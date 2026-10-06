@@ -43,7 +43,9 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
   // B-LOOP-07 re-pin: the W1 step chain left Today; the ONE primary slot is
   // the first block of planToday's order (morning: the practice).
   it("OverviewTab renders ONE primary slot: the first of the three blocks", () => {
-    expect(overview).toContain('{i === 0 ? <div data-primary-move="do-practice" className="min-w-0">{blocks[id]}</div> : blocks[id]}');
+    // P5 design r1 P0-1: the slot's stamp sits on its answers (one literal).
+    expect(overview).toContain('const primaryStamp = { "data-primary-move": "do-practice" } as const;');
+    expect(overview).toContain('stampMove={firstBlock === "practice" ? primaryMoveId : undefined}');
     expect(count(overview, /<TodayActionLoop/g)).toBe(1);
     expect(count(overview, /<TodayRecommendation/g)).toBe(0);
     expect(count(overview, /<PromptCaptureCard/g)).toBe(0);
@@ -86,7 +88,7 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
   it("section order: capture → the three blocks → the door (What changed → the Ask step → rail → noticed)", () => {
     const order = [
       overview.indexOf("<QuickCaptureBar"),
-      overview.indexOf("plan.order.map((id, i) => ("),
+      overview.indexOf("plan.order.map((id) => ("),
       overview.indexOf("<WhatChanged"),
       overview.indexOf("<TodayActionLoop"),
       overview.indexOf("<FirstStepsRail"),

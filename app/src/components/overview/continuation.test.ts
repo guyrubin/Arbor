@@ -68,7 +68,7 @@ describe("B-TODAY-18 · placement on Today", () => {
   // B-LOOP-07 re-pin: the continuation slot (carry-over ask, tomorrow's
   // reason) is the coordinator's ONE slot behind Today's door, below the blocks.
   it("the slot renders behind the door, after the three blocks", () => {
-    const blocks = overview.indexOf("plan.order.map((id, i) => (");
+    const blocks = overview.indexOf("plan.order.map((id) => (");
     const slotAt = overview.indexOf("<CompanionOfferSlot");
     expect(blocks).toBeGreaterThan(-1);
     expect(slotAt).toBeGreaterThan(blocks);

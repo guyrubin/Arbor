@@ -123,7 +123,9 @@ describe("NEXTLEVEL critic r1 — a named topic, a joy opener, the chips are the
   // standalone mount is gone and the first block carries the one stamp.
   it("OverviewTab: no standalone record card; the first block carries the one stamp; the rail sits behind the door", () => {
     expect(SRC).not.toContain("<FromRecordCard");
-    expect(SRC).toContain('<div data-primary-move="do-practice" className="min-w-0">');
+    // P5 design r1 P0-1: the stamp is on the first block's answers, not a wrapper.
+    expect(SRC).toContain('const primaryStamp = { "data-primary-move": "do-practice" } as const;');
+    expect(SRC).not.toContain('<div data-primary-move="do-practice"');
     expect(SRC).toContain("{railWould && <FirstStepsRail");
   });
 });
@@ -133,7 +135,9 @@ describe("B-TODAY-28 — OverviewTab wiring (source pin)", () => {
     expect(SRC).not.toContain("today.greeting.");
     expect(SRC).not.toContain('t("today.header.prompt")');
     expect(SRC).toContain('data-testid="today-identity"');
-    expect(SRC).toMatch(/"today\.identity"/);
+    // P5 design r1 P0-1: name · age on ONE line; the weekday is in the eyebrow.
+    expect(SRC).toMatch(/"elev\.loop\.today\.identity"/);
+    expect(SRC).toMatch(/"elev\.loop\.today\.eyebrow"/);
   });
 
   it("critic r1 (Law 8): the identity h1 inherits the page direction — no dir=auto, no outer bdi", () => {

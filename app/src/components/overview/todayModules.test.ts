@@ -68,7 +68,8 @@ describe("todayModules v3 — planToday", () => {
     expect(c?.primaryMove).toBe("do-practice");
     const ov = stripComments(read("components/tabs/OverviewTab.tsx"));
     expect(ov.match(/data-primary-move/g)?.length).toBe(1);
-    expect(ov).toContain('data-primary-move="do-practice"');
+    // P5 design r1 P0-1: the prop form — one literal, placed on the answers.
+    expect(ov).toContain('"data-primary-move": "do-practice"');
   });
 
   it("P1-B: the plan never consults a content-publish gate", () => {

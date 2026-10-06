@@ -43,11 +43,17 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
     }
   });
 
-  it("the blocks render in planToday's order; exactly ONE primary-move stamp (do-practice) on the first", () => {
-    expect(OV).toContain("plan.order.map((id, i) => (");
+  // P5 design r1 P0-1 re-pin: the ONE stamp literal sits on the first
+  // block's ANSWER group (PracticeCard / TonightFlow stampMove, the slot
+  // NoticeCard answersAttrs), never on a wrapper around the whole card.
+  it("the blocks render in planToday's order; exactly ONE primary-move stamp (do-practice) on the first block's answers", () => {
+    expect(OV).toContain("plan.order.map((id) => (");
     expect(OV).toContain('data-module={`today-${id}`}');
     expect(OV.match(/data-primary-move/g)?.length).toBe(1);
-    expect(OV).toContain('{i === 0 ? <div data-primary-move="do-practice" className="min-w-0">{blocks[id]}</div> : blocks[id]}');
+    expect(OV).toContain('const primaryStamp = { "data-primary-move": "do-practice" } as const;');
+    expect(OV).toContain('stampMove={firstBlock === "practice" ? primaryMoveId : undefined}');
+    expect(OV).toContain('stampMove={firstBlock === "tonight" ? primaryMoveId : undefined}');
+    expect(OV).not.toMatch(/<div data-primary-move=/);
     expect(contractFor("overview")).toMatchObject({ primaryMove: "do-practice", moduleBudget: 3, demotionTarget: "disclosure" });
   });
 

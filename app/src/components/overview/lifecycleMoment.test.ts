@@ -97,7 +97,7 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
   // anchor ROW (the seat the dev-map card held), so the lifecycle moment now
   // renders after that row — still after the day's action (P1-A).
   it("renders AFTER the day's blocks (P1-A) and after the door's What-changed lines", () => {
-    const blocks = overview.indexOf("plan.order.map((id, i) => (");
+    const blocks = overview.indexOf("plan.order.map((id) => (");
     const changed = overview.indexOf("<WhatChanged");
     const lifecycle = overview.indexOf("<LifecycleMomentCard");
     expect(blocks).toBeGreaterThan(-1);

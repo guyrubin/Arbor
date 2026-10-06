@@ -291,7 +291,7 @@ describe("OverviewTab wiring — ONE What-changed card", () => {
   it("one mount, behind the door, after the blocks", () => {
     expect(overview.match(/<WhatChanged\b/g)).toHaveLength(1);
     expect(overview).toMatch(/\{changedWould && \(\s*<WhatChanged\s+lines=\{changed\.lines\.slice\(0, 3\)\}/);
-    expect(overview.indexOf("<WhatChanged")).toBeGreaterThan(overview.indexOf("plan.order.map((id, i) => ("));
+    expect(overview.indexOf("<WhatChanged")).toBeGreaterThan(overview.indexOf("plan.order.map((id) => ("));
     expect(overview.indexOf("<WhatChanged")).toBeGreaterThan(overview.indexOf('data-testid="today-door"'));
   });
 
