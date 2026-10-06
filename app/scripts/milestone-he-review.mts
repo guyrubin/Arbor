@@ -28,8 +28,22 @@
  * reviewer_fix cell: one line per corrected field, `title=…`, `desc=…`,
  * `looks=…` (or the Hebrew prefixes `כותרת=`, `תיאור=`, `איך זה נראה=`).
  *
- * EXTENSION POINT: `--practices` (B-LOOP-08, the practice library) registers
- * its own export/import in MODES below; not built here.
+ * PRACTICES MODE (B-LOOP-08, the practice library, content/practices.ts):
+ *
+ *   npx tsx scripts/milestone-he-review.mts --practices export [--out <dir>]
+ *   npx tsx scripts/milestone-he-review.mts --practices import <file.csv> [--practices-file <path>]
+ *
+ * EXPORT writes HE-REVIEW-PRACTICES-<YYYY-MM-DD>.csv (BOM, CRLF, quoted):
+ * one row per practice — id · milestoneId · shelf · band · EN do · HE do ·
+ * EN say · HE say · reviewer_ok · reviewer_fix · reviewer_note.
+ * IMPORT applies `reviewer_fix` (`do=…` / `say=…`, or `עשו=` / `אמרו=`) into
+ * content/practices.ts BY ID + FIELD: inside the practice's `P("<milestoneId>"`
+ * block, the `do:` / `say:` line's exact HE value is string-replaced (never
+ * regenerated); a stale or non-unique value is REFUSED, and so is a fix that
+ * carries Latin letters, a verdict/norm word, a diagnosis term, a practice
+ * banned word (PRACTICE_BANNED) or more words than the cap (do 25, say 15).
+ * Practices carry no review flag (reviewStatus stays "draft" until the
+ * clinical reviewer signs); the import lists the unsigned ids.
  */
 import process from "node:process";
 import path from "node:path";
@@ -40,6 +54,7 @@ import { HE_MILESTONE_TEXT } from "../src/lib/i18nElevation/milestoneCatalogue.j
 import { milestoneShelf } from "../src/lib/shelves/registry.js";
 import { HE_VERDICT_WORDS } from "../src/lib/milestoneHeRules.js";
 import { findClinicalDiagnosisTerm } from "../src/lib/clinicalScan.js";
+import { PRACTICES, PRACTICE_BANNED } from "../src/content/practices.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_OUT_DIR = "C:/Users/dguyr/ROS/PAI/projects/arbor/execution/2026-10-06--milestone-loop";
@@ -223,13 +238,164 @@ export function runImport(csvText: string, opts: { catalogue?: string; data?: st
   return { changed, refused, gaps, flag };
 }
 
+/* ── PRACTICES (B-LOOP-08) ─────────────────────────────────────────────── */
+
+export const DEFAULT_PRACTICES = path.resolve(HERE, "..", "src", "content", "practices.ts");
+export const PRACTICE_COLUMNS = ["id", "milestoneId", "shelf", "band", "en_do", "he_do", "en_say", "he_say", "reviewer_ok", "reviewer_fix", "reviewer_note"] as const;
+export type PracticeReviewRow = Record<(typeof PRACTICE_COLUMNS)[number], string>;
+const PRACTICE_FIELDS = ["do", "say"] as const;
+type PracticeField = (typeof PRACTICE_FIELDS)[number];
+const PRACTICE_FIX_PREFIX: Record<string, PracticeField> = { do: "do", say: "say", "עשו": "do", "אמרו": "say" };
+const PRACTICE_WORD_CAP: Record<PracticeField, number> = { do: 25, say: 15 };
+
+/** One row per practice, in library order; the text is the TS source's own. */
+export function buildPracticeReviewRows(): PracticeReviewRow[] {
+  return PRACTICES.map((p) => ({
+    id: p.id, milestoneId: p.milestoneId, shelf: p.shelf, band: bandForAgeMonths(p.ageMonths).label,
+    en_do: p.do.en, he_do: p.do.he, en_say: p.say.en, he_say: p.say.he,
+    reviewer_ok: "", reviewer_fix: "", reviewer_note: "",
+  }));
+}
+
+export function buildPracticeExportCsv(rows: PracticeReviewRow[] = buildPracticeReviewRows()): string {
+  const lines = [PRACTICE_COLUMNS.map((c) => quote(c)).join(","), ...rows.map((r) => PRACTICE_COLUMNS.map((c) => quote(r[c])).join(","))];
+  return BOM + lines.join("\r\n") + "\r\n";
+}
+
+export const practicesExportFileName = (now: Date = new Date()): string => `HE-REVIEW-PRACTICES-${now.toISOString().slice(0, 10)}.csv`;
+
+export function runPracticesExport(outDir: string = DEFAULT_OUT_DIR, now: Date = new Date()): { file: string; rows: number } {
+  mkdirSync(outDir, { recursive: true });
+  const rows = buildPracticeReviewRows();
+  const file = path.join(outDir, practicesExportFileName(now));
+  writeFileSync(file, buildPracticeExportCsv(rows), "utf8");
+  return { file, rows: rows.length };
+}
+
+/** Parse a practice reviewer_fix cell (`do=` / `say=` / `עשו=` / `אמרו=`). */
+export function parsePracticeFix(cell: string): Partial<Record<PracticeField, string>> {
+  const out: Partial<Record<PracticeField, string>> = {};
+  for (const raw of cell.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const eq = line.indexOf("=");
+    const field = eq > 0 ? PRACTICE_FIX_PREFIX[line.slice(0, eq).trim()] : undefined;
+    if (!field) throw new Error(`reviewer_fix line has no do= / say= prefix: "${line}"`);
+    out[field] = line.slice(eq + 1).trim();
+  }
+  return out;
+}
+
+/** Why a Hebrew practice fix may not enter the library, or null. */
+export function practiceFixProblem(text: string, field: PracticeField): string | null {
+  const base = fixProblem(text);
+  if (base) return base;
+  const banned = PRACTICE_BANNED.he.find((w) => text.includes(w));
+  if (banned) return `practice banned word "${banned}"`;
+  const words = text.split(/\s+/).filter(Boolean).length;
+  if (words > PRACTICE_WORD_CAP[field]) return `${words} words (cap ${PRACTICE_WORD_CAP[field]})`;
+  return null;
+}
+
+export interface PracticesImportResult {
+  changed: string[];
+  refused: string[];
+  gaps: string[];
+}
+
+export function runPracticesImport(csvText: string, opts: { practices?: string } = {}): PracticesImportResult {
+  const file = opts.practices ?? DEFAULT_PRACTICES;
+  const [header, ...body] = parseCsv(csvText);
+  const col = (name: (typeof PRACTICE_COLUMNS)[number]) => {
+    const i = header?.indexOf(name) ?? -1;
+    if (i < 0) throw new Error(`CSV has no "${name}" column`);
+    return i;
+  };
+  const idx = { id: col("id"), milestoneId: col("milestoneId"), ok: col("reviewer_ok"), fix: col("reviewer_fix"), he: { do: col("he_do"), say: col("he_say") } };
+
+  const raw = readFileSync(file, "utf8");
+  const crlf = raw.includes("\r\n");
+  const lines = raw.replace(/\r\n/g, "\n").split("\n");
+  const changed: string[] = [];
+  const refused: string[] = [];
+  const signed = new Set<string>();
+
+  /** The line index of `field:` inside the practice block of `milestoneId`, or -1. */
+  const fieldLine = (milestoneId: string, field: PracticeField): number => {
+    const start = lines.findIndex((l) => l.startsWith(`  P(${JSON.stringify(milestoneId)},`));
+    if (start < 0) return -1;
+    for (let i = start + 1; i < lines.length; i += 1) {
+      if (lines[i].startsWith("  P(") || lines[i].startsWith("];")) return -1;
+      if (lines[i].startsWith(`    ${field}: L(`)) return i;
+    }
+    return -1;
+  };
+
+  for (const row of body) {
+    const id = row[idx.id]?.trim();
+    if (!id) continue;
+    const milestoneId = row[idx.milestoneId]?.trim() ?? "";
+    if (id !== `pr-${milestoneId}`) { refused.push(`${id}: id and milestoneId disagree — re-export`); continue; }
+    const ok = row[idx.ok]?.trim() === "1";
+    let fix: Partial<Record<PracticeField, string>> = {};
+    try {
+      fix = parsePracticeFix(row[idx.fix] ?? "");
+    } catch (e) {
+      refused.push(`${id}: ${(e as Error).message}`);
+      continue;
+    }
+    let rowRefused = false;
+    for (const field of PRACTICE_FIELDS) {
+      const next = fix[field];
+      if (next === undefined) continue;
+      const key = `${id}.${field}.he`;
+      const problem = practiceFixProblem(next, field);
+      if (problem) { refused.push(`${key}: ${problem}`); rowRefused = true; continue; }
+      const lineNo = fieldLine(milestoneId, field);
+      if (lineNo < 0) { refused.push(`${key}: no ${field}: line for ${id}`); rowRefused = true; continue; }
+      const current = JSON.stringify(row[idx.he[field]] ?? "");
+      if (lines[lineNo].split(current).length - 1 !== 1) { refused.push(`${key}: the current value is not the text the reviewer saw (or not unique) — re-export`); rowRefused = true; continue; }
+      if (JSON.stringify(next) === current) continue;
+      lines[lineNo] = lines[lineNo].replace(current, () => JSON.stringify(next));
+      changed.push(key);
+    }
+    if (!rowRefused && (ok || Object.keys(fix).length > 0)) signed.add(id);
+  }
+
+  if (changed.length > 0) {
+    const out = lines.join("\n");
+    writeFileSync(file, crlf ? out.replace(/\n/g, "\r\n") : out, "utf8");
+  }
+  const gaps = PRACTICES.map((p) => p.id).filter((id) => !signed.has(id));
+  return { changed, refused, gaps };
+}
+
+const PRACTICE_MODES: Record<string, (argv: string[]) => number> = {
+  export: (argv) => {
+    const { file, rows } = runPracticesExport(arg(argv, "--out") ?? DEFAULT_OUT_DIR);
+    console.log(`wrote ${rows} practice rows → ${file}`);
+    return 0;
+  },
+  import: (argv) => {
+    const file = argv[1];
+    if (!file || file.startsWith("--")) { console.error("--practices import needs a CSV file"); return 2; }
+    const res = runPracticesImport(readFileSync(file, "utf8"), { practices: arg(argv, "--practices-file") });
+    console.log(`fields changed: ${res.changed.length}`);
+    for (const k of res.changed) console.log(`  ~ ${k}`);
+    if (res.refused.length) { console.log(`refused: ${res.refused.length}`); for (const r of res.refused) console.log(`  ! ${r}`); }
+    if (res.gaps.length) console.log(`not yet signed (${res.gaps.length})`);
+    return res.refused.length ? 1 : 0;
+  },
+};
+
 /* ── CLI ───────────────────────────────────────────────────────────────── */
 
-const HELP = `milestone-he-review — native Hebrew review of the milestone catalogue (B-LOOP-02)
+const HELP = `milestone-he-review — native Hebrew review of the milestone catalogue (B-LOOP-02) and the practice library (B-LOOP-08)
 
   export [--out <dir>]                                  write HE-REVIEW-<date>.csv (default dir: ${DEFAULT_OUT_DIR})
   import <file.csv> [--catalogue <path>] [--data <path>] apply reviewer_fix cells; flip the flag only on a complete review
-  --practices                                           reserved for B-LOOP-08 (not built)
+  --practices export [--out <dir>]                      write HE-REVIEW-PRACTICES-<date>.csv (one row per practice)
+  --practices import <file.csv> [--practices-file <p>]  apply do= / say= fixes into content/practices.ts by id + field
 `;
 
 const arg = (argv: string[], name: string): string | undefined => {
@@ -237,7 +403,7 @@ const arg = (argv: string[], name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined;
 };
 
-/** Mode registry — B-LOOP-08 adds `practices` here. */
+/** Mode registry (catalogue); `--practices` dispatches to PRACTICE_MODES. */
 const MODES: Record<string, (argv: string[]) => number> = {
   export: (argv) => {
     const { file, rows } = runExport(arg(argv, "--out") ?? DEFAULT_OUT_DIR);
@@ -259,7 +425,12 @@ const MODES: Record<string, (argv: string[]) => number> = {
 
 export function main(argv: string[]): number {
   if (argv.length === 0 || argv.includes("--help") || argv.includes("-h")) { console.log(HELP); return 0; }
-  if (argv.includes("--practices")) { console.error("--practices is B-LOOP-08 (the practice library); not built yet."); return 2; }
+  if (argv.includes("--practices")) {
+    const rest = argv.filter((a) => a !== "--practices");
+    const practiceMode = PRACTICE_MODES[rest[0]];
+    if (!practiceMode) { console.error(`--practices needs a mode (export | import)\n\n${HELP}`); return 2; }
+    return practiceMode(rest);
+  }
   const mode = MODES[argv[0]];
   if (!mode) { console.error(`unknown mode "${argv[0]}"\n\n${HELP}`); return 2; }
   return mode(argv);

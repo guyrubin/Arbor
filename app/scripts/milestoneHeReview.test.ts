@@ -15,8 +15,10 @@ import path from "node:path";
 import { ALL_MILESTONES, MILESTONE_HE_REVIEW } from "../src/lib/milestoneData";
 import { HE_MILESTONE_TEXT } from "../src/lib/i18nElevation/milestoneCatalogue";
 import { translate } from "../src/lib/i18n";
+import { PRACTICES } from "../src/content/practices";
 import {
   BOM, COLUMNS, DEFAULT_CATALOGUE, DEFAULT_DATA, buildExportCsv, buildReviewRows, exportFileName, main, parseCsv, runExport, runImport, type ReviewRow,
+  DEFAULT_PRACTICES, PRACTICE_COLUMNS, buildPracticeExportCsv, buildPracticeReviewRows, practicesExportFileName, runPracticesExport, runPracticesImport, type PracticeReviewRow,
 } from "./milestone-he-review.mts";
 
 let tmp: string;
@@ -143,9 +145,109 @@ describe("B-LOOP-02 — import (temp copies only)", () => {
 });
 
 describe("B-LOOP-02 — CLI", () => {
-  it("--help prints usage; --practices is reserved for B-LOOP-08", () => {
+  it("--help prints usage; --practices without a mode and an unknown mode exit 2", () => {
     expect(main(["--help"])).toBe(0);
     expect(main(["--practices"])).toBe(2);
+    expect(main(["--practices", "nope"])).toBe(2);
     expect(main(["nope"])).toBe(2);
+  });
+});
+
+/**
+ * B-LOOP-08 — the practices mode: one row per practice (EN + HE do/say), and
+ * fixes applied into a TEMP copy of content/practices.ts by id + field.
+ */
+describe("B-LOOP-08 — practices export", () => {
+  it("one row per practice, header = the eleven columns, the eight text columns filled, BOM + CRLF", () => {
+    const csv = buildPracticeExportCsv();
+    expect(csv.startsWith(BOM)).toBe(true);
+    expect(csv.includes("\r\n")).toBe(true);
+    const rows = parseCsv(csv);
+    expect(rows[0]).toEqual([...PRACTICE_COLUMNS]);
+    const body = rows.slice(1);
+    expect(body.map((r) => r[0])).toEqual(PRACTICES.map((p) => p.id));
+    expect(body).toHaveLength(ALL_MILESTONES.length);
+    for (const r of body) {
+      expect(r, r[0]).toHaveLength(11);
+      for (let i = 0; i < 8; i += 1) expect(r[i].trim().length, `${r[0]} ${PRACTICE_COLUMNS[i]}`).toBeGreaterThan(0);
+      expect(r.slice(8)).toEqual(["", "", ""]);
+    }
+    const first = buildPracticeReviewRows()[0];
+    expect(first.he_say).toBe(PRACTICES[0].say.he);
+    expect(first.shelf).toBe(PRACTICES[0].shelf);
+  });
+
+  it("runPracticesExport writes HE-REVIEW-PRACTICES-<date>.csv with the Hebrew intact", () => {
+    const out = runPracticesExport(tmp, new Date("2026-10-06T12:00:00Z"));
+    expect(path.basename(out.file)).toBe("HE-REVIEW-PRACTICES-2026-10-06.csv");
+    expect(path.basename(out.file)).toBe(practicesExportFileName(new Date("2026-10-06T12:00:00Z")));
+    const bytes = fs.readFileSync(out.file);
+    expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(parseCsv(bytes.toString("utf8"))[1][7]).toBe(PRACTICES[0].say.he);
+    expect(out.rows).toBe(PRACTICES.length);
+  });
+});
+
+describe("B-LOOP-08 — practices import (temp copy only)", () => {
+  const realPractices = fs.readFileSync(DEFAULT_PRACTICES, "utf8");
+  const practicesCopy = () => {
+    const file = path.join(tmp, "practices.ts");
+    fs.writeFileSync(file, realPractices, "utf8");
+    return file;
+  };
+  const prows = (patch: (r: PracticeReviewRow) => PracticeReviewRow = (r) => r) => buildPracticeReviewRows().map(patch);
+
+  it("one say= fix changes exactly one line (the say line of that practice); the rest is listed as unsigned", () => {
+    const file = practicesCopy();
+    const rows = prows((r) => (r.id === "pr-cdc-2m-4" ? { ...r, reviewer_fix: "say=בום גדול! זאת הייתה הדלת. אני כאן." } : r));
+    const res = runPracticesImport(buildPracticeExportCsv(rows), { practices: file });
+    expect(res.changed).toEqual(["pr-cdc-2m-4.say.he"]);
+    expect(res.refused).toEqual([]);
+    expect(res.gaps).toHaveLength(PRACTICES.length - 1);
+    const before = realPractices.split(/\r?\n/);
+    const after = fs.readFileSync(file, "utf8").split(/\r?\n/);
+    expect(after.length).toBe(before.length);
+    const diff = after.map((l, i) => (l === before[i] ? null : i)).filter((i) => i !== null);
+    expect(diff).toHaveLength(1);
+    expect(after[diff[0] as number]).toMatch(/^ {4}say: L\(/);
+    expect(after[diff[0] as number]).toContain('"בום גדול! זאת הייתה הדלת. אני כאן."');
+    expect(after[diff[0] as number]).toContain(JSON.stringify(PRACTICES.find((p) => p.id === "pr-cdc-2m-4")!.say.en));
+  });
+
+  it("a Hebrew-prefixed עשו= fix lands on the do line; every row signed leaves no gap", () => {
+    const file = practicesCopy();
+    const rows = prows((r) => ({ ...r, reviewer_ok: "1", ...(r.id === "pr-cdc-4m-3" ? { reviewer_fix: "עשו=החזיקו את התינוק/ת פנים מול פנים. השמיעו צליל קצר וחכו לתשובה." } : {}) }));
+    const res = runPracticesImport(buildPracticeExportCsv(rows), { practices: file });
+    expect(res.changed).toEqual(["pr-cdc-4m-3.do.he"]);
+    expect(res.gaps).toEqual([]);
+    expect(fs.readFileSync(file, "utf8")).toContain('"החזיקו את התינוק/ת פנים מול פנים. השמיעו צליל קצר וחכו לתשובה."');
+  });
+
+  it("refuses Latin letters, a verdict word, a practice banned word, an over-cap say, a stale base text and a missing prefix — and writes nothing", () => {
+    const file = practicesCopy();
+    const rows = prows((r) => {
+      if (r.id === "pr-cdc-6m-3") return { ...r, reviewer_fix: "say=Your turn" };
+      if (r.id === "pr-cdc-6m-4") return { ...r, reviewer_fix: "say=זה תקין לגמרי" };
+      if (r.id === "pr-cdc-9m-4") return { ...r, reviewer_fix: "do=צריך ללמד אותו מילים" };
+      if (r.id === "pr-cdc-9m-5") return { ...r, reviewer_fix: `say=${"מילה ".repeat(16).trim()}` };
+      if (r.id === "pr-cdc-12m-2") return { ...r, he_say: "טקסט ישן", reviewer_fix: "say=ביי סבתא!" };
+      if (r.id === "pr-cdc-12m-3") return { ...r, reviewer_fix: "הנה אבא" };
+      return r;
+    });
+    const res = runPracticesImport(buildPracticeExportCsv(rows), { practices: file });
+    expect(res.changed).toEqual([]);
+    expect(res.refused.map((x) => x.split(":")[0]).sort()).toEqual([
+      "pr-cdc-12m-2.say.he", "pr-cdc-12m-3", "pr-cdc-6m-3.say.he", "pr-cdc-6m-4.say.he", "pr-cdc-9m-4.do.he", "pr-cdc-9m-5.say.he",
+    ]);
+    expect(fs.readFileSync(file, "utf8")).toBe(realPractices);
+  });
+
+  it("the real practices file is never touched by the suite", () => {
+    expect(fs.readFileSync(DEFAULT_PRACTICES, "utf8")).toBe(realPractices);
+  });
+
+  it("CLI: --practices export writes the pack to --out", () => {
+    expect(main(["--practices", "export", "--out", tmp])).toBe(0);
+    expect(fs.readdirSync(tmp).some((f) => /^HE-REVIEW-PRACTICES-\d{4}-\d{2}-\d{2}\.csv$/.test(f))).toBe(true);
   });
 });
