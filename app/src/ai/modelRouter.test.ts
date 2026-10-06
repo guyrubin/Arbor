@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { createTestConfig } from "../testConfig.js";
@@ -104,6 +104,52 @@ describe("model route decisions", () => {
 
     expect(modelForGeminiRequest(config, "coach_high_stakes", [{ data: "QUJD", mimeType: "image/png" }]))
       .toBe("gemini-2.5-pro");
+  });
+});
+
+// B-PROV-07: the candidate list + entitlement weights never move production:
+// with the env defaults (no AI_CANDIDATES_*), every route's prod selection IS
+// the resolved id pinned in evals/pinned-models.json — for every entitlement.
+describe("B-PROV-07 · prod default selection equals evals/pinned-models.json", () => {
+  const KEYS = [
+    "ARBOR_ENV", "MODEL_PROVIDER", "MEMORY_ADAPTER", "ENABLE_LOCAL_MEMORY_ADAPTER", "GCP_PROJECT_ID", "FIREBASE_PROJECT_ID",
+    "GCP_REGION", "VERTEX_LOCATION", "VERTEX_CLAUDE_LOCATION", "VERTEX_MODEL_CHAT", "VERTEX_MODEL_STORY", "VERTEX_MODEL_ANALYSIS", "VERTEX_MODEL_HANDOFF",
+    "AI_CANDIDATES_COACH_HIGH_STAKES", "AI_CANDIDATES_CREATIVE_LOW_RISK", "AI_CANDIDATES_ANALYSIS_STRUCTURED", "AI_CANDIDATES_HANDOFF_STRUCTURED",
+  ];
+  let saved: Record<string, string | undefined> = {};
+  beforeEach(() => {
+    saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
+    for (const k of KEYS) delete process.env[k];
+    process.env.ARBOR_ENV = "prod";
+    process.env.MEMORY_ADAPTER = "firestore";
+    process.env.ENABLE_LOCAL_MEMORY_ADAPTER = "false";
+    process.env.GCP_PROJECT_ID = "arbor-test";
+    process.env.FIREBASE_PROJECT_ID = "arbor-test";
+  });
+  afterEach(() => {
+    for (const k of KEYS) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+  });
+
+  it("every ModelRoute: provider + resolved id match the pin, unweighted, free and paid", async () => {
+    const { loadConfig } = await import("../config/env.js");
+    const pinned = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, "..", "..", "..", "evals", "pinned-models.json"), "utf8"),
+    ) as { routes: Record<string, { provider: string; alias: string; resolved: string }> };
+    const config = loadConfig();
+    const routes: ModelRoute[] = ["coach_high_stakes", "creative_low_risk", "analysis_structured", "handoff_structured"];
+    for (const route of routes) {
+      const pin = pinned.routes[route];
+      expect(pin, `pin for ${route}`).toBeDefined();
+      for (const entitlement of [undefined, "free", "paid"] as const) {
+        const decision = routeDecisionFor(config, route, entitlement);
+        expect(decision.provider, `${route} ${entitlement ?? "none"}`).toBe(pin.provider);
+        expect(decision.model, `${route} ${entitlement ?? "none"}`).toBe(pin.alias);
+        expect(toAnthropicVertexModelId(decision.model), `${route} ${entitlement ?? "none"}`).toBe(pin.resolved);
+      }
+    }
   });
 });
 

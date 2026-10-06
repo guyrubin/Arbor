@@ -1,12 +1,13 @@
 import { GoogleGenAI, type Schema } from "@google/genai";
 import type { ArborConfig } from "../config/env.js";
 import { withDefaultModelDeadlines } from "./modelDeadlines.js";
-import { ClaudeVertexProvider, claudeVertexLocation } from "./claudeVertexProvider.js";
+import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
 import { abortableIterate, isAbortError, isTransientModelError, raceWithAbort, withModelRetry, type ModelCallBudget } from "./modelRetry.js";
 import { recordUsage, startCallTimer } from "./usage.js";
 import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "./capabilities/policy.js";
-import type { CapabilityRequest } from "./capabilities/contracts.js";
-import { MOCK_MODEL_ID, MockModelProvider } from "./mockProvider.js";
+import type { AiEntitlement, CapabilityRequest } from "./capabilities/contracts.js";
+import { candidatesFor, defaultCandidateFor } from "./capabilities/candidates.js";
+import { MockModelProvider } from "./mockProvider.js";
 
 export { withModelRetry, isAbortError, newAbortError, type ModelCallBudget } from "./modelRetry.js";
 
@@ -147,78 +148,19 @@ export type ModelProvider = {
   routeDecision(route: ModelRoute): RouteDecision;
 };
 
-/** The raw config→model map (no policy). Internal: production callers go
- *  through modelForRoute / routeDecisionFor, which enforce the route policy. */
-const modelIdForRoute = (config: ArborConfig, route: ModelRoute) => {
-  if (config.modelProvider === "gemini_dev") return config.geminiModel;
-  if (config.modelProvider === "mock") return MOCK_MODEL_ID;
-
-  const map: Record<ModelRoute, string> = {
-    coach_high_stakes: config.vertexModelChat,
-    creative_low_risk: config.vertexModelStory,
-    analysis_structured: config.vertexModelAnalysis,
-    handoff_structured: config.vertexModelHandoff
-  };
-  return map[route];
-};
-
 // ── COACH-3: the ai/capabilities policy layer is WIRED here, not scaffolding.
 // Every structured-text/stream route decision executes selectProvider against
 // the RoutePolicy built from ArborConfig, so provider eligibility (region /
 // no-training / retention) is actually enforced on production request paths —
 // and fails closed (AiProviderError "policy_denied") on a misconfigured region
 // instead of silently routing family data to an ineligible provider.
+// B-PROV-07: the candidates are a LIST (ai/capabilities/candidates.ts); unset
+// AI_CANDIDATES_<ROUTE> = today's single candidate per route.
 
-const CANDIDATE_SCORE = { quality: 3, safety: 3, reliability: 3, latencyFitness: 3, costFitness: 3 } as const;
-
-/** The single provider candidate the current config yields for a route,
- *  declared with its real residency/retention posture for the policy gate. */
-export const structuredTextCandidateFor = (config: ArborConfig, route: ModelRoute): ProviderCandidate => {
-  if (config.modelProvider === "mock") {
-    // B-INF-04: fixtures, no network. Declared "global" so even a mis-set prod
-    // config is denied by the EU-only route policy (env.ts refuses it first).
-    return {
-      ref: { provider: "mock", model: MOCK_MODEL_ID, region: "global" },
-      capabilities: ["structured_text", "text_stream"],
-      audiences: ["parent", "professional", "internal"],
-      dataClasses: ["public", "account", "child_profile"],
-      trainsOnCustomerData: false,
-      retentionDays: 0,
-      score: CANDIDATE_SCORE
-    };
-  }
-  if (config.modelProvider === "gemini_dev") {
-    return {
-      // AI-Studio developer API has no regional endpoint — declared honestly as
-      // "global", which the route policy only admits outside prod.
-      ref: { provider: "gemini_dev", model: config.geminiModel, region: "global" },
-      capabilities: ["structured_text", "text_stream"],
-      audiences: ["parent", "professional", "internal"],
-      dataClasses: ["public", "account", "child_profile"],
-      trainsOnCustomerData: false,
-      retentionDays: 30,
-      score: CANDIDATE_SCORE
-    };
-  }
-  const model = modelIdForRoute(config, route);
-  const claude = /^claude-/i.test(model);
-  return {
-    ref: {
-      provider: claude ? "vertex_claude" : "vertex_gemini",
-      model,
-      // B-PROV-03: a Claude route declares the region its calls actually go
-      // to (VERTEX_CLAUDE_LOCATION, default the `eu` multi-region); Gemini
-      // routes keep VERTEX_LOCATION.
-      region: providerRegion(claude ? claudeVertexLocation(config) : config.vertexLocation)
-    },
-    capabilities: ["structured_text", "text_stream"],
-    audiences: ["parent", "professional", "internal"],
-    dataClasses: ["public", "account", "child_profile"],
-    trainsOnCustomerData: false,
-    retentionDays: 0,
-    score: CANDIDATE_SCORE
-  };
-};
+/** Today's single provider candidate for a route (the configured provider +
+ *  model), declared with its real residency/retention posture. */
+export const structuredTextCandidateFor = (config: ArborConfig, route: ModelRoute): ProviderCandidate =>
+  defaultCandidateFor(config, route);
 
 /** Policy-enforced model id for a route (throws policy_denied when the
  *  configured provider violates the route policy — fail closed). */
@@ -244,16 +186,20 @@ export const modelForGeminiRequest = (config: ArborConfig, route: ModelRoute, im
   return multimodalModel;
 };
 
-export const routeDecisionFor = (config: ArborConfig, route: ModelRoute): RouteDecision => {
+/** B-PROV-07: policy-enforced decision over the route's candidate list;
+ *  `entitlement` weights the choice between eligible candidates (free → cost,
+ *  paid → quality); absent → today's unweighted policy. */
+export const routeDecisionFor = (config: ArborConfig, route: ModelRoute, entitlement?: AiEntitlement): RouteDecision => {
   const request: CapabilityRequest<"structured_text"> = {
     capability: "structured_text",
     route,
     audience: "parent",
     locale: "en",
     dataClasses: ["child_profile"],
-    risk: route === "coach_high_stakes" ? "high" : "moderate"
+    risk: route === "coach_high_stakes" ? "high" : "moderate",
+    ...(entitlement ? { entitlement } : {})
   };
-  const decision = selectProvider(request, routePolicyFor(config), [structuredTextCandidateFor(config, route)]);
+  const decision = selectProvider(request, routePolicyFor(config, request), candidatesFor(config, route));
   return { route, provider: decision.selected.ref.provider as ProviderId, model: decision.selected.ref.model };
 };
 
@@ -553,7 +499,9 @@ export class VertexModelProvider implements ModelProvider {
   private readonly claude: ClaudeVertexProvider;
   private readonly gemini: VertexGeminiProvider;
   constructor(private readonly config: ArborConfig) {
-    this.claude = new ClaudeVertexProvider(config);
+    // B-PROV-07: Claude calls the POLICY-decided model (the candidate list may
+    // name a Claude model other than VERTEX_MODEL_CHAT).
+    this.claude = new ClaudeVertexProvider(config, (route) => modelForRoute(config, route));
     this.gemini = new VertexGeminiProvider(config);
   }
 

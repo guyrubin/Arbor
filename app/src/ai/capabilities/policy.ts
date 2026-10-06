@@ -32,15 +32,28 @@ export const providerRegion = (location?: string): string => {
   return "other";
 };
 
+/** B-PROV-07: entitlement weights for the choice between eligible candidates
+ *  (unlisted weights stay 1). Free favours cost, paid favours quality. */
+export const ENTITLEMENT_WEIGHTS: Record<NonNullable<CapabilityRequest["entitlement"]>, Partial<ProviderCandidate["score"]>> = {
+  free: { costFitness: 3 },
+  paid: { quality: 3 },
+};
+
 /** COACH-3: the single RoutePolicy production request paths enforce.
  *  Prod is EU-resident-only; non-prod additionally admits "global" (the
  *  AI-Studio dev key has no regional endpoint). No-training and bounded
- *  retention are required in EVERY environment. */
-export const routePolicyFor = (config: Pick<ArborConfig, "arborEnv">): RoutePolicy => ({
-  allowedRegions: config.arborEnv === "prod" ? ["eu"] : ["eu", "global"],
-  requireNoTraining: true,
-  maxRetentionDays: 30,
-});
+ *  retention are required in EVERY environment.
+ *  B-PROV-07: a request carrying an entitlement adds its weights; no
+ *  entitlement → today's unweighted policy. Weights never touch eligibility. */
+export const routePolicyFor = (config: Pick<ArborConfig, "arborEnv">, request?: Pick<CapabilityRequest, "entitlement">): RoutePolicy => {
+  const weights = request?.entitlement ? ENTITLEMENT_WEIGHTS[request.entitlement] : undefined;
+  return {
+    allowedRegions: config.arborEnv === "prod" ? ["eu"] : ["eu", "global"],
+    requireNoTraining: true,
+    maxRetentionDays: 30,
+    ...(weights ? { weights: { ...weights } } : {}),
+  };
+};
 
 const rejectionReasons = (request: CapabilityRequest, policy: RoutePolicy, candidate: ProviderCandidate): string[] => {
   const reasons: string[] = [];

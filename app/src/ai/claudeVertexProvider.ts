@@ -88,7 +88,13 @@ const extractToolInput = (payload: any) => {
 export class ClaudeVertexProvider {
   private readonly auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
 
-  constructor(private readonly config: ArborConfig) {}
+  /** B-PROV-07: `resolveModel` returns the policy-decided model for a route
+   *  (VertexModelProvider passes modelRouter.modelForRoute); absent → the
+   *  configured route model. */
+  constructor(
+    private readonly config: ArborConfig,
+    private readonly resolveModel: (route: ModelRoute) => string = (route) => modelForRoute(config, route),
+  ) {}
 
   async generateJson(options: GenerateJsonOptions) {
     return this.callClaude(options);
@@ -165,7 +171,7 @@ export class ClaudeVertexProvider {
     const token = typeof accessToken === "string" ? accessToken : accessToken?.token;
     if (!token) throw new Error("Could not acquire Google access token for Claude on Vertex.");
 
-    const model = toAnthropicVertexModelId(modelForRoute(this.config, options.route));
+    const model = toAnthropicVertexModelId(this.resolveModel(options.route));
     const method = stream ? "streamRawPredict" : "rawPredict";
     const url = claudeVertexUrl({ location: claudeVertexLocation(this.config), projectId: this.config.gcpProjectId, model, method });
     const schema = toJsonSchema(options.schema);

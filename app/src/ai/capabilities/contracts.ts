@@ -4,7 +4,9 @@ export type AiCapability = "structured_text" | "text_stream" | "realtime_audio" 
 export type AiAudience = "parent" | "child" | "professional" | "internal";
 export type AiDataClass = "public" | "account" | "child_profile" | "child_voice" | "child_image";
 export type AiRisk = "low" | "moderate" | "high";
-export interface CapabilityRequest<C extends AiCapability = AiCapability> { capability: C; route: ModelRoute; audience: AiAudience; locale: "en" | "he"; dataClasses: readonly AiDataClass[]; risk: AiRisk; requestId?: string; }
+/** B-PROV-07: the caller's plan — weights the choice between ELIGIBLE candidates (never eligibility). */
+export type AiEntitlement = "free" | "paid";
+export interface CapabilityRequest<C extends AiCapability = AiCapability> { capability: C; route: ModelRoute; audience: AiAudience; locale: "en" | "he"; dataClasses: readonly AiDataClass[]; risk: AiRisk; requestId?: string; entitlement?: AiEntitlement; }
 export interface ProviderRef { provider: string; model: string; version?: string; region?: string; }
 export interface NormalizedAiUsage { inputTokens?: number; outputTokens?: number; totalTokens?: number; inputChars?: number; audioInputMs?: number; audioOutputMs?: number; estimatedCostUsd?: number; }
 export type AiErrorCode = "not_configured" | "policy_denied" | "rate_limited" | "timeout" | "provider_unavailable" | "invalid_output" | "safety_blocked" | "unknown";

@@ -26,6 +26,46 @@ describe("selectProvider", () => {
   });
 });
 
+describe("B-PROV-07 · entitlement weights the choice between eligible candidates", async () => {
+  const { routePolicyFor, ENTITLEMENT_WEIGHTS } = await import("./policy.js");
+  const text: CapabilityRequest<"structured_text"> = { capability: "structured_text", route: "coach_high_stakes", audience: "parent", locale: "en", dataClasses: ["child_profile"], risk: "high" };
+  const textCandidate = (provider: string, score: ProviderCandidate["score"], region = "eu"): ProviderCandidate => ({ ref: { provider, model: `${provider}-model`, region }, capabilities: ["structured_text"], audiences: ["parent"], dataClasses: ["child_profile"], trainsOnCustomerData: false, retentionDays: 0, score });
+  const cheaper = textCandidate("cheaper", { quality: 3, safety: 3, reliability: 3, latencyFitness: 4, costFitness: 4 });
+  const better = textCandidate("better", { quality: 4, safety: 4, reliability: 3, latencyFitness: 3, costFitness: 2 });
+
+  it("no entitlement → today's unweighted policy (no weights key)", () => {
+    expect(routePolicyFor({ arborEnv: "prod" })).toEqual({ allowedRegions: ["eu"], requireNoTraining: true, maxRetentionDays: 30 });
+    expect(routePolicyFor({ arborEnv: "prod" }, { entitlement: undefined })).not.toHaveProperty("weights");
+  });
+
+  it("free → costFitness 3, paid → quality 3 (other weights stay 1)", () => {
+    expect(ENTITLEMENT_WEIGHTS).toEqual({ free: { costFitness: 3 }, paid: { quality: 3 } });
+    expect(routePolicyFor({ arborEnv: "prod" }, { entitlement: "free" }).weights).toEqual({ costFitness: 3 });
+    expect(routePolicyFor({ arborEnv: "prod" }, { entitlement: "paid" }).weights).toEqual({ quality: 3 });
+  });
+
+  it("two eligible candidates: free picks the cheaper, paid picks the higher quality — in either list order", () => {
+    for (const list of [[cheaper, better], [better, cheaper]]) {
+      const free = { ...text, entitlement: "free" as const };
+      const paid = { ...text, entitlement: "paid" as const };
+      expect(selectProvider(free, routePolicyFor({ arborEnv: "prod" }, free), list).selected.ref.provider).toBe("cheaper");
+      expect(selectProvider(paid, routePolicyFor({ arborEnv: "prod" }, paid), list).selected.ref.provider).toBe("better");
+    }
+  });
+
+  it("an ineligible region is rejected before scoring, whatever the entitlement weights", () => {
+    const outside = textCandidate("outside-eu", { quality: 10, safety: 10, reliability: 10, latencyFitness: 10, costFitness: 10 }, "us");
+    for (const entitlement of ["free", "paid"] as const) {
+      const req = { ...text, entitlement };
+      const decision = selectProvider(req, routePolicyFor({ arborEnv: "prod" }, req), [outside, cheaper, better]);
+      expect(decision.selected.ref.provider).not.toBe("outside-eu");
+      expect(decision.eligible.map((c) => c.ref.provider)).toEqual(["cheaper", "better"]);
+      expect(decision.rejected).toEqual([{ candidate: outside.ref, reasons: ["region"] }]);
+    }
+    expect(() => selectProvider({ ...text, entitlement: "paid" }, routePolicyFor({ arborEnv: "prod" }, { entitlement: "paid" }), [outside])).toThrow(AiProviderError);
+  });
+});
+
 describe("B-PROV-01 · realtime_audio under the dated residency exception", async () => {
   const live = await import("../liveResidency.js");
   const { routePolicyFor } = await import("./policy.js");
