@@ -26,8 +26,9 @@ import type { ActionLoopEntry } from "../actionLoop/model";
 import type { Appointment, AppointmentFollowUp } from "../lib/careTrack";
 import type { LangObservation } from "../growth/vocabAgg";
 import { defaultChildProfile, initialMilestones } from "../initialData";
+import { hardMomentCards } from "../content/hardMomentCards";
 
-export const DEMO_FAMILY_VERSION = "2026-10-05.1";
+export const DEMO_FAMILY_VERSION = "2026-10-06.1";
 export const DEMO_FAMILY_LABEL = { en: "Demo family", he: "משפחת הדגמה" } as const;
 /** The demo child IS the sandbox's synthetic child, so `npm run seed:demo` populates it. */
 export const DEMO_CHILD_ID = defaultChildProfile.id;
@@ -206,6 +207,25 @@ export function buildDemoFamily({
     outcome: s.outcome,
     outcomeAt: at(now, s.daysAgo - 1, 20),
   }));
+  // NEXTLEVEL critic r1 (B-ASKJB-33 rendered evidence): one hard-moment step
+  // the parent booked from the Tantrum guide two days ago and answered "held
+  // the plan" — so "Last time, this helped with Dylan" renders on #/behaviors
+  // and in the sheet, and the Consult packet prints the dated adults' line.
+  const tantrum = hardMomentCards.find((c) => c.id === "tantrum");
+  if (tantrum) {
+    actionLoops.push({
+      id: "demo-held-1",
+      recommendation: tantrum.doNow[lang],
+      source: "hard-moment",
+      capacity: "standard",
+      status: "completed",
+      acceptedAt: at(now, 2, 17),
+      outcome: "helped",
+      outcomeAt: at(now, 2, 19),
+      held: "yes",
+      childResponse: "calmer",
+    });
+  }
 
   // One Kid Mode session, six days ago: a few practice events + one hero story.
   const kidDay = 6;

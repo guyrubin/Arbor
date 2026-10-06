@@ -85,8 +85,11 @@ describe("B-DIST-01 · the invented record", () => {
       expect(f.collections.milestones.filter((m) => m.checked)).toHaveLength(5);
       expect(f.collections.langObs).toHaveLength(4);
       expect(f.collections.langObs.filter((w) => HEBREW.test(w.phrase))).toHaveLength(2);
-      expect(f.collections.actionLoops).toHaveLength(2);
-      expect(f.collections.actionLoops.filter((a) => a.outcome === "helped")).toHaveLength(1);
+      // Two Today steps + (NEXTLEVEL r1) one held hard-moment step.
+      expect(f.collections.actionLoops).toHaveLength(3);
+      expect(f.collections.actionLoops.filter((a) => a.source !== "hard-moment" && a.outcome === "helped")).toHaveLength(1);
+      const held = f.collections.actionLoops.filter((a) => a.source === "hard-moment" && a.held === "yes" && a.outcomeAt);
+      expect(held).toHaveLength(1);
       expect(f.collections.practiceEvents.length).toBeGreaterThan(0);
       expect(f.collections.heroRuns).toHaveLength(1);
       // W2-CAREPRO c2 r1: a done visit + one booked inside the 14-day Prepare window.
@@ -317,7 +320,7 @@ describe("W2-CAREPRO c2 r1 · the demo memory seed renders a group at volume", (
  * change the family → this fails until the version is bumped and the pin
  * re-recorded (then `npm run seed:demo -- --apply` re-seeds the sandbox). */
 describe("W2-CAREPRO c2 r2 · the demo content is pinned to DEMO_FAMILY_VERSION", () => {
-  const PINNED = { version: "2026-10-05.1", sha256: "419e2a09d02bc688306183a0fa2a30dc9ff03095a68177bc179a241a57ba6411" };
+  const PINNED = { version: "2026-10-06.1", sha256: "3819881da6b1899ae5e7cf775e2162c66cbdd47d82b2021adcf2436605ccba18" };
   const contentHash = async () => {
     const { createHash } = await import("node:crypto");
     const body = JSON.stringify([buildDemoFamily({ now: NOW, lang: "en" }), buildDemoFamily({ now: NOW, lang: "he" })]);
