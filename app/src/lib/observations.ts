@@ -189,10 +189,13 @@ export function toObservations(sources: ObservationSources, child: ObservationCh
     // only what the parent NOTICED is on the record; "not yet" is not a fact
     // about the child that the record counts
     if (!m.checked) continue;
-    push("milestones", m.id, m.observationUpdatedAt, toDomains("developmental", m.domain), {
+    // B-LOOP-04: the day the parent says they saw it (lib/milestones/observe)
+    // leads; older docs carry only the answer's timestamp.
+    push("milestones", m.id, m.observedAt ?? m.observationUpdatedAt, toDomains("developmental", m.domain), {
       kind: "milestone",
       value: { type: "milestone", milestoneId: m.id, title: m.title },
-      source: "parent_typed",
+      source: m.observationSource ?? "parent_typed",
+      ...(m.observationProvenance ? { provenance: m.observationProvenance } : {}),
     });
   }
 

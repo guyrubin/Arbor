@@ -46,6 +46,7 @@ import { isLearnPilotCard } from "../learn/learnPilotRelease";
 import { concernsForBehaviors } from "../content/selectCards";
 import { ageYearsFromProfile } from "../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
+import { observeMilestoneDoc, type ObserveOptions, type ObserveStatus } from "../lib/milestones/observe";
 import { hydrateMilestones } from "./milestoneHydration";
 import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
@@ -1439,15 +1440,13 @@ function useArborState() {
     if (m) void milestonesCol.upsert({ ...m, checked: !m.checked, observationStatus: !m.checked ? "yes" : "not_yet", observationUpdatedAt: new Date().toISOString() });
   };
 
-  const setMilestoneObservation = (id: string, status: "yes" | "not_sure" | "not_yet") => {
+  /** B-LOOP-04: every milestone answer (the Milestones tab, Today's Notice
+   *  card, the journal shelf, a confirmed capture proposal) writes the ONE
+   *  document lib/milestones/observe.ts builds — same answer, same bytes. */
+  const setMilestoneObservation = (id: string, status: ObserveStatus, opts: ObserveOptions = {}) => {
     const milestone = milestones.find((item) => item.id === id);
     if (!milestone) return;
-    void milestonesCol.upsert({
-      ...milestone,
-      checked: status === "yes",
-      observationStatus: status,
-      observationUpdatedAt: new Date().toISOString(),
-    });
+    void milestonesCol.upsert(observeMilestoneDoc(milestone, status, opts));
   };
 
   /**

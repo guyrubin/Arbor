@@ -58,6 +58,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { DEVELOPMENTAL_DOMAIN_IDS, domainLabel as registryDomainLabel, primaryDomainLabel } from "../../lib/domains/registry";
 import { DevelopmentalDomainId, Milestone } from "../../types";
 import { ageMonthsOf } from "../../lib/age/forChild";
+import type { ObserveStatus } from "../../lib/milestones/observe";
 
 /** NEXTLEVEL critic r1: "Born early?" leads the rail only while correction
  *  applies (under ~24 months, or a gestation is set); otherwise the same
@@ -182,7 +183,9 @@ export default function MilestonesTab() {
    *  layers at most once per milestone id ever (arbor.celebrate.seen.{childId})
    *  and at most once per session — the card's own session guard is checked
    *  BEFORE opening so the overlay never mounts around an empty card. */
-  const observeMilestone = (item: Milestone, status: "yes" | "not_sure" | "not_yet") => {
+  const observeMilestone = (item: Milestone, status: ObserveStatus) => {
+    // B-LOOP-04: the one write seam (lib/milestones/observe via the context),
+    // shared with Today's and the Journal's Notice cards.
     setMilestoneObservation(item.id, status);
     if (status !== "yes" || item.checked) return;
     celebrate();

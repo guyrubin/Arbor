@@ -351,6 +351,19 @@ export interface Milestone {
   /** Parent observation state. `checked` remains the backward-compatible yes flag. */
   observationStatus?: "yes" | "not_sure" | "not_yet";
   observationUpdatedAt?: string;
+  /**
+   * B-LOOP-04 — the day the parent says they SAW it, set only on "yes"
+   * through lib/milestones/observe.ts (the one write seam). It is the upper
+   * bound of `observedWhen`: "today" = that day, "this_week" = within the
+   * seven days before it, "earlier" = on or before it. Never inferred.
+   */
+  observedAt?: string;
+  observedWhen?: "today" | "this_week" | "earlier";
+  /** B-LOOP-04 / B-LOOP-06 — who wrote the answer: the parent, or an AI
+   *  proposal the parent confirmed (never an AI write on its own). */
+  observationSource?: "parent_typed" | "ai_proposed_parent_confirmed";
+  /** B-LOOP-06 — the behaviour-log id whose words proposed this answer. */
+  observationProvenance?: string;
   checked: boolean;
   references?: { label: string; url: string }[];
   /**
