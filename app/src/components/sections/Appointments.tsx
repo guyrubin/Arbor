@@ -542,9 +542,9 @@ function ApptRow({
       {followUps.length > 0 && (
         <ul className="space-y-1.5 ps-1">
           {followUps.map((f) => (
-            <li key={f.id} className="t-sm leading-relaxed flex items-start gap-2" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+            <li key={f.id} className="t-sm leading-relaxed flex items-start gap-2" style={{ color: "var(--arbor-ink)" }}>
               <Icon name="chat_bubble" size={14} className="mt-1" style={{ color: "var(--arbor-lav-ink)" }} />
-              <span className="flex-1">{f.note}</span>
+              <span className="flex-1" dir="auto">{f.note}</span>
             </li>
           ))}
         </ul>

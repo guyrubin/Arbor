@@ -471,7 +471,6 @@ export default function Masterclasses() {
           <summary
             className="flex items-center gap-2 text-[13px] font-extrabold cursor-pointer"
             style={{ color: "var(--arbor-green-ink)", minHeight: 44 }}
-            dir="auto"
           >
             <Icon name="unfold_more" size={18} />
             {t("academy.rail.more")}

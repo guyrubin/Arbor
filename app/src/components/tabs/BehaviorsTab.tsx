@@ -703,7 +703,6 @@ export default function BehaviorsTab() {
             data-testid="capture-prompt-cue"
             className="mb-3 flex items-start gap-2.5 rounded-[14px] px-4 py-3"
             style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}
-            dir="auto"
             aria-live="polite"
           >
             <Icon name="lightbulb" size={18} fill={1} className="mt-0.5 flex-shrink-0" />

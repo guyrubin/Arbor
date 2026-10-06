@@ -222,7 +222,6 @@ function JournalRow({
             <span
               data-testid="journal-row-origin"
               className="inline-flex items-center gap-1 t-sm font-bold rounded-md px-1.5 py-0.5"
-              dir="auto"
               style={{ background: PASTEL.mint.soft, color: PASTEL.mint.ink }}
             >
               <Icon name="bookmark_added" size={11} fill={1} />
@@ -596,7 +595,6 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
           data-testid="journal-prompt-cue"
           className="flex items-start gap-2.5 rounded-[var(--r)] px-4 py-3 lg:col-start-1"
           style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}
-          dir="auto"
           aria-live="polite"
         >
           <Icon name="lightbulb" size={18} fill={1} className="flex-shrink-0 mt-0.5" />

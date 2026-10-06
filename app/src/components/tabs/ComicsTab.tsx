@@ -677,7 +677,7 @@ export default function ComicsTab() {
           never-a-real-photo and provenance-watermark claims survive verbatim
           in meaning in BOTH languages (comicsBookendsI18n.test.ts locks it). */}
       <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-ink)" }}>
-        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }} dir="auto">
+        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
           <Icon name="verified_user" size={16} /> {he ? "בטוח ופרטי" : "Safe & private"}
         </span>
         <span style={{ color: "var(--arbor-muted)" }} dir="auto">

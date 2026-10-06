@@ -97,7 +97,6 @@ export default function DailyPlayCard({
             data-testid="play-continuation-line"
             className="inline-flex items-center gap-1.5 text-[12.5px] font-bold mb-2"
             style={{ color: GREEN }}
-            dir="auto"
           >
             <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
             {continueText("elev.continue.play.helped", uiLang === "he")}

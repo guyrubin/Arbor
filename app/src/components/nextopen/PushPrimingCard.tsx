@@ -77,7 +77,6 @@ export default function PushPrimingCard({
                 <li
                   key={k}
                   className="flex items-start gap-2 text-[12.5px] leading-snug"
-                  dir="auto"
                   style={{ color: "var(--arbor-ink-soft)" }}
                 >
                   <Icon name="check_circle" size={14} className="mt-0.5 flex-shrink-0" />

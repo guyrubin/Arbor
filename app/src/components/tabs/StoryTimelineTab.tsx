@@ -103,7 +103,6 @@ function SignalRow({ signal, childName }: { signal: TimelineSignal; childName?: 
                 <span
                   className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide rounded-md px-2 py-0.5"
                   style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}
-                  dir="auto"
                 >
                   <Icon name="child_care" size={12} fill={1} />
                   {childName || tt("elev.childsignals.prov.fallback")}

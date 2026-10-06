@@ -1566,13 +1566,12 @@ export default function CoachTab() {
                     return (
                       <button
                         key={card.id}
-                        dir="auto"
                         aria-label={title}
                         onClick={() => requestLearnRead({ cardId: card.id, source: "coach-answer" })}
                         className="text-[12px] px-4 py-1.5 min-h-[38px] rounded-full transition active:scale-[0.98] flex items-center gap-1.5 font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                         style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}
                       >
-                        <Icon name="local_library" size={14} /> {title}
+                        <Icon name="local_library" size={14} /> <span dir="auto">{title}</span>
                       </button>
                     );
                   })}

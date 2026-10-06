@@ -456,7 +456,7 @@ export default function QuickLogModal({
     <Modal open={open} onClose={closeSheet} title={editLogId ? t("beh.editMoment") : hardMomentNow ? t("elev.capture.hard.title") : t("ql.title")}>
       {reply ? (
         <section data-testid="quicklog-reply" aria-live="polite" className="space-y-4 text-sm">
-          <p dir="auto" data-testid="quicklog-reply-line1" className="flex items-start gap-2 text-[15px] font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>
+          <p dir={replyLocale === "he" ? "rtl" : "ltr"} lang={replyLocale} data-testid="quicklog-reply-line1" className="flex items-start gap-2 text-[15px] font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>
             <Icon name="check_circle" size={20} style={{ color: "var(--arbor-green-ink)" }} className="mt-0.5 flex-none" />
             <span>
               {replyEcho
