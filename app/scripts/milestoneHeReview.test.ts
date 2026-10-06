@@ -19,7 +19,9 @@ import { PRACTICES } from "../src/content/practices";
 import {
   BOM, COLUMNS, DEFAULT_CATALOGUE, DEFAULT_DATA, buildExportCsv, buildReviewRows, exportFileName, main, parseCsv, runExport, runImport, type ReviewRow,
   DEFAULT_PRACTICES, PRACTICE_COLUMNS, buildPracticeExportCsv, buildPracticeReviewRows, practicesExportFileName, runPracticesExport, runPracticesImport, type PracticeReviewRow,
+  PROGRAM_COLUMNS, buildProgramExportCsv, buildProgramReviewRows, programsExportFileName, runProgramsExport,
 } from "./milestone-he-review.mts";
+import { TALK_TOGETHER, TALK_TOGETHER_META } from "../src/content/programs/talkTogether";
 
 let tmp: string;
 let catalogue: string;
@@ -266,5 +268,50 @@ describe("B-LOOP-08 — practices import (temp copy only)", () => {
   it("CLI: --practices export writes the pack to --out", () => {
     expect(main(["--practices", "export", "--out", tmp])).toBe(0);
     expect(fs.readdirSync(tmp).some((f) => /^HE-REVIEW-PRACTICES-\d{4}-\d{2}-\d{2}\.csv$/.test(f))).toBe(true);
+  });
+});
+
+/**
+ * B-PROG-02 — the programs mode: one row per Hebrew string of every program
+ * (parent skill, week skills, coach scripts, measure label / unit / rule),
+ * same CSV shape as the other packs (BOM, CRLF, quoted, three reviewer cells).
+ */
+describe("B-PROG-02 — programs export", () => {
+  it("one row per program string: 1 parent skill + 8 skills + 24 scripts + 4 measures × 3, header = the nine columns", () => {
+    const csv = buildProgramExportCsv();
+    expect(csv.startsWith(BOM)).toBe(true);
+    expect(csv.includes("\r\n")).toBe(true);
+    const rows = parseCsv(csv);
+    expect(rows[0]).toEqual([...PROGRAM_COLUMNS]);
+    const body = rows.slice(1);
+    expect(body).toHaveLength(1 + 8 + 24 + 4 * 3);
+    expect(body.filter((r) => r[3] === "coach-script")).toHaveLength(24);
+    expect(body.filter((r) => r[3] === "skill").map((r) => r[2])).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
+    expect(body.filter((r) => r[3] === "measure-label").map((r) => r[0])).toEqual([
+      "talk-together.practice-days.label", "talk-together.turns-waited.label", "talk-together.new-words.label", "talk-together.two-word-phrases.label",
+    ]);
+    for (const r of body) {
+      expect(r, r[0]).toHaveLength(9);
+      for (let i = 0; i < 6; i += 1) expect(r[i].trim().length, `${r[0]} ${PROGRAM_COLUMNS[i]}`).toBeGreaterThan(0);
+      expect(r.slice(6)).toEqual(["", "", ""]);
+    }
+    const rowsById = new Map(buildProgramReviewRows().map((r) => [r.id, r]));
+    expect(rowsById.get("tt-w1-s1")?.he).toBe(TALK_TOGETHER.weeks[0].coachScripts[0].text.he);
+    expect(rowsById.get("talk-together.w7.skill")?.he).toBe(TALK_TOGETHER.weeks[6].skill.he);
+    expect(rowsById.get("talk-together.two-word-phrases.rule")?.he).toBe(TALK_TOGETHER_META.phrasesMeasure.countingRule.he);
+  });
+
+  it("runProgramsExport writes HE-REVIEW-PROGRAMS-<date>.csv with the Hebrew intact; the CLI writes it to --out; no import mode", () => {
+    const out = runProgramsExport(tmp, new Date("2026-10-06T12:00:00Z"));
+    expect(path.basename(out.file)).toBe("HE-REVIEW-PROGRAMS-2026-10-06.csv");
+    expect(path.basename(out.file)).toBe(programsExportFileName(new Date("2026-10-06T12:00:00Z")));
+    const bytes = fs.readFileSync(out.file);
+    expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(parseCsv(bytes.toString("utf8"))[1][5]).toBe(TALK_TOGETHER.parentSkill.he);
+    expect(out.rows).toBe(45);
+    expect(main(["--programs", "export", "--out", tmp])).toBe(0);
+    expect(fs.readdirSync(tmp).some((f) => /^HE-REVIEW-PROGRAMS-\d{4}-\d{2}-\d{2}\.csv$/.test(f))).toBe(true);
+    expect(main(["--programs"])).toBe(2);
+    expect(main(["--programs", "import", "x.csv"])).toBe(2);
   });
 });

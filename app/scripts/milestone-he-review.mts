@@ -44,6 +44,18 @@
  * banned word (PRACTICE_BANNED) or more words than the cap (do 25, say 15).
  * Practices carry no review flag (reviewStatus stays "draft" until the
  * clinical reviewer signs); the import lists the unsigned ids.
+ *
+ * PROGRAMS MODE (B-PROG-02, content/programs — Talk Together v0.1):
+ *
+ *   npx tsx scripts/milestone-he-review.mts --programs export [--out <dir>]
+ *
+ * EXPORT writes HE-REVIEW-PROGRAMS-<YYYY-MM-DD>.csv (BOM, CRLF, quoted): one
+ * row per Hebrew string of every program — id · program · week (`—` for a
+ * program-level row) · kind (parent-skill · skill · coach-script ·
+ * measure-label · measure-unit · measure-rule) · EN · HE · reviewer_ok ·
+ * reviewer_fix · reviewer_note. Export only in v0.1: fixes go into
+ * content/programs/<program>.ts by hand (the file is the transcription of
+ * the program document, which changes first).
  */
 import process from "node:process";
 import path from "node:path";
@@ -55,6 +67,9 @@ import { milestoneShelf } from "../src/lib/shelves/registry.js";
 import { HE_VERDICT_WORDS } from "../src/lib/milestoneHeRules.js";
 import { findClinicalDiagnosisTerm } from "../src/lib/clinicalScan.js";
 import { PRACTICES, PRACTICE_BANNED } from "../src/content/practices.js";
+import { PROGRAMS } from "../src/content/programs/index.js";
+import { TALK_TOGETHER_DOSE, TALK_TOGETHER_META } from "../src/content/programs/talkTogether.js";
+import type { MeasureDef } from "../src/content/programs/types.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_OUT_DIR = "C:/Users/dguyr/ROS/PAI/projects/arbor/execution/2026-10-06--milestone-loop";
@@ -393,6 +408,61 @@ const PRACTICE_MODES: Record<string, (argv: string[]) => number> = {
   },
 };
 
+/* ── PROGRAMS (B-PROG-02) ──────────────────────────────────────────────── */
+
+export const PROGRAM_COLUMNS = ["id", "program", "week", "kind", "en", "he", "reviewer_ok", "reviewer_fix", "reviewer_note"] as const;
+export type ProgramReviewRow = Record<(typeof PROGRAM_COLUMNS)[number], string>;
+/** The week cell of a program-level row (parent skill, measures). */
+export const PROGRAM_LEVEL_MARK = "—";
+
+/** One row per Hebrew string of every program: the parent skill, each week's
+ *  skill and coach scripts, then each measure's label, unit and counting rule
+ *  (Talk Together also carries the dose words and the phrases companion). */
+export function buildProgramReviewRows(): ProgramReviewRow[] {
+  const rows: ProgramReviewRow[] = [];
+  const row = (id: string, program: string, week: string, kind: string, text: { en: string; he: string }) =>
+    rows.push({ id, program, week, kind, en: text.en, he: text.he, reviewer_ok: "", reviewer_fix: "", reviewer_note: "" });
+  for (const p of PROGRAMS) {
+    row(`${p.id}.parentSkill`, p.id, PROGRAM_LEVEL_MARK, "parent-skill", p.parentSkill);
+    for (const w of p.weeks) {
+      row(`${p.id}.w${w.n}.skill`, p.id, String(w.n), "skill", w.skill);
+      for (const s of w.coachScripts) row(s.id, p.id, String(w.n), "coach-script", s.text);
+    }
+    const measures: MeasureDef[] = p.id === "talk-together"
+      ? [TALK_TOGETHER_DOSE, p.measures.parentProxy, p.measures.childProxy, TALK_TOGETHER_META.phrasesMeasure]
+      : [p.measures.parentProxy, p.measures.childProxy];
+    for (const m of measures) {
+      row(`${p.id}.${m.id}.label`, p.id, PROGRAM_LEVEL_MARK, "measure-label", m.label);
+      row(`${p.id}.${m.id}.unit`, p.id, PROGRAM_LEVEL_MARK, "measure-unit", m.unit);
+      row(`${p.id}.${m.id}.rule`, p.id, PROGRAM_LEVEL_MARK, "measure-rule", m.countingRule);
+    }
+  }
+  return rows;
+}
+
+export function buildProgramExportCsv(rows: ProgramReviewRow[] = buildProgramReviewRows()): string {
+  const lines = [PROGRAM_COLUMNS.map((c) => quote(c)).join(","), ...rows.map((r) => PROGRAM_COLUMNS.map((c) => quote(r[c])).join(","))];
+  return BOM + lines.join("\r\n") + "\r\n";
+}
+
+export const programsExportFileName = (now: Date = new Date()): string => `HE-REVIEW-PROGRAMS-${now.toISOString().slice(0, 10)}.csv`;
+
+export function runProgramsExport(outDir: string = DEFAULT_OUT_DIR, now: Date = new Date()): { file: string; rows: number } {
+  mkdirSync(outDir, { recursive: true });
+  const rows = buildProgramReviewRows();
+  const file = path.join(outDir, programsExportFileName(now));
+  writeFileSync(file, buildProgramExportCsv(rows), "utf8");
+  return { file, rows: rows.length };
+}
+
+const PROGRAM_MODES: Record<string, (argv: string[]) => number> = {
+  export: (argv) => {
+    const { file, rows } = runProgramsExport(arg(argv, "--out") ?? DEFAULT_OUT_DIR);
+    console.log(`wrote ${rows} program rows → ${file}`);
+    return 0;
+  },
+};
+
 /* ── CLI ───────────────────────────────────────────────────────────────── */
 
 const HELP = `milestone-he-review — native Hebrew review of the milestone catalogue (B-LOOP-02) and the practice library (B-LOOP-08)
@@ -401,6 +471,7 @@ const HELP = `milestone-he-review — native Hebrew review of the milestone cata
   import <file.csv> [--catalogue <path>] [--data <path>] apply reviewer_fix cells; flip the flag only on a complete review
   --practices export [--out <dir>]                      write HE-REVIEW-PRACTICES-<date>.csv (one row per practice)
   --practices import <file.csv> [--practices-file <p>]  apply do= / say= fixes into content/practices.ts by id + field
+  --programs export [--out <dir>]                       write HE-REVIEW-PROGRAMS-<date>.csv (skills, coach scripts, measures; export only)
 `;
 
 const arg = (argv: string[], name: string): string | undefined => {
@@ -430,6 +501,12 @@ const MODES: Record<string, (argv: string[]) => number> = {
 
 export function main(argv: string[]): number {
   if (argv.length === 0 || argv.includes("--help") || argv.includes("-h")) { console.log(HELP); return 0; }
+  if (argv.includes("--programs")) {
+    const rest = argv.filter((a) => a !== "--programs");
+    const programMode = PROGRAM_MODES[rest[0]];
+    if (!programMode) { console.error(`--programs needs a mode (export)\n\n${HELP}`); return 2; }
+    return programMode(rest);
+  }
   if (argv.includes("--practices")) {
     const rest = argv.filter((a) => a !== "--practices");
     const practiceMode = PRACTICE_MODES[rest[0]];
