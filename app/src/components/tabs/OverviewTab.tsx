@@ -53,7 +53,7 @@ import LifecycleMomentCard from "../overview/LifecycleMomentCard";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
 import WeekOpenAnchorCard from "../overview/WeekOpenAnchorCard";
 import { readWeekAnchorSeen, weekAnchorRecapDue, weekOpenAnchorDue } from "../overview/weekAnchor";
-import WeekAnchorCard from "../overview/WeekAnchorCard";
+import WeekAnchorCard, { WeekAnchorLine } from "../overview/WeekAnchorCard";
 import { recapWeekId, useWeeklyRecap } from "../../hooks/useWeeklyRecap";
 import { track } from "../../lib/analytics";
 
@@ -479,6 +479,8 @@ export default function OverviewTab() {
   );
   const recordAnswered = useMemo(() => answeredToday(actionLoop, childProfile.id), [actionLoop, childProfile.id]);
   const recordSpeaks = !!recordOpener || !!recordAnswered;
+  /** NEXTLEVEL critic r1: the record card is asking (its chips are the move). */
+  const recordAsks = !!recordOpener && !recordAnswered;
 
   // The step card's ONE seeded ask: the focus text, or (B-TODAY-12) the
   // matched guide's doNow when that is the step.
@@ -585,12 +587,14 @@ export default function OverviewTab() {
         // produce a moment before the first capture (P1-C day-0 shape).
         lifecycle: lifecycleMoment !== null,
         changed: changedWould,
-        rail: railWould,
+        // NEXTLEVEL critic r1: the day-0 "First steps" rail has no reason to
+        // exist once the record speaks (a plan or a parent note).
+        rail: railWould && !recordSpeaks,
         noticed: !dayZero && noticedWould,
       },
       { noticedCanFold: changedWould },
     ),
-    [changedWould, railWould, dayZero, noticedWould, todayChoice.kind, lifecycleMoment]
+    [changedWould, railWould, recordSpeaks, dayZero, noticedWould, todayChoice.kind, lifecycleMoment]
   );
 
   // The watch signal degrades by FOLDING into a What-changed line ("Arbor
@@ -747,7 +751,11 @@ export default function OverviewTab() {
                headline — day-0/fallback copy can never reach acceptTodayAction,
                so it can never be persisted into actionLoops nor injected into
                the next focus prompt. */}
-        <div data-primary-move="do-today-action" className="min-w-0">
+        {/* NEXTLEVEL critic r1: while the record card asks, ITS answer chips
+            carry the primary-move stamp (stampMove) — the wrapper spanned the
+            card AND the week anchor (343 x 523 at 375), so "one thing" read
+            as two. Otherwise the wrapper keeps the stamp as before. */}
+        <div data-primary-move={recordAsks ? undefined : "do-today-action"} className="min-w-0">
           {/* B-TODAY-28: the record speaks first — the parent's own words, one
               question, three answers (the first chip row of the primary
               move); after an answer, a one-line receipt. */}
@@ -755,7 +763,7 @@ export default function OverviewTab() {
             <div className="mb-3"><FromRecordReceipt /></div>
           ) : recordOpener ? (
             <div className="mb-4">
-              <FromRecordCard opener={recordOpener} onAnswer={(answer) => recordFromRecordAnswer(recordOpener, answer)} />
+              <FromRecordCard opener={recordOpener} childName={firstName} stampMove onAnswer={(answer) => recordFromRecordAnswer(recordOpener, answer)} />
             </div>
           ) : null}
           {/* B-TODAY-18: the continuation slot ABOVE the step — exactly one of
@@ -771,7 +779,12 @@ export default function OverviewTab() {
               week. It sits FIRST in this chain only because chooseTodayAction
               already ranked it below an accepted action — kind "weekOpen" is
               unreachable while one exists — so the loop still wins. */}
-          {todayChoice.kind === "recap" ? (
+          {todayChoice.kind === "recap" && recordAsks ? (
+            /* NEXTLEVEL critic r1: under the record card the week is ONE quiet
+               line — no filled button, no display heading competing with the
+               record question. */
+            <WeekAnchorLine weekId={weekOpen.weekId} />
+          ) : todayChoice.kind === "recap" ? (
             <WeekAnchorCard
               weekId={weekOpen.weekId}
               onDismiss={() => setWeekOpen((prev) => ({ ...prev, dismissed: true }))}

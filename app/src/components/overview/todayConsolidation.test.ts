@@ -221,7 +221,7 @@ describe("B-TODAY-12 — one step card: the hard-moment offer folds into it as '
   const hero = stripComments(read("components/overview/TodayRecommendation.tsx"));
   const slot = stripComments(read("components/overview/CompanionOfferSlot.tsx"));
   /** The day-anchor column: from its primary-move stamp to the end of the anchor module. */
-  const anchor = overview.slice(overview.indexOf('data-primary-move="do-today-action"'), overview.indexOf("{showLifecycle &&"));
+  const anchor = overview.slice(overview.indexOf('data-primary-move={recordAsks ? undefined : "do-today-action"}'), overview.indexOf("{showLifecycle &&"));
 
   it("the anchor tree holds ONE accept label and ONE gradient owner", () => {
     expect(anchor.length).toBeGreaterThan(1000);

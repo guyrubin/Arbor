@@ -33,12 +33,12 @@ describe("B-TODAY-28 — the record card (rendered)", () => {
   for (const lang of ["en", "he"] as const) {
     it(`${lang}: quote verbatim in the editorial serif inside an inline-start rule, the date line, ONE question, three ≥44 px answers`, () => {
       harness.lang = lang;
-      const html = renderToStaticMarkup(<FromRecordCard opener={planOpener} onAnswer={() => {}} />);
+      const html = renderToStaticMarkup(<FromRecordCard opener={planOpener} childName="Dylan" onAnswer={() => {}} />);
       expect(html).toContain(NOTE);
       expect(html).toMatch(/data-testid="today-record-quote"[^>]*class="[^"]*border-s-2 ps-3[^"]*text-\[17px\]/);
       expect(html).toContain("var(--font-editorial)");
       expect(html).toContain(translate(lang, "today.record.meta.note", { date: lang === "he" ? "9 ביולי" : "9 Jul" }).split("·")[0].trim());
-      expect(html).toContain(translate(lang, "today.record.q.plan"));
+      expect(html).toContain(translate(lang, "today.record.q.plan", { name: "Dylan" }).replace(/[⁨⁩]/g, "").split("Dylan")[0]);
       expect(html.match(/data-answer="/g)).toHaveLength(3);
       expect(html.match(/min-h-\[44px\]/g)).toHaveLength(3);
       for (const a of ["easier", "hard_again", "other"]) expect(html).toContain(translate(lang, `today.record.a.change.${a}`));
@@ -77,6 +77,39 @@ describe("B-TODAY-28 — the record card (rendered)", () => {
   });
 });
 
+describe("NEXTLEVEL critic r1 — a named topic, a joy opener, the chips are the move", () => {
+  const topicOpener: FromRecordOpener = { ...planOpener, topicKey: "mornings", tone: "change" };
+  const joyOpener: FromRecordOpener = { key: "note:l1", kind: "note", topic: null, topicKey: "bath", tone: "joy", quote: "Sang the whole bath song on his own", quoteSource: "parent", quoteAt: "2026-09-20T19:00:00.000Z" };
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: the topic line is 2-3 words (never the plan title) and the question names the topic and the child`, () => {
+      harness.lang = lang;
+      const html = renderToStaticMarkup(<FromRecordCard opener={topicOpener} childName="Dylan" onAnswer={() => {}} />);
+      expect(html).toContain(translate(lang, "today.record.topic.mornings"));
+      expect(html).not.toContain("Morning Departure Support Plan");
+      expect(html).toContain("Dylan");
+      expect(html).toMatch(/data-testid="today-record-topic"[^>]*style="[^"]*var\(--font-display\)/);
+    });
+    it(`${lang}: a win note asks 'again since?' — never 'Hard again'`, () => {
+      harness.lang = lang;
+      const html = renderToStaticMarkup(<FromRecordCard opener={joyOpener} childName="Dylan" onAnswer={() => {}} />);
+      for (const a of ["easier", "hard_again", "other"]) expect(html).toContain(translate(lang, `today.record.a.joy.${a}`));
+      expect(html).not.toContain(translate(lang, "today.record.a.change.hard_again"));
+    });
+  }
+  it("stampMove puts data-primary-move on the answer chip row", () => {
+    const html = renderToStaticMarkup(<FromRecordCard opener={topicOpener} childName="Dylan" stampMove onAnswer={() => {}} />);
+    expect(html).toMatch(/data-testid="today-record-answers" data-primary-move="do-today-action"/);
+    const plain = renderToStaticMarkup(<FromRecordCard opener={topicOpener} childName="Dylan" onAnswer={() => {}} />);
+    expect(plain).not.toContain("data-primary-move");
+  });
+  it("OverviewTab: the wrapper drops its stamp while the card asks; the week is one quiet line; the rail hides when the record speaks", () => {
+    expect(SRC).toContain('data-primary-move={recordAsks ? undefined : "do-today-action"}');
+    expect(SRC).toMatch(/<FromRecordCard opener=\{recordOpener\} childName=\{firstName\} stampMove /);
+    expect(SRC).toMatch(/todayChoice\.kind === "recap" && recordAsks \? \(\s*(\/\*[\s\S]*?\*\/\s*)?<WeekAnchorLine/);
+    expect(SRC).toContain("rail: railWould && !recordSpeaks,");
+  });
+});
+
 describe("B-TODAY-28 — OverviewTab wiring (source pin)", () => {
   it("the greeting to the parent is gone; the child's identity line leads", () => {
     expect(SRC).not.toContain("today.greeting.");
@@ -94,7 +127,7 @@ describe("B-TODAY-28 — OverviewTab wiring (source pin)", () => {
   });
 
   it("the record card is the FIRST thing inside the primary move", () => {
-    const anchor = SRC.slice(SRC.indexOf('data-primary-move="do-today-action"'));
+    const anchor = SRC.slice(SRC.indexOf('data-primary-move={recordAsks ? undefined : "do-today-action"}'));
     expect(anchor.indexOf("<FromRecordCard")).toBeGreaterThan(-1);
     expect(anchor.indexOf("<FromRecordCard")).toBeLessThan(anchor.indexOf("<TodayContinuation"));
   });

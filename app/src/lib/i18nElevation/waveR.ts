@@ -164,6 +164,8 @@ export const en: Record<string, string> = {
   "elev.waveR.recap.body":
     "Last week is written up and waiting — a few cards, counts only, then one thing to carry into this week.",
   "elev.waveR.recap.cta": "Open last week",
+  // NEXTLEVEL critic r1: the one quiet line under Today's record card.
+  "elev.waveR.recap.line": "Last week's letter is ready",
   "elev.waveR.recap.later": "Not now",
 
   // ── ENG-24 · the week-open anchor — the variant that SHIPS ────────────────
@@ -325,6 +327,7 @@ export const he: Record<string, string> = {
   "elev.waveR.recap.body":
     "השבוע שעבר כבר כתוב ומחכה — כמה כרטיסים, ספירות בלבד, ואז דבר אחד לקחת אל השבוע הזה.",
   "elev.waveR.recap.cta": "לפתוח את השבוע שעבר",
+  "elev.waveR.recap.line": "המכתב של השבוע שעבר מוכן",
   "elev.waveR.recap.later": "לא עכשיו",
 
   // ── ENG-24 · עוגן פתיחת השבוע — הגרסה שנשלחת ──────────────────────────────

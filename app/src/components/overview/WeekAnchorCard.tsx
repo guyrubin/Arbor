@@ -16,6 +16,35 @@ import { markWeekAnchorSeen } from "./weekAnchor";
    the child is rendered here. The recap surface itself owns all of that, and
    is already firewall-scanned (components/weekly/recapStoryCards.test.ts).
    ════════════════════════════════════════════════════════════════════════════ */
+/** NEXTLEVEL critic r1 — the week as ONE quiet ghost row under Today's record
+ *  card: "Last week's letter is ready →" in clay text, ≥ 44 px, no filled
+ *  button and no display heading. Same door and same seen-marker as the card. */
+export function WeekAnchorLine({ weekId }: { weekId: string }) {
+  const { childProfile, setActiveTab } = useArbor();
+  const { t } = useLanguage();
+  const open = () => {
+    markWeekAnchorSeen(childProfile.id, weekId);
+    try {
+      track("week_anchor_opened", { weekId });
+    } catch {
+      /* analytics is never load-bearing */
+    }
+    setActiveTab("weekly");
+  };
+  return (
+    <button
+      type="button"
+      onClick={open}
+      data-testid="today-week-anchor-line"
+      className="inline-flex min-h-11 items-center gap-1.5 px-1 text-sm font-semibold"
+      style={{ color: "var(--arbor-clay)" }}
+    >
+      {t("elev.waveR.recap.line")}
+      <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+    </button>
+  );
+}
+
 export default function WeekAnchorCard({
   weekId,
   onDismiss,

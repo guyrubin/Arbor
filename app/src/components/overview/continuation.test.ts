@@ -66,7 +66,7 @@ describe("B-TODAY-18 · placement on Today", () => {
   const cont = strip(read("./TodayContinuation.tsx"));
 
   it("the slot renders ABOVE the step card, inside the anchor column", () => {
-    const anchor = overview.indexOf('data-primary-move="do-today-action"');
+    const anchor = overview.indexOf('data-primary-move={recordAsks ? undefined : "do-today-action"}');
     const cont = overview.indexOf("<TodayContinuation choice={continuation} isReturning={isReturning}>");
     const step = overview.indexOf("<TodayRecommendation");
     expect(anchor).toBeGreaterThan(-1);

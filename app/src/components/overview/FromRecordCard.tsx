@@ -36,12 +36,20 @@ export function recordDate(iso: string | null, lang: string): string {
 export default function FromRecordCard({
   opener,
   onAnswer,
+  childName,
+  stampMove = false,
 }: {
   opener: FromRecordOpener;
   onAnswer: (answer: FromRecordAnswer) => void;
+  /** The child's first name — the question names the child. */
+  childName?: string;
+  /** NEXTLEVEL critic r1: the answer chips ARE Today's primary move. */
+  stampMove?: boolean;
 }) {
   const { t, uiLang } = useLanguage();
-  const question = t(fromRecordQuestionKey(opener));
+  const question = t(fromRecordQuestionKey(opener), { name: childName || t("today.record.childFallback") });
+  // NEXTLEVEL critic r1: a 2-3 word topic ("Mornings"), never the plan's full title.
+  const topicLine = opener.topicKey ? t(`today.record.topic.${opener.topicKey}`) : opener.topic;
   const metaKey = fromRecordMetaKey(opener);
   const date = recordDate(opener.quoteAt, uiLang);
   return (
@@ -52,17 +60,17 @@ export default function FromRecordCard({
       className="rounded-[20px] p-4 sm:p-5"
       style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
     >
-      {opener.topic && (
-        <p data-testid="today-record-topic" className="text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
-          <FreeText text={opener.topic} />
+      {topicLine && (
+        <p data-testid="today-record-topic" className="font-semibold leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontSize: "var(--t-lg)" }}>
+          <FreeText text={topicLine} />
         </p>
       )}
       {opener.quote && (
-        <figure className={opener.topic ? "mt-2" : ""}>
+        <figure className={topicLine ? "mt-2" : ""}>
           <blockquote
             data-testid="today-record-quote"
             className="border-s-2 ps-3 text-[17px] leading-snug sm:text-[19px]"
-            style={{ borderColor: "var(--arbor-rule-strong)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}
+            style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}
           >
             <FreeText text={opener.quote} />
           </blockquote>
@@ -75,12 +83,12 @@ export default function FromRecordCard({
       )}
       <h2
         data-testid="today-record-question"
-        className="mt-3 text-[20px] font-semibold leading-tight sm:text-[22px]"
-        style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}
+        className="mt-3 font-semibold leading-tight"
+        style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontSize: "var(--t-xl)" }}
       >
         {question}
       </h2>
-      <div role="group" aria-label={question} data-testid="today-record-answers" className="mt-3 flex flex-wrap gap-2">
+      <div role="group" aria-label={question} data-testid="today-record-answers" {...(stampMove ? { "data-primary-move": "do-today-action" } : {})} className="mt-3 flex flex-wrap gap-2">
         {FROM_RECORD_ANSWERS.map((answer) => (
           <button
             key={answer}
@@ -88,7 +96,7 @@ export default function FromRecordCard({
             data-answer={answer}
             onClick={() => onAnswer(answer)}
             className="inline-flex min-h-[44px] items-center rounded-full px-4 text-[14px] font-semibold transition active:scale-[0.98]"
-            style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)" }}
+            style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}
           >
             {t(fromRecordAnswerKey(opener, answer))}
           </button>

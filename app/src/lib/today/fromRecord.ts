@@ -23,6 +23,7 @@ import type { ActionPlan, BehaviorLog } from "../../types";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import { planStepStatus } from "../plans";
 import { parentWords as sharedParentWords } from "../recordCounts";
+import { isIncidentType } from "../../content/behaviorTaxonomy";
 
 export type FromRecordKind = "plan" | "note" | "fact";
 /** The three tap answers; stored verbatim as the reflection. */
@@ -43,6 +44,53 @@ export interface FromRecordOpener {
   quoteSource: FromRecordQuoteSource | null;
   /** ISO date the quoted text was written / the step was rated. */
   quoteAt: string | null;
+  /** NEXTLEVEL critic r1: the plan's 2-3 word topic (`today.record.topic.<k>`),
+   *  matched from its title/issue/steps (EN + HE); null = no table match. */
+  topicKey?: RecordTopic | null;
+  /** NEXTLEVEL critic r1: a plain moment the parent wrote down (not an
+   *  incident) is a win — its opener asks "again since?", never "Hard again". */
+  tone?: "change" | "joy";
+}
+
+/* ── NEXTLEVEL critic r1 — topics ──────────────────────────────────────────
+   A plan opener quotes ONLY the parent's words about the plan's own topic: a
+   bath-song win under "Preschool Transition & Morning Arrival Plan" asked
+   "How is it going now? … Hard again" against a joyful sentence. A note
+   belongs to a plan when both resolve to the same topic below, or when they
+   share a content word. The table also names the topic in the question
+   ("How are mornings with Dylan now?"). Pure; EN + HE. */
+export type RecordTopic = "mornings" | "bedtime" | "bath" | "meals" | "screens" | "siblings" | "feelings" | "transitions";
+const TOPIC_TABLE: ReadonlyArray<[RecordTopic, RegExp]> = [
+  ["bath", /\bbath|\bwash(ing)? (his|her|their) hair|אמבט|רחצה|מקלחת/i],
+  ["bedtime", /\bbed ?time|\bbed\b|\bsleep|\bnight|\bnap|שינה|לישון|השכבה|לילה/i],
+  ["mornings", /\bmorning|\bdrop-?off|\bdeparture|\bleaving (for|the house)|\bkindergarten|\bpreschool|\bshoes|\barrival|בוקר|בקרים|פרידה|יציאה מהבית|לגן/i],
+  ["meals", /\bmeal|\bdinner|\bbreakfast|\blunch|\bpicky|\beating|ארוח|אוכל|לאכול/i],
+  ["screens", /\bscreen|\btablet|\btv\b|\bipad|\bphone|מסך|טאבלט|טלוויזיה/i],
+  ["siblings", /\bsibling|\bbrother|\bsister|אחים|אחות|אחיו/i],
+  ["feelings", /\btantrum|\bmeltdown|\bbig feeling|\bhitting|\bangry|\bfrustrat|התקף|זעם|כעס/i],
+  ["transitions", /\btransition|\bswitching|מעבר/i],
+];
+export function recordTopic(text: string): RecordTopic | null {
+  for (const [k, re] of TOPIC_TABLE) if (re.test(text)) return k;
+  return null;
+}
+const STOP = new Set(["the", "and", "for", "with", "his", "her", "their", "was", "had", "has", "have", "this", "that", "from", "into", "plan", "support", "step", "steps", "day", "days", "time", "של", "את", "עם", "על", "זה", "היה", "גם", "כל"]);
+function contentWords(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const raw of text.toLowerCase().replace(/[\u0591-\u05C7]/g, "").match(/[\p{L}]+/gu) ?? []) {
+    const w = raw.replace(/(ing|ed|es|s)$/u, "");
+    if (w.length >= 4 && !STOP.has(raw) && !STOP.has(w)) out.add(w);
+  }
+  return out;
+}
+/** True when the parent's note is about this plan (same topic, or a shared content word). */
+export function noteMatchesPlan(note: string, plan: Pick<ActionPlan, "title" | "issue" | "phases">): boolean {
+  const planText = [plan.title, plan.issue, ...(plan.phases ?? []).flatMap((ph) => (ph.steps ?? []).map((s) => s.text))].filter(Boolean).join(" ");
+  const a = recordTopic(note);
+  if (a && a === recordTopic(planText)) return true;
+  const pw = contentWords(planText);
+  for (const w of contentWords(note)) if (pw.has(w)) return true;
+  return false;
 }
 
 export interface FromRecordFact {
@@ -93,16 +141,18 @@ export function quotableWords(log: Pick<BehaviorLog, "behaviorType" | "trigger" 
   return s.length >= MIN_QUOTE ? s : null;
 }
 
-/** The parent's newest written note (any age), or null. */
-function latestNote(logs: readonly BehaviorLog[]): { id: string; text: string; at: string } | null {
-  let best: { id: string; text: string; at: string; t: number } | null = null;
+type Note = { id: string; text: string; at: string; context: string; win: boolean };
+/** The parent's written notes, newest first. `context` adds what came first
+ *  (the trigger of an incident) for topic matching only — never quoted. */
+function notesNewestFirst(logs: readonly BehaviorLog[]): Note[] {
+  const out: (Note & { t: number })[] = [];
   for (const l of logs) {
     const text = quotableWords(l);
     const t = ms(l.timestamp);
     if (!text || !Number.isFinite(t)) continue;
-    if (!best || t > best.t) best = { id: l.id, text, at: l.timestamp, t };
+    out.push({ id: l.id, text, at: l.timestamp, t, context: `${text} ${l.trigger ?? ""}`, win: !isIncidentType(l.behaviorType) });
   }
-  return best ? { id: best.id, text: best.text, at: best.at } : null;
+  return out.sort((a, b) => b.t - a.t).map(({ t: _t, ...n }) => n);
 }
 
 /** The record rows this module writes, for one child. */
@@ -122,21 +172,27 @@ function quietKeys(loop: readonly ActionLoopEntry[], now: Date): Set<string> {
 }
 
 /** The plan opener: an active plan (a step not done) — newest plan first. */
-function planOpener(input: FromRecordInput, note: ReturnType<typeof latestNote>): FromRecordOpener | null {
+function planOpener(input: FromRecordInput, notes: readonly Note[]): FromRecordOpener | null {
   const plan = input.plans.find((p) => (p.phases ?? []).some((ph) => (ph.steps ?? []).some((s) => planStepStatus(s) !== "done")));
   if (!plan) return null;
+  const topicKey = recordTopic([plan.title, plan.issue].filter(Boolean).join(" "))
+    ?? recordTopic((plan.phases ?? []).flatMap((ph) => (ph.steps ?? []).map((s) => s.text)).join(" "));
   // the last step the parent rated (loop outcome) …
   const rated = input.loop
     .filter((r) => r.source === "plan" && r.planId === plan.id && r.outcome && r.recommendation.trim())
     .sort((a, b) => (b.outcomeAt ?? "").localeCompare(a.outcomeAt ?? ""))[0];
   if (rated) {
-    return { key: `plan:${plan.id}`, kind: "plan", topic: plan.title?.trim() || null, quote: rated.recommendation.trim(), quoteSource: "step", quoteAt: rated.outcomeAt ?? rated.acceptedAt };
+    return { key: `plan:${plan.id}`, kind: "plan", topic: plan.title?.trim() || null, topicKey, tone: "change", quote: rated.recommendation.trim(), quoteSource: "step", quoteAt: rated.outcomeAt ?? rated.acceptedAt };
   }
-  // … else the parent's latest written note, else the topic alone
+  // … else the parent's newest note ON THIS PLAN'S TOPIC (never recency
+  // alone — NEXTLEVEL critic r1), else the topic alone.
+  const note = notes.find((n) => noteMatchesPlan(n.context, plan)) ?? null;
   return {
     key: `plan:${plan.id}`,
     kind: "plan",
     topic: plan.title?.trim() || null,
+    topicKey,
+    tone: "change",
     quote: note?.text ?? null,
     quoteSource: note ? "parent" : null,
     quoteAt: note?.at ?? null,
@@ -148,14 +204,15 @@ function planOpener(input: FromRecordInput, note: ReturnType<typeof latestNote>)
  */
 export function selectFromRecord(input: FromRecordInput): FromRecordOpener | null {
   const quiet = quietKeys(input.loop, input.now);
-  const note = latestNote(input.logs);
+  const notes = notesNewestFirst(input.logs);
+  const note = notes[0] ?? null;
 
-  const plan = planOpener(input, note);
+  const plan = planOpener(input, notes);
   if (plan && !quiet.has(plan.key)) return plan;
 
   if (note && input.now.getTime() - ms(note.at) > NOTE_STALE_DAYS * DAY_MS) {
     const key = `note:${note.id}`;
-    if (!quiet.has(key)) return { key, kind: "note", topic: null, quote: note.text, quoteSource: "parent", quoteAt: note.at };
+    if (!quiet.has(key)) return { key, kind: "note", topic: null, topicKey: recordTopic(note.context), tone: note.win ? "joy" : "change", quote: note.text, quoteSource: "parent", quoteAt: note.at };
   }
 
   const facts = input.facts
@@ -214,10 +271,13 @@ export function fromRecordEntry(
 
 /** i18n keys for an opener's question and answers (EN + HE in lib/i18n.ts). */
 export function fromRecordQuestionKey(opener: FromRecordOpener): string {
-  return opener.kind === "fact" ? "today.record.q.fact" : opener.kind === "plan" ? "today.record.q.plan" : "today.record.q.note";
+  if (opener.kind === "fact") return "today.record.q.fact";
+  if (opener.tone === "joy") return "today.record.q.win";
+  if (opener.kind === "plan" && opener.topicKey) return `today.record.q.topic.${opener.topicKey}`;
+  return opener.kind === "plan" ? "today.record.q.plan" : "today.record.q.note";
 }
 export function fromRecordAnswerKey(opener: FromRecordOpener, answer: FromRecordAnswer): string {
-  return `today.record.a.${opener.kind === "fact" ? "fact" : "change"}.${answer}`;
+  return `today.record.a.${opener.kind === "fact" ? "fact" : opener.tone === "joy" ? "joy" : "change"}.${answer}`;
 }
 export function fromRecordMetaKey(opener: FromRecordOpener): string | null {
   if (!opener.quoteSource) return null;

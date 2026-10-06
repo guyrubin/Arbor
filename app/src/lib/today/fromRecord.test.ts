@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  fromRecordAnswerKey,
+  fromRecordQuestionKey,
+  noteMatchesPlan,
+  recordTopic,
   answeredToday,
   factHasTimeWord,
   fromRecordEntry,
@@ -122,6 +126,44 @@ describe("B-TODAY-28 — the answer write (existing actionLoops ledger, one row 
     expect(row.id.startsWith("today.")).toBe(false); // never Today's accepted-step slot
     expect(answeredToday([row], "c1", NOW)).toEqual(row);
     expect(answeredToday([row], "c1", new Date("2026-10-07T08:00:00"))).toBeNull();
+  });
+});
+
+describe("NEXTLEVEL critic r1 — the plan opener quotes only words on its own topic", () => {
+  const bath = log({ id: "log-bath", timestamp: "2026-10-04T19:00:00.000Z", behaviorType: "Moment", trigger: "Sang the whole bath song on his own", notes: "" });
+  it("a newer bath-song win does NOT become the morning plan's quote; the topic is named", () => {
+    const o = selectFromRecord(base({ plans: [plan()], logs: [log(), bath] }));
+    expect(o?.kind).toBe("plan");
+    expect(o?.quote).toBe(NOTE); // the 9 Jul mornings note, not the newer bath win
+    expect(o?.topicKey).toBe("mornings");
+    expect(fromRecordQuestionKey(o!)).toBe("today.record.q.topic.mornings");
+  });
+  it("with only an off-topic note the plan opener carries the topic alone (no quote)", () => {
+    const o = selectFromRecord(base({ plans: [plan()], logs: [bath] }));
+    expect(o).toMatchObject({ kind: "plan", quote: null, quoteSource: null, topicKey: "mornings" });
+  });
+  it("a stale plain-moment note opens as a JOY: 'again since?', never 'Hard again'", () => {
+    const old = { ...bath, timestamp: "2026-09-01T19:00:00.000Z" };
+    const o = selectFromRecord(base({ logs: [old] }));
+    expect(o).toMatchObject({ kind: "note", tone: "joy" });
+    expect(fromRecordQuestionKey(o!)).toBe("today.record.q.win");
+    expect(fromRecordAnswerKey(o!, "hard_again")).toBe("today.record.a.joy.hard_again");
+  });
+  it("topics resolve in EN and HE; matching is by topic or a shared content word", () => {
+    expect(recordTopic("Preschool Transition & Morning Arrival Plan")).toBe("mornings");
+    expect(recordTopic("בוקר בגן")).toBe("mornings");
+    expect(recordTopic("שעת השינה")).toBe("bedtime");
+    expect(noteMatchesPlan("Leaving for kindergarten took ages", plan())).toBe(true);
+    expect(noteMatchesPlan("Sang the whole bath song on his own", plan())).toBe(false);
+  });
+  it("every topic and joy key ships in both languages", () => {
+    for (const k of ["mornings", "bedtime", "bath", "meals", "screens", "siblings", "feelings", "transitions"]) {
+      for (const d of [en, he] as Record<string, string>[]) {
+        expect(d[`today.record.topic.${k}`], k).toBeTruthy();
+        expect(d[`today.record.q.topic.${k}`], k).toContain("{name}");
+      }
+    }
+    for (const a of ["easier", "hard_again", "other"]) expect((he as Record<string, string>)[`today.record.a.joy.${a}`]).toBeTruthy();
   });
 });
 
