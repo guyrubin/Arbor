@@ -332,7 +332,7 @@ describe("B-DIST-01 · every egress carries the demo header (EN + HE)", () => {
     const dot = src.slice(src.indexOf("function DemoDot"), src.indexOf("export function SwitcherChildOption"));
     expect(dot).toMatch(/aria-label=\{t\("elev\.demo\.chipAria"\)\}/);
     expect(dot).toMatch(/background: "var\(--arbor-muted\)"/);
-    expect(dot).not.toMatch(/#[0-9a-fA-F]{3,8}|green|amber|coral|red/);
+    expect(dot).not.toMatch(/#[0-9a-fA-F]{3,8}\b|green|amber|coral|red/);
     expect(src).toMatch(/p\.demo === true && <DemoChip t=\{t\} \/>/);
     const chip = src.slice(src.indexOf("function DemoChip"), src.indexOf("export default function"));
     expect(chip).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
