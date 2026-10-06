@@ -265,7 +265,7 @@ export const projectJournal = (input: {
   const nextMilestones = buildMilestoneCandidates(req.nextMilestoneIds ?? [], input.childProfile)
     .filter((m) => CATALOGUE_IDS.has(m.id))
     .slice(0, MAX_JOURNAL_MILESTONES)
-    .map((m) => ({ id: m.id, shelf: m.shelf, title: m.title, ageLine: milestoneAgeLine({ id: m.id }, enT) }));
+    .map((m) => ({ id: m.id, shelf: m.shelf as ShelfId, title: m.title, ageLine: milestoneAgeLine({ id: m.id }, enT) }));
   const restedShelves = [...(req.restedShelves ?? [])];
   // Candidates: catalogue practices inside the child's age window, never on a rested shelf.
   const months = comparisonMonthsOf((input.childProfile ?? null) as ChildProfile | null);
