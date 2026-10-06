@@ -61,7 +61,7 @@ import { translate } from "../lib/i18n.js";
 import { ALL_MILESTONES, isCatalogueMilestone, milestoneAgeWindow } from "../lib/milestoneData.js";
 import { comparisonMonthsOf } from "../lib/age/forChild.js";
 import { buildMilestoneCandidates } from "./milestoneMatch.js";
-import { SHELF_IDS } from "../lib/shelves/registry.js";
+import { SHELF_IDS, shelfLabel } from "../lib/shelves/registry.js";
 import { resolveHebrewSlash } from "../lib/hebrewSlashGender.js";
 import type { ChildProfile } from "../types.js";
 import {
@@ -71,6 +71,7 @@ import {
   acceptedJournalDay,
   sanitizeDoseRow,
   sanitizeJournalRequest,
+  WHY_KEYS,
   type CompanionJournal,
   type JournalCandidate,
   type JournalDoseRow,
@@ -293,7 +294,7 @@ export const projectJournal = (input: {
     : kept.map((p, i) => ({ p, i })).sort((a, b) => (shelfCoverage[a.p.shelf] - shelfCoverage[b.p.shelf]) || (order(a.p.shelf) - order(b.p.shelf)) || (a.i - b.i)).map((x) => x.p);
   const head = ordered[0];
   const inFirstTier = (p: Practice) => !!head && (input.keepOrder ? p.shelf === head.shelf : shelfCoverage[p.shelf] === shelfCoverage[head.shelf]);
-  const candidates: JournalCandidate[] = ordered.map((p) => ({ id: p.id, shelf: p.shelf, say: p.say.en, milestoneId: p.milestoneId, firstTier: inFirstTier(p) }));
+  const candidates: JournalCandidate[] = ordered.map((p) => ({ id: p.id, shelf: p.shelf, say: p.say.en, milestoneId: p.milestoneId, firstTier: inFirstTier(p), do: p.do.en }));
   // Dose rows: the server ledger first; the client's rows only when the ledger has none.
   const prefix = `practice.${input.childId}.`;
   const fromLedger = ledgerDoseRows(input.actionLoops, input.childId);
@@ -329,6 +330,27 @@ export const practiceSayLine = (id: string, lang: "en" | "he", gender?: string |
   const p = PRACTICE_BY_ID.get(id);
   if (!p) return "";
   return lang === "he" ? resolveHebrewSlash(p.say.he, gender) : p.say.en;
+};
+
+/** Round 4: the coherence material of a practice — its do / say lines and its
+ *  shelf name, EN + HE (the step may be written in either language). */
+export const practiceMaterial = (id: string): string => {
+  const p = PRACTICE_BY_ID.get(id);
+  if (!p) return "";
+  const label = (lang: "en" | "he") => shelfLabel(p.shelf, (k) => translate(lang, k));
+  return [p.do.en, p.do.he, p.say.en, p.say.he, label("en"), label("he"), p.shelf].join(" ");
+};
+
+/**
+ * Round 2/4: the server-rendered why (the chooser's reason, the two shapes
+ * Today ships). HE: the closing "בשבילו" (agreeing with the shelf) follows the
+ * child's gender through the shared slash resolver ("בשבילו/ה" → בשבילה for
+ * a girl; boy / unknown keep בשבילו) — loop-he-register-thin-shelf on 1.3.2.
+ */
+export const renderWhyLine = (input: { reason: "empty" | "fewest"; shelf: ShelfId; lang: "en" | "he"; name: string; gender?: string | null }): string => {
+  const t = (key: string, vars?: Record<string, string | number>) => translate(input.lang, key, vars);
+  const text = t(WHY_KEYS[input.reason], { shelf: shelfLabel(input.shelf, t), name: input.name || t("today.record.childFallback") });
+  return input.lang === "he" ? resolveHebrewSlash(text.replace(/בשבילו(?=[.\s]|$)/u, "בשבילו/ה"), input.gender) : text;
 };
 
 /** The practice line's input for coach_chat / voice_reply (null without a practice). */

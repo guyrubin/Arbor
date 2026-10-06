@@ -31,7 +31,7 @@ export type JournalMilestone = { id: string; shelf: ShelfId; title: string; ageL
 /** One of TODAY's practice candidates (the chooser's own list, catalogue say-line).
  *  `firstTier` (round 2): the thinnest non-rested shelf of the chooser's order —
  *  the ONLY candidates the model sees and the route accepts. */
-export type JournalCandidate = { id: string; shelf: ShelfId; say: string; milestoneId: string | null; firstTier: boolean };
+export type JournalCandidate = { id: string; shelf: ShelfId; say: string; milestoneId: string | null; firstTier: boolean; /** Round 4: the practice's catalogue do-line (EN) — the material the step is written about. */ do?: string };
 /** Today's practice — from today's dose row, else the parent's day pin. */
 export type JournalPractice = { id: string; shelf: ShelfId; say: string; state: JournalPracticeState; date: string };
 /** A night answer: the evening outcome and the parent's one line. Never a quote. */
@@ -234,8 +234,9 @@ export const renderFocusJournalBlock = (journal?: CompanionJournal | null): stri
   } else if (firstTier.length) {
     lines.push(
       "Today's practice candidates — FIRST TIER, already ordered by Arbor (the thinnest shelf the parent has not rested). Do not rank shelves yourself; choose ONE id from this list only, or \"\":",
-      ...firstTier.map((c) => `- ${c.id} · ${c.shelf} · ${JSON.stringify(c.say)}`),
-      "- \"practiceId\": the first-tier candidate that fits the record best; when two fit, let a night answer decide (a \"not today\" or a hard evening → the lighter one; a practice that helped → build on it). tryToday and sayThis support the practice you choose.",
+      ...firstTier.map((c) => `- ${c.id} · ${c.shelf} · do: ${JSON.stringify(c.do ?? "")} · say: ${JSON.stringify(c.say)}`),
+      "- \"practiceId\": the first-tier candidate that fits the record best; when two fit, let a night answer decide (a \"not today\" or a hard evening → the lighter one; a practice that helped → build on it).",
+      "- Write focus, tryToday and sayThis ABOUT the practice you pick: focus names that moment, tryToday is its do in your own words, sayThis is what the parent says while doing it. Never write about another shelf.",
     );
   }
   return `${lines.join("\n")}\n`;
@@ -330,6 +331,18 @@ const GRADED_HE: readonly RegExp[] = [
 /** True when a line grades the child's difficulty (EN or HE): the focus fails closed. */
 export const gradesTheChild = (text: string): boolean =>
   GRADED_EN.some((re) => re.test(text)) || GRADED_HE.some((re) => re.test(text));
+
+/**
+ * Round 4 (loop-thin-shelf-sleep-en: the pick was sleep, the step was about
+ * words): the step must be ABOUT the chosen practice — focus or tryToday
+ * shares a content stem with the practice's do / say lines or its shelf name
+ * (EN + HE material). Else the route fails closed to the chooser's card.
+ */
+export const stepFitsPractice = (step: string, practiceMaterial: string): boolean => {
+  const a = stems(step);
+  for (const s of stems(practiceMaterial)) if (a.has(s)) return true;
+  return false;
+};
 
 /** The chooser's reason for a shelf (PracticeCard A3): nothing this month, or the fewest of all the child's shelves; else none. */
 export const whyReasonFor = (coverage: Partial<Record<ShelfId, number>>, shelf: ShelfId): "empty" | "fewest" | null => {

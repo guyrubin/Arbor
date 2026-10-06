@@ -285,7 +285,7 @@ describe("B-TODAY-24 · /todays-focus returns one screened sayThis (≤140) and 
     expect(Object.keys(lastSchema.properties ?? {})).toEqual(["focus", "tryToday", "sayThis"]);
     expect(lastSchema.required).toEqual(["focus", "tryToday", "sayThis"]);
     expect(json.sayThis).toBe("Two more minutes, then shoes on together.");
-    expect(lastPrompt).toContain('"sayThis": exactly ONE sentence (under 140 characters; never two sentences)');
+    expect(lastPrompt).toContain('"sayThis": exactly ONE sentence (under 140 characters; never two sentences) — the exact sentence the parent says to the child while doing tryToday');
   });
 
   it("an over-long sayThis is dropped, never cut", async () => {
@@ -317,7 +317,7 @@ describe("B-TODAY-24 · /todays-focus returns one screened sayThis (≤140) and 
       suite: string; promptVersions: Record<string, string>; scenarios: { id: string; route?: string; locale?: string; safetyMustHold?: boolean }[];
     };
     expect(suite.suite).toBe("today-focus-v1");
-    expect(suite.promptVersions.todays_focus).toBe("1.3.2");
+    expect(suite.promptVersions.todays_focus).toBe("1.3.3");
     const ids = suite.scenarios.map((s) => s.id);
     for (const required of ["cold-start", "approved-fact-used", "not-today-not-repeated", "he-output", "two-child-isolation", "safety-trip-no-score-trend-diagnosis", "saythis-length",
       // B-LOOP-13: the journal scenarios + the live-judge fixes on 1.2.0
@@ -390,7 +390,7 @@ describe("B-LOOP-13 · /todays-focus chooses the practice from the journal", () 
   it("the server re-applies the chooser's order: sleep (0 notes) is the first tier whatever the wire order; words is never listed", async () => {
     draft = { ...DRAFT, practiceId: "pr-sleep-08" };
     await postFocus(body("c-loop-order"));
-    expect(lastPrompt).toContain('- pr-sleep-08 · sleep · "What comes after pyjamas? Show me on our page."');
+    expect(lastPrompt).toContain('- pr-sleep-08 · sleep · do: "Draw the bedtime steps together, one small picture each, and stick the page where your child can point to what comes next." · say: "What comes after pyjamas? Show me on our page."');
     expect(lastPrompt).not.toContain("- pr-cdc-24m-4");
   });
 
@@ -504,5 +504,23 @@ describe("B-LOOP-13 round 3 · graded difficulty → 422 (the pure chooser's car
     draft = { ...CLEAN_DRAFT };
     await postFocus({ childProfile: { id: "c-grade-prompt", name: "T", age: 4 }, signals: { count: 2 } });
     expect(lastPrompt).toContain("The focus never grades or assesses the child");
+  });
+});
+
+/* ── B-LOOP-13 round 4: the step must be ABOUT the chosen practice; gendered HE why ── */
+describe("B-LOOP-13 round 4 · coherence + gendered why", () => {
+  const journal = { candidatePracticeIds: ["pr-sleep-08", "pr-cdc-24m-4"], shelfCoverage: { sleep: 0, words: 3, food: 2, feelings: 2, play: 2, moving: 2, hands: 2, school: 2, family: 2 } };
+  it("a sleep pick with a words step → 422 (the chooser's card); a bedtime step passes (EN + HE)", async () => {
+    draft = { focus: "Today, let's pay attention to how Noa is using words.", tryToday: "Offer two words when Noa reaches for a toy.", sayThis: "Big ball, red ball.", practiceId: "pr-sleep-08" };
+    const bad = await postFocus({ childProfile: { id: "c-coh-bad", name: "Noa", age: 2 }, signals: { count: 2 }, journal });
+    expect(bad.status).toBe(422);
+    draft = { focus: "Bedtime is today's small thing.", tryToday: "Draw the bedtime steps together on one page.", sayThis: "What comes after pyjamas? Show me.", practiceId: "pr-sleep-08" };
+    expect((await postFocus({ childProfile: { id: "c-coh-ok", name: "Noa", age: 2 }, signals: { count: 2 }, journal })).status).toBe(200);
+    draft = { focus: "אפשר לשתף את נועה במטלות קטנות בבית.", tryToday: "כמו לאסוף צעצועים בסלון.", sayThis: "בואי נאסוף יחד את הצעצועים.", practiceId: "pr-sleep-08" };
+    expect((await postFocus({ childProfile: { id: "c-coh-he-bad", name: "נועה", age: 2, gender: "girl" }, signals: { count: 2 }, journal, language: "he" })).status).toBe(422);
+    draft = { focus: "הערב שלבי השינה הם הדבר הקטן.", tryToday: "ציירו יחד את שלבי השינה על דף אחד.", sayThis: "מה בא אחרי הפיג'מה? תראי לי על הדף.", practiceId: "pr-sleep-08" };
+    const he = await postFocus({ childProfile: { id: "c-coh-he-ok", name: "נועה", age: 2, gender: "girl" }, signals: { count: 2 }, journal, language: "he" });
+    expect(he.status).toBe(200);
+    expect(String(he.json.why).endsWith("בשבילה.")).toBe(true);
   });
 });

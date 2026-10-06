@@ -6,7 +6,7 @@
  * about a hard moment are not a grade and pass.
  */
 import { describe, expect, it } from "vitest";
-import { gradesTheChild, sanitizeDoseRow } from "./journalContext";
+import { gradesTheChild, sanitizeDoseRow, stepFitsPractice } from "./journalContext";
 
 describe("gradesTheChild — graded difficulty fails closed (EN + HE)", () => {
   it("EN: a grading adjective with a difficulty noun, or an indicates / points-to frame", () => {
@@ -52,5 +52,17 @@ describe("sanitizeDoseRow — a long child id is kept (round 3: the 80-char id c
     expect(sanitizeDoseRow({ id: `practice.${"c".repeat(201)}.2026-10-05`, practiceId: "pr-sleep-06" })).toBeNull();
     expect(sanitizeDoseRow({ id: "practice.child a.2026-10-05", practiceId: "pr-sleep-06" })).toBeNull();
     expect(sanitizeDoseRow({ id: "practice.child-a.yesterday", practiceId: "pr-sleep-06" })).toBeNull();
+  });
+});
+
+describe("stepFitsPractice — the step is ABOUT the chosen practice (round 4)", () => {
+  const sleep08 = "Draw the bedtime steps together, one small picture each, and stick the page where your child can point to what comes next. ציירו יחד את שלבי השינה, ציור קטן לכל שלב, ותלו את הדף במקום שבו הילד/ה יכול/ה להצביע על מה שבא אחר כך. What comes after pyjamas? Show me on our page. Sleep שינה sleep";
+  it("EN: a bedtime step fits; a words step for a sleep pick does not", () => {
+    expect(stepFitsPractice("Tonight, draw the bedtime steps on one page together.", sleep08)).toBe(true);
+    expect(stepFitsPractice("Today, let's pay attention to how Noa is using words. Offer two words when Noa reaches for a toy.", sleep08)).toBe(false);
+  });
+  it("HE: a sleep-routine step fits; a family chores step does not", () => {
+    expect(stepFitsPractice("הערב ציירו יחד את שלבי השינה על דף אחד.", sleep08)).toBe(true);
+    expect(stepFitsPractice("אפשר לשתף את נועה במטלות קטנות בבית, כמו לאסוף צעצועים.", sleep08)).toBe(false);
   });
 });

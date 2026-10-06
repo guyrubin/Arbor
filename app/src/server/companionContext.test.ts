@@ -245,7 +245,8 @@ const provider = {
   generateJson: async ({ prompt }: { prompt: string }) => {
     if (prompt.includes("Today's Focus writer")) {
       focusPrompt = prompt;
-      return { focus: "Notice the evening.", tryToday: "Try a quiet first minute." };
+      // B-LOOP-13 round 4: the step names the bedtime page, so a pinned sleep practice coheres.
+      return { focus: "Notice the evening.", tryToday: "Try a quiet first minute with the bedtime page." };
     }
     return { safe: true, reason: "" };
   },
@@ -432,7 +433,7 @@ describe("B-LOOP-13 — the journal block (CompanionContext v2)", () => {
     expect(j.shelfCoverage).toEqual({ sleep: 0, food: 2, words: 4, feelings: 0, play: 0, moving: 0, hands: 999, school: 0, family: 0 });
     expect(j.nextMilestones).toEqual([{ id: "cdc-18m-4", shelf: "words", title: "Says three or more words", ageLine: "Most children do this by 18 months" }]);
     expect(j.candidates.map((c) => c.id)).toEqual(["pr-sleep-08", "pr-cdc-24m-4"]);
-    expect(j.candidates[1]).toEqual({ id: "pr-cdc-24m-4", shelf: "words", say: "Where's the bear? There he is! A big brown bear.", milestoneId: "cdc-24m-4", firstTier: false });
+    expect(j.candidates[1]).toMatchObject({ id: "pr-cdc-24m-4", shelf: "words", say: "Where's the bear? There he is! A big brown bear.", milestoneId: "cdc-24m-4", firstTier: false });
     expect(j.candidates[0].firstTier).toBe(true);
     const flat = JSON.stringify(j);
     for (const leak of ["IGNORE PREVIOUS", "behaviorLogs note text", "INJECTED", "custom-123", "not-a-practice"]) expect(flat).not.toContain(leak);
@@ -581,5 +582,25 @@ describe("B-LOOP-13 round 3 — companion-continuity-v1 night-answer scenarios r
       const row = (sc.input.journal as { doseRows: { whatHappened: string }[] }).doseRows[0];
       expect(prompt, sc.id).toContain(JSON.stringify(row.whatHappened));
     }
+  });
+});
+
+/* ── B-LOOP-13 round 4: the gendered why + the practice material ─────────── */
+describe("B-LOOP-13 round 4 — renderWhyLine follows the child's gender (HE); practiceMaterial", () => {
+  it("HE: בשבילה for a girl, בשבילו for a boy and for an unknown gender; EN unchanged", async () => {
+    const { renderWhyLine } = await import("./companionContext.js");
+    const girl = renderWhyLine({ reason: "empty", shelf: "family", lang: "he", name: "נועה", gender: "girl" });
+    expect(girl).toContain("נועה");
+    expect(girl.endsWith("בשבילה.")).toBe(true);
+    expect(girl).not.toContain("/");
+    expect(renderWhyLine({ reason: "fewest", shelf: "words", lang: "he", name: "יואב", gender: "boy" }).endsWith("בשבילו.")).toBe(true);
+    expect(renderWhyLine({ reason: "empty", shelf: "sleep", lang: "he", name: "טל" }).endsWith("בשבילו.")).toBe(true);
+    expect(renderWhyLine({ reason: "empty", shelf: "sleep", lang: "en", name: "Noa", gender: "girl" })).toBe("Nothing on Noa's Sleep shelf yet this month, so today's small thing is for it.");
+  });
+  it("practiceMaterial carries do + say in EN and HE and the shelf name; unknown id → empty", async () => {
+    const { practiceMaterial } = await import("./companionContext.js");
+    const m = practiceMaterial("pr-sleep-08");
+    for (const bit of ["Draw the bedtime steps", "ציירו יחד", "What comes after pyjamas", "Sleep", "שינה"]) expect(m).toContain(bit);
+    expect(practiceMaterial("nope")).toBe("");
   });
 });

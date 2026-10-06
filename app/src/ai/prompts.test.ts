@@ -383,7 +383,7 @@ Use only the time frames and the history this input states: never invent a perio
 Write today's single most useful parenting focus:
 - "focus": 1-2 short, warm sentences naming what to pay attention to today — grounded only in what this input states, never an assessment. The focus never grades or assesses the child: no "slight", "mild" or "serious" difficulty, problem or delay, nothing "points to" or "indicates" anything — it names the moment and the one thing to try.
 - "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
-- "sayThis": exactly ONE sentence (under 140 characters; never two sentences) the parent can say to the child while trying that step — warm, plain words a child understands; never a label, a verdict or praise of an outcome.
+- "sayThis": exactly ONE sentence (under 140 characters; never two sentences) — the exact sentence the parent says to the child while doing tryToday, in the parent's voice: warm, plain words a child understands that invite or model the step; never the child's own line, never a label or a verdict, never "good job" — when the practice is noticing what the child did, say what they did.
 Never include a score, percentage, trend, severity, readiness claim, diagnosis, or outcome claim. No headings, no markdown, no emojis.${languageDirective}
 Return only JSON matching the schema.`;
   };
@@ -613,7 +613,7 @@ describe("B-PROG-01 — the active-program line", () => {
     expect(buildLiveSystemInstruction("en", spoken)).toBe(strip(buildLiveSystemInstruction("en", { ...spoken!, program })));
     // an empty skill or name renders nothing
     expect(buildChatPrompt({ ...chatArgs, activeProgram: { ...program, skill: " " } })).toBe(buildChatPrompt(chatArgs));
-    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.2");
+    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.3");
     expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.7.0");
     expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.8.2");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.5.0");
@@ -635,7 +635,7 @@ describe("B-LOOP-13 — the journal block and today's practice line", () => {
     shelfCoverage: { sleep: 0, food: 2, words: 1, feelings: 0, play: 3, moving: 0, hands: 0, school: 0, family: 0 },
     nextMilestones: [{ id: "m-1", shelf: "words" as const, title: "Says two words together", ageLine: "Most children do this by 2 years" }],
     candidates: [
-      { id: "pr-1", shelf: "sleep" as const, say: "Night night, teddy.", milestoneId: null, firstTier: true },
+      { id: "pr-1", shelf: "sleep" as const, say: "Night night, teddy.", milestoneId: null, firstTier: true, do: "Tuck teddy in first." },
       { id: "pr-2", shelf: "words" as const, say: "LATER_TIER_SAY", milestoneId: "m-1", firstTier: false },
     ],
     restedShelves: ["food" as const],
@@ -670,7 +670,10 @@ describe("B-LOOP-13 — the journal block and today's practice line", () => {
     expect(p).toContain("sleep 0 · food 2 · words 1");
     expect(p).toMatch(/never write a number, never compare shelves or children/);
     expect(p).toContain('- m-1 · words · "Says two words together" · "Most children do this by 2 years"');
-    expect(p).toContain('- pr-1 · sleep · "Night night, teddy."');
+    expect(p).toContain('- pr-1 · sleep · do: "Tuck teddy in first." · say: "Night night, teddy."');
+    // round 4: the step is written ABOUT the picked practice
+    expect(p).toMatch(/Write focus, tryToday and sayThis ABOUT the practice you pick/);
+    expect(p).toMatch(/never the child's own line, never a label or a verdict, never "good job"/);
     // round 2: only the FIRST TIER is listed; the model never ranks shelves
     expect(p).not.toContain("LATER_TIER_SAY");
     expect(p).toMatch(/FIRST TIER, already ordered by Arbor/);
@@ -701,8 +704,8 @@ describe("B-LOOP-13 — the journal block and today's practice line", () => {
     expect(warm).toContain("(the journal's notes per shelf cover the last 30 days)");
   });
 
-  it("versions: todays_focus 1.3.2 · coach_chat 1.7.0 · voice_reply 1.8.2 · live_session unchanged 1.5.0", () => {
-    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.2");
+  it("versions: todays_focus 1.3.3 · coach_chat 1.7.0 · voice_reply 1.8.2 · live_session unchanged 1.5.0", () => {
+    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.3");
     expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.7.0");
     expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.8.2");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.5.0");

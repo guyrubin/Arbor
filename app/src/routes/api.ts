@@ -13,8 +13,8 @@ import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCoun
 import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
 import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
 import { createDigestJobSource, createOidcJobVerifier, runWeeklyDigestJob, type DigestJobSource, type JobCallerVerifier } from "../server/digestJob.js";
-import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, practiceSayLine, programPromptLine, renderApprovedFactLines, todayPracticeLine, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
-import { WHY_KEYS, firstSentence, gradesTheChild, sanitizeJournalRequest, sayRelatesTo, whyReasonFor } from "../ai/journalContext.js";
+import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, practiceMaterial, practiceSayLine, programPromptLine, renderWhyLine, renderApprovedFactLines, todayPracticeLine, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
+import { firstSentence, gradesTheChild, sanitizeJournalRequest, sayRelatesTo, stepFitsPractice, whyReasonFor } from "../ai/journalContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, renderSeededConditionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
@@ -85,7 +85,7 @@ import { countAnalyzeLogs, toAnalyzeLogInputs } from "../lib/analyzeLogPayload.j
 import { toDigestLogInputs, toDigestMilestoneInputs } from "../lib/digestPayload.js";
 import { sanitizeTypeCounts } from "../lib/planRecord.js";
 import { buildMilestoneCandidates, validateMilestoneMatch } from "../server/milestoneMatch.js";
-import { SHELF_IDS, shelfLabel } from "../lib/shelves/registry.js";
+import { SHELF_IDS } from "../lib/shelves/registry.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
@@ -2184,9 +2184,9 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
       // Today's card already ships (i18nElevation/loop whyEmpty / whyFewest),
       // only beside an AI pick; no reason → no why.
       const whyReason = aiCandidate && journal ? whyReasonFor(journal.shelfCoverage, aiCandidate.shelf) : null;
-      const whyT = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
-      const firstName = String(childProfile?.name ?? "").trim().split(/\s+/)[0] || whyT("today.record.childFallback");
-      const why = whyReason && aiCandidate ? whyT(WHY_KEYS[whyReason], { shelf: shelfLabel(aiCandidate.shelf, whyT), name: firstName }) : "";
+      const firstName = String(childProfile?.name ?? "").trim().split(/\s+/)[0];
+      // Round 4: the HE closing word follows the child's gender (renderWhyLine).
+      const why = whyReason && aiCandidate ? renderWhyLine({ reason: whyReason, shelf: aiCandidate.shelf, lang, name: firstName, gender: childProfile?.gender }) : "";
       // sayThis: ONE sentence ≤ 140 that belongs to tryToday; otherwise the
       // chosen practice's own catalogue say-line (EN/HE) — never an empty card.
       const chosenPracticeId = journal?.practice?.id ?? practice?.practiceId ?? "";
@@ -2218,6 +2218,15 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
       // practice's own say-line, no AI text). Nothing is cached.
       if (gradesTheChild([focus, tryToday, sayThisRaw].filter(Boolean).join(" "))) {
         logger.warn("Todays Focus output blocked: graded difficulty", { requestId: requestIdOf(req) });
+        res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later." });
+        return;
+      }
+      // Round 4 (loop-thin-shelf-sleep-en: the pick was sleep, the step was
+      // about words): with a chosen practice, focus or tryToday must share a
+      // content word with that practice's do / say lines or its shelf name;
+      // otherwise the text and the pick disagree → the chooser's card.
+      if (chosenPracticeId && !stepFitsPractice(`${focus} ${tryToday}`, practiceMaterial(chosenPracticeId))) {
+        logger.warn("Todays Focus output blocked: step does not match the chosen practice", { requestId: requestIdOf(req) });
         res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later." });
         return;
       }

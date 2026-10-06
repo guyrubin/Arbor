@@ -311,7 +311,14 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // moment and the one thing to try; the route fails a graded difficulty
   // closed (ai/journalContext gradesTheChild, EN + HE → 422 = the pure
   // chooser's card). Re-pin owed (live): today-focus-v1.
-  todays_focus: { version: "1.3.2", sha256: "738b1f4743f89027cc7889d491b4bd4fb049936eb2ab7c2d56ed43dabd69f194" },
+  // 1.3.3 (B-LOOP-13 round 4, live judge on 1.3.2 = 0.74, 0 unsafe): each
+  // first-tier candidate carries its do + say lines and the model writes
+  // focus, tryToday and sayThis ABOUT the practice it picks (the route fails
+  // closed when the step shares no content word with that practice —
+  // ai/journalContext stepFitsPractice); sayThis is the exact sentence the
+  // parent says while doing tryToday, never the child's line, never
+  // "good job" (a noticing practice says what the child did). Re-pin owed (live): today-focus-v1.
+  todays_focus: { version: "1.3.3", sha256: "950f71a987dbd71ed168c02f5818222652be9e310f1eb848288eeffc20501824" },
   // 1.0.0 (B-AI-02): first pins. weekly_digest = server/digest.ts
   // buildDigestPrompt + the OPTIONAL recent-steps line (the parent's accepted
   // steps + outcomes; absent → the B-TODAY-03 bytes). generate_plan moved out
@@ -701,7 +708,7 @@ Use only the time frames and the history this input states: never invent a perio
 Write today's single most useful parenting focus:
 - "focus": 1-2 short, warm sentences naming what to pay attention to today — grounded only in what this input states, never an assessment. The focus never grades or assesses the child: no "slight", "mild" or "serious" difficulty, problem or delay, nothing "points to" or "indicates" anything — it names the moment and the one thing to try.
 - "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
-- "sayThis": exactly ONE sentence (under 140 characters; never two sentences) the parent can say to the child while trying that step — warm, plain words a child understands; never a label, a verdict or praise of an outcome.
+- "sayThis": exactly ONE sentence (under 140 characters; never two sentences) — the exact sentence the parent says to the child while doing tryToday, in the parent's voice: warm, plain words a child understands that invite or model the step; never the child's own line, never a label or a verdict, never "good job" — when the practice is noticing what the child did, say what they did.
 Never include a score, percentage, trend, severity, readiness claim, diagnosis, or outcome claim. No headings, no markdown, no emojis.${languageDirective}
 Return only JSON matching the schema.`;
 };
@@ -848,7 +855,7 @@ const CANONICAL = {
       { id: "«ms-id-2»", shelf: "hands", title: "«ms-title-2»", ageLine: null },
     ],
     candidates: [
-      { id: "«pr-id»", shelf: "sleep", say: "«pr-say»", milestoneId: null, firstTier: true },
+      { id: "«pr-id»", shelf: "sleep", say: "«pr-say»", milestoneId: null, firstTier: true, do: "«pr-do»" },
       { id: "«pr-id-2»", shelf: "food", say: "«pr-say-2»", milestoneId: "«ms-id»", firstTier: false },
     ],
     restedShelves: ["food"],
