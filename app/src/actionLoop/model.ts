@@ -85,6 +85,11 @@ export interface ActionLoopEntry {
    *  Together "turns you waited": 0–5, 5 = "5+"). The parent's own count of
    *  their own waiting — never a score of the child. */
   selfCount?: number;
+  /** B-LOOP-13: a `practice` row's Tonight line ("What happened?", <= 240
+   *  chars) — typed by the parent in answer to Arbor's own question under the
+   *  helper "This helps choose tomorrow's practice", so it may reach the
+   *  todays_focus prompt as a night answer. Never the `quote` keepsake. */
+  whatHappened?: string;
 }
 
 export type HeldAnswer = "yes" | "no";

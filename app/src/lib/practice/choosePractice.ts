@@ -91,8 +91,9 @@ const hash = (s: string): number => {
   return h;
 };
 
-/** Shelves the parent answered "not sure" on today (B-LOOP-04: rested). */
-function restedShelves(milestones: readonly Milestone[], now: Date): Set<ShelfId> {
+/** Shelves the parent answered "not sure" on today (B-LOOP-04: rested). Exported for
+ *  B-LOOP-13: the focus route receives them so the AI never picks a rested shelf. */
+export function restedShelves(milestones: readonly Milestone[], now: Date): Set<ShelfId> {
   const out = new Set<ShelfId>();
   for (const m of milestones) {
     if (m.observationStatus !== "not_sure" || !answeredToday(m, now)) continue;

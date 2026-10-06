@@ -8,6 +8,7 @@ import { ChildProfile } from "../types";
 import type { FocusInputsUsed } from "../lib/todayFocus";
 import { trackLoopContinued } from "../lib/kpiEvents";
 import { dayKey } from "../practice/signals";
+import { WHY_MAX, type JournalRequest } from "../ai/journalContext";
 
 export type FocusSignals = {
   count: number;
@@ -41,6 +42,13 @@ export type Focus = {
   tryToday?: string;
   /** B-TODAY-24: ONE sentence the parent can say while trying the step (≤140). */
   sayThis?: string;
+  /** B-LOOP-13: today's practice as the focus route resolved it — one of the
+   *  candidates the client sent. "ai" = the model's own pick (the chooser
+   *  honours it); "chooser" = the pick was dropped, the pure chooser stands. */
+  practiceId?: string;
+  practiceVia?: "ai" | "chooser";
+  /** B-LOOP-13: ONE screened parent-facing sentence beside an AI pick. */
+  why?: string;
   inputsUsed?: FocusInputsUsed;
   generatedAt: string;
   dateKey: string;
@@ -99,7 +107,7 @@ export function isFocusStale(
  * localStorage key, so a language switch can never surface stale
  * cross-language text.
  */
-export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
+export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journal?: JournalRequest) {
   const { user } = useAuth();
   // OBJ-TODAY-02: the focus language is the language the parent is READING.
   // Gating the cache on `aiLang` let a `.he` record survive a session whose
@@ -156,6 +164,8 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
           language: focusLang,
           // B-TODAY-11: the parent's local day (the server accepts ±1 day).
           dateKey: todayKey(),
+          // B-LOOP-13: ids and counts only; absent ⇒ the pre-1.3.0 body.
+          ...(journal ? { journal } : {}),
         }),
       });
       if (!res.ok) throw new Error("focus generation failed");
@@ -174,6 +184,12 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
       // B-TODAY-24: the server drops an over-long line; never re-cut here.
       const sayThisRaw = String(data.sayThis ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim();
       const sayThis = sayThisRaw && sayThisRaw.length <= 140 ? sayThisRaw : undefined;
+      // B-LOOP-13: the pick is kept only as the server labelled it; the why
+      // only beside an AI pick (the server already screened and capped it).
+      const practiceVia = data.practiceVia === "ai" || data.practiceVia === "chooser" ? (data.practiceVia as "ai" | "chooser") : undefined;
+      const practiceId = practiceVia && typeof data.practiceId === "string" && data.practiceId.trim() ? data.practiceId.trim().slice(0, 80) : undefined;
+      const whyRaw = practiceVia === "ai" && practiceId ? String(data.why ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim() : "";
+      const why = whyRaw && whyRaw.length <= WHY_MAX ? whyRaw : undefined;
       const inputsUsed: FocusInputsUsed | undefined =
         data.inputsUsed && typeof data.inputsUsed === "object"
           ? {
@@ -192,6 +208,8 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
         ...(focusObservation ? { focus: focusObservation } : {}),
         ...(tryToday ? { tryToday } : {}),
         ...(sayThis ? { sayThis } : {}),
+        ...(practiceId && practiceVia ? { practiceId, practiceVia } : {}),
+        ...(why ? { why } : {}),
         ...(inputsUsed ? { inputsUsed: JSON.parse(JSON.stringify(inputsUsed)) as FocusInputsUsed } : {}),
         generatedAt: new Date().toISOString(),
         dateKey: todayKey(),
@@ -215,7 +233,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals) {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [child, signals, remote, uid, focusLang]);
+  }, [child, signals, journal, remote, uid, focusLang]);
 
   // Load cache when the active child — or the language — changes.
   useEffect(() => {

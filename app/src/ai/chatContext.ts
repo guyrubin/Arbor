@@ -29,6 +29,8 @@
  * byte-identical to the legacy prompt.
  */
 
+import type { JournalRequest } from "./journalContext.js";
+
 export type RecentTurnRole = "parent" | "coach";
 export type RecentTurn = { role: RecentTurnRole; text: string };
 
@@ -286,6 +288,10 @@ export const buildVoiceContext = (
 
 export const buildChatContext = (input: {
   thread: ReadonlyArray<ThreadTurnLike>;
+  /** B-LOOP-13 — today's practice for coach_chat 1.7.0 (ai/journalContext
+   *  buildJournalRequest: the day pin + this child's practice dose rows).
+   *  Sent only when it names a practice; absent ⇒ the legacy body. */
+  journal?: JournalRequest;
   behaviorLogs: WeeklyContextSources["behaviorLogs"];
   milestones: WeeklyContextSources["milestones"];
   actionLoop: WeeklyContextSources["actionLoop"];
@@ -293,11 +299,12 @@ export const buildChatContext = (input: {
   langObs?: WeeklyContextSources["langObs"];
   weeklyContextEnabled: boolean;
   now?: Date;
-}): { recentTurns?: RecentTurn[]; weeklyContext?: WeeklyContext } => {
+}): { recentTurns?: RecentTurn[]; weeklyContext?: WeeklyContext; journal?: JournalRequest } => {
   const recentTurns = settledTurns(input.thread);
 
-  const out: { recentTurns?: RecentTurn[]; weeklyContext?: WeeklyContext } = {};
+  const out: { recentTurns?: RecentTurn[]; weeklyContext?: WeeklyContext; journal?: JournalRequest } = {};
   if (recentTurns.length > 0) out.recentTurns = recentTurns;
+  if (input.journal && (input.journal.pinnedPracticeId || (input.journal.doseRows?.length ?? 0) > 0)) out.journal = input.journal;
   if (input.weeklyContextEnabled) {
     out.weeklyContext = computeWeeklyContext(
       { behaviorLogs: input.behaviorLogs, milestones: input.milestones, actionLoop: input.actionLoop, ...(input.langObs ? { langObs: input.langObs } : {}) },

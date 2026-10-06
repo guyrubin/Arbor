@@ -48,6 +48,10 @@ export interface PracticeCardProps {
    *  or the fewest notes of all the child's shelves. Otherwise (the
    *  alternation's second shelf) the plain shelf line — never a false claim. */
   whyReason?: PracticeWhyReason | null;
+  /** B-LOOP-13: the AI's one why sentence (todays_focus 1.3.0, screened on the
+   *  server; only beside an AI pick). Present → it REPLACES the chooser's
+   *  reason line; absent → the chooser's line, unchanged. */
+  whyText?: string | null;
   /** Law 7: the answers ARE the surface's primary move (P5 design r1 P0-1:
    *  the stamp sits on the "Did it" / "Not today" group, h ≈ 48, never on the
    *  card; after an answer the route moves it to the next unanswered
@@ -78,6 +82,7 @@ export default function PracticeCard({
   quotes,
   headerNote,
   whyReason,
+  whyText,
   stampMove,
 }: PracticeCardProps) {
   const { t, uiLang } = useLanguage();
@@ -199,7 +204,7 @@ export default function PracticeCard({
             the parent's words fit above "Did it" at 375 (bottom ≤ 640). */}
         <p data-testid="practice-meta" className="mt-3" style={{ color: "var(--arbor-muted)", fontSize: "var(--t-sm)" }}>{meta}</p>
         <p data-testid="practice-why" className="mt-1 italic leading-snug" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-base)" }}>
-          {t(whyReason ? WHY_KEY[whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfName, name: childName || t("today.record.childFallback") })}
+          {whyText?.trim() || t(whyReason ? WHY_KEY[whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfName, name: childName || t("today.record.childFallback") })}
         </p>
       </div>
     </section>

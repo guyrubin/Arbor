@@ -133,3 +133,22 @@ describe("PracticeCard at 375 × 812 — the move sits above the capture dock", 
     expect(src).toContain('stampMove={firstBlock === "tonight" ? primaryMoveId : undefined}');
   });
 });
+
+/* B-LOOP-13 — the AI's why sentence replaces the chooser's reason line ONLY
+   when it is given; it sits under the answers, so the fold model above is
+   unchanged (the why-line is already the last line of the card). */
+describe("B-LOOP-13 · the why-line", () => {
+  const whyOf = (html: string) => /data-testid="practice-why"[^>]*>([^<]*)</.exec(html)?.[1] ?? "";
+  const card = (whyText?: string | null) =>
+    renderToStaticMarkup(
+      <PracticeCard practice={DEMO} milestone={null} shelf="hands" childName="Dylan" gender="boy" onAnswer={() => undefined} whyReason="empty" whyText={whyText} />,
+    );
+  it("an AI why replaces the reason line; absent / blank keeps the chooser's line", () => {
+    state.lang = "en";
+    const chooserLine = whyOf(card());
+    expect(chooserLine.length).toBeGreaterThan(0);
+    expect(whyOf(card("Hands has had fewer notes lately, so here is one small thing to try."))).toBe("Hands has had fewer notes lately, so here is one small thing to try.");
+    expect(whyOf(card(null))).toBe(chooserLine);
+    expect(whyOf(card("   "))).toBe(chooserLine);
+  });
+});

@@ -58,6 +58,9 @@ import type { ConversationChangeRecord, ConversationProposal } from "../lib/conv
 import { restorableMilestone } from "../lib/conversationProposals";
 import { appendChatUser, appendChatAck, applyChatDelta, settleChatTurn, abortChatStream, hasUserTurn } from "../lib/chatStream";
 import { buildChatContext, readWeeklyContextConsent } from "../ai/chatContext";
+import { buildJournalRequest } from "../ai/journalContext";
+import { readTodayPin } from "../lib/practice/todayPin";
+import { dayKey } from "../practice/signals";
 import type { CaptureSource } from "../components/overview/ConfirmCaptureReview";
 import { useLanguage } from "./LanguageContext";
 import type { ExportAudience } from "../consult/packet";
@@ -1061,6 +1064,9 @@ function useArborState() {
             actionLoop,
             langObs: langObsCol.items,
             weeklyContextEnabled: readWeeklyContextConsent(childProfile.id),
+            // B-LOOP-13 (coach_chat 1.7.0): today's practice — the day pin and
+            // this child's dose rows (the server ledger wins when it has them).
+            journal: buildJournalRequest({ childId: childProfile.id, dateKey: dayKey(new Date()), pinnedPracticeId: readTodayPin(childProfile.id), actionLoop }),
           }),
         }),
       });

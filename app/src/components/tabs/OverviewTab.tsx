@@ -34,7 +34,10 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { useObservations } from "../../hooks/useObservations";
 import { PRACTICES } from "../../content/practices";
-import { choosePractice, practiceDoseEntry, recentPracticeIds, todayDose, type PracticeAnswer } from "../../lib/practice/choosePractice";
+import { choosePractice, practiceDoseEntry, recentPracticeIds, restedShelves, todayDose, todaysCandidates, type PracticeAnswer } from "../../lib/practice/choosePractice";
+import { buildJournalRequest, WHAT_HAPPENED_CAP } from "../../ai/journalContext";
+import { selectNextMilestones } from "../../lib/milestoneData";
+import { dayKey } from "../../practice/signals";
 import { readTodayPin } from "../../lib/practice/todayPin";
 import { shelfCoverage } from "../../lib/milestones/selectByShelf";
 import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
@@ -170,14 +173,38 @@ export default function OverviewTab() {
     for (const a of actionLoop) consider(a.outcomeAt);
     return latest || undefined;
   }, [behaviorLogs, playLogs, actionLoop]);
+  // B-LOOP-13: the journal the focus route chooses from — ids and counts the
+  // client already holds (every text is resolved on the server from the
+  // catalogue): 30-day shelf counts, the open milestones, TODAY's candidates
+  // (the same list the pure chooser ranks), the "not sure" shelves, the day
+  // pin and the practice dose rows (night answers). Zero new model calls: it
+  // rides on the one focus request.
+  const recentIds = useMemo(() => recentPracticeIds(actionLoop, childProfile.id, now), [actionLoop, childProfile.id, now]);
+  const journal = useMemo(() => {
+    if (comparisonMonths === null) return undefined;
+    const base = { childId: childProfile.id, milestones, comparisonMonths, practices: PRACTICES, coverage, today: now, recentPracticeIds: recentIds };
+    return buildJournalRequest({
+      childId: childProfile.id,
+      dateKey: dayKey(now),
+      shelfCoverage: coverage,
+      nextMilestoneIds: selectNextMilestones(milestones, comparisonMonths, 6).map((m) => m.id),
+      candidatePracticeIds: todaysCandidates(base).map((c) => c.practice.id),
+      restedShelves: Array.from(restedShelves(milestones, now)),
+      pinnedPracticeId: readTodayPin(childProfile.id, now),
+      actionLoop,
+    });
+  }, [childProfile.id, milestones, comparisonMonths, coverage, now, recentIds, actionLoop]);
   const { focus } = useTodaysFocus(childProfile, {
     count: recentCount,
     topTrigger,
     lastActionRecommendation: latestCompletedAction?.recommendation,
     lastActionOutcome: latestCompletedAction?.outcome,
     latestAt: latestRecordAt,
-  });
-  const aiPracticeId = (focus as { practiceId?: string } | null)?.practiceId;
+  }, journal);
+  // B-LOOP-13: only the AI's OWN pick (practiceVia "ai") is offered to the
+  // chooser, which honours it inside today's candidates and below a dose row
+  // or the parent's pin; the why-line rides with it.
+  const aiPracticeId = focus?.practiceVia === "ai" ? focus.practiceId : undefined;
   const pick = useMemo(
     () => choosePractice({
       childId: childProfile.id,
@@ -186,13 +213,13 @@ export default function OverviewTab() {
       practices: PRACTICES,
       coverage,
       today: now,
-      recentPracticeIds: recentPracticeIds(actionLoop, childProfile.id, now),
+      recentPracticeIds: recentIds,
       // B-LOOP-11: "Try it today" on a journal shelf page pins the practice
       // for the day (lib/practice/todayPin); a dose row always wins.
       todayPracticeId: dose?.practiceId ?? readTodayPin(childProfile.id, now),
       aiPracticeId,
     }),
-    [childProfile.id, milestones, comparisonMonths, coverage, now, actionLoop, dose?.practiceId, aiPracticeId]
+    [childProfile.id, milestones, comparisonMonths, coverage, now, recentIds, dose?.practiceId, aiPracticeId]
   );
   const doseAnswer: PracticeAnswer | null = dose ? (dose.outcome === "not_today" ? "not_today" : "did") : null;
   const sayText = pick ? practiceText(pick.practice, "say", lang, childProfile.gender) : "";
@@ -404,6 +431,9 @@ export default function OverviewTab() {
       onUndo={dose ? () => removeTodayAction(dose.id) : undefined}
       quotes={quotes}
       whyReason={whyReason}
+      /* B-LOOP-13: the AI's why sentence replaces the chooser's reason ONLY
+         beside its own pick; the mock provider / a dropped pick keeps the line. */
+      whyText={pick.via === "ai" ? focus?.why : null}
       headerNote={lifecycleNote}
       stampMove={firstBlock === "practice" ? primaryMoveId : undefined}
     />
@@ -441,7 +471,13 @@ export default function OverviewTab() {
         recordPracticeDose(tonightOutcomeEntry(row, outcome));
       }}
       onWhatHappened={(text) => {
-        if (pick) addMoment(text, { shelf: pick.shelf, ...(pick.milestone ? { milestoneId: pick.milestone.id } : {}) });
+        if (!pick) return;
+        addMoment(text, { shelf: pick.shelf, ...(pick.milestone ? { milestoneId: pick.milestone.id } : {}) });
+        // B-LOOP-13: the line also lands on the day's dose row — the night
+        // answer tomorrow's practice is chosen from (≤ 240 chars; the helper
+        // line under the field says so). Never the quote keepsake.
+        const line = text.replace(/\s+/g, " ").trim().slice(0, WHAT_HAPPENED_CAP);
+        if (line) recordPracticeDose({ ...(dose ?? practiceDoseEntry(pick, "did", childProfile.id, sayText)), whatHappened: line });
       }}
       dayQuestion={dayQuestion}
       onQuote={(text) => {

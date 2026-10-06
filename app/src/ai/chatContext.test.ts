@@ -300,3 +300,19 @@ describe("B-GROWTH-15 — ArborContext.sendMessage passes the words ledger (time
     expect(call).toContain("langObs: langObsCol.items,");
   });
 });
+
+/* B-LOOP-13 — today's practice rides on the /chat body only when it names one. */
+describe("B-LOOP-13 · buildChatContext journal (coach_chat 1.7.0)", () => {
+  const base = { thread: [], behaviorLogs: [], milestones: [], actionLoop: [], weeklyContextEnabled: false };
+  it("absent journal / a journal naming no practice → no journal field (legacy body)", () => {
+    expect(buildChatContext(base)).toEqual({});
+    expect(buildChatContext({ ...base, journal: { dateKey: "2026-10-06" } })).toEqual({});
+    expect(buildChatContext({ ...base, journal: { dateKey: "2026-10-06", doseRows: [] } })).toEqual({});
+  });
+  it("a day pin or a dose row → the journal rides along unchanged", () => {
+    const pinned = { dateKey: "2026-10-06", pinnedPracticeId: "pr-sleep-06" };
+    expect(buildChatContext({ ...base, journal: pinned }).journal).toEqual(pinned);
+    const rows = { dateKey: "2026-10-06", doseRows: [{ id: "practice.c.2026-10-06", practiceId: "pr-sleep-06" }] };
+    expect(buildChatContext({ ...base, journal: rows }).journal).toEqual(rows);
+  });
+});

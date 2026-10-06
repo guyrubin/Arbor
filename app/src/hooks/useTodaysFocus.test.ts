@@ -108,8 +108,25 @@ describe("N2-errfocus — focus fetch failure surfaces an inline error + retry",
   });
 
   it("the practice renders whether or not the focus fetch succeeded (the AI pick only wins inside the candidates)", () => {
-    expect(overviewSrc).toContain("const aiPracticeId = (focus as { practiceId?: string } | null)?.practiceId;");
+    // B-LOOP-13 re-pin: only the AI's OWN pick (practiceVia "ai") reaches the chooser.
+    expect(overviewSrc).toContain('const aiPracticeId = focus?.practiceVia === "ai" ? focus.practiceId : undefined;');
     expect(overviewSrc).toContain("aiPracticeId,");
+  });
+
+  // B-LOOP-13: the journal rides on the ONE focus request (zero new model
+  // calls); the why-line is kept only beside an AI pick and replaces the
+  // chooser's reason line only then (mock provider / dropped pick = unchanged).
+  it("B-LOOP-13: the request carries the journal; practiceId/practiceVia/why are kept as the server labelled them", () => {
+    expect(hookSrc).toContain("...(journal ? { journal } : {}),");
+    expect(hookSrc).toContain('const whyRaw = practiceVia === "ai" && practiceId ?');
+    expect(hookSrc).toContain("...(practiceId && practiceVia ? { practiceId, practiceVia } : {}),");
+    expect(overviewSrc).toContain("}, journal);");
+    expect(overviewSrc).toContain('whyText={pick.via === "ai" ? focus?.why : null}');
+    expect(overviewSrc).toContain("candidatePracticeIds: todaysCandidates(base).map((c) => c.practice.id),");
+    expect((overviewSrc.match(/useTodaysFocus\(/g) ?? []).length).toBe(1);
+    // the Tonight line lands on the day's dose row (the night answer; never the quote keepsake)
+    expect(overviewSrc).toContain("whatHappened: line });");
+    expect(overviewSrc).toContain("slice(0, WHAT_HAPPENED_CAP)");
   });
 
   it("the hook still exposes regenerate for any surface that renders the focus", () => {
