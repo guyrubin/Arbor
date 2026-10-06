@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import type {
   AdventureResult,
   BandSnapshot,
@@ -12,13 +12,11 @@ import type {
 } from "../types";
 import { useChildCollection, type ChildCollection } from "../hooks/useChildCollection";
 import {
-  bandTrend,
   dayKey,
   daysPracticed,
   developmentScore,
   domainBands,
   domainConfidence,
-  pendingSnapshot,
   recommend,
   soundStats,
   streakDays,
@@ -98,7 +96,12 @@ export interface CopilotData {
   bands: DomainBand[];
   recommendation: CopilotRecommendation;
   confidence: Record<PracticeDomain, ConfidenceLevel>;
-  trend: Record<PracticeDomain, number>;
+  /**
+   * LEGACY weekly band snapshots, read-only. B-GROWTH-22a (6 Oct) stopped the
+   * writer: no new document is ever stored. The read stays only because the
+   * two history cards (Journey, Development Copilot) still list the documents
+   * already stored, as counts; W4-R2 / W4-P1 retire the read and the documents.
+   */
   snapshots: BandSnapshot[];
   heroMetrics: Partial<DevelopmentMetrics>;
   heroRunCount: number;
@@ -106,8 +109,10 @@ export interface CopilotData {
 
 /**
  * Copilot derivations shared by the dashboard, missions banner and Journey.
- * Also maintains the weekly band-snapshot history (one snapshot per ISO week,
- * written automatically once enough collections have loaded).
+ * The in-memory `bands` drive escalation (recommend/confidence/watch). They
+ * are NEVER stored: B-GROWTH-22a removed the weekly `bandSnapshots` writer
+ * (a stored band is a stored grade on a child — law 1). Guard:
+ * practice/noStoredGrades.test.ts.
  */
 export function useCopilot(
   milestones: Milestone[],
@@ -146,25 +151,10 @@ export function useCopilot(
     return out;
   }, [bands, milestones, data.speech.items, data.adventures.items, data.events.items, data.missions.items]);
 
-  // Weekly history: persist one snapshot per ISO week (Epic 1 historical progression).
-  const snapshotWritten = useRef<string | null>(null);
-  useEffect(() => {
-    if (!snapshotsCol.loaded || !data.speech.loaded) return;
-    const snap = pendingSnapshot(snapshotsCol.items, bands, data.today, milestones);
-    if (snap && snapshotWritten.current !== snap.id) {
-      snapshotWritten.current = snap.id;
-      void snapshotsCol.upsert(snap);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshotsCol.loaded, snapshotsCol.items, data.speech.loaded, bands, data.today]);
-
-  const trend = useMemo(() => bandTrend(snapshotsCol.items, bands), [snapshotsCol.items, bands]);
-
   return {
     bands,
     recommendation,
     confidence,
-    trend,
     snapshots: snapshotsCol.items,
     heroMetrics,
     heroRunCount: heroRunsCol.items.length,

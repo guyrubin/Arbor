@@ -378,42 +378,10 @@ export function weekKey(d: Date): string {
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
-/**
- * Build this week's snapshot if none exists yet (the historical-progression record).
- * Persists both the internal `signal`/`band` (escalation basis, never surfaced) and
- * the count register (`reached`/`total` parent-noticed milestones per domain) so the
- * Weekly history can render counts over time rather than a 0–100 verdict trend.
- */
-export function pendingSnapshot(
-  existing: BandSnapshot[],
-  bands: DomainBand[],
-  today: string,
-  milestones: Milestone[] = []
-): BandSnapshot | null {
-  const wk = weekKey(new Date(`${today}T12:00:00`));
-  if (existing.some((s) => s.id === wk)) return null;
-  const counts = domainMilestoneCounts(milestones);
-  return {
-    id: wk,
-    date: today,
-    bands: bands.map((b) => {
-      const c = counts.get(b.domain);
-      return { domain: b.domain, signal: b.signal, band: b.band, reached: c?.reached ?? 0, total: c?.total ?? 0 };
-    }),
-  };
-}
-
-/** Per-domain change vs the previous snapshot (for trend arrows). */
-export function bandTrend(history: BandSnapshot[], current: DomainBand[]): Record<PracticeDomain, number> {
-  const sorted = [...history].sort((a, b) => (a.id < b.id ? -1 : 1));
-  const prev = sorted.length >= 2 ? sorted[sorted.length - 2] : sorted[sorted.length - 1];
-  const out = {} as Record<PracticeDomain, number>;
-  for (const b of current) {
-    const p = prev?.bands.find((x) => x.domain === b.domain);
-    out[b.domain] = p ? b.signal - p.signal : 0;
-  }
-  return out;
-}
+// B-GROWTH-22a (6 Oct): `pendingSnapshot` (the weekly band-snapshot builder)
+// and `bandTrend` (the per-domain change vs the previous stored snapshot) are
+// deleted with their last caller — a stored band is a stored grade on a child.
+// Guard: practice/noStoredGrades.test.ts.
 
 /* ---------------- Longitudinal development trajectory (the moat made visible) ---------------- */
 

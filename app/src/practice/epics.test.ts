@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BehaviorLog, Milestone, PracticeEvent, SpeechAttempt } from "../types";
-import { bandTrend, domainBands, domainConfidence, memoryGridSize, pendingSnapshot, weekKey } from "./signals";
+import { domainBands, domainConfidence, memoryGridSize } from "./signals";
 import { watchSignals, type WatchInput } from "./watch";
 import { composeWeek, suggestObjectives } from "./journey";
 import { computeAchievements } from "./achievements";
@@ -43,27 +43,15 @@ describe("bands with practice events + hero metrics", () => {
   });
 });
 
-describe("confidence + snapshots", () => {
+describe("confidence", () => {
   it("confidence grows with observed data", () => {
     expect(domainConfidence("emotional", [], [], [], [], [])).toBe("low");
     const events = Array.from({ length: 25 }, () => ev("emotion-id", "emotional", true));
     expect(domainConfidence("emotional", [], [], [], events, [])).toBe("high");
   });
 
-  it("takes one snapshot per ISO week", () => {
-    const bands = domainBands([], [], [], []);
-    const snap = pendingSnapshot([], bands, "2026-06-12");
-    expect(snap?.id).toBe(weekKey(new Date("2026-06-12T12:00:00")));
-    expect(pendingSnapshot([snap!], bands, "2026-06-13")).toBeNull();
-  });
-
-  it("computes trend vs previous snapshot", () => {
-    const bands = domainBands([], [], [], []);
-    const prev = { id: "2026-W23", date: "2026-06-05", bands: bands.map((b) => ({ ...b, signal: b.signal - 10 })) };
-    const cur = { id: "2026-W24", date: "2026-06-12", bands: bands.map((b) => ({ domain: b.domain, signal: b.signal, band: b.band })) };
-    const t = bandTrend([prev, cur], bands);
-    expect(t.language).toBe(10);
-  });
+  // B-GROWTH-22a: the "one snapshot per ISO week" and "trend vs previous
+  // snapshot" cases went with pendingSnapshot/bandTrend (no stored grades).
 });
 
 describe("watch signals (non-diagnostic guardrails)", () => {
