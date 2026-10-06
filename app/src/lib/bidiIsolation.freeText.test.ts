@@ -49,6 +49,7 @@ describe("B-SHELL-28 — FreeText renders inside a bdi with dir=auto, the name i
   it("Today's record card quotes through FreeText", () => {
     const src = fs.readFileSync(path.resolve(__dirname, "../components/overview/FromRecordCard.tsx"), "utf8");
     expect(src).toContain("<FreeText text={opener.quote} />");
-    expect(src).toContain("<FreeText text={opener.topic} />");
+    // NEXTLEVEL r1: the topic line is the 2-3 word topic (else the plan title), still isolated.
+    expect(src).toContain("<FreeText text={topicLine} />");
   });
 });
