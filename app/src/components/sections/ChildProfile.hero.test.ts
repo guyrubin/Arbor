@@ -120,3 +120,15 @@ describe("B-SHELL-27 — one face on My Child", () => {
     expect(src).not.toMatch(/const \{ hasHero[^}]*\} = useHeroAvatar\(\)/);
   });
 });
+
+describe("NEXTLEVEL critic r1 (profile · design · P1) — one weight for the fact quote in both locales", () => {
+  const css = readFileSync(path.join(here, "..", "..", "index.css"), "utf8");
+  it("the remembered fact is the editorial face at weight 400", () => {
+    expect(src).toContain('style={{ fontFamily: "var(--font-editorial)", fontWeight: 400, fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}><FreeText text={toParentWords(m.fact)} />');
+  });
+  it("on a Hebrew page Latin runs take Instrument Serif first; Hebrew falls through to Frank Ruhl Libre (both HE scopes)", () => {
+    const he = css.match(/--font-editorial: [^;]*Frank Ruhl Libre[^;]*;/g) ?? [];
+    expect(he.length).toBe(2);
+    for (const decl of he) expect(decl).toBe(`--font-editorial: 'Instrument Serif', "Frank Ruhl Libre", "Heebo", Georgia, serif;`);
+  });
+});

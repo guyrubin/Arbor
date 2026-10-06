@@ -233,7 +233,12 @@ html[lang="he"] {
   --font-display: "Frank Ruhl Libre", "Heebo", Georgia, serif;
   /* Instrument Serif and Georgia carry no Hebrew glyphs — the editorial face
      fell to a system serif with a synthesised oblique (practice critic r2). */
-  --font-editorial: "Frank Ruhl Libre", "Heebo", Georgia, serif;
+  /* NEXTLEVEL critic r1 (profile · design · P1): Latin runs on a Hebrew page
+     (a parent's English fact) take Instrument Serif, as in EN — Frank Ruhl
+     Libre ships 500-700 only, so its Latin read bold and heavier than the
+     H2. Instrument Serif has no Hebrew glyphs, so Hebrew falls through to
+     Frank Ruhl Libre glyph by glyph (no system serif, no synthesised oblique). */
+  --font-editorial: 'Instrument Serif', "Frank Ruhl Libre", "Heebo", Georgia, serif;
 }
 html[lang="he"] .display,
 html[lang="he"] .title,
@@ -1456,7 +1461,12 @@ html[lang="he"] .arbor-app,
 html[lang="he"] .arbor-parent {
   --font-sans: "Heebo", "Assistant", -apple-system, system-ui, sans-serif;
   --font-display: "Frank Ruhl Libre", "Heebo", Georgia, serif;
-  --font-editorial: "Frank Ruhl Libre", "Heebo", Georgia, serif;
+  /* NEXTLEVEL critic r1 (profile · design · P1): Latin runs on a Hebrew page
+     (a parent's English fact) take Instrument Serif, as in EN — Frank Ruhl
+     Libre ships 500-700 only, so its Latin read bold and heavier than the
+     H2. Instrument Serif has no Hebrew glyphs, so Hebrew falls through to
+     Frank Ruhl Libre glyph by glyph (no system serif, no synthesised oblique). */
+  --font-editorial: 'Instrument Serif', "Frank Ruhl Libre", "Heebo", Georgia, serif;
 }
 /* Hebrew has no italic: an <i>/<em> in the editorial face stays upright. */
 html[lang="he"] .arbor-app i,

@@ -314,7 +314,7 @@ export default function ChildProfile() {
                 {m.createdAt && (
                   <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.childmem.provenance.inference", { date: fmtDay(m.createdAt, uiLang) })}</p>
                 )}
-                <p className="mt-1 text-sm" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}><FreeText text={toParentWords(m.fact)} /></p>
+                <p className="mt-1 text-sm" style={{ fontFamily: "var(--font-editorial)", fontWeight: 400, fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}><FreeText text={toParentWords(m.fact)} /></p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
