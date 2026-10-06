@@ -1,3 +1,6 @@
+// B-LOOP-17: before anything reads the time — the sweep's `?now=` clock,
+// DEV server only (lib/devClockBoot.ts; dropped from production builds).
+import './lib/devClockBoot';
 // B-GAME-07d (g): FIRST — a local-only `/?proof=sneak` visit writes its device
 // state before the Kid Mode gate and the language provider read storage.
 import './components/kidmode/proofVisit';

@@ -619,6 +619,40 @@ async function undoPractice(h) {
   return (await h.page.locator("main [data-testid=practice-answers]").count()) > 0;
 }
 
+/**
+ * B-LOOP-17 `loop-first-open`: a fresh child — every observation source emptied and every
+ * milestone answer cleared (the write seam's own fields, lib/milestones/observe) in this
+ * throwaway context, then a reload; `ready` is the route's first-open anchor. Shared by
+ * #/overview, #/journal and #/milestones.
+ */
+const FIRST_OPEN_WRITES = "the throwaway context's local record is emptied (no moments, plays, steps, practice rows, words, keepsakes; every milestone unanswered) before a reload; nothing leaves the context";
+async function firstOpen(h, ready, what) {
+  await h.page.evaluate(() => {
+    const id = localStorage.getItem("arbor.activeChildId");
+    const sources = ["behaviorLogs", "playLogs", "actionLoops", "practiceEvents", "langObs", "keepsakes", "growthEntries", "goalObservations", "speechAttempts", "mimicSessions", "adventureResults", "missionRecords", "screenings", "sleepLogs"];
+    for (const c of sources) localStorage.setItem(`arbor.${c}.${id}`, "[]");
+    const mk = `arbor.milestones.${id}`;
+    const clear = ["observationStatus", "observationUpdatedAt", "observedAt", "observedWhen", "observationSource", "observationProvenance"];
+    const ms = JSON.parse(localStorage.getItem(mk) || "[]").map((m) => {
+      const out = { ...m, checked: false };
+      for (const k of clear) delete out[k];
+      return out;
+    });
+    localStorage.setItem(mk, JSON.stringify(ms));
+  });
+  await h.page.reload({ waitUntil: "domcontentloaded" });
+  await h.need(ready, what, 12_000); // first open is read from the top: no scroll
+  // The acceptance: no "0" anywhere on first open (empty-but-not-"0"). Recorded as `via`
+  // with each hit's context; the critic reads it beside the shot.
+  const zeros = await h.page.evaluate(() => {
+    const text = document.querySelector("main")?.innerText ?? "";
+    const out = [];
+    for (const m of text.matchAll(/(^|[^\d:.,/])0(?![\d:.,])/gm)) out.push(text.slice(Math.max(0, m.index - 24), m.index + 26).replace(/\s+/g, " ").trim());
+    return out;
+  });
+  return { via: zeros.length ? `"0" strings ${zeros.length}: ${zeros.slice(0, 5).map((z) => JSON.stringify(z)).join(" · ")}` : '"0" strings 0' };
+}
+
 /** Coach: send the fixture question and wait for the four-block answer (mock provider). */
 async function askAnswered(h) {
   const box = await h.need("[data-primary-move=ask] textarea", "the Ask composer");
@@ -648,7 +682,10 @@ async function openSettings(h) {
 }
 
 /**
- * THE STATES TABLE. route → [{ name, run(h), from?, only?(vp), writes? }].
+ * THE STATES TABLE. route → [{ name, run(h), from?, now?, only?(vp), writes? }].
+ *  `from` = the hash the state loads (a route, or a route + query: "journal?view=all");
+ *  `now` = the page clock, "HH:MM" local or ISO (B-LOOP-17: `/?now=` → lib/devClock, honoured
+ *  ONLY by the Vite dev server; recorded on the cell as `clock`).
  *  run returns { name?, via?, undo? } (name overrides for a runtime-chosen state; undo runs
  *  after the shot). `writes` is recorded on the cell: what the state touches and why that
  *  leaves nothing behind. Every state runs in a throwaway context.
@@ -708,8 +745,19 @@ const STATES = {
     },
     // P5 critic r1 on #/overview (pass A9, 6 Oct): the loop's own states.
     // practice-did = loop-morning-did; practice-quotes = loop-quotes.
+    // B-LOOP-17: `now` = the page clock (`/?now=HH:MM`, lib/devClock — dev server only);
+    // the demo seed v2026-10-07.1 never writes today's dose row, so 07:30 is "pending".
+    {
+      name: "loop-morning",
+      now: "07:30",
+      run: async (h) => {
+        await h.need("main [data-module=today-practice] [data-testid=practice-answers] [data-answer=did]", "today's practice, pending (Did it · Not today) at 07:30", 12_000);
+        return { via: "clock 07:30" };
+      },
+    },
     {
       name: "loop-morning-did",
+      now: "07:30",
       writes: "one practice dose row in the local record; the card's Undo removes it after the shot (cell.undone = the answers ask again)",
       run: async (h) => {
         await h.click("main [data-testid=practice-answers] [data-answer=did]", [h.tr("elev.loop.practice.didIt")], "the practice card's Did it");
@@ -719,6 +767,7 @@ const STATES = {
     },
     {
       name: "loop-morning-not-today",
+      now: "07:30",
       writes: "one practice dose row (not today) in the local record; Undo removes it after the shot",
       run: async (h) => {
         await h.click("main [data-testid=practice-answers] [data-answer=not_today]", [h.tr("elev.loop.practice.notToday")], "the practice card's Not today");
@@ -727,15 +776,32 @@ const STATES = {
       },
     },
     {
+      // B-LOOP-17: 21:00 — the evening door is open, today's practice is done ("Did it",
+      // tapped in the flow when the seed left it pending), Tonight's flow sits at step 1
+      // asking how it went. Before the clock hook this state opened the flow early
+      // through the morning pointer; the pointer stays the fallback.
       name: "loop-tonight",
-      writes: "none (the flow is opened early through Tonight's pointer; no answer is tapped)",
+      now: "21:00",
+      writes: "one practice dose row (did) in this throwaway context's local record when today's practice was still pending; no outcome is tapped",
       run: async (h) => {
-        await h.click("main [data-testid=today-tonight-pointer]", [h.tr("elev.loop.today.tonight")], "Tonight's pointer line");
-        await h.top(await h.need("main [data-module=today-tonight]", "the three-question Tonight flow (step 1)"));
+        if (!(await h.has("main [data-testid=tonight-flow]", 4_000))) {
+          await h.click("main [data-testid=today-tonight-pointer]", [h.tr("elev.loop.today.tonight")], "Tonight's pointer line");
+        }
+        const flow = await h.need('main [data-testid=tonight-flow][data-step="1"]', "the three-question Tonight flow at step 1");
+        let via = "clock 21:00 · practice already answered";
+        const did = await h.first("main [data-testid=tonight-flow] [data-testid=tonight-practice-answers] [data-answer=did]", 1_500);
+        if (did) {
+          await did.click({ timeout: 5_000 });
+          via = "clock 21:00 · Did it tapped in step 1";
+        }
+        await h.need("main [data-testid=tonight-flow] [data-testid=tonight-how]", "step 1 after the practice: how did it go (helped · somewhat)");
+        await h.top(flow);
+        return { via };
       },
     },
     {
       name: "loop-quotes",
+      now: "07:30",
       writes: "two dated notes on the practice's shelf, written to this throwaway context's local record only (outside the 30-day count, so the pick is unchanged)",
       run: async (h) => {
         const card = await h.need("main [data-testid=practice-card]", "the practice card");
@@ -760,17 +826,9 @@ const STATES = {
     },
     {
       name: "loop-first-open",
-      writes: "the throwaway context's local record is emptied (no moments, no plays, no steps, every milestone open) before a reload; nothing leaves the context",
+      writes: FIRST_OPEN_WRITES,
       run: async (h) => {
-        await h.page.evaluate(() => {
-          const id = localStorage.getItem("arbor.activeChildId");
-          for (const c of ["behaviorLogs", "playLogs", "actionLoops", "practiceEvents", "langObs", "keepsakes"]) localStorage.setItem(`arbor.${c}.${id}`, "[]");
-          const mk = `arbor.milestones.${id}`;
-          const ms = JSON.parse(localStorage.getItem(mk) || "[]").map((m) => ({ ...m, checked: false, observationStatus: undefined, observationUpdatedAt: undefined }));
-          localStorage.setItem(mk, JSON.stringify(ms));
-        });
-        await h.page.reload({ waitUntil: "domcontentloaded" });
-        await h.need("main [data-module=today-practice], main [data-module=today-notice]", "Today's first-open blocks", 12_000);
+        return firstOpen(h, "main [data-module=today-practice], main [data-module=today-notice]", "Today's first-open blocks");
       },
     },
     {
@@ -888,6 +946,14 @@ const STATES = {
         return { via: h.lang === "he" ? 'query "כדור"' : 'query "ball"' };
       },
     },
+    {
+      // B-LOOP-17: a fresh child (0 observations) — every shelf in its empty-but-not-"0" form.
+      name: "loop-first-open",
+      writes: FIRST_OPEN_WRITES,
+      run: async (h) => {
+        return firstOpen(h, "[data-testid=ms-shelf-map]", "the shelf map on first open");
+      },
+    },
   ],
   plans: [
     {
@@ -918,9 +984,12 @@ const STATES = {
       },
     },
   ],
+  // B-LOOP-11 moved the day-grouped list to #/journal?view=all (#/journal is the shelf
+  // grid now): search and hard-filter open there (B-LOOP-17). The loop states follow.
   journal: [
     {
       name: "search",
+      from: "journal?view=all",
       run: async (h) => {
         const word = SEED?.info ? journalWord(SEED.bundle) : null;
         if (!word) skip("no seeded moment text to search for");
@@ -931,9 +1000,46 @@ const STATES = {
     },
     {
       name: "hard-filter",
+      from: "journal?view=all",
       run: async (h) => {
         await h.click("[data-testid=journal-filter-hard]", [], "the Hard moments filter");
         await h.page.waitForTimeout(300);
+      },
+    },
+    {
+      // B-LOOP-17: the shelf grid with its thin shelf (demo seed: Sleep holds zero entries).
+      name: "loop-thin-shelf",
+      run: async (h) => {
+        await h.need("[data-testid=shelf-grid] [data-testid=shelf-tile][data-shelf=sleep]", "the Sleep tile on the shelf grid");
+        await h.top(await h.need("[data-testid=shelf-grid]", "the shelf grid"));
+        return { via: "grid · Sleep is the thin shelf" };
+      },
+    },
+    {
+      // B-LOOP-17: the thin shelf's own page — the Sleep tile opens #/journal?shelf=sleep.
+      name: "loop-thin-shelf-page",
+      run: async (h) => {
+        await h.click("[data-testid=shelf-grid] [data-testid=shelf-tile][data-shelf=sleep]", [], "the Sleep tile on the shelf grid");
+        await h.need("[data-testid=shelf-page-empty], [data-testid=shelf-page-count]", "the Sleep shelf page (#/journal?shelf=sleep)");
+        const hash = await h.page.evaluate(() => window.location.hash);
+        if (!/[?&]shelf=sleep\b/.test(hash)) throw new Error(`the Sleep tile opened ${hash}, not #/journal?shelf=sleep`);
+        return { via: hash };
+      },
+    },
+    {
+      name: "loop-first-open",
+      writes: FIRST_OPEN_WRITES,
+      run: async (h) => {
+        return firstOpen(h, "[data-testid=shelf-grid]", "the shelf grid on first open");
+      },
+    },
+    {
+      // B-LOOP-17: the professional view with the Speech therapist chip selected (&for=slp).
+      name: "loop-pro-view",
+      from: "journal?view=pro&for=slp",
+      run: async (h) => {
+        await h.need('[data-testid=pro-chips] [data-profession=slp][aria-checked="true"]', "the professional view with the Speech therapist chip selected");
+        return { via: "#/journal?view=pro&for=slp" };
       },
     },
   ],
@@ -971,6 +1077,20 @@ const STATES = {
         await summary.click({ timeout: 5_000 });
         await h.page.waitForTimeout(300);
         await h.top(summary);
+      },
+    },
+    {
+      // B-LOOP-17: the SLP intake packet from the professional view (#/consult?intake=slp),
+      // the reviewed gate ticked so PDF · Copy · Send are enabled. Nothing is sent.
+      name: "loop-pro-packet",
+      from: "consult?intake=slp",
+      writes: "none (the reviewed toggle is page state; PDF · Copy · Send are never tapped)",
+      run: async (h) => {
+        const reviewed = await h.need("[data-testid=consult-reviewed]", "the intake packet's reviewed gate (step 3)", 12_000);
+        if ((await reviewed.getAttribute("aria-pressed")) !== "true") await reviewed.click({ timeout: 5_000 });
+        await h.need('[data-testid=consult-reviewed][aria-pressed="true"]', "the reviewed gate ticked");
+        await h.top(reviewed);
+        return { via: "#/consult?intake=slp · reviewed" };
       },
     },
   ],
@@ -1134,6 +1254,9 @@ let cbCounter = Date.now();
  */
 async function visit(context, base, route, vp, allowLatin, shotPath, run = null) {
   const loadRoute = run?.state.from ?? route;
+  // B-LOOP-17: a state's page clock (`now`: "HH:MM" local or ISO) rides the query, before the
+  // hash — lib/devClock honours it on the dev server only.
+  const clockQuery = run?.state.now ? `&now=${encodeURIComponent(run.state.now)}` : "";
   const page = await context.newPage();
   const errors = new Set();
   const api = [];
@@ -1167,10 +1290,10 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
   let navError = null;
   try {
     try {
-      await page.goto(`${base}/?cb=${++cbCounter}#/${loadRoute}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+      await page.goto(`${base}/?cb=${++cbCounter}${clockQuery}#/${loadRoute}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     } catch {
       retried = true; // a cold Vite transform can outlast one load; one retry, then record the failure
-      await page.goto(`${base}/?cb=${++cbCounter}#/${loadRoute}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+      await page.goto(`${base}/?cb=${++cbCounter}${clockQuery}#/${loadRoute}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     }
     let deadline = Date.now() + READY_BUDGET_MS;
     let present = false;
@@ -1216,7 +1339,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       // Settle: the state's own requests finish and the page is quiet before the record.
       const settle = Date.now() + 8_000;
       while (Date.now() < settle && !(inflight === 0 && Date.now() - lastNet >= QUIET_MS)) await page.waitForTimeout(100);
-      stateRec = { state: stateName, reached: true, stateMs: Date.now() - tState, ...(state.writes ? { writes: state.writes } : {}), ...(out?.via ? { via: out.via } : {}) };
+      stateRec = { state: stateName, reached: true, stateMs: Date.now() - tState, ...(state.now ? { clock: state.now } : {}), ...(state.from ? { opened: `#/${state.from}` } : {}), ...(state.writes ? { writes: state.writes } : {}), ...(out?.via ? { via: out.via } : {}) };
     } catch (err) {
       // The page's own first error says WHY (e.g. the sandbox's hourly AI quota) — keep it.
       const firstErr = [...errors][0];
