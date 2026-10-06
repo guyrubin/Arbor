@@ -470,6 +470,14 @@ function useArborState() {
     try { track("today_action_outcome", todayOutcomeProps({ outcome, capacity: item.capacity, via, acceptedAt: item.acceptedAt })); } catch { /* noop */ }
   };
   const removeTodayAction = (id: string) => void actionLoopCol.remove(id);
+  /** B-LOOP-09 — "Did it" / "Not today" on today's practice: ONE dose row per
+   *  day on the actionLoops ledger (lib/practice/choosePractice). No streak,
+   *  no count is derived from it on Today. */
+  const recordPracticeDose = (entry: ActionLoopEntry) => {
+    if (entry.source !== "practice") return;
+    void actionLoopCol.upsert(entry);
+    try { track("practice_dose", { answer: entry.outcome === "not_today" ? "not_today" : "did" }); } catch { /* noop */ }
+  };
   // B-ASKJB-33 — the second tap ("And {name}? Calmer · Same · Harder"):
   // stored on the same row for the visit packet; never feeds "last time".
   const recordChildResponse = (id: string, childResponse: ChildResponse) => {
@@ -1605,6 +1613,7 @@ function useArborState() {
     acceptTodayAction,
     recordTodayOutcome,
     removeTodayAction,
+    recordPracticeDose,
     recordFromRecordAnswer,
     recordChildResponse,
     captureSheet,

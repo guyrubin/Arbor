@@ -36,6 +36,7 @@ import type { ScreeningResult } from "./screening";
 import { correctedAgeMonths, ageMonthsFromProfile } from "./childAge";
 import { DOMAIN_IDS, toDomains, type DomainId } from "./domains/registry";
 import { shelfDef, shelfOfOrUndefined, type ShelfId } from "./shelves/registry";
+import type { ActionLoopEntry } from "../actionLoop/model";
 
 export type ObservationKind =
   | "moment"
@@ -69,7 +70,8 @@ export type ObservationOrigin =
   | "mimicSessions"
   | "adventureResults"
   | "missionRecords"
-  | "memory";
+  | "memory"
+  | "actionLoops";
 
 /** Typed per kind; descriptive facts only. */
 export type ObservationValue =
@@ -124,6 +126,9 @@ export interface ObservationSources {
   mimicSessions?: MimicSession[];
   adventureResults?: AdventureResult[];
   missionRecords?: MissionRecord[];
+  /** B-LOOP-09: the actionLoops ledger — only `practice` rows the parent did
+   *  ("Did it") fold, on the practice's shelf; every other source stays out. */
+  actionLoops?: ActionLoopEntry[];
   /** Approved memory facts that carry domains (B-GROWTH-29); untagged facts are left out. */
   memoryFacts?: { id: string; fact: string; at: string; domains?: string[] }[];
 }
@@ -187,6 +192,20 @@ export function toObservations(sources: ObservationSources, child: ObservationCh
       source: l.conversationProposalId ? "ai_proposed_parent_confirmed" : "parent_typed",
       ...(l.conversationProposalId ? { provenance: l.conversationProposalId } : l.milestoneId ? { provenance: l.milestoneId } : {}),
       ...(filedSubArea ? { subArea: filedSubArea } : {}),
+    });
+  }
+
+  // B-LOOP-09: a practice the parent did lands on its shelf (dose logged,
+  // never scored); "Not today" is not a practice and never folds.
+  for (const r of sources.actionLoops ?? []) {
+    if (r.source !== "practice" || !r.shelf || !r.practiceId || r.outcome === "not_today") continue;
+    const def = shelfDef(r.shelf);
+    push("actionLoops", r.id, r.acceptedAt, [def.domain], {
+      kind: "practice",
+      value: { type: "practice", activity: `practice:${r.practiceId}` },
+      source: "parent_typed",
+      provenance: r.practiceId,
+      ...(r.shelf === "sleep" ? { subArea: "sleep" } : r.shelf === "food" ? { subArea: "feeding" } : {}),
     });
   }
 

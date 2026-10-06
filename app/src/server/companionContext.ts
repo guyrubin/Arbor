@@ -91,6 +91,7 @@ const ACTION_SOURCE_SET: { [K in ActionSource]: true } = {
   vision: true,
   "hard-moment": true,
   "from-record": true,
+  practice: true,
 };
 const OUTCOMES = new Set(["helped", "somewhat", "not_today"]);
 

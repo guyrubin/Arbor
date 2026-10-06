@@ -24,7 +24,8 @@ export type ActionSource =
   | "plan"
   | "vision"
   | "hard-moment"
-  | "from-record";
+  | "from-record"
+  | "practice";
 
 /** Runtime registry of every ActionSource. The mapped type fails to compile
  *  when a source is added to the union and not listed here (exhaustiveness
@@ -39,6 +40,7 @@ const ACTION_SOURCE_MAP: { [K in ActionSource]: true } = {
   vision: true,
   "hard-moment": true,
   "from-record": true,
+  practice: true,
 };
 export const ACTION_SOURCES = Object.keys(ACTION_SOURCE_MAP) as readonly ActionSource[];
 
@@ -70,6 +72,12 @@ export interface ActionLoopEntry {
    *  (kept for the visit packet). The parent's own read, never a score. */
   held?: HeldAnswer;
   childResponse?: ChildResponse;
+  /** B-LOOP-09: a `practice` row (one per day, id `practice.<child>.<day>`)
+   *  names the practice, the milestone it serves and its parent shelf. The
+   *  dose is logged, never scored; tonight's question sets `outcome`. */
+  practiceId?: string;
+  milestoneId?: string;
+  shelf?: import("../lib/shelves/registry").ShelfId;
 }
 
 export type HeldAnswer = "yes" | "no";

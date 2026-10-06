@@ -49,6 +49,16 @@ export const en: Record<string, string> = {
   "elev.loop.capture.shelf.file": "File it",
   "elev.loop.capture.shelf.done": "Filed under {shelf}.",
   "elev.loop.capture.notThis": "Not this",
+  // ── B-LOOP-09 · Today's practice ────────────────────────────────────────
+  "elev.loop.practice.caption": "Today's practice",
+  "elev.loop.practice.say": "Say:",
+  "elev.loop.practice.minutes": "{n} minutes",
+  "elev.loop.practice.why": "A small thing for {shelf} today, from the milestone “{title}”.",
+  "elev.loop.practice.didIt": "Did it",
+  "elev.loop.practice.notToday": "Not today",
+  "elev.loop.practice.didReceipt": "Noted. Tonight Arbor asks how it went.",
+  "elev.loop.practice.notTodayReceipt": "Tomorrow is fine.",
+  "elev.loop.practice.quoteMeta": "Your words, {date}",
 };
 
 export const he: Record<string, string> = {
@@ -89,4 +99,14 @@ export const he: Record<string, string> = {
   "elev.loop.capture.shelf.file": "לתייק",
   "elev.loop.capture.shelf.done": "תויק תחת {shelf}.",
   "elev.loop.capture.notThis": "לא זה",
+  // ── B-LOOP-09 · Today's practice ────────────────────────────────────────
+  "elev.loop.practice.caption": "התרגול של היום",
+  "elev.loop.practice.say": "אמרו:",
+  "elev.loop.practice.minutes": "{n} דקות",
+  "elev.loop.practice.why": "משהו קטן למדף {shelf} היום, מתוך אבן הדרך „{title}”.",
+  "elev.loop.practice.didIt": "עשינו",
+  "elev.loop.practice.notToday": "לא היום",
+  "elev.loop.practice.didReceipt": "נרשם. בערב נשאל איך זה הלך.",
+  "elev.loop.practice.notTodayReceipt": "גם מחר זה בסדר.",
+  "elev.loop.practice.quoteMeta": "המילים שלכם, {date}",
 };
