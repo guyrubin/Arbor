@@ -30,6 +30,11 @@ import { loopFirewallHits } from "../../lib/loop/firewall";
 import { shelfWordsThenNow, THEN_GAP_DAYS } from "../../lib/today/shelfWords";
 import { contractFor } from "../../lib/surfaceContract";
 import type { BehaviorLog } from "../../types";
+import type { ActionLoopEntry } from "../../actionLoop/model";
+import { lastNightWords } from "../../lib/today/shelfWords";
+import { tonightLineEntry, tonightOutcomeEntry } from "../../lib/loop/tonight";
+import { practiceDoseEntry } from "../../lib/practice/choosePractice";
+import { translate as translateFor } from "../../lib/i18n";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -117,6 +122,70 @@ describe("shelfWordsThenNow — a change in the parent's own words", () => {
     expect(html.indexOf("Bath ended in tears")).toBeLessThan(html.indexOf("Sang the whole bath song"));
     expect(html).not.toMatch(/better|improv|progress|worse/i);
   });
+});
+
+describe("P5-LOOP c2 r1 — the words slot is fed by the loop (last night's line), then the shelf, then nothing", () => {
+  const NOW = new Date(2026, 9, 7, 7, 30);
+  const yesterday = new Date(2026, 9, 6, 9);
+  const row = (at: Date, extra: Partial<ActionLoopEntry> = {}): ActionLoopEntry => ({
+    ...practiceDoseEntry({ practice: PRACTICES.find((p) => p.shelf === "feelings")!, milestone: null, shelf: "feelings" }, "did", "kid-1", "x", at),
+    ...extra,
+  });
+
+  it("lastNightWords: yesterday's dose row with its 'What happened?' line, quoted with its shelf; nothing else counts", () => {
+    const night = tonightLineEntry(tonightOutcomeEntry(row(yesterday), "helped", new Date(2026, 9, 6, 21)), "  he picked   the pyjamas himself ")!;
+    expect(lastNightWords([night], "kid-1", NOW)).toEqual({ text: "he picked the pyjamas himself", at: night.outcomeAt, shelf: "feelings" });
+    // no line → null; a line from two nights ago is not "last night"; another child's row never
+    expect(lastNightWords([row(yesterday)], "kid-1", NOW)).toBeNull();
+    expect(lastNightWords([tonightLineEntry(row(new Date(2026, 9, 5, 9)), "older")!], "kid-1", NOW)).toBeNull();
+    expect(lastNightWords([night], "kid-2", NOW)).toBeNull();
+    expect(tonightLineEntry(row(yesterday), "   ")).toBeNull();
+  });
+
+  it("OverviewTab feeds the slot from lastNightWords first, the shelf's THEN/NOW notes second, and writes the night line through tonightLineEntry", () => {
+    expect(OV).toContain("lastNightWords(actionLoop, childProfile.id, now)");
+    expect(OV).toMatch(/const quotes: PracticeQuote\[\] = lastNight\s*\?\s*\[\{ text: lastNight\.text, lead: t\("elev\.loop\.practice\.lastNight"\), shelf: shelfLabel\(lastNight\.shelf, t\) \}\]\s*:\s*\[words\.then, words\.now\]/);
+    expect(OV).toContain("tonightLineEntry(dose ?? practiceDoseEntry(pick, \"did\", childProfile.id, sayText), text)");
+    expect(OV).not.toMatch(/whatHappened: line/);
+    // the why answers the quotes; the chosen reason holds after the answer (P2-1)
+    expect(OV).toContain('return "since";');
+    expect(OV).toContain('return shelfNewestAt ? "empty" : "startsPage";');
+    expect(OV).toContain("if (pick && !dose) frozenWhy.current = { id: pick.practice.id, reason: liveWhy };");
+  });
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: line 1 is last night's words with its shelf; the quotes and the say share ONE --arbor-ink rule; the why answers the words`, () => {
+      state.lang = lang;
+      const p = PRACTICES.find((x) => x.shelf === "sleep")!;
+      const lead = translateFor(lang, "elev.loop.practice.lastNight");
+      const html = renderToStaticMarkup(
+        <PracticeCard practice={p} milestone={null} shelf="sleep" childName="Dylan" answered={null} onAnswer={() => undefined}
+          quotes={[{ text: "he picked the pyjamas himself", lead, shelf: lang === "he" ? "רגשות" : "Feelings" }]}
+          whyReason="since" whyDate="29 Aug" />,
+      );
+      const words = html.match(/<div data-testid="practice-words"[^>]*>/)![0];
+      expect(words).toMatch(/border-s-2/);
+      expect(words).toContain("border-color:var(--arbor-ink)");
+      expect(html).not.toMatch(/data-testid="practice-say"[^>]*border-s-2/);
+      expect(html).not.toMatch(/data-testid="practice-quotes"[^>]*border/);
+      expect(html.indexOf(lead)).toBeLessThan(html.lastIndexOf("he picked the pyjamas himself"));
+      expect(html).toMatch(/data-testid="practice-quote-shelf"[^>]*>[^<]*<bdi>(Feelings|רגשות)<\/bdi>/);
+      expect(html.match(/data-testid="practice-quote"/g)).toHaveLength(1);
+      expect(html).toContain("29 Aug");
+      expect(html).not.toMatch(/better|improv|progress|worse|streak/i);
+      // nothing on the shelf at all → "tonight's answer starts that page"
+      const empty = renderToStaticMarkup(
+        <PracticeCard practice={p} milestone={null} shelf="sleep" childName="Dylan" answered={null} onAnswer={() => undefined} whyReason="startsPage" />,
+      );
+      expect(empty).not.toContain('data-testid="practice-quotes"');
+      expect(empty).toContain(translateFor(lang, "elev.loop.practice.whyStartsPage", { name: "Dylan", shelf: translateFor(lang, "elev.shelves.sleep") }).slice(0, 12));
+      // "since" without a date never renders a dangling "from ;" — the plain line instead
+      const noDate = renderToStaticMarkup(
+        <PracticeCard practice={p} milestone={null} shelf="sleep" childName="Dylan" answered={null} onAnswer={() => undefined} whyReason="since" />,
+      );
+      expect(noDate).not.toMatch(/from ;|מ־;/);
+    });
+  }
 });
 
 describe("every Today / practice / tonight string — no streak, no count of days, no verdict (EN + HE)", () => {

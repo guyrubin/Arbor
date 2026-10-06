@@ -115,7 +115,10 @@ describe("pass A3 — the why-line states the chooser's reason, names the child,
   }
   it("OverviewTab derives the reason from the coverage the chooser ranked by", () => {
     const src = readFileSync(path.join(here, "OverviewTab.tsx"), "utf8");
-    expect(src).toContain('if (n === 0) return "empty";');
+    // P5-LOOP c2 r1: still from the same coverage; with no words on the shelf
+    // the empty reason says tonight's answer starts the page
+    expect(src).toContain('if (n === 0) return shelfNewestAt ? "empty" : "startsPage";');
+    expect(src).toContain("return n <= Math.min(...Object.values(coverage)) ? \"fewest\" : null;");
     expect(src).toContain('whyReason={whyReason}');
     expect(readFileSync(path.join(here, "..", "loop", "PracticeCard.tsx"), "utf8")).not.toContain('"elev.loop.practice.why"');
   });

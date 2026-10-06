@@ -125,8 +125,13 @@ describe("N2-errfocus — focus fetch failure surfaces an inline error + retry",
     expect(overviewSrc).toContain("candidatePracticeIds: todaysCandidates(base).map((c) => c.practice.id),");
     expect((overviewSrc.match(/useTodaysFocus\(/g) ?? []).length).toBe(1);
     // the Tonight line lands on the day's dose row (the night answer; never the quote keepsake)
-    expect(overviewSrc).toContain("whatHappened: line });");
-    expect(overviewSrc).toContain("slice(0, WHAT_HAPPENED_CAP)");
+    // (P5-LOOP c2 r1: through the named builder lib/loop/tonight tonightLineEntry,
+    //  which the demo seed uses too — so yesterday's line is Today's line 1)
+    expect(overviewSrc).toContain('const row = tonightLineEntry(dose ?? practiceDoseEntry(pick, "did", childProfile.id, sayText), text);');
+    expect(overviewSrc).toContain("if (row) recordPracticeDose(row);");
+    const tonightSrc = read("lib/loop/tonight.ts");
+    expect(tonightSrc).toContain("return line ? { ...dose, whatHappened: line } : null;");
+    expect(tonightSrc).toContain("slice(0, WHAT_HAPPENED_CAP)");
   });
 
   it("the hook still exposes regenerate for any surface that renders the focus", () => {

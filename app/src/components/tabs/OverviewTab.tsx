@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { formatChildAge } from "../../lib/age/format";
 import { availableHardMomentCards } from "../../content/selectCards";
@@ -35,7 +35,7 @@ import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { useObservations } from "../../hooks/useObservations";
 import { PRACTICES } from "../../content/practices";
 import { choosePractice, practiceDoseEntry, recentPracticeIds, restedShelves, todayDose, todaysCandidates, type PracticeAnswer } from "../../lib/practice/choosePractice";
-import { buildJournalRequest, WHAT_HAPPENED_CAP } from "../../ai/journalContext";
+import { buildJournalRequest } from "../../ai/journalContext";
 import { selectNextMilestones } from "../../lib/milestoneData";
 import { dayKey } from "../../practice/signals";
 import { readTodayPin } from "../../lib/practice/todayPin";
@@ -43,12 +43,12 @@ import { shelfCoverage } from "../../lib/milestones/selectByShelf";
 import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
 import { localDay, type ObserveStatus, type ObservedWhen } from "../../lib/milestones/observe";
-import { shelfWordsThenNow } from "../../lib/today/shelfWords";
-import { quoteKeepsakeDoc, tonightDayQuestion, tonightOutcomeEntry } from "../../lib/loop/tonight";
+import { lastNightWords, shelfWordsThenNow } from "../../lib/today/shelfWords";
+import { quoteKeepsakeDoc, tonightDayQuestion, tonightLineEntry, tonightOutcomeEntry } from "../../lib/loop/tonight";
 import { keepsakeDoc, type KeepsakeDoc } from "../../lib/firstsKeepsake";
 import type { Milestone } from "../../types";
-import type { ShelfId } from "../../lib/shelves/registry";
-import PracticeCard, { practiceText, type PracticeWhyReason } from "../loop/PracticeCard";
+import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
+import PracticeCard, { practiceText, type PracticeQuote, type PracticeWhyReason } from "../loop/PracticeCard";
 import NoticeCard from "../loop/NoticeCard";
 import TonightFlow from "../loop/TonightFlow";
 
@@ -233,17 +233,40 @@ export default function OverviewTab() {
     [pick, observations, behaviorLogs]
   );
   const dateOf = (iso: string) => new Date(iso).toLocaleDateString(lang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" });
-  const quotes = [words.then, words.now].filter((w): w is NonNullable<typeof w> => !!w).map((w) => ({ text: w.text, date: dateOf(w.at) }));
+  // P5-LOOP critic c2 r1 (product P1-2, stronger target a): the words slot is
+  // fed by the LOOP — last night's "What happened?" line on yesterday's
+  // practice, quoted with its shelf — and falls back to the practice shelf's
+  // own notes at any age (THEN and NOW), else nothing (no filler).
+  const lastNight = useMemo(() => lastNightWords(actionLoop, childProfile.id, now), [actionLoop, childProfile.id, now]);
+  const quotes: PracticeQuote[] = lastNight
+    ? [{ text: lastNight.text, lead: t("elev.loop.practice.lastNight"), shelf: shelfLabel(lastNight.shelf, t) }]
+    : [words.then, words.now].filter((w): w is NonNullable<typeof w> => !!w).map((w) => ({ text: w.text, date: dateOf(w.at) }));
+  // The newest of the parent's words ON THIS SHELF (the "since" reason's date).
+  const shelfNewestAt = useMemo(() => {
+    const ats = [words.now?.at, lastNight && pick && lastNight.shelf === pick.shelf ? lastNight.at : undefined].filter((x): x is string => !!x);
+    return ats.sort().pop() ?? null;
+  }, [words.now, lastNight, pick]);
   // P5 r1 pass A3: the why-line states the chooser's reason from the SAME
   // coverage count it ranked by (never rendered as a number): nothing on the
   // shelf this month, or the fewest notes of all the child's shelves; the
   // alternation's second shelf gets the plain line — never a false "fewest".
-  const whyReason = useMemo<PracticeWhyReason | null>(() => {
+  // c2 r1: with the parent's words on this shelf the line answers them ("your
+  // last words … are from {date}; tonight's answer goes next to them"); with
+  // none, "tonight's answer starts that page". The reason chosen for a
+  // practice is FROZEN for the session (P2-1: "Did it" adds a row to the
+  // shelf, and the line must not fall back to the reasonless one).
+  const liveWhy = useMemo<PracticeWhyReason | null>(() => {
     if (!pick) return null;
     const n = coverage[pick.shelf] ?? 0;
-    if (n === 0) return "empty";
+    if (shelfNewestAt && dayKey(new Date(shelfNewestAt)) !== dayKey(now)) return "since";
+    if (n === 0) return shelfNewestAt ? "empty" : "startsPage";
     return n <= Math.min(...Object.values(coverage)) ? "fewest" : null;
-  }, [pick, coverage]);
+  }, [pick, coverage, shelfNewestAt, now]);
+  // live until the day's answer exists (the record may still be loading), then held
+  const frozenWhy = useRef<{ id: string; reason: PracticeWhyReason | null } | null>(null);
+  if (pick && !dose) frozenWhy.current = { id: pick.practice.id, reason: liveWhy };
+  const whyReason = pick && dose && frozenWhy.current?.id === pick.practice.id ? frozenWhy.current.reason : liveWhy;
+  const whyDate = whyReason === "since" && shelfNewestAt ? dateOf(shelfNewestAt) : null;
 
   // ── B-LOOP-04: Notice today. A card the parent just answered stays in place
   //    for the session (its receipt); the block never shows the practice's shelf.
@@ -430,6 +453,7 @@ export default function OverviewTab() {
       onUndo={dose ? () => removeTodayAction(dose.id) : undefined}
       quotes={quotes}
       whyReason={whyReason}
+      whyDate={whyDate}
       /* B-LOOP-13: the AI's why sentence replaces the chooser's reason ONLY
          beside its own pick; the mock provider / a dropped pick keeps the line. */
       whyText={pick.via === "ai" ? focus?.why : null}
@@ -474,9 +498,10 @@ export default function OverviewTab() {
         addMoment(text, { shelf: pick.shelf, ...(pick.milestone ? { milestoneId: pick.milestone.id } : {}) });
         // B-LOOP-13: the line also lands on the day's dose row — the night
         // answer tomorrow's practice is chosen from (≤ 240 chars; the helper
-        // line under the field says so). Never the quote keepsake.
-        const line = text.replace(/\s+/g, " ").trim().slice(0, WHAT_HAPPENED_CAP);
-        if (line) recordPracticeDose({ ...(dose ?? practiceDoseEntry(pick, "did", childProfile.id, sayText)), whatHappened: line });
+        // line under the field says so), and tomorrow morning's line 1 on
+        // Today (c2 r1). Never the quote keepsake.
+        const row = tonightLineEntry(dose ?? practiceDoseEntry(pick, "did", childProfile.id, sayText), text);
+        if (row) recordPracticeDose(row);
       }}
       dayQuestion={dayQuestion}
       onQuote={(text) => {

@@ -87,6 +87,9 @@ export const en: Record<string, string> = {
   "elev.loop.practice.didReceipt": "Noted. Tonight Arbor asks how it went.",
   "elev.loop.practice.notTodayReceipt": "Tomorrow is fine.",
   "elev.loop.practice.quoteMeta": "Your words, {date}",
+  "elev.loop.practice.lastNight": "Last night you wrote:",
+  "elev.loop.practice.whySince": "Your last words on {name}'s {shelf} shelf are from {date}; tonight's answer goes next to them.",
+  "elev.loop.practice.whyStartsPage": "Nothing kept on {name}'s {shelf} shelf this month, so tonight's answer starts that page.",
   // ── B-LOOP-10 · Tonight ─────────────────────────────────────────────────
   "elev.loop.tonight.caption": "Tonight",
   "elev.loop.tonight.step": "{n} of {total}",
@@ -203,6 +206,9 @@ export const he: Record<string, string> = {
   "elev.loop.practice.didReceipt": "נרשם. בערב נשאל איך זה הלך.",
   "elev.loop.practice.notTodayReceipt": "גם מחר זה בסדר.",
   "elev.loop.practice.quoteMeta": "המילים שלכם, {date}",
+  "elev.loop.practice.lastNight": "אתמול בערב כתבתם:",
+  "elev.loop.practice.whySince": "המילים האחרונות שלכם במדף {shelf} של {name} הן מ־{date}; התשובה של הערב תיכנס לידן.",
+  "elev.loop.practice.whyStartsPage": "עוד לא נשמר כלום במדף {shelf} של {name} החודש, אז התשובה של הערב פותחת את הדף הזה.",
   // ── B-LOOP-10 · Tonight ─────────────────────────────────────────────────
   "elev.loop.tonight.caption": "הערב",
   "elev.loop.tonight.step": "{n} מתוך {total}",

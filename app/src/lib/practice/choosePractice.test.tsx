@@ -245,7 +245,8 @@ describe("PracticeCard", () => {
     for (const lang of ["en", "he"] as const) {
       const html = render(lang);
       expect(html).toContain('data-testid="practice-do"');
-      expect(html).toMatch(/data-testid="practice-say" class="[^"]*border-s-2 ps-3/);
+      // P5-LOOP c2 r1: the say sits inside the ONE start rule it shares with the parent's words
+      expect(html).toMatch(/data-testid="practice-words" class="[^"]*border-s-2 ps-3[^>]*>(?:(?!<\/div>)[\s\S])*data-testid="practice-say"/);
       expect(html).toContain('data-primary-move="do-practice"');
       const buttons = html.match(/<button[^>]*data-answer="[a-z_]+"[^>]*>/g) ?? [];
       expect(buttons).toHaveLength(2);

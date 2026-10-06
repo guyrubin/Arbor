@@ -16,6 +16,7 @@ import type { ActionLoopEntry, ActionOutcome } from "../../actionLoop/model";
 import type { KeepsakeDoc } from "../firstsKeepsake";
 import { dayKey } from "../../practice/signals";
 import { localDay } from "../milestones/observe";
+import { WHAT_HAPPENED_CAP } from "../../ai/journalContext";
 
 export const TONIGHT_STEPS = 3;
 
@@ -34,6 +35,15 @@ export function tonightDayQuestion(logs: readonly BehaviorLog[], now: Date = new
 /** The outcome write for step 1: today's dose row with the parent's outcome. */
 export function tonightOutcomeEntry(dose: ActionLoopEntry, outcome: ActionOutcome, at: Date = new Date()): ActionLoopEntry {
   return { ...dose, status: "completed", outcome, outcomeAt: at.toISOString() };
+}
+
+/** Step 1's "What happened?" line on the day's dose row (B-LOOP-13: the
+ *  night answer tomorrow's practice is chosen from, and — P5-LOOP critic
+ *  c2 r1 — tomorrow morning's line 1 on Today). One line, whitespace folded,
+ *  <= WHAT_HAPPENED_CAP; an empty line writes nothing (null). */
+export function tonightLineEntry(dose: ActionLoopEntry, text: string): ActionLoopEntry | null {
+  const line = text.replace(/\s+/g, " ").trim().slice(0, WHAT_HAPPENED_CAP);
+  return line ? { ...dose, whatHappened: line } : null;
 }
 
 /** FNV-1a for a stable quote id. */

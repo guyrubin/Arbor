@@ -247,7 +247,8 @@ describe("ENG-07 — whyLineFor is built from real inputs", () => {
   // catalogue label; the plain shelf line when neither is true.
   it("Today's why-line is the practice's own (the shelf and the chooser's reason), never a fixed generic key", () => {
     const card = read("components/loop/PracticeCard.tsx");
-    expect(card).toContain('t(whyReason ? WHY_KEY[whyReason] : "elev.loop.practice.whyShelf"');
+    // P5-LOOP c2 r1: "since" needs its date, else the plain shelf line
+    expect(card).toContain('t(whyReason && (whyReason !== "since" || whyDate) ? WHY_KEY[whyReason] : "elev.loop.practice.whyShelf"');
     expect(card).not.toContain('"elev.loop.practice.why"');
   });
 });

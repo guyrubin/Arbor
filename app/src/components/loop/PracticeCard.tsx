@@ -19,12 +19,27 @@ export function practiceText(p: Practice, field: "do" | "say" | "materials", lan
   return lang === "he" ? resolveHebrewSlash(text, gender) : text;
 }
 
-export type PracticeWhyReason = "empty" | "fewest";
+/** P5-LOOP c2 r1: "since" answers the parent's quoted words on this shelf
+ *  (their date rides in `whyDate`); "startsPage" says, in the child's terms,
+ *  that tonight's answer starts an empty shelf's page. */
+export type PracticeWhyReason = "empty" | "fewest" | "since" | "startsPage";
 
 const WHY_KEY: Record<PracticeWhyReason, string> = {
   empty: "elev.loop.practice.whyEmpty",
   fewest: "elev.loop.practice.whyFewest",
+  since: "elev.loop.practice.whySince",
+  startsPage: "elev.loop.practice.whyStartsPage",
 };
+
+/** One quoted line in the words slot: the parent's text verbatim, and either
+ *  the default "Your words, {date}" lead or a `lead` of its own ("Last night
+ *  you wrote:"), with the shelf it was written on after it. */
+export interface PracticeQuote {
+  text: string;
+  date?: string;
+  lead?: string;
+  shelf?: string;
+}
 
 export interface PracticeCardProps {
   practice: Practice;
@@ -40,7 +55,7 @@ export interface PracticeCardProps {
   onUndo?: () => void;
   /** B-LOOP-07: the parent's own words on this shelf, dated — THEN and NOW
    *  (lib/today/shelfWords), oldest first; the change is in their words. */
-  quotes?: ReadonlyArray<{ text: string; date?: string }>;
+  quotes?: ReadonlyArray<PracticeQuote>;
   /** B-LOOP-07: a lifecycle line (birthday, first week) inside the header, never a sibling. */
   headerNote?: string | null;
   /** P5 r1 pass A3: the chooser's REASON for this shelf today (the coverage
@@ -48,6 +63,8 @@ export interface PracticeCardProps {
    *  or the fewest notes of all the child's shelves. Otherwise (the
    *  alternation's second shelf) the plain shelf line — never a false claim. */
   whyReason?: PracticeWhyReason | null;
+  /** The date the "since" reason names (the newest quoted line on this shelf). */
+  whyDate?: string | null;
   /** B-LOOP-13: the AI's one why sentence (todays_focus 1.3.0, screened on the
    *  server; only beside an AI pick). Present → it REPLACES the chooser's
    *  reason line; absent → the chooser's line, unchanged. */
@@ -82,6 +99,7 @@ export default function PracticeCard({
   quotes,
   headerNote,
   whyReason,
+  whyDate,
   whyText,
   stampMove,
 }: PracticeCardProps) {
@@ -122,31 +140,40 @@ export default function PracticeCard({
         >
           {titleText}
         </h2>
-        {/* P5 r1 pass A1: the parent's OWN words on this shelf, dated, right
-            under the title — THEN and NOW when both exist (lib/today/shelfWords).
-            ONE line each (date first, the words after; the full sentence in the
-            title attribute) so "Did it" stays ≤ 640 at 375 with both present. */}
-        {quotes && quotes.length > 0 && (
-          <div data-testid="practice-quotes" className="mt-2 space-y-1 border-s-2 ps-3" style={{ borderColor: "var(--arbor-clay)" }}>
-            {quotes.map((q, i) => (
-              <p key={i} data-testid="practice-quote" title={q.text} className="truncate leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-base)" }}>
-                {q.date && (
-                  <span style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
-                    {t("elev.loop.practice.quoteMeta", { date: q.date })} ·{" "}
-                  </span>
-                )}
-                <FreeText text={`“${q.text}”`} />
-              </p>
-            ))}
-          </div>
-        )}
-        <blockquote
-          data-testid="practice-say"
-          className="mt-3 border-s-2 ps-3 leading-snug"
-          style={{ borderColor: "var(--arbor-ink)", color: "var(--arbor-ink-soft)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-xl)" }}
-        >
-          {t("elev.loop.practice.say")} <FreeText text={`“${sayText}”`} />
-        </blockquote>
+        {/* P5 r1 pass A1: the parent's OWN words, dated, right under the title
+            — last night's line on yesterday's practice first (P5-LOOP c2 r1),
+            else THEN and NOW on this shelf (lib/today/shelfWords). ONE line
+            each (lead first, the words after; the full sentence in the title
+            attribute) so "Did it" stays <= 640 at 375. The quotes and the say
+            share ONE 2 px --arbor-ink inline-start rule (c2 r1 design P2-9). */}
+        <div data-testid="practice-words" className="mt-2 border-s-2 ps-3" style={{ borderColor: "var(--arbor-ink)" }}>
+          {quotes && quotes.length > 0 && (
+            <div data-testid="practice-quotes" className="space-y-1">
+              {quotes.map((q, i) => (
+                <p key={i} data-testid="practice-quote" title={q.text} className="truncate leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-base)" }}>
+                  {(q.lead || q.date) && (
+                    <span style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
+                      {q.lead ?? `${t("elev.loop.practice.quoteMeta", { date: q.date ?? "" })} ·`}{" "}
+                    </span>
+                  )}
+                  <FreeText text={`“${q.text}”`} />
+                  {q.shelf && (
+                    <span data-testid="practice-quote-shelf" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
+                      {" · "}<bdi>{q.shelf}</bdi>
+                    </span>
+                  )}
+                </p>
+              ))}
+            </div>
+          )}
+          <blockquote
+            data-testid="practice-say"
+            className={`${quotes && quotes.length > 0 ? "mt-3" : ""} leading-snug`}
+            style={{ color: "var(--arbor-ink-soft)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-xl)" }}
+          >
+            {t("elev.loop.practice.say")} <FreeText text={`“${sayText}”`} />
+          </blockquote>
+        </div>
         {!titleIsWholeDo(titleText, doText) && (
           <p data-testid="practice-do" className="mt-2 leading-snug" style={{ color: "var(--arbor-ink)", fontSize: "var(--t-base)" }}>
             {doText}
@@ -204,7 +231,7 @@ export default function PracticeCard({
             the parent's words fit above "Did it" at 375 (bottom ≤ 640). */}
         <p data-testid="practice-meta" className="mt-3" style={{ color: "var(--arbor-muted)", fontSize: "var(--t-sm)" }}>{meta}</p>
         <p data-testid="practice-why" className="mt-1 italic leading-snug" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-base)" }}>
-          {whyText?.trim() || t(whyReason ? WHY_KEY[whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfName, name: childName || t("today.record.childFallback") })}
+          {whyText?.trim() || t(whyReason && (whyReason !== "since" || whyDate) ? WHY_KEY[whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfName, name: childName || t("today.record.childFallback"), date: whyDate ?? "" })}
         </p>
       </div>
     </section>

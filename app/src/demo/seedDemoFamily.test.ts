@@ -30,7 +30,8 @@ import { milestoneAgeWindow } from "../lib/milestoneData";
 import { observeMilestoneDoc } from "../lib/milestones/observe";
 import { shelfOfMilestone } from "../lib/milestones/selectByShelf";
 import { practiceDoseEntry, practiceDoseId } from "../lib/practice/choosePractice";
-import { quoteKeepsakeDoc, quotesFromDocs, tonightOutcomeEntry } from "../lib/loop/tonight";
+import { quoteKeepsakeDoc, quotesFromDocs, tonightLineEntry, tonightOutcomeEntry } from "../lib/loop/tonight";
+import { lastNightWords } from "../lib/today/shelfWords";
 import { toObservations } from "../lib/observations";
 import { dayKey } from "../practice/signals";
 import { bandFor } from "../lib/age/forChild";
@@ -375,7 +376,7 @@ describe("W2-CAREPRO c2 r1 · the demo memory seed renders a group at volume", (
  * change the family → this fails until the version is bumped and the pin
  * re-recorded (then `npm run seed:demo -- --apply` re-seeds the sandbox). */
 describe("W2-CAREPRO c2 r2 · the demo content is pinned to DEMO_FAMILY_VERSION", () => {
-  const PINNED = { version: "2026-10-07.1", sha256: "aed3319b0833f88c3d07e369b08662e19b2e4b7efdbcea386fabdb6ae12973ed" };
+  const PINNED = { version: "2026-10-07.2", sha256: "74345201c184904c797e630a0d64f2713bcee773465b9989c019b5056c018315" };
   const contentHash = async () => {
     const { createHash } = await import("node:crypto");
     const body = JSON.stringify([buildDemoFamily({ now: NOW, lang: "en" }), buildDemoFamily({ now: NOW, lang: "he" })]);
@@ -441,9 +442,9 @@ describe("B-LOOP-17 · the loop's seeded record", () => {
   const catalogue = (id: string) => initialMilestones.find((m) => m.id === id)!;
   const practiceRows = (rows: readonly ActionLoopEntry[]) => rows.filter((r) => r.source === "practice");
 
-  it("the version string is bumped to 2026-10-07.1", () => {
-    expect(DEMO_FAMILY_VERSION).toBe("2026-10-07.1");
-    expect(buildDemoFamily({ now: NOW }).version).toBe("2026-10-07.1");
+  it("the version string is bumped to 2026-10-07.2 (night lines, P5-LOOP c2 r1)", () => {
+    expect(DEMO_FAMILY_VERSION).toBe("2026-10-07.2");
+    expect(buildDemoFamily({ now: NOW }).version).toBe("2026-10-07.2");
   });
 
   it("the dry run prints the new counts per collection, child and sibling, and writes nothing", async () => {
@@ -533,7 +534,8 @@ describe("B-LOOP-17 · the loop's seeded record", () => {
           r.recommendation,
           new Date(t),
         );
-        expect(r).toEqual(r.outcome && r.outcome !== "not_today" ? tonightOutcomeEntry(base, r.outcome, new Date(r.outcomeAt!)) : base);
+        const night = r.outcome && r.outcome !== "not_today" ? tonightOutcomeEntry(base, r.outcome, new Date(r.outcomeAt!)) : base;
+        expect(r).toEqual(r.whatHappened ? tonightLineEntry(night, r.whatHappened) : night);
       }
       expect(new Set(rows.map((r) => r.id)).size).toBe(9);
       expect(rows.filter((r) => r.outcome === "not_today").length).toBeGreaterThan(0);
@@ -541,6 +543,13 @@ describe("B-LOOP-17 · the loop's seeded record", () => {
       const night = rows.filter((r) => r.outcome === "helped" || r.outcome === "somewhat");
       expect(night).toHaveLength(3);
       for (const r of night) expect(new Date(r.outcomeAt!).getUTCHours()).toBe(19);
+      // P5-LOOP c2 r1: every night answer carries the parent's line, and
+      // YESTERDAY's is Today's line 1 (lastNightWords), on its own shelf
+      for (const r of night) expect(r.whatHappened, r.id).toBeTruthy();
+      if (lang === "he") for (const r of night) expect(HEBREW.test(r.whatHappened!)).toBe(true);
+      const yesterday = lastNightWords(f.collections.actionLoops, f.child.id, new Date(NOW));
+      expect(yesterday?.text).toBe(rows.find((r) => r.id === practiceDoseId(f.child.id, new Date(NOW - DAY)))?.whatHappened);
+      expect(yesterday?.shelf).not.toBe("sleep");
       const quotes = quotesFromDocs(f.collections.keepsakes);
       expect(quotes).toHaveLength(4);
       for (const d of f.collections.keepsakes) expect(d).toEqual(quoteKeepsakeDoc(d.note, new Date(d.createdAt)));

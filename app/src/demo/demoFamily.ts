@@ -38,7 +38,9 @@
  *               today", no Sleep practice, never today: the morning state
  *               finds today's practice pending);
  *   night       lib/loop/tonight `tonightOutcomeEntry` — 3 of the "did" rows
- *               carry Tonight's step-1 answer (helped · somewhat · helped);
+ *               carry Tonight's step-1 answer (helped · somewhat · helped)
+ *               and its "What happened?" line (`tonightLineEntry`, v .2:
+ *               yesterday's line is Today's line 1 — P5-LOOP c2 r1);
  *   keepsakes   lib/loop/tonight `quoteKeepsakeDoc` — 4 `quote` keepsakes
  *               ("Things {name} said", Tonight's step 2).
  * The one bedtime hard moment became a sibling conflict, so the Sleep shelf
@@ -54,11 +56,11 @@ import { practicesForMilestone } from "../content/practices";
 import { observeMilestoneDoc, type ObserveStatus } from "../lib/milestones/observe";
 import { shelfOfMilestone } from "../lib/milestones/selectByShelf";
 import { practiceDoseEntry, type PracticeAnswer } from "../lib/practice/choosePractice";
-import { quoteKeepsakeDoc, tonightOutcomeEntry } from "../lib/loop/tonight";
+import { quoteKeepsakeDoc, tonightLineEntry, tonightOutcomeEntry } from "../lib/loop/tonight";
 import type { KeepsakeDoc } from "../lib/firstsKeepsake";
 import { resolveHebrewSlash } from "../lib/hebrewSlashGender";
 
-export const DEMO_FAMILY_VERSION = "2026-10-07.1";
+export const DEMO_FAMILY_VERSION = "2026-10-07.2";
 export const DEMO_FAMILY_LABEL = { en: "Demo family", he: "משפחת הדגמה" } as const;
 /** The demo child IS the sandbox's synthetic child, so `npm run seed:demo` populates it. */
 export const DEMO_CHILD_ID = defaultChildProfile.id;
@@ -181,15 +183,15 @@ const LOOP_ANSWERS: LoopAnswer[] = [
   { id: "asha-feed-24m", status: "yes", daysAgo: 30 },
 ];
 
-type LoopDose = { daysAgo: number; milestoneId: string; answer: PracticeAnswer; night?: Exclude<ActionOutcome, "not_today"> };
+type LoopDose = { daysAgo: number; milestoneId: string; answer: PracticeAnswer; night?: Exclude<ActionOutcome, "not_today">; what?: L };
 /** Nine dose rows over 14 days, never today, never the Sleep shelf; three night answers. */
 const LOOP_DOSES: LoopDose[] = [
-  { daysAgo: 1, milestoneId: "cdc-36m-3", answer: "did", night: "helped" },
+  { daysAgo: 1, milestoneId: "cdc-36m-3", answer: "did", night: "helped", what: L("He told me the whole big-slide story twice, and I just listened", "הוא סיפר לי פעמיים את כל הסיפור על המגלשה הגדולה, ורק הקשבתי") },
   { daysAgo: 2, milestoneId: "cdc-30m-11", answer: "not_today" },
   { daysAgo: 3, milestoneId: "cdc-36m-2", answer: "did" },
-  { daysAgo: 5, milestoneId: "cdc-36m-7", answer: "did", night: "somewhat" },
+  { daysAgo: 5, milestoneId: "cdc-36m-7", answer: "did", night: "somewhat", what: L("He drew a big round sun and called it Mummy", "הוא צייר שמש עגולה וגדולה וקרא לה אמא") },
   { daysAgo: 6, milestoneId: "cdc-30m-10", answer: "not_today" },
-  { daysAgo: 8, milestoneId: "cdc-36m-1", answer: "did", night: "helped" },
+  { daysAgo: 8, milestoneId: "cdc-36m-1", answer: "did", night: "helped", what: L("Short goodbye at the gate; he waved from the window", "פרידה קצרה בשער; הוא נופף מהחלון") },
   { daysAgo: 10, milestoneId: "cdc-36m-11", answer: "did" },
   { daysAgo: 12, milestoneId: "cdc-30m-3", answer: "not_today" },
   { daysAgo: 14, milestoneId: "cdc-36m-9", answer: "did" },
@@ -215,7 +217,7 @@ const LENI_ANSWERS: LoopAnswer[] = [
   { id: "cdc-18m-9", status: "yes", daysAgo: 5 },
 ];
 const LENI_DOSES: LoopDose[] = [
-  { daysAgo: 1, milestoneId: "cdc-18m-5", answer: "did", night: "helped" },
+  { daysAgo: 1, milestoneId: "cdc-18m-5", answer: "did", night: "helped", what: L("She brought me the sock and clapped for herself", "היא הביאה לי את הגרב ומחאה לעצמה כפיים") },
   { daysAgo: 3, milestoneId: "cdc-18m-3", answer: "not_today" },
   { daysAgo: 5, milestoneId: "cdc-18m-8", answer: "did" },
 ];
@@ -332,7 +334,9 @@ function doseRows(now: number, childId: string, doses: readonly LoopDose[], lang
       if (!practice || practice.shelf === "sleep") throw new Error(`B-LOOP-17: no non-Sleep practice for ${d.milestoneId}`);
       const say = lang === "he" ? resolveHebrewSlash(practice.say.he, gender) : practice.say.en;
       const row = practiceDoseEntry({ practice, milestone, shelf: practice.shelf }, d.answer, childId, say, new Date(at(now, d.daysAgo, 9)));
-      return d.night ? tonightOutcomeEntry(row, d.night, new Date(at(now, d.daysAgo, 19))) : row;
+      if (!d.night) return row;
+      const night = tonightOutcomeEntry(row, d.night, new Date(at(now, d.daysAgo, 19)));
+      return (d.what && tonightLineEntry(night, lang === "he" ? d.what.he : d.what.en)) || night;
     })
     .sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt));
 }
