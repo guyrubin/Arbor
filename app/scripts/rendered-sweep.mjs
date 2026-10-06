@@ -649,6 +649,82 @@ const STATES = {
       },
     },
   ],
+  // P5 critic r1 on #/milestones (+ P1-NEXTLEVEL r3 "marked"): the screen's
+  // one move rendered — Seen it (receipt · Undo · When · Keep), Not yet
+  // (the neutral line · Undo), a kept line, the shelf door (later bands
+  // titles only) and the word search. Every answer is undone through the
+  // card's own Undo (restores the pre-answer document); the throwaway
+  // context discards the kept line's keepsake.
+  milestones: [
+    {
+      name: "notice-seen",
+      writes: "one milestone answer in the local record; the card's Undo restores the pre-answer document after the shot (cell.undone = the first card asks again)",
+      run: async (h) => {
+        await h.click("[data-testid=ms-shelf-map] [data-primary-move] [data-answer=yes]", [], "the first Notice card's Seen it");
+        await h.click("[data-testid=ms-shelf-map] [data-when=this_week]", [], "When? This week");
+        await h.top(await h.need("[data-testid=ms-shelf-map] [data-testid=notice-seen-strip]", "the Seen-it strip (receipt · Undo · When · Keep)"));
+        return {
+          undo: async () => {
+            await h.page.locator("[data-testid=ms-shelf-map] [data-testid=notice-undo]").first().click({ timeout: 5_000 });
+            await h.page.waitForTimeout(400);
+            return (await h.page.locator("[data-testid=ms-shelf-map] [data-primary-move] [data-answer=yes]").count()) > 0;
+          },
+        };
+      },
+    },
+    {
+      name: "not-yet",
+      writes: "one milestone answer in the local record; the card's Undo restores it after the shot",
+      run: async (h) => {
+        await h.click("[data-testid=ms-shelf-map] [data-primary-move] [data-answer=not_yet]", [], "the first Notice card's Not yet");
+        await h.top(await h.need("[data-testid=ms-shelf-map] [data-testid=notice-thanks]", "the neutral Not-yet line with Undo"));
+        return {
+          undo: async () => {
+            await h.page.locator("[data-testid=ms-shelf-map] [data-testid=notice-undo]").first().click({ timeout: 5_000 });
+            await h.page.waitForTimeout(400);
+            return (await h.page.locator("[data-testid=ms-shelf-map] [data-primary-move] [data-answer=yes]").count()) > 0;
+          },
+        };
+      },
+    },
+    {
+      name: "notice-kept",
+      writes: "one milestone answer + one keepsake line in the local record; Undo restores the milestone, the throwaway context drops the keepsake",
+      run: async (h) => {
+        await h.click("[data-testid=ms-shelf-map] [data-primary-move] [data-answer=yes]", [], "the first Notice card's Seen it");
+        const input = await h.need("[data-testid=ms-shelf-map] [data-testid=notice-keep-quote]", "the Keep a moment line");
+        await input.fill(h.lang === "he" ? "הוא אמר 'כדור גדול' ליד הגינה" : "He said 'big ball' at the park");
+        await h.click("[data-testid=ms-shelf-map] [data-testid=notice-keep-save]", [], "Keep it");
+        await h.top(await h.need("[data-testid=ms-shelf-map] [data-testid=notice-kept]", "the kept line (quote on the ink rule · Kept in {name}'s story)"));
+        return {
+          undo: async () => {
+            await h.page.locator("[data-testid=ms-shelf-map] [data-testid=notice-undo]").first().click({ timeout: 5_000 });
+            await h.page.waitForTimeout(400);
+            return (await h.page.locator("[data-testid=ms-shelf-map] [data-primary-move] [data-answer=yes]").count()) > 0;
+          },
+        };
+      },
+    },
+    {
+      name: "door-open",
+      run: async (h) => {
+        const words = await h.first("[data-testid=ms-shelf][data-shelf=words] [data-testid=ms-shelf-door]", 3_000);
+        if (words) await words.click({ timeout: 5_000 });
+        else await h.click("[data-testid=ms-shelf-door]", [], "the first shelf door");
+        await h.top(await h.need("[data-testid=ms-shelf-band]", "the shelf's bands (later bands titles only)"));
+      },
+    },
+    {
+      name: "search",
+      run: async (h) => {
+        await h.click("[data-testid=ms-search-open]", [], "the search icon");
+        await (await h.need("[data-testid=ms-search]", "the milestone search")).fill(h.lang === "he" ? "כדור" : "ball");
+        await h.page.waitForTimeout(400);
+        await h.need("[data-testid=ms-search-results]", "the search results across shelves");
+        return { via: h.lang === "he" ? 'query "כדור"' : 'query "ball"' };
+      },
+    },
+  ],
   plans: [
     {
       name: "active-plan",

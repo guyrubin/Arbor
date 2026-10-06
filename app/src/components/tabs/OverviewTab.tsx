@@ -356,7 +356,7 @@ export default function OverviewTab() {
       quotes={quotes}
     />
   ) : slotNotice ? (
-    <NoticeCard key={slotNotice.milestone.id} milestone={slotNotice.milestone} shelf={slotNotice.shelf} gender={childProfile.gender} variant="card" {...noticeHandlers(slotNotice.milestone, slotNotice.shelf)} />
+    <NoticeCard key={slotNotice.milestone.id} milestone={slotNotice.milestone} shelf={slotNotice.shelf} gender={childProfile.gender} childName={firstName} variant="card" {...noticeHandlers(slotNotice.milestone, slotNotice.shelf)} />
   ) : null;
 
   const noticeBlock = (
@@ -368,7 +368,7 @@ export default function OverviewTab() {
       <div className="mt-1">
         {blockNotices.map((c, i) => (
           <div key={c.milestone.id} style={i > 0 ? { borderTop: "1px solid var(--arbor-rule)" } : undefined}>
-            <NoticeCard milestone={c.milestone} shelf={c.shelf} gender={childProfile.gender} variant="row" {...noticeHandlers(c.milestone, c.shelf)} />
+            <NoticeCard milestone={c.milestone} shelf={c.shelf} gender={childProfile.gender} childName={firstName} variant="row" {...noticeHandlers(c.milestone, c.shelf)} />
           </div>
         ))}
       </div>

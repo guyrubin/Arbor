@@ -260,6 +260,7 @@ export default function TonightFlow(props: TonightFlowProps) {
           milestone={props.notice.milestone}
           shelf={props.notice.shelf}
           gender={props.gender}
+          childName={props.childName}
           variant="row"
           onAnswer={props.onNotice}
           onWhen={props.onNoticeWhen}

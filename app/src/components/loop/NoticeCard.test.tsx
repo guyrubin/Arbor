@@ -30,7 +30,7 @@ const asha = ALL_MILESTONES.find((m) => m.source?.org === "ASHA")!;
 const render = (m: Milestone, lang: "en" | "he" = "en", phase: NoticePhase = "ask", gender: string | null = "girl") => {
   state.lang = lang;
   return renderToStaticMarkup(
-    <NoticeCard milestone={m} shelf="words" gender={gender} onAnswer={() => undefined} onWhen={() => undefined} onKeepQuote={() => undefined} onKeepPhoto={() => undefined} initialPhase={phase} />,
+    <NoticeCard milestone={m} shelf="words" gender={gender} childName="Noa" onAnswer={() => undefined} onWhen={() => undefined} onKeepQuote={() => undefined} onKeepPhoto={() => undefined} initialPhase={phase} />,
   );
 };
 const decode = (html: string) => html.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
@@ -54,7 +54,7 @@ describe("NoticeCard — the answers", () => {
     for (const b of html.match(/<button[^>]*data-when[^>]*>/g) ?? []) expect(b).toMatch(/min-h-\[44px\]/);
     expect(html).toContain('data-testid="notice-keep-quote"');
     expect(html).not.toContain('data-testid="notice-answers"');
-    expect(text(html)).toContain("Noted under Words.");
+    expect(text(html)).toContain("Noted on Noa's Words shelf.");
   });
 
   it("critic r3: Undo sits on the receipt (seen and thanked), 44 px, EN + HE; absent without onUndo", () => {

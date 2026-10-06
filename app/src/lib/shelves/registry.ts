@@ -52,28 +52,40 @@ export interface ShelfDef {
   order: number;
   /** B-LOOP-15 illustration key (typed WebP set; no runtime image generation). */
   illustrationKey: string;
+  /** Framer ruling (6 Oct, P5 critic r1): the shelf's Material Symbols glyph
+   *  (DATA, rendered by components/loop/ShelfGlyph; no image, no emoji). The
+   *  ruling named back_hand / family_restroom; the shipped icon subset has
+   *  neither, so hands takes front_hand and family diversity_3 (the subset
+   *  grows only through the networked font build). */
+  glyph: string;
+  /** The jewel tint of the glyph chip (-soft background, -ink glyph). */
+  tint: ShelfTint;
 }
 
-const s = (id: ShelfId, domain: DomainId, order: number, subAreas?: readonly string[]): ShelfDef => ({
+export type ShelfTint = "sky" | "yellow" | "lav" | "pink" | "green" | "peach" | "deep";
+
+const s = (id: ShelfId, domain: DomainId, order: number, glyph: string, tint: ShelfTint, subAreas?: readonly string[]): ShelfDef => ({
   id,
   domain,
   ...(subAreas ? { subAreas } : {}),
   labelKey: `elev.shelves.${id}`,
   order,
   illustrationKey: `shelf.${id}`,
+  glyph,
+  tint,
 });
 
 /** The nine shelves, in parent display order. */
 export const SHELVES: readonly ShelfDef[] = [
-  s("sleep", "body", 1, ["sleep"]),
-  s("food", "body", 2, ["feeding_nutrition", "eating", "feeding", "growth_measurements"]),
-  s("words", "talking", 3),
-  s("feelings", "feelings", 4),
-  s("play", "playing", 5),
-  s("moving", "moving", 6),
-  s("hands", "hands", 7),
-  s("school", "thinking", 8),
-  s("family", "family", 9),
+  s("sleep", "body", 1, "bedtime", "sky", ["sleep"]),
+  s("food", "body", 2, "restaurant", "yellow", ["feeding_nutrition", "eating", "feeding", "growth_measurements"]),
+  s("words", "talking", 3, "chat_bubble", "lav"),
+  s("feelings", "feelings", 4, "favorite", "pink"),
+  s("play", "playing", 5, "group", "green"),
+  s("moving", "moving", 6, "directions_run", "peach"),
+  s("hands", "hands", 7, "front_hand", "deep"),
+  s("school", "thinking", 8, "school", "sky"),
+  s("family", "family", 9, "diversity_3", "lav"),
 ];
 
 export const SHELF_IDS: readonly ShelfId[] = SHELVES.map((x) => x.id);

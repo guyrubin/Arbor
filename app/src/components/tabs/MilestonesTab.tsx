@@ -29,7 +29,7 @@ import { cardCls, Split } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES } from "../../lib/milestoneReferences";
 import { noticedMilestoneCounts } from "../../lib/record/counts";
-import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneBandLabel, milestoneText } from "../../lib/milestoneData";
+import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneAgeWindow, milestoneBandLabel, milestoneText } from "../../lib/milestoneData";
 // UND-7 — fail-closed gate for the governed milestone example-media slot
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
 import { isRenderableMilestoneMedia } from "../../content/governance";
@@ -61,8 +61,10 @@ import { ageMonthsOf } from "../../lib/age/forChild";
 import { localDay, type ObserveStatus } from "../../lib/milestones/observe";
 import { selectNextMilestonesByShelf, shelfOfMilestone } from "../../lib/milestones/selectByShelf";
 import { groupMilestonesByShelf, matchesMilestoneQuery, noticedByShelf, shelfBands } from "../../lib/milestones/shelfMap";
-import { SHELVES, SHELF_IDS, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
-import NoticeCard, { NOTICE_ANSWER_KEYS } from "../loop/NoticeCard";
+import { SHELF_IDS, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
+import NoticeCard, { NoticeAnswers } from "../loop/NoticeCard";
+import { practiceText } from "../loop/PracticeCard";
+import { PRACTICES } from "../../content/practices";
 import { ShelfGlyph } from "../loop/ShelfGlyph";
 
 /** NEXTLEVEL critic r1: "Born early?" leads the rail only while correction
@@ -190,10 +192,16 @@ export default function MilestonesTab() {
     // shared with Today's and the Journal's Notice cards.
     setMilestoneObservation(item.id, status);
     if (status !== "yes" || item.checked) return;
+    // P5 critic r1 (framer ruling 3): the confetti burst fires ONCE per
+    // milestone id ever (a completion moment, never a repeat reward); an Undo and a
+    // second "Seen it" replay nothing.
+    if (hasCelebrated(childProfile.id, item.id)) return;
     celebrate();
-    if (!hasCelebrated(childProfile.id, item.id) && celebrationSessionAvailable()) {
+    if (celebrationSessionAvailable()) {
       markCelebrated(childProfile.id, item.id);
       setCelebratingId(item.id);
+    } else {
+      markCelebrated(childProfile.id, item.id);
     }
   };
 
@@ -248,6 +256,25 @@ export default function MilestonesTab() {
   const firstNoticeShelf = SHELF_IDS.find((id) => noticeFor(id));
   const [openShelves, setOpenShelves] = useState<Partial<Record<ShelfId, boolean>>>({});
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  // P5 critic r1 (design P0): the map in ACTION order — shelves holding a
+  // Notice card first, then the shelves with only their door; a shelf with no
+  // catalogue row (Sleep, Family) closes the map as a quiet row with its
+  // shelf-level practice (B-LOOP-08 follow-up) inside the child's window.
+  const mapShelves: ShelfId[] = [
+    ...SHELF_IDS.filter((id) => noticeFor(id)),
+    ...SHELF_IDS.filter((id) => !noticeFor(id) && shelfItems[id].length > 0),
+  ];
+  const quietWindow = milestoneAgeWindow(comparisonMonths);
+  const quietShelves = SHELF_IDS.filter((id) => shelfItems[id].length === 0).map((shelf) => ({
+    shelf,
+    practice:
+      PRACTICES.find((p) => {
+        if (p.milestoneId !== null || p.shelf !== shelf) return false;
+        const band = bandForAgeMonths(p.ageMonths).months;
+        return band <= quietWindow.currentBandMonths && band >= quietWindow.earlierBandMonths;
+      }) ?? null,
+  }));
 
   // UND-3 — "Gentle watch points" derives from the canonical useMonitoring
   // watch-area derivation: real domain names + COUNTS only (clinical firewall —
@@ -374,16 +401,15 @@ export default function MilestonesTab() {
               GP-12 — min-h-11 (44px): this is the surface's primary move, and a
               mis-tap between "Not sure" and "Not yet" changes what monitoring
               counts as an answer (lib/monitoring.ts isMilestoneAnswered). */}
-          <div className="grid grid-cols-3 gap-1.5 pt-2" role="group" aria-label={tGCare(uiLang, "elev.gcare.ms.observePrompt")}>
-            {([
-              ["yes", tGCare(uiLang, "elev.gcare.ms.observe.yes")],
-              ["not_sure", t("ms.observe.notSure")],
-              ["not_yet", t("ms.observe.notYet")],
-            ] as const).map(([status, label]) => {
-              const selected = (item.observationStatus ?? (item.checked ? "yes" : undefined)) === status;
-              return <button key={status} type="button" onClick={() => observeMilestone(item, status)} aria-pressed={selected} className="min-h-11 rounded-lg px-1.5 text-[11px] font-bold" style={{ background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)", color: selected ? "var(--arbor-green-ink)" : "var(--arbor-muted)", border: `1px solid ${selected ? "var(--arbor-rule-strong)" : "var(--arbor-rule)"}` }}>{label}</button>;
-            })}
-          </div>
+          {/* P5 critic r1 (P1-2): ONE answer grammar on the route — the Notice
+              card's NoticeAnswers (yes · not_yet · not_sure, 44 px, "Seen it"
+              outlined), never the old 11 px trio in another order. */}
+          <NoticeAnswers
+            selected={item.observationStatus ?? (item.checked ? "yes" : null)}
+            onAnswer={(status) => observeMilestone(item, status)}
+            ariaLabel={tGCare(uiLang, "elev.gcare.ms.observePrompt")}
+            className="pt-2"
+          />
           {item.observationStatus === "not_sure" && <p className="pt-1 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.observeNotSureHint")}</p>}
           <div className="flex items-center gap-2 flex-wrap pt-1">
             {/* GP-10 — `observationUpdatedAt` has been written on every mark since
@@ -397,7 +423,6 @@ export default function MilestonesTab() {
                   : tGCare(uiLang, "elev.gcare.ms.noticedUndated")}
               </span>
             )}
-            {item.ageGroup && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)" }}>{t("ms.age")} {milestoneAgeGroupText(item, t)}</span>}
             {item.custom && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-peach-ink)", background: "var(--arbor-peach-soft)" }}>{t("ms.custom")}</span>}
             {item.custom && (
               <button
@@ -637,7 +662,7 @@ export default function MilestonesTab() {
               ))}
             </ul>
           ) : (
-            <div className="space-y-2">{band.items.map(renderItem)}</div>
+            <div className="space-y-2">{band.items.filter((m) => m.id !== noticeFor(shelf)?.id).map(renderItem)}</div>
           )}
         </div>
       ))}
@@ -693,7 +718,21 @@ export default function MilestonesTab() {
         <HeroAvatar size={52} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
         <div className="min-w-0">
           <h1 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.title")}</h1>
-          <p className="text-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("ms.subtitle")}</p>
+          {latestNoticed ? (
+            /* P5 critic r1 (design P0, stronger target 1): the one sentence that
+               matters leads under the H1 — the parent's last first, dated. The
+               four-line disclaimer moves to one muted line under the shelf map. */
+            <p data-testid="ms-latest" className="mt-1.5 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)", color: "var(--arbor-ink-soft)" }}>
+              {t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })}{" "}
+              <bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>
+              <span data-testid="ms-latest-area" className="t-sm" style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}> · {t("elev.ms.latest.area", { area: latestShelfName })} · {t("elev.ms.latest.when")} </span>
+              <span data-testid="ms-latest-date" className="inline-flex items-center rounded-full px-2.5 py-0.5 t-sm font-semibold whitespace-nowrap" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", fontFamily: "var(--font-sans)" }}>
+                <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
+              </span>
+            </p>
+          ) : (
+            <p data-testid="ms-lede" className="t-sm mt-1.5 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.ms.lede")}</p>
+          )}
         </div>
       </div>
 
@@ -723,66 +762,30 @@ export default function MilestonesTab() {
                   score") are gone (the subtitle already says it). B-GROWTH-07:
                   the count stands alone as text, never a ring or a fraction. */}
               <div className="min-w-0" data-testid="ms-map-count">
-                {latestNoticed ? (
-                  /* NEXTLEVEL critic r1 (1i/1j): one sentence from the record —
-                     "Dylan's latest: 'Jumps with both feet' — you noticed it on
-                     3 Oct". The title in display type; the date the screen's
-                     one warm accent (green-soft chip). The count follows as one
-                     quiet line from the same reader Growth and Care use. */
-                  <div data-testid="ms-latest">
-                    <p className="t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>
-                      {t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })}
-                    </p>
-                    <p className="mt-1 font-semibold leading-snug" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-xl)", color: "var(--arbor-ink)" }}>
-                      <bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>
-                    </p>
-                    {/* P1-NEXTLEVEL critic r2: name the area the item was counted
-                        in, so "latest: notices feelings" never contradicts a
-                        Feelings row that has not counted it. */}
-                    <p data-testid="ms-latest-area" className="mt-0.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
-                      {t("elev.ms.latest.area", { area: latestShelfName })}
-                    </p>
-                    <p className="mt-2 flex flex-wrap items-center gap-1.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
-                      {t("elev.ms.latest.when")}
-                      <span data-testid="ms-latest-date" className="inline-flex items-center rounded-full px-2.5 py-0.5 font-semibold whitespace-nowrap" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-                        <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
-                      </span>
-                    </p>
-                    {!changingLatest && (
-                      <button
-                        type="button"
-                        data-testid="ms-latest-change"
-                        onClick={() => setChangingLatest(true)}
-                        className="mt-1 inline-flex min-h-11 items-center t-sm font-semibold"
-                        style={{ color: "var(--arbor-clay)" }}
-                      >
-                        {t("elev.loop.latest.change")}
-                      </button>
-                    )}
-                    {/* Critic r3 (P1): correctable where it is read — "Not right?
-                        Change" opens the three answers for this milestone. */}
-                    {changingLatest ? (
-                      <div role="group" aria-label={t("ms.observePrompt")} data-testid="ms-latest-change-answers" className="mt-2 flex flex-wrap gap-2">
-                        {(["yes", "not_yet", "not_sure"] as const).map((status) => (
-                          <button
-                            key={status}
-                            type="button"
-                            onClick={() => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
-                            className="inline-flex min-h-11 items-center rounded-full px-4 t-sm font-semibold"
-                            style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}
-                          >
-                            {t(NOTICE_ANSWER_KEYS[status])}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <p className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</p>
+                {latestNoticed && !changingLatest && (
+                  <button
+                    type="button"
+                    data-testid="ms-latest-change"
+                    onClick={() => setChangingLatest(true)}
+                    className="inline-flex min-h-11 items-center t-sm font-semibold"
+                    style={{ color: "var(--arbor-clay)" }}
+                  >
+                    {t("elev.loop.latest.change")}
+                  </button>
                 )}
-                <div className={latestNoticed ? "mt-3 t-sm" : "mt-1 t-2xl font-extrabold leading-tight"} style={latestNoticed ? { color: "var(--arbor-muted)" } : { fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                {/* Critic r3 (P1): correctable where it is read — "Not right?
+                    Change" opens the ONE answer group for the latest milestone. */}
+                {latestNoticed && changingLatest ? (
+                  <div data-testid="ms-latest-change-answers">
+                    <NoticeAnswers
+                      onAnswer={(status) => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
+                      ariaLabel={t("ms.observePrompt")}
+                      className="mt-2"
+                    />
+                  </div>
+                ) : null}
+                <div className={latestNoticed ? "mt-1 t-sm" : "mt-1 t-2xl font-extrabold leading-tight"} style={latestNoticed ? { color: "var(--arbor-muted)" } : { fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                   {recordCounts.noticed} {t("ms.domainOf")}
-                  {latestNoticed && noticedShelves > 0 && <> {t(noticedShelves === 1 ? "elev.ms.latest.areas.one" : "elev.ms.latest.areas", { n: noticedShelves })}</>}
                 </div>
               </div>
 
@@ -803,7 +806,205 @@ export default function MilestonesTab() {
               )}
             </div>
 
-            {/* Corrected-age (preterm) control + badge — relocated into the rail. */}
+
+          </div>
+        }
+        right={
+          <div data-testid="ms-shelf-map" className={`${cardCls} min-w-0 p-4 sm:p-6`}>
+            <div className="flex items-center gap-2">
+              <h2 className="min-w-0 flex-1 font-semibold leading-snug" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+                {t("elev.loop.shelfMap.title")}
+              </h2>
+              {/* P5 critic r1 (design P0): search is a 44 px icon in the map's
+                  heading row that opens the field in place. */}
+              <button
+                type="button"
+                data-testid="ms-search-open"
+                aria-label={t("elev.loop.ms.search")}
+                aria-expanded={searchOpen || !!query}
+                onClick={() => setSearchOpen((v) => !v)}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl"
+                style={{ color: "var(--arbor-ink-soft)" }}
+              >
+                <Icon name="search" size={20} />
+              </button>
+            </div>
+            {(searchOpen || !!query) && (
+              <label className="field-pill mt-3 flex min-h-11 items-center gap-2 rounded-xl ps-3 pe-1">
+                <Icon name="search" size={18} style={{ color: "var(--arbor-muted)" }} />
+                <input
+                  data-testid="ms-search"
+                  type="search"
+                  dir="auto"
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={t("elev.loop.search.placeholder")}
+                  aria-label={t("elev.loop.search.label")}
+                  className="field-bare min-h-11 min-w-0 flex-1 bg-transparent t-base focus:outline-none"
+                  style={{ color: "var(--arbor-ink)" }}
+                />
+                {query && (
+                  <button type="button" onClick={() => setQuery("")} aria-label={t("elev.loop.search.clear")} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg" style={{ color: "var(--arbor-muted)" }}>
+                    <Icon name="close" size={18} />
+                  </button>
+                )}
+              </label>
+            )}
+
+            {searchHits ? (
+              <div data-testid="ms-search-results" className="mt-4 space-y-4">
+                {searchHits.length === 0 && (
+                  <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.search.empty", { q: query.trim() })}</p>
+                )}
+                {searchHits.map((g) => (
+                  <div key={g.shelf} className="space-y-2">
+                    <p className="t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>{shelfLabel(g.shelf, t)}</p>
+                    {g.items.map((m) =>
+                      isLaterItem(m) ? (
+                        <p key={m.id} data-testid="ms-search-later" className="t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
+                          {milestoneText(m, "title", t, msGender)}
+                        </p>
+                      ) : (
+                        renderItem(m)
+                      ),
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-1">
+                {/* P5 critic r1 (design P0): shelves in ACTION order — the
+                    shelves holding a Notice card first, then the shelves with
+                    only their door; the shelves with no catalogue row close
+                    the map as quiet rows (framer ruling 2). */}
+                {mapShelves.map((shelf, i) => {
+                  const card = noticeFor(shelf);
+                  const n = shelfCounts[shelf];
+                  const open = Boolean(openShelves[shelf]);
+                  return (
+                    <section
+                      key={shelf}
+                      data-testid="ms-shelf"
+                      data-shelf={shelf}
+                      aria-labelledby={`ms-shelf-${shelf}`}
+                      className="py-3"
+                      style={i === 0 ? undefined : { borderTop: "1px solid var(--arbor-rule)" }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <ShelfGlyph shelf={shelf} size={36} />
+                        <h3 id={`ms-shelf-${shelf}`} className="min-w-0 flex-1 font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}>
+                          {shelfLabel(shelf, t)}
+                        </h3>
+                        {n > 0 && (
+                          <span data-testid="ms-shelf-count" className="t-sm whitespace-nowrap" style={{ color: "var(--arbor-muted)" }}>
+                            {t(n === 1 ? "elev.loop.shelf.noticed.one" : "elev.loop.shelf.noticed", { n })}
+                          </span>
+                        )}
+                      </div>
+                      {card ? (
+                        /* A ROW inside the map (no card in a card); the shelf is
+                           named once by the header; the first shelf's answers
+                           carry the route's one stamp. */
+                        <NoticeCard
+                          key={card.id}
+                          milestone={card}
+                          shelf={shelf}
+                          gender={childProfile.gender}
+                          childName={firstName}
+                          variant="row"
+                          hideShelf
+                          answersAttrs={shelf === firstNoticeShelf ? { "data-primary-move": "notice-milestone" } : undefined}
+                          onAnswer={(status) => {
+                            setHeldNotice((p) => ({ ...p, [shelf]: card.id }));
+                            setBeforeAnswer((p) => ({ ...p, [shelf]: card }));
+                            observeMilestone(card, status);
+                          }}
+                          onUndo={() => {
+                            const previous = beforeAnswer[shelf];
+                            if (previous) restoreMilestone(previous);
+                          }}
+                          onWhen={(when) => setMilestoneObservation(card.id, "yes", { when })}
+                          onKeepQuote={(note) => saveKeepsake({ milestoneId: card.id, note, noticedOn: localDay(new Date()) })}
+                          onKeepPhoto={() => setKeepsakeFor(card.id)}
+                        />
+                      ) : windowShelfItems[shelf].length === 0 ? (
+                        <p className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.shelf.noneNow")}</p>
+                      ) : null}
+                      <button
+                        type="button"
+                        data-testid="ms-shelf-door"
+                        aria-expanded={open}
+                        onClick={() => setOpenShelves((p) => ({ ...p, [shelf]: !p[shelf] }))}
+                        className="inline-flex min-h-11 items-center gap-1.5 t-sm font-semibold"
+                        style={{ color: "var(--arbor-ink-soft)" }}
+                      >
+                        {t(open ? "elev.loop.shelf.doorClose" : "elev.loop.shelf.door")}
+                        <Icon name="expand_more" size={18} style={{ transform: open ? "rotate(180deg)" : undefined }} />
+                      </button>
+                      {open && (
+                        <div className="mt-2 space-y-3">
+                          {renderShelfBands(shelf)}
+                          <button
+                            type="button"
+                            data-testid="ms-play-ideas"
+                            onClick={openPlayIdeas}
+                            className="min-h-11 w-full flex items-center gap-2.5 rounded-xl p-3 text-start transition"
+                            style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule)" }}
+                          >
+                            <Icon name="sports_esports" size={18} style={{ color: "var(--arbor-ink-soft)" }} />
+                            <span className="flex-1 t-base font-semibold" style={{ color: "var(--arbor-ink)" }}>
+                              {t("ms.playIdeas", { area: shelfLabel(shelf, t) })}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            data-testid="ms-map-ask-arbor"
+                            onClick={() => askAboutShelf(shelf)}
+                            className="min-h-11 inline-flex items-center gap-1.5 t-sm font-semibold"
+                            style={{ color: "var(--arbor-ink)" }}
+                          >
+                            <Icon name="forum" size={16} />
+                            {t("ms.askArbor")}
+                          </button>
+                        </div>
+                      )}
+                    </section>
+                  );
+                })}
+                {/* Framer ruling 2: a shelf with no catalogue row (Sleep, Family)
+                    never says "No milestones": it shows its shelf-level practice
+                    as one thing to try, and no door; with none for this age the
+                    shelves fold into ONE quiet line. */}
+                {quietShelves.length > 0 && (
+                  <div data-testid="ms-quiet-shelves" className="space-y-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+                    {quietShelves.filter((q) => q.practice).map((q) => (
+                      <div key={q.shelf} data-testid="ms-shelf-try" data-shelf={q.shelf} className="flex items-start gap-3">
+                        <ShelfGlyph shelf={q.shelf} size={36} />
+                        <p className="min-w-0 flex-1 t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
+                          <span className="font-semibold" style={{ color: "var(--arbor-ink)" }}>{shelfLabel(q.shelf, t)}</span>
+                          {" · "}{t("elev.loop.ms.tryLabel")}: {q.practice ? practiceText(q.practice, "do", uiLang === "he" ? "he" : "en", childProfile.gender) : ""}
+                        </p>
+                      </div>
+                    ))}
+                    {quietShelves.some((q) => !q.practice) && (
+                      <p data-testid="ms-shelf-none" className="t-sm" style={{ color: "var(--arbor-muted)" }}>
+                        {t("elev.loop.ms.quietNone", { shelves: quietShelves.filter((q) => !q.practice).map((q) => shelfLabel(q.shelf, t)).join(" · ") })}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            <p data-testid="ms-footer" className="mt-3 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.ms.footer")}</p>
+          </div>
+        }
+      />
+
+      </div>
+
+      {/* P5 critic r1 (P1-1): Born early sits AFTER the shelf map at every
+          width (the contract's disclosure), never ahead of the one move. */}
             <BornEarlyFrame inline={comparisonMonths < 24 || !!gestationalWeeks} summary={t("ms.bornEarly")}>
               <div className="flex flex-col gap-3">
                 <div className="flex items-start gap-2.5">
@@ -861,158 +1062,6 @@ export default function MilestonesTab() {
                 </form>
               )}
             </BornEarlyFrame>
-          </div>
-        }
-        right={
-          <div data-testid="ms-shelf-map" className={`${cardCls} min-w-0 p-4 sm:p-6`}>
-            <h2 className="font-semibold leading-snug" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
-              {t("elev.loop.shelfMap.title")}
-            </h2>
-            <label className="mt-3 flex min-h-11 items-center gap-2 rounded-xl ps-3 pe-1" style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)" }}>
-              <Icon name="search" size={18} style={{ color: "var(--arbor-muted)" }} />
-              <input
-                data-testid="ms-search"
-                type="search"
-                dir="auto"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t("elev.loop.search.placeholder")}
-                aria-label={t("elev.loop.search.label")}
-                className="min-h-11 min-w-0 flex-1 bg-transparent t-base focus:outline-none"
-                style={{ color: "var(--arbor-ink)" }}
-              />
-              {query && (
-                <button type="button" onClick={() => setQuery("")} aria-label={t("elev.loop.search.clear")} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg" style={{ color: "var(--arbor-muted)" }}>
-                  <Icon name="close" size={18} />
-                </button>
-              )}
-            </label>
-
-            {searchHits ? (
-              <div data-testid="ms-search-results" className="mt-4 space-y-4">
-                {searchHits.length === 0 && (
-                  <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.search.empty", { q: query.trim() })}</p>
-                )}
-                {searchHits.map((g) => (
-                  <div key={g.shelf} className="space-y-2">
-                    <p className="t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>{shelfLabel(g.shelf, t)}</p>
-                    {g.items.map((m) =>
-                      isLaterItem(m) ? (
-                        <p key={m.id} data-testid="ms-search-later" className="t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
-                          {milestoneText(m, "title", t, msGender)} · {milestoneAgeGroupText(m, t)}
-                        </p>
-                      ) : (
-                        renderItem(m)
-                      ),
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-2">
-                {SHELVES.map((def, i) => {
-                  const shelf = def.id;
-                  const card = noticeFor(shelf);
-                  const n = shelfCounts[shelf];
-                  const open = Boolean(openShelves[shelf]);
-                  const hasItems = shelfItems[shelf].length > 0;
-                  return (
-                    <section
-                      key={shelf}
-                      data-testid="ms-shelf"
-                      data-shelf={shelf}
-                      aria-labelledby={`ms-shelf-${shelf}`}
-                      className="py-4"
-                      style={i === 0 ? undefined : { borderTop: "1px solid var(--arbor-rule)" }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <ShelfGlyph shelf={shelf} size={36} />
-                        <h3 id={`ms-shelf-${shelf}`} className="min-w-0 flex-1 font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}>
-                          {shelfLabel(shelf, t)}
-                        </h3>
-                        {n > 0 && (
-                          <span data-testid="ms-shelf-count" className="t-sm whitespace-nowrap" style={{ color: "var(--arbor-muted)" }}>
-                            {t(n === 1 ? "elev.loop.shelf.noticed.one" : "elev.loop.shelf.noticed", { n })}
-                          </span>
-                        )}
-                      </div>
-                      {card ? (
-                        <div className="mt-3" {...(shelf === firstNoticeShelf ? { "data-primary-move": "notice-milestone" } : {})}>
-                          <NoticeCard
-                            key={card.id}
-                            milestone={card}
-                            shelf={shelf}
-                            gender={childProfile.gender}
-                            variant="card"
-                            onAnswer={(status) => {
-                              setHeldNotice((p) => ({ ...p, [shelf]: card.id }));
-                              setBeforeAnswer((p) => ({ ...p, [shelf]: card }));
-                              observeMilestone(card, status);
-                            }}
-                            onUndo={() => {
-                              const previous = beforeAnswer[shelf];
-                              if (previous) restoreMilestone(previous);
-                            }}
-                            onWhen={(when) => setMilestoneObservation(card.id, "yes", { when })}
-                            onKeepQuote={(note) => saveKeepsake({ milestoneId: card.id, note, noticedOn: localDay(new Date()) })}
-                            onKeepPhoto={() => setKeepsakeFor(card.id)}
-                          />
-                        </div>
-                      ) : !hasItems ? (
-                        <p data-testid="ms-shelf-none" className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.shelf.none")}</p>
-                      ) : windowShelfItems[shelf].length === 0 ? (
-                        <p className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.shelf.noneNow")}</p>
-                      ) : null}
-                      {hasItems && (
-                        <button
-                          type="button"
-                          data-testid="ms-shelf-door"
-                          aria-expanded={open}
-                          onClick={() => setOpenShelves((p) => ({ ...p, [shelf]: !p[shelf] }))}
-                          className="mt-2 inline-flex min-h-11 items-center gap-1.5 t-sm font-semibold"
-                          style={{ color: "var(--arbor-ink-soft)" }}
-                        >
-                          {t(open ? "elev.loop.shelf.doorClose" : "elev.loop.shelf.door")}
-                          <Icon name="expand_more" size={18} style={{ transform: open ? "rotate(180deg)" : undefined }} />
-                        </button>
-                      )}
-                      {open && (
-                        <div className="mt-2 space-y-3">
-                          {renderShelfBands(shelf)}
-                          <button
-                            type="button"
-                            data-testid="ms-play-ideas"
-                            onClick={openPlayIdeas}
-                            className="min-h-11 w-full flex items-center gap-2.5 rounded-[13px] p-3 text-start transition"
-                            style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule)" }}
-                          >
-                            <Icon name="sports_esports" size={18} style={{ color: "var(--arbor-ink-soft)" }} />
-                            <span className="flex-1 t-base font-semibold" style={{ color: "var(--arbor-ink)" }}>
-                              {t("ms.playIdeas", { area: shelfLabel(shelf, t) })}
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            data-testid="ms-map-ask-arbor"
-                            onClick={() => askAboutShelf(shelf)}
-                            className="min-h-11 inline-flex items-center gap-1.5 t-sm font-semibold"
-                            style={{ color: "var(--arbor-ink)" }}
-                          >
-                            <Icon name="forum" size={16} />
-                            {t("ms.askArbor")}
-                          </button>
-                        </div>
-                      )}
-                    </section>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        }
-      />
-
-      </div>
 
       {/* Add custom milestone */}
       <div data-module="milestones-custom" className={`${cardCls} p-5`}>
