@@ -553,13 +553,22 @@ export function selectWeeklyFocus(milestones: Milestone[], comparisonMonths: num
  * The AI "explain this milestone" prompt, months-precise for under-24-month
  * children (a "9-month-old", never a "0-year-old"). Pure and exported so the
  * infant phrasing is snapshot-tested.
+ *
+ * Clinical pre-review R05 (HIGH, 6 Oct): the prompt no longer asks for a
+ * "typical age range" — that let the model invent an age claim beside the
+ * ONE sourced sentence (P5 "Firewall on age"). The age descriptor is the
+ * CORRECTED age (`comparisonMonths`, preterm-adjusted under 24 months), and
+ * the only age text the prompt carries is `milestoneAgeLine`'s sentence (or
+ * nothing for an unstated / parent-added row), which the model may repeat
+ * but never extend.
  */
-export function explainMilestonePrompt(title: string, chronoMonths: number): string {
-  const safeMonths = Math.max(0, Math.round(Number.isFinite(chronoMonths) ? chronoMonths : 0));
+export function explainMilestonePrompt(title: string, comparisonMonths: number, ageLine: string | null = null): string {
+  const safeMonths = Math.max(0, Math.round(Number.isFinite(comparisonMonths) ? comparisonMonths : 0));
   const ageDescriptor = safeMonths < 24
     ? `${safeMonths}-month-old`
     : `${Math.floor(safeMonths / 12)}-year-old`;
-  return `Briefly explain the developmental milestone "${title}" for a ${ageDescriptor}. Cover: typical age range, what it looks like in everyday life, and 2 concrete ways a parent can support it. Non-diagnostic, warm, short. Use the headings ### Typical age, ### What it looks like, ### How to support.`;
+  const sourced = ageLine && ageLine.trim() ? ` The only age statement you may repeat is the source's own sentence: "${ageLine.trim()}".` : "";
+  return `Briefly explain the developmental milestone "${title}" for a ${ageDescriptor}. Cover: what it looks like in everyday life, and 2 concrete ways a parent can support it. Do not state ages, age ranges, averages or norms.${sourced} Non-diagnostic, warm, short. Use the headings ### What it looks like, ### How to support.`;
 }
 
 /* ───────────────────────────── Catalogue text by stable id (B-GROWTH-11) ───────────────────────────── */

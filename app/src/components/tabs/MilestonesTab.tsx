@@ -59,6 +59,7 @@ import { DEVELOPMENTAL_DOMAIN_IDS, domainLabel as registryDomainLabel, primaryDo
 import { DevelopmentalDomainId, Milestone } from "../../types";
 import { ageMonthsOf } from "../../lib/age/forChild";
 import { localDay, type ObserveStatus } from "../../lib/milestones/observe";
+import { milestoneAgeLine } from "../../lib/milestoneAgeLine";
 import { selectNextMilestonesByShelf, shelfOfMilestone } from "../../lib/milestones/selectByShelf";
 import { groupMilestonesByShelf, matchesMilestoneQuery, noticedByShelf, shelfBands } from "../../lib/milestones/shelfMap";
 import { SHELF_IDS, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
@@ -323,7 +324,9 @@ export default function MilestonesTab() {
           subject: `The developmental milestone "${item.title}"`,
           // UND-8 — months-precise for under-24-month children ("a 9-month-old",
           // never "a 0-year-old"); the B0 chronoMonths spine is the source.
-          details: explainMilestonePrompt(item.title, chronoMonths),
+          // Pre-review R05: corrected age, no "typical age" ask, the sourced
+          // sentence as the only age text the model may repeat.
+          details: explainMilestonePrompt(item.title, comparisonMonths, milestoneAgeLine(item, t)),
           language: getAiLanguage(),
         }),
       });

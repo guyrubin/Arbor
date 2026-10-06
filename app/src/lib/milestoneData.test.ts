@@ -307,9 +307,17 @@ describe("selectWeeklyFocus (UND-6)", () => {
 describe("explainMilestonePrompt (UND-8)", () => {
   it("infant snapshot: months-precise, never 'a 0-year-old'", () => {
     // Pinned prompt text — the explain() seam sends exactly this for a 9-month-old.
+    // Clinical pre-review R05: no "typical age range" ask, no "### Typical age" heading.
     expect(explainMilestonePrompt("Sits without support", 9)).toBe(
-      'Briefly explain the developmental milestone "Sits without support" for a 9-month-old. Cover: typical age range, what it looks like in everyday life, and 2 concrete ways a parent can support it. Non-diagnostic, warm, short. Use the headings ### Typical age, ### What it looks like, ### How to support.',
+      'Briefly explain the developmental milestone "Sits without support" for a 9-month-old. Cover: what it looks like in everyday life, and 2 concrete ways a parent can support it. Do not state ages, age ranges, averages or norms. Non-diagnostic, warm, short. Use the headings ### What it looks like, ### How to support.',
     );
+  });
+
+  it("pre-review R05: the sourced sentence is the ONLY age text, and no range is ever asked for", () => {
+    const p = explainMilestonePrompt("Kicks a ball", 26, "Most children do this by 2 years");
+    expect(p).toContain('The only age statement you may repeat is the source\'s own sentence: "Most children do this by 2 years".');
+    expect(p).not.toMatch(/typical age|age range,|### Typical/i);
+    expect(explainMilestonePrompt("Kicks a ball", 26, null)).not.toContain("source's own sentence");
   });
 
   it("newborn edge: 0 months reads '0-month-old', not '0-year-old'", () => {

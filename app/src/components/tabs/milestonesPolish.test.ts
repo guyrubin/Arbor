@@ -34,7 +34,8 @@ describe("UND-8 — Milestones consumer polish", () => {
   });
 
   it("the explain() seam goes through the months-precise prompt builder", () => {
-    expect(code).toContain("explainMilestonePrompt(item.title, chronoMonths)");
+    // pre-review R05: the CORRECTED age and the sourced sentence (never chronological months alone)
+    expect(code).toContain("explainMilestonePrompt(item.title, comparisonMonths, milestoneAgeLine(item, t))");
     expect(code).not.toMatch(/\$\{childProfile\.age\}-year-old/);
   });
 });
