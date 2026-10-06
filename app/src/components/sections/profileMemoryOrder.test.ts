@@ -68,8 +68,10 @@ describe("Child Memory · the action queue comes first", () => {
 
 describe("Profile · one door per room", () => {
   it("OBJ-PROFILE-03 — the memory door is the chapter, not a chapter plus a tile", () => {
-    // Chapter 6's own review link survives; the duplicate footer tile is gone.
-    expect(profile).toContain('t("cp.reviewMemory", { name: first })');
+    // B-SHELL-26: chapter 6 folded into the "Things Arbor remembers" band; its
+    // ONE door to #/memory is the band's quiet check line. No footer tile.
+    expect(profile).toContain('data-testid="profile-remember-check"');
+    expect(profile.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(1);
     expect(profile).not.toContain('t("cp.footer.memory")');
     const footer = profile.slice(at(profile, "Footer jump strip"));
     expect(footer).not.toContain('tab: "memory"');
@@ -84,14 +86,13 @@ describe("Profile · one door per room", () => {
      review button, so `#/profile` still printed "What Arbor remembers" twice.
      The chapter is the door; the tile is gone. */
   it("R9 — the memory heading is rendered exactly once on the page", () => {
-    expect(profile.match(/t\("cp\.ch\.memory"\)/g) ?? []).toHaveLength(1);
-    // …and it is the chapter's own SectionCard title, not a bare tile heading.
-    expect(profile).toMatch(/<SectionCard title=\{t\("cp\.ch\.memory"\)\}/);
-    // The chapter keeps the ONE review link. W2-GROWTH r1: the pending band's
-    // "Not quite" (edit lives there) and "See all N waiting" also open it —
-    // decisions, not a second chapter; the heading still renders once.
-    expect(profile.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(3);
-    expect(profile).toContain('t("elev.profile.remember.notQuite")');
+    // B-SHELL-26: the one heading is the band's "Things Arbor remembers" —
+    // chapter 6 (cp.ch.memory) folded into it, so the room is named once.
+    expect(profile.match(/t\("elev\.profile\.remembers\.title"\)/g) ?? []).toHaveLength(1);
+    expect(profile.match(/t\("cp\.ch\.memory"\)/g) ?? []).toHaveLength(0);
+    // ONE door to #/memory (the quiet check line); no Keep / Not quite here.
+    expect(profile.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(1);
+    expect(profile).not.toContain('t("elev.profile.remember.notQuite")');
   });
 
   it("NEGATIVE CONTROL: the pre-fix tile is a second heading of the same name", () => {
@@ -99,8 +100,9 @@ describe("Profile · one door per room", () => {
           <h2 className="text-[15px] font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {t("cp.ch.memory")}
           </h2>`;
-    // Two renders of the heading in one file is exactly what R9 rejected.
-    expect((preFixTile + profile).match(/t\("cp\.ch\.memory"\)/g) ?? []).toHaveLength(2);
+    // A second render of the room's heading is exactly what R9 rejected; the
+    // fixture carries the only cp.ch.memory left (B-SHELL-26 folded chapter 6).
+    expect((preFixTile + profile).match(/t\("cp\.ch\.memory"\)/g) ?? []).toHaveLength(1);
     expect(profile).not.toContain(preFixTile);
     // and its counts row, which duplicated the chapter's own pending line
     expect(profile).not.toContain('{approvedMemoryItems.length}</strong> {t("coach.approved")}');

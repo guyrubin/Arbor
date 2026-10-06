@@ -103,14 +103,15 @@ describe("#/profile Hebrew page — no Latin chrome (Law 8)", () => {
   });
 });
 
-describe("critic r1 (P0) — a pending fact is an inference, never 'you wrote'", () => {
+describe("critic r1 (P0) → B-SHELL-26 — a pending inference is Arbor's, never 'you wrote', and never decided on Profile", () => {
   for (const loc of ["en", "he"] as const) {
-    it(`${loc}: the pending card says Arbor noticed it in the conversation`, () => {
+    it(`${loc}: one quiet line says Arbor has a thought to check; the inference's words stay on #/memory`, () => {
       h.locale = loc;
       h.pending = [{ memoryId: "p1", fact: "Mornings go smoother when his bag is packed the night before.", status: "pending", createdAt: "2026-10-05T10:00:00.000Z", source: "chat", retention: "90d" }];
       const html = renderToStaticMarkup(<ChildProfile />);
-      const lead = translate(loc, "elev.childmem.provenance.inference", { date: "X" }).split("X")[0];
-      expect(text(html)).toContain(lead.trim());
+      expect(text(html)).toContain(translate(loc, "elev.profile.remembers.check.one"));
+      expect(html).toContain('data-testid="profile-remember-check"');
+      expect(text(html)).not.toContain("Mornings go smoother");
       expect(text(html)).not.toMatch(/From what you wrote|ממה שכתבתם/);
     });
   }
@@ -143,40 +144,44 @@ describe("#/profile — the cut chapter, the count and the knows line", () => {
     expect(band).toMatch(/kept since September 2026/);
     expect(band).not.toMatch(/\d+ (child|children|family members?|captured moments)/);
   });
-  it("nothing approved, nothing pending: the band invites one fact (the stamped zero state)", () => {
+  it("nothing approved, nothing pending: the door invites one fact (the stamped zero state)", () => {
     h.locale = "en";
     h.approved = [];
     const html = renderToStaticMarkup(<ChildProfile />);
-    expect(html).toMatch(/data-testid="profile-hero-cta" data-primary-move="approve-memory"/);
+    expect(html).toMatch(/data-testid="profile-hero-cta" data-primary-move="capture-moment"/);
     expect(html).toContain("Tell Arbor one thing about Dylan worth remembering.");
+    expect(html).not.toContain('data-module="profile-remember"');
   });
-  it("pending facts are decided here: up to three, Keep / Not quite / Forget, one stamp", () => {
+  it("B-SHELL-26: pending inferences are not decided here — no Keep / Not quite, one quiet line, one stamp", () => {
     h.locale = "he";
     h.pending = [1, 2, 3, 4].map((n) => ({ memoryId: `p${n}`, fact: `fact ${n}`, status: "pending", createdAt: "2026-10-02T10:00:00.000Z", source: "chat", retention: "90d" }));
     const html = renderToStaticMarkup(<ChildProfile />);
-    expect(html.match(/data-testid="profile-remember-fact"/g)).toHaveLength(3);
-    expect(html.match(/data-primary-move="approve-memory"/g)).toHaveLength(1);
-    expect(html).toContain(translate("he", "elev.profile.remember.keep"));
-    expect(html).toContain(translate("he", "elev.profile.remember.notQuite"));
+    expect(html).not.toContain('data-testid="profile-remember-fact"');
+    expect(html).not.toContain('data-testid="profile-remember-keep"');
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    expect(html).toMatch(/data-testid="profile-hero-cta" data-primary-move="capture-moment"/);
+    expect(html).not.toContain(translate("he", "elev.profile.remember.keep"));
+    expect(html).not.toContain(translate("he", "elev.profile.remember.notQuite"));
+    expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
+    // the kept fact is listed with Forget only
+    expect(html).toContain('data-testid="profile-remembered-forget"');
     expect(html).toContain(translate("he", "elev.profile.remember.forget"));
     expect(html.indexOf('data-module="profile-remember"')).toBeLessThan(html.indexOf('data-module="profile-who"'));
   });
-  it("W2-GROWTH r2 (P0): the first fold is identity → working on → the first pending fact's Keep; nothing else sits above Keep (EN + HE)", () => {
+  it("W2-GROWTH r2 → B-SHELL-26: the first fold is identity → working on → the knows-line → the one door (EN + HE)", () => {
     for (const locale of ["en", "he"] as const) {
       h.locale = locale;
       h.pending = [{ memoryId: "p1", fact: "fact 1", status: "pending", createdAt: "2026-10-02T10:00:00.000Z", source: "chat", retention: "90d" }];
       const html = renderToStaticMarkup(<ChildProfile />);
-      const keep = html.indexOf('data-testid="profile-remember-keep"');
-      const above = html.slice(0, keep);
-      expect(keep).toBeGreaterThan(-1);
+      const door = html.indexOf('data-testid="profile-hero-cta"');
+      const above = html.slice(0, door);
+      expect(door).toBeGreaterThan(-1);
       expect(above).toContain('data-testid="profile-identity-line"');
       expect(above).toContain('data-testid="profile-goals"');
-      // the knows-line, Ask Arbor and Create hero all sit BELOW the decision
-      expect(above).not.toContain('data-testid="profile-knows-line"');
-      expect(html.indexOf('data-testid="profile-knows-line"')).toBeGreaterThan(keep);
+      expect(above).toContain('data-testid="profile-knows-line"');
       expect(above).not.toContain(translate(locale, "cp.askAbout", { name: "Dylan" }));
       expect(above).not.toContain(translate(locale, "cp.hero.subline"));
-      // at lg the band is a column beside the identity (grid lines mirror in RTL)
+      // at lg the remembered band is a column beside the identity (grid lines mirror in RTL)
       expect(html).toMatch(/data-testid="profile-fold" class="[^"]*lg:grid lg:grid-cols-2/);
       expect(html).toMatch(/data-module="profile-remember"[^>]*class="[^"]*lg:col-start-2 lg:row-start-1/);
     }

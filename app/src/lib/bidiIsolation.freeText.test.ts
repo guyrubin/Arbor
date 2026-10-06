@@ -42,7 +42,9 @@ describe("B-SHELL-28 — FreeText renders inside a bdi with dir=auto, the name i
     const src = fs.readFileSync(path.resolve(__dirname, "../components/sections/ChildProfile.tsx"), "utf8");
     expect(src).toContain("<FreeText text={toParentWords(latestApproved.fact)} />");
     expect(src).toContain("<FreeText text={toParentWords(m.fact)} />");
-    expect(src).toContain("<FreeText text={shown.fact} />");
+    // (B-SHELL-26: chapter 6's `shown.fact` list folded into the remembered
+    //  band, which renders <FreeText text={toParentWords(m.fact)} /> above.)
+    expect(src).not.toMatch(/>\{shown\.fact\}</);
     expect(src).not.toMatch(/dir="auto"[^>]*>\{toParentWords/);
   });
 

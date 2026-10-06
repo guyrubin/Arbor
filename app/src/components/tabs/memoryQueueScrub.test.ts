@@ -149,7 +149,9 @@ describe("B-CAREPRO-06 · ChildMemory, ChildProfile and SafetyTab render scrubbe
 
   it("ChildProfile and SafetyTab list the scrubbed approved facts", () => {
     expect(PROFILE).toContain("scrubMemoryProposals(approvedMemoryItems)");
-    expect(PROFILE).toContain("shownApproved.slice(0, 5).map(");
+    // B-SHELL-26: the remembered band lists the scrubbed facts, newest first.
+    expect(PROFILE).toContain("[...shownApproved].sort(");
+    expect(PROFILE).toContain("remembered.slice(0, 5).map(");
     expect(PROFILE).not.toContain("approvedMemoryItems.slice(");
     expect(PROFILE).toContain("pendingQueue.length === 1");
     // B-CAREPRO-14: Safety renders no memory text at all.

@@ -227,11 +227,8 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "profile/ProfileEditDrawer.tsx",
     "sections/Appointments.tsx",
     "sections/AskSpecialist.tsx",
-    // W2-GROWTH r1 / B-GROWTH-NEW-1E: the first pending fact's Keep carries
-    // data-primary-move="approve-memory" (surfaceContract profile.primaryMove);
-    // with nothing pending, the "tell Arbor one thing" control carries it. One
-    // gradient per state; ChildProfile.layout.test pins one stamp per render.
-    "sections/ChildProfile.tsx",
+    // (B-SHELL-26: ChildProfile left the ratchet — the queue's gradient Keep is
+    //  gone and the capture-moment door is a solid accent fill.)
     // W2-CAREPRO r1: the lead pending row's "Remember this" carries
     // data-primary-move="approve-memory-fact" (surfaceContract memory.primaryMove),
     // the only gradient in the file; memoryGroups.render.test pins one stamp.

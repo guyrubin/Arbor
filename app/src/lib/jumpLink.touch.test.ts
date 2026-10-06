@@ -126,8 +126,11 @@ describe("item 9 · the primary-move controls state a 44 px hit box", () => {
     // The sites all go through the primitive rather than hand-rolled links.
     // (Eight since GP-26 retired the strengths door — see profileMemoryOrder;
     // six since B-CAREPRO-29 removed the plan "next step" chapter's two;
-    // four since W2-GROWTH r1 CUT the "Now" chapter and its two.)
-    expect((src.match(/<JumpLink /g) ?? []).length).toBeGreaterThanOrEqual(4);
+    // four since W2-GROWTH r1 CUT the "Now" chapter and its two; three since
+    // B-SHELL-26 folded chapter 6 into the remembered band, whose one door is
+    // a 44 px min-h-11 button.)
+    expect((src.match(/<JumpLink /g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(src).toMatch(/data-testid="profile-remember-check"[^\n]{0,200}min-h-11/);
   });
 
   it("the Milestones preterm input and the vocabulary add button state a floor", () => {

@@ -69,26 +69,29 @@ describe("W2 Profile identity and protected doors",()=>{
   expect(line).not.toContain("English");
   expect(line).toContain("<bdi dir=\"auto\">School</bdi>");
  });
- // W2-GROWTH r1 / B-GROWTH-NEW-1E: a proposal is shown ONLY inside the decision
- // band, beside its Keep / Not quite / Forget — never in the approved list.
- it("labels approved and proposed memory separately; a proposal appears only where it is decided",()=>{
+ // B-SHELL-26: Profile lists the kept facts (Forget only); an inference waiting
+ // is one quiet line to #/memory — its words are never shown or decided here.
+ it("lists what Arbor remembers with Forget only; a proposal's words never appear on Profile",()=>{
   harness.approved=[{memoryId:"a1",fact:"Approved fact"}];harness.pending=[{memoryId:"p1",fact:"Unapproved private proposal"}];
   const html=renderToStaticMarkup(<ChildProfile/>);
-  expect(html).toContain("Approved by you");expect(html).toContain("Approved fact");
-  expect(html).toContain("awaiting your review");
   const band=html.slice(html.indexOf('data-module="profile-remember"'),html.indexOf("</section>",html.indexOf('data-module="profile-remember"')));
-  expect(band).toContain("Unapproved private proposal");expect(band).toContain('data-testid="profile-remember-keep"');
-  expect(html.split("Unapproved private proposal")).toHaveLength(2);
+  expect(band).toContain("Approved fact");expect(band).toContain('data-testid="profile-remembered-forget"');
+  expect(band).toContain('data-testid="profile-remember-check"');
+  expect(html).not.toContain("Unapproved private proposal");
+  expect(html).not.toContain('data-testid="profile-remember-keep"');
  });
- it("the primary keeps the first pending fact on this page, and opens editing when nothing waits",()=>{
+ it("the primary is the one 'Add a fact' door (capture-moment) in every state; Forget deletes, nothing routes",()=>{
   harness.callback=true;
-  const stamped=()=>elements(ChildProfile()).filter(el=>el.props["data-primary-move"]==="approve-memory");
+  const stamped=()=>elements(ChildProfile()).filter(el=>el.props["data-primary-move"]==="capture-moment");
   expect(stamped()).toHaveLength(1);
+  expect(stamped()[0].props["data-testid"]).toBe("profile-hero-cta");
   stamped()[0].props.onClick();expect(harness.setState).toHaveBeenCalledWith(true);expect(harness.setActiveTab).not.toHaveBeenCalled();
-  harness.pending=[{memoryId:"p1",fact:"f"},{memoryId:"p2",fact:"g"}];
+  harness.pending=[{memoryId:"p1",fact:"f"},{memoryId:"p2",fact:"g"}];harness.approved=[{memoryId:"a1",fact:"Approved fact"}];
   expect(stamped()).toHaveLength(1);
-  expect(stamped()[0].props["data-testid"]).toBe("profile-remember-keep");
-  stamped()[0].props.onClick();expect(harness.decide).toHaveBeenCalledWith("p1","approved");
+  expect(stamped()[0].props["data-testid"]).toBe("profile-hero-cta");
+  expect(elements(ChildProfile()).filter(el=>el.props["data-primary-move"]==="approve-memory")).toHaveLength(0);
+  const forget=elements(ChildProfile()).find(el=>el.props["data-testid"]==="profile-remembered-forget");
+  forget!.props.onClick();expect(harness.decide).toHaveBeenCalledWith("a1","deleted");
   expect(harness.setActiveTab).not.toHaveBeenCalled();
  });
  it("Create Hero opens the existing edit/creation seam rather than navigating to itself",()=>{
