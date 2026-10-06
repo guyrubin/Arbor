@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { DOMAINS, domainName, type DomainId } from "../../lib/domains/registry";
@@ -81,6 +81,12 @@ export default function ProView({
 }: ProViewProps) {
   const { t } = useLanguage();
   const sectionItems = (id: string) => packet.sections.find((s) => s.id === id)?.items ?? [];
+  // P5-LOOP c2 r1 (journal product P1, G0): each packet line folds to 3 items
+  // under ONE "Show all", so the packet's verbs — moved under its title — sit
+  // above the fold at 375 (they were at y 920 / 961 under the full lists).
+  const FOLD = 3;
+  const [expanded, setExpanded] = useState(false);
+  const folds = PACKET_LINES.some(({ section }) => sectionItems(section).length > FOLD);
   const professionName = t(intakeLabelKey(profession));
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[720px] flex-col gap-4">
@@ -136,6 +142,25 @@ export default function ProView({
             {t("elev.packet.prepared", { date: packet.generatedAt })}
             {packet.demo ? <> · <span data-testid="pro-packet-demo">{t(DEMO_HEADER_KEY)}</span></> : null}
           </p>
+          <div data-testid="pro-packet-actions" className="mt-3 flex gap-2">
+            {(["pdf", "copy", "send"] as const).map((verb, i) => (
+              <button
+                key={verb}
+                type="button"
+                data-testid={`pro-egress-${verb}`}
+                onClick={() => onEgress(verb)}
+                {...(i === 0 ? primaryMoveProps ?? {} : {})}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 t-sm font-bold"
+                style={i === 0
+                  ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }
+                  : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
+              >
+                <Icon name={verb === "pdf" ? "description" : verb === "copy" ? "content_copy" : "send"} size={17} aria-hidden />
+                {t(`elev.shelfJournal.pro.${verb}`)}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.pro.egressHint")}</p>
           <dl className="mt-2">
             {PACKET_LINES.map(({ section, labelKey }) => {
               const items = sectionItems(section);
@@ -144,12 +169,26 @@ export default function ProView({
                   <dt className="w-24 flex-none pt-0.5 t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{t(labelKey)}</dt>
                   <dd className="min-w-0 flex-1 t-sm leading-relaxed" style={{ color: items.length ? "var(--arbor-ink-soft)" : "var(--arbor-muted)" }}>
                     {items.length
-                      ? items.map((it) => <span key={it.id} className="block"><bdi dir="auto">{it.text}</bdi></span>)
+                      ? (expanded ? items : items.slice(0, FOLD)).map((it) => <span key={it.id} className="block"><bdi dir="auto">{it.text}</bdi></span>)
                       : t("elev.shelfJournal.pro.line.none")}
                   </dd>
                 </div>
               );
             })}
+            {folds && (
+              <div className="border-t py-1" style={{ borderColor: "var(--arbor-rule)" }}>
+                <button
+                  type="button"
+                  data-testid="pro-packet-show-all"
+                  aria-expanded={expanded}
+                  onClick={() => setExpanded((v) => !v)}
+                  className="inline-flex min-h-11 items-center gap-1 t-sm font-bold underline underline-offset-4"
+                  style={{ color: "var(--arbor-clay)" }}
+                >
+                  {t(expanded ? "elev.shelfJournal.pro.showFewer" : "elev.shelfJournal.pro.showAll")}
+                </button>
+              </div>
+            )}
             <div data-testid="pro-packet-line" data-section="intake-questions" className="flex gap-3 border-t py-2" style={{ borderColor: "var(--arbor-rule)" }}>
               <dt className="w-24 flex-none pt-0.5 t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
                 <label htmlFor="pro-questions">{t("elev.shelfJournal.pro.line.questions")}</label>
@@ -169,25 +208,6 @@ export default function ProView({
               </dd>
             </div>
           </dl>
-          <div className="mt-3 flex gap-2">
-            {(["pdf", "copy", "send"] as const).map((verb, i) => (
-              <button
-                key={verb}
-                type="button"
-                data-testid={`pro-egress-${verb}`}
-                onClick={() => onEgress(verb)}
-                {...(i === 0 ? primaryMoveProps ?? {} : {})}
-                className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 t-sm font-bold"
-                style={i === 0
-                  ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }
-                  : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
-              >
-                <Icon name={verb === "pdf" ? "description" : verb === "copy" ? "content_copy" : "send"} size={17} aria-hidden />
-                {t(`elev.shelfJournal.pro.${verb}`)}
-              </button>
-            ))}
-          </div>
-          <p className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.pro.egressHint")}</p>
         </article>
       </section>
 

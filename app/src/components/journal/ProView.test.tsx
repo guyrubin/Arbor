@@ -88,6 +88,36 @@ describe("ProView — the professional view", () => {
     for (const v of ["pdf", "copy", "send"]) expect(html).toMatch(new RegExp(`data-testid="pro-egress-${v}"[^>]*min-h-11|min-h-11[^>]*data-testid="pro-egress-${v}"`));
   });
 
+  it("P5-LOOP c2 r1 (G0): the packet's verbs sit under its title, BEFORE the lines; each line folds to 3 under ONE 'Show all' (EN + HE)", () => {
+    for (const lang of ["en", "he"] as const) {
+      const html = render(lang);
+      const actions = html.indexOf('data-testid="pro-packet-actions"');
+      expect(actions).toBeGreaterThan(html.indexOf('data-testid="pro-packet-prepared"'));
+      expect(actions).toBeLessThan(html.indexOf('data-testid="pro-packet-line"'));
+      expect(html.indexOf('data-testid="pro-egress-pdf"')).toBeLessThan(html.indexOf('data-testid="pro-packet-line"'));
+      // the base packet has no line over 3 → no toggle
+      expect(html).not.toContain('data-testid="pro-packet-show-all"');
+      const base = packetFor(lang);
+      const long: ConsultPacket = {
+        ...base,
+        sections: base.sections.map((sec) => sec.id === "intake-moments"
+          ? { ...sec, items: [1, 2, 3, 4, 5].map((n) => ({ ...(sec.items[0] ?? { id: "x", text: "" }), id: `m${n}`, text: `Moment number ${n}` })) }
+          : sec),
+      };
+      state.lang = lang;
+      const folded = renderToStaticMarkup(
+        <ProView childName="Dylan" profession="slp" onSelectProfession={noop} packet={long} questions="" onQuestionsChange={noop} onEgress={noop} counts={counts} onBack={noop} primaryMoveProps={{ "data-primary-move": "open-shelf" }} />,
+      );
+      expect(text(folded)).toContain("Moment number 3");
+      expect(text(folded)).not.toContain("Moment number 4");
+      const toggle = folded.match(/<button[^>]*data-testid="pro-packet-show-all"[^>]*>/g) ?? [];
+      expect(toggle).toHaveLength(1);
+      expect(toggle[0]).toMatch(/aria-expanded="false"/);
+      expect(toggle[0]).toMatch(/min-h-11/);
+      expect(text(folded)).toContain(translate(lang, "elev.shelfJournal.pro.showAll"));
+    }
+  });
+
   it("three modules, one stamp (the packet's first verb)", () => {
     const html = render();
     expect([...html.matchAll(/data-module="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["pro-header", "pro-packet", "pro-domains"]);
