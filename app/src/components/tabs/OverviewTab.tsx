@@ -223,7 +223,7 @@ export default function OverviewTab() {
   //    program's shelf is skipped by the thinnest-shelf rule and the week's
   //    watchFor rows are served first (lib/programs/notice); no enrolment =
   //    exactly the previous selection. ──
-  const programRows = useChildCollection<unknown>(childProfile.id, "programs");
+  const programRows = useChildCollection<{ id: string }>(childProfile.id, "programs");
   const noticeProgram = useMemo<NoticeProgram | null>(() => {
     const active = activeProgramWeek(programRows.items, now);
     return active ? { shelf: active.program.shelf, watchFor: active.content.watchFor } : null;
