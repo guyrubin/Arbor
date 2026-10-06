@@ -231,6 +231,96 @@ export const PRACTICES: readonly Practice[] = [
     do: L("Make tidying a small game: ask for one thing at a time, without pointing, and say thank you when it arrives.", "הפכו סידור למשחק קטן: בקשו דבר אחד בכל פעם, בלי להצביע, ואמרו תודה כשהוא מגיע."),
     say: L("Can you give me the sock? Thank you! You brought the sock.", "תביא/י לי את הגרב? תודה! הבאת את הגרב."),
   }),
+
+  /* ── batch 2/7 · Words · 24–60 months ────────────────────────────────── */
+  P("cdc-24m-3", "responsive_interaction", 5, S.ashaActivities, {
+    do: L("When your child says one word, say it back with one more word added. Keep it light, a reply, not a correction.", "כשהילד/ה אומר/ת מילה אחת, החזירו אותה עם עוד מילה אחת. בקלילות, כמו תשובה ולא כמו תיקון."),
+    say: L("Milk? More milk! You want more milk.", "חלב? עוד חלב! את/ה רוצה עוד חלב."),
+  }),
+  P("cdc-24m-4", "dialogic_reading", 10, S.aapLiteracy, {
+    do: L("Read a picture book side by side. Instead of reading every word, ask 'where is…?' about one picture and wait for a point.", "קראו ספר תמונות זה לצד זה. במקום לקרוא כל מילה, שאלו 'איפה ה...?' על תמונה אחת וחכו להצבעה."),
+    say: L("Where's the bear? There he is! A big brown bear.", "איפה הדובי? הנה הוא! דובי חום וגדול."),
+    materials: L("A picture book from home", "ספר תמונות מהבית"),
+  }),
+  P("cdc-24m-5", "joint_attention", 5, S.cdcMilestones, {
+    do: L("At bath or dressing time, touch and name one body part at a time, then ask where it is on them.", "באמבטיה או בהתלבשות, געו בחלק אחד של הגוף ואמרו את השם שלו, ואז שאלו איפה הוא אצל הילד/ה."),
+    say: L("Here's my nose. Where's your nose? There it is!", "הנה האף שלי. איפה האף שלך? הנה הוא!"),
+  }),
+  P("asha-comm-24m", "responsive_interaction", 5, S.ashaActivities, {
+    do: L("When you don't catch a word, repeat the part you understood and ask about it, so your child can show or say it again.", "כשלא הבנתם מילה, חזרו על החלק שכן הבנתם ושאלו עליו, כדי שהילד/ה יוכל/תוכל להראות או להגיד שוב."),
+    say: L("You saw a big... what? Show me!", "ראית משהו גדול... מה? תראה/י לי!"),
+  }),
+  P("cdc-30m-3", "responsive_interaction", 10, S.ashaActivities, {
+    do: L("While you cook or tidy, describe what you are doing in short, simple sentences, and name the things your child picks up.", "בזמן בישול או סידור, ספרו בקול מה אתם עושים במשפטים קצרים, ותנו שם לדברים שהילד/ה מרים/ה."),
+    say: L("I'm cutting the cucumber. Crunch! You have the spoon.", "חותכים מלפפון. קראנץ'! ובידיים שלך כף."),
+  }),
+  P("cdc-30m-4", "child_directed_play", 10, S.aapPowerOfPlay, {
+    do: L("Play with toy animals or cars on the floor and narrate what they do with action words, following whatever your child moves.", "שחקו על הרצפה עם חיות או מכוניות, ותארו במילות פעולה מה הן עושות, לפי מה שהילד/ה מזיז/ה."),
+    say: L("The doggie runs! Now he jumps. Up, up, up!", "הכלבלב רץ! עכשיו הוא קופץ. למעלה, למעלה!"),
+    materials: L("A few toy animals or cars", "כמה חיות צעצוע או מכוניות"),
+  }),
+  P("cdc-30m-5", "dialogic_reading", 10, S.aapLiteracy, {
+    do: L("Look at a picture book together. Point to a picture, ask 'what's that?', and add a little more to whatever they say.", "הסתכלו יחד בספר תמונות. הצביעו על תמונה, שאלו 'מה זה?' והוסיפו עוד קצת למה שהילד/ה אומר/ת."),
+    say: L("What's that? A truck! A big red truck.", "מה זה? משאית! משאית אדומה וגדולה."),
+    materials: L("A picture book from home", "ספר תמונות מהבית"),
+  }),
+  P("cdc-36m-3", "responsive_interaction", 5, S.ashaActivities, {
+    do: L("When your child tells you something, get down to their eye level, listen to the end, and repeat the key words back clearly.", "כשהילד/ה מספר/ת לכם משהו, רדו לגובה העיניים, הקשיבו עד הסוף והחזירו את המילים החשובות בבירור."),
+    say: L("You went down the big slide? Wow, the big slide!", "ירדת במגלשה הגדולה? וואו, המגלשה הגדולה!"),
+  }),
+  P("cdc-36m-4", "serve_and_return", 5, S.harvardServeReturn, {
+    do: L("When the questions come, answer briefly and honestly, then hand a question back so they can share their own idea.", "כשמגיעות השאלות, ענו בקצרה ובכנות, ואז החזירו שאלה כדי לשמוע מה הוא/היא חושב/ת."),
+    say: L("Why is it raining? Clouds are full of water. What do you think?", "למה יורד גשם? העננים מלאים במים. ומה את/ה חושב/ת?"),
+  }),
+  P("cdc-36m-5", "child_directed_play", 5, S.cdcMilestones, {
+    do: L("Sing a simple hello song that uses your child's name and the names of others in the room, leaving a gap for them to fill.", "שירו שיר שלום פשוט עם השם של הילד/ה ושל אחרים בחדר, ועצרו רגע כדי שימלא/תמלא את החסר."),
+    say: L("Hello, Mommy! Hello, Grandpa! And hello to... who are you?", "שלום לאמא! שלום לסבא! ושלום ל... מי את/ה?"),
+  }),
+  P("cdc-36m-6", "serve_and_return", 10, S.harvardServeReturn, {
+    do: L("At a calm moment, like the car or bath, start a chat about something they care about and keep it going with short replies.", "ברגע רגוע, כמו בנסיעה או באמבטיה, פתחו שיחה על משהו שמעניין את הילד/ה והמשיכו אותה בתשובות קצרות."),
+    say: L("Tell me about the cat you saw. What was it doing?", "ספר/י לי על החתול שראית. מה הוא עשה?"),
+  }),
+  P("asha-comm-36m", "responsive_interaction", 5, S.ashaActivities, {
+    do: L("When a word comes out differently, don't correct it. Say the word back the usual way inside your reply, then carry on.", "כשמילה יוצאת אחרת, אל תתקנו. אמרו אותה בצורה הרגילה בתוך התשובה שלכם, והמשיכו הלאה."),
+    say: L("A tat? Yes, a cat! The cat is sleeping.", "תתול? כן, חתול! החתול ישן."),
+  }),
+  P("cdc-48m-6", "serve_and_return", 10, S.harvardServeReturn, {
+    do: L("At a meal, ask one open question that has no right answer, then listen and build on what they say.", "בארוחה, שאלו שאלה פתוחה אחת בלי תשובה נכונה, הקשיבו, והמשיכו ממה שהילד/ה אומר/ת."),
+    say: L("If you could be any animal, which one would you be?", "אם היית יכול/ה להיות כל חיה, איזו חיה היית?"),
+  }),
+  P("cdc-48m-7", "routine_building", 5, S.whoUnicefCcd, {
+    do: L("Sing the same favourite song or rhyme at a daily moment, like the bath, and pause before a familiar word so they can join in.", "שירו את אותו שיר אהוב ברגע קבוע ביום, כמו באמבטיה, ועצרו לפני מילה מוכרת כדי שיוכל/תוכל להצטרף."),
+    say: L("Our bath song! I'll start... and you sing the next word!", "השיר של האמבטיה! אני מתחיל/ה... ואת/ה ממשיך/ה!"),
+  }),
+  P("cdc-48m-8", "serve_and_return", 5, S.harvardServeReturn, {
+    do: L("At bedtime or pickup, share one small thing from your own day first, then ask about one specific part of theirs.", "בזמן השכבה או באיסוף מהגן, ספרו קודם דבר קטן אחד מהיום שלכם, ואז שאלו על רגע מסוים מהיום שלו/ה."),
+    say: L("I saw a funny dog today. Who did you play with outside?", "היום ראיתי כלב מצחיק. עם מי שיחקת בחצר?"),
+  }),
+  P("cdc-48m-9", "serve_and_return", 5, S.cdcMilestones, {
+    do: L("Play a 'what is it for?' game with everyday things around the house, and give your own silly answers too.", "שחקו במשחק 'בשביל מה זה?' עם חפצים בבית, ותנו גם אתם תשובות מצחיקות."),
+    say: L("What is a spoon for? For eating soup! Or... for a hat?", "בשביל מה יש כף? לאכול מרק! או... לשים על הראש?"),
+  }),
+  P("asha-comm-48m", "child_directed_play", 5, S.ashaActivities, {
+    do: L("Play with sounds for fun: stretch out a sound, like 'sssnake', and invite your child to find other words that start the same way.", "שחקו בצלילים בשביל הכיף: מתחו צליל, כמו 'סססוס', והזמינו את הילד/ה למצוא עוד מילים שמתחילות באותו צליל."),
+    say: L("Sssnake starts with sss. What else starts with sss?", "סססוס מתחיל בסס. מה עוד מתחיל בסס?"),
+  }),
+  P("cdc-60m-4", "dialogic_reading", 10, S.aapLiteracy, {
+    do: L("Take turns telling a story about a family photo or a picture book page: you say one part, they add the next.", "ספרו סיפור בתורות על תמונה משפחתית או על עמוד בספר: אתם אומרים חלק אחד, והילד/ה מוסיף/ה את ההמשך."),
+    say: L("Once upon a time, a little bear went out. And then what happened?", "פעם אחת, דובון קטן יצא לטייל. ואז מה קרה?"),
+  }),
+  P("cdc-60m-5", "dialogic_reading", 10, S.aapLiteracy, {
+    do: L("After reading a book, ask one question about it with no wrong answer, like how a character felt or what might happen next.", "אחרי קריאת ספר, שאלו שאלה אחת עליו שאין לה תשובה לא נכונה, למשל מה הדמות הרגישה או מה היה קורה אחר כך."),
+    say: L("How do you think the bunny felt when he got lost?", "איך לדעתך הרגיש הארנב כשהלך לאיבוד?"),
+    materials: L("A picture book from home", "ספר תמונות מהבית"),
+  }),
+  P("cdc-60m-6", "serve_and_return", 10, S.harvardServeReturn, {
+    do: L("Have a few minutes of talk with no phones nearby, on a topic they choose. Follow their lead and answer with interest.", "קחו כמה דקות של שיחה בלי טלפונים ליד, על נושא שהילד/ה בוחר/ת. לכו אחרי ההובלה שלו/ה וענו בעניין."),
+    say: L("You choose what we talk about. I'm all ears.", "את/ה בוחר/ת על מה נדבר. אני כולי אוזן."),
+  }),
+  P("cdc-60m-7", "child_directed_play", 5, S.ashaActivities, {
+    do: L("Play a silly rhyming game in the car or bath: say a word and enjoy whatever rhymes come back, real or made up.", "שחקו במשחק חרוזים מצחיק באוטו או באמבטיה: אמרו מילה ותיהנו מכל חרוז שחוזר, אמיתי או מומצא."),
+    say: L("Cat, hat, bat... what else sounds like cat?", "גמל, חשמל, נמל... מה עוד מתחרז עם גמל?"),
+  }),
 ];
 
 /* ───────────────────────────── helpers ───────────────────────────── */
