@@ -330,8 +330,11 @@ describe("B-ASKJB-22 · no 'Toughest' / 'worst' grade in the copy; resolved is a
     const beh = fs.readFileSync(path.join(__dirname, "..", "components", "tabs", "BehaviorsTab.tsx"), "utf8");
     expect(beh).toContain("resolved: resolvedWeek,");
     expect(beh).not.toMatch(/`\$\{resolvedWeek\}\/\$\{last7\.length\}`/);
-    expect(beh).toContain('{ value: heroStats.resolved, label: t("elev.closeloop.stats.settledWeek") }');
-    expect(translate("en", "elev.closeloop.stats.settledWeek")).toBe("settled this week");
-    expect(translate("he", "elev.closeloop.stats.settledWeek")).toBe("נרגעו השבוע");
+    // NEXTLEVEL r1: the hero trio is cut; the settled count rides the one
+    // muted week line, with its own label, never a ratio.
+    expect(beh).toContain('t("elev.beh.week.settled", { n: heroStats.resolved })');
+    expect(translate("en", "elev.beh.week.settled", { n: 1 })).toMatch(/^\D*1\D*settled$/);
+    expect(translate("he", "elev.beh.week.settled", { n: 1 })).toMatch(/נרגעו/);
+    for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.beh.week.settled", { n: 2 })).not.toContain("/");
   });
 });

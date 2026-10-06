@@ -109,8 +109,10 @@ describe("RUN-08 · the Behaviors hero at day 0", () => {
     expect(textOf(render(prefix))).not.toMatch(/\d/);
   });
 
-  it("the hero passes a translated zero line", () => {
-    expect(read("components/tabs/BehaviorsTab.tsx")).toMatch(/zeroLine=\{t\("elev\.growthTruth\.hero\.empty"\)\}/);
+  it("NEXTLEVEL r1: the hero is cut — no stat trio; a populated week says its count once, keyed, as one muted line", () => {
+    const beh = read("components/tabs/BehaviorsTab.tsx");
+    expect(beh).not.toMatch(/<HubHero|stats=\{\[/);
+    expect(beh).toMatch(/\{hasWeek && \(\s*<span data-testid="behaviors-week-line">/);
   });
 });
 
@@ -118,10 +120,13 @@ describe("RUN-08 · Journal and Story zero branches", () => {
   const journal = read("components/tabs/JournalTab.tsx");
   const story = read("components/tabs/StoryTimelineTab.tsx");
 
-  it("the Journal week stat swaps the numeral for a teach line at zero", () => {
-    expect(journal).toMatch(/weekCount === 0 \?/);
+  it("the Journal aside never prints a week numeral; at zero it carries the teach line", () => {
+    // NEXTLEVEL r1 (Law 9): the week count is said once, in the story line.
+    expect(journal).toMatch(/\(lastKept \|\| weekCount === 0\) &&/);
     expect(journal).toContain('data-testid="journal-week-zero-line"');
     expect(journal).toContain('t("elev.journal.week.zero")');
+    const aside = journal.slice(journal.indexOf('data-testid="journal-week-aside"'), journal.indexOf("</header>"));
+    expect(aside).not.toContain("{weekCount}");
   });
 
   it("B-ASKJB-19: the Story stat grid is gone — no zero wall because no wall", () => {

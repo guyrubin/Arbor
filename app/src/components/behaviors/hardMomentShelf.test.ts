@@ -27,7 +27,7 @@ const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
 
 /** Markers in the order the parent meets them on #/behaviors. */
 const MARKERS = [
-  { name: "hero", re: /<HubHero/ },
+  // NEXTLEVEL r1: the HubHero is cut; the capture question is the page's H1.
   { name: "capture", re: /aria-label=\{t\("beh\.captureTitle"\)\}/ },
   { name: "echo", re: /behaviors-pattern-echo/ },
   { name: "guides", re: /<HardMomentsSection/ },
@@ -51,7 +51,8 @@ function outOfOrder(source: string): string | null {
 describe("TJB-21 — Behaviors section order", () => {
   const source = read("components/tabs/BehaviorsTab.tsx");
 
-  it("renders hero → capture → echo → guides → logs", () => {
+  it("renders capture → echo → guides → logs (no hero)", () => {
+    expect(source).not.toMatch(/<HubHero/);
     expect(outOfOrder(source)).toBeNull();
   });
 
@@ -247,9 +248,13 @@ describe("critic r1 — behaviors capture reads first, one primary fill", async 
   it("a visible heading names the move (the H1 on an empty week), in both locales", () => {
     // Critic r2: the 2-row field is gone (it swallowed keystrokes); the
     // heading is the page's H1 when the hero is absent (no data this week).
-    expect(BEH).toMatch(/\{hasWeek && \(\s*<HubHero/);
+    // NEXTLEVEL r1: ONE H1 on every week — the hero (and its counter trio) is
+    // cut; the week's count is one muted line, never a three-column row.
+    expect(BEH).not.toMatch(/<HubHero|stats=\{\[/);
+    expect(BEH.match(/data-testid="behaviors-capture-label"/g)).toHaveLength(1);
     expect(BEH).toMatch(/<h1 data-testid="behaviors-capture-label"[^>]*>\s*\{t\("beh\.capture\.label", \{ name: behFirst \}\)\}/);
-    expect(BEH).toMatch(/<h2 data-testid="behaviors-capture-label"[^>]*>\s*\{t\("beh\.capture\.label", \{ name: behFirst \}\)\}/);
+    expect(BEH).not.toMatch(/<h2 data-testid="behaviors-capture-label"/);
+    expect(BEH).toContain('t(heroStats.events === 1 ? "elev.beh.week.one" : "elev.beh.week", { n: heroStats.events })');
     expect(i18n.en["beh.capture.label"]).toContain("{name}");
     expect(i18n.he["beh.capture.label"]).toContain("{name}");
   });
@@ -317,6 +322,10 @@ describe("critic r2 — behaviors: guides under the capture, one warm line, no s
     expect(line).toContain("var(--font-editorial)");
     expect(line).toContain('background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)"');
     expect(BEH).toContain("words.length > 70 ? `${words.slice(0, 70).trimEnd()}");
+    // NEXTLEVEL r1 (Law 8): the page direction on the paragraph, the words an auto island, the day its own.
+    expect(line).toContain('dir={uiLang === "he" ? "rtl" : "ltr"}');
+    expect(line).toContain("<bdi dir=\"auto\">{uiLang === \"he\" ? \"„\" : \"“\"}{warmLine.words}{\"”\"}</bdi>");
+    expect(line).toContain("<bdi>{warmLine.day}</bdi>");
     for (const d of [i18n.en, i18n.he]) {
       expect(d["beh.warm.quote"]).toContain("{words}");
       expect(d["beh.warm.guide"]).toContain("{guide}");

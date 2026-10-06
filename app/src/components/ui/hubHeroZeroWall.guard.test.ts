@@ -42,9 +42,12 @@ const mounts=listTsx(SRC).flatMap(file=>scan(fs.readFileSync(file,"utf8"),path.r
 const fixture=(jsx:string)=>{const result=scan("const element = ("+jsx+");");expect(result).toHaveLength(1);return result[0];};
 describe("RUN-08 — no statistical hub mounts an untranslated zero wall",()=>{
  it("finds four remaining mounts plus both real custom-header destinations",()=>{
-  expect(mounts.length).toBeGreaterThanOrEqual(2);
+  expect(mounts.length).toBeGreaterThanOrEqual(1);
   const files=new Set(mounts.map(m=>m.file));
-  for(const file of ["BehaviorsTab","RoutinesTab"])expect(files.has("components/tabs/"+file+".tsx"),file).toBe(true);
+  for(const file of ["RoutinesTab"])expect(files.has("components/tabs/"+file+".tsx"),file).toBe(true);
+  // NEXTLEVEL critic r1: Behaviors' stat hero is CUT — the capture question is
+  // the H1 and the week's count is one muted line; no stats mount remains there.
+  expect(files.has("components/tabs/BehaviorsTab.tsx"),"BehaviorsTab").toBe(false);
   // W2-GROWTH r1: Growth's stat hero is CUT — the H1 is "What's new with {name}"
   // and the page opens on New-since rows; no stats mount can greet with zeros.
   expect(files.has("components/tabs/DevelopmentTab.tsx"),"DevelopmentTab").toBe(false);
@@ -58,13 +61,12 @@ describe("RUN-08 — no statistical hub mounts an untranslated zero wall",()=>{
   // B-PLAY-18: the academy header carries no stat list — the pick's reading minutes ride the pick line.
   expect(academy).toContain('data-testid="academy-pick-minutes"');expect(academy).not.toContain('heroStats.map');
  });
- it("actually extracts the stats-bearing Behaviors mount, including stats after CTA",()=>{
-  const statistical=mounts.filter(hasStats);
-  expect(statistical.length).toBeGreaterThanOrEqual(1);
-  for(const file of ["components/tabs/BehaviorsTab.tsx"]){
-   const found=statistical.filter(m=>m.file===file);expect(found,file).toHaveLength(1);
-   expect(found[0].attributes.has("zeroLine"),file).toBe(true);
-  }
+ it("actually extracts a stats-bearing mount, including stats after CTA (the scanner still sees them)",()=>{
+  // NEXTLEVEL r1: the last real stats mount (Behaviors) is cut; the scanner is
+  // proven on the shape it shipped in, so a returning stats hero is caught.
+  const shipped=fixture('<HubHero compact zeroLine={t("elev.growthTruth.hero.empty")} tone="coral" title={t("beh.hero.title", { name: behFirst })} stats={[{ value: heroStats.events, label: t("beh.stats.events") }]} testId="behaviors-hub-hero" />');
+  expect(hasStats(shipped)).toBe(true);expect(shipped.attributes.has("zeroLine")).toBe(true);
+  for(const m of mounts.filter(hasStats))expect(m.attributes.has("zeroLine"),m.file).toBe(true);
  });
  it("every real stats mount supplies its day-0 teach line",()=>{
   expect(mounts.filter(missingZero).map(m=>m.file),"HubHero stats without zeroLine greet day-0 parents with zeros").toEqual([]);

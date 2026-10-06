@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { HeartHandshake } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
@@ -14,7 +13,6 @@ import { SayThis } from "../ui/AiBlock";
 import { explainAnswerText } from "../../lib/explainAnswer";
 import { Skeleton } from "../ui/Skeleton";
 import { cardCls, PASTEL, type PastelKey } from "../ui/kit";
-import { HubHero } from "../ui/HubHero";
 import { T } from "../../lib/tokens";
 import PatternInsights from "../behaviors/PatternInsights";
 import HardMomentsSection from "../behaviors/HardMomentsSection";
@@ -660,23 +658,13 @@ export default function BehaviorsTab() {
       {/* Critic r2 (behaviors design P1 G1): the hero renders only when this
           week has moments (counts only); on an empty week the capture heading
           is the page's H1, so the primary move leads the first viewport. */}
-      {hasWeek && (
-      <HubHero
-        compact
-        zeroLine={t("elev.growthTruth.hero.empty")}
-        tone="coral"
-        icon={HeartHandshake}
-        eyebrow={t("beh.hero.tag")}
-        title={t("beh.hero.title", { name: behFirst })}
-        subtitle={t("beh.hero.sub")}
-        stats={[
-          { value: heroStats.events, label: t("beh.stats.events") },
-          { value: heroStats.contexts, label: t("beh.stats.contexts") },
-          { value: heroStats.resolved, label: t("elev.closeloop.stats.settledWeek") },
-        ]}
-        testId="behaviors-hub-hero"
-      />
-      )}
+      {/* NEXTLEVEL critic r1 (behaviors design P1 x2): the HubHero is CUT on
+          every week. Its "5 Events · 2 Contexts · 1 settled" trio was a
+          three-column counter row (the parent register forbids it), its
+          caption repeated the count, and its ~22 px H1 sat UNDER a ~28 px
+          capture question. The capture question is the page's one H1 now
+          (inside the capture card), "Patterns you noticed…" its subtitle,
+          and a populated week says its count once, in one muted line. */}
 
       {/* TJB-21 — the static "YOUR NEXT STEP" banner that stood here (213 px of
           `beh.next.*` copy rendered regardless of data) pushed the declared
@@ -740,19 +728,28 @@ export default function BehaviorsTab() {
             tile opens the Hard moment now sheet. The heading names the move;
             one warm line (the page's one warm accent) speaks to this family. */}
         <div data-testid="behaviors-capture-card" className="min-w-0 space-y-3 rounded-[var(--r-xl)] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }}>
-          {hasWeek ? (
-            <h2 data-testid="behaviors-capture-label" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              {t("beh.capture.label", { name: behFirst })}
-            </h2>
-          ) : (
+          <div className="min-w-0">
             <h1 data-testid="behaviors-capture-label" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
               {t("beh.capture.label", { name: behFirst })}
             </h1>
-          )}
+            <p className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
+              {t("beh.hero.sub")}
+              {hasWeek && (
+                <span data-testid="behaviors-week-line">
+                  {" · "}{t(heroStats.events === 1 ? "elev.beh.week.one" : "elev.beh.week", { n: heroStats.events })}
+                  {heroStats.resolved > 0 && <>{" · "}{t("elev.beh.week.settled", { n: heroStats.resolved })}</>}
+                </span>
+              )}
+            </p>
+          </div>
           {warmLine && (
-            <p data-testid="behaviors-warm-line" data-warm={warmLine.kind} dir="auto" className="px-3 py-2 t-sm leading-snug" style={{ borderRadius: "var(--r-sm)", fontFamily: "var(--font-editorial)", background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
+            /* NEXTLEVEL critic r1 (Law 8): the paragraph keeps the PAGE
+               direction; only the parent's words (with their quote marks) are
+               an auto-direction island and the day is its own island — an
+               English quote on a Hebrew page no longer flips its marks. */
+            <p data-testid="behaviors-warm-line" data-warm={warmLine.kind} dir={uiLang === "he" ? "rtl" : "ltr"} className="px-3 py-2 t-sm leading-snug" style={{ borderRadius: "var(--r-sm)", fontFamily: "var(--font-editorial)", background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
               {warmLine.kind === "quote"
-                ? t("beh.warm.quote", { words: warmLine.words, day: warmLine.day })
+                ? <>{t("beh.warm.quoteLead")}{" "}<bdi dir="auto">{uiLang === "he" ? "„" : "“"}{warmLine.words}{"”"}</bdi>{" · "}<bdi>{warmLine.day}</bdi></>
                 : t("beh.warm.guide", { guide: warmLine.guide, name: behFirst })}
             </p>
           )}
