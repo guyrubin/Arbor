@@ -58,7 +58,9 @@ describe("B-AI-04 — SC-4: the source is registered and wired", () => {
   it("the timeline hook feeds ArborContext's kept-insight rows to the builder", () => {
     const hook = readFileSync(path.join(__dirname, "..", "hooks", "useTimeline.ts"), "utf8");
     expect(hook).toMatch(/keptInsights,\s+childProfile,\s+\} = useArbor\(\);/);
-    const start = hook.indexOf("buildTimeline({");
+    // B-ASKJB-34: the hook reads through lib/timelineFold.readTimeline (which calls buildTimeline).
+    const start = hook.indexOf("readTimeline({");
+    expect(start).toBeGreaterThan(-1);
     const call = hook.slice(start, hook.indexOf("}),", start));
     expect(call).toMatch(/\bkeptInsights,/);
   });
