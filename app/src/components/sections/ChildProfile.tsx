@@ -44,9 +44,11 @@ import { writtenDateFor } from "../../lib/record/datedFact";
  * now, milestones, strengths, language, what Arbor remembers, and the next step
  * — with each chapter linking into its full tool.
  */
-/** The route's ONE primary move. Three mutually exclusive states render it (a pending fact to keep,
- *  the zero-pending hero CTA, the add-a-fact CTA), so the stamp is declared once and spread. */
-const APPROVE_MOVE = { "data-primary-move": "approve-memory" } as const;
+/** The route's ONE primary move (B-SHELL-26, framer default): capture-moment
+ *  on the profile's "Add a fact" door — "tell Arbor one thing" opens the drawer
+ *  where the parent's facts live. One door, rendered once in every state; the
+ *  review queue that used to carry approve-memory is gone. */
+const CAPTURE_MOVE = { "data-primary-move": "capture-moment" } as const;
 
 export default function ChildProfile() {
   const {
@@ -99,13 +101,11 @@ export default function ChildProfile() {
     () => [...shownApproved].sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")))[0] ?? null,
     [shownApproved],
   );
-  // B-GROWTH-NEW-1E: Keep / Forget decide on THIS page; the settled line shows
-  // only once the server confirmed (same seam and rule as #/memory).
-  const [kept, setKept] = useState(false);
-  const decide = async (memoryId: string, status: "approved" | "rejected") => {
-    const ok = await handleMemoryDecision(memoryId, status);
-    if (ok && status === "approved") setKept(true);
-  };
+  // B-SHELL-26: the remembered list, newest first (the parent's kept facts).
+  const remembered = useMemo(
+    () => [...shownApproved].sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))),
+    [shownApproved],
+  );
 
   // B-CAREPRO-29: "What we're working on" is what the PARENT chose (the 1–3
   // curated activeGoals the coach already reads) — never a focus derived from
@@ -268,85 +268,58 @@ export default function ChildProfile() {
             />
           )}
         </div>
-        {/* Nothing pending: the knows-line closes the header, then the
-            approve-memory move in its zero-pending shape. */}
-        {!hasPending && knowsLine && <div className="mt-4">{knowsLine}</div>}
-        {!hasPending && (latestApproved ? (
-          <button type="button" data-testid="profile-hero-cta" {...APPROVE_MOVE} onClick={() => setEditingProfile(true)} className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold" style={{ color: "var(--arbor-clay)" }}>
-            <Icon name="edit" size={16} /> {t("elev.growthTruth.profile.cta.addFact", { name: first })}
-          </button>
-        ) : (
-          <button
-            type="button"
-            data-testid="profile-hero-cta"
-            // Zero pending (the contract's empty state): the approve-memory move
-            // is "tell Arbor one thing" — it opens the drawer where facts live.
-            {...APPROVE_MOVE}
-            onClick={() => setEditingProfile(true)}
-            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-start text-sm font-bold"
-            style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
-          >
-            <Icon name="edit" size={16} />
-            {t("elev.profile.knows.empty", { name: first })}
-          </button>
-        ))}
+        {/* B-SHELL-26: the knows-line closes the header, then the route's one
+            door — "Add a fact" / "Tell Arbor one thing" (capture-moment), in
+            every state. One accent fill, no gradient. */}
+        {knowsLine && <div className="mt-4">{knowsLine}</div>}
+        <button
+          type="button"
+          data-testid="profile-hero-cta"
+          {...CAPTURE_MOVE}
+          onClick={() => setEditingProfile(true)}
+          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-start text-sm font-semibold"
+          style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
+        >
+          <Icon name="edit" size={16} />
+          {latestApproved ? t("elev.growthTruth.profile.cta.addFact", { name: first }) : t("elev.profile.knows.empty", { name: first })}
+        </button>
       </header>
 
-      {/* B-GROWTH-NEW-1E — What Arbor would like to remember: the first
-          pending facts, up to three, each in the parent's own words with its
-          source, decided ON this page. Keep writes the approval (the same
-          handleMemoryDecision seam #/memory uses); Not quite opens the full
-          review where a fact is edited; Forget dismisses it. The first Keep is
-          the route's stamped approve-memory and its one gradient. */}
-      {hasPending && (
+      {/* B-SHELL-26 — Things Arbor remembers: the facts the parent kept (their
+          own words are kept on creation), newest first, dated, each with
+          Forget only (the same "deleted" decision #/memory makes). No Keep, no
+          "Not quite", no queue: an inference is asked inline in the
+          conversation (B-AI-07) and on #/memory; here it is one quiet line. */}
+      {(remembered.length > 0 || hasPending) && (
         <section data-module="profile-remember" aria-labelledby="profile-remember-title" className="space-y-3 lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1">
           <h2 id="profile-remember-title" className="text-lg font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {t("elev.profile.remember.title")}
+            {t("elev.profile.remembers.title")}
           </h2>
-          {kept && (
-            <p role="status" data-testid="profile-remember-kept" className="t-sm rounded-[var(--r)] px-4 py-3" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-              {t("elev.childmem.kept.any")}
-            </p>
-          )}
-          <ul className="space-y-3">
-            {pendingQueue.slice(0, 3).map((m, i) => (
-              <li key={m.memoryId} data-testid="profile-remember-fact" className="rounded-[var(--r-lg)] p-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", opacity: isMemoryUpdating === m.memoryId ? 0.6 : 1 }}>
-                {m.createdAt && (
-                  <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.childmem.provenance.inference", { date: fmtDay(m.createdAt, uiLang) })}</p>
-                )}
-                <p className="mt-1 text-sm" style={{ fontFamily: "var(--font-editorial)", fontWeight: 400, fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}><FreeText text={toParentWords(m.fact)} /></p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    data-testid="profile-remember-keep"
-                    {...(i === 0 ? APPROVE_MOVE : {})}
-                    disabled={isMemoryUpdating === m.memoryId}
-                    onClick={() => { void decide(m.memoryId, "approved"); }}
-                    className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-sm font-extrabold"
-                    style={i === 0
-                      ? { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }
-                      : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" }}
-                  >
-                    <Icon name="check" size={16} /> {t("elev.profile.remember.keep")}
-                  </button>
-                  <button type="button" data-testid="profile-remember-notquite" onClick={() => setActiveTab("memory")} className="inline-flex min-h-11 items-center px-3 text-sm font-bold" style={{ color: "var(--arbor-clay)" }}>
-                    {t("elev.profile.remember.notQuite")}
-                  </button>
-                  <button type="button" data-testid="profile-remember-forget" disabled={isMemoryUpdating === m.memoryId} onClick={() => { void decide(m.memoryId, "rejected"); }} className="inline-flex min-h-11 items-center px-3 text-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
+          {remembered.length > 0 && (
+            <ul data-testid="profile-remembered">
+              {remembered.slice(0, 5).map((m) => (
+                <li key={m.memoryId} data-testid="profile-remembered-fact" className="flex items-start justify-between gap-3 border-b py-3 last:border-b-0" style={{ borderColor: "var(--arbor-rule)", opacity: isMemoryUpdating === m.memoryId ? 0.6 : 1 }}>
+                  <div className="min-w-0 flex-1">
+                    <p style={{ fontFamily: "var(--font-editorial)", fontWeight: 400, fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}>
+                      {writtenPrefix(toParentWords(m.fact), m.createdAt)}<FreeText text={toParentWords(m.fact)} />
+                    </p>
+                    {m.createdAt && (
+                      <p className="mt-0.5 t-sm" style={{ color: "var(--arbor-muted)" }}>{fmtDay(m.createdAt, uiLang)}</p>
+                    )}
+                  </div>
+                  <button type="button" data-testid="profile-remembered-forget" disabled={isMemoryUpdating === m.memoryId} onClick={() => { void handleMemoryDecision(m.memoryId, "deleted"); }} className="inline-flex min-h-11 flex-shrink-0 items-center px-2 t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>
                     {t("elev.profile.remember.forget")}
                   </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          {pendingQueue.length > 3 && (
-            <button type="button" onClick={() => setActiveTab("memory")} className="inline-flex min-h-11 items-center gap-1 text-sm font-bold" style={{ color: "var(--arbor-clay)" }}>
-              {t("elev.profile.remember.more", { n: pendingQueue.length })}
+                </li>
+              ))}
+            </ul>
+          )}
+          {hasPending && (
+            <button type="button" data-testid="profile-remember-check" onClick={() => setActiveTab("memory")} className="inline-flex min-h-11 items-center gap-1 t-sm font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>
+              {pendingQueue.length === 1 ? t("elev.profile.remembers.check.one") : t("elev.profile.remembers.check.many", { n: pendingQueue.length })}
               <Icon name="chevron_right" size={16} className="rtl:rotate-180" />
             </button>
           )}
-          {/* The knows-line sits under the decision, never above it. */}
-          {knowsLine}
         </section>
       )}
       </div>
@@ -532,29 +505,8 @@ export default function ChildProfile() {
       </SectionCard>
       </div>
 
-      {/* Chapter 6 — what Arbor remembers (the parent-approved memory) */}
-      <div data-module="profile-memory" data-module-demoted style={{ display: "contents" }}>
-      <SectionCard title={t("cp.ch.memory")} icon={<Icon name="bookmark" size={20} />} tone="lav">
-        <p className="mb-2 text-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Knowledge.profile.approved")}</p>
-        {shownApproved.length > 0 ? (
-          <ul className="space-y-1.5 text-sm" style={{ color: "var(--arbor-ink)" }}>
-            {shownApproved.slice(0, 5).map((shown) => (
-              <li key={shown.memoryId} className="flex items-start gap-2">
-                <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--arbor-lav-ink)" }} /> <span>{writtenPrefix(shown.fact, shown.createdAt)}<FreeText text={shown.fact} /></span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>
-            {t("cp.memory.empty", { name: first })}
-          </p>
-        )}
-        {pendingQueue.length > 0 && (
-          <p className="text-xs mt-2 font-bold" style={{ color: "var(--arbor-lav-ink)" }}><span className="block">{t("elev.wave2Knowledge.profile.proposed")}</span>{pendingQueue.length === 1 ? t("cp.memory.pendingOne", { count: pendingQueue.length }) : t("cp.memory.pendingMany", { count: pendingQueue.length })}</p>
-        )}
-        <div className="mt-3"><JumpLink onClick={() => setActiveTab("memory")} color="var(--arbor-lav-ink)">{t("cp.reviewMemory", { name: first })}</JumpLink></div>
-      </SectionCard>
-      </div>
+      {/* Chapter 6 (what Arbor remembers) is the "Things Arbor remembers" band
+          above (B-SHELL-26) — one list, never two. */}
 
       {/* Footer jump strip — the deep tools, one tap away */}
       <div data-module="profile-jump-strip" data-module-demoted className="grid min-w-0 gap-3 sm:grid-cols-3">

@@ -449,12 +449,13 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "profile", hub: "profile", depth: 0,
     job: "Who she is — and what Arbor remembers.",
-    primaryMove: "approve-memory", moduleBudget: 3, demotionTarget: "disclosure",
-    // The hub's one move per plan §4 (MY CHILD): approve a proposed fact —
-    // W2-GROWTH r1 / B-GROWTH-NEW-1E: performed ON this page. The stamp sits
-    // on the first pending fact's Keep (profile-remember band, handleMemoryDecision
-    // "approved" → kind "memory"). Zero-pending state: the stamp moves to the
-    // one "tell Arbor one thing" / "Add what you know" control (edit drawer).
+    primaryMove: "capture-moment", moduleBudget: 3, demotionTarget: "disclosure",
+    // B-SHELL-26 (framer default, REJECTIONS P1-NEXTLEVEL): the review queue is
+    // gone — the parent's own facts are kept on creation, inferences are asked
+    // inline (B-AI-07) and on #/memory. The hub's one move is now telling Arbor
+    // one thing: the stamp sits on the profile's "Add a fact" / "Tell Arbor one
+    // thing" door (edit drawer), rendered once in every state. The remembered
+    // list carries Forget only.
     threadWrite: "memory",
   },
   {

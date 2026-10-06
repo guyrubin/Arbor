@@ -1,6 +1,6 @@
 /**
  * GP-15 / RUN-20 — the Profile hub hero's ONE CTA is the surface contract's
- * primary move (`approve-memory`), and the child count is the family's real
+ * primary move (`capture-moment` since B-SHELL-26), and the child count is the family's real
  * count. Source pins with the verbatim pre-fix lines as negative controls.
  */
 import { describe, expect, it } from "vitest";
@@ -21,31 +21,42 @@ const hero = (() => {
 })();
 
 describe("GP-15 — the hero CTA is the contract's primary move", () => {
-  it("the profile contract's primaryMove is approve-memory", () => {
+  // B-SHELL-26 (framer default): the review queue is gone; the hub's one move
+  // is telling Arbor one thing — capture-moment on the "Add a fact" door.
+  it("the profile contract's primaryMove is capture-moment", () => {
     const c = SURFACE_CONTRACTS.find((x) => x.route === "profile")!;
-    expect(c.primaryMove).toBe("approve-memory");
+    expect(c.primaryMove).toBe("capture-moment");
   });
 
-  // W2-GROWTH r1 / B-GROWTH-NEW-1E: the move is PERFORMED here. With pending
-  // facts the stamp sits on the first Keep (handleMemoryDecision "approved");
-  // with none it sits on the one "tell Arbor one thing" control (edit drawer).
-  // Never again a button that routes away and calls itself approve-memory.
-  it("with pending facts the stamped control is Keep on this page; otherwise it adds a fact", () => {
-    const band = src.slice(src.indexOf('data-module="profile-remember"'), src.indexOf("</section>", src.indexOf('data-module="profile-remember"')));
-    expect(band).toContain('data-testid="profile-remember-keep"');
-    expect(band).toContain("{...(i === 0 ? APPROVE_MOVE : {})}");
-    expect(band).toContain('void decide(m.memoryId, "approved")');
-    expect(src).toMatch(/const ok = await handleMemoryDecision\(memoryId, status\);/);
+  it("the stamped control is the one 'Add a fact' door, in every state; nothing routes away", () => {
     expect(hero).toContain('data-testid="profile-hero-cta"');
-    expect(hero).toMatch(/\{\.\.\.APPROVE_MOVE\}\s+onClick=\{\(\) => setEditingProfile\(true\)\}/);
-    // one declaration, spread into the three mutually exclusive states (framework-check: exactly 1 stamp)
-    expect(src).toContain('const APPROVE_MOVE = { "data-primary-move": "approve-memory" } as const;');
+    expect(hero).toMatch(/\{\.\.\.CAPTURE_MOVE\}\s+onClick=\{\(\) => setEditingProfile\(true\)\}/);
+    // one declaration, one spread (framework-check: exactly 1 stamp)
+    expect(src).toContain('const CAPTURE_MOVE = { "data-primary-move": "capture-moment" } as const;');
     expect(src.match(/data-primary-move/g)?.length).toBe(1);
-    expect(src).not.toMatch(/<div[^>]*\{\.\.\.APPROVE_MOVE\}/);
+    expect(src.match(/\{\.\.\.CAPTURE_MOVE\}/g)?.length).toBe(1);
+    expect(src).not.toMatch(/<div[^>]*\{\.\.\.CAPTURE_MOVE\}/);
     expect(hero).toContain('t("elev.growthTruth.profile.cta.addFact", { name: first })');
-    // no stamped control routes away
-    expect(src).not.toMatch(/data-primary-move="approve-memory"[^>]*setActiveTab\("memory"\)/);
-    expect(src).not.toMatch(/<div[^>]*data-primary-move="approve-memory"/);
+    expect(hero).toContain('t("elev.profile.knows.empty", { name: first })');
+    // the door is not gated on an empty queue any more
+    expect(hero).not.toContain("!hasPending &&");
+    expect(src).not.toMatch(/data-primary-move="[^"]*"[^>]*setActiveTab\("memory"\)/);
+    expect(src).not.toContain("APPROVE_MOVE");
+  });
+
+  it("B-SHELL-26: Profile lists what Arbor remembers with Forget only — no Keep, no 'Not quite', no queue", () => {
+    const band = src.slice(src.indexOf('data-module="profile-remember"'), src.indexOf("</section>", src.indexOf('data-module="profile-remember"')));
+    expect(band).toContain('t("elev.profile.remembers.title")');
+    expect(band).toContain('data-testid="profile-remembered-forget"');
+    expect(band).toContain('handleMemoryDecision(m.memoryId, "deleted")');
+    expect(src).not.toContain('data-testid="profile-remember-keep"');
+    expect(src).not.toContain('data-testid="profile-remember-notquite"');
+    expect(src).not.toContain('"elev.profile.remember.keep"');
+    expect(src).not.toContain('"elev.profile.remember.notQuite"');
+    expect(src).not.toContain('"elev.profile.remember.title"');
+    // an inference waiting is ONE quiet line to #/memory, never a list here
+    expect(band).toContain('data-testid="profile-remember-check"');
+    expect(band).not.toMatch(/pendingQueue\.(slice|map)\(/);
   });
 
   it("NEGATIVE CONTROL: the pre-fix 'Add a family member' CTA is gone from the hero", () => {
@@ -124,7 +135,9 @@ describe("B-SHELL-27 — one face on My Child", () => {
 describe("NEXTLEVEL critic r1 (profile · design · P1) — one weight for the fact quote in both locales", () => {
   const css = readFileSync(path.join(here, "..", "..", "index.css"), "utf8");
   it("the remembered fact is the editorial face at weight 400", () => {
-    expect(src).toContain('style={{ fontFamily: "var(--font-editorial)", fontWeight: 400, fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}><FreeText text={toParentWords(m.fact)} />');
+    // B-SHELL-26: the remembered list row — same face and weight; the B-GROWTH-35
+    // written-date prefix precedes the parent's words.
+    expect(src).toMatch(/style=\{\{ fontFamily: "var\(--font-editorial\)", fontWeight: 400, fontSize: "var\(--t-md\)", color: "var\(--arbor-ink\)" \}\}>\s*\{writtenPrefix\(toParentWords\(m\.fact\), m\.createdAt\)\}<FreeText text=\{toParentWords\(m\.fact\)\} \/>/);
   });
   it("on a Hebrew page Latin runs take Instrument Serif first; Hebrew falls through to Frank Ruhl Libre (both HE scopes)", () => {
     const he = css.match(/--font-editorial: [^;]*Frank Ruhl Libre[^;]*;/g) ?? [];

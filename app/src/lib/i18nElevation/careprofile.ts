@@ -56,6 +56,12 @@ export const en: Record<string, string> = {
   "elev.profile.remember.more": "See all {n} waiting",
   "elev.profile.ms.noticed": "{n} milestones noticed",
   "elev.profile.ms.noticedOne": "1 milestone noticed",
+  // B-SHELL-26 — the queue is gone: the parent's own facts are kept on creation;
+  // Profile lists what Arbor remembers, each with Forget only. Inferences are
+  // asked inline (B-AI-07) and on #/memory.
+  "elev.profile.remembers.title": "Things Arbor remembers",
+  "elev.profile.remembers.check.one": "Arbor has one thought to check with you",
+  "elev.profile.remembers.check.many": "Arbor has {n} thoughts to check with you",
 };
 
 export const he: Record<string, string> = {
@@ -100,4 +106,7 @@ export const he: Record<string, string> = {
   "elev.profile.remember.more": "לכל {n} הממתינים",
   "elev.profile.ms.noticed": "שמתם לב ל־{n} אבני דרך",
   "elev.profile.ms.noticedOne": "שמתם לב לאבן דרך אחת",
+  "elev.profile.remembers.title": "דברים שארבור זוכר",
+  "elev.profile.remembers.check.one": "לארבור יש מחשבה אחת לבדוק איתכם",
+  "elev.profile.remembers.check.many": "לארבור יש {n} מחשבות לבדוק איתכם",
 };
