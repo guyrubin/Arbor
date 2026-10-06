@@ -119,9 +119,11 @@ describe("B-GROWTH-35 — source pins: every surface reads lib/record/counts", (
     expect(ask).toMatch(/reportsLeadCounts\(\{[^}]*wholeRecord: anchor\.kind === "start"/);
     expect(ask).toMatch(/langObs: langObsCol\.items/);
     const milestonesTab = strip(read("components/tabs/MilestonesTab.tsx"));
-    expect(milestonesTab).toContain('import { milestonesNoticedSince, noticedMilestoneCounts } from "../../lib/record/counts"');
-    // the per-age-band count reads the same selector — no local .filter(checked).length
-    expect(milestonesTab).toContain("milestonesNoticedSince({ milestones: band.items }, null)");
+    expect(milestonesTab).toContain('import { noticedMilestoneCounts } from "../../lib/record/counts"');
+    // B-LOOP-05: the per-SHELF count (the per-band fraction is gone) reads the
+    // same selector through lib/milestones/shelfMap — no local .filter(checked).length
+    expect(milestonesTab).toContain("noticedByShelf(milestones)");
+    expect(strip(read("lib/milestones/shelfMap.ts"))).toContain("milestonesNoticedSince({ milestones: by[id] }, null)");
     expect(milestonesTab).not.toMatch(/\.filter\(\(m\) => m\.checked\)\.length/);
     // Journal: its moments line is signalTimeline.weekMomentCount, which delegates to momentRowsSince
     expect(strip(read("components/tabs/JournalTab.tsx"))).toMatch(/weekMomentCount\(signals/);

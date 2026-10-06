@@ -30,7 +30,9 @@ describe("NEXTLEVEL r1 — one noticed count across Milestones, Growth and Profi
   it("the headline and the domain rows read noticedMilestoneCounts, never the age window", () => {
     expect(MS).toContain("noticedMilestoneCounts(milestones)");
     expect(MS).toContain('{recordCounts.noticed} {t("ms.domainOf")}');
-    expect(MS).toContain("recordCounts.byDomain[dom.id]");
+    // B-LOOP-05: the per-row count is per SHELF now; the shelves add up to
+    // recordCounts.noticed (lib/milestones/shelfMap.test.ts pins the sum).
+    expect(MS).toContain("noticedByShelf(milestones)");
     expect(MS).not.toMatch(/windowChecked/);
     expect(MS).not.toMatch(/\{s\.checked\}/);
     // Growth and Profile read the same helper.
@@ -55,14 +57,18 @@ describe("NEXTLEVEL r1 — one noticed count across Milestones, Growth and Profi
 });
 
 describe("NEXTLEVEL r1 — the primary move is a control", () => {
-  it("data-primary-move=mark-milestone stamps the 'Seen any of these?' section, not the display:contents spine", () => {
+  // B-LOOP-05 re-pin: the move is notice-milestone, stamped on the FIRST
+  // shelf's Notice card (three 44 px answers), never on the display:contents
+  // spine; the answers write through observeMilestone (the one seam).
+  it("data-primary-move=notice-milestone stamps the first shelf's Notice card, not the display:contents spine", () => {
     expect(MS).toContain('<div data-module="milestones-spine" style={{ display: "contents" }}>');
-    expect(MS.match(/data-primary-move="mark-milestone"/g)?.length).toBe(1);
-    const sec = MS.slice(MS.indexOf('data-primary-move="mark-milestone"'), MS.indexOf("</section>", MS.indexOf('data-primary-move="mark-milestone"')));
-    expect(MS).toContain("selectNextMilestones(milestones, comparisonMonths, 3)");
-    expect(sec).toContain('onClick={() => observeMilestone(m, "yes")}');
-    expect(sec).toContain("min-h-11");
-    expect(sec.match(/var\(--gradient-cta\)/g)?.length).toBe(1);
+    expect(MS.match(/data-primary-move/g)?.length).toBe(1);
+    const at = MS.indexOf('"data-primary-move": "notice-milestone"');
+    expect(at).toBeGreaterThan(-1);
+    const sec = MS.slice(at, MS.indexOf("</div>", at));
+    expect(sec).toContain("<NoticeCard");
+    expect(sec).toContain("observeMilestone(card, status)");
+    expect(MS).not.toMatch(/var\(--gradient-cta\)/);
   });
 
   it("EN + HE strings exist for the move, its empty state and the domain next-item line", () => {
@@ -82,11 +88,14 @@ describe("NEXTLEVEL r1 — a quiet page", () => {
   });
 
   it("no DEVELOPMENT MAP eyebrow and no second disclaimer in the summary card", () => {
-    const card = MS.slice(MS.indexOf('data-testid="ms-map-count"') - 400, MS.indexOf('data-primary-move="mark-milestone"'));
+    const card = MS.slice(MS.indexOf('data-testid="ms-map-count"') - 400, MS.indexOf("comparisonMonths < 24 && ("));
     expect(card).not.toContain('t("ms.developmentMap")');
     expect(card).not.toContain('t("ms.snapshotNotScore")');
     expect(card).not.toMatch(/\buppercase\b/);
-    expect(MS.match(/t\("ms\.developmentMap"\)/g)?.length).toBe(1);
+    // B-LOOP-05: the domain map is gone (the professional view regroups by
+    // domain, B-LOOP-12); the shelf map carries one title.
+    expect(MS).not.toContain('t("ms.developmentMap")');
+    expect(MS.match(/t\("elev\.loop\.shelfMap\.title"\)/g)?.length).toBe(1);
   });
 
   it("no raw #fff and no off-token rgba green border", () => {
@@ -128,14 +137,17 @@ describe("NEXTLEVEL r1 (B-NEXTLEVEL-NEW-1i/1j) — the parent's last first leads
 describe("P1-NEXTLEVEL critic r2 — the latest card names its area; the map is on the type scale", () => {
   it("under the latest title, one quiet t-sm line names the area it was counted in (EN + HE)", () => {
     expect(MS).toContain('data-testid="ms-latest-area" className="mt-0.5 t-sm"');
-    expect(MS).toContain('t("elev.ms.latest.area", { area: domainLabel(latestNoticed.milestone.domain) })');
+    // B-LOOP-05: the area is the SHELF the item sits on, the same name the map prints.
+    expect(MS).toContain('t("elev.ms.latest.area", { area: latestShelfName })');
+    expect(MS).toContain("shelfLabel(latestShelf, t)");
     for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.ms.latest.area", { area: "x" })).not.toBe("elev.ms.latest.area");
   });
   it("the count card and the Development Map carry no orphan px sizes; the map heading is a step above its rows", () => {
-    const map = MS.slice(MS.indexOf('t("ms.developmentMap")') - 200, MS.indexOf('t("ms.playIdeas"'));
+    // B-LOOP-05 re-pin: the shelf map — title t-lg, shelf names t-md, rows t-sm.
+    const map = MS.slice(MS.indexOf('t("elev.loop.shelfMap.title")') - 300, MS.indexOf('t("ms.playIdeas"'));
     expect(map).not.toMatch(/text-\[(?:11|12|12\.5|13|13\.5|15|17|26)px\]/);
-    expect(map).toContain('<h3 className="t-lg font-extrabold mb-4"');
-    expect(map).toContain('<span className="flex-1 t-base font-bold"');
+    expect(map).toContain('fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>\n              {t("elev.loop.shelfMap.title")}');
+    expect(map).toContain('fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}>\n                          {shelfLabel(shelf, t)}');
     expect(MS).not.toContain("text-[26px]");
   });
 });

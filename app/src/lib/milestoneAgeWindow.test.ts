@@ -21,6 +21,7 @@ import {
   selectWeeklyFocus,
 } from "./milestoneData";
 import { milestoneInAgeWindow } from "../consult/packet";
+import { translate } from "./i18n";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..");
@@ -161,12 +162,15 @@ describe("GP-08 — every denominator surface counts the window, not the catalog
   });
 });
 
-describe("GP-09 — later bands collapse behind 'Show later milestones'", () => {
-  it("MilestonesTab collapses bands beyond current + next and offers the later toggle (en + he)", () => {
+describe("GP-09 → B-LOOP-05 — later bands sit behind each shelf's door, titles only", () => {
+  it("MilestonesTab shows the bands only behind 'Earlier and later'; a later band renders titles, never answers (en + he)", () => {
     const code = stripComments(read("components/tabs/MilestonesTab.tsx"));
-    expect(code).toMatch(/const isLater = band\.months !== -1 && band\.months > nextBandMonths;/);
-    expect(code).toMatch(/\(isLater && !openLaterBands\[band\.months\]\)/);
-    expect(code).toContain('t("elev.growthTruth.ms.showLater")');
+    // every band of a shelf renders only inside the open door
+    expect(code).toMatch(/\{open && \(\s*<div className="mt-2 space-y-3">\s*\{renderShelfBands\(shelf\)\}/);
+    const later = code.slice(code.indexOf("band.later ? ("), code.indexOf(") : (", code.indexOf("band.later ? (")));
+    expect(later).toContain('data-testid="ms-later-item"');
+    expect(later).not.toMatch(/<button|observeMilestone|renderItem/);
+    for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.loop.shelf.door")).not.toBe("elev.loop.shelf.door");
     // Pre-fix rule: only earlier bands ever collapsed.
     expect(code).not.toMatch(/const collapsed = isEarlier && !openEarlierBands\[band\.months\];/);
     const dict = read("lib/i18nElevation/growthTruth.ts");

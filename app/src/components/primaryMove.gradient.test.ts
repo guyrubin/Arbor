@@ -266,10 +266,8 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // spells the literal (was the T.gradientCta alias this scan cannot see);
     // languageLab.hebrewChrome.test pins it.
     "tabs/LanguageLabVocabView.tsx",
-    // NEXTLEVEL critic r1: the first "Yes, I've seen it" inside "Seen any of
-    // these?" carries data-primary-move="mark-milestone" (surfaceContract
-    // milestones.primaryMove) and is the only gradient in the file.
-    "tabs/MilestonesTab.tsx",
+    // B-LOOP-05: tabs/MilestonesTab.tsx left the ratchet — the shelf map's
+    // move (notice-milestone) is the Notice card's outlined "Seen it"; no gradient.
     "tabs/PlansTab.tsx",
     // W2-CAREPRO r1: the one-tap call button carries data-primary-move="call-helpline"
     // (surfaceContract safety.primaryMove) and is the only gradient in the file

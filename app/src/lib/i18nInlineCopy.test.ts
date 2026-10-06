@@ -524,7 +524,10 @@ describe("R22 — the practice domain names and the Full Picture body carry both
     const ms = stripComments(readSrc("components/tabs/MilestonesTab.tsx"));
     // B-SHELL-28: still the registry resolver — its one-name-per-row form.
     expect(ms).toContain('const domainLabel = (id: string) => primaryDomainLabel("developmental", id, t);');
-    expect(ms).toContain("{domainLabel(dom.id)}");
+    // B-LOOP-05: the map rows are shelves (shelfLabel); the domain resolver
+    // still names the custom-milestone domain options.
+    expect(ms).toContain("{domainLabel(d.id)}");
+    expect(ms).toContain("{shelfLabel(shelf, t)}");
     expect(ms).not.toMatch(/>\{dom\.label\}</);
     expect(ms).not.toContain('title="Celebrate"');
 

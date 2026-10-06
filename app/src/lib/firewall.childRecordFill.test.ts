@@ -96,9 +96,10 @@ describe("B-GROWTH-07 — no proportional fill of a child record", () => {
     // NEXTLEVEL critic r1: the headline is the unwindowed noticed count (lib/pulse).
     expect(ms).toContain('{recordCounts.noticed} {t("ms.domainOf")}');
     expect(ms).not.toContain('{s.checked}/{s.total}');
-    // The domain row + drill-in header: the noticed count per domain, as text.
-    expect((ms.match(/\{recordCounts\.byDomain\[dom\.id\] \?\? 0\} \{t\("ms\.domainOf"\)\}/g) ?? []).length).toBe(2);
-    expect(ms).not.toMatch(/\{recordCounts\.byDomain\[dom\.id\][^}]*\}\s*\/\s*\{/);
+    // B-LOOP-05: the shelf row carries the noticed count per shelf, as text — never a fraction.
+    expect((ms.match(/t\(n === 1 \? "elev\.loop\.shelf\.noticed\.one" : "elev\.loop\.shelf\.noticed", \{ n \}\)/g) ?? []).length).toBe(1);
+    expect(ms).not.toMatch(/\{n\}\s*\/\s*\{/);
+    expect(ms).not.toMatch(/\}\/\{[a-zA-Z.]+\.length\}/);
   });
 
   it("NEGATIVE CONTROL — the pre-fix shapes trip every pattern", () => {
