@@ -43,7 +43,7 @@ export interface ChildDataRow {
 /** Display order = the order a parent meets the data in the app. */
 export const CHILD_DATA_ROWS: readonly ChildDataRow[] = [
   { id: "profile", icon: "person", collections: [], elsewhere: ["profile-doc"] },
-  { id: "moments", icon: "edit_note", collections: ["behaviorLogs", "insights", "keepsakes", "wellness"] },
+  { id: "moments", icon: "edit_note", collections: ["behaviorLogs", "insights", "keepsakes", "wellness", "sleepLogs"] },
   { id: "milestones", icon: "straighten", collections: ["milestones", "growthEntries", "langObs"] },
   {
     id: "play",

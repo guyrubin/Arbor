@@ -197,10 +197,10 @@ describe("B-PROG-02 — the three measures", () => {
 });
 
 describe("B-PROG-02 — the registry and the B-PROG-01 shape (session A builds the engine on this file)", () => {
-  it("PROGRAMS holds Talk Together; programById finds it and nothing else", () => {
-    expect(PROGRAMS.map((p) => p.id)).toEqual(["talk-together"]);
+  it("PROGRAMS holds Talk Together first (B-PROG-06 adds Steady Nights second); programById finds it, and nothing unknown", () => {
+    expect(PROGRAMS.map((p) => p.id)).toEqual(["talk-together", "steady-nights"]);
     expect(programById("talk-together")).toBe(TALK_TOGETHER);
-    expect(programById("steady-nights")).toBeUndefined();
+    expect(programById("no-such-program")).toBeUndefined();
   });
 
   it("runtime shape: the program's keys are exactly the pack's (no extra field rides inside Program)", () => {
@@ -227,7 +227,7 @@ describe("B-PROG-02 — the registry and the B-PROG-01 shape (session A builds t
     expectTypeOf<keyof MeasureDef>().toEqualTypeOf<"id" | "label" | "countingRule" | "source" | "unit">();
     expectTypeOf<MeasureDef["source"]>().toEqualTypeOf<"actionLoops" | "selfCount" | "shelfEntries" | "milestone" | "sleepLogs">();
     expectTypeOf<keyof CoachScript>().toEqualTypeOf<"id" | "text">();
-    expectTypeOf<PracticeSource>().toEqualTypeOf<{ org: string; title: string; url?: string; year: number }>();
+    expectTypeOf<PracticeSource>().toEqualTypeOf<{ org: string; title: string; url?: string; year: number; verified?: boolean }>(); // B-PROG-06 adds `verified`
     expectTypeOf(TALK_TOGETHER).toEqualTypeOf<Program>();
   });
 });

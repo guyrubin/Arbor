@@ -103,6 +103,7 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "savedComics",
       "keepsakes", // B-GROWTH-10 (4ccb483): milestone keepsakes moved from device-local into the registered record
       "bookAssets", // B-BOOK-36 (release): the metadata of the child's private picture-book files (hero sheet, narration) — exported and erased with the child
+      "sleepLogs", // B-PROG-06 (Steady Nights): the sleep diary, one doc per night (routine tap + morning times) — exported and erased with the child
     ]);
   });
 });

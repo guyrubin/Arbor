@@ -73,6 +73,10 @@ export interface PracticeSource {
   title: string;
   url?: string;
   year: number;
+  /** B-PROG-06: true = the builder/author opened the document and confirmed
+   *  title + date; false = the citation detail comes from knowledge and the
+   *  clinical reviewer confirms it (REVIEW-SHEET row). Absent = not yet marked. */
+  verified?: boolean;
 }
 
 export interface Practice {
@@ -111,12 +115,26 @@ export const PRACTICE_SOURCES = {
   harvardServeReturn: { org: "Harvard Center on the Developing Child", title: "Serve and Return (key concept page, undated; cited 2026)", year: 2026 },
   harvardExecutiveFunction: { org: "Harvard Center on the Developing Child", title: "Enhancing and Practicing Executive Function Skills with Children from Infancy to Adolescence", year: 2014 },
   whoUnicefCcd: { org: "WHO/UNICEF", title: "Care for Child Development: counselling cards (play and communication)", year: 2012 },
-  whoMovement: { org: "WHO", title: "Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age", year: 2019 },
+  whoMovement: { org: "WHO", title: "Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age", year: 2019, verified: false },
   whoFeeding: { org: "WHO", title: "WHO Guideline for complementary feeding of infants and young children 6–23 months of age", year: 2023 },
   // B-LOOP-08 follow-up — the shelf-level Sleep set.
-  aapSafeSleep: { org: "AAP", title: "Sleep-Related Infant Deaths: Updated 2022 Recommendations for Reducing Infant Deaths in the Sleep Environment (policy statement, Pediatrics)", year: 2022 },
-  aapHealthyChildrenSleep: { org: "AAP", title: "HealthyChildren.org — sleep pages for babies, toddlers and preschoolers (web pages, undated; cited 2026)", year: 2026 },
-  nhsStartForLifeSleep: { org: "NHS", title: "Start for Life — helping your baby to sleep and bedtime routines (web pages, undated; cited 2026)", year: 2026 },
+  // B-PROG-06 (Steady Nights, S10): citation detail unverified offline (Pediatrics 150(1):e2022057990).
+  aapSafeSleep: { org: "AAP", title: "Sleep-Related Infant Deaths: Updated 2022 Recommendations for Reducing Infant Deaths in the Sleep Environment (policy statement, Pediatrics)", year: 2022, verified: false },
+  // B-PROG-06 (S2, opened 6 Oct): the HealthyChildren sleep hub.
+  aapHealthyChildrenSleep: { org: "AAP", title: "HealthyChildren.org — Sleep (section hub; cited 2026)", url: "https://www.healthychildren.org/English/healthy-living/sleep/Pages/default.aspx", year: 2026, verified: true },
+  // B-PROG-06 (S3, opened 6 Oct): this record was MISTITLED "Start for Life" — the page it stands for is the NHS
+  // baby-section page "Sleep and young children". The key is kept (practices cite it by key).
+  nhsStartForLifeSleep: { org: "NHS", title: "Sleep and young children (NHS baby section, page reviewed 31 Mar 2023)", url: "https://www.nhs.uk/baby/health/sleep-and-young-children/", year: 2023, verified: true },
+  // B-PROG-06 — Steady Nights v0.1 (PAI/projects/arbor/PROGRAM-STEADY-NIGHTS-v0.1.md §sources). verified: true =
+  // opened by the author on 6 Oct; false = from knowledge, the reviewer confirms (REVIEW-SHEET §B-PROG-06).
+  aapBedtimeTrouble: { org: "AAP", title: "HealthyChildren.org — Toddler Bedtime Trouble: 7 Tips for Parents (last updated 25 Aug 2022)", url: "https://www.healthychildren.org/English/healthy-living/sleep/Pages/bedtime-trouble.aspx", year: 2022, verified: true },
+  aapMediaYoungMinds: { org: "AAP Council on Communications and Media", title: "Media and Young Minds (policy statement, Pediatrics 138(5):e20162591)", year: 2016, verified: false },
+  mindell2015Routines: { org: "Mindell, Li, Sadeh, Kwon & Goh (Sleep 38(5):717–722)", title: "Bedtime routines for young children: a dose-dependent association with sleep outcomes", year: 2015, verified: false },
+  mindellWilliamson2018: { org: "Mindell & Williamson (Sleep Medicine Reviews 40:93–108)", title: "Benefits of a bedtime routine in young children: sleep, development, and beyond", url: "https://pubmed.ncbi.nlm.nih.gov/29195725/", year: 2018, verified: true },
+  meltzerMindell2014: { org: "Meltzer & Mindell (Journal of Pediatric Psychology 39(8):932–948)", title: "Systematic review and meta-analysis of behavioral interventions for pediatric insomnia", year: 2014, verified: false },
+  mindell2006Review: { org: "Mindell, Kuhn, Lewin, Meltzer & Sadeh (Sleep 29(10):1263–1276)", title: "Behavioral treatment of bedtime problems and night wakings in infants and young children", year: 2006, verified: false },
+  sheffieldSleepDiary: { org: "Sheffield Children's NHS Foundation Trust", title: "Sleep diary (printable, resource library; undated, cited 2026)", url: "https://library.sheffieldchildrens.nhs.uk/sleep-diary/", year: 2026, verified: true },
+  aapSleepBreathing2012: { org: "AAP (Marcus et al.)", title: "Clinical practice guideline on childhood sleep-disordered breathing (Pediatrics 130(3):576–584)", year: 2012, verified: false },
   // B-LOOP-08 follow-up 2 — the shelf-level Words book set (18–36 months).
   whitehurstDialogicReading: { org: "Whitehurst (Reading Rockets, public article)", title: "Dialogic Reading: An Effective Way to Read to Preschoolers", year: 1992 },
 } as const satisfies Record<string, PracticeSource>;
@@ -778,7 +796,8 @@ export const PRACTICES: readonly Practice[] = [
     say: L("Wash, pyjamas, song, and now bed. Goodnight, sweetheart.", "רחצה, פיג'מה, שיר, ועכשיו למיטה. לילה טוב, מתוק/ה."),
   }),
   SP("pr-sleep-03", "sleep", 12, "routine_building", 5, S.nhsStartForLifeSleep, {
-    do: L("In the evening, dim the lights and keep your voice soft. In the morning, open the curtains and spend a little time in daylight together.", "בערב, עמעמו את האורות ודברו בקול רך. בבוקר, פתחו את הווילונות ובלו קצת זמן יחד באור היום."),
+    // B-PROG-06 (R10): the morning-daylight half had no confirmed source (S3 is silent on it) — softened to the evening only.
+    do: L("In the evening, dim the lights and keep your voice soft, so the evening feels different from the day.", "בערב, עמעמו את האורות ודברו בקול רך, כדי שהערב ירגיש שונה מהיום."),
     say: L("Lights down low. It's getting dark, sleepy time soon.", "מחשיכים את האור. עוד מעט הולכים לישון."),
   }),
   SP("pr-sleep-04", "sleep", 18, "responsive_interaction", 5, S.aapHealthyChildrenSleep, {
@@ -792,6 +811,79 @@ export const PRACTICES: readonly Practice[] = [
   SP("pr-sleep-06", "sleep", 48, "responsive_interaction", 10, S.aapHealthyChildrenSleep, {
     do: L("Inside the usual bedtime steps, offer two small choices, like which book or which pyjamas, then keep the steps in the same order.", "בתוך שלבי השינה הקבועים, הציעו שתי בחירות קטנות, כמו איזה ספר או איזו פיג'מה, ושמרו על אותו סדר."),
     say: L("This book or that one? You choose, then lights out.", "הספר הזה או ההוא? את/ה בוחר/ת, ואז מכבים את האור."),
+  }),
+
+  /* ── B-PROG-06 · Steady Nights v0.1 — shelf-level Sleep · 12–24 months ── */
+  /* Transcribed 1:1 from PROGRAM-STEADY-NIGHTS-v0.1.md §New practices.       */
+  /* Routine, light, timing, wind-down, the diary, a small step the family   */
+  /* chooses — never a method, an amount or a target for the child.         */
+  SP("pr-sleep-07", "sleep", 12, "routine_building", 10, S.aapBedtimeTrouble, {
+    do: L("Pick a few calm bedtime steps, like bath, teeth, pyjamas and a book, and do them in the same order tonight.", "בחרו כמה שלבים רגועים לפני השינה, כמו מקלחת, צחצוח שיניים, פיג'מה וספר, ועשו אותם הערב באותו סדר."),
+    say: L("First teeth, then pyjamas, then our book.", "קודם שיניים, אחר כך פיג'מה, ואז הספר שלנו."),
+  }),
+  SP("pr-sleep-08", "sleep", 24, "routine_building", 10, S.mindellWilliamson2018, {
+    do: L("Draw the bedtime steps together, one small picture each, and stick the page where your child can point to what comes next.", "ציירו יחד את שלבי השינה, ציור קטן לכל שלב, ותלו את הדף במקום שבו הילד/ה יכול/ה להצביע על מה שבא אחר כך."),
+    say: L("What comes after pyjamas? Show me on our page.", "מה בא אחרי הפיג'מה? תראה/י לי על הדף שלנו."),
+    materials: L("Paper, a pen, tape", "דף, עט, סלוטייפ"),
+  }),
+  SP("pr-sleep-09", "sleep", 12, "routine_building", 5, S.aapBedtimeTrouble, {
+    do: L("Before the last bedtime step, offer a sip of water, the toilet or a fresh nappy, and a cuddle, so needs are met first.", "לפני השלב האחרון, הציעו לגימת מים, שירותים או חיתול נקי, וחיבוק, כדי שכל הצרכים יטופלו קודם."),
+    say: L("Water, toilet, cuddle. Now it's time to sleep.", "מים, שירותים, חיבוק. עכשיו זמן לישון."),
+    materials: L("A cup of water", "כוס מים"),
+  }),
+  SP("pr-sleep-10", "sleep", 15, "responsive_interaction", 5, S.aapBedtimeTrouble, {
+    do: L("Let your child choose one soft toy or small blanket that joins every bedtime routine and stays in bed with them.", "תנו לילד/ה לבחור בובה רכה או שמיכה קטנה אחת שמצטרפת לכל טקס שינה ונשארת איתו/איתה במיטה."),
+    say: L("Bunny's coming to bed too. Goodnight, Bunny.", "גם הארנב בא למיטה. לילה טוב, ארנב."),
+    materials: L("A soft toy or small blanket you already have", "בובה או שמיכה קטנה שכבר יש בבית"),
+  }),
+  SP("pr-sleep-11", "sleep", 12, "routine_building", 5, S.aapMediaYoungMinds, {
+    do: L("Switch off the TV, tablets and phones when the wind-down starts, and keep screens out of the bedroom at night, yours too.", "כבו טלוויזיה, טאבלטים וטלפונים כשמתחילים להירגע לקראת שינה, ובלילה השאירו את המסכים מחוץ לחדר, גם את שלכם."),
+    say: L("The screens are going to sleep now. Book time.", "המסכים הולכים לישון עכשיו. זמן לספר."),
+  }),
+  SP("pr-sleep-12", "sleep", 12, "routine_building", 5, S.nhsStartForLifeSleep, {
+    do: L("Keep the bedroom dark and quiet at sleep time; if your child is afraid of the dark, leave a dim nightlight on.", "שמרו על חדר חשוך ושקט בזמן השינה; אם הילד/ה מפחד/ת מהחושך, השאירו מנורת לילה עמומה דלוקה."),
+    say: L("The little light stays on. I'm just outside.", "האור הקטן נשאר דלוק. אני ממש פה בחוץ."),
+    materials: L("A nightlight or landing light", "מנורת לילה או אור במסדרון"),
+  }),
+  SP("pr-sleep-13", "sleep", 12, "routine_building", 5, S.nhsStartForLifeSleep, {
+    do: L("Keep the last nap of the day well away from bedtime, so your child is ready for sleep when the routine starts.", "דאגו ששנת הצהריים תיגמר הרבה לפני שעת השינה, כדי שהילד/ה יהיה/תהיה עייף/ה כשהטקס מתחיל."),
+    say: L("Nap's over! Let's go and play outside.", "נגמרה שנת הצהריים! בוא/י נצא לשחק בחוץ."),
+  }),
+  SP("pr-sleep-14", "sleep", 12, "routine_building", 10, S.aapBedtimeTrouble, {
+    do: L("Before bed, swap running and tickling for quiet things: a bath, a puzzle, a book in soft light.", "לפני השינה, החליפו ריצות ודגדוגים בדברים שקטים: מקלחת, פאזל, ספר באור רך."),
+    say: L("Quiet time now. Bath first, or the puzzle?", "עכשיו זמן שקט. קודם מקלחת או פאזל?"),
+    materials: L("A puzzle or a book", "פאזל או ספר"),
+  }),
+  SP("pr-sleep-15", "sleep", 12, "routine_building", 5, S.sheffieldSleepDiary, {
+    do: L("Each morning, jot down roughly when your child fell asleep, any wakings you noticed, and when they woke. Just noting, no judging.", "בכל בוקר, רשמו בערך מתי הילד/ה נרדם/ה, כל התעוררות ששמתם לב אליה, ומתי קם/קמה. רק רושמים, לא שופטים."),
+    say: L("Good morning! It's light outside. Time to get up.", "בוקר טוב! בחוץ כבר אור. זמן לקום."),
+    materials: L("The app's diary, or paper and a pen", "היומן באפליקציה, או דף ועט"),
+  }),
+  SP("pr-sleep-16", "sleep", 12, "responsive_interaction", 5, S.sheffieldSleepDiary, {
+    do: L("Tonight, watch for the first sleepy sign, a yawn, rubbing eyes, going quiet, and note the time before you start the routine.", "הערב, חפשו את סימן העייפות הראשון, פיהוק, שפשוף עיניים, שקט פתאומי, ורשמו את השעה לפני שמתחילים את הטקס."),
+    say: L("I saw a big yawn. Our bedtime routine starts now.", "ראיתי פיהוק גדול. הטקס שלנו מתחיל עכשיו."),
+  }),
+  SP("pr-sleep-17", "sleep", 18, "responsive_interaction", 5, S.nhsStartForLifeSleep, {
+    do: L("If your child comes out of bed, walk them back calmly with as few words as possible, the same way every time.", "אם הילד/ה יוצא/ת מהמיטה, החזירו אותו/אותה ברוגע, עם כמה שפחות מילים, באותה דרך בכל פעם."),
+    say: L("It's sleep time. Back to bed. Goodnight.", "זה זמן לישון. חוזרים למיטה. לילה טוב."),
+  }),
+  SP("pr-sleep-18", "sleep", 12, "responsive_interaction", 5, S.nhsStartForLifeSleep, {
+    do: L("If your child wakes in the night, keep the lights off and your voice low, comfort them, and keep it quiet and dull.", "אם הילד/ה מתעורר/ת בלילה, השאירו את האור כבוי ודברו בשקט, נחמו, ושמרו שהכול יהיה שקט ומשעמם."),
+    say: L("Shh, it's still night-time. I'm here. Back to sleep.", "שששש, עדיין לילה. אני פה. חוזרים לישון."),
+  }),
+  // Ruling (orchestrator, 6 Oct): allowed as public behavioural guidance in the family's own words, no method
+  // name — flagged for the clinical reviewer (REVIEW-SHEET §B-PROG-06, SN-P19).
+  SP("pr-sleep-19", "sleep", 18, "responsive_interaction", 10, S.meltzerMindell2014, {
+    do: L("Choose one small change at sleep time, like sitting by the door instead of the bed, and keep the rest of the routine the same.", "בחרו שינוי קטן אחד בזמן ההירדמות, למשל לשבת ליד הדלת במקום ליד המיטה, ושמרו על שאר הטקס כמו שהוא."),
+    say: L("I'm right here by the door. Goodnight.", "אני כאן ליד הדלת. לילה טוב."),
+  }),
+  SP("pr-sleep-20", "sleep", 24, "specific_praise", 5, S.aapBedtimeTrouble, {
+    do: L("In the morning, name one thing your child did at bedtime that helped, like climbing into bed or choosing the book.", "בבוקר, ציינו דבר אחד שהילד/ה עשה/תה בזמן ההשכבה ועזר, כמו לטפס לבד למיטה או לבחור את הספר."),
+    say: L("You climbed into bed all by yourself. Thank you!", "טיפסת למיטה לבד לגמרי. תודה!"),
+  }),
+  SP("pr-sleep-21", "sleep", 12, "routine_building", 5, S.mindellWilliamson2018, {
+    do: L("When the evening is different, a trip, guests, a cold, keep a short version of your usual steps in the usual order.", "כשהערב שונה, נסיעה, אורחים, הצטננות, עשו גרסה קצרה של השלבים הרגילים, באותו סדר."),
+    say: L("Different bed tonight, same steps: pyjamas, book, cuddle.", "מיטה אחרת הלילה, אותם שלבים: פיג'מה, ספר, חיבוק."),
   }),
 
   /* ── shelf-level (B-LOOP-08 follow-up) · Family · 12–48 months ───────── */

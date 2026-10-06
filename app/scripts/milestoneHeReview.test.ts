@@ -277,20 +277,29 @@ describe("B-LOOP-08 — practices import (temp copy only)", () => {
  * same CSV shape as the other packs (BOM, CRLF, quoted, three reviewer cells).
  */
 describe("B-PROG-02 — programs export", () => {
-  it("one row per program string: 1 parent skill + 8 skills + 24 scripts + 4 measures × 3, header = the nine columns", () => {
+  it("one row per program string: Talk Together 1 parent skill + 8 skills + 24 scripts + 4 measures × 3; Steady Nights (B-PROG-06) 1 + 6 + 18 + 3 measures × 3 + 2 notes + 2 boundaries; header = the nine columns", () => {
     const csv = buildProgramExportCsv();
     expect(csv.startsWith(BOM)).toBe(true);
     expect(csv.includes("\r\n")).toBe(true);
     const rows = parseCsv(csv);
     expect(rows[0]).toEqual([...PROGRAM_COLUMNS]);
-    const body = rows.slice(1);
+    const all = rows.slice(1);
+    const sn = all.filter((r) => r[1] === "steady-nights");
+    expect(sn).toHaveLength(1 + 6 + 18 + 3 * 3 + 2 + 2);
+    expect(sn.filter((r) => r[3] === "coach-script")).toHaveLength(18);
+    expect(sn.filter((r) => r[3] === "measure-label").map((r) => r[0])).toEqual([
+      "steady-nights.practice-days.label", "steady-nights.routine-in-order.label", "steady-nights.longest-stretch.label",
+    ]);
+    expect(sn.filter((r) => r[3] === "parent-note").map((r) => r[2])).toEqual(["4", "5"]);
+    const body = all.filter((r) => r[1] === "talk-together");
+    expect(all).toHaveLength(body.length + sn.length);
     expect(body).toHaveLength(1 + 8 + 24 + 4 * 3);
     expect(body.filter((r) => r[3] === "coach-script")).toHaveLength(24);
     expect(body.filter((r) => r[3] === "skill").map((r) => r[2])).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
     expect(body.filter((r) => r[3] === "measure-label").map((r) => r[0])).toEqual([
       "talk-together.practice-days.label", "talk-together.turns-waited.label", "talk-together.new-words.label", "talk-together.two-word-phrases.label",
     ]);
-    for (const r of body) {
+    for (const r of all) {
       expect(r, r[0]).toHaveLength(9);
       for (let i = 0; i < 6; i += 1) expect(r[i].trim().length, `${r[0]} ${PROGRAM_COLUMNS[i]}`).toBeGreaterThan(0);
       expect(r.slice(6)).toEqual(["", "", ""]);
@@ -308,7 +317,7 @@ describe("B-PROG-02 — programs export", () => {
     const bytes = fs.readFileSync(out.file);
     expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     expect(parseCsv(bytes.toString("utf8"))[1][5]).toBe(TALK_TOGETHER.parentSkill.he);
-    expect(out.rows).toBe(45);
+    expect(out.rows).toBe(45 + 38); // Talk Together + Steady Nights (B-PROG-06)
     expect(main(["--programs", "export", "--out", tmp])).toBe(0);
     expect(fs.readdirSync(tmp).some((f) => /^HE-REVIEW-PROGRAMS-\d{4}-\d{2}-\d{2}\.csv$/.test(f))).toBe(true);
     expect(main(["--programs"])).toBe(2);

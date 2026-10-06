@@ -64,7 +64,12 @@ describe("B-LOOP-08 — coverage", () => {
       expect(practicesForMilestone(p.id), p.id).toEqual([]);
     }
     // Sleep practices cite the sleep sources only (AAP safe sleep / HealthyChildren, NHS Start for Life, WHO 2019).
-    const sleepSources = [PRACTICE_SOURCES.aapSafeSleep, PRACTICE_SOURCES.aapHealthyChildrenSleep, PRACTICE_SOURCES.nhsStartForLifeSleep, PRACTICE_SOURCES.whoMovement];
+    const sleepSources = [
+      PRACTICE_SOURCES.aapSafeSleep, PRACTICE_SOURCES.aapHealthyChildrenSleep, PRACTICE_SOURCES.nhsStartForLifeSleep, PRACTICE_SOURCES.whoMovement,
+      // B-PROG-06 (Steady Nights)
+      PRACTICE_SOURCES.aapBedtimeTrouble, PRACTICE_SOURCES.aapMediaYoungMinds, PRACTICE_SOURCES.mindellWilliamson2018,
+      PRACTICE_SOURCES.meltzerMindell2014, PRACTICE_SOURCES.sheffieldSleepDiary,
+    ];
     for (const p of practicesForShelf("sleep")) expect(sleepSources, p.id).toContain(p.evidence.source);
     for (const p of practicesForShelf("family")) expect([PRACTICE_SOURCES.whoUnicefCcd, PRACTICE_SOURCES.aapBrightFutures], p.id).toContain(p.evidence.source);
   });
@@ -80,11 +85,26 @@ describe("B-LOOP-08 — coverage", () => {
       for (const t of texts(p)) expect(/\bPEER\b|\bCROWD\b|dialogic/i.test(t.text), `${p.id}.${t.field}.${t.locale}`).toBe(false);
     }
     // pre-review H7: pr-words-07 is the recast practice of the retired asha-comm-36m row
-    expect(PRACTICES.filter((p) => p.milestoneId === null)).toHaveLength(17);
+    expect(PRACTICES.filter((p) => p.milestoneId === null)).toHaveLength(32); // 17 + B-PROG-06 pr-sleep-07…21
     const recast = PRACTICES.find((p) => p.id === "pr-words-07")!;
     expect(recast.shelf).toBe("words");
     expect(recast.evidence.source).toBe(PRACTICE_SOURCES.ashaActivities);
     expect(PRACTICES.some((p) => p.milestoneId === "asha-comm-36m" || p.milestoneId === "cdc-48m-11")).toBe(false);
+  });
+
+  it("B-PROG-06: Steady Nights adds pr-sleep-07…21 (sleep shelf, 12–24 months); every source is marked verified or not, and only a verified source carries a URL", () => {
+    const ids = Array.from({ length: 15 }, (_, i) => `pr-sleep-${String(i + 7).padStart(2, "0")}`);
+    for (const id of ids) {
+      const p = PRACTICES.find((x) => x.id === id);
+      expect(p, id).toBeTruthy();
+      expect(p!.shelf, id).toBe("sleep");
+      expect(p!.ageMonths >= 12 && p!.ageMonths <= 24, id).toBe(true);
+      expect(typeof p!.evidence.source.verified, id).toBe("boolean");
+    }
+    expect(practicesForShelf("sleep").length).toBe(21);
+    for (const [key, s] of Object.entries(PRACTICE_SOURCES) as [string, { url?: string; verified?: boolean }][]) if (s.verified === false) expect(s.url, key).toBeUndefined();
+    expect(PRACTICE_SOURCES.nhsStartForLifeSleep.title).not.toMatch(/start for life/i); // R10: the mistitled record is fixed
+    expect(PRACTICES.find((p) => p.id === "pr-sleep-03")!.do.en).not.toMatch(/morning|daylight/i); // R10: softened
   });
 
   it("pre-review H4: infant safe sleep (pr-sleep-01) is anchored at 2 months and carries the three core AAP 2022 points in plain words", () => {

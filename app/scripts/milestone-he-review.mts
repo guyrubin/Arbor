@@ -69,6 +69,7 @@ import { findClinicalDiagnosisTerm } from "../src/lib/clinicalScan.js";
 import { PRACTICES, PRACTICE_BANNED } from "../src/content/practices.js";
 import { PROGRAMS } from "../src/content/programs/index.js";
 import { TALK_TOGETHER_DOSE, TALK_TOGETHER_META } from "../src/content/programs/talkTogether.js";
+import { STEADY_NIGHTS_DOSE, STEADY_NIGHTS_META } from "../src/content/programs/steadyNights.js";
 import type { MeasureDef } from "../src/content/programs/types.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -430,11 +431,19 @@ export function buildProgramReviewRows(): ProgramReviewRow[] {
     }
     const measures: MeasureDef[] = p.id === "talk-together"
       ? [TALK_TOGETHER_DOSE, p.measures.parentProxy, p.measures.childProxy, TALK_TOGETHER_META.phrasesMeasure]
-      : [p.measures.parentProxy, p.measures.childProxy];
+      : p.id === "steady-nights"
+        ? [STEADY_NIGHTS_DOSE, p.measures.parentProxy, p.measures.childProxy]
+        : [p.measures.parentProxy, p.measures.childProxy];
     for (const m of measures) {
       row(`${p.id}.${m.id}.label`, p.id, PROGRAM_LEVEL_MARK, "measure-label", m.label);
       row(`${p.id}.${m.id}.unit`, p.id, PROGRAM_LEVEL_MARK, "measure-unit", m.unit);
       row(`${p.id}.${m.id}.rule`, p.id, PROGRAM_LEVEL_MARK, "measure-rule", m.countingRule);
+    }
+    // B-PROG-06: Steady Nights' parent-typed prompts and the two boundary lines the program page renders.
+    if (p.id === "steady-nights") {
+      for (const note of STEADY_NIGHTS_META.parentNotes) row(`${p.id}.note.${note.id}`, p.id, String(note.week), "parent-note", note.prompt);
+      row(`${p.id}.boundary.professional`, p.id, PROGRAM_LEVEL_MARK, "boundary", STEADY_NIGHTS_META.boundaries.professional);
+      row(`${p.id}.boundary.week5Safety`, p.id, "5", "boundary", STEADY_NIGHTS_META.boundaries.week5Safety);
     }
   }
   return rows;

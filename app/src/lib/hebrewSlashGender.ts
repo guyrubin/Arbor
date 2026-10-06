@@ -44,6 +44,8 @@ const IRREGULAR: Readonly<Record<string, readonly [string, string]>> = {
   "כשאת/ה": ["כשאתה", "כשאת"],
   // the feminine of "one" is not base + ת
   "אחד/ת": ["אחד", "אחת"],
+  // B-PROG-06: a past-tense ל"ה verb whose feminine is written as a partial alternative ("עשה/תה" → "עשתה")
+  "עשה/תה": ["עשה", "עשתה"],
 };
 
 /** Clitic particles that stay in front of a whole-word alternative ("כשהוא/היא" → "כשהיא"). */

@@ -261,6 +261,36 @@ export interface CoachContract {
   todayPlanProvenance?: { step: number; memoryId: string; kind: "approved_fact" }[];
 }
 
+/**
+ * B-PROG-06 (Steady Nights) — one night of the sleep diary, the child
+ * sub-collection `sleepLogs` (users/{uid}/children/{childId}/sleepLogs/{date};
+ * registered in lib/childData CHILD_SUBCOLLECTIONS: export + erase). One
+ * document per night, keyed by the EVENING's local date. Written in two moments
+ * by the pure builders in lib/sleepDiary.ts: the bedtime tap ("Done in order" /
+ * "Not tonight", the parent proxy — last tap wins) and the next morning's diary
+ * (fell asleep · wakings noticed · woke up). `longestStretchMinutes` is
+ * COMPUTED from the times (never typed by the parent, never a goal).
+ */
+export interface SleepLogEntry {
+  /** YYYY-MM-DD — the evening the night began (also the document id). */
+  date: string;
+  /** "HH:MM" (24 h, local) — about when the child fell asleep. */
+  bedtime?: string;
+  /** "HH:MM" — wakings the parent noticed, in the order they happened (optional). */
+  wakings?: string[];
+  /** "HH:MM" — when the child woke up for the day. */
+  wake?: string;
+  /** Computed: the longest gap between consecutive diary times, in minutes. */
+  longestStretchMinutes?: number;
+  /** The parent's bedtime tap (the routine, not the child). */
+  routine?: "done_in_order" | "not_tonight";
+  /** ISO time of the last routine tap. */
+  routineAt?: string;
+  /** The program enrolment the night belongs to, when one is active. */
+  programId?: string;
+  updatedAt: string;
+}
+
 export interface BehaviorLog {
   id: string;
   timestamp: string;

@@ -12,6 +12,9 @@
  *   - per-milestone references in the seeded catalogue (`ALL_MILESTONES`)
  *   - B-LOOP-01: each catalogue row's `source` document (CDC 2022, ASHA 2023)
  *   - the hard-moment guides' evidence refs (`hardMomentCards`)
+ *   - B-PROG-06: the practice library's source records (`PRACTICE_SOURCES`) —
+ *     only a record marked `verified: true` with a URL (an unverified citation
+ *     carries no URL and is never counted until the reviewer confirms it)
  *   - the Trust Center's own citation anchors, passed in by the page (kept
  *     there so the AP-060 preservation guard still sees them in that file)
  *
@@ -22,6 +25,7 @@
 import { DOMAIN_REFERENCES } from "./milestoneReferences";
 import { ALL_MILESTONES } from "./milestoneData";
 import { hardMomentCards } from "../content/hardMomentCards";
+import { PRACTICE_SOURCES, type PracticeSource } from "../content/practices";
 
 export interface CitedSourceRef {
   readonly url: string;
@@ -36,6 +40,7 @@ export function contentCitedSourceUrls(): string[] {
     if (milestone.source?.url) urls.push(milestone.source.url);
   }
   for (const card of hardMomentCards) urls.push(...card.evidenceRefs);
+  for (const source of Object.values(PRACTICE_SOURCES) as PracticeSource[]) if (source.verified === true && source.url) urls.push(source.url);
   return urls;
 }
 

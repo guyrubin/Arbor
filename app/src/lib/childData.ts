@@ -80,6 +80,9 @@ export const CHILD_SUBCOLLECTIONS = [
   // in Storage under children/{childId}/books/ and are swept by
   // /privacy/erase and the account deletion. Export lists the metadata.
   "bookAssets",
+  // B-PROG-06 (Steady Nights): the sleep diary — one doc per night (bedtime
+  // routine tap + the morning's times; lib/sleepDiary.ts). Export + erase.
+  "sleepLogs",
 ];
 
 const remoteActive = (uid?: string) =>
