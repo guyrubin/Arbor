@@ -36,7 +36,7 @@ const NOW = new Date("2026-10-06T12:00:00Z");
 const logs = [
   { id: "w1", behaviorType: "A moment", trigger: "Said big ball at the park", timestamp: "2026-09-29T08:00:00Z", context: "home", shelf: "words" },
   { id: "m1", behaviorType: "A moment", trigger: "Climbed the ladder", timestamp: "2026-10-02T08:00:00Z", context: "home", shelf: "moving" },
-] as BehaviorLog[];
+] as unknown as BehaviorLog[];
 const doses = [{ id: "d1", recommendation: "x", source: "practice", capacity: "tiny", status: "completed", acceptedAt: "2026-10-01T08:00:00Z", practiceId: "p1", shelf: "words" }] as ActionLoopEntry[];
 const child = { id: "c1", name: "Dylan", age: 3, demo: true };
 const counts = proDomainCounts(toObservations({ behaviorLogs: logs, actionLoops: doses }, child), (s) => shelfDef(s).domain, NOW);
