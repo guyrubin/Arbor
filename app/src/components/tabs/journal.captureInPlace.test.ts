@@ -331,7 +331,8 @@ describe("critic r2 — Journal: real modules, an honest aside, the quote at eve
   });
 
   it("the quiet week quotes the parent in the story line at every width (no md-only quote), the type label is the fallback", () => {
-    expect(JOURNAL).toContain('const quotedLastKept = storyState === "quiet-week" && !!lastKept?.words;');
+    // NEXTLEVEL r1 (1f): the quote leads on every week, not only a quiet one.
+    expect(JOURNAL).toContain("const quotedLastKept = !!lastKept?.words;");
     const line = JOURNAL.slice(JOURNAL.indexOf('data-story="quoted"'), JOURNAL.indexOf('data-story="quoted"') + 900);
     expect(line).toContain('<bdi dir="auto">{lastKept!.words}</bdi>');
     expect(line).toContain("var(--font-editorial)");
@@ -342,6 +343,17 @@ describe("critic r2 — Journal: real modules, an honest aside, the quote at eve
     expect(aside).not.toContain("lastKept.words");
     // One door per width: the story line's door is md:hidden, the aside is md+.
     expect(JOURNAL).toContain('<div className="md:hidden">{lastKeptDoor("journal-story-door")}</div>');
+  });
+
+  it("NEXTLEVEL critic r1 (B-NEXTLEVEL-NEW-1f) — 'Last thing you wrote about {name}' under the H1 on every week; tap opens the entry; the week count stays one quiet line", () => {
+    const line = JOURNAL.slice(JOURNAL.indexOf('data-story="quoted"'), JOURNAL.indexOf('data-story="quoted"') + 1800);
+    expect(line).toContain('t("elev.journal.lastWrote.caption", { name: childFirstName, date: lastKeptDate })');
+    expect(line).toContain("onClick={() => requestJournalFocus(lastKept!.id)}");
+    expect(line).toContain('borderColor: "var(--arbor-clay-dim)"');
+    expect(line).toContain('{weekCount > 0 && <p data-testid="journal-week-line"');
+    expect(line).not.toMatch(/uppercase|tracking-/);
+    expect(dict.en["elev.journal.lastWrote.caption"]).toBe("Last thing you wrote about {name} · {date}");
+    expect(dict.he["elev.journal.lastWrote.caption"]).toBe("הדבר האחרון שכתבתם על {name} · {date}");
   });
 
   it("the search pill is one surface: the input is field-bare, the pill and month select share field-pill", () => {

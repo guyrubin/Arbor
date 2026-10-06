@@ -272,7 +272,7 @@ function JournalRow({
 /** `primaryMoveProps`: TimelineTab's contract stamp (capture-moment), spread on
  *  the capture tiles — the control that performs the move, not the wrapper. */
 export default function JournalTab({ primaryMoveProps, densityToggle }: { primaryMoveProps?: Record<string, string>; densityToggle?: ReactNode } = {}) {
-  const { milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, childProfile, openCaptureSheet, toggleLogResolved, deleteLog } = useArbor();
+  const { milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, requestJournalFocus, childProfile, openCaptureSheet, toggleLogResolved, deleteLog } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
   // elev.childsignals.* keys (practice-kind titles) resolve from the module
@@ -478,7 +478,11 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
   const feedCount = journalFeedCountKey(signals);
   // Critic r2: the quiet week quotes the parent at every width when the row
   // has words; the type label stays the fallback for a row without words.
-  const quotedLastKept = storyState === "quiet-week" && !!lastKept?.words;
+  // NEXTLEVEL critic r1 (B-NEXTLEVEL-NEW-1f): the parent's last words lead
+  // the header on EVERY week, not only a quiet one; a populated week keeps its
+  // count as one quiet line under the quote (said once). No words → the count
+  // line alone; never a machine entry.
+  const quotedLastKept = !!lastKept?.words;
   const lastKeptDoor = (testId: string) => (
     <button
       type="button"
@@ -520,12 +524,22 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
                  tiles (below md; at md+ the door sits in the aside). Real row
                  text only, never generated; no new colour, gradient or chip. */
               <div data-testid="journal-story-line" data-story="quoted" className="mt-3 max-w-2xl space-y-1">
-                <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>
-                  {t("elev.journal.lastKept.caption", { date: lastKeptDate })}
+                <p className="t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>
+                  {t("elev.journal.lastWrote.caption", { name: childFirstName, date: lastKeptDate })}
                 </p>
-                <p dir="auto" className="t-lg leading-snug line-clamp-2" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>
-                  {"“"}<bdi dir="auto">{lastKept!.words}</bdi>{"”"}
-                </p>
+                {/* Tapping the words opens that entry in place (the thread's focus seam). */}
+                <button
+                  type="button"
+                  data-testid="journal-last-words"
+                  onClick={() => requestJournalFocus(lastKept!.id)}
+                  className="block w-full border-s-2 ps-3 text-start"
+                  style={{ borderColor: "var(--arbor-clay-dim)" }}
+                >
+                  <span dir="auto" className="block t-lg leading-snug line-clamp-2" style={{ fontFamily: "var(--font-editorial)", lineHeight: 1.35, color: "var(--arbor-ink)" }}>
+                    {"“"}<bdi dir="auto">{lastKept!.words}</bdi>{"”"}
+                  </span>
+                </button>
+                {weekCount > 0 && <p data-testid="journal-week-line" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{storyCopy}</p>}
                 <div className="md:hidden">{lastKeptDoor("journal-story-door")}</div>
               </div>
             ) : (
