@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -9,6 +9,10 @@ import { ageLabel } from "../../lib/childAge";
 import { aggregateLangCounts, type LangObservation } from "../../growth/vocabAgg";
 import LanguageLabVocabView, { PhraseLogForm, WordsList } from "./LanguageLabVocabView";
 import { languageName } from "../../lib/languageName";
+import { ageMonthsOf, isUnderThree } from "../../lib/age/forChild";
+import { genderedKey } from "../../lib/today/fromRecord";
+import { actNowKey, sayBackFor } from "../../lib/language/sayBack";
+import { SaidCapture, SaidList, SayBackBlock } from "../growth/ThingsSaid";
 
 /**
  * Language Lab — multilingual development support, driven by the child's own
@@ -37,6 +41,15 @@ export default function LanguageLabTab() {
   const target = second ? ln(second) : t("lang.theirSecondLang");
   // GP-01: the months-precise age label — the ONE parent-facing age render.
   const age = ageLabel(childProfile, t);
+  // B-GROWTH-36: age decides the object — words under 3 (the ledger below),
+  // "Things {name} said" from 3 (a quote keepsake). After a keep, the
+  // say-back (deterministic templates) is the largest text on the page.
+  const gender = childProfile.gender;
+  const gk = (k: string) => genderedKey(k, gender);
+  const months = ageMonthsOf(childProfile);
+  const underThree = isUnderThree(childProfile);
+  const [kept, setKept] = useState<{ text: string; language: string | null } | null>(null);
+  const sayBack = kept ? sayBackFor({ text: kept.text, language: kept.language, languages: langs, months }) : null;
 
   // Read-only over the SAME parent-logged phrase observations the vocabulary
   // log below writes ("langObs") — a count per language, nothing derived.
@@ -94,7 +107,7 @@ export default function LanguageLabTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
       <PageHeader
         eyebrow={t("lang.eyebrow")}
-        title={t("lang.title")}
+        title={underThree ? t("lang.title") : t(gk("elev.words.said.title"), { name: first })}
         subtitle={t("lang.subtitle", { first })}
         action={
           <button onClick={() => setActiveTab("speech")} className="touch-target gap-1.5 px-2 text-xs font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
@@ -124,15 +137,20 @@ export default function LanguageLabTab() {
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
-          <div data-module="language-capture" data-primary-move="log-language-moment">
-            <PhraseLogForm childId={childProfile.id} languages={langs} onAdded={() => {}} t={t} />
+          <div data-module="language-capture" data-primary-move="log-language-moment" className="space-y-4">
+            {underThree ? (
+              <PhraseLogForm childId={childProfile.id} languages={langs} onAdded={(obs) => setKept(obs ? { text: obs.phrase, language: obs.language } : null)} t={t} />
+            ) : (
+              <SaidCapture childId={childProfile.id} languages={langs} first={first} gender={gender} onKept={setKept} />
+            )}
+            {sayBack && <SayBackBlock back={sayBack} first={first} gender={gender} />}
           </div>
 
           {/* B-GROWTH-16 — the words written down are the second module (the
               parent's own record, under the form that writes it); the practice
               ideas moved into the disclosure below. */}
           <div data-module="language-words">
-            <WordsList />
+            {underThree ? <WordsList /> : <SaidList childId={childProfile.id} first={first} gender={gender} />}
           </div>
 
           {/* Language profile — roles in the home + moments logged. One tone,
@@ -178,6 +196,12 @@ export default function LanguageLabTab() {
               <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
             </summary>
             <div className="px-4 pb-4 space-y-4">
+          {/* B-GROWTH-36: the "Act now if…" line for the child's age — a DRAFT
+              pending the clinical review line (REVIEW-SHEET.md, P2 WORDS). */}
+          <p data-testid="lang-act-now" data-review="draft" className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
+            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.words.actNow.label")}</span>
+            {t(gk(actNowKey(months)), { name: first })}
+          </p>
           {/* B-GROWTH-16: daily practice ideas — demoted into the disclosure. */}
           <div data-module="language-practice" data-module-demoted style={{ display: "contents" }}>
           <SectionCard

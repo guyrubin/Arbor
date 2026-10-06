@@ -84,6 +84,7 @@ import * as wave2Daily from "./wave2Daily";
 import * as wave2Knowledge from "./wave2Knowledge";
 import * as waveE from "./waveE";
 import * as waveR from "./waveR";
+import * as words from "./words";
 import * as wow from "./wow";
 import * as yourData from "./yourData";
 
@@ -155,6 +156,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   wave2Knowledge,
   waveE,
   waveR,
+  words,
   wow,
   yourData,
 ];

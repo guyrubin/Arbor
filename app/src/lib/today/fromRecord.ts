@@ -4,6 +4,10 @@
  *
  * Pure and on-device (zero model calls). Given the child's record it returns
  * at most ONE opener, in this priority:
+ *   0. B-GROWTH-36: something the child said YESTERDAY that has a say-back
+ *      (lib/language/sayBack) → the child's words + "Did you get to say it
+ *      back in Hebrew? Yes / Not today" (the parent's act; no count of the
+ *      child, never a rating of the child's language);
  *   1. an active plan → its topic, quoting the last step tried/rated (else the
  *      parent's latest written note);
  *   2. the parent's last written note, when it is older than 14 days → quoted;
@@ -24,14 +28,23 @@ import type { ActionLoopEntry } from "../../actionLoop/model";
 import { planStepStatus } from "../plans";
 import { parentWords as sharedParentWords } from "../recordCounts";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
+import { sayBackFor } from "../language/sayBack";
 
-export type FromRecordKind = "plan" | "note" | "fact";
-/** The three tap answers; stored verbatim as the reflection. */
-export type FromRecordAnswer = "easier" | "hard_again" | "other";
+export type FromRecordKind = "plan" | "note" | "fact" | "said";
+/** The tap answers; stored verbatim as the reflection. "yes" / "not_today"
+ *  answer the say-back opener only (B-GROWTH-36). */
+export type FromRecordAnswer = "easier" | "hard_again" | "other" | "yes" | "not_today";
 export const FROM_RECORD_ANSWERS: readonly FromRecordAnswer[] = ["easier", "hard_again", "other"];
+/** B-GROWTH-36: the say-back opener's two answers — the parent's act, nothing about the child. */
+export const SAID_ANSWERS: readonly FromRecordAnswer[] = ["yes", "not_today"];
+/** The answers an opener offers. */
+export function answersFor(opener: Pick<FromRecordOpener, "kind">): readonly FromRecordAnswer[] {
+  return opener.kind === "said" ? SAID_ANSWERS : FROM_RECORD_ANSWERS;
+}
 
-/** Where the quote came from: the parent's own words, or a plan step they tried. */
-export type FromRecordQuoteSource = "parent" | "fact" | "step";
+/** Where the quote came from: the parent's own words, a plan step they tried,
+ *  or (B-GROWTH-36) the child's own words the parent kept. */
+export type FromRecordQuoteSource = "parent" | "fact" | "step" | "child";
 
 export interface FromRecordOpener {
   /** Stable id of what the opener is about: `plan:<id>` · `note:<id>` · `fact:<id>`. */
@@ -50,6 +63,10 @@ export interface FromRecordOpener {
   /** NEXTLEVEL critic r1: a plain moment the parent wrote down (not an
    *  incident) is a win — its opener asks "again since?", never "Hard again". */
   tone?: "change" | "joy";
+  /** B-GROWTH-36 (said opener): "cross" = say it back in the kept language
+   *  (`sayBackIn`, a plain profile language name); "same" = say it back and add one. */
+  sayBackMode?: "cross" | "same";
+  sayBackIn?: string | null;
 }
 
 /* ── NEXTLEVEL critic r1 — topics ──────────────────────────────────────────
@@ -108,6 +125,23 @@ export interface FromRecordInput {
   logs: readonly BehaviorLog[];
   /** Memory facts; only `approved` (or status-less) ones are read. */
   facts: readonly FromRecordFact[];
+  /** B-GROWTH-36: the child's kept quotes (lib/loop/tonight `quotesFromDocs`
+   *  rows, + the language the parent saved them under), the profile's
+   *  languages and the child's age in months (lib/age/forChild ageMonthsOf). */
+  said?: {
+    quotes: readonly SaidQuoteRow[];
+    languages: readonly string[];
+    months: number;
+  };
+}
+
+/** One kept quote, as the selector reads it. */
+export interface SaidQuoteRow {
+  id: string;
+  note: string;
+  /** Local YYYY-MM-DD the parent kept it. */
+  noticedOn: string;
+  language?: string | null;
 }
 
 const DAY_MS = 86_400_000;
@@ -204,6 +238,9 @@ function planOpener(input: FromRecordInput, notes: readonly Note[]): FromRecordO
  */
 export function selectFromRecord(input: FromRecordInput): FromRecordOpener | null {
   const quiet = quietKeys(input.loop, input.now);
+
+  const said = saidOpener(input, quiet);
+  if (said) return said;
   const notes = notesNewestFirst(input.logs);
   const note = notes[0] ?? null;
 
@@ -222,6 +259,32 @@ export function selectFromRecord(input: FromRecordInput): FromRecordOpener | nul
     const key = `fact:${f.id}`;
     if (quiet.has(key)) continue;
     return { key, kind: "fact", topic: null, quote: f.fact.trim(), quoteSource: "fact", quoteAt: f.createdAt };
+  }
+  return null;
+}
+
+/** B-GROWTH-36 — priority 0: a quote kept YESTERDAY that has a say-back. */
+function saidOpener(input: FromRecordInput, quiet: Set<string>): FromRecordOpener | null {
+  if (!input.said) return null;
+  const yesterday = localDay(new Date(input.now.getTime() - DAY_MS));
+  const rows = input.said.quotes
+    .filter((q) => q.noticedOn === yesterday && q.note?.trim())
+    .sort((a, b) => b.id.localeCompare(a.id));
+  for (const q of rows) {
+    const key = `said:${q.id}`;
+    if (quiet.has(key)) continue;
+    const back = sayBackFor({ text: q.note, language: q.language, languages: input.said.languages, months: input.said.months });
+    if (!back) continue;
+    return {
+      key,
+      kind: "said",
+      topic: null,
+      quote: q.note.trim(),
+      quoteSource: "child",
+      quoteAt: q.noticedOn,
+      sayBackMode: back.mode,
+      sayBackIn: back.mode === "cross" ? back.answerIn : null,
+    };
   }
   return null;
 }
@@ -271,16 +334,19 @@ export function fromRecordEntry(
 
 /** i18n keys for an opener's question and answers (EN + HE in lib/i18n.ts). */
 export function fromRecordQuestionKey(opener: FromRecordOpener): string {
+  if (opener.kind === "said") return `elev.words.today.q.${opener.sayBackMode === "cross" ? "cross" : "same"}`;
   if (opener.kind === "fact") return "today.record.q.fact";
   if (opener.tone === "joy") return "today.record.q.win";
   if (opener.kind === "plan" && opener.topicKey) return `today.record.q.topic.${opener.topicKey}`;
   return opener.kind === "plan" ? "today.record.q.plan" : "today.record.q.note";
 }
 export function fromRecordAnswerKey(opener: FromRecordOpener, answer: FromRecordAnswer): string {
+  if (opener.kind === "said") return `elev.words.today.a.${answer}`;
   return `today.record.a.${opener.kind === "fact" ? "fact" : opener.tone === "joy" ? "joy" : "change"}.${answer}`;
 }
 export function fromRecordMetaKey(opener: FromRecordOpener): string | null {
   if (!opener.quoteSource) return null;
+  if (opener.quoteSource === "child") return "elev.words.today.meta";
   return opener.quoteSource === "step" ? "today.record.meta.step" : opener.quoteSource === "fact" ? "today.record.meta.fact" : "today.record.meta.note";
 }
 

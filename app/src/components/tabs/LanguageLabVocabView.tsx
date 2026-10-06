@@ -9,14 +9,14 @@
  *  - LEADS with the COMBINED TOTAL; per-language counts are SECONDARY neutral context.
  *  - B-GROWTH-14: no "Hebrew / English" mix line (it assumed two languages a
  *    Russian- or Arabic-speaking family does not have) and no per-language
- *    chart (a proportional picture). Counts per PROFILE language + a month list.
+ *    chart (a proportional picture). Counts per PROFILE language.
  *  - Interpretation caption is REQUIRED adjacent to the counts.
  *  - Provenance line is REQUIRED and visible at all times.
  *  - Activity section title: "Ideas for both languages" — NEVER "balanced activities".
  *  - Activity sub-line: "These are ideas, not instructions…" — REQUIRED.
  *  - First-view disclaimer is REQUIRED (re-accessible via toggle).
  *  - NO red/amber on the lower-count language.
- *  - The month list is a plain count per month; it NEVER characterizes one language.
+ *  - B-GROWTH-36: NO per-month count list (never month against month).
  *  - NEVER a readiness score/percentile/verdict.
  */
 
@@ -34,7 +34,6 @@ import { childScopedKey } from "../../lib/childLocalState";
 import {
   aggregateLangCounts,
   combinedTotal,
-  monthlyWordCounts,
   profileLangCounts,
   type LangObservation,
 } from "../../growth/vocabAgg";
@@ -103,7 +102,8 @@ export function PhraseLogForm({
 }: {
   childId: string;
   languages: string[];
-  onAdded: () => void;
+  /** B-GROWTH-36: the saved word, so the page can show its say-back. */
+  onAdded: (obs?: LangObservation) => void;
   t: (k: string, v?: Record<string, string | number>) => string;
 }) {
   const col = useChildCollection<LangObservation>(childId, "langObs", {
@@ -138,7 +138,7 @@ export function PhraseLogForm({
     };
     void col.upsert(obs);
     setPhrase("");
-    onAdded();
+    onAdded(obs);
   };
 
   return (
@@ -372,34 +372,12 @@ export function WordsList() {
 
 export default function LanguageLabVocabView() {
   const { childProfile } = useArbor();
-  const { t, uiLang } = useLanguage();
+  const { t } = useLanguage();
 
   const [showActivities, setShowActivities] = useState(false);
 
-  const childId = childProfile.id;
   const languages = (childProfile.languages ?? []).map((l) => l.trim()).filter(Boolean);
   const first = childProfile.name.split(" ")[0];
-
-  // READ-ONLY collection consumer — no writes from this component.
-  const obsCol = useChildCollection<LangObservation>(childId, "langObs", {
-    orderByField: "timestamp",
-    orderDir: "desc",
-    max: 500,
-  });
-
-  const observations = obsCol.items;
-
-  // B-GROWTH-14: a plain month list in place of the stacked per-language chart.
-  const months = useMemo(() => monthlyWordCounts(observations, 6), [observations]);
-  const monthFmt = useMemo(
-    () => new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-US", { month: "long", timeZone: "UTC" }),
-    [uiLang],
-  );
-  const monthFmtYear = useMemo(
-    () => new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-US", { month: "long", year: "numeric", timeZone: "UTC" }),
-    [uiLang],
-  );
-  const thisYear = new Date().getUTCFullYear();
 
   // If fewer than 2 languages configured, show a gentle prompt.
   if (languages.length < 2) {
@@ -415,28 +393,9 @@ export default function LanguageLabVocabView() {
       {/* B-GROWTH-16: the words list (with its first-view disclaimer, the
           per-language counts, the interpretation caption and the provenance
           line) moved up to a top-level module — see WordsList below. What
-          stays here, in the disclosure, is the month list and the ideas. */}
-
-      {/* ── B-GROWTH-14: words logged per month — a plain list, newest first,
-          at most six. Replaces the stacked per-language area chart. ── */}
-      {months.length > 0 && (
-        <SectionCard
-          title={t("vl.month.title")}
-          icon={<Icon name="calendar_month" size={20} />}
-          tone="mint"
-        >
-          <ul className="space-y-1.5 text-sm" data-testid="vl-month-list">
-            {months.map((m) => {
-              const label = (m.year === thisYear ? monthFmt : monthFmtYear).format(new Date(Date.UTC(m.year, m.month, 1)));
-              return (
-                <li key={`${m.year}-${m.month}`} style={{ color: T.ink }}>
-                  {m.count === 1 ? t("vl.month.row.one", { month: label }) : t("vl.month.row", { month: label, n: m.count })}
-                </li>
-              );
-            })}
-          </ul>
-        </SectionCard>
-      )}
+          stays here, in the disclosure, is the ideas.
+          B-GROWTH-36: the per-month word count list is GONE — never month
+          against month (vocabAgg.test pins its absence). */}
 
       {/* ── Ideas for both languages ── */}
       <SectionCard

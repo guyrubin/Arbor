@@ -3,8 +3,9 @@ import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { FreeText } from "../ui/FreeText";
 import { useLanguage } from "../../context/LanguageContext";
+import { languageName } from "../../lib/languageName";
 import {
-  FROM_RECORD_ANSWERS,
+  answersFor,
   fromRecordAnswerKey,
   fromRecordMetaKey,
   fromRecordQuestionKey,
@@ -47,7 +48,11 @@ export default function FromRecordCard({
   stampMove?: boolean;
 }) {
   const { t, uiLang } = useLanguage();
-  const question = t(fromRecordQuestionKey(opener), { name: childName || t("today.record.childFallback") });
+  // B-GROWTH-36: the say-back opener names the language the family is keeping.
+  const question = t(fromRecordQuestionKey(opener), {
+    name: childName || t("today.record.childFallback"),
+    kept: opener.sayBackIn ? languageName(opener.sayBackIn, t) : "",
+  });
   // NEXTLEVEL critic r1: a 2-3 word topic ("Mornings"), never the plan's full title.
   const topicLine = opener.topicKey ? t(`today.record.topic.${opener.topicKey}`) : opener.topic;
   const metaKey = fromRecordMetaKey(opener);
@@ -89,7 +94,7 @@ export default function FromRecordCard({
         {question}
       </h2>
       <div role="group" aria-label={question} data-testid="today-record-answers" {...(stampMove ? { "data-primary-move": "do-today-action" } : {})} className="mt-3 flex flex-wrap gap-2">
-        {FROM_RECORD_ANSWERS.map((answer) => (
+        {answersFor(opener).map((answer) => (
           <button
             key={answer}
             type="button"

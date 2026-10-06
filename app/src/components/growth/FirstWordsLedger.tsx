@@ -8,6 +8,9 @@ import { fmtDay } from "../../lib/formatDate";
 import { languageName } from "../../lib/languageName";
 import { buildFirstWordsLedger } from "../../lib/firstWords";
 import type { LangObservation } from "../../growth/vocabAgg";
+import { isUnderThree } from "../../lib/age/forChild";
+import { genderedKey } from "../../lib/today/fromRecord";
+import { SaidList } from "./ThingsSaid";
 
 /* ════════════════════════════════════════════════════════════════════════════
    FirstWordsLedger — GP-33.
@@ -39,6 +42,43 @@ export default function FirstWordsLedger() {
   const ledger = useMemo(() => buildFirstWordsLedger(obsCol.items), [obsCol.items]);
 
   const openLab = () => setActiveTab("language");
+
+  // B-GROWTH-36: the word ledger is for a child under 3. From 3 the record
+  // shows "Things {name} said" — the kept quotes (the `quote` keepsakes
+  // Tonight and #/language write), newest first, with their dates.
+  if (!isUnderThree(childProfile)) {
+    const gk = (k: string) => genderedKey(k, childProfile.gender);
+    return (
+      <section
+        data-testid="growth-things-said"
+        aria-labelledby="growth-things-said-title"
+        className="overflow-hidden rounded-[24px] p-4 sm:p-6"
+        style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2
+            id="growth-things-said-title"
+            className="min-w-0 break-words text-xl font-semibold leading-tight"
+            style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
+          >
+            {t(gk("elev.words.said.title"), { name: firstName })}
+          </h2>
+          <button
+            type="button"
+            onClick={openLab}
+            data-testid="growth-things-said-add"
+            className="inline-flex min-h-11 flex-shrink-0 items-center gap-2 rounded-xl px-4 text-[14px] font-semibold"
+            style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}
+          >
+            <Icon name="add" size={18} /> {t(gk("elev.words.ledger.add"), { name: firstName })}
+          </button>
+        </div>
+        <div className="mt-3">
+          <SaidList childId={childProfile.id} first={firstName} gender={childProfile.gender} max={5} />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
