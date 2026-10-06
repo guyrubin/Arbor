@@ -35,6 +35,7 @@ import { renderSpokenContext, type SpokenContext } from "./spokenContext.js";
 import { buildLiveSystemInstruction } from "../lib/livePersona.js";
 import { buildDigestPrompt } from "../server/digest.js";
 import { toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
+import { CONCERN_CUES_EN, CONCERN_CUES_HE } from "../lib/loop/concernCues.js";
 
 // ── AI-12 / GP-16: the ONE profile allow-list every prompt goes through ──────
 //
@@ -220,7 +221,15 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // candidates the bytes equal 1.2.0 (parity pinned in prompts.test.ts).
   // Re-pin owed (live, NOT run by the builder): capture-extract-v1 (12 new
   // milestone-match scenarios, Vertex VERTEX_MODEL_CHAT=gemini-2.5-flash).
-  extract_log: { version: "1.3.0", sha256: "1fb1f6d04f379a6df1cac73d43a11ac8906d4f0578919da9a8e5f4e1756fab57" },
+  // 1.3.1 (B-LOOP-06 follow-up, 2026-10-06; live judge 0.85 on 1.3.0 —
+  // loop-match-none-en came back {food, low}, loop-match-concern-en/he
+  // {words, low}): a shelf or milestone is proposed ONLY for a skill the
+  // child DEMONSTRATED in the words; an everyday event with no skill is null;
+  // the worry / negation cues are named in EN + HE from lib/loop/concernCues
+  // (the same list server/milestoneMatch screens after the model). No-candidate
+  // bytes still equal 1.2.0. Re-pin owed (live, NOT run by the builder):
+  // capture-extract-v1.
+  extract_log: { version: "1.3.1", sha256: "282ea814fda7ec436e00983053e8c820394726ba4d8806ca02156a56e06a8544" },
   // 1.0.0 (B-AI-01 ← B-TODAY-24 server half): the /todays-focus prompt left
   // the route handler. Byte-parity with the inline template it replaced is
   // pinned in prompts.test.ts; the only new text is the OPTIONAL approved-
@@ -530,7 +539,7 @@ export const MILESTONE_MATCH_SHELVES = "sleep | food | words | feelings | play |
 const renderMilestoneMatchBlock = (candidates?: readonly MilestoneMatchCandidate[]): string =>
   candidates && candidates.length
     ? `
-Milestone match (optional): below are open milestones for this child's age, each as id · shelf · title. If the description directly shows the child doing ONE of them, set milestoneMatch to {"shelf": its shelf, "milestoneId": its exact id, "confidence": "high"}. If the moment clearly belongs to one shelf but no listed milestone fits exactly, set {"shelf": that shelf, "confidence": "low"} with no milestoneId. Otherwise set milestoneMatch to null. Choose ONLY from this list, never another id. A worry, a concern or something the child does NOT do is never a milestone (null). Never infer a delay, a status, an emotion or a diagnosis.
+Milestone match (optional): below are open milestones for this child's age, each as id · shelf · title. Propose a shelf and a milestone ONLY for a skill the child DEMONSTRATED in the parent's words; otherwise set milestoneMatch to null. If the description directly shows the child doing ONE of them, set milestoneMatch to {"shelf": its shelf, "milestoneId": its exact id, "confidence": "high"}. If the child clearly demonstrates a skill on one shelf but no listed milestone fits exactly, set {"shelf": that shelf, "confidence": "low"} with no milestoneId. An everyday event that shows no skill (a meal, an outing, a visit) is null. Choose ONLY from this list, never another id. A worry, a concern or something the child does NOT (yet) do is never a milestone: when the description says ${CONCERN_CUES_EN.map((c) => `"${c}"`).join(", ")} or, in Hebrew, ${CONCERN_CUES_HE.map((c) => `"${c}"`).join(", ")}, set milestoneMatch to null. Never infer a delay, a status, an emotion or a diagnosis.
 Shelves: ${MILESTONE_MATCH_SHELVES}
 Candidates:
 ${candidates.map((c) => `- ${c.id} · ${c.shelf} · ${JSON.stringify(c.title)}`).join("\n")}`

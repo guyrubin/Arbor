@@ -16,6 +16,8 @@ import type { MilestoneMatchCandidate } from "../ai/prompts.js";
 import { ALL_MILESTONES, isCatalogueMilestone, milestoneAgeWindow } from "../lib/milestoneData.js";
 import { comparisonMonthsOf } from "../lib/age/forChild.js";
 import { SHELF_IDS, milestoneShelf, type ShelfId } from "../lib/shelves/registry.js";
+import { hasConcernCue } from "../lib/loop/concernCues.js";
+import { screenForConditionQuestion } from "../safety/conditionQuestion.js";
 
 export const MAX_MILESTONE_CANDIDATES = 24;
 
@@ -50,14 +52,26 @@ export function buildMilestoneCandidates(rawIds: unknown, childProfile: unknown)
 }
 
 /**
+ * extract_log 1.3.1 (live judge 0.85 on 1.3.0: a worry and a "still doesn't"
+ * came back as a shelf): the parent's description is screened HERE, after
+ * the model, with the same cue list the prompt names (lib/loop/concernCues)
+ * plus the condition-question screen (safety/conditionQuestion). A worry, a
+ * negation or a condition question is never milestone evidence.
+ */
+export const describesConcernOrAbsence = (message: unknown): boolean =>
+  hasConcernCue(message) || screenForConditionQuestion(message);
+
+/**
  * The model's raw `milestoneMatch`, validated against the candidates:
+ *  - a description that voices a worry / a skill not shown → null;
  *  - an id outside the list → null (dropped);
  *  - "high" needs a listed id; the shelf is the candidate's own shelf;
  *  - "low" carries a valid shelf and no id;
  *  - anything else → null.
  */
-export function validateMilestoneMatch(raw: unknown, candidates: readonly MilestoneMatchCandidate[]): MilestoneMatch | null {
+export function validateMilestoneMatch(raw: unknown, candidates: readonly MilestoneMatchCandidate[], message?: unknown): MilestoneMatch | null {
   if (!raw || typeof raw !== "object" || candidates.length === 0) return null;
+  if (message !== undefined && describesConcernOrAbsence(message)) return null;
   const r = raw as Record<string, unknown>;
   const id = typeof r.milestoneId === "string" ? r.milestoneId.trim() : "";
   if (id) {

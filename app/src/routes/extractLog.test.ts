@@ -200,6 +200,22 @@ describe("/api/extract-log milestone match (B-LOOP-06)", () => {
     expect((await ask(["cdc-24m-3"], { shelf: "behind", confidence: "low" })).json.milestoneMatch).toBeNull();
   });
 
+  it("extract_log 1.3.1: a worry, a negation or a condition question never comes back as a match, whatever the model says", async () => {
+    const tryMessage = (message: string) => {
+      lastPrompt = "";
+      draft = { ...LEGACY, milestoneMatch: { shelf: "words", milestoneId: "cdc-24m-3", confidence: "high" } };
+      return postExtract({ message, childProfile: TODDLER, milestoneCandidateIds: ["cdc-24m-3"] });
+    };
+    // the two live-judge failures on 1.3.0, plus a condition question
+    expect((await tryMessage("I'm worried she still doesn't put two words together like her cousin does.")).json.milestoneMatch).toBeNull();
+    expect((await tryMessage("אני דואגת שהיא עדיין לא מחברת שתי מילים כמו בת הדודה שלה.")).json.milestoneMatch).toBeNull();
+    expect((await tryMessage("Does she have autism? She says big ball.")).json.milestoneMatch).toBeNull();
+    // the prompt names the demonstrated-skill rule and the cues
+    expect(lastPrompt).toContain("ONLY for a skill the child DEMONSTRATED");
+    // NEGATIVE CONTROL: a demonstrated skill still survives
+    expect((await tryMessage("She said big ball at the park")).json.milestoneMatch).toEqual({ shelf: "words", milestoneId: "cdc-24m-3", confidence: "high" });
+  });
+
   it("no candidates ⇒ no block in the prompt and no milestoneMatch key: the legacy fields byte for byte", async () => {
     lastPrompt = "";
     draft = { ...LEGACY };

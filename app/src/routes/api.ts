@@ -1921,7 +1921,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       await sendScreenedJson(
         res,
         milestoneCandidates.length
-          ? { ...(normalized as Record<string, unknown>), milestoneMatch: validateMilestoneMatch((restored as { milestoneMatch?: unknown } | null)?.milestoneMatch, milestoneCandidates) }
+          ? { ...(normalized as Record<string, unknown>), milestoneMatch: validateMilestoneMatch((restored as { milestoneMatch?: unknown } | null)?.milestoneMatch, milestoneCandidates, message) }
           : normalized
       );
     } catch (error: any) {

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
+import { CONCERN_CUES_EN, CONCERN_CUES_HE } from "../lib/loop/concernCues.js";
 import {
   COACH_CHAT_FIELD_RULES,
   COACH_CHAT_GOVERNED_ESCALATION_BLOCK,
@@ -518,7 +519,7 @@ describe("coach_chat 1.4.1 — field rules", () => {
   });
 });
 
-/* B-LOOP-06 — extract_log 1.3.0: the milestone-match block is OPTIONAL. With
+/* B-LOOP-06 — extract_log 1.3.0 / 1.3.1: the milestone-match block is OPTIONAL. With
    no candidates the rendered prompt is byte-identical to 1.2.0 (whose pinned
    digest was the single canonical build); with candidates the block lists
    ONLY the server's candidates and embeds the non-diagnostic contract. */
@@ -546,7 +547,13 @@ describe("B-LOOP-06 — extract_log milestone-match block", () => {
     expect(p).toContain('- cdc-24m-3 · words · "Says two words together"');
     expect(p).toContain('- cdc-24m-9 · moving · "Kicks a ball"');
     expect(p).toContain("Choose ONLY from this list, never another id.");
-    expect(p).toContain("is never a milestone (null)");
+    // 1.3.1: a proposal needs a DEMONSTRATED skill; the worry / negation cues
+    // are named in EN + HE from the one list the server guard screens.
+    expect(p).toContain("Propose a shelf and a milestone ONLY for a skill the child DEMONSTRATED in the parent's words; otherwise set milestoneMatch to null.");
+    expect(p).toContain("An everyday event that shows no skill (a meal, an outing, a visit) is null.");
+    expect(p).toContain("is never a milestone: when the description says");
+    for (const cue of [...CONCERN_CUES_EN, ...CONCERN_CUES_HE]) expect(p).toContain(`"${cue}"`);
+    expect(p).not.toContain("If the moment clearly belongs to one shelf");
     expect(p).toContain("Never infer a delay, a status, an emotion or a diagnosis.");
     expect(p.indexOf("Milestone match (optional)")).toBeLessThan(p.indexOf("Return only JSON matching the schema."));
   });
