@@ -480,6 +480,98 @@ export const PRACTICES: readonly Practice[] = [
     say: L("One spoon... and a lid! What will you do now?", "כף אחת... ומכסה! מה עושים עכשיו?"),
     materials: L("Two safe household objects, like a wooden spoon and a lid", "שני חפצים בטוחים מהבית, כמו כף עץ ומכסה"),
   }),
+
+  /* ── batch 5/7 · Moving · 12–60 months, Hands · 30–60, School · 2–6 ─── */
+  P("cdc-12m-7", "gross_motor_play", 5, S.whoMovement, {
+    do: L("Clear a safe spot by a steady sofa and put a favourite toy on the seat, then stay close while your baby pulls up.", "פנו מקום בטוח ליד ספה יציבה ושימו צעצוע אהוב על המושב, והישארו קרוב בזמן שהתינוק/ת נעמד/ת."),
+    say: L("Your bear is up here. Up, up, up!", "הדובי פה למעלה. הופה, למעלה!"),
+  }),
+  P("cdc-12m-8", "gross_motor_play", 10, S.whoMovement, {
+    do: L("Line up steady furniture with small gaps and put a toy at the far end, so your child can travel along holding on.", "סדרו רהיטים יציבים בשורה עם רווחים קטנים ושימו צעצוע בקצה, כדי שהילד/ה יוכל/תוכל להתקדם בהחזקה."),
+    say: L("Step, step, step! You're on your way to the ball.", "צעד, צעד, צעד! בדרך אל הכדור."),
+  }),
+  P("cdc-12m-9", "fine_motor_play", 5, S.whoUnicefCcd, {
+    do: L("At mealtime, put a few soft, pea-sized pieces of food on the tray and let your child pick them up their own way.", "בארוחה, שימו על המגש כמה חתיכות אוכל רכות בגודל של אפונה, ותנו לילד/ה להרים אותן בדרך שלו/ה."),
+    say: L("Little peas! You picked one up. Yum?", "אפונה קטנה! הרמת אחת. טעים?"),
+  }),
+  P("cdc-15m-7", "gross_motor_play", 5, S.whoMovement, {
+    do: L("Kneel a short distance away with open arms and let your child walk or crawl to you, whichever they choose.", "כרעו במרחק קצר עם ידיים פתוחות ותנו לילד/ה ללכת או לזחול אליכם, מה שהוא/היא בוחר/ת."),
+    say: L("Here I am! Come to me! You made it!", "אני כאן! בוא/י אליי! הגעת!"),
+  }),
+  P("cdc-18m-8", "gross_motor_play", 15, S.whoMovement, {
+    do: L("Go for a slow walk outside at your child's speed, letting them stop to look and choose the way at safe spots.", "צאו להליכה איטית בחוץ, במהירות של הילד/ה, ותנו לעצור להסתכל ולבחור את הדרך במקומות בטוחים."),
+    say: L("Which way, this way or that way? You lead!", "לאן הולכים, לפה או לשם? את/ה מוביל/ה!"),
+  }),
+  P("cdc-24m-9", "gross_motor_play", 10, S.whoMovement, {
+    do: L("Roll a soft ball gently toward your child's feet outside or in a clear room, and kick it back when it comes to you.", "גלגלו כדור רך בעדינות לכיוון הרגליים של הילד/ה, בחוץ או בחדר פנוי, ובעטו אותו בחזרה כשהוא מגיע אליכם."),
+    say: L("Here comes the ball! Boom! Back to me!", "הנה הכדור מגיע! בום! בחזרה אליי!"),
+    materials: L("A soft ball", "כדור רך"),
+  }),
+  P("cdc-24m-10", "gross_motor_play", 10, S.whoMovement, {
+    do: L("On safe stairs or a park climber, stay beside your child as they climb, offering a hand if they reach for it.", "במדרגות בטוחות או במתקן בגינה, עמדו ליד הילד/ה בזמן הטיפוס, והושיטו יד אם הוא/היא מבקש/ת."),
+    say: L("Up you climb! I'm right next to you.", "מטפסים למעלה! אני ממש לידך."),
+  }),
+  P("cdc-30m-10", "gross_motor_play", 10, S.whoMovement, {
+    do: L("Play a jumping game together, like hopping over a line of tape or jumping like frogs, jumping alongside your child.", "שחקו יחד במשחק קפיצות, כמו לקפוץ מעל פס על הרצפה או לקפוץ כמו צפרדעים, וקפצו גם אתם."),
+    say: L("Frog jump! Ribbit! Let's jump like frogs!", "קפיצת צפרדע! קווה קווה! בוא/י נקפוץ כמו צפרדעים!"),
+    materials: L("Masking tape or a rope on the floor", "נייר דבק או חבל על הרצפה"),
+  }),
+  P("cdc-36m-9", "fine_motor_play", 10, S.aapPowerOfPlay, {
+    do: L("Thread large pasta tubes onto a shoelace together to make a necklace, letting your child choose each piece.", "השחילו יחד פסטה צינורות גדולה על שרוך נעל ליצירת שרשרת, ותנו לילד/ה לבחור כל חתיכה."),
+    say: L("Which one is next? In it goes, through the hole!", "איזו חתיכה עכשיו? נכנסת דרך החור!"),
+    materials: L("Large pasta tubes and a shoelace", "פסטה צינורות גדולה ושרוך נעל"),
+  }),
+  P("cdc-48m-13", "gross_motor_play", 10, S.whoMovement, {
+    do: L("Toss a large soft ball gently from close by, with a ready signal first, and celebrate the try, caught or not.", "זרקו כדור גדול ורך בעדינות ממרחק קצר, אחרי סימן מוכן, ושמחו בניסיון, גם אם הכדור לא נתפס."),
+    say: L("Ready? Hands out... here it comes! Good try!", "מוכן/ה? ידיים קדימה... הנה הוא בא! איזה ניסיון!"),
+    materials: L("A large soft ball", "כדור גדול ורך"),
+  }),
+  P("cdc-60m-13", "gross_motor_play", 10, S.aapPowerOfPlay, {
+    do: L("Make up a silly hopping game, like hopping across chalk squares or between cushions, and hop along too.", "המציאו משחק קפיצות מצחיק, כמו לקפוץ בין ריבועי גיר או בין כריות, וקפצו גם אתם."),
+    say: L("Hop, hop, hop on one foot! Now it's my turn!", "הופ, הופ, הופ על רגל אחת! עכשיו תורי!"),
+    materials: L("Chalk outside or cushions inside", "גיר בחוץ או כריות בבית"),
+  }),
+  P("cdc-30m-11", "fine_motor_play", 10, S.aapLiteracy, {
+    do: L("Read a board book together and let your child turn every page, even if they skip pages or go back.", "קראו יחד ספר קרטון ותנו לילד/ה להפוך כל דף, גם אם הוא/היא מדלג/ת קדימה או חוזר/ת אחורה."),
+    say: L("Your turn to turn the page. What's next?", "תורך להפוך את הדף. מה יש עכשיו?"),
+    materials: L("A board book", "ספר קרטון"),
+  }),
+  P("cdc-48m-14", "fine_motor_play", 10, S.aapBrightFutures, {
+    do: L("Put out an old shirt with big buttons for dress-up, and let your child work on opening them while you chat.", "הוציאו חולצה ישנה עם כפתורים גדולים למשחק תחפושות, ותנו לילד/ה לפתוח אותם בזמן שאתם מדברים."),
+    say: L("The button goes through the hole... pop!", "הכפתור עובר דרך החור... פופ! נפתח."),
+    materials: L("An old shirt with big buttons", "חולצה ישנה עם כפתורים גדולים"),
+  }),
+  P("cdc-60m-14", "fine_motor_play", 5, S.aapBrightFutures, {
+    do: L("In the morning, leave a little extra time and let your child try one button on their coat, offering help only if asked.", "בבוקר, השאירו קצת זמן נוסף ותנו לילד/ה לנסות לכפתר כפתור אחד במעיל, ועזרו רק אם מבקשים."),
+    say: L("Want to try the top button? I'm here if you want help.", "רוצה לנסות את הכפתור העליון? אני פה אם תרצה/י עזרה."),
+  }),
+  P("cdc-2m-5", "responsive_interaction", 5, S.whoUnicefCcd, {
+    do: L("While your baby lies safely awake, move slowly across their view, talking as you go, and pause where they can see you.", "כשהתינוק/ת שוכב/ת ער/ה ובטוח/ה, זוזו לאט מול העיניים שלו/ה תוך כדי דיבור, ועצרו במקום שרואים אתכם."),
+    say: L("I'm walking over here... and now I'm here!", "אני הולך/ת לפה... ועכשיו אני פה!"),
+  }),
+  P("cdc-2m-6", "joint_attention", 5, S.whoUnicefCcd, {
+    do: L("Hold a bright object close to your baby's face, move it slowly from side to side, and talk about it.", "החזיקו חפץ צבעוני קרוב לפנים של התינוק/ת, הזיזו אותו לאט מצד לצד ודברו עליו."),
+    say: L("Look at the red spoon. It's moving... there it goes!", "תראה/י את הכף האדומה. היא זזה... הנה היא הולכת!"),
+    materials: L("A brightly coloured household object", "חפץ צבעוני מהבית"),
+  }),
+  P("cdc-4m-5", "child_directed_play", 5, S.aapPowerOfPlay, {
+    do: L("When your baby is studying their hands, give them the time, then gently touch each hand and name it.", "כשהתינוק/ת מתבונן/ת בידיים, תנו לזה זמן, ואחר כך געו בעדינות בכל יד ותנו לה שם."),
+    say: L("Those are your hands! One hand, two hands.", "אלה הידיים שלך! יד אחת, שתי ידיים."),
+  }),
+  P("cdc-4m-6", "fine_motor_play", 5, S.whoUnicefCcd, {
+    do: L("Hold a light rattle or spoon within easy reach in front of your baby and let them swipe at it, without pulling it away.", "החזיקו רעשן קל או כף בהישג יד מול התינוק/ת, ותנו לו/ה לנסות לגעת, בלי להרחיק."),
+    say: L("Here's the rattle! Shake, shake. You touched it!", "הנה הרעשן! שקשוק, שקשוק. נגעת בו!"),
+    materials: L("A light rattle or a plastic spoon", "רעשן קל או כף פלסטיק"),
+  }),
+  P("cdc-6m-5", "child_directed_play", 5, S.aapBrightFutures, {
+    do: L("Offer a few safe, clean objects of different textures, too big to swallow, and let your baby explore them with hands and mouth.", "הציעו כמה חפצים בטוחים ונקיים במרקמים שונים, גדולים מכדי להיבלע, ותנו לתינוק/ת לחקור אותם בידיים ובפה."),
+    say: L("Soft cloth, hard spoon. How does that feel?", "מגבת רכה, כף קשה. איך זה מרגיש?"),
+    materials: L("A clean washcloth, a wooden spoon, a large plastic lid", "מגבת פנים נקייה, כף עץ, מכסה פלסטיק גדול"),
+  }),
+  P("cdc-6m-6", "fine_motor_play", 5, S.whoUnicefCcd, {
+    do: L("Place a favourite toy just within reach while your baby sits supported or lies on their tummy, and wait for the reach.", "שימו צעצוע אהוב בדיוק בהישג יד, כשהתינוק/ת יושב/ת עם תמיכה או שוכב/ת על הבטן, וחכו להושטת היד."),
+    say: L("Your duck is right there. You got it!", "הברווז ממש פה. תפסת אותו!"),
+  }),
 ];
 
 /* ───────────────────────────── helpers ───────────────────────────── */
