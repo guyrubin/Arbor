@@ -143,3 +143,41 @@ describe("B-PROG-01 — program enrolments export and erase with the child", () 
     expect(map.has("arbor.programs.c2")).toBe(true);
   });
 });
+
+/* B-PROG-07 — the family's goals (`familyGoals`) are per-child data: export + erase. */
+describe("B-PROG-07 — family goals export and erase with the child", () => {
+  const installStorage = () => {
+    const map = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      get length() { return map.size; },
+      clear: () => map.clear(),
+      key: (i: number) => [...map.keys()][i] ?? null,
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => { map.set(k, String(v)); },
+      removeItem: (k: string) => { map.delete(k); },
+    } as Storage);
+    vi.stubGlobal("sessionStorage", { get length() { return 0; }, key: () => null, getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {} } as Storage);
+    return map;
+  };
+  const doc = { id: "goal-2026-10-06-1", text: "Bedtime without shouting", setAt: "t", scale: { "-2": "a", "-1": "b", "0": "c", "1": "d", "2": "e" }, scores: [], updatedAt: "t" };
+
+  it("is registered", () => {
+    expect(CHILD_SUBCOLLECTIONS).toContain("familyGoals");
+  });
+
+  it("the export JSON carries collections.familyGoals", async () => {
+    const map = installStorage();
+    map.set("arbor.familyGoals.c1", JSON.stringify([doc]));
+    const out = await exportChildData(undefined, { id: "c1", name: "Noa" } as ChildProfile);
+    expect(out.collections.familyGoals).toEqual([doc]);
+  });
+
+  it("child erase removes it; a sibling's goals stay", async () => {
+    const map = installStorage();
+    map.set("arbor.familyGoals.c1", JSON.stringify([doc]));
+    map.set("arbor.familyGoals.c2", JSON.stringify([doc]));
+    await eraseEverything(undefined, "c1");
+    expect(map.has("arbor.familyGoals.c1")).toBe(false);
+    expect(map.has("arbor.familyGoals.c2")).toBe(true);
+  });
+});

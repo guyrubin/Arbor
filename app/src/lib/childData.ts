@@ -88,6 +88,9 @@ export const CHILD_SUBCOLLECTIONS = [
   // first-week baseline, optional parent-typed lines; lib/programs/enrolment).
   // Export + erase.
   "programs",
+  // B-PROG-07: the family's goals in their own words (text, the family-written
+  // −2..+2 scale labels, the family's scores; lib/goals.ts). Export + erase.
+  "familyGoals",
 ];
 
 const remoteActive = (uid?: string) =>

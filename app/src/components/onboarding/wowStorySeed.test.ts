@@ -105,6 +105,7 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "bookAssets", // B-BOOK-36 (release): the metadata of the child's private picture-book files (hero sheet, narration) — exported and erased with the child
       "sleepLogs", // B-PROG-06 (Steady Nights): the sleep diary, one doc per night (routine tap + morning times) — exported and erased with the child
       "programs", // B-PROG-01 (program engine): the child's program enrolments (programId, start day, week, status, own-first-week baseline) — exported and erased with the child
+      "familyGoals", // B-PROG-07: the family's goals in their own words, their own scale labels and scores — exported and erased with the child
     ]);
   });
 });
