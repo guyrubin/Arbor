@@ -21,7 +21,14 @@ export const SCHOOL_SOURCES = {
   aapAges: "https://www.healthychildren.org/English/ages-stages/Pages/default.aspx",
 } as const;
 
-const DANGER = L("If anyone is in immediate danger, seek local emergency help. ", "אם מישהו בסכנה מיידית, פנו לעזרת חירום מקומית. ");
+/** Clinical pre-review R16 (6 Oct): the danger prefix carries the Israeli
+ *  numbers (MDA 101, police 100) and is OPT-IN — on for the heightened-care
+ *  cards, off for the everyday ones (never on homework or the morning rush). */
+export const DANGER = L("If anyone is in immediate danger, call 101 (ambulance) or 100 (police). ", "בסכנה מיידית, התקשרו למד״א 101 או למשטרה 100. ");
+
+/** Pre-review R17: every school-age card names the route for a child who
+ *  talks about self-harm (ERAN 1201, as lib safety/escalation lists it). */
+export const SELF_HARM_ROUTE = L(" If your child talks about hurting themselves or not wanting to live, get help today: your pediatrician, or ERAN 1201.", " אם יש דיבור על פגיעה עצמית או על רצון לא לחיות, פנו לעזרה עוד היום: לרופא הילדים או לער״ן 1201.");
 
 function schoolCard(
   id: string,
@@ -33,7 +40,9 @@ function schoolCard(
 ): HardMomentCard {
   return {
     id, category, ...copy,
-    escalation: L(DANGER.en + copy.escalation.en, DANGER.he + copy.escalation.he),
+    escalation: heightened
+      ? L(DANGER.en + copy.escalation.en + SELF_HARM_ROUTE.en, DANGER.he + copy.escalation.he + SELF_HARM_ROUTE.he)
+      : L(copy.escalation.en + SELF_HARM_ROUTE.en, copy.escalation.he + SELF_HARM_ROUTE.he),
     version: "1.0.0", ageBands: ["6-8"], domains: ["social-emotional"],
     concerns, moment: id,
     locales: ["en", "he"], safetyClass: heightened ? "heightened-care" : "general-parenting", reviewStatus: "draft",

@@ -28,7 +28,10 @@ export const TODDLER_SOURCES = {
   cdcTwoYears: "https://www.cdc.gov/act-early/milestones/2-years.html",
 } as const;
 
-const DANGER = L("If anyone is in immediate danger, seek local emergency help. ", "אם מישהו בסכנה מיידית, פנו לעזרת חירום מקומית. ");
+/** Clinical pre-review R16 (6 Oct): the danger prefix carries the Israeli
+ *  numbers (MDA 101, police 100) and is OPT-IN — on for the heightened-care
+ *  cards, off for the everyday ones (never on homework or the morning rush). */
+export const DANGER = L("If anyone is in immediate danger, call 101 (ambulance) or 100 (police). ", "בסכנה מיידית, התקשרו למד״א 101 או למשטרה 100. ");
 
 function toddlerCard(
   id: string,
@@ -37,11 +40,14 @@ function toddlerCard(
   sources: string[],
   copy: { title: LocalizedText; doNow: LocalizedText; sayThis: LocalizedText; avoid: LocalizedText; observe: LocalizedText; escalation: LocalizedText },
   heightened = false,
+  /** Pre-review R18: a card whose band starts later than 12 months names it
+   *  in a notation fits() reads (lib/age/forChild rangeOfNotation). */
+  ageBands: string[] = ["1-2"],
 ): HardMomentCard {
   return {
     id, category, ...copy,
-    escalation: L(DANGER.en + copy.escalation.en, DANGER.he + copy.escalation.he),
-    version: "1.0.0", ageBands: ["1-2"], domains: ["social-emotional"],
+    escalation: heightened ? L(DANGER.en + copy.escalation.en, DANGER.he + copy.escalation.he) : copy.escalation,
+    version: "1.0.0", ageBands, domains: ["social-emotional"],
     concerns, moment: id,
     locales: ["en", "he"], safetyClass: heightened ? "heightened-care" : "general-parenting", reviewStatus: "draft",
     reviewerRole: "clinical-content-reviewer", reviewedBy: "", reviewedAt: "", reviewDueAt: "2027-10-06",
@@ -116,11 +122,11 @@ export const toddlerHardMomentCards: HardMomentCard[] = [
   }, true),
   toddlerCard("t-new-sibling", "relationships", ["transitions", "regulation"], [TODDLER_SOURCES.cdcTwoYears], {
     title: L("A new baby arrives", "תינוק חדש בבית"),
-    doNow: L("Keep the toddler's own routines the same and give a short daily time that is only theirs.", "שמרו על השגרה של הפעוט כמו שהייתה ותנו זמן קצר בכל יום שהוא רק שלו."),
+    doNow: L("Keep the toddler's own routines the same and give a short daily time that is only theirs. Never leave the toddler alone with the baby.", "שמרו על השגרה של הפעוט כמו שהייתה ותנו זמן קצר בכל יום שהוא רק שלו. אל תשאירו את הפעוט לבד עם התינוק."),
     sayThis: L("This is our time. Just the two of us.", "זה הזמן שלנו. רק שנינו."),
-    avoid: L("Telling the toddler to be the big one, or blaming the baby for every no.", "לבקש מהפעוט להיות \"הגדול\", או להאשים את התינוק בכל \"לא\"."),
+    avoid: L("Telling the toddler to be the big one, blaming the baby for every no, or leaving the two of them alone together.", "לבקש מהפעוט להיות \"הגדול\", להאשים את התינוק בכל \"לא\", או להשאיר את שניהם לבד יחד."),
     observe: L("Notice going back to old habits — bottle, nappy, being carried. It is common and usually passes.", "שימו לב לחזרה להרגלים ישנים — בקבוק, חיתול, לבקש ידיים. זה שכיח ובדרך כלל עובר."),
-    escalation: L("If the toddler tries to hurt the baby, or the change in sleep, eating or mood lasts for weeks, talk with your pediatrician.", "אם הפעוט מנסה לפגוע בתינוק, או שהשינוי בשינה, באכילה או במצב הרוח נמשך שבועות, שוחחו עם רופא הילדים."),
+    escalation: L("If the toddler tries to hurt the baby, keep them apart unless an adult is right there, and talk with your pediatrician soon. If the change in sleep, eating or mood lasts for weeks, talk with your pediatrician.", "אם הפעוט מנסה לפגוע בתינוק, אל תשאירו אותם יחד בלי מבוגר לידם, ושוחחו בהקדם עם רופא הילדים. אם השינוי בשינה, באכילה או במצב הרוח נמשך שבועות, שוחחו עם רופא הילדים."),
   }, true),
   toddlerCard("t-screen-handover", "transitions", ["screens", "transitions"], [TODDLER_SOURCES.cdcTwoYears], {
     title: L("Handing back the phone", "להחזיר את הטלפון"),
@@ -129,5 +135,5 @@ export const toddlerHardMomentCards: HardMomentCard[] = [
     avoid: L("Grabbing it without warning, or handing it back to stop the crying.", "לחטוף בלי הודעה, או להחזיר כדי להפסיק את הבכי."),
     observe: L("Notice how long the screen time was, and which next thing makes the swap easier.", "שימו לב כמה זמן נמשך המסך, ואיזה דבר הבא מקל על ההחלפה."),
     escalation: L("If screens have become the only way to calm the child, or play and talking with people are shrinking, talk with your pediatrician.", "אם המסך הפך לדרך היחידה להרגיע את הילד, או שהמשחק והדיבור עם אנשים מצטמצמים, שוחחו עם רופא הילדים."),
-  }),
+  }, false, ["18-24m", "2-3y"]),
 ];

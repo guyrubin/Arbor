@@ -43,6 +43,13 @@ describe("B-ASKJB-38 · bands", () => {
   });
 
   for (const locale of ["en", "he"] as const) {
+    it(`${locale}: pre-review R18 — the screen handover card starts at 18 months (12 m: no; 18 m and 35 m: yes; 36 m: no)`, () => {
+      expect(fits(["18-24m", "2-3y"], bandForMonths(12))).toBe(false);
+      expect(shown(12, locale).map((c) => c.id)).not.toContain("t-screen-handover");
+      expect(shown(18, locale).map((c) => c.id)).toContain("t-screen-handover");
+      expect(shown(35, locale).map((c) => c.id)).toContain("t-screen-handover");
+      expect(shown(36, locale).map((c) => c.id)).not.toContain("t-screen-handover");
+    });
     it(`${locale}: a 22-month child sees only toddler cards — and all ten of them`, () => {
       const ids = shown(22, locale).map((c) => c.id);
       expect(ids.length).toBe(10);
@@ -86,7 +93,8 @@ describe("B-ASKJB-38 · the new sets are complete drafts with sources", () => {
       expect(c.reviewStatus).toBe("draft");
       expect(c.reviewedBy).toBe("");
       expect(c.contentHash).toBeUndefined();
-      expect(c.ageBands).toEqual(toddlerIds.has(c.id) ? ["1-2"] : ["6-8"]);
+      // pre-review R18: t-screen-handover starts at 18 months (no phone in a 12-month-old's hands)
+      expect(c.ageBands).toEqual(c.id === "t-screen-handover" ? ["18-24m", "2-3y"] : toddlerIds.has(c.id) ? ["1-2"] : ["6-8"]);
       // clinical firewall: no verdict words in the copy
       const all = [c.title, c.doNow, c.sayThis, c.avoid, c.observe, c.escalation].map((f) => `${f.en} ${f.he}`).join(" ");
       expect(all).not.toMatch(/\bbehind\b|\bdelay|\bdisorder|\bscore\b|%/i);

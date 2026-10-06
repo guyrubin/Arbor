@@ -1,6 +1,6 @@
 import { isPublishableContent, type ContentLocale, type ContentPublicationKind } from "./governance";
 import type { HardMomentCard } from "./hardMomentCards";
-import { fitsMonths } from "../lib/age/forChild";
+import { fitsMonths, rangeOfNotation } from "../lib/age/forChild";
 
 /** Editorial release evidence is separate from an individual clinical review. */
 export interface PilotRelease {
@@ -48,26 +48,26 @@ export const HARD_MOMENT_PILOT: PilotRelease = Object.freeze({
     "change-of-plan": "fnv1a64:f3a200301e8c3646",
     // B-ASKJB-38: the toddler (12–36 m) and school-age (6–8) DRAFT sets, behind
     // this same pilot (same expiry, same withdrawal lever) until clinical review.
-    "t-biting": "fnv1a64:58f8302f1219432b",
-    "t-hitting": "fnv1a64:97eff979d32d3ec0",
-    "t-throwing-food": "fnv1a64:69275b4ccf76815a",
-    "t-potty-refusal": "fnv1a64:ae9f68960f09acef",
-    "t-bedtime-two": "fnv1a64:0a0f45727a2a1ef1",
-    "t-no-phase": "fnv1a64:eec6a837ba4eef34",
-    "t-daycare-separation": "fnv1a64:6bfd0d92076a5e67",
-    "t-public-meltdown": "fnv1a64:671b1e617a83139a",
-    "t-new-sibling": "fnv1a64:441d902c455b3695",
-    "t-screen-handover": "fnv1a64:8b591e1c64607a06",
-    "s-homework-start": "fnv1a64:e3b4fa9f90424924",
-    "s-losing-games": "fnv1a64:9aa5a418856d7f4d",
-    "s-friend-trouble": "fnv1a64:7aa6445ebcaea818",
-    "s-lying": "fnv1a64:ec88f9b53822e8e6",
-    "s-screens": "fnv1a64:7cd4252fa8b65275",
-    "s-bedtime-seven": "fnv1a64:3534b7f977f8b4d5",
-    "s-morning-rush": "fnv1a64:3de6fcd5f0ff0932",
-    "s-backtalk": "fnv1a64:d67533dd9a457b2f",
-    "s-sibling-fights": "fnv1a64:f111860c3467b40f",
-    "s-night-fears": "fnv1a64:c6040babbb98a038",
+    "t-biting": "fnv1a64:03d6575a2e6a91de",
+    "t-hitting": "fnv1a64:6391a8765a49bc49",
+    "t-throwing-food": "fnv1a64:f8e661fa07e8573b",
+    "t-potty-refusal": "fnv1a64:cdc565f59ac0445a",
+    "t-bedtime-two": "fnv1a64:b243f1575484557e",
+    "t-no-phase": "fnv1a64:17f162b30c2357cd",
+    "t-daycare-separation": "fnv1a64:7cdad12f61b9e6f8",
+    "t-public-meltdown": "fnv1a64:8caba1503bbd9c65",
+    "t-new-sibling": "fnv1a64:8cf24aa60ca333a1",
+    "t-screen-handover": "fnv1a64:9d3b8d46719a5e09",
+    "s-homework-start": "fnv1a64:9e8fe634a2d08085",
+    "s-losing-games": "fnv1a64:2226e69af602f37c",
+    "s-friend-trouble": "fnv1a64:ea42fb5b98c7d6e9",
+    "s-lying": "fnv1a64:78d0d040b4e1a1c7",
+    "s-screens": "fnv1a64:05020b0f043c22b4",
+    "s-bedtime-seven": "fnv1a64:13c50aa3aa0188a4",
+    "s-morning-rush": "fnv1a64:171643adefdb1f51",
+    "s-backtalk": "fnv1a64:e85b4989503b72d4",
+    "s-sibling-fights": "fnv1a64:f30eb8b74020f2fc",
+    "s-night-fears": "fnv1a64:98b57eef74373877",
   }),
   withdrawnIds: Object.freeze([] as string[]),
 });
@@ -121,7 +121,12 @@ export function parseHardMomentAgeBand(band: string): HardMomentAgeRange | null 
     return { startMonths: Number(closed[1]) * 12, endMonths: (Number(closed[2]) + 1) * 12 };
   }
   const open = /^(\d+)\+$/.exec(band);
-  return open ? { startMonths: Number(open[1]) * 12, endMonths: Infinity } : null;
+  if (open) return { startMonths: Number(open[1]) * 12, endMonths: Infinity };
+  // Pre-review R18 (6 Oct): a card whose band starts mid-year names it in a
+  // month notation the ONE age reader understands ("18-24m", "2-3y";
+  // lib/age/forChild rangeOfNotation). Anything else stays unreadable.
+  const months = rangeOfNotation(band);
+  return months ? { startMonths: months[0], endMonths: months[1] } : null;
 }
 
 /**
