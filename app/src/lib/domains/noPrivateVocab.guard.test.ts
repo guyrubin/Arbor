@@ -39,6 +39,9 @@ export const RULES: Rule[] = [
   { name: "PLAY_DOMAIN_LABEL", test: (c) => /\bPLAY_DOMAIN_LABEL\b/.test(c) },
   { name: "DOMAIN_META label", test: (c) => /DOMAIN_META(?:\[[^\]]*\]|\.\w+)\.label(?:Key)?\b/.test(c) },
   { name: "screen.domain dictionary", test: (c) => /`screen\.domain\.\$\{|["']screen\.domain\.["']\s*\+/.test(c) },
+  // B-LOOP-03: shelf names resolve only through lib/shelves/registry shelfLabel.
+  { name: "shelf label literal", test: (c) => /["'`]elev\.shelves\./.test(c) },
+  { name: "private shelf dictionary", test: (c) => /\bSHELF_LABELS?\b|\bSHELF_NAMES?\b/.test(c) },
 ];
 
 function violations(code: string): string[] {
@@ -79,6 +82,8 @@ describe("B-GROWTH-26 — no private domain vocabulary under components/", () =>
       PLAY_DOMAIN_LABEL: "PLAY_DOMAIN_LABEL[domain].en",
       "DOMAIN_META label": "<span>{t(DOMAIN_META[b.domain].labelKey)}</span>",
       "screen.domain dictionary": "const key = `screen.domain.${id}`;",
+      "shelf label literal": '<h3>{t("elev.shelves.sleep")}</h3>',
+      "private shelf dictionary": "const SHELF_LABELS = { sleep: \"Sleep\" };",
     };
     for (const [rule, code] of Object.entries(samples)) expect(violations(code), rule).toContain(rule);
     expect(violations("DOMAIN_META.speech.label")).toContain("DOMAIN_META label");

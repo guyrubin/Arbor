@@ -368,6 +368,12 @@ export interface Milestone {
    * (lib/milestoneAgeLine.ts), never from this field directly.
    */
   source?: MilestoneSource;
+  /**
+   * B-LOOP-03 — the parent-shelf signal for a row whose domain alone does not
+   * say Sleep or Food (both shelves sit over `body`): "feeding" puts the row
+   * on Food & growth, "sleep" on Sleep (lib/shelves/registry milestoneShelf).
+   */
+  tags?: ("sleep" | "feeding")[];
 }
 
 /** B-LOOP-01 — who published the document a catalogue row cites. */

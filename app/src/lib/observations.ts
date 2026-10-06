@@ -35,6 +35,7 @@ import type { GoalObservation } from "../practice/dailyPlan";
 import type { ScreeningResult } from "./screening";
 import { correctedAgeMonths, ageMonthsFromProfile } from "./childAge";
 import { DOMAIN_IDS, toDomains, type DomainId } from "./domains/registry";
+import { shelfOfOrUndefined, type ShelfId } from "./shelves/registry";
 
 export type ObservationKind =
   | "moment"
@@ -101,6 +102,10 @@ export interface Observation {
   /** The child's age when it happened, in months (preterm-corrected under 24 m). */
   ageAtObservationMonths: number | null;
   pretermCorrected: boolean;
+  /** B-LOOP-03 — the parent shelf, DERIVED at build time through `shelfOf`
+   *  (lib/shelves/registry). Unset only where the binding table has no rule
+   *  (a body-only record with no sleep/feeding signal) — never guessed. */
+  shelf?: ShelfId;
 }
 
 /** Records the read model folds. Every list is optional (absent = not loaded). */
@@ -152,7 +157,7 @@ export function toObservations(sources: ObservationSources, child: ObservationCh
   ) => {
     if (!validDate(at) || domains.length === 0) return;
     const { months, corrected } = ageAt(child, at);
-    out.push({
+    const observation: Observation = {
       id: `${origin}:${recordId}`,
       childId: child.id,
       at,
@@ -161,7 +166,9 @@ export function toObservations(sources: ObservationSources, child: ObservationCh
       ageAtObservationMonths: months,
       pretermCorrected: corrected,
       ...rest,
-    });
+    };
+    const shelf = shelfOfOrUndefined(observation);
+    out.push(shelf ? { ...observation, shelf } : observation);
   };
 
   for (const l of sources.behaviorLogs ?? []) {

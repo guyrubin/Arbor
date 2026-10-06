@@ -54,6 +54,10 @@ export const ashaUnstated = (note: string): MilestoneSource => ({ org: "ASHA", t
 const ASHA_FEEDING_NOTE = "Feeding item: ASHA's feeding page and the age range it prints could not be cited offline; no age line until the reviewer re-sources it.";
 const ASHA_INTELLIGIBILITY_NOTE = "The intelligibility percentage is not a confirmed item of ASHA's milestone page (commonly attributed to Coplan & Gleason 1988); no ASHA range is cited over it.";
 
+/** B-LOOP-03 — CDC rows whose skill is eating or drinking: tagged "feeding"
+ *  so the parent finds them on the Food & growth shelf (lib/shelves). */
+const CDC_FEEDING_IDS: ReadonlySet<string> = new Set(["cdc-15m-8", "cdc-18m-9", "cdc-60m-12"]);
+
 /** Build a stable, deterministic id for a CDC checklist item. */
 const cdc = (
   ageMonths: number,
@@ -76,6 +80,7 @@ const cdc = (
   // literal — that read as artificial per-child "progress" rather than truth.)
   checked: false,
   source: CDC_2022_SOURCE,
+  ...(CDC_FEEDING_IDS.has(`cdc-${ageMonths}m-${n}`) ? { tags: ["feeding" as const] } : {}),
 });
 
 export const CDC_MILESTONES: Milestone[] = [
@@ -234,6 +239,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   {
     id: "asha-feed-9m",
     source: ashaUnstated(ASHA_FEEDING_NOTE),
+    tags: ["feeding"],
     domain: "independence_adaptive_skills",
     ageMonths: 9,
     ageGroup: "9 months",
@@ -245,6 +251,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   {
     id: "asha-feed-12m",
     source: ashaUnstated(ASHA_FEEDING_NOTE),
+    tags: ["feeding"],
     domain: "independence_adaptive_skills",
     ageMonths: 12,
     ageGroup: "12 months",
@@ -267,6 +274,7 @@ export const ASHA_MILESTONES: Milestone[] = [
   {
     id: "asha-feed-24m",
     source: ashaUnstated(ASHA_FEEDING_NOTE),
+    tags: ["feeding"],
     domain: "independence_adaptive_skills",
     ageMonths: 24,
     ageGroup: "2 years",
