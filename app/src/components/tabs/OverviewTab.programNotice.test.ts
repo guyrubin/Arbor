@@ -56,7 +56,7 @@ describe("B-PROG-03 (seam) — Today's Notice reads the program wrapper", () => 
 
   it("OverviewTab wires it: the programs collection → activeProgramWeek → selectNoticeWithProgram", () => {
     const src = readFileSync(path.join(here, "OverviewTab.tsx"), "utf8");
-    expect(src).toContain('useChildCollection<unknown>(childProfile.id, "programs")');
+    expect(src).toContain('useChildCollection<{ id: string }>(childProfile.id, "programs")');
     expect(src).toContain("return active ? { shelf: active.program.shelf, watchFor: active.content.watchFor } : null;");
     expect(src).toContain("selectNoticeWithProgram(milestones, comparisonMonths, {");
     expect(src).not.toContain("selectNextMilestonesByShelf(");
