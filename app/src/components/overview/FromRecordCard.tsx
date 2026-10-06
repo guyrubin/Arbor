@@ -106,9 +106,34 @@ export default function FromRecordCard({
   );
 }
 
-/** The one-line receipt after an answer ("Noted · today"). The page's one movement. */
-export function FromRecordReceipt() {
+/** The receipt after an answer. NEXTLEVEL critic r1: it says the parent's
+ *  own words back ("Noted today, next to your words: '…'"), one editorial
+ *  line in --arbor-green-ink behind the same clay rule as the card — never a
+ *  celebration, never a count. With no quote it stays "Noted · today". */
+export function FromRecordReceipt({ quote }: { quote?: string | null } = {}) {
   const { t } = useLanguage();
+  const words = (quote ?? "").trim();
+  if (words) {
+    return (
+      <figure
+        data-testid="today-record-receipt"
+        role="status"
+        className="px-1"
+      >
+        <figcaption className="flex items-center gap-1.5 text-[13px]" style={{ color: "var(--arbor-muted)" }}>
+          <Icon name="check" size={16} />
+          {t("today.record.receipt.words")}
+        </figcaption>
+        <blockquote
+          data-testid="today-record-receipt-quote"
+          className="mt-1.5 border-s-2 ps-3 leading-snug"
+          style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-green-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)" }}
+        >
+          <FreeText text={words} />
+        </blockquote>
+      </figure>
+    );
+  }
   return (
     <motion.p
       initial={{ opacity: 0, y: 4 }}

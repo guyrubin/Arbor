@@ -769,7 +769,7 @@ export default function OverviewTab() {
               question, three answers (the first chip row of the primary
               move); after an answer, a one-line receipt. */}
           {recordAnswered ? (
-            <div className="mb-3"><FromRecordReceipt /></div>
+            <div className="mb-3"><FromRecordReceipt quote={recordAnswered.recommendation} /></div>
           ) : recordOpener ? (
             <div className="mb-4">
               <FromRecordCard opener={recordOpener} childName={firstName} stampMove onAnswer={(answer) => recordFromRecordAnswer(recordOpener, answer)} />

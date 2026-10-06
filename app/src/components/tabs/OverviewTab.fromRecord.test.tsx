@@ -75,6 +75,24 @@ describe("B-TODAY-28 — the record card (rendered)", () => {
       expect(html).not.toMatch(/celebrat|confetti|🎉|!/);
     }
   });
+
+  it("NEXTLEVEL r1 — the receipt says the parent's words back, verbatim, in the editorial serif (EN + HE)", () => {
+    for (const lang of ["en", "he"] as const) {
+      harness.lang = lang;
+      const html = renderToStaticMarkup(<FromRecordReceipt quote="Calmed and put shoes on within 8 mins" />);
+      expect(html).toContain(translate(lang, "today.record.receipt.words"));
+      expect(html).toContain("Calmed and put shoes on within 8 mins");
+      expect(html).toContain('data-testid="today-record-receipt-quote"');
+      expect(html).toContain("var(--arbor-green-ink)");
+      expect(html).toContain("var(--font-editorial)");
+      expect(html).toContain('role="status"');
+      expect(html).not.toMatch(/celebrat|confetti|🎉|!|%/);
+    }
+    // Today passes the answered row's words (the quote the parent answered).
+    const fs = require("node:fs") as typeof import("node:fs");
+    const src = fs.readFileSync(require("node:path").resolve(__dirname, "OverviewTab.tsx"), "utf8");
+    expect(src).toContain("<FromRecordReceipt quote={recordAnswered.recommendation} />");
+  });
 });
 
 describe("NEXTLEVEL critic r1 — a named topic, a joy opener, the chips are the move", () => {

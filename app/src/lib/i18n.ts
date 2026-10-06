@@ -1577,6 +1577,7 @@ export const en: Dict = {
   "today.record.a.fact.hard_again": "It changed",
   "today.record.a.fact.other": "Something else",
   "today.record.receipt": "Noted · today",
+  "today.record.receipt.words": "Noted today, next to your words:",
   // NEXTLEVEL critic r1 — a named topic, a question that names it, and a win
   // that is never answered "Hard again".
   "today.record.topic.mornings": "Mornings",
@@ -4071,6 +4072,7 @@ export const he: Dict = {
   "today.record.a.fact.hard_again": "זה השתנה",
   "today.record.a.fact.other": "משהו אחר",
   "today.record.receipt": "נרשם · היום",
+  "today.record.receipt.words": "נרשם היום, לצד המילים שלכם:",
   // NEXTLEVEL critic r1 — נושא בשם, שאלה שמזכירה אותו, והצלחה שלא נענית "שוב קשה".
   "today.record.topic.mornings": "בקרים",
   "today.record.topic.bedtime": "שעת השינה",
