@@ -685,7 +685,13 @@ export default function BehaviorsTab() {
           column), the guide shelf as a rail in the end column. Below lg the
           shelf sits directly under the capture (its tiles a snap row). */}
       <div className="min-w-0 space-y-6 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6 lg:space-y-0">
-      <div className="min-w-0 space-y-6 lg:col-span-7">
+      {/* NEXTLEVEL critic r1 (behaviors · design · P1): the record (recent
+          moments + patterns) follows capture in the START column at lg
+          (row 2), the guide shelf is the end rail spanning both rows — no
+          empty paper under the capture card. DOM order is unchanged
+          (capture → shelf → record), so below lg the shelf still sits
+          directly under capture. */}
+      <div className="min-w-0 space-y-6 lg:col-span-7 lg:col-start-1 lg:row-start-1">
       <section data-module="behaviors-capture" data-primary-move="log-behavior" className="min-w-0" aria-label={t("beh.captureTitle")}>
         {/* TJB-12 — the writing prompt the parent tapped in the Journal before
             arriving here. It used to die at the tab switch, leaving them in
@@ -865,11 +871,10 @@ export default function BehaviorsTab() {
           filtered for this parent's locale and the child's age — not only
           publishedHardMomentCards as this comment used to claim. */}
       </div>
-      <div data-module="behaviors-hard-moments" className="min-w-0 lg:col-span-5"><HardMomentsSection /></div>
-      </div>
+      <div data-module="behaviors-hard-moments" className="min-w-0 lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1"><HardMomentsSection /></div>
 
       {/* Row 2 — events main column + right rail (patterns) */}
-      <div data-module="behaviors-record" className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div data-module="behaviors-record" className="grid min-w-0 grid-cols-1 items-start gap-6 lg:col-span-7 lg:col-start-1 lg:row-start-2">
         {/* Main column: events + the full log form */}
         <div className="min-w-0 space-y-6">
           <div className={`${cardCls} p-5 space-y-4`}>
@@ -1404,6 +1409,7 @@ export default function BehaviorsTab() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </motion.div>
   );

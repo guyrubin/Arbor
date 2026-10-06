@@ -329,8 +329,19 @@ describe("critic r2 — behaviors: guides under the capture, one warm line, no s
   });
   it("at lg: a 7/5 grid — capture in the start column, the shelf as the end rail", () => {
     expect(BEH).toContain("lg:grid lg:grid-cols-12");
-    expect(BEH).toMatch(/<div className="min-w-0 space-y-6 lg:col-span-7">\s*<section data-module="behaviors-capture"/);
-    expect(BEH).toContain('<div data-module="behaviors-hard-moments" className="min-w-0 lg:col-span-5"><HardMomentsSection /></div>');
+    expect(BEH).toMatch(/<div className="min-w-0 space-y-6 lg:col-span-7 lg:col-start-1 lg:row-start-1">\s*<section data-module="behaviors-capture"/);
+    expect(BEH).toContain('<div data-module="behaviors-hard-moments" className="min-w-0 lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1"><HardMomentsSection /></div>');
+  });
+  it("NEXTLEVEL critic r1 — at lg the record follows capture in the start column (row 2); the shelf rail spans both rows", () => {
+    expect(BEH).toContain('data-module="behaviors-record" className="grid min-w-0 grid-cols-1 items-start gap-6 lg:col-span-7 lg:col-start-1 lg:row-start-2"');
+    // DOM order unchanged: capture → shelf → record (below lg the shelf sits under capture).
+    const cap = BEH.indexOf('data-module="behaviors-capture"');
+    const shelf = BEH.indexOf('data-module="behaviors-hard-moments"');
+    const record = BEH.indexOf('data-module="behaviors-record"');
+    expect(cap).toBeLessThan(shelf);
+    expect(shelf).toBeLessThan(record);
+    // The old full-width second row with its own 1.5fr split is gone.
+    expect(BEH).not.toContain("lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]");
   });
   it("one warm line in the capture card: the parent's own words (<= 70 chars) or the top guide by name, EN + HE", () => {
     const at = BEH.indexOf('data-testid="behaviors-warm-line"');
