@@ -21,6 +21,7 @@ export type ChildDataRowId =
   | "moments"
   | "milestones"
   | "play"
+  | "books"
   | "plans"
   | "screening"
   | "coach"
@@ -52,6 +53,10 @@ export const CHILD_DATA_ROWS: readonly ChildDataRow[] = [
       "heroRuns", "heroRenders", "journeyObjectives", "adventureResults", "savedStories", "savedComics", "kidSouvenirs",
     ],
   },
+  // B-BOOK release: the child's own picture-book files (hero sheet, prints,
+  // narration in the child's name) — the metadata here; the files in Storage,
+  // erased with the child.
+  { id: "books", icon: "auto_stories", collections: ["bookAssets"] },
   { id: "plans", icon: "checklist", collections: ["actionPlans", "actionLoops", "routines", "goals", "goalObservations", "savedLearn", "weeklyReports"] },
   { id: "screening", icon: "fact_check", collections: ["screenings", "devScoreSnapshots", "bandSnapshots"] },
   { id: "coach", icon: "forum", collections: ["conversations", "conversationChanges"] },

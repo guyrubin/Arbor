@@ -71,6 +71,10 @@ export const en: Record<string, string> = {
   "elev.trust.data.play.label": "Activity history",
   "elev.trust.data.play.desc":
     "Activities and games played, and the stories and comics you saved, so the next suggestion can continue from there.",
+  // B-BOOK release: the child's own picture books (lib/childDataGroups "books").
+  "elev.trust.data.books.label": "Your child's own picture books",
+  "elev.trust.data.books.desc":
+    "The hero pictures and read-aloud recordings made for your child's own picture books, so the book shows and speaks to your child. Kept until you delete your child's data.",
   "elev.trust.data.plans.label": "Plans, routines and goals",
   "elev.trust.data.plans.desc": "Action plans and today's steps with how they went, routines, goals, saved Learn cards and weekly letters.",
   "elev.trust.data.screening.label": "Development-check answers",
@@ -182,6 +186,8 @@ export const he: Record<string, string> = {
   "elev.trust.data.milestones.desc": "אבני הדרך שסימנתם, הגובה והמשקל שהזנתם, והמילים והמשפטים שתיעדתם.",
   "elev.trust.data.play.label": "היסטוריית פעילויות",
   "elev.trust.data.play.desc": "פעילויות ומשחקים ששוחקו, וסיפורים וקומיקס ששמרתם, כדי שההצעה הבאה תמשיך מאותה נקודה.",
+  "elev.trust.data.books.label": "ספרי התמונות האישיים",
+  "elev.trust.data.books.desc": "תמונות הגיבור וההקראות שהוכנו לספרי התמונות האישיים של ילדכם, כדי שהספר יראה וידבר אל ילדכם. נשמרים עד שתמחקו את נתוני הילד.",
   "elev.trust.data.plans.label": "תוכניות, שגרות ומטרות",
   "elev.trust.data.plans.desc": "תוכניות פעולה וצעדי היום ואיך הם הלכו, שגרות, מטרות, כרטיסי למידה ששמרתם ומכתבים שבועיים.",
   "elev.trust.data.screening.label": "תשובות מבדיקת ההתפתחות",
