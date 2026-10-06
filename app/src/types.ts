@@ -280,6 +280,11 @@ export interface BehaviorLog {
   /** Parent-confirmed Harbor conversation provenance; never written by the realtime provider. */
   conversationProposalId?: string;
   sourceExcerpt?: string;
+  /** B-LOOP-06 — the parent shelf the parent CONFIRMED for this moment (an AI
+   *  proposal they accepted in the capture sheet); absent = filed by type. */
+  shelf?: import("./lib/shelves/registry").ShelfId;
+  /** B-LOOP-06 — the milestone this moment is evidence for (parent-confirmed). */
+  milestoneId?: string;
 }
 
 /** A completed Daily Play activity — a positive, lightweight "win" written to

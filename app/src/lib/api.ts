@@ -452,8 +452,14 @@ export const api = {
   // AI-CAP-2: `language` threads the parent's AI language into the extraction
   // prompt (mirroring /chat's languageDirective) so an HE description yields
   // HE trigger/response/notes — behaviorType/context stay schema-valued.
-  extractLog: (payload: { message: string; childProfile: ChildProfile; language?: "en" | "he" }) =>
-    post<{ behaviorType: string; intensity: number; durationMinutes: number; context: string; trigger: string; response: string; notes: string }>("/api/extract-log", payload),
+  // B-LOOP-06: `milestoneCandidateIds` (the child's open in-window milestones)
+  // asks for a milestone match; the server validates every id and answers
+  // `milestoneMatch` only then (absent ⇒ the legacy response, byte for byte).
+  extractLog: (payload: { message: string; childProfile: ChildProfile; language?: "en" | "he"; milestoneCandidateIds?: string[] }) =>
+    post<{
+      behaviorType: string; intensity: number; durationMinutes: number; context: string; trigger: string; response: string; notes: string;
+      milestoneMatch?: { shelf: string; milestoneId?: string; confidence: "high" | "low" } | null;
+    }>("/api/extract-log", payload),
   // childId is REQUIRED by the server's COPPA gate (requireConsent reads it from
   // the body); without it /api/vision fails closed with 451. The caller passes the
   // active child's id. AIX-S1: `language` (getAiLanguage()) drives the server-side

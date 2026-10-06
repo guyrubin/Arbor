@@ -72,6 +72,7 @@ import type { ConversationChangeRecord, ConversationProposal } from "./conversat
 import { noteKeepCommitted } from "./conversationProposals";
 import { trackPlanFromAnswer } from "./kpiEvents";
 import type { CoachContract } from "../types";
+import { SHELF_IDS, type ShelfId } from "./shelves/registry";
 
 /**
  * The prompt behind every typed coach answer, pinned client-side.
@@ -280,3 +281,42 @@ export function buildTypedCaptureProposals(
     },
   }));
 }
+
+/* ── B-LOOP-06 · proposal kind "milestone" ──────────────────────────────────
+ * After a plain moment is saved, the extract seam may answer with a
+ * `milestoneMatch` (server-validated against in-window candidates). It becomes
+ * ONE proposal row in the capture sheet's reply — the parent adds it, files
+ * it, or says "Not this". Nothing writes itself; a low-confidence match names
+ * the shelf only and can never tick a milestone. */
+
+export type MilestoneMatchKind = "milestone" | "shelf";
+
+export interface MilestoneCaptureProposal {
+  kind: MilestoneMatchKind;
+  /** The saved moment (behaviour-log id) the proposal is about. */
+  logId: string;
+  shelf: ShelfId;
+  /** Only on kind "milestone" (a high-confidence, listed id). */
+  milestoneId?: string;
+}
+
+/** The server's match → a proposal row, or null (no match, a low pick with no shelf, an unknown id). */
+export function milestoneProposalFrom(
+  match: { shelf?: unknown; milestoneId?: unknown; confidence?: unknown } | null | undefined,
+  logId: string,
+  knownMilestoneIds: ReadonlySet<string>,
+): MilestoneCaptureProposal | null {
+  if (!match || !logId) return null;
+  const shelf = typeof match.shelf === "string" && (SHELF_IDS as readonly string[]).includes(match.shelf) ? (match.shelf as ShelfId) : null;
+  if (!shelf) return null;
+  const id = typeof match.milestoneId === "string" ? match.milestoneId : "";
+  if (match.confidence === "high" && id && knownMilestoneIds.has(id)) return { kind: "milestone", logId, shelf, milestoneId: id };
+  return { kind: "shelf", logId, shelf };
+}
+
+/** The row's copy keys (EN + HE in lib/i18nElevation/loop.ts). */
+export const MILESTONE_PROPOSAL_COPY: Readonly<Record<MilestoneMatchKind, { line: string; accept: string; done: string }>> = {
+  milestone: { line: "elev.loop.capture.milestone.line", accept: "elev.loop.capture.milestone.add", done: "elev.loop.capture.milestone.done" },
+  shelf: { line: "elev.loop.capture.shelf.line", accept: "elev.loop.capture.shelf.file", done: "elev.loop.capture.shelf.done" },
+};
+export const MILESTONE_PROPOSAL_DECLINE_KEY = "elev.loop.capture.notThis";

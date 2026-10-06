@@ -47,6 +47,7 @@ import { concernsForBehaviors } from "../content/selectCards";
 import { ageYearsFromProfile } from "../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
 import { observeMilestoneDoc, type ObserveOptions, type ObserveStatus } from "../lib/milestones/observe";
+import type { ShelfId } from "../lib/shelves/registry";
 import { hydrateMilestones } from "./milestoneHydration";
 import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
@@ -1428,6 +1429,13 @@ function useArborState() {
 
   // Deletions (data correction)
   const deleteLog = (id: string) => void logsCol.remove(id);
+  /** B-LOOP-06: the parent confirmed where a saved moment belongs (and,
+   *  optionally, the milestone it evidences). Only the parent's tap calls it. */
+  const fileMomentOnShelf = (logId: string, shelf: ShelfId, milestoneId?: string) => {
+    const log = behaviorLogs.find((l) => l.id === logId);
+    if (!log) return;
+    void logsCol.upsert({ ...log, shelf, ...(milestoneId ? { milestoneId } : {}) });
+  };
   const deletePlan = (id: string) => void plansCol.remove(id);
   // B-GROWTH-25: a ready-made routine starts as a plan in one tap — no goal,
   // no AI call; the template (lib/routineTemplates.routineToPlan) is the plan.
@@ -1712,6 +1720,7 @@ function useArborState() {
     handleToggleMilestone,
     setMilestoneObservation,
     restoreMilestone,
+    fileMomentOnShelf,
     addCustomMilestone,
     handleTogglePlanStep,
     setPlanStepStatus,

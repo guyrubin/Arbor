@@ -12,6 +12,7 @@ import {
   MAX_TYPED_PROPOSALS,
   TYPED_TURN_PROMPT,
 } from "./captureProposals";
+import { MILESTONE_PROPOSAL_COPY, MILESTONE_PROPOSAL_DECLINE_KEY, milestoneProposalFrom } from "./captureProposals";
 import type { ChatMessage } from "../context/ArborContext";
 import type { CoachContract } from "../types";
 
@@ -298,5 +299,46 @@ describe("the coach contract cannot be flipped to 'consented' before the gate ex
     const flippedTooEarly = { threadWrite: "consented", autoIngest: true };
     const ok = !(flippedTooEarly.threadWrite === "consented" && flippedTooEarly.autoIngest);
     expect(ok).toBe(false);
+  });
+});
+
+/* B-LOOP-06 — proposal kind "milestone": a saved moment's validated match
+   becomes ONE row; copy EN + HE; "Not this" suppresses that log forever. */
+describe("B-LOOP-06 — milestone proposals from a saved moment", () => {
+  const known = new Set(["cdc-24m-3"]);
+  it("a high-confidence listed id is a milestone row; a low pick (or an unlisted id) names the shelf only; junk is nothing", () => {
+    expect(milestoneProposalFrom({ shelf: "words", milestoneId: "cdc-24m-3", confidence: "high" }, "log-1", known)).toEqual({ kind: "milestone", logId: "log-1", shelf: "words", milestoneId: "cdc-24m-3" });
+    expect(milestoneProposalFrom({ shelf: "sleep", confidence: "low" }, "log-1", known)).toEqual({ kind: "shelf", logId: "log-1", shelf: "sleep" });
+    expect(milestoneProposalFrom({ shelf: "words", milestoneId: "cdc-36m-1", confidence: "high" }, "log-1", known)).toEqual({ kind: "shelf", logId: "log-1", shelf: "words" });
+    expect(milestoneProposalFrom({ shelf: "behind", confidence: "low" }, "log-1", known)).toBeNull();
+    expect(milestoneProposalFrom(null, "log-1", known)).toBeNull();
+  });
+
+  it("every proposal copy key exists in EN and HE, names the shelf, and carries no verdict", async () => {
+    const { translate } = await import("./i18n");
+    const { loopFirewallHits } = await import("./loop/firewall");
+    for (const lang of ["en", "he"] as const) {
+      for (const kind of ["milestone", "shelf"] as const) {
+        for (const key of Object.values(MILESTONE_PROPOSAL_COPY[kind])) {
+          const v = translate(lang, key, { title: "T", shelf: "S" });
+          expect(v, `${lang} ${key}`).not.toBe(key);
+          expect(loopFirewallHits(v)).toEqual([]);
+        }
+        expect(translate(lang, MILESTONE_PROPOSAL_COPY[kind].line, { title: "T", shelf: "S" })).toContain("S");
+      }
+      expect(translate(lang, MILESTONE_PROPOSAL_DECLINE_KEY)).not.toBe(MILESTONE_PROPOSAL_DECLINE_KEY);
+    }
+  });
+
+  it('"Not this" suppresses re-proposal for that log id (per child, device ledger)', async () => {
+    const { declineMilestoneProposal, isMilestoneProposalDeclined } = await import("./milestones/proposalLedger");
+    const mem = new Map<string, string>();
+    const storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v) };
+    expect(isMilestoneProposalDeclined("kid-1", "log-1", storage)).toBe(false);
+    declineMilestoneProposal("kid-1", "log-1", storage);
+    expect(isMilestoneProposalDeclined("kid-1", "log-1", storage)).toBe(true);
+    expect(isMilestoneProposalDeclined("kid-1", "log-2", storage)).toBe(false);
+    expect(isMilestoneProposalDeclined("kid-2", "log-1", storage)).toBe(false);
+    expect([...mem.keys()]).toEqual(["arbor.milestoneProposal.declined.kid-1"]);
   });
 });

@@ -41,6 +41,14 @@ export const en: Record<string, string> = {
   "elev.loop.search.placeholder": "Search by word, like ball",
   "elev.loop.search.empty": "Nothing matches “{q}”.",
   "elev.loop.search.clear": "Clear the search",
+  // ── B-LOOP-06 · a saved moment's milestone proposal (capture sheet) ─────
+  "elev.loop.capture.milestone.line": "Sounds like “{title}”, on {shelf}. Add it as seen?",
+  "elev.loop.capture.milestone.add": "Add",
+  "elev.loop.capture.milestone.done": "Added under {shelf}.",
+  "elev.loop.capture.shelf.line": "This looks like it belongs on {shelf}. File it there?",
+  "elev.loop.capture.shelf.file": "File it",
+  "elev.loop.capture.shelf.done": "Filed under {shelf}.",
+  "elev.loop.capture.notThis": "Not this",
 };
 
 export const he: Record<string, string> = {
@@ -73,4 +81,12 @@ export const he: Record<string, string> = {
   "elev.loop.search.placeholder": "חיפוש לפי מילה, למשל כדור",
   "elev.loop.search.empty": "לא נמצא דבר עבור „{q}”.",
   "elev.loop.search.clear": "ניקוי החיפוש",
+  // ── B-LOOP-06 · a saved moment's milestone proposal (capture sheet) ─────
+  "elev.loop.capture.milestone.line": "נשמע כמו „{title}”, במדף {shelf}. להוסיף כמשהו שראיתם?",
+  "elev.loop.capture.milestone.add": "להוסיף",
+  "elev.loop.capture.milestone.done": "נוסף תחת {shelf}.",
+  "elev.loop.capture.shelf.line": "נראה שזה שייך למדף {shelf}. לתייק שם?",
+  "elev.loop.capture.shelf.file": "לתייק",
+  "elev.loop.capture.shelf.done": "תויק תחת {shelf}.",
+  "elev.loop.capture.notThis": "לא זה",
 };

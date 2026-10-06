@@ -35,7 +35,7 @@ import type { GoalObservation } from "../practice/dailyPlan";
 import type { ScreeningResult } from "./screening";
 import { correctedAgeMonths, ageMonthsFromProfile } from "./childAge";
 import { DOMAIN_IDS, toDomains, type DomainId } from "./domains/registry";
-import { shelfOfOrUndefined, type ShelfId } from "./shelves/registry";
+import { shelfDef, shelfOfOrUndefined, type ShelfId } from "./shelves/registry";
 
 export type ObservationKind =
   | "moment"
@@ -176,11 +176,17 @@ export function toObservations(sources: ObservationSources, child: ObservationCh
     // every behaviour type lands in feelings & behaviour (spine §2); free-text
     // types the taxonomy does not know still do
     const doms = toDomains("behavior", l.behaviorType);
-    push("behaviorLogs", l.id, l.timestamp, doms.length ? doms : ["feelings"], {
+    // B-LOOP-06: a moment the parent filed on a shelf (a confirmed capture
+    // proposal) sits on that shelf's domain, with the body sub-area that
+    // tells Sleep from Food; the milestone it evidences is its provenance.
+    const filed = l.shelf ? shelfDef(l.shelf) : null;
+    const filedSubArea = l.shelf === "sleep" ? "sleep" : l.shelf === "food" ? "feeding" : undefined;
+    push("behaviorLogs", l.id, l.timestamp, filed ? [filed.domain] : doms.length ? doms : ["feelings"], {
       kind: "moment",
       value: { type: "moment", behaviorType: l.behaviorType, ...(l.context ? { context: l.context } : {}) },
       source: l.conversationProposalId ? "ai_proposed_parent_confirmed" : "parent_typed",
-      ...(l.conversationProposalId ? { provenance: l.conversationProposalId } : {}),
+      ...(l.conversationProposalId ? { provenance: l.conversationProposalId } : l.milestoneId ? { provenance: l.milestoneId } : {}),
+      ...(filedSubArea ? { subArea: filedSubArea } : {}),
     });
   }
 

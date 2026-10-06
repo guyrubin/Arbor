@@ -188,7 +188,14 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // merged, never an array), notes copy the parent's own words, no adjective
   // about the parent, Hebrew in → Hebrew out. Deterministic floor under it:
   // server/captureDraft.ts. Re-pin: capture-extract-v1 (live tier).
-  extract_log: { version: "1.2.0", sha256: "fbad6b9dc903299846b64b6eb0834f67cadec8cc84b7874194f0d88347aecdf6" },
+  // 1.3.0 (B-LOOP-06, 2026-10-06): an OPTIONAL milestone-match block — the
+  // server passes ≤ 24 in-window, catalogue-validated candidates (id · shelf ·
+  // title) and the model may only pick one of them or return null; a concern
+  // never becomes a milestone, nothing is inferred about the child. With no
+  // candidates the bytes equal 1.2.0 (parity pinned in prompts.test.ts).
+  // Re-pin owed (live, NOT run by the builder): capture-extract-v1 (12 new
+  // milestone-match scenarios, Vertex VERTEX_MODEL_CHAT=gemini-2.5-flash).
+  extract_log: { version: "1.3.0", sha256: "1fb1f6d04f379a6df1cac73d43a11ac8906d4f0578919da9a8e5f4e1756fab57" },
   // 1.0.0 (B-AI-01 ← B-TODAY-24 server half): the /todays-focus prompt left
   // the route handler. Byte-parity with the inline template it replaced is
   // pinned in prompts.test.ts; the only new text is the OPTIONAL approved-
@@ -471,7 +478,26 @@ export type ExtractLogPromptArgs = {
    *  behaviorTaxonomy grep guard keeps pinning routes/api.ts to the module. */
   behaviorTypes: string;
   languageDirective: string;
+  /** B-LOOP-06 — the in-window open milestones the model may choose from
+   *  (server-validated catalogue ids, ≤ 24). Absent/empty ⇒ the 1.2.0 bytes. */
+  milestoneCandidates?: readonly MilestoneMatchCandidate[];
 };
+
+/** B-LOOP-06 — one milestone the extract prompt may match (server-built). */
+export type MilestoneMatchCandidate = { id: string; shelf: string; title: string };
+
+/** The parent shelves the match may name (lib/shelves/registry SHELF_IDS). */
+export const MILESTONE_MATCH_SHELVES = "sleep | food | words | feelings | play | moving | hands | school | family";
+
+/** B-LOOP-06: "" when no candidates, so the bytes equal extract_log 1.2.0. */
+const renderMilestoneMatchBlock = (candidates?: readonly MilestoneMatchCandidate[]): string =>
+  candidates && candidates.length
+    ? `
+Milestone match (optional): below are open milestones for this child's age, each as id · shelf · title. If the description directly shows the child doing ONE of them, set milestoneMatch to {"shelf": its shelf, "milestoneId": its exact id, "confidence": "high"}. If the moment clearly belongs to one shelf but no listed milestone fits exactly, set {"shelf": that shelf, "confidence": "low"} with no milestoneId. Otherwise set milestoneMatch to null. Choose ONLY from this list, never another id. A worry, a concern or something the child does NOT do is never a milestone (null). Never infer a delay, a status, an emotion or a diagnosis.
+Shelves: ${MILESTONE_MATCH_SHELVES}
+Candidates:
+${candidates.map((c) => `- ${c.id} · ${c.shelf} · ${JSON.stringify(c.title)}`).join("\n")}`
+    : "";
 
 /** /extract-log — the one-structured-behavior-log extraction prompt. */
 export const buildExtractLogPrompt = ({
@@ -479,6 +505,7 @@ export const buildExtractLogPrompt = ({
   message,
   behaviorTypes,
   languageDirective,
+  milestoneCandidates,
 }: ExtractLogPromptArgs): string => `
 ${NON_DIAGNOSTIC_CONTRACT}
 You are Arbor's logging assistant. Read the parent's description of a moment with their child and extract ONE structured behavior log. Observations only — never a diagnosis.
@@ -496,7 +523,7 @@ Rules:
 - notes: one short neutral sentence in the parent's own words — copy them from the description, in the description's language — for anything else about the child's moment ("" if none).
 One capture = one log: the description is ONE moment unless the parent says "and then" or "later". If it names several moments, draft only the most salient one (the first one described when unsure) and keep every field about that moment; never merge details from the other moments into its fields, never return an array.
 Never describe, grade, praise or comfort the parent: no adjectives about the parent and nothing about how the parent felt or coped, even when the description is self-blaming. Every field describes the child's moment.
-Write trigger, response and notes in the language of the description (Hebrew in, Hebrew out).
+Write trigger, response and notes in the language of the description (Hebrew in, Hebrew out).${renderMilestoneMatchBlock(milestoneCandidates)}
 Return only JSON matching the schema.${languageDirective}`;
 
 export type TodaysFocusPromptArgs = {
@@ -811,11 +838,22 @@ export const promptFingerprint = (key: PromptKey): string => {
         buildAnalyzeBehaviorPrompt({ developmentalFramework: CANONICAL.framework, childProfile: CANONICAL.childProfile, logs: [], languageDirective: "" }),
       ]));
     case "extract_log":
-      return sha256(buildExtractLogPrompt({
-        childProfile: CANONICAL.childProfile,
-        message: CANONICAL.message,
-        behaviorTypes: CANONICAL.behaviorTypes,
-        languageDirective: CANONICAL.languageDirective,
-      }));
+      // B-LOOP-06 (1.3.0): the digest pins the candidate-free bytes AND the
+      // milestone-match block's template text.
+      return sha256(JSON.stringify([
+        buildExtractLogPrompt({
+          childProfile: CANONICAL.childProfile,
+          message: CANONICAL.message,
+          behaviorTypes: CANONICAL.behaviorTypes,
+          languageDirective: CANONICAL.languageDirective,
+        }),
+        buildExtractLogPrompt({
+          childProfile: CANONICAL.childProfile,
+          message: CANONICAL.message,
+          behaviorTypes: CANONICAL.behaviorTypes,
+          languageDirective: CANONICAL.languageDirective,
+          milestoneCandidates: [{ id: "«milestone-id»", shelf: "«shelf»", title: "«milestone-title»" }],
+        }),
+      ]));
   }
 };

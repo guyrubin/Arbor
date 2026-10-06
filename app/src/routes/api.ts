@@ -81,6 +81,8 @@ import { countAnalyzeLogs, toAnalyzeLogInputs } from "../lib/analyzeLogPayload.j
 // B-AI-16: the digest routes drop every free-text field an older client still posts.
 import { toDigestLogInputs, toDigestMilestoneInputs } from "../lib/digestPayload.js";
 import { sanitizeTypeCounts } from "../lib/planRecord.js";
+import { buildMilestoneCandidates, validateMilestoneMatch } from "../server/milestoneMatch.js";
+import { SHELF_IDS } from "../lib/shelves/registry.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
@@ -1791,7 +1793,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // form. Non-diagnostic; safety-screened; the client falls back gracefully if
   // extraction is unavailable.
   router.post("/extract-log", async (req, res) => {
-    const { message, childProfile, language } = req.body;
+    const { message, childProfile, language, milestoneCandidateIds } = req.body;
     // EVAL-3 (capture-extract-v1 empty-input scenario): empty-ISH input —
     // missing, non-string, or whitespace-only — answers 400 before any model
     // call; a blank description must never burn a model round-trip.
@@ -1826,11 +1828,16 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // EVAL-6: version-pinned named builder (ai/prompts.ts) — the canonical
       // six stay joined HERE so the taxonomy grep guard keeps pinning this
       // route to CANONICAL_BEHAVIOR_TYPES.join(...) from the shared module.
+      // B-LOOP-06: the in-window open milestones the model may match, built
+      // and validated HERE from the catalogue (ids from the client are only a
+      // filter); none sent ⇒ no block, no schema field, legacy bytes.
+      const milestoneCandidates = buildMilestoneCandidates(milestoneCandidateIds, childProfile);
       const prompt = buildExtractLogPrompt({
         childProfile,
         message,
         behaviorTypes: CANONICAL_BEHAVIOR_TYPES.join(" | "),
-        languageDirective
+        languageDirective,
+        ...(milestoneCandidates.length ? { milestoneCandidates } : {})
       });
 
       const privacy = createRedaction(childProfile?.name);
@@ -1850,13 +1857,33 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
             context: { type: Type.STRING, enum: ["Home", "School", "Transit", "Public"] },
             trigger: { type: Type.STRING },
             response: { type: Type.STRING },
-            notes: { type: Type.STRING }
+            notes: { type: Type.STRING },
+            ...(milestoneCandidates.length
+              ? {
+                  milestoneMatch: {
+                    type: Type.OBJECT,
+                    properties: {
+                      shelf: { type: Type.STRING, enum: [...SHELF_IDS] },
+                      milestoneId: { type: Type.STRING },
+                      confidence: { type: Type.STRING, enum: ["high", "low"] }
+                    }
+                  }
+                }
+              : {})
           }
         }
       }), budget.signal);
       budget.settle();
       // B-AI-15: one log per capture, neutral about the parent (server/captureDraft).
-      await sendScreenedJson(res, normalizeCaptureDraft(privacy.restoreDeep(draft)));
+      const restored = privacy.restoreDeep(draft);
+      const normalized = normalizeCaptureDraft(restored);
+      // B-LOOP-06: only a candidate id survives; legacy responses carry no key.
+      await sendScreenedJson(
+        res,
+        milestoneCandidates.length
+          ? { ...(normalized as Record<string, unknown>), milestoneMatch: validateMilestoneMatch((restored as { milestoneMatch?: unknown } | null)?.milestoneMatch, milestoneCandidates) }
+          : normalized
+      );
     } catch (error: any) {
       budget.settle();
       if (budget.clientGone()) return;

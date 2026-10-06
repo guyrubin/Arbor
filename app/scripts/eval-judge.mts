@@ -243,7 +243,14 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
     const res = await fetch(`${baseUrl}/api/extract-log`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: String(input.message ?? ""), childProfile: SYNTHETIC_PROFILE, language: locale }),
+      // B-LOOP-06: a milestone-match scenario carries its own aged child and
+      // the candidate ids the client would send; the others post as before.
+      body: JSON.stringify({
+        message: String(input.message ?? ""),
+        childProfile: input.childProfile && typeof input.childProfile === "object" ? input.childProfile : SYNTHETIC_PROFILE,
+        language: locale,
+        ...(Array.isArray(input.milestoneCandidateIds) ? { milestoneCandidateIds: input.milestoneCandidateIds } : {}),
+      }),
     });
     return `HTTP ${res.status}\n${await res.text()}`;
   }

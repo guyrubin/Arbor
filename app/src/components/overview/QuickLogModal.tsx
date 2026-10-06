@@ -32,6 +32,12 @@ import { renderSayThis, type HardMomentCard } from "../../content/hardMomentCard
 import { locText } from "../../content/hardMomentSurface";
 import { isolate } from "../../lib/bidi";
 import type { BehaviorLog } from "../../types";
+import MilestoneProposalRow from "../loop/MilestoneProposalRow";
+import { milestoneCandidateIds, milestoneMatchAllowed, requestMilestoneProposal } from "../../lib/milestones/captureMatch";
+import { declineMilestoneProposal } from "../../lib/milestones/proposalLedger";
+import type { MilestoneCaptureProposal } from "../../lib/captureProposals";
+import { milestoneText } from "../../lib/milestoneData";
+import { comparisonMonthsOf } from "../../lib/age/forChild";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
  *
@@ -93,6 +99,9 @@ export default function QuickLogModal({
     deleteLog,
     seedCoach,
     cancelEditLog,
+    milestones,
+    setMilestoneObservation,
+    fileMomentOnShelf,
   } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
@@ -228,12 +237,37 @@ export default function QuickLogModal({
   const [sayCopied, setSayCopied] = useState(false);
   const logIdsRef = useRef<string[]>([]);
   logIdsRef.current = behaviorLogs.map((l) => l.id);
+  // B-LOOP-06 — a saved plain moment may come back with ONE milestone
+  // proposal (the extract seam with the child's open in-window candidates;
+  // server-validated). Nothing writes until the parent taps Add / File it.
+  const [msProposal, setMsProposal] = useState<MilestoneCaptureProposal | null>(null);
+  const [msDone, setMsDone] = useState(false);
   useEffect(() => {
     if (!open) {
       setReply(null);
       setSayCopied(false);
+      setMsProposal(null);
+      setMsDone(false);
     }
   }, [open]);
+  const msTitle = (() => {
+    const id = msProposal?.milestoneId;
+    const m = id ? milestones.find((x) => x.id === id) : undefined;
+    return m ? milestoneText(m, "title", t, { gender: childProfile.gender }) : undefined;
+  })();
+  const acceptMilestoneProposal = () => {
+    if (!msProposal) return;
+    if (msProposal.kind === "milestone" && msProposal.milestoneId) {
+      setMilestoneObservation(msProposal.milestoneId, "yes", { source: "ai_proposed_parent_confirmed", provenance: msProposal.logId });
+    }
+    fileMomentOnShelf(msProposal.logId, msProposal.shelf, msProposal.kind === "milestone" ? msProposal.milestoneId : undefined);
+    setMsDone(true);
+  };
+  const declineMilestoneProposalRow = () => {
+    if (!msProposal) return;
+    declineMilestoneProposal(childProfile.id, msProposal.logId);
+    setMsProposal(null);
+  };
   const firstName = (childProfile.name || "").split(" ")[0];
   const replyLocale = uiLang === "he" ? "he" : "en";
   const replyEcho = reply
@@ -386,6 +420,7 @@ export default function QuickLogModal({
     e.preventDefault();
     // A photo with no words still keeps: the caption is a neutral label.
     const words = newLogTrigger.trim() || (photo ? t("elev.capture.photo.caption") : "");
+    const typedWords = newLogTrigger.trim();
     const written = addMoment(words, {
       ...(photo ? { photoAttachment: photo } : {}),
       ...(promptKey ? { promptKey } : {}),
@@ -402,6 +437,16 @@ export default function QuickLogModal({
       hard: false,
       seed: t("elev.capture.reply.seed", { name: firstName, text: written.trigger }),
     });
+    // B-LOOP-06: one milestone-match request for a plain moment the parent
+    // wrote (never a hard moment, a photo-only caption or a declined log).
+    setMsProposal(null);
+    setMsDone(false);
+    if (milestoneMatchAllowed(written, { childId: childProfile.id, hard: false, photoOnly: !typedWords })) {
+      const candidateIds = milestoneCandidateIds(milestones, comparisonMonthsOf(childProfile));
+      void requestMilestoneProposal({ extract: api.extractLog, log: written, childProfile, language: getAiLanguage(), candidateIds }).then((p) => {
+        if (p) setMsProposal(p);
+      });
+    }
   };
 
   const submit = (e: React.FormEvent) => {
@@ -468,6 +513,15 @@ export default function QuickLogModal({
                 : t("elev.capture.reply.kept", { name: firstName })}
             </span>
           </p>
+          {msProposal && msProposal.logId === reply.log.id && (
+            <MilestoneProposalRow
+              proposal={msProposal}
+              milestoneTitle={msTitle}
+              done={msDone}
+              onAccept={acceptMilestoneProposal}
+              onDecline={declineMilestoneProposalRow}
+            />
+          )}
           {replyCard ? (
             <div data-testid="quicklog-reply-saythis" className="space-y-1.5" lang={replyLocale} dir={replyLocale === "he" ? "rtl" : "ltr"}>
               <SayThis

@@ -157,3 +157,59 @@ describe("/api/extract-log escalation contract for the typed path (AI-CAP-3)", (
     expect(json.intensity).toBe(4);
   });
 });
+
+/* B-LOOP-06 — a moment becomes milestone EVIDENCE: the server builds the
+   candidates (catalogue, in the child's window), the model may only choose
+   among them, anything else is dropped, and a request without candidates is
+   byte-identical to before (no block, no key). */
+describe("/api/extract-log milestone match (B-LOOP-06)", () => {
+  const birth = new Date();
+  birth.setMonth(birth.getMonth() - 26);
+  const TODDLER = { id: "c26", name: "Test Child", birthDate: birth.toISOString().slice(0, 10) };
+  const LEGACY = { behaviorType: "Moment", intensity: 1, durationMinutes: 10, context: "Home", trigger: "said big ball", response: "", notes: "" };
+  const ask = (ids: unknown, match: unknown) => {
+    lastPrompt = "";
+    draft = { ...LEGACY, milestoneMatch: match };
+    return postExtract({ message: "She said big ball at the park", childProfile: TODDLER, milestoneCandidateIds: ids });
+  };
+
+  it("candidates are server-built: catalogue ids in the window only (no ahead-of-band, no unknown, no duplicates)", async () => {
+    await ask(["cdc-24m-3", "cdc-24m-3", "cdc-18m-2", "cdc-36m-1", "custom-xyz", 42], null);
+    expect(lastPrompt).toContain("Milestone match (optional)");
+    expect(lastPrompt).toContain("- cdc-24m-3 · words · ");
+    expect(lastPrompt).toContain("- cdc-18m-2 · ");
+    expect(lastPrompt).not.toContain("cdc-36m-1");
+    expect(lastPrompt).not.toContain("custom-xyz");
+    expect(lastPrompt.match(/- cdc-24m-3 /g)?.length).toBe(1);
+  });
+
+  it("a listed id survives with the catalogue's shelf", async () => {
+    const { status, json } = await ask(["cdc-24m-3", "cdc-24m-9"], { shelf: "feelings", milestoneId: "cdc-24m-3", confidence: "high" });
+    expect(status).toBe(200);
+    expect(json.milestoneMatch).toEqual({ shelf: "words", milestoneId: "cdc-24m-3", confidence: "high" });
+  });
+
+  it("a response with an id not in the candidate list is dropped", async () => {
+    const { json } = await ask(["cdc-24m-3"], { shelf: "words", milestoneId: "cdc-36m-1", confidence: "high" });
+    expect(json.milestoneMatch).toBeNull();
+  });
+
+  it("low confidence names the shelf only, never a milestone to tick; a bad shelf is dropped", async () => {
+    expect((await ask(["cdc-24m-3"], { shelf: "words", milestoneId: "cdc-24m-3", confidence: "low" })).json.milestoneMatch).toEqual({ shelf: "words", confidence: "low" });
+    expect((await ask(["cdc-24m-3"], { shelf: "sleep", confidence: "low" })).json.milestoneMatch).toEqual({ shelf: "sleep", confidence: "low" });
+    expect((await ask(["cdc-24m-3"], { shelf: "behind", confidence: "low" })).json.milestoneMatch).toBeNull();
+  });
+
+  it("no candidates ⇒ no block in the prompt and no milestoneMatch key: the legacy fields byte for byte", async () => {
+    lastPrompt = "";
+    draft = { ...LEGACY };
+    const { json } = await postExtract({ message: "She said big ball at the park", childProfile: TODDLER });
+    expect(lastPrompt).not.toContain("Milestone match");
+    expect("milestoneMatch" in json).toBe(false);
+    expect(JSON.stringify(json)).toBe(JSON.stringify(LEGACY));
+    // ids for a child with no age give no candidates either
+    lastPrompt = "";
+    await postExtract({ message: "She said big ball", childProfile: { id: "x", name: "N" }, milestoneCandidateIds: ["cdc-24m-3"] });
+    expect(lastPrompt).not.toContain("Milestone match");
+  });
+});
