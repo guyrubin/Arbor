@@ -135,7 +135,8 @@ export const he: Record<string, string> = {
   "elev.capture.reply.kept": "נשמר ביומן של {name}",
   "elev.capture.reply.ask": "לשאול את ארבור על זה",
   "elev.capture.reply.seed": "רשמתי עכשיו משהו על {name}: \"{text}\". מה זה יכול לספר לי, והאם יש דבר קטן אחד שכדאי לנסות?",
-  "elev.capture.reply.undo": "ביטול",
+  // P5 r1 A10 (r3 G1-8): "ביטול" read as Cancel; the reply removes the saved moment.
+  "elev.capture.reply.undo": "בטל שמירה",
   "elev.capture.reply.done": "סיום",
   "elev.capture.reply.undone": "הוסר מהיומן.",
   "elev.brief.family.aria": "מה מחכה לשאר הילדים",
