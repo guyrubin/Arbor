@@ -26,6 +26,8 @@ export const en: Record<string, string> = {
   "elev.loop.notice.seenReceipt": "Noted under {shelf}.",
   "elev.loop.notice.keptReceipt": "Kept with this milestone.",
   "elev.loop.notice.thanks": "Noted. No need to test or push; everyday play is enough.",
+  "elev.loop.notice.undo": "Undo",
+  "elev.loop.latest.change": "Not right? Change",
   // ── B-LOOP-05 · the shelf map (#/milestones) ────────────────────────────
   "elev.loop.shelfMap.title": "What to notice, shelf by shelf",
   "elev.loop.shelf.noticed": "{n} noticed",
@@ -56,6 +58,8 @@ export const he: Record<string, string> = {
   "elev.loop.notice.seenReceipt": "נרשם תחת {shelf}.",
   "elev.loop.notice.keptReceipt": "נשמר ליד אבן הדרך הזו.",
   "elev.loop.notice.thanks": "נרשם. אין צורך לבדוק או ללחוץ; משחק רגיל מספיק.",
+  "elev.loop.notice.undo": "ביטול",
+  "elev.loop.latest.change": "לא מדויק? לשנות",
   // ── B-LOOP-05 · the shelf map (#/milestones) ────────────────────────────
   "elev.loop.shelfMap.title": "מה לשים לב אליו, מדף אחר מדף",
   "elev.loop.shelf.noticed": "{n} נצפו",

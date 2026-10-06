@@ -62,7 +62,7 @@ import { localDay, type ObserveStatus } from "../../lib/milestones/observe";
 import { selectNextMilestonesByShelf, shelfOfMilestone } from "../../lib/milestones/selectByShelf";
 import { groupMilestonesByShelf, matchesMilestoneQuery, noticedByShelf, shelfBands } from "../../lib/milestones/shelfMap";
 import { SHELVES, SHELF_IDS, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
-import NoticeCard from "../loop/NoticeCard";
+import NoticeCard, { NOTICE_ANSWER_KEYS } from "../loop/NoticeCard";
 import { ShelfGlyph } from "../loop/ShelfGlyph";
 
 /** NEXTLEVEL critic r1: "Born early?" leads the rail only while correction
@@ -105,6 +105,7 @@ export default function MilestonesTab() {
   const {
     milestones,
     setMilestoneObservation,
+    restoreMilestone,
     addCustomMilestone,
     setActiveTab,
     seedCoach,
@@ -236,6 +237,9 @@ export default function MilestonesTab() {
     [milestones, comparisonMonths, noticeNow],
   );
   const [heldNotice, setHeldNotice] = useState<Partial<Record<ShelfId, string>>>({});
+  // Critic r3 (P1): the document BEFORE the answer, so Undo restores it byte-equal.
+  const [beforeAnswer, setBeforeAnswer] = useState<Partial<Record<ShelfId, Milestone>>>({});
+  const [changingLatest, setChangingLatest] = useState(false);
   const noticeFor = (shelf: ShelfId): Milestone | undefined => {
     const held = heldNotice[shelf];
     if (held) return milestones.find((m) => m.id === held);
@@ -744,6 +748,34 @@ export default function MilestonesTab() {
                         <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
                       </span>
                     </p>
+                    {!changingLatest && (
+                      <button
+                        type="button"
+                        data-testid="ms-latest-change"
+                        onClick={() => setChangingLatest(true)}
+                        className="mt-1 inline-flex min-h-11 items-center t-sm font-semibold"
+                        style={{ color: "var(--arbor-clay)" }}
+                      >
+                        {t("elev.loop.latest.change")}
+                      </button>
+                    )}
+                    {/* Critic r3 (P1): correctable where it is read — "Not right?
+                        Change" opens the three answers for this milestone. */}
+                    {changingLatest ? (
+                      <div role="group" aria-label={t("ms.observePrompt")} data-testid="ms-latest-change-answers" className="mt-2 flex flex-wrap gap-2">
+                        {(["yes", "not_yet", "not_sure"] as const).map((status) => (
+                          <button
+                            key={status}
+                            type="button"
+                            onClick={() => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
+                            className="inline-flex min-h-11 items-center rounded-full px-4 t-sm font-semibold"
+                            style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}
+                          >
+                            {t(NOTICE_ANSWER_KEYS[status])}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <p className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ms.observedSoFar")}</p>
@@ -914,7 +946,12 @@ export default function MilestonesTab() {
                             variant="card"
                             onAnswer={(status) => {
                               setHeldNotice((p) => ({ ...p, [shelf]: card.id }));
+                              setBeforeAnswer((p) => ({ ...p, [shelf]: card }));
                               observeMilestone(card, status);
+                            }}
+                            onUndo={() => {
+                              const previous = beforeAnswer[shelf];
+                              if (previous) restoreMilestone(previous);
                             }}
                             onWhen={(when) => setMilestoneObservation(card.id, "yes", { when })}
                             onKeepQuote={(note) => saveKeepsake({ milestoneId: card.id, note, noticedOn: localDay(new Date()) })}

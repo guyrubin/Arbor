@@ -32,6 +32,10 @@ export interface NoticeCardProps {
   onKeepQuote?: (text: string) => void;
   /** "Add a photo" — opens the existing capture sheet. */
   onKeepPhoto?: () => void;
+  /** Critic r3 (P1): "Undo" where the answer was given — the caller writes
+   *  back the document it held BEFORE the answer (byte-equal), the card asks
+   *  again. A mis-tap never travels silently into the clinician packet. */
+  onUndo?: () => void;
   /** "row" sits inside a parent card (Today); "card" is its own card (Milestones, Journal). */
   variant?: "row" | "card";
   /** Start phase (tests render each phase statically). */
@@ -60,6 +64,7 @@ export default function NoticeCard({
   onWhen,
   onKeepQuote,
   onKeepPhoto,
+  onUndo,
   variant = "card",
   initialPhase = "ask",
   stampMove,
@@ -78,6 +83,11 @@ export default function NoticeCard({
   const answer = (status: ObserveStatus) => {
     onAnswer(status);
     setPhase(status === "yes" ? "seen" : "thanked");
+  };
+  const undo = () => {
+    onUndo?.();
+    setWhen("today");
+    setPhase("ask");
   };
   const pickWhen = (w: ObservedWhen) => {
     setWhen(w);
@@ -162,10 +172,23 @@ export default function NoticeCard({
 
           {phase === "seen" && (
             <div data-testid="notice-seen-strip" className="mt-3 space-y-3">
-              <p role="status" data-testid="notice-receipt" className="flex items-center gap-1.5 text-[13px]" style={{ color: "var(--arbor-muted)" }}>
-                <Icon name="check" size={16} />
-                {t("elev.loop.notice.seenReceipt", { shelf: shelfName })}
-              </p>
+              <div className="flex items-center gap-2">
+                <p role="status" data-testid="notice-receipt" className="flex min-w-0 items-center gap-1.5 text-[13px]" style={{ color: "var(--arbor-muted)" }}>
+                  <Icon name="check" size={16} />
+                  {t("elev.loop.notice.seenReceipt", { shelf: shelfName })}
+                </p>
+              {onUndo && (
+                <button
+                  type="button"
+                  data-testid="notice-undo"
+                  onClick={undo}
+                  className="ms-auto inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
+                  style={{ color: "var(--arbor-clay)" }}
+                >
+                  {t("elev.loop.notice.undo")}
+                </button>
+              )}
+              </div>
               <div role="group" aria-label={t("elev.loop.notice.when")} data-testid="notice-when">
                 <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-ink)" }}>{t("elev.loop.notice.when")}</p>
                 <div className="mt-1.5 flex flex-wrap gap-2">
@@ -242,9 +265,22 @@ export default function NoticeCard({
           )}
 
           {phase === "thanked" && (
-            <p role="status" data-testid="notice-thanks" className="mt-3 text-[13px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
-              {t("elev.loop.notice.thanks")}
-            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <p role="status" data-testid="notice-thanks" className="min-w-0 text-[13px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
+                {t("elev.loop.notice.thanks")}
+              </p>
+              {onUndo && (
+                <button
+                  type="button"
+                  data-testid="notice-undo"
+                  onClick={undo}
+                  className="ms-auto inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
+                  style={{ color: "var(--arbor-clay)" }}
+                >
+                  {t("elev.loop.notice.undo")}
+                </button>
+              )}
+            </div>
           )}
 
           {phase === "kept" && (

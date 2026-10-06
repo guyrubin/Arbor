@@ -1448,6 +1448,13 @@ function useArborState() {
     if (!milestone) return;
     void milestonesCol.upsert(observeMilestoneDoc(milestone, status, opts));
   };
+  /** B-LOOP-04 (critic r3): Undo where the answer was given — writes back the
+   *  document the surface held BEFORE the answer, byte for byte (setDoc
+   *  replaces), so a mis-tap leaves no trace in the record or the packet. */
+  const restoreMilestone = (previous: Milestone) => {
+    if (!milestones.some((item) => item.id === previous.id)) return;
+    void milestonesCol.upsert(previous);
+  };
 
   /**
    * The ONLY durable-write seam for realtime conversation proposals. Provider
@@ -1704,6 +1711,7 @@ function useArborState() {
     handleGenerateActionPlan,
     handleToggleMilestone,
     setMilestoneObservation,
+    restoreMilestone,
     addCustomMilestone,
     handleTogglePlanStep,
     setPlanStepStatus,

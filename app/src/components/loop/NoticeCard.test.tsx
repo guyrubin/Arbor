@@ -57,6 +57,19 @@ describe("NoticeCard — the answers", () => {
     expect(text(html)).toContain("Noted under Words.");
   });
 
+  it("critic r3: Undo sits on the receipt (seen and thanked), 44 px, EN + HE; absent without onUndo", () => {
+    for (const p of ["seen", "thanked"] as const) {
+      state.lang = "en";
+      const html = renderToStaticMarkup(<NoticeCard milestone={cdc} shelf="words" onAnswer={() => undefined} onUndo={() => undefined} initialPhase={p} />);
+      const btn = html.match(/<button[^>]*data-testid="notice-undo"[^>]*>/)?.[0] ?? "";
+      expect(btn).toMatch(/min-h-\[44px\]/);
+      expect(text(html)).toContain("Undo");
+      state.lang = "he";
+      expect(text(renderToStaticMarkup(<NoticeCard milestone={cdc} shelf="words" onAnswer={() => undefined} onUndo={() => undefined} initialPhase={p} />))).toContain("ביטול");
+    }
+    expect(render(cdc, "en", "seen")).not.toContain("notice-undo");
+  });
+
   it('"Not yet" / "Not sure" thank in one neutral line', () => {
     const html = render(cdc, "en", "thanked");
     expect(html).toContain('data-testid="notice-thanks"');

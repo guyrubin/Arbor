@@ -71,6 +71,31 @@ describe("observeMilestoneDoc", () => {
   });
 });
 
+describe("critic r3 (P1) — Undo where the answer was given", () => {
+  it("Yes followed by Undo leaves the stored milestone byte-equal", () => {
+    const store = new Map<string, Milestone>();
+    const before = { ...row(), checked: false, observationStatus: "not_sure" as const, observationUpdatedAt: "2026-09-01T10:00:00.000Z" };
+    store.set(before.id, before);
+    const held = store.get(before.id)!; // the surface holds the document BEFORE the answer
+    store.set(before.id, observeMilestoneDoc(held, "yes", { now: NOW }));
+    expect(store.get(before.id)!.checked).toBe(true);
+    store.set(held.id, held); // restoreMilestone(previous): setDoc replaces
+    expect(JSON.stringify(store.get(before.id))).toBe(JSON.stringify(before));
+  });
+
+  it("the context restores the held document; the Milestones tab holds it before answering and passes Undo", () => {
+    const ctx = src("context/ArborContext.tsx");
+    expect(ctx).toContain("const restoreMilestone = (previous: Milestone) => {");
+    expect(ctx).toContain("void milestonesCol.upsert(previous);");
+    const tab = src("components/tabs/MilestonesTab.tsx");
+    const at = tab.indexOf("setBeforeAnswer((p) => ({ ...p, [shelf]: card }));");
+    expect(at).toBeGreaterThan(-1);
+    expect(at).toBeLessThan(tab.indexOf("observeMilestone(card, status);", at));
+    expect(tab).toContain("if (previous) restoreMilestone(previous);");
+    expect(tab).toContain('data-testid="ms-latest-change"');
+  });
+});
+
 describe("one seam — source pins", () => {
   it("the context's setMilestoneObservation writes observeMilestoneDoc's document", () => {
     const ctx = src("context/ArborContext.tsx");
