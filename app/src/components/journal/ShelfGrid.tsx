@@ -20,6 +20,16 @@ export interface ShelfGridProps {
   onOpenAll: () => void;
   /** TimelineTab's ONE stamp literal (open-shelf), spread on the grid of shelves. */
   primaryMoveProps?: Record<string, string>;
+  /** B-LOOP-NEW-1d (1): the parent's latest own entry, verbatim, with its
+   *  shelf and a relative day; absent on first open (never a placeholder). */
+  latest?: { text: string; shelf: ShelfId; day: string } | null;
+  /** B-LOOP-NEW-1c (1): per tile, the parent's latest words on that shelf
+   *  (verbatim, dated) — or, on an empty shelf, its practice's title. */
+  tileWords?: Partial<Record<ShelfId, { text: string; date: string }>>;
+  tileTry?: Partial<Record<ShelfId, string>>;
+  /** B-LOOP-NEW-1c (2) / critic c2 r1 (journal product P1): the capture dock,
+   *  unfiled — the grid's third module (budget 3). */
+  captureDock?: React.ReactNode;
 }
 
 const TILE = "flex w-full min-h-[96px] flex-col items-start gap-2 p-3.5 text-start transition active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
@@ -43,7 +53,7 @@ const TILE_STYLE: React.CSSProperties = {
  * is the registry's `order`, never the count; a shelf with nothing shows the
  * one-thing-to-try line, never "0", "empty", a colour or a comparison.
  */
-export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, onOpenAll, primaryMoveProps }: ShelfGridProps) {
+export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, onOpenAll, primaryMoveProps, latest = null, tileWords = {}, tileTry = {}, captureDock }: ShelfGridProps) {
   const { t } = useLanguage();
   const ordered = [...SHELVES].sort((a, b) => a.order - b.order);
   return (
@@ -54,6 +64,21 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
           {t("elev.shelfJournal.h1", { name: childName })}
         </h1>
         <p className="mt-1 t-base leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.lede")}</p>
+        {latest && (
+          <button
+            type="button"
+            data-testid="journal-latest-words"
+            onClick={() => onOpenShelf(latest.shelf)}
+            className="mt-2 flex min-h-11 w-full flex-col items-start gap-0.5 py-1 text-start focus:outline-none focus-visible:ring-2"
+          >
+            <span dir="auto" className="block border-s-2 ps-3 t-lg leading-snug line-clamp-2" style={{ borderColor: "var(--arbor-clay-dim)", fontFamily: "var(--font-editorial)", color: "var(--arbor-ink-soft)" }}>
+              {"“"}{latest.text}{"”"}
+            </span>
+            <span className="block ps-3.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
+              <bdi>{shelfLabel(latest.shelf, t)}</bdi> · <bdi>{latest.day}</bdi>
+            </span>
+          </button>
+        )}
         <button
           type="button"
           data-testid="journal-flip-pro"
@@ -70,7 +95,9 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
         <div data-testid="shelf-grid" className="grid grid-cols-2 gap-2.5 lg:grid-cols-3" {...(primaryMoveProps ?? {})}>
           {ordered.map((def) => {
             const n = counts[def.id] ?? 0;
-            const line = shelfCountKey(n);
+            const tryTitle = n <= 0 ? tileTry[def.id] : undefined;
+            const words = n > 0 ? tileWords[def.id] : undefined;
+            const line = tryTitle ? { key: "elev.shelfJournal.nothingYetShort", vars: undefined } : shelfCountKey(n);
             const family = def.id === "family";
             return (
               <button
@@ -89,6 +116,18 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
                     {family ? `${t("elev.shelfJournal.family.sub", { name: childName })} · ` : ""}
                     {t(line.key, line.vars)}
                   </span>
+                  {/* B-LOOP-NEW-1c (1): every tile says what to try, from the record —
+                      the parent's latest words on a filled shelf, the practice on an
+                      empty one. Each tile reads only its own shelf: no comparison. */}
+                  {(words || tryTitle) && (
+                    <span data-testid="shelf-tile-next" className="mt-1 block t-sm leading-snug line-clamp-2" style={{ color: "var(--arbor-ink-soft)" }}>
+                      {words ? (
+                        <><span dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>{"“"}{words.text}{"”"}</span>{" · "}<bdi>{words.date}</bdi></>
+                      ) : (
+                        t("elev.shelfJournal.tryLine", { title: tryTitle ?? "" })
+                      )}
+                    </span>
+                  )}
                 </span>
               </button>
             );
@@ -111,6 +150,11 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
           </button>
         </div>
       </section>
+      {captureDock && (
+        <section data-module="journal-capture" aria-label={t("elev.shelfJournal.captureAria", { name: childName })} className="min-w-0">
+          {captureDock}
+        </section>
+      )}
     </div>
   );
 }

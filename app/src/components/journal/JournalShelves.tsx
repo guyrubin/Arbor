@@ -15,7 +15,12 @@ import { keepsakeDoc, type KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { recentPracticeIds, todayDose } from "../../lib/practice/choosePractice";
 import { readTodayPin, writeTodayPin } from "../../lib/practice/todayPin";
-import { proDomainCounts, shelfNotice, shelfPractice, signalsOnShelf } from "../../lib/journal/shelfView";
+import { latestOwnWords, latestWordsByShelf, proDomainCounts, shelfDayLabel, shelfNotice, shelfPractice, signalsOnShelf } from "../../lib/journal/shelfView";
+import { practiceTitle } from "../../lib/practice/practiceTitle";
+import { practiceText } from "../loop/PracticeCard";
+import QuickCaptureBar from "../overview/QuickCaptureBar";
+import { availableHardMomentCards } from "../../content/selectCards";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 import { groupByDay, SIGNAL_PROVENANCE, signalDetail, signalTitle } from "../../lib/signalTimeline";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
 import QuickLogModal from "../overview/QuickLogModal";
@@ -47,7 +52,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
   intakeFor?: string | null;
   primaryMoveProps?: Record<string, string>;
 }) {
-  const { childProfile, milestones, behaviorLogs, actionLoop, setMilestoneObservation, restoreMilestone, requestJournalFocus } = useArbor();
+  const { childProfile, milestones, behaviorLogs, actionLoop, setMilestoneObservation, restoreMilestone, requestJournalFocus, openHardMomentNow } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
   const tt = useMemo(() => withChildSignals(t, uiLang === "he"), [t, uiLang]);
@@ -150,6 +155,36 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
   );
   const domainCounts = useMemo(() => proDomainCounts(observations, (s) => shelfDef(s).domain, now), [observations, now]);
 
+  // ── B-LOOP-NEW-1c / 1d (P5-LOOP c2 r1): the grid remembers in the parent's
+  //    words — the latest own entry under the lede, per tile the latest words
+  //    (filled) or the shelf's practice (empty). Grid only; zero model calls. ──
+  const onGrid = !shelf && !pro;
+  // the hard-moment tile, as on Today: only when a card fits the child's age
+  const hardMomentTile = useMemo(
+    () => availableHardMomentCards({ now, ageMonths: ageMonthsFromProfile(childProfile, now), locale }).length > 0,
+    [childProfile, now, locale],
+  );
+  const wordsByShelf = useMemo(
+    () => (onGrid ? latestWordsByShelf(observations, behaviorLogs, SHELF_IDS) : {}),
+    [onGrid, observations, behaviorLogs],
+  );
+  const latestOwn = useMemo(() => latestOwnWords(wordsByShelf), [wordsByShelf]);
+  const tileWords = useMemo(() => {
+    const out: Partial<Record<ShelfId, { text: string; date: string }>> = {};
+    for (const [id, w] of Object.entries(wordsByShelf) as [ShelfId, { text: string; at: string }][]) out[id] = { text: w.text, date: shelfDayLabel(w.at, now, locale) };
+    return out;
+  }, [wordsByShelf, now, locale]);
+  const tileTry = useMemo(() => {
+    const out: Partial<Record<ShelfId, string>> = {};
+    if (!onGrid) return out;
+    for (const id of SHELF_IDS) {
+      if ((coverage[id] ?? 0) > 0) continue;
+      const pick = shelfPractice({ childId: childProfile.id, milestones, comparisonMonths, practices: PRACTICES, coverage, today: now, recentPracticeIds: recentPracticeIds(actionLoop, childProfile.id, now) }, id);
+      if (pick) out[id] = practiceTitle(practiceText(pick.practice, "do", locale, childProfile.gender), locale);
+    }
+    return out;
+  }, [onGrid, coverage, childProfile.id, childProfile.gender, milestones, comparisonMonths, now, actionLoop, locale]);
+
   const openEntry = (id: string) => {
     goToRoute("journal", { view: "all" });
     requestJournalFocus(id);
@@ -195,6 +230,20 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
           onOpenPro={() => goToRoute("journal", { view: "pro" })}
           onOpenAll={() => goToRoute("journal", { view: "all" })}
           primaryMoveProps={primaryMoveProps}
+          latest={latestOwn ? { text: latestOwn.text, shelf: latestOwn.shelf, day: shelfDayLabel(latestOwn.at, now, locale) } : null}
+          tileWords={tileWords}
+          tileTry={tileTry}
+          captureDock={
+            /* The ONE capture sheet, UNFILED: extract_log proposes the shelf and
+               the parent confirms it in the sheet (B-LOOP-06) — no filing
+               decision before writing. */
+            <QuickCaptureBar
+              childName={childName}
+              onText={() => setCapture({ open: true, mode: "text" })}
+              onMode={(mode) => setCapture({ open: true, mode })}
+              onHardMoment={hardMomentTile ? () => openHardMomentNow() : undefined}
+            />
+          }
         />
       )}
       <QuickLogModal open={capture.open} mode={capture.mode} shelf={shelf ?? undefined} onClose={() => setCapture((c) => ({ ...c, open: false }))} />

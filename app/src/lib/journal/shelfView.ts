@@ -13,12 +13,13 @@
  * is read only to print "{n} noticed" on its own tile (never ranked, never
  * coloured, the grid order is the registry's `order`).
  */
-import type { Milestone } from "../../types";
+import type { BehaviorLog, Milestone } from "../../types";
 import type { Observation, ObservationOrigin } from "../observations";
 import type { TimelineSignal } from "../signalTimeline";
 import type { ShelfId } from "../shelves/registry";
 import { selectNextMilestonesByShelf, type NoticePick } from "../milestones/selectByShelf";
 import { practiceCandidates, type ChoosePracticeInput, type PracticePick } from "../practice/choosePractice";
+import { shelfWordsThenNow, type DatedWords } from "../today/shelfWords";
 
 /** Read-model origin → the timeline signal id prefix (the origins the journal thread shows). */
 export const SIGNAL_PREFIX: Partial<Record<ObservationOrigin, string>> = {
@@ -101,4 +102,46 @@ export function proDomainCounts(
     out.set(domain, c);
   }
   return out;
+}
+
+/* ── P5-LOOP c2 r1 · B-LOOP-NEW-1c / 1d — the grid remembers in the parent's words ── */
+
+/** "Today" / "Yesterday" (Intl, so EN and HE localize natively), else "2 Oct". */
+export function shelfDayLabel(iso: string, now: Date, locale: string): string {
+  const at = new Date(iso);
+  if (!Number.isFinite(at.getTime())) return "";
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const daysAgo = Math.round((day(now) - day(at)) / 86_400_000);
+  if (daysAgo === 0 || daysAgo === 1) {
+    try {
+      const s = new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-daysAgo, "day");
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    } catch {
+      /* fall through to the date */
+    }
+  }
+  return at.toLocaleDateString(locale === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" });
+}
+
+/** Per shelf, the parent's newest own words on it (lib/today/shelfWords `now`), verbatim. */
+export function latestWordsByShelf(
+  observations: ReadonlyArray<Pick<Observation, "id" | "origin" | "shelf" | "at">>,
+  logs: readonly BehaviorLog[],
+  shelves: readonly ShelfId[],
+): Partial<Record<ShelfId, DatedWords>> {
+  const out: Partial<Record<ShelfId, DatedWords>> = {};
+  for (const shelf of shelves) {
+    const w = shelfWordsThenNow(observations, logs, shelf).now;
+    if (w) out[shelf] = w;
+  }
+  return out;
+}
+
+/** The newest of those, with its shelf — null when the parent has written nothing yet. */
+export function latestOwnWords(byShelf: Partial<Record<ShelfId, DatedWords>>): (DatedWords & { shelf: ShelfId }) | null {
+  let best: (DatedWords & { shelf: ShelfId }) | null = null;
+  for (const [shelf, w] of Object.entries(byShelf) as [ShelfId, DatedWords][]) {
+    if (!best || Date.parse(w.at) > Date.parse(best.at)) best = { ...w, shelf };
+  }
+  return best;
 }

@@ -106,3 +106,75 @@ describe("ShelfGrid — nine tiles, registry order, counts never verdicts", () =
     expect(src).not.toMatch(/--gradient-cta|--arbor-gradient-primary/);
   });
 });
+
+/* P5-LOOP c2 r1 — the grid remembers in the parent's words (B-LOOP-NEW-1d (1),
+   B-LOOP-NEW-1c (1)+(2)) and offers the capture dock, unfiled (journal product P1). */
+describe("ShelfGrid — the parent's words, what to try, and the capture dock", () => {
+  const full = (lang: "en" | "he", over: Partial<React.ComponentProps<typeof ShelfGrid>> = {}) => {
+    state.lang = lang;
+    return renderToStaticMarkup(
+      <ShelfGrid
+        childName="Dylan"
+        counts={{ words: 8, sleep: 0 }}
+        onOpenShelf={noop}
+        onOpenPro={noop}
+        onOpenAll={noop}
+        primaryMoveProps={{ "data-primary-move": "open-shelf" }}
+        latest={{ text: "Sang the whole bath song on his own", shelf: "words", day: lang === "he" ? "אתמול" : "Yesterday" }}
+        tileWords={{ words: { text: "more juice!", date: "2 Oct" }, sleep: { text: "never shown on an empty tile", date: "1 Oct" } }}
+        tileTry={{ sleep: "Say the bedtime steps out loud", words: "never shown on a filled tile" }}
+        captureDock={<div data-testid="dock-probe" />}
+        {...over}
+      />,
+    );
+  };
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: the latest own entry sits in the header — verbatim, clay-dim rule, editorial t-lg, shelf in <bdi> + the day, a 44 px target`, () => {
+      const html = full(lang);
+      const header = html.slice(html.indexOf('data-module="journal-shelves-header"'), html.indexOf('data-module="journal-shelves"'));
+      const btn = header.match(/<button[^>]*data-testid="journal-latest-words"[^>]*>/)![0];
+      expect(btn).toMatch(/min-h-11/);
+      expect(header).toContain("Sang the whole bath song on his own");
+      expect(header).toMatch(/border-s-2 ps-3 t-lg[^"]*" style="border-color:var\(--arbor-clay-dim\);font-family:var\(--font-editorial\);color:var\(--arbor-ink-soft\)"/);
+      expect(header).toContain(`<bdi>${translate(lang, "elev.shelves.words")}</bdi>`);
+      // absent on first open — never a placeholder
+      expect(full(lang, { latest: null })).not.toContain('data-testid="journal-latest-words"');
+    });
+
+    it(`${lang}: a filled tile quotes its latest words with the date; an empty tile names its practice; each tile reads only its own shelf`, () => {
+      const html = full(lang);
+      const tile = (id: string) => {
+        const i = html.indexOf(`data-shelf="${id}"`);
+        return html.slice(i, html.indexOf("</button>", i));
+      };
+      expect(tile("words")).toContain("more juice!");
+      expect(tile("words")).toContain("<bdi>2 Oct</bdi>");
+      expect(tile("words")).not.toContain("never shown on a filled tile");
+      expect(text(tile("sleep"))).toContain(translate(lang, "elev.shelfJournal.tryLine", { title: "Say the bedtime steps out loud" }));
+      expect(text(tile("sleep"))).toContain(translate(lang, "elev.shelfJournal.nothingYetShort"));
+      expect(tile("sleep")).not.toContain("never shown on an empty tile");
+      // a tile with neither keeps the plain count line
+      expect(text(tile("play"))).toContain(translate(lang, "elev.shelfJournal.nothingYet"));
+      expect(tile("play")).not.toContain('data-testid="shelf-tile-next"');
+      expect(loopFirewallHits(text(html))).toEqual([]);
+      expect(text(html)).not.toMatch(/%|more than|fewer than|most|least|יותר מ|פחות מ/i);
+    });
+  }
+
+  it("the capture dock is the grid's THIRD module (budget 3), after the shelves; the stamp stays on the grid", () => {
+    const html = full("en");
+    expect([...html.matchAll(/data-module="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["journal-shelves-header", "journal-shelves", "journal-capture"]);
+    expect(html.indexOf('data-testid="dock-probe"')).toBeGreaterThan(html.indexOf('data-testid="shelf-all-by-date"'));
+    expect((html.match(/data-primary-move=/g) || []).length).toBe(1);
+  });
+
+  it("JournalShelves wires the dock to the ONE capture sheet UNFILED (no shelf on the grid) and the hard moment through openHardMomentNow", () => {
+    const src = readFileSync(path.resolve(__dirname, "JournalShelves.tsx"), "utf8");
+    expect(src).toContain("<QuickCaptureBar");
+    expect(src).toContain('onText={() => setCapture({ open: true, mode: "text" })}');
+    expect(src).toContain("onHardMoment={hardMomentTile ? () => openHardMomentNow() : undefined}");
+    expect(src).toContain("shelf={shelf ?? undefined}");
+    expect(src).toContain("latestWordsByShelf(observations, behaviorLogs, SHELF_IDS)");
+  });
+});
