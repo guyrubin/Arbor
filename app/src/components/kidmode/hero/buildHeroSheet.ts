@@ -318,3 +318,44 @@ export function resumeHeroSheet(child: { id: string; photoUrl?: string | null; a
 export function heroSheetRunning(childId: string, photoUrl?: string | null): boolean {
   return !!photoUrl && running.has(`${childId}:${heroAvatarHash(photoUrl)}`);
 }
+
+/* ── B-GAME-14: the parent's review ─────────────────────────────────────────
+ * "Looks like {name}? / Redraw" per pose, on the parent side only. A pose the
+ * parent sends back is removed from the record AT ONCE (the game falls back to
+ * another pose: the child never sees a rejected one), then drawn once more for
+ * the same hero (counted against the sheet's call cap, never a new sheet). One
+ * redraw per pose per creation.
+ */
+export async function markHeroPoseOk(store: HeroSheetStore, pose: HeroSheetPoseId): Promise<boolean> {
+  const docs = await store.read();
+  const d = docs.poses[pose];
+  if (!d || d.review === "ok") return false;
+  await store.writePose({ ...d, review: "ok" });
+  return true;
+}
+
+export async function redrawHeroPose(input: { childId: string; avatarHash: string; pose: HeroSheetPoseId }, deps: BuilderDeps): Promise<{ ok: boolean; reason?: string }> {
+  const { childId, avatarHash, pose } = input;
+  const docs = await deps.store.read();
+  const old = docs.poses[pose];
+  if (!docs.meta || docs.meta.avatarHash !== avatarHash || !old || old.avatarHash !== avatarHash) return { ok: false, reason: "not-in-sheet" };
+  if (old.redrawn) return { ok: false, reason: "redraw-spent" };
+  const writeMeta = (poses: HeroSheetPoseId[]) => deps.store.writeMeta({ ...docs.meta!, poses: HERO_SHEET_POSE_IDS.filter((p) => poses.includes(p)), updatedAt: deps.now() });
+  const others = (docs.meta.poses.length ? docs.meta.poses : HERO_SHEET_POSE_IDS.filter((p) => docs.poses[p])).filter((p) => p !== pose);
+  // The rejected pose leaves the record before anything else happens.
+  await deps.store.remove([pose]);
+  await writeMeta(others);
+  let ref: SheetReference | null = null;
+  if (pose !== HERO_SHEET_ANCHOR) {
+    const idle = docs.poses[HERO_SHEET_ANCHOR];
+    const img = idle ? await deps.decode(idle.dataUrl).catch(() => null) : null;
+    if (!img) return { ok: false, reason: "no-anchor" };
+    ref = sheetReference(img);
+  }
+  const drawn = await drawPose(childId, pose, avatarHash, deps, () => undefined);
+  if (!drawn.ok) return { ok: false, reason: drawn.stop ?? drawn.skip ?? "qa" };
+  const sprite = drawn.keyed.sprite as RgbaImage;
+  await storePose(pose, drawn.keyed, ref ?? sheetReference(sprite), avatarHash, deps, { redrawn: true });
+  await writeMeta([...others, pose]);
+  return { ok: true };
+}
