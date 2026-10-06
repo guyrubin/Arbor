@@ -1,7 +1,7 @@
 import { sanitizeRecentTurns } from "../ai/chatContext.js";
 import type { SpokenContext } from "../ai/spokenContext.js";
 import type { MemoryStore } from "../memory/types.js";
-import { assembleCompanionContext, programPromptLine, type CompanionLedgerSource } from "./companionContext.js";
+import { assembleCompanionContext, programPromptLine, todayPracticeLine, type CompanionLedgerSource } from "./companionContext.js";
 import { createRedaction } from "./redaction.js";
 
 const EMPTY = (): SpokenContext => ({ profile: null, approvedMemory: "", approvedMemoryFactsUsed: 0, recentTurns: [] });
@@ -36,6 +36,9 @@ export const assembleSpokenContext = async (input: {
    *  live_session 1.5.0). Absent → no ledger read, no program line. */
   ledgerSource?: CompanionLedgerSource;
   uid?: string;
+  /** B-LOOP-13: the client's raw journal request (sanitized by the context
+   *  service); with the ledger's dose rows it yields today's practice line. */
+  journal?: unknown;
 }): Promise<SpokenContext> => {
   if (input.privateMode === true || !input.canReadMemory) return EMPTY();
   const childId = spokenChildId(input.childProfile);
@@ -47,6 +50,7 @@ export const assembleSpokenContext = async (input: {
     memoryStore: input.memoryStore,
     maxFacts: Math.min(8, Math.max(1, input.maxMemoryFacts ?? 8)),
     ...(input.ledgerSource && input.uid ? { ledgerSource: input.ledgerSource, uid: input.uid } : {}),
+    ...(input.journal !== undefined ? { journal: input.journal } : {}),
   });
   const context = EMPTY();
   context.profile = companion.profile;
@@ -57,6 +61,8 @@ export const assembleSpokenContext = async (input: {
   context.approvedMemoryFactsUsed = companion.approvedFacts.length;
   const program = programPromptLine(companion.program);
   if (program) context.program = program;
+  const practice = todayPracticeLine(companion.journal);
+  if (practice) context.todayPractice = practice;
   return context;
 };
 

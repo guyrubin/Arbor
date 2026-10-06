@@ -220,7 +220,7 @@ describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", ()
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/Return "escalateIf": \[\]/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/shepherd/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/do not reword it/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.6.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.7.0");
   });
 
   it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep the block-free bytes", () => {
@@ -360,20 +360,30 @@ describe("AI-12 / GP-16 — promptProfile allow-list: no verdict, photo, avatar 
  */
 // B-TODAY-24 (todays_focus 1.1.0): the ONE parity test now carries the one
 // added "sayThis" bullet; every other byte is still the retired inline template.
+// B-LOOP-13 (todays_focus 1.3.0, live judge on 1.2.0): the zero-moment line
+// splits into a cold start ("a first day together", no week) and "in the last
+// 7 days: no moments"; one line forbids inventing a period or history; the
+// focus bullet is grounded in the input (no "child's week"); sayThis says
+// "exactly ONE sentence". The template below is the 1.3.0 no-journal form.
 describe("B-AI-01 — todays_focus byte-parity with the retired inline template", () => {
   const legacyInline = (childProfile: unknown, count: number, triggerSent: string, lastActionRecommendation: string, lastActionOutcome: string, languageDirective: string) => {
+    const starter = "Offer an age-appropriate starter step: something easy to try and notice together, not a fix for a problem.";
+    const cold = count === 0 && !(lastActionRecommendation && lastActionOutcome);
     const weekLine =
       count === 0
-        ? "What the parent has logged this week: no moments logged this week. Offer an age-appropriate starter step: something easy to try and notice together, not a fix for a problem."
+        ? cold
+          ? `What the parent has logged so far: nothing yet, and no earlier step is on record — treat today as a first day together. ${starter}`
+          : `What the parent has logged in the last 7 days: no moments. ${starter}`
         : `What the parent has logged this week: ${count} moment${count === 1 ? "" : "s"}${triggerSent ? `, most often around "${triggerSent}"` : ""}.`;
     return `${NON_DIAGNOSTIC_CONTRACT}
 You are Arbor's Today's Focus writer for a calm parenting app.
 Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
 ${weekLine}${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
+Use only the time frames and the history this input states: never invent a period ("this week", "lately", "recently", "again", "these days") or anything earlier that the input does not carry.
 Write today's single most useful parenting focus:
-- "focus": 1-2 short, warm sentences naming what to pay attention to today — an observation about the child's week, never an assessment.
+- "focus": 1-2 short, warm sentences naming what to pay attention to today — grounded only in what this input states, never an assessment.
 - "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
-- "sayThis": ONE short sentence (under 140 characters) the parent can say to the child while trying that step — warm, plain words a child understands; never a label, a verdict or praise of an outcome.
+- "sayThis": exactly ONE sentence (under 140 characters; never two sentences) the parent can say to the child while trying that step — warm, plain words a child understands; never a label, a verdict or praise of an outcome.
 Never include a score, percentage, trend, severity, readiness claim, diagnosis, or outcome claim. No headings, no markdown, no emojis.${languageDirective}
 Return only JSON matching the schema.`;
   };
@@ -381,6 +391,7 @@ Return only JSON matching the schema.`;
     [{ id: "c", name: "Noa", age: 4 }, 3, "transitions", "Two-minute warning", "not_today", ""],
     [{ id: "c", name: "Noa", age: 4 }, 0, "", "", "", "\nIMPORTANT: Hebrew."],
     [null, 1, "", "step", "", ""],
+    [null, 0, "", "step", "helped", ""],
   ];
   it("no facts → the builder bytes equal the inline template for every case", () => {
     for (const [p, count, trig, rec, out, dir] of cases) {
@@ -478,7 +489,7 @@ describe("coach_chat 1.4.1 — field rules", () => {
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never write that condition's name or any label back/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/In a routine answer no field names self-harm/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never low, medium, high/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.6.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.7.0");
   });
   it("coach_chat 1.5.1: escalateIf thresholds stay on the behaviour the parent described", () => {
     expect(COACH_CHAT_FIELD_RULES).toContain("Thresholds are about the behaviour the parent described and never introduce a danger the parent did not raise.");
@@ -602,9 +613,91 @@ describe("B-PROG-01 — the active-program line", () => {
     expect(buildLiveSystemInstruction("en", spoken)).toBe(strip(buildLiveSystemInstruction("en", { ...spoken!, program })));
     // an empty skill or name renders nothing
     expect(buildChatPrompt({ ...chatArgs, activeProgram: { ...program, skill: " " } })).toBe(buildChatPrompt(chatArgs));
-    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.2.0");
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.6.0");
-    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.7.0");
+    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.7.0");
+    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.8.0");
+    expect(PROMPT_VERSIONS.live_session.version).toBe("1.5.0");
+  });
+});
+
+/* B-LOOP-13 — the journal in todays_focus 1.3.0, the practice line in
+   coach_chat 1.7.0 and voice_reply 1.8.0 (never live_session). */
+describe("B-LOOP-13 — the journal block and today's practice line", () => {
+  const LINE = "Today's practice: 'Night night, teddy.' (not today).";
+  const practice = { say: "Night night, teddy.", state: "not_today" as const };
+  const chatArgs = {
+    developmentalFramework: "F", approvedMemory: "", knowledgeContext: "", childProfile: null,
+    scholar: { name: "s", concept: "c", method: "m", defaultFrame: "f" }, message: "q", languageDirective: "",
+  };
+  const spoken = { profile: { age: 2 }, approvedMemory: "m", approvedMemoryFactsUsed: 1, recentTurns: [] } as NonNullable<Parameters<typeof buildVoiceReplyPrompt>[0]["companionContext"]>;
+  const voiceArgs = { persona: "P", scholar: { name: "s", method: "m" }, childProfile: null, message: "q", languageDirective: "" };
+  const journal = {
+    shelfCoverage: { sleep: 0, food: 2, words: 1, feelings: 0, play: 3, moving: 0, hands: 0, school: 0, family: 0 },
+    nextMilestones: [{ id: "m-1", shelf: "words" as const, title: "Says two words together", ageLine: "Most children do this by 2 years" }],
+    candidates: [{ id: "pr-1", shelf: "sleep" as const, say: "Night night, teddy.", milestoneId: null }],
+    restedShelves: ["food" as const],
+    practice: null,
+    nightAnswers: [{ date: "2026-10-05", practiceOutcome: "helped" as const, whatHappened: "She hugged the book" }],
+  };
+  const focusArgs = { childProfile: null, count: 2, triggerSent: "", lastActionRecommendation: "", lastActionOutcome: "", languageDirective: "" };
+
+  it("coach_chat and voice_reply render the line once; live_session never does", async () => {
+    const { buildLiveSystemInstruction } = await import("../lib/livePersona.js");
+    const chat = buildChatPrompt({ ...chatArgs, todayPractice: practice });
+    const voice = buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken, todayPractice: practice } });
+    for (const p of [chat, voice]) expect(p.split(LINE).length - 1).toBe(1);
+    expect(chat.indexOf(LINE)).toBeLessThan(chat.indexOf("ARBOR AI WIKI SOURCE CARDS"));
+    expect(voice.indexOf(LINE)).toBeLessThan(voice.indexOf("The parent just said"));
+    expect(chat).toMatch(/never as a verdict about the child/);
+    expect(buildLiveSystemInstruction("en", { ...spoken, todayPractice: practice })).toBe(buildLiveSystemInstruction("en", spoken));
+  });
+
+  it("parity: no practice ⇒ the previous bytes (chat, voice, focus)", () => {
+    const strip = (x: string) => x.replace(/Today's practice: [^\n]*\n/, "");
+    expect(buildChatPrompt(chatArgs)).toBe(strip(buildChatPrompt({ ...chatArgs, todayPractice: practice })));
+    expect(buildChatPrompt({ ...chatArgs, todayPractice: null })).toBe(buildChatPrompt(chatArgs));
+    expect(buildChatPrompt({ ...chatArgs, todayPractice: { say: " ", state: "pending" } })).toBe(buildChatPrompt(chatArgs));
+    expect(buildVoiceReplyPrompt({ ...voiceArgs, companionContext: spoken })).toBe(strip(buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken, todayPractice: practice } })));
+    expect(buildTodaysFocusPrompt({ ...focusArgs, journal: null })).toBe(buildTodaysFocusPrompt(focusArgs));
+  });
+
+  it("todays_focus renders the journal: counts as choosing input, candidates, rested shelves, night answers — never a quote", () => {
+    const p = buildTodaysFocusPrompt({ ...focusArgs, journal });
+    expect(p).toContain("THE PARENT'S JOURNAL");
+    expect(p).toContain("sleep 0 · food 2 · words 1");
+    expect(p).toMatch(/never write a number, never compare shelves or children/);
+    expect(p).toContain('- m-1 · words · "Says two words together" · "Most children do this by 2 years"');
+    expect(p).toContain('- pr-1 · sleep · "Night night, teddy."');
+    expect(p).toContain("rest them, never choose them: food");
+    expect(p).toContain('- 2026-10-05: helped · "She hugged the book"');
+    expect(p).toMatch(/"why": ONE sentence to the parent/);
+    expect(p).toMatch(/never "behind", "delayed", "should", "normal"/);
+    expect(p).not.toMatch(/quote/i);
+    expect(p.indexOf("THE PARENT'S JOURNAL")).toBeLessThan(p.indexOf("What the parent has logged"));
+  });
+
+  it("a practice already set (dose row or pin) replaces the candidate list and the pick rules", () => {
+    const set = buildTodaysFocusPrompt({ ...focusArgs, journal: { ...journal, practice: { id: "pr-1", shelf: "sleep", say: "Night night, teddy.", state: "pending", date: "2026-10-06" } } });
+    expect(set).toContain("Today's practice: 'Night night, teddy.' (pending).");
+    expect(set).toContain("already set by the parent");
+    expect(set).not.toContain("Today's practice candidates");
+    expect(set).not.toMatch(/"practiceId":/);
+  });
+
+  it("cold start says a first day and names no week; a night answer makes it not a cold start", () => {
+    const cold = buildTodaysFocusPrompt({ ...focusArgs, count: 0 });
+    expect(cold).toContain("nothing yet, and no earlier step is on record — treat today as a first day together");
+    expect(cold).not.toContain("logged this week");
+    expect(cold).toMatch(/never invent a period/);
+    const warm = buildTodaysFocusPrompt({ ...focusArgs, count: 0, journal });
+    expect(warm).toContain("in the last 7 days: no moments");
+    expect(warm).toContain("(the journal's notes per shelf cover the last 30 days)");
+  });
+
+  it("versions: todays_focus 1.3.0 · coach_chat 1.7.0 · voice_reply 1.8.0 · live_session unchanged 1.5.0", () => {
+    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.7.0");
+    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.8.0");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.5.0");
   });
 });

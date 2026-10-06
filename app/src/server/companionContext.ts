@@ -25,6 +25,18 @@
  * the child. Present only when an enrolment is active; the `child` audience
  * never sees it (the whole context is empty for it, fail closed).
  *
+ * B-LOOP-13 (v2): the JOURNAL block — `journal: { shelfCoverage, nextMilestones,
+ * candidates, restedShelves, practice, nightAnswers }` (ai/journalContext).
+ * Built ONLY from: the client's sanitized journal request (30-day shelf
+ * counts, open milestone ids, today's candidate practice ids, the day pin,
+ * the "not sure" shelves) resolved against the CATALOGUE (titles, age lines
+ * and say-lines are never taken from the wire), and the practice dose rows of
+ * `actionLoops` (the server ledger first; the client's rows only when the
+ * ledger holds none — local adapter). Today's practice = today's dose row,
+ * else the day pin. Night answers = the evening outcome + the parent's
+ * Tonight line (`whatHappened`, ≤ 240 chars), never the `quote` keepsake.
+ * The `child` audience never sees it (fail closed, like the whole context).
+ *
  * What it never reads: moment free text (`behaviorLogs.notes`) — Guy G-14
  * keeps it out of every prompt; weekly counts arrive only as the caller's
  * already-sanitized counts. Every read is scoped to the AUTHENTICATED uid's
@@ -43,6 +55,28 @@ import type { LocalizedText } from "../content/governance.js";
 import type { ShelfId } from "../lib/shelves/registry.js";
 import { programName } from "../content/programs/index.js";
 import { activeProgramWeek } from "../lib/programs/enrolment.js";
+import { PRACTICES, type Practice } from "../content/practices.js";
+import { milestoneAgeLine } from "../lib/milestoneAgeLine.js";
+import { translate } from "../lib/i18n.js";
+import { ALL_MILESTONES, isCatalogueMilestone, milestoneAgeWindow } from "../lib/milestoneData.js";
+import { comparisonMonthsOf } from "../lib/age/forChild.js";
+import { buildMilestoneCandidates } from "./milestoneMatch.js";
+import { SHELF_IDS } from "../lib/shelves/registry.js";
+import type { ChildProfile } from "../types.js";
+import {
+  MAX_JOURNAL_CANDIDATES,
+  MAX_JOURNAL_MILESTONES,
+  MAX_NIGHT_ANSWERS,
+  acceptedJournalDay,
+  sanitizeDoseRow,
+  sanitizeJournalRequest,
+  type CompanionJournal,
+  type JournalCandidate,
+  type JournalDoseRow,
+  type JournalNightAnswer,
+  type JournalPractice,
+  type JournalRequest,
+} from "../ai/journalContext.js";
 
 export type CompanionPurpose =
   | "chat"
@@ -95,6 +129,9 @@ export type CompanionContext = {
   weeklyCounts?: WeeklyContext | null;
   /** B-PROG-01: only when an enrolment is active (parent audience only). */
   program?: CompanionProgram;
+  /** B-LOOP-13: parent audience only, when a journal request or a ledger
+   *  practice row exists (ai/journalContext). */
+  journal?: CompanionJournal;
 };
 
 /** Raw ledger rows as the client writes them — validated field by field here.
@@ -195,6 +232,82 @@ export const projectActiveProgram = (rows: readonly unknown[], now: number = Dat
 export const programPromptLine = (program?: CompanionProgram | null): { name: string; week: number; skill: string } | undefined =>
   program ? { name: program.name.en, week: program.week, skill: program.skill.en } : undefined;
 
+/* ── B-LOOP-13: the journal block ─────────────────────────────────────────── */
+
+const PRACTICE_BY_ID: ReadonlyMap<string, Practice> = new Map(PRACTICES.map((p) => [p.id, p]));
+const CATALOGUE_IDS: ReadonlySet<string> = new Set(ALL_MILESTONES.filter((m) => isCatalogueMilestone(m)).map((m) => m.id));
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
+
+/** Practice dose rows of THIS child from the ledger (validated; other rows ignored). */
+const ledgerDoseRows = (rows: readonly unknown[], childId: string): JournalDoseRow[] => {
+  const prefix = `practice.${childId}.`;
+  return rows.map(sanitizeDoseRow).filter((r): r is JournalDoseRow => !!r && r.id.startsWith(prefix));
+};
+
+/**
+ * The journal block (B-LOOP-13). Pure: the sanitized request + the ledger's
+ * action rows → the capped block. Every text comes from the catalogue except
+ * `whatHappened` (the parent's Tonight line, ≤ 240). Sizes: ≤ 6 milestones,
+ * ≤ 6 candidates, ≤ 3 night answers.
+ */
+export const projectJournal = (input: {
+  request: JournalRequest | null;
+  /** The server ledger's actionLoops rows (empty when unread). */
+  actionLoops: readonly unknown[];
+  childId: string;
+  childProfile?: unknown;
+  now?: number;
+}): CompanionJournal => {
+  const req: JournalRequest = input.request ?? {};
+  const now = input.now ?? Date.now();
+  const day = acceptedJournalDay(req.dateKey, now);
+  const shelfCoverage = Object.fromEntries(SHELF_IDS.map((id) => [id, req.shelfCoverage?.[id] ?? 0])) as CompanionJournal["shelfCoverage"];
+  const nextMilestones = buildMilestoneCandidates(req.nextMilestoneIds ?? [], input.childProfile)
+    .filter((m) => CATALOGUE_IDS.has(m.id))
+    .slice(0, MAX_JOURNAL_MILESTONES)
+    .map((m) => ({ id: m.id, shelf: m.shelf, title: m.title, ageLine: milestoneAgeLine({ id: m.id }, enT) }));
+  const restedShelves = [...(req.restedShelves ?? [])];
+  // Candidates: catalogue practices inside the child's age window, never on a rested shelf.
+  const months = comparisonMonthsOf((input.childProfile ?? null) as ChildProfile | null);
+  const window = months === null ? null : milestoneAgeWindow(months);
+  const candidates: JournalCandidate[] = [];
+  for (const id of req.candidatePracticeIds ?? []) {
+    const p = PRACTICE_BY_ID.get(id);
+    if (!p || !window || !window.includes(p.ageMonths) || restedShelves.includes(p.shelf)) continue;
+    candidates.push({ id: p.id, shelf: p.shelf, say: p.say.en, milestoneId: p.milestoneId });
+    if (candidates.length >= MAX_JOURNAL_CANDIDATES) break;
+  }
+  // Dose rows: the server ledger first; the client's rows only when the ledger has none.
+  const prefix = `practice.${input.childId}.`;
+  const fromLedger = ledgerDoseRows(input.actionLoops, input.childId);
+  const rows = (fromLedger.length ? fromLedger : (req.doseRows ?? []).filter((r) => r.id.startsWith(prefix)))
+    .filter((r) => PRACTICE_BY_ID.has(r.practiceId) && r.id.slice(prefix.length) <= day);
+  const asPractice = (p: Practice, state: JournalPractice["state"]): JournalPractice => ({ id: p.id, shelf: p.shelf, say: p.say.en, state, date: day });
+  const todayRow = rows.find((r) => r.id === `${prefix}${day}`);
+  const todayPractice = todayRow ? PRACTICE_BY_ID.get(todayRow.practiceId) : undefined;
+  const pinned = req.pinnedPracticeId ? PRACTICE_BY_ID.get(req.pinnedPracticeId) : undefined;
+  // Precedence (B-LOOP-11): today's dose row > the parent's day pin > none (the AI or the chooser picks).
+  const practice: JournalPractice | null = todayRow && todayPractice
+    ? asPractice(todayPractice, todayRow.outcome === "not_today" ? "not_today" : "done")
+    : pinned
+      ? asPractice(pinned, "pending")
+      : null;
+  const nightAnswers: JournalNightAnswer[] = rows
+    .filter((r) => r.outcome || r.whatHappened)
+    .sort((a, b) => b.id.localeCompare(a.id))
+    .slice(0, MAX_NIGHT_ANSWERS)
+    .map((r) => ({
+      date: r.id.slice(prefix.length),
+      ...(r.outcome ? { practiceOutcome: r.outcome } : {}),
+      ...(r.whatHappened ? { whatHappened: r.whatHappened } : {}),
+    }));
+  return { shelfCoverage, nextMilestones, candidates, restedShelves, practice, nightAnswers };
+};
+
+/** The practice line's input for coach_chat / voice_reply (null without a practice). */
+export const todayPracticeLine = (journal?: CompanionJournal | null): Pick<JournalPractice, "say" | "state"> | null =>
+  journal?.practice ? { say: journal.practice.say, state: journal.practice.state } : null;
+
 export const emptyCompanionContext = (profile: ModelProfile | null = null): CompanionContext => ({
   profile,
   approvedFacts: [],
@@ -223,6 +336,8 @@ export const assembleCompanionContext = async (input: {
   canReadMemory?: boolean;
   maxFacts?: number;
   weeklyCounts?: WeeklyContext | null;
+  /** B-LOOP-13: the client's raw journal request (sanitized here). */
+  journal?: unknown;
   now?: number;
 }): Promise<CompanionContext> => {
   if (input.audience !== "parent") return emptyCompanionContext();
@@ -248,9 +363,11 @@ export const assembleCompanionContext = async (input: {
     }
   }
 
+  let ledgerActions: readonly unknown[] = [];
   if (input.ledgerSource && input.uid && input.canReadMemory !== false) {
     try {
       const ledger = await input.ledgerSource.load(input.uid, childId);
+      ledgerActions = ledger.actionLoops ?? [];
       context.acceptedActions = projectAcceptedActions(ledger.actionLoops ?? []);
       context.keptInsights = projectKeptInsights(ledger.insights ?? []);
       const program = projectActiveProgram(ledger.programs ?? [], now);
@@ -259,6 +376,19 @@ export const assembleCompanionContext = async (input: {
       context.acceptedActions = [];
       context.keptInsights = [];
       delete context.program;
+      ledgerActions = [];
+    }
+  }
+
+  // B-LOOP-13: the journal — the parent's own record; never on a turn that may not read memory.
+  if (input.canReadMemory !== false) {
+    const request = sanitizeJournalRequest(input.journal);
+    if (request || ledgerDoseRows(ledgerActions, childId).length > 0) {
+      try {
+        context.journal = projectJournal({ request, actionLoops: ledgerActions, childId, childProfile: input.childProfile, now });
+      } catch {
+        delete context.journal;
+      }
     }
   }
   return context;

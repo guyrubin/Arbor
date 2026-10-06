@@ -11,6 +11,10 @@ export type SpokenContext = {
   /** B-PROG-01 — the active program's one context line (voice_reply 1.7.0 /
    *  live_session 1.5.0). Absent ⇒ the pre-B-PROG-01 bytes. */
   program?: ActiveProgramLine;
+  /** B-LOOP-13 — today's practice (CompanionContext journal). Rendered by
+   *  voice_reply 1.8.0 ONLY (ai/prompts buildVoiceReplyPrompt), never by
+   *  renderSpokenContext, so live_session keeps its 1.5.0 bytes. */
+  todayPractice?: { say: string; state: "pending" | "done" | "not_today" };
 };
 
 /** JSON keeps parent-written newlines/role labels inside values, not prompt roles. */

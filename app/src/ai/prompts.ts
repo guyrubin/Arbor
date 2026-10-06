@@ -33,6 +33,7 @@ import type { ChildProfile } from "../types.js";
 import type { RecentTurn, WeeklyContext } from "./chatContext.js";
 import { renderSpokenContext, type SpokenContext } from "./spokenContext.js";
 import { renderActiveProgramLine, type ActiveProgramLine } from "./programContext.js";
+import { renderFocusJournalBlock, renderTodayPracticeLine, type CompanionJournal, type JournalPractice } from "./journalContext.js";
 import { buildLiveSystemInstruction } from "../lib/livePersona.js";
 import { buildDigestPrompt } from "../server/digest.js";
 import { toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
@@ -212,7 +213,13 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // (ai/programContext.ts; CompanionContext v2 `program`). No program ⇒ the
   // 1.5.3 bytes (parity pinned in prompts.test.ts). Re-pin owed (live, NOT
   // run by the builder): coach-core-v1, coach-hardmoment-seed-v1.
-  coach_chat: { version: "1.6.0", sha256: "3897994c4d2ee2d0a98fce5ba0e21afc2afd4bc2cdb3eace10e96d00a853e764" },
+  // 1.7.0 (B-LOOP-13, 2026-10-06): one OPTIONAL line after the program line —
+  // "Today's practice: '{say}' ({state})" + one clause (connect to it when it
+  // fits; never a verdict about the child). From CompanionContext v2 `journal`
+  // (today's dose row > the parent's day pin). No practice ⇒ the 1.6.0 bytes
+  // (parity pinned in prompts.test.ts). Re-pin owed (live, NOT run by the
+  // builder): coach-core-v1 (+4 practice-line scenarios), coach-hardmoment-seed-v1.
+  coach_chat: { version: "1.7.0", sha256: "4a7f90ad369b70817ab67c9b3e5c81f2bc5342f9a84004aec3733b4c9bc6faf2" },
   council_synthesis: { version: "1.2.0", sha256: "428ed3513c47ba544b8e1afee8a4492140902d4b1210ec8cbb75893d8b77a00f" },
   // voice_reply 1.7.0 / live_session 1.5.0 (B-PROG-01, 2026-10-06): the
   // spoken context (ai/spokenContext.ts) renders the OPTIONAL "Active
@@ -220,7 +227,13 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // program. No program ⇒ the 1.6.0 / 1.4.0 bytes (parity pinned in
   // prompts.test.ts). Re-pin owed (live, NOT run by the builder):
   // companion-continuity-v1, voice-loop-v1.
-  voice_reply: { version: "1.7.0", sha256: "18d08b2ebbc89562f15008d2f2f655f6cb5abb3d16df7369790ecee131c9010c" },
+  // voice_reply 1.8.0 (B-LOOP-13, 2026-10-06): the same OPTIONAL "Today's
+  // practice: '{say}' ({state})" line, rendered after the spoken context by
+  // buildVoiceReplyPrompt only (SpokenContext.todayPractice) — live_session
+  // never renders it and keeps 1.5.0. No practice ⇒ the 1.7.0 bytes (parity
+  // pinned). Re-pin owed (live, NOT run by the builder): companion-continuity-v1
+  // (+3 night-answer scenarios), voice-loop-v1. B-PROV-10 Part B takes 1.9.0.
+  voice_reply: { version: "1.8.0", sha256: "a8fcf2633ab2995ce928df3ffce8248564a167c0ebec0b5d99633f8f0dc18953" },
   live_session: { version: "1.5.0", sha256: "970ef0d3c685a0aead19ab8244d311b0af3fc0ab87ff071b3b08d9a6c9ca0829" },
   // 1.2.0 (B-AI-15, 2026-10-04): one capture = one log (first moment, never
   // merged, never an array), notes copy the parent's own words, no adjective
@@ -257,7 +270,18 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // week {n}: {skill}" line after the approved facts. No program ⇒ the 1.1.0
   // bytes (parity pinned in prompts.test.ts). Re-pin owed (live, NOT run by
   // the builder): today-focus-v1.
-  todays_focus: { version: "1.2.0", sha256: "1209725ea326a1907ad7329850193779a8c1ab377aa89f85181756dc72184b64" },
+  // 1.3.0 (B-LOOP-13, 2026-10-06): (a) the OPTIONAL journal block
+  // (ai/journalContext renderFocusJournalBlock: 30-day notes per shelf as a
+  // choosing count, ≤ 6 open catalogue milestones with their sourced age line,
+  // rested "not sure" shelves, ≤ 3 night answers, today's practice when set,
+  // else ≤ 6 candidates + the `practiceId` / `why` field rules); (b) live judge
+  // on 1.2.0 (0.71, 5/7): cold start = "nothing yet … a first day together",
+  // a zero-moment family with history reads "in the last 7 days: no moments",
+  // one line forbids inventing any period or history, the focus bullet no
+  // longer asks for "an observation about the child's week"; (c) sayThis says
+  // "exactly ONE sentence" (the route also cuts at the first boundary). Re-pin
+  // owed (live, NOT run by the builder): today-focus-v1 (+12 scenarios).
+  todays_focus: { version: "1.3.0", sha256: "9afa5e55150b1442b4c11388f5d46830d82c72b8e3155e5e10c51e3bfd92c76c" },
   // 1.0.0 (B-AI-02): first pins. weekly_digest = server/digest.ts
   // buildDigestPrompt + the OPTIONAL recent-steps line (the parent's accepted
   // steps + outcomes; absent → the B-TODAY-03 bytes). generate_plan moved out
@@ -349,6 +373,8 @@ export type ChatPromptArgs = {
   seededHardMoment?: boolean;
   /** 1.6.0 (B-PROG-01) — the active program's one context line. Absent ⇒ 1.5.3 bytes. */
   activeProgram?: ActiveProgramLine;
+  /** 1.7.0 (B-LOOP-13) — today's practice (CompanionContext journal). Absent ⇒ 1.6.0 bytes. */
+  todayPractice?: Pick<JournalPractice, "say" | "state"> | null;
 };
 
 /**
@@ -445,10 +471,11 @@ export const buildChatPrompt = ({
   keptInsights,
   seededHardMoment,
   activeProgram,
+  todayPractice,
 }: ChatPromptArgs): string => `
 ${NON_DIAGNOSTIC_CONTRACT}
 ${renderMemoryFirstBlock(approvedMemory)}${developmentalFramework}
-${renderMemoryLateBlock(approvedMemory)}${renderCompanionLedgerBlock(acceptedActions, keptInsights)}${renderActiveProgramLine(activeProgram)}
+${renderMemoryLateBlock(approvedMemory)}${renderCompanionLedgerBlock(acceptedActions, keptInsights)}${renderActiveProgramLine(activeProgram)}${renderTodayPracticeLine(todayPractice)}
 ARBOR AI WIKI SOURCE CARDS:
 ${knowledgeContext || "No matching Arbor AI Wiki cards found. Use the framework contract and keep uncertainty explicit."}
 
@@ -533,7 +560,7 @@ export const buildVoiceReplyPrompt = ({
 }: VoiceReplyPromptArgs): string => `${NON_DIAGNOSTIC_CONTRACT}
 ${persona} Apply this lens: ${scholar.name} — ${scholar.method}
 Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
-${renderSpokenContext(companionContext)}The parent just said: ${JSON.stringify(message)}
+${renderSpokenContext(companionContext)}${renderTodayPracticeLine(companionContext?.todayPractice)}The parent just said: ${JSON.stringify(message)}
 Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, or ask one short clarifying question when the needed context is missing. Never invent an earlier discussion. Use plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
 
 export type ExtractLogPromptArgs = {
@@ -605,7 +632,16 @@ export type TodaysFocusPromptArgs = {
   approvedFacts?: readonly string[];
   /** 1.2.0 (B-PROG-01) — the active program's one context line. Absent ⇒ 1.1.0 bytes. */
   activeProgram?: ActiveProgramLine;
+  /** 1.3.0 (B-LOOP-13) — the journal block (CompanionContext v2 `journal`). */
+  journal?: CompanionJournal | null;
 };
+
+/** 1.3.0: nothing logged, no earlier step, no fact, no night answer and no practice set. */
+const isColdStart = (a: TodaysFocusPromptArgs): boolean =>
+  a.count === 0 &&
+  !(a.lastActionRecommendation && a.lastActionOutcome) &&
+  !(a.approvedFacts && a.approvedFacts.length) &&
+  !(a.journal && (a.journal.nightAnswers.length || a.journal.practice));
 
 /** B-AI-01: "" when no facts, so the bytes equal the pre-1.0.0 inline template. */
 const renderFocusFactsBlock = (facts?: readonly string[]): string =>
@@ -614,30 +650,28 @@ const renderFocusFactsBlock = (facts?: readonly string[]): string =>
     : "";
 
 /** /todays-focus — the Today's Focus writer (moved out of routes/api.ts). */
-export const buildTodaysFocusPrompt = ({
-  childProfile,
-  count,
-  triggerSent,
-  lastActionRecommendation,
-  lastActionOutcome,
-  languageDirective,
-  approvedFacts,
-  activeProgram,
-}: TodaysFocusPromptArgs): string => {
+export const buildTodaysFocusPrompt = (args: TodaysFocusPromptArgs): string => {
+  const { childProfile, count, triggerSent, lastActionRecommendation, lastActionOutcome, languageDirective, approvedFacts, activeProgram, journal } = args;
   // B-AI-03: the prompt states only facts the parent actually logged. No
   // trigger → no clause; no moments → say so and ask for a starter step.
+  // 1.3.0 (live judge on 1.2.0, cold-start-no-moments grounding 0.5): with
+  // nothing on record the prompt says it is a first day and names no week.
+  const starter = "Offer an age-appropriate starter step: something easy to try and notice together, not a fix for a problem.";
   const weekLine =
     count === 0
-      ? "What the parent has logged this week: no moments logged this week. Offer an age-appropriate starter step: something easy to try and notice together, not a fix for a problem."
+      ? isColdStart(args)
+        ? `What the parent has logged so far: nothing yet, and no earlier step is on record — treat today as a first day together. ${starter}`
+        : `What the parent has logged in the last 7 days: no moments. ${starter}`
       : `What the parent has logged this week: ${count} moment${count === 1 ? "" : "s"}${triggerSent ? `, most often around "${triggerSent}"` : ""}.`;
   return `${NON_DIAGNOSTIC_CONTRACT}
 You are Arbor's Today's Focus writer for a calm parenting app.
 Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
-${renderFocusFactsBlock(approvedFacts)}${renderActiveProgramLine(activeProgram)}${weekLine}${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
+${renderFocusFactsBlock(approvedFacts)}${renderActiveProgramLine(activeProgram)}${renderFocusJournalBlock(journal)}${weekLine}${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
+Use only the time frames and the history this input states: never invent a period ("this week", "lately", "recently", "again", "these days") or anything earlier that the input does not carry${journal ? " (the journal's notes per shelf cover the last 30 days)" : ""}.
 Write today's single most useful parenting focus:
-- "focus": 1-2 short, warm sentences naming what to pay attention to today — an observation about the child's week, never an assessment.
+- "focus": 1-2 short, warm sentences naming what to pay attention to today — grounded only in what this input states, never an assessment.
 - "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
-- "sayThis": ONE short sentence (under 140 characters) the parent can say to the child while trying that step — warm, plain words a child understands; never a label, a verdict or praise of an outcome.
+- "sayThis": exactly ONE sentence (under 140 characters; never two sentences) the parent can say to the child while trying that step — warm, plain words a child understands; never a label, a verdict or praise of an outcome.
 Never include a score, percentage, trend, severity, readiness claim, diagnosis, or outcome claim. No headings, no markdown, no emojis.${languageDirective}
 Return only JSON matching the schema.`;
 };
@@ -768,9 +802,27 @@ const CANONICAL = {
     recentTurns: [{ role: "parent", text: "«turn-parent»" }, { role: "coach", text: "«turn-coach»" }],
     // B-PROG-01 — voice_reply 1.7.0 / live_session 1.5.0 pin the program line's text.
     program: { name: "«program»", week: 2, skill: "«program-skill»" },
+    // B-LOOP-13 — voice_reply 1.8.0 pins the practice line (live_session never renders it).
+    todayPractice: { say: "«practice-say»", state: "not_today" },
   } as SpokenContext,
   // B-PROG-01 — coach_chat 1.6.0 / todays_focus 1.2.0 pin the program line's text.
   activeProgram: { name: "«program»", week: 2, skill: "«program-skill»" } as ActiveProgramLine,
+  // B-LOOP-13 — coach_chat 1.7.0 pins the practice line; todays_focus 1.3.0 the journal block.
+  todayPractice: { say: "«practice-say»", state: "pending" } as Pick<JournalPractice, "say" | "state">,
+  journal: {
+    shelfCoverage: { sleep: 0, food: 1, words: 2, feelings: 3, play: 4, moving: 5, hands: 6, school: 7, family: 8 },
+    nextMilestones: [
+      { id: "«ms-id»", shelf: "words", title: "«ms-title»", ageLine: "«age-line»" },
+      { id: "«ms-id-2»", shelf: "hands", title: "«ms-title-2»", ageLine: null },
+    ],
+    candidates: [{ id: "«pr-id»", shelf: "sleep", say: "«pr-say»", milestoneId: null }],
+    restedShelves: ["food"],
+    practice: null,
+    nightAnswers: [
+      { date: "«day-1»", practiceOutcome: "not_today", whatHappened: "«what-happened»" },
+      { date: "«day-2»", whatHappened: "«what-happened-2»" },
+    ],
+  } as CompanionJournal,
   // Masterplan 1.3 — the coach_chat fingerprint pins the NEW optional blocks'
   // template text too (framing line, role labels, weekly-line phrasing).
   recentTurns: [
@@ -811,6 +863,7 @@ export const promptFingerprint = (key: PromptKey): string => {
         // 1.5.0: the fingerprint pins the governed-escalation block's text.
         seededHardMoment: true,
         activeProgram: CANONICAL.activeProgram,
+        todayPractice: CANONICAL.todayPractice,
       }));
     case "council_synthesis":
       return sha256(buildCouncilSynthesisPrompt({
@@ -850,6 +903,7 @@ export const promptFingerprint = (key: PromptKey): string => {
           languageDirective: CANONICAL.languageDirective,
           approvedFacts: ["«approved-fact»"],
           activeProgram: CANONICAL.activeProgram,
+          journal: CANONICAL.journal,
         }),
         buildTodaysFocusPrompt({
           childProfile: null,
@@ -858,6 +912,16 @@ export const promptFingerprint = (key: PromptKey): string => {
           lastActionRecommendation: "",
           lastActionOutcome: "",
           languageDirective: "",
+        }),
+        // 1.3.0: the non-cold zero-moment line + the "practice already set" block.
+        buildTodaysFocusPrompt({
+          childProfile: null,
+          count: 0,
+          triggerSent: "",
+          lastActionRecommendation: "«last-step»",
+          lastActionOutcome: "not_today",
+          languageDirective: "",
+          journal: { ...CANONICAL.journal, candidates: [], restedShelves: [], nightAnswers: [], practice: { id: "«pr-id»", shelf: "sleep", say: "«pr-say»", state: "done", date: "«day»" } },
         }),
       ]));
     case "weekly_digest":

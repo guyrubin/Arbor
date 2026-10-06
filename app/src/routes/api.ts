@@ -13,7 +13,8 @@ import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCoun
 import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
 import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
 import { createDigestJobSource, createOidcJobVerifier, runWeeklyDigestJob, type DigestJobSource, type JobCallerVerifier } from "../server/digestJob.js";
-import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, programPromptLine, renderApprovedFactLines, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
+import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, programPromptLine, renderApprovedFactLines, todayPracticeLine, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
+import { WHY_MAX, firstSentence, sanitizeJournalRequest, whyHasVerdict } from "../ai/journalContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, renderSeededConditionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
@@ -784,7 +785,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     // parent is looking at these turns) and `weeklyContext` (parent-toggle-
     // gated, counts/categories only) are OPTIONAL and hard-sanitized below;
     // requests without them produce a prompt byte-identical to coach_chat 1.0.0.
-    const { message, childProfile, scholarLens, language, libraryContext, recentTurns, weeklyContext } = req.body;
+    const { message, childProfile, scholarLens, language, libraryContext, recentTurns, weeklyContext, journal } = req.body;
     const languageDirective =
       language === "he"
         ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
@@ -873,6 +874,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         uid: actorOf(req).uid,
         query: typeof message === "string" ? message : "",
         maxFacts: config.memoryPromptMaxFacts,
+        // B-LOOP-13: the client's journal request (sanitized in the context service).
+        journal,
       });
       const approvedMemory = renderApprovedFactLines(companion.approvedFacts);
       const approvedMemoryFactsUsed = companion.approvedFacts.length;
@@ -928,6 +931,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         keptInsights: companion.keptInsights,
         // B-PROG-01 (coach_chat 1.6.0): the active program's one context line.
         activeProgram: programPromptLine(companion.program),
+        // B-LOOP-13 (coach_chat 1.7.0): today's practice line (dose row > day pin).
+        todayPractice: todayPracticeLine(companion.journal),
         // 1.5.0 (B-AI-14): only when the governed line resolved; else 1.4.1 bytes.
         seededHardMoment: seededEscalation !== null,
       });
@@ -1435,7 +1440,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   router.post("/voice", async (req, res) => {
     // AI-02: `recentTurns` joins the existing fields — the SAME sanitized
     // same-thread transcript /chat accepts (masterplan 1.3), re-capped here.
-    const { message, childProfile, scholarLens, language, recentTurns, contextChildId, privateMode } = req.body;
+    const { message, childProfile, scholarLens, language, recentTurns, contextChildId, privateMode, journal } = req.body;
     if (!message || typeof message !== "string") {
       res.status(400).json({ error: "A message is required" });
       return;
@@ -1473,6 +1478,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         memoryStore, childProfile, recentTurns, contextChildId, privateMode,
         canReadMemory, maxMemoryFacts: config.memoryPromptMaxFacts,
         ledgerSource, uid: actorOf(req).uid,
+        // B-LOOP-13 (voice_reply 1.8.0): today's practice line.
+        journal,
       }), budget.signal);
       // AI-V9: persona + language directive come from the ONE shared spoken
       // persona module (lib/livePersona.ts) — byte-shared with the Live path.
@@ -2046,7 +2053,7 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
   const focusRev = (count: number, lastOutcome: string, latestAt: string): string =>
     createHash("sha256").update(`${count}|${lastOutcome}|${latestAt}`, "utf8").digest("hex").slice(0, 12);
   router.post("/todays-focus", async (req, res) => {
-    const { childProfile, signals, language, dateKey: clientDateKey } = req.body ?? {};
+    const { childProfile, signals, language, dateKey: clientDateKey, journal: rawJournal } = req.body ?? {};
     const count = Math.max(0, Math.min(500, Number(signals?.count ?? 0) || 0));
     const topTrigger = String(signals?.topTrigger ?? "").slice(0, 80);
     const clientLastRecommendation = String(signals?.lastActionRecommendation ?? "").slice(0, 300);
@@ -2060,8 +2067,15 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
     const latestAtMs = Date.parse(String(signals?.latestAt ?? ""));
     const latestAt = Number.isFinite(latestAtMs) ? new Date(latestAtMs).toISOString() : "";
     const rev = focusRev(count, clientLastOutcome, latestAt);
+    // B-LOOP-13: the journal request rides on the route's accepted local day;
+    // what it carries (sanitized) is part of the cache identity, so a new pin,
+    // dose answer or candidate list never serves a pick made for another list.
+    const journalInput = rawJournal && typeof rawJournal === "object" && !Array.isArray(rawJournal) ? { ...rawJournal, dateKey } : undefined;
+    const journalKey = journalInput
+      ? createHash("sha256").update(JSON.stringify(sanitizeJournalRequest(journalInput)), "utf8").digest("hex").slice(0, 12)
+      : "-";
 
-    const cacheKey = `${actorOf(req).uid}:${childProfile?.id ?? "none"}:${dateKey}:${lang}:${rev}`;
+    const cacheKey = `${actorOf(req).uid}:${childProfile?.id ?? "none"}:${dateKey}:${lang}:${rev}:${journalKey}`;
     const cached = focusCache.get(cacheKey);
     if (cached) {
       res.json(cached);
@@ -2091,7 +2105,14 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
         uid: actorOf(req).uid,
         canReadMemory,
         maxFacts: 5,
+        // B-LOOP-13: shelf counts, open milestones, today's candidates, the
+        // day pin, the dose rows (the server ledger wins) and night answers.
+        ...(journalInput ? { journal: journalInput } : {}),
       }), budget.signal);
+      const journal = companion.journal ?? null;
+      // The AI may pick only when nothing is set today (no dose row, no pin)
+      // and there are candidates to pick from.
+      const mayPick = !!journal && !journal.practice && journal.candidates.length > 0;
       const rated = lastRatedAction(companion.acceptedActions);
       const lastActionRecommendation = rated ? rated.recommendation : clientLastRecommendation;
       const lastActionOutcome = rated?.outcome ?? clientLastOutcome;
@@ -2109,6 +2130,8 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
         approvedFacts,
         // B-PROG-01 (todays_focus 1.2.0): the active program's one context line.
         activeProgram: programPromptLine(companion.program),
+        // B-LOOP-13 (todays_focus 1.3.0): the journal block.
+        journal,
       });
 
       const privacy = createRedaction(childProfile?.name);
@@ -2125,19 +2148,40 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
           properties: {
             focus: { type: Type.STRING },
             tryToday: { type: Type.STRING },
-            sayThis: { type: Type.STRING }
+            sayThis: { type: Type.STRING },
+            // B-LOOP-13: optional, and only when the AI may pick today.
+            ...(mayPick ? { practiceId: { type: Type.STRING }, why: { type: Type.STRING } } : {}),
           }
         },
         promptVersion: PROMPT_VERSIONS.todays_focus.version
-      }), budget.signal)) as { focus?: unknown; tryToday?: unknown; sayThis?: unknown };
+      }), budget.signal)) as { focus?: unknown; tryToday?: unknown; sayThis?: unknown; practiceId?: unknown; why?: unknown };
 
-      const restored = privacy.restoreDeep(draft) as { focus?: unknown; tryToday?: unknown; sayThis?: unknown };
+      const restored = privacy.restoreDeep(draft) as { focus?: unknown; tryToday?: unknown; sayThis?: unknown; practiceId?: unknown; why?: unknown };
       const focus = String(restored.focus ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim().slice(0, 400);
       const tryToday = String(restored.tryToday ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim().slice(0, 300);
       // B-TODAY-24: one sentence the parent can say; ≤140 chars, dropped when
       // over (a cut sentence is worse than none), screened with the rest.
-      const sayThisRaw = String(restored.sayThis ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim();
+      // todays_focus 1.3.0 (live judge on 1.2.0, approved-fact-used sayThis 0):
+      // exactly ONE sentence — a second sentence is cut at the first boundary;
+      // a first sentence too short to stand alone drops the line (the card
+      // keeps the practice's own say-line).
+      const sayThisRaw = firstSentence(String(restored.sayThis ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim());
       const sayThis = sayThisRaw.length > 0 && sayThisRaw.length <= TODAY_SAY_THIS_MAX ? sayThisRaw : "";
+      // B-LOOP-13: the AI's practice pick is honoured ONLY inside today's
+      // candidate list (never a rested shelf; never when a dose row or the
+      // parent's pin already set today). Anything else is dropped and the
+      // pure chooser's first candidate stands (the list arrives in its order).
+      const aiPick = typeof restored.practiceId === "string" ? restored.practiceId.trim() : "";
+      const aiCandidate = mayPick && journal ? journal.candidates.find((c) => c.id === aiPick) ?? null : null;
+      // The why-line: one parent-facing sentence about the AI's own pick, no
+      // verdict (fail closed: a verdict word drops it), screened below with the rest.
+      const whyRaw = aiCandidate ? firstSentence(String(restored.why ?? "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim()) : "";
+      const why = whyRaw && whyRaw.length <= WHY_MAX && !whyHasVerdict(whyRaw) ? whyRaw : "";
+      const practice = mayPick && journal
+        ? aiCandidate
+          ? { practiceId: aiCandidate.id, practiceVia: "ai" as const }
+          : { practiceId: journal.candidates[0].id, practiceVia: "chooser" as const }
+        : null;
       const text = [focus, tryToday].filter(Boolean).join(" ");
       if (!text) {
         budget.settle();
@@ -2147,7 +2191,7 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
 
       // Firewall condition 1: the FULL output screen gates the return. Flagged
       // output never reaches the parent (and never reaches the cache).
-      const outputVerdict = await screenModelOutput(modelProvider, [text, sayThis].filter(Boolean).join(" "));
+      const outputVerdict = await screenModelOutput(modelProvider, [text, sayThis, why].filter(Boolean).join(" "));
       budget.settle();
       if (outputVerdict.flagged) {
         logger.warn("Todays Focus output blocked by output safety screen", {
@@ -2168,7 +2212,13 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
       const inputsUsed: { momentCount: number; topTrigger?: string; lastActionOutcome?: string; factCount: number } = { momentCount: count, factCount: approvedFacts.length };
       if (triggerSent) inputsUsed.topTrigger = triggerSent;
       if (lastActionRecommendation && lastActionOutcome) inputsUsed.lastActionOutcome = lastActionOutcome;
-      const payload = { text, focus, tryToday, ...(sayThis ? { sayThis } : {}), inputsUsed, generatedAt: new Date().toISOString(), dateKey };
+      // B-LOOP-13: `practiceId` + `practiceVia` only when the AI could pick
+      // today; `why` only beside an AI pick that passed the verdict screen.
+      const payload = {
+        text, focus, tryToday, ...(sayThis ? { sayThis } : {}),
+        ...(practice ?? {}), ...(practice?.practiceVia === "ai" && why ? { why } : {}),
+        inputsUsed, generatedAt: new Date().toISOString(), dateKey,
+      };
       // Firewall condition 4: only screened payloads are cached.
       if (focusCache.size >= FOCUS_CACHE_MAX) {
         const oldest = focusCache.keys().next().value;
