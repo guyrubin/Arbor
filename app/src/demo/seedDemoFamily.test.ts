@@ -22,7 +22,17 @@ import os from "node:os";
 import path from "node:path";
 import express from "express";
 import type { AddressInfo } from "node:net";
-import { buildDemoFamily, DEMO_CHILD_ID, DEMO_SIBLING_ID, demoFamilyCounts, demoSandboxStorage } from "./demoFamily";
+import { buildDemoFamily, DEMO_CHILD_ID, DEMO_FAMILY_VERSION, DEMO_SIBLING_ID, demoFamilyCounts, demoSandboxStorage } from "./demoFamily";
+import type { ActionLoopEntry } from "../actionLoop/model";
+import { initialMilestones } from "../initialData";
+import { PRACTICES } from "../content/practices";
+import { milestoneAgeWindow } from "../lib/milestoneData";
+import { observeMilestoneDoc } from "../lib/milestones/observe";
+import { shelfOfMilestone } from "../lib/milestones/selectByShelf";
+import { practiceDoseEntry, practiceDoseId } from "../lib/practice/choosePractice";
+import { quoteKeepsakeDoc, quotesFromDocs, tonightOutcomeEntry } from "../lib/loop/tonight";
+import { toObservations } from "../lib/observations";
+import { dayKey } from "../practice/signals";
 import { bandFor } from "../lib/age/forChild";
 import { formatChildAge } from "../lib/age/format";
 import { CHILD_SUBCOLLECTIONS } from "../lib/childData";
@@ -84,12 +94,13 @@ describe("B-DIST-01 · the invented record", () => {
       expect(logs.some((l) => l.behaviorType === "Transition Refusal" && new Date(l.timestamp).getUTCHours() < 10)).toBe(true);
       const oldest = Math.min(...logs.map((l) => Date.parse(l.timestamp)));
       expect((NOW - oldest) / 86_400_000).toBeLessThanOrEqual(42);
-      expect(f.collections.milestones.filter((m) => m.checked)).toHaveLength(5);
+      // B-LOOP-17: ten "yes" answers + one "not sure" (the loop's shelf-aware distribution).
+      expect(f.collections.milestones.filter((m) => m.checked)).toHaveLength(10);
       expect(f.collections.langObs).toHaveLength(4);
       expect(f.collections.langObs.filter((w) => HEBREW.test(w.phrase))).toHaveLength(2);
-      // Two Today steps + (NEXTLEVEL r1) one held hard-moment step.
-      expect(f.collections.actionLoops).toHaveLength(3);
-      expect(f.collections.actionLoops.filter((a) => a.source !== "hard-moment" && a.outcome === "helped")).toHaveLength(1);
+      // Two Today steps + (NEXTLEVEL r1) one held hard-moment step + (B-LOOP-17) nine practice dose rows.
+      expect(f.collections.actionLoops).toHaveLength(12);
+      expect(f.collections.actionLoops.filter((a) => a.source === "today-guidance" && a.outcome === "helped")).toHaveLength(1);
       const held = f.collections.actionLoops.filter((a) => a.source === "hard-moment" && a.held === "yes" && a.outcomeAt);
       expect(held).toHaveLength(1);
       expect(f.collections.practiceEvents.length).toBeGreaterThan(0);
@@ -141,8 +152,9 @@ describe("P2A AGES · the toddler sibling", () => {
       expect(moments.every((l) => l.behaviorType === "Moment")).toBe(true);
       expect(moments).toHaveLength(4); // three word-moments + one bedtime note
       expect(leni.collections.langObs).toHaveLength(3);
-      expect(leni.collections.milestones.filter((m) => m.checked)).toHaveLength(1);
-      expect(leni.collections.milestones.find((m) => m.checked)?.ageMonths).toBe(18);
+      // B-LOOP-17: the lighter loop — seven answers inside her 15–18 m window.
+      expect(leni.collections.milestones.filter((m) => m.checked)).toHaveLength(7);
+      for (const m of leni.collections.milestones.filter((x) => x.checked)) expect([15, 18]).toContain(m.ageMonths);
       if (lang === "he") expect(HEBREW.test(moments[0].trigger)).toBe(true);
       for (const name of Object.keys(leni.collections)) expect(CHILD_SUBCOLLECTIONS).toContain(name);
     });
@@ -363,7 +375,7 @@ describe("W2-CAREPRO c2 r1 · the demo memory seed renders a group at volume", (
  * change the family → this fails until the version is bumped and the pin
  * re-recorded (then `npm run seed:demo -- --apply` re-seeds the sandbox). */
 describe("W2-CAREPRO c2 r2 · the demo content is pinned to DEMO_FAMILY_VERSION", () => {
-  const PINNED = { version: "2026-10-06.8", sha256: "d2de05880d01b298f5323a71d441f4f00390a38386e43b3a92d283c2fd0fe0d2" };
+  const PINNED = { version: "2026-10-07.1", sha256: "aed3319b0833f88c3d07e369b08662e19b2e4b7efdbcea386fabdb6ae12973ed" };
   const contentHash = async () => {
     const { createHash } = await import("node:crypto");
     const body = JSON.stringify([buildDemoFamily({ now: NOW, lang: "en" }), buildDemoFamily({ now: NOW, lang: "he" })]);
@@ -414,6 +426,134 @@ describe("P1-NEXTLEVEL r2 · the demo memory ledger is one language per run", ()
       expect(live.filter((i) => firstFacts.has(i.fact))).toEqual([]);
       expect(live.filter((i) => i.status === "approved")).toHaveLength(1);
       expect(live.filter((i) => i.status === "pending")).toHaveLength(4);
+    });
+  }
+});
+
+/* B-LOOP-17 — the loop's seeded states (demo seed v2026-10-07.1). Critics
+ * converge only on SEEDED states (5 Oct lesson): the demo child carries a
+ * shelf-aware milestone distribution with ONE thin shelf (Sleep: zero entries
+ * of any kind), a 14-day practice dose log with Tonight's night answers and
+ * the quotes — every document exactly what the app's own builder writes. */
+describe("B-LOOP-17 · the loop's seeded record", () => {
+  const DAY = 86_400_000;
+  const LOOP_SHELVES = ["words", "feelings", "play", "moving"] as const;
+  const catalogue = (id: string) => initialMilestones.find((m) => m.id === id)!;
+  const practiceRows = (rows: readonly ActionLoopEntry[]) => rows.filter((r) => r.source === "practice");
+
+  it("the version string is bumped to 2026-10-07.1", () => {
+    expect(DEMO_FAMILY_VERSION).toBe("2026-10-07.1");
+    expect(buildDemoFamily({ now: NOW }).version).toBe("2026-10-07.1");
+  });
+
+  it("the dry run prints the new counts per collection, child and sibling, and writes nothing", async () => {
+    const log = vi.fn();
+    const sandbox = vi.fn();
+    const dry = await seedScript.runDemoSeed(seedScript.parseArgs(["--now", new Date(NOW).toISOString()]), { log, apply: { sandbox, firestore: vi.fn() } });
+    expect(dry.wrote).toEqual([]);
+    expect(sandbox).not.toHaveBeenCalled();
+    const out = String(log.mock.calls[0][0]);
+    const n = initialMilestones.length;
+    const child: Record<string, number> = { behaviorLogs: 17, milestones: n, langObs: 4, actionLoops: 12, practiceEvents: 4, heroRuns: 1, appointments: 2, apptFollowUps: 1, keepsakes: 4 };
+    for (const [name, count] of Object.entries(child)) expect(out, name).toMatch(new RegExp(`\\n  ${name}\\s+${count} docs`));
+    expect(out).toMatch(/milestones noticed 10/);
+    const sib: Record<string, number> = { behaviorLogs: 4, milestones: n, langObs: 3, actionLoops: 3, keepsakes: 1 };
+    const sibOut = out.slice(out.indexOf("sibling leni-demo"));
+    for (const [name, count] of Object.entries(sib)) expect(sibOut, `sibling ${name}`).toMatch(new RegExp(`\\n    ${name}\\s+${count} docs`));
+    expect(demoFamilyCounts(dry.family)).toEqual(child);
+  });
+
+  it("every written collection — the child's and the sibling's — is in CHILD_SUBCOLLECTIONS", () => {
+    const plan = seedScript.planDemoWrites(buildDemoFamily({ now: NOW }), { target: "sandbox", uid: null });
+    const names = [
+      ...plan.collections.map((c: { name: string }) => c.name),
+      ...plan.siblings.flatMap((s: { collections: { name: string }[] }) => s.collections.map((c) => c.name)),
+    ];
+    expect(names).toContain("keepsakes");
+    expect(names).toContain("actionLoops");
+    for (const name of names) expect(CHILD_SUBCOLLECTIONS).toContain(name);
+  });
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: ~60 % "yes" in Words / Feelings / Play / Moving, one "not sure" in Hands, two feeding rows "yes"`, () => {
+      const f = buildDemoFamily({ now: NOW, lang });
+      const window = milestoneAgeWindow(f.child.ageMonths!);
+      const inWindow = f.collections.milestones.filter((m) => typeof m.ageMonths === "number" && window.includes(m.ageMonths));
+      for (const shelf of LOOP_SHELVES) {
+        const rows = inWindow.filter((m) => shelfOfMilestone(m) === shelf);
+        expect(rows.length, shelf).toBeGreaterThan(0);
+        expect(rows.filter((m) => m.observationStatus === "yes").length, shelf).toBe(Math.round(0.6 * rows.length));
+      }
+      const notSure = f.collections.milestones.filter((m) => m.observationStatus === "not_sure");
+      expect(notSure.map((m) => shelfOfMilestone(m))).toEqual(["hands"]);
+      expect(f.collections.milestones.filter((m) => m.observationStatus === "yes" && shelfOfMilestone(m) === "food")).toHaveLength(2);
+      // Written through THE seam: each answered row is byte-identical to observeMilestoneDoc's document.
+      for (const m of f.collections.milestones.filter((x) => x.observationStatus)) {
+        expect(m).toEqual(observeMilestoneDoc(catalogue(m.id), m.observationStatus as "yes" | "not_sure", { now: m.observationUpdatedAt }));
+      }
+    });
+
+    it(`${lang}: the Sleep shelf is the thin shelf — no answer, no moment, no practice row, no observation (child and sibling)`, () => {
+      const f = buildDemoFamily({ now: NOW, lang });
+      const kids = [
+        { child: f.child, c: f.collections as Partial<typeof f.collections> },
+        ...f.siblings.map((s) => ({ child: s.child, c: s.collections as Partial<typeof f.collections> })),
+      ];
+      for (const { child, c } of kids) {
+        expect(c.milestones!.filter((m) => m.observationStatus && shelfOfMilestone(m) === "sleep"), child.id).toHaveLength(0);
+        expect(practiceRows(c.actionLoops ?? []).filter((r) => r.shelf === "sleep"), child.id).toHaveLength(0);
+        expect(c.behaviorLogs!.filter((l) => l.behaviorType === "Sleep Meltdown"), child.id).toHaveLength(0);
+        const obs = toObservations(
+          { behaviorLogs: c.behaviorLogs, milestones: c.milestones, langObs: c.langObs, actionLoops: c.actionLoops, practiceEvents: c.practiceEvents, keepsakes: c.keepsakes },
+          child,
+        );
+        expect(obs.length, child.id).toBeGreaterThan(0);
+        expect(obs.filter((o) => o.shelf === "sleep").map((o) => o.id), child.id).toEqual([]);
+      }
+    });
+
+    it(`${lang}: nine practice rows over 14 days (mixed, never today), three night answers, four quotes — the app's own documents`, () => {
+      const f = buildDemoFamily({ now: NOW, lang });
+      const rows = practiceRows(f.collections.actionLoops);
+      expect(rows).toHaveLength(9);
+      const today = dayKey(new Date(NOW));
+      for (const r of rows) {
+        const t = Date.parse(r.acceptedAt);
+        const daysBack = Math.round((Date.parse(today) - Date.parse(dayKey(new Date(t)))) / DAY);
+        expect(daysBack).toBeGreaterThanOrEqual(1);
+        expect(daysBack).toBeLessThanOrEqual(14); // over the last 14 days
+        expect(dayKey(new Date(t))).not.toBe(today); // the morning state finds today's practice pending
+        expect(r.id).toBe(practiceDoseId(f.child.id, new Date(t)));
+        const practice = PRACTICES.find((p) => p.id === r.practiceId)!;
+        expect(practice.shelf).not.toBe("sleep");
+        const base = practiceDoseEntry(
+          { practice, milestone: catalogue(r.milestoneId!), shelf: practice.shelf },
+          r.outcome === "not_today" ? "not_today" : "did",
+          f.child.id,
+          r.recommendation,
+          new Date(t),
+        );
+        expect(r).toEqual(r.outcome && r.outcome !== "not_today" ? tonightOutcomeEntry(base, r.outcome, new Date(r.outcomeAt!)) : base);
+      }
+      expect(new Set(rows.map((r) => r.id)).size).toBe(9);
+      expect(rows.filter((r) => r.outcome === "not_today").length).toBeGreaterThan(0);
+      expect(rows.filter((r) => r.outcome !== "not_today").length).toBeGreaterThan(0);
+      const night = rows.filter((r) => r.outcome === "helped" || r.outcome === "somewhat");
+      expect(night).toHaveLength(3);
+      for (const r of night) expect(new Date(r.outcomeAt!).getUTCHours()).toBe(19);
+      const quotes = quotesFromDocs(f.collections.keepsakes);
+      expect(quotes).toHaveLength(4);
+      for (const d of f.collections.keepsakes) expect(d).toEqual(quoteKeepsakeDoc(d.note, new Date(d.createdAt)));
+      if (lang === "he") for (const q of quotes) expect(HEBREW.test(q.note)).toBe(true);
+    });
+
+    it(`${lang}: Leni carries the lighter loop — three practice rows, one night answer, one quote`, () => {
+      const leni = buildDemoFamily({ now: NOW, lang }).siblings[0];
+      const rows = practiceRows(leni.collections.actionLoops);
+      expect(rows).toHaveLength(3);
+      for (const r of rows) expect(r.id).toBe(practiceDoseId(DEMO_SIBLING_ID, new Date(r.acceptedAt)));
+      expect(rows.filter((r) => r.outcome === "helped" || r.outcome === "somewhat")).toHaveLength(1);
+      expect(quotesFromDocs(leni.collections.keepsakes)).toHaveLength(1);
     });
   }
 });

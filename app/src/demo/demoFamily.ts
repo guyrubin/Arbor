@@ -9,12 +9,12 @@
  *
  * P2A AGES (B-INF-10): a second child, Leni (22 months, a girl), with a small
  * toddler record of her own (`siblings[0]`: three word-moments, one bedtime
- * note, one noticed milestone, three words) — so every chooser can be driven
+ * note, seven noticed milestones (B-LOOP-17), three words) — so every chooser can be driven
  * on two children of different bands and on the switch between them.
  *
  * What six weeks of an ordinary family record holds (counts are the item's):
  *   14 moments (2 with photos) · 3 hard moments (one "hard morning" that
- *   matches a pilot guide) · 5 milestones noticed · 4 words written down
+ *   matches a pilot guide) · 10 milestones noticed + 1 "not sure" (B-LOOP-17) · 4 words written down
  *   (2 HE) · 2 accepted steps with outcomes (one "helped") · 1 Kid Mode
  *   session (practice events + one hero story) · 1 appointment with an
  *   after-visit note · server memory: 1 approved fact + 1 pending proposal.
@@ -25,15 +25,40 @@
  * documents into the SAME per-child storage keys useChildCollection reads.
  * Collections are a subset of CHILD_SUBCOLLECTIONS (lib/childData.ts), so the
  * Art. 15/20 export and Art. 17 erase cover every demo document.
+ *
+ * B-LOOP-17 (v2026-10-07.1) — THE LOOP'S SEEDED STATES. The milestone answers
+ * are shelf-aware and every loop write goes through the app's own builders
+ * (never an invented field):
+ *   milestones  lib/milestones/observe `observeMilestoneDoc` — "yes" on ~60 %
+ *               of the in-window rows of Words / Feelings / Play / Moving
+ *               (Math.round(0.6 × n) per shelf), ONE "not_sure" in Hands, two
+ *               feeding rows "yes", NOTHING on Sleep (the thin shelf);
+ *   actionLoops lib/practice/choosePractice `practiceDoseEntry` — 9 practice
+ *               dose rows over 14 days (source "practice", 6 "did" + 3 "not
+ *               today", no Sleep practice, never today: the morning state
+ *               finds today's practice pending);
+ *   night       lib/loop/tonight `tonightOutcomeEntry` — 3 of the "did" rows
+ *               carry Tonight's step-1 answer (helped · somewhat · helped);
+ *   keepsakes   lib/loop/tonight `quoteKeepsakeDoc` — 4 `quote` keepsakes
+ *               ("Things {name} said", Tonight's step 2).
+ * The one bedtime hard moment became a sibling conflict, so the Sleep shelf
+ * holds zero entries of any kind. Leni (P2A) gets the lighter version.
  */
 import type { BehaviorLog, ChildProfile, HeroJourneyRun, Milestone, PracticeEvent } from "../types";
-import type { ActionLoopEntry } from "../actionLoop/model";
+import type { ActionLoopEntry, ActionOutcome } from "../actionLoop/model";
 import type { Appointment, AppointmentFollowUp } from "../lib/careTrack";
 import type { LangObservation } from "../growth/vocabAgg";
 import { defaultChildProfile, initialMilestones } from "../initialData";
 import { hardMomentCards } from "../content/hardMomentCards";
+import { practicesForMilestone } from "../content/practices";
+import { observeMilestoneDoc, type ObserveStatus } from "../lib/milestones/observe";
+import { shelfOfMilestone } from "../lib/milestones/selectByShelf";
+import { practiceDoseEntry, type PracticeAnswer } from "../lib/practice/choosePractice";
+import { quoteKeepsakeDoc, tonightOutcomeEntry } from "../lib/loop/tonight";
+import type { KeepsakeDoc } from "../lib/firstsKeepsake";
+import { resolveHebrewSlash } from "../lib/hebrewSlashGender";
 
-export const DEMO_FAMILY_VERSION = "2026-10-06.8";
+export const DEMO_FAMILY_VERSION = "2026-10-07.1";
 export const DEMO_FAMILY_LABEL = { en: "Demo family", he: "משפחת הדגמה" } as const;
 /** The demo child IS the sandbox's synthetic child, so `npm run seed:demo` populates it. */
 export const DEMO_CHILD_ID = defaultChildProfile.id;
@@ -73,6 +98,8 @@ export type DemoFamily = {
     heroRuns: HeroJourneyRun[];
     appointments: Appointment[];
     apptFollowUps: AppointmentFollowUp[];
+    /** B-LOOP-17: Tonight's `quote` keepsakes (the registered keepsakes collection). */
+    keepsakes: KeepsakeDoc[];
   };
   memory: DemoMemorySeed;
   /** P2A AGES: the other children of the family, each with her own small record. */
@@ -86,6 +113,10 @@ export type DemoSibling = {
     behaviorLogs: BehaviorLog[];
     milestones: Milestone[];
     langObs: LangObservation[];
+    /** B-LOOP-17: her lighter loop — practice dose rows (one night answer). */
+    actionLoops: ActionLoopEntry[];
+    /** B-LOOP-17: one `quote` keepsake. */
+    keepsakes: KeepsakeDoc[];
   };
 };
 
@@ -111,7 +142,8 @@ const MOMENTS: { daysAgo: number; hour: number; text: L; context: BehaviorLog["c
 const HARD: { daysAgo: number; hour: number; type: string; trigger: L; response: L; intensity: number; minutes: number; context: BehaviorLog["context"] }[] = [
   // The "hard morning": a Transition Refusal on the way out, which the pilot guide shelf matches.
   { daysAgo: 2, hour: 7, type: "Transition Refusal", trigger: L("leaving for kindergarten", "יציאה לגן"), response: L("gave a two-minute heads-up and carried his bag together", "נתתי התראה של שתי דקות ונשאנו את התיק יחד"), intensity: 3, minutes: 12, context: "Home" },
-  { daysAgo: 10, hour: 19, type: "Sleep Meltdown", trigger: L("lights off before the story ended", "כיבינו את האור לפני שהסיפור נגמר"), response: L("finished the last page with the night light on", "סיימנו את העמוד האחרון עם מנורת הלילה"), intensity: 2, minutes: 8, context: "Home" },
+  // B-LOOP-17: was a bedtime meltdown — the Sleep shelf is the thin shelf (zero entries).
+  { daysAgo: 10, hour: 17, type: "Sibling Conflict", trigger: L("Leni knocked over his block tower", "לני הפילה לו את מגדל הקוביות"), response: L("named the anger and we built the base again together", "קראנו בשם לכעס ובנינו יחד את הבסיס מחדש"), intensity: 2, minutes: 8, context: "Home" },
   { daysAgo: 23, hour: 17, type: "Screentime Dispute", trigger: L("tablet turned off", "כיבוי הטאבלט"), response: L("sat next to him until he was calm", "ישבתי לידו עד שנרגע"), intensity: 3, minutes: 10, context: "Home" },
 ];
 
@@ -125,6 +157,70 @@ const WORDS: { daysAgo: number; language: string; phrase: string }[] = [
 const STEPS: { daysAgo: number; text: L; outcome: ActionLoopEntry["outcome"] }[] = [
   { daysAgo: 9, text: L("Give a two-minute heads-up before leaving the house", "לתת התראה של שתי דקות לפני היציאה מהבית"), outcome: "helped" },
   { daysAgo: 4, text: L("Read the last page with the night light on", "לקרוא את העמוד האחרון עם מנורת הלילה"), outcome: "somewhat" },
+];
+
+/* ── B-LOOP-17: the loop's record ─────────────────────────────────────────
+   Milestone answers per shelf (catalogue ids; the shelf comes from the
+   registry, the in-window share is asserted by the guard), the 14-day
+   practice dose log with Tonight's three night answers, and the quotes. */
+
+type LoopAnswer = { id: string; status: ObserveStatus; daysAgo: number };
+/** Dylan (38 months, window 30–36 m): Words 4 of 7 · Feelings 1 of 1 · Play 2 of 3 ·
+ *  Moving 1 of 1 · Hands one "not sure" · two feeding rows · Sleep nothing. */
+const LOOP_ANSWERS: LoopAnswer[] = [
+  { id: "cdc-30m-4", status: "yes", daysAgo: 33 },
+  { id: "cdc-30m-5", status: "yes", daysAgo: 22 },
+  { id: "cdc-36m-4", status: "yes", daysAgo: 11 },
+  { id: "cdc-36m-5", status: "yes", daysAgo: 4 },
+  { id: "cdc-36m-1", status: "yes", daysAgo: 5 },
+  { id: "cdc-30m-1", status: "yes", daysAgo: 26 },
+  { id: "cdc-30m-2", status: "yes", daysAgo: 14 },
+  { id: "cdc-30m-10", status: "yes", daysAgo: 3 },
+  { id: "cdc-36m-10", status: "not_sure", daysAgo: 6 },
+  { id: "cdc-36m-11", status: "yes", daysAgo: 7 },
+  { id: "asha-feed-24m", status: "yes", daysAgo: 30 },
+];
+
+type LoopDose = { daysAgo: number; milestoneId: string; answer: PracticeAnswer; night?: Exclude<ActionOutcome, "not_today"> };
+/** Nine dose rows over 14 days, never today, never the Sleep shelf; three night answers. */
+const LOOP_DOSES: LoopDose[] = [
+  { daysAgo: 1, milestoneId: "cdc-36m-3", answer: "did", night: "helped" },
+  { daysAgo: 2, milestoneId: "cdc-30m-11", answer: "not_today" },
+  { daysAgo: 3, milestoneId: "cdc-36m-2", answer: "did" },
+  { daysAgo: 5, milestoneId: "cdc-36m-7", answer: "did", night: "somewhat" },
+  { daysAgo: 6, milestoneId: "cdc-30m-10", answer: "not_today" },
+  { daysAgo: 8, milestoneId: "cdc-36m-1", answer: "did", night: "helped" },
+  { daysAgo: 10, milestoneId: "cdc-36m-11", answer: "did" },
+  { daysAgo: 12, milestoneId: "cdc-30m-3", answer: "not_today" },
+  { daysAgo: 14, milestoneId: "cdc-36m-9", answer: "did" },
+];
+
+/** Tonight's step 2 answers — "Things Dylan said" (invented). */
+const LOOP_QUOTES: { daysAgo: number; text: L }[] = [
+  { daysAgo: 1, text: L("I did it all by my own self!", "עשיתי את זה לגמרי לבד!") },
+  { daysAgo: 4, text: L("Leni is my baby. I take care of her.", "לני היא התינוקת שלי. אני שומר עליה.") },
+  { daysAgo: 9, text: L("The bus says beep beep, not moo.", "האוטובוס עושה ביפ ביפ, לא מו.") },
+  { daysAgo: 13, text: L("When I'm big I will reach the top shelf.", "כשאהיה גדול אגיע למדף העליון.") },
+];
+
+/** Leni (22 months, window 15–18 m), the lighter version: Words 2 of 4 · Play 3 of 5 ·
+ *  Moving 1 of 2 · one feeding row · three dose rows (one night answer) · one quote. */
+const LENI_ANSWERS: LoopAnswer[] = [
+  { id: "cdc-15m-3", status: "yes", daysAgo: 12 },
+  { id: "cdc-18m-4", status: "yes", daysAgo: 3 },
+  { id: "cdc-15m-1", status: "yes", daysAgo: 13 },
+  { id: "cdc-18m-1", status: "yes", daysAgo: 6 },
+  { id: "cdc-18m-2", status: "yes", daysAgo: 2 },
+  { id: "cdc-15m-7", status: "yes", daysAgo: 10 },
+  { id: "cdc-18m-9", status: "yes", daysAgo: 5 },
+];
+const LENI_DOSES: LoopDose[] = [
+  { daysAgo: 1, milestoneId: "cdc-18m-5", answer: "did", night: "helped" },
+  { daysAgo: 3, milestoneId: "cdc-18m-3", answer: "not_today" },
+  { daysAgo: 5, milestoneId: "cdc-18m-8", answer: "did" },
+];
+const LENI_QUOTES: { daysAgo: number; text: L }[] = [
+  { daysAgo: 2, text: L("Uh-oh! Ball gone!", "אוי! כדור הלך!") },
 ];
 
 const MEMORY: Record<DemoLang, DemoMemorySeed> = {
@@ -150,7 +246,7 @@ const MEMORY: Record<DemoLang, DemoMemorySeed> = {
 
 /* ── the toddler (P2A AGES): Leni, 22 months, a girl ─────────────────────
    A small toddler record, two weeks deep: three word-moments, one bedtime
-   note, one noticed milestone. Every string invented. */
+   note, seven noticed milestones (B-LOOP-17). Every string invented. */
 const LENI_MOMENTS: { daysAgo: number; hour: number; text: L; context: BehaviorLog["context"] }[] = [
   { daysAgo: 1, hour: 8, text: L("Said \"more\" at breakfast and pointed to the banana", "אמרה \"עוד\" בארוחת הבוקר והצביעה על הבננה"), context: "Home" },
   { daysAgo: 4, hour: 17, text: L("Called the dog \"woof\" at the park", "קראה לכלב \"הב הב\" בגן השעשועים"), context: "Public" },
@@ -191,13 +287,12 @@ function buildLeni(now: number, lang: DemoLang): DemoSibling {
     trigger: pick(m.text),
     context: m.context,
   })).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  // One milestone noticed, from the real template: the first one written for 18 months.
-  const noticedId = initialMilestones.find((m) => m.ageMonths === 18)?.id;
-  const milestones: Milestone[] = initialMilestones.map((m) =>
-    m.id === noticedId ? { ...m, checked: true, observationStatus: "yes" as const, observationUpdatedAt: at(now, 6, 18) } : { ...m },
-  );
+  // B-LOOP-17: the lighter loop — seven answers across Words / Play / Moving / Food.
+  const milestones: Milestone[] = answeredMilestones(now, LENI_ANSWERS);
   const langObs: LangObservation[] = LENI_WORDS.map((w, i) => ({ id: `demo-leni-word-${i + 1}`, timestamp: at(now, w.daysAgo, 18), language: w.language, phrase: w.phrase }));
-  return { child, collections: { behaviorLogs, milestones, langObs } };
+  const actionLoops = doseRows(now, child.id, LENI_DOSES, lang, child.gender);
+  const keepsakes = quoteDocs(now, LENI_QUOTES, lang);
+  return { child, collections: { behaviorLogs, milestones, langObs, actionLoops, keepsakes } };
 }
 
 /* ── the builder ──────────────────────────────────────────────────────── */
@@ -207,6 +302,49 @@ const at = (now: number, daysAgo: number, hour: number) => {
   d.setUTCHours(hour, 0, 0, 0);
   return d.toISOString();
 };
+
+/* B-LOOP-17: the loop's writes, each through the app's own builder. The
+   hours are UTC 09/18/19, so a dose row's local-day id is the same day from
+   UTC−9 to UTC+5 (the content hash is pinned; CI runs in UTC). */
+const catalogueRow = (id: string): Milestone => {
+  const row = initialMilestones.find((m) => m.id === id);
+  if (!row) throw new Error(`B-LOOP-17: unknown catalogue milestone ${id}`);
+  if (shelfOfMilestone(row) === "sleep") throw new Error(`B-LOOP-17: ${id} is a Sleep milestone — the Sleep shelf stays empty`);
+  return row;
+};
+
+/** The milestone list with the parent's answers, through `observeMilestoneDoc` (THE write seam). */
+function answeredMilestones(now: number, answers: readonly LoopAnswer[]): Milestone[] {
+  const byId = new Map(answers.map((a) => [a.id, a]));
+  for (const a of answers) catalogueRow(a.id);
+  return initialMilestones.map((m) => {
+    const a = byId.get(m.id);
+    return a ? observeMilestoneDoc(m, a.status, { now: at(now, a.daysAgo, 18) }) : { ...m };
+  });
+}
+
+/** The practice dose log (`practiceDoseEntry`), Tonight's step-1 answer where given (`tonightOutcomeEntry`). */
+function doseRows(now: number, childId: string, doses: readonly LoopDose[], lang: DemoLang, gender: ChildProfile["gender"]): ActionLoopEntry[] {
+  return doses
+    .map((d) => {
+      const milestone = catalogueRow(d.milestoneId);
+      const practice = practicesForMilestone(d.milestoneId)[0];
+      if (!practice || practice.shelf === "sleep") throw new Error(`B-LOOP-17: no non-Sleep practice for ${d.milestoneId}`);
+      const say = lang === "he" ? resolveHebrewSlash(practice.say.he, gender) : practice.say.en;
+      const row = practiceDoseEntry({ practice, milestone, shelf: practice.shelf }, d.answer, childId, say, new Date(at(now, d.daysAgo, 9)));
+      return d.night ? tonightOutcomeEntry(row, d.night, new Date(at(now, d.daysAgo, 19))) : row;
+    })
+    .sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt));
+}
+
+/** Tonight's step-2 answers as `quote` keepsakes (`quoteKeepsakeDoc`). */
+function quoteDocs(now: number, quotes: readonly { daysAgo: number; text: L }[], lang: DemoLang): KeepsakeDoc[] {
+  return quotes.map((q) => {
+    const doc = quoteKeepsakeDoc(q.text[lang], new Date(at(now, q.daysAgo, 18)));
+    if (!doc) throw new Error("B-LOOP-17: an empty demo quote");
+    return doc;
+  });
+}
 
 export function buildDemoFamily({
   now = Date.now(),
@@ -259,16 +397,8 @@ export function buildDemoFamily({
     })),
   ].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
-  // Five milestones noticed, from the real template (the sandbox's milestone list).
-  const ageFit = initialMilestones.filter((m) => typeof m.ageMonths === "number" && m.ageMonths >= 24 && m.ageMonths <= 48);
-  const noticed = new Set(ageFit.slice(0, 5).map((m) => m.id));
-  const noticedDays = [3, 8, 14, 22, 33];
-  let n = 0;
-  const milestones: Milestone[] = initialMilestones.map((m) =>
-    noticed.has(m.id)
-      ? { ...m, checked: true, observationStatus: "yes" as const, observationUpdatedAt: at(now, noticedDays[n++] ?? 30, 18) }
-      : { ...m },
-  );
+  // B-LOOP-17: the parent's answers, shelf by shelf (LOOP_ANSWERS), through the write seam.
+  const milestones: Milestone[] = answeredMilestones(now, LOOP_ANSWERS);
 
   const langObs: LangObservation[] = WORDS.map((w, i) => ({ id: `demo-word-${i + 1}`, timestamp: at(now, w.daysAgo, 18), language: w.language, phrase: w.phrase }));
 
@@ -301,6 +431,9 @@ export function buildDemoFamily({
       childResponse: "calmer",
     });
   }
+  // B-LOOP-17: the 14-day practice dose log with Tonight's three night answers.
+  actionLoops.push(...doseRows(now, childId, LOOP_DOSES, lang, child.gender));
+  const keepsakes = quoteDocs(now, LOOP_QUOTES, lang);
 
   // One Kid Mode session, six days ago: a few practice events + one hero story.
   const kidDay = 6;
@@ -377,7 +510,7 @@ export function buildDemoFamily({
     lang,
     parent: { demo: true, displayName: DEMO_FAMILY_LABEL[lang] },
     child,
-    collections: { behaviorLogs, milestones, langObs, actionLoops, practiceEvents, heroRuns, appointments, apptFollowUps },
+    collections: { behaviorLogs, milestones, langObs, actionLoops, practiceEvents, heroRuns, appointments, apptFollowUps, keepsakes },
     memory: MEMORY[lang],
     siblings: [buildLeni(now, lang)],
   };
