@@ -194,7 +194,7 @@ describe("signal provenance", () => {
       milestone: "manual",
       play: "manual",
       plan: "auto",
-      memory: "auto",
+      memory: "manual", // P1-NEXTLEVEL r2: approving a fact is the parent's act
       // AI-04 (consent gate): there is no "coach" kind. A kept line is the
       // parent's own act and rides in as kind "moment" / provenance manual.
       practice: "child",
@@ -208,7 +208,7 @@ describe("signal provenance", () => {
     expect(isAutoSignal("milestone")).toBe(false);
     expect(isAutoSignal("play")).toBe(false);
     expect(isAutoSignal("plan")).toBe(true);
-    expect(isAutoSignal("memory")).toBe(true);
+    expect(isAutoSignal("memory")).toBe(false); // P1-NEXTLEVEL r2
     // Child activity is neither the parent's manual log nor an Arbor derivation.
     expect(isAutoSignal("practice")).toBe(false);
   });

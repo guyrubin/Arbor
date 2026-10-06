@@ -262,10 +262,11 @@ describe("critic r1 — the journal's primary move is the capture tiles", async 
     expect(JOURNAL).toContain('data-capture-bar {...primaryMoveProps}');
   });
 
-  it("tiles come before the prompt chips; one gradient, on the Text tile", () => {
+  it("tiles come before the prompt chips; no gradient — the Text tile is the one solid accent fill", () => {
     expect(JOURNAL.indexOf("data-capture-bar")).toBeLessThan(JOURNAL.indexOf('data-testid="journal-prompt-chips"'));
-    expect((JOURNAL.match(/--gradient-cta|--arbor-gradient-primary/g) || []).length).toBe(1);
-    expect(JOURNAL).toMatch(/key === "text"\s*\? \{ borderRadius: "var\(--r\)", background: "var\(--gradient-cta\)"/);
+    // P1-NEXTLEVEL critic r2: B-ASKJB-34 acceptance is 0 gradients on #/journal.
+    expect((JOURNAL.match(/--gradient-cta|--arbor-gradient-primary/g) || []).length).toBe(0);
+    expect(JOURNAL).toMatch(/key === "text"\s*\? \{ borderRadius: "var\(--r\)", background: "var\(--arbor-clay\)"/);
     expect(JOURNAL).not.toContain('key === "voice" ? "var(--arbor-green-soft)"');
   });
 
@@ -375,8 +376,8 @@ describe("NEXTLEVEL r1 — Journal: the parent's words are the row; sentence cas
   const JOURNAL = stripComments(read("components/tabs/JournalTab.tsx"));
   const SHEET = stripComments(read("components/journal/JournalEntrySheet.tsx"));
   it("a parent-written moment row leads with the words verbatim (editorial, t-lg, FreeText); the type label + time are one quiet caption; no provenance chip", () => {
-    expect(JOURNAL).toContain('const parentLead = prov === "manual" && signal.kind === "moment" && !!detail.trim();');
-    const lead = JOURNAL.slice(JOURNAL.indexOf("{parentLead ? ("), JOURNAL.indexOf(") : (", JOURNAL.indexOf("{parentLead ? (")));
+    expect(JOURNAL).toContain('const parentLead = prov === "manual" && (signal.kind === "moment" || signal.kind === "memory") && !!detail.trim();');
+    const lead = JOURNAL.slice(JOURNAL.indexOf(": parentLead ? ("), JOURNAL.indexOf(") : (", JOURNAL.indexOf(": parentLead ? (")));
     expect(lead).toContain('data-testid="journal-row-words"');
     expect(lead).toContain("<FreeText text={detail} />");
     expect(lead).toContain('fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)"');
@@ -391,5 +392,21 @@ describe("NEXTLEVEL r1 — Journal: the parent's words are the row; sentence cas
       expect(src).not.toMatch(/text-\[(10|9)px\]/);
     }
     expect(JOURNAL).not.toContain('t("journal.eyebrow")');
+  });
+});
+
+describe("P1-NEXTLEVEL critic r2 — #/journal targets, chips and the compose question", () => {
+  it("the quoted last words are a 44 px target (sub44AboveFold held only the skip link)", () => {
+    const at = JOURNAL.indexOf('data-testid="journal-last-words"');
+    const tag = JOURNAL.slice(at, JOURNAL.indexOf("className=", at) + 80);
+    expect(tag).toContain("min-h-11");
+  });
+  it("from sm the spark chips may shrink and wrap inside the 20rem rail (no chip past the card edge)", () => {
+    const at = JOURNAL.indexOf('data-testid="journal-prompt-chips"');
+    expect(JOURNAL.slice(at, at + 1400)).toContain("sm:max-w-full sm:flex-shrink");
+  });
+  it("the compose card asks the question its tiles answer, naming the child; no 'New moment' eyebrow", () => {
+    expect(JOURNAL).toContain('t("elev.journal.compose.ask", { name: childFirstName })');
+    expect(JOURNAL).not.toContain('t("journal.compose.eyebrow")');
   });
 });

@@ -155,7 +155,13 @@ function JournalRow({
   // machine type label ("A moment", "Departure Refusal") plus the time drop to
   // one quiet caption. Parent rows carry no provenance chip; Arbor and child
   // rows keep theirs, in sentence case.
-  const parentLead = prov === "manual" && signal.kind === "moment" && !!detail.trim();
+  // P1-NEXTLEVEL critic r2: a kept memory fact is the parent's too — the fact
+  // leads in the serif, captioned "Kept · time" (no machine title, no chip).
+  const parentLead = prov === "manual" && (signal.kind === "moment" || signal.kind === "memory") && !!detail.trim();
+  // P1-NEXTLEVEL critic r2: an Arbor row (prov auto) never leads the day at
+  // full weight — t-sm secondary ink, no 40 px disc, no chip, "Arbor" a word
+  // in the caption.
+  const arborQuiet = prov === "auto";
   // B-ASKJB-34: the child's play and stories (one folded row a day) are the
   // quiet line under the parent's entries — regular weight, secondary ink.
   const quiet = prov === "child";
@@ -174,13 +180,25 @@ function JournalRow({
       style={{ borderColor: "var(--arbor-rule)", background: focused ? "var(--arbor-green-soft)" : undefined }}
     >
       {/* Colored icon tile — tone + glyph follow the entry's domain (kind fallback). */}
+      {!arborQuiet && (
       <span
         className="inline-flex items-center justify-center rounded-full flex-shrink-0"
         style={{ width: 40, height: 40, background: p.soft, color: p.ink }}
       >
         <Icon name={glyph} size={22} fill={1} />
       </span>
-      {parentLead ? (
+      )}
+      {arborQuiet ? (
+      <div className="min-w-0 flex-1">
+        <p data-testid="journal-row-arbor" className="t-sm leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
+          <bdi dir="auto">{title}</bdi>
+        </p>
+        <p className="mt-0.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
+          {provLabel}
+          {when && <>{" · "}<bdi>{when}</bdi></>}
+        </p>
+      </div>
+      ) : parentLead ? (
       <div className="min-w-0 flex-1">
         <p data-testid="journal-row-words" className="leading-snug line-clamp-3" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
           <FreeText text={detail} />
@@ -202,7 +220,6 @@ function JournalRow({
               lav chip with the child's name, MANUAL a neutral "You" one. */}
           <span
             className="inline-flex items-center gap-1 t-sm font-semibold rounded-md px-2 py-0.5"
-            dir="auto"
             style={
               prov === "auto"
                 ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
@@ -532,10 +549,11 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
                   type="button"
                   data-testid="journal-last-words"
                   onClick={() => requestJournalFocus(lastKept!.id)}
-                  className="block w-full border-s-2 ps-3 text-start"
-                  style={{ borderColor: "var(--arbor-clay-dim)" }}
+                  className="flex min-h-11 w-full items-center py-1 text-start"
                 >
-                  <span dir="auto" className="block t-lg leading-snug line-clamp-2" style={{ fontFamily: "var(--font-editorial)", lineHeight: 1.35, color: "var(--arbor-ink)" }}>
+                  {/* P1-NEXTLEVEL critic r2 (G0): the quote is a 44 px target;
+                      the clay rule stays at the text height on the inner span. */}
+                  <span dir="auto" className="block border-s-2 ps-3 t-lg leading-snug line-clamp-2" style={{ borderColor: "var(--arbor-clay-dim)", fontFamily: "var(--font-editorial)", lineHeight: 1.35, color: "var(--arbor-ink)" }}>
                     {"“"}<bdi dir="auto">{lastKept!.words}</bdi>{"”"}
                   </span>
                 </button>
@@ -609,12 +627,12 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
           entry affordance, not a new capture path. */}
       <section ref={composeRef} data-module="journal-compose" className="rounded-[var(--r-lg)] p-4 sm:p-5 lg:sticky lg:top-4 lg:col-start-2 lg:row-span-3 lg:row-start-1" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}>
         <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("journal.compose.eyebrow")}</p>
-          <h2 className="mt-1 t-lg font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {t("journal.compose.title")}
+          {/* P1-NEXTLEVEL critic r2 (B-NEXTLEVEL-NEW-2f): the "New moment"
+              eyebrow and the "Log a moment" title go; the H2 is the question
+              the tiles answer, naming the child. */}
+          <h2 data-testid="journal-compose-ask" className="t-lg font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            {t("elev.journal.compose.ask", { name: childFirstName })}
           </h2>
-          </div>
           <IconBadge tone="lav" size={34}><Icon name="edit_note" size={19} fill={1} /></IconBadge>
         </div>
 
@@ -631,7 +649,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
               onClick={() => startCapture(key)}
               className="flex min-h-[48px] items-center justify-center gap-2 px-3 py-3 t-sm font-extrabold transition motion-safe:hover:-translate-y-0.5"
               style={key === "text"
-                ? { borderRadius: "var(--r)", background: "var(--gradient-cta)", border: "1px solid transparent", color: "var(--arbor-on-accent)" }
+                ? { borderRadius: "var(--r)", background: "var(--arbor-clay)", border: "1px solid transparent", color: "var(--arbor-on-accent)" }
                 : { borderRadius: "var(--r)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
             >
               <Icon name={ms} size={21} fill={1} style={{ color: key === "text" ? "var(--arbor-on-accent)" : "var(--arbor-ink)" }} />
@@ -658,7 +676,7 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
                   onClick={() => onPromptTap(key)}
                   aria-pressed={active}
                   dir="auto"
-                  className="min-h-[44px] flex-shrink-0 snap-start rounded-full px-3.5 py-1.5 t-sm font-bold text-start transition active:scale-[0.98]"
+                  className="min-h-[44px] flex-shrink-0 snap-start rounded-full px-3.5 py-1.5 t-sm font-bold text-start transition active:scale-[0.98] sm:max-w-full sm:flex-shrink"
                   style={
                     active
                       ? { background: PASTEL.lav.soft, color: PASTEL.lav.ink, border: `1px solid ${PASTEL.lav.ink}` }

@@ -24,10 +24,11 @@ describe("B-ASKJB-34 — #/journal speaks in sentence case and one weight of gre
     expect(CODE).not.toMatch(/tracking-(?:wide|wider|widest)\b/);
   });
 
-  it("0 gradient classes; the licensed capture tile is the one gradient", () => {
+  it("0 gradients (the item's acceptance); the Text tile is the one solid accent fill", () => {
     expect(CODE).not.toMatch(/bg-gradient-|\bfrom-\[|\bvia-\[|linear-gradient|radial-gradient/);
-    expect(CODE.match(/--gradient-/g) ?? []).toHaveLength(1);
-    expect(CODE).toMatch(/key === "text"\s*\?\s*\{[^}]*background: "var\(--gradient-cta\)"/);
+    // P1-NEXTLEVEL critic r2: the self-licensed Text-tile gradient is gone.
+    expect(CODE.match(/--gradient-/g) ?? []).toHaveLength(0);
+    expect(CODE).toMatch(/key === "text"\s*\?\s*\{[^}]*background: "var\(--arbor-clay\)"/);
   });
 
   it("no text under 12 px: no t-xs, no t-caption, no px literals under 12", () => {
@@ -41,7 +42,13 @@ describe("B-ASKJB-34 — #/journal speaks in sentence case and one weight of gre
     expect(CODE).toContain('data-testid="journal-row-words"');
   });
 
-  it("the compose label is one quiet grey, not a second accent", () => {
-    expect(CODE).toContain('<p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("journal.compose.eyebrow")}</p>');
+  it("the compose card has no eyebrow; its H2 is the question (P1-NEXTLEVEL critic r2, B-NEXTLEVEL-NEW-2f)", () => {
+    expect(CODE).not.toContain('t("journal.compose.eyebrow")');
+    expect(CODE).toContain('data-testid="journal-compose-ask"');
+  });
+  it("an Arbor row is quiet: no disc, no chip, t-sm secondary ink (P1-NEXTLEVEL critic r2)", () => {
+    expect(CODE).toContain('const arborQuiet = prov === "auto";');
+    expect(CODE).toContain("{!arborQuiet && (");
+    expect(CODE).toContain('data-testid="journal-row-arbor" className="t-sm leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}');
   });
 });

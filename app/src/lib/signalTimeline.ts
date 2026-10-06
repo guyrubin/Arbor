@@ -160,7 +160,9 @@ export const SIGNAL_PROVENANCE: Record<SignalKind, SignalProvenance> = {
   milestone: "manual",
   play: "manual",
   plan: "auto",
-  memory: "auto",
+  // P1-NEXTLEVEL critic r2: approving a fact into memory is the PARENT's act
+  // (the seed records source "parent"); the row reads as theirs, like kept.
+  memory: "manual",
   practice: "child",
   // TJB-05: Arbor OFFERED the step, but accepting it and saying how it went
   // are both the parent's own acts — the badge must read "You".

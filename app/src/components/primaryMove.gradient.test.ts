@@ -65,11 +65,9 @@ const ALLOWED = new Set([
   "ui/Button.tsx",
   "weekly/RecapStoryCards.tsx",
   "tabs/WeeklyTab.tsx",
-  // W2-ASKJB critic r1: the Text capture tile carries TimelineTab's
-  // data-primary-move="capture-moment" (surfaceContract journal.primaryMove,
-  // spread through primaryMoveProps) and is the only gradient in the file;
-  // journal.captureInPlace.test pins one gradient on the "text" tile.
-  "tabs/JournalTab.tsx",
+  // P1-NEXTLEVEL critic r2 (B-ASKJB-34 acceptance: 0 gradient backgrounds on
+  // #/journal): the Text tile is a solid --arbor-clay fill; JournalTab left
+  // this licence and the ratchet below.
 ]);
 
 /** Drop comments so prose about the rule cannot trip the scan. */
@@ -258,8 +256,6 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // not see; it now spells the literal, only while there is text to send
     // (coachWaveL.test pins the rest/ready pair). Visible, not new.
     "tabs/CoachTab.tsx",
-    // W2-ASKJB critic r1: licensed above (the Text capture tile = capture-moment).
-    "tabs/JournalTab.tsx",
     // W2-GROWTH critic r1: with no focus milestone, "Review milestones" carries
     // data-primary-move="notice-milestone" (surfaceContract development
     // .primaryMove) and is the only gradient in the file; growthPrimaryMove.test

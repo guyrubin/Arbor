@@ -15,9 +15,10 @@ import { describe, expect, it } from "vitest";
 
 const SRC = path.resolve(__dirname, "..");
 // An opening tag carrying dir="auto" (attribute values may hold one level of
-// nested braces) whose FIRST child is an <Icon>.
+// nested braces) whose FIRST child is an <Icon>, bare or conditional
+// (`{cond && <Icon …`).
 const DIR_AUTO_ICON_LEAD =
-  /<([a-zA-Z][\w.]*)\b((?:[^>{}]|\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})*?)\bdir="auto"((?:[^>{}]|\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})*?)>\s*<Icon\b/g;
+  /<([a-zA-Z][\w.]*)\b((?:[^>{}]|\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})*?)\bdir="auto"((?:[^>{}]|\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})*?)>\s*(?:\{[^{}<]*&&\s*)?<Icon\b/g;
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const f of fs.readdirSync(dir)) {
@@ -46,6 +47,12 @@ describe("dir=auto never resolves from an icon ligature", () => {
     const bad = `<p dir="auto" data-testid="x" className="flex">\n  <Icon name="check_circle" size={20} />\n  <span>{t("k")}</span>\n</p>`;
     DIR_AUTO_ICON_LEAD.lastIndex = 0;
     expect(DIR_AUTO_ICON_LEAD.test(bad)).toBe(true);
+    const conditional = `<span className="x" dir="auto" style={a ? { b: 1 } : { c: 2 }}>
+  {prov === "auto" && <Icon name="auto_awesome" />}
+  {label}
+</span>`;
+    DIR_AUTO_ICON_LEAD.lastIndex = 0;
+    expect(DIR_AUTO_ICON_LEAD.test(conditional)).toBe(true);
   });
 
   it("the capture reply line takes its direction from the reply locale", () => {

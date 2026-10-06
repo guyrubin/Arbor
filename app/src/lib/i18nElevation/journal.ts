@@ -168,6 +168,8 @@ export const en: Record<string, string> = {
   "elev.journal.story.quietWeek": "Nothing kept this week. Your last moment: {title}, {date}.",
   "elev.journal.lastKept.caption": "Last kept · {date}",
   "elev.journal.lastWrote.caption": "Last thing you wrote about {name} · {date}",
+  // P1-NEXTLEVEL r2 (B-NEXTLEVEL-NEW-2f): the compose card asks the question its tiles answer.
+  "elev.journal.compose.ask": "What happened with {name} today?",
   "elev.journal.lastKept.title": "From the story",
   "elev.journal.lastKept.next": "What happened with {name} today?",
 
@@ -340,6 +342,7 @@ export const he: Record<string, string> = {
   "elev.journal.story.quietWeek": "השבוע עוד לא נשמר כלום. הרגע האחרון שלכם: {title}, {date}.",
   "elev.journal.lastKept.caption": "נשמר לאחרונה · {date}",
   "elev.journal.lastWrote.caption": "הדבר האחרון שכתבתם על {name} · {date}",
+  "elev.journal.compose.ask": "מה קרה היום עם {name}?",
   "elev.journal.lastKept.title": "מהסיפור",
   "elev.journal.lastKept.next": "מה קרה היום עם {name}?",
 
