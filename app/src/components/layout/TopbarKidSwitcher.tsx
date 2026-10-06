@@ -104,8 +104,11 @@ export function SwitcherChildOption({
 }
 
 /**
- * B-SHELL-38 — the ONE identity line: name over the child's own age ("22
- * months" under three, "5 years" from three — lib/age/format). On a child
+ * B-SHELL-38 — the ONE identity line: name · the child's own age ("22
+ * months" under three, "5 years" from three — lib/age/format), ON ONE LINE
+ * (P5 r1 pass A8, 6 Oct: stacked, the name collapsed to zero width at 375
+ * and the age ran under the Demo chip). The name shrinks with an ellipsis,
+ * the age never wraps and never paints outside the line. On a child
  * switch the line crossfades in 200 ms (keyed on the child id): the one
  * motion this item allows. Exported so the line renders in a static test.
  */
@@ -118,19 +121,22 @@ export function ChildIdentity({ child, t }: { child: ChildProfile; t: (key: stri
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      style={{ display: "flex", flexDirection: "column", minWidth: 0, textAlign: "start", lineHeight: 1.15 }}
+      style={{ display: "flex", flexDirection: "row", alignItems: "baseline", gap: "4px", minWidth: 0, overflow: "hidden", textAlign: "start", lineHeight: 1.15 }}
     >
       <span
         dir="auto"
         data-identity-name
-        style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--arbor-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}
+        style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--arbor-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "2ch", flex: "0 1 auto" }}
       >
         {child.name}
       </span>
       {age && (
-        <span dir="auto" data-identity-age style={{ fontSize: "12px", color: "var(--arbor-muted)", whiteSpace: "nowrap" }}>
-          {age}
-        </span>
+        <>
+          <span aria-hidden="true" style={{ fontSize: "12px", color: "var(--arbor-muted)", flex: "0 0 auto" }}>·</span>
+          <span dir="auto" data-identity-age style={{ fontSize: "12px", color: "var(--arbor-muted)", whiteSpace: "nowrap", flex: "0 0 auto" }}>
+            {age}
+          </span>
+        </>
       )}
     </motion.span>
   );
@@ -208,7 +214,7 @@ export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = fals
       >
         <Avatar name={activeChild.name} photoURL={childPicture(activeChild).url} size={fullWidth ? 32 : 24} />
         {/* B-SHELL-38: the identity line — picture · name · her own age, once per screen. */}
-        <span style={{ flex: fullWidth ? 1 : undefined, minWidth: 0, display: "flex" }}>
+        <span style={{ flex: "1 1 auto", minWidth: "3.5rem", overflow: "hidden", display: "flex" }}>
           <ChildIdentity child={activeChild} t={t} />
         </span>
         {activeChild.demo === true && <DemoChip t={t} />}
