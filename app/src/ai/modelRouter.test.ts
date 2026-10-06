@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { createTestConfig } from "../testConfig.js";
 import { AiProviderError } from "./capabilities/contracts.js";
-import { GeminiDevProvider, VertexGeminiProvider, VertexModelProvider, modelForGeminiRequest, modelForRoute, routeDecisionFor, thinkingConfigForRoute, toAnthropicVertexModelId, type ModelRoute } from "./modelRouter.js";
+import { GeminiDevProvider, VertexGeminiProvider, VertexModelProvider, modelForGeminiRequest, modelForRoute, routeDecisionFor, structuredTextCandidateFor, thinkingConfigForRoute, toAnthropicVertexModelId, type ModelRoute } from "./modelRouter.js";
 
 describe("model route decisions", () => {
   it("routes high-stakes coach calls to Claude on Vertex and other routes to Gemini on Vertex", () => {
@@ -57,7 +57,9 @@ describe("model route decisions", () => {
   // COACH-3: every route decision now executes selectProvider — provider
   // eligibility (region / no-training / retention) is enforced fail-closed.
   it("fails closed with policy_denied when the configured Vertex region violates the EU route policy", () => {
-    const config = createTestConfig({ vertexLocation: "us-central1" });
+    // B-PROV-03: a Claude route's region comes from VERTEX_CLAUDE_LOCATION,
+    // a Gemini route's from VERTEX_LOCATION — both set non-EU here.
+    const config = createTestConfig({ vertexLocation: "us-central1", vertexClaudeLocation: "us-east5" });
     for (const route of ["coach_high_stakes", "analysis_structured"] as ModelRoute[]) {
       expect(() => routeDecisionFor(config, route)).toThrow(AiProviderError);
       try {
@@ -67,6 +69,21 @@ describe("model route decisions", () => {
       }
       expect(() => modelForRoute(config, route)).toThrow(/No eligible provider/i);
     }
+  });
+
+  // B-PROV-03: the Claude candidate declares the region its calls go to.
+  it("a Claude route's candidate region is the Claude location (`eu` by default) and passes the prod policy", () => {
+    const prod = createTestConfig({ arborEnv: "prod" });
+    expect(structuredTextCandidateFor(prod, "coach_high_stakes").ref).toMatchObject({ provider: "vertex_claude", region: "eu" });
+    expect(routeDecisionFor(prod, "coach_high_stakes")).toMatchObject({ provider: "vertex_claude", model: "claude-sonnet-5@anthropic" });
+    // Gemini routes keep VERTEX_LOCATION: a non-EU VERTEX_LOCATION denies them, never the Claude route.
+    const split = createTestConfig({ arborEnv: "prod", vertexLocation: "us-central1" });
+    expect(structuredTextCandidateFor(split, "coach_high_stakes").ref.region).toBe("eu");
+    expect(structuredTextCandidateFor(split, "analysis_structured").ref.region).toBe("us");
+    expect(() => routeDecisionFor(split, "analysis_structured")).toThrow(AiProviderError);
+    expect(routeDecisionFor(split, "coach_high_stakes").provider).toBe("vertex_claude");
+    // A regional EU Claude location also passes.
+    expect(structuredTextCandidateFor(createTestConfig({ arborEnv: "prod", vertexClaudeLocation: "europe-west4" }), "coach_high_stakes").ref.region).toBe("eu");
   });
 
   it("keeps the EU Vertex config and the local gemini_dev config eligible (behavior unchanged)", () => {

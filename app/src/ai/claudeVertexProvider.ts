@@ -23,6 +23,36 @@ const toAnthropicVertexModelId = (model: string) => {
   return model.replace(/@anthropic$/, "");
 };
 
+/** B-PROV-03: Claude's Vertex location when VERTEX_CLAUDE_LOCATION is unset. */
+export const DEFAULT_VERTEX_CLAUDE_LOCATION = "eu";
+
+/** Vertex multi-region locations served from `aiplatform.<loc>.rep.googleapis.com`. */
+const CLAUDE_MULTI_REGIONS: ReadonlySet<string> = new Set(["eu"]);
+
+/** B-PROV-03: the Vertex location every Claude call (and its policy region) uses. */
+export const claudeVertexLocation = (config: Pick<ArborConfig, "vertexClaudeLocation">): string =>
+  (config.vertexClaudeLocation || "").trim().toLowerCase() || DEFAULT_VERTEX_CLAUDE_LOCATION;
+
+/**
+ * B-PROV-03: the Anthropic-on-Vertex endpoint URL. Pure (no auth), so it is
+ * unit-tested directly. The multi-region `eu` is served from
+ * `https://aiplatform.eu.rep.googleapis.com` with `locations/eu`; a regional
+ * value (`europe-west4`, `us-east5`) keeps `https://<loc>-aiplatform.googleapis.com`
+ * with `locations/<loc>`.
+ */
+export const claudeVertexUrl = ({ location, projectId, model, method }: {
+  location: string;
+  projectId: string;
+  model: string;
+  method: "rawPredict" | "streamRawPredict";
+}): string => {
+  const loc = location.trim().toLowerCase();
+  const host = CLAUDE_MULTI_REGIONS.has(loc)
+    ? `https://aiplatform.${loc}.rep.googleapis.com`
+    : `https://${loc}-aiplatform.googleapis.com`;
+  return `${host}/v1/projects/${projectId}/locations/${loc}/publishers/anthropic/models/${model}:${method}`;
+};
+
 /**
  * AIR-4: Claude Sonnet 5 / Opus 4.7+ / Fable 5 reject non-default sampling
  * parameters (`temperature`/`top_p`/`top_k` return HTTP 400). Older Claude
@@ -137,7 +167,7 @@ export class ClaudeVertexProvider {
 
     const model = toAnthropicVertexModelId(modelForRoute(this.config, options.route));
     const method = stream ? "streamRawPredict" : "rawPredict";
-    const url = `https://${this.config.vertexLocation}-aiplatform.googleapis.com/v1/projects/${this.config.gcpProjectId}/locations/${this.config.vertexLocation}/publishers/anthropic/models/${model}:${method}`;
+    const url = claudeVertexUrl({ location: claudeVertexLocation(this.config), projectId: this.config.gcpProjectId, model, method });
     const schema = toJsonSchema(options.schema);
     const body = {
       anthropic_version: "vertex-2023-10-16",

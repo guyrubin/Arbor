@@ -15,6 +15,13 @@ export type ArborConfig = {
   gcpProjectId?: string;
   gcpRegion: string;
   vertexLocation: string;
+  /** B-PROV-03: Vertex location for Claude (Anthropic publisher) calls
+   *  (VERTEX_CLAUDE_LOCATION, default "eu"). The multi-region value "eu" uses
+   *  the aiplatform.eu.rep.googleapis.com endpoint with locations/eu; a
+   *  regional value ("europe-west4") the regional host. Gemini routes keep
+   *  `vertexLocation`. Optional so hand-built test configs stay valid
+   *  (absent = "eu", ai/claudeVertexProvider claudeVertexLocation). */
+  vertexClaudeLocation?: string;
   vertexModelChat: string;
   vertexModelStory: string;
   vertexModelAnalysis: string;
@@ -158,6 +165,8 @@ export const loadConfig = (): ArborConfig => {
     gcpProjectId: process.env.GCP_PROJECT_ID,
     gcpRegion: process.env.GCP_REGION || "europe-west4",
     vertexLocation: process.env.VERTEX_LOCATION || process.env.GCP_REGION || "europe-west4",
+    // B-PROV-03: Claude on the Vertex `eu` multi-region endpoint by default.
+    vertexClaudeLocation: (process.env.VERTEX_CLAUDE_LOCATION || "").trim() || "eu",
     // AIR-4: default coach model is the current Claude Sonnet generation on
     // Vertex (resolved to the bare publisher id `claude-sonnet-5`). The PROD
     // env-var flip + quality sign-off remain Guy's gate (GG-3): coach-core-v1 +

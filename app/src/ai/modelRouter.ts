@@ -1,7 +1,7 @@
 import { GoogleGenAI, type Schema } from "@google/genai";
 import type { ArborConfig } from "../config/env.js";
 import { withDefaultModelDeadlines } from "./modelDeadlines.js";
-import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
+import { ClaudeVertexProvider, claudeVertexLocation } from "./claudeVertexProvider.js";
 import { abortableIterate, isAbortError, isTransientModelError, raceWithAbort, withModelRetry, type ModelCallBudget } from "./modelRetry.js";
 import { recordUsage, startCallTimer } from "./usage.js";
 import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "./capabilities/policy.js";
@@ -200,11 +200,16 @@ export const structuredTextCandidateFor = (config: ArborConfig, route: ModelRout
       score: CANDIDATE_SCORE
     };
   }
+  const model = modelIdForRoute(config, route);
+  const claude = /^claude-/i.test(model);
   return {
     ref: {
-      provider: /^claude-/i.test(modelIdForRoute(config, route)) ? "vertex_claude" : "vertex_gemini",
-      model: modelIdForRoute(config, route),
-      region: providerRegion(config.vertexLocation)
+      provider: claude ? "vertex_claude" : "vertex_gemini",
+      model,
+      // B-PROV-03: a Claude route declares the region its calls actually go
+      // to (VERTEX_CLAUDE_LOCATION, default the `eu` multi-region); Gemini
+      // routes keep VERTEX_LOCATION.
+      region: providerRegion(claude ? claudeVertexLocation(config) : config.vertexLocation)
     },
     capabilities: ["structured_text", "text_stream"],
     audiences: ["parent", "professional", "internal"],
