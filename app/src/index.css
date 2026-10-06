@@ -1382,7 +1382,7 @@ html[lang="he"] .arbor-play,
      scrollport), so a sticky frame's height is 100dvh minus this band
      (mirrors components/layout/Topbar.tsx height). */
   --shell-topbar-h:       74px;
-  --arbor-clay-soft:      linear-gradient(135deg, rgba(88,166,255,0.15), rgba(88,166,255,0.05));
+  --arbor-clay-soft:      #ebf2f8; /* P1-NEXTLEVEL r2: flat — the old gradient midpoint (10%) over --arbor-paper */
   --arbor-clay-glow:      0 0 20px rgba(88, 166, 255, 0.3);
   --arbor-sage:           #10b981;
   --arbor-gradient-primary: linear-gradient(135deg, #1a6be8, #1558c0 60%, #124da8); /* resolved literal; CTA stops corrected by CR-01 */
@@ -1390,19 +1390,19 @@ html[lang="he"] .arbor-play,
   --shadow-lav: 0 8px 20px rgba(167,139,250,0.28);
   --arbor-gradient-progress: linear-gradient(90deg, #58a6ff, #1f6feb); /* W4.1 progress freeze unchanged */
   --arbor-peach:       #f97316;
-  --arbor-peach-soft:  linear-gradient(135deg, rgba(249,115,22,0.15), rgba(249,115,22,0.05));
+  --arbor-peach-soft:  #fbede1; /* P1-NEXTLEVEL r2: flat — the old gradient midpoint (10%) over --arbor-paper */
   --arbor-peach-ink:   #92400e;
   --arbor-peach-glow:  0 0 16px rgba(249,115,22,0.2);
   --arbor-lav:         #a78bfa;
-  --arbor-lav-soft:    linear-gradient(135deg, rgba(167,139,250,0.15), rgba(167,139,250,0.05));
+  --arbor-lav-soft:    #f3eff7; /* P1-NEXTLEVEL r2: flat — the old gradient midpoint (10%) over --arbor-paper */
   --arbor-lav-ink:     #6d28d9;
   --arbor-lav-glow:    0 0 16px rgba(167,139,250,0.2);
   --arbor-yellow:      #fbbf24;
-  --arbor-yellow-soft: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(251,191,36,0.05));
+  --arbor-yellow-soft: #fbf4e2; /* P1-NEXTLEVEL r2: flat — the old gradient midpoint (10%) over --arbor-paper */
   --arbor-yellow-ink:  #92400e;
   --arbor-yellow-glow: 0 0 16px rgba(251,191,36,0.2);
   --arbor-pink:        #ec4899;
-  --arbor-pink-soft:   linear-gradient(135deg, rgba(236,72,153,0.15), rgba(236,72,153,0.05));
+  --arbor-pink-soft:   #fae8ee; /* P1-NEXTLEVEL r2: flat — the old gradient midpoint (10%) over --arbor-paper */
   /* W2-CAREPRO c2 r1 — FLAT washes (one gradient per page: the primary CTA).
      Each = color-mix(in srgb, var(--arbor-<tone>) 9%, var(--arbor-paper-elevated)),
      resolved to a literal so the contrast suite can read it. */
@@ -1412,7 +1412,7 @@ html[lang="he"] .arbor-play,
   --arbor-pink-ink:    #9d174d;
   --arbor-pink-glow:   0 0 16px rgba(236,72,153,0.2);
   --arbor-sky:         #0ea5e9;
-  --arbor-sky-soft:    linear-gradient(135deg, rgba(14,165,233,0.15), rgba(14,165,233,0.05));
+  --arbor-sky-soft:    #e3f2f6; /* P1-NEXTLEVEL r2: flat — the old gradient midpoint (10%) over --arbor-paper */
   --arbor-sky-ink:     #075985;
   --arbor-sky-glow:    0 0 16px rgba(14,165,233,0.2);
   --arbor-blue:        #58a6ff;

@@ -274,6 +274,22 @@ describe("hex-creep guard — src/components/**/*.tsx stays on the token allowli
    documented exception sets below.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/** P1-NEXTLEVEL critic r2 (journal + consult design) — six exact flat-scope
+    replacements: the jewel -soft tokens were still gradients in the parent
+    register (green-soft was already flat), so every icon disc counted as a
+    gradient (26 on #/journal; the law is one, the CTA). Each = the old
+    gradient midpoint (10%) composited over the flat --arbor-paper #fbfaf7.
+    :root keeps its glass gradients; tokens.contrast.test pins "no gradient
+    -soft in the parent scope". */
+const P1_NEXTLEVEL_FLAT_SOFTS: Readonly<Record<string, string>> = {
+  "--arbor-clay-soft": "#ebf2f8",
+  "--arbor-peach-soft": "#fbede1",
+  "--arbor-lav-soft": "#f3eff7",
+  "--arbor-yellow-soft": "#fbf4e2",
+  "--arbor-pink-soft": "#fae8ee",
+  "--arbor-sky-soft": "#e3f2f6",
+};
+
 /** The 24 tokens the flat block ALREADY overrode by design (the clinical
     re-skin). Their values intentionally differ from :root — GD-1/GD-2 own any
     change to this set. */
@@ -286,6 +302,7 @@ const FLAT_INTENTIONAL_OVERRIDES = new Set([
   "--arbor-ink", "--arbor-ink-soft", "--arbor-muted", "--arbor-faint",
   "--arbor-clay", "--arbor-clay-deep", "--arbor-clay-dim", "--arbor-clay-border",
   "--arbor-green-soft", "--arbor-green-ink",
+  ...Object.keys(P1_NEXTLEVEL_FLAT_SOFTS),
 ]);
 
 /** CR-01: only the two primary CTA gradients receive authorized AA stops.
@@ -490,7 +507,8 @@ const CR01_APPROVED_FLAT: Readonly<Record<string, string>> = {
   "--arbor-green-cta-start": "#1a6be8",
   "--arbor-muted-alt": "var(--arbor-muted)",
   "--gradient-cta": "linear-gradient(135deg, #1a6be8, #1558c0 60%, #124da8)",
-  ...W2_CAREPRO_FLAT_WASHES
+  ...W2_CAREPRO_FLAT_WASHES,
+  ...P1_NEXTLEVEL_FLAT_SOFTS,
 };
 
 function tokenBaselineDrift(
@@ -601,8 +619,9 @@ describe("W4.1 token-leak freeze — flat block mirrors :root byte-for-byte", ()
     expect(flatDecls.get("--arbor-gradient-progress")).toBe(frozen);
   });
 
-  it("intentional-override allowlist is exactly the pre-freeze 24 and all present", () => {
-    expect(FLAT_INTENTIONAL_OVERRIDES.size).toBe(24);
+  it("intentional-override allowlist is exactly the pre-freeze 24 + the six P1-NEXTLEVEL r2 flat softs, all present", () => {
+    expect(FLAT_INTENTIONAL_OVERRIDES.size).toBe(24 + Object.keys(P1_NEXTLEVEL_FLAT_SOFTS).length);
+    expect(Object.keys(P1_NEXTLEVEL_FLAT_SOFTS)).toHaveLength(6);
     for (const name of FLAT_INTENTIONAL_OVERRIDES) {
       expect(rootDecls.has(name), `${name} gone from :root — update the allowlist`).toBe(true);
       expect(flatDecls.has(name), `${name} gone from the flat block — update the allowlist`).toBe(true);
@@ -678,7 +697,7 @@ const RGBA_BASELINE: Record<string, number> = {
   "components/ui/playkit.tsx": 8,
   "components/ui/ProvenanceBadge.tsx": 1,
   "context/ToastContext.tsx": 3,
-  "index.css": 76,
+  "index.css": 64, // P1-NEXTLEVEL r2: six parent -soft gradients flattened (12 rgba stops gone)
   "lib/shareCard.ts": 2,
 };
 

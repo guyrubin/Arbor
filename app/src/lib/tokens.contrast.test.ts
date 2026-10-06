@@ -506,3 +506,17 @@ describe("CR-01 — StoryTimeline filter-count consumer", () => {
     expect(() => storyFilterCountPairs(unmodelled, scopes)).toThrow();
   });
 });
+
+/* P1-NEXTLEVEL critic r2 (journal + consult design): inside .arbor-parent the
+ * jewel -soft tokens were still linear-gradients (green-soft was already
+ * flat), so every icon disc and the consult quote card counted as a gradient
+ * (26 on #/journal against a law of one: the primary CTA). Parent soft = flat. */
+describe("P1-NEXTLEVEL r2 — parent-scope -soft tokens are flat tints", () => {
+  it("no --arbor-*-soft declared in a .arbor-parent block is a gradient", () => {
+    const parent = rulesOf(css).filter((r) => r.selectors.includes(".arbor-parent"));
+    expect(parent.length).toBeGreaterThan(0);
+    const softs = parent.flatMap((r) => Object.entries(r.declarations).filter(([k]) => /^--arbor-[a-z]+-soft$/.test(k) && k !== "--arbor-ink-soft"));
+    expect(softs.length).toBeGreaterThanOrEqual(7);
+    for (const [k, v] of softs) expect(v, k).not.toMatch(/gradient/);
+  });
+});
