@@ -363,7 +363,7 @@ describe("W2-CAREPRO c2 r1 · the demo memory seed renders a group at volume", (
  * change the family → this fails until the version is bumped and the pin
  * re-recorded (then `npm run seed:demo -- --apply` re-seeds the sandbox). */
 describe("W2-CAREPRO c2 r2 · the demo content is pinned to DEMO_FAMILY_VERSION", () => {
-  const PINNED = { version: "2026-10-06.4", sha256: "47ad8d10c3c8902d03546d64d0a6ac51ef9ff6590e03e4a02879fe856f255093" };
+  const PINNED = { version: "2026-10-06.5", sha256: "60eb3a71128fd93fe1dcfc8909036160e0a3a1d430972b64bbbaf6b9930bbfc3" };
   const contentHash = async () => {
     const { createHash } = await import("node:crypto");
     const body = JSON.stringify([buildDemoFamily({ now: NOW, lang: "en" }), buildDemoFamily({ now: NOW, lang: "he" })]);
