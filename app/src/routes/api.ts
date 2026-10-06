@@ -14,7 +14,7 @@ import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js
 import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
 import { createDigestJobSource, createOidcJobVerifier, runWeeklyDigestJob, type DigestJobSource, type JobCallerVerifier } from "../server/digestJob.js";
 import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, practiceSayLine, programPromptLine, renderApprovedFactLines, todayPracticeLine, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
-import { WHY_KEYS, firstSentence, sanitizeJournalRequest, sayRelatesTo, whyReasonFor } from "../ai/journalContext.js";
+import { WHY_KEYS, firstSentence, gradesTheChild, sanitizeJournalRequest, sayRelatesTo, whyReasonFor } from "../ai/journalContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, renderSeededConditionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
@@ -2209,6 +2209,15 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
           category: outputVerdict.category,
           reason: outputVerdict.reason,
         });
+        res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later." });
+        return;
+      }
+      // B-LOOP-13 round 3: a GRADED difficulty about the child ("slight
+      // difficulty", "קושי קל", "להצביע על קושי") in any model field fails
+      // closed the same way — Today keeps the pure chooser's card (the
+      // practice's own say-line, no AI text). Nothing is cached.
+      if (gradesTheChild([focus, tryToday, sayThisRaw].filter(Boolean).join(" "))) {
+        logger.warn("Todays Focus output blocked: graded difficulty", { requestId: requestIdOf(req) });
         res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later." });
         return;
       }

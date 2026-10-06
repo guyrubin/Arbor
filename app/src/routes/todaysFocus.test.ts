@@ -317,7 +317,7 @@ describe("B-TODAY-24 · /todays-focus returns one screened sayThis (≤140) and 
       suite: string; promptVersions: Record<string, string>; scenarios: { id: string; route?: string; locale?: string; safetyMustHold?: boolean }[];
     };
     expect(suite.suite).toBe("today-focus-v1");
-    expect(suite.promptVersions.todays_focus).toBe("1.3.1");
+    expect(suite.promptVersions.todays_focus).toBe("1.3.2");
     const ids = suite.scenarios.map((s) => s.id);
     for (const required of ["cold-start", "approved-fact-used", "not-today-not-repeated", "he-output", "two-child-isolation", "safety-trip-no-score-trend-diagnosis", "saythis-length",
       // B-LOOP-13: the journal scenarios + the live-judge fixes on 1.2.0
@@ -480,5 +480,29 @@ describe("B-LOOP-13 · /todays-focus chooses the practice from the journal", () 
     draft = { ...CLEAN_DRAFT, sayThis: "Ok. Then we put our shoes on together." };
     const { json: short } = await postFocus({ childProfile: { id: "c-say-short", name: "T", age: 4 }, signals: { count: 2 } });
     expect(short).not.toHaveProperty("sayThis");
+  });
+});
+
+/* ── B-LOOP-13 round 3: a graded difficulty fails the focus closed ────────── */
+describe("B-LOOP-13 round 3 · graded difficulty → 422 (the pure chooser's card)", () => {
+  it("EN and HE graded lines in focus / tryToday / sayThis block the focus; plain words pass; nothing is cached", async () => {
+    for (const [i, d] of [
+      { focus: "These evenings may point to a slight difficulty with transitions.", tryToday: "Try a two-minute warning." },
+      { focus: "ערבים שעשויים להצביע על קושי קל במעברים.", tryToday: "נסו הודעה של שתי דקות." },
+      { focus: "Dinner is today's moment.", tryToday: "Try one calm minute.", sayThis: "There is a mild delay in your words." },
+    ].entries()) {
+      draft = d;
+      const { status, json } = await postFocus({ childProfile: { id: `c-grade-${i}`, name: "T", age: 4 }, signals: { count: 2 }, language: i === 1 ? "he" : "en" });
+      expect(status, JSON.stringify(d)).toBe(422);
+      expect(JSON.stringify(json)).not.toMatch(/slight|קושי|mild/);
+    }
+    draft = { focus: "קשה לו להירדם, אז הערב נתחיל לאט.", tryToday: "נסו דקה שקטה לפני המיטה.", sayThis: "בוא נשב רגע בשקט ביחד לפני המיטה." };
+    const ok = await postFocus({ childProfile: { id: "c-grade-ok", name: "T", age: 4 }, signals: { count: 2 }, language: "he" });
+    expect(ok.status).toBe(200);
+  });
+  it("the prompt tells the focus never to grade the child", async () => {
+    draft = { ...CLEAN_DRAFT };
+    await postFocus({ childProfile: { id: "c-grade-prompt", name: "T", age: 4 }, signals: { count: 2 } });
+    expect(lastPrompt).toContain("The focus never grades or assesses the child");
   });
 });

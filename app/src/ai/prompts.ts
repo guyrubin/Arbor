@@ -240,7 +240,16 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // answer ⇒ the 1.8.0 practice line; nothing ⇒ the 1.7.0 bytes. Re-pin owed
   // (live, NOT run by the builder): companion-continuity-v1, voice-loop-v1.
   // B-PROV-10 Part B takes 1.9.0.
-  voice_reply: { version: "1.8.1", sha256: "6f15785a8d18abb077cb33137e20a1d60fb8824af2ec038e1b13c56cc34329d4" },
+  // 1.8.2 (B-LOOP-13 round 3, continuity re-run on 1.8.1): posted dose rows
+  // with long child ids were dropped by the 80-char id cap (fixed in
+  // ai/journalContext sanitizeDoseRow); each night answer now reads as a
+  // sentence ("the parent tried X; it went Y; in their words …") with "answer
+  // from this journal … build on it"; with no turns and no memory the spoken
+  // context's no-prior-conversation rule gives way to a journal note
+  // (renderSpokenContext journalAware: voice_reply only; live_session keeps
+  // 1.5.0). Re-pin owed (live, NOT run by the builder): companion-continuity-v1,
+  // voice-loop-v1. B-PROV-10 Part B takes 1.9.0.
+  voice_reply: { version: "1.8.2", sha256: "11a1d1a097e9f6d72b1047b95ab3c8152aece61ff091f0712f69cd72b1a09cc8" },
   live_session: { version: "1.5.0", sha256: "970ef0d3c685a0aead19ab8244d311b0af3fc0ab87ff071b3b08d9a6c9ca0829" },
   // 1.2.0 (B-AI-15, 2026-10-04): one capture = one log (first moment, never
   // merged, never an array), notes copy the parent's own words, no adjective
@@ -296,7 +305,13 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // practice. sayThis is REQUIRED in the schema (route falls back to the
   // practice's own say-line). Re-pin owed (live, NOT run by the builder):
   // today-focus-v1.
-  todays_focus: { version: "1.3.1", sha256: "007c235f557c21f47e49190b6859120a4ee2e36f2dd6d306220caaa7cb55798f" },
+  // 1.3.2 (B-LOOP-13 round 3, he-output UNSAFE on 1.3.1: "…להצביע על קושי
+  // קל"): the focus bullet says it never grades or assesses the child (no
+  // slight / mild / serious difficulty, nothing "points to") — it names the
+  // moment and the one thing to try; the route fails a graded difficulty
+  // closed (ai/journalContext gradesTheChild, EN + HE → 422 = the pure
+  // chooser's card). Re-pin owed (live): today-focus-v1.
+  todays_focus: { version: "1.3.2", sha256: "738b1f4743f89027cc7889d491b4bd4fb049936eb2ab7c2d56ed43dabd69f194" },
   // 1.0.0 (B-AI-02): first pins. weekly_digest = server/digest.ts
   // buildDigestPrompt + the OPTIONAL recent-steps line (the parent's accepted
   // steps + outcomes; absent → the B-TODAY-03 bytes). generate_plan moved out
@@ -575,7 +590,7 @@ export const buildVoiceReplyPrompt = ({
 }: VoiceReplyPromptArgs): string => `${NON_DIAGNOSTIC_CONTRACT}
 ${persona} Apply this lens: ${scholar.name} — ${scholar.method}
 Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
-${renderSpokenContext(companionContext)}${renderVoiceJournalBlock(companionContext?.todayPractice, companionContext?.nightAnswers)}The parent just said: ${JSON.stringify(message)}
+${renderSpokenContext(companionContext, { journalAware: true })}${renderVoiceJournalBlock(companionContext?.todayPractice, companionContext?.nightAnswers)}The parent just said: ${JSON.stringify(message)}
 Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, or ask one short clarifying question when the needed context is missing. Never invent an earlier discussion. Use plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
 
 export type ExtractLogPromptArgs = {
@@ -684,7 +699,7 @@ Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
 ${renderFocusFactsBlock(approvedFacts)}${renderActiveProgramLine(activeProgram)}${renderFocusJournalBlock(journal)}${weekLine}${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
 Use only the time frames and the history this input states: never invent a period ("this week", "lately", "recently", "again", "these days") or anything earlier that the input does not carry${journal ? " (the journal's notes per shelf cover the last 30 days)" : ""}.
 Write today's single most useful parenting focus:
-- "focus": 1-2 short, warm sentences naming what to pay attention to today — grounded only in what this input states, never an assessment.
+- "focus": 1-2 short, warm sentences naming what to pay attention to today — grounded only in what this input states, never an assessment. The focus never grades or assesses the child: no "slight", "mild" or "serious" difficulty, problem or delay, nothing "points to" or "indicates" anything — it names the moment and the one thing to try.
 - "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
 - "sayThis": exactly ONE sentence (under 140 characters; never two sentences) the parent can say to the child while trying that step — warm, plain words a child understands; never a label, a verdict or praise of an outcome.
 Never include a score, percentage, trend, severity, readiness claim, diagnosis, or outcome claim. No headings, no markdown, no emojis.${languageDirective}
@@ -907,6 +922,15 @@ export const promptFingerprint = (key: PromptKey): string => {
         persona: CANONICAL.persona,
         scholar: CANONICAL.scholar,
         childProfile: null,
+        message: CANONICAL.message,
+        languageDirective: CANONICAL.languageDirective,
+      }),
+      // 1.8.2: the journal-only shape (no turns, no memory, night answers) pins the override line.
+      buildVoiceReplyPrompt({
+        persona: CANONICAL.persona,
+        companionContext: { ...CANONICAL.spokenContext, approvedMemory: "", approvedMemoryFactsUsed: 0, recentTurns: [] },
+        scholar: CANONICAL.scholar,
+        childProfile: CANONICAL.childProfile,
         message: CANONICAL.message,
         languageDirective: CANONICAL.languageDirective,
       })]));

@@ -381,7 +381,7 @@ Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
 ${weekLine}${lastActionRecommendation && lastActionOutcome ? ` The parent last tried "${lastActionRecommendation}" and reported the attempt as "${lastActionOutcome}". Use that parent-reported outcome to avoid repeating an unhelpful step and adapt effort or framing.` : ""}
 Use only the time frames and the history this input states: never invent a period ("this week", "lately", "recently", "again", "these days") or anything earlier that the input does not carry.
 Write today's single most useful parenting focus:
-- "focus": 1-2 short, warm sentences naming what to pay attention to today — grounded only in what this input states, never an assessment.
+- "focus": 1-2 short, warm sentences naming what to pay attention to today — grounded only in what this input states, never an assessment. The focus never grades or assesses the child: no "slight", "mild" or "serious" difficulty, problem or delay, nothing "points to" or "indicates" anything — it names the moment and the one thing to try.
 - "tryToday": ONE small, concrete thing to try today — a developmental mechanism (serve-and-return, co-regulation, a transition cue), phrased as a doable step.
 - "sayThis": exactly ONE sentence (under 140 characters; never two sentences) the parent can say to the child while trying that step — warm, plain words a child understands; never a label, a verdict or praise of an outcome.
 Never include a score, percentage, trend, severity, readiness claim, diagnosis, or outcome claim. No headings, no markdown, no emojis.${languageDirective}
@@ -613,9 +613,9 @@ describe("B-PROG-01 — the active-program line", () => {
     expect(buildLiveSystemInstruction("en", spoken)).toBe(strip(buildLiveSystemInstruction("en", { ...spoken!, program })));
     // an empty skill or name renders nothing
     expect(buildChatPrompt({ ...chatArgs, activeProgram: { ...program, skill: " " } })).toBe(buildChatPrompt(chatArgs));
-    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.1");
+    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.2");
     expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.7.0");
-    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.8.1");
+    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.8.2");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.5.0");
   });
 });
@@ -701,10 +701,10 @@ describe("B-LOOP-13 — the journal block and today's practice line", () => {
     expect(warm).toContain("(the journal's notes per shelf cover the last 30 days)");
   });
 
-  it("versions: todays_focus 1.3.1 · coach_chat 1.7.0 · voice_reply 1.8.1 · live_session unchanged 1.5.0", () => {
-    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.1");
+  it("versions: todays_focus 1.3.2 · coach_chat 1.7.0 · voice_reply 1.8.2 · live_session unchanged 1.5.0", () => {
+    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.2");
     expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.7.0");
-    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.8.1");
+    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.8.2");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.5.0");
   });
 });
@@ -717,10 +717,14 @@ describe("B-LOOP-13 round 2 — voice_reply night answers", () => {
   const answers = [{ date: "2026-10-05", practice: "This book or that one?", practiceOutcome: "not_today" as const, whatHappened: "She was too tired." }];
   it("renders the answers after the practice line, says they ARE the earlier record, before the parent's words", () => {
     const v = buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken, todayPractice: practice, nightAnswers: answers } });
-    expect(v).toContain(`- 2026-10-05 · practice 'This book or that one?': not today · "She was too tired."`);
-    expect(v).toMatch(/This journal IS the earlier record for the practice/);
-    expect(v.indexOf("Today's practice:")).toBeLessThan(v.indexOf("THE PARENT'S PRACTICE JOURNAL"));
-    expect(v.indexOf("THE PARENT'S PRACTICE JOURNAL")).toBeLessThan(v.indexOf("The parent just said"));
+    expect(v).toContain(`- 2026-10-05: the parent tried 'This book or that one?'; not today — it did not happen or did not work; in their words: "She was too tired.".`);
+    expect(v).toMatch(/this IS the earlier record/);
+    expect(v).toMatch(/Answer from this journal: .* then build on it/);
+    // round 3: with no turns and no memory, the no-prior-conversation rule gives way to the journal note
+    expect(v).toContain("BUT THE PARENT'S PRACTICE JOURNAL BELOW IS THE EARLIER RECORD");
+    expect(v).not.toContain("say you do not have the earlier step here");
+    expect(v.indexOf("Today's practice:")).toBeLessThan(v.indexOf("THE PARENT'S PRACTICE JOURNAL —"));
+    expect(v.indexOf("THE PARENT'S PRACTICE JOURNAL —")).toBeLessThan(v.indexOf("The parent just said"));
   });
   it("parity: no answers ⇒ the practice line alone; live_session never renders either", async () => {
     const { buildLiveSystemInstruction } = await import("../lib/livePersona.js");

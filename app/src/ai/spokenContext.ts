@@ -22,16 +22,25 @@ export type SpokenContext = {
 };
 
 /** JSON keeps parent-written newlines/role labels inside values, not prompt roles. */
-export const renderSpokenContext = (context?: SpokenContext): string => {
+/** `journalAware` (voice_reply 1.8.2 only): a practice journal replaces the no-history rule. Live never passes it. */
+export const renderSpokenContext = (context?: SpokenContext, opts: { journalAware?: boolean } = {}): string => {
   const missingHistoryRule = "NO PRIOR CONVERSATION OR APPROVED MEMORY IS AVAILABLE FOR THIS TURN. If the parent asks what we discussed or were going to try, say you do not have the earlier step here and ask one short clarifying question. Do not invent a previous discussion or offer a replacement plan until the parent clarifies.";
   if (!context || (!context.profile && !context.approvedMemory && context.recentTurns.length === 0)) {
     return "\nNO PRIOR FAMILY CONTEXT IS AVAILABLE FOR THIS TURN. Use the current request only. Reply naturally without a personal name or bracketed name placeholder.\n" + missingHistoryRule + "\n" + renderActiveProgramLine(context?.program);
   }
   const programLine = renderActiveProgramLine(context.program).trimEnd();
   const hasHistory = context.recentTurns.length > 0 || context.approvedMemory.trim().length > 0;
+  // B-LOOP-13 round 3 (voice_reply 1.8.2): with no turns and no memory but a
+  // practice journal, the "no prior conversation" rule would tell the model
+  // to say it lacks the earlier step — it did, three times, on 1.8.1. The
+  // journal note replaces it — for voice_reply only (journalAware); the Live
+  // instruction never passes it, so live_session keeps its 1.5.0 bytes.
+  const journalOnly = opts.journalAware === true && !hasHistory && (context.nightAnswers?.length ?? 0) > 0;
   return [
     "",
-    hasHistory
+    journalOnly
+      ? "NO PRIOR CONVERSATION OR APPROVED MEMORY IS AVAILABLE FOR THIS TURN, BUT THE PARENT'S PRACTICE JOURNAL BELOW IS THE EARLIER RECORD. When the parent asks what to try or refers to last night, answer from that journal; never say you do not have the earlier step."
+      : hasHistory
       ? "CONVERSATION CONTINUITY IS AVAILABLE BELOW. Read recentTurns and approvedMemory before answering. When the parent asks what we discussed or were going to try, recall the relevant specific step from these records directly, then add one small practical cue that makes that same step easy to carry out today (for example where to do it, what to prepare, or a short phrase to say). Do not merely repeat the parent's original problem, replace the agreed plan or ask an unnecessary follow-up. A parent's agreement such as yes or we will try confirms the preceding suggestion as their plan; it does not mean they have already done it. If the relevant plan is present, do not claim you lack the information or ask the parent to repeat it. Only ask a clarifying question if neither supplied record actually identifies the requested step."
       : missingHistoryRule,
     "COMPANION CONTEXT — for this child and this conversation only.",

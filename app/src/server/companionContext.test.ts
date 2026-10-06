@@ -540,8 +540,8 @@ describe("B-LOOP-13 round 2 — first tier + night answers on /voice", () => {
     const { buildVoiceReplyPrompt } = await import("../ai/prompts.js");
     const prompt = buildVoiceReplyPrompt({ persona: "P", scholar: { name: "s", method: "m" }, childProfile: spoken.profile, companionContext: spoken, message: "What should we try tomorrow evening?", languageDirective: "" });
     expect(prompt).toContain("Today's practice: 'What comes after pyjamas? Show me on our page.' (pending).");
-    expect(prompt).toContain('not today · "She was too tired."');
-    expect(prompt).toMatch(/This journal IS the earlier record for the practice/);
+    expect(prompt).toContain('not today — it did not happen or did not work; in their words: "She was too tired."');
+    expect(prompt).toMatch(/this IS the earlier record/);
     // night answers alone (no pin) still render
     const answersOnly = await assembleSpokenContext({ memoryStore: storeOf([]), childProfile: child, canReadMemory: true, journal: { doseRows: journal.doseRows } });
     expect(answersOnly.nightAnswers).toHaveLength(1);
@@ -555,5 +555,31 @@ describe("B-LOOP-13 round 2 — first tier + night answers on /voice", () => {
       expect("nightAnswers" in s2 || "todayPractice" in s2, JSON.stringify(over)).toBe(false);
     }
     expect("journal" in (await ctx(journal, { audience: "child" }))).toBe(false);
+  });
+});
+
+/* ── B-LOOP-13 round 3: the EXACT continuity scenario bodies reach the voice prompt ── */
+describe("B-LOOP-13 round 3 — companion-continuity-v1 night-answer scenarios render the journal", () => {
+  it("every scenario that posts a journal gets today's practice + its night answers + the journal note in the voice_reply prompt", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const suitePath = path.resolve(__dirname, "..", "..", "..", "evals", "companion-continuity-v1.eval.json");
+    const suite = JSON.parse(fs.readFileSync(suitePath, "utf8")) as { suite: string; scenarios: { id: string; input: Record<string, unknown> }[] };
+    const { buildVoiceReplyPrompt } = await import("../ai/prompts.js");
+    const withJournal = suite.scenarios.filter((s) => s.input.journal);
+    expect(withJournal.map((s) => s.id)).toEqual(["voice-night-answer-not-today-shapes-tomorrow", "voice-night-answer-helped-builds", "voice-night-answer-he"]);
+    for (const sc of withJournal) {
+      // the runner's synthetic profile (scripts/eval-judge.mts syntheticProfileFor)
+      const profile = { id: `eval-${suite.suite}-${sc.id}`, name: "Noa", age: 4, ageBand: "3-5 years" };
+      const spoken = await assembleSpokenContext({ memoryStore: storeOf([]), childProfile: profile, canReadMemory: true, journal: sc.input.journal });
+      expect(spoken.todayPractice, sc.id).toBeTruthy();
+      expect(spoken.nightAnswers?.length, sc.id).toBe(1);
+      const prompt = buildVoiceReplyPrompt({ persona: "P", scholar: { name: "s", method: "m" }, childProfile: spoken.profile, companionContext: spoken, message: String(sc.input.parentMessage), languageDirective: "" });
+      expect(prompt, sc.id).toContain("THE PARENT'S PRACTICE JOURNAL — this IS the earlier record");
+      expect(prompt, sc.id).toContain("BUT THE PARENT'S PRACTICE JOURNAL BELOW IS THE EARLIER RECORD");
+      expect(prompt, sc.id).not.toContain("say you do not have the earlier step here");
+      const row = (sc.input.journal as { doseRows: { whatHappened: string }[] }).doseRows[0];
+      expect(prompt, sc.id).toContain(JSON.stringify(row.whatHappened));
+    }
   });
 });
