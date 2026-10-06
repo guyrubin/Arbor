@@ -136,7 +136,8 @@ describe("W2 Today working density", () => {
     const capture = stripComments(read("components/overview/QuickCaptureBar.tsx"));
     const compactHero = stripComments(read("components/overview/TodayRecommendation.tsx"));
     // B-TODAY-10: four tiles share one visible-label class (LABEL), never hidden.
-    expect(capture).toContain('<span className={LABEL}>{t("today.capture.text")}</span>');
+    expect(capture).toContain('<span className={labelClass}>{t("today.capture.text")}</span>');
+    expect(capture).toContain('const labelClass = stack ? `${LABEL} ${STACK_LABEL}` : LABEL;');
     expect(capture).toContain('shortLabel: "elev.wave2Daily.capture.voice"');
     expect(capture).toContain('shortLabel: "elev.wave2Daily.capture.photo"');
     expect(capture).toContain('aria-label={t(label)}');

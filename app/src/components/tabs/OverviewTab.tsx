@@ -718,9 +718,18 @@ export default function OverviewTab() {
              z-30 keeps it under MobileNav (z-40) and QuickLogModal (z-50).
              The max-md:pb-* on the column below reserves its floating slot.
              Capture-only surface: no metrics, no firewall exposure. ── */}
-      <div className="max-md:fixed max-md:inset-x-4 max-md:z-30 max-md:bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+8px)]">
+      {/* NEXTLEVEL critic r1 (overview · design · P1): at lg the page is two
+             tracks, not a stretched phone column — the record card and the day
+             anchor in the main track, capture as a vertical list in the
+             inline-end track (placed with col/row-start, so the record card is
+             read first while capture stays first in the DOM for keyboards). The
+             What-changed card follows the anchor in the main track; edges align
+             with the rows below (one column width). */}
+      <div data-today-tracks="" className="flex flex-col gap-4 md:gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-5">
+      <div className="max-md:fixed max-md:inset-x-4 max-md:z-30 max-md:bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+8px)] lg:col-start-2 lg:row-start-1">
         <QuickCaptureBar
           key="today-primary-capture"
+          stack
           childName={firstName}
           onText={() => startCapture("text")}
           onMode={(mode) => startCapture(mode)}
@@ -739,9 +748,9 @@ export default function OverviewTab() {
              the number of stamps in this file. Deliberately UNSTAMPED: the
              header and the QuickCapture bar (chrome, per todayModules.ts) and
              playSection, which renders only INSIDE the anchor as the step. */}
-      {/* B-TODAY-21: at lg the ONE What-changed card takes the right column the
-             dev-map count card used to hold; below lg it follows the anchor. */}
-      <div className={showChanged ? "grid grid-cols-1 items-start gap-4 md:gap-5 lg:grid-cols-[1.55fr_1fr]" : "grid grid-cols-1 gap-4 md:gap-5 lg:max-w-[820px]"}>
+      {/* B-TODAY-21: the ONE What-changed card follows the anchor in the main
+             track (NEXTLEVEL r1: the inline-end track is capture's at lg). */}
+      <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:gap-5 lg:col-start-1 lg:row-start-1">
       <div data-module="today-anchor" className="min-w-0">
         {/* ── Day anchor (left slot) — W1 1.2 guaranteed action. ONE slot, one
                primary: an accepted action owns it (TodayActionLoop); else the
@@ -902,6 +911,7 @@ export default function OverviewTab() {
           />
         </div>
       )}
+      </div>
       </div>
 
       {/* ── ENG-09 / Wave E: the lifecycle moment. BELOW the anchor row (P1-A —

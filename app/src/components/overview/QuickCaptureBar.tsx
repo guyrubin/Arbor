@@ -39,14 +39,24 @@ const TILE_STYLE = (ink: string): React.CSSProperties =>
 const ICON = "flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-full";
 /** A door label is never truncated (critic r1): it wraps to two centred lines. */
 const LABEL = "max-w-full line-clamp-2 break-words text-center leading-tight text-[11.5px] @2xl:text-[12px] font-bold";
+/** NEXTLEVEL critic r1 (overview · design · P1): on Today at lg the bar is the
+ *  inline-end track of a two-track page — a vertical list (icon beside label,
+ *  hairline between rows), read after the record card. Below lg it is the bar. */
+const STACK_GRID = "lg:grid-cols-1";
+const STACK_TILE = "lg:flex-row lg:justify-start lg:gap-3 lg:px-4 lg:py-2";
+const STACK_BORDER = "lg:border-s-0 lg:border-t";
+const STACK_LABEL = "lg:text-start lg:text-[13px]";
 
 export default function QuickCaptureBar({
   childName,
   onText,
   onMode,
   onHardMoment,
+  stack = false,
 }: {
   childName: string;
+  /** Today at lg: a vertical list in the page's inline-end track. */
+  stack?: boolean;
   /** Open the capture sheet in text mode (inline on Today). */
   onText: () => void;
   /** Open the capture sheet in voice or photo mode (inline on Today). */
@@ -58,6 +68,9 @@ export default function QuickCaptureBar({
   const reduce = useReducedMotion();
   const { t } = useLanguage();
   const tiles = onHardMoment ? 4 : 3;
+  const tile = stack ? `${TILE} ${STACK_TILE}` : TILE;
+  const labelClass = stack ? `${LABEL} ${STACK_LABEL}` : LABEL;
+  const edge = stack ? `border-s ${STACK_BORDER}` : "border-s";
 
   return (
     <div className="@container min-w-0">
@@ -66,7 +79,8 @@ export default function QuickCaptureBar({
       animate={{ opacity: 1, y: 0 }}
       transition={reduce ? { duration: 0 } : { duration: 0.16 }}
       data-capture-tiles={tiles}
-      className={`grid ${tiles === 4 ? "grid-cols-4 @3xl:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]" : "grid-cols-3 @3xl:grid-cols-[1.1fr_1fr_1fr_1fr]"} items-stretch overflow-hidden rounded-[18px]`}
+      data-capture-stack={stack ? "lg" : undefined}
+      className={`grid ${tiles === 4 ? "grid-cols-4 @3xl:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]" : "grid-cols-3 @3xl:grid-cols-[1.1fr_1fr_1fr_1fr]"} ${stack ? STACK_GRID : ""} items-stretch overflow-hidden rounded-[18px]`}
       style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
     >
       <div className="hidden @3xl:flex flex-col justify-center px-5 py-3">
@@ -77,11 +91,11 @@ export default function QuickCaptureBar({
         onClick={onText}
         aria-label={t("today.capture.aria", { name: childName })}
         data-capture-tile="text"
-        className={`${TILE} @3xl:border-s active:scale-[0.99]`}
+        className={`${tile} @3xl:border-s active:scale-[0.99]`}
         style={TILE_STYLE("var(--arbor-ink)")}
       >
         <span className={ICON} style={{ background: "var(--arbor-tint)", color: "var(--arbor-clay)" }}><Icon name="edit_note" size={19} /></span>
-        <span className={LABEL}>{t("today.capture.text")}</span>
+        <span className={labelClass}>{t("today.capture.text")}</span>
       </button>
       {AUX_MODES.map(({ ms, key, label, shortLabel }) => (
         <button
@@ -91,11 +105,11 @@ export default function QuickCaptureBar({
           aria-label={t(label)}
           title={t(label)}
           data-capture-tile={key}
-          className={`${TILE} border-s active:scale-[0.97]`}
+          className={`${tile} ${edge} active:scale-[0.97]`}
           style={TILE_STYLE(GREEN)}
         >
           <span className={ICON} style={{ background: key === "voice" ? "var(--arbor-lav-soft)" : "var(--arbor-green-soft)", color: key === "voice" ? "var(--arbor-lav-ink)" : GREEN }}><Icon name={ms} size={20} fill={1} /></span>
-          <span className={LABEL} style={{ color: "var(--arbor-ink)" }}>{t(shortLabel)}</span>
+          <span className={labelClass} style={{ color: "var(--arbor-ink)" }}>{t(shortLabel)}</span>
         </button>
       ))}
       {/* B-TODAY-10: the 4th tile. Neutral ink on paper — never red, coral or
@@ -109,11 +123,11 @@ export default function QuickCaptureBar({
           aria-label={t("elev.capture.hard.aria")}
           title={t("elev.capture.hard.aria")}
           data-capture-tile="hard-moment"
-          className={`${TILE} border-s active:scale-[0.97]`}
+          className={`${tile} ${edge} active:scale-[0.97]`}
           style={TILE_STYLE("var(--arbor-ink)")}
         >
           <span className={ICON} style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }}><Icon name="volunteer_activism" size={19} /></span>
-          <span className={LABEL} style={{ color: "var(--arbor-ink)" }}>{t("elev.capture.hard.tile")}</span>
+          <span className={labelClass} style={{ color: "var(--arbor-ink)" }}>{t("elev.capture.hard.tile")}</span>
         </button>
       )}
     </motion.div>

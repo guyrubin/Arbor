@@ -41,7 +41,10 @@ describe("B-TODAY-10 · four tiles, each ≥44 px", () => {
     // Critic r1: the lead cell reads the BAR's width (@container), never the viewport.
     expect(BAR).toContain('tiles === 4 ? "grid-cols-4 @3xl:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]"');
     expect(BAR).toContain('<div className="@container min-w-0">');
-    expect(BAR).not.toMatch(/\blg:grid-cols|\blg:flex\b/);
+    // NEXTLEVEL r1: viewport lg: classes live ONLY in the STACK_* constants,
+    // which Today alone opts into (stack); the shared bar never reads lg:.
+    const base = BAR.split("\n").filter((l) => !/^const STACK_/.test(l)).join("\n");
+    expect(base).not.toMatch(/\blg:grid-cols|\blg:flex\b/);
   });
 
   it("every tile is ≥48 px tall and wraps icon over label in a narrow bar (≈89 px wide at 390)", () => {
@@ -100,6 +103,28 @@ describe("B-TODAY-10 · gating and opener", () => {
     const logs = [0, 1, 2].map((i) => ({ behaviorType: "Transition Refusal", timestamp: new Date(now.getTime() - i * 86_400_000).toISOString() }));
     const matched = matchToRecentBehaviors(recentBehaviorTypes(logs, now), undefined, now, 48, "en");
     expect(matched.length).toBeGreaterThan(0);
+  });
+});
+
+describe("NEXTLEVEL critic r1 · Today at 1280 is two tracks, not a stretched phone column", () => {
+  it("capture is the inline-end track (a vertical list) and the anchor the main track; capture stays first in the DOM", () => {
+    expect(TODAY).toMatch(/data-today-tracks="" className="[^"]*lg:grid lg:grid-cols-\[minmax\(0,1fr\)_18rem\]/);
+    // The capture wrapper sits in column 2, the anchor grid in column 1, same row.
+    expect(TODAY).toMatch(/max-md:fixed[^"]*lg:col-start-2 lg:row-start-1/);
+    expect(TODAY).toMatch(/grid min-w-0 grid-cols-1 items-start gap-4 md:gap-5 lg:col-start-1 lg:row-start-1/);
+    expect(TODAY).toMatch(/<QuickCaptureBar[\s\S]{0,80}\bstack\b/);
+    // The old stretched layouts are gone (820 px cap, 1.55fr split).
+    expect(TODAY).not.toContain("lg:max-w-[820px]");
+    expect(TODAY).not.toContain("lg:grid-cols-[1.55fr_1fr]");
+  });
+
+  it("the stacked bar is one column at lg with icon beside a start-aligned label; #/behaviors keeps the bar", () => {
+    expect(BAR).toContain('const STACK_GRID = "lg:grid-cols-1"');
+    expect(BAR).toMatch(/STACK_TILE = "lg:flex-row lg:justify-start/);
+    expect(BAR).toMatch(/STACK_LABEL = "lg:text-start/);
+    expect(BAR).toContain("stack = false");
+    const behaviors = strip(read("components/tabs/BehaviorsTab.tsx"));
+    expect(behaviors).not.toMatch(/<QuickCaptureBar[^>]*\bstack\b/);
   });
 });
 
