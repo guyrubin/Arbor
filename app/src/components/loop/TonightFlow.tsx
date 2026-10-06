@@ -37,8 +37,8 @@ export interface TonightFlowProps {
   onNotice: (status: ObserveStatus) => void;
   onNoticeWhen?: (when: ObservedWhen) => void;
   onNoticeUndo?: () => void;
-  /** The story door (the last quiet line). */
-  onStory: () => void;
+  /** The story door (the last quiet line); omitted when no story fits the child (B-PLAY-24). */
+  onStory?: () => void;
   /** Tests render each step statically. */
   initialStep?: TonightStep;
   /** Law 7: in the evening the first answer is Today's primary move. */
@@ -292,6 +292,7 @@ export default function TonightFlow(props: TonightFlowProps) {
       <div className="rounded-[18px] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
         {body}
       </div>
+      {props.onStory && (
       <button
         type="button"
         data-testid="tonight-story"
@@ -302,6 +303,7 @@ export default function TonightFlow(props: TonightFlowProps) {
         <Icon name="auto_stories" size={20} />
         {t("elev.loop.tonight.story")}
       </button>
+      )}
     </section>
   );
 }

@@ -70,11 +70,13 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   // ── TODAY ──────────────────────────────────────────────────────────────────
   {
     route: "overview", hub: "today", depth: 0,
-    job: "One thing to do now — and what changed since you left.",
-    primaryMove: "do-today-action", moduleBudget: 4, demotionTarget: "disclosure",
-    // Budget 4 = todayModules.ts TODAY_MODULE_BUDGET (Rule A, already law;
-    // B-TODAY-17 took play off Today and deleted the "More" drawer, so the one
-    // demotion left is the watch signal FOLDING into the What-changed card).
+    // B-LOOP-07: Today = three blocks (practice · notice · tonight); the door
+    // "More for today" is chrome, never counted (todayModules.ts v3, budget 3).
+    job: "Today's practice for {name}, two things to notice, three questions tonight.",
+    primaryMove: "do-practice", moduleBudget: 3, demotionTarget: "disclosure",
+    // Budget 3 = todayModules.ts TODAY_MODULE_BUDGET (v3, B-LOOP-07); every
+    // demoted object (what changed, the watch signal, the week, play, the
+    // first steps, a lifecycle moment) lives behind the one disclosure.
     // Wave L TJB-05: the "action-outcome" source the plan wanted NOW EXISTS —
     // signalTimeline.ts ingests `actionOutcomes` (the actionLoops ledger) as
     // kind "action", so accepting the day's step writes a real thread row and

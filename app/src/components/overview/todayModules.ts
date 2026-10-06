@@ -1,114 +1,69 @@
 /* ════════════════════════════════════════════════════════════════════════════
-   todayModules — the Rule A module budget for Today (masterplan
-   ARBOR-UI-MASTERPLAN-2026-08-11 §1: Today renders MAX 5 modules and EXACTLY
-   ONE primary action ABOVE THE FOLD).
+   todayModules v3 — B-LOOP-07: Today = THREE BLOCKS (the milestone loop).
 
-   WHY THIS EXISTS (P1-B, 2026-08-12 visual audit)
-   ───────────────────────────────────────────────
-   The first Rule-A implementation did the budget arithmetic through a PROXY:
+     practice — Today's practice (B-LOOP-09), the day's primary move; in the
+                evening only its outcome strip.
+     notice   — Notice today: ≤ 2 watch-for cards (B-LOOP-04), never the
+                practice's shelf.
+     tonight  — Tonight's three questions (B-LOOP-10). Before the evening door
+                opens it is ONE pointer line under `notice` ("Tonight · 3 quick
+                questions"), not a module.
+     door     — "More for today": chrome, never counted (what changed since
+                you left, hard-moment words, the week, Daily Play, an accepted
+                step, a lifecycle moment, first steps).
 
-       foldNoticed = isReturning && noticedWould && hardMomentWould
+   Order: morning practice → notice (+ tonight pointer); evening tonight →
+   practice outcome → notice. `lifecycle`, `changed`, `noticed`, `rail` are no
+   longer modules — they live behind the door, so they can never be siblings.
 
-   `hardMomentWould` resolved via todayHardMomentOffer() →
-   publishedHardMomentCards, which is `hardMomentCards.filter(isPublishableContent)`
-   — and the only authored card is `reviewStatus: "draft"`, so that array is
-   EMPTY by governance (GD-10). The proxy could therefore never be true, the
-   fold never engaged, and Today shipped SIX sibling modules.
-
-   The lesson is the rule this module encodes: **the budget counts the modules
-   that actually render.** It never consults a content-governance gate, a
-   publish state, or any other array a reviewer can empty. A governed array
-   going empty must change what a module SAYS, never how many modules Today is
-   allowed to show. (Guarded by todayConsolidation.test.ts.)
-
+   The budget still counts the modules that ACTUALLY render (P1-B lesson): the
+   inputs are each block's real render condition, never a governance gate.
    Pure functions — no React, no context, no I/O.
    ════════════════════════════════════════════════════════════════════════════ */
 
-/**
- * The Today modules that occupy a top-level slot in the column.
- *
- * NOT listed, deliberately:
- *  - the greeting header and the QuickCapture bar — ambient chrome, not modules
- *    (the capture bar is `fixed` on phones and carries no content),
- *  - the "More" disclosure — the collapsed SECONDARY drawer that RECEIVES
- *    demoted modules. Counting the drawer would make the overflow container
- *    compete with its own overflow,
- *  - the hard-moment offer — it renders INSIDE the anchor row's left column,
- *    so it is never a sibling module (the very confusion that produced P1-B).
- */
-/*
- * B-TODAY-21: `since` + `narrative` → `changed` — the ONE "What changed since
- * you left" card (it took the anchor row's second column, the dev-map card's
- * old seat). `noticed` folds into `changed` exactly as it folded into the
- * since-strip (law 6: the watch signal never vanishes).
- *
- * `lifecycle` (ENG-09, Wave E) sits directly below that anchor row (anchor +
- * changed) in both orders. It is the AT MOST ONE lifecycle moment
- * lib/lifecycle.ts resolves for this open — a first-week keepsake, a birthday,
- * a welcome back after a lapse. It is rare by construction (each occurrence
- * fires once), and with since + narrative merged the six possible modules
- * leave only `noticed` to fold at the real budget.
- */
-export type TodayModuleId = "anchor" | "lifecycle" | "changed" | "noticed" | "rail";
+export type TodayModuleId = "practice" | "notice" | "tonight" | "door";
 
-/** Rule A: at most four visible modules on Today, in every state (B-TODAY-17:
- *  the play module left Today — Daily Play renders only as the day's step). */
-export const TODAY_MODULE_BUDGET = 4;
+/** At most three modules render on Today in every state; the door is chrome. */
+export const TODAY_MODULE_BUDGET = 3;
 
-/**
- * Priority, highest first. The tail loses its slot when the budget is spent.
- *
- * Only modules that DEGRADE GRACEFULLY may sit at the tail — a demoted module
- * must land somewhere, never just vanish:
- *   play    → the collapsed "More" drawer (and it keeps its full home in
- *             Growth › Daily Play),
- *   noticed → FOLDS into a What-changed line ("Arbor noticed something —
- *             look"), which only exists when that card itself renders.
- *
- * Hence the two orders: when the card is absent there is nothing to fold
- * into, so `noticed` climbs above `rail`/`play` and `play` takes the cut
- * instead. A watch signal never silently disappears to make room.
- */
-export function todayModulePriority(opts: { noticedCanFold: boolean }): readonly TodayModuleId[] {
-  return opts.noticedCanFold
-    ? ["anchor", "changed", "lifecycle", "rail", "noticed"]
-    : ["anchor", "changed", "lifecycle", "noticed", "rail"];
+export interface TodayPlanInput {
+  /** The evening door is open (lib/timeOfDay bedtimeDoorOpen) or the parent opened Tonight early. */
+  evening: boolean;
+  /** Block 1 has something to show: a practice, or the thin-shelf Notice card fallback. */
+  practice: boolean;
+  /** Block 2 has at least one watch-for card. */
+  notice: boolean;
+  /** Tonight has a question to ask (a day to read from). */
+  tonight: boolean;
+  /** Evening only: today's practice was answered (its outcome strip has a line). */
+  practiceAnswered?: boolean;
 }
 
-export type TodayModuleWants = Partial<Record<TodayModuleId, boolean>>;
-
-export interface TodayModulePlan {
-  /** Modules that render as top-level siblings — never more than `budget`. */
-  visible: ReadonlySet<TodayModuleId>;
-  /** Modules that wanted a slot and did not get one, in priority order. */
-  demoted: readonly TodayModuleId[];
+export interface TodayPlan {
+  /** The modules that render, in order — never more than the budget, never the door. */
+  order: TodayModuleId[];
+  /** Morning: the one-line pointer to Tonight under `notice`. */
+  tonightPointer: boolean;
+  /** How block 1 renders: the full card, its outcome strip (evening), or not at all. */
+  practiceMode: "card" | "outcome" | null;
 }
 
-/**
- * Resolve which requested modules render.
- *
- * `wants` is keyed by each module's REAL render condition (e.g. `rail` = "the
- * rail component would return markup", from useFirstStepsRail().visible) — not
- * by a stand-in for it, and never by a content-publish gate. The anchor is
- * implicit: it always holds a slot.
- */
-export function resolveTodayModules(
-  wants: TodayModuleWants,
-  opts: { budget?: number; noticedCanFold?: boolean } = {},
-): TodayModulePlan {
-  const budget = opts.budget ?? TODAY_MODULE_BUDGET;
-  const visible = new Set<TodayModuleId>();
-  const demoted: TodayModuleId[] = [];
-
-  for (const id of todayModulePriority({ noticedCanFold: opts.noticedCanFold === true })) {
-    const wanted = id === "anchor" ? true : wants[id] === true;
-    if (!wanted) continue;
-    // The anchor is exempt from the cap — a Today with no primary action is a
-    // worse failure than a Today with one module too many, and the priority
-    // order puts it first anyway, so this is belt-and-braces.
-    if (id === "anchor" || visible.size < budget) visible.add(id);
-    else demoted.push(id);
+export function planToday(input: TodayPlanInput): TodayPlan {
+  const order: TodayModuleId[] = [];
+  let practiceMode: TodayPlan["practiceMode"] = null;
+  if (input.evening && input.tonight) {
+    order.push("tonight");
+    if (input.practice && input.practiceAnswered) {
+      order.push("practice");
+      practiceMode = "outcome";
+    }
+    if (input.notice) order.push("notice");
+    return { order: order.slice(0, TODAY_MODULE_BUDGET), tonightPointer: false, practiceMode };
   }
-
-  return { visible, demoted };
+  if (input.practice) {
+    order.push("practice");
+    practiceMode = "card";
+  }
+  if (input.notice) order.push("notice");
+  return { order: order.slice(0, TODAY_MODULE_BUDGET), tonightPointer: input.tonight, practiceMode };
 }

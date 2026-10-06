@@ -1266,14 +1266,22 @@ function useArborState() {
    */
   const addMoment = (
     text: string,
-    opts: { photoAttachment?: string; promptKey?: string } = {},
+    opts: { photoAttachment?: string; promptKey?: string; shelf?: ShelfId; milestoneId?: string } = {},
   ): BehaviorLog | null => {
     // B-TODAY-19: the one capture sheet keeps a photo in place (in-doc
     // thumbnail, as handleAddLog does) and the answered prompt's key — one
     // pure builder (content/behaviorTaxonomy buildMomentLog).
-    const built = buildMomentLog(text, newLogContext, opts);
+    const { shelf, milestoneId, ...buildOpts } = opts;
+    const built = buildMomentLog(text, newLogContext, buildOpts);
     if (!built) return null;
-    const logItem: BehaviorLog = { ...built, context: built.context as BehaviorContext };
+    // B-LOOP-10: Tonight's "What happened?" line is filed on the practice's
+    // shelf (the parent answered about that shelf), with its milestone.
+    const logItem: BehaviorLog = {
+      ...built,
+      context: built.context as BehaviorContext,
+      ...(shelf ? { shelf } : {}),
+      ...(milestoneId ? { milestoneId } : {}),
+    };
     void logsCol.upsert(logItem);
     track("log_created", { type: logItem.behaviorType, intensity: logItem.intensity, context: logItem.context });
     trackCaptureSaved("moment");

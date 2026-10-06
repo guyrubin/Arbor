@@ -85,6 +85,18 @@ export const en: Record<string, string> = {
   "elev.loop.said.title": "Things {name} said",
   "elev.loop.said.empty": "Words you keep from tonight's question land here.",
   "elev.loop.said.share": "Send this one",
+  // ── B-LOOP-07 · Today in three blocks ───────────────────────────────────
+  "elev.loop.today.caption": "One small thing for {name} today",
+  "elev.loop.today.captionEvening": "Three quick questions about {name}'s day",
+  "elev.loop.today.notice.title": "Notice today",
+  "elev.loop.today.notice.sub": "Two things to watch for, if they happen",
+  "elev.loop.today.tonight": "Tonight · 3 quick questions",
+  "elev.loop.today.tonightSub": "About a minute, after bedtime",
+  "elev.loop.today.door": "More for today",
+  "elev.loop.today.doorSub": "What changed · words for a hard moment · this week",
+  "elev.loop.door.hardMoment": "Words for a hard moment",
+  "elev.loop.door.week": "This week's letter",
+  "elev.loop.door.play": "Play ideas for today",
 };
 
 export const he: Record<string, string> = {
@@ -161,4 +173,16 @@ export const he: Record<string, string> = {
   "elev.loop.said.title": "דברים ש{name} אמר/ה",
   "elev.loop.said.empty": "מילים שתשמרו בשאלת הערב יגיעו לכאן.",
   "elev.loop.said.share": "לשלוח את זה",
+  // ── B-LOOP-07 · Today in three blocks ───────────────────────────────────
+  "elev.loop.today.caption": "דבר קטן אחד בשביל {name} היום",
+  "elev.loop.today.captionEvening": "שלוש שאלות קצרות על היום של {name}",
+  "elev.loop.today.notice.title": "לשים לב היום",
+  "elev.loop.today.notice.sub": "שני דברים לשים לב אליהם, אם יקרו",
+  "elev.loop.today.tonight": "הערב · 3 שאלות קצרות",
+  "elev.loop.today.tonightSub": "בערך דקה, אחרי ההשכבה",
+  "elev.loop.today.door": "עוד להיום",
+  "elev.loop.today.doorSub": "מה השתנה · מילים לרגע קשה · השבוע",
+  "elev.loop.door.hardMoment": "מילים לרגע קשה",
+  "elev.loop.door.week": "המכתב של השבוע",
+  "elev.loop.door.play": "רעיונות למשחק היום",
 };

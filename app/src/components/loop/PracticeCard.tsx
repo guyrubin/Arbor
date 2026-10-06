@@ -30,8 +30,9 @@ export interface PracticeCardProps {
   onAnswer: (answer: PracticeAnswer) => void;
   /** Undo the dose row (the card asks again). */
   onUndo?: () => void;
-  /** B-LOOP-07: the parent's own words on this shelf (P1 FromRecordCard's quote), on-topic only. */
-  quote?: { text: string; date?: string } | null;
+  /** B-LOOP-07: the parent's own words on this shelf, dated — THEN and NOW
+   *  (lib/today/shelfWords), oldest first; the change is in their words. */
+  quotes?: ReadonlyArray<{ text: string; date?: string }>;
   /** B-LOOP-07: a lifecycle line (birthday, first week) inside the header, never a sibling. */
   headerNote?: string | null;
   /** Law 7: the answers ARE the surface's primary move. */
@@ -57,7 +58,7 @@ export default function PracticeCard({
   answered,
   onAnswer,
   onUndo,
-  quote,
+  quotes,
   headerNote,
   stampMove,
 }: PracticeCardProps) {
@@ -104,17 +105,21 @@ export default function PracticeCard({
         >
           {t("elev.loop.practice.say")} <FreeText text={`“${sayText}”`} />
         </blockquote>
-        {quote?.text && (
-          <figure data-testid="practice-quote" className="mt-3">
-            <blockquote className="border-s-2 ps-3 text-[15px] leading-snug" style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
-              <FreeText text={quote.text} />
-            </blockquote>
-            {quote.date && (
-              <figcaption className="mt-1 ps-3 text-[12px]" style={{ color: "var(--arbor-muted)" }}>
-                {t("elev.loop.practice.quoteMeta", { date: quote.date })}
-              </figcaption>
-            )}
-          </figure>
+        {quotes && quotes.length > 0 && (
+          <div data-testid="practice-quotes" className="mt-3 space-y-2">
+            {quotes.map((q, i) => (
+              <figure key={i} data-testid="practice-quote">
+                <blockquote className="border-s-2 ps-3 text-[15px] leading-snug" style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
+                  <FreeText text={q.text} />
+                </blockquote>
+                {q.date && (
+                  <figcaption className="mt-1 ps-3 text-[12px]" style={{ color: "var(--arbor-muted)" }}>
+                    {t("elev.loop.practice.quoteMeta", { date: q.date })}
+                  </figcaption>
+                )}
+              </figure>
+            ))}
+          </div>
         )}
         <p data-testid="practice-meta" className="mt-3 text-[13px]" style={{ color: "var(--arbor-muted)" }}>{meta}</p>
         <p data-testid="practice-why" className="mt-1 text-[14.5px] italic leading-snug" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-editorial)" }}>
@@ -169,5 +174,20 @@ export default function PracticeCard({
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * B-LOOP-07 — the evening's practice block: its outcome strip only (one line
+ * under Tonight), never the card again. Nothing renders before an answer.
+ */
+export function PracticeOutcomeStrip({ shelf, answered }: { shelf: ShelfId; answered: PracticeAnswer | null | undefined }) {
+  const { t } = useLanguage();
+  if (!answered) return null;
+  return (
+    <p role="status" data-testid="practice-outcome-strip" className="flex items-center gap-1.5 px-1 text-[14px]" style={{ color: "var(--arbor-muted)" }}>
+      <Icon name="check" size={18} />
+      {shelfLabel(shelf, t)} · {t(answered === "did" ? "elev.loop.practice.didReceipt" : "elev.loop.practice.notTodayReceipt")}
+    </p>
   );
 }
