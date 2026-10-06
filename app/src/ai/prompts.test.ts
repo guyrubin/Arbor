@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
 import {
   COACH_CHAT_FIELD_RULES,
+  COACH_CHAT_GOVERNED_ESCALATION_BLOCK,
   MODEL_PROFILE_FIELDS,
   PROMPT_VERSIONS,
   ROUTINE_ESCALATION_GUIDANCE,
@@ -197,6 +198,17 @@ describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", ()
 
   it("with BOTH new fields absent, the prompt is byte-identical to the block-free 1.4.1 rendering", () => {
     expect(sha256(buildChatPrompt({ ...legacyArgs }))).toBe(COACH_CHAT_BLOCK_FREE_SHA256);
+  });
+
+  it("coach_chat 1.5.0: seededHardMoment absent or false keeps the 1.4.1 bytes; true adds the governed block once", () => {
+    expect(sha256(buildChatPrompt({ ...legacyArgs, seededHardMoment: false }))).toBe(COACH_CHAT_BLOCK_FREE_SHA256);
+    const seeded = buildChatPrompt({ ...legacyArgs, seededHardMoment: true });
+    expect(seeded).toBe(buildChatPrompt({ ...legacyArgs }).replace(`${COACH_CHAT_FIELD_RULES}\nReturn only JSON`, `${COACH_CHAT_FIELD_RULES}\n${COACH_CHAT_GOVERNED_ESCALATION_BLOCK}\nReturn only JSON`));
+    expect(seeded.split(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).length).toBe(2);
+    expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/Return "escalateIf": \[\]/);
+    expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/shepherd/);
+    expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/do not reword it/);
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.0");
   });
 
   it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep the block-free bytes", () => {
@@ -454,7 +466,7 @@ describe("coach_chat 1.4.1 — field rules", () => {
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never write that condition's name or any label back/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/In a routine answer no field names self-harm/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never low, medium, high/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.4.1");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.5.0");
   });
   it("council and voice prompts do not carry the /chat field rules", () => {
     const council = buildCouncilSynthesisPrompt({ developmentalFramework: "F", approvedMemory: "", knowledgeContext: "", childProfile: null, councilTakes: "T", message: "q", languageDirective: "" });

@@ -79,3 +79,111 @@ export function applyGovernedEscalation<T extends { escalateIf?: string[]; gover
   contract.escalateIf = [];
   return contract;
 }
+
+/**
+ * B-AI-14 (live fix, 6 Oct) — belt and braces on a SEEDED turn only: the live
+ * judge saw the model restate the boundary outside escalateIf (the shepherd
+ * frame named "a pediatrician … a child psychologist"; a requested prose
+ * summary). coach_chat 1.5.0 tells the model not to; this lexical screen
+ * removes what slips through. Language-scoped (a term list is valid only for
+ * the language it was written for): the session language's list runs.
+ *
+ * HE deviations from the orchestrator's list, on purpose: "מטפל" alone also
+ * matches "מטפלת" (the daycare caregiver, a normal word in a separation
+ * answer), so only "מטפל/ת" and the emotional-therapist forms are listed;
+ * "לפנות ל" alone matches "לפנות לילד/ה" (to address the child), so it is
+ * listed only before a professional or help noun.
+ */
+export const PROFESSIONAL_HELP_TERMS: Readonly<Record<"en" | "he", readonly RegExp[]>> = {
+  en: [
+    /\bp(?:a)?ediatrician/i,
+    /\bdoctor/i,
+    /\bpsychologist/i,
+    /\btherapist/i,
+    /\bspecialist/i,
+    /\bprofessional (?:help|support)/i,
+    /\bseek(?:ing)? help/i,
+    /\breach(?:ing)? out for (?:more )?support/i,
+    /\bwhen to get help/i,
+  ],
+  he: [
+    /רופא/,
+    /פסיכולוג/,
+    /מטפל\/ת/,
+    /מטפל(?:ת)? רגשי/,
+    /עזרה מקצועית/,
+    /ייעוץ מקצועי/,
+    /אי(?:ש|שת) מקצוע/,
+    /אנשי מקצוע/,
+    /גורם מקצועי/,
+    /לפנות ל(?:רופא|איש|אשת|אנשי|גורם|ייעוץ|עזרה|פסיכולוג|מטפל)/,
+  ],
+};
+
+/** Neutral fallbacks for a REQUIRED field the screen emptied (grounded in the guide the parent is following). */
+const SCRUB_FALLBACK: Readonly<Record<"en" | "he", { parentScript: string; todayStep: string; frame: string }>> = {
+  en: { parentScript: "Use the words from the guide's Say this step.", todayStep: "Follow the guide's Do now step.", frame: "—" },
+  he: { parentScript: "אפשר להשתמש במילים מהמדריך.", todayStep: "לפעול לפי הצעד הראשון במדריך.", frame: "—" },
+};
+
+let scrubbedSentenceCount = 0;
+/** How many sentences the seeded-turn screen removed in this process (log counter). */
+export const seededScrubCount = (): number => scrubbedSentenceCount;
+
+type ScrubbableContract = {
+  text?: string;
+  parentScript: string;
+  observe: string[];
+  todayPlan: string[];
+  nonDiagnosticHypotheses: { label: string; confidence: string; rationale: string }[];
+  frameRouting: { aim: string; twoAxes: string; story: string; shadow: string; marriage: string; shepherd: string };
+};
+
+/** Drop the sentences that carry a term; null when nothing changed (the string stays byte-identical). */
+const scrubSentences = (value: string, terms: readonly RegExp[]): { text: string; dropped: number } | null => {
+  if (!terms.some((re) => re.test(value))) return null;
+  const parts = value.split(/(?<=[.!?…])\s+|\n+/).filter((p) => p.trim().length > 0);
+  const kept = parts.filter((p) => !terms.some((re) => re.test(p)));
+  return { text: kept.join(" ").trim(), dropped: parts.length - kept.length };
+};
+
+/**
+ * Seeded turns only: remove every model-authored sentence that names
+ * professional help or whom to contact (the app shows the governed line).
+ * Never blocks the answer: an emptied optional field is omitted, an emptied
+ * required field gets the neutral fallback. Mutates; returns sentences dropped.
+ */
+export function scrubSeededProfessionalHelp<T extends ScrubbableContract>(contract: T, language: "en" | "he"): number {
+  const terms = PROFESSIONAL_HELP_TERMS[language];
+  const fallback = SCRUB_FALLBACK[language];
+  let dropped = 0;
+  const one = (value: string): string | null => {
+    const hit = scrubSentences(value, terms);
+    if (!hit) return value;
+    dropped += hit.dropped;
+    return hit.text.length > 0 ? hit.text : null;
+  };
+  if (typeof contract.text === "string") {
+    const text = one(contract.text);
+    if (text === null) delete contract.text;
+    else contract.text = text;
+  }
+  contract.parentScript = one(contract.parentScript) ?? fallback.parentScript;
+  contract.observe = contract.observe.map(one).filter((s): s is string => s !== null);
+  const plan = contract.todayPlan.map(one).filter((s): s is string => s !== null);
+  contract.todayPlan = plan.length > 0 ? plan : [fallback.todayStep];
+  contract.nonDiagnosticHypotheses = contract.nonDiagnosticHypotheses.flatMap((h) => {
+    if (terms.some((re) => re.test(h.label))) {
+      dropped += 1;
+      return [];
+    }
+    const rationale = one(h.rationale);
+    return rationale === null ? [] : [{ ...h, rationale }];
+  });
+  const frames = contract.frameRouting;
+  for (const key of ["aim", "twoAxes", "story", "shadow", "marriage", "shepherd"] as const) {
+    frames[key] = one(frames[key]) ?? fallback.frame;
+  }
+  scrubbedSentenceCount += dropped;
+  return dropped;
+}

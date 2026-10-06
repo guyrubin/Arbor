@@ -168,7 +168,12 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // crisis words in a routine answer, confidence as an uncertainty phrase).
   // The block-free 1.3.0 parity ends here by design (new pin in prompts.test.ts).
   // Re-pin: coach-core-v1, coach-hardmoment-seed-v1 (live tier re-run 1 Oct).
-  coach_chat: { version: "1.4.1", sha256: "d577ab7fbef1d97288be864d7add86d1c21dd9f6ea55aaa33c4b8c731be9d612" },
+  // 1.5.0 (B-AI-14 live fix, 2026-10-06): COACH_CHAT_GOVERNED_ESCALATION_BLOCK
+  // after the field rules, ONLY on a hard-moment seeded turn (escalateIf [],
+  // no field restates the boundary the app shows verbatim). Block absent ⇒
+  // the 1.4.1 bytes (parity pin in prompts.test.ts). Re-pin owed (live, by the
+  // orchestrator): coach-core-v1, coach-hardmoment-seed-v1, companion-continuity-v1.
+  coach_chat: { version: "1.5.0", sha256: "e213405b92ae7da7a811724526ec71067fe830be65a780b3b48a0aa21cbff36b" },
   council_synthesis: { version: "1.2.0", sha256: "428ed3513c47ba544b8e1afee8a4492140902d4b1210ec8cbb75893d8b77a00f" },
   voice_reply: { version: "1.6.0", sha256: "7c06dfda8297c50b0fd596f32a728689cd1503cb0662f9e10d3904e007be651b" },
   live_session: { version: "1.4.0", sha256: "a860d147a58a4be6f0adca9b9525925c76e3db86bf563f0ee6ad5590572fbe5c" },
@@ -234,6 +239,21 @@ export const COACH_CHAT_FIELD_RULES = `Field rules:
 - escalateIf: 1-3 thresholds built only from what the parent reported (how often, how long, how intense, in how many settings, skills lost, daily life disrupted) and whom to talk to. In a routine answer no field names self-harm, suicide, abuse, violence or injury.
 - nonDiagnosticHypotheses[].confidence: an uncertainty phrase such as "one possibility", never low, medium, high, a score or a percentage.`;
 
+/**
+ * coach_chat 1.5.0 (B-AI-14 live fix, 2026-10-06) — the governed-escalation
+ * block, rendered ONLY on a hard-moment seeded turn (the route passes
+ * `seededHardMoment` exactly when safety/seededEscalation resolved the card's
+ * governed line). The app shows that line itself (`governedEscalation`), so
+ * the model must never author the boundary: escalateIf is [] and no field
+ * restates, summarizes or hints at it (live judge 6 Oct: the shepherd frame
+ * and a requested prose summary reworded it). The line itself is NOT in the
+ * prompt. Absent ⇒ the rendered bytes equal 1.4.1 (parity pin).
+ */
+export const COACH_CHAT_GOVERNED_ESCALATION_BLOCK = `Governed escalation (this conversation follows an Arbor hard-moment guide; this overrides the escalateIf field rule above):
+- The app shows this guide's own line on when to reach out for more support, word for word, with your answer. Return "escalateIf": [] (an empty array).
+- No field (text, parentScript, observe, nonDiagnosticHypotheses, frameRouting: aim, twoAxes, story, shadow, marriage, shepherd, todayPlan) may state, summarize, reword or hint at when professional help is needed or whom to contact.
+- If the parent asks you to summarize or restate when to get help, answer in one sentence in "text" that the guide's own line is shown with this answer, and do not reword it.`;
+
 // ── Versioned builders ────────────────────────────────────────────────────
 
 export type ChatPromptArgs = {
@@ -256,7 +276,14 @@ export type ChatPromptArgs = {
   acceptedActions?: readonly CompanionStepLine[];
   /** 1.4 (B-AI-01) — ≤5 kept-insight lines (B-AI-04). Absent/empty ⇒ 1.3.0 bytes. */
   keptInsights?: readonly { text: string }[];
+  /** 1.5.0 (B-AI-14) — true ONLY when the route resolved a governed
+   *  hard-moment escalation line for this conversation. Absent/false ⇒ 1.4.1 bytes. */
+  seededHardMoment?: boolean;
 };
+
+/** 1.5.0: "" unless seeded, so every other conversation keeps the 1.4.1 bytes. */
+const renderGovernedEscalationBlock = (seeded?: boolean): string =>
+  seeded === true ? `\n${COACH_CHAT_GOVERNED_ESCALATION_BLOCK}` : "";
 
 /** 1.3(a): the continuity transcript block — "" when there are no turns, so
  *  the legacy prompt bytes are untouched. Rendered BEFORE the new question. */
@@ -324,6 +351,7 @@ export const buildChatPrompt = ({
   weeklyContext,
   acceptedActions,
   keptInsights,
+  seededHardMoment,
 }: ChatPromptArgs): string => `
 ${NON_DIAGNOSTIC_CONTRACT}
 ${developmentalFramework}
@@ -345,7 +373,7 @@ ${renderRecentTurnsBlock(recentTurns)}${renderWeeklyContextLine(weeklyContext)}P
 ${message}
 
 ${ROUTINE_ESCALATION_GUIDANCE}
-${COACH_CHAT_FIELD_RULES}
+${COACH_CHAT_FIELD_RULES}${renderGovernedEscalationBlock(seededHardMoment)}
 Return only JSON that matches the response schema. Open with the "text" field FIRST: 2-4 warm, plain sentences that briefly acknowledge the parent and give the heart of your answer — no headings, no lists, no labels. Keep todayPlan to 1-3 steps. Include sourceCardsUsed as source-card ids you used. Include followUps: 2-3 short, natural next questions THIS parent is likely to ask after THIS answer (specific to their situation, never generic), each under 100 characters, in the same language as your other text values.${languageDirective}
 `;
 
@@ -663,6 +691,8 @@ export const promptFingerprint = (key: PromptKey): string => {
         weeklyContext: CANONICAL.weeklyContext,
         acceptedActions: CANONICAL.acceptedActions,
         keptInsights: CANONICAL.keptInsights,
+        // 1.5.0: the fingerprint pins the governed-escalation block's text.
+        seededHardMoment: true,
       }));
     case "council_synthesis":
       return sha256(buildCouncilSynthesisPrompt({

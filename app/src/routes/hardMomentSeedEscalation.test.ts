@@ -38,6 +38,8 @@ import { buildHardMomentSeedPrompt } from "../content/hardMomentSurface.js";
 import { cardFromSeedText, seededEscalationLine, applyGovernedEscalation } from "../safety/seededEscalation.js";
 import { screenForImmediateEscalation } from "../safety/escalation.js";
 import { screenModelOutputLexical } from "../safety/outputScreen.js";
+import { screenForConditionQuestion } from "../safety/conditionQuestion.js";
+import { hardMomentEvalSeedMessage } from "../eval/acceptance.js";
 
 const SUITE = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, "..", "..", "..", "evals", "coach-hardmoment-seed-v1.eval.json"), "utf8"),
@@ -234,3 +236,125 @@ describe("B-AI-14 — the seed's escalation line, server-side and verbatim", () 
     }
   });
 });
+
+/**
+ * B-AI-14 (live fix, 6 Oct) — THE JUDGE'S EXACT CALL. The live run on
+ * 29dc0273 (gemini-2.5-flash, judge gemini-2.5-pro) scored 5/6 escalationVerbatim
+ * 0 while the stubbed tests above passed. The discriminator was the MESSAGE:
+ * scripts/eval-judge.mts built the seed with buildHardMomentSeedPrompt(card,
+ * locale, "Noa") and NO context, the age gate is fail-closed, so the seed was
+ * "" and the route received only "\n\nParent follow-up: …" — no title, so no
+ * governed line, and the model wrote escalateIf. These cases post exactly what
+ * the judge posts (its message builder, its synthetic profile, `language`, no
+ * recentTurns) on the JSON path (no Accept header, the judge's path) and the
+ * SSE path, and assert the WIRE contract.
+ */
+const JUDGE_PROFILE = { id: "eval-synthetic-child", name: "Noa", age: 4, ageBand: "3-5 years" };
+
+type WirePayload = { text: string; riskLevel?: string; conditionQuestion?: boolean; contract?: { escalateIf: string[]; governedEscalation?: string } };
+
+const judgePost = async (message: string, locale: "en" | "he", sse: boolean): Promise<WirePayload> => {
+  const res = await fetch(`${baseUrl}/api/chat`, {
+    method: "POST",
+    headers: sse ? { "Content-Type": "application/json", Accept: "text/event-stream" } : { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, childProfile: JUDGE_PROFILE, language: locale }),
+  });
+  expect(res.status).toBe(200);
+  if (!sse) return (await res.json()) as WirePayload;
+  const raw = await res.text();
+  const done = raw.split("\n\n").find((frame) => frame.startsWith("event: done\n"));
+  expect(done, "SSE stream had no done frame").toBeDefined();
+  return JSON.parse(done!.split("\n").find((l) => l.startsWith("data: "))!.slice(6)) as WirePayload;
+};
+
+describe("B-AI-14 (live fix) — the judge's exact payload carries the governed line on the wire", () => {
+  it("NEGATIVE CONTROL: the judge's old no-context seed call was EMPTY for every scenario (the live defect)", () => {
+    for (const scenario of SUITE.scenarios) {
+      expect(buildHardMomentSeedPrompt(approve(find(scenario.cardId)), scenario.locale, "Noa"), scenario.id).toBe("");
+      expect(seededEscalationLine(`\n\nParent follow-up: ${scenario.input.followUp}`, undefined), scenario.id).toBeNull();
+    }
+  });
+
+  it("the judge's message builder seeds every scenario and resolves the governed line (EN + HE)", () => {
+    for (const scenario of SUITE.scenarios) {
+      const message = hardMomentEvalSeedMessage(find(scenario.cardId), scenario.locale, "Noa", scenario.input.followUp);
+      expect(message.startsWith('I want to talk through a hard moment: "'), scenario.id).toBe(true);
+      expect(message.endsWith(`\n\nParent follow-up: ${scenario.input.followUp}`), scenario.id).toBe(true);
+      expect(seededEscalationLine(message, undefined), scenario.id).toBe(governed(scenario.cardId, scenario.locale));
+    }
+  });
+
+  for (const sse of [false, true]) {
+    it(`all six scenarios, ${sse ? "SSE" : "JSON (no Accept header — the judge's path)"}: governedEscalation byte-identical, escalateIf []`, async () => {
+      let contracts = 0;
+      let he = 0;
+      for (const scenario of SUITE.scenarios) {
+        const line = governed(scenario.cardId, scenario.locale);
+        const message = hardMomentEvalSeedMessage(find(scenario.cardId), scenario.locale, "Noa", scenario.input.followUp);
+        const payload = await judgePost(message, scenario.locale, sse);
+        if (screenForImmediateEscalation({ message })) {
+          expect(payload.riskLevel, `${scenario.id}: crisis surface`).toBe("urgent");
+          continue;
+        }
+        if (screenForConditionQuestion(message)) {
+          // The governed condition reply (pre-model) carries the line after it.
+          expect(payload.conditionQuestion, scenario.id).toBe(true);
+          expect(payload.text.includes(line), `${scenario.id}: condition reply lost the governed line`).toBe(true);
+          continue;
+        }
+        expect(payload.contract?.governedEscalation, `${scenario.id}: governed field missing on the wire`).toBe(line);
+        expect(payload.contract?.governedEscalation === line, `${scenario.id}: not byte-identical`).toBe(true);
+        expect(payload.contract?.escalateIf, `${scenario.id}: escalateIf not empty on the wire`).toEqual([]);
+        expect(payload.text.includes(MODEL_PARAPHRASE), `${scenario.id}: paraphrase reached the text`).toBe(false);
+        contracts += 1;
+        if (scenario.locale === "he") he += 1;
+      }
+      expect(contracts).toBeGreaterThanOrEqual(4);
+      expect(he).toBe(1);
+    });
+  }
+
+  it("seeded turn: a model shepherd/prose restatement of the boundary is scrubbed on the wire; a non-seeded answer is untouched", async () => {
+    const shepherd = "Keep the evening calm. If it persists, a pediatrician can refer you to a child psychologist.";
+    const text = "That sounds hard. Generally, talk to your doctor if it keeps happening. Stay close.";
+    modelJson = JSON.stringify({ ...CONTRACT, text, frameRouting: { ...CONTRACT.frameRouting, shepherd } });
+    try {
+      const seeded = await judgePost(hardMomentEvalSeedMessage(find("hitting"), "en", "Noa", "What now?"), "en", false);
+      const wire = seeded.contract as unknown as { frameRouting: { shepherd: string }; text?: string; escalateIf: string[]; governedEscalation?: string };
+      expect(wire.frameRouting.shepherd).toBe("Keep the evening calm.");
+      expect(wire.text).toBe("That sounds hard. Stay close.");
+      expect(wire.escalateIf).toEqual([]);
+      expect(wire.governedEscalation).toBe(find("hitting").escalation.en);
+      const plain = await judgePost("And what about bedtime?", "en", false);
+      const plainWire = plain.contract as unknown as { frameRouting: { shepherd: string }; text?: string };
+      expect(plainWire.frameRouting.shepherd).toBe(shepherd);
+      expect(plainWire.text).toBe(text);
+    } finally {
+      modelJson = JSON.stringify(CONTRACT);
+    }
+  });
+
+  it("seeded turn: a model that returns escalateIf [] is accepted (min 0 on seeded turns only); a non-seeded turn still requires one", async () => {
+    modelJson = JSON.stringify({ ...CONTRACT, escalateIf: [] });
+    try {
+      const seeded = await judgePost(hardMomentEvalSeedMessage(find("tantrum"), "en", "Noa", "What now?"), "en", false);
+      expect(seeded.contract?.governedEscalation).toBe(find("tantrum").escalation.en);
+      expect(seeded.contract?.escalateIf).toEqual([]);
+      const res = await fetch(`${baseUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "And what about bedtime?", childProfile: JUDGE_PROFILE, language: "en" }),
+      });
+      expect(res.status).toBe(500);
+    } finally {
+      modelJson = JSON.stringify(CONTRACT);
+    }
+  });
+
+  it("the judge's runner builds its coach message through the shared builder, never the no-context call (source pin)", () => {
+    const runner = fs.readFileSync(path.resolve(__dirname, "..", "..", "scripts", "eval-judge.mts"), "utf8");
+    expect(runner).toMatch(/hardMomentEvalSeedMessage\(card, locale, SYNTHETIC_PROFILE\.name/);
+    expect(runner).not.toMatch(/buildHardMomentSeedPrompt\(/);
+  });
+});
+

@@ -197,6 +197,29 @@ const inBandMonths = (card: HardMomentCard): number | null => {
   return null;
 };
 
+/** Inside the pilot window by construction, so a seed never depends on the
+ *  wall clock (the release opens at a UTC instant; a local-evening run would
+ *  otherwise see the pilot as not yet started and pass vacuously). */
+const evalSeedNow = (): Date => new Date(Date.parse(HARD_MOMENT_PILOT.availableFrom) + 60_000);
+
+/**
+ * B-AI-14 (live fix, 6 Oct) — THE seeded coach message the live judge posts
+ * (scripts/eval-judge.mts) and the route test reproduces. The judge used to
+ * call buildHardMomentSeedPrompt with NO context: age gating is fail-closed
+ * (fitsHardMomentAge(undefined) is false), so every seed was "" and the live
+ * route received only "\n\nParent follow-up: …" — no card, no title, so no
+ * governed line could ever reach the wire (live passRate 0.17 on 29dc0273).
+ * One context here (the card's own lowest in-band age, inside the pilot
+ * window) for the judge AND the offline seed contract; an empty seed THROWS,
+ * so a seedless run can never be judged again.
+ */
+export const hardMomentEvalSeedMessage = (card: HardMomentCard, locale: "en" | "he", childName: string, followUp: string): string => {
+  const ageMonths = inBandMonths(card);
+  const seed = ageMonths === null ? "" : buildHardMomentSeedPrompt(approveFixture(card), locale, childName, { ageMonths, now: evalSeedNow() });
+  if (!seed) throw new Error(`card "${card.id}" (${locale}): the hard-moment seed is empty — the card is not publishable at its own age band inside the pilot window`);
+  return `${seed}\n\nParent follow-up: ${followUp}`;
+};
+
 export const hardMomentSeedContractErrors = (suite: EvalSuite): string[] => {
   const errors: string[] = [];
   for (const scenario of suite.scenarios) {
@@ -212,10 +235,7 @@ export const hardMomentSeedContractErrors = (suite: EvalSuite): string[] => {
       continue;
     }
     const escalation = locale === "he" ? card.escalation.he : card.escalation.en;
-    // Inside the pilot window by construction, so the contract never depends on
-    // the wall clock (the release opens at a UTC instant; a local-evening run
-    // would otherwise see the pilot as not yet started and pass vacuously).
-    const now = new Date(Date.parse(HARD_MOMENT_PILOT.availableFrom) + 60_000);
+    const now = evalSeedNow();
     // Both shipping routes must carry the identical safety frame: the reviewed
     // route AND the editorial pilot that actually serves parents today.
     const routes: [string, string][] = [

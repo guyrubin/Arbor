@@ -104,6 +104,16 @@ export const coachResponseZodSchema = z.object({
  */
 export type CoachResponse = z.infer<typeof coachResponseZodSchema> & { governedEscalation?: string };
 
+/**
+ * B-AI-14 (coach_chat 1.5.0): on a hard-moment SEEDED turn the app shows the
+ * governed line and the model returns `escalateIf: []`, so escalateIf relaxes
+ * min(1) → min(0) for seeded turns ONLY. Every other turn keeps
+ * coachResponseZodSchema unchanged.
+ */
+export const coachSeededResponseZodSchema = coachResponseZodSchema.extend({
+  escalateIf: z.array(z.string().min(1)),
+});
+
 /** COACH-6: a resolved citation row — real title + card type for an id. */
 export type SourceCardRef = { id: string; title: string; type: string };
 
@@ -123,6 +133,23 @@ export const buildSourceCards = (
     const card = byId.get(id);
     return card ? [{ id, title: card.title, type: card.type }] : [];
   });
+};
+
+/** B-AI-14 (coach_chat 1.5.0): the model schema sent on a SEEDED turn says
+ *  escalateIf is an empty array; everything else is the standard schema. */
+export const createSeededCoachResponseGeminiSchema = (framework: FrameworkDefinition) => {
+  const base = createCoachResponseGeminiSchema(framework);
+  return {
+    ...base,
+    properties: {
+      ...base.properties,
+      escalateIf: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
+        description: "Always an empty array [] in this conversation: the app shows the guide's own line on when to reach out for more support.",
+      },
+    },
+  };
 };
 
 export const createCoachResponseGeminiSchema = (framework: FrameworkDefinition) => ({

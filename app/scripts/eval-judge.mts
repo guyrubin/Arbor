@@ -41,9 +41,8 @@ import { createReferralStore } from "../src/server/referral.js";
 import { createConsultStore } from "../src/server/consultRequests.js";
 import { createAdminMetricsStore } from "../src/server/adminMetrics.js";
 import { createWaitlistStore } from "../src/server/waitlist.js";
-import { computeContentHash } from "../src/content/governance.js";
-import { hardMomentCards, type HardMomentCard } from "../src/content/hardMomentCards.js";
-import { buildHardMomentSeedPrompt } from "../src/content/hardMomentSurface.js";
+import { hardMomentCards } from "../src/content/hardMomentCards.js";
+import { hardMomentEvalSeedMessage } from "../src/eval/acceptance.js";
 import { appendResultsRow, judgeVisibleInput, runSuiteWithDeps, type ScenarioVerdict } from "../src/eval/judge.js";
 import type { EvalScenario, EvalSuite } from "../src/eval/acceptance.js";
 import { handoffWireBody, planWireBody, runnerInputError, todaysFocusWireBody } from "../src/eval/runnerInput.js";
@@ -53,14 +52,6 @@ const REPO_ROOT = path.resolve(process.cwd(), "..");
 /** SYNTHETIC child profile — never real child data (suite fixture rule). */
 const SYNTHETIC_PROFILE = { id: "eval-synthetic-child", name: "Noa", age: 4, ageBand: "3-5 years" };
 
-/** The approved-fixture stamp (test-only shape from content/selectCards.test.ts). */
-const approveFixture = (card: HardMomentCard): HardMomentCard => ({
-  ...card,
-  reviewStatus: "approved",
-  reviewedBy: "Dr. Noa Levi",
-  reviewedAt: "2026-07-01",
-  contentHash: computeContentHash(card),
-});
 
 const loadSuite = (name: string): EvalSuite => {
   const file = path.join(REPO_ROOT, "evals", `${name}.eval.json`);
@@ -260,8 +251,10 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
   if (scenario.cardId) {
     const card = hardMomentCards.find((item) => item.id === scenario.cardId);
     if (!card) throw new Error(`scenario "${scenario.id}" references unknown card "${scenario.cardId}"`);
-    const seed = buildHardMomentSeedPrompt(approveFixture(card), locale, SYNTHETIC_PROFILE.name);
-    message = `${seed}\n\nParent follow-up: ${String(input.followUp ?? "")}`;
+    // B-AI-14 (live fix): the ONE seeded message (src/eval/acceptance) — the
+    // old inline call passed no age/now, so every seed was "" (fail-closed
+    // age gate) and the route never saw the card. It throws on an empty seed.
+    message = hardMomentEvalSeedMessage(card, locale, SYNTHETIC_PROFILE.name, String(input.followUp ?? ""));
   }
   if (!message) throw new Error(`scenario "${scenario.id}" has no parentMessage/followUp input`);
 

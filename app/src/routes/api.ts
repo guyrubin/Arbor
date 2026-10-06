@@ -5,7 +5,7 @@ import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
-import { createCoachResponseGeminiSchema, coachResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence } from "../contracts/coach.js";
+import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, coachResponseZodSchema, coachSeededResponseZodSchema, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
@@ -17,7 +17,7 @@ import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction,
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
 import { renderConditionQuestionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
-import { seededEscalationLine, applyGovernedEscalation } from "../safety/seededEscalation.js";
+import { seededEscalationLine, applyGovernedEscalation, scrubSeededProfessionalHelp, seededScrubCount } from "../safety/seededEscalation.js";
 import { captureLanguage, normalizeCaptureDraft } from "../server/captureDraft.js";
 import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
@@ -383,6 +383,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const verifyJobCaller = jobCallerVerifier ?? createOidcJobVerifier(process.env, `${config.appUrl}/api/jobs/weekly-digest`);
   const developmentalFramework = buildDevelopmentalFrameworkPrompt(framework);
   const coachResponseSchema = createCoachResponseGeminiSchema(framework);
+  // B-AI-14 (coach_chat 1.5.0): seeded hard-moment turns only.
+  const seededCoachResponseSchema = createSeededCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
   // B-BOOK release: a child's private book files (hero sheet, prints, narration)
@@ -871,6 +873,15 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         .filter((card) => (seenCardIds.has(card.id) ? false : (seenCardIds.add(card.id), true)))
         .slice(0, 5);
 
+      // B-AI-14 (reopened 6 Oct): in a hard-moment seeded conversation the
+      // card's governed escalation sentence rides its OWN field,
+      // `governedEscalation`, byte-identical — set by the server after
+      // generation, never asked of the model — and the model's escalateIf
+      // lines are dropped (safety/seededEscalation). Resolved BEFORE the
+      // prompt (live fix, coach_chat 1.5.0): a seeded turn renders the
+      // governed-escalation block and sends the seeded schema (escalateIf []).
+      const seededEscalation = seededEscalationLine(message, recentTurns);
+
       // EVAL-6: version-pinned named builder (ai/prompts.ts) — byte-identical
       // to the old inline template; promptVersion is stamped into telemetry.
       const prompt = buildChatPrompt({
@@ -890,6 +901,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         // 1.4 (B-AI-01): the parent's own action ledger + kept insights.
         acceptedActions: companion.acceptedActions,
         keptInsights: companion.keptInsights,
+        // 1.5.0 (B-AI-14): only when the governed line resolved; else 1.4.1 bytes.
+        seededHardMoment: seededEscalation !== null,
       });
 
       // SEC/CMP P0: child PII never reaches the model — redact at the call seam,
@@ -944,7 +957,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       for await (const chunk of abortableIterate(modelProvider.generateJsonStream({
         route: "coach_high_stakes",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
-        schema: coachResponseSchema,
+        schema: seededEscalation ? seededCoachResponseSchema : coachResponseSchema,
         temperature: 0.45,
         budget: budget.budget,
         promptVersion: PROMPT_VERSIONS.coach_chat.version
@@ -968,7 +981,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       }
       if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
 
-      const structured = privacy.restoreDeep(coachResponseZodSchema.parse(parseJson(rawResponse.trim())));
+      // B-AI-14 (1.5.0): a seeded turn accepts escalateIf [] (min 0); every
+      // other turn keeps the min(1) contract.
+      const structured = privacy.restoreDeep((seededEscalation ? coachSeededResponseZodSchema : coachResponseZodSchema).parse(parseJson(rawResponse.trim())));
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
         structured.sourceCardsUsed = knowledgeCards.map((card) => card.id);
       }
@@ -984,15 +999,18 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const renderLanguage = language === "he" ? "he" : "en";
       scrubHypothesisConfidence(structured, renderLanguage);
 
-      // B-AI-14 (reopened 6 Oct): in a hard-moment seeded conversation the
-      // card's governed escalation sentence rides its OWN field,
-      // `governedEscalation`, byte-identical — set by the server after
-      // generation, never asked of the model — and the model's escalateIf
-      // lines are dropped (safety/seededEscalation). renderCoachResponse
-      // renders the field in the escalation section, so the output screen
-      // below covers it.
-      const seededEscalation = seededEscalationLine(message, recentTurns);
-      if (seededEscalation) applyGovernedEscalation(structured, seededEscalation);
+      // B-AI-14: renderCoachResponse renders `governedEscalation` in the
+      // escalation section, so the output screen below covers it. Live fix
+      // (6 Oct): then a lexical screen removes any model sentence that still
+      // names professional help or whom to contact (seeded turns only; never
+      // blocks the answer).
+      if (seededEscalation) {
+        applyGovernedEscalation(structured, seededEscalation);
+        const scrubbed = scrubSeededProfessionalHelp(structured, renderLanguage);
+        if (scrubbed > 0) {
+          logger.info("Seeded-turn professional-help scrub", { requestId: requestIdOf(req), dropped: scrubbed, total: seededScrubCount() });
+        }
+      }
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
       const renderedText = renderCoachResponse(structured, renderLanguage);
