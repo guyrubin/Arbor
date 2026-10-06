@@ -46,6 +46,7 @@ import { isLearnPilotCard } from "../learn/learnPilotRelease";
 import { concernsForBehaviors } from "../content/selectCards";
 import { ageYearsFromProfile } from "../lib/childAge";
 import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
+import { hydrateMilestones } from "./milestoneHydration";
 import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
 import { fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
@@ -412,11 +413,9 @@ function useArborState() {
     () => [...logsCol.items].sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1)),
     [logsCol.items]
   );
-  const milestones = useMemo(() => {
-    const order = new Map(initialMilestones.map((m, i) => [m.id, i]));
-    const list = milestonesCol.items.length > 0 ? milestonesCol.items : initialMilestones;
-    return [...list].sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
-  }, [milestonesCol.items]);
+  // B-LOOP-01 follow-up: retired catalogue ids (m-1…m-10) are dropped on
+  // READ (never written, never deleted) — context/milestoneHydration.ts.
+  const milestones = useMemo(() => hydrateMilestones(milestonesCol.items, initialMilestones), [milestonesCol.items]);
   const actionPlans = useMemo(() => {
     const ts = (id: string) => {
       const m = /(\d{10,})/.exec(id);
