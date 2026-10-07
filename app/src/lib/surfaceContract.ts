@@ -192,6 +192,12 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     primaryMove: "notice-milestone", moduleBudget: 4, demotionTarget: "disclosure",
     // Count moves + the tree gains a leaf, same frame; months layer is
     // monotonic cumulative only.
+    // B-PROG-05: `?view=program` is the program page (components/program/
+    // ProgramPage, its own ONE stamp do-this-week, three modules) — a mode of
+    // this leaf until lib/routes.ts gains the `program` id; the `program` row
+    // (hub growth, depth 1, job "See where you are in {program} and what
+    // moved.", primaryMove do-this-week, moduleBudget 3) is the residue hunk
+    // in REJECTIONS P6-PRACTICE (7 Oct, session A).
     threadWrite: "milestones",
   },
   {
