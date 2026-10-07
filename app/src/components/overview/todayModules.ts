@@ -15,7 +15,8 @@
                 step, a lifecycle moment, first steps).
 
    Order: morning practice → notice (+ tonight pointer); evening tonight →
-   notice. `lifecycle`, `changed`, `noticed`, `rail` are no
+   notice — unless the evening never showed the practice (critic c2 r2
+   P1-2): then practice (tonight mode) → notice (+ tonight pointer). `lifecycle`, `changed`, `noticed`, `rail` are no
    longer modules — they live behind the door, so they can never be siblings.
 
    The budget still counts the modules that ACTUALLY render (P1-B lesson): the
@@ -39,6 +40,12 @@ export interface TodayPlanInput {
   tonight: boolean;
   /** Today's practice was answered (kept for the callers; the evening no longer renders a strip). */
   practiceAnswered?: boolean;
+  /** P5-LOOP critic c2 r2 (product P1-2): the parent SAW today's practice
+   *  (a dose row, the day pin, a day-mode card impression, or Tonight opened
+   *  from the pointer). `false` in the evening → Tonight cannot ask "Did you
+   *  try it?" about it, so the evening opens on the practice card in its
+   *  tonight mode, with Tonight as the pointer beneath. Omitted = shown. */
+  practiceShown?: boolean;
 }
 
 export interface TodayPlan {
@@ -46,13 +53,21 @@ export interface TodayPlan {
   order: TodayModuleId[];
   /** Morning: the one-line pointer to Tonight under `notice`. */
   tonightPointer: boolean;
-  /** How block 1 renders: the full card, or not at all (the evening). */
-  practiceMode: "card" | null;
+  /** How block 1 renders: the full card (day), the card offered for tonight
+   *  (an evening that never showed it), or not at all (the evening flow). */
+  practiceMode: "card" | "tonight" | null;
 }
 
 export function planToday(input: TodayPlanInput): TodayPlan {
   const order: TodayModuleId[] = [];
   let practiceMode: TodayPlan["practiceMode"] = null;
+  // c2 r2 P1-2: an evening that never showed the practice offers it first —
+  // never a question with a false premise ("Did you try it today?").
+  if (input.evening && input.practice && input.practiceShown === false) {
+    order.push("practice");
+    if (input.notice) order.push("notice");
+    return { order: order.slice(0, TODAY_MODULE_BUDGET), tonightPointer: input.tonight, practiceMode: "tonight" };
+  }
   if (input.evening && input.tonight) {
     order.push("tonight");
     if (input.notice) order.push("notice");

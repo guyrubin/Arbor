@@ -38,7 +38,7 @@ import { choosePractice, practiceDoseEntry, recentPracticeIds, restedShelves, to
 import { buildJournalRequest } from "../../ai/journalContext";
 import { selectNextMilestones } from "../../lib/milestoneData";
 import { dayKey } from "../../practice/signals";
-import { readTodayPin } from "../../lib/practice/todayPin";
+import { readTodayPin, readPracticeShown, markPracticeShown } from "../../lib/practice/todayPin";
 import { shelfCoverage } from "../../lib/milestones/selectByShelf";
 import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
@@ -239,7 +239,8 @@ export default function OverviewTab() {
   // own notes at any age (THEN and NOW), else nothing (no filler).
   const lastNight = useMemo(() => lastNightWords(actionLoop, childProfile.id, now), [actionLoop, childProfile.id, now]);
   const quotes: PracticeQuote[] = lastNight
-    ? [{ text: lastNight.text, lead: t("elev.loop.practice.lastNight"), shelf: shelfLabel(lastNight.shelf, t) }]
+    // c2 r2 (P1-1, B-LOOP-NEW-2a): verbatim, shelved AND dated ("· Sleep · 6 Oct").
+    ? [{ text: lastNight.text, lead: t("elev.loop.practice.lastNight"), shelf: `${shelfLabel(lastNight.shelf, t)} · ${dateOf(lastNight.at)}` }]
     : [words.then, words.now].filter((w): w is NonNullable<typeof w> => !!w).map((w) => ({ text: w.text, date: dateOf(w.at) }));
   // The newest of the parent's words ON THIS SHELF (the "since" reason's date).
   const shelfNewestAt = useMemo(() => {
@@ -326,13 +327,25 @@ export default function OverviewTab() {
   const storyFits = HERO_STORIES.some((s) => storyFitsChild(s, childProfile));
   const tonightHasQuestions = !!pick || behaviorLogs.length + playLogs.length > 0 || !!tonightNotice;
 
+  // P5-LOOP critic c2 r2 (product P1-2, B-LOOP-NEW-2a): Tonight asks "Did
+  // you try it today?" only about a practice the parent SAW today — a dose
+  // row, the parent opening Tonight from the pointer, the day pin, or the
+  // card's day-mode impression. Otherwise the evening offers the practice.
+  const practiceShown = !!dose || tonightEarly || !!readTodayPin(childProfile.id, now) || (!!pick && readPracticeShown(childProfile.id, now) === pick.practice.id);
   const plan = planToday({
     evening,
     practice: !!pick || !!slotNotice,
     notice: blockNotices.length > 0,
     tonight: tonightHasQuestions,
     practiceAnswered: !!dose,
+    practiceShown: pick ? practiceShown : true,
   });
+  // The impression is written by the DAY card only (the tonight-mode card
+  // must not flip itself into the question it replaced).
+  const shownPracticeId = plan.practiceMode === "card" && pick ? pick.practice.id : null;
+  useEffect(() => {
+    if (shownPracticeId) markPracticeShown(childProfile.id, shownPracticeId, now);
+  }, [childProfile.id, shownPracticeId, now]);
   useEffect(() => {
     track("today_action_offered", { kind: plan.order[0] ?? "none" });
   }, [plan.order[0]]);
@@ -417,7 +430,8 @@ export default function OverviewTab() {
   // thing for Dylan"), and the shell's hub line is quiet on this route
   // (Shell HUB_LINE_QUIET_TABS) — together ≈ 50 px back above the fold.
   const identityLine = ageText ? t("elev.loop.today.identity", { name: firstName, age: nowrap(ageText) }) : firstName;
-  const eyebrowLine = t(evening ? "elev.loop.today.eyebrowEvening" : "elev.loop.today.eyebrow", { when: t(whenKey, { weekday }), name: firstName });
+  // c2 r2 P1-2: "three quick questions" only when Tonight's flow leads.
+  const eyebrowLine = t(evening && plan.order[0] === "tonight" ? "elev.loop.today.eyebrowEvening" : "elev.loop.today.eyebrow", { when: t(whenKey, { weekday }), name: firstName });
   // Law 7 (P5 design r1 P0-1): ONE stamp literal on this route, placed on the
   // first block's ANSWER group (h ≈ 48) — never on a whole card, whose height
   // let the fold gate pass while "Did it" sat under the capture dock.
@@ -459,6 +473,7 @@ export default function OverviewTab() {
       whyText={pick.via === "ai" ? focus?.why : null}
       headerNote={lifecycleNote}
       stampMove={firstBlock === "practice" ? primaryMoveId : undefined}
+      mode={plan.practiceMode === "tonight" ? "tonight" : "day"}
     />
   ) : slotNotice ? (
     <NoticeCard key={slotNotice.milestone.id} milestone={slotNotice.milestone} shelf={slotNotice.shelf} gender={childProfile.gender} childName={firstName} variant="card" answersAttrs={firstBlock === "practice" ? primaryStamp : undefined} {...noticeHandlers(slotNotice.milestone, slotNotice.shelf)} />

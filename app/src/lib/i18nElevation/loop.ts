@@ -76,6 +76,7 @@ export const en: Record<string, string> = {
   // ── B-LOOP-09 · Today's practice ────────────────────────────────────────
   "elev.loop.practice.caption": "Today's practice",
   "elev.loop.practice.say": "Say:",
+  "elev.loop.practice.sayTonight": "For tonight, say:",
   "elev.loop.practice.minutes": "{n} minutes",
   "elev.loop.practice.why": "A small thing for {shelf} today, from the milestone “{title}”.",
   "elev.loop.practice.whyShelf": "A small thing for {shelf} today.",
@@ -202,6 +203,7 @@ export const he: Record<string, string> = {
   // ── B-LOOP-09 · Today's practice ────────────────────────────────────────
   "elev.loop.practice.caption": "התרגול של היום",
   "elev.loop.practice.say": "אמרו:",
+  "elev.loop.practice.sayTonight": "להערב, אמרו:",
   "elev.loop.practice.minutes": "{n} דקות",
   "elev.loop.practice.why": "משהו קטן למדף {shelf} היום, מתוך אבן הדרך „{title}”.",
   "elev.loop.practice.whyShelf": "משהו קטן למדף {shelf} היום.",

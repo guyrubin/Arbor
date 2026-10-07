@@ -74,6 +74,11 @@ export interface PracticeCardProps {
    *  card; after an answer the route moves it to the next unanswered
    *  control — Today: the first Notice row). */
   stampMove?: string;
+  /** P5-LOOP critic c2 r2 (product P1-2, B-LOOP-NEW-2a): "tonight" when the
+   *  evening opens on a practice the parent was never shown — the caption is
+   *  Tonight's practice and the say is offered "for tonight"; the answers,
+   *  the do-line and the stamp are unchanged. Default "day". */
+  mode?: "day" | "tonight";
 }
 
 /**
@@ -102,6 +107,7 @@ export default function PracticeCard({
   whyDate,
   whyText,
   stampMove,
+  mode = "day",
 }: PracticeCardProps) {
   const { t, uiLang } = useLanguage();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
@@ -117,7 +123,8 @@ export default function PracticeCard({
       data-testid="practice-card"
       data-practice-id={practice.id}
       data-shelf={shelf}
-      aria-label={t("elev.loop.practice.caption")}
+      data-mode={mode}
+      aria-label={t(mode === "tonight" ? "elev.loop.tonight.practice.caption" : "elev.loop.practice.caption")}
       className="overflow-hidden rounded-[18px]"
       style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
     >
@@ -125,7 +132,7 @@ export default function PracticeCard({
         <div className="flex items-center gap-2.5">
           <ShelfGlyph shelf={shelf} size={40} />
           <div className="min-w-0">
-            <p className="text-[12.5px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.practice.caption")}</p>
+            <p className="text-[12.5px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{t(mode === "tonight" ? "elev.loop.tonight.practice.caption" : "elev.loop.practice.caption")}</p>
             <p data-testid="practice-shelf" className="text-[13px] font-semibold" style={{ color: "var(--arbor-ink)" }}>
               {headerNote ? `${shelfName} · ${headerNote}` : shelfName}
             </p>
@@ -171,7 +178,7 @@ export default function PracticeCard({
             className={`${quotes && quotes.length > 0 ? "mt-3" : ""} leading-snug`}
             style={{ color: "var(--arbor-ink-soft)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-xl)" }}
           >
-            {t("elev.loop.practice.say")} <FreeText text={`“${sayText}”`} />
+            {t(mode === "tonight" ? "elev.loop.practice.sayTonight" : "elev.loop.practice.say")} <FreeText text={`“${sayText}”`} />
           </blockquote>
         </div>
         {!titleIsWholeDo(titleText, doText) && (

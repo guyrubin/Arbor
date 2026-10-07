@@ -54,6 +54,18 @@ describe("todayModules v3 — planToday", () => {
     expect(tab.slice(tab.indexOf("<TonightFlow"), tab.indexOf("/>", tab.indexOf("<TonightFlow")))).not.toMatch(/onStory=/);
   });
 
+  it("c2 r2 P1-2: an evening that never SHOWED the practice offers it (tonight mode) with Tonight as the pointer — never 'Did you try it?' first", () => {
+    expect(planToday({ ...STATES.eveningUnanswered, practiceShown: false })).toEqual({ order: ["practice", "notice"], tonightPointer: true, practiceMode: "tonight" });
+    // shown (dose row / pin / day impression / pointer opened) → the flow asks
+    expect(planToday({ ...STATES.eveningUnanswered, practiceShown: true }).order).toEqual(["tonight", "notice"]);
+    // the morning is unchanged by the flag
+    expect(planToday({ ...STATES.morning, practiceShown: false })).toEqual(planToday(STATES.morning));
+    // the container feeds the flag from the dose, the pin, the day impression and the pointer — and records the impression in day mode only
+    const tab = stripComments(read("components/tabs/OverviewTab.tsx"));
+    expect(tab).toMatch(/practiceShown\s*=\s*!!dose \|\| tonightEarly \|\| !!readTodayPin\(/);
+    expect(tab).toMatch(/plan\.practiceMode === "card"[\s\S]{0,200}markPracticeShown\(/);
+  });
+
   it("nothing invented: a block renders only when its input says it would", () => {
     expect(planToday({ evening: false, practice: false, notice: false, tonight: false }).order).toEqual([]);
     expect(planToday(STATES.noPractice).order).toEqual(["notice"]);

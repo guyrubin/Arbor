@@ -144,7 +144,8 @@ describe("P5-LOOP c2 r1 — the words slot is fed by the loop (last night's line
 
   it("OverviewTab feeds the slot from lastNightWords first, the shelf's THEN/NOW notes second, and writes the night line through tonightLineEntry", () => {
     expect(OV).toContain("lastNightWords(actionLoop, childProfile.id, now)");
-    expect(OV).toMatch(/const quotes: PracticeQuote\[\] = lastNight\s*\?\s*\[\{ text: lastNight\.text, lead: t\("elev\.loop\.practice\.lastNight"\), shelf: shelfLabel\(lastNight\.shelf, t\) \}\]\s*:\s*\[words\.then, words\.now\]/);
+    // c2 r2 (P1-1, B-LOOP-NEW-2a): last night's line is shelved AND dated
+    expect(OV).toMatch(/const quotes: PracticeQuote\[\] = lastNight[\s\S]{0,120}\?\s*\[\{ text: lastNight\.text, lead: t\("elev\.loop\.practice\.lastNight"\), shelf: `\$\{shelfLabel\(lastNight\.shelf, t\)\} · \$\{dateOf\(lastNight\.at\)\}` \}\]\s*:\s*\[words\.then, words\.now\]/);
     expect(OV).toContain("tonightLineEntry(dose ?? practiceDoseEntry(pick, \"did\", childProfile.id, sayText), text)");
     expect(OV).not.toMatch(/whatHappened: line/);
     // the why answers the quotes; the chosen reason holds after the answer (P2-1)
@@ -152,6 +153,26 @@ describe("P5-LOOP c2 r1 — the words slot is fed by the loop (last night's line
     expect(OV).toContain('return shelfNewestAt ? "empty" : "startsPage";');
     expect(OV).toContain("if (pick && !dose) frozenWhy.current = { id: pick.practice.id, reason: liveWhy };");
   });
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: c2 r2 P1-2 — the tonight-mode card OFFERS the practice (caption, 'for tonight' say, do-line, stamped Did it), never 'Did you try it today?'`, () => {
+      state.lang = lang;
+      const p = PRACTICES.find((x) => x.shelf === "sleep")!;
+      const html = renderToStaticMarkup(
+        <PracticeCard practice={p} milestone={null} shelf="sleep" childName="Dylan" answered={null} onAnswer={() => undefined} stampMove="do-practice" mode="tonight" />,
+      ).replace(/&#x27;/g, "'");
+      expect(html).toContain('data-mode="tonight"');
+      expect(html).toContain(translateFor(lang, "elev.loop.tonight.practice.caption"));
+      expect(html).toContain(translateFor(lang, "elev.loop.practice.sayTonight"));
+      expect(html).not.toContain(translateFor(lang, "elev.loop.tonight.practice.q"));
+      expect(html.match(/data-primary-move="do-practice"/g)).toHaveLength(1);
+      expect(html).toMatch(/data-testid="practice-answers"[^>]*data-primary-move="do-practice"|data-primary-move="do-practice"[^>]*data-testid="practice-answers"/);
+      // the day card is unchanged
+      const day = renderToStaticMarkup(<PracticeCard practice={p} milestone={null} shelf="sleep" childName="Dylan" answered={null} onAnswer={() => undefined} />).replace(/&#x27;/g, "'");
+      expect(day).toContain('data-mode="day"');
+      expect(day).toContain(translateFor(lang, "elev.loop.practice.caption"));
+    });
+  }
 
   for (const lang of ["en", "he"] as const) {
     it(`${lang}: line 1 is last night's words with its shelf; the quotes and the say share ONE --arbor-ink rule; the why answers the words`, () => {

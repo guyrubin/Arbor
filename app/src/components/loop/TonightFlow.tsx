@@ -112,7 +112,10 @@ export default function TonightFlow(props: TonightFlowProps) {
     // question ("How did it go?") — never the answered "Did you try it today?".
     const did = answer === "did";
     const doseHour = props.doseAt ? new Date(props.doseAt).getHours() : NaN;
-    const earlierReceipt = did && !answeredHere && props.doseAnswer === "did"
+    // a "Did it" tapped on tonight's practice card moments ago is not "earlier"
+    const doseMs = props.doseAt ? Date.parse(props.doseAt) : NaN;
+    const justNow = Number.isFinite(doseMs) && Date.now() - doseMs < 30 * 60_000;
+    const earlierReceipt = did && !answeredHere && !justNow && props.doseAnswer === "did"
       ? t(Number.isFinite(doseHour) && doseHour < 12 ? "elev.loop.tonight.practice.didMorning" : "elev.loop.tonight.practice.didEarlier")
       : null;
     body = (
