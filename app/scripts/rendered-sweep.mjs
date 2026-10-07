@@ -134,6 +134,25 @@ function fail(msg, code = 1) {
   process.exit(code);
 }
 
+/** Closure 7 Oct: a demo sweep never renders a stale seed. The source's DEMO_FAMILY_VERSION
+ *  (src/demo/demoFamily.ts) must equal the bundle the sandbox serves (.data/demo-family.json);
+ *  otherwise exit 2. The sweep never applies the seed — the orchestrator does. */
+function checkSeedFresh() {
+  let source = "unknown";
+  try {
+    const src = readFileSync(path.join(APP_DIR, "src", "demo", "demoFamily.ts"), "utf8");
+    source = /export const DEMO_FAMILY_VERSION\s*=\s*"([^"]+)"/.exec(src)?.[1] ?? "unknown";
+  } catch { /* reported as unknown */ }
+  let bundle = "missing";
+  try {
+    bundle = String(JSON.parse(readFileSync(path.join(APP_DIR, ".data", "demo-family.json"), "utf8")).version ?? "unknown");
+  } catch { /* reported as missing */ }
+  if (bundle !== source) {
+    console.log(`SEED STALE ${bundle} != ${source}: run npm run seed:demo -- --apply`);
+    process.exit(2);
+  }
+}
+
 /* ── routes: SURFACE_CONTRACTS, cross-checked against ROUTE_IDS ───────────── */
 async function loadRoutes() {
   const contractFile = path.join(APP_DIR, "src", "lib", "surfaceContract.ts");
@@ -598,6 +617,18 @@ const ASK_Q = {
 };
 const CAPTURE_TEXT = { en: "Stacked the cups by himself and laughed", he: "בנה מגדל כוסות לבד וצחק" };
 const SHELL_SEARCH = { en: "bedtime", he: "שינה" };
+/** loop-quotes: the parent's THEN / NOW notes, in each shelf's own terms (fixture copy, never shipped). */
+const QUOTE_NOTES = {
+  sleep: { en: ["Took an hour to settle after the bath", "Asleep before the second song"], he: ["לקח שעה להירגע אחרי האמבטיה", "נרדם לפני השיר השני"] },
+  food: { en: ["Pushed the plate away after two bites", "Tried the peas and asked for more"], he: ["דחף את הצלחת אחרי שני ביסים", "טעם את האפונה וביקש עוד"] },
+  words: { en: ["Pointed at the ball and said 'ba'", "Said 'more juice please' in one go"], he: ["הצביע על הכדור ואמר 'כה'", "אמר 'עוד מיץ בבקשה' ברצף אחד"] },
+  feelings: { en: ["Cried at the gate for ten minutes", "Waved at the gate and walked in"], he: ["בכה בשער עשר דקות", "נופף בשער ונכנס לבד"] },
+  play: { en: ["Played next to the other kids, not with them", "Took turns with the blocks at the park"], he: ["שיחק ליד הילדים האחרים, לא איתם", "חיכה לתור שלו עם הקוביות בגינה"] },
+  moving: { en: ["Held the rail on every step", "Jumped off the bottom step with both feet"], he: ["החזיק במעקה בכל מדרגה", "קפץ מהמדרגה התחתונה בשתי רגליים"] },
+  hands: { en: ["Gave up after one try at the puzzle", "Did six puzzle pieces and wanted more"], he: ["ויתר על הפאזל אחרי ניסיון אחד", "הרכיב שש חתיכות פאזל ורצה עוד"] },
+  school: { en: ["Scribbled when asked for a circle", "Drew a round sun and named it"], he: ["קשקש כשביקשנו עיגול", "צייר שמש עגולה ונתן לה שם"] },
+  family: { en: ["Hid behind me when Grandma came in", "Ran to the door to hug Grandma"], he: ["התחבא מאחוריי כשסבתא נכנסה", "רץ לדלת לחבק את סבתא"] },
+};
 const SHARE_EMAIL = "other.parent@example.com"; // never sent: the grant button is never tapped
 
 /** Sum of every per-child behaviour-log list in local storage (the capture write's home). */
@@ -795,33 +826,67 @@ const STATES = {
           via = "clock 21:00 · Did it tapped in step 1";
         }
         await h.need("main [data-testid=tonight-flow] [data-testid=tonight-how]", "step 1 after the practice: how did it go (helped · somewhat)");
+        // 07dba149: Tonight carries Today's ONE stamp on its CURRENT step (TonightFlow `stamp`).
+        await h.need("main [data-testid=tonight-flow] [data-primary-move]", "the primary move on Tonight's current step");
+        const stamps = await h.page.locator("[data-primary-move]").count();
+        if (stamps !== 1) throw new Error(`loop-tonight: ${stamps} data-primary-move stamps on the page (expected exactly 1, on Tonight's current step)`);
         await h.top(flow);
-        return { via };
+        return { via: `${via} · primaryMove on the current step` };
       },
     },
     {
+      // Closure 7 Oct: the notes were puzzle sentences whatever the shelf, so on a Sleep pick
+      // they read as puzzle notes on Sleep. Now: the shelf is the chooser's pick as rendered
+      // (the card's data-shelf), and the two notes are THAT shelf's own words (QUOTE_NOTES).
+      // Last night's line (the v.2 seed's yesterday dose row) leads the words slot over
+      // THEN / NOW, so it is cleared in this throwaway context; loop-yesterday covers it.
       name: "loop-quotes",
       now: "07:30",
-      writes: "two dated notes on the practice's shelf, written to this throwaway context's local record only (outside the 30-day count, so the pick is unchanged)",
+      writes: "two dated notes on the practice's shelf, and yesterday's dose row without its 'What happened' line, in this throwaway context's local record only (outside the 30-day count, so the pick is unchanged)",
       run: async (h) => {
         const card = await h.need("main [data-testid=practice-card]", "the practice card");
         const shelf = await card.getAttribute("data-shelf");
         if (!shelf) skip("the practice card carries no shelf");
-        await h.page.evaluate(({ shelf, lang }) => {
+        const notes = (QUOTE_NOTES[shelf] ?? QUOTE_NOTES.words)[h.lang === "he" ? "he" : "en"];
+        await h.page.evaluate(({ shelf, notes }) => {
           const id = localStorage.getItem("arbor.activeChildId");
           const key = `arbor.behaviorLogs.${id}`;
           const logs = JSON.parse(localStorage.getItem(key) || "[]");
           const at = (d) => new Date(Date.now() - d * 86_400_000).toISOString();
-          const words = lang === "he" ? ["ויתר אחרי ניסיון אחד", "עשה שש חתיכות ורצה עוד"] : ["Gave up after one try", "Did six pieces and wanted more"];
           logs.unshift(
-            { id: "sweep-quote-now", timestamp: at(38), behaviorType: "Moment", durationMinutes: 0, trigger: words[1], context: "Home", shelf },
-            { id: "sweep-quote-then", timestamp: at(52), behaviorType: "Moment", durationMinutes: 0, trigger: words[0], context: "Home", shelf },
+            { id: "sweep-quote-now", timestamp: at(38), behaviorType: "Moment", durationMinutes: 0, trigger: notes[1], context: "Home", shelf },
+            { id: "sweep-quote-then", timestamp: at(52), behaviorType: "Moment", durationMinutes: 0, trigger: notes[0], context: "Home", shelf },
           );
           localStorage.setItem(key, JSON.stringify(logs));
-        }, { shelf, lang: h.lang });
+          // lib/today/shelfWords lastNightWords reads yesterday's dose row (practice.<child>.<day>).
+          const y = new Date();
+          y.setDate(y.getDate() - 1);
+          const day = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, "0")}-${String(y.getDate()).padStart(2, "0")}`;
+          const lk = `arbor.actionLoops.${id}`;
+          const rows = JSON.parse(localStorage.getItem(lk) || "[]").map((r) => (r && r.id === `practice.${id}.${day}` ? { ...r, whatHappened: "" } : r));
+          localStorage.setItem(lk, JSON.stringify(rows));
+        }, { shelf, notes });
         await h.page.reload({ waitUntil: "domcontentloaded" });
-        await h.top(await h.need("main [data-testid=practice-quotes]", "the parent's own words under the practice title (THEN / NOW)", 12_000));
-        return { via: `two notes on ${shelf}` };
+        const quotes = await h.need("main [data-testid=practice-quotes]", "the parent's own words under the practice title (THEN / NOW)", 12_000);
+        const shown = await quotes.innerText();
+        if (!shown.includes(notes[1])) throw new Error(`loop-quotes: the NOW note (${JSON.stringify(notes[1])}) is not in the words slot: ${JSON.stringify(shown.slice(0, 160))}`);
+        await h.top(quotes);
+        return { via: `two ${shelf} notes on ${shelf}` };
+      },
+    },
+    {
+      // Closure 7 Oct: the v.2 seed's yesterday dose row carries a "What happened?" line —
+      // at 07:30 the practice card quotes it first ("Last night you wrote:" · shelf · date;
+      // 3b63650e: lastNightWords → the quote with a practice-quote-shelf slot). Read-only.
+      name: "loop-yesterday",
+      now: "07:30",
+      run: async (h) => {
+        const lead = h.tr("elev.loop.practice.lastNight");
+        const quote = await h.need("main [data-testid=practice-card] [data-testid=practice-quotes] [data-testid=practice-quote]:has([data-testid=practice-quote-shelf])", "last night's line on the practice card (Last night you wrote: … · shelf · date)", 12_000);
+        const text = await quote.innerText();
+        if (lead && !text.includes(lead.replace(/:$/, ""))) throw new Error(`loop-yesterday: the quote does not open with ${JSON.stringify(lead)}: ${JSON.stringify(text.slice(0, 160))}`);
+        await h.top(await h.need("main [data-testid=practice-card]", "the practice card"));
+        return { via: `clock 07:30 · ${text.replace(/\s+/g, " ").trim().slice(0, 90)}` };
       },
     },
     {
@@ -829,6 +894,29 @@ const STATES = {
       writes: FIRST_OPEN_WRITES,
       run: async (h) => {
         return firstOpen(h, "main [data-module=today-practice], main [data-module=today-notice]", "Today's first-open blocks");
+      },
+    },
+    {
+      // Closure 7 Oct: first open in the EVENING — a fresh record at 21:00, no pointer click.
+      // Today's practice leads the page (the first data-module) under its evening caption
+      // ("Tonight's practice" — PracticeCard mode "tonight", elev.loop.tonight.practice.caption).
+      name: "loop-first-open-evening",
+      now: "21:00",
+      writes: FIRST_OPEN_WRITES,
+      run: async (h) => {
+        const res = await firstOpen(h, "main [data-module=today-practice]", "Today's practice on an evening first open");
+        const order = await h.page.evaluate(() =>
+          [...document.querySelectorAll("main [data-module]")]
+            .filter((el) => !el.parentElement || !el.parentElement.closest("[data-module]"))
+            .map((el) => el.getAttribute("data-module")),
+        );
+        if (order[0] !== "today-practice") throw new Error(`loop-first-open-evening: the first module is ${order[0] ?? "none"} (order ${order.join(",")}), not today-practice`);
+        const caption = h.tr("elev.loop.tonight.practice.caption");
+        const card = await h.need("main [data-module=today-practice] [data-testid=practice-card]", "the practice card in today-practice");
+        const label = (await card.getAttribute("aria-label")) ?? "";
+        const mode = (await card.getAttribute("data-mode")) ?? "";
+        if (caption ? label !== caption : mode !== "tonight") throw new Error(`loop-first-open-evening: the practice card reads ${JSON.stringify(label)} (data-mode ${mode}), not ${JSON.stringify(caption ?? "mode tonight")}`);
+        return { via: `clock 21:00 · first open · order ${order.join(",")} · ${res.via}` };
       },
     },
     {
@@ -1031,6 +1119,24 @@ const STATES = {
       writes: FIRST_OPEN_WRITES,
       run: async (h) => {
         return firstOpen(h, "[data-testid=shelf-grid]", "the shelf grid on first open");
+      },
+    },
+    {
+      // Closure 7 Oct (73c926e2 owed this): the Words shelf page's Notice module mounts with
+      // its three answers (Seen it · Not yet · Not sure), each a 44 px target. Read-only.
+      name: "loop-shelf-page-notice",
+      from: "journal?shelf=words",
+      run: async (h) => {
+        const notice = await h.need("[data-testid=shelf-notice] [data-testid=notice-card]", "the Notice module on #/journal?shelf=words", 12_000);
+        const heights = [];
+        for (const a of ["yes", "not_yet", "not_sure"]) {
+          const btn = await h.need(`[data-testid=shelf-notice] [data-testid=notice-answers] [data-answer=${a}]`, `the Notice answer ${a}`);
+          const box = await btn.boundingBox();
+          heights.push(`${a} ${Math.round(box?.height ?? 0)}`);
+          if (!box || box.height < 44) throw new Error(`loop-shelf-page-notice: the ${a} answer is ${Math.round(box?.height ?? 0)} px tall (< 44)`);
+        }
+        await h.top(notice);
+        return { via: `#/journal?shelf=words · answers ${heights.join(" · ")} px` };
       },
     },
     {
@@ -1680,6 +1786,7 @@ async function main() {
     // --routes narrows the comparison too; otherwise every unswept route reads as "absent".
     if (opts.routes) prevDoc = { ...prevDoc, cells: prevDoc.cells.filter((c) => routes.includes(c.route)) };
   }
+  if (opts.seed === "demo") checkSeedFresh();
   await waitForServer(opts.base);
   SEED = await loadSeed(opts.base, opts.seed);
   const allowLatin = [...new Set(["Arbor", seededChildName(), SEED.info?.childName].filter(Boolean))];
