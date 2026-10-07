@@ -24,7 +24,8 @@ import { DOMAIN_REFERENCES, DOMAIN_REFERENCE_LABEL_KEY } from "../../lib/milesto
 import { noticedMilestoneCounts } from "../../lib/record/counts";
 import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneAgeWindow, milestoneBandLabel, milestoneText, selectNextMilestones } from "../../lib/milestoneData";
 import { useObservations } from "../../hooks/useObservations";
-import { latestWordsByShelf, shelfDayLabel } from "../../lib/journal/shelfView";
+import { ownWordsByShelf, shelfDayLabel, tileWordsExcept, type ShelfEntryWords } from "../../lib/journal/shelfView";
+import { quotesFromDocs } from "../../lib/loop/tonight";
 // UND-7 — fail-closed gate for the governed milestone example-media slot
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
 import { isRenderableMilestoneMedia } from "../../content/governance";
@@ -245,7 +246,23 @@ export default function MilestonesTab() {
   // B-LOOP-NEW-1e (3): the map remembers in the parent's words — each shelf
   // header carries its latest kept line (verbatim, dated); nothing else on it judges.
   const observations = useObservations();
-  const shelfWords = useMemo(() => latestWordsByShelf(observations, behaviorLogs ?? [], SHELF_IDS), [observations, behaviorLogs]);
+  // P5-LOOP c2 r2 (B-LOOP-NEW-2e): the family's words — the parent's notes and,
+  // on Words, the child's kept quotes. The newest of the last 7 days opens the
+  // map under the H1; its shelf's epigraph then shows that shelf's previous
+  // line, so no sentence renders twice.
+  const keptQuotes = useMemo(() => quotesFromDocs(keepsakeCol.items), [keepsakeCol.items]);
+  const ownWords = useMemo(() => ownWordsByShelf(observations, behaviorLogs ?? [], keptQuotes, SHELF_IDS), [observations, behaviorLogs, keptQuotes]);
+  const headerQuote = useMemo(() => {
+    const since = noticeNow.getTime() - 7 * 86_400_000;
+    let best: (ShelfEntryWords & { shelf: ShelfId }) | null = null;
+    for (const [shelf, list] of Object.entries(ownWords) as [ShelfId, ShelfEntryWords[]][]) {
+      const w = list[0];
+      const at = w ? Date.parse(w.at) : NaN;
+      if (w && at >= since && at <= noticeNow.getTime() + 86_400_000 && (!best || at > Date.parse(best.at))) best = { ...w, shelf };
+    }
+    return best;
+  }, [ownWords, noticeNow]);
+  const shelfWords = useMemo(() => tileWordsExcept(ownWords, headerQuote?.id), [ownWords, headerQuote]);
   // B-LOOP-NEW-1e (4): after an answer, the next open row on the SAME shelf
   // (a title only: no date, no count, no notification).
   const nextOnShelf = (shelf: ShelfId, answeredId: string): Milestone | undefined =>
@@ -997,6 +1014,32 @@ export default function MilestonesTab() {
   );
   const latestShelf = latestNoticed ? shelfOfMilestone(latestNoticed.milestone) : null;
   const latestShelfName = latestShelf ? shelfLabel(latestShelf, t) : latestNoticed ? domainLabel(latestNoticed.milestone.domain) : "";
+  // The latest milestone: the line under the H1 — or, when the family's own
+  // words open the map (c2 r2, B-LOOP-NEW-2e), one quiet t-sm line in the Change row.
+  const latestLine = latestNoticed ? (
+    /* P5 critic r1 (design P0, stronger target 1): the one sentence that
+       matters leads under the H1 — the parent's last first, dated. The
+       four-line disclaimer moves to one muted line under the shelf map. */
+    <p data-testid="ms-latest" className={headerQuote ? "min-w-0 t-sm leading-snug" : "mt-1.5 leading-snug"} style={headerQuote ? { color: "var(--arbor-ink-soft)" } : { fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)", color: "var(--arbor-ink-soft)" }}>
+      {t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })}{" "}
+      <bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>
+      <span data-testid="ms-latest-area" className="t-sm" style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}> · {t("elev.ms.latest.area", { area: latestShelfName })} · {t("elev.ms.latest.when")} </span>
+      <span data-testid="ms-latest-date" className="inline-flex items-center rounded-full px-2.5 py-0.5 t-sm font-semibold whitespace-nowrap" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", fontFamily: "var(--font-sans)" }}>
+        <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
+      </span>
+    </p>
+  ) : null;
+  const changeButton = (
+    <button
+      type="button"
+      data-testid="ms-latest-change"
+      onClick={() => setChangingLatest(true)}
+      className="inline-flex min-h-11 items-center t-sm font-semibold"
+      style={{ color: "var(--arbor-clay)" }}
+    >
+      {t("elev.loop.latest.change")}
+    </button>
+  );
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`flex w-full min-w-0 flex-col gap-5 sm:gap-6 ${hasRail ? "mx-auto max-w-[1180px]" : "me-auto max-w-[760px]"}`}>
@@ -1005,44 +1048,42 @@ export default function MilestonesTab() {
         <HeroAvatar size={52} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
         <div className="min-w-0">
           <h1 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.title")}</h1>
-          {latestNoticed ? (
-            /* P5 critic r1 (design P0, stronger target 1): the one sentence that
-               matters leads under the H1 — the parent's last first, dated. The
-               four-line disclaimer moves to one muted line under the shelf map. */
-            <p data-testid="ms-latest" className="mt-1.5 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)", color: "var(--arbor-ink-soft)" }}>
-              {t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })}{" "}
-              <bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>
-              <span data-testid="ms-latest-area" className="t-sm" style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}> · {t("elev.ms.latest.area", { area: latestShelfName })} · {t("elev.ms.latest.when")} </span>
-              <span data-testid="ms-latest-date" className="inline-flex items-center rounded-full px-2.5 py-0.5 t-sm font-semibold whitespace-nowrap" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", fontFamily: "var(--font-sans)" }}>
-                <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
-              </span>
+          {/* P5-LOOP c2 r2 (B-LOOP-NEW-2e): the map opens on the family's own
+              words — a line kept in the last 7 days, its shelf and its day,
+              editorial t-lg behind a 2 px ink start rule. No count, no date
+              pressure; the latest milestone moves into the Change row. */}
+          {headerQuote && (
+            <p data-testid="ms-header-quote" className="mt-1.5 border-s-2 ps-3 leading-snug" style={{ borderColor: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+              <span dir="auto">{"“"}{headerQuote.text}{"”"}</span>
+              <span className="t-sm" style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}> · <bdi>{shelfLabel(headerQuote.shelf, t)}</bdi> · <bdi>{shelfDayLabel(headerQuote.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi></span>
             </p>
+          )}
+          {latestNoticed ? (
+            headerQuote ? null : latestLine
           ) : (
             <>
-              {/* P5-LOOP c2 r1 (B-LOOP-NEW-1f): first open names the child in ONE
-                  editorial line — no number, no chip; it yields to "{name}'s
-                  latest" after the first answer. */}
+              {/* P5-LOOP c2 r1 (B-LOOP-NEW-1f) → c2 r2 (B-LOOP-NEW-2e): first
+                  open is ONE editorial sentence — it names the child and the
+                  first card, with no second instruction; no number, no chip. */}
               <p data-testid="ms-first-line" dir="auto" className="mt-1.5 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
-                {t("elev.loop.ms.firstLine", { name: firstName || t("ms.watch.childFallback") })}
+                {firstCard
+                  ? t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: milestoneText(firstCard, "title", t, msGender) })
+                  : t("elev.loop.ms.firstLine", { name: firstName || t("ms.watch.childFallback") })}
               </p>
-              {/* c2 r1 (product P1): the lede names the first card, never the map title again. */}
-              <p data-testid="ms-lede" className="t-sm mt-1 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
-                {firstCard ? t("elev.loop.ms.ledeFirst", { title: milestoneText(firstCard, "title", t, msGender) }) : t("elev.loop.ms.lede")}
-              </p>
+              {!firstCard && (
+                <p data-testid="ms-lede" className="t-sm mt-1 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
+                  {t("elev.loop.ms.lede")}
+                </p>
+              )}
             </>
           )}
           <div className="min-w-0">
-            {latestNoticed && !changingLatest && (
-              <button
-                type="button"
-                data-testid="ms-latest-change"
-                onClick={() => setChangingLatest(true)}
-                className="inline-flex min-h-11 items-center t-sm font-semibold"
-                style={{ color: "var(--arbor-clay)" }}
-              >
-                {t("elev.loop.latest.change")}
-              </button>
-            )}
+            {latestNoticed && headerQuote ? (
+              <div data-testid="ms-change-row" className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3">
+                {latestLine}
+                {!changingLatest && changeButton}
+              </div>
+            ) : latestNoticed && !changingLatest ? changeButton : null}
             {/* Critic r3 (P1): correctable where it is read — "Not right?
                 Change" opens the ONE answer group for the latest milestone. */}
             {latestNoticed && changingLatest ? (

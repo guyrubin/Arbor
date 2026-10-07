@@ -102,7 +102,16 @@ describe("P5-LOOP c2 r1 — no scoreboard at zero, one column at 1280, no watch-
     expect(translate("en", "elev.loop.ms.firstLine", { name: "Dylan" })).toBe("Dylan's shelves are ready — start with whatever you saw this week.");
     expect(translate("he", "elev.loop.ms.firstLine", { name: "Dylan" }).replace(/[\u2068\u2069]/g, "")).toBe("המדפים של Dylan מוכנים — התחילו ממה שראיתם השבוע.");
     expect(MS).toMatch(/data-testid="ms-first-line" dir="auto"[^>]*fontFamily: "var\(--font-editorial\)", fontSize: "var\(--t-lg\)", color: "var\(--arbor-ink\)"/);
-    expect(MS).toContain('firstCard ? t("elev.loop.ms.ledeFirst", { title: milestoneText(firstCard, "title", t, msGender) }) : t("elev.loop.ms.lede")');
+    // c2 r2 (B-LOOP-NEW-2e): with a first card, ONE sentence names the child and the card — no second line, no imperative
+    expect(MS).toContain('t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: milestoneText(firstCard, "title", t, msGender) })');
+    expect(MS).toMatch(/\{!firstCard && \(\s*<p data-testid="ms-lede"/);
+    for (const lang of ["en", "he"] as const) {
+      const one = translate(lang, "elev.loop.ms.firstCard", { name: "Dylan", title: "Draws a circle" }).replace(/[\u2068\u2069]/g, "");
+      expect(one).toContain("Dylan");
+      expect(one).toContain("Draws a circle");
+      expect(one).not.toMatch(/\bstart\b|\btry\b|התחילו|נסו|\d/i);
+      expect(one.match(/[.!?]/g)?.length ?? 0).toBeLessThanOrEqual(1);
+    }
   });
 
   it("the Split renders only with its rail (under 2); otherwise ONE start-aligned 760 px column shared by the header, the map and the cards", () => {
@@ -122,7 +131,9 @@ describe("P5-LOOP c2 r1 — no scoreboard at zero, one column at 1280, no watch-
 
 describe("B-LOOP-NEW-1e — the map remembers in the parent's words", () => {
   it("each shelf header carries its latest kept line: verbatim, editorial t-sm, 2 px --arbor-ink start rule, dated — and no count, no comparison", () => {
-    expect(MS).toContain("const shelfWords = useMemo(() => latestWordsByShelf(observations, behaviorLogs ?? [], SHELF_IDS), [observations, behaviorLogs]);");
+    // c2 r2 (B-LOOP-NEW-2e): notes + the child's kept quotes; the header quote's entry is excluded from its shelf's epigraph
+    expect(MS).toContain("const ownWords = useMemo(() => ownWordsByShelf(observations, behaviorLogs ?? [], keptQuotes, SHELF_IDS), [observations, behaviorLogs, keptQuotes]);");
+    expect(MS).toContain("const shelfWords = useMemo(() => tileWordsExcept(ownWords, headerQuote?.id), [ownWords, headerQuote]);");
     expect(MS).toMatch(/data-testid="ms-shelf-epigraph" className="mt-2 truncate border-s-2 ps-3 t-sm leading-snug" style=\{\{ borderColor: "var\(--arbor-ink\)", fontFamily: "var\(--font-editorial\)", color: "var\(--arbor-ink-soft\)" \}\}/);
     const epi = MS.slice(MS.indexOf('data-testid="ms-shelf-epigraph"'), MS.indexOf("</p>", MS.indexOf('data-testid="ms-shelf-epigraph"')));
     expect(epi).toContain("shelfDayLabel(");
@@ -209,5 +220,25 @@ describe("P1-NEXTLEVEL critic r2 — the latest card names its area; the map is 
     expect(map).toContain('fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>\n                {t("elev.loop.shelfMap.title")}');
     expect(map).toContain('fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}>\n                          {shelfLabel(shelf, t)}');
     expect(MS).not.toContain("text-[26px]");
+  });
+});
+
+describe("P5-LOOP c2 r2 (B-LOOP-NEW-2e) — the map opens on the family's own words", () => {
+  it("a line kept in the last 7 days sits under the H1: editorial t-lg, 2 px ink start rule, dir=auto quote, shelf + day in <bdi>; no count", () => {
+    expect(MS).toContain("const since = noticeNow.getTime() - 7 * 86_400_000;");
+    const at = MS.indexOf('data-testid="ms-header-quote"');
+    expect(at).toBeGreaterThan(-1);
+    const quote = MS.slice(at, MS.indexOf("</p>", at));
+    expect(quote).toContain('className="mt-1.5 border-s-2 ps-3 leading-snug" style={{ borderColor: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}');
+    expect(quote).toContain('<span dir="auto">{"“"}{headerQuote.text}{"”"}</span>');
+    expect(quote).toContain("<bdi>{shelfLabel(headerQuote.shelf, t)}</bdi>");
+    expect(quote).toContain("shelfDayLabel(headerQuote.at, noticeNow");
+    expect(quote).not.toMatch(/recordCounts|noticed|count/);
+    // the quote opens the map BEFORE the latest milestone; the latest line moves into the Change row
+    expect(at).toBeLessThan(MS.indexOf('data-testid="ms-change-row"'));
+    expect(MS).toMatch(/\{latestNoticed \? \(\s*headerQuote \? null : latestLine\s*\)/);
+    expect(MS).toMatch(/data-testid="ms-change-row"[^>]*>\s*\{latestLine\}\s*\{!changingLatest && changeButton\}/);
+    // the quote's own entry never repeats as its shelf's epigraph
+    expect(MS).toContain("tileWordsExcept(ownWords, headerQuote?.id)");
   });
 });

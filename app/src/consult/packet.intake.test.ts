@@ -139,7 +139,7 @@ describe("buildIntakePacket — the child's kept quotes lead the SLP Moments (c2
   for (const lang of ["en", "he"] as const) {
     it(`${lang}: a Words-shelf quote keepsake is the FIRST SLP moment, quoted and dated in the locale; the OT packet does not include it`, () => {
       const slp = buildIntakePacket("slp", input({ quotes, lang, child: { id: "c1", name: "Dylan Demo", age: 3, gender: "boy", languages: ["English (Native)", "Hebrew"] } }));
-      const moments = slp.sections.find((s) => s.id === "intake-moments")!.items.map((i) => i.text.replace(/[⁨⁩]/g, ""));
+      const moments = slp.sections.find((s) => s.id === "intake-moments")!.items.map((i) => i.text.replace(/[\u2068\u2069]/g, ""));
       const day = new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(Date.parse("2026-10-04T12:00:00"));
       expect(moments[0]).toContain("big ball!");
       expect(moments[0]).toContain(day);

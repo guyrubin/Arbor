@@ -83,7 +83,7 @@ describe("ProView — the professional view", () => {
     expect(text(html)).toContain("Said big ball at the park");
     expect(text(html)).not.toContain("Climbed the ladder");
     // c2 r2 (P2-5): ONE date format — the locale day, as every packet line ("6 Oct 2026")
-    expect(text(html).replace(/[⁨⁩]/g, "")).toContain(translate("en", "elev.packet.prepared", { date: "6 Oct 2026" }).replace(/[⁨⁩]/g, ""));
+    expect(text(html).replace(/[\u2068\u2069]/g, "")).toContain(translate("en", "elev.packet.prepared", { date: "6 Oct 2026" }).replace(/[\u2068\u2069]/g, ""));
     expect(text(html)).not.toContain("2026-10-06");
     expect(html).toContain('data-testid="pro-packet-demo"');
     expect(text(html)).toContain(translate("en", DEMO_HEADER_KEY));
