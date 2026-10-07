@@ -42,7 +42,9 @@ import { dayKey } from "../../practice/signals";
 import { readTodayPin, readPracticeShown, markPracticeShown } from "../../lib/practice/todayPin";
 import { shelfCoverage } from "../../lib/milestones/selectByShelf";
 import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
-import { activeProgramWeek } from "../../lib/programs/enrolment";
+import { activeProgramWeek, dayKey as programDayKey } from "../../lib/programs/enrolment";
+import { programWeekDays } from "../../lib/programs/measures";
+import { activeGoals, scoreGoal, type FamilyGoal } from "../../lib/goals";
 import { localDay, type ObserveStatus, type ObservedWhen } from "../../lib/milestones/observe";
 import { lastNightWords, shelfWordsThenNow } from "../../lib/today/shelfWords";
 import { quoteKeepsakeDoc, tonightDayQuestion, tonightLineEntry, tonightOutcomeEntry } from "../../lib/loop/tonight";
@@ -96,7 +98,7 @@ export default function OverviewTab() {
     playLogs, actionLoop, requestJournalFocus, approvedMemoryItems,
     pendingCaptureMode, consumeCaptureRequest, openHardMomentNow,
     setMilestoneObservation, restoreMilestone, recordPracticeDose, removeTodayAction,
-    addMoment,
+    addMoment, activeTodayAction,
   } = useArbor();
 
   const { t, uiLang } = useLanguage();
@@ -281,6 +283,17 @@ export default function OverviewTab() {
     const active = activeProgramWeek(programRows.items, now);
     return active ? { shelf: active.program.shelf, watchFor: active.content.watchFor } : null;
   }, [programRows.items, now]);
+  // B-PROG-07: on the LAST day of the active program week, Tonight asks how
+  // each of the family's goals went (step 4, the family's own words) — never
+  // while a coach step is open (one question line at a time, the step first).
+  const familyGoals = useChildCollection<FamilyGoal>(childProfile.id, "familyGoals");
+  const weeklyGoals = useMemo<FamilyGoal[] | undefined>(() => {
+    if (activeTodayAction?.status === "accepted") return undefined;
+    const active = activeProgramWeek(programRows.items, now);
+    if (!active || programDayKey(now) !== programWeekDays(active.enrolment, active.week).to) return undefined;
+    const goals = activeGoals(familyGoals.items);
+    return goals.length ? goals : undefined;
+  }, [activeTodayAction?.status, programRows.items, familyGoals.items, now]);
   const noticePicks = useMemo(
     () => (comparisonMonths === null ? [] : selectNoticeWithProgram(milestones, comparisonMonths, {
       perShelf: 1,
@@ -529,6 +542,11 @@ export default function OverviewTab() {
       onNotice={(status) => tonightNotice && noticeHandlers(tonightNotice.milestone, tonightNotice.shelf).onAnswer(status)}
       onNoticeWhen={(when) => tonightNotice && setMilestoneObservation(tonightNotice.milestone.id, "yes", { when })}
       onNoticeUndo={() => tonightNotice && noticeHandlers(tonightNotice.milestone, tonightNotice.shelf).onUndo()}
+      weeklyGoals={weeklyGoals}
+      onGoalScore={(goalId, value) => {
+        const goal = familyGoals.items.find((g) => g.id === goalId);
+        if (goal) void familyGoals.upsert(scoreGoal(goal, value, new Date()));
+      }}
       stampMove={firstBlock === "tonight" ? primaryMoveId : undefined}
     />
   );

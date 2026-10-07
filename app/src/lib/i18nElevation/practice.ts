@@ -93,6 +93,8 @@ export const en: Record<string, string> = {
   "elev.program.goals.error.full": "Three hopes is the most at once.",
   // residue strings (Tonight's weekly question; the packet's goal lines) — used by the orchestrator's hunks
   "elev.program.goals.tonight.q": "How did this go this week, in your words?",
+  "elev.program.goals.tonight.qGoal": "How did “{goal}” go this week?",
+  "elev.program.goals.tonight.qMany": "How did your hopes go this week?",
   "elev.program.goals.packet.title": "Family goals (family-set scale)",
   "elev.program.goals.packet.line": "{text}: {value} on the family's scale ({word}) · marked {scored} times",
   "elev.program.goals.packet.line.one": "{text}: {value} on the family's scale ({word}) · marked once",
@@ -182,6 +184,8 @@ export const he: Record<string, string> = {
   "elev.program.goals.error.full": "שלוש תקוות הן המקסימום בבת אחת.",
   // residue strings (Tonight's weekly question; the packet's goal lines) — used by the orchestrator's hunks
   "elev.program.goals.tonight.q": "איך זה הלך השבוע, במילים שלכם?",
+  "elev.program.goals.tonight.qGoal": "איך הלך השבוע עם „{goal}”?",
+  "elev.program.goals.tonight.qMany": "איך הלכו השבוע התקוות שלכם?",
   "elev.program.goals.packet.title": "מטרות המשפחה (סולם שהמשפחה קבעה)",
   "elev.program.goals.packet.line": "{text}: {value} בסולם של המשפחה ({word}) · סומן {scored} פעמים",
   "elev.program.goals.packet.line.one": "{text}: {value} בסולם של המשפחה ({word}) · סומן פעם אחת",

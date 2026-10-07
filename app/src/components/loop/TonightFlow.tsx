@@ -9,11 +9,12 @@ import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import type { PracticeAnswer, PracticePick } from "../../lib/practice/choosePractice";
 import type { ObserveStatus, ObservedWhen } from "../../lib/milestones/observe";
 import { TONIGHT_STEPS } from "../../lib/loop/tonight";
+import { GOAL_SCALE_VALUES, type FamilyGoal, type GoalScaleKey, type GoalScaleValue } from "../../lib/goals";
 import { ShelfGlyph } from "./ShelfGlyph";
 import NoticeCard from "./NoticeCard";
 import { practiceText } from "./PracticeCard";
 
-export type TonightStep = 1 | 2 | 3 | "done";
+export type TonightStep = 1 | 2 | 3 | 4 | "done";
 
 export interface TonightFlowProps {
   childName: string;
@@ -42,6 +43,13 @@ export interface TonightFlowProps {
   onNoticeUndo?: () => void;
   /** The story door (the last quiet line); omitted when no story fits the child (B-PLAY-24). */
   onStory?: () => void;
+  /** B-PROG-07: the family's active goals, passed ONLY on the last day of the
+   *  active program week (dayKey(now) === programWeekRange(startedAt, week).to)
+   *  and never while a coach step is open; else absent. Step 4 asks how each
+   *  went, answered in the family's OWN five words — the number never renders. */
+  weeklyGoals?: FamilyGoal[];
+  /** Step 4: the chip writes scoreGoal(goal, value) (one score per local day). */
+  onGoalScore?: (goalId: string, value: GoalScaleValue) => void;
   /** Tests render each step statically. */
   initialStep?: TonightStep;
   /** Law 7: in the evening Tonight's CURRENT step is Today's primary move —
@@ -76,15 +84,20 @@ export default function TonightFlow(props: TonightFlowProps) {
   const [line, setLine] = useState("");
   const [quote, setQuote] = useState("");
   const [kept, setKept] = useState(false);
+  const [goalMarks, setGoalMarks] = useState<Record<string, GoalScaleValue>>({});
+  const hasGoals = !!(props.weeklyGoals?.length && props.onGoalScore);
+  const totalSteps = hasGoals ? TONIGHT_STEPS + 1 : TONIGHT_STEPS;
   const name = props.childName || t("today.record.childFallback");
   const forwardReady = !!outcome || !!line.trim();
   // Law 7: ONE stamp, spread on whichever action group the current step shows.
   const stamp: Record<string, string> = props.stampMove ? { "data-primary-move": props.stampMove } : {};
 
-  const next = (from: TonightStep) => setStep(from === 1 ? 2 : from === 2 && props.notice ? 3 : "done");
-  const progress = (n: 1 | 2 | 3) => (
+  // B-PROG-07: on a program week's last day the family's goals are step 4.
+  const next = (from: TonightStep) =>
+    setStep(from === 1 ? 2 : from === 2 && props.notice ? 3 : (from === 2 || from === 3) && hasGoals ? 4 : "done");
+  const progress = (n: 1 | 2 | 3 | 4) => (
     <p data-testid="tonight-progress" className="text-[12.5px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
-      {t("elev.loop.tonight.step", { n, total: TONIGHT_STEPS })}
+      {t("elev.loop.tonight.step", { n, total: totalSteps })}
     </p>
   );
   const skipButton = (from: TonightStep) => (
@@ -313,6 +326,72 @@ export default function TonightFlow(props: TonightFlowProps) {
           answersAttrs={stamp}
         />
         <div className="flex flex-wrap gap-2">
+          {hasGoals ? nextButton(3) : (
+          <button
+            type="button"
+            data-testid="tonight-finish"
+            onClick={() => setStep("done")}
+            className={pillBase}
+            style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}
+          >
+            {t("elev.loop.tonight.finish")}
+          </button>
+          )}
+        </div>
+      </div>
+    );
+  } else if (step === 4 && hasGoals && props.weeklyGoals) {
+    // B-PROG-07: the week's goal question — the family's words, answered with
+    // the family's own five words (the outcome-chip recipe); never a number.
+    const goals = props.weeklyGoals;
+    const one = goals.length === 1;
+    body = (
+      <div data-testid="tonight-step-4">
+        {progress(4)}
+        <h2 id="tonight-step-4-q" className="mt-2 font-semibold leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontSize: "var(--t-lg)" }}>
+          <FreeText text={one ? t("elev.program.goals.tonight.qGoal", { goal: goals[0].text }) : t("elev.program.goals.tonight.qMany")} />
+        </h2>
+        <div className="mt-3 space-y-4">
+          {goals.map((goal, gi) => (
+            <div key={goal.id} data-testid="tonight-goal" className="space-y-2">
+              {!one && (
+                <p className="border-s-2 ps-3 leading-snug" style={{ borderColor: "var(--arbor-ink)", color: "var(--arbor-ink-soft)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-base)" }}>
+                  <FreeText text={goal.text} />
+                </p>
+              )}
+              <div
+                role="group"
+                aria-label={t("elev.program.goals.tonight.qGoal", { goal: goal.text })}
+                data-testid="tonight-goal-answers"
+                {...(gi === 0 ? stamp : {})}
+                className="flex flex-wrap gap-2"
+              >
+                {GOAL_SCALE_VALUES.map((v) => {
+                  const on = goalMarks[goal.id] === v;
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      data-testid="tonight-goal-chip"
+                      aria-pressed={on}
+                      onClick={() => { setGoalMarks((m) => ({ ...m, [goal.id]: v })); props.onGoalScore!(goal.id, v); }}
+                      className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full px-4 text-[14.5px] font-bold"
+                      style={{
+                        color: "var(--arbor-clay-deep)",
+                        background: "var(--arbor-clay-dim)",
+                        border: `2px solid ${on ? "var(--arbor-clay-deep)" : "transparent"}`,
+                      }}
+                    >
+                      {on && <Icon name="check" size={18} />}
+                      <bdi dir="auto">{goal.scale[String(v) as GoalScaleKey]}</bdi>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
             data-testid="tonight-finish"
