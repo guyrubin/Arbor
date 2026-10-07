@@ -15,7 +15,10 @@ import { keepsakeDoc, type KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { recentPracticeIds, todayDose } from "../../lib/practice/choosePractice";
 import { readTodayPin, writeTodayPin } from "../../lib/practice/todayPin";
-import { latestOwnWords, latestWordsByShelf, proDomainCounts, shelfDayLabel, shelfNotice, shelfPractice, signalsOnShelf } from "../../lib/journal/shelfView";
+import { latestOwnEntry, ownWordsByShelf, proDomainCounts, shelfDayLabel, shelfNotice, shelfPractice, signalsOnShelf, tileWordsExcept } from "../../lib/journal/shelfView";
+import { selectNextMilestonesByShelf } from "../../lib/milestones/selectByShelf";
+import { milestoneText } from "../../lib/milestoneData";
+import { quotesFromDocs } from "../../lib/loop/tonight";
 import { practiceTitle } from "../../lib/practice/practiceTitle";
 import { practiceText } from "../loop/PracticeCard";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
@@ -164,27 +167,42 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
     () => availableHardMomentCards({ now, ageMonths: ageMonthsFromProfile(childProfile, now), locale }).length > 0,
     [childProfile, now, locale],
   );
-  const wordsByShelf = useMemo(
-    () => (onGrid ? latestWordsByShelf(observations, behaviorLogs, SHELF_IDS) : {}),
-    [onGrid, observations, behaviorLogs],
+  // c2 r2 (journal P1 G1-1 + design P1, B-LOOP-NEW-2c/2d): the family's own
+  // words per shelf — the parent's notes, and on Words the child's kept
+  // quotes. The header carries the newest note; its tile shows the shelf's
+  // PREVIOUS line instead, so no sentence renders twice.
+  const keptQuotes = useMemo(() => quotesFromDocs(keepsakes.items), [keepsakes.items]);
+  const ownWords = useMemo(
+    () => (onGrid ? ownWordsByShelf(observations, behaviorLogs, keptQuotes, SHELF_IDS) : {}),
+    [onGrid, observations, behaviorLogs, keptQuotes],
   );
-  const latestOwn = useMemo(() => latestOwnWords(wordsByShelf), [wordsByShelf]);
+  const latestOwn = useMemo(() => latestOwnEntry(ownWords), [ownWords]);
   const tileWords = useMemo(() => {
     const out: Partial<Record<ShelfId, { text: string; date: string }>> = {};
-    for (const [id, w] of Object.entries(wordsByShelf) as [ShelfId, { text: string; at: string }][]) out[id] = { text: w.text, date: shelfDayLabel(w.at, now, locale) };
+    for (const [id, w] of Object.entries(tileWordsExcept(ownWords, latestOwn?.id)) as [ShelfId, { text: string; at: string }][]) out[id] = { text: w.text, date: shelfDayLabel(w.at, now, locale) };
     return out;
-  }, [wordsByShelf, now, locale]);
+  }, [ownWords, latestOwn, now, locale]);
+  // (b) a filled shelf without words: its next thing to notice (the shelf
+  // page's own pick — never ahead of band), as a title.
+  const tileNotice = useMemo(() => {
+    const out: Partial<Record<ShelfId, string>> = {};
+    if (!onGrid || comparisonMonths === null) return out;
+    for (const p of selectNextMilestonesByShelf(milestones, comparisonMonths, { perShelf: 1, total: 9, now })) {
+      if (!out[p.shelf]) out[p.shelf] = milestoneText(p.milestone, "title", t, { gender: childProfile.gender });
+    }
+    return out;
+  }, [onGrid, milestones, comparisonMonths, now, t, childProfile.gender]);
+  // (c) the shelf's practice — an empty shelf's line, and a filled shelf's last resort.
   const tileTry = useMemo(() => {
     const out: Partial<Record<ShelfId, string>> = {};
     if (!onGrid) return out;
     for (const id of SHELF_IDS) {
-      if ((coverage[id] ?? 0) > 0) continue;
+      if ((coverage[id] ?? 0) > 0 && (tileWords[id] || tileNotice[id])) continue;
       const pick = shelfPractice({ childId: childProfile.id, milestones, comparisonMonths, practices: PRACTICES, coverage, today: now, recentPracticeIds: recentPracticeIds(actionLoop, childProfile.id, now) }, id);
       if (pick) out[id] = practiceTitle(practiceText(pick.practice, "do", locale, childProfile.gender), locale);
     }
     return out;
-  }, [onGrid, coverage, childProfile.id, childProfile.gender, milestones, comparisonMonths, now, actionLoop, locale]);
-
+  }, [onGrid, coverage, tileWords, tileNotice, childProfile.id, childProfile.gender, milestones, comparisonMonths, now, actionLoop, locale]);
   const openEntry = (id: string) => {
     goToRoute("journal", { view: "all" });
     requestJournalFocus(id);
@@ -233,6 +251,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
           latest={latestOwn ? { text: latestOwn.text, shelf: latestOwn.shelf, day: shelfDayLabel(latestOwn.at, now, locale) } : null}
           tileWords={tileWords}
           tileTry={tileTry}
+          tileNotice={tileNotice}
           captureDock={
             /* The ONE capture sheet, UNFILED: extract_log proposes the shelf and
                the parent confirms it in the sheet (B-LOOP-06) — no filing

@@ -20,7 +20,9 @@ vi.mock("../../context/LanguageContext", async () => {
   };
 });
 
-import ShelfGrid, { shelfCountKey } from "./ShelfGrid";
+import ShelfGrid, { shelfCountKey, tileNext } from "./ShelfGrid";
+import { latestOwnEntry, ownWordsByShelf, tileWordsExcept } from "../../lib/journal/shelfView";
+import type { BehaviorLog } from "../../types";
 import { SHELVES, type ShelfId } from "../../lib/shelves/registry";
 import { translate } from "../../lib/i18n";
 import { loopFirewallHits } from "../../lib/loop/firewall";
@@ -175,6 +177,87 @@ describe("ShelfGrid — the parent's words, what to try, and the capture dock", 
     expect(src).toContain('onText={() => setCapture({ open: true, mode: "text" })}');
     expect(src).toContain("onHardMoment={hardMomentTile ? () => openHardMomentNow() : undefined}");
     expect(src).toContain("shelf={shelf ?? undefined}");
-    expect(src).toContain("latestWordsByShelf(observations, behaviorLogs, SHELF_IDS)");
+    // c2 r2: notes + the child's kept quotes; the header's entry is excluded from its tile
+    expect(src).toContain("ownWordsByShelf(observations, behaviorLogs, keptQuotes, SHELF_IDS)");
+    expect(src).toContain("tileWordsExcept(ownWords, latestOwn?.id)");
+    expect(src).toContain("tileNotice={tileNotice}");
   });
+});
+
+/* P5-LOOP c2 r2 — ONE second line on every tile, family words first
+   (journal product P1 G1-1, B-LOOP-NEW-2c), and the header's quote never
+   repeats on its tile (journal design P1, B-LOOP-NEW-2d). */
+describe("ShelfGrid — one line per tile, the quote appears once (c2 r2)", () => {
+  // the seeded demo shape: nine shelves, six filled, the Words shelf holding notes AND kept quotes
+  const log = (id: string, notes: string, timestamp: string) => ({ id, behaviorType: "Positive Moment", notes, timestamp, intensity: 1 } as unknown as BehaviorLog);
+  const logs = [
+    log("f1", "Sang the whole bath song on his own", "2026-10-06T19:00:00"),
+    log("f0", "Hugged his sister after the fight", "2026-09-30T19:00:00"),
+    log("w1", "Asked for more juice with a full sentence", "2026-10-02T09:00:00"),
+  ];
+  const obs = [
+    { id: "behaviorLogs:f1", origin: "behaviorLogs" as const, shelf: "feelings" as ShelfId, at: "2026-10-06T19:00:00" },
+    { id: "behaviorLogs:f0", origin: "behaviorLogs" as const, shelf: "feelings" as ShelfId, at: "2026-09-30T19:00:00" },
+    { id: "behaviorLogs:w1", origin: "behaviorLogs" as const, shelf: "words" as ShelfId, at: "2026-10-02T09:00:00" },
+  ];
+  const quotes = [{ id: "quote-2026-10-04-a", note: "big ball!", noticedOn: "2026-10-04" }];
+  const counts: Partial<Record<ShelfId, number>> = { food: 3, words: 8, feelings: 2, play: 3, moving: 1, hands: 1, school: 2, sleep: 0, family: 0 };
+  const own = ownWordsByShelf(obs, logs, quotes, REGISTRY_ORDER);
+  const latest = latestOwnEntry(own)!;
+  const tileWords = Object.fromEntries(Object.entries(tileWordsExcept(own, latest.id)).map(([k, w]) => [k, { text: w!.text, date: w!.at.slice(5, 10) }]));
+  const tileNotice: Partial<Record<ShelfId, string>> = { food: "Washes and dries hands", play: "Plays pretend with a friend", moving: "Climbs well", school: "Draws a circle" };
+  const tileTry: Partial<Record<ShelfId, string>> = { sleep: "Same bedtime, same wake-up", family: "Name the people at dinner", hands: "Put on one sock together" };
+  const grid = (lang: "en" | "he") => {
+    state.lang = lang;
+    return renderToStaticMarkup(
+      <ShelfGrid childName="Dylan" counts={counts} onOpenShelf={noop} onOpenPro={noop} onOpenAll={noop}
+        latest={{ text: latest.text, shelf: latest.shelf, day: "Yesterday" }} tileWords={tileWords} tileNotice={tileNotice} tileTry={tileTry} />,
+    );
+  };
+  const tileOf = (html: string, id: string) => {
+    const i = html.indexOf(`data-shelf="${id}"`);
+    return html.slice(i, html.indexOf("</button>", i));
+  };
+
+  it("the selectors: the Words shelf holds the child's kept quote (newest first); the header is the newest NOTE; its tile gets the previous line", () => {
+    expect(own.words?.map((w) => w.text)).toEqual(["big ball!", "Asked for more juice with a full sentence"]);
+    expect(own.words?.[0].quote).toBe(true);
+    expect(latest).toMatchObject({ shelf: "feelings", text: "Sang the whole bath song on his own" });
+    expect(tileWordsExcept(own, latest.id).feelings?.text).toBe("Hugged his sister after the fight");
+    // a shelf whose only line is the header's shows no words (its next line comes from notice/try)
+    const solo = ownWordsByShelf([obs[0]], logs, [], REGISTRY_ORDER);
+    expect(tileWordsExcept(solo, latestOwnEntry(solo)!.id).feelings).toBeUndefined();
+  });
+
+  it("tileNext cascade: words → next to notice → try; an empty shelf keeps its practice line only", () => {
+    expect(tileNext(3, { text: "w", date: "d" }, "n", "t")?.kind).toBe("words");
+    expect(tileNext(3, undefined, "n", "t")?.kind).toBe("notice");
+    expect(tileNext(3, undefined, undefined, "t")?.kind).toBe("try");
+    expect(tileNext(3)).toBeNull();
+    expect(tileNext(0, { text: "w", date: "d" }, "n", "t")).toEqual({ kind: "try", title: "t" });
+    expect(tileNext(0)).toBeNull();
+  });
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: every seeded tile carries EXACTLY one second line; Words reads the child's quote; the header's sentence renders once`, () => {
+      const html = grid(lang);
+      for (const id of REGISTRY_ORDER) {
+        expect((tileOf(html, id).match(/data-testid="shelf-tile-next"/g) ?? []).length, `${lang} ${id}`).toBe(1);
+      }
+      expect(tileOf(html, "words")).toContain("big ball!");
+      expect(tileOf(html, "words")).toMatch(/data-next="words"/);
+      expect(text(tileOf(html, "food"))).toContain(translate(lang, "elev.shelfJournal.nextNotice", { title: "Washes and dries hands" }));
+      expect(text(tileOf(html, "hands"))).toContain(translate(lang, "elev.shelfJournal.tryLine", { title: "Put on one sock together" }));
+      // the header quote appears ONCE on the page; Feelings shows its previous line
+      expect(html.split("Sang the whole bath song on his own").length - 1).toBe(1);
+      expect(tileOf(html, "feelings")).toContain("Hugged his sister after the fight");
+      // tile lines: t-sm sans in --arbor-ink-soft; tiles equal; no comparison words
+      for (const m of html.matchAll(/<span data-testid="shelf-tile-next"[^>]*>/g)) {
+        expect(m[0]).toContain("t-sm");
+        expect(m[0]).toContain("color:var(--arbor-ink-soft)");
+      }
+      expect(loopFirewallHits(text(html))).toEqual([]);
+      expect(text(html)).not.toMatch(/%|more than|fewer than|most|least|יותר מ|פחות מ/i);
+    });
+  }
 });

@@ -11,6 +11,31 @@ export function shelfCountKey(n: number): { key: string; vars?: Record<string, n
   return { key: "elev.loop.shelf.noticed", vars: { n } };
 }
 
+/** P5-LOOP c2 r2 (journal product P1 G1-1, B-LOOP-NEW-2c): a tile's ONE
+ *  second line, in order — (a) the family's own latest words on that shelf
+ *  (the Words tile includes the child's kept quotes; the header's entry is
+ *  already excluded by the caller), (b) the shelf's next thing to notice,
+ *  (c) its practice. An empty shelf keeps its practice line only. Each tile
+ *  reads only its own shelf: never a comparison. */
+export type TileNext =
+  | { kind: "words"; text: string; date: string }
+  | { kind: "notice"; title: string }
+  | { kind: "try"; title: string }
+  | null;
+
+export function tileNext(
+  n: number,
+  words?: { text: string; date: string },
+  notice?: string,
+  tryTitle?: string,
+): TileNext {
+  if (n <= 0) return tryTitle ? { kind: "try", title: tryTitle } : null;
+  if (words) return { kind: "words", text: words.text, date: words.date };
+  if (notice) return { kind: "notice", title: notice };
+  if (tryTitle) return { kind: "try", title: tryTitle };
+  return null;
+}
+
 export interface ShelfGridProps {
   childName: string;
   /** Entries per shelf over the last 30 days (lib/milestones/selectByShelf shelfCoverage). */
@@ -27,6 +52,10 @@ export interface ShelfGridProps {
    *  (verbatim, dated) — or, on an empty shelf, its practice's title. */
   tileWords?: Partial<Record<ShelfId, { text: string; date: string }>>;
   tileTry?: Partial<Record<ShelfId, string>>;
+  /** c2 r2 (B-LOOP-NEW-2c): per shelf, the title of its next thing to notice
+   *  (lib/journal/shelfView shelfNotice) — a filled tile's line when it has
+   *  no words of its own. */
+  tileNotice?: Partial<Record<ShelfId, string>>;
   /** B-LOOP-NEW-1c (2) / critic c2 r1 (journal product P1): the capture dock,
    *  unfiled — the grid's third module (budget 3). */
   captureDock?: React.ReactNode;
@@ -53,7 +82,7 @@ const TILE_STYLE: React.CSSProperties = {
  * is the registry's `order`, never the count; a shelf with nothing shows the
  * one-thing-to-try line, never "0", "empty", a colour or a comparison.
  */
-export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, onOpenAll, primaryMoveProps, latest = null, tileWords = {}, tileTry = {}, captureDock }: ShelfGridProps) {
+export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, onOpenAll, primaryMoveProps, latest = null, tileWords = {}, tileTry = {}, tileNotice = {}, captureDock }: ShelfGridProps) {
   const { t } = useLanguage();
   const ordered = [...SHELVES].sort((a, b) => a.order - b.order);
   return (
@@ -95,9 +124,8 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
         <div data-testid="shelf-grid" className="grid grid-cols-2 gap-2.5 lg:grid-cols-3" {...(primaryMoveProps ?? {})}>
           {ordered.map((def) => {
             const n = counts[def.id] ?? 0;
-            const tryTitle = n <= 0 ? tileTry[def.id] : undefined;
-            const words = n > 0 ? tileWords[def.id] : undefined;
-            const line = tryTitle ? { key: "elev.shelfJournal.nothingYetShort", vars: undefined } : shelfCountKey(n);
+            const next = tileNext(n, tileWords[def.id], tileNotice[def.id], tileTry[def.id]);
+            const line = n <= 0 && next ? { key: "elev.shelfJournal.nothingYetShort", vars: undefined } : shelfCountKey(n);
             const family = def.id === "family";
             return (
               <button
@@ -116,15 +144,17 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
                     {family ? `${t("elev.shelfJournal.family.sub", { name: childName })} · ` : ""}
                     {t(line.key, line.vars)}
                   </span>
-                  {/* B-LOOP-NEW-1c (1): every tile says what to try, from the record —
-                      the parent's latest words on a filled shelf, the practice on an
-                      empty one. Each tile reads only its own shelf: no comparison. */}
-                  {(words || tryTitle) && (
-                    <span data-testid="shelf-tile-next" className="mt-1 block t-sm leading-snug line-clamp-2" style={{ color: "var(--arbor-ink-soft)" }}>
-                      {words ? (
-                        <><span dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>{"“"}{words.text}{"”"}</span>{" · "}<bdi>{words.date}</bdi></>
+                  {/* B-LOOP-NEW-1c (1) → c2 r2 (B-LOOP-NEW-2c): ONE second line per
+                      tile — the family's words, else the next thing to notice,
+                      else the practice. Each tile reads only its own shelf. */}
+                  {next && (
+                    <span data-testid="shelf-tile-next" data-next={next.kind} className="mt-1 block t-sm leading-snug line-clamp-2" style={{ color: "var(--arbor-ink-soft)" }}>
+                      {next.kind === "words" ? (
+                        <><span dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>{"“"}{next.text}{"”"}</span>{" · "}<bdi>{next.date}</bdi></>
+                      ) : next.kind === "notice" ? (
+                        t("elev.shelfJournal.nextNotice", { title: next.title })
                       ) : (
-                        t("elev.shelfJournal.tryLine", { title: tryTitle ?? "" })
+                        t("elev.shelfJournal.tryLine", { title: next.title })
                       )}
                     </span>
                   )}

@@ -20,6 +20,7 @@ import type { ShelfId } from "../shelves/registry";
 import { selectNextMilestonesByShelf, type NoticePick } from "../milestones/selectByShelf";
 import { practiceCandidates, type ChoosePracticeInput, type PracticePick } from "../practice/choosePractice";
 import { shelfWordsThenNow, type DatedWords } from "../today/shelfWords";
+import { quotableWords } from "../today/fromRecord";
 
 /** Read-model origin → the timeline signal id prefix (the origins the journal thread shows). */
 export const SIGNAL_PREFIX: Partial<Record<ObservationOrigin, string>> = {
@@ -144,4 +145,77 @@ export function latestOwnWords(byShelf: Partial<Record<ShelfId, DatedWords>>): (
     if (!best || Date.parse(w.at) > Date.parse(best.at)) best = { ...w, shelf };
   }
   return best;
+}
+
+/* ── P5-LOOP c2 r2 · B-LOOP-NEW-2c / 2d — one line per tile, family words first ── */
+
+/** One dated line of the family's own words on a shelf, with its record id
+ *  (so the header's entry can be excluded from its tile — never shown twice). */
+export interface ShelfEntryWords extends DatedWords {
+  id: string;
+  /** A "Things {name} said" quote keepsake (the child's words, kept by the parent). */
+  quote?: boolean;
+}
+
+/** The shelf a quote keepsake belongs to: what the child SAID is the Words shelf. */
+export const QUOTE_SHELF: ShelfId = "words";
+
+/** A quote keepsake's local day ("YYYY-MM-DD") as a local-noon instant (no UTC day shift). */
+const quoteAt = (noticedOn: string): string => `${noticedOn}T12:00:00`;
+
+/**
+ * Per shelf, the family's own words, newest first: the parent's written
+ * notes (behaviorLogs, `quotableWords`, verbatim) and — on the Words shelf —
+ * the child's kept quotes (keepsakes `kind: "quote"`, lib/loop/tonight
+ * quotesFromDocs). FIREWALL: verbatim and dated; nothing computed or compared.
+ */
+export function ownWordsByShelf(
+  observations: ReadonlyArray<Pick<Observation, "id" | "origin" | "shelf" | "at">>,
+  logs: readonly BehaviorLog[],
+  quotes: ReadonlyArray<{ id: string; note: string; noticedOn: string }>,
+  shelves: readonly ShelfId[],
+): Partial<Record<ShelfId, ShelfEntryWords[]>> {
+  const wanted = new Set<ShelfId>(shelves);
+  const byId = new Map(logs.map((l) => [`behaviorLogs:${l.id}`, l]));
+  const out: Partial<Record<ShelfId, ShelfEntryWords[]>> = {};
+  const push = (shelf: ShelfId, w: ShelfEntryWords) => {
+    (out[shelf] ??= []).push(w);
+  };
+  for (const o of observations) {
+    if (o.origin !== "behaviorLogs" || !o.shelf || !wanted.has(o.shelf)) continue;
+    const log = byId.get(o.id);
+    const text = log ? quotableWords(log) : null;
+    if (!text || !Number.isFinite(Date.parse(o.at))) continue;
+    push(o.shelf, { id: o.id, text, at: o.at });
+  }
+  if (wanted.has(QUOTE_SHELF)) {
+    for (const q of quotes) {
+      const text = q.note.replace(/\s+/g, " ").trim();
+      const at = quoteAt(q.noticedOn);
+      if (!text || !Number.isFinite(Date.parse(at))) continue;
+      push(QUOTE_SHELF, { id: `keepsakes:${q.id}`, text, at, quote: true });
+    }
+  }
+  for (const list of Object.values(out)) list?.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  return out;
+}
+
+/** The header's line: the parent's newest written note on any shelf (quotes are the child's words, not the parent's). */
+export function latestOwnEntry(byShelf: Partial<Record<ShelfId, ShelfEntryWords[]>>): (ShelfEntryWords & { shelf: ShelfId }) | null {
+  let best: (ShelfEntryWords & { shelf: ShelfId }) | null = null;
+  for (const [shelf, list] of Object.entries(byShelf) as [ShelfId, ShelfEntryWords[]][]) {
+    const w = list.find((x) => !x.quote);
+    if (w && (!best || Date.parse(w.at) > Date.parse(best.at))) best = { ...w, shelf };
+  }
+  return best;
+}
+
+/** Per shelf, the newest own words EXCEPT the header's entry (that shelf shows its previous line, or none). */
+export function tileWordsExcept(byShelf: Partial<Record<ShelfId, ShelfEntryWords[]>>, excludeId: string | null | undefined): Partial<Record<ShelfId, ShelfEntryWords>> {
+  const out: Partial<Record<ShelfId, ShelfEntryWords>> = {};
+  for (const [shelf, list] of Object.entries(byShelf) as [ShelfId, ShelfEntryWords[]][]) {
+    const w = list.find((x) => x.id !== excludeId);
+    if (w) out[shelf] = w;
+  }
+  return out;
 }
