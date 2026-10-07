@@ -153,8 +153,10 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
       comparisonMonths,
       nowMs: now.getTime(),
       lang: uiLang === "he" ? "he" : "en",
+      // c2 r2 (G1-3): the child's kept quotes lead the SLP packet's Moments
+      quotes: quotesFromDocs(keepsakes.items),
     }) : null),
-    [pro, profession, childProfile, milestones, behaviorLogs, actionLoop, questions, comparisonMonths, now, uiLang],
+    [pro, profession, childProfile, milestones, behaviorLogs, actionLoop, questions, comparisonMonths, now, uiLang, keepsakes.items],
   );
   const domainCounts = useMemo(() => proDomainCounts(observations, (s) => shelfDef(s).domain, now), [observations, now]);
 

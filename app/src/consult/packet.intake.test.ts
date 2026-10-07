@@ -127,3 +127,37 @@ describe("buildIntakePacket — one profession's domains only", () => {
     expect(isConsultPacketEmpty(p)).toBe(true);
   });
 });
+
+/* P5-LOOP c2 r2 (journal product P1 G1-3, B-LOOP-NEW-2c/2d): the SLP packet
+   opens with the child's own kept words; the OT packet never carries them;
+   the prepared line names the home languages. */
+describe("buildIntakePacket — the child's kept quotes lead the SLP Moments (c2 r2)", () => {
+  const quotes = [
+    { id: "quote-2026-10-04-a", note: "big ball!", noticedOn: "2026-10-04" },
+    { id: "quote-2026-08-01-b", note: "too old for the window", noticedOn: "2026-08-01" },
+  ];
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: a Words-shelf quote keepsake is the FIRST SLP moment, quoted and dated in the locale; the OT packet does not include it`, () => {
+      const slp = buildIntakePacket("slp", input({ quotes, lang, child: { id: "c1", name: "Dylan Demo", age: 3, gender: "boy", languages: ["English (Native)", "Hebrew"] } }));
+      const moments = slp.sections.find((s) => s.id === "intake-moments")!.items.map((i) => i.text.replace(/[⁨⁩]/g, ""));
+      const day = new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(Date.parse("2026-10-04T12:00:00"));
+      expect(moments[0]).toContain("big ball!");
+      expect(moments[0]).toContain(day);
+      expect(moments[0]).toContain(lang === "he" ? "Dylan אמר:" : "Dylan said:");
+      expect(moments[0]).not.toContain("/");
+      // the parent's note still follows; the out-of-window quote is not there
+      expect(moments.some((m) => m.includes("Said big ball at the park"))).toBe(true);
+      expect(moments.join("\n")).not.toContain("too old for the window");
+      // the OT packet: no Words shelf, no quote
+      const ot = buildIntakePacket("ot", input({ quotes, lang }));
+      expect(allText(ot)).not.toContain("big ball!");
+      // home languages, localized, on the packet (ProView's prepared line)
+      expect(slp.languages).toHaveLength(2);
+      expect(slp.languages!.join(" ")).not.toMatch(/elev\.|ob\.lang\./);
+      expect(loopFirewallHits(allText(slp))).toEqual([]);
+    });
+  }
+  it("no languages on the profile → no languages field (never an empty 'Home languages:')", () => {
+    expect(buildIntakePacket("slp", input()).languages).toBeUndefined();
+  });
+});

@@ -4,7 +4,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { DOMAINS, domainName, type DomainId } from "../../lib/domains/registry";
 import { shelfLabel, shelvesOfDomain } from "../../lib/shelves/registry";
 import { intakeLabelKey, professionLabelKey } from "../../lib/i18nElevation/professions";
-import { DEMO_HEADER_KEY, INTAKE_PROFESSIONS, type ConsultPacket, type IntakeProfession } from "../../consult/packet";
+import { DEMO_HEADER_KEY, INTAKE_PROFESSIONS, intakeDay, type ConsultPacket, type IntakeProfession } from "../../consult/packet";
 import type { ProDomainCounts } from "../../lib/journal/shelfView";
 
 export type ProEgressVerb = "pdf" | "copy" | "send";
@@ -79,7 +79,7 @@ export default function ProView({
   onBack,
   primaryMoveProps,
 }: ProViewProps) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const sectionItems = (id: string) => packet.sections.find((s) => s.id === id)?.items ?? [];
   // P5-LOOP c2 r1 (journal product P1, G0): each packet line folds to 3 items
   // under ONE "Show all", so the packet's verbs — moved under its title — sit
@@ -139,7 +139,10 @@ export default function ProView({
             {t("elev.shelfJournal.pro.packetTitle", { profession: professionName })}
           </h2>
           <p data-testid="pro-packet-prepared" className="mt-1 t-sm" style={{ color: "var(--arbor-muted)" }}>
-            {t("elev.packet.prepared", { date: packet.generatedAt })}
+            {/* c2 r2 (P2-5 + G1-3): ONE date format (the locale day, as every
+                packet line), and the home languages named for the reader. */}
+            {t("elev.packet.prepared", { date: intakeDay(`${packet.generatedAt}T12:00:00`, uiLang === "he" ? "he" : "en") || packet.generatedAt })}
+            {packet.languages?.length ? <> · <span data-testid="pro-packet-languages">{t("elev.packet.intake.languages", { languages: packet.languages.join(", ") })}</span></> : null}
             {packet.demo ? <> · <span data-testid="pro-packet-demo">{t(DEMO_HEADER_KEY)}</span></> : null}
           </p>
           <div data-testid="pro-packet-actions" className="mt-3 flex gap-2">

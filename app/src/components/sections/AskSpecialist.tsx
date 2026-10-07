@@ -40,6 +40,7 @@ import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 // LC-20 + LC-12: the reason for the visit, the questions prepared in
 // Appointments, and the discipline-specific evidence each preset reads.
 import { useChildCollection } from "../../hooks/useChildCollection";
+import { quotesFromDocs } from "../../lib/loop/tonight";
 import type { LangObservation } from "../../growth/vocabAgg";
 import type { GrowthEntry } from "../../growth/growthEntries";
 
@@ -171,6 +172,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   const questionsCol = useChildCollection<{ id: string; text: string }>(childProfile.id, "apptQuestions");
   const langObsCol = useChildCollection<LangObservation>(childProfile.id, "langObs", { orderByField: "timestamp", orderDir: "desc", max: 200 });
   const growthCol = useChildCollection<GrowthEntry>(childProfile.id, "growthEntries", { orderByField: "date", orderDir: "desc", max: 200 });
+  // P5-LOOP c2 r2 (G1-3): the child's kept quotes — the intake packet's Moments lead with them (SLP).
+  const keepsakesCol = useChildCollection<{ id: string; kind?: string; note?: string; noticedOn?: string }>(childProfile.id, "keepsakes");
   // W2-CAREPRO c2 r1: the visit this summary follows (careTrack's own sinks).
   const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments");
   const followUpsCol = useChildCollection<AppointmentFollowUp>(childProfile.id, "apptFollowUps");
@@ -253,8 +256,9 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       comparisonMonths: comparisonMonthsOf(childProfile),
       nowMs: Date.now(),
       lang: uiLang === "he" ? "he" : "en",
+      quotes: quotesFromDocs(keepsakesCol.items),
     }) : null),
-    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang]
+    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items]
   );
   const packet = useMemo(() => intakePacket ?? presetPacket(audience, fullPacket), [intakePacket, audience, fullPacket]);
   // The intake packet is already scoped to its profession; it leaves through

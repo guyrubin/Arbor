@@ -82,7 +82,9 @@ describe("ProView — the professional view", () => {
     expect([...html.matchAll(/data-testid="pro-packet-line" data-section="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["intake-seen", "intake-not-yet", "intake-moments", "intake-practice", "intake-questions"]);
     expect(text(html)).toContain("Said big ball at the park");
     expect(text(html)).not.toContain("Climbed the ladder");
-    expect(text(html)).toContain(translate("en", "elev.packet.prepared", { date: "2026-10-06" }));
+    // c2 r2 (P2-5): ONE date format — the locale day, as every packet line ("6 Oct 2026")
+    expect(text(html).replace(/[⁨⁩]/g, "")).toContain(translate("en", "elev.packet.prepared", { date: "6 Oct 2026" }).replace(/[⁨⁩]/g, ""));
+    expect(text(html)).not.toContain("2026-10-06");
     expect(html).toContain('data-testid="pro-packet-demo"');
     expect(text(html)).toContain(translate("en", DEMO_HEADER_KEY));
     for (const v of ["pdf", "copy", "send"]) expect(html).toMatch(new RegExp(`data-testid="pro-egress-${v}"[^>]*min-h-11|min-h-11[^>]*data-testid="pro-egress-${v}"`));
@@ -170,4 +172,20 @@ describe("grep pin — professions are rendered only in ProView and Care", () =>
     const src = readFileSync(path.resolve(__dirname, "ProView.tsx"), "utf8");
     expect(/i18nElevation\/professions/.test(src)).toBe(true);
   });
+});
+
+describe("ProView — the prepared line names the home languages (P5-LOOP c2 r2, B-LOOP-NEW-2c)", () => {
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: 'Home languages: …' sits on the prepared line when the profile has languages; absent otherwise`, () => {
+      state.lang = lang;
+      const packet = buildIntakePacket("slp", { child: { ...child, languages: ["English (Native)", "Hebrew"] }, milestones: [], behaviorLogs: logs, actionLoops: doses, nowMs: NOW.getTime(), lang });
+      const html = renderToStaticMarkup(
+        <ProView childName="Dylan" profession="slp" onSelectProfession={noop} packet={packet} questions="" onQuestionsChange={noop} onEgress={noop} counts={counts} onBack={noop} />,
+      );
+      const prepared = html.match(/<p data-testid="pro-packet-prepared"[\s\S]*?<\/p>/)![0];
+      expect(prepared).toContain('data-testid="pro-packet-languages"');
+      expect(text(prepared)).toContain(lang === "he" ? "שפות בבית:" : "Home languages:");
+      expect(render(lang)).not.toContain('data-testid="pro-packet-languages"');
+    });
+  }
 });

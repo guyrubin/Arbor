@@ -23,6 +23,7 @@ import { DOMAINS, type DomainId, type Profession } from "../lib/domains/registry
 import { milestoneShelf, shelfDef, shelfLabel, type ShelfId } from "../lib/shelves/registry";
 import { toObservations, type ObservationChild } from "../lib/observations";
 import { milestoneAgeLine } from "../lib/milestoneAgeLine";
+import { resolveHebrewSlash } from "../lib/hebrewSlashGender";
 import type { BehaviorLog, Milestone } from "../types";
 import type { ActionLoopEntry } from "../actionLoop/model";
 
@@ -258,7 +259,9 @@ export interface ConsultPacket {
   sections: PacketSection[];
   /** B-DIST-01: built from the demo family — every serializer leads with
    *  DEMO_HEADER_KEY ("Demo family — invented data"). */
-  demo?: true;
+  demo?: true;  /** P5-LOOP c2 r2 (B-LOOP-NEW-2c): the intake packet's prepared line names
+   *  the home languages (the profile's languages, localized by languageName). */
+  languages?: string[];
 }
 
 /** B-DIST-01: the one header line every egress of a demo-family record carries. */
@@ -1573,12 +1576,19 @@ export interface IntakePacketInput {
   windowDays?: number;
   /** The packet is built in the parent's language. */
   lang?: UiLang;
+  /** P5-LOOP c2 r2 (journal product P1 G1-3): the child's kept quotes
+   *  ("Things {name} said", keepsakes `kind: "quote"`, lib/loop/tonight
+   *  quotesFromDocs). They are filed on the Words shelf, so they reach the
+   *  packets whose profession owns that shelf's domain (the SLP), never the OT. */
+  quotes?: ReadonlyArray<{ id: string; note: string; noticedOn: string }>;
 }
 
 const INTAKE_MOMENTS_CAP = 8;
+/** The shelf a quote keepsake is filed on (lib/journal/shelfView QUOTE_SHELF — kept literal here: consult never imports the journal view). */
+const INTAKE_QUOTE_SHELF: ShelfId = "words";
 
 /** An ISO date as the reader reads a day ("14 Sep 2026" / "14 בספט׳ 2026"). */
-function intakeDay(iso: string, lang: UiLang): string {
+export function intakeDay(iso: string, lang: UiLang): string {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return "";
   return new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(t);
@@ -1638,9 +1648,26 @@ export function buildIntakePacket(profession: IntakeProfession, input: IntakePac
     });
   section("intake-not-yet", "elev.packet.intake.notYet", notYet, "elev.packet.intake.notYet.note");
 
-  // · Moments — the parent's words, quoted and dated, newest first
+  // · Moments — the family's words, quoted and dated, newest first. c2 r2
+  //   (G1-3): the child's kept quotes on the profession's shelves LEAD (what
+  //   he says is the speech therapist's first question), then the parent's notes.
+  const childName = (input.child.name || "").split(" ")[0] || translate(lang, "learn.yourChild");
+  const quoteMoments: PacketItem[] = onDomain(INTAKE_QUOTE_SHELF)
+    ? (input.quotes ?? [])
+      .map((q) => ({ q, at: `${q.noticedOn}T12:00:00`, words: q.note.replace(/\s+/g, " ").trim() }))
+      .filter(({ at, words }) => !!words && Date.parse(at) >= since - DAY && Date.parse(at) <= input.nowMs + DAY)
+      .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+      .map(({ q, at, words }): PacketItem => {
+        const date = intakeDay(at, lang);
+        // the template's Hebrew slash form resolves from the gender; the quote stays verbatim
+        const said = lang === "he"
+          ? resolveHebrewSlash(t("elev.packet.intake.saidLine", { name: childName, quote: "{quote}" }), gender).replace("{quote}", words)
+          : t("elev.packet.intake.saidLine", { name: childName, quote: words });
+        return { id: `intake-quote-${q.id}`, text: date ? `${said} · ${date}` : said };
+      })
+    : [];
   const logById = new Map(input.behaviorLogs.map((l) => [l.id, l]));
-  const moments = observations
+  const noteMoments = observations
     .filter((o) => o.origin === "behaviorLogs" && onDomain(o.shelf) && Date.parse(o.at) >= since && Date.parse(o.at) <= input.nowMs)
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .map((o): PacketItem | null => {
@@ -1650,8 +1677,8 @@ export function buildIntakePacket(profession: IntakeProfession, input: IntakePac
       const date = intakeDay(o.at, lang);
       return { id: `intake-moment-${log.id}`, text: `“${words}”${date ? ` · ${date}` : ""}` };
     })
-    .filter((x): x is PacketItem => !!x)
-    .slice(0, INTAKE_MOMENTS_CAP);
+    .filter((x): x is PacketItem => !!x);
+  const moments = [...quoteMoments, ...noteMoments].slice(0, INTAKE_MOMENTS_CAP);
   section("intake-moments", "elev.packet.intake.moments", moments);
 
   // · Practice — practice DAYS per shelf in the window (a count of days, never a rate)
@@ -1681,5 +1708,7 @@ export function buildIntakePacket(profession: IntakeProfession, input: IntakePac
     generatedAt: new Date(input.nowMs).toISOString().slice(0, 10),
     sections,
     ...(input.child.demo === true ? { demo: true as const } : {}),
+    // c2 r2: the home languages, named in the parent's language ("English (Native)" → "אנגלית (שפת אם)")
+    ...(input.child.languages?.length ? { languages: input.child.languages.map((l) => languageName(l, (k) => translate(lang, k))).filter(Boolean) } : {}),
   };
 }
