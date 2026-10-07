@@ -57,7 +57,7 @@ export const CHILD_DATA_ROWS: readonly ChildDataRow[] = [
   // narration in the child's name) — the metadata here; the files in Storage,
   // erased with the child.
   { id: "books", icon: "auto_stories", collections: ["bookAssets"] },
-  { id: "plans", icon: "checklist", collections: ["actionPlans", "actionLoops", "routines", "goals", "goalObservations", "savedLearn", "weeklyReports", "programs", "familyGoals"] },
+  { id: "plans", icon: "checklist", collections: ["actionPlans", "actionLoops", "routines", "goals", "goalObservations", "savedLearn", "weeklyReports", "programs", "familyGoals", "coachSessions"] },
   { id: "screening", icon: "fact_check", collections: ["screenings", "devScoreSnapshots", "bandSnapshots"] },
   { id: "coach", icon: "forum", collections: ["conversations", "conversationChanges"] },
   { id: "memory", icon: "bookmark", collections: [], elsewhere: ["server-memory"] },
