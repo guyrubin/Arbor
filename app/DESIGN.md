@@ -4,7 +4,7 @@ Captured from the live code (src/index.css "Arbor 2035 Sapphire", src/lib/tokens
 
 ## Theme
 
-Light only. No dark mode. Flat clinical surfaces; depth via hairline borders + neutral shadows, not glass.
+Light only. No dark mode. Flat clinical surfaces; depth via a hairline ring + one neutral 2 px lift, never glass on content. **Glass on sticky chrome only** (B-DESIGN-02, framer decision 7 Oct): the sticky top bar and the dock may take `.arbor-chrome-glass` (`--arbor-chrome-glass` = paper at 80 % + `--arbor-chrome-blur` 14 px); every card, sheet and row under it stays opaque.
 
 ## Color
 
@@ -15,6 +15,7 @@ Light only. No dark mode. Flat clinical surfaces; depth via hairline borders + n
 - Jewel accents, each `-soft` (tint bg) + `-ink` (AA text): green (success), peach, lav, yellow, pink, sky. CR-01 text inks: green #066446, peach/yellow #92400e, pink #9d174d, sky #075985; lavender #6d28d9 unchanged. Solid jewel accents remain decorative.
 - Primary gradients `--gradient-cta` / `--arbor-gradient-primary`: sapphire #1a6be8 → #1558c0 → #124da8, with `--arbor-on-accent` labels. `--arbor-green-cta-start` retains its legacy name. Hero/coach washes and decorative progress retain their existing values.
 - Shell chrome: active pill `--arbor-subtab-active` #14225a with `--arbor-subtab-on-ink` #fff
+- Shelf washes (fixed strength, flat): `--arbor-sky-wash` · `--arbor-green-wash` · `--arbor-peach-wash` · `--arbor-lav-wash` · `--arbor-pink-wash` = the jewel 9 % into `--arbor-paper-elevated`, `--arbor-yellow-wash` 11 %; hands (tint deep) uses `--arbor-paper-deep`. Used on the Journal grid tiles and the shelf-page header ONLY: never on Milestones rows, never a strength chosen by count, answers or state. A glyph chip on a wash is a white chip. Contrast-pinned with muted / ink-soft / every -ink.
 
 ### CR-01 contrast contract (authorized 2026-09-03)
 
@@ -32,24 +33,33 @@ Practice Studio uses `--arbor-coach-grad` behind its small heading/caption and r
 
 ## Typography
 
-- Display `--font-display` Fraunces (HE: Frank Ruhl Libre) — h1–h3 automatic
-- Body `--font-sans` Nunito (HE: Heebo)
-- Editorial accent `--font-editorial` Instrument Serif (sparing)
-- Rem scale `--t-xs`…`--t-2xl` + utilities `.t-xs`…`.t-2xl`; fixed scale, no clamp
+Chosen 7 Oct (P7-DESIGN, Option A + three B elements; `execution/2026-10-07--design-direction/option-ab-blend.html` is the design of record).
+
+- Display `--font-display` Fraunces variable, optical size auto + `"SOFT" 40` (HE: Frank Ruhl Libre variable 300–900) — h1–h3 automatic; H1 weight `--arbor-w-hero` 500, titles `--arbor-w-title` 600, quotes 400
+- Body `--font-sans` **Instrument Sans / IBM Plex Sans Hebrew** — ONE Latin-first stack for both locales (a Latin name on a Hebrew page keeps the Latin face). The kid register (`.arbor-play`) keeps Nunito / Heebo; never cross them
+- Editorial accent `--font-editorial` Instrument Serif with `font-size-adjust` `--arbor-editorial-adjust` .5 (none in HE)
+- Scale: the bottom is unchanged (`--t-xs`…`--t-2xl`, utilities `.t-xs`…`.t-2xl`); the top opens to one loud step per screen: H1 `--t-hero` 34 px (44 px at ≥ 1280) · title `--t-title` 22 · the family's words `--t-say` 24 (HE 22) · kicker `--t-kicker` 12 uppercase tracked (HE 13, no uppercase). Utilities `.arbor-type-hero` / `-title` / `-say` / `-kicker` bundle face, weight and size
+- Numerals `tabular-nums lining-nums` on `time`, `table` and `.arbor-num` (times and counts align). A count is never a big numeral
+- **Accent rule: one warm accent per screen** — the family's words in the editorial face on a 2 px ink rule (`.arbor-accent-rule`), shelf and day on their own line. A second accent (a chip, a coloured date) competes and is removed. On a shelf page the 96 px shelf glyph at 12 % is the accent instead
 
 ## Shape & Space
 
 - Radii `--r-sm` 10px, `--r` 14px, `--r-lg` 18px, `--r-xl` 22px (Tailwind rounded-xl/2xl/3xl remapped to these)
-- Standard card chrome: `cardCls` from tokens.ts = white bg, 18px radius, `--arbor-rule` border, `--shadow-xs`
+- Standard card chrome: `cardCls` from tokens.ts = white bg, 18px radius, `--arbor-rule` border, `--shadow-xs` (legacy; new cards take the depth below)
+- Depth: `--arbor-shadow-card` = hairline ring + one 2 px lift on every card (`.arbor-depth-card`); `--arbor-shadow-primary` (deep, `0 22 40 -28` ink at 34 %) on the screen's ONE primary card (`.arbor-depth-primary`), never two. Use the classes or an inline `boxShadow`: a Tailwind `shadow-*` class is remapped to `--shadow-sm` by index.css
 - Shadows `--shadow-xs`…`--shadow-xl` (neutral) · focus `--ring` · touch floor `--touch-min` 44px
+- Rhythm (8-pt): sections 32 · between cards 12 · card padding 20
 
 ## Components
 
 - Cards: `cardCls` + `p-5`; header = 40×40 rounded-2xl icon chip in a `-soft` tint with `-ink` icon
+- `ShelfGlyph` (components/ui): a shelf's mark at 44 px (`--arbor-glyph-chip`), duotone — the registry glyph FILL 1 in the jewel at 30 % under a 500-weight `-ink` outline, on the `-soft` chip (white chip when on a wash). The tint names the shelf, never the child: same chip for every count and answer
+- `SectionHead` (components/ui): kicker row = glyph + title + hairline rule to the end edge; logical, EN + HE. Each section starts with one
+- `SegmentedAnswers` (components/ui): the three answers Seen it / Not yet / Not sure as ONE segmented control — deep-well track, three 44 px cells, "Seen it" alone outlined in sapphire; `aria-pressed`, arrow keys move between cells. Used wherever the three answers appear (Notice card, Milestones rows, shelf-page Notice)
 - Chips/pills: `rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase` in tint pairs
 - Kit primitives (src/components/ui/kit.tsx): PageHeader, SectionCard, Chip, IconBadge, ProgressBar (count-based only), HubHero pattern in section files
 - Shared Button: primary uses clay/on-accent and clay-deep hover; ghost uses muted. Both sizes use the existing `touch-target` floor, whose app-scoped selector wins over the shell's min-width reset.
-- Icons: Material Symbols Rounded via `<Icon name>` inside surfaces; lucide-react only for NavItem/HubHero props. Never mix within one surface.
+- Icons: Material Symbols Rounded via `<Icon name>` inside surfaces; lucide-react only for NavItem/HubHero props. Never mix within one surface. Chrome icons (top bar, dock, nav) are weight 300 outline and filled when active: `<Icon name chrome active={on}>`. Content glyphs are the duotone `ShelfGlyph`. A glyph outside the subset needs `npm run build:icon-font` (networked)
 
 ## Motion
 
@@ -61,4 +71,4 @@ Practice Studio uses `--arbor-coach-grad` behind its small heading/caption and r
 
 ## RTL
 
-`html[lang="he"]` swaps fonts and mirrors the shell; card roots set `dir`, content text `dir="auto"`; use logical properties (ms-/ps-/text-start); directional icons `rtl:-scale-x-100`.
+`html[lang="he"]` swaps the display face (the body stack is shared) and mirrors the shell; card roots set `dir`, content text `dir="auto"`; use logical properties (ms-/ps-/text-start); directional icons `rtl:-scale-x-100`. The icon class `.msr` sets `direction: ltr`: a glyph positioned with `inset-inline-*` (the shelf-page bleed glyph) needs `direction: inherit`.
