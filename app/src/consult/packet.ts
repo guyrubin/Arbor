@@ -26,6 +26,7 @@ import { milestoneAgeLine } from "../lib/milestoneAgeLine";
 import { resolveHebrewSlash } from "../lib/hebrewSlashGender";
 import type { BehaviorLog, Milestone } from "../types";
 import type { ActionLoopEntry } from "../actionLoop/model";
+import { SPLIT_CLINICIAN_PRESETS } from "../content/consultPresets";
 
 export interface PacketInputProfile {
   name: string;
@@ -1041,7 +1042,9 @@ export function isConsultPacketEmpty(packet: ConsultPacket): boolean {
  * No preset, clinician or not, may export "riskLevel", "milestonesPercent",
  * or a percentage readiness figure — those tokens appear in NO export. */
 
-export type ConsultAudience = "teacher" | "therapist" | "pediatrician" | "slp" | "behavioral_health";
+/** B-CAREPRO-42: "therapist" split into OT, PT and psychology (content/consultPresets);
+ *  "therapist" stays as "another clinician", the generalist ceiling. */
+export type ConsultAudience = "teacher" | "therapist" | "pediatrician" | "slp" | "behavioral_health" | "ot" | "pt" | "psychology";
 
 export interface ConsultPreset {
   audience: ConsultAudience;
@@ -1103,6 +1106,12 @@ export const CONSULT_PRESETS: Record<ConsultAudience, ConsultPreset> = {
   slp: clinicianPreset("slp", ["language-observations"]),
   // What the parent noticed came first, in their own words, with counts.
   behavioral_health: clinicianPreset("behavioral_health", ["triggers"]),
+  // B-CAREPRO-42: cloned from the clinician template (content/consultPresets) —
+  // the base sections, then the discipline's own evidence (OT none · PT the
+  // measurements · psychology what came first). Same ceiling, term-scan exempt.
+  ot: clinicianPreset("ot", SPLIT_CLINICIAN_PRESETS.ot.sections.slice(PARENT_VOICE_SECTIONS.length + CLINICIAN_SECTIONS.length)),
+  pt: clinicianPreset("pt", SPLIT_CLINICIAN_PRESETS.pt.sections.slice(PARENT_VOICE_SECTIONS.length + CLINICIAN_SECTIONS.length)),
+  psychology: clinicianPreset("psychology", SPLIT_CLINICIAN_PRESETS.psychology.sections.slice(PARENT_VOICE_SECTIONS.length + CLINICIAN_SECTIONS.length)),
 };
 
 /** Tokens that appear in NO export, for ANY audience (clinician or not). */
@@ -1215,6 +1224,10 @@ export const SHARED_SCOPE_SECTIONS: Record<string, readonly string[]> = {
   report_pediatrician: CONSULT_PRESETS.pediatrician.sections,
   report_slp: CONSULT_PRESETS.slp.sections,
   report_behavioral_health: CONSULT_PRESETS.behavioral_health.sections,
+  // B-CAREPRO-42: the split presets' scopes mirror their ceilings exactly.
+  report_ot: CONSULT_PRESETS.ot.sections,
+  report_pt: CONSULT_PRESETS.pt.sections,
+  report_psychology: CONSULT_PRESETS.psychology.sections,
 };
 
 /** Build the recipient's read-only packet: exactly the sections the granted
@@ -1545,9 +1558,10 @@ const INTAKE_REGISTRY_PROFESSIONS: Record<IntakeProfession, readonly Profession[
 /** The consult audience whose step-1 chip the packet opens under (H1, hint). */
 export const INTAKE_AUDIENCE: Record<IntakeProfession, ExportAudience> = {
   slp: "slp",
-  ot: "therapist",
-  pt: "therapist",
-  psychology: "behavioral_health",
+  // B-CAREPRO-42: each split chip opens under its own preset.
+  ot: "ot",
+  pt: "pt",
+  psychology: "psychology",
   pediatrician: "pediatrician",
 };
 

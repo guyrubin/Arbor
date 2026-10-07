@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { AUDIENCE_PROFESSIONS, HOME_PRACTICE_MAX, domainsForAudience, homePracticeWorlds, openHomePracticeWorld } from "./homePractice";
 import { EXPORT_AUDIENCES } from "./packet";
+import { SPLIT_CLINICIAN_AUDIENCES } from "../content/consultPresets";
 import { STUDIO_WORLDS } from "../components/practice/studioWorlds";
 import { DOMAIN_IDS, isDomainId } from "../lib/domains/registry";
 import { translate } from "../lib/i18n";
@@ -51,7 +52,8 @@ describe("B-CAREPRO-20 · worlds that work the referred domain", () => {
       expect(w.domains.length, w.id).toBeGreaterThan(0);
       for (const d of w.domains) expect(isDomainId(d), `${w.id}: ${d}`).toBe(true);
     }
-    expect(Object.keys(AUDIENCE_PROFESSIONS).sort()).toEqual([...EXPORT_AUDIENCES].sort());
+    // B-CAREPRO-42: the audience step + the three split presets (their own chips).
+    expect(Object.keys(AUDIENCE_PROFESSIONS).sort()).toEqual([...EXPORT_AUDIENCES, ...SPLIT_CLINICIAN_AUDIENCES].sort());
     expect(DOMAIN_IDS).toContain("talking");
   });
 

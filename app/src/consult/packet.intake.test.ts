@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CONSULT_PRESETS,
   DEMO_HEADER_KEY,
   INTAKE_AUDIENCE,
   INTAKE_PROFESSIONS,
@@ -78,7 +79,9 @@ describe("buildIntakePacket — one profession's domains only", () => {
     expect(intakeDomains("ot")).toEqual(["hands"]);
     expect(intakeDomains("pediatrician")).toEqual(["moving", "body"]);
     expect(intakeDomains("psychology")).toEqual(["thinking", "playing", "feelings"]);
-    for (const p of INTAKE_PROFESSIONS) expect(["slp", "therapist", "pediatrician", "behavioral_health"]).toContain(INTAKE_AUDIENCE[p]);
+    // B-CAREPRO-42: every chip opens under an existing preset; the split chips under their OWN preset
+    for (const p of INTAKE_PROFESSIONS) expect(Object.keys(CONSULT_PRESETS)).toContain(INTAKE_AUDIENCE[p]);
+    expect(INTAKE_AUDIENCE).toMatchObject({ slp: "slp", ot: "ot", pt: "pt", psychology: "psychology", pediatrician: "pediatrician" });
     const pt = buildIntakePacket("pt", input());
     expect(pt.sections.flatMap((s) => s.items.map((i) => i.id))).toEqual([`intake-seen-${seenMove.id}`, "intake-moment-m1", "intake-practice-moving", "intake-question-0"]);
   });

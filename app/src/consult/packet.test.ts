@@ -18,12 +18,17 @@ import {
   humanDomainLabel,
   milestoneInAgeWindow,
   EXPORT_AUDIENCES,
+  SHARED_SCOPE_SECTIONS,
+  buildSharedScopePacket,
+  DEMO_HEADER_KEY,
   type BuildPacketInput,
   type ConsultAudience,
   type ConsultPacket,
   type RawChildRecord,
 } from "./packet";
 import { ClinicalLanguageError } from "../lib/clinicalScan";
+import { translate } from "../lib/i18n";
+import { SPLIT_CLINICIAN_AUDIENCES, SPLIT_CLINICIAN_PRESETS } from "../content/consultPresets";
 import { ALL_MILESTONES, MILESTONE_AGE_BANDS } from "../lib/milestoneData";
 
 const NOW = new Date("2026-06-15T12:00:00").getTime();
@@ -805,5 +810,56 @@ describe("LC-11b — the teacher ceiling excludes the parent's clinician-facing 
       .join(" | ");
     expect(text).toContain(CLINICIAN_VOICE);
     expect(text).toContain(CLINICIAN_QUESTION);
+  });
+});
+
+/* B-CAREPRO-42 (packet hunk, REJECTIONS P2-WORDS): the OT / PT / psychology
+   presets are ConsultAudience members cloned from the clinician template, and
+   their report_* share scopes unlock exactly their preset's sections. */
+describe("B-CAREPRO-42 — the split clinician presets and their share scopes", () => {
+  const evidence = ["growth-measurements", "language-observations", "triggers"];
+  it("each split preset IS the content/consultPresets clone: the clinician base + its own evidence, same ceiling, term-scan exempt", () => {
+    for (const p of SPLIT_CLINICIAN_AUDIENCES) {
+      expect(CONSULT_PRESETS[p].audience).toBe(p);
+      expect(CONSULT_PRESETS[p].sections).toEqual(SPLIT_CLINICIAN_PRESETS[p].sections);
+      expect(CONSULT_PRESETS[p].sections.slice(0, 10)).toEqual(CONSULT_PRESETS.therapist.sections);
+      expect(CONSULT_PRESETS[p].dataCeiling).toEqual(CONSULT_PRESETS.therapist.dataCeiling);
+      expect(CONSULT_PRESETS[p].clinicalTermScan).toBe(false);
+    }
+    expect(CONSULT_PRESETS.ot.sections.filter((s) => evidence.includes(s))).toEqual([]);
+    expect(CONSULT_PRESETS.pt.sections.filter((s) => evidence.includes(s))).toEqual(["growth-measurements"]);
+    expect(CONSULT_PRESETS.psychology.sections.filter((s) => evidence.includes(s))).toEqual(["triggers"]);
+  });
+
+  it("report_ot / report_pt / report_psychology unlock exactly their preset's sections (and the PT one carries the measurements)", () => {
+    for (const p of SPLIT_CLINICIAN_AUDIENCES) {
+      expect(SHARED_SCOPE_SECTIONS[`report_${p}`]).toEqual(CONSULT_PRESETS[p].sections);
+      expect(SPLIT_CLINICIAN_PRESETS[p].shareScope).toBe(`report_${p}`);
+      const shared = buildSharedScopePacket([`report_${p}`], true, richRecord);
+      const ids = shared.sections.map((s) => s.id);
+      expect(ids.length).toBeGreaterThan(0);
+      for (const id of ids) expect(CONSULT_PRESETS[p].sections, `${p}: ${id}`).toContain(id);
+      expect(ids).toEqual(buildPresetPacket(p, richRecord).sections.map((s) => s.id));
+    }
+    expect(buildSharedScopePacket(["report_pt"], true, richRecord).sections.map((s) => s.id)).toContain("growth-measurements");
+    expect(buildSharedScopePacket(["report_ot"], true, richRecord).sections.map((s) => s.id)).not.toContain("growth-measurements");
+    expect(buildSharedScopePacket(["report_psychology"], true, richRecord).sections.map((s) => s.id)).toContain("triggers");
+    // NEGATIVE CONTROL: an unknown scope still unlocks nothing (fails closed)
+    expect(buildSharedScopePacket(["report_occupational"], true, richRecord).sections).toEqual([]);
+  });
+
+  it("the export seam keeps the non-diagnostic prepared line and the demo header for the split presets (EN + HE)", () => {
+    for (const lang of ["en", "he"] as const) {
+      for (const p of SPLIT_CLINICIAN_AUDIENCES) {
+        const demo = buildPresetPacket(p, { ...richRecord, profile: { ...richRecord.profile, demo: true } });
+        const md = serializeForExport(p, demo, new Set(), "", "Parent note", lang);
+        const prepared = translate(lang, "elev.packet.prepared", { date: demo.generatedAt });
+        expect(md, `${lang} ${p}`).toContain(prepared);
+        expect(md).toContain(translate(lang, DEMO_HEADER_KEY));
+        expect(exportPrintSections(p, demo, new Set(), "", "Parent note", lang)[0].heading).toBe(translate(lang, DEMO_HEADER_KEY));
+        for (const token of FORBIDDEN_EXPORT_TOKENS) expect(md).not.toContain(token);
+        expect(md).not.toMatch(/\d\s*%/);
+      }
+    }
   });
 });

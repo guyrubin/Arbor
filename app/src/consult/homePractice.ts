@@ -26,8 +26,12 @@ export const AUDIENCE_PROFESSIONS: Readonly<Record<ExportAudience, readonly Prof
   pediatrician: ["pediatrician"],
   slp: ["slp"],
   behavioral_health: ["child_psychologist", "behavioral_therapist"],
-  // "Another clinician": the OT / PT seat until B-CAREPRO-42 splits the preset.
+  // "Another clinician": the generalist seat (the OT / PT lenses it always read).
   therapist: ["ot", "pt"],
+  // B-CAREPRO-42: the split presets read their own profession (the intake chips').
+  ot: ["ot"],
+  pt: ["pt"],
+  psychology: ["developmental_psychologist", "educational_psychologist", "child_psychologist"],
   teacher: [],
   self: [],
 };
