@@ -34,6 +34,14 @@ describe("the ONE stamp literal and the contract change together", () => {
     expect(c.job).toBe("See {name} shelf by shelf, and what to try next.");
     expect(c.threadWrite).toBe("behaviorLogs");
   });
+  it("B-OCCL-04: the grid passes the stamp to ShelfGrid, which spreads it on the registry-first tile only — never the grid", () => {
+    expect(strip(src("journal/JournalShelves.tsx"))).toMatch(/<ShelfGrid[\s\S]{0,400}?primaryMoveProps=\{primaryMoveProps\}/);
+    const grid = strip(src("journal/ShelfGrid.tsx"));
+    expect(grid).toContain('<div data-testid="shelf-grid" className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">');
+    expect(grid).toContain("{ordered.map((def, i) => {");
+    expect(grid).toContain("{...(i === 0 ? primaryMoveProps ?? {} : {})}");
+    expect(grid.match(/primaryMoveProps/g)).toHaveLength(3); // the prop type, the destructure, the one spread
+  });
 });
 
 describe("the doors and seams", () => {

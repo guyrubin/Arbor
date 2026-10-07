@@ -65,10 +65,14 @@ describe("ShelfGrid — nine tiles, registry order, counts never verdicts", () =
   it("every tile wears the same chrome whatever its count (no tile differs by count)", () => {
     const a = render({ sleep: 0, food: 40 });
     const b = render({ sleep: 40, food: 0 });
-    const chrome = (html: string) => tiles(html).map((m) => m[0].replace(/data-shelf="[a-z]+"/, ""));
+    // B-OCCL-04: the route's stamp rides the registry-FIRST tile whatever the
+    // counts (a position, never a count) — stripped like data-shelf.
+    const strip = (tag: string) => tag.replace(/data-shelf="[a-z]+"/, "").replace(/ data-primary-move="[a-z-]+"/, "");
+    const chrome = (html: string) => tiles(html).map((m) => strip(m[0]));
     expect(chrome(a)).toEqual(chrome(b));
-    const nonFamily = tiles(a).filter((m) => m[1] !== "family").map((m) => m[0].replace(/data-shelf="[a-z]+"/, ""));
+    const nonFamily = tiles(a).filter((m) => m[1] !== "family").map((m) => strip(m[0]));
     expect(new Set(nonFamily).size).toBe(1);
+    expect(tiles(a).map((m) => /data-primary-move=/.test(m[0]))).toEqual(tiles(b).map((m) => /data-primary-move=/.test(m[0])));
   });
 
   it("tiles are ≥ 88 px tall (min-h 96) and every control is a 44 px target", () => {
@@ -86,11 +90,15 @@ describe("ShelfGrid — nine tiles, registry order, counts never verdicts", () =
     }
   });
 
-  it("one stamp on the grid; header + grid = 2 modules (budget 3)", () => {
-    const html = render({ words: 3 });
-    expect((html.match(/data-primary-move="open-shelf"/g) || []).length).toBe(1);
-    expect(html).toMatch(/data-testid="shelf-grid"[^>]*data-primary-move="open-shelf"/);
-    expect((html.match(/data-module="/g) || []).length).toBeLessThanOrEqual(3);
+  it("one stamp, on the registry-first tile (never the grid); header + grid = 2 modules (budget 3)", () => {
+    for (const counts of [{ words: 3 }, {}, Object.fromEntries(REGISTRY_ORDER.map((id) => [id, 5]))]) {
+      const html = render(counts as Partial<Record<ShelfId, number>>);
+      expect((html.match(/data-primary-move="open-shelf"/g) || []).length).toBe(1);
+      expect(html).not.toMatch(/data-testid="shelf-grid"[^>]*data-primary-move/);
+      const stamped = tiles(html).filter((m) => /data-primary-move="open-shelf"/.test(m[0])).map((m) => m[1]);
+      expect(stamped).toEqual([REGISTRY_ORDER[0]]);
+    }
+    expect((render({ words: 3 }).match(/data-module="/g) || []).length).toBeLessThanOrEqual(3);
   });
 
   it("no firewall word, no %, no claim that nothing is added without the parent (EN + HE)", () => {
@@ -164,7 +172,7 @@ describe("ShelfGrid — the parent's words, what to try, and the capture dock", 
     });
   }
 
-  it("the capture dock is the grid's THIRD module (budget 3), after the shelves; the stamp stays on the grid", () => {
+  it("the capture dock is the grid's THIRD module (budget 3), after the shelves; the stamp stays on the first tile", () => {
     const html = full("en");
     expect([...html.matchAll(/data-module="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["journal-shelves-header", "journal-shelves", "journal-capture"]);
     expect(html.indexOf('data-testid="dock-probe"')).toBeGreaterThan(html.indexOf('data-testid="shelf-all-by-date"'));
@@ -260,4 +268,48 @@ describe("ShelfGrid — one line per tile, the quote appears once (c2 r2)", () =
       expect(text(html)).not.toMatch(/%|more than|fewer than|most|least|יותר מ|פחות מ/i);
     });
   }
+});
+
+/* B-OCCL-04 (7 Oct) — #/journal 375 EN + HE base: the ship sweep on b2c0d0f6
+   measured the open-shelf stamp on the whole grid (y 345 / 321, h 875 / 873,
+   dock top 749 → occluded). The stamp now rides the registry-first tile — the
+   grid's first control, a 2-column cell at 375 — and the capture dock (the
+   third module) follows the grid. jsdom has no layout, so this is the line
+   model of that tile's bottom edge from the measured header: the grid top
+   (EN 345 · HE 321, header with the demo seed's latest-words quote) plus one
+   more t-lg line (24.75) in case that quote wraps to its 2-line clamp, then
+   the tile: p-3.5 (14) · glyph 36 · gap-2 8 · name t-base leading-snug (15 ×
+   1.375) · mt-0.5 2 · count t-sm (13 × 1.375) · mt-1 4 · the next line at
+   its 2-line clamp · p-3.5 (14). A row is as tall as its taller cell, and
+   both cells clamp the same way, so the bound holds for the row. */
+describe("ShelfGrid — the stamped tile clears the capture dock at 375 (B-OCCL-04)", () => {
+  const FOLD_LIMIT = 640;
+  const GRID_TOP_375 = { en: 345, he: 321 } as const;
+  const QUOTE_WRAP = 18 * 1.375;
+  const tileH = 14 + 36 + 8 + 15 * 1.375 + 2 + 13 * 1.375 + 4 + 2 * 13 * 1.375 + 14;
+  const bottom = (lang: "en" | "he") => Math.round(GRID_TOP_375[lang] + QUOTE_WRAP + tileH);
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: the stamp is the first tile (first control of the grid module), bottom ${bottom(lang)} ≤ ${FOLD_LIMIT}`, () => {
+      state.lang = lang;
+      const html = renderToStaticMarkup(
+        <ShelfGrid childName="Dylan" counts={{ sleep: 0, words: 8 }} onOpenShelf={noop} onOpenPro={noop} onOpenAll={noop}
+          primaryMoveProps={{ "data-primary-move": "open-shelf" }} tileTry={{ sleep: "Same bedtime, same wake-up" }}
+          latest={{ text: "Sang the whole bath song on his own", shelf: "words", day: "Yesterday" }} captureDock={<div data-testid="dock-probe" />} />,
+      );
+      const grid = html.slice(html.indexOf('data-module="journal-shelves"'));
+      const firstControl = /<button[^>]*>/.exec(grid)?.[0] ?? "";
+      expect(firstControl).toContain('data-primary-move="open-shelf"');
+      expect(firstControl).toContain(`data-shelf="${REGISTRY_ORDER[0]}"`);
+      // the dock follows the stamped tile, never above it
+      expect(html.indexOf('data-testid="dock-probe"')).toBeGreaterThan(html.indexOf('data-primary-move="open-shelf"'));
+      // the lede stays one short sentence (no second lede line under the H1)
+      expect(translate(lang, "elev.shelfJournal.lede").length).toBeLessThanOrEqual(60);
+      expect(bottom(lang)).toBeLessThanOrEqual(FOLD_LIMIT);
+    });
+  }
+
+  it("negative control: the grid as the stamp (the shipped shape) ran under the dock", () => {
+    expect(GRID_TOP_375.en + 875).toBeGreaterThan(749);
+  });
 });

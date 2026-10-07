@@ -43,7 +43,9 @@ export interface ShelfGridProps {
   onOpenShelf: (shelf: ShelfId) => void;
   onOpenPro: () => void;
   onOpenAll: () => void;
-  /** TimelineTab's ONE stamp literal (open-shelf), spread on the grid of shelves. */
+  /** TimelineTab's ONE stamp literal (open-shelf). B-OCCL-04: spread on the
+   *  FIRST tile in registry order (the control that opens a shelf), never on
+   *  the grid — the grid is ~875 px at 375 and ran under the capture dock. */
   primaryMoveProps?: Record<string, string>;
   /** B-LOOP-NEW-1d (1): the parent's latest own entry, verbatim, with its
    *  shelf and a relative day; absent on first open (never a placeholder). */
@@ -121,8 +123,8 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
       </header>
 
       <section data-module="journal-shelves" aria-label={t("elev.shelfJournal.gridAria", { name: childName })} className="min-w-0">
-        <div data-testid="shelf-grid" className="grid grid-cols-2 gap-2.5 lg:grid-cols-3" {...(primaryMoveProps ?? {})}>
-          {ordered.map((def) => {
+        <div data-testid="shelf-grid" className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
+          {ordered.map((def, i) => {
             const n = counts[def.id] ?? 0;
             const next = tileNext(n, tileWords[def.id], tileNotice[def.id], tileTry[def.id]);
             const line = n <= 0 && next ? { key: "elev.shelfJournal.nothingYetShort", vars: undefined } : shelfCountKey(n);
@@ -133,6 +135,7 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
                 type="button"
                 data-testid="shelf-tile"
                 data-shelf={def.id}
+                {...(i === 0 ? primaryMoveProps ?? {} : {})}
                 onClick={() => onOpenShelf(def.id)}
                 className={`${TILE}${family ? " col-span-2 flex-row items-center lg:col-span-1 lg:flex-col lg:items-start" : ""}`}
                 style={TILE_STYLE}
