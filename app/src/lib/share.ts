@@ -241,7 +241,7 @@ export async function shareWordsText(text: string, nav: Pick<Navigator, "share" 
 /* ── B-SHELL-29 — the ONE send sheet's path (components/share/SendSheet) ──
    Parent-side child content leaves only as text: the loop events fire as
    for a card share (channel "text" / "clipboard"), the payload is the text
-   alone — no url, no files, no referral code. */
+   alone — no link, no attachment, no referral code. */
 
 /** Pure: a branded-card's fields as plain lines (the object the parent shares). */
 export function textFromCardOpts(opts: ShareCardOpts): string[] {

@@ -208,7 +208,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/ui/HeroAvatar.tsx": ["#fff"],
   "components/ui/HeroCrest.tsx": ["#fff"],
   "components/ui/ProvenanceBadge.tsx": ["#fff"],
-  "components/ui/ShareButton.tsx": ["#fff"],
 };
 
 describe("hex-creep guard — src/components/**/*.tsx stays on the token allowlist", () => {
