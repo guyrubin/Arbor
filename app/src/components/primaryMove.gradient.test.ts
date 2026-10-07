@@ -231,6 +231,11 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "practice/SpeechCoachTab.tsx",
     // (W2-SHELLPLAY critic r1: PracticeStudioTab left the ratchet — the Kid
     //  Mode door CTA is secondary; the declared move is the first world tile.)
+    // B-PROG-05 (P6 PRACTICE): the program page's ONE gradient is its declared
+    // move (data-primary-move="do-this-week": "Today's practice", "Pick up week
+    // {n}" when paused, or the first Start on the not-enrolled page) — exactly
+    // one rendered per state; ProgramPage.test pins one stamp and the flat band.
+    "program/ProgramPage.tsx",
     "profile/AvatarCreator.tsx",
     "profile/ProfileEditDrawer.tsx",
     "sections/Appointments.tsx",

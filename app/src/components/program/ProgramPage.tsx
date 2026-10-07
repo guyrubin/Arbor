@@ -98,8 +98,8 @@ function CountRow({ c, week }: { c: ProgramCount; week: number }) {
  * Growth leaf until lib/routes.ts gains the `program` id — REJECTIONS
  * P6-PRACTICE session A). Shelf-page register (art/mockups/journal-shelves.html
  * phone 2): back link · 44 px glyph + "{Program} · week {n} of {N}" · ONE
- * coach-wash band holding the week's skill (display face, the sentence that
- * matters) and the ONE primary move on --gradient-cta · three labelled counts,
+ * band holding the week's skill (display face, the sentence that matters) on
+ * a flat caption, and the ONE primary move — the page's only gradient · three labelled counts,
  * each beside the family's OWN first week in muted ink (no bar, no arrow, no
  * colour, no %) · the week list (done = plain rows, current open, future =
  * titles only) · Pause · Finish behind a confirm sheet · "What the
@@ -124,7 +124,7 @@ export function ProgramPageView({
 }: ProgramPageViewProps) {
   const { t } = useLanguage();
   const compact = useCompactSurface();
-  const [confirm, setConfirm] = useState<"pause" | "finish" | null>(null);
+  const [confirm, setConfirm] = useState<"toPause" | "toFinish" | null>(null);
   const ageT = (k: string, v?: Record<string, number>) => t(k, v);
 
   const back = (
@@ -192,16 +192,16 @@ export function ProgramPageView({
 
   const paused = model.status === "paused";
   const confirmTitle = confirm ? t(`elev.program.confirm.${confirm}.title`, { program: model.name }) : "";
-  const confirmBody = confirm === "pause"
-    ? t("elev.program.confirm.pause.body")
-    : t("elev.program.confirm.finish.body", { name: childName });
+  const confirmBody = confirm === "toPause"
+    ? t("elev.program.confirm.toPause.body")
+    : t("elev.program.confirm.toFinish.body", { name: childName });
   const confirmBox = confirm && (
     <div data-testid="program-confirm" data-confirm={confirm} className="flex flex-col gap-3">
       <p className="t-base leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{confirmBody}</p>
       <button
         type="button"
         data-testid="program-confirm-yes"
-        onClick={() => { const which = confirm; setConfirm(null); if (which === "pause") onPause(); else onFinish(); }}
+        onClick={() => { const which = confirm; setConfirm(null); if (which === "toPause") onPause(); else onFinish(); }}
         className="inline-flex min-h-11 items-center justify-center rounded-full px-5 t-sm font-bold"
         style={{ background: "var(--arbor-ink)", color: "var(--arbor-on-accent)" }}
       >
@@ -237,8 +237,9 @@ export function ProgramPageView({
           </div>
         </header>
         <article data-testid="program-week-band" className="overflow-hidden" style={CARD}>
-          {/* The page's ONE wash: the coach band IS the caption row (ShelfPage's recipe). */}
-          <p className="px-4 py-2.5 t-sm font-bold" style={{ background: "var(--arbor-coach-grad)", color: "var(--arbor-muted)" }}>{t("elev.program.week.caption")}</p>
+          {/* The band's caption is a FLAT fill: the page's ONE gradient is the
+              primary move's control below (primaryMove.gradient ratchet). */}
+          <p className="px-4 py-2.5 t-sm font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{t("elev.program.week.caption")}</p>
           <div className="px-4 pb-4 pt-3">
             <h2 data-testid="program-skill" className="t-lg font-semibold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
               <bdi dir="auto">{model.skill}</bdi>
@@ -308,11 +309,11 @@ export function ProgramPageView({
         {coach}
         <div className="mt-3 flex gap-2">
           {!paused && (
-            <button type="button" data-testid="program-pause" onClick={() => setConfirm("pause")} className="inline-flex min-h-11 items-center rounded-full px-4 t-sm font-bold" style={QUIET}>
+            <button type="button" data-testid="program-pause" onClick={() => setConfirm("toPause")} className="inline-flex min-h-11 items-center rounded-full px-4 t-sm font-bold" style={QUIET}>
               {t("elev.program.pause")}
             </button>
           )}
-          <button type="button" data-testid="program-finish" onClick={() => setConfirm("finish")} className="inline-flex min-h-11 items-center rounded-full px-4 t-sm font-bold" style={QUIET}>
+          <button type="button" data-testid="program-finish" onClick={() => setConfirm("toFinish")} className="inline-flex min-h-11 items-center rounded-full px-4 t-sm font-bold" style={QUIET}>
             {t("elev.program.finish")}
           </button>
         </div>
