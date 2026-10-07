@@ -289,7 +289,9 @@ describe("B-ASKJB-26 — a plan-sourced step through accept → Today → outcom
       expect(html).toContain('data-testid="plan-weekly-check"');
       for (const a of ["yes", "little", "not_yet"]) expect(html).toContain(`data-check-answer="${a}"`);
       expect(html).toContain(lang === "he" ? "יש סימנים שזה עובד?" : "Signs it&#x27;s working?");
-      expect(html).toContain("Fewer tears at the gate");
+      // B-ASKJB-35: the plan's signs are never listed on the parent surface; one "Arbor will ask" line.
+      expect(html).not.toContain("Fewer tears at the gate");
+      expect(html).toContain('data-testid="plan-will-ask"');
       // Day 6: no check-in yet. No percentage anywhere.
       expect(r(basePlan, NOW - 86_400_000)).not.toContain('data-testid="plan-weekly-check"');
       expect(html).not.toMatch(/\d\s*%/);

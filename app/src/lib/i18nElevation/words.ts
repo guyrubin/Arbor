@@ -79,6 +79,11 @@ export const en: Dict = {
   "elev.words.send.closingNoName": "From Arbor — {parent}'s notes",
   "elev.words.invite.title": "Know a parent who'd like this?",
   "elev.words.invite.sub": "Send them a free month of Arbor, and you get one too. The link carries nothing about {name}.",
+
+  // B-ASKJB-35 — the Plans page: one plan, today's act first
+  "elev.words.plans.willAsk": "Arbor will ask how it went.",
+  "elev.words.plans.others": "Other plans ({n})",
+  "elev.words.plans.scripts": "What to say, moment by moment",
 };
 
 export const he: Dict = {
@@ -138,4 +143,8 @@ export const he: Dict = {
   "elev.words.send.closingNoName": "מתוך ארבור — הרשימות של {parent}",
   "elev.words.invite.title": "מכירים הורה שזה יתאים לו?",
   "elev.words.invite.sub": "שלחו לו חודש חינם בארבור, וגם אתם תקבלו חודש. בקישור אין שום דבר על {name}.",
+
+  "elev.words.plans.willAsk": "ארבור תשאל איך זה הלך.",
+  "elev.words.plans.others": "תוכניות נוספות ({n})",
+  "elev.words.plans.scripts": "מה להגיד, רגע אחר רגע",
 };

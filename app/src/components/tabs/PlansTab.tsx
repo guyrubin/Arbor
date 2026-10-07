@@ -89,7 +89,7 @@ export default function PlansTab() {
   } as const;
   const createCard = (
     <div data-module="plans-create" className={`${cardCls} p-6 space-y-4`}>
-      <span className="text-xs font-extrabold tracking-wider uppercase block" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.create")}</span>
+      <span className="text-[13px] font-semibold block" style={{ color: "var(--arbor-ink)" }}>{t("plan.create")}</span>
 
       {/* Templates — start from a common challenge */}
       <div className="flex flex-wrap gap-1.5">
@@ -109,7 +109,7 @@ export default function PlansTab() {
             key={tpl}
             type="button"
             onClick={() => setPlanChallengeTopic(tpl)}
-            className="inline-flex min-h-11 items-center px-3 py-1.5 rounded-lg text-[11px] font-bold transition"
+            className="inline-flex min-h-11 items-center px-3 py-1.5 rounded-lg text-[12px] font-semibold transition"
             style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
           >
             {tpl.split(" ").slice(0, 3).join(" ")}…
@@ -136,7 +136,7 @@ export default function PlansTab() {
               <button
                 type="button"
                 onClick={() => setPlanChallengeTopic(s.topic)}
-                className="min-h-11 px-3 py-1.5 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1.5 text-start"
+                className="min-h-11 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition inline-flex items-center gap-1.5 text-start"
                 style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}
               >
                 <Icon name="auto_awesome" size={12} /> <span dir="auto">{s.topic.split("—")[0].trim()}</span>
@@ -226,7 +226,10 @@ export default function PlansTab() {
       )}
 
       <div data-module="plans-active" className="space-y-8">
+        {/* B-ASKJB-35 (c): ONE active plan leads with today's step as the
+            single primary move; every other plan sits in one disclosure. */}
         {actionPlans.map((plan, planIdx) => {
+          if (planIdx > 0) return null;
           // B-ASKJB-26: today's step = the first not-done step of the current
           // phase; accept → action loop (source "plan"), outcome moves the step.
           const step = todaysPlanStep(plan, actionLoop, todayKey);
@@ -254,11 +257,12 @@ export default function PlansTab() {
             </div>
             <PlanSteps plan={plan} todayStep={step} now={now} />
 
-            <div className={`${cardCls} p-6 space-y-5 lg:col-span-2`}>
+            <details data-testid="plan-scripts" className={`${cardCls} p-6 space-y-5 lg:col-span-2 group`}>
+              <summary className="list-none cursor-pointer inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold" style={{ color: "var(--arbor-ink)" }}>
+                {t("elev.words.plans.scripts")}
+                <Icon name="expand_more" size={16} className="transition group-open:rotate-180" />
+              </summary>
               <div className="space-y-3 p-4 rounded-2xl" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
-                  <Icon name="chat" size={14} style={{ color: "var(--arbor-peach-ink)" }} /> {t("plan.whatToSay")}
-                </h4>
                 <div className="space-y-3 text-xs">
                   {plan.scripts.map((sc, scIdx) => (
                     <div key={scIdx} className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 p-3 rounded-xl" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
@@ -287,10 +291,23 @@ export default function PlansTab() {
 
               {/* B-ASKJB-26: "Signs it's working" is asked weekly on the plan
                   card (PlanTrackCard), not printed here as a static list. */}
-            </div>
+            </details>
           </div>
           );
         })}
+        {actionPlans.length > 1 && (
+          <details data-testid="plans-others" className="group">
+            <summary className="list-none cursor-pointer inline-flex min-h-11 items-center gap-1.5 px-1 text-[14px] font-semibold" style={{ color: "var(--arbor-ink)" }}>
+              {t("elev.words.plans.others", { n: actionPlans.length - 1 })}
+              <Icon name="expand_more" size={16} className="transition group-open:rotate-180" />
+            </summary>
+            <ul className="mt-2 space-y-2">
+              {actionPlans.slice(1).map((p) => (
+                <li key={p.id}><PlanSteps plan={p} todayStep={todaysPlanStep(p, actionLoop, todayKey)} now={now} /></li>
+              ))}
+            </ul>
+          </details>
+        )}
       </div>
 
       {actionPlans.length > 0 && createCard}

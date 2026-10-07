@@ -105,14 +105,10 @@ export default function PlanTrackCard({ plan, step, today, lang, now, onTryIt, o
       {due && (
         <div data-testid="plan-weekly-check" className="space-y-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
           <p className="t-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.plans.check.q")}</p>
-          {plan.successIndicators?.length > 0 && (
-            <div className="t-sm" style={{ color: "var(--arbor-muted)" }}>
-              <span className="font-bold">{t("elev.plans.check.signs")}</span>
-              <ul className="list-disc ps-5 space-y-0.5 mt-1 leading-relaxed">
-                {plan.successIndicators.map((s, i) => <li key={i} dir="auto">{s}</li>)}
-              </ul>
-            </div>
-          )}
+          {/* B-ASKJB-35: no "signs it's working" list on the parent surface
+              (a list of child outcomes to watch for reads as a verdict);
+              the follow-up question IS the observation. */}
+          <p data-testid="plan-will-ask" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.words.plans.willAsk")}</p>
           <div className="flex flex-wrap gap-2" role="group" aria-label={t("elev.plans.check.q")}>
             {PLAN_CHECK_ANSWERS.map((a) => (
               <button

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
+import { demoteObservationSteps } from "../../lib/plans/stepOrder";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ActionPlan, StepStatus } from "../../types";
@@ -155,7 +156,9 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
 
       <div className="space-y-4">
         {plan.phases.map((ph, phaseIdx) => {
-          const rows = items.filter((i) => i.phaseIdx === phaseIdx);
+          // B-ASKJB-35 (b): act-first display order inside the phase (an
+          // observation step never leads while an act follows it).
+          const rows = demoteObservationSteps(items.filter((i) => i.phaseIdx === phaseIdx));
           if (rows.length === 0) return null;
           return (
             <div key={phaseIdx} className="space-y-2">

@@ -1,6 +1,7 @@
 import type { ActionPlan, BehaviorLog, PlanCheckAnswer, StepStatus } from "../types";
 import type { ActionLoopEntry, ActionOutcome, PlanStepRef } from "../actionLoop/model";
 import { MOMENT_BEHAVIOR_TYPE } from "../content/behaviorTaxonomy";
+import { demoteObservationSteps } from "./plans/stepOrder";
 
 /**
  * Pure helpers that turn a one-shot Growth Plan into a closed loop:
@@ -159,10 +160,14 @@ export function todaysPlanStep(
   phases.forEach((ph, phaseIdx) => (ph.steps ?? []).forEach((st, stepIdx) =>
     flat.push({ planId: plan.id, phaseIdx, stepIdx, text: st.text, status: planStepStatus(st) })));
   const { currentPhaseIndex } = planProgress(plan);
-  const at = flat.findIndex((s) => s.phaseIdx === currentPhaseIndex && s.status !== "done");
-  if (at === -1) return null;
-  const cur = flat[at];
-  const nextStep = flat.slice(at + 1).find((s) => s.status !== "done") ?? null;
+  // B-ASKJB-35 (b): today's step is an ACT. The not-done steps from the
+  // current phase on, in act-first order (lib/plans/stepOrder): an
+  // observation step ("Observe and log…") never leads while an act follows
+  // it. Addresses (phaseIdx/stepIdx) are untouched — only which step leads.
+  if (!flat.some((s) => s.phaseIdx === currentPhaseIndex && s.status !== "done")) return null;
+  const remaining = demoteObservationSteps(flat.filter((s) => s.phaseIdx >= currentPhaseIndex && s.status !== "done"));
+  const cur = remaining[0];
+  const nextStep = remaining[1] ?? null;
   const rows = loop.filter((r) => r.source === "plan" && r.planId === plan.id && r.status !== "superseded");
   const pastDays = new Set(rows.map(rowDay).filter((d) => d !== todayKey));
   const lastForStep = rows
