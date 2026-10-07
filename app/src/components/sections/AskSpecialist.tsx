@@ -25,6 +25,7 @@ import {
   type IntakeProfession,
 } from "../../consult/packet";
 import { intakeQuestionLines, readIntakeQuestionsText } from "../../consult/intakeDraft";
+import { SPLIT_CLINICIAN_AUDIENCES, SPLIT_CLINICIAN_PRESETS, isSplitClinicianAudience, type SplitClinicianAudience } from "../../content/consultPresets";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
@@ -149,6 +150,16 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     try { localStorage.setItem(AUDIENCE_STORAGE_KEY, a); } catch { /* metadata only */ }
   };
   const isTeacher = audience === "teacher";
+  // B-CAREPRO-42: "therapist" splits into OT, PT and psychology. A split
+  // preset rides the profession's intake packet (B-LOOP-12 path: the
+  // registry domains that profession owns, the parent's questions), under
+  // the audience consult/packet maps it to today (INTAKE_AUDIENCE).
+  const split: SplitClinicianAudience | null = intake && isSplitClinicianAudience(intake) ? intake : null;
+  const selectSplit = (p: SplitClinicianAudience) => {
+    setAudience(INTAKE_AUDIENCE[p]);
+    setIntake(p);
+    setReviewed(false);
+  };
   useEffect(() => { onAudienceChange?.(audience); }, [audience, onAudienceChange]);
   // B-CAREPRO-20: the worlds that work the chosen professional's domain —
   // parent-only, names only, never part of any packet.
@@ -458,7 +469,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           style={{ scrollMarginBlockStart: "0.75rem" }}
         >
           {EXPORT_AUDIENCES.map((a) => {
-            const on = a === audience;
+            const on = a === audience && !split;
             return (
               <button
                 key={a}
@@ -474,11 +485,39 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
                   : { background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
               >
                 {on && <Icon name="check" size={14} weight={600} />}
-                {t(`elev.carehonesty.consult.audience.${a}`)}
+                {a === "therapist" ? t("elev.words.consult.preset.therapistOther") : t(`elev.carehonesty.consult.audience.${a}`)}
+              </button>
+            );
+          })}
+          {SPLIT_CLINICIAN_AUDIENCES.map((p) => {
+            const on = split === p;
+            return (
+              <button
+                key={p}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                data-split-preset={p}
+                onClick={() => selectSplit(p)}
+                className="inline-flex items-center gap-1.5 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
+                style={on
+                  ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
+                  : { background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
+              >
+                {on && <Icon name="check" size={14} weight={600} />}
+                {t(SPLIT_CLINICIAN_PRESETS[p].labelKey)}
               </button>
             );
           })}
         </div>
+        {split && (
+          <div data-testid="consult-split-intake" className="flex flex-col gap-1">
+            <p className="text-[13px]" style={{ color: MUTED }}>{t("elev.words.consult.mayAsk")}</p>
+            <ul className="list-disc ps-5 space-y-0.5 text-[14px] leading-relaxed" style={{ color: INK }}>
+              {SPLIT_CLINICIAN_PRESETS[split].intakeQuestions.map((k) => <li key={k}>{t(k, { name: firstName })}</li>)}
+            </ul>
+          </div>
+        )}
         <p className="text-xs leading-relaxed" style={{ color: MUTED }}>
           {t(`elev.carehonesty.consult.audience.hint.${audience}`)}
         </p>
