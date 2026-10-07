@@ -21,6 +21,9 @@ import { selectNextMilestonesByShelf, type NoticePick } from "../milestones/sele
 import { practiceCandidates, type ChoosePracticeInput, type PracticePick } from "../practice/choosePractice";
 import { shelfWordsThenNow, type DatedWords } from "../today/shelfWords";
 import { quotableWords } from "../today/fromRecord";
+import type { Practice } from "../../content/practices";
+import { practiceTitle } from "../practice/practiceTitle";
+import { resolveHebrewSlash, type ChildGenderish } from "../hebrewSlashGender";
 
 /** Read-model origin → the timeline signal id prefix (the origins the journal thread shows). */
 export const SIGNAL_PREFIX: Partial<Record<ObservationOrigin, string>> = {
@@ -56,6 +59,42 @@ export function signalsOnShelf(
 export function shelfPractice(input: ChoosePracticeInput, shelf: ShelfId): PracticePick | null {
   const prior = input.candidateFilter;
   return practiceCandidates({ ...input, candidateFilter: (p) => p.shelf === shelf && (!prior || prior(p)) }, 1)[0] ?? null;
+}
+
+/** P5-LOOP critic residue (journal tileTry, 7 Oct): a tile's practice line
+ *  never goes missing. The cascade: the chooser's pick for the shelf; else
+ *  the same pick WITHOUT the recency exclusion (yesterday's practice is still
+ *  a practice for this shelf); else the shelf's catalogue practice nearest
+ *  the child's age without being ahead of it (the first in catalogue order
+ *  among equals; no age → the shelf's first catalogue practice). Null only
+ *  for a shelf with no catalogue practice at all. */
+export function shelfTryPractice(input: ChoosePracticeInput, shelf: ShelfId): Practice | null {
+  const pick = shelfPractice(input, shelf) ?? (input.recentPracticeIds?.length ? shelfPractice({ ...input, recentPracticeIds: [] }, shelf) : null);
+  if (pick) return pick.practice;
+  const pool = input.practices.filter((p) => p.shelf === shelf && (!input.candidateFilter || input.candidateFilter(p)));
+  const months = input.comparisonMonths;
+  if (months === null || !Number.isFinite(months)) return pool[0] ?? null;
+  let best: Practice | null = null;
+  for (const p of pool) if (p.ageMonths <= months && (!best || p.ageMonths > best.ageMonths)) best = p;
+  return best ?? pool[0] ?? null;
+}
+
+const EN_CHILD = /\b[Yy]our (?:child|baby|toddler)('s)?(?![\w'])/g;
+const HE_CHILD = /(^|[\s(])(?:הילד\/ה|התינוק\/ת)(?=[\s.,;:!?)]|$)/gu;
+
+/** The tile's "Try: …" title — the practice's do, headline-cut (practiceTitle),
+ *  in the child's terms: "your child" / "your baby" become the child's name
+ *  (EN), a standalone הילד/ה / התינוק/ת becomes the name and every other
+ *  slash form resolves to the child's gender (HE). No name → the do as
+ *  written, gender-resolved. */
+export function practiceTryTitle(practice: Practice, lang: "en" | "he", childName: string, gender?: ChildGenderish): string {
+  const name = childName.trim();
+  if (lang === "he") {
+    const raw = name ? practice.do.he.replace(HE_CHILD, (_m, lead: string) => `${lead}\u2068${name}\u2069`) : practice.do.he;
+    return practiceTitle(resolveHebrewSlash(raw, gender), "he");
+  }
+  const text = name ? practice.do.en.replace(EN_CHILD, (_m, poss?: string) => `${name}${poss ?? ""}`) : practice.do.en;
+  return practiceTitle(text, "en");
 }
 
 /** The shelf's next thing to notice (never ahead of band, never a shelf answered today). */

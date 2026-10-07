@@ -15,12 +15,10 @@ import { keepsakeDoc, type KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { recentPracticeIds, todayDose } from "../../lib/practice/choosePractice";
 import { readTodayPin, writeTodayPin } from "../../lib/practice/todayPin";
-import { latestOwnEntry, ownWordsByShelf, proDomainCounts, shelfDayLabel, shelfNotice, shelfPractice, signalsOnShelf, tileWordsExcept } from "../../lib/journal/shelfView";
+import { latestOwnEntry, ownWordsByShelf, practiceTryTitle, proDomainCounts, shelfDayLabel, shelfNotice, shelfPractice, shelfTryPractice, signalsOnShelf, tileWordsExcept } from "../../lib/journal/shelfView";
 import { selectNextMilestonesByShelf } from "../../lib/milestones/selectByShelf";
 import { milestoneText } from "../../lib/milestoneData";
 import { quotesFromDocs } from "../../lib/loop/tonight";
-import { practiceTitle } from "../../lib/practice/practiceTitle";
-import { practiceText } from "../loop/PracticeCard";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
 import { availableHardMomentCards } from "../../content/selectCards";
 import { ageMonthsFromProfile } from "../../lib/childAge";
@@ -194,17 +192,22 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
     }
     return out;
   }, [onGrid, milestones, comparisonMonths, now, t, childProfile.gender]);
-  // (c) the shelf's practice — an empty shelf's line, and a filled shelf's last resort.
+  // (c) the shelf's practice — an empty shelf's line, and a filled shelf's last
+  // resort. Critic residue (7 Oct): a filled shelf whose chooser pick was
+  // excluded by recency showed a bare count; shelfTryPractice falls back to
+  // the pick without the recency exclusion, then the shelf's catalogue
+  // practice, and the line names the child (never "your child").
   const tileTry = useMemo(() => {
     const out: Partial<Record<ShelfId, string>> = {};
     if (!onGrid) return out;
+    const firstName = (childProfile.name || "").split(" ")[0] || "";
     for (const id of SHELF_IDS) {
       if ((coverage[id] ?? 0) > 0 && (tileWords[id] || tileNotice[id])) continue;
-      const pick = shelfPractice({ childId: childProfile.id, milestones, comparisonMonths, practices: PRACTICES, coverage, today: now, recentPracticeIds: recentPracticeIds(actionLoop, childProfile.id, now) }, id);
-      if (pick) out[id] = practiceTitle(practiceText(pick.practice, "do", locale, childProfile.gender), locale);
+      const practice = shelfTryPractice({ childId: childProfile.id, milestones, comparisonMonths, practices: PRACTICES, coverage, today: now, recentPracticeIds: recentPracticeIds(actionLoop, childProfile.id, now) }, id);
+      if (practice) out[id] = practiceTryTitle(practice, locale, firstName, childProfile.gender);
     }
     return out;
-  }, [onGrid, coverage, tileWords, tileNotice, childProfile.id, childProfile.gender, milestones, comparisonMonths, now, actionLoop, locale]);
+  }, [onGrid, coverage, tileWords, tileNotice, childProfile.id, childProfile.name, childProfile.gender, milestones, comparisonMonths, now, actionLoop, locale]);
   const openEntry = (id: string) => {
     goToRoute("journal", { view: "all" });
     requestJournalFocus(id);

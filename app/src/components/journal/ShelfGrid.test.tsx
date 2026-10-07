@@ -21,7 +21,15 @@ vi.mock("../../context/LanguageContext", async () => {
 });
 
 import ShelfGrid, { shelfCountKey, tileNext } from "./ShelfGrid";
-import { latestOwnEntry, ownWordsByShelf, tileWordsExcept } from "../../lib/journal/shelfView";
+import { latestOwnEntry, ownWordsByShelf, practiceTryTitle, shelfDayLabel, shelfPractice, shelfTryPractice, tileWordsExcept } from "../../lib/journal/shelfView";
+import { buildDemoFamily } from "../../demo/demoFamily";
+import { toObservations } from "../../lib/observations";
+import { shelfCoverage, selectNextMilestonesByShelf } from "../../lib/milestones/selectByShelf";
+import { comparisonMonthsOf } from "../../lib/age/forChild";
+import { PRACTICES } from "../../content/practices";
+import { recentPracticeIds } from "../../lib/practice/choosePractice";
+import { quotesFromDocs } from "../../lib/loop/tonight";
+import { milestoneText } from "../../lib/milestoneData";
 import type { BehaviorLog } from "../../types";
 import { SHELVES, type ShelfId } from "../../lib/shelves/registry";
 import { translate } from "../../lib/i18n";
@@ -311,5 +319,103 @@ describe("ShelfGrid — the stamped tile clears the capture dock at 375 (B-OCCL-
 
   it("negative control: the grid as the stamp (the shipped shape) ran under the dock", () => {
     expect(GRID_TOP_375.en + 875).toBeGreaterThan(749);
+  });
+});
+
+/* P5-LOOP critic residue (journal tileTry, 7 Oct) — on the demo seed two
+   filled tiles (Body, food & growth "2 noticed"; Moving "1 noticed") showed a
+   bare count: no words, no notice, and shelfPractice null under the recency
+   exclusion. shelfTryPractice falls back to the pick WITHOUT recency, then
+   the shelf's catalogue practice nearest the child's age (never ahead of
+   it); practiceTryTitle names the child, never "your child". The grid inputs
+   below are JournalShelves' own cascade over the real demo seed. */
+describe("ShelfGrid — on the demo seed every tile carries one line (tileTry fallback)", () => {
+  const NOW = new Date("2026-10-07T09:00:00Z");
+  const seeded = (lang: "en" | "he") => {
+    const fam = buildDemoFamily({ now: NOW.getTime(), lang });
+    const c = fam.collections;
+    const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
+    const obs = toObservations({ behaviorLogs: c.behaviorLogs, milestones: c.milestones, langObs: c.langObs, actionLoops: c.actionLoops, practiceEvents: c.practiceEvents }, { id: fam.child.id, birthDate: fam.child.birthDate });
+    const coverage = shelfCoverage(obs, NOW);
+    const months = comparisonMonthsOf(fam.child, NOW);
+    const own = ownWordsByShelf(obs, c.behaviorLogs, quotesFromDocs(c.keepsakes), REGISTRY_ORDER);
+    const latest = latestOwnEntry(own);
+    const tileWords: Partial<Record<ShelfId, { text: string; date: string }>> = {};
+    for (const [id, w] of Object.entries(tileWordsExcept(own, latest?.id)) as [ShelfId, { text: string; at: string }][]) tileWords[id] = { text: w.text, date: shelfDayLabel(w.at, NOW, lang) };
+    const tileNotice: Partial<Record<ShelfId, string>> = {};
+    for (const p of selectNextMilestonesByShelf(c.milestones, months, { perShelf: 1, total: 9, now: NOW })) {
+      if (!tileNotice[p.shelf]) tileNotice[p.shelf] = milestoneText(p.milestone, "title", t, { gender: fam.child.gender });
+    }
+    const input = { childId: fam.child.id, milestones: c.milestones, comparisonMonths: months, practices: PRACTICES, coverage, today: NOW, recentPracticeIds: recentPracticeIds(c.actionLoops, fam.child.id, NOW) };
+    const first = fam.child.name.split(" ")[0];
+    const tileTry: Partial<Record<ShelfId, string>> = {};
+    for (const id of REGISTRY_ORDER) {
+      if ((coverage[id] ?? 0) > 0 && (tileWords[id] || tileNotice[id])) continue;
+      const practice = shelfTryPractice(input, id);
+      if (practice) tileTry[id] = practiceTryTitle(practice, lang, first, fam.child.gender);
+    }
+    state.lang = lang;
+    const html = renderToStaticMarkup(
+      <ShelfGrid childName={first} counts={coverage} onOpenShelf={noop} onOpenPro={noop} onOpenAll={noop} primaryMoveProps={{ "data-primary-move": "open-shelf" }}
+        latest={latest ? { text: latest.text, shelf: latest.shelf, day: shelfDayLabel(latest.at, NOW, lang) } : null}
+        tileWords={tileWords} tileNotice={tileNotice} tileTry={tileTry} />,
+    );
+    return { fam, input, coverage, tileWords, tileNotice, tileTry, first, html };
+  };
+  const tileOf = (html: string, id: string) => {
+    const i = html.indexOf(`data-shelf="${id}"`);
+    return html.slice(i, html.indexOf("</button>", i));
+  };
+
+  it("the residue reproduces: food and moving are filled, with no words, no notice, and no chooser pick even without recency", () => {
+    const { input, coverage, tileWords, tileNotice } = seeded("en");
+    for (const id of ["food", "moving"] as const) {
+      expect(coverage[id] ?? 0, id).toBeGreaterThan(0);
+      expect(tileWords[id], id).toBeUndefined();
+      expect(tileNotice[id], id).toBeUndefined();
+      expect(shelfPractice(input, id), id).toBeNull();
+      expect(shelfPractice({ ...input, recentPracticeIds: [] }, id), id).toBeNull();
+      // the catalogue fallback: on the shelf, never ahead of the child's age
+      const p = shelfTryPractice(input, id)!;
+      expect(p.shelf).toBe(id);
+      expect(p.ageMonths).toBeLessThanOrEqual(input.comparisonMonths!);
+    }
+  });
+
+  it("the recency fallback: a shelf whose only pick was yesterday's still gets it", () => {
+    const { input } = seeded("en");
+    const words = shelfPractice({ ...input, recentPracticeIds: [] }, "words")!;
+    const recentOnly = { ...input, recentPracticeIds: [words.practice.id] };
+    const pick = shelfPractice(recentOnly, "words");
+    expect(shelfTryPractice(recentOnly, "words")!.id).toBe((pick ?? words).practice.id);
+  });
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: all nine tiles carry exactly one second line; food + moving read "Try: …" in the child's terms`, () => {
+      const { html, tileTry, first } = seeded(lang);
+      for (const id of REGISTRY_ORDER) {
+        expect((tileOf(html, id).match(/data-testid="shelf-tile-next"/g) ?? []).length, `${lang} ${id}`).toBe(1);
+      }
+      for (const id of ["food", "moving"] as const) {
+        expect(tileOf(html, id)).toMatch(/data-next="try"/);
+        expect(text(tileOf(html, id))).toContain(text(translate(lang, "elev.shelfJournal.tryLine", { title: tileTry[id]! })));
+      }
+      const out = text(html);
+      expect(out).not.toMatch(/your child|your baby|your toddler/i);
+      expect(out).not.toMatch(/הילד\/ה|התינוק\/ת|\/ה\b/);
+      expect(loopFirewallHits(out)).toEqual([]);
+      expect(first).not.toBe("");
+    });
+  }
+
+  it("practiceTryTitle: the child's name replaces 'your child' (EN) and a standalone הילד/ה (HE); no name keeps the do as written", () => {
+    const p = PRACTICES.find((x) => /your child\b/.test(x.do.en) && /(^|\s)הילד\/ה(\s|$)/.test(x.do.he))!;
+    expect(p).toBeTruthy();
+    const en = practiceTryTitle(p, "en", "Dylan", "boy");
+    expect(en).not.toMatch(/your child/i);
+    const he = practiceTryTitle(p, "he", "דילן", "boy");
+    expect(he).not.toContain("/");
+    expect(practiceTryTitle({ ...p, do: { en: "When your child's shoe is off, say 'shoe' and wait.", he: p.do.he } }, "en", "Dylan")).not.toMatch(/your/i);
+    expect(practiceTryTitle(p, "en", "")).toBe(practiceTryTitle(p, "en", " "));
   });
 });
