@@ -213,3 +213,17 @@ describe("the shelf's entries — filtered by shelfOf only", () => {
     expect(signalsOnShelf(signals, observations, "feelings").map((s) => s.id)).toEqual(["moment-c"]);
   });
 });
+
+/* P5-LOOP c2 r2 (journal P1 G1-2 / design P1): the Notice card's rendered
+   proof is the orchestrator's sweep state loop-shelf-page-notice on
+   ?shelf=words — this pins that the catalogue SUPPLIES that card for the
+   demo child (Dylan, 38 m), and that Sleep has none (the framer's open ask). */
+describe("the shelf page's Notice card has a row on Words for the demo child (c2 r2)", () => {
+  it("shelfNotice(words, 38 m) is an in-window row; Sleep has none until a sourced row exists", () => {
+    const fresh = ALL_MILESTONES.map((m) => ({ ...m, checked: false })) as Milestone[];
+    const words = shelfNotice(fresh, 38, "words", new Date(2026, 9, 7, 9));
+    expect(words).not.toBeNull();
+    expect(words!.shelf).toBe("words");
+    expect(shelfNotice(fresh, 38, "sleep", new Date(2026, 9, 7, 9))).toBeNull();
+  });
+});
