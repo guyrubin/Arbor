@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Heebo:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,0..100&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Heebo:wght@400;500;600;700;800&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=Frank+Ruhl+Libre:wght@300..900&family=Instrument+Serif:ital@0;1&display=swap');
 @import "tailwindcss";
 
 /* ─── Design Tokens — Arbor 2035 Sapphire ────────────────────────────────────
@@ -136,12 +136,17 @@
   --arbor-pack-truth:           #4f6ae6;
   --arbor-metric-truth:         #4f6ae6;
 
-  /* Type system: Fraunces display · Nunito UI · Instrument Serif editorial
-     accents; Hebrew swaps to Heebo/Frank Ruhl Libre below. B-SHELL-24: the
+  /* Type system: Fraunces display · Instrument Sans UI · Instrument Serif editorial
+     accents. B-DESIGN-02 (P7-DESIGN framer decision, 7 Oct): ONE Latin-first body
+     stack for both locales (Instrument Sans, then IBM Plex Sans Hebrew for Hebrew
+     glyphs, so a Latin name on a Hebrew page keeps the Latin face); Hebrew display
+     swaps to Frank Ruhl Libre below. Nunito/Heebo stay loaded for the KID register
+     only (.arbor-play pin, end of file). Google serves per-subset unicode-range
+     faces, so a page downloads only the latin + hebrew files it renders. B-SHELL-24: the
      Google import at the top loads ONLY the families these tokens name (Baloo 2
      and Plus Jakarta Sans were imported but named by no token — dropped). */
   --font-display:   'Fraunces', 'Frank Ruhl Libre', Georgia, 'Times New Roman', serif;
-  --font-sans:      'Nunito', 'Heebo', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-sans:      'Instrument Sans', 'IBM Plex Sans Hebrew', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-editorial: 'Instrument Serif', Georgia, serif;
 
   /* Type scale (rem, product-fixed; root = 15px → px equivalents shown as comment)
@@ -171,6 +176,31 @@
   --shadow-green: 0 0 24px rgba(52,211,153,0.25);
   /* Focus ring — brand-blue halo */
   --ring:         0 0 0 3px rgba(88, 166, 255, 0.18);
+
+  /* ── B-DESIGN-02 (P7-DESIGN framer decision, 7 Oct) — the chosen A+B tokens.
+     Re-declared byte-identically in the flat block (W4.1 freeze). Consumers:
+     B-DESIGN-03/04 (screens) through the .t-* / .arbor-* utilities below. */
+  --t-kicker: 0.75rem;   /* kicker row 12 px (HE 13 px, no uppercase) */
+  --t-title:  1.375rem;  /* card / section title 22 px */
+  --t-say:    1.5rem;    /* the family's words, editorial 24 px (HE 22 px) */
+  --t-hero:   2.125rem;  /* page H1 34 px; 44 px at >= 1280 */
+  --arbor-w-hero:  500;  /* H1 weight in the display face (FRL/Fraunces variable) */
+  --arbor-w-title: 600;
+  --arbor-editorial-adjust: 0.5;  /* Instrument Serif x-height fix (critic P2-14); none in HE */
+  /* Depth: a hairline ring + ONE neutral 2 px lift on every card; the deep
+     shadow belongs to the screen's primary card ONLY. color-mix of the ink, so
+     the flat scope resolves exactly rgba(20,34,90,.04 / .34) with no rgba literal. */
+  --arbor-shadow-card:    0 0 0 1px var(--arbor-rule), 0 1px 2px color-mix(in srgb, var(--arbor-ink) 4%, transparent);
+  --arbor-shadow-primary: 0 0 0 1px var(--arbor-rule), 0 22px 40px -28px color-mix(in srgb, var(--arbor-ink) 34%, transparent);
+  /* Fixed-strength shelf washes (Journal grid tiles + the shelf-page header ONLY;
+     never Milestones rows; never varies with count or answers). Same formula as
+     the shipped peach/lav/pink washes: color-mix(in srgb, var(--arbor-<jewel>)
+     9%, var(--arbor-paper-elevated)), yellow 11%; resolved to literals so the
+     contrast suite reads them. Hands (tint deep) uses --arbor-paper-deep. */
+  --arbor-sky-wash:    #e9f7fd;
+  --arbor-green-wash:  #e9f9f4;
+  --arbor-yellow-wash: #fff8e7;
+  --arbor-glyph-chip:  44px;     /* shelf glyph chip (duotone) */
 
   /* ── UC-1 layout foundation — page width + composition ───────────────────
      Centers the app on wide canvases (fixes the "full-width card desert" on
@@ -229,8 +259,10 @@ html, body, #root { min-height: 100%; overflow-x: hidden; }
    <html lang/dir>; flex/grid auto-mirror under dir=rtl, with a few explicit
    border/position flips for the shell. */
 html[lang="he"] {
-  --font-sans: "Heebo", "Assistant", -apple-system, system-ui, sans-serif;
+  /* B-DESIGN-02: no separate Hebrew --font-sans — the :root stack is Latin-first
+     and carries IBM Plex Sans Hebrew for the Hebrew glyphs. */
   --font-display: "Frank Ruhl Libre", "Heebo", Georgia, serif;
+  --t-say: 1.375rem; --t-kicker: 0.8125rem;  /* HE steps (no uppercase kicker) */
   /* Instrument Serif and Georgia carry no Hebrew glyphs — the editorial face
      fell to a system serif with a synthesised oblique (practice critic r2). */
   /* NEXTLEVEL critic r1 (profile · design · P1): Latin runs on a Hebrew page
@@ -471,6 +503,46 @@ body {
 .t-lg   { font-size: var(--t-lg); }
 .t-xl   { font-size: var(--t-xl); }
 .t-2xl  { font-size: var(--t-2xl); }
+
+/* ─── B-DESIGN-02 — the chosen type steps, depth, numerals, chrome ────────────
+   P7-DESIGN framer decision (7 Oct): Option A + three B elements. Parent register
+   only — every rule below excludes .arbor-play (Kid Mode keeps its own type).
+   Sizes/weights are opt-in utilities (screens adopt them in B-DESIGN-03/04); the
+   display axes and numerals apply app-wide now. */
+.t-kicker { font-size: var(--t-kicker); }
+.t-title  { font-size: var(--t-title); }
+.t-say    { font-size: var(--t-say); }
+.t-hero   { font-size: var(--t-hero); }
+@media (min-width: 1280px) {
+  :root, .arbor-app, .arbor-parent { --t-hero: 2.75rem; }  /* H1 44 px at 1280 */
+}
+/* Display face: Fraunces optical size auto + SOFT 40 (FRL has no SOFT axis and
+   ignores it). */
+.arbor-app :is(h1, h2, h3, .arbor-display-xl, .arbor-display-lg, .arbor-type-hero, .arbor-type-title):not(.arbor-play *) {
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 40;
+}
+/* (0,2,0) !important beats the `.arbor-app h1` 600 !important above. */
+.arbor-app .arbor-type-hero  { font-family: var(--font-display) !important; font-weight: var(--arbor-w-hero) !important; font-size: var(--t-hero); line-height: 1.08; letter-spacing: -0.015em; }
+.arbor-app .arbor-type-title { font-family: var(--font-display) !important; font-weight: var(--arbor-w-title) !important; font-size: var(--t-title); line-height: 1.2; letter-spacing: -0.01em; }
+.arbor-app .arbor-type-say   { font-family: var(--font-editorial); font-weight: 400; font-size: var(--t-say); line-height: 1.3; font-size-adjust: var(--arbor-editorial-adjust); }
+.arbor-app .arbor-type-kicker { font: 700 var(--t-kicker)/1.2 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--arbor-muted); }
+html[lang="he"] .arbor-app :is(.arbor-type-hero, .arbor-type-title) { letter-spacing: 0; }
+html[lang="he"] .arbor-app .arbor-type-say { font-size-adjust: none; }
+html[lang="he"] .arbor-app .arbor-type-kicker { letter-spacing: 0; text-transform: none; }
+/* The one warm accent per screen: the family's words, editorial face, 2 px ink rule. */
+.arbor-app .arbor-accent-rule { padding-inline-start: 14px; border-inline-start: 2px solid var(--arbor-ink); }
+/* Numerals: times and counts align (tabular, lining) wherever numbers render. */
+.arbor-app :is(time, table, .arbor-num):not(.arbor-play *) { font-variant-numeric: tabular-nums lining-nums; }
+/* Depth (class names avoid the `[class*="shadow-"]` remap above). */
+.arbor-app .arbor-depth-card    { box-shadow: var(--arbor-shadow-card); }
+.arbor-app .arbor-depth-primary { box-shadow: var(--arbor-shadow-primary); }
+/* Sticky chrome only (top bar + dock): paper 80 % + blur 14 px. Never on content. */
+.arbor-app .arbor-chrome-glass {
+  background-color: var(--arbor-chrome-glass);
+  -webkit-backdrop-filter: var(--arbor-chrome-blur);
+  backdrop-filter: var(--arbor-chrome-blur);
+}
 
 /* ─── VIS-2: Touch-target floor ─────────────────────────────────────────────
    Inline icon-only controls (those carrying only an SVG and no label text)
@@ -1440,27 +1512,57 @@ html[lang="he"] .arbor-play,
   --arbor-pack-truth:           #4f6ae6;
   --arbor-metric-truth:         #4f6ae6;
   --font-display:   'Fraunces', 'Frank Ruhl Libre', Georgia, 'Times New Roman', serif;
-  --font-sans:      'Nunito', 'Heebo', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-sans:      'Instrument Sans', 'IBM Plex Sans Hebrew', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-editorial: 'Instrument Serif', Georgia, serif;
   --touch-min: 44px;
   --r-sm: 10px; --r: 14px; --r-lg: 18px; --r-xl: 22px;
   --shadow-green: 0 0 24px rgba(52,211,153,0.25);
   --ring:         0 0 0 3px rgba(88, 166, 255, 0.18);
+  /* ── B-DESIGN-02 (P7-DESIGN framer decision, 7 Oct) — the chosen A+B tokens.
+     Re-declared byte-identically in the flat block (W4.1 freeze). Consumers:
+     B-DESIGN-03/04 (screens) through the .t-* / .arbor-* utilities below. */
+  --t-kicker: 0.75rem;   /* kicker row 12 px (HE 13 px, no uppercase) */
+  --t-title:  1.375rem;  /* card / section title 22 px */
+  --t-say:    1.5rem;    /* the family's words, editorial 24 px (HE 22 px) */
+  --t-hero:   2.125rem;  /* page H1 34 px; 44 px at >= 1280 */
+  --arbor-w-hero:  500;  /* H1 weight in the display face (FRL/Fraunces variable) */
+  --arbor-w-title: 600;
+  --arbor-editorial-adjust: 0.5;  /* Instrument Serif x-height fix (critic P2-14); none in HE */
+  /* Depth: a hairline ring + ONE neutral 2 px lift on every card; the deep
+     shadow belongs to the screen's primary card ONLY. color-mix of the ink, so
+     the flat scope resolves exactly rgba(20,34,90,.04 / .34) with no rgba literal. */
+  --arbor-shadow-card:    0 0 0 1px var(--arbor-rule), 0 1px 2px color-mix(in srgb, var(--arbor-ink) 4%, transparent);
+  --arbor-shadow-primary: 0 0 0 1px var(--arbor-rule), 0 22px 40px -28px color-mix(in srgb, var(--arbor-ink) 34%, transparent);
+  /* Fixed-strength shelf washes (Journal grid tiles + the shelf-page header ONLY;
+     never Milestones rows; never varies with count or answers). Same formula as
+     the shipped peach/lav/pink washes: color-mix(in srgb, var(--arbor-<jewel>)
+     9%, var(--arbor-paper-elevated)), yellow 11%; resolved to literals so the
+     contrast suite reads them. Hands (tint deep) uses --arbor-paper-deep. */
+  --arbor-sky-wash:    #e9f7fd;
+  --arbor-green-wash:  #e9f9f4;
+  --arbor-yellow-wash: #fff8e7;
+  --arbor-glyph-chip:  44px;     /* shelf glyph chip (duotone) */
+  /* B-DESIGN-02: translucent STICKY CHROME only (top bar + dock); content stays
+     opaque. = color-mix(in srgb, var(--arbor-paper) 80%, transparent), resolved
+     so the contrast suite composites it. Flat scope only (the parent register). */
+  --arbor-chrome-glass: #fbfaf7cc;
+  --arbor-chrome-blur:  saturate(1.4) blur(14px);
   --page-max: 1480px;
   --content-max: 1040px;
   --rail-width: 360px;
   --shell-pad-x: clamp(16px, 3vw, 48px);
 }
 
-/* W4.1 leak-freeze companion: the flat block above re-declares --font-sans /
-   --font-display at .arbor-app scope, which would otherwise defeat the
+/* W4.1 leak-freeze companion: the flat block above re-declares --font-display
+   (and, since B-DESIGN-02, the Latin-first --font-sans shared by both locales)
+   at .arbor-app scope, which would otherwise defeat the
    html[lang="he"] font swap (a declaration on the scope element beats the
    value inherited from <html>). Byte-copied from the html[lang="he"] rule so
    Hebrew rendering is unchanged. Remove together with the freeze block. */
 html[lang="he"] .arbor-app,
 html[lang="he"] .arbor-parent {
-  --font-sans: "Heebo", "Assistant", -apple-system, system-ui, sans-serif;
   --font-display: "Frank Ruhl Libre", "Heebo", Georgia, serif;
+  --t-say: 1.375rem; --t-kicker: 0.8125rem;
   /* NEXTLEVEL critic r1 (profile · design · P1): Latin runs on a Hebrew page
      (a parent's English fact) take Instrument Serif, as in EN — Frank Ruhl
      Libre ships 500-700 only, so its Latin read bold and heavier than the
@@ -1468,6 +1570,15 @@ html[lang="he"] .arbor-parent {
      Frank Ruhl Libre glyph by glyph (no system serif, no synthesised oblique). */
   --font-editorial: 'Instrument Serif', "Frank Ruhl Libre", "Heebo", Georgia, serif;
 }
+/* ════════════════════════════════════════════════════════════════════════════
+   B-DESIGN-02 — the KID register keeps its toy voice. The parent body face moved
+   to Instrument Sans / IBM Plex Sans Hebrew (P7-DESIGN framer decision, 7 Oct);
+   .arbor-play (Kid Mode overlay + the practice play layer) keeps the exact pre-
+   change stacks, so no kid word changes face (kidType.test: Nunito/Heebo 800).
+   ════════════════════════════════════════════════════════════════════════════ */
+.arbor-play { --font-sans: 'Nunito', 'Heebo', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+html[lang="he"] .arbor-play { --font-sans: "Heebo", "Assistant", -apple-system, system-ui, sans-serif; }
+
 /* Hebrew has no italic: an <i>/<em> in the editorial face stays upright. */
 html[lang="he"] .arbor-app i,
 html[lang="he"] .arbor-app em,

@@ -101,6 +101,24 @@ export const CSS_VARS = {
 
   // Ring
   ring: "var(--ring)",
+
+  // B-DESIGN-02 (P7-DESIGN framer decision, 7 Oct) — the chosen A+B tokens
+  fontEditorial: "var(--font-editorial)",
+  textKicker: "var(--t-kicker)",
+  textTitle: "var(--t-title)",
+  textSay: "var(--t-say)",
+  textHero: "var(--t-hero)",
+  shadowCard: "var(--arbor-shadow-card)",        // hairline ring + one 2 px lift
+  shadowPrimary: "var(--arbor-shadow-primary)",  // the screen's primary card ONLY
+  chromeGlass: "var(--arbor-chrome-glass)",      // sticky top bar + dock ONLY
+  chromeBlur: "var(--arbor-chrome-blur)",
+  skyWash: "var(--arbor-sky-wash)",              // fixed-strength shelf washes
+  greenWash: "var(--arbor-green-wash)",
+  yellowWash: "var(--arbor-yellow-wash)",
+  peachWash: "var(--arbor-peach-wash)",
+  lavWash: "var(--arbor-lav-wash)",
+  pinkWash: "var(--arbor-pink-wash)",
+  glyphChip: "var(--arbor-glyph-chip)",
 } as const;
 
 export type TokenName = keyof typeof CSS_VARS;

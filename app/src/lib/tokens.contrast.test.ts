@@ -182,12 +182,17 @@ const TINTS = ["--arbor-paper-tinted", "--arbor-clay-dim", "--arbor-clay-soft",
   "--arbor-green-soft", "--arbor-peach-soft", "--arbor-lav-soft",
   "--arbor-yellow-soft", "--arbor-pink-soft", "--arbor-sky-soft",
   // W2-CAREPRO c2 r1: the flat washes (crisis card, Start-here band, Plus chip).
-  "--arbor-peach-wash", "--arbor-lav-wash", "--arbor-pink-wash"];
+  "--arbor-peach-wash", "--arbor-lav-wash", "--arbor-pink-wash",
+  // B-DESIGN-02 (P7-DESIGN framer decision): the fixed-strength shelf washes (Journal
+  // tiles, shelf-page header) carry muted / ink-soft / every jewel -ink at AA.
+  "--arbor-sky-wash", "--arbor-green-wash", "--arbor-yellow-wash"];
 const TEXT = ["--arbor-ink", "--arbor-ink-soft", "--arbor-muted", "--arbor-faint",
   "--arbor-muted-alt", "--arbor-clay", "--arbor-clay-deep", "--arbor-clay-ink"];
 const FUNCTIONAL = ["green", "peach", "lav", "yellow", "pink", "sky"];
 const CTA = ["--arbor-gradient-primary", "--gradient-cta"];
-const FLAT_TINTS = ["--arbor-tint", "--arbor-tint-2", "--arbor-topbar-band", "--arbor-coach-grad"];
+const FLAT_TINTS = ["--arbor-tint", "--arbor-tint-2", "--arbor-topbar-band", "--arbor-coach-grad",
+  // B-DESIGN-02: the sticky-chrome glass (paper at 80 %) composited over every paper.
+  "--arbor-chrome-glass"];
 
 function backgrounds(values: Declarations, flat: boolean): { name: string; color: Color }[] {
   const papers = PAPER.map((name) => ({ name, color: colorOf(required(values, name)) }));

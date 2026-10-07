@@ -470,6 +470,41 @@ const W2_CAREPRO_FLAT_WASHES: Readonly<Record<string, string>> = {
   "--shell-topbar-h": "74px",
 };
 
+/** B-DESIGN-02 — the P7-DESIGN token move, AUTHORIZED by the framer decision
+ *  (REJECTIONS.md §"Framer decision — P7-DESIGN direction", Guy 7 Oct: "do the
+ *  right combination" → Option A + three B elements; decision 2 "font swap" taken).
+ *  Exact values, both scopes byte-identical (the W4.1 freeze still holds):
+ *  · --font-sans: Nunito/Heebo → ONE Latin-first stack Instrument Sans / IBM Plex
+ *    Sans Hebrew (the kid register keeps Nunito/Heebo through its .arbor-play pin);
+ *  · the top type steps, hero/title weights and the editorial size-adjust;
+ *  · depth = hairline ring + one 2 px lift; the deep shadow for the primary card;
+ *  · three fixed-strength shelf washes by the shipped 9 % (yellow 11 %) formula
+ *    (contrast-pinned in tokens.contrast.test.ts TINTS);
+ *  · the 44 px shelf-glyph chip. */
+const B_DESIGN_02_TOKENS: Readonly<Record<string, string>> = {
+  "--font-sans": "'Instrument Sans', 'IBM Plex Sans Hebrew', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+  "--t-kicker": "0.75rem",
+  "--t-title": "1.375rem",
+  "--t-say": "1.5rem",
+  "--t-hero": "2.125rem",
+  "--arbor-w-hero": "500",
+  "--arbor-w-title": "600",
+  "--arbor-editorial-adjust": "0.5",
+  "--arbor-shadow-card": "0 0 0 1px var(--arbor-rule), 0 1px 2px color-mix(in srgb, var(--arbor-ink) 4%, transparent)",
+  "--arbor-shadow-primary": "0 0 0 1px var(--arbor-rule), 0 22px 40px -28px color-mix(in srgb, var(--arbor-ink) 34%, transparent)",
+  "--arbor-sky-wash": "#e9f7fd",
+  "--arbor-green-wash": "#e9f9f4",
+  "--arbor-yellow-wash": "#fff8e7",
+  "--arbor-glyph-chip": "44px",
+};
+/** B-DESIGN-02 — sticky chrome glass (top bar + dock only), parent scope only:
+ *  paper #fbfaf7 at 80 % (= color-mix(paper 80%, transparent)) + blur 14 px.
+ *  Framer decision 3 ("glass on chrome") taken. */
+const B_DESIGN_02_FLAT_CHROME: Readonly<Record<string, string>> = {
+  "--arbor-chrome-glass": "#fbfaf7cc",
+  "--arbor-chrome-blur": "saturate(1.4) blur(14px)",
+};
+
 /** Exact replacements, not permission to change these tokens arbitrarily.
  * Root progress changes representation only: its pre-change resolved colours
  * stay pinned by the existing decorative-progress assertion. */
@@ -487,7 +522,8 @@ const CR01_APPROVED_ROOT: Readonly<Record<string, string>> = {
   "--arbor-sky-ink": "#075985",
   "--arbor-green-cta-start": "#1a6be8",
   "--arbor-muted-alt": "var(--arbor-muted)",
-  ...W2_CAREPRO_FLAT_WASHES
+  ...W2_CAREPRO_FLAT_WASHES,
+  ...B_DESIGN_02_TOKENS,
 };
 
 const CR01_APPROVED_FLAT: Readonly<Record<string, string>> = {
@@ -508,6 +544,8 @@ const CR01_APPROVED_FLAT: Readonly<Record<string, string>> = {
   "--gradient-cta": "linear-gradient(135deg, #1a6be8, #1558c0 60%, #124da8)",
   ...W2_CAREPRO_FLAT_WASHES,
   ...P1_NEXTLEVEL_FLAT_SOFTS,
+  ...B_DESIGN_02_TOKENS,
+  ...B_DESIGN_02_FLAT_CHROME,
 };
 
 function tokenBaselineDrift(
@@ -628,9 +666,23 @@ describe("W4.1 token-leak freeze — flat block mirrors :root byte-for-byte", ()
   });
 
   it("Hebrew font swap survives the freeze (html[lang=he] mirror present)", () => {
-    // The flat block re-declares --font-sans/--font-display at .arbor-app scope,
-    // which beats the inherited html[lang="he"] values; the mirror restores them.
-    expect(indexCss).toMatch(/html\[lang="he"\]\s+\.arbor-app,\s*\n\s*html\[lang="he"\]\s+\.arbor-parent\s*\{[^}]*--font-sans:\s*"Heebo"/);
+    // The flat block re-declares --font-display at .arbor-app scope, which beats
+    // the inherited html[lang="he"] value; the mirror restores the Hebrew display.
+    // B-DESIGN-02 (framer decision, 7 Oct): the body face is ONE Latin-first stack
+    // for both locales, so neither Hebrew rule declares its own --font-sans any more
+    // (re-pinned from `--font-sans: "Heebo"`); IBM Plex Sans Hebrew rides in that stack.
+    const mirror = /html\[lang="he"\]\s+\.arbor-app,\s*\n\s*html\[lang="he"\]\s+\.arbor-parent\s*\{([^}]*)\}/.exec(indexCss);
+    expect(mirror).not.toBeNull();
+    expect(mirror![1]).toMatch(/--font-display:\s*"Frank Ruhl Libre"/);
+    expect(mirror![1].replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/--font-sans/);
+    const heRoot = /^html\[lang="he"\]\s*\{([^}]*)\}/m.exec(indexCss);
+    expect(heRoot![1].replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/--font-sans/);
+    expect(B_DESIGN_02_TOKENS["--font-sans"]).toMatch(/^'Instrument Sans', 'IBM Plex Sans Hebrew',/);
+  });
+
+  it("B-DESIGN-02: the kid register keeps its pre-change toy voice (.arbor-play pin, both locales)", () => {
+    expect(indexCss).toContain(".arbor-play { --font-sans: 'Nunito', 'Heebo', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }");
+    expect(indexCss).toContain('html[lang="he"] .arbor-play { --font-sans: "Heebo", "Assistant", -apple-system, system-ui, sans-serif; }');
   });
 
   it("W4.5: the CSS nth-child entrance stagger stays removed (Shell owns entrance)", () => {
