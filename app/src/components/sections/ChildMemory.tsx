@@ -39,6 +39,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { quotesFromDocs } from "../../lib/loop/tonight";
 import ThingsSaid from "../loop/ThingsSaid";
+import FirstMonthKeepsakeRow from "../loop/FirstMonthKeepsakeRow";
 
 const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : txt.en);
 
@@ -270,6 +271,8 @@ export default function ChildMemory() {
             month; one tap shares ONE quote as text. Demoted like its siblings. */}
         <div data-module="memory-quotes" data-module-demoted className="pt-1">
           <ThingsSaid quotes={keptQuotes} childName={(quoteChild.name || "").split(" ")[0]} gender={quoteChild.gender} />
+          {/* B-SHELL-NEW-keepsake: the first-month keepsake, once, with its own date (off Today since PASS A5). */}
+          <FirstMonthKeepsakeRow />
         </div>
         {/* demotionTarget: "profile" — the hub the contract sends these to. */}
         <button onClick={() => setActiveTab("profile")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
