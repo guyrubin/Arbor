@@ -159,12 +159,16 @@ function acceptBottom(lang: "en" | "he", text: string, top = LETTER_TOP_375) {
   const offset = Math.max(0, (box - content) / 2);
   return Math.round(top + 4 + 24 + 17 + offset + contentAbove + 44);
 }
+/** Weekly 1b: the stamped Next on cards 1…n-1 sits in the card's top-end
+ *  corner (absolute top-3, no layout height): section p-1 4 + 12 + 44. The
+ *  last card has no Next, so the accept model above is unchanged. */
+const nextBottom = (top = LETTER_TOP_375) => Math.round(top + 4 + 12 + 44);
 
 describe("#/weekly — the move is the accept button, above the capture dock at 375", () => {
   it("ONE data-primary-move literal in WeeklyTab, a shared const spread on the accept controls; the letter wrapper carries none", () => {
     expect(TAB.match(/\bdata-primary-move\b(?!-)/g)).toHaveLength(1);
     expect(TAB).toContain('const ACCEPT_STAMP = { "data-primary-move": "accept-recap-recommendation" } as const;');
-    expect(TAB).toMatch(/<RecapStoryCards\s+acceptStamp=\{ACCEPT_STAMP\}/);
+    expect(TAB).toMatch(/<RecapStoryCards\s+acceptStamp=\{acceptRendered \? ACCEPT_STAMP : undefined\}/);
     // whiteLabelContrast: the letter sets ONE data attribute, never a prop spread on the button.
     const LETTER = readFileSync(path.join(here, "../weekly/RecapStoryCards.tsx"), "utf8");
     expect(LETTER).toContain('data-primary-move={acceptStamp?.["data-primary-move"]}');
@@ -201,12 +205,41 @@ describe("#/weekly — the move is the accept button, above the capture dock at 
   });
 
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: the rendered letter stamps the accept button only, on the last card`, () => {
+    it(`${lang}: weekly 1b — every card index renders exactly one stamp, on the visible card's forward control (next, next, next, accept)`, () => {
       const html = renderCard(lang, TRY[lang][0]);
       expect(html.match(/data-primary-move=/g)).toHaveLength(1);
       expect(html).toMatch(/<button[^>]*data-primary-move="accept-recap-recommendation"[^>]*data-testid="recap-accept"/);
       expect(html).not.toMatch(/<section[^>]*data-primary-move/);
-      for (const i of [0, 1, 2]) expect(renderCard(lang, TRY[lang][0], i)).not.toContain("data-primary-move");
+      // The last card has no Next: its accept is the forward control.
+      expect(html).not.toContain('data-testid="recap-next"');
+      const n = (html.match(/class="rounded-full transition-all"/g) ?? []).length;
+      expect(n).toBeGreaterThanOrEqual(3);
+      for (let i = 0; i < n - 1; i++) {
+        const card = renderCard(lang, TRY[lang][0], i);
+        expect(card.match(/data-primary-move=/g), `card ${i + 1}`).toHaveLength(1);
+        const next = /<button[^>]*data-testid="recap-next"[^>]*>/.exec(card)?.[0] ?? "";
+        expect(next).toContain('data-primary-move="accept-recap-recommendation"');
+        expect(next).toContain("--arbor-gradient-primary");
+        expect(card).not.toContain('data-testid="recap-accept"');
+      }
+      // No acceptStamp (fallback / accepted letter) → no stamp on any card; WeeklyTab's Retell carries it.
+      state.lang = lang;
+      for (let i = 0; i < n; i++) {
+        const bare = renderToStaticMarkup(
+          <RecapStoryCards report={report(TRY[lang][0])} record={record} childName="Dylan" canAccept accepted={false} onAccept={() => undefined} onCapture={() => undefined} initialIndex={i} />,
+        );
+        expect(bare).not.toContain("data-primary-move");
+        if (i < n - 1) expect(/<button[^>]*data-testid="recap-next"[^>]*>/.exec(bare)?.[0] ?? "").not.toContain("gradient");
+      }
+    });
+
+    it(`${lang}: card 1's stamped Next sits in the card's top-end corner (before its content), bottom ${nextBottom()} ≤ ${FOLD_LIMIT} at 375`, () => {
+      const html = renderCard(lang, TRY[lang][0], 0);
+      const next = /<button[^>]*data-testid="recap-next"[^>]*>/.exec(html)?.[0] ?? "";
+      expect(next).toMatch(/class="absolute top-3 end-3 /);
+      expect(html.indexOf('data-testid="recap-next"')).toBeLessThan(html.indexOf('data-testid="recap-card-new"'));
+      expect(html.indexOf('data-testid="recap-next"')).toBeLessThan(html.indexOf('data-testid="recap-nav"'));
+      expect(nextBottom()).toBeLessThanOrEqual(FOLD_LIMIT);
     });
 
     for (const text of TRY[lang]) {
@@ -273,16 +306,16 @@ describe("#/weekly — every state renders exactly one stamp (B-OCCL-03)", () =>
       expect(html).toContain(translate(lang, "wk.regenerate"));
     });
 
-    it(`${lang}: stored AI letter → the generate control is outline and unstamped; the letter's accept owns the move`, () => {
+    it(`${lang}: stored AI letter at card 1 (the ship sweep's base cell on 13137d1a) → one stamp, on the letter's Next; the generate control is outline and unstamped`, () => {
       const html = render(lang, [stored(lang, report(TRY[lang][0]).digest)]);
       expect(html).toContain('data-module="weekly-recap"');
       const gen = /<button[^>]*data-testid="weekly-generate"[^>]*>/.exec(html)?.[0] ?? "";
       expect(gen).not.toBe("");
       expect(gen).not.toContain("data-primary-move");
       expect(gen).not.toContain("gradient");
-      // The letter opens on card 1; its accept (last card) is the stamped
-      // control — exactly one stamp, data-testid recap-accept (renderCard above).
-      expect(stamps(html)).toHaveLength(0);
+      expect(stamps(html)).toHaveLength(1);
+      expect(stampedTag(html)).toContain('data-testid="recap-next"');
+      expect(nextBottom()).toBeLessThanOrEqual(FOLD_LIMIT);
       expect(stamps(renderCard(lang, TRY[lang][0]))).toHaveLength(1);
     });
 

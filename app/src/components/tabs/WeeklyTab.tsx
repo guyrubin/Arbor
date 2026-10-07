@@ -29,7 +29,10 @@ import InviteCard from "../referral/InviteCard";
    accept — never on the letter's wrapper (650 px at 375, it ran under the
    capture dock). Both branches are mutually exclusive (showRecap).
    B-OCCL-03: with no accept rendered, the generate control carries it
-   (generateIsMove) — the route never renders zero stamps or two. */
+   (generateIsMove) — the route never renders zero stamps or two.
+   Weekly 1b: the letter receives it only when its last card offers an
+   accept, and stamps the VISIBLE card's forward control — Next on cards
+   1…n-1, the accept on the last. */
 const ACCEPT_STAMP = { "data-primary-move": "accept-recap-recommendation" } as const;
 
 /**
@@ -326,7 +329,7 @@ export default function WeeklyTab() {
           {showRecap && selected.digest && (
             <div data-module="weekly-recap" style={{ display: "contents" }}>
             <RecapStoryCards
-              acceptStamp={ACCEPT_STAMP}
+              acceptStamp={acceptRendered ? ACCEPT_STAMP : undefined}
               report={selected as WeeklyReport & { digest: WeeklyDigest }}
               record={recapRecord}
               childName={childProfile.name}

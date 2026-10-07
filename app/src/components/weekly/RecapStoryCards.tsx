@@ -197,9 +197,11 @@ export default function RecapStoryCards({
   /** The card the letter opens on (0 = "New this week"). */
   initialIndex?: number;
   /** B-OCCL-02: the route's primary-move stamp (WeeklyTab ACCEPT_STAMP), set
-   *  as ONE data attribute on the accept button itself — never on the
+   *  as ONE data attribute on the visible card's forward control (weekly 1b:
+   *  Next on cards 1…n-1, the accept button on the last) — never on the
    *  letter, and never as a spread (whiteLabelContrast must prove the
-   *  button's fill and ink: a prop spread could override them). */
+   *  button's fill and ink: a prop spread could override them). WeeklyTab
+   *  passes it only when the last card renders an accept. */
   acceptStamp?: { readonly "data-primary-move": string };
 }) {
   const { t, uiLang } = useLanguage();
@@ -237,6 +239,9 @@ export default function RecapStoryCards({
 
   const card = cards[index];
   const last = index === cards.length - 1;
+  // Weekly 1b: the stamp rides the visible card's forward control — Next
+  // until the last card, where the accept button (below) carries it.
+  const forwardStamp = !last && acceptStamp ? acceptStamp["data-primary-move"] : undefined;
   const first = childName.split(" ")[0];
 
   const num = (n: number) => countFor(n, uiLang);
@@ -256,13 +261,35 @@ export default function RecapStoryCards({
         initial={reduce ? false : { opacity: 0, x: (rtl ? -dir : dir) * 28 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: reduce ? 0 : 0.22, ease: "easeOut" }}
-        className="rounded-[24px] p-6 sm:p-8 min-h-[380px] flex flex-col"
+        className="relative rounded-[24px] p-6 sm:p-8 min-h-[380px] flex flex-col"
         style={{
           background: card.kind === "recommendation" ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)",
           boxShadow: "var(--shadow-sm)",
         }}
       >
-        <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-muted)" }}>
+        {/* Weekly 1b (7 Oct): the visible card's FORWARD control. Cards
+            1…n-1: Next, in the card's top-end corner (no layout height, so
+            the last card's accept stays where the fold model puts it), with
+            the route's stamp and the gradient when the letter's last card
+            offers an accept; the last card has no Next — its accept carries
+            the stamp. Under a min-h 380 card, a Next in the pager row ran
+            under the capture dock at 375. */}
+        {!last && (
+          <button
+            type="button"
+            onClick={() => go(index + 1)}
+            aria-label={rc("elev.recap.nav.next")}
+            data-testid="recap-next"
+            data-primary-move={forwardStamp}
+            className="absolute top-3 end-3 sm:top-5 sm:end-5 inline-flex h-11 w-11 items-center justify-center rounded-full transition active:scale-[0.96]"
+            style={forwardStamp
+              ? { background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)", border: "1px solid transparent" }
+              : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+          >
+            <Icon name="chevron_right" size={20} className="rtl:-scale-x-100" />
+          </button>
+        )}
+        <div className={`flex items-center gap-2 ${last ? "" : "pe-14"} text-[11px] font-extrabold uppercase tracking-[0.12em]`} style={{ color: "var(--arbor-muted)" }}>
           <Icon name={CARD_ICON[card.kind]} size={15} />
           {card.kind === "new" && rc("elev.recap.new.eyebrow")}
           {card.kind === "helped" && rc("elev.recap.helped.eyebrow")}
@@ -437,8 +464,9 @@ export default function RecapStoryCards({
         )}
       </motion.div>
 
-      {/* Button + keyboard navigation (no gesture lib). */}
-      <div className="mt-3 flex items-center justify-between px-1">
+      {/* Button + keyboard navigation (no gesture lib): Back + the dots
+          under the card; Next lives in the card's top-end corner (weekly 1b). */}
+      <div data-testid="recap-nav" className="mt-3 flex items-center justify-between px-1">
         <button
           type="button"
           onClick={() => go(index - 1)}
@@ -467,16 +495,8 @@ export default function RecapStoryCards({
           {rc("elev.recap.card.count", { i: index + 1, n: cards.length })}
         </span>
 
-        <button
-          type="button"
-          onClick={() => go(index + 1)}
-          disabled={last}
-          aria-label={rc("elev.recap.nav.next")}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full transition active:scale-[0.96] disabled:opacity-35"
-          style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
-        >
-          <Icon name="chevron_right" size={20} className="rtl:-scale-x-100" />
-        </button>
+        {/* Weekly 1b: Next moved into the card (top-end corner); this keeps the dots centred. */}
+        <span aria-hidden className="h-11 w-11" />
       </div>
     </section>
   );
