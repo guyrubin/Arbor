@@ -27,7 +27,9 @@ import InviteCard from "../referral/InviteCard";
    on the control that performs the move — the letter's "Make it today's step"
    (RecapStoryCards acceptStamp, last card) or, on a history week, the insight card's
    accept — never on the letter's wrapper (650 px at 375, it ran under the
-   capture dock). Both branches are mutually exclusive (showRecap). */
+   capture dock). Both branches are mutually exclusive (showRecap).
+   B-OCCL-03: with no accept rendered, the generate control carries it
+   (generateIsMove) — the route never renders zero stamps or two. */
 const ACCEPT_STAMP = { "data-primary-move": "accept-recap-recommendation" } as const;
 
 /**
@@ -71,7 +73,9 @@ export default function WeeklyTab() {
     if (!selectedId) setSelectedId(currentId);
   }, [selectedId, currentId]);
 
-  const selected = reports.find((r) => r.id === selectedId) ?? null;
+  // B-OCCL-03: the first paint already reads the current week (selectedId is
+  // null until the landing effect runs) — same landing rule, no empty flash.
+  const selected = reports.find((r) => r.id === (selectedId ?? currentId)) ?? null;
   const hasStoredCurrentWeek = reports.some((r) => r.id === currentId);
   // Current week selected with no stored report yet → honest empty state.
   const emptyCurrentWeek = isEmptyCurrentWeek(selectedId, currentId, hasStoredCurrentWeek);
@@ -99,6 +103,19 @@ export default function WeeklyTab() {
   // W2 2.1: the CURRENT week renders as the story-card ritual when its digest
   // exists; history weeks keep the classic layout below.
   const showRecap = !!selected?.digest && selected.id === currentId && !awaitingLanguage;
+
+  /* B-OCCL-03 (7 Oct): WHICH control carries ACCEPT_STAMP in this state. An
+     accept renders only for an AI digest not yet taken into today — the
+     letter's last card (showRecap) or the insight card's button (history week
+     / digest-less letter). With no accept on the page (nothing stored, a
+     story the digest call could not write, a fallback digest, a step already
+     taken) the move is performed by the ONE generate control — "Create this
+     week's story" in the header, or "Retell" under the story once the week
+     is stored — so the stamp (and the one gradient) sits there. Exactly one
+     of the three renders the stamp; never none, never two. */
+  const digestAccepted = !!selected?.digest && activeTodayAction?.recommendation === selected.digest.tryThisWeek.trim();
+  const acceptRendered = !!selected && !awaitingLanguage && selected.digest?.generated === "ai" && !!selected.digest.tryThisWeek.trim() && !digestAccepted;
+  const generateIsMove = !acceptRendered;
 
   // B-TODAY-23: the letter reads the parent's OWN record over the report's
   // calendar week (recapWeekStartMs: the same week recapWeekId files it under).
@@ -162,17 +179,21 @@ export default function WeeklyTab() {
   /* TJB-10 / principle 3: ONE gradient per screen, and it belongs to
      the surface's primaryMove — "accept-recap-recommendation"
      (surfaceContract weekly). Retelling a week the parent already
-     has is a secondary move and now reads as one; only "Create this
-     week's story", when there is nothing to accept yet, keeps the
-     gradient, because then it IS the only move on the screen. */
+     has is a secondary move and reads as one while an accept is on
+     the page; when there is nothing to accept (generateIsMove) the
+     generate control IS the only move on the screen, so it carries
+     the stamp and the gradient — "Create this week's story" in the
+     header, or Retell under a story the digest could not write. */
   const retellButton = (
     <button
       onClick={() => void generate()}
       disabled={generating}
+      data-testid="weekly-generate"
+      {...(generateIsMove ? ACCEPT_STAMP : undefined)}
       className="inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 disabled:opacity-60"
-      style={hasStoredCurrentWeek
-        ? { background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44 }
-        : { background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)", minHeight: 44 }}
+      style={generateIsMove
+        ? { background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)", minHeight: 44 }
+        : { background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44 }}
     >
       {generating ? (<><Icon name="refresh" size={16} className="animate-spin" /> {t("wk.generating")}</>) : (<><Icon name="auto_awesome" size={16} /> {hasStoredCurrentWeek ? t("wk.regenerate") : t("wk.generate")}</>)}
     </button>

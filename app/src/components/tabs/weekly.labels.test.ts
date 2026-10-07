@@ -100,9 +100,11 @@ describe("4 · principle 3 · one gradient, and it is the primary move", () => {
     expect(brief).not.toBe("");
     expect(brief).not.toContain("gradient");
     expect(brief).toContain("border: \"1px solid var(--arbor-green-ink)\"");
-    // Retell keeps the gradient ONLY when there is nothing stored yet, i.e.
-    // when creating the story is the only move on the screen.
-    expect(tab).toContain("style={hasStoredCurrentWeek");
+    // Retell keeps the gradient ONLY when no accept is on the page
+    // (B-OCCL-03 generateIsMove), i.e. when generating the story is the only
+    // move on the screen — the gradient follows the stamp.
+    expect(tab).toContain("style={generateIsMove");
+    expect(tab).toContain("{...(generateIsMove ? ACCEPT_STAMP : undefined)}");
   });
 
   it("the accept CTA carries the gradient on a history week", () => {

@@ -37,11 +37,48 @@ vi.mock("../../context/LanguageContext", async () => {
 });
 vi.mock("../../lib/analytics", () => ({ track: () => undefined }));
 vi.mock("../ui/ShareButton", () => ({ default: () => null, ShareButton: () => null }));
+/* B-OCCL-03: the whole tab, rendered server-side over a stubbed context. */
+const tab = vi.hoisted(() => ({
+  reports: [] as unknown[],
+  active: null as null | { recommendation: string },
+}));
+vi.mock("../../context/ArborContext", () => ({
+  useArbor: () => ({
+    childProfile: { id: "dylan-demo", name: "Dylan", birthDate: "2023-08-01" },
+    setActiveTab: () => undefined,
+    acceptTodayAction: () => undefined,
+    activeTodayAction: tab.active,
+    behaviorLogs: [], playLogs: [], milestones: [], checkedMilestones: 0,
+    actionLoop: [], approvedMemoryItems: [], keptInsights: [],
+  }),
+}));
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: null }) }));
+vi.mock("../../hooks/useWeeklyRecap", async () => {
+  const actual = await vi.importActual<typeof import("../../hooks/useWeeklyRecap")>("../../hooks/useWeeklyRecap");
+  return {
+    ...actual,
+    useWeeklyRecap: () => ({
+      reports: tab.reports, generating: false, generate: async () => undefined,
+      currentId: "2026-W40", currentLabel: "This week", labelFor: () => "Week of 27 September",
+      languageRefreshPending: false, recapUnopened: false, markRecapOpened: () => undefined,
+    }),
+  };
+});
+vi.mock("../weekly/recapEmail", () => ({
+  fetchDigestEmailStatus: () => new Promise(() => undefined),
+  readEmailOptIn: () => false,
+  writeEmailOptIn: () => undefined,
+}));
+vi.mock("../referral/InviteCard", () => ({ default: () => null }));
+vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => null }));
+vi.mock("../overview/QuickLogModal", () => ({ default: () => null }));
 
 import RecapStoryCards, { type RecapRecord } from "../weekly/RecapStoryCards";
 import { recapWeekStartMs, type WeeklyReport } from "../../hooks/useWeeklyRecap";
 import type { WeeklyDigest } from "../../lib/api";
 import { translate } from "../../lib/i18n";
+import WeeklyTab from "./WeeklyTab";
+import { rcString } from "../weekly/recapStrings";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const strip = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -182,4 +219,106 @@ describe("#/weekly — the move is the accept button, above the capture dock at 
   it("negative control: from the pre-fix letter top (510) the same button sat under the dock", () => {
     expect(acceptBottom("en", TRY.en[1], 510)).toBeGreaterThan(FOLD_LIMIT);
   });
+});
+
+/* B-OCCL-03 (7 Oct) — the ship sweep on b2c0d0f6 (sweeps/ship-b2c0d0f6):
+   #/weekly 375 EN + HE and 1280 had NO data-primary-move. The base cell held
+   a stored current week whose digest call failed (modules weekly-insight,
+   weekly-detail, weekly-share): no accept anywhere, and with nothing stored
+   the header "Create this week's story" carried no stamp either. Fix: with
+   no accept rendered the ONE generate control carries ACCEPT_STAMP
+   (generateIsMove) — in the header when nothing is stored, as Retell under
+   the story when it is. The contract's primaryMove id is unchanged. */
+describe("#/weekly — every state renders exactly one stamp (B-OCCL-03)", () => {
+  const stamps = (html: string) => html.match(/data-primary-move="accept-recap-recommendation"/g) ?? [];
+  const stampedTag = (html: string) => /<button[^>]*data-primary-move="accept-recap-recommendation"[^>]*>/.exec(html)?.[0] ?? "";
+  const render = (lang: "en" | "he", reports: unknown[], active: null | { recommendation: string } = null) => {
+    state.lang = lang;
+    tab.reports = reports;
+    tab.active = active;
+    return renderToStaticMarkup(<WeeklyTab />);
+  };
+  const stored = (lang: "en" | "he", digest: unknown) => ({
+    id: "2026-W40", lang, weekStart: "2026-09-27T00:00:00.000Z", generatedAt: "2026-10-01T06:00:00.000Z",
+    summary: { count: 3, resolved: 2, topTrigger: "Transitions" }, milestoneWins: [], planProgress: { done: 0, total: 0 },
+    insight: rcString((k) => translate(lang, k), lang, "elev.recap.insight.unavailable"),
+    ...(digest ? { digest } : {}),
+  });
+
+  it("source: one literal, spread conditionally on the generate control; the gradient follows the stamp", () => {
+    expect(TAB.match(/\bdata-primary-move\b(?!-)/g)).toHaveLength(1);
+    expect(TAB).toMatch(/data-testid="weekly-generate"\s+\{\.\.\.\(generateIsMove \? ACCEPT_STAMP : undefined\)\}/);
+    expect(TAB).toContain("const generateIsMove = !acceptRendered;");
+    expect(TAB).toMatch(/style=\{generateIsMove\s+\? \{ background: "var\(--arbor-gradient-primary\)"/);
+  });
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: nothing stored → exactly one stamp, on "Create this week's story" in the header`, () => {
+      const html = render(lang, []);
+      expect(stamps(html)).toHaveLength(1);
+      const tag = stampedTag(html);
+      expect(tag).toContain('data-testid="weekly-generate"');
+      expect(tag).toContain("--arbor-gradient-primary");
+      expect(html).toContain(translate(lang, "wk.generate").replace(/'/g, "&#x27;"));
+      expect(html).toContain('data-module="weekly-empty"');
+      // The create control sits in the header, above the empty card.
+      expect(html.indexOf('data-testid="weekly-generate"')).toBeLessThan(html.indexOf('data-module="weekly-empty"'));
+    });
+
+    it(`${lang}: stored week, the digest call failed (the sweep's base cell) → one stamp, on Retell`, () => {
+      const html = render(lang, [stored(lang, null)]);
+      expect(html).toContain('data-module="weekly-insight"');
+      expect(stamps(html)).toHaveLength(1);
+      expect(stampedTag(html)).toContain('data-testid="weekly-generate"');
+      expect(html).toContain(translate(lang, "wk.regenerate"));
+    });
+
+    it(`${lang}: stored AI letter → the generate control is outline and unstamped; the letter's accept owns the move`, () => {
+      const html = render(lang, [stored(lang, report(TRY[lang][0]).digest)]);
+      expect(html).toContain('data-module="weekly-recap"');
+      const gen = /<button[^>]*data-testid="weekly-generate"[^>]*>/.exec(html)?.[0] ?? "";
+      expect(gen).not.toBe("");
+      expect(gen).not.toContain("data-primary-move");
+      expect(gen).not.toContain("gradient");
+      // The letter opens on card 1; its accept (last card) is the stamped
+      // control — exactly one stamp, data-testid recap-accept (renderCard above).
+      expect(stamps(html)).toHaveLength(0);
+      expect(stamps(renderCard(lang, TRY[lang][0]))).toHaveLength(1);
+    });
+
+    it(`${lang}: stored fallback letter (no accept) → Retell carries the stamp`, () => {
+      const html = render(lang, [stored(lang, { ...report(TRY[lang][0]).digest, generated: "fallback" })]);
+      expect(stamps(html)).toHaveLength(1);
+      expect(stampedTag(html)).toContain('data-testid="weekly-generate"');
+    });
+
+    it(`${lang}: step already taken from the letter → Retell carries the stamp`, () => {
+      const html = render(lang, [stored(lang, report(TRY[lang][0]).digest)], { recommendation: TRY[lang][0] });
+      expect(stamps(html)).toHaveLength(1);
+      expect(stampedTag(html)).toContain('data-testid="weekly-generate"');
+    });
+  }
+
+  /* The 375 line model for the generate control, from the same measured
+     letter top (LETTER_TOP_375 = the stored-week header bottom + space-y-6).
+     Nothing stored: the header gains the action row (gap-3 12 + 44).
+     Stored, digest failed: the insight card (p-6 24 · label row 16 ·
+     space-y-3 12 · the unavailable sentence, text-sm 20 / line over
+     375 − 32 = 343 − 2·24 = 295 px at 0.5 em · p-6 24) · space-y-6 24 ·
+     Retell 44. The H1 ("{first}'s week", 24 px × 1.1) is one line in the
+     measured base; any extra wrapped line is added. */
+  const HEADER_BOTTOM_STORED = LETTER_TOP_375 - 24;
+  const titleExtra = (lang: "en" | "he") => (lines(translate(lang, "wk.title", { first: "Dylan" }), 24, 0.55) - 1) * 24 * 1.1;
+  const createBottom = (lang: "en" | "he") => Math.round(HEADER_BOTTOM_STORED + titleExtra(lang) + 12 + 44);
+  const retellBottom = (lang: "en" | "he") => {
+    const sentence = rcString((k) => translate(lang, k), lang, "elev.recap.insight.unavailable");
+    const textH = Math.ceil((sentence.length * 14 * 0.5) / 295) * 20;
+    return Math.round(HEADER_BOTTOM_STORED + titleExtra(lang) + 24 + (24 + 16 + 12 + textH + 24) + 24 + 44);
+  };
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: the stamped generate control's bottom ≤ ${FOLD_LIMIT} px at 375 × 812 (nothing stored · digest failed)`, () => {
+      expect(createBottom(lang)).toBeLessThanOrEqual(FOLD_LIMIT);
+      expect(retellBottom(lang)).toBeLessThanOrEqual(FOLD_LIMIT);
+    });
+  }
 });
