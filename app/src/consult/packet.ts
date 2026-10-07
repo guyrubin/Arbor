@@ -27,6 +27,7 @@ import { resolveHebrewSlash } from "../lib/hebrewSlashGender";
 import type { BehaviorLog, Milestone } from "../types";
 import type { ActionLoopEntry } from "../actionLoop/model";
 import { SPLIT_CLINICIAN_PRESETS } from "../content/consultPresets";
+import { programPacketLine, type ProgramPageModel } from "../lib/programPage";
 
 export interface PacketInputProfile {
   name: string;
@@ -1595,6 +1596,10 @@ export interface IntakePacketInput {
    *  quotesFromDocs). They are filed on the Words shelf, so they reach the
    *  packets whose profession owns that shelf's domain (the SLP), never the OT. */
   quotes?: ReadonlyArray<{ id: string; note: string; noticedOn: string }>;
+  /** B-PROG-05: the enrolled program's page model (lib/programPage
+   *  programPageModel, built in the packet's language), null/absent when
+   *  the child is not enrolled. Only an ACTIVE enrolment writes the line. */
+  program?: ProgramPageModel | null;
 }
 
 const INTAKE_MOMENTS_CAP = 8;
@@ -1712,6 +1717,16 @@ export function buildIntakePacket(profession: IntakeProfession, input: IntakePac
       text: t(set.size === 1 ? "elev.packet.intake.practiceLine.one" : "elev.packet.intake.practiceLine", { shelf: shelfLabel(shelf, t), n: set.size, days }),
     }));
   section("intake-practice", "elev.packet.intake.practice", practice);
+
+  // · Program — B-PROG-05: ONE line, only while an enrolment is ACTIVE and the
+  //   program's shelf is this profession's ("Talk Together: week 5 of 8 ·
+  //   practice days 4/7 this week · Turns you waited for: 9 (from 4 practice
+  //   days; first week 3) · New words this week: 2 (first week 1)") — the
+  //   parent and child proxies as counts beside the family's own first week,
+  //   never a grade, a rate or a %.
+  if (input.program && input.program.status === "active" && onDomain(input.program.shelf)) {
+    section("intake-program", "elev.program.pro.line", [{ id: `intake-program-${input.program.programId}`, text: programPacketLine(input.program, t) }]);
+  }
 
   // · Questions — the parent's own lines, as written
   const questions = (input.questions ?? []).map((q) => q.trim()).filter(Boolean).map((q, i): PacketItem => ({ id: `intake-question-${i}`, text: q }));

@@ -42,6 +42,9 @@ import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 // Appointments, and the discipline-specific evidence each preset reads.
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { quotesFromDocs } from "../../lib/loop/tonight";
+import { programPageModel } from "../../lib/programPage";
+import { toObservations } from "../../lib/observations";
+import type { SleepLogEntry } from "../../types";
 import type { LangObservation } from "../../growth/vocabAgg";
 import type { GrowthEntry } from "../../growth/growthEntries";
 
@@ -257,6 +260,20 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // step-3 count, the empty test and Copy/PDF/Send all read the audience-capped
   // packet, so switching the chip re-shapes step 2 and every row shown can leave.
   // B-LOOP-12: with a profession preset the curated packet IS the intake packet.
+  // B-PROG-05: the enrolled program's line (only while an enrolment is active;
+  // the packet scopes it to the profession). The child proxy "new words" reads
+  // the word observations (langObs) this step already loads.
+  const programRows = useChildCollection<{ id: string }>(childProfile.id, "programs");
+  const sleepLogsCol = useChildCollection<SleepLogEntry & { id: string }>(childProfile.id, "sleepLogs");
+  const intakeProgram = useMemo(
+    () => (intake ? programPageModel(programRows.items, {
+      childId: childProfile.id,
+      actionLoops: actionLoop ?? [],
+      sleepLogs: sleepLogsCol.items,
+      observations: toObservations({ langObs: langObsCol.items }, childProfile),
+    }, new Date(), uiLang === "he" ? "he" : "en", childProfile.gender ?? null) : null),
+    [intake, programRows.items, childProfile, actionLoop, sleepLogsCol.items, langObsCol.items, uiLang],
+  );
   const intakePacket = useMemo(
     () => (intake ? buildIntakePacket(intake, {
       child: childProfile,
@@ -268,8 +285,9 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       nowMs: Date.now(),
       lang: uiLang === "he" ? "he" : "en",
       quotes: quotesFromDocs(keepsakesCol.items),
+      program: intakeProgram,
     }) : null),
-    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items]
+    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items, intakeProgram]
   );
   const packet = useMemo(() => intakePacket ?? presetPacket(audience, fullPacket), [intakePacket, audience, fullPacket]);
   // The intake packet is already scoped to its profession; it leaves through

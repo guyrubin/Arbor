@@ -30,6 +30,8 @@ import ShelfPage, { type ShelfDayGroup } from "./ShelfPage";
 import ProView from "./ProView";
 import { buildIntakePacket, isIntakeProfession, type IntakeProfession } from "../../consult/packet";
 import { intakeQuestionLines, readIntakeQuestionsText, writeIntakeQuestionsText } from "../../consult/intakeDraft";
+import { programPageModel } from "../../lib/programPage";
+import type { SleepLogEntry } from "../../types";
 
 /** A query value that names a shelf, or null (an unknown id falls back to the grid). */
 export function shelfFromQuery(v: string | null): ShelfId | null {
@@ -141,6 +143,13 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
     setQuestions(text);
     writeIntakeQuestionsText(childProfile.id, profession, text);
   };
+  // B-PROG-05: the enrolled program's line (only while an enrolment is active; the packet scopes it to the profession)
+  const programRows = useChildCollection<{ id: string }>(childProfile.id, "programs");
+  const sleepLogs = useChildCollection<SleepLogEntry & { id: string }>(childProfile.id, "sleepLogs");
+  const intakeProgram = useMemo(
+    () => (pro ? programPageModel(programRows.items, { childId: childProfile.id, actionLoops: actionLoop, sleepLogs: sleepLogs.items, observations }, now, uiLang === "he" ? "he" : "en", childProfile.gender ?? null) : null),
+    [pro, programRows.items, childProfile.id, childProfile.gender, actionLoop, sleepLogs.items, observations, now, uiLang],
+  );
   const intakePacket = useMemo(
     () => (pro ? buildIntakePacket(profession, {
       child: childProfile,
@@ -153,8 +162,9 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
       lang: uiLang === "he" ? "he" : "en",
       // c2 r2 (G1-3): the child's kept quotes lead the SLP packet's Moments
       quotes: quotesFromDocs(keepsakes.items),
+      program: intakeProgram,
     }) : null),
-    [pro, profession, childProfile, milestones, behaviorLogs, actionLoop, questions, comparisonMonths, now, uiLang, keepsakes.items],
+    [pro, profession, childProfile, milestones, behaviorLogs, actionLoop, questions, comparisonMonths, now, uiLang, keepsakes.items, intakeProgram],
   );
   const domainCounts = useMemo(() => proDomainCounts(observations, (s) => shelfDef(s).domain, now), [observations, now]);
 
