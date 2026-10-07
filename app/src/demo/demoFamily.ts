@@ -60,7 +60,7 @@ import { quoteKeepsakeDoc, tonightLineEntry, tonightOutcomeEntry } from "../lib/
 import type { KeepsakeDoc } from "../lib/firstsKeepsake";
 import { resolveHebrewSlash } from "../lib/hebrewSlashGender";
 
-export const DEMO_FAMILY_VERSION = "2026-10-07.2";
+export const DEMO_FAMILY_VERSION = "2026-10-07.3";
 export const DEMO_FAMILY_LABEL = { en: "Demo family", he: "משפחת הדגמה" } as const;
 /** The demo child IS the sandbox's synthetic child, so `npm run seed:demo` populates it. */
 export const DEMO_CHILD_ID = defaultChildProfile.id;

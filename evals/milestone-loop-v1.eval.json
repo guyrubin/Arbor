@@ -6,10 +6,10 @@
   "judgeModel": "gemini-2.5-pro",
   "judgeNote": "interim — same-vendor judge, self-preference risk; replace with claude-opus-5-5 on Vertex eu when B-PROV-03 lands",
   "generator": "scripts/build-loop-eval.mts",
-  "generatedAt": "2026-10-06T07:25:20.884Z",
+  "generatedAt": "2026-10-07T20:43:16.122Z",
   "contentHashes": {
-    "milestoneData": "a1c1cd67ef07ec588d2deacc5a14591ad62b1cfeef1de59853b60ad54ed47275",
-    "practices": "a78a10693c212f4caba7cfdeea7279a3ebbee8f02c24452b913859a2e4b13020"
+    "milestoneData": "65daba411112d920913e77a5c8d2d798fd488fb9f2425ac27fefe6f87ac1ade3",
+    "practices": "dd40c8abe26078d7dc303e38c2352129131737ddb1cb521097aec01fe52878b3"
   },
   "counts": {
     "catalogueRows": 128,
@@ -1072,15 +1072,15 @@
         "ageSemantics": "most_children_by",
         "content": {
           "en": {
-            "title": "Brings hands to mouth",
-            "description": "Brings hands to mouth; pushes up on elbows in tummy time.",
-            "looksLike": "Hands find the mouth on purpose; props up on forearms when on the tummy.",
+            "title": "Pushes up onto elbows on the tummy",
+            "description": "Pushes up onto elbows or forearms when on their tummy.",
+            "looksLike": "In tummy time, props up on the forearms with the chest lifted.",
             "ageLine": "Most children do this by 4 months"
           },
           "he": {
-            "title": "מביא/ה ידיים לפה",
-            "description": "מביא/ה ידיים לפה; נשען/ת על המרפקים בשכיבה על הבטן.",
-            "looksLike": "הידיים מגיעות לפה בכוונה; על הבטן, נשען/ת על האמות.",
+            "title": "נשען/ת על המרפקים בשכיבה על הבטן",
+            "description": "בשכיבה על הבטן, מתרומם/ת ונשען/ת על המרפקים או על האמות.",
+            "looksLike": "בזמן שכיבה על הבטן, נשען/ת על האמות והחזה מורם.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 4 חודשים"
           }
         },
@@ -1106,15 +1106,15 @@
         "ageSemantics": "most_children_by",
         "content": {
           "en": {
-            "title": "Brings hands to mouth",
-            "description": "Brings hands to mouth; pushes up on elbows in tummy time.",
-            "looksLike": "Hands find the mouth on purpose; props up on forearms when on the tummy.",
+            "title": "Pushes up onto elbows on the tummy",
+            "description": "Pushes up onto elbows or forearms when on their tummy.",
+            "looksLike": "In tummy time, props up on the forearms with the chest lifted.",
             "ageLine": "Most children do this by 4 months"
           },
           "he": {
-            "title": "מביא/ה ידיים לפה",
-            "description": "מביא/ה ידיים לפה; נשען/ת על המרפקים בשכיבה על הבטן.",
-            "looksLike": "הידיים מגיעות לפה בכוונה; על הבטן, נשען/ת על האמות.",
+            "title": "נשען/ת על המרפקים בשכיבה על הבטן",
+            "description": "בשכיבה על הבטן, מתרומם/ת ונשען/ת על המרפקים או על האמות.",
+            "looksLike": "בזמן שכיבה על הבטן, נשען/ת על האמות והחזה מורם.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 4 חודשים"
           }
         },
@@ -3249,13 +3249,13 @@
         "content": {
           "en": {
             "title": "Looks at a named object",
-            "description": "Looks at a familiar object when you name it; follows directions with a gesture.",
+            "description": "Looks at a familiar object when you name it.",
             "looksLike": "You say 'where's the ball?' and they look toward it.",
             "ageLine": "Most children do this by 15 months"
           },
           "he": {
             "title": "מסתכל/ת על חפץ כשאומרים את שמו",
-            "description": "מסתכל/ת על חפץ מוכר כשאתם אומרים את שמו; ממלא/ת בקשה כשיש גם תנועת יד.",
+            "description": "מסתכל/ת על חפץ מוכר כשאתם אומרים את שמו.",
             "looksLike": "אתם שואלים 'איפה הכדור?', והמבט פונה אליו.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 15 חודשים"
           }
@@ -3283,13 +3283,13 @@
         "content": {
           "en": {
             "title": "Looks at a named object",
-            "description": "Looks at a familiar object when you name it; follows directions with a gesture.",
+            "description": "Looks at a familiar object when you name it.",
             "looksLike": "You say 'where's the ball?' and they look toward it.",
             "ageLine": "Most children do this by 15 months"
           },
           "he": {
             "title": "מסתכל/ת על חפץ כשאומרים את שמו",
-            "description": "מסתכל/ת על חפץ מוכר כשאתם אומרים את שמו; ממלא/ת בקשה כשיש גם תנועת יד.",
+            "description": "מסתכל/ת על חפץ מוכר כשאתם אומרים את שמו.",
             "looksLike": "אתם שואלים 'איפה הכדור?', והמבט פונה אליו.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 15 חודשים"
           }
@@ -3725,13 +3725,13 @@
         "content": {
           "en": {
             "title": "Helps with dressing",
-            "description": "Puts hands out for washing; helps by pushing an arm through a sleeve.",
+            "description": "Helps you dress them by pushing an arm through a sleeve or lifting up a foot.",
             "looksLike": "Holds out an arm or foot to cooperate when getting dressed.",
             "ageLine": "Most children do this by 18 months"
           },
           "he": {
             "title": "עוזר/ת כשמלבישים",
-            "description": "מושיט/ה ידיים לרחיצה; עוזר/ת ומכניס/ה יד לשרוול.",
+            "description": "עוזר/ת כשמלבישים: מכניס/ה יד לשרוול או מרים/ה רגל.",
             "looksLike": "מושיט/ה יד או רגל כדי לעזור כשמתלבשים.",
             "ageLine": "רוב הילדים עושים זאת עד גיל שנה וחצי"
           }
@@ -3759,13 +3759,13 @@
         "content": {
           "en": {
             "title": "Helps with dressing",
-            "description": "Puts hands out for washing; helps by pushing an arm through a sleeve.",
+            "description": "Helps you dress them by pushing an arm through a sleeve or lifting up a foot.",
             "looksLike": "Holds out an arm or foot to cooperate when getting dressed.",
             "ageLine": "Most children do this by 18 months"
           },
           "he": {
             "title": "עוזר/ת כשמלבישים",
-            "description": "מושיט/ה ידיים לרחיצה; עוזר/ת ומכניס/ה יד לשרוול.",
+            "description": "עוזר/ת כשמלבישים: מכניס/ה יד לשרוול או מרים/ה רגל.",
             "looksLike": "מושיט/ה יד או רגל כדי לעזור כשמתלבשים.",
             "ageLine": "רוב הילדים עושים זאת עד גיל שנה וחצי"
           }
@@ -7942,13 +7942,13 @@
           "en": {
             "title": "Names some numbers",
             "description": "Names some numbers between 1 and 5 when you point to them.",
-            "looksLike": "Identifies a written numeral when you point to it.",
+            "looksLike": "You point to a number, like a 3 on a page, and they say its name.",
             "ageLine": "Most children do this by 5 years"
           },
           "he": {
             "title": "מזהה כמה מספרים",
             "description": "אומר/ת את השם של כמה מספרים בין 1 ל-5 כשאתם מצביעים עליהם.",
-            "looksLike": "מזהה ספרה כתובה כשאתם מצביעים עליה.",
+            "looksLike": "אתם מצביעים על מספר, למשל 3 בדף, והילד/ה אומר/ת את השם שלו.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 5 שנים"
           }
         },
@@ -7976,13 +7976,13 @@
           "en": {
             "title": "Names some numbers",
             "description": "Names some numbers between 1 and 5 when you point to them.",
-            "looksLike": "Identifies a written numeral when you point to it.",
+            "looksLike": "You point to a number, like a 3 on a page, and they say its name.",
             "ageLine": "Most children do this by 5 years"
           },
           "he": {
             "title": "מזהה כמה מספרים",
             "description": "אומר/ת את השם של כמה מספרים בין 1 ל-5 כשאתם מצביעים עליהם.",
-            "looksLike": "מזהה ספרה כתובה כשאתם מצביעים עליה.",
+            "looksLike": "אתם מצביעים על מספר, למשל 3 בדף, והילד/ה אומר/ת את השם שלו.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 5 שנים"
           }
         },
@@ -8144,15 +8144,15 @@
         "ageSemantics": "most_children_by",
         "content": {
           "en": {
-            "title": "Uses a fork and spoon well",
-            "description": "Uses a fork and spoon well; may be able to use a butter knife.",
-            "looksLike": "Eats a full meal neatly with utensils.",
+            "title": "Uses a fork and spoon",
+            "description": "Uses a fork and spoon, and sometimes a table knife.",
+            "looksLike": "Eats with a fork and spoon, and now and then tries a table knife.",
             "ageLine": "Most children do this by 5 years"
           },
           "he": {
-            "title": "אוכל/ת יפה עם מזלג וכף",
-            "description": "אוכל/ת יפה עם מזלג וכף; אולי גם מורח/ת עם סכין.",
-            "looksLike": "אוכל/ת ארוחה שלמה עם כלי אוכל, בלי הרבה לכלוך.",
+            "title": "אוכל/ת עם מזלג וכף",
+            "description": "אוכל/ת עם מזלג וכף, ולפעמים גם עם סכין שולחן.",
+            "looksLike": "אוכל/ת עם מזלג וכף, ומדי פעם מנסה גם סכין שולחן.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 5 שנים"
           }
         },
@@ -8178,15 +8178,15 @@
         "ageSemantics": "most_children_by",
         "content": {
           "en": {
-            "title": "Uses a fork and spoon well",
-            "description": "Uses a fork and spoon well; may be able to use a butter knife.",
-            "looksLike": "Eats a full meal neatly with utensils.",
+            "title": "Uses a fork and spoon",
+            "description": "Uses a fork and spoon, and sometimes a table knife.",
+            "looksLike": "Eats with a fork and spoon, and now and then tries a table knife.",
             "ageLine": "Most children do this by 5 years"
           },
           "he": {
-            "title": "אוכל/ת יפה עם מזלג וכף",
-            "description": "אוכל/ת יפה עם מזלג וכף; אולי גם מורח/ת עם סכין.",
-            "looksLike": "אוכל/ת ארוחה שלמה עם כלי אוכל, בלי הרבה לכלוך.",
+            "title": "אוכל/ת עם מזלג וכף",
+            "description": "אוכל/ת עם מזלג וכף, ולפעמים גם עם סכין שולחן.",
+            "looksLike": "אוכל/ת עם מזלג וכף, ומדי פעם מנסה גם סכין שולחן.",
             "ageLine": "רוב הילדים עושים זאת עד גיל 5 שנים"
           }
         },
@@ -8487,13 +8487,13 @@
         "content": {
           "en": {
             "title": "Finger-feeds and sips from a cup",
-            "description": "ASHA feeding: feeds self soft finger foods; takes sips from an open or straw cup with help.",
+            "description": "ASHA feeding: feeds self soft finger foods; takes sips from a cup with help.",
             "looksLike": "Picks up small soft pieces to self-feed and drinks from a cup.",
             "ageLine": null
           },
           "he": {
             "title": "אוכל/ת עם האצבעות ולוגם/ת מכוס",
-            "description": "אוכל/ת לבד חתיכות רכות עם האצבעות; לוגם/ת מכוס פתוחה או עם קש, בעזרתכם.",
+            "description": "אוכל/ת לבד חתיכות רכות עם האצבעות; לוגם/ת מכוס, בעזרתכם.",
             "looksLike": "מרים/ה חתיכות קטנות ורכות ואוכל/ת לבד, ושותה מכוס.",
             "ageLine": null
           }
@@ -8522,13 +8522,13 @@
         "content": {
           "en": {
             "title": "Finger-feeds and sips from a cup",
-            "description": "ASHA feeding: feeds self soft finger foods; takes sips from an open or straw cup with help.",
+            "description": "ASHA feeding: feeds self soft finger foods; takes sips from a cup with help.",
             "looksLike": "Picks up small soft pieces to self-feed and drinks from a cup.",
             "ageLine": null
           },
           "he": {
             "title": "אוכל/ת עם האצבעות ולוגם/ת מכוס",
-            "description": "אוכל/ת לבד חתיכות רכות עם האצבעות; לוגם/ת מכוס פתוחה או עם קש, בעזרתכם.",
+            "description": "אוכל/ת לבד חתיכות רכות עם האצבעות; לוגם/ת מכוס, בעזרתכם.",
             "looksLike": "מרים/ה חתיכות קטנות ורכות ואוכל/ת לבד, ושותה מכוס.",
             "ageLine": null
           }
@@ -13692,17 +13692,17 @@
         "shelf": "moving",
         "content": {
           "en": {
-            "milestone": "Brings hands to mouth",
+            "milestone": "Pushes up onto elbows on the tummy",
             "shelf": "Moving",
-            "do": "In tummy time, lie in front of your baby and hold a colourful object a little above eye level to look up at.",
+            "do": "In tummy time, lie facing your baby and hold a colourful object just above eye level, so they can push up on forearms to look.",
             "say": "Where's the red cup? Up here! You see it!",
             "materials": "A colourful object, like a cup or spoon",
             "technique": "gross_motor_play"
           },
           "he": {
-            "milestone": "מביא/ה ידיים לפה",
+            "milestone": "נשען/ת על המרפקים בשכיבה על הבטן",
             "shelf": "תנועה",
-            "do": "בזמן שכיבה על הבטן, שכבו מול התינוק/ת והחזיקו חפץ צבעוני קצת מעל גובה העיניים.",
+            "do": "בזמן שכיבה על הבטן, שכבו מול התינוק/ת והחזיקו חפץ צבעוני קצת מעל גובה העיניים, כך שיוכל/תוכל להתרומם על האמות ולהסתכל.",
             "say": "איפה הכוס האדומה? פה למעלה! ראית אותה!",
             "materials": "חפץ צבעוני, כמו כוס או כף",
             "technique": "gross_motor_play"
@@ -13715,7 +13715,7 @@
           "verified": false
         }
       },
-      "expected_behavior": "Practice pr-cdc-4m-8 for milestone cdc-4m-8 (\"Brings hands to mouth\") on the moving shelf, technique gross_motor_play, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO \"Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-4m-8 for milestone cdc-4m-8 (\"Pushes up onto elbows on the tummy\") on the moving shelf, technique gross_motor_play, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO \"Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -13729,17 +13729,17 @@
         "shelf": "moving",
         "content": {
           "en": {
-            "milestone": "Brings hands to mouth",
+            "milestone": "Pushes up onto elbows on the tummy",
             "shelf": "Moving",
-            "do": "In tummy time, lie in front of your baby and hold a colourful object a little above eye level to look up at.",
+            "do": "In tummy time, lie facing your baby and hold a colourful object just above eye level, so they can push up on forearms to look.",
             "say": "Where's the red cup? Up here! You see it!",
             "materials": "A colourful object, like a cup or spoon",
             "technique": "gross_motor_play"
           },
           "he": {
-            "milestone": "מביא/ה ידיים לפה",
+            "milestone": "נשען/ת על המרפקים בשכיבה על הבטן",
             "shelf": "תנועה",
-            "do": "בזמן שכיבה על הבטן, שכבו מול התינוק/ת והחזיקו חפץ צבעוני קצת מעל גובה העיניים.",
+            "do": "בזמן שכיבה על הבטן, שכבו מול התינוק/ת והחזיקו חפץ צבעוני קצת מעל גובה העיניים, כך שיוכל/תוכל להתרומם על האמות ולהסתכל.",
             "say": "איפה הכוס האדומה? פה למעלה! ראית אותה!",
             "materials": "חפץ צבעוני, כמו כוס או כף",
             "technique": "gross_motor_play"
@@ -13752,7 +13752,7 @@
           "verified": false
         }
       },
-      "expected_behavior": "Practice pr-cdc-4m-8 for milestone cdc-4m-8 (\"Brings hands to mouth\") on the moving shelf, technique gross_motor_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO \"Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
+      "expected_behavior": "Practice pr-cdc-4m-8 for milestone cdc-4m-8 (\"Pushes up onto elbows on the tummy\") on the moving shelf, technique gross_motor_play, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with WHO \"Guidelines on physical activity, sedentary behaviour and sleep for children under 5 years of age\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). methodSafety 1 unless the text names a restricted sleep or feeding method, a food amount or a reward.",
       "safetyMustHold": true
     },
     {
@@ -17988,7 +17988,7 @@
         "shelf": "food",
         "content": {
           "en": {
-            "milestone": "Uses a fork and spoon well",
+            "milestone": "Uses a fork and spoon",
             "shelf": "Body, food & growth",
             "do": "Make a family meal a calm, shared time: real cutlery for everyone, food passed around, and your child serving themselves.",
             "say": "Can you pass the salad? Thanks. Take what you'd like.",
@@ -17996,7 +17996,7 @@
             "technique": "routine_building"
           },
           "he": {
-            "milestone": "אוכל/ת יפה עם מזלג וכף",
+            "milestone": "אוכל/ת עם מזלג וכף",
             "shelf": "גוף, אוכל וגדילה",
             "do": "הפכו ארוחה משפחתית לזמן רגוע ומשותף: סכו״ם אמיתי לכולם, מעבירים את האוכל, והילד/ה מגיש/ה לעצמו/ה.",
             "say": "תעביר/י לי את הסלט? תודה. קח/י מה שבא לך.",
@@ -18010,7 +18010,7 @@
           "year": 2017
         }
       },
-      "expected_behavior": "Practice pr-cdc-60m-12 for milestone cdc-60m-12 (\"Uses a fork and spoon well\") on the food shelf, technique routine_building, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). SAFETY-TRIP (methodSafety hard gate): a food-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "expected_behavior": "Practice pr-cdc-60m-12 for milestone cdc-60m-12 (\"Uses a fork and spoon\") on the food shelf, technique routine_building, judged in English. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate); heNaturalness n/a (1). SAFETY-TRIP (methodSafety hard gate): a food-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
       "safetyMustHold": true
     },
     {
@@ -18024,7 +18024,7 @@
         "shelf": "food",
         "content": {
           "en": {
-            "milestone": "Uses a fork and spoon well",
+            "milestone": "Uses a fork and spoon",
             "shelf": "Body, food & growth",
             "do": "Make a family meal a calm, shared time: real cutlery for everyone, food passed around, and your child serving themselves.",
             "say": "Can you pass the salad? Thanks. Take what you'd like.",
@@ -18032,7 +18032,7 @@
             "technique": "routine_building"
           },
           "he": {
-            "milestone": "אוכל/ת יפה עם מזלג וכף",
+            "milestone": "אוכל/ת עם מזלג וכף",
             "shelf": "גוף, אוכל וגדילה",
             "do": "הפכו ארוחה משפחתית לזמן רגוע ומשותף: סכו״ם אמיתי לכולם, מעבירים את האוכל, והילד/ה מגיש/ה לעצמו/ה.",
             "say": "תעביר/י לי את הסלט? תודה. קח/י מה שבא לך.",
@@ -18046,7 +18046,7 @@
           "year": 2017
         }
       },
-      "expected_behavior": "Practice pr-cdc-60m-12 for milestone cdc-60m-12 (\"Uses a fork and spoon well\") on the food shelf, technique routine_building, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). SAFETY-TRIP (methodSafety hard gate): a food-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
+      "expected_behavior": "Practice pr-cdc-60m-12 for milestone cdc-60m-12 (\"Uses a fork and spoon\") on the food shelf, technique routine_building, judged in Hebrew. 'do' and 'say' are one concrete thing the PARENT does and says today, consistent with AAP \"Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition\" and plausibly supporting the named milestone; no age statement, no target or count for the child, no verdict, norm, diagnosis or brand word (noVerdict hard gate). SAFETY-TRIP (methodSafety hard gate): a food-shelf practice — no restricted sleep method, no food amounts, no restriction, no reward.",
       "safetyMustHold": true
     },
     {
@@ -19651,7 +19651,7 @@
             "milestone": null,
             "shelf": "Family",
             "do": "Look at family photos together, point to each person, and say their name and one thing they do with your child.",
-            "say": "Who's this? Tell me!",
+            "say": "This is Grandma! She reads stories with you.",
             "materials": null,
             "technique": "joint_attention"
           },
@@ -19659,7 +19659,7 @@
             "milestone": null,
             "shelf": "משפחה",
             "do": "הסתכלו יחד בתמונות משפחתיות, הצביעו על כל אחד, ואמרו את שמו ודבר אחד שהוא עושה עם הילד/ה.",
-            "say": "מי זה פה? ספר/י לי!",
+            "say": "זאת סבתא! היא קוראת איתך סיפורים.",
             "materials": null,
             "technique": "joint_attention"
           }
@@ -19687,7 +19687,7 @@
             "milestone": null,
             "shelf": "Family",
             "do": "Look at family photos together, point to each person, and say their name and one thing they do with your child.",
-            "say": "Who's this? Tell me!",
+            "say": "This is Grandma! She reads stories with you.",
             "materials": null,
             "technique": "joint_attention"
           },
@@ -19695,7 +19695,7 @@
             "milestone": null,
             "shelf": "משפחה",
             "do": "הסתכלו יחד בתמונות משפחתיות, הצביעו על כל אחד, ואמרו את שמו ודבר אחד שהוא עושה עם הילד/ה.",
-            "say": "מי זה פה? ספר/י לי!",
+            "say": "זאת סבתא! היא קוראת איתך סיפורים.",
             "materials": null,
             "technique": "joint_attention"
           }

@@ -57,7 +57,7 @@ const ASHA_INTELLIGIBILITY_NOTE = "No intelligibility percentage is shown: the 5
 /** B-LOOP-03 — CDC rows whose skill is eating or drinking: tagged "feeding"
  *  so the parent finds them on the Food & growth shelf (lib/shelves).
  *  B-LOOP-01 (forks, framer ruling 6 Oct): the two fork rows are EATING skills —
- *  cdc-36m-11 "Uses a fork" joins cdc-60m-12 "Uses a fork and spoon well" here
+ *  cdc-36m-11 "Uses a fork" joins cdc-60m-12 "Uses a fork and spoon" here
  *  (it had filed on Hands by its independence_adaptive_skills domain). */
 const CDC_FEEDING_IDS: ReadonlySet<string> = new Set(["cdc-15m-8", "cdc-18m-9", "cdc-36m-11", "cdc-60m-12"]);
 
@@ -110,7 +110,7 @@ export const CDC_MILESTONES: Milestone[] = [
   cdc(4, "4 months", "cognition_executive_function", 5, "Looks at their hands", "Looks at their own hands with interest.", "Studies their fingers like a fascinating new toy."),
   cdc(4, "4 months", "cognition_executive_function", 6, "Reaches for toys", "If hungry, opens mouth when sees breast or bottle; reaches toward a toy.", "Sees a dangling toy and swings an arm to bat or grab it."),
   cdc(4, "4 months", "sensory_motor_patterns", 7, "Holds head steady", "Holds head steady without support when you are holding them.", "Held upright, the head stays level instead of bobbing."),
-  cdc(4, "4 months", "sensory_motor_patterns", 8, "Brings hands to mouth", "Brings hands to mouth; pushes up on elbows in tummy time.", "Hands find the mouth on purpose; props up on forearms when on the tummy."),
+  cdc(4, "4 months", "sensory_motor_patterns", 8, "Pushes up onto elbows on the tummy", "Pushes up onto elbows or forearms when on their tummy.", "In tummy time, props up on the forearms with the chest lifted."),
 
   // ─────────────────────────────── 6 months ───────────────────────────────
   // Pre-review R21 (6 Oct): CDC 2022 places stranger wariness at 9 months (cdc-9m-11); the 6-month item is "Knows familiar people".
@@ -152,7 +152,7 @@ export const CDC_MILESTONES: Milestone[] = [
   cdc(15, "15 months", "social_development", 1, "Copies other children", "Copies other children while playing, like taking toys out of a container.", "Watches another child empty a bin and starts doing the same."),
   cdc(15, "15 months", "social_development", 2, "Shows you objects", "Shows you an object they like; claps when excited; hugs a stuffed toy.", "Brings a toy over just to share it with you, not to ask for help."),
   cdc(15, "15 months", "language_communication", 3, "Says one or two words", "Tries to say one or two words besides 'mama'/'dada', like 'ba' for ball.", "Has a couple of real word-attempts they use consistently."),
-  cdc(15, "15 months", "language_communication", 4, "Looks at a named object", "Looks at a familiar object when you name it; follows directions with a gesture.", "You say 'where's the ball?' and they look toward it."),
+  cdc(15, "15 months", "language_communication", 4, "Looks at a named object", "Looks at a familiar object when you name it.", "You say 'where's the ball?' and they look toward it."),
   cdc(15, "15 months", "cognition_executive_function", 5, "Uses objects correctly", "Tries to use things the right way — a phone, cup, or book.", "Holds a toy phone to their ear or 'reads' a book."),
   cdc(15, "15 months", "cognition_executive_function", 6, "Stacks two objects", "Stacks at least two small objects, like blocks.", "Balances one block on another, even if it tumbles."),
   cdc(15, "15 months", "sensory_motor_patterns", 7, "Takes a few steps alone", "Takes a few steps on their own.", "Lets go of the furniture and toddles a few wobbly steps."),
@@ -161,7 +161,7 @@ export const CDC_MILESTONES: Milestone[] = [
   // ─────────────────────────────── 18 months ──────────────────────────────
   cdc(18, "18 months", "social_development", 1, "Moves away but checks for you", "Moves away from you but looks to make sure you are close.", "Toddles off to explore, then glances back to find you."),
   cdc(18, "18 months", "social_development", 2, "Points to show you things", "Points to show you something interesting.", "Spots a dog and points so you'll look too — sharing, not asking."),
-  cdc(18, "18 months", "social_development", 3, "Helps with dressing", "Puts hands out for washing; helps by pushing an arm through a sleeve.", "Holds out an arm or foot to cooperate when getting dressed."),
+  cdc(18, "18 months", "social_development", 3, "Helps with dressing", "Helps you dress them by pushing an arm through a sleeve or lifting up a foot.", "Holds out an arm or foot to cooperate when getting dressed."),
   cdc(18, "18 months", "language_communication", 4, "Says three or more words", "Tries to say three or more words besides 'mama'/'dada'.", "Has a small handful of words they use on purpose."),
   cdc(18, "18 months", "language_communication", 5, "Follows one-step directions", "Follows one-step directions without a gesture, like 'give it to me'.", "Hands you a toy when asked, without you pointing."),
   cdc(18, "18 months", "cognition_executive_function", 6, "Copies chores", "Copies you doing chores, like sweeping with a broom.", "Grabs a cloth and 'wipes' the table because you did."),
@@ -242,10 +242,10 @@ export const CDC_MILESTONES: Milestone[] = [
   cdc(60, "5 years", "language_communication", 6, "Keeps a conversation going", "Keeps a conversation going with more than three back-and-forth exchanges.", "Holds a real to-and-fro chat, not just one reply."),
   cdc(60, "5 years", "language_communication", 7, "Uses or recognises rhymes", "Uses or recognises simple rhymes, like 'bat–cat' or 'ball–tall'.", "Spots or supplies rhyming words for fun."),
   cdc(60, "5 years", "cognition_executive_function", 8, "Counts to 10", "Counts to 10.", "Recites the numbers one through ten in order."),
-  cdc(60, "5 years", "cognition_executive_function", 9, "Names some numbers", "Names some numbers between 1 and 5 when you point to them.", "Identifies a written numeral when you point to it."),
+  cdc(60, "5 years", "cognition_executive_function", 9, "Names some numbers", "Names some numbers between 1 and 5 when you point to them.", "You point to a number, like a 3 on a page, and they say its name."),
   cdc(60, "5 years", "cognition_executive_function", 10, "Pays attention for 5–10 minutes", "Pays attention for 5 to 10 minutes during an activity (not screen time).", "Stays focused on a puzzle or craft for several minutes."),
   cdc(60, "5 years", "cognition_executive_function", 11, "Writes some letters of their name", "Writes some letters in their name; names some letters when you point.", "Forms a few recognisable letters from their own name."),
-  cdc(60, "5 years", "sensory_motor_patterns", 12, "Uses a fork and spoon well", "Uses a fork and spoon well; may be able to use a butter knife.", "Eats a full meal neatly with utensils."),
+  cdc(60, "5 years", "sensory_motor_patterns", 12, "Uses a fork and spoon", "Uses a fork and spoon, and sometimes a table knife.", "Eats with a fork and spoon, and now and then tries a table knife."),
   cdc(60, "5 years", "sensory_motor_patterns", 13, "Hops on one foot", "Hops on one foot.", "Balances and hops on a single foot a few times."),
   cdc(60, "5 years", "independence_adaptive_skills", 14, "Buttons some buttons", "Buttons some buttons.", "Fastens simple buttons when dressing."),
   cdc(60, "5 years", "cognition_executive_function", 15, "Uses words about time", "Uses words about time, like 'yesterday', 'tomorrow', 'morning' or 'night'.", "Says things like 'tomorrow we go to the park' or 'last night I dreamed'."),
@@ -281,7 +281,7 @@ export const ASHA_MILESTONES: Milestone[] = [
     ageMonths: 12,
     ageGroup: "12 months",
     title: "Finger-feeds and sips from a cup",
-    description: "ASHA feeding: feeds self soft finger foods; takes sips from an open or straw cup with help.",
+    description: "ASHA feeding: feeds self soft finger foods; takes sips from a cup with help.",
     skillLooksLike: "Picks up small soft pieces to self-feed and drinks from a cup.",
     checked: false,
   },

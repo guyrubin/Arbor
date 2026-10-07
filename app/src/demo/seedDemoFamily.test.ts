@@ -381,7 +381,7 @@ describe("W2-CAREPRO c2 r1 · the demo memory seed renders a group at volume", (
  * change the family → this fails until the version is bumped and the pin
  * re-recorded (then `npm run seed:demo -- --apply` re-seeds the sandbox). */
 describe("W2-CAREPRO c2 r2 · the demo content is pinned to DEMO_FAMILY_VERSION", () => {
-  const PINNED = { version: "2026-10-07.2", sha256: "74345201c184904c797e630a0d64f2713bcee773465b9989c019b5056c018315" };
+  const PINNED = { version: "2026-10-07.3", sha256: "bfb1072972be936518b1ca5b5af487d1aabb124bddadf51a8d9cc4f1271c34af" };
   const contentHash = async () => {
     const { createHash } = await import("node:crypto");
     const body = JSON.stringify([buildDemoFamily({ now: NOW, lang: "en" }), buildDemoFamily({ now: NOW, lang: "he" })]);
@@ -447,9 +447,9 @@ describe("B-LOOP-17 · the loop's seeded record", () => {
   const catalogue = (id: string) => initialMilestones.find((m) => m.id === id)!;
   const practiceRows = (rows: readonly ActionLoopEntry[]) => rows.filter((r) => r.source === "practice");
 
-  it("the version string is bumped to 2026-10-07.2 (night lines, P5-LOOP c2 r1)", () => {
-    expect(DEMO_FAMILY_VERSION).toBe("2026-10-07.2");
-    expect(buildDemoFamily({ now: NOW }).version).toBe("2026-10-07.2");
+  it("the version string is bumped to 2026-10-07.3 (B-LOOP-14 judge corrections in the catalogue text; .2 = night lines, P5-LOOP c2 r1)", () => {
+    expect(DEMO_FAMILY_VERSION).toBe("2026-10-07.3");
+    expect(buildDemoFamily({ now: NOW }).version).toBe("2026-10-07.3");
   });
 
   it("the dry run prints the new counts per collection, child and sibling, and writes nothing", async () => {

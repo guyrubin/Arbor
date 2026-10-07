@@ -517,7 +517,7 @@ export const PRACTICES: readonly Practice[] = [
     say: L("Here's the window. Look at the tree outside!", "הנה החלון. תראה/י את העץ בחוץ!"),
   }),
   P("cdc-4m-8", "gross_motor_play", 5, S.whoMovement, {
-    do: L("In tummy time, lie in front of your baby and hold a colourful object a little above eye level to look up at.", "בזמן שכיבה על הבטן, שכבו מול התינוק/ת והחזיקו חפץ צבעוני קצת מעל גובה העיניים."),
+    do: L("In tummy time, lie facing your baby and hold a colourful object just above eye level, so they can push up on forearms to look.", "בזמן שכיבה על הבטן, שכבו מול התינוק/ת והחזיקו חפץ צבעוני קצת מעל גובה העיניים, כך שיוכל/תוכל להתרומם על האמות ולהסתכל."),
     say: L("Where's the red cup? Up here! You see it!", "איפה הכוס האדומה? פה למעלה! ראית אותה!"),
     materials: L("A colourful object, like a cup or spoon", "חפץ צבעוני, כמו כוס או כף"),
   }),
@@ -901,7 +901,7 @@ export const PRACTICES: readonly Practice[] = [
   /* Routines and the people around the child.                              */
   SP("pr-family-01", "family", 12, "joint_attention", 5, S.whoUnicefCcd, {
     do: L("Look at family photos together, point to each person, and say their name and one thing they do with your child.", "הסתכלו יחד בתמונות משפחתיות, הצביעו על כל אחד, ואמרו את שמו ודבר אחד שהוא עושה עם הילד/ה."),
-    say: L("Who's this? Tell me!", "מי זה פה? ספר/י לי!"),
+    say: L("This is Grandma! She reads stories with you.", "זאת סבתא! היא קוראת איתך סיפורים."),
   }),
   SP("pr-family-02", "family", 24, "specific_praise", 5, S.aapBrightFutures, {
     do: L("Give your child one small real job in a family routine, like carrying the napkins to the table, and thank them for it.", "תנו לילד/ה תפקיד קטן ואמיתי בשגרה המשפחתית, כמו להביא את המפיות לשולחן, ותודו לו/ה על כך."),
