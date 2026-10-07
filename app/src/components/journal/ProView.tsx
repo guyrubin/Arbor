@@ -27,12 +27,18 @@ export interface ProViewProps {
   primaryMoveProps?: Record<string, string>;
 }
 
-/** The packet's five labelled lines, in the order an intake reads them. */
-const PACKET_LINES: { section: string; labelKey: string }[] = [
+/** The packet's labelled lines, in the order an intake reads them. A line
+ *  marked `onlyWhenPresent` is left out (never a muted "nothing yet") when its
+ *  section is absent. The family-goals section (the family-set scale number)
+ *  is deliberately NOT a line here: this is a parent surface. */
+const PACKET_LINES: { section: string; labelKey: string; onlyWhenPresent?: boolean }[] = [
   { section: "intake-seen", labelKey: "elev.shelfJournal.pro.line.seen" },
   { section: "intake-not-yet", labelKey: "elev.shelfJournal.pro.line.notYet" },
   { section: "intake-moments", labelKey: "elev.shelfJournal.pro.line.moments" },
   { section: "intake-practice", labelKey: "elev.shelfJournal.pro.line.practice" },
+  // B-PROG-05: the Program line per profession — the packet writes it only while
+  // an enrolment is active and the program's shelf is this profession's.
+  { section: "intake-program", labelKey: "elev.program.pro.line", onlyWhenPresent: true },
 ];
 
 const CARD: React.CSSProperties = {
@@ -165,8 +171,9 @@ export default function ProView({
           </div>
           <p className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.pro.egressHint")}</p>
           <dl className="mt-2">
-            {PACKET_LINES.map(({ section, labelKey }) => {
+            {PACKET_LINES.map(({ section, labelKey, onlyWhenPresent }) => {
               const items = sectionItems(section);
+              if (onlyWhenPresent && !items.length) return null;
               return (
                 <div key={section} data-testid="pro-packet-line" data-section={section} className="flex gap-3 border-t py-2 first:border-t-0" style={{ borderColor: "var(--arbor-rule)" }}>
                   <dt className="w-24 flex-none pt-0.5 t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{t(labelKey)}</dt>
