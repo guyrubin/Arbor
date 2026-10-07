@@ -96,7 +96,7 @@ const post = (body: unknown) =>
 const MEMORY_HEADER = "Parent-approved facts about this child";
 
 describe("B-ASKJB-27 — the plan reads the record", () => {
-  it("counts reach the prompt as type: number only; the prompt version is 1.3.0", async () => {
+  it("counts reach the prompt as type: number only; the prompt version is 1.2.0", async () => {
     const res = await post({
       challengeTopic: "transitions", childProfile: { id: "child-a", age: 4 },
       recentTypeCounts: [{ type: "Transition Refusal", count: 6 }, { type: "Sleep Meltdown", count: 2 }],
@@ -105,8 +105,8 @@ describe("B-ASKJB-27 — the plan reads the record", () => {
     expect(seen.plan).toContain("What the parent logged in the last 21 days");
     expect(seen.plan).toContain('- "Transition Refusal": 6');
     expect(seen.plan).toContain('- "Sleep Meltdown": 2');
-    expect(seen.version).toBe("1.3.0");
-    expect(PROMPT_VERSIONS.generate_plan.version).toBe("1.3.0");
+    expect(seen.version).toBe("1.2.0");
+    expect(PROMPT_VERSIONS.generate_plan.version).toBe("1.2.0");
   });
 
   it("counts NEVER include text: free-text types, text fields and non-integers are dropped", async () => {
@@ -187,7 +187,7 @@ describe("B-ASKJB-27 — lib/planRecord (client counts, server sanitizer)", () =
 });
 
 describe("B-ASKJB-27 — plan-v1 (the deterministic stub suite) is authored against this route", () => {
-  it("names generate_plan 1.3.0 and covers counts, HE, approved fact, private mode, isolation, safety-trip", () => {
+  it("names generate_plan 1.2.0 and covers counts, HE, approved fact, private mode, isolation, safety-trip", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const suite = JSON.parse(readFileSync(path.resolve(here, "..", "..", "..", "evals", "plan-v1.eval.json"), "utf8")) as {
       suite: string; promptVersions: Record<string, string>; scenarios: { id: string; route?: string; safetyMustHold?: boolean }[];

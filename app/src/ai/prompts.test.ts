@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { NON_DIAGNOSTIC_CONTRACT } from "../contracts/coach.js";
 import { CONCERN_CUES_EN, CONCERN_CUES_HE } from "../lib/loop/concernCues.js";
-import { OBSERVE_CUES } from "../lib/plans/stepOrder.js";
 import {
   COACH_CHAT_FIELD_RULES,
   COACH_CHAT_GOVERNED_ESCALATION_BLOCK,
@@ -431,15 +430,9 @@ ${fw}
 Generate a structured, non-diagnostic Arbor action plan.
 Profile: ${JSON.stringify(promptProfile(profile))}
 Focus Challenge: "${topic}"
-Step rules:
-- The FIRST step of the first phase is something the parent does WITH the child the next time this moment happens (tomorrow morning, tonight at bedtime), and it carries one sentence to say, in quotes.
-- Observation is never a step: no step starts with observe, log, track, notice, record or monitor (or תעדו, שימו לב, עקבו, צפו). Arbor asks the parent afterwards how it went; that question is the observation.
-- Every step is one concrete act a parent can do in under five minutes.
-Return JSON with title, issue, phases, scripts, and successIndicators. successIndicators are for Arbor's follow-up question only and are never shown as a list of things to watch the child for.
+Return JSON with title, issue, phases, scripts, and successIndicators.
 `;
-  // 1.3.0 (B-ASKJB-35 a): the inline template's bytes + the step rules — the
-  // absent-context prompt is the old template with the rules before the return line.
-  it("no context → the builder bytes equal the retired inline template + the 1.3.0 step rules", () => {
+  it("no context → the builder bytes equal the retired inline template", () => {
     const p = { id: "c", name: "Noa", age: 4 };
     expect(buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: p, challengeTopic: "transitions" })).toBe(legacyPlan("FW", p, "transitions"));
     expect(buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: p, challengeTopic: "x", approvedFacts: [], pastSteps: [] })).toBe(legacyPlan("FW", p, "x"));
@@ -741,37 +734,5 @@ describe("B-LOOP-13 round 2 — voice_reply night answers", () => {
     expect(buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken, todayPractice: practice, nightAnswers: [] } }))
       .toBe(buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken, todayPractice: practice } }));
     expect(buildLiveSystemInstruction("en", { ...spoken, todayPractice: practice, nightAnswers: answers })).toBe(buildLiveSystemInstruction("en", spoken));
-  });
-});
-
-/* B-ASKJB-35 (a) — generate_plan 1.3.0: the step rules. Step 1 is an act
-   WITH the child with one quoted sentence; observation is never a step (the
-   prompt names the cues lib/plans/stepOrder OBSERVE_CUES demotes on the
-   parent surface); successIndicators feed the follow-up question only. */
-describe("B-ASKJB-35 (a) — generate_plan 1.3.0 step rules", () => {
-  const p = buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: { age: 4 }, challengeTopic: "mornings", languageDirective: "«HE»" });
-  it("is pinned at 1.3.0", () => {
-    expect(PROMPT_VERSIONS.generate_plan.version).toBe("1.3.0");
-  });
-  it("the rules sit before the ONE return line; the directive still closes the prompt", () => {
-    expect(p.split("Return JSON").length).toBe(2);
-    expect(p.indexOf("Step rules:")).toBeGreaterThan(p.indexOf('Focus Challenge: "mornings"'));
-    expect(p.indexOf("Step rules:")).toBeLessThan(p.indexOf("Return JSON"));
-    expect(p).toContain("The FIRST step of the first phase is something the parent does WITH the child");
-    expect(p).toContain("one sentence to say, in quotes");
-    expect(p).toContain("successIndicators are for Arbor's follow-up question only");
-    expect(p.trimEnd().endsWith("watch the child for.«HE»")).toBe(true);
-  });
-  it("every observation verb the prompt bans is one OBSERVE_CUES demotes (EN + HE)", () => {
-    const rule = p.split(/\r?\n/).find((l) => l.startsWith("- Observation is never a step"))!;
-    expect(rule).toBeTruthy();
-    for (const en of ["observe", "log", "track", "notice", "record", "monitor"]) {
-      expect(rule).toContain(en);
-      expect(OBSERVE_CUES.en).toContain(en);
-    }
-    for (const he of ["תעדו", "שימו לב", "עקבו", "צפו"]) {
-      expect(rule).toContain(he);
-      expect(OBSERVE_CUES.he).toContain(he);
-    }
   });
 });

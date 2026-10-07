@@ -335,15 +335,7 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // only, no moment text — Guy G6) and an OPTIONAL "not today twice" block
   // (avoid repeating unchanged). Both absent → the 1.1.0 bytes. Pinned by the
   // deterministic stub evals/plan-v1.eval.json (live tier = Guy G5).
-  // 1.3.0 (B-ASKJB-35 a): "Step rules" before the return line — step 1 of
-  // phase 1 is an act WITH the child the next time the moment happens, with
-  // one quoted sentence to say; no step starts with an observation verb
-  // (the lib/plans/stepOrder OBSERVE_CUES list, EN + HE); every step is one
-  // concrete act under five minutes; successIndicators feed Arbor's
-  // follow-up question only. Unconditional (no absent-context parity with
-  // 1.2.0). Re-pin owed (live, the orchestrator): plan-v1 at 1.3.0 with the
-  // actFirst rubric dimension.
-  generate_plan: { version: "1.3.0", sha256: "5035fbaf7c902d4d83b7ba8930e692e6cf9f55dbd7cc26961f953e7a36fe0233" },
+  generate_plan: { version: "1.2.0", sha256: "ecff6b207c80c7a2193da67e9b4c19eb71f98abb31132aad2daff239f4fe17b1" },
   // 1.1.0 (B-AI-13): the logs pass the shared allowlist (no notes / free
   // text, G-14) and triggerBreakdown asks for a whole-number count per trigger
   // (the schema's proportional field is gone; the server overwrites both count
@@ -794,11 +786,7 @@ ${developmentalFramework}
 Generate a structured, non-diagnostic Arbor action plan.
 Profile: ${JSON.stringify(promptProfile(childProfile))}
 Focus Challenge: "${challengeTopic}"
-${renderPlanContextBlock(approvedFacts, pastSteps)}${renderPlanRecordBlock(recentTypeCounts, pastSteps)}Step rules:
-- The FIRST step of the first phase is something the parent does WITH the child the next time this moment happens (tomorrow morning, tonight at bedtime), and it carries one sentence to say, in quotes.
-- Observation is never a step: no step starts with observe, log, track, notice, record or monitor (or תעדו, שימו לב, עקבו, צפו). Arbor asks the parent afterwards how it went; that question is the observation.
-- Every step is one concrete act a parent can do in under five minutes.
-Return JSON with title, issue, phases, scripts, and successIndicators. successIndicators are for Arbor's follow-up question only and are never shown as a list of things to watch the child for.${languageDirective ?? ""}
+${renderPlanContextBlock(approvedFacts, pastSteps)}${renderPlanRecordBlock(recentTypeCounts, pastSteps)}Return JSON with title, issue, phases, scripts, and successIndicators.${languageDirective ?? ""}
 `;
 
 export type AnalyzeBehaviorPromptArgs = {
