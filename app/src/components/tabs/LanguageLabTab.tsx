@@ -53,7 +53,7 @@ export default function LanguageLabTab() {
   const [kept, setKept] = useState<{ text: string; language: string | null } | null>(null);
   const sayBack = kept ? sayBackFor({ text: kept.text, language: kept.language, languages: langs, months }) : null;
   // B-GROWTH-37: #/language?view=said is the month page (a mode of this
-  // route; lib/routes.ts holds no sub-routes — REJECTIONS P2-WORDS).
+  // route); #/language/said resolves to the same query (lib/routes.ts SUB_ROUTES).
   const view = useHashQuery().get("view");
 
   // Read-only over the SAME parent-logged phrase observations the vocabulary

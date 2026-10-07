@@ -176,8 +176,32 @@ export function splitHash(raw: string): { key: string; query: URLSearchParams } 
   const at = bare.indexOf("?");
   const path = at >= 0 ? bare.slice(0, at) : bare;
   const qs = at >= 0 ? bare.slice(at + 1) : "";
-  return { key: path.replace(/\/+$/, "").trim(), query: new URLSearchParams(qs) };
+  const key = path.replace(/\/+$/, "").trim();
+  const query = new URLSearchParams(qs);
+  // B-GROWTH-37: a sub-route path is its route plus the mode it names.
+  const sub = SUB_ROUTES[key.toLowerCase()];
+  if (sub) {
+    for (const [k, v] of Object.entries(sub.query)) query.set(k, v);
+    return { key: sub.route, query };
+  }
+  return { key, query };
 }
+
+/**
+ * B-GROWTH-37 — SUB-ROUTES: a path that names a MODE of a route.
+ * `#/language/said` is `#/language?view=said` (the month page of "Things
+ * {name} said", read by LanguageLabTab through `useHashQuery`). Like the
+ * `?view=` / `?shelf=` modes (B-LOOP-11) it is the same route — no
+ * ROUTE_IDS seat, no contract of its own — so `splitHash` cuts the path into
+ * the route key and the query the mode reads (the path's mode wins over a
+ * `?view=` the link also carries; other parameters, e.g. `&month=`, ride
+ * along). Only the paths listed here resolve: `#/overview/extra` stays an
+ * unknown hash. Keys are lowercase `route/mode`, and every route is a
+ * ROUTE_ID (routes.query.test.ts).
+ */
+export const SUB_ROUTES: Readonly<Record<string, { route: ActiveTab; query: Readonly<Record<string, string>> }>> = {
+  "language/said": { route: "language", query: { view: "said" } },
+};
 
 /** The query of a hash (`#/journal?shelf=sleep` → shelf=sleep); empty when none. */
 export function hashQuery(raw: string): URLSearchParams {

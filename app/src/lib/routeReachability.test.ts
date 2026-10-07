@@ -28,7 +28,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { ROUTE_IDS, HASH_ALIASES, RETIRED_ROUTES, resolveRouteId } from "./routes";
+import { ROUTE_IDS, HASH_ALIASES, RETIRED_ROUTES, SUB_ROUTES, hashQuery, resolveRouteId } from "./routes";
 import { SECTIONS, hubTabsForSection } from "./navigation";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -195,5 +195,21 @@ describe("IA-09 — every non-pill route has a real entry point", () => {
     expect(callSites.has("strengths"), "a component navigates to #/strengths again").toBe(false);
     expect(navigationTargets(read("components/sections/ChildProfile.tsx")).has("strengths")).toBe(false);
     expect(resolveRouteId("#/strengths")).toBe("profile");
+  });
+
+  it("B-GROWTH-37: every sub-route (#/language/said) lands on a LIVE, reachable route with its mode, and takes no ROUTE_IDS seat", () => {
+    const subs = Object.entries(SUB_ROUTES);
+    expect(subs.length, "the sub-route map is empty — this contract is not being exercised").toBeGreaterThan(0);
+    for (const [sub, { route, query }] of subs) {
+      expect(live.has(sub), `sub-route "${sub}" took a ROUTE_IDS seat`).toBe(false);
+      expect(live.has(route), `sub-route "${sub}" points at non-route "${route}"`).toBe(true);
+      expect(retired.has(route), `sub-route "${sub}" points at retired "${route}"`).toBe(false);
+      expect(resolveRouteId(`#/${sub}`)).toBe(route);
+      const reachable = pills.has(route) || callSites.has(route) || extra.has(route) || aliasTargets.has(route);
+      expect(reachable, `sub-route "${sub}" lands on "${route}", which nothing else reaches`).toBe(true);
+      for (const [k, v] of Object.entries(query)) expect(hashQuery(`#/${sub}`).get(k)).toBe(v);
+    }
+    expect(resolveRouteId("#/language/said")).toBe("language");
+    expect(hashQuery("#/language/said").get("view")).toBe("said");
   });
 });
