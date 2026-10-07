@@ -28,6 +28,7 @@ import type { BehaviorLog, Milestone } from "../types";
 import type { ActionLoopEntry } from "../actionLoop/model";
 import { SPLIT_CLINICIAN_PRESETS } from "../content/consultPresets";
 import { programPacketLine, type ProgramPageModel } from "../lib/programPage";
+import { activeGoals, goalForPacket, type FamilyGoal } from "../lib/goals";
 
 export interface PacketInputProfile {
   name: string;
@@ -1600,9 +1601,20 @@ export interface IntakePacketInput {
    *  programPageModel, built in the packet's language), null/absent when
    *  the child is not enrolled. Only an ACTIVE enrolment writes the line. */
   program?: ProgramPageModel | null;
+  /** B-PROG-07: the family's goals (familyGoals). The professional's packet is
+   *  the ONLY place the goal's number appears, always under the
+   *  "family-set scale" title; a parent surface shows the family's words only. */
+  familyGoals?: FamilyGoal[];
 }
 
 const INTAKE_MOMENTS_CAP = 8;
+
+/** B-PROG-07: the family-set scale value as the packet prints it ("+1", "0",
+ *  "-2"); in Hebrew it is a first-strong isolate so the sign stays put. */
+const goalValue = (v: number, lang: UiLang): string => {
+  const s = v > 0 ? `+${v}` : String(v);
+  return lang === "he" ? `${String.fromCodePoint(0x2068)}${s}${String.fromCodePoint(0x2069)}` : s;
+};
 /** The shelf a quote keepsake is filed on (lib/journal/shelfView QUOTE_SHELF — kept literal here: consult never imports the journal view). */
 const INTAKE_QUOTE_SHELF: ShelfId = "words";
 
@@ -1727,6 +1739,20 @@ export function buildIntakePacket(profession: IntakeProfession, input: IntakePac
   if (input.program && input.program.status === "active" && onDomain(input.program.shelf)) {
     section("intake-program", "elev.program.pro.line", [{ id: `intake-program-${input.program.programId}`, text: programPacketLine(input.program, t) }]);
   }
+
+  // · Family goals — B-PROG-07: the family's words and the latest mark on the
+  //   FAMILY-SET scale (the number + the family's own word for it). Goals are
+  //   the family's, not a shelf's: every profession's packet carries them.
+  const goals = activeGoals(input.familyGoals ?? []).map((g): PacketItem => {
+    const p = goalForPacket(g, lang === "he" ? "he" : "en");
+    return {
+      id: `intake-goal-${g.id}`,
+      text: p.latest
+        ? t(p.scored === 1 ? "elev.program.goals.packet.line.one" : "elev.program.goals.packet.line", { text: p.text, value: goalValue(p.latest.value, lang), word: p.latest.word, scored: p.scored })
+        : p.text,
+    };
+  });
+  section("intake-goals", "elev.program.goals.packet.title", goals);
 
   // · Questions — the parent's own lines, as written
   const questions = (input.questions ?? []).map((q) => q.trim()).filter(Boolean).map((q, i): PacketItem => ({ id: `intake-question-${i}`, text: q }));

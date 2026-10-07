@@ -43,6 +43,7 @@ import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { quotesFromDocs } from "../../lib/loop/tonight";
 import { programPageModel } from "../../lib/programPage";
+import type { FamilyGoal } from "../../lib/goals";
 import { toObservations } from "../../lib/observations";
 import type { SleepLogEntry } from "../../types";
 import type { LangObservation } from "../../growth/vocabAgg";
@@ -265,6 +266,9 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // the word observations (langObs) this step already loads.
   const programRows = useChildCollection<{ id: string }>(childProfile.id, "programs");
   const sleepLogsCol = useChildCollection<SleepLogEntry & { id: string }>(childProfile.id, "sleepLogs");
+  // B-PROG-07: the family's goals reach the professional's packet ONLY (the
+  // number under the "family-set scale" title); no parent surface prints it.
+  const familyGoalsCol = useChildCollection<FamilyGoal>(childProfile.id, "familyGoals");
   const intakeProgram = useMemo(
     () => (intake ? programPageModel(programRows.items, {
       childId: childProfile.id,
@@ -286,8 +290,9 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       lang: uiLang === "he" ? "he" : "en",
       quotes: quotesFromDocs(keepsakesCol.items),
       program: intakeProgram,
+      familyGoals: familyGoalsCol.items,
     }) : null),
-    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items, intakeProgram]
+    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items, intakeProgram, familyGoalsCol.items]
   );
   const packet = useMemo(() => intakePacket ?? presetPacket(audience, fullPacket), [intakePacket, audience, fullPacket]);
   // The intake packet is already scoped to its profession; it leaves through

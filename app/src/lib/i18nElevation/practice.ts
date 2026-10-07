@@ -95,6 +95,7 @@ export const en: Record<string, string> = {
   "elev.program.goals.tonight.q": "How did this go this week, in your words?",
   "elev.program.goals.packet.title": "Family goals (family-set scale)",
   "elev.program.goals.packet.line": "{text}: {value} on the family's scale ({word}) · marked {scored} times",
+  "elev.program.goals.packet.line.one": "{text}: {value} on the family's scale ({word}) · marked once",
 };
 
 export const he: Record<string, string> = {
@@ -183,4 +184,5 @@ export const he: Record<string, string> = {
   "elev.program.goals.tonight.q": "איך זה הלך השבוע, במילים שלכם?",
   "elev.program.goals.packet.title": "מטרות המשפחה (סולם שהמשפחה קבעה)",
   "elev.program.goals.packet.line": "{text}: {value} בסולם של המשפחה ({word}) · סומן {scored} פעמים",
+  "elev.program.goals.packet.line.one": "{text}: {value} בסולם של המשפחה ({word}) · סומן פעם אחת",
 };
