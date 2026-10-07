@@ -134,6 +134,8 @@ export default function TopbarSearch() {
         <Icon
           name="search"
           size={18}
+          chrome
+          active={open}
           style={{
             alignSelf: "center",
             color: open ? "var(--arbor-clay)" : "var(--arbor-faint)",

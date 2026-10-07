@@ -43,7 +43,7 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
         className="lg:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
         style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
       >
-        <Icon name="sports_esports" size={18} />
+        <Icon name="sports_esports" size={18} chrome />
       </button>
       </>
     );
@@ -76,7 +76,7 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
         textAlign: "start",
       }}
     >
-      <Icon name="sports_esports" size={16} />
+      <Icon name="sports_esports" size={16} chrome />
       <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
         <span>{t("aria.kidMode")}</span>
         {/* Safety line — visible on wide topbars; always in the aria-label. */}

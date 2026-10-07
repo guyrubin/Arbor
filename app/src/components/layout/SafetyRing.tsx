@@ -44,7 +44,7 @@ export default function SafetyRing({ onNavigate }: { onNavigate?: () => void }) 
         ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-clay-border)" }
         : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
     >
-      <Icon name="support" size={20} fill={on ? 1 : 0} />
+      <Icon name="support" size={20} chrome active={on} />
     </button>
   );
 }

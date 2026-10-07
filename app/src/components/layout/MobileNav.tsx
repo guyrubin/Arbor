@@ -67,7 +67,9 @@ export default function MobileNav() {
   return (
     <>
       <nav
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 flex bg-white"
+        /* B-DESIGN-03 (chrome): the dock is chrome glass (paper 80 % + blur 14 px);
+           the content scrolling under it stays opaque. */
+        className="arbor-chrome-glass lg:hidden fixed bottom-0 inset-x-0 z-40 flex"
         style={{ borderTop: "1px solid var(--arbor-rule)", boxShadow: "0 -4px 16px rgba(41,51,63,0.04)" }}
       >
         {primary.map((sec) => {
@@ -100,7 +102,7 @@ export default function MobileNav() {
               style={{ color: on ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
             >
               <span className="relative inline-flex">
-                <Icon name={sec.msIcon} size={emphasized ? 21 : 18} fill={on ? 1 : 0} />
+                <Icon name={sec.msIcon} size={emphasized ? 21 : 18} chrome active={on} />
                 {showBadge && (
                   <span
                     aria-hidden="true"
@@ -126,7 +128,7 @@ export default function MobileNav() {
           className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-bold transition"
           style={{ color: overflowActive ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
         >
-          <Icon name="more_horiz" size={18} fill={overflowActive ? 1 : 0} />
+          <Icon name="more_horiz" size={18} chrome active={overflowActive} />
           {t("nav.short.more")}
         </button>
       </nav>

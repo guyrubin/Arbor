@@ -29,10 +29,11 @@ export default function Topbar() {
   const hubSubKey = section.id === "stories" && !childProfile.avatar ? "stories.noHero" : section.id;
   return (
     <header
-      className="hidden lg:flex items-center gap-4 px-5 xl:px-7 flex-none min-w-0"
+      /* B-DESIGN-03 (chrome): the sticky band takes the chrome glass — paper
+         80 % + blur 14 px (index.css .arbor-chrome-glass); content stays opaque. */
+      className="arbor-chrome-glass hidden lg:flex items-center gap-4 px-5 xl:px-7 flex-none min-w-0"
       style={{
         height: "74px",
-        background: "var(--arbor-topbar-band)",
         borderBottom: "1px solid var(--arbor-rule)",
       }}
       aria-label={t("aria.applicationTopbar")}

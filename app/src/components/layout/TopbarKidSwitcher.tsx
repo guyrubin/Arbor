@@ -245,6 +245,7 @@ export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = fals
         <Icon
           name="expand_more"
           size={16}
+          chrome
           style={{
             transition: "transform 150ms ease",
             transform: open ? "rotate(180deg)" : "rotate(0deg)",
