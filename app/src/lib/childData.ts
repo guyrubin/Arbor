@@ -91,6 +91,7 @@ export const CHILD_SUBCOLLECTIONS = [
   // B-PROG-07: the family's goals in their own words (text, the family-written
   // −2..+2 scale labels, the family's scores; lib/goals.ts). Export + erase.
   "familyGoals",
+  "coachSessions", // B-PROG-10: the guided tier's sessions the parent booked (slot, day, what the family agreed to try) — export + erase
 ];
 
 const remoteActive = (uid?: string) =>

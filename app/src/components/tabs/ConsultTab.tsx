@@ -9,6 +9,7 @@ import { useToast } from "../../context/ToastContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { fmtDay } from "../../lib/formatDate";
 import { Icon } from "../ui/Icon";
+import { guidedTierOn } from "../../lib/entitlementsGuided";
 import {
   appointmentStatus,
   consultAudienceForProfession,
@@ -110,6 +111,13 @@ export default function ConsultTab() {
         )}
         {firstName && (
           <p className="t-sm mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.consult.forName", { name: firstName })}</p>
+        )}
+        {/* B-PROG-10 (E3 canon): Care is a warm handoff to the family's own
+            professionals and, in the guided pilot only, Arbor's light coach. */}
+        {guidedTierOn() && (
+          <p data-testid="consult-guided-tier" className="t-sm mt-2 leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
+            {t("elev.program.care.guided", { name: firstName || t("learn.yourChild") })}
+          </p>
         )}
       </header>
       <div data-module="consult-packet">

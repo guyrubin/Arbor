@@ -11,12 +11,15 @@ import { ShelfGlyph } from "../loop/ShelfGlyph";
 import { ageMonthsOf } from "../../lib/age/forChild";
 import { formatAgeMonths } from "../../lib/age/format";
 import type { SleepLogEntry } from "../../types";
+import { GUIDED_TIER_COACH, guidedTierOn } from "../../lib/entitlementsGuided";
+import CoachSessions, { agreeToTry, type CoachSessionDoc } from "./CoachSessions";
 import {
   captureBaseline,
   enrolInProgram,
   finishEnrolment,
   pauseEnrolment,
   resumeEnrolment,
+  setEnrolmentNote,
   type ProgramEnrolment,
 } from "../../lib/programs/enrolment";
 import { programWeekMeasures } from "../../lib/programs/measures";
@@ -340,6 +343,9 @@ export default function ProgramPage() {
   const programs = useChildCollection<ProgramEnrolment>(childId, "programs");
   const sleepLogs = useChildCollection<SleepLogEntry & { id: string }>(childId, "sleepLogs");
   const observations = useObservations();
+  // B-PROG-10: the guided tier (flag off → no coach surface at all).
+  const coachSessions = useChildCollection<CoachSessionDoc>(childId, "coachSessions");
+  const [guided] = useState(() => guidedTierOn());
   const [now] = useState(() => new Date());
   const inputs = useMemo(
     () => ({ childId, actionLoops: actionLoop, sleepLogs: sleepLogs.items, observations }),
@@ -382,6 +388,29 @@ export default function ProgramPage() {
         const r = enrolInProgram(programs.items, programId, new Date());
         if ("enrolment" in r) void programs.upsert(r.enrolment);
       }}
+      coach={model && guided ? (
+        <CoachSessions
+          coach={GUIDED_TIER_COACH}
+          enrolment={model.enrolment}
+          sessions={coachSessions.items}
+          now={now}
+          onBook={(url) => {
+            try {
+              window.open(url, "_blank", "noopener,noreferrer");
+            } catch {
+              /* SSR / tests */
+            }
+          }}
+          onSave={(doc) => void coachSessions.upsert(doc)}
+          onAgree={(doc, text) => {
+            const kept = agreeToTry(doc, text, new Date());
+            if (kept === doc) return;
+            void coachSessions.upsert(kept);
+            // the family's line is also a practice note on the enrolment
+            void programs.upsert(setEnrolmentNote(model.enrolment, `coach-${doc.slot}`, kept.agreed ?? "", new Date()));
+          }}
+        />
+      ) : undefined}
     />
   );
 }

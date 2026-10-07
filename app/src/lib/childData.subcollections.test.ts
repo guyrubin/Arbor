@@ -181,3 +181,41 @@ describe("B-PROG-07 — family goals export and erase with the child", () => {
     expect(map.has("arbor.familyGoals.c2")).toBe(true);
   });
 });
+
+/* B-PROG-10 — the guided tier's coach sessions (`coachSessions`) are per-child data: export + erase. */
+describe("B-PROG-10 — coach sessions export and erase with the child", () => {
+  const installStorage = () => {
+    const map = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      get length() { return map.size; },
+      clear: () => map.clear(),
+      key: (i: number) => [...map.keys()][i] ?? null,
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => { map.set(k, String(v)); },
+      removeItem: (k: string) => { map.delete(k); },
+    } as Storage);
+    vi.stubGlobal("sessionStorage", { get length() { return 0; }, key: () => null, getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {} } as Storage);
+    return map;
+  };
+  const doc = { id: "talk-together.2026-09-09.kickoff", enrolmentId: "talk-together.2026-09-09", programId: "talk-together", slot: "kickoff", bookedFor: "2026-09-10", agreed: "Wait at bath time", createdAt: "t", updatedAt: "t" };
+
+  it("is registered", () => {
+    expect(CHILD_SUBCOLLECTIONS).toContain("coachSessions");
+  });
+
+  it("the export JSON carries collections.coachSessions", async () => {
+    const map = installStorage();
+    map.set("arbor.coachSessions.c1", JSON.stringify([doc]));
+    const out = await exportChildData(undefined, { id: "c1", name: "Noa" } as ChildProfile);
+    expect(out.collections.coachSessions).toEqual([doc]);
+  });
+
+  it("child erase removes it; a sibling's sessions stay", async () => {
+    const map = installStorage();
+    map.set("arbor.coachSessions.c1", JSON.stringify([doc]));
+    map.set("arbor.coachSessions.c2", JSON.stringify([doc]));
+    await eraseEverything(undefined, "c1");
+    expect(map.has("arbor.coachSessions.c1")).toBe(false);
+    expect(map.has("arbor.coachSessions.c2")).toBe(true);
+  });
+});
