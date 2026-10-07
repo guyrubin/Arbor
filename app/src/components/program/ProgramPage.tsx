@@ -13,6 +13,8 @@ import { formatAgeMonths } from "../../lib/age/format";
 import type { SleepLogEntry } from "../../types";
 import { GUIDED_TIER_COACH, guidedTierOn } from "../../lib/entitlementsGuided";
 import CoachSessions, { agreeToTry, type CoachSessionDoc } from "./CoachSessions";
+import FamilyGoals from "./FamilyGoals";
+import type { FamilyGoal } from "../../lib/goals";
 import {
   captureBaseline,
   enrolInProgram,
@@ -346,6 +348,9 @@ export default function ProgramPage() {
   // B-PROG-10: the guided tier (flag off → no coach surface at all).
   const coachSessions = useChildCollection<CoachSessionDoc>(childId, "coachSessions");
   const [guided] = useState(() => guidedTierOn());
+  // B-PROG-07: the family's three hopes, in their words (lib/goals; words only on this page).
+  const familyGoals = useChildCollection<FamilyGoal>(childId, "familyGoals");
+  const [goalPrefill, setGoalPrefill] = useState<string | null>(null);
   const [now] = useState(() => new Date());
   const inputs = useMemo(
     () => ({ childId, actionLoops: actionLoop, sleepLogs: sleepLogs.items, observations }),
@@ -388,6 +393,14 @@ export default function ProgramPage() {
         const r = enrolInProgram(programs.items, programId, new Date());
         if ("enrolment" in r) void programs.upsert(r.enrolment);
       }}
+      goals={model ? (
+        <FamilyGoals
+          goals={familyGoals.items}
+          programId={model.programId}
+          prefill={goalPrefill}
+          onSave={(goal) => { setGoalPrefill(null); void familyGoals.upsert(goal); }}
+        />
+      ) : undefined}
       coach={model && guided ? (
         <CoachSessions
           coach={GUIDED_TIER_COACH}
@@ -402,6 +415,7 @@ export default function ProgramPage() {
             }
           }}
           onSave={(doc) => void coachSessions.upsert(doc)}
+          onMakeGoal={(text) => setGoalPrefill(text)}
           onAgree={(doc, text) => {
             const kept = agreeToTry(doc, text, new Date());
             if (kept === doc) return;
