@@ -40,6 +40,8 @@ import FirstWordsLedger from "../growth/FirstWordsLedger";
 // picture of the child (the rule lives in lib/arborTree.ts).
 import ArborTreeCard from "../growth/ArborTreeCard";
 import RecordByDomain from "../growth/RecordByDomain";
+import ProgramPage from "../program/ProgramPage";
+import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { ageMonthsOf } from "../../lib/age/forChild";
 
 /** Masterplan 1.7 — module-local string resolution for the Full Picture entry
@@ -63,6 +65,10 @@ export default function DevelopmentTab() {
   const { t, uiLang } = useLanguage();
   const { milestones, behaviorLogs, playLogs, childProfile, setActiveTab, setMilestoneObservation } = useArbor();
   const [checkOpen, setCheckOpen] = useState(false);
+  // B-PROG-05: #/development?view=program is the program page (a mode of the
+  // Growth leaf until lib/routes.ts gains the `program` id — REJECTIONS
+  // P6-PRACTICE session A); the early return sits after every hook below.
+  const view = useHashQuery().get("view");
   const firstName = (childProfile.name || "").split(" ")[0];
   // W2-GROWTH r2 (Law 8): catalogue Hebrew takes the child's gender from the
   // profile — one form, never the intake-form slash ("נרגע/ת").
@@ -207,6 +213,8 @@ export default function DevelopmentTab() {
     closeDay(childProfile.id, Date.now(), returnSignals);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childProfile.id]);
+
+  if (view === "program") return <ProgramPage />;
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
@@ -476,10 +484,13 @@ export default function DevelopmentTab() {
           // timeline surface (MonthsSpine), so the door now points there and
           // says what it opens.
           { tab: "timeline", glyph: "calendar_month", label: tGCare(uiLang, "elev.gcare.growth.link.timeline.label"), sub: tGCare(uiLang, "elev.gcare.growth.link.timeline.sub") },
+          // B-PROG-05: the program page's door (a mode of this leaf, ?view=program).
+          { tab: "program", glyph: "flag", label: t("elev.program.door.label"), sub: t("elev.program.door.sub") },
         ] as const).map((l) => (
           <button
             key={l.tab}
-            onClick={() => setActiveTab(l.tab)}
+            data-testid={l.tab === "program" ? "growth-program-door" : undefined}
+            onClick={() => (l.tab === "program" ? goToRoute("development", { view: "program" }) : setActiveTab(l.tab))}
             className="flex items-center gap-3 rounded-2xl px-4 py-3.5 text-start transition"
             style={{ minHeight: 44, background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
           >
