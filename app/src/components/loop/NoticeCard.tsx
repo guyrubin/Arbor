@@ -106,6 +106,10 @@ export interface NoticeCardProps {
   stampMove?: string;
   /** Attributes spread on the answers group (a route's own stamp literal). */
   answersAttrs?: Record<string, string>;
+  /** P5-LOOP c2 r2 (B-LOOP-NEW-2f): the newest kept line already on this
+   *  shelf — the "Seen it" receipt says the answer was filed next to it
+   *  (the quote verbatim, editorial, dir=auto; no chip, no number). */
+  besideWords?: string | null;
 }
 
 /**
@@ -138,6 +142,7 @@ export default function NoticeCard({
   selected,
   stampMove,
   answersAttrs,
+  besideWords,
 }: NoticeCardProps) {
   const { t, uiLang } = useLanguage();
   const [phase, setPhase] = useState<NoticePhase>(initialPhase);
@@ -230,10 +235,18 @@ export default function NoticeCard({
           {phase === "seen" && (
             <div data-testid="notice-seen-strip" className="mt-3 space-y-3">
               <div className="flex items-center gap-2">
-                <p role="status" data-testid="notice-receipt" className="flex min-w-0 items-center gap-1.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
-                  <Icon name="check" size={16} />
-                  {t("elev.loop.notice.seenReceipt", { shelf: shelfName, name })}
-                </p>
+                {besideWords?.trim() ? (
+                  <p role="status" data-testid="notice-receipt" data-beside="true" className="min-w-0 t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
+                    <Icon name="check" size={16} className="me-1 inline-block align-[-3px]" />
+                    {t("elev.loop.notice.seenReceiptBeside", { shelf: shelfName, name })}{" "}
+                    <span dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>{"“"}{besideWords.trim()}{"”"}</span>
+                  </p>
+                ) : (
+                  <p role="status" data-testid="notice-receipt" className="flex min-w-0 items-center gap-1.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
+                    <Icon name="check" size={16} />
+                    {t("elev.loop.notice.seenReceipt", { shelf: shelfName, name })}
+                  </p>
+                )}
                 {undoButton}
               </div>
               <div role="group" aria-label={t("elev.loop.notice.when")} data-testid="notice-when">

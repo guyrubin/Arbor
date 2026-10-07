@@ -907,6 +907,8 @@ export default function MilestonesTab() {
                           onWhen={(when) => setMilestoneObservation(card.id, "yes", { when })}
                           onKeepQuote={(note) => saveKeepsake({ milestoneId: card.id, note, noticedOn: localDay(new Date()) })}
                           onKeepPhoto={() => setKeepsakeFor(card.id)}
+                          /* c2 r2 (B-LOOP-NEW-2f): "Seen it" is filed next to the shelf's newest kept line */
+                          besideWords={ownWords[shelf]?.[0]?.text ?? null}
                         />
                         {heldNotice[shelf] === card.id && (() => {
                           const next = nextOnShelf(shelf, card.id);

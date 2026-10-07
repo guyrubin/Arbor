@@ -132,3 +132,31 @@ describe("NoticeCard — firewall and direction", () => {
     expect(render(cdc, "he")).toMatchSnapshot();
   });
 });
+
+describe("NoticeCard — 'Seen it' is filed next to the shelf's kept line (P5-LOOP c2 r2, B-LOOP-NEW-2f)", () => {
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: the receipt echoes the kept quote — one t-sm ink-soft line, the quote editorial + dir=auto, no chip, no number`, () => {
+      state.lang = lang;
+      const html = renderToStaticMarkup(
+        <NoticeCard milestone={cdc} shelf="words" gender="boy" childName="Dylan" onAnswer={() => undefined} initialPhase="seen" besideWords="big ball" />,
+      );
+      const receipt = html.match(/<p role="status" data-testid="notice-receipt"[\s\S]*?<\/p>/)![0];
+      expect(receipt).toContain('data-beside="true"');
+      expect(receipt).toMatch(/class="min-w-0 t-sm leading-snug" style="color:var\(--arbor-ink-soft\)"/);
+      expect(receipt).toMatch(/<span dir="auto" style="font-family:var\(--font-editorial\)">“big ball”<\/span>/);
+      expect(text(receipt)).toContain(text(translate(lang, "elev.loop.notice.seenReceiptBeside", { name: "Dylan", shelf: translate(lang, "elev.shelves.words") })));
+      expect(text(receipt)).not.toMatch(/\d/);
+      expect(receipt).not.toMatch(/rounded-full|background:/);
+      // no kept line → the plain receipt, unchanged
+      const plain = renderToStaticMarkup(<NoticeCard milestone={cdc} shelf="words" childName="Dylan" onAnswer={() => undefined} initialPhase="seen" />);
+      expect(plain).not.toContain('data-beside="true"');
+      expect(text(plain)).toContain(text(translate(lang, "elev.loop.notice.seenReceipt", { name: "Dylan", shelf: translate(lang, "elev.shelves.words") })));
+    });
+  }
+  it("the shelf map passes the shelf's newest kept line", async () => {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const src = readFileSync(path.resolve(__dirname, "../tabs/MilestonesTab.tsx"), "utf8");
+    expect(src).toContain("besideWords={ownWords[shelf]?.[0]?.text ?? null}");
+  });
+});
