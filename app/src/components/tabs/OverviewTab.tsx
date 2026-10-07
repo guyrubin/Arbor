@@ -487,6 +487,7 @@ export default function OverviewTab() {
       gender={childProfile.gender}
       practice={pick}
       doseAnswer={doseAnswer}
+      doseAt={dose?.acceptedAt ?? null}
       onPracticeAnswer={answerPractice}
       onOutcome={(outcome) => {
         if (!pick) return;

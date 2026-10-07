@@ -22,6 +22,9 @@ export interface TonightFlowProps {
   practice: PracticePick | null;
   /** Today's dose answer, if the parent already answered in the morning. */
   doseAnswer?: PracticeAnswer | null;
+  /** When that answer was given (the dose row's acceptedAt) — the receipt
+   *  under the say reads "this morning" before noon, else "earlier today". */
+  doseAt?: string | null;
   /** Step 1: "Did it" / "Not today" (writes the day's dose row). */
   onPracticeAnswer: (answer: PracticeAnswer) => void;
   /** Step 1: how it went — the parent's choice, never inferred. */
@@ -65,6 +68,10 @@ export default function TonightFlow(props: TonightFlowProps) {
   const firstStep: TonightStep = props.practice ? 1 : 2;
   const [step, setStep] = useState<TonightStep>(props.initialStep ?? firstStep);
   const [answer, setAnswer] = useState<PracticeAnswer | null>(props.doseAnswer ?? null);
+  // P5-LOOP critic c2 r2 (design P1 / B-LOOP-NEW-2b): a "Did it" given EARLIER
+  // (the morning card) is confirmed by a muted receipt under the say; a tap
+  // in this step needs none (the heading already moved on).
+  const [answeredHere, setAnsweredHere] = useState(false);
   const [outcome, setOutcome] = useState<ActionOutcome | null>(null);
   const [line, setLine] = useState("");
   const [quote, setQuote] = useState("");
@@ -101,6 +108,13 @@ export default function TonightFlow(props: TonightFlowProps) {
   if (step === 1 && props.practice) {
     const p = props.practice;
     const say = practiceText(p.practice, "say", lang, props.gender);
+    // c2 r2 design P1: once "Did it" is in, the display heading IS the live
+    // question ("How did it go?") — never the answered "Did you try it today?".
+    const did = answer === "did";
+    const doseHour = props.doseAt ? new Date(props.doseAt).getHours() : NaN;
+    const earlierReceipt = did && !answeredHere && props.doseAnswer === "did"
+      ? t(Number.isFinite(doseHour) && doseHour < 12 ? "elev.loop.tonight.practice.didMorning" : "elev.loop.tonight.practice.didEarlier")
+      : null;
     body = (
       <div data-testid="tonight-step-1">
         <div className="flex items-center justify-between gap-2">{progress(1)}</div>
@@ -111,12 +125,18 @@ export default function TonightFlow(props: TonightFlowProps) {
             <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-ink)" }}>{shelfLabel(p.shelf, t)}</p>
           </div>
         </div>
-        <h2 className="mt-3 font-semibold leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontSize: "var(--t-xl)" }}>
-          {t("elev.loop.tonight.practice.q")}
+        <h2 id="tonight-step-1-q" data-testid="tonight-step-1-heading" className="mt-3 font-semibold leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontSize: "var(--t-xl)" }}>
+          {t(did ? "elev.loop.tonight.practice.how" : "elev.loop.tonight.practice.q")}
         </h2>
         <blockquote className="mt-2 border-s-2 ps-3 leading-snug" style={{ borderColor: "var(--arbor-ink)", color: "var(--arbor-ink-soft)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)" }}>
           <FreeText text={`“${say}”`} />
         </blockquote>
+        {earlierReceipt && (
+          <p data-testid="tonight-did-receipt" className="mt-1.5 flex items-center gap-1.5" style={{ color: "var(--arbor-muted)", fontSize: "var(--t-sm)" }}>
+            <Icon name="check" size={16} />
+            {earlierReceipt}
+          </p>
+        )}
         {!answer ? (
           <div
             role="group"
@@ -128,7 +148,7 @@ export default function TonightFlow(props: TonightFlowProps) {
             <button
               type="button"
               data-answer="did"
-              onClick={() => { setAnswer("did"); props.onPracticeAnswer("did"); }}
+              onClick={() => { setAnswer("did"); setAnsweredHere(true); props.onPracticeAnswer("did"); }}
               className="inline-flex min-h-12 flex-[1.15] items-center justify-center gap-2 rounded-full px-5 text-[15px] font-bold"
               style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
             >
@@ -162,10 +182,12 @@ export default function TonightFlow(props: TonightFlowProps) {
               next(1);
             }}
           >
-            <p className="text-[14px] font-semibold" style={{ color: "var(--arbor-ink)" }}>{t("elev.loop.tonight.practice.how")}</p>
             {/* Law 7: the how-group IS the evening's move once "Did it" is in
-                (the morning answer, or step 1's own tap). */}
-            <div role="group" aria-label={t("elev.loop.tonight.practice.how")} data-testid="tonight-how-answers" {...stamp} className="flex flex-wrap gap-2">
+                (the morning answer, or step 1's own tap). c2 r2 design P1: the
+                question is the heading above (no second 14 px label), and the
+                outcome chips are the answer row — min-h-12, clay-dim fill,
+                clay-deep ink: visibly heavier than "Next". */}
+            <div role="group" aria-labelledby="tonight-step-1-q" data-testid="tonight-how-answers" {...stamp} className="flex flex-wrap gap-2.5">
               {(["helped", "somewhat"] as const).map((o) => (
                 <button
                   key={o}
@@ -173,13 +195,15 @@ export default function TonightFlow(props: TonightFlowProps) {
                   data-outcome={o}
                   aria-pressed={outcome === o}
                   onClick={() => { setOutcome(o); props.onOutcome(o); }}
-                  className={pillBase}
+                  data-testid="tonight-outcome"
+                  className="inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-full px-5 text-[15px] font-bold"
                   style={{
-                    color: outcome === o ? "var(--arbor-clay)" : "var(--arbor-ink)",
-                    background: outcome === o ? "var(--arbor-clay-soft)" : "var(--arbor-paper-deep)",
-                    border: `1px solid ${outcome === o ? "var(--arbor-clay)" : "var(--arbor-rule-strong)"}`,
+                    color: "var(--arbor-clay-deep)",
+                    background: "var(--arbor-clay-dim)",
+                    border: `2px solid ${outcome === o ? "var(--arbor-clay-deep)" : "transparent"}`,
                   }}
                 >
+                  {outcome === o && <Icon name="check" size={18} />}
                   {t(`elev.loop.tonight.practice.${o}`)}
                 </button>
               ))}

@@ -161,6 +161,42 @@ describe("Law 7 — the ONE stamp moves with the step (P5-LOOP critic c2 r1 P1-1
   });
 });
 
+describe("the evening after 'Did it' asks the LIVE question (P5-LOOP critic c2 r2 design P1, B-LOOP-NEW-2b)", () => {
+  const heading = (html: string) => text((html.match(/<h2[^>]*data-testid="tonight-step-1-heading"[^>]*>[\s\S]*?<\/h2>/) ?? [""])[0]).trim();
+  it("the display heading is 'How did it go?' once Did it is in — never the answered question — EN + HE", () => {
+    for (const [lang, how, q] of [["en", "How did it go?", "Did you try it today?"], ["he", "איך זה הלך?", "ניסיתם את זה היום?"]] as const) {
+      const did = render(1, lang, { doseAnswer: "did", doseAt: new Date(2026, 9, 6, 7, 30).toISOString() });
+      expect(heading(did), lang).toBe(how);
+      expect(text(did)).not.toContain(q);
+      // the how-question appears ONCE (no second 14 px label under the say)
+      expect(text(did).split(how).length - 1, `${lang} how once`).toBe(1);
+      // before an answer the heading still asks
+      expect(heading(render(1, lang)), `${lang} ask`).toBe(q);
+    }
+  });
+  it("a morning 'Did it' gets ONE muted receipt under the say; an afternoon one says 'earlier today'; none without a prior answer", () => {
+    const morning = render(1, "en", { doseAnswer: "did", doseAt: new Date(2026, 9, 6, 7, 30).toISOString() });
+    expect(morning).toContain('data-testid="tonight-did-receipt"');
+    expect(text(morning)).toContain("You did it this morning");
+    expect(morning).toMatch(/data-testid="tonight-did-receipt"[^>]*style="[^"]*color:var\(--arbor-muted\);font-size:var\(--t-sm\)/);
+    expect(text(render(1, "he", { doseAnswer: "did", doseAt: new Date(2026, 9, 6, 8, 0).toISOString() }))).toContain("עשיתם את זה הבוקר");
+    expect(text(render(1, "en", { doseAnswer: "did", doseAt: new Date(2026, 9, 6, 15, 0).toISOString() }))).toContain("You did it earlier today");
+    expect(render(1, "en")).not.toContain('data-testid="tonight-did-receipt"');
+    expect(render(1, "en", { doseAnswer: "not_today" })).not.toContain('data-testid="tonight-did-receipt"');
+  });
+  it("the outcome chips are the answer row: min-h-12, clay-dim fill, clay-deep ink — heavier than 'Next'", () => {
+    const did = render(1, "en", { doseAnswer: "did" });
+    const chips = did.match(/<button[^>]*data-outcome="[^"]+"[^>]*>/g) ?? [];
+    expect(chips).toHaveLength(2);
+    for (const c of chips) {
+      expect(c).toContain("min-h-12");
+      expect(c).toContain("background:var(--arbor-clay-dim)");
+      expect(c).toContain("color:var(--arbor-clay-deep)");
+    }
+    expect(did).toMatch(/data-testid="tonight-how-answers"[^>]*aria-labelledby="tonight-step-1-q"|aria-labelledby="tonight-step-1-q"[^>]*data-testid="tonight-how-answers"/);
+  });
+});
+
 describe("each step writes through its named seam; skipping writes nothing", () => {
   it("practice outcome → the day's actionLoops dose row (the parent's choice)", () => {
     const dose = practiceDoseEntry(pick, "did", "kid-1", "x", NOW);
