@@ -82,14 +82,16 @@ describe("B-ASKJB-25 — the plan builder carries the shared language directive"
     const args = { developmentalFramework: "FW", childProfile: { age: 4 }, challengeTopic: "transitions" };
     const he = buildGeneratePlanPrompt({ ...args, languageDirective: jsonLanguageDirective("he") });
     expect(he).toContain("עברית");
-    expect(he.trimEnd().endsWith("successIndicators." + jsonLanguageDirective("he"))).toBe(true);
+    // 1.3.0 (B-ASKJB-35 a): the return line closes on the successIndicators rule, then the directive.
+    expect(he.trimEnd().endsWith("never shown as a list of things to watch the child for." + jsonLanguageDirective("he"))).toBe(true);
     expect(buildGeneratePlanPrompt({ ...args, languageDirective: jsonLanguageDirective("en") })).toBe(buildGeneratePlanPrompt(args));
     expect(jsonLanguageDirective(undefined)).toBe("");
   });
 
   it("generate_plan is versioned past 1.0.0 (the directive changed the template)", () => {
-    // 1.1.0 (B-ASKJB-25) → 1.2.0 (B-ASKJB-27: the record blocks; planPrompt.test.ts).
-    expect(PROMPT_VERSIONS.generate_plan.version).toBe("1.2.0");
+    // 1.1.0 (B-ASKJB-25) → 1.2.0 (B-ASKJB-27: the record blocks; planPrompt.test.ts)
+    // → 1.3.0 (B-ASKJB-35 a: the step rules).
+    expect(PROMPT_VERSIONS.generate_plan.version).toBe("1.3.0");
   });
 });
 
