@@ -23,6 +23,7 @@ import { useLifecycleMoment } from "../overview/useLifecycleMoment";
 import CompanionOfferSlot from "../overview/CompanionOfferSlot";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
 import TodayStepLine from "../overview/TodayStepLine";
+import TodaySayBackLine from "../overview/TodaySayBackLine";
 import FamilyOfferLines from "../overview/FamilyOfferLines";
 import ArborNoticedCard from "../sections/ArborNoticedCard";
 import { useWeeklyRecap } from "../../hooks/useWeeklyRecap";
@@ -628,6 +629,9 @@ export default function OverviewTab() {
               {weeklyRecap.currentReport && doorLine("today-door-week", "auto_stories", t("elev.loop.door.week"), () => setActiveTab("weekly"))}
               {doorLine("today-door-play", "sports_esports", t("elev.loop.door.play"), () => setActiveTab("daily-play"))}
               <TodayStepLine />
+              {/* B-GROWTH-36 (ruling P2-WORDS): the say-back question, one door
+                  line, only while no coach step is open (one question line at a time). */}
+              <TodaySayBackLine keepsakeDocs={keepsakes.items} now={now} />
               <CompanionOfferSlot surface="today" offer={todayOffer.offer} controls={todayOffer} placement="under-step" />
               {/* Kept (pass A5, Law 6): the hard-moment watch signal ("worth
                   mentioning to your pediatrician") has no other home — clinical. */}
