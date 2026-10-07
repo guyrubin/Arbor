@@ -21,6 +21,7 @@ import {
   DEFAULT_EXPORT_AUDIENCE,
   INTAKE_AUDIENCE,
   buildIntakePacket,
+  parentGoalPreview,
   type ExportAudience,
   type IntakeProfession,
 } from "../../consult/packet";
@@ -328,9 +329,28 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // Latin interpolation inside it. NEXTLEVEL critic r1: the item BODY is
   // isolated text too (B-SHELL-28 FreeText) — an English fact in a Hebrew
   // packet kept its full stop at the wrong end (".page").
-  const packetLine = (it: Parameters<typeof itemText>[0]) => (
-    <span dir={uiLang === "he" ? "rtl" : "ltr"} className="block"><FreeText text={itemText(it, uiLang)} /></span>
-  );
+  // B-PROG-07 (curation, framer ruling 8 Oct): a family-goal line previews to
+  // the parent as the family's WORD only (consult/packet parentGoalPreview →
+  // lib/goals goalParentLine); the family-set scale number stays in the
+  // professional's copy, and the first goal line carries ONE muted note saying so.
+  const goalPreviewText = (it: Parameters<typeof itemText>[0]): string | null => {
+    const goal = parentGoalPreview(it, familyGoalsCol.items);
+    if (!goal) return null;
+    return goal.word ? `${goal.text} · ${t("elev.program.goals.last")} ${goal.word}` : goal.text;
+  };
+  const firstGoalItemId = packet.sections.find((s) => s.id === "intake-goals")?.items[0]?.id;
+  const packetLine = (it: Parameters<typeof itemText>[0]) => {
+    const goalText = goalPreviewText(it);
+    if (goalText !== null) {
+      return (
+        <span dir={uiLang === "he" ? "rtl" : "ltr"} className="block" data-testid="consult-goal-line">
+          <FreeText text={goalText} />
+          {it.id === firstGoalItemId && <span data-testid="consult-goal-note" className="block t-xs mt-1 leading-relaxed" style={{ color: MUTED }}>{t("elev.program.goals.packet.parentNote")}</span>}
+        </span>
+      );
+    }
+    return <span dir={uiLang === "he" ? "rtl" : "ltr"} className="block"><FreeText text={itemText(it, uiLang)} /></span>;
+  };
   const countVars = {
     moments: t(sinceCounts.moments === 1 ? "elev.reports.line.momentsLogged.one" : "elev.reports.line.momentsLogged.other", { n: sinceCounts.moments }),
     milestones: t(sinceCounts.milestones === 1 ? "elev.reports.lead.milestones.one" : "elev.reports.lead.milestones.other", { n: sinceCounts.milestones }),
@@ -762,6 +782,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
                 <div key={section.id} className="flex flex-col gap-2">
                   {section.items.map((it) => {
                     const on = !excluded.has(it.id);
+                    // B-PROG-07 (curation): the goal line's parent words (null for every other line)
+                    const goalText = goalPreviewText(it);
                     return (
                       <InsetRow
                         key={it.id}
@@ -774,7 +796,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
                           <button
                             onClick={() => toggle(it.id)}
                             aria-pressed={on}
-                            aria-label={t("elev.packet.include", { item: itemText(it, uiLang) })}
+                            aria-label={t("elev.packet.include", { item: goalText ?? itemText(it, uiLang) })}
                             className="flex-shrink-0 w-11 h-11 -m-3 rounded-md flex items-center justify-center transition self-start"
                             style={{ color: on ? "var(--arbor-paper-elevated)" : MUTED }}
                           >

@@ -28,7 +28,7 @@ import type { BehaviorLog, Milestone } from "../types";
 import type { ActionLoopEntry } from "../actionLoop/model";
 import { SPLIT_CLINICIAN_PRESETS } from "../content/consultPresets";
 import { programPacketLine, type ProgramPageModel } from "../lib/programPage";
-import { activeGoals, goalForPacket, type FamilyGoal } from "../lib/goals";
+import { activeGoals, goalForPacket, goalParentLine, type FamilyGoal } from "../lib/goals";
 
 export interface PacketInputProfile {
   name: string;
@@ -1609,6 +1609,19 @@ export interface IntakePacketInput {
 
 const INTAKE_MOMENTS_CAP = 8;
 
+/** B-PROG-07 (curation, framer ruling 8 Oct): the packet's goal item id. */
+const INTAKE_GOAL_PREFIX = "intake-goal-";
+
+/** B-PROG-07 (curation) — PARENT SURFACE: how Consult step 2 previews a packet
+ *  goal line to the parent — the family's words and their OWN last word
+ *  (lib/goals goalParentLine), never the family-set scale number, which stays
+ *  in the professional's copy. Null for any item that is not a goal line. */
+export function parentGoalPreview(item: Pick<PacketItem, "id">, goals: readonly FamilyGoal[]): { text: string; word: string | null } | null {
+  if (!item.id.startsWith(INTAKE_GOAL_PREFIX)) return null;
+  const goal = goals.find((g) => g.id === item.id.slice(INTAKE_GOAL_PREFIX.length));
+  return goal ? goalParentLine(goal) : null;
+}
+
 /** B-PROG-07: the family-set scale value as the packet prints it ("+1", "0",
  *  "-2"); in Hebrew it is a first-strong isolate so the sign stays put. */
 const goalValue = (v: number, lang: UiLang): string => {
@@ -1746,7 +1759,7 @@ export function buildIntakePacket(profession: IntakeProfession, input: IntakePac
   const goals = activeGoals(input.familyGoals ?? []).map((g): PacketItem => {
     const p = goalForPacket(g, lang === "he" ? "he" : "en");
     return {
-      id: `intake-goal-${g.id}`,
+      id: `${INTAKE_GOAL_PREFIX}${g.id}`,
       text: p.latest
         ? t(p.scored === 1 ? "elev.program.goals.packet.line.one" : "elev.program.goals.packet.line", { text: p.text, value: goalValue(p.latest.value, lang), word: p.latest.word, scored: p.scored })
         : p.text,

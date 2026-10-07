@@ -98,6 +98,7 @@ export const en: Record<string, string> = {
   "elev.program.goals.packet.title": "Family goals (family-set scale)",
   "elev.program.goals.packet.line": "{text}: {value} on the family's scale ({word}) · marked {scored} times",
   "elev.program.goals.packet.line.one": "{text}: {value} on the family's scale ({word}) · marked once",
+  "elev.program.goals.packet.parentNote": "The professional's copy also carries the mark on your own scale, as the number your words stand for.",
 };
 
 export const he: Record<string, string> = {
@@ -189,4 +190,5 @@ export const he: Record<string, string> = {
   "elev.program.goals.packet.title": "מטרות המשפחה (סולם שהמשפחה קבעה)",
   "elev.program.goals.packet.line": "{text}: {value} בסולם של המשפחה ({word}) · סומן {scored} פעמים",
   "elev.program.goals.packet.line.one": "{text}: {value} בסולם של המשפחה ({word}) · סומן פעם אחת",
+  "elev.program.goals.packet.parentNote": "בעותק של איש המקצוע מופיע גם הסימון בסולם שלכם, כמספר שהמילים שלכם מייצגות.",
 };

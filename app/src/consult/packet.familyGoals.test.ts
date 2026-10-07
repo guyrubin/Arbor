@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { buildIntakePacket, INTAKE_PROFESSIONS, type IntakePacketInput } from "./packet";
+import { buildIntakePacket, INTAKE_PROFESSIONS, parentGoalPreview, type IntakePacketInput } from "./packet";
 import { archiveGoal, scoreGoal, type FamilyGoal } from "../lib/goals";
+import { translate } from "../lib/i18n";
 
 /* B-PROG-07 (packet) — the goal attainment number lives ONLY in the
    professional's packet, under the "family-set scale" title, as the number
@@ -72,6 +73,51 @@ describe("B-PROG-07 packet — family goals on the family-set scale", () => {
     expect(pro).not.toMatch(/intake-goals/);
     for (const rel of ["../components/journal/ProView.tsx", "../components/program/FamilyGoals.tsx", "../components/loop/TonightFlow.tsx"]) {
       expect(readFileSync(path.join(here, rel), "utf8")).not.toMatch(/goalForPacket|goals\.packet\./);
+    }
+  });
+});
+
+/* B-PROG-07 (curation, framer ruling 8 Oct) — Consult step 2 shows the parent
+   the packet lines to curate. A family-goal line previews as the family's WORD
+   only (goalParentLine), with a muted note that the professional's copy carries
+   the family-set scale number; the packet itself is unchanged. */
+describe("B-PROG-07 curation — the parent preview shows the goal's word, the number stays in the packet", () => {
+  it("every goal line's parent preview carries the family's words and their last word, and no digit", () => {
+    const goals = [marked, unmarked, once, aside];
+    for (const lang of ["en", "he"] as const) {
+      const s = goalsSection(buildIntakePacket("slp", input({ lang })))!;
+      const previews = s.items.map((it) => parentGoalPreview(it, goals));
+      expect(previews).toEqual([
+        { text: "Gentle hands with his sister", word: "Once a week" },
+        { text: "Asks for help with words", word: null },
+        { text: "Stays in bed after the story", word: "Still hitting every day" },
+      ]);
+      for (const p of previews) expect(`${p!.text} ${p!.word ?? ""}`).not.toMatch(/\d|%/);
+      // the packet line itself still carries the family-set scale number
+      expect(s.items[0].text).toMatch(/\+1/);
+    }
+  });
+
+  it("only goal lines are re-voiced; any other packet item has no parent goal preview", () => {
+    const p = buildIntakePacket("slp", input({ questions: ["Is this worth a look?"] }));
+    for (const sec of p.sections.filter((x) => x.id !== "intake-goals")) {
+      for (const it of sec.items) expect(parentGoalPreview(it, [marked, unmarked, once])).toBeNull();
+    }
+  });
+
+  it("Consult step 2 renders the goal line through parentGoalPreview (value AND the include toggle's label) with the muted note, EN + HE", () => {
+    const src = readFileSync(path.join(here, "../components/sections/AskSpecialist.tsx"), "utf8");
+    expect(src).toContain("const goal = parentGoalPreview(it, familyGoalsCol.items);");
+    expect(src).toContain("const goalText = goalPreviewText(it);");
+    expect(src).toContain("value={packetLine(it)}");
+    expect(src).toMatch(/if \(goalText !== null\) \{[\s\S]*?<FreeText text=\{goalText\} \/>/);
+    expect(src).toContain('aria-label={t("elev.packet.include", { item: goalText ?? itemText(it, uiLang) })}');
+    expect(src).toContain('t("elev.program.goals.packet.parentNote")');
+    expect(src).not.toMatch(/goalForPacket/);
+    for (const lang of ["en", "he"] as const) {
+      const note = translate(lang, "elev.program.goals.packet.parentNote");
+      expect(note).not.toBe("elev.program.goals.packet.parentNote");
+      expect(note).not.toMatch(/\d|%/);
     }
   });
 });
