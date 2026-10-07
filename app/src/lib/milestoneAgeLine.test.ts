@@ -159,7 +159,7 @@ describe("B-LOOP-01 — what is never said", () => {
 describe("B-LOOP-01 — the sources reach the cited-sources list (Science / Trust page count)", () => {
   it("contentCitedSourceUrls carries the CDC 2022 and ASHA 2023 documents", () => {
     const urls = contentCitedSourceUrls();
-    expect(urls).toContain("https://www.cdc.gov/ncbddd/actearly/milestones/index.html");
+    expect(urls).toContain("https://www.cdc.gov/act-early/milestones/index.html");
     expect(urls).toContain("https://www.asha.org/public/developmental-milestones/");
     expect(citedSourceUrls()).toContain("https://www.asha.org/public/developmental-milestones/");
   });

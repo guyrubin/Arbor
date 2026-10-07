@@ -45,7 +45,7 @@ const CITATIONS = [
   {
     key: "cdc-ltsae",
     label: "CDC Learn the Signs. Act Early. (2022 revision)",
-    url: "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+    url: "https://www.cdc.gov/act-early/milestones/index.html",
     note: "cdc_note",
   },
   {

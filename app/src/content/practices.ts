@@ -106,7 +106,7 @@ export interface Practice {
  * reviewer to confirm (REVIEW-SHEET risk notes).
  */
 export const PRACTICE_SOURCES = {
-  cdcMilestones: { org: "CDC", title: "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)", url: "https://www.cdc.gov/ncbddd/actearly/milestones/index.html", year: 2022 },
+  cdcMilestones: { org: "CDC", title: "Learn the Signs. Act Early. milestone checklists, 'Help your child learn and grow' tips (2022 revision)", url: "https://www.cdc.gov/act-early/milestones/index.html", year: 2022 },
   cdcPositiveParenting: { org: "CDC", title: "Positive Parenting Tips (web pages by age, undated; cited 2026)", year: 2026 },
   aapBrightFutures: { org: "AAP", title: "Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents, 4th edition", year: 2017 },
   aapPowerOfPlay: { org: "AAP", title: "The Power of Play: A Pediatric Role in Enhancing Development in Young Children (clinical report, Pediatrics)", year: 2018 },
@@ -281,6 +281,10 @@ export const PRACTICES: readonly Practice[] = [
     do: L("During a walk or at home, point to one thing your child is already looking at and name it, then wait for their look back.", "בטיול או בבית, הצביעו על משהו שהילד/ה כבר מסתכל/ת עליו, אמרו את השם שלו וחכו למבט בחזרה."),
     say: L("Look, a dog! The dog is drinking. Where's the dog?", "תראה/י, כלב! הכלב שותה. איפה הכלב?"),
   }),
+  P("cdc-15m-9", "responsive_interaction", 5, S.cdcMilestones, {
+    do: L("At tidy-up time, hold out your hand, ask for one thing in words, and thank your child warmly when it arrives.", "בזמן סידור, הושיטו יד, בקשו דבר אחד במילים, ותודו לילד/ה בחום כשהוא מגיע."),
+    say: L("The ball, please? Thank you! You gave me the ball.", "את הכדור, בבקשה? תודה! נתת לי את הכדור."),
+  }),
   P("cdc-18m-4", "responsive_interaction", 5, S.ashaActivities, {
     do: L("At snack or dressing time, hold up two choices and name each one. Hand over whichever they pick, naming it again.", "בזמן ארוחה קטנה או התלבשות, הרימו שתי אפשרויות ואמרו את השם של כל אחת. תנו את מה שבחר/ה ואמרו שוב את השם."),
     say: L("Banana or yoghurt? Banana! Here's your banana.", "בננה או יוגורט? בננה! הנה הבננה שלך."),
@@ -448,6 +452,10 @@ export const PRACTICES: readonly Practice[] = [
     do: L("When your child points, look where they point first, then name what you see together, and add one thing about it.", "כשהילד/ה מצביע/ה, הסתכלו קודם לאן שהוא/היא מצביע/ה, תנו שם למה שרואים, והוסיפו עליו עוד משהו."),
     say: L("You see the bird! A bird on the fence. It's singing.", "ראית ציפור! ציפור על הגדר. היא שרה."),
   }),
+  P("cdc-18m-10", "routine_building", 5, S.cdcMilestones, {
+    do: L("Before meals, take your child to the sink, hold out your own hands first, and wash theirs slowly, naming each step.", "לפני הארוחה, לכו עם הילד/ה לכיור, הושיטו קודם את הידיים שלכם, ורחצו את הידיים שלו/ה לאט, ותנו שם לכל שלב."),
+    say: L("Hands out... water on... rub, rub. All clean!", "ידיים קדימה... מים... משפשפים, משפשפים. נקי!"),
+  }),
   P("cdc-18m-3", "routine_building", 5, S.cdcMilestones, {
     do: L("At dressing time, slow down and offer the sleeve or sock so your child can push in an arm or foot. Name each step.", "בזמן ההלבשה, האטו והגישו את השרוול או הגרב כך שהילד/ה יוכל/תוכל להכניס יד או רגל. תנו שם לכל שלב."),
     say: L("Arm in the sleeve... whoosh! Your arm came out!", "יד לשרוול... ושש! היד יצאה!"),
@@ -520,6 +528,11 @@ export const PRACTICES: readonly Practice[] = [
     do: L("In tummy time, lie facing your baby and hold a colourful object just above eye level, so they can push up on forearms to look.", "בזמן שכיבה על הבטן, שכבו מול התינוק/ת והחזיקו חפץ צבעוני קצת מעל גובה העיניים, כך שיוכל/תוכל להתרומם על האמות ולהסתכל."),
     say: L("Where's the red cup? Up here! You see it!", "איפה הכוס האדומה? פה למעלה! ראית אותה!"),
     materials: L("A colourful object, like a cup or spoon", "חפץ צבעוני, כמו כוס או כף"),
+  }),
+  P("cdc-4m-9", "fine_motor_play", 5, S.cdcMilestones, {
+    do: L("Offer a clean teething ring or soft toy to hold, let your baby bring it to their mouth, and talk about it.", "תנו לתינוק/ת טבעת נשיכה נקייה או צעצוע רך להחזיק, תנו לו/ה להביא אותו לפה, ודברו על מה שקורה."),
+    say: L("Hands to your mouth! You're tasting the ring.", "ידיים לפה! טועמים את הטבעת."),
+    materials: L("A clean teething ring or soft toy", "טבעת נשיכה נקייה או צעצוע רך"),
   }),
   P("cdc-6m-7", "gross_motor_play", 5, S.whoMovement, {
     do: L("On a blanket on the floor, place a toy just to one side so your baby can reach and roll toward it. Cheer the effort.", "על שמיכה על הרצפה, שימו צעצוע קצת בצד, כדי שהתינוק/ת יוכל/תוכל להושיט יד ולהתגלגל אליו. עודדו את הניסיון."),
@@ -770,7 +783,7 @@ export const PRACTICES: readonly Practice[] = [
     say: L("This is mashed carrot. Soft and orange. Want to touch it?", "זה גזר מעוך. רך וכתום. רוצה לגעת?"),
   }),
   P("asha-feed-12m", "responsive_interaction", 10, S.whoFeeding, {
-    do: L("Sit and eat together, offering soft finger foods and a small open cup with a little water, and let your child lead.", "שבו לאכול יחד, הציעו אוכל רך שאפשר לאכול בידיים וכוס פתוחה קטנה עם קצת מים, ותנו לילד/ה להוביל."),
+    do: L("Sit and eat together, offer water in a sippy cup your child can hold with both hands, and let them lead.", "שבו לאכול יחד, הציעו מים בכוס עם פייה שהילד/ה יכול/ה להחזיק בשתי ידיים, ותנו לו/ה להוביל."),
     say: L("Here's your cup. Sip, sip. Mmm, water!", "הנה הכוס שלך. לגימה קטנה. ממ, מים!"),
   }),
   P("cdc-15m-8", "responsive_interaction", 10, S.whoFeeding, {
@@ -785,10 +798,6 @@ export const PRACTICES: readonly Practice[] = [
   P("asha-feed-24m", "responsive_interaction", 10, S.aapBrightFutures, {
     do: L("Put a soft-cooked taste of a new food next to a familiar one, eat some yourself, and let your child decide whether to try.", "שימו טעימה רכה ומבושלת של מאכל חדש ליד מאכל מוכר, אכלו ממנה בעצמכם, ותנו לילד/ה להחליט אם לטעום."),
     say: L("This is soft carrot. Mmm. You can just look.", "זה גזר רך. ממ. אפשר רק להסתכל."),
-  }),
-  P("cdc-60m-12", "routine_building", 15, S.aapBrightFutures, {
-    do: L("Make a family meal a calm, shared time: real cutlery for everyone, food passed around, and your child serving themselves.", "הפכו ארוחה משפחתית לזמן רגוע ומשותף: סכו״ם אמיתי לכולם, מעבירים את האוכל, והילד/ה מגיש/ה לעצמו/ה."),
-    say: L("Can you pass the salad? Thanks. Take what you'd like.", "תעביר/י לי את הסלט? תודה. קח/י מה שבא לך."),
   }),
 
   /* ── shelf-level (B-LOOP-08 follow-up) · Sleep · 6–48 months ─────────── */

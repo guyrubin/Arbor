@@ -13,7 +13,7 @@ export const DOMAIN_REFERENCES: Record<DevelopmentalDomainId, { label: string; u
   },
   language_communication: {
     label: "CDC — language milestones",
-    url: "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+    url: "https://www.cdc.gov/act-early/milestones/index.html",
   },
   cognition_executive_function: {
     label: "Harvard — executive function",
@@ -21,7 +21,7 @@ export const DOMAIN_REFERENCES: Record<DevelopmentalDomainId, { label: string; u
   },
   social_development: {
     label: "CDC — developmental milestones",
-    url: "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+    url: "https://www.cdc.gov/act-early/milestones/index.html",
   },
   independence_adaptive_skills: {
     label: "AAP HealthyChildren — ages & stages",
@@ -29,7 +29,7 @@ export const DOMAIN_REFERENCES: Record<DevelopmentalDomainId, { label: string; u
   },
   sensory_motor_patterns: {
     label: "CDC — movement & physical",
-    url: "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+    url: "https://www.cdc.gov/act-early/milestones/index.html",
   },
   ecosystem_stressors: {
     label: "Harvard — toxic stress",

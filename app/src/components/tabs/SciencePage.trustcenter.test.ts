@@ -88,7 +88,7 @@ describe("trust center — firewall (page source)", () => {
 
 describe("trust center — AP-060 content preserved (never delete factual content)", () => {
   const URLS = [
-    "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+    "https://www.cdc.gov/act-early/milestones/index.html",
     "https://www.aap.org/en/patient-care/developmental-surveillance-and-screening/",
     "https://www.asha.org/public/speech/development/",
     "https://www.who.int/health-topics/child-development",

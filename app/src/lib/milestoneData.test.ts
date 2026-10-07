@@ -90,7 +90,7 @@ describe("CDC/AAP-2022 milestone dataset", () => {
     // B-LOOP-01 (VETO-FIRST clinical) retired them: no public source states
     // those skills at those ages. Stored records may still carry the ids; the
     // list names them so a reader can recognise them.
-    expect([...RETIRED_MILESTONE_IDS]).toEqual([...Array.from({ length: 10 }, (_, i) => `m-${i + 1}`), "cdc-48m-11", "asha-comm-36m"]); // + pre-review H6 / H7 (6 Oct)
+    expect([...RETIRED_MILESTONE_IDS]).toEqual([...Array.from({ length: 10 }, (_, i) => `m-${i + 1}`), "cdc-48m-11", "asha-comm-36m", "cdc-60m-12"]); // + pre-review H6 / H7 (6 Oct); + B-LOOP-14 r2 (8 Oct: no CDC 2022 source)
     for (const id of RETIRED_MILESTONE_IDS) {
       expect(ALL_MILESTONES.some((m) => m.id === id), id).toBe(false);
       expect(isCatalogueMilestone({ id }), id).toBe(false);
@@ -101,10 +101,10 @@ describe("CDC/AAP-2022 milestone dataset", () => {
 describe("B-LOOP-01 — every catalogue row carries its source and its age semantics", () => {
   const bandMonths = new Set(MILESTONE_AGE_BANDS.map((b) => b.months));
 
-  it("prints the catalogue count (133 before B-LOOP-01, 10 Arbor rows retired; +1 cdc-24m-11; pre-review: −cdc-48m-11 −asha-comm-36m +cdc-9m-10 +cdc-9m-11 +cdc-48m-15 +cdc-60m-15)", () => {
+  it("prints the catalogue count (133 before B-LOOP-01, 10 Arbor rows retired; +1 cdc-24m-11; pre-review: −cdc-48m-11 −asha-comm-36m +cdc-9m-10 +cdc-9m-11 +cdc-48m-15 +cdc-60m-15; B-LOOP-14 r2: +cdc-4m-9 +cdc-15m-9 +cdc-18m-10 −cdc-60m-12)", () => {
     // eslint-disable-next-line no-console
     console.log(`B-LOOP-01 catalogue rows: ${ALL_MILESTONES.length} (CDC ${CDC_MILESTONES.length} · ASHA ${ASHA_MILESTONES.length} · Arbor ${ARBOR_EXTENDED_MILESTONES.length})`);
-    expect(ALL_MILESTONES.length).toBe(128);
+    expect(ALL_MILESTONES.length).toBe(130);
   });
 
   it("every row has a source with org, title, year and ageSemantics", () => {
@@ -141,13 +141,16 @@ describe("B-LOOP-01 — every catalogue row carries its source and its age seman
 
   it("CDC rows cite the 2022 revision as 'most children by'; their anchor is a band threshold", () => {
     for (const m of CDC_MILESTONES) {
-      expect(m.source).toEqual(CDC_2022_SOURCE);
+      // B-LOOP-14 r2: a row may carry its verbatim CDC bullet (source.quote); everything else is the shared record.
+      const { quote, ...shared } = m.source!;
+      expect(shared, m.id).toEqual(CDC_2022_SOURCE);
+      if (quote !== undefined) expect(quote.trim().length, `${m.id} quote`).toBeGreaterThan(0);
       expect(bandMonths.has(m.ageMonths as number), m.id).toBe(true);
     }
     expect(CDC_2022_SOURCE).toEqual({
       org: "CDC",
       title: "Learn the Signs. Act Early. (2022 revision, Zubler et al.)",
-      url: "https://www.cdc.gov/ncbddd/actearly/milestones/index.html",
+      url: "https://www.cdc.gov/act-early/milestones/index.html",
       year: 2022,
       ageSemantics: "most_children_by",
     });

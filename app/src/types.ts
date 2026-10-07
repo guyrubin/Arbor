@@ -462,6 +462,8 @@ export interface MilestoneSource {
   printedRange?: string;
   /** Why an "unstated" row has no age line (for the reviewer). */
   note?: string;
+  /** B-LOOP-14 r2 — the verbatim bullet the cited page prints for THIS row (judged against text, not memory). */
+  quote?: string;
 }
 
 export type StepStatus = 'todo' | 'doing' | 'done';
