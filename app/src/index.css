@@ -514,7 +514,7 @@ body {
 .t-say    { font-size: var(--t-say); }
 .t-hero   { font-size: var(--t-hero); }
 @media (min-width: 1280px) {
-  :root, .arbor-app, .arbor-parent { --t-hero: 2.75rem; }  /* H1 44 px at 1280 */
+  :root { --t-hero: 2.75rem; }  /* H1 44 px at 1280 (the app scopes: after the flat block below) */
 }
 /* Display face: Fraunces optical size auto + SOFT 40 (FRL has no SOFT axis and
    ignores it). */
@@ -1551,6 +1551,14 @@ html[lang="he"] .arbor-play,
   --content-max: 1040px;
   --rail-width: 360px;
   --shell-pad-x: clamp(16px, 3vw, 48px);
+}
+
+/* P7-DESIGN fix r1 (milestones design P1-2): the 44 px desktop hero step. The
+   flat block above re-declares --t-hero 2.125rem at .arbor-app/.arbor-parent
+   with the same specificity as a breakpoint rule placed before it, so the
+   breakpoint must come AFTER the flat block to win (tokens.test pins it). */
+@media (min-width: 1280px) {
+  .arbor-app, .arbor-parent { --t-hero: 2.75rem; }  /* H1 44 px at 1280 */
 }
 
 /* W4.1 leak-freeze companion: the flat block above re-declares --font-display

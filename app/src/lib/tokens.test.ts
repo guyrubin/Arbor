@@ -923,3 +923,53 @@ describe("law 4 zero-pin — four parent surfaces carry no raw colour at all", (
     ).toEqual([]);
   });
 });
+
+/* P7-DESIGN fix r1 (milestones design P1-2, 8 Oct): the 44 px desktop hero
+   step was dead app-wide — the flat block re-declared --t-hero 2.125rem at
+   .arbor-app/.arbor-parent AFTER the 1280 media rule, at equal specificity.
+   The checker walks index.css in source order (the cascade order for equal
+   specificity) and reports the last --t-hero each app scope receives with and
+   without the ≥ 1280 media rules applied. */
+export function heroCascade(css: string): { base: string | null; wide: string | null } {
+  const src = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const stack: { selectors: string[]; wide: boolean; media: boolean }[] = [];
+  let buffer = "";
+  let base: string | null = null;
+  let wide: string | null = null;
+  const take = (decl: string) => {
+    const m = /^--t-hero\s*:\s*(.+)$/s.exec(decl.trim());
+    const rule = stack[stack.length - 1];
+    if (!m || !rule || !rule.selectors.some((s) => s === ".arbor-app" || s === ".arbor-parent")) return;
+    const value = m[1].trim();
+    const inMedia = stack.some((r) => r.media);
+    const inWide = stack.some((r) => r.wide);
+    if (inMedia && !inWide) return;
+    if (!inMedia) base = value;
+    wide = value;
+  };
+  for (const ch of src) {
+    if (ch === "{") {
+      const head = buffer.trim();
+      stack.push({ selectors: head.split(",").map((s) => s.trim()), media: head.startsWith("@media"), wide: /^@media\s*\(min-width:\s*1280px\)/.test(head) });
+      buffer = "";
+    } else if (ch === "}") {
+      take(buffer);
+      stack.pop();
+      buffer = "";
+    } else if (ch === ";") {
+      take(buffer);
+      buffer = "";
+    } else buffer += ch;
+  }
+  return { base, wide };
+}
+
+describe("P7-DESIGN fix r1 — the hero step: 34 px, 44 px at >= 1280 (the breakpoint wins the cascade)", () => {
+  it("in the app scopes the last --t-hero is 2.125rem below 1280 and 2.75rem at >= 1280", () => {
+    expect(heroCascade(indexCss)).toEqual({ base: "2.125rem", wide: "2.75rem" });
+  });
+  it("NEGATIVE CONTROL: the pre-fix order (breakpoint before the flat block) leaves 1280 at 2.125rem", () => {
+    const before = "@media (min-width: 1280px) {\n  :root, .arbor-app, .arbor-parent { --t-hero: 2.75rem; }\n}\n.arbor-app,\n.arbor-parent {\n  --t-hero:   2.125rem;\n}\n";
+    expect(heroCascade(before)).toEqual({ base: "2.125rem", wide: "2.125rem" });
+  });
+});
