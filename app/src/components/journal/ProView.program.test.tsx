@@ -33,7 +33,7 @@ const enrolment = { id: `talk-together.${START}`, programId: "talk-together", st
 const dose = (day: string, selfCount: number): ActionLoopEntry =>
   ({ id: `practice.c1.${day}`, recommendation: "x", source: "practice", capacity: "tiny", status: "completed", acceptedAt: `${day}T08:00:00`, practiceId: `p-${day}`, shelf: "words", selfCount }) as ActionLoopEntry;
 const loops = [dose("2026-10-01", 2), dose("2026-10-02", 3), dose("2026-10-05", 4)];
-const child = { id: "c1", name: "Dylan", age: 3, gender: "boy" };
+const child = { id: "c1", name: "Dylan", age: 3, gender: "boy" as const };
 const goal = scoreGoal({ id: "g1", text: "Gentle hands", setAt: "2026-09-01T08:00:00.000Z", scale: { "-2": "a", "-1": "b", "0": "c", "1": "d", "2": "e" }, scores: [], updatedAt: "2026-09-01T08:00:00.000Z" } as FamilyGoal, 1, NOW);
 
 const noop = () => undefined;
