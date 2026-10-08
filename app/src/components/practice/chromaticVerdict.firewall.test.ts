@@ -287,3 +287,46 @@ describe("clinical firewall — #/milestones glyphs and answers carry no chromat
     expect(seg).not.toMatch(/var\(--arbor-(?:yellow|peach|pink|danger|green)/);
   });
 });
+
+/* B-DESIGN-04 (P7-DESIGN framer decision, 7 Oct — the [B] fixed-strength
+   shelf wash): on #/journal a tile and the shelf-page header sit on their
+   SHELF's wash. A wash is shelf identity — a fixed tint per shelf — never a
+   state colour: it may not be chosen by a count, the words, an answer or any
+   other record input, and no ternary may pick a wash. The checker is a pure
+   function so the forbidden shapes can be fed in as negative controls. */
+export function washVerdicts(src: string): string[] {
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const hits: string[] = [];
+  // the tone is read from the shelf id alone
+  for (const m of code.matchAll(/shelfTone\(([^)]*)\)/g)) if (!/^(?:def\.id|shelf)$/.test(m[1].trim())) hits.push(m[0]);
+  for (const m of code.matchAll(/shelfTileStyle\(([^)]*)\)/g)) if (!/^(?:def\.id|shelf(?::\s*ShelfId)?)$/.test(m[1].trim())) hits.push(m[0]);
+  // no conditional picks a wash (or the tone that carries it)
+  for (const m of code.matchAll(/[^;\n{}]*\?[^;\n{}]*:[^;\n{}]*/g)) if (/-wash\b|tone\.wash|shelfTone\(|shelfTileStyle\(/.test(m[0])) hits.push(m[0].trim());
+  // no raw strength: every wash is a token (the strength lives in index.css only)
+  for (const m of code.matchAll(/color-mix\([^)]*-(?:sky|yellow|lav|pink|green|peach)\)[^)]*\)/g)) if (!/-ink\)|--arbor-ink\b|tone\.(?:ink|jewel)/.test(m[0])) hits.push(m[0]);
+  return hits;
+}
+
+describe("clinical firewall — #/journal shelf washes are identity, never a state colour", () => {
+  const read = (rel: string) => readFileSync(path.join(componentsRoot, "journal", rel), "utf8");
+  it("NEGATIVE CONTROL — a count-, answer- or words-driven wash trips the checker", () => {
+    expect(washVerdicts(`style={{ background: n > 0 ? tone.wash : "var(--arbor-paper-elevated)" }}`)).not.toEqual([]);
+    expect(washVerdicts(`const tone = shelfTone(n > 3 ? "words" : def.id);`)).not.toEqual([]);
+    expect(washVerdicts(`style={selected === "yes" ? shelfTileStyle(def.id) : {}}`)).not.toEqual([]);
+    expect(washVerdicts(`background: count ? "var(--arbor-sky-wash)" : "var(--arbor-paper)"`)).not.toEqual([]);
+    expect(washVerdicts(`const tone = shelfTone(def.id); style={shelfTileStyle(def.id)}`)).toEqual([]);
+  });
+  it("ShelfGrid and ShelfPage read the tone from the shelf alone; no conditional wash", () => {
+    expect(washVerdicts(read("ShelfGrid.tsx"))).toEqual([]);
+    expect(washVerdicts(read("ShelfPage.tsx"))).toEqual([]);
+    expect(read("ShelfGrid.tsx")).toContain("style={shelfTileStyle(def.id)}");
+    expect(read("ShelfPage.tsx")).toContain("const tone = shelfTone(shelf);");
+  });
+  it("the wash tokens are the shelves' fixed tints — never a state/verdict token (danger, success, warning)", () => {
+    const glyph = readFileSync(path.join(componentsRoot, "ui", "ShelfGlyph.tsx"), "utf8");
+    const washes = [...glyph.matchAll(/wash: "(var\(--arbor-[a-z-]+\))"/g)].map((m) => m[1]);
+    expect(washes).toHaveLength(7);
+    for (const w of washes) expect(w).toMatch(/^var\(--arbor-(?:(?:sky|yellow|lav|pink|green|peach)-wash|paper-deep)\)$/);
+    for (const rel of ["ShelfGrid.tsx", "ShelfPage.tsx"]) expect(read(rel)).not.toMatch(/--arbor-(?:danger|success|warning|error|amber|red)\b/);
+  });
+});

@@ -209,3 +209,25 @@ describe("B-SHELL-21 · the post-capture strip still clears MobileNav", () => {
     expect(read(FILES.strip)).toMatch(/bottom-20/);
   });
 });
+
+/* B-DESIGN-04 (P7-DESIGN, 8 Oct) — Today's re-dressed controls keep their
+   floors: the practice answers (48), Undo (44), the Tonight pointer and the
+   door summary (44), and every Notice answer on the route is the segmented
+   control, whose three cells are 44 px (components/ui/SegmentedAnswers). */
+describe("B-DESIGN-04 · Today keeps its 44 px floors after the blend", () => {
+  const card = read("components/loop/PracticeCard.tsx");
+  const ov = read("components/tabs/OverviewTab.tsx");
+  const seg = read("components/ui/SegmentedAnswers.tsx");
+  it("the practice answers are min-h-12; Undo is min-h-[44px]", () => {
+    expect(card.match(/data-answer="(?:did|not_today)"[\s\S]{0,120}?className="[^"]*\bmin-h-12\b/g)).toHaveLength(2);
+    expect(card).toMatch(/data-testid="practice-undo"[\s\S]{0,120}?min-h-\[44px\]/);
+  });
+  it("the Tonight pointer and the door summary keep min-h-11", () => {
+    expect(ov).toMatch(/data-testid="today-tonight-pointer"[\s\S]{0,120}?className="[^"]*\bmin-h-11\b/);
+    expect(ov).toMatch(/<summary className="[^"]*\bmin-h-11\b/);
+  });
+  it("every Notice answer on Today is the segmented control; its cells are 44 px", () => {
+    expect(ov.match(/<NoticeCard\b[^>]*answers="segmented"/g)).toHaveLength(2);
+    expect(seg).toMatch(/const cellBase = "[^"]*\bmin-h-\[44px\][^"]*\bmin-w-\[44px\]/);
+  });
+});

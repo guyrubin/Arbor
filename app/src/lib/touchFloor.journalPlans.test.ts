@@ -110,3 +110,25 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     }
   });
 });
+
+/* B-DESIGN-04 (P7-DESIGN, 8 Oct) — the journal's re-dressed controls keep
+   their floors: a shelf tile stays ≥ 88 px (min-h 96) although it shrank to
+   the mock's height, "Everything by date" is a 60 px row (min-h-16), the
+   latest-words line, the flip, the back link, "Try it today" and the add row
+   keep min-h-11, and the shelf-page Notice answers are the 44 px segments. */
+describe("B-DESIGN-04 · the journal keeps its 44 px floors after the blend", () => {
+  const grid = read("components/journal/ShelfGrid.tsx");
+  const page = read("components/journal/ShelfPage.tsx");
+  it("the tile is min-h-[96px]; the door min-h-16; the latest line and the flip min-h-11", () => {
+    expect(grid).toMatch(/const TILE = "[^"]*\bmin-h-\[96px\]/);
+    expect(grid).toMatch(/data-testid="shelf-all-by-date"[\s\S]{0,120}?className="[^"]*\bmin-h-16\b/);
+    expect(grid).toMatch(/data-testid="journal-latest-words"[\s\S]{0,120}?className="[^"]*\bmin-h-11\b/);
+    expect(grid).toMatch(/data-testid="journal-flip-pro"[\s\S]{0,120}?className="[^"]*\bmin-h-11\b/);
+  });
+  it("the shelf page: back, Try it today and the add row keep min-h-11; the Notice answers are segmented", () => {
+    for (const id of ["shelf-back", "shelf-try-today", "shelf-add-moment"]) {
+      expect(page, id).toMatch(new RegExp(`data-testid="${id}"[\\s\\S]{0,200}?className="[^"]*\\bmin-h-11\\b`));
+    }
+    expect(page).toMatch(/<NoticeCard[\s\S]{0,300}answers="segmented"/);
+  });
+});
