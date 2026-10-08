@@ -1106,7 +1106,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // arrives as a fact the parent is asked to approve, so it must be in
       // their words. scrubMemoryProposals rewrites the assessment register and
       // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
-      const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, canReadMemory ? scrubMemoryProposals(structured.memoryProposals) : [], {
+      const memoryReviewItems = canReadMemory ? await appendMemoryProposals(memoryStore, childId, scrubMemoryProposals(structured.memoryProposals), {
         familyId,
         prompt: message,
         frameRouting: structured.frameRouting,
@@ -1114,7 +1114,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         answerDomains: structured.domains,
         // B-AI-07: the name is one token when near-duplicates are compared
         childName: typeof childProfile?.name === "string" ? childProfile.name : null
-      });
+      }) : [];
       budget.settle();
       const payload = { text: renderedText, contract: structured, memoryReviewItems };
       if (streamResponse) {
@@ -1386,7 +1386,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // arrives as a fact the parent is asked to approve, so it must be in
       // their words. scrubMemoryProposals rewrites the assessment register and
       // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
-      const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, canReadMemory ? scrubMemoryProposals(structured.memoryProposals) : [], {
+      const memoryReviewItems = canReadMemory ? await appendMemoryProposals(memoryStore, childId, scrubMemoryProposals(structured.memoryProposals), {
         familyId,
         prompt: message,
         frameRouting: structured.frameRouting,
@@ -1394,7 +1394,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         answerDomains: structured.domains,
         // B-AI-07: the name is one token when near-duplicates are compared
         childName: typeof childProfile?.name === "string" ? childProfile.name : null
-      });
+      }) : [];
       budget.settle();
       const payload = { text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems };
       if (streamResponse) {

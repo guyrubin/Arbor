@@ -29,7 +29,7 @@ export default function MobileNav() {
       style={{ color: activeTab === "coach" ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}>
       <Icon name="forum" size={23} chrome active={activeTab === "coach"}/>{he ? "לדבר" : "Talk"}
     </button>
-    <button onClick={requestOpenSettings} aria-label={t("aria.settings")} className="min-h-[64px] w-11 shrink-0 flex items-center justify-center" style={{ color: "var(--arbor-muted)" }}>
+    <button onClick={() => requestOpenSettings()} aria-label={t("aria.settings")} className="min-h-[64px] w-11 shrink-0 flex items-center justify-center" style={{ color: "var(--arbor-muted)" }}>
       <Icon name="settings" size={21}/>
     </button>
   </nav>;

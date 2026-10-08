@@ -17,6 +17,8 @@
  *     they reported (B-AI-05 keeps history; superseded rows are left out);
  *   · kept insights — suggestion lines the parent tapped "Keep this" on
  *     (`insights` rows of kind `kept-insight`, B-AI-04).
+ *   · one explicitly selected family topic — the parent's title and intent,
+ *     read from their own child path; no linked observation text is included.
  *
  * B-PROG-01 (v2): the child's ACTIVE program enrolment (`programs` rows,
  * lib/programs/enrolment) becomes `program: { id, name, shelf, week, skill,
@@ -455,7 +457,12 @@ export const assembleCompanionContext = async (input: {
     && documentId(input.topicId) && input.canReadMemory !== false) {
     try {
       context.familyTopic = projectFamilyTopic(await input.ledgerSource.loadTopic(input.uid, childId, input.topicId), childId, input.topicId);
-      if (!context.familyTopic) delete context.familyTopic;
+      if (!context.familyTopic) {
+        delete context.familyTopic;
+        // A deleted, archived or invalid selection is unavailable in THIS
+        // turn, not evidence that the parent never saved a question.
+        context.familyTopicStatus = "unavailable";
+      }
     } catch {
       context.familyTopicStatus = "unavailable";
     }

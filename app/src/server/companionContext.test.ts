@@ -242,10 +242,12 @@ describe("B-AI-01 — /voice and /live/token context is byte-identical before/af
 let focusPrompt = "";
 let chatPrompt = "";
 const perspectivePrompts: string[] = [];
+let unsafePerspective = false;
 const provider = {
   generateJson: async ({ prompt }: { prompt: string }) => {
     if (prompt.includes("one voice on a parenting council")) {
       perspectivePrompts.push(prompt);
+      if (unsafePerspective) return { takeaway: "Your child has autism.", suggestion: "Ask for a diagnosis." };
       return { takeaway: "A small shared moment can make room for connection.", suggestion: "Offer a quiet first minute together." };
     }
     if (prompt.includes("Today's Focus writer")) {
@@ -288,6 +290,7 @@ routeLedger.loadTopic = async (_uid, childId, topicId) => childId === "child-a" 
   : null;
 let server: Server;
 let base: string;
+let routeMemoryReads = 0;
 
 beforeAll(async () => {
   const config = createTestConfig();
@@ -296,7 +299,7 @@ beforeAll(async () => {
   app.use(express.json());
   app.use((req, _res, next) => { (req as any).user = { uid: "parent-a" }; next(); });
   app.use("/api", createApiRouter({
-    config, modelProvider: provider, memoryStore: storeOf(routeEvents), shareStore: new LocalShareStore(),
+    config, modelProvider: provider, memoryStore: { ...storeOf(routeEvents), listEvents: async () => { routeMemoryReads++; return routeEvents; } }, shareStore: new LocalShareStore(),
     consentStore: new LocalConsentStore(), framework: loadFramework(), entitlementStore,
     referralStore: createReferralStore(config, entitlementStore), counters: createCounterStore(config),
     consultStore: createConsultStore(config), adminMetrics: createAdminMetricsStore(config), waitlistStore: createWaitlistStore(config),
@@ -334,11 +337,28 @@ describe("B-AI-01 — routes consume CompanionContext", () => {
     }
   });
 
+  it("unsafe individual council takes reach neither the synthesis nor perspective cards", async () => {
+    unsafePerspective = true;
+    try {
+      const res = await post("/council", { message: "Can we draw something together?", childProfile: { id: "child-a", age: 4 }, topicId: "topic-a" });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.council).toEqual([]);
+      expect(chatPrompt).not.toContain("Your child has autism");
+      expect(JSON.stringify(body)).not.toContain("Your child has autism");
+    } finally {
+      unsafePerspective = false;
+    }
+  });
+
   it.each(["/chat", "/council"])("%s private turns do not load topic, facts, actions or program", async (route) => {
     perspectivePrompts.length = 0;
+    routeMemoryReads = 0;
     const res = await post(route, { message: "Can we draw something together?", childProfile: { id: "child-a", age: 4 }, topicId: "topic-a", privateMode: true });
     expect(res.status).toBe(200);
-    await res.json();
+    const body = await res.json();
+    expect(body.memoryReviewItems).toEqual([]);
+    expect(routeMemoryReads).toBe(0);
     for (const prompt of [...perspectivePrompts, chatPrompt]) {
       expect(prompt).not.toMatch(/Draw together for enjoyment|Two-minute warning before leaving|Bedtime goes better after a warm bath|Active program:/);
     }

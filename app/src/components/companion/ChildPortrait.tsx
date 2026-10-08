@@ -4,6 +4,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useObservations } from "../../hooks/useObservations";
 import { DOMAIN_IDS, domainName, type DomainId } from "../../lib/domains/registry";
 import type { Observation, ObservationOrigin } from "../../lib/observations";
+import { milestoneText } from "../../lib/milestoneData";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/Avatar";
@@ -26,7 +27,7 @@ const copy = {
 export interface ChildPortraitProps { onDiscuss?: (prompt: string, observationIds: string[]) => void }
 
 export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
-  const { childProfile, behaviorLogs, setActiveTab, seedCoach, openCaptureSheet } = useArbor();
+  const { childProfile, behaviorLogs, milestones, setActiveTab, seedCoach, openCaptureSheet } = useArbor();
   const { t, uiLang } = useLanguage();
   const c = copy[uiLang === "he" ? "he" : "en"];
   const allObservations = useObservations();
@@ -53,8 +54,8 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
   const title = (o: Observation): string => {
     const v = o.value;
     switch (v.type) {
-      case "moment": return logMap.get(o.id)?.notes?.trim() || behaviorTypeLabel(v.behaviorType, t);
-      case "milestone": return v.title;
+      case "moment": { const log = logMap.get(o.id); return log?.trigger?.trim() || log?.notes?.trim() || behaviorTypeLabel(v.behaviorType, t); }
+      case "milestone": { const milestone = milestones.find(item => item.id === v.milestoneId); return milestone ? milestoneText(milestone, "title", t, { gender: childProfile.gender ?? null }) : v.title; }
       case "keepsake": return v.note;
       case "word": return v.phrase;
       case "goal_note": return v.text;

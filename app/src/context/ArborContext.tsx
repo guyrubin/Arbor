@@ -802,7 +802,7 @@ function useArborState() {
     chatAbortRef.current = null;
     setIsChatLoading(false);
     conversationTopicRef.current = c.topicId;
-    topicState.selectFamilyTopic(c.topicId ?? null);
+    topicState.selectFamilyTopic(topicState.familyTopics.some(topic => topic.id === c.topicId) ? c.topicId! : null);
     setActiveConversationId(id);
     setChatMessages(c.messages);
   };

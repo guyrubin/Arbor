@@ -99,7 +99,6 @@ export function useChildCollection<T extends WithId>(
         q,
         (snap) => {
           if (!active || scopeRef.current !== scope) return;
-          setLoadedScope(scope);
           if (snap.empty && opts?.seed && opts.seed.length > 0 && !seededRef.current) {
             seededRef.current = true;
             const batch = writeBatch(db!);
@@ -107,6 +106,7 @@ export function useChildCollection<T extends WithId>(
             batch.commit().catch(() => {});
             return; // snapshot fires again once seeded
           }
+          setLoadedScope(scope);
           setItems(snap.docs.map((d) => ({ ...(d.data() as object), id: d.id })) as T[]);
           setLoaded(true);
           // W0.5: a successful snapshot clears the error state (additive — the
