@@ -235,7 +235,7 @@ describe("#/development order, stamp and budget (W2-GROWTH r1)", () => {
     expect(html).not.toMatch(/\d+ noticed · \d+ areas?/);
   });
   it("the portrait retains a named record and one notice action in both languages", async () => {
-    for (const locale of ["en", "he"]) {
+    for (const locale of ["en", "he"] as const) {
       h.locale = locale;
       const html = await render();
       expect(html).toContain('aria-labelledby="growth-record-title"');
