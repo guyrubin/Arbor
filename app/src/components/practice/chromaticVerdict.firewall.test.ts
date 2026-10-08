@@ -256,3 +256,34 @@ describe("B-PLAY-07 · the Speech parent page is a co-play guide, not a meter", 
     expect("candidates.find((s) => (practiced.get(s.id)?.recentAccuracy ?? 0) < 80)").toMatch(/recentAccuracy/);
   });
 });
+
+/* B-DESIGN-03 (P7-DESIGN framer decision, 7 Oct) — #/milestones takes the
+   44 px duotone shelf glyphs (jump rail + row groups). The tint names the
+   SHELF: every glyph call carries the shelf alone (no count, answer or state
+   input can reach its colour), and no shelf wash lands on the route. The
+   segmented answers mark the stored answer the same way for all three. */
+describe("clinical firewall — #/milestones glyphs and answers carry no chromatic verdict", () => {
+  const ms = readFileSync(path.join(componentsRoot, "tabs", "MilestonesTab.tsx"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+
+  it("every ShelfGlyph on the route is the shelf alone; no wash token, no onWash", () => {
+    const calls = ms.match(/<ShelfGlyph\b[^>]*\/>/g) ?? [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const c of calls) expect(c).toMatch(/^<ShelfGlyph shelf=\{(?:shelf|q\.shelf)\} \/>$/);
+    expect(ms).not.toMatch(/-wash\b|onWash/);
+  });
+
+  it("the ShelfGlyph primitive takes no record input (shelf, size, onWash only)", () => {
+    const glyph = readFileSync(path.join(componentsRoot, "ui", "ShelfGlyph.tsx"), "utf8");
+    const props = /export function ShelfGlyph\(\{([^}]*)\}/.exec(glyph)![1];
+    expect(props.split(",").map((p) => p.split("=")[0].trim()).filter(Boolean)).toEqual(["shelf", "size", "onWash"]);
+  });
+
+  it("the segmented answers: one pressed treatment for all three (never a colour per answer)", () => {
+    const seg = readFileSync(path.join(componentsRoot, "ui", "SegmentedAnswers.tsx"), "utf8");
+    expect(seg).toContain("const on = selected === status;");
+    expect(seg).not.toMatch(/not_yet["']?\s*\?\s*\{[^}]*(?:yellow|peach|pink|danger|green)/);
+    expect(seg).not.toMatch(/var\(--arbor-(?:yellow|peach|pink|danger|green)/);
+  });
+});
