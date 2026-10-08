@@ -10,7 +10,7 @@ export const en: Record<string, string> = {
   "elev.growth.record.compactCount": "{n} saved · 4 weeks",
   "elev.growth.record.compactCount.one": "1 saved · 4 weeks",
   // Growth portrait: observation detail, with no inferred assessment.
-  "elev.growth.portrait.sub": "The little things you notice, brought together. Explore an area to see the moments behind it.",
+  "elev.growth.portrait.sub": "The little things you notice, brought together. Explore an area to see the moments you have saved.",
   "elev.growth.portrait.mapLink": "See the whole picture",
   "elev.growth.record.areas": "Developmental areas in your record",
   "elev.growth.record.detail.eyebrow": "A closer look",
