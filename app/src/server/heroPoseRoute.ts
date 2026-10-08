@@ -30,6 +30,7 @@ import type { UsageCounterStore } from "./quotaStore.js";
 import type { EntitlementStore } from "./entitlements.js";
 import { HERO_SHEET_POSES_BY_PLAN, chargeHeroSheetCall, imagePlanFor } from "./imageQuota.js";
 import { heroPosePrompt } from "./heroPosePrompts.js";
+import { mockHeroPoseImage } from "./heroPoseMock.js";
 import {
   HERO_POSE_REFUSALS,
   HERO_SHEET_MODEL,
@@ -131,6 +132,9 @@ export interface HeroPoseDeps {
   generate: (req: Request, res: Response, input: { prompt: string; images: { mimeType: string; data: string }[]; pose: HeroSheetPoseId }) => Promise<GeneratedImage>;
   /** Maps a provider failure to the response (api.ts sendImageFailure). */
   fail: (res: Response, error: unknown) => void;
+  /** B-GAME-13d: MODEL_PROVIDER=mock — answer with the deterministic synthetic
+   *  pose (heroPoseMock.ts) after every refusal and the allowance, no spend. */
+  mock?: boolean;
 }
 
 export function createHeroPoseHandler(deps: HeroPoseDeps): RequestHandler {
@@ -184,7 +188,8 @@ export function createHeroPoseHandler(deps: HeroPoseDeps): RequestHandler {
 
     // 5. One image call; a failure gives the per-sheet call unit back.
     try {
-      const image = await deps.generate(req, res, { prompt: heroPosePrompt(pose), images, pose });
+      const prompt = heroPosePrompt(pose);
+      const image = deps.mock ? mockHeroPoseImage(pose) : await deps.generate(req, res, { prompt, images, pose });
       if (res.headersSent) return;
       const dataUrl = `data:${image.mimeType};base64,${image.data}`;
       // Sandbox: the idle THIS server drew is the next poses' image 1.
