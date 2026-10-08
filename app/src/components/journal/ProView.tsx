@@ -39,6 +39,9 @@ const PACKET_LINES: { section: string; labelKey: string; onlyWhenPresent?: boole
   // B-PROG-05: the Program line per profession — the packet writes it only while
   // an enrolment is active and the program's shelf is this profession's.
   { section: "intake-program", labelKey: "elev.program.pro.line", onlyWhenPresent: true },
+  // B-PROG-09: the home program THIS professional gave — practice days as counts
+  // and the goals they proposed in the family's words (the section carries no number).
+  { section: "intake-home-program", labelKey: "elev.homeProgram.pro.line", onlyWhenPresent: true },
 ];
 
 const CARD: React.CSSProperties = {

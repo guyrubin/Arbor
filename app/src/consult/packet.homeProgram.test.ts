@@ -64,11 +64,11 @@ describe("B-PROG-09 packet — the home program's adherence", () => {
 
   it("HE: the same section in Hebrew", () => {
     const s = homeSection(buildIntakePacket("ot", input({ lang: "he" })))!;
-    const lines = s.items.map((i) => i.text);
+    const lines = s.items.map((i) => i.text.replace(/[⁦-⁩]/g, ""));
     const name = translate("he", "elev.homeProgram.name", { profession: translate("he", "elev.carehonesty.consult.audience.ot") });
-    expect(lines[0].startsWith(`${name}: שבוע 2 מתוך 4 · ימי תרגול 2/7 השבוע · 3 ימי תרגול מאז`)).toBe(true);
+    expect(lines[0].startsWith(`${name.replace(/[⁦-⁩]/g, "")}: שבוע 2 מתוך 4 · ימי תרגול 2/7 השבוע · 3 ימי תרגול מאז`)).toBe(true);
     expect(lines[1]).toBe("Thread five big beads after breakfast: נעשה ב-3 ימים");
-    expect(lines[3]).toContain(translate("he", "elev.homeProgram.goal.proposedBy", { profession: translate("he", "elev.carehonesty.consult.audience.ot") }));
+    expect(lines[3]).toContain(translate("he", "elev.homeProgram.goal.proposedBy", { profession: translate("he", "elev.carehonesty.consult.audience.ot") }).replace(/[⁦-⁩]/g, ""));
   });
 
   it("another profession's packet, a finished program or no program carries no home-program section", () => {
