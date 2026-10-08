@@ -877,16 +877,54 @@ const STATES = {
     {
       // Closure 7 Oct: the v.2 seed's yesterday dose row carries a "What happened?" line —
       // at 07:30 the practice card quotes it first ("Last night you wrote:" · shelf · date;
-      // 3b63650e: lastNightWords → the quote with a practice-quote-shelf slot). Read-only.
+      // 3b63650e: lastNightWords → the quote with a practice-quote-shelf slot).
+      // P7-DESIGN r1 (3044e18b, 8 Oct): unreached on every cell, NOT a markup change — the
+      // line still renders as practice-quote(:has practice-quote-shelf) inside practice-quotes,
+      // now inside the practice-words block on the ink rule (B-DESIGN-04). The seed is
+      // calendar-relative to its seededAt in UTC (demoFamily.ts `at`: now − daysAgo, UTC
+      // hours): the 2026-10-08.1 bundle was applied at 01:14 local (23:14Z on 7 Oct), so its
+      // "yesterday" dose row is practice.<child>.2026-10-06 and on 8 Oct lastNightWords finds
+      // no row for 7 Oct. So: read-only when the seed's yesterday row carries its line; else
+      // the seed's newest night line is re-anchored to yesterday (the seed's own intent) in
+      // this throwaway context, the dose count unchanged, and `via` says so.
       name: "loop-yesterday",
       now: "07:30",
+      writes: "only when the seed is not anchored on the sweep's local day: the seed's newest dose row with a 'What happened' line is re-dated to yesterday (moved, not copied — the dose count is unchanged) in this throwaway context's local record",
       run: async (h) => {
+        const anchor = await h.page.evaluate(() => {
+          const id = localStorage.getItem("arbor.activeChildId");
+          if (!id) return { error: "no active child in the local record" };
+          const lk = `arbor.actionLoops.${id}`;
+          const rows = JSON.parse(localStorage.getItem(lk) || "[]");
+          const y = new Date();
+          y.setDate(y.getDate() - 1);
+          const pad = (n) => String(n).padStart(2, "0");
+          const day = `${y.getFullYear()}-${pad(y.getMonth() + 1)}-${pad(y.getDate())}`;
+          const yId = `practice.${id}.${day}`;
+          const said = (r) => !!(r && typeof r.whatHappened === "string" && r.whatHappened.trim() && r.shelf);
+          const yRow = rows.find((r) => r && r.id === yId);
+          if (said(yRow)) return { moved: null, day };
+          const prefix = `practice.${id}.`;
+          const src = rows
+            .filter((r) => r && typeof r.id === "string" && r.id.startsWith(prefix) && r.id !== yId && said(r))
+            .sort((a, b) => b.id.localeCompare(a.id))[0];
+          if (!src) return { error: `no dose row with a 'What happened' line for ${id}` };
+          const at = (hh) => { const d = new Date(y); d.setHours(hh, 0, 0, 0); return d.toISOString(); };
+          const next = yRow
+            ? rows.map((r) => (r === yRow ? { ...r, whatHappened: src.whatHappened, shelf: r.shelf || src.shelf } : r))
+            : rows.map((r) => (r === src ? { ...r, id: yId, acceptedAt: at(9), ...(r.outcomeAt ? { outcomeAt: at(19) } : {}) } : r));
+          localStorage.setItem(lk, JSON.stringify(next));
+          return { moved: src.id.slice(prefix.length), day };
+        });
+        if (anchor.error) skip(`loop-yesterday: ${anchor.error}`);
+        if (anchor.moved) await h.page.reload({ waitUntil: "domcontentloaded" });
         const lead = h.tr("elev.loop.practice.lastNight");
-        const quote = await h.need("main [data-testid=practice-card] [data-testid=practice-quotes] [data-testid=practice-quote]:has([data-testid=practice-quote-shelf])", "last night's line on the practice card (Last night you wrote: … · shelf · date)", 12_000);
+        const quote = await h.need("main [data-testid=practice-card] [data-testid=practice-words] [data-testid=practice-quotes] [data-testid=practice-quote]:has([data-testid=practice-quote-shelf])", "last night's line in the practice card's words block (Last night you wrote: … · shelf · date)", 12_000);
         const text = await quote.innerText();
         if (lead && !text.includes(lead.replace(/:$/, ""))) throw new Error(`loop-yesterday: the quote does not open with ${JSON.stringify(lead)}: ${JSON.stringify(text.slice(0, 160))}`);
         await h.top(await h.need("main [data-testid=practice-card]", "the practice card"));
-        return { via: `clock 07:30 · ${text.replace(/\s+/g, " ").trim().slice(0, 90)}` };
+        const how = anchor.moved ? `seed line re-anchored ${anchor.moved} → ${anchor.day}` : "seed's own yesterday line";
+        return { via: `clock 07:30 · ${how} · ${text.replace(/\s+/g, " ").trim().slice(0, 90)}` };
       },
     },
     {
@@ -926,7 +964,7 @@ const STATES = {
         // when NO practice fits the window; shelf-level practices (Sleep, Family)
         // fit every window, so the seeded record cannot reach it.
         const slot = await h.first("main [data-module=today-practice] [data-testid=notice-card]", 1_500);
-        if (!slot) skip("no window without a practice: shelf-level practices (Sleep, Family) fit every age, so the thin-shelf Notice slot cannot render for the demo child");
+        if (!slot) skip("unreachable by design (since 6 Oct) on #/overview: no window without a practice — shelf-level practices (Sleep, Family) fit every age, so the thin-shelf Notice slot cannot render for the demo child; #/journal loop-thin-shelf covers the thin shelf");
         await h.top(slot);
       },
     },
@@ -998,7 +1036,11 @@ const STATES = {
       name: "not-sure",
       writes: "one milestone answer in the local record; the card's Undo restores it after the shot",
       run: async (h) => {
-        await h.click("[data-testid=ms-shelf-map] [data-primary-move] [data-answer=not_sure]", [], "the first Notice card's Not sure");
+        // B-DESIGN-03 (a962f4fa): the stamp rides the stamped NoticeCard's SegmentedAnswers
+        // group (answersAttrs → attrs on role=group); click its Not sure cell, never a text match.
+        const seg = "[data-testid=ms-shelf-map] [data-testid=notice-card] [data-testid=segmented-answers][role=group][data-primary-move]";
+        await h.need(seg, "the stamped Notice card's segmented answers on the shelf map");
+        await h.click(`${seg} > button[data-answer=not_sure]`, [], "the first Notice card's Not sure (segmented cell)");
         await h.top(await h.need("[data-testid=ms-shelf-map] [data-testid=notice-thanks]", "the neutral Not-sure line with Undo"));
         return {
           undo: async () => {
@@ -1124,19 +1166,28 @@ const STATES = {
     {
       // Closure 7 Oct (73c926e2 owed this): the Words shelf page's Notice module mounts with
       // its three answers (Seen it · Not yet · Not sure), each a 44 px target. Read-only.
+      // B-DESIGN-04 (0505a73b): the answers are ONE SegmentedAnswers control (role=group,
+      // data-testid=segmented-answers, three buttons in NOTICE_ANSWER_ORDER), not the
+      // notice-answers pills; ShelfPage passes no `selected`, so no cell may read pressed.
       name: "loop-shelf-page-notice",
       from: "journal?shelf=words",
       run: async (h) => {
         const notice = await h.need("[data-testid=shelf-notice] [data-testid=notice-card]", "the Notice module on #/journal?shelf=words", 12_000);
+        const seg = await h.need("[data-testid=shelf-notice] [data-testid=notice-card] [data-testid=segmented-answers][role=group]", "the Notice card's segmented answers (role=group)");
+        const pills = await h.page.locator("[data-testid=shelf-notice] [data-testid=notice-answers]").count();
+        if (pills) throw new Error(`loop-shelf-page-notice: ${pills} notice-answers pill group(s) beside the segmented control`);
+        const order = await seg.evaluate((g) => [...g.querySelectorAll(":scope > button[data-answer]")].map((b) => b.getAttribute("data-answer")));
+        if (order.join(",") !== "yes,not_yet,not_sure") throw new Error(`loop-shelf-page-notice: the segmented cells read ${JSON.stringify(order)} (expected yes,not_yet,not_sure)`);
         const heights = [];
         for (const a of ["yes", "not_yet", "not_sure"]) {
-          const btn = await h.need(`[data-testid=shelf-notice] [data-testid=notice-answers] [data-answer=${a}]`, `the Notice answer ${a}`);
+          const btn = seg.locator(`:scope > button[data-answer=${a}]`).first();
           const box = await btn.boundingBox();
           heights.push(`${a} ${Math.round(box?.height ?? 0)}`);
-          if (!box || box.height < 44) throw new Error(`loop-shelf-page-notice: the ${a} answer is ${Math.round(box?.height ?? 0)} px tall (< 44)`);
+          if (!box || box.height < 44) throw new Error(`loop-shelf-page-notice: the ${a} cell is ${Math.round(box?.height ?? 0)} px tall (< 44)`);
+          if ((await btn.getAttribute("aria-pressed")) === "true") throw new Error(`loop-shelf-page-notice: the ${a} cell reads pressed before any answer`);
         }
         await h.top(notice);
-        return { via: `#/journal?shelf=words · answers ${heights.join(" · ")} px` };
+        return { via: `#/journal?shelf=words · segmented ${heights.join(" · ")} px` };
       },
     },
     {
