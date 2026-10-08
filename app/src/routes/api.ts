@@ -2753,6 +2753,8 @@ Framing: head-and-shoulders portrait, centered, simple soft background, warm and
     counters,
     entitlements: entitlementStore,
     requireUid: config.memoryAdapter === "firestore",
+    // B-GAME-13d: the sandbox dry run draws a synthetic figure, no spend.
+    mock: config.modelProvider === "mock",
     generate: async (_req, res, input) => {
       const budget = createRouteBudget(res, "image");
       try {
