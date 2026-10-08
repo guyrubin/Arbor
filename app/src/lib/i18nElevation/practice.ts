@@ -139,6 +139,14 @@ export const en: Record<string, string> = {
   "elev.homeProgram.days.none": "Not marked yet",
   "elev.homeProgram.days.one": "Done on one day",
   "elev.homeProgram.days.count": "Done on {n} days",
+  // B-PROG-09 (adherence out) · the packet's home-program section (counts and the family's words)
+  "elev.homeProgram.pro.line": "Home program",
+  "elev.homeProgram.packet.line": "{program}: week {n} of {total} · practice days {d}/7 this week · {all} practice days since {date}",
+  "elev.homeProgram.packet.exercise": "{text}: done on {n} days",
+  "elev.homeProgram.packet.exercise.one": "{text}: done on one day",
+  "elev.homeProgram.packet.exercise.none": "{text}: not marked yet",
+  "elev.homeProgram.packet.goal": "{text} · {proposed} · last marked, in the family's words: “{word}”",
+  "elev.homeProgram.packet.goal.none": "{text} · {proposed} · not marked yet",
 };
 
 export const he: Record<string, string> = {
@@ -271,4 +279,12 @@ export const he: Record<string, string> = {
   "elev.homeProgram.days.none": "עוד לא סומן",
   "elev.homeProgram.days.one": "נעשה ביום אחד",
   "elev.homeProgram.days.count": "נעשה ב-{n} ימים",
+  // B-PROG-09 (adherence out) · מקטע תוכנית הבית בסיכום (ספירות ומילים של המשפחה)
+  "elev.homeProgram.pro.line": "תוכנית בית",
+  "elev.homeProgram.packet.line": "{program}: שבוע {n} מתוך {total} · ימי תרגול {d}/7 השבוע · {all} ימי תרגול מאז {date}",
+  "elev.homeProgram.packet.exercise": "{text}: נעשה ב-{n} ימים",
+  "elev.homeProgram.packet.exercise.one": "{text}: נעשה ביום אחד",
+  "elev.homeProgram.packet.exercise.none": "{text}: עוד לא סומן",
+  "elev.homeProgram.packet.goal": "{text} · {proposed} · הסימון האחרון, במילים של המשפחה: „{word}”",
+  "elev.homeProgram.packet.goal.none": "{text} · {proposed} · עוד לא סומן",
 };

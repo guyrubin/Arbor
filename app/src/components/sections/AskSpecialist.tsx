@@ -292,8 +292,10 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       quotes: quotesFromDocs(keepsakesCol.items),
       program: intakeProgram,
       familyGoals: familyGoalsCol.items,
+      // B-PROG-09: the active home program from this profession (adherence: days + the family's words)
+      homePrograms: programRows.items,
     }) : null),
-    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items, intakeProgram, familyGoalsCol.items]
+    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items, intakeProgram, familyGoalsCol.items, programRows.items]
   );
   const packet = useMemo(() => intakePacket ?? presetPacket(audience, fullPacket), [intakePacket, audience, fullPacket]);
   // The intake packet is already scoped to its profession; it leaves through

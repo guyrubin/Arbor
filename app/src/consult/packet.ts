@@ -29,6 +29,7 @@ import type { ActionLoopEntry } from "../actionLoop/model";
 import { SPLIT_CLINICIAN_PRESETS } from "../content/consultPresets";
 import { programPacketLine, type ProgramPageModel } from "../lib/programPage";
 import { activeGoals, goalForPacket, goalParentLine, type FamilyGoal } from "../lib/goals";
+import { activeHomeEnrolmentFor, homeAdherence, homeProgramGoals } from "../content/programs/homeProgram";
 
 export interface PacketInputProfile {
   name: string;
@@ -1605,6 +1606,11 @@ export interface IntakePacketInput {
    *  the ONLY place the goal's number appears, always under the
    *  "family-set scale" title; a parent surface shows the family's words only. */
   familyGoals?: FamilyGoal[];
+  /** B-PROG-09: the child's `programs` rows. The ACTIVE home program from THIS
+   *  profession (`home-<profession>`, content/programs/homeProgram) writes the
+   *  adherence section: practice days as counts and the proposed goals in the
+   *  family's words (the number stays in the family-goals section only). */
+  homePrograms?: readonly unknown[];
 }
 
 const INTAKE_MOMENTS_CAP = 8;
@@ -1751,6 +1757,34 @@ export function buildIntakePacket(profession: IntakeProfession, input: IntakePac
   //   never a grade, a rate or a %.
   if (input.program && input.program.status === "active" && onDomain(input.program.shelf)) {
     section("intake-program", "elev.program.pro.line", [{ id: `intake-program-${input.program.programId}`, text: programPacketLine(input.program, t) }]);
+  }
+
+  // · Home program — B-PROG-09: the program THIS professional gave, as the
+  //   family keeps it ("Home program · Occupational therapist: week 2 of 4 ·
+  //   practice days 3/7 this week · 5 practice days since 8 Oct 2026"), one
+  //   line per exercise in the family's words with its days, and each goal
+  //   the professional proposed in the family's words with the family's own
+  //   last word. Counts and words only: no %, no rate, no score here.
+  const home = activeHomeEnrolmentFor(input.homePrograms ?? [], profession);
+  if (home) {
+    const a = homeAdherence(home, new Date(input.nowMs));
+    const name = t("elev.homeProgram.name", { profession: t(`elev.carehonesty.consult.audience.${profession}`) });
+    const proposed = t("elev.homeProgram.goal.proposedBy", { profession: lang === "en" ? t(`elev.carehonesty.consult.audience.${profession}`).toLowerCase() : t(`elev.carehonesty.consult.audience.${profession}`) });
+    const homeItems: PacketItem[] = [
+      { id: `intake-home-${home.programId}`, text: t("elev.homeProgram.packet.line", { program: name, n: a.week, total: a.weeks, d: a.daysThisWeek, all: a.daysInAll, date: intakeDay(`${home.startedAt}T12:00:00`, lang) }) },
+      ...a.exercises.map((e): PacketItem => ({
+        id: `intake-home-ex-${e.id}`,
+        text: t(e.days === 0 ? "elev.homeProgram.packet.exercise.none" : e.days === 1 ? "elev.homeProgram.packet.exercise.one" : "elev.homeProgram.packet.exercise", { text: e.text, n: e.days }),
+      })),
+      ...homeProgramGoals(input.familyGoals ?? [], home).map((g): PacketItem => {
+        const line = goalParentLine(g);
+        return {
+          id: `intake-home-goal-${g.id}`,
+          text: line.word ? t("elev.homeProgram.packet.goal", { text: line.text, proposed, word: line.word }) : t("elev.homeProgram.packet.goal.none", { text: line.text, proposed }),
+        };
+      }),
+    ];
+    section("intake-home-program", "elev.homeProgram.pro.line", homeItems);
   }
 
   // · Family goals — B-PROG-07: the family's words and the latest mark on the
