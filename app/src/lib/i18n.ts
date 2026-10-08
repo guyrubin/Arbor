@@ -7,6 +7,7 @@
  * NOTE: Hebrew strings are a solid first draft; a native review is recommended
  * before wide release (child-health product).
  */
+import { companionEn, companionHe } from "./i18nCompanion";
 import { isolate } from "./bidi";
 import { elevationEn, elevationHe } from "./i18nElevation";
 
@@ -15,6 +16,7 @@ export type UiLang = "en" | "he";
 type Dict = Record<string, string>;
 
 export const en: Dict = {
+  ...companionEn,
   // AP-005 — JITAI home-nudge strings (were hardcoded EN on the #1 retention surface).
   "nudge.prep.headline": "Get ahead of {hour}",
   "nudge.prep.body": "Around {hour} tends to be a harder stretch for {name}. A calm move now usually softens it.",
@@ -2604,6 +2606,7 @@ export const en: Dict = {
 };
 
 export const he: Dict = {
+  ...companionHe,
   // AP-005 — JITAI home-nudge strings (HE; were hardcoded EN). Flagged for arbor-localization native review.
   "nudge.prep.headline": "להתכונן ל{hour}",
   "nudge.prep.body": "סביב {hour} נוטה להיות קטע מאתגר יותר עבור {name}. צעד מרגיע עכשיו בדרך כלל מרכך אותו.",

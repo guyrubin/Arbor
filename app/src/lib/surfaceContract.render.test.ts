@@ -62,7 +62,10 @@ describe("contractFor — the reachable half of the manifest", () => {
 describe("SurfaceFrame — the contract reaches the DOM without changing layout", () => {
   it("Shell wraps the active tab in a frame stamped with route and budget", () => {
     expect(SHELL).toContain('import { contractFor } from "../../lib/surfaceContract";');
-    expect(SHELL).toMatch(/<SurfaceFrame route=\{activeTab\}>\s*\n\s*<ActiveTabComponent \/>\s*\n\s*<\/SurfaceFrame>/);
+    const framed = SHELL.slice(SHELL.indexOf('<SurfaceFrame route={activeTab}>'), SHELL.indexOf('</SurfaceFrame>'));
+    expect(framed).toContain('<OverviewTab topic={activeFamilyTopic}');
+    expect(framed).toContain('<DevelopmentTab onDiscuss={createTopic}');
+    expect(framed).toContain('<ActiveTabComponent/>');
     const frame = SHELL.slice(SHELL.indexOf("function SurfaceFrame"), SHELL.indexOf("export default function Shell"));
     expect(frame).toContain("const contract = contractFor(route);");
     expect(frame).toContain("data-route={route}");

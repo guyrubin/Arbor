@@ -56,6 +56,8 @@ export function useChildCollection<T extends WithId>(
   const items = inScope ? storedItems : [];
   const loaded = inScope && storedLoaded;
   const error = inScope && storedError;
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
   const lsKey = `arbor.${name}.${childId}`;
   const seededRef = useRef(false);
 
@@ -155,49 +157,54 @@ export function useChildCollection<T extends WithId>(
 
   const upsert = useCallback(
     async (item: T) => {
-      if (scopeRef.current !== scope) return;
+      if (scopeRef.current !== scope) throw new Error("The active child changed");
       if (remote && db && uid) {
         await setDoc(doc(db, `users/${uid}/children/${childId}/${name}`, item.id), item as Record<string, unknown>);
       } else {
-        setItems((prev) => {
-          const idx = prev.findIndex((p) => p.id === item.id);
-          if (idx >= 0) {
-            const copy = [...prev];
-            copy[idx] = item;
-            return copy;
-          }
-          return [item, ...prev];
-        });
+        const previous = itemsRef.current;
+        const next = previous.some(value => value.id === item.id)
+          ? previous.map(value => value.id === item.id ? item : value)
+          : [item, ...previous];
+        // Persist before acknowledging the write. Quota/privacy-mode failures
+        // reject the promise; the caller can keep its draft and offer retry.
+        localStorage.setItem(lsKey, JSON.stringify(next));
+        itemsRef.current = next;
+        setItems(next);
       }
     },
-    [remote, uid, childId, name, scope]
+    [remote, uid, childId, name, scope, lsKey]
   );
 
   const remove = useCallback(
     async (id: string) => {
-      if (scopeRef.current !== scope) return;
+      if (scopeRef.current !== scope) throw new Error("The active child changed");
       if (remote && db && uid) {
         await deleteDoc(doc(db, `users/${uid}/children/${childId}/${name}`, id));
       } else {
-        setItems((prev) => prev.filter((p) => p.id !== id));
+        const next = itemsRef.current.filter(item => item.id !== id);
+        localStorage.setItem(lsKey, JSON.stringify(next));
+        itemsRef.current = next;
+        setItems(next);
       }
     },
-    [remote, uid, childId, name, scope]
+    [remote, uid, childId, name, scope, lsKey]
   );
 
   const replaceAll = useCallback(
     async (next: T[]) => {
-      if (scopeRef.current !== scope) return;
+      if (scopeRef.current !== scope) throw new Error("The active child changed");
       if (remote && db && uid) {
         const colRef = collection(db, `users/${uid}/children/${childId}/${name}`);
         const batch = writeBatch(db);
         next.forEach((it) => batch.set(doc(colRef, it.id), it as Record<string, unknown>));
         await batch.commit();
       } else {
+        localStorage.setItem(lsKey, JSON.stringify(next));
+        itemsRef.current = next;
         setItems(next);
       }
     },
-    [remote, uid, childId, name, scope]
+    [remote, uid, childId, name, scope, lsKey]
   );
 
   return { items, loaded, error, remote, upsert, remove, replaceAll };

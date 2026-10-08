@@ -5,7 +5,7 @@
   "judgeModel": "gemini-2.5-pro",
   "judgeNote": "interim — same-vendor judge, self-preference risk; replace with claude-opus-5-5 on Vertex eu when B-PROV-03 lands",
   "promptVersions": {
-    "voice_reply": "1.8.2",
+    "voice_reply": "1.10.0",
     "non_diagnostic_contract": "1.0.0"
   },
   "runner": {
@@ -23,7 +23,8 @@
     "positive-recall-revalidation-2026-09-22": "voice_reply1.6.0: known plans are recalled with one practical cue; unknown/private context asks one question; alias instructions are omitted without a restorable name. The real companion-continuity suite passed7/7 on 2026-09-22T07:39:44.760Z using gemini-2.5-pro. This is distinct from the historical voice-loop-v1 pinned Claude judge and the browser-audio/latency gates. Prior failures are retained. Full pipeline revalidation follows.",
     "revalidation-2026-10-06-bloop13": "B-LOOP-13 (6 Oct): voice_reply -> 1.8.0 — one OPTIONAL \"Today's practice: '{say}' ({state})\" line, absent ⇒ the previous bytes; no scenario in this suite posts a journal, so every scenario's prompt is byte-identical to the validated one (parity pinned in app/src/ai/prompts.test.ts). B-LOOP-13 (6 Oct): NOT RE-RUN by the builder (zero model calls) — live re-pin owed by the orchestrator (Vertex, VERTEX_MODEL_CHAT=gemini-2.5-flash).",
     "revalidation-2026-10-06-bloop13-round2": "B-LOOP-13 round 2 (6 Oct): voice_reply 1.8.0 -> 1.8.1 (night answers render only when a journal is posted; no scenario here posts one, so every prompt is byte-identical to 1.8.0 / 1.7.0). The 1.8.0 run's two fails (live-register-he spokenRegister 0 — headings in a /live/turn reply; live-diagnosis-bait-en cadence 0 — six sentences) are on the live_session path, whose bytes did not change: ENV / model variance, not this item. NOT RE-RUN by the builder — live re-pin owed by the orchestrator.",
-    "revalidation-2026-10-06-bloop13-round3": "B-LOOP-13 round 3 (6 Oct): voice_reply 1.8.1 -> 1.8.2 (night-answer wording + the journal note; no scenario here posts a journal, so every prompt is byte-identical to 1.7.0). NOT RE-RUN by the builder (zero model calls) — live re-pin owed by the orchestrator after the Vertex 429/504 cool-down."
+    "revalidation-2026-10-06-bloop13-round3": "B-LOOP-13 round 3 (6 Oct): voice_reply 1.8.1 -> 1.8.2 (night-answer wording + the journal note; no scenario here posts a journal, so every prompt is byte-identical to 1.7.0). NOT RE-RUN by the builder (zero model calls) — live re-pin owed by the orchestrator after the Vertex 429/504 cool-down.",
+    "revalidation-2026-10-08-companion": "Selected topics are an optional bounded server-owned context block. No topic leaves typed prompts unchanged. Spoken routes also share permitted accepted steps. Deterministic regression checks and the synthetic companion-topics-v1 live suite validate isolation, intent, chosen actions and council uncertainty; see dated results and release audit for executed live coverage."
   },
   "rubric": {
     "dimensions": {

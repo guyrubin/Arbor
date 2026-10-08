@@ -243,6 +243,7 @@ let focusPrompt = "";
 let chatPrompt = "";
 const perspectivePrompts: string[] = [];
 let unsafePerspective = false;
+let inventedProposal = false;
 const provider = {
   generateJson: async ({ prompt }: { prompt: string }) => {
     if (prompt.includes("one voice on a parenting council")) {
@@ -265,7 +266,7 @@ const provider = {
       todayPlan: ["Name the feeling and offer two choices."], parentScript: "I can see this is hard.", avoid: ["Long lectures."],
       observe: ["When it starts."], escalateIf: ["The pattern intensifies for two weeks."],
       frameRouting: { aim: "a", twoAxes: "b", story: "c", shadow: "d", marriage: "e", shepherd: "f" },
-      memoryProposals: [], handoffNotes: { teacher: "t", professional: "p" }, sourceCardsUsed: [],
+      memoryProposals: inventedProposal ? [{ fact: "A leaving ritual helped this child", source: "council inference", retention: "short" }] : [], handoffNotes: { teacher: "t", professional: "p" }, sourceCardsUsed: [],
     });
   },
   async *streamText() { yield ""; },
@@ -349,6 +350,18 @@ describe("B-AI-01 — routes consume CompanionContext", () => {
     } finally {
       unsafePerspective = false;
     }
+  });
+
+  it("council suggestions cannot become reported outcomes in the contract or memory queue", async () => {
+    inventedProposal = true;
+    try {
+      const res = await post("/council", { message: "What might make leaving easier?", childProfile: { id: "child-a", age: 4 }, topicId: "topic-a" });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.contract.memoryProposals).toEqual([]);
+      expect(body.memoryReviewItems).toEqual([]);
+      expect(JSON.stringify(body)).not.toContain("A leaving ritual helped");
+    } finally { inventedProposal = false; }
   });
 
   it.each(["/chat", "/council"])("%s private turns do not load topic, facts, actions or program", async (route) => {

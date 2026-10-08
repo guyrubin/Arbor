@@ -1354,6 +1354,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
 
       const structured = privacy.restoreDeep(coachResponseZodSchema.parse(parseJson(rawResponse.trim())));
       const restoredTakes = privacy.restoreDeep(takes);
+      // Council hypotheses and suggested experiments are not parent reports.
+      // Keep them out of both the response contract and the memory review queue.
+      structured.memoryProposals = [];
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
         structured.sourceCardsUsed = knowledgeCards.map((c) => c.id);
       }
@@ -1386,15 +1389,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // arrives as a fact the parent is asked to approve, so it must be in
       // their words. scrubMemoryProposals rewrites the assessment register and
       // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
-      const memoryReviewItems = canReadMemory ? await appendMemoryProposals(memoryStore, childId, scrubMemoryProposals(structured.memoryProposals), {
-        familyId,
-        prompt: message,
-        frameRouting: structured.frameRouting,
-        // B-GROWTH-29: the fact carries the answer's registry domains
-        answerDomains: structured.domains,
-        // B-AI-07: the name is one token when near-duplicates are compared
-        childName: typeof childProfile?.name === "string" ? childProfile.name : null
-      }) : [];
+      const memoryReviewItems: [] = [];
       budget.settle();
       const payload = { text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems };
       if (streamResponse) {

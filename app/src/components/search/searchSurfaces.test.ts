@@ -98,12 +98,12 @@ describe("W2.7 nav de-overload — emphasis only", () => {
   // Heartwood D5 ratified the W2.7 canon follow-up: the slot ORDER now matches
   // the emphasis set (Today · Journal · Ask lead, Growth fourth). Still four
   // tabs + More — no section is removed from the bar.
-  it("primary section ids are the Heartwood D5 slots (no removal)", () => {
-    expect(mobileNav).toContain('const PRIMARY_SECTION_IDS = ["today", "journal", "ask", "growth"] as const;');
+  it("three companion places precede Talk, with every other destination in More", () => {
+    expect(mobileNav).toContain('const PRIMARY_SECTION_IDS = ["today", "growth", "practice", "ask"] as const;');
   });
 
-  it("emphasis set is the three primary jobs (today/ask/journal)", () => {
-    expect(mobileNav).toContain('new Set<string>(["today", "ask", "journal"])');
+  it("all four labeled doors remain equally readable", () => {
+    expect(mobileNav).toContain('new Set<string>(["today", "growth", "practice", "ask"])');
   });
 
   it("quieter rendering is size/opacity only — colors stay on tokens", () => {
@@ -112,7 +112,7 @@ describe("W2.7 nav de-overload — emphasis only", () => {
     const barChunk = mobileNav.slice(navBarAt, sheetAt);
     expect(barChunk).toContain("var(--arbor-clay-deep)");
     expect(barChunk).toContain("var(--arbor-muted)");
-    expect(barChunk).toContain("opacity");
+    expect(barChunk).not.toMatch(/opacity:\s*0\.[0-9]/);
     // No raw hex colors introduced in the bar region.
     expect(barChunk).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });

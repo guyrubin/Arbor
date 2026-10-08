@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "feature": "Selected parent topics across typed, spoken and council routes. Synthetic contract/evaluation fixtures; expected behavior follows the approved product boundary, not a clinical golden-set endorsement.",
   "judgeModel": "gemini-2.5-pro",
-  "promptVersions": { "coach_chat": "1.8.0", "council_synthesis": "1.3.0", "voice_reply": "1.10.0", "live_session": "1.6.0" },
+  "promptVersions": { "coach_chat": "1.8.0", "council_synthesis": "1.3.1", "voice_reply": "1.10.0", "live_session": "1.6.0" },
   "runner": { "offlineGate": "app/src/server/familyTopicContext.test.ts", "liveJudge": "npm run eval:judge -- companion-topics-v1", "fixturePolicy": "Local synthetic stores only. Topic fixtures are injected at the server ledger seam; titles never come from the client wire. No clinical golden-set review claimed." },
   "rubric": {
     "dimensions": {

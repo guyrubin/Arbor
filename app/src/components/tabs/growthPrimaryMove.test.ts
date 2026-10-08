@@ -62,10 +62,10 @@ describe("GP-06 negative controls — the matchers reject the pre-change hub", (
 });
 
 describe("GP-06 — the hub's declared primaryMove is the observe row", () => {
-  it("the contract still declares notice-milestone for the development hub", () => {
+  it("the replacement portrait declares exploration as the development primary move", () => {
     const contract = SURFACE_CONTRACTS.find((c) => c.route === "development");
     expect(contract).toBeTruthy();
-    expect(contract!.primaryMove).toBe("notice-milestone");
+    expect(contract!.primaryMove).toBe("explore-child-record");
     expect(contract!.depth).toBe(0);
   });
 

@@ -121,7 +121,7 @@ describe("TJB-05 — the source is registered and the contract admits it", () =>
   it("the overview contract's threadWrite names it (it declared \"none\" before)", () => {
     const overview = SURFACE_CONTRACTS.find((c) => c.route === "overview");
     // B-LOOP-07: the move is the practice; the ledger (dose rows) is still the thread write.
-    expect(overview?.primaryMove).toBe("do-practice");
+    expect(overview?.primaryMove).toBe("choose-next-step");
     expect(overview?.threadWrite).toBe("actionOutcomes");
     // Negative control: the assertion above would have FAILED on the shipped
     // pre-change shape, which is the whole point of SC-4 (no silent dead-ends).

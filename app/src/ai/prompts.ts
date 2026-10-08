@@ -224,7 +224,7 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // builder): coach-core-v1 (+4 practice-line scenarios), coach-hardmoment-seed-v1.
   // Companion experience: an optional parent-selected topic; council shares the context ledger.
   coach_chat: { version: "1.8.0", sha256: "670672691c15c558eccf22d5cfbe05970b4467038e1ff276d6685c5bf0cfab08" },
-  council_synthesis: { version: "1.3.0", sha256: "b5819d4b1668d45a0d3160f93e5610e83823bd2802a622cb129c54b001841f5c" },
+  council_synthesis: { version: "1.3.1", sha256: "7a2dd9585732f9ee8f93b0ad57c3104c176732e0a11f80218534756e34a81bb1" },
   // voice_reply 1.7.0 / live_session 1.5.0 (B-PROG-01, 2026-10-06): the
   // spoken context (ai/spokenContext.ts) renders the OPTIONAL "Active
   // program: {name}, week {n}: {skill}" line when the family has an active
@@ -545,7 +545,7 @@ ${childProfile ? JSON.stringify(promptProfile(childProfile), null, 2) : "None pr
 
 ${councilTakes}
 
-Integrate the council's distinct lenses into one coherent, non-diagnostic answer — lead with connection, then capability, then context. Do not contradict the lenses.
+Integrate the council's distinct lenses into one coherent, non-diagnostic answer — lead with connection, then capability, then context. The lenses are possibilities, not evidence about this child. Discard any claim that is not grounded in the parent's actual report or approved memory. A question is not a report of distress or a previous outcome. Use conditional language when the experience is unknown; never turn a suggested experiment into something that already helped. Set memoryProposals to []: council deliberation does not establish facts for the child's record.
 Parent question:
 ${message}
 

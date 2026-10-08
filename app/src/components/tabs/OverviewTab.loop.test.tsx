@@ -60,7 +60,7 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
     expect(OV).toContain('stampMove={firstBlock === "practice" ? primaryMoveId : undefined}');
     expect(OV).toContain('stampMove={firstBlock === "tonight" ? primaryMoveId : undefined}');
     expect(OV).not.toMatch(/<div data-primary-move=/);
-    expect(contractFor("overview")).toMatchObject({ primaryMove: "do-practice", moduleBudget: 3, demotionTarget: "disclosure" });
+    expect(contractFor("overview")).toMatchObject({ primaryMove: "choose-next-step", moduleBudget: 3, demotionTarget: "disclosure" });
   });
 
   it("Tonight is a pointer line in the morning, the flow in the evening; the door is ONE collapsed disclosure", () => {

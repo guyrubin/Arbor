@@ -462,10 +462,10 @@ function useArborState() {
   // B-TODAY-15: `via` = where the outcome was rated (the step card or the
   // carry-over ask); the event carries via + daysLate (ids/enums/counts only).
   // B-ASKJB-33: a hard-moment row also stores `held` (the two-tap ask).
-  const recordTodayOutcome = (id: string, outcome: ActionOutcome, via: TodayOutcomeVia = "card", held?: HeldAnswer) => {
+  const saveTodayOutcome = async (id: string, outcome: ActionOutcome, via: TodayOutcomeVia = "card", held?: HeldAnswer) => {
     const item = actionLoop.find((entry) => entry.id === id);
-    if (!item) return;
-    void actionLoopCol.upsert({ ...item, status: "completed", outcome, outcomeAt: new Date().toISOString(), ...(held ? { held } : {}) });
+    if (!item) throw new Error("The selected action is no longer available");
+    await actionLoopCol.upsert({ ...item, status: "completed", outcome, outcomeAt: new Date().toISOString(), ...(held ? { held } : {}) });
     // B-ASKJB-26: a plan step's outcome moves the step — helped → done (the
     // next step becomes today's), somewhat → in progress (kept, next offered),
     // not_today → unchanged (tomorrow's step).
@@ -474,6 +474,9 @@ function useArborState() {
       if (next) setPlanStepStatus(item.planId, item.phaseIdx, item.stepIdx, next);
     }
     try { track("today_action_outcome", todayOutcomeProps({ outcome, capacity: item.capacity, via, acceptedAt: item.acceptedAt })); } catch { /* noop */ }
+  };
+  const recordTodayOutcome = (...args: Parameters<typeof saveTodayOutcome>) => {
+    void saveTodayOutcome(...args).catch(() => toast(t("companion.arbor-context.your-response-wasn-t-saved-please-try-agai"), "error"));
   };
   const removeTodayAction = (id: string) => void actionLoopCol.remove(id);
   /** B-LOOP-09 — "Did it" / "Not today" on today's practice: ONE dose row per
@@ -1340,6 +1343,18 @@ function useArborState() {
     return logItem;
   };
 
+  const saveMoment = async (text: string, opts: { photoAttachment?: string; promptKey?: string; shelf?: ShelfId; milestoneId?: string } = {}): Promise<BehaviorLog | null> => {
+    const { shelf, milestoneId, ...buildOpts } = opts;
+    const built = buildMomentLog(text, newLogContext, buildOpts);
+    if (!built) return null;
+    const logItem: BehaviorLog = { ...built, context: built.context as BehaviorContext,
+      ...(shelf ? { shelf } : {}), ...(milestoneId ? { milestoneId } : {}) };
+    await logsCol.upsert(logItem);
+    track("log_created", { type: logItem.behaviorType, context: logItem.context });
+    trackCaptureSaved("moment");
+    return logItem;
+  };
+
   // Load a log into the form for editing.
   const startEditLog = (id: string) => {
     const log = behaviorLogs.find((l) => l.id === id);
@@ -1673,6 +1688,7 @@ function useArborState() {
     activeTodayAction,
     acceptTodayAction,
     recordTodayOutcome,
+    saveTodayOutcome,
     removeTodayAction,
     recordPracticeDose,
     recordFromRecordAnswer,
@@ -1785,6 +1801,7 @@ function useArborState() {
     finalizeVoiceAiTurn,
     handleAddLog,
     addMoment,
+    saveMoment,
     handleAnalyzeBehaviors,
     handleGenerateActionPlan,
     handleToggleMilestone,

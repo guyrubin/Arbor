@@ -43,7 +43,7 @@ const PRE_FIX_TAB = `
 describe("IA-16 — nav labels are legible at 390", () => {
   it("the guard actually found the bar (stays honest)", () => {
     expect(bar.length).toBeGreaterThan(400);
-    expect(bar).toContain("nav.short.");
+    expect(bar).toContain("{label}");
   });
 
   it("every declared label size in the bar is at least 11 px", () => {
@@ -103,7 +103,7 @@ describe("IA-16 — the unread coach count reaches the tab that opens the coach"
   });
 
   it("CLINICAL FIREWALL: the badge renders the count and nothing else", () => {
-    const badge = bar.slice(bar.indexOf("{showBadge &&"), bar.indexOf("{t(\"nav.short."));
+    const badge = bar.slice(bar.indexOf("{showBadge &&"), bar.indexOf("{label}"));
     // the only interpolation inside the chip is the count string itself
     expect([...badge.matchAll(/\{([a-zA-Z.]+)\}/g)].map((m) => m[1])).toEqual(["badge"]);
     expect(badge).not.toMatch(/score|risk|verdict|percentile|behind|flagged/i);
@@ -180,14 +180,14 @@ describe("B-SHELL-03 — the Ask badge says what it counts", () => {
   const sidebar = stripComments(read("Sidebar.tsx"));
 
   it("the tab's accessible name carries the count through the review key (MobileNav + Sidebar)", () => {
-    expect(nav).toContain('t("elev.sidebar.badge.review", { label: t("nav.short." + sec.id), count: pendingReviewCount })');
+    expect(nav).toContain('t("elev.sidebar.badge.review", { label, count: pendingReviewCount })');
     expect(bar).toContain("aria-label={reviewAria}");
-    expect(sidebar).toContain('t("elev.sidebar.badge.review", { label: t("nav.cat." + sec.id), count: pendingReviewCount })');
+    expect(sidebar).toContain('t("elev.sidebar.badge.review", { label, count: pendingReviewCount })');
     expect(sidebar).toContain("aria-label={reviewAria}");
   });
 
   it("the visible chip is hidden from AT (the name already says it) and its number is unchanged", () => {
-    const badge = bar.slice(bar.indexOf("{showBadge &&"), bar.indexOf("{t(\"nav.short."));
+    const badge = bar.slice(bar.indexOf("{showBadge &&"), bar.indexOf("{label}"));
     expect(badge).toContain('aria-hidden="true"');
     expect(badge).toContain("{badge}");
   });

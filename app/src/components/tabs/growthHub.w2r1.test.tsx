@@ -8,7 +8,7 @@
  *    parent's own words (no count trio, no type labels as titles).
  *  - The primary-move stamp is on the observe GROUP; the focus section is not
  *    stamped (the 851 px container false positive).
- *  - Law 7: top-level modules = stamps minus demoted ≤ the contract budget;
+ *  - Law 7: legacy growth has four top-level modules;
  *    Words and Tree are views of ONE record card; the tail is demoted.
  *  - After "Not sure" the card names the date (an open loop, not a nudge).
  */
@@ -252,7 +252,8 @@ describe("#/development order, stamp and budget (W2-GROWTH r1)", () => {
     const html = await render();
     const stamps = [...html.matchAll(/<[^>]*data-module="([^"]+)"[^>]*>/g)];
     const top = stamps.filter((m) => !m[0].includes("data-module-demoted")).map((m) => m[1]);
-    const budget = SURFACE_CONTRACTS.find((c) => c.route === "development")!.moduleBudget;
+    // This legacy component is retained for compatibility; ChildPortrait now owns the route.
+    const budget = 4;
     // W2-GROWTH r2: the four blocks B-GROWTH-02 names, by name; RecordByDomain
     // is the Record card's Map view, never a second top-level record object.
     expect(top).toEqual(["growth-new-since", "growth-weekly-focus", "growth-record", "growth-go-deeper"]);

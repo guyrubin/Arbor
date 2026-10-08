@@ -605,7 +605,7 @@ export default function Shell() {
                       : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab onDiscuss={createTopic}/>)
                       : <>
                         {activeTab === "coach" && activeFamilyTopic && <button className="min-h-11 w-full mb-4 px-4 py-3 rounded-xl text-start text-sm" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }} onClick={openTopic}>
-                          {uiLang === "he" ? "השאלה שלנו: " : "Our question: "}{activeFamilyTopic.title}
+                          {t("companion.shell.our-question")}{activeFamilyTopic.title}
                         </button>}
                         <ActiveTabComponent/>
                       </>}

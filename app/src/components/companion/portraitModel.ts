@@ -43,9 +43,9 @@ export function buildPortraitEnvironments(observations: readonly Observation[]) 
 }
 
 export function portraitDiscussionPrompt(domains: readonly DomainId[], domainLabel: (domain: DomainId) => string, he: boolean): string {
-  const areas = [...new Set(domains)].map(domainLabel).join(he ? " ו" : " and ");
+  const lang = he ? "he" : "en";
+  const areas = new Intl.ListFormat(lang, { style: "long", type: "conjunction" }).format([...new Set(domains)].map(domainLabel));
   // The selected IDs may be attached as provenance; saved free-text notes never become a prompt here (G14).
-  return he
-    ? `אני רוצה להבין טוב יותר את ${areas || "התמונה של הילד שלי"}. עזרו לי לבחור שאלה אחת שכדאי להתבונן בה, בלי להסיק מסקנות ממספר התיעודים.`
-    : `I'd like to understand ${areas || "my child's picture"} better. Help me choose one question to explore, without drawing conclusions from how many records there are.`;
+  return translate(lang, "companion.portrait.discuss", { areas: areas || translate(lang, "companion.portrait.myChildPicture") });
 }
+import { translate } from "../../lib/i18n";
