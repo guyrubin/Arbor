@@ -22,6 +22,14 @@ describe("public guide social previews", () => {
     expect(() => renderPublicGuidePreview("<html><head></head></html>", "Guide", "https://arborparentingapp.com/guides")).toThrow();
   });
 
+  it("resolves relative production assets from the root on nested guide routes", () => {
+    const builtShell = shell.replace('src="/src/main.tsx"', 'src="./assets/app.js"');
+    const html = renderPublicGuidePreview(builtShell, "Guide", "https://arborparentingapp.com/guides/tantrum");
+    const base = /<base href="([^"]+)"/.exec(html)?.[1];
+    expect(base).toBeDefined();
+    expect(new URL("./assets/app.js", new URL(base!, "https://arborparentingapp.com/guides/tantrum/")).pathname).toBe("/assets/app.js");
+  });
+
   it("generates directory index files Firebase Hosting can serve for all original 25 guides", () => {
     const dist = mkdtempSync(join(tmpdir(), "arbor-public-guide-build-"));
     writeFileSync(join(dist, "index.html"), shell);

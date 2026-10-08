@@ -7,9 +7,14 @@ import type { CoParentActivitySelection } from "../../sharing/coParentTypes";
 import { api } from "../../lib/api";
 import type { ShareGrant } from "../../types";
 import Icon from "../ui/Icon";
+import { CoParentRequests } from "../../lib/coParentRequests";
 
 const button = "min-h-11 rounded-xl px-4 py-2 text-sm font-bold inline-flex items-center justify-center gap-2 disabled:cursor-wait";
-export default function CoParentInvite({ childId, childName, grants, onChanged }: { childId: string; childName: string; grants: ShareGrant[]; onChanged: () => Promise<void> }) {
+type CoParentInviteProps = { childId: string; childName: string; grants: ShareGrant[]; onChanged: () => Promise<void> };
+export default function CoParentInvite(props: CoParentInviteProps) {
+  return <CoParentInviteSession key={props.childId} {...props} />;
+}
+function CoParentInviteSession({ childId, childName, grants, onChanged }: CoParentInviteProps) {
   const { uiLang } = useLanguage();
   const c = coParentCopy[uiLang];
   const [email, setEmail] = useState("");
@@ -23,50 +28,69 @@ export default function CoParentInvite({ childId, childName, grants, onChanged }
   const [activityError, setActivityError] = useState("");
   const [activityBusy, setActivityBusy] = useState(false);
   const choiceRequest = useRef(crypto.randomUUID());
+  const activityRequests = useRef(new CoParentRequests());
+  const invitationRequests = useRef(new CoParentRequests());
+  useEffect(() => () => { activityRequests.current.invalidate(); invitationRequests.current.invalidate(); }, []);
   const pinned = readTodayPin(childId);
   const loadActivities = useCallback(async () => {
+    const ticket = activityRequests.current.begin();
     setActivityLoading(true);
     try {
       const result = await coParentApi.activities(childId, uiLang);
+      if (!activityRequests.current.latest(ticket)) return;
       setSelection(result); setActivityError("");
       setChoice((current) => result.choices.some((p) => p.id === current) ? current
         : result.choices.find((p) => p.id === pinned)?.id ?? result.choices.find((p) => p.id === result.activity?.practiceId)?.id ?? result.choices[0]?.id ?? "");
-    } catch { setActivityError(c.choiceLoadError); }
-    finally { setActivityLoading(false); }
+    } catch { if (activityRequests.current.latest(ticket)) setActivityError(c.choiceLoadError); }
+    finally { if (activityRequests.current.latest(ticket)) setActivityLoading(false); }
   }, [childId, uiLang, pinned, c.choiceLoadError]);
   useEffect(() => {
+    activityRequests.current.invalidate();
+    setSelection(null); setChoice(""); setActivityError(""); setActivityBusy(false);
     void loadActivities();
     const refresh = () => { if (document.visibilityState === "visible") void loadActivities(); };
     window.addEventListener("focus", refresh);
     const timer = window.setInterval(refresh, 60_000);
-    return () => { window.removeEventListener("focus", refresh); window.clearInterval(timer); };
+    return () => { activityRequests.current.invalidate(); window.removeEventListener("focus", refresh); window.clearInterval(timer); };
   }, [loadActivities]);
   const saveChoice = async (event: React.FormEvent) => {
     event.preventDefault(); if (!choice) return;
+    activityRequests.current.invalidate();
+    const ticket = activityRequests.current.begin();
     setActivityBusy(true); setActivityError(""); setNotice("");
     try {
       await coParentApi.chooseActivity(childId, choice, choiceRequest.current, uiLang);
+      if (!activityRequests.current.belongs(ticket)) return;
       choiceRequest.current = crypto.randomUUID(); setNotice(c.chooseSaved);
       await loadActivities();
-    } catch { setActivityError(c.chooseError); }
-    finally { setActivityBusy(false); }
+    } catch { if (activityRequests.current.belongs(ticket)) setActivityError(c.chooseError); }
+    finally { if (activityRequests.current.belongs(ticket)) setActivityBusy(false); }
   };
   const completeChoice = async () => {
     if (!selection?.activity) return;
+    activityRequests.current.invalidate();
+    const ticket = activityRequests.current.begin();
     setActivityBusy(true); setActivityError(""); setNotice("");
     try {
-      await coParentApi.completeOwnedActivity(childId, selection.activity.id); setNotice(c.completed);
+      await coParentApi.completeOwnedActivity(childId, selection.activity.id);
+      if (!activityRequests.current.belongs(ticket)) return;
+      setNotice(c.completed);
       await loadActivities();
-    } catch (e) { setActivityError(e instanceof CoParentError && e.status === 409 ? c.changed : c.completeError); }
-    finally { setActivityBusy(false); }
+    } catch (e) { if (activityRequests.current.belongs(ticket)) setActivityError(e instanceof CoParentError && e.status === 409 ? c.changed : c.completeError); }
+    finally { if (activityRequests.current.belongs(ticket)) setActivityBusy(false); }
   };
   const candidate = selection?.choices.find((p) => p.id === choice);
-  const team = grants.filter((g) => g.accessMode === "family_workspace" && !g.revokedAt && (!g.expiresAt || Date.parse(g.expiresAt) > Date.now()));
+  const team = grants.filter((g) => g.childId === childId && g.accessMode === "family_workspace" && !g.revokedAt && (!g.expiresAt || Date.parse(g.expiresAt) > Date.now()));
   const create = async (event: React.FormEvent) => {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
-    try { setInvited(await coParentApi.invite(childId, childName, email.trim())); setEmail(""); await onChanged(); }
-    catch { setError(c.createError); }
-    finally { setBusy(false); }
+    const ticket = invitationRequests.current.begin();
+    try {
+      const grant = await coParentApi.invite(childId, childName, email.trim());
+      if (!invitationRequests.current.latest(ticket)) return;
+      setInvited(grant); setEmail(""); await onChanged();
+    }
+    catch { if (invitationRequests.current.latest(ticket)) setError(c.createError); }
+    finally { if (invitationRequests.current.latest(ticket)) setBusy(false); }
   };
   const copy = async (id: string) => {
     try { await navigator.clipboard.writeText(coParentLink(id)); setNotice(c.copied); }
@@ -78,10 +102,11 @@ export default function CoParentInvite({ childId, childName, grants, onChanged }
     catch (error) { if (!(error instanceof DOMException && error.name === "AbortError")) await copy(id); }
   };
   const revoke = async (id: string) => {
+    const ticket = invitationRequests.current.begin();
     setBusy(true); setError("");
-    try { await api.revokeShare(id); setInvited(null); setNotice(c.stopped); await onChanged(); }
-    catch { setError(c.error); }
-    finally { setBusy(false); }
+    try { await api.revokeShare(id); if (!invitationRequests.current.latest(ticket)) return; setInvited(null); setNotice(c.stopped); await onChanged(); }
+    catch { if (invitationRequests.current.latest(ticket)) setError(c.error); }
+    finally { if (invitationRequests.current.latest(ticket)) setBusy(false); }
   };
   return <section className="rounded-2xl p-5 space-y-4 arbor-depth-card min-w-0" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" }} data-testid="coparent-invite">
     <div className="flex items-start gap-3"><span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}><Icon name="diversity_3" size={22} /></span><div className="min-w-0"><p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{c.free}</p><h2 className="arbor-type-title">{c.title}</h2></div></div>

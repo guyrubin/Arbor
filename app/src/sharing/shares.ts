@@ -125,8 +125,16 @@ export interface ShareStore {
 /** In-memory store for sandbox/dev. */
 export class LocalShareStore implements ShareStore {
   private grants = new Map<string, ShareGrant>();
+  private closedChildren = new Set<string>();
 
-  async create(grant: ShareGrant) { this.grants.set(grant.id, grant); return grant; }
+  async create(grant: ShareGrant) {
+    if (grant.accessMode === "family_workspace") {
+      if (this.closedChildren.has(`${grant.ownerUid}/${grant.childId}`)) throw new Error("child_unavailable");
+      const existing = [...this.grants.values()].find((g) => g.ownerUid === grant.ownerUid && g.childId === grant.childId && g.recipientEmail === grant.recipientEmail && g.accessMode === "family_workspace" && isShareActive(g));
+      if (existing) return existing;
+    }
+    this.grants.set(grant.id, grant); return grant;
+  }
 
   async listByOwner(ownerUid: string, childId?: string, opts?: ListByOwnerOptions) {
     return [...this.grants.values()]
@@ -160,6 +168,7 @@ export class LocalShareStore implements ShareStore {
   }
 
   async eraseByChild(ownerUid: string, childId: string) {
+    this.closedChildren.add(`${ownerUid}/${childId}`);
     let removed = 0;
     for (const [id, g] of this.grants) {
       if (g.ownerUid === ownerUid && g.childId === childId) {
@@ -183,6 +192,21 @@ export class FirestoreShareStore implements ShareStore {
   private col() { return this.db.collection("shares"); }
 
   async create(grant: ShareGrant) {
+    if (grant.accessMode === "family_workspace") {
+      return this.db.runTransaction(async (tx) => {
+        // The existing child document serializes invitations across instances.
+        // A read/query without this shared write could create two active links.
+        const child = this.db.doc(`users/${grant.ownerUid}/children/${grant.childId}`);
+        const childSnap = await tx.get(child);
+        if (!childSnap.exists || childSnap.data()?.coParentSharingClosedAt) throw new Error("child_unavailable");
+        const snap = await tx.get(this.col().where("ownerUid", "==", grant.ownerUid));
+        const existing = snap.docs.map((d) => d.data() as ShareGrant).find((g) => g.childId === grant.childId && g.recipientEmail === grant.recipientEmail && g.accessMode === "family_workspace" && isShareActive(g));
+        if (existing) return existing;
+        tx.set(this.col().doc(grant.id), grant);
+        tx.set(child, { coParentInviteVersion: grant.id }, { merge: true });
+        return grant;
+      });
+    }
     await this.col().doc(grant.id).set(grant);
     return grant;
   }
@@ -235,6 +259,12 @@ export class FirestoreShareStore implements ShareStore {
   }
 
   async eraseByChild(ownerUid: string, childId: string) {
+    // Close new family invitations before the sweep, on the same transaction
+    // lock as create. The client may delete the child document a moment later.
+    const child = this.db.doc(`users/${ownerUid}/children/${childId}`);
+    await this.db.runTransaction(async (tx) => {
+      if ((await tx.get(child)).exists) tx.update(child, { coParentSharingClosedAt: new Date().toISOString() });
+    });
     const snap = await this.col()
       .where("ownerUid", "==", ownerUid)
       .where("childId", "==", childId)

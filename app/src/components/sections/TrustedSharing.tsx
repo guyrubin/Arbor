@@ -18,6 +18,7 @@ import { fmtDay } from "../../lib/formatDate";
 import CoParentInvite from "../sharing/CoParentInvite";
 import { coParentLink } from "../../lib/coParentApi";
 import { coParentCopy } from "../../lib/i18nElevation/coParent";
+import { CoParentRequests } from "../../lib/coParentRequests";
 // LC-17: the review step shows the RECIPIENT'S ACTUAL VIEW, built by the same
 // function the server uses for them — not a list of scope labels.
 import { buildPacketInput, buildSharedScopePacket, itemParts, sectionTitle, sectionNote, type PacketItem } from "../../consult/packet";
@@ -119,6 +120,8 @@ export default function TrustedSharing() {
     g.expiresAt ? t("sec.sharing.expires", { date: fmtDay(g.expiresAt, uiLang) }) : t("share.duration.until_revoked");
 
   const [shares, setShares] = useState<ShareGrant[]>([]);
+  const rosterRequests = useRef(new CoParentRequests());
+  useEffect(() => () => { rosterRequests.current.invalidate(); }, []);
   const [inbound, setInbound] = useState<ShareGrant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -245,6 +248,7 @@ export default function TrustedSharing() {
   };
 
   const load = useCallback(async () => {
+    const ticket = rosterRequests.current.begin();
     setLoading(true);
     setError(false);
     // Track each call independently: a partial failure still renders what loaded,
@@ -258,13 +262,14 @@ export default function TrustedSharing() {
         api.listShares(childProfile.id, { history: true }).catch(() => { aFailed = true; return { shares: [] }; }),
         api.sharedWithMe().catch(() => { bFailed = true; return { shares: [] }; }),
       ]);
+      if (!rosterRequests.current.latest(ticket)) return;
       setShares(mine.shares || []);
       setInbound(toMe.shares || []);
       if (aFailed && bFailed) setError(true);
     } catch {
-      setError(true);
+      if (rosterRequests.current.latest(ticket)) setError(true);
     } finally {
-      setLoading(false);
+      if (rosterRequests.current.latest(ticket)) setLoading(false);
     }
   }, [childProfile.id]);
 

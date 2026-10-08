@@ -221,16 +221,17 @@ export type StartHomeProgramResult =
  * profession is finished (returned in `superseded` for the caller to write).
  * Goals are NOT written here — see `acceptProposedGoal`.
  */
-export function startHomeProgram(rows: readonly unknown[], entry: HomeProgramEntry, now: Date = new Date()): StartHomeProgramResult {
+export function startHomeProgram(rows: readonly unknown[], entry: HomeProgramEntry, now: Date = new Date(), intakeId = now.getTime().toString(36)): StartHomeProgramResult {
   if (!isHomeProfession(entry.profession)) return { ok: false, reason: "unknown_profession" };
   const exercises = homeExercises(entry);
   if (!exercises.length) return { ok: false, reason: "no_exercises" };
   const programId = homeProgramId(entry.profession);
   const startedAt = dayKey(now);
+  const id = `${enrolmentId(programId, startedAt)}.${intakeId}`;
   const iso = now.toISOString();
   const nextVisit = entry.nextVisit && DATE.test(entry.nextVisit) ? entry.nextVisit : null;
   const superseded = homeEnrolments(rows)
-    .filter((e) => e.programId === programId && e.status !== "done" && e.id !== enrolmentId(programId, startedAt))
+    .filter((e) => e.programId === programId && e.status !== "done" && e.id !== id)
     .map((e): HomeProgramEnrolment => {
       const { pausedAt: _drop, ...rest } = e;
       return { ...rest, status: "done", finishedAt: iso, updatedAt: iso };
@@ -240,7 +241,7 @@ export function startHomeProgram(rows: readonly unknown[], entry: HomeProgramEnt
     ok: true,
     superseded,
     enrolment: {
-      id: enrolmentId(programId, startedAt),
+      id,
       programId,
       startedAt,
       enrolledAt: iso,

@@ -85,6 +85,17 @@ describe("free co-parent joins the existing child", () => {
     expect((await call("invitations", owner, { childId: "not-owned", recipientEmail: "third@example.test" })).status).toBe(403);
     expect((await call("invitations", owner, { childId: "child-one", recipientEmail: owner.email })).status).toBe(400);
   });
+  it("concurrent invitations reuse one active grant, so one revocation ends access", async () => {
+    const body = { childId: "child-one", recipientEmail: "concurrent@example.test" };
+    const responses = await Promise.all(Array.from({ length: 4 }, () => call("invitations", owner, body)));
+    const grants = await Promise.all(responses.map((r) => r.json() as Promise<ShareGrant>));
+    expect(new Set(grants.map((g) => g.id)).size).toBe(1);
+    await store.revoke(grants[0].id, owner.uid);
+    expect(await store.listByRecipient(body.recipientEmail)).toEqual([]);
+    const fresh = await (await call("invitations", owner, body)).json() as ShareGrant;
+    expect(fresh.id).not.toBe(grants[0].id);
+    expect((await store.get(grants[0].id))?.revokedAt).toBeTruthy();
+  });
   it("the link is not bearer authorization; verified invited identity + acceptance are required", async () => {
     expect((await call(`${grant.id}/workspace`)).status).toBe(403);
     expect((await call(`${grant.id}/accept`, { ...recipient, emailVerified: false }, {})).status).toBe(403);

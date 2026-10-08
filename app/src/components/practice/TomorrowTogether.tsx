@@ -19,7 +19,7 @@ function Scene({ kit, step, label }: { kit: TomorrowKit["id"]; step: number; lab
       {person(78, 104, 1.25, "var(--arbor-clay-soft)")}{person(step === 1 || (kit === "joining" && step === 2) ? 126 : 153, 122, .72, "var(--arbor-clay-soft)")}{person(247, 122, .72, "var(--arbor-green-soft)")}
       {kit === "turns" ? <circle cx={step === 2 ? 167 : 225} cy="135" r="10" fill="var(--arbor-clay-soft)" stroke="var(--arbor-ink)" strokeWidth="2" /> : <g fill="var(--arbor-paper-elevated)" stroke="var(--arbor-ink)" strokeWidth="2"><rect x="180" y="125" width="20" height="18" rx="2" /><rect x="202" y="125" width="20" height="18" rx="2" /><rect x="190" y="106" width="20" height="18" rx="2" /></g>}
       {step === 1 && <path d="M166 75 Q192 53 218 75" fill="none" stroke="var(--arbor-rule-strong)" strokeWidth="2" strokeDasharray="4 5" />}
-      {kit === "joining" && step === 2 && <g fill="var(--arbor-paper-elevated)" stroke="var(--arbor-ink)" strokeWidth="2"><path d="M46 65 L73 58 L99 66 L98 90 L73 82 L48 89 Z M73 58 V82" /><path d="M103 113 Q114 99 126 111" fill="none" /></g>}
+      {kit === "joining" && step === 2 && <g fill="var(--arbor-paper-elevated)" stroke="var(--arbor-ink)" strokeWidth="2"><path d="M42 101 L59 96 L76 102 L75 122 L59 117 L43 122 Z M59 96 V117" /><path d="M103 113 Q114 99 126 111" fill="none" /></g>}
     </>}
   </svg>;
 }

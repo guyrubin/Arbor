@@ -19,7 +19,9 @@ export function renderPublicGuidePreview(shell: string, title: string, url: stri
     [/<meta property="og:description" content="[^"]*"\s*\/?>/, `<meta property="og:description" content="${escape(description)}" />`],
     [/<meta property="og:url" content="[^"]*"\s*\/?>/, `<meta property="og:url" content="${escape(url)}" />`],
   ];
-  let html = shell;
+  // The native app uses relative Vite asset paths. Nested public routes need
+  // their own root base or /guides/<topic>/assets/... returns the SPA as HTML.
+  let html = shell.replace("<head>", '<head>\n  <base href="/" />');
   for (const [pattern, replacement] of fields) {
     if (!pattern.test(html)) throw new Error(`Public guide preview could not find ${pattern.source}`);
     html = html.replace(pattern, () => replacement);

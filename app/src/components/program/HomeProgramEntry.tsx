@@ -32,7 +32,8 @@ import { dayKey } from "../../lib/programs/enrolment";
  * scale words) or it is left out. NOTHING is written before "Save the home
  * program": the state below lives in this component; `entryWrites` computes
  * the documents only on confirm, and the caller (ConsultTab) persists them.
- * The sheet itself is typed or pasted into the fields (no OCR, no model call).
+ * Optional photo/PDF extraction is reviewed in HomeProgramImport; only the
+ * parent's selected, editable text enters this form before final confirmation.
  *
  * `HomeProgramDays` is the family's own "done today" mark per exercise —
  * practice days as counts, never a rate (content/programs/homeProgram).
@@ -134,6 +135,7 @@ export function entryReducer(s: HomeEntryState, a: HomeEntryAction): HomeEntrySt
 export const allGoalsDecided = (s: HomeEntryState): boolean => goalsWritten(s).every(({ i }) => s.decisions[i] !== undefined);
 
 export interface EntryContext {
+  intakeId?: string;
   rows: readonly unknown[];
   existingGoals: readonly FamilyGoal[];
   nextVisit: string | null;
@@ -148,7 +150,7 @@ export type EntryWrites =
 export function entryWrites(s: HomeEntryState, ctx: EntryContext): EntryWrites {
   if (!s.profession) return { ok: false, reason: "unknown_profession" };
   if (!allGoalsDecided(s)) return { ok: false, reason: "undecided" };
-  const started = startHomeProgram(ctx.rows, { profession: s.profession, exercises: filled(s), goals: goalsWritten(s).map((x) => x.g), nextVisit: ctx.nextVisit }, ctx.now);
+  const started = startHomeProgram(ctx.rows, { profession: s.profession, exercises: filled(s), goals: goalsWritten(s).map((x) => x.g), nextVisit: ctx.nextVisit }, ctx.now, ctx.intakeId);
   if ("reason" in started) return { ok: false, reason: started.reason };
   const goals: FamilyGoal[] = [];
   for (const { i } of goalsWritten(s)) {
@@ -213,7 +215,10 @@ export default function HomeProgramEntry({ childId, profession, nextVisit, rows,
   const [s, dispatch] = useReducer(entryReducer, initialState ?? initialEntryState(profession));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
-  const ctx = (): EntryContext => ({ rows, existingGoals, nextVisit, now: now() });
+  // One identity and timestamp per intake: retries stay idempotent; a new
+  // same-day intake preserves the earlier program and its source history.
+  const [intake] = useState(() => ({ id: crypto.randomUUID(), at: now() }));
+  const ctx = (): EntryContext => ({ rows, existingGoals, nextVisit, now: intake.at, intakeId: intake.id });
   const profLabel = (p: HomeProfession) => t(`elev.carehonesty.consult.audience.${p}`);
   const weeks = homeProgramWeeks(nextVisit, now());
   const decided = allGoalsDecided(s);
