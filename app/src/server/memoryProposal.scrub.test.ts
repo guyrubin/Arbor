@@ -143,10 +143,11 @@ describe("the clause and the wiring are both present", () => {
     expect(PLAIN_PARENT_WORDS_CLAUSE).toMatch(/No severity or grading adjectives/);
   });
 
-  it("routes/api.ts scrubs both memory-proposal call sites and the bedtime summary", () => {
+  it("routes/api.ts scrubs the chat memory-proposal call site and the bedtime summary", () => {
     const api = fs.readFileSync(path.resolve(__dirname, "..", "routes", "api.ts"), "utf8");
     const scrubbedCalls = api.match(/appendMemoryProposals\(memoryStore, childId, scrubMemoryProposals\(/g) ?? [];
-    expect(scrubbedCalls).toHaveLength(2);
+    expect(scrubbedCalls).toHaveLength(1);
+    expect(api).toContain("structured.memoryProposals = [];");
     expect(api).not.toMatch(/appendMemoryProposals\(memoryStore, childId, structured\.memoryProposals/);
     expect(api).toContain("PLAIN_PARENT_WORDS_CLAUSE");
     expect(api).toMatch(/\.summary = toParentWords\(/);

@@ -260,7 +260,7 @@ describe("/api/todays-focus inputsUsed (AI-19)", () => {
   });
 });
 
-describe("source scan — appendMemoryProposals is called only from /chat, /council and the parent-initiated /memory propose", () => {
+describe("source scan — appendMemoryProposals is called only from /chat and the parent-initiated /memory propose", () => {
   const apiSrc = fs.readFileSync(path.resolve(__dirname, "api.ts"), "utf8");
   // Split the router into handler slices at every `router.<verb>("<path>"`.
   const HANDLER_HEAD = /router\.(?:get|post|patch|put|delete)\(\s*"([^"]+)"/g;
@@ -273,14 +273,14 @@ describe("source scan — appendMemoryProposals is called only from /chat, /coun
   });
   const callers = slices.filter((s) => /\bappendMemoryProposals\(/.test(s.body)).map((s) => s.route);
 
-  it("negative control: the walker sees the /chat and /council handlers and they DO call appendMemoryProposals", () => {
+  it("the walker sees chat proposals but council hypotheses cannot enter memory", () => {
     expect(slices.some((s) => s.route === "/explain")).toBe(true);
     expect(callers).toContain("/chat");
-    expect(callers).toContain("/council");
+    expect(callers).not.toContain("/council");
   });
 
   it("no other handler proposes memory — in particular not /explain", () => {
-    expect([...new Set(callers)].sort()).toEqual(["/chat", "/council", "/memory/:childId/propose"].sort());
+    expect([...new Set(callers)].sort()).toEqual(["/chat", "/memory/:childId/propose"].sort());
   });
 
   it("/explain never renders the coach contract and runs on the analysis route with the 2-field schema", () => {

@@ -64,6 +64,7 @@ import { readTodayPin } from "../lib/practice/todayPin";
 import { dayKey } from "../practice/signals";
 import type { CaptureSource } from "../components/overview/ConfirmCaptureReview";
 import { useLanguage } from "./LanguageContext";
+import { threadForTopic } from "../lib/topicConversation";
 import type { ExportAudience } from "../consult/packet";
 import type { ProfessionalReportType } from "../lib/reportExport";
 import { ageMonthsOf } from "../lib/age/forChild";
@@ -330,6 +331,7 @@ function useArborState() {
    * omit it). `source` tags where the seed came from for telemetry.
    */
   const seedCoach = (opts: { prompt?: string; lens?: string; source?: string }) => {
+    if (activeConversationId && conversationTopicRef.current !== activeFamilyTopic?.id) newConversation();
     if (opts.prompt !== undefined) setChatInput(opts.prompt);
     if (opts.lens) setSelectedLens(opts.lens);
     setActiveTab("coach");
@@ -776,10 +778,7 @@ function useArborState() {
   // capture path: this is the existing chat-message write seam.
   const appendVoiceUserTurn = (text: string) => {
     if (!text.trim()) return;
-    if (!activeConversationId) {
-      conversationTopicRef.current = activeFamilyTopic?.id;
-      setActiveConversationId(`conv-${Date.now()}`);
-    }
+    prepareTopicConversation();
     setChatMessages((prev) => appendVoiceUser(prev, text, selectedLens));
   };
   const appendVoiceAiDelta = (delta: string) => {
@@ -797,6 +796,34 @@ function useArborState() {
     conversationTopicRef.current = undefined;
     setActiveConversationId(null);
     setChatMessages([]);
+    setChatInput("");
+    setApiError(null);
+    setChatStreamStatus(null);
+  };
+  // Explicit topic choices end the current thread. Opening history below uses
+  // the raw selector so the saved conversation remains readable as recorded.
+  const selectFamilyTopic = (id: string | null) => {
+    if (id && !topicState.familyTopics.some(topic => topic.id === id)) return;
+    if ((activeFamilyTopic?.id ?? null) !== id) newConversation();
+    topicState.selectFamilyTopic(id);
+  };
+  const createFamilyTopic = async (...args: Parameters<typeof topicState.createFamilyTopic>) => {
+    const topic = await topicState.createFamilyTopic(...args);
+    if (currentChildRef.current === childProfile.id) newConversation();
+    return topic;
+  };
+  const updateFamilyTopic = async (...args: Parameters<typeof topicState.updateFamilyTopic>) => {
+    await topicState.updateFamilyTopic(...args);
+    if (currentChildRef.current === childProfile.id && args[1].status === "archived" && activeFamilyTopic?.id === args[0]) newConversation();
+  };
+  const prepareTopicConversation = () => {
+    const next = threadForTopic({ id: activeConversationId, topicId: conversationTopicRef.current, messages: chatMessages }, activeFamilyTopic?.id);
+    if (!next.id) {
+      newConversation();
+      conversationTopicRef.current = next.topicId;
+      setActiveConversationId(`conv-${crypto.randomUUID()}`);
+    }
+    return next.messages;
   };
   const openConversation = (id: string) => {
     const c = conversationsCol.items.find((x) => x.id === id);
@@ -1035,16 +1062,12 @@ function useArborState() {
   const handleChatSend = async (customPrompt?: string, opts?: { displayText?: string }) => {
     const promptValue = customPrompt || chatInput;
     if (!promptValue.trim() || isChatLoading) return;
+    const topicThread = prepareTopicConversation();
 
     if (!customPrompt) setChatInput("");
     setApiError(null);
     setChatStreamStatus(t("coach.status.connecting"));
 
-    // Begin a persisted conversation on the first message of a fresh thread.
-    if (!activeConversationId) {
-      conversationTopicRef.current = activeFamilyTopic?.id;
-      setActiveConversationId(`conv-${Date.now()}`);
-    }
 
     // ASK-1: the user turn + an IMMEDIATE locally-rendered acknowledgment
     // bubble — the parent sees a response begin the moment they send, then the
@@ -1096,7 +1119,7 @@ function useArborState() {
           // i.e. exactly the turns BEFORE the new question. Both fields are absent
           // when empty/off, keeping the request byte-identical to today's.
           ...buildChatContext({
-            thread: chatMessages,
+            thread: topicThread,
             behaviorLogs,
             milestones,
             actionLoop,
@@ -1178,17 +1201,15 @@ function useArborState() {
   // made the button a no-op exactly then. CoachTab disables the button (with
   // a hint) only when no prior user turn exists either.
   const handleCouncilSend = async (customPrompt?: string) => {
-    const lastUserTurn = [...chatMessages].reverse().find((m) => m.sender === "user");
+    const eligibleThread = threadForTopic({ id: activeConversationId, topicId: conversationTopicRef.current, messages: chatMessages }, activeFamilyTopic?.id).messages;
+    const lastUserTurn = [...eligibleThread].reverse().find((m) => m.sender === "user");
     const promptValue = customPrompt || chatInput.trim() || lastUserTurn?.text || "";
     if (!promptValue.trim() || isChatLoading) return;
+    prepareTopicConversation();
 
     if (!customPrompt) setChatInput("");
     setApiError(null);
     setChatStreamStatus(t("coach.status.council"));
-    if (!activeConversationId) {
-      conversationTopicRef.current = activeFamilyTopic?.id;
-      setActiveConversationId(`conv-${Date.now()}`);
-    }
 
     // ASK-8: same retry-dedupe seam as handleChatSend — a council retry after
     // a failure reuses the trailing user question instead of duplicating it.
@@ -1345,9 +1366,11 @@ function useArborState() {
 
   const saveMoment = async (text: string, opts: { photoAttachment?: string; promptKey?: string; shelf?: ShelfId; milestoneId?: string } = {}): Promise<BehaviorLog | null> => {
     const { shelf, milestoneId, ...buildOpts } = opts;
-    const built = buildMomentLog(text, newLogContext, buildOpts);
+    const built = buildMomentLog(text, "", buildOpts);
     if (!built) return null;
-    const logItem: BehaviorLog = { ...built, context: built.context as BehaviorContext,
+    // Together never asks for a place; do not borrow one from another draft.
+    const { context: _unchosenContext, ...moment } = built;
+    const logItem: BehaviorLog = { ...moment,
       ...(shelf ? { shelf } : {}), ...(milestoneId ? { milestoneId } : {}) };
     await logsCol.upsert(logItem);
     track("log_created", { type: logItem.behaviorType, context: logItem.context });
@@ -1667,6 +1690,9 @@ function useArborState() {
 
   return {
     ...topicState,
+    selectFamilyTopic,
+    createFamilyTopic,
+    updateFamilyTopic,
     showSandboxBanner,
     activeTab,
     setActiveTab,

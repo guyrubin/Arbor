@@ -254,7 +254,7 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // 1.5.0). Re-pin owed (live, NOT run by the builder): companion-continuity-v1,
   // voice-loop-v1. B-PROV-10 Part B takes 1.9.0.
   // Existing B-PROV-10 reservation remains 1.9.0; this context revision follows it.
-  voice_reply: { version: "1.10.0", sha256: "77eaa937803f1842920c2548e6e35a93764bd8de0967110bd7eda8155512e524" },
+  voice_reply: { version: "1.10.1", sha256: "cc5e3376df8abac40a00b84df02cc05358779b0a6a9e9eff093985e6ef237144" },
   live_session: { version: "1.6.0", sha256: "e548541a970778692712349da73107873b6bf0b58a211bd5111306a37113aacd" },
   // 1.2.0 (B-AI-15, 2026-10-04): one capture = one log (first moment, never
   // merged, never an array), notes copy the parent's own words, no adjective
@@ -577,7 +577,7 @@ export const buildVoiceReplyPrompt = ({
 ${persona} Apply this lens: ${scholar.name} — ${scholar.method}
 Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
 ${renderSpokenContext(companionContext, { journalAware: true })}${renderVoiceJournalBlock(companionContext?.todayPractice, companionContext?.nightAnswers)}The parent just said: ${JSON.stringify(message)}
-Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, or ask one short clarifying question when the needed context is missing. Never invent an earlier discussion. Use plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${languageDirective}`;
+Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, or ask one short clarifying question when the needed context is missing. Never invent an earlier discussion. Use plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help. Hard length limit: one paragraph, no more than 4 sentences and 65 words, even when several context records are available. Choose ONE adjustment rather than several alternatives. A single routine difficult evening does not itself justify introducing a medical concern or referral; any escalation must be grounded in what the parent actually reported.${languageDirective}`;
 
 export type ExtractLogPromptArgs = {
   childProfile: unknown;

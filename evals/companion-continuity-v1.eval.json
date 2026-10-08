@@ -4,7 +4,7 @@
   "feature": "Spoken coaching continues the active child's settled conversation using parent-approved unexpired memory. Live token context uses the same assembly; live audio quality is evaluated separately.",
   "judgeModel": "gemini-2.5-pro",
   "promptVersions": {
-    "voice_reply": "1.10.0",
+    "voice_reply": "1.10.1",
     "live_session": "1.6.0",
     "non_diagnostic_contract": "1.0.0"
   },
