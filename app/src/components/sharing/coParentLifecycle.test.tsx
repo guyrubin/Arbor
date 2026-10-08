@@ -105,12 +105,12 @@ beforeEach(() => {
 afterEach(() => { unmount(); vi.unstubAllGlobals(); });
 
 describe("co-parent recipient authorization lifetime", () => {
-  it("a newer403 clears private data and an older200 cannot restore it", async () => {
+  it.each([[403, "revoked"], [404, "child_unavailable"]] as const)("a newer %i %s clears private data and an older success cannot restore it", async (status, code) => {
     gate(); await settle(); expect(sharedActivity(gate())).toBeDefined();
     const old = deferred<ReturnType<typeof workspace>>(); const denied = deferred<ReturnType<typeof workspace>>();
     h.api.workspace.mockImplementationOnce(() => old.promise).mockImplementationOnce(() => denied.promise);
     fireFocus(); fireFocus();
-    denied.reject(new CoParentError(403, "revoked")); await settle();
+    denied.reject(new CoParentError(status, code)); await settle();
     expect(sharedActivity(gate())).toBeUndefined();
     old.resolve(workspace("OLD PRIVATE CONTENT")); await settle();
     const tree = gate(); expect(sharedActivity(tree)).toBeUndefined();
@@ -210,17 +210,21 @@ describe("co-parent owner activity lifetime", () => {
     expect(text(ownerActivity(owner()))).toContain("הפעילות בעברית"); expect(text(ownerActivity(owner()))).not.toContain("stale English activity");
   });
 
-  it("switching language during a save releases busy and ignores its old-locale follow-up", async () => {
+  it("a save finishing after a language switch refreshes in the current language and releases busy", async () => {
     owner(); await settle();
     const saving = deferred<unknown>(); h.api.chooseActivity.mockImplementationOnce(() => saving.promise);
     nodes(ownerActivity(owner())).find(node => node.type === "form")!.props.onSubmit({ preventDefault: () => undefined });
     expect(nodes(ownerActivity(owner())).find(node => node.type === "select")!.props.disabled).toBe(true);
-    h.lang = "he"; h.api.activities.mockResolvedValue(selection("הפעילות בעברית")); owner(); await settle();
+    h.lang = "he"; h.api.activities.mockResolvedValueOnce(selection("לפני השמירה")); owner(); await settle();
+    expect(nodes(ownerActivity(owner())).find(node => node.type === "select")!.props.disabled).toBe(true);
+    h.api.activities.mockResolvedValue(selection("הפעילות בעברית"));
     saving.resolve({ saved: true }); await settle();
     const tree = ownerActivity(owner());
     expect(nodes(tree).find(node => node.type === "select")!.props.disabled).toBe(false);
     expect(text(tree)).toContain("הפעילות בעברית");
-    expect(h.api.activities.mock.calls.map(call => call[1])).toEqual(["en", "he"]);
+    expect(text(tree)).not.toContain("לפני השמירה");
+    expect(h.api.activities.mock.calls.map(call => call[1])).toEqual(["en", "he", "he"]);
+    expect(text(owner())).toContain(coParentCopy.he.chooseSaved);
     expect(text(owner())).not.toContain(coParentCopy.en.chooseSaved);
   });
 

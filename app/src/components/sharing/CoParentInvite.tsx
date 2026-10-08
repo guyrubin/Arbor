@@ -29,8 +29,11 @@ function CoParentInviteSession({ childId, childName, grants, onChanged }: CoPare
   const [activityBusy, setActivityBusy] = useState(false);
   const choiceRequest = useRef(crypto.randomUUID());
   const activityRequests = useRef(new CoParentRequests());
+  const activityMutations = useRef(new CoParentRequests());
   const invitationRequests = useRef(new CoParentRequests());
-  useEffect(() => () => { activityRequests.current.invalidate(); invitationRequests.current.invalidate(); }, []);
+  const currentCopy = useRef(c);
+  currentCopy.current = c;
+  useEffect(() => () => { activityRequests.current.invalidate(); activityMutations.current.invalidate(); invitationRequests.current.invalidate(); }, []);
   const pinned = readTodayPin(childId);
   const loadActivities = useCallback(async () => {
     const ticket = activityRequests.current.begin();
@@ -44,9 +47,13 @@ function CoParentInviteSession({ childId, childName, grants, onChanged }: CoPare
     } catch { if (activityRequests.current.latest(ticket)) setActivityError(c.choiceLoadError); }
     finally { if (activityRequests.current.latest(ticket)) setActivityLoading(false); }
   }, [childId, uiLang, pinned, c.choiceLoadError]);
+  // Locale changes replace reads, while a mutation still belongs to this child.
+  // Its completion reloads through the current locale rather than a stale closure.
+  const currentActivityLoad = useRef(loadActivities);
+  currentActivityLoad.current = loadActivities;
   useEffect(() => {
     activityRequests.current.invalidate();
-    setSelection(null); setChoice(""); setActivityError(""); setActivityBusy(false);
+    setSelection(null); setChoice(""); setActivityError("");
     void loadActivities();
     const refresh = () => { if (document.visibilityState === "visible") void loadActivities(); };
     window.addEventListener("focus", refresh);
@@ -56,28 +63,28 @@ function CoParentInviteSession({ childId, childName, grants, onChanged }: CoPare
   const saveChoice = async (event: React.FormEvent) => {
     event.preventDefault(); if (!choice) return;
     activityRequests.current.invalidate();
-    const ticket = activityRequests.current.begin();
+    const ticket = activityMutations.current.begin();
     setActivityBusy(true); setActivityError(""); setNotice("");
     try {
       await coParentApi.chooseActivity(childId, choice, choiceRequest.current, uiLang);
-      if (!activityRequests.current.belongs(ticket)) return;
-      choiceRequest.current = crypto.randomUUID(); setNotice(c.chooseSaved);
-      await loadActivities();
-    } catch { if (activityRequests.current.belongs(ticket)) setActivityError(c.chooseError); }
-    finally { if (activityRequests.current.belongs(ticket)) setActivityBusy(false); }
+      if (!activityMutations.current.latest(ticket)) return;
+      choiceRequest.current = crypto.randomUUID(); setNotice(currentCopy.current.chooseSaved);
+      await currentActivityLoad.current();
+    } catch { if (activityMutations.current.latest(ticket)) setActivityError(currentCopy.current.chooseError); }
+    finally { if (activityMutations.current.latest(ticket)) setActivityBusy(false); }
   };
   const completeChoice = async () => {
     if (!selection?.activity) return;
     activityRequests.current.invalidate();
-    const ticket = activityRequests.current.begin();
+    const ticket = activityMutations.current.begin();
     setActivityBusy(true); setActivityError(""); setNotice("");
     try {
       await coParentApi.completeOwnedActivity(childId, selection.activity.id);
-      if (!activityRequests.current.belongs(ticket)) return;
-      setNotice(c.completed);
-      await loadActivities();
-    } catch (e) { if (activityRequests.current.belongs(ticket)) setActivityError(e instanceof CoParentError && e.status === 409 ? c.changed : c.completeError); }
-    finally { if (activityRequests.current.belongs(ticket)) setActivityBusy(false); }
+      if (!activityMutations.current.latest(ticket)) return;
+      setNotice(currentCopy.current.completed);
+      await currentActivityLoad.current();
+    } catch (e) { if (activityMutations.current.latest(ticket)) setActivityError(e instanceof CoParentError && e.status === 409 ? currentCopy.current.changed : currentCopy.current.completeError); }
+    finally { if (activityMutations.current.latest(ticket)) setActivityBusy(false); }
   };
   const candidate = selection?.choices.find((p) => p.id === choice);
   const team = grants.filter((g) => g.childId === childId && g.accessMode === "family_workspace" && !g.revokedAt && (!g.expiresAt || Date.parse(g.expiresAt) > Date.now()));

@@ -50,7 +50,7 @@ function CoParentSession({ children }: { children: React.ReactNode }) {
 
   const failure = (e: unknown, ticket: CoParentRequestTicket, saving = false) => {
     if (!requests.current.belongs(ticket)) return;
-    if (e instanceof CoParentError && e.status === 403) {
+    if (e instanceof CoParentError && (e.status === 403 || (e.status === 404 && e.code === "child_unavailable"))) {
       requests.current.invalidate();
       activeGrant.current = null;
       setWorkspace(null); setSelected(null); setShares([]); setNote(""); setNotice("");
@@ -156,7 +156,7 @@ function CoParentSession({ children }: { children: React.ReactNode }) {
     }
     catch (e) {
       if (!requests.current.belongs(ticket)) return;
-      if (e instanceof CoParentError && e.status === 403) failure(e, ticket);
+      if (e instanceof CoParentError && (e.status === 403 || (e.status === 404 && e.code === "child_unavailable"))) failure(e, ticket);
       else setError(e instanceof CoParentError && e.status === 409 ? "changed" : "completeError");
     }
     finally { if (requests.current.belongs(ticket)) setBusy(false); }
