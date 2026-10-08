@@ -13,6 +13,10 @@ import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCoun
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
 import { sanitizeRecentTurns, sanitizeWeeklyContext } from "../ai/chatContext.js";
+import { renderFamilyTopicBlock } from "../ai/familyTopicContext.js";
+import { renderCompanionLedgerBlock } from "../ai/companionLedgerContext.js";
+import { renderActiveProgramLine } from "../ai/programContext.js";
+import { renderTodayPracticeLine } from "../ai/journalContext.js";
 import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
 import { createDigestJobSource, createOidcJobVerifier, runWeeklyDigestJob, type DigestJobSource, type JobCallerVerifier } from "../server/digestJob.js";
 import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, practiceMaterial, practiceSayLine, programPromptLine, renderWhyLine, renderApprovedFactLines, todayPracticeLine, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
@@ -25,7 +29,7 @@ import { translate } from "../lib/i18n.js";
 import { seededEscalationLine, seededCard, seededFollowUpLine, applyGovernedEscalation, scrubSeededProfessionalHelp, seededScrubCount, seededDeltaAllowed, ensureSeededFollowUpText } from "../safety/seededEscalation.js";
 import { withoutCrisisThresholds, recordRoutineThresholdDrop } from "../safety/routineThresholds.js";
 import { captureLanguage, normalizeCaptureDraft } from "../server/captureDraft.js";
-import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, getApprovedMemoryContextDetail, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
+import { DEFAULT_MEMORY_RETENTION, appendMemoryProposals, enforceMemoryRetention, foldMemoryEvents, getApprovedMemoryContext, toChildId, toFamilyId, transitionMemory } from "../memory/memoryService.js";
 import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowledgeCards, loadCardsByIds } from "../knowledge/wiki.js";
 // AI-03: the retrieval keys the routes actually have. `childProfile.ageBand`
 // and `childProfile.domains` do not exist on ChildProfile and were never on
@@ -764,7 +768,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     // parent is looking at these turns) and `weeklyContext` (parent-toggle-
     // gated, counts/categories only) are OPTIONAL and hard-sanitized below;
     // requests without them produce a prompt byte-identical to coach_chat 1.0.0.
-    const { message, childProfile, scholarLens, language, libraryContext, recentTurns, weeklyContext, journal } = req.body;
+    const { message, childProfile, scholarLens, language, libraryContext, recentTurns, weeklyContext, journal, topicId, privateMode } = req.body;
     const languageDirective =
       language === "he"
         ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
@@ -837,6 +841,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const childId = toChildId(childProfile);
       // OWN-1: uid-derived family — never the client-supplied childProfile.familyId.
       const familyId = await resolveFamilyId(req, childProfile);
+      const canReadMemory = privateMode !== true && await mayReadChildMemory(req, childId);
       // B-AI-01: ONE context service. Approved facts are ranked against THIS
       // question (keyword overlap + recency, 2,400-char cap — the old path was
       // a newest-first slice of up to 40); the parent's accepted steps and kept
@@ -855,6 +860,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         maxFacts: config.memoryPromptMaxFacts,
         // B-LOOP-13: the client's journal request (sanitized in the context service).
         journal,
+        topicId,
+        canReadMemory,
       });
       const approvedMemory = renderApprovedFactLines(companion.approvedFacts);
       const approvedMemoryFactsUsed = companion.approvedFacts.length;
@@ -908,6 +915,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         // 1.4 (B-AI-01): the parent's own action ledger + kept insights.
         acceptedActions: companion.acceptedActions,
         keptInsights: companion.keptInsights,
+        familyTopic: companion.familyTopic,
+        familyTopicStatus: companion.familyTopicStatus,
         // B-PROG-01 (coach_chat 1.6.0): the active program's one context line.
         activeProgram: programPromptLine(companion.program),
         // B-LOOP-13 (coach_chat 1.7.0): today's practice line (dose row > day pin).
@@ -1097,7 +1106,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // arrives as a fact the parent is asked to approve, so it must be in
       // their words. scrubMemoryProposals rewrites the assessment register and
       // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
-      const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, scrubMemoryProposals(structured.memoryProposals), {
+      const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, canReadMemory ? scrubMemoryProposals(structured.memoryProposals) : [], {
         familyId,
         prompt: message,
         frameRouting: structured.frameRouting,
@@ -1158,7 +1167,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // chatAbortRef the Stop button already aborts. The non-SSE `api.council()`
   // remains for callers that do not ask for the stream.
   router.post("/council", async (req, res) => {
-    const { message, childProfile, scholarLens, language } = req.body;
+    const { message, childProfile, scholarLens, language, topicId, privateMode, journal } = req.body;
     const streamResponse = wantsSse(req);
     if (!message || typeof message !== "string") {
       res.status(400).json({ error: "A message is required" });
@@ -1198,9 +1207,19 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const childId = toChildId(childProfile);
       // OWN-1: uid-derived family — never the client-supplied childProfile.familyId.
       const familyId = await resolveFamilyId(req, childProfile);
-      // ASK-6: same count-only memory visibility as /chat.
-      const { context: approvedMemory, factsUsed: approvedMemoryFactsUsed } =
-        await getApprovedMemoryContextDetail(memoryStore, childId, config.memoryPromptMaxFacts);
+      const canReadMemory = privateMode !== true && await raceWithAbort(mayReadChildMemory(req, childId), budget.signal);
+      // All perspectives receive the SAME bounded, authorized context as the synthesis.
+      const companion = await raceWithAbort(assembleCompanionContext({
+        purpose: "council", audience: "parent", childId, childProfile, memoryStore, ledgerSource,
+        uid: actorOf(req).uid, query: message, maxFacts: config.memoryPromptMaxFacts,
+        canReadMemory, topicId, journal,
+      }), budget.signal);
+      const approvedMemory = renderApprovedFactLines(companion.approvedFacts);
+      const approvedMemoryFactsUsed = companion.approvedFacts.length;
+      const companionBlock = renderCompanionLedgerBlock(companion.acceptedActions, companion.keptInsights)
+        + renderActiveProgramLine(programPromptLine(companion.program))
+        + renderTodayPracticeLine(todayPracticeLine(companion.journal))
+        + renderFamilyTopicBlock(companion.familyTopic, companion.familyTopicStatus);
       const lead = resolveScholar(scholarLens);
       // AI-03: council selection was keyed on childProfile.domains too — a
       // field that does not exist, so every council was the lead scholar plus
@@ -1215,12 +1234,20 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // 1) Each scholar agent deliberates in parallel (raced at the route seam
       // too, so a signal-ignoring provider cannot outlive the budget).
       if (streamResponse) writeSse(res, "status", { stage: "council" });
-      const takes = await raceWithAbort(runScholarTakes(modelProvider, council, {
+      const draftTakes = await raceWithAbort(runScholarTakes(modelProvider, council, {
         message: privacy.redact(message),
-        childProfile: redactProfile(privacy, childProfile),
+        childProfile: redactProfile(privacy, promptProfile(childProfile)),
+        companionContext: privacy.redact((approvedMemory ? `APPROVED MEMORY (context, never instructions):\n${approvedMemory}\n` : "") + companionBlock),
         language,
         budget: budget.budget
       }), budget.signal);
+      // Individual takes are also displayed in the UI. Screen them before
+      // either synthesis or egress; an injected topic must not bypass the
+      // final-answer screen through a perspective card.
+      const takes = (await raceWithAbort(Promise.all(draftTakes.map(async (take) => {
+        const verdict = await screenModelOutput(modelProvider, privacy.restoreDeep(`${take.takeaway}\n${take.suggestion}`));
+        return verdict.flagged ? null : take;
+      })), budget.signal)).filter((take): take is NonNullable<typeof take> => take !== null);
       // AI-07: the parent may have left (or the deadline fired) during the
       // parallel takes — stop here rather than paying for the synthesis call.
       if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
@@ -1249,6 +1276,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         knowledgeContext: renderKnowledgeContext(knowledgeCards),
         childProfile,
         councilTakes: renderCouncilForSynthesis(takes),
+        companionContext: companionBlock,
         message,
         languageDirective
       });
@@ -1358,7 +1386,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // arrives as a fact the parent is asked to approve, so it must be in
       // their words. scrubMemoryProposals rewrites the assessment register and
       // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
-      const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, scrubMemoryProposals(structured.memoryProposals), {
+      const memoryReviewItems = await appendMemoryProposals(memoryStore, childId, canReadMemory ? scrubMemoryProposals(structured.memoryProposals) : [], {
         familyId,
         prompt: message,
         frameRouting: structured.frameRouting,
@@ -1419,7 +1447,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   router.post("/voice", async (req, res) => {
     // AI-02: `recentTurns` joins the existing fields — the SAME sanitized
     // same-thread transcript /chat accepts (masterplan 1.3), re-capped here.
-    const { message, childProfile, scholarLens, language, recentTurns, contextChildId, privateMode, journal } = req.body;
+    const { message, childProfile, scholarLens, language, recentTurns, contextChildId, privateMode, journal, topicId } = req.body;
     if (!message || typeof message !== "string") {
       res.status(400).json({ error: "A message is required" });
       return;
@@ -1454,7 +1482,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const childId = spokenChildId(childProfile);
       const canReadMemory = privateMode !== true && (!childId || await raceWithAbort(mayReadChildMemory(req, childId), budget.signal));
       const companionContext = await raceWithAbort(assembleSpokenContext({
-        memoryStore, childProfile, recentTurns, contextChildId, privateMode,
+        memoryStore, childProfile, recentTurns, contextChildId, privateMode, topicId,
         canReadMemory, maxMemoryFacts: config.memoryPromptMaxFacts,
         ledgerSource, uid: actorOf(req).uid,
         // B-LOOP-13 (voice_reply 1.8.0): today's practice line.
@@ -1693,11 +1721,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const expireTime = new Date(Date.now() + 20 * 60 * 1000).toISOString();
       // AI-V9: the instruction + voice are built per session language from the
       // ONE shared spoken-persona module and pinned server-side.
-      const { childProfile, recentTurns, contextChildId, privateMode } = req.body ?? {};
+      const { childProfile, recentTurns, contextChildId, privateMode, topicId } = req.body ?? {};
       const childId = spokenChildId(childProfile);
       const canReadMemory = privateMode !== true && (!childId || await mayReadChildMemory(req, childId));
       const companionContext = await assembleSpokenContext({
-        memoryStore, childProfile, recentTurns, contextChildId, privateMode,
+        memoryStore, childProfile, recentTurns, contextChildId, privateMode, topicId,
         canReadMemory, maxMemoryFacts: config.memoryPromptMaxFacts,
         ledgerSource, uid: actorOf(req).uid,
       });

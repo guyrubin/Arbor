@@ -241,8 +241,13 @@ describe("B-AI-01 — /voice and /live/token context is byte-identical before/af
 
 let focusPrompt = "";
 let chatPrompt = "";
+const perspectivePrompts: string[] = [];
 const provider = {
   generateJson: async ({ prompt }: { prompt: string }) => {
+    if (prompt.includes("one voice on a parenting council")) {
+      perspectivePrompts.push(prompt);
+      return { takeaway: "A small shared moment can make room for connection.", suggestion: "Offer a quiet first minute together." };
+    }
     if (prompt.includes("Today's Focus writer")) {
       focusPrompt = prompt;
       // B-LOOP-13 round 4: the step names the bedtime page, so a pinned sleep practice coheres.
@@ -278,6 +283,9 @@ const routeLedger = ledgerOf({
     programs: [{ id: "talk-together.x", programId: "talk-together", startedAt: localDay(Date.now() - 8 * DAY), enrolledAt: "t", currentWeek: 1, status: "active", baseline: { childProxy: null, capturedAt: null }, updatedAt: "t" }],
   },
 });
+routeLedger.loadTopic = async (_uid, childId, topicId) => childId === "child-a" && topicId === "topic-a"
+  ? { id: "topic-a", childId: "child-a", title: "Draw together for enjoyment", intent: "enjoy", status: "active", updatedAt: "2026-10-08T10:00:00Z", observationIds: ["behavior:RAW_NOTE_ID"], notes: "RAW_NOTE_SECRET" }
+  : null;
 let server: Server;
 let base: string;
 
@@ -303,6 +311,39 @@ const post = (route: string, body: unknown) =>
   fetch(`${base}${route}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 describe("B-AI-01 — routes consume CompanionContext", () => {
+  it("the chat route resolves the topic from the server and ignores a forged client title", async () => {
+    const res = await post("/chat", { message: "What can we enjoy together?", childProfile: { id: "child-a", age: 4 }, topicId: "topic-a", familyTopic: { title: "FORGED_CLIENT_TITLE" } });
+    expect(res.status).toBe(200);
+    await res.json();
+    expect(chatPrompt).toContain("Draw together for enjoyment");
+    expect(chatPrompt).not.toMatch(/FORGED_CLIENT_TITLE|RAW_NOTE_SECRET|RAW_NOTE_ID/);
+  });
+
+  it("all council takes and the synthesis use the same permitted topic, accepted actions and program", async () => {
+    perspectivePrompts.length = 0;
+    const res = await post("/council", { message: "Help me think about this question", childProfile: { id: "child-a", age: 4 }, topicId: "topic-a" });
+    expect(res.status).toBe(200);
+    await res.json();
+    expect(perspectivePrompts).toHaveLength(3);
+    for (const prompt of [...perspectivePrompts, chatPrompt]) {
+      expect(prompt).toContain("Draw together for enjoyment");
+      expect(prompt).toContain("Two-minute warning before leaving");
+      expect(prompt).toContain("Bedtime goes better after a warm bath");
+      expect(prompt).toContain("Active program:");
+      expect(prompt).not.toMatch(/RAW_NOTE_SECRET|RAW_NOTE_ID|CHILD_B_FACT/);
+    }
+  });
+
+  it.each(["/chat", "/council"])("%s private turns do not load topic, facts, actions or program", async (route) => {
+    perspectivePrompts.length = 0;
+    const res = await post(route, { message: "Can we draw something together?", childProfile: { id: "child-a", age: 4 }, topicId: "topic-a", privateMode: true });
+    expect(res.status).toBe(200);
+    await res.json();
+    for (const prompt of [...perspectivePrompts, chatPrompt]) {
+      expect(prompt).not.toMatch(/Draw together for enjoyment|Two-minute warning before leaving|Bedtime goes better after a warm bath|Active program:/);
+    }
+  });
+
   it("/todays-focus cites the last rated step and its outcome from the SERVER ledger when the client sends none", async () => {
     const res = await post("/todays-focus", { childProfile: { id: "child-a", age: 4 }, signals: { count: 2 }, language: "en" });
     expect(res.status).toBe(200);
@@ -336,7 +377,7 @@ describe("B-AI-01 — routes consume CompanionContext", () => {
     expect(chatPrompt).toContain('- "Name the feeling first"');
     expect(chatPrompt).not.toContain("CHILD_B_FACT");
     expect(body.contract?.approvedMemoryFactsUsed ?? body.approvedMemoryFactsUsed).toBe(1);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.7.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.8.0");
   });
 });
 

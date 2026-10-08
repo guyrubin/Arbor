@@ -7,7 +7,8 @@ import { ArborMark } from "../ui/ArborMark";
 import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
 import { requestOpenSettings } from "./settingsBus";
-import { SECTIONS, sectionForTab, primaryTabOf, type NavBadge } from "../../lib/navigation";
+import { type NavBadge } from "../../lib/navigation";
+import { COMPANION_PLACES, placeForTab } from "../../lib/companionPlaces";
 
 /** Resolve the generalized sidebar badge to its display string from app state.
  *  Returns "" when the badge should not render.
@@ -28,11 +29,11 @@ export function badgeText(
 }
 
 export default function Sidebar() {
-  const { activeTab, setActiveTab, milestones, actionPlans, pendingReviewCount } = useArbor();
-  const milestonesNoticed = milestones.filter((m) => m.checked).length;
+  const { activeTab, setActiveTab } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
-  const { t } = useLanguage();
-  const activeSectionId = sectionForTab(activeTab).id;
+  const { t, uiLang } = useLanguage();
+  const he = uiLang === "he";
+  const activePlace = placeForTab(activeTab).id;
   const [popoverOpen, setPopoverOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
 
@@ -75,54 +76,29 @@ export default function Sidebar() {
       {/* Child profile card */}
       <ProfileSwitcher />
 
-      {/* The ten hubs (Heartwood IA) — denser, rounder rows (UC-1) */}
-      <nav aria-label={t("elev.sidebar.nav.aria")} className="flex flex-col gap-1 flex-1">
-        {SECTIONS.map((sec) => {
-          const active = sec.id === activeSectionId;
-          const text = badgeText(sec.badge, { milestonesNoticed, plansCount: actionPlans.length, pendingReviewCount });
-          // B-SHELL-03: a screen reader hears what the number counts.
-          const reviewAria =
-            typeof sec.badge === "object" && sec.badge.kind === "count" && text !== ""
-              ? t("elev.sidebar.badge.review", { label: t("nav.cat." + sec.id), count: pendingReviewCount })
-              : undefined;
-          const showDot = typeof sec.badge === "object" && sec.badge.kind === "dot";
-          return (
-            <button
-              key={sec.id}
-              onClick={() => setActiveTab(primaryTabOf(sec))}
-              aria-current={active ? "page" : undefined}
-              aria-label={reviewAria}
-              className="flex items-center justify-between gap-3 rounded-[13px] text-start transition"
-              style={{
-                padding: "11px 13px",
-                fontSize: "14.5px",
-                ...(active
-                  ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)", fontWeight: 700 }
-                  : { color: "var(--arbor-muted)", fontWeight: 600 }),
-              }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--arbor-paper-deep)"; }}
-              onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
-            >
-              <span className="flex items-center gap-3 min-w-0">
-                <Icon name={sec.msIcon} size={22} fill={active ? 1 : 0} />
-                <span className="truncate">{t("nav.cat." + sec.id)}</span>
-              </span>
-              {showDot ? (
-                <span aria-hidden="true" className="rounded-full flex-shrink-0" style={{ width: 8, height: 8, background: "var(--arbor-clay)" }} />
-              ) : text ? (
-                <span aria-hidden={reviewAria ? true : undefined} className="text-[11px] font-extrabold rounded-full px-2 py-0.5 flex-shrink-0" style={active ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>
-                  {text}
-                </span>
-              ) : null}
-            </button>
-          );
+      <nav aria-label={t("elev.sidebar.nav.aria")} className="flex flex-col gap-2 flex-1">
+        {COMPANION_PLACES.map(place => {
+          const active = activePlace === place.id && activeTab !== "coach";
+          return <button key={place.id} onClick={() => setActiveTab(place.tab)} aria-current={active ? "page" : undefined}
+            className="flex items-start gap-3 rounded-2xl px-3 py-4 text-start min-h-11 transition-colors"
+            style={{ background: active ? "var(--arbor-clay-dim)" : "transparent", color: active ? "var(--arbor-clay-deep)" : "var(--arbor-ink)" }}>
+            <Icon name={place.icon} size={24} fill={active ? 1 : 0} />
+            <span><span className="block text-[16px] font-bold">{he ? place.he : place.en}</span>
+              <span className="block mt-1 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{he ? place.detailHe : place.detailEn}</span></span>
+          </button>;
         })}
+        <div className="mt-5 pt-5 space-y-1" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+          {([
+            { tab: "coach", icon: "forum", en: "Talk with Arbor", he: "לדבר עם Arbor" },
+            { tab: "masterclasses", icon: "school", en: "For you, the parent", he: "בשבילך, ההורה" },
+            { tab: "consult", icon: "diversity_1", en: "Care, together", he: "יחד עם אנשי המקצוע" },
+          ] as const).map(link => <button key={link.tab} onClick={() => setActiveTab(link.tab)} aria-current={activeTab === link.tab ? "page" : undefined}
+            className="w-full min-h-11 flex items-center gap-3 px-3 py-3 rounded-xl text-start text-sm font-semibold"
+            style={{ color: activeTab === link.tab ? "var(--arbor-clay-deep)" : "var(--arbor-muted)", background: activeTab === link.tab ? "var(--arbor-clay-dim)" : "transparent" }}>
+            <Icon name={link.icon} size={21}/>{he ? link.he : link.en}
+          </button>)}
+        </div>
       </nav>
-
-      {/* UC-6: the global TOOLS drawer is REMOVED. The sidebar is now exactly the
-          ten hubs + the account row. Each hub's secondary capabilities are
-          folded into its own contextual pill row (Shell › hubTabsForSection), so
-          tools feel integrated with their hub rather than a separate drawer. */}
 
       {/* Account row + upward popover (Language toggle + Settings) — UC-1 */}
       <div ref={accountRef} className="mt-auto pt-4 relative" style={{ borderTop: "1px solid var(--arbor-rule)" }}>

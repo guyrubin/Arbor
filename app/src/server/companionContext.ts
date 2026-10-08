@@ -64,6 +64,7 @@ import { buildMilestoneCandidates } from "./milestoneMatch.js";
 import { SHELF_IDS, shelfLabel } from "../lib/shelves/registry.js";
 import { resolveHebrewSlash } from "../lib/hebrewSlashGender.js";
 import type { ChildProfile } from "../types.js";
+import type { FamilyTopicContext } from "../ai/familyTopicContext.js";
 import {
   MAX_JOURNAL_CANDIDATES,
   MAX_JOURNAL_MILESTONES,
@@ -82,6 +83,7 @@ import {
 
 export type CompanionPurpose =
   | "chat"
+  | "council"
   | "todays-focus"
   | "voice"
   | "live"
@@ -134,6 +136,9 @@ export type CompanionContext = {
   /** B-LOOP-13: parent audience only, when a journal request or a ledger
    *  practice row exists (ai/journalContext). */
   journal?: CompanionJournal;
+  /** Only an explicitly selected, server-read parent topic; never its source excerpts. */
+  familyTopic?: FamilyTopicContext;
+  familyTopicStatus?: "unavailable";
 };
 
 /** Raw ledger rows as the client writes them — validated field by field here.
@@ -143,6 +148,8 @@ export type CompanionLedger = { actionLoops: unknown[]; insights: unknown[]; pro
 /** Server-side read of the parent's own child ledgers. */
 export interface CompanionLedgerSource {
   load(uid: string, childId: string): Promise<CompanionLedger>;
+  /** A single authenticated child-scoped lookup, not a scan of all family questions. */
+  loadTopic?(uid: string, childId: string, topicId: string): Promise<unknown>;
 }
 
 export const MAX_ACCEPTED_ACTIONS = 5;
@@ -171,6 +178,19 @@ const clean = (value: unknown, cap: number): string =>
   typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, cap) : "";
 
 const validIso = (value: unknown): value is string => typeof value === "string" && Number.isFinite(Date.parse(value));
+
+const documentId = (value: unknown): value is string =>
+  typeof value === "string" && /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,199}$/.test(value);
+
+export const projectFamilyTopic = (raw: unknown, childId: string, topicId: string): FamilyTopicContext | undefined => {
+  if (!raw || typeof raw !== "object") return undefined;
+  const row = raw as Record<string, unknown>;
+  if (row.id !== topicId || row.childId !== childId || row.status !== "active") return undefined;
+  if (row.intent !== "understand" && row.intent !== "support" && row.intent !== "enjoy") return undefined;
+  const title = clean(row.title, 160);
+  if (!title || !validIso(row.updatedAt)) return undefined;
+  return { id: topicId, title, intent: row.intent, updatedAt: row.updatedAt };
+};
 
 /** ≤5 most recent accepted / completed steps (superseded rows are not steps the parent tried). */
 export const projectAcceptedActions = (rows: readonly unknown[]): CompanionAction[] => {
@@ -387,6 +407,8 @@ export const assembleCompanionContext = async (input: {
   weeklyCounts?: WeeklyContext | null;
   /** B-LOOP-13: the client's raw journal request (sanitized here). */
   journal?: unknown;
+  /** Selector only. Titles and source text from the client are never accepted. */
+  topicId?: unknown;
   now?: number;
 }): Promise<CompanionContext> => {
   if (input.audience !== "parent") return emptyCompanionContext();
@@ -426,6 +448,16 @@ export const assembleCompanionContext = async (input: {
       context.keptInsights = [];
       delete context.program;
       ledgerActions = [];
+    }
+  }
+
+  if (input.ledgerSource?.loadTopic && documentId(input.uid) && documentId(childId)
+    && documentId(input.topicId) && input.canReadMemory !== false) {
+    try {
+      context.familyTopic = projectFamilyTopic(await input.ledgerSource.loadTopic(input.uid, childId, input.topicId), childId, input.topicId);
+      if (!context.familyTopic) delete context.familyTopic;
+    } catch {
+      context.familyTopicStatus = "unavailable";
     }
   }
 
@@ -487,6 +519,12 @@ export class FirestoreCompanionLedgerSource implements CompanionLedgerSource {
       insights: insights.docs.map((d) => d.data()),
       programs: programs.docs.map((d) => d.data()),
     };
+  }
+
+  async loadTopic(uid: string, childId: string, topicId: string): Promise<unknown> {
+    if (!documentId(uid) || !documentId(childId) || !documentId(topicId)) return null;
+    const record = await this.db.doc(`users/${uid}/children/${childId}/familyTopics/${topicId}`).get();
+    return record.exists ? { ...record.data(), id: record.id } : null;
   }
 }
 

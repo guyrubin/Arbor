@@ -33,6 +33,7 @@ export const CHILD_SUBCOLLECTIONS = [
   "conversations",
   // Parent-confirmed Harbor conversation updates + reversible audit metadata.
   "conversationChanges",
+  "familyTopics", // Parent-chosen questions and references; export + erase.
   "playLogs",
   // AR-CAP-02: parent-accepted Today actions and parent-reported outcomes.
   "actionLoops",

@@ -155,6 +155,7 @@ export default function CoachTab() {
     setPlanChallengeTopic,
     setNewLogNotes,
     childProfile,
+    activeFamilyTopic,
     conversations,
     activeConversationId,
     newConversation,
@@ -529,7 +530,7 @@ export default function CoachTab() {
         {
           message: text,
           childProfile,
-          scholarLens: selectedLens,
+          ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}),          scholarLens: selectedLens,
           language: getAiLanguage(),
           // AI-02: a spoken turn is the SAME conversation as a typed one — it
           // now carries this thread's settled turns, so a spoken follow-up
@@ -711,7 +712,7 @@ export default function CoachTab() {
 
     if (liveAvail) {
       try {
-        const fresh = await api.liveToken({ language: getAiLanguage(), childId: childProfile.id, childProfile, ...buildVoiceContext(voiceMessagesRef.current, childProfile.id) }, { signal: attempt.signal });
+        const fresh = await api.liveToken({ ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}), language: getAiLanguage(), childId: childProfile.id, childProfile, ...buildVoiceContext(voiceMessagesRef.current, childProfile.id) }, { signal: attempt.signal });
         if (!attempt.isCurrent()) return;
         if (!(fresh.available && fresh.token && fresh.model)) trackLiveUnavailable("token_error");
         if (fresh.available && fresh.token && fresh.model) {

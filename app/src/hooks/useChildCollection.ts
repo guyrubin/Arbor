@@ -43,9 +43,19 @@ export function useChildCollection<T extends WithId>(
   const remote = firebaseEnabled && !!user && user.uid !== "local-sandbox" && !!db;
   const uid = user?.uid;
 
-  const [items, setItems] = useState<T[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
+  const [storedItems, setItems] = useState<T[]>([]);
+  const [storedLoaded, setLoaded] = useState(false);
+  const [storedError, setError] = useState(false);
+  const scope = `${remote ? uid : "local"}:${childId}:${name}`;
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
+  const [loadedScope, setLoadedScope] = useState<string | null>(null);
+  // Effects run after render: hide the previous child's rows immediately, and
+  // never mirror them under the next child's localStorage key.
+  const inScope = loadedScope === scope;
+  const items = inScope ? storedItems : [];
+  const loaded = inScope && storedLoaded;
+  const error = inScope && storedError;
   const lsKey = `arbor.${name}.${childId}`;
   const seededRef = useRef(false);
 
@@ -62,7 +72,7 @@ export function useChildCollection<T extends WithId>(
     (fallback?: T[]): T[] => {
       try {
         const raw = localStorage.getItem(lsKey);
-        if (raw) return JSON.parse(raw) as T[];
+        if (raw) { const parsed: unknown = JSON.parse(raw); if (Array.isArray(parsed)) return parsed as T[]; }
       } catch {
         /* ignore */
       }
@@ -74,6 +84,7 @@ export function useChildCollection<T extends WithId>(
   // Subscribe / load when the active child (or auth mode) changes.
   useEffect(() => {
     if (!childId) return;
+    let active = true;
     seededRef.current = false;
     setLoaded(false);
     setError(false);
@@ -87,6 +98,8 @@ export function useChildCollection<T extends WithId>(
       const unsub = onSnapshot(
         q,
         (snap) => {
+          if (!active || scopeRef.current !== scope) return;
+          setLoadedScope(scope);
           if (snap.empty && opts?.seed && opts.seed.length > 0 && !seededRef.current) {
             seededRef.current = true;
             const batch = writeBatch(db!);
@@ -102,6 +115,8 @@ export function useChildCollection<T extends WithId>(
           clearSyncError(name, childId);
         },
         () => {
+          if (!active || scopeRef.current !== scope) return;
+          setLoadedScope(scope);
           // Permission/network error → degrade to local (unchanged), but no
           // longer silently: W0.5 surfaces it. The local fallback KEEPS
           // rendering; error just says "this may be stale, not empty", and the
@@ -113,6 +128,7 @@ export function useChildCollection<T extends WithId>(
         }
       );
       return () => {
+        active = false;
         unsub();
         // Leaving the screen (or switching child) retires this listener's
         // banner registration — a stale entry must not outlive its listener.
@@ -120,6 +136,7 @@ export function useChildCollection<T extends WithId>(
       };
     }
 
+    setLoadedScope(scope);
     setItems(readLocal(opts?.sandboxSeed));
     setLoaded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -138,6 +155,7 @@ export function useChildCollection<T extends WithId>(
 
   const upsert = useCallback(
     async (item: T) => {
+      if (scopeRef.current !== scope) return;
       if (remote && db && uid) {
         await setDoc(doc(db, `users/${uid}/children/${childId}/${name}`, item.id), item as Record<string, unknown>);
       } else {
@@ -152,22 +170,24 @@ export function useChildCollection<T extends WithId>(
         });
       }
     },
-    [remote, uid, childId, name]
+    [remote, uid, childId, name, scope]
   );
 
   const remove = useCallback(
     async (id: string) => {
+      if (scopeRef.current !== scope) return;
       if (remote && db && uid) {
         await deleteDoc(doc(db, `users/${uid}/children/${childId}/${name}`, id));
       } else {
         setItems((prev) => prev.filter((p) => p.id !== id));
       }
     },
-    [remote, uid, childId, name]
+    [remote, uid, childId, name, scope]
   );
 
   const replaceAll = useCallback(
     async (next: T[]) => {
+      if (scopeRef.current !== scope) return;
       if (remote && db && uid) {
         const colRef = collection(db, `users/${uid}/children/${childId}/${name}`);
         const batch = writeBatch(db);
@@ -177,7 +197,7 @@ export function useChildCollection<T extends WithId>(
         setItems(next);
       }
     },
-    [remote, uid, childId, name]
+    [remote, uid, childId, name, scope]
   );
 
   return { items, loaded, error, remote, upsert, remove, replaceAll };

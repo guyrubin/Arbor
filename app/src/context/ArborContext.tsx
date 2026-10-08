@@ -29,6 +29,7 @@ import {
 import { useProfile } from "./ProfileContext";
 import { api, ApiError, authHeaders, getAiLanguage, PaywallError, streamCouncil } from "../lib/api";
 import { useChildCollection } from "../hooks/useChildCollection";
+import { useFamilyTopics } from "../hooks/useFamilyTopics";
 import type { ExplainAnswer } from "../lib/explainAnswer";
 import { track } from "../lib/analytics";
 import { isKidModeActive } from "../lib/kidModeGate";
@@ -194,7 +195,7 @@ export type ChatMessage = {
   chatAck?: boolean;
 };
 export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract; council?: CouncilTake[] };
-export type Conversation = { id: string; title: string; messages: ChatMessage[]; updatedAt: string };
+export type Conversation = { topicId?: string; id: string; title: string; messages: ChatMessage[]; updatedAt: string };
 
 // ASK-7: the English WELCOME_MESSAGE bubble was deleted — a fresh thread is
 // simply []. Orientation lives ONCE on the surface itself (mascot empty state
@@ -226,6 +227,8 @@ function useArborState() {
   // scoped to the selected child rather than a hardcoded profile.
   const { activeChild, updateChild } = useProfile();
   const childProfile: ChildProfile = activeChild;
+  const topicState = useFamilyTopics(childProfile.id);
+  const { activeFamilyTopic } = topicState;
 
   // Navigation State (persisted preferences). Initial tab: URL hash wins (deep
   // link), then last-used (localStorage), then Home.
@@ -453,7 +456,7 @@ function useArborState() {
   const acceptTodayAction = (recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry["source"] = "today-guidance", planStep?: PlanStepRef) => {
     const { entry: item, superseded } = planAcceptedAction(actionLoop, { recommendation, source, capacity, ...(planStep ? { planStep } : {}) }, todayActionId(childProfile.id));
     for (const old of superseded) void actionLoopCol.upsert(old);
-    void actionLoopCol.upsert(item);
+    void actionLoopCol.upsert({ ...item, ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}) });
     try { track("today_action_accepted", { capacity, source }); } catch { /* noop */ }
   };
   // B-TODAY-15: `via` = where the outcome was rated (the step card or the
@@ -478,7 +481,7 @@ function useArborState() {
    *  no count is derived from it on Today. */
   const recordPracticeDose = (entry: ActionLoopEntry) => {
     if (entry.source !== "practice") return;
-    void actionLoopCol.upsert(entry);
+    void actionLoopCol.upsert({ ...entry, ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}) });
     try { track("practice_dose", { answer: entry.outcome === "not_today" ? "not_today" : "did" }); } catch { /* noop */ }
   };
   // B-ASKJB-33 — the second tap ("And {name}? Calmer · Same · Harder"):
@@ -536,10 +539,15 @@ function useArborState() {
   // store (lib/onboardingJourney); the coach composer starts pre-filled with it
   // on the very first session. takeCoachSeed() is read-once-and-clear.
   const [chatInput, setChatInput] = useState<string>(() => takeCoachSeed() ?? "");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [storedChatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatChildId, setChatChildId] = useState(childProfile.id);
+  const currentChildRef = useRef(childProfile.id);
+  currentChildRef.current = childProfile.id;
+  const chatMessages = chatChildId === childProfile.id ? storedChatMessages : [];
   // Multi-thread coach conversations (persisted per child).
   const conversationsCol = useChildCollection<Conversation>(childProfile.id, "conversations");
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const conversationTopicRef = useRef<string | undefined>(undefined);
   const conversations = useMemo(
     () => [...conversationsCol.items].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)),
     [conversationsCol.items]
@@ -726,6 +734,14 @@ function useArborState() {
   useEffect(() => {
     if (loadedChatChild.current === childProfile.id) return;
     loadedChatChild.current = childProfile.id;
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+    conversationTopicRef.current = undefined;
+    setChatChildId(childProfile.id);
+    setChatInput("");
+    setIsChatLoading(false);
+    setChatStreamStatus(null);
+    setApiError(null);
     setActiveConversationId(null);
     setChatMessages([]);
   }, [childProfile.id]);
@@ -742,6 +758,7 @@ function useArborState() {
     const title = (firstUser ? firstUser.displayText || firstUser.text : "Conversation").replace(/[#*]/g, "").trim().slice(0, 48) || "Conversation";
     void conversationsCol.upsert({
       id: activeConversationId,
+      ...(conversationTopicRef.current ? { topicId: conversationTopicRef.current } : {}),
       title,
       messages: chatMessages.slice(-30),
       updatedAt: new Date().toISOString(),
@@ -756,7 +773,10 @@ function useArborState() {
   // capture path: this is the existing chat-message write seam.
   const appendVoiceUserTurn = (text: string) => {
     if (!text.trim()) return;
-    if (!activeConversationId) setActiveConversationId(`conv-${Date.now()}`);
+    if (!activeConversationId) {
+      conversationTopicRef.current = activeFamilyTopic?.id;
+      setActiveConversationId(`conv-${Date.now()}`);
+    }
     setChatMessages((prev) => appendVoiceUser(prev, text, selectedLens));
   };
   const appendVoiceAiDelta = (delta: string) => {
@@ -768,12 +788,21 @@ function useArborState() {
 
   // Coach conversation thread controls.
   const newConversation = () => {
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+    setIsChatLoading(false);
+    conversationTopicRef.current = undefined;
     setActiveConversationId(null);
     setChatMessages([]);
   };
   const openConversation = (id: string) => {
     const c = conversationsCol.items.find((x) => x.id === id);
     if (!c) return;
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+    setIsChatLoading(false);
+    conversationTopicRef.current = c.topicId;
+    topicState.selectFamilyTopic(c.topicId ?? null);
     setActiveConversationId(id);
     setChatMessages(c.messages);
   };
@@ -925,7 +954,7 @@ function useArborState() {
     return t("coach.loading");
   };
 
-  const readStreamingChatResponse = async (res: Response): Promise<ChatResponsePayload> => {
+  const readStreamingChatResponse = async (res: Response, isCurrent: () => boolean): Promise<ChatResponsePayload> => {
     const reader = res.body?.getReader();
     if (!reader) throw new Error("Streaming response body unavailable");
 
@@ -934,6 +963,7 @@ function useArborState() {
     let finalPayload: ChatResponsePayload | null = null;
 
     const handleBlock = (block: string) => {
+      if (!isCurrent()) return;
       if (!block.trim()) return;
 
       let eventName = "message";
@@ -982,10 +1012,10 @@ function useArborState() {
     return finalPayload;
   };
 
-  const readChatPayload = async (res: Response): Promise<ChatResponsePayload> => {
+  const readChatPayload = async (res: Response, isCurrent: () => boolean): Promise<ChatResponsePayload> => {
     const contentType = res.headers.get("content-type") || "";
     if (contentType.includes("text/event-stream")) {
-      return readStreamingChatResponse(res);
+      return readStreamingChatResponse(res, isCurrent);
     }
     return await res.json();
   };
@@ -1008,7 +1038,10 @@ function useArborState() {
     setChatStreamStatus(t("coach.status.connecting"));
 
     // Begin a persisted conversation on the first message of a fresh thread.
-    if (!activeConversationId) setActiveConversationId(`conv-${Date.now()}`);
+    if (!activeConversationId) {
+      conversationTopicRef.current = activeFamilyTopic?.id;
+      setActiveConversationId(`conv-${Date.now()}`);
+    }
 
     // ASK-1: the user turn + an IMMEDIATE locally-rendered acknowledgment
     // bubble — the parent sees a response begin the moment they send, then the
@@ -1022,6 +1055,7 @@ function useArborState() {
 
     const controller = new AbortController();
     chatAbortRef.current = controller;
+    const isCurrent = () => currentChildRef.current === childProfile.id && chatAbortRef.current === controller;
 
     try {
       const res = await fetch("/api/chat", {
@@ -1031,6 +1065,7 @@ function useArborState() {
         body: JSON.stringify({
           message: promptValue,
           childProfile: childProfile,
+          ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}),
           scholarLens: selectedLens || "Integrated Balanced",
           language: getAiLanguage(),
           // LL-A9 — Learn Library grounding: attach the catalogue read that
@@ -1097,7 +1132,8 @@ function useArborState() {
         );
       }
 
-      const data = await readChatPayload(res);
+      const data = await readChatPayload(res, isCurrent);
+      if (!isCurrent()) return;
       if (data.memoryReviewItems) {
         setMemoryReviewItems(data.memoryReviewItems);
       }
@@ -1107,7 +1143,7 @@ function useArborState() {
       setChatMessages((prev) => settleChatTurn(prev, data, selectedLens));
       track("coach_message", { lens: selectedLens });
     } catch (err: any) {
-      console.error(err);
+      if (!isCurrent()) return;
       if (err.name === "AbortError") {
         // ASK-8: keep any screened partial prose (parity with the voice loop);
         // an ack-only bubble is dropped so no placeholder survives the stop.
@@ -1124,9 +1160,11 @@ function useArborState() {
       setApiError(err.message || "An exception occurred while connecting to Arbor services.");
       setChatMessages((prev) => abortChatStream(prev));
     } finally {
-      setIsChatLoading(false);
-      setChatStreamStatus(null);
-      chatAbortRef.current = null;
+      if (isCurrent()) {
+        setIsChatLoading(false);
+        setChatStreamStatus(null);
+        chatAbortRef.current = null;
+      }
     }
   };
 
@@ -1144,7 +1182,10 @@ function useArborState() {
     if (!customPrompt) setChatInput("");
     setApiError(null);
     setChatStreamStatus(t("coach.status.council"));
-    if (!activeConversationId) setActiveConversationId(`conv-${Date.now()}`);
+    if (!activeConversationId) {
+      conversationTopicRef.current = activeFamilyTopic?.id;
+      setActiveConversationId(`conv-${Date.now()}`);
+    }
 
     // ASK-8: same retry-dedupe seam as handleChatSend — a council retry after
     // a failure reuses the trailing user question instead of duplicating it.
@@ -1163,21 +1204,24 @@ function useArborState() {
 
     const controller = new AbortController();
     chatAbortRef.current = controller;
+    const isCurrent = () => currentChildRef.current === childProfile.id && chatAbortRef.current === controller;
 
     try {
       const data = await streamCouncil(
         {
           message: promptValue,
           childProfile,
+          ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}),
           scholarLens: selectedLens || "Integrated Balanced",
           language: getAiLanguage(),
         },
-        (text) => setChatMessages((prev) => applyChatDelta(prev, text, selectedLens)),
+        (text) => { if (isCurrent()) setChatMessages((prev) => applyChatDelta(prev, text, selectedLens)); },
         {
           signal: controller.signal,
-          onStatus: (stage) => setChatStreamStatus(chatStageStatus(stage)),
+          onStatus: (stage) => { if (isCurrent()) setChatStreamStatus(chatStageStatus(stage)); },
         },
       );
+      if (!isCurrent()) return;
       if (data.memoryReviewItems) setMemoryReviewItems(data.memoryReviewItems);
       // The same settle seam as /chat — which is also the ONE place a done-time
       // output-screen flag retracts streamed prose. Appending a fresh bubble
@@ -1186,7 +1230,7 @@ function useArborState() {
       setChatMessages((prev) => settleChatTurn(prev, data, selectedLens));
       track("coach_council", { lens: selectedLens, voices: data.council?.length || 0 });
     } catch (err: any) {
-      console.error(err);
+      if (!isCurrent()) return;
       if (err.name === "AbortError") {
         // Parity with /chat: screened partial prose is kept, an ack-only bubble
         // is dropped, and no cancel message is written into the thread — a stop
@@ -1204,9 +1248,11 @@ function useArborState() {
       // Whatever the failure, the live ack/partial bubble must not survive it.
       setChatMessages((prev) => abortChatStream(prev));
     } finally {
-      setIsChatLoading(false);
-      setChatStreamStatus(null);
-      chatAbortRef.current = null;
+      if (isCurrent()) {
+        setIsChatLoading(false);
+        setChatStreamStatus(null);
+        chatAbortRef.current = null;
+      }
     }
   };
 
@@ -1605,6 +1651,7 @@ function useArborState() {
   };
 
   return {
+    ...topicState,
     showSandboxBanner,
     activeTab,
     setActiveTab,

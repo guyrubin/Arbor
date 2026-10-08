@@ -5,6 +5,7 @@ import SafetyRing from "./SafetyRing"; // IA-01: canon Safety life-ring — firs
 import OfflineChip from "../ui/OfflineChip"; // W0.6: renders only while offline
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { placeForTab, isCompanionHome } from "../../lib/companionPlaces";
 import { sectionForTab } from "../../lib/navigation";
 
 /**
@@ -22,7 +23,8 @@ import { sectionForTab } from "../../lib/navigation";
  */
 export default function Topbar() {
   const { activeTab, childProfile } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  const place = placeForTab(activeTab);
   const section = sectionForTab(activeTab);
 
   // One key per hub; a hero-less child gets the Stories line that does not promise "starring {name}".
@@ -60,11 +62,11 @@ export default function Topbar() {
           className="text-[18px] font-extrabold leading-tight truncate"
           style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
         >
-          {t("nav.title." + section.id)}
+          {isCompanionHome(activeTab) ? (uiLang === "he" ? place.he : place.en) : t("nav.title." + section.id)}
         </span>
         {/* P5 r1 pass A6: Today owns its one caption (the eyebrow line); the
             hub sentence here repeated it, in HE with a second wording. */}
-        {activeTab !== "overview" && (
+        {!isCompanionHome(activeTab) && (
           <span className="text-[12px] truncate" style={{ color: "var(--arbor-muted)" }}>
             {/* W2-SHELLPLAY critic r2: "starring" only once a hero exists. */}
             {t("nav.sub." + hubSubKey, { name: childProfile.name })}

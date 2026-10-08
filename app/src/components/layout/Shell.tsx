@@ -4,6 +4,8 @@ import { Icon } from "../ui/Icon";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { isCompanionHome, placeForTab } from "../../lib/companionPlaces";
+import { useHashQuery } from "../../hooks/useHashQuery";
 import { sectionForTab, pillRowFor, isCompactHiddenTool } from "../../lib/navigation";
 import { contractFor } from "../../lib/surfaceContract";
 import Sidebar from "./Sidebar";
@@ -52,7 +54,7 @@ import TopbarKidSwitcher from "./TopbarKidSwitcher";
 import { SETTINGS_OPEN_EVENT } from "./settingsBus";
 
 // Existing leaf views (preserved).
-const OverviewTab = lazy(() => import("../tabs/OverviewTab"));
+const OverviewTab = lazy(() => import("../companion/NowView"));
 const CoachTab = lazy(() => import("../tabs/CoachTab"));
 const BehaviorsTab = lazy(() => import("../tabs/BehaviorsTab"));
 const MilestonesTab = lazy(() => import("../tabs/MilestonesTab"));
@@ -88,12 +90,14 @@ const AdventuresTab = lazy(() => import("../practice/AdventuresTab"));
 const DevelopmentCopilot = lazy(() => import("../practice/DevelopmentCopilot"));
 
 // IA v3: consolidation hubs (merge confusable/duplicate leaves).
-const DevelopmentTab = lazy(() => import("../tabs/DevelopmentTab"));
+const DevelopmentTab = lazy(() => import("../companion/ChildPortrait"));
+const ProgramPage = lazy(() => import("../program/ProgramPage"));
+const FamilyTopicSheet = lazy(() => import("../companion/FamilyTopicSheet"));
 const DailyPlayTab = lazy(() => import("../tabs/DailyPlayTab"));
 // IA fix (AR-IA): the parent #/practice route hosts the PARENT-register
 // Practice Studio launcher; the kid-register Hero Arcade (PracticeHubTab)
 // now lives exclusively inside Kid Mode.
-const PracticeStudioTab = lazy(() => import("../practice/PracticeStudioTab"));
+const PracticeStudioTab = lazy(() => import("../companion/TogetherView"));
 const ConsultTab = lazy(() => import("../tabs/ConsultTab"));
 
 // P0-5: internal attribution + UTM funnel dashboard (admin-gated inside the view).
@@ -124,7 +128,7 @@ const RoutinesTab = lazy(() => import("../tabs/RoutinesTab"));
 // the screen is for; the hub line repeated it and pushed "Did it" under the dock.
 // P7-DESIGN fix r1 (framer ruling R4): "milestones" — the "{name}'s development
 // map" kicker gives its room to the jump rail's printed names at 375.
-export const HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set(["memory", "sharing", "safety", "school-brief", "practice", "feelings", "adventures", "overview", "milestones"]);
+export const HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set(["memory", "sharing", "safety", "school-brief", "practice", "feelings", "adventures", "overview", "milestones", "development"]);
 
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
@@ -216,9 +220,13 @@ function SurfaceFrame({ route, children }: { route: ActiveTab; children: React.R
 }
 
 export default function Shell() {
-  const { activeTab, setActiveTab, showSandboxBanner, childProfile, captureSheet, closeCaptureSheet } = useArbor();
+  const { activeTab, setActiveTab, showSandboxBanner, childProfile, captureSheet, closeCaptureSheet, activeFamilyTopic } = useArbor();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  const query = useHashQuery();
+  const [topicSheet, setTopicSheet] = useState<{ childId: string; draft?: string; observationIds?: string[]; startNew?: boolean } | null>(null);
+  const openTopic = () => setTopicSheet({ childId: childProfile.id });
+  const createTopic = (draft: string, observationIds: string[] = []) => setTopicSheet({ childId: childProfile.id, draft, observationIds, startNew: true });
   const ActiveTabComponent = tabRegistry[activeTab];
   const section = sectionForTab(activeTab);
   const focusLabel = childProfile.languages.length > 1
@@ -438,13 +446,16 @@ export default function Shell() {
             </div>
           }/>
 
+          {!isCompanionHome(activeTab) && <button onClick={() => setActiveTab(placeForTab(activeTab).tab)} className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: "var(--arbor-muted)" }}>
+            <Icon name="arrow_back" size={18} className="rtl:-scale-x-100"/>{uiLang === "he" ? placeForTab(activeTab).he : placeForTab(activeTab).en}
+          </button>}
           {/* UC-6 hub contextual pill row — the hub's FULL capability set: its
               primary/hub view + sub-tabs + its own folded tools (no global TOOLS
               drawer any more). Navy active fill / white inactive with a hairline
               border, sticky to the top of the scroll region. The first pill of
               each section is its Overview/hub. Renders only when there is more
               than one capability. */}
-          {pillRowFor(section, activeTab).length > 1 && (
+          {!isCompanionHome(activeTab) && pillRowFor(section, activeTab).length > 1 && (
             <div
               role="tablist"
               aria-label={`${section.label} sections`}
@@ -590,7 +601,14 @@ export default function Shell() {
                       is counting inside instead of re-deriving it. Presentation
                       is untouched: display:contents, no box, no style. */}
                   <SurfaceFrame route={activeTab}>
-                    <ActiveTabComponent />
+                    {activeTab === "overview" ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic}/>
+                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab onDiscuss={createTopic}/>)
+                      : <>
+                        {activeTab === "coach" && activeFamilyTopic && <button className="min-h-11 w-full mb-4 px-4 py-3 rounded-xl text-start text-sm" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }} onClick={openTopic}>
+                          {uiLang === "he" ? "השאלה שלנו: " : "Our question: "}{activeFamilyTopic.title}
+                        </button>}
+                        <ActiveTabComponent/>
+                      </>}
                   </SurfaceFrame>
                 </ErrorBoundary>
               </motion.div>
@@ -602,6 +620,7 @@ export default function Shell() {
       </div>
 
       <MobileNav />
+      {!kidLocked && topicSheet?.childId === childProfile.id && <Suspense fallback={null}><FamilyTopicSheet key={childProfile.id} {...topicSheet} onClose={() => setTopicSheet(null)}/></Suspense>}
       {/* AI-CAP-7: fixed above MobileNav (z-30 < nav z-40) — non-blocking,
           dismissible, appears only right after a confirmed capture. */}
       <PostCaptureCoachStrip />

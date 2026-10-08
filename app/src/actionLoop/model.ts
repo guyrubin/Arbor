@@ -49,6 +49,8 @@ export const ACTION_SOURCES = Object.keys(ACTION_SOURCE_MAP) as readonly ActionS
 export type ActionStatus = "accepted" | "completed" | "superseded";
 
 export interface ActionLoopEntry {
+  /** Explicitly selected parent question; references the existing action ledger. */
+  topicId?: string;
   id: string;
   recommendation: string;
   source: ActionSource;

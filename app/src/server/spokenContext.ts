@@ -39,6 +39,7 @@ export const assembleSpokenContext = async (input: {
   /** B-LOOP-13: the client's raw journal request (sanitized by the context
    *  service); with the ledger's dose rows it yields today's practice line. */
   journal?: unknown;
+  topicId?: unknown;
 }): Promise<SpokenContext> => {
   if (input.privateMode === true || !input.canReadMemory) return EMPTY();
   const childId = spokenChildId(input.childProfile);
@@ -51,6 +52,7 @@ export const assembleSpokenContext = async (input: {
     maxFacts: Math.min(8, Math.max(1, input.maxMemoryFacts ?? 8)),
     ...(input.ledgerSource && input.uid ? { ledgerSource: input.ledgerSource, uid: input.uid } : {}),
     ...(input.journal !== undefined ? { journal: input.journal } : {}),
+    topicId: input.topicId,
   });
   const context = EMPTY();
   context.profile = companion.profile;
@@ -63,6 +65,9 @@ export const assembleSpokenContext = async (input: {
   if (program) context.program = program;
   const practice = todayPracticeLine(companion.journal);
   if (practice) context.todayPractice = practice;
+  if (companion.familyTopic) context.familyTopic = companion.familyTopic;
+  if (companion.familyTopicStatus) context.familyTopicStatus = companion.familyTopicStatus;
+  if (companion.acceptedActions.length) context.acceptedActions = companion.acceptedActions;
   // Round 2 (continuity judge on 1.8.0): the night answers reach voice_reply
   // too — the client's rows when the server ledger holds none.
   const answers = companion.journal?.nightAnswers ?? [];
@@ -87,5 +92,7 @@ export const liveContextWithoutNames = (context: SpokenContext, childName?: stri
     profile: context.profile ? JSON.parse(clean(JSON.stringify(profile))) : null,
     approvedMemory: clean(context.approvedMemory),
     recentTurns: context.recentTurns.map((turn) => ({ ...turn, text: clean(turn.text) })),
+    ...(context.familyTopic ? { familyTopic: { ...context.familyTopic, title: clean(context.familyTopic.title) } } : {}),
+    ...(context.acceptedActions ? { acceptedActions: context.acceptedActions.map((step) => ({ ...step, recommendation: clean(step.recommendation) })) } : {}),
   };
 };
