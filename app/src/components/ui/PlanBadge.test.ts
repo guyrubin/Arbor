@@ -31,7 +31,7 @@ describe("featurePlan — feature→plan resolution", () => {
 
   it("resolves the client-enforced limit gates", () => {
     expect(featurePlan("maxChildren")).toBe("plus");
-    expect(featurePlan("coParentSeats")).toBe("family");
+    expect(featurePlan("coParentSeats")).toBeNull();
   });
 
   it("unknown feature keys resolve to null → no badge, never a wrong badge", () => {
@@ -59,11 +59,11 @@ describe("FEATURE_PLANS pins to server PLAN_LIMITS (no invented gating)", () => 
     expect(PLAN_LIMITS.plus.maxChildren).toBeGreaterThan(PLAN_LIMITS.free.maxChildren);
   });
 
-  it("coParentSeats is the ONLY family-over-plus gate (family = plus + co-parent seat)", () => {
-    expect(PLAN_LIMITS.family.coParentSeats).toBeGreaterThan(PLAN_LIMITS.plus.coParentSeats);
+  it("coParentSeats no longer requires Family; existing Family retains Plus limits", () => {
+    expect(PLAN_LIMITS.free.coParentSeats).toBe(PLAN_LIMITS.plus.coParentSeats);
     const familyOnlyDiffs = (Object.keys(PLAN_LIMITS.plus) as Array<keyof typeof PLAN_LIMITS.plus>)
       .filter((k) => PLAN_LIMITS.plus[k] !== PLAN_LIMITS.family[k]);
-    expect(familyOnlyDiffs).toEqual(["coParentSeats"]);
+    expect(familyOnlyDiffs).toEqual([]);
   });
 
   it("every free→plus limit difference is represented in the map (completeness)", () => {
@@ -145,17 +145,18 @@ describe("source contracts (node env — same style as TrustPanel.test.ts)", () 
     expect(badge).toContain("PASTEL");
   });
 
-  it("PaywallModal states the free/plus/family split plainly (3.6)", () => {
-    for (const key of ["freeTitle", "plusTitle", "familyTitle", "free.1", "plus.1", "family.1"]) {
+  it("PaywallModal states the free/plus split plainly", () => {
+    for (const key of ["freeTitle", "plusTitle", "free.1", "plus.1"]) {
       expect(modal, `PaywallModal missing planclarity slot "${key}"`).toContain(key);
     }
     // Split renders BEFORE the cadence toggle / price block (clarity precedes the pitch).
     expect(modal.indexOf("freeTitle")).toBeLessThan(modal.indexOf("set.plan.monthly"));
   });
 
-  it("PaywallModal mounts PlanBadge for both paid plans", () => {
+  it("PaywallModal offers only Plus now co-parent sharing is free", () => {
     expect(modal).toContain('<PlanBadge plan="plus" />');
-    expect(modal).toContain('<PlanBadge plan="family" />');
+    expect(modal).not.toContain('<PlanBadge plan="family" />');
+    expect(modal).toContain('.filter((row) => row.plan === "plus")');
   });
 
   it("PaywallModal keeps price literals out of copy (prices stay in paywallModel/pricing.ts)", () => {

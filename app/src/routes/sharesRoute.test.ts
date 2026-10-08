@@ -109,13 +109,13 @@ const invite = async (uid: string, email: string, recipientEmail: string, role =
 };
 
 describe("B-CAREPRO-10 · /shares co-parent bodies", () => {
-  it("Free → 402 for a co-parent invite, and the body never says 'your account'", async () => {
+  it("Free → co-parent sharing succeeds without an upgrade", async () => {
     const { status, text } = await invite("free-parent", "free@example.com", "other@example.com");
-    expect(status).toBe(402);
+    expect(status).toBe(200);
     const body = JSON.parse(text);
-    expect(body.upgrade).toEqual({ feature: "coParentSeats", plan: "family" });
+    expect(body.upgrade).toBeUndefined();
     expect(text.toLowerCase()).not.toContain("your account");
-    expect(body.details).toBe("Co-parent invites are part of Arbor Family.");
+    expect(body.role).toBe("co_parent");
   });
 
   it("Free → a viewer share is not gated (the identical read-only view)", async () => {
@@ -123,13 +123,13 @@ describe("B-CAREPRO-10 · /shares co-parent bodies", () => {
     expect(status).toBe(200);
   });
 
-  it("Family + one live co-parent → second invite is 409 seat_in_use with no upgrade object", async () => {
+  it("co-parent invitations do not require an additional paid seat", async () => {
     const first = await invite("family-parent", "fam@example.com", "coparent1@example.com");
     expect(first.status).toBe(200);
     const second = await invite("family-parent", "fam@example.com", "coparent2@example.com");
-    expect(second.status).toBe(409);
+    expect(second.status).toBe(200);
     const body = JSON.parse(second.text);
-    expect(body).toEqual({ error: "seat_in_use" });
+    expect(body.recipientEmail).toBe("coparent2@example.com");
     expect(body.upgrade).toBeUndefined();
     expect(second.text.toLowerCase()).not.toContain("your account");
   });

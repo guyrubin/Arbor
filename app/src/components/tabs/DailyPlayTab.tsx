@@ -5,6 +5,8 @@ import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import DailyPlayCard from "../overview/DailyPlayCard";
+import SourceActivities from "../practice/SourceActivities";
+import TomorrowTogether from "../practice/TomorrowTogether";
 import DailyPlanCard from "../overview/DailyPlanCard";
 import CourseCard from "../overview/CourseCard";
 import GoalBuilderModal from "../practice/GoalBuilderModal";
@@ -339,6 +341,7 @@ export default function DailyPlayTab() {
 
       {/* Readiness tracks — goal courses the parent chooses (school / sibling / sleep) */}
       <section data-module="play-readiness" className="max-w-[640px]">
+        <TomorrowTogether />
         <div className="mb-3">
           <h2 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("play.readinessTitle")}</h2>
           <p className="text-[13px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("play.readinessSubtitle")}</p>
@@ -384,6 +387,7 @@ export default function DailyPlayTab() {
       </div>
 
       <div data-module="play-picks" data-primary-move="log-play" className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <div className="lg:col-span-2"><SourceActivities /></div>
         {picks.map((p) => (
           <div key={p.activity.id}>
             {/* E6: each pick was selected with ageYearsOf(childProfile) — render the fact. */}

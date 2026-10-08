@@ -6,7 +6,7 @@ import { api, type EntitlementInfo } from "../lib/api";
  *  server said Free" from "we could not ask" (MOB-08). */
 export const FALLBACK_FREE: EntitlementInfo = {
   plan: "free",
-  limits: { coachMessagesPerDay: 10, maxChildren: 1, professionalReports: false, advancedPlans: false, coParentSeats: 0 },
+  limits: { coachMessagesPerDay: 10, maxChildren: 1, professionalReports: false, advancedPlans: false, coParentSeats: 1 },
   source: "client_fallback",
   enforced: true,
   usage: { coachMessagesToday: 0 },

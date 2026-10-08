@@ -80,6 +80,13 @@ export interface ActionLoopEntry {
    *  names the practice, the milestone it serves and its parent shelf. The
    *  dose is logged, never scored; tonight's question sets `outcome`. */
   practiceId?: string;
+  /** Explicit owner-selected shared activity; snapshot preserves the authored wording. */
+  sharedWithCoParent?: true;
+  selectedByUid?: string;
+  practiceDo?: string;
+  practiceSay?: string;
+  /** B-NEXT-18: exact authored version the parent explicitly recorded. */
+  practiceAdaptation?: import("../content/practiceAdaptations").PracticeAdaptationRecord;
   milestoneId?: string;
   shelf?: import("../lib/shelves/registry").ShelfId;
   /** B-PROG-01: the program a `practice` row was served by (the active
@@ -94,6 +101,10 @@ export interface ActionLoopEntry {
    *  helper "This helps choose tomorrow's practice", so it may reach the
    *  todays_focus prompt as a night answer. Never the `quote` keepsake. */
   whatHappened?: string;
+  /** A co-parent records the adult activity as done, without inventing an outcome. */
+  completedAt?: string;
+  completedByUid?: string;
+  completedVia?: "co_parent";
 }
 
 export type HeldAnswer = "yes" | "no";

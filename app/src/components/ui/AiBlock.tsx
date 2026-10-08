@@ -117,10 +117,15 @@ export function SayThis({
   onCopy?: () => void;
 }) {
   const [ownCopied, setOwnCopied] = useState(false);
+  const [copyFallback, setCopyFallback] = useState(false);
   const isCopied = copied ?? ownCopied;
-  const handleCopy = onCopy ?? (() => {
-    try { void navigator.clipboard?.writeText(text); } catch { /* best-effort */ }
-    setOwnCopied(true);
+  const handleCopy = onCopy ?? (async () => {
+    setOwnCopied(false); setCopyFallback(false);
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(text);
+      setOwnCopied(true);
+    } catch { setCopyFallback(true); }
   });
   return (
     <AiBlock
@@ -138,6 +143,7 @@ export function SayThis({
       }
     >
       <p className="text-[13px] leading-relaxed italic" style={{ color: "var(--arbor-ink)" }}>&ldquo;{text}&rdquo;</p>
+      {copyFallback && <textarea aria-label={copyLabel} readOnly value={text} dir="auto" autoFocus onFocus={(event) => event.currentTarget.select()} className="mt-3 min-h-11 w-full rounded-lg border p-3 text-sm" style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", borderColor: "var(--arbor-rule-strong)" }} />}
     </AiBlock>
   );
 }

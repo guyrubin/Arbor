@@ -9,7 +9,7 @@
 import type { EvalScenario } from "./acceptance.js";
 
 /** Routes the live runner can drive. */
-export const RUNNER_ROUTES = ["/api/chat", "/api/voice", "/api/live/turn", "/api/extract-log", "/api/generate-handoff", "/api/todays-focus", "/api/generate-plan"] as const;
+export const RUNNER_ROUTES = ["/api/chat", "/api/voice", "/api/live/turn", "/api/extract-log", "/api/generate-handoff", "/api/todays-focus", "/api/generate-plan", "/api/vision"] as const;
 
 const DAY = 86_400_000;
 
@@ -28,6 +28,12 @@ export function runnerInputError(scenario: Pick<EvalScenario, "route" | "input" 
   const route = scenario.route ?? "/api/chat";
   if (!(RUNNER_ROUTES as readonly string[]).includes(route)) return `has a route the runner cannot drive (${route})`;
   const input = (scenario.input ?? {}) as Record<string, unknown>;
+  if (route === "/api/vision") {
+    if (input.documentKind !== "pdf" && input.documentKind !== "photo") return "has no supported synthetic documentKind for /api/vision";
+    if (!Array.isArray(input.sourceLines) || !input.sourceLines.length || input.sourceLines.length > 12 || input.sourceLines.some((line) => typeof line !== "string" || line.length > 200)) return "has invalid synthetic sourceLines for /api/vision";
+    if (input.documentKind === "pdf" && input.sourceLines.some((line) => !/^[\x20-\x7e]*$/.test(String(line)) || String(line).length > 95)) return "has non-ASCII or oversized PDF source lines; use a photo fixture";
+    return null;
+  }
   // live/turn and extract-log take their text as-is (empty is a scenario).
   if (route === "/api/live/turn" || route === "/api/extract-log") return null;
   if (route === "/api/generate-handoff") {

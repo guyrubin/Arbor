@@ -35,6 +35,7 @@ import * as childsignals from "./childsignals";
 import * as closeloop from "./closeloop";
 import * as coachcontract from "./coachcontract";
 import * as continueModule from "./continue";
+import * as coParent from "./coParent";
 import * as demoFamily from "./demoFamily";
 import * as domains from "./domains";
 import * as evening from "./evening";
@@ -60,12 +61,15 @@ import * as memorydisclosure from "./memorydisclosure";
 import * as milestoneCatalogue from "./milestoneCatalogue";
 import * as offer from "./offer";
 import * as personal from "./personal";
+import * as pilotSix from "./pilotSix";
 import * as planclarity from "./planclarity";
 import * as plans from "./plans";
 import * as practice from "./practice";
+import * as practiceAdaptation from "./practiceAdaptation";
 import * as practiceDoors from "./practiceDoors";
 import * as professions from "./professions";
 import * as promise from "./promise";
+import * as publicGuides from "./publicGuides";
 import * as recap from "./recap";
 import * as returnhooks from "./returnhooks";
 import * as safety from "./safety";
@@ -108,6 +112,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   closeloop,
   coachcontract,
   continueModule,
+  coParent,
   demoFamily,
   domains,
   evening,
@@ -133,12 +138,15 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   milestoneCatalogue,
   offer,
   personal,
+  pilotSix,
   planclarity,
   plans,
   practice,
+  practiceAdaptation,
   practiceDoors,
   professions,
   promise,
+  publicGuides,
   recap,
   returnhooks,
   safety,

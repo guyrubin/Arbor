@@ -17,6 +17,7 @@ import type { BehaviorLog } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 import { lastHeldFor } from "./hardMomentLastTime";
 import { LastTimeLead, SendWordsButton } from "./HardMomentWords";
+import { PublicGuideShare } from "./PublicGuideShare";
 
 /**
  * B-ASKJB-31 — "Hard moment now": ONE sheet over the governed pilot guides,
@@ -200,6 +201,7 @@ export default function HardMomentNowSheet() {
                 </>
               )}
               <SendWordsButton card={card} locale={locale} parentName={parentFirst} childName={childFirst} t={t} />
+              <PublicGuideShare key={`${card.id}-${locale}`} card={card} locale={locale} />
               <button
                 type="button"
                 data-testid="hard-moment-now-talk"

@@ -30,14 +30,14 @@ export const fmtStoreCurrency = (amount: number, currencyCode: string): string =
  * offerings load — or when billing isn't configured — no price renders, never
  * a stale EUR constant.
  */
-export function PlanPrices({ cadence }: { cadence: "monthly" | "annual" }) {
+export function PlanPrices({ cadence, plans = ["plus"] }: { cadence: "monthly" | "annual"; plans?: PaidPlan[] }) {
   const { t } = useLanguage();
   const nativePrices = useNativePrices();
 
   if (isNativePlatform) {
     return (
       <div className="space-y-1" data-testid="plan-prices">
-        {nativePrices && (Object.keys(PLAN_PRICES) as PaidPlan[]).map((plan) => {
+        {nativePrices && plans.map((plan) => {
           const price = nativePrices[plan]?.[cadence];
           if (!price) return null;
           return (
@@ -59,7 +59,7 @@ export function PlanPrices({ cadence }: { cadence: "monthly" | "annual" }) {
 
   return (
     <div className="space-y-1" data-testid="plan-prices">
-      {(Object.keys(PLAN_PRICES) as PaidPlan[]).map((plan) => (
+      {plans.map((plan) => (
         <p key={plan} className="text-xs font-semibold" style={{ color: "var(--arbor-ink)" }}>
           {cadence === "monthly"
             ? t("set.plan.price.perMonth", { plan: t(PLAN_NAME_KEY[plan]), price: formatEur(PLAN_PRICES[plan].monthlyEur) })

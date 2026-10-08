@@ -18,8 +18,8 @@ import * as planclarity from "../../lib/i18nElevation/planclarity";
  * Client mirror of the ACTUAL gating in src/server/entitlements.ts PLAN_LIMITS —
  * nothing invented. Keys are exactly what the server names in 402 payloads
  * (`upgrade.feature` from requirePlusFeature / the coach meter) plus the two
- * limit-shaped gates the client already enforces (maxChildren in AddChildModal,
- * coParentSeats = the Family differentiator). Pinned to the server config by
+ * limit-shaped gate the client already enforces (maxChildren in AddChildModal).
+ * Co-parent sharing is free and deliberately absent. Pinned to server config by
  * PlanBadge.test.ts so this map can never drift from real entitlements.
  */
 export const FEATURE_PLANS = {
@@ -27,7 +27,6 @@ export const FEATURE_PLANS = {
   professionalReports: "plus", // requirePlusFeature("/api/generate-handoff")
   advancedPlans: "plus", // requirePlusFeature("/api/generate-plan")
   maxChildren: "plus", // AddChildModal limit gate (free = 1 child)
-  coParentSeats: "family", // the only Family-over-Plus gate
 } as const satisfies Record<string, PaidPlan>;
 
 export type GatedFeatureKey = keyof typeof FEATURE_PLANS;

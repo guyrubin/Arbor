@@ -167,6 +167,9 @@ export interface ShareGrant {
   createdAt: string;
   expiresAt: string | null;
   revokedAt: string | null;
+  accessMode?: "family_workspace";
+  recipientUid?: string;
+  acceptedAt?: string;
 }
 
 /** CARE-2: the read-only shared view a share RECIPIENT sees — grant metadata
@@ -293,6 +296,10 @@ export interface SleepLogEntry {
 
 export interface BehaviorLog {
   id: string;
+  /** Same-child co-parent note provenance, stamped by the authenticated server. */
+  authorUid?: string;
+  captureSource?: "co_parent";
+  shareGrantId?: string;
   timestamp: string;
   behaviorType: string;
   /** 1-5, recorded on the hard-moment sheet only. B-DATA-09: a plain moment

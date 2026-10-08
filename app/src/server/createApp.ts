@@ -58,7 +58,8 @@ const cspDirectives = () => ({
     "https://generativelanguage.googleapis.com",
     "wss://generativelanguage.googleapis.com",
   ],
-  frameSrc: ["'self'", "https://*.firebaseapp.com", "https://accounts.google.com"],
+  // Local PDF preview only; the importer validates PDF bytes and never loads remote URLs.
+  frameSrc: ["'self'", "blob:", "https://*.firebaseapp.com", "https://accounts.google.com"],
 });
 
 /**

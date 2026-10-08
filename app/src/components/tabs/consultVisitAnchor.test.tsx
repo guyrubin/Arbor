@@ -45,6 +45,7 @@ vi.mock("../../context/ArborContext", () => ({
   }),
 }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast: vi.fn() }) }));
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { uid: "synthetic-parent" } }) }));
 vi.mock("../../context/LanguageContext", () => ({
   useLanguage: () => ({
     uiLang: harness.locale,

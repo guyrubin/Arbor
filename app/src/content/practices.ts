@@ -87,7 +87,7 @@ export interface Practice {
   shelf: ShelfId;
   do: LocalizedText;
   say: LocalizedText;
-  minutes: 5 | 10 | 15;
+  minutes: 2 | 5 | 10 | 15;
   materials?: LocalizedText;
   evidence: { technique: PracticeTechnique; source: PracticeSource };
   reviewStatus: ContentReviewStatus;

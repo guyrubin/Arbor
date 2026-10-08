@@ -15,6 +15,10 @@ import { REPORTS } from "./Reports";
 import { isProfessionalReportType } from "../../lib/reportExport";
 import { HOME_PROGRAM_SCOPE_ID, REPORT_SCOPE_BY_TYPE, WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
 import { fmtDay } from "../../lib/formatDate";
+import CoParentInvite from "../sharing/CoParentInvite";
+import { coParentLink } from "../../lib/coParentApi";
+import { coParentCopy } from "../../lib/i18nElevation/coParent";
+import { CoParentRequests } from "../../lib/coParentRequests";
 // LC-17: the review step shows the RECIPIENT'S ACTUAL VIEW, built by the same
 // function the server uses for them — not a list of scope labels.
 import { buildPacketInput, buildSharedScopePacket, itemParts, sectionTitle, sectionNote, type PacketItem } from "../../consult/packet";
@@ -116,6 +120,8 @@ export default function TrustedSharing() {
     g.expiresAt ? t("sec.sharing.expires", { date: fmtDay(g.expiresAt, uiLang) }) : t("share.duration.until_revoked");
 
   const [shares, setShares] = useState<ShareGrant[]>([]);
+  const rosterRequests = useRef(new CoParentRequests());
+  useEffect(() => () => { rosterRequests.current.invalidate(); }, []);
   const [inbound, setInbound] = useState<ShareGrant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -242,6 +248,7 @@ export default function TrustedSharing() {
   };
 
   const load = useCallback(async () => {
+    const ticket = rosterRequests.current.begin();
     setLoading(true);
     setError(false);
     // Track each call independently: a partial failure still renders what loaded,
@@ -255,13 +262,14 @@ export default function TrustedSharing() {
         api.listShares(childProfile.id, { history: true }).catch(() => { aFailed = true; return { shares: [] }; }),
         api.sharedWithMe().catch(() => { bFailed = true; return { shares: [] }; }),
       ]);
+      if (!rosterRequests.current.latest(ticket)) return;
       setShares(mine.shares || []);
       setInbound(toMe.shares || []);
       if (aFailed && bFailed) setError(true);
     } catch {
-      setError(true);
+      if (rosterRequests.current.latest(ticket)) setError(true);
     } finally {
-      setLoading(false);
+      if (rosterRequests.current.latest(ticket)) setLoading(false);
     }
   }, [childProfile.id]);
 
@@ -272,7 +280,7 @@ export default function TrustedSharing() {
   // move to the persistent "Sharing history" card — the grant records
   // (createdAt/expiresAt/revokedAt) ARE the audit trail, surviving reloads.
   const isLiveGrant = (g: ShareGrant) => !g.revokedAt && (!g.expiresAt || Date.parse(g.expiresAt) > Date.now());
-  const team = shares.filter(isLiveGrant);
+  const team = shares.filter((g) => isLiveGrant(g) && g.accessMode !== "family_workspace");
   // W2-CAREPRO c2 r2 — the done state, fed by the existing grant list (no new
   // write): once a live week grant exists, the card says who reads the week,
   // offers a 44 px Stop sharing (the same revoke as the roster) and a door to
@@ -377,6 +385,7 @@ export default function TrustedSharing() {
   const [viewError, setViewError] = useState<"ended" | "blocked" | "generic" | null>(null);
 
   const openSharedView = async (g: ShareGrant) => {
+    if (g.accessMode === "family_workspace") { window.location.assign(coParentLink(g.id)); return; }
     setViewing(g);
     setView(null);
     setViewError(null);
@@ -442,6 +451,7 @@ export default function TrustedSharing() {
           hand-off it produces (LC-17) are two steps of one capability, so
           they carry one stamp between them rather than competing as two. */}
       <div data-module="sharing-grant" style={{ display: "contents" }}>
+      <CoParentInvite key={childProfile.id} childId={childProfile.id} childName={childProfile.name} grants={shares} onChanged={load} />
       {!error && (
         <section data-testid="share-week-card" className="rounded-[22px] p-5 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-x-6 lg:gap-y-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
           {/* W2-CAREPRO r2: at lg the card is two columns — what is shared on
@@ -786,7 +796,7 @@ export default function TrustedSharing() {
                   <Chip tone="yellow" icon={<Icon name="schedule" size={15} />}>{expiryLabel(s)}</Chip>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{scopesLabel(s.scopes) || t("sec.sharing.noScopes")}</Chip>
+                  <Chip tone="sky" icon={<Icon name="verified_user" size={15} fill={1} />}>{s.accessMode === "family_workspace" ? coParentCopy[uiLang].workspaceLabel : scopesLabel(s.scopes) || t("sec.sharing.noScopes")}</Chip>
                 </div>
                 {/* CARE-2: the card is no longer a dead end — open the read-only view. */}
                 <button
@@ -795,7 +805,7 @@ export default function TrustedSharing() {
                   className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold"
                   style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
                 >
-                  <Icon name="visibility" size={17} /> {t("sec.sharing.viewer.open")}
+                  <Icon name="visibility" size={17} /> {s.accessMode === "family_workspace" ? coParentCopy[uiLang].open : t("sec.sharing.viewer.open")}
                   <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
                 </button>
               </div>

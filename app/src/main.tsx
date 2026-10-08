@@ -6,7 +6,6 @@ import './lib/devClockBoot';
 import './components/kidmode/proofVisit';
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
-import App from './App.tsx';
 import './index.css';
 import {track, setGlobalProps} from './lib/analytics';
 import {captureAttribution, attributionProps} from './lib/attribution';
@@ -16,6 +15,7 @@ import {initNativeShell} from './lib/native';
 import {restoreTheme} from './lib/theme';
 import {firebaseEnabled} from './lib/firebase';
 import {hydrateDemoFamily} from './lib/demoFamilyHydrate';
+import {isPublicGuidePath} from './content/publicHardMoments';
 
 // AP-052: restore accent-theme preference before first render so there is no
 // flash-of-wrong-theme on load. Runs synchronously — no await needed.
@@ -33,12 +33,21 @@ const attribution = captureAttribution();
 setGlobalProps(() => attributionProps(attribution));
 trackAppStart();
 
-const renderApp = () =>
+const renderApp = async () => {
+  const {default: App} = await import('./App.tsx');
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />
     </StrictMode>,
   );
+};
+
+// B-NEXT-12: public, generic guides never mount authentication, onboarding or
+// the family's providers. In local development they also skip demo hydration.
+const renderPublicGuides = async () => {
+  const {default: PublicGuides} = await import('./components/behaviors/PublicGuides');
+  createRoot(document.getElementById('root')!).render(<StrictMode><PublicGuides /></StrictMode>);
+};
 
 // B-BOOK-05: DEV-only review route for the new kid book reader
 // (`?book=<id>&hero=<sheetId>&lang=en|he&gender=m|f&name=<name>`, see
@@ -49,7 +58,8 @@ const devBookReview = import.meta.env.DEV && new URLSearchParams(window.location
 // B-DIST-01: in the local sandbox (no Firebase) a seeded demo family is written
 // into the per-child storage keys BEFORE the first render; no bundle → the app
 // renders exactly as before. Never runs with Firebase (prod/stage/dev clouds).
-if (devBookReview) void import('./components/library/devBookRoute').then((m) => m.mountDevBookRoute(document.getElementById('root')!));
+if (isPublicGuidePath(window.location.pathname)) void renderPublicGuides();
+else if (devBookReview) void import('./components/library/devBookRoute').then((m) => m.mountDevBookRoute(document.getElementById('root')!));
 else if (firebaseEnabled) renderApp();
 else void hydrateDemoFamily().catch(() => 'none').finally(renderApp);
 

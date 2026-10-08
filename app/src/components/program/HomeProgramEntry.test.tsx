@@ -162,6 +162,19 @@ describe("B-PROG-09 · the family's practice days (counts, never a rate)", () =>
 });
 
 describe("B-PROG-09 · the visit seams", () => {
+  it("imports only after selection, preserves provenance, and can remove imported rows without losing manual work", () => {
+    const source = { kind: "text" as const, name: "Synthetic note", sourceText: "Read together.", quotations: ["Read together."], confirmedAt: NOW.toISOString(), extractionVersion: "parent-paste-v1" };
+    const manual = entryReducer(initialEntryState("tipat_halav"), { type: "exerciseText", i: 0, text: "My own idea" });
+    const imported = entryReducer(manual, { type: "importExercises", texts: ["Read a favourite book together."], source });
+    expect(manual.source).toBeUndefined();
+    expect(imported.exercises).toHaveLength(2);
+    const writes = entryWrites(imported, { rows: [], existingGoals: [], nextVisit: null, now: NOW });
+    expect(writes.ok).toBe(true);
+    if (writes.ok) expect(writes.enrolment.home.source).toEqual(source);
+    const removed = entryReducer(imported, { type: "removeImport" });
+    expect(removed.exercises.map(e => e.text)).toEqual(["My own idea"]);
+    expect(removed.source).toBeUndefined();
+  });
   it("the visit's profession and the next booked visit with the same professional", () => {
     expect(homeProfessionForAppointment("psychologist")).toBe("psychology");
     expect(homeProfessionForAppointment("ot")).toBe("ot");

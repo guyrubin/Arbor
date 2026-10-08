@@ -30,6 +30,7 @@
 import type { Milestone } from "../../types";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import type { Practice } from "../../content/practices";
+import { restorePracticeAdaptation, type PracticeAdaptationRecord } from "../../content/practiceAdaptations";
 import { bandForAgeMonths, milestoneAgeWindow, selectNextMilestones } from "../milestoneData";
 import { dayKey } from "../../practice/signals";
 import { answeredToday } from "../milestones/observe";
@@ -48,6 +49,7 @@ export interface PracticePick {
   /** B-PROG-01: set when the pick came from the active program's week. */
   programId?: string;
   programWeek?: number;
+  adaptation?: PracticeAdaptationRecord;
 }
 
 /** B-PROG-01: the active program, as the chooser needs it (lib/programs/enrolment
@@ -72,6 +74,7 @@ export interface ChoosePracticeInput {
   recentPracticeIds?: readonly string[];
   /** The practice today's dose row already names — the card stays put all day. */
   todayPracticeId?: string;
+  todayAdaptation?: PracticeAdaptationRecord;
   /** B-LOOP-13: the AI's pick; honoured only inside the candidate set. */
   aiPracticeId?: string;
   /** P6 seam (B-PROG-01): a program rule may narrow the candidates later; the
@@ -290,7 +293,7 @@ export function choosePractice(input: ChoosePracticeInput): PracticePick | null 
       const inProgram = input.program && (input.program.weeks[week - 1] ?? []).includes(practice.id)
         ? { programId: input.program.programId, programWeek: week }
         : {};
-      return { practice, milestone, shelf: practice.shelf, via: "today", ...inProgram };
+      return { ...restorePracticeAdaptation(practice, input.todayAdaptation), milestone, shelf: practice.shelf, via: "today", ...inProgram };
     }
   }
   const candidates = todaysCandidates(input);
@@ -310,7 +313,7 @@ export const practiceDoseId = (childId: string, at: Date = new Date()): string =
 
 /** The row "Did it" / "Not today" writes. Pure; the caller persists it. */
 export function practiceDoseEntry(
-  pick: Pick<PracticePick, "practice" | "milestone" | "shelf" | "programId">,
+  pick: Pick<PracticePick, "practice" | "milestone" | "shelf" | "programId" | "adaptation">,
   answer: PracticeAnswer,
   childId: string,
   sayText: string,
@@ -325,6 +328,7 @@ export function practiceDoseEntry(
     status: "completed",
     acceptedAt: iso,
     practiceId: pick.practice.id,
+    ...(pick.adaptation ? { practiceAdaptation: pick.adaptation } : {}),
     ...(pick.milestone ? { milestoneId: pick.milestone.id } : {}),
     shelf: pick.shelf,
     ...(pick.programId ? { programId: pick.programId } : {}),

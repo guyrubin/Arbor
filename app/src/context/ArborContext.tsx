@@ -511,7 +511,7 @@ function useArborState() {
   const logPlayCompletion = (a: ScoredActivity | PlayActivity, source: PlayLog["source"], courseId?: string) => {
     const activity = "activity" in a ? a.activity : a;
     const reason: PlayLog["reason"] = "activity" in a ? a.reason : "stage-match";
-    const day = new Date().toISOString().slice(0, 10);
+    const day = dayKey(new Date());
     const id = `${activity.id}.${day}`;
     // Idempotent per activity per day: skip the loop event on a repeat tap.
     const alreadyDone = playLogCol.items.some((p) => p.id === id);

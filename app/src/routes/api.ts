@@ -1,4 +1,6 @@
 import express from "express";
+import { PROGRAM_IMPORT_PROMPT } from "../ai/programImportPrompt.js";
+import { parseProgramDocument, parseRecommendationDraft, PROGRAM_IMPORT_VERSION } from "../lib/programImport.js";
 import { createHash } from "node:crypto";
 import type { ArborConfig } from "../config/env.js";
 import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
@@ -31,7 +33,7 @@ import { loadKnowledgeCardsWithMetadata, renderKnowledgeContext, retrieveKnowled
 import { COACH_EXCLUDED_CARD_TYPES, retrievalKeysFor } from "../knowledge/retrievalKeys.js";
 import { resolveScholar } from "../services/scholars.js";
 import { selectCouncil, runScholarTakes, renderCouncilForSynthesis } from "../services/council.js";
-import { buildGrant, isShareActive, type ShareStore } from "../sharing/shares.js";
+import { buildGrant, type ShareStore } from "../sharing/shares.js";
 import { getStorySpec } from "../lib/heroJourneys.js";
 import { ARBOR_PROFESSIONALS, filterProfessionals } from "../services/professionals.js";
 import { Type, Modality } from "@google/genai";
@@ -91,6 +93,7 @@ import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
 import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier, type WaitlistStore } from "../server/waitlist.js";
 import { createSharedChildRecordSource, resolveSharedPacket, type SharedChildRecordSource } from "../server/sharedPacket.js";
+import { createCoParentRouter } from "../server/coParent.js";
 
 type ApiDeps = {
   config: ArborConfig;
@@ -403,6 +406,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const seededFollowUpCoachResponseSchema = createSeededFollowUpCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
+  router.use(createCoParentRouter({ config, shareStore, requireOwnership }));
   // B-BOOK release: a child's private book files (hero sheet, prints, narration)
   // — read only through this owner-checked proxy (server/bookAssets.ts).
   router.use(createBookAssetsRouter({ getBucket: () => defaultBookAssetBucket(config.storageBucket), requireOwnership }));
@@ -607,40 +611,15 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   });
 
   // TRB-3 + SAFE-4 (v6): co-parent / trusted sharing with server-enforced expiry.
-  router.post("/shares", async (req, res) => {
+  router.post("/shares", requireOwnership, async (req, res) => {
     const { uid, email } = actorOf(req);
     const { childId, childName, recipientEmail, role, scopes, duration } = req.body;
     if (!childId || !recipientEmail) {
       res.status(400).json({ error: "childId and recipientEmail are required" });
       return;
     }
-    // MON-2: the co-parent seat is the Family tier's differentiator. Gate it on
-    // the entitlement's coParentSeats (Free/Plus = 0, Family = 1) and the count of
-    // active co-parent grants the owner already holds. 402 → client opens paywall.
-    if (role === "co_parent") {
-      const entitlement = await resolveEntitlement(entitlementStore, { uid, email });
-      const seats = entitlement.limits.coParentSeats;
-      if (seats < 1) {
-        // B-CAREPRO-10(b): neutral, true copy — a co-parent gets a read-only
-        // view of what the owner shares, never "your account".
-        res.status(402).json({
-          error: "Co-parent sharing is an Arbor Family feature",
-          details: "Co-parent invites are part of Arbor Family.",
-          upgrade: { feature: "coParentSeats", plan: "family" },
-        });
-        return;
-      }
-      const activeCoParents = (await shareStore.listByOwner(uid))
-        .filter((g) => g.role === "co_parent" && isShareActive(g)).length;
-      if (activeCoParents >= seats) {
-        // B-CAREPRO-10(a): a Family holder whose seat is in use is not sold
-        // Family again. 409 with a stable code and NO upgrade object; the
-        // client keys a "revoke {email}" hint off `error` (lib/api.ts keeps
-        // this one code out of the escalation 409 contract).
-        res.status(409).json({ error: "seat_in_use" });
-        return;
-      }
-    }
+    // Co-parent access is free. Existing scoped grants retain their read-only
+    // contract; writable same-child access requires the explicit workspace invite.
     try {
       const grant = await shareStore.create(
         buildGrant({ ownerUid: uid, ownerEmail: email, childId, childName, recipientEmail, role, scopes, duration }),
@@ -2424,6 +2403,30 @@ Return only JSON matching the schema.`;
   // reads `childId` from the body, the client MUST send childId or every call 451s.
   router.post("/vision", requireOwnership, requireConsent(consentStore, "face_processing", (req) => !!req.body?.image), async (req, res) => {
     const { image, mode = "observe", note, childProfile, language } = req.body;
+    if (mode === "recommendations") {
+      // Reuses vision's authentication, child ownership, parental consent,
+      // request size and per-user AI quota gates. No upload is persisted.
+      let document: { data: string; mimeType: string };
+      try { document = parseProgramDocument(image?.dataUrl); }
+      catch { res.status(400).json({ error: "Use a PNG, JPEG, WebP or PDF up to 4 MB." }); return; }
+      try {
+        const result = await modelProvider.generateJson({
+          route: "analysis_structured", prompt: PROGRAM_IMPORT_PROMPT,
+          promptVersion: PROGRAM_IMPORT_VERSION, temperature: 0,
+          images: [document],
+          schema: { type: Type.OBJECT, required: ["sourceText", "recommendations", "unreadable", "offTopic"], properties: {
+            sourceText: { type: Type.STRING }, recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+            unreadable: { type: Type.BOOLEAN }, offTopic: { type: Type.BOOLEAN },
+          } },
+        });
+        const draft = parseRecommendationDraft(result);
+        await sendScreenedJson(res, { mode, ...draft });
+      } catch {
+        // Document text is private: never include model errors/content in logs.
+        res.status(422).json({ error: "We couldn't read that reliably. You can paste the recommendations instead." });
+      }
+      return;
+    }
     const parsed = parseDataUrl(image?.dataUrl ?? image);
     if (!parsed) {
       res.status(400).json({ error: "A base64 image data URL is required" });

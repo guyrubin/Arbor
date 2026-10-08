@@ -47,7 +47,7 @@ describe("B-PROG-09 template · two exercises → one enrolment, two practices o
     if (!("enrolment" in r)) return;
     const e = r.enrolment;
     expect(e.programId).toBe("home-ot");
-    expect(e.id).toBe("home-ot.2026-10-08");
+    expect(e.id).toBe(`home-ot.2026-10-08.${NOW.getTime().toString(36)}`);
     expect(e.status).toBe("active");
     expect(e.home.exercises).toEqual([
       { id: "ex-1", text: "Thread five big beads on a lace after breakfast", shelf: "hands" },
@@ -95,6 +95,8 @@ describe("B-PROG-09 template · two exercises → one enrolment, two practices o
 describe("B-PROG-09 template · the rules", () => {
   it("defaults each exercise to the profession's shelf, a shelf over a domain the profession owns", () => {
     for (const p of HOME_PROFESSIONS) {
+      // Tipat Halav is the source team, not a diagnostic profession/lens.
+      if (p === "tipat_halav") { expect(HOME_PROFESSION_SHELF[p]).toBe("family"); continue; }
       const domain = shelfDef(HOME_PROFESSION_SHELF[p]).domain;
       const owners = DOMAINS.find((d) => d.id === domain)!.professions as readonly string[];
       const lens: Record<string, readonly string[]> = {
@@ -137,7 +139,22 @@ describe("B-PROG-09 template · the rules", () => {
     expect("enrolment" in r).toBe(true);
     if (!("enrolment" in r)) return;
     expect(r.superseded.map((x) => [x.id, x.status])).toEqual([[old.id, "done"]]);
-    expect(r.enrolment.id).toBe("home-ot.2026-10-20");
+    expect(r.enrolment.id).toBe(`home-ot.2026-10-20.${at(20).getTime().toString(36)}`);
+  });
+
+  it("preserves same-day source and completion history and keeps retry identity stable", () => {
+    const old = toggleExerciseDay(started(), "ex-1", NOW);
+    old.home.source = { kind: "text", name: "First note", sourceText: "Original instruction", quotations: ["Original instruction"], confirmedAt: NOW.toISOString(), extractionVersion: "parent-paste-v1" };
+    const first = startHomeProgram([old], entry, NOW, "second-intake");
+    if (!("enrolment" in first)) throw new Error("expected an enrolment");
+    expect(first.enrolment.id).not.toBe(old.id);
+    expect(first.superseded).toHaveLength(1);
+    expect(first.superseded[0].home).toEqual(old.home);
+    expect(first.superseded[0].status).toBe("done");
+    const retry = startHomeProgram([first.enrolment, ...first.superseded], entry, NOW, "second-intake");
+    if (!("enrolment" in retry)) throw new Error("expected an enrolment");
+    expect(retry.enrolment.id).toBe(first.enrolment.id);
+    expect(retry.superseded).toEqual([]);
   });
 });
 

@@ -12,6 +12,7 @@
 import { renderShareCard, type ShareCardOpts } from "./shareCard";
 import { trackShareInitiated, trackShareCompleted, type LoopArtifact } from "./loopEvents";
 import type { Market } from "./attribution";
+import { PUBLIC_WEB_ORIGIN } from "./publicWebOrigin";
 
 /**
  * Canonical share/landing origin. Soft dep on mk-p0-1-domain: until the final
@@ -19,7 +20,7 @@ import type { Market } from "./attribution";
  * swaps it in one place. Mirrors lib/runtime.ts PROD_API_ORIGIN (kept local to
  * avoid importing the Capacitor runtime into the pure URL builder).
  */
-export const SHARE_URL = "https://arborparentingapp.com";
+export const SHARE_URL = PUBLIC_WEB_ORIGIN;
 
 export type ShareChannel = "native" | "web_share" | "download";
 

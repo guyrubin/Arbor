@@ -25,7 +25,7 @@ export const en: Record<string, string> = {
   "elev.plan.freeTitle": "Always free",
   "elev.plan.free.1": "Journal, milestones, and daily plays",
   "elev.plan.free.2": "Coach messages every day, up to the daily limit",
-  "elev.plan.free.3": "One child profile",
+  "elev.plan.free.3": "One child profile, with free co-parent sharing",
   "elev.plan.plusTitle": "Arbor Plus adds",
   "elev.plan.plus.1": "Coaching without the daily limit",
   // B-CAREPRO-08: every packet and PDF is free (built client-side, no gate);
@@ -34,13 +34,10 @@ export const en: Record<string, string> = {
   "elev.plan.plus.2": "AI-drafted school notes",
   "elev.plan.plus.3": "Advanced growth plans",
   "elev.plan.plus.4": "Up to six children",
-  "elev.plan.familyTitle": "Arbor Family adds",
-  // ENG-03: what Family ACTUALLY unlocks is one co-parent share grant
-  // (server/entitlements.ts coParentSeats: 1, the only family-over-plus gate),
-  // and what that grant gives the other adult is the read-only, scope-exact,
-  // revocable packet at GET /shared/:grantId/packet. Not "a seat" — nobody
-  // gets to use the account. The bullet now says the thing that exists.
-  "elev.plan.family.1": "Everything in Plus, plus one co-parent invite: a read-only view of what you choose to share, revocable any time",
+  "elev.plan.familyTitle": "Existing Arbor Family subscriptions",
+  // Existing Family subscribers retain Plus features; sharing is never sold
+  // as a paid differentiator now that same-child co-parent access is free.
+  "elev.plan.family.1": "Includes all Plus features. Co-parent sharing is free on every plan, revocable any time",
 
   // ── Paywall body for the professionalReports gate (B-CAREPRO-08) ──────────
   "elev.plan.pw.bodySchoolNotes": "AI-drafted school notes are part of Arbor Plus. Upgrade and Arbor drafts the note for your child's teacher.",
@@ -57,14 +54,14 @@ export const he: Record<string, string> = {
   "elev.plan.freeTitle": "תמיד בחינם",
   "elev.plan.free.1": "יומן, אבני דרך ומשחקים יומיים",
   "elev.plan.free.2": "הודעות מאמן בכל יום, עד המכסה היומית",
-  "elev.plan.free.3": "פרופיל ילד אחד",
+  "elev.plan.free.3": "פרופיל ילד אחד, עם שיתוף חינמי להורה נוסף",
   "elev.plan.plusTitle": "ארבור פלוס מוסיף",
   "elev.plan.plus.1": "אימון בלי המכסה היומית",
   "elev.plan.plus.2": "מסמכים לגן ולבית הספר שארבור מנסח בשבילכם",
   "elev.plan.plus.3": "תוכניות צמיחה מתקדמות",
   "elev.plan.plus.4": "עד שישה ילדים",
-  "elev.plan.familyTitle": "ארבור משפחה מוסיף",
-  "elev.plan.family.1": "כל מה שבפלוס, ובנוסף הזמנה אחת להורה שותף: צפייה בלבד במה שתבחרו לשתף, וניתן לבטל בכל רגע",
+  "elev.plan.familyTitle": "מנויי ארבור משפחה קיימים",
+  "elev.plan.family.1": "כולל את כל יכולות פלוס. שיתוף עם הורה נוסף זמין ללא תשלום בכל מסלול, וניתן לבטל בכל רגע",
 
   // ── Paywall body (he) ──────────────────────────────────────────────────────
   "elev.plan.pw.bodySchoolNotes": "מסמכים לגן ולבית הספר שארבור מנסח הם חלק מארבור פלוס. שדרגו וארבור ינסח את המסמך לצוות החינוכי.",

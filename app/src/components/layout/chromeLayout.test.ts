@@ -504,7 +504,6 @@ describe("R5 — every Settings control declares the 44 px floor", () => {
     ["AI-language switch", () => settings, 't("set.aiLang.toggle")'],
     ["cadence toggle", () => settings, "onClick={() => setCadence(c)}"],
     ["upgrade to Plus", () => settings, 'startCheckout("plus", cadence, "settings")'],
-    ["upgrade to Family", () => settings, 'startCheckout("family", cadence, "settings")'],
     ["manage plan", () => settings, "void openPortal()"],
     ["restore purchases", () => settings, "void restorePurchases()"],
     ["retry entitlement", () => settings, "void retryEntitlement()"],
