@@ -246,7 +246,8 @@ describe("PracticeCard", () => {
       const html = render(lang);
       expect(html).toContain('data-testid="practice-do"');
       // P5-LOOP c2 r1: the say sits inside the ONE start rule it shares with the parent's words
-      expect(html).toMatch(/data-testid="practice-words" class="[^"]*border-s-2 ps-3[^>]*>(?:(?!<\/div>)[\s\S])*data-testid="practice-say"/);
+      // (B-DESIGN-04: the rule is .arbor-accent-rule — 2 px --arbor-ink, padding-inline-start 14)
+      expect(html).toMatch(/data-testid="practice-words" class="[^"]*\barbor-accent-rule\b[^>]*>(?:(?!<\/div>)[\s\S])*data-testid="practice-say"/);
       expect(html).toContain('data-primary-move="do-practice"');
       const buttons = html.match(/<button[^>]*data-answer="[a-z_]+"[^>]*>/g) ?? [];
       expect(buttons).toHaveLength(2);

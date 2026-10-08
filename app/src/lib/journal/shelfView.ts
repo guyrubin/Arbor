@@ -88,13 +88,19 @@ const HE_CHILD = /(^|[\s(])(?:הילד\/ה|התינוק\/ת)(?=[\s.,;:!?)]|$)/gu
  *  slash form resolves to the child's gender (HE). No name → the do as
  *  written, gender-resolved. */
 export function practiceTryTitle(practice: Practice, lang: "en" | "he", childName: string, gender?: ChildGenderish): string {
+  return practiceTitle(practiceDoNamed(practice, lang, childName, gender), lang);
+}
+
+/** B-DESIGN-04 (Today critic c2.r4 P2-N4): the practice's whole do in the
+ *  child's terms \u2014 the same substitution as the tile's "Try:" line, so the
+ *  Today card's headline and do-line name the child the way the Journal does. */
+export function practiceDoNamed(practice: Practice, lang: "en" | "he", childName: string, gender?: ChildGenderish): string {
   const name = childName.trim();
   if (lang === "he") {
     const raw = name ? practice.do.he.replace(HE_CHILD, (_m, lead: string) => `${lead}\u2068${name}\u2069`) : practice.do.he;
-    return practiceTitle(resolveHebrewSlash(raw, gender), "he");
+    return resolveHebrewSlash(raw, gender);
   }
-  const text = name ? practice.do.en.replace(EN_CHILD, (_m, poss?: string) => `${name}${poss ?? ""}`) : practice.do.en;
-  return practiceTitle(text, "en");
+  return name ? practice.do.en.replace(EN_CHILD, (_m, poss?: string) => `${name}${poss ?? ""}`) : practice.do.en;
 }
 
 /** The shelf's next thing to notice (never ahead of band, never a shelf answered today). */

@@ -71,7 +71,9 @@ describe("TonightFlow — three steps in order", () => {
     for (const [s, n] of [[1, 1], [2, 2], [3, 3]] as const) {
       const html = render(s);
       expect(text(html.match(/data-testid="tonight-progress"[^>]*>([^<]*)</)![1])).toBe(`${n} of 3`);
-      expect(html).not.toMatch(/role="progressbar"|<progress|%/);
+      // B-DESIGN-04: the duotone shelf glyph mixes its jewel in CSS (color-mix … 30%) — a style
+      // attribute is not a rendered number; every rendered % or progress bar still fails.
+      expect(html.replace(/ style="[^"]*"/g, "")).not.toMatch(/role="progressbar"|<progress|%/);
     }
     expect(text(render(1, "he").match(/data-testid="tonight-progress"[^>]*>([^<]*)</)![1])).toBe("1 מתוך 3");
   });

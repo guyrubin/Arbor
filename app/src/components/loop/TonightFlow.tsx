@@ -10,7 +10,7 @@ import type { PracticeAnswer, PracticePick } from "../../lib/practice/choosePrac
 import type { ObserveStatus, ObservedWhen } from "../../lib/milestones/observe";
 import { TONIGHT_STEPS } from "../../lib/loop/tonight";
 import { GOAL_SCALE_VALUES, type FamilyGoal, type GoalScaleKey, type GoalScaleValue } from "../../lib/goals";
-import { ShelfGlyph } from "./ShelfGlyph";
+import { ShelfGlyph } from "../ui/ShelfGlyph"; // B-DESIGN-04: the 44 px duotone glyph
 import NoticeCard from "./NoticeCard";
 import { practiceText } from "./PracticeCard";
 
@@ -135,7 +135,7 @@ export default function TonightFlow(props: TonightFlowProps) {
       <div data-testid="tonight-step-1">
         <div className="flex items-center justify-between gap-2">{progress(1)}</div>
         <div className="mt-2 flex items-center gap-2.5">
-          <ShelfGlyph shelf={p.shelf} size={40} />
+          <ShelfGlyph shelf={p.shelf} />
           <div className="min-w-0">
             <p className="text-[12.5px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.tonight.practice.caption")}</p>
             <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-ink)" }}>{shelfLabel(p.shelf, t)}</p>
@@ -323,6 +323,7 @@ export default function TonightFlow(props: TonightFlowProps) {
           onAnswer={props.onNotice}
           onWhen={props.onNoticeWhen}
           onUndo={props.onNoticeUndo}
+          answers="segmented"
           answersAttrs={stamp}
         />
         <div className="flex flex-wrap gap-2">

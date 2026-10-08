@@ -7,7 +7,8 @@ import type { Milestone } from "../../types";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import type { PracticeAnswer } from "../../lib/practice/choosePractice";
-import { ShelfGlyph } from "./ShelfGlyph";
+import { ShelfGlyph } from "../ui/ShelfGlyph";
+import { practiceDoNamed } from "../../lib/journal/shelfView";
 import { practiceTitle, titleIsWholeDo } from "../../lib/practice/practiceTitle";
 
 /** The page-language text of a practice field, Hebrew slash forms resolved
@@ -39,6 +40,10 @@ export interface PracticeQuote {
   date?: string;
   lead?: string;
   shelf?: string;
+  /** B-DESIGN-04 (Today critic c2.r4 P2-N1): false when the line was written
+   *  on ANOTHER shelf (last night's words on yesterday's practice) — the "Did
+   *  it" receipt then never claims the dose was filed "next to your words". */
+  onShelf?: boolean;
 }
 
 export interface PracticeCardProps {
@@ -82,16 +87,20 @@ export interface PracticeCardProps {
 }
 
 /**
- * B-LOOP-09 / B-LOOP-07 — Today's practice, the design of record
- * (art/mockups/today-option-1.html): a caption row with the shelf mark,
- * a short title (≤ 8 words, the do's first clause — lib/practice/
- * practiceTitle; P5 r1 P0-1) at --t-lg, the full do at body size, the "say"
- * as the one --t-xl editorial sentence
- * behind a 2 px navy start rule, one muted meta line, one why-line, and
- * the two answers — solid sapphire "Did it" + pale "Not today". After an
- * answer: ONE line ("Noted. Tonight Arbor asks how it went." / "Tomorrow is
- * fine.") — never a count, a streak or a score. Parent register: flat
- * tints, tokens only, logical properties.
+ * B-LOOP-09 / B-LOOP-07 → B-DESIGN-04 (P7-DESIGN, design of record
+ * execution/2026-10-07--design-direction/option-ab-blend.html, frame 01):
+ * Today's practice is the screen's PRIMARY card — the one card with the deep
+ * shadow (--arbor-shadow-primary) on --r-xl. It opens on a kicker row (the
+ * 44 px duotone shelf glyph, the caption as a kicker over the shelf name, and
+ * the minutes as a quiet tag) under a hairline; then a short title (≤ 8
+ * words, the do's first clause in the child's terms — practiceDoNamed +
+ * practiceTitle) in the display face at --t-title; the family's own words
+ * (editorial) and the "say" (editorial --t-say, the one largest line) on ONE
+ * 2 px ink rule — the screen's one warm accent; the full do at body size; the
+ * two answers (the CTA-recipe "Did it" — the route's one — and a pale
+ * "Not today"); then the materials and the why-line, muted. After an answer:
+ * ONE line — never a count, a streak or a score. Parent register: tokens
+ * only, logical properties (the rule and the tag mirror in Hebrew).
  */
 export default function PracticeCard({
   practice,
@@ -112,135 +121,148 @@ export default function PracticeCard({
   const { t, uiLang } = useLanguage();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
   const shelfName = shelfLabel(shelf, t);
-  const doText = practiceText(practice, "do", lang, gender);
+  // P2-N4: the headline and the do-line name the child ("Give Dylan …"), the
+  // same substitution the Journal tile's "Try:" line uses.
+  const doText = practiceDoNamed(practice, lang, childName ?? "", gender);
   const titleText = practiceTitle(doText, lang);
   const stamp = stampMove ? { "data-primary-move": stampMove } : {};
   const sayText = practiceText(practice, "say", lang, gender);
   const materials = practiceText(practice, "materials", lang, gender);
-  const meta = [t("elev.loop.practice.minutes", { n: practice.minutes }), materials].filter(Boolean).join(" · ");
+  const caption = t(mode === "tonight" ? "elev.loop.tonight.practice.caption" : "elev.loop.practice.caption");
+  const hasQuotes = !!quotes && quotes.length > 0;
+  const besideWords = !!quotes && quotes.some((q) => q.onShelf !== false);
   return (
     <section
       data-testid="practice-card"
       data-practice-id={practice.id}
       data-shelf={shelf}
       data-mode={mode}
-      aria-label={t(mode === "tonight" ? "elev.loop.tonight.practice.caption" : "elev.loop.practice.caption")}
-      className="overflow-hidden rounded-[18px]"
-      style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+      aria-label={caption}
+      className="arbor-depth-primary overflow-hidden px-4 pb-4 pt-3.5 sm:px-5 sm:pb-5"
+      style={{ background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-xl)" }}
     >
-      <div data-testid="practice-band" className="px-4 pb-2.5 pt-3 sm:px-5" style={{ background: "var(--arbor-clay-soft)" }}>
-        <div className="flex items-center gap-2.5">
-          <ShelfGlyph shelf={shelf} size={40} />
-          <div className="min-w-0">
-            <p className="text-[12.5px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{t(mode === "tonight" ? "elev.loop.tonight.practice.caption" : "elev.loop.practice.caption")}</p>
-            <p data-testid="practice-shelf" className="text-[13px] font-semibold" style={{ color: "var(--arbor-ink)" }}>
-              {headerNote ? `${shelfName} · ${headerNote}` : shelfName}
-            </p>
-          </div>
-        </div>
-      </div>
-      <div className="px-4 pb-4 sm:px-5">
-        <h2
-          data-testid="practice-title"
-          className="mt-3 font-semibold leading-snug"
-          style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontSize: "var(--t-lg)" }}
-        >
-          {titleText}
-        </h2>
-        {/* P5 r1 pass A1: the parent's OWN words, dated, right under the title
-            — last night's line on yesterday's practice first (P5-LOOP c2 r1),
-            else THEN and NOW on this shelf (lib/today/shelfWords). ONE line
-            each (lead first, the words after; the full sentence in the title
-            attribute) so "Did it" stays <= 640 at 375. The quotes and the say
-            share ONE 2 px --arbor-ink inline-start rule (c2 r1 design P2-9). */}
-        <div data-testid="practice-words" className="mt-2 border-s-2 ps-3" style={{ borderColor: "var(--arbor-ink)" }}>
-          {quotes && quotes.length > 0 && (
-            <div data-testid="practice-quotes" className="space-y-1">
-              {quotes.map((q, i) => (
-                <p key={i} data-testid="practice-quote" title={q.text} className="truncate leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-base)" }}>
-                  {(q.lead || q.date) && (
-                    <span style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
-                      {q.lead ?? `${t("elev.loop.practice.quoteMeta", { date: q.date ?? "" })} ·`}{" "}
-                    </span>
-                  )}
-                  <FreeText text={`“${q.text}”`} />
-                  {q.shelf && (
-                    <span data-testid="practice-quote-shelf" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
-                      {" · "}<bdi>{q.shelf}</bdi>
-                    </span>
-                  )}
-                </p>
-              ))}
-            </div>
-          )}
-          <blockquote
-            data-testid="practice-say"
-            className={`${quotes && quotes.length > 0 ? "mt-3" : ""} leading-snug`}
-            style={{ color: "var(--arbor-ink-soft)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-xl)" }}
-          >
-            {t(mode === "tonight" ? "elev.loop.practice.sayTonight" : "elev.loop.practice.say")} <FreeText text={`“${sayText}”`} />
-          </blockquote>
-        </div>
-        {!titleIsWholeDo(titleText, doText) && (
-          <p data-testid="practice-do" className="mt-2 leading-snug" style={{ color: "var(--arbor-ink)", fontSize: "var(--t-base)" }}>
-            {doText}
+      {/* The kicker row: glyph · caption over the shelf · the minutes tag, on a hairline. */}
+      <header data-testid="practice-band" className="flex items-center gap-3 pb-2.5" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
+        <ShelfGlyph shelf={shelf} />
+        <div className="min-w-0 flex-1">
+          <p data-testid="practice-kicker" className="arbor-type-kicker">{caption}</p>
+          <p data-testid="practice-shelf" className="mt-0.5 t-base font-semibold leading-tight" style={{ color: "var(--arbor-ink)" }}>
+            {headerNote ? `${shelfName} · ${headerNote}` : shelfName}
           </p>
-        )}
-        {answered ? (
-          <div className="mt-4 flex items-center gap-2">
-            <p role="status" data-testid="practice-receipt" className="flex min-w-0 items-center gap-1.5 text-[14px]" style={{ color: "var(--arbor-muted)" }}>
-              <Icon name="check" size={18} />
-              {/* pass A1: the dose is filed on the shelf, next to the parent's words */}
-              {t(answered === "did" ? (quotes && quotes.length > 0 ? "elev.loop.practice.didReceiptWords" : "elev.loop.practice.didReceipt") : "elev.loop.practice.notTodayReceipt", { name: childName || t("today.record.childFallback"), shelf: shelfName })}
-            </p>
-            {onUndo && (
-              <button
-                type="button"
-                data-testid="practice-undo"
-                onClick={onUndo}
-                className="ms-auto inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
-                style={{ color: "var(--arbor-clay)" }}
-              >
-                {t("elev.loop.notice.undo")}
-              </button>
-            )}
-          </div>
-        ) : (
-          <div
-            role="group"
-            aria-label={t("elev.loop.practice.caption")}
-            data-testid="practice-answers"
-            {...stamp}
-            className="mt-4 flex gap-2.5"
-          >
-            <button
-              type="button"
-              data-answer="did"
-              onClick={() => onAnswer("did")}
-              className="inline-flex min-h-12 flex-[1.15] items-center justify-center gap-2 rounded-full px-5 text-[15px] font-bold transition active:scale-[0.98]"
-              style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-sm)" }}
-            >
-              <Icon name="check" size={20} />
-              {t("elev.loop.practice.didIt")}
-            </button>
-            <button
-              type="button"
-              data-answer="not_today"
-              onClick={() => onAnswer("not_today")}
-              className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full px-5 text-[15px] font-semibold transition active:scale-[0.98]"
-              style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
-            >
-              {t("elev.loop.practice.notToday")}
-            </button>
+        </div>
+        <span
+          data-testid="practice-minutes"
+          className="inline-flex h-[30px] flex-none items-center gap-1 rounded-full px-2.5 t-sm font-semibold"
+          style={{ background: "var(--arbor-paper)", boxShadow: "inset 0 0 0 1px var(--arbor-rule)", color: "var(--arbor-ink-soft)" }}
+        >
+          <Icon name="schedule" size={16} />
+          <span className="arbor-num">{t("elev.loop.practice.minutes", { n: practice.minutes })}</span>
+        </span>
+      </header>
+      <h2 data-testid="practice-title" className="mt-2.5 arbor-type-title" style={{ color: "var(--arbor-ink)" }}>
+        {titleText}
+      </h2>
+      {/* P5 r1 pass A1: the parent's OWN words, dated, right under the title
+          — last night's line on yesterday's practice first (P5-LOOP c2 r1),
+          else THEN and NOW on this shelf (lib/today/shelfWords). ONE line
+          each (lead first, the words after; the full sentence in the title
+          attribute) so "Did it" stays <= 640 at 375. The words and the say
+          share ONE 2 px --arbor-ink inline-start rule: the screen's one warm
+          accent (B-DESIGN-04; .arbor-accent-rule). */}
+      <div data-testid="practice-words" className="mt-2 arbor-accent-rule">
+        {hasQuotes && (
+          <div data-testid="practice-quotes" className="space-y-1">
+            {quotes!.map((q, i) => (
+              <p key={i} data-testid="practice-quote" title={q.text} className="truncate leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-base)" }}>
+                {(q.lead || q.date) && (
+                  <span style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
+                    {q.lead ?? `${t("elev.loop.practice.quoteMeta", { date: q.date ?? "" })} ·`}{" "}
+                  </span>
+                )}
+                <FreeText text={`“${q.text}”`} />
+                {q.shelf && (
+                  <span data-testid="practice-quote-shelf" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
+                    {" · "}<bdi>{q.shelf}</bdi>
+                  </span>
+                )}
+              </p>
+            ))}
           </div>
         )}
-        {/* P5 r1 pass A1/A3: the meta and the reason sit UNDER the answers, so
-            the parent's words fit above "Did it" at 375 (bottom ≤ 640). */}
-        <p data-testid="practice-meta" className="mt-3" style={{ color: "var(--arbor-muted)", fontSize: "var(--t-sm)" }}>{meta}</p>
-        <p data-testid="practice-why" className="mt-1 italic leading-snug" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-base)" }}>
-          {whyText?.trim() || t(whyReason && (whyReason !== "since" || whyDate) ? WHY_KEY[whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfName, name: childName || t("today.record.childFallback"), date: whyDate ?? "" })}
-        </p>
+        <blockquote data-testid="practice-say" className={`${hasQuotes ? "mt-3" : ""} arbor-type-say`} style={{ color: "var(--arbor-ink)" }}>
+          <span data-testid="practice-say-label" className="t-sm font-semibold" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>
+            {t(mode === "tonight" ? "elev.loop.practice.sayTonight" : "elev.loop.practice.say")}
+          </span>{" "}
+          <FreeText text={`“${sayText}”`} />
+        </blockquote>
       </div>
+      {!titleIsWholeDo(titleText, doText) && (
+        <p data-testid="practice-do" className="mt-2 t-base leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
+          {doText}
+        </p>
+      )}
+      {answered ? (
+        <div className="mt-3.5 flex items-center gap-2">
+          <p role="status" data-testid="practice-receipt" className="flex min-w-0 items-center gap-1.5 t-base" style={{ color: "var(--arbor-muted)" }}>
+            <Icon name="check" size={18} />
+            {/* pass A1: the dose is filed on the shelf — "next to your words"
+                only when the words shown ARE on this shelf (P2-N1). */}
+            {t(answered === "did" ? (besideWords ? "elev.loop.practice.didReceiptWords" : "elev.loop.practice.didReceipt") : "elev.loop.practice.notTodayReceipt", { name: childName || t("today.record.childFallback"), shelf: shelfName })}
+          </p>
+          {onUndo && (
+            <button
+              type="button"
+              data-testid="practice-undo"
+              onClick={onUndo}
+              className="ms-auto inline-flex min-h-[44px] items-center rounded-full px-3 t-sm font-semibold"
+              style={{ color: "var(--arbor-clay)" }}
+            >
+              {t("elev.loop.notice.undo")}
+            </button>
+          )}
+        </div>
+      ) : (
+        <div
+          role="group"
+          aria-label={t("elev.loop.practice.caption")}
+          data-testid="practice-answers"
+          {...stamp}
+          className="mt-3.5 flex gap-2.5"
+        >
+          <button
+            type="button"
+            data-answer="did"
+            onClick={() => onAnswer("did")}
+            className="inline-flex min-h-12 flex-[1.15] items-center justify-center gap-2 rounded-full px-5 t-md font-bold transition active:scale-[0.98]"
+            style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-sm)" }}
+          >
+            <Icon name="check" size={20} />
+            {t("elev.loop.practice.didIt")}
+          </button>
+          <button
+            type="button"
+            data-answer="not_today"
+            onClick={() => onAnswer("not_today")}
+            className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full px-5 t-md font-semibold transition active:scale-[0.98]"
+            style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
+          >
+            {t("elev.loop.practice.notToday")}
+          </button>
+        </div>
+      )}
+      {/* P5 r1 pass A1/A3: the materials and the reason sit UNDER the answers,
+          so the parent's words fit above "Did it" at 375 (bottom ≤ 640). The
+          minutes moved to the kicker row's tag (B-DESIGN-04). */}
+      {materials && (
+        <p data-testid="practice-meta" className="mt-3 t-sm" style={{ color: "var(--arbor-muted)" }}>{materials}</p>
+      )}
+      <p
+        data-testid="practice-why"
+        className={`${materials ? "mt-1" : "mt-3"} t-base leading-snug${lang === "he" ? "" : " italic"}`}
+        style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-editorial)" }}
+      >
+        {whyText?.trim() || t(whyReason && (whyReason !== "since" || whyDate) ? WHY_KEY[whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfName, name: childName || t("today.record.childFallback"), date: whyDate ?? "" })}
+      </p>
     </section>
   );
 }

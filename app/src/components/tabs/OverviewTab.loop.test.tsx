@@ -145,7 +145,7 @@ describe("P5-LOOP c2 r1 — the words slot is fed by the loop (last night's line
   it("OverviewTab feeds the slot from lastNightWords first, the shelf's THEN/NOW notes second, and writes the night line through tonightLineEntry", () => {
     expect(OV).toContain("lastNightWords(actionLoop, childProfile.id, now)");
     // c2 r2 (P1-1, B-LOOP-NEW-2a): last night's line is shelved AND dated
-    expect(OV).toMatch(/const quotes: PracticeQuote\[\] = lastNight[\s\S]{0,120}\?\s*\[\{ text: lastNight\.text, lead: t\("elev\.loop\.practice\.lastNight"\), shelf: `\$\{shelfLabel\(lastNight\.shelf, t\)\} · \$\{dateOf\(lastNight\.at\)\}` \}\]\s*:\s*\[words\.then, words\.now\]/);
+    expect(OV).toMatch(/const quotes: PracticeQuote\[\] = lastNight[\s\S]{0,120}\?\s*\[\{ text: lastNight\.text, lead: t\("elev\.loop\.practice\.lastNight"\), shelf: `\$\{shelfLabel\(lastNight\.shelf, t\)\} · \$\{dateOf\(lastNight\.at\)\}`, onShelf: !!pick && lastNight\.shelf === pick\.shelf \}\]\s*:\s*\[words\.then, words\.now\]/);
     expect(OV).toContain("tonightLineEntry(dose ?? practiceDoseEntry(pick, \"did\", childProfile.id, sayText), text)");
     expect(OV).not.toMatch(/whatHappened: line/);
     // the why answers the quotes; the chosen reason holds after the answer (P2-1)
@@ -185,8 +185,8 @@ describe("P5-LOOP c2 r1 — the words slot is fed by the loop (last night's line
           whyReason="since" whyDate="29 Aug" />,
       );
       const words = html.match(/<div data-testid="practice-words"[^>]*>/)![0];
-      expect(words).toMatch(/border-s-2/);
-      expect(words).toContain("border-color:var(--arbor-ink)");
+      // B-DESIGN-04: the ONE rule is .arbor-accent-rule (2 px --arbor-ink, index.css)
+      expect(words).toMatch(/\barbor-accent-rule\b/);
       expect(html).not.toMatch(/data-testid="practice-say"[^>]*border-s-2/);
       expect(html).not.toMatch(/data-testid="practice-quotes"[^>]*border/);
       expect(html.indexOf(lead)).toBeLessThan(html.lastIndexOf("he picked the pyjamas himself"));
@@ -217,6 +217,43 @@ describe("every Today / practice / tonight string — no streak, no count of day
         expect(loopFirewallHits(v), k).toEqual([]);
         expect(v, k).not.toMatch(/ברצף|in a row|\bstreak/i);
       }
+    }
+  });
+});
+
+/* B-DESIGN-04 (P7-DESIGN, blend frame 01 — 8 Oct): Today takes the chosen
+   direction. The practice card is the ONE primary card (the deep shadow lives
+   in PracticeCard alone — PracticeCard.fold pins it); "Notice today" opens on
+   the editorial section head (glyph · title · hairline) over ONE card on the
+   hairline-ring depth; every Notice answer on the route is the ONE segmented
+   control; the door keeps its content and loses the dashed border. */
+describe("B-DESIGN-04 · Today takes the blend frame", () => {
+  const TF = strip(readFileSync(path.join(here, "..", "loop", "TonightFlow.tsx"), "utf8").replace(/\r\n/g, "\n"));
+  it("Notice today = SectionHead (visibility glyph, the h2 id the section is labelled by, the sub-line) over one card", () => {
+    const block = OV.slice(OV.indexOf('data-testid="today-notice"'), OV.indexOf("const tonightBlock"));
+    expect(block).toContain('<SectionHead id="today-notice-title" icon="visibility" title={t("elev.loop.today.notice.title")} sub={t("elev.loop.today.notice.sub")} />');
+    expect(block).toContain('aria-labelledby="today-notice-title"');
+    expect(block).toMatch(/className="arbor-depth-card mt-3/);
+    expect(block).not.toMatch(/rounded-\[|text-\[\d/);
+  });
+  it("every NoticeCard on Today (the slot card, the Notice rows, Tonight's step 3) answers segmented", () => {
+    expect(OV.match(/<NoticeCard\b/g)).toHaveLength(2);
+    expect(OV.match(/<NoticeCard\b[^>]*answers="segmented"/g)).toHaveLength(2);
+    expect(TF.match(/<NoticeCard\b/g)).toHaveLength(1);
+    expect(TF).toMatch(/<NoticeCard[\s\S]{0,400}answers="segmented"/);
+  });
+  it("no surface on the route but the practice card takes the deep shadow; the door is a solid hairline", () => {
+    expect(OV).not.toMatch(/arbor-depth-primary|--arbor-shadow-primary/);
+    expect(TF).not.toMatch(/arbor-depth-primary|--arbor-shadow-primary/);
+    const door = OV.slice(OV.indexOf('data-testid="today-door"'), OV.indexOf("</summary>"));
+    expect(door).toContain('border: "1px solid var(--arbor-rule)"');
+    expect(door).not.toMatch(/dashed/);
+  });
+  it("the flat loop glyph is gone from Today: PracticeCard, NoticeCard and TonightFlow mount the duotone one", () => {
+    for (const rel of ["PracticeCard.tsx", "NoticeCard.tsx", "TonightFlow.tsx"]) {
+      const src = readFileSync(path.join(here, "..", "loop", rel), "utf8");
+      expect(src, rel).toMatch(/import \{ ShelfGlyph \} from "\.\.\/ui\/ShelfGlyph";/);
+      expect(src, rel).not.toMatch(/<ShelfGlyph\b[^>]*size=\{(?:36|40)\}/);
     }
   });
 });

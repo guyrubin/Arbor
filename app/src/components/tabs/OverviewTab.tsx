@@ -13,6 +13,7 @@ import WhatChanged from "../overview/WhatChanged";
 import { composeWhatChanged, type WhatChangedLine } from "../overview/whatChangedEvents";
 import { firstsStorageKey, type FirstsState } from "../../lib/firsts";
 import { Avatar } from "../ui/Avatar";
+import { SectionHead } from "../ui/SectionHead";
 import { childPicture } from "../../lib/childPicture";
 import type { CaptureMode } from "../../context/ArborContext";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
@@ -243,7 +244,8 @@ export default function OverviewTab() {
   const lastNight = useMemo(() => lastNightWords(actionLoop, childProfile.id, now), [actionLoop, childProfile.id, now]);
   const quotes: PracticeQuote[] = lastNight
     // c2 r2 (P1-1, B-LOOP-NEW-2a): verbatim, shelved AND dated ("· Sleep · 6 Oct").
-    ? [{ text: lastNight.text, lead: t("elev.loop.practice.lastNight"), shelf: `${shelfLabel(lastNight.shelf, t)} · ${dateOf(lastNight.at)}` }]
+    // B-DESIGN-04 (P2-N1): onShelf tells the receipt whether "next to your words" is true.
+    ? [{ text: lastNight.text, lead: t("elev.loop.practice.lastNight"), shelf: `${shelfLabel(lastNight.shelf, t)} · ${dateOf(lastNight.at)}`, onShelf: !!pick && lastNight.shelf === pick.shelf }]
     : [words.then, words.now].filter((w): w is NonNullable<typeof w> => !!w).map((w) => ({ text: w.text, date: dateOf(w.at) }));
   // The newest of the parent's words ON THIS SHELF (the "since" reason's date).
   const shelfNewestAt = useMemo(() => {
@@ -490,20 +492,20 @@ export default function OverviewTab() {
       mode={plan.practiceMode === "tonight" ? "tonight" : "day"}
     />
   ) : slotNotice ? (
-    <NoticeCard key={slotNotice.milestone.id} milestone={slotNotice.milestone} shelf={slotNotice.shelf} gender={childProfile.gender} childName={firstName} variant="card" answersAttrs={firstBlock === "practice" ? primaryStamp : undefined} {...noticeHandlers(slotNotice.milestone, slotNotice.shelf)} />
+    <NoticeCard key={slotNotice.milestone.id} milestone={slotNotice.milestone} shelf={slotNotice.shelf} gender={childProfile.gender} childName={firstName} variant="card" answers="segmented" answersAttrs={firstBlock === "practice" ? primaryStamp : undefined} {...noticeHandlers(slotNotice.milestone, slotNotice.shelf)} />
   ) : null;
 
   const noticeBlock = (
-    <section data-testid="today-notice" aria-labelledby="today-notice-title" className="rounded-[18px] px-4 pt-4 sm:px-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
-      <h2 id="today-notice-title" className="font-semibold leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontSize: "var(--t-lg)" }}>
-        {t("elev.loop.today.notice.title")}
-      </h2>
-      <p className="mt-0.5 text-[13px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.today.notice.sub")}</p>
-      <div className="mt-1">
+    // B-DESIGN-04 (blend frame 01): the section opens on the editorial section
+    // head (glyph · title · hairline) with its sub-line; the rows sit in ONE
+    // card on the hairline-ring depth (the deep shadow is the practice card's).
+    <section data-testid="today-notice" aria-labelledby="today-notice-title" className="min-w-0">
+      <SectionHead id="today-notice-title" icon="visibility" title={t("elev.loop.today.notice.title")} sub={t("elev.loop.today.notice.sub")} />
+      <div className="arbor-depth-card mt-3 px-4 sm:px-5" style={{ background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-lg)" }}>
         {blockNotices.map((c, i) => (
           <div key={c.milestone.id} style={i > 0 ? { borderTop: "1px solid var(--arbor-rule)" } : undefined}>
             {/* Practice answered: the move passes to the first Notice row's answers. */}
-            <NoticeCard milestone={c.milestone} shelf={c.shelf} gender={childProfile.gender} childName={firstName} variant="row" answersAttrs={i === 0 && firstBlock === "practice" && pick && doseAnswer ? primaryStamp : undefined} {...noticeHandlers(c.milestone, c.shelf)} />
+            <NoticeCard milestone={c.milestone} shelf={c.shelf} gender={childProfile.gender} childName={firstName} variant="row" answers="segmented" answersAttrs={i === 0 && firstBlock === "practice" && pick && doseAnswer ? primaryStamp : undefined} {...noticeHandlers(c.milestone, c.shelf)} />
           </div>
         ))}
       </div>
@@ -563,8 +565,10 @@ export default function OverviewTab() {
     >
       <header className="px-1">
         {/* P5 design r1 P0-1: ONE caption line (the day folded in) above a one-line H1. */}
-        <p data-testid="today-caption" className="font-semibold" style={{ color: "var(--arbor-muted)", fontSize: "var(--t-sm)" }}>
-          {eyebrowLine}
+        {/* B-DESIGN-04 (blend frame 01): the kicker opens on the part of day's glyph. */}
+        <p data-testid="today-caption" className="flex items-center gap-1.5 font-semibold" style={{ color: "var(--arbor-ink-soft)", fontSize: "var(--t-sm)" }}>
+          <Icon name={evening ? "dark_mode" : "wb_sunny"} size={18} fill={1} aria-hidden style={{ color: evening ? "var(--arbor-lav-ink)" : "var(--arbor-yellow-ink)" }} />
+          <span className="min-w-0">{eyebrowLine}</span>
         </p>
         {/* B-SHELL-27: the same face as the sidebar/switcher, a 28 px circle in the identity line only. */}
         <div className="mt-1 flex items-center gap-2.5">
@@ -606,26 +610,31 @@ export default function OverviewTab() {
               type="button"
               data-testid="today-tonight-pointer"
               onClick={() => setTonightEarly(true)}
-              className="flex min-h-11 w-full items-center gap-3 rounded-[14px] px-4 py-3 text-start"
-              style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+              className="arbor-depth-card flex min-h-11 w-full items-center gap-3 px-4 py-3 text-start"
+              style={{ background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-lg)" }}
             >
-              <span className="inline-flex h-9 w-9 flex-none items-center justify-center rounded-xl" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-                <Icon name="dark_mode" size={19} />
+              {/* B-DESIGN-04: the 44 px duotone chip recipe (ui/ShelfGlyph) on a
+                  non-shelf glyph — lav fill at 30 % under the -ink outline. */}
+              <span aria-hidden="true" className="inline-grid h-11 w-11 flex-none place-items-center" style={{ background: "var(--arbor-lav-soft)", borderRadius: "var(--r)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--arbor-lav-ink) 12%, transparent)" }}>
+                <Icon name="dark_mode" size={23} fill={1} weight={400} style={{ gridArea: "1 / 1", color: "color-mix(in srgb, var(--arbor-lav) 30%, transparent)" }} />
+                <Icon name="dark_mode" size={23} fill={0} weight={500} style={{ gridArea: "1 / 1", color: "var(--arbor-lav-ink)" }} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.loop.today.tonight")}</span>
-                <span className="block text-[12.5px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.today.tonightSub")}</span>
+                <span className="block t-md font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.loop.today.tonight")}</span>
+                <span className="block t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.today.tonightSub")}</span>
               </span>
               <Icon name="chevron_right" size={20} className="rtl:-scale-x-100" style={{ color: "var(--arbor-muted)" }} />
             </button>
           )}
 
           {/* "More for today" — ONE collapsed door (demotion target: disclosure). */}
-          <details data-module-disclosure="today-more" data-testid="today-door" className="rounded-[14px]" style={{ border: "1px dashed var(--arbor-rule-strong)" }}>
+          {/* B-DESIGN-04: the door on a solid hairline (design critic P2-18: a
+              dashed border is not a DESIGN.md hairline); content unchanged. */}
+          <details data-module-disclosure="today-more" data-testid="today-door" style={{ border: "1px solid var(--arbor-rule)", borderRadius: "var(--r-lg)" }}>
             <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 px-4 py-3">
               <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.loop.today.door")}</span>
-                <span className="block text-[12.5px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.today.doorSub")}</span>
+                <span className="block t-md font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.loop.today.door")}</span>
+                <span className="block t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.today.doorSub")}</span>
               </span>
               <Icon name="expand_more" size={20} style={{ color: "var(--arbor-muted)" }} />
             </summary>

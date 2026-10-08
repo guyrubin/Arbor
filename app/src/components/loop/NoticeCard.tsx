@@ -8,7 +8,8 @@ import { milestoneAgeLine } from "../../lib/milestoneAgeLine";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import { OBSERVED_WHEN, type ObserveStatus, type ObservedWhen } from "../../lib/milestones/observe";
-import { ShelfGlyph } from "./ShelfGlyph";
+// B-DESIGN-04: the 44 px duotone shelf glyph (P7-DESIGN; the flat loop chip retired here).
+import { ShelfGlyph } from "../ui/ShelfGlyph";
 // B-DESIGN-03: the one segmented answer control (P7-DESIGN, from Option B).
 // SegmentedAnswers reads NOTICE_ANSWER_KEYS / NOTICE_ANSWER_ORDER from this
 // module; both sides use the other only at render time, so the cycle is inert.
@@ -116,9 +117,9 @@ export interface NoticeCardProps {
   besideWords?: string | null;
   /** B-DESIGN-03 (P7-DESIGN framer decision, 7 Oct): "segmented" renders the
    *  answers as the ONE 44 px segmented control (components/ui/SegmentedAnswers,
-   *  same keys, order, `selected` and stamp attrs). #/milestones passes it; the
-   *  default "pills" keeps Today / Journal / Tonight as shipped until B-DESIGN-04
-   *  flips them. */
+   *  same keys, order, `selected` and stamp attrs). #/milestones passes it, and
+   *  B-DESIGN-04 passes it on Today (the slot card, the Notice rows, Tonight's
+   *  step 3) and the shelf page; the default "pills" stays for any other host. */
   answers?: "pills" | "segmented";
 }
 
@@ -198,7 +199,7 @@ export default function NoticeCard({
 
   const frame =
     variant === "card"
-      ? { className: "rounded-2xl p-4", style: { background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" } }
+      ? { className: "arbor-depth-card p-4", style: { background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-lg)" } }
       : { className: "py-3", style: {} };
   const stamp = stampMove ? { "data-primary-move": stampMove } : {};
 
@@ -212,14 +213,19 @@ export default function NoticeCard({
       className={frame.className}
       style={frame.style}
     >
-      <div className="flex items-start gap-3">
-        {!hideShelf && <ShelfGlyph shelf={shelf} size={36} />}
-        <div className="min-w-0 flex-1">
-          {!hideShelf && (
-            <p data-testid="notice-shelf" className="t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>
-              {shelfName}
-            </p>
-          )}
+      {/* B-DESIGN-04 (blend frame 01): the shelf line — the 44 px duotone glyph
+          and the shelf's name — leads the row; the title, the looks line, the
+          age line and the answers then take the full width. */}
+      {!hideShelf && (
+        <div data-testid="notice-shelf-line" className="mb-2.5 flex items-center gap-3">
+          <ShelfGlyph shelf={shelf} />
+          <p data-testid="notice-shelf" className="min-w-0 t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>
+            {shelfName}
+          </p>
+        </div>
+      )}
+      <div>
+        <div className="min-w-0">
           <h3
             data-testid="notice-title"
             className="mt-0.5 font-semibold leading-tight"
