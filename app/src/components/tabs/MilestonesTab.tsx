@@ -816,9 +816,14 @@ export default function MilestonesTab() {
      registry order (never the action order, never a count, never a state
      colour: the tint is the shelf's own). Search leads the rail (the map's
      44 px search icon, P5 r1 design P0). Below sm the names ride in the
-     accessible name only (the fold at 375); from sm they print under each glyph. */
+     accessible name only (the fold at 375); from sm they print under each glyph.
+     P7-DESIGN fix r1 (framer ruling R4, milestones design P1-1): the names print
+     at EVERY width on ONE line (each item at least 64 px, as wide as its name —
+     the design of record's 375 frame sets every name on one line); Shell drops
+     the hub kicker on phones for this route, the portrait is 44 px and the
+     rail's top margin 8 px, so the stamp keeps the 375 fold (designBlend model). */
   const jumpRail = (
-    <nav data-testid="ms-jump-rail" aria-labelledby="ms-map-title" className="no-scrollbar -mx-4 mt-3 overflow-x-auto px-4 py-1 sm:mx-0 sm:px-0">
+    <nav data-testid="ms-jump-rail" aria-labelledby="ms-map-title" className="no-scrollbar -mx-4 mt-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:px-0">
       <ul className="flex items-start gap-2">
         <li className="flex flex-none items-start gap-2">
           <button
@@ -827,13 +832,13 @@ export default function MilestonesTab() {
             aria-label={t("elev.loop.ms.search")}
             aria-expanded={searchOpen || !!query}
             onClick={() => setSearchOpen((v) => !v)}
-            className="flex min-h-11 min-w-11 flex-col items-center gap-1 sm:w-16"
+            className="flex min-h-11 min-w-16 flex-col items-center gap-1"
             style={{ color: "var(--arbor-ink-soft)" }}
           >
             <span className="inline-flex h-11 w-11 items-center justify-center" style={{ borderRadius: "var(--r)", background: "var(--arbor-paper-deep)", boxShadow: "inset 0 0 0 1px var(--arbor-rule)" }}>
               <Icon name="search" size={20} />
             </span>
-            <span aria-hidden="true" className="hidden text-center t-xs font-semibold leading-tight sm:block">{t("top.search")}</span>
+            <span aria-hidden="true" className="text-center t-xs font-semibold leading-tight whitespace-nowrap">{t("top.search")}</span>
           </button>
           <span aria-hidden="true" className="h-11 w-px flex-none" style={{ background: "var(--arbor-rule)" }} />
         </li>
@@ -848,13 +853,13 @@ export default function MilestonesTab() {
                 aria-label={shelfLabel(shelf, t)}
                 aria-current={on ? "location" : undefined}
                 onClick={() => jumpTo(shelf)}
-                className="flex min-h-11 min-w-11 flex-col items-center gap-1 sm:w-16"
+                className="flex min-h-11 min-w-16 flex-col items-center gap-1"
                 style={{ color: on ? "var(--arbor-ink)" : "var(--arbor-ink-soft)" }}
               >
                 <span className="inline-flex" style={{ borderRadius: "var(--r)", boxShadow: on ? "0 0 0 2px var(--arbor-paper), 0 0 0 4px var(--arbor-ink)" : undefined }}>
                   <ShelfGlyph shelf={shelf} />
                 </span>
-                <span aria-hidden="true" className="hidden text-center t-xs font-semibold leading-tight sm:block">{shelfLabel(shelf, t)}</span>
+                <span aria-hidden="true" className="text-center t-xs font-semibold leading-tight whitespace-nowrap">{shelfLabel(shelf, t)}</span>
               </button>
             </li>
           );
@@ -1117,22 +1122,31 @@ export default function MilestonesTab() {
         <>
           {t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })}{" "}
           <bdi dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>
-          <span data-testid="ms-latest-area"> · {t("elev.ms.latest.area", { area: latestShelfName })} · </span>
-          <span className="hidden sm:inline">{t("elev.ms.latest.when")} </span>
-          <time data-testid="ms-latest-date" dateTime={latestNoticed.at} className="whitespace-nowrap">
-            <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
-          </time>
         </>
       )}
-      {recordCounts.noticed > 0 && (
-        <span data-testid="ms-map-count" className="arbor-num whitespace-nowrap">{latestNoticed ? " · " : ""}{recordCounts.noticed} {t("ms.domainOf")}</span>
-      )}
-      {latestNoticed && !changingLatest && (
-        <>
-          {" · "}
-          {changeButton}
-        </>
-      )}
+      {/* P7-DESIGN fix r1 (milestones design P2-a): no stranded "·" — below sm
+          the clause after the title starts its own line WITHOUT a separator
+          (the figcaption's way); from sm it runs on, after a " · ". */}
+      <span data-testid="ms-latest-tail" className={latestNoticed ? "block sm:inline" : undefined}>
+        {latestNoticed && (
+          <>
+            <span data-testid="ms-latest-area"><span className="hidden sm:inline"> · </span>{t("elev.ms.latest.area", { area: latestShelfName })} · </span>
+            <span className="hidden sm:inline">{t("elev.ms.latest.when")} </span>
+            <time data-testid="ms-latest-date" dateTime={latestNoticed.at} className="whitespace-nowrap">
+              <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
+            </time>
+          </>
+        )}
+        {recordCounts.noticed > 0 && (
+          <span data-testid="ms-map-count" className="arbor-num whitespace-nowrap">{latestNoticed ? " · " : ""}{recordCounts.noticed} {t("ms.domainOf")}</span>
+        )}
+        {latestNoticed && !changingLatest && (
+          <>
+            {" · "}
+            {changeButton}
+          </>
+        )}
+      </span>
     </p>
   ) : null;
 
@@ -1144,7 +1158,7 @@ export default function MilestonesTab() {
       <div data-testid="ms-header" className="min-w-0">
         <div className="flex min-w-0 items-center gap-3.5">
           {/* The child's memory portrait — modest, no comic frame in the parent register. */}
-          <HeroAvatar size={52} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
+          <HeroAvatar size={44} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
           <h1 className="arbor-type-hero min-w-0" style={{ color: "var(--arbor-ink)" }}>{t("ms.title")}</h1>
         </div>
         {/* The ONE warm accent: the family's newest kept words (last 7 days),
@@ -1153,7 +1167,7 @@ export default function MilestonesTab() {
             date pressure. */}
         {headerQuote ? (
           <figure data-testid="ms-header-quote" className="arbor-accent-rule mt-3 min-w-0">
-            <blockquote dir="auto" className="leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)", ...(uiLang === "he" ? {} : { fontSizeAdjust: "var(--arbor-editorial-adjust)" }) }}>
+            <blockquote dir="auto" className="arbor-type-say" style={{ color: "var(--arbor-ink)" }}>
               {quoted(headerQuote.text)}
             </blockquote>
             <figcaption className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
@@ -1167,7 +1181,7 @@ export default function MilestonesTab() {
                 first card, with no second instruction; no number, no chip. */}
             <p data-testid="ms-first-line" dir="auto" className="mt-3 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
               {firstCard
-                ? t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: milestoneText(firstCard, "title", t, msGender) })
+                ? t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: quoted(milestoneText(firstCard, "title", t, msGender)) })
                 : t("elev.loop.ms.firstLine", { name: firstName || t("ms.watch.childFallback") })}
             </p>
             {!firstCard && (

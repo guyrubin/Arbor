@@ -122,7 +122,9 @@ const RoutinesTab = lazy(() => import("../tabs/RoutinesTab"));
  *  count of play (the door sentence, the feelings line); one count per screen. */
 // P5 design r1 P0-1 (6 Oct): "overview" — Today's own eyebrow line says what
 // the screen is for; the hub line repeated it and pushed "Did it" under the dock.
-export const HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set(["memory", "sharing", "safety", "school-brief", "practice", "feelings", "adventures", "overview"]);
+// P7-DESIGN fix r1 (framer ruling R4): "milestones" — the "{name}'s development
+// map" kicker gives its room to the jump rail's printed names at 375.
+export const HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set(["memory", "sharing", "safety", "school-brief", "practice", "feelings", "adventures", "overview", "milestones"]);
 
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,

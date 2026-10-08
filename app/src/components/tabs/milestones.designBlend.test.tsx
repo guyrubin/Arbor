@@ -50,6 +50,7 @@ const between = (from: string, to: string) => {
   expect(b, to).toBeGreaterThan(a);
   return MS.slice(a, b);
 };
+const SHELL = readFileSync(path.join(here, "..", "layout", "Shell.tsx"), "utf8");
 const decode = (html: string) => html.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
 
 describe("B-DESIGN-03 · the header: H1 + ONE warm accent + ONE muted line", () => {
@@ -67,7 +68,11 @@ describe("B-DESIGN-03 · the header: H1 + ONE warm accent + ONE muted line", () 
   it("ONE warm accent: the kept words on the ink rule, shelf + day on their own line; the first-open sentence only when there is no latest", () => {
     const head = between('data-testid="ms-header"', "{jumpRail}");
     expect(head).toContain('data-testid="ms-header-quote" className="arbor-accent-rule mt-3 min-w-0"');
-    expect(head.match(/var\(--font-editorial\)/g)).toHaveLength(2); // the quote OR the first-open line, never both
+    // P7-DESIGN fix r1 (milestones design P1-3): the kept words are at the kit's say step (.arbor-type-say: editorial,
+    // --t-say 24 / HE 22, the size-adjust) — never an inline --t-lg; the first-open line keeps its editorial sentence.
+    expect(head).toContain('<blockquote dir="auto" className="arbor-type-say" style={{ color: "var(--arbor-ink)" }}>');
+    expect(head).not.toMatch(/<blockquote[^>]*--t-lg/);
+    expect(head.match(/var\(--font-editorial\)/g)).toHaveLength(1); // the first-open line
     expect(head).toMatch(/\{headerQuote \? \(\s*<figure[\s\S]*\) : !latestNoticed \? \(/);
     // the order: H1 → accent → muted line → (Change answers) → jump rail
     const at = (s: string) => head.indexOf(s);
@@ -92,7 +97,7 @@ describe("B-DESIGN-03 · the jump rail is navigation only (firewall)", () => {
     expect(rail).toContain("{SHELF_IDS.map((shelf) => {");
     expect(rail).toContain("<ShelfGlyph shelf={shelf} />");
     expect(rail).toContain("aria-label={shelfLabel(shelf, t)}");
-    expect(rail).toMatch(/className="flex min-h-11 min-w-11 flex-col/);
+    expect(rail).toMatch(/className="flex min-h-11 min-w-16 flex-col/);
     expect(SHELF_IDS).toHaveLength(9);
   });
 
@@ -104,9 +109,12 @@ describe("B-DESIGN-03 · the jump rail is navigation only (firewall)", () => {
     expect(MS.match(/setJumpedTo\(/g)).toHaveLength(1);
   });
 
-  it("search leads the rail (the map's 44 px icon, P5 r1 design P0); below sm the names live in the accessible name only", () => {
+  it("search leads the rail (the map's 44 px icon, P5 r1 design P0); R4: the names print at EVERY width (one line, >= 64 px), the hub kicker is quiet on phones", () => {
     expect(rail.indexOf('data-testid="ms-search-open"')).toBeLessThan(rail.indexOf("SHELF_IDS.map"));
-    expect(rail.match(/className="hidden text-center t-xs font-semibold leading-tight sm:block"/g)).toHaveLength(2);
+    expect(rail.match(/className="text-center t-xs font-semibold leading-tight whitespace-nowrap"/g)).toHaveLength(2);
+    expect(rail).not.toMatch(/hidden[^"]*sm:block/);
+    expect(rail.match(/className="flex min-h-11 min-w-16 flex-col items-center gap-1"/g)).toHaveLength(2);
+    expect(SHELL).toMatch(/HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set\(\[[^\]]*"milestones"[^\]]*\]\)/);
     expect(MS.match(/data-testid="ms-search-open"/g)).toHaveLength(1);
   });
 
@@ -198,9 +206,13 @@ describe("B-DESIGN-03 · NoticeCard answers=\"segmented\"", () => {
    375 EN + HE (base, not-sure, quiet-shelves, loop-first-open). */
 const FOLD_375 = 749;
 const FOLD_LIMIT = FOLD_375 - 16;
-const HEADER_TOP_375 = 183;
+/* P7-DESIGN fix r1 (R4): the shell's hub kicker is quiet on #/milestones at
+   375 (Shell HUB_LINE_QUIET_TABS) — 24 px, as measured on Today (PracticeCard.fold). */
+const HEADER_TOP_375 = 183 - 24;
 const lines = (text: string, px: number, width: number, em = 0.5) => Math.max(1, Math.ceil((text.length * px * em) / width));
-const T_SM = 13, T_BASE = 15, T_LG = 19;
+const T_SM = 13, T_BASE = 15, T_LG = 19, T_XS = 11.25;
+/* --t-say: 1.5rem at the 15 px root = 22.5 px (HE 1.375rem = 20.6 px), line-height 1.3. */
+const T_SAY = { en: 22.5, he: 20.625 } as const;
 
 function stampBottom(lang: "en" | "he", opts: { quote: boolean; latest: boolean }) {
   const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v).replace(/[⁨⁩]/g, "");
@@ -208,26 +220,27 @@ function stampBottom(lang: "en" | "he", opts: { quote: boolean; latest: boolean 
   const latest = ALL_MILESTONES.find((x) => x.title === "Jumps off the ground")!;
   const card = ALL_MILESTONES.find((x) => x.title === "Talks well enough to be understood")!;
   expect(latest && card).toBeTruthy();
-  let y = HEADER_TOP_375 + 52; // HeroAvatar 52 beside the hero H1 (34 × 1.08 = 37 px fits the row)
+  let y = HEADER_TOP_375 + 44; // HeroAvatar 44 beside the hero H1 (34 × 1.08 = 37 px fits the row)
   if (opts.quote) {
     const quote = t("elev.loop.ms.quoted", { text: lang === "he" ? "שר לבד את כל שיר האמבטיה" : "Sang the whole bath song on his own" });
-    y += 12 + lines(quote, T_LG, 327, 0.45) * T_LG * 1.375; // mt-3 + the words (t-lg, leading-snug)
+    y += 12 + lines(quote, T_SAY[lang], 327, 0.45) * T_SAY[lang] * 1.3; // mt-3 + the words (.arbor-type-say)
     y += 4 + T_SM * 1.375; // figcaption: shelf · day
   } else if (!opts.latest) {
     const first = t("elev.loop.ms.firstCard", { name: "Dylan", title: milestoneText(card, "title", t, g) });
     y += 12 + lines(first, T_LG, 343, 0.45) * T_LG * 1.375;
   }
   if (opts.latest) {
-    const muted = [
-      `${t("elev.ms.latest.lead", { name: "Dylan" })} ${milestoneText(latest, "title", t, g)}`,
+    const lead = `${t("elev.ms.latest.lead", { name: "Dylan" })} ${milestoneText(latest, "title", t, g)}`;
+    const tail = [
       t("elev.ms.latest.area", { area: shelfLabel("moving", t) }),
       lang === "he" ? "3 באוק׳" : "3 Oct",
       `10 ${t("ms.domainOf")}`,
       t("elev.loop.latest.change"),
     ].join(" · ");
-    y += 8 + lines(muted, T_SM, 343) * T_SM * 1.375; // mt-2 + the ONE muted line (Change's 44 px box rides -my-3)
+    // mt-2 + the ONE muted paragraph: below sm the tail starts its own line (P2-a, no stranded "·")
+    y += 8 + (lines(lead, T_SM, 343) + lines(tail, T_SM, 343)) * T_SM * 1.375; // (Change's 44 px box rides -my-3)
   }
-  y += 12 + 4 + 44 + 4; // the jump rail: mt-3, py-1, 44 px glyphs (names in the accessible name below sm)
+  y += 8 + 4 + 44 + 4 + T_XS * 1.25 + 4; // the jump rail: mt-2, py-1, 44 px glyphs, gap-1 + the names (one line, R4)
   y += 20; // the root's gap-5
   y += 16 + 4 + 12; // card p-4 (the h2 is sr-only below sm) · the map's mt-1 · the first section's py-3
   y += 44; // glyph + SectionHead row
@@ -242,10 +255,11 @@ function stampBottom(lang: "en" | "he", opts: { quote: boolean; latest: boolean 
 }
 
 describe("B-DESIGN-03 · the stamp stays above the 375 fold (line model, EN + HE)", () => {
-  it("the source matches the model: header order, rail names hidden below sm, the map h2 sr-only below sm, the stamp on the first unanswered card", () => {
-    expect(MS).toContain('<nav data-testid="ms-jump-rail" aria-labelledby="ms-map-title" className="no-scrollbar -mx-4 mt-3 overflow-x-auto px-4 py-1 sm:mx-0 sm:px-0">');
+  it("the source matches the model: header order, rail names printed (R4), the map h2 sr-only below sm, the stamp on the first unanswered card", () => {
+    expect(MS).toContain('<span data-testid="ms-latest-tail" className={latestNoticed ? "block sm:inline" : undefined}>');
+    expect(MS).toContain('<nav data-testid="ms-jump-rail" aria-labelledby="ms-map-title" className="no-scrollbar -mx-4 mt-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:px-0">');
     expect(MS).toContain('<h2 id="ms-map-title" className="arbor-type-title sr-only sm:not-sr-only"');
-    expect(MS).toContain('<HeroAvatar size={52}');
+    expect(MS).toContain('<HeroAvatar size={44}');
     expect(MS).toContain('className="-my-3 inline-flex min-h-11 items-center align-middle t-sm font-semibold"');
     expect(MS).toContain("const stampShelf = mapShelves.find((id) => noticeFor(id) && !heldNotice[id]);");
     expect(MS).toMatch(/answersAttrs=\{shelf === stampShelf \? \{ "data-primary-move": "notice-milestone" \} : undefined\}/);

@@ -107,7 +107,9 @@ describe("P5-LOOP c2 r1 — no scoreboard at zero, one column at 1280, no watch-
     expect(translate("he", "elev.loop.ms.firstLine", { name: "Dylan" }).replace(/[\u2068\u2069]/g, "")).toBe("המדפים של Dylan מוכנים — התחילו ממה שראיתם השבוע.");
     expect(MS).toMatch(/data-testid="ms-first-line" dir="auto"[^>]*fontFamily: "var\(--font-editorial\)", fontSize: "var\(--t-lg\)", color: "var\(--arbor-ink\)"/);
     // c2 r2 (B-LOOP-NEW-2e): with a first card, ONE sentence names the child and the card — no second line, no imperative
-    expect(MS).toContain('t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: milestoneText(firstCard, "title", t, msGender) })');
+    // P7-DESIGN fix r1 (R2): the card title rides the ONE quote key (״…״ in HE, never „…”)
+    expect(MS).toContain('t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: quoted(milestoneText(firstCard, "title", t, msGender)) })');
+    for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.loop.ms.firstCard", { name: "D", title: "x" })).not.toMatch(/[“”„]/);
     expect(MS).toMatch(/\{!firstCard && \(\s*<p data-testid="ms-lede"/);
     for (const lang of ["en", "he"] as const) {
       const one = translate(lang, "elev.loop.ms.firstCard", { name: "Dylan", title: "Draws a circle" }).replace(/[\u2068\u2069]/g, "");
@@ -214,7 +216,8 @@ describe("P1-NEXTLEVEL critic r2 — the latest card names its area; the map is 
   it("under the latest title, one quiet t-sm line names the area it was counted in (EN + HE)", () => {
     // P5 critic r1: the latest sentence is the lede under the H1, the area one quiet t-sm span in it.
     // B-DESIGN-03: the area is a span INSIDE the one t-sm muted line (no own size).
-    expect(MS).toContain('<span data-testid="ms-latest-area"> · {t("elev.ms.latest.area", { area: latestShelfName })} · </span>');
+    // P7-DESIGN fix r1 (P2-a): below sm the area clause opens the paragraph's second line with no leading "·"
+    expect(MS).toContain('<span data-testid="ms-latest-area"><span className="hidden sm:inline"> · </span>{t("elev.ms.latest.area", { area: latestShelfName })} · </span>');
     // B-LOOP-05: the area is the SHELF the item sits on, the same name the map prints.
     expect(MS).toContain('t("elev.ms.latest.area", { area: latestShelfName })');
     expect(MS).toContain("shelfLabel(latestShelf, t)");
@@ -241,7 +244,8 @@ describe("P5-LOOP c2 r2 (B-LOOP-NEW-2e) — the map opens on the family's own wo
     // B-DESIGN-03 (P7-DESIGN one warm accent; critic c2.r3 P2-13): the 2 px ink rule (.arbor-accent-rule),
     // the words in the editorial face, the shelf and the day on their own t-sm line (no stranded separator).
     expect(quote).toContain('className="arbor-accent-rule mt-3 min-w-0"');
-    expect(quote).toContain('<blockquote dir="auto" className="leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)"');
+    // P7-DESIGN fix r1 (milestones design P1-3): the kit's say step (editorial face, --t-say, the size-adjust in EN)
+    expect(quote).toContain('<blockquote dir="auto" className="arbor-type-say" style={{ color: "var(--arbor-ink)" }}>');
     expect(quote).toContain("{quoted(headerQuote.text)}");
     expect(quote).toContain('<figcaption className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>');
     expect(quote.slice(quote.indexOf("<figcaption"))).not.toMatch(/^\s*·/);
