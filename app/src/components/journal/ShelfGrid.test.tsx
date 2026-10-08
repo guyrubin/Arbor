@@ -75,7 +75,13 @@ describe("ShelfGrid — nine tiles, registry order, counts never verdicts", () =
     const b = render({ sleep: 40, food: 0 });
     // B-OCCL-04: the route's stamp rides the registry-FIRST tile whatever the
     // counts (a position, never a count) — stripped like data-shelf.
-    const strip = (tag: string) => tag.replace(/data-shelf="[a-z]+"/, "").replace(/ data-primary-move="[a-z-]+"/, "");
+    // B-DESIGN-04: a tile wears its SHELF's fixed tone (wash + ring ink) — shelf
+    // identity, like data-shelf, so it is normalized; everything else is equal.
+    const strip = (tag: string) =>
+      tag
+        .replace(/data-shelf="[a-z]+"/, "")
+        .replace(/ data-primary-move="[a-z-]+"/, "")
+        .replace(/var\(--arbor-(?:sky|yellow|lav|pink|green|peach)-(?:wash|ink)\)|var\(--arbor-paper-deep\)|var\(--arbor-ink\)(?= 9%)/g, "TONE");
     const chrome = (html: string) => tiles(html).map((m) => strip(m[0]));
     expect(chrome(a)).toEqual(chrome(b));
     const nonFamily = tiles(a).filter((m) => m[1] !== "family").map((m) => strip(m[0]));
@@ -87,7 +93,8 @@ describe("ShelfGrid — nine tiles, registry order, counts never verdicts", () =
     const html = render({});
     for (const m of tiles(html)) expect(m[0]).toContain("min-h-[96px]");
     expect(html).toMatch(/data-testid="journal-flip-pro"[^>]*min-h-11|min-h-11[^>]*data-testid="journal-flip-pro"/);
-    expect(html).toMatch(/<button[^>]*data-testid="shelf-all-by-date"[^>]*min-h-\[96px\]/);
+    // B-DESIGN-04 (journal design P2-7): the door is a 44 px+ row (min-h-16), not a 96 px tile
+    expect(html).toMatch(/<button[^>]*data-testid="shelf-all-by-date"[^>]*min-h-16/);
   });
 
   it('the flip is a TEXT control named "Professional view" (never icon-only), EN + HE', () => {
@@ -148,13 +155,13 @@ describe("ShelfGrid — the parent's words, what to try, and the capture dock", 
   };
 
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: the latest own entry sits in the header — verbatim, clay-dim rule, editorial t-lg, shelf in <bdi> + the day, a 44 px target`, () => {
+    it(`${lang}: the latest own entry sits in the header — verbatim, the ONE warm accent (ink rule, editorial --t-say), shelf in <bdi> + the day, a 44 px target`, () => {
       const html = full(lang);
       const header = html.slice(html.indexOf('data-module="journal-shelves-header"'), html.indexOf('data-module="journal-shelves"'));
       const btn = header.match(/<button[^>]*data-testid="journal-latest-words"[^>]*>/)![0];
       expect(btn).toMatch(/min-h-11/);
       expect(header).toContain("Sang the whole bath song on his own");
-      expect(header).toMatch(/border-s-2 ps-3 t-lg[^"]*" style="border-color:var\(--arbor-clay-dim\);font-family:var\(--font-editorial\);color:var\(--arbor-ink-soft\)"/);
+      expect(header).toMatch(/data-testid="journal-latest-quote" class="block arbor-accent-rule arbor-type-say line-clamp-2" style="color:var\(--arbor-ink\)"/);
       expect(header).toContain(`<bdi>${translate(lang, "elev.shelves.words")}</bdi>`);
       // absent on first open — never a placeholder
       expect(full(lang, { latest: null })).not.toContain('data-testid="journal-latest-words"');
@@ -418,4 +425,66 @@ describe("ShelfGrid — on the demo seed every tile carries one line (tileTry fa
     expect(practiceTryTitle({ ...p, do: { en: "When your child's shoe is off, say 'shoe' and wait.", he: p.do.he } }, "en", "Dylan")).not.toMatch(/your/i);
     expect(practiceTryTitle(p, "en", "")).toBe(practiceTryTitle(p, "en", " "));
   });
+});
+
+/* B-DESIGN-04 (P7-DESIGN blend frames 02 / 05, 8 Oct): the grid takes the
+   chosen direction — each tile on its shelf's FIXED wash (never by count), the
+   44 px duotone glyph on a white chip, the name in the display face, ONE count
+   line and ONE verb-led detail line; the family's quote in the editorial face. */
+describe("B-DESIGN-04 · the shelf tiles", () => {
+  const html = (lang: "en" | "he", counts: Partial<Record<ShelfId, number>>) => {
+    state.lang = lang;
+    return renderToStaticMarkup(
+      <ShelfGrid
+        childName="Dylan"
+        counts={counts}
+        onOpenShelf={noop}
+        onOpenPro={noop}
+        onOpenAll={noop}
+        primaryMoveProps={{ "data-primary-move": "open-shelf" }}
+        tileWords={{ words: { text: "more juice!", date: "2 Oct" } }}
+        tileTry={{ sleep: "Say the bedtime steps out loud" }}
+        tileNotice={{ food: "Washes and dries hands" }}
+      />,
+    );
+  };
+  const tileOf = (h: string, id: string) => {
+    const i = h.indexOf(`data-shelf="${id}"`);
+    return h.slice(i, h.indexOf("</button>", i));
+  };
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: every tile = its shelf's wash + the duotone glyph on the white chip + the display-face name; the old flat glyph is gone`, () => {
+      const h = html(lang, { words: 8, food: 3 });
+      for (const id of REGISTRY_ORDER) {
+        const tile = tileOf(h, id);
+        expect(tile, id).toMatch(new RegExp(`data-testid="shelf-glyph-duotone" data-shelf="${id}"`));
+        expect(tile, id).toContain("background:var(--arbor-paper-elevated)"); // the white chip on the wash
+        expect(tile, id).toMatch(/data-testid="shelf-tile-name"[^>]*font-family:var\(--font-display\)/);
+      }
+      expect(h).not.toContain('data-testid="shelf-glyph"');
+      expect(h).not.toMatch(/--gradient-cta|--arbor-gradient-primary/);
+    });
+    it(`${lang}: the wash is the same for a shelf at 0 and at 40 (identity, never a count)`, () => {
+      const washOf = (h: string, id: string) => /style="background:(var\(--arbor-[a-z-]+\))/.exec(tileOf(h, id))?.[1];
+      const a = html(lang, { sleep: 0, words: 40 });
+      const b = html(lang, { sleep: 40, words: 0 });
+      for (const id of REGISTRY_ORDER) expect(washOf(a, id), id).toBe(washOf(b, id));
+      expect(washOf(a, "sleep")).toBe("var(--arbor-sky-wash)");
+      expect(washOf(a, "hands")).toBe("var(--arbor-paper-deep)");
+    });
+    it(`${lang}: the detail line leads with its verb in ink; the localized line renders whole; one line at 375`, () => {
+      const h = html(lang, { words: 8, food: 3 });
+      const sleep = tileOf(h, "sleep");
+      expect(sleep).toMatch(new RegExp(`data-testid="shelf-tile-verb"[^>]*>${translate(lang, "elev.shelfJournal.tryVerb")}<`));
+      expect(text(sleep)).toContain(translate(lang, "elev.shelfJournal.tryLine", { title: "Say the bedtime steps out loud" }));
+      const food = tileOf(h, "food");
+      expect(food).toMatch(new RegExp(`data-testid="shelf-tile-verb"[^>]*>${translate(lang, "elev.shelfJournal.nextNoticeVerb")}<`));
+      expect(h).toMatch(/data-testid="shelf-tile-next"[^>]*class="[^"]*\bline-clamp-1\b/);
+      expect(tileOf(h, "words")).toMatch(/data-testid="shelf-tile-quote"[^>]*font-family:var\(--font-editorial\)/);
+    });
+    it(`${lang}: each verb key is the exact prefix of its line (the split never drops a word)`, () => {
+      expect(translate(lang, "elev.shelfJournal.tryLine", { title: "X" }).startsWith(translate(lang, "elev.shelfJournal.tryVerb"))).toBe(true);
+      expect(translate(lang, "elev.shelfJournal.nextNotice", { title: "X" }).startsWith(translate(lang, "elev.shelfJournal.nextNoticeVerb"))).toBe(true);
+    });
+  }
 });

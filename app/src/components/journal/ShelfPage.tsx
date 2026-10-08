@@ -3,12 +3,14 @@ import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import type { Milestone } from "../../types";
 import type { Practice } from "../../content/practices";
-import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
+import { shelfDef, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import type { ObserveStatus, ObservedWhen } from "../../lib/milestones/observe";
 import { practiceTitle } from "../../lib/practice/practiceTitle";
 import { practiceText } from "../loop/PracticeCard";
 import NoticeCard from "../loop/NoticeCard";
-import { ShelfGlyph } from "../loop/ShelfGlyph";
+// B-DESIGN-04: the 44 px duotone glyph (its white chip on the header wash) + the shelf tone.
+import { ShelfGlyph, shelfTone } from "../ui/ShelfGlyph";
+import { SectionHead } from "../ui/SectionHead";
 import { FreeText } from "../ui/FreeText";
 import { shelfCountKey } from "./ShelfGrid";
 
@@ -59,16 +61,22 @@ export interface ShelfPageProps {
   primaryMoveProps?: Record<string, string>;
 }
 
+/** B-DESIGN-04: the hairline ring + the one 2 px lift (--arbor-shadow-card). */
 const CARD: React.CSSProperties = {
   background: "var(--arbor-paper-elevated)",
-  border: "1px solid var(--arbor-rule)",
   borderRadius: "var(--r-lg)",
-  boxShadow: "var(--shadow-xs)",
+  boxShadow: "var(--arbor-shadow-card)",
 };
 
 /**
  * B-LOOP-11 — a shelf page (`#/journal?shelf=<id>`, same route; Back returns
- * to the grid). Design of record: art/mockups/journal-shelves.html, phone 2.
+ * to the grid). Design of record: art/mockups/journal-shelves.html, phone 2,
+ * re-dressed by B-DESIGN-04 (option-ab-blend.html frames 03 / 03b): the header
+ * is a band on the shelf's FIXED wash with the 44 px duotone glyph on a white
+ * chip, the H1 at --t-hero, and the shelf glyph at 96 px / 12 % of its jewel
+ * bleeding off the inline-end corner — that screen's ONE accent (no words
+ * accent here; logical inset + `direction: inherit`, so it lands on the end
+ * side in Hebrew too).
  * Three modules: the header (back link, 44 px glyph, name, count) · Suggested
  * now (the shelf's practice on the coach-gradient band — the ONE gradient on
  * the page — the say-line on a navy rule and "Try it today"; then ONE Notice
@@ -101,7 +109,8 @@ export default function ShelfPage({
   const doText = practice ? practiceText(practice, "do", lang, gender) : "";
   const sayText = practice ? practiceText(practice, "say", lang, gender) : "";
   const materials = practice ? practiceText(practice, "materials", lang, gender) : "";
-  const meta = practice ? [t("elev.loop.practice.minutes", { n: practice.minutes }), materials].filter(Boolean).join(" · ") : "";
+  const tone = shelfTone(shelf);
+  const glyph = shelfDef(shelf).glyph;
   // The page's ONE stamp: "Try it today" when the shelf has a practice, else the add-moment row.
   const stampOnTry = !!practice && !practiceIsToday;
   // P5-LOOP c2 r1 (journal P1 G0): the empty line promises ONLY what renders —
@@ -131,12 +140,26 @@ export default function ShelfPage({
           <Icon name="arrow_back" size={18} aria-hidden className="rtl:-scale-x-100" />
           {t("elev.shelfJournal.back")}
         </button>
-        <div className="mt-1 flex items-center gap-3">
-          <ShelfGlyph shelf={shelf} size={44} />
-          <div className="min-w-0">
-            <h1 className="t-2xl leading-tight tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{name}</h1>
-            <p data-testid="shelf-page-count" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{countLine}</p>
+        <div
+          data-testid="shelf-page-hero"
+          className="relative mt-1 flex items-center gap-3.5 overflow-hidden p-4"
+          style={{ background: tone.wash, borderRadius: "var(--r-xl)", boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${tone.ink} 9%, transparent)` }}
+        >
+          <span className="relative flex-none"><ShelfGlyph shelf={shelf} onWash /></span>
+          <div className="relative min-w-0">
+            <h1 className="arbor-type-hero" style={{ color: "var(--arbor-ink)" }}>{name}</h1>
+            <p data-testid="shelf-page-count" className="arbor-num mt-1 t-sm font-medium" style={{ color: "var(--arbor-ink-soft)" }}>{countLine}</p>
           </div>
+          {glyph && (
+            <span
+              aria-hidden="true"
+              data-testid="shelf-page-bleed"
+              className="msr pointer-events-none absolute"
+              style={{ insetInlineEnd: -16, top: "50%", transform: "translateY(-46%)", direction: "inherit", fontSize: 96, fontVariationSettings: "'opsz' 48, 'wght' 400, 'GRAD' 0, 'FILL' 1", color: `color-mix(in srgb, ${tone.jewel} 12%, transparent)` }}
+            >
+              {glyph}
+            </span>
+          )}
         </div>
         {count === 0 && (
           <p data-testid="shelf-page-empty" className="mt-3 t-base leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
@@ -152,17 +175,24 @@ export default function ShelfPage({
             {/* The page's ONE gradient: the coach wash IS the caption row's own
                 block (P5-LOOP c2 r1 design P1: the old fixed h-14 wash cut
                 through the H2's descenders); the H2 sits on white below it. */}
-            <p data-testid="shelf-practice-caption" className="px-4 py-2.5 t-sm font-bold" style={{ background: "var(--arbor-coach-grad)", color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.suggested")}</p>
+            <p data-testid="shelf-practice-caption" className="flex items-center gap-2 px-4 py-2.5 t-sm font-bold" style={{ background: "var(--arbor-coach-grad)", color: "var(--arbor-muted)" }}>
+              <Icon name="lightbulb" size={18} aria-hidden style={{ color: "var(--arbor-ink-soft)" }} />
+              <span className="min-w-0 flex-1">{t("elev.shelfJournal.suggested")}</span>
+              <span data-testid="shelf-practice-minutes" className="inline-flex flex-none items-center gap-1 t-sm font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>
+                <Icon name="schedule" size={16} aria-hidden />
+                <span className="arbor-num">{t("elev.loop.practice.minutes", { n: practice.minutes })}</span>
+              </span>
+            </p>
             <div className="px-4 pb-4 pt-3">
-              <h2 className="t-lg font-semibold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+              <h2 className="arbor-type-title" style={{ color: "var(--arbor-ink)" }}>
                 <FreeText text={practiceTitle(doText, lang)} />
               </h2>
               {sayText && (
-                <p data-testid="shelf-practice-say" className="mt-2 border-s-2 ps-3 leading-snug" style={{ borderColor: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-xl)", color: "var(--arbor-ink-soft)" }}>
+                <p data-testid="shelf-practice-say" className="mt-2 arbor-accent-rule arbor-type-say" style={{ color: "var(--arbor-ink)" }}>
                   {"“"}<bdi dir="auto">{sayText}</bdi>{"”"}
                 </p>
               )}
-              {meta && <p className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{meta}</p>}
+              {materials && <p className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{materials}</p>}
               {practiceIsToday ? (
                 <p data-testid="shelf-try-today-done" role="status" className="mt-3 inline-flex min-h-11 items-center gap-1.5 t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>
                   <Icon name="check" size={16} aria-hidden />
@@ -187,8 +217,8 @@ export default function ShelfPage({
           <p data-testid="shelf-no-practice" className="t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.noPractice")}</p>
         )}
         {notice && (
-          <div data-testid="shelf-notice" className="p-4 pb-1" style={CARD}>
-            <p className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.notice")}</p>
+          <div data-testid="shelf-notice" className="arbor-depth-card p-4 pb-1" style={{ background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-lg)" }}>
+            <SectionHead icon="visibility" title={t("elev.shelfJournal.notice")} />
             <NoticeCard
               key={notice.id}
               milestone={notice}
@@ -197,6 +227,7 @@ export default function ShelfPage({
               childName={childName}
               variant="row"
               hideShelf
+              answers="segmented"
               {...noticeHandlers}
             />
           </div>
@@ -204,7 +235,14 @@ export default function ShelfPage({
       </section>
 
       <section data-module="shelf-entries" aria-labelledby="shelf-entries-title" className="min-w-0">
-        <h2 id="shelf-entries-title" className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.entries")}</h2>
+        {/* journal design P2-3: "On this shelf" in the BODY face (the h1–h3
+            rule sets the display face with !important, so the words sit in a
+            sans span); glyph + hairline as every section head. */}
+        <div data-testid="shelf-entries-head" className="flex items-center gap-2.5">
+          <Icon name="view_agenda" size={20} aria-hidden style={{ color: "var(--arbor-clay)" }} />
+          <h2 id="shelf-entries-title" className="m-0 min-w-0 t-sm font-bold"><span style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.entries")}</span></h2>
+          <span aria-hidden="true" className="h-px min-w-6 flex-1" style={{ background: "var(--arbor-rule)" }} />
+        </div>
         {lead && (
           <button
             type="button"
@@ -236,7 +274,7 @@ export default function ShelfPage({
         </button>
         {listGroups.map((g) => (
           <div key={g.key} className="mt-3">
-            <h3 className="t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>{g.label}</h3>
+            <h3 className="t-sm font-semibold"><span style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}>{g.label}</span></h3>
             {g.rows.map((r) => (
               <button
                 key={r.id}

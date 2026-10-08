@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { SHELVES, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
-import { ShelfGlyph } from "../loop/ShelfGlyph";
+import { ShelfGlyph, shelfTone } from "../ui/ShelfGlyph";
 
 /** The tile's count line: "{n} noticed", or the one-thing-to-try line for 0 — never "0", never "empty". */
 export function shelfCountKey(n: number): { key: string; vars?: Record<string, number> } {
@@ -63,29 +63,58 @@ export interface ShelfGridProps {
   captureDock?: React.ReactNode;
 }
 
-const TILE = "flex w-full min-h-[96px] flex-col items-start gap-2 p-3.5 text-start transition active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
-const TILE_STYLE: React.CSSProperties = {
-  background: "var(--arbor-paper-elevated)",
-  border: "1px solid var(--arbor-rule)",
-  borderRadius: "var(--r-lg)",
-  boxShadow: "var(--shadow-xs)",
-};
+/** B-DESIGN-04 (blend frame 02): the detail line leads with its verb in ink
+ *  ("Try:", "Next to notice:") — the whole localized line (with its bidi
+ *  isolates) renders unchanged; only its verb prefix is set apart. */
+function VerbLine({ line, verb }: { line: string; verb: string }) {
+  if (!verb || !line.startsWith(verb)) return <>{line}</>;
+  return (
+    <>
+      <span data-testid="shelf-tile-verb" className="font-semibold" style={{ color: "var(--arbor-ink)" }}>{verb}</span>
+      {line.slice(verb.length)}
+    </>
+  );
+}
+
+/** B-DESIGN-04: the tile box — 44 px targets everywhere, ≥ 88 px tall (min-h
+ *  96), padding 12 so the 375 tile lands near the mock's height (≈ 100–118 px:
+ *  glyph row + one detail line) and the capture dock rises toward screen 1. */
+const TILE = "flex w-full min-h-[96px] flex-col items-start gap-2 p-3 text-start transition active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
+
+/** B-DESIGN-04 (P7-DESIGN [B] element 2, framer ruling 7 Oct): a tile sits on
+ *  its SHELF's fixed-strength wash (the -wash token; hands = the paper well)
+ *  with a ring in the shelf's -ink. The tone is read from the shelf id ALONE —
+ *  never from the count, the words or an answer — so a wash names the shelf
+ *  and never grades the child (chromaticVerdict.firewall pins it). */
+export function shelfTileStyle(shelf: ShelfId): React.CSSProperties {
+  const tone = shelfTone(shelf);
+  return {
+    background: tone.wash,
+    borderRadius: "var(--r-lg)",
+    boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${tone.ink} 9%, transparent), 0 1px 2px color-mix(in srgb, var(--arbor-ink) 4%, transparent)`,
+  };
+}
 
 /**
- * B-LOOP-11 — the journal is nine shelves, not a list. Design of record:
- * execution/2026-10-06--milestone-loop/art/mockups/journal-shelves.html,
- * phone 1. The header (eyebrow, display H1, one honest lede, the flip to the
- * professional view as an underlined sapphire text control) and the grid:
- * equal tiles in registry order (two columns at 375, three at lg) with the
- * shelf glyph, the name and ONE count line; Family is a wide row below lg;
- * "Everything by date" is the dashed door to the full day-grouped thread.
+ * B-LOOP-11 → B-DESIGN-04 — the journal is nine shelves, not a list. Design of
+ * record: execution/2026-10-07--design-direction/option-ab-blend.html (frames
+ * 02 and 05). The header (eyebrow, display H1, one honest lede, the family's
+ * newest line as the screen's ONE warm accent — editorial --t-say on the 2 px
+ * ink rule — and the flip to the professional view as an underlined sapphire
+ * text control) and the grid: equal tiles in registry order (two columns at
+ * 375, three at lg), each on its shelf's fixed wash with the 44 px duotone
+ * glyph on a white chip, the shelf name in the display face, ONE count line
+ * and ONE verb-led detail line on the shelf's hairline; Family is a wide row
+ * below lg; "Everything by date" is the dashed door to the full day-grouped
+ * thread.
  *
- * FIREWALL: every tile is drawn the same way whatever its count; the order
- * is the registry's `order`, never the count; a shelf with nothing shows the
- * one-thing-to-try line, never "0", "empty", a colour or a comparison.
+ * FIREWALL: every tile is drawn the same way whatever its count; the wash is
+ * the shelf's identity, never a state; the order is the registry's `order`,
+ * never the count; a shelf with nothing shows the one-thing-to-try line,
+ * never "0", "empty", a colour or a comparison.
  */
 export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, onOpenAll, primaryMoveProps, latest = null, tileWords = {}, tileTry = {}, tileNotice = {}, captureDock }: ShelfGridProps) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const ordered = [...SHELVES].sort((a, b) => a.order - b.order);
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-4">
@@ -100,12 +129,14 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
             type="button"
             data-testid="journal-latest-words"
             onClick={() => onOpenShelf(latest.shelf)}
-            className="mt-2 flex min-h-11 w-full flex-col items-start gap-0.5 py-1 text-start focus:outline-none focus-visible:ring-2"
+            className="mt-3 flex min-h-11 w-full flex-col items-start gap-1 py-1 text-start focus:outline-none focus-visible:ring-2"
           >
-            <span dir="auto" className="block border-s-2 ps-3 t-lg leading-snug line-clamp-2" style={{ borderColor: "var(--arbor-clay-dim)", fontFamily: "var(--font-editorial)", color: "var(--arbor-ink-soft)" }}>
+            {/* The screen's ONE warm accent (B-DESIGN-04): the family's words,
+                editorial, on the 2 px ink rule; shelf + day on their own line. */}
+            <span dir="auto" data-testid="journal-latest-quote" className="block arbor-accent-rule arbor-type-say line-clamp-2" style={{ color: "var(--arbor-ink)" }}>
               {"“"}{latest.text}{"”"}
             </span>
-            <span className="block ps-3.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
+            <span className="block ps-4 t-sm" style={{ color: "var(--arbor-muted)" }}>
               <bdi>{shelfLabel(latest.shelf, t)}</bdi> · <bdi>{latest.day}</bdi>
             </span>
           </button>
@@ -123,12 +154,13 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
       </header>
 
       <section data-module="journal-shelves" aria-label={t("elev.shelfJournal.gridAria", { name: childName })} className="min-w-0">
-        <div data-testid="shelf-grid" className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
+        <div data-testid="shelf-grid" className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {ordered.map((def, i) => {
             const n = counts[def.id] ?? 0;
             const next = tileNext(n, tileWords[def.id], tileNotice[def.id], tileTry[def.id]);
             const line = n <= 0 && next ? { key: "elev.shelfJournal.nothingYetShort", vars: undefined } : shelfCountKey(n);
             const family = def.id === "family";
+            const tone = shelfTone(def.id);
             return (
               <button
                 key={def.id}
@@ -137,31 +169,38 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
                 data-shelf={def.id}
                 {...(i === 0 ? primaryMoveProps ?? {} : {})}
                 onClick={() => onOpenShelf(def.id)}
-                className={`${TILE}${family ? " col-span-2 flex-row items-center lg:col-span-1 lg:flex-col lg:items-start" : ""}`}
-                style={TILE_STYLE}
+                className={`${TILE}${family ? " col-span-2 lg:col-span-1" : ""}`}
+                style={shelfTileStyle(def.id)}
               >
-                <ShelfGlyph shelf={def.id} size={36} />
-                <span className="min-w-0 flex-1">
-                  <span className="block t-base font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>{shelfLabel(def.id, t)}</span>
-                  <span data-testid="shelf-tile-count" className="mt-0.5 block t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
-                    {family ? `${t("elev.shelfJournal.family.sub", { name: childName })} · ` : ""}
-                    {t(line.key, line.vars)}
-                  </span>
-                  {/* B-LOOP-NEW-1c (1) → c2 r2 (B-LOOP-NEW-2c): ONE second line per
-                      tile — the family's words, else the next thing to notice,
-                      else the practice. Each tile reads only its own shelf. */}
-                  {next && (
-                    <span data-testid="shelf-tile-next" data-next={next.kind} className="mt-1 block t-sm leading-snug line-clamp-2" style={{ color: "var(--arbor-ink-soft)" }}>
-                      {next.kind === "words" ? (
-                        <><span dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>{"“"}{next.text}{"”"}</span>{" · "}<bdi>{next.date}</bdi></>
-                      ) : next.kind === "notice" ? (
-                        t("elev.shelfJournal.nextNotice", { title: next.title })
-                      ) : (
-                        t("elev.shelfJournal.tryLine", { title: next.title })
-                      )}
+                <span className="flex w-full min-w-0 items-center gap-2.5">
+                  <ShelfGlyph shelf={def.id} onWash />
+                  <span className="min-w-0 flex-1">
+                    <span data-testid="shelf-tile-name" className="block t-md font-semibold leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{shelfLabel(def.id, t)}</span>
+                    <span data-testid="shelf-tile-count" className="arbor-num mt-0.5 block t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
+                      {family ? `${t("elev.shelfJournal.family.sub", { name: childName })} · ` : ""}
+                      {t(line.key, line.vars)}
                     </span>
-                  )}
+                  </span>
                 </span>
+                {/* B-LOOP-NEW-1c (1) → c2 r2 (B-LOOP-NEW-2c): ONE second line per
+                    tile — the family's words (editorial), else the next thing to
+                    notice, else the practice, verb first in ink. Each tile reads
+                    only its own shelf. One line at 375 (journal design P2-2). */}
+                {next && (
+                  <span
+                    data-testid="shelf-tile-next"
+                    data-next={next.kind}
+                    title={next.kind === "words" ? next.text : undefined}
+                    className="block w-full min-w-0 pt-2 t-sm leading-snug line-clamp-1 sm:line-clamp-2"
+                    style={{ color: "var(--arbor-ink-soft)", borderTop: `1px solid color-mix(in srgb, ${tone.ink} 10%, transparent)` }}
+                  >
+                    {next.kind === "words" ? (
+                      <><span dir="auto" data-testid="shelf-tile-quote" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)", fontSize: uiLang === "he" ? undefined : "var(--t-base)" }}>{"“"}{next.text}{"”"}</span>{" · "}<bdi>{next.date}</bdi></>
+                    ) : (
+                      <VerbLine line={t(next.kind === "notice" ? "elev.shelfJournal.nextNotice" : "elev.shelfJournal.tryLine", { title: next.title })} verb={t(next.kind === "notice" ? "elev.shelfJournal.nextNoticeVerb" : "elev.shelfJournal.tryVerb")} />
+                    )}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -169,11 +208,12 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
             type="button"
             data-testid="shelf-all-by-date"
             onClick={onOpenAll}
-            className={`${TILE} col-span-2 flex-row items-center lg:col-span-3`}
+            className="col-span-2 flex min-h-16 w-full items-center gap-3 px-3 py-2.5 text-start transition active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 lg:col-span-3"
             style={{ background: "transparent", border: "1px dashed var(--arbor-rule-strong)", borderRadius: "var(--r-lg)" }}
           >
-            <span aria-hidden="true" className="inline-flex flex-none items-center justify-center rounded-xl" style={{ width: 36, height: 36, background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }}>
-              <Icon name="calendar_month" size={19} />
+            <span aria-hidden="true" className="inline-grid flex-none place-items-center" style={{ width: 36, height: 36, borderRadius: "var(--r)", background: "var(--arbor-paper-deep)" }}>
+              <Icon name="calendar_month" size={19} fill={1} weight={400} style={{ gridArea: "1 / 1", color: "color-mix(in srgb, var(--arbor-clay) 30%, transparent)" }} />
+              <Icon name="calendar_month" size={19} fill={0} weight={500} style={{ gridArea: "1 / 1", color: "var(--arbor-ink)" }} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block t-base font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>{t("elev.shelfJournal.all")}</span>

@@ -227,3 +227,43 @@ describe("the shelf page's Notice card has a row on Words for the demo child (c2
     expect(shelfNotice(fresh, 38, "sleep", new Date(2026, 9, 7, 9))).toBeNull();
   });
 });
+
+/* B-DESIGN-04 (P7-DESIGN blend frames 03 / 03b, 8 Oct): the header band on the
+   shelf's FIXED wash with the 44 px duotone glyph on a white chip and the 96 px
+   glyph at 12 % bleeding off the inline-END corner (logical inset, direction
+   inherit — RTL lands it on the left); that is the screen's ONE accent (no
+   editorial words accent in the header); the Notice card answers segmented;
+   "On this shelf" and the day heads read in the body face. */
+describe("B-DESIGN-04 · the shelf page header and sections", () => {
+  const SRC = readFileSync(path.resolve(__dirname, "ShelfPage.tsx"), "utf8");
+  it("the header band: the shelf's wash, the white-chip duotone glyph, the H1 at --t-hero, the bleed at the inline end", () => {
+    const hero = /<div\s+data-testid="shelf-page-hero"[\s\S]*?\{count === 0 &&/.exec(SRC)![0];
+    expect(hero).toContain("background: tone.wash");
+    expect(hero).toContain("<ShelfGlyph shelf={shelf} onWash />");
+    expect(hero).toContain('<h1 className="arbor-type-hero"');
+    expect(hero).toMatch(/data-testid="shelf-page-bleed"[\s\S]{0,200}insetInlineEnd: -16[\s\S]{0,120}direction: "inherit"/);
+    expect(hero).toContain("fontSize: 96");
+    expect(hero).toContain("${tone.jewel} 12%");
+    expect(hero).not.toMatch(/insetInlineStart|\bleft:|\bright:/);
+    expect(hero).not.toMatch(/font-editorial|arbor-accent-rule/); // the bleed is the one accent
+    expect(SRC).toContain("const tone = shelfTone(shelf);");
+    expect(SRC).not.toMatch(/from "\.\.\/loop\/ShelfGlyph"/);
+  });
+  it("the Notice card answers segmented under a section head; On this shelf + the day heads in the body face", () => {
+    expect(SRC).toMatch(/<NoticeCard[\s\S]{0,300}hideShelf\s*answers="segmented"/);
+    expect(SRC).toContain('<SectionHead icon="visibility" title={t("elev.shelfJournal.notice")} />');
+    expect(SRC).toMatch(/<h2 id="shelf-entries-title"[^>]*><span style=\{\{ fontFamily: "var\(--font-sans\)"/);
+    expect(SRC).toMatch(/<h3 className="t-sm font-semibold"><span style=\{\{ fontFamily: "var\(--font-sans\)"/);
+  });
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: the wash is the shelf's own token (sleep → sky), the count reads no zero, the bleed glyph is the registry's`, () => {
+      state.lang = lang;
+      const html = renderToStaticMarkup(
+        <ShelfPage shelf="sleep" childName="Dylan" count={0} practice={null} onTryToday={() => undefined} notice={null} noticeHandlers={{ onAnswer: () => undefined }} groups={[]} onOpenEntry={() => undefined} onBack={() => undefined} onAdd={() => undefined} />,
+      );
+      expect(html).toMatch(/data-testid="shelf-page-hero"[^>]*style="background:var\(--arbor-sky-wash\)/);
+      expect(html).toMatch(/data-testid="shelf-page-bleed"[^>]*>bedtime</);
+      expect(html.match(/data-testid="shelf-glyph-duotone"/g)).toHaveLength(1);
+    });
+  }
+});
