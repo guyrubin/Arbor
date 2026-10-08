@@ -1,4 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import { doc, writeBatch } from "firebase/firestore";
+import { db } from "../../lib/firebase";
+import { useAuth } from "../../context/AuthContext";
 import AskSpecialist from "../sections/AskSpecialist";
 import { isIntakeProfession, type ExportAudience } from "../../consult/packet";
 import { useHashQuery } from "../../hooks/useHashQuery";
@@ -57,7 +60,10 @@ export function consultHeading(input: { visitAudience?: ExportAudience; hasVisit
 const lowerFor = (lang: string, x: string) => (lang === "en" ? x.toLowerCase() : x);
 
 export default function ConsultTab() {
+  const { user } = useAuth();
   const { childProfile, activeTab } = useArbor();
+  const currentChild = useRef(childProfile.id);
+  currentChild.current = childProfile.id;
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
   const firstName = (childProfile.name || "").split(" ")[0];
@@ -98,14 +104,27 @@ export default function ConsultTab() {
   // on the parent's confirm, after every proposed goal was accepted in their
   // words or left out. The exercises, in the parent's words, are the visit's
   // follow-up ("What did they suggest?"), which closes the booking.
-  const saveHomeProgram = (w: Extract<EntryWrites, { ok: true }>) => {
-    if (!awaiting) return;
-    for (const old of w.superseded) void programsCol.upsert(old);
-    void programsCol.upsert(w.enrolment);
-    for (const goal of w.goals) void familyGoalsCol.upsert(goal);
-    const record = makeFollowUp(awaiting.id, w.enrolment.home.exercises.map((e) => e.text).join(" · "), Date.now());
-    if (record) void followUpsCol.upsert(record);
-    if (appointmentStatus(awaiting) !== "done") void apptsCol.upsert({ ...awaiting, status: "done" });
+  const saveHomeProgram = async (w: Extract<EntryWrites, { ok: true }>) => {
+    const childId = childProfile.id;
+    const record = awaiting ? makeFollowUp(awaiting.id, w.enrolment.home.exercises.map((e) => e.text).join(" · "), Date.now()) : null;
+    if (programsCol.remote) {
+      if (!db || !user) throw new Error("Sign in to save");
+      const batch = writeBatch(db);
+      const path = `users/${user.uid}/children/${childId}`;
+      for (const old of w.superseded) batch.set(doc(db, `${path}/programs/${old.id}`), old);
+      batch.set(doc(db, `${path}/programs/${w.enrolment.id}`), w.enrolment);
+      for (const goal of w.goals) batch.set(doc(db, `${path}/familyGoals/${goal.id}`), goal);
+      if (record) batch.set(doc(db, `${path}/apptFollowUps/${record.id}`), record);
+      if (awaiting && appointmentStatus(awaiting) !== "done") batch.set(doc(db, `${path}/appointments/${awaiting.id}`), { ...awaiting, status: "done" });
+      await batch.commit();
+    } else {
+      await programsCol.upsert(w.enrolment);
+      for (const old of w.superseded) await programsCol.upsert(old);
+      for (const goal of w.goals) await familyGoalsCol.upsert(goal);
+      if (record) await followUpsCol.upsert(record);
+      if (awaiting && appointmentStatus(awaiting) !== "done") await apptsCol.upsert({ ...awaiting, status: "done" });
+    }
+    if (currentChild.current !== childId) return;
     setHomeOpen(false);
     toast(t("elev.homeProgram.saved"), "success");
   };
@@ -145,6 +164,10 @@ export default function ConsultTab() {
         )}
       </header>
       <div data-module="consult-packet">
+        {!awaiting && <section className="mb-5 rounded-[var(--r-lg)] border p-4" style={{ borderColor: "var(--arbor-rule)" }}>
+          {!homeOpen ? <button type="button" className="min-h-11 rounded-full px-4 text-sm font-semibold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }} onClick={() => setHomeOpen(true)}>{uiLang === "he" ? "יש לי המלצות לתרגול בבית" : "I have recommendations for home"}</button>
+            : <HomeProgramEntry key={childProfile.id} childId={childProfile.id} profession={null} nextVisit={null} rows={programsCol.items} existingGoals={familyGoalsCol.items} onConfirm={saveHomeProgram} onCancel={() => setHomeOpen(false)} />}
+        </section>}
         {activeHome.map((e) => (
           <HomeProgramDays key={e.id} enrolment={e} onSave={(exerciseId) => void programsCol.upsert(toggleExerciseDay(e, exerciseId))} />
         ))}
@@ -187,6 +210,8 @@ export default function ConsultTab() {
               </button>
             ) : (
               <HomeProgramEntry
+                key={childProfile.id}
+                childId={childProfile.id}
                 profession={homeProfessionForAppointment(awaiting.profession)}
                 nextVisit={nextVisitDayFor(apptsCol.items, awaiting, nowMs)}
                 rows={programsCol.items}

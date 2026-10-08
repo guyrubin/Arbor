@@ -53,6 +53,7 @@ import { keepsakeDoc, type KeepsakeDoc } from "../../lib/firstsKeepsake";
 import type { Milestone } from "../../types";
 import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import PracticeCard, { practiceText, type PracticeQuote, type PracticeWhyReason } from "../loop/PracticeCard";
+import { adaptPractice, adaptationSessionKey, type PracticeAdaptationKey } from "../../content/practiceAdaptations";
 import NoticeCard from "../loop/NoticeCard";
 import TonightFlow from "../loop/TonightFlow";
 
@@ -210,7 +211,7 @@ export default function OverviewTab() {
   // chooser, which honours it inside today's candidates and below a dose row
   // or the parent's pin; the why-line rides with it.
   const aiPracticeId = focus?.practiceVia === "ai" ? focus.practiceId : undefined;
-  const pick = useMemo(
+  const basePick = useMemo(
     () => choosePractice({
       childId: childProfile.id,
       milestones,
@@ -222,10 +223,19 @@ export default function OverviewTab() {
       // B-LOOP-11: "Try it today" on a journal shelf page pins the practice
       // for the day (lib/practice/todayPin); a dose row always wins.
       todayPracticeId: dose?.practiceId ?? readTodayPin(childProfile.id, now),
+      todayAdaptation: dose?.practiceAdaptation,
       aiPracticeId,
     }),
-    [childProfile.id, milestones, comparisonMonths, coverage, now, recentIds, dose?.practiceId, aiPracticeId]
+    [childProfile.id, milestones, comparisonMonths, coverage, now, recentIds, dose?.practiceId, dose?.practiceAdaptation, aiPracticeId]
   );
+  const adaptationKey = adaptationSessionKey(childProfile.id, basePick?.practice.id ?? "", dayKey(now));
+  const [adaptationPreview, setAdaptationPreview] = useState<{ session: string; key: PracticeAdaptationKey | null } | null>(null);
+  useEffect(() => { setAdaptationPreview(null); }, [adaptationKey]);
+  const selectedAdaptation = adaptationPreview?.session === adaptationKey ? adaptationPreview.key : null;
+  const pick = useMemo(() => {
+    if (!basePick || dose) return basePick;
+    return { ...basePick, ...adaptPractice(basePick.practice, selectedAdaptation) };
+  }, [basePick, dose, selectedAdaptation]);
   const doseAnswer: PracticeAnswer | null = dose ? (dose.outcome === "not_today" ? "not_today" : "did") : null;
   const sayText = pick ? practiceText(pick.practice, "say", lang, childProfile.gender) : "";
   const answerPractice = (answer: PracticeAnswer) => {
@@ -473,6 +483,7 @@ export default function OverviewTab() {
 
   const practiceBlock = pick ? (
     <PracticeCard
+      key={adaptationKey}
       practice={pick.practice}
       milestone={pick.milestone}
       shelf={pick.shelf}
@@ -490,6 +501,8 @@ export default function OverviewTab() {
       headerNote={lifecycleNote}
       stampMove={firstBlock === "practice" ? primaryMoveId : undefined}
       mode={plan.practiceMode === "tonight" ? "tonight" : "day"}
+      adaptation={pick.adaptation?.key ?? null}
+      onAdapt={(key) => setAdaptationPreview({ session: adaptationKey, key })}
     />
   ) : slotNotice ? (
     <NoticeCard key={slotNotice.milestone.id} milestone={slotNotice.milestone} shelf={slotNotice.shelf} gender={childProfile.gender} childName={firstName} variant="card" answers="segmented" answersAttrs={firstBlock === "practice" ? primaryStamp : undefined} {...noticeHandlers(slotNotice.milestone, slotNotice.shelf)} />

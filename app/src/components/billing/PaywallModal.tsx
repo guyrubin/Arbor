@@ -46,11 +46,11 @@ export default function PaywallModal() {
   const { busy, startCheckout, restorePurchases, isNative } = useCheckout();
   const nativePrices = useNativePrices();
   const [cadence, setCadence] = useState<Cadence>("monthly");
-  const [selected, setSelected] = useState<PaidPlan>(paywall.suggestedPlan ?? "plus");
+  const [selected, setSelected] = useState<PaidPlan>("plus");
 
   // The 402 names the plan that unlocks the feature; re-select it each open.
   useEffect(() => {
-    if (paywall.open) setSelected(paywall.suggestedPlan ?? "plus");
+    if (paywall.open) setSelected("plus");
   }, [paywall.open, paywall.suggestedPlan]);
 
   /* N1-02 — the conversion moment reported that it happened nowhere. ONE event
@@ -65,7 +65,9 @@ export default function PaywallModal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paywall.open]);
 
-  const rows = buildPlanRows({ isNative: isNativePlatform, nativePrices, cadence, fmtCurrency: fmtStoreCurrency });
+  // Co-parent sharing is free. Preserve existing Family subscriptions, but
+  // do not sell a more expensive plan with no additional entitlement.
+  const rows = buildPlanRows({ isNative: isNativePlatform, nativePrices, cadence, fmtCurrency: fmtStoreCurrency }).filter((row) => row.plan === "plus");
   const cta = paywallCta({ rows, selected, cadence, isNative: isNativePlatform, platform: nativePlatform, t });
   const disclosure = disclosureText(t, nativePlatform, cadence);
 
@@ -114,12 +116,6 @@ export default function PaywallModal() {
                 {t(keptCount === 1 ? "pw.kept.one" : "pw.kept.many", { n: keptCount, name })}
               </p>
             )}
-            <p className="font-bold mt-2 mb-1 flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
-              <PlanBadge plan="family" />{pc("familyTitle")}
-            </p>
-            <ul className="space-y-0.5 list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
-              <li>{pc("family.1")}</li>
-            </ul>
           </div>
         </div>
 

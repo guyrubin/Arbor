@@ -95,6 +95,8 @@ describe("B-PROG-09 template · two exercises → one enrolment, two practices o
 describe("B-PROG-09 template · the rules", () => {
   it("defaults each exercise to the profession's shelf, a shelf over a domain the profession owns", () => {
     for (const p of HOME_PROFESSIONS) {
+      // Tipat Halav is the source team, not a diagnostic profession/lens.
+      if (p === "tipat_halav") { expect(HOME_PROFESSION_SHELF[p]).toBe("family"); continue; }
       const domain = shelfDef(HOME_PROFESSION_SHELF[p]).domain;
       const owners = DOMAINS.find((d) => d.id === domain)!.professions as readonly string[];
       const lens: Record<string, readonly string[]> = {

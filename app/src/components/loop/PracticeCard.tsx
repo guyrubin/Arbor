@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { FreeText } from "../ui/FreeText";
 import { useLanguage } from "../../context/LanguageContext";
@@ -10,6 +10,7 @@ import type { PracticeAnswer } from "../../lib/practice/choosePractice";
 import { ShelfGlyph } from "../ui/ShelfGlyph";
 import { practiceDoNamed } from "../../lib/journal/shelfView";
 import { practiceTitle, titleIsWholeDo } from "../../lib/practice/practiceTitle";
+import { PRACTICE_ADAPTATIONS, PRACTICE_ADAPTATION_KEYS, type PracticeAdaptationKey } from "../../content/practiceAdaptations";
 
 /** The page-language text of a practice field, Hebrew slash forms resolved
  *  from the child's gender (Law 8). */
@@ -84,6 +85,9 @@ export interface PracticeCardProps {
    *  Tonight's practice and the say is offered "for tonight"; the answers,
    *  the do-line and the stamp are unchanged. Default "day". */
   mode?: "day" | "tonight";
+  /** The parent owns this preview. Only onAnswer records it. */
+  adaptation?: PracticeAdaptationKey | null;
+  onAdapt?: (key: PracticeAdaptationKey | null) => void;
 }
 
 /**
@@ -117,6 +121,8 @@ export default function PracticeCard({
   whyText,
   stampMove,
   mode = "day",
+  adaptation,
+  onAdapt,
 }: PracticeCardProps) {
   const { t, uiLang } = useLanguage();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
@@ -131,6 +137,15 @@ export default function PracticeCard({
   const caption = t(mode === "tonight" ? "elev.loop.tonight.practice.caption" : "elev.loop.practice.caption");
   const hasQuotes = !!quotes && quotes.length > 0;
   const besideWords = !!quotes && quotes.some((q) => q.onShelf !== false);
+  const [adaptOpen, setAdaptOpen] = useState(false);
+  const adaptId = useId();
+  const adaptTrigger = useRef<HTMLButtonElement>(null);
+  const canAdapt = !!onAdapt && !!PRACTICE_ADAPTATIONS[practice.id];
+  const chooseAdaptation = (key: PracticeAdaptationKey | null) => {
+    onAdapt?.(key);
+    setAdaptOpen(false);
+    adaptTrigger.current?.focus();
+  };
   return (
     <section
       data-testid="practice-card"
@@ -248,6 +263,48 @@ export default function PracticeCard({
           >
             {t("elev.loop.practice.notToday")}
           </button>
+        </div>
+      )}
+      {canAdapt && !answered && (
+        <div data-testid="practice-adapt" className="mt-2" dir={lang === "he" ? "rtl" : "ltr"}>
+          <button
+            type="button"
+            ref={adaptTrigger}
+            aria-expanded={adaptOpen}
+            aria-controls={adaptId}
+            onClick={() => setAdaptOpen((open) => !open)}
+            className="flex min-h-11 w-full items-center gap-2 rounded-xl px-1 text-start t-sm font-semibold"
+            style={{ color: "var(--arbor-clay)" }}
+          >
+            <span className="flex-1">{t(adaptOpen ? "elev.adapt.close" : "elev.adapt.open")}</span>
+            <Icon name={adaptOpen ? "expand_less" : "expand_more"} size={20} />
+          </button>
+          {adaptation && (
+            <p role="status" className="pb-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
+              {t("elev.adapt.active", { option: t(`elev.adapt.${adaptation}`) })}
+            </p>
+          )}
+          {adaptOpen && (
+            <div id={adaptId} className="space-y-2 rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)" }}>
+              <p className="t-base font-semibold" style={{ color: "var(--arbor-ink)" }}>{t("elev.adapt.prompt")}</p>
+              <div role="group" aria-label={t("elev.adapt.prompt")} className="grid gap-2 sm:grid-cols-2">
+                {PRACTICE_ADAPTATION_KEYS.map((key) => (
+                  <button key={key} type="button" data-adaptation={key} aria-pressed={adaptation === key}
+                    onClick={() => chooseAdaptation(key)}
+                    className="min-h-11 rounded-xl px-3 py-2.5 text-start"
+                    style={{ background: "var(--arbor-paper-elevated)", border: `1px solid var(${adaptation === key ? "--arbor-clay" : "--arbor-rule"})`, color: "var(--arbor-ink)" }}>
+                    <span className="block t-sm font-semibold">{t(`elev.adapt.${key}`)}</span>
+                    <span className="block mt-0.5 t-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{t(`elev.adapt.${key}.detail`)}</span>
+                  </button>
+                ))}
+              </div>
+              <button type="button" onClick={() => chooseAdaptation(null)}
+                className="min-h-11 w-full rounded-xl px-3 text-start t-sm font-semibold" style={{ color: "var(--arbor-clay)" }}>
+                {t("elev.adapt.revert")}
+              </button>
+              <p className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.adapt.preview")}</p>
+            </div>
+          )}
         </div>
       )}
       {/* P5 r1 pass A1/A3: the materials and the reason sit UNDER the answers,

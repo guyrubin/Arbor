@@ -74,10 +74,10 @@ describe("entitlement layer (MON-1)", () => {
     expect(PLAN_LIMITS.plus.maxChildren).toBeGreaterThan(PLAN_LIMITS.free.maxChildren);
   });
 
-  it("Family adds a co-parent seat on top of everything Plus has", () => {
+  it("co-parent sharing is available on every plan", () => {
     expect(PLAN_LIMITS.family.coParentSeats).toBe(1);
-    expect(PLAN_LIMITS.plus.coParentSeats).toBe(0);
-    expect(PLAN_LIMITS.free.coParentSeats).toBe(0);
+    expect(PLAN_LIMITS.plus.coParentSeats).toBe(1);
+    expect(PLAN_LIMITS.free.coParentSeats).toBe(1);
     expect(PLAN_LIMITS.family.coachMessagesPerDay).toBeNull();
     expect(PLAN_LIMITS.family.professionalReports).toBe(true);
   });

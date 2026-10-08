@@ -9,6 +9,7 @@ import { LanguageProvider, useLanguage } from "./context/LanguageContext";
 import Shell from "./components/layout/Shell";
 import LoginScreen from "./components/auth/LoginScreen";
 import OnboardingFlow from "./components/auth/OnboardingFlow";
+import CoParentGate from "./components/sharing/CoParentGate";
 import { firebaseClientMisconfigured, missingFirebaseClientConfig } from "./lib/firebase";
 import { refreshEntitlement, markBillingReturn } from "./hooks/useEntitlement";
 import { recordBillingTransition } from "./lib/billingTransition";
@@ -147,11 +148,13 @@ export default function App() {
           <AuthGate>
             <BillingReturnWatcher />
             <ProfileProvider>
+              <CoParentGate>
               <ProfileGate>
                 <ArborProvider>
                   <Shell />
                 </ArborProvider>
               </ProfileGate>
+              </CoParentGate>
             </ProfileProvider>
           </AuthGate>
         </AuthProvider>

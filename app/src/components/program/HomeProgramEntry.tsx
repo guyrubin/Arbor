@@ -1,4 +1,6 @@
-import React, { useReducer } from "react";
+import React, { useReducer, useState } from "react";
+import HomeProgramImport from "./HomeProgramImport";
+import type { ProgramImportSource } from "../../lib/programImport";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { fmtDay } from "../../lib/formatDate";
@@ -44,6 +46,7 @@ const EMPTY_SCALE = (): Record<GoalScaleKey, string> => ({ "-2": "", "-1": "", "
 export type GoalDecision = { text: string; scale: Record<GoalScaleKey, string> } | "left_out";
 
 export interface HomeEntryState {
+  source?: ProgramImportSource;
   step: "enter" | "review";
   profession: HomeProfession | null;
   exercises: Array<{ text: string; shelf: ShelfId }>;
@@ -57,6 +60,7 @@ export interface HomeEntryState {
 }
 
 export type HomeEntryAction =
+  | { type: "importExercises"; texts: string[]; source: ProgramImportSource }
   | { type: "profession"; profession: HomeProfession }
   | { type: "exerciseText"; i: number; text: string }
   | { type: "exerciseShelf"; i: number; shelf: ShelfId }
@@ -80,6 +84,11 @@ export function initialEntryState(profession: HomeProfession | null): HomeEntryS
 
 export function entryReducer(s: HomeEntryState, a: HomeEntryAction): HomeEntryState {
   switch (a.type) {
+    case "importExercises": {
+      const existing = filled(s);
+      if (s.source || a.texts.length > HOME_EXERCISES_MAX - existing.length) return s;
+      return { ...s, source: a.source, error: null, exercises: [...existing, ...a.texts.map(text => ({ text, shelf: shelfFor(s.profession) }))] };
+    }
     case "profession": {
       // an untouched default shelf follows the profession; a shelf the parent picked stays
       const before = shelfFor(s.profession);
@@ -141,7 +150,8 @@ export function entryWrites(s: HomeEntryState, ctx: EntryContext): EntryWrites {
     if ("reason" in r) return { ok: false, reason: r.reason };
     goals.push(r.goal);
   }
-  return { ok: true, enrolment: started.enrolment, superseded: started.superseded, goals };
+  const enrolment = s.source ? { ...started.enrolment, home: { ...started.enrolment.home, source: s.source } } : started.enrolment;
+  return { ok: true, enrolment, superseded: started.superseded, goals };
 }
 
 /** The acceptance form's check before a goal is held (same limits as any family goal). */
@@ -176,39 +186,49 @@ export function nextVisitDayFor(appts: readonly Appointment[], visit: Appointmen
 const lowerFor = (lang: string, x: string) => (lang === "en" ? x.toLowerCase() : x);
 
 export interface HomeProgramEntryProps {
+  childId?: string;
   /** The visit's profession when known; null = the parent picks. */
   profession: HomeProfession | null;
   /** LOCAL day key of the next booked visit, or null. */
   nextVisit: string | null;
   rows: readonly unknown[];
   existingGoals: readonly FamilyGoal[];
-  onConfirm: (writes: Extract<EntryWrites, { ok: true }>) => void;
+  onConfirm: (writes: Extract<EntryWrites, { ok: true }>) => void | Promise<void>;
   onCancel: () => void;
   now?: () => Date;
   /** Tests render a given step (the component holds its own state otherwise). */
   initialState?: HomeEntryState;
 }
 
-export default function HomeProgramEntry({ profession, nextVisit, rows, existingGoals, onConfirm, onCancel, now = () => new Date(), initialState }: HomeProgramEntryProps) {
+export default function HomeProgramEntry({ childId, profession, nextVisit, rows, existingGoals, onConfirm, onCancel, now = () => new Date(), initialState }: HomeProgramEntryProps) {
   const { t, uiLang } = useLanguage();
   const [s, dispatch] = useReducer(entryReducer, initialState ?? initialEntryState(profession));
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const ctx = (): EntryContext => ({ rows, existingGoals, nextVisit, now: now() });
   const profLabel = (p: HomeProfession) => t(`elev.carehonesty.consult.audience.${p}`);
   const weeks = homeProgramWeeks(nextVisit, now());
   const decided = allGoalsDecided(s);
 
-  const confirm = () => {
+  const confirm = async () => {
+    if (saving) return;
     const w = entryWrites(s, ctx());
     if ("reason" in w) {
       dispatch({ type: "error", error: w.reason === "undecided" ? "undecided" : w.reason === "no_exercises" ? "no_exercises" : null });
       return;
     }
-    onConfirm(w);
+    setSaving(true); setSaveError(false);
+    try { await onConfirm(w); }
+    catch { setSaveError(true); }
+    finally { setSaving(false); }
   };
 
   return (
     <section data-testid="home-program-entry" data-step={s.step} className="mt-3 flex flex-col gap-3">
       <h2 className="t-base font-bold" style={{ color: "var(--arbor-ink)" }}>{t(s.step === "enter" ? "elev.homeProgram.entry.title" : "elev.homeProgram.review.title")}</h2>
+      {saving && <p role="status" className="text-sm">{uiLang === "he" ? "שומרים וממתינים לאישור הסנכרון…" : "Saving and waiting for sync confirmation…"}</p>}
+      {saveError && <p role="alert" className="text-sm">{uiLang === "he" ? "השמירה לא הושלמה. הטקסט עדיין כאן; אפשר לנסות שוב." : "The save did not finish. Your text is still here; you can retry."}</p>}
+      {childId && <HomeProgramImport key={childId} childId={childId} readOnly={s.step === "review"} remaining={HOME_EXERCISES_MAX - filled(s).length} onApply={(texts, source) => dispatch({ type: "importExercises", texts, source })} />}
       {s.step === "enter" ? (
         <>
           <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.homeProgram.entry.lede")}</p>
@@ -328,8 +348,8 @@ export default function HomeProgramEntry({ profession, nextVisit, rows, existing
           )}
           {(s.error === "undecided" || !decided) && <p role="status" data-testid="home-program-undecided" className="t-sm" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.homeProgram.review.undecided")}</p>}
           <div className="flex flex-wrap gap-2">
-            <button type="button" data-testid="home-program-save" disabled={!decided} onClick={confirm} className="inline-flex min-h-11 items-center rounded-full px-4 t-sm font-bold disabled:cursor-not-allowed disabled:opacity-60" style={SAVE}>{t("elev.homeProgram.review.save")}</button>
-            <button type="button" data-testid="home-program-back" onClick={() => dispatch({ type: "back" })} className="inline-flex min-h-11 items-center rounded-full px-4 t-sm font-semibold" style={QUIET}>{t("elev.homeProgram.entry.back")}</button>
+            <button type="button" data-testid="home-program-save" disabled={!decided || saving} onClick={() => void confirm()} className="inline-flex min-h-11 items-center rounded-full px-4 t-sm font-bold disabled:cursor-not-allowed disabled:opacity-60" style={SAVE}>{t("elev.homeProgram.review.save")}</button>
+            <button type="button" data-testid="home-program-back" disabled={saving} onClick={() => dispatch({ type: "back" })} className="inline-flex min-h-11 items-center rounded-full px-4 t-sm font-semibold" style={QUIET}>{t("elev.homeProgram.entry.back")}</button>
           </div>
         </>
       )}
@@ -339,12 +359,18 @@ export default function HomeProgramEntry({ profession, nextVisit, rows, existing
 
 /** The family's "done today" mark per exercise of an active home program — counts of days, never a rate. */
 export function HomeProgramDays({ enrolment, onSave, now = () => new Date() }: { enrolment: HomeProgramEnrolment; onSave: (exerciseId: string) => void; now?: () => Date }) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const a = homeAdherence(enrolment, now());
   return (
     <section data-testid="home-program-days" data-program={enrolment.programId} className="mb-5 border-y py-4" style={{ borderColor: "var(--arbor-rule)" }}>
       <h2 className="t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.homeProgram.name", { profession: t(`elev.carehonesty.consult.audience.${a.profession}`) })}</h2>
       <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.homeProgram.days.week", { n: a.week, total: a.weeks })}</p>
+      {enrolment.home.source && <details className="my-3 text-sm">
+        <summary className="min-h-11 cursor-pointer py-3 font-semibold">{uiLang === "he" ? "התמלול שנבדק והציטוטים שנבחרו" : "Reviewed transcription and selected quotes"}</summary>
+        <p dir="auto" className="mb-2 break-words">{enrolment.home.source.name}</p>
+        <p dir="auto" className="max-h-64 overflow-auto whitespace-pre-wrap rounded-[var(--r)] p-3" style={QUIET}>{enrolment.home.source.sourceText}</p>
+        <ul className="mt-3 list-disc ps-5">{enrolment.home.source.quotations.map((quote, i) => <li key={i} dir="auto" className="mb-2">{quote}</li>)}</ul>
+      </details>}
       <ul className="mt-2">
         {a.exercises.map((e) => {
           const on = exerciseDoneToday(enrolment, e.id, now());

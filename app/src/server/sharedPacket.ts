@@ -77,6 +77,9 @@ export async function resolveSharedPacket(opts: {
 
   const grant = await shareStore.get(grantId);
   if (!grant) return { status: 404, error: "Share not found" };
+  // Collaborative invitations have a stricter UID-bound acceptance contract.
+  // They must never fall back to the older email-only packet endpoint.
+  if (grant.accessMode === "family_workspace") return { status: 403, error: "Open the shared family workspace to accept this invitation" };
 
   // Recipient identity check — fails closed without an authenticated email.
   const email = (recipientEmail ?? "").trim().toLowerCase();

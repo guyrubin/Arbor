@@ -110,26 +110,25 @@ describe("1 · the retired claims are gone from BOTH dictionaries", () => {
  * adult inside the account — a sign-in, a session, the ability to write. No such
  * thing exists, at either price.
  */
-describe("5 · the Family plan promises one co-parent invite, not a seat", () => {
-  it("the seat is the only thing Family adds — and it is a share grant", () => {
+describe("5 · co-parent sharing is free, never sold as Family's differentiator", () => {
+  it("existing Family keeps its Plus features while sharing is free for everyone", () => {
     expect(PLAN_LIMITS.family.coParentSeats).toBe(1);
-    expect(PLAN_LIMITS.plus.coParentSeats).toBe(0);
+    expect(PLAN_LIMITS.plus.coParentSeats).toBe(1);
+    expect(PLAN_LIMITS.free.coParentSeats).toBe(1);
     // Everything else Family "adds" is already in Plus, which is exactly why
     // this one bullet had to carry the difference honestly.
     expect(PLAN_LIMITS.family.maxChildren).toBe(PLAN_LIMITS.plus.maxChildren);
     expect(PLAN_LIMITS.family.coachMessagesPerDay).toBe(PLAN_LIMITS.plus.coachMessagesPerDay);
   });
 
-  it("both surfaces name the invite and its limits, in both languages", () => {
+  it("both surfaces name free sharing and revocation, in both languages", () => {
     for (const s of [planEn["elev.plan.family.1"], en["set.plan.familyDesc"]]) {
-      expect(s).toMatch(/co-parent invite/);
-      expect(s).toMatch(/read-only/);
+      expect(s).toMatch(/[Cc]o-parent sharing is free on every plan/);
       expect(s).toMatch(/revoke|revocable/);
       expect(s).not.toMatch(/\bseat\b/);
     }
     for (const s of [planHe["elev.plan.family.1"], he["set.plan.familyDesc"]]) {
-      expect(s).toContain("הזמנה אחת");
-      expect(s).toContain("צפייה בלבד");
+      expect(s).toContain("ללא תשלום בכל מסלול");
       expect(s).toContain("לבטל");
       expect(s).not.toContain("מושב");
     }

@@ -29,6 +29,10 @@ export type ShareGrant = {
   createdAt: string;
   expiresAt: string | null;   // ISO, or null = until revoked
   revokedAt: string | null;
+  /** Explicit owner opt-in. Legacy co-parent packets remain read-only. */
+  accessMode?: "family_workspace";
+  recipientUid?: string;
+  acceptedAt?: string;
 };
 
 /** SERVER-ENFORCED expiry: a grant resolves only while live and unrevoked. */
@@ -73,6 +77,7 @@ export type NewShare = {
   role?: ShareRole;
   scopes?: string[];
   duration?: string;
+  accessMode?: "family_workspace";
 };
 
 export const buildGrant = (input: NewShare, now: number = Date.now()): ShareGrant => ({
@@ -91,7 +96,13 @@ export const buildGrant = (input: NewShare, now: number = Date.now()): ShareGran
   createdAt: new Date(now).toISOString(),
   expiresAt: expiryFromDuration(input.duration, now),
   revokedAt: null,
+  ...(input.role === "co_parent" && input.accessMode === "family_workspace" ? { accessMode: "family_workspace" as const } : {}),
 });
+
+export const canAcceptCoParent = (g: ShareGrant, uid: string, email: string): boolean =>
+  g.role === "co_parent" && g.accessMode === "family_workspace" && isShareActive(g)
+  && g.ownerUid !== uid && g.recipientEmail === email.trim().toLowerCase()
+  && (!g.recipientUid || g.recipientUid === uid);
 
 /** CARE-6: owner-side listing options. `includeInactive` returns revoked and
  *  expired grants too — the owner's own grant records (createdAt/expiresAt/
@@ -105,6 +116,8 @@ export interface ShareStore {
   listByRecipient(email: string): Promise<ShareGrant[]>;
   get(id: string): Promise<ShareGrant | null>;
   revoke(id: string, ownerUid: string): Promise<ShareGrant | null>;
+  /** Caller supplies only server-verified identity, never values from the body. */
+  acceptCoParent(id: string, uid: string, verifiedEmail: string): Promise<ShareGrant | null>;
   /** GDPR erasure: hard-delete every grant (active, expired, or revoked) the owner created for a child. */
   eraseByChild(ownerUid: string, childId: string): Promise<number>;
 }
@@ -129,6 +142,14 @@ export class LocalShareStore implements ShareStore {
   }
 
   async get(id: string) { return this.grants.get(id) ?? null; }
+
+  async acceptCoParent(id: string, uid: string, verifiedEmail: string) {
+    const grant = this.grants.get(id);
+    if (!grant || !canAcceptCoParent(grant, uid, verifiedEmail)) return null;
+    const accepted = { ...grant, recipientUid: uid, acceptedAt: grant.acceptedAt ?? new Date().toISOString() };
+    this.grants.set(id, accepted);
+    return accepted;
+  }
 
   async revoke(id: string, ownerUid: string) {
     const g = this.grants.get(id);
@@ -187,6 +208,19 @@ export class FirestoreShareStore implements ShareStore {
   async get(id: string) {
     const doc = await this.col().doc(id).get();
     return doc.exists ? (doc.data() as ShareGrant) : null;
+  }
+
+  async acceptCoParent(id: string, uid: string, verifiedEmail: string) {
+    return this.db.runTransaction(async (tx) => {
+      const ref = this.col().doc(id);
+      const snap = await tx.get(ref);
+      if (!snap.exists) return null;
+      const grant = snap.data() as ShareGrant;
+      if (!canAcceptCoParent(grant, uid, verifiedEmail)) return null;
+      const accepted = { ...grant, recipientUid: uid, acceptedAt: grant.acceptedAt ?? new Date().toISOString() };
+      tx.set(ref, accepted);
+      return accepted;
+    });
   }
 
   async revoke(id: string, ownerUid: string) {

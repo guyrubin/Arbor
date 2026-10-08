@@ -173,8 +173,8 @@ describe("B-SHELL-11 · one body per trigger, a plain kept count", () => {
     });
   }
 
-  it("claim gate: the co-parent body names the read-only view; the child body names six", () => {
-    expect(bodyText("en", "coParentSeats")).toMatch(/read-only/);
+  it("claim gate: co-parent sharing is free; the child body names six", () => {
+    expect(bodyText("en", "coParentSeats")).toMatch(/free on every plan/);
     expect(bodyText("en", "maxChildren")).toMatch(/six/);
     for (const f of PAYWALL_FEATURES) expect(bodyText("en", f)).not.toMatch(/what changed|snapshot/i);
   });

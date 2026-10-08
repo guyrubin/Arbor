@@ -35,6 +35,7 @@
  * Arbor (reviewStatus stays "draft"; it publishes nowhere).
  */
 import type { LocalizedText } from "../governance";
+import type { ProgramImportSource } from "../../lib/programImport";
 import type { Program, ProgramWeek } from "./types";
 import { SHELF_IDS, type ShelfId } from "../../lib/shelves/registry";
 import { dayKey, daysBetween, enrolmentId, type ProgramEnrolment } from "../../lib/programs/enrolment";
@@ -42,8 +43,8 @@ import { setGoal, type FamilyGoal, type GoalScaleKey, type SetGoalResult } from 
 import { en as PRACTICE_EN, he as PRACTICE_HE } from "../../lib/i18nElevation/practice";
 
 /** The consult intake professions (consult/packet IntakeProfession) a home program can come from. */
-export type HomeProfession = "slp" | "ot" | "pt" | "psychology" | "pediatrician";
-export const HOME_PROFESSIONS: readonly HomeProfession[] = ["slp", "ot", "pt", "psychology", "pediatrician"];
+export type HomeProfession = "slp" | "ot" | "pt" | "psychology" | "pediatrician" | "tipat_halav";
+export const HOME_PROFESSIONS: readonly HomeProfession[] = ["slp", "ot", "pt", "psychology", "pediatrician", "tipat_halav"];
 export const isHomeProfession = (v: unknown): v is HomeProfession =>
   typeof v === "string" && (HOME_PROFESSIONS as readonly string[]).includes(v);
 
@@ -56,6 +57,7 @@ export const HOME_PROFESSION_SHELF: Readonly<Record<HomeProfession, ShelfId>> = 
   pt: "moving",
   psychology: "feelings",
   pediatrician: "food",
+  tipat_halav: "family",
 };
 
 export const HOME_PROGRAM_PREFIX = "home-";
@@ -84,6 +86,8 @@ export interface HomeExercise {
 
 /** What a home-program enrolment carries beyond the engine's shape. */
 export interface HomeProgramRecord {
+  /** Confirmed import provenance; exported/erased with the existing programs record. No file bytes. */
+  source?: ProgramImportSource;
   profession: HomeProfession;
   exercises: HomeExercise[];
   /** Whole weeks until the next visit (or the default). */

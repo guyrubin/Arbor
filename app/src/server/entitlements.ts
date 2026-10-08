@@ -36,7 +36,7 @@ export type PlanLimits = {
   maxChildren: number;
   professionalReports: boolean;
   advancedPlans: boolean;
-  /** Shared-access adults beyond the account owner (co-parent seats). Family = 1. */
+  /** Compatibility availability flag: co-parent sharing is free on every plan. */
   coParentSeats: number;
 };
 
@@ -46,14 +46,14 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     maxChildren: 1,
     professionalReports: false,
     advancedPlans: false,
-    coParentSeats: 0,
+    coParentSeats: 1,
   },
   plus: {
     coachMessagesPerDay: null,
     maxChildren: 6,
     professionalReports: true,
     advancedPlans: true,
-    coParentSeats: 0,
+    coParentSeats: 1,
   },
   family: {
     coachMessagesPerDay: null,
@@ -227,7 +227,7 @@ export const resolveEntitlement = async (
   const uid = actor.uid.toLowerCase();
   const email = (actor.email || "").toLowerCase();
   // Comp lists grant a plan without billing (founders, example/demo accounts).
-  // Family is the superset (everything in Plus + a co-parent seat), so it wins.
+  // Preserve existing Family billing identity; its limits now match Plus.
   if (envList("ARBOR_FAMILY_UIDS").includes(uid) || (email && envList("ARBOR_FAMILY_EMAILS").includes(email))) {
     return { plan: "family", limits: PLAN_LIMITS.family, source: "env", enforced: true, status: "active", provider: "comp" };
   }
