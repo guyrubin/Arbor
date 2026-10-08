@@ -162,7 +162,7 @@ describe("/api/todays-focus output screen (AIR-5 firewall condition 1)", () => {
     expect(JSON.stringify(json)).not.toContain("autism");
     expect(json.text).toBeUndefined();
     // P7-DESIGN fix r1 (sandbox mock): the 422 names its gate (the client ignores it; the sweep reads it)
-    expect(json.blocked).toBe("output");
+    expect(json.blocked).toBe("screen");
   });
 
   it("a flagged draft is never cached — the next call re-generates", async () => {

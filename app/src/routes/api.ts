@@ -2219,7 +2219,7 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
           category: outputVerdict.category,
           reason: outputVerdict.reason,
         });
-        res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later.", blocked: "output" });
+        res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later.", blocked: "screen" });
         return;
       }
       // B-LOOP-13 round 3: a GRADED difficulty about the child ("slight
