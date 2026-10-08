@@ -42,12 +42,17 @@ const shell = stripComments(read("components/layout/Shell.tsx"));
 describe("AI-CAP-6 — live interim transcript in the capture area", () => {
   it("BehaviorsTab wires onInterim into its dictation and renders the caption in the calm register", () => {
     expect(behaviors).toMatch(/onInterim: \(text\) => setVoiceInterim\(text\)/);
-    expect(behaviors).toContain('data-testid="voice-interim-caption"');
+    // REC-01 (8 Oct): the caption moved into the shared RecordingIndicator;
+    // Behaviours passes its pinned id, the component owns the calm register.
+    expect(behaviors).toMatch(/<RecordingIndicator[\s\S]{0,500}interim=\{voiceInterim\}/);
+    expect(behaviors).toMatch(/<RecordingIndicator[\s\S]{0,500}captionTestId="voice-interim-caption"/);
     // calm register + a11y + RTL: muted token, polite live region, dir=auto
-    const caption = /data-testid="voice-interim-caption"[\s\S]*?<\/p>/.exec(behaviors)?.[0] ?? "";
-    expect(behaviors).toMatch(/aria-live="polite"[\s\S]*?data-testid="voice-interim-caption"|data-testid="voice-interim-caption"[\s\S]{0,400}aria-live="polite"/);
+    const indicator = stripComments(read("components/ui/RecordingIndicator.tsx"));
+    const caption = /<p\s+dir="auto"[^>]*?data-testid=\{captionTestId\}[\s\S]*?<\/p>/.exec(indicator)?.[0] ?? "";
+    expect(caption).not.toBe("");
+    expect(caption).toContain('aria-live="polite"');
+    expect(caption).toContain('dir="auto"');
     expect(caption).toMatch(/--arbor-muted/);
-    expect(behaviors).toMatch(/dir="auto"[\s\S]{0,300}voice-interim-caption|voice-interim-caption[\s\S]{0,300}dir="auto"/);
   });
 
   it("dictation runs continuous with the silence-finalize window (a pause never truncates the moment)", () => {

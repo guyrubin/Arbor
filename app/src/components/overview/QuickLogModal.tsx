@@ -4,6 +4,7 @@ import ConfirmCaptureReview from "./ConfirmCaptureReview";
 import type { CaptureSource } from "./ConfirmCaptureReview";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { Icon } from "../ui/Icon";
+import RecordingIndicator from "../ui/RecordingIndicator";
 import { useArbor } from "../../context/ArborContext";
 import { abandonCaptureRequest, captureRequestPending, trackCaptureStarted } from "../../lib/kpiEvents";
 import type { CaptureMode } from "../../context/ArborContext";
@@ -579,6 +580,24 @@ export default function QuickLogModal({
           </div>
         </section>
       ) : (<>
+      {/* REC-01 (Guy, 8 Oct: "no indication of recording"): the ONE recording
+          indicator, ABOVE every branch — moment form, hard moment, review and
+          escalation — so a live microphone is never silent. It used to render
+          only inside the moment form, so a hard-moment recording showed nothing. */}
+      {listening && (
+        <div className="mb-4">
+          <RecordingIndicator
+            interim={voiceInterim}
+            hint={t("beh.capture.listening")}
+            label={t("elev.rec.on")}
+            stopLabel={t("elev.ql.voice.stop")}
+            stopAria={t("elev.rec.stopAria")}
+            onStop={() => stopRef.current?.()}
+            testId="quicklog-listening"
+            captionTestId="quicklog-listening-caption"
+          />
+        </div>
+      )}
       {hardGuide && !reviewing && !escalationMarkdown && (
         <section data-testid="quicklog-hard-guide" className="mb-4 space-y-3">
           <p className="text-[13px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("elev.capture.hard.lead")}</p>
@@ -627,20 +646,6 @@ export default function QuickLogModal({
         onDiscard={discard}
         onConfirm={confirm}
       /> : !hardMoment ? <form onSubmit={saveMoment} className="space-y-4 text-sm" data-testid="quicklog-moment-form">
-        {/* TJB-08: the live dictation strip. Present only while listening, so
-            the typed path is byte-identical to what it was. */}
-        {listening && (
-          <div className="flex items-start gap-3 rounded-xl p-3" role="status" data-testid="quicklog-listening"
-            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-            <Icon name="mic" size={18} style={{ color: "var(--arbor-green-ink)" }} />
-            <p dir="auto" className="min-w-0 flex-1 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-              {voiceInterim || t("beh.mode.voice")}
-            </p>
-            <button type="button" onClick={() => stopRef.current?.()} className="touch-target px-2 text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-              {t("elev.ql.voice.stop")}
-            </button>
-          </div>
-        )}
         {promptKey && (
           <p dir="auto" data-testid="quicklog-prompt-cue" className="rounded-xl px-3 py-2 text-[13px] font-semibold leading-snug" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
             {t(promptKey)}

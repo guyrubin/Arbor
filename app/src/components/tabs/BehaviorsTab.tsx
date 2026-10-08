@@ -26,6 +26,7 @@ import ConfirmCaptureReview, { type CaptureSource } from "../overview/ConfirmCap
 import { speechSupported, startDictation } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import MicrophoneNotice from "../ui/MicrophoneNotice";
+import RecordingIndicator from "../ui/RecordingIndicator";
 import { api, EscalationRequiredError, getAiLanguage } from "../../lib/api";
 import { escalationCategories, renderEscalationMarkdown } from "../../safety/escalation";
 import { BEHAVIOR_TYPES, behaviorTypeLabel, isIncidentType, normalizeExtractedLog, validateLogDraft } from "../../content/behaviorTaxonomy";
@@ -1178,16 +1179,22 @@ export default function BehaviorsTab() {
                 dir="auto" for HE/RTL). Evidence Arbor is hearing them — the
                 fix for speak-blind capture. Shows a quiet listening line until
                 the first words arrive. */}
+            {/* REC-01: the same recording indicator as the capture sheet —
+                dot, "Recording", elapsed time, a 44 px Stop, and the caption
+                (data-testid voice-interim-caption) in the calm register. */}
             {listening && (
-              <p
-                dir="auto"
-                aria-live="polite"
-                data-testid="voice-interim-caption"
-                className="mt-3 rounded-xl px-3 py-2 text-xs leading-relaxed"
-                style={{ color: "var(--arbor-muted)", background: "var(--arbor-paper-deep)", border: "1px dashed var(--arbor-rule-strong)" }}
-              >
-                {voiceInterim || t("beh.capture.listening")}
-              </p>
+              <div className="mt-3">
+                <RecordingIndicator
+                  interim={voiceInterim}
+                  hint={t("beh.capture.listening")}
+                  label={t("elev.rec.on")}
+                  stopLabel={t("elev.ql.voice.stop")}
+                  stopAria={t("elev.rec.stopAria")}
+                  onStop={() => stopRef.current?.()}
+                  testId="beh-recording"
+                  captionTestId="voice-interim-caption"
+                />
+              </div>
             )}
 
             <div className="mt-4 space-y-1">

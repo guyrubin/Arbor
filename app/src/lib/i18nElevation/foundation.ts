@@ -119,6 +119,9 @@ export const en: Record<string, string> = {
 
   // TJB-08 · the in-place dictation strip inside QuickLogModal.
   "elev.ql.voice.stop": "Stop",
+  // REC-01 · the one recording indicator (capture sheet + Behaviours).
+  "elev.rec.on": "Recording",
+  "elev.rec.stopAria": "Stop recording",
 
   // ── Builder I · shell chrome (object backlog, 2026-09-07) ────────────────
   // OBJ-SHELL-01: the mobile strip's focus label was the English literal
@@ -211,6 +214,9 @@ export const he: Record<string, string> = {
   "elev.today.receipt.notToday": "אמרתם שלא היום. זה נכנס לצעד שארבור תציע בפעם הבאה — ולא נדרש מכם דבר נוסף.",
 
   "elev.ql.voice.stop": "עצירה",
+  // REC-01 — gender-neutral; native review owed.
+  "elev.rec.on": "מקליטים",
+  "elev.rec.stopAria": "עצירת ההקלטה",
 
   // ── Builder I · shell chrome (object backlog, 2026-09-07) ────────────────
   "elev.shell.focus.multilingual": "גדל/ה עם יותר משפה אחת",

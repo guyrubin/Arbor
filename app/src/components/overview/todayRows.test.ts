@@ -71,7 +71,11 @@ describe("TJB-08 — voice captures on Today, not on Behaviors", () => {
     expect(en["elev.ql.voice.stop"]).toBeTruthy();
     expect(he["elev.ql.voice.stop"]).toBeTruthy();
     expect(he["elev.ql.voice.stop"]).not.toBe(en["elev.ql.voice.stop"]);
-    expect(modal).toMatch(/className="touch-target px-2 text-xs font-bold"/);
+    // REC-01 (8 Oct): Stop lives in the shared RecordingIndicator; the sheet
+    // passes the keyed label and the component carries the 44 px floor.
+    expect(modal).toMatch(/<RecordingIndicator[\s\S]{0,400}stopLabel=\{t\("elev\.ql\.voice\.stop"\)\}/);
+    const indicator = readFileSync(path.join(path.resolve(__dirname, "..", ".."), "components/ui/RecordingIndicator.tsx"), "utf8");
+    expect(indicator).toMatch(/onClick=\{onStop\}[\s\S]{0,200}className="[^"]*min-h-11 min-w-11/);
   });
 
   it("negative control: the shipped handler switched hub for every mode", () => {
