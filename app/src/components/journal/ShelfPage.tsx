@@ -21,6 +21,10 @@ export interface ShelfEntryRow {
   /** The parent's words when the row has them (shown in the editorial face). */
   words?: string;
   when: string;
+  /** P7-DESIGN fix r1 (R5): the row the shelf's words lead with (first under its day head). */
+  lead?: boolean;
+  /** R5: the child's kept quote (Words) — not a journal signal, so the row opens nothing. */
+  keptQuote?: boolean;
 }
 
 export interface ShelfDayGroup {
@@ -59,6 +63,31 @@ export interface ShelfPageProps {
   onAdd: () => void;
   /** TimelineTab's ONE stamp literal — on this page it rides on the page's primary control. */
   primaryMoveProps?: Record<string, string>;
+  /** P7-DESIGN fix r1 (R5): the shelf's own words as its grid tile shows them
+   *  (lib/journal/shelfView ownWordsByShelf → tileWordsExcept). They lead the
+   *  entries as the FIRST ordinary row under their day head — never a lifted
+   *  accent. On Words they are the child's kept quote, which is not a signal row. */
+  leadWords?: { id: string; text: string; day: string } | null;
+}
+
+/** P7-DESIGN fix r1 (framer ruling R5): the entries with the shelf's words as
+ *  the FIRST ordinary row under their day head — never lifted above the list,
+ *  never a separate accent. `leadWords` (the tile's own words) wins: the row
+ *  holding the same words moves to the top of its day; words that are no
+ *  journal row (Words: the child's kept quote) open their own day group at
+ *  the top. Without leadWords, the newest row with words leads its day. */
+export function shelfEntryGroups(groups: readonly ShelfDayGroup[], leadWords?: { id: string; text: string; day: string } | null): ShelfDayGroup[] {
+  const norm = (x: string) => x.replace(/\s+/g, " ").trim();
+  const match = leadWords
+    ? groups.find((g) => g.rows.some((r) => r.words && norm(r.words) === norm(leadWords.text)))
+    : groups.find((g) => g.rows.some((r) => r.words));
+  if (match) {
+    const row = leadWords ? match.rows.find((r) => r.words && norm(r.words) === norm(leadWords.text))! : match.rows.find((r) => r.words)!;
+    return groups.map((g) => (g === match ? { ...g, rows: [{ ...row, lead: true }, ...g.rows.filter((r) => r !== row)] } : g));
+  }
+  if (!leadWords) return [...groups];
+  const kept: ShelfEntryRow = { id: leadWords.id, title: "", words: leadWords.text, when: "", lead: true, keptQuote: true };
+  return [{ key: `lead:${leadWords.id}`, label: leadWords.day, rows: [kept] }, ...groups];
 }
 
 /** B-DESIGN-04: the hairline ring + the one 2 px lift (--arbor-shadow-card). */
@@ -98,6 +127,7 @@ export default function ShelfPage({
   noticeHandlers,
   groups,
   onOpenEntry,
+  leadWords = null,
   onBack,
   onAdd,
   primaryMoveProps,
@@ -120,13 +150,12 @@ export default function ShelfPage({
     : practice ? "elev.shelfJournal.page.empty.bodyTry"
     : notice ? "elev.shelfJournal.page.empty.bodyNotice"
     : null;
-  // B-LOOP-NEW-1d (2): the latest entry in the parent's own words leads "On
-  // this shelf" (verbatim, its day as the caption); it is not repeated below.
-  const leadGroup = groups.find((g) => g.rows.some((r) => r.words));
-  const lead = leadGroup ? { group: leadGroup, row: leadGroup.rows.find((r) => r.words)! } : null;
-  const listGroups = lead
-    ? groups.map((g) => ({ ...g, rows: g.rows.filter((r) => r.id !== lead.row.id) })).filter((g) => g.rows.length > 0)
-    : groups;
+  // B-LOOP-NEW-1d (2) → P7-DESIGN fix r1 (framer ruling R5, journal design
+  // "lead quote" ruling): the shelf's words keep their place at the top of "On
+  // this shelf" but lose the accent — they are the FIRST ordinary entry row
+  // under their own day head (the bleed is the page's one accent). The words
+  // are the tile's own (leadWords) when given, else the newest row with words.
+  const listGroups = shelfEntryGroups(groups, leadWords);
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[720px] flex-col gap-4">
       <header data-module="shelf-header" className="min-w-0">
@@ -189,7 +218,9 @@ export default function ShelfPage({
               </h2>
               {sayText && (
                 <p data-testid="shelf-practice-say" className="mt-2 arbor-accent-rule arbor-type-say" style={{ color: "var(--arbor-ink)" }}>
-                  {"“"}<bdi dir="auto">{sayText}</bdi>{"”"}
+                  {/* journal design P2-21: the "Say" label makes the line a script (frame 03), not a second accent. */}
+                  <span data-testid="shelf-practice-say-label" className="t-sm font-semibold" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>{t("elev.loop.practice.say")}</span>{" "}
+                  <bdi dir="auto">{t("elev.loop.ms.quoted", { text: sayText })}</bdi>
                 </p>
               )}
               {materials && <p className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{materials}</p>}
@@ -243,19 +274,6 @@ export default function ShelfPage({
           <h2 id="shelf-entries-title" className="m-0 min-w-0 t-sm font-bold"><span style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.entries")}</span></h2>
           <span aria-hidden="true" className="h-px min-w-6 flex-1" style={{ background: "var(--arbor-rule)" }} />
         </div>
-        {lead && (
-          <button
-            type="button"
-            data-testid="shelf-lead-quote"
-            onClick={() => onOpenEntry(lead.row.id)}
-            className="mt-2 flex min-h-11 w-full flex-col items-start gap-0.5 py-1 text-start"
-          >
-            <span dir="auto" className="block border-s-2 ps-3 t-lg leading-snug line-clamp-3" style={{ borderColor: "var(--arbor-clay-dim)", fontFamily: "var(--font-editorial)", color: "var(--arbor-ink-soft)" }}>
-              {"“"}<bdi dir="auto">{lead.row.words}</bdi>{"”"}
-            </span>
-            <span className="block ps-3.5 t-sm" style={{ color: "var(--arbor-muted)" }}><bdi>{lead.group.label}</bdi></span>
-          </button>
-        )}
         <button
           type="button"
           data-testid="shelf-add-moment"
@@ -275,32 +293,44 @@ export default function ShelfPage({
         {listGroups.map((g) => (
           <div key={g.key} className="mt-3">
             <h3 className="t-sm font-semibold"><span style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}>{g.label}</span></h3>
-            {g.rows.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                data-testid="shelf-entry"
-                data-signal-id={r.id}
-                onClick={() => onOpenEntry(r.id)}
-                className="mt-2 flex w-full min-h-11 gap-3 px-3.5 py-3 text-start"
-                style={{ ...CARD, borderRadius: "var(--r)" }}
-              >
+            {g.rows.map((r) => {
+              const body = (
                 <span className="min-w-0 flex-1">
                   {r.words ? (
-                    <span className="block leading-snug line-clamp-3" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
-                      {"“"}<bdi dir="auto">{r.words}</bdi>{"”"}
+                    <span data-testid="shelf-entry-words" className="leading-snug line-clamp-3" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+                      <bdi dir="auto">{t("elev.loop.ms.quoted", { text: r.words })}</bdi>
                     </span>
                   ) : (
                     <span className="block t-base font-semibold leading-snug" style={{ color: "var(--arbor-ink)" }}><bdi dir="auto">{r.title}</bdi></span>
                   )}
-                  <span className="mt-0.5 block t-sm" style={{ color: "var(--arbor-muted)" }}>
-                    {r.words ? <><bdi dir="auto">{r.title}</bdi>{r.when ? " · " : ""}</> : null}
-                    {r.when && <bdi>{r.when}</bdi>}
-                  </span>
+                  {(!!(r.words && r.title) || !!r.when) && (
+                    <span className="mt-0.5 block t-sm" style={{ color: "var(--arbor-muted)" }}>
+                      {r.words && r.title ? <><bdi dir="auto">{r.title}</bdi>{r.when ? " · " : ""}</> : null}
+                      {r.when && <bdi>{r.when}</bdi>}
+                    </span>
+                  )}
                 </span>
-                <Icon name="chevron_right" size={18} aria-hidden className="self-center rtl:-scale-x-100" style={{ color: "var(--arbor-muted)" }} />
-              </button>
-            ))}
+              );
+              return r.keptQuote ? (
+                <div key={r.id} data-testid="shelf-entry" data-lead="true" data-kept-quote="true" className="mt-2 flex w-full min-h-11 gap-3 px-3.5 py-3 text-start" style={{ ...CARD, borderRadius: "var(--r)" }}>
+                  {body}
+                </div>
+              ) : (
+                <button
+                  key={r.id}
+                  type="button"
+                  data-testid="shelf-entry"
+                  data-signal-id={r.id}
+                  {...(r.lead ? { "data-lead": "true" } : {})}
+                  onClick={() => onOpenEntry(r.id)}
+                  className="mt-2 flex w-full min-h-11 gap-3 px-3.5 py-3 text-start"
+                  style={{ ...CARD, borderRadius: "var(--r)" }}
+                >
+                  {body}
+                  <Icon name="chevron_right" size={18} aria-hidden className="self-center rtl:-scale-x-100" style={{ color: "var(--arbor-muted)" }} />
+                </button>
+              );
+            })}
           </div>
         ))}
       </section>

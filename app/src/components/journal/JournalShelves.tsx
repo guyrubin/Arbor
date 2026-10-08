@@ -192,6 +192,14 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
     [onGrid, observations, behaviorLogs, keptQuotes],
   );
   const latestOwn = useMemo(() => latestOwnEntry(ownWords), [ownWords]);
+  // P7-DESIGN fix r1 (framer ruling R5): on a shelf page the shelf's newest own
+  // words (the same source as its grid tile — on Words the child's kept quote)
+  // lead "On this shelf" as its first ordinary row (ShelfPage shelfEntryGroups).
+  const pageWords = useMemo(() => {
+    if (!shelf) return null;
+    const w = ownWordsByShelf(observations, behaviorLogs, keptQuotes, [shelf])[shelf]?.[0];
+    return w ? { id: w.id, text: w.text, day: shelfDayLabel(w.at, now, locale) } : null;
+  }, [shelf, observations, behaviorLogs, keptQuotes, now, locale]);
   const tileWords = useMemo(() => {
     const out: Partial<Record<ShelfId, { text: string; date: string }>> = {};
     for (const [id, w] of Object.entries(tileWordsExcept(ownWords, latestOwn?.id)) as [ShelfId, { text: string; at: string }][]) out[id] = { text: w.text, date: shelfDayLabel(w.at, now, locale) };
@@ -255,6 +263,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
           notice={shownNotice}
           noticeHandlers={shownNotice ? noticeHandlers(shownNotice) : { onAnswer: () => undefined }}
           groups={groups}
+          leadWords={pageWords}
           onOpenEntry={openEntry}
           onBack={() => goToRoute("journal")}
           onAdd={() => setCapture({ open: true, mode: "text" })}

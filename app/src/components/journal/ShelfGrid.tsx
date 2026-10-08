@@ -76,10 +76,13 @@ function VerbLine({ line, verb }: { line: string; verb: string }) {
   );
 }
 
-/** B-DESIGN-04: the tile box — 44 px targets everywhere, ≥ 88 px tall (min-h
- *  96), padding 12 so the 375 tile lands near the mock's height (≈ 100–118 px:
- *  glyph row + one detail line) and the capture dock rises toward screen 1. */
-const TILE = "flex w-full min-h-[96px] flex-col items-start gap-2 p-3 text-start transition active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
+/** B-DESIGN-04: the tile box — 44 px targets everywhere, ≥ 88 px tall, padding
+ *  12. P7-DESIGN fix r1 (journal P1-1): below sm every tile is ONE height,
+ *  116 px — its content is bounded (name <= 2 lines, count 1 line, detail 1
+ *  line; ShelfGrid.test line model on the demo seed, EN + HE), so min-h IS the
+ *  height and the rows are equal; from sm the old 96 floor. The detail line
+ *  sits at the tile's foot (mt-auto), aligned across a row. */
+const TILE = "flex w-full min-h-[116px] sm:min-h-[96px] flex-col items-start gap-2 p-3 text-start transition active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
 
 /** B-DESIGN-04 (P7-DESIGN [B] element 2, framer ruling 7 Oct): a tile sits on
  *  its SHELF's fixed-strength wash (the -wash token; hands = the paper well)
@@ -120,7 +123,9 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
     <div className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-4">
       <header data-module="journal-shelves-header" className="min-w-0">
         <p className="t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.eyebrow")}</p>
-        <h1 className="mt-1 t-2xl leading-tight tracking-[-0.02em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+        {/* P7-DESIGN fix r1 (framer ruling R3, journal design P1-2): the grid H1
+            on the hero step (34 px; 44 px at 1280), clearly above the 24 px words. */}
+        <h1 className="mt-1 arbor-type-hero" style={{ color: "var(--arbor-ink)" }}>
           {t("elev.shelfJournal.h1", { name: childName })}
         </h1>
         <p className="mt-1 t-base leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.lede")}</p>
@@ -133,8 +138,10 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
           >
             {/* The screen's ONE warm accent (B-DESIGN-04): the family's words,
                 editorial, on the 2 px ink rule; shelf + day on their own line. */}
-            <span dir="auto" data-testid="journal-latest-quote" className="block arbor-accent-rule arbor-type-say line-clamp-2" style={{ color: "var(--arbor-ink)" }}>
-              {"“"}{latest.text}{"”"}
+            {/* P7-DESIGN fix r1: no `block` beside a clamp — the built CSS orders
+                .block after .line-clamp-*, which cancelled the clamp. */}
+            <span dir="auto" data-testid="journal-latest-quote" className="w-full arbor-accent-rule arbor-type-say line-clamp-2" style={{ color: "var(--arbor-ink)" }}>
+              {t("elev.loop.ms.quoted", { text: latest.text })}
             </span>
             <span className="block ps-4 t-sm" style={{ color: "var(--arbor-muted)" }}>
               <bdi>{shelfLabel(latest.shelf, t)}</bdi> · <bdi>{latest.day}</bdi>
@@ -175,8 +182,8 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
                 <span className="flex w-full min-w-0 items-center gap-2.5">
                   <ShelfGlyph shelf={def.id} onWash />
                   <span className="min-w-0 flex-1">
-                    <span data-testid="shelf-tile-name" className="block t-md font-semibold leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{shelfLabel(def.id, t)}</span>
-                    <span data-testid="shelf-tile-count" className="arbor-num mt-0.5 block t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
+                    <span data-testid="shelf-tile-name" className="t-tile-name font-semibold leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{shelfLabel(def.id, t)}</span>
+                    <span data-testid="shelf-tile-count" className={`arbor-num mt-0.5 t-sm leading-snug ${family ? "line-clamp-2" : "block truncate"}`} style={{ color: "var(--arbor-muted)" }}>
                       {family ? `${t("elev.shelfJournal.family.sub", { name: childName })} · ` : ""}
                       {t(line.key, line.vars)}
                     </span>
@@ -186,16 +193,20 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
                     tile — the family's words (editorial), else the next thing to
                     notice, else the practice, verb first in ink. Each tile reads
                     only its own shelf. One line at 375 (journal design P2-2). */}
+                {/* P7-DESIGN fix r1 (journal P1-1): ONE line at 375 — the clamp
+                    without `block` (which cancelled it in the built CSS); the words
+                    line is a truncating quote + a date that cannot wrap, so the
+                    "·" never strands. font-normal so the verb's 600 leads (P2-19). */}
                 {next && (
                   <span
                     data-testid="shelf-tile-next"
                     data-next={next.kind}
                     title={next.kind === "words" ? next.text : undefined}
-                    className="block w-full min-w-0 pt-2 t-sm leading-snug line-clamp-1 sm:line-clamp-2"
+                    className={`mt-auto w-full min-w-0 pt-2 t-sm font-normal leading-snug ${next.kind === "words" ? "flex items-baseline gap-1" : "line-clamp-1 sm:line-clamp-2"}`}
                     style={{ color: "var(--arbor-ink-soft)", borderTop: `1px solid color-mix(in srgb, ${tone.ink} 10%, transparent)` }}
                   >
                     {next.kind === "words" ? (
-                      <><span dir="auto" data-testid="shelf-tile-quote" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)", fontSize: uiLang === "he" ? undefined : "var(--t-base)" }}>{"“"}{next.text}{"”"}</span>{" · "}<bdi>{next.date}</bdi></>
+                      <><span dir="auto" data-testid="shelf-tile-quote" className="min-w-0 truncate" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)", fontSize: uiLang === "he" ? undefined : "var(--t-base)" }}>{t("elev.loop.ms.quoted", { text: next.text })}</span><span data-testid="shelf-tile-date" className="flex-none whitespace-nowrap">{"· "}<bdi>{next.date}</bdi></span></>
                     ) : (
                       <VerbLine line={t(next.kind === "notice" ? "elev.shelfJournal.nextNotice" : "elev.shelfJournal.tryLine", { title: next.title })} verb={t(next.kind === "notice" ? "elev.shelfJournal.nextNoticeVerb" : "elev.shelfJournal.tryVerb")} />
                     )}

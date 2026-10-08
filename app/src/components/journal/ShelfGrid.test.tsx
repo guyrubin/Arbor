@@ -2,6 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
 /* B-LOOP-11 — the journal is nine shelves: nine tiles in registry order
@@ -89,9 +90,9 @@ describe("ShelfGrid — nine tiles, registry order, counts never verdicts", () =
     expect(tiles(a).map((m) => /data-primary-move=/.test(m[0]))).toEqual(tiles(b).map((m) => /data-primary-move=/.test(m[0])));
   });
 
-  it("tiles are ≥ 88 px tall (min-h 96) and every control is a 44 px target", () => {
+  it("tiles are ≥ 88 px tall (116 below sm, min-h 96 from sm) and every control is a 44 px target", () => {
     const html = render({});
-    for (const m of tiles(html)) expect(m[0]).toContain("min-h-[96px]");
+    for (const m of tiles(html)) expect(m[0]).toMatch(/min-h-\[116px\] sm:min-h-\[96px\]/);
     expect(html).toMatch(/data-testid="journal-flip-pro"[^>]*min-h-11|min-h-11[^>]*data-testid="journal-flip-pro"/);
     // B-DESIGN-04 (journal design P2-7): the door is a 44 px+ row (min-h-16), not a 96 px tile
     expect(html).toMatch(/<button[^>]*data-testid="shelf-all-by-date"[^>]*min-h-16/);
@@ -161,7 +162,7 @@ describe("ShelfGrid — the parent's words, what to try, and the capture dock", 
       const btn = header.match(/<button[^>]*data-testid="journal-latest-words"[^>]*>/)![0];
       expect(btn).toMatch(/min-h-11/);
       expect(header).toContain("Sang the whole bath song on his own");
-      expect(header).toMatch(/data-testid="journal-latest-quote" class="block arbor-accent-rule arbor-type-say line-clamp-2" style="color:var\(--arbor-ink\)"/);
+      expect(header).toMatch(/data-testid="journal-latest-quote" class="w-full arbor-accent-rule arbor-type-say line-clamp-2" style="color:var\(--arbor-ink\)"/);
       expect(header).toContain(`<bdi>${translate(lang, "elev.shelves.words")}</bdi>`);
       // absent on first open — never a placeholder
       expect(full(lang, { latest: null })).not.toContain('data-testid="journal-latest-words"');
@@ -299,9 +300,14 @@ describe("ShelfGrid — one line per tile, the quote appears once (c2 r2)", () =
    both cells clamp the same way, so the bound holds for the row. */
 describe("ShelfGrid — the stamped tile clears the capture dock at 375 (B-OCCL-04)", () => {
   const FOLD_LIMIT = 640;
-  const GRID_TOP_375 = { en: 345, he: 321 } as const;
+  /* P7-DESIGN fix r1 (R3): the grid H1 moved from t-2xl (26.25 × 1.25 = 32.8) to
+     the hero step (34 × 1.08 = 36.7), counted at TWO lines (a generous bound:
+     "Dylan, shelf by shelf" may wrap at 375) = +40.6 on the measured tops; the
+     tile is the fixed 116 px of the fix (one height below sm). */
+  const HERO_DELTA = 2 * 34 * 1.08 - 26.25 * 1.25;
+  const GRID_TOP_375 = { en: 345 + HERO_DELTA, he: 321 + HERO_DELTA } as const;
   const QUOTE_WRAP = 18 * 1.375;
-  const tileH = 14 + 36 + 8 + 15 * 1.375 + 2 + 13 * 1.375 + 4 + 2 * 13 * 1.375 + 14;
+  const tileH = 116;
   const bottom = (lang: "en" | "he") => Math.round(GRID_TOP_375[lang] + QUOTE_WRAP + tileH);
 
   for (const lang of ["en", "he"] as const) {
@@ -485,6 +491,126 @@ describe("B-DESIGN-04 · the shelf tiles", () => {
     it(`${lang}: each verb key is the exact prefix of its line (the split never drops a word)`, () => {
       expect(translate(lang, "elev.shelfJournal.tryLine", { title: "X" }).startsWith(translate(lang, "elev.shelfJournal.tryVerb"))).toBe(true);
       expect(translate(lang, "elev.shelfJournal.nextNotice", { title: "X" }).startsWith(translate(lang, "elev.shelfJournal.nextNoticeVerb"))).toBe(true);
+    });
+  }
+});
+
+
+/* P7-DESIGN fix r1 (journal product P1-1 + design P1-1, 8 Oct). The built CSS
+   orders `.block` AFTER `.line-clamp-*`, so `block` beside a clamp cancelled it
+   (tiles 139–160 px at 375, details on 2–3 rows, a stranded "·"). The guard:
+   (1) no element in the grid carries `block` together with `line-clamp-*`;
+   (2) the words line is a truncating quote + a date that cannot wrap;
+   (3) a line model of every 375 tile on the REAL demo seed (JournalShelves'
+   own cascade), EN + HE, the way PracticeCard.fold measures: the tile's
+   content stays under its 116 px floor, so every tile — every row — renders at
+   exactly that height, and the height is <= 124.
+   Widths: the 375 tile is (375 − 2 × 16 − 12) / 2 = 165.5 px; inside p-3 it is
+   141.5; beside the 44 px glyph + 10 px gap the name/count column is 87.5 px
+   (Family, two columns wide: 265). Advance per character is generous (display
+   0.55 em, body 0.5 em); words wrap whole. OWED to the rendered sweep: journal
+   375 EN + HE stampHeight (the Sleep tile) = 116 and equal rows. */
+describe("P7-DESIGN fix r1 · the 375 tile is one height (<= 124 px), its detail one line", () => {
+  const NOW = new Date("2026-10-07T09:00:00Z");
+  const TILE_375 = 116;
+  const COL = 87.5;
+  const FAMILY_COL = 265;
+  const T_BASE = 14.0625, T_SM = 12.1875;
+  /** Lines a text takes at `width`, wrapping whole words. */
+  const wrap = (txt: string, px: number, width: number, em: number) => {
+    const adv = px * em;
+    let lines = 1, run = 0;
+    for (const word of txt.split(/\s+/).filter(Boolean)) {
+      const w = word.length * adv;
+      const next = run === 0 ? w : run + adv + w;
+      if (next > width && run > 0) { lines += 1; run = w; } else run = next;
+    }
+    return lines;
+  };
+  const seededHtml = (lang: "en" | "he") => {
+    const fam = buildDemoFamily({ now: NOW.getTime(), lang });
+    const c = fam.collections;
+    const obs = toObservations({ behaviorLogs: c.behaviorLogs, milestones: c.milestones, langObs: c.langObs, actionLoops: c.actionLoops, practiceEvents: c.practiceEvents }, { id: fam.child.id, birthDate: fam.child.birthDate });
+    const coverage = shelfCoverage(obs, NOW);
+    const own = ownWordsByShelf(obs, c.behaviorLogs, quotesFromDocs(c.keepsakes), REGISTRY_ORDER);
+    const latest = latestOwnEntry(own);
+    const tileWords: Partial<Record<ShelfId, { text: string; date: string }>> = {};
+    for (const [id, w] of Object.entries(tileWordsExcept(own, latest?.id)) as [ShelfId, { text: string; at: string }][]) tileWords[id] = { text: w.text, date: shelfDayLabel(w.at, NOW, lang) };
+    // a deliberately long practice title on every shelf: the detail line is one line whatever it says
+    const tileTry: Partial<Record<ShelfId, string>> = Object.fromEntries(REGISTRY_ORDER.map((id) => [id, "Keep bedtime and wake-up the same every day of the week"]));
+    state.lang = lang;
+    const first = fam.child.name.split(" ")[0];
+    return {
+      full: renderToStaticMarkup(
+        <ShelfGrid childName={first} counts={coverage} onOpenShelf={noop} onOpenPro={noop} onOpenAll={noop} primaryMoveProps={{ "data-primary-move": "open-shelf" }}
+          latest={latest ? { text: latest.text, shelf: latest.shelf, day: shelfDayLabel(latest.at, NOW, lang) } : null} tileWords={tileWords} tileTry={tileTry} />,
+      ),
+      // first open: every shelf empty (HE "Nothing yet" was the 2-row count)
+      empty: renderToStaticMarkup(
+        <ShelfGrid childName={first} counts={{}} onOpenShelf={noop} onOpenPro={noop} onOpenAll={noop} tileTry={tileTry} />,
+      ),
+    };
+  };
+  const tileParts = (html: string) => REGISTRY_ORDER.map((id) => {
+    const i = html.indexOf(`data-shelf="${id}"`);
+    const tile = html.slice(i, html.indexOf("</button>", i));
+    const name = text(/data-testid="shelf-tile-name"[^>]*>([^<]*)</.exec(tile)![1]);
+    const count = text(/data-testid="shelf-tile-count"[^>]*>([\s\S]*?)<\/span>/.exec(tile)![1]);
+    return { id, tile, name, count, hasNext: tile.includes('data-testid="shelf-tile-next"') };
+  });
+  /** The model: p-3 · max(glyph 44, name + 2 + count) · gap-2 · (pt-2 + hairline + one t-sm line) · p-3. */
+  const contentHeight = (t: ReturnType<typeof tileParts>[number]) => {
+    const family = t.id === "family";
+    const nameLines = Math.min(2, wrap(t.name, T_BASE, family ? FAMILY_COL : COL, 0.55));
+    const countLines = family ? Math.min(2, wrap(t.count, T_SM, FAMILY_COL, 0.5)) : 1;
+    const top = Math.max(44, nameLines * T_BASE * 1.25 + 2 + countLines * T_SM * 1.375);
+    return 12 + top + (t.hasNext ? 8 + 8 + 1 + T_SM * 1.375 : 0) + 12;
+  };
+  const SRC = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "ShelfGrid.tsx"), "utf8");
+
+  it("source: no `block` beside a `line-clamp-*` anywhere in the grid (the built CSS lets block win)", () => {
+    const blockWithClamp = (c: string) => /\bline-clamp-\d/.test(c) && /(^|\s)block(\s|$)/.test(c);
+    const classes = [...SRC.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)].map((m) => m[1] ?? m[2]);
+    expect(classes.length).toBeGreaterThan(10);
+    expect(classes.filter(blockWithClamp)).toEqual([]);
+    expect(SRC).toContain('const TILE = "flex w-full min-h-[116px] sm:min-h-[96px] flex-col');
+    // NEGATIVE CONTROL: the shipped detail span trips the check
+    expect(blockWithClamp("block w-full min-w-0 pt-2 t-sm leading-snug line-clamp-1 sm:line-clamp-2")).toBe(true);
+  });
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: every tile on the demo seed (filled + first open) fits the ${TILE_375} px floor, so every row is ${TILE_375} px (<= 124)`, () => {
+      const { full, empty } = seededHtml(lang);
+      for (const html of [full, empty]) {
+        const parts = tileParts(html);
+        expect(parts).toHaveLength(9);
+        for (const t of parts) {
+          expect(t.tile, t.id).toMatch(/min-h-\[116px\]/);
+          expect(t.tile).toMatch(/data-testid="shelf-tile-name"[^>]*class="[^"]*\bline-clamp-2\b/);
+          expect(Math.round(contentHeight(t)), `${lang} ${t.id} "${t.name}" / "${t.count}"`).toBeLessThanOrEqual(TILE_375);
+          // a shelf name never needs the clamp's ellipsis: two whole-word lines at most
+          expect(wrap(t.name, T_BASE, t.id === "family" ? FAMILY_COL : COL, 0.55), `${lang} ${t.id}`).toBeLessThanOrEqual(2);
+          if (t.id !== "family") expect(t.tile).toMatch(/data-testid="shelf-tile-count"[^>]*class="[^"]*\btruncate\b/);
+          // the count line never needs its ellipsis either (no meaning lost to the truncate)
+          if (t.id !== "family") expect(wrap(t.count, T_SM, COL, 0.5), `${lang} ${t.id} "${t.count}"`).toBe(1);
+        }
+      }
+      expect(TILE_375).toBeLessThanOrEqual(124);
+    });
+
+    it(`${lang}: the words line = a truncating quote + a "· date" that cannot wrap (the separator never strands); one quote pair per locale`, () => {
+      const { full } = seededHtml(lang);
+      const words = tileParts(full).filter((t) => /data-next="words"/.test(t.tile));
+      expect(words.length).toBeGreaterThan(0);
+      for (const t of words) {
+        expect(t.tile).toMatch(/data-testid="shelf-tile-next"[^>]*class="[^"]*\bflex\b/);
+        expect(t.tile).toMatch(/data-testid="shelf-tile-quote"[^>]*class="min-w-0 truncate"/);
+        expect(t.tile).toMatch(/data-testid="shelf-tile-date" class="flex-none whitespace-nowrap">· /);
+        if (lang === "he") {
+          expect(t.tile).not.toMatch(/[\u201C\u201D]/);
+          expect(t.tile).toContain("\u05F4");
+        }
+      }
     });
   }
 });

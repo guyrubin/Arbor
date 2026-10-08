@@ -89,7 +89,7 @@ export const he: Record<string, string> = {
   "elev.shelfJournal.flip": "תצוגה לאנשי מקצוע",
   "elev.shelfJournal.gridAria": "המדפים של {name}",
   "elev.shelfJournal.nothingYet": "עוד אין כאן כלום · דבר אחד לנסות",
-  "elev.shelfJournal.nothingYetShort": "עוד אין כאן כלום",
+  "elev.shelfJournal.nothingYetShort": "עוד אין כלום",
   "elev.shelfJournal.tryLine": "לנסות: {title}",
   "elev.shelfJournal.nextNotice": "הבא לשים לב: {title}",
   "elev.shelfJournal.tryVerb": "לנסות:",

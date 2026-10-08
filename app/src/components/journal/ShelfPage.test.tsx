@@ -21,7 +21,7 @@ vi.mock("../../context/LanguageContext", async () => {
   };
 });
 
-import ShelfPage, { type ShelfDayGroup } from "./ShelfPage";
+import ShelfPage, { shelfEntryGroups, type ShelfDayGroup } from "./ShelfPage";
 import { PRACTICES } from "../../content/practices";
 import { ALL_MILESTONES } from "../../lib/milestoneData";
 import { shelfOfMilestone } from "../../lib/milestones/selectByShelf";
@@ -41,7 +41,7 @@ const decode = (html: string) => html.replace(/&quot;/g, '"').replace(/&#x27;/g,
 const text = (html: string) => decode(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 const groups: ShelfDayGroup[] = [{ key: "2026-10-05", label: "Yesterday", rows: [{ id: "moment-a", title: "A moment", words: "Said big ball at the park", when: "9:00" }] }];
 
-const render = (opts: { lang?: "en" | "he"; count?: number; withPractice?: boolean; isToday?: boolean; withNotice?: boolean } = {}) => {
+const render = (opts: { lang?: "en" | "he"; count?: number; withPractice?: boolean; isToday?: boolean; withNotice?: boolean; groups?: ShelfDayGroup[]; leadWords?: { id: string; text: string; day: string } | null } = {}) => {
   state.lang = opts.lang ?? "en";
   return renderToStaticMarkup(
     <ShelfPage
@@ -54,7 +54,8 @@ const render = (opts: { lang?: "en" | "he"; count?: number; withPractice?: boole
       onTryToday={noop}
       notice={opts.withNotice === false ? null : milestone}
       noticeHandlers={{ onAnswer: noop }}
-      groups={groups}
+      groups={opts.groups ?? groups}
+      leadWords={opts.leadWords ?? null}
       onOpenEntry={noop}
       onBack={noop}
       onAdd={noop}
@@ -122,17 +123,67 @@ describe("ShelfPage — the suggestion block", () => {
     expect(src).toMatch(/<div className="px-4 pb-4 pt-3">\s*<h2/);
   });
 
-  it("B-LOOP-NEW-1d: the latest entry in the parent's words leads 'On this shelf' (44 px, clay-dim rule, day caption) and is not repeated below", () => {
+  /* P7-DESIGN fix r1 (framer ruling R5; journal design "lead quote" ruling):
+     the shelf's words keep their words and lose the accent — no 2 px rule, not
+     lifted above the list: the FIRST ordinary entry row under their day head,
+     in the entry rows' editorial face; on Words they are the tile's own quote. */
+  it("R5: the parent's words are the first ordinary entry row under their day head — no lifted lead, no rule (EN + HE)", () => {
     for (const lang of ["en", "he"] as const) {
       const html = render({ lang });
-      const lead = html.match(/<button[^>]*data-testid="shelf-lead-quote"[^>]*>/)![0];
-      expect(lead).toMatch(/min-h-11/);
-      expect(html).toMatch(/border-s-2 ps-3 t-lg[^"]*" style="border-color:var\(--arbor-clay-dim\);font-family:var\(--font-editorial\);color:var\(--arbor-ink-soft\)"/);
-      expect(html.indexOf('id="shelf-entries-title"')).toBeLessThan(html.indexOf('data-testid="shelf-lead-quote"'));
-      expect(html.indexOf('data-testid="shelf-lead-quote"')).toBeLessThan(html.indexOf('data-testid="shelf-add-moment"'));
+      expect(html).not.toContain('data-testid="shelf-lead-quote"');
+      expect(html).not.toContain("--arbor-clay-dim");
+      const add = html.indexOf('data-testid="shelf-add-moment"');
+      const head = html.indexOf(">Yesterday<");
+      const row = html.indexOf('data-testid="shelf-entry"');
+      expect(add).toBeGreaterThan(-1);
+      expect(add).toBeLessThan(head);
+      expect(head).toBeLessThan(row);
+      expect(html.slice(row - 200, row + 400)).toMatch(/data-lead="true"/);
       expect((text(html).match(/Said big ball at the park/g) || []).length).toBe(1);
-      expect(html).not.toContain('data-testid="shelf-entry"');
-      expect(text(html)).toContain("Yesterday");
+      expect(html).toMatch(/data-testid="shelf-entry-words" class="leading-snug line-clamp-3" style="font-family:var\(--font-editorial\)/);
+    }
+    const src = readFileSync(path.resolve(__dirname, "ShelfPage.tsx"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(src).not.toMatch(/border-s-2/);
+    // NEGATIVE CONTROL: no clamp on a `block` element (the built CSS orders .block after .line-clamp-*)
+    const classes = [...src.matchAll(/className="([^"]*)"/g)].map((m) => m[1]);
+    expect(classes.filter((c) => /\bline-clamp-\d/.test(c) && /(^|\s)block(\s|$)/.test(c))).toEqual([]);
+  });
+
+  it("R5: shelfEntryGroups — the words row moves to the top of ITS day; tile words that are no row (Words' kept quote) open their own day group first", () => {
+    const g: ShelfDayGroup[] = [
+      { key: "d1", label: "Today", rows: [{ id: "a", title: "Bath", when: "9:00" }] },
+      { key: "d2", label: "Yesterday", rows: [{ id: "b", title: "Park", when: "8:00" }, { id: "c", title: "Song", words: "Sang it all", when: "7:00" }] },
+    ];
+    const moved = shelfEntryGroups(g, null);
+    expect(moved.map((x) => x.rows.map((r) => r.id))).toEqual([["a"], ["c", "b"]]);
+    expect(moved[1].rows[0].lead).toBe(true);
+    const kept = shelfEntryGroups(g, { id: "keepsakes:q1", text: "I did it all by my own self!", day: "6 Oct" });
+    expect(kept[0]).toMatchObject({ label: "6 Oct", rows: [{ id: "keepsakes:q1", words: "I did it all by my own self!", lead: true, keptQuote: true }] });
+    expect(kept.slice(1)).toEqual(g);
+    const same = shelfEntryGroups(g, { id: "x", text: "Sang  it all", day: "Yesterday" });
+    expect(same.map((x) => x.rows.map((r) => r.id))).toEqual([["a"], ["c", "b"]]);
+    expect(shelfEntryGroups([], null)).toEqual([]);
+  });
+
+  it("R5 on Words: the tile's kept quote is the first row (no chevron, opens nothing), its day as the head; HE quote pair ״…״", () => {
+    for (const lang of ["en", "he"] as const) {
+      const html = render({ lang, groups: [], leadWords: { id: "keepsakes:q1", text: "I did it all by my own self!", day: "6 Oct" } });
+      const row = /<div[^>]*data-testid="shelf-entry"[^>]*data-kept-quote="true"[^>]*>([\s\S]*?)<\/div>/.exec(html);
+      expect(row).toBeTruthy();
+      expect(row![1]).not.toContain("chevron_right");
+      expect(text(html)).toContain("6 Oct");
+      expect(text(html).replace(/[⁨⁩]/g, "")).toContain(translate(lang, "elev.loop.ms.quoted", { text: "I did it all by my own self!" }).replace(/[\u2068\u2069]/g, ""));
+      if (lang === "he") expect(html).not.toMatch(/[\u201C\u201D]/);
+    }
+  });
+
+  it("P2-21: the practice say carries its 'Say' label (a script, not a second accent), quoted through the one key", () => {
+    for (const lang of ["en", "he"] as const) {
+      const html = render({ lang });
+      const say = /data-testid="shelf-practice-say"[^>]*>([\s\S]*?)<\/p>/.exec(html)![1];
+      expect(say).toMatch(new RegExp(`data-testid="shelf-practice-say-label"[^>]*>${translate(lang, "elev.loop.practice.say")}<`));
+      if (lang === "he") expect(say).toContain("\u05F4");
+      expect(say).not.toMatch(lang === "he" ? /[\u201C\u201D]/ : /\u05F4/);
     }
   });
 
@@ -156,7 +207,7 @@ describe("ShelfPage — the suggestion block", () => {
   it("the entries are the caller's day groups (the parent's words lead), EN + HE chrome", () => {
     for (const lang of ["en", "he"] as const) {
       const html = render({ lang });
-      expect(text(html)).toContain("Said big ball at the park"); // (as the lead quote, B-LOOP-NEW-1d)
+      expect(text(html)).toContain("Said big ball at the park"); // (the first entry row, R5)
       expect(text(html)).toContain(translate(lang, "elev.shelfJournal.add", { shelf: translate(lang, "elev.shelves.words") }));
       expect(text(html)).toContain(translate(lang, "elev.shelfJournal.back"));
     }
