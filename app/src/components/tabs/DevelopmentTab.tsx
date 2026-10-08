@@ -43,6 +43,8 @@ import RecordByDomain from "../growth/RecordByDomain";
 import ProgramPage from "../program/ProgramPage";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { ageMonthsOf } from "../../lib/age/forChild";
+import { Avatar } from "../ui/Avatar";
+import "../growth/developmentPortrait.css";
 
 /** Masterplan 1.7 — module-local string resolution for the Full Picture entry
  *  card (same recipe as Screening.tsx × screeningcalm: i18nElevation/index.ts
@@ -217,21 +219,27 @@ export default function DevelopmentTab() {
   if (view === "program") return <ProgramPage />;
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
+    <div className="development-portrait mx-auto w-full min-w-0 max-w-[1180px]">
       {/* W2-GROWTH r1 + B-GROWTH-NEW-1A/1B — the hub opens on what CHANGED.
           H1 "What's new with {name}" (--t-2xl), then the New-since well, then
-          the focus card whose observe row is THE stamped control — all inside
-          the first 375 viewport. The slogan hero, its scroll-to CTA and the
+          the focus card whose observe row is THE stamped control — the focus remains on the first mobile viewport. The slogan hero, its scroll-to CTA and the
           count trio ("5 noticed · 2 areas · 6 moments") are cut: totals, not
           what changed, and a dashboard in the parent register. */}
-      <header data-testid="growth-hub-hero" className="space-y-2">
+      <header data-testid="growth-hub-hero" className="development-portrait-header">
+        <div className="flex items-center gap-4">
+          <Avatar name={childProfile.name} photoURL={childProfile.photoUrl} size={56} />
+          <div className="min-w-0">
         <h1
-          className="break-words font-semibold leading-tight"
-          style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-2xl)", color: "var(--arbor-ink)" }}
+          className="arbor-type-hero break-words"
+          style={{ color: "var(--arbor-ink)" }}
         >
           {firstName ? t("elev.growth.whatsNew.title", { name: firstName }) : t("elev.growth.whatsNew.titleGeneric")}
         </h1>
+        <p className="mt-2 max-w-2xl t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.growth.portrait.sub")}</p>
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <button type="button" className="inline-flex min-h-11 items-center gap-2 t-sm font-semibold" style={{ color: "var(--arbor-clay)" }} onClick={() => document.getElementById("growth-record-title")?.focus()}><Icon name="view_agenda" size={18} />{t("elev.growth.portrait.mapLink")}</button>
           <EvidenceChip />
         </div>
       </header>
@@ -247,47 +255,16 @@ export default function DevelopmentTab() {
           "disclosure"). New since is its OWN module: 2–4 dated rows in the
           parent's own words; a zero-event visit renders nothing and the focus
           card is the hero. */}
-      {/* W2-GROWTH r2 (1280 used the width as a phone column): at lg the
-          focus card + its observe row take the inline-start 7/12 and New since
-          is a sticky 5/12 aside at inline-end. Grid lines follow the writing
-          direction, so RTL mirrors with no extra rule; the Record card spans
-          the full width below. */}
-      <div className="space-y-5 sm:space-y-6 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6 lg:space-y-0">
-        {newSince.length > 0 && (
-          <aside
-            data-module="growth-new-since"
-            data-testid="growth-new-since"
-            aria-labelledby="growth-since-line"
-            className="rounded-[var(--r-lg)] p-4 lg:sticky lg:top-4 lg:col-span-5 lg:col-start-8 lg:row-start-1"
-            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
-          >
-            <h2 id="growth-since-line" className="pb-1.5 text-xs font-bold" style={{ color: "var(--arbor-muted)", borderBottom: "1px solid var(--arbor-rule)" }} data-testid="growth-since-line">{sinceLabel}</h2>
-            <ul className="mt-2 space-y-2">
-              {newSince.map((row) => (
-                <li key={row.id} data-testid={`growth-new-since-${row.kind}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="min-w-0 break-words text-sm" style={{ color: "var(--arbor-ink)" }}>
-                    {row.text}
-                    {row.quote && (
-                      <>
-                        {" "}
-                        <bdi dir="auto" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)" }}>{row.quote}</bdi>
-                      </>
-                    )}
-                  </span>
-                  {/* B-GROWTH-NEW-2B: a note, not a log — no year on a this-week row. */}
-                  <span className="text-xs" style={{ color: "var(--arbor-muted)" }}>· {fmtDayShort(row.dateIso, uiLang)}</span>
-                </li>
-              ))}
-            </ul>
-          </aside>
-        )}
+      {/* The record and current action share a desktop view. Reading order
+          stays focus -> record -> recent on phones and for assistive tech. */}
+      <div className="development-portrait-summary">
       <section
         data-module="growth-weekly-focus"
-        className={`space-y-4 lg:col-start-1 lg:row-start-1 ${newSince.length > 0 ? "lg:col-span-7" : "lg:col-span-12"}`}
+        className="development-portrait-focus space-y-4"
         aria-labelledby="growth-weekly-focus"
       >
         <div className="min-w-0">
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }} data-testid="growth-focus-eyebrow">
+            <span className="arbor-type-kicker inline-flex items-center gap-1.5" style={{ color: "var(--arbor-clay)" }} data-testid="growth-focus-eyebrow">
               <Icon name={weeklyFocus.chosen ? "visibility" : "explore"} size={16} />
               {weeklyFocus.chosen ? tGCare(uiLang, "elev.gcare.growth.watch.eyebrow") : t("growth.focus.eyebrow")}
             </span>
@@ -340,9 +317,9 @@ export default function DevelopmentTab() {
                         onClick={() => observeFocusMilestone(weeklyFocus.milestoneId as string, status, weeklyFocus.observationStatus === "yes")}
                         className="min-h-11 rounded-xl px-1.5 text-sm font-bold transition active:scale-[0.98]"
                         style={{
-                          background: selected ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)",
-                          color: selected ? "var(--arbor-green-ink)" : "var(--arbor-ink)",
-                          border: `1px solid ${selected ? "var(--arbor-green-ink)" : "var(--arbor-rule-strong)"}`,
+                          background: selected ? "var(--arbor-clay-soft)" : "var(--arbor-paper-elevated)",
+                          color: selected ? "var(--arbor-clay)" : "var(--arbor-ink)",
+                          border: `1px solid ${selected ? "var(--arbor-clay)" : "var(--arbor-rule-strong)"}`,
                         }}
                       >
                         {label}
@@ -426,7 +403,7 @@ export default function DevelopmentTab() {
           objects; they are three views of one record now. */}
       <section data-module="growth-record" aria-labelledby="growth-record-title" className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="growth-record-title" className="break-words font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+          <h2 id="growth-record-title" tabIndex={-1} className="arbor-type-title scroll-mt-36 break-words" style={{ color: "var(--arbor-ink)" }}>
             {firstName ? t("elev.growth.record.title", { name: firstName }) : t("elev.growth.record.titleGeneric")}
           </h2>
           <div role="tablist" aria-labelledby="growth-record-title" className="inline-flex gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)" }}>
@@ -465,6 +442,34 @@ export default function DevelopmentTab() {
           ) : recordTab === "words" ? <FirstWordsLedger /> : <ArborTreeCard />}
         </div>
       </section>
+        {newSince.length > 0 && (
+          <aside
+            data-module="growth-new-since"
+            data-testid="growth-new-since"
+            aria-labelledby="growth-since-line"
+            className="development-portrait-recent rounded-[var(--r-lg)] p-4"
+            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
+          >
+            <h2 id="growth-since-line" className="pb-1.5 text-xs font-bold" style={{ color: "var(--arbor-muted)", borderBottom: "1px solid var(--arbor-rule)" }} data-testid="growth-since-line">{sinceLabel}</h2>
+            <ul className="mt-2 space-y-2">
+              {newSince.map((row) => (
+                <li key={row.id} data-testid={`growth-new-since-${row.kind}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="min-w-0 break-words text-sm" style={{ color: "var(--arbor-ink)" }}>
+                    {row.text}
+                    {row.quote && (
+                      <>
+                        {" "}
+                        <bdi dir="auto" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)" }}>{row.quote}</bdi>
+                      </>
+                    )}
+                  </span>
+                  {/* B-GROWTH-NEW-2B: a note, not a log — no year on a this-week row. */}
+                  <span className="text-xs" style={{ color: "var(--arbor-muted)" }}>· {fmtDayShort(row.dateIso, uiLang)}</span>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        )}
       {/* B-GROWTH-03: the Growth SpineRibbon (-> Academy) is removed — the
           Journal mount keeps the spine promise (spinePromiseMounts.test.ts). */}
       {/* Go deeper — Milestones · Timeline · Development Check (with its

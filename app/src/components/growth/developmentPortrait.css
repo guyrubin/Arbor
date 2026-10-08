@@ -1,0 +1,43 @@
+/* Growth adopts the approved editorial tokens. The record and the action
+   share the first desktop view; on a phone the notice action stays first. */
+.development-portrait { display: grid; gap: 28px; }
+.development-portrait-header { display: grid; gap: 12px; }
+.arbor-app .development-portrait-header .arbor-type-hero { font-size: var(--t-2xl); }
+.record-portrait-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: start; }
+.record-portrait-areas { display: grid; gap: 8px; }
+.record-portrait-area { display: flex; gap: 10px; align-items: center; }
+.record-portrait-detail { position: sticky; top: 100px; }
+.development-portrait-summary { display: contents; }
+.development-portrait-focus {
+  padding: 20px;
+  border: 1px solid var(--arbor-rule);
+  border-radius: var(--r-xl);
+  background: var(--arbor-paper-elevated);
+}
+@media (max-width: 767px) {
+  .record-portrait-grid { grid-template-columns: minmax(0, 1fr); }
+  .record-portrait-areas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .record-portrait-area { align-items: start; flex-direction: column; }
+  .record-portrait-detail { position: static; }
+}
+.development-portrait [data-module="growth-record"] { min-width: 0; }
+.development-portrait #growth-record-title:focus-visible,
+.development-portrait #record-area-detail:focus-visible {
+  outline: 2px solid var(--arbor-clay);
+  outline-offset: 5px;
+}
+@media (min-width: 1024px) {
+  .development-portrait { grid-template-columns: minmax(0, 1fr) minmax(300px, 350px); align-items: start; }
+  .development-portrait-header { grid-column: 1 / -1; }
+  .development-portrait-focus { grid-column: 2; grid-row: 2; }
+  .development-portrait-recent { grid-column: 2; grid-row: 3; }
+  .development-portrait [data-module="growth-record"] { grid-column: 1; grid-row: 2 / span 3; }
+  .development-portrait [data-module="growth-go-deeper"],
+  .development-portrait [data-module-disclosure="growth-more"] { grid-column: 1 / -1; }
+}
+@media (max-width: 1023px) {
+  .development-portrait-focus { grid-row: 2; }
+  .development-portrait-recent { grid-row: 4; }
+  .development-portrait [data-module="growth-record"] { grid-row: 3; }
+  .development-portrait-header .arbor-type-hero { font-size: var(--t-2xl); }
+}
