@@ -80,7 +80,7 @@ export default function RecordByDomain() {
                       </span>
                       <span className="min-w-0">
                         <span className="block t-base font-semibold leading-snug" style={{ color: "var(--arbor-ink)" }}>{domainName(row.domain, t)}</span>
-                        {row.count4w > 0 && <span className="mt-1 block t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.growth.record.compactCount", { n: row.count4w })}</span>}
+                        {row.count4w > 0 && <span className="mt-1 block t-sm" style={{ color: "var(--arbor-muted)" }}>{t(row.count4w === 1 ? "elev.growth.record.compactCount.one" : "elev.growth.record.compactCount", { n: row.count4w })}</span>}
                       </span>
                     </button>
                   </li>

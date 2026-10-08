@@ -8,6 +8,7 @@
 
 export const en: Record<string, string> = {
   "elev.growth.record.compactCount": "{n} saved · 4 weeks",
+  "elev.growth.record.compactCount.one": "1 saved · 4 weeks",
   // Growth portrait: observation detail, with no inferred assessment.
   "elev.growth.portrait.sub": "The little things you notice, brought together. Explore an area to see the moments behind it.",
   "elev.growth.portrait.mapLink": "See the whole picture",
@@ -145,6 +146,7 @@ export const en: Record<string, string> = {
 
 export const he: Record<string, string> = {
   "elev.growth.record.compactCount": "{n} רשומות · 4 שבועות",
+  "elev.growth.record.compactCount.one": "רשומה אחת · 4 שבועות",
   // Growth portrait: observation detail, with no inferred assessment.
   "elev.growth.portrait.sub": "הדברים הקטנים ששמתם לב אליהם, בתמונה אחת. בחרו תחום כדי לראות את הרגעים ששמרתם.",
   "elev.growth.portrait.mapLink": "לראות את התמונה המלאה",
