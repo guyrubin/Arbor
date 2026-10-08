@@ -99,6 +99,15 @@ export const en: Record<string, string> = {
   "elev.program.goals.packet.line": "{text}: {value} on the family's scale ({word}) · marked {scored} times",
   "elev.program.goals.packet.line.one": "{text}: {value} on the family's scale ({word}) · marked once",
   "elev.program.goals.packet.parentNote": "The professional's copy also carries the mark on your own scale, as the number your words stand for.",
+  // ── B-PROG-09 · the home program (the professional's exercises, in the family's words) ──
+  "elev.homeProgram.name": "Home program · {profession}",
+  "elev.homeProgram.parentSkill": "The exercises from the visit, in your words",
+  "elev.homeProgram.measure.days.label": "Practice days",
+  "elev.homeProgram.measure.days.rule": "Days you marked at least one exercise from the home program as done.",
+  "elev.homeProgram.measure.days.unit": "days",
+  "elev.homeProgram.measure.exercise.label": "Days per exercise",
+  "elev.homeProgram.measure.exercise.rule": "For each exercise, the days you marked it as done.",
+  "elev.homeProgram.goal.proposedBy": "Proposed by the {profession}",
 };
 
 export const he: Record<string, string> = {
@@ -191,4 +200,13 @@ export const he: Record<string, string> = {
   "elev.program.goals.packet.line": "{text}: {value} בסולם של המשפחה ({word}) · סומן {scored} פעמים",
   "elev.program.goals.packet.line.one": "{text}: {value} בסולם של המשפחה ({word}) · סומן פעם אחת",
   "elev.program.goals.packet.parentNote": "בעותק של איש המקצוע מופיע גם הסימון בסולם שלכם, כמספר שהמילים שלכם מייצגות.",
+  // ── B-PROG-09 · תוכנית הבית (התרגילים מאיש המקצוע, במילים של המשפחה) ──
+  "elev.homeProgram.name": "תוכנית בית · {profession}",
+  "elev.homeProgram.parentSkill": "התרגילים מהביקור, במילים שלכם",
+  "elev.homeProgram.measure.days.label": "ימי תרגול",
+  "elev.homeProgram.measure.days.rule": "ימים שבהם סימנתם שעשיתם לפחות תרגיל אחד מתוכנית הבית.",
+  "elev.homeProgram.measure.days.unit": "ימים",
+  "elev.homeProgram.measure.exercise.label": "ימים לכל תרגיל",
+  "elev.homeProgram.measure.exercise.rule": "לכל תרגיל, הימים שבהם סימנתם שעשיתם אותו.",
+  "elev.homeProgram.goal.proposedBy": "הצעה של {profession}",
 };

@@ -42,6 +42,11 @@ export interface FamilyGoal {
   scores: GoalScore[];
   /** The program enrolment the goal was set under, when one was active. */
   programId?: string;
+  /** B-PROG-09: PROVENANCE only — the professional who proposed the goal at a
+   *  visit (consult intake profession id: "slp" · "ot" · "pt" · "psychology" ·
+   *  "pediatrician"). The family accepted it in their own words; the app never
+   *  turns it into an instruction. Absent on a goal the family wrote alone. */
+  proposedBy?: string;
   /** ISO time the family put the goal aside (it stays on the record and in the export). */
   archivedAt?: string;
   updatedAt: string;
@@ -88,7 +93,7 @@ export type SetGoalResult =
 /** Set a new goal in the family's words with their own five labels. At most three active goals. */
 export function setGoal(
   existing: readonly FamilyGoal[],
-  input: { text: string; scale: Partial<Record<GoalScaleKey, unknown>>; programId?: string },
+  input: { text: string; scale: Partial<Record<GoalScaleKey, unknown>>; programId?: string; proposedBy?: string },
   now: Date = new Date(),
 ): SetGoalResult {
   const text = clean(input.text, GOAL_TEXT_MAX);
@@ -109,6 +114,7 @@ export function setGoal(
       scale,
       scores: [],
       ...(input.programId ? { programId: input.programId } : {}),
+      ...(input.proposedBy ? { proposedBy: input.proposedBy } : {}),
       updatedAt: iso,
     },
   };
