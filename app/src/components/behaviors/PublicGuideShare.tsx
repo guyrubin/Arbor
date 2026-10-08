@@ -12,7 +12,7 @@ import { PUBLIC_WEB_ORIGIN } from "../../lib/publicWebOrigin";
 export function PublicGuideShare({ card, locale }: { card: HardMomentCard; locale: ContentLocale }) {
   const [state, setState] = useState<"idle" | "shared" | "copied" | "error">("idle");
   const [busy, setBusy] = useState(false);
-  const t = (key: string) => translate(locale, `elev.guides.${key}`);
+  const copy = (key: string) => translate(locale, `elev.guides.${key}`);
   const url = publicGuideShareUrl(card.id, locale, PUBLIC_WEB_ORIGIN);
   if (!url || !hardMomentPublication(card, publicGuideContext(card, { locale, age: null }))) return null;
 
@@ -42,14 +42,14 @@ export function PublicGuideShare({ card, locale }: { card: HardMomentCard; local
       <button type="button" disabled={busy} onClick={() => void share()}
         className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60"
         style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
-        <Icon name="share" size={18} /> {t("share")}
+        <Icon name="share" size={18} /> {copy("share")}
       </button>
-      <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("shareHint")}</p>
+      <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{copy("shareHint")}</p>
       <p role="status" aria-live="polite" className="text-sm" style={{ color: "var(--arbor-ink-soft)" }}>
-        {state === "shared" ? t("shared") : state === "copied" ? t("copied") : state === "error" ? t("copyFailed") : ""}
+        {state === "shared" ? copy("shared") : state === "copied" ? copy("copied") : state === "error" ? copy("copyFailed") : ""}
       </p>
       {state === "error" && <div>
-        <label htmlFor={`guide-link-${card.id}`} className="sr-only">{t("link")}</label>
+        <label htmlFor={`guide-link-${card.id}`} className="sr-only">{copy("link")}</label>
         <input id={`guide-link-${card.id}`} value={url} readOnly dir="ltr" onFocus={(event) => event.currentTarget.select()}
           className="min-h-11 w-full min-w-0 rounded-xl px-3 text-sm" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" }} />
       </div>}

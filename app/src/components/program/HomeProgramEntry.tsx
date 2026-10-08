@@ -47,6 +47,7 @@ export type GoalDecision = { text: string; scale: Record<GoalScaleKey, string> }
 
 export interface HomeEntryState {
   source?: ProgramImportSource;
+  importedStart?: number;
   step: "enter" | "review";
   profession: HomeProfession | null;
   exercises: Array<{ text: string; shelf: ShelfId }>;
@@ -61,6 +62,7 @@ export interface HomeEntryState {
 
 export type HomeEntryAction =
   | { type: "importExercises"; texts: string[]; source: ProgramImportSource }
+  | { type: "removeImport" }
   | { type: "profession"; profession: HomeProfession }
   | { type: "exerciseText"; i: number; text: string }
   | { type: "exerciseShelf"; i: number; shelf: ShelfId }
@@ -87,7 +89,13 @@ export function entryReducer(s: HomeEntryState, a: HomeEntryAction): HomeEntrySt
     case "importExercises": {
       const existing = filled(s);
       if (s.source || a.texts.length > HOME_EXERCISES_MAX - existing.length) return s;
-      return { ...s, source: a.source, error: null, exercises: [...existing, ...a.texts.map(text => ({ text, shelf: shelfFor(s.profession) }))] };
+      return { ...s, source: a.source, importedStart: existing.length, error: null, exercises: [...existing, ...a.texts.map(text => ({ text, shelf: shelfFor(s.profession) }))] };
+    }
+    case "removeImport": {
+      const start = s.importedStart ?? s.exercises.length;
+      const count = s.source?.quotations.length ?? 0;
+      const exercises = s.exercises.filter((_, i) => i < start || i >= start + count);
+      return { ...s, source: undefined, importedStart: undefined, exercises: exercises.length ? exercises : [{ text: "", shelf: shelfFor(s.profession) }] };
     }
     case "profession": {
       // an untouched default shelf follows the profession; a shelf the parent picked stays
@@ -226,9 +234,9 @@ export default function HomeProgramEntry({ childId, profession, nextVisit, rows,
   return (
     <section data-testid="home-program-entry" data-step={s.step} className="mt-3 flex flex-col gap-3">
       <h2 className="t-base font-bold" style={{ color: "var(--arbor-ink)" }}>{t(s.step === "enter" ? "elev.homeProgram.entry.title" : "elev.homeProgram.review.title")}</h2>
-      {saving && <p role="status" className="text-sm">{uiLang === "he" ? "שומרים וממתינים לאישור הסנכרון…" : "Saving and waiting for sync confirmation…"}</p>}
-      {saveError && <p role="alert" className="text-sm">{uiLang === "he" ? "השמירה לא הושלמה. הטקסט עדיין כאן; אפשר לנסות שוב." : "The save did not finish. Your text is still here; you can retry."}</p>}
-      {childId && <HomeProgramImport key={childId} childId={childId} readOnly={s.step === "review"} remaining={HOME_EXERCISES_MAX - filled(s).length} onApply={(texts, source) => dispatch({ type: "importExercises", texts, source })} />}
+      {saving && <p role="status" className="text-sm">{t("elev.pilot.saving.and.waiting.for.sync.confirmation")}</p>}
+      {saveError && <p role="alert" className="text-sm">{t("elev.pilot.the.save.did.not.finish.your.text.is.still.here.you.can.retry")}</p>}
+      {childId && <HomeProgramImport key={childId} childId={childId} readOnly={s.step === "review"} remaining={HOME_EXERCISES_MAX - filled(s).length} onApply={(texts, source) => dispatch({ type: "importExercises", texts, source })} onReset={() => dispatch({ type: "removeImport" })} />}
       {s.step === "enter" ? (
         <>
           <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.homeProgram.entry.lede")}</p>
@@ -366,7 +374,7 @@ export function HomeProgramDays({ enrolment, onSave, now = () => new Date() }: {
       <h2 className="t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.homeProgram.name", { profession: t(`elev.carehonesty.consult.audience.${a.profession}`) })}</h2>
       <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.homeProgram.days.week", { n: a.week, total: a.weeks })}</p>
       {enrolment.home.source && <details className="my-3 text-sm">
-        <summary className="min-h-11 cursor-pointer py-3 font-semibold">{uiLang === "he" ? "התמלול שנבדק והציטוטים שנבחרו" : "Reviewed transcription and selected quotes"}</summary>
+        <summary className="min-h-11 cursor-pointer py-3 font-semibold">{t("elev.pilot.reviewed.transcription.and.selected.quotes")}</summary>
         <p dir="auto" className="mb-2 break-words">{enrolment.home.source.name}</p>
         <p dir="auto" className="max-h-64 overflow-auto whitespace-pre-wrap rounded-[var(--r)] p-3" style={QUIET}>{enrolment.home.source.sourceText}</p>
         <ul className="mt-3 list-disc ps-5">{enrolment.home.source.quotations.map((quote, i) => <li key={i} dir="auto" className="mb-2">{quote}</li>)}</ul>

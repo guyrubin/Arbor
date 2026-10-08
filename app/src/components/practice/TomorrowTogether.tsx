@@ -24,10 +24,9 @@ function Scene({ kit, step, label }: { kit: TomorrowKit["id"]; step: number; lab
   </svg>;
 }
 export default function TomorrowTogether() {
-  const { uiLang } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const { childProfile } = useArbor();
   const lang = uiLang === "he" ? "he" : "en";
-  const text = (en: string, he: string) => lang === "he" ? he : en;
   const [choice, setChoice] = useState<{ childId: string; id: string; step: number } | null>(null);
   const kit = choice?.childId === childProfile.id ? TOMORROW_KITS.find(k => k.id === choice.id) : undefined;
   const step = choice?.step ?? 0;
@@ -36,26 +35,26 @@ export default function TomorrowTogether() {
   const style = { borderColor: "var(--arbor-rule)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" };
   return <details data-testid="tomorrow-together" className="mb-5 rounded-[var(--r-lg)] border p-5 sm:p-6" style={{ ...style, background: "var(--arbor-paper)" }}>
     <summary className="min-h-11 cursor-pointer">
-    <p className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>{text("A LITTLE REHEARSAL, TOGETHER", "מתכוננים קצת, יחד")}</p>
-    <h2 className="mt-2 text-2xl" style={{ fontFamily: "var(--font-display)" }}>{text("Make tomorrow feel familiar", "כדי שמחר יהיה קצת יותר מוכר")}</h2>
+    <p className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.pilot.a.little.rehearsal.together")}</p>
+    <h2 className="mt-2 text-2xl" style={{ fontFamily: "var(--font-display)" }}>{t("elev.pilot.make.tomorrow.feel.familiar")}</h2>
     </summary>
-    <p className="mt-2 text-sm leading-relaxed">{text("Three pictures and words to borrow. A grown-up leads; your child can join, watch or stop.", "שלוש תמונות ומשפטים שאפשר לאמץ. אתם מובילים; הילד או הילדה יכולים להצטרף, להסתכל או לעצור.")}</p>
+    <p className="mt-2 text-sm leading-relaxed">{t("elev.pilot.three.pictures.and.words.to.borrow.a.grown.up.leads.your.child.ca")}</p>
     <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">{TOMORROW_KITS.map(k => <button key={k.id} type="button" className={button} style={style} onClick={() => setChoice({ childId: childProfile.id, id: k.id, step: 0 })}>{k.title[lang]}</button>)}</div>
     <Modal open={!!kit} onClose={() => setChoice(null)} title={kit?.title[lang]}>
       {kit && <div dir={lang === "he" ? "rtl" : "ltr"} lang={lang}>
         <p className="mb-4 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{kit.intro[lang]}</p>
         <Scene kit={kit.id} step={step} label={kit.scenes[step].story[lang]} />
         <div aria-live="polite" aria-atomic="true">
-          <p className="mt-4 text-xs" style={{ color: "var(--arbor-muted)" }}>{text(`Picture ${step + 1} of 3`, `תמונה ${step + 1} מתוך 3`)}</p>
+          <p className="mt-4 text-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.pilot.picture", { n: step + 1 })}</p>
           <h3 className="mt-1 text-xl" style={{ fontFamily: "var(--font-display)" }}>{kit.scenes[step].title[lang]}</h3>
           <p className="mt-2 leading-relaxed">{kit.scenes[step].story[lang]}</p>
           <blockquote className="my-4 border-s-2 ps-4 text-lg leading-relaxed" style={{ borderColor: "var(--arbor-clay)", fontFamily: "var(--font-display)" }}>“{kit.scenes[step].say[lang]}”</blockquote>
         </div>
-        {step === 2 && <p className="rounded-[var(--r)] p-3 text-sm leading-relaxed" style={{ background: "var(--arbor-paper-deep)" }}>{kit.play[lang]}<br />{text("Watching is enough. You can leave it here.", "גם להסתכל זה בסדר. אפשר לסיים כאן.")}</p>}
+        {step === 2 && <p className="rounded-[var(--r)] p-3 text-sm leading-relaxed" style={{ background: "var(--arbor-paper-deep)" }}>{kit.play[lang]}<br />{t("elev.pilot.watching.is.enough.you.can.leave.it.here")}</p>}
         <div className="mt-5 flex flex-wrap gap-2">
-          {step > 0 && <button type="button" className={button} style={style} onClick={() => setChoice({ childId: childProfile.id, id: kit.id, step: step - 1 })}>{text("Previous picture", "לתמונה הקודמת")}</button>}
-          {step < 2 && <button type="button" className={button} style={{ background: "var(--arbor-ink)", color: "var(--arbor-on-accent)" }} onClick={() => setChoice({ childId: childProfile.id, id: kit.id, step: step + 1 })}>{text("Next picture", "לתמונה הבאה")}</button>}
-          <button type="button" className={button} style={style} onClick={() => setChoice(null)}>{text("Leave it here", "נסיים כאן")}</button>
+          {step > 0 && <button type="button" className={button} style={style} onClick={() => setChoice({ childId: childProfile.id, id: kit.id, step: step - 1 })}>{t("elev.pilot.previous.picture")}</button>}
+          {step < 2 && <button type="button" className={button} style={{ background: "var(--arbor-ink)", color: "var(--arbor-on-accent)" }} onClick={() => setChoice({ childId: childProfile.id, id: kit.id, step: step + 1 })}>{t("elev.pilot.next.picture")}</button>}
+          <button type="button" className={button} style={style} onClick={() => setChoice(null)}>{t("elev.pilot.leave.it.here")}</button>
         </div>
       </div>}
     </Modal>

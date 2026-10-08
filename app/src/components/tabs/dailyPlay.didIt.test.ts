@@ -14,7 +14,7 @@
  * The language mock is the REAL Hebrew dictionary, so "0 English toasts under
  * he" is measured, not assumed.
  */
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import React from "react";
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -26,8 +26,16 @@ type Captured = {
   plan?: { plan: DailyPlan | null; onDid: (p: DailyPlan) => void };
   courses: { course: PlayCourse; onToggle: (id: string) => void }[];
   picks: { pick: ScoredActivity; onDid: (p: ScoredActivity) => void }[];
+  sourceButtons: { disabled?: boolean; onClick: () => void }[];
 };
-const captured: Captured = { courses: [], picks: [] };
+const captured: Captured = { courses: [], picks: [], sourceButtons: [] };
+const captureSourceButton = (type: unknown, props: unknown) => {
+  if (!props || typeof props !== "object") return;
+  const children = (props as Record<string, unknown>).children;
+  if (type === "button" && Array.isArray(children) && children.some(child => child === "ניסינו יחד" || child === "נשמר ברגעים של היום")) {
+    captured.sourceButtons.push(props as { disabled?: boolean; onClick: () => void });
+  }
+};
 
 const logPlayCompletion = vi.fn();
 const toast = vi.fn();
@@ -39,6 +47,7 @@ const state = {
   updateChild: vi.fn(async () => {}),
   seedCoach: vi.fn(),
   actionLoop: [] as unknown[],
+  playLogs: [] as { activityId: string; timestamp: string }[],
 };
 
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => state }));
@@ -63,7 +72,27 @@ vi.mock("../overview/DailyPlayCard", () => ({
 }));
 vi.mock("../practice/GoalBuilderModal", () => ({ default: () => null }));
 vi.mock("../practice/SessionLengthChips", () => ({ default: () => null }));
+// Portals and focus management belong to the rendered dialog tests. Keep
+// actual SourceActivities and TomorrowTogether mounted in this route test.
+vi.mock("../ui/Modal", () => ({
+  Modal: ({ open, children }: { open: boolean; children?: React.ReactNode }) => open ? children : null,
+}));
+// Capture the real source activity's native completion callback without
+// substituting its implementation. Static markup alone discards events.
+vi.mock("react/jsx-runtime", async (original) => {
+  const runtime = await original<typeof import("react/jsx-runtime")>();
+  return {
+    ...runtime,
+    jsx: (...args: Parameters<typeof runtime.jsx>) => { captureSourceButton(args[0], args[1]); return runtime.jsx(...args); },
+    jsxs: (...args: Parameters<typeof runtime.jsxs>) => { captureSourceButton(args[0], args[1]); return runtime.jsxs(...args); },
+  };
+});
+vi.mock("react/jsx-dev-runtime", async (original) => {
+  const runtime = await original<typeof import("react/jsx-dev-runtime")>();
+  return { ...runtime, jsxDEV: (...args: Parameters<typeof runtime.jsxDEV>) => { captureSourceButton(args[0], args[1]); return runtime.jsxDEV(...args); } };
+});
 vi.mock("motion/react", () => ({
+  AnimatePresence: ({ children }: { children?: React.ReactNode }) => children,
   motion: new Proxy({}, {
     get: (_t, tag: string) => ({ children, ...rest }: Record<string, unknown> & { children?: React.ReactNode }) => {
       const { initial, animate, exit, transition, ...safe } = rest as Record<string, unknown>;
@@ -91,13 +120,18 @@ const render = async () => {
 };
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-08T12:00:00Z"));
   installStorage();
   captured.plan = undefined;
   captured.courses = [];
   captured.picks = [];
+  captured.sourceButtons = [];
+  state.playLogs = [];
   logPlayCompletion.mockClear();
   toast.mockClear();
 });
+afterEach(() => { vi.useRealTimers(); });
 
 describe("B-GROWTH-19 — all four 'did it' paths write the playLogs record", () => {
   it("the stubs captured the plan, both course cards and the picks", async () => {
@@ -162,6 +196,38 @@ describe("B-GROWTH-19 — all four 'did it' paths write the playLogs record", ()
       expect(msg).not.toMatch(/[A-Za-z]/);
       expect(msg).toContain("נועה");
     }
+  });
+});
+
+describe("B-NEXT-11 — source activity joins the existing completion path", () => {
+  it("browsing does not record a play; its actual button records the selected Hebrew activity", async () => {
+    const html = await render();
+    expect(html).toContain('data-testid="source-activities"');
+    expect(captured.sourceButtons).toHaveLength(1);
+    expect(logPlayCompletion).not.toHaveBeenCalled();
+    expect(captured.sourceButtons[0].disabled).toBe(false);
+    captured.sourceButtons[0].onClick();
+    expect(logPlayCompletion).toHaveBeenCalledTimes(1);
+    expect(logPlayCompletion.mock.calls[0]).toMatchObject([
+      { id: "moh-play-15", title: "רגע של מחר", steps: ["דברו על דבר מוכר אחד שיקרה מחר.", "מחר נלך יחד."] }, "library",
+    ]);
+  });
+
+  it("a saved source activity displays its receipt and disables a second completion after reload", async () => {
+    state.playLogs = [{ activityId: "moh-play-15", timestamp: new Date().toISOString() }];
+    const html = await render();
+    expect(captured.sourceButtons[0].disabled).toBe(true);
+    expect(html).toContain("נשמר ברגעים של היום");
+    expect(logPlayCompletion).not.toHaveBeenCalled();
+  });
+
+  it("a previous local day's record does not disable today's source activity", async () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    state.playLogs = [{ activityId: "moh-play-15", timestamp: yesterday.toISOString() }];
+    await render();
+    expect(captured.sourceButtons[0].disabled).toBe(false);
+    expect(logPlayCompletion).not.toHaveBeenCalled();
   });
 });
 

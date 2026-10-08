@@ -195,10 +195,10 @@ describe("N1-02 — the call sites are LIVE (source pins + pre-fix negative cont
     expect(modal).toContain('onClick={() => void startCheckout(selected, cadence, "paywall")}');
   });
 
-  it("B-SHELL-12: Settings upgrades enter the funnel with surface 'settings'", () => {
+  it("Settings offers Plus with surface 'settings', and never upsells free co-parent sharing", () => {
     const settings = read("components/layout/SettingsModal.tsx");
     expect(settings).toContain('startCheckout("plus", cadence, "settings")');
-    expect(settings).toContain('startCheckout("family", cadence, "settings")');
+    expect(settings).not.toContain('startCheckout("family", cadence, "settings")');
     // NEGATIVE CONTROL — the pre-fix silent calls are gone.
     expect(settings).not.toMatch(/startCheckout\("(plus|family)", cadence\)/);
   });

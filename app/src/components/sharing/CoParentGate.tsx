@@ -21,7 +21,7 @@ export default function CoParentGate({ children }: { children: React.ReactNode }
   const c = coParentCopy[uiLang];
   // Labelled, invented QA state; this branch is removed from production builds.
   const preview = import.meta.env.DEV && new URLSearchParams(window.location.search).has("coparent-preview");
-  const [requested] = useState(() => new URLSearchParams(window.location.search).get("join"));
+  const [requested] = useState(() => new URLSearchParams(window.location.search).get("family-invite"));
   const [dismissed, setDismissed] = useState(false);
   const [shares, setShares] = useState<ShareGrant[]>([]);
   const [checked, setChecked] = useState(false);
@@ -29,7 +29,7 @@ export default function CoParentGate({ children }: { children: React.ReactNode }
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<CoParentWorkspace | null>(null);
-  const [error, setError] = useState<"verify" | "ended" | "error" | "saveError" | null>(null);
+  const [error, setError] = useState<"verify" | "ended" | "error" | "saveError" | "completeError" | "changed" | null>(null);
   const [notice, setNotice] = useState("");
   const [note, setNote] = useState("");
   const requestId = useRef(crypto.randomUUID());
@@ -44,9 +44,9 @@ export default function CoParentGate({ children }: { children: React.ReactNode }
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     if (preview) {
-      setWorkspace({ childId: "preview-only", childName: uiLang === "he" ? "נועם · משפחה לדוגמה" : "Noam · example family", ownerEmail: null,
-        activity: { id: "preview-activity", text: uiLang === "he" ? "בונים מגדל בתורות. מניחים קובייה אחת, מחכים ואז מזמינים: עכשיו תורך." : "Build a tower together. Place one block, wait, then invite: Your turn.", acceptedAt: "2026-10-08T12:00:00Z", completedAt: null },
-        moments: [{ id: "preview-moment", text: uiLang === "he" ? "אחרי הגן ישבנו ביחד על השטיח. נועם בחר את הקובייה הראשונה." : "After preschool, we sat together on the rug. Noam chose the first block.", at: "2026-10-08T12:05:00Z", addedByYou: false }] });
+      setWorkspace({ childId: "preview-only", childName: c.previewChild, ownerEmail: null,
+        activity: { id: "preview-activity", text: c.previewDo, do: c.previewDo, say: c.previewSay, acceptedAt: "2026-10-08T12:00:00Z", completedAt: null },
+        moments: [{ id: "preview-moment", text: c.previewMoment, at: "2026-10-08T12:05:00Z", addedByYou: false }] });
       setSelected("preview-only"); setChecked(true); setLoading(false); return;
     }
     try {
@@ -108,11 +108,14 @@ export default function CoParentGate({ children }: { children: React.ReactNode }
     setBusy(true); setError(null);
     if (preview) { setWorkspace((w) => w && ({ ...w, activity: w.activity && { ...w.activity, completedAt: new Date().toISOString() } })); setNotice(c.completed); setBusy(false); return; }
     try { await coParentApi.complete(selected, workspace.activity.id); setNotice(c.completed); try { setWorkspace(await coParentApi.workspace(selected)); } catch (e) { failure(e); } }
-    catch (e) { failure(e, true); }
+    catch (e) {
+      if (e instanceof CoParentError && e.status === 403) failure(e);
+      else setError(e instanceof CoParentError && e.status === 409 ? "changed" : "completeError");
+    }
     finally { setBusy(false); }
   };
   const leave = () => {
-    const url = new URL(window.location.href); url.searchParams.delete("join");
+    const url = new URL(window.location.href); url.searchParams.delete("family-invite");
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
     setWorkspace(null); setSelected(null); setDismissed(true);
   };
@@ -127,7 +130,7 @@ export default function CoParentGate({ children }: { children: React.ReactNode }
       {error && <section role="alert" className="rounded-2xl p-5 space-y-3 arbor-depth-card" style={card}><p className="text-sm leading-relaxed">{c[error]}</p><button type="button" onClick={() => void refresh()} className={button} style={primary}>{c.retry}</button></section>}
       {notice && <p role="status" className="text-sm font-bold">{notice}</p>}
       {workspace ? <>
-        <section className="rounded-2xl p-5 space-y-4 arbor-depth-primary" style={card} data-testid="coparent-activity"><div className="flex items-center gap-3"><Icon name="diversity_3" size={24} style={{ color: "var(--arbor-clay)" }} /><h2 className="arbor-type-title">{c.activity}</h2></div><p className="text-base leading-relaxed whitespace-pre-wrap" dir="auto">{workspace.activity?.text || c.noActivity}</p>{workspace.activity && <>{workspace.activity.completedAt ? <p className="text-sm font-bold flex items-center gap-2"><Icon name="check" size={18} />{c.completed} · <bdi>{date(workspace.activity.completedAt)}</bdi></p> : <button type="button" disabled={busy} className={button} style={primary} onClick={() => void complete()}>{busy ? c.saving : c.done}</button>}</>}</section>
+        <section className="rounded-2xl p-5 space-y-4 arbor-depth-primary" style={card} data-testid="coparent-activity"><div className="flex items-center gap-3"><Icon name="diversity_3" size={24} style={{ color: "var(--arbor-clay)" }} /><h2 className="arbor-type-title">{c.activity}</h2></div><p className="text-base leading-relaxed whitespace-pre-wrap" dir="auto">{workspace.activity?.do || workspace.activity?.text || c.noActivity}</p>{workspace.activity?.say && <div className="rounded-xl p-4 space-y-2" style={{ background: "var(--arbor-paper-deep)" }}><p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{c.sayLabel}</p><p className="text-base leading-relaxed" dir="auto"><q>{workspace.activity.say}</q></p></div>}{workspace.activity && <>{workspace.activity.completedAt ? <p className="text-sm font-bold flex items-center gap-2"><Icon name="check" size={18} />{c.completed} · <bdi>{date(workspace.activity.completedAt)}</bdi></p> : <button type="button" disabled={busy} className={button} style={primary} onClick={() => void complete()}>{busy ? c.saving : c.done}</button>}</>}</section>
         <form onSubmit={(e) => void save(e)} className="rounded-2xl p-5 space-y-3 arbor-depth-card" style={card}><label htmlFor="coparent-note" className="block arbor-type-title">{c.note}</label><textarea id="coparent-note" dir="auto" value={note} onChange={(e) => { setNote(e.target.value); requestId.current = crypto.randomUUID(); }} disabled={busy} required maxLength={1200} rows={4} placeholder={c.placeholder} aria-describedby="coparent-note-hint" className="w-full rounded-xl p-3 text-sm leading-relaxed resize-y" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} /><p id="coparent-note-hint" className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{c.noteHint}</p><button type="submit" disabled={busy || !note.trim()} className={button} style={primary}>{busy ? c.saving : c.save}</button></form>
         <section className="space-y-3"><div className="flex items-center justify-between gap-2"><h2 className="arbor-type-title">{c.moments}</h2><button type="button" disabled={loading} onClick={() => void refresh()} className={button} style={{ color: "var(--arbor-clay)" }}>{c.refresh}</button></div>{workspace.moments.length === 0 ? <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{c.noMoments}</p> : <ul className="space-y-3">{workspace.moments.map((m) => <li key={m.id} className="rounded-2xl p-5 space-y-2 arbor-depth-card" style={card}><p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{m.addedByYou ? c.you : c.shared} · <bdi>{date(m.at)}</bdi></p><p dir="auto" className="text-sm leading-relaxed whitespace-pre-wrap break-words">{m.text}</p></li>)}</ul>}</section>
       </> : checked && !loading && !error && <section className="space-y-3">{invitations.length === 0 ? <p className="text-sm leading-relaxed">{c.empty}</p> : invitations.map((g) => <div key={g.id} className="rounded-2xl p-5 space-y-4 arbor-depth-card" style={card}><p className="arbor-type-kicker" style={{ color: "var(--arbor-muted)" }}>{c.invitation}</p><h2 className="arbor-type-title" dir="auto">{g.childName}</h2><p className="text-sm break-words">{c.invitedBy} <bdi>{g.ownerEmail}</bdi></p><p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{c.intro}</p><button type="button" disabled={busy} onClick={() => void join(g.id)} className={button} style={primary}>{busy ? c.joining : g.acceptedAt ? c.open : c.join}</button></div>)}</section>}

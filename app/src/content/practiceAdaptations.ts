@@ -1,3 +1,5 @@
+// @icon-font-ignore — authored activity data only; "not_interested" is a
+// saved option identifier, never a Material Symbols glyph or UI icon.
 import type { Practice } from "./practices";
 
 /** B-NEXT-18. Authored options for a parent's circumstances, never a child

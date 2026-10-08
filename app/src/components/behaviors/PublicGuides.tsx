@@ -94,7 +94,7 @@ export default function PublicGuides() {
           </article> : <div className="space-y-4" role="status">
             <h1 className="arbor-type-hero">{copy("unavailable")}</h1>
             <p className="text-base leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{copy("unavailableDetail")}</p>
-            <button type="button" onClick={browse} className="inline-flex min-h-11 items-center rounded-xl px-4 py-3 text-sm font-semibold" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{copy("browse")}</button>
+            <button type="button" onClick={browse} className="inline-flex min-h-11 items-center rounded-xl px-4 py-3 text-sm font-semibold" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{copy("browseGuides")}</button>
           </div>}
         </> : <>
           <div className="mb-8 max-w-2xl">

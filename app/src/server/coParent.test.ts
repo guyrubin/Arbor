@@ -2,15 +2,18 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
-import { createCoParentRouter, coParentAuthorized, FirestoreCoParentSource, type CoParentSource } from "./coParent.js";
+import { createCoParentRouter, coParentAuthorized, coParentPractices, FirestoreCoParentSource, type CoParentSource } from "./coParent.js";
 import { buildGrant, LocalShareStore, type ShareGrant } from "../sharing/shares.js";
 import { createTestConfig } from "../testConfig.js";
 import { resolveSharedPacket } from "./sharedPacket.js";
+import { PRACTICES } from "../content/practices.js";
 
 const firestore = vi.hoisted(() => ({ rows: new Map<string, Record<string, unknown>>(), writes: [] as string[] }));
 vi.mock("firebase-admin/app", () => ({ getApps: () => [{}], initializeApp: vi.fn(), applicationDefault: vi.fn() }));
 vi.mock("firebase-admin/firestore", () => {
-  const ref = (path: string): any => ({ path, id: path.split("/").at(-1), collection: (name: string) => ({ doc: (id: string) => ref(`${path}/${name}/${id}`) }) });
+  const snapshot = (path: string) => ({ id: path.split("/").at(-1), exists: firestore.rows.has(path), data: () => firestore.rows.get(path) });
+  const collection = (path: string, field = "timestamp", max = 20): any => ({ doc: (id: string) => ref(`${path}/${id}`), orderBy: (key: string) => collection(path, key, max), limit: (count: number) => collection(path, field, count), get: async () => ({ docs: [...firestore.rows.keys()].filter((key) => key.startsWith(`${path}/`) && !key.slice(path.length + 1).includes("/")).map(snapshot).sort((a, b) => String(b.data()?.[field]).localeCompare(String(a.data()?.[field]))).slice(0, max) }) });
+  const ref = (path: string): any => ({ path, id: path.split("/").at(-1), get: async () => snapshot(path), collection: (name: string) => collection(`${path}/${name}`) });
   return { getFirestore: () => ({ doc: ref, runTransaction: async (fn: any) => fn({
     get: async (r: { path: string }) => ({ exists: firestore.rows.has(r.path), data: () => firestore.rows.get(r.path) }),
     create: (r: { path: string }, row: Record<string, unknown>) => { firestore.writes.push(r.path); firestore.rows.set(r.path, row); },
@@ -24,6 +27,15 @@ const store = new LocalShareStore();
 let writes: { ownerUid: string; childId: string; text?: string; uid: string; activityId?: string }[] = [];
 const source: CoParentSource = {
   childExists: async (uid, childId) => uid === "owner" && childId === "child-one",
+  activities: async (uid, childId) => uid === "owner" && childId === "child-one" ? { activity: null, choices: [] } : null,
+  chooseActivity: async (uid, childId, practiceId) => {
+    if (uid !== "owner" || childId !== "child-one") throw new Error("access_ended");
+    writes.push({ ownerUid: uid, childId, uid, activityId: practiceId });
+  },
+  completeOwnedActivity: async (uid, childId, activityId) => {
+    if (uid !== "owner" || childId !== "child-one") throw new Error("access_ended");
+    writes.push({ ownerUid: uid, childId, uid, activityId });
+  },
   load: async (g) => ({ childId: g.childId, childName: "Invented child", ownerEmail: g.ownerEmail, activity: { id: "today.child-one.2026-10-08", text: "Take turns building a tower", acceptedAt: new Date().toISOString(), completedAt: null }, moments: [] }),
   addMoment: async (g, actor, text) => {
     if (!coParentAuthorized((await store.get(g.id))!, actor)) throw new Error("access_ended");
@@ -52,6 +64,17 @@ const invite = () => call("invitations", owner, { childId: "child-one", childNam
 
 describe("free co-parent joins the existing child", () => {
   let grant: ShareGrant;
+  it("only the real owner chooses an activity; reading and previewing create no row", async () => {
+    writes = [];
+    expect((await call("children/child-one/activity?language=he", owner)).status).toBe(200);
+    expect(writes).toEqual([]);
+    const body = { practiceId: "pr-cdc-36m-1", requestId: "chosen-1", language: "he", ownerUid: "attacker" };
+    expect((await call("children/child-one/activity", recipient, body)).status).toBe(403);
+    expect((await call("children/not-owned/activity", owner, body)).status).toBe(403);
+    expect((await call("children/child-one/activity", owner, body)).status).toBe(200);
+    expect(writes).toEqual([{ ownerUid: "owner", childId: "child-one", uid: "owner", activityId: "pr-cdc-36m-1" }]);
+    expect((await call("children/child-one/activity/complete", recipient, { activityId: "chosen-1" })).status).toBe(403);
+  });
   it("creates a free explicit invitation, scoped to the owner's real child", async () => {
     const response = await invite(); expect(response.status).toBe(200);
     grant = await response.json() as ShareGrant;
@@ -106,9 +129,63 @@ describe("production Firestore write boundary", () => {
   const seed = (grant: ShareGrant) => {
     firestore.rows.clear(); firestore.writes.length = 0;
     firestore.rows.set(`shares/${grant.id}`, grant as unknown as Record<string, unknown>);
-    firestore.rows.set("users/owner/children/child-one", { name: "Invented child" });
-    firestore.rows.set("users/owner/children/child-one/actionLoops/action-one", { recommendation: "Take turns", status: "accepted", source: "practice" });
+    firestore.rows.set("users/owner/children/child-one", { name: "Invented child", age: 3, ageMonths: 36, ageMonthsAsOf: new Date().toISOString().slice(0, 10), coParentActivityId: "action-one" });
+    firestore.rows.set("users/owner/children/child-one/actionLoops/action-one", { recommendation: "Take turns", status: "accepted", source: "practice", sharedWithCoParent: true, selectedByUid: owner.uid });
   };
+  it("shares the exact explicit authored choice before completion in the same child tree, never arbitrary newer history", async () => {
+    const grant = accepted(); seed(grant);
+    const old = firestore.rows.get("users/owner/children/child-one/actionLoops/action-one");
+    const options = await source.activities(owner.uid, "child-one", "he");
+    expect(options!.choices.length).toBeGreaterThan(0);
+    expect(firestore.writes).toEqual([]);
+    const choice = options!.choices[0];
+    await source.chooseActivity(owner.uid, "child-one", choice.id, "choice-1", "he");
+    const id = "co-parent-practice-choice-1";
+    expect(firestore.rows.get("users/owner/children/child-one")?.coParentActivityId).toBe(id);
+    expect(firestore.rows.get(`users/owner/children/child-one/actionLoops/${id}`)).toMatchObject({ id, status: "accepted", source: "practice", selectedByUid: owner.uid, practiceId: choice.id, practiceDo: choice.do, practiceSay: choice.say, sharedWithCoParent: true });
+    expect(firestore.rows.get("users/owner/children/child-one/actionLoops/action-one")).toEqual(old);
+    firestore.rows.set("users/owner/children/child-one/actionLoops/unrelated-newest", { recommendation: "Must not surface", acceptedAt: "2099-01-01", status: "completed" });
+    expect((await source.load(grant, recipient.uid))?.activity).toMatchObject({ id, do: choice.do, say: choice.say, completedAt: null, selectedByUid: owner.uid });
+    await expect(source.completeActivity(grant, recipient, "action-one")).rejects.toThrow("activity_changed");
+    await expect(source.completeActivity(grant, recipient, "unrelated-newest")).rejects.toThrow("activity_changed");
+    await source.completeActivity(grant, recipient, id);
+    expect((await source.activities(owner.uid, "child-one", "he"))?.activity?.completedAt).toBeTruthy();
+    expect((await source.load(grant, recipient.uid))?.activity?.completedAt).toBeTruthy();
+  });
+  it("retries never reopen a completed activity or move the shared pointer back from a later choice", async () => {
+    const grant = accepted(); seed(grant);
+    const choices = (await source.activities(owner.uid, "child-one", "en"))!.choices;
+    await source.chooseActivity(owner.uid, "child-one", choices[0].id, "first", "en");
+    await source.completeOwnedActivity(owner.uid, "child-one", "co-parent-practice-first");
+    const first = { ...firestore.rows.get("users/owner/children/child-one/actionLoops/co-parent-practice-first") };
+    await source.chooseActivity(owner.uid, "child-one", choices[1].id, "second", "en");
+    const before = firestore.writes.length;
+    await source.chooseActivity(owner.uid, "child-one", choices[0].id, "first", "en");
+    expect(firestore.writes).toHaveLength(before);
+    expect(firestore.rows.get("users/owner/children/child-one")?.coParentActivityId).toBe("co-parent-practice-second");
+    expect(firestore.rows.get("users/owner/children/child-one/actionLoops/co-parent-practice-first")).toEqual(first);
+    expect(first.completedByUid).toBe(owner.uid);
+    expect(first.outcome).toBeUndefined();
+  });
+  it("validates the real child's age and authored ID server-side, and never creates an erased or another owner's child", async () => {
+    const grant = accepted(); seed(grant);
+    await expect(source.chooseActivity(owner.uid, "child-one", "invented-ai-action", "one", "en")).rejects.toThrow("invalid_activity");
+    const future = PRACTICES.find((p) => p.ageMonths === 60)!;
+    await expect(source.chooseActivity(owner.uid, "child-one", future.id, "two", "en")).rejects.toThrow("invalid_activity");
+    await expect(source.chooseActivity("other-owner", "child-one", future.id, "three", "en")).rejects.toThrow("access_ended");
+    expect(coParentPractices({ age: "" } as any)).toEqual([]);
+    const known = coParentPractices({ age: 3, ageMonths: 36, ageMonthsAsOf: new Date().toISOString().slice(0, 10) });
+    expect(known.every((p) => [30, 36].includes(p.ageMonths))).toBe(true);
+    firestore.rows.delete("users/owner/children/child-one");
+    await expect(source.chooseActivity(owner.uid, "child-one", known[0].id, "four", "en")).rejects.toThrow("access_ended");
+    expect(firestore.writes).toEqual([]);
+  });
+  it("an existing history without a shared pointer never becomes a shared chosen activity", async () => {
+    const grant = accepted(); seed(grant);
+    firestore.rows.set("users/owner/children/child-one", { name: "Invented child", age: 3 });
+    expect((await source.load(grant, recipient.uid))?.activity).toBeNull();
+    await expect(source.completeActivity(grant, recipient, "action-one")).rejects.toThrow("activity_changed");
+  });
   it("a collaborative invitation cannot bypass UID acceptance through the legacy email-only packet route", async () => {
     const grant = accepted(); await store.create(grant);
     const load = vi.fn();

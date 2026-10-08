@@ -41,6 +41,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
+import { createHash } from "node:crypto";
 import { loadConfig } from "../src/config/env.js";
 import { createModelProvider, VertexGeminiProvider, routeDecisionFor, toAnthropicVertexModelId, type ModelRoute } from "../src/ai/modelRouter.js";
 import { ClaudeVertexProvider } from "../src/ai/claudeVertexProvider.js";
@@ -62,6 +63,9 @@ import { appendResultsRow, isStaticSuite, judgeVisibleInput, runSuiteWithDeps, t
 import { changedContentKeys } from "../src/eval/contentHashes.js";
 import type { EvalScenario, EvalSuite } from "../src/eval/acceptance.js";
 import { handoffWireBody, planWireBody, runnerInputError, todaysFocusWireBody } from "../src/eval/runnerInput.js";
+import { syntheticDocumentDataUrl } from "./evalDocumentFixture.mjs";
+import { PROGRAM_IMPORT_PROMPT } from "../src/ai/programImportPrompt.js";
+import { PROGRAM_IMPORT_VERSION } from "../src/lib/programImport.js";
 
 const REPO_ROOT = path.resolve(process.cwd(), "..");
 
@@ -174,6 +178,18 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
   if (inputError) throw new Error(`scenario "${scenario.id}" ${inputError}`);
   // A scenario never inherits another scenario's persisted synthetic memories.
   const scenarioProfile = syntheticProfileFor(suite, scenario);
+
+  if (route === "/api/vision") {
+    // The model gets bytes only. sourceLines and golden expectations are
+    // visible to the judge, never leaked into the OCR request or prompt.
+    const dataUrl = await syntheticDocumentDataUrl(input, locale);
+    console.log(`[eval:vision] ${scenario.id} (${input.documentKind}, ${locale})`);
+    const res = await fetch(`${baseUrl}/api/vision`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ childId: scenarioProfile.id, childProfile: scenarioProfile, mode: "recommendations", image: { dataUrl }, language: locale }),
+    });
+    return `HTTP ${res.status}\n${await res.text()}`;
+  }
 
   // B-CAREPRO-12 residue (school-handoff-v1): the School Brief route. The body
   // is what the client posts (logs with day/timestamp, milestones, language,
@@ -448,9 +464,12 @@ export const runLiveSuite = async (suiteName: string, opts: { ids?: string[] } =
       runScenario: buildScenarioRunner(suite, baseUrl),
       judge: buildJudgeCall(suite),
       resolvedRouteModel,
-      promptVersions: Object.fromEntries(
+      promptVersions: { ...Object.fromEntries(
         Object.entries(PROMPT_VERSIONS).map(([key, entry]) => [key, entry.version]),
-      ),
+      ), ...(suite.suite === "home-program-import" ? {
+        home_program_import: PROGRAM_IMPORT_VERSION,
+        home_program_import_sha256: createHash("sha256").update(PROGRAM_IMPORT_PROMPT).digest("hex"),
+      } : {}) },
       ...(subset ? { subset } : {}),
     });
     appendResultsRow(path.join(REPO_ROOT, "evals", `${suiteName}.results.jsonl`), result.row);

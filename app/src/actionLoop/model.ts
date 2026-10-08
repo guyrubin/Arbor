@@ -80,6 +80,11 @@ export interface ActionLoopEntry {
    *  names the practice, the milestone it serves and its parent shelf. The
    *  dose is logged, never scored; tonight's question sets `outcome`. */
   practiceId?: string;
+  /** Explicit owner-selected shared activity; snapshot preserves the authored wording. */
+  sharedWithCoParent?: true;
+  selectedByUid?: string;
+  practiceDo?: string;
+  practiceSay?: string;
   /** B-NEXT-18: exact authored version the parent explicitly recorded. */
   practiceAdaptation?: import("../content/practiceAdaptations").PracticeAdaptationRecord;
   milestoneId?: string;
