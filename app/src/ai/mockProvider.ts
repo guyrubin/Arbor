@@ -29,6 +29,8 @@ import type {
   RouteDecision,
   StreamTextOptions,
 } from "./modelRouter.js";
+import { PRACTICES } from "../content/practices.js";
+import { resolveHebrewSlash } from "../lib/hebrewSlashGender.js";
 
 export const MOCK_MODEL_ID = "mock-fixtures";
 
@@ -267,6 +269,50 @@ export const mockFixtureIdFor = (schema: unknown): string | null => {
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
+/**
+ * P7-DESIGN fix r1 (sandbox mock): the line Today's focus must stay coherent
+ * with. routes/api.ts fails a focus closed (422) when the step shares no
+ * content word with the CHOSEN practice (journalContext stepFitsPractice) —
+ * and the chooser's pick moves with the date, so a fixed fixture ("transitions
+ * after play") 422'd whenever the pick was, say, a sleep practice. The prompt
+ * names that practice: the FIRST first-tier candidate's do-line (the chooser's
+ * pick when the AI picks nothing — the mock never picks), or the practice the
+ * parent already set ("Today's practice: '…'"). null = no journal block.
+ */
+export function focusAnchorLine(prompt: string, lang: Lang = "en"): string | null {
+  // The prompt lists the candidates' catalogue lines in English; a Hebrew
+  // session echoes the SAME practice's Hebrew line (the coherence material
+  // holds both), looked up by id — never a Latin sentence on a Hebrew Today.
+  const candidate = /^- ([^\s·]+) · [a-z]+ · do: ("(?:[^"\\]|\\.)*")/m.exec(prompt);
+  if (candidate) {
+    const p = PRACTICES.find((x) => x.id === candidate[1]);
+    if (lang === "he" && p?.do.he) return neutralHe(p.do.he);
+    try {
+      const line = String(JSON.parse(candidate[2]) ?? "").trim();
+      if (line) return line;
+    } catch {
+      /* fall through */
+    }
+  }
+  const set = /^Today's practice: '(.+)' \([a-z ]+\)\. /m.exec(prompt);
+  if (!set) return null;
+  const say = set[1].trim();
+  if (lang === "he") {
+    const p = PRACTICES.find((x) => x.say.en.replace(/\s+/g, " ").trim() === say);
+    if (p?.say.he) return neutralHe(p.say.he);
+  }
+  return say || null;
+}
+
+/** The catalogue's Hebrew "a/b" gender pairs resolved the app's own way (no child known → the base form). */
+const neutralHe = (line: string): string => resolveHebrewSlash(line, null).trim();
+
+/** The first sentence of a practice line — what the mock's tryToday echoes (its content words ARE the practice's). */
+const firstSentenceOf = (line: string): string => {
+  const m = /^(.+?[.!?])(\s|$)/u.exec(line);
+  return (m ? m[1] : line).slice(0, 300);
+};
+
 /** The deterministic answer for one structured call. */
 export function mockJsonFor(options: Pick<GenerateJsonOptions, "prompt" | "schema">): Json {
   const lang = mockLanguageOf(options.prompt ?? "");
@@ -274,8 +320,24 @@ export function mockJsonFor(options: Pick<GenerateJsonOptions, "prompt" | "schem
   const id = mockFixtureIdFor(options.schema);
   const curated = CURATED.find((c) => c.id === id);
   if (!curated || !base || typeof base !== "object" || Array.isArray(base)) return base;
-  return { ...(base as Record<string, Json>), ...clone(curated.overlay[lang]) };
+  const out: Record<string, Json> = { ...(base as Record<string, Json>), ...clone(curated.overlay[lang]) };
+  if (id === "todays_focus") {
+    // Coherent with whatever the chooser picked today: the step IS the chosen
+    // practice's own first sentence (so it shares its content words in EN and
+    // HE); the focus is a neutral lead; sayThis stays the fixture's ONE sentence.
+    const anchor = focusAnchorLine(options.prompt ?? "", lang);
+    if (anchor) {
+      out.focus = FOCUS_LEAD[lang];
+      out.tryToday = firstSentenceOf(anchor);
+    }
+  }
+  return out;
 }
+
+const FOCUS_LEAD: Record<Lang, string> = {
+  en: "One small step today",
+  he: "צעד קטן אחד היום",
+};
 
 const SPOKEN: Record<Lang, string[]> = {
   en: ["That sounds like a hard moment. ", "Try naming the feeling in one short sentence, ", "then offer two choices for what comes next."],

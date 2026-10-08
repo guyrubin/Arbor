@@ -161,6 +161,8 @@ describe("/api/todays-focus output screen (AIR-5 firewall condition 1)", () => {
     expect(status).toBe(422);
     expect(JSON.stringify(json)).not.toContain("autism");
     expect(json.text).toBeUndefined();
+    // P7-DESIGN fix r1 (sandbox mock): the 422 names its gate (the client ignores it; the sweep reads it)
+    expect(json.blocked).toBe("output");
   });
 
   it("a flagged draft is never cached — the next call re-generates", async () => {
@@ -204,7 +206,7 @@ describe("/api/todays-focus daily cache (AIR-5 firewall condition 4)", () => {
 
 describe("createApp wiring (AIR-5/AIR-6 metering, source-pinned)", () => {
   const createAppSrc = fs.readFileSync(path.resolve(__dirname, "../server/createApp.ts"), "utf8");
-  const quotaBlock = /app\.use\(\s*\[[\s\S]*?\],\s*createAiQuota\(counters\)\s*\);/.exec(createAppSrc)?.[0] ?? "";
+  const quotaBlock = /app\.use\(\s*\[[\s\S]*?\],\s*createAiQuota\(counters(?:, \{ exempt: aiHourlyExempt\(config\) \})?\)\s*\);/.exec(createAppSrc)?.[0] ?? "";
 
   it("/api/todays-focus sits INSIDE the hourly AI quota", () => {
     expect(quotaBlock).toContain('"/api/todays-focus"');
@@ -494,6 +496,7 @@ describe("B-LOOP-13 round 3 · graded difficulty → 422 (the pure chooser's car
       draft = d;
       const { status, json } = await postFocus({ childProfile: { id: `c-grade-${i}`, name: "T", age: 4 }, signals: { count: 2 }, language: i === 1 ? "he" : "en" });
       expect(status, JSON.stringify(d)).toBe(422);
+      expect(json.blocked, JSON.stringify(d)).toBe("graded");
       expect(JSON.stringify(json)).not.toMatch(/slight|קושי|mild/);
     }
     draft = { focus: "קשה לו להירדם, אז הערב נתחיל לאט.", tryToday: "נסו דקה שקטה לפני המיטה.", sayThis: "בוא נשב רגע בשקט ביחד לפני המיטה." };
@@ -514,6 +517,9 @@ describe("B-LOOP-13 round 4 · coherence + gendered why", () => {
     draft = { focus: "Today, let's pay attention to how Noa is using words.", tryToday: "Offer two words when Noa reaches for a toy.", sayThis: "Big ball, red ball.", practiceId: "pr-sleep-08" };
     const bad = await postFocus({ childProfile: { id: "c-coh-bad", name: "Noa", age: 2 }, signals: { count: 2 }, journal });
     expect(bad.status).toBe(422);
+    expect(bad.json.blocked).toBe("coherence");
+    // the three 422 bodies differ ONLY by the gate tag (same error copy, no model text)
+    expect(Object.keys(bad.json).sort()).toEqual(["blocked", "error"]);
     draft = { focus: "Bedtime is today's small thing.", tryToday: "Draw the bedtime steps together on one page.", sayThis: "What comes after pyjamas? Show me.", practiceId: "pr-sleep-08" };
     expect((await postFocus({ childProfile: { id: "c-coh-ok", name: "Noa", age: 2 }, signals: { count: 2 }, journal })).status).toBe(200);
     draft = { focus: "אפשר לשתף את נועה במטלות קטנות בבית.", tryToday: "כמו לאסוף צעצועים בסלון.", sayThis: "בואי נאסוף יחד את הצעצועים.", practiceId: "pr-sleep-08" };

@@ -268,3 +268,49 @@ describe("TTS character meter (AIR-6)", () => {
     expect(Number(res.headers["X-TTS-Quota-Remaining"])).toBe(10000 - 4000 - 2);
   });
 });
+
+/* P7-DESIGN fix r1 (sandbox mock): the hourly AI cap is skipped ONLY under
+   MODEL_PROVIDER=mock outside prod (fixtures cost nothing; the rendered sweep
+   was 429'd by mock calls). Every real provider keeps the cap. */
+describe("P7-DESIGN fix r1 · the hourly AI cap and the mock provider", () => {
+  it("aiHourlyExempt: mock outside prod only — never vertex, never gemini_dev, never prod", async () => {
+    vi.resetModules();
+    const { aiHourlyExempt } = await import("./aiQuota.js");
+    expect(aiHourlyExempt({ modelProvider: "mock", arborEnv: "dev" })).toBe(true);
+    expect(aiHourlyExempt({ modelProvider: "mock", arborEnv: "stage" })).toBe(true);
+    expect(aiHourlyExempt({ modelProvider: "mock", arborEnv: "prod" })).toBe(false);
+    expect(aiHourlyExempt({ modelProvider: "vertex", arborEnv: "dev" })).toBe(false);
+    expect(aiHourlyExempt({ modelProvider: "vertex", arborEnv: "prod" })).toBe(false);
+    expect(aiHourlyExempt({ modelProvider: "gemini_dev", arborEnv: "dev" })).toBe(false);
+  });
+
+  it("vertex: the limiter still applies (the 3rd call over a budget of 2 is a 429); mock: exempt, nothing counted", async () => {
+    const createAiQuota = await loadAiQuota("2");
+    const { aiHourlyExempt } = await import("./aiQuota.js");
+    const vertex = createAiQuota(new MemoryCounterStore(), { exempt: aiHourlyExempt({ modelProvider: "vertex", arborEnv: "dev" }) });
+    expect((await callQuota(vertex, "u-v")).passed).toBe(true);
+    expect((await callQuota(vertex, "u-v")).passed).toBe(true);
+    const blocked = await callQuota(vertex, "u-v");
+    expect(blocked.passed).toBe(false);
+    expect(blocked.res.statusCode).toBe(429);
+    const counters = new MemoryCounterStore();
+    const mock = createAiQuota(counters, { exempt: aiHourlyExempt({ modelProvider: "mock", arborEnv: "dev" }) });
+    for (let i = 0; i < 6; i++) {
+      const r = await callQuota(mock, "u-m");
+      expect(r.passed, `mock call ${i + 1}`).toBe(true);
+      expect(r.res.statusCode).toBe(0);
+    }
+    // the default (no options) is the enforced cap
+    const plain = createAiQuota(new MemoryCounterStore());
+    await callQuota(plain, "u-p");
+    await callQuota(plain, "u-p");
+    expect((await callQuota(plain, "u-p")).res.statusCode).toBe(429);
+  });
+
+  it("source: createApp passes the exemption from config to BOTH hourly gates (aiQuota + the coach gate)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("./createApp.ts", import.meta.url), "utf8");
+    expect(src).toContain("createAiQuota(counters, { exempt: aiHourlyExempt(config) })");
+    expect(src).toContain("createCoachGate(counters, entitlementStore, { exemptHourly: aiHourlyExempt(config) })");
+  });
+});

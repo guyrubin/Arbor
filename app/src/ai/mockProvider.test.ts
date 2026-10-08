@@ -27,7 +27,10 @@ import { createWaitlistStore } from "../server/waitlist.js";
 import { buildCapabilityRegistry } from "../server/createApp.js";
 import { createModelProvider, routeDecisionFor, type ModelProvider } from "./modelRouter.js";
 import { createCoachResponseGeminiSchema, coachResponseZodSchema } from "../contracts/coach.js";
-import { MockModelProvider, mockFixtureIdFor, mockJsonFor } from "./mockProvider.js";
+import { MockModelProvider, focusAnchorLine, mockFixtureIdFor, mockJsonFor } from "./mockProvider.js";
+import { stepFitsPractice } from "./journalContext.js";
+import { practiceMaterial } from "../server/companionContext.js";
+import { PRACTICES } from "../content/practices.js";
 import type { ArborConfig } from "../config/env.js";
 
 const config: ArborConfig = { ...createTestConfig(), modelProvider: "mock" };
@@ -157,6 +160,48 @@ describe("B-INF-04 · a Today / Ask / Kid pass answers every AI route with zero 
     expect(HEBREW.test(JSON.parse(digest.text).summary)).toBe(true);
     const capture = await post("/extract-log", { message: "הוא זרק את הכוס כשכיביתי את הטאבלט.", childProfile: CHILD, language: "he" });
     expect(HEBREW.test(JSON.parse(capture.text).trigger)).toBe(true);
+  });
+
+  /* P7-DESIGN fix r1 (sandbox mock): Today HE logged a 422 whenever the
+     chooser's pick was a sleep practice — the fixed fixture ("transitions
+     after play") failed the route's coherence gate (stepFitsPractice). The
+     focus now echoes the FIRST candidate's do-line, so it is coherent with
+     whatever the date picks, in EN and HE; sayThis stays ONE sentence. */
+  it("todays-focus stays coherent with the chooser's pick (a sleep practice): 200 in EN + HE, the step shares the practice's words", async () => {
+    const journal = { candidatePracticeIds: ["pr-sleep-08", "pr-cdc-24m-4"], shelfCoverage: { sleep: 0, words: 3, food: 2, feelings: 2, play: 2, moving: 2, hands: 2, school: 2, family: 2 } };
+    for (const language of ["en", "he"] as const) {
+      const before = outbound.length;
+      const { status, text } = await post("/todays-focus", { childProfile: { ...CHILD, id: `c-mock-coh-${language}`, age: 2 }, signals: { count: 2 }, journal, language });
+      expect(status, text.slice(0, 300)).toBe(200);
+      const json = JSON.parse(text);
+      expect(stepFitsPractice(`${json.focus ?? ""} ${json.tryToday ?? ""}`, practiceMaterial("pr-sleep-08")), text.slice(0, 300)).toBe(true);
+      if (language === "he") expect(HEBREW.test(json.tryToday)).toBe(true);
+      expect(outbound.slice(before)).toEqual([]);
+    }
+    // NEGATIVE CONTROL (the residue reproduced): the old fixed fixture fails the same gate on sleep picks, EN and HE
+    const sleepIds = PRACTICES.filter((p) => p.shelf === "sleep").map((p) => p.id);
+    expect(sleepIds.some((id) => !stepFitsPractice("Transitions after play Give a two-minute heads-up before the next switch.", practiceMaterial(id)))).toBe(true);
+    expect(sleepIds.some((id) => !stepFitsPractice("מעברים אחרי משחק לתת התראה של שתי דקות לפני המעבר הבא.", practiceMaterial(id)))).toBe(true);
+    // ...and the anchored mock passes it for EVERY sleep practice, EN + HE
+    for (const id of sleepIds) {
+      for (const lang of ["en", "he"] as const) {
+        const p = PRACTICES.find((x) => x.id === id)!;
+        const prompt = `${lang === "he" ? "עברית\n" : ""}- ${id} · sleep · do: ${JSON.stringify(p.do.en)} · say: ${JSON.stringify(p.say.en)}`;
+        const out = mockJsonFor({ prompt, schema: { type: "OBJECT", required: ["focus", "tryToday", "sayThis"], properties: { focus: { type: "STRING" }, tryToday: { type: "STRING" }, sayThis: { type: "STRING" } } } }) as Record<string, string>;
+        expect(stepFitsPractice(`${out.focus} ${out.tryToday}`, practiceMaterial(id)), `${lang} ${id}: ${out.tryToday}`).toBe(true);
+        if (lang === "he") expect(HEBREW.test(out.tryToday), id).toBe(true);
+      }
+    }
+  });
+
+  it("focusAnchorLine reads the FIRST candidate's do-line, else the set practice's say; nothing without a journal", () => {
+    const block = ["x", `- pr-a · sleep · do: ${JSON.stringify('Draw the "bedtime" steps together.')} · say: "s"`, '- pr-b · words · do: "Other." · say: "t"'].join("\n");
+    expect(focusAnchorLine(block)).toBe('Draw the "bedtime" steps together.');
+    expect(focusAnchorLine("Today's practice: 'Same bedtime as every night.' (done). It is what the parent is already trying today")).toBe("Same bedtime as every night.");
+    expect(focusAnchorLine("no journal here")).toBeNull();
+    const plain = mockJsonFor({ prompt: "p", schema: { type: "OBJECT", required: ["focus", "tryToday", "sayThis"], properties: { focus: { type: "STRING" }, tryToday: { type: "STRING" }, sayThis: { type: "STRING" } } } }) as Record<string, string>;
+    expect(plain.focus).toBe("Transitions after play"); // no journal block → the curated fixture, unchanged
+    expect(plain.sayThis.split(/[.!?](\s|$)/).filter((x) => x && x.trim()).length).toBe(1);
   });
 
   it("the whole pass made zero outbound calls", () => {

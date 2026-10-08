@@ -76,7 +76,7 @@ describe("VC-7 — gate wiring stays fail-closed", () => {
   });
 
   it("/api/live/token AND the upcoming /api/live/turn sit on the createAiQuota allow-list", () => {
-    const quotaBlock = /app\.use\(\s*\[[\s\S]*?\],\s*createAiQuota\(counters\)\s*\);/.exec(createApp)?.[0] ?? "";
+    const quotaBlock = /app\.use\(\s*\[[\s\S]*?\],\s*createAiQuota\(counters(?:, \{ exempt: aiHourlyExempt\(config\) \})?\)\s*\);/.exec(createApp)?.[0] ?? "";
     expect(quotaBlock).toContain('"/api/live/token"');
     expect(quotaBlock).toContain('"/api/live/turn"');
   });

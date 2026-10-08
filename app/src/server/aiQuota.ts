@@ -47,7 +47,22 @@ const rejectOverHourlyQuota = (res: any, count: number, resetAt: number): boolea
   return false;
 };
 
-export const createAiQuota = (counters: UsageCounterStore): RequestHandler => async (req, res, next) => {
+/**
+ * P7-DESIGN fix r1 (sandbox mock): under MODEL_PROVIDER=mock no call leaves
+ * the box (curated fixtures, zero model cost), so the per-user HOURLY AI cap
+ * has nothing to protect — and it 429'd the rendered sweep (39 rate-limited
+ * cells were mock calls). Exempt ONLY then; never in production
+ * (config/env.ts already refuses mock when ARBOR_ENV=prod — checked again
+ * here). Every other provider (vertex, gemini_dev) keeps the cap.
+ */
+export const aiHourlyExempt = (config: { modelProvider: string; arborEnv: string }): boolean =>
+  config.modelProvider === "mock" && config.arborEnv !== "prod";
+
+export const createAiQuota = (counters: UsageCounterStore, opts: { exempt?: boolean } = {}): RequestHandler => async (req, res, next) => {
+  if (opts.exempt) {
+    next();
+    return;
+  }
   const startedAt = Date.now();
   const key = quotaKeyOf(req);
   const { count, resetAt } = await counters.increment("ai_hourly", key, WINDOW_MS, { limit: LIMIT });
@@ -68,18 +83,20 @@ export const createAiQuota = (counters: UsageCounterStore): RequestHandler => as
 export const createCoachGate = (
   counters: UsageCounterStore,
   entitlementStore: EntitlementStore,
+  opts: { exemptHourly?: boolean } = {},
 ): RequestHandler => async (req, res, next) => {
   const startedAt = Date.now();
   const key = quotaKeyOf(req);
   const actor = { uid: (req as any).user?.uid || "local-sandbox", email: ((req as any).user?.email as string | null) || null };
 
   const [quota, entitlement] = await Promise.all([
-    counters.increment("ai_hourly", key, WINDOW_MS, { limit: LIMIT }),
+    // fix r1: the hourly AI cap is skipped under the mock provider (aiHourlyExempt); the coach meter below still applies
+    opts.exemptHourly ? Promise.resolve(null) : counters.increment("ai_hourly", key, WINDOW_MS, { limit: LIMIT }),
     resolveEntitlement(entitlementStore, actor),
   ]);
   (req as any).entitlement = entitlement;
 
-  if (rejectOverHourlyQuota(res, quota.count, quota.resetAt)) {
+  if (quota && rejectOverHourlyQuota(res, quota.count, quota.resetAt)) {
     logGateDuration(req, "coach_gate", startedAt);
     return;
   }

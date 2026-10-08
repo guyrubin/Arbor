@@ -15,7 +15,7 @@ import { LocalConsentStore, FirestoreConsentStore } from "../sharing/consent.js"
 import { loadFramework } from "../services/framework.js";
 import { createApiRouter } from "../routes/api.js";
 import { createAuthMiddleware } from "./authMiddleware.js";
-import { createAiQuota, createCoachGate, createTtsQuota } from "./aiQuota.js";
+import { aiHourlyExempt, createAiQuota, createCoachGate, createTtsQuota } from "./aiQuota.js";
 import { createImageQuota } from "./imageQuota.js";
 import { createCounterStore } from "./quotaStore.js";
 import { createEntitlementStore, requirePlusFeature } from "./entitlements.js";
@@ -233,7 +233,7 @@ export const createApp = (config: ArborConfig) => {
       // same exclusion from the coach meter as todays-focus.
       "/api/explain",
     ],
-    createAiQuota(counters)
+    createAiQuota(counters, { exempt: aiHourlyExempt(config) })
   );
   // AIR-6: /api/tts left the model-call quota — spoken sentences are not model
   // calls and must never 429 a voice conversation mid-session. It gets its own
@@ -254,7 +254,7 @@ export const createApp = (config: ArborConfig) => {
   // resolved concurrently, coach meter after) instead of the serial
   // aiQuota→coachMeter pair — same headers, same 429/402 payloads, fewer
   // sequential Firestore round-trips before the first model token.
-  app.use(["/api/chat", "/api/council"], createCoachGate(counters, entitlementStore));
+  app.use(["/api/chat", "/api/council"], createCoachGate(counters, entitlementStore, { exemptHourly: aiHourlyExempt(config) }));
   app.use("/api/generate-handoff", requirePlusFeature(entitlementStore, "professionalReports", "Professional reports"));
   app.use("/api/generate-plan", requirePlusFeature(entitlementStore, "advancedPlans", "Advanced growth plans"));
   app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, aiCapabilityRegistry }));

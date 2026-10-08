@@ -2219,7 +2219,7 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
           category: outputVerdict.category,
           reason: outputVerdict.reason,
         });
-        res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later." });
+        res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later.", blocked: "output" });
         return;
       }
       // B-LOOP-13 round 3: a GRADED difficulty about the child ("slight
@@ -2228,7 +2228,7 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
       // practice's own say-line, no AI text). Nothing is cached.
       if (gradesTheChild([focus, tryToday, sayThisRaw].filter(Boolean).join(" "))) {
         logger.warn("Todays Focus output blocked: graded difficulty", { requestId: requestIdOf(req) });
-        res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later." });
+        res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later.", blocked: "graded" });
         return;
       }
       // Round 4 (loop-thin-shelf-sleep-en: the pick was sleep, the step was
@@ -2237,7 +2237,7 @@ Finalized parent transcript: ${privacy.redact(transcript.trim())}${REDACTION_DIR
       // otherwise the text and the pick disagree → the chooser's card.
       if (chosenPracticeId && !stepFitsPractice(`${focus} ${tryToday}`, practiceMaterial(chosenPracticeId))) {
         logger.warn("Todays Focus output blocked: step does not match the chosen practice", { requestId: requestIdOf(req) });
-        res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later." });
+        res.status(422).json({ error: "Arbor couldn't draft a focus for today. Please try again later.", blocked: "coherence" });
         return;
       }
 
