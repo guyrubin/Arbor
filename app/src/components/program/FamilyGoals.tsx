@@ -44,7 +44,7 @@ const FIELD: React.CSSProperties = { border: "1px solid var(--arbor-rule-strong)
 const QUIET: React.CSSProperties = { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" };
 const SAVE: React.CSSProperties = { background: "var(--arbor-ink)", color: "var(--arbor-on-accent)" };
 
-function GoalForm({
+export function GoalForm({
   initialText,
   initialScale,
   onSubmit,

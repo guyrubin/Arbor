@@ -10,6 +10,9 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { fmtDay } from "../../lib/formatDate";
 import { Icon } from "../ui/Icon";
 import { guidedTierOn } from "../../lib/entitlementsGuided";
+import HomeProgramEntry, { HomeProgramDays, homeProfessionForAppointment, nextVisitDayFor, type EntryWrites } from "../program/HomeProgramEntry";
+import { activeHomeEnrolments, toggleExerciseDay, type HomeProgramEnrolment } from "../../content/programs/homeProgram";
+import type { FamilyGoal } from "../../lib/goals";
 import {
   appointmentStatus,
   consultAudienceForProfession,
@@ -61,6 +64,10 @@ export default function ConsultTab() {
   const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments");
   const followUpsCol = useChildCollection<AppointmentFollowUp>(childProfile.id, "apptFollowUps");
   const nowMs = Date.now();
+  // B-PROG-09: the home program the professional gave (programs, home-* rows) and the goals the family accepted
+  const programsCol = useChildCollection<HomeProgramEnrolment>(childProfile.id, "programs");
+  const familyGoalsCol = useChildCollection<FamilyGoal>(childProfile.id, "familyGoals");
+  const [homeOpen, setHomeOpen] = useState(false);
   const visit = useMemo(() => nextPrepareVisit(apptsCol.items, nowMs), [apptsCol.items, nowMs]);
   const awaiting = useMemo(() => visitAwaitingOutcome(apptsCol.items, followUpsCol.items, nowMs), [apptsCol.items, followUpsCol.items, nowMs]);
   const anchorAudience = visit?.profession ? consultAudienceForProfession(visit.profession) : undefined;
@@ -86,6 +93,23 @@ export default function ConsultTab() {
     setOutcome("");
     toast(t("elev.learnCare.appt.followUp.saved"), "success");
   };
+
+  // B-PROG-09 (assignment in): the ONLY place the home program is written —
+  // on the parent's confirm, after every proposed goal was accepted in their
+  // words or left out. The exercises, in the parent's words, are the visit's
+  // follow-up ("What did they suggest?"), which closes the booking.
+  const saveHomeProgram = (w: Extract<EntryWrites, { ok: true }>) => {
+    if (!awaiting) return;
+    for (const old of w.superseded) void programsCol.upsert(old);
+    void programsCol.upsert(w.enrolment);
+    for (const goal of w.goals) void familyGoalsCol.upsert(goal);
+    const record = makeFollowUp(awaiting.id, w.enrolment.home.exercises.map((e) => e.text).join(" · "), Date.now());
+    if (record) void followUpsCol.upsert(record);
+    if (appointmentStatus(awaiting) !== "done") void apptsCol.upsert({ ...awaiting, status: "done" });
+    setHomeOpen(false);
+    toast(t("elev.homeProgram.saved"), "success");
+  };
+  const activeHome = activeHomeEnrolments(programsCol.items);
 
   /* Item 11 (IA-02): the surface contract reaches the DOM. TWO routes render
      this one leaf — #/consult (build-share-packet) and #/handoff
@@ -121,6 +145,9 @@ export default function ConsultTab() {
         )}
       </header>
       <div data-module="consult-packet">
+        {activeHome.map((e) => (
+          <HomeProgramDays key={e.id} enrolment={e} onSave={(exerciseId) => void programsCol.upsert(toggleExerciseDay(e, exerciseId))} />
+        ))}
         {awaiting && (
           <section data-testid="consult-visit-outcome" className="mb-5 border-y py-4 flex flex-col gap-2" style={{ borderColor: "var(--arbor-rule)" }}>
             <label htmlFor="consult-visit-outcome-input" className="t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>
@@ -147,6 +174,27 @@ export default function ConsultTab() {
                 <Icon name="check" size={16} /> {t("elev.learnCare.appt.followUp.save")}
               </button>
             </div>
+            {/* B-PROG-09: the second answer — the professional gave a home program */}
+            {!homeOpen ? (
+              <button
+                type="button"
+                data-testid="consult-home-program-choice"
+                onClick={() => setHomeOpen(true)}
+                className="inline-flex items-center gap-1.5 self-start rounded-xl px-4 min-h-11 t-sm font-semibold"
+                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
+              >
+                <Icon name="add" size={16} aria-hidden /> {t("elev.homeProgram.entry.choice")}
+              </button>
+            ) : (
+              <HomeProgramEntry
+                profession={homeProfessionForAppointment(awaiting.profession)}
+                nextVisit={nextVisitDayFor(apptsCol.items, awaiting, nowMs)}
+                rows={programsCol.items}
+                existingGoals={familyGoalsCol.items}
+                onConfirm={saveHomeProgram}
+                onCancel={() => setHomeOpen(false)}
+              />
+            )}
           </section>
         )}
         <AskSpecialist key={`${anchorAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`} primaryMoveStamp={primaryMoveStamp} anchorAudience={anchorAudience} intake={intake} onAudienceChange={setChosen} />
