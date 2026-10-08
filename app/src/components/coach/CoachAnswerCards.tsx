@@ -680,7 +680,7 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{t("coach.alignedWith", { lens: lens! })}</span>
             )}
             {contract.ageBand && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{ageBandChipLabel(contract.ageBand, lang)}</span>}
-            {contract.domains?.slice(0, 3).map((d) => (
+            {Array.from(new Set(contract.domains ?? [])).slice(0, 3).map((d) => (
               <span key={d} className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{domainChipLabel(d, lang)}</span>
             ))}
           </div>

@@ -241,8 +241,16 @@ describe("B-AI-01 — /voice and /live/token context is byte-identical before/af
 
 let focusPrompt = "";
 let chatPrompt = "";
+const perspectivePrompts: string[] = [];
+let unsafePerspective = false;
+let inventedProposal = false;
 const provider = {
   generateJson: async ({ prompt }: { prompt: string }) => {
+    if (prompt.includes("one voice on a parenting council")) {
+      perspectivePrompts.push(prompt);
+      if (unsafePerspective) return { takeaway: "Your child has autism.", suggestion: "Ask for a diagnosis." };
+      return { takeaway: "A small shared moment can make room for connection.", suggestion: "Offer a quiet first minute together." };
+    }
     if (prompt.includes("Today's Focus writer")) {
       focusPrompt = prompt;
       // B-LOOP-13 round 4: the step names the bedtime page, so a pinned sleep practice coheres.
@@ -258,7 +266,7 @@ const provider = {
       todayPlan: ["Name the feeling and offer two choices."], parentScript: "I can see this is hard.", avoid: ["Long lectures."],
       observe: ["When it starts."], escalateIf: ["The pattern intensifies for two weeks."],
       frameRouting: { aim: "a", twoAxes: "b", story: "c", shadow: "d", marriage: "e", shepherd: "f" },
-      memoryProposals: [], handoffNotes: { teacher: "t", professional: "p" }, sourceCardsUsed: [],
+      memoryProposals: inventedProposal ? [{ fact: "A leaving ritual helped this child", source: "council inference", retention: "short" }] : [], handoffNotes: { teacher: "t", professional: "p" }, sourceCardsUsed: [],
     });
   },
   async *streamText() { yield ""; },
@@ -278,8 +286,12 @@ const routeLedger = ledgerOf({
     programs: [{ id: "talk-together.x", programId: "talk-together", startedAt: localDay(Date.now() - 8 * DAY), enrolledAt: "t", currentWeek: 1, status: "active", baseline: { childProxy: null, capturedAt: null }, updatedAt: "t" }],
   },
 });
+routeLedger.loadTopic = async (_uid, childId, topicId) => childId === "child-a" && topicId === "topic-a"
+  ? { id: "topic-a", childId: "child-a", title: "Draw together for enjoyment", intent: "enjoy", status: "active", updatedAt: "2026-10-08T10:00:00Z", observationIds: ["behavior:RAW_NOTE_ID"], notes: "RAW_NOTE_SECRET" }
+  : null;
 let server: Server;
 let base: string;
+let routeMemoryReads = 0;
 
 beforeAll(async () => {
   const config = createTestConfig();
@@ -288,7 +300,7 @@ beforeAll(async () => {
   app.use(express.json());
   app.use((req, _res, next) => { (req as any).user = { uid: "parent-a" }; next(); });
   app.use("/api", createApiRouter({
-    config, modelProvider: provider, memoryStore: storeOf(routeEvents), shareStore: new LocalShareStore(),
+    config, modelProvider: provider, memoryStore: { ...storeOf(routeEvents), listEvents: async () => { routeMemoryReads++; return routeEvents; } }, shareStore: new LocalShareStore(),
     consentStore: new LocalConsentStore(), framework: loadFramework(), entitlementStore,
     referralStore: createReferralStore(config, entitlementStore), counters: createCounterStore(config),
     consultStore: createConsultStore(config), adminMetrics: createAdminMetricsStore(config), waitlistStore: createWaitlistStore(config),
@@ -303,6 +315,68 @@ const post = (route: string, body: unknown) =>
   fetch(`${base}${route}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 describe("B-AI-01 — routes consume CompanionContext", () => {
+  it("the chat route resolves the topic from the server and ignores a forged client title", async () => {
+    const res = await post("/chat", { message: "What can we enjoy together?", childProfile: { id: "child-a", age: 4 }, topicId: "topic-a", familyTopic: { title: "FORGED_CLIENT_TITLE" } });
+    expect(res.status).toBe(200);
+    await res.json();
+    expect(chatPrompt).toContain("Draw together for enjoyment");
+    expect(chatPrompt).not.toMatch(/FORGED_CLIENT_TITLE|RAW_NOTE_SECRET|RAW_NOTE_ID/);
+  });
+
+  it("all council takes and the synthesis use the same permitted topic, accepted actions and program", async () => {
+    perspectivePrompts.length = 0;
+    const res = await post("/council", { message: "Help me think about this question", childProfile: { id: "child-a", age: 4 }, topicId: "topic-a" });
+    expect(res.status).toBe(200);
+    await res.json();
+    expect(perspectivePrompts).toHaveLength(3);
+    for (const prompt of [...perspectivePrompts, chatPrompt]) {
+      expect(prompt).toContain("Draw together for enjoyment");
+      expect(prompt).toContain("Two-minute warning before leaving");
+      expect(prompt).toContain("Bedtime goes better after a warm bath");
+      expect(prompt).toContain("Active program:");
+      expect(prompt).not.toMatch(/RAW_NOTE_SECRET|RAW_NOTE_ID|CHILD_B_FACT/);
+    }
+  });
+
+  it("unsafe individual council takes reach neither the synthesis nor perspective cards", async () => {
+    unsafePerspective = true;
+    try {
+      const res = await post("/council", { message: "Can we draw something together?", childProfile: { id: "child-a", age: 4 }, topicId: "topic-a" });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.council).toEqual([]);
+      expect(chatPrompt).not.toContain("Your child has autism");
+      expect(JSON.stringify(body)).not.toContain("Your child has autism");
+    } finally {
+      unsafePerspective = false;
+    }
+  });
+
+  it("council suggestions cannot become reported outcomes in the contract or memory queue", async () => {
+    inventedProposal = true;
+    try {
+      const res = await post("/council", { message: "What might make leaving easier?", childProfile: { id: "child-a", age: 4 }, topicId: "topic-a" });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.contract.memoryProposals).toEqual([]);
+      expect(body.memoryReviewItems).toEqual([]);
+      expect(JSON.stringify(body)).not.toContain("A leaving ritual helped");
+    } finally { inventedProposal = false; }
+  });
+
+  it.each(["/chat", "/council"])("%s private turns do not load topic, facts, actions or program", async (route) => {
+    perspectivePrompts.length = 0;
+    routeMemoryReads = 0;
+    const res = await post(route, { message: "Can we draw something together?", childProfile: { id: "child-a", age: 4 }, topicId: "topic-a", privateMode: true });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.memoryReviewItems).toEqual([]);
+    expect(routeMemoryReads).toBe(0);
+    for (const prompt of [...perspectivePrompts, chatPrompt]) {
+      expect(prompt).not.toMatch(/Draw together for enjoyment|Two-minute warning before leaving|Bedtime goes better after a warm bath|Active program:/);
+    }
+  });
+
   it("/todays-focus cites the last rated step and its outcome from the SERVER ledger when the client sends none", async () => {
     const res = await post("/todays-focus", { childProfile: { id: "child-a", age: 4 }, signals: { count: 2 }, language: "en" });
     expect(res.status).toBe(200);
@@ -336,7 +410,7 @@ describe("B-AI-01 — routes consume CompanionContext", () => {
     expect(chatPrompt).toContain('- "Name the feeling first"');
     expect(chatPrompt).not.toContain("CHILD_B_FACT");
     expect(body.contract?.approvedMemoryFactsUsed ?? body.approvedMemoryFactsUsed).toBe(1);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.7.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.8.0");
   });
 });
 
@@ -541,7 +615,7 @@ describe("B-LOOP-13 round 2 — first tier + night answers on /voice", () => {
     const { buildVoiceReplyPrompt } = await import("../ai/prompts.js");
     const prompt = buildVoiceReplyPrompt({ persona: "P", scholar: { name: "s", method: "m" }, childProfile: spoken.profile, companionContext: spoken, message: "What should we try tomorrow evening?", languageDirective: "" });
     expect(prompt).toContain("Today's practice: 'What comes after pyjamas? Show me on our page.' (pending).");
-    expect(prompt).toContain('not today — it did not happen or did not work; in their words: "She was too tired."');
+    expect(prompt).toContain('Parent-reported outcome: not today — it did not happen or did not work. Parent\'s own description: "She was too tired."');
     expect(prompt).toMatch(/this IS the earlier record/);
     // night answers alone (no pin) still render
     const answersOnly = await assembleSpokenContext({ memoryStore: storeOf([]), childProfile: child, canReadMemory: true, journal: { doseRows: journal.doseRows } });

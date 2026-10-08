@@ -97,7 +97,7 @@ describe("1 · every literal i18n key in src/** resolves in EN and HE", () => {
       while ((m = dynSite.exec(src))) found.add(m[1]);
     }
     expect([...found].sort()).toEqual([
-      "hm.cat.", "nav.cat.", "nav.short.",
+      "hm.cat.", "nav.cat.",
       "nav.sub.", "nav.tab.", "nav.title.", "noticed.domain.", "ob.lang.", "sm.extra.",
     ]);
     expect(found.has("nav.")).toBe(false);

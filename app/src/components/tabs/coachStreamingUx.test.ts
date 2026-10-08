@@ -55,7 +55,7 @@ describe("N9 — progressive streamed render (client wiring)", () => {
   it("FALLBACK: a non-SSE response is read as plain JSON through the same settle seam (old-client/spinner path intact)", () => {
     const gate = /const readChatPayload = [\s\S]*?\n  };/.exec(ctx)?.[0] ?? "";
     expect(gate).toContain('if (contentType.includes("text/event-stream"))');
-    expect(gate).toContain("return readStreamingChatResponse(res);");
+    expect(gate).toContain("return readStreamingChatResponse(res, isCurrent);");
     expect(gate).toContain("return await res.json();");
   });
 });

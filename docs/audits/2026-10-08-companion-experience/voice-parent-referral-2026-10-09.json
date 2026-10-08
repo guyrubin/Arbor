@@ -1,0 +1,20 @@
+{
+  "ts": "2026-10-08T22:15:47.981Z",
+  "kind": "isolated synthetic non-crisis adult referral smoke",
+  "input": {
+    "message": "I'd like to book a routine appointment to discuss my own poor sleep and tiredness over the past month. This question is about me, the parent. Which doctor should I contact?",
+    "childProfile": {
+      "id": "eval-synthetic-parent-referral-child",
+      "name": "Noa",
+      "age": 4
+    },
+    "language": "en"
+  },
+  "httpStatus": 200,
+  "promptVersion": "1.10.5",
+  "routeModel": "gemini-2.5-flash",
+  "transcript": "It sounds like you're feeling the effects of poor sleep, and it's really important to address that. For your own health concerns like sleep and tiredness, the best person to contact would be your own primary care doctor. They can help you explore what might be contributing to this.",
+  "terminal": {},
+  "passed": true,
+  "limitation": "One synthetic route check with explicit assertions and transcript for review; no clinical golden-set or general safety certification claimed."
+}

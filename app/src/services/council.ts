@@ -58,7 +58,7 @@ const TAKE_SCHEMA = {
 export const runScholarTakes = async (
   provider: ModelProvider,
   scholars: ScholarEntry[],
-  ctx: { message: string; childProfile: unknown; language?: string; budget?: ModelCallBudget },
+  ctx: { message: string; childProfile: unknown; language?: string; budget?: ModelCallBudget; companionContext?: string },
 ): Promise<CouncilTake[]> => {
   const languageDirective = ctx.language === "he" ? "\nWrite takeaway and suggestion in warm Hebrew (עברית)." : "";
   const takes = await Promise.all(
@@ -68,8 +68,10 @@ export const runScholarTakes = async (
 You are ${s.name}, one voice on a parenting council. Apply ONLY your lens.
 Your method: ${s.method}
 Child: ${JSON.stringify(ctx.childProfile)}
-The parent's situation: "${ctx.message}"
-Give one short takeaway (what your lens notices here) and one concrete, doable suggestion for this week. Observations only — never a diagnosis. Return JSON {takeaway, suggestion}.${languageDirective}`;
+${ctx.companionContext || ""}
+The parent's request or question: "${ctx.message}"
+A question is not a report that something happened. Do not invent the child's feelings, behavior, traits, previous attempts or outcomes. Where the parent has not reported an experience, use conditional language and offer an experiment, never a claim about this child.
+Give one short takeaway (a possibility from your lens) and one concrete, doable suggestion for this week. Never a diagnosis. Return JSON {takeaway, suggestion}.${languageDirective}`;
       try {
         const r = (await provider.generateJson({
           route: "creative_low_risk",

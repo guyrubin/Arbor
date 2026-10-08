@@ -9,7 +9,7 @@
 import type { EvalScenario } from "./acceptance.js";
 
 /** Routes the live runner can drive. */
-export const RUNNER_ROUTES = ["/api/chat", "/api/voice", "/api/live/turn", "/api/extract-log", "/api/generate-handoff", "/api/todays-focus", "/api/generate-plan", "/api/vision"] as const;
+export const RUNNER_ROUTES = ["/api/chat", "/api/council", "/api/voice", "/api/live/turn", "/api/extract-log", "/api/generate-handoff", "/api/todays-focus", "/api/generate-plan", "/api/vision"] as const;
 
 const DAY = 86_400_000;
 

@@ -77,6 +77,7 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "growthEntries",
       "conversations",
       "conversationChanges",
+      "familyTopics", // Companion: parent questions participate in export and erase.
       "playLogs",
       "actionLoops",
       "savedLearn",

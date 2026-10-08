@@ -72,20 +72,20 @@ export const screenForConditionQuestion = (message: unknown): boolean => {
 export type ConditionReplyLanguage = "en" | "he";
 
 const REPLY: Record<ConditionReplyLanguage, string> = {
-  en: `That is a question an app cannot answer, and should not try to. Whether a label fits a child is something only a qualified professional can assess — your paediatrician or a child-development specialist — after getting to know your child.
+  en: `It makes sense to want a clear answer about your child and the support that might help. You do not have to figure this out alone. An app cannot determine whether a label fits; only a qualified professional can assess that — your paediatrician or a child-development specialist — after getting to know your child.
 
-What you can do now is get ready for that conversation:
-- **Notice:** for one week, write down a few concrete moments — what happened, where, how long it lasted and what helped.
-- **Compare settings:** note whether the same thing shows up at home, at nursery or school, and with other caregivers.
-- **Bring it:** take those notes to the appointment. They will make the conversation more useful than any label.
+We can make that conversation easier to begin. You do not need perfect notes or a label before asking for support:
+- **Notice:** write down a few concrete moments — what happened, where, how long it lasted and what helped.
+- **Compare settings:** if you know, note whether the same thing shows up at home, at nursery or school, and with other caregivers. It is okay not to know yet.
+- **Bring it:** take any notes and your questions to the appointment. They can help the professional understand everyday life with your child.
 
 If you tell me what you have been noticing, we can think it through together.`,
-  he: `זו שאלה שאפליקציה לא יכולה לענות עליה, וגם לא צריכה לנסות. רק איש מקצוע מוסמך — רופא או רופאת הילדים, או מומחה להתפתחות הילד — יכול להעריך אם הגדרה כזו מתאימה, אחרי שיכיר את הילד או הילדה.
+  he: `מובן שתרצו תשובה ברורה על הילד או הילדה שלכם, ועל התמיכה שיכולה לעזור. לא צריך למצוא את התשובה לבד. אפליקציה לא יכולה לקבוע אם הגדרה כזו מתאימה; רק איש מקצוע מוסמך — רופא או רופאת הילדים, או מומחה להתפתחות הילד — יכול להעריך זאת אחרי שיכיר את הילד או הילדה.
 
-מה שאפשר לעשות כבר עכשיו הוא להתכונן לשיחה הזאת:
-- **לשים לב:** במשך שבוע, רשמו כמה רגעים מוחשיים — מה קרה, איפה, כמה זמן זה נמשך ומה עזר.
-- **להשוות בין מסגרות:** שימו לב אם אותו דבר מופיע בבית, בגן או בבית הספר, ועם מבוגרים אחרים.
-- **להביא את זה:** קחו את הרשימות לפגישה. הן יועילו לשיחה יותר מכל הגדרה.
+אפשר להתכונן לשיחה הזאת יחד. לא צריך רשימות מושלמות או הגדרה כדי לבקש תמיכה:
+- **לשים לב:** רשמו כמה רגעים מוחשיים — מה קרה, איפה, כמה זמן זה נמשך ומה עזר.
+- **להשוות בין מסגרות:** אם ידוע לכם, ציינו אם אותו דבר מופיע בבית, בגן או בבית הספר, ועם מבוגרים אחרים. גם אם עדיין לא יודעים, זה בסדר.
+- **להביא את זה:** קחו לפגישה את השאלות שלכם ואת הרשימות, אם יש. הן יכולות לעזור לאיש המקצוע להבין את חיי היומיום של הילד או הילדה.
 
 אם תספרו לי מה שמתם לב אליו, נוכל לחשוב על זה יחד.`,
 };

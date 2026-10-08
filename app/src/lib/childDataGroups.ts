@@ -59,7 +59,7 @@ export const CHILD_DATA_ROWS: readonly ChildDataRow[] = [
   { id: "books", icon: "auto_stories", collections: ["bookAssets"] },
   { id: "plans", icon: "checklist", collections: ["actionPlans", "actionLoops", "routines", "goals", "goalObservations", "savedLearn", "weeklyReports", "programs", "familyGoals", "coachSessions"] },
   { id: "screening", icon: "fact_check", collections: ["screenings", "devScoreSnapshots", "bandSnapshots"] },
-  { id: "coach", icon: "forum", collections: ["conversations", "conversationChanges"] },
+  { id: "coach", icon: "forum", collections: ["conversations", "conversationChanges", "familyTopics"] },
   { id: "memory", icon: "bookmark", collections: [], elsewhere: ["server-memory"] },
   { id: "care", icon: "event", collections: ["appointments", "apptQuestions", "apptFollowUps", "contacts", "briefs"] },
   { id: "sharing", icon: "share", collections: [], elsewhere: ["server-shares", "device-export-history"] },

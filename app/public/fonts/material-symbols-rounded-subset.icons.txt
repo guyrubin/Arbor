@@ -39,8 +39,10 @@ bookmark_added
 boy
 brush
 bubble
+build
 cake
 calendar_month
+calendar_today
 call
 camera
 campaign
@@ -88,6 +90,7 @@ devices
 diagnosis
 diamond
 directions_run
+directions_walk
 diversity_1
 diversity_3
 domain
@@ -125,10 +128,12 @@ forward
 front_hand
 fullscreen
 function
+games
 gif
 girl
 gpp_maybe
 graphic_eq
+grid_view
 group
 healing
 health_and_safety
@@ -206,6 +211,8 @@ owl
 pages
 paid
 palette
+pan_tool
+park
 password
 pattern
 pending
@@ -234,7 +241,6 @@ queue
 radio
 radio_button_unchecked
 record_voice_over
-redeem
 refresh
 remove
 replay
@@ -294,6 +300,7 @@ sync
 sync_alt
 sync_problem
 tab
+table
 tag
 target
 task_alt

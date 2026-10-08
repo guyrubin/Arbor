@@ -250,7 +250,7 @@ describe("OBJ-PRACTICE-02 — the practice doors speak both languages", () => {
  * conditional branch renders sometimes and never raises the total.
  */
 const STAMPED_ROUTES: { route: string; file: string; move: string }[] = [
-  { route: "practice", file: "components/practice/PracticeStudioTab.tsx", move: "start-world" },
+  { route: "practice", file: "components/companion/TogetherView.tsx", move: "choose-together" },
   { route: "speech", file: "components/practice/SpeechCoachTab.tsx", move: "complete-speech-round" },
   { route: "mimic", file: "components/practice/MimicStudioTab.tsx", move: "complete-mimic-round" },
   { route: "feelings", file: "components/practice/FeelingsLabTab.tsx", move: "open-world-door" },

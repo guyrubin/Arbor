@@ -81,7 +81,7 @@ describe("todayModules v3 — planToday", () => {
     expect(TODAY_MODULE_BUDGET).toBe(3);
     const c = contractFor("overview");
     expect(c?.moduleBudget).toBe(TODAY_MODULE_BUDGET);
-    expect(c?.primaryMove).toBe("do-practice");
+    expect(c?.primaryMove).toBe("choose-next-step");
     const ov = stripComments(read("components/tabs/OverviewTab.tsx"));
     expect(ov.match(/data-primary-move/g)?.length).toBe(1);
     // P5 design r1 P0-1: the prop form — one literal, placed on the answers.

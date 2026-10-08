@@ -3,7 +3,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import CoachAnswerCards, { sourcesLabel, escalationTier, citationRows, memoryFooterLabel, escalationLines } from "./CoachAnswerCards";
+import CoachAnswerCards, { sourcesLabel, escalationTier, citationRows, memoryFooterLabel, escalationLines, domainChipLabel } from "./CoachAnswerCards";
 import { hardMomentCards } from "../../content/hardMomentCards";
 import type { CoachContract } from "../../types";
 
@@ -103,6 +103,20 @@ function makeContract(riskLevel: string): CoachContract {
 }
 
 const noop = () => {};
+
+describe("domain attribution chips", () => {
+  it("renders each model-provided domain once before applying the three-chip limit", () => {
+    const domains: CoachContract["domains"] = ["attachment_regulation", "attachment_regulation", "language_communication", "cognition_executive_function", "ecosystem_stressors"];
+    const html = renderToStaticMarkup(React.createElement(CoachAnswerCards, {
+      contract: { ...makeContract("low"), domains }, onSaveToPlan: noop, onAddToHandoff: noop, lang: "en",
+    }));
+    const chip = (domain: string) => renderToStaticMarkup(React.createElement("span", null, domainChipLabel(domain, "en"))).replace("<span>", ">");
+    for (const domain of [domains[0], domains[2], domains[3]]) expect(html.split(chip(domain)).length - 1, domain).toBe(1);
+    expect(html).not.toContain(chip(domains[4]));
+    // Presentation normalization must not rewrite the model's source contract.
+    expect(domains).toHaveLength(5);
+  });
+});
 
 function renderCards(riskLevel: string): string {
   return renderToStaticMarkup(

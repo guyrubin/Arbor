@@ -66,6 +66,7 @@ import { handoffWireBody, planWireBody, runnerInputError, todaysFocusWireBody } 
 import { syntheticDocumentDataUrl } from "./evalDocumentFixture.mjs";
 import { PROGRAM_IMPORT_PROMPT } from "../src/ai/programImportPrompt.js";
 import { PROGRAM_IMPORT_VERSION } from "../src/lib/programImport.js";
+import type { CompanionLedgerSource } from "../src/server/companionContext.js";
 
 const REPO_ROOT = path.resolve(process.cwd(), "..");
 
@@ -118,7 +119,7 @@ const seedApprovedMemory = async (baseUrl: string, childId: string, facts: reado
 };
 
 // ── The real in-process server ───────────────────────────────────────────────
-export const startServer = async (wrapProvider?: (provider: ReturnType<typeof createModelProvider>) => ReturnType<typeof createModelProvider>) => {
+export const startServer = async (wrapProvider?: (provider: ReturnType<typeof createModelProvider>) => ReturnType<typeof createModelProvider>, companionLedgerSource?: CompanionLedgerSource) => {
   if (process.env.ARBOR_ENV === "prod" || process.env.MEMORY_ADAPTER === "firestore") throw new Error("Live evaluations require local synthetic stores; production data must not be used.");
   const config = loadConfig();
   const rawProvider = createModelProvider(config);
@@ -141,6 +142,7 @@ export const startServer = async (wrapProvider?: (provider: ReturnType<typeof cr
       consultStore: createConsultStore(config),
       adminMetrics: createAdminMetricsStore(config),
       waitlistStore: createWaitlistStore(config),
+      companionLedgerSource,
     }),
   );
   const server: Server = await new Promise((resolve) => {
@@ -308,6 +310,7 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
           contextChildId: input.contextChildId === "different-child" ? "different-child" : scenarioProfile.id,
         } : {}),
         ...(input.privateMode === true ? { privateMode: true } : {}),
+        ...(typeof input.topicId === "string" ? { topicId: input.topicId } : {}),
         // B-LOOP-13 (voice_reply 1.8.0): the scenario's journal request (today's practice).
         ...(input.journal && typeof input.journal === "object" ? { journal: input.journal } : {}),
       }),
@@ -315,13 +318,15 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
     return sseTranscript(await res.text());
   }
 
-  const res = await fetch(`${baseUrl}/api/chat`, {
+  const res = await fetch(`${baseUrl}${route === "/api/council" ? route : "/api/chat"}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       message,
       childProfile: scenarioProfile,
       language: locale,
+      ...(input.privateMode === true ? { privateMode: true } : {}),
+      ...(typeof input.topicId === "string" ? { topicId: input.topicId } : {}),
       // EVAL-5 (lens fidelity): the selected lens is load-bearing — pass it
       // through so the live answer is judged on APPLYING the method.
       ...(input.scholarLens ? { scholarLens: String(input.scholarLens) } : {}),
@@ -455,7 +460,21 @@ export const runLiveSuite = async (suiteName: string, opts: { ids?: string[] } =
           : "Supplied profile and parent-approved memory are allowed; only same-child settled recentTurns are allowed.",
     },
   }));
-  const { config, baseUrl, server } = await startServer();
+  // Synthetic in-process fixtures only; startServer refuses production/Firestore.
+  // IDs are derived by this runner, and no family store is ever queried or written.
+  const fixtureFor = (childId: string) => suite.scenarios.find((scenario) => syntheticProfileFor(suite, scenario).id === childId)?.input;
+  const fixtureLedger: CompanionLedgerSource = {
+    load: async (_uid, childId) => ({ actionLoops: fixtureFor(childId)?.acceptedActionsFixture as unknown[] ?? [], insights: [] }),
+    loadTopic: async (_uid, childId, topicId) => {
+      const input = fixtureFor(childId);
+      if (input?.topicReadFailure === true) throw new Error("Synthetic topic read unavailable");
+      const raw = input?.familyTopicFixture;
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+      const fixture = raw as Record<string, unknown>;
+      return { ...fixture, id: topicId, childId: fixture.childId === "different-child" ? "different-child" : childId };
+    },
+  };
+  const { config, baseUrl, server } = await startServer(undefined, fixtureLedger);
   try {
     const primaryRoute = modelRouteFor(routeOf(suite.scenarios[0] ?? {} as EvalScenario));
     const decision = routeDecisionFor(config, primaryRoute);

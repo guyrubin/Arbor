@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SECTIONS, sectionForTab, primaryTabOf } from "../../lib/navigation";
+import { COMPANION_PLACES, placeForTab } from "../../lib/companionPlaces";
 import { Icon } from "../ui/Icon";
 import { selectionHaptic } from "../../lib/native";
 import { usePulses } from "../../lib/pulse";
@@ -12,28 +13,13 @@ import KidModeButton from "./KidModeButton"; // IA-24: the Kid Mode door, in the
 import { requestOpenSettings } from "./settingsBus"; // IA-03: Settings moved out of the mobile strip
 import { badgeText } from "./Sidebar"; // IA-16: ONE badge derivation, shared with the sidebar
 
-/**
- * Bottom tab bar shown on mobile and tablet (< lg). The Heartwood IA has TEN
- * categories, which don't fit a mobile bar — so the first four show as tabs and
- * a fifth "More" entry opens a sheet exposing EVERY remaining category as
- * NAVIGATION rows (no route is lost; never a tools grid).
- */
-// Mobile is job-prioritized rather than a slice of the desktop IA. Ask Arbor is
-// a frequent in-the-moment parent action; Behaviors remains one tap away in
-// More. Heartwood D5 slot order: the three primary jobs lead (Today · Journal ·
-// Ask), Growth fourth, More last.
-const PRIMARY_SECTION_IDS = ["today", "journal", "ask", "growth"] as const;
-
-// W2.7 nav de-overload (anti-overload, EMPHASIS ONLY): the three primary jobs
-// (Today / Journal / Ask) carry more visual weight; the remaining tab (Growth)
-// and More render quieter via size/opacity tokens. NO tab is removed — the
-// Heartwood D5 pass reordered the slots to match the emphasis set (the W2.7
-// canon follow-up from the 2026-08-11 masterplan §2.7, now ratified).
-const EMPHASIZED_SECTION_IDS = new Set<string>(["today", "ask", "journal"]);
+/** Three primary places, a conversation door, and utilities available at any scroll position. */
+const PRIMARY_SECTION_IDS = ["today", "growth", "practice", "ask"] as const;
+const EMPHASIZED_SECTION_IDS = new Set<string>(["today", "growth", "practice", "ask"]);
 
 export default function MobileNav() {
   const { activeTab, setActiveTab, milestones, actionPlans, pendingReviewCount } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const pulses = usePulses(); // E1 living pulses — shown on the More-sheet rows
   const activeSectionId = sectionForTab(activeTab).id;
   const milestonesNoticed = milestones.filter((m) => m.checked).length;
@@ -44,7 +30,7 @@ export default function MobileNav() {
     .map((id) => SECTIONS.find((section) => section.id === id))
     .filter((section): section is (typeof SECTIONS)[number] => Boolean(section));
   const overflow = SECTIONS.filter((section) => !PRIMARY_SECTION_IDS.includes(section.id as (typeof PRIMARY_SECTION_IDS)[number]));
-  const overflowActive = overflow.some((s) => s.id === activeSectionId);
+  const overflowActive = moreOpen;
 
   // The sheet is hidden at lg; it must not retain focus/scroll ownership there.
   useEffect(() => {
@@ -66,14 +52,16 @@ export default function MobileNav() {
 
   return (
     <>
-      <nav
+      <nav aria-label={t("elev.sidebar.nav.aria")}
         /* B-DESIGN-03 (chrome): the dock is chrome glass (paper 80 % + blur 14 px);
            the content scrolling under it stays opaque. */
         className="arbor-chrome-glass lg:hidden fixed bottom-0 inset-x-0 z-40 flex"
-        style={{ borderTop: "1px solid var(--arbor-rule)", boxShadow: "0 -4px 16px rgba(41,51,63,0.04)" }}
+        style={{ borderTop: "1px solid var(--arbor-rule)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         {primary.map((sec) => {
-          const on = sec.id === activeSectionId;
+          const place = COMPANION_PLACES.find(p => p.tab === primaryTabOf(sec));
+          const on = sec.id === "ask" ? activeTab === "coach" : activeTab !== "coach" && place?.id === placeForTab(activeTab).id;
+          const label = place ? (uiLang === "he" ? place.he : place.en) : t("companion.mobile-nav.talk");
           // W2.7: emphasis-only weighting — primary jobs render a larger glyph.
           // IA-16: the SIZE difference stays; the dimming does not. Labels ran
           // 9-10 px at 0.72 opacity — smaller than any other text in the app,
@@ -90,7 +78,7 @@ export default function MobileNav() {
           const badge = badgeText(sec.badge, { milestonesNoticed, plansCount: actionPlans.length, pendingReviewCount });
           const showBadge = typeof sec.badge === "object" && sec.badge.kind === "count" && badge !== "";
           const reviewAria = showBadge
-            ? t("elev.sidebar.badge.review", { label: t("nav.short." + sec.id), count: pendingReviewCount })
+            ? t("elev.sidebar.badge.review", { label, count: pendingReviewCount })
             : undefined;
           return (
             <button
@@ -98,7 +86,7 @@ export default function MobileNav() {
               onClick={() => go(sec.id)}
               aria-current={on ? "page" : undefined}
               aria-label={reviewAria}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 font-bold transition ${emphasized ? "text-[12px]" : "text-[11px]"}`}
+              className={`min-h-[64px] min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2.5 font-bold transition ${emphasized ? "text-[12px]" : "text-[11px]"}`}
               style={{ color: on ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
             >
               <span className="relative inline-flex">
@@ -113,7 +101,7 @@ export default function MobileNav() {
                   </span>
                 )}
               </span>
-              {t("nav.short." + sec.id)}
+              {label}
             </button>
           );
         })}
@@ -125,7 +113,7 @@ export default function MobileNav() {
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
           aria-current={overflowActive ? "page" : undefined}
-          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-bold transition"
+          className="min-h-[64px] min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-bold transition"
           style={{ color: overflowActive ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
         >
           <Icon name="more_horiz" size={18} chrome active={overflowActive} />
