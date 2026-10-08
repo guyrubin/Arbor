@@ -258,7 +258,7 @@ export default function NoticeCard({
                   <p role="status" data-testid="notice-receipt" data-beside="true" className="min-w-0 t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
                     <Icon name="check" size={16} className="me-1 inline-block align-[-3px]" />
                     {t("elev.loop.notice.seenReceiptBeside", { shelf: shelfName, name })}{" "}
-                    <span dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>{"“"}{besideWords.trim()}{"”"}</span>
+                    <span dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>{t("elev.loop.ms.quoted", { text: besideWords.trim() })}</span>
                   </p>
                 ) : (
                   <p role="status" data-testid="notice-receipt" className="flex min-w-0 items-center gap-1.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
@@ -357,7 +357,7 @@ export default function NoticeCard({
             <figure data-testid="notice-kept" className="mt-3">
               {kept && (
                 <blockquote className="border-s-2 ps-3 leading-snug" style={{ borderColor: "var(--arbor-ink)", color: "var(--arbor-ink-soft)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)" }}>
-                  <FreeText text={`“${kept}”`} />
+                  <FreeText text={t("elev.loop.ms.quoted", { text: kept })} />
                 </blockquote>
               )}
               <figcaption className="mt-2 flex items-center gap-2">

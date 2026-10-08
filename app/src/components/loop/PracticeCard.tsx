@@ -179,7 +179,7 @@ export default function PracticeCard({
                     {q.lead ?? `${t("elev.loop.practice.quoteMeta", { date: q.date ?? "" })} ·`}{" "}
                   </span>
                 )}
-                <FreeText text={`“${q.text}”`} />
+                <FreeText text={t("elev.loop.ms.quoted", { text: q.text })} />
                 {q.shelf && (
                   <span data-testid="practice-quote-shelf" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
                     {" · "}<bdi>{q.shelf}</bdi>
@@ -193,7 +193,7 @@ export default function PracticeCard({
           <span data-testid="practice-say-label" className="t-sm font-semibold" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>
             {t(mode === "tonight" ? "elev.loop.practice.sayTonight" : "elev.loop.practice.say")}
           </span>{" "}
-          <FreeText text={`“${sayText}”`} />
+          <FreeText text={t("elev.loop.ms.quoted", { text: sayText })} />
         </blockquote>
       </div>
       {!titleIsWholeDo(titleText, doText) && (

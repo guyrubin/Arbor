@@ -59,7 +59,7 @@ export interface TonightFlowProps {
   stampMove?: string;
 }
 
-const pillBase = "inline-flex min-h-[44px] items-center justify-center rounded-full px-4 text-[14px] font-semibold";
+const pillBase = "inline-flex min-h-[44px] items-center justify-center rounded-full px-4 t-base font-semibold";
 
 /**
  * B-LOOP-10 — Tonight, one card, three steps (design of record: the tonight
@@ -96,7 +96,7 @@ export default function TonightFlow(props: TonightFlowProps) {
   const next = (from: TonightStep) =>
     setStep(from === 1 ? 2 : from === 2 && props.notice ? 3 : (from === 2 || from === 3) && hasGoals ? 4 : "done");
   const progress = (n: 1 | 2 | 3 | 4) => (
-    <p data-testid="tonight-progress" className="text-[12.5px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
+    <p data-testid="tonight-progress" className="arbor-num t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>
       {t("elev.loop.tonight.step", { n, total: totalSteps })}
     </p>
   );
@@ -133,19 +133,25 @@ export default function TonightFlow(props: TonightFlowProps) {
       : null;
     body = (
       <div data-testid="tonight-step-1">
-        <div className="flex items-center justify-between gap-2">{progress(1)}</div>
-        <div className="mt-2 flex items-center gap-2.5">
+        {/* P7-DESIGN fix r1 (R6, overview design P1-1): the morning card's
+            kicker row — glyph · the caption in the label style over the shelf ·
+            "1 of 3" as the inline-end tag where the minutes sit in the morning,
+            on a hairline. */}
+        <header data-testid="tonight-band" className="flex items-center gap-3 pb-2.5" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
           <ShelfGlyph shelf={p.shelf} />
-          <div className="min-w-0">
-            <p className="text-[12.5px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.tonight.practice.caption")}</p>
-            <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-ink)" }}>{shelfLabel(p.shelf, t)}</p>
+          <div className="min-w-0 flex-1">
+            <p data-testid="tonight-kicker" className="arbor-type-kicker">{t("elev.loop.tonight.practice.caption")}</p>
+            <p className="mt-0.5 t-base font-semibold leading-tight" style={{ color: "var(--arbor-ink)" }}>{shelfLabel(p.shelf, t)}</p>
           </div>
-        </div>
+          <span className="inline-flex h-[30px] flex-none items-center rounded-full px-2.5" style={{ background: "var(--arbor-paper)", boxShadow: "inset 0 0 0 1px var(--arbor-rule)" }}>
+            {progress(1)}
+          </span>
+        </header>
         <h2 id="tonight-step-1-q" data-testid="tonight-step-1-heading" className="mt-3 font-semibold leading-tight" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontSize: "var(--t-xl)" }}>
           {t(did ? "elev.loop.tonight.practice.how" : "elev.loop.tonight.practice.q")}
         </h2>
-        <blockquote className="mt-2 border-s-2 ps-3 leading-snug" style={{ borderColor: "var(--arbor-ink)", color: "var(--arbor-ink-soft)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)" }}>
-          <FreeText text={`“${say}”`} />
+        <blockquote data-testid="tonight-say" className="mt-2 arbor-accent-rule arbor-type-say" style={{ color: "var(--arbor-ink)" }}>
+          <FreeText text={t("elev.loop.ms.quoted", { text: say })} />
         </blockquote>
         {earlierReceipt && (
           <p data-testid="tonight-did-receipt" className="mt-1.5 flex items-center gap-1.5" style={{ color: "var(--arbor-muted)", fontSize: "var(--t-sm)" }}>
@@ -165,7 +171,7 @@ export default function TonightFlow(props: TonightFlowProps) {
               type="button"
               data-answer="did"
               onClick={() => { setAnswer("did"); setAnsweredHere(true); props.onPracticeAnswer("did"); }}
-              className="inline-flex min-h-12 flex-[1.15] items-center justify-center gap-2 rounded-full px-5 text-[15px] font-bold"
+              className="inline-flex min-h-12 flex-[1.15] items-center justify-center gap-2 rounded-full px-5 t-base font-bold"
               style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
             >
               <Icon name="check" size={20} />
@@ -175,7 +181,7 @@ export default function TonightFlow(props: TonightFlowProps) {
               type="button"
               data-answer="not_today"
               onClick={() => { setAnswer("not_today"); props.onPracticeAnswer("not_today"); }}
-              className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full px-5 text-[15px] font-semibold"
+              className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full px-5 t-base font-semibold"
               style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
             >
               {t("elev.loop.practice.notToday")}
@@ -183,7 +189,7 @@ export default function TonightFlow(props: TonightFlowProps) {
           </div>
         ) : answer === "not_today" ? (
           <div className="mt-4 space-y-3">
-            <p role="status" data-testid="tonight-not-today" className="text-[14px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.practice.notTodayReceipt")}</p>
+            <p role="status" data-testid="tonight-not-today" className="t-base" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.practice.notTodayReceipt")}</p>
             <div className="flex flex-wrap gap-2" {...stamp}>{nextButton(1)}</div>
           </div>
         ) : (
@@ -212,7 +218,7 @@ export default function TonightFlow(props: TonightFlowProps) {
                   aria-pressed={outcome === o}
                   onClick={() => { setOutcome(o); props.onOutcome(o); }}
                   data-testid="tonight-outcome"
-                  className="inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-full px-5 text-[15px] font-bold"
+                  className="inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-full px-5 t-base font-bold"
                   style={{
                     color: "var(--arbor-clay-deep)",
                     background: "var(--arbor-clay-dim)",
@@ -233,10 +239,10 @@ export default function TonightFlow(props: TonightFlowProps) {
               placeholder={t("elev.loop.tonight.practice.what")}
               aria-label={t("elev.loop.tonight.practice.what")}
               data-testid="tonight-what"
-              className="min-h-[44px] w-full min-w-0 rounded-xl px-3 text-[14.5px]"
+              className="min-h-[44px] w-full min-w-0 rounded-xl px-3 t-base"
               style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
             />
-            <p className="text-[12.5px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.tonight.helper")}</p>
+            <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.tonight.helper")}</p>
             {/* Critic c2 r1 (design P1): ONE forward button. Once an outcome or
                 a line exists it is "Save & next" in the CTA treatment — the
                 evening's only gradient; before that a plain "Next". */}
@@ -265,7 +271,7 @@ export default function TonightFlow(props: TonightFlowProps) {
         </h2>
         {kept ? (
           <div className="mt-3 space-y-3">
-            <p role="status" data-testid="tonight-kept" className="flex items-center gap-1.5 text-[14px]" style={{ color: "var(--arbor-muted)" }}>
+            <p role="status" data-testid="tonight-kept" className="flex items-center gap-1.5 t-base" style={{ color: "var(--arbor-muted)" }}>
               <Icon name="check" size={18} />
               {g(t("elev.loop.tonight.day.receipt", { name }))}
             </p>
@@ -294,7 +300,7 @@ export default function TonightFlow(props: TonightFlowProps) {
                 placeholder={t("elev.loop.tonight.day.placeholder")}
                 aria-label={t("elev.loop.tonight.day.placeholder")}
                 data-testid="tonight-quote"
-                className="min-h-[44px] min-w-0 flex-1 rounded-xl px-3 text-[14.5px]"
+                className="min-h-[44px] min-w-0 flex-1 rounded-xl px-3 t-base"
                 style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}
               />
               <button type="submit" disabled={!quote.trim()} className={`${pillBase} disabled:opacity-60`} style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
@@ -376,7 +382,7 @@ export default function TonightFlow(props: TonightFlowProps) {
                       data-testid="tonight-goal-chip"
                       aria-pressed={on}
                       onClick={() => { setGoalMarks((m) => ({ ...m, [goal.id]: v })); props.onGoalScore!(goal.id, v); }}
-                      className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full px-4 text-[14.5px] font-bold"
+                      className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full px-4 t-base font-bold"
                       style={{
                         color: "var(--arbor-clay-deep)",
                         background: "var(--arbor-clay-dim)",
@@ -407,7 +413,7 @@ export default function TonightFlow(props: TonightFlowProps) {
     );
   } else {
     body = (
-      <p role="status" data-testid="tonight-done" className="flex items-center gap-1.5 text-[15px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
+      <p role="status" data-testid="tonight-done" className="flex items-center gap-1.5 t-base" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
         <Icon name="dark_mode" size={18} />
         {t("elev.loop.tonight.done")}
       </p>
@@ -416,7 +422,9 @@ export default function TonightFlow(props: TonightFlowProps) {
 
   return (
     <section data-testid="tonight-flow" data-step={String(step)} aria-label={t("elev.loop.tonight.caption")} className="space-y-3">
-      <div className="rounded-[18px] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
+      {/* R6: at 21:00 this is the screen's PRIMARY card — the morning card's
+          depth (--arbor-shadow-primary, its hairline ring) on the token radius. */}
+      <div data-testid="tonight-card" className="arbor-depth-primary p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-xl)" }}>
         {body}
       </div>
       {props.onStory && (
@@ -424,7 +432,7 @@ export default function TonightFlow(props: TonightFlowProps) {
         type="button"
         data-testid="tonight-story"
         onClick={props.onStory}
-        className="inline-flex min-h-11 items-center gap-2 px-1 text-[14px] font-semibold"
+        className="inline-flex min-h-11 items-center gap-2 px-1 t-base font-semibold"
         style={{ color: "var(--arbor-clay)" }}
       >
         <Icon name="auto_stories" size={20} />

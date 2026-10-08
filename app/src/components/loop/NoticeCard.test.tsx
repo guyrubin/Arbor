@@ -143,7 +143,8 @@ describe("NoticeCard — 'Seen it' is filed next to the shelf's kept line (P5-LO
       const receipt = html.match(/<p role="status" data-testid="notice-receipt"[\s\S]*?<\/p>/)![0];
       expect(receipt).toContain('data-beside="true"');
       expect(receipt).toMatch(/class="min-w-0 t-sm leading-snug" style="color:var\(--arbor-ink-soft\)"/);
-      expect(receipt).toMatch(/<span dir="auto" style="font-family:var\(--font-editorial\)">“big ball”<\/span>/);
+      // P7-DESIGN fix r1 (R2): the ONE quote key — “…” in EN, ״…״ in HE (isolates around the words)
+      expect(receipt.replace(/[⁨⁩]/g, "")).toMatch(lang === "he" ? /<span dir="auto" style="font-family:var\(--font-editorial\)">״big ball״<\/span>/ : /<span dir="auto" style="font-family:var\(--font-editorial\)">“big ball”<\/span>/);
       expect(text(receipt)).toContain(text(translate(lang, "elev.loop.notice.seenReceiptBeside", { name: "Dylan", shelf: translate(lang, "elev.shelves.words") })));
       expect(text(receipt)).not.toMatch(/\d/);
       expect(receipt).not.toMatch(/rounded-full|background:/);

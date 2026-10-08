@@ -45,7 +45,7 @@ export default function ThingsSaid({ quotes, childName, gender }: { quotes: read
                 <li key={q.id} data-testid="things-said-quote" className="flex items-start gap-2">
                   <figure className="min-w-0 flex-1">
                     <blockquote className="border-s-2 ps-3 text-[16px] leading-snug" style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
-                      <FreeText text={`“${q.note}”`} />
+                      <FreeText text={t("elev.loop.ms.quoted", { text: q.note })} />
                     </blockquote>
                     <figcaption className="mt-1 ps-3 text-[12px]" style={{ color: "var(--arbor-muted)" }}>{dayLabel(q.noticedOn, lang)}</figcaption>
                   </figure>

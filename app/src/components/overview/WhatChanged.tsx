@@ -67,7 +67,7 @@ export function whatChangedLineText(line: WhatChangedLine, t: TFn, lang: string,
     case "moments":
       return {
         title: line.count === 1 ? t("elev.brief.changed.moments.one") : t("elev.brief.changed.moments.many", { n: num(line.count) }),
-        sub: line.quote ? `“${line.quote}”` : undefined,
+        sub: line.quote ? t("elev.loop.ms.quoted", { text: line.quote }) : undefined,
       };
     case "noticed":
       return { title: t("elev.sincevisit.row.noticed") };

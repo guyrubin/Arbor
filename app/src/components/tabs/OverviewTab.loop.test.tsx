@@ -29,6 +29,7 @@ import { en, he } from "../../lib/i18n";
 import { loopFirewallHits } from "../../lib/loop/firewall";
 import { shelfWordsThenNow, THEN_GAP_DAYS } from "../../lib/today/shelfWords";
 import { contractFor } from "../../lib/surfaceContract";
+import { planToday } from "../overview/todayModules";
 import type { BehaviorLog } from "../../types";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import { lastNightWords } from "../../lib/today/shelfWords";
@@ -242,9 +243,24 @@ describe("B-DESIGN-04 · Today takes the blend frame", () => {
     expect(TF.match(/<NoticeCard\b/g)).toHaveLength(1);
     expect(TF).toMatch(/<NoticeCard[\s\S]{0,400}answers="segmented"/);
   });
-  it("no surface on the route but the practice card takes the deep shadow; the door is a solid hairline", () => {
+  it("the deep shadow belongs to the day's ONE primary card — the morning practice card or, at 21:00, the Tonight card (R6; they never render together); the door is a solid hairline", () => {
     expect(OV).not.toMatch(/arbor-depth-primary|--arbor-shadow-primary/);
-    expect(TF).not.toMatch(/arbor-depth-primary|--arbor-shadow-primary/);
+    // P7-DESIGN fix r1 (framer ruling R6, overview design P1-1): Tonight is the evening's primary card —
+    // the morning card's depth on the token radius, the caption in the label style, "1 of 3" inside the
+    // header row, the say at .arbor-type-say, no hard-coded text-[Npx]
+    expect(TF.match(/arbor-depth-primary/g)).toHaveLength(1);
+    expect(TF).toContain('data-testid="tonight-card" className="arbor-depth-primary p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-xl)" }}');
+    expect(TF).toMatch(/data-testid="tonight-kicker" className="arbor-type-kicker"/);
+    const band = TF.slice(TF.indexOf('data-testid="tonight-band"'), TF.indexOf("</header>"));
+    expect(band).toContain("{progress(1)}");
+    expect(TF).toContain('data-testid="tonight-say" className="mt-2 arbor-accent-rule arbor-type-say"');
+    expect(TF).not.toMatch(/text-\[\d/);
+    expect(TF).not.toMatch(/rounded-\[18px\]/);
+    // the evening plan never mounts the practice card beside Tonight (one deep card on screen)
+    for (const practiceShown of [true, false, undefined]) {
+      const order = planToday({ evening: true, tonight: true, notice: true, practice: true, practiceShown } as Parameters<typeof planToday>[0]).order;
+      expect(order.includes("practice") && order.includes("tonight"), String(practiceShown)).toBe(false);
+    }
     const door = OV.slice(OV.indexOf('data-testid="today-door"'), OV.indexOf("</summary>"));
     expect(door).toContain('border: "1px solid var(--arbor-rule)"');
     expect(door).not.toMatch(/dashed/);

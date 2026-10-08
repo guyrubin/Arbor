@@ -22,7 +22,7 @@ export default function TodayStepLine() {
     <div data-testid="today-door-step" className="flex min-h-11 flex-wrap items-center gap-2 rounded-xl px-3 py-1.5">
       <Icon name="task_alt" size={18} style={{ color: "var(--arbor-muted)" }} />
       <span className="line-clamp-2 min-w-0 flex-1 font-semibold leading-snug" style={{ color: "var(--arbor-ink)", fontSize: "var(--t-base)" }}>
-        {t("elev.loop.door.step")} <FreeText text={`“${activeTodayAction.recommendation}”`} />
+        {t("elev.loop.door.step")} <FreeText text={t("elev.loop.ms.quoted", { text: activeTodayAction.recommendation })} />
       </span>
       {open ? (
         <span className="flex gap-2" role="group" aria-label={t("elev.loop.door.step")}>
