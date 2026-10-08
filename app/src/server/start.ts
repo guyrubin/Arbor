@@ -4,6 +4,16 @@ import { createServer as createViteServer } from "vite";
 import type { ArborConfig } from "../config/env.js";
 import { loadKnowledgeCardsWithMetadata } from "../knowledge/wiki.js";
 
+export function mountProductionStatic(app: express.Express, distPath: string) {
+  // Existing per-guide previews keep their metadata. Unknown or withdrawn
+  // routes need the guide shell's root base so nested URLs load their assets.
+  app.use(express.static(distPath));
+  app.get("*", (req, res) => {
+    const guidePath = req.path === "/guides" || req.path.startsWith("/guides/");
+    res.sendFile(path.join(distPath, guidePath ? "guides/index.html" : "index.html"));
+  });
+}
+
 export const startHttpServer = async (app: express.Express, config: ArborConfig) => {
   const serverEntry = process.argv[1] || "";
   const isBundledServer = /(^|[\\/])dist[\\/]server\.cjs$/.test(serverEntry);
@@ -16,10 +26,7 @@ export const startHttpServer = async (app: express.Express, config: ArborConfig)
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (_req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+    mountProductionStatic(app, distPath);
   }
 
   const knowledge = await loadKnowledgeCardsWithMetadata();
