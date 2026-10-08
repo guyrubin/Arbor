@@ -13,7 +13,7 @@ import { PageHeader, SectionCard, cardCls, Chip, PASTEL, PastelKey, InitialsTile
 import { ErrorState } from "../ui/ErrorState";
 import { REPORTS } from "./Reports";
 import { isProfessionalReportType } from "../../lib/reportExport";
-import { REPORT_SCOPE_BY_TYPE, WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
+import { HOME_PROGRAM_SCOPE_ID, REPORT_SCOPE_BY_TYPE, WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
 import { fmtDay } from "../../lib/formatDate";
 // LC-17: the review step shows the RECIPIENT'S ACTUAL VIEW, built by the same
 // function the server uses for them — not a list of scope labels.
@@ -77,6 +77,7 @@ export function PreviewItemRows({ items, lang, className, style }: { items: Pack
   );
 }
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
+import HomeProgramShareCard, { HomeProgramAdherenceView, homeProgramLinkOn, sharedViewMode, type HomeProgramGrant } from "../program/HomeProgramShare";
 
 // IA W4.5 + CARE-3: the professional share scopes mirror the W4.1 preset
 // audiences one-to-one — derived from the single REPORTS definition
@@ -334,6 +335,22 @@ export default function TrustedSharing() {
     void shareWeek();
   };
 
+  // B-PROG-09 (read link): the home program's read-only link for the
+  // professional — one scope, until revoked; the card is mounted only when
+  // homeProgramLinkOn() (the server mirror + the pilot flag).
+  const grantHomeProgram = async (email: string) => {
+    setBusy("home-program");
+    try {
+      await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: "professional", scopes: [HOME_PROGRAM_SCOPE_ID], duration: "until_revoked" });
+      toast(t("elev.homeProgram.share.done", { email }), "success");
+      await load();
+    } catch {
+      toast(t("sec.sharing.audit.createError"), "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const revoke = async (g: ShareGrant) => {
     setBusy(g.id);
     try {
@@ -570,6 +587,16 @@ export default function TrustedSharing() {
           </button>
           <p className="text-[11.5px] leading-relaxed basis-full" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.invite.hint")}</p>
         </div>
+      )}
+
+      {homeProgramLinkOn() && (
+        <HomeProgramShareCard
+          childId={childProfile.id}
+          grants={team as HomeProgramGrant[]}
+          busy={busy}
+          onGrant={(email) => void grantHomeProgram(email)}
+          onRevoke={(g) => void revoke(g as ShareGrant)}
+        />
       )}
 
       {adding && (
@@ -838,7 +865,10 @@ export default function TrustedSharing() {
               {t(`sec.sharing.viewer.${viewError === "ended" ? "ended" : viewError === "blocked" ? "blocked" : "error"}`)}
             </p>
           )}
-          {!viewLoading && !viewError && view && (
+          {/* B-PROG-09: a home-program grant (the SERVER's resolved scopes carry
+              it) renders the adherence page ONLY — never the packet sections. */}
+          {!viewLoading && !viewError && view && sharedViewMode(view) === "home-program" && <HomeProgramAdherenceView view={view} />}
+          {!viewLoading && !viewError && view && sharedViewMode(view) === "packet" && (
             <>
               <div className="rounded-2xl p-3 flex items-start gap-2.5" style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule)" }}>
                 <Icon name="verified_user" size={18} style={{ color: "var(--arbor-green-ink)" }} />

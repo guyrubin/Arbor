@@ -147,6 +147,16 @@ export const en: Record<string, string> = {
   "elev.homeProgram.packet.exercise.none": "{text}: not marked yet",
   "elev.homeProgram.packet.goal": "{text} · {proposed} · last marked, in the family's words: “{word}”",
   "elev.homeProgram.packet.goal.none": "{text} · {proposed} · not marked yet",
+  // B-PROG-09 (read link) · the grant card (consent, revocable in place) and the read-only page
+  "elev.homeProgram.share.title": "Share the home program with the professional",
+  "elev.homeProgram.share.consent": "The professional will see only this home program: the days you marked and your goals, in your words. Read-only, and you can stop sharing here at any time.",
+  "elev.homeProgram.share.email": "The professional's email",
+  "elev.homeProgram.share.send": "Share the home program",
+  "elev.homeProgram.share.done": "Home program shared with {email}",
+  "elev.homeProgram.share.active": "Shared with {email}",
+  "elev.homeProgram.share.stop": "Stop sharing",
+  "elev.homeProgram.view.readOnly": "Read-only. The family shared this and can stop it at any time.",
+  "elev.homeProgram.view.empty": "Nothing to show yet.",
 };
 
 export const he: Record<string, string> = {
@@ -287,4 +297,14 @@ export const he: Record<string, string> = {
   "elev.homeProgram.packet.exercise.none": "{text}: עוד לא סומן",
   "elev.homeProgram.packet.goal": "{text} · {proposed} · הסימון האחרון, במילים של המשפחה: „{word}”",
   "elev.homeProgram.packet.goal.none": "{text} · {proposed} · עוד לא סומן",
+  // B-PROG-09 (read link) · כרטיס השיתוף (הסכמה, ביטול במקום) והעמוד לקריאה בלבד
+  "elev.homeProgram.share.title": "לשתף את תוכנית הבית עם איש המקצוע",
+  "elev.homeProgram.share.consent": "איש המקצוע יראה רק את תוכנית הבית הזו: הימים שסימנתם והמטרות שלכם, במילים שלכם. לקריאה בלבד, ואפשר להפסיק את השיתוף כאן בכל רגע.",
+  "elev.homeProgram.share.email": "כתובת המייל של איש המקצוע",
+  "elev.homeProgram.share.send": "לשתף את תוכנית הבית",
+  "elev.homeProgram.share.done": "תוכנית הבית שותפה עם {email}",
+  "elev.homeProgram.share.active": "משותף עם {email}",
+  "elev.homeProgram.share.stop": "להפסיק לשתף",
+  "elev.homeProgram.view.readOnly": "לקריאה בלבד. המשפחה שיתפה את זה ויכולה להפסיק בכל רגע.",
+  "elev.homeProgram.view.empty": "עוד אין מה להציג.",
 };

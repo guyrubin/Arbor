@@ -35,6 +35,27 @@ export type ShareScopeId = (typeof SHARE_SCOPE_IDS)[number];
 export const isShareScopeId = (value: string): value is ShareScopeId =>
   (SHARE_SCOPE_IDS as readonly string[]).includes(value);
 
+/** B-PROG-09 (read link): the professional's read-only link to the HOME
+ *  PROGRAM — practice days as counts and the goals in the family's words,
+ *  nothing else. A stable id, PENDING the server: it is deliberately NOT in
+ *  SHARE_SCOPE_IDS yet. The server imports this module, so listing it there
+ *  would make today's server accept a grant it cannot fill (it neither loads
+ *  `programs` / `familyGoals` nor maps the scope to a section). Left out, the
+ *  server's normalizeScopes drops it — fail closed: a grant carrying only this
+ *  scope resolves to NO scope and the shared view answers 403.
+ *  SERVER MIRROR (REJECTIONS P6-PRACTICE 8 Oct, "B-PROG-09 — the read link's
+ *  server side"): move the id into SHARE_SCOPE_IDS, add
+ *  consult/packet SHARED_SCOPE_SECTIONS["home-program-adherence"] =
+ *  ["intake-home-program"], load the two sub-collections in
+ *  server/sharedPacket.ts, add `share.scope.home-program-adherence` (EN + HE)
+ *  to lib/i18n.ts, then flip HOME_PROGRAM_SCOPE_SERVER_READY. */
+export const HOME_PROGRAM_SCOPE_ID = "home-program-adherence" as const;
+/** Flips to true only together with the server mirror above (the client grant card stays OFF until then). */
+export const HOME_PROGRAM_SCOPE_SERVER_READY = false;
+/** Do these (server-resolved) scopes carry the home-program scope? */
+export const grantsHomeProgram = (scopes: readonly string[] | undefined | null): boolean =>
+  (scopes ?? []).some((s) => (s ?? "").trim() === HOME_PROGRAM_SCOPE_ID);
+
 /** B-CAREPRO-26 (CARE-3): the first card on Sharing — "Share {name}'s week" —
  *  grants exactly these two scopes, read-only, until revoked. */
 export const WEEK_SHARE_SCOPES: readonly ShareScopeId[] = ["weekly_insight", "story_timeline"];
