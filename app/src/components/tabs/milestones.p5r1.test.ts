@@ -28,10 +28,14 @@ describe("P0 — the ONLY age text on #/milestones is milestoneAgeLine's sourced
 });
 
 describe("P1 — one answer grammar on the route", () => {
-  it("every answer group is NoticeAnswers (yes · not_yet · not_sure); the old 11 px trio is gone", () => {
+  it("every answer group is the ONE segmented control (yes · not_yet · not_sure); the old 11 px trio is gone", () => {
     expect(MS).not.toMatch(/grid grid-cols-3 gap-1\.5 pt-2/);
     expect(MS).not.toContain('["not_sure", t("ms.observe.notSure")]');
-    expect(MS.match(/<NoticeAnswers\b/g)?.length).toBe(2);
+    // B-DESIGN-03: the custom rows and the latest's Change answer through
+    // SegmentedAnswers; every NoticeCard on the route passes answers="segmented".
+    expect(MS.match(/<SegmentedAnswers\b/g)?.length).toBe(2);
+    expect(MS).not.toMatch(/<NoticeAnswers\b/);
+    expect(MS.match(/<NoticeCard\b/g)?.length).toBe(MS.match(/answers="segmented"/g)?.length);
     expect(CARD).toContain('export const NOTICE_ANSWER_ORDER: readonly ObserveStatus[] = ["yes", "not_yet", "not_sure"];');
   });
   it("the Notice card mounts as a ROW inside the map, the shelf named once, the stamp on the answers", () => {

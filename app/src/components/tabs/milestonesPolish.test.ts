@@ -108,9 +108,10 @@ describe("B-GROWTH-13 — Milestones h1 and touch floor", () => {
     return out;
   };
 
-  it("exactly one h1 (the route title) and it carries the old h2's classes", () => {
+  it("exactly one h1 (the route title) on the hero step of the type scale (B-DESIGN-03)", () => {
     expect((src.match(/<h1\b/g) ?? []).length).toBe(1);
-    expect(src).toContain('<h1 className="text-2xl md:text-[2rem] leading-[1.1]"');
+    expect(src).toContain('<h1 className="arbor-type-hero min-w-0" style={{ color: "var(--arbor-ink)" }}>');
+    expect(src).not.toContain("md:text-[2rem]");
     expect(src).toContain('{t("ms.title")}</h1>');
   });
 

@@ -6,7 +6,9 @@ import { Icon } from "./Icon";
  * editorial section head: a kicker row of glyph + title + a hairline rule that
  * runs to the end edge, with an optional muted sub-line. Flex row, logical
  * spacing only, so it mirrors in Hebrew. The title is an h2 (display face by the
- * app-wide heading rule) at --t-lg. Not mounted yet (B-DESIGN-03/04 adopt it).
+ * app-wide heading rule) at --t-lg. B-DESIGN-03 mounts it on the #/milestones
+ * shelf rows; the title may wrap (min-w-0) rather than overflow a 375 px row
+ * that also carries a 44 px glyph and a count.
  */
 export function SectionHead({
   title,
@@ -28,7 +30,7 @@ export function SectionHead({
     <div data-testid="section-head" className={className}>
       <div className="flex items-center gap-2.5">
         {icon ? <Icon name={icon} size={20} style={{ color: "var(--arbor-clay)" }} /> : null}
-        <Tag id={id} className="m-0 whitespace-nowrap t-lg" style={{ color: "var(--arbor-ink)" }}>
+        <Tag id={id} className="m-0 min-w-0 t-lg" style={{ color: "var(--arbor-ink)" }}>
           {title}
         </Tag>
         <span aria-hidden="true" data-section-rule="" className="h-px min-w-6 flex-1" style={{ background: "var(--arbor-rule)" }} />

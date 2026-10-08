@@ -84,7 +84,11 @@ describe("NEXTLEVEL r1 — the primary move is a control", () => {
 
 describe("P5-LOOP c2 r1 — no scoreboard at zero, one column at 1280, no watch-points panel", () => {
   it("the count renders ONLY at 1 or more, always t-sm muted body font; never t-2xl / display", () => {
-    expect(MS).toMatch(/\{recordCounts\.noticed > 0 && \(\s*<div data-testid="ms-map-count" className="mt-1 t-sm" style=\{\{ color: "var\(--arbor-muted\)" \}\}>/);
+    // B-DESIGN-03 (critic c2.r3 P2-12): the count rides the ONE muted t-sm line (ms-latest), tabular numerals.
+    expect(MS).toMatch(/\{recordCounts\.noticed > 0 && \(\s*<span data-testid="ms-map-count" className="arbor-num whitespace-nowrap">/);
+    const line = MS.slice(MS.indexOf('<p data-testid="ms-latest"'), MS.indexOf("</p>", MS.indexOf('<p data-testid="ms-latest"')));
+    expect(line).toContain('className="mt-2 min-w-0 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}');
+    expect(line).toContain('data-testid="ms-map-count"');
     expect(MS).not.toMatch(/t-2xl font-extrabold leading-tight/);
     expect(MS.match(/data-testid="ms-map-count"/g)?.length).toBe(1);
   });
@@ -192,8 +196,10 @@ describe("NEXTLEVEL r1 (B-NEXTLEVEL-NEW-1i/1j) — the parent's last first leads
     expect(at).toBeGreaterThan(-1);
     expect(at).toBeLessThan(MS.indexOf('{recordCounts.noticed} {t("ms.domainOf")}'));
     expect(MS).toContain('t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })');
-    expect(MS).toContain('<bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>');
-    expect(MS).toMatch(/data-testid="ms-latest-date"[^>]*background: "var\(--arbor-green-soft\)", color: "var\(--arbor-green-ink\)"/);
+    expect(MS).toContain('<bdi dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>');
+    // B-DESIGN-03 (critic c2.r3 stronger target): the date is plain muted text in a <time>, the green chip is gone.
+    expect(MS).toContain('<time data-testid="ms-latest-date" dateTime={latestNoticed.at} className="whitespace-nowrap">');
+    expect(MS).not.toMatch(/data-testid="ms-latest-date"[^>]*(?:green-soft|green-ink|rounded-full)/);
     const { translate } = await import("../../lib/i18n");
     for (const lang of ["en", "he"] as const) {
       for (const k of ["elev.ms.latest.lead", "elev.ms.latest.when", "elev.ms.latest.areas", "elev.ms.latest.areas.one"]) {
@@ -207,7 +213,8 @@ describe("NEXTLEVEL r1 (B-NEXTLEVEL-NEW-1i/1j) — the parent's last first leads
 describe("P1-NEXTLEVEL critic r2 — the latest card names its area; the map is on the type scale", () => {
   it("under the latest title, one quiet t-sm line names the area it was counted in (EN + HE)", () => {
     // P5 critic r1: the latest sentence is the lede under the H1, the area one quiet t-sm span in it.
-    expect(MS).toContain('data-testid="ms-latest-area" className="t-sm"');
+    // B-DESIGN-03: the area is a span INSIDE the one t-sm muted line (no own size).
+    expect(MS).toContain('<span data-testid="ms-latest-area"> · {t("elev.ms.latest.area", { area: latestShelfName })} · </span>');
     // B-LOOP-05: the area is the SHELF the item sits on, the same name the map prints.
     expect(MS).toContain('t("elev.ms.latest.area", { area: latestShelfName })');
     expect(MS).toContain("shelfLabel(latestShelf, t)");
@@ -217,8 +224,10 @@ describe("P1-NEXTLEVEL critic r2 — the latest card names its area; the map is 
     // B-LOOP-05 re-pin: the shelf map — title t-lg, shelf names t-md, rows t-sm.
     const map = MS.slice(MS.indexOf('t("elev.loop.shelfMap.title")') - 300, MS.indexOf('t("ms.playIdeas"'));
     expect(map).not.toMatch(/text-\[(?:11|12|12\.5|13|13\.5|15|17|26)px\]/);
-    expect(map).toContain('fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>\n                {t("elev.loop.shelfMap.title")}');
-    expect(map).toContain('fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}>\n                          {shelfLabel(shelf, t)}');
+    // B-DESIGN-03: the map title is the title step (22 px), the shelf heads the section step (t-lg).
+    expect(MS).toContain('<h2 id="ms-map-title" className="arbor-type-title sr-only sm:not-sr-only" style={{ color: "var(--arbor-ink)" }}>');
+    expect(map).toContain('<SectionHead as="h3" id={`ms-shelf-${shelf}`} title={shelfLabel(shelf, t)} className="min-w-0 flex-1" />');
+    expect(read("components/ui/SectionHead.tsx")).toContain('className="m-0 min-w-0 t-lg"');
     expect(MS).not.toContain("text-[26px]");
   });
 });
@@ -228,16 +237,21 @@ describe("P5-LOOP c2 r2 (B-LOOP-NEW-2e) — the map opens on the family's own wo
     expect(MS).toContain("const since = noticeNow.getTime() - 7 * 86_400_000;");
     const at = MS.indexOf('data-testid="ms-header-quote"');
     expect(at).toBeGreaterThan(-1);
-    const quote = MS.slice(at, MS.indexOf("</p>", at));
-    expect(quote).toContain('className="mt-1.5 border-s-2 ps-3 leading-snug" style={{ borderColor: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}');
-    expect(quote).toContain('<span dir="auto">{"“"}{headerQuote.text}{"”"}</span>');
+    const quote = MS.slice(at, MS.indexOf("</figure>", at));
+    // B-DESIGN-03 (P7-DESIGN one warm accent; critic c2.r3 P2-13): the 2 px ink rule (.arbor-accent-rule),
+    // the words in the editorial face, the shelf and the day on their own t-sm line (no stranded separator).
+    expect(quote).toContain('className="arbor-accent-rule mt-3 min-w-0"');
+    expect(quote).toContain('<blockquote dir="auto" className="leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)"');
+    expect(quote).toContain("{quoted(headerQuote.text)}");
+    expect(quote).toContain('<figcaption className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>');
+    expect(quote.slice(quote.indexOf("<figcaption"))).not.toMatch(/^\s*·/);
     expect(quote).toContain("<bdi>{shelfLabel(headerQuote.shelf, t)}</bdi>");
     expect(quote).toContain("shelfDayLabel(headerQuote.at, noticeNow");
     expect(quote).not.toMatch(/recordCounts|noticed|count/);
-    // the quote opens the map BEFORE the latest milestone; the latest line moves into the Change row
-    expect(at).toBeLessThan(MS.indexOf('data-testid="ms-change-row"'));
-    expect(MS).toMatch(/\{latestNoticed \? \(\s*headerQuote \? null : latestLine\s*\)/);
-    expect(MS).toMatch(/data-testid="ms-change-row"[^>]*>\s*\{latestLine\}\s*\{!changingLatest && changeButton\}/);
+    // the quote opens the map BEFORE the ONE muted line (latest · count · Change at its end)
+    expect(at).toBeLessThan(MS.indexOf("{latestLine}"));
+    expect(MS).toMatch(/\{latestNoticed && !changingLatest && \(\s*<>\s*\{" · "\}\s*\{changeButton\}/);
+    expect(MS).not.toContain('data-testid="ms-change-row"');
     // the quote's own entry never repeats as its shelf's epigraph
     expect(MS).toContain("tileWordsExcept(ownWords, headerQuote?.id)");
   });

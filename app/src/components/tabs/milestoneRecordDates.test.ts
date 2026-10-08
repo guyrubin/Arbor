@@ -32,8 +32,11 @@ const code = read("components/tabs/MilestonesTab.tsx");
 // P5 critic r1 (P1-2): the door rows answer through the ONE loop group
 // (NoticeAnswers in components/loop/NoticeCard.tsx); the row's call site
 // passes the Wave G group label.
-const observeRow = code.slice(code.indexOf("<NoticeAnswers"), code.indexOf("observeNotSureHint"));
+// B-DESIGN-03: the route's rows answer through the ONE segmented control
+// (components/ui/SegmentedAnswers, the same keys and order as NoticeAnswers).
+const observeRow = code.slice(code.indexOf("<SegmentedAnswers"), code.indexOf("observeNotSureHint"));
 const answers = read("components/loop/NoticeCard.tsx");
+const segmented = read("components/ui/SegmentedAnswers.tsx");
 const chipBlock = code.slice(code.indexOf('data-testid="ms-noticed-chip"') - 400, code.indexOf('data-testid="ms-noticed-chip"') + 700);
 
 /** Exactly what shipped before this change. */
@@ -49,6 +52,8 @@ describe("GP-12 — the marking control is 44px", () => {
     expect(observeRow).toContain("onAnswer={(status) => observeMilestone(item, status)}");
     expect(answers).toContain('const pill = "inline-flex min-h-[44px] min-w-[44px]');
     expect(answers).not.toContain("min-h-9");
+    expect(segmented).toContain('const cellBase = "inline-flex min-h-[44px] min-w-[44px]');
+    expect(segmented).not.toContain("min-h-9");
   });
 
   it("NEGATIVE CONTROL: the pre-change row fails both assertions", () => {

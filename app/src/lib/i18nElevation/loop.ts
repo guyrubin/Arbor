@@ -36,6 +36,8 @@ export const en: Record<string, string> = {
   "elev.loop.ms.quiet": "{shelves}: one thing to try",
   "elev.loop.ms.quietNone": "{shelves}: nothing to mark at this age. Moments you add still land here.",
   "elev.loop.ms.tryLabel": "One thing to try",
+  // B-DESIGN-03 (product c2.r3 P2-3): ONE quote pair per locale for the family's words on #/milestones.
+  "elev.loop.ms.quoted": "“{text}”",
   "elev.loop.notice.keptReceipt": "Kept with this milestone.",
   "elev.loop.notice.thanks": "Noted. If it's still not there by the next check-up, it's worth mentioning there.",
   "elev.loop.notice.undo": "Undo",
@@ -167,6 +169,7 @@ export const he: Record<string, string> = {
   "elev.loop.ms.quiet": "{shelves}: דבר אחד לנסות",
   "elev.loop.ms.quietNone": "{shelves}: אין מה לסמן בגיל הזה. רגעים שתוסיפו עדיין יגיעו לכאן.",
   "elev.loop.ms.tryLabel": "דבר אחד לנסות",
+  "elev.loop.ms.quoted": "״{text}״",
   "elev.loop.notice.keptReceipt": "נשמר ליד אבן הדרך הזו.",
   "elev.loop.notice.thanks": "נרשם. אם זה עדיין לא יופיע עד הבדיקה הבאה, כדאי להזכיר את זה שם.",
   "elev.loop.notice.undo": "ביטול",

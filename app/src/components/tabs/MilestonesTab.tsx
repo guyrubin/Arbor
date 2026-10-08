@@ -57,10 +57,16 @@ import { milestoneAgeLine } from "../../lib/milestoneAgeLine";
 import { selectNextMilestonesByShelf, shelfOfMilestone } from "../../lib/milestones/selectByShelf";
 import { groupMilestonesByShelf, matchesMilestoneQuery, noticedByShelf, shelfBands } from "../../lib/milestones/shelfMap";
 import { SHELF_IDS, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
-import NoticeCard, { NoticeAnswers } from "../loop/NoticeCard";
+import NoticeCard from "../loop/NoticeCard";
+// B-DESIGN-03 (P7-DESIGN blend frame): the route's answers are the ONE segmented
+// control; each shelf row group leads with its duotone glyph and a section head.
+import { SegmentedAnswers } from "../ui/SegmentedAnswers";
+import { SectionHead } from "../ui/SectionHead";
 import { practiceText } from "../loop/PracticeCard";
 import { PRACTICES } from "../../content/practices";
-import { ShelfGlyph } from "../loop/ShelfGlyph";
+// B-DESIGN-03: the 44 px duotone glyph (components/ui). Today / Journal keep the
+// shipped flat chip (components/loop/ShelfGlyph) until B-DESIGN-04 moves them.
+import { ShelfGlyph } from "../ui/ShelfGlyph";
 
 /** NEXTLEVEL critic r1: "Born early?" leads the rail only while correction
  *  applies (under ~24 months, or a gestation is set); otherwise the same
@@ -271,6 +277,29 @@ export default function MilestonesTab() {
   const [openShelves, setOpenShelves] = useState<Partial<Record<ShelfId, boolean>>>({});
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  /* B-DESIGN-03 — the jump rail is NAVIGATION only: the ring marks the shelf
+     the parent jumped to (never an answer, a count or a verdict). A jump
+     closes a running search first, then scrolls once the shelf is rendered,
+     and moves focus to the shelf (tabIndex -1) for keyboard and screen reader. */
+  const [jumpedTo, setJumpedTo] = useState<ShelfId | null>(null);
+  const [pendingJump, setPendingJump] = useState<ShelfId | null>(null);
+  const jumpTo = (shelf: ShelfId) => {
+    setJumpedTo(shelf);
+    if (query || searchOpen) {
+      setQuery("");
+      setSearchOpen(false);
+    }
+    setPendingJump(shelf);
+  };
+  useEffect(() => {
+    if (!pendingJump) return;
+    setPendingJump(null);
+    const target = document.getElementById(`ms-at-${pendingJump}`) ?? document.getElementById("ms-at-quiet");
+    if (!target) return;
+    const still = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({ block: "start", behavior: still ? "auto" : "smooth" });
+    target.focus({ preventScroll: true });
+  }, [pendingJump]);
   // P5 critic r1 (design P0): the map in ACTION order — shelves holding a
   // Notice card first, then the shelves with only their door; a shelf with no
   // catalogue row (Sleep, Family) closes the map as a quiet row with its
@@ -415,13 +444,14 @@ export default function MilestonesTab() {
               mis-tap between "Not sure" and "Not yet" changes what monitoring
               counts as an answer (lib/monitoring.ts isMilestoneAnswered). */}
           {/* P5 critic r1 (P1-2): ONE answer grammar on the route — the Notice
-              card's NoticeAnswers (yes · not_yet · not_sure, 44 px, "Seen it"
-              outlined), never the old 11 px trio in another order. */}
-          <NoticeAnswers
+              card's answers (yes · not_yet · not_sure, 44 px, "Seen it"
+              outlined), never the old 11 px trio in another order.
+              B-DESIGN-03: as the ONE segmented control (SegmentedAnswers). */}
+          <SegmentedAnswers
             selected={item.observationStatus ?? (item.checked ? "yes" : null)}
             onAnswer={(status) => observeMilestone(item, status)}
             ariaLabel={tGCare(uiLang, "elev.gcare.ms.observePrompt")}
-            className="pt-2"
+            className="mt-2"
           />
           {item.observationStatus === "not_sure" && <p className="pt-1 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.observeNotSureHint")}</p>}
           <div className="flex items-center gap-2 flex-wrap pt-1">
@@ -668,6 +698,7 @@ export default function MilestonesTab() {
         childName={firstName}
         variant="row"
         hideShelf
+        answers="segmented"
         selected={m.observationStatus ?? (m.checked ? "yes" : null)}
         onAnswer={(status) => {
           setBeforeRow((p) => ({ ...p, [m.id]: m }));
@@ -777,32 +808,74 @@ export default function MilestonesTab() {
   };
 
   const firstName = (childProfile.name || "").split(" ")[0];
+  /* B-DESIGN-03 (product c2.r3 P2-3): ONE quote pair per locale for the
+     family's words on this route — ״…״ in Hebrew, “…” in English. */
+  const quoted = (text: string) => t("elev.loop.ms.quoted", { text });
+  /* B-DESIGN-03 (P7-DESIGN blend frame, DESIGN-DIRECTION.md §Chosen row 7):
+     the nine shelf glyphs as a jump rail under the header — 44 px duotone,
+     registry order (never the action order, never a count, never a state
+     colour: the tint is the shelf's own). Search leads the rail (the map's
+     44 px search icon, P5 r1 design P0). Below sm the names ride in the
+     accessible name only (the fold at 375); from sm they print under each glyph. */
+  const jumpRail = (
+    <nav data-testid="ms-jump-rail" aria-labelledby="ms-map-title" className="no-scrollbar -mx-4 mt-3 overflow-x-auto px-4 py-1 sm:mx-0 sm:px-0">
+      <ul className="flex items-start gap-2">
+        <li className="flex flex-none items-start gap-2">
+          <button
+            type="button"
+            data-testid="ms-search-open"
+            aria-label={t("elev.loop.ms.search")}
+            aria-expanded={searchOpen || !!query}
+            onClick={() => setSearchOpen((v) => !v)}
+            className="flex min-h-11 min-w-11 flex-col items-center gap-1 sm:w-16"
+            style={{ color: "var(--arbor-ink-soft)" }}
+          >
+            <span className="inline-flex h-11 w-11 items-center justify-center" style={{ borderRadius: "var(--r)", background: "var(--arbor-paper-deep)", boxShadow: "inset 0 0 0 1px var(--arbor-rule)" }}>
+              <Icon name="search" size={20} />
+            </span>
+            <span aria-hidden="true" className="hidden text-center t-xs font-semibold leading-tight sm:block">{t("top.search")}</span>
+          </button>
+          <span aria-hidden="true" className="h-11 w-px flex-none" style={{ background: "var(--arbor-rule)" }} />
+        </li>
+        {SHELF_IDS.map((shelf) => {
+          const on = jumpedTo === shelf;
+          return (
+            <li key={shelf} className="flex-none">
+              <button
+                type="button"
+                data-testid="ms-jump"
+                data-shelf={shelf}
+                aria-label={shelfLabel(shelf, t)}
+                aria-current={on ? "location" : undefined}
+                onClick={() => jumpTo(shelf)}
+                className="flex min-h-11 min-w-11 flex-col items-center gap-1 sm:w-16"
+                style={{ color: on ? "var(--arbor-ink)" : "var(--arbor-ink-soft)" }}
+              >
+                <span className="inline-flex" style={{ borderRadius: "var(--r)", boxShadow: on ? "0 0 0 2px var(--arbor-paper), 0 0 0 4px var(--arbor-ink)" : undefined }}>
+                  <ShelfGlyph shelf={shelf} />
+                </span>
+                <span aria-hidden="true" className="hidden text-center t-xs font-semibold leading-tight sm:block">{shelfLabel(shelf, t)}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
   // P5-LOOP c2 r1: the rail exists only for the under-2 lead.
   const hasRail = comparisonMonths < 24;
   // The first card the parent can answer (the route's stamp) — named by the first-open lede.
   const firstCard = stampShelf ? noticeFor(stampShelf) : undefined;
   const shelfMap = (
           <div data-testid="ms-shelf-map" className={`${cardCls} min-w-0 p-4 sm:p-6`}>
-            <div className="flex items-center gap-2">
-              <h2 className="min-w-0 flex-1 font-semibold leading-snug" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
-                {t("elev.loop.shelfMap.title")}
-              </h2>
-              {/* P5 critic r1 (design P0): search is a 44 px icon in the map's
-                  heading row that opens the field in place. */}
-              <button
-                type="button"
-                data-testid="ms-search-open"
-                aria-label={t("elev.loop.ms.search")}
-                aria-expanded={searchOpen || !!query}
-                onClick={() => setSearchOpen((v) => !v)}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl"
-                style={{ color: "var(--arbor-ink-soft)" }}
-              >
-                <Icon name="search" size={20} />
-              </button>
-            </div>
+            {/* B-DESIGN-03: at 375 the jump rail above IS the map's heading
+                (the first answers stay above the fold); the h2 keeps the outline,
+                names the rail, and prints from sm up. */}
+            <h2 id="ms-map-title" className="arbor-type-title sr-only sm:not-sr-only" style={{ color: "var(--arbor-ink)" }}>
+              {t("elev.loop.shelfMap.title")}
+            </h2>
             {(searchOpen || !!query) && (
-              <label className="field-pill mt-3 flex min-h-11 items-center gap-2 rounded-xl ps-3 pe-1">
+              <label className="field-pill mb-1 flex sm:mt-3 min-h-11 items-center gap-2 rounded-xl ps-3 pe-1">
                 <Icon name="search" size={18} style={{ color: "var(--arbor-muted)" }} />
                 <input
                   data-testid="ms-search"
@@ -858,26 +931,29 @@ export default function MilestonesTab() {
                   return (
                     <section
                       key={shelf}
+                      id={`ms-at-${shelf}`}
+                      tabIndex={-1}
                       data-testid="ms-shelf"
                       data-shelf={shelf}
                       aria-labelledby={`ms-shelf-${shelf}`}
-                      className="py-3"
+                      className="scroll-mt-24 py-3 focus:outline-none"
                       style={i === 0 ? undefined : { borderTop: "1px solid var(--arbor-rule)" }}
                     >
+                      {/* B-DESIGN-03: the row group leads with its 44 px duotone
+                          glyph (the same tint whatever the shelf holds) and a section
+                          head — display title + hairline; the count is text at the end. */}
                       <div className="flex items-center gap-3">
-                        <ShelfGlyph shelf={shelf} size={36} />
-                        <h3 id={`ms-shelf-${shelf}`} className="min-w-0 flex-1 font-semibold leading-tight" style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-md)", color: "var(--arbor-ink)" }}>
-                          {shelfLabel(shelf, t)}
-                        </h3>
+                        <ShelfGlyph shelf={shelf} />
+                        <SectionHead as="h3" id={`ms-shelf-${shelf}`} title={shelfLabel(shelf, t)} className="min-w-0 flex-1" />
                         {n > 0 && (
-                          <span data-testid="ms-shelf-count" className="t-sm whitespace-nowrap" style={{ color: "var(--arbor-muted)" }}>
+                          <span data-testid="ms-shelf-count" className="arbor-num t-sm whitespace-nowrap" style={{ color: "var(--arbor-muted)" }}>
                             {t(n === 1 ? "elev.loop.shelf.noticed.one" : "elev.loop.shelf.noticed", { n })}
                           </span>
                         )}
                       </div>
                       {shelfWords[shelf] && (
                         <p data-testid="ms-shelf-epigraph" className="mt-2 truncate border-s-2 ps-3 t-sm leading-snug" style={{ borderColor: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", color: "var(--arbor-ink-soft)" }} title={shelfWords[shelf]!.text}>
-                          <span dir="auto">{"“"}{shelfWords[shelf]!.text}{"”"}</span>
+                          <span dir="auto">{quoted(shelfWords[shelf]!.text)}</span>
                           <span style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}> · <bdi>{shelfDayLabel(shelfWords[shelf]!.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi></span>
                         </p>
                       )}
@@ -907,6 +983,7 @@ export default function MilestonesTab() {
                           onWhen={(when) => setMilestoneObservation(card.id, "yes", { when })}
                           onKeepQuote={(note) => saveKeepsake({ milestoneId: card.id, note, noticedOn: localDay(new Date()) })}
                           onKeepPhoto={() => setKeepsakeFor(card.id)}
+                          answers="segmented"
                           /* c2 r2 (B-LOOP-NEW-2f): "Seen it" is filed next to the shelf's newest kept line */
                           besideWords={ownWords[shelf]?.[0]?.text ?? null}
                         />
@@ -989,8 +1066,8 @@ export default function MilestonesTab() {
                 {quietShelves.length > 0 && (
                   <div data-testid="ms-quiet-shelves" className="space-y-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
                     {quietShelves.filter((q) => q.practice).map((q) => (
-                      <div key={q.shelf} data-testid="ms-shelf-try" data-shelf={q.shelf} className="flex items-start gap-3">
-                        <ShelfGlyph shelf={q.shelf} size={36} />
+                      <div key={q.shelf} id={`ms-at-${q.shelf}`} tabIndex={-1} data-testid="ms-shelf-try" data-shelf={q.shelf} className="flex scroll-mt-24 items-center gap-3 focus:outline-none">
+                        <ShelfGlyph shelf={q.shelf} />
                         <p className="min-w-0 flex-1 t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
                           <span className="font-semibold" style={{ color: "var(--arbor-ink)" }}>{shelfLabel(q.shelf, t)}</span>
                           {" · "}{t("elev.loop.ms.tryLabel")}: {q.practice ? practiceText(q.practice, "do", uiLang === "he" ? "he" : "en", childProfile.gender) : ""}
@@ -998,7 +1075,7 @@ export default function MilestonesTab() {
                       </div>
                     ))}
                     {quietShelves.some((q) => !q.practice) && (
-                      <p data-testid="ms-shelf-none" className="t-sm" style={{ color: "var(--arbor-muted)" }}>
+                      <p id="ms-at-quiet" tabIndex={-1} data-testid="ms-shelf-none" className="scroll-mt-24 t-sm focus:outline-none" style={{ color: "var(--arbor-muted)" }}>
                         {t("elev.loop.ms.quietNone", { shelves: quietShelves.filter((q) => !q.practice).map((q) => shelfLabel(q.shelf, t)).join(" · ") })}
                       </p>
                     )}
@@ -1016,96 +1093,103 @@ export default function MilestonesTab() {
   );
   const latestShelf = latestNoticed ? shelfOfMilestone(latestNoticed.milestone) : null;
   const latestShelfName = latestShelf ? shelfLabel(latestShelf, t) : latestNoticed ? domainLabel(latestNoticed.milestone.domain) : "";
-  // The latest milestone: the line under the H1 — or, when the family's own
-  // words open the map (c2 r2, B-LOOP-NEW-2e), one quiet t-sm line in the Change row.
-  const latestLine = latestNoticed ? (
-    /* P5 critic r1 (design P0, stronger target 1): the one sentence that
-       matters leads under the H1 — the parent's last first, dated. The
-       four-line disclaimer moves to one muted line under the shelf map. */
-    <p data-testid="ms-latest" className={headerQuote ? "min-w-0 t-sm leading-snug" : "mt-1.5 leading-snug"} style={headerQuote ? { color: "var(--arbor-ink-soft)" } : { fontFamily: "var(--font-editorial)", fontSize: "var(--t-md)", color: "var(--arbor-ink-soft)" }}>
-      {t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })}{" "}
-      <bdi dir="auto">{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>
-      <span data-testid="ms-latest-area" className="t-sm" style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}> · {t("elev.ms.latest.area", { area: latestShelfName })} · {t("elev.ms.latest.when")} </span>
-      <span data-testid="ms-latest-date" className="inline-flex items-center rounded-full px-2.5 py-0.5 t-sm font-semibold whitespace-nowrap" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", fontFamily: "var(--font-sans)" }}>
-        <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
-      </span>
-    </p>
-  ) : null;
+  /* B-DESIGN-03 — "Not right? Change" rides at the END of the muted line
+     (critic P2-12). It stays a 44 px target; the negative block margin keeps
+     the line box at the text's own height. */
   const changeButton = (
     <button
       type="button"
       data-testid="ms-latest-change"
       onClick={() => setChangingLatest(true)}
-      className="inline-flex min-h-11 items-center t-sm font-semibold"
+      className="-my-3 inline-flex min-h-11 items-center align-middle t-sm font-semibold"
       style={{ color: "var(--arbor-clay)" }}
     >
       {t("elev.loop.latest.change")}
     </button>
   );
+  /* B-DESIGN-03 (critic c2.r3 P2-12 + the stronger target): ONE muted t-sm
+     line — the latest milestone, its shelf and its day as plain text (the
+     green date chip is gone: the family's words are the one warm accent),
+     the shared count, and Change at its end. Nothing at zero. */
+  const latestLine = latestNoticed || recordCounts.noticed > 0 ? (
+    <p data-testid="ms-latest" className="mt-2 min-w-0 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
+      {latestNoticed && (
+        <>
+          {t("elev.ms.latest.lead", { name: firstName || t("ms.watch.childFallback") })}{" "}
+          <bdi dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>{milestoneText(latestNoticed.milestone, "title", t, msGender)}</bdi>
+          <span data-testid="ms-latest-area"> · {t("elev.ms.latest.area", { area: latestShelfName })} · </span>
+          <span className="hidden sm:inline">{t("elev.ms.latest.when")} </span>
+          <time data-testid="ms-latest-date" dateTime={latestNoticed.at} className="whitespace-nowrap">
+            <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
+          </time>
+        </>
+      )}
+      {recordCounts.noticed > 0 && (
+        <span data-testid="ms-map-count" className="arbor-num whitespace-nowrap">{latestNoticed ? " · " : ""}{recordCounts.noticed} {t("ms.domainOf")}</span>
+      )}
+      {latestNoticed && !changingLatest && (
+        <>
+          {" · "}
+          {changeButton}
+        </>
+      )}
+    </p>
+  ) : null;
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`flex w-full min-w-0 flex-col gap-5 sm:gap-6 ${hasRail ? "mx-auto max-w-[1180px]" : "me-auto max-w-[760px]"}`}>
-      <div className="flex min-w-0 items-start gap-3.5 sm:items-center">
-        {/* The child's memory portrait — modest, no comic frame in the parent register. */}
-        <HeroAvatar size={52} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
-        <div className="min-w-0">
-          <h1 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("ms.title")}</h1>
-          {/* P5-LOOP c2 r2 (B-LOOP-NEW-2e): the map opens on the family's own
-              words — a line kept in the last 7 days, its shelf and its day,
-              editorial t-lg behind a 2 px ink start rule. No count, no date
-              pressure; the latest milestone moves into the Change row. */}
-          {headerQuote && (
-            <p data-testid="ms-header-quote" className="mt-1.5 border-s-2 ps-3 leading-snug" style={{ borderColor: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
-              <span dir="auto">{"“"}{headerQuote.text}{"”"}</span>
-              <span className="t-sm" style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}> · <bdi>{shelfLabel(headerQuote.shelf, t)}</bdi> · <bdi>{shelfDayLabel(headerQuote.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi></span>
-            </p>
-          )}
-          {latestNoticed ? (
-            headerQuote ? null : latestLine
-          ) : (
-            <>
-              {/* P5-LOOP c2 r1 (B-LOOP-NEW-1f) → c2 r2 (B-LOOP-NEW-2e): first
-                  open is ONE editorial sentence — it names the child and the
-                  first card, with no second instruction; no number, no chip. */}
-              <p data-testid="ms-first-line" dir="auto" className="mt-1.5 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
-                {firstCard
-                  ? t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: milestoneText(firstCard, "title", t, msGender) })
-                  : t("elev.loop.ms.firstLine", { name: firstName || t("ms.watch.childFallback") })}
-              </p>
-              {!firstCard && (
-                <p data-testid="ms-lede" className="t-sm mt-1 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
-                  {t("elev.loop.ms.lede")}
-                </p>
-              )}
-            </>
-          )}
-          <div className="min-w-0">
-            {latestNoticed && headerQuote ? (
-              <div data-testid="ms-change-row" className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3">
-                {latestLine}
-                {!changingLatest && changeButton}
-              </div>
-            ) : latestNoticed && !changingLatest ? changeButton : null}
-            {/* Critic r3 (P1): correctable where it is read — "Not right?
-                Change" opens the ONE answer group for the latest milestone. */}
-            {latestNoticed && changingLatest ? (
-              <div data-testid="ms-latest-change-answers">
-                <NoticeAnswers
-                  onAnswer={(status) => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
-                  ariaLabel={t("ms.observePrompt")}
-                  className="mt-2"
-                />
-              </div>
-            ) : null}
-            {/* c2 r1 (P1 ×2): ONE style in every state — t-sm, muted, body font —
-                and nothing at all at zero (a "0 noticed" headline is a scoreboard). */}
-            {recordCounts.noticed > 0 && (
-              <div data-testid="ms-map-count" className="mt-1 t-sm" style={{ color: "var(--arbor-muted)" }}>
-                {recordCounts.noticed} {t("ms.domainOf")}
-              </div>
-            )}
-          </div>
+      {/* B-DESIGN-03 (P7-DESIGN blend frame; critics c2.r3 P2-12 / P2-13): the
+          header collapses to the H1 (hero step), the ONE warm accent and ONE
+          muted line, then the jump rail. */}
+      <div data-testid="ms-header" className="min-w-0">
+        <div className="flex min-w-0 items-center gap-3.5">
+          {/* The child's memory portrait — modest, no comic frame in the parent register. */}
+          <HeroAvatar size={52} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
+          <h1 className="arbor-type-hero min-w-0" style={{ color: "var(--arbor-ink)" }}>{t("ms.title")}</h1>
         </div>
+        {/* The ONE warm accent: the family's newest kept words (last 7 days),
+            editorial face on the 2 px ink rule; the shelf and the day on their
+            own t-sm line beneath (P2-13, no stranded separator). No count, no
+            date pressure. */}
+        {headerQuote ? (
+          <figure data-testid="ms-header-quote" className="arbor-accent-rule mt-3 min-w-0">
+            <blockquote dir="auto" className="leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)", ...(uiLang === "he" ? {} : { fontSizeAdjust: "var(--arbor-editorial-adjust)" }) }}>
+              {quoted(headerQuote.text)}
+            </blockquote>
+            <figcaption className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
+              <bdi>{shelfLabel(headerQuote.shelf, t)}</bdi> · <bdi>{shelfDayLabel(headerQuote.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi>
+            </figcaption>
+          </figure>
+        ) : !latestNoticed ? (
+          <>
+            {/* P5-LOOP c2 r1 (B-LOOP-NEW-1f) → c2 r2 (B-LOOP-NEW-2e): first
+                open is ONE editorial sentence — it names the child and the
+                first card, with no second instruction; no number, no chip. */}
+            <p data-testid="ms-first-line" dir="auto" className="mt-3 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+              {firstCard
+                ? t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: milestoneText(firstCard, "title", t, msGender) })
+                : t("elev.loop.ms.firstLine", { name: firstName || t("ms.watch.childFallback") })}
+            </p>
+            {!firstCard && (
+              <p data-testid="ms-lede" className="t-sm mt-1 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
+                {t("elev.loop.ms.lede")}
+              </p>
+            )}
+          </>
+        ) : null}
+        {latestLine}
+        {/* Critic r3 (P1): correctable where it is read — "Not right?
+            Change" opens the ONE answer group for the latest milestone. */}
+        {latestNoticed && changingLatest ? (
+          <div data-testid="ms-latest-change-answers">
+            <SegmentedAnswers
+              onAnswer={(status) => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
+              ariaLabel={t("ms.observePrompt")}
+              className="mt-2"
+            />
+          </div>
+        ) : null}
+        {jumpRail}
       </div>
 
       {/* W5 mount — the R3 threshold-crossing pride moment. Designed for Today,

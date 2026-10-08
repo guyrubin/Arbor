@@ -9,6 +9,10 @@ import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import { OBSERVED_WHEN, type ObserveStatus, type ObservedWhen } from "../../lib/milestones/observe";
 import { ShelfGlyph } from "./ShelfGlyph";
+// B-DESIGN-03: the one segmented answer control (P7-DESIGN, from Option B).
+// SegmentedAnswers reads NOTICE_ANSWER_KEYS / NOTICE_ANSWER_ORDER from this
+// module; both sides use the other only at render time, so the cycle is inert.
+import { SegmentedAnswers } from "../ui/SegmentedAnswers";
 
 /** Where the card is in its short life: asking · seen (When + keep) · thanked (not yet / not sure) · kept. */
 export type NoticePhase = "ask" | "seen" | "thanked" | "kept";
@@ -110,6 +114,12 @@ export interface NoticeCardProps {
    *  shelf — the "Seen it" receipt says the answer was filed next to it
    *  (the quote verbatim, editorial, dir=auto; no chip, no number). */
   besideWords?: string | null;
+  /** B-DESIGN-03 (P7-DESIGN framer decision, 7 Oct): "segmented" renders the
+   *  answers as the ONE 44 px segmented control (components/ui/SegmentedAnswers,
+   *  same keys, order, `selected` and stamp attrs). #/milestones passes it; the
+   *  default "pills" keeps Today / Journal / Tonight as shipped until B-DESIGN-04
+   *  flips them. */
+  answers?: "pills" | "segmented";
 }
 
 /**
@@ -143,6 +153,7 @@ export default function NoticeCard({
   stampMove,
   answersAttrs,
   besideWords,
+  answers = "pills",
 }: NoticeCardProps) {
   const { t, uiLang } = useLanguage();
   const [phase, setPhase] = useState<NoticePhase>(initialPhase);
@@ -228,9 +239,11 @@ export default function NoticeCard({
             </p>
           )}
 
-          {phase === "ask" && (
+          {phase === "ask" && (answers === "segmented" ? (
+            <SegmentedAnswers onAnswer={answer} selected={selected} ariaLabel={t("ms.observePrompt")} attrs={{ ...stamp, ...(answersAttrs ?? {}) }} />
+          ) : (
             <NoticeAnswers onAnswer={answer} selected={selected} ariaLabel={t("ms.observePrompt")} attrs={{ ...stamp, ...(answersAttrs ?? {}) }} />
-          )}
+          ))}
 
           {phase === "seen" && (
             <div data-testid="notice-seen-strip" className="mt-3 space-y-3">
