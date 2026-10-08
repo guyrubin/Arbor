@@ -15,26 +15,29 @@
  */
 import type { HeroSheetPoseId } from "../lib/heroSheetContract.js";
 
-/** Verbatim but for the proof hero's own garments (suit, boots, cape -> the
- *  hero's clothes and shoes): a family's hero must not be handed a cape. */
-export const SPRITE_STYLE = "Glossy stylised 3D character render at premium animated-feature-film quality: soft rounded sculpted "
-  + "volumes; hair sculpted in glossy clumps, never strand-level; large expressive eyes with one clean "
-  + "catch-light; skin with a gentle warm subsurface glow and no pores; semi-gloss materials on the clothes and "
-  + "shoes; matte cloth with a soft fuzz; rich, warm, clean colour, never neon.";
+/** ONE CHARACTER EVERYWHERE (Guy, 8 Oct): the hero looks the same on every kid
+ *  surface - tiles, books, games. The finish is the stored hero's own; the pose
+ *  route never re-styles it. Before 8 Oct this block forced a glossy 3D film
+ *  finish (large eyes, ~3.5 heads tall, head as wide as the shoulders), which drew
+ *  a second, cartoon version of the child beside the book's painted one. */
+export const SPRITE_STYLE = "Paint the hero in EXACTLY the illustration finish of the hero reference image: the same rendering, "
+  + "brushwork, shading, line quality, colour palette and light as that image. Do not re-style the hero: no glossy 3D "
+  + "film render, no chibi or big-headed proportions, no enlarged eyes unless the reference has them. Natural "
+  + "child proportions as in the reference.";
 
 export const TAIL = "Absolutely no text anywhere: no letters, words, numbers, writing on signs, labels, logos, watermarks, signatures, "
-  + "captions, speech bubbles or interface elements. Stylised cartoon characters only: not photorealistic, no "
-  + "realistic skin texture, not the likeness of any real person or celebrity, no resemblance to any existing film or "
+  + "captions, speech bubbles or interface elements. An illustrated character only: never photorealistic, no "
+  + "photographic skin texture, not the likeness of any celebrity or other real person, no resemblance to any existing film or "
   + "franchise character. Correct anatomy: five fingers on each hand, no extra or merged limbs. No weapons, no blood, "
   + "no scary faces, no menacing shadows. No sparkle trails, glitter, floating orbs, light beams everywhere or lens "
   + "flares; no screens or phones; no coins, trophies or reward stars. No border or frame.";
 
 /** Generalised: the identity is the reference's, not a description. */
-export const HERO = "THE HERO: the original stylised cartoon child hero shown in the reference, about 3.5 heads tall, head as "
-  + "wide as the shoulders. FACE, eyes, eyebrows, skin tone and HAIR exactly as in the reference. OUTFIT: exactly the "
+export const HERO = "THE HERO: the original illustrated child hero shown in the reference, with the reference's own body "
+  + "proportions. FACE, eyes, eyebrows, skin tone and HAIR (cut, length and shape) exactly as in the reference. OUTFIT: exactly the "
   + "reference's clothing, colours and accessories; where the reference shows only the head and shoulders, continue "
   + "the same outfit naturally down to a full body with matching shoes, inventing nothing that changes who the hero "
-  + "is. A stylised cartoon character, never photoreal.";
+  + "is. An illustrated character, never photoreal.";
 
 export const BACKGROUND = "Background: one perfectly flat, uniform, saturated chroma-key green (#00B140) from edge to edge — no "
   + "gradient, no vignette, no floor, no horizon, no ground line, no contact shadow, no cast shadow, no "
@@ -54,8 +57,8 @@ export const STAGE = "THE PICTURE: a character sprite on a flat chroma-key backg
 
 /** The anchor (idle): image 1 = the stored hero. */
 export const REFS_ANCHOR = "Image 1 is THE HERO — this is exactly who the hero is: copy the face shape, eyes, eyebrows, nose, skin "
-  + "tone, hair, clothing, colours and accessories exactly, in the stylised 3D finish described. Ignore its framing, its "
-  + "background, its lighting and any drawing style that differs from the finish described. Paint a NEW picture.";
+  + "tone, hair, clothing, colours and accessories exactly, in image 1's OWN illustration finish. Ignore its framing, its "
+  + "background and its lighting. Paint a NEW picture of the same character.";
 
 /** Every other pose: image 1 = the approved idle, image 2 = the stored hero. */
 export const REFS_POSE = "Image 1 is THE HERO exactly as the hero must look in every picture: the same face, the same hair, the "
