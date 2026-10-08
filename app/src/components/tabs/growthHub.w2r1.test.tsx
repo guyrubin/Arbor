@@ -182,7 +182,7 @@ describe("B-GROWTH-NEW-2B — the child's word leads New since; a count never le
     expect(noWord[0].kind).toBe("milestone");
     h.locale = "en";
     const html = await render();
-    const well = html.slice(html.indexOf('data-testid="growth-new-since"'), html.indexOf('data-module="growth-weekly-focus"'));
+    const well = html.slice(html.indexOf('data-testid="growth-new-since"')).split('</aside>')[0];
     expect(well).toBeTruthy();
     expect(well).not.toMatch(/\b20\d\d\b/);
     expect(SRC).toMatch(/data-testid="growth-focus-hint"/);
@@ -222,24 +222,27 @@ describe("#/development Hebrew takes the child's gender from the profile — nev
 });
 
 describe("#/development order, stamp and budget (W2-GROWTH r1)", () => {
-  it("opens on What's new with {name}; New since sits above the focus card; no count trio", async () => {
+  it("opens on the child; focus and record precede recent updates in reading order", async () => {
     h.locale = "en";
     const html = await render();
     expect(html).toMatch(/<h1[^>]*>What&#x27;s new with Dylan<\/h1>/);
     const since = html.indexOf('data-testid="growth-new-since"');
     const focus = html.indexOf('id="growth-weekly-focus"');
     expect(since).toBeGreaterThan(-1);
-    expect(since).toBeLessThan(focus);
+    expect(focus).toBeLessThan(html.indexOf('data-module="growth-record"'));
+    expect(html.indexOf('data-module="growth-record"')).toBeLessThan(since);
     expect(html).not.toContain("growth-hub-hero-zero-line");
     expect(html).not.toMatch(/\d+ noticed · \d+ areas?/);
   });
-  it("W2-GROWTH r2: at lg the focus takes the inline-start 7/12 and New since is a sticky 5/12 aside (grid lines, no order hacks)", async () => {
-    h.locale = "en";
-    const html = await render();
-    expect(html).toMatch(/class="[^"]*lg:grid lg:grid-cols-12[^"]*"/);
-    expect(html).toMatch(/data-module="growth-new-since"[^>]*class="[^"]*lg:sticky[^"]*lg:col-span-5 lg:col-start-8 lg:row-start-1/);
-    expect(html).toMatch(/data-module="growth-weekly-focus" class="[^"]*lg:col-start-1 lg:row-start-1 lg:col-span-7/);
-    expect(SRC).not.toMatch(/\blg:order-|\b(?:ml|mr|pl|pr|left|right)-\d/);
+  it("the portrait retains a named record and one notice action in both languages", async () => {
+    for (const locale of ["en", "he"] as const) {
+      h.locale = locale;
+      const html = await render();
+      expect(html).toContain('aria-labelledby="growth-record-title"');
+      expect(html).toContain('aria-labelledby="growth-weekly-focus"');
+      expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+      expect(html).not.toMatch(/\b(?:ml|mr|pl|pr|left|right)-\d/);
+    }
   });
   it("stamps the observe group, never the section", async () => {
     h.locale = "en";
@@ -255,7 +258,7 @@ describe("#/development order, stamp and budget (W2-GROWTH r1)", () => {
     const budget = SURFACE_CONTRACTS.find((c) => c.route === "development")!.moduleBudget;
     // W2-GROWTH r2: the four blocks B-GROWTH-02 names, by name; RecordByDomain
     // is the Record card's Map view, never a second top-level record object.
-    expect(top).toEqual(["growth-new-since", "growth-weekly-focus", "growth-record", "growth-go-deeper"]);
+    expect(top).toEqual(["growth-weekly-focus", "growth-record", "growth-new-since", "growth-go-deeper"]);
     const record = html.slice(html.indexOf('data-module="growth-record"'), html.indexOf('data-module="growth-go-deeper"'));
     expect(record).toContain('data-testid="record-by-domain"');
     expect(SRC).not.toMatch(/\n {6}<RecordByDomain \/>/);

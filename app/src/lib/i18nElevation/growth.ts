@@ -7,6 +7,30 @@
  * no AI/tech framing; flagged for arbor-localization native review. */
 
 export const en: Record<string, string> = {
+  "elev.growth.record.compactCount": "{n} saved · 4 weeks",
+  "elev.growth.record.compactCount.one": "1 saved · 4 weeks",
+  // Growth portrait: observation detail, with no inferred assessment.
+  "elev.growth.portrait.sub": "The little things you notice, brought together. Explore an area to see the moments you have saved.",
+  "elev.growth.portrait.mapLink": "See the whole picture",
+  "elev.growth.record.areas": "Developmental areas in your record",
+  "elev.growth.record.detail.eyebrow": "A closer look",
+  "elev.growth.record.latestDate": "Latest saved · {date}",
+  "elev.growth.record.earlier": "Earlier moments in this area",
+  "elev.growth.record.photo": "Photo saved with this moment",
+  "elev.growth.record.source.practice": "From a saved activity",
+  "elev.growth.record.source.saved": "From your saved record",
+  "elev.growth.record.item.speech": "Speech practice",
+  "elev.growth.record.item.mimic": "A session of copying expressions",
+  "elev.growth.record.item.story": "A story activity",
+  "elev.growth.record.description.talking": "Words, conversations and the things you hear each day.",
+  "elev.growth.record.description.moving": "Everyday movement, from a little jump to outdoor play.",
+  "elev.growth.record.description.hands": "Drawing, exploring with the senses and doing things independently.",
+  "elev.growth.record.description.thinking": "Questions, discoveries and everyday problem-solving.",
+  "elev.growth.record.description.playing": "Joining in, taking turns and time with other children.",
+  "elev.growth.record.description.feelings": "Feelings, transitions and the moments you work through together.",
+  "elev.growth.record.description.body": "Sleep, mealtimes and the body measurements you have saved.",
+  "elev.growth.record.description.family": "The people, places and routines around your child.",
+
   // ── E2 · Growth (Development) hub hero
   "elev.hero.growth.eyebrow": "Growth",
   "elev.hero.growth.title": "Small moments become the growth story",
@@ -77,7 +101,7 @@ export const en: Record<string, string> = {
 
   // B-GROWTH-30 — the Record by area (spine Option A). Counts of things the
   // parent noticed and dates only; never a share, a total or a trend.
-  "elev.growth.record.sub": "Everything you've noted, grouped by area. Tap an area for its dated list.",
+  "elev.growth.record.sub": "The developmental view of your record. Each area opens the words and moments you saved.",
   "elev.growth.record.empty": "As you note moments, words and milestones, they gather here by area.",
   "elev.growth.record.count.one": "1 thing noticed in the last 4 weeks",
   "elev.growth.record.count.many": "{n} things noticed in the last 4 weeks",
@@ -121,6 +145,30 @@ export const en: Record<string, string> = {
 };
 
 export const he: Record<string, string> = {
+  "elev.growth.record.compactCount": "{n} רשומות · 4 שבועות",
+  "elev.growth.record.compactCount.one": "רשומה אחת · 4 שבועות",
+  // Growth portrait: observation detail, with no inferred assessment.
+  "elev.growth.portrait.sub": "הדברים הקטנים ששמתם לב אליהם, בתמונה אחת. בחרו תחום כדי לראות את הרגעים ששמרתם.",
+  "elev.growth.portrait.mapLink": "לראות את התמונה המלאה",
+  "elev.growth.record.areas": "תחומי ההתפתחות ברשומות שלכם",
+  "elev.growth.record.detail.eyebrow": "מבט מקרוב",
+  "elev.growth.record.latestDate": "נשמר לאחרונה · {date}",
+  "elev.growth.record.earlier": "רגעים קודמים בתחום הזה",
+  "elev.growth.record.photo": "תמונה שנשמרה עם הרגע הזה",
+  "elev.growth.record.source.practice": "פעילות שנשמרה",
+  "elev.growth.record.source.saved": "נשמר ברשומות שלכם",
+  "elev.growth.record.item.speech": "תרגול דיבור",
+  "elev.growth.record.item.mimic": "פעילות של חיקוי הבעות",
+  "elev.growth.record.item.story": "פעילות עם סיפור",
+  "elev.growth.record.description.talking": "מילים, שיחות והדברים שאתם שומעים ביום־יום.",
+  "elev.growth.record.description.moving": "תנועה ביום־יום, מקפיצה קטנה למשחק בחוץ.",
+  "elev.growth.record.description.hands": "ציור, חקירה דרך החושים ועשייה עצמאית.",
+  "elev.growth.record.description.thinking": "שאלות, תגליות ופתרון בעיות ביום־יום.",
+  "elev.growth.record.description.playing": "להצטרף למשחק, לחכות לתור ולבלות עם ילדים אחרים.",
+  "elev.growth.record.description.feelings": "רגשות, מעברים והרגעים שאתם עוברים יחד.",
+  "elev.growth.record.description.body": "שינה, ארוחות ומדידות גוף ששמרתם.",
+  "elev.growth.record.description.family": "האנשים, המקומות והשגרה שסביב הילד.",
+
   "elev.hero.growth.eyebrow": "התפתחות",
   "elev.hero.growth.title": "כאן רגעים קטנים הופכים לסיפור ההתפתחות",
   "elev.hero.growth.sub": "כל אבן דרך ששמתם לב אליה נשמרת — ארבור זוכרת בשבילכם.",
@@ -178,7 +226,7 @@ export const he: Record<string, string> = {
   "elev.growth.play.setFocusOptional": "הגדירו מיקוד כדי להתאים אותה למה שאתם עובדים עליו",
 
   // B-GROWTH-30 — התיעוד לפי תחום
-  "elev.growth.record.sub": "כל מה שרשמתם, מקובץ לפי תחום. הקישו על תחום לרשימה עם תאריכים.",
+  "elev.growth.record.sub": "המבט ההתפתחותי על הרשומות שלכם. בחרו תחום כדי לראות את המילים והרגעים ששמרתם.",
   "elev.growth.record.empty": "כשתרשמו רגעים, מילים ואבני דרך, הם יתקבצו כאן לפי תחום.",
   "elev.growth.record.count.one": "דבר אחד שנרשם ב-4 השבועות האחרונים",
   "elev.growth.record.count.many": "{n} דברים שנרשמו ב-4 השבועות האחרונים",
