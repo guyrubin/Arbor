@@ -129,19 +129,46 @@ describe("SegmentedAnswers — one 44 px three-cell control", () => {
     expect(render("he")).toContain("ראיתי");
   });
 
-  it("Seen it alone is outlined; aria-pressed appears only when an answer is stored, true on that one", () => {
-    const fresh = render("en");
-    expect(fresh).not.toContain("aria-pressed");
-    const yes = /<button[^>]*data-answer="yes"[^>]*>/.exec(fresh)![0];
-    const notYet = /<button[^>]*data-answer="not_yet"[^>]*>/.exec(fresh)![0];
-    expect(yes).toContain("inset 0 0 0 1.5px var(--arbor-clay)");
-    expect(notYet).not.toContain("var(--arbor-clay)");
+  it("R1 (P7-DESIGN fix r1): resting is NEUTRAL — no cell reads pre-selected; aria-pressed only when an answer is stored", () => {
+    const cellStyle = (html: string, s: string) => new RegExp(`data-answer="${s}"[^>]*style="([^"]*)"`).exec(html)![1];
+    for (const lang of ["en", "he"] as const) {
+      const fresh = render(lang);
+      expect(fresh).not.toContain("aria-pressed");
+      // three equal plain cells: the same style, no clay, no outline, no glyph
+      const styles = NOTICE_ANSWER_ORDER.map((s) => cellStyle(fresh, s));
+      expect(new Set(styles).size).toBe(1);
+      expect(styles[0]).not.toContain("--arbor-clay");
+      expect(styles[0]).not.toContain("box-shadow");
+      expect(fresh).not.toContain(">check<");
+    }
     const stored = render("en", "not_sure");
     expect([...stored.matchAll(/data-answer="([a-z_]+)" aria-pressed="(true|false)"/g)].map((m) => `${m[1]}:${m[2]}`))
       .toEqual(["yes:false", "not_yet:false", "not_sure:true"]);
-    // the stored mark is the same treatment for every answer (state, never a colour verdict)
-    const pressedStyle = (html: string, s: string) => new RegExp(`data-answer="${s}"[^>]*style="([^"]*)"`).exec(html)![1];
-    expect(pressedStyle(render("en", "not_yet"), "not_yet")).toBe(pressedStyle(render("en", "yes"), "yes"));
+  });
+
+  it("R1: the pressed cell = --arbor-clay fill, on-accent label, a check glyph; the same for every answer (state, never a colour verdict)", () => {
+    const cellStyle = (html: string, s: string) => new RegExp(`data-answer="${s}"[^>]*style="([^"]*)"`).exec(html)![1];
+    const cell = (html: string, s: string) => new RegExp(`<button[^>]*data-answer="${s}"[^>]*>([\\s\\S]*?)</button>`).exec(html)![1];
+    for (const lang of ["en", "he"] as const) {
+      for (const s of NOTICE_ANSWER_ORDER) {
+        const html = render(lang, s);
+        const pressed = cellStyle(html, s);
+        expect(pressed).toContain("background:var(--arbor-clay)");
+        expect(pressed).toContain("color:var(--arbor-on-accent)");
+        // pressed and resting differ in background token
+        const other = NOTICE_ANSWER_ORDER.find((o) => o !== s)!;
+        expect(cellStyle(html, other)).not.toContain("--arbor-clay");
+        expect(cell(html, s)).toMatch(/>check<\/span>/);
+        expect(cell(html, s)).toContain(translate(lang, NOTICE_ANSWER_KEYS[s]));
+        expect(cell(html, other)).not.toContain(">check<");
+      }
+    }
+    expect(cellStyle(render("en", "not_yet"), "not_yet")).toBe(cellStyle(render("en", "yes"), "yes"));
+  });
+
+  it("NEGATIVE CONTROL: the pre-R1 resting style (Seen it outlined on white) fails the neutral check", () => {
+    const BEFORE = ["color:var(--arbor-clay);background:var(--arbor-paper-elevated);box-shadow:inset 0 0 0 1.5px var(--arbor-clay)", "color:var(--arbor-ink);background:transparent", "color:var(--arbor-ink);background:transparent"];
+    expect(new Set(BEFORE).size).not.toBe(1);
   });
 
   it("keyboard: arrows move in reading order (mirrored in Hebrew), Home/End jump, other keys do nothing", () => {

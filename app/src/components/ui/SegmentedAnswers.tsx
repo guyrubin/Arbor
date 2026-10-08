@@ -2,15 +2,19 @@ import React, { useRef } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { ObserveStatus } from "../../lib/milestones/observe";
 import { NOTICE_ANSWER_KEYS, NOTICE_ANSWER_ORDER } from "../loop/NoticeCard";
+import { Icon } from "./Icon";
 
 /**
  * B-DESIGN-02 (P7-DESIGN framer decision, 7 Oct — the one element taken from
  * Option B's answers; DESIGN.md §Components) — Seen it / Not yet / Not sure as
  * ONE segmented control: a deep-well track (--arbor-paper-deep, --r-lg) holding
  * three equal 44 px cells (--r = outer radius minus the 4 px track padding).
- * "Seen it" alone is outlined in sapphire; "Not yet" / "Not sure" are plain and
- * equal; the stored answer (`selected`) takes the same pressed treatment for
- * all three — a state mark, never a colour verdict.
+ * P7-DESIGN fix r1 (framer ruling R1, 8 Oct): the resting state is NEUTRAL —
+ * three equal plain cells, so no answer reads as pre-selected; the stored
+ * answer (`selected`) is the pressed cell — --arbor-clay fill, on-accent label,
+ * a leading check glyph — the same treatment for all three (a state mark,
+ * never a colour verdict), so an answered card reads MORE present than an
+ * unanswered one.
  *
  * Drop-in for loop/NoticeCard's NoticeAnswers (same props, same keys and order,
  * `attrs` on the group for the primary-move stamp). Keyboard: Tab reaches each
@@ -62,7 +66,6 @@ export function SegmentedAnswers({
       style={{ background: "var(--arbor-paper-deep)", borderRadius: "var(--r-lg)" }}
     >
       {NOTICE_ANSWER_ORDER.map((status, i) => {
-        const seen = status === "yes";
         const on = selected === status;
         return (
           <button
@@ -75,16 +78,15 @@ export function SegmentedAnswers({
             {...(selected !== undefined ? { "aria-pressed": on } : {})}
             onClick={() => onAnswer(status)}
             onKeyDown={onKeyDown(i)}
-            className={cellBase}
+            className={`${cellBase} gap-1`}
             style={{
               borderRadius: "var(--r)",
               ...(on
-                ? { color: "var(--arbor-clay)", background: "var(--arbor-clay-soft)", boxShadow: "inset 0 0 0 1.5px var(--arbor-clay)" }
-                : seen
-                  ? { color: "var(--arbor-clay)", background: "var(--arbor-paper-elevated)", boxShadow: "inset 0 0 0 1.5px var(--arbor-clay)" }
-                  : { color: "var(--arbor-ink)", background: "transparent" }),
+                ? { color: "var(--arbor-on-accent)", background: "var(--arbor-clay)" }
+                : { color: "var(--arbor-ink)", background: "transparent" }),
             }}
           >
+            {on && <Icon name="check" size={16} weight={600} />}
             {t(NOTICE_ANSWER_KEYS[status])}
           </button>
         );
