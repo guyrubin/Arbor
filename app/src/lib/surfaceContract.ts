@@ -186,12 +186,10 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "development", hub: "growth", depth: 0,
     job: "Watch her record grow.",
-    // W2-GROWTH r2 (Law 7): the tail is demoted IN PAGE — the `growth-more`
-    // disclosure holds MonthInReview + the Full Picture (IA-homed on this hub,
-    // never on #/milestones), so the target is the disclosure, not a route.
+    // The child portrait opens original records from time, environment and
+    // domain views; supporting tools stay below the whole-child overview.
     primaryMove: "explore-child-record", moduleBudget: 3, demotionTarget: "disclosure",
-    // Count moves + the tree gains a leaf, same frame; months layer is
-    // monotonic cumulative only.
+    // Timeline marks indicate saved evidence, never developmental attainment.
     // B-PROG-05: `?view=program` is the program page (components/program/
     // ProgramPage, its own ONE stamp do-this-week, three modules) — a mode of
     // this leaf until lib/routes.ts gains the `program` id; the `program` row
@@ -275,8 +273,8 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     route: "practice", hub: "practice", depth: 0,
     job: "Choose a story, a game or a moment to enjoy together.",
     primaryMove: "choose-together", moduleBudget: 4, demotionTarget: "disclosure",
-    // Launcher is already exactly 2 modules (Kid-Mode door + worlds grid).
-    // Exit strip line comes from the practiceEvents child-class fold (M1.4).
+    // Editorial invitation, stories, age-appropriate games and offscreen ideas.
+    // Existing game routes retain their parent gates and practice event writes.
     threadWrite: "practiceEvents",
   },
   {

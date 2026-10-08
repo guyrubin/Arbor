@@ -615,7 +615,7 @@ describe("B-LOOP-13 round 2 — first tier + night answers on /voice", () => {
     const { buildVoiceReplyPrompt } = await import("../ai/prompts.js");
     const prompt = buildVoiceReplyPrompt({ persona: "P", scholar: { name: "s", method: "m" }, childProfile: spoken.profile, companionContext: spoken, message: "What should we try tomorrow evening?", languageDirective: "" });
     expect(prompt).toContain("Today's practice: 'What comes after pyjamas? Show me on our page.' (pending).");
-    expect(prompt).toContain('not today — it did not happen or did not work; in their words: "She was too tired."');
+    expect(prompt).toContain('Parent-reported outcome: not today — it did not happen or did not work. Parent\'s own description: "She was too tired."');
     expect(prompt).toMatch(/this IS the earlier record/);
     // night answers alone (no pin) still render
     const answersOnly = await assembleSpokenContext({ memoryStore: storeOf([]), childProfile: child, canReadMemory: true, journal: { doseRows: journal.doseRows } });

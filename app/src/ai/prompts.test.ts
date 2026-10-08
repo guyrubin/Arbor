@@ -107,7 +107,8 @@ describe("EVAL-6 — builders keep the byte contract of the old inline templates
       languageDirective: "\nDIRECTIVE",
     });
     expect(prompt.startsWith(`${NON_DIAGNOSTIC_CONTRACT}\nPERSONA-FROM-LIVEPERSONA`)).toBe(true);
-    expect(prompt).toContain("Reply in 2 to 4 short, spoken-friendly sentences");
+    expect(prompt).toContain("Reply in exactly 2 or 3 short, spoken-friendly sentences in ONE paragraph, at most 55 words.");
+    expect(prompt).toContain("A referral must fit INSIDE this three-sentence limit, never after it.");
     expect(prompt).toContain("Observations only — never a diagnosis.");
     expect(prompt.endsWith("DIRECTIVE")).toBe(true);
   });
@@ -615,7 +616,7 @@ describe("B-PROG-01 — the active-program line", () => {
     expect(buildChatPrompt({ ...chatArgs, activeProgram: { ...program, skill: " " } })).toBe(buildChatPrompt(chatArgs));
     expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.3");
     expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.8.0");
-    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.10.1");
+    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.10.6");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.6.0");
   });
 });
@@ -707,7 +708,7 @@ describe("B-LOOP-13 — the journal block and today's practice line", () => {
   it("versions: todays_focus 1.3.3 · coach_chat 1.7.0 · voice_reply 1.8.2 · live_session unchanged 1.5.0", () => {
     expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.3");
     expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.8.0");
-    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.10.1");
+    expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.10.6");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.6.0");
   });
 });
@@ -720,7 +721,9 @@ describe("B-LOOP-13 round 2 — voice_reply night answers", () => {
   const answers = [{ date: "2026-10-05", practice: "This book or that one?", practiceOutcome: "not_today" as const, whatHappened: "She was too tired." }];
   it("renders the answers after the practice line, says they ARE the earlier record, before the parent's words", () => {
     const v = buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken, todayPractice: practice, nightAnswers: answers } });
-    expect(v).toContain(`- 2026-10-05: the parent tried 'This book or that one?'; not today — it did not happen or did not work; in their words: "She was too tired.".`);
+    expect(v).toContain(`Arbor catalogue guidance for the linked activity (suggested wording, NOT a record of anyone's speech): "This book or that one?".`);
+    expect(v).toContain(`Parent-reported outcome: not today — it did not happen or did not work. Parent's own description: "She was too tired.".`);
+    expect(v).not.toContain(`the parent tried 'This book or that one?'`);
     expect(v).toMatch(/this IS the earlier record/);
     expect(v).toMatch(/Answer from this journal: .* then build on it/);
     // round 3: with no turns and no memory, the no-prior-conversation rule gives way to the journal note

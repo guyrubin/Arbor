@@ -254,7 +254,10 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // 1.5.0). Re-pin owed (live, NOT run by the builder): companion-continuity-v1,
   // voice-loop-v1. B-PROV-10 Part B takes 1.9.0.
   // Existing B-PROV-10 reservation remains 1.9.0; this context revision follows it.
-  voice_reply: { version: "1.10.1", sha256: "cc5e3376df8abac40a00b84df02cc05358779b0a6a9e9eff093985e6ef237144" },
+  // 1.10.6: keep any warranted referral inside the three-sentence spoken budget;
+  // child concerns go to child care, parent wellbeing to their own clinician.
+  // Crisis routing is unchanged.
+  voice_reply: { version: "1.10.6", sha256: "a0679af8f576fef6b47d82c3694883cadbd02d1d38af44fd3cfe961e7f474ec6" },
   live_session: { version: "1.6.0", sha256: "e548541a970778692712349da73107873b6bf0b58a211bd5111306a37113aacd" },
   // 1.2.0 (B-AI-15, 2026-10-04): one capture = one log (first moment, never
   // merged, never an array), notes copy the parent's own words, no adjective
@@ -577,7 +580,9 @@ export const buildVoiceReplyPrompt = ({
 ${persona} Apply this lens: ${scholar.name} — ${scholar.method}
 Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
 ${renderSpokenContext(companionContext, { journalAware: true })}${renderVoiceJournalBlock(companionContext?.todayPractice, companionContext?.nightAnswers)}The parent just said: ${JSON.stringify(message)}
-Reply in 2 to 4 short, spoken-friendly sentences: briefly acknowledge, then give one concrete thing to try, or ask one short clarifying question when the needed context is missing. Never invent an earlier discussion. Use plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help. Hard length limit: one paragraph, no more than 4 sentences and 65 words, even when several context records are available. Choose ONE adjustment rather than several alternatives. A single routine difficult evening does not itself justify introducing a medical concern or referral; any escalation must be grounded in what the parent actually reported.${languageDirective}`;
+When the parent's report or approved context identifies something that helped with THIS request, build the practical next step on that same approach: name it and give one small concrete cue for continuing it. Acknowledging the success and then proposing an unrelated technique is not continuity. Change approach only if the parent asks to change it, newer information says it did not help, or safety requires it. The parent's latest correction or reported outcome overrides older memory; never turn an accepted suggestion into a claimed success.
+PROVENANCE: catalogue practice say-lines, suggested actions and earlier assistant replies are suggested wording, never the parent's exact speech. Describe the tried activity and reported outcome without quoting its script. Attribute a direct quote to the parent only when those exact words occur in their current message, a parent turn, or the journal's "Parent's own description" field. Otherwise paraphrase without quotation marks or invented earlier dialogue.
+Reply in exactly 2 or 3 short, spoken-friendly sentences in ONE paragraph, at most 55 words. Sentence 1: briefly acknowledge the parent's actual concern or relevant reported outcome. Sentence 2: give ONE concrete next step, or ask one short clarifying question if needed. Sentence 3 is optional: a warranted referral OR an offer to continue. A referral must fit INSIDE this three-sentence limit, never after it. Skip developmental milestone background, extra reassurance and transition phrases. Even when asked for a full walkthrough, give only the first useful step; never list every step. Never invent an earlier discussion. Use plain everyday language. No markdown, headings, bullet points or emojis. Observations only — never a diagnosis. If a concern ABOUT THE CHILD warrants referral, name the child's pediatrician or a child-development clinic (רופא/ת הילדים או המכון להתפתחות הילד), not a vague "professional". For the parent's own health or wellbeing, suggest the parent's own doctor or appropriate adult clinician, never the child's clinic. Existing urgent/crisis guidance takes precedence. Do not introduce a medical concern or referral for an ordinary difficult evening. Any escalation must be grounded in what the parent actually reported.${languageDirective}`;
 
 export type ExtractLogPromptArgs = {
   childProfile: unknown;

@@ -27,7 +27,6 @@
 .companion-icon-button { min-inline-size: var(--touch-min); padding-inline: 13px; }
 .companion-text-button { display: inline-flex; align-items: center; justify-content: flex-start; gap: 7px; padding: 8px 0; color: var(--arbor-clay-deep); background: transparent; border: 0; text-align: start; font-size: var(--t-sm); line-height: 1.4; }
 .companion-text-button:hover { text-decoration: underline; text-underline-offset: 4px; }
-[dir="rtl"] .companion-arrow { transform: scaleX(-1); }
 .companion-quiet-note { display: flex; align-items: flex-start; gap: 8px; font-size: var(--t-xs); color: var(--arbor-muted); line-height: 1.55; margin-block-start: 24px; padding-block-start: 19px; border-block-start: 1px solid var(--arbor-rule); }
 .companion-next { padding-block: 8px; min-inline-size: 0; }
 .companion-next h2 { font-size: var(--t-title); line-height: 1.3; margin-block: 11px 14px; }

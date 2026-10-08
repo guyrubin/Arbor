@@ -47,7 +47,6 @@
 .portrait-section-head p, .portrait-next p, .portrait-empty p { font-size: 13px; color: var(--arbor-muted); line-height: 1.7; margin: 0; }
 .portrait-text-button { display: inline-flex; align-items: center; justify-content: flex-start; gap: 8px; padding: 8px 0; text-align: start; font-size: 13px; font-weight: 600; color: var(--arbor-clay); }
 .portrait-arrow { flex-shrink: 0; }
-[dir=rtl] .portrait-arrow { transform: scaleX(-1); }
 .portrait-thread-map { position: relative; }
 .portrait-thread-head, .portrait-thread { display: grid; grid-template-columns: minmax(145px, 1.2fr) repeat(3, minmax(0, 1fr)); column-gap: 12px; }
 .portrait-thread-head { padding-block: 0 14px; font-size: 12px; color: var(--arbor-muted); text-align: center; }

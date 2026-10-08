@@ -1,0 +1,31 @@
+{
+  "ts": "2026-10-08T22:10:41.778Z",
+  "synthetic": true,
+  "probe": "Existing voice-smoke prompt, three consecutive samples in one provider process; all samples retained",
+  "rows": [
+    {
+      "sample": 1,
+      "firstTokenMs": 5355,
+      "firstSentenceMs": 5461,
+      "totalMs": 5692,
+      "chunks": 4,
+      "pass": false
+    },
+    {
+      "sample": 2,
+      "firstTokenMs": 424,
+      "firstSentenceMs": 589,
+      "totalMs": 852,
+      "chunks": 4,
+      "pass": true
+    },
+    {
+      "sample": 3,
+      "firstTokenMs": 669,
+      "firstSentenceMs": 814,
+      "totalMs": 986,
+      "chunks": 4,
+      "pass": true
+    }
+  ]
+}
