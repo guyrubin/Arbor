@@ -108,6 +108,14 @@ const GAME_PROMPT: Record<string, string> = {
   reading: "a magical letter forge where glowing letters become words",
 };
 const GAMES = KID_WORLDS.map((w) => ({ ...w, Icon: GAME_ICON[w.worldId] ?? Gamepad2, imagePrompt: GAME_PROMPT[w.worldId] ?? "" }));
+/** B-GAME-19 (ruling GD-6, Guy 8 Oct "go"): the nine worlds leave the kid home
+ *  once game 1 ships - while Sneak & Freeze is on, it is the ONE game on the
+ *  kid home (shown large, the hero on its tile). The nine stay reachable as
+ *  grown-up-led practice on the parent side. A device that turns the game off
+ *  (arbor.flags.sneakFreeze = "0") keeps the nine, so the section never empties. */
+export function kidHomeGames(sneakOn: boolean = sneakFreezeFlagOn()): typeof GAMES {
+  return sneakOn ? [] : GAMES;
+}
 /** B-KID-88: the home's game tiles with their name keys (tests read this). */
 export const KID_HOME_GAMES: readonly { id: string; worldId: string; titleKey: string; subKey: string }[] = KID_WORLDS.map((w) => ({
   id: w.id,
@@ -140,7 +148,8 @@ export function kidDestinations(bannerStoryId: string, bookIds: readonly string[
     ...bookIds.map((id) => ({ tile: `book:${id}`, surface: "journeys" as KidSurface, arg: id })),
     // B-KID-85: the library also holds the saved comics ("Made before").
     { tile: "books-see-all", surface: "journeys", arg: null },
-    ...GAMES.map((g) => ({ tile: `game:${g.id}`, surface: "arcade" as KidSurface, arg: g.worldId })),
+    ...kidHomeGames().map((g) => ({ tile: `game:${g.id}`, surface: "arcade" as KidSurface, arg: g.worldId })),
+    ...(sneakFreezeFlagOn() ? [{ tile: `game:${SNEAK_FREEZE_WORLD.id}`, surface: "arcade" as KidSurface, arg: SNEAK_FREEZE_WORLD.worldId }] : []),
   ];
 }
 
@@ -396,6 +405,8 @@ export default function KidDashboard({
   // illustrated in the child's theme leads (R-4b); the rest lead My books.
   // A child without one: nothing here changes.
   const libraryBooks = useChildLibraryBooks(childProfile.id);
+  // B-GAME-19: one game on the kid home while Sneak & Freeze is on.
+  const homeGames = kidHomeGames();
   const bookLang: "en" | "he" = storyLanguage(uiLang, aiLang) === "he" ? "he" : "en";
   const tonightLib = onOpenBook ? libraryBooks[0] ?? null : null;
   const moreLib = onOpenBook ? libraryBooks.slice(1) : [];
@@ -598,15 +609,16 @@ export default function KidDashboard({
             {kt("kid.games.title")}
           </h2>
         </div>
-        <div className={tilePortrait ? PORTRAIT_GRID : undefined} style={tilePortrait ? { gap: `${KID_HOME_TILE_GAP}px` } : { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
-          {GAMES.map((g, i) => (
+        {/* B-GAME-19: the one game is shown large (one column, up to 420 px). */}
+        <div className={tilePortrait && homeGames.length ? PORTRAIT_GRID : undefined} style={!homeGames.length ? { display: "grid", gridTemplateColumns: "minmax(0, 420px)", gap: `${KID_HOME_TILE_GAP}px` } : tilePortrait ? { gap: `${KID_HOME_TILE_GAP}px` } : { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
+          {homeGames.map((g, i) => (
             <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(g.nameKey)} sub={kt(g.subKey)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
           {/* B-GAME-07b: the G0 proof game, only behind its device flag. No
               tile art yet (dev placeholder = the accent + glyph); no hero url,
               so no scene is generated. */}
           {sneakFreezeFlagOn() && (
-            <SceneTile key={SNEAK_FREEZE_WORLD.id} worldId={SNEAK_FREEZE_WORLD.worldId} accent={SNEAK_FREEZE_WORLD.accent} Icon={Footprints} title={kt(SNEAK_FREEZE_WORLD.nameKey)} sub={kt(SNEAK_FREEZE_WORLD.subKey)} imagePrompt="" theme={kidTheme} index={GAMES.length} onClick={() => onOpenSurface("arcade", SNEAK_FREEZE_WORLD.worldId)} />
+            <SceneTile key={SNEAK_FREEZE_WORLD.id} worldId={SNEAK_FREEZE_WORLD.worldId} accent={SNEAK_FREEZE_WORLD.accent} Icon={Footprints} title={kt(SNEAK_FREEZE_WORLD.nameKey)} sub={kt(SNEAK_FREEZE_WORLD.subKey)} imagePrompt="" theme={kidTheme} index={homeGames.length} onClick={() => onOpenSurface("arcade", SNEAK_FREEZE_WORLD.worldId)} />
           )}
         </div>
       </section>
