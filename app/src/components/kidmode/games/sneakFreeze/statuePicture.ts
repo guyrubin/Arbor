@@ -26,6 +26,15 @@ import { sameOriginOrData } from "../../proofAssets";
 /** The picture: 4:3, sized for a phone share and a desktop frame. */
 export const PICTURE = { w: 1200, h: 900 } as const;
 
+/** B-GAME-09d: the picture's shape. The kept / shared picture is always the
+ *  4:3 one; a phone held upright is SHOWN a 3:4 close shot of the same moment
+ *  (the same crop height, its sides trimmed), so it can fill the screen. */
+export type PictureShape = "landscape" | "portrait";
+export const PICTURE_SIZE: Readonly<Record<PictureShape, { w: number; h: number }>> = {
+  landscape: PICTURE,
+  portrait: { w: 900, h: 1200 },
+};
+
 export interface StatueShot {
   pose: FreezePose;
   /** Where along the run the hero froze (0 = back gate, 1 = the stool). */
@@ -90,7 +99,9 @@ export interface PictureLayout {
 }
 
 /** Where everything stands in the picture (picture px; the crop in design units). */
-export function pictureLayout(shot: StatueShot, variantIndex = 0): PictureLayout {
+export function pictureLayout(shot: StatueShot, variantIndex = 0, shape: PictureShape = "landscape"): PictureLayout {
+  const P = PICTURE_SIZE[shape];
+  const upright = shape === "portrait";
   const variant = PICTURE_VARIANTS[((variantIndex % PICTURE_VARIANTS.length) + PICTURE_VARIANTS.length) % PICTURE_VARIANTS.length];
   // The hero's own depth scale (fieldLayout's landscape run is linear in y).
   const path = sneakLayout("landscape").heroPath;
@@ -103,8 +114,10 @@ export function pictureLayout(shot: StatueShot, variantIndex = 0): PictureLayout
   const feetX = WALK.centreX + (variant.side === "right" ? WALK.offsetX : -WALK.offsetX);
   const frac = variant.tight ? HERO_FRACTION.tight : HERO_FRACTION.loose;
   const h = heroH(feetY) / frac;
-  const w = h * (PICTURE.w / PICTURE.h);
-  const heroAcross = variant.side === "right" ? 0.62 : 0.38;
+  const w = h * (P.w / P.h);
+  // Upright, the hero stands a touch further from the cat's corner.
+  const across = upright ? 0.64 : 0.62;
+  const heroAcross = variant.side === "right" ? across : 1 - across;
   const d = DESIGN.landscape;
   const minX = -d.w * PLATE_BLEED;
   const minY = -d.h * PLATE_BLEED;
@@ -112,20 +125,22 @@ export function pictureLayout(shot: StatueShot, variantIndex = 0): PictureLayout
   const maxY = d.h * (1 + PLATE_BLEED);
   const x = Math.min(Math.max(feetX - heroAcross * w, minX), maxX - w);
   const y = Math.min(Math.max(feetY - FEET_AT * h, minY), maxY - h);
-  const scale = PICTURE.h / h;
+  const scale = P.h / h;
   const hero = { x: (feetX - x) * scale, y: (feetY - y) * scale, h: heroH(feetY) * scale };
   // The cat: lower foreground corner opposite the hero, seen from behind,
   // peering at him (the sprite peers right; mirrored when he stands left).
-  const catH = PICTURE.h * 0.44;
+  // Upright the cat is a little smaller and further in, so it stays whole in the narrower frame.
+  const catH = P.h * (upright ? 0.4 : 0.44);
+  const catAt = upright ? 0.22 : 0.2;
   const watcher = variant.side === "right"
-    ? { x: PICTURE.w * 0.2, y: PICTURE.h * 0.975, h: catH, flip: false }
-    : { x: PICTURE.w * 0.8, y: PICTURE.h * 0.975, h: catH, flip: true };
+    ? { x: P.w * catAt, y: P.h * 0.975, h: catH, flip: false }
+    : { x: P.w * (1 - catAt), y: P.h * 0.975, h: catH, flip: true };
   return { variant, crop: { x, y, w, h }, scale, hero, watcher };
 }
 
 /** Picture px -> picture px as drawn (mirrored for right-to-left, like the scene). */
-export function toPicture(p: FieldPoint, rtl: boolean): FieldPoint {
-  return { x: rtl ? PICTURE.w - p.x : p.x, y: p.y };
+export function toPicture(p: FieldPoint, rtl: boolean, shape: PictureShape = "landscape"): FieldPoint {
+  return { x: rtl ? PICTURE_SIZE[shape].w - p.x : p.x, y: p.y };
 }
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -164,13 +179,14 @@ const TINT: Readonly<Record<PictureTint, { light: string; lightA: number; shade:
  * canvas cannot be read back (a cross-origin sprite) — the caller then shows
  * the picture without keeping it.
  */
-export async function composeStatuePicture(o: { shot: StatueShot; art: SneakArt; sheet: HeroSheet; rtl: boolean; variant?: number }): Promise<string | null> {
+export async function composeStatuePicture(o: { shot: StatueShot; art: SneakArt; sheet: HeroSheet; rtl: boolean; variant?: number; shape?: PictureShape }): Promise<string | null> {
   if (typeof document === "undefined") return null;
   const looking = watcherSprite(o.art, "looking", false).sprite;
-  const l = pictureLayout(o.shot, o.variant ?? 0);
+  const size = PICTURE_SIZE[o.shape ?? "landscape"];
+  const l = pictureLayout(o.shot, o.variant ?? 0, o.shape ?? "landscape");
   const canvas = document.createElement("canvas");
-  canvas.width = PICTURE.w;
-  canvas.height = PICTURE.h;
+  canvas.width = size.w;
+  canvas.height = size.h;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
   const heroPose = resolvePose(o.sheet, o.shot.pose);
@@ -183,8 +199,8 @@ export async function composeStatuePicture(o: { shot: StatueShot; art: SneakArt;
   const urls = [o.art.plate.landscape, looking.url, heroPose.sprite.url];
   if (!urls.every(sameOriginOrData)) return null;
   const [plate, cat, hero] = await Promise.all([loadImage(o.art.plate.landscape), loadImage(looking.url), loadImage(heroPose.sprite.url)]);
-  const W = PICTURE.w;
-  const H = PICTURE.h;
+  const W = size.w;
+  const H = size.h;
   const tint = TINT[l.variant.tint];
   ctx.save();
   if (o.rtl) { ctx.translate(W, 0); ctx.scale(-1, 1); }
