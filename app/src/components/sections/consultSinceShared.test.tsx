@@ -39,6 +39,9 @@ vi.mock("../../hooks/useChildCollection", () => ({
 }));
 vi.mock("../../lib/loopEvents", () => ({ trackShareInitiated: vi.fn(), trackShareCompleted: vi.fn() }));
 vi.mock("./Reports", () => ({ REPORTS: [], useReportExport: () => vi.fn(), useConsultPdf: () => vi.fn() }));
+// B-CAREPRO-36: the teacher preset mounts the School Brief editor inline; its
+// review Modal portals to document.body, which a static render does not have.
+vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 
 import AskSpecialist from "./AskSpecialist";
 

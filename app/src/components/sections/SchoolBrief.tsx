@@ -8,7 +8,6 @@ import { api, PaywallError, EscalationRequiredError } from "../../lib/api";
 import type { BehaviorLog, Milestone, SchoolBrief as SchoolBriefData } from "../../types";
 import type { HandoffLogInput, HandoffMilestoneInput } from "../../lib/api";
 import { buildPacketInput, milestoneInAgeWindow, teacherBriefDraft, teacherHomeStep } from "../../consult/packet";
-import { takeTeacherNote } from "../../schoolBrief/teacherHandoff";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { screenForImmediateEscalation } from "../../safety/escalation";
 import { Modal } from "../ui/Modal";
@@ -34,7 +33,9 @@ import { openPrintableReport } from "../../lib/reportExport";
 
 /* AP-056 — School Handoff Brief (parent-controlled, teacher-facing).
  *
- * B-CAREPRO-27: THE teacher document — Consult's teacher audience opens here.
+ * B-CAREPRO-27: THE teacher document. B-CAREPRO-36: it renders INLINE under
+ * Consult's teacher preset ("Prepare for a visit" → Teacher or gan), and
+ * #/school-brief is that same page with the teacher preselected.
  * This surface:
  *  - OPENS on a free, deterministic draft from the teacher preset
  *    (consult/packet.teacherBriefDraft: about → overview, the profile's
@@ -98,15 +99,29 @@ const MUTED = "var(--arbor-muted)";
 const GREEN = "var(--arbor-green-ink)";
 const RULE = "var(--arbor-rule)";
 
-export default function SchoolBrief() {
+export interface SchoolBriefProps {
+  /** B-CAREPRO-36: the editor sits INLINE under Consult's teacher preset (the
+   *  page already carries the H1 and the teacher line) — no header of its own. */
+  embedded?: boolean;
+  /** B-CAREPRO-27/36: the parent's note for the teacher (Consult's prefill),
+   *  placed in the draft the parent reviews line by line; it follows the note
+   *  until the parent edits the brief. Never stored, never sent on its own. */
+  teacherNote?: string;
+  /** B-CAREPRO-36: the HOST route's declared move (Consult's stamp follows the
+   *  route: consult · school-brief · handoff); "build-school-brief" alone. */
+  primaryMove?: string;
+}
+
+export default function SchoolBrief({ embedded = false, teacherNote, primaryMove: routeMove }: SchoolBriefProps = {}) {
   const { childProfile, behaviorLogs, milestones, actionPlans, setActiveTab, openPaywall } = useArbor();
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
   const reduceMotion = useReducedMotion();
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
-  // B-CAREPRO-27: a note Consult's teacher branch handed over (one-shot).
-  const [handedNote] = useState<string | null>(() => takeTeacherNote());
+  // B-CAREPRO-27 → 36: the note Consult's teacher branch carries (a prop now
+  // that the editor is inline — no one-shot seam across a route change).
+  const handedNote: string | null = teacherNote?.trim() ? teacherNote.trim() : null;
 
   // B-CAREPRO-27 — the FREE draft: the teacher preset's ceiling (about + what
   // the family already tries; never logs, milestones or memory), in the
@@ -334,10 +349,15 @@ export default function SchoolBrief() {
   // (the free draft), so the move that builds the teacher's document is
   // "Save as PDF" — review, approve, print. Spread once, so this file carries
   // exactly one `data-primary-move` and the page renders exactly one.
-  const primaryMove = { "data-primary-move": "build-school-brief" };
+  // B-CAREPRO-36: inline in Consult the stamp carries the HOST route's move
+  // (one stamp in the DOM either way; Consult draws no other in this branch).
+  const primaryMove = { "data-primary-move": routeMove ?? "build-school-brief" };
 
   return (
     <motion.div {...motionProps} className="space-y-5 max-w-[760px]">
+      {/* B-CAREPRO-36: inline under Consult's teacher preset the page owns the
+          one H1 and the teacher line, so the editor opens on its actions. */}
+      {!embedded && (
       <header>
         {/* W2-CAREPRO r1: no page kicker — the hub (Care) already names it. */}
         <h1 className="text-[1.6rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
@@ -347,6 +367,7 @@ export default function SchoolBrief() {
           {t("schoolBrief.subtitle", { name: firstName })}
         </p>
       </header>
+      )}
 
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);

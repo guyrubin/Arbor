@@ -103,7 +103,7 @@ describe("LC-28 / OBJ-CARE-02 · the packet, not the hero", () => {
     expect("<HubHero compact zeroLine={t(\"x\")} />").toContain("<HubHero");
   });
 
-  it("W2-CAREPRO r2: the stamp lands on a REAL act (Build the summary / Open the School Brief), never a chip or the flow wrapper", () => {
+  it("W2-CAREPRO r2: the stamp lands on a REAL act (Build the summary / the inline brief's Save as PDF), never a chip or the flow wrapper", () => {
     const stampLines = CONSULT_TAB.split("\n").filter((l) => /\bdata-primary-move\b/.test(l) && !/^\s*(\/\/|\*|\/\*)/.test(l));
     expect(stampLines).toHaveLength(1);
     expect(stampLines[0]).toContain("const primaryMoveStamp = {");
@@ -114,7 +114,25 @@ describe("LC-28 / OBJ-CARE-02 · the packet, not the hero", () => {
     // the build button carries it and acts (scrolls + focuses step 3)
     expect(CONSULT).toMatch(/data-testid="consult-build"\s+onClick=\{buildSummary\}\s+\{\.\.\.primaryMoveStamp\}/);
     expect(CONSULT).toMatch(/const buildSummary = \(\) => \{[\s\S]*?scrollIntoView[\s\S]*?focus/);
-    expect(CONSULT).toMatch(/data-testid="consult-teacher-open"\s+\{\.\.\.primaryMoveStamp\}/);
+    // B-CAREPRO-36: the teacher branch's act is the inline brief's "Save as
+    // PDF" — the route's stamp VALUE is handed to the editor, which spreads it
+    // on that button (one stamp in the DOM; the old "Open" door is gone).
+    expect(CONSULT).toContain('<SchoolBrief embedded teacherNote={visionNote} primaryMove={primaryMoveStamp?.["data-primary-move"]} />');
+    expect(CONSULT).not.toContain('data-testid="consult-teacher-open"');
+    const BRIEF = read("components/sections/SchoolBrief.tsx");
+    expect(BRIEF).toContain('const primaryMove = { "data-primary-move": routeMove ?? "build-school-brief" };');
+    expect((BRIEF.match(/\{\.\.\.primaryMove\}/g) ?? []).length).toBe(1);
+  });
+
+  it("B-CAREPRO-36: #/school-brief renders this page with the teacher preselected (the route stays live)", () => {
+    expect(CONSULT_TAB).toContain('const routeAudience: ExportAudience | undefined = activeTab === "school-brief" ? "teacher" : undefined;');
+    expect(CONSULT_TAB).toContain("anchorAudience={presetAudience}");
+    expect(CONSULT_TAB).toMatch(/activeTab === "school-brief" \? "build-school-brief"/);
+    const SHELL = read("components/layout/Shell.tsx").replace(/\r\n/g, "\n");
+    expect(SHELL).toMatch(/^\s*"school-brief": ConsultTab,$/m);
+    expect(SHELL).not.toContain('import("../sections/SchoolBrief")');
+    // NEGATIVE CONTROL: the pre-change registry seat is what this rejects
+    expect('  "school-brief": SchoolBriefSection, // AP-056').not.toMatch(/^\s*"school-brief": ConsultTab,$/m);
   });
 
   it("the audience row is focusable and scroll-anchored", () => {

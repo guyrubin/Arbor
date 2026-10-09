@@ -113,7 +113,6 @@ const SmartRemindersPanel = lazy(() => import("../sections/SmartRemindersPanel")
 
 // AP-060: The Science — parent-facing trust/source-transparency page (static editorial, no child data).
 const SciencePage = lazy(() => import("../tabs/SciencePage"));
-const SchoolBriefSection = lazy(() => import("../sections/SchoolBrief")); // AP-056
 
 // AP-057: Bedtime Stories — day-rooted, generate-and-discard, escalation-gated.
 const BedtimeStoriesTab = lazy(() => import("../tabs/BedtimeStoriesTab"));
@@ -185,7 +184,10 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   "day-windows": DayWindowsPanel,   // AP-051: Day Windows (read-only, from Today)
   "smart-reminders": SmartRemindersPanel, // AP-058: Smart Reminders parent settings
   science: SciencePage,              // AP-060: The Science trust page (static editorial, no child data)
-  "school-brief": SchoolBriefSection, // AP-056: School Handoff Brief (parent-controlled, teacher-facing, curated)
+  // B-CAREPRO-36: #/school-brief stays a live route and renders the Consult
+  // leaf with the teacher preselected — the School Brief editor (AP-056:
+  // parent-controlled, teacher-facing, curated) sits inline under step 1.
+  "school-brief": ConsultTab,
   "bedtime-stories": BedtimeStoriesTab, // AP-057: Bedtime Stories (day-rooted, generate-and-discard, escalation-gated)
   routines: RoutinesTab, // Wireframe: Ready-made Routines library (Growth › Routines)
 };

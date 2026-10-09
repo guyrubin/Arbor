@@ -77,6 +77,12 @@ export default function ConsultTab() {
   const visit = useMemo(() => nextPrepareVisit(apptsCol.items, nowMs), [apptsCol.items, nowMs]);
   const awaiting = useMemo(() => visitAwaitingOutcome(apptsCol.items, followUpsCol.items, nowMs), [apptsCol.items, followUpsCol.items, nowMs]);
   const anchorAudience = visit?.profession ? consultAudienceForProfession(visit.profession) : undefined;
+  // B-CAREPRO-36 (closure): #/school-brief renders THIS page with the teacher
+  // preselected (the School Brief editor inline under step 1). Applied once
+  // like the visit anchor, never persisted as the parent's remembered choice;
+  // the route stays live and keeps its own contract (build-school-brief).
+  const routeAudience: ExportAudience | undefined = activeTab === "school-brief" ? "teacher" : undefined;
+  const presetAudience = routeAudience ?? anchorAudience;
   // B-LOOP-12: the professional view's PDF · Copy · Send land here
   // (`#/consult?intake=<profession>`) — the profession preset builds the
   // intake packet (consult/packet buildIntakePacket) and it leaves through
@@ -87,7 +93,7 @@ export default function ConsultTab() {
   // NEXTLEVEL critic r1 (P1): the H1 names the audience the parent CHOSE.
   // "Prepare for the speech therapist on 14 Oct" stayed on screen after
   // Pediatrician was picked, so the two loudest lines named two people.
-  const [chosen, setChosen] = useState<ExportAudience | undefined>(anchorAudience);
+  const [chosen, setChosen] = useState<ExportAudience | undefined>(presetAudience);
   const heading = consultHeading({ visitAudience: anchorAudience, hasVisit: !!visit, chosen });
 
   const saveOutcome = () => {
@@ -130,12 +136,14 @@ export default function ConsultTab() {
   };
   const activeHome = activeHomeEnrolments(programsCol.items);
 
-  /* Item 11 (IA-02): the surface contract reaches the DOM. TWO routes render
-     this one leaf — #/consult (build-share-packet) and #/handoff
-     (copy-handoff-brief) — so the stamp's VALUE follows the route. W2-CAREPRO
-     r2: AskSpecialist puts it on a real act — "Build the one-page summary"
-     under step 1 (the teacher branch: "Open the School Brief"). */
-  const primaryMoveStamp = { "data-primary-move": activeTab === "handoff" ? "copy-handoff-brief" : "build-share-packet" };
+  /* Item 11 (IA-02): the surface contract reaches the DOM. Several routes
+     render this one leaf — #/consult (build-share-packet), #/handoff
+     (copy-handoff-brief), #/school-brief (build-school-brief, B-CAREPRO-36)
+     and the retired #/find-pro — so the stamp's VALUE follows the route.
+     W2-CAREPRO r2: AskSpecialist puts it on a real act — "Build the one-page
+     summary" under step 1; in the teacher branch the inline School Brief's
+     "Save as PDF" (B-CAREPRO-36). */
+  const primaryMoveStamp = { "data-primary-move": activeTab === "handoff" ? "copy-handoff-brief" : activeTab === "school-brief" ? "build-school-brief" : "build-share-packet" };
 
   return (
     <div>
@@ -222,7 +230,7 @@ export default function ConsultTab() {
             )}
           </section>
         )}
-        <AskSpecialist key={`${anchorAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`} primaryMoveStamp={primaryMoveStamp} anchorAudience={anchorAudience} intake={intake} onAudienceChange={setChosen} />
+        <AskSpecialist key={`${presetAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`} primaryMoveStamp={primaryMoveStamp} anchorAudience={presetAudience} intake={intake} onAudienceChange={setChosen} />
       </div>
     </div>
   );

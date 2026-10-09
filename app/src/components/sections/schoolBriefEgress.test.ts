@@ -135,9 +135,10 @@ const TEACHER_REACHERS = SOURCES.filter(
 );
 
 /** The rule every door must satisfy: it recognises the teacher audience and
- *  sends it to the School Brief instead of minting a rival teacher document. */
+ *  sends it to the School Brief instead of minting a rival teacher document —
+ *  by navigating there, or (B-CAREPRO-36) by mounting the editor inline. */
 const routesTeacherToSchoolBrief = (src: string): boolean =>
-  /(type|audience) === "teacher"/.test(src) && /setActiveTab\("school-brief"\)/.test(src);
+  /(type|audience) === "teacher"/.test(src) && (/setActiveTab\("school-brief"\)/.test(src) || /<SchoolBrief\b/.test(src));
 
 /** The pre-change Reports card: every report type exported unconditionally. */
 const PRE_REPORTS_CARD = `
@@ -176,12 +177,15 @@ describe("LC-11b · one teacher door — every door, not one named file", () => 
     expect(routesTeacherToSchoolBrief(HYPOTHETICAL_NEW_DOOR)).toBe(false);
   });
 
-  it("B-CAREPRO-28: Consult's teacher audience opens the School Brief and builds no teacher text", () => {
+  it("B-CAREPRO-28 → 36: Consult's teacher audience shows the School Brief editor inline and builds no teacher text", () => {
     expect(consult).toContain('const isTeacher = audience === "teacher";');
     const branch = /data-testid="consult-teacher-branch"[\s\S]*?<\/section>/.exec(consult);
     expect(branch).toBeTruthy();
-    // B-CAREPRO-27: the teacher note travels with the parent into the brief.
-    expect(branch![0]).toContain('onClick={() => { handTeacherNote(visionNote); setActiveTab("school-brief"); }}');
+    // B-CAREPRO-27/36: the teacher note goes into the inline brief, which
+    // carries the route's ONE stamp; nothing navigates away any more.
+    expect(branch![0]).toContain('<SchoolBrief embedded teacherNote={visionNote} primaryMove={primaryMoveStamp?.["data-primary-move"]} />');
+    expect(branch![0]).not.toContain('setActiveTab("school-brief")');
+    expect(consult).toContain('import SchoolBrief from "./SchoolBrief";');
     // no Copy / PDF / send text for a teacher: the build and the PDF both stop first
     expect(consult).toContain('if (isTeacher) return { text: null, error: "" };');
     expect(consult).toContain("if (exportText == null || isTeacher) return;");
@@ -335,7 +339,6 @@ import {
   type BuildPacketInput,
 } from "../../consult/packet";
 import { buildSchoolBriefExport, findClinicalDiagnosisTerm } from "../../schoolBrief/schoolBrief";
-import { handTeacherNote, takeTeacherNote } from "../../schoolBrief/teacherHandoff";
 
 const DRAFT_INPUT: BuildPacketInput = {
   profile: { name: "Dylan", age: 5, languages: ["Hebrew", "English"], schoolContext: "Gan Shaked", strengths: ["Builds towers", "Kind to friends"], challenges: ["Speech delay"] },
@@ -425,10 +428,12 @@ describe("B-CAREPRO-27 · the brief opens on a free draft from the teacher prese
     expect(brief).not.toContain("schoolBrief.empty.");
   });
 
-  it("Consult's teacher note travels once into the brief", () => {
-    handTeacherNote("  Loves trains — use them for transitions.  ");
-    expect(takeTeacherNote()).toBe("Loves trains — use them for transitions.");
-    expect(takeTeacherNote()).toBeNull();
-    expect(brief).toContain("useState<string | null>(() => takeTeacherNote())");
+  it("B-CAREPRO-36: Consult's teacher note reaches the inline brief as a prop (no one-shot seam)", () => {
+    expect(brief).toContain('const handedNote: string | null = teacherNote?.trim() ? teacherNote.trim() : null;');
+    expect(brief).not.toContain("takeTeacherNote");
+    // the note rides the curated overview only, so the export scan covers it
+    expect(brief).toContain('overview: [draft.openingLine, draft.overview, handedNote ?? ""]');
+    // NEGATIVE CONTROL: the pre-change seam shape is what this rejects
+    expect("const [handedNote] = useState<string | null>(() => takeTeacherNote());").toContain("takeTeacherNote");
   });
 });

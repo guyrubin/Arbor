@@ -383,7 +383,9 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   // ── CARE ───────────────────────────────────────────────────────────────────
   {
     route: "consult", hub: "care", depth: 0,
-    job: "Bring in a pro without losing control.",
+    // B-CAREPRO-36: the page is "Prepare for a visit" — who it is for, what
+    // changed, what leaves (the teacher preset shows the School Brief inline).
+    job: "Prepare for a visit — you choose what leaves.",
     primaryMove: "build-share-packet", moduleBudget: 3, demotionTarget: "disclosure",
     // One flow: find → share → track; redaction preview visibly applied before
     // anything leaves. The plan's "share-event" thread line has no source in
@@ -402,6 +404,8 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     route: "school-brief", hub: "care", depth: 1,
     job: "Give her teacher a one-page brief that actually helps.",
     primaryMove: "build-school-brief", moduleBudget: 2, demotionTarget: "consult",
+    // B-CAREPRO-36: the route stays live and renders the Consult leaf with the
+    // teacher preselected; ConsultTab's stamp carries this move on this route.
     // Export is fail-closed scanned; no share-event source in buildTimeline —
     // "none".
     threadWrite: "none",

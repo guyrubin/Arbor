@@ -36,7 +36,8 @@ import { useConsultPdf } from "./Reports";
 import { consultAnchor, parentWords, reportsLeadCounts } from "../../lib/recordCounts";
 import type { Appointment, AppointmentFollowUp } from "../../lib/careTrack";
 import { exportPlainLines } from "../../consult/plainText";
-import { handTeacherNote } from "../../schoolBrief/teacherHandoff";
+// B-CAREPRO-36: the teacher preset shows the School Brief editor inline.
+import SchoolBrief from "./SchoolBrief";
 import { homePracticeWorlds, openHomePracticeWorld } from "../../consult/homePractice";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 // LC-20 + LC-12: the reason for the visit, the questions prepared in
@@ -55,8 +56,9 @@ import type { GrowthEntry } from "../../growth/growthEntries";
 
    1 · Who is it for? — the audience IS the preset: pediatrician · speech
        therapist · behaviour/psychology · another clinician · teacher · my own
-       records. A teacher is handed to the School Brief (one teacher document,
-       LC-11); every other audience builds its own preset packet.
+       records. A teacher gets the School Brief (one teacher document, LC-11)
+       — its editor inline below step 1 (B-CAREPRO-36); every other audience
+       builds its own preset packet.
    2 · What changed — the parent's reason for the visit, then the live packet
        (each item an include-toggle; rows render in full, LC-07) and a preview
        of exactly what leaves.
@@ -589,27 +591,27 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       {isTeacher ? (
         /* LC-11 / B-CAREPRO-28 — ONE teacher document. A teacher never gets
            this packet's text; the School Brief (classroom words, per-export
-           approval, fail-closed scan) is the teacher branch. */
-        <section data-testid="consult-teacher-branch" className="rounded-[22px] p-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}>
-          <h2 className="t-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
-            {t("elev.carehonesty.consult.teacher.title", { name: firstName })}
-          </h2>
-          <p className="t-sm leading-relaxed mt-1.5" style={{ color: MUTED }}>{t("elev.carehonesty.consult.teacher.body")}</p>
-          {visionNote.trim() !== "" && (
-            <p data-testid="consult-teacher-note-carried" className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
-              <Icon name="check_circle" size={14} fill={1} /> {t("elev.carehonesty.consult.teacher.noteCarried")}
-            </p>
-          )}
-          <button
-            type="button"
-            data-testid="consult-teacher-open"
-            {...primaryMoveStamp}
-            onClick={() => { handTeacherNote(visionNote); setActiveTab("school-brief"); }}
-            className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 mt-4 min-h-[44px]"
-            style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-paper-elevated)", boxShadow: "var(--arbor-clay-glow)" }}
-          >
-            <Icon name="school" size={17} /> {t("elev.carehonesty.consult.teacher.cta")}
-          </button>
+           approval, fail-closed scan) is the teacher branch.
+           B-CAREPRO-36 (closure): the School Brief editor renders HERE, inline
+           — the parent never leaves "Prepare for a visit" — and #/school-brief
+           is this page with the teacher preselected (ConsultTab). The route's
+           ONE stamp lands on the brief's "Save as PDF" (the real act); the
+           editor's own export path (per-export approval, CURATED_FIELDS,
+           ClinicalLanguageError fail-closed scan) is unchanged. A hairline
+           section, not a card: the brief's own card sits inside it. */
+        <section data-testid="consult-teacher-branch" className="flex flex-col gap-4 border-t pt-5" style={{ borderColor: RULE }}>
+          <div>
+            <h2 className="t-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
+              {t("elev.carehonesty.consult.teacher.title", { name: firstName })}
+            </h2>
+            <p className="t-sm leading-relaxed mt-1.5" style={{ color: MUTED }}>{t("elev.carehonesty.consult.teacher.body")}</p>
+            {visionNote.trim() !== "" && (
+              <p data-testid="consult-teacher-note-carried" className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
+                <Icon name="check_circle" size={14} fill={1} /> {t("elev.carehonesty.consult.teacher.noteCarried")}
+              </p>
+            )}
+          </div>
+          <SchoolBrief embedded teacherNote={visionNote} primaryMove={primaryMoveStamp?.["data-primary-move"]} />
         </section>
       ) : (
         /* W2-CAREPRO r2: at lg a two-pane fold — the builder column (steps 2,
