@@ -25,7 +25,7 @@ export const WORLD_ART: Readonly<Record<string, string>> = {
 export const STORY_DOORS: readonly { id: string; tab: ActiveTab; icon: string; art: string; title: { en: string; he: string }; detail: { en: string; he: string } }[] = [
   { id: "library", tab: "stories", icon: "auto_stories", art: "/visuals/worlds/v2/tonight-story-v2-480.webp", title: pair("companion.story.library.title"), detail: pair("companion.story.library.detail") },
   { id: "bedtime", tab: "bedtime-stories", icon: "bedtime", art: "/visuals/worlds/v2/story-quest-v2-480.webp", title: pair("companion.story.bedtime.title"), detail: pair("companion.story.bedtime.detail") },
-  { id: "comics", tab: "comics", icon: "menu_book", art: "/visuals/cards/story-david-and-goliath.png", title: pair("companion.story.comics.title"), detail: pair("companion.story.comics.detail") },
+  { id: "comics", tab: "comics", icon: "menu_book", art: "/visuals/cards/web/story-david-and-goliath-480.webp", title: pair("companion.story.comics.title"), detail: pair("companion.story.comics.detail") },
   { id: "family", tab: "family", icon: "favorite", art: "/visuals/companion/together-table.webp", title: pair("companion.story.family.title"), detail: pair("companion.story.family.detail") },
 ];
 
