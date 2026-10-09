@@ -446,6 +446,8 @@ export const fiveSmoothStones: Book = {
   ageBand: "4-7",
   // ages 4-7: 48-60 m, 60-72 m, 6-8 y
   ageBands: ["48m", "60m", "6-8y"],
+  // K2: one David book per child - a child who has this book no longer sees the legacy story
+  replacesStory: "david-and-goliath",
   /** v2 poses the hero sheet may not have yet (round 3): the nearest pose it has.
    *  K2: the tunic costume is not drawn on the hero pipeline (one character, the
    *  hero's own clothes), so worried-tunic stands in with worried. */

@@ -61,7 +61,8 @@ import { T, METRIC_VARS } from "../../lib/tokens";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { authoredChoice, authoredScene, completeRender, type StoryHero } from "../../lib/heroJourneyRender";
 import KidLibrary from "../kidmode/KidLibrary";
-import { kidBookOpenable, kidBooks } from "../kidmode/kidBooks";
+import { kidBookOpenable, kidBooks, kidShelfFor } from "../kidmode/kidBooks";
+import { useChildLibraryBooks } from "../kidmode/useChildLibraryBooks";
 import { adoptSavedRender, getSavedRender, hydrateHeroRenders, renderSignature, resolvePersonalisedRender, type SavedHeroRender } from "../../lib/heroRenderStore";
 import { KidBookTitleCard } from "../kidmode/KidBookCover";
 import { autoReadPage } from "../kidmode/kidReadAloud";
@@ -222,6 +223,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     fresh,
   });
   const runs = runsCol.items;
+  // K2: one David book per child - a child who has Five Smooth Stones no longer
+  // sees the legacy story on the kid shelf or as Tonight's story
+  const libraryBooks = useChildLibraryBooks(childProfile.id);
+  const kidShelf = useMemo(() => kidShelfFor(libraryBooks), [libraryBooks]);
   // B-KID-46 (KB-03): the language a story is told in. A story that cannot be
   // told in it (no Hebrew beats) is not listed — catalogue and Tonight pick
   // alike (the read-runs shelf applies the same rule on #/comics, B-PLAY-12);
@@ -846,6 +851,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       readIds: runs.map((r) => r.storyId), aims, ageMonths: childMonths, showAllAges,
       prefer: (s) => storyCover(s.id) !== null,
       lang: storyLang,
+      stories: kidShelf,
     });
     const tonightStory = pinned ?? tonightPick.story ?? undefined;
     const tonightCover = tonightStory ? storyCover(tonightStory.id) : null;
@@ -913,7 +919,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             the virtue chips and the separate Library shelf are gone from the
             kid register; the parent branch below is unchanged. */}
         <KidLibrary
-          books={kidBooks({ lang: storyLang, ageMonths: childMonths, showAllAges, hasCover: (id) => storyCover(id) !== null, runs })}
+          books={kidBooks({ lang: storyLang, ageMonths: childMonths, showAllAges, hasCover: (id) => storyCover(id) !== null, runs, stories: kidShelf })}
           theme={kidTheme}
           lang={uiLang === "he" ? "he" : "en"}
           childProfile={childProfile}

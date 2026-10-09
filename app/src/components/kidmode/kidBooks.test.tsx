@@ -10,7 +10,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { en as kidsEn, he as kidsHe } from "../../lib/i18nElevation/kidsStories";
 import { describe, expect, it } from "vitest";
-import { kidBooks } from "./kidBooks";
+import { kidBooks, kidShelfFor } from "./kidBooks";
+import { pickTonightsStory } from "./tonightsStory";
+import { fiveSmoothStones } from "../../lib/library/books/fiveSmoothStones";
 import { KidBookCover } from "./KidBookCover";
 import { HERO_STORIES, KID_RETIRED_STORY_IDS, KID_SHELF_STORIES, storyHasLanguage } from "../../lib/heroJourneys";
 import { kidArt, storyCoverKey } from "../../lib/kidThemeManifest";
@@ -174,5 +176,32 @@ describe("B-KID-85 — the kid library is a cover grid in the kid register", () 
     const parent = tab.slice(tab.indexOf("    ) : (\n      <div className=\"space-y-6 max-w-[1100px]\">"));
     expect(parent).toContain("setPackFilter");
     expect(parent).toContain("agefilter-toggle-hero-journeys");
+  });
+});
+
+describe("K2: one David book per child", () => {
+  const withBook = kidShelfFor([{ book: fiveSmoothStones }]);
+  it("a child who has Five Smooth Stones no longer has the legacy David story; a child without it keeps it", () => {
+    expect(fiveSmoothStones.replacesStory).toBe("david-and-goliath");
+    expect(KID_SHELF_STORIES.some((s) => s.id === "david-and-goliath")).toBe(true);
+    expect(withBook.some((s) => s.id === "david-and-goliath")).toBe(false);
+    expect(withBook).toHaveLength(KID_SHELF_STORIES.length - 1);
+    expect(kidShelfFor([])).toEqual(KID_SHELF_STORIES);
+    const books = kidBooks({ lang: "en", ageMonths: 60, showAllAges: true, hasCover: () => true, runs: [{ storyId: "david-and-goliath", startedAt: "2026-10-01T18:00:00Z" }], stories: withBook });
+    expect(books.some((b) => b.story.id === "david-and-goliath")).toBe(false);
+    for (let d = 1; d <= 28; d++) {
+      const day = `2026-10-${String(d).padStart(2, "0")}`;
+      expect(pickTonightsStory(day, "kid1", { lang: "en", stories: withBook }).story?.id, day).not.toBe("david-and-goliath");
+    }
+  });
+
+  it("the kid home and the kid story surface read the child's shelf for the list AND Tonight", () => {
+    const dash = readFileSync(path.join(__dirname, "KidDashboard.tsx"), "utf8");
+    expect(dash).toContain("const kidShelf = useMemo(() => kidShelfFor(libraryBooks), [libraryBooks]);");
+    expect(dash.match(/stories: kidShelf,/g)).toHaveLength(2);
+    const tab = readFileSync(path.join(__dirname, "..", "tabs", "HeroJourneyTab.tsx"), "utf8");
+    expect(tab).toContain("const kidShelf = useMemo(() => kidShelfFor(libraryBooks), [libraryBooks]);");
+    expect(tab).toContain("runs, stories: kidShelf })}");
+    expect(tab).toMatch(/lang: storyLang,\s*stories: kidShelf,\s*\}\)/);
   });
 });

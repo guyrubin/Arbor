@@ -49,7 +49,7 @@ import { loadShowAllAges } from "../../lib/ageFilter";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import type { HeroJourneyRun } from "../../types";
 import { HERO_STORIES, storyLanguage } from "../../lib/heroJourneys";
-import { kidBooks } from "./kidBooks";
+import { kidBooks, kidShelfFor } from "./kidBooks";
 import { KID_WORLDS, KID_WORLD_NAME_KEY, SNEAK_FREEZE_WORLD, kidWorldByWorldId, sneakFreezeFlagOn, type KidWorldAccent } from "./kidWorlds";
 import { KID_BOOK_EAGER_COUNT, KidBookCover } from "./KidBookCover";
 import { useChildLibraryBooks } from "./useChildLibraryBooks";
@@ -364,6 +364,8 @@ export default function KidDashboard({
   // illustrated in the child's theme leads (R-4b); the rest lead My books.
   // A child without one: nothing here changes.
   const libraryBooks = useChildLibraryBooks(childProfile.id);
+  // K2: one David book per child - the legacy story leaves the shelf and Tonight
+  const kidShelf = useMemo(() => kidShelfFor(libraryBooks), [libraryBooks]);
   // B-GAME-19: one game on the kid home while Sneak & Freeze is on.
   const homeGames = kidHomeGames();
   const bookLang: "en" | "he" = storyLanguage(uiLang, aiLang) === "he" ? "he" : "en";
@@ -379,9 +381,10 @@ export default function KidDashboard({
       prefer: (s) => kidArt(kidTheme, storyCoverKey(s.id)) !== null,
       // B-KID-46: only stories that can be told in the child's language (FIRST).
       lang: storyLanguage(uiLang, aiLang),
+      stories: kidShelf,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data.today, childProfile.id, heroReadIds, kidTheme, uiLang, aiLang],
+    [data.today, childProfile.id, heroReadIds, kidTheme, uiLang, aiLang, kidShelf],
   );
   // B-KID-78: keep tonight's cover, the last 3 opened books and this theme's
   // tile art in the service worker's kid-art cache (books work offline).
@@ -412,9 +415,10 @@ export default function KidDashboard({
       showAllAges: loadShowAllAges("hero-journeys"),
       hasCover: (id) => kidArt(kidTheme, storyCoverKey(id)) !== null,
       runs: heroRunsCol.items,
+      stories: kidShelf,
     }), tonightLib ? "" : tonightsStoryId),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [uiLang, aiLang, childProfile.id, kidTheme, heroRunsCol.items, tonightsStoryId, tonightLib],
+    [uiLang, aiLang, childProfile.id, kidTheme, heroRunsCol.items, tonightsStoryId, tonightLib, kidShelf],
   );
   // B-KID-68: the world is named by the registry's own key (Spell Forge too).
   const yesterdayNameKey = yesterdayWorld ? greetingWorldNameKey(yesterdayWorld) : undefined;

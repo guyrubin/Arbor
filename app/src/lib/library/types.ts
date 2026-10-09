@@ -294,6 +294,10 @@ export interface Book {
    *  art agent's next round adds it). Used only when the sheet's manifest is
    *  read and lacks the pose. */
   poseFallbacks?: Record<Pose, Pose>;
+  /** K2: the legacy hero story this library book supersedes (one David book
+   *  per child): a child who HAS this book no longer sees that story on the
+   *  kid shelf or as Tonight's story (components/kidmode/kidBooks kidShelfFor). */
+  replacesStory?: string;
 }
 
 /** The child the book is read for — display-time data only. */

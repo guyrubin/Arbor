@@ -37,6 +37,17 @@ export interface KidBooksInput {
   stories?: readonly HeroStorySpec[];
 }
 
+/**
+ * K2 (one David book per child): the kid shelf for THIS child - the shelf
+ * without every legacy story a library book the child has supersedes
+ * (Book.replacesStory: Five Smooth Stones replaces david-and-goliath). A child
+ * without the library book keeps the legacy story.
+ */
+export function kidShelfFor(libraryBooks: readonly { book: { replacesStory?: string } }[], shelf: readonly HeroStorySpec[] = KID_SHELF_STORIES): HeroStorySpec[] {
+  const replaced = new Set(libraryBooks.map((e) => e.book.replacesStory).filter((id): id is string => !!id));
+  return shelf.filter((s) => !replaced.has(s.id));
+}
+
 export function kidBooks(input: KidBooksInput): KidBook[] {
   // B-BOOK-29: the kid shelf (canonical-text books only) unless a list is injected.
   const told = storiesForLanguage(input.stories ?? KID_SHELF_STORIES, input.lang);
