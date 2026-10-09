@@ -75,9 +75,13 @@ const forceOnboardingPreview =
   import.meta.env.DEV && new URLSearchParams(window.location.search).has("onboarding");
 
 function ProfileGate({ children }: { children: React.ReactNode }) {
-  const { loading, needsOnboarding } = useProfile();
+  const { loading, needsOnboarding, loadError, retryProfiles } = useProfile();
   const { t } = useLanguage();
 
+  if (loadError) return <div className="arbor-app min-h-screen flex flex-col items-center justify-center gap-4 px-6" role="alert">
+    <p>{t("err.profiles.load")}</p>
+    <button type="button" className="min-h-11 rounded-xl px-5 py-3" onClick={retryProfiles}>{t("err.retry")}</button>
+  </div>;
   if (loading) {
     return (
       <div

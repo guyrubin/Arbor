@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { collection, deleteField, doc, getDocs, setDoc, updateDoc } from "firebase/firestore";
-import { db, firebaseEnabled } from "../lib/firebase";
+import { auth, db, firebaseEnabled } from "../lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { useAuth } from "./AuthContext";
 import { ChildProfile, DeletionReceipt } from "../types";
 import { defaultChildProfile } from "../initialData";
@@ -23,6 +24,9 @@ type ProfileContextValue = {
   /** The currently selected child (always defined once loaded). */
   activeChild: ChildProfile;
   loading: boolean;
+  /** Signed-in profile reads fail closed; Retry never imports another device-local family. */
+  loadError: boolean;
+  retryProfiles: () => void;
   /** True for a new authenticated account with no children yet. */
   needsOnboarding: boolean;
   setActiveChild: (id: string) => void;
@@ -37,6 +41,12 @@ type ProfileContextValue = {
 };
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
+
+type ProfileScope = { retry: number; key: string; active: boolean; changed: boolean; owner: NonNullable<typeof auth>["currentUser"] | null; remote: boolean };
+function liveProfileScope(scope: ProfileScope, latest: ProfileScope, key: string): boolean {
+  return scope === latest && scope.key === key && scope.active && !scope.changed
+    && (!scope.remote || (!!scope.owner && scope.key === `remote:${scope.owner.uid}` && auth?.currentUser === scope.owner));
+}
 
 const readLocalProfiles = (): ChildProfile[] => {
   try {
@@ -71,14 +81,17 @@ const writeLocalProfiles = (profiles: ChildProfile[]) => {
  * guard is only set on success).
  */
 const OWNERSHIP_GUARD_PREFIX = "arbor.ownershipProvisioned.";
-async function provisionOwnership(childId: string, childProfile?: Partial<ChildProfile>): Promise<boolean> {
+async function provisionOwnership(childId: string, childProfile: Partial<ChildProfile> | undefined, current: () => boolean): Promise<boolean> {
   try {
+    if (!current()) return false;
+    const headers = await authHeaders();
+    if (!current()) return false;
     const res = await fetch("/api/onboarding/family-child", {
       method: "POST",
-      headers: await authHeaders(),
+      headers,
       body: JSON.stringify({ childId, childProfile }),
     });
-    return res.ok;
+    return current() && res.ok;
   } catch {
     return false;
   }
@@ -97,73 +110,107 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     }
   });
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadedScope, setLoadedScope] = useState<ProfileScope | null>(null);
+  const [loadErrorScope, setLoadErrorScope] = useState<ProfileScope | null>(null);
+  const [loadVersion, setLoadVersion] = useState(0);
+  const retryProfiles = useCallback(() => setLoadVersion(version => version + 1), []);
+
+  // ProfileProvider survives the keyed owner subtree. Async callbacks must
+  // never install a previous owner's result into the next owner's state.
+  const writeScopeKey = `${useFirestore ? "remote" : "local"}:${user?.uid ?? "local-sandbox"}`;
+  const [, setAuthVersion] = useState(0);
+  const actualOwner = useFirestore ? auth?.currentUser ?? null : null;
+  const writeScope = useRef<ProfileScope>({ retry: loadVersion, key: writeScopeKey, owner: actualOwner, remote: useFirestore, active: true, changed: false });
+  if (writeScope.current.key !== writeScopeKey || writeScope.current.owner !== actualOwner || (writeScope.current.changed && writeScope.current.retry !== loadVersion)) {
+    writeScope.current = { retry: loadVersion, key: writeScopeKey, owner: actualOwner, remote: useFirestore, active: true, changed: false };
+  }
+  const ownerScope = writeScope.current;
+  useEffect(() => {
+    const scope = ownerScope; scope.active = true;
+    const unsubscribe = useFirestore && auth ? onAuthStateChanged(auth, current => {
+      // Latch even A→B→the original A object before React commits another render.
+      if (current !== scope.owner) { scope.changed = true; setAuthVersion(version => version + 1); }
+    }) : () => {};
+    return () => { scope.active = false; unsubscribe(); };
+  }, [ownerScope]);
+
 
   // OWN-1: once-per-session-per-child guard for the ownership backfill —
   // in-memory ref first, sessionStorage second (survives remounts, resets on a
   // new session so a transient failure retries on the next sign-in).
   const provisionedChildren = useRef<Set<string>>(new Set());
+  const ownershipAttempts = useRef(new Map<string, { scope: ProfileScope }>());
   const ensureOwnership = useCallback(
     async (child: Pick<ChildProfile, "id"> & Partial<ChildProfile>) => {
-      if (provisionedChildren.current.has(child.id)) return;
+      const scope = ownerScope;
+      const current = () => liveProfileScope(scope, writeScope.current, writeScopeKey);
+      if (!current()) return;
+      const guard = `${scope.key}:${child.id}`;
+      if (provisionedChildren.current.has(guard)) return;
       try {
-        if (sessionStorage.getItem(`${OWNERSHIP_GUARD_PREFIX}${child.id}`)) {
-          provisionedChildren.current.add(child.id);
+        if (sessionStorage.getItem(`${OWNERSHIP_GUARD_PREFIX}${guard}`)) {
+          provisionedChildren.current.add(guard);
           return;
         }
-      } catch {
-        /* storage blocked — the in-memory ref still guards this session */
-      }
-      provisionedChildren.current.add(child.id);
-      const ok = await provisionOwnership(child.id, child);
-      if (ok) {
-        try { sessionStorage.setItem(`${OWNERSHIP_GUARD_PREFIX}${child.id}`, new Date().toISOString()); } catch { /* ignore */ }
-      } else {
-        // Let a later trigger in this session retry (e.g. addChild after a load failure).
-        provisionedChildren.current.delete(child.id);
+      } catch { /* storage blocked: the scoped in-memory guard still holds */ }
+      if (!current()) return;
+      if (ownershipAttempts.current.get(guard)?.scope === scope) return;
+      const attempt = { scope };
+      ownershipAttempts.current.set(guard, attempt);
+      try {
+        const ok = await provisionOwnership(child.id, child, current);
+        if (!current()) return;
+        if (ok) {
+          provisionedChildren.current.add(guard);
+          try { sessionStorage.setItem(`${OWNERSHIP_GUARD_PREFIX}${guard}`, new Date().toISOString()); } catch { /* ignore */ }
+        }
+      } finally {
+        // An obsolete A attempt must not delete a newer A→B→A attempt.
+        if (ownershipAttempts.current.get(guard) === attempt) ownershipAttempts.current.delete(guard);
       }
     },
-    []
+    [writeScopeKey, ownerScope]
   );
 
   const profilesPath = user ? `users/${user.uid}/children` : "";
-
-  // Load profiles on mount / when the auth identity changes.
+  // Load profiles on mount / owner change / explicit retry. Signed-in failure
+  // never reads the unowned sandbox cache or turns an unknown result into empty.
   useEffect(() => {
     let cancelled = false;
-
+    const scope = ownerScope;
+    const current = () => !cancelled && liveProfileScope(scope, writeScope.current, writeScopeKey);
     const load = async () => {
-      setLoading(true);
-      if (useFirestore && db && user) {
-        try {
+      if (!current()) return;
+      setLoading(true); setLoadErrorScope(null); setLoadedScope(null); setProfiles([]);
+      try {
+        if (useFirestore && db && user) {
           const snap = await getDocs(collection(db, profilesPath));
-          // Real accounts are NOT seeded with demo data — an empty result means the
-          // user is new and onboarding will create their first child.
+          if (!current()) return;
+          // Only a confirmed empty remote result may start new-account onboarding.
           const loaded = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ChildProfile, "id">) }));
-          if (!cancelled) setProfiles(loaded);
-          // OWN-1: backfill server ownership docs for every existing child on
-          // sign-in (idempotent + session-guarded). Fire-and-forget — profile
-          // loading never blocks on it.
-          for (const child of loaded) void ensureOwnership(child);
-        } catch {
-          if (!cancelled) setProfiles(readLocalProfiles());
+          setProfiles(loaded); setLoadedScope(scope);
+          for (const child of loaded) {
+            if (!current()) return;
+            void ensureOwnership(child);
+          }
+        } else {
+          if (!current()) return;
+          setProfiles(readLocalProfiles()); setLoadedScope(scope);
         }
-      } else {
-        if (!cancelled) setProfiles(readLocalProfiles());
+      } catch {
+        if (current()) setLoadErrorScope(scope);
+      } finally {
+        if (current()) setLoading(false);
       }
-      if (!cancelled) setLoading(false);
     };
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useFirestore, user?.uid]);
+    void load();
+    return () => { cancelled = true; };
+  }, [useFirestore, user?.uid, writeScopeKey, ownerScope, loadVersion]);
 
   // Mirror sandbox profiles to localStorage.
   useEffect(() => {
-    if (!useFirestore && profiles.length > 0) writeLocalProfiles(profiles);
-  }, [profiles, useFirestore]);
+    if (!useFirestore && loadedScope === ownerScope && profiles.length > 0) writeLocalProfiles(profiles);
+  }, [profiles, useFirestore, loadedScope, ownerScope]);
 
   // Keep the active child id valid and persisted.
   useEffect(() => {
@@ -182,6 +229,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
   const addChild = useCallback(
     async (input: NewChildInput): Promise<ChildProfile> => {
+      const scope = ownerScope;
+      const current = () => liveProfileScope(scope, writeScope.current, writeScopeKey);
+      if (!current()) throw new Error("The profile session changed");
       const newChild: ChildProfile = { ...input, id: `child-${Date.now()}` };
       if (useFirestore && db) {
         try {
@@ -189,13 +239,16 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         } catch {
           /* fall through to local state update */
         }
+        if (!current()) throw new Error("The profile session changed");
         // OWN-1: provision the server-side ownership docs right after the
         // child doc write so the new child's memory/privacy routes work
         // immediately (fire-and-forget; the load-time backfill is the net).
         void ensureOwnership(newChild);
       }
+      if (!current()) throw new Error("The profile session changed");
       let count = 0;
       setProfiles((prev) => {
+        if (!current()) return prev;
         count = prev.length + 1;
         return [...prev, newChild];
       });
@@ -206,11 +259,14 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       try { trackProfileCreated(count, bandForAge(newChild.age).id); } catch { /* noop */ }
       return newChild;
     },
-    [useFirestore, profilesPath, ensureOwnership]
+    [useFirestore, profilesPath, ensureOwnership, writeScopeKey, ownerScope]
   );
 
   const updateChild = useCallback(
     async (id: string, patch: Partial<ChildProfile>): Promise<boolean> => {
+      const scope = ownerScope;
+      const current = () => liveProfileScope(scope, writeScope.current, writeScopeKey);
+      if (!current()) return false;
       let persisted = true;
       // B-DATA-03: an own `undefined` on a clearable field (birthDate after a
       // months edit) DELETES the stored value — ignoreUndefinedProperties would
@@ -220,6 +276,12 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       for (const k of clears) firestorePatch[k] = deleteField();
       // B-CAREPRO-34: a retired field leaves the stored record on this write.
       for (const k of RETIRED_PROFILE_FIELDS) firestorePatch[k] = deleteField();
+      const applyLocal = (p: ChildProfile): ChildProfile => {
+        const next = { ...p, ...patch } as Record<string, unknown>;
+        for (const k of clears) delete next[k];
+        for (const k of RETIRED_PROFILE_FIELDS) delete next[k];
+        return next as unknown as ChildProfile;
+      };
       if (useFirestore && db) {
         try {
           await updateDoc(doc(db, profilesPath, id), firestorePatch);
@@ -230,16 +292,11 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           persisted = false;
         }
       }
-      const applyLocal = (p: ChildProfile): ChildProfile => {
-        const next = { ...p, ...patch } as Record<string, unknown>;
-        for (const k of clears) delete next[k];
-        for (const k of RETIRED_PROFILE_FIELDS) delete next[k];
-        return next as unknown as ChildProfile;
-      };
-      setProfiles((prev) => prev.map((p) => (p.id === id ? applyLocal(p) : p)));
+      if (!current()) return false;
+      setProfiles((prev) => current() ? prev.map((p) => (p.id === id ? applyLocal(p) : p)) : prev);
       return persisted;
     },
-    [useFirestore, profilesPath]
+    [useFirestore, profilesPath, writeScopeKey, ownerScope]
   );
 
   const deleteChild = useCallback(
@@ -264,12 +321,16 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const activeChild =
     profiles.find((p) => p.id === activeChildId) || profiles[0] || defaultChildProfile;
 
-  const needsOnboarding = computeNeedsOnboarding(useFirestore, loading, profiles);
+  const loadError = loadErrorScope === ownerScope || ownerScope.changed;
+  const profileLoading = loading || loadedScope !== ownerScope;
+  const needsOnboarding = computeNeedsOnboarding(useFirestore, profileLoading || loadError, profiles);
 
   const value: ProfileContextValue = {
     profiles,
     activeChild,
-    loading,
+    loading: profileLoading,
+    loadError,
+    retryProfiles,
     needsOnboarding,
     setActiveChild,
     addChild,

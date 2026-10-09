@@ -417,6 +417,7 @@ export const en: Dict = {
   "shell.sandbox.toast": "Add GEMINI_API_KEY to app/.env.local (copy from app/.env.example) to enable live AI responses.",
   // error / retry states (m5)
   "err.retry": "Try again",
+  "err.profiles.load": "Your child profiles couldn’t be loaded. Please try again.",
   "err.careTeam.title": "We couldn't load your care team",
   "err.careTeam.body": "Something interrupted the connection. {name}'s data is safe — give it another try.",
   "err.memory.title": "We couldn't load {name}'s memory",
@@ -2957,6 +2958,7 @@ export const he: Dict = {
   "shell.sandbox.learn": "איך עושים את זה",
   "shell.sandbox.toast": "הוסיפו GEMINI_API_KEY לקובץ app/.env.local (העתיקו מ-app/.env.example) כדי להפעיל תשובות AI חיות.",
   "err.retry": "נסו שוב",
+  "err.profiles.load": "לא הצלחנו לטעון את פרטי הילדים. נסו שוב.",
   "err.careTeam.title": "לא הצלחנו לטעון את צוות הטיפול",
   "err.careTeam.body": "משהו הפריע לחיבור. הנתונים של {name} בטוחים — נסו שוב.",
   "err.memory.title": "לא הצלחנו לטעון את הזיכרון של {name}",
