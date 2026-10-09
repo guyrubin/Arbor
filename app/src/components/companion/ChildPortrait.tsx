@@ -17,6 +17,7 @@ import PortraitWatchRow from "./PortraitWatchRow";
 import PortraitKeepsakes from "./PortraitKeepsakes";
 import { DOMAIN_ART, EMPTY_ART, MOMENT_ART } from "../../lib/parentArt";
 import "./childPortrait.css";
+import { childPicture } from "../../lib/childPicture";
 
 // One glyph per concept: hands and family match their shelves (lib/shelves/registry.ts); `home` stays the Now place and the Home context.
 const icons: Record<DomainId, string> = { talking: "chat_bubble", moving: "directions_run", hands: "front_hand", thinking: "psychology", playing: "group", feelings: "favorite", body: "spa", family: "diversity_3" };
@@ -168,7 +169,7 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     <div data-module="child-portrait-overview">
     <header className="portrait-intro">
       <div><p className="portrait-kicker">{c.kicker}</p><h1>{c.title}</h1><p className="portrait-subtitle">{c.subtitle}</p></div>
-      <button type="button" className="portrait-identity" onClick={() => setActiveTab("profile")} aria-label={`${c.edit} · ${name}`}><Avatar name={childProfile.name} photoURL={childProfile.photoUrl} size={52} /><span><strong dir="auto">{name}</strong><span>{c.edit}<Icon name="chevron_right" size={16} className="portrait-arrow rtl:-scale-x-100" /></span></span></button>
+      <button type="button" className="portrait-identity" onClick={() => setActiveTab("profile")} aria-label={`${c.edit} · ${name}`}><Avatar name={childProfile.name} photoURL={childPicture(childProfile).url ?? undefined} size={52} /><span><strong dir="auto">{name}</strong><span>{c.edit}<Icon name="chevron_right" size={16} className="portrait-arrow rtl:-scale-x-100" /></span></span></button>
     </header>
     {!!childProfile.interests?.length && <div className="portrait-interests"><span>{c.interests}</span><p dir="auto">{childProfile.interests.join(" · ")}</p></div>}
     {!!childProfile.strengths?.length && <p className="portrait-strengths"><strong>{copy.strengths}</strong><span dir="auto">{childProfile.strengths.join(" · ")}</span></p>}

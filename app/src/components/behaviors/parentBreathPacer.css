@@ -1,0 +1,4 @@
+/* B-ASKJB-40: under reduced motion the pacer keeps its words and drops the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .arbor-breath-circle { transition: none !important; transform: scale(0.8) !important; }
+}

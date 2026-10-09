@@ -1,5 +1,5 @@
 import { translate as inputText } from "../../lib/i18n";
-import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDialog } from "../../hooks/useDialog";
@@ -8,14 +8,22 @@ import { trackCompanionPanelOpen } from "../../lib/kpiEvents";
 import Icon from "../ui/Icon";
 import { ArborMark } from "../ui/ArborMark";
 import { ErrorBoundary } from "../ErrorBoundary";
+import { availableHardMomentCards } from "../../content/selectCards";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 import "./companionWorkspace.css";
 
 const CoachTab = lazy(() => import("../tabs/CoachTab"));
 
 /** Mounted above routes: changing a view must not restart a draft, turn or microphone session. */
 export default function CompanionWorkspace({ children, kidLocked }: { children: React.ReactNode; kidLocked: boolean }) {
-  const { activeTab, setActiveTab, childProfile, activeFamilyTopic, setChatInput, chatInput, openCaptureSheet } = useArbor();
+  const { activeTab, setActiveTab, childProfile, activeFamilyTopic, setChatInput, chatInput, openCaptureSheet, openHardMomentNow } = useArbor();
   const { uiLang } = useLanguage();
+  // B-ASKJB-39: the hard-moment sheet is one tap from every parent screen. Same gate
+  // as Now's door (a pilot guide fits this child and language); Now keeps its own door.
+  const hardMomentDoor = useMemo(() => {
+    const at = new Date();
+    return availableHardMomentCards({ now: at, ageMonths: ageMonthsFromProfile(childProfile, at), locale: uiLang === "he" ? "he" : "en" }).length > 0;
+  }, [childProfile, uiLang]);
   const routeIsConversation = activeTab === "coach" || activeTab === "scholar";
   const [open, setOpen] = useState(routeIsConversation);
   const [mounted, setMounted] = useState(routeIsConversation);
@@ -102,6 +110,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
       <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.input.talk-with-arbor-text-photo-or-voice")}>
         <ArborMark size={27} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : (inputText(uiLang, "companion.input.what-would-you-like-to-share"))}<small>{inputText(uiLang, "companion.input.write-show-talk")}</small></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" />
       </button>
+      {hardMomentDoor && activeTab !== "overview" && <button type="button" className="companion-launch-save companion-launch-hard" data-testid="launcher-hard-moment" onClick={() => openHardMomentNow()} aria-label={inputText(uiLang, "companion.input.hard-moment-aria")}><Icon name="volunteer_activism" size={21} /><span className="companion-launch-save-label">{inputText(uiLang, "companion.input.hard-moment")}</span></button>}
       <button type="button" className="companion-launch-save" onClick={() => openCaptureSheet({ mode: "text" })} aria-label={inputText(uiLang, "companion.input.just-keep-a-moment")}><Icon name="add_a_photo" size={21} /><span className="companion-launch-save-label">{inputText(uiLang, "companion.input.keep-a-moment")}</span></button>
     </div>}
   </div>;

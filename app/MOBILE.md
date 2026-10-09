@@ -51,17 +51,21 @@ npx cap open ios             # opens Xcode           (macOS only)
 
 ## App icon & splash
 
-Source art lives in `assets/` (`icon-only.svg`, `icon-foreground.svg`,
-`icon-background.svg`, `splash.svg`, `splash-dark.svg` — the Arbor "Sprout" on the
-brand canvas). Regenerate all platform sizes after editing:
+Source art lives in `assets/` as PNG (B-DESIGN-07, Guy 9 Oct: the brand mark on white is the icon):
+`icon-only.png` (1024, the mark at 64 % on white, from `brand-mark-master.png`, a faithful 2x master of
+`public/brand/arbor-mark-transparent.png`), `icon-foreground.png` (transparent, the mark inside the
+adaptive-icon safe circle), `icon-background.png` (white), `splash.png` (the mark on the app paper
+`#eef2ef`, so the launch has no colour jump) and `splash-dark.png` (the icon tile on `#141d18`).
+Regenerate all platform sizes after editing:
 
 ```bash
-npx @capacitor/assets generate \
-  --iconBackgroundColor '#eef6f0' --iconBackgroundColorDark '#141d18' \
-  --splashBackgroundColor '#eef6f0' --splashBackgroundColorDark '#141d18'
+npx @capacitor/assets generate   --iconBackgroundColor '#ffffff' --iconBackgroundColorDark '#141d18'   --splashBackgroundColor '#eef2ef' --splashBackgroundColorDark '#141d18'
 ```
 
-This also emits PWA icons to `icons/`.
+The tool's PWA output (`public/assets/icons/` and its `manifest.webmanifest` edit) is NOT used: write
+`icons/icon-{48..512}.webp` as PNG data from `assets/icon-only.png`, then run
+`node scripts/generate-web-icons.mjs` (`public/icons/*.png`, maskable, apple-touch). The in-app
+`ui/ArborMark` renders `public/brand/arbor-mark-{128,256}.webp`.
 
 ## Cloud CI builds (no local Android Studio / Mac needed)
 

@@ -6,6 +6,7 @@
  */
 import { useMemo } from "react";
 import { useProfile } from "../context/ProfileContext";
+import { childPicture } from "../lib/childPicture";
 
 export interface FamilyGlanceRow {
   id: string;
@@ -26,7 +27,8 @@ export function useFamilyGlance(): FamilyGlanceRow[] {
         id: p.id,
         name: p.name,
         age: p.age,
-        photoUrl: p.photoUrl,
+        // B-SHELL-27: the one resolver (hero render → photo → initial), the same face as the switcher.
+        photoUrl: childPicture(p).url ?? undefined,
         isActive: p.id === activeChild.id,
       }))
       .sort((a, b) => {
