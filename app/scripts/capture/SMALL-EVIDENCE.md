@@ -21,13 +21,13 @@ There is no injected CSS or removal of real error/sync UI. A failed state retain
 diagnostic pixels without being marked reached. Together's two frames are the first
 observed ready frame and three seconds later, not proof of pre-hydration timing.
 
-The evidence workflow requests the source fonts. Only its disposable Docker build
+The evidence workflow requests the source fonts. Only its dedicated disposable font-preparation container
 fetches the exact Google Fonts URL already in `src/index.css` and the WOFF2 URLs
 that response names, with a 120-second total bound, no redirects or credentials,
 and strict origin/type/size limits. There are no local font downloads or committed
 font binaries. The full sweep retains its default fallback mode.
 
-Runtime serves those hash-verified bytes from the disposable cache while Docker
+The font-only container runs no application code; its cache is kept in a local CI image, never pushed. Runtime serves those hash-verified bytes from the disposable cache while Docker
 remains network-none. `font-provenance.json` records public URLs, hashes and Chromium
 version; `font-evidence.small.json` records loaded faces and sampled actual rendered
 glyph fonts for every attempted successful screenshot. Source-font shots have an

@@ -18,7 +18,22 @@ jobs:
           persist-credentials: false
       - name: Build synthetic capture image
         timeout-minutes: 15
-        run: docker build --file app/scripts/capture/Dockerfile --build-arg CAPTURE_FONT_MODE=exact --build-arg CAPTURE_DISPOSABLE_CI=true --tag arbor-parent-evidence .
+        run: docker build --file app/scripts/capture/Dockerfile --tag arbor-parent-evidence-base .
+      - name: Cache only existing public fonts in a disposable container
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          # BuildKit RUN lacks /.dockerenv. Use a real container rather than
+          # weakening the font-preparation guard or faking its marker. This
+          # command imports no app code and permits only exact public font GETs.
+          fonts=$(docker create --network bridge \
+            --env CAPTURE_FONT_MODE=exact --env CAPTURE_DISPOSABLE_CI=true \
+            arbor-parent-evidence-base node scripts/capture/prepare-font-cache.mjs)
+          trap 'docker rm -f "$fonts" >/dev/null' EXIT
+          docker start --attach "$fonts"
+          # Local CI image only: no registry push or font artifact upload.
+          docker commit "$fonts" arbor-parent-evidence >/dev/null
       - name: Capture bounded mobile EN and HE evidence
         timeout-minutes: 12
         shell: bash

@@ -51,18 +51,26 @@ describe('source-font cache contracts, stubbed fetch only', () => {
       expect(() => validateFontCache(dir, source)).toThrow('FONT_CACHE_HASH_MISMATCH');
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
-  it('gates downloads to an explicit disposable CI build, never runtime or app execution', () => {
+  it('gates downloads to an explicit disposable CI container, never app execution', () => {
     const prep = read('app/scripts/capture/prepare-font-cache.mjs');
     const runtime = read('app/scripts/capture/font-runtime.mjs');
     const docker = read('app/scripts/capture/Dockerfile');
     expect(prep).toContain("process.env.CAPTURE_DISPOSABLE_CI !== 'true'");
     expect(prep).toContain('AbortSignal.timeout(120_000)');
     expect(prep).toContain('64 * 1024 * 1024');
-    expect(docker).toContain('ARG CAPTURE_FONT_MODE=fallback');
+    expect(prep).toContain("!existsSync('/.dockerenv')");
+    expect(docker).not.toMatch(/RUN.*prepare-font-cache/);
     expect(docker).not.toMatch(/RUN.*(?:server\.ts|seed-demo|collect-evidence)/);
     expect(runtime).not.toMatch(/\bfetch\s*\(|route\.continue\(|route\.fetch\(/);
     expect(runtime).toContain('CSS.getPlatformFontsForNode');
     expect(runtime).toContain('FONT_RENDERED_GLYPHS_UNPROVEN');
-    expect(read('.github/workflows/arbor-parent-evidence.yml')).toContain('--build-arg CAPTURE_DISPOSABLE_CI=true');
+    const workflow = read('.github/workflows/arbor-parent-evidence.yml');
+    const fontStep = workflow.split('name: Cache only existing public fonts')[1].split('name: Capture bounded')[0];
+    expect(fontStep).toContain('docker create --network bridge');
+    expect(fontStep).toContain('--env CAPTURE_DISPOSABLE_CI=true');
+    expect(fontStep).toContain('node scripts/capture/prepare-font-cache.mjs');
+    expect(fontStep).toContain('docker commit "$fonts" arbor-parent-evidence');
+    expect(fontStep).not.toMatch(/server\.ts|run-evidence|seed-demo|docker push|--volume|--mount|secrets\./);
+    expect(workflow).toContain('docker create --network none');
   });
 });
