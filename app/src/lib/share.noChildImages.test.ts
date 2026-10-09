@@ -98,5 +98,12 @@ describe("B-SHELL-29 · index.html preview tags", () => {
     const file = path.resolve(SRC, "..", "public", "og", "arbor-invite-1200x630.png");
     if (!fs.existsSync(file)) expect(live).not.toContain("og:image");
     expect(html).toContain("/og/arbor-invite-1200x630.png");
+    // B-INF-07 (9 Oct): the file exists, so the live tags carry it, absolute and sized.
+    if (fs.existsSync(file)) {
+      expect(live).toContain('<meta property="og:image" content="https://arborparentingapp.com/og/arbor-invite-1200x630.png" />');
+      expect(live).toContain('<meta property="og:image:width" content="1200" />');
+      expect(live).toContain('<meta property="og:image:height" content="630" />');
+      expect(live).toContain('<meta name="twitter:card" content="summary_large_image" />');
+    }
   });
 });
