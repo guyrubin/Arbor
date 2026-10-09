@@ -62,7 +62,7 @@ import { hardMomentEvalSeedMessage } from "../src/eval/acceptance.js";
 import { appendResultsRow, isStaticSuite, judgeVisibleInput, runSuiteWithDeps, type ScenarioVerdict } from "../src/eval/judge.js";
 import { changedContentKeys } from "../src/eval/contentHashes.js";
 import type { EvalScenario, EvalSuite } from "../src/eval/acceptance.js";
-import { handoffWireBody, planWireBody, runnerInputError, todaysFocusWireBody } from "../src/eval/runnerInput.js";
+import { handoffWireBody, planWireBody, routeChildProfile, runnerInputError, todaysFocusWireBody } from "../src/eval/runnerInput.js";
 import { syntheticDocumentDataUrl } from "./evalDocumentFixture.mjs";
 import { PROGRAM_IMPORT_PROMPT } from "../src/ai/programImportPrompt.js";
 import { PROGRAM_IMPORT_VERSION } from "../src/lib/programImport.js";
@@ -458,7 +458,7 @@ export const runLiveSuite = async (suiteName: string, opts: { ids?: string[] } =
     ...scenario,
     input: {
       ...judgeVisibleInput(scenario.input),
-      suppliedChildProfile: syntheticProfileFor(suite, scenario),
+      suppliedChildProfile: routeChildProfile(routeOf(scenario), scenario.input ?? {}, syntheticProfileFor(suite, scenario), SYNTHETIC_PROFILE),
       contextScope: scenario.input?.privateMode === true
         ? "Private turn: server excludes the supplied profile, stored memory and previous turns."
         : scenario.input?.contextChildId === "different-child"

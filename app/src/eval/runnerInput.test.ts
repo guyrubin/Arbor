@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { handoffWireBody, planWireBody, runnerInputError, todaysFocusWireBody } from "./runnerInput";
+import { handoffWireBody, planWireBody, routeChildProfile, runnerInputError, todaysFocusWireBody } from "./runnerInput";
 import type { EvalSuite } from "./acceptance";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -86,7 +86,9 @@ describe("the handoff wire body is what a School Brief client posts", () => {
 
   it("the runner calls the rule and has the handoff branch", () => {
     const runner = readFileSync(path.join(APP, "scripts", "eval-judge.mts"), "utf8").replace(/\r\n/g, "\n");
-    expect(runner).toContain('import { handoffWireBody, planWireBody, runnerInputError, todaysFocusWireBody } from "../src/eval/runnerInput.js";');
+    expect(runner).toContain('import { handoffWireBody, planWireBody, routeChildProfile, runnerInputError, todaysFocusWireBody } from "../src/eval/runnerInput.js";');
+    // B-GA-27: the judge's suppliedChildProfile comes from the same rule.
+    expect(runner).toContain("suppliedChildProfile: routeChildProfile(routeOf(scenario), scenario.input ?? {}, syntheticProfileFor(suite, scenario), SYNTHETIC_PROFILE),");
     expect(runner).toContain("const inputError = runnerInputError(scenario);");
     expect(runner).toMatch(/if \(route === "\/api\/generate-handoff"\) \{[\s\S]{0,400}handoffWireBody\(input, scenarioProfile\)/);
     // B-ASKJB-27 (plan-v1): the plan branch posts the PlansTab body.
@@ -100,5 +102,27 @@ describe("the handoff wire body is what a School Brief client posts", () => {
     );
     expect(body).toEqual({ challengeTopic: "Bedtime", childProfile: { id: "eval-p" }, language: "he", recentTypeCounts: [{ type: "Sleep Meltdown", count: 2 }], privateMode: true });
     expect(runnerInputError({ route: "/api/generate-plan", input: { childProfile: { id: "x" } } })).toMatch(/challengeTopic/);
+  });
+});
+
+describe("B-GA-27 — the judge is shown the child profile the route received", () => {
+  const synthetic = { id: "eval-suite-scenario", name: "Noa", age: 4 };
+  const fallback = { id: "eval-synthetic-child", name: "Noa", age: 4 };
+  const own = { id: "eval-s1", name: "Ari", age: 4 };
+
+  it("Today's Focus and the plan post the scenario's own child, and the judge sees the same one", () => {
+    for (const route of ["/api/todays-focus", "/api/generate-plan"]) {
+      expect(routeChildProfile(route, { childProfile: own }, synthetic, fallback), route).toEqual(own);
+      expect(routeChildProfile(route, {}, synthetic, fallback), route).toEqual(synthetic);
+    }
+    expect(todaysFocusWireBody({ childProfile: own }, synthetic).childProfile).toEqual(routeChildProfile("/api/todays-focus", { childProfile: own }, synthetic, fallback));
+    expect(planWireBody({ childProfile: own }, synthetic).childProfile).toEqual(routeChildProfile("/api/generate-plan", { childProfile: own }, synthetic, fallback));
+  });
+
+  it("capture extraction falls back to the shared synthetic child; other routes always get the per-scenario profile", () => {
+    expect(routeChildProfile("/api/extract-log", { childProfile: own }, synthetic, fallback)).toEqual(own);
+    expect(routeChildProfile("/api/extract-log", {}, synthetic, fallback)).toEqual(fallback);
+    expect(routeChildProfile("/api/chat", { childProfile: own }, synthetic, fallback)).toEqual(synthetic);
+    expect(routeChildProfile("/api/voice", {}, synthetic, fallback)).toEqual(synthetic);
   });
 });

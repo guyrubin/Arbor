@@ -132,6 +132,28 @@ export function todaysFocusWireBody(
 /** B-LOOP-13: a scenario `journal` is the client's request object (ai/journalContext JournalRequest). */
 const isJournal = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 
+/**
+ * B-GA-27: the child profile a scenario's route actually receives — the one
+ * the judge must be shown as `suppliedChildProfile`. Today's Focus, the plan
+ * and capture extraction post the scenario's own `childProfile` when it has
+ * one (todaysFocusWireBody / planWireBody / the extract-log body); every other
+ * route posts the runner's per-scenario synthetic profile. Showing the judge
+ * the synthetic profile for a route that received the scenario's own child
+ * graded a correctly personalised answer as an isolation breach (judge
+ * gemini-3.8-flash, today-focus-v1 and plan-v1, 9 Oct).
+ */
+export function routeChildProfile(
+  route: string,
+  input: Record<string, unknown>,
+  scenarioProfile: Record<string, unknown>,
+  extractFallback: Record<string, unknown>,
+): Record<string, unknown> {
+  const own = input.childProfile && typeof input.childProfile === "object" ? (input.childProfile as Record<string, unknown>) : undefined;
+  if (route === "/api/todays-focus" || route === "/api/generate-plan") return own ?? scenarioProfile;
+  if (route === "/api/extract-log") return own ?? extractFallback;
+  return scenarioProfile;
+}
+
 /** B-ASKJB-27 (plan-v1): the body PlansTab posts — topic, child, language,
  *  the behaviour counts as written (the server's sanitizer is under test) and
  *  privateMode when the scenario sets it. Approved facts are never posted. */
