@@ -1379,7 +1379,8 @@ function useArborState() {
   // and the failure is a calm toast, never a blocking alert().
   // B-TODAY-20: returns the written row (null when invalid) so the capture
   // sheet's reply panel can echo and Undo exactly that row.
-  const handleAddLog = async (e: React.FormEvent): Promise<BehaviorLog | null> => {
+  // `callerShowsFailure`: see addMoment — one failed write, one message.
+  const handleAddLog = async (e: React.FormEvent, { callerShowsFailure = false }: { callerShowsFailure?: boolean } = {}): Promise<BehaviorLog | null> => {
     e.preventDefault();
     const invalid = validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse });
     if (invalid) {
@@ -1425,7 +1426,7 @@ function useArborState() {
       if (captureRevisionRef.current === revision && currentCaptureDraftRef.current === draftSnapshot) resetLogForm();
       return logItem;
     } catch {
-      if (captureScopeRef.current === captureScope) toast(t("companion.capture.saveError"), "error");
+      if (!callerShowsFailure && captureScopeRef.current === captureScope) toast(t("companion.capture.saveError"), "error");
       return null;
     } finally {
       captureWritesRef.current.delete(writeKey);
@@ -1433,12 +1434,16 @@ function useArborState() {
   };
 
   /** One awaited persistence seam for plain moments. Unchosen place and
-   * incident fields never leak from another capture into a neutral memory. */
+   * incident fields never leak from another capture into a neutral memory.
+   * A failed write is announced ONCE: by this toast, unless the caller passes
+   * `callerShowsFailure` because it renders the failure itself beside the kept
+   * draft and its retry (QuickLogModal, TogetherView, KidExitRecap). */
   const addMoment = async (
     text: string,
-    opts: { photoAttachment?: string; promptKey?: string; shelf?: ShelfId; milestoneId?: string; context?: BehaviorContext; notes?: string } = {},
+    opts: { photoAttachment?: string; promptKey?: string; shelf?: ShelfId; milestoneId?: string; context?: BehaviorContext; notes?: string; callerShowsFailure?: boolean } = {},
   ): Promise<BehaviorLog | null> => {
-    const { shelf, milestoneId, context, notes, ...buildOpts } = opts;
+    const { callerShowsFailure = false, ...writeOpts } = opts;
+    const { shelf, milestoneId, context, notes, ...buildOpts } = writeOpts;
     const built = buildMomentLog(text, context ?? "", buildOpts);
     if (!built) return null;
     const { context: _unchosenContext, ...moment } = built;
@@ -1449,7 +1454,7 @@ function useArborState() {
       ...(shelf ? { shelf } : {}),
       ...(milestoneId ? { milestoneId } : {}),
     };
-    const writeKey = `${childProfile.id}:moment:${text}:${JSON.stringify(opts)}`;
+    const writeKey = `${childProfile.id}:moment:${text}:${JSON.stringify(writeOpts)}`;
     if (captureWritesRef.current.has(writeKey) || captureScopeRef.current !== captureScope) return null;
     captureWritesRef.current.add(writeKey);
     try {
@@ -1459,7 +1464,7 @@ function useArborState() {
       trackCaptureSaved("moment");
       return logItem;
     } catch {
-      if (captureScopeRef.current === captureScope) toast(t("companion.capture.saveError"), "error");
+      if (!callerShowsFailure && captureScopeRef.current === captureScope) toast(t("companion.capture.saveError"), "error");
       return null;
     } finally {
       captureWritesRef.current.delete(writeKey);

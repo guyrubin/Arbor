@@ -83,13 +83,20 @@ export default function KidExitRecap() {
       offerSneakHandBack({ childId: childProfile.id, name: (childProfile.name || "").split(" ")[0], gender: childProfile.gender, reached, keepLine: line || null });
       return;
     }
+    // A failed Keep re-offers the line as an error toast that says it was not
+    // kept and carries Keep again. That toast is the failure's one message, so
+    // addMoment's own failure toast stays quiet.
     if (line) {
       const kept = line;
-      const offerKeep = () => toast(line, "info", {
-        label: t("elev.learnCare.kidExit.keep"),
-        onClick: async () => { if (!await addMoment(kept)) offerKeep(); },
-      });
-      offerKeep();
+      const offerKeep = (failed: boolean) => toast(
+        failed ? t("elev.learnCare.kidExit.keepFailed", { line }) : line,
+        failed ? "error" : "info",
+        {
+          label: t("elev.learnCare.kidExit.keep"),
+          onClick: async () => { if (!await addMoment(kept, { callerShowsFailure: true })) offerKeep(true); },
+        },
+      );
+      offerKeep(false);
     }
   };
 

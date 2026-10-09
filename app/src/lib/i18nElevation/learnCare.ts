@@ -144,6 +144,8 @@ export const en: Record<string, string> = {
   "elev.learnCare.kidExit.join": " · ",
   // B-SHELL-04 — the recap toast stays until the parent keeps or dismisses it.
   "elev.learnCare.kidExit.keep": "Keep in the journal",
+  // A failed Keep: the one failure message, re-offering the same line.
+  "elev.learnCare.kidExit.keepFailed": "Not kept in the journal yet. {line}",
 
   // Builder M — R25 — #/sharing (and #/care-team, same leaf) demotion disclosure and its door to #/consult.
   "elev.learnCare.share.more.title": "Shared with you, your data and the record",
@@ -265,6 +267,7 @@ export const he: Record<string, string> = {
   "elev.learnCare.kidExit.strip": "בזמן שלא הייתם, {name}: {summary}",
   "elev.learnCare.kidExit.join": " · ",
   "elev.learnCare.kidExit.keep": "לשמור ביומן",
+  "elev.learnCare.kidExit.keepFailed": "עוד לא נשמר ביומן. {line}",
 
   // Builder M — R25 — #/sharing (and #/care-team, same leaf) demotion disclosure and its door to #/consult.
   "elev.learnCare.share.more.title": "מה שותף אתכם, הנתונים והרשומה",
