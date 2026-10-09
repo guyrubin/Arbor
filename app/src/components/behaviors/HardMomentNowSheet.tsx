@@ -18,6 +18,7 @@ import { useAuth } from "../../context/AuthContext";
 import { lastHeldFor } from "./hardMomentLastTime";
 import { LastTimeLead, SendWordsButton } from "./HardMomentWords";
 import { PublicGuideShare } from "./PublicGuideShare";
+import { ParentBreathPacer } from "./ParentBreathPacer";
 
 /**
  * B-ASKJB-31 — "Hard moment now": ONE sheet over the governed pilot guides,
@@ -128,6 +129,8 @@ export default function HardMomentNowSheet() {
           <p role="status" className="text-sm" style={{ color: "var(--arbor-ink-soft)" }}>{t("hm.now.none")}</p>
         ) : !card ? (
           <>
+            {/* B-ASKJB-40: an optional breath for the parent first — collapsed, skippable, never a gate. */}
+            <ParentBreathPacer t={t} />
             <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("hm.now.pick")}</p>
             {lead.length > 0 && (
               <div className="space-y-2" data-testid="hard-moment-now-matched">
