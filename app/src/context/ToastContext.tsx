@@ -5,6 +5,11 @@ import { Icon } from "../components/ui/Icon";
 import { useLanguage } from "./LanguageContext";
 import { isKidModeActive, subscribeKidMode } from "../lib/kidModeGate";
 
+/* B-STATUS-01 — one feedback grammar: a toast is for an ERROR or an UNDO (an
+   action). Anything that went well answers where it happened, with the one
+   Receipt line (components/ui/Receipt.tsx); AI work waits with its one
+   PendingLine. Every other `toast(` call site is held to a shrink-only
+   baseline by lib/toastRatchet.guard.test.ts — remove one, never add one. */
 type ToastType = "success" | "error" | "info";
 /** CR-09: an optional single action a toast can offer (e.g. "Retry" on the
  *  billing-return pending toast). A toast that carries an action is NOT

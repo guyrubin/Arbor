@@ -1,0 +1,100 @@
+{
+  "$comment": "B-STATUS-01 — toast( call sites per file by ratcheted kind (success / info / dynamic). Shrink-only: see src/lib/toastRatchet.guard.test.ts. Errors and toasts carrying an action (Undo) are not counted.",
+  "files": {
+    "components/auth/OnboardingFlow.tsx": {
+      "success": 1
+    },
+    "components/capture/CaptureProposalsTray.tsx": {
+      "dynamic": 1,
+      "info": 1
+    },
+    "components/coach/ConversationProposalTray.tsx": {
+      "info": 1
+    },
+    "components/layout/DeleteAccountModal.tsx": {
+      "info": 1,
+      "success": 1
+    },
+    "components/layout/ParentalGatePanel.tsx": {
+      "success": 2
+    },
+    "components/layout/SettingsModal.tsx": {
+      "success": 1
+    },
+    "components/layout/Shell.tsx": {
+      "dynamic": 1,
+      "info": 1
+    },
+    "components/layout/YourDataSheet.tsx": {
+      "success": 1
+    },
+    "components/milestones/FirstKeepsakeSheet.tsx": {
+      "dynamic": 1,
+      "success": 1,
+      "info": 1
+    },
+    "components/overview/QuickLogModal.tsx": {
+      "info": 2,
+      "success": 1
+    },
+    "components/profile/AddChildModal.tsx": {
+      "success": 1
+    },
+    "components/sections/Appointments.tsx": {
+      "success": 2
+    },
+    "components/sections/AskSpecialist.tsx": {
+      "success": 1
+    },
+    "components/sections/FamilyFormation.tsx": {
+      "success": 1
+    },
+    "components/sections/SchoolBrief.tsx": {
+      "success": 1
+    },
+    "components/sections/Screening.tsx": {
+      "info": 1,
+      "success": 1
+    },
+    "components/sections/TrustedSharing.tsx": {
+      "success": 3
+    },
+    "components/tabs/BedtimeStoriesTab.tsx": {
+      "success": 2
+    },
+    "components/tabs/BehaviorsTab.tsx": {
+      "success": 3,
+      "info": 2
+    },
+    "components/tabs/CoachTab.tsx": {
+      "info": 5,
+      "success": 2
+    },
+    "components/tabs/ConsultTab.tsx": {
+      "success": 2
+    },
+    "components/tabs/DailyPlayTab.tsx": {
+      "success": 5
+    },
+    "components/tabs/HeroJourneyTab.tsx": {
+      "success": 1
+    },
+    "components/tabs/RoutinesTab.tsx": {
+      "success": 1
+    },
+    "context/ArborContext.tsx": {
+      "dynamic": 1,
+      "info": 1,
+      "success": 2
+    },
+    "hooks/useCheckout.ts": {
+      "dynamic": 1,
+      "info": 2,
+      "success": 1
+    },
+    "hooks/useEntitlement.ts": {
+      "info": 2,
+      "success": 1
+    }
+  }
+}
