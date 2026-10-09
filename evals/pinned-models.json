@@ -29,10 +29,10 @@
       "resolved": "gemini-2.5-flash-image"
     }
   },
-  "$productionComment": "B-GA-27 (2026-10-09): the text-route env cloudbuild.prod.yaml deploys. The prod coach model is VERTEX_MODEL_CHAT, not the coach_high_stakes code default above. Every live suite re-runs green on these values before the prod flip (GG-3); app/src/eval/acceptance.test.ts fails when cloudbuild.prod.yaml drifts from this block.",
+  "$productionComment": "B-GA-27 (2026-10-09): the text-route env cloudbuild.prod.yaml deploys. The prod coach model is VERTEX_MODEL_CHAT, not the coach_high_stakes code default above. Text runs in europe-west3, not the `eu` multi-region: measured 9 Oct on arborprd-westeu, gemini-3.5-flash, thinking off: the `eu` multi-region answered 5 of 25 calls in more than 15 s (max 92 s) and timed out live eval routes with HTTP 504; europe-west3 answered 25 of 25 within 8 s after the cold first call (p50 about 1 s). Every live suite re-runs green on these values before the prod flip (GG-3); app/src/eval/acceptance.test.ts fails when cloudbuild.prod.yaml drifts from this block.",
   "production": {
     "VERTEX_MODEL_CHAT": "gemini-3.5-flash",
-    "VERTEX_LOCATION": "eu"
+    "VERTEX_LOCATION": "europe-west3"
   },
   "$retiredComment": "Vertex retirement dates read on the model-versions page (9 Oct 2026). No route pin, production value or judge may name a model listed here (exact id). gemini-2.5-flash-image (retires 2027-03-15) is not yet listed.",
   "retiredModels": {
@@ -42,7 +42,7 @@
   "legacy": {
     "claude-3-5-sonnet@anthropic": "claude-3-5-sonnet-v2@20241022"
   },
-  "$judgeComment": "B-GA-27 (2026-10-09): the interim judge tier is gemini-3.8-flash (GA 2 Sep 2026, no retirement date announced; called on Vertex eu from arborprd-westeu). Same-vendor judge, self-preference risk, recorded per suite as judgeNote. gemini-2.5-pro is DEAD (retires on Vertex 20 Oct 2026). claude-opus-4-8 is DEAD (not enabled on this project's Vertex: 404 in europe-west4 and us-east5). claude-opus-5-5 on Vertex eu returned 429 on every call on 9 Oct (no quota on arborprd-westeu); it joins judgeModels when B-PROV-03 lands.",
+  "$judgeComment": "B-GA-27 (2026-10-09): the interim judge tier is gemini-3.8-flash (GA 2 Sep 2026, no retirement date announced; called on Vertex eu from arborprd-westeu; not served in europe-west3, so app/scripts/eval-judge.mts calls it on eu). Same-vendor judge, self-preference risk, recorded per suite as judgeNote. gemini-2.5-pro is DEAD (retires on Vertex 20 Oct 2026). claude-opus-4-8 is DEAD (not enabled on this project's Vertex: 404 in europe-west4 and us-east5). claude-opus-5-5 on Vertex eu returned 429 on every call on 9 Oct (no quota on arborprd-westeu); it joins judgeModels when B-PROV-03 lands.",
   "judgeModels": [
     "gemini-3.8-flash"
   ],

@@ -8,7 +8,7 @@ import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate 
 import type { AiEntitlement, CapabilityRequest } from "./capabilities/contracts.js";
 import { candidatesFor, defaultCandidateFor } from "./capabilities/candidates.js";
 import { MockModelProvider } from "./mockProvider.js";
-import { isVertexMultiRegion, vertexApiEndpoint } from "./vertexEndpoint.js";
+import { vertexApiEndpoint } from "./vertexEndpoint.js";
 
 export { withModelRetry, isAbortError, newAbortError, type ModelCallBudget } from "./modelRetry.js";
 
@@ -353,15 +353,15 @@ export class VertexGeminiProvider {
     }
   ) {}
 
-  /** Ordered image regions admitted by the route policy (EU-only in prod). A
-   *  regional `vertexLocation` is first; a configured non-EU fallback is
-   *  dropped here rather than silently moving family imagery out of region.
-   *  B-GA-27: a multi-region text location (`eu`) is not an image region; the
-   *  image model keeps its regional list (prod: europe-west4 first). */
+  /** Ordered image regions admitted by the route policy (EU-only in prod); a
+   *  configured non-EU fallback is dropped here rather than silently moving
+   *  family imagery out of region. B-GA-27: images never follow the text
+   *  `vertexLocation` — the list is `vertexImageRegions` (GCP_REGION first,
+   *  prod europe-west4), else `gcpRegion` alone. */
   imageRegions(): string[] {
     const policy = routePolicyFor(this.config);
-    const ordered = Array.from(new Set([this.config.vertexLocation, ...(this.config.vertexImageRegions ?? [])]))
-      .filter((location) => !isVertexMultiRegion(location));
+    const configured = this.config.vertexImageRegions?.length ? this.config.vertexImageRegions : [this.config.gcpRegion];
+    const ordered = Array.from(new Set(configured));
     return ordered.filter((location) => policy.allowedRegions.includes(providerRegion(location)));
   }
 

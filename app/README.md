@@ -41,7 +41,7 @@ The default local URL is `http://localhost:3000`.
 
 Optional runtime variables:
 
-- `GEMINI_MODEL`: defaults to `gemini-2.5-flash`.
+- `GEMINI_MODEL`: defaults to `gemini-3.5-flash`.
 - `CORS_ORIGINS`: comma-separated browser origins allowed to call the API. Defaults to `http://localhost:3000,http://127.0.0.1:3000`.
 - `PORT`: defaults to `3000`.
 
@@ -68,4 +68,4 @@ Founder scripts (Application Default Credentials, production; run by the lead, n
 - `node scripts/cohort-report.mjs --since <date> --retention --activation --funnel billing|loop --events`: the cohort read.
 - `node scripts/tag-internal-accounts.mjs --since <date> [--uids a,b] [--apply]`: tags founder, comped and smoke rollups `cohort: "internal"` (B-MEAS-07). Dry run by default; `--apply` writes that one field.
 
-`GEMINI_MODEL` defaults to `gemini-2.5-flash`, which the Gemini API model docs list as the stable Gemini 2.5 Flash model.
+`GEMINI_MODEL` defaults to `gemini-3.5-flash` (B-GA-27, 9 Oct 2026: Gemini 2.5 Flash retires on Vertex on 20 Oct 2026; the Vertex text routes moved to gemini-3.5-flash in europe-west3).

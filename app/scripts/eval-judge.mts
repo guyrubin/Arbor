@@ -364,7 +364,10 @@ const buildJudgeCall = (suite: EvalSuite) => {
   // The suite chooses the judge explicitly; never silently substitute a model.
   if (suite.judgeModel?.startsWith("gemini-")) {
     const config = loadConfig();
-    const judgeProvider = new VertexGeminiProvider({ ...config, modelProvider: "vertex", vertexModelHandoff: suite.judgeModel });
+    // B-GA-27: the judge (gemini-3.8-flash) is served on the `eu` multi-region,
+    // not in the europe-west3 text region; EVAL_JUDGE_LOCATION overrides.
+    const judgeLocation = process.env.EVAL_JUDGE_LOCATION || "eu";
+    const judgeProvider = new VertexGeminiProvider({ ...config, modelProvider: "vertex", vertexLocation: judgeLocation, vertexModelHandoff: suite.judgeModel });
     return async (prompt: string): Promise<Omit<ScenarioVerdict, "id">> =>
       await judgeProvider.generateJson({ route: "handoff_structured", prompt, schema: judgeSchemaFor(suite), temperature: 0, promptVersion: "eval-judge" }) as Omit<ScenarioVerdict, "id">;
   }

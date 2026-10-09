@@ -7,7 +7,7 @@
     "companion_attachments": "1.1.0"
   },
   "runner": {
-    "judge-repin-2026-10-09": "B-GA-27 (9 Oct 2026): judgeModel gemini-2.5-pro -> gemini-3.8-flash (gemini-2.5-pro and gemini-2.5-flash retire on Vertex 20 Oct 2026; gemini-3.8-flash is GA with no retirement date and answers on Vertex eu from arborprd-westeu; claude-opus-5-5 on eu returned 429, no quota). Route model gemini-2.5-flash @ europe-west4 -> gemini-3.5-flash @ eu (VERTEX_LOCATION=eu). Suite and prompt versions unchanged; the first rows on the new pair are in the results file.",
+    "judge-repin-2026-10-09": "B-GA-27 (9 Oct 2026): judgeModel gemini-2.5-pro -> gemini-3.8-flash (gemini-2.5-pro and gemini-2.5-flash retire on Vertex 20 Oct 2026; gemini-3.8-flash is GA with no retirement date and answers on Vertex eu from arborprd-westeu; claude-opus-5-5 on eu returned 429, no quota). Route model gemini-2.5-flash @ europe-west4 -> gemini-3.5-flash @ europe-west3 (VERTEX_LOCATION=europe-west3; the eu multi-region timed routes out with 504s, measured 9 Oct); the judge is called on eu. Suite and prompt versions unchanged; the first rows on the new pair are in the results file.",
     "offlineGate": "app/src/routes/companionAttachmentsRoute.test.ts and app/src/lib/companionAttachments.test.ts: real route authorization, consent, source binding, privacy, output screening and continuation.",
     "liveJudge": "app/scripts/eval-judge.mts; synthetic document fixtures only. This suite does not certify microphone capture or image content redaction.",
     "validationStatus": "Deterministic tests passed; live run follows the actual attachment route using synthetic PDFs.",

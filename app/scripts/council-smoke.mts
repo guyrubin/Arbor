@@ -15,7 +15,7 @@ const run = async () => {
   process.env.GCP_PROJECT_ID ||= "arborprd-westeu";
   process.env.FIREBASE_PROJECT_ID ||= "arborprd-westeu";
   process.env.GCP_REGION ||= "europe-west4";
-  process.env.VERTEX_LOCATION ||= "eu";
+  process.env.VERTEX_LOCATION ||= "europe-west3";
   process.env.MEMORY_ADAPTER = "firestore";
   process.env.ENABLE_LOCAL_MEMORY_ADAPTER = "false";
 
