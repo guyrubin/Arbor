@@ -114,12 +114,10 @@ describe("the Kid Mode reader (HeroJourneyTab)", () => {
     expect(kidReader).toMatch(/inlineSize: 48, minBlockSize: 48/);
     expect((kidReader.match(/<button\b/g) ?? []).length).toBe(4); // back, next, read again, my books
   });
-  it("each page reads itself on open; the Decision page reads its question; the cards are the large stacked list", () => {
-    // B-KID-73 re-pin: the question, then each choice label, as one voice queue.
-    // B-KID-120 re-pin: the question is spoken in the render's language.
-    expect(tab).toContain('? [`${displayScene.narration} ${kidsStoriesText("journey.decision", renderLang');
-    expect(tab).toContain("...choices.map((c) => c.label)].join(\"\\n\")");
-    expect(tab).toContain("autoReadPage(childProfile.id, kidSpeech.split(\"\\n\"), atEnd ? (aiLang === \"he\" ? \"he\" : \"en\") : renderLang)");
+  it("B-BOOK-28: legacy pages never synthesize narration; the Decision question and choices stay readable", () => {
+    expect(tab).not.toContain("autoReadPage");
+    expect(tab).not.toContain("kidSay");
+    expect(tab).toContain("stopVoice();");
     expect(kidReader).toContain("renderChoices()");
     expect(tab).toContain("<DecisionChoices choices={choices}");
   });

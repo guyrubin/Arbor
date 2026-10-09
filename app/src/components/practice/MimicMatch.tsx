@@ -34,6 +34,7 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
   const wonRef = useRef(false);
   const lastVideoTime = useRef(-1);
   const stoppedRef = useRef(false);
+  const startingRef = useRef(false);
 
   const face = MIMIC_FACES[idx % MIMIC_FACES.length];
   useEffect(() => { idxRef.current = idx; }, [idx]);
@@ -72,18 +73,24 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
   };
 
   const start = async () => {
+    if (startingRef.current || status === "live") return;
+    startingRef.current = true;
     setStatus("loading");
     stoppedRef.current = false;
     wonRef.current = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+      // A disclosure close/navigation can finish before camera permission.
+      // Release a late stream before loading the model or attaching the video.
+      if (stoppedRef.current) { stream.getTracks().forEach((t) => t.stop()); return; }
       streamRef.current = stream;
       const landmarker = await getFaceLandmarker();
       if (stoppedRef.current) { stream.getTracks().forEach((t) => t.stop()); return; }
       const v = videoRef.current;
-      if (!v) return;
+      if (!v) { stop(); return; }
       v.srcObject = stream;
       await v.play().catch(() => {});
+      if (stoppedRef.current) return;
       setStatus("live");
 
       const loop = () => {
@@ -108,8 +115,11 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
       };
       rafRef.current = requestAnimationFrame(loop);
     } catch {
+      if (stoppedRef.current) return;
       stop();
       setStatus("unavailable");
+    } finally {
+      startingRef.current = false;
     }
   };
 

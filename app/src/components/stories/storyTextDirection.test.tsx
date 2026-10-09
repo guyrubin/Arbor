@@ -91,7 +91,8 @@ describe("the reader (HeroJourneyTab source pins)", () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const tab = readFileSync(path.join(here, "..", "tabs", "HeroJourneyTab.tsx"), "utf8");
   it("the render carries its own language; the book's title, Decision question and choices read it", () => {
-    expect(tab).toContain("const [renderLang, setRenderLang]");
+    expect(tab).toContain("const [storedRenderLang, setRenderLang]");
+    expect(tab).toContain("const renderLang = kidMode ? storyLang : storedRenderLang;");
     expect(tab).toMatch(/data-kid-book-title=""/);
     expect(tab).toMatch(/lang=\{renderLang\} dir=\{langDir\(renderLang\)\} data-kid-book-title/);
     expect(tab).toContain('<DecisionChoices choices={choices} lang={renderLang} heroName=');

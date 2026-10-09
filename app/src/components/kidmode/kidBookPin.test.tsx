@@ -8,10 +8,9 @@
  * story". A second cause: the pin was a once-per-mount boolean, so only the
  * first pinned book of a mounted tab ever opened.
  *
- * Now: the pinned book is open on the FIRST paint on its authored text (the
- * model call never resolves in this file and the book is still there), the
- * pin is keyed by story id + a per-tap nonce, a late personalised render only
- * replaces page 1 while the child has not moved, a refused pin shows that
+ * Now: the pinned book is open on the FIRST paint on stable authored text.
+ * B-BOOK-28 removes background rewriting and parent-kept text from child reads.
+ * The pin is keyed by story id + a per-tap nonce; a refused pin shows that
  * book's cover with Read (never the grid), and every id the kid home row, the
  * Tonight banner and the library grid list passes the pin's own gate.
  * Rendered with react-dom/server (no jsdom in this repo).
@@ -40,7 +39,7 @@ vi.mock("../../lib/kidModeGate", () => ({ isKidModeActive: () => true, subscribe
 vi.mock("../../lib/tts", () => ({ stopSpeaking: vi.fn() }));
 vi.mock("../../lib/voice", () => ({ speakText: vi.fn(() => 0), stopVoice: vi.fn(), voiceSupported: () => false, voiceState: () => ({ speaking: false, engine: "basic" }) }));
 
-import HeroJourneyTab, { kidBookOpening, kidLateRenderApplies, kidPinKey, rememberJourney, journeyMemoKey, clearJourneyMemo, runRestorable } from "../tabs/HeroJourneyTab";
+import HeroJourneyTab, { kidBookOpening, kidPinKey, rememberJourney, journeyMemoKey, clearJourneyMemo, runRestorable } from "../tabs/HeroJourneyTab";
 import { kidBookOpenable, kidBooks } from "./kidBooks";
 import { chooseTonightsStory } from "./tonightsStory";
 import { HERO_STORIES, getStorySpec } from "../../lib/heroJourneys";
@@ -71,7 +70,7 @@ describe("B-KID-124: a pinned book is open on the first paint (the model call ne
     expect(html).toMatch(/<p lang="he" dir="rtl"[^>]*data-kid-book-text/);
     lang.ui = "en";
   });
-  it("no model call happens during render (the background request is an effect)", () => {
+  it("no model call happens during render", () => {
     expect(apiCalls.n).toBe(0);
   });
   it("a refused pin (the pin's own gate says no) shows THAT book's cover with Read, never the grid", () => {
@@ -99,12 +98,9 @@ describe("B-KID-124: the pin is keyed by story + tap", () => {
     expect(kidPinKey("a", 1)).not.toBe(kidPinKey("a", 2));
     expect(kidPinKey("a", 3)).toBe(kidPinKey("a", 3));
   });
-  it("a late personalised render replaces page 1 only for the same open, before any page turn or read-aloud", () => {
-    const base = { openSeq: 2, requestSeq: 2, pageMoved: false, narrationSpoken: false };
-    expect(kidLateRenderApplies(base)).toBe(true);
-    expect(kidLateRenderApplies({ ...base, pageMoved: true })).toBe(false);
-    expect(kidLateRenderApplies({ ...base, narrationSpoken: true })).toBe(false);
-    expect(kidLateRenderApplies({ ...base, openSeq: 3 })).toBe(false); // another book opened since
+  it("B-BOOK-28: a child open ignores the parent memo and never requests a late rewrite", () => {
+    const spec = getStorySpec(STORY)!;
+    expect(kidBookOpening(spec, "child-1", "en", "image theme", { name: "Dana" }, "2026-10-05").personalised).toBe(false);
   });
   it("the reader and the overlay wire it: nonce per tap, the old boolean is gone, the cover is the Suspense fallback", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
@@ -113,7 +109,8 @@ describe("B-KID-124: the pin is keyed by story + tap", () => {
     expect(tab).not.toContain("pinnedOpened");
     expect(tab).toContain("}, [pinKey]);");
     expect(tab).toContain("onOpen={(story) => { openKidBook(story, false); }}");
-    expect(tab).toMatch(/kidLateRenderApplies\(\{ openSeq: kidOpenSeq\.current/);
+    expect(tab).not.toContain("kidPersonalise");
+    expect(tab).not.toContain("kidLateRenderApplies");
     expect(overlay).toContain("setPinNonce((n) => n + 1);");
     expect(overlay).toContain("<HeroJourneyTab initialStoryId={arcadeWorldId ?? undefined} pinNonce={pinNonce} />");
     expect(overlay).toContain("<KidStageFallback storyId={arcadeWorldId ?? undefined} />");
@@ -149,10 +146,11 @@ describe("B-KID-121: a run is restored only in the language it was written in", 
     expect(html).not.toContain("ENGLISH PERSONALISED WORDS");
     expect(html).toMatch(/<p lang="he" dir="rtl"[^>]*data-kid-book-text/);
     lang.ui = "en"; lang.ai = null;
-    // The same run in English opens in English.
+    // B-BOOK-28: the English child read also ignores the parent memo.
     child.profile = profile(6);
     const en = renderToStaticMarkup(<HeroJourneyTab initialStoryId={STORY} pinNonce={1} />);
-    expect(en).toContain("ENGLISH PERSONALISED WORDS");
+    expect(en).not.toContain("ENGLISH PERSONALISED WORDS");
+    expect(en).toMatch(/<p lang="en" dir="ltr"[^>]*data-kid-book-text/);
     clearJourneyMemo();
   });
   it("a saved run in another language is not restored", () => {
@@ -162,8 +160,8 @@ describe("B-KID-121: a run is restored only in the language it was written in", 
   });
 });
 
-describe("B-KID-127: a kept story opens on its kept words, zero network", () => {
-  it("after a reload (front hydrated from the device store) the pinned book shows the kept render and no api call is made", async () => {
+describe("B-BOOK-28: kept parent words never enter the child read", () => {
+  it("after a reload, the pinned child book ignores kept renders without deleting the parent copy", async () => {
     const { _setHeroRenderBackend, saveRender, renderSignature, _resetHeroRenderFront, hydrateHeroRenders } = await import("../../lib/heroRenderStore");
     const map = new Map<string, import("../../lib/heroRenderStore").SavedHeroRender>();
     _setHeroRenderBackend({ get: async (id) => map.get(id), put: async (r) => { map.set(r.id, r); }, delete: async (id) => { map.delete(id); }, getAll: async () => [...map.values()], clear: async () => map.clear() });
@@ -177,7 +175,9 @@ describe("B-KID-127: a kept story opens on its kept words, zero network", () => 
     child.profile = profile(6);
     const before = apiCalls.n;
     const html = renderToStaticMarkup(<HeroJourneyTab initialStoryId={STORY} pinNonce={1} />);
-    expect(html).toContain("KEPT PERSONALISED WORDS");
+    expect(html).not.toContain("KEPT PERSONALISED WORDS");
+    const { getSavedRender } = await import("../../lib/heroRenderStore");
+    expect(getSavedRender("child-1", STORY, "en", renderSignature("Dana", spec))?.scenes[0].narration).toBe("KEPT PERSONALISED WORDS");
     expect(apiCalls.n).toBe(before);
     // A renamed child does not get the old child's words.
     child.profile = profile(6, "Noa");

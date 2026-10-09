@@ -9,7 +9,7 @@
  * recap's keep action: one parent moment) and Share. Share hands the picture
  * — already rendered on the device — to the OS share sheet (lib/share
  * shareImageFile: no link, no referral call, no events, no child data in any
- * network request) and is rendered ONLY with the sandbox flag on (production
+ * network request) and is rendered ONLY with the development build only (production
  * share waits for counsel).
  *
  * FIREWALL: no percentage, no level or band word, no catch or miss count, no
@@ -18,7 +18,7 @@
 import React from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { sneakFreezeFlagOn } from "./kidWorlds";
+import { statueShareAllowed } from "./games/sneakFreeze/statueShareGate";
 import { dismissSneakHandBack, playRealKey, reachedKey, useSneakHandBack } from "./games/sneakFreeze/handBack";
 import { readStatuePictures } from "./games/sneakFreeze/statueStore";
 import { shareImageFile } from "../../lib/share";
@@ -101,6 +101,7 @@ export default function SneakHandBackCard() {
   const picture = readStatuePictures(card.childId)[0]?.url ?? null;
   const reachedLine = t(reachedKey(card.name, card.gender, card.reached), { name: card.name, count: card.reached });
   const keep = card.keepLine ?? reachedLine;
+  const shareAllowed = statueShareAllowed(import.meta.env.DEV);
   return (
     <SneakHandBackView
       picture={picture}
@@ -109,10 +110,10 @@ export default function SneakHandBackCard() {
       reachedLine={reachedLine}
       playRealLine={t(playRealKey(card.name, card.gender), { name: card.name })}
       keepLabel={t("elev.learnCare.kidExit.keep")}
-      shareLabel={sneakFreezeFlagOn() ? t("handBack.sneakFreeze.share") : null}
+      shareLabel={shareAllowed ? t("handBack.sneakFreeze.share") : null}
       closeLabel={t("aria.close")}
       onKeep={async () => { if (await addMoment(keep)) dismissSneakHandBack(); }}
-      onShare={() => { if (picture) void shareImageFile({ dataUrl: picture, filename: "statue.jpg" }); }}
+      onShare={() => { if (shareAllowed && picture) void shareImageFile({ dataUrl: picture, filename: "statue.jpg" }); }}
       onClose={dismissSneakHandBack}
     />
   );

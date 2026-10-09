@@ -17,16 +17,17 @@ const overlay = readFileSync(path.join(SRC, "components/kidmode/KidModeOverlay.t
 const tab = readFileSync(path.join(SRC, "components/tabs/HeroJourneyTab.tsx"), "utf8");
 
 describe("B-KID-38: the empty shelf for a child with no hero", () => {
-  it("the 'comic appears' promise renders only with a hero; without one, the honest line", () => {
-    expect(shelf).toMatch(/\{heroUrl \? \(\s*<>\s*<p[^>]*>\{kidsStoriesText\("shelf\.empty", aiLang\)\}<\/p>\s*<p[^>]*>\{kidsStoriesText\("shelf\.emptyHint", aiLang\)\}<\/p>/);
-    expect(shelf).toContain('{kidsStoriesText("shelf.emptyNoHero", aiLang)}');
+  it("B-BOOK-28: the empty shelf stays honest with or without a hero", () => {
+    expect(shelf).toContain('{kidsStoriesText("shelf.empty", aiLang)}');
+    expect(shelf).not.toContain('kidsStoriesText("shelf.emptyHint", aiLang)');
+    expect(shelf).not.toContain('kidsStoriesText("shelf.emptyNoHero", aiLang)');
   });
   it("the shelf's door opens the story catalogue", () => {
     expect(shelf).toContain('<PlayButton tone="clay" onClick={onOpenStories}>{kidsStoriesText("shelf.openStories", aiLang)}</PlayButton>');
     expect(overlay).toContain('onOpenStories={() => setView("journeys")}');
   });
   it("the premise holds: the reader never shelves without a hero", () => {
-    expect(tab).toContain("if (!activeStory || !render || !heroAvatarUrl) return;");
+    expect(tab).toContain("if (isKidModeActive() || !activeStory || !render || !heroAvatarUrl) return;");
   });
   it.each(["shelf.emptyNoHero", "shelf.openStories"])("%s exists in EN and Hebrew and promises no comic", (key) => {
     expect(en[key]).toBeTruthy();
