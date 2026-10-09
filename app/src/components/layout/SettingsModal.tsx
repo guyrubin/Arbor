@@ -352,7 +352,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         {/* Plan — read from the real entitlement endpoint (MON-1 / MON-2 billing) */}
         {/* m3-hex-sweep (resolved): the old green-tinted #eef6f1 wash now has a sapphire
             token — --arbor-paper-tinted — so the insight well sits in the 2035 chrome. */}
-        <div className="rounded-2xl p-4" style={{ background: "linear-gradient(120deg,var(--arbor-paper-tinted),var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
+        <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-tinted)", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: T.paperElevated, color: "var(--arbor-clay-deep)" }}><Icon name="auto_awesome" size={18} /></span>
@@ -576,7 +576,7 @@ function Section({ title, sub, children }: { title: string; sub: string; childre
     <section className="rounded-2xl p-3 space-y-3" style={{ background: "rgba(255,255,255,0.62)", border: "1px solid var(--arbor-rule)" }}>
       <div>
         {/* GREEN-DRIFT-SETTINGS: neutral eyebrow, not emerald, in the sapphire 2035 chrome */}
-        <h3 className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{title}</h3>
+        <h3 className="t-sm font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>{title}</h3>
         <p className="text-xs mt-0.5" style={{ color: "var(--arbor-faint)" }}>{sub}</p>
       </div>
       {children}

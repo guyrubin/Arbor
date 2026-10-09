@@ -74,7 +74,7 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
         minHeight: "44px",
         minWidth: "44px",
         borderRadius: "var(--r)",
-        fontWeight: 800,
+        fontWeight: 600,
         fontSize: "var(--t-sm)",
         background: "var(--arbor-clay-dim)",
         color: "var(--arbor-clay-deep)",

@@ -279,7 +279,7 @@ export default function TopbarSearch() {
                   <span
                     style={{
                       display: "block",
-                      fontSize: "11px",
+                      fontSize: "12px",
                       color: "var(--arbor-muted)",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -293,10 +293,8 @@ export default function TopbarSearch() {
                 {/* Kind badge */}
                 <span
                   style={{
-                    fontSize: "9px",
-                    fontWeight: 800,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
+                    fontSize: "12px",
+                    fontWeight: 500,
                     flexShrink: 0,
                     color: entry.color,
                   }}
