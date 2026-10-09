@@ -56,6 +56,7 @@ import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
 import { createBookAssetsRouter, defaultBookAssetBucket, eraseChildBookAssets, type BookAssetBucket } from "../server/bookAssets.js";
 import { createBookAssetsDocStore, createBookSheetRouter } from "../server/bookSheet.js";
+import { createBookNarrationRouter, FirestoreNarrationChildSource, googleBookTts, localNarrationChildSource, mockBookTts } from "../server/bookNarration.js";
 import { localBookAssetBucket } from "../server/localBookAssetBucket.js";
 import { requireConsent } from "../server/requireConsent.js";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
@@ -433,7 +434,32 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const heroSource = heroPoseSource ?? createHeroPoseSource(config);
   // K2 4a: the book sheet's write path (PUT a file, POST commit): the child's
   // own hero on every page of a library book (server/bookSheet.ts).
-  router.use(createBookSheetRouter({ getBucket: getBookBucket, requireOwnership, heroSource, entitlements: entitlementStore, docs: createBookAssetsDocStore(config), local: localBooks }));
+  const bookDocs = createBookAssetsDocStore(config);
+  router.use(createBookSheetRouter({ getBucket: getBookBucket, requireOwnership, heroSource, entitlements: entitlementStore, docs: bookDocs, local: localBooks }));
+  // K2 2b (B-BOOK-30): the name pages of a library book in the child's name
+  // (server/bookNarration.ts): the name from the child record, Gemini-TTS
+  // (env models, Sulafat), checked by the server's ASR when one is usable,
+  // its own quota; MODEL_PROVIDER=mock answers a tone.
+  const narrationMock = config.modelProvider === "mock";
+  router.use(createBookNarrationRouter({
+    getBucket: getBookBucket,
+    requireOwnership,
+    docs: bookDocs,
+    children: config.memoryAdapter === "firestore" ? new FirestoreNarrationChildSource(config) : localNarrationChildSource,
+    counters,
+    entitlements: entitlementStore,
+    provider: narrationMock ? mockBookTts : googleBookTts(config),
+    check: !narrationMock && childAsrConfigured(config)
+      ? async (audio, ext, firstName) => {
+          const r = await scoreChildUtterance(config, modelProvider, { target: firstName, sound: "", level: "word", audio: { data: audio.toString("base64"), mimeType: ext === "wav" ? "audio/wav" : "audio/mpeg" } });
+          return r.result === "got" || (r.heard ?? "").toLowerCase().includes(firstName.toLowerCase());
+        }
+      : null,
+    mock: narrationMock,
+    local: localBooks,
+    config,
+    disabled: !narrationMock && config.ttsDisabled,
+  }));
   const sendImageFailure = (res: express.Response, error: unknown, fallback: string): void => {
     // B-KID-05: quota exhaustion → 429 image_resting (no Retry-After);
     // transient → 503 + Retry-After 15; anything else → 500 with the fallback.
