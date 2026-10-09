@@ -65,7 +65,7 @@ export default function CarryOverActionAsk({ onSkip }: { onSkip?: () => void } =
       <div className="flex items-start gap-2.5">
         <Icon name="history" size={17} className="mt-0.5 flex-none" style={{ color: "var(--arbor-clay)" }} />
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-clay)" }}>
+          <p className="text-xs font-semibold" style={{ color: "var(--arbor-clay-deep)" }}>
             {t("elev.closeloop.carry.eyebrow")}
           </p>
           <p
