@@ -105,3 +105,13 @@ describe("K1: the proof hero stays with the proof child only", () => {
     expect(proofAllowedFor("", { firebase: true })).toBe(false);
   });
 });
+
+describe("K1: no auto-drawn sheet outranks the proof sheet", () => {
+  it("the parent door starts ensureHeroSheet for every child except the proof children", async () => {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const src = readFileSync(path.resolve(__dirname, "../../layout/KidModeButton.tsx"), "utf8");
+    expect(src).toMatch(/if \(child && !PROOF_HERO_CHILD_IDS\.includes\(child\.id\)\) void ensureHeroSheet\(child\);/);
+    expect((src.match(/ensureHeroSheet\(/g) ?? []).length).toBe(1);
+  });
+});
