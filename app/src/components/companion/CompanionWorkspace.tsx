@@ -1,3 +1,4 @@
+import { translate as inputText } from "../../lib/i18n";
 import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -14,7 +15,6 @@ const CoachTab = lazy(() => import("../tabs/CoachTab"));
 export default function CompanionWorkspace({ children, kidLocked }: { children: React.ReactNode; kidLocked: boolean }) {
   const { activeTab, setActiveTab, childProfile, activeFamilyTopic, setChatInput, chatInput, openCaptureSheet } = useArbor();
   const { uiLang } = useLanguage();
-  const he = uiLang === "he";
   const routeIsConversation = activeTab === "coach" || activeTab === "scholar";
   const [open, setOpen] = useState(routeIsConversation);
   const [mounted, setMounted] = useState(routeIsConversation);
@@ -63,7 +63,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   return <div className={`companion-workspace${visible ? " is-open" : ""}${expanded ? " is-expanded" : ""}`}>
     {children}
     <div className="companion-panel-layer" data-arbor-dialog-layer>
-    {modal && <button type="button" tabIndex={-1} className="companion-workspace-backdrop" aria-label={he ? "סגירת השיחה" : "Close conversation"} onClick={close} />}
+    {modal && <button type="button" tabIndex={-1} className="companion-workspace-backdrop" aria-label={inputText(uiLang, "companion.input.close-conversation")} onClick={close} />}
     {mounted && !kidLocked && <aside ref={panelRef} hidden={!visible} className="arbor-parent companion-conversation" role={modal ? "dialog" : "complementary"} aria-modal={modal || undefined} aria-labelledby="companion-conversation-title">
       <header className="companion-conversation-heading">
         <ArborMark size={30} />
@@ -71,19 +71,19 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
           <h2 id="companion-conversation-title">Arbor</h2>
           <span dir="auto">{childProfile.name}{activeFamilyTopic ? ` · ${activeFamilyTopic.title}` : ""}</span>
         </div>
-        {wide && <button type="button" className="companion-chrome-button" onClick={() => setExpanded(value => !value)} aria-label={expanded ? (he ? "חזרה לצד המסך" : "Show beside the page") : (he ? "הרחבת השיחה" : "Expand conversation")}><Icon name={expanded ? "close_fullscreen" : "open_in_full"} size={20} /></button>}
-        <button type="button" className="companion-chrome-button" onClick={close} aria-label={he ? "סגירת השיחה וחזרה למסך" : "Close conversation and return to the page"}><Icon name="close" size={22} /></button>
+        {wide && <button type="button" className="companion-chrome-button" onClick={() => setExpanded(value => !value)} aria-label={expanded ? (inputText(uiLang, "companion.input.show-beside-the-page")) : (inputText(uiLang, "companion.input.expand-conversation"))}><Icon name={expanded ? "expand_less" : "fullscreen"} size={20} /></button>}
+        <button type="button" className="companion-chrome-button" onClick={close} aria-label={inputText(uiLang, "companion.input.close-conversation-and-return-to-the-page")}><Icon name="close" size={22} /></button>
       </header>
-      <ErrorBoundary><Suspense fallback={<p className="companion-loading" role="status">{he ? "פותחים את השיחה…" : "Opening your conversation…"}</p>}>
+      <ErrorBoundary><Suspense fallback={<p className="companion-loading" role="status">{inputText(uiLang, "companion.input.opening-your-conversation")}</p>}>
         <CoachTab key={childProfile.id} embedded visible={visible} />
       </Suspense></ErrorBoundary>
     </aside>}
     </div>
     {!visible && !kidLocked && <div className="arbor-parent companion-launcher" data-testid="companion-launcher">
-      <button ref={launchRef} type="button" className="companion-launch-main" onClick={show} aria-haspopup="dialog" aria-label={he ? "לדבר עם Arbor — טקסט, תמונה או קול" : "Talk with Arbor — text, photo or voice"}>
-        <ArborMark size={27} /><span>{chatInput.trim() ? (he ? "להמשיך את הטיוטה" : "Continue your draft") : (he ? "מה תרצו לשתף?" : "What would you like to share?")}<small>{he ? "לכתוב, להראות, לדבר" : "Write, show, talk"}</small></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" />
+      <button ref={launchRef} type="button" className="companion-launch-main" onClick={show} aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.input.talk-with-arbor-text-photo-or-voice")}>
+        <ArborMark size={27} /><span>{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : (inputText(uiLang, "companion.input.what-would-you-like-to-share"))}<small>{inputText(uiLang, "companion.input.write-show-talk")}</small></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" />
       </button>
-      <button type="button" className="companion-launch-save" onClick={() => openCaptureSheet({ mode: "text" })} aria-label={he ? "רק לשמור רגע" : "Just keep a moment"}><Icon name="add_a_photo" size={21} /><span>{he ? "לשמור רגע" : "Keep a moment"}</span></button>
+      <button type="button" className="companion-launch-save" onClick={() => openCaptureSheet({ mode: "text" })} aria-label={inputText(uiLang, "companion.input.just-keep-a-moment")}><Icon name="add_a_photo" size={21} /><span>{inputText(uiLang, "companion.input.keep-a-moment")}</span></button>
     </div>}
   </div>;
 }

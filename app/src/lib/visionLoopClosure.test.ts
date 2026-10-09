@@ -22,25 +22,33 @@ import { en, he } from "./i18n";
 const SRC_ROOT = path.resolve(__dirname, "..");
 const read = (rel: string): string => fs.readFileSync(path.join(SRC_ROOT, rel), "utf8");
 
-describe("AIX-S3(a) — CoachTab consumes the handoff note (mount contract)", () => {
+describe("AIX-S3(a) — attached media stays in the unified report and explicit handoff", () => {
   const code = read("components/tabs/CoachTab.tsx");
+  const composer = read("components/companion/CompanionComposer.tsx");
 
-  it("onGoHandoff receives the note argument and threads it into requestConsultPrefill", () => {
-    expect(code).toMatch(/onGoHandoff=\{\(note\) => \{ requestConsultPrefill\(\{ note \}\);/);
+  it("the report receives the note argument and threads it into the same editable prefill seam", () => {
+    expect(code).toMatch(/onAddToHandoff=\{\(note\) => \{\s*requestConsultPrefill\(\{ note, audience: "teacher" \}\);/);
+    expect(code).not.toContain("<ArborVision");
   });
 
   it("the old dropped-argument mount is gone", () => {
     expect(code).not.toMatch(/onGoHandoff=\{\(\) =>/);
   });
 
-  it("the toast is the factual 'prefilled' copy, not the stale 'paste it' copy", () => {
-    const mount = code.slice(code.indexOf("<ArborVision"));
-    expect(mount).toContain('t("coach.toast.handoffPrefilled")');
-    expect(mount).not.toContain('t("coach.toast.noteCopied")');
+  it("media uses the composer send seam instead of a separate Vision result", () => {
+    expect(code).toContain("onSend={handleChatSend}");
+    expect(composer).toContain("onSend(undefined, { attachments })");
+    expect(code).not.toContain("setVisionMode(");
+    expect(code).not.toContain('t("coach.toast.noteCopied")');
   });
 
-  it("onProposeMemory wires the existing parent-approved propose seam", () => {
-    expect(code).toMatch(/onProposeMemory=\{\(fact\) => proposeMemory\(fact/);
+  it("the unified answer exposes memory review through the existing parent-owned surface", () => {
+    expect(code).toContain("onManageMemory=");
+    const cards = read("components/coach/CoachAnswerCards.tsx");
+    expect(cards).toContain('t("coach.memory.reviewChip")');
+    expect(cards).toContain("onClick={onManageMemory}");
+    expect(cards).not.toContain("handleMemoryDecision");
+    expect(cards).not.toMatch(/status:\s*["']approved["']/);
   });
 });
 

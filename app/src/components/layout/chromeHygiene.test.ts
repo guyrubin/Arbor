@@ -45,9 +45,9 @@ describe("B-SHELL-23 · targets, tokens and comments", () => {
     for (const item of items) expect(item.slice(0, 600)).toMatch(/className="[^"]*\bmin-h-11\b/);
   });
 
-  it("the active badge ink is a token, the sandbox banner is peach-ink — no raw hex in either file", () => {
-    expect(sidebar).toContain('color: "var(--arbor-on-accent)"');
-    expect(shell).toContain('color: "var(--arbor-peach-ink)"');
+  it("active navigation and sandbox contrast use tokens — no raw hex in either file", () => {
+    expect(sidebar).toContain('color: active ? "var(--arbor-clay-deep)" : "var(--arbor-ink)"');
+    expect(shell).toContain('background: "var(--arbor-peach-ink)", color: "var(--arbor-on-accent)"');
     for (const src of [shell, sidebar]) expect(src).not.toMatch(/#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/);
   });
 

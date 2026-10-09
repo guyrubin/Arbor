@@ -265,12 +265,8 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // a private clay→green-ink gradient this scan could not see);
     // bedtimeReader.test pins it.
     "tabs/BedtimeStoriesTab.tsx",
-    // W2-ASKJB critic r2: the send arrow inside the composer stamped
-    // data-primary-move="ask" (surfaceContract coach.primaryMove). It always
-    // wore the gradient through the T.gradientCta alias, which this scan could
-    // not see; it now spells the literal, only while there is text to send
-    // (coachWaveL.test pins the rest/ready pair). Visible, not new.
-    "tabs/CoachTab.tsx",
+    // The shared companion composer uses a solid token fill. CoachTab no
+    // longer receives a gradient licence merely because it hosts the input.
     // W2-GROWTH critic r1: with no focus milestone, "Review milestones" carries
     // data-primary-move="notice-milestone" (surfaceContract development
     // .primaryMove) and is the only gradient in the file; growthPrimaryMove.test

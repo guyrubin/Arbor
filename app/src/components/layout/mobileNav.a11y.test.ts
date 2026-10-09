@@ -179,11 +179,13 @@ describe("the settings seam is a one-way event, not a second owner of the state"
 describe("B-SHELL-03 — the Ask badge says what it counts", () => {
   const sidebar = stripComments(read("Sidebar.tsx"));
 
-  it("the tab's accessible name carries the count through the review key (MobileNav + Sidebar)", () => {
+  it("a count, if present, is named as review work; the sidebar adds no misleading notification count", () => {
     expect(nav).toContain('t("elev.sidebar.badge.review", { label, count: pendingReviewCount })');
     expect(bar).toContain("aria-label={reviewAria}");
-    expect(sidebar).toContain('t("elev.sidebar.badge.review", { label, count: pendingReviewCount })');
-    expect(sidebar).toContain("aria-label={reviewAria}");
+    const badgeHelper = sidebar.slice(sidebar.indexOf("export function badgeText("), sidebar.indexOf("export default function Sidebar"));
+    expect(badgeHelper).toContain('return "";');
+    expect(sidebar).not.toContain("{pendingReviewCount}");
+    expect(sidebar).toContain('aria-current={active ? "page" : undefined}');
   });
 
   it("the visible chip is hidden from AT (the name already says it) and its number is unchanged", () => {

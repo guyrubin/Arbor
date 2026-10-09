@@ -1,3 +1,4 @@
+import { translate as inputText } from "../../lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -198,7 +199,7 @@ export default function CaptureProposalsTray({ surface, inline }: {
       <div className="coach-report__keep" data-testid="coach-report-keep">
         <button type="button" disabled={busy} onClick={() => void keep(entry)} data-testid="capture-proposal-keep">
           <Icon name="bookmark_add" size={16} />
-          {busy ? (uiLang === "he" ? "שומר…" : "Keeping…") : (uiLang === "he" ? "לשמור את העצה" : "Keep this advice")}
+          {busy ? (inputText(uiLang, "companion.input.keeping")) : (inputText(uiLang, "companion.input.keep-this-advice"))}
         </button>
         <button type="button" disabled={busy} onClick={() => editFirst(entry)} data-testid="capture-proposal-edit">
           {t("elev.waveR.capture.edit")}

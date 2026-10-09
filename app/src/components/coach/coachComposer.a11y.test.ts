@@ -25,9 +25,12 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { coachContractText, en as ccEn, he as ccHe } from "../../lib/i18nElevation/coachcontract";
+import { translate } from "../../lib/i18n";
 
 const SRC = path.resolve(__dirname, "..", "..");
 const coach = readFileSync(path.join(SRC, "components/tabs/CoachTab.tsx"), "utf8");
+const composer = readFileSync(path.join(SRC, "components/companion/CompanionComposer.tsx"), "utf8");
+const composerCss = readFileSync(path.join(SRC, "components/companion/companionComposer.css"), "utf8");
 const iconManifest = new Set(
   readFileSync(path.join(SRC, "..", "public/fonts/material-symbols-rounded-subset.icons.txt"), "utf8")
     .split("\n")
@@ -37,15 +40,14 @@ const iconManifest = new Set(
 
 describe("OBJ-ASK-01 · the composer has an accessible name", () => {
   it("the textarea carries aria-label, in both locales", () => {
-    const start = coach.indexOf("<textarea");
-    const textarea = coach.slice(start, coach.indexOf("/>", start) + 2);
+    const start = composer.indexOf("<textarea");
+    expect(start).toBeGreaterThan(-1);
+    const textarea = composer.slice(start, composer.indexOf("/>", start) + 2);
     expect(textarea).toContain("aria-label=");
-    expect(textarea).toContain("elev.coachcontract.composer.aria");
-    expect(ccEn["elev.coachcontract.composer.aria"]).toBeTruthy();
-    expect(ccHe["elev.coachcontract.composer.aria"]).toMatch(/[֐-׿]/);
-    expect(coachContractText("he", "elev.coachcontract.composer.aria")).toBe(
-      ccHe["elev.coachcontract.composer.aria"],
-    );
+    const key = "companion.input.what-would-you-like-to-share-with-arbor";
+    expect(textarea).toContain(`inputText(language, "${key}")`);
+    expect(translate("en", key)).not.toBe(key);
+    expect(translate("he", key)).toMatch(/[֐-׿]/);
   });
 
   it("NEGATIVE CONTROL: the pre-fix textarea would fail this check", () => {
@@ -57,9 +59,12 @@ describe("OBJ-ASK-01 · the composer has an accessible name", () => {
   });
 
   it("the chips around it clear the 44 px floor", () => {
-    // The three capture chips (photo / document / voice).
-    expect(coach).not.toContain("min-h-[36px] px-3 rounded-full");
-    expect((coach.match(/min-h-11 px-3 rounded-full text-\[11px\] font-bold/g) ?? []).length).toBe(3);
+    // Photo/file/dictation/live-voice share one 44px CSS rule.
+    expect(composer).toContain('className="companion-composer-tools"');
+    expect(composerCss).toMatch(/\.companion-composer-tools button\{[^}]*min-height:44px/);
+    expect(composerCss).toMatch(/\.companion-input-well>button\{[^}]*width:46px;height:46px/);
+    expect(composerCss).toMatch(/\.companion-attachments button\{[^}]*min-width:44px;min-height:44px/);
+    expect(composerCss).toContain("outline:2px solid var(--arbor-clay)");
     // New and delete retain real target floors inside the compact history region.
     expect(coach).toContain('onClick={newConversation}');
     expect(coach).toContain('className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] font-extrabold');
@@ -127,8 +132,8 @@ describe("B-ASKJB-07 · the one-time weekly-context notice in the composer", () 
     const start = coach.indexOf("const composerSection");
     const composer = coach.slice(start, coach.indexOf("{voiceNotice && voicePhase", start));
     const notice = composer.slice(composer.indexOf('data-testid="coach-weekly-notice"'));
-    expect(composer.indexOf('data-testid="coach-weekly-notice"')).toBeGreaterThan(composer.indexOf("<textarea"));
-    expect(composer.indexOf('data-testid="coach-weekly-notice"')).toBeGreaterThan(composer.indexOf('t("coach.photo")'));
+    expect(composer.indexOf("<CompanionComposer")).toBeGreaterThan(-1);
+    expect(composer.indexOf('data-testid="coach-weekly-notice"')).toBeGreaterThan(composer.indexOf("<CompanionComposer"));
     expect(notice.length).toBeGreaterThan(0);
     for (const id of ["coach-weekly-notice-change", "coach-weekly-notice-dismiss"]) {
       const at = notice.indexOf(`data-testid="${id}"`);

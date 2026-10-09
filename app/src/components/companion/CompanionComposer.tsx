@@ -1,3 +1,4 @@
+import { translate as inputText } from "../../lib/i18n";
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "../ui/Icon";
 import { fileToThumbnail } from "../../lib/image";
@@ -6,8 +7,8 @@ import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import { MAX_COMPANION_ATTACHMENTS, parseCompanionAttachments, prepareCompanionAttachment, type ComposerAttachment } from "../../lib/companionAttachments";
 import "./companionComposer.css";
 
-export default function CompanionComposer({ childId, conversationId, language, value, onChange, busy, visible, onSend, onVoice, voiceActive, voiceLabel, onKeep }: {
-  childId: string; conversationId: string | null; language: "en" | "he"; value: string; onChange: (value: string) => void;
+export default function CompanionComposer({ childId, conversationRevision, language, value, onChange, busy, visible, onSend, onVoice, voiceActive, voiceLabel, onKeep }: {
+  childId: string; conversationRevision: number; language: "en" | "he"; value: string; onChange: (value: string) => void;
   busy: boolean; visible: boolean; onSend: (prompt?: string, options?: { attachments?: ComposerAttachment[] }) => Promise<boolean | undefined>;
   onVoice: () => void; voiceActive: boolean; voiceLabel: string; onKeep: (text: string, photo?: string) => void;
 }) {
@@ -22,21 +23,21 @@ export default function CompanionComposer({ childId, conversationId, language, v
   const stopRef = useRef<(() => void) | null>(null);
   const scope = useRef(0);
   const speechScope = useRef(0);
-  const previousConversation = useRef(conversationId);
+  const previousConversation = useRef(conversationRevision);
   const textRef = useRef(value);
   textRef.current = value;
   useEffect(() => {
     if (!visible) { speechScope.current++; stopRef.current?.(); stopRef.current = null; setListening(false); setInterim(""); }
   }, [visible]);
   useEffect(() => {
-    // Assigning the first saved id is still the same draft and voice session.
-    const switched = previousConversation.current !== null && previousConversation.current !== conversationId;
-    previousConversation.current = conversationId;
+    // The revision changes on explicit New/history/topic actions, never first persistence.
+    const switched = previousConversation.current !== conversationRevision;
+    previousConversation.current = conversationRevision;
     if (switched) {
       scope.current++; speechScope.current++; stopRef.current?.(); stopRef.current = null;
       setAttachments([]); setPreparing(false); setError(""); setListening(false); setInterim("");
     }
-  }, [conversationId]);
+  }, [conversationRevision]);
   useEffect(() => () => { scope.current++; speechScope.current++; stopRef.current?.(); stopRef.current = null; }, []);
   const addFiles = async (files: FileList | null, kind: ComposerAttachment["kind"]) => {
     if (!files?.length || preparing) return;
@@ -48,7 +49,7 @@ export default function CompanionComposer({ childId, conversationId, language, v
       for (const file of Array.from(files)) next.push(await prepareCompanionAttachment(file, childId, kind));
       if (turn === scope.current) setAttachments(parseCompanionAttachments([...attachments, ...next], childId));
     } catch {
-      if (turn === scope.current) setError(he ? "אפשר לצרף עד 3 קובצי JPG, PNG, WebP או PDF. עד 4MB לקובץ ו־6MB יחד." : "Choose up to 3 JPG, PNG, WebP or PDF files. Up to 4 MB each and 6 MB together.");
+      if (turn === scope.current) setError(inputText(language, "companion.input.choose-up-to-3-jpg-png-webp-or-pdf-files-up-to-4-mb-each-and-6-mb"));
     } finally { if (turn === scope.current) setPreparing(false); }
   };
   const dictate = () => {
@@ -70,7 +71,7 @@ export default function CompanionComposer({ childId, conversationId, language, v
   };
   const keep = async () => {
     if (attachments.length > 1 || attachments.some(a => a.mimeType === "application/pdf")) {
-      setError(he ? "רגע יכול לכלול תמונה אחת. הסירו קבצים נוספים או שלחו אותם לשיחה." : "A moment can keep one photo. Remove extra files, or send them in the conversation."); return;
+      setError(inputText(language, "companion.input.a-moment-can-keep-one-photo-remove-extra-files-or-send-them-in-th")); return;
     }
     const turn = scope.current;
     const photo = attachments[0];
@@ -81,37 +82,37 @@ export default function CompanionComposer({ childId, conversationId, language, v
         thumbnail = await fileToThumbnail(new File([bytes], photo.name, { type: photo.mimeType }));
       }
       if (turn === scope.current) onKeep(textRef.current, thumbnail);
-    } catch { setError(he ? "לא הצלחנו להכין את התמונה. הטיוטה נשמרה כאן." : "We couldn’t prepare the photo. Your draft is still here."); }
+    } catch { setError(inputText(language, "companion.input.we-couldn-t-prepare-the-photo-your-draft-is-still-here")); }
   };
   const draftPending = !!value.trim() || attachments.length > 0 || listening;
   return <div className="companion-composer" data-testid="companion-composer">
-    {!!attachments.length && <div className="companion-attachments" aria-label={he ? "קבצים לשליחה" : "Files to send"}>
+    {!!attachments.length && <div className="companion-attachments" aria-label={inputText(language, "companion.input.files-to-send")}>
       {attachments.map(file => <figure key={file.id}>
         {file.mimeType.startsWith("image/") ? <img src={file.dataUrl} alt={file.name} /> : <Icon name="description" size={32} />}
         <figcaption title={file.name}>{file.name}</figcaption>
-        <button type="button" disabled={busy} onClick={() => setAttachments(items => items.filter(a => a.id !== file.id))} aria-label={`${he ? "הסרה" : "Remove"}: ${file.name}`}><Icon name="close" size={18} /></button>
+        <button type="button" disabled={busy} onClick={() => setAttachments(items => items.filter(a => a.id !== file.id))} aria-label={`${inputText(language, "companion.input.remove")}: ${file.name}`}><Icon name="close" size={18} /></button>
       </figure>)}
     </div>}
-    {!!attachments.length && <p className="companion-media-note">{he ? "הקבצים נשלחים לניתוח רק עם השליחה. בשיחה נשמר ההסבר, לא הקובץ המקורי." : "Files are analysed when you send. The conversation keeps the explanation, not the original files."}</p>}
+    {!!attachments.length && <p className="companion-media-note">{inputText(language, "companion.input.files-are-analysed-when-you-send-the-conversation-keeps-the-expla")}</p>}
     <div className="companion-input-well" data-testid="coach-composer-well">
-      <textarea value={value} onChange={event => onChange(event.target.value)} rows={2} disabled={busy || voiceActive}
+      <textarea className="field-bare" value={value} onChange={event => onChange(event.target.value)} rows={2} disabled={busy || voiceActive}
         onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }}
-        placeholder={he ? "שתפו רגע, שאלה או מחשבה…" : "Share a moment, a question, a thought…"}
-        aria-label={he ? "מה תרצו לשתף עם Arbor?" : "What would you like to share with Arbor?"} />
-      <button type="button" data-testid="coach-send" onClick={() => void send()} disabled={busy || preparing || listening || voiceActive || (!value.trim() && !attachments.length)} aria-label={he ? "שליחה" : "Send"}><Icon name="arrow_upward" size={23} /></button>
+        placeholder={inputText(language, "companion.input.share-a-moment-a-question-a-thought")}
+        aria-label={inputText(language, "companion.input.what-would-you-like-to-share-with-arbor")} />
+      <button type="button" data-testid="coach-send" onClick={() => void send()} disabled={busy || preparing || listening || voiceActive || (!value.trim() && !attachments.length)} aria-label={inputText(language, "companion.input.send")}><Icon name="arrow_forward" size={23} /></button>
     </div>
-    {listening && <p className="companion-recording" role="status"><span aria-hidden />{interim || (he ? "מקשיבים… המילים יופיעו בטיוטה." : "Listening… your words will appear in the draft.")}</p>}
+    {listening && <p className="companion-recording" role="status"><span aria-hidden />{interim || (inputText(language, "companion.input.listening-your-words-will-appear-in-the-draft"))}</p>}
     {error && <p className="companion-composer-error" role="alert">{error}</p>}
-    {preparing && <p role="status">{he ? "מכינים את הקבצים…" : "Preparing your files…"}</p>}
+    {preparing && <p role="status">{inputText(language, "companion.input.preparing-your-files")}</p>}
     <div className="companion-composer-tools">
       <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={event => { void addFiles(event.target.files, "photo"); event.target.value = ""; }} />
       <input ref={documentRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple hidden onChange={event => { void addFiles(event.target.files, "document"); event.target.value = ""; }} />
-      <button type="button" disabled={busy || preparing || voiceActive} onClick={() => photoRef.current?.click()}><Icon name="photo_camera" size={20} />{he ? "תמונה" : "Photo"}</button>
-      <button type="button" disabled={busy || preparing || voiceActive} onClick={() => documentRef.current?.click()}><Icon name="attach_file" size={20} />{he ? "קובץ" : "File"}</button>
-      <button type="button" disabled={busy || voiceActive} onClick={dictate} aria-pressed={listening}><Icon name={listening ? "stop_circle" : "mic"} size={20} />{listening ? (he ? "סיום" : "Done") : (he ? "הכתבה" : "Dictate")}</button>
-      <button type="button" className="companion-live-button" disabled={!voiceActive && (busy || preparing || draftPending)} onClick={onVoice} aria-pressed={voiceActive} aria-label={voiceLabel}><Icon name={voiceActive ? "stop" : "graphic_eq"} size={20} />{voiceActive ? (he ? "עצירה" : "Stop") : (he ? "לדבר" : "Talk")}</button>
+      <button type="button" disabled={busy || preparing || voiceActive} onClick={() => photoRef.current?.click()}><Icon name="photo_camera" size={20} />{inputText(language, "companion.input.photo")}</button>
+      <button type="button" disabled={busy || preparing || voiceActive} onClick={() => documentRef.current?.click()}><Icon name="attachment" size={20} />{inputText(language, "companion.input.file")}</button>
+      <button type="button" disabled={busy || voiceActive} onClick={dictate} aria-pressed={listening}><Icon name={listening ? "stop_circle" : "mic"} size={20} />{listening ? (inputText(language, "companion.input.done")) : (inputText(language, "companion.input.dictate"))}</button>
+      <button type="button" className="companion-live-button" disabled={!voiceActive && (busy || preparing || draftPending)} onClick={onVoice} aria-pressed={voiceActive} aria-label={voiceLabel}><Icon name={voiceActive ? "stop" : "graphic_eq"} size={20} />{voiceActive ? (inputText(language, "companion.input.stop")) : (inputText(language, "companion.input.talk"))}</button>
     </div>
-    {draftPending && !voiceActive && <p className="companion-media-note">{he ? "שלחו את הטיוטה, ואז אפשר להמשיך עליה בשיחה קולית." : "Send your draft, then continue the conversation by voice."}</p>}
-    <div className="companion-composer-foot"><span>{he ? "Arbor הוא מלווה מבוסס AI" : "Arbor is your AI companion"}</span><button type="button" disabled={busy || preparing || listening || voiceActive} onClick={() => void keep()}>{he ? "רק לשמור רגע" : "Just keep a moment"}<Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" /></button></div>
+    {draftPending && !voiceActive && <p className="companion-media-note">{inputText(language, "companion.input.send-your-draft-then-continue-the-conversation-by-voice")}</p>}
+    <div className="companion-composer-foot"><span>{inputText(language, "companion.input.arbor-is-your-ai-companion")}</span><button type="button" disabled={busy || preparing || listening || voiceActive} onClick={() => void keep()}>{inputText(language, "companion.input.just-keep-a-moment")}<Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" /></button></div>
   </div>;
 }

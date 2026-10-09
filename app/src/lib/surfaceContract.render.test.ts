@@ -209,7 +209,8 @@ describe("R24 — the coach composer is stamped in BOTH of its positions", () =>
   );
 
   it("the stamps sit on the shared composer element, not on the docked wrapper", () => {
-    expect(composerSection, "the composerSection slice must really contain the composer").toContain("<textarea");
+    expect(composerSection, "the composerSection slice must really contain the shared composer").toContain("<CompanionComposer");
+    expect(read("src/components/companion/CompanionComposer.tsx")).toContain("<textarea");
     // B-ASKJB-06: the composer keeps the primary-move stamp only; it is
     // nested in coach-orientation, so a module stamp would be a 4th module.
     expect(composerSection).not.toContain('data-module="coach-composer"');
@@ -514,6 +515,9 @@ export function freshTopLevelModules(source: string): { stamped: string[]; unsta
     const line = body[i];
     if (!/^ {6}[<{]/.test(line) || /^ {6}<\//.test(line) || /^ {6}\{\/\*/.test(line)) continue;
     const head = line.trim();
+    // The persistent workspace adds one scrolling layout wrapper, not a new
+    // information module. Its stamped children are still scanned below.
+    if (/^<div className=\{embedded \? "companion-transcript" : undefined\} data-companion-scroll=/.test(head)) continue;
     // Gated blocks that never render on a fresh thread.
     if (/^\{(composerDocked|voicePhase !== "off"|[^}]*&& userTurnExists|userTurnExists) &&/.test(head) && !/!userTurnExists/.test(head)) continue;
     if (/^\{lastMessage\?\.sender === "ai" && userTurnExists/.test(head)) continue;

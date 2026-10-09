@@ -32,29 +32,36 @@ const coach = stripComments(coachRaw);
 const ctxRaw = read("context/ArborContext.tsx");
 const ctx = stripComments(ctxRaw);
 const cards = stripComments(read("components/coach/CoachAnswerCards.tsx"));
+const composer = stripComments(read("components/companion/CompanionComposer.tsx"));
+const composerCss = read("components/companion/companionComposer.css");
 
 describe("ASK-2 — single sticky composer", () => {
   it("exactly one textarea exists on the Ask surface (COACH-4 invariant)", () => {
-    expect(coach.match(/<textarea/g)?.length).toBe(1);
+    expect(coach.match(/<textarea/g) ?? []).toHaveLength(0);
+    expect(coach.match(/<CompanionComposer\b/g)).toHaveLength(1);
+    expect(composer.match(/<textarea/g)).toHaveLength(1);
   });
 
-  it("the composer docks sticky (bottom) when a user turn exists, hero otherwise — same element", () => {
+  it("the embedded composer stays in one bottom slot before and after the first turn", () => {
     // One shared JSX const, rendered in exactly one of two positions.
     expect(coach).toContain("const composerSection = (");
-    expect(coach).toContain("const composerDocked = userTurnExists;");
+    expect(coach).toContain("const composerDocked = embedded || userTurnExists;");
     expect(coach).toContain("{!composerDocked && composerSection}");
     const docked = /data-testid="coach-docked-composer"[\s\S]*?\{composerSection\}/.exec(coach)?.[0] ?? "";
     expect(docked).not.toBe("");
-    // Sticky within the scrolling <main>, clearing the fixed MobileNav on mobile
-    // (MOB-14: --mobile-nav-h + safe-area inset, the OverviewTab formula).
-    expect(coachRaw).toContain('className="sticky bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+8px)] lg:bottom-0 z-30"');
+    // Only the transcript scrolls; the input cannot be remounted or scrolled
+    // away when the first reply arrives, and it clears the device safe area.
+    expect(composerCss).toMatch(/\.companion-transcript \{[^}]*flex:1;[^}]*overflow-y:auto/);
+    expect(composerCss).toMatch(/\.companion-coach \[data-testid=coach-docked-composer\] \{[^}]*flex-shrink:0;[^}]*env\(safe-area-inset-bottom\)/);
   });
 
   it("the voice/photo capture chips travel inside the composer section", () => {
     const section = /const composerSection = \([\s\S]*?<\/section>/.exec(coach)?.[0] ?? "";
-    expect(section).toContain('setVisionMode("observe")');
-    expect(section).toContain('setVisionMode("document")');
-    expect(section).toContain("onClick={toggleVoice}");
+    expect(section).toContain("<CompanionComposer");
+    expect(section).toContain("onVoice={() => void toggleVoice()}");
+    expect(composer).toContain('addFiles(event.target.files, "photo")');
+    expect(composer).toContain('addFiles(event.target.files, "document")');
+    expect(composer).toContain("onClick={onVoice}");
   });
 });
 
@@ -158,7 +165,7 @@ describe("ASK-3 — frames stay out of the parent render (source guard)", () => 
 });
 
 
-describe("W2 fresh Ask density � examples and history stay available without an empty transcript", () => {
+describe("W2 fresh Ask density � examples and history stay available without an empty transcript", () => {
   it("shows three deterministic scenarios first and reveals the remaining existing prompts", () => {
     expect(coach).toContain("SCENARIOS.slice(0, staticShown)"); // B-ASKJB-10: echo chip + 2 static, or 3 static
     expect(coach).toContain("const staticShown = echoScenario ? 2 : 3;");

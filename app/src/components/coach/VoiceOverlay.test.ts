@@ -115,6 +115,12 @@ describe("captions — parent's own words + screened answer only", () => {
 });
 
 describe("controls — tap-orb barge-in + X = end", () => {
+  it("the voice sheet is a named modal in the shared dialog layer with a focus target", () => {
+    const html = render();
+    expect(html).toMatch(/<section[^>]*tabindex="-1"[^>]*data-arbor-dialog-layer="true"[^>]*aria-modal="true"[^>]*role="dialog"/);
+    expect(html).toContain('aria-label="Voice conversation with Arbor"');
+    expect(html).toContain("min-width:var(--touch-min);min-height:var(--touch-min)");
+  });
   it("the orb offers tap-to-interrupt only when the fallback loop is speaking", () => {
     const speaking = render({ phase: "speaking", canInterrupt: true });
     expect(speaking).toContain('aria-label="Tap to interrupt"');

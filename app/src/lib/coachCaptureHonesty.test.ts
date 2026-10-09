@@ -33,22 +33,29 @@ function count(code: string, needle: string): number {
 
 describe("COACH-4 — CoachTab is one composer + one flowing thread", () => {
   const code = read("components/tabs/CoachTab.tsx");
+  const composer = read("components/companion/CompanionComposer.tsx");
 
-  it("has exactly one visible text input bound to chatInput (the hero textarea)", () => {
-    expect(count(code, "<textarea")).toBe(1);
+  it("has exactly one shared text input bound to the conversation draft", () => {
+    expect(count(code, "<textarea")).toBe(0);
+    expect(count(code, "<CompanionComposer ")).toBe(1);
+    expect(count(composer, "<textarea")).toBe(1);
+    expect(composer).toContain("value={value}");
+    expect(composer).toContain("onChange(event.target.value)");
     expect(count(code, "value={chatInput}")).toBe(1);
     // The deleted bottom capsule input must not come back.
     expect(code).not.toContain("<input");
   });
 
   it("has exactly one mic, one photo and one document entry point (firewall condition: they survive)", () => {
-    expect(count(code, "onClick={toggleVoice}")).toBe(1);
-    expect(count(code, 'setVisionMode("observe")')).toBe(1);
-    expect(count(code, 'setVisionMode("document")')).toBe(1);
+    expect(count(composer, "onClick={onVoice}")).toBe(1);
+    expect(count(composer, 'addFiles(event.target.files, "photo")')).toBe(1);
+    expect(count(composer, 'addFiles(event.target.files, "document")')).toBe(1);
+    expect(code).toContain("onVoice={() => void toggleVoice()}");
+    expect(code).not.toContain("<ArborVision");
   });
 
   it("renders the EU AI-Act Art. 50 disclosure line (firewall condition: it survives)", () => {
-    expect(code).toContain('t("coach.aiDisclosure")');
+    expect(composer).toContain('inputText(language, "companion.input.arbor-is-your-ai-companion")');
   });
 
   it("keeps one fresh Ask heading and its count-aware context without a duplicate composer title", () => {

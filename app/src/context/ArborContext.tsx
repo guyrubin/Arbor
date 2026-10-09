@@ -557,6 +557,7 @@ function useArborState() {
   // Multi-thread coach conversations (persisted per child).
   const conversationsCol = useChildCollection<Conversation>(childProfile.id, "conversations");
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [conversationRevision, setConversationRevision] = useState(0);
   const conversationTopicRef = useRef<string | undefined>(undefined);
   const conversations = useMemo(
     () => [...conversationsCol.items].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)),
@@ -736,7 +737,16 @@ function useArborState() {
   // Auto Scroll Chat
   const chatBottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const anchor = chatBottomRef.current;
+    const pane = anchor?.closest<HTMLElement>("[data-companion-scroll]");
+    if (pane) {
+      const latest = chatMessages[chatMessages.length - 1];
+      const messages = pane.querySelectorAll<HTMLElement>('[data-companion-message="ai"]');
+      const answer = messages[messages.length - 1];
+      // Keep every ancestor still. A settled report starts at its explanation,
+      // while incoming sentences follow the growing response inside this pane.
+      pane.scrollTo({ top: !isChatLoading && latest?.contract && answer ? answer.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop - 12 : pane.scrollHeight, behavior: "auto" });
+    } else anchor?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, isChatLoading]);
 
   // Start a fresh (unsaved) conversation when the active child changes.
@@ -795,6 +805,7 @@ function useArborState() {
 
   // Coach conversation thread controls.
   const newConversation = () => {
+    setConversationRevision(value => value + 1);
     chatAbortRef.current?.abort();
     chatAbortRef.current = null;
     setIsChatLoading(false);
@@ -824,7 +835,7 @@ function useArborState() {
   const prepareTopicConversation = () => {
     const next = threadForTopic({ id: activeConversationId, topicId: conversationTopicRef.current, messages: chatMessages }, activeFamilyTopic?.id);
     if (!next.id) {
-      newConversation();
+      if (activeConversationId || chatMessages.length) newConversation();
       conversationTopicRef.current = next.topicId;
       setActiveConversationId(`conv-${crypto.randomUUID()}`);
     }
@@ -833,9 +844,13 @@ function useArborState() {
   const openConversation = (id: string) => {
     const c = conversationsCol.items.find((x) => x.id === id);
     if (!c) return;
+    setConversationRevision(value => value + 1);
     chatAbortRef.current?.abort();
     chatAbortRef.current = null;
     setIsChatLoading(false);
+    setChatInput("");
+    setApiError(null);
+    setChatStreamStatus(null);
     conversationTopicRef.current = c.topicId;
     topicState.selectFamilyTopic(topicState.familyTopics.some(topic => topic.id === c.topicId) ? c.topicId! : null);
     setActiveConversationId(id);
@@ -1770,6 +1785,7 @@ function useArborState() {
     chatMessages,
     conversations,
     activeConversationId,
+    conversationRevision,
     newConversation,
     openConversation,
     deleteConversation,

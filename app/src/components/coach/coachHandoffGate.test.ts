@@ -60,9 +60,10 @@ describe("AI-05(a) — the teacher note is consumed, not dropped", () => {
     expect(coachSrc).not.toMatch(/onAddToHandoff=\{\(\) =>/);
   });
 
-  it("it routes through the SAME prefill seam ArborVision's handoff already uses", () => {
-    // Two call sites now: the vision handoff (AIX-S3a) and the teacher note.
-    expect((coachSrc.match(/requestConsultPrefill\(/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  it("the unified report has one explicit prefill seam, with no separate Vision handoff", () => {
+    expect((coachSrc.match(/requestConsultPrefill\(/g) ?? []).length).toBe(1);
+    expect(coachSrc).not.toContain("<ArborVision");
+    expect(coachSrc).toMatch(HANDOFF_CONSUMES_NOTE);
   });
 });
 

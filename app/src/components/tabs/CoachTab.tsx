@@ -1,3 +1,4 @@
+import { translate as inputText } from "../../lib/i18n";
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 // Directional glyphs are RTL-aware: the caller already picks the start/end
@@ -159,6 +160,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     activeFamilyTopic,
     conversations,
     activeConversationId,
+    conversationRevision,
     newConversation,
     openConversation,
     deleteConversation,
@@ -872,12 +874,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     liveCtlRef.current = null;
   }, []);
 
-  const voiceConversationRef = useRef(activeConversationId);
-  useEffect(() => {
-    const switched = voiceConversationRef.current !== null && voiceConversationRef.current !== activeConversationId;
-    voiceConversationRef.current = activeConversationId;
-    if (!visible || switched) stopVoice();
-  }, [visible, activeConversationId]);
+  useEffect(() => { stopVoice(); }, [conversationRevision]);
+  useEffect(() => { if (!visible) stopVoice(); }, [visible]);
 
   const voiceLabel = voicePhase === "connecting" ? t("coach.voice.connecting") : voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
   // COACH-2: live caption text on the voicePhase chip while the answer streams
@@ -962,7 +960,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               </button>
             </div>
           )}
-          <CompanionComposer key={childProfile.id} childId={childProfile.id} conversationId={activeConversationId} language={uiLang === "he" ? "he" : "en"}
+          <CompanionComposer key={childProfile.id} childId={childProfile.id} conversationRevision={conversationRevision} language={uiLang === "he" ? "he" : "en"}
             value={chatInput} onChange={setChatInput} busy={isChatLoading} visible={visible}
             onSend={handleChatSend} onVoice={() => void toggleVoice()} voiceActive={voicePhase !== "off"} voiceLabel={voiceLabel}
             onKeep={(text, photo) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo })} />
@@ -1014,8 +1012,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
       {/* One coaching workspace: orientation, conversation, composer. */}
+      <div className={embedded ? "companion-transcript" : undefined} data-companion-scroll={embedded ? "true" : undefined}>
       <div data-module="coach-orientation" className="space-y-4">
-        {embedded && !userTurnExists && <div className="companion-welcome"><h3>{uiLang === "he" ? "בואו נבין את זה יחד." : "Let’s make sense of it, together."}</h3><p>{uiLang === "he" ? "רגע קטן, שאלה גדולה, תמונה מהיום. התחילו איפה שנוח לכם — ונמצא יחד את הצעד הבא." : "A little moment, a big question, a photo from today. Start wherever feels natural, and we’ll find a next step together."}</p></div>}
+        {embedded && !userTurnExists && <div className="companion-welcome"><h3>{inputText(uiLang, "companion.input.let-s-make-sense-of-it-together")}</h3><p>{inputText(uiLang, "companion.input.a-little-moment-a-big-question-a-photo-from-today-start-wherever-")}</p></div>}
         <header className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="max-w-2xl">
             <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.hero.ask.eyebrow")}</p>
@@ -1288,7 +1287,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               — it hides the moment any real turn exists, including a legacy
               conversation that still opens with the old welcome bubble. */}
           {chatMessages.map((msg, idx) => (
-            <div key={idx} className={`flex gap-3 group ${msg.sender === "user" ? "ms-auto max-w-[85%] flex-row-reverse" : "me-auto w-full"}`}>
+            <div key={idx} data-companion-message={msg.sender} className={`flex gap-3 group ${msg.sender === "user" ? "ms-auto max-w-[85%] flex-row-reverse" : "me-auto w-full"}`}>
               {msg.sender === "user" ? (
                 <Avatar name={user?.displayName} photoURL={user?.photoURL} size={32} />
               ) : (
@@ -1366,7 +1365,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   // localized chip label) — msg.text stays the canonical
                   // prompt that went to the model.
                   <>
-                    {msg.attachments?.map(file => <div key={file.id} className="companion-file-receipt"><Icon name={file.kind === "photo" ? "photo" : "description"} size={20}/><span>{file.name}<small className="block">{uiLang === "he" ? "נותח בשיחה זו · המקור לא נשמר" : "Attached to this turn · original not saved"}</small></span></div>)}
+                    {msg.attachments?.map(file => <div key={file.id} className="companion-file-receipt"><Icon name={file.kind === "photo" ? "photo" : "description"} size={20}/><span>{file.name}<small className="block">{inputText(uiLang, "companion.input.attached-to-this-turn-original-not-saved")}</small></span></div>)}
                     <MarkdownBlock text={msg.displayText || msg.text} />
                   </>
                 )}
@@ -1623,7 +1622,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               decideValuePreview's named reasons. */}
           <ValuePreview
             threadEmpty={chatMessages.length === 0}
-            surfaceIdle={!isChatLoading && !failureCopy && voicePhase === "off" }
+            surfaceIdle={!embedded && !isChatLoading && !failureCopy && voicePhase === "off" }
             online={online}
           />
         </div>
@@ -1655,6 +1654,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           onEscalate={escalationSignal ? () => setActiveTab("consult") : undefined}
         />
       )}
+
+      </div>
 
       {/* ASK-2: the docked composer — the SAME single element from the hero
           position, now sticky at the viewport bottom so the follow-up loop

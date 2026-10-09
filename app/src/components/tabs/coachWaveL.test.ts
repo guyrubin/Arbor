@@ -21,6 +21,8 @@ const stripComments = (code: string) =>
   code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
 
 const coach = stripComments(read("components/tabs/CoachTab.tsx"));
+const composer = stripComments(read("components/companion/CompanionComposer.tsx"));
+const composerCss = read("components/companion/companionComposer.css");
 const cue = stripComments(read("components/coach/RhythmCue.tsx"));
 // B-AI-06: the engine call, the prefs, the shown-ledger and the ceiling spend
 // moved into the single-offer coordinator hook; RhythmCue renders its nudge.
@@ -146,16 +148,18 @@ describe("AI-24 — offline is said out loud, before the send", () => {
     // the guard from a single place.
     expect(coach).toMatch(/handleChatSend: sendToCoach/);
     expect(coach).toMatch(/handleCouncilSend: convenceCouncil/);
-    expect(coach).toMatch(/const handleChatSend = \(customPrompt\?: string, opts\?: \{ displayText\?: string \}\) => \{\s*if \(!online\) \{/);
+    expect(coach).toMatch(/const handleChatSend = async \(customPrompt\?: string, opts\?: \{ displayText\?: string; attachments\?: ComposerAttachment\[\] \}\) => \{\s*if \(!online\) \{/);
     expect(coach).toMatch(/const handleCouncilSend = \(customPrompt\?: string\) => \{\s*if \(!online\) \{/);
     expect(coach).toMatch(/classifyAiFailure\(null, \{ online: false/);
     expect(coach).toMatch(/data-testid="coach-offline-note"/);
     expect(coach).toMatch(/elev\.aierrors\.offline\.composer/);
     // the textarea stays editable — only loading gates it
-    expect(coach).toMatch(/disabled=\{isChatLoading\}\s*\n\s*rows=\{2\}/);
+    expect(composer).toContain("disabled={busy || voiceActive}");
+    expect(composer).not.toContain("!online");
+    expect(coach).toContain("onSend={handleChatSend}");
   });
 
-  it("the send button's opening element stays byte-identical to the frozen white-label case", () => {
+  it("one send supports text or files, with a distinct token-based disabled state", () => {
     // lib/whiteLabelContrast.test.ts (CR-01) hashes the WHOLE opening element
     // of every unresolved fill — T.gradientCta here — so the offline gate had
     // to live in the handler, not in this element's `disabled`. Pinned so a
@@ -164,12 +168,12 @@ describe("AI-24 — offline is said out loud, before the send", () => {
     // gradient renders only while there is text and no request in flight; at
     // rest a disabled solid --arbor-clay-dim well. The offline gate still
     // lives in the handler (handleChatSend), not in this element.
-    expect(coach).toMatch(/\{chatInput\.trim\(\) && !isChatLoading \? \(\s*<button\s+type="button"\s+data-testid="coach-send"\s+data-state="ready"\s+onClick=\{\(\) => handleChatSend\(\)\}/);
-    const rest = coach.slice(coach.indexOf('data-state="rest"'), coach.indexOf('data-state="rest"') + 500);
-    expect(rest).toMatch(/\bdisabled\b/);
-    expect(rest).toContain('background: "var(--arbor-clay-dim)", color: "var(--arbor-clay)"');
-    expect(rest).not.toMatch(/gradient|text-white|opacity-40/);
-    expect(coach).not.toMatch(/disabled:opacity-40/);
+    expect(composer.match(/data-testid="coach-send"/g)).toHaveLength(1);
+    expect(composer).toContain("disabled={busy || preparing || listening || voiceActive || (!value.trim() && !attachments.length)}");
+    expect(composerCss).toMatch(/\.companion-input-well>button\{[^}]*background:var\(--arbor-clay\);color:var\(--arbor-on-accent\)/);
+    expect(composerCss).toMatch(/\.companion-input-well>button:disabled\{background:var\(--arbor-paper-deep\);color:var\(--arbor-muted\)/);
+    expect(composerCss).not.toContain("gradient");
+    expect(composer).toContain("onSend(undefined, { attachments })");
   });
 
   it("NEGATIVE CONTROL — the pre-change surface had no offline seam at all", () => {

@@ -98,12 +98,17 @@ describe("W2.7 nav de-overload — emphasis only", () => {
   // Heartwood D5 ratified the W2.7 canon follow-up: the slot ORDER now matches
   // the emphasis set (Today · Journal · Ask lead, Growth fourth). Still four
   // tabs + More — no section is removed from the bar.
-  it("three companion places precede Talk, with every other destination in More", () => {
-    expect(mobileNav).toContain('const PRIMARY_SECTION_IDS = ["today", "growth", "practice", "ask"] as const;');
+  it("three companion places remain navigation; conversation is the shared global dock", () => {
+    expect(mobileNav).toContain('const PRIMARY_SECTION_IDS = ["today", "growth", "practice"] as const;');
+    expect(mobileNav).toContain('section.id !== "ask"');
+    expect(shell).toContain("<CompanionWorkspace");
+    const workspace = readSrc("components", "companion", "CompanionWorkspace.tsx");
+    expect(workspace).toContain('data-testid="companion-launcher"');
+    expect(workspace).toContain('<CoachTab key={childProfile.id} embedded visible={visible} />');
   });
 
-  it("all four labeled doors remain equally readable", () => {
-    expect(mobileNav).toContain('new Set<string>(["today", "growth", "practice", "ask"])');
+  it("all three labeled places remain equally readable", () => {
+    expect(mobileNav).toContain('new Set<string>(["today", "growth", "practice"])');
   });
 
   it("quieter rendering is size/opacity only — colors stay on tokens", () => {

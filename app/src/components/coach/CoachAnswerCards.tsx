@@ -1,3 +1,4 @@
+import { translate as inputText } from "../../lib/i18n";
 import React, { useState } from "react";
 import Icon from "../ui/Icon";
 import type { CoachContract, CouncilTake } from "../../types";
@@ -423,7 +424,7 @@ export default function CoachAnswerCards({
 
       {contract.text?.trim() && (
         <header className="coach-report__opening" data-testid="coach-report-opening">
-          <p className="coach-report__eyebrow">{lang === "he" ? "נעשה סדר" : "Making sense of it"}</p>
+          <p className="coach-report__eyebrow">{inputText(lang, "companion.input.making-sense-of-it")}</p>
           <MarkdownBlock text={contract.text} className="coach-report__lead" />
         </header>
       )}
@@ -598,7 +599,7 @@ export default function CoachAnswerCards({
       </footer>
       {copyFallback !== null && (
         <label className="coach-report__copy-fallback">
-          <span>{lang === "he" ? "אפשר לבחור ולהעתיק את הטקסט" : "Select the text to copy it"}</span>
+          <span>{inputText(lang, "companion.input.select-the-text-to-copy-it")}</span>
           <textarea readOnly value={copyFallback} dir="auto" autoFocus onFocus={(event) => event.currentTarget.select()} />
         </label>
       )}

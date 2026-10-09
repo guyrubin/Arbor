@@ -1,3 +1,4 @@
+import { isSupportedPlayAge } from "../../lib/age/playEligibility";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import type { FocusSignals } from "../../hooks/useTodaysFocus";
 import type { BehaviorLog, Milestone, PlayLog } from "../../types";
@@ -47,7 +48,7 @@ export function focusSignalsForNow(input: {
 /** Reuse the live library's ranking, but do not let weighting offer an
  * out-of-band activity on the home screen. Never expose its internal score. */
 export function dailyPlayForNow(context: PlaySelectContext, count = 3): ScoredActivity[] {
-  if (!Number.isFinite(context.ageYears) || context.ageYears < 0 || context.ageYears > 12) return [];
+  if (!isSupportedPlayAge(context.ageYears)) return [];
   const band = bandForAge(context.ageYears);
   return selectDailyPlay(context, 100)
     .filter((pick) => pick.activity.bands.includes(band))

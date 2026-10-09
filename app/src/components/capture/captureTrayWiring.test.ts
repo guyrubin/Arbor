@@ -40,15 +40,19 @@ describe("the scan is real", () => {
 describe("the tray is mounted where a typed turn can be kept (B-ASKJB-03: under the Ask answer)", () => {
   const coach = stripComments(read("components/tabs/CoachTab.tsx"));
 
-  it("CoachTab imports and renders it with the typed surface id 'coach'", () => {
+  it("CoachTab offers inline keep actions on the latest settled typed report", () => {
     expect(coach).toContain('import CaptureProposalsTray from "../capture/CaptureProposalsTray"');
-    expect(coach).toMatch(/<CaptureProposalsTray\s+surface="coach"\s*\/>/);
+    expect(coach).toMatch(/renderKeepAction=\{idx === chatMessages\.length - 1 && !isChatLoading && !msg\.chatLive && !msg\.voiceLive/);
+    expect(coach).toMatch(/<CaptureProposalsTray\s+surface="coach"\s+inline=\{\{ field, text \}\}\s*\/>/);
   });
 
-  it("it sits after the thread's answers and before the failure card", () => {
-    const at = coach.indexOf('<CaptureProposalsTray surface="coach" />');
+  it("keep is attached to the report's sentence, with no duplicate standalone tray", () => {
+    const at = coach.indexOf('<CaptureProposalsTray surface="coach" inline=');
     expect(at).toBeGreaterThan(coach.indexOf("<CoachAnswerCards"));
     expect(at).toBeLessThan(coach.indexOf('data-testid="coach-failure-card"'));
+    expect(coach).not.toContain('<CaptureProposalsTray surface="coach" />');
+    expect(tray).toContain("p.field === inline.field");
+    expect(tray).toContain("p.proposal.summary === inline.text");
   });
 
   it("JournalTab no longer imports or renders a proposals tray", () => {

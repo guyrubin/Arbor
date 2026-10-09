@@ -1,3 +1,4 @@
+import { attachmentSourcePolicy } from "./attachmentSourcePolicy.js";
 /**
  * EVAL-6: version-pinned prompt builders.
  *
@@ -457,7 +458,7 @@ const renderRecentTurnsBlock = (turns?: RecentTurn[]): string => {
   const lines = turns.map((t) => `${t.role === "parent" ? "Parent" : "Coach"}: ${t.text}`);
   return `Recent turns of this same conversation, for continuity — read them so pronouns and follow-ups resolve, and do not repeat advice already given:
 ${lines.join("\n")}
-`;
+${attachmentSourcePolicy(turns)}`;
 };
 
 /** 1.3(b): ONE short context line from the parent-enabled weekly digest —

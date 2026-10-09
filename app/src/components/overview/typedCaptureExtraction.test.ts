@@ -148,11 +148,14 @@ describe("AI-CAP-3 — QuickLogModal typed capture", () => {
 });
 
 describe("AI-CAP-4 — coach AI drafts land in the review-gated sheet (B-ASKJB-05: the dead Create-log handler is gone)", () => {
-  it("the two live coach draft paths open the capture sheet in review ('ai-draft') — never a bare tab switch", () => {
-    // B-ASKJB-05 removed the never-called onCreateLog handler (and with it its
-    // extraction call); the overflow "Log" item and the Arbor Vision hand-off
-    // remain, and both open the ONE sheet on its review step (B-ASKJB-30).
-    expect(count(coach, /openCaptureSheet\(\{ review: "ai-draft" \}\)/g)).toBe(2);
+  it("both overflow and inline Edit keep AI drafts in the review-gated capture sheet", () => {
+    // Media now enters the same conversation; there is no separate Vision
+    // handoff. The overflow and inline advice Edit still require review.
+    const tray = stripComments(read("components/capture/CaptureProposalsTray.tsx"));
+    expect(count(coach, /openCaptureSheet\(\{ review: "ai-draft" \}\)/g)).toBe(1);
+    expect(count(tray, /openCaptureSheet\(\{ review: "ai-draft" \}\)/g)).toBe(1);
+    expect(tray).toMatch(/setNewLogNotes\([\s\S]*?openCaptureSheet\(\{ review: "ai-draft" \}\)/);
+    expect(coach).not.toContain("<ArborVision");
     expect(coach).not.toContain('setActiveTab("behaviors")');
     expect(coach).not.toContain("onCreateLog");
   });

@@ -394,12 +394,16 @@ describe("placement — exactly one mount, on the calm coach surface", () => {
     expect(mounts.map((f) => path.relative(SRC, f).replace(/\\/g, "/"))).toEqual(["components/tabs/CoachTab.tsx"]);
   });
 
-  it("it is mounted on an EMPTY thread and an idle surface", () => {
+  it("it is eligible only on an empty idle standalone thread, never the active companion workspace", () => {
     const coach = stripComments(readFileSync(path.join(SRC, "components", "tabs", "CoachTab.tsx"), "utf8").replace(/\r\n/g, "\n"));
     expect(coach.length).toBeGreaterThan(20_000);
     expect(coach).toContain("<ValuePreview");
     expect(coach).toContain("threadEmpty={chatMessages.length === 0}");
-    expect(coach).toContain('surfaceIdle={!isChatLoading && !failureCopy && voicePhase === "off" && !visionMode}');
+    expect(coach).toMatch(/surfaceIdle=\{!embedded && !isChatLoading && !failureCopy && voicePhase === "off"\s*\}/);
+    // Preparing media and dictation belong to the persistent input. Its host
+    // excludes this commercial preview throughout that flow.
+    expect(stripComments(readFileSync(path.join(SRC, "components", "companion", "CompanionWorkspace.tsx"), "utf8"))).toContain("embedded visible={visible}");
+    expect(coach).not.toContain("<ArborVision");
     expect(coach).toContain("online={online}");
     // Exactly one mount, so a second copy cannot creep onto a busier spot.
     expect(coach.match(/<ValuePreview/g)).toHaveLength(1);

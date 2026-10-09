@@ -30,3 +30,12 @@
 .companion-welcome p{font-size:14px;line-height:1.65;color:var(--arbor-muted);margin-top:8px}
 .companion-file-receipt{display:flex;align-items:center;gap:8px;font-size:12px;line-height:1.5;padding-bottom:8px}
 @media(max-width:520px){.companion-coach{padding-inline:16px}.companion-coach #coach-scenarios{grid-template-columns:1fr}.companion-composer-tools button{padding-inline:8px}}
+
+.companion-coach { display:flex; flex-direction:column; flex:1; height:auto; overflow:hidden; padding:0; gap:0; }
+.companion-coach > * { margin-block-start:0!important; }
+.companion-transcript { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:18px 20px 24px; }
+.companion-transcript > * + * { margin-top:20px; }
+.companion-transcript > [data-module=coach-orientation] > header { display:none; }
+.companion-coach [data-testid=coach-docked-composer] { flex-shrink:0; position:relative; margin:0; padding:0 20px env(safe-area-inset-bottom); }
+.arbor-app .companion-input-well textarea { background:transparent; }
+@media(max-width:520px){.companion-transcript{padding-inline:16px}.companion-coach [data-testid=coach-docked-composer]{padding-inline:16px}}

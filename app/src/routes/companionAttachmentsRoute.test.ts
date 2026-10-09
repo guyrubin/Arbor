@@ -70,7 +70,7 @@ describe("one multimodal coach turn at the authenticated route", () => {
     expect(JSON.stringify(result.body)).not.toContain("base64");
     expect(result.body.memoryReviewItems).toEqual([]);
   });
-  it("requires existing media consent even for document/PDF attachment", async () => {
+  it("denied-media-consent: requires existing media consent even for document/PDF attachment", async () => {
     const result = await post({ ...BODY, childId: "no-consent", childProfile: { id: "no-consent", age: 4 }, attachments: [{ ...attachment, childId: "no-consent", kind: "document", mimeType: "application/pdf", dataUrl: "data:application/pdf;base64,JVBERi0xLjc=" }] });
     expect(result.status).toBe(451);
     expect(result.body.purpose).toBe("face_processing");
@@ -81,7 +81,7 @@ describe("one multimodal coach turn at the authenticated route", () => {
     expect(result.status).toBe(403);
     expect(calls).toHaveLength(0);
   });
-  it("rejects stale attachments, profile mismatch and disguised files before model access", async () => {
+  it("cross-child-attachment: rejects stale attachments, profile mismatch and disguised files before model access", async () => {
     for (const body of [
       { ...BODY, attachments: [{ ...attachment, childId: "stale-child" }] },
       { ...BODY, childProfile: { id: "stale-child" } },
@@ -95,7 +95,14 @@ describe("one multimodal coach turn at the authenticated route", () => {
     expect(result.body.escalationCategory).toBeTruthy();
     expect(calls).toHaveLength(0);
   });
-  it("blocks diagnostic image interpretation through the existing output screen", async () => {
+  it("urgent text receives governed help even when media consent has not been granted", async () => {
+    const result = await post({ ...BODY, childId: "no-consent", childProfile: { id: "no-consent", age: 4 }, message: "My child is unconscious and not breathing.", attachments: [{ ...attachment, childId: "no-consent" }] });
+    expect(result.status).toBe(200);
+    expect(result.body.escalationCategory).toBeTruthy();
+    expect(result.body.attachmentContext).toBeUndefined();
+    expect(calls).toHaveLength(0);
+  });
+  it("image-diagnosis-output-blocked: blocks diagnostic image interpretation through the existing output screen", async () => {
     draft = { ...CLEAN, text: "Your child has autism." };
     const result = await post(BODY);
     expect(result.body.outputBlocked).toBe(true);

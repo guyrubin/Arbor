@@ -70,13 +70,12 @@ const CALLS = walk(SRC).flatMap((f) => {
 const OBJECT_ARG = /^\{[\s\S]*\}$/;
 
 describe("B-CAREPRO-13 · every caller goes through the widened seam", () => {
-  it("the scan found the six known callers (Appointments, Reports, Coach ×2, Screening, Safety)", () => {
+  it("the scan found five explicit callers (Appointments, Reports, unified Coach report, Screening, Safety)", () => {
     const files = CALLS.map((c) => c.rel).sort();
     expect(files).toEqual([
       "components/sections/Appointments.tsx", // B-CAREPRO-31: "Prepare" on an upcoming visit
       "components/sections/Reports.tsx", // B-CAREPRO-23: the one door from Your full record into Consult
       "components/sections/Screening.tsx",
-      "components/tabs/CoachTab.tsx",
       "components/tabs/CoachTab.tsx",
       "components/tabs/SafetyTab.tsx",
     ]);
@@ -95,7 +94,7 @@ describe("B-CAREPRO-13 · every caller goes through the widened seam", () => {
   it("each caller sets the field it knows", () => {
     const coach = read("components/tabs/CoachTab.tsx");
     expect(coach).toContain('requestConsultPrefill({ note, audience: "teacher" });'); // teacher note
-    expect(coach).toContain("requestConsultPrefill({ note });"); // Vision handoff
+    expect(coach).not.toContain("<ArborVision"); // attached media stays in the unified conversation
     expect(read("components/sections/Screening.tsx")).toContain("requestConsultPrefill({ reason: visitPrefillReason(watchAreas, t) });");
     expect(read("components/tabs/SafetyTab.tsx")).toContain('requestConsultPrefill({ reason: t("elev.safety.signs.consultReason", { labels }) });');
   });

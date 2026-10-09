@@ -771,7 +771,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     // Normalize before authorization; older clients only supplied the profile.
     if (!supplied && typeof profileId === "string") req.body.childId = profileId;
     next();
-  }, requireOwnership, requireConsent(consentStore, "face_processing", (req) => Array.isArray(req.body?.attachments) && req.body.attachments.length > 0), async (req, res) => {
+  }, requireOwnership, requireConsent(consentStore, "face_processing", (req) => Array.isArray(req.body?.attachments) && req.body.attachments.length > 0 && !screenForImmediateEscalation({ message: req.body?.message })), async (req, res) => {
     let attachments: ComposerAttachment[];
     try { attachments = parseCompanionAttachments(req.body.attachments, String(req.body.childId || "")); }
     catch { res.status(400).json({ error: "Invalid attachments. Please attach these files again." }); return; }

@@ -1,45 +1,22 @@
 /**
- * AI-17 — byte-equivalence guard for the richest structured-AI surface.
+ * The unified companion report: one explanation, visible reasoning and all
+ * suggested steps, with explicit actions beside keepable advice. Snapshots
+ * record the authorized October redesign rather than freeze the former
+ * collapsed-card layout.
  *
- * CoachAnswerCards is the reference implementation of Arbor's structured
- * answer: the framed section, the parent script with its read-aloud and copy
- * affordances, the interactive today-plan, and the action row. AI-17 lifts
- * those four blocks into shared primitives so the other surfaces stop
- * re-implementing them.
+ * Structural and mutated-render checks preserve the substantive invariants:
+ * no hidden core answer, no duplicated steps, no keepable hypotheses or help
+ * warnings, urgent help first, readable EN/HE, bidi isolation, count-only
+ * provenance, accessible controls and token-based styling.
  *
- * The bar for that extraction is ZERO visual regression, so this file freezes
- * the markup the component ships; if moving a block into a shared primitive
- * changes one class, one attribute or one text node, this fails.
- *
- * Re-pinned once, deliberately, after three source changes that the snapshot
- * exists to make visible and that were each reviewed here:
- *   OBJ-TODAY-01  the TrustLink chip is an OUTLINE, not a `--arbor-*-soft`
- *                 wash (every soft token is a gradient, so the filled chip
- *                 read as a second gradient CTA);
- *   OBJ-TODAY-04  that chip carries `touch-target` for the 44 px floor;
- *   OBJ-ASK/M     `isolate()` wraps Latin runs inside Hebrew copy in
- *                 FSI/PDI so a name cannot flip the sentence direction.
- * B-ASKJB-05 re-pinned it a second time, on purpose: the answer became ONE
- * recommendation — read · Try this (step 1 + "I'll try it") · Say this ·
- * escalate · More (steps 2-3, why, avoid, watch-for, council, sources, chips,
- * teacher note, the ONE "Turn into a plan" door) · footer. The KeepBar, the
- * header "Save as plan" and the per-step tick boxes left the card; the block
- * count below pins the shape so a sixth block cannot creep back.
- * No text node was lost, no frame was unwrapped and no verdict word entered;
- * the two matchers at the end of the negative-control block pin exactly those
- * three properties so the re-pin cannot silently absorb a fourth change.
- *
- * The explicit assertions below the snapshot are the negative controls: each
- * one names a structural property the extraction could plausibly break, and
- * each is proven to reject a mutated copy of the same markup.
- *
- * Rendered with renderToStaticMarkup under `environment: "node"`, so the
- * read-aloud control (which needs a speech-capable window) renders nothing
- * here; the copy affordance and every framed block do render.
+ * renderToStaticMarkup checks markup and hidden ancestors. Computed layout,
+ * actual focus behavior and microphone permissions require browser evidence.
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import CoachAnswerCards from "./CoachAnswerCards";
 import type { CoachContract, CouncilTake } from "../../types";
 
@@ -76,6 +53,7 @@ const council: CouncilTake[] = [
 ];
 
 const noop = () => {};
+const reportCss = readFileSync(resolve(__dirname, "coachReport.css"), "utf8");
 const asyncNoop = async () => {};
 void asyncNoop;
 
@@ -93,20 +71,20 @@ function render(props: Partial<Parameters<typeof CoachAnswerCards>[0]> = {}): st
 
 /* ── Frozen pre-extraction markup ─────────────────────────────────────────── */
 
-describe("AI-17 — CoachAnswerCards markup is byte-identical across the extraction", () => {
-  it("renders the low-risk English answer exactly as it shipped", () => {
+describe("AI-17 — the unified report's English, Hebrew and escalation markup", () => {
+  it("renders the complete low-risk English report", () => {
     const html = render({ lang: "en" });
     expect(html.length).toBeGreaterThan(2000);
     expect(html).toMatchSnapshot();
   });
 
-  it("renders the prominent-escalation answer exactly as it shipped", () => {
+  it("renders urgent help before the report explanation", () => {
     const html = render({ lang: "en", contract: { ...contract, riskLevel: "moderate" } });
     expect(html.length).toBeGreaterThan(2000);
     expect(html).toMatchSnapshot();
   });
 
-  it("renders the Hebrew answer with a council exactly as it shipped", () => {
+  it("renders the Hebrew report with council and bidi isolation", () => {
     const html = render({ lang: "he", council, lens: "Bowlby's Attachment Model" });
     expect(html.length).toBeGreaterThan(2000);
     expect(html).toMatchSnapshot();
@@ -120,6 +98,25 @@ describe("AI-17 — CoachAnswerCards markup is byte-identical across the extract
 
 const CARD_FRAME = 'class="rounded-xl p-3.5 bg-white"';
 const SECTION_TITLE = "text-[10px] font-extrabold uppercase tracking-wider";
+
+/** Read visibility from the actual static HTML, including hidden ancestors.
+ * This checks collapsed markup, not computed CSS or browser layout. */
+function visibleText(html: string, content: string): boolean {
+  const at = html.indexOf(content);
+  if (at < 0) return false;
+  const stack: { tag: string; hidden: boolean }[] = [];
+  const tags = /<\/?([a-zA-Z][a-zA-Z0-9-]*)([^>]*?)(\/?)>/g;
+  for (const match of html.slice(0, at).matchAll(tags)) {
+    const tag = match[1].toLowerCase();
+    if (match[0].startsWith("</")) {
+      const index = stack.map(item => item.tag).lastIndexOf(tag);
+      if (index >= 0) stack.length = index;
+    } else if (match[3] !== "/" && !/^(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/.test(tag)) {
+      stack.push({ tag, hidden: /\bhidden(?:=|\s|$)|display:\s*none/.test(match[2]) });
+    }
+  }
+  return !stack.some(item => item.hidden);
+}
 
 describe("AI-17 negative controls — the structural matchers reject a regressed render", () => {
   const html = render({ lang: "en" });
@@ -143,12 +140,14 @@ describe("AI-17 negative controls — the structural matchers reject a regressed
     expect(mutant).not.toContain(SECTION_TITLE);
   });
 
-  it("an outline door that lost its strong rule is rejected", () => {
-    // B-ASKJB-05: the tick boxes left the card; the strong rule now frames the
-    // teacher-note and plan doors inside More.
-    expect(html).toContain("border:1px solid var(--arbor-rule-strong)");
-    const mutant = html.split("var(--arbor-rule-strong)").join("var(--arbor-rule)");
-    expect(mutant).not.toContain("var(--arbor-rule-strong)");
+  it("report action doors retain an outline and accessible touch floor through their shared CSS", () => {
+    expect(html).toContain('class="coach-report__tools"');
+    const tools = /\.coach-report__tools button \{([^}]+)\}/.exec(reportCss)?.[1];
+    expect(tools).toBeTruthy();
+    expect(tools).toContain("border: 1px solid var(--arbor-rule-strong)");
+    expect(tools).toContain("min-block-size: var(--touch-min)");
+    const mutant = tools!.replace("border: 1px solid var(--arbor-rule-strong)", "border: 0");
+    expect(mutant).not.toContain("border: 1px solid var(--arbor-rule-strong)");
   });
 
   it("the trust chip stays an OUTLINE — a soft (gradient) wash is rejected", () => {
@@ -173,10 +172,22 @@ describe("AI-17 negative controls — the structural matchers reject a regressed
     expect(mutant).not.toContain("⁨Bowlby&#x27;s Attachment Model⁩");
   });
 
-  it("an action row that lost the accent keep button is rejected", () => {
-    expect(html).toContain("background:var(--arbor-green-soft);color:var(--arbor-green-ink)");
-    const mutant = html.split("var(--arbor-green-soft)").join("var(--arbor-paper-deep)");
-    expect(mutant).not.toContain("var(--arbor-green-soft)");
+  it("inline Keep is offered only beside keepable advice, never a hypothesis or help warning", () => {
+    const kept: { field: string; text: string }[] = [];
+    const out = render({ renderKeepAction: (field, text) => {
+      kept.push({ field, text });
+      return React.createElement("button", { type: "button", "data-testid": "test-inline-keep" }, "Keep this advice");
+    } });
+    expect(kept).toEqual([
+      ...contract.todayPlan.map(text => ({ field: "todayPlan", text })),
+      { field: "parentScript", text: contract.parentScript },
+      ...contract.observe.map(text => ({ field: "observe", text })),
+    ]);
+    expect(out.match(/data-testid="test-inline-keep"/g)).toHaveLength(4);
+    expect(reportCss).toMatch(/\.coach-report__keep button \{[^}]*min-block-size: var\(--touch-min\)/);
+    const mutant = `<div hidden>${out}</div>`;
+    expect(visibleText(out, "Keep this advice")).toBe(true);
+    expect(visibleText(mutant, "Keep this advice")).toBe(false);
   });
 });
 
@@ -185,10 +196,12 @@ describe("AI-17 negative controls — the structural matchers reject a regressed
 describe("AI-17 — the four structured blocks are all present on the reference surface", () => {
   const html = render({ lang: "en" });
 
-  it("frames every section in the shared card tone", () => {
-    // Try today, Say this, Avoid, Watch for — four framed sections minimum.
-    const frames = html.split(CARD_FRAME).length - 1;
-    expect(frames).toBeGreaterThanOrEqual(4);
+  it("one report keeps its explanation, reasoning, steps, script and considerations visible", () => {
+    expect(html.match(/data-testid="coach-answer-cards"/g)).toHaveLength(1);
+    expect(html).toContain('<article class="coach-report"');
+    for (const line of [contract.text, ...contract.nonDiagnosticHypotheses.flatMap(item => [item.label, item.rationale]), ...contract.todayPlan, contract.parentScript, ...contract.observe, ...contract.avoid]) {
+      expect(visibleText(html, line), line).toBe(true);
+    }
   });
 
   it("renders the parent script as a quoted, copyable block", () => {
@@ -198,44 +211,41 @@ describe("AI-17 — the four structured blocks are all present on the reference 
     expect(html).toContain("Copy");
   });
 
-  it("renders Try today as the FIRST step only; the rest sit inside More (B-ASKJB-05)", () => {
+  it("renders every suggested step once, outside any More disclosure", () => {
     expect(html).toContain("Try today");
-    for (const step of contract.todayPlan) expect(html).toContain(step);
-    const more = html.indexOf('data-testid="coach-answer-more"');
-    expect(html.indexOf(contract.todayPlan[0])).toBeLessThan(more);
-    expect(html.indexOf(contract.todayPlan[1])).toBeGreaterThan(more);
+    for (const step of contract.todayPlan) {
+      expect(html.split(step)).toHaveLength(2);
+      expect(visibleText(html, step)).toBe(true);
+    }
+    expect(html).not.toContain('data-testid="coach-answer-more"');
     // No ephemeral tick box: the step enters the loop through "I'll try it".
     expect(html).not.toContain('class="flex items-start gap-2 text-start w-full group"');
   });
 
-  it("renders ONE plan door and the hand-off action inside More (B-ASKJB-05)", () => {
+  it("renders one visible plan door and explicit teacher-note action", () => {
     expect(html.split('data-testid="coach-plan-door"').length - 1).toBe(1);
     expect(html).toContain("Turn into a plan");
     expect(html).not.toContain("Save to plan");
     expect(html).not.toContain("Save as plan");
     expect(html).toContain("Teacher note");
+    expect(visibleText(html, "Turn into a plan")).toBe(true);
+    expect(visibleText(html, "Teacher note")).toBe(true);
   });
 
-  it("B-ASKJB-05 block count: ≤5 top-level blocks + the footer, in order", () => {
+  it("the report reads explanation → reasoning → action, while urgent help always comes first", () => {
     for (const c of [contract, { ...contract, riskLevel: "moderate" }]) {
       const out = render({ lang: "en", contract: c });
-      const root = out.indexOf(">", out.indexOf('data-testid="coach-answer-cards"')) + 1;
-      const kids: string[] = [];
-      let depth = 0;
-      const re = /<\/?([a-zA-Z][a-zA-Z0-9-]*)([^>]*?)(\/?)>/g;
-      re.lastIndex = root;
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(out))) {
-        if (m[0].startsWith("</")) { if (depth === 0) break; depth -= 1; continue; }
-        if (depth === 0) kids.push(m[0]);
-        if (m[3] !== "/") depth += 1;
+      const ordered = ["coach-report-opening", "coach-report-understanding", "coach-report-next", "say-this", "coach-report-observe", "coach-plan-door", "coach-report-sources", "coach-answer-footer"];
+      const positions = ordered.map(id => out.indexOf(`data-testid="${id}"`));
+      expect(positions.every(position => position >= 0)).toBe(true);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+      if (c.riskLevel === "moderate") {
+        expect(out.indexOf('data-testid="coach-report-urgent-help"')).toBeLessThan(positions[0]);
+        expect(visibleText(out, c.escalateIf[0])).toBe(true);
+      } else {
+        expect(out).toMatch(/data-testid="coach-report-help"[^>]*><button type="button" aria-expanded="false"/);
+        expect(visibleText(out, c.escalateIf[0])).toBe(false);
       }
-      expect(kids.length).toBe(6); // read · try · say · escalate · More · footer
-      expect(kids[0]).toContain("flex flex-wrap items-center gap-1.5"); // read (trust link)
-      expect(kids[2]).toContain('data-testid="say-this"');
-      expect(kids[4]).toContain('data-testid="coach-answer-more"');
-      expect(kids[5]).toContain('data-testid="coach-answer-footer"');
-      expect(out).toMatch(/data-testid="coach-answer-more"[^>]*><button type="button" aria-expanded="false"/);
     }
   });
 
