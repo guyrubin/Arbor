@@ -140,7 +140,8 @@ describe("NoticeCard — 'Seen it' is filed next to the shelf's kept line (P5-LO
       const html = renderToStaticMarkup(
         <NoticeCard milestone={cdc} shelf="words" gender="boy" childName="Dylan" onAnswer={() => undefined} initialPhase="seen" besideWords="big ball" />,
       );
-      const receipt = html.match(/<p role="status" data-testid="notice-receipt"[\s\S]*?<\/p>/)![0];
+      // B-STATUS-01: the one Receipt line (announced through the shared polite region, so no role on the line)
+      const receipt = html.match(/<p data-testid="notice-receipt"[\s\S]*?<\/p>/)![0];
       expect(receipt).toContain('data-beside="true"');
       expect(receipt).toMatch(/class="min-w-0 t-sm leading-snug" style="color:var\(--arbor-ink-soft\)"/);
       // P7-DESIGN fix r1 (R2): the ONE quote key — “…” in EN, ״…״ in HE (isolates around the words)

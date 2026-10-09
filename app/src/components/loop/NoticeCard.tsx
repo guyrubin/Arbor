@@ -14,6 +14,9 @@ import { ShelfGlyph } from "../ui/ShelfGlyph";
 // SegmentedAnswers reads NOTICE_ANSWER_KEYS / NOTICE_ANSWER_ORDER from this
 // module; both sides use the other only at render time, so the cycle is inert.
 import { SegmentedAnswers } from "../ui/SegmentedAnswers";
+// B-STATUS-01: the one receipt line of parent mode.
+import { Receipt } from "../ui/Receipt";
+import { routeHash } from "../../lib/routes";
 
 /** Where the card is in its short life: asking · seen (When + keep) · thanked (not yet / not sure) · kept. */
 export type NoticePhase = "ask" | "seen" | "thanked" | "kept";
@@ -191,11 +194,11 @@ export default function NoticeCard({
     setKept(text);
     setPhase("kept");
   };
-  const undoButton = onUndo ? (
-    <button type="button" data-testid="notice-undo" onClick={undo} className="ms-auto inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full px-3 t-sm font-semibold" style={{ color: "var(--arbor-clay)" }}>
-      {t("elev.loop.notice.undo")}
-    </button>
-  ) : null;
+  // B-STATUS-01: every receipt here is the ONE Receipt line — "Undo" sits on
+  // it (critic r3), and a "Seen it" links to the shelf it was noted on unless
+  // the host already IS that shelf's place (hideShelf).
+  const undoAction = onUndo ? { label: t("elev.loop.notice.undo"), onUndo: undo, testId: "notice-undo" } : null;
+  const shelfLink = hideShelf ? null : { where: shelfName, href: `#${routeHash("journal", { shelf })}`, testId: "notice-receipt-open" };
 
   const frame =
     variant === "card"
@@ -253,21 +256,16 @@ export default function NoticeCard({
 
           {phase === "seen" && (
             <div data-testid="notice-seen-strip" className="mt-3 space-y-3">
-              <div className="flex items-center gap-2">
-                {besideWords?.trim() ? (
-                  <p role="status" data-testid="notice-receipt" data-beside="true" className="min-w-0 t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
-                    <Icon name="check" size={16} className="me-1 inline-block align-[-3px]" />
-                    {t("elev.loop.notice.seenReceiptBeside", { shelf: shelfName, name })}{" "}
-                    <span dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>{t("elev.loop.ms.quoted", { text: besideWords.trim() })}</span>
-                  </p>
-                ) : (
-                  <p role="status" data-testid="notice-receipt" className="flex min-w-0 items-center gap-1.5 t-sm" style={{ color: "var(--arbor-muted)" }}>
-                    <Icon name="check" size={16} />
-                    {t("elev.loop.notice.seenReceipt", { shelf: shelfName, name })}
-                  </p>
-                )}
-                {undoButton}
-              </div>
+              {besideWords?.trim() ? (
+                <Receipt testId="notice-receipt" data={{ "data-beside": "true" }} tone="soft" size="sm" link={shelfLink} undo={undoAction}>
+                  {t("elev.loop.notice.seenReceiptBeside", { shelf: shelfName, name })}{" "}
+                  <span dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>{t("elev.loop.ms.quoted", { text: besideWords.trim() })}</span>
+                </Receipt>
+              ) : (
+                <Receipt testId="notice-receipt" size="sm" link={shelfLink} undo={undoAction}>
+                  {t("elev.loop.notice.seenReceipt", { shelf: shelfName, name })}
+                </Receipt>
+              )}
               <div role="group" aria-label={t("elev.loop.notice.when")} data-testid="notice-when">
                 <p className="t-sm font-semibold" style={{ color: "var(--arbor-ink)" }}>{t("elev.loop.notice.when")}</p>
                 <div className="mt-1.5 flex flex-wrap gap-2">
@@ -345,12 +343,9 @@ export default function NoticeCard({
           )}
 
           {phase === "thanked" && (
-            <div className="mt-3 flex items-center gap-2">
-              <p role="status" data-testid="notice-thanks" className="min-w-0 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
-                {t("elev.loop.notice.thanks")}
-              </p>
-              {undoButton}
-            </div>
+            <Receipt testId="notice-thanks" icon={null} size="sm" className="mt-3" undo={undoAction}>
+              {t("elev.loop.notice.thanks")}
+            </Receipt>
           )}
 
           {phase === "kept" && (
@@ -360,12 +355,10 @@ export default function NoticeCard({
                   <FreeText text={t("elev.loop.ms.quoted", { text: kept })} />
                 </blockquote>
               )}
-              <figcaption className="mt-2 flex items-center gap-2">
-                <span role="status" data-testid="notice-kept-status" className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 t-sm font-semibold" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-                  <Icon name="check" size={16} />
+              <figcaption className="mt-2">
+                <Receipt testId="notice-kept-status" tone="kept" size="sm" undo={undoAction}>
                   {he(t("elev.loop.notice.keptStory", { name, date: today }))}
-                </span>
-                {undoButton}
+                </Receipt>
               </figcaption>
             </figure>
           )}

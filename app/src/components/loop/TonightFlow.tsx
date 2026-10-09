@@ -13,6 +13,9 @@ import { GOAL_SCALE_VALUES, type FamilyGoal, type GoalScaleKey, type GoalScaleVa
 import { ShelfGlyph } from "../ui/ShelfGlyph"; // B-DESIGN-04: the 44 px duotone glyph
 import NoticeCard from "./NoticeCard";
 import { practiceText } from "./PracticeCard";
+// B-STATUS-01: the one receipt line of parent mode.
+import { Receipt } from "../ui/Receipt";
+import { routeHash } from "../../lib/routes";
 
 export type TonightStep = 1 | 2 | 3 | 4 | "done";
 
@@ -153,11 +156,12 @@ export default function TonightFlow(props: TonightFlowProps) {
         <blockquote data-testid="tonight-say" className="mt-2 arbor-accent-rule arbor-type-say" style={{ color: "var(--arbor-ink)" }}>
           <FreeText text={t("elev.loop.ms.quoted", { text: say })} />
         </blockquote>
+        {/* B-STATUS-01: the morning's answer, drawn by the one Receipt line —
+            shown, not announced (it answers nothing tapped here). */}
         {earlierReceipt && (
-          <p data-testid="tonight-did-receipt" className="mt-1.5 flex items-center gap-1.5" style={{ color: "var(--arbor-muted)", fontSize: "var(--t-sm)" }}>
-            <Icon name="check" size={16} />
+          <Receipt testId="tonight-did-receipt" size="sm" className="mt-1.5" announce={false}>
             {earlierReceipt}
-          </p>
+          </Receipt>
         )}
         {!answer ? (
           <div
@@ -180,7 +184,7 @@ export default function TonightFlow(props: TonightFlowProps) {
             <button
               type="button"
               data-answer="not_today"
-              onClick={() => { setAnswer("not_today"); props.onPracticeAnswer("not_today"); }}
+              onClick={() => { setAnswer("not_today"); setAnsweredHere(true); props.onPracticeAnswer("not_today"); }}
               className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full px-5 t-base font-semibold"
               style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
             >
@@ -189,7 +193,8 @@ export default function TonightFlow(props: TonightFlowProps) {
           </div>
         ) : answer === "not_today" ? (
           <div className="mt-4 space-y-3">
-            <p role="status" data-testid="tonight-not-today" className="t-base" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.practice.notTodayReceipt")}</p>
+            {/* B-STATUS-01: announced only when "Not today" was tapped HERE. */}
+            <Receipt testId="tonight-not-today" icon={null} announce={answeredHere}>{t("elev.loop.practice.notTodayReceipt")}</Receipt>
             <div className="flex flex-wrap gap-2" {...stamp}>{nextButton(1)}</div>
           </div>
         ) : (
@@ -271,10 +276,10 @@ export default function TonightFlow(props: TonightFlowProps) {
         </h2>
         {kept ? (
           <div className="mt-3 space-y-3">
-            <p role="status" data-testid="tonight-kept" className="flex items-center gap-1.5 t-base" style={{ color: "var(--arbor-muted)" }}>
-              <Icon name="check" size={18} />
+            {/* B-STATUS-01: the kept words, with a link to where they went. */}
+            <Receipt testId="tonight-kept" link={{ where: g(t("elev.loop.said.title", { name })), href: `#${routeHash("language", { view: "said" })}`, testId: "tonight-kept-open" }}>
               {g(t("elev.loop.tonight.day.receipt", { name }))}
-            </p>
+            </Receipt>
             <div className="flex flex-wrap gap-2" {...stamp}>{nextButton(2)}</div>
           </div>
         ) : (

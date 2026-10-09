@@ -142,6 +142,10 @@ export const en: Record<string, string> = {
   "elev.loop.door.hardMoment": "Words for a hard moment",
   "elev.loop.door.week": "This week's letter",
   "elev.loop.door.play": "Play ideas for today",
+  // ── B-STATUS-01 · one feedback grammar: the receipt link, the pending line ─
+  "elev.loop.receipt.open": "Open",
+  "elev.loop.receipt.openAria": "Open {where}",
+  "elev.loop.pending.practice": "Arbor is choosing today's practice…",
 };
 
 export const he: Record<string, string> = {
@@ -269,4 +273,8 @@ export const he: Record<string, string> = {
   "elev.loop.door.hardMoment": "מילים לרגע קשה",
   "elev.loop.door.week": "המכתב של השבוע",
   "elev.loop.door.play": "רעיונות למשחק היום",
+  // ── B-STATUS-01 · one feedback grammar: the receipt link, the pending line ─
+  "elev.loop.receipt.open": "לפתוח",
+  "elev.loop.receipt.openAria": "לפתוח את {where}",
+  "elev.loop.pending.practice": "ארבור בוחר את התרגול של היום…",
 };

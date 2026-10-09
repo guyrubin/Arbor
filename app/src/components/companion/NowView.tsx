@@ -53,12 +53,19 @@ function PrimaryMove({ primary = true, ...props }: React.ComponentProps<"button"
  *  NowRecommendation makes (same signals, same journal, one cached call a day),
  *  mounted only while the practice leads. A chosen step or a program never
  *  triggers a request. */
-function PracticeFocus({ journal, onFocus }: { journal: ReturnType<typeof useNowLoop>["journal"]; onFocus: (focus: Focus | null) => void }) {
+function PracticeFocus({ journal, onFocus, onPending }: {
+  journal: ReturnType<typeof useNowLoop>["journal"];
+  onFocus: (focus: Focus | null) => void;
+  /** B-STATUS-01: while the focus request runs, the practice lead shows the pending line. */
+  onPending: (pending: boolean) => void;
+}) {
   const { childProfile, behaviorLogs, playLogs, milestones, actionLoop } = useArbor();
   const now = useMemo(() => new Date(), [childProfile, behaviorLogs, playLogs, milestones, actionLoop]);
   const signals = useMemo(() => focusSignalsForNow({ behaviorLogs, playLogs, milestones, actionLoop }, now), [behaviorLogs, playLogs, milestones, actionLoop, now]);
-  const { focus } = useTodaysFocus(childProfile, signals, journal);
+  const { focus, loading } = useTodaysFocus(childProfile, signals, journal);
   useEffect(() => { onFocus(focus); }, [focus, onFocus]);
+  useEffect(() => { onPending(loading); }, [loading, onPending]);
+  useEffect(() => () => onPending(false), [onPending]);
   return null;
 }
 
@@ -115,6 +122,7 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
 
   // ── The milestone loop (parity 9 Oct): practice → Did it → Tonight → notice. ──
   const [focus, setFocus] = useState<Focus | null>(null);
+  const [focusPending, setFocusPending] = useState(false);
   const loop = useNowLoop({
     aiPracticeId: focus?.practiceVia === "ai" ? focus.practiceId : undefined,
     openPhotoCapture: () => openCaptureSheet({ mode: "photo" }),
@@ -152,7 +160,7 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
 
     <div className="now-main-grid">
       <div className="now-main-column">
-        {lead === "practice" && <PracticeFocus journal={loop.journal} onFocus={setFocus} />}
+        {lead === "practice" && <PracticeFocus journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
         {lead === "tonight" ? <section className="now-loop-lead" data-module="today-tonight" aria-label={t("elev.loop.today.tonight")}>
           <NowTonightLead loop={loop} />
         </section> : lead === "step" && chosen ? <section className="now-lead arbor-depth-primary" data-module="now-step" aria-labelledby={`${id}-step`}>
@@ -167,7 +175,7 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
           <PrimaryMove primary={!!receiptAction} type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(chosen.recommendation))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></PrimaryMove>
           {saveError && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
         </section> : lead === "practice" && loop.pick ? <section className="now-loop-lead" data-module="today-practice" aria-label={copy.today}>
-          <NowPracticeLead loop={loop} name={name} whyText={focus?.why} headerNote={lifecycleNote} adaptLabel={copy.adapt}
+          <NowPracticeLead loop={loop} name={name} whyText={focus?.why} headerNote={lifecycleNote} adaptLabel={copy.adapt} choosing={focusPending}
             onAdapt={() => talk(copy.adaptPrompt(practiceText(loop.pick!.practice, "do", lang, childProfile.gender)))} />
         </section> : lead === "notice" ? <section className="now-loop-lead" data-module="today-practice" aria-label={t("elev.loop.today.notice.title")}>
           <NowNoticeLead loop={loop} name={name} />

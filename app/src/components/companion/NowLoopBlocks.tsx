@@ -6,6 +6,7 @@ import NoticeCard from "../loop/NoticeCard";
 import TonightFlow from "../loop/TonightFlow";
 import { SectionHead } from "../ui/SectionHead";
 import Icon from "../ui/Icon";
+import { PendingLine } from "../ui/Receipt";
 import type { useNowLoop } from "./useNowLoop";
 
 type Loop = ReturnType<typeof useNowLoop>;
@@ -20,11 +21,14 @@ type Loop = ReturnType<typeof useNowLoop>;
 const MOVE = "choose-next-step";
 const stamp = { "data-primary-move": MOVE } as const;
 
-export function NowPracticeLead({ loop, name, whyText, headerNote, onAdapt, adaptLabel }: {
+export function NowPracticeLead({ loop, name, whyText, headerNote, onAdapt, adaptLabel, choosing = false }: {
   loop: Loop; name: string; whyText?: string | null; headerNote?: string | null;
   onAdapt: () => void; adaptLabel: string;
+  /** B-STATUS-01: the AI focus is still choosing today's practice (B-LOOP-13). */
+  choosing?: boolean;
 }) {
   const { childProfile } = useArbor();
+  const { t } = useLanguage();
   if (!loop.pick) return null;
   const pick = loop.pick;
   return <>
@@ -49,6 +53,9 @@ export function NowPracticeLead({ loop, name, whyText, headerNote, onAdapt, adap
       adaptation={pick.adaptation?.key ?? null}
       onAdapt={loop.setAdaptation}
     />
+    {/* B-STATUS-01: Arbor may still swap in its pick (B-LOOP-13) — ONE quiet
+        line after 400 ms, gone once it answers or the dose is in. */}
+    <PendingLine active={choosing && !loop.doseAnswer} testId="now-practice-pending">{t("elev.loop.pending.practice")}</PendingLine>
     <button type="button" className="companion-text-button now-loop-adapt" onClick={onAdapt}>{adaptLabel}<Icon name="chat_bubble" size={18} /></button>
   </>;
 }

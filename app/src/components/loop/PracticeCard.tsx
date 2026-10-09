@@ -11,6 +11,8 @@ import { ShelfGlyph } from "../ui/ShelfGlyph";
 import { practiceDoNamed } from "../../lib/journal/shelfView";
 import { practiceTitle, titleIsWholeDo } from "../../lib/practice/practiceTitle";
 import { PRACTICE_ADAPTATIONS, PRACTICE_ADAPTATION_KEYS, type PracticeAdaptationKey } from "../../content/practiceAdaptations";
+import { Receipt } from "../ui/Receipt";
+import { routeHash } from "../../lib/routes";
 
 /** The page-language text of a practice field, Hebrew slash forms resolved
  *  from the child's gender (Law 8). */
@@ -138,6 +140,8 @@ export default function PracticeCard({
   const hasQuotes = !!quotes && quotes.length > 0;
   const besideWords = !!quotes && quotes.some((q) => q.onShelf !== false);
   const [adaptOpen, setAdaptOpen] = useState(false);
+  // B-STATUS-01: the answer this card opened with (null unless a reload).
+  const answeredAtMount = useRef<PracticeAnswer | null>(answered ?? null);
   const adaptId = useId();
   const adaptTrigger = useRef<HTMLButtonElement>(null);
   const canAdapt = !!onAdapt && !!PRACTICE_ADAPTATIONS[practice.id];
@@ -217,25 +221,19 @@ export default function PracticeCard({
         </p>
       )}
       {answered ? (
-        <div className="mt-3.5 flex items-center gap-2">
-          <p role="status" data-testid="practice-receipt" className="flex min-w-0 items-center gap-1.5 t-base" style={{ color: "var(--arbor-muted)" }}>
-            <Icon name="check" size={18} />
-            {/* pass A1: the dose is filed on the shelf — "next to your words"
-                only when the words shown ARE on this shelf (P2-N1). */}
-            {t(answered === "did" ? (besideWords ? "elev.loop.practice.didReceiptWords" : "elev.loop.practice.didReceipt") : "elev.loop.practice.notTodayReceipt", { name: childName || t("today.record.childFallback"), shelf: shelfName })}
-          </p>
-          {onUndo && (
-            <button
-              type="button"
-              data-testid="practice-undo"
-              onClick={onUndo}
-              className="ms-auto inline-flex min-h-[44px] items-center rounded-full px-3 t-sm font-semibold"
-              style={{ color: "var(--arbor-clay)" }}
-            >
-              {t("elev.loop.notice.undo")}
-            </button>
-          )}
-        </div>
+        /* B-STATUS-01: the ONE receipt line — what it says is unchanged; a
+           "Did it" links to the shelf it was filed on. pass A1: "next to your
+           words" only when the words shown ARE on this shelf (P2-N1). An answer
+           given before this card mounted (a reload) is drawn, not announced. */
+        <Receipt
+          testId="practice-receipt"
+          className="mt-3.5"
+          announce={answered !== answeredAtMount.current}
+          link={answered === "did" ? { where: shelfName, href: `#${routeHash("journal", { shelf })}`, testId: "practice-receipt-open" } : null}
+          undo={onUndo ? { label: t("elev.loop.notice.undo"), onUndo, testId: "practice-undo" } : null}
+        >
+          {t(answered === "did" ? (besideWords ? "elev.loop.practice.didReceiptWords" : "elev.loop.practice.didReceipt") : "elev.loop.practice.notTodayReceipt", { name: childName || t("today.record.childFallback"), shelf: shelfName })}
+        </Receipt>
       ) : (
         <div
           role="group"

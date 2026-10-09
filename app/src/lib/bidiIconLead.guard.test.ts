@@ -55,8 +55,13 @@ describe("dir=auto never resolves from an icon ligature", () => {
     expect(DIR_AUTO_ICON_LEAD.test(conditional)).toBe(true);
   });
 
-  it("the capture reply line takes its direction from the reply locale", () => {
-    const src = fs.readFileSync(path.resolve(SRC, "components/overview/QuickLogModal.tsx"), "utf8");
-    expect(src).toMatch(/<p dir=\{replyLocale === "he" \? "rtl" : "ltr"\} lang=\{replyLocale\} data-testid="quicklog-reply-line1"/);
+  it("the capture reply line takes its direction from the page locale (B-STATUS-01: through the one Receipt line)", () => {
+    const src = fs.readFileSync(path.resolve(SRC, "components/overview/QuickLogModal.tsx"), "utf8").replace(/\r\n/g, "\n");
+    expect(src).toMatch(/<Receipt\s+testId="quicklog-reply-line1"/);
+    // the receipt line (and the pending line) set dir + lang from uiLang — never dir="auto" over an icon
+    const receipt = fs.readFileSync(path.resolve(SRC, "components/ui/Receipt.tsx"), "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(receipt).toContain('const lang = uiLang === "he" ? "he" : "en";');
+    expect((receipt.match(/dir=\{lang === "he" \? "rtl" : "ltr"\}\s+lang=\{lang\}/g) ?? []).length).toBe(2);
+    expect(receipt).not.toContain('dir="auto"');
   });
 });

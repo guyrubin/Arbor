@@ -21,7 +21,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath } from "node:url";
 import { todayLiveSource } from "../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -221,7 +221,13 @@ describe("B-DESIGN-04 · Today keeps its 44 px floors after the blend", () => {
   const seg = read("components/ui/SegmentedAnswers.tsx");
   it("the practice answers are min-h-12; Undo is min-h-[44px]", () => {
     expect(card.match(/data-answer="(?:did|not_today)"[\s\S]{0,120}?className="[^"]*\bmin-h-12\b/g)).toHaveLength(2);
-    expect(card).toMatch(/data-testid="practice-undo"[\s\S]{0,120}?min-h-\[44px\]/);
+    // B-STATUS-01: Undo is drawn by the one Receipt line; its trailing
+    // controls (Open · Undo) share ONE 44 x 44 class.
+    expect(card).toContain('undo={onUndo ? { label: t("elev.loop.notice.undo"), onUndo, testId: "practice-undo" } : null}');
+    const receipt = read("components/ui/Receipt.tsx");
+    expect(receipt).toMatch(/const TRAILING = "inline-flex min-h-\[44px\] min-w-\[44px\]/);
+    expect(receipt).toMatch(/data-testid=\{undo\.testId\}[\s\S]{0,200}?\$\{TRAILING\}/);
+    expect(receipt).toMatch(/data-testid=\{link\.testId \?\? "receipt-open"\}[\s\S]{0,200}?\$\{TRAILING\}/);
   });
   it("the Tonight pointer and the door summary keep a 44 px floor", () => {
     // Parity 9 Oct: Now draws them with nowView.css (the pointer is a

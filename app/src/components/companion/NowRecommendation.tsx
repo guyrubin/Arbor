@@ -13,6 +13,7 @@ import { TrustLink } from "../trust/TrustLink";
 import { dailyPlayForNow, focusSignalsForNow } from "./nowRecommendationModel";
 import { NOW_COPY } from "./nowViewCopy";
 import { trackActionOffered } from "../../lib/loopEvents";
+import { PendingLine } from "../ui/Receipt";
 
 /** Mounted only when a chosen step/program does not already lead Now. The
  * parent keys this by child/language, so cached or in-flight AI from another
@@ -109,7 +110,9 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
       {(useAi ? picks.length > 0 : picks.length > 1) && <button type="button" className="companion-text-button" onClick={another}>{copy.otherIdea}<Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" /></button>}
       <button type="button" className="companion-text-button" onClick={() => setActiveTab("daily-play")}>{copy.library}</button>
     </div>
-    {loading && !useAi && !preferLibrary && <p className="now-inline-status" role="status">{copy.loading}</p>}
+    {/* B-STATUS-01: Arbor's idea is still coming — the ONE pending line,
+        quiet and only after 400 ms (a cached focus never flashes it). */}
+    <PendingLine active={loading && !useAi && !preferLibrary} testId="now-recommendation-pending" className="now-inline-status">{copy.loading}</PendingLine>
     {error && !useAi && <div className="now-inline-status" role="status"><p>{copy.focusError}</p><button type="button" className="companion-text-button" disabled={loading} onClick={() => void regenerate()}>{copy.retry}</button></div>}
   </section>;
 }

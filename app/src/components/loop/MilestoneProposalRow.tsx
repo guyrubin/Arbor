@@ -1,6 +1,7 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { FreeText } from "../ui/FreeText";
+import { Receipt } from "../ui/Receipt";
+import { routeHash } from "../../lib/routes";
 import { useLanguage } from "../../context/LanguageContext";
 import { shelfLabel } from "../../lib/shelves/registry";
 import { MILESTONE_PROPOSAL_COPY, MILESTONE_PROPOSAL_DECLINE_KEY, type MilestoneCaptureProposal } from "../../lib/captureProposals";
@@ -20,6 +21,7 @@ export default function MilestoneProposalRow({
   busy = false,
   onAccept,
   onDecline,
+  onOpenShelf,
 }: {
   proposal: MilestoneCaptureProposal;
   /** The milestone's title in the page language (gender-resolved by the caller). */
@@ -29,6 +31,8 @@ export default function MilestoneProposalRow({
   busy?: boolean;
   onAccept: () => void;
   onDecline: () => void;
+  /** B-STATUS-01: runs as the receipt's shelf link opens (the sheet closes). */
+  onOpenShelf?: () => void;
 }) {
   const { t } = useLanguage();
   const copy = MILESTONE_PROPOSAL_COPY[proposal.kind];
@@ -42,10 +46,15 @@ export default function MilestoneProposalRow({
       style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
     >
       {done ? (
-        <p role="status" data-testid="capture-milestone-done" className="flex items-center gap-1.5 text-[13px]" style={{ color: "var(--arbor-muted)" }}>
-          <Icon name="check" size={16} />
+        /* B-STATUS-01: the one Receipt line, with a link to the shelf it was
+           filed on (the host closes its sheet as the link opens). */
+        <Receipt
+          testId="capture-milestone-done"
+          size="sm"
+          link={{ where: shelf, href: `#${routeHash("journal", { shelf: proposal.shelf })}`, onOpen: onOpenShelf, testId: "capture-milestone-open" }}
+        >
           {t(copy.done, { shelf })}
-        </p>
+        </Receipt>
       ) : (
         <>
           <p className="text-[14px] leading-snug" style={{ color: "var(--arbor-ink)" }}>

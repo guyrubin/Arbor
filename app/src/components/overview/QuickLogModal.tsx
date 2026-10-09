@@ -43,6 +43,9 @@ import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { createCaptureSession } from "../../lib/captureSession";
 import { contextLabel } from "../behaviors/contextLabel";
 import type { ShelfId } from "../../lib/shelves/registry";
+// B-STATUS-01: the one receipt line and the one pending line of parent mode.
+import { PendingLine, Receipt } from "../ui/Receipt";
+import { routeHash } from "../../lib/routes";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
  *
@@ -633,18 +636,25 @@ export default function QuickLogModal({
       <fieldset disabled={saving} className="min-w-0 border-0 p-0">
       {reply ? (
         <section data-testid="quicklog-reply" aria-live="polite" className="space-y-4 text-sm">
-          <p dir={replyLocale === "he" ? "rtl" : "ltr"} lang={replyLocale} data-testid="quicklog-reply-line1" className="flex items-start gap-2 text-[15px] font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>
-            <Icon name="check_circle" size={20} style={{ color: "var(--arbor-green-ink)" }} className="mt-0.5 flex-none" />
-            <span>
-              {replyEcho
-                ? t("elev.closeloop.echo.title", {
-                    type: isolate(behaviorTypeLabel(replyEcho.type, t), replyLocale),
-                    n: replyEcho.count,
-                    days: replyEcho.windowDays,
-                  })
-                : t("elev.capture.reply.kept", { name: firstName })}
-            </span>
-          </p>
+          {/* B-STATUS-01: the capture confirm is the ONE Receipt line (its
+              direction and lang from the page language, the words unchanged),
+              with a link to where the moment went; the sheet's own Undo ·
+              Done row stays below. */}
+          <Receipt
+            testId="quicklog-reply-line1"
+            tone="ink"
+            strong
+            icon="check_circle"
+            link={{ where: t("nav.tab.journal"), href: `#${routeHash("journal")}`, onOpen: closeSheet, testId: "quicklog-reply-open" }}
+          >
+            {replyEcho
+              ? t("elev.closeloop.echo.title", {
+                  type: isolate(behaviorTypeLabel(replyEcho.type, t), replyLocale),
+                  n: replyEcho.count,
+                  days: replyEcho.windowDays,
+                })
+              : t("elev.capture.reply.kept", { name: firstName })}
+          </Receipt>
           {msProposal && msProposal.logId === reply.log.id && (
             <MilestoneProposalRow
               proposal={msProposal}
@@ -653,6 +663,7 @@ export default function QuickLogModal({
               busy={saving}
               onAccept={() => void acceptMilestoneProposal()}
               onDecline={declineMilestoneProposalRow}
+              onOpenShelf={closeSheet}
             />
           )}
           {replyCard ? (
@@ -835,6 +846,9 @@ export default function QuickLogModal({
           </span>
         </label>
         {optionalDetails}
+        {/* B-STATUS-01: while Arbor drafts from the parent's words, ONE quiet
+            line after 400 ms (never a spinner, never a flash). */}
+        <PendingLine active={drafting} testId="quicklog-drafting">{t("beh.parsing")}</PendingLine>
         <button type="submit" disabled={saving || drafting || photoPreparing} className="min-h-11 w-full py-3 text-white font-extrabold text-xs rounded-xl transition active:scale-[0.98]" style={{ background: "var(--arbor-gradient-primary)" }}>
           {saving ? t("companion.family-topic-sheet.saving") : editLogId ? t("companion.capture.saveChanges") : t("ql.moment.save")}
         </button>
@@ -890,12 +904,11 @@ export default function QuickLogModal({
         </div>
 
         {optionalDetails}
+        {/* B-STATUS-01: the drafting spinner in the button became the ONE
+            pending line — quiet, after 400 ms; the button keeps its label. */}
+        <PendingLine active={drafting} testId="quicklog-drafting">{t("beh.parsing")}</PendingLine>
         <button type="submit" disabled={drafting || saving || photoPreparing} className="min-h-11 w-full py-3 text-white font-extrabold text-xs rounded-xl transition active:scale-[0.98] disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
-          {drafting ? (
-            <span className="inline-flex items-center gap-1.5"><Icon name="progress_activity" size={14} className="animate-spin" /> {t("beh.parsing")}</span>
-          ) : (
-            t("ql.save")
-          )}
+          {t("ql.save")}
         </button>
       </form>}
       </>)}

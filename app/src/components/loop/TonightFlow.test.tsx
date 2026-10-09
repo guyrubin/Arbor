@@ -180,7 +180,8 @@ describe("the evening after 'Did it' asks the LIVE question (P5-LOOP critic c2 r
     const morning = render(1, "en", { doseAnswer: "did", doseAt: new Date(2026, 9, 6, 7, 30).toISOString() });
     expect(morning).toContain('data-testid="tonight-did-receipt"');
     expect(text(morning)).toContain("You did it this morning");
-    expect(morning).toMatch(/data-testid="tonight-did-receipt"[^>]*style="[^"]*color:var\(--arbor-muted\);font-size:var\(--t-sm\)/);
+    // B-STATUS-01: the one Receipt line — muted, t-sm, drawn without announcing (an earlier answer)
+    expect(morning).toMatch(/data-testid="tonight-did-receipt"[^>]*class="[^"]*\bt-sm\b[^"]*" style="color:var\(--arbor-muted\)"/);
     expect(text(render(1, "he", { doseAnswer: "did", doseAt: new Date(2026, 9, 6, 8, 0).toISOString() }))).toContain("עשיתם את זה הבוקר");
     expect(text(render(1, "en", { doseAnswer: "did", doseAt: new Date(2026, 9, 6, 15, 0).toISOString() }))).toContain("You did it earlier today");
     expect(render(1, "en")).not.toContain('data-testid="tonight-did-receipt"');
