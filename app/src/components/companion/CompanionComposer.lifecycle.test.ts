@@ -162,6 +162,8 @@ function harness(options: { send?: () => Promise<boolean | undefined>; text?: st
   };
   const imports = {
     "../ui/Icon": { __esModule: true, default: "Icon" },
+    // B-STATUS-02: dictation shows the REC-01 indicator (rendered by name here).
+    "../ui/RecordingIndicator": { __esModule: true, default: "RecordingIndicator" },
     "../../lib/image": { fileToThumbnail: thumbnail },
     "../../lib/i18n": { translate },
     "../../lib/speech": { startDictation, speechSupported: () => true },
@@ -299,12 +301,15 @@ describe("Companion draft, attachment and speech lifetime", () => {
 
   it("hiding stops dictation and ignores every late speech callback, while preserving the text draft", () => {
     const view = harness(); view.click("Dictate"); const session = view.sessions[0];
-    session.callbacks.onInterim("half a sentence"); expect(text(view.render())).toContain("half a sentence");
+    // B-STATUS-02: the live words ride in the REC-01 indicator (rendered by name in this harness).
+    session.callbacks.onInterim("half a sentence");
+    expect(one(view.render(), node => node.type === "RecordingIndicator").props.interim).toBe("half a sentence");
     view.state.visible = false; view.render(); expect(session.stop).toHaveBeenCalledTimes(1);
     session.callbacks.onResult("late words"); session.callbacks.onInterim("late interim");
     session.callbacks.onError("denied"); session.callbacks.onEnd();
     view.state.visible = true;
     expect(view.state.chatInput).toBe("A moment from today"); expect(text(view.render())).not.toMatch(/late|half a sentence|Microphone:/);
+    expect(nodes(view.render()).some(node => node.type === "RecordingIndicator")).toBe(false);
     expect(button(view.render(), "Dictate").props["aria-pressed"]).toBe(false);
   });
 
