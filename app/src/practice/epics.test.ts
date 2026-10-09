@@ -27,11 +27,12 @@ describe("bands with practice events + hero metrics", () => {
     expect(e1.basis).not.toContain("Feelings Lab");
   });
 
-  it("nudges social from story-choice empathy, capped", () => {
-    const bands = domainBands([], [], [], [], [], { empathy: 10, courage: 0, resilience: 0, responsibility: 0, wisdom: 0 });
-    const social = bands.find((b) => b.domain === "social")!;
-    expect(social.basis).toContain("story choices");
-    expect(social.signal).toBeLessThanOrEqual(58 + 10); // 50 base + 8 cap (+rounding)
+  // B-BOOK-60 (supersedes the capped empathy nudge): a story choice is never
+  // evidence about the child.
+  it("story-choice metrics move no band", () => {
+    const bands = domainBands([], [], [], [], [], { empathy: 10, courage: 10, resilience: 10, responsibility: 0, wisdom: 0 });
+    expect(bands).toEqual(domainBands([], [], [], []));
+    for (const b of bands) expect(b.basis).not.toContain("story choices");
   });
 
   // B-KID-90 re-pin: Mind Vault scores are play, not a cognition input.
@@ -44,10 +45,14 @@ describe("bands with practice events + hero metrics", () => {
 });
 
 describe("confidence", () => {
+  // B-GAME-17: only observation (milestones, missions, speech, the parent's
+  // Words & Express practice) builds confidence; kid-game volume does not.
   it("confidence grows with observed data", () => {
-    expect(domainConfidence("emotional", [], [], [], [], [])).toBe("low");
-    const events = Array.from({ length: 25 }, () => ev("emotion-id", "emotional", true));
-    expect(domainConfidence("emotional", [], [], [], events, [])).toBe("high");
+    expect(domainConfidence("language", [], [], [], [], [])).toBe("low");
+    const events = Array.from({ length: 25 }, () => ev("vocab-naming", "language", true));
+    expect(domainConfidence("language", [], [], [], events, [])).toBe("high");
+    const quiz = Array.from({ length: 25 }, () => ev("emotion-id", "emotional", true));
+    expect(domainConfidence("emotional", [], [], [], quiz, [])).toBe("low");
   });
 
   // B-GROWTH-22a: the "one snapshot per ISO week" and "trend vs previous
