@@ -24,6 +24,8 @@ const OWNS_FAILURE = [
   "components/overview/QuickLogModal.tsx",
 ];
 const SEAM_TOASTS = [
+  // Tonight's "What happened?" on Now (parity 9 Oct): TonightFlow has no inline error.
+  "components/companion/useNowLoop.ts",
   "components/kidmode/SneakHandBackCard.tsx",
   "components/practice/PracticeStudioTab.tsx",
   "components/tabs/BedtimeStoriesTab.tsx",

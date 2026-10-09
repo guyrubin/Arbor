@@ -2,6 +2,7 @@ import React, { useEffect, useId, useMemo, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
+import type { JournalRequest } from "../../ai/journalContext";
 import { ageYearsOf, knownAgeMonthsOf } from "../../lib/age/forChild";
 import { focusBodyFor, focusHeadlineFor, whyLineFor } from "../../lib/todayFocus";
 import { localizeActivity } from "../../playbank/content";
@@ -16,9 +17,12 @@ import { trackActionOffered } from "../../lib/loopEvents";
 /** Mounted only when a chosen step/program does not already lead Now. The
  * parent keys this by child/language, so cached or in-flight AI from another
  * context cannot become the next child's recommendation. */
-export default function NowRecommendation({ name, onTalkOpen }: {
+export default function NowRecommendation({ name, onTalkOpen, journal }: {
   name: string;
   onTalkOpen: (prompt?: string) => void;
+  /** B-LOOP-13: the shelves, open milestones and night answers the step is
+   *  grounded in (ids and counts only; the same request the practice lead makes). */
+  journal?: JournalRequest;
 }) {
   const { childProfile, behaviorLogs, playLogs, milestones, actionLoop, acceptTodayAction, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
@@ -27,7 +31,7 @@ export default function NowRecommendation({ name, onTalkOpen }: {
   const id = useId();
   const now = useMemo(() => new Date(), [childProfile, behaviorLogs, playLogs, milestones, actionLoop]);
   const signals = useMemo(() => focusSignalsForNow({ behaviorLogs, playLogs, milestones, actionLoop }, now), [behaviorLogs, playLogs, milestones, actionLoop, now]);
-  const { focus, loading, error, regenerate } = useTodaysFocus(childProfile, signals);
+  const { focus, loading, error, regenerate } = useTodaysFocus(childProfile, signals, journal);
   const [libraryIndex, setLibraryIndex] = useState(0);
   const [preferLibrary, setPreferLibrary] = useState(false);
   const [stepsOpen, setStepsOpen] = useState(false);
