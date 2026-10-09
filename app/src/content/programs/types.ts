@@ -54,6 +54,12 @@ export interface MeasureDef {
   unit: LocalizedText;
 }
 
+/** B-PROG-13: a Kid Mode world a week's skill can be played in, together —
+ *  named by its kid id (components/kidmode/kidWorlds) or, for a world with no
+ *  Kid Mode seat yet, its Practice Studio id. A LINK only: a program authors no
+ *  kid content (the Kids program is paused). */
+export type ProgramKidWorld = "sound-lab" | "word-world";
+
 export interface ProgramWeek {
   /** 1-based week number. */
   n: number;
@@ -62,6 +68,9 @@ export interface ProgramWeek {
   practices: PracticeId[];
   coachScripts: CoachScript[];
   watchFor: MilestoneId[];
+  /** B-PROG-13: the program page shows ONE "Play {world} together" door for
+   *  this week, only when Kid Mode can open that world for this child. */
+  kidWorld?: ProgramKidWorld;
 }
 
 export type ProgramReviewStatus = "draft" | "approved" | "retired";

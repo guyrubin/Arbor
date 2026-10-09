@@ -17,6 +17,8 @@ export const en: Record<string, string> = {
   "elev.program.week.caption": "This week's skill",
   "elev.program.week.do": "Today's practice",
   "elev.program.week.doSub": "Each day's practice comes from this week.",
+  // B-PROG-13: {world} = the kid world's one name (Sound Lab, Word World).
+  "elev.program.kidWorld.door": "Play {world} together",
   "elev.program.resume": "Pick up week {n}",
   "elev.program.counts.title": "What you counted",
   "elev.program.counts.note": "Counts of what you noticed, each beside your own first week.",
@@ -167,6 +169,7 @@ export const he: Record<string, string> = {
   "elev.program.week.caption": "המיומנות של השבוע",
   "elev.program.week.do": "התרגול של היום",
   "elev.program.week.doSub": "התרגול של כל יום מגיע מהשבוע הזה.",
+  "elev.program.kidWorld.door": "לשחק יחד ב{world}",
   "elev.program.resume": "להמשיך משבוע {n}",
   "elev.program.counts.title": "מה שספרתם",
   "elev.program.counts.note": "ספירה של מה ששמתם לב אליו, כל מספר ליד השבוע הראשון שלכם.",

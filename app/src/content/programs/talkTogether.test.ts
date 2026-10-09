@@ -7,7 +7,7 @@ import { PRACTICES, PRACTICE_BANNED, PRACTICE_TECHNIQUES, type PracticeSource, t
 import type { LocalizedText } from "../governance";
 import { TALK_TOGETHER, TALK_TOGETHER_DOSE, TALK_TOGETHER_META, TALK_TOGETHER_SOURCES } from "./talkTogether";
 import { PROGRAMS, programById } from "./index";
-import type { CoachScript, LearnCardId, MeasureDef, MilestoneId, PracticeId, Program, ProgramWeek } from "./types";
+import type { CoachScript, LearnCardId, MeasureDef, MilestoneId, PracticeId, Program, ProgramKidWorld, ProgramWeek } from "./types";
 
 /**
  * B-PROG-02 — Talk Together v0.1, the guard (pack P6-PRACTICE acceptance):
@@ -205,7 +205,9 @@ describe("B-PROG-02 — the registry and the B-PROG-01 shape (session A builds t
 
   it("runtime shape: the program's keys are exactly the pack's (no extra field rides inside Program)", () => {
     expect(Object.keys(P).sort()).toEqual(["evidence", "id", "measures", "parentSkill", "reviewStatus", "shelf", "weeks"]);
-    for (const w of P.weeks) expect(Object.keys(w).filter((k) => k !== "lesson").sort()).toEqual(["coachScripts", "n", "practices", "skill", "watchFor"]);
+    // B-PROG-13: `kidWorld` is optional like `lesson` (weeks 6-8 name one).
+    for (const w of P.weeks) expect(Object.keys(w).filter((k) => k !== "lesson" && k !== "kidWorld").sort()).toEqual(["coachScripts", "n", "practices", "skill", "watchFor"]);
+    expect(P.weeks.map((w) => w.kidWorld ?? null)).toEqual([null, null, null, null, null, "word-world", "word-world", "sound-lab"]);
     expect(Object.keys(P.measures).sort()).toEqual(["childProxy", "dose", "parentProxy"]);
     expect(Object.keys(P.measures.parentProxy).sort()).toEqual(["countingRule", "id", "label", "source", "unit"]);
     expect(Object.keys(P.evidence).sort()).toEqual(["sources", "techniques"]);
@@ -219,7 +221,8 @@ describe("B-PROG-02 — the registry and the B-PROG-01 shape (session A builds t
     expectTypeOf<Program["evidence"]>().toEqualTypeOf<{ techniques: PracticeTechnique[]; sources: PracticeSource[] }>();
     expectTypeOf<Program["measures"]>().toEqualTypeOf<{ dose: true; parentProxy: MeasureDef; childProxy: MeasureDef }>();
     expectTypeOf<Program["reviewStatus"]>().toEqualTypeOf<"draft" | "approved" | "retired">();
-    expectTypeOf<keyof ProgramWeek>().toEqualTypeOf<"n" | "skill" | "lesson" | "practices" | "coachScripts" | "watchFor">();
+    expectTypeOf<keyof ProgramWeek>().toEqualTypeOf<"n" | "skill" | "lesson" | "practices" | "coachScripts" | "watchFor" | "kidWorld">();
+    expectTypeOf<ProgramWeek["kidWorld"]>().toEqualTypeOf<ProgramKidWorld | undefined>();
     expectTypeOf<ProgramWeek["lesson"]>().toEqualTypeOf<LearnCardId | undefined>();
     expectTypeOf<ProgramWeek["practices"]>().toEqualTypeOf<PracticeId[]>();
     expectTypeOf<ProgramWeek["coachScripts"]>().toEqualTypeOf<CoachScript[]>();

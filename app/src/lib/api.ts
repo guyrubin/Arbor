@@ -2,6 +2,7 @@ import { toAnalyzeLogInputs } from "./analyzeLogPayload";
 import { toDigestLogInputs, toDigestMilestoneInputs } from "./digestPayload";
 import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone, HeroJourneyRender, CoachContract, CouncilTake, MemoryReviewItem, ShareGrant, ShareRole, SharedPacketView, ConsentGrant, ConsentPurpose, DeletionReceipt } from "../types";
 import type { AdventureScenario } from "../practice/content";
+import type { BedtimeProgramTheme } from "./bedtimeStories";
 
 /**
  * Typed fetch wrappers for the Arbor API. An auth-token provider can be
@@ -440,6 +441,9 @@ export const api = {
     dayEvents: { description: string; tone?: string }[];
     avatarDescription?: string;
     language?: "en" | "he";
+    /** B-PROG-13: the active program's shelf + week skill — optional, ignored
+     *  by the generator until the Kids session uses it. */
+    programTheme?: BedtimeProgramTheme;
   }) => post<BedtimeStory>("/api/generate-bedtime-story", payload),
   generateHeroJourney: (payload: { storyId: string; childName: string; age: number; language: "en" | "he" }) =>
     post<HeroJourneyRender>("/api/generate-hero-journey", payload).then(assertHeroJourneyRender),

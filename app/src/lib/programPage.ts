@@ -209,6 +209,25 @@ export interface StartableProgram {
   canEnrol: boolean;
 }
 
+/**
+ * B-PROG-13 — the bedtime story request's optional `programTheme`: the ACTIVE
+ * program's shelf and this week's skill sentence in the story language. Null
+ * with no active enrolment (a paused program frames nothing). Program content
+ * only; the generator ignores it until the Kids session uses it.
+ */
+export function programStoryTheme(
+  rows: readonly unknown[],
+  now: Date,
+  lang: ProgramLang,
+  gender?: string | null,
+): { shelf: ShelfId; skill: string } | null {
+  const enrolment = activeEnrolment(rows);
+  const program = enrolment ? programById(enrolment.programId) : undefined;
+  if (!enrolment || !program) return null;
+  const content = programWeek(program, programWeekAt(enrolment, program, now));
+  return content ? { shelf: program.shelf, skill: loc(content.skill, lang, gender) } : null;
+}
+
 export function startablePrograms(ageMonths: number | null, lang: ProgramLang): StartableProgram[] {
   return PROGRAMS.map((program) => {
     const meta = programMeta(program.id)!;

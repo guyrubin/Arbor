@@ -20,6 +20,11 @@
  *    "B-PROG-02 Talk Together v0.1"; Hebrew review pack:
  *    `npx tsx scripts/milestone-he-review.mts --programs export`.
  *
+ * B-PROG-13: weeks 6-7 (books) name Word World and week 8 (songs, rhymes,
+ * gaps) names Sound Lab as `kidWorld` - a link to the child's side, no kid
+ * content. The program page offers the door only when Kid Mode can open
+ * that world for this child (components/program/programKidWorld.ts).
+ *
  * Guard: content/programs/talkTogether.test.ts.
  */
 import { PRACTICE_SOURCES, type PracticeSource } from "../practices";
@@ -148,6 +153,7 @@ export const TALK_TOGETHER: Program = {
         { id: "tt-w6-s3", text: L("When they point, name it and add a little: 'A dog! A big dog.' Then turn the page together.", "כשהוא/היא מצביע/ה, תנו שם והוסיפו קצת: „כלב! כלב גדול.” ואז הופכים דף ביחד.") },
       ],
       watchFor: ["cdc-24m-4", "cdc-30m-5"],
+      kidWorld: "word-world",
     },
     {
       n: 7,
@@ -162,6 +168,7 @@ export const TALK_TOGETHER: Program = {
         { id: "tt-w7-s3", text: L("One prompt per page is plenty. If they want to turn the page, follow them.", "שאלה אחת לדף זה מספיק. אם הוא/היא רוצה להפוך דף, לכו אחריו/אחריה.") },
       ],
       watchFor: ["cdc-30m-5", "cdc-24m-3"],
+      kidWorld: "word-world",
     },
     {
       n: 8,
@@ -176,6 +183,7 @@ export const TALK_TOGETHER: Program = {
         { id: "tt-w8-s3", text: L("Any sound in the gap is their turn. If nothing comes, fill it in yourself, kindly.", "כל קול ברווח הוא התור שלו/שלה. אם לא בא כלום, השלימו בעצמכם, בנעימות.") },
       ],
       watchFor: ["cdc-36m-5", "cdc-30m-3"],
+      kidWorld: "sound-lab",
     },
   ],
   measures: {
