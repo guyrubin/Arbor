@@ -9,6 +9,7 @@ import { opensInKidMode, studioWorldsForChild, worksInLanguage, type StudioWorld
 import Icon from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { OFFSCREEN_IDEAS, STORY_DOORS, WORLD_ART, type TogetherCategory } from "./companionChoices";
+import { trackCompanionPlaceOpen, trackPracticeStudioOpen, trackPracticeTogetherDid } from "../../lib/kpiEvents";
 import "./companionExperience.css";
 
 type Preview = { kind: "world"; world: StudioWorld } | { kind: "offscreen"; id: string };
@@ -32,6 +33,7 @@ export default function TogetherView() {
   const kidAvailable = kidModeOpenFor(childProfile);
   const filterId = useId();
   useEffect(() => { setPreview(null); setKeptState({ childId: childProfile.id, ids: [] }); setCategory("all"); }, [childProfile.id]);
+  useEffect(() => { trackCompanionPlaceOpen("together"); }, [childProfile.id]);
   const filters: { id: TogetherCategory; label: string; icon: string }[] = [
     { id: "all", label: t("companion.together-view.all-together"), icon: "interests" },
     { id: "stories", label: t("companion.together-view.stories"), icon: "auto_stories" },
@@ -41,7 +43,9 @@ export default function TogetherView() {
   const show = (id: TogetherCategory) => category === "all" || category === id;
   const openWorld = (world: StudioWorld) => {
     setPreview(null);
-    if ((!opensInKidMode(world) || !worksInLanguage(world, lang)) && world.tab) setActiveTab(world.tab);
+    const direct = (!opensInKidMode(world) || !worksInLanguage(world, lang)) && !!world.tab;
+    trackPracticeStudioOpen(world.id, direct ? "direct" : "kidmode");
+    if (direct && world.tab) setActiveTab(world.tab);
     else requestKidMode({ view: "arcade", worldId: world.id });
   };
   const offlineIds: readonly string[] = kidAvailable ? OFFSCREEN_IDEAS.map((idea) => idea.id) : TOGETHER_CARDS;
@@ -59,7 +63,10 @@ export default function TogetherView() {
     const idea = offline(id);
     const moment = kidAvailable ? (t("companion.together-view.we-tried-together", { value0: idea.title })) : t(`elev.ages.together.${id}.moment`);
     // The inline alert is this failure's one message; the seam stays quiet.
-    try { if (await saveMoment(moment, { callerShowsFailure: true })) setKeptState({ childId: childProfile.id, ids: [...kept, id] }); else setSaveError(true); }
+    try {
+      if (await saveMoment(moment, { callerShowsFailure: true })) { setKeptState({ childId: childProfile.id, ids: [...kept, id] }); trackPracticeTogetherDid(id); }
+      else setSaveError(true);
+    }
     catch { setSaveError(true); }
     finally { setSaving(false); }
   };

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useObservationRecord } from "../../hooks/useObservationRecord";
@@ -12,6 +12,7 @@ import { Modal } from "../ui/Modal";
 import { buildPortraitChapters, buildPortraitEnvironments, buildPortraitThreads, portraitDiscussionPrompt } from "./portraitModel";
 import { PORTRAIT_COPY } from "./portraitCopy";
 import { portraitEvidenceLines, reviewedPortraitDraft } from "./portraitEvidence";
+import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import "./childPortrait.css";
 
 const icons: Record<DomainId, string> = { talking: "chat_bubble", moving: "directions_run", hands: "pan_tool", thinking: "psychology", playing: "group", feelings: "favorite", body: "spa", family: "home" };
@@ -23,6 +24,7 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
   const { childProfile, milestones, setActiveTab, seedCoach, openCaptureSheet, requestJournalFocus } = useArbor();
   const { t, uiLang } = useLanguage();
   const copy = PORTRAIT_COPY[uiLang === "he" ? "he" : "en"];
+  useEffect(() => { trackCompanionPlaceOpen("child"); }, [childProfile.id]);
   const c = {
     kicker: t("companion.portrait.kicker"),
     title: t("companion.portrait.title"),

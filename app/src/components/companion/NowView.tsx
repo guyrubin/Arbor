@@ -6,6 +6,7 @@ import { activeProgramWeek } from "../../lib/programs/enrolment";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import { nextChosenAction } from "./companionChoices";
 import { NOW_COPY } from "./nowViewCopy";
+import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import NowRecommendation from "./NowRecommendation";
 import Icon from "../ui/Icon";
 import "./companionExperience.css";
@@ -47,6 +48,7 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const id = useId();
+  useEffect(() => { trackCompanionPlaceOpen("now"); }, []);
   const chosen = receiptAction ?? action;
   const talk = (prompt?: string) => onTalkOpen ? onTalkOpen(prompt) : seedCoach({ prompt: prompt ?? "", source: "companion-now" });
   const saveOutcome = async (outcome: "helped" | "not_today") => {

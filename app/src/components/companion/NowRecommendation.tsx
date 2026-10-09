@@ -1,4 +1,4 @@
-import React, { useId, useMemo, useState } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
@@ -11,6 +11,7 @@ import Icon from "../ui/Icon";
 import { TrustLink } from "../trust/TrustLink";
 import { dailyPlayForNow, focusSignalsForNow } from "./nowRecommendationModel";
 import { NOW_COPY } from "./nowViewCopy";
+import { trackActionOffered } from "../../lib/loopEvents";
 
 /** Mounted only when a chosen step/program does not already lead Now. The
  * parent keys this by child/language, so cached or in-flight AI from another
@@ -58,6 +59,9 @@ export default function NowRecommendation({ name, onTalkOpen }: {
       : pick?.reason === "concern-match" ? copy.momentsWhy
         : pick?.reason === "interest-match" && pick.matchedInterest ? copy.interestWhy(pick.matchedInterest)
           : copy.curatedWhy;
+  // The funnel's first step (offered → accepted → outcome): one event per
+  // distinct AI step a parent is shown, never per render.
+  useEffect(() => { if (useAi && aiStep) trackActionOffered("now"); }, [useAi, aiStep]);
   const accept = async () => {
     // Only a genuine screened model step can enter the AI action ledger.
     if (!useAi || !aiStep || saving) return;

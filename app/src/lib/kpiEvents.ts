@@ -81,6 +81,15 @@ export const KpiEvent = {
   LiveUnavailable: "live_unavailable",
   /** B-MEAS-02: a response was built from an outcome the parent reported (the loop closed). */
   LoopContinued: "loop_continued",
+  /* ── Companion places (parity, 9 Oct) ─────────────────────────────────── */
+  /** One of the three companion places rendered for a parent. */
+  CompanionPlaceOpen: "companion_place_open",
+  /** The persistent conversation opened, and from where. */
+  CompanionPanelOpen: "companion_panel_open",
+  /** Together: a world was chosen from its preview (name kept from Practice Studio). */
+  PracticeStudioOpen: "practice_studio_open",
+  /** Together: an away-from-the-screen idea was kept as a moment. */
+  PracticeTogetherDid: "practice_together_did",
 } as const;
 
 /** The capture entry modes (mirrors ArborContext's CaptureMode union). */
@@ -490,4 +499,34 @@ export const LOOP_SOURCES = ["today-focus", "coach"] as const;
  */
 export function trackLoopContinued(source: string): void {
   track(KpiEvent.LoopContinued, { source: oneOf(LOOP_SOURCES, source) });
+}
+
+/* ── Companion places (parity, 9 Oct 2026) ───────────────────────────────
+ * The three-place rewrite (Now · My child · Together + one conversation)
+ * shipped with no event at all, so neither per-place reach nor the panel
+ * could be read. One family, ids only, the same allow-list law as above.
+ * Kid Mode never emits (kid egress gate). */
+export const COMPANION_PLACES = ["now", "child", "together"] as const;
+export const COMPANION_PANEL_VIA = ["launcher", "seed", "route"] as const;
+export const PRACTICE_OPEN_VIA = ["kidmode", "direct", "hero"] as const;
+
+export function trackCompanionPlaceOpen(place: string): void {
+  if (isKidModeActive()) return;
+  track(KpiEvent.CompanionPlaceOpen, { place: oneOf(COMPANION_PLACES, place) });
+}
+
+export function trackCompanionPanelOpen(via: string): void {
+  if (isKidModeActive()) return;
+  track(KpiEvent.CompanionPanelOpen, { via: oneOf(COMPANION_PANEL_VIA, via) });
+}
+
+/** Practice Studio's names and keys, unchanged, so the old series continues. */
+export function trackPracticeStudioOpen(world: string, via: string): void {
+  if (isKidModeActive()) return;
+  track(KpiEvent.PracticeStudioOpen, { world: shortId(world), via: oneOf(PRACTICE_OPEN_VIA, via) });
+}
+
+export function trackPracticeTogetherDid(card: string): void {
+  if (isKidModeActive()) return;
+  track(KpiEvent.PracticeTogetherDid, { card: shortId(card) });
 }
