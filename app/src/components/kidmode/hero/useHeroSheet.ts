@@ -8,15 +8,15 @@
  *     without Firebase (the local sandbox, where there are no other families);
  *   3 a sheet injected on the device (`arbor.heroSheet.<cid>` as one HeroSheet
  *     object: the sandbox proof path);
- *   4 the stock hero the family chose (`stockHeroId` on the child; the sheet at
- *     /visuals/heroes/<id>/sheet.json, same HeroSheet shape; absent = skip);
+ *   4 the stock hero the family chose (`stockHeroId` on the child; its sheet
+ *     at stockHeroSheetUrl(id) in lib/heroSheetContract; absent = skip);
  *   5 the dev placeholder.
  * Read-only: nothing here draws, keys or generates (the builder is parent-side
  * only and is never imported under kidmode/ outside its own files).
  */
 import { useEffect, useMemo, useState } from "react";
 import { firebaseEnabled } from "../../../lib/firebase";
-import { heroAvatarHash } from "../../../lib/heroSheetContract";
+import { heroAvatarHash, stockHeroSheetUrl } from "../../../lib/heroSheetContract";
 import { fetchProofJson } from "../proofAssets";
 import { devPlaceholderSheet } from "./devPlaceholderSheet";
 import { loadProofHeroSheet, parseHeroSheet, readStoredHeroSheet, type HeroSheet } from "./heroSheet";
@@ -24,10 +24,11 @@ import { sheetFromDocs, subscribeHeroSheetDocs, type HeroSheetDocs } from "../..
 
 /**
  * The children who may play as the proof hero (the owner's son). Child ids,
- * not names; empty until the orchestrator fills in his id — or, better,
- * migrates the proof sheet into his own heroSheet docs (then this list can go).
+ * not names. K1 (9 Oct): his production child id — the one child folder with
+ * book assets in the child-assets bucket — so the release keeps his proof
+ * hero; the list can go once his sheet lives in his own heroSheet docs.
  */
-export const PROOF_HERO_CHILD_IDS: readonly string[] = [];
+export const PROOF_HERO_CHILD_IDS: readonly string[] = ["child-1780330920145"];
 
 export type HeroSheetFrom = "child" | "proof" | "device" | "stock" | "placeholder";
 
@@ -37,7 +38,7 @@ export interface HeroChainChild {
   stockHeroId?: unknown;
 }
 
-export const stockSheetUrl = (id: string) => `/visuals/heroes/${id}/sheet.json`;
+export const stockSheetUrl = stockHeroSheetUrl;
 
 /** May this child play as the proof hero? */
 export function proofAllowedFor(childId: string, opts: { firebase?: boolean; allowList?: readonly string[] } = {}): boolean {

@@ -321,6 +321,29 @@ export function resumeHeroSheet(child: { id: string; photoUrl?: string | null; a
   return startHeroSheet({ childId: child.id, photoUrl: child.photoUrl, source: child.avatar?.source ?? "" });
 }
 
+/**
+ * K1 (9 Oct): a hero accepted BEFORE pose sheets existed gets its sheet once,
+ * started from the parent shell (the Kid Mode door is mounted there), so the
+ * child plays as their own hero without the parent re-making it. Only a hero
+ * drawn from a description (the server refuses the rest); nothing to do when a
+ * sheet of this hero already exists (complete or stopped); a building sheet
+ * resumes. Once per child and hero per page load.
+ */
+const ensured = new Set<string>();
+export async function ensureHeroSheet(child: { id: string; photoUrl?: string | null; avatar?: { source?: string } | null } | null | undefined, deps?: BuilderDeps): Promise<BuildResult | null> {
+  if (!child?.id || !child.photoUrl || !/^data:image\//.test(child.photoUrl) || child.avatar?.source !== "descriptor") return null;
+  const avatarHash = heroAvatarHash(child.photoUrl);
+  const key = `${child.id}:${avatarHash}`;
+  if (ensured.has(key)) return null;
+  ensured.add(key);
+  const d = deps ?? browserBuilderDeps(child.id);
+  const docs = await d.store.read().catch(() => null);
+  if (docs?.meta?.avatarHash === avatarHash && docs.meta.status !== "building") return null;
+  return startHeroSheet({ childId: child.id, photoUrl: child.photoUrl, source: "descriptor" }, d);
+}
+/** Test seam. */
+export function resetEnsuredHeroSheetsForTest(): void { ensured.clear(); }
+
 /** True while this device is drawing the sheet of this hero. */
 export function heroSheetRunning(childId: string, photoUrl?: string | null): boolean {
   return !!photoUrl && running.has(`${childId}:${heroAvatarHash(photoUrl)}`);

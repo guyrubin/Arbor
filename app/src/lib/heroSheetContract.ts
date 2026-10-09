@@ -95,3 +95,7 @@ export const HERO_POSE_REFUSALS = {
   anchor: "hero_anchor_missing",
   resting: "hero_sheet_resting",
 } as const;
+
+/** The sheet of a stock hero (B-GAME-15), same HeroSheet shape. The art path
+ *  lives here, outside the kid components (B-KID-70 (c): art by manifest/lib). */
+export const stockHeroSheetUrl = (id: string) => `/visuals/heroes/${id}/sheet.json`;

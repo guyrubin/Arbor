@@ -95,3 +95,13 @@ describe("B-GAME-13c stored docs", () => {
     expect(parseHeroSheetDocs({ v: 1, poses: {} })).toEqual({ meta: null, poses: {} }); // an injected proof object is not docs
   });
 });
+
+describe("K1: the proof hero stays with the proof child only", () => {
+  it("the owner's son (his production child id) keeps the proof sheet on a Firebase build; any other child does not", async () => {
+    const { proofAllowedFor, PROOF_HERO_CHILD_IDS } = await import("./useHeroSheet");
+    expect(PROOF_HERO_CHILD_IDS).toEqual(["child-1780330920145"]);
+    expect(proofAllowedFor("child-1780330920145", { firebase: true })).toBe(true);
+    expect(proofAllowedFor("child-1780330920146", { firebase: true })).toBe(false);
+    expect(proofAllowedFor("", { firebase: true })).toBe(false);
+  });
+});

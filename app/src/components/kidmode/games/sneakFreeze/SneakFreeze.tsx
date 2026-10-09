@@ -253,6 +253,37 @@ export function useSneakAssets(child: HeroChainChild | null): { ready: boolean; 
   return settled ? { ready: true, art: settled.art, sheet: settled.sheet } : { ready: false, art: baseArt, sheet: hero.sheet };
 }
 
+/**
+ * B-GAME-15b: the kid-home tile's picture is the game's OWN first frame —
+ * Savta's courtyard plate (no child painted in), the cat counting, and the
+ * hero from the same resolution chain the game plays (the child's own sheet;
+ * the proof sheet only for the proof child). It replaces the painted card,
+ * which showed one child (the reference hero) to every family. Static: no
+ * hold surface, no sound, no motion beyond the idle breathe.
+ */
+export function SneakPoster() {
+  const { childProfile } = useArbor();
+  const { uiLang } = useLanguage();
+  const rtl = uiLang === "he";
+  const { art, sheet } = useSneakAssets(childProfile ?? null);
+  // The frame: the hero two-thirds up the path, tiptoeing toward the cat that
+  // counts — close enough to be recognised at tile size ("is it him?").
+  const v = useMemo<SneakView>(() => ({ ...viewOf(startSitting({ seed: 1, track: "A", level: 1, intro: false })), progress: 0.7, heroPose: "tiptoe" }), []);
+  return (
+    <PlayField
+      aria-hidden="true"
+      data-sneak-poster={art.source}
+      rtl={rtl}
+      needFor={(o) => LAYOUTS[o].need}
+      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+      plate={({ fit }) => (
+        <img src={art.plate[fit.orientation]} alt="" draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", maxWidth: "none", objectFit: "cover" }} />
+      )}
+      actors={(ctx) => <Scene ctx={ctx} v={v} art={art} sheet={sheet} prevProgress={0} />}
+    />
+  );
+}
+
 export default function SneakFreeze() {
   const { childProfile } = useArbor();
   const { t } = useLanguage();

@@ -27,7 +27,7 @@
  * Firewall: the star reads a MONOTONIC field (lifetime sessions), never a
  * streak. Styling is token-only and RTL-safe (logical CSS properties).
  */
-import React, { useEffect, useMemo } from "react";
+import React, { Suspense, lazy, useEffect, useMemo } from "react";
 import { BookOpen, Brain, Footprints, Gamepad2, Heart, Map, Mic, Music, PersonStanding, Shapes, Smile, Sparkles, Star, ChevronRight, Type } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import type { AvatarStyle } from "../../lib/api";
@@ -58,6 +58,10 @@ import { KidStickerStrip } from "./rewards/KidSouvenir";
 import { kidOfflineArtUrls, precacheKidArt, recentlyOpenedStoryIds } from "../../lib/kidOfflineArt";
 import { useKidSouvenirs } from "./rewards/useKidSouvenirs";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
+
+// B-GAME-15b: the Sneak tile is the game's own first frame with the child's
+// hero, loaded with the game's chunk (never the painted card of one child).
+const SneakPoster = lazy(() => import("./games/sneakFreeze/SneakFreeze").then((m) => ({ default: m.SneakPoster })));
 
 export type KidSurface = "journeys" | "arcade" | "feelings" | "comics";
 
@@ -239,6 +243,7 @@ function SceneTile({
   onClick,
   big,
   index,
+  scene,
 }: {
   worldId: string;
   accent: Accent;
@@ -253,6 +258,8 @@ function SceneTile({
   onClick: () => void;
   big?: boolean;
   index: number;
+  /** B-GAME-15b: a composed picture that replaces the WorldScene render. */
+  scene?: React.ReactNode;
 }) {
   // R-2b: the theme decides the tile shape (KID_THEME_TILE_SHAPE), not this file.
   const portrait = KID_THEME_TILE_SHAPE[theme] === "portrait";
@@ -288,9 +295,11 @@ function SceneTile({
       }}
     >
       <div className={portrait ? "absolute inset-0" : "relative"} style={portrait ? undefined : { minBlockSize: big ? 60 : KID_HOME_GAME_TILE_IMAGE_BLOCK }}>
-        <WorldScene worldId={worldId} theme={theme} imagePrompt={imagePrompt} heroUrl={heroUrl} heroStyle={heroStyle} sizes={portrait ? "(max-width: 767px) 50vw, 25vw" : big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
-          <span aria-hidden="true" className="grid h-full w-full place-items-center" style={{ color: ACCENT_INK[accent] }}><Icon className="w-10 h-10" /></span>
-        </WorldScene>
+        {scene ?? (
+          <WorldScene worldId={worldId} theme={theme} imagePrompt={imagePrompt} heroUrl={heroUrl} heroStyle={heroStyle} sizes={portrait ? "(max-width: 767px) 50vw, 25vw" : big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
+            <span aria-hidden="true" className="grid h-full w-full place-items-center" style={{ color: ACCENT_INK[accent] }}><Icon className="w-10 h-10" /></span>
+          </WorldScene>
+        )}
 
       </div>
       {/* Title block. */}
@@ -554,7 +563,8 @@ export default function KidDashboard({
               tile art yet (dev placeholder = the accent + glyph); no hero url,
               so no scene is generated. */}
           {sneakFreezeFlagOn() && (
-            <SceneTile key={SNEAK_FREEZE_WORLD.id} worldId={SNEAK_FREEZE_WORLD.worldId} accent={SNEAK_FREEZE_WORLD.accent} Icon={Footprints} title={kt(SNEAK_FREEZE_WORLD.nameKey)} sub={kt(SNEAK_FREEZE_WORLD.subKey)} imagePrompt="" theme={kidTheme} index={homeGames.length} onClick={() => onOpenSurface("arcade", SNEAK_FREEZE_WORLD.worldId)} />
+            <SceneTile key={SNEAK_FREEZE_WORLD.id} worldId={SNEAK_FREEZE_WORLD.worldId} accent={SNEAK_FREEZE_WORLD.accent} Icon={Footprints} title={kt(SNEAK_FREEZE_WORLD.nameKey)} sub={kt(SNEAK_FREEZE_WORLD.subKey)} imagePrompt="" theme={kidTheme} index={homeGames.length} onClick={() => onOpenSurface("arcade", SNEAK_FREEZE_WORLD.worldId)}
+              scene={<Suspense fallback={null}><SneakPoster /></Suspense>} />
           )}
         </div>
       </section>

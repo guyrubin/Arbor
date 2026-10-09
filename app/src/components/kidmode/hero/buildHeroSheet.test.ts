@@ -201,3 +201,33 @@ describe("B-GAME-14 parent review", () => {
     expect(sheetFromDocs(docs, HASH)?.poses.dash).toBeUndefined();
   });
 });
+
+describe("K1 ensureHeroSheet: a hero made before sheets existed gets one, once", () => {
+  const HERO = "data:image/png;base64,SEVSTw==";
+  it("draws the sheet of an existing described hero with no sheet; a second call (same hero) does nothing", async () => {
+    const { ensureHeroSheet, resetEnsuredHeroSheetsForTest } = await import("./buildHeroSheet");
+    resetEnsuredHeroSheetsForTest();
+    const f = fakes();
+    const child = { id: "c1", photoUrl: HERO, avatar: { source: "descriptor" } };
+    const r = await ensureHeroSheet(child, f.deps);
+    expect(r?.status).toBe("complete");
+    expect(f.calls.length).toBe(8);
+    expect(await ensureHeroSheet(child, f.deps)).toBeNull();
+    expect(f.calls.length).toBe(8);
+  });
+
+  it("does nothing for a photo-sourced hero, no hero, or a hero whose sheet already exists", async () => {
+    const { ensureHeroSheet, resetEnsuredHeroSheetsForTest } = await import("./buildHeroSheet");
+    resetEnsuredHeroSheetsForTest();
+    const f = fakes();
+    expect(await ensureHeroSheet({ id: "c1", photoUrl: HERO, avatar: { source: "photo" } }, f.deps)).toBeNull();
+    expect(await ensureHeroSheet({ id: "c1", photoUrl: null }, f.deps)).toBeNull();
+    expect(await ensureHeroSheet(null, f.deps)).toBeNull();
+    expect(f.calls.length).toBe(0);
+    await buildHeroSheet({ childId: "c1", avatarHash: heroAvatarHash(HERO) }, f.deps);
+    const before = f.calls.length;
+    resetEnsuredHeroSheetsForTest();
+    expect(await ensureHeroSheet({ id: "c1", photoUrl: HERO, avatar: { source: "descriptor" } }, f.deps)).toBeNull();
+    expect(f.calls.length).toBe(before);
+  });
+});
