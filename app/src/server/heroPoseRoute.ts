@@ -17,6 +17,10 @@
  *    caller's own `users/{uid}`); requireOwnership guards the child id.
  * Order: `idle` first (the anchor); every other pose needs the approved idle,
  * stored by the device on the idle doc (`anchor`), as image 1.
+ * K2: the same route draws a BOOK pose (heroSheetContract HERO_BOOK_POSE_IDS)
+ * with the book prompts (heroPosePrompts BOOK_POSES): always anchored on the
+ * approved game idle (none yet = hero_book_anchor_missing), gated by the plan
+ * (HERO_BOOK_POSES_BY_PLAN: Free 403) and counted on the same per-sheet calls.
  * Allowance: imageQuota.chargeHeroSheetCall — its own counters and breaker,
  * never the scene buckets; Free gets no sheet unless HERO_SHEET_POSES_BY_PLAN
  * says so (GD-5).
@@ -28,7 +32,7 @@ import type { ArborConfig } from "../config/env.js";
 import type { GeneratedImage } from "../ai/modelRouter.js";
 import type { UsageCounterStore } from "./quotaStore.js";
 import type { EntitlementStore } from "./entitlements.js";
-import { HERO_SHEET_POSES_BY_PLAN, chargeHeroSheetCall, imagePlanFor } from "./imageQuota.js";
+import { HERO_BOOK_POSES_BY_PLAN, HERO_SHEET_POSES_BY_PLAN, chargeHeroSheetCall, imagePlanFor } from "./imageQuota.js";
 import { heroPosePrompt } from "./heroPosePrompts.js";
 import { mockHeroPoseImage } from "./heroPoseMock.js";
 import {
@@ -36,8 +40,9 @@ import {
   HERO_SHEET_MODEL,
   HERO_SHEET_PROMPT_VERSION,
   heroAvatarHash,
-  isHeroSheetPose,
-  type HeroSheetPoseId,
+  isHeroBookPose,
+  isHeroPose,
+  type HeroPoseId,
 } from "../lib/heroSheetContract.js";
 
 /** The flat background every pose is asked for (heroPosePrompts BACKGROUND;
@@ -129,7 +134,7 @@ export interface HeroPoseDeps {
   /** True when the server reads the child record from Firestore (auth needed). */
   requireUid: boolean;
   /** The image call (api.ts wires the route budget and the provider). */
-  generate: (req: Request, res: Response, input: { prompt: string; images: { mimeType: string; data: string }[]; pose: HeroSheetPoseId }) => Promise<GeneratedImage>;
+  generate: (req: Request, res: Response, input: { prompt: string; images: { mimeType: string; data: string }[]; pose: HeroPoseId }) => Promise<GeneratedImage>;
   /** Maps a provider failure to the response (api.ts sendImageFailure). */
   fail: (res: Response, error: unknown) => void;
   /** B-GAME-13d: MODEL_PROVIDER=mock — answer with the deterministic synthetic
@@ -151,11 +156,13 @@ export function createHeroPoseHandler(deps: HeroPoseDeps): RequestHandler {
     if (deps.requireUid && !uid) return refuse(401, HERO_POSE_REFUSALS.auth, "Sign in to draw hero poses");
     const childId = typeof body.childId === "string" ? body.childId.trim() : "";
     const pose = body.pose;
-    if (!childId || childId.length > 128 || !isHeroSheetPose(pose)) return refuse(400, "hero_pose_bad_request", "childId and a pose are required");
+    if (!childId || childId.length > 128 || !isHeroPose(pose)) return refuse(400, "hero_pose_bad_request", "childId and a pose are required");
+    const book = isHeroBookPose(pose);
 
-    // 2. The plan's pose set (GD-5: Free = none by default).
+    // 2. The plan's pose set (GD-5: Free = none by default; K2: book poses alike).
     const plan = await imagePlanFor(req, deps.entitlements);
-    if (!HERO_SHEET_POSES_BY_PLAN[plan].includes(pose)) return refuse(403, HERO_POSE_REFUSALS.plan, "Hero poses are part of Plus and Family", { plan });
+    const allowed = book ? HERO_BOOK_POSES_BY_PLAN[plan] : HERO_SHEET_POSES_BY_PLAN[plan];
+    if (!allowed.includes(pose)) return refuse(403, HERO_POSE_REFUSALS.plan, "Hero poses are part of Plus and Family", { plan });
 
     // 3. The stored hero: generated from text cues, inline.
     const owner = uid || "local-sandbox";
@@ -178,6 +185,7 @@ export function createHeroPoseHandler(deps: HeroPoseDeps): RequestHandler {
     const images = [stored];
     if (pose !== "idle") {
       const anchor = hero.anchor ? parseDataUrl(hero.anchor) : null;
+      if (!anchor && book) return refuse(409, HERO_POSE_REFUSALS.bookAnchor, "The hero's game poses come first: a book pose is drawn from the approved idle");
       if (!anchor) return refuse(409, HERO_POSE_REFUSALS.anchor, "The first pose is not ready yet");
       images.unshift(anchor);
     }

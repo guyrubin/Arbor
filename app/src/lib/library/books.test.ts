@@ -262,7 +262,8 @@ describe("Five Smooth Stones (the proof) — manuscript specifics", () => {
     expect(byId.p6c.hero!.pose).toBe("sit-hunched");
     expect(byId.p7c.hero!.pose).toBe("sit-hunched");
     expect(byId.p7c.repair!.heroAfter!.pose).toBe("stand-tall");
-    expect(book.poseFallbacks).toEqual({ "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit", "sling-release": "sling-swing-face-right" });
+    // K2: the tunic costume is not drawn on the hero pipeline: worried-tunic stands in with worried
+    expect(book.poseFallbacks).toEqual({ "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit", "sling-release": "sling-swing-face-right", "worried-tunic": "worried" });
   });
 
   it("manuscript v3: p9 has four picture states cued by the words (flight on 'The stone flew', dust on 'BOOM', quiet at the end)", () => {

@@ -446,8 +446,10 @@ export const fiveSmoothStones: Book = {
   ageBand: "4-7",
   // ages 4-7: 48-60 m, 60-72 m, 6-8 y
   ageBands: ["48m", "60m", "6-8y"],
-  /** v2 poses the hero sheet may not have yet (round 3): the nearest pose it has. */
-  poseFallbacks: { "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit", "sling-release": "sling-swing-face-right" },
+  /** v2 poses the hero sheet may not have yet (round 3): the nearest pose it has.
+   *  K2: the tunic costume is not drawn on the hero pipeline (one character, the
+   *  hero's own clothes), so worried-tunic stands in with worried. */
+  poseFallbacks: { "stand-tall-hand": "look-up", "stand-tall": "look-up", "sit-hunched": "sit", "sling-release": "sling-swing-face-right", "worried-tunic": "worried" },
   cover,
   pages: [p1, p2, p2b, p3, p3b, p4, p4b, p5, p8, p9, p9b, p10],
   decision: {

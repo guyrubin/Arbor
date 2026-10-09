@@ -18,10 +18,10 @@ const MONTH = 30 * 86400000;
 const DAY = 86400000;
 
 describe("B-GAME-13b: the hero sheet allowance", () => {
-  it("defaults: breaker 1,500/day, 24 calls a sheet, sheets = the plan's hero creations, Free and signed-out none", async () => {
+  it("defaults: breaker 1,500/day, 60 calls a sheet (K2: game + book poses), sheets = the plan's hero creations, Free and signed-out none", async () => {
     const q = await load();
     expect(q.IMAGE_SHEET_GLOBAL_DAILY).toBe(1500);
-    expect(q.IMAGE_SHEET_CALLS_PER_SHEET).toBe(24);
+    expect(q.IMAGE_SHEET_CALLS_PER_SHEET).toBe(60);
     expect(q.sheetsPer30Days("plus")).toBe(4);
     expect(q.sheetsPer30Days("family")).toBe(6);
     expect(q.sheetsPer30Days("free")).toBe(0);
@@ -29,6 +29,11 @@ describe("B-GAME-13b: the hero sheet allowance", () => {
     expect(q.HERO_SHEET_POSES_BY_PLAN.free).toEqual([]);
     expect(q.HERO_SHEET_POSES_BY_PLAN.plus).toHaveLength(8);
     expect(q.HERO_SHEET_POSES_BY_PLAN.family).toEqual(q.HERO_SHEET_POSES_BY_PLAN.plus);
+    // K2: the book poses follow the same plan switch
+    expect(q.HERO_BOOK_POSES_BY_PLAN.free).toEqual([]);
+    expect(q.HERO_BOOK_POSES_BY_PLAN.signed_out).toEqual([]);
+    expect(q.HERO_BOOK_POSES_BY_PLAN.plus).toHaveLength(18);
+    expect(q.HERO_BOOK_POSES_BY_PLAN.family).toEqual(q.HERO_BOOK_POSES_BY_PLAN.plus);
   });
 
   it("one sheet per hero: retries and redraws for the same hero are counted, never re-charged", async () => {

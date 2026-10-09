@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import type { UsageCounterStore } from "./quotaStore.js";
 import { entitlementsEnforced, resolveEntitlement, type EntitlementStore, type Plan } from "./entitlements.js";
+import { HERO_BOOK_POSE_IDS } from "../lib/heroSheetContract.js";
 
 /**
  * S2 — per-user DAILY cap + global circuit breaker on the image-generation
@@ -192,10 +193,19 @@ export const HERO_SHEET_POSES_BY_PLAN: Readonly<Record<ImageAllowancePlan, reado
   plus: HERO_SHEET_FULL,
   family: HERO_SHEET_FULL,
 };
+/** K2: the book poses (lib/heroSheetContract HERO_BOOK_POSE_IDS) by plan, on
+ *  the same sheet allowance; a plan without a game sheet gets none (Free 403). */
+export const HERO_BOOK_POSES_BY_PLAN: Readonly<Record<ImageAllowancePlan, readonly string[]>> = {
+  signed_out: [],
+  free: [],
+  plus: HERO_BOOK_POSE_IDS,
+  family: HERO_BOOK_POSE_IDS,
+};
 /** Global sheet breaker, provider attempts per day (≈ $58 at $0.039). */
 export const IMAGE_SHEET_GLOBAL_DAILY = envNum("IMAGE_SHEET_GLOBAL_DAILY", 1500);
-/** Calls one (child, hero) sheet may make: 8 poses + 8 QA retries + 8 redraws. */
-export const IMAGE_SHEET_CALLS_PER_SHEET = envNum("IMAGE_SHEET_CALLS_PER_SHEET", 24);
+/** Calls one (child, hero) sheet may make, game AND book (K2): 8 game + 18
+ *  book poses, their QA retries and redraws. Was 24 (the game alone). */
+export const IMAGE_SHEET_CALLS_PER_SHEET = envNum("IMAGE_SHEET_CALLS_PER_SHEET", 60);
 export const IMAGE_SHEET_COUNTERS = {
   sheet: "img_sheet_30d",
   charged: "img_sheet_charged_30d",

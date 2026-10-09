@@ -2,13 +2,17 @@
  * B-GAME-13b — POST /api/hero-pose refusals (contract): an uploaded image, a
  * photo-styled or raw-photo hero, a missing sign-in, the Free plan, a pose
  * before its anchor, a hero not saved yet; and the happy path's references.
+ * K2: the book poses on the same route (contract, plan, anchor, shared cap, mock).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryCounterStore } from "./quotaStore.js";
 import type { EntitlementStore, Plan } from "./entitlements.js";
 import { createHeroPoseHandler, LocalHeroPoseSource, type HeroPoseSource, type StoredHero } from "./heroPoseRoute.js";
-import { heroAvatarHash } from "../lib/heroSheetContract.js";
-import { heroPosePrompt, POSES } from "./heroPosePrompts.js";
+import { HERO_BOOK_POSE_IDS, HERO_BOOK_POSE_SETS, HERO_SHEET_POSE_IDS, HERO_SHEET_PROMPT_VERSION, heroAvatarHash, isHeroPose } from "../lib/heroSheetContract.js";
+import { heroPosePrompt, POSES, STAGE_BOOK } from "./heroPosePrompts.js";
+import { mockHeroPoseImage } from "./heroPoseMock.js";
+import { bookPoseIds } from "../lib/library/bookPoses.js";
+import { fiveSmoothStones } from "../lib/library/books/fiveSmoothStones.js";
 
 const HERO = "data:image/png;base64,SEVSTw==";
 const ANCHOR = "data:image/jpeg;base64,SURMRQ==";
@@ -157,5 +161,100 @@ describe("B-GAME-13b prompts — fixed text", () => {
       expect(p).not.toMatch(/\bcape\b|\bsuit\b/i);
       expect(p).toContain(pose === "idle" ? "Image 1 is THE HERO — this is exactly who the hero is" : "Image 1 is THE HERO exactly as the hero must look");
     }
+  });
+});
+
+describe("K2 book poses — the contract", () => {
+  it("the five-smooth-stones set is exactly the poses the book names (pages, repair ends, costume slot, art states)", () => {
+    expect(HERO_BOOK_POSE_SETS["five-smooth-stones"]).toHaveLength(18);
+    expect([...HERO_BOOK_POSE_SETS["five-smooth-stones"]].sort()).toEqual(bookPoseIds(fiveSmoothStones));
+  });
+
+  it("book pose ids never collide with the game's; the route's pose set is the two together", () => {
+    expect(HERO_BOOK_POSE_IDS.filter((p) => (HERO_SHEET_POSE_IDS as readonly string[]).includes(p))).toEqual([]);
+    for (const p of [...HERO_SHEET_POSE_IDS, ...HERO_BOOK_POSE_IDS]) expect(isHeroPose(p), p).toBe(true);
+    for (const p of ["kneel", "walk-bag", "wave", "", "../idle"]) expect(isHeroPose(p), p).toBe(false);
+  });
+
+  it("worried-tunic is optional: the book's stopgap maps it to worried", () => {
+    expect(fiveSmoothStones.poseFallbacks?.["worried-tunic"]).toBe("worried");
+  });
+});
+
+describe("K2 /hero-pose — book poses", () => {
+  const MONTH = 30 * 86400000;
+
+  it("a book pose is drawn from the approved game idle (image 1) and the hero (image 2), with its book prompt", async () => {
+    const s = setup();
+    const r = await s.call({ childId: "c1", pose: "sling-swing" });
+    expect(r.statusCode).toBe(200);
+    expect(r.body).toMatchObject({ pose: "sling-swing", keyColour: "#00B140", promptVersion: HERO_SHEET_PROMPT_VERSION, newSheet: true });
+    expect(s.gen.mock.calls[0][2].images).toEqual([{ mimeType: "image/jpeg", data: "SURMRQ==" }, { mimeType: "image/png", data: "SEVSTw==" }]);
+    expect(s.gen.mock.calls[0][2].prompt).toBe(heroPosePrompt("sling-swing"));
+    expect(s.gen.mock.calls[0][2].prompt).toContain(STAGE_BOOK);
+  });
+
+  it("Free gets 403 for a book pose, before the hero is read", async () => {
+    const s = setup({ plan: "free" });
+    const r = await s.call({ childId: "c1", pose: "sit" });
+    expect(r.statusCode).toBe(403);
+    expect(r.body).toMatchObject({ code: "hero_sheet_plan", plan: "free" });
+    expect(s.src.loads).toBe(0);
+    expect(s.gen).not.toHaveBeenCalled();
+  });
+
+  it("a book pose without the approved game idle is refused with its own code, before any allowance moves", async () => {
+    const s = setup({ hero: { photoUrl: HERO, source: "descriptor", anchor: null } });
+    const r = await s.call({ childId: "c1", pose: "stand-tall" });
+    expect(r.statusCode).toBe(409);
+    expect(r.body.code).toBe("hero_book_anchor_missing");
+    expect(s.gen).not.toHaveBeenCalled();
+    expect((await s.counters.peek("img_sheet_calls_30d", `u1:c1:${heroAvatarHash(HERO)}`, MONTH)).count).toBe(0);
+    expect((await s.counters.peek("img_sheet_global_daily", "all", 86400000)).count).toBe(0);
+    // the game's own refusal is unchanged
+    expect((await s.call({ childId: "c1", pose: "cheer" })).body.code).toBe("hero_anchor_missing");
+  });
+
+  it("an unknown pose id is refused", async () => {
+    const s = setup();
+    for (const pose of ["kneel", "walk-bag", "wave", "", 42, "../sit"]) {
+      const r = await s.call({ childId: "c1", pose });
+      expect(r.statusCode, String(pose)).toBe(400);
+      expect(r.body.code, String(pose)).toBe("hero_pose_bad_request");
+    }
+    expect(s.gen).not.toHaveBeenCalled();
+  });
+
+  it("book and game calls share one per-sheet cap: 60 by default, call 61 is refused hero_sheet_resting", async () => {
+    const s = setup();
+    for (let i = 0; i < 60; i++) {
+      const pose = i % 2 ? HERO_SHEET_POSE_IDS[1 + (i % 7)] : HERO_BOOK_POSE_IDS[i % HERO_BOOK_POSE_IDS.length];
+      const r = await s.call({ childId: "c1", pose });
+      expect(r.statusCode, `call ${i + 1} (${pose})`).toBe(200);
+    }
+    const over = await s.call({ childId: "c1", pose: "sit" });
+    expect(over.statusCode).toBe(429);
+    expect(over.body).toMatchObject({ code: "hero_sheet_resting", window: "sheet" });
+    expect(s.gen).toHaveBeenCalledTimes(60);
+    expect((await s.counters.peek("img_sheet_30d", "u1:c1", MONTH)).count).toBe(1);
+  });
+
+  it("sandbox (MODEL_PROVIDER=mock): a book pose comes back as the synthetic figure after the idle this server drew, with no model call", async () => {
+    delete process.env.ENFORCE_ENTITLEMENTS; // sandbox: unenforced = plus
+    const local = new LocalHeroPoseSource();
+    local.remember("local-sandbox", "c1", { hero: { dataUrl: HERO, source: "descriptor" } });
+    const generate = vi.fn(async () => { throw new Error("no model call in the dry run"); });
+    const handler = createHeroPoseHandler({ source: local, counters: new MemoryCounterStore(), entitlements: plans({}), requireUid: false, mock: true, generate, fail: () => {} });
+    const call = async (pose: string) => {
+      const res = makeRes();
+      await handler({ body: { childId: "c1", pose } } as any, res, () => {});
+      return res;
+    };
+    expect((await call("squat-stones")).body.code).toBe("hero_book_anchor_missing");
+    expect((await call("idle")).statusCode).toBe(200);
+    const book = await call("squat-stones");
+    expect(book.statusCode).toBe(200);
+    expect(book.body.dataUrl).toBe(`data:image/png;base64,${mockHeroPoseImage("squat-stones").data}`);
+    expect(generate).not.toHaveBeenCalled();
   });
 });
