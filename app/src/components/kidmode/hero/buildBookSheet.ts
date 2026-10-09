@@ -33,6 +33,7 @@ import { BOOK_SPRITE_MAX_BYTES, bookSheetChoiceRel, bookSheetDrawPoses, bookShee
 import type { Book } from "../../../lib/library/types";
 import { bookSpriteAnchor, keyBookSprite, type BookSpriteAnchor, type RgbaImage } from "./heroKeyer";
 import { browserImageDeps } from "./buildHeroSheet";
+import { renderChoiceCards } from "./choiceCards";
 
 export const DEFAULT_SHEET_BOOK = "five-smooth-stones";
 
@@ -339,6 +340,7 @@ export function browserBookBuilderDeps(childId: string, cancelled: () => boolean
     commitSheet: api.commitSheet,
     decode: browserImageDeps.decode,
     encodeWebp: encodeWebpBrowser,
+    choiceCards: renderChoiceCards,
     async fetchSprite(rel) {
       const blob = await api.fetchSpriteBlob(rel);
       if (!blob) return null;
