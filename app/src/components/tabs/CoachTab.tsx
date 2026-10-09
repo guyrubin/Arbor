@@ -35,6 +35,7 @@ import { EvidenceChip } from "../ui/EvidenceChip";
 import CompanionComposer from "../companion/CompanionComposer";
 import type { ComposerAttachment } from "../../lib/companionAttachments";
 import { requestCompanionConsentReview } from "../../lib/companionConsent";
+import { COMPANION_CONVERSATION_EVENT, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
 import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError } from "../../lib/api";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
@@ -415,6 +416,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [liveAvail, setLiveAvail] = useState(false);
   // B-ASKJB-02: the Live residency exception's last day (null → undated line).
   const [liveUntil, setLiveUntil] = useState<Date | null>(null);
+  // B-VOICE-06: the Live probe has answered (either way), so a spoken
+  // conversation asked for from elsewhere starts on the right path (HD or not).
+  const [liveProbed, setLiveProbed] = useState(false);
+  // B-VOICE-06: bumps when "Talk it through" is tapped while this panel is mounted.
+  const [voiceAsk, setVoiceAsk] = useState(0);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   // AI-V7: live caption of the PARENT'S OWN words while they speak (interim
   // browser-STT partials / Live input transcription — never model output).
@@ -475,7 +481,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       if (cancelled || !r.available) return;
       setLiveAvail(true);
       setLiveUntil(liveResidencyUntil(r));
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => { if (!cancelled) setLiveProbed(true); });
     return () => { cancelled = true; };
   }, []);
 
@@ -880,6 +886,25 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
 
   useEffect(() => { stopVoice(); }, [conversationRevision]);
   useEffect(() => { if (!visible) stopVoice(); }, [visible]);
+
+  // B-VOICE-06: "Talk it through" on the capture bar asks the conversation to
+  // start talking. It starts through toggleVoice — the SAME path as the
+  // composer's Talk button (no second voice path) — once the panel is visible
+  // and the Live probe has answered. The request is claimed once and only while
+  // fresh (lib/companionConversation), so a microphone never opens long after
+  // the tap; a request that lands while voice is already on changes nothing.
+  useEffect(() => {
+    const onAsk = (event: Event) => {
+      if ((event as CustomEvent<CompanionConversationRequest>).detail?.voice) setVoiceAsk((n) => n + 1);
+    };
+    window.addEventListener(COMPANION_CONVERSATION_EVENT, onAsk);
+    return () => window.removeEventListener(COMPANION_CONVERSATION_EVENT, onAsk);
+  }, []);
+  useEffect(() => {
+    if (!visible || !liveProbed || !conversationVoiceRequestPending()) return;
+    if (consumeConversationVoiceRequest() && voicePhase === "off") void toggleVoice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, liveProbed, voiceAsk]);
 
   const voiceLabel = voicePhase === "connecting" ? t("coach.voice.connecting") : voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
   // COACH-2: live caption text on the voicePhase chip while the answer streams

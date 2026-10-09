@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useId, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import type { CaptureMode } from "../../context/ArborContext";
+import { requestCompanionConversation } from "../../lib/companionConversation";
+import { markVoiceDoorNoticeSeen, voiceDoorNoticeSeen } from "../../lib/voiceDoor";
 
 /* Quick Capture — the ambient door into logging a moment, above the forms in
    the capture hierarchy. First in Today's DOM so keyboard users reach capture
@@ -15,7 +17,9 @@ import type { CaptureMode } from "../../context/ArborContext";
    own mode — text, voice (already dictating), photo (picker + preview) — so
    nothing captured here leaves Today (TJB-08, B-TODAY-19). Drafted captures
    still pass the shared ConfirmCaptureReview inside that sheet. Convenience,
-   not a nag. */
+   not a nag. B-VOICE-06: the Voice tile first offers a choice — "Note
+   something" (that same sheet, dictating) or "Talk it through" (the spoken
+   conversation, through the one conversation seam). */
 
 const GREEN = "var(--arbor-green-ink)";
 const RULE = "var(--arbor-rule)";
@@ -46,6 +50,10 @@ const STACK_GRID = "lg:grid-cols-1";
 const STACK_TILE = "lg:flex-row lg:justify-start lg:gap-3 lg:px-4 lg:py-2";
 const STACK_BORDER = "lg:border-s-0 lg:border-t";
 const STACK_LABEL = "lg:text-start lg:text-[13px]";
+/** B-VOICE-06: one row of the Voice choice — icon beside a label and its sub
+ *  line, 44 px floor, the tile's own focus ring. */
+const CHOICE =
+  "flex min-h-11 w-full min-w-0 items-center gap-3 rounded-[14px] px-3 py-2 text-start transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset";
 
 export default function QuickCaptureBar({
   childName,
@@ -67,6 +75,20 @@ export default function QuickCaptureBar({
 }) {
   const reduce = useReducedMotion();
   const { t } = useLanguage();
+  // B-VOICE-06: the Voice tile opens a choice between the two voice doors that
+  // already exist — "Note something" is the capture sheet's dictation (onMode,
+  // unchanged) and "Talk it through" is the conversation's Talk path (the one
+  // conversation seam, asked to start talking). No new voice path.
+  const [voiceChoice, setVoiceChoice] = useState(false);
+  const [firstUse, setFirstUse] = useState(() => !voiceDoorNoticeSeen());
+  const choiceId = useId();
+  const voiceTileRef = useRef<HTMLButtonElement>(null);
+  const chooseVoice = (door: "note" | "talk") => {
+    setVoiceChoice(false);
+    if (firstUse) { markVoiceDoorNoticeSeen(); setFirstUse(false); }
+    if (door === "note") onMode("voice");
+    else requestCompanionConversation({ source: "capture-voice", voice: true });
+  };
   const tiles = onHardMoment ? 4 : 3;
   const tile = stack ? `${TILE} ${STACK_TILE}` : TILE;
   const labelClass = stack ? `${LABEL} ${STACK_LABEL}` : LABEL;
@@ -100,9 +122,12 @@ export default function QuickCaptureBar({
       {AUX_MODES.map(({ ms, key, label, shortLabel }) => (
         <button
           key={key}
+          ref={key === "voice" ? voiceTileRef : undefined}
           type="button"
-          onClick={() => onMode(key)}
+          onClick={() => (key === "voice" ? setVoiceChoice((open) => !open) : onMode(key))}
           aria-label={t(label)}
+          aria-expanded={key === "voice" ? voiceChoice : undefined}
+          aria-controls={key === "voice" && voiceChoice ? choiceId : undefined}
           title={t(label)}
           data-capture-tile={key}
           className={`${tile} ${edge} active:scale-[0.97]`}
@@ -131,6 +156,76 @@ export default function QuickCaptureBar({
         </button>
       )}
     </motion.div>
+    {/* B-VOICE-06: the Voice choice, under the bar (it adds to the bar, never
+        replaces a tile). The first time it opens it says once what happens to
+        the audio; the residency sentence is the existing Live line (this bar
+        reads no /live/availability, so it carries the undated form). Escape
+        closes it and returns focus to the Voice tile. */}
+    {voiceChoice && (
+      <VoiceChoice
+        id={choiceId}
+        firstUse={firstUse}
+        t={t}
+        onChoose={chooseVoice}
+        onEscape={() => { setVoiceChoice(false); voiceTileRef.current?.focus(); }}
+      />
+    )}
+    </div>
+  );
+}
+
+const CHOICE_STYLE = { color: "var(--arbor-ink)", ["--tw-ring-color" as string]: GREEN } as React.CSSProperties;
+
+/** B-VOICE-06 — the Voice tile's two doors (exported for the render test). */
+export function VoiceChoice({
+  id,
+  firstUse,
+  t,
+  onChoose,
+  onEscape,
+}: {
+  id?: string;
+  /** The one data-use line shows only until the parent has picked a door once. */
+  firstUse: boolean;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  onChoose: (door: "note" | "talk") => void;
+  onEscape: () => void;
+}) {
+  return (
+    <div
+      id={id}
+      role="group"
+      aria-label={t("elev.wave2Daily.capture.voice.choice")}
+      data-testid="capture-voice-choice"
+      onKeyDown={(event) => {
+        if (event.key !== "Escape") return;
+        event.stopPropagation();
+        onEscape();
+      }}
+      className="mt-2 rounded-[18px] p-1.5"
+      style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
+    >
+      {firstUse && (
+        <p data-testid="capture-voice-data-use" className="px-3 pt-2 pb-1.5 text-[12px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
+          {t("elev.wave2Daily.capture.voice.dataUse", { residency: t("elev.coachcontract.uses.liveResidencyUndated") })}
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-1 @md:grid-cols-2">
+        <button type="button" data-voice-choice="note" onClick={() => onChoose("note")} className={CHOICE} style={CHOICE_STYLE}>
+          <span className={ICON} style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}><Icon name="mic" size={19} fill={1} /></span>
+          <span className="min-w-0">
+            <span className="block text-[13px] font-bold leading-tight">{t("elev.wave2Daily.capture.voice.note")}</span>
+            <span className="block text-[12px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Daily.capture.voice.noteSub")}</span>
+          </span>
+        </button>
+        <button type="button" data-voice-choice="talk" onClick={() => onChoose("talk")} className={CHOICE} style={CHOICE_STYLE}>
+          <span className={ICON} style={{ background: "var(--arbor-green-soft)", color: GREEN }}><Icon name="graphic_eq" size={19} /></span>
+          <span className="min-w-0">
+            <span className="block text-[13px] font-bold leading-tight">{t("elev.wave2Daily.capture.voice.talk")}</span>
+            <span className="block text-[12px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Daily.capture.voice.talkSub")}</span>
+          </span>
+        </button>
+      </div>
     </div>
   );
 }
