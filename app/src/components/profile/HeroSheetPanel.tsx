@@ -11,7 +11,7 @@
  *    it once more for the same hero (counted, not re-charged). One per pose.
  */
 import React, { useEffect, useState } from "react";
-import { Check, RefreshCw } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { HERO_SHEET_POSE_IDS, heroAvatarHash, type HeroSheetPoseId } from "../../lib/heroSheetContract";
 import { browserBuilderDeps, markHeroPoseOk, redrawHeroPose, resumeHeroSheet } from "../kidmode/hero/buildHeroSheet";
@@ -88,18 +88,18 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
                   <div className="flex gap-1.5">
                     {d.review === "ok" ? (
                       <span className="inline-flex min-h-11 items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-                        <Check className="w-3.5 h-3.5" aria-hidden="true" /> {t("elev.hero.sheet.review.kept")}
+                        <Icon name="check" size={14} /> {t("elev.hero.sheet.review.kept")}
                       </span>
                     ) : (
                       <button type="button" onClick={() => { void ok(pose); }} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg px-2 text-[11px] font-bold" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
-                        <Check className="w-3.5 h-3.5" aria-hidden="true" /> {t("elev.hero.sheet.review.yes")}
+                        <Icon name="check" size={14} /> {t("elev.hero.sheet.review.yes")}
                       </button>
                     )}
                     {d.redrawn ? (
                       <span className="inline-flex min-h-11 items-center text-[11px]" style={muted}>{t("elev.hero.sheet.review.redrawn")}</span>
                     ) : d.review !== "ok" && (
                       <button type="button" onClick={() => { void redraw(pose); }} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg px-2 text-[11px] font-bold" style={{ background: "var(--arbor-paper)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
-                        <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" /> {t("elev.hero.sheet.review.redraw")}
+                        <Icon name="refresh" size={14} /> {t("elev.hero.sheet.review.redraw")}
                       </button>
                     )}
                   </div>
