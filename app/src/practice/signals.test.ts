@@ -499,7 +499,8 @@ describe("B-KID-02 · mood-checkin never enters accuracy or stars", async () => 
     expect(src).toContain("if (checkinRecorded.current) return;");
     const feel = src.slice(src.indexOf("const feel = (id: string) =>"), src.indexOf("// The emotion the avatar should be wearing"));
     expect(feel).not.toMatch(/correct/);
-    expect(read("components/kidmode/KidDashboard.tsx")).toContain("starEvents(data.events.items).length");
+    // B-BOOK-26 (T7): the kid home shows no star count at all now.
+    expect(read("components/kidmode/KidDashboard.tsx")).not.toContain("starEvents(");
     expect(read("components/practice/HeroArcade.tsx")).toContain("count: (d) => starEvents(d.events.items).length");
     function read(rel: string) { return readFileSync(resolve(__dirname, "..", rel), "utf8"); }
   });
