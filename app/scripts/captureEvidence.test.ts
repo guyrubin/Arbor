@@ -57,7 +57,7 @@ describe('bounded mobile evidence source contracts, without browser or sockets',
     expect(probe).toContain('doc.completed = missingSmallEvidence(doc.cells).length === 0');
     expect(probe).toContain('cell.failureShot = failureShot');
     expect(runner).toContain('metadata.missingEvidence = missingSmallEvidence(evidence.cells)');
-    expect(probe.indexOf('doc.cells.push(cell); save()')).toBeLessThan(probe.indexOf('await action()'));
+    expect(probe.indexOf('doc.cells.push(cell); save()')).toBeLessThan(probe.indexOf('await action(cell)'));
   });
   it('bounds the child before the outer deadline and keeps honest partial files', () => {
     expect(runner).toContain('8 * 60_000');
@@ -99,5 +99,14 @@ describe('bounded mobile evidence source contracts, without browser or sockets',
     expect(artifactPaths).not.toMatch(/\.log|\.env|\.data|\*\*/);
     expect(artifactPaths).toContain('evidence.json');
     expect(artifactPaths).toContain('shots/*.png');
+  });
+  it('keeps the original slow-loader evidence before its bounded readiness wait', () => {
+    expect(probe).toContain('cell.pendingAt8s = diagnostics()');
+    expect(probe).toContain('lazy-pending-8s.fonts-unverified.png');
+    expect(probe).toContain('timeout: 45_000');
+    expect(probe).toContain('cell.slowLazyReadiness = cell.composerReadyMs > 8_000');
+    expect(probe).toContain("if (!opened) throw new Error('DEPENDENT_STATE_UNREACHED')");
+    expect(probe).toContain('moduleFailures: moduleFailures.slice(-100)');
+    expect(probe).not.toMatch(/message\.text\(\)|error\.stack|request\.headers\(\)/);
   });
 });

@@ -43,6 +43,30 @@ try {
     await context.addInitScript(initializeSyntheticOnline, { lang });
     const page = await context.newPage();
     page.setDefaultTimeout(8_000);
+    // Diagnose cold lazy-module readiness without recording page text, prompts,
+    // query strings, API payloads, headers or arbitrary console messages.
+    const pendingModules = new Map();
+    const moduleFailures = [];
+    const runtimeErrors = [];
+    const modulePath = (request) => {
+      const url = new URL(request.url());
+      return url.origin === BASE && ['script', 'stylesheet'].includes(request.resourceType())
+        ? url.pathname.replace(/[^a-zA-Z0-9_./@-]/g, '').slice(0, 200) : null;
+    };
+    page.on('request', (request) => { const path = modulePath(request); if (path) pendingModules.set(request, { path, startedAt: Date.now() }); });
+    page.on('requestfinished', (request) => pendingModules.delete(request));
+    page.on('requestfailed', (request) => {
+      const path = modulePath(request);
+      if (path) moduleFailures.push({ path, kind: 'MODULE_REQUEST_FAILED' });
+      pendingModules.delete(request);
+    });
+    page.on('response', (response) => { const path = modulePath(response.request()); if (path && response.status() >= 400) moduleFailures.push({ path, status: response.status() }); });
+    page.on('pageerror', () => runtimeErrors.push('PAGE_SCRIPT_ERROR'));
+    page.on('console', (message) => { if (message.type() === 'error') runtimeErrors.push('CONSOLE_ERROR'); });
+    const diagnostics = () => ({
+      pendingModules: [...pendingModules.values()].slice(-100).map(({ path, startedAt }) => ({ path, elapsedMs: Date.now() - startedAt })),
+      moduleFailures: moduleFailures.slice(-100), runtimeErrors: runtimeErrors.slice(-100),
+    });
     const load = async (route) => {
       await page.goto(`${BASE}/?capture=small-${lang}-${Date.now()}#/${route}`, { waitUntil: 'domcontentloaded', timeout: 90_000 });
       await page.locator('main h1, main [data-module]').first().waitFor({ state: 'visible', timeout: 30_000 });
@@ -52,7 +76,7 @@ try {
       doc.cells.push(cell); save();
       console.log(`Evidence screen: ${route}/${state}/${lang}; screenshots=${doc.cells.filter((c) => c.shot).length}.`);
       try {
-        await action();
+        await action(cell);
         // Measure layout after the same font readiness required for the PNG.
         if (mode === 'exact') await page.evaluate(async () => {
           await Promise.race([document.fonts.ready, new Promise((_, reject) => setTimeout(() => reject(new Error('FONT_READY_TIMEOUT')), 15_000))]);
@@ -81,15 +105,31 @@ try {
           try { await page.screenshot({ path: `${output}/${failureShot}`, timeout: 5000, animations: 'disabled' }); cell.failureShot = failureShot; } catch { /* partial JSON still survives */ }
         }
       }
+      cell.runtimeDiagnostics = diagnostics();
       save();
       return cell.reached;
     };
     await screen('overview', 'now', async () => { await load('overview'); await page.locator('[data-testid=companion-launcher]').waitFor({ state: 'visible' }); });
-    await screen('shell', 'launcher-open', async () => {
+    const opened = await screen('shell', 'launcher-open', async (cell) => {
+      const startedAt = Date.now();
       await page.locator('[data-testid=companion-launcher] .companion-launch-main').click();
-      await page.locator('.companion-conversation [data-testid=companion-composer] textarea').waitFor({ state: 'visible' });
+      const composer = page.locator('.companion-conversation [data-testid=companion-composer] textarea');
+      try { await composer.waitFor({ state: 'visible', timeout: 8_000 }); }
+      catch (error) {
+        if (error?.name !== 'TimeoutError') throw error;
+        cell.pendingAt8s = diagnostics();
+        cell.pendingShot = `shots/shell.375x812.${lang}.lazy-pending-8s.fonts-unverified.png`;
+        await page.screenshot({ path: `${output}/${cell.pendingShot}`, timeout: 5000, animations: 'disabled' });
+        save();
+        // Keep slow development-server readiness visible as a finding. Do not
+        // silently turn the original eight-second pending state into a pass.
+        await composer.waitFor({ state: 'visible', timeout: 45_000 });
+      }
+      cell.composerReadyMs = Date.now() - startedAt;
+      cell.slowLazyReadiness = cell.composerReadyMs > 8_000;
     });
     const answered = await screen('shell', 'structured-answer', async () => {
+      if (!opened) throw new Error('DEPENDENT_STATE_UNREACHED');
       await page.locator('.companion-conversation [data-testid=companion-composer] textarea').fill(lang === 'he' ? 'הוא מתפרק כשאנחנו עוזבים את גן השעשועים' : 'He melts down when we leave the playground');
       await page.locator('.companion-conversation [data-testid=coach-send]').click();
       const report = page.locator('[data-testid=coach-answer-cards]').last();
