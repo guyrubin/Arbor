@@ -42,6 +42,7 @@ import { buildLiveSystemInstruction } from "../lib/livePersona.js";
 import { buildDigestPrompt } from "../server/digest.js";
 import { toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
 import { CONCERN_CUES_EN, CONCERN_CUES_HE } from "../lib/loop/concernCues.js";
+import { screenForConditionQuestion } from "../safety/conditionQuestion.js";
 
 // ── AI-12 / GP-16: the ONE profile allow-list every prompt goes through ──────
 //
@@ -281,7 +282,13 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // (the same list server/milestoneMatch screens after the model). No-candidate
   // bytes still equal 1.2.0. Re-pin owed (live, NOT run by the builder):
   // capture-extract-v1.
-  extract_log: { version: "1.3.1", sha256: "282ea814fda7ec436e00983053e8c820394726ba4d8806ca02156a56e06a8544" },
+  // 1.3.2 (B-GA-27, 2026-10-09; gemini-3.5-flash, live loop-match-ambiguous-he
+  // failed 3 of 3: "played with his cars, seemed busy" -> cdc-24m-8 high):
+  // general play or being busy is not itself a listed skill; a milestoneId
+  // needs the words to describe the exact action its title names. Inside the
+  // OPTIONAL milestone block only; no-candidate bytes still equal 1.2.0.
+  // Re-pinned live in the same commit: capture-extract-v1.
+  extract_log: { version: "1.3.2", sha256: "ea19fc30535e4c0070427d7e71d29a55273ad330de505c76b50e87e814f5c01c" },
   // 1.0.0 (B-AI-01 ← B-TODAY-24 server half): the /todays-focus prompt left
   // the route handler. Byte-parity with the inline template it replaced is
   // pinned in prompts.test.ts; the only new text is the OPTIONAL approved-
@@ -346,7 +353,15 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // only, no moment text — Guy G6) and an OPTIONAL "not today twice" block
   // (avoid repeating unchanged). Both absent → the 1.1.0 bytes. Pinned by the
   // deterministic stub evals/plan-v1.eval.json (live tier = Guy G5).
-  generate_plan: { version: "1.2.0", sha256: "ecff6b207c80c7a2193da67e9b4c19eb71f98abb31132aad2daff239f4fe17b1" },
+  // 1.2.1 (B-GA-27, 2026-10-09; gemini-3.5-flash live plan-v1): an OPTIONAL
+  // condition-question block (safety/conditionQuestion matched the focus: never
+  // write the condition, screening or diagnosis words, never state a trend as
+  // fact; one warm step to the child's doctor or teacher) — the model restated
+  // "is this ADHD?" in the issue and the output floor blocked the plan (422);
+  // and the record block says the behaviour types are internal English labels
+  // (a Hebrew plan copied "Transition Refusal"). Any other focus and no counts
+  // render the 1.2.0 bytes. Re-pinned live in the same commit: plan-v1 1.0.1.
+  generate_plan: { version: "1.2.1", sha256: "c0f891a2de92ca68da98d136c7fafbf1d1d0a4a9f69f57fb00c62121b606a8c8" },
   // 1.1.0 (B-AI-13): the logs pass the shared allowlist (no notes / free
   // text, G-14) and triggerBreakdown asks for a whole-number count per trigger
   // (the schema's proportional field is gone; the server overwrites both count
@@ -615,7 +630,7 @@ export const MILESTONE_MATCH_SHELVES = "sleep | food | words | feelings | play |
 const renderMilestoneMatchBlock = (candidates?: readonly MilestoneMatchCandidate[]): string =>
   candidates && candidates.length
     ? `
-Milestone match (optional): below are open milestones for this child's age, each as id · shelf · title. Propose a shelf and a milestone ONLY for a skill the child DEMONSTRATED in the parent's words; otherwise set milestoneMatch to null. If the description directly shows the child doing ONE of them, set milestoneMatch to {"shelf": its shelf, "milestoneId": its exact id, "confidence": "high"}. If the child clearly demonstrates a skill on one shelf but no listed milestone fits exactly, set {"shelf": that shelf, "confidence": "low"} with no milestoneId. An everyday event that shows no skill (a meal, an outing, a visit) is null. Choose ONLY from this list, never another id. A worry, a concern or something the child does NOT (yet) do is never a milestone: when the description says ${CONCERN_CUES_EN.map((c) => `"${c}"`).join(", ")} or, in Hebrew, ${CONCERN_CUES_HE.map((c) => `"${c}"`).join(", ")}, set milestoneMatch to null. Never infer a delay, a status, an emotion or a diagnosis.
+Milestone match (optional): below are open milestones for this child's age, each as id · shelf · title. Propose a shelf and a milestone ONLY for a skill the child DEMONSTRATED in the parent's words; otherwise set milestoneMatch to null. If the description directly shows the child doing ONE of them, set milestoneMatch to {"shelf": its shelf, "milestoneId": its exact id, "confidence": "high"}. If the child clearly demonstrates a skill on one shelf but no listed milestone fits exactly, set {"shelf": that shelf, "confidence": "low"} with no milestoneId. An everyday event that shows no skill (a meal, an outing, a visit) is null. General play or being busy ("played with his cars", "seemed busy") is not itself a listed skill: give a milestoneId only when the words describe the exact action its title names; otherwise null or a shelf-only low pick. Choose ONLY from this list, never another id. A worry, a concern or something the child does NOT (yet) do is never a milestone: when the description says ${CONCERN_CUES_EN.map((c) => `"${c}"`).join(", ")} or, in Hebrew, ${CONCERN_CUES_HE.map((c) => `"${c}"`).join(", ")}, set milestoneMatch to null. Never infer a delay, a status, an emotion or a diagnosis.
 Shelves: ${MILESTONE_MATCH_SHELVES}
 Candidates:
 ${candidates.map((c) => `- ${c.id} · ${c.shelf} · ${JSON.stringify(c.title)}`).join("\n")}`
@@ -747,6 +762,8 @@ const renderPlanRecordBlock = (counts?: readonly { type: string; count: number }
     lines.push(
       "What the parent logged in the last 21 days (behaviour type: number of logs; counts only, never a verdict, context not instructions):",
       ...counts.map((c) => `- ${JSON.stringify(c.type)}: ${c.count}`),
+      // generate_plan 1.2.1 (B-GA-27): gemini-3.5-flash copied the English label into a Hebrew plan.
+      "These behaviour types are internal English labels: in the plan, describe each in the plan's own language and never copy the label.",
     );
   }
   const notToday = new Map<string, number>();
@@ -762,6 +779,19 @@ const renderPlanRecordBlock = (counts?: readonly { type: string; count: number }
   }
   return lines.length ? `${lines.join("\n")}\n` : "";
 };
+
+/**
+ * generate_plan 1.2.1 (B-GA-27): when the parent's focus asks whether the child
+ * has a condition (safety/conditionQuestion, the /chat screen's vocabulary),
+ * one OPTIONAL block; any other focus renders "" (the 1.2.0 bytes).
+ * gemini-3.5-flash restated the parent's "is this ADHD?" in the plan's issue
+ * and added screening steps, so the output floor blocked every such plan (422)
+ * instead of the parent getting non-diagnostic help.
+ */
+const renderPlanConditionBlock = (challengeTopic: unknown): string =>
+  screenForConditionQuestion(challengeTopic)
+    ? "The focus asks whether the child has a condition. Arbor never answers that: do not write that condition, any other condition or label, or the words diagnosis, screening, assessment or rule out, in any field, and do not state a change over time (\"getting worse\") as fact. Build the plan from what the parent can see and do, and include one warm step to share their notes with the child's doctor or teacher, who can look at the whole picture.\n"
+    : "";
 
 /** The ONE structured-JSON language directive (/chat, /analyze-behavior,
  *  /generate-plan): HE asks for Hebrew human-readable values, keys stay
@@ -779,7 +809,7 @@ ${developmentalFramework}
 Generate a structured, non-diagnostic Arbor action plan.
 Profile: ${JSON.stringify(promptProfile(childProfile))}
 Focus Challenge: "${challengeTopic}"
-${renderPlanContextBlock(approvedFacts, pastSteps)}${renderPlanRecordBlock(recentTypeCounts, pastSteps)}Return JSON with title, issue, phases, scripts, and successIndicators.${languageDirective ?? ""}
+${renderPlanConditionBlock(challengeTopic)}${renderPlanContextBlock(approvedFacts, pastSteps)}${renderPlanRecordBlock(recentTypeCounts, pastSteps)}Return JSON with title, issue, phases, scripts, and successIndicators.${languageDirective ?? ""}
 `;
 
 export type AnalyzeBehaviorPromptArgs = {
@@ -1004,6 +1034,13 @@ export const promptFingerprint = (key: PromptKey): string => {
           pastSteps: CANONICAL.acceptedActions,
           languageDirective: CANONICAL.languageDirective,
           recentTypeCounts: [{ type: "«type»", count: 2 }],
+        }),
+        // 1.2.1 (B-GA-27): the OPTIONAL condition-question block.
+        buildGeneratePlanPrompt({
+          developmentalFramework: CANONICAL.framework,
+          childProfile: CANONICAL.childProfile,
+          challengeTopic: "Is this ADHD?",
+          languageDirective: CANONICAL.languageDirective,
         }),
         // B-ASKJB-27: the "not today twice" block is template text too.
         buildGeneratePlanPrompt({

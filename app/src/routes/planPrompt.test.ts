@@ -105,8 +105,8 @@ describe("B-ASKJB-27 — the plan reads the record", () => {
     expect(seen.plan).toContain("What the parent logged in the last 21 days");
     expect(seen.plan).toContain('- "Transition Refusal": 6');
     expect(seen.plan).toContain('- "Sleep Meltdown": 2');
-    expect(seen.version).toBe("1.2.0");
-    expect(PROMPT_VERSIONS.generate_plan.version).toBe("1.2.0");
+    expect(seen.version).toBe("1.2.1");
+    expect(PROMPT_VERSIONS.generate_plan.version).toBe("1.2.1");
   });
 
   it("counts NEVER include text: free-text types, text fields and non-integers are dropped", async () => {

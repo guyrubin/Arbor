@@ -438,6 +438,18 @@ Return JSON with title, issue, phases, scripts, and successIndicators.
     expect(buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: p, challengeTopic: "transitions" })).toBe(legacyPlan("FW", p, "transitions"));
     expect(buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: p, challengeTopic: "x", approvedFacts: [], pastSteps: [] })).toBe(legacyPlan("FW", p, "x"));
   });
+  it("1.2.1 (B-GA-27): a condition-question focus adds the one condition block; the record block names labels as internal", () => {
+    const p = { id: "c", name: "Dana", age: 7 };
+    const asked = buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: p, challengeTopic: "Meltdowns are getting worse every week, is this ADHD?" });
+    expect(asked).toContain("The focus asks whether the child has a condition. Arbor never answers that");
+    expect(asked.indexOf("The focus asks whether")).toBeGreaterThan(asked.indexOf("Focus Challenge:"));
+    // A focus that names no condition question keeps the legacy bytes (no block).
+    expect(buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: p, challengeTopic: "She has ADHD, homework tips?" })).not.toContain("The focus asks whether");
+    expect(buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: p, challengeTopic: "transitions" })).toBe(legacyPlan("FW", p, "transitions"));
+    const counted = buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: p, challengeTopic: "mornings", recentTypeCounts: [{ type: "Transition Refusal", count: 4 }] });
+    expect(counted).toContain("- \"Transition Refusal\": 4\nThese behaviour types are internal English labels: in the plan, describe each in the plan's own language and never copy the label.");
+  });
+
   it("facts + past steps add one quoted block (and break parity)", () => {
     const withCtx = buildGeneratePlanPrompt({
       developmentalFramework: "FW", childProfile: null, challengeTopic: "t", approvedFacts: ["Bath helps"],
@@ -563,6 +575,8 @@ describe("B-LOOP-06 — extract_log milestone-match block", () => {
     // are named in EN + HE from the one list the server guard screens.
     expect(p).toContain("Propose a shelf and a milestone ONLY for a skill the child DEMONSTRATED in the parent's words; otherwise set milestoneMatch to null.");
     expect(p).toContain("An everyday event that shows no skill (a meal, an outing, a visit) is null.");
+    // 1.3.2 (B-GA-27): general play is not a listed skill by itself.
+    expect(p).toContain("General play or being busy (\"played with his cars\", \"seemed busy\") is not itself a listed skill: give a milestoneId only when the words describe the exact action its title names; otherwise null or a shelf-only low pick.");
     expect(p).toContain("is never a milestone: when the description says");
     for (const cue of [...CONCERN_CUES_EN, ...CONCERN_CUES_HE]) expect(p).toContain(`"${cue}"`);
     expect(p).not.toContain("If the moment clearly belongs to one shelf");
