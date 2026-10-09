@@ -59,7 +59,7 @@ Chosen 7 Oct (P7-DESIGN, Option A + three B elements; `execution/2026-10-07--des
 - Chips/pills: `rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase` in tint pairs
 - Kit primitives (src/components/ui/kit.tsx): PageHeader, SectionCard, Chip, IconBadge, ProgressBar (count-based only), HubHero pattern in section files
 - Shared Button: primary uses clay/on-accent and clay-deep hover; ghost uses muted. Both sizes use the existing `touch-target` floor, whose app-scoped selector wins over the shell's min-width reset.
-- Icons: Material Symbols Rounded via `<Icon name>` inside surfaces; lucide-react only for NavItem/HubHero props. Never mix within one surface. Chrome icons (top bar, dock, nav) are weight 300 outline and filled when active: `<Icon name chrome active={on}>`. Content glyphs are the duotone `ShelfGlyph`. A glyph outside the subset needs `npm run build:icon-font` (networked)
+- Icons: Material Symbols Rounded via `<Icon name>` is the only icon family in parent mode; lucide-react survives only inside Kid Mode (`components/kidmode/`), held by `iconFamily.guard.test.ts`. The three places (Now, My child, Together) take their glyphs from `lib/companionPlaces.ts` (sidebar and dock alike), and no two nav destinations share a glyph. An `<Icon>` never leads a `dir="auto"` element (its ligature is Latin text): give that line the locale's `dir`. Chrome icons (top bar, dock, nav) are weight 300 outline and filled when active: `<Icon name chrome active={on}>`. Content glyphs are the duotone `ShelfGlyph`. A glyph outside the subset needs `npm run build:icon-font` (networked)
 
 ## Motion
 

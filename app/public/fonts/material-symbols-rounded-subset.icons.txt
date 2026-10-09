@@ -19,6 +19,7 @@ assignment_turned_in
 attachment
 attribution
 auto_awesome
+auto_fix_high
 auto_stories
 autorenew
 backpack
@@ -76,9 +77,11 @@ contract
 conversation
 cookie
 create
+credit_card
 crib
 curtains_closed
 dark_mode
+dashboard
 database
 delete
 delete_forever
@@ -150,6 +153,7 @@ hub
 image
 inbox
 info
+ink_eraser
 input
 insights
 interests
@@ -211,7 +215,6 @@ owl
 pages
 paid
 palette
-pan_tool
 park
 password
 pattern
@@ -243,6 +246,7 @@ radio_button_unchecked
 record_voice_over
 refresh
 remove
+repeat
 replay
 resize
 restart_alt
@@ -325,6 +329,7 @@ verified_user
 view_agenda
 visibility
 visibility_off
+volume_off
 volume_up
 volunteer_activism
 warning
