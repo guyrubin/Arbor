@@ -99,8 +99,10 @@ describe("EmptyState — backwards-compatible API", () => {
     expect(html).not.toContain("arbor-skeleton");
   });
 
-  it("the 3 pre-existing consumers still import the shared EmptyState", () => {
-    for (const rel of ["../tabs/AttributionTab.tsx", "../tabs/HeroJourneyTab.tsx", "../tabs/PlansTab.tsx"]) {
+  it("the pre-existing consumers still import the shared EmptyState", () => {
+    // B-PLAY-12: HeroJourneyTab used EmptyState only for its "Your library"
+    // module, which moved to the Comics shelf (lib/storyShelf); it left the list.
+    for (const rel of ["../tabs/AttributionTab.tsx", "../tabs/PlansTab.tsx"]) {
       const src = read(rel);
       expect(src, `${rel} dropped the shared EmptyState import`).toMatch(
         /import \{[^}]*EmptyState[^}]*\} from "\.\.\/ui\/EmptyState"/,
@@ -184,9 +186,11 @@ describe("HeroJourneyTab — loading region migrated", () => {
     expect(source).not.toMatch(/["'`]טוען(…|\.\.\.)["'`]/);
   });
 
-  it("library loading renders the shared SectionSkeleton", () => {
-    expect(source).toMatch(/import \{ SectionSkeleton \} from "\.\.\/ui\/Skeleton"/);
-    expect(source).toContain("<SectionSkeleton");
+  it("B-PLAY-12: the library (and its loading skeleton) left #/stories for the Comics shelf", () => {
+    // The skeleton served the "Your library" module only; the runs it listed
+    // are comics or text books on #/comics now (lib/storyShelf.test.tsx).
+    expect(source).not.toContain('data-module="stories-library"');
+    expect(source).not.toContain("hero-library-skeleton");
   });
 
   it("story-start feedback localizes through the states module", () => {

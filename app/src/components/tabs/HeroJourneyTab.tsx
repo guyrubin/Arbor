@@ -18,7 +18,6 @@ import {
   HERO_STORIES,
   PACKS,
   getStorySpec,
-  runTitle,
   storiesForLanguage,
   storiesInPack,
   storyHasLanguage,
@@ -45,8 +44,6 @@ import { STORY_COMIC, clearJourneyPageFailure, generateJourneyPage, journeyPageK
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { ComicPage, usePrefersReducedMotion } from "../ui/playkit";
-import { EmptyState } from "../ui/EmptyState";
-import { SectionSkeleton } from "../ui/Skeleton";
 import { statesText } from "../../lib/i18nElevation/states";
 import { HeroAvatar, resolveHeroUrl } from "../ui/HeroAvatar";
 import HeroCreateDialog from "../profile/HeroCreateDialog";
@@ -61,7 +58,6 @@ import { pickTonightsStory, TONIGHT_AIM_REASON_KEY } from "../kidmode/tonightsSt
 import { dayKey } from "../../practice/signals";
 import { PageHeader, cardCls } from "../ui/kit";
 import { T, METRIC_VARS } from "../../lib/tokens";
-import { fmtDay } from "../../lib/formatDate";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { authoredChoice, authoredScene, completeRender, type StoryHero } from "../../lib/heroJourneyRender";
 import KidLibrary from "../kidmode/KidLibrary";
@@ -227,14 +223,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   });
   const runs = runsCol.items;
   // B-KID-46 (KB-03): the language a story is told in. A story that cannot be
-  // told in it (no Hebrew beats) is not listed — catalogue, Tonight pick and
-  // the Library shelf alike; the pick's order is language → age → illustrated.
+  // told in it (no Hebrew beats) is not listed — catalogue and Tonight pick
+  // alike (the read-runs shelf applies the same rule on #/comics, B-PLAY-12);
+  // the pick's order is language → age → illustrated.
   const storyLang = storyLanguage(uiLang, aiLang);
-  const isTellable = (storyId: string) => {
-    const spec = getStorySpec(storyId);
-    return !spec || storyHasLanguage(spec, storyLang);
-  };
-  const shelfRuns = runs.filter((r) => isTellable(r.storyId));
   // G2 (22 Sep 2026): every story read with a hero is a comic. Page keys are
   // collected as the child turns pages (cover = 0, beats = 1..N); a complete
   // set is saved as a book on the child's shelf when the story finishes.
@@ -706,27 +698,6 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     void shelveWhenComplete();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReflection, activeStory?.id]);
-
-  const replay = (run: HeroJourneyRun) => {
-    const story = getStorySpec(run.storyId);
-    if (!story) return;
-    // B-KID-121: a run written in another language is not restored.
-    if (!runRestorable(run, storyLang)) {
-      if (kidMode) openKidBook(story, false);
-      else void startJourney(story);
-      return;
-    }
-    startedAtRef.current = run.startedAt;
-    setActiveStory(story);
-    setRender(run.render);
-    setRenderLang(run.language === "he" ? "he" : "en");
-    setSceneIndex(0);
-    setChoiceId(run.choiceId);
-    setQuestionsChecked({});
-    setSaved(true);
-    setFinishing(false);
-    finishingRef.current = false;
-  };
 
   // B-KID-121: the app language changed under an open book - its words are in
   // the old language, so the book reopens in the story language (Kid Mode: at
@@ -1283,47 +1254,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         </section>
         </details>
 
-        <section data-module="stories-library">
-        {/* JOURNEY LIBRARY */}
-        <div>
-          <h2 className="font-black mb-3 inline-flex items-center gap-2" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(18px,3.4vw,24px)" }}>
-            <Icon name="auto_stories" size={20} /> {kidMode ? (he ? `הספרייה (${shelfRuns.length})` : `Library (${shelfRuns.length})`) : `${t("elev.stories.library.title")} (${shelfRuns.length})`}
-          </h2>
-          {!runsCol.loaded ? (
-            /* Masterplan 4.3 — per-section skeleton mimicking the library tile
-               grid (reserves real dimensions; ~10s → inline retry wired to the
-               W0 syncStore, which re-mounts this runsCol listener). */
-            <SectionSkeleton title={false} rows={2} rowClassName="h-[120px]" loaded={runsCol.loaded} testId="hero-library-skeleton" />
-          ) : shelfRuns.length === 0 ? (
-            <div className={`${cardCls} p-5`}>
-              <EmptyState
-                headline={he ? "עדיין אין מסעות" : "No quests yet"}
-                body={he ? "בחרו סיפור למעלה והתחילו את המסע הראשון. כל מסע שהושלם נשמר כאן." : "Pick a story above and start your first quest. Completed quests are saved here."}
-              />
-            </div>
-          ) : (
-            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
-              {shelfRuns.map((run) => {
-                const spec = getStorySpec(run.storyId);
-                const cover = storyCover(run.storyId);
-                return (
-                  <button key={run.id} onClick={() => replay(run)} className="world-tile text-start" aria-label={runTitle(run, uiLang === "he" ? "he" : "en")}>
-                    <div className="grid place-items-center overflow-hidden" style={{ height: 72, background: spec ? STORY_PACK_SOFT[spec.pack] : "var(--arbor-paper-deep)", borderBottom: "1px solid var(--arbor-rule)" }}>
-                      {cover ? <img src={cover.src480} alt="" aria-hidden="true" loading="lazy" decoding="async" className="h-full w-full object-cover" style={{ objectPosition: cover.objectPosition }} /> : <Icon name="auto_stories" size={28} style={{ color: "var(--arbor-muted)" }} />}
-                    </div>
-                    <div className="p-2.5">
-                      <span className="text-[12.5px] font-black block leading-tight line-clamp-2" style={{ color: "var(--arbor-ink)" }} dir="auto">{runTitle(run, uiLang === "he" ? "he" : "en")}</span>
-                      <span className="text-[10.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                        {run.completedAt ? fmtDay(run.completedAt, uiLang) : he ? "בתהליך" : "In progress"}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        </section>
+        {/* B-PLAY-12: the "Your library" module (every run read, finished or
+            not) moved to the Comics shelf, one tap away on this hub: a run
+            with a read-along comic is that comic, every other run is a text
+            book reread in place (lib/storyShelf, components/stories/StoryTextReader). */}
       </div>
     );
   }

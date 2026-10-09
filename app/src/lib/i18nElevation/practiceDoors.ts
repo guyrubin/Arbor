@@ -114,6 +114,14 @@ export const en: Record<string, string> = {
   "elev.stories.more": "More stories",
   // B-KID-87 (KB-29): #/comics leads with the library.
   "elev.comics.ourBooks.title": "Our books",
+  // B-PLAY-12: a story read with no comic is a text book on the Comics shelf.
+  "elev.comics.storyBooks.title": "Stories you read together",
+  "elev.comics.storyBook.read": "Read the story",
+  "elev.comics.storyBook.readAria": "Read the story again: {title}",
+  "elev.comics.storyBook.chip": "Story",
+  "elev.comics.storyBook.inProgress": "In progress",
+  "elev.comics.storyBook.back": "Back to the shelf",
+  "elev.comics.storyBook.choice": "The choice:",
   // B-PLAY-05 + W2-SHELLPLAY critic r1: the Practice door's ONE sentence —
   // one unit (rounds), one stated window, at most one finished story title
   // (rendered bidi-isolated). Gender variants exist for Hebrew; English is the
@@ -338,6 +346,13 @@ export const he: Record<string, string> = {
   "elev.stories.catalogue.title": "בחירת סיפור אחר",
   "elev.stories.more": "סיפורים נוספים",
   "elev.comics.ourBooks.title": "הספרים שלנו",
+  "elev.comics.storyBooks.title": "סיפורים שקראתם יחד",
+  "elev.comics.storyBook.read": "לקרוא את הסיפור",
+  "elev.comics.storyBook.readAria": "לקרוא שוב את הסיפור: {title}",
+  "elev.comics.storyBook.chip": "סיפור",
+  "elev.comics.storyBook.inProgress": "בתהליך",
+  "elev.comics.storyBook.back": "חזרה למדף",
+  "elev.comics.storyBook.choice": "הבחירה:",
   "elev.practice.door.when.day": "מאז {day}",
   "elev.practice.door.when.today": "היום",
   "elev.practice.door.when.week": "בשבעת הימים האחרונים",
