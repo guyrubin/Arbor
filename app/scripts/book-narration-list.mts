@@ -4,6 +4,9 @@
  * narration.ts) — the brief for the audio render. Markdown to stdout.
  *
  *   npx tsx scripts/book-narration-list.mts [bookId] [voiceKey] > NARRATION-FILES.md
+ *   npx tsx scripts/book-narration-list.mts [bookId] --json > narration.json
+ *     K2 2a: the same list as data, per voice folder, with the TTS input (the
+ *     fully pointed Hebrew, the style prompt, the tagged text) and nameBearing.
  *
  * Whole-page renders (RULINGS BR8): the child's name is spoken inside the file
  * ({name} below = the child's display name). A repair page is split the way
@@ -15,11 +18,18 @@
 import { getLibraryBook, DEFAULT_REVIEW_BOOK } from "../src/lib/library/books/index.ts";
 import { DEV_NARRATION_ROOT, NARRATION_ROOT } from "../src/lib/library/narration.ts";
 import { bookNarrationFiles, type VoiceFolder } from "../src/lib/library/narrationFiles.ts";
+import { narrationJson } from "../src/lib/library/narrationTts.ts";
 
-const bookId = process.argv[2] ?? DEFAULT_REVIEW_BOOK;
-const voiceKey = process.argv[3] ?? "dylan-v2";
+const json = process.argv.includes("--json");
+const args = process.argv.slice(2).filter((a) => a !== "--json");
+const bookId = args[0] ?? DEFAULT_REVIEW_BOOK;
+const voiceKey = args[1] ?? "dylan-v2";
 const book = getLibraryBook(bookId);
 if (!book) throw new Error(`no book ${bookId}`);
+if (json) {
+  process.stdout.write(JSON.stringify(narrationJson(book), null, 1) + "\n");
+  process.exit(0);
+}
 
 // The file list itself (names, texts, play moments) is lib/library/narrationFiles.ts.
 const VOICES: { folder: VoiceFolder; label: string }[] = [
