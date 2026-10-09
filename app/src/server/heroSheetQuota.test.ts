@@ -12,16 +12,17 @@ async function load(env: Record<string, string> = {}) {
   vi.resetModules();
   return await import("./imageQuota.js");
 }
-const ENV_KEYS = ["IMAGE_SHEET_GLOBAL_DAILY", "IMAGE_SHEET_CALLS_PER_SHEET", "IMAGE_PLUS_SHEETS_PER_30D"];
+const ENV_KEYS = ["IMAGE_SHEET_GLOBAL_DAILY", "IMAGE_SHEET_CALLS_PER_SHEET", "IMAGE_SHEET_BOOK_CALLS_PER_SHEET", "IMAGE_PLUS_SHEETS_PER_30D"];
 afterEach(() => { for (const k of ENV_KEYS) delete process.env[k]; });
 const MONTH = 30 * 86400000;
 const DAY = 86400000;
 
 describe("B-GAME-13b: the hero sheet allowance", () => {
-  it("defaults: breaker 1,500/day, 60 calls a sheet (K2: game + book poses), sheets = the plan's hero creations, Free and signed-out none", async () => {
+  it("defaults: breaker 1,500/day, 24 calls a sheet (K2: + 40 book calls of their own), sheets = the plan's hero creations, Free and signed-out none", async () => {
     const q = await load();
     expect(q.IMAGE_SHEET_GLOBAL_DAILY).toBe(1500);
-    expect(q.IMAGE_SHEET_CALLS_PER_SHEET).toBe(60);
+    expect(q.IMAGE_SHEET_CALLS_PER_SHEET).toBe(24);
+    expect(q.IMAGE_SHEET_BOOK_CALLS_PER_SHEET).toBe(40);
     expect(q.sheetsPer30Days("plus")).toBe(4);
     expect(q.sheetsPer30Days("family")).toBe(6);
     expect(q.sheetsPer30Days("free")).toBe(0);
@@ -85,6 +86,29 @@ describe("B-GAME-13b: the hero sheet allowance", () => {
     if (a.ok) { await a.release(); await a.release(); }
     expect((await c.peek("img_sheet_calls_30d", "u1:c1:h1", MONTH)).count).toBe(2);
     expect((await q.chargeHeroSheetCall(c, at)).ok).toBe(true);
+  });
+
+  it("K2: book calls count on their own per-sheet counter (env), never the game's; release gives the book unit back", async () => {
+    const q = await load({ IMAGE_SHEET_CALLS_PER_SHEET: "2", IMAGE_SHEET_BOOK_CALLS_PER_SHEET: "3" });
+    const c = new MemoryCounterStore();
+    const at = { plan: "plus" as const, uid: "u1", childId: "c1", avatarHash: "h1" };
+    const first = await q.chargeHeroSheetCall(c, { ...at, kind: "book" });
+    expect(first).toMatchObject({ ok: true, newSheet: true });
+    expect((await q.chargeHeroSheetCall(c, { ...at, kind: "book" })).ok).toBe(true);
+    expect((await q.chargeHeroSheetCall(c, { ...at, kind: "book" })).ok).toBe(true);
+    const over = await q.chargeHeroSheetCall(c, { ...at, kind: "book" });
+    expect(over).toMatchObject({ ok: false, status: 429 });
+    if (!over.ok) expect((over as Extract<typeof over, { ok: false }>).body).toMatchObject({ code: "hero_sheet_resting", window: "book-sheet" });
+    // the game's own two calls are untouched by the book's three
+    expect((await q.chargeHeroSheetCall(c, at)).ok).toBe(true);
+    expect((await q.chargeHeroSheetCall(c, at)).ok).toBe(true);
+    expect((await q.chargeHeroSheetCall(c, at)).ok).toBe(false);
+    expect((await c.peek("img_sheet_book_calls_30d", "u1:c1:h1", MONTH)).count).toBe(3);
+    expect((await c.peek("img_sheet_calls_30d", "u1:c1:h1", MONTH)).count).toBe(2);
+    // one sheet for the hero, whichever kind came first
+    expect((await c.peek("img_sheet_30d", "u1:c1", MONTH)).count).toBe(1);
+    if (first.ok) await first.release();
+    expect((await c.peek("img_sheet_book_calls_30d", "u1:c1:h1", MONTH)).count).toBe(2);
   });
 
   it("its own global breaker, counted on every attempt and never refunded", async () => {

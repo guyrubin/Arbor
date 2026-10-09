@@ -20,7 +20,8 @@
  * K2: the same route draws a BOOK pose (heroSheetContract HERO_BOOK_POSE_IDS)
  * with the book prompts (heroPosePrompts BOOK_POSES): always anchored on the
  * approved game idle (none yet = hero_book_anchor_missing), gated by the plan
- * (HERO_BOOK_POSES_BY_PLAN: Free 403) and counted on the same per-sheet calls.
+ * (HERO_BOOK_POSES_BY_PLAN: Free 403) and counted on its OWN per-sheet calls
+ * (IMAGE_SHEET_BOOK_CALLS_PER_SHEET, default 40; the game keeps its 24).
  * Allowance: imageQuota.chargeHeroSheetCall — its own counters and breaker,
  * never the scene buckets; Free gets no sheet unless HERO_SHEET_POSES_BY_PLAN
  * says so (GD-5).
@@ -191,7 +192,7 @@ export function createHeroPoseHandler(deps: HeroPoseDeps): RequestHandler {
     }
 
     // 4. The sheet allowance (own counters + breaker; never the scene buckets).
-    const charge = await chargeHeroSheetCall(deps.counters, { plan, uid: owner, childId, avatarHash });
+    const charge = await chargeHeroSheetCall(deps.counters, { plan, uid: owner, childId, avatarHash, kind: book ? "book" : "game" });
     // No strictNullChecks in this app: `!charge.ok` does not narrow, so the refusal is read through a cast.
     if (!charge.ok) { const refusal = charge as Extract<typeof charge, { ok: false }>; res.status(refusal.status).json(refusal.body); return; }
 

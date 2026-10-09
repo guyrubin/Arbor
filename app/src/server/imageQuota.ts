@@ -203,13 +203,16 @@ export const HERO_BOOK_POSES_BY_PLAN: Readonly<Record<ImageAllowancePlan, readon
 };
 /** Global sheet breaker, provider attempts per day (≈ $58 at $0.039). */
 export const IMAGE_SHEET_GLOBAL_DAILY = envNum("IMAGE_SHEET_GLOBAL_DAILY", 1500);
-/** Calls one (child, hero) sheet may make, game AND book (K2): 8 game + 18
- *  book poses, their QA retries and redraws. Was 24 (the game alone). */
-export const IMAGE_SHEET_CALLS_PER_SHEET = envNum("IMAGE_SHEET_CALLS_PER_SHEET", 60);
+/** Calls one (child, hero) sheet may make: 8 poses + 8 QA retries + 8 redraws. */
+export const IMAGE_SHEET_CALLS_PER_SHEET = envNum("IMAGE_SHEET_CALLS_PER_SHEET", 24);
+/** K2: the BOOK poses of the same (child, hero) count on their own per-sheet
+ *  counter: 17 drawn poses (worried-tunic is skipped) + QA retries + redraws. */
+export const IMAGE_SHEET_BOOK_CALLS_PER_SHEET = envNum("IMAGE_SHEET_BOOK_CALLS_PER_SHEET", 40);
 export const IMAGE_SHEET_COUNTERS = {
   sheet: "img_sheet_30d",
   charged: "img_sheet_charged_30d",
   calls: "img_sheet_calls_30d",
+  bookCalls: "img_sheet_book_calls_30d",
   global: "img_sheet_global_daily",
 } as const;
 /** Sheets per child per 30 days: one per hero creation the plan allows. */
@@ -227,7 +230,7 @@ export type SheetCharge =
  */
 export const chargeHeroSheetCall = async (
   counters: UsageCounterStore,
-  input: { plan: ImageAllowancePlan; uid: string; childId: string; avatarHash: string },
+  input: { plan: ImageAllowancePlan; uid: string; childId: string; avatarHash: string; kind?: "game" | "book" },
 ): Promise<SheetCharge> => {
   const refused = (window: string, resetAt: number): SheetCharge => ({
     ok: false, status: 429, body: { ...IMAGE_RESTING_BODY, code: "hero_sheet_resting", window, resetAt: new Date(resetAt).toISOString() },
@@ -249,10 +252,14 @@ export const chargeHeroSheetCall = async (
     await counters.increment(IMAGE_SHEET_COUNTERS.charged, sheetKey, MONTH_MS);
     newSheet = true;
   }
-  const calls = await counters.increment(IMAGE_SHEET_COUNTERS.calls, sheetKey, MONTH_MS, { limit: IMAGE_SHEET_CALLS_PER_SHEET });
-  if (calls.count > IMAGE_SHEET_CALLS_PER_SHEET) {
-    await counters.add(IMAGE_SHEET_COUNTERS.calls, sheetKey, -1, MONTH_MS);
-    return refused("sheet", calls.resetAt);
+  // K2: a book pose counts on its own per-sheet counter; the game's is untouched.
+  const book = input.kind === "book";
+  const callsName = book ? IMAGE_SHEET_COUNTERS.bookCalls : IMAGE_SHEET_COUNTERS.calls;
+  const callsCap = book ? IMAGE_SHEET_BOOK_CALLS_PER_SHEET : IMAGE_SHEET_CALLS_PER_SHEET;
+  const calls = await counters.increment(callsName, sheetKey, MONTH_MS, { limit: callsCap });
+  if (calls.count > callsCap) {
+    await counters.add(callsName, sheetKey, -1, MONTH_MS);
+    return refused(book ? "book-sheet" : "sheet", calls.resetAt);
   }
   let released = false;
   return {
@@ -261,7 +268,7 @@ export const chargeHeroSheetCall = async (
     release: async () => {
       if (released) return;
       released = true;
-      await counters.add(IMAGE_SHEET_COUNTERS.calls, sheetKey, -1, MONTH_MS);
+      await counters.add(callsName, sheetKey, -1, MONTH_MS);
     },
   };
 };

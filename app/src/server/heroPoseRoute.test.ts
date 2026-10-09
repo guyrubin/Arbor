@@ -225,17 +225,21 @@ describe("K2 /hero-pose — book poses", () => {
     expect(s.gen).not.toHaveBeenCalled();
   });
 
-  it("book and game calls share one per-sheet cap: 60 by default, call 61 is refused hero_sheet_resting", async () => {
+  it("book calls have their own per-sheet cap: 40 by default, call 41 is refused hero_sheet_resting; the game keeps its 24", async () => {
     const s = setup();
-    for (let i = 0; i < 60; i++) {
-      const pose = i % 2 ? HERO_SHEET_POSE_IDS[1 + (i % 7)] : HERO_BOOK_POSE_IDS[i % HERO_BOOK_POSE_IDS.length];
+    for (let i = 0; i < 40; i++) {
+      const pose = HERO_BOOK_POSE_IDS[i % HERO_BOOK_POSE_IDS.length];
       const r = await s.call({ childId: "c1", pose });
-      expect(r.statusCode, `call ${i + 1} (${pose})`).toBe(200);
+      expect(r.statusCode, `book call ${i + 1} (${pose})`).toBe(200);
     }
     const over = await s.call({ childId: "c1", pose: "sit" });
     expect(over.statusCode).toBe(429);
-    expect(over.body).toMatchObject({ code: "hero_sheet_resting", window: "sheet" });
-    expect(s.gen).toHaveBeenCalledTimes(60);
+    expect(over.body).toMatchObject({ code: "hero_sheet_resting", window: "book-sheet" });
+    // the game's 24 are untouched by the book's 40
+    for (let i = 0; i < 24; i++) expect((await s.call({ childId: "c1", pose: HERO_SHEET_POSE_IDS[1 + (i % 7)] })).statusCode, `game call ${i + 1}`).toBe(200);
+    const gameOver = await s.call({ childId: "c1", pose: "cheer" });
+    expect(gameOver.body).toMatchObject({ code: "hero_sheet_resting", window: "sheet" });
+    expect(s.gen).toHaveBeenCalledTimes(64);
     expect((await s.counters.peek("img_sheet_30d", "u1:c1", MONTH)).count).toBe(1);
   });
 
