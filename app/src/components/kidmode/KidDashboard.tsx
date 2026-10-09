@@ -27,7 +27,7 @@
  * Firewall: the star reads a MONOTONIC field (lifetime sessions), never a
  * streak. Styling is token-only and RTL-safe (logical CSS properties).
  */
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { BookOpen, Brain, Footprints, Gamepad2, Heart, Map, Mic, Music, PersonStanding, Shapes, Smile, Sparkles, Star, ChevronRight, Type } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import type { AvatarStyle } from "../../lib/api";
@@ -58,7 +58,6 @@ import { KidStickerStrip } from "./rewards/KidSouvenir";
 import { kidOfflineArtUrls, precacheKidArt, recentlyOpenedStoryIds } from "../../lib/kidOfflineArt";
 import { useKidSouvenirs } from "./rewards/useKidSouvenirs";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
-import { starEvents } from "../../practice/signals";
 
 export type KidSurface = "journeys" | "arcade" | "feelings" | "comics";
 
@@ -223,55 +222,6 @@ export const KID_HOME_GAME_TITLE_SIZE = "clamp(20px, 5vw, 24px)";
 /** The 390 px floor the clamp guarantees, asserted by kidDashboard.fold.test.ts. */
 export const KID_HOME_GAME_TITLE_MIN_PX = 20;
 
-/** A calm, one-shot count-up of an already-earned number. Reveals on mount only —
- *  never a live ticker. Respects prefers-reduced-motion (snaps to the total). */
-function StarMeter({ value }: { value: number }) {
-  const { t } = useLanguage();
-  // Start at 0 so the count-up never flashes the final total for one frame on mount.
-  const [shown, setShown] = useState(0);
-  const rafRef = useRef<number | null>(null);
-  useEffect(() => {
-    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || value <= 0) {
-      setShown(value);
-      return;
-    }
-    const start = Date.now();
-    const DURATION = 600;
-    setShown(0);
-    const tick = () => {
-      const p = Math.min(1, (Date.now() - start) / DURATION);
-      setShown(Math.round(p * value));
-      if (p < 1) rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, [value]);
-
-  return (
-    <span
-      aria-label={t("kid.stars.aria", { count: value })}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        paddingInline: "12px",
-        paddingBlock: "6px",
-        borderRadius: "999px",
-        background: "var(--arbor-peach-soft)",
-        color: "var(--arbor-peach-ink)",
-        fontWeight: 800,
-        fontSize: "var(--t-sm)",
-        whiteSpace: "nowrap",
-      }}
-    >
-      <Star className="w-4 h-4" aria-hidden="true" />
-      {shown}
-    </span>
-  );
-}
 
 /** A themed tile whose background is an avatar-in-scene render (WorldScene),
  *  degrading to a centered themed icon. A bottom ink scrim keeps the title
@@ -463,19 +413,6 @@ export default function KidDashboard({
     ? kt("elev.kid.greeting.playedYesterday", { world: t(yesterdayNameKey) })
     : kt("elev.kid.greeting.ready");
 
-  // Monotonic star total — lifetime sessions across modules. Never a streak.
-  const stars = useMemo(
-    () =>
-      data.speech.items.length +
-      data.mimic.items.length +
-      data.adventures.items.length +
-      // B-KID-02: a self check-in is not an achievement — no star.
-      starEvents(data.events.items).length +
-      data.missions.items.filter((m) => m.completed).length +
-      // B-KID-43: a finished story is the kid's main achievement — it counts.
-      heroRunsCol.items.filter((r) => r.completedAt).length,
-    [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items, heroRunsCol.items],
-  );
 
   return (
     <div style={{ maxInlineSize: "1100px", marginInline: "auto", display: "flex", flexDirection: "column", gap: `${KID_HOME_SECTION_GAP}px` }}>
@@ -489,8 +426,7 @@ export default function KidDashboard({
           <div style={{ fontSize: "var(--t-sm)", color: "var(--arbor-muted)" }}>{greetingSub}</div>
         </div>
         <div style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: "12px" }}>
-          {/* B-KID-43: no "0" chip on day one — the meter appears with the first star. */}
-          {stars > 0 && <StarMeter value={stars} />}
+          {/* B-BOOK-26 (T7): no count is shown to the child — the star meter is gone. */}
           <HoldExitButton onExit={onExit} idleLabel={t("kid.exit.backToParent")} ariaIdle={t("kid.exit.backToParentAria")} />
         </div>
       </header>
