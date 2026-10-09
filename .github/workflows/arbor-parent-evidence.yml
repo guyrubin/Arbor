@@ -1,0 +1,52 @@
+name: Arbor bounded Parent evidence
+on:
+  push:
+    branches: ['codex/parent-ui-evidence']
+    paths: ['app/**', 'knowledge/**', '.github/workflows/arbor-parent-evidence.yml']
+permissions:
+  contents: read
+concurrency:
+  group: arbor-parent-evidence-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  mobile-current-screens:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build synthetic capture image
+        timeout-minutes: 15
+        run: docker build --file app/scripts/capture/Dockerfile --build-arg CAPTURE_FONT_MODE=exact --build-arg CAPTURE_DISPOSABLE_CI=true --tag arbor-parent-evidence .
+      - name: Capture bounded mobile EN and HE evidence
+        timeout-minutes: 12
+        shell: bash
+        run: |
+          set -euo pipefail
+          container=$(docker create --network none --shm-size=1g \
+            --env ARBOR_CAPTURE_SHA="$GITHUB_SHA" \
+            --env ARBOR_CAPTURE_FONT_MODE=exact \
+            arbor-parent-evidence node scripts/capture/run-evidence.mjs)
+          trap 'docker rm -f "$container" >/dev/null' EXIT
+          set +e
+          docker start --attach "$container"
+          result=$?
+          set -e
+          mkdir -p "$RUNNER_TEMP/arbor-parent-evidence"
+          docker cp "$container:/capture-output/." "$RUNNER_TEMP/arbor-parent-evidence/" || result=1
+          exit "$result"
+      - name: Keep honest partial evidence even when a screen is unreachable
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arbor-parent-small-source-fonts-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/arbor-parent-evidence/capture.json
+            ${{ runner.temp }}/arbor-parent-evidence/evidence.json
+            ${{ runner.temp }}/arbor-parent-evidence/font-provenance.json
+            ${{ runner.temp }}/arbor-parent-evidence/font-evidence.small.json
+            ${{ runner.temp }}/arbor-parent-evidence/shots/*.png
+          if-no-files-found: warn
+          retention-days: 7
+          include-hidden-files: false

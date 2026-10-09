@@ -11,4 +11,8 @@ COPY app/scripts ./scripts
 COPY app/server.ts app/vite.config.ts app/tsconfig.json app/index.html ./
 COPY knowledge /capture/knowledge
 RUN node scripts/copy-mediapipe-wasm.mjs
+# Opt-in only for the disposable CI evidence build. Default full sweep is unchanged.
+ARG CAPTURE_FONT_MODE=fallback
+ARG CAPTURE_DISPOSABLE_CI=false
+RUN CAPTURE_FONT_MODE=$CAPTURE_FONT_MODE CAPTURE_DISPOSABLE_CI=$CAPTURE_DISPOSABLE_CI node scripts/capture/prepare-font-cache.mjs
 CMD ["node", "scripts/capture/run.mjs"]
