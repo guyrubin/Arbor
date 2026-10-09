@@ -14,6 +14,9 @@ import type { SleepLogEntry } from "../../types";
 import { GUIDED_TIER_COACH, guidedTierOn } from "../../lib/entitlementsGuided";
 import CoachSessions, { agreeToTry, type CoachSessionDoc } from "./CoachSessions";
 import FamilyGoals from "./FamilyGoals";
+import ProgramKidWorldDoor from "./ProgramKidWorldDoor";
+import { programKidWorldDoor } from "./programKidWorld";
+import { programById, programWeek } from "../../content/programs";
 import type { FamilyGoal } from "../../lib/goals";
 import {
   captureBaseline,
@@ -65,6 +68,10 @@ export interface ProgramPageViewProps {
   goals?: React.ReactNode;
   /** B-PROG-10 seam: the guided tier's coach sessions, rendered inside the weeks module (absent when the flag is off). */
   coach?: React.ReactNode;
+  /** B-PROG-13 seam: the week's ONE "Play {world} together" door, under the
+   *  primary move in the week band (absent when the week names no world or
+   *  Kid Mode cannot open it; never shown on a paused week). */
+  kidDoor?: React.ReactNode;
 }
 
 function CountRow({ c, week }: { c: ProgramCount; week: number }) {
@@ -126,6 +133,7 @@ export function ProgramPageView({
   onEnrol,
   goals,
   coach,
+  kidDoor,
 }: ProgramPageViewProps) {
   const { t } = useLanguage();
   const compact = useCompactSurface();
@@ -261,6 +269,7 @@ export function ProgramPageView({
               <Icon name={paused ? "play_arrow" : "today"} size={18} aria-hidden />
               {paused ? t("elev.program.resume", { n: model.week }) : t("elev.program.week.do")}
             </button>
+            {!paused && kidDoor && <div data-testid="program-kid-door" className="flex flex-col items-start">{kidDoor}</div>}
           </div>
         </article>
       </section>
@@ -374,8 +383,14 @@ export default function ProgramPage() {
   }, [model, inputs, programs]);
 
   const firstName = (childProfile.name || "").split(" ")[0];
+  // B-PROG-13: the week's kid world, when it names one and Kid Mode can open it
+  // for this child (programKidWorld: the parent doors' own rules, no new gate).
+  const activeProgram = model && model.status === "active" ? programById(model.programId) : undefined;
+  const kidWorld = model && activeProgram ? programWeek(activeProgram, model.week)?.kidWorld : undefined;
+  const door = programKidWorldDoor(kidWorld, childProfile, lang, now);
   return (
     <ProgramPageView
+      kidDoor={door ? <ProgramKidWorldDoor worldId={door.worldId} label={t("elev.program.kidWorld.door", { world: t(door.nameKey) })} /> : undefined}
       childName={firstName}
       model={model}
       startable={startable}

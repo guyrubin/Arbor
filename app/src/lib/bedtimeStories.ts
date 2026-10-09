@@ -17,6 +17,20 @@
 import { isolate } from "./i18n";
 import { localDayKey } from "./firstsKeepsake";
 import { MOMENT_BEHAVIOR_TYPE, behaviorTypeLabel } from "../content/behaviorTaxonomy";
+import type { ShelfId } from "./shelves/registry";
+
+/**
+ * B-PROG-13 — the active program's frame, carried on a bedtime story request
+ * as an OPTIONAL input: the program's shelf and this week's skill sentence (in
+ * the story language). The generator ignores it today (buildBedtimeStoryPrompt
+ * does not read it, and the route reads only its own fields); the Kids session
+ * decides whether and how a story is themed by it. Never child data — program
+ * content only.
+ */
+export interface BedtimeProgramTheme {
+  shelf: ShelfId;
+  skill: string;
+}
 
 /** One prefilled line of the bedtime form (B-PLAY-13). */
 export interface BedtimePrefillLine {

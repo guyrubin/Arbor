@@ -32,6 +32,9 @@ import { useToast } from "../../context/ToastContext";
 import { api, EscalationRequiredError } from "../../lib/api";
 import { isolate } from "../../lib/i18n";
 import { bedtimePrefillLatest } from "../../lib/bedtimeStories";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { programStoryTheme } from "../../lib/programPage";
+import type { ProgramEnrolment } from "../../lib/programs/enrolment";
 import type { BedtimeStory } from "../../types";
 import { cardCls, PageHeader } from "../ui/kit";
 import { ShareButton } from "../ui/ShareButton";
@@ -68,6 +71,9 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
   const { childProfile, behaviorLogs, addMoment, openPaywall } = useArbor();
   const { aiLang, uiLang, t } = useLanguage();
   const { toast } = useToast();
+  // B-PROG-13: the active program frames the request as an optional input
+  // (shelf + this week's skill); the generator ignores it for now.
+  const programs = useChildCollection<ProgramEnrolment>(childProfile.id, "programs");
   // B-PLAY-13: the page's chrome follows the UI language; only the story
   // request (and its read-aloud) keeps aiLang.
   const he = uiLang === "he";
@@ -151,6 +157,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
         dayEvents: validEvents.map((e) => ({ description: e.description })),
         avatarDescription: avatarStyle ? `Avatar style: ${avatarStyle}` : undefined,
         language: aiLang,
+        programTheme: programStoryTheme(programs.items, new Date(), aiLang === "he" ? "he" : "en", childProfile.gender ?? null) ?? undefined,
         });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
