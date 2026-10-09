@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
+import { contextLabel } from "../behaviors/contextLabel";
 import { Icon } from "../ui/Icon";
 
 /** TODAY-3 — the ONE shared confirmed-capture review contract.
@@ -58,6 +59,7 @@ function EditableRow({ row, fromNoteLabel }: { row: ReviewRow; fromNoteLabel?: s
       </div>
       {row.onChange && editing ? (
         <textarea
+          aria-label={row.label}
           value={row.value}
           onChange={(e) => row.onChange!(e.target.value)}
           onBlur={() => setEditing(false)}
@@ -72,9 +74,9 @@ function EditableRow({ row, fromNoteLabel }: { row: ReviewRow; fromNoteLabel?: s
           type="button"
           onClick={() => setEditing(true)}
           aria-label={`${row.label} — ${t("ql.review.tapToEdit")}`}
-          className="mt-1 flex w-full items-start justify-between gap-2 text-start"
+          className="mt-1 flex min-h-11 w-full items-start justify-between gap-2 text-start"
         >
-          <span className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{row.value}</span>
+          <span className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{row.value || t("ql.review.tapToEdit")}</span>
           <Icon name="edit" size={13} className="flex-shrink-0" style={{ color: "var(--arbor-muted)" }} aria-hidden />
         </button>
       ) : (
@@ -86,6 +88,7 @@ function EditableRow({ row, fromNoteLabel }: { row: ReviewRow; fromNoteLabel?: s
 
 export default function ConfirmCaptureReview({
   source,
+  busy = false,
   rows,
   intensity,
   onIntensityChange,
@@ -101,6 +104,7 @@ export default function ConfirmCaptureReview({
 }: {
   /** Factual provenance of the draft — picks the ql.review.source* line. */
   source: CaptureSource;
+  busy?: boolean;
   /** Draft fields to review; empty values are skipped. A row with onChange is tap-to-edit. */
   rows: ReviewRow[];
   /** AI-CAP-5: intensity 1-5, corrected in place via the stepper. */
@@ -128,7 +132,7 @@ export default function ConfirmCaptureReview({
   const aiFilled = source === "voice" || source === "ai-draft";
   const fromNote = aiFilled ? t("ql.review.fromNote") : undefined;
   return (
-    <form onSubmit={onConfirm} className="space-y-4 text-sm">
+    <form onSubmit={onConfirm} aria-busy={busy} className="space-y-4 text-sm">
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule)" }} role="status">
         <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ql.review.title")}</p>
         <p className="mt-1 text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t(SOURCE_KEY[source])}</p>
@@ -148,7 +152,7 @@ export default function ConfirmCaptureReview({
         )}
         <p className="mt-3 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ql.review.notSaved")}</p>
       </div>
-      {rows.filter((r) => r.value.trim()).map((r) => (
+      {rows.filter((r) => r.value.trim() || r.onChange).map((r) => (
         <EditableRow key={r.label} row={r} fromNoteLabel={r.onChange ? fromNote : undefined} />
       ))}
       {typeof intensity === "number" && onIntensityChange && (
@@ -163,7 +167,7 @@ export default function ConfirmCaptureReview({
               onClick={() => onIntensityChange(Math.max(1, intensity - 1))}
               disabled={intensity <= 1}
               aria-label={t("ql.review.intensityDown")}
-              className="flex h-9 w-9 items-center justify-center rounded-lg disabled:opacity-40"
+              className="flex h-11 w-11 items-center justify-center rounded-lg disabled:opacity-40"
               style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)" }}
             >
               <Icon name="remove" size={16} />
@@ -179,7 +183,7 @@ export default function ConfirmCaptureReview({
               onClick={() => onIntensityChange(Math.min(5, intensity + 1))}
               disabled={intensity >= 5}
               aria-label={t("ql.review.intensityUp")}
-              className="flex h-9 w-9 items-center justify-center rounded-lg disabled:opacity-40"
+              className="flex h-11 w-11 items-center justify-center rounded-lg disabled:opacity-40"
               style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)" }}
             >
               <Icon name="add" size={16} />
@@ -200,12 +204,12 @@ export default function ConfirmCaptureReview({
                 type="button"
                 onClick={() => onContextChange(c)}
                 aria-pressed={context === c}
-                className="min-h-9 rounded-lg py-1.5 text-[10px] font-bold transition"
+                className="min-h-11 rounded-lg py-1.5 text-[10px] font-bold transition"
                 style={context === c
                   ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)" }
                   : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
-                {c}
+                {c ? contextLabel(c, t) : t("companion.capture.noPlace")}
               </button>
             ))}
           </div>
@@ -220,10 +224,10 @@ export default function ConfirmCaptureReview({
           <input
             id="review-duration"
             type="number"
-            min={1}
+            min={0}
             value={durationMinutes}
-            onChange={(e) => onDurationChange(Math.max(1, parseInt(e.target.value) || 1))}
-            className="mt-1 w-24 rounded-lg p-2 text-xs focus:outline-none"
+            onChange={(e) => onDurationChange(Math.max(0, parseInt(e.target.value) || 0))}
+            className="mt-1 min-h-11 w-24 rounded-lg p-2 text-xs focus:outline-none"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
           />
         </div>
@@ -232,9 +236,9 @@ export default function ConfirmCaptureReview({
         <img src={photoSrc} alt={t("ql.review.photoAlt")} className="h-24 rounded-xl object-cover" style={{ border: "1px solid var(--arbor-rule)" }} />
       )}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <button type="button" onClick={onEdit} className="min-h-11 rounded-xl px-3 text-xs font-bold" style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)" }}>{t("ql.review.edit")}</button>
-        <button type="button" onClick={onDiscard} className="min-h-11 rounded-xl px-3 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.review.discard")}</button>
-        <button type="submit" className="col-span-2 min-h-11 rounded-xl px-3 text-xs font-extrabold text-white sm:col-span-1" style={{ background: "var(--arbor-gradient-primary)" }}>{t("ql.review.confirm")}</button>
+        <button type="button" disabled={busy} onClick={onEdit} className="min-h-11 rounded-xl px-3 text-xs font-bold" style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)" }}>{t("ql.review.edit")}</button>
+        <button type="button" disabled={busy} onClick={onDiscard} className="min-h-11 rounded-xl px-3 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.review.discard")}</button>
+        <button type="submit" disabled={busy} className="col-span-2 min-h-11 rounded-xl px-3 text-xs font-extrabold text-white sm:col-span-1" style={{ background: "var(--arbor-gradient-primary)" }}>{busy ? t("companion.family-topic-sheet.saving") : t("ql.review.confirm")}</button>
       </div>
     </form>
   );

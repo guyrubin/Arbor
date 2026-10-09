@@ -93,9 +93,9 @@ export default function PracticeStudioTab() {
   // sentence: the kept text is remembered, so a second tap writes nothing.
   const [keptLine, setKeptLine] = React.useState<string | null>(null);
   const sinceText = since ? `${since.before}${since.title ?? ""}${since.after}` : "";
-  const keepSince = () => {
+  const keepSince = async () => {
     if (!sinceText || keptLine === sinceText) return;
-    if (addMoment(sinceText)) setKeptLine(sinceText);
+    if (await addMoment(sinceText)) setKeptLine(sinceText);
   };
 
   // KID-21: this session's parent area was reached by answering the math
@@ -137,10 +137,10 @@ export default function PracticeStudioTab() {
   const { worlds, stampId } = studioWorldsForChild(lang, childProfile);
   const kidModeOpen = kidModeOpenFor(childProfile);
   const [togetherKept, setTogetherKept] = React.useState<string[]>([]);
-  const keepTogether = (id: string) => {
+  const keepTogether = async (id: string) => {
     if (togetherKept.includes(id)) return;
     try { track("practice_together_did", { card: id }); } catch { /* noop */ }
-    if (addMoment(t(`elev.ages.together.${id}.moment`))) setTogetherKept((k) => [...k, id]);
+    if (await addMoment(t(`elev.ages.together.${id}.moment`))) setTogetherKept((k) => [...k, id]);
   };
 
   return (

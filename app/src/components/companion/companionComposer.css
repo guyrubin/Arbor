@@ -11,6 +11,20 @@
 .companion-composer-tools .companion-live-button{margin-inline-start:auto;background:var(--arbor-green-soft);color:var(--arbor-green-ink)}
 .companion-composer-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px;font-size:11px;color:var(--arbor-muted)}
 .companion-composer-foot button{display:inline-flex;align-items:center;gap:5px;min-height:44px;font-size:12px;font-weight:600;color:var(--arbor-green-ink)}
+.companion-consent{padding:12px;margin-block-end:12px;border:1px solid var(--arbor-rule-strong);border-radius:var(--r-lg);background:var(--arbor-paper-elevated);font-size:var(--t-xs);line-height:1.6}
+.companion-consent header{display:flex;align-items:center;gap:8px;margin-block-end:8px}
+.companion-consent h3{flex:1;min-inline-size:0;font-size:var(--t-lg);line-height:1.35}
+.companion-consent button{min-block-size:44px;min-inline-size:44px;padding:8px 10px;border-radius:var(--r);color:var(--arbor-ink)}
+.companion-consent button:focus-visible,.companion-composer-foot button:focus-visible{outline:2px solid var(--arbor-clay);outline-offset:2px}
+.companion-consent-explanation{max-block-size:min(28dvh,220px);overflow-y:auto;overscroll-behavior:contain;padding-inline-end:6px}
+.companion-consent-explanation>p{margin-block-end:10px;color:var(--arbor-muted)}
+.companion-consent-explanation>.companion-consent-status{color:var(--arbor-ink);font-weight:600}
+.companion-consent-check{display:flex;align-items:flex-start;gap:8px;min-block-size:44px;padding-block:8px;color:var(--arbor-ink);cursor:pointer}
+.companion-consent-check input{flex-shrink:0;margin-block-start:4px;inline-size:20px;block-size:20px;accent-color:var(--arbor-clay)}
+.companion-consent-actions{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin-block-start:10px}
+.companion-consent-actions .companion-consent-allow{background:var(--arbor-clay);color:var(--arbor-on-accent);font-weight:600}
+.companion-consent-actions button:disabled{background:var(--arbor-paper-deep);color:var(--arbor-muted);cursor:not-allowed}
+.companion-consent [role=alert],.companion-consent [role=status]{margin-block-start:8px;color:var(--arbor-ink-soft)}
 .companion-attachments{display:flex;gap:10px;overflow-x:auto;padding:4px 0 8px}
 .companion-attachments figure{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;width:116px;min-height:94px;border-radius:var(--r);border:1px solid var(--arbor-rule);overflow:hidden;background:var(--arbor-paper-deep)}
 .companion-attachments img{width:116px;height:76px;object-fit:cover}

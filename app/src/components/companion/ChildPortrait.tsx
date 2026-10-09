@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { useObservations } from "../../hooks/useObservations";
+import { useObservationRecord } from "../../hooks/useObservationRecord";
 import { DOMAIN_IDS, domainName, type DomainId } from "../../lib/domains/registry";
 import type { Observation, ObservationOrigin } from "../../lib/observations";
 import { milestoneText } from "../../lib/milestoneData";
@@ -10,16 +10,19 @@ import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/Avatar";
 import { Modal } from "../ui/Modal";
 import { buildPortraitChapters, buildPortraitEnvironments, buildPortraitThreads, portraitDiscussionPrompt } from "./portraitModel";
+import { PORTRAIT_COPY } from "./portraitCopy";
+import { portraitEvidenceLines, reviewedPortraitDraft } from "./portraitEvidence";
 import "./childPortrait.css";
 
 const icons: Record<DomainId, string> = { talking: "chat_bubble", moving: "directions_run", hands: "pan_tool", thinking: "psychology", playing: "group", feelings: "favorite", body: "spa", family: "home" };
 
 
-export interface ChildPortraitProps { onDiscuss?: (prompt: string, observationIds: string[]) => void }
+export interface ChildPortraitProps { onDiscuss?: (prompt: string, childId: string) => void; onSaveQuestion?: (prompt: string, observationIds: string[]) => void }
 
-export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
-  const { childProfile, behaviorLogs, milestones, setActiveTab, seedCoach, openCaptureSheet } = useArbor();
+export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortraitProps) {
+  const { childProfile, milestones, setActiveTab, seedCoach, openCaptureSheet, requestJournalFocus } = useArbor();
   const { t, uiLang } = useLanguage();
+  const copy = PORTRAIT_COPY[uiLang === "he" ? "he" : "en"];
   const c = {
     kicker: t("companion.portrait.kicker"),
     title: t("companion.portrait.title"),
@@ -94,17 +97,21 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
     countLabel: t("companion.portrait.countLabel"),
     noPlace: t("companion.portrait.noPlace")
   };
-  const allObservations = useObservations();
+  const record = useObservationRecord();
+  const allObservations = record.observations;
   const [view, setView] = useState<"time" | "context" | "domain">("time");
   const [range, setRange] = useState(3);
   const [selection, setSelection] = useState<{ childId: string; title: string; ids: string[]; domain?: DomainId } | null>(null);
   const [visible, setVisible] = useState(20);
+  const [reviewSelection, setReviewSelection] = useState<{ childId: string; ids: string[] }>({ childId: childProfile.id, ids: [] });
+  const reviewedIds = reviewSelection.childId === childProfile.id ? reviewSelection.ids : [];
   const observations = useMemo(() => allObservations.filter(o => o.childId === childProfile.id), [allObservations, childProfile.id]);
   const chapters = useMemo(() => buildPortraitChapters(observations, childProfile.id, new Date(), range), [observations, childProfile.id, range]);
   const threads = useMemo(() => buildPortraitThreads(chapters), [chapters]);
   const inView = useMemo(() => chapters.flatMap(chapter => chapter.observations).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)), [chapters]);
   const environments = useMemo(() => buildPortraitEnvironments(inView), [inView]);
-  const logMap = useMemo(() => new Map(behaviorLogs.map(log => [`behaviorLogs:${log.id}`, log])), [behaviorLogs]);
+  const logMap = useMemo(() => new Map((record.sources.behaviorLogs ?? []).map(log => [`behaviorLogs:${log.id}`, log])), [record.sources.behaviorLogs]);
+  const unfiled = inView.filter(observation => observation.domains.length === 0);
   const selected = selection?.childId === childProfile.id ? selection : null;
   const selectedObservations = selected ? observations.filter(o => selected.ids.includes(o.id)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)) : [];
   const name = childProfile.name.split(/\s+/)[0] || childProfile.name;
@@ -127,23 +134,26 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
       case "goal_note": return v.text;
       case "fact": return v.fact;
       case "play": return v.title;
-      case "practice": return c.practice;
+      case "practice": return o.origin === "speechAttempts" ? copy.speech : o.origin === "mimicSessions" ? copy.mimic : o.origin === "adventureResults" ? copy.adventure : o.origin === "missionRecords" ? copy.mission : c.practice;
       case "measurement": return c.measurement;
       case "check": return c.check;
     }
   };
-  const select = (items: Observation[], heading: string, domain?: DomainId) => { setVisible(20); setSelection({ childId: childProfile.id, title: heading, ids: items.map(o => o.id), domain }); };
+  const select = (items: Observation[], heading: string, domain?: DomainId) => { setVisible(20); setReviewSelection({ childId: childProfile.id, ids: [] }); setSelection({ childId: childProfile.id, title: heading, ids: items.map(o => o.id), domain }); };
   const discuss = () => {
     if (!selected) return;
     const domains = selected.domain ? [selected.domain] : [...new Set(selectedObservations.flatMap(o => o.domains))];
-    const prompt = portraitDiscussionPrompt(domains, domain => domainName(domain, t), uiLang === "he");
+    const question = portraitDiscussionPrompt(domains, domain => domainName(domain, t), uiLang === "he");
+    const sources = selectedObservations.filter(o => reviewedIds.includes(o.id)).map(o => ({ childId: o.childId, id: o.id, at: o.at, source: sourceLabel(o), text: [title(o), ...portraitEvidenceLines(o, record.sources, uiLang === "he").map(line => `${line.label}: ${line.text}`)].join("\n") }));
+    const prompt = reviewedPortraitDraft(question, childProfile.id, sources, uiLang === "he");
     setSelection(null);
-    if (onDiscuss) onDiscuss(prompt, selected.ids);
+    if (onDiscuss) onDiscuss(prompt, childProfile.id);
     else seedCoach({ prompt, source: "child-portrait" });
   };
   const openOriginal = (o: Observation) => {
     setSelection(null);
-    if (o.origin === "behaviorLogs") { openCaptureSheet({ editLogId: o.id.slice("behaviorLogs:".length) }); return; }
+    if (o.origin === "behaviorLogs") { openCaptureSheet({ editLogId: o.id.slice("behaviorLogs:".length), editLog: logMap.get(o.id) }); return; }
+    if (o.origin === "milestones" && milestones.some(m => `milestones:${m.id}` === o.id)) { requestJournalFocus(`milestone-${o.id.slice("milestones:".length)}`); setActiveTab("journal"); return; }
     const routes: Partial<Record<ObservationOrigin, Parameters<typeof setActiveTab>[0]>> = { milestones: "milestones", keepsakes: "milestones", growthEntries: "profile", langObs: "language", screenings: "screening", memory: "memory", goalObservations: "practice", actionLoops: "journal", playLogs: "journal", practiceEvents: "journal", speechAttempts: "speech", mimicSessions: "mimic", adventureResults: "adventures", missionRecords: "journal" };
     setActiveTab(routes[o.origin] ?? "journal");
   };
@@ -155,13 +165,19 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
       <button type="button" className="portrait-identity" onClick={() => setActiveTab("profile")} aria-label={`${c.edit} · ${name}`}><Avatar name={childProfile.name} photoURL={childProfile.photoUrl} size={52} /><span><strong dir="auto">{name}</strong><span>{c.edit}<Icon name="chevron_right" size={16} className="portrait-arrow rtl:-scale-x-100" /></span></span></button>
     </header>
     {!!childProfile.interests?.length && <div className="portrait-interests"><span>{c.interests}</span><p dir="auto">{childProfile.interests.join(" · ")}</p></div>}
+    {!!childProfile.strengths?.length && <p className="portrait-strengths"><strong>{copy.strengths}</strong><span dir="auto">{childProfile.strengths.join(" · ")}</span></p>}
     <div className="portrait-toolbar">
       <div className="portrait-views" role="group" aria-label={c.title}>{(["time", "context", "domain"] as const).map(key => <button type="button" key={key} aria-pressed={view === key} onClick={() => setView(key)}><Icon name={key === "time" ? "history" : key === "context" ? "home" : "grid_view"} size={18} />{c[key]}</button>)}</div>
-      <label className="portrait-period"><span className="sr-only">{c.range}</span><Icon name="calendar_today" size={18} /><select aria-label={c.range} value={range} onChange={event => setRange(Number(event.target.value))}><option value={3}>{c.three}</option><option value={12}>{c.year}</option><option value={0}>{c.entire}</option></select></label>
+      <label className="portrait-period"><span className="sr-only">{c.range}</span><Icon name="calendar_today" size={18} /><select aria-label={c.range} value={range} onChange={event => setRange(Number(event.target.value))}><option value={3}>{c.three}</option><option value={12}>{c.year}</option><option value={0}>{record.more || record.loading || record.error || !record.confirmed ? copy.loaded : c.entire}</option></select></label>
       <button type="button" className="portrait-text-button" onClick={() => select(inView, c.all)} data-primary-move="explore-child-record">{c.view}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button>
     </div>
 
-    {inView.length === 0 && <div className="portrait-empty"><div className="portrait-empty-mark" aria-hidden="true"><Icon name="auto_stories" size={52} /></div><div><h2>{observations.length ? c.periodEmpty : c.emptyAll}</h2><p>{observations.length ? c.periodEmptySub : c.emptyAllSub}</p><button type="button" className="portrait-primary" onClick={() => openCaptureSheet()}><Icon name="add" size={20} />{c.capture}</button></div></div>}
+    <div className="portrait-coverage" data-history-state={record.error ? "error" : record.loading ? "loading" : !record.confirmed ? "syncing" : record.more ? "partial" : "complete"}>
+      <p role="status"><Icon name="history" size={18} />{record.error ? copy.failed : record.loading ? copy.loading : !record.confirmed ? copy.syncing : record.more ? copy.partial : copy.complete}</p>
+      {record.more && !record.error && <button type="button" className="portrait-text-button" disabled={record.loading} onClick={record.loadMore}>{record.loading ? copy.loading : copy.more}<Icon name="expand_more" size={18} /></button>}
+      {record.error && <button type="button" className="portrait-text-button" onClick={record.reload}>{copy.retry}</button>}
+    </div>
+    {!record.loading && !record.error && record.confirmed && inView.length === 0 && <div className="portrait-empty"><div className="portrait-empty-mark" aria-hidden="true"><Icon name="auto_stories" size={52} /></div><div><h2>{observations.length ? c.periodEmpty : c.emptyAll}</h2><p>{observations.length ? c.periodEmptySub : c.emptyAllSub}</p><button type="button" className="portrait-primary" onClick={() => openCaptureSheet()}><Icon name="add" size={20} />{c.capture}</button></div></div>}
     </div>
 
     <div data-module="child-portrait-evidence">
@@ -172,7 +188,7 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
         return <article className="portrait-chapter" key={chapter.id}>
           <div className="portrait-chapter-date"><span>{chapterLabel(chapter)}</span><span className="portrait-date-line" /></div>
           {featured ? <button type="button" className={`portrait-memory ${photo ? "portrait-memory-photo" : ""}`} onClick={() => select(chapter.observations, chapterLabel(chapter))}>
-            {photo ? <img src={photo} alt={c.photo} loading="lazy" /> : <div className="portrait-memory-art" aria-hidden="true"><Icon name={icons[featured.domains[0]]} size={52} /></div>}
+            {photo ? <img src={photo} alt={c.photo} loading="lazy" /> : <div className="portrait-memory-art" aria-hidden="true"><Icon name={icons[featured.domains[0]] ?? "auto_stories"} size={52} /></div>}
             <div className="portrait-memory-copy"><span className="portrait-meta">{sourceLabel(featured)} · {date(featured.at)}</span><p dir="auto">{title(featured)}</p><span className="portrait-memory-link">{c.view}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></span></div>
           </button> : <button type="button" className="portrait-memory portrait-memory-empty" onClick={() => openCaptureSheet()}><Icon name="add_a_photo" size={28} /><strong>{c.emptyChapter}</strong><span>{c.emptySub}</span></button>}
         </article>;
@@ -195,14 +211,51 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
       return <button type="button" className="portrait-domain-detail" key={domain} onClick={() => select(items, domainName(domain, t), domain)}><span className="portrait-domain-index" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span><Icon name={icons[domain]} size={32} /><div><h3>{domainName(domain, t)}</h3><p dir="auto">{items[0] ? title(items[0]) : c.noDomain}</p>{items[0] && <span className="portrait-meta">{date(items[0].at)} · {sourceLabel(items[0])}</span>}</div><Icon name="arrow_forward" size={20} className="portrait-arrow rtl:-scale-x-100" /></button>;
     })}</div></section>}
 
+    {!!unfiled.length && <button type="button" className="portrait-unfiled" onClick={() => select(unfiled, copy.unfiled)}><Icon name="auto_stories" size={24} /><span><strong>{copy.unfiled} · {unfiled.length}</strong><span>{copy.unfiledNote}</span></span><Icon name="arrow_forward" size={20} className="portrait-arrow rtl:-scale-x-100" /></button>}
     </div>
-    <div className="portrait-next" data-module="child-portrait-support"><section className="portrait-care"><Icon name="diversity_1" size={38} /><div><h2>{c.care}</h2><p>{c.careSub}</p><button type="button" className="portrait-text-button" onClick={() => setActiveTab("care-team")}>{c.careAction}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button></div></section><section className="portrait-record-tools"><button type="button" onClick={() => setActiveTab("memory")}><Icon name="psychology" size={22} /><span><strong>{c.memory}</strong><span>{c.memorySub}</span></span><Icon name="chevron_right" size={20} className="portrait-arrow rtl:-scale-x-100" /></button><div><button type="button" onClick={() => setActiveTab("milestones")}>{c.milestones}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button><button type="button" onClick={() => setActiveTab("language")}>{c.language}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button><button type="button" onClick={() => { setActiveTab("development"); window.location.hash = "#/development?view=program"; }}>{t("companion.portrait.programs")}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button><button type="button" onClick={() => setActiveTab("screening")}>{t("nav.tab.screening")}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button><button type="button" onClick={() => setActiveTab("journal")}>{c.journal}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button></div></section></div>
+    <div className="portrait-next" data-module="child-portrait-support">
+      <section className="portrait-care"><Icon name="diversity_1" size={38} /><div><h2>{c.care}</h2><p>{c.careSub}</p><button type="button" className="portrait-text-button" onClick={() => setActiveTab("care-team")}>{c.careAction}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button></div></section>
+      <section className="portrait-record-tools"><h2>{copy.understanding}</h2>
+        <button type="button" onClick={() => setActiveTab("copilot")}><Icon name="auto_stories" size={22} /><span><strong>{copy.copilot}</strong><span>{copy.copilotSub}</span></span><Icon name="chevron_right" size={20} className="portrait-arrow rtl:-scale-x-100" /></button>
+        <button type="button" onClick={() => setActiveTab("memory")}><Icon name="psychology" size={22} /><span><strong>{c.memory}</strong><span>{c.memorySub}</span></span><Icon name="chevron_right" size={20} className="portrait-arrow rtl:-scale-x-100" /></button>
+        <div>{([
+          ["reports", copy.reports], ["milestones", c.milestones], ["language", c.language],
+          ["screening", t("nav.tab.screening")], ["behaviors", copy.behavior], ["plans", copy.plans], ["journal", c.journal],
+        ] as const).map(([route, label]) => <button type="button" key={route} onClick={() => setActiveTab(route)}>{label}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button>)}
+          <button type="button" onClick={() => { setActiveTab("development"); window.location.hash = "#/development?view=program"; }}>{t("companion.portrait.programs")}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button>
+        </div>
+      </section>
+    </div>
 
     <Modal open={!!selected} onClose={() => setSelection(null)} title={selected?.title ?? c.sourceTitle} maxWidth="max-w-2xl"><div className="portrait-evidence" dir={uiLang === "he" ? "rtl" : "ltr"}>
       {selectedObservations.length === 0 && <p>{c.noDomain}</p>}
-      {selectedObservations.slice(0, visible).map(o => <article key={o.id}><div className="portrait-evidence-meta"><time dateTime={o.at}>{date(o.at, true)}</time><span>{sourceLabel(o)}</span></div>{logMap.get(o.id)?.photoAttachment && <img className="portrait-evidence-photo" src={logMap.get(o.id)?.photoAttachment} alt={c.photo} loading="lazy" />}<h4>{c.original}</h4><p className="portrait-evidence-words" dir="auto">{title(o)}</p>{o.value.type === "measurement" && <p>{[o.value.heightCm != null ? `${o.value.heightCm} cm` : "", o.value.weightKg != null ? `${o.value.weightKg} kg` : "", o.value.headCircumferenceCm != null ? `${o.value.headCircumferenceCm} cm` : ""].filter(Boolean).join(" · ")}</p>}{o.value.type === "moment" && o.value.context && <p className="portrait-meta">{c.contextLabel}: {contextLabel(o.value.context)}</p>}<p className="portrait-meta">{o.domains.map(domain => domainName(domain, t)).join(" · ")}</p><button type="button" className="portrait-text-button" onClick={() => openOriginal(o)}>{c.sourceOpen}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button></article>)}
+      {!!selectedObservations.length && <p className="portrait-map-note">{copy.selectionHint}</p>}
+      {selectedObservations.slice(0, visible).map(o => {
+        const selectedForReview = reviewedIds.includes(o.id);
+        const lines = portraitEvidenceLines(o, record.sources, uiLang === "he");
+        const keepsake = o.origin === "keepsakes" ? record.sources.keepsakes?.find(item => `keepsakes:${item.milestoneId}` === o.id) : undefined;
+        const photo = logMap.get(o.id)?.photoAttachment ?? keepsake?.photoUrl;
+        return <article key={o.id} data-observation-id={o.id}>
+          <div className="portrait-evidence-meta"><time dateTime={o.at}>{date(o.at, true)}</time><span>{sourceLabel(o)}</span></div>
+          {photo && <img className="portrait-evidence-photo" src={photo} alt={c.photo} loading="lazy" />}
+          <h4>{copy.original}</h4><p className="portrait-evidence-words" dir="auto">{title(o)}</p>
+          {!!lines.length && <dl className="portrait-evidence-details">{lines.map((line, index) => <div key={`${line.label}-${index}`}><dt>{line.label}</dt><dd dir="auto">{line.text}</dd></div>)}</dl>}
+          {o.value.type === "moment" && o.value.context && <p className="portrait-meta">{c.contextLabel}: {contextLabel(o.value.context)}</p>}
+          <p className="portrait-meta">{o.domains.length ? o.domains.map(domain => domainName(domain, t)).join(" · ") : copy.unfiled}</p>
+          <details className="portrait-source-reference"><summary>{copy.recordId}</summary><span dir="ltr">{o.id}</span></details>
+          <label className="portrait-source-selection"><input type="checkbox" checked={selectedForReview} disabled={!selectedForReview && reviewedIds.length >= 5} onChange={() => setReviewSelection({ childId: childProfile.id, ids: selectedForReview ? reviewedIds.filter(id => id !== o.id) : [...reviewedIds, o.id].slice(0, 5) })} /><span>{copy.select}</span></label>
+          <button type="button" className="portrait-text-button" onClick={() => openOriginal(o)}>{o.origin === "behaviorLogs" ? c.sourceOpen : o.origin === "milestones" && milestones.some(m => `milestones:${m.id}` === o.id) ? copy.journal : copy.library}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button>
+        </article>;
+      })}
       {selectedObservations.length > visible && <button type="button" className="portrait-text-button" onClick={() => setVisible(n => n + 20)}>{c.more}</button>}
-      <aside className="portrait-interpretation"><h4>{c.interpretation}</h4><p>{c.interpretationText}</p></aside><button type="button" className="portrait-primary" onClick={discuss}><Icon name="chat_bubble" size={20} />{c.ask}</button><p className="portrait-map-note">{c.askNote}</p>
+      <aside className="portrait-interpretation"><h4>{c.interpretation}</h4><p>{c.interpretationText}</p></aside>
+      <button type="button" className="portrait-primary" onClick={discuss}><Icon name="chat_bubble" size={20} />{reviewedIds.length ? `${copy.discuss} · ${reviewedIds.length}` : copy.none}</button>
+      {!!reviewedIds.length && <p className="portrait-map-note">{copy.shortened}</p>}
+      {onSaveQuestion && <button type="button" className="portrait-text-button" onClick={() => {
+        if (!selected) return;
+        const prompt = portraitDiscussionPrompt(selected.domain ? [selected.domain] : [...new Set(selectedObservations.flatMap(o => o.domains))], domain => domainName(domain, t), uiLang === "he");
+        setSelection(null); onSaveQuestion(prompt, selected.ids);
+      }}>{copy.saveQuestion}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button>}
     </div></Modal>
   </section>;
 }

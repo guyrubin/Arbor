@@ -177,6 +177,7 @@ export async function pollMemoryReview(deps: {
 
 import { attachmentMetadata, parseCompanionAttachments, type ComposerAttachment, type AttachmentReceipt, type AttachmentContext } from "../lib/companionAttachments";
 import { requestCompanionConversation } from "../lib/companionConversation";
+import { councilConversation } from "../lib/councilConversation";
 
 export type ChatMessage = {
   attachments?: AttachmentReceipt[];
@@ -592,7 +593,7 @@ function useArborState() {
   const [newLogTrigger, setNewLogTrigger] = useState<string>("");
   const [newLogResponse, setNewLogResponse] = useState<string>("");
   const [newLogNotes, setNewLogNotes] = useState<string>("");
-  const [newLogContext, setNewLogContext] = useState<BehaviorContext>("Home");
+  const [newLogContext, setNewLogContext] = useState<BehaviorContext | "">("");
   const [newLogPhoto, setNewLogPhoto] = useState<string>("");
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
 
@@ -606,7 +607,14 @@ function useArborState() {
   const [behaviorAnalysis, setBehaviorAnalysis] = useState<BehaviorAnalysis | null>(null);
   const [isAnalyzingBehavior, setIsAnalyzingBehavior] = useState<boolean>(false);
 
-  const [memoryReviewItems, setMemoryReviewItems] = useState<MemoryReviewItem[]>([]);
+  const [memoryReviewState, setMemoryReviewState] = useState<{ childId: string; items: MemoryReviewItem[] }>({ childId: childProfile.id, items: [] });
+  const memoryReviewItems = memoryReviewState.childId === childProfile.id ? memoryReviewState.items : [];
+  const memoryScopeRef = useRef({ childId: childProfile.id });
+  if (memoryScopeRef.current.childId !== childProfile.id) memoryScopeRef.current = { childId: childProfile.id };
+  const memoryRequestRef = useRef(0);
+  const [memoryLoadedChildId, setMemoryLoadedChildId] = useState<string | null>(null);
+  const memoryReviewLoaded = memoryLoadedChildId === childProfile.id;
+  const setMemoryReviewItems = (items: MemoryReviewItem[]) => setMemoryReviewState({ childId: childProfile.id, items });
   const [isMemoryUpdating, setIsMemoryUpdating] = useState<string | null>(null);
   // OWN-1: true while the last memory-review ledger read failed. Surfaces the
   // failure (Child Memory renders an error + retry card, the coach footer's
@@ -917,6 +925,8 @@ function useArborState() {
   // --- HANDLERS: SERVER API CALLS ---
 
   const refreshMemoryReview = async () => {
+    const scope = memoryScopeRef.current;
+    const request = ++memoryRequestRef.current;
     const outcome = await pollMemoryReview({
       attempt: async () => {
         const res = await fetch(`/api/memory/${encodeURIComponent(childProfile.id)}`, {
@@ -925,7 +935,10 @@ function useArborState() {
         if (!res.ok) return { status: res.status };
         return { status: res.status, items: (await res.json()).items || [] };
       },
+      alive: () => scope === memoryScopeRef.current && request === memoryRequestRef.current,
     });
+    if (scope !== memoryScopeRef.current || request !== memoryRequestRef.current) return;
+    setMemoryLoadedChildId(childProfile.id);
     if (!outcome.failure) {
       setMemoryReviewItems(outcome.items as MemoryReviewItem[]);
       setMemoryReviewError(false);
@@ -944,13 +957,20 @@ function useArborState() {
   };
 
   useEffect(() => {
-    refreshMemoryReview();
+    setMemoryReviewItems([]);
+    setMemoryLoadedChildId(null);
+    setMemoryReviewError(false);
+    setMemoryReviewErrorKind(null);
+    setIsMemoryUpdating(null);
+    void refreshMemoryReview();
+    return () => { memoryRequestRef.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childProfile.id]);
 
   // W2-CAREPRO c2 r1: resolves true ONLY when the server confirmed the write
   // (res.ok) — callers settle "Kept" on true, never on a swallowed failure.
   const handleMemoryDecision = async (memoryId: string, status: "approved" | "rejected" | "deleted"): Promise<boolean> => {
+    const scope = memoryScopeRef.current;
     setIsMemoryUpdating(memoryId);
     try {
       const res = await fetch(`/api/memory/${encodeURIComponent(memoryId)}`, {
@@ -960,13 +980,15 @@ function useArborState() {
       });
       if (!res.ok) throw new Error("Memory review update failed");
       const data = await res.json();
+      if (scope !== memoryScopeRef.current) return false;
       setMemoryReviewItems(data.items || []);
       return true;
     } catch (err: any) {
+      if (scope !== memoryScopeRef.current) return false;
       toast(t("ctx.toast.memoryReviewFailed"), "error");
       return false;
     } finally {
-      setIsMemoryUpdating(null);
+      if (scope === memoryScopeRef.current) setIsMemoryUpdating(null);
     }
   };
 
@@ -978,6 +1000,7 @@ function useArborState() {
     fact: string,
     opts?: { source?: string; retention?: string; prompt?: string }
   ): Promise<void> => {
+    const scope = memoryScopeRef.current;
     const res = await fetch(`/api/memory/${encodeURIComponent(childProfile.id)}/propose`, {
       method: "POST",
       headers: await authHeaders(),
@@ -992,6 +1015,7 @@ function useArborState() {
     });
     if (!res.ok) throw new Error("Memory proposal failed");
     const data = await res.json();
+    if (scope !== memoryScopeRef.current) return;
     setMemoryReviewItems(data.items || []);
   };
 
@@ -1087,8 +1111,10 @@ function useArborState() {
     if (!promptValue.trim() || isChatLoading) return false;
     const topicThread = prepareTopicConversation();
 
+    const sentDraft = !customPrompt ? chatInput : "";
     if (!customPrompt) setChatInput("");
     setApiError(null);
+    setApiErrorStatus(null);
     setChatStreamStatus(t("coach.status.connecting"));
 
 
@@ -1163,9 +1189,11 @@ function useArborState() {
 
       if (!res.ok) {
         const errData = await res.json();
+        if (!isCurrent()) return false;
         // MON-1: 402 = free-tier coach meter exhausted → render the Plus upsell
         // inline instead of an error.
         if (res.status === 402) {
+          if (sentDraft) setChatInput(current => current.trim() ? current : sentDraft);
           openPaywall(errData?.upgrade?.feature || "coach_unlimited", errData?.upgrade?.plan === "family" ? "family" : "plus");
           // ASK-5: the meter bubble is localized like every other injected
           // message — never the server's English `details` string.
@@ -1189,7 +1217,9 @@ function useArborState() {
 
       const data = await readChatPayload(res, isCurrent);
       if (!isCurrent()) return false;
-      if (data.memoryReviewItems) {
+      // Attachment analysis deliberately returns no memory proposals; an empty
+      // proposal payload must not erase the already loaded approved ledger.
+      if (data.memoryReviewItems && !attachments.length) {
         setMemoryReviewItems(data.memoryReviewItems);
       }
       // ASK-1/AIR-1: settle the live bubble with the final payload. On a
@@ -1201,6 +1231,7 @@ function useArborState() {
     } catch (err: any) {
       if (!isCurrent()) return false;
       if (err.name === "AbortError") {
+        if (sentDraft) setChatInput(current => current.trim() ? current : sentDraft);
         // ASK-8: keep any screened partial prose (parity with the voice loop);
         // an ack-only bubble is dropped so no placeholder survives the stop.
         // No cancel bubble is appended — a stop is the parent's own action,
@@ -1212,7 +1243,7 @@ function useArborState() {
       // renders t("coach.error") — never the raw err.message). No error bubble
       // is appended, so no Firestore/index/provider internals ever land in a
       // stressed parent's thread or in the persisted conversation.
-      if (!customPrompt) setChatInput(current => current.trim() ? current : promptValue);
+      if (sentDraft) setChatInput(current => current.trim() ? current : sentDraft);
       setApiErrorStatus(err instanceof ApiError ? err.status : null);
       setApiError(err.message || "An exception occurred while connecting to Arbor services.");
       setChatMessages((prev) => abortChatStream(prev));
@@ -1232,15 +1263,17 @@ function useArborState() {
   // handleChatSend has already cleared chatInput; the old silent early-return
   // made the button a no-op exactly then. CoachTab disables the button (with
   // a hint) only when no prior user turn exists either.
-  const handleCouncilSend = async (customPrompt?: string) => {
+  const handleCouncilSend = async (customPrompt?: string, opts?: { answerIndex?: number }) => {
     const eligibleThread = threadForTopic({ id: activeConversationId, topicId: conversationTopicRef.current, messages: chatMessages }, activeFamilyTopic?.id).messages;
-    const lastUserTurn = [...eligibleThread].reverse().find((m) => m.sender === "user");
-    const promptValue = customPrompt || chatInput.trim() || lastUserTurn?.text || "";
-    if (!promptValue.trim() || isChatLoading) return;
+    const continuation = councilConversation({ thread: eligibleThread, childId: childProfile.id, draft: chatInput, customPrompt, answerIndex: opts?.answerIndex });
+    if (!continuation || isChatLoading) return;
+    const promptValue = continuation.message;
+    const sentDraft = continuation.consumesDraft ? chatInput : "";
     prepareTopicConversation();
 
-    if (!customPrompt) setChatInput("");
+    if (continuation.consumesDraft) setChatInput("");
     setApiError(null);
+    setApiErrorStatus(null);
     setChatStreamStatus(t("coach.status.council"));
 
     // ASK-8: same retry-dedupe seam as handleChatSend — a council retry after
@@ -1270,6 +1303,7 @@ function useArborState() {
           ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}),
           scholarLens: selectedLens || "Integrated Balanced",
           language: getAiLanguage(),
+          ...(continuation.recentTurns ? { recentTurns: continuation.recentTurns, contextChildId: continuation.contextChildId } : {}),
         },
         (text) => { if (isCurrent()) setChatMessages((prev) => applyChatDelta(prev, text, selectedLens)); },
         {
@@ -1278,7 +1312,9 @@ function useArborState() {
         },
       );
       if (!isCurrent()) return;
-      if (data.memoryReviewItems) setMemoryReviewItems(data.memoryReviewItems);
+      // Council deliberation creates no child facts and returns an empty queue.
+      // Keep the authoritative memory read; this is not a ledger deletion.
+      if (data.memoryReviewItems?.length) setMemoryReviewItems(data.memoryReviewItems);
       // The same settle seam as /chat — which is also the ONE place a done-time
       // output-screen flag retracts streamed prose. Appending a fresh bubble
       // here instead would leave the streamed text standing next to the
@@ -1287,6 +1323,7 @@ function useArborState() {
       track("coach_council", { lens: selectedLens, voices: data.council?.length || 0 });
     } catch (err: any) {
       if (!isCurrent()) return;
+      if (sentDraft) setChatInput(current => current.trim() ? current : sentDraft);
       if (err.name === "AbortError") {
         // Parity with /chat: screened partial prose is kept, an ack-only bubble
         // is dropped, and no cancel message is written into the thread — a stop
@@ -1299,6 +1336,7 @@ function useArborState() {
       } else {
         // ASK-8: the calm retry card is the single error affordance — no
         // raw err.message bubble is appended to (or persisted with) the thread.
+        setApiErrorStatus(err instanceof ApiError ? err.status : null);
         setApiError(err.message || "The scholar council could not be reached.");
       }
       // Whatever the failure, the live ack/partial bubble must not survive it.
@@ -1313,7 +1351,21 @@ function useArborState() {
   };
 
   // Add a Custom Behavior Log
+  const captureScopeRef = useRef({ childId: childProfile.id });
+  if (captureScopeRef.current.childId !== childProfile.id) captureScopeRef.current = { childId: childProfile.id };
+  const captureScope = captureScopeRef.current;
+  const currentCaptureDraftRef = useRef("");
+  currentCaptureDraftRef.current = JSON.stringify([newLogType, newLogIntensity, newLogDuration, newLogTrigger, newLogResponse, newLogNotes, newLogContext, newLogPhoto, editingLogId]);
+  const captureWritesRef = useRef(new Set<string>());
+  const captureRevisionRef = useRef(0);
+  const editingLogSnapshotRef = useRef<BehaviorLog | null>(null);
   const resetLogForm = () => {
+    captureRevisionRef.current++;
+    editingLogSnapshotRef.current = null;
+    setNewLogType(MOMENT_BEHAVIOR_TYPE);
+    setNewLogIntensity(3);
+    setNewLogDuration(0);
+    setNewLogContext("");
     setNewLogTrigger("");
     setNewLogResponse("");
     setNewLogNotes("");
@@ -1326,15 +1378,17 @@ function useArborState() {
   // and the failure is a calm toast, never a blocking alert().
   // B-TODAY-20: returns the written row (null when invalid) so the capture
   // sheet's reply panel can echo and Undo exactly that row.
-  const handleAddLog = (e: React.FormEvent): BehaviorLog | null => {
+  const handleAddLog = async (e: React.FormEvent): Promise<BehaviorLog | null> => {
     e.preventDefault();
     const invalid = validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse });
     if (invalid) {
       toast(t(invalid), "error");
       return null;
     }
-    const existing = editingLogId ? behaviorLogs.find((l) => l.id === editingLogId) : null;
+    const existing = editingLogId ? (behaviorLogs.find((l) => l.id === editingLogId) ?? (editingLogSnapshotRef.current?.id === editingLogId ? editingLogSnapshotRef.current : null)) : null;
+    if (editingLogId && !existing) return null;
     const logItem: BehaviorLog = {
+      ...existing,
       id: existing ? existing.id : `log-${Date.now()}`,
       timestamp: existing ? existing.timestamp : new Date().toISOString(),
       behaviorType: newLogType,
@@ -1349,71 +1403,74 @@ function useArborState() {
       // A moment carries a response only if the parent actually wrote one.
       response: isIncidentType(newLogType) ? newLogResponse : newLogResponse.trim() || undefined,
       notes: newLogNotes || undefined,
-      context: newLogContext,
+      context: newLogContext || undefined,
       resolved: existing ? existing.resolved : false,
       resolutionNotes: existing?.resolutionNotes,
       photoAttachment: newLogPhoto || undefined,
     };
 
-    void logsCol.upsert(logItem);
-    if (!existing) {
-      track("log_created", { type: newLogType, intensity: logItem.intensity, context: newLogContext });
-      // ENG-22: closes started → saved. An edit is not a capture, so only a
-      // genuinely new row counts.
-      trackCaptureSaved("log");
+    const writeKey = `${childProfile.id}:draft`;
+    if (captureWritesRef.current.has(writeKey) || captureScopeRef.current !== captureScope) return null;
+    captureWritesRef.current.add(writeKey);
+    const revision = captureRevisionRef.current;
+    const draftSnapshot = currentCaptureDraftRef.current;
+    try {
+      await logsCol.upsert(logItem);
+      if (captureScopeRef.current !== captureScope) return null;
+      if (!existing) {
+        track("log_created", { type: newLogType, intensity: logItem.intensity, context: logItem.context });
+        trackCaptureSaved("log");
+      }
+      if (captureRevisionRef.current === revision && currentCaptureDraftRef.current === draftSnapshot) resetLogForm();
+      return logItem;
+    } catch {
+      if (captureScopeRef.current === captureScope) toast(t("companion.capture.saveError"), "error");
+      return null;
+    } finally {
+      captureWritesRef.current.delete(writeKey);
     }
-    resetLogForm();
-    return logItem;
   };
 
-  /**
-   * TJB-01: a plain moment from ONE text field — no type, no intensity, no
-   * "what you tried". Writes directly (independent of the incident draft
-   * state, so a half-filled form elsewhere never leaks into it). Returns the
-   * written row, or null when the text is empty.
-   */
-  const addMoment = (
+  /** One awaited persistence seam for plain moments. Unchosen place and
+   * incident fields never leak from another capture into a neutral memory. */
+  const addMoment = async (
     text: string,
-    opts: { photoAttachment?: string; promptKey?: string; shelf?: ShelfId; milestoneId?: string } = {},
-  ): BehaviorLog | null => {
-    // B-TODAY-19: the one capture sheet keeps a photo in place (in-doc
-    // thumbnail, as handleAddLog does) and the answered prompt's key — one
-    // pure builder (content/behaviorTaxonomy buildMomentLog).
-    const { shelf, milestoneId, ...buildOpts } = opts;
-    const built = buildMomentLog(text, newLogContext, buildOpts);
+    opts: { photoAttachment?: string; promptKey?: string; shelf?: ShelfId; milestoneId?: string; context?: BehaviorContext; notes?: string } = {},
+  ): Promise<BehaviorLog | null> => {
+    const { shelf, milestoneId, context, notes, ...buildOpts } = opts;
+    const built = buildMomentLog(text, context ?? "", buildOpts);
     if (!built) return null;
-    // B-LOOP-10: Tonight's "What happened?" line is filed on the practice's
-    // shelf (the parent answered about that shelf), with its milestone.
+    const { context: _unchosenContext, ...moment } = built;
     const logItem: BehaviorLog = {
-      ...built,
-      context: built.context as BehaviorContext,
+      ...moment,
+      ...(context ? { context } : {}),
+      ...(notes?.trim() ? { notes: notes.trim() } : {}),
       ...(shelf ? { shelf } : {}),
       ...(milestoneId ? { milestoneId } : {}),
     };
-    void logsCol.upsert(logItem);
-    track("log_created", { type: logItem.behaviorType, intensity: logItem.intensity, context: logItem.context });
-    trackCaptureSaved("moment");
-    return logItem;
+    const writeKey = `${childProfile.id}:moment:${text}:${JSON.stringify(opts)}`;
+    if (captureWritesRef.current.has(writeKey) || captureScopeRef.current !== captureScope) return null;
+    captureWritesRef.current.add(writeKey);
+    try {
+      await logsCol.upsert(logItem);
+      if (captureScopeRef.current !== captureScope) return null;
+      track("log_created", { type: logItem.behaviorType, context: logItem.context });
+      trackCaptureSaved("moment");
+      return logItem;
+    } catch {
+      if (captureScopeRef.current === captureScope) toast(t("companion.capture.saveError"), "error");
+      return null;
+    } finally {
+      captureWritesRef.current.delete(writeKey);
+    }
   };
-
-  const saveMoment = async (text: string, opts: { photoAttachment?: string; promptKey?: string; shelf?: ShelfId; milestoneId?: string } = {}): Promise<BehaviorLog | null> => {
-    const { shelf, milestoneId, ...buildOpts } = opts;
-    const built = buildMomentLog(text, "", buildOpts);
-    if (!built) return null;
-    // Together never asks for a place; do not borrow one from another draft.
-    const { context: _unchosenContext, ...moment } = built;
-    const logItem: BehaviorLog = { ...moment,
-      ...(shelf ? { shelf } : {}), ...(milestoneId ? { milestoneId } : {}) };
-    await logsCol.upsert(logItem);
-    track("log_created", { type: logItem.behaviorType, context: logItem.context });
-    trackCaptureSaved("moment");
-    return logItem;
-  };
+  const saveMoment = addMoment;
 
   // Load a log into the form for editing.
-  const startEditLog = (id: string) => {
-    const log = behaviorLogs.find((l) => l.id === id);
+  const startEditLog = (id: string, original?: BehaviorLog) => {
+    const log = behaviorLogs.find((l) => l.id === id) ?? (original?.id === id ? original : undefined);
     if (!log) return;
+    editingLogSnapshotRef.current = log;
     setNewLogType(log.behaviorType);
     // B-DATA-09: a moment carries no intensity — the sheet keeps its own.
     if (typeof log.intensity === "number") setNewLogIntensity(log.intensity);
@@ -1421,7 +1478,8 @@ function useArborState() {
     setNewLogTrigger(log.trigger);
     setNewLogResponse(log.response ?? "");
     setNewLogNotes(log.notes || "");
-    setNewLogContext(log.context || "Home");
+    captureRevisionRef.current++;
+    setNewLogContext(log.context || "");
     setNewLogPhoto(log.photoAttachment || "");
     setEditingLogId(id);
   };
@@ -1435,13 +1493,25 @@ function useArborState() {
   //    updates the row through handleAddLog's editingLogId branch.
   // capture_started is emitted here for a capture (an edit is not one), and
   // pendingCaptureMode is NOT armed — Behaviors must not re-open it later.
-  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string; initialText?: string; initialPhoto?: string }>({ open: false });
-  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string; initialText?: string; initialPhoto?: string } = {}) => {
-    if (opts.editLogId) startEditLog(opts.editLogId);
-    else trackCaptureStarted(opts.review === "ai-draft" ? "ai-draft" : opts.mode ?? "text");
+  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialPhoto?: string }>({ open: false });
+  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialPhoto?: string } = {}) => {
+    if (opts.editLogId) startEditLog(opts.editLogId, opts.editLog);
+    else {
+      if (!opts.review) resetLogForm();
+      trackCaptureStarted(opts.review === "ai-draft" ? "ai-draft" : opts.mode ?? "text");
+    }
     setCaptureSheet({ open: true, ...opts });
   };
-  const closeCaptureSheet = () => setCaptureSheet({ open: false });
+  const closeCaptureSheet = () => {
+    captureRevisionRef.current++;
+    setCaptureSheet({ open: false });
+  };
+  useEffect(() => {
+    resetLogForm();
+    setCaptureSheet({ open: false });
+    // Child changes retire every capture draft, including unfinished edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childProfile.id]);
 
   // Edit a custom milestone's title.
   const updateMilestoneTitle = (id: string, title: string) => {
@@ -1566,13 +1636,13 @@ function useArborState() {
   };
 
   // Deletions (data correction)
-  const deleteLog = (id: string) => void logsCol.remove(id);
+  const deleteLog = (id: string) => logsCol.remove(id);
   /** B-LOOP-06: the parent confirmed where a saved moment belongs (and,
    *  optionally, the milestone it evidences). Only the parent's tap calls it. */
-  const fileMomentOnShelf = (logId: string, shelf: ShelfId, milestoneId?: string) => {
-    const log = behaviorLogs.find((l) => l.id === logId);
-    if (!log) return;
-    void logsCol.upsert({ ...log, shelf, ...(milestoneId ? { milestoneId } : {}) });
+  const fileMomentOnShelf = (logId: string, shelf: ShelfId, milestoneId?: string, original?: BehaviorLog) => {
+    const log = behaviorLogs.find((l) => l.id === logId) ?? (original?.id === logId ? original : undefined);
+    if (!log) return Promise.reject(new Error("The saved moment is no longer available"));
+    return logsCol.upsert({ ...log, shelf, ...(milestoneId ? { milestoneId } : {}) });
   };
   const deletePlan = (id: string) => void plansCol.remove(id);
   // B-GROWTH-25: a ready-made routine starts as a plan in one tap — no goal,
@@ -1592,7 +1662,7 @@ function useArborState() {
   const setMilestoneObservation = (id: string, status: ObserveStatus, opts: ObserveOptions = {}) => {
     const milestone = milestones.find((item) => item.id === id);
     if (!milestone) return;
-    void milestonesCol.upsert(observeMilestoneDoc(milestone, status, opts));
+    return milestonesCol.upsert(observeMilestoneDoc(milestone, status, opts));
   };
   /** B-LOOP-04 (critic r3): Undo where the answer was given — writes back the
    *  document the surface held BEFORE the answer, byte for byte (setDoc
@@ -1831,6 +1901,7 @@ function useArborState() {
     keptInsights,
     isAnalyzingBehavior,
     memoryReviewItems,
+    memoryReviewLoaded,
     isMemoryUpdating,
     memoryReviewError,
     memoryReviewErrorKind,

@@ -33,7 +33,7 @@ const provider = {
   generateJson: async () => ({ safe: true, reason: "" }), async *streamText() { yield ""; },
 } as unknown as ModelProvider;
 class OwnedMemory extends LocalMemoryStore {
-  async ownsChild(uid: string, childId: string) { return uid === "synthetic-parent" && ["owned-child", "no-consent"].includes(childId); }
+  async ownsChild(uid: string, childId: string) { return uid === "synthetic-parent" && ["owned-child", "no-consent", "consent-lifecycle"].includes(childId); }
 }
 let server: Server;
 let base: string;
@@ -42,7 +42,9 @@ const consent = new LocalConsentStore();
 beforeAll(async () => {
   const config = createTestConfig();
   const entitlementStore = createEntitlementStore(config);
-  await consent.set(buildConsent({ childId: "owned-child", purpose: "face_processing", granted: true, actorUid: "synthetic-parent" }));
+  await consent.set(buildConsent({ childId: "owned-child", purpose: "companion_attachments", granted: true, actorUid: "synthetic-parent" }));
+  // An avatar grant must never silently become permission to analyse documents.
+  await consent.set(buildConsent({ childId: "no-consent", purpose: "face_processing", granted: true, actorUid: "synthetic-parent" }));
   const app = express();
   app.use(express.json({ limit: "10mb" }));
   app.use((req, _res, next) => { (req as unknown as { user: { uid: string } }).user = { uid: "synthetic-parent" }; next(); });
@@ -70,11 +72,32 @@ describe("one multimodal coach turn at the authenticated route", () => {
     expect(JSON.stringify(result.body)).not.toContain("base64");
     expect(result.body.memoryReviewItems).toEqual([]);
   });
-  it("denied-media-consent: requires existing media consent even for document/PDF attachment", async () => {
+  it("denied-media-consent: an existing avatar grant does not authorize image/PDF analysis", async () => {
     const result = await post({ ...BODY, childId: "no-consent", childProfile: { id: "no-consent", age: 4 }, attachments: [{ ...attachment, childId: "no-consent", kind: "document", mimeType: "application/pdf", dataUrl: "data:application/pdf;base64,JVBERi0xLjc=" }] });
     expect(result.status).toBe(451);
-    expect(result.body.purpose).toBe("face_processing");
+    expect(result.body.purpose).toBe("companion_attachments");
     expect(calls).toHaveLength(0);
+  });
+  it("legacy document analysis also rejects an avatar-only grant", async () => {
+    const response = await fetch(`${base}/api/vision`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ childId: "no-consent", image: { dataUrl: attachment.dataUrl }, mode: "recommendations" }) });
+    expect(response.status).toBe(451);
+    expect((await response.json()).purpose).toBe("companion_attachments");
+    expect(calls).toHaveLength(0);
+  });
+  it("explicit grant allows a retry and revocation stops the next analysis", async () => {
+    const body = { ...BODY, childId: "consent-lifecycle", childProfile: { id: "consent-lifecycle", age: 4 }, attachments: [{ ...attachment, childId: "consent-lifecycle" }] };
+    expect((await post(body)).status).toBe(451);
+    const response = await fetch(`${base}/api/consent`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ childId: "consent-lifecycle", purpose: "companion_attachments", granted: true }) });
+    expect(response.status).toBe(200);
+    const { grant } = await response.json();
+    expect(grant.purpose).toBe("companion_attachments");
+    expect(grant.policyVersion).toBe("2026-10-companion-attachments-1");
+    expect(calls).toHaveLength(0);
+    expect((await post(body)).status).toBe(200);
+    expect(calls).toHaveLength(1);
+    expect((await fetch(`${base}/api/consent/${grant.id}`, { method: "DELETE" })).status).toBe(200);
+    expect((await post(body)).status).toBe(451);
+    expect(calls).toHaveLength(1);
   });
   it("rejects another family's child before model access", async () => {
     const result = await post({ ...BODY, childId: "other-child", childProfile: { id: "other-child" }, attachments: [{ ...attachment, childId: "other-child" }] });

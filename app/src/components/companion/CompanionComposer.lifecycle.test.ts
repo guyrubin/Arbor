@@ -6,6 +6,8 @@ import ts from "typescript";
 import { MAX_COMPANION_ATTACHMENTS, parseCompanionAttachments, type ComposerAttachment } from "../../lib/companionAttachments";
 import { threadForTopic } from "../../lib/topicConversation";
 import { translate } from "../../lib/i18n";
+import { screenForImmediateEscalation } from "../../safety/escalation";
+import { COMPANION_CONSENT_COPY } from "./companionConsentCopy";
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), "src", path), "utf8");
 const composerSource = read("components/companion/CompanionComposer.tsx");
@@ -127,7 +129,7 @@ const photo = (id = "photo-a", childId = "child-a"): ComposerAttachment => ({
 });
 type SpeechCallbacks = { onResult: (text: string) => void; onInterim: (text: string) => void; onError: (reason: string) => void; onEnd: () => void };
 
-function harness(options: { send?: () => Promise<boolean | undefined>; text?: string } = {}) {
+function harness(options: { send?: () => Promise<boolean | undefined>; text?: string; permission?: () => Promise<boolean> } = {}) {
   const preparations: { file: File; childId: string; kind: ComposerAttachment["kind"]; pending: ReturnType<typeof deferred<ComposerAttachment>> }[] = [];
   const sessions: { callbacks: SpeechCallbacks; stop: ReturnType<typeof vi.fn> }[] = [];
   const prepare = vi.fn((file: File, childId: string, kind: ComposerAttachment["kind"]) => {
@@ -139,6 +141,7 @@ function harness(options: { send?: () => Promise<boolean | undefined>; text?: st
   const thumbnail = vi.fn(async (_file: File) => "data:image/jpeg;base64,bounded-thumbnail");
   const onSend = vi.fn((_prompt?: string, _options?: { attachments?: ComposerAttachment[] }) => options.send ? options.send() : Promise.resolve(true));
   const openCaptureSheet = vi.fn(), stopVoice = vi.fn();
+  const requirePermission = vi.fn(options.permission ?? (async () => true));
   const state = {
     childProfile: { id: "child-a" }, activeConversationId: null as string | null,
     conversationRevision: 0, chatMessages: [] as any[], activeFamilyTopic: undefined,
@@ -162,6 +165,10 @@ function harness(options: { send?: () => Promise<boolean | undefined>; text?: st
     "../../lib/speech": { startDictation, speechSupported: () => true },
     "../../lib/microphoneRecovery": { microphoneRecovery: (reason: string) => `Microphone: ${reason}` },
     "../../lib/companionAttachments": { MAX_COMPANION_ATTACHMENTS, parseCompanionAttachments, prepareCompanionAttachment: prepare },
+    "../../safety/escalation": { screenForImmediateEscalation },
+    "./useCompanionConsent": { useCompanionConsent: () => ({ accountId: "parent-a", busy: null, requirePermission, review: vi.fn() }) },
+    "./CompanionConsentReview": { __esModule: true, default: "CompanionConsentReview" },
+    "./companionConsentCopy": { COMPANION_CONSENT_COPY },
     "./companionComposer.css": {},
   };
   const parent = renderer(slotCode, { "./CompanionComposer": { __esModule: true, default: "CompanionComposer" } });
@@ -176,7 +183,7 @@ function harness(options: { send?: () => Promise<boolean | undefined>; text?: st
   };
   render(); stopVoice.mockClear();
   return {
-    state, render, preparations, prepare, sessions, thumbnail, onSend, openCaptureSheet, stopVoice,
+    state, render, preparations, prepare, sessions, thumbnail, onSend, openCaptureSheet, stopVoice, requirePermission,
     allocate: () => { controlsView.render(state).prepareTopicConversation(); render(); },
     newConversation: () => { controlsView.render(state).newConversation(); render(); },
     openConversation: (id: string) => { controlsView.render(state).openConversation(id); render(); },
@@ -245,7 +252,7 @@ describe("Companion draft, attachment and speech lifetime", () => {
 
   it("a successful send clears attachments even while the panel is hidden", async () => {
     const pending = deferred<boolean>(); const view = harness({ send: () => pending.promise }); await attach(view);
-    view.click("Send"); view.state.visible = false; view.render(); pending.resolve(true); await tick();
+    view.click("Send"); await tick(); view.state.visible = false; view.render(); pending.resolve(true); await tick();
     expect(view.previews()).toEqual([]); view.state.visible = true; expect(view.previews()).toEqual([]);
   });
 
@@ -257,6 +264,29 @@ describe("Companion draft, attachment and speech lifetime", () => {
     expect(view.onSend).toHaveBeenCalledTimes(2);
     expect(view.onSend.mock.calls.map(call => call[1]?.attachments)).toEqual([[file], [file]]);
     expect(view.previews()).toEqual([]);
+  });
+
+  it("a missing file permission preserves draft and originals without sending to AI", async () => {
+    const view = harness({ permission: async () => false }); const file = await attach(view);
+    view.click("Send"); await tick();
+    expect(view.requirePermission).toHaveBeenCalledOnce();
+    expect(view.onSend).not.toHaveBeenCalled(); expect(view.previews()).toEqual([file.name]);
+    expect(view.state.chatInput).toBe("A moment from today");
+  });
+
+  it("immediate-help text reaches the governed server path without waiting on file permission", async () => {
+    const view = harness({ text: "My child says he wants to die", permission: async () => false });
+    const file = await attach(view); view.click("Send"); await tick();
+    expect(view.requirePermission).not.toHaveBeenCalled();
+    expect(view.onSend).toHaveBeenCalledWith(undefined, { attachments: [file] });
+  });
+
+  it("closing while checking file permission does not send a draft after the panel is hidden", async () => {
+    const pending = deferred<boolean>(); const view = harness({ permission: () => pending.promise });
+    const file = await attach(view); view.click("Send"); view.state.visible = false; view.render();
+    pending.resolve(true); await tick();
+    expect(view.onSend).not.toHaveBeenCalled(); expect(view.previews()).toEqual([file.name]);
+    view.state.visible = true; expect(button(view.render(), "Send").props.disabled).toBe(false);
   });
 
   it("late send success cannot remove files attached in the next conversation", async () => {

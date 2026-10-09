@@ -228,8 +228,8 @@ describe("TJB-01 — no capture surface renders a blocking alert()", () => {
     expect(ctx).toContain("toast(t(invalid), \"error\")");
     // B-TODAY-19: addMoment takes the photo + prompt key, through the ONE
     // pure builder that keeps the same validateLogDraft rule.
-    expect(ctx).toMatch(/const addMoment = \(\s*text: string,/);
-    expect(ctx).toContain("buildMomentLog(text, newLogContext, buildOpts)");
+    expect(ctx).toMatch(/const addMoment = async \(\s*text: string,/);
+    expect(ctx).toContain('buildMomentLog(text, context ?? "", buildOpts)');
     expect(readSrc("content/behaviorTaxonomy.ts")).toMatch(/export function buildMomentLog[\s\S]{0,400}if \(validateLogDraft\(fields\)\) return null;/);
   });
 

@@ -4,6 +4,8 @@
  * A grant records verifiable parental consent for ONE purpose on ONE child:
  *   - face_processing  — turn a reference photo into a stylized avatar
  *   - voice_processing — score the child's recorded speech (cloud ASR)
+ *   - companion_attachments — analyse parent-selected images/PDFs in the
+ *                             companion; separate from legacy avatar grants
  *   - ai_training      — let Arbor use child-derived signals to improve models
  *                        (DEFAULT OFF, opt-in; Arbor's stance is to keep this off)
  *
@@ -17,7 +19,7 @@ import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
 
-export type ConsentPurpose = "face_processing" | "voice_processing" | "ai_training";
+export type ConsentPurpose = "face_processing" | "voice_processing" | "ai_training" | "companion_attachments";
 
 export type ConsentGrant = {
   id: string;
@@ -32,6 +34,7 @@ export type ConsentGrant = {
 };
 
 export const CONSENT_POLICY_VERSION = "2026-06-coppa-1";
+export const COMPANION_CONSENT_POLICY_VERSION = "2026-10-companion-attachments-1";
 
 /** Active only while granted, unrevoked, and unexpired. */
 export const isConsentActive = (
@@ -57,7 +60,7 @@ export const buildConsent = (input: NewConsent, now: number = Date.now()): Conse
   childId: input.childId,
   purpose: input.purpose,
   granted: input.granted,
-  policyVersion: CONSENT_POLICY_VERSION,
+  policyVersion: input.purpose === "companion_attachments" ? COMPANION_CONSENT_POLICY_VERSION : CONSENT_POLICY_VERSION,
   actorUid: input.actorUid,
   grantedAt: new Date(now).toISOString(),
   expiresAt: input.granted ? defaultExpiry(input.purpose, now) : null,

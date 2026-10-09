@@ -125,7 +125,7 @@ describe("wiring: offered on exit, shown once Kid Mode is closed, memory only", 
     const ctx = read("..", "..", "KidModeContext.tsx");
     expect(ctx).toContain("{!isKidModeOpen && <SneakHandBackCard />}");
     const cardSrc = read("..", "..", "SneakHandBackCard.tsx");
-    expect(cardSrc).toContain("onKeep={() => { addMoment(keep); dismissSneakHandBack(); }}");
+    expect(cardSrc).toContain("onKeep={async () => { if (await addMoment(keep)) dismissSneakHandBack(); }}");
     expect(cardSrc).not.toMatch(/["']kid\./); // parent register copy only
     expect(() => offerSneakHandBack({ childId: "c1", name: "Dylan", reached: 3, keepLine: null })).not.toThrow();
   });

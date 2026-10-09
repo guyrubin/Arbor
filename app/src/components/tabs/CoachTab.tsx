@@ -34,6 +34,7 @@ import { ShareButton } from "../ui/ShareButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import CompanionComposer from "../companion/CompanionComposer";
 import type { ComposerAttachment } from "../../lib/companionAttachments";
+import { requestCompanionConsentReview } from "../../lib/companionConsent";
 import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError } from "../../lib/api";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
@@ -320,13 +321,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     setAiFailure(null);
     return sendToCoach(customPrompt, opts);
   };
-  const handleCouncilSend = (customPrompt?: string) => {
+  const handleCouncilSend = (customPrompt?: string, opts?: { answerIndex?: number }) => {
     if (!online) {
       setAiFailure(classifyAiFailure(null, { online: false, childName: childFirst }));
       return;
     }
     setAiFailure(null);
-    return convenceCouncil(customPrompt);
+    return convenceCouncil(customPrompt, opts);
   };
 
   // The ONE thing the failure card should say. A 429 (wait, nothing is lost),
@@ -334,6 +335,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // offline are three different problems with three different next steps —
   // they must never share one sentence, and none of them may render the
   // server's own English `details` string.
+  const fileConsentFailure = apiErrorStatus === 451 && !![...chatMessages].reverse().find(message => message.sender === "user")?.attachments?.length;
   const failureCopy: AiFailureCopy | null =
     aiFailure ?? (apiError && !isChatLoading
       // AI-06: classify on the STATUS the context preserved. Passing null
@@ -341,7 +343,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       // sentence with a Retry button — a retry the parent owns the answer
       // to. The raw server message is still never rendered.
       ? classifyAiFailure(apiErrorStatus == null ? null : { status: apiErrorStatus },
-          { online, childName: childFirst })
+          { online, childName: childFirst, ...(fileConsentFailure ? { consentPurpose: "companion_attachments" as const } : {}) })
       : null);
 
   // F-08: text for the ALWAYS-mounted polite chat-status live region (twin:
@@ -1339,7 +1341,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                       }}
                       // B-ASKJB-05: "Go deeper" (inside More, only while no
                       // council exists) convenes the council on this question.
-                      onGoDeeper={() => handleCouncilSend()}
+                      onGoDeeper={() => handleCouncilSend(undefined, { answerIndex: idx })}
                       // AI-05: the teacher note is CONSUMED, not dropped. The
                       // card handed a real note string and this callback threw
                       // it away, so "Teacher note" was a bare tab switch into an
@@ -1585,10 +1587,10 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                       <Icon name="sync" size={14} /> {t("elev.aierrors.retry")}
                     </button>
                   )}
-                  {failureCopy.actionKey && failureCopy.actionRoute && (
+                  {failureCopy.actionKey && (failureCopy.actionRoute || fileConsentFailure) && (
                     <button
                       type="button"
-                      onClick={() => setActiveTab(failureCopy.actionRoute!)}
+                      onClick={() => fileConsentFailure ? requestCompanionConsentReview(childProfile.id) : setActiveTab(failureCopy.actionRoute!)}
                       className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl text-xs font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                       style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
                     >

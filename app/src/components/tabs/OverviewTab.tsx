@@ -538,9 +538,9 @@ export default function OverviewTab() {
         const row = dose ?? practiceDoseEntry(pick, "did", childProfile.id, sayText);
         recordPracticeDose(tonightOutcomeEntry(row, outcome));
       }}
-      onWhatHappened={(text) => {
+      onWhatHappened={async (text) => {
         if (!pick) return;
-        addMoment(text, { shelf: pick.shelf, ...(pick.milestone ? { milestoneId: pick.milestone.id } : {}) });
+        if (!await addMoment(text, { shelf: pick.shelf, ...(pick.milestone ? { milestoneId: pick.milestone.id } : {}) })) return;
         // B-LOOP-13: the line also lands on the day's dose row — the night
         // answer tomorrow's practice is chosen from (≤ 240 chars; the helper
         // line under the field says so), and tomorrow morning's line 1 on

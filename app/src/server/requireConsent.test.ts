@@ -5,8 +5,8 @@ import { LocalConsentStore, buildConsent } from "../sharing/consent.js";
 /**
  * A2 + A3 regression: the COPPA gate on /api/vision (and /api/generate-avatar).
  * /vision sends a child photo to a multimodal model, so it must fail CLOSED with
- * 451 unless an active `face_processing` parental consent exists for the childId
- * — the same grant the onboarding consent step (A3) records into this store.
+ * 451 unless an active `companion_attachments` parental consent exists for the childId
+ * — separate from the legacy avatar grant.
  */
 
 function ctx(over: { uid?: string; childId?: string; image?: unknown } = {}) {
@@ -30,7 +30,7 @@ function ctx(over: { uid?: string; childId?: string; image?: unknown } = {}) {
 
 // Mirrors the wiring in routes/api.ts: gate /vision whenever an image is present.
 const visionGate = (store: LocalConsentStore) =>
-  requireConsent(store, "face_processing", (req) => !!req.body?.image);
+  requireConsent(store, "companion_attachments", (req) => !!req.body?.image);
 
 describe("requireConsent — /vision COPPA gate (A2/A3)", () => {
   const IMAGE = { dataUrl: "data:image/png;base64,iVBORw0KGgo=" };
@@ -41,23 +41,23 @@ describe("requireConsent — /vision COPPA gate (A2/A3)", () => {
     await visionGate(store)(c.req, c.res, c.next);
     expect(c.next).not.toHaveBeenCalled();
     expect(c.status).toBe(451);
-    expect(c.payload).toMatchObject({ consentRequired: true, purpose: "face_processing" });
+    expect(c.payload).toMatchObject({ consentRequired: true, purpose: "companion_attachments" });
   });
 
   it("451s (fails closed) when the client omits childId, even with an image", async () => {
     const store = new LocalConsentStore();
     // Pre-record consent for a child — but the request carries no childId.
-    await store.set(buildConsent({ childId: "kid1", purpose: "face_processing", granted: true, actorUid: "parentA" }));
+    await store.set(buildConsent({ childId: "kid1", purpose: "companion_attachments", granted: true, actorUid: "parentA" }));
     const c = ctx({ uid: "parentA", image: IMAGE }); // no childId
     await visionGate(store)(c.req, c.res, c.next);
     expect(c.next).not.toHaveBeenCalled();
     expect(c.status).toBe(451);
   });
 
-  it("passes once the parent's face_processing consent is recorded (the onboarding/A3 grant)", async () => {
+  it("passes once the parent's companion_attachments consent is recorded (the explicit file-analysis grant)", async () => {
     const store = new LocalConsentStore();
     // Exactly what the onboarding consent step + POST /api/consent write.
-    await store.set(buildConsent({ childId: "kid1", purpose: "face_processing", granted: true, actorUid: "parentA" }));
+    await store.set(buildConsent({ childId: "kid1", purpose: "companion_attachments", granted: true, actorUid: "parentA" }));
     const c = ctx({ uid: "parentA", childId: "kid1", image: IMAGE });
     await visionGate(store)(c.req, c.res, c.next);
     expect(c.next).toHaveBeenCalled();
@@ -66,7 +66,7 @@ describe("requireConsent — /vision COPPA gate (A2/A3)", () => {
 
   it("451s again after the consent is revoked (re-prompt on withdrawal)", async () => {
     const store = new LocalConsentStore();
-    const grant = await store.set(buildConsent({ childId: "kid1", purpose: "face_processing", granted: true, actorUid: "parentA" }));
+    const grant = await store.set(buildConsent({ childId: "kid1", purpose: "companion_attachments", granted: true, actorUid: "parentA" }));
     await store.revoke(grant.id);
     const c = ctx({ uid: "parentA", childId: "kid1", image: IMAGE });
     await visionGate(store)(c.req, c.res, c.next);

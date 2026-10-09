@@ -195,10 +195,10 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
 
   /** B-PLAY-14: keep what the child said to one goodnight question — ONE
    *  parent-provenance moment through the addMoment seam (no new store). */
-  const keepAnswer = (i: number, question: string) => {
+  const keepAnswer = async (i: number, question: string) => {
     const answer = (answers[i] ?? "").trim();
     if (!answer || kept[i]) return;
-    const written = addMoment(t("elev.bedtime.keep.line", { question, name, answer }));
+    const written = await addMoment(t("elev.bedtime.keep.line", { question, name, answer }));
     if (written) {
       setKept((k) => ({ ...k, [i]: true }));
       toast(t("elev.bedtime.goodnight.saved"), "success");
@@ -221,14 +221,16 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
    * GDPR surface. Generate-and-discard is untouched: the STORY is still not
    * persisted — only the parent's own line that they read one tonight.
    */
-  const goodNight = () => {
+  const goodNight = async () => {
     const title = story?.title?.trim();
     const line = title
       ? t("elev.bedtime.goodnight.moment.titled").replace("{title}", title)
       : t("elev.bedtime.goodnight.moment");
-    const written = addMoment(line);
-    if (written) toast(t("elev.bedtime.goodnight.saved"), "success");
-    reset();
+    const written = await addMoment(line);
+    if (written) {
+      toast(t("elev.bedtime.goodnight.saved"), "success");
+      reset();
+    }
   };
 
   // E8/F-10: display copy below bidi-isolates each interpolation of the name

@@ -106,4 +106,12 @@ describe("Now's restored recommendations and one conversation entrance", () => {
     expect(html).not.toContain(NOW_COPY.en.curatedWhy);
     expect(html).not.toContain(NOW_COPY.en.talkTitle);
   });
+  it("offers a deliberate weekly reflection door without adding a competing primary action", () => {
+    const html = renderToStaticMarkup(<NowView />);
+    const weekly = state.buttons.find(item => item.className === "now-weekly-door");
+    expect(weekly).toBeDefined(); weekly!.onClick?.();
+    expect(state.setActiveTab).toHaveBeenCalledWith("weekly");
+    expect(html).toContain(NOW_COPY.en.weeklyTitle);
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+  });
 });

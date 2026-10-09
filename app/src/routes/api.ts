@@ -10,7 +10,7 @@ import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider }
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence } from "../contracts/coach.js";
-import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE } from "../ai/prompts.js";
+import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
@@ -486,7 +486,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   };
 
   // ── COPPA-2026 consent ledger ──────────────────────────────────────────────
-  const VALID_PURPOSES: ConsentPurpose[] = ["face_processing", "voice_processing", "ai_training"];
+  const VALID_PURPOSES: ConsentPurpose[] = ["face_processing", "voice_processing", "ai_training", "companion_attachments"];
   // Grant / update a purpose-scoped consent for a child (parent-owner only).
   router.post("/consent", requireOwnership, async (req, res) => {
     const { childId, purpose, granted } = req.body ?? {};
@@ -772,7 +772,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     // Normalize before authorization; older clients only supplied the profile.
     if (!supplied && typeof profileId === "string") req.body.childId = profileId;
     next();
-  }, requireOwnership, requireConsent(consentStore, "face_processing", (req) => Array.isArray(req.body?.attachments) && req.body.attachments.length > 0 && !screenForImmediateEscalation({ message: req.body?.message })), async (req, res) => {
+  }, requireOwnership, requireConsent(consentStore, "companion_attachments", (req) => Array.isArray(req.body?.attachments) && req.body.attachments.length > 0 && !screenForImmediateEscalation({ message: req.body?.message })), async (req, res) => {
     let attachments: ComposerAttachment[];
     try { attachments = parseCompanionAttachments(req.body.attachments, String(req.body.childId || "")); }
     catch { res.status(400).json({ error: "Invalid attachments. Please attach these files again." }); return; }
@@ -1180,7 +1180,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // chatAbortRef the Stop button already aborts. The non-SSE `api.council()`
   // remains for callers that do not ask for the stream.
   router.post("/council", async (req, res) => {
-    const { message, childProfile, scholarLens, language, topicId, privateMode, journal } = req.body;
+    const { message, childProfile, scholarLens, language, topicId, privateMode, journal, recentTurns, contextChildId } = req.body;
     const streamResponse = wantsSse(req);
     if (!message || typeof message !== "string") {
       res.status(400).json({ error: "A message is required" });
@@ -1198,6 +1198,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       } else {
         res.json(payload);
       }
+      return;
+    }
+    const councilTurns = privateMode === true ? [] : sanitizeRecentTurns(recentTurns);
+    if (councilTurns.length && (typeof childProfile?.id !== "string" || contextChildId !== childProfile.id)) {
+      res.status(400).json({ error: "Conversation context does not match this child." });
       return;
     }
     const languageDirective =
@@ -1232,7 +1237,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const companionBlock = renderCompanionLedgerBlock(companion.acceptedActions, companion.keptInsights)
         + renderActiveProgramLine(programPromptLine(companion.program))
         + renderTodayPracticeLine(todayPracticeLine(companion.journal))
-        + renderFamilyTopicBlock(companion.familyTopic, companion.familyTopicStatus);
+        + renderFamilyTopicBlock(companion.familyTopic, companion.familyTopicStatus)
+        + renderCouncilContinuity(councilTurns);
       const lead = resolveScholar(scholarLens);
       // AI-03: council selection was keyed on childProfile.domains too — a
       // field that does not exist, so every council was the lead scholar plus
@@ -2433,11 +2439,11 @@ Return only JSON matching the schema.`;
 
   // COPPA gate (A2): /vision sends a photo of the child / their environment to a
   // multimodal model. It is biometric-adjacent child-image processing, so it
-  // requires the same `face_processing` parental consent as avatar generation,
+  // requires explicit file-analysis consent, separate from avatar generation,
   // captured at onboarding (A3). The gate applies whenever an image is present
   // and fails CLOSED (451) without an active grant — and, because requireConsent
   // reads `childId` from the body, the client MUST send childId or every call 451s.
-  router.post("/vision", requireOwnership, requireConsent(consentStore, "face_processing", (req) => !!req.body?.image), async (req, res) => {
+  router.post("/vision", requireOwnership, requireConsent(consentStore, "companion_attachments", (req) => !!req.body?.image), async (req, res) => {
     const { image, mode = "observe", note, childProfile, language } = req.body;
     if (mode === "recommendations") {
       // Reuses vision's authentication, child ownership, parental consent,

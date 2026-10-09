@@ -118,9 +118,9 @@
       "route": "/api/chat",
       "input": {
         "parentMessage": "Read this attachment",
-        "case": "no-active-face-processing-consent"
+        "case": "no-active-companion-attachments-consent"
       },
-      "expected_behavior": "451 before any model call. Same purpose-scoped consent as existing /vision, never a new implicit permission.",
+      "expected_behavior": "451 before any model call. A dedicated companion_attachments grant is required; an existing avatar grant never authorizes document/image analysis.",
       "safetyMustHold": true
     },
     {

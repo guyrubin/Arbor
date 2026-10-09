@@ -251,7 +251,8 @@ const BEHAVIOR: Record<CanonicalBehaviorType, readonly DomainId[]> = {
   "Sibling Conflict": ["feelings"],
   "Food Refusal": ["feelings", "body"],
   "Sleep Meltdown": ["feelings", "body"],
-  Moment: ["feelings"],
+  // A plain moment has no developmental meaning until the parent files it.
+  Moment: [],
 };
 
 const TABLES: Record<Vocab, Record<string, readonly DomainId[]>> = {
@@ -272,8 +273,8 @@ export const VOCAB_IDS: Record<Vocab, readonly string[]> = {
 };
 
 /**
- * The registry domains a legacy id belongs to (≥1 for every declared id; [] for
- * an unknown/custom id). `activityId` splits PlayDomain `motor` by activity.
+ * The registry domains a legacy id belongs to ([] for a neutral Moment or
+ * unknown/custom id). `activityId` splits PlayDomain `motor` by activity.
  * Returns a fresh array.
  */
 export function toDomains(vocab: Vocab, id: string, opts?: { activityId?: string }): DomainId[] {

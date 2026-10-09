@@ -95,9 +95,9 @@ export function SneakHandBackView(p: SneakHandBackViewProps) {
 /** Mounted by KidModeProvider only while Kid Mode is CLOSED. */
 export default function SneakHandBackCard() {
   const card = useSneakHandBack();
-  const { addMoment } = useArbor();
+  const { addMoment, childProfile } = useArbor();
   const { t } = useLanguage();
-  if (!card) return null;
+  if (!card || card.childId !== childProfile.id) return null;
   const picture = readStatuePictures(card.childId)[0]?.url ?? null;
   const reachedLine = t(reachedKey(card.name, card.gender, card.reached), { name: card.name, count: card.reached });
   const keep = card.keepLine ?? reachedLine;
@@ -111,7 +111,7 @@ export default function SneakHandBackCard() {
       keepLabel={t("elev.learnCare.kidExit.keep")}
       shareLabel={sneakFreezeFlagOn() ? t("handBack.sneakFreeze.share") : null}
       closeLabel={t("aria.close")}
-      onKeep={() => { addMoment(keep); dismissSneakHandBack(); }}
+      onKeep={async () => { if (await addMoment(keep)) dismissSneakHandBack(); }}
       onShare={() => { if (picture) void shareImageFile({ dataUrl: picture, filename: "statue.jpg" }); }}
       onClose={dismissSneakHandBack}
     />

@@ -93,6 +93,7 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
         </section> : <NowRecommendation name={name} onTalkOpen={talk} />}
 
         <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}><Icon name="volunteer_activism" size={24} /><span><b>{copy.hardTitle}</b><small>{copy.hardBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
+        <button type="button" className="now-weekly-door" onClick={() => setActiveTab("weekly")}><Icon name="calendar_month" size={24} /><span><b>{copy.weeklyTitle}</b><small>{copy.weeklyBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
       </div>
 
       <aside className="now-side-column">

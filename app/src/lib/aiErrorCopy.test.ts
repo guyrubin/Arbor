@@ -62,6 +62,12 @@ describe("AI-06 — 429 and 451 never collapse into one message", () => {
     // …and degrades to an empty interpolation rather than a placeholder leak.
     expect(classifyAiFailure(consent(), {}).bodyParams.name).toBe("");
   });
+  it("file consent returns to the pending draft, not the unrelated avatar profile", () => {
+    const result = classifyAiFailure(consent(), { childName: "Dylan", consentPurpose: "companion_attachments" });
+    expect(result.bodyKey).toBe("elev.aierrors.files.body");
+    expect(result.actionKey).toBe("elev.aierrors.files.cta");
+    expect(result.actionRoute).toBeUndefined(); expect(result.retryable).toBe(false);
+  });
 
   it("never carries the server's own words into the copy", () => {
     const c = classifyAiFailure(consent(), { childName: "Dylan" });

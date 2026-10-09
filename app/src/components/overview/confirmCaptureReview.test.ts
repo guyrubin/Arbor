@@ -160,10 +160,10 @@ describe("AI-CAP-5 — review honesty: the AI-guessed fields are visible and inl
 
   it("BOTH consumers pass the intensity/context/duration draft state + text setters into the SAME component (no fork)", () => {
     for (const surface of [modal, behaviors]) {
-      expect(surface).toMatch(/intensity=\{newLogIntensity\}/);
+      expect(surface).toMatch(/intensity=\{(?:isIncidentType\(newLogType\) \? )?newLogIntensity(?: : undefined)?\}/);
       expect(surface).toMatch(/onIntensityChange=\{setNewLogIntensity\}/);
       expect(surface).toMatch(/context=\{newLogContext\}/);
-      expect(surface).toMatch(/durationMinutes=\{newLogDuration\}/);
+      expect(surface).toMatch(/durationMinutes=\{(?:isIncidentType\(newLogType\) \? )?newLogDuration(?: : undefined)?\}/);
       expect(surface).toMatch(/onDurationChange=\{setNewLogDuration\}/);
       expect(surface).toMatch(/onChange: setNewLogTrigger/);
       expect(surface).toMatch(/onChange: setNewLogResponse/);
@@ -194,6 +194,6 @@ describe("AI-CAP-5 — review honesty: the AI-guessed fields are visible and inl
     // confirmed write (handleAddLog) reads newLogIntensity/newLogContext/etc.
     // directly, so a stepper tap inside review is already in the write.
     expect(behaviors).toMatch(/onContextChange=\{\(c\) => setNewLogContext\(c as BehaviorContext\)\}/);
-    expect(modal).toMatch(/onContextChange=\{\(c\) => setNewLogContext\(c as BehaviorContext\)\}/);
+    expect(modal).toMatch(/onContextChange=\{\(c\) => setNewLogContext\(c as BehaviorContext \| ""\)\}/);
   });
 });

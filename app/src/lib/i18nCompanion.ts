@@ -1,5 +1,12 @@
 /** Parent companion experience: canonical EN/HE copy, covered by registry parity. */
 export const companionEn = {
+  "companion.capture.saveChanges": "Save changes",
+  "companion.capture.saveError": "We couldn’t save this yet. Your draft is still here. Please try again.",
+  "companion.capture.undoError": "We couldn’t undo this yet. The saved moment is still in the journal. Please try again.",
+  "companion.capture.details": "Add details (optional)",
+  "companion.capture.noPlace": "Not specified",
+  "companion.capture.photoPreparing": "Preparing your photo…",
+
   "companion.input.choose-up-to-3-jpg-png-webp-or-pdf-files-up-to-4-mb-each-and-6-mb": "Choose up to 3 JPG, PNG, WebP or PDF files. Up to 4 MB each and 6 MB together.",
   "companion.input.a-moment-can-keep-one-photo-remove-extra-files-or-send-them-in-th": "A moment can keep one photo. Remove extra files, or send them in the conversation.",
   "companion.input.we-couldn-t-prepare-the-photo-your-draft-is-still-here": "We couldn’t prepare the photo. Your draft is still here.",
@@ -237,6 +244,13 @@ export const companionEn = {
 };
 
 export const companionHe = {
+  "companion.capture.saveChanges": "שמירת שינויים",
+  "companion.capture.saveError": "עדיין לא הצלחנו לשמור. הטיוטה שלכם נשארה כאן. אפשר לנסות שוב.",
+  "companion.capture.undoError": "עדיין לא הצלחנו לבטל. הרגע השמור עדיין ביומן. אפשר לנסות שוב.",
+  "companion.capture.details": "הוספת פרטים (לא חובה)",
+  "companion.capture.noPlace": "לא צוין",
+  "companion.capture.photoPreparing": "מכינים את התמונה…",
+
   "companion.input.choose-up-to-3-jpg-png-webp-or-pdf-files-up-to-4-mb-each-and-6-mb": "אפשר לצרף עד 3 קובצי JPG, PNG, WebP או PDF. עד 4MB לקובץ ו־6MB יחד.",
   "companion.input.a-moment-can-keep-one-photo-remove-extra-files-or-send-them-in-th": "רגע יכול לכלול תמונה אחת. הסירו קבצים נוספים או שלחו אותם לשיחה.",
   "companion.input.we-couldn-t-prepare-the-photo-your-draft-is-still-here": "לא הצלחנו להכין את התמונה. הטיוטה נשמרה כאן.",

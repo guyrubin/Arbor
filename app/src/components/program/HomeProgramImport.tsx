@@ -2,11 +2,23 @@ import React, { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
 import { PROGRAM_DOCUMENT_MAX_BYTES, PROGRAM_IMPORT_VERSION, pastedRecommendations, parseProgramDocument, parseRecommendationDraft, type ProgramImportSource, type RecommendationDraft } from "../../lib/programImport";
+import { useAuth } from "../../context/AuthContext";
+import { useCompanionConsent } from "../companion/useCompanionConsent";
+import CompanionConsentReview from "../companion/CompanionConsentReview";
+import { COMPANION_CONSENT_COPY } from "../companion/companionConsentCopy";
+import "../companion/companionComposer.css";
 
 const field = { border: "1px solid var(--arbor-rule-strong)", borderRadius: "var(--r)", background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" };
 interface Props { childId: string; remaining: number; readOnly?: boolean; onApply: (texts: string[], source: ProgramImportSource) => void; onReset: () => void }
-export default function HomeProgramImport({ childId, remaining, readOnly, onApply, onReset }: Props) {
+export default function HomeProgramImport(props: Props) {
+  const { user } = useAuth();
+  return <HomeProgramImportContent key={`${user?.uid ?? ""}:${props.childId}`} {...props} />;
+}
+function HomeProgramImportContent({ childId, remaining, readOnly, onApply, onReset }: Props) {
   const { t, uiLang } = useLanguage();
+  const consent = useCompanionConsent(childId);
+  const reviewButton = useRef<HTMLButtonElement>(null);
+  const extracting = useRef(false);
   const [paste, setPaste] = useState("");
   const [document, setDocument] = useState<{ url: string; dataUrl: string; name: string; kind: "photo" | "pdf" } | null>(null);
   const [draft, setDraft] = useState<RecommendationDraft | null>(null);
@@ -37,9 +49,12 @@ export default function HomeProgramImport({ childId, remaining, readOnly, onAppl
     finally { if (request === operation.current) setBusy(false); }
   };
   const extract = async () => {
+    if (extracting.current || busy || locked) return;
+    extracting.current = true;
     const request = ++operation.current;
     setBusy(true); setError(""); setDraft(null); setSelected([]);
     try {
+      if (document && (!await consent.requirePermission() || request !== operation.current)) return;
       const result = document ? parseRecommendationDraft(await api.importHomeRecommendations({ childId, image: { dataUrl: document.dataUrl } })) : pastedRecommendations(paste);
       if (request !== operation.current) return;
       setDraft(result); setEdits(result.recommendations);
@@ -49,9 +64,9 @@ export default function HomeProgramImport({ childId, remaining, readOnly, onAppl
       if (status === 429) { setError(t("elev.pilot.reading.is.temporarily.at.its.limit.try.later.or.paste.the.text.h")); return; }
       if (status === 401 || status === 403) { setError(t("elev.pilot.please.sign.in.with.access.to.this.child.s.record.then.try.again")); return; }
       if (e instanceof TypeError) { setError(t("elev.pilot.check.your.connection.and.try.again.your.selected.file.is.still.h")); return; }
-      const consent = status === 451;
-      setError(consent ? t("elev.pilot.document.processing.needs.your.image.processing.consent.in.privac") : t("elev.pilot.we.couldn.t.read.that.reliably.try.a.clearer.file.or.paste.one.re"));
-    } finally { if (request === operation.current) setBusy(false); }
+      if (status === 451) { consent.review(); return; }
+      setError(t("elev.pilot.we.couldn.t.read.that.reliably.try.a.clearer.file.or.paste.one.re"));
+    } finally { if (request === operation.current) { extracting.current = false; setBusy(false); } }
   };
   const apply = () => {
     if (!draft || !selected.length || selected.length > remaining || selected.some(i => !edits[i]?.trim())) return;
@@ -61,12 +76,14 @@ export default function HomeProgramImport({ childId, remaining, readOnly, onAppl
   return <section data-testid="home-program-import" className="rounded-[var(--r-lg)] border p-4 sm:p-5" style={{ borderColor: "var(--arbor-rule)", background: "var(--arbor-paper)" }}>
     <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.pilot.bring.the.recommendations.home")}</h3>
     <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.pilot.photo.pdf.or.pasted.text.check.each.line.against.the.original.edi")}</p>
+    <div className="mt-3"><CompanionConsentReview consent={consent} language={uiLang === "he" ? "he" : "en"} onReturnToDraft={() => reviewButton.current?.focus()} /></div>
     {!locked && <div className="mt-4 space-y-3">
       <label htmlFor="home-source-file" className="block text-sm font-semibold">{t("elev.pilot.choose.a.photo.or.short.pdf.up.to.4.mb")}</label>
       <input id="home-source-file" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" disabled={busy} onChange={e => void fileChosen(e.target.files?.[0])} className="block min-h-11 w-full min-w-0 text-sm file:me-3 file:min-h-11 file:rounded-full file:border-0 file:px-4" />
       <label htmlFor="home-source-paste" className="block text-sm font-semibold">{t("elev.pilot.or.paste.one.recommendation.per.line")}</label>
-      <textarea id="home-source-paste" dir="auto" rows={3} maxLength={12000} value={paste} onChange={e => { reset(); setDocument(null); setPaste(e.target.value); }} className="w-full px-3 py-2" style={field} />
-      <button type="button" disabled={busy || (!document && !paste.trim())} onClick={() => void extract()} className="min-h-11 rounded-full px-4 font-semibold disabled:opacity-50" style={{ background: "var(--arbor-ink)", color: "var(--arbor-on-accent)" }}>{busy ? t("elev.pilot.reading") : t("elev.pilot.review.the.text")}</button>
+      <textarea id="home-source-paste" dir="auto" rows={3} maxLength={12000} disabled={busy} value={paste} onChange={e => { reset(); setDocument(null); setPaste(e.target.value); }} className="w-full px-3 py-2" style={field} />
+      <button ref={reviewButton} type="button" disabled={busy || consent.reviewing || !!consent.busy || (!document && !paste.trim())} onClick={() => void extract()} className="min-h-11 rounded-full px-4 font-semibold disabled:opacity-50" style={{ background: "var(--arbor-ink)", color: "var(--arbor-on-accent)" }}>{busy ? t("elev.pilot.reading") : t("elev.pilot.review.the.text")}</button>
+      <button type="button" disabled={busy || !!consent.busy} onClick={consent.review} className="min-h-11 px-3 text-sm underline">{COMPANION_CONSENT_COPY[uiLang === "he" ? "he" : "en"].control}</button>
     </div>}
     {error && <p role="alert" className="mt-3 text-sm">{error}</p>}
     {(document || draft) && <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2">

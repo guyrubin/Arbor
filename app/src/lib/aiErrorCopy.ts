@@ -45,6 +45,8 @@ export interface AiFailureCopy {
 }
 
 export interface AiFailureContext {
+  /** The companion has an explicit file permission beside its pending draft. */
+  consentPurpose?: "companion_attachments";
   /** The child's first name, for the consent copy. */
   childName?: string;
   /**
@@ -111,11 +113,11 @@ export function classifyAiFailure(err: unknown, ctx: AiFailureContext = {}): AiF
       return {
         kind: "consent",
         titleKey: "elev.aierrors.consent.title",
-        bodyKey: "elev.aierrors.consent.body",
+        bodyKey: ctx.consentPurpose === "companion_attachments" ? "elev.aierrors.files.body" : "elev.aierrors.consent.body",
         bodyParams: { name: childName?.trim() || "" },
-        actionKey: "elev.aierrors.consent.cta",
+        actionKey: ctx.consentPurpose === "companion_attachments" ? "elev.aierrors.files.cta" : "elev.aierrors.consent.cta",
         // Where `face_processing` is granted (profile › avatar/photo consent).
-        actionRoute: "profile",
+        actionRoute: ctx.consentPurpose === "companion_attachments" ? undefined : "profile",
         retryable: false,
       };
     case PAYWALL_STATUS:

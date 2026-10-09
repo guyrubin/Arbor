@@ -58,7 +58,7 @@ export default function TogetherView() {
     setSaving(true); setSaveError(false);
     const idea = offline(id);
     const moment = kidAvailable ? (t("companion.together-view.we-tried-together", { value0: idea.title })) : t(`elev.ages.together.${id}.moment`);
-    try { if (await saveMoment(moment)) setKeptState({ childId: childProfile.id, ids: [...kept, id] }); }
+    try { if (await saveMoment(moment)) setKeptState({ childId: childProfile.id, ids: [...kept, id] }); else setSaveError(true); }
     catch { setSaveError(true); }
     finally { setSaving(false); }
   };

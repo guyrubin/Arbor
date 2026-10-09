@@ -59,8 +59,8 @@ describe("KID-10 · Good night leaves one line", () => {
 
   it("goodNight writes through the existing addMoment seam and still resets", () => {
     expect(src).toContain("const { childProfile, behaviorLogs, addMoment, openPaywall } = useArbor();");
-    expect(src).toMatch(/const written = addMoment\(line\);/);
-    expect(src).toMatch(/const goodNight = \(\) => \{[\s\S]*?reset\(\);\s*\};/);
+    expect(src).toMatch(/const written = await addMoment\(line\);/);
+    expect(src).toMatch(/const goodNight = async \(\) => \{[\s\S]*?if \(written\) \{[\s\S]*?reset\(\);\s*\}\s*\};/);
   });
 
   it("the written line carries the story title when there is one, via keys (law 7)", () => {

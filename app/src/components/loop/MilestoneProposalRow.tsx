@@ -17,6 +17,7 @@ export default function MilestoneProposalRow({
   proposal,
   milestoneTitle,
   done,
+  busy = false,
   onAccept,
   onDecline,
 }: {
@@ -25,6 +26,7 @@ export default function MilestoneProposalRow({
   milestoneTitle?: string;
   /** After Add / File it: the receipt replaces the buttons. */
   done?: boolean;
+  busy?: boolean;
   onAccept: () => void;
   onDecline: () => void;
 }) {
@@ -54,6 +56,7 @@ export default function MilestoneProposalRow({
               type="button"
               data-testid="capture-milestone-accept"
               onClick={onAccept}
+              disabled={busy}
               className="inline-flex min-h-[44px] items-center rounded-full px-4 text-[14px] font-semibold"
               style={{ color: "var(--arbor-clay)", background: "var(--arbor-paper-elevated)", border: "1.5px solid var(--arbor-clay)" }}
             >
@@ -63,6 +66,7 @@ export default function MilestoneProposalRow({
               type="button"
               data-testid="capture-milestone-decline"
               onClick={onDecline}
+              disabled={busy}
               className="inline-flex min-h-[44px] items-center rounded-full px-4 text-[14px] font-semibold"
               style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)" }}
             >

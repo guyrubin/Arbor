@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { useLanguage } from "../../context/LanguageContext";
@@ -65,7 +65,7 @@ export default function JournalEntrySheet({
    *  and delete live here now, not on the Behaviors list. */
   hardMoment?: { resolved: boolean };
   onToggleResolved?: () => void;
-  onDelete?: () => void;
+  onDelete?: () => void | Promise<void>;
 }) {
   const { t, uiLang } = useLanguage();
   const { childProfile } = useArbor();
@@ -76,6 +76,25 @@ export default function JournalEntrySheet({
   const p = PASTEL[tone];
   // B-ASKJB-30: delete asks through a keyed confirm modal (never window.confirm).
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
+  const deleteBusyRef = useRef(false);
+  const selectedRef = useRef(signal?.id);
+  selectedRef.current = signal?.id;
+  useEffect(() => { setConfirmDelete(false); setDeleteError(false); setDeleting(false); deleteBusyRef.current = false; }, [signal?.id]);
+  const confirmRemoval = async () => {
+    if (deleteBusyRef.current || !onDelete) return;
+    const selected = signal?.id;
+    deleteBusyRef.current = true; setDeleting(true); setDeleteError(false);
+    try {
+      await onDelete();
+      if (selectedRef.current === selected) setConfirmDelete(false);
+    } catch {
+      if (selectedRef.current === selected) setDeleteError(true);
+    } finally {
+      if (selectedRef.current === selected) { deleteBusyRef.current = false; setDeleting(false); }
+    }
+  };
 
   return (
     <Modal open={!!signal} onClose={onClose} title={t("elev.closeloop.entry.title")}>
@@ -239,6 +258,7 @@ export default function JournalEntrySheet({
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title={t("journal.entry.deleteConfirm.title")}>
         <div className="space-y-4" data-testid="journal-entry-delete-confirm">
           <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{t("journal.entry.deleteConfirm.body")}</p>
+          {deleteError && <p role="alert" className="text-sm" style={{ color: "var(--arbor-peach-ink)" }}>{t("companion.capture.undoError")}</p>}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -251,7 +271,8 @@ export default function JournalEntrySheet({
             <button
               type="button"
               data-testid="journal-entry-delete-yes"
-              onClick={() => { setConfirmDelete(false); onDelete?.(); }}
+              onClick={() => void confirmRemoval()}
+              disabled={deleting}
               className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-4 text-[13px] font-bold"
               style={{ border: "1px solid var(--arbor-ink)", color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)" }}
             >

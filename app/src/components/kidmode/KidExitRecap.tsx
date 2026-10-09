@@ -85,10 +85,11 @@ export default function KidExitRecap() {
     }
     if (line) {
       const kept = line;
-      toast(line, "info", {
+      const offerKeep = () => toast(line, "info", {
         label: t("elev.learnCare.kidExit.keep"),
-        onClick: () => { addMoment(kept); },
+        onClick: async () => { if (!await addMoment(kept)) offerKeep(); },
       });
+      offerKeep();
     }
   };
 

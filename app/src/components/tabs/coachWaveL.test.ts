@@ -153,8 +153,9 @@ describe("AI-24 — offline is said out loud, before the send", () => {
     expect(coach).toMatch(/classifyAiFailure\(null, \{ online: false/);
     expect(coach).toMatch(/data-testid="coach-offline-note"/);
     expect(coach).toMatch(/elev\.aierrors\.offline\.composer/);
-    // the textarea stays editable — only loading gates it
-    expect(composer).toContain("disabled={busy || voiceActive}");
+    // Offline never locks the draft; an in-flight send/permission check owns
+    // its exact text+file payload until it settles.
+    expect(composer).toContain("disabled={busy || sending || voiceActive}");
     expect(composer).not.toContain("!online");
     expect(coach).toContain("onSend={handleChatSend}");
   });
@@ -169,7 +170,7 @@ describe("AI-24 — offline is said out loud, before the send", () => {
     // rest a disabled solid --arbor-clay-dim well. The offline gate still
     // lives in the handler (handleChatSend), not in this element.
     expect(composer.match(/data-testid="coach-send"/g)).toHaveLength(1);
-    expect(composer).toContain("disabled={busy || preparing || listening || voiceActive || (!value.trim() && !attachments.length)}");
+    expect(composer).toContain("disabled={busy || sending || !!consent.busy || preparing || listening || voiceActive || (!value.trim() && !attachments.length)}");
     expect(composerCss).toMatch(/\.companion-input-well>button\{[^}]*background:var\(--arbor-clay\);color:var\(--arbor-on-accent\)/);
     expect(composerCss).toMatch(/\.companion-input-well>button:disabled\{background:var\(--arbor-paper-deep\);color:var\(--arbor-muted\)/);
     expect(composerCss).not.toContain("gradient");
@@ -227,10 +228,10 @@ describe("AI-06 — Arbor Vision stops speaking the server's English at the pare
   });
 
   it("/api/vision is exactly the endpoint that can answer BOTH 429 and 451", () => {
-    // The server gate: requireConsent(consentStore, "face_processing", …) →
+    // The server gate: requireConsent(consentStore, "companion_attachments", …) →
     // 451 fail-closed; the shared AI quota → 429. One surface, two opposite
     // problems, which is why the classifier exists.
     const routes = read("routes/api.ts");
-    expect(routes).toMatch(/router\.post\("\/vision", requireOwnership, requireConsent\(consentStore, "face_processing"/);
+    expect(routes).toMatch(/router\.post\("\/vision", requireOwnership, requireConsent\(consentStore, "companion_attachments"/);
   });
 });

@@ -80,6 +80,17 @@ describe("B-GROWTH-28 — toObservations", () => {
     expect(o.pretermCorrected).toBe(true);
     expect(o.ageAtObservationMonths!).toBeLessThan(3);
   });
+
+  it("preserves neutral and custom moments without inventing a domain; a confirmed shelf still files them", () => {
+    const rows = ["Moment", "Our birthday"].map((behaviorType, index) => ({ id: String(index), timestamp: daysAgo(1), behaviorType, trigger: "Built a bridge", durationMinutes: 0 }));
+    const result = toObservations({ behaviorLogs: [...rows, { ...rows[0], id: "filed", shelf: "hands" }] }, child);
+    expect(result).toHaveLength(3);
+    expect(result.find(row => row.id === "behaviorLogs:0")).toMatchObject({ domains: [] });
+    expect(result.find(row => row.id === "behaviorLogs:1")).toMatchObject({ domains: [] });
+    expect(result.find(row => row.id === "behaviorLogs:0")?.shelf).toBeUndefined();
+    expect(result.find(row => row.id === "behaviorLogs:filed")).toMatchObject({ domains: ["hands"], shelf: "hands" });
+    expect(summariseByDomain(result, NOW).map(row => row.domain)).toEqual(["hands"]);
+  });
 });
 
 describe("B-GROWTH-28 — summariseByDomain: integers and ISO dates only", () => {

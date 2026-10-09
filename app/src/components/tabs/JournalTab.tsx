@@ -939,7 +939,7 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
         onEdit={openMomentLogId(openSignal) ? editOpenSignal : undefined}
         hardMoment={openLog && isIncidentType(openLog.behaviorType) ? { resolved: !!openLog.resolved } : undefined}
         onToggleResolved={openLog ? () => toggleLogResolved(openLog.id) : undefined}
-        onDelete={openLog ? () => { deleteLog(openLog.id); setOpenSignal(null); } : undefined}
+        onDelete={openLog ? async () => { await deleteLog(openLog.id); setOpenSignal(null); } : undefined}
       />
     </motion.div>
   );

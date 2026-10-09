@@ -67,7 +67,8 @@ describe("B-GROWTH-26 — exhaustive: every id of the four vocabularies + behavi
       expect(ids.length).toBeGreaterThan(0);
       for (const id of ids) {
         const doms = toDomains(vocab, id);
-        expect(doms.length, `${vocab}:${id}`).toBeGreaterThanOrEqual(1);
+        if (vocab === "behavior" && id === "Moment") expect(doms).toEqual([]);
+        else expect(doms.length, `${vocab}:${id}`).toBeGreaterThanOrEqual(1);
         for (const d of doms) expect(DOMAIN_IDS).toContain(d);
       }
       expect([...VOCAB_IDS[vocab]].sort()).toEqual([...ids].sort());

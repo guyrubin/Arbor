@@ -3,14 +3,14 @@
  * (spine §3, §4.2, phase 1).
  *
  * One shape for every dated thing a parent (or a kid-practice session) put on
- * the child's record, each tagged with ≥1 domain of the one registry
+ * the child's record, with explicit domains from the one registry
  * (`lib/domains/registry.ts`). Built from the same sources `useTimeline` reads
  * plus `growthEntries`, `goalObservations`, `langObs`, `keepsakes`,
  * `screenings` and parent-scored `speechAttempts`.
  *
  * READ-ONLY: no collection is migrated, renamed or written here (spine §9
- * migration risk). A source record whose domain cannot be resolved is LEFT
- * OUT — never guessed into a domain.
+ * migration risk). Neutral parent moments stay visible without a domain;
+ * unresolvable non-moment sources are left out, never guessed into one.
  *
  * CLINICAL FIREWALL: `summariseByDomain` returns integers and ISO dates only —
  * counts over 4 and 12 weeks and the latest dates. No rate, no delta between
@@ -93,7 +93,7 @@ export interface Observation {
   childId: string;
   /** ISO timestamp / date the thing happened (or was noticed). */
   at: string;
-  /** ≥1 registry domain, registry order. */
+  /** Registry order. An unfiled parent moment has no inferred domain. */
   domains: DomainId[];
   subArea?: string;
   kind: ObservationKind;
@@ -151,7 +151,7 @@ const ordered = (doms: DomainId[]): DomainId[] => DOMAIN_IDS.filter((d) => doms.
 
 /**
  * Fold the sources into observations, newest first. One observation per
- * source record that has a date and ≥1 resolvable domain.
+ * source record that has a date and a resolvable domain, plus unfiled moments.
  */
 export function toObservations(sources: ObservationSources, child: ObservationChild): Observation[] {
   const out: Observation[] = [];
@@ -160,9 +160,9 @@ export function toObservations(sources: ObservationSources, child: ObservationCh
     recordId: string,
     at: string | undefined,
     domains: DomainId[],
-    rest: Pick<Observation, "kind" | "value" | "source"> & { subArea?: string; provenance?: string },
+    rest: Pick<Observation, "kind" | "value" | "source"> & { subArea?: string; provenance?: string; shelf?: ShelfId },
   ) => {
-    if (!validDate(at) || domains.length === 0) return;
+    if (!validDate(at) || (domains.length === 0 && origin !== "behaviorLogs")) return;
     const { months, corrected } = ageAt(child, at);
     const observation: Observation = {
       id: `${origin}:${recordId}`,
@@ -174,25 +174,25 @@ export function toObservations(sources: ObservationSources, child: ObservationCh
       pretermCorrected: corrected,
       ...rest,
     };
-    const shelf = shelfOfOrUndefined(observation);
+    const shelf = rest.shelf ?? shelfOfOrUndefined(observation);
     out.push(shelf ? { ...observation, shelf } : observation);
   };
 
   for (const l of sources.behaviorLogs ?? []) {
-    // every behaviour type lands in feelings & behaviour (spine §2); free-text
-    // types the taxonomy does not know still do
+    // Only an explicit category or parent-confirmed shelf supplies a domain.
     const doms = toDomains("behavior", l.behaviorType);
     // B-LOOP-06: a moment the parent filed on a shelf (a confirmed capture
     // proposal) sits on that shelf's domain, with the body sub-area that
     // tells Sleep from Food; the milestone it evidences is its provenance.
     const filed = l.shelf ? shelfDef(l.shelf) : null;
     const filedSubArea = l.shelf === "sleep" ? "sleep" : l.shelf === "food" ? "feeding" : undefined;
-    push("behaviorLogs", l.id, l.timestamp, filed ? [filed.domain] : doms.length ? doms : ["feelings"], {
+    push("behaviorLogs", l.id, l.timestamp, filed ? [filed.domain] : doms, {
       kind: "moment",
       value: { type: "moment", behaviorType: l.behaviorType, ...(l.context ? { context: l.context } : {}) },
       source: l.conversationProposalId ? "ai_proposed_parent_confirmed" : "parent_typed",
       ...(l.conversationProposalId ? { provenance: l.conversationProposalId } : l.milestoneId ? { provenance: l.milestoneId } : {}),
       ...(filedSubArea ? { subArea: filedSubArea } : {}),
+      ...(l.shelf ? { shelf: l.shelf } : {}),
     });
   }
 

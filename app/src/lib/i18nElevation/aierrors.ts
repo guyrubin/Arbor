@@ -27,6 +27,8 @@ export const en: Record<string, string> = {
   "elev.aierrors.consent.title": "Your permission is needed first",
   "elev.aierrors.consent.body": "Arbor will not look at a photo or listen to a recording of {name} until you allow it. You can give — or withdraw — that permission any time.",
   "elev.aierrors.consent.cta": "Open the profile to allow it",
+  "elev.aierrors.files.body": "Your files have not been analysed. Review the file permission here; your draft and attachments are still ready for you.",
+  "elev.aierrors.files.cta": "Review file permission",
 
   // ── Offline (AI-24).
   "elev.aierrors.offline.title": "No connection",
@@ -47,6 +49,8 @@ export const he: Record<string, string> = {
   "elev.aierrors.consent.title": "צריך קודם את האישור שלכם",
   "elev.aierrors.consent.body": "ארבור לא יסתכל על תמונה ולא יאזין להקלטה של {name} עד שתאשרו. אפשר לתת — או לבטל — את האישור בכל רגע.",
   "elev.aierrors.consent.cta": "פתחו את הפרופיל כדי לאשר",
+  "elev.aierrors.files.body": "הקבצים שלכם לא נותחו. אפשר לבדוק כאן את ההרשאה לניתוח קבצים; הטיוטה והקבצים עדיין מחכים לכם.",
+  "elev.aierrors.files.cta": "בדיקת הרשאה לקבצים",
 
   "elev.aierrors.offline.title": "אין חיבור",
   "elev.aierrors.offline.body": "ארבור עונה כשיש חיבור לאינטרנט. מה שכתבתם נשאר כאן — שלחו כשהחיבור חוזר.",

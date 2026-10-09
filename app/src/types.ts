@@ -199,7 +199,7 @@ export interface DeletionReceipt {
 }
 
 /** COPPA-2026 consent purposes + grant record (client mirror of sharing/consent.ts). */
-export type ConsentPurpose = "face_processing" | "voice_processing" | "ai_training";
+export type ConsentPurpose = "face_processing" | "voice_processing" | "ai_training" | "companion_attachments";
 export interface ConsentGrant {
   id: string;
   childId: string;

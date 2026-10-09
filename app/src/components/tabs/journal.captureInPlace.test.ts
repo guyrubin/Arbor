@@ -78,7 +78,7 @@ describe("B-TODAY-19 · every capture tile opens the one sheet in place", () => 
 describe("B-TODAY-19 · QuickLogModal photo mode", () => {
   it("reuses the Behaviors photo seam (fileToThumbnail, accept image/*), in-doc only", () => {
     expect(MODAL).toContain('import { fileToThumbnail } from "../../lib/image";');
-    expect(MODAL).toMatch(/type="file"\s+accept="image\/\*"/);
+    expect(MODAL).toContain('accept={["image", "*"].join("/")}');
     expect(MODAL).not.toContain("uploadChildPhoto");
   });
 
@@ -92,7 +92,7 @@ describe("B-TODAY-19 · QuickLogModal photo mode", () => {
 
   it("the save writes the photo and the prompt key through addMoment", () => {
     // B-LOOP-11: opened from a journal shelf page, the moment is filed on that shelf (addMoment's shelf seam).
-    expect(MODAL).toMatch(/addMoment\(words, \{\s*\.\.\.\(photo \? \{ photoAttachment: photo \} : \{\}\),\s*\.\.\.\(promptKey \? \{ promptKey \} : \{\}\),\s*\.\.\.\(shelf \? \{ shelf \} : \{\}\),\s*\}\)/);
+    expect(MODAL).toMatch(/addMoment\(words, \{\s*\.\.\.\(photo \? \{ photoAttachment: photo \} : \{\}\),\s*\.\.\.\(promptKey \? \{ promptKey \} : \{\}\),\s*\.\.\.\(shelf \? \{ shelf \} : \{\}\),[\s\S]*?\}\)/);
     expect(MODAL).toContain('trackCaptureStarted(mode === "voice" ? "voice" : mode === "photo" ? "photo" : "text")');
   });
 
@@ -142,8 +142,8 @@ describe("B-TODAY-19 · addMoment stores the photo (unit)", () => {
 
   it("ArborContext.addMoment writes the builder's record (one path)", () => {
     // B-LOOP-07/10: the opts also carry the shelf + milestone Tonight files the line on; the builder gets the rest.
-    expect(CONTEXT).toMatch(/const addMoment = \(\s*text: string,\s*opts: \{ photoAttachment\?: string; promptKey\?: string; shelf\?: ShelfId; milestoneId\?: string \} = \{\},/);
-    expect(CONTEXT).toContain("buildMomentLog(text, newLogContext, buildOpts)");
+    expect(CONTEXT).toMatch(/const addMoment = async \(\s*text: string,\s*opts: \{ photoAttachment\?: string; promptKey\?: string; shelf\?: ShelfId; milestoneId\?: string; context\?: BehaviorContext; notes\?: string \} = \{\},/);
+    expect(CONTEXT).toContain('buildMomentLog(text, context ?? "", buildOpts)');
   });
 
   it("the Journal row reads the stored photo (signalTimeline maps photoAttachment)", () => {
@@ -194,16 +194,17 @@ describe("B-ASKJB-30 · edit and review in place", () => {
     const journal = strip(rd("components/tabs/JournalTab.tsx"));
     expect(journal).toContain("openCaptureSheet({ editLogId: logId });");
     expect(journal).not.toMatch(/setActiveTab\(/);
-    expect(CTX).toContain("if (opts.editLogId) startEditLog(opts.editLogId);");
+    expect(CTX).toContain("if (opts.editLogId) startEditLog(opts.editLogId, opts.editLog);");
   });
 
-  it("an edit opens the incident form prefilled; Save goes through handleAddLog's editingLogId branch; closing unsaved disarms it", () => {
-    expect(MODAL).toMatch(/else if \(editLogId\) \{\s*setHardMoment\(true\);/);
+  it("an edit opens its original neutral or incident form; Save goes through handleAddLog's editingLogId branch; closing unsaved disarms it", () => {
+    expect(MODAL).toMatch(/else if \(editLogId\) \{\s*setHardMoment\(isIncidentType\(newLogType\)\);/);
     expect(MODAL).toContain("if (editLogId) cancelEditLog();");
     // handleAddLog is called from confirm only — the review step is the one write.
     expect(MODAL.match(/handleAddLog\(/g)?.length).toBe(1);
     expect(MODAL.slice(MODAL.indexOf("const confirm = "), MODAL.indexOf("const discard = "))).toContain("handleAddLog(e)");
-    expect(CTX).toContain("const existing = editingLogId ? behaviorLogs.find((l) => l.id === editingLogId) : null;");
+    expect(CTX).toContain("editingLogSnapshotRef.current?.id === editingLogId");
+    expect(CTX).toContain("...existing,");
   });
 
   it("fail-closed: a review-mode sheet opens ON the review step, and the AI handoffs all use it", () => {
@@ -225,7 +226,8 @@ describe("B-ASKJB-30 · edit and review in place", () => {
   it("hard moments resolve and delete from the entry sheet; delete asks through a keyed modal, never window.confirm", () => {
     expect(SHEET).toContain('data-testid="journal-entry-resolve"');
     expect(SHEET).toContain('data-testid="journal-entry-delete-confirm"');
-    expect(SHEET).toContain('onClick={() => { setConfirmDelete(false); onDelete?.(); }}');
+    expect(SHEET).toContain('onClick={() => void confirmRemoval()}');
+    expect(SHEET).toContain("await onDelete();");
     expect(SHEET).not.toContain("window.confirm");
     const journal = strip(rd("components/tabs/JournalTab.tsx"));
     expect(journal).toContain("hardMoment={openLog && isIncidentType(openLog.behaviorType) ? { resolved: !!openLog.resolved } : undefined}");

@@ -605,7 +605,7 @@ export default function Shell() {
                       is untouched: display:contents, no box, no style. */}
                   <SurfaceFrame route={activeTab}>
                     {["overview", "coach", "scholar"].includes(activeTab) ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
-                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab onDiscuss={createTopic}/>)
+                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }} onSaveQuestion={createTopic}/>)
                       : <>
                         {activeTab === "coach" && activeFamilyTopic && <button className="min-h-11 w-full mb-4 px-4 py-3 rounded-xl text-start text-sm" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }} onClick={openTopic}>
                           {t("companion.shell.our-question")}{activeFamilyTopic.title}
@@ -645,6 +645,7 @@ export default function Shell() {
           in place (openCaptureSheet); it portals to body, the route stays. */}
       {!kidLocked && (
         <QuickLogModal
+          key={childProfile.id}
           initialText={captureSheet.initialText}
           initialPhoto={captureSheet.initialPhoto}
           open={captureSheet.open}

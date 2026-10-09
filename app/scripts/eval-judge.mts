@@ -326,7 +326,7 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
       message,
       childProfile: scenarioProfile,
       ...(attachmentData ? { childId: scenarioProfile.id, attachments: [{ id: "synthetic-document", childId: scenarioProfile.id, kind: input.documentKind === "photo" ? "photo" : "document", name: "synthetic-note", mimeType: attachmentData.slice(5, attachmentData.indexOf(";")), dataUrl: attachmentData }] } : {}),
-      ...(Array.isArray(input.recentTurns) ? { recentTurns: input.recentTurns } : {}),
+      ...(Array.isArray(input.recentTurns) ? { recentTurns: input.recentTurns, ...(route === "/api/council" ? { contextChildId: input.contextChildId === "different-child" ? "different-child" : scenarioProfile.id } : {}) } : {}),
       language: locale,
       ...(input.privateMode === true ? { privateMode: true } : {}),
       ...(typeof input.topicId === "string" ? { topicId: input.topicId } : {}),

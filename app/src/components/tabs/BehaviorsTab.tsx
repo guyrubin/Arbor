@@ -205,6 +205,11 @@ export default function BehaviorsTab() {
   const [listening, setListening] = useState(false);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [savingLog, setSavingLog] = useState(false);
+  const savingLogRef = useRef(false);
+  const captureChildScopeRef = useRef({ childId: childProfile.id });
+  if (captureChildScopeRef.current.childId !== childProfile.id) captureChildScopeRef.current = { childId: childProfile.id };
+  useEffect(() => { savingLogRef.current = false; setSavingLog(false); }, [childProfile.id]);
   // AI-CAP-6: live interim transcript — the parent's own words render in the
   // capture area (calm register, --arbor-muted) while they are still speaking,
   // so dictation is never speak-blind. The final transcript still flows through
@@ -540,7 +545,7 @@ export default function BehaviorsTab() {
 
   // Save with clear, non-blocking feedback (replaces handleAddLog's blocking
   // alert, which read as "it didn't save even though I typed something").
-  const submitLog = (e: React.FormEvent) => {
+  const submitLog = async (e: React.FormEvent) => {
     e.preventDefault();
     // TJB-09 made the draft visible BEFORE the extract round-trip settles, so a
     // parent on a slow network could save an escalation-triggering entry while
@@ -566,7 +571,13 @@ export default function BehaviorsTab() {
     // pattern echo below can speak about the log the parent just saved. An
     // EDIT is not a new occurrence — it must never bump the count.
     const savedType = wasEditing ? null : newLogType;
-    handleAddLog(e);
+    if (savingLogRef.current) return;
+    const scope = captureChildScopeRef.current;
+    savingLogRef.current = true; setSavingLog(true);
+    const written = await handleAddLog(e);
+    if (captureChildScopeRef.current !== scope) return;
+    savingLogRef.current = false; setSavingLog(false);
+    if (!written) return;
     toast(wasEditing ? t("beh.toast.updated") : t("beh.toast.logged"), "success");
     setEchoDismissed(false);
     setEchoType(savedType);
@@ -578,7 +589,7 @@ export default function BehaviorsTab() {
   };
 
   // TODAY-3: explicit confirm — the ONLY behavior-log write for gated captures.
-  const confirmReview = (e: React.FormEvent) => {
+  const confirmReview = async (e: React.FormEvent) => {
     // AI-CAP-5: inline review editing can now empty a required field — let the
     // shared validation speak and keep the review open instead of fake-toasting.
     const invalid = validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse });
@@ -598,7 +609,13 @@ export default function BehaviorsTab() {
       response: newLogResponse,
     });
     const savedType = wasEditing ? null : newLogType;
-    handleAddLog(e);
+    if (savingLogRef.current) return;
+    const scope = captureChildScopeRef.current;
+    savingLogRef.current = true; setSavingLog(true);
+    const written = await handleAddLog(e);
+    if (captureChildScopeRef.current !== scope) return;
+    savingLogRef.current = false; setSavingLog(false);
+    if (!written) return;
     toast(wasEditing ? t("beh.toast.updated") : t("beh.toast.logged"), "success");
     if (!wasEditing) offerPostCaptureCoach(confirmedPrompt);
     // TJB-06 / TJB-12 — same contract as submitLog: the echo speaks for a new
@@ -1069,7 +1086,7 @@ export default function BehaviorsTab() {
                                             <Icon name="edit" size={13} /> {t("beh.editMoment")}
                                           </button>
                                           <button
-                                            onClick={() => { if (window.confirm(t("beh.deleteConfirm"))) deleteLog(log.id); }}
+                                            onClick={async () => { if (window.confirm(t("beh.deleteConfirm"))) { try { await deleteLog(log.id); } catch { toast(t("companion.capture.undoError"), "error"); } } }}
                                             aria-label={t("beh.deleteLogAria")}
                                             className="px-2 py-1 rounded-lg transition"
                                             style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
@@ -1154,7 +1171,7 @@ export default function BehaviorsTab() {
               <button
                 type="button"
                 onClick={toggleVoice}
-                disabled={parsing}
+                disabled={parsing || savingLog}
                 title={t("beh.speakToLog")}
                 className={`flex min-h-11 min-w-11 items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg transition ${listening ? "animate-pulse" : ""}`}
                 style={listening
@@ -1377,6 +1394,7 @@ export default function BehaviorsTab() {
                 write straight into the ONE draft state the confirmed write
                 reads, so a correction never needs the full form round-trip. */}
             <ConfirmCaptureReview
+              busy={savingLog}
               source={captureSource}
               rows={[
                 { label: t("beh.typeLabel"), value: behaviorTypeLabel(newLogType, t) },

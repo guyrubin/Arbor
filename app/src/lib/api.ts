@@ -351,7 +351,7 @@ export type CouncilPayload = {
  * be discarded, not appended to.
  */
 export async function streamCouncil(
-  payload: { topicId?: string; message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he" },
+  payload: { topicId?: string; message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he"; recentTurns?: { role: "parent" | "coach"; text: string }[]; contextChildId?: string },
   onDelta: (text: string) => void,
   opts: { signal?: AbortSignal; onStatus?: (stage: string) => void } = {},
 ): Promise<CouncilPayload> {
@@ -500,7 +500,7 @@ export const api = {
   childAsrStatus: () => get<{ configured: boolean; provider: string }>("/api/score-utterance"),
   scoreUtterance: (payload: { target: string; sound: string; level: string; audio: { dataUrl: string; mimeType?: string } }) =>
     post<{ configured: boolean; result?: "got" | "almost" | "missed"; heard?: string; confidence?: number; provider?: string }>("/api/score-utterance", payload),
-  council: (payload: { topicId?: string; message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he" }) =>
+  council: (payload: { topicId?: string; message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he"; recentTurns?: { role: "parent" | "coach"; text: string }[]; contextChildId?: string }) =>
     post<{ text: string; contract?: CoachContract; council?: CouncilTake[]; memoryReviewItems?: MemoryReviewItem[] }>("/api/council", payload),
   // Co-parent / trusted sharing (server-enforced expiry).
   createShare: (payload: { childId: string; childName?: string; recipientEmail: string; role?: ShareRole; scopes?: string[]; duration?: string }) =>
