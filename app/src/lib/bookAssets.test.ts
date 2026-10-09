@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("./api", () => ({ authHeaders: async () => ({ "Content-Type": "application/json", Authorization: "Bearer T" }) }));
 
 import { fetchBookAsset, purgeBookAssets, setBookAssetBackend, type BookAssetBackend, type CachedFile } from "./bookAssetStore";
-import { libraryBookEntries, resolveBookAssets } from "./bookAssets";
+import { fillSharedNarration, libraryBookEntries, resolveBookAssets } from "./bookAssets";
 import { bookPoseIds, missingBookPoses } from "./library/bookPoses";
 import { fiveSmoothStones as book } from "./library/books/fiveSmoothStones";
 import type { BookAssetsDoc } from "./library/bookAssetPaths";
@@ -75,7 +75,9 @@ describe("reading the private files", () => {
     setBookAssetBackend(backend);
     calls.length = 0;
     vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
-      calls.push({ url, auth: new Headers(init.headers).get("authorization") });
+      calls.push({ url, auth: new Headers(init?.headers).get("authorization") });
+      // the shared set (public, static) answers its own cue times
+      if (url.startsWith("/audio/")) return new Response(JSON.stringify({ flight: 15063, boom: 20437 }), { status: 200, headers: { "content-type": "application/json" } });
       const body = url.includes("cues.json") ? JSON.stringify({ flight: 6200, boom: 8100 }) : "BYTES";
       return new Response(body, { status: 200 });
     });
@@ -108,10 +110,67 @@ describe("reading the private files", () => {
     expect(r.sheet.anchors?.["look-up"]).toEqual({ aspect: 0.6, footX: 0.5, footW: 0.3 });
     expect(r.sheet.prints?.cover).toMatchObject({ width: 1920, height: 1280 });
     expect(r.sheet.choices?.a).toMatch(/^blob:/);
-    expect(Object.keys(r.narration.files).sort()).toEqual(["en/p1.mp3", "en/p9.mp3"]);
+    const own = Object.entries(r.narration.files).filter(([, u]) => u.startsWith("blob:")).map(([k]) => k).sort();
+    expect(own).toEqual(["en/p1.mp3", "en/p9.mp3"]);
     expect(r.narration.cues).toEqual({ "en/p9": { flight: 6200, boom: 8100 } });
     expect(calls.some((c) => c.url.includes("he-m"))).toBe(false);
     r.revoke();
+  });
+
+  const SHARED = "/audio/books/five-smooth-stones/shared-v3";
+  const NAME_BEARING = ["cover.mp3", "p1.mp3", "p10.a.mp3", "p10.b.mp3", "p10.c.mp3"];
+
+  it("K2: the child's own files win; the shared set fills only the name-free gaps; a name-bearing file is never shared", async () => {
+    const d = docWith(POSES);
+    const r = await resolveBookAssets("kid1", { ...d, files: [...d.files, "narration/dylan-v3/en/p2.wav"] }, "en");
+    const f = r.narration.files;
+    // own: .mp3, and a .wav twin keeps its page (the shared .mp3 never shadows it)
+    expect(f["en/p1.mp3"]).toMatch(/^blob:/);
+    expect(f["en/p9.mp3"]).toMatch(/^blob:/);
+    expect(f["en/p2.wav"]).toMatch(/^blob:/);
+    expect(f["en/p2.mp3"]).toBeUndefined();
+    // the child's own sidecar stays with the child's own audio
+    expect(r.narration.cues["en/p9"]).toEqual({ flight: 6200, boom: 8100 });
+    // shared: the name-free gaps, from the public set of the same folder
+    expect(f["en/p3.mp3"]).toBe(`${SHARED}/en/p3.mp3`);
+    expect(f["en/p5-choice.b.mp3"]).toBe(`${SHARED}/en/p5-choice.b.mp3`);
+    expect(f["en/p7b-after.mp3"]).toBe(`${SHARED}/en/p7b-after.mp3`);
+    expect(f["en/p8.c.mp3"]).toBe(`${SHARED}/en/p8.c.mp3`);
+    // never a name-bearing file from the shared set (the child lacks them: silence)
+    for (const n of NAME_BEARING.filter((x) => x !== "p1.mp3")) expect(f[`en/${n}`], n).toBeUndefined();
+    for (const [k, u] of Object.entries(f)) if (!u.startsWith("blob:")) expect(u, k).toBe(`${SHARED}/${k}`);
+    // no cue sidecar fetched for a page the child has
+    expect(calls.some((c) => c.url.startsWith("/audio/"))).toBe(false);
+    r.revoke();
+  });
+
+  it("K2: he-f reads the he-m shared files for the name-free pages; never for a name-bearing one", async () => {
+    const d = docWith(POSES);
+    const r = await resolveBookAssets("kid1", { ...d, files: [...d.files.filter((x) => !x.startsWith("narration/")), "narration/dylan-v3/he-f/p1.mp3"] }, "he-f");
+    const f = r.narration.files;
+    expect(f["he-f/p1.mp3"]).toMatch(/^blob:/);
+    expect(f["he-f/p2.mp3"]).toBe(`${SHARED}/he-m/p2.mp3`);
+    expect(f["he-f/p8.a.mp3"]).toBe(`${SHARED}/he-m/p8.a.mp3`);
+    for (const n of NAME_BEARING.filter((x) => x !== "p1.mp3")) expect(f[`he-f/${n}`], n).toBeUndefined();
+    expect(Object.keys(f).every((k) => k.startsWith("he-f/"))).toBe(true);
+    expect(Object.values(f).some((u) => u.includes("/he-f/"))).toBe(false);
+    r.revoke();
+  });
+
+  it("K2: a page played from the shared set reads the shared cue sidecar (the child's stray sidecar is dropped)", async () => {
+    const d = docWith(POSES);
+    const r = await resolveBookAssets("kid1", { ...d, files: d.files.filter((x) => x !== "narration/dylan-v3/en/p9.mp3") }, "en");
+    expect(r.narration.files["en/p9.mp3"]).toBe(`${SHARED}/en/p9.mp3`);
+    expect(r.narration.cues["en/p9"]).toEqual({ flight: 15063, boom: 20437 });
+    expect(calls.filter((c) => c.url.startsWith("/audio/")).map((c) => [c.url, c.auth])).toEqual([[`${SHARED}/en/p9.cues.json`, null]]);
+    r.revoke();
+  });
+
+  it("K2: a book without a shared set (or an unknown book) gets nothing from it", async () => {
+    const files: Record<string, string> = {};
+    await fillSharedNarration("abrams-long-road", "en", files, {});
+    await fillSharedNarration("no-such-book", "en", files, {});
+    expect(files).toEqual({});
   });
 
   it("erase / sign-out remove the device copies", async () => {

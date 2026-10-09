@@ -8,6 +8,12 @@
  *   (`libraryBookEntries`).
  * - Each file comes from lib/bookAssetStore (the device copy, else the
  *   owner-checked proxy); the reader gets `blob:` URLs.
+ * - K2 shared narration: the book's NAME-FREE pages are rendered once for
+ *   every child (lib/library/narrationFiles, public/audio/books/<book>/<set>/).
+ *   The child's own files win; the shared set fills only the name-free gaps
+ *   (he-f reads he-m where the words are the same); a name-bearing file is
+ *   NEVER taken from it. A cue sidecar follows its audio: a page played from
+ *   the shared set reads the shared sidecar (static JSON, loadStaticJson).
  * - Never a model call.
  */
 import { fetchBookAsset } from "./bookAssetStore";
@@ -16,6 +22,8 @@ import { readCues, type CueTimes } from "./library/bookArtStates";
 import { getLibraryBook } from "./library/books";
 import { missingBookPoses } from "./library/bookPoses";
 import type { HeroSheet } from "./library/heroSheet";
+import { cueFileOf, sharedNarrationUrls } from "./library/narrationFiles";
+import { loadStaticJson } from "./library/staticJson";
 import type { Book } from "./library/types";
 
 export interface LibraryBookEntry {
@@ -93,7 +101,39 @@ export async function resolveBookAssets(childId: string, doc: BookAssetsDoc, fol
     const u = await url(rel);
     if (u) files[`${folder}/${name}`] = u;
   });
+  await fillSharedNarration(doc.bookId, folder, files, cues);
   return { sheet, narration: { files, cues }, revoke: () => urls.forEach((u) => URL.revokeObjectURL(u)) };
+}
+
+/** K2: the book's shared name-free files fill the gaps in the child's own
+ *  narration (`files` / `cues`, keyed `<folder>/<file>`, filled in place). A
+ *  page the child has as .mp3 or .wav keeps the child's file and sidecar. */
+export async function fillSharedNarration(
+  bookId: string,
+  folder: "en" | "he-m" | "he-f",
+  files: Record<string, string>,
+  cues: Record<string, CueTimes>,
+): Promise<void> {
+  const book = getLibraryBook(bookId);
+  if (!book) return;
+  const shared = sharedNarrationUrls(book, folder);
+  const sidecars: [string, string][] = [];
+  for (const [name, src] of Object.entries(shared)) {
+    if (!name.endsWith(".mp3")) continue;
+    const key = `${folder}/${name}`;
+    if (files[key] || files[key.replace(/\.mp3$/, ".wav")]) continue;
+    files[key] = src;
+    const cue = cueFileOf(name);
+    const stem = `${folder}/${name.slice(0, -".mp3".length)}`;
+    delete cues[stem];
+    if (Object.prototype.hasOwnProperty.call(shared, cue)) sidecars.push([stem, shared[cue]]);
+  }
+  await Promise.all(
+    sidecars.map(async ([stem, src]) => {
+      const raw = await loadStaticJson(src);
+      if (raw) cues[stem] = readCues(raw);
+    }),
+  );
 }
 
 /** The cover picture for a book card: the child's printed cover (blob URL),

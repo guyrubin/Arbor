@@ -171,4 +171,10 @@ describe("K2: the bundle's narration is the shared, name-free set only", () => {
     }
     expect(rels.filter((r) => r.startsWith("books/")).sort()).toEqual(expected.sort());
   });
+
+  it("the private loader's only other read is the shared set's cue sidecar, as static JSON", () => {
+    const loader = read("lib/bookAssets.ts");
+    expect(loader.match(/loadStaticJson\(/g)).toHaveLength(1);
+    expect(loader).toMatch(/const shared = sharedNarrationUrls\(book, folder\);/);
+  });
 });
