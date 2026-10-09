@@ -23,12 +23,14 @@ const stripComments = (src: string) =>
 
 /** The hub page and the cards it mounts inline (sheets it opens are not the hub). */
 const HUB_FILES = [
-  "components/tabs/DevelopmentTab.tsx",
+  // Parity 9 Oct: the Growth leaf is the child portrait and its two rows.
+  "components/companion/ChildPortrait.tsx",
+  "components/companion/PortraitWatchRow.tsx",
+  "components/companion/PortraitKeepsakes.tsx",
   "components/sections/DevScoreCard.tsx",
   "components/growth/MonthInReview.tsx",
   "components/growth/FirstWordsLedger.tsx",
   "components/growth/ArborTreeCard.tsx",
-  "components/growth/RecordByDomain.tsx",
   // W2-GROWTH r1 (profile critic F3): the Profile milestones chapter printed
   // "{checked} of {total} noticed in the {band} window" — the denominator
   // B-GROWTH-34 removed from the hub survived one route over.
@@ -57,7 +59,7 @@ describe("B-GROWTH-34 — the Growth hub counts, never 'of N'", () => {
     expect(pulse).toMatch(/const \{ noticed \} = noticedMilestoneCounts\(milestones\);/);
     // W2-GROWTH r1: the hub no longer prints a milestone total at all (the
     // pill is the one count; the page opens on New-since rows instead).
-    const dev = stripComments(read("components/tabs/DevelopmentTab.tsx"));
+    const dev = stripComments(HUB_FILES.slice(0, 3).map(read).join("\n"));
     expect(dev).not.toContain("noticedMilestoneCounts(");
     expect(dev).not.toContain("ageWindowMilestones(");
     expect(dev).not.toContain("inWindow.length");
@@ -73,7 +75,7 @@ describe("B-GROWTH-34 — the Growth hub counts, never 'of N'", () => {
   // dashboard density in the parent register, and a repeat of the pill. The
   // keys stay valid (other surfaces / history), so the dictionary check stays.
   it("the hub renders no stat trio; the count keys stay plain counts (EN + HE)", () => {
-    const dev = stripComments(read("components/tabs/DevelopmentTab.tsx"));
+    const dev = stripComments(HUB_FILES.slice(0, 3).map(read).join("\n"));
     expect(dev).not.toContain("heroStats");
     expect(dev).not.toMatch(/stats=\{\[/);
     expect(dev).not.toContain('pickCountKey("elev.hero.growth.stat');

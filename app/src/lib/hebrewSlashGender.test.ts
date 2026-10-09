@@ -437,11 +437,12 @@ describe("P1-NEXTLEVEL critic r2 (milestones · G0) — every Growth screen pass
   // A milestoneText( call with no 4th argument skips resolveHebrewSlash and
   // paints 'נרגע/ת' on Hebrew screens. #/development was fixed in fcd4a2df;
   // #/milestones rendered the slash forms in the hero and all three rows.
-  for (const file of ["MilestonesTab.tsx", "DevelopmentTab.tsx"]) {
+  // Parity 9 Oct: the Growth leaf's milestone text lives in the portrait's watch row.
+  for (const file of ["tabs/MilestonesTab.tsx", "companion/PortraitWatchRow.tsx"]) {
     it(`${file}: no milestoneText( call lacks the gender opts`, async () => {
       const fs = await import("node:fs");
       const path = await import("node:path");
-      const src = fs.readFileSync(path.resolve(__dirname, "../components/tabs", file), "utf8");
+      const src = fs.readFileSync(path.resolve(__dirname, "../components", file), "utf8");
       const calls: string[] = src.match(/milestoneText\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)/g) ?? [];
       expect(calls.length).toBeGreaterThan(0);
       const bare = calls.filter((c) => c.split(",").length < 4);

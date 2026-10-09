@@ -30,15 +30,14 @@ describe("OBJ-GROWTH-01 — one domain count, derived once", () => {
     const growth = read("lib", "i18nElevation", "growth.ts");
     expect(growth).not.toContain('"elev.hero.growth.stat.domains"');
     expect(growth).not.toContain('"elev.hero.growth.stat.noticed"');
-    const dev = stripComments(read("components", "tabs", "DevelopmentTab.tsx"));
+    const dev = stripComments(["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx"].map((f) => read("components", "companion", f)).join("\n"));
     expect(dev).not.toContain("domainCountsIn");
     expect(dev).not.toContain("DOMAIN_META");
     expect(dev).not.toContain("DOMAIN_COUNT");
   });
 
-  it("the Full Picture teaser renders without a number in EN and HE", () => {
-    const dev = stripComments(read("components", "tabs", "DevelopmentTab.tsx"));
-    expect(dev).toContain('{t("elev.fullpicture.card.teaser")}');
+  it("the Full Picture teaser string carries no number in EN and HE", () => {
+    // Parity 9 Oct: the hub card that rendered it is gone; the key stays honest.
     for (const lang of ["en", "he"] as const) {
       const s = translate(lang, "elev.fullpicture.card.teaser", {});
       expect(s).not.toBe("elev.fullpicture.card.teaser");
@@ -70,14 +69,9 @@ describe("OBJ-GROWTH-01 — one domain count, derived once", () => {
      professional preview — which the PARENT reads — printed "0 domain(s)."
      All four now name DOMAIN_COUNT and resolve their own plural. */
   describe("R1 — the rendered strings name the same total", () => {
-    const dev = stripComments(read("components", "tabs", "DevelopmentTab.tsx"));
     const copilot = stripComments(read("components", "practice", "DevelopmentCopilot.tsx"));
     const fp = read("lib", "i18nElevation", "fullpicture.ts");
 
-    it("the teaser resolves through the shared t(), not the local tFP", () => {
-      expect(dev).toContain('{t("elev.fullpicture.card.teaser")}');
-      expect(dev).not.toContain('tFP(uiLang, "elev.fullpicture.card.teaser"');
-    });
 
     it("the teaser key carries no count at all (B-GROWTH-01)", () => {
       for (const line of fp.split("\n").filter((l) => l.includes("elev.fullpicture.card.teaser"))) {

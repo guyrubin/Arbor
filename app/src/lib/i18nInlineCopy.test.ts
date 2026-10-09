@@ -531,10 +531,9 @@ describe("R22 — the practice domain names and the Full Picture body carry both
     expect(ms).not.toMatch(/>\{dom\.label\}</);
     expect(ms).not.toContain('title="Celebrate"');
 
-    const dev = stripComments(readSrc("components/tabs/DevelopmentTab.tsx"));
-    // W2-GROWTH r1: the recent rows merged into New-since (lib/growthNewSince):
-    // the parent's own note, never the stored type or the stored English context.
-    expect(dev).toContain("buildNewSince({");
+    // Parity 9 Oct: the Growth leaf is the child portrait; a record row shows the
+    // parent's own note, never the stored type or the stored English context.
+    const dev = stripComments(readSrc("components/companion/ChildPortrait.tsx"));
     expect(dev).not.toContain("log.behaviorType");
     expect(dev).not.toContain("log.context");
 

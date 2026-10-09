@@ -253,9 +253,11 @@ describe("B-PROG-05 — the container and the door", () => {
   });
 
   it("the Growth leaf mounts the page at ?view=program and carries its door", () => {
-    const s = src("../tabs/DevelopmentTab.tsx");
-    expect(s).toContain('if (view === "program") return <ProgramPage />;');
-    expect(s).toContain('goToRoute("development", { view: "program" })');
+    // Parity 9 Oct: Shell mounts it on #/development?view=program; the portrait
+    // carries the door and still exactly one primary move.
+    expect(src("../layout/Shell.tsx")).toContain('query.get("view") === "program" ? <ProgramPage/>');
+    const s = src("../companion/ChildPortrait.tsx");
+    expect(s).toContain('window.location.hash = "#/development?view=program"');
     expect((s.match(/data-primary-move="/g) || []).length).toBe(1);
   });
 });

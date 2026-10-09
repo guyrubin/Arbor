@@ -299,7 +299,7 @@ describe("B-TODAY-18 — tomorrow's reason is a coordinator candidate", () => {
     const slot = read("../components/overview/CompanionOfferSlot.tsx");
     expect(slot).toContain('case "tomorrow-reason":');
     expect(slot).toContain("<TomorrowReasonCard onResolved={controls.refresh} />");
-    const growth = read("../components/tabs/DevelopmentTab.tsx");
+    const growth = read("../components/companion/PortraitWatchRow.tsx");
     expect(growth).not.toContain("<TomorrowReasonCard");
     expect(growth).toContain("closeDay(childProfile.id, Date.now(), returnSignals);");
     const hook = read("../components/overview/useCompanionOffer.ts");

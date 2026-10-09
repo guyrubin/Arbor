@@ -107,12 +107,13 @@ describe("GP-33 — the ledger card keeps the record's register", () => {
     readFileSync(path.join(here, "..", rel), "utf8").replace(/\r\n/g, "\n");
   const CARD = read("components/growth/FirstWordsLedger.tsx");
   const MODULE = read("lib/firstWords.ts");
-  const HUB = read("components/tabs/DevelopmentTab.tsx");
+  // Parity 9 Oct: the Growth leaf mounts the ledger in its keepsake disclosure.
+  const HUB = read("components/companion/PortraitKeepsakes.tsx");
 
   it("all three files were actually read (extraction proven)", () => {
     expect(CARD.length).toBeGreaterThan(1000);
     expect(MODULE.length).toBeGreaterThan(500);
-    expect(HUB.length).toBeGreaterThan(1000);
+    expect(HUB.length).toBeGreaterThan(800);
   });
 
   it("NEGATIVE CONTROL — the matcher catches the shapes this feature must not grow", () => {

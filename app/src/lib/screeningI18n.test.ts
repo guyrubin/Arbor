@@ -73,7 +73,6 @@ describe("UND-1 — the check flow renders no hardcoded English literal", () => 
   ];
   const FLOW_SURFACES = [
     "components/sections/Screening.tsx",
-    "components/sections/ScreeningSheet.tsx",
   ];
 
   for (const rel of FLOW_SURFACES) {

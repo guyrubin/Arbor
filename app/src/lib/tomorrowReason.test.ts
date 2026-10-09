@@ -191,7 +191,8 @@ describe("TJB-28 — what the hook is allowed to say and where it goes", () => {
 });
 
 describe("TJB-28 — the hook is mounted, in-app, and sends nothing", () => {
-  const growth = read("../components/tabs/DevelopmentTab.tsx");
+  // Parity 9 Oct: the Growth leaf's close-of-day write lives in the watch row.
+  const growth = read("../components/companion/PortraitWatchRow.tsx");
   const card = read("../components/nextopen/TomorrowReasonCard.tsx");
 
   it("reads both files (a scan over an empty string proves nothing)", () => {
@@ -268,7 +269,7 @@ describe("deriveReturnSignals (B-GROWTH-04)", () => {
 
   it("Growth and Comics both derive through it (source pins)", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
-    for (const rel of ["../components/tabs/DevelopmentTab.tsx", "../components/tabs/ComicsTab.tsx"]) {
+    for (const rel of ["../components/companion/PortraitWatchRow.tsx", "../components/tabs/ComicsTab.tsx"]) {
       const src = readFileSync(path.join(here, rel), "utf8");
       expect(src, rel).toContain("deriveReturnSignals({");
       expect(src, rel).not.toContain("countSince(behaviorLogs, startOfToday");

@@ -24,7 +24,10 @@ import { en as fpEn, he as fpHe } from "../../lib/i18nElevation/fullpicture";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const copilotSrc = readFileSync(path.join(here, "DevelopmentCopilot.tsx"), "utf8");
-const devTabSrc = readFileSync(path.join(here, "..", "tabs", "DevelopmentTab.tsx"), "utf8");
+// Parity 9 Oct: #/development is the child portrait (with its watch row and
+// keepsake disclosure); the Growth hub file is gone.
+const devTabSrc = ["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx"]
+  .map((f) => readFileSync(path.join(here, "..", "companion", f), "utf8")).join("\n");
 
 /* ── Banned patterns ─────────────────────────────────────────────────────────
    B1 — the "Discuss"/"Monitor" verdict chip labels (graded level tags).
@@ -142,24 +145,22 @@ describe("1.7 zero-regression — every capability stays reachable, reframed", (
   });
 });
 
-describe("1.7 mount — DevelopmentTab hosts the Full Picture card", () => {
+describe("1.7 mount — the Growth leaf (child portrait) hosts the Full Picture door", () => {
   /* B-GROWTH-03 — three foreign cards went to the homes that own their job:
      the Growth SpineRibbon (-> Academy) is removed (the Journal ribbon keeps
      the promise), the reminders card lives on #/smart-reminders and the ritual
      card on #/family. Growth imports none of the three. */
-  it("B-GROWTH-03: DevelopmentTab imports none of SpineRibbon, PushPrimingCard, RitualTurnCard", () => {
+  it("B-GROWTH-03: the Growth leaf imports none of SpineRibbon, PushPrimingCard, RitualTurnCard", () => {
     for (const name of ["SpineRibbon", "PushPrimingCard", "RitualTurnCard"]) {
       expect(devTabSrc, name).not.toMatch(new RegExp(`import[^;]*\\b${name}\\b`));
       expect(devTabSrc, name).not.toContain(`<${name}`);
     }
     expect(devTabSrc).not.toContain("growth-spine-ribbon");
   });
-  it("hosts the Full Picture entry card (title, promise, count teaser, CTA)", () => {
-    expect(devTabSrc).toContain('data-testid="full-picture-card"');
-    expect(devTabSrc).toContain("elev.fullpicture.title");
-    expect(devTabSrc).toContain("elev.fullpicture.card.promise");
-    expect(devTabSrc).toContain("elev.fullpicture.card.teaser");
+  it("hosts the Full Picture door (the portrait's record tools)", () => {
+    // The hub's teaser card left with the hub; the portrait keeps ONE door.
     expect(devTabSrc).toContain('setActiveTab("copilot")');
+    expect(devTabSrc).toContain("copy.copilot");
   });
   it("links to copilot exactly once (upgraded tile, no duplicate)", () => {
     expect((devTabSrc.match(/setActiveTab\("copilot"\)/g) ?? []).length).toBe(1);
@@ -219,7 +220,9 @@ describe("GP-05 repo-wide — no <TrustSafetyBar> call site passes a risk expres
   });
 
   it("scans a non-trivial number of call sites (the walker is not vacuous)", () => {
-    expect(sites.length).toBeGreaterThanOrEqual(6);
+    // Parity 9 Oct: 6 -> 5 — sections/ScreeningSheet.tsx (dead since the
+    // companion rewrite, deleted with it) carried the sixth call site.
+    expect(sites.length).toBeGreaterThanOrEqual(5);
     expect(sites.some((s) => s.file.endsWith("CoachTab.tsx"))).toBe(true);
   });
 

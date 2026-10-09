@@ -162,9 +162,9 @@ describe("re-check reminder source contract", () => {
     expect(src).toContain('t("screen.recheck.dueOn"');
   });
 
-  it("B-GROWTH-04: DevelopmentTab.tsx states the re-check DATE as text, no chip", () => {
-    const src = readSrc("components/tabs/DevelopmentTab.tsx");
-    expect(src).toContain('data-testid="dev-recheck-date"');
+  it("B-GROWTH-04: the portrait's watch row states the re-check DATE as text, no chip", () => {
+    const src = readSrc("components/companion/PortraitWatchRow.tsx");
+    expect(src).toContain('data-testid="portrait-recheck-date"');
     expect(src).toContain('t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })');
     expect(src).toContain("latestRecheckDueAt");
     // the yellow proactive chip is gone

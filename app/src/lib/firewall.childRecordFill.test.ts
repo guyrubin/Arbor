@@ -42,7 +42,9 @@ const GROWTH_FILES = fs.existsSync(growthDir)
 
 const SCANNED = [
   "components/tabs/MilestonesTab.tsx",
-  "components/tabs/DevelopmentTab.tsx",
+  "components/companion/ChildPortrait.tsx",
+  "components/companion/PortraitWatchRow.tsx",
+  "components/companion/PortraitKeepsakes.tsx",
   ...GROWTH_FILES,
   "components/sections/ChildProfile.tsx",
   "components/practice/DevelopmentCopilot.tsx",
@@ -64,9 +66,9 @@ describe("B-GROWTH-07 — no proportional fill of a child record", () => {
   /* B-GROWTH-30 — the record by area is covered BEFORE it renders (spine §9
      verdict creep): no fill, no fraction of a total, no chart, and its strings
      carry counts of noticed things only. */
-  it("covers the Record by area (components/growth/RecordByDomain.tsx)", () => {
-    expect(SCANNED).toContain("components/growth/RecordByDomain.tsx");
-    const src = stripComments(read("components/growth/RecordByDomain.tsx"));
+  it("covers the record by area (the child portrait's area lens, which replaced RecordByDomain)", () => {
+    expect(SCANNED).toContain("components/companion/ChildPortrait.tsx");
+    const src = stripComments(read("components/companion/ChildPortrait.tsx"));
     expect(src).not.toMatch(/\btotal\b|%|Chart|<svg/);
     expect(src).not.toMatch(/sort\([^)]*count/);
   });

@@ -150,7 +150,7 @@ describe("GP-08 — every denominator surface counts the window, not the catalog
   });
 
   it("the pre-fix all-ages denominators are gone", () => {
-    const dev = stripComments(read("components/tabs/DevelopmentTab.tsx"));
+    const dev = stripComments(["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx"].map((f) => read(`components/companion/${f}`)).join("\n"));
     expect(dev).not.toMatch(/total:\s*milestones\.length/);
     expect(dev).not.toMatch(/total:\s*heroStats\.|inWindow\.length/);
     const ms = stripComments(read("components/tabs/MilestonesTab.tsx"));
