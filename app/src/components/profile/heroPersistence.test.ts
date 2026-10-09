@@ -61,9 +61,14 @@ describe("a failed child-doc write is visible to the parent", () => {
     expect(ctx).toContain("updateChild: (id: string, patch: Partial<ChildProfile>) => Promise<boolean>;");
     expect(ctx).toMatch(/} catch \{[\s\S]{0,400}persisted = false;/);
     expect(ctx).toContain("return persisted;");
-    // The local state update still happens — the parent keeps editing what
-    // they can see; only the silence is gone.
-    expect(ctx).toMatch(/setProfiles\(\(prev\) => prev\.map[\s\S]{0,120}\);\s*\n\s*return persisted;/);
+    // Current-owner edits remain visible after a failed save; stale owners
+    // must not mutate the newly signed-in family's profiles.
+    const guardedLocalUpdate = /setProfiles\(\(prev\) => current\(\) \? prev\.map[\s\S]{0,120}: prev\);\s*\n\s*return persisted;/;
+    expect(ctx).toMatch(guardedLocalUpdate);
+    const guarded = "setProfiles((prev) => current() ? prev.map((p) => (p.id === id ? applyLocal(p) : p)) : prev);\nreturn persisted;";
+    expect(guarded).toMatch(guardedLocalUpdate);
+    expect("setProfiles((prev) => prev.map((p) => applyLocal(p)));\nreturn persisted;").not.toMatch(guardedLocalUpdate);
+    expect(guarded.replace("return persisted;", "return true;")).not.toMatch(guardedLocalUpdate);
   });
 
   it("the profile drawer raises an error toast and stays open", () => {

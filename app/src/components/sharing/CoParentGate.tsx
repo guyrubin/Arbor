@@ -23,7 +23,7 @@ export default function CoParentGate({ children }: { children: React.ReactNode }
 
 function CoParentSession({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth();
-  const { loading: profileLoading, needsOnboarding } = useProfile();
+  const { loading: profileLoading, needsOnboarding, loadError } = useProfile();
   const { uiLang } = useLanguage();
   const c = coParentCopy[uiLang];
   // Labelled, invented QA state; this branch is removed from production builds.
@@ -43,7 +43,7 @@ function CoParentSession({ children }: { children: React.ReactNode }) {
   const requests = useRef(new CoParentRequests());
   const activeGrant = useRef<string | null>(null);
   useEffect(() => () => { requests.current.invalidate(); }, []);
-  const active = !dismissed && (preview || ((Boolean(requested) || needsOnboarding) && user?.uid !== "local-sandbox"));
+  const active = !loadError && !dismissed && (preview || ((Boolean(requested) || needsOnboarding) && user?.uid !== "local-sandbox"));
   useEffect(() => {
     if (!active) { requests.current.invalidate(); activeGrant.current = null; setWorkspace(null); setSelected(null); }
   }, [active]);
@@ -169,7 +169,8 @@ function CoParentSession({ children }: { children: React.ReactNode }) {
     setWorkspace(null); setSelected(null); setDismissed(true);
   };
   const exitAccount = () => { requests.current.invalidate(); activeGrant.current = null; setWorkspace(null); setSelected(null); setShares([]); setNote(""); void signOut(); };
-  if (!active || (checked && !requested && !preview && !error && shares.length === 0)) return <>{children}</>;
+  // Let ProfileGate show its retryable error even when an invite is in the URL.
+  if (loadError || !active || (checked && !requested && !preview && !error && shares.length === 0)) return <>{children}</>;
   const invitations = requested ? shares.filter((g) => g.id === requested) : shares;
   const date = (at: string) => Number.isFinite(Date.parse(at)) ? new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(at)) : "";
   return <main className="arbor-app arbor-parent min-h-screen px-4 py-8 sm:py-12" dir={uiLang === "he" ? "rtl" : "ltr"} style={{ background: "var(--arbor-paper)", color: "var(--arbor-ink)" }}>

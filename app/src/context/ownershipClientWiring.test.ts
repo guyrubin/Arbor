@@ -41,7 +41,8 @@ describe("OWN-1 — the client provisions server ownership docs", () => {
     expect(profile).toContain('"/api/onboarding/family-child"');
     const call = /fetch\("\/api\/onboarding\/family-child"[\s\S]{0,300}/.exec(profile)?.[0] ?? "";
     expect(call).toContain('method: "POST"');
-    expect(call).toContain("authHeaders()");
+    expect(profile).toMatch(/const headers = await authHeaders\(\);\s*if \(!current\(\)\) return false;\s*const res = await fetch/);
+    expect(call).toContain("headers,");
   });
 
   it("identity is server-derived: the body carries childId + profile, never familyId/userId", () => {
@@ -53,17 +54,19 @@ describe("OWN-1 — the client provisions server ownership docs", () => {
 
   it("provisioning runs from addChild after the child doc write AND as a backfill after profiles load", () => {
     // addChild: right after the Firestore setDoc path.
-    const add = /const addChild = useCallback\([\s\S]*?\[useFirestore, profilesPath, ensureOwnership\]/.exec(profile)?.[0] ?? "";
+    const add = /const addChild = useCallback\([\s\S]*?\[useFirestore, profilesPath, ensureOwnership, writeScopeKey, ownerScope\]/.exec(profile)?.[0] ?? "";
     expect(add).not.toBe("");
     expect(add).toContain("void ensureOwnership(newChild)");
     // Load path: every loaded profile is backfilled (existing accounts heal on sign-in).
-    expect(profile).toContain("for (const child of loaded) void ensureOwnership(child)");
+    expect(profile).toMatch(/for \(const child of loaded\) \{\s*if \(!current\(\)\) return;\s*void ensureOwnership\(child\);/);
   });
 
   it("the backfill is once-per-session-per-child (ref + sessionStorage guard, cleared only on success)", () => {
     expect(profile).toContain("provisionedChildren");
-    expect(profile).toContain("sessionStorage.getItem(`${OWNERSHIP_GUARD_PREFIX}${child.id}`)");
-    expect(profile).toContain("sessionStorage.setItem(`${OWNERSHIP_GUARD_PREFIX}${child.id}`");
+    expect(profile).toContain('const guard = `${scope.key}:${child.id}`');
+    expect(profile).toContain("if (ownershipAttempts.current.get(guard) === attempt) ownershipAttempts.current.delete(guard)");
+    expect(profile).toContain("sessionStorage.getItem(`${OWNERSHIP_GUARD_PREFIX}${guard}`)");
+    expect(profile).toContain("sessionStorage.setItem(`${OWNERSHIP_GUARD_PREFIX}${guard}`");
   });
 });
 
