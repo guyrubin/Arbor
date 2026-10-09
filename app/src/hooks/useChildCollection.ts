@@ -3,6 +3,7 @@ import { collection, deleteDoc, doc, limit as fbLimit, onSnapshot, orderBy, quer
 import { db, firebaseEnabled } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { clearSyncError, getSyncSnapshot, reportSyncError, subscribeSyncStatus } from "../lib/syncStore";
+import { settleOrQueue } from "../lib/firestoreWrite";
 
 type WithId = { id: string };
 
@@ -159,7 +160,7 @@ export function useChildCollection<T extends WithId>(
     async (item: T) => {
       if (scopeRef.current !== scope) throw new Error("The active child changed");
       if (remote && db && uid) {
-        await setDoc(doc(db, `users/${uid}/children/${childId}/${name}`, item.id), item as Record<string, unknown>);
+        await settleOrQueue(setDoc(doc(db, `users/${uid}/children/${childId}/${name}`, item.id), item as Record<string, unknown>));
       } else {
         const previous = itemsRef.current;
         const next = previous.some(value => value.id === item.id)
@@ -179,7 +180,7 @@ export function useChildCollection<T extends WithId>(
     async (id: string) => {
       if (scopeRef.current !== scope) throw new Error("The active child changed");
       if (remote && db && uid) {
-        await deleteDoc(doc(db, `users/${uid}/children/${childId}/${name}`, id));
+        await settleOrQueue(deleteDoc(doc(db, `users/${uid}/children/${childId}/${name}`, id)));
       } else {
         const next = itemsRef.current.filter(item => item.id !== id);
         localStorage.setItem(lsKey, JSON.stringify(next));

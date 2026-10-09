@@ -33,13 +33,15 @@ const firstNonBody = (doms: DomainId[]): ShelfId | "throws" => {
 function producedCases(): Case[] {
   const cases: Case[] = [];
   const moment = (behaviorType: string): ObservationValue => ({ type: "moment", behaviorType });
-  // behaviorLogs: toDomains("behavior", type), unknown types → ["feelings"]
+  // behaviorLogs: toDomains("behavior", type). A plain Moment and unknown/custom
+  // types carry NO domain until the parent files them — they are produced
+  // unshelved by design (see the unfiled-moment test below), not cases here.
   for (const type of VOCAB_IDS.behavior) {
     const doms = ordered(toDomains("behavior", type));
+    if (doms.length === 0) continue;
     const special = type === "Sleep Meltdown" ? "sleep" : type === "Food Refusal" ? "food" : null;
     cases.push({ origin: "behaviorLogs", domains: doms, value: moment(type), expect: special ?? firstNonBody(doms) });
   }
-  cases.push({ origin: "behaviorLogs", domains: ["feelings"], value: moment("Something new"), expect: "feelings" });
   // milestones + keepsakes: toDomains("developmental", every DevelopmentalDomainId); an untagged custom row
   for (const id of DEVELOPMENTAL_DOMAIN_IDS) {
     const doms = ordered(toDomains("developmental", id));
@@ -169,6 +171,23 @@ describe("B-LOOP-03 — shelfOf, every ObservationOrigin × domain the read mode
     expect(by("memory:f1").domains).toEqual(["body"]);
     expect(by("memory:f1").shelf).toBe("food");
     for (const o of obs) expect(o.shelf, o.id).toBeDefined();
+  });
+
+  it("an unfiled plain or custom moment stays on the record with NO shelf (never guessed onto feelings); a parent-filed one keeps its shelf", () => {
+    const at = "2026-10-01T10:00:00.000Z";
+    const obs = toObservations({
+      behaviorLogs: [
+        { id: "m1", behaviorType: "Moment", timestamp: at } as never,
+        { id: "m2", behaviorType: "Our birthday", timestamp: at } as never,
+        { id: "m3", behaviorType: "Moment", timestamp: at, shelf: "hands" } as never,
+      ],
+    }, { id: "child-1" });
+    const by = (id: string): Observation => obs.find((o) => o.id === id)!;
+    for (const id of ["behaviorLogs:m1", "behaviorLogs:m2"]) {
+      expect(by(id).domains, id).toEqual([]);
+      expect(by(id).shelf, id).toBeUndefined();
+    }
+    expect(by("behaviorLogs:m3").shelf).toBe("hands");
   });
 });
 

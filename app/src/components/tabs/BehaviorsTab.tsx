@@ -210,6 +210,15 @@ export default function BehaviorsTab() {
   const captureChildScopeRef = useRef({ childId: childProfile.id });
   if (captureChildScopeRef.current.childId !== childProfile.id) captureChildScopeRef.current = { childId: childProfile.id };
   useEffect(() => { savingLogRef.current = false; setSavingLog(false); }, [childProfile.id]);
+  // A late extraction belongs to the child (and the mounted tab) it was asked
+  // for: the draft setters live in the provider and outlive a child switch, so
+  // without this lease child A's words could refill child B's form.
+  const captureAliveRef = useRef(true);
+  useEffect(() => { captureAliveRef.current = true; return () => { captureAliveRef.current = false; }; }, []);
+  const captureLease = () => {
+    const scope = captureChildScopeRef.current;
+    return () => captureAliveRef.current && captureChildScopeRef.current === scope;
+  };
   // AI-CAP-6: live interim transcript — the parent's own words render in the
   // capture area (calm register, --arbor-muted) while they are still speaking,
   // so dictation is never speak-blind. The final transcript still flows through
@@ -305,8 +314,10 @@ export default function BehaviorsTab() {
     // factual provenance and arm the explicit-confirm gate.
     setCaptureSource("voice");
     setNeedsReview(true);
+    const isCurrent = captureLease();
     try {
       const d = await api.extractLog({ message: text, childProfile, language: getAiLanguage() });
+      if (!isCurrent()) return;
       applyExtractedDraft(d, text);
       toast(t("beh.toast.voiceParsed"), "success");
     } catch (err) {
@@ -323,6 +334,7 @@ export default function BehaviorsTab() {
       } else {
         // Only AFTER the escalation branch: 500/network keeps the raw
         // transcript in the trigger field so nothing is lost.
+        if (!isCurrent()) return;
         setNewLogTrigger(text);
         toast(t("beh.toast.voiceFallback"), "info");
       }
@@ -360,22 +372,29 @@ export default function BehaviorsTab() {
     setEscalationMarkdown(null);
     setCaptureSource("ai-draft");
     setNeedsReview(true);
+    const isCurrent = captureLease();
     try {
       const d = await api.extractLog({ message: text, childProfile, language: getAiLanguage() });
+      if (!isCurrent()) return;
       applyExtractedDraft(d, text);
       setCaptureOpen(true);
       setReviewOpen(true);
     } catch (err) {
       if (err instanceof EscalationRequiredError) {
+        // Crisis resources always show; the shared-draft rollback is skipped
+        // only when the parent already moved to another child (whose draft the
+        // provider has reset).
         // FAIL-CLOSED, and TJB-09 must not weaken it: the optimistic draft
         // above put the parent's sentence in the form, so an escalation has to
         // ROLL IT BACK through the SHARED reset seam (the same one
         // discardReview uses) — an escalated transcript may never survive in
         // an ordinary editable draft. Post-condition is identical to the old
         // code path: zero draft fields, and no toast.
-        cancelEditLog();
-        setCaptureOpen(false);
-        setDetailsOpen(false);
+        if (isCurrent()) {
+          cancelEditLog();
+          setCaptureOpen(false);
+          setDetailsOpen(false);
+        }
         const match =
           escalationCategories.find((c) => c.category === err.category) ??
           escalationCategories[0];
@@ -384,6 +403,7 @@ export default function BehaviorsTab() {
         // Only AFTER the escalation branch: extraction failure degrades to
         // today's ungated behavior — the sentence is already in the trigger
         // field from the optimistic draft, so nothing is lost or re-written.
+        if (!isCurrent()) return;
         setNeedsReview(false);
         setCaptureSource("text");
         toast(t("beh.toast.voiceFallback"), "info");

@@ -525,7 +525,8 @@ export const api = {
     post<{ grant: ConsentGrant }>("/api/consent", payload),
   listConsent: (childId: string) =>
     get<{ grants: ConsentGrant[] }>(`/api/consent/${encodeURIComponent(childId)}`),
-  revokeConsent: (id: string) => del<{ grant: ConsentGrant }>(`/api/consent/${encodeURIComponent(id)}`),
+  revokeConsent: (id: string, childId: string) =>
+    del<{ grant: ConsentGrant }>(`/api/consent/${encodeURIComponent(id)}?childId=${encodeURIComponent(childId)}`),
   // Gemini Live: mint an ephemeral token for a direct browser Live session.
   // AI-V8: config-only availability probe (no SDK call, no token mint server-side).
   // Probe THIS on mount; call liveToken only when the parent toggles voice on.

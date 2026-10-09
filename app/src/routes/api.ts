@@ -502,8 +502,13 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   router.get("/consent/:childId", requireOwnership, async (req, res) => {
     res.json({ grants: await consentStore.list(req.params.childId) });
   });
-  // Revoke a single consent grant.
+  // Revoke a single consent grant — only on a child the caller owns, and only a
+  // grant recorded for that child (a grant id alone authorizes nothing).
   router.delete("/consent/:id", async (req, res) => {
+    const childId = String(req.query.childId || "").trim();
+    if (!childId) { res.status(400).json({ error: "childId is required" }); return; }
+    if (!(await mayReadChildMemory(req, childId))) { res.status(403).json({ error: "Not authorized for this child." }); return; }
+    if (!(await consentStore.list(childId)).some((g) => g.id === req.params.id)) { res.status(404).json({ error: "Consent grant not found" }); return; }
     const grant = await consentStore.revoke(req.params.id);
     if (!grant) { res.status(404).json({ error: "Consent grant not found" }); return; }
     res.json({ grant });

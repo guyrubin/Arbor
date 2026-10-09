@@ -114,6 +114,21 @@ describe("AI-CAP-3 — BehaviorsTab typed capture goes through the extraction se
     const apply = /const applyExtractedDraft = [\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
     expect(apply).toMatch(/setNewLogResponse\(n\.response \|\| t\("beh\.extract\.noResponse"\)\)/);
   });
+
+  it("a late extraction never writes into another child's draft (lease taken before the request, checked after it)", () => {
+    expect(behaviors).toMatch(/const captureLease = \(\) => \{\s*const scope = captureChildScopeRef\.current;\s*return \(\) => captureAliveRef\.current && captureChildScopeRef\.current === scope;/);
+    for (const fn of ["parseVoice", "extractFromTyped"]) {
+      const body = new RegExp(`const ${fn} = async [\\s\\S]*?\\n  };`).exec(behaviors)?.[0] ?? "";
+      expect(body, fn).not.toBe("");
+      const lease = body.indexOf("const isCurrent = captureLease();");
+      const request = body.indexOf("await api.extractLog(");
+      expect(lease, fn).toBeGreaterThan(-1);
+      expect(lease, fn).toBeLessThan(request);
+      // The success write is gated, and the non-escalation fallback is gated.
+      expect(body.slice(request), fn).toMatch(/await api\.extractLog\([^;]*\);\s*if \(!isCurrent\(\)\) return;\s*applyExtractedDraft/);
+      expect((body.match(/if \(!isCurrent\(\)\) return;/g) ?? []).length, fn).toBe(2);
+    }
+  });
 });
 
 describe("AI-CAP-3 — QuickLogModal typed capture", () => {

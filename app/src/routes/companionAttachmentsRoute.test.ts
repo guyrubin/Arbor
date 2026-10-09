@@ -95,9 +95,16 @@ describe("one multimodal coach turn at the authenticated route", () => {
     expect(calls).toHaveLength(0);
     expect((await post(body)).status).toBe(200);
     expect(calls).toHaveLength(1);
-    expect((await fetch(`${base}/api/consent/${grant.id}`, { method: "DELETE" })).status).toBe(200);
+    // A grant id alone authorizes nothing: the owned child is required, another
+    // family's child is refused, and a grant is only revocable under its own child.
+    expect((await fetch(`${base}/api/consent/${grant.id}`, { method: "DELETE" })).status).toBe(400);
+    expect((await fetch(`${base}/api/consent/${grant.id}?childId=other-child`, { method: "DELETE" })).status).toBe(403);
+    expect((await fetch(`${base}/api/consent/${grant.id}?childId=owned-child`, { method: "DELETE" })).status).toBe(404);
+    expect((await post(body)).status).toBe(200);
+    expect(calls).toHaveLength(2);
+    expect((await fetch(`${base}/api/consent/${grant.id}?childId=consent-lifecycle`, { method: "DELETE" })).status).toBe(200);
     expect((await post(body)).status).toBe(451);
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
   });
   it("rejects another family's child before model access", async () => {
     const result = await post({ ...BODY, childId: "other-child", childProfile: { id: "other-child" }, attachments: [{ ...attachment, childId: "other-child" }] });

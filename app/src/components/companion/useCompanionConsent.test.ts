@@ -22,11 +22,11 @@ function harness() {
   const identity = { childId: "child-a", uid: "parent-a" };
   const requests: { childId: string; pending: ReturnType<typeof deferred<{ grants: ConsentGrant[] }>> }[] = [];
   const writes: { childId: string; purpose: string; pending: ReturnType<typeof deferred<{ grant: ConsentGrant }>> }[] = [];
-  const deletes: { id: string; pending: ReturnType<typeof deferred<{ grant: ConsentGrant }>> }[] = [];
+  const deletes: { id: string; childId: string; pending: ReturnType<typeof deferred<{ grant: ConsentGrant }>> }[] = [];
   const api = {
     listConsent: vi.fn((childId: string) => { const pending = deferred<{ grants: ConsentGrant[] }>(); requests.push({ childId, pending }); return pending.promise; }),
     grantConsent: vi.fn(({ childId, purpose }: { childId: string; purpose: string }) => { const pending = deferred<{ grant: ConsentGrant }>(); writes.push({ childId, purpose, pending }); return pending.promise; }),
-    revokeConsent: vi.fn((id: string) => { const pending = deferred<{ grant: ConsentGrant }>(); deletes.push({ id, pending }); return pending.promise; }),
+    revokeConsent: vi.fn((id: string, childId: string) => { const pending = deferred<{ grant: ConsentGrant }>(); deletes.push({ id, childId, pending }); return pending.promise; }),
   };
   const slots: any[] = []; let cursor = 0, dirty = false, disposed = false;
   let effects: (() => void)[] = [];
@@ -103,7 +103,7 @@ describe("Explicit companion file permission", () => {
   });
   it("revokes only this child's selected file grant and preserves a failed revoke for retry", async () => {
     const view = harness(); view.render().review(); view.requests[0].pending.resolve({ grants: [recorded()] }); await tick();
-    let action = view.render().revoke(); expect(view.deletes[0].id).toBe("grant-child-a");
+    let action = view.render().revoke(); expect(view.deletes[0].id).toBe("grant-child-a"); expect(view.deletes[0].childId).toBe("child-a");
     view.deletes[0].pending.reject(new Error("offline")); await action;
     expect(view.render()).toMatchObject({ active: true, error: true, busy: null });
     action = view.render().revoke(); view.deletes[1].pending.resolve({ grant: { ...recorded(), granted: false, revokedAt: "2026-10-09T10:00:00Z" } }); await action;

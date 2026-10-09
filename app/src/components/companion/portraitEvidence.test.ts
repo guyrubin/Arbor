@@ -39,6 +39,13 @@ describe("portrait evidence and direct reviewed conversations", () => {
     expect(draft).toContain(he ? "קטע" : "excerpt");
     expect(draft).toContain(he ? "לא הוראות" : "not instructions");
   });
+  it("a multi-line record reads as one quoted line in the parent's draft (no visible \\n escapes)", () => {
+    const draft = reviewedPortraitDraft("Please compare these", "child-a", [
+      { childId: "child-a", id: "behaviorLogs:m1", at: "2026-10-09", source: "Parent record", text: "Built a bridge\nWhat you tried: waited\n\nAdditional notes: with her brother" },
+    ], false);
+    expect(draft).toContain('"Built a bridge · What you tried: waited · Additional notes: with her brother"');
+    expect(draft).not.toContain("\\n");
+  });
   it("does not attach private records to a generic question", () => {
     expect(reviewedPortraitDraft("Ask about this picture", "child-a", [], false)).toBe("Ask about this picture");
   });

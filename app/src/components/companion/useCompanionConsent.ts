@@ -76,7 +76,7 @@ export function useCompanionConsent(childId: string) {
     const ticket = ++request.current;
     setBusy("revoking"); setError(false); setNotice(null);
     try {
-      const result = await api.revokeConsent(grant.id);
+      const result = await api.revokeConsent(grant.id, childId);
       if (!current(ticket)) return;
       if (result.grant.childId !== childId || result.grant.purpose !== COMPANION_CONSENT_PURPOSE || companionConsentActive(result.grant)) throw new Error("Permission was not revoked");
       setGrant(result.grant); setChecked(false); setNotice("revoked"); setReviewing(false);

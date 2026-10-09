@@ -63,7 +63,10 @@ export function reviewedPortraitDraft(prompt: string, childId: string, sources: 
   const chosen = sources.filter(source => source.childId === childId).slice(0, 5);
   if (!chosen.length) return prompt;
   const excerpts = chosen.map(source => {
-    const text = source.text.length > 500 ? `${source.text.slice(0, 500)}… (${c.excerpt})` : source.text;
+    // One quoted line per record: the parent reads this draft before sending,
+    // so line breaks become " · " rather than visible \n escapes.
+    const flat = source.text.replace(/\s*\n+\s*/g, " · ").trim();
+    const text = flat.length > 500 ? `${flat.slice(0, 500)}… (${c.excerpt})` : flat;
     return `${c.source}: ${source.source.slice(0, 80)} · ${c.date}: ${source.at.slice(0, 30)}\n${c.recordId}: ${source.id.slice(0, 100)}\n${JSON.stringify(text)}`;
   });
   return `${prompt.slice(0, 350)}\n\n${c.draftHeading}\n\n${excerpts.join("\n\n")}\n\n${c.draftEnd}`.slice(0, 4000);
