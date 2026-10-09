@@ -15,10 +15,11 @@
  *     POST /api/hero-pose { childId, pose, avatarHash }  (book prompt, anchored)
  *     -> heroKeyer.keyBookSprite (cut-out + QA gate, tight trim, anchors)
  *     -> on a QA reject: once more (counted on the book's own per-sheet calls)
- *     -> WebP <= 300 KB -> PUT .../file?path=hero-sheets/h-<hash>/<pose>.webp
+ *     -> WebP <= 300 KB, else PNG <= 900 KB (Safari's canvas has no WebP encoder)
+ *     -> PUT .../file?path=hero-sheets/h-<hash>/<pose>.<webp|png>
  *   then the choice cards (choiceCards.ts, no model call) and the commit — the
  *   ONLY step that makes the book visible. A refusal, the quota, a pose that
- *   keeps failing QA or a device that cannot encode WebP stop the build before
+ *   keeps failing QA or a picture that cannot be encoded stop the build before
  *   the commit: nothing is half-committed, the book stays hidden; a later run
  *   resumes from the files already uploaded.
  * One build per child; a newer hero cancels the older build (the folder is
@@ -29,11 +30,12 @@ import { authHeaders } from "../../../lib/api";
 import { HERO_POSE_REFUSALS, type HeroPoseId } from "../../../lib/heroSheetContract";
 import { bookAssetUrl, type BookAssetsDoc } from "../../../lib/library/bookAssetPaths";
 import { getLibraryBook } from "../../../lib/library/books";
-import { BOOK_SPRITE_MAX_BYTES, bookSheetChoiceRel, bookSheetDrawPoses, bookSheetId, bookSheetPoseRel } from "../../../lib/library/bookSheet";
+import { bookSheetChoiceRel, bookSheetDrawPoses, bookSheetId, bookSheetPoseRel, sheetFileIn } from "../../../lib/library/bookSheet";
 import type { Book } from "../../../lib/library/types";
 import { bookSpriteAnchor, keyBookSprite, type BookSpriteAnchor, type RgbaImage } from "./heroKeyer";
 import { browserImageDeps } from "./buildHeroSheet";
 import { renderChoiceCards } from "./choiceCards";
+import { encodeSpriteBrowser, type EncodedImage } from "./sheetImageEncode";
 
 export const DEFAULT_SHEET_BOOK = "five-smooth-stones";
 
@@ -54,13 +56,13 @@ export interface BookSprite {
 export interface BookBuilderDeps {
   requestPose(body: { childId: string; pose: HeroPoseId; avatarHash: string }): Promise<BookPoseResponse>;
   decode(dataUrl: string): Promise<RgbaImage>;
-  /** WebP with alpha, at most `maxBytes` (shrinks as needed); null when the device cannot encode WebP. */
-  encodeWebp(img: RgbaImage, maxBytes: number): Promise<Blob | null>;
+  /** WebP (<= 300 KB), else PNG (<= 900 KB), shrinking as needed; null when nothing fits. */
+  encodeSprite(img: RgbaImage): Promise<EncodedImage | null>;
   upload(rel: string, body: Blob, anchor?: BookSpriteAnchor, opts?: { redrawn?: boolean }): Promise<BookCall>;
   probe(avatarHash: string): Promise<CommitProbe>;
   commitSheet(avatarHash: string): Promise<CommitResult>;
   /** 4e: the child's choice cards (crops of the book's composites), or none. */
-  choiceCards?(book: Book, sprites: ReadonlyMap<string, BookSprite>): Promise<Record<string, Blob>>;
+  choiceCards?(book: Book, sprites: ReadonlyMap<string, BookSprite>): Promise<Record<string, EncodedImage>>;
   /** A sprite already uploaded in an earlier run (for the choice cards). */
   fetchSprite?(rel: string): Promise<RgbaImage | null>;
   /** Sandbox: the device keeps the committed doc (its local collection). */
@@ -145,7 +147,7 @@ export async function buildBookSheet(input: { childId: string; avatarHash: strin
 
   // 2. The missing poses, one at a time (the /api rate limit is per IP).
   const sprites = new Map<string, BookSprite>();
-  const queue = bookSheetDrawPoses(book).filter((pose) => !p.have.includes(bookSheetPoseRel(sheetId, pose)));
+  const queue = bookSheetDrawPoses(book).filter((pose) => !sheetFileIn(p.have, (ext) => bookSheetPoseRel(sheetId, pose, ext)));
   for (const pose of queue) {
     if (deps.cancelled?.()) return { status: "stopped", drawn, skipped, stoppedBy: "superseded", calls };
     const d = await drawBookPose(childId, pose, avatarHash, deps, count);
@@ -156,9 +158,9 @@ export async function buildBookSheet(input: { childId: string; avatarHash: strin
       continue;
     }
     const s = (d as { sprite: BookSprite }).sprite;
-    const body = await deps.encodeWebp(s.sprite, BOOK_SPRITE_MAX_BYTES).catch(() => null);
-    if (!body) return { status: "stopped", drawn, skipped: [...skipped, pose], stoppedBy: "webp_unsupported", calls };
-    const up = await callWithRetry(() => deps.upload(bookSheetPoseRel(sheetId, pose), body, s.anchor), deps);
+    const enc = await deps.encodeSprite(s.sprite).catch(() => null);
+    if (!enc) return { status: "stopped", drawn, skipped: [...skipped, pose], stoppedBy: "image_too_large", calls };
+    const up = await callWithRetry(() => deps.upload(bookSheetPoseRel(sheetId, pose, enc.ext), enc.body, s.anchor), deps);
     if (!up.ok) return { status: "stopped", drawn, skipped: [...skipped, pose], stoppedBy: (up as { code: string }).code, calls };
     sprites.set(pose, s);
     drawn.push(pose);
@@ -167,19 +169,20 @@ export async function buildBookSheet(input: { childId: string; avatarHash: strin
 
   // 3. The choice cards (4e): crops of the composites, on the device.
   if (deps.choiceCards) {
-    const need = book.decision.choices.filter((c) => !p.have.includes(bookSheetChoiceRel(sheetId, c.id)));
+    const need = book.decision.choices.filter((c) => !sheetFileIn(p.have, (ext) => bookSheetChoiceRel(sheetId, c.id, ext)));
     if (need.length) {
       for (const c of need) {
         const pose = c.branch[0]?.hero?.pose;
         if (pose && !sprites.has(pose) && deps.fetchSprite) {
-          const img = await deps.fetchSprite(bookSheetPoseRel(sheetId, pose)).catch(() => null);
+          const rel = sheetFileIn(p.have, (ext) => bookSheetPoseRel(sheetId, pose, ext));
+          const img = rel ? await deps.fetchSprite(rel).catch(() => null) : null;
           if (img) sprites.set(pose, { pose, sprite: img, anchor: bookSpriteAnchor(img) });
         }
       }
-      const cards = await deps.choiceCards(book, sprites).catch(() => ({} as Record<string, Blob>));
+      const cards = await deps.choiceCards(book, sprites).catch(() => ({} as Record<string, EncodedImage>));
       for (const c of need) {
         const card = cards[c.id];
-        if (card) await callWithRetry(() => deps.upload(bookSheetChoiceRel(sheetId, c.id), card), deps);
+        if (card) await callWithRetry(() => deps.upload(bookSheetChoiceRel(sheetId, c.id, card.ext), card.body), deps);
       }
     }
   }
@@ -206,9 +209,9 @@ export async function redrawBookPose(input: { childId: string; avatarHash: strin
   const d = await drawBookPose(childId, pose, avatarHash, deps, () => undefined);
   if (!d.ok) { const miss = d as { stop?: string; skip?: string }; return { ok: false, reason: miss.stop ?? miss.skip ?? "qa" }; }
   const s = (d as { sprite: BookSprite }).sprite;
-  const body = await deps.encodeWebp(s.sprite, BOOK_SPRITE_MAX_BYTES).catch(() => null);
-  if (!body) return { ok: false, reason: "webp_unsupported" };
-  const up = await callWithRetry(() => deps.upload(bookSheetPoseRel(bookSheetId(avatarHash), pose), body, s.anchor, { redrawn: true }), deps);
+  const enc = await deps.encodeSprite(s.sprite).catch(() => null);
+  if (!enc) return { ok: false, reason: "image_too_large" };
+  const up = await callWithRetry(() => deps.upload(bookSheetPoseRel(bookSheetId(avatarHash), pose, enc.ext), enc.body, s.anchor, { redrawn: true }), deps);
   if (!up.ok) return { ok: false, reason: (up as { code: string }).code };
   const done = await callWithRetry(() => deps.commitSheet(avatarHash), deps);
   if (!done.ok) return { ok: false, reason: (done as { code: string }).code };
@@ -257,7 +260,7 @@ export function bookSheetApi(childId: string, bookId: string = DEFAULT_SHEET_BOO
     async upload(rel, body, anchor, opts) {
       const q = new URLSearchParams({ path: rel, ...(anchor ? { aspect: String(anchor.aspect), footX: String(anchor.footX), footW: String(anchor.footW) } : {}), ...(opts?.redrawn ? { redrawn: "1" } : {}) });
       const headers = await authHeaders();
-      headers["Content-Type"] = "image/webp";
+      headers["Content-Type"] = rel.endsWith(".png") ? "image/png" : "image/webp";
       const res = await fetch(`${base}/file?${q}`, { method: "PUT", headers, body });
       return res.ok ? { ok: true } : { ok: false, status: res.status, code: await codeOf(res) };
     },
@@ -292,39 +295,6 @@ export function keepLocalBookDoc(childId: string, storage: Pick<Storage, "getIte
     }
     storage.setItem(key, JSON.stringify([...list.filter((d) => d?.id !== doc.id), doc]));
   };
-}
-
-const bytesOf = (dataUrl: string) => Math.floor(((dataUrl.length - dataUrl.indexOf(",") - 1) * 3) / 4);
-
-/** Encode WebP (alpha) at most maxBytes: quality steps, then shrink; null when
- *  the device cannot encode WebP (the server takes WebP only). */
-export async function encodeWebpBrowser(img: RgbaImage, maxBytes: number): Promise<Blob | null> {
-  const src = document.createElement("canvas");
-  src.width = img.width;
-  src.height = img.height;
-  const sctx = src.getContext("2d");
-  if (!sctx) return null;
-  const data = new ImageData(img.width, img.height);
-  data.data.set(img.data);
-  sctx.putImageData(data, 0, 0);
-  let factor = Math.min(1, 1200 / img.height);
-  for (let round = 0; round < 5; round++) {
-    const out = document.createElement("canvas");
-    out.width = Math.max(1, Math.round(img.width * factor));
-    out.height = Math.max(1, Math.round(img.height * factor));
-    const ctx = out.getContext("2d");
-    if (!ctx) return null;
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(src, 0, 0, out.width, out.height);
-    for (const q of [0.88, 0.8, 0.72, 0.64]) {
-      const u = out.toDataURL("image/webp", q);
-      if (!u.startsWith("data:image/webp")) return null;
-      if (bytesOf(u) <= maxBytes) return (await fetch(u)).blob();
-    }
-    factor *= 0.85;
-  }
-  return null;
 }
 
 /* ── One build per child ─────────────────────────────────────────────────── */
@@ -365,7 +335,7 @@ export function browserBookBuilderDeps(childId: string, cancelled: () => boolean
     probe: api.probe,
     commitSheet: api.commitSheet,
     decode: browserImageDeps.decode,
-    encodeWebp: encodeWebpBrowser,
+    encodeSprite: encodeSpriteBrowser,
     choiceCards: renderChoiceCards,
     async fetchSprite(rel) {
       const blob = await api.fetchSpriteBlob(rel);

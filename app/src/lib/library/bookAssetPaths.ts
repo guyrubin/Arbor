@@ -7,9 +7,11 @@
  *
  * Storage (server-only; storage.rules grants clients nothing outside
  * users/{uid}/): `children/{childId}/books/{bookId}/<rel>` where <rel> is
- *   hero-sheets/{sheetId}/<pose>.webp
- *   hero-sheets/{sheetId}/choices/<choiceId>.webp
- *   hero-sheets/{sheetId}/prints/<pageId>.webp
+ *   hero-sheets/{sheetId}/<pose>.webp | .png
+ *   hero-sheets/{sheetId}/choices/<choiceId>.webp | .png
+ *   hero-sheets/{sheetId}/prints/<pageId>.webp | .png
+ *   (K2: PNG too - Safari cannot encode WebP from a canvas, so an iPhone
+ *   parent's device uploads PNG; lib/library/bookSheet)
  *   hero-sheets/{sheetId}/manifest.json
  *   narration/{setId}/<en|he-m|he-f>/<file>.mp3 | .wav | .cues.json
  *   manifest.json
@@ -25,7 +27,7 @@ const SEG = "[A-Za-z0-9_-]{1,64}";
 const REL = new RegExp(
   "^(?:" +
     "manifest\\.json" +
-    `|hero-sheets/${SEG}/(?:(?:choices|prints)/)?${SEG}\\.webp` +
+    `|hero-sheets/${SEG}/(?:(?:choices|prints)/)?${SEG}\\.(?:webp|png)` +
     `|hero-sheets/${SEG}/manifest\\.json` +
     `|narration/${SEG}/(?:en|he-m|he-f)/${SEG}(?:\\.${SEG})*\\.(?:mp3|wav|json)` +
     ")$",
@@ -51,6 +53,7 @@ export function bookAssetObject(childId: string, bookId: string, rel: string): s
 /** The content type a file is served with. */
 export function bookAssetContentType(rel: string): string {
   if (rel.endsWith(".webp")) return "image/webp";
+  if (rel.endsWith(".png")) return "image/png";
   if (rel.endsWith(".mp3")) return "audio/mpeg";
   if (rel.endsWith(".wav")) return "audio/wav";
   return "application/json";

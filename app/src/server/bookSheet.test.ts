@@ -29,6 +29,17 @@ const HASH = heroAvatarHash(HERO);
 const OTHER = "0123456789abcdef";
 const BOOK = "five-smooth-stones";
 
+/** A minimal PNG of w x h (signature + IHDR, padded to `bytes`). */
+function png(w: number, h: number, bytes = 64): Buffer {
+  const b = Buffer.alloc(Math.max(bytes, 33));
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b, 0);
+  b.writeUInt32BE(13, 8);
+  b.write("IHDR", 12, "latin1");
+  b.writeUInt32BE(w, 16);
+  b.writeUInt32BE(h, 20);
+  return b;
+}
+
 /** A minimal VP8X WebP of w x h (header only, padded to `bytes`). */
 function webp(w: number, h: number, bytes = 64): Buffer {
   const b = Buffer.alloc(Math.max(bytes, 30));
@@ -102,6 +113,7 @@ function serve(opts: { hero?: StoredHero | null; local?: boolean; bucket?: BookA
 
 const ANCHOR = { aspect: 0.5, footX: 0.5, footW: 0.4 };
 const poseRel = (pose: string, hash = HASH) => `hero-sheets/h-${hash}/${pose}.webp`;
+const pngRel = (pose: string, hash = HASH) => `hero-sheets/h-${hash}/${pose}.png`;
 
 beforeEach(() => { process.env.ENFORCE_ENTITLEMENTS = "true"; });
 afterEach(() => { delete process.env.ENFORCE_ENTITLEMENTS; });
@@ -148,9 +160,16 @@ describe("K2 4a: PUT a book sheet file", () => {
       `hero-sheets/h-${HASH}/../x.webp`,
     ]) expect(await code(await s.put(bad, webp(200, 400), ANCHOR)), bad).toEqual([400, "book_sheet_bad_path"]);
     expect(await code(await s.put(poseRel("look-up", OTHER), webp(200, 400), ANCHOR))).toEqual([409, "hero_changed"]);
-    expect(await code(await s.put(poseRel("look-up"), Buffer.from("\x89PNG\r\n\x1a\n" + "0".repeat(60), "latin1"), ANCHOR))).toEqual([415, "book_sheet_not_webp"]);
-    expect(await code(await s.put(poseRel("look-up"), webp(200, 400), ANCHOR, "owner", "image/png"))).toEqual([415, "book_sheet_not_webp"]);
+    // the path's extension, the content type and the magic must agree
+    expect(await code(await s.put(poseRel("look-up"), png(200, 400), ANCHOR))).toEqual([415, "book_sheet_bad_image"]);
+    expect(await code(await s.put(poseRel("look-up"), webp(200, 400), ANCHOR, "owner", "image/png"))).toEqual([415, "book_sheet_bad_image"]);
+    expect(await code(await s.put(pngRel("look-up"), webp(200, 400), ANCHOR, "owner", "image/png"))).toEqual([415, "book_sheet_bad_image"]);
+    expect(await code(await s.put(pngRel("look-up"), png(200, 400), ANCHOR, "owner", "image/webp"))).toEqual([415, "book_sheet_bad_image"]);
+    expect(await code(await s.put(poseRel("look-up"), Buffer.from("GIF89a" + "0".repeat(60), "latin1"), ANCHOR))).toEqual([415, "book_sheet_bad_image"]);
+    // WebP at most 300 KB, PNG at most 900 KB
     expect(await code(await s.put(poseRel("look-up"), webp(200, 400, 300 * 1024 + 1), ANCHOR))).toEqual([413, "book_sheet_too_large"]);
+    expect((await s.put(pngRel("look-up"), png(200, 400, 600 * 1024), ANCHOR, "owner", "image/png")).status).toBe(200);
+    expect(await code(await s.put(pngRel("look-up"), png(200, 400, 900 * 1024 + 1), ANCHOR, "owner", "image/png"))).toEqual([413, "book_sheet_too_large"]);
     expect(await code(await s.put(poseRel("look-up"), webp(200, 400), {}))).toEqual([400, "book_sheet_bad_anchor"]);
     expect(await code(await s.put(poseRel("look-up"), webp(200, 400), { ...ANCHOR, aspect: 0.8 }))).toEqual([400, "book_sheet_bad_anchor"]);
     expect(await code(await s.put(poseRel("look-up"), webp(200, 400), { ...ANCHOR, footX: 1.5 }))).toEqual([400, "book_sheet_bad_anchor"]);
@@ -268,5 +287,26 @@ describe("K2 4a: the sandbox runs the same path on a local folder", () => {
     const api = readFileSync(path.join(app, "src", "routes", "api.ts"), "utf8");
     expect(api).toContain('const localBooks = config.memoryAdapter !== "firestore";');
     expect(api).toMatch(/createBookAssetsRouter\(\{ getBucket: getBookBucket, requireOwnership, allowLocal: localBooks \}\)/);
+  });
+
+  it("PNG too: a PNG pose replaces its WebP twin, the commit names the .png, the proxy serves image/png", async () => {
+    process.env.ENFORCE_ENTITLEMENTS = "true";
+    const s = serve({});
+    await s.start();
+    const draw = bookSheetDrawPoses(book);
+    for (const pose of draw) await s.put(poseRel(pose), webp(200, 400), ANCHOR);
+    expect((await s.put(pngRel("sit"), png(200, 400), ANCHOR, "owner", "image/png")).status).toBe(200);
+    expect(s.objects.has(`children/kid1/books/${BOOK}/${poseRel("sit")}`)).toBe(false);
+    expect((await s.put(`hero-sheets/h-${HASH}/choices/a.png`, png(800, 600), {}, "owner", "image/png")).status).toBe(200);
+    expect((await s.commit({ avatarHash: HASH })).status).toBe(200);
+    const doc = await s.docs.read("owner", "kid1", BOOK);
+    expect(doc!.sheetManifest.poses.sit).toEqual({ file: "sit.png", ...ANCHOR });
+    expect(doc!.sheetManifest.poses["look-up"].file).toBe("look-up.webp");
+    expect(doc!.sheetManifest.choices).toEqual({ a: "choices/a.png" });
+    expect(doc!.files).toContain(pngRel("sit"));
+    const res = await s.get(`/api/children/kid1/book-assets/${BOOK}/file?path=${encodeURIComponent(pngRel("sit"))}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/png");
+    await s.stop();
   });
 });

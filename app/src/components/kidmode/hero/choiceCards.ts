@@ -10,11 +10,11 @@
  */
 import { getPlate } from "../../../lib/library/books";
 import { plateSources } from "../../../lib/library/bookPlates";
-import { BOOK_CHOICE_H, BOOK_CHOICE_W, BOOK_SPRITE_MAX_BYTES } from "../../../lib/library/bookSheet";
+import { BOOK_CHOICE_H, BOOK_CHOICE_W } from "../../../lib/library/bookSheet";
 import type { SpriteAnchor } from "../../../lib/library/bookPageLayout";
 import type { Book, Slot } from "../../../lib/library/types";
 import type { BookSprite } from "./buildBookSheet";
-import type { RgbaImage } from "./heroKeyer";
+import { canvasFromRgba, encodeCanvas, type EncodedImage } from "./sheetImageEncode";
 
 export interface Box { x: number; y: number; w: number; h: number }
 
@@ -66,16 +66,6 @@ export function choiceCardPlans(book: Book, anchors: ReadonlyMap<string, SpriteA
 
 /* ── Browser rendering ────────────────────────────────────────────────────── */
 
-function canvasOfRgba(img: RgbaImage): HTMLCanvasElement {
-  const c = document.createElement("canvas");
-  c.width = img.width;
-  c.height = img.height;
-  const d = new ImageData(img.width, img.height);
-  d.data.set(img.data);
-  c.getContext("2d")?.putImageData(d, 0, 0);
-  return c;
-}
-
 async function loadImage(src: string): Promise<HTMLImageElement> {
   const el = new Image();
   el.decoding = "async";
@@ -84,11 +74,11 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
   return el;
 }
 
-/** Render the cards (800 x 600 WebP) for the builder; a card that cannot be
- *  made is left out (the reader falls back to the plate's focus crop). */
-export async function renderChoiceCards(book: Book, sprites: ReadonlyMap<string, BookSprite>): Promise<Record<string, Blob>> {
+/** Render the cards (800 x 600; WebP, else PNG) for the builder; a card that
+ *  cannot be made is left out (the reader falls back to the plate's focus crop). */
+export async function renderChoiceCards(book: Book, sprites: ReadonlyMap<string, BookSprite>): Promise<Record<string, EncodedImage>> {
   const anchors = new Map([...sprites].map(([pose, s]) => [pose, s.anchor] as const));
-  const out: Record<string, Blob> = {};
+  const out: Record<string, EncodedImage> = {};
   for (const plan of choiceCardPlans(book, anchors)) {
     const plate = getPlate(book.id, plan.plateId);
     const pose = book.decision.choices.find((c) => c.id === plan.choiceId)?.branch[0]?.hero?.pose;
@@ -107,7 +97,8 @@ export async function renderChoiceCards(book: Book, sprites: ReadonlyMap<string,
       const sx = img.naturalWidth / plan.plate.w, sy = img.naturalHeight / plan.plate.h;
       ctx.drawImage(img, plan.crop.x * sx, plan.crop.y * sy, plan.crop.w * sx, plan.crop.h * sy, 0, 0, BOOK_CHOICE_W, BOOK_CHOICE_H);
       const hx = (plan.hero.x - plan.crop.x) * k, hy = (plan.hero.y - plan.crop.y) * k, hw = plan.hero.w * k, hh = plan.hero.h * k;
-      const sprite = canvasOfRgba(s.sprite);
+      const sprite = canvasFromRgba(s.sprite);
+      if (!sprite) continue;
       if (plan.hero.flip) {
         ctx.save();
         ctx.translate(hx + hw, hy);
@@ -115,10 +106,8 @@ export async function renderChoiceCards(book: Book, sprites: ReadonlyMap<string,
         ctx.drawImage(sprite, 0, 0, hw, hh);
         ctx.restore();
       } else ctx.drawImage(sprite, hx, hy, hw, hh);
-      for (const q of [0.86, 0.78, 0.7]) {
-        const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/webp", q));
-        if (blob && blob.type === "image/webp" && blob.size <= BOOK_SPRITE_MAX_BYTES) { out[plan.choiceId] = blob; break; }
-      }
+      const enc = await encodeCanvas(c);
+      if (enc) out[plan.choiceId] = enc;
     } catch {
       /* this card falls back to the plate's focus crop */
     }

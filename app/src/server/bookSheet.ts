@@ -5,10 +5,14 @@
  * commits; the commit is what makes the book visible to the child.
  *
  *   PUT  /api/children/:childId/book-assets/:bookId/file?path=<rel>[&aspect=&footX=&footW=]
- *        body: the WebP bytes (Content-Type image/webp, <= 300 KB, RIFF/WEBP magic)
- *        rel:  hero-sheets/h-<avatarHash>/<pose>.webp          (a pose of this book; anchors required;
- *                                                              redrawn=1 marks the parent's one Redraw)
- *              hero-sheets/h-<avatarHash>/choices/<choice>.webp (a choice of this book; 4:3)
+ *        body: WebP (image/webp, RIFF/WEBP magic, <= 300 KB) or PNG (image/png,
+ *              PNG magic, <= 900 KB: Safari's canvas cannot encode WebP); the
+ *              path's extension, the content type and the magic must agree
+ *        rel:  hero-sheets/h-<avatarHash>/<pose>.<webp|png>          (a pose of this book; anchors
+ *                                                                    required; redrawn=1 marks the
+ *                                                                    parent's one Redraw)
+ *              hero-sheets/h-<avatarHash>/choices/<choice>.<webp|png> (a choice of this book; 4:3)
+ *        A file replaces its other-format twin (one picture per pose).
  *   POST /api/children/:childId/book-assets/:bookId/commit { avatarHash, dryRun? }
  *        lists the hero's folder; every pose the book needs (a pose or its
  *        stopgap, lib/library/bookPoses) must be there; writes
@@ -22,7 +26,8 @@
  * (hero_sheet_plan: the book poses' plan table), an unknown book / a path of
  * any other shape / a pose or choice the book does not have 400, not the
  * child's CURRENT hero 409 (hero_changed / hero_missing / hero_photo_source),
- * not WebP 415, over 300 KB 413, a sprite without valid anchors (or whose
+ * not WebP / PNG as named 415, over 300 KB (WebP) / 900 KB (PNG) 413, a sprite
+ * without valid anchors (or whose
  * aspect is not the file's) 400, an incomplete sheet 409, an admin-uploaded
  * sheet 409 (never replaced). Never a model call.
  */
@@ -33,7 +38,7 @@ import type { ArborConfig } from "../config/env.js";
 import { BOOK_ASSET_ID, bookAssetObject, childBookAssetPrefix, isBookAssetRel, type BookAssetsDoc } from "../lib/library/bookAssetPaths.js";
 import { getLibraryBook } from "../lib/library/books/index.js";
 import { missingBookPoses } from "../lib/library/bookPoses.js";
-import { BOOK_SPRITE_MAX_BYTES, bookSheetChoiceRel, bookSheetId, bookSheetPoseRel, isAvatarHash, isHeroBookSheetId, readSpriteAnchor } from "../lib/library/bookSheet.js";
+import { bookSheetChoiceRel, bookSheetId, bookSheetPoseRel, isAvatarHash, isHeroBookSheetId, readSpriteAnchor, sheetFileIn, sheetImageMaxBytes, type SheetImageExt } from "../lib/library/bookSheet.js";
 import { HERO_BOOK_POSE_SETS, heroAvatarHash } from "../lib/heroSheetContract.js";
 import type { BookAssetBucket } from "./bookAssets.js";
 import type { HeroPoseSource } from "./heroPoseRoute.js";
@@ -85,6 +90,16 @@ export const createBookAssetsDocStore = (config: ArborConfig): BookAssetsDocStor
 /** RIFF....WEBP */
 export function isWebp(buf: Buffer): boolean {
   return buf.length >= 30 && buf.toString("latin1", 0, 4) === "RIFF" && buf.toString("latin1", 8, 12) === "WEBP";
+}
+
+const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+/** \x89PNG\r\n\x1a\n then IHDR */
+export function isPng(buf: Buffer): boolean {
+  return buf.length >= 33 && buf.subarray(0, 8).equals(PNG_MAGIC) && buf.toString("latin1", 12, 16) === "IHDR";
+}
+/** The size of a PNG (IHDR), or null. */
+export function pngSize(buf: Buffer): { w: number; h: number } | null {
+  return isPng(buf) ? { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) } : null;
 }
 
 /** The canvas size of a WebP (VP8X, VP8L or VP8), or null. */
@@ -179,23 +194,25 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
     express.raw({ type: () => true, limit: "1mb" }),
     async (req, res) => {
       const rel = typeof req.query.path === "string" ? req.query.path : "";
-      const m = /^hero-sheets\/h-([0-9a-f]{16})\/(?:choices\/)?([A-Za-z0-9_-]{1,64})\.webp$/.exec(rel);
+      const m = /^hero-sheets\/h-([0-9a-f]{16})\/(?:choices\/)?([A-Za-z0-9_-]{1,64})\.(webp|png)$/.exec(rel);
       if (!m || !isBookAssetRel(rel)) return refuse(res, 400, "book_sheet_bad_path", "Bad book sheet path");
       const g = await gate(req, res, m[1]);
       if (!g) return;
       const book = getLibraryBook(g.bookId)!;
       const sheetId = bookSheetId(g.avatarHash);
-      const isChoice = rel === bookSheetChoiceRel(sheetId, m[2]);
+      const ext = m[3] as SheetImageExt;
+      const isChoice = rel === bookSheetChoiceRel(sheetId, m[2], ext);
       const known = isChoice
         ? book.decision.choices.some((c) => c.id === m[2])
-        : (HERO_BOOK_POSE_SETS[g.bookId as keyof typeof HERO_BOOK_POSE_SETS] as readonly string[]).includes(m[2]) && rel === bookSheetPoseRel(sheetId, m[2]);
+        : (HERO_BOOK_POSE_SETS[g.bookId as keyof typeof HERO_BOOK_POSE_SETS] as readonly string[]).includes(m[2]) && rel === bookSheetPoseRel(sheetId, m[2], ext);
       if (!known) return refuse(res, 400, "book_sheet_bad_path", "Not a pose or choice of this book");
       const type = String(req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
       const body = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
-      if (type !== "image/webp" || !isWebp(body)) return refuse(res, 415, "book_sheet_not_webp", "WebP only");
-      if (body.length > BOOK_SPRITE_MAX_BYTES) return refuse(res, 413, "book_sheet_too_large", "At most 300 KB a file");
-      const size = webpSize(body);
-      if (!size || size.w < 16 || size.h < 16) return refuse(res, 415, "book_sheet_not_webp", "WebP only");
+      const magicOk = ext === "png" ? type === "image/png" && isPng(body) : type === "image/webp" && isWebp(body);
+      if (!magicOk) return refuse(res, 415, "book_sheet_bad_image", "WebP or PNG, as the path names it");
+      if (body.length > sheetImageMaxBytes(ext)) return refuse(res, 413, "book_sheet_too_large", ext === "png" ? "At most 900 KB a PNG" : "At most 300 KB a WebP");
+      const size = ext === "png" ? pngSize(body) : webpSize(body);
+      if (!size || size.w < 16 || size.h < 16) return refuse(res, 415, "book_sheet_bad_image", "WebP or PNG, as the path names it");
       let custom: Record<string, string> = {};
       if (!isChoice) {
         const a = readSpriteAnchor({ aspect: req.query.aspect, footX: req.query.footX, footW: req.query.footW });
@@ -206,7 +223,12 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
         const bucket = await deps.getBucket();
         const file = bucket?.file(bookAssetObject(g.childId, g.bookId, rel));
         if (!file?.save) return refuse(res, 503, "book_storage_unavailable", "Book storage is not available");
-        await file.save(body, { contentType: "image/webp", resumable: false, metadata: { cacheControl: "private, max-age=86400", metadata: custom } });
+        await file.save(body, { contentType: ext === "png" ? "image/png" : "image/webp", resumable: false, metadata: { cacheControl: "private, max-age=86400", metadata: custom } });
+        // one picture per pose / choice: the other format's twin goes
+        const twinExt: SheetImageExt = ext === "png" ? "webp" : "png";
+        const twinRel = isChoice ? bookSheetChoiceRel(sheetId, m[2], twinExt) : bookSheetPoseRel(sheetId, m[2], twinExt);
+        const twin = bucket!.file(bookAssetObject(g.childId, g.bookId, twinRel));
+        if ((await twin.exists().catch(() => [false]))[0]) await twin.delete().catch(() => undefined);
         res.json({ ok: true, path: rel, bytes: body.length });
       } catch (error: unknown) {
         logger.error("Book sheet upload error", error instanceof Error ? error : new Error(String(error)), { requestId: requestIdOf(req) });
@@ -229,9 +251,10 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
       const byRel = new Map(listed.map((f) => [f.name.slice(prefix.length), f] as const).filter(([rel]) => isBookAssetRel(rel)));
       const poses: BookAssetsDoc["sheetManifest"]["poses"] = {};
       for (const pose of HERO_BOOK_POSE_SETS[g.bookId as keyof typeof HERO_BOOK_POSE_SETS]) {
-        const f = byRel.get(bookSheetPoseRel(sheetId, pose));
+        const rel = sheetFileIn(byRel.keys(), (ext) => bookSheetPoseRel(sheetId, pose, ext));
+        const f = rel ? byRel.get(rel) : undefined;
         const a = f ? readSpriteAnchor(f.metadata?.metadata ?? null) : null;
-        if (a) poses[pose] = { file: `${pose}.webp`, ...a, ...(f?.metadata?.metadata?.redrawn === "1" ? { redrawn: true } : {}) };
+        if (a && rel) poses[pose] = { file: rel.split("/").pop()!, ...a, ...(f?.metadata?.metadata?.redrawn === "1" ? { redrawn: true } : {}) };
       }
       const missing = missingBookPoses(book, Object.keys(poses));
       const have = [...byRel.keys()].filter((rel) => rel.startsWith(`hero-sheets/${sheetId}/`)).sort();
@@ -244,7 +267,10 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
       if (missing.length) return refuse(res, 409, "book_sheet_incomplete", "The sheet is not complete", { missing, have });
       if (admin) return refuse(res, 409, "book_sheet_admin", "This book has an uploaded sheet");
       const choices: Record<string, string> = {};
-      for (const c of book.decision.choices) if (byRel.has(bookSheetChoiceRel(sheetId, c.id))) choices[c.id] = `choices/${c.id}.webp`;
+      for (const c of book.decision.choices) {
+        const rel = sheetFileIn(byRel.keys(), (ext) => bookSheetChoiceRel(sheetId, c.id, ext));
+        if (rel) choices[c.id] = `choices/${rel.split("/").pop()}`;
+      }
       // The child's narration set (Block 2) stays with the book across a recommit.
       const setId = existing?.setId && BOOK_ASSET_ID.test(existing.setId) ? existing.setId : "none";
       const files = [

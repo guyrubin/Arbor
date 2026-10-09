@@ -27,7 +27,7 @@ function fakeDeps(opts: Partial<BookBuilderDeps> & { have?: string[]; probeResul
   const deps: BookBuilderDeps = {
     requestPose: vi.fn(async ({ pose }: { pose: HeroPoseId }): Promise<BookPoseResponse> => { poses.push(pose); return { ok: true, dataUrl: `mock:${pose}` }; }),
     decode: async (u) => mockHeroPoseRaster(u.slice(5) as HeroPoseId),
-    encodeWebp: async () => new Blob(["RIFF"]),
+    encodeSprite: async () => ({ body: new Blob(["RIFF"]), ext: "webp" as const }),
     upload: async (r, _b, anchor, o) => { uploads.push({ rel: r, anchor }); if (o?.redrawn) redrawn.push(r); return { ok: true }; },
     probe: async () => probeResult ?? { ok: true, complete: false, missing: [], have: have ?? [], committed: false, admin: false },
     commitSheet: async (h) => { commits.push(h); return { ok: true, doc: DOC, local: !!commitLocal }; },
@@ -84,11 +84,18 @@ describe("K2 4b: the book sheet builder", () => {
     expect(f.commits).toEqual([]);
   }, 60_000);
 
-  it("a device that cannot encode WebP stops before any upload; the /api rate limit is waited out", async () => {
-    const webp = fakeDeps({ encodeWebp: async () => null });
-    expect((await buildBookSheet({ childId: "kid1", avatarHash: HASH }, webp.deps)).stoppedBy).toBe("webp_unsupported");
-    expect(webp.uploads).toEqual([]);
-    expect(webp.commits).toEqual([]);
+  it("a device without a WebP encoder uploads PNG; a picture that cannot be encoded stops before any upload; the rate limit is waited out", async () => {
+    const png = fakeDeps({ encodeSprite: async () => ({ body: new Blob(["PNG"]), ext: "png" as const }) });
+    expect((await buildBookSheet({ childId: "kid1", avatarHash: HASH }, png.deps)).status).toBe("complete");
+    expect(png.uploads.map((u) => u.rel).sort()).toEqual(DRAW.map((p) => `hero-sheets/h-${HASH}/${p}.png`).sort());
+    // a PNG already uploaded counts on resume
+    const resumed = fakeDeps({ have: DRAW.map((p) => `hero-sheets/h-${HASH}/${p}.png`) });
+    expect((await buildBookSheet({ childId: "kid1", avatarHash: HASH }, resumed.deps)).status).toBe("complete");
+    expect(resumed.poses).toEqual([]);
+    const none = fakeDeps({ encodeSprite: async () => null });
+    expect((await buildBookSheet({ childId: "kid1", avatarHash: HASH }, none.deps)).stoppedBy).toBe("image_too_large");
+    expect(none.uploads).toEqual([]);
+    expect(none.commits).toEqual([]);
     let limited = 2;
     const sleeps: number[] = [];
     const rate = fakeDeps({

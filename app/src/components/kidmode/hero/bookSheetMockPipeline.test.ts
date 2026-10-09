@@ -22,6 +22,7 @@ import { createHeroPoseHandler, LocalHeroPoseSource } from "../../../server/hero
 import { createBookSheetRouter, LocalBookAssetsDocStore } from "../../../server/bookSheet";
 import { createBookAssetsRouter } from "../../../server/bookAssets";
 import { LocalFsBookAssetBucket } from "../../../server/localBookAssetBucket";
+import { encodePng } from "../../../server/heroPoseMock";
 import { heroAvatarHash } from "../../../lib/heroSheetContract";
 import { bookAssetUrl, type BookAssetsDoc } from "../../../lib/library/bookAssetPaths";
 import { bookSheetDrawPoses } from "../../../lib/library/bookSheet";
@@ -98,13 +99,15 @@ describe("K2 block 4: sandbox dry run — route (mock) -> book builder -> local 
     // the game sheet's idle (the anchor the server remembers in the sandbox)
     expect((await api.requestPose({ childId: "kid1", pose: "idle", avatarHash: HASH })).ok).toBe(true);
 
+    let encoded = 0;
     const mem = new Map<string, string>();
     const storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v) };
     const deps: BookBuilderDeps = {
       ...api,
       decode: async (u) => decodePng(u),
-      encodeWebp: async (img) => fakeWebp(img.width, img.height),
-      choiceCards: async (b, sprites) => Object.fromEntries(choiceCardPlans(b, new Map([...sprites].map(([p, s]) => [p, s.anchor]))).map((p) => [p.choiceId, fakeWebp(800, 600)])),
+      // an iPhone (no WebP encoder) uploads real PNGs; the other half goes as WebP
+      encodeSprite: async (img) => (++encoded % 2 ? { body: new Blob([encodePng(img)], { type: "image/png" }), ext: "png" as const } : { body: fakeWebp(img.width, img.height), ext: "webp" as const }),
+      choiceCards: async (b, sprites) => Object.fromEntries(choiceCardPlans(b, new Map([...sprites].map(([p, s]) => [p, s.anchor]))).map((p) => [p.choiceId, { body: fakeWebp(800, 600), ext: "webp" as const }])),
       keepLocalDoc: keepLocalBookDoc("kid1", storage),
       sleep: async () => {},
     };
@@ -121,10 +124,16 @@ describe("K2 block 4: sandbox dry run — route (mock) -> book builder -> local 
     expect(missingBookPoses(book, Object.keys(doc.sheetManifest.poses))).toEqual([]);
     expect(doc.sheetManifest.choices).toEqual({ a: "choices/a.webp", b: "choices/b.webp", c: "choices/c.webp" });
     for (const v of Object.values(doc.sheetManifest.poses)) expect(v.aspect! > 0 && v.footX! > 0 && v.footX! < 1).toBe(true);
-    // every listed file comes back through the owner-checked proxy
+    // PNG and WebP sprites side by side in one sheet
+    const files = Object.values(doc.sheetManifest.poses).map((v) => v.file);
+    expect(files.filter((f) => f.endsWith(".png")).length).toBe(9);
+    expect(files.filter((f) => f.endsWith(".webp")).length).toBe(8);
+    // every listed file comes back through the owner-checked proxy, with its type
     for (const rel of doc.files) {
       const res = await fetch(base + bookAssetUrl("kid1", book.id, rel));
       expect(res.status, rel).toBe(200);
+      expect(res.headers.get("content-type"), rel).toBe(rel.endsWith(".png") ? "image/png" : "image/webp");
+      if (rel.endsWith(".png")) expect(Buffer.from(await res.arrayBuffer()).subarray(1, 4).toString("latin1")).toBe("PNG");
     }
     // a second run finds the book already showing this hero: nothing drawn
     const again = await buildBookSheet({ childId: "kid1", avatarHash: HASH }, deps);

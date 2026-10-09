@@ -43,6 +43,9 @@ describe("book asset paths", () => {
       "hero-sheets/dylan-v2/look-up.webp",
       "hero-sheets/dylan-v2/prints/cover.webp",
       "hero-sheets/dylan-v2/choices/a.webp",
+      // K2: PNG too (Safari's canvas cannot encode WebP)
+      "hero-sheets/h-0123456789abcdef/look-up.png",
+      "hero-sheets/h-0123456789abcdef/choices/a.png",
       "hero-sheets/dylan-v2/manifest.json",
       "narration/dylan-v3/en/p1.mp3",
       "narration/dylan-v3/he-f/p10.a.mp3",
@@ -54,7 +57,8 @@ describe("book asset paths", () => {
     for (const bad of [
       "../x.webp",
       "hero-sheets/../../users/u/x.webp",
-      "hero-sheets/dylan-v2/look-up.png",
+      "hero-sheets/dylan-v2/look-up.jpg",
+      "hero-sheets/dylan-v2/look-up.gif",
       "narration/dylan-v3/fr/p1.mp3",
       "narration/dylan-v3/en/p1.mp3?x",
       "hero-sheets//look-up.webp",
