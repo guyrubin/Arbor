@@ -182,7 +182,7 @@ describe("B-STATUS-01 · the capture sheet answers back", () => {
     for (const f of ["PracticeCard.tsx", "NoticeCard.tsx", "TonightFlow.tsx", "MilestoneProposalRow.tsx"]) {
       const src = read(f);
       expect(src, f).toContain("<Receipt");
-      const statuses = src.match(/role="status"[^>]*data-testid="([a-z-]+)"/g) ?? [];
+      const statuses: string[] = src.match(/role="status"[^>]*data-testid="([a-z-]+)"/g) ?? [];
       expect(statuses.filter((s) => !s.includes("tonight-done")), f).toEqual([]);
     }
     expect('<p role="status" data-testid="practice-receipt" className="x">').toMatch(/role="status"[^>]*data-testid="([a-z-]+)"/);
