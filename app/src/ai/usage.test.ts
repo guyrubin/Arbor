@@ -12,6 +12,18 @@ describe("normalizeUsage", () => {
     ).toEqual({ promptTokens: 1200, outputTokens: 300, totalTokens: 1500 });
   });
 
+  it("B-GA-27: carries Gemini thinking tokens and bills them at the output rate", () => {
+    const usage = normalizeUsage({ promptTokenCount: 3679, candidatesTokenCount: 1031, thoughtsTokenCount: 3839, totalTokenCount: 8549 });
+    expect(usage).toEqual({ promptTokens: 3679, outputTokens: 1031, totalTokens: 8549, thoughtsTokens: 3839 });
+    const price = PRICE_TABLE["gemini-3.5-flash"];
+    const expected = Math.round(((3679 * price.inputPerM + (1031 + 3839) * price.outputPerM) / 1_000_000) * 1_000_000) / 1_000_000;
+    expect(estimateCostUsd("gemini-3.5-flash", usage)).toBe(expected);
+    const event = buildUsageEvent({ route: "coach_high_stakes", provider: "vertex_gemini", model: "gemini-3.5-flash" }, usage);
+    expect(event).toMatchObject({ thoughtsTokens: 3839, estimatedCostUsd: expected });
+    // No thinking reported: the event shape is unchanged.
+    expect(buildUsageEvent({ route: "analysis_structured", provider: "vertex_gemini", model: "gemini-3.5-flash" }, normalizeUsage({ promptTokenCount: 10, candidatesTokenCount: 5 }))).not.toHaveProperty("thoughtsTokens");
+  });
+
   it("derives total when Gemini omits totalTokenCount", () => {
     expect(normalizeUsage({ promptTokenCount: 100, candidatesTokenCount: 40 })).toEqual({
       promptTokens: 100,

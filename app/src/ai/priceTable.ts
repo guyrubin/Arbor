@@ -57,7 +57,7 @@ export function priceKeyFor(model: string | undefined | null): string | null {
  */
 export function estimateCostUsd(
   model: string | undefined | null,
-  usage: { promptTokens: number; outputTokens: number; audioInputTokens?: number } | null | undefined,
+  usage: { promptTokens: number; outputTokens: number; thoughtsTokens?: number; audioInputTokens?: number } | null | undefined,
 ): number | undefined {
   const key = priceKeyFor(model);
   if (!key || !usage) return undefined;
@@ -67,6 +67,7 @@ export function estimateCostUsd(
   const usd =
     (textIn / 1_000_000) * price.inputPerM +
     (audio / 1_000_000) * (price.audioInputPerM ?? price.inputPerM) +
-    (Math.max(0, usage.outputTokens) / 1_000_000) * price.outputPerM;
+    // B-GA-27: Gemini thinking tokens are billed as output (outputPerM includes them).
+    (Math.max(0, usage.outputTokens + (usage.thoughtsTokens ?? 0)) / 1_000_000) * price.outputPerM;
   return Math.round(usd * 1_000_000) / 1_000_000;
 }

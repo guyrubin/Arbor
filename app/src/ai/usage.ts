@@ -22,6 +22,9 @@ export type TokenUsage = {
   promptTokens: number;
   outputTokens: number;
   totalTokens: number;
+  /** Gemini thinking tokens (usageMetadata.thoughtsTokenCount): not in
+   *  outputTokens, billed at the output rate (B-GA-27). Absent when zero. */
+  thoughtsTokens?: number;
 };
 
 /** EVAL-7: latency measured at the provider seam (never in route handlers). */
@@ -51,10 +54,12 @@ export const normalizeUsage = (raw: any): TokenUsage | null => {
   if (raw.totalTokenCount != null || raw.promptTokenCount != null || raw.candidatesTokenCount != null) {
     const promptTokens = Number(raw.promptTokenCount || 0);
     const outputTokens = Number(raw.candidatesTokenCount || 0);
+    const thoughtsTokens = Number(raw.thoughtsTokenCount || 0);
     return {
       promptTokens,
       outputTokens,
-      totalTokens: Number(raw.totalTokenCount || promptTokens + outputTokens),
+      totalTokens: Number(raw.totalTokenCount || promptTokens + outputTokens + thoughtsTokens),
+      ...(thoughtsTokens > 0 ? { thoughtsTokens } : {}),
     };
   }
   // Anthropic (Claude on Vertex): input_tokens / output_tokens.
@@ -105,6 +110,7 @@ export const buildUsageEvent = (
     promptVersion: meta.promptVersion ?? "unversioned",
     promptTokens: usage?.promptTokens ?? 0,
     outputTokens: usage?.outputTokens ?? 0,
+    ...(usage?.thoughtsTokens ? { thoughtsTokens: usage.thoughtsTokens } : {}),
     totalTokens: usage?.totalTokens ?? 0,
     // B-PROV-04: dated price table (ai/priceTable.ts) on the RESOLVED model.
     // Absent — never 0 — when the model is unpriced or no tokens were reported.
