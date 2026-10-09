@@ -78,9 +78,15 @@ describe("B-VOICE-06 · the Voice tile opens a choice between the two existing d
     expect(BAR).not.toMatch(/startDictation|getUserMedia|SpeechRecognition|startGeminiLive|liveToken/);
   });
 
-  it("CoachTab starts the requested conversation through toggleVoice only, once visible and probed", () => {
-    expect(COACH).toMatch(/if \(!visible \|\| !liveProbed \|\| !conversationVoiceRequestPending\(\)\) return;\s*if \(consumeConversationVoiceRequest\(\) && voicePhase === "off"\) void toggleVoice\(\);/);
+  it("CoachTab never opens the microphone from the request: it focuses Talk and invites the tap", () => {
+    expect(COACH).toMatch(/if \(!visible \|\| !liveProbed \|\| !conversationVoiceRequestPending\(\)\) return;\s*if \(consumeConversationVoiceRequest\(\) && voicePhase === "off"\) \{\s*setVoiceInvite\(true\);/);
+    const effect = COACH.slice(COACH.indexOf("if (!visible || !liveProbed"), COACH.indexOf("}, [visible, liveProbed, voiceAsk]);"));
+    expect(effect).not.toContain("toggleVoice()");
+    expect(effect).toContain('.companion-live-button"))?.focus()');
+    expect(COACH).toContain('data-testid="voice-door-invite"');
     expect(COACH).toContain(".finally(() => { if (!cancelled) setLiveProbed(true); })");
+    // negative control: the pre-fix auto-start fails the same rule
+    expect('if (consumeConversationVoiceRequest() && voicePhase === "off") void toggleVoice();').toContain("toggleVoice()");
   });
 
   for (const lang of ["en", "he"] as const) {

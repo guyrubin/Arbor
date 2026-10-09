@@ -56,3 +56,5 @@
 .companion-coach [data-structured-report] > :first-child { display:none; }
 .companion-coach [data-structured-report] > [dir] { padding:0; border:0!important; border-radius:0; box-shadow:none!important; }
 @media(max-width:520px){.companion-transcript{padding-inline:16px}.companion-coach [data-testid=coach-docked-composer]{padding-inline:16px}}
+/* B-VOICE-06: after the voice door, one calm line until the parent taps Talk it through. */
+.companion-voice-invite{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--arbor-ink-soft)}
