@@ -166,7 +166,7 @@ describe("parent surfaces (components/overview) — no bg-white / \"white\" lite
 /* PLAT-6 — repo-wide hex-creep guard. The design constraint is tokens
    (--arbor-*) only; raw hex literals in component code drift the palette and
    evade the token↔CSS consistency checks above. Some hex is legitimate —
-   SVG artwork (ArborMark, ArborMascot, StoryIllustration, Avatar palettes),
+   SVG artwork (ArborMascot, StoryIllustration, Avatar palettes),
    confetti/brand literals, print-CSS template strings — so the guard is a
    RATCHET: every hex value currently present in any .tsx file under
    src/components is snapshotted below per file, and the suite fails when
@@ -200,10 +200,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
     "#f3b24d", "#f4d991", "#f6b27a", "#f6cdd9", "#f6d9b8", "#fbe1ea", "#fbeede", "#fce39a",
   ],
   "components/tabs/ComicsTab.tsx": ["#fff"],
-  "components/ui/ArborMark.tsx": [
-    // brand-mark SVG gradient stops — allowlisted art file
-    "#18f0d2", "#1b2898", "#38c8f0", "#68b4ff", "#a07af8", "#cca8ff", "#ff5822", "#ffc07a",
-  ],
   "components/ui/ArborMascot.tsx": ["#16352a", "#5fce97", "#ef8a52", "#f3a886", "#fff", "#ffffff"], // mascot SVG
   "components/ui/HeroAvatar.tsx": ["#fff"],
   "components/ui/HeroCrest.tsx": ["#fff"],
