@@ -90,7 +90,7 @@ export default function MobileNav() {
               onClick={() => go(sec.id)}
               aria-current={on ? "page" : undefined}
               aria-label={reviewAria}
-              className={`min-h-[64px] min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2.5 font-bold transition ${emphasized ? "text-[12px]" : "text-[11px]"}`}
+              className={`min-h-[64px] min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2.5 font-bold transition text-[12px]`}
               style={{ color: on ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
             >
               <span className="relative inline-flex">
@@ -98,7 +98,7 @@ export default function MobileNav() {
                 {showBadge && (
                   <span
                     aria-hidden="true"
-                    className="absolute -top-1.5 text-[10px] font-extrabold rounded-full px-1.5 leading-4 text-center"
+                    className="absolute -top-1.5 text-xs font-bold rounded-full px-1.5 leading-4 text-center"
                     style={{ insetInlineStart: "100%", marginInlineStart: "-7px", background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
                   >
                     {badge}
@@ -117,7 +117,7 @@ export default function MobileNav() {
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
           aria-current={overflowActive ? "page" : undefined}
-          className="min-h-[64px] min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-bold transition"
+          className="min-h-[64px] min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[12px] font-bold transition"
           style={{ color: overflowActive ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
         >
           <Icon name="more_horiz" size={18} chrome active={overflowActive} />
@@ -172,7 +172,7 @@ export default function MobileNav() {
                 <span className="min-w-0 flex-1">
                   <span className="block break-words leading-snug">{t("nav.cat." + sec.id)}</span>
                   {pulseText ? (
-                    <span className="mt-0.5 block break-words text-[11px] leading-snug" style={{ color: "var(--arbor-muted)", fontWeight: 500 }}>
+                    <span className="mt-0.5 block break-words text-[12px] leading-snug" style={{ color: "var(--arbor-muted)", fontWeight: 500 }}>
                       {pulseText}
                     </span>
                   ) : null}

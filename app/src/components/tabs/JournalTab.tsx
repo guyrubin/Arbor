@@ -75,7 +75,7 @@ const MODE_TILES: { ms: string; key: CaptureMode }[] = [
 ];
 
 /** Per-domain Material Symbols glyph for the colored icon tile + descriptive chip.
- *  Mirrors the kit's lucide DOMAIN_VISUALS one-for-one so the journal re-skins
+ *  Mirrors the kit's DOMAIN_VISUALS one-for-one so the journal re-skins
  *  without forking the domain taxonomy. Descriptive only — never a verdict. */
 const DOMAIN_MS: Record<DevelopmentalDomainId, string> = {
   attachment_regulation: "favorite",

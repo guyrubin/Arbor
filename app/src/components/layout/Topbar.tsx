@@ -59,7 +59,7 @@ export default function Topbar() {
         style={{ minInlineSize: "min(11rem, 22%)" }}
       >
         <span
-          className="text-[18px] font-extrabold leading-tight truncate"
+          className="text-[18px] font-bold leading-tight truncate"
           style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
         >
           {isCompanionHome(activeTab) ? (uiLang === "he" ? place.he : place.en) : t("nav.title." + section.id)}

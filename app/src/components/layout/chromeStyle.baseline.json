@@ -2,24 +2,6 @@
   "components/layout/AdminDashboard.tsx": {
     "under12px": 2
   },
-  "components/layout/MobileNav.tsx": {
-    "under12px": 4,
-    "extraBold": 1
-  },
-  "components/layout/Shell.tsx": {
-    "under12px": 1,
-    "extraBold": 1
-  },
-  "components/layout/Sidebar.tsx": {
-    "under12px": 1,
-    "extraBold": 1
-  },
-  "components/layout/Topbar.tsx": {
-    "extraBold": 1
-  },
-  "components/layout/YourDataSheet.tsx": {
-    "extraBold": 1
-  },
   "components/capture/CaptureProposalsTray.tsx": {
     "uppercase": 2,
     "letterSpacedLabel": 1,

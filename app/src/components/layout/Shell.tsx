@@ -532,7 +532,7 @@ export default function Shell() {
               safety: the page's own promise is its subtitle) the hub line is
               quiet — the pills already name the hub. */}
           {!HUB_LINE_QUIET_TABS.has(activeTab) && (
-          <p className="lg:hidden text-[11px] leading-snug mb-3 min-w-0" style={{ color: "var(--arbor-muted)" }}>
+          <p className="lg:hidden text-xs leading-snug mb-3 min-w-0" style={{ color: "var(--arbor-muted)" }}>
             {hubPulse ? t(hubPulse.key, hubPulse.params) : t("nav.sub." + hubSubKey, { name: childProfile.name })}
           </p>
           )}
@@ -553,7 +553,7 @@ export default function Shell() {
               </span>
               <button
                 onClick={() => toast(t("shell.sandbox.toast"), "info")}
-                className="touch-target font-extrabold px-3 py-1.5 rounded-xl flex-shrink-0"
+                className="touch-target font-bold px-3 py-1.5 rounded-xl flex-shrink-0"
                 style={{ background: "var(--arbor-peach-ink)", color: "var(--arbor-on-accent)" }}
               >
                 {t("shell.sandbox.learn")}
