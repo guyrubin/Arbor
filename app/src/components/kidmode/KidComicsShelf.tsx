@@ -274,17 +274,9 @@ export default function KidComicsShelf({
       ) : openableBooks.length === 0 ? (
         <PlayPanel tone="lav" className="text-center">
           <div className="mx-auto mb-3 w-fit"><HeroAvatar size={88} mood="think" animate={false} /></div>
-          {/* B-KID-38 (KB-06, truth): a child with no hero never gets a comic
-              shelved (the reader shelves only with a hero), so "your comic
-              appears here" was a promise that could not come true. */}
-          {heroUrl ? (
-            <>
-              <p className="kid-type-label" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.empty", aiLang)}</p>
-              <p className="kid-type-tag mt-1" style={{ color: "var(--arbor-muted)" }}>{kidsStoriesText("shelf.emptyHint", aiLang)}</p>
-            </>
-          ) : (
-            <p className="kid-type-label" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.emptyNoHero", aiLang)}</p>
-          )}
+          {/* B-BOOK-28: reading a legacy story no longer generates a comic.
+              The saved shelf must not promise a new book after a child read. */}
+          <p className="kid-type-label" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("shelf.empty", aiLang)}</p>
           {onOpenStories && (
             <div className="mt-4 flex justify-center">
               <PlayButton tone="clay" onClick={onOpenStories}>{kidsStoriesText("shelf.openStories", aiLang)}</PlayButton>

@@ -148,7 +148,7 @@ describe("B-KID-33 — a moderated hero-journey answer never crashes the reader"
     expect(() => assertHeroJourneyRender(null as never)).toThrow();
     const ok = { scenes: [], choices: [] } as never;
     expect(assertHeroJourneyRender(ok)).toBe(ok);
-    expect(read("lib/api.ts")).toContain('post<HeroJourneyRender>("/api/generate-hero-journey", payload).then(assertHeroJourneyRender)');
+    expect(read("lib/api.ts")).toContain('post<HeroJourneyRender>("/api/generate-hero-journey", payload, beforeDispatch).then(assertHeroJourneyRender)');
   });
 
   it("the failure path renders the authored story and is NOT cached for the day", () => {

@@ -95,7 +95,7 @@ describe("FIREWALL: the card from a fixture", () => {
   it("Share is rendered only when the sandbox flag gives a label", () => {
     expect(card("en", "Dylan", "boy", false)).not.toContain("data-hand-back-share");
     expect(card("en", "Dylan", "boy", true)).toContain("data-hand-back-share");
-    expect(read("..", "..", "SneakHandBackCard.tsx")).toContain('shareLabel={sneakFreezeFlagOn() ? t("handBack.sneakFreeze.share") : null}');
+    expect(read("..", "..", "SneakHandBackCard.tsx")).toContain('shareLabel={shareAllowed ? t("handBack.sneakFreeze.share") : null}');
   });
 });
 

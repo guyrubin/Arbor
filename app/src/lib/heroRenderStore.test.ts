@@ -133,3 +133,47 @@ describe("B-KID-127: kept, never generated twice", () => {
     expect(CHILD_SUBCOLLECTIONS).toContain("heroRenders");
   });
 });
+
+describe("B-BOOK-28: only a current parent request can generate and persist", () => {
+  it("an already retired request does not even read the device", async () => {
+    const get = vi.spyOn(backend, "get");
+    const request = ask({ isCurrent: () => false });
+    await expect(request.p).rejects.toThrow("Story request retired");
+    expect(get).not.toHaveBeenCalled();
+    expect(request.generate).not.toHaveBeenCalled();
+    expect(request.persistRemote).not.toHaveBeenCalled();
+  });
+  it("retiring during device lookup prevents account adoption and new generation", async () => {
+    let release!: (value: undefined) => void;
+    vi.spyOn(backend, "get").mockReturnValue(new Promise(resolve => { release = resolve; }));
+    let current = true;
+    const account: SavedHeroRender = { id: "noahs-ark|en", childId: "c1", storyId: story.id, lang: "en", sig: renderSignature("Dana", story), savedAt: "2026-10-01T00:00:00Z", render: render("ACCOUNT") };
+    const request = ask({ remote: [account], isCurrent: () => current });
+    current = false; release(undefined);
+    await expect(request.p).rejects.toThrow("Story request retired");
+    expect(request.generate).not.toHaveBeenCalled();
+    expect(backend.map.size).toBe(0);
+    expect(getSavedRender("c1", story.id, "en", account.sig)).toBeUndefined();
+  });
+  it("retiring while the model is pending discards the result before device and account persistence", async () => {
+    let release!: (value: HeroJourneyRender) => void;
+    const generate = vi.fn(() => new Promise<HeroJourneyRender>(resolve => { release = resolve; }));
+    let current = true;
+    const request = ask({ fresh: true, generate, isCurrent: () => current });
+    expect(generate).toHaveBeenCalledOnce();
+    current = false; release(render("LATE PARENT WORDS"));
+    await expect(request.p).rejects.toThrow("Story request retired");
+    await flush();
+    expect(request.persistRemote).not.toHaveBeenCalled();
+    expect(backend.map.size).toBe(0);
+    expect(getSavedRender("c1", story.id, "en", renderSignature("Dana", story))).toBeUndefined();
+  });
+  it("positive control: a current parent request still keeps device and account copies", async () => {
+    const request = ask({ isCurrent: () => true });
+    expect((await request.p).source).toBe("generated");
+    await flush();
+    expect(request.generate).toHaveBeenCalledOnce();
+    expect(request.persistRemote).toHaveBeenCalledOnce();
+    expect(backend.map.size).toBe(1);
+  });
+});

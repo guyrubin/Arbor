@@ -13,6 +13,7 @@
 import { api, PaywallError } from "./api";
 import { HERO_STORIES, getStorySpec } from "./heroJourneys";
 import { getScene, resolveScene, setScene } from "./sceneCache";
+import { isKidModeActive, subscribeKidMode } from "./kidModeGate";
 import {
   captureComicPageEpoch,
   comicPageEpochIsCurrent,
@@ -613,17 +614,24 @@ async function resolveComicPage(args: {
   key: string;
   childId?: string;
   pageEpoch?: ComicPageEpoch;
-  request: () => Promise<string>;
+  request: (beforeDispatch: () => void) => Promise<string>;
+  /** Journey reader lifecycle; omitted for the unchanged parent book builder. */
+  isCurrent?: () => boolean;
 }): Promise<string> {
   const { key, childId, pageEpoch, request } = args;
+  const requireCurrent = () => {
+    requireCurrentEpoch(pageEpoch);
+    if (args.isCurrent && !args.isCurrent()) throw new ComicGenerationCancelledError();
+  };
+  requireCurrent();
   const memHit = getScene(key);
   if (memHit !== undefined) {
-    requireCurrentEpoch(pageEpoch);
+    requireCurrent();
     return memHit;
   }
   if (childId) {
     const persisted = await getComicPage(childId, key);
-    requireCurrentEpoch(pageEpoch);
+    requireCurrent();
     if (persisted !== undefined) {
       setScene(key, persisted);
       return persisted;
@@ -632,10 +640,13 @@ async function resolveComicPage(args: {
   const url = await resolveScene(key, () => {
     // The scene-cache throttle may hold this work in its queue. Recheck at the
     // instant the provider call starts so erased-child jobs never leave device.
-    requireCurrentEpoch(pageEpoch);
-    return request();
+    requireCurrent();
+    return request(requireCurrent).then(url => {
+      requireCurrent(); // discard before resolveScene caches a retired result
+      return url;
+    });
   }, { priority: "page" }); // B-KID-56: a book page jumps queued tile scenes
-  requireCurrentEpoch(pageEpoch);
+  requireCurrent();
   if (childId) void putComicPage(childId, key, url, pageEpoch);
   return url;
 }
@@ -715,16 +726,22 @@ export function journeyPageKey(a: JourneyPageArgs): string {
 }
 
 export async function generateJourneyPage(a: JourneyPageArgs): Promise<{ key: string; url: string }> {
+  // B-BOOK-28: child reads never enter this pipeline, including jobs a parent
+  // queued before opening Kid Mode. A gate transition retires them permanently.
+  if (isKidModeActive()) throw new ComicGenerationCancelledError();
   const epoch = a.lifetimeEpoch ?? (a.childId ? captureComicPageEpoch(a.childId) : undefined);
   if (epoch && (!a.childId || epoch.childId !== a.childId)) throw new ComicGenerationCancelledError();
   requireCurrentEpoch(epoch);
   const key = journeyPageKey(a);
   // R2: a key that already failed this session never reaches the provider.
   if (journeyPageFailures.has(key)) throw new JourneyPageFailedBeforeError(key);
+  let retired = false;
+  const unsubscribe = subscribeKidMode(() => { retired = true; });
   try {
     const url = await resolveComicPage({
       key, childId: a.childId, pageEpoch: epoch,
-      request: () => api
+      isCurrent: () => !retired && !isKidModeActive(),
+      request: (beforeDispatch) => api
         .generateComic({
           avatar: { dataUrl: a.heroDataUrl },
           heroName: a.heroName,
@@ -733,7 +750,7 @@ export async function generateJourneyPage(a: JourneyPageArgs): Promise<{ key: st
           sfx: a.sfx,
           style: a.style,
           pageIndex: a.pageIndex,
-        })
+        }, beforeDispatch)
         .then((r) => r.dataUrl),
     });
     return { key, url };
@@ -742,6 +759,8 @@ export async function generateJourneyPage(a: JourneyPageArgs): Promise<{ key: st
     // recording it would deny the next legitimate request.
     if (!(error instanceof ComicGenerationCancelledError)) journeyPageFailures.add(key);
     throw error;
+  } finally {
+    unsubscribe();
   }
 }
 

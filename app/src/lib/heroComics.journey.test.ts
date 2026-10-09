@@ -10,15 +10,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * viral copy still resolve to an Adventure so their saved books can open.
  */
 
+const gate = vi.hoisted(() => ({ active: false, listeners: new Set<() => void>() }));
+vi.mock("./kidModeGate", () => ({
+  isKidModeActive: () => gate.active,
+  subscribeKidMode: (listener: () => void) => { gate.listeners.add(listener); return () => gate.listeners.delete(listener); },
+}));
 const generateComic = vi.fn();
 vi.mock("./api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./api")>()),
   api: { generateComic: (...a: unknown[]) => generateComic(...a) },
 }));
 
-import { ADVENTURES, STORY_COMIC, JourneyPageFailedBeforeError, _resetJourneyPageFailures, clearJourneyPageFailure, generateJourneyPage, getAdventure, hasJourneyPageFailed, journeyAdventure, journeyPageKey, type JourneyPageArgs } from "./heroComics";
+import { ADVENTURES, STORY_COMIC, ComicGenerationCancelledError, JourneyPageFailedBeforeError, _resetJourneyPageFailures, clearJourneyPageFailure, generateJourneyPage, getAdventure, hasJourneyPageFailed, journeyAdventure, journeyPageKey, type JourneyPageArgs } from "./heroComics";
 import { HERO_STORIES } from "./heroJourneys";
-import { _resetSceneCache } from "./sceneCache";
+import { _resetSceneCache, getScene, resolveScene } from "./sceneCache";
 import { _resetComicPageStore, _setComicPageBackend, type ComicPageBackend, type ComicPageRecord } from "./comicPageStore";
 
 const CHILD = "child-1";
@@ -54,6 +59,7 @@ const args = (over: Partial<JourneyPageArgs> = {}): JourneyPageArgs => ({
 
 let mem: ReturnType<typeof memBackend>;
 beforeEach(() => {
+  gate.active = false; gate.listeners.clear();
   mem = memBackend();
   _resetComicPageStore(); // forgets the backend — inject ours AFTER the reset
   _setComicPageBackend(mem.backend);
@@ -215,5 +221,53 @@ describe("a page that failed is bought once, not once per page turn", () => {
       await expect(generateJourneyPage(a)).rejects.toThrow("provider 503");
     }
     expect(generateComic).toHaveBeenCalledTimes(3); // what the critic measured
+  });
+});
+
+describe("B-BOOK-28: journey generation stops at the actual queued provider boundary", () => {
+  const settle = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
+  const switchGate = (active: boolean) => { gate.active = active; gate.listeners.forEach(listener => listener()); };
+  it("an active child cannot start a page/cover request or read the page store", async () => {
+    switchGate(true);
+    const read = vi.spyOn(mem.backend, "get");
+    await expect(generateJourneyPage(args())).rejects.toBeInstanceOf(ComicGenerationCancelledError);
+    await expect(generateJourneyPage(args({ cover: true, pageIndex: 0 }))).rejects.toBeInstanceOf(ComicGenerationCancelledError);
+    expect(read).not.toHaveBeenCalled(); expect(generateComic).not.toHaveBeenCalled();
+    expect(gate.listeners.size).toBe(0);
+  });
+  it("a parent job queued behind two occupied slots never reaches the provider after entering Kid Mode", async () => {
+    let releaseA!: (url: string) => void, releaseB!: (url: string) => void;
+    const blockerA = resolveScene("synthetic-slot-a", () => new Promise(resolve => { releaseA = resolve; }));
+    const blockerB = resolveScene("synthetic-slot-b", () => new Promise(resolve => { releaseB = resolve; }));
+    await settle();
+    const a = args();
+    const pending = generateJourneyPage(a);
+    const rejected = expect(pending).rejects.toBeInstanceOf(ComicGenerationCancelledError);
+    await settle(); expect(generateComic).not.toHaveBeenCalled();
+    switchGate(true); switchGate(false); // returning to parent does not revive it
+    releaseA("a"); releaseB("b"); await Promise.all([blockerA, blockerB]);
+    await rejected;
+    expect(generateComic).not.toHaveBeenCalled();
+    expect(getScene(journeyPageKey(a))).toBeUndefined();
+    expect(mem.map.size).toBe(0); expect(gate.listeners.size).toBe(0);
+    expect(hasJourneyPageFailed(journeyPageKey(a))).toBe(false);
+    // Cancellation is not a failed image: a later deliberate parent read works.
+    generateComic.mockResolvedValue({ dataUrl: "data:image/png;base64,UEFHRQ==" });
+    await expect(generateJourneyPage(a)).resolves.toMatchObject({ key: journeyPageKey(a) });
+    expect(generateComic).toHaveBeenCalledOnce();
+  });
+  it("an in-flight parent result arriving after a gate transition cannot populate memory or device cache", async () => {
+    let release!: (value: { dataUrl: string }) => void;
+    generateComic.mockReturnValue(new Promise(resolve => { release = resolve; }));
+    const a = args();
+    const pending = generateJourneyPage(a);
+    const rejected = expect(pending).rejects.toBeInstanceOf(ComicGenerationCancelledError);
+    await settle(); expect(generateComic).toHaveBeenCalledOnce();
+    switchGate(true);
+    release({ dataUrl: "data:image/png;base64,UEFHRQ==" });
+    await rejected; await settle();
+    expect(getScene(journeyPageKey(a))).toBeUndefined();
+    expect(mem.map.size).toBe(0); expect(gate.listeners.size).toBe(0);
+    expect(hasJourneyPageFailed(journeyPageKey(a))).toBe(false);
   });
 });

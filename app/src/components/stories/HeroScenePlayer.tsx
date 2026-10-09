@@ -152,7 +152,8 @@ export function HeroScenePlayer({
   // Latin name in a Hebrew one), so it never reorders the words around it.
   const narration = isolateNameIn(scene.narration, heroName, bookLang);
   const beatTitle = isolateNameIn(scene.title, heroName, bookLang);
-  const pageArgs: JourneyPageArgs | undefined = heroAvatarUrl && scene.imagePrompt
+  // B-BOOK-28: a child page only uses static cover art / the seeded illustration.
+  const pageArgs: JourneyPageArgs | undefined = layout !== "book" && !isKidModeActive() && heroAvatarUrl && scene.imagePrompt
     ? {
         storyId: storyId ?? seed,
         lang: bookLang,
@@ -192,7 +193,7 @@ export function HeroScenePlayer({
   useEffect(() => {
     setResolvedArt(undefined);
     setArtError(false);
-    if (!pageArgs || !artRequestKey) {
+    if (layout === "book" || isKidModeActive() || !pageArgs || !artRequestKey) {
       setArtLoading(false);
       return;
     }
@@ -215,12 +216,12 @@ export function HeroScenePlayer({
     const key = artRequestKey;
     runInstrumented("scene_art", () => generateJourneyPage(pageArgs))
       .then(({ url }) => {
-        if (!active) return;
+        if (!active || isKidModeActive()) return;
         setResolvedArt({ key, url });
         onPageResolved?.({ beatNumber, key });
       })
-      .catch(() => { if (active) setArtError(true); })
-      .finally(() => { if (active) setArtLoading(false); });
+      .catch(() => { if (active && !isKidModeActive()) setArtError(true); })
+      .finally(() => { if (active && !isKidModeActive()) setArtLoading(false); });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [artRequestKey, retryTick]);
@@ -256,10 +257,8 @@ export function HeroScenePlayer({
   );
 
   if (layout === "book") {
-    // B-KID-76 (b): one picture, then the words. Generated art when it exists
-    // (a child with a hero and an allowance); otherwise the story's own cover,
-    // cropped per beat; otherwise the seeded illustration. Never a smudged page
-    // or a Redraw button in front of the child.
+    // B-BOOK-28: the story's static cover, cropped per beat, or its seeded
+    // illustration. Neither page turns nor retries enter the image pipeline.
     return (
       <div className={KID_BOOK_SPREAD_CLASS} data-kid-book-page="">
         <span className="sr-only">{kidsStoriesText("journey.beat", aiLang, { current: beatNumber, total: beatTotal })}</span>
@@ -275,9 +274,7 @@ export function HeroScenePlayer({
           {sceneArt && <ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} className="absolute bottom-2 end-2" />}
         </div>
         <div className={KID_BOOK_SIDE_CLASS}>
-        {/* B-KID-124: keyed by the words, so a personalised render that lands
-            while the child is on this page fades in (reduced motion: a swap);
-            the block is a fixed three lines, so nothing below it moves. */}
+        {/* Stable authored words; reduced motion keeps the swap still. */}
         <motion.p
           key={narration}
           initial={reducedMotion ? false : { opacity: 0 }}

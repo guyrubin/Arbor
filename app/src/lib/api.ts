@@ -133,10 +133,10 @@ export const noteImageAllowance = (a: { perDay: number; perMonth: number } | nul
 export const sceneImagesOff = (): boolean => sceneImagesAllowed === false;
 /** Test-only. */
 export const __resetImageAllowance = (): void => { sceneImagesAllowed = null; };
-const sceneImagePost = (url: string, payload: unknown) =>
+const sceneImagePost = (url: string, payload: unknown, beforeDispatch?: () => void) =>
   sceneImagesOff()
     ? Promise.reject(new ApiError(IMAGE_RESTING, 429))
-    : post<{ dataUrl: string }>(url, payload).catch((err) => {
+    : post<{ dataUrl: string }>(url, payload, beforeDispatch).catch((err) => {
         if (isImageResting(err)) sceneImagesAllowed = false;
         throw err;
       });
@@ -161,9 +161,13 @@ function retryAfterOf(res: { headers: { get(name: string): string | null } }): n
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
-async function request<T>(url: string, method: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+async function request<T>(url: string, method: string, body?: unknown, signal?: AbortSignal, beforeDispatch?: () => void): Promise<T> {
+  beforeDispatch?.();
   const headers = await authHeaders();
   signal?.throwIfAborted();
+  // B-BOOK-28: auth refresh may outlive the parent reader. The lifecycle
+  // assertion stays out of the payload and runs at the actual dispatch seam.
+  beforeDispatch?.();
   const res = await fetch(url, {
     ...(signal ? { signal } : {}),
     method,
@@ -204,7 +208,7 @@ async function request<T>(url: string, method: string, body?: unknown, signal?: 
   }
   return (await res.json()) as T;
 }
-const post = <T>(url: string, body: unknown) => request<T>(url, "POST", body);
+const post = <T>(url: string, body: unknown, beforeDispatch?: () => void) => request<T>(url, "POST", body, undefined, beforeDispatch);
 // Live startup includes auth-token refresh and response JSON, not only fetch.
 // Bound the whole operation and never send after an owner has cancelled it.
 function liveStartupRequest<T>(body: unknown, signal?: AbortSignal): Promise<T> {
@@ -445,8 +449,8 @@ export const api = {
      *  by the generator until the Kids session uses it. */
     programTheme?: BedtimeProgramTheme;
   }) => post<BedtimeStory>("/api/generate-bedtime-story", payload),
-  generateHeroJourney: (payload: { storyId: string; childName: string; age: number; language: "en" | "he" }) =>
-    post<HeroJourneyRender>("/api/generate-hero-journey", payload).then(assertHeroJourneyRender),
+  generateHeroJourney: (payload: { storyId: string; childName: string; age: number; language: "en" | "he" }, beforeDispatch?: () => void) =>
+    post<HeroJourneyRender>("/api/generate-hero-journey", payload, beforeDispatch).then(assertHeroJourneyRender),
   // LC-11: `language` threads the parent's UI language into the handoff
   // generation seam (mirroring extractLog/vision). The matching languageDirective
   // in the /generate-handoff prompt is a server-side change (src/routes/api.ts).
@@ -478,8 +482,8 @@ export const api = {
   generateAvatar: (payload: { childId?: string; descriptors?: AvatarDescriptors; character?: AvatarCharacterIntent; photo?: { dataUrl: string }; style?: AvatarStyle }) =>
     post<{ dataUrl: string; style: string; source: "descriptor" | "photo" }>("/api/generate-avatar", payload),
   // AVA-3: render a story-beat scene featuring the child's generated character.
-  generateScene: (payload: { imagePrompt: string; avatar?: { dataUrl: string }; style?: AvatarStyle }) =>
-    sceneImagePost("/api/generate-scene", payload),
+  generateScene: (payload: { imagePrompt: string; avatar?: { dataUrl: string }; style?: AvatarStyle }, beforeDispatch?: () => void) =>
+    sceneImagePost("/api/generate-scene", payload, beforeDispatch),
   // A3b: a full-page Hero Comic panel starring the child's hero (avatar reference).
   generateComic: (payload: {
     avatar?: { dataUrl: string };
@@ -496,7 +500,7 @@ export const api = {
     cover?: boolean;
     /** G2: the title to letter on a cover page. */
     title?: string;
-  }) => sceneImagePost("/api/generate-comic", payload),
+  }, beforeDispatch?: () => void) => sceneImagePost("/api/generate-comic", payload, beforeDispatch),
   // Generative Cognitive Adventure personalized to the child (AdventureScenario shape).
   generateAdventure: (payload: { childProfile: ChildProfile; focusSkill?: string }) =>
     post<AdventureScenario>("/api/generate-adventure", payload),

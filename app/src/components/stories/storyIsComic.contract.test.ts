@@ -34,7 +34,7 @@ describe("HeroScenePlayer — one framed page per beat", () => {
     expect(player).toContain('retryLabel={kidsStoriesText("page.redraw", aiLang)}');
     // the effect re-arms on retry, and the failure never falls through to StoryIllustration
     expect(player).toContain("}, [artRequestKey, retryTick]);");
-    expect(player).toContain(".catch(() => { if (active) setArtError(true); })");
+    expect(player).toContain(".catch(() => { if (active && !isKidModeActive()) setArtError(true); })");
     // R2: and the key is remembered so a remount does not buy it again.
     expect(player).toContain("if (hasJourneyPageFailed(artRequestKey)) {");
   });
@@ -46,12 +46,12 @@ describe("HeroScenePlayer — one framed page per beat", () => {
 });
 
 describe("HeroJourneyTab — cover, shelf save, child ending", () => {
-  it("draws the cover once per story start and only when a hero exists", () => {
-    expect(tab).toContain("if (!activeStory || !render || !heroAvatarUrl) return;");
+  it("draws the parent cover once per story start, only with a hero and outside Kid Mode", () => {
+    expect(tab).toContain("if (kidMode || !activeStory || !render || !heroAvatarUrl) return;");
     expect(tab).toContain("pageIndex: 0,\n    cover: true as const,");
     // a cover that failed at start gets exactly one more try at finish
     expect(tab).toContain("if (!comicPageKeys.current.has(0)) {");
-    expect(tab).toContain("}, [activeStory?.id, heroAvatarUrl, renderLang]);"); // B-KID-121 re-pin: the cover follows the render's language
+    expect(tab).toContain("}, [activeStory?.id, heroAvatarUrl, renderLang, kidMode]);"); // B-KID-121 re-pin: the cover follows the render's language
   });
 
   it("saves the book only when the cover and every illustrated beat resolved — never a book that cannot open", () => {
@@ -197,9 +197,9 @@ describe("M2 — the reader speaks the UI language", () => {
  * `savedComics` stayed empty.
  */
 describe("M2 R2 — reading the book to its end is what shelves it", () => {
-  it("the ending shelves the comic, Finish button or not", () => {
+  it("the parent ending shelves the comic, Finish button or not; child ending never generates", () => {
     expect(tab).toContain("const shelveWhenComplete = async () => {");
-    expect(tab).toContain("if (!reachedEnding.current || comicSavedRef.current || shelvingRef.current) return;");
+    expect(tab).toContain("if (isKidModeActive() || !reachedEnding.current || comicSavedRef.current || shelvingRef.current) return;");
     // armed by arriving at the last beat…
     expect(tab).toContain("if (!isReflection || !activeStory || !render) return;");
     expect(tab).toContain("reachedEnding.current = true;");

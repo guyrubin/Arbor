@@ -40,6 +40,15 @@ import { createConsultStore } from "./consultRequests.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
 import { createWaitlistStore } from "./waitlist.js";
 
+// This is an offline authentication contract test. Even an invalid token
+// makes the real Google verifier download public certificates before parsing
+// it; mock that boundary so unit tests never contact an identity provider.
+const oidc = vi.hoisted(() => ({ verify: vi.fn() }));
+vi.mock("google-auth-library", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("google-auth-library")>();
+  return { ...actual, OAuth2Client: class { verifyIdToken = oidc.verify; } };
+});
+
 const NOW = Date.parse("2026-10-04T05:00:00.000Z");
 const DAY = 86_400_000;
 const at = (daysAgo: number) => new Date(NOW - daysAgo * DAY).toISOString();
@@ -171,9 +180,19 @@ describe("B-INF-02 — who may call the job", () => {
   });
 
   it("a configured SA still refuses a missing or forged token", async () => {
+    oidc.verify.mockRejectedValueOnce(new Error("Synthetic invalid token"));
     const verify = createOidcJobVerifier({ ARBOR_JOB_SA: "job@p.iam.gserviceaccount.com" }, "https://api.example/api/jobs/weekly-digest");
     expect(await verify(undefined)).toBe(false);
     expect(await verify("Bearer not-a-jwt")).toBe(false);
+    expect(oidc.verify).toHaveBeenCalledWith({ idToken: "not-a-jwt", audience: "https://api.example/api/jobs/weekly-digest" });
+  });
+
+  it("requires the configured service account and a verified email after signature validation", async () => {
+    const verify = createOidcJobVerifier({ ARBOR_JOB_SA: "job@p.iam.gserviceaccount.com" }, "https://api.example/api/jobs/weekly-digest");
+    for (const [email, email_verified, allowed] of [["other@example.org", true, false], ["job@p.iam.gserviceaccount.com", false, false], ["job@p.iam.gserviceaccount.com", true, true]] as const) {
+      oidc.verify.mockResolvedValueOnce({ getPayload: () => ({ email, email_verified }) });
+      expect(await verify("Bearer synthetic-signed-token")).toBe(allowed);
+    }
   });
 
   it("the Firebase auth middleware lets ONLY the job path through to the route's own check", async () => {

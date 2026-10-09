@@ -254,13 +254,20 @@ export async function resolvePersonalisedRender(args: {
   lang: "en" | "he";
   firstName: string;
   remote: readonly SavedHeroRender[];
-  generate: () => Promise<HeroJourneyRender>;
+  generate: (beforeDispatch: () => void) => Promise<HeroJourneyRender>;
   persistRemote: (doc: SavedHeroRender) => void;
   fresh?: boolean;
+  /** A parent request retired by navigation must not read, generate or persist. */
+  isCurrent?: () => boolean;
 }): Promise<{ render: HeroJourneyRender; source: "device" | "account" | "generated" }> {
+  const assertCurrent = () => {
+    if (args.isCurrent && !args.isCurrent()) throw new Error("Story request retired");
+  };
+  assertCurrent();
   const sig = renderSignature(args.firstName, args.story);
   if (!args.fresh) {
     const local = await loadSavedRender(args.childId, args.story.id, args.lang, sig);
+    assertCurrent();
     if (local) return { render: local, source: "device" };
     const acct = args.remote.find((r) => r.storyId === args.story.id && r.lang === args.lang && r.sig === sig);
     if (acct) {
@@ -268,7 +275,9 @@ export async function resolvePersonalisedRender(args: {
       return { render: acct.render, source: "account" };
     }
   }
-  const render = await args.generate();
+  assertCurrent();
+  const render = await args.generate(assertCurrent);
+  assertCurrent();
   const rec = saveRender(args.childId, args.story.id, args.lang, sig, render);
   if (rec) args.persistRemote({ ...rec, id: heroRenderDocId(args.story.id, args.lang) });
   return { render, source: "generated" };
