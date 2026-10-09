@@ -4,7 +4,7 @@
   "feature": "One parent turn combines an explicitly selected image or document and a question; the screened coach report is the sole response. Original files remain transient.",
   "judgeModel": "gemini-2.5-pro",
   "promptVersions": {
-    "companion_attachments": "1.1.0"
+    "companion_attachments": "1.2.0"
   },
   "runner": {
     "offlineGate": "app/src/routes/companionAttachmentsRoute.test.ts and app/src/lib/companionAttachments.test.ts: real route authorization, consent, source binding, privacy, output screening and continuation.",
