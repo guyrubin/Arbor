@@ -1,0 +1,234 @@
+{
+  "created": "2026-10-09",
+  "model": "gemini-3-pro-image",
+  "method": "Google Vertex AI (project arborprd-westeu, global endpoint) image generation; two candidates per picture (gemini-3-pro-image and gemini-3.1-flash-image), the better one chosen by eye; centre-cropped and exported to 480/960 WebP. Direction approved by Guy 9 Oct 2026: real objects that carry each area's meaning, drawn in the Arbor mark's language (leaf, arch, circle; its four gradients; translucent overlaps) on one brand shape.",
+  "rules": "Decorative only; abstract or object-only, never a child, a face or a family's own activity; no text.",
+  "totalBytes": 403264,
+  "assets": [
+    {
+      "file": "area-sleep",
+      "outputs": [
+        "area-sleep-480.webp",
+        "area-sleep-960.webp"
+      ],
+      "bytes": 22820,
+      "model": "gemini-3-pro-image",
+      "aspect": "1:1",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep its real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: sleep and bedtime. Composition: a large deep navy-to-sapphire arch stands behind the objects like a night window; a peach-to-coral circle inside the arch becomes the moon; the folded striped blanket in navy and sky, the small moon night-light, a closed picture book in sage-teal and a small glass of water rest in front of the arch; one teal leaf from the logo lies beside them like a sprig. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "area-food",
+      "outputs": [
+        "area-food-480.webp",
+        "area-food-960.webp"
+      ],
+      "bytes": 29452,
+      "model": "gemini-3-pro-image",
+      "aspect": "1:1",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: eating, the body and growing. Stage: one large mint-to-teal leaf shape rising behind the objects like new growth, with a peach-to-coral circle overlapping its tip. In front: a small bowl with blueberries and pear slices, a child's two-handled sapphire cup, a whole pear and a small wooden spoon. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app, matching a set where every picture has one brand shape as its stage. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "area-words",
+      "outputs": [
+        "area-words-480.webp",
+        "area-words-960.webp"
+      ],
+      "bytes": 23944,
+      "model": "gemini-3-pro-image",
+      "aspect": "1:1",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep its real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: words and talking between a parent and a child. Composition: two large translucent leaf shapes from the logo, one teal-to-sky and one lavender-to-periwinkle, overlap behind the objects like two voices meeting; in front of them two paper cups joined by one taut navy string (a toy telephone) and a closed navy picture book with a blank speech-bubble card; one small coral circle above like a spark. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "area-feelings",
+      "outputs": [
+        "area-feelings-480.webp",
+        "area-feelings-960.webp"
+      ],
+      "bytes": 26634,
+      "model": "gemini-3-pro-image",
+      "aspect": "1:1",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: feelings and closeness. Stage: one large peach-to-coral circle like a warm core, with a lavender-to-periwinkle leaf overlapping it translucently. In front: a soft knitted heart cushion in sapphire, a shallow dish holding three smooth pebbles in navy, teal and coral, and a small sprig of chamomile. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app, matching a set where every picture has one brand shape as its stage. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "area-play",
+      "outputs": [
+        "area-play-480.webp",
+        "area-play-960.webp"
+      ],
+      "bytes": 24538,
+      "model": "gemini-3-pro-image",
+      "aspect": "1:1",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: play and friends. Stage: two large circles overlapping translucently side by side, one lavender-to-periwinkle and one sky-to-teal, like two friends leaning together; their overlap forms a lighter blended lens shape. Never two arches side by side. In front: a pretend tea set for two (a little teapot, two small cups on saucers, two plates with a slice of cake each) and a small soft ball. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app, matching a set where every picture has one brand shape as its stage. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "area-moving",
+      "outputs": [
+        "area-moving-480.webp",
+        "area-moving-960.webp"
+      ],
+      "bytes": 33820,
+      "model": "gemini-3.1-flash-image",
+      "aspect": "1:1",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: moving and the body in motion. Stage: three teal-to-sky leaf shapes in a rising arc from left to right like a motion trail, ending at a small peach-to-coral circle. In front: a pair of small navy sneakers, a coiled jump rope with light handles, and a striped teal-and-white ball mid-bounce. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app, matching a set where every picture has one brand shape as its stage. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "area-hands",
+      "outputs": [
+        "area-hands-480.webp",
+        "area-hands-960.webp"
+      ],
+      "bytes": 39550,
+      "model": "gemini-3-pro-image",
+      "aspect": "1:1",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: hands and the senses. Stage: one large lavender-to-periwinkle circle behind the objects. In front: soft modelling clay in teal and sapphire with one rolled clay coil, three chunky crayons, a light-wood lacing board with a navy lace, and a few large buttons. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app, matching a set where every picture has one brand shape as its stage. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "area-school",
+      "outputs": [
+        "area-school-480.webp",
+        "area-school-960.webp"
+      ],
+      "bytes": 38328,
+      "model": "gemini-3-pro-image",
+      "aspect": "1:1",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: thinking, curiosity and learning. Stage: one deep navy-to-sapphire arch with a small peach-to-coral circle hovering above it like an idea. In front: a light-wood shape sorter with a circle, square and triangle beside it, a magnifying glass, and a small bead frame with sapphire and coral beads. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app, matching a set where every picture has one brand shape as its stage. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "area-family",
+      "outputs": [
+        "area-family-480.webp",
+        "area-family-960.webp"
+      ],
+      "bytes": 34120,
+      "model": "gemini-3.1-flash-image",
+      "aspect": "1:1",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: family and belonging. Stage: three nested arches of decreasing size (deep navy, sky-to-teal, lavender) overlapping translucently, with one peach-to-coral circle above like a shared sun. In front: a small light-wood house with a sapphire roof, a family-size bowl of fruit for sharing, and a small vase of sage-teal sprigs. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app, matching a set where every picture has one brand shape as its stage. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "empty-journal",
+      "outputs": [
+        "empty-journal-480.webp",
+        "empty-journal-960.webp"
+      ],
+      "bytes": 21278,
+      "model": "gemini-3-pro-image",
+      "aspect": "3:2",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: a family journal waiting for its first written moment. Stage: one large sky-to-teal leaf shape rising from behind the notebook like a page lifting. In front: an open notebook with blank pages and a navy ribbon bookmark, a pencil resting across it, a pressed leaf, and a small blank instant-photo card. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app, matching a set where every picture has one brand shape as its stage. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "empty-plans",
+      "outputs": [
+        "empty-plans-480.webp",
+        "empty-plans-960.webp"
+      ],
+      "bytes": 16128,
+      "model": "gemini-3-pro-image",
+      "aspect": "3:2",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: a gentle plan, one step at a time. Stage: three circles stepping up diagonally from small to large, from lavender to peach to coral, like steps toward a sun. In front: a planner open to blank pages with three small tab flags in teal, sapphire and coral along its edge, a pencil, and a small hourglass. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app, matching a set where every picture has one brand shape as its stage. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "empty-learn",
+      "outputs": [
+        "empty-learn-480.webp",
+        "empty-learn-960.webp"
+      ],
+      "bytes": 23292,
+      "model": "gemini-3-pro-image",
+      "aspect": "3:2",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: a parent's quiet learning time. Stage: one deep navy-to-sapphire arch like a doorway, a small peach-to-coral circle inside it. In front: a stack of three books in navy, teal and lavender, the top one lying open with blank pages, and a pair of reading glasses resting on it. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app, matching a set where every picture has one brand shape as its stage. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "empty-weekly",
+      "outputs": [
+        "empty-weekly-480.webp",
+        "empty-weekly-960.webp"
+      ],
+      "bytes": 16834,
+      "model": "gemini-3.1-flash-image",
+      "aspect": "3:2",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: looking back on one week. Stage: exactly seven small circles in a gentle rising arc, their colors moving from lavender through sky and teal to peach and coral, like seven days. In front: a small open notebook with blank pages, a pressed leaf on it, and a pencil. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app, matching a set where every picture has one brand shape as its stage. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "empty-portrait",
+      "outputs": [
+        "empty-portrait-480.webp",
+        "empty-portrait-960.webp"
+      ],
+      "bytes": 20446,
+      "model": "gemini-3-pro-image",
+      "aspect": "3:2",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: a child's story beginning to grow. Stage: one tall teal-to-mint leaf and one deep navy-to-sapphire arch overlapping translucently like the logo's figure, with a small peach-to-coral circle. In front: a small sapling with fresh leaves in a navy pot, and an open photo album with blank pages. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app, matching a set where every picture has one brand shape as its stage. No text, letters, numbers, faces, eyes, people, hands or animals."
+    },
+    {
+      "file": "together",
+      "outputs": [
+        "together-480.webp",
+        "together-960.webp"
+      ],
+      "bytes": 32080,
+      "model": "gemini-3.1-flash-image",
+      "aspect": "3:2",
+      "references": [
+        "public/brand/arbor-mark-transparent.png (on white)",
+        "the area's object reference (watercolor set, not shipped)"
+      ],
+      "prompt": "Create one illustration that is a smart combination of the two attached references. Image 1 is the Arbor logo: take its visual language exactly - smooth gradients in its palette only (mint to teal to sky blue, lavender to periwinkle, deep navy to sapphire, peach to coral), translucent overlaps where shapes cross, its rounded leaf, thick arch and perfect circle shapes, crisp clean edges, modern and premium. Image 2 shows the subject: keep its real, recognisable objects and their meaning, but redraw them in image 1's modern style - simplified volumes, soft gradient shading in the logo palette, crisp edges, at most a very subtle grain; no pencil lines, no watercolor, no paper texture, not flat clip-art either. Subject: a parent and a child sharing time together. Wide composition: a tall deep navy-to-sapphire arch and a smaller lavender-to-sky arch stand side by side behind the objects, overlapping translucently like the logo's figure beside a smaller one; in front of them an open picture book, a small house of navy and natural blocks and two little cups; one peach-to-coral circle sun above; one teal leaf. White background, generous white space, centered and balanced, filling about 65 percent of the frame. Sophisticated, modern editorial brand illustration for a premium parenting app. No text, letters, numbers, faces, eyes, people, hands or animals."
+    }
+  ]
+}
