@@ -421,6 +421,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [liveProbed, setLiveProbed] = useState(false);
   // B-VOICE-06: bumps when "Talk it through" is tapped while this panel is mounted.
   const [voiceAsk, setVoiceAsk] = useState(0);
+  // B-VOICE-06: the one-line "tap Talk it through to start" after the door, until voice starts.
+  const [voiceInvite, setVoiceInvite] = useState(false);
+  useEffect(() => { if (voicePhase !== "off") setVoiceInvite(false); }, [voicePhase]);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   // AI-V7: live caption of the PARENT'S OWN words while they speak (interim
   // browser-STT partials / Live input transcription — never model output).
@@ -887,12 +890,14 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   useEffect(() => { stopVoice(); }, [conversationRevision]);
   useEffect(() => { if (!visible) stopVoice(); }, [visible]);
 
-  // B-VOICE-06: "Talk it through" on the capture bar asks the conversation to
-  // start talking. It starts through toggleVoice — the SAME path as the
-  // composer's Talk button (no second voice path) — once the panel is visible
-  // and the Live probe has answered. The request is claimed once and only while
-  // fresh (lib/companionConversation), so a microphone never opens long after
-  // the tap; a request that lands while voice is already on changes nothing.
+  // B-VOICE-06: "Talk it through" on the capture bar opens the conversation
+  // READY to talk — it never opens the microphone by itself. The microphone
+  // starts only from the parent's own tap on the composer's Talk button (the
+  // one voice path): a mic or audio started after a navigation is outside the
+  // tap's user activation (iOS Safari can start it muted), and the 9 Oct input
+  // contract keeps "available" distinct from "listening". So the claimed
+  // request focuses that button and shows one line saying so. The request is
+  // claimed once and only while fresh (lib/companionConversation).
   useEffect(() => {
     const onAsk = (event: Event) => {
       if ((event as CustomEvent<CompanionConversationRequest>).detail?.voice) setVoiceAsk((n) => n + 1);
@@ -902,7 +907,10 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   }, []);
   useEffect(() => {
     if (!visible || !liveProbed || !conversationVoiceRequestPending()) return;
-    if (consumeConversationVoiceRequest() && voicePhase === "off") void toggleVoice();
+    if (consumeConversationVoiceRequest() && voicePhase === "off") {
+      setVoiceInvite(true);
+      window.setTimeout(() => (document.querySelector<HTMLButtonElement>(".companion-conversation .companion-live-button"))?.focus(), 60);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, liveProbed, voiceAsk]);
 
@@ -1031,6 +1039,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               </button>
             </div>
           )}
+          {voiceInvite && voicePhase === "off" && !voiceNotice && <p role="status" data-testid="voice-door-invite" className="companion-voice-invite" dir="auto">{inputText(uiLang, "companion.input.tap-talk-to-start")}</p>}
           {voiceNotice && voicePhase === "off" && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={() => void toggleVoice()} onDismiss={() => setVoiceNotice(null)} />}
         </section>
   );
