@@ -158,7 +158,9 @@ describe("AI-CAP-3 — QuickLogModal typed capture", () => {
   });
 
   it("confirm still writes through the ONE handleAddLog seam only", () => {
-    expect(count(modal, /handleAddLog\(e\)/g)).toBe(1);
+    // The sheet owns this write's failure message (inline alert), so the seam stays quiet.
+    expect(count(modal, /handleAddLog\(e, \{ callerShowsFailure: true \}\)/g)).toBe(1);
+    expect(count(modal, /handleAddLog\(/g)).toBe(1);
   });
 });
 
