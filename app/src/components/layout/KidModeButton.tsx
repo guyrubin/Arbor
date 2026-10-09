@@ -6,6 +6,8 @@ import { readParentPin } from "../kidmode/parentGate";
 import { useArborOptional } from "../../context/ArborContext";
 import { kidModeOpenFor } from "../../lib/age/playGate";
 import { ensureHeroSheet } from "../kidmode/hero/buildHeroSheet";
+import { ensureBookNarration, narrationFolder } from "../kidmode/hero/buildBookNarration";
+import { storyLanguage } from "../../lib/heroJourneys";
 import { PROOF_HERO_CHILD_IDS } from "../kidmode/hero/useHeroSheet";
 
 /**
@@ -20,7 +22,7 @@ import { PROOF_HERO_CHILD_IDS } from "../kidmode/hero/useHeroSheet";
  * <KidModeProvider> (Topbar + the in-content accessories row both qualify).
  */
 export default function KidModeButton({ compact = false, onBeforeOpen }: { compact?: boolean; onBeforeOpen?: () => void }) {
-  const { t } = useLanguage();
+  const { t, uiLang, aiLang } = useLanguage();
   // M4 / B-KID-11: the ONE parent-side step before hand-over lives in the
   // shared entry seam (hero-first once per session, then Kid Mode opens).
   const { request, step } = useKidModeEntry(onBeforeOpen);
@@ -39,6 +41,11 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
   // The proof child keeps the proof sheet Guy approved: no auto-drawn sheet
   // may outrank it in the chain (useHeroSheet: own sheet first).
   useEffect(() => { if (child && !PROOF_HERO_CHILD_IDS.includes(child.id)) void ensureHeroSheet(child); }, [child?.id, child?.photoUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  // K2 2c: the book's name pages in the child's name - again when the name,
+  // the Hebrew form or the story language changes (the server finds a stored
+  // take; the proof child keeps its uploaded narration).
+  const narrationVoice = narrationFolder(storyLanguage(uiLang, aiLang), child?.gender);
+  useEffect(() => { if (child && !PROOF_HERO_CHILD_IDS.includes(child.id)) void ensureBookNarration(child, narrationVoice); }, [child?.id, child?.name, child?.gender, narrationVoice]); // eslint-disable-line react-hooks/exhaustive-deps
   if (child && !kidModeOpenFor(child)) return <>{step}</>;
 
   if (compact) {

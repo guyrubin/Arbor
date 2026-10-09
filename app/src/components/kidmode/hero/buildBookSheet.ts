@@ -353,7 +353,13 @@ export function browserBookBuilderDeps(childId: string, cancelled: () => boolean
   };
 }
 
-/** Called by buildHeroSheet once the game's idle of this hero exists. */
+/** Called by buildHeroSheet once the game's idle of this hero exists. Once the
+ *  book shows the hero (committed now, or already), the narration in the
+ *  child's name follows (buildBookNarration, 2c). */
 export function startBrowserBookSheet(childId: string, avatarHash: string): Promise<BookBuildResult> {
-  return startBookSheet({ childId, avatarHash }, (cancelled) => browserBookBuilderDeps(childId, cancelled));
+  const job = startBookSheet({ childId, avatarHash }, (cancelled) => browserBookBuilderDeps(childId, cancelled));
+  void job.then((r) => {
+    if (r.status === "complete" || r.status === "already") void import("./buildBookNarration").then((m) => m.afterBookSheet(childId)).catch(() => undefined);
+  });
+  return job;
 }

@@ -24,7 +24,7 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 const rel = (p: string) => path.relative(SRC, p).split(path.sep).join("/");
 // K2 4b: the book sheet builder is the same kind of parent-side file.
-const BUILDER_FILES = new Set(["components/kidmode/hero/buildHeroSheet.ts", "components/kidmode/hero/buildBookSheet.ts", "components/kidmode/hero/choiceCards.ts"]);
+const BUILDER_FILES = new Set(["components/kidmode/hero/buildHeroSheet.ts", "components/kidmode/hero/buildBookSheet.ts", "components/kidmode/hero/choiceCards.ts", "components/kidmode/hero/buildBookNarration.ts"]);
 
 describe("B-GAME-13c: Kid Mode never draws a hero", () => {
   const kid = walk(KIDMODE);
@@ -37,7 +37,7 @@ describe("B-GAME-13c: Kid Mode never draws a hero", () => {
   it("no Kid Mode module imports the builder or calls the pose route", () => {
     const offenders = kid
       .filter((f) => !BUILDER_FILES.has(rel(f)))
-      .filter((f) => { const s = readFileSync(f, "utf8"); return /from\s+["'][^"']*(buildHeroSheet|buildBookSheet|choiceCards)["']/.test(s) || /import\(["'][^"']*buildBookSheet["']\)/.test(s) || s.includes("/api/hero-pose") || s.includes("/commit`"); })
+      .filter((f) => { const s = readFileSync(f, "utf8"); return /from\s+["'][^"']*(buildHeroSheet|buildBookSheet|choiceCards|buildBookNarration)["']/.test(s) || /import\(["'][^"']*(buildBookSheet|buildBookNarration)["']\)/.test(s) || s.includes("/api/hero-pose") || s.includes("/commit`"); })
       .map(rel);
     expect(offenders).toEqual([]);
   });
