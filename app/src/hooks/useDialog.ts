@@ -5,12 +5,13 @@ const useDialogEffect = typeof document === "undefined" ? useEffect : useLayoutE
 /** Parent dialog behavior only. Registration survives inline callback changes;
  * Escape, focus and dismissal belong to the shared top layer. No media, data,
  * native Back, or presentation behavior is introduced here. */
-export function useDialog<T extends HTMLElement = HTMLDivElement>({ open, onClose, initialFocusRef, returnFocusRef, parentRef }: {
+export function useDialog<T extends HTMLElement = HTMLDivElement>({ open, onClose, initialFocusRef, returnFocusRef, parentRef, persistentLayer = false }: {
   open: boolean;
   onClose: () => void;
   initialFocusRef?: RefObject<HTMLElement | null>;
   returnFocusRef?: RefObject<HTMLElement | null>;
   parentRef?: RefObject<HTMLElement | null>;
+  persistentLayer?: boolean;
 }) {
   const ref = useRef<T | null>(null);
   const latest = useRef({ onClose, initialFocusRef, returnFocusRef, parentRef });
@@ -24,13 +25,14 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>({ open, onClos
       initialFocus: () => latest.current.initialFocusRef?.current ?? null,
       returnFocus: () => latest.current.returnFocusRef?.current ?? null,
       parentRoot: () => latest.current.parentRef?.current ?? null,
+      persistentLayer,
     });
     handle.current = registration;
     return () => {
       if (handle.current === registration) handle.current = null;
       registration.dispose();
     };
-  }, [open]);
+  }, [open, persistentLayer]);
   const requestClose = useCallback(() => handle.current?.close(), []);
   const onBackdropClick = useCallback((event: MouseEvent<HTMLElement>) => {
     // React portal events still bubble through the owning drawer's ancestry.

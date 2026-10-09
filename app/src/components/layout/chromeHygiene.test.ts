@@ -21,6 +21,8 @@ const walk = (dir: string): string[] =>
   });
 const shell = read("components/layout/Shell.tsx");
 const sidebar = read("components/layout/Sidebar.tsx");
+const workspace = read("components/companion/CompanionWorkspace.tsx");
+const workspaceCss = read("components/companion/companionWorkspace.css");
 const HEBREW = /[֐-׿]/;
 
 describe("B-SHELL-23 · one SettingsModal", () => {
@@ -91,5 +93,54 @@ describe("B-SHELL-23 · skip link", () => {
       expect(HEBREW.test(translate("he", key)), `${key} HE`).toBe(true);
     }
     expect(translate("en", "shell.skipToContent")).toBe("Skip to content");
+  });
+});
+
+describe("persistent companion · mobile chrome", () => {
+  it("keeps the inline conversation and its backdrop above the sibling mobile navigation", () => {
+    // A z-10 on page-shell traps even a z-46 fixed conversation below the
+    // sibling z-40 nav. Check both the ancestor and the intended layer order.
+    const pageClasses = /className="(page-shell[^"]*)"/.exec(shell)?.[1];
+    expect(pageClasses).toBeTruthy();
+    const createsStack = (classes: string) => /(?:^|\s)(?:[\w-]+:)*z-(?!auto\b)\S+/.test(classes);
+    expect(createsStack(pageClasses!)).toBe(false);
+    expect(createsStack(`${pageClasses} z-10`)).toBe(true); // original failure
+    const pageRules = [...read("index.css").matchAll(/\.page-shell\s*\{([^}]+)\}/g)];
+    expect(pageRules.length).toBeGreaterThan(0);
+    for (const [, rule] of pageRules) expect(rule).not.toMatch(/(?:z-index|transform|isolation|contain)\s*:/);
+    const workspaceRule = /\.companion-workspace\s*\{([^}]+)\}/.exec(workspaceCss)?.[1];
+    expect(workspaceRule).toBeTruthy();
+    expect(workspaceRule).not.toMatch(/(?:z-index|transform|isolation|contain)\s*:/);
+
+    const defaultLayer = (selector: string) => {
+      const rule = new RegExp(`\\.${selector}\\s*\\{([^}]+)\\}`).exec(workspaceCss)?.[1];
+      expect(rule, selector).toMatch(/position:\s*fixed/);
+      return Number(/z-index:\s*(\d+)/.exec(rule!)?.[1]);
+    };
+    const navClasses = /<nav\b[\s\S]*?className="([^"]+)"/.exec(read("components/layout/MobileNav.tsx"))?.[1];
+    const navLayer = Number(/\bz-(\d+)\b/.exec(navClasses ?? "")?.[1]);
+    expect(Number.isFinite(navLayer)).toBe(true);
+    expect(defaultLayer("companion-workspace-backdrop")).toBeGreaterThan(navLayer);
+    expect(defaultLayer("companion-conversation")).toBeGreaterThan(defaultLayer("companion-workspace-backdrop"));
+    expect(shell.indexOf("<CompanionWorkspace")).toBeGreaterThan(shell.indexOf('className="page-shell'));
+    expect(shell.indexOf("<MobileNav />")).toBeGreaterThan(shell.indexOf("</CompanionWorkspace>"));
+  });
+
+  it("styles launcher labels separately so mobile keeps both the arrow and accessible save icon", () => {
+    // Icon itself renders a span: broad child-span rules flexed the arrow and
+    // hid the only visible save affordance when the text label was removed.
+    expect(read("components/ui/Icon.tsx")).toMatch(/return\s*\(\s*<span/);
+    expect(workspace).toMatch(/<span className="companion-launch-copy">[\s\S]*?<\/span><Icon name="arrow_forward"/);
+    expect(workspaceCss).toMatch(/\.companion-launch-copy\s*\{[^}]*flex:\s*1;/);
+    expect(workspaceCss).toMatch(/@media\s*\(max-width:\s*520px\)\s*\{\s*\.companion-launch-save-label\s*\{\s*display:\s*none;/);
+    const affectsIconSpans = (css: string) => /\.companion-launch-(?:main|save)(?:\s*>\s*|\s+)span\b/.test(css);
+    expect(affectsIconSpans(workspaceCss)).toBe(false);
+    expect(affectsIconSpans(".companion-launch-main > span { flex: 1; }")).toBe(true);
+    expect(affectsIconSpans(".companion-launch-save > span { display: none; }")).toBe(true);
+    const saveButton = /<button\b[^>]*className="companion-launch-save"[\s\S]*?<\/button>/.exec(workspace)?.[0];
+    expect(saveButton).toBeTruthy();
+    expect(saveButton).toContain('aria-label={inputText(uiLang, "companion.input.just-keep-a-moment")}');
+    expect(saveButton).toMatch(/<Icon name="add_a_photo"[^>]*\/><span className="companion-launch-save-label">/);
+    expect(workspaceCss).toMatch(/\.companion-launch-save\s*\{[^}]*min-inline-size:\s*48px;/);
   });
 });

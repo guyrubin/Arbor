@@ -1278,7 +1278,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           </div>
         )}
 
-        <div className={hasThreadContent ? "flex-1 p-4 md:p-6" : "p-0"}>
+        <div data-companion-messages className={hasThreadContent ? "flex-1 p-4 md:p-6" : "p-0"}>
          <div className="max-w-[760px] mx-auto space-y-3.5">
           {/* Empty state — orient a first-run parent on what Ask Arbor does.
               COACH-4: the title line lives ONCE, on the hero composer above;
@@ -1287,7 +1287,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               — it hides the moment any real turn exists, including a legacy
               conversation that still opens with the old welcome bubble. */}
           {chatMessages.map((msg, idx) => (
-            <div key={idx} data-companion-message={msg.sender} className={`flex gap-3 group ${msg.sender === "user" ? "ms-auto max-w-[85%] flex-row-reverse" : "me-auto w-full"}`}>
+            <div key={idx} data-companion-message={msg.sender} data-structured-report={msg.sender === "ai" && !!msg.contract || undefined} className={`flex gap-3 group ${msg.sender === "user" ? "ms-auto max-w-[85%] flex-row-reverse" : "me-auto w-full"}`}>
               {msg.sender === "user" ? (
                 <Avatar name={user?.displayName} photoURL={user?.photoURL} size={32} />
               ) : (
@@ -1298,7 +1298,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               {/* Asymmetric "tail" via logical radii so it flips correctly in RTL:
                   the speaker-side bottom corner is tightened to 6px. Coach bubbles
                   carry a soft shadow to lift the conversation off the canvas. */}
-              <div dir="auto" className="p-4 rounded-[18px] text-sm font-medium leading-[1.55]"
+              <div dir="auto" className={`min-w-0 p-4 rounded-[18px] text-sm font-medium leading-[1.55]${msg.sender === "ai" ? " flex-1" : ""}`}
                 style={msg.sender === "user"
                   ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)", borderEndEndRadius: 6 }
                   : { background: T.paperElevated, color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)", borderEndStartRadius: 6, boxShadow: "var(--shadow-sm)" }}>

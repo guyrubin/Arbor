@@ -38,4 +38,8 @@
 .companion-transcript > [data-module=coach-orientation] > header { display:none; }
 .companion-coach [data-testid=coach-docked-composer] { flex-shrink:0; position:relative; margin:0; padding:0 20px env(safe-area-inset-bottom); }
 .arbor-app .companion-input-well textarea { background:transparent; }
+.companion-coach [data-module="coach-thread"] { border:0; border-radius:0; box-shadow:none; }
+.companion-coach [data-companion-messages] { padding:20px 0 0; }
+.companion-coach [data-structured-report] > :first-child { display:none; }
+.companion-coach [data-structured-report] > [dir] { padding:0; border:0!important; border-radius:0; box-shadow:none!important; }
 @media(max-width:520px){.companion-transcript{padding-inline:16px}.companion-coach [data-testid=coach-docked-composer]{padding-inline:16px}}

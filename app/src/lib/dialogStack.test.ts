@@ -159,6 +159,54 @@ describe("dialog stack: production event and lifetime ownership", () => {
     expect(f.doc.body.style.getPropertyValue("overflow")).toBe("");
   });
 
+  it("a persistent workspace can become an interactive side pane and re-enter modal mode without remounting", () => {
+    const f = fixture();
+    const layer = f.doc.body.append(new Node(f.doc));
+    layer.setAttribute("data-arbor-dialog-layer", "true");
+    layer.style.setProperty("display", "contents");
+    const panel = layer.append(new Node(f.doc, "aside")); panel.setAttribute("tabindex", "-1");
+    const draft = panel.append(new Node(f.doc, "input")); draft.setAttribute("value", "Our unsent moment");
+    const onClose = vi.fn();
+    const a = f.stack.register({ root: html(panel), onClose, persistentLayer: true }); f.flush();
+    expect(f.doc.activeElement).toBe(draft);
+    expect(f.shell.hasAttribute("inert")).toBe(true);
+
+    // Expand → beside-page, or phone → desktop: the SAME visible layer stays
+    // mounted. Losing dialog status must release shielding, not retire it.
+    a.dispose(); f.flush();
+    expect(f.stack.depth).toBe(0);
+    for (const node of [layer, panel]) {
+      expect(node.hasAttribute("inert")).toBe(false);
+      expect(node.hasAttribute("aria-hidden")).toBe(false);
+      expect(node.style.getPropertyValue("pointer-events")).toBe("");
+    }
+    expect(f.shell.hasAttribute("inert")).toBe(false);
+    expect(f.doc.body.style.getPropertyValue("overflow")).toBe("");
+    draft.focus(); expect(f.doc.activeElement).toBe(draft);
+    expect(f.key("Escape").preventDefault).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(draft.getAttribute("value")).toBe("Our unsent moment");
+
+    const b = f.stack.register({ root: html(panel), onClose, persistentLayer: true }); f.flush();
+    expect(panel.children).toEqual([draft]);
+    expect(f.doc.activeElement).toBe(draft);
+    expect(f.shell.hasAttribute("inert")).toBe(true);
+    f.key("Escape"); expect(onClose).toHaveBeenCalledOnce();
+    b.dispose(); f.flush(); draft.focus();
+    expect(f.doc.activeElement).toBe(draft);
+    expect(draft.getAttribute("value")).toBe("Our unsent moment");
+  });
+
+  it("persistent layers are opt-in; a normal exiting modal still becomes inert and cannot intercept input", () => {
+    const f = fixture(), dialog = f.layer();
+    const handle = f.stack.register({ root: html(dialog.root), onClose: vi.fn() }); f.flush();
+    handle.dispose(); f.flush();
+    expect(dialog.root.hasAttribute("inert")).toBe(true);
+    expect(dialog.root.getAttribute("aria-hidden")).toBe("true");
+    expect(dialog.root.style.getPropertyValue("pointer-events")).toBe("none");
+    dialog.first.focus(); expect(f.doc.activeElement).toBe(f.opener);
+  });
+
   it("More → Search in one commit transfers focus and preserves the original opener", () => {
     const f = fixture(), more = f.layer();
     const a = f.stack.register({ root: html(more.root), onClose: vi.fn(), returnFocus: () => html(f.opener) }); f.flush();

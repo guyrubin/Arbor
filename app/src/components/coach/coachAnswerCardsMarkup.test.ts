@@ -54,6 +54,7 @@ const council: CouncilTake[] = [
 
 const noop = () => {};
 const reportCss = readFileSync(resolve(__dirname, "coachReport.css"), "utf8");
+const coachSource = readFileSync(resolve(__dirname, "../tabs/CoachTab.tsx"), "utf8");
 const asyncNoop = async () => {};
 void asyncNoop;
 
@@ -195,6 +196,25 @@ describe("AI-17 negative controls — the structural matchers reject a regressed
 
 describe("AI-17 — the four structured blocks are all present on the reference surface", () => {
   const html = render({ lang: "en" });
+
+  it("the container-query report receives real flex width from its AI bubble", () => {
+    // Inline-size containment removes the report's intrinsic width. An
+    // auto-sized flex bubble can therefore collapse to nearly zero width.
+    // Execute the shipped class expressions for both roles, and prove the
+    // pre-fix missing-growth/min-width shapes fail this source-level guard.
+    const bubble = /<div dir="auto" className=\{(`[^`]+`)\}/.exec(coachSource)?.[1];
+    const row = /data-companion-message=\{msg\.sender\}[^>]*?className=\{(`[^`]+`)\}/.exec(coachSource)?.[1];
+    expect(bubble).toBeTruthy(); expect(row).toBeTruthy();
+    const classes = (expression: string, sender: string): string => new Function("msg", `return ${expression};`)({ sender });
+    const safeBubble = (value: string) => /\bmin-w-0\b/.test(value) && /\bflex-1\b/.test(value);
+    const ai = classes(bubble!, "ai");
+    expect(reportCss).toContain("container-type: inline-size");
+    expect(classes(row!, "ai")).toMatch(/\bw-full\b/);
+    expect(safeBubble(ai)).toBe(true);
+    expect(safeBubble(ai.replace("flex-1", ""))).toBe(false);
+    expect(safeBubble(ai.replace("min-w-0", ""))).toBe(false);
+    expect(classes(bubble!, "user")).not.toMatch(/\bflex-1\b/);
+  });
 
   it("one report keeps its explanation, reasoning, steps, script and considerations visible", () => {
     expect(html.match(/data-testid="coach-answer-cards"/g)).toHaveLength(1);

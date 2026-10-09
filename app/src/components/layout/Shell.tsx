@@ -371,7 +371,7 @@ export default function Shell() {
       </a>
       <div
         // B-SHELL-01: two columns at every width — the third (AI rail) track is gone.
-        className="page-shell grid grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] min-h-screen relative z-10 transition-all duration-300 max-w-full overflow-x-hidden"
+        className="page-shell grid grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] min-h-screen relative transition-all duration-300 max-w-full overflow-x-hidden"
       >
         <Sidebar />
 

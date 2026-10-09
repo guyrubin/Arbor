@@ -1,4 +1,4 @@
-import { attachmentSourcePolicy } from "./attachmentSourcePolicy.js";
+import { attachmentSourcePolicy, attachmentTurnPolicy, ATTACHMENT_SOURCE_POLICY_VERSION } from "./attachmentSourcePolicy.js";
 /**
  * EVAL-6: version-pinned prompt builders.
  *
@@ -139,6 +139,7 @@ export const promptProfile = (profile: unknown, now?: Date): ModelProfile | null
 };
 
 export type PromptKey =
+  | "companion_attachments"
   | "non_diagnostic_contract"
   | "coach_chat"
   | "council_synthesis"
@@ -156,6 +157,7 @@ export type PromptKey =
  * that prompt version (see each suite's `promptVersions` block).
  */
 export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: string }> = {
+  companion_attachments: { version: ATTACHMENT_SOURCE_POLICY_VERSION, sha256: "3ee63fb2508161d3bef27ca3b48678734ddc486312011273e61e68fccdcc348d" },
   non_diagnostic_contract: { version: "1.0.0", sha256: "b9179613d1346f25bfc95c4f10a0bbada56a2c2bae5202bceb5fbb769555763a" },
   // 1.1.0 — masterplan 1.3: optional recentTurns transcript block + optional
   // weeklyContext line (both between the scholar-lens paragraph and "Parent
@@ -875,6 +877,8 @@ const CANONICAL = {
 /** Recompute the pinned template fingerprint for a prompt key. */
 export const promptFingerprint = (key: PromptKey): string => {
   switch (key) {
+    case "companion_attachments":
+      return sha256(JSON.stringify([attachmentTurnPolicy(["image/png", "application/pdf"]), attachmentSourcePolicy([{ role: "coach", text: "Original files are unavailable." }])]));
     case "non_diagnostic_contract":
       return sha256(NON_DIAGNOSTIC_CONTRACT);
     case "coach_chat":

@@ -9,6 +9,8 @@ export type DialogRegistration = {
   returnFocus?: () => HTMLElement | null;
   /** Explicit React parent for portals that can mount in the same commit. */
   parentRoot?: () => HTMLElement | null;
+  /** A retained workspace owns its own hidden state when returning to nonmodal mode. */
+  persistentLayer?: boolean;
 };
 export type DialogHandle = { close(): void; dispose(): void };
 type Entry = DialogRegistration & { layer: HTMLElement; returns: HTMLElement[]; closing: boolean; z: string; zPriority: string; baseZ: number };
@@ -219,13 +221,15 @@ export function createDialogStack(env: Environment) {
           // It must not capture input or remain in the accessibility tree.
           const active = element(doc.activeElement);
           if (layer.contains(active)) active?.blur();
-          const undoHidden = hide(layer);
-          const pointer = layer.style.getPropertyValue("pointer-events"), priority = layer.style.getPropertyPriority("pointer-events");
-          layer.style.setProperty("pointer-events", "none");
-          retired.set(layer, () => {
-            undoHidden();
-            if (pointer) layer.style.setProperty("pointer-events", pointer, priority); else layer.style.removeProperty("pointer-events");
-          });
+          if (!entry.persistentLayer) {
+            const undoHidden = hide(layer);
+            const pointer = layer.style.getPropertyValue("pointer-events"), priority = layer.style.getPropertyPriority("pointer-events");
+            layer.style.setProperty("pointer-events", "none");
+            retired.set(layer, () => {
+              undoHidden();
+              if (pointer) layer.style.setProperty("pointer-events", pointer, priority); else layer.style.removeProperty("pointer-events");
+            });
+          }
           if (entry.z) layer.style.setProperty("z-index", entry.z, entry.zPriority); else layer.style.removeProperty("z-index");
           queue();
         },

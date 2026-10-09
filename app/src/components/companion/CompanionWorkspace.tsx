@@ -30,7 +30,10 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     if (routeIsConversation) setActiveTab(returnTab.current);
     else requestAnimationFrame(() => launchRef.current?.focus());
   };
-  const { ref: panelRef } = useDialog<HTMLElement>({ open: modal, onClose: close, returnFocusRef: launchRef });
+  const { ref: panelRef } = useDialog<HTMLElement>({ open: modal, onClose: close, returnFocusRef: launchRef, persistentLayer: true });
+  useEffect(() => {
+    if (visible && !modal) panelRef.current?.focus();
+  }, [visible, modal, panelRef]);
   const show = () => { setMounted(true); setOpen(true); };
   useEffect(() => {
     const query = window.matchMedia("(min-width: 1280px)");
@@ -64,7 +67,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     {children}
     <div className="companion-panel-layer" data-arbor-dialog-layer>
     {modal && <button type="button" tabIndex={-1} className="companion-workspace-backdrop" aria-label={inputText(uiLang, "companion.input.close-conversation")} onClick={close} />}
-    {mounted && !kidLocked && <aside ref={panelRef} hidden={!visible} className="arbor-parent companion-conversation" role={modal ? "dialog" : "complementary"} aria-modal={modal || undefined} aria-labelledby="companion-conversation-title">
+    {mounted && !kidLocked && <aside ref={panelRef} tabIndex={-1} hidden={!visible} className="arbor-parent companion-conversation" role={modal ? "dialog" : "complementary"} aria-modal={modal || undefined} aria-labelledby="companion-conversation-title">
       <header className="companion-conversation-heading">
         <ArborMark size={30} />
         <div className="companion-conversation-identity">
@@ -81,9 +84,9 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     </div>
     {!visible && !kidLocked && <div className="arbor-parent companion-launcher" data-testid="companion-launcher">
       <button ref={launchRef} type="button" className="companion-launch-main" onClick={show} aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.input.talk-with-arbor-text-photo-or-voice")}>
-        <ArborMark size={27} /><span>{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : (inputText(uiLang, "companion.input.what-would-you-like-to-share"))}<small>{inputText(uiLang, "companion.input.write-show-talk")}</small></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" />
+        <ArborMark size={27} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : (inputText(uiLang, "companion.input.what-would-you-like-to-share"))}<small>{inputText(uiLang, "companion.input.write-show-talk")}</small></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" />
       </button>
-      <button type="button" className="companion-launch-save" onClick={() => openCaptureSheet({ mode: "text" })} aria-label={inputText(uiLang, "companion.input.just-keep-a-moment")}><Icon name="add_a_photo" size={21} /><span>{inputText(uiLang, "companion.input.keep-a-moment")}</span></button>
+      <button type="button" className="companion-launch-save" onClick={() => openCaptureSheet({ mode: "text" })} aria-label={inputText(uiLang, "companion.input.just-keep-a-moment")}><Icon name="add_a_photo" size={21} /><span className="companion-launch-save-label">{inputText(uiLang, "companion.input.keep-a-moment")}</span></button>
     </div>}
   </div>;
 }

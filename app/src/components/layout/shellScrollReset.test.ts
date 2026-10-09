@@ -51,6 +51,8 @@ describe("F-02 — Shell resets scroll on tab swap (onExitComplete)", () => {
 
   it("the reset does NOT live in ArborContext.setActiveTab", () => {
     const ctx = readFileSync(path.join(here, "..", "..", "context", "ArborContext.tsx"), "utf8");
-    expect(ctx).not.toMatch(/scrollTo/);
+    const tabSetter = ctx.slice(ctx.indexOf("const setActiveTab ="), ctx.indexOf("\n  };", ctx.indexOf("const setActiveTab =")));
+    expect(tabSetter).toContain("setActiveTabState(t)");
+    expect(tabSetter).not.toMatch(/scrollTo/);
   });
 });

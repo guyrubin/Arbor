@@ -82,7 +82,7 @@ export default function CompanionComposer({ childId, conversationRevision, langu
         thumbnail = await fileToThumbnail(new File([bytes], photo.name, { type: photo.mimeType }));
       }
       if (turn === scope.current) onKeep(textRef.current, thumbnail);
-    } catch { setError(inputText(language, "companion.input.we-couldn-t-prepare-the-photo-your-draft-is-still-here")); }
+    } catch { if (turn === scope.current) setError(inputText(language, "companion.input.we-couldn-t-prepare-the-photo-your-draft-is-still-here")); }
   };
   const draftPending = !!value.trim() || attachments.length > 0 || listening;
   return <div className="companion-composer" data-testid="companion-composer">
