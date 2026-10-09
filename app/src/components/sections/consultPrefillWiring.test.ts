@@ -93,7 +93,8 @@ describe("B-CAREPRO-13 · every caller goes through the widened seam", () => {
 
   it("each caller sets the field it knows", () => {
     const coach = read("components/tabs/CoachTab.tsx");
-    expect(coach).toContain('requestConsultPrefill({ note, audience: "teacher" });'); // teacher note
+    expect(coach).toContain('requestConsultPrefill({ note, audience });'); // teacher (default) / professional note
+    expect(coach).toContain('onAddToHandoff={(note, audience = "teacher") => {');
     expect(coach).not.toContain("<ArborVision"); // attached media stays in the unified conversation
     expect(read("components/sections/Screening.tsx")).toContain("requestConsultPrefill({ reason: visitPrefillReason(watchAreas, t) });");
     expect(read("components/tabs/SafetyTab.tsx")).toContain('requestConsultPrefill({ reason: t("elev.safety.signs.consultReason", { labels }) });');

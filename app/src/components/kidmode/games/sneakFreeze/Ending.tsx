@@ -14,6 +14,11 @@
  * courtyard itself (blurred, darkened) is the backdrop; the prizes sit as
  * objects on a little shelf (not buttons); every sitting gets another
  * framing / time of day than the last.
+ * B-GAME-09d: a phone held upright is shown a 3:4 close shot that takes the
+ * height the toys leave (>= half the screen at 375x812, no scroll at 375x667):
+ * the caption and the shelf sit right under it, the two toys at the bottom in
+ * the thumb zone. The 4:3 picture is still the one kept (and shared from the
+ * parent's hand-back card). Landscape and tablets keep the 4:3 layout.
  * No stars, no counts, no auto-advance, no model or network call. The last
  * 12 pictures are kept on the device (statueStore.ts).
  */
@@ -23,7 +28,7 @@ import { kidIsolate } from "../../kidText";
 import type { HeroSheet } from "../../hero/heroSheet";
 import { prefersReducedMotion } from "../../hero/HeroFigure";
 import type { PrizeId, SneakState } from "./rules";
-import { PICTURE, composeStatuePicture, pickVariant, statueShot } from "./statuePicture";
+import { PICTURE, PICTURE_SIZE, composeStatuePicture, pickVariant, statueShot } from "./statuePicture";
 import { keepStatuePicture, lastStatueVariant } from "./statueStore";
 import type { SneakArt } from "./sneakArt";
 
@@ -58,6 +63,18 @@ let visitVariant: number | null = null;
 const PICTURE_INLINE = `min(calc(100vw - 32px), calc((100dvh - var(--sneak-end-rest, 430px)) * ${PICTURE.w / PICTURE.h}), 1240px)`;
 /** The photo's rest tilt (mirrored with the art in right-to-left). */
 const TILT = 1.5;
+/** The photo's white lip. */
+const LIP = "clamp(6px, 1.1vmin, 14px)";
+const UPRIGHT = PICTURE_SIZE.portrait;
+/** B-GAME-09d: upright on a phone the photo fills its flex box (a size
+ *  container): as wide as the box allows, or as tall — whichever binds first
+ *  (8px kept for the tilt's corners). */
+const UPRIGHT_INLINE = `min(calc(100cqw - 8px), calc((100cqh - 2 * ${LIP}) * ${UPRIGHT.w / UPRIGHT.h} + 2 * ${LIP}))`;
+
+/** A phone held upright: tall and narrow (a tablet upright keeps the 4:3 layout). */
+export function isUprightPhone(w: number, h: number): boolean {
+  return w < 600 && h >= w * 1.4;
+}
 
 export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, playAgainLabel, homeLabel, onPlayAgain, onHome, onShown }: EndingProps) {
   const [picture, setPicture] = useState<string | null>(null);
@@ -67,6 +84,7 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
   const [portrait] = useState(() => typeof window !== "undefined" && window.innerHeight > window.innerWidth);
   // A phone keeps both toys on one row (the picture keeps the height).
   const [narrow] = useState(() => typeof window !== "undefined" && window.innerWidth < 480);
+  const [upright] = useState(() => typeof window !== "undefined" && isUprightPhone(window.innerWidth, window.innerHeight));
   const toyPad = narrow ? { paddingInline: 20 } : undefined;
   const photoRef = useRef<HTMLDivElement | null>(null);
   const tilt = rtl ? TILT : -TILT;
@@ -83,13 +101,16 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
     if (!shot) { shown(); return; }
     const variant = pickVariant(state.seed, lastStatueVariant(childId) ?? visitVariant);
     visitVariant = variant;
-    composeStatuePicture({ shot, art, sheet, rtl, variant })
-      .then((url) => {
+    // The 4:3 picture is the one kept; upright, the 3:4 close shot is the one shown.
+    Promise.all([
+      composeStatuePicture({ shot, art, sheet, rtl, variant }),
+      upright ? composeStatuePicture({ shot, art, sheet, rtl, variant, shape: "portrait" }) : Promise.resolve(null),
+    ])
+      .then(([url, tall]) => {
         if (!alive) return;
-        if (url) {
-          setPicture(url);
-          keepStatuePicture(childId, { id: state.seed, at: new Date().toISOString(), url, pose: shot.pose, variant });
-        }
+        if (url) keepStatuePicture(childId, { id: state.seed, at: new Date().toISOString(), url, pose: shot.pose, variant });
+        const show = upright ? tall ?? url : url;
+        if (show) setPicture(show);
         shown();
       })
       .catch(() => { shown(); /* the ending still stands without its picture */ });
@@ -129,14 +150,24 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
       />
       <div
         data-sneak-ending-stack=""
-        style={{ position: "relative", blockSize: "100%", overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "clamp(8px, 1.6dvh, 18px)", paddingInline: 16, paddingBlockEnd: "clamp(10px, 2dvh, 20px)", paddingBlockStart: "calc(max(10px, env(safe-area-inset-top)) + 80px)" }}
+        data-sneak-ending-shape={upright ? "upright" : "wide"}
+        style={{ position: "relative", blockSize: "100%", overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: upright ? "flex-start" : "center", gap: "clamp(8px, 1.6dvh, 18px)", paddingInline: 16, paddingBlockEnd: upright ? "max(clamp(10px, 2dvh, 20px), env(safe-area-inset-bottom))" : "clamp(10px, 2dvh, 20px)", paddingBlockStart: "calc(max(10px, env(safe-area-inset-top)) + 80px)" }}
       >
-        <figure data-sneak-picture-frame="" style={{ margin: 0, inlineSize: PICTURE_INLINE, minInlineSize: "min(calc(100vw - 32px), 280px)", flexShrink: 0 }}>
+        <figure
+          data-sneak-picture-frame=""
+          style={upright
+            // Upright: the figure takes every pixel the caption, shelf and toys leave.
+            ? { margin: 0, inlineSize: "100%", flex: "1 1 0", minBlockSize: 0, display: "flex", flexDirection: "column" }
+            : { margin: 0, inlineSize: PICTURE_INLINE, minInlineSize: "min(calc(100vw - 32px), 280px)", flexShrink: 0 }}
+        >
+          <PhotoBox upright={upright}>
           <div
             ref={photoRef}
             data-sneak-photo=""
             style={{
-              padding: "clamp(6px, 1.1vmin, 14px)",
+              inlineSize: upright ? UPRIGHT_INLINE : undefined,
+              boxSizing: upright ? "border-box" : undefined,
+              padding: LIP,
               background: "var(--arbor-paper-elevated)",
               borderRadius: "clamp(14px, 2vmin, 26px)",
               boxShadow: "0 22px 44px -16px color-mix(in srgb, var(--arbor-ink) 72%, transparent), 0 4px 10px color-mix(in srgb, var(--arbor-ink) 30%, transparent)",
@@ -144,10 +175,11 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
               opacity: picture ? 1 : 0,
             }}
           >
-            <div style={{ position: "relative", aspectRatio: `${PICTURE.w} / ${PICTURE.h}`, borderRadius: "clamp(9px, 1.4vmin, 18px)", overflow: "hidden", background: "var(--arbor-paper-deep)" }}>
+            <div style={{ position: "relative", aspectRatio: upright ? `${UPRIGHT.w} / ${UPRIGHT.h}` : `${PICTURE.w} / ${PICTURE.h}`, borderRadius: "clamp(9px, 1.4vmin, 18px)", overflow: "hidden", background: "var(--arbor-paper-deep)" }}>
               {picture && <img data-statue-picture="" src={picture} alt={pictureAlt} style={{ display: "block", inlineSize: "100%", blockSize: "100%", objectFit: "cover" }} />}
             </div>
           </div>
+          </PhotoBox>
           <figcaption dir="auto" className="kid-type-title" style={{ marginBlockStart: "clamp(10px, 1.8dvh, 18px)", marginInline: "auto", inlineSize: "fit-content", maxInlineSize: "100%", textAlign: "center", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", borderRadius: "var(--kid-r-m)", paddingInline: 18, paddingBlock: 8, fontWeight: 800, boxShadow: "0 6px 16px -8px color-mix(in srgb, var(--arbor-ink) 60%, transparent)" }}>
             {kidIsolate(caption)}
           </figcaption>
@@ -184,6 +216,17 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
           {onHome && <KidToy tone="paper" glyph="home" onClick={onHome} style={toyPad} data-kid-finish-home="">{kidIsolate(homeLabel)}</KidToy>}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Upright: a size container that grows into the free height; the photo sits
+ *  at its foot so the caption is directly under it. Otherwise: no wrapper. */
+function PhotoBox({ upright, children }: { upright: boolean; children: React.ReactNode }) {
+  if (!upright) return <>{children}</>;
+  return (
+    <div data-sneak-photo-box="" style={{ flex: "1 1 0", minBlockSize: 0, containerType: "size", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      {children}
     </div>
   );
 }

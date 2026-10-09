@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useObservationRecord } from "../../hooks/useObservationRecord";
@@ -12,6 +12,9 @@ import { Modal } from "../ui/Modal";
 import { buildPortraitChapters, buildPortraitEnvironments, buildPortraitThreads, portraitDiscussionPrompt } from "./portraitModel";
 import { PORTRAIT_COPY } from "./portraitCopy";
 import { portraitEvidenceLines, reviewedPortraitDraft } from "./portraitEvidence";
+import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
+import PortraitWatchRow from "./PortraitWatchRow";
+import PortraitKeepsakes from "./PortraitKeepsakes";
 import "./childPortrait.css";
 
 const icons: Record<DomainId, string> = { talking: "chat_bubble", moving: "directions_run", hands: "pan_tool", thinking: "psychology", playing: "group", feelings: "favorite", body: "spa", family: "home" };
@@ -23,6 +26,7 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
   const { childProfile, milestones, setActiveTab, seedCoach, openCaptureSheet, requestJournalFocus } = useArbor();
   const { t, uiLang } = useLanguage();
   const copy = PORTRAIT_COPY[uiLang === "he" ? "he" : "en"];
+  useEffect(() => { trackCompanionPlaceOpen("child"); }, [childProfile.id]);
   const c = {
     kicker: t("companion.portrait.kicker"),
     title: t("companion.portrait.title"),
@@ -166,6 +170,8 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     </header>
     {!!childProfile.interests?.length && <div className="portrait-interests"><span>{c.interests}</span><p dir="auto">{childProfile.interests.join(" · ")}</p></div>}
     {!!childProfile.strengths?.length && <p className="portrait-strengths"><strong>{copy.strengths}</strong><span dir="auto">{childProfile.strengths.join(" · ")}</span></p>}
+    {/* Parity 9 Oct: the watch focus, its three answers and the re-check date (GP-34/GP-06, UND-6, B-GROWTH-04). */}
+    <PortraitWatchRow />
     <div className="portrait-toolbar">
       <div className="portrait-views" role="group" aria-label={c.title}>{(["time", "context", "domain"] as const).map(key => <button type="button" key={key} aria-pressed={view === key} onClick={() => setView(key)}><Icon name={key === "time" ? "history" : key === "context" ? "home" : "grid_view"} size={18} />{c[key]}</button>)}</div>
       <label className="portrait-period"><span className="sr-only">{c.range}</span><Icon name="calendar_today" size={18} /><select aria-label={c.range} value={range} onChange={event => setRange(Number(event.target.value))}><option value={3}>{c.three}</option><option value={12}>{c.year}</option><option value={0}>{record.more || record.loading || record.error || !record.confirmed ? copy.loaded : c.entire}</option></select></label>
@@ -177,6 +183,8 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
       {record.more && !record.error && <button type="button" className="portrait-text-button" disabled={record.loading} onClick={record.loadMore}>{record.loading ? copy.loading : copy.more}<Icon name="expand_more" size={18} /></button>}
       {record.error && <button type="button" className="portrait-text-button" onClick={record.reload}>{copy.retry}</button>}
     </div>
+    {/* Parity 9 Oct: words, firsts, the tree and the month — one collapsed disclosure. */}
+    <PortraitKeepsakes />
     {!record.loading && !record.error && record.confirmed && inView.length === 0 && <div className="portrait-empty"><div className="portrait-empty-mark" aria-hidden="true"><Icon name="auto_stories" size={52} /></div><div><h2>{observations.length ? c.periodEmpty : c.emptyAll}</h2><p>{observations.length ? c.periodEmptySub : c.emptyAllSub}</p><button type="button" className="portrait-primary" onClick={() => openCaptureSheet()}><Icon name="add" size={20} />{c.capture}</button></div></div>}
     </div>
 
@@ -198,7 +206,7 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
         <div className="portrait-thread-head" role="row"><div role="columnheader" className="sr-only">{c.domain}</div>{chapters.map(chapter => <span role="columnheader" key={chapter.id}>{chapterLabel(chapter)}</span>)}</div>
         {threads.map(thread => <div className="portrait-thread" role="row" key={thread.domain}>
           <div role="rowheader" className="portrait-domain-label"><button type="button" onClick={() => select(inView.filter(o => o.domains.includes(thread.domain)), domainName(thread.domain, t), thread.domain)}><Icon name={icons[thread.domain]} size={22} /><span>{domainName(thread.domain, t)}</span></button></div>
-          {thread.cells.map((cell, i) => <div role="cell" className="portrait-thread-cell" key={chapters[i].id}>{cell.length ? <button type="button" className="portrait-mark-button" onClick={() => select(cell, `${domainName(thread.domain, t)} · ${chapterLabel(chapters[i])}`, thread.domain)} aria-label={`${domainName(thread.domain, t)}, ${chapterLabel(chapters[i])}, ${cell.length} ${cell.length === 1 ? c.oneMoment : c.moments}`}><span className="portrait-mark" aria-hidden="true" /><span className="portrait-cell-label" dir="auto">{title(cell[0])}</span><span className="portrait-cell-count">{cell.length} {cell.length === 1 ? c.oneMoment : c.moments}</span></button> : <span className="portrait-no-mark"><span aria-hidden="true">—</span><span className="sr-only">{c.noRecord}</span></span>}</div>)}
+          {thread.cells.map((cell, i) => <div role="cell" className="portrait-thread-cell" key={chapters[i].id}>{cell.length ? <button type="button" className="portrait-mark-button" onClick={() => select(cell, `${domainName(thread.domain, t)} · ${chapterLabel(chapters[i])}`, thread.domain)} aria-label={`${domainName(thread.domain, t)}, ${chapterLabel(chapters[i])}: ${title(cell[0])}`}><span className="portrait-mark" aria-hidden="true" /><span className="portrait-cell-label" dir="auto">{title(cell[0])}</span></button> : <span className="portrait-no-mark"><span aria-hidden="true">—</span><span className="sr-only">{c.noRecord}</span></span>}</div>)}
         </div>)}
       </div>
       <p className="portrait-map-note"><Icon name="info" size={18} />{c.timelineNote}</p>
@@ -206,9 +214,9 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
 
     {view === "context" && <section className="portrait-context-view"><div className="portrait-section-head"><div><h2>{c.contextIntro}</h2><p>{c.contextSub}</p></div></div><div className="portrait-environments">{environments.map(environment => <article className="portrait-environment" key={environment.context}><div className="portrait-environment-heading"><Icon name={environment.context === "Home" ? "home" : environment.context === "School" ? "school" : environment.context === "Transit" ? "directions_walk" : environment.context === "Public" ? "park" : "edit_note"} size={36} /><h3>{contextLabel(environment.context)}</h3><span>{environment.observations.length} {c.moments}</span></div><div className="portrait-context-domains">{environment.domains.map(domain => <button key={domain} type="button" onClick={() => select(environment.observations.filter(o => o.domains.includes(domain)), `${contextLabel(environment.context)} · ${domainName(domain, t)}`, domain)}><Icon name={icons[domain]} size={20} /><span>{domainName(domain, t)}</span><Icon name="chevron_right" size={18} className="portrait-arrow rtl:-scale-x-100" /></button>)}</div><button type="button" className="portrait-context-quote" onClick={() => select(environment.observations, contextLabel(environment.context))}><span>{date(environment.observations[0].at)}</span><p dir="auto">{title(environment.observations[0])}</p><Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button></article>)}</div></section>}
 
-    {view === "domain" && <section><div className="portrait-section-head"><div><h2>{c.domainIntro}</h2><p>{c.domainSub}</p></div></div><div className="portrait-domain-view">{DOMAIN_IDS.map((domain, i) => {
+    {view === "domain" && <section><div className="portrait-section-head"><div><h2>{c.domainIntro}</h2><p>{c.domainSub}</p></div></div><div className="portrait-domain-view">{DOMAIN_IDS.map((domain) => {
       const items = inView.filter(o => o.domains.includes(domain));
-      return <button type="button" className="portrait-domain-detail" key={domain} onClick={() => select(items, domainName(domain, t), domain)}><span className="portrait-domain-index" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span><Icon name={icons[domain]} size={32} /><div><h3>{domainName(domain, t)}</h3><p dir="auto">{items[0] ? title(items[0]) : c.noDomain}</p>{items[0] && <span className="portrait-meta">{date(items[0].at)} · {sourceLabel(items[0])}</span>}</div><Icon name="arrow_forward" size={20} className="portrait-arrow rtl:-scale-x-100" /></button>;
+      return <button type="button" className="portrait-domain-detail" key={domain} onClick={() => select(items, domainName(domain, t), domain)}><Icon name={icons[domain]} size={32} /><div><h3>{domainName(domain, t)}</h3><p dir="auto">{items[0] ? title(items[0]) : c.noDomain}</p>{items[0] && <span className="portrait-meta">{date(items[0].at)} · {sourceLabel(items[0])}</span>}</div><Icon name="arrow_forward" size={20} className="portrait-arrow rtl:-scale-x-100" /></button>;
     })}</div></section>}
 
     {!!unfiled.length && <button type="button" className="portrait-unfiled" onClick={() => select(unfiled, copy.unfiled)}><Icon name="auto_stories" size={24} /><span><strong>{copy.unfiled} · {unfiled.length}</strong><span>{copy.unfiledNote}</span></span><Icon name="arrow_forward" size={20} className="portrait-arrow rtl:-scale-x-100" /></button>}

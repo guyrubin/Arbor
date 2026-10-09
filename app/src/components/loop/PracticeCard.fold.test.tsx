@@ -43,7 +43,8 @@ import PracticeCard, { practiceText } from "./PracticeCard";
 import { PRACTICES } from "../../content/practices";
 import { practiceTitle, titleIsWholeDo } from "../../lib/practice/practiceTitle";
 import { translate } from "../../lib/i18n";
-import { practiceDoNamed } from "../../lib/journal/shelfView";
+import { practiceDoNamed } from "../../lib/journal/shelfView";
+import { todayFile, todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DEMO = PRACTICES.find((p) => p.id === "pr-cdc-36m-9")!;
@@ -183,14 +184,16 @@ describe("PracticeCard at 375 × 812 — the move sits above the capture dock", 
     expect(html).toContain("Dylan");
   });
 
-  it("the route stamps the answers, never a card wrapper (one literal, OverviewTab)", () => {
-    const src = readFileSync(path.join(here, "..", "tabs", "OverviewTab.tsx"), "utf8")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/^\s*\/\/.*$/gm, "");
-    expect(src.match(/\bdata-primary-move\b(?!-)/g)).toHaveLength(1);
-    expect(src).not.toMatch(/<div data-primary-move=/);
-    expect(src).toContain('stampMove={firstBlock === "practice" ? primaryMoveId : undefined}');
-    expect(src).toContain('stampMove={firstBlock === "tonight" ? primaryMoveId : undefined}');
+  it("the route stamps the answers, never a card wrapper (one literal per file; Now)", () => {
+    // Parity 9 Oct: the leaf (NowView) keeps ONE literal (framework-check); the
+    // loop blocks pass theirs through the components' own stamp props.
+    const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const leaf = strip(todayFile("NowView.tsx"));
+    const blocks = strip(todayFile("NowLoopBlocks.tsx"));
+    expect(leaf.match(/\bdata-primary-move\b(?!-)/g)).toHaveLength(1);
+    expect(blocks.match(/\bdata-primary-move\b(?!-)/g)).toHaveLength(1);
+    expect(todayLiveSource()).not.toMatch(/<div data-primary-move=/);
+    expect(blocks.match(/stampMove=\{MOVE\}/g)).toHaveLength(2);
   });
 });
 

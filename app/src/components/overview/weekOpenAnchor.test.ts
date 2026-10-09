@@ -27,7 +27,9 @@ import {
 import { chooseTodayAction } from "./chooseTodayAction";
 import { recapWeekId } from "../../hooks/useWeeklyRecap";
 import { isChildScopedKey } from "../../lib/childLocalState";
-import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
+import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
+import { todayLiveSource } from "../../testTodaySource";
+import { NOW_COPY } from "../companion/nowViewCopy";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (...rel: string[]) => readFileSync(path.join(here, ...rel), "utf8").replace(/\r\n/g, "\n");
@@ -355,21 +357,26 @@ describe("ENG-24 — where the week-open anchor sits in the one ranking function
    7. Wiring — Today mounts it, and buys no subscription doing so.
    ══════════════════════════════════════════════════════════════════════════ */
 describe("ENG-24 — Today mounts the honest anchor, and only the honest one", () => {
-  const RAW = read("..", "tabs", "OverviewTab.tsx");
+  const RAW = todayLiveSource();
   const OVERVIEW = stripComments(RAW);
 
   it("the Today hub source was actually read", () => {
     expect(OVERVIEW.length).toBeGreaterThan(20_000);
-    expect(OVERVIEW).toContain("export default function OverviewTab");
+    expect(OVERVIEW).toContain("export default function NowView");
   });
 
   // B-LOOP-07 re-pin: the week anchors left Today; the week is ONE door line
   // ("This week's letter" → #/weekly) when a recap exists. The anchor
   // decisions (weekOpenAnchorDue, weekAnchorRecapDue) keep their own suites.
-  it("Today mounts no week anchor card; the week is one door line when a recap exists", () => {
+  it("Today mounts no week anchor card; the week is ONE door that claims no letter", () => {
     expect(OVERVIEW).not.toContain("<WeekOpenAnchorCard");
     expect(OVERVIEW).not.toContain("<WeekAnchorCard");
-    expect(OVERVIEW).toContain('{weeklyRecap.currentReport && doorLine("today-door-week", "auto_stories", t("elev.loop.door.week"), () => setActiveTab("weekly"))}');
+    // Parity 9 Oct: Now's week door is an invitation, always present; it claims
+    // no written letter, so it needs no recap signal (ENG-24).
+    expect(OVERVIEW.match(/setActiveTab\("weekly"\)/g)).toHaveLength(1);
+    for (const lang of ["en", "he"] as const) {
+      expect(`${NOW_COPY[lang].weeklyTitle} ${NOW_COPY[lang].weeklyBody}`).not.toMatch(/written|waiting|ready|letter|כתוב|מחכה|מכתב/i);
+    }
   });
 
   it("B-TODAY-08: buys NO second recap subscription — the overview tree mounts useWeeklyRecap exactly once", () => {
@@ -386,16 +393,16 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
     expect(/useWeeklyRecap\(/.test("const recap = useWeeklyRecap();")).toBe(true);
   });
 
-  it("B-TODAY-08: the recap line claims a letter only from the verified signal (the recap hook's report)", () => {
-    expect(OVERVIEW).toContain("weeklyRecap.currentReport &&");
+  it("B-TODAY-08: nothing on Today claims a letter without the verified signal (the recap hook's report)", () => {
     expect(OVERVIEW).not.toContain("hasWeekAnchorRecap");
+    expect(OVERVIEW).not.toMatch(/elev\.waveR\.recap\.|elev\.loop\.door\.week/);
   });
 
-  it("an accepted step from Ask keeps its loop behind the door; the chain order stays pinned for its importers", () => {
-    // P5 r1 pass A5: the accepted step is ONE line in the door (TodayStepLine
-    // reads activeTodayAction and writes through recordTodayOutcome).
-    const door = OVERVIEW.slice(OVERVIEW.indexOf('data-testid="today-door"'), OVERVIEW.indexOf("</details>"));
-    expect(door).toContain("<TodayStepLine />");
+  it("an accepted step from Ask leads Now; the chain order stays pinned for its importers", () => {
+    // Parity 9 Oct: the step line left with the Today door. The newest accepted
+    // step is Now's lead and its outcome writes through saveTodayOutcome.
+    expect(OVERVIEW).toContain("const action = useMemo(() => nextChosenAction(actionLoop, topic?.id), [actionLoop, topic?.id]);");
+    expect(OVERVIEW).toContain("await saveTodayOutcome(action.id, outcome);");
     const chain = stripComments(read("chooseTodayAction.ts"));
     const at = (s: string) => chain.indexOf(s);
     expect(at("input.hasActiveAction")).toBeLessThan(at("input.hasWeekAnchorRecap"));

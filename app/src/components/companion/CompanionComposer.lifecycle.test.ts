@@ -30,7 +30,7 @@ function oneSource(source: ts.SourceFile, predicate: (node: ts.Node) => boolean)
 // decisions. This catches conversation-key remounts as well as local hook races.
 const composerSlot = oneSource(coachSource, node => ts.isJsxSelfClosingElement(node) && node.tagName.getText(coachSource) === "CompanionComposer");
 const slotSource = `import React from "react"; import CompanionComposer from "./CompanionComposer";
-export default function Slot({ childProfile, activeConversationId, conversationRevision, uiLang, chatInput, setChatInput, isChatLoading, visible, handleChatSend, toggleVoice, voicePhase, voiceLabel, openCaptureSheet }) { return ${composerSlot}; }`;
+export default function Slot({ childProfile, activeConversationId, conversationRevision, uiLang, chatInput, setChatInput, isChatLoading, visible, handleChatSend, toggleVoice, voicePhase, voiceLabel, openCaptureSheet, setComposerFiles }) { return ${composerSlot}; }`;
 const controls = ["newConversation", "prepareTopicConversation", "openConversation"].map(name =>
   oneSource(contextSource, node => ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === name)),
 ).join("\n");
@@ -143,7 +143,7 @@ function harness(options: { send?: () => Promise<boolean | undefined>; text?: st
   const openCaptureSheet = vi.fn(), stopVoice = vi.fn();
   const requirePermission = vi.fn(options.permission ?? (async () => true));
   const state = {
-    childProfile: { id: "child-a" }, activeConversationId: null as string | null,
+    childProfile: { id: "child-a" }, activeConversationId: null as string | null, composerFiles: 0,
     conversationRevision: 0, chatMessages: [] as any[], activeFamilyTopic: undefined,
     conversationTopicRef: { current: undefined as string | undefined }, chatAbortRef: { current: null },
     conversationsCol: { items: [{ id: "saved-a", topicId: undefined, messages: [{ sender: "user", text: "Earlier question" }] }, { id: "saved-b", topicId: undefined, messages: [] }] },
@@ -157,6 +157,8 @@ function harness(options: { send?: () => Promise<boolean | undefined>; text?: st
     setChatMessages: (value: any[]) => { state.chatMessages = value; },
     setApiError: vi.fn(), setChatStreamStatus: vi.fn(), threadForTopic,
     handleChatSend: onSend, toggleVoice: vi.fn(), openCaptureSheet, stopVoice,
+    // Parity 9 Oct: the composer reports how many files it holds (a count).
+    setComposerFiles: (count: number) => { state.composerFiles = count; },
   };
   const imports = {
     "../ui/Icon": { __esModule: true, default: "Icon" },

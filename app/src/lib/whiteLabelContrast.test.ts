@@ -1099,6 +1099,9 @@ const FROZEN_DEBT: readonly Debt[] = [
 const FROZEN_SEAL = "66b8a7891677ed44216437abe0176e245b554deb40754e7f1d747688e6af5ee6";
 // Retire exact keys only after fixing/removing their consumer; never rewrite the snapshot.
 const RETIRED_DEBT: readonly string[] = [
+  // REMOVED 2026-10-09: ArborVision.tsx deleted as dead code (nothing mounted
+  // it), so its translucent image-overlay label no longer exists to verify.
+  "components/coach/ArborVision.tsx#3c6c769def467ed1f0ae02ffc8225084821ff1983576805498f80e2df2418985",
   // RESOLVED 2026-10-06 (P1-NEXTLEVEL critic r2, profile design): the initials
   // disc reads the jewel ink tokens with --arbor-on-accent; no text-white class.
   "components/ui/Avatar.tsx#401210d34e62158d500c7d4604fe8d72d5f7139f8ac00e6152a1760806fb7e3b",

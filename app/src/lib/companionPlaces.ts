@@ -1,10 +1,11 @@
 import type { ActiveTab } from "./routes";
 import { sectionForTab } from "./navigation";
+import { companionEn, companionHe } from "./i18nCompanion";
 
 export const COMPANION_PLACES = [
-  { id: "now", tab: "overview", icon: "home", en: "Now", he: "עכשיו", detailEn: "A little clarity for today", detailHe: "בהירות לרגע הזה" },
-  { id: "child", tab: "development", icon: "person", en: "My child", he: "הילד שלי", detailEn: "The whole picture, over time", detailHe: "התמונה השלמה, לאורך זמן" },
-  { id: "together", tab: "practice", icon: "interests", en: "Together", he: "ביחד", detailEn: "Small moments. Shared discoveries.", detailHe: "רגעים קטנים, גילויים משותפים" },
+  { id: "now", tab: "overview", icon: "home", en: companionEn["companion.place.now"], he: companionHe["companion.place.now"], detailEn: companionEn["companion.place.now.detail"], detailHe: companionHe["companion.place.now.detail"] },
+  { id: "child", tab: "development", icon: "person", en: companionEn["companion.place.child"], he: companionHe["companion.place.child"], detailEn: companionEn["companion.place.child.detail"], detailHe: companionHe["companion.place.child.detail"] },
+  { id: "together", tab: "practice", icon: "interests", en: companionEn["companion.place.together"], he: companionHe["companion.place.together"], detailEn: companionEn["companion.place.together.detail"], detailHe: companionHe["companion.place.together.detail"] },
 ] as const;
 export type CompanionPlace = typeof COMPANION_PLACES[number];
 export function placeForTab(tab: ActiveTab): CompanionPlace {

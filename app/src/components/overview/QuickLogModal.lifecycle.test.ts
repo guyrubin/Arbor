@@ -190,6 +190,22 @@ describe("capture durability — actual production callbacks", () => {
     expect(noPlace).not.toHaveProperty("context");
     expect(await h.addMoment("At school", { context: "School", notes: "With Sam" })).toMatchObject({ context: "School", notes: "With Sam" });
   });
+  it("one failed write, one message: the seam toasts unless the caller shows the failure itself", async () => {
+    const h = contextHarness();
+    h.env.logsCol.upsert.mockRejectedValue(new Error("offline"));
+    expect(await h.addMoment("Built blocks", { callerShowsFailure: true })).toBeNull();
+    expect(await h.handleAddLog(formEvent(), { callerShowsFailure: true })).toBeNull();
+    expect(h.env.toast).not.toHaveBeenCalled();
+    // A caller with no failure UI of its own (a Keep button) still hears it, once.
+    expect(await h.addMoment("Built blocks")).toBeNull();
+    expect(h.env.toast).toHaveBeenCalledTimes(1);
+    expect(h.env.toast).toHaveBeenCalledWith("companion.capture.saveError", "error");
+  });
+  it("the caller's flag never reaches the stored row", async () => {
+    const h = contextHarness();
+    expect(await h.addMoment("Built blocks", { callerShowsFailure: true })).not.toHaveProperty("callerShowsFailure");
+    expect(h.env.logsCol.upsert.mock.calls[0][0]).not.toHaveProperty("callerShowsFailure");
+  });
   it("retires A → B → A writes and does not erase a replacement draft", async () => {
     const h = contextHarness(), pending = deferred<void>();
     h.env.logsCol.upsert.mockImplementationOnce(() => pending.promise);
@@ -227,6 +243,22 @@ describe("one capture sheet — real rendered handlers with deferred I/O", () =>
     h.state.addMoment.mockResolvedValueOnce(saved);
     await one(tree, n => n.props["data-testid"] === "quicklog-moment-form").props.onSubmit(formEvent());
     expect(nodes(h.render()).some(n => n.props["data-testid"] === "quicklog-reply")).toBe(true);
+  });
+  it("a failed save shows ONE message: the inline alert beside the kept draft, not the seam's toast too", async () => {
+    // Production addMoment resolves null on a failed write; it never throws.
+    const h = captureHarness({ save: async () => null });
+    await one(h.render(), n => n.props["data-testid"] === "quicklog-moment-form").props.onSubmit(formEvent());
+    expect(h.state.addMoment).toHaveBeenCalledWith("Built a tower", expect.objectContaining({ callerShowsFailure: true }));
+    expect(text(one(h.render(), n => n.props.role === "alert"))).toBe("companion.capture.saveError");
+    expect(h.state.newLogTrigger).toBe("Built a tower");
+    expect(h.toast).not.toHaveBeenCalled();
+  });
+  it("the confirm (edit/incident) path hands the same failure ownership to the sheet", async () => {
+    const h = captureHarness({ edit: true, save: async () => null });
+    await one(h.render(), n => n.props["data-testid"] === "quicklog-moment-form").props.onSubmit(formEvent());
+    expect(h.state.handleAddLog).toHaveBeenCalledWith(expect.anything(), { callerShowsFailure: true });
+    expect(text(one(h.render(), n => n.props.role === "alert"))).toBe("companion.capture.saveError");
+    expect(h.toast).not.toHaveBeenCalled();
   });
   it("neutral edit stays neutral and uses the edit seam instead of creating a second moment", async () => {
     const h = captureHarness({ edit: true });

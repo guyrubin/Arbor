@@ -167,3 +167,91 @@ export const createImageQuota = (counters: UsageCounterStore, entitlements?: Ent
   }
   next();
 };
+
+/* ── B-GAME-13b: the hero pose sheet's own allowance ─────────────────────────
+ * A sheet is drawn ONCE per hero creation, parent-side, from the stored
+ * generated hero (server/heroPoseRoute.ts). Its provider calls never touch the
+ * scene day/month buckets or the hero bucket above, and they have their own
+ * global breaker: at ~10 calls a sheet, 25 sheets would otherwise spend the
+ * shared 300-attempt breaker for every family.
+ *  - img_sheet_30d          sheets per child per 30-day window (= the plan's
+ *                           hero creations; 1 sheet per creation)
+ *  - img_sheet_charged_30d  marks a (child, hero) sheet as charged: every later
+ *                           call for the same hero (a QA retry, a parent
+ *                           redraw, a resumed build) is counted, never re-charged
+ *  - img_sheet_calls_30d    provider calls per (child, hero) sheet, capped
+ *  - img_sheet_global_daily all sheet provider attempts, all users (cost bound)
+ */
+/** GD-5 (Guy's default: stock heroes only on Free). THE switch: set `free` to
+ *  HERO_SHEET_MINI for the one small pose set per child (≈ $0.16). */
+export const HERO_SHEET_FULL = ["idle", "tiptoe", "dash", "freeze-a", "freeze-b", "oops", "cheer", "hold-up"] as const;
+export const HERO_SHEET_MINI = ["idle", "cheer", "oops", "freeze-a"] as const;
+export const HERO_SHEET_POSES_BY_PLAN: Readonly<Record<ImageAllowancePlan, readonly string[]>> = {
+  signed_out: [],
+  free: [],
+  plus: HERO_SHEET_FULL,
+  family: HERO_SHEET_FULL,
+};
+/** Global sheet breaker, provider attempts per day (≈ $58 at $0.039). */
+export const IMAGE_SHEET_GLOBAL_DAILY = envNum("IMAGE_SHEET_GLOBAL_DAILY", 1500);
+/** Calls one (child, hero) sheet may make: 8 poses + 8 QA retries + 8 redraws. */
+export const IMAGE_SHEET_CALLS_PER_SHEET = envNum("IMAGE_SHEET_CALLS_PER_SHEET", 24);
+export const IMAGE_SHEET_COUNTERS = {
+  sheet: "img_sheet_30d",
+  charged: "img_sheet_charged_30d",
+  calls: "img_sheet_calls_30d",
+  global: "img_sheet_global_daily",
+} as const;
+/** Sheets per child per 30 days: one per hero creation the plan allows. */
+export const sheetsPer30Days = (plan: ImageAllowancePlan): number =>
+  HERO_SHEET_POSES_BY_PLAN[plan].length ? envNum(`IMAGE_${plan.toUpperCase()}_SHEETS_PER_30D`, IMAGE_ALLOWANCE[plan].heroPer30Days) : 0;
+
+export type SheetCharge =
+  | { ok: true; newSheet: boolean; release: () => Promise<void> }
+  | { ok: false; status: number; body: Record<string, unknown> };
+
+/**
+ * Count one sheet provider call. The global breaker is counted first and never
+ * refunded (it bounds cost); the per-sheet call unit is refunded by `release`
+ * when the call delivered nothing. A new (child, hero) pair charges one sheet.
+ */
+export const chargeHeroSheetCall = async (
+  counters: UsageCounterStore,
+  input: { plan: ImageAllowancePlan; uid: string; childId: string; avatarHash: string },
+): Promise<SheetCharge> => {
+  const refused = (window: string, resetAt: number): SheetCharge => ({
+    ok: false, status: 429, body: { ...IMAGE_RESTING_BODY, code: "hero_sheet_resting", window, resetAt: new Date(resetAt).toISOString() },
+  });
+  const limit = sheetsPer30Days(input.plan);
+  if (limit <= 0) return { ok: false, status: 403, body: { error: "Hero poses are part of Plus and Family", code: "hero_sheet_plan", plan: input.plan } };
+  const global = await counters.increment(IMAGE_SHEET_COUNTERS.global, "all", DAY_MS, { limit: IMAGE_SHEET_GLOBAL_DAILY });
+  if (global.count > IMAGE_SHEET_GLOBAL_DAILY) return refused("day", global.resetAt);
+  const childKey = `${input.uid}:${input.childId}`;
+  const sheetKey = `${childKey}:${input.avatarHash}`;
+  let newSheet = false;
+  const charged = await counters.peek(IMAGE_SHEET_COUNTERS.charged, sheetKey, MONTH_MS);
+  if (charged.count === 0) {
+    const sheet = await counters.increment(IMAGE_SHEET_COUNTERS.sheet, childKey, MONTH_MS, { limit });
+    if (sheet.count > limit) {
+      await counters.add(IMAGE_SHEET_COUNTERS.sheet, childKey, -1, MONTH_MS);
+      return refused("month", sheet.resetAt);
+    }
+    await counters.increment(IMAGE_SHEET_COUNTERS.charged, sheetKey, MONTH_MS);
+    newSheet = true;
+  }
+  const calls = await counters.increment(IMAGE_SHEET_COUNTERS.calls, sheetKey, MONTH_MS, { limit: IMAGE_SHEET_CALLS_PER_SHEET });
+  if (calls.count > IMAGE_SHEET_CALLS_PER_SHEET) {
+    await counters.add(IMAGE_SHEET_COUNTERS.calls, sheetKey, -1, MONTH_MS);
+    return refused("sheet", calls.resetAt);
+  }
+  let released = false;
+  return {
+    ok: true,
+    newSheet,
+    release: async () => {
+      if (released) return;
+      released = true;
+      await counters.add(IMAGE_SHEET_COUNTERS.calls, sheetKey, -1, MONTH_MS);
+    },
+  };
+};

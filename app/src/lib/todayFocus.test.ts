@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import { focusHeadlineFrom, focusHeadlineFor, focusBodyFor, whyLineFor, whyLineParts } from "./todayFocus";
-import { en, he, translate } from "./i18n";
+import { en, he, translate } from "./i18n";
+import { todayFile, todayLiveSource } from "../testTodaySource";
 
 /**
  * Next-level Wave-1 (TODAY hub) pins — TODAY-1, CODEX-2, CODEX-3, TODAY-4.
@@ -90,12 +91,15 @@ describe("focusHeadlineFrom — pure scrub (CODEX-2 firewall condition)", () => 
 });
 
 describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
-  const src = read("components/tabs/OverviewTab.tsx");
+  const src = todayLiveSource();
 
   // B-LOOP-07 re-pin: Today renders no focus headline (the practice leads);
   // the scrub stays the one path for any surface that renders the focus.
-  it("Today renders no focus headline; the focus only names a practice from the candidates", () => {
-    expect(src).not.toContain("focusHeadlineFor(focus)");
+  it("the loop renders no focus headline (only the fallback recommendation lead does); the focus names a practice only from the candidates", () => {
+    // Parity 9 Oct: Codex's recommendation lead shows the AI step when no practice,
+    // notice or program leads; the loop's own blocks never render a headline.
+    expect(todayFile("NowView.tsx")).not.toContain("focusHeadlineFor(");
+    expect(todayFile("NowLoopBlocks.tsx")).not.toContain("focusHeadlineFor(");
     expect(src).toContain("aiPracticeId");
   });
 
@@ -105,17 +109,17 @@ describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
   });
 
   it("never feeds the marketing fallback into the action loop", () => {
-    expect(src).not.toMatch(/acceptTodayAction/);
+    // Parity 9 Oct: the ONE accept is the recommendation lead's, for a screened model step only.
+    expect(src.match(/acceptTodayAction\(/g)).toHaveLength(1);
+    expect(src).toContain("if (!useAi || !aiStep || saving) return;");
     expect(src).not.toMatch(/t\("ov\.recoEmpty"/);
   });
 
-  it("names the local part of day via i18n keys (no hardcoded Good morning)", () => {
-    // B-TODAY-28: the greeting became the child's identity line
-    // ("Dylan · 5 years · Tuesday morning"); CODEX-2's local-time rule stands.
-    expect(src).toContain('"today.when.morning"');
-    expect(src).toContain('"today.when.afternoon"');
-    expect(src).toContain('"today.when.evening"');
-    expect(src).toContain("getHours()");
+  it("names the day through the locale's calendar (no hardcoded Good morning)", () => {
+    // Parity 9 Oct: Now's eyebrow is the local date (he-IL / en-GB) · the child's
+    // identity line (B-TODAY-28); CODEX-2's local-time rule stands.
+    expect(src).toContain('new Date().toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "long" })');
+    expect(src).toContain('"elev.loop.today.identity"');
     expect(src).not.toContain("Good morning");
     expect(src).not.toContain("בוקר טוב");
   });
@@ -154,7 +158,7 @@ describe("TJB-02 — focusHeadlineFor prefers the model's tryToday step", () => 
   });
 
   it("OverviewTab persists no focus headline (B-LOOP-07: the practice's dose row is the write)", () => {
-    const src = read("components/tabs/OverviewTab.tsx");
+    const src = todayLiveSource();
     expect(src).not.toContain("acceptTodayAction(focusHeadline");
     expect(src).toContain("recordPracticeDose(");
   });
@@ -178,7 +182,7 @@ describe("ENG-07 — whyLineFor is built from real inputs", () => {
     expect(/rhythm|goals|interests/.test(retired)).toBe(true);
     expect(en["today.intent.whyRhythm"]).toBeUndefined();
     expect(he["today.intent.whyRhythm"]).toBeUndefined();
-    expect(read("components/tabs/OverviewTab.tsx")).not.toContain("today.intent.whyRhythm");
+    expect(todayLiveSource()).not.toContain("today.intent.whyRhythm");
   });
 
   it("cold start (no moments) → the honest day-0 line with the child's name, no rhythm/goals/interests", () => {
@@ -351,15 +355,13 @@ describe("Today hero asset budget (CODEX-3)", () => {
 });
 
 describe("mobile pinned capture bar exists as documented (TODAY-4)", () => {
-  it("OverviewTab pins the bar above the MobileNav on phones and reserves its slot", () => {
-    const src = read("components/tabs/OverviewTab.tsx");
-    expect(src).toContain("max-md:fixed");
-    expect(src).toMatch(/max-md:bottom-\[calc\(var\(--mobile-nav-h\)\+env\(safe-area-inset-bottom\)/);
-    // Fixed is out of flow — the column must reserve the floating slot.
-    expect(src).toContain("max-md:pb-20");
-    // No stale sticky/order-last comments or classes (the pin is fixed).
-    expect(src).not.toContain("max-md:sticky");
+  it("Now docks nothing over the MobileNav: capture is the side column's card (no fixed bar to reserve)", () => {
+    // Parity 9 Oct: the pinned QuickCaptureBar left with the Today hub.
+    const src = todayLiveSource();
+    expect(src).not.toMatch(/max-md:fixed|max-md:sticky/);
+    expect(src).toContain('<section className="now-capture"');
     expect(src).not.toContain("order-last");
+    expect(read("components/companion/nowView.css")).not.toMatch(/position:\s*(fixed|sticky)/);
   });
 
   it("--mobile-nav-h is declared in index.css", () => {

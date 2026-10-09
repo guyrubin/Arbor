@@ -43,7 +43,8 @@ const SPEECH = stripComments(read("components/practice/SpeechCoachTab.tsx"));
 const FEELINGS = stripComments(read("components/practice/FeelingsLabTab.tsx"));
 const JOURNEY = stripComments(read("components/practice/JourneyTab.tsx"));
 // B-PLAY-02: the world list moved to components/practice/studioWorlds.ts.
-const STUDIO = stripComments(read("components/practice/PracticeStudioTab.tsx")) + stripComments(read("components/practice/studioWorlds.ts"));
+// Parity 9 Oct: #/practice is Together (components/companion/TogetherView.tsx).
+const STUDIO = stripComments(read("components/companion/TogetherView.tsx")) + stripComments(read("components/practice/studioWorlds.ts"));
 
 const countOf = (src: string, re: RegExp) => (src.match(re) || []).length;
 const MODULE = /\bdata-module=/g;
@@ -332,14 +333,14 @@ describe("B-PLAY-02 · per-world count and unit", () => {
   });
 
   it("no world says 'sessions' any more", () => {
-    const studio = stripComments(read("components/practice/PracticeStudioTab.tsx"));
+    const studio = stripComments(read("components/companion/TogetherView.tsx"));
     expect(studio).not.toContain("practice.studio.sessions");
     expect(translate("en", "practice.studio.sessions")).toBe("practice.studio.sessions");
   });
 });
 
 describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice door", () => {
-  const studio = readFileSync(path.join(here, "..", "components", "practice", "PracticeStudioTab.tsx"), "utf8");
+  const studio = readFileSync(path.join(here, "..", "components", "companion", "TogetherView.tsx"), "utf8").replace(/\r\n/g, "\n");
   const tEn = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
   const tHe = (key: string, vars?: Record<string, string | number>) => translate("he", key, vars);
   // Thursday 1 Oct 2026, 16:00 UTC; "now" is the next day.
@@ -409,23 +410,24 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     }
   });
 
-  it("the sentence lives INSIDE the kid-mode door (no new module), title bidi-isolated; the page still stamps 2", () => {
-    const door = studio.slice(studio.indexOf('data-module="practice-kidmode-door"'), studio.indexOf("</section>", studio.indexOf('data-module="practice-kidmode-door"')));
-    expect(door).toContain('data-testid="practice-since-last-play"');
-    expect(door).toMatch(/<bdi>\{since\.title\}<\/bdi>/);
-    expect((studio.match(/\bdata-module="/g) || []).length).toBe(2);
+  it("the sentence lives INSIDE the hero (no new module), title bidi-isolated", () => {
+    // Parity 9 Oct: #/practice is Together; the since-line sits in its hero (together-invitation).
+    const at = studio.indexOf('data-module="together-invitation"');
+    const hero = studio.slice(at, studio.indexOf("</section>", at));
+    expect(hero).toContain('data-testid="together-since"');
+    expect(hero).toMatch(/<bdi>\{since\.title\}<\/bdi>/);
     expect(studio).toContain("known ?? Date.now() - SINCE_LAST_PLAY_FALLBACK_MS");
     // the story title is resolved in the UI language, never the stored run title
     expect(studio).toContain("runTitle(r, lang)");
   });
 
-  it("the door CTA is secondary and the move is stamped on ONE tile (the first that works in the UI language), not the grid", () => {
+  it("the hand-over is secondary and the move is stamped ONCE (Together's choose-together), never on the grid", () => {
     const src = stripComments(studio);
     expect(src).not.toMatch(/--gradient-cta|--arbor-gradient-primary/);
-    // B-PLAY-24: the one literal lives in START_WORLD_STAMP; the tile spreads it on the first fitting world.
-    expect(src).toContain('const START_WORLD_STAMP = { "data-primary-move": "start-world" } as const;');
-    expect(src).toContain("{...(world.id === stampId ? START_WORLD_STAMP : {})}");
-    expect(src).not.toMatch(/className="grid[^"]*"\s+data-primary-move/);
+    expect(src.match(/\bdata-primary-move\b/g)).toHaveLength(1);
+    expect(src).toContain('data-primary-move="choose-together"');
+    expect(src).toContain('className="companion-secondary companion-handover" data-testid="together-handover"');
+    expect(src).not.toMatch(/className="companion-world-grid"[^>]*data-primary-move/);
   });
 
   it("one count of play per screen: the phone hub line is quiet on practice / feelings / adventures", () => {
@@ -440,7 +442,8 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     expect(src).not.toContain("practice.studio.openKidmode");
     expect(src).not.toMatch(/\bopenKidMode\(/);
     expect(src).toContain('requestKidMode({ view: "arcade", worldId: world.id })');
-    expect(src).toContain('t("elev.practice.studio.opensWorld", { world: t(world.kidNameKey) })');
+    // Parity 9 Oct: Together's preview says it before anything opens.
+    expect(src).toContain('opensInKidMode(preview.world) ? (t("companion.together-view.when-you-are-ready-enter-the-child-area-yo"))');
     expect(translate("en", "elev.practice.studio.opensWorld", { world: "Sound Lab" })).toBe("Opens Sound Lab in Kid Mode");
     expect(translate("he", "elev.practice.studio.opensWorld", { world: "מעבדת הצלילים" })).not.toMatch(/[A-Za-z]/);
     const { opensInKidMode } = await import("../components/practice/studioWorlds");
@@ -476,35 +479,34 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     // B-PLAY-24: the page reads ONE seam that filters THAT order by the child's
     // band and stamps from THAT helper; for a child every world fits (5 y), the
     // list and the stamp are exactly orderedStudioWorlds / stampWorldId.
-    expect(studio).toContain("const { worlds, stampId } = studioWorldsForChild(lang, childProfile);");
+    // Parity 9 Oct: Together lists THAT order; its one move is choose-together, so it reads no stamp.
+    expect(studio).toContain("const { worlds } = studioWorldsForChild(lang, childProfile);");
     for (const lang of ["en", "he"] as const) {
       const five = { age: 5, ageMonths: 62, ageMonthsAsOf: new Date().toISOString().slice(0, 10) };
       const seam = studioWorldsForChild(lang, five);
       expect(seam.worlds.map((w) => w.id), lang).toEqual(orderedStudioWorlds(lang).map((w) => w.id));
       expect(seam.stampId, lang).toBe(stampWorldId(lang));
     }
-    expect(stripComments(studio)).toContain("{worlds.map((world, i) => {");
-    expect(stripComments(studio)).not.toContain("{STUDIO_WORLDS.map((world, i) => {");
+    expect(stripComments(studio)).toContain('{worlds.slice(0, category === "all" ? 3 : undefined).map((world) =>');
+    expect(stripComments(studio)).not.toContain("STUDIO_WORLDS.map(");
     // NEGATIVE CONTROL: the r3 rule (first world that works in HE) stamped the parent-tab tile 2
     expect(STUDIO_WORLDS.find((w) => worksInLanguage(w, "he"))!.id).toBe("word-world");
     expect(STUDIO_WORLDS.findIndex((w) => w.id === "word-world")).toBe(1);
   });
 
-  it("SHIP-FIX r3: in Hebrew the Sound Lab tile never sends the child into the English drill, and its footer says so (muted, keyed)", () => {
+  it("SHIP-FIX r3: in Hebrew the Sound Lab tile never sends the child into the English drill, and its preview says so", () => {
     const src = stripComments(studio);
-    expect(src).toContain("const kidOpens = (world: StudioWorld) => opensInKidMode(world) && worksInLanguage(world, lang);");
-    expect(src).toContain("const kid = kidOpens(world);");
-    expect(src).toContain('t("elev.practice.studio.notInLanguage", { tab: t(world.fallbackTabNameKey) })');
-    expect(src).toContain('color: inLang ? "var(--arbor-clay-deep)" : "var(--arbor-muted)"');
+    // Parity 9 Oct: Together opens a world that does not work in the UI language on its parent tab.
+    expect(src).toContain("const direct = (!opensInKidMode(world) || !worksInLanguage(world, lang)) && !!world.tab;");
+    expect(src).toContain('!worksInLanguage(preview.world, lang) ? (t("companion.together-view.this-voice-game-is-currently-in-english-op"))');
     expect(STUDIO_WORLDS.find((w) => w.id === "speech")!.fallbackTabNameKey).toBe("nav.tab.speech");
-    expect(translate("he", "elev.practice.studio.notInLanguage", { tab: translate("he", "nav.tab.speech") })).not.toMatch(/[A-Za-z]/);
-    expect(translate("he", "elev.practice.studio.notInLanguage", { tab: "x" })).not.toContain("במצב ילדים");
-    expect(translate("en", "elev.practice.studio.notInLanguage", { tab: "Speech Coach" })).toContain("Speech Coach");
+    expect(translate("he", "companion.together-view.this-voice-game-is-currently-in-english-op")).not.toMatch(/[A-Za-z]/);
+    expect(translate("en", "companion.together-view.this-voice-game-is-currently-in-english-op")).toContain("English");
   });
 });
 
 describe("W2-SHELLPLAY r2 · practice — the door tells the truth about the gate and the tiles", () => {
-  const studio = stripComments(read("components/practice/PracticeStudioTab.tsx"));
+  const studio = stripComments(read("components/companion/TogetherView.tsx"));
   const button = stripComments(read("components/layout/KidModeButton.tsx"));
   const CANT_EXIT = /can't exit|cannot exit|לא יכול לצאת|לא יכולה לצאת/;
 
@@ -515,7 +517,9 @@ describe("W2-SHELLPLAY r2 · practice — the door tells the truth about the gat
       expect(translate(lang, "elev.kidmode.gated")).not.toMatch(CANT_EXIT);
     }
     expect(translate("en", "elev.practice.door.gated")).toBe("Grown-up gate");
-    expect(studio).toContain('t(pinSet ? "practice.studio.kidmode.subLocked" : "practice.studio.kidmode.sub")');
+    // Parity 9 Oct: Together's play note says what the PIN does only once one is set.
+    expect(studio).toContain('pinSet ? (t("companion.together-view.you-choose-when-to-enter-play-your-pin-pro")) : (t("companion.together-view.play-opens-in-the-child-area-set-a-pin-to"))');
+    for (const lang of ["en", "he"] as const) expect(translate(lang, "companion.together-view.play-opens-in-the-child-area-set-a-pin-to")).not.toMatch(CANT_EXIT);
     expect(studio).toContain('pinSet ? "elev.practice.door.locked" : "elev.practice.door.gated"');
     expect(studio).toContain("const pinSet = Boolean(readParentPin());");
     expect(button).toContain('t(readParentPin() ? "elev.kidmode.locked" : "elev.kidmode.gated")');
@@ -553,7 +557,7 @@ describe("W2-SHELLPLAY r2 · practice — the door tells the truth about the gat
     expect(c.total).toBe(Object.values(c.byWorld).reduce((a, b) => a + b, 0));
     expect(c.total).toBe(3); // vocab-naming + mood-checkin are no world's — in neither
     // the page reads the chips AND the door from this one counter
-    expect(studio).toContain("const sessions = counts.byWorld[world.id] ?? 0;");
+    expect(studio).toContain('{category === "games" && (counts.byWorld[world.id] ?? 0) > 0 &&');
     expect(studio).toContain("total: counts.total,");
     expect(studio).not.toContain("world.count(data)");
   });
@@ -653,13 +657,15 @@ describe("W2-SHELLPLAY r1 · #/speech — the round is scored on the fold, in on
 });
 
 describe("B-SHELL-NEW-1b · the door sentence can be kept as ONE journal moment", () => {
-  const studio = stripComments(read("components/practice/PracticeStudioTab.tsx"));
-  it("Keep writes through addMoment (the B-SHELL-04 path), once per sentence, 44 px", () => {
-    expect(studio).toContain("if (await addMoment(sinceText)) setKeptLine(sinceText);");
-    expect(studio).toContain("if (!sinceText || keptLine === sinceText) return;");
-    const btn = studio.slice(studio.indexOf('data-testid="practice-since-keep"'), studio.indexOf("</button>", studio.indexOf('data-testid="practice-since-keep"')));
-    expect(btn).toContain("min-h-11");
+  const studio = stripComments(read("components/companion/TogetherView.tsx"));
+  it("Keep writes ONE journal moment per sentence through the caller-owned save, 44 px", () => {
+    // Parity 9 Oct: Together saves through saveMoment and owns the failure inline (B-PARITY-06).
+    expect(studio).toContain("try { if (await saveMoment(sinceText, { callerShowsFailure: true })) setSinceKept({ childId: childProfile.id, text: sinceText }); else setSinceError(true); }");
+    expect(studio).toContain("if (!sinceText || sinceIsKept) return;");
+    const btn = studio.slice(studio.indexOf('data-testid="together-since-keep"'), studio.indexOf("</button>", studio.indexOf('data-testid="together-since-keep"')));
+    expect(studio).toContain('<button type="button" className="companion-text-button" data-testid="together-since-keep"');
     expect(btn).not.toMatch(/--gradient-cta/);
+    expect(read("components/companion/companionExperience.css")).toContain(".companion-since .companion-text-button { min-block-size: 44px; }");
     for (const lang of ["en", "he"] as const) {
       expect(translate(lang, "elev.practice.door.keep")).not.toBe("elev.practice.door.keep");
       expect(translate(lang, "elev.practice.door.kept")).not.toBe("elev.practice.door.kept");

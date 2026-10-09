@@ -4,6 +4,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDialog } from "../../hooks/useDialog";
 import { COMPANION_CONVERSATION_EVENT, type CompanionConversationRequest } from "../../lib/companionConversation";
+import { trackCompanionPanelOpen } from "../../lib/kpiEvents";
 import Icon from "../ui/Icon";
 import { ArborMark } from "../ui/ArborMark";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -34,7 +35,14 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   useEffect(() => {
     if (visible && !modal) panelRef.current?.focus();
   }, [visible, modal, panelRef]);
-  const show = () => { setMounted(true); setOpen(true); };
+  // A ref, not `open`: the seed listener's closure can be a render behind.
+  const openRef = useRef(open);
+  openRef.current = open;
+  const show = (via: "launcher" | "seed" | "route") => {
+    if (!openRef.current) trackCompanionPanelOpen(via);
+    openRef.current = true;
+    setMounted(true); setOpen(true);
+  };
   useEffect(() => {
     const query = window.matchMedia("(min-width: 1280px)");
     const update = () => setWide(query.matches);
@@ -42,15 +50,23 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     return () => query.removeEventListener("change", update);
   }, []);
   useEffect(() => {
-    if (routeIsConversation) { show(); setExpanded(true); }
-    else { returnTab.current = activeTab; setExpanded(false); }
+    if (routeIsConversation) { show("route"); setExpanded(true); }
+    else {
+      returnTab.current = activeTab; setExpanded(false);
+      // An answer's own action (Plan, Teacher note, Specialist, Manage memory)
+      // moved the page. Below 1280px the panel is full-screen and would hide
+      // the page the parent just asked for, so it steps aside; the draft and
+      // thread stay mounted and the launcher brings them back. Wide screens
+      // keep it docked beside the page.
+      if (!wide) setOpen(false);
+    }
   }, [activeTab]);
   useEffect(() => {
     const receive = (event: Event) => {
       if (kidLocked) return;
       const detail = (event as CustomEvent<CompanionConversationRequest>).detail;
       if (typeof detail?.prompt === "string") setChatInput(current => current.trim() && current.trim() !== detail.prompt?.trim() ? `${current}\n\n${detail.prompt}` : detail.prompt ?? current);
-      show();
+      show("seed");
     };
     window.addEventListener(COMPANION_CONVERSATION_EVENT, receive);
     return () => window.removeEventListener(COMPANION_CONVERSATION_EVENT, receive);
@@ -83,7 +99,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     </aside>}
     </div>
     {!visible && !kidLocked && <div className="arbor-parent companion-launcher" data-testid="companion-launcher">
-      <button ref={launchRef} type="button" className="companion-launch-main" onClick={show} aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.input.talk-with-arbor-text-photo-or-voice")}>
+      <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.input.talk-with-arbor-text-photo-or-voice")}>
         <ArborMark size={27} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : (inputText(uiLang, "companion.input.what-would-you-like-to-share"))}<small>{inputText(uiLang, "companion.input.write-show-talk")}</small></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" />
       </button>
       <button type="button" className="companion-launch-save" onClick={() => openCaptureSheet({ mode: "text" })} aria-label={inputText(uiLang, "companion.input.just-keep-a-moment")}><Icon name="add_a_photo" size={21} /><span className="companion-launch-save-label">{inputText(uiLang, "companion.input.keep-a-moment")}</span></button>

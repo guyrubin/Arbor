@@ -367,7 +367,7 @@ function AnswerFeedback({ contract, lens, surface, lang, sources }: {
 export default function CoachAnswerCards({
   contract, lens, council, lang = "en", onSaveToPlan, onGoDeeper,
   onAddToHandoff, onManageMemory, reviewUnavailable = false,
-  todayStep, onTryIt, onUndoTryIt, renderKeepAction,
+  todayStep, onTryIt, onUndoTryIt, renderKeepAction, onProposeMemory,
 }: {
   contract: CoachContract;
   todayStep?: CoachTodayStep | null;
@@ -378,8 +378,13 @@ export default function CoachAnswerCards({
   lang?: UiLang;
   onSaveToPlan: (topic: string) => void;
   onGoDeeper?: () => void;
-  onAddToHandoff: (note: string) => void;
+  /** One prefill seam for every note; the audience defaults to the teacher. */
+  onAddToHandoff: (note: string, audience?: "teacher" | "pediatrician") => void;
   onManageMemory?: () => void;
+  /** A document's suggested fact, chosen by the parent: proposes it to the
+   *  PENDING memory queue (Profile › Child Memory approves; nothing is used
+   *  before that). Rejects on failure so the row can offer a retry. */
+  onProposeMemory?: (fact: string) => Promise<void>;
   reviewUnavailable?: boolean;
   /** Only provide this for the latest settled typed turn. Persistence remains
    *  in CaptureProposalsTray's shared explicit commit / edit / undo seam. */
@@ -389,6 +394,15 @@ export default function CoachAnswerCards({
   const [copyFallback, setCopyFallback] = useState<string | null>(null);
   const [citationsOpen, setCitationsOpen] = useState(false);
   const [escalateOpen, setEscalateOpen] = useState(false);
+  const [proposed, setProposed] = useState<Record<number, "saving" | "saved" | "error">>({});
+  const doc = contract.fileDeclined ? undefined : contract.document;
+  const proposeFact = async (fact: string, index: number) => {
+    if (!onProposeMemory || proposed[index] === "saving" || proposed[index] === "saved") return;
+    setProposed((state) => ({ ...state, [index]: "saving" }));
+    try { await onProposeMemory(fact); setProposed((state) => ({ ...state, [index]: "saved" })); }
+    catch { setProposed((state) => ({ ...state, [index]: "error" })); }
+  };
+  const docNote = doc ? [doc.handoffNote, ...doc.questionsForProfessional.map((q) => `- ${q}`)].filter(Boolean).join("\n") : "";
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
   const sources = citationRows(contract);
   const escalation = escalationLines(contract);
@@ -427,6 +441,40 @@ export default function CoachAnswerCards({
           <p className="coach-report__eyebrow">{inputText(lang, "companion.input.making-sense-of-it")}</p>
           <MarkdownBlock text={contract.text} className="coach-report__lead" />
         </header>
+      )}
+
+      {doc && (
+        <section className="coach-report__section coach-report__document" data-testid="coach-report-document">
+          <h3><Icon name="description" size={18} />{doc.documentType ? t("coach.doc.titleTyped", { type: doc.documentType }) : t("coach.doc.title")}</h3>
+          {doc.keyPoints.length > 0 && <>
+            <p className="coach-report__eyebrow">{t("coach.doc.keyPoints")}</p>
+            <ul className="coach-report__list">{doc.keyPoints.map((point, i) => <li key={i} dir="auto">{point}</li>)}</ul>
+          </>}
+          {doc.questionsForProfessional.length > 0 && <>
+            <p className="coach-report__eyebrow">{t("coach.doc.askPro")}</p>
+            <ul className="coach-report__list">{doc.questionsForProfessional.map((q, i) => <li key={i} dir="auto">{q}</li>)}</ul>
+          </>}
+          {docNote && (
+            <button type="button" className="coach-report__doc-handoff" data-testid="coach-doc-handoff" onClick={() => onAddToHandoff(docNote, "pediatrician")}>
+              <Icon name="send" size={17} />{t("coach.doc.toConsult")}
+            </button>
+          )}
+          {doc.suggestedMemory.length > 0 && onProposeMemory && <>
+            <p className="coach-report__eyebrow">{t("coach.doc.remember")}</p>
+            <ul className="coach-report__list" data-testid="coach-doc-memory">
+              {doc.suggestedMemory.map((fact, i) => (
+                <li key={i}>
+                  <p dir="auto">{fact}</p>
+                  <button type="button" disabled={proposed[i] === "saving" || proposed[i] === "saved"} onClick={() => void proposeFact(fact, i)}>
+                    <Icon name={proposed[i] === "saved" ? "check" : "bookmark_add"} size={16} />
+                    {proposed[i] === "saved" ? t("coach.doc.saved") : proposed[i] === "error" ? t("coach.doc.retry") : t("coach.doc.save")}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p className="coach-report__meta">{t("coach.doc.pendingNote")}</p>
+          </>}
+        </section>
       )}
 
       {contract.nonDiagnosticHypotheses?.length > 0 && (
@@ -523,6 +571,11 @@ export default function CoachAnswerCards({
         {contract.handoffNotes?.teacher && (
           <button type="button" onClick={() => onAddToHandoff(contract.handoffNotes.teacher)}>
             <Icon name="send" size={17} />{t("coach.cards.teacherNote")}
+          </button>
+        )}
+        {contract.handoffNotes?.professional && (
+          <button type="button" data-testid="coach-professional-note" onClick={() => onAddToHandoff(contract.handoffNotes.professional, "pediatrician")}>
+            <Icon name="send" size={17} />{t("coach.cards.professionalNote")}
           </button>
         )}
         {!council?.length && onGoDeeper && (

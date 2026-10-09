@@ -9,8 +9,9 @@
  *  - the Hebrew languageDirective in the /vision prompt for BOTH modes
  *    (observe + document), mirroring the /digest pattern,
  *  - no directive when the session is English,
- *  - the client-side threading (api.vision carries language; ArborVision
- *    sends getAiLanguage()) via source pins.
+ *  - the client wrapper (api.vision carries language) via a source pin. The
+ *    ArborVision modal that sent getAiLanguage() was deleted 2026-10-09
+ *    (nothing mounted it).
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import express from "express";
@@ -204,10 +205,8 @@ describe("/api/vision language directive (AIX-S1, mirrors /digest)", () => {
 });
 
 describe("AIX-S1 client threading (source-pinned)", () => {
-  it("api.vision accepts and ArborVision sends the session AI language", () => {
+  it("api.vision accepts the session AI language", () => {
     const apiSrc = fs.readFileSync(path.join(SRC_ROOT, "lib", "api.ts"), "utf8");
     expect(apiSrc).toMatch(/vision:\s*\(payload:\s*\{[^)]*language\?:\s*"en"\s*\|\s*"he"/);
-    const visionSrc = fs.readFileSync(path.join(SRC_ROOT, "components", "coach", "ArborVision.tsx"), "utf8");
-    expect(visionSrc).toContain("language: getAiLanguage()");
   });
 });

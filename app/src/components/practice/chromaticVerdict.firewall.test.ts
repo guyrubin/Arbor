@@ -106,8 +106,8 @@ const DRILL_FILES = [
   "practice/FeelingsLabTab.tsx",
   "../components/tabs/LanguageLabVocabView.tsx",
   "../components/tabs/LanguageLabTab.tsx",
-  // B-GROWTH-30 — the record by area (spine §9: the guard covers it before it renders)
-  "growth/RecordByDomain.tsx",
+  // B-GROWTH-30 — the record by area: the child portrait's area lens replaced RecordByDomain
+  "companion/ChildPortrait.tsx",
 ] as const;
 
 /** `{…accuracy…}%` / `{…pct…}%` / `{…percent…}%` — a rendered performance share. */

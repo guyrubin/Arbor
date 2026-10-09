@@ -170,49 +170,20 @@ describe("no economy vocabulary in kid surfaces (kidmode + playbank + practice)"
   );
 });
 
-/* ── 2. Monotonic star derivation — exact anchor ────────────────────────── */
+/* ── 2. No star count on the kid home ──────────────────────────────────── */
 
-describe("KidDashboard stars stay monotonic (exact useMemo anchor)", () => {
+// B-BOOK-26 (T7, 9 Oct): the lifetime star chip was a number shown to the
+// child. It is gone from the kid home; the monotonic-derivation anchor that
+// guarded it retires with it.
+describe("KidDashboard shows the child no count", () => {
   const dashPath = path.join(SRC, "components", "kidmode", "KidDashboard.tsx");
-  const raw = readFileSync(dashPath, "utf8");
-  const normalized = stripComments(raw).replace(/\s+/g, " ");
+  const src = stripComments(readFileSync(dashPath, "utf8"));
 
-  it("derives stars ONLY from saved play-log lengths + completed missions, verbatim", () => {
-    const EXACT_DERIVATION =
-      "const stars = useMemo( () => " +
-      "data.speech.items.length + " +
-      "data.mimic.items.length + " +
-      "data.adventures.items.length + " +
-      // B-KID-02: self check-ins (mood-checkin) earn no star. Still monotonic —
-      // a filter over an append-only log can only grow.
-      "starEvents(data.events.items).length + " +
-      "data.missions.items.filter((m) => m.completed).length + " +
-      // B-KID-43: finished stories (completedAt set once, never unset) — still monotonic.
-      "heroRunsCol.items.filter((r) => r.completedAt).length, " +
-      "[data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items, heroRunsCol.items], );";
-    expect(
-      normalized,
-      "the star derivation changed — a rewrite must stay monotonic (lengths of saved logs only) and update this anchor consciously",
-    ).toContain(EXACT_DERIVATION);
+  it("has no star meter, star total or kid.stars copy", () => {
+    expect(src).not.toMatch(/StarMeter|const stars\b|kid\.stars/);
   });
 
-  it("B-KID-43: the chip hides at 0 (no zero badge on day one)", () => {
-    expect(raw).toContain("{stars > 0 && <StarMeter value={stars} />}");
-  });
-
-  it("keeps the monotonic design note next to the derivation", () => {
-    expect(raw).toContain("Monotonic star total");
-    expect(raw).toContain("Never a streak");
-  });
-
-  it("no decrement, reset, or randomness anywhere near stars", () => {
-    // The dashboard may use Date.now for ANIMATION timing (StarMeter count-up),
-    // but the stars value itself can only ever go up between renders: no
-    // subtraction from stars, no zero-reset, no randomness, no local persistence
-    // that could disagree with the saved logs. (The derivation itself is pinned
-    // verbatim by the anchor test above — clock-free by construction.)
-    const src = stripComments(raw);
-    expect(src).not.toMatch(/stars\s*-|stars\s*=\s*0|Math\.random/);
+  it("keeps no local persistence of any total", () => {
     expect(src).not.toMatch(/localStorage|sessionStorage/);
   });
 });

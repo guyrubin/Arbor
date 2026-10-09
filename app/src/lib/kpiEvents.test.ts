@@ -77,7 +77,8 @@ describe("N8 KPI events — all six families live at their call sites", () => {
     expect(errorState).toContain("trackErrorBannerShown(surface)");
     // Mount-once, not render-loop: the effect has an empty dep array.
     expect(errorState).toMatch(/useEffect\(\(\) => \{\s*trackErrorBannerShown\(surface\);/);
-    expect(read("components/tabs/OverviewTab.tsx")).not.toContain('surface="today-focus"');
+    // (Now's recommendation lead keeps a TrustLink with that surface name; no banner.)
+    expect(todayLiveSource()).not.toContain("<ErrorState");
   });
 });
 
@@ -512,7 +513,8 @@ import {
   noteTypedKeepCommitted,
   notePlanCreatedFromAnswer,
   resetPlanFromAnswer,
-} from "./captureProposals";
+} from "./captureProposals";
+import { todayLiveSource } from "../testTodaySource";
 
 /** The shape ArborContext.commitConversationProposal returns, minimally. */
 const committed = (target: "journal" | "milestone" | "observation" | "report_fact" = "journal") => ({

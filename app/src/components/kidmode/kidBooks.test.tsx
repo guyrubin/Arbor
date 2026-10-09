@@ -12,7 +12,7 @@ import { en as kidsEn, he as kidsHe } from "../../lib/i18nElevation/kidsStories"
 import { describe, expect, it } from "vitest";
 import { kidBooks } from "./kidBooks";
 import { KidBookCover } from "./KidBookCover";
-import { HERO_STORIES, storyHasLanguage } from "../../lib/heroJourneys";
+import { HERO_STORIES, KID_RETIRED_STORY_IDS, KID_SHELF_STORIES, storyHasLanguage } from "../../lib/heroJourneys";
 import { kidArt, storyCoverKey } from "../../lib/kidThemeManifest";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -31,17 +31,26 @@ describe("kidBooks — the one list", () => {
     const four = kidBooks({ lang: "en", ageMonths: 48, showAllAges: false, hasCover: film3dCover, runs: [] });
     expect(four.some((b) => b.story.id === "moses-and-pharaoh")).toBe(false);
     const all = kidBooks({ lang: "en", ageMonths: 48, showAllAges: true, hasCover: film3dCover, runs: [] });
-    expect(all.length).toBe(HERO_STORIES.length);
+    expect(all.length).toBe(KID_SHELF_STORIES.length);
+  });
+
+  it("B-BOOK-29: the kid shelf is the canonical-text books only - the five retired and the originals never appear", () => {
+    const all = kidBooks({ lang: "en", ageMonths: null, showAllAges: true, hasCover: film3dCover, runs: [] }).map((b) => b.story.id);
+    expect(all.sort()).toEqual(["david-and-goliath", "jacob-wrestling-the-angel", "jonah-and-the-great-fish", "joseph-and-his-brothers", "moses-and-pharaoh", "noahs-ark"]);
+    for (const id of KID_RETIRED_STORY_IDS) expect(all, id).not.toContain(id);
+    for (const s of HERO_STORIES.filter((x) => x.origin === "original")) expect(all, s.id).not.toContain(s.id);
   });
 
   it("opened books lead, most recent first; then illustrated before title cards", () => {
     // B-KID-131 re-pin: film3d covers every story, so the mixed shelf is proven
     // in the storybook theme (3 covers); film3d has no title cards at all.
+    // B-BOOK-29 re-pin: the shelf is the canonical-text books; the ordering
+    // rule is proven over the full catalogue (injected), as before.
     const runs = [
       { storyId: "noahs-ark", completedAt: "2026-09-01T18:00:00Z" },
       { storyId: "the-lantern-path", completedAt: "2026-09-03T18:00:00Z" },
     ];
-    const books = kidBooks({ lang: "en", ageMonths: 60, showAllAges: false, hasCover: storybookCover, runs });
+    const books = kidBooks({ lang: "en", ageMonths: 60, showAllAges: false, hasCover: storybookCover, runs, stories: HERO_STORIES });
     expect(books.slice(0, 2).map((b) => [b.story.id, b.state])).toEqual([["the-lantern-path", "finished"], ["noahs-ark", "finished"]]);
     const rest = books.slice(2);
     const firstTitleCard = rest.findIndex((b) => !storybookCover(b.story.id));

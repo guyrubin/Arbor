@@ -33,7 +33,8 @@ import { shelfWordsThenNow } from "../../lib/today/shelfWords";
 import { bandForAgeMonths, milestoneAgeWindow } from "../../lib/milestoneData";
 import { shelfLabel } from "../../lib/shelves/registry";
 import { translate } from "../../lib/i18n";
-import type { BehaviorLog } from "../../types";
+import type { BehaviorLog } from "../../types";
+import { todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const NOW = Date.parse("2026-10-06T07:00:00Z");
@@ -82,9 +83,9 @@ describe("pass A1 — the parent's own words on the practice's shelf", () => {
     });
   }
   it("OverviewTab passes the shelf words to the card", () => {
-    const src = readFileSync(path.join(here, "OverviewTab.tsx"), "utf8");
+    const src = todayLiveSource();
     expect(src).toContain("shelfWordsThenNow(observations, behaviorLogs, pick.shelf)");
-    expect(src).toContain("quotes={quotes}");
+    expect(src).toContain("quotes={loop.quotes}");
   });
 });
 
@@ -114,12 +115,12 @@ describe("pass A3 — the why-line states the chooser's reason, names the child,
     });
   }
   it("OverviewTab derives the reason from the coverage the chooser ranked by", () => {
-    const src = readFileSync(path.join(here, "OverviewTab.tsx"), "utf8");
+    const src = todayLiveSource();
     // P5-LOOP c2 r1: still from the same coverage; with no words on the shelf
     // the empty reason says tonight's answer starts the page
     expect(src).toContain('if (n === 0) return shelfNewestAt ? "empty" : "startsPage";');
     expect(src).toContain("return n <= Math.min(...Object.values(coverage)) ? \"fewest\" : null;");
-    expect(src).toContain('whyReason={whyReason}');
+    expect(src).toContain("whyReason={loop.whyReason}");
     expect(readFileSync(path.join(here, "..", "loop", "PracticeCard.tsx"), "utf8")).not.toContain('"elev.loop.practice.why"');
   });
 });

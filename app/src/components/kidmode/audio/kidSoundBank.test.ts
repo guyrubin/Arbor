@@ -7,7 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../../lib/voice", () => ({ voiceSupported: () => true, speakText: () => 1, stopVoice: () => {} }));
+vi.mock("../../../lib/voice", () => ({ voiceSupported: () => true, speakText: () => 1, stopVoice: () => {}, voiceState: () => ({ speaking: false, engine: "basic" }) }));
 
 import { kidHush, resetKidAudioForTests, setKidAudioChild, setKidReadAloudMuted } from "./kidAudio";
 import { DEDUPE_MS, FOLEY_RATE_JITTER, clipUrl, createKidSoundBank, parseSoundManifest } from "./kidSoundBank";

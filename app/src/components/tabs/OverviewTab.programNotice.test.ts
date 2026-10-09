@@ -7,7 +7,8 @@ import { toObservations } from "../../lib/observations";
 import { shelfCoverage, selectNextMilestonesByShelf } from "../../lib/milestones/selectByShelf";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { enrolInProgram, activeProgramWeek } from "../../lib/programs/enrolment";
-import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
+import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
+import { todayLiveSource } from "../../testTodaySource";
 
 /* B-PROG-03 (seam): Today's Notice reads the program wrapper. With an ACTIVE
    enrolment the program's shelf is not offered by the thinnest-shelf rule and
@@ -55,7 +56,7 @@ describe("B-PROG-03 (seam) — Today's Notice reads the program wrapper", () => 
   });
 
   it("OverviewTab wires it: the programs collection → activeProgramWeek → selectNoticeWithProgram", () => {
-    const src = readFileSync(path.join(here, "OverviewTab.tsx"), "utf8");
+    const src = todayLiveSource();
     expect(src).toContain('useChildCollection<{ id: string }>(childProfile.id, "programs")');
     expect(src).toContain("return active ? { shelf: active.program.shelf, watchFor: active.content.watchFor } : null;");
     expect(src).toContain("selectNoticeWithProgram(milestones, comparisonMonths, {");

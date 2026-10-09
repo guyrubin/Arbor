@@ -19,7 +19,8 @@ import * as path from "node:path";
 import { en, he } from "../../lib/i18nElevation/firstMoment";
 import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
 import { FIRST_MOMENT_STEPS } from "../../lib/firstMomentChain";
-import { LIFECYCLE_STICKY_KINDS } from "./useLifecycleMoment";
+import { LIFECYCLE_STICKY_KINDS } from "./useLifecycleMoment";
+import { todayLiveSource } from "../../testTodaySource";
 
 /** Read a source file relative to src/, CRLF-normalised and comment-stripped. */
 const read = (rel: string) =>
@@ -30,7 +31,7 @@ const read = (rel: string) =>
     .replace(/^\s*\/\/.*$/gm, "");
 
 const CARD = read("components/overview/LifecycleMomentCard.tsx");
-const OVERVIEW = read("components/tabs/OverviewTab.tsx");
+const OVERVIEW = todayLiveSource();
 
 describe("the sources were actually read", () => {
   it("both files carry real code, not an empty string", () => {
@@ -38,7 +39,7 @@ describe("the sources were actually read", () => {
     expect(OVERVIEW.length).toBeGreaterThan(20_000);
     // A comment-stripping bug that ate the file would trip these too.
     expect(CARD).toContain("export default function LifecycleMomentCard");
-    expect(OVERVIEW).toContain("export default function OverviewTab");
+    expect(OVERVIEW).toContain("export default function NowView");
   });
 });
 
@@ -134,7 +135,7 @@ describe("ENG-L2 — a captured interest actually reaches play selection", () =>
     const list = (deps?.[1] ?? deps?.[2] ?? "");
     expect(list.length).toBeGreaterThan(20);
     expect(list).toContain("childProfile.interests");
-    expect(OVERVIEW).toContain('doorLine("today-door-play", "sports_esports", t("elev.loop.door.play"), () => setActiveTab("daily-play"))');
+    expect(OVERVIEW).toContain('line("today-door-play", "sports_esports", t("elev.loop.door.play"), () => setActiveTab("daily-play"))');
   });
 
   it("NEGATIVE CONTROL — the shipped dep list would have failed before the fix", () => {

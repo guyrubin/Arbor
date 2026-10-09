@@ -27,7 +27,7 @@
  * Firewall: the star reads a MONOTONIC field (lifetime sessions), never a
  * streak. Styling is token-only and RTL-safe (logical CSS properties).
  */
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, lazy, useEffect, useMemo } from "react";
 import { BookOpen, Brain, Footprints, Gamepad2, Heart, Map, Mic, Music, PersonStanding, Shapes, Smile, Sparkles, Star, ChevronRight, Type } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import type { AvatarStyle } from "../../lib/api";
@@ -58,7 +58,10 @@ import { KidStickerStrip } from "./rewards/KidSouvenir";
 import { kidOfflineArtUrls, precacheKidArt, recentlyOpenedStoryIds } from "../../lib/kidOfflineArt";
 import { useKidSouvenirs } from "./rewards/useKidSouvenirs";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
-import { starEvents } from "../../practice/signals";
+
+// B-GAME-15b: the Sneak tile is the game's own first frame with the child's
+// hero, loaded with the game's chunk (never the painted card of one child).
+const SneakPoster = lazy(() => import("./games/sneakFreeze/SneakFreeze").then((m) => ({ default: m.SneakPoster })));
 
 export type KidSurface = "journeys" | "arcade" | "feelings" | "comics";
 
@@ -108,6 +111,14 @@ const GAME_PROMPT: Record<string, string> = {
   reading: "a magical letter forge where glowing letters become words",
 };
 const GAMES = KID_WORLDS.map((w) => ({ ...w, Icon: GAME_ICON[w.worldId] ?? Gamepad2, imagePrompt: GAME_PROMPT[w.worldId] ?? "" }));
+/** B-GAME-19 (ruling GD-6, Guy 8 Oct "go"): the nine worlds leave the kid home
+ *  once game 1 ships - while Sneak & Freeze is on, it is the ONE game on the
+ *  kid home (shown large, the hero on its tile). The nine stay reachable as
+ *  grown-up-led practice on the parent side. A device that turns the game off
+ *  (arbor.flags.sneakFreeze = "0") keeps the nine, so the section never empties. */
+export function kidHomeGames(sneakOn: boolean = sneakFreezeFlagOn()): typeof GAMES {
+  return sneakOn ? [] : GAMES;
+}
 /** B-KID-88: the home's game tiles with their name keys (tests read this). */
 export const KID_HOME_GAMES: readonly { id: string; worldId: string; titleKey: string; subKey: string }[] = KID_WORLDS.map((w) => ({
   id: w.id,
@@ -140,7 +151,8 @@ export function kidDestinations(bannerStoryId: string, bookIds: readonly string[
     ...bookIds.map((id) => ({ tile: `book:${id}`, surface: "journeys" as KidSurface, arg: id })),
     // B-KID-85: the library also holds the saved comics ("Made before").
     { tile: "books-see-all", surface: "journeys", arg: null },
-    ...GAMES.map((g) => ({ tile: `game:${g.id}`, surface: "arcade" as KidSurface, arg: g.worldId })),
+    ...kidHomeGames().map((g) => ({ tile: `game:${g.id}`, surface: "arcade" as KidSurface, arg: g.worldId })),
+    ...(sneakFreezeFlagOn() ? [{ tile: `game:${SNEAK_FREEZE_WORLD.id}`, surface: "arcade" as KidSurface, arg: SNEAK_FREEZE_WORLD.worldId }] : []),
   ];
 }
 
@@ -214,55 +226,6 @@ export const KID_HOME_GAME_TITLE_SIZE = "clamp(20px, 5vw, 24px)";
 /** The 390 px floor the clamp guarantees, asserted by kidDashboard.fold.test.ts. */
 export const KID_HOME_GAME_TITLE_MIN_PX = 20;
 
-/** A calm, one-shot count-up of an already-earned number. Reveals on mount only —
- *  never a live ticker. Respects prefers-reduced-motion (snaps to the total). */
-function StarMeter({ value }: { value: number }) {
-  const { t } = useLanguage();
-  // Start at 0 so the count-up never flashes the final total for one frame on mount.
-  const [shown, setShown] = useState(0);
-  const rafRef = useRef<number | null>(null);
-  useEffect(() => {
-    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || value <= 0) {
-      setShown(value);
-      return;
-    }
-    const start = Date.now();
-    const DURATION = 600;
-    setShown(0);
-    const tick = () => {
-      const p = Math.min(1, (Date.now() - start) / DURATION);
-      setShown(Math.round(p * value));
-      if (p < 1) rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, [value]);
-
-  return (
-    <span
-      aria-label={t("kid.stars.aria", { count: value })}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        paddingInline: "12px",
-        paddingBlock: "6px",
-        borderRadius: "999px",
-        background: "var(--arbor-peach-soft)",
-        color: "var(--arbor-peach-ink)",
-        fontWeight: 800,
-        fontSize: "var(--t-sm)",
-        whiteSpace: "nowrap",
-      }}
-    >
-      <Star className="w-4 h-4" aria-hidden="true" />
-      {shown}
-    </span>
-  );
-}
 
 /** A themed tile whose background is an avatar-in-scene render (WorldScene),
  *  degrading to a centered themed icon. A bottom ink scrim keeps the title
@@ -280,6 +243,7 @@ function SceneTile({
   onClick,
   big,
   index,
+  scene,
 }: {
   worldId: string;
   accent: Accent;
@@ -294,6 +258,8 @@ function SceneTile({
   onClick: () => void;
   big?: boolean;
   index: number;
+  /** B-GAME-15b: a composed picture that replaces the WorldScene render. */
+  scene?: React.ReactNode;
 }) {
   // R-2b: the theme decides the tile shape (KID_THEME_TILE_SHAPE), not this file.
   const portrait = KID_THEME_TILE_SHAPE[theme] === "portrait";
@@ -329,9 +295,11 @@ function SceneTile({
       }}
     >
       <div className={portrait ? "absolute inset-0" : "relative"} style={portrait ? undefined : { minBlockSize: big ? 60 : KID_HOME_GAME_TILE_IMAGE_BLOCK }}>
-        <WorldScene worldId={worldId} theme={theme} imagePrompt={imagePrompt} heroUrl={heroUrl} heroStyle={heroStyle} sizes={portrait ? "(max-width: 767px) 50vw, 25vw" : big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
-          <span aria-hidden="true" className="grid h-full w-full place-items-center" style={{ color: ACCENT_INK[accent] }}><Icon className="w-10 h-10" /></span>
-        </WorldScene>
+        {scene ?? (
+          <WorldScene worldId={worldId} theme={theme} imagePrompt={imagePrompt} heroUrl={heroUrl} heroStyle={heroStyle} sizes={portrait ? "(max-width: 767px) 50vw, 25vw" : big ? "(max-width: 639px) 100vw, 33vw" : "(max-width: 359px) 100vw, (max-width: 639px) 50vw, 25vw"}>
+            <span aria-hidden="true" className="grid h-full w-full place-items-center" style={{ color: ACCENT_INK[accent] }}><Icon className="w-10 h-10" /></span>
+          </WorldScene>
+        )}
 
       </div>
       {/* Title block. */}
@@ -396,6 +364,8 @@ export default function KidDashboard({
   // illustrated in the child's theme leads (R-4b); the rest lead My books.
   // A child without one: nothing here changes.
   const libraryBooks = useChildLibraryBooks(childProfile.id);
+  // B-GAME-19: one game on the kid home while Sneak & Freeze is on.
+  const homeGames = kidHomeGames();
   const bookLang: "en" | "he" = storyLanguage(uiLang, aiLang) === "he" ? "he" : "en";
   const tonightLib = onOpenBook ? libraryBooks[0] ?? null : null;
   const moreLib = onOpenBook ? libraryBooks.slice(1) : [];
@@ -452,19 +422,6 @@ export default function KidDashboard({
     ? kt("elev.kid.greeting.playedYesterday", { world: t(yesterdayNameKey) })
     : kt("elev.kid.greeting.ready");
 
-  // Monotonic star total — lifetime sessions across modules. Never a streak.
-  const stars = useMemo(
-    () =>
-      data.speech.items.length +
-      data.mimic.items.length +
-      data.adventures.items.length +
-      // B-KID-02: a self check-in is not an achievement — no star.
-      starEvents(data.events.items).length +
-      data.missions.items.filter((m) => m.completed).length +
-      // B-KID-43: a finished story is the kid's main achievement — it counts.
-      heroRunsCol.items.filter((r) => r.completedAt).length,
-    [data.speech.items, data.mimic.items, data.adventures.items, data.events.items, data.missions.items, heroRunsCol.items],
-  );
 
   return (
     <div style={{ maxInlineSize: "1100px", marginInline: "auto", display: "flex", flexDirection: "column", gap: `${KID_HOME_SECTION_GAP}px` }}>
@@ -478,8 +435,7 @@ export default function KidDashboard({
           <div style={{ fontSize: "var(--t-sm)", color: "var(--arbor-muted)" }}>{greetingSub}</div>
         </div>
         <div style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: "12px" }}>
-          {/* B-KID-43: no "0" chip on day one — the meter appears with the first star. */}
-          {stars > 0 && <StarMeter value={stars} />}
+          {/* B-BOOK-26 (T7): no count is shown to the child — the star meter is gone. */}
           <HoldExitButton onExit={onExit} idleLabel={t("kid.exit.backToParent")} ariaIdle={t("kid.exit.backToParentAria")} />
         </div>
       </header>
@@ -598,15 +554,17 @@ export default function KidDashboard({
             {kt("kid.games.title")}
           </h2>
         </div>
-        <div className={tilePortrait ? PORTRAIT_GRID : undefined} style={tilePortrait ? { gap: `${KID_HOME_TILE_GAP}px` } : { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
-          {GAMES.map((g, i) => (
+        {/* B-GAME-19: the one game is shown large (one column, up to 420 px). */}
+        <div className={tilePortrait && homeGames.length ? PORTRAIT_GRID : undefined} style={!homeGames.length ? { display: "grid", gridTemplateColumns: "minmax(0, 420px)", gap: `${KID_HOME_TILE_GAP}px` } : tilePortrait ? { gap: `${KID_HOME_TILE_GAP}px` } : { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
+          {homeGames.map((g, i) => (
             <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(g.nameKey)} sub={kt(g.subKey)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
           {/* B-GAME-07b: the G0 proof game, only behind its device flag. No
               tile art yet (dev placeholder = the accent + glyph); no hero url,
               so no scene is generated. */}
           {sneakFreezeFlagOn() && (
-            <SceneTile key={SNEAK_FREEZE_WORLD.id} worldId={SNEAK_FREEZE_WORLD.worldId} accent={SNEAK_FREEZE_WORLD.accent} Icon={Footprints} title={kt(SNEAK_FREEZE_WORLD.nameKey)} sub={kt(SNEAK_FREEZE_WORLD.subKey)} imagePrompt="" theme={kidTheme} index={GAMES.length} onClick={() => onOpenSurface("arcade", SNEAK_FREEZE_WORLD.worldId)} />
+            <SceneTile key={SNEAK_FREEZE_WORLD.id} worldId={SNEAK_FREEZE_WORLD.worldId} accent={SNEAK_FREEZE_WORLD.accent} Icon={Footprints} title={kt(SNEAK_FREEZE_WORLD.nameKey)} sub={kt(SNEAK_FREEZE_WORLD.subKey)} imagePrompt="" theme={kidTheme} index={homeGames.length} onClick={() => onOpenSurface("arcade", SNEAK_FREEZE_WORLD.worldId)}
+              scene={<Suspense fallback={null}><SneakPoster /></Suspense>} />
           )}
         </div>
       </section>

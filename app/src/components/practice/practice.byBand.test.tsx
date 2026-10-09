@@ -1,9 +1,10 @@
 /**
  * B-PLAY-24 guard — the parent-side Practice page offers what fits the child.
- * Leni (22 months): three parent-led "together" cards, no game tiles, no Kid
- * Mode door ("From 3, Leni can play on her own"). Dylan (5 years): the worlds
- * whose band tags fit (read from the Kids sessions' registry), the door, one
- * start-world stamp. Tonight offers a story only when one fits the band.
+ * Parity 9 Oct: #/practice is Together (components/companion/TogetherView.tsx).
+ * Leni (22 months): three parent-led "together" ideas, no games, no Kid Mode
+ * hand-over ("From 3, Leni can play on her own"). Dylan (5 years): the games
+ * whose band tags fit (read from the Kids sessions' registry) and the labelled
+ * hand-over. Tonight offers a story only when one fits the band.
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -20,7 +21,7 @@ vi.mock("../../context/LanguageContext", () => ({
   useLanguage: () => ({ t: (k: string, v?: Record<string, string | number>) => translate(ui.lang as UiLang, k, v), uiLang: ui.lang }),
 }));
 vi.mock("../../context/ArborContext", () => {
-  const value = () => ({ childProfile: ui.child, setActiveTab: () => undefined, addMoment: () => null });
+  const value = () => ({ childProfile: ui.child, setActiveTab: () => undefined, saveMoment: async () => null, activeFamilyTopic: null });
   return { useArbor: value, useArborOptional: value };
 });
 vi.mock("../kidmode/useKidModeEntry", () => ({ useKidModeEntry: () => ({ request: () => undefined, step: null }) }));
@@ -29,42 +30,41 @@ vi.mock("../../practice/usePracticeData", () => ({
   usePracticeData: () => ({ speech: { items: [] }, mimic: { items: [] }, adventures: { items: [] }, events: { items: [] }, missions: { items: [] } }),
 }));
 vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ items: [] }) }));
+vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 
-import PracticeStudioTab from "./PracticeStudioTab";
-import { STUDIO_WORLDS } from "./studioWorlds";
-import { offersForChild, storyFitsChild, kidModeOpenFor } from "../../lib/age/playGate";
+import TogetherView from "../companion/TogetherView";
+import { STUDIO_WORLDS, studioWorldsForChild } from "./studioWorlds";
+import { offersForChild, storyFitsChild, kidModeOpenFor, TOGETHER_CARDS } from "../../lib/age/playGate";
 import { HERO_STORIES } from "../../lib/heroJourneys";
 
 const render = (child: ChildProfile, lang: UiLang) => {
   ui.child = child;
   ui.lang = lang;
-  return renderToStaticMarkup(React.createElement(PracticeStudioTab));
+  return renderToStaticMarkup(React.createElement(TogetherView));
 };
 const plain = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/[‎‏⁦-⁩]/g, "").replace(/\s+/g, " ");
 
-describe("B-PLAY-24 · Practice by band", () => {
+describe("B-PLAY-24 · Together by band", () => {
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: Leni (22 m) gets three together cards, no game tiles, no Kid Mode door`, () => {
+    it(`${lang}: Leni (22 m) gets the three together ideas, no games, no Kid Mode hand-over`, () => {
       const html = render(LENI, lang);
-      expect(html.match(/data-together-card=/g)?.length).toBe(3);
-      // the worlds module holds the together cards, never a game tile
-      expect(html).not.toContain('data-testid="practice-count-window"');
-      expect(html).not.toContain('data-module="practice-kidmode-door"');
-      expect(html).toContain('data-testid="practice-kidmode-from-three"');
+      expect(TOGETHER_CARDS).toHaveLength(3);
+      for (const id of TOGETHER_CARDS) expect(plain(html)).toContain(translate(lang, `elev.ages.together.${id}.title`));
+      expect(html).not.toContain('data-module="together-games"');
+      expect(html).not.toContain('data-testid="together-handover"');
       expect(plain(html)).toMatch(lang === "en" ? /From 3, Leni can play on her own/ : /מגיל 3, Leni תוכל לשחק כאן לבד/);
-      expect(html.match(/data-primary-move="start-world"/g)?.length).toBe(1);
-      for (const w of STUDIO_WORLDS) expect(plain(html)).not.toContain(translate(lang, `practice.world.${w.key}.name`));
+      expect(html.match(/data-primary-move="choose-together"/g)?.length).toBe(1);
     });
 
-    it(`${lang}: Dylan (5 y) gets the fitting worlds and the door, no together cards`, () => {
+    it(`${lang}: Dylan (5 y) gets the fitting games and the labelled hand-over`, () => {
       const html = render(DYLAN, lang);
-      expect(html).not.toContain("data-together-card");
-      expect(html).toContain('data-module="practice-kidmode-door"');
-      expect(html).toContain('data-module="practice-worlds"');
-      expect(html.match(/data-primary-move="start-world"/g)?.length).toBe(1);
-      const fitting = offersForChild(STUDIO_WORLDS, DYLAN);
-      expect(fitting.length).toBeGreaterThan(5);
-      for (const w of fitting) expect(plain(html)).toContain(translate(lang, `practice.world.${w.key}.name`));
+      expect(html).toContain('data-module="together-games"');
+      expect(html).toContain('data-testid="together-handover"');
+      expect(html.match(/data-primary-move="choose-together"/g)?.length).toBe(1);
+      const { worlds } = studioWorldsForChild(lang, DYLAN);
+      expect(worlds.length).toBeGreaterThan(2);
+      // "All" shows the first three; their kid names are what the child will see.
+      for (const w of worlds.slice(0, 3)) expect(plain(html)).toContain(translate(lang, w.kidNameKey));
     });
   }
 

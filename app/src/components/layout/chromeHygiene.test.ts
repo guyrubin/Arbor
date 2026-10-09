@@ -126,6 +126,15 @@ describe("persistent companion · mobile chrome", () => {
     expect(shell.indexOf("<MobileNav />")).toBeGreaterThan(shell.indexOf("</CompanionWorkspace>"));
   });
 
+  it("a page change from inside the conversation closes the full-screen panel (phones) but keeps the docked one", () => {
+    const effect = /useEffect\(\(\) => \{\s*if \(routeIsConversation\) \{ show\("route"\); setExpanded\(true\); \}\s*else \{([\s\S]*?)\}\s*\}, \[activeTab\]\);/.exec(workspace);
+    expect(effect, "the activeTab effect in CompanionWorkspace").toBeTruthy();
+    expect(effect![1]).toContain("returnTab.current = activeTab; setExpanded(false);");
+    expect(effect![1]).toContain("if (!wide) setOpen(false);");
+    // Closing never unmounts: the draft, thread and microphone survive.
+    expect(effect![1]).not.toContain("setMounted(false)");
+  });
+
   it("styles launcher labels separately so mobile keeps both the arrow and accessible save icon", () => {
     // Icon itself renders a span: broad child-span rules flexed the arrow and
     // hid the only visible save affordance when the text label was removed.

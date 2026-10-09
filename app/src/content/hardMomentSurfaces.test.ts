@@ -15,6 +15,8 @@ import {
 } from "./hardMomentSurface";
 import { seededEscalationLine } from "../safety/seededEscalation";
 
+import { todayLiveSource } from "../testTodaySource";
+
 /**
  * CONT-2 / CODEX-5(surfaces) — acceptance tests for the AR-CONT-01 consuming
  * surfaces built dark (2026-07-23 next-level wave 3).
@@ -202,7 +204,7 @@ describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams
   const SURFACES = [
     "components/behaviors/HardMomentsSection.tsx",
     "components/overview/hardMomentStep.ts",
-    "components/tabs/OverviewTab.tsx",
+    "components/companion/NowView.tsx",
     "components/tabs/CoachTab.tsx",
   ];
 
@@ -224,7 +226,7 @@ describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams
     const code = stripComments(read("components/overview/hardMomentStep.ts"));
     expect(code).toContain('accept(locText(current.doNow, ctx.locale), capacity, "hard-moment")');
     expect(code).not.toMatch(/handleAddLog|upsert|firestore|setDoc/i);
-    const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
+    const overview = stripComments(todayLiveSource());
     expect(overview).toContain("openHardMomentNow()");
     expect(overview).not.toContain("HardMomentTodayOffer");
     expect(stripComments(read("components/overview/CompanionOfferSlot.tsx"))).toMatch(/if \(offer\.kind === "grounded-step" && surface === "today"\) return null;/);
@@ -240,10 +242,13 @@ describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams
     expect(stripComments(read("content/hardMomentSurface.ts"))).toContain("export function buildHardMomentSeedPrompt");
   });
 
-  it("TODAY-2 holds on Today: no step card, no accept — the practice is the one move (B-LOOP-07)", () => {
-    const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
+  it("TODAY-2 holds on Today: no step card; the one accept is the recommendation lead's screened AI step (B-LOOP-07)", () => {
+    const overview = stripComments(todayLiveSource());
     expect((overview.match(/<TodayRecommendation\b/g) ?? []).length).toBe(0);
-    expect(overview).not.toMatch(/acceptTodayAction|today\.action\.make/);
+    expect(overview).not.toMatch(/today\.action\.make/);
+    // Parity 9 Oct: Codex's recommendation lead (7e25419e) saves ONLY a screened model step.
+    expect(overview.match(/acceptTodayAction\(/g)).toHaveLength(1);
+    expect(overview).toContain("if (!useAi || !aiStep || saving) return;");
   });
 
   it("tokens only: no hex literals or white literals in the new surfaces", () => {

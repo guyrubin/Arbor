@@ -499,7 +499,8 @@ describe("B-KID-02 · mood-checkin never enters accuracy or stars", async () => 
     expect(src).toContain("if (checkinRecorded.current) return;");
     const feel = src.slice(src.indexOf("const feel = (id: string) =>"), src.indexOf("// The emotion the avatar should be wearing"));
     expect(feel).not.toMatch(/correct/);
-    expect(read("components/kidmode/KidDashboard.tsx")).toContain("starEvents(data.events.items).length");
+    // B-BOOK-26 (T7): the kid home shows no star count at all now.
+    expect(read("components/kidmode/KidDashboard.tsx")).not.toContain("starEvents(");
     expect(read("components/practice/HeroArcade.tsx")).toContain("count: (d) => starEvents(d.events.items).length");
     function read(rel: string) { return readFileSync(resolve(__dirname, "..", rel), "utf8"); }
   });
@@ -557,10 +558,26 @@ describe("B-KID-90 · kid-game accuracy stops feeding the developmental bands", 
     }
   });
 
-  it("the play still counts: the same rounds raise the observation volume (confidence), never the band", () => {
-    const rounds = Array.from({ length: 20 }, () => kev("memory", false, 0));
-    expect(domainConfidence("cognition", [], [], [], rounds, [])).toBe("high");
+  // B-GAME-17 (ruling G10, 6 Oct) supersedes the B-KID-90 "counts still reach
+  // confidence" pin: play volume is not observation volume either.
+  it("the same rounds raise neither the band nor the observation volume (confidence)", () => {
+    const rounds = (["memory", "pattern", "rhythm", "pose", "emotion-id", "emotion-why", "letter-trace", "phonics", "sight-word", "calm"] as PracticeEventKind[])
+      .flatMap((k) => Array.from({ length: 30 }, () => kev(k, false, 0)));
+    for (const d of ["language", "speech", "cognition", "social", "emotional"] as const) {
+      expect(domainConfidence(d, [], [], [], rounds, []), d).toBe(domainConfidence(d, [], [], [], [], []));
+    }
     expect(domainConfidence("cognition", [], [], [], [], [])).toBe("low");
+  });
+
+  it("B-GAME-17 + B-BOOK-60: 30 sittings, 50 play rows and maximum story metrics give the same bands and confidence as no play", () => {
+    const sittings = Array.from({ length: 30 }, () => kev("stop-signal"));
+    const play = (["calm", "rhythm", "pose", "memory", "letter-trace"] as PracticeEventKind[]).flatMap((k) => Array.from({ length: 10 }, () => kev(k, true, 100)));
+    const adventures = Array.from({ length: 12 }, (_, i) => ({ id: `a${i}`, correct: true }) as never);
+    const maxStory = { empathy: 99, courage: 99, resilience: 99, responsibility: 99, wisdom: 99 };
+    expect(strip(domainBands(mss, [], [], adventures, [...sittings, ...play], maxStory))).toEqual(baseline);
+    for (const d of ["language", "speech", "cognition", "social", "emotional"] as const) {
+      expect(domainConfidence(d, mss, [], adventures, [...sittings, ...play], []), d).toBe(domainConfidence(d, mss, [], [], [], []));
+    }
   });
 
   it("every kid game kind is in the stop list; the parent-register Words & Express practice still contributes", () => {

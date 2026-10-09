@@ -14,9 +14,9 @@ import { en, he } from "./i18n";
  *     seam into a PARENT-EDITABLE note; the note joins exports only through
  *     the existing explicit acts (firewall: prefill is not consent).
  *
- * (b) Memory: suggestedMemory items get a per-item propose CTA through the
- *     EXISTING parent-approved seam (proposeMemory → POST /memory/:id/propose)
- *     so items land ONLY in the pending-approval queue.
+ * (b) Memory: the per-item suggestedMemory propose CTA left with ArborVision
+ *     itself (deleted 2026-10-09 — nothing mounted it). Memory review from a
+ *     unified answer stays on the parent-owned surface pinned below.
  */
 
 const SRC_ROOT = path.resolve(__dirname, "..");
@@ -27,7 +27,7 @@ describe("AIX-S3(a) — attached media stays in the unified report and explicit 
   const composer = read("components/companion/CompanionComposer.tsx");
 
   it("the report receives the note argument and threads it into the same editable prefill seam", () => {
-    expect(code).toMatch(/onAddToHandoff=\{\(note\) => \{\s*requestConsultPrefill\(\{ note, audience: "teacher" \}\);/);
+    expect(code).toMatch(/onAddToHandoff=\{\(note, audience = "teacher"\) => \{\s*requestConsultPrefill\(\{ note, audience \}\);/);
     expect(code).not.toContain("<ArborVision");
   });
 
@@ -97,40 +97,13 @@ describe("AIX-S3 — ArborContext seam shape", () => {
   });
 });
 
-describe("AIX-S3(b) — suggestedMemory items propose into the pending queue only", () => {
-  const code = read("components/coach/ArborVision.tsx");
-
-  it("each suggestedMemory item renders a per-item propose CTA", () => {
-    expect(code).toMatch(/suggestedMemory\.map\(\(fact, i\)/);
-    expect(code).toContain("proposeItem(fact, i)");
-    expect(code).toContain('t("vis.memory.save"');
-  });
-
-  it("propose goes through the injected seam — no direct fetch and no auto-approve", () => {
-    expect(code).toContain("onProposeMemory(fact)");
-    expect(code).not.toContain("fetch(");
-    // The component never performs an approval transition — approval stays in
-    // Profile › Child Memory (handleMemoryDecision), untouched here.
-    expect(code).not.toContain("handleMemoryDecision");
-    expect(code).not.toMatch(/status:\s*["']approved["']/);
-  });
-
-  it("pending-queue honesty note renders with the list", () => {
-    expect(code).toContain('t("vis.memory.pendingNote")');
-  });
-});
-
-describe("AIX-S3 — EN + HE copy for both CTAs", () => {
+describe("AIX-S3 — EN + HE copy for the handoff CTA", () => {
   const KEYS = [
     "coach.toast.handoffPrefilled",
     "consult.visionNote.title",
     "consult.visionNote.hint",
     "consult.visionNote.heading",
     "consult.visionNote.remove",
-    "vis.memory.save",
-    "vis.memory.saved",
-    "vis.memory.retry",
-    "vis.memory.pendingNote",
   ];
 
   it("every key exists in BOTH dictionaries with non-empty values", () => {

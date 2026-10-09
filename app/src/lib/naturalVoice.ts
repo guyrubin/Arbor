@@ -68,12 +68,18 @@ type FetchedAudio = { b64: string; mime: string };
 const PREFETCH_MAX = 16;
 const prefetchCache = new Map<string, Promise<FetchedAudio | null>>();
 
-async function fetchTtsAudio(text: string): Promise<FetchedAudio | null> {
+/** B-BOOK-61: the prefetch cache is keyed by language as well as text
+ *  (the two-letter prefix keeps the key unambiguous). */
+const cacheKey = (text: string, lang: "en" | "he") => `${lang}:${text}`;
+
+async function fetchTtsAudio(text: string, lang: "en" | "he"): Promise<FetchedAudio | null> {
   try {
     const res = await fetch("/api/tts", {
       method: "POST",
       headers: await authHeaders(),
-      body: JSON.stringify({ text, language: getAiLanguage(), screenedToken: takeTtsToken(text) }),
+      // B-BOOK-61: the UTTERANCE's language, not the session's AI language —
+      // a Hebrew book in an English-AI session is spoken by a Hebrew voice.
+      body: JSON.stringify({ text, language: lang, screenedToken: takeTtsToken(text) }),
     });
     if (!res.ok) return null;
     const { audio, mimeType } = (await res.json()) as { audio?: string; mimeType?: string };
@@ -86,19 +92,20 @@ async function fetchTtsAudio(text: string): Promise<FetchedAudio | null> {
 
 /** Start fetching `text`'s audio now (sentence N+1 while N plays). Idempotent
  *  per text; the synth consumes the cached promise on playback. */
-export function prefetchNaturalAudio(text: string): void {
+export function prefetchNaturalAudio(text: string, lang: "en" | "he" = getAiLanguage()): void {
   const trimmed = text.trim();
-  if (!trimmed || prefetchCache.has(trimmed)) return;
+  const key = cacheKey(trimmed, lang);
+  if (!trimmed || prefetchCache.has(key)) return;
   if (prefetchCache.size >= PREFETCH_MAX) {
     const oldest = prefetchCache.keys().next().value;
     if (oldest !== undefined) prefetchCache.delete(oldest);
   }
-  prefetchCache.set(trimmed, fetchTtsAudio(trimmed));
+  prefetchCache.set(key, fetchTtsAudio(trimmed, lang));
 }
 
 /* ── The synth ─────────────────────────────────────────────────────────────── */
 
-export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers): NaturalSynthHandle => {
+export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers, lang: "en" | "he" = getAiLanguage()): NaturalSynthHandle => {
   // F-03: the HTMLAudioElement MUST be created SYNCHRONOUSLY, inside the user
   // gesture that triggered this utterance — before ANY await. Creating it only
   // after the /api/tts fetch resolved put the first play() outside the gesture,
@@ -128,12 +135,12 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers): Natur
 
   // Consume a prefetched fetch when one exists (single-owner: the entry is
   // removed so an interrupted utterance can never replay a stale buffer).
-  const prefetched = prefetchCache.get(text);
-  if (prefetched) prefetchCache.delete(text);
+  const prefetched = prefetchCache.get(cacheKey(text, lang));
+  if (prefetched) prefetchCache.delete(cacheKey(text, lang));
 
   void (async () => {
     try {
-      const fetched = await (prefetched ?? fetchTtsAudio(text));
+      const fetched = await (prefetched ?? fetchTtsAudio(text, lang));
       if (cancelled) return;
       if (!fetched) {
         handlers.onError?.();

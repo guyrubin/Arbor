@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { pickTonightsStory } from "./tonightsStory";
-import { HERO_STORIES, storiesForLanguage, storyHasLanguage, storyLanguage } from "../../lib/heroJourneys";
+import { HERO_STORIES, storiesForLanguage, storyHasLanguage, storyLanguage, KID_SHELF_STORIES } from "../../lib/heroJourneys";
 import { kidArt, storyCoverKey, KID_THEME_IDS } from "../../lib/kidThemeManifest";
 import type { HeroStorySpec } from "../../types";
 
@@ -103,7 +103,8 @@ describe("B-KID-46: the Tonight pick — language first, then illustrated-first"
     for (const theme of KID_THEME_IDS) {
       const covers = (s: { id: string }) => kidArt(theme, storyCoverKey(s.id)) !== null;
       for (const lang of ["en", "he"] as const) {
-        const tellableCovered = HERO_STORIES.some((s) => storyHasLanguage(s, lang) && covers(s));
+        // B-BOOK-29: Tonight picks from the kid shelf, so "a covered story exists" is judged there.
+        const tellableCovered = KID_SHELF_STORIES.some((s) => storyHasLanguage(s, lang) && covers(s));
         for (const d of days) {
           const { story } = pickTonightsStory(d, "child-x", { prefer: covers, showAllAges: true, lang });
           expect(story, `${theme}/${lang}/${d}`).not.toBeNull();

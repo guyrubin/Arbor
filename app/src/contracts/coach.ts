@@ -104,6 +104,12 @@ export const coachResponseZodSchema = z.object({
  */
 export type CoachResponse = z.infer<typeof coachResponseZodSchema> & {
   governedEscalation?: string;
+  /** Parity 9 Oct (companion_attachments 1.2.0): a file turn the FILE SAFETY
+   *  GATE declined — `text` is the whole answer, every card section is empty. */
+  fileDeclined?: boolean;
+  /** Parity 9 Oct: what a child-related DOCUMENT says (the retired /vision
+   *  document mode's outputs), on file turns only. */
+  document?: FileTurnDocument;
   /** B-AI-14 (route): server-set, like governedEscalation — see types.ts CoachContract. */
   todayPlanProvenance?: { step: number; memoryId: string; kind: "approved_fact" }[];
 };
@@ -158,6 +164,118 @@ export const toSeededFollowUpContract = (raw: unknown): CoachResponse => {
     observe: [],
     frameRouting: { ...EMPTY_FRAME_ROUTING },
   };
+};
+
+/* ── File turns (parity, 9 Oct 2026; companion_attachments 1.2.0) ─────────
+ * The retired /vision route had an `offTopic` flag and a document mode. The
+ * /chat file turn needs both: a DECLINE that fits no card (an unrelated,
+ * explicit or graphic file — live run 9 Oct: the model declined into empty
+ * domains/todayPlan and the strict parse 500'd the turn), and the DOCUMENT
+ * block a school or clinic note deserves. The route, not the model, decides
+ * the declined shape (as toSeededFollowUpContract does). */
+export type FileTurnDocument = {
+  documentType: string;
+  keyPoints: string[];
+  questionsForProfessional: string[];
+  handoffNote: string;
+  suggestedMemory: string[];
+};
+
+const cleanList = (items: unknown, max: number, chars: number): string[] =>
+  Array.isArray(items)
+    ? items.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean).slice(0, max).map((item) => item.slice(0, chars))
+    : [];
+
+/** The document block, trimmed and capped at the parse seam (never a hard fail). */
+export const cleanFileTurnDocument = (raw: unknown): FileTurnDocument | undefined => {
+  if (!raw || typeof raw !== "object") return undefined;
+  const value = raw as Record<string, unknown>;
+  const doc: FileTurnDocument = {
+    documentType: typeof value.documentType === "string" ? value.documentType.trim().slice(0, 60) : "",
+    keyPoints: cleanList(value.keyPoints, 5, 240),
+    questionsForProfessional: cleanList(value.questionsForProfessional, 3, 200),
+    handoffNote: typeof value.handoffNote === "string" ? value.handoffNote.trim().slice(0, 600) : "",
+    suggestedMemory: cleanList(value.suggestedMemory, 3, 200),
+  };
+  const empty = !doc.keyPoints.length && !doc.questionsForProfessional.length && !doc.handoffNote && !doc.suggestedMemory.length;
+  return empty ? undefined : doc;
+};
+
+/** The decline, when the model returned no words of its own. */
+export const FILE_DECLINED_FALLBACK: Record<CoachRenderLanguage, string> = {
+  en: "I can only look at photos and documents about your child and family. You're welcome to share one of those, or tell me in words what's going on.",
+  he: "אני יכול להסתכל רק על תמונות ומסמכים שקשורים לילד ולמשפחה. אפשר לשתף אחד כזה, או לספר לי במילים מה קורה.",
+};
+
+/** Parse a FILE turn: a decline becomes the text-only shape; a read file keeps
+ *  the full contract (every min(1) holds) plus its optional document block. */
+export const toFileTurnContract = (raw: unknown, language: CoachRenderLanguage = "en"): CoachResponse => {
+  const value = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  if (value.fileDeclined === true) {
+    const text = typeof value.text === "string" ? value.text.trim() : "";
+    return {
+      text: text || FILE_DECLINED_FALLBACK[language],
+      riskLevel: typeof value.riskLevel === "string" && value.riskLevel.trim() ? value.riskLevel : "Low",
+      ageBand: typeof value.ageBand === "string" && value.ageBand.trim() ? value.ageBand : "unknown",
+      domains: [],
+      nonDiagnosticHypotheses: [],
+      todayPlan: [],
+      parentScript: "",
+      avoid: [],
+      observe: [],
+      escalateIf: [],
+      frameRouting: { ...EMPTY_FRAME_ROUTING },
+      memoryProposals: [],
+      handoffNotes: { teacher: "", professional: "" },
+      followUps: undefined,
+      sourceCardsUsed: [],
+      fileDeclined: true,
+    };
+  }
+  const strict: CoachResponse = coachResponseZodSchema.parse(raw);
+  const document = cleanFileTurnDocument(value.document);
+  return document ? { ...strict, document } : strict;
+};
+
+/** A declined file turn renders (and is screened as) its words alone. */
+export const renderFileDeclinedResponse = (response: CoachResponse): string => response.text?.trim() ?? "";
+
+/** The file-turn model schema: the standard one, plus the decline flag and the
+ *  optional document block. Lists may come back [] on a decline. */
+export const createFileTurnCoachResponseGeminiSchema = (framework: FrameworkDefinition) => {
+  const base = createCoachResponseGeminiSchema(framework);
+  const list = (description: string) => ({ type: Type.ARRAY, items: { type: Type.STRING }, description });
+  return {
+    ...base,
+    properties: {
+      ...base.properties,
+      fileDeclined: {
+        type: Type.BOOLEAN,
+        description: "true ONLY when the FILE SAFETY GATE applies (the file is not about this child or family, or it is explicit, sexual, graphic or violent). Then `text` holds the one or two calm sentences of the decline and every list is [] and every other string is empty. Otherwise false.",
+      },
+      document: {
+        type: Type.OBJECT,
+        description: "Fill ONLY when a file is a child-related document (school, daycare, clinic, therapy, activity). Omit it for photos and when declining.",
+        properties: {
+          documentType: { type: Type.STRING, description: "What kind of document it is, in a few words, in the answer language (for example: daycare note)." },
+          keyPoints: list("Up to 5 things the document actually says, plainly, keeping every negation."),
+          questionsForProfessional: list("Up to 3 questions the parent could ask the document's author or their own professional."),
+          handoffNote: { type: Type.STRING, description: "Two or three plain sentences the parent could share with a teacher or professional, in the parent's voice: what the document says and what the parent has seen. Observations only; never a diagnosis, label or score." },
+          suggestedMemory: list("Up to 3 durable, practical facts from the document the parent might choose to keep (an arrangement, a schedule, a named support), one plain sentence each. Never a diagnosis, label, score or judgement. Nothing is saved unless the parent chooses it."),
+        },
+      },
+    },
+  };
+};
+
+/** The document block as screened text (the AI-2 output screen covers every
+ *  string the parent sees — same rule as followUps). */
+const renderDocumentLines = (doc: FileTurnDocument, language: CoachRenderLanguage): string => {
+  const L = language === "he"
+    ? { title: "מתוך המסמך", key: "נקודות עיקריות", ask: "לשאול את איש המקצוע", note: "פתק לשיתוף", remember: "שווה לזכור" }
+    : { title: "From the document", key: "Key points", ask: "To ask the professional", note: "A note to share", remember: "Worth remembering" };
+  const section = (label: string, items: string[]) => items.length ? `\n${label}\n${items.map((item) => `- ${item}`).join("\n")}` : "";
+  return `${L.title}${doc.documentType ? `: ${doc.documentType}` : ""}${section(L.key, doc.keyPoints)}${section(L.ask, doc.questionsForProfessional)}${doc.handoffNote ? `\n${L.note}\n${doc.handoffNote}` : ""}${section(L.remember, doc.suggestedMemory)}`;
 };
 
 /**
@@ -481,5 +599,9 @@ ${response.handoffNotes.professional ? `${L.professional} ${response.handoffNote
     response.followUps?.length
       ? `\n\n${L.followUps}\n${response.followUps.map((q) => `- ${q}`).join("\n")}`
       : ""
+  }${
+    // Parity 9 Oct: the document block is rendered to the parent, so it is
+    // screened here too. Absent on every non-file turn (byte-identical).
+    response.document ? `\n\n${renderDocumentLines(response.document, language)}` : ""
   }`;
 };

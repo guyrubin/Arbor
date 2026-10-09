@@ -76,6 +76,33 @@ export const en: Record<string, string> = {
   // ── Write honesty ─────────────────────────────────────────────────────────
   "elev.hero.save.failed": "We couldn't save that hero. Check your connection and try again.",
   "elev.hero.saveProfile.failed": "We couldn't save those changes. Check your connection and try again.",
+
+  // ── B-GAME-13c: the pose sheet (parent side only; one calm line) ─────────
+  "elev.hero.sheet.building": "{name}'s hero is learning to move — ready in a few minutes",
+  "elev.hero.sheet.building.boy": "{name}'s hero is learning to move — ready in a few minutes",
+  "elev.hero.sheet.building.girl": "{name}'s hero is learning to move — ready in a few minutes",
+  "elev.hero.sheet.stopped": "{name}'s hero learned some of the moves today — the game plays with those.",
+  "elev.hero.sheet.stopped.boy": "{name}'s hero learned some of the moves today — the game plays with those.",
+  "elev.hero.sheet.stopped.girl": "{name}'s hero learned some of the moves today — the game plays with those.",
+  // ── B-GAME-14: the parent's review of the poses ──────────────────────────
+  "elev.hero.sheet.review.title": "{name}'s hero can move. Does each pose look like {name}?",
+  "elev.hero.sheet.review.title.boy": "{name}'s hero can move. Does each pose look like {name}?",
+  "elev.hero.sheet.review.title.girl": "{name}'s hero can move. Does each pose look like {name}?",
+  "elev.hero.sheet.review.ask": "Looks like {name}?",
+  "elev.hero.sheet.review.yes": "Yes",
+  "elev.hero.sheet.review.redraw": "Redraw",
+  "elev.hero.sheet.review.redrawing": "Redrawing…",
+  "elev.hero.sheet.review.kept": "Kept",
+  "elev.hero.sheet.review.redrawn": "Redrawn once",
+  "elev.hero.sheet.review.failed": "This pose rests for today; the game uses another one.",
+  "elev.hero.sheet.pose.idle": "Standing",
+  "elev.hero.sheet.pose.tiptoe": "Tiptoe",
+  "elev.hero.sheet.pose.dash": "Running",
+  "elev.hero.sheet.pose.freeze-a": "Statue",
+  "elev.hero.sheet.pose.freeze-b": "Tree statue",
+  "elev.hero.sheet.pose.oops": "Oops",
+  "elev.hero.sheet.pose.cheer": "Cheer",
+  "elev.hero.sheet.pose.hold-up": "Holding up",
 };
 
 export const he: Record<string, string> = {
@@ -130,4 +157,29 @@ export const he: Record<string, string> = {
 
   "elev.hero.save.failed": "לא הצלחנו לשמור את הגיבור. בדקו את החיבור ונסו שוב.",
   "elev.hero.saveProfile.failed": "לא הצלחנו לשמור את השינויים. בדקו את החיבור ונסו שוב.",
+
+  "elev.hero.sheet.building": "הדמות של {name} לומדת לזוז — מוכנה בעוד כמה דקות",
+  "elev.hero.sheet.building.boy": "הגיבור של {name} לומד לזוז — מוכן בעוד כמה דקות",
+  "elev.hero.sheet.building.girl": "הגיבורה של {name} לומדת לזוז — מוכנה בעוד כמה דקות",
+  "elev.hero.sheet.stopped": "הדמות של {name} למדה היום חלק מהתנועות — המשחק משתמש בהן.",
+  "elev.hero.sheet.stopped.boy": "הגיבור של {name} למד היום חלק מהתנועות — המשחק משתמש בהן.",
+  "elev.hero.sheet.stopped.girl": "הגיבורה של {name} למדה היום חלק מהתנועות — המשחק משתמש בהן.",
+  "elev.hero.sheet.review.title": "הדמות של {name} יודעת לזוז. האם כל תנוחה נראית כמו {name}?",
+  "elev.hero.sheet.review.title.boy": "הגיבור של {name} יודע לזוז. האם כל תנוחה נראית כמו {name}?",
+  "elev.hero.sheet.review.title.girl": "הגיבורה של {name} יודעת לזוז. האם כל תנוחה נראית כמו {name}?",
+  "elev.hero.sheet.review.ask": "האם זה נראה כמו {name}?",
+  "elev.hero.sheet.review.yes": "כן",
+  "elev.hero.sheet.review.redraw": "ציירו מחדש",
+  "elev.hero.sheet.review.redrawing": "מציירים מחדש…",
+  "elev.hero.sheet.review.kept": "נשמר",
+  "elev.hero.sheet.review.redrawn": "צויר מחדש",
+  "elev.hero.sheet.review.failed": "התנוחה הזו נחה היום — המשחק משתמש בתנוחה אחרת.",
+  "elev.hero.sheet.pose.idle": "עמידה",
+  "elev.hero.sheet.pose.tiptoe": "על קצות האצבעות",
+  "elev.hero.sheet.pose.dash": "ריצה",
+  "elev.hero.sheet.pose.freeze-a": "פסל",
+  "elev.hero.sheet.pose.freeze-b": "פסל עץ",
+  "elev.hero.sheet.pose.oops": "אופס",
+  "elev.hero.sheet.pose.cheer": "שמחה",
+  "elev.hero.sheet.pose.hold-up": "הרמה",
 };

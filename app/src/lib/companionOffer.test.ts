@@ -28,7 +28,8 @@ import {
 } from "./companionOffer";
 import { DEFAULT_PREFS } from "../growth/jitaiPrefs";
 import CompanionOfferSlot from "../components/overview/CompanionOfferSlot";
-import type { Nudge } from "./jitai";
+import type { Nudge } from "./jitai";
+import { todayLiveSource } from "../testTodaySource";
 
 // Build an epoch ms whose LOCAL hour is `h` (same clock as jitai.test.ts).
 const at = (h: number, day = 17) => new Date(2026, 5, day, h, 0, 0).getTime();
@@ -267,7 +268,7 @@ describe("B-AI-06 — render: exactly one proactive module", () => {
   it("Today and Ask mount no proactive renderer outside the coordinator (source scan)", () => {
     const strip = (c: string) => c.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
     const read = (rel: string) => strip(readFileSync(path.join(__dirname, "..", rel), "utf8"));
-    const overview = read("components/tabs/OverviewTab.tsx");
+    const overview = todayLiveSource();
     const coach = read("components/tabs/CoachTab.tsx");
     for (const src of [overview, coach]) {
       expect(src).not.toMatch(/<CarryOverActionAsk\b/);
@@ -299,7 +300,7 @@ describe("B-TODAY-18 — tomorrow's reason is a coordinator candidate", () => {
     const slot = read("../components/overview/CompanionOfferSlot.tsx");
     expect(slot).toContain('case "tomorrow-reason":');
     expect(slot).toContain("<TomorrowReasonCard onResolved={controls.refresh} />");
-    const growth = read("../components/tabs/DevelopmentTab.tsx");
+    const growth = read("../components/companion/PortraitWatchRow.tsx");
     expect(growth).not.toContain("<TomorrowReasonCard");
     expect(growth).toContain("closeDay(childProfile.id, Date.now(), returnSignals);");
     const hook = read("../components/overview/useCompanionOffer.ts");

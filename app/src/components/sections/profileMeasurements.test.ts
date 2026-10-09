@@ -14,10 +14,10 @@ const stripComments = (src: string) =>
   src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
 
 describe("B-GROWTH-05 — Measurements live on Profile, not on Growth", () => {
-  const dev = stripComments(read("components/tabs/DevelopmentTab.tsx"));
+  const dev = stripComments(["components/companion/ChildPortrait.tsx", "components/companion/PortraitWatchRow.tsx", "components/companion/PortraitKeepsakes.tsx"].map(read).join("\n"));
   const profile = stripComments(read("components/sections/ChildProfile.tsx"));
 
-  it("DevelopmentTab does not import or mount PhysicalGrowthCard; ChildProfile does", () => {
+  it("the Growth leaf does not import or mount PhysicalGrowthCard; ChildProfile does", () => {
     expect(dev).not.toContain("PhysicalGrowthCard");
     expect(profile).toContain('import PhysicalGrowthCard from "./PhysicalGrowthCard";');
     expect(profile).toContain("<PhysicalGrowthCard embedded />");

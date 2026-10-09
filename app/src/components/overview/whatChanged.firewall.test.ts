@@ -213,8 +213,8 @@ describe("hidden on day-0 and with no events", () => {
     }
   });
 
-  it("OverviewTab gates the mount on returning + not day-0", () => {
-    const overview = code("../tabs/OverviewTab.tsx");
+  it("Today gates the mount on returning + not day-0 (Now's More-for-today door)", () => {
+    const overview = code("../companion/NowMoreForToday.tsx");
     expect(overview).toMatch(/changedWould\s*=\s*!dayZero\s*&&\s*isReturning\s*&&/);
     expect(overview).toMatch(/previousVisitAt:\s*isReturning\s*&&\s*!dayZero/);
   });

@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const voice = vi.hoisted(() => ({ speakText: vi.fn(() => 7), stopVoice: vi.fn(), supported: true }));
-vi.mock("../../lib/voice", () => ({ speakText: voice.speakText, stopVoice: voice.stopVoice, voiceSupported: () => voice.supported }));
+vi.mock("../../lib/voice", () => ({ speakText: voice.speakText, stopVoice: voice.stopVoice, voiceSupported: () => voice.supported, voiceState: () => ({ speaking: false, engine: "basic" }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: "en", aiLang: "en", t: (k: string) => k }) }));
 vi.mock("../../lib/api", () => ({ api: {} }));
 vi.mock("../../lib/tts", () => ({ stopSpeaking: vi.fn() }));

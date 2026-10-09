@@ -33,7 +33,11 @@ const GRADIENT = /--arbor-gradient-primary|--gradient-cta|\bgradient-cta\b/;
 const SCOPE_DIRS = ["overview", "onboarding", "trust", "ui", "weekly"];
 /** Individually scoped leaves outside those directories. */
 const SCOPE_FILES = [
-  "tabs/OverviewTab.tsx",
+  // Parity 9 Oct: Today is NowView and the loop it runs.
+  "companion/NowView.tsx",
+  "companion/NowLoopBlocks.tsx",
+  "companion/NowMoreForToday.tsx",
+  "companion/NowRecommendation.tsx",
   "tabs/JournalTab.tsx",
   "tabs/WeeklyTab.tsx",
 ];
@@ -267,11 +271,6 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "tabs/BedtimeStoriesTab.tsx",
     // The shared companion composer uses a solid token fill. CoachTab no
     // longer receives a gradient licence merely because it hosts the input.
-    // W2-GROWTH critic r1: with no focus milestone, "Review milestones" carries
-    // data-primary-move="notice-milestone" (surfaceContract development
-    // .primaryMove) and is the only gradient in the file; growthPrimaryMove.test
-    // pins one gradient + the stamp on the same control.
-    "tabs/DevelopmentTab.tsx",
     // W2-GROWTH critic r1: "Add phrase" = data-primary-move log-language-moment
     // (surfaceContract language.primaryMove), the only gradient in the file; it
     // spells the literal (was the T.gradientCta alias this scan cannot see);

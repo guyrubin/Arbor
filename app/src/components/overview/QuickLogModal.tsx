@@ -522,6 +522,8 @@ export default function QuickLogModal({
         ...(shelf ? { shelf } : {}),
         ...(newLogContext ? { context: newLogContext } : {}),
         ...(newLogNotes.trim() ? { notes: newLogNotes.trim() } : {}),
+        // The inline alert below is this failure's one message (draft kept).
+        callerShowsFailure: true,
       });
       if (!isCurrent()) return;
       if (!written) { setSaveError(t("companion.capture.saveError")); return; }
@@ -576,7 +578,7 @@ export default function QuickLogModal({
     const isCurrent = sessionRef.current.lease("write");
     busyRef.current = true; setSaving(true); setSaveError(null);
     try {
-      const written = await handleAddLog(e);
+      const written = await handleAddLog(e, { callerShowsFailure: true });
       if (!isCurrent()) return;
       if (!written) { setSaveError(t("companion.capture.saveError")); return; }
       setReviewing(false); setSource("text");

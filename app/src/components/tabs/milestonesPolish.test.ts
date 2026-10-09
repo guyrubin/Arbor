@@ -77,7 +77,8 @@ describe("UND-7 — governed milestone example-media seam ships empty, renders f
 });
 
 describe("UND-6 — weekly focus is age-aware", () => {
-  const code = stripComments(read("components/tabs/DevelopmentTab.tsx"));
+  // Parity 9 Oct: the weekly focus lives in the portrait's watch row.
+  const code = stripComments(read("components/companion/PortraitWatchRow.tsx"));
 
   it("selects through selectWeeklyFocus with corrected months, not array order", () => {
     expect(code).toContain("selectWeeklyFocus(milestones, comparisonMonths)");

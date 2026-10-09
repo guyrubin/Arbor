@@ -35,11 +35,12 @@ import type { ActionLoopEntry } from "../../actionLoop/model";
 import { lastNightWords } from "../../lib/today/shelfWords";
 import { tonightLineEntry, tonightOutcomeEntry } from "../../lib/loop/tonight";
 import { practiceDoseEntry } from "../../lib/practice/choosePractice";
-import { translate as translateFor } from "../../lib/i18n";
+import { translate as translateFor } from "../../lib/i18n";
+import { todayFile, todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
-const OV = strip(readFileSync(path.join(here, "OverviewTab.tsx"), "utf8").replace(/\r\n/g, "\n"));
+const OV = strip(todayLiveSource().replace(/\r\n/g, "\n"));
 
 describe("OverviewTab — three blocks and one door (source pins)", () => {
   it("chooseTodayAction is retired for Today; the old step chain is gone", () => {
@@ -52,13 +53,14 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
   // P5 design r1 P0-1 re-pin: the ONE stamp literal sits on the first
   // block's ANSWER group (PracticeCard / TonightFlow stampMove, the slot
   // NoticeCard answersAttrs), never on a wrapper around the whole card.
-  it("the blocks render in planToday's order; exactly ONE primary-move stamp (do-practice) on the first block's answers", () => {
-    expect(OV).toContain("plan.order.map((id) => (");
-    expect(OV).toContain('data-module={`today-${id}`}');
-    expect(OV.match(/data-primary-move/g)?.length).toBe(1);
-    expect(OV).toContain('const primaryStamp = { "data-primary-move": "do-practice" } as const;');
-    expect(OV).toContain('stampMove={firstBlock === "practice" ? primaryMoveId : undefined}');
-    expect(OV).toContain('stampMove={firstBlock === "tonight" ? primaryMoveId : undefined}');
+  it("the lead follows planToday's order (Tonight first in the evening); ONE primary-move literal per file, on the first block's answers", () => {
+    // Parity 9 Oct: #/overview is NowView; planToday still decides the loop's blocks.
+    expect(OV).toContain('const tonightLeads = tonightOpen || (!chosen && loop.plan.order[0] === "tonight");');
+    expect(OV).toContain('const showNotice = lead !== "notice" && loop.plan.order.includes("notice") && loop.blockNotices.length > 0;');
+    expect(strip(todayFile("NowView.tsx")).match(/data-primary-move/g)?.length).toBe(1);
+    expect(strip(todayFile("NowLoopBlocks.tsx")).match(/data-primary-move/g)?.length).toBe(1);
+    expect(OV).toContain('const stamp = { "data-primary-move": MOVE } as const;');
+    expect(OV.match(/stampMove=\{MOVE\}/g)).toHaveLength(2);
     expect(OV).not.toMatch(/<div data-primary-move=/);
     expect(contractFor("overview")).toMatchObject({ primaryMove: "choose-next-step", moduleBudget: 3, demotionTarget: "disclosure" });
   });
@@ -66,15 +68,15 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
   it("Tonight is a pointer line in the morning, the flow in the evening; the door is ONE collapsed disclosure", () => {
     expect(OV).toContain('data-testid="today-tonight-pointer"');
     expect(OV).toContain("<TonightFlow");
-    expect(OV).toMatch(/<details data-module-disclosure="today-more" data-testid="today-door"(?![^>]*\bopen\b)/);
+    // Parity 9 Oct: the door is Now's "More for today" (NowMoreForToday).
+    expect(OV).toMatch(/<details className="now-more" data-module-disclosure="today-more" data-testid="today-door"(?![^>]*\bopen\b)/);
     const door = OV.slice(OV.indexOf('data-testid="today-door"'), OV.indexOf("</details>"));
-    // P5 r1 pass A5 (option b): lines only, plus the ONE proactive slot, the
-    // clinical watch signal and the sibling lines; no lifecycle card, no rail,
-    // no step card (TodayStepLine is its line).
-    for (const tok of ["<WhatChanged", "today-door-hard", "today-door-week", "today-door-play", "<TodayStepLine", "<ArborNoticedCard", "<CompanionOfferSlot", "<FamilyOfferLines"]) {
+    // lines only, plus the ONE proactive slot, the say-back, the clinical watch
+    // signal and the sibling lines; the hard-moment and week doors sit beside the lead
+    for (const tok of ["<WhatChanged", "today-door-story", "today-door-play", "<TodaySayBackLine", "<ArborNoticedCard", "<CompanionOfferSlot", "<FamilyOfferLines"]) {
       expect(door, tok).toContain(tok);
     }
-    for (const tok of ["<LifecycleMomentCard", "<FirstStepsRail", "<TodayActionLoop"]) expect(OV, tok).not.toContain(tok);
+    for (const tok of ["<LifecycleMomentCard", "<FirstStepsRail", "<TodayActionLoop", "<TodayStepLine"]) expect(OV, tok).not.toContain(tok);
     expect(door).toContain("changed.lines.slice(0, 3)");
   });
 
@@ -88,7 +90,7 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
   it("the parent's own words on the practice's shelf, THEN and NOW, sit in the practice card", () => {
     expect(OV).toContain("shelfWordsThenNow(observations, behaviorLogs, pick.shelf)");
     expect(OV).toContain("[words.then, words.now]");
-    expect(OV).toContain("quotes={quotes}");
+    expect(OV).toContain("quotes={loop.quotes}");
   });
 });
 
@@ -231,10 +233,12 @@ describe("every Today / practice / tonight string — no streak, no count of day
 describe("B-DESIGN-04 · Today takes the blend frame", () => {
   const TF = strip(readFileSync(path.join(here, "..", "loop", "TonightFlow.tsx"), "utf8").replace(/\r\n/g, "\n"));
   it("Notice today = SectionHead (visibility glyph, the h2 id the section is labelled by, the sub-line) over one card", () => {
-    const block = OV.slice(OV.indexOf('data-testid="today-notice"'), OV.indexOf("const tonightBlock"));
-    expect(block).toContain('<SectionHead id="today-notice-title" icon="visibility" title={t("elev.loop.today.notice.title")} sub={t("elev.loop.today.notice.sub")} />');
-    expect(block).toContain('aria-labelledby="today-notice-title"');
-    expect(block).toMatch(/className="arbor-depth-card mt-3/);
+    // Parity 9 Oct: the block is NowNoticeBlock (components/companion/NowLoopBlocks.tsx).
+    const blocks = strip(todayFile("NowLoopBlocks.tsx"));
+    const block = blocks.slice(blocks.indexOf('data-testid="today-notice"'), blocks.indexOf("export function NowTonightLead"));
+    expect(block).toContain('<SectionHead id={`${id}-notice`} icon="visibility" title={t("elev.loop.today.notice.title")} sub={t("elev.loop.today.notice.sub")} />');
+    expect(block).toContain("aria-labelledby={`${id}-notice`}");
+    expect(block).toContain('<div className="now-notice-card">');
     expect(block).not.toMatch(/rounded-\[|text-\[\d/);
   });
   it("every NoticeCard on Today (the slot card, the Notice rows, Tonight's step 3) answers segmented", () => {
@@ -244,7 +248,13 @@ describe("B-DESIGN-04 · Today takes the blend frame", () => {
     expect(TF).toMatch(/<NoticeCard[\s\S]{0,400}answers="segmented"/);
   });
   it("the deep shadow belongs to the day's ONE primary card — the morning practice card or, at 21:00, the Tonight card (R6; they never render together); the door is a solid hairline", () => {
-    expect(OV).not.toMatch(/arbor-depth-primary|--arbor-shadow-primary/);
+    // Parity 9 Oct: the loop blocks add no depth of their own (PracticeCard and
+    // TonightFlow carry it); each Now lead that is not a loop card carries it
+    // itself — the chosen step, the program, the recommendation — and exactly
+    // one lead renders, so one deep card is on screen.
+    expect(strip(todayFile("NowLoopBlocks.tsx"))).not.toMatch(/arbor-depth-primary|--arbor-shadow-primary/);
+    expect(strip(todayFile("NowView.tsx")).match(/arbor-depth-primary/g)).toHaveLength(2);
+    expect(strip(todayFile("NowRecommendation.tsx")).match(/arbor-depth-primary/g)).toHaveLength(1);
     // P7-DESIGN fix r1 (framer ruling R6, overview design P1-1): Tonight is the evening's primary card —
     // the morning card's depth on the token radius, the caption in the label style, "1 of 3" inside the
     // header row, the say at .arbor-type-say, no hard-coded text-[Npx]
@@ -261,9 +271,9 @@ describe("B-DESIGN-04 · Today takes the blend frame", () => {
       const order = planToday({ evening: true, tonight: true, notice: true, practice: true, practiceShown } as Parameters<typeof planToday>[0]).order;
       expect(order.includes("practice") && order.includes("tonight"), String(practiceShown)).toBe(false);
     }
-    const door = OV.slice(OV.indexOf('data-testid="today-door"'), OV.indexOf("</summary>"));
-    expect(door).toContain('border: "1px solid var(--arbor-rule)"');
-    expect(door).not.toMatch(/dashed/);
+    const css = readFileSync(path.join(here, "..", "companion", "nowView.css"), "utf8");
+    expect(css).toMatch(/\.now-more \{[^}]*border: 1px solid var\(--arbor-rule\)/);
+    expect(css.match(/\.now-more[^{]*\{[^}]*\}/g)?.join("\n")).not.toMatch(/dashed/);
   });
   it("the flat loop glyph is gone from Today: PracticeCard, NoticeCard and TonightFlow mount the duotone one", () => {
     for (const rel of ["PracticeCard.tsx", "NoticeCard.tsx", "TonightFlow.tsx"]) {

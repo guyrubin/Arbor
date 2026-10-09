@@ -49,12 +49,12 @@ const FOREIGN = ["components/kidmode/"];
 
 /** The content choosers (the item's list) — rule C applies here. */
 export const CHOOSERS = [
-  "components/tabs/OverviewTab.tsx",
+  "components/companion/useNowLoop.ts",
   "components/overview/useCompanionOffer.ts",
   "components/tabs/DailyPlayTab.tsx",
   "components/tabs/JournalTab.tsx",
   "components/tabs/MilestonesTab.tsx",
-  "components/tabs/DevelopmentTab.tsx",
+  "components/companion/PortraitWatchRow.tsx",
   "components/sections/Screening.tsx",
   "components/sections/DayWindowsPanel.tsx",
   "components/sections/SmartRemindersPanel.tsx",

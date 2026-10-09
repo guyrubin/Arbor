@@ -183,7 +183,7 @@ describe("ENG-25 → B-GROWTH-03 — the cadence is surfaced on #/family", () =>
     const mod = growth.indexOf('data-module="family-rituals"');
     expect(mod).toBeGreaterThan(-1);
     expect(growth.indexOf("<RitualTurnCard")).toBeGreaterThan(mod);
-    expect(read("../components/tabs/DevelopmentTab.tsx")).not.toMatch(/RitualTurnCard/);
+    for (const f of ["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx"]) expect(read(`../components/companion/${f}`)).not.toMatch(/RitualTurnCard/);
     expect(card).toContain("ritualOfTheMoment");
     expect(card).toContain("markRitualPractised");
     expect(card).toContain('data-testid="ritual-turn-card"');

@@ -93,6 +93,9 @@ export const CHILD_SUBCOLLECTIONS = [
   // −2..+2 scale labels, the family's scores; lib/goals.ts). Export + erase.
   "familyGoals",
   "coachSessions", // B-PROG-10: the guided tier's sessions the parent booked (slot, day, what the family agreed to try) — export + erase
+  // B-GAME-13c: the hero's pose sheet — one doc per pose (generated art drawn
+  // from the stored generated hero, never a photo) + `_meta`. Export + erase.
+  "heroSheet",
 ];
 
 const remoteActive = (uid?: string) =>

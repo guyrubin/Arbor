@@ -133,7 +133,7 @@ describe("ENG-23 → B-GROWTH-03 — #/smart-reminders mounts the primed card, n
 
   it("B-GROWTH-03: the state comes from usePushPriming and Growth no longer mounts the card", () => {
     expect(src).toContain("const push = usePushPriming();");
-    const growth = read("../components/tabs/DevelopmentTab.tsx");
+    const growth = ["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx"].map((f) => read(`../components/companion/${f}`)).join("\n");
     expect(growth).not.toMatch(/<PushPrimingCard|import[^;]*(PushPrimingCard|usePushPriming|readPushPermission)/);
     const hook = read("../hooks/usePushPriming.ts");
     expect(hook).toContain('import("../lib/push.js")');

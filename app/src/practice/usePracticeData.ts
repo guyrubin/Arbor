@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import type {
   AdventureResult,
   BandSnapshot,
-  DevelopmentMetrics,
   HeroJourneyRun,
   Milestone,
   MimicSession,
@@ -103,7 +102,6 @@ export interface CopilotData {
    * already stored, as counts; W4-R2 / W4-P1 retire the read and the documents.
    */
   snapshots: BandSnapshot[];
-  heroMetrics: Partial<DevelopmentMetrics>;
   heroRunCount: number;
 }
 
@@ -126,20 +124,11 @@ export function useCopilot(
     max: 60,
   });
 
-  const heroMetrics = useMemo(() => {
-    const sum: Partial<DevelopmentMetrics> = {};
-    for (const run of heroRunsCol.items) {
-      for (const [k, v] of Object.entries(run.metricsEarned ?? {})) {
-        const key = k as keyof DevelopmentMetrics;
-        sum[key] = (sum[key] ?? 0) + (v ?? 0);
-      }
-    }
-    return sum;
-  }, [heroRunsCol.items]);
-
+  // B-BOOK-60: a story choice is never evidence about the child — the runs'
+  // legacy `metricsEarned` are not summed and no band reads them.
   const bands = useMemo(
-    () => domainBands(milestones, data.speech.items, data.missions.items, data.adventures.items, data.events.items, heroMetrics),
-    [milestones, data.speech.items, data.missions.items, data.adventures.items, data.events.items, heroMetrics]
+    () => domainBands(milestones, data.speech.items, data.missions.items, data.adventures.items, data.events.items),
+    [milestones, data.speech.items, data.missions.items, data.adventures.items, data.events.items]
   );
   const recommendation = useMemo(() => recommend(bands, data.missions.items), [bands, data.missions.items]);
 
@@ -156,7 +145,6 @@ export function useCopilot(
     recommendation,
     confidence,
     snapshots: snapshotsCol.items,
-    heroMetrics,
     heroRunCount: heroRunsCol.items.length,
   };
 }

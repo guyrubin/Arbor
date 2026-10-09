@@ -27,7 +27,8 @@ vi.mock("../../context/LanguageContext", async () => {
 });
 
 import FirstMonthKeepsakeRow, { firstMonthKeepsakeRow, keptOnLabel } from "../loop/FirstMonthKeepsakeRow";
-import { translate } from "../../lib/i18n";
+import { translate } from "../../lib/i18n";
+import { todayLiveSource } from "../../testTodaySource";
 
 const NOW = new Date(2026, 9, 7, 9, 0, 0); // 7 Oct, local — day 64 after the anchor
 const LOGS = [{ timestamp: "2026-08-04T18:00:00.000Z" }, { timestamp: "2026-08-04T19:00:00.000Z" }, { timestamp: "2026-08-20T08:00:00.000Z" }];
@@ -91,7 +92,7 @@ describe("#/memory renders the row (EN + HE)", () => {
 
 describe("the mount: #/memory's keepsakes section, never Today", () => {
   const MEM = read("ChildMemory.tsx");
-  const OV = read("../tabs/OverviewTab.tsx");
+  const OV = todayLiveSource();
   it("ChildMemory mounts it once, right after Things {name} said (the quotes module)", () => {
     expect(MEM.match(/<FirstMonthKeepsakeRow /g)).toHaveLength(1);
     const quotes = MEM.slice(MEM.indexOf('data-module="memory-quotes"'), MEM.indexOf("</div>", MEM.indexOf('data-module="memory-quotes"')));

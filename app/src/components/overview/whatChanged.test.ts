@@ -48,7 +48,8 @@ vi.mock("../../lib/analytics", () => ({
 }));
 
 import WhatChanged from "./WhatChanged";
-import { composeWhatChanged, WHAT_CHANGED_MAX_LINES, WHAT_CHANGED_QUOTE_MAX, type WhatChangedLine } from "./whatChangedEvents";
+import { composeWhatChanged, WHAT_CHANGED_MAX_LINES, WHAT_CHANGED_QUOTE_MAX, type WhatChangedLine } from "./whatChangedEvents";
+import { todayLiveSource } from "../../testTodaySource";
 
 const T0 = Date.parse("2026-09-28T20:00:00.000Z");
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -283,15 +284,16 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC_ROOT, rel), "utf8");
 const stripComments = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 describe("OverviewTab wiring — ONE What-changed card", () => {
-  const overview = stripComments(read("components/tabs/OverviewTab.tsx"));
+  const overview = stripComments(todayLiveSource());
   const card = stripComments(read("components/overview/WhatChanged.tsx"));
 
   // B-LOOP-07 re-pin: the ONE What-changed card is the first object behind
   // Today's "More for today" door (≤ 3 lines), after the three blocks.
-  it("one mount, behind the door, after the blocks", () => {
+  it("one mount, behind the door, after the lead", () => {
     expect(overview.match(/<WhatChanged\b/g)).toHaveLength(1);
-    expect(overview).toMatch(/\{changedWould && \(\s*<WhatChanged\s+lines=\{changed\.lines\.slice\(0, 3\)\}/);
-    expect(overview.indexOf("<WhatChanged")).toBeGreaterThan(overview.indexOf("plan.order.map((id) => ("));
+    expect(overview).toMatch(/\{changedWould && <WhatChanged\s+lines=\{changed\.lines\.slice\(0, 3\)\}/);
+    // Parity 9 Oct: the door (NowMoreForToday) mounts after Now's lead and loop blocks.
+    expect(overview.indexOf("<NowMoreForToday")).toBeGreaterThan(overview.indexOf("{showPointer &&"));
     expect(overview.indexOf("<WhatChanged")).toBeGreaterThan(overview.indexOf('data-testid="today-door"'));
   });
 

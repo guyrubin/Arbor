@@ -174,7 +174,7 @@ describe("B-GROWTH-11 — render sites print through the resolver (source scan)"
       /milestoneTitle=\{\s*openKeepsake\?\.title/,
       /title:\s*item\.title\b/,
     ],
-    "components/tabs/DevelopmentTab.tsx": [
+    "components/companion/PortraitWatchRow.tsx": [
       /\bchosenWatch\.(?:title|description)\b/,
       /\bselected\.milestone\.(?:title|description)\b/,
       /title:\s*m\.title\b/,
@@ -193,7 +193,7 @@ describe("B-GROWTH-11 — render sites print through the resolver (source scan)"
   it("NEGATIVE CONTROL: the pre-fix render shapes are what the scan bans", () => {
     expect("<span>{item.title}</span>").toMatch(FORBIDDEN["components/tabs/MilestonesTab.tsx"][0]);
     expect("{band.label}").toMatch(FORBIDDEN["components/tabs/MilestonesTab.tsx"][1]);
-    expect("title: chosenWatch.title,").toMatch(FORBIDDEN["components/tabs/DevelopmentTab.tsx"][0]);
+    expect("title: chosenWatch.title,").toMatch(FORBIDDEN["components/companion/PortraitWatchRow.tsx"][0]);
     expect("{nextToWatch.title}").toMatch(FORBIDDEN["components/growth/MonthInReview.tsx"][0]);
   });
 });

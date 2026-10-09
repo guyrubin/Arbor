@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { TODAY_MODULE_BUDGET, planToday, type TodayModuleId, type TodayPlanInput } from "./todayModules";
-import { contractFor } from "../../lib/surfaceContract";
+import { contractFor } from "../../lib/surfaceContract";
+import { todayFile, todayLiveSource } from "../../testTodaySource";
 
 /**
  * B-LOOP-07 — Today = three blocks (practice · notice · tonight); the door is
@@ -47,10 +48,10 @@ describe("todayModules v3 — planToday", () => {
   it("evening: tonight → notice; the morning receipt never sits under the open flow (critic c2 r1)", () => {
     expect(planToday(STATES.evening)).toEqual({ order: ["tonight", "notice"], tonightPointer: false, practiceMode: null });
     expect(planToday(STATES.eveningUnanswered).order).toEqual(["tonight", "notice"]);
-    const tab = stripComments(read("components/tabs/OverviewTab.tsx"));
+    const tab = stripComments(todayLiveSource());
     expect(tab).not.toMatch(/PracticeOutcomeStrip|practiceMode === "outcome"/);
     // the story is ONE door line at night, never a line under the Tonight card
-    expect(tab).toContain('{evening && storyFits && doorLine("today-door-story"');
+    expect(tab).toContain('{evening && storyFits && line("today-door-story"');
     expect(tab.slice(tab.indexOf("<TonightFlow"), tab.indexOf("/>", tab.indexOf("<TonightFlow")))).not.toMatch(/onStory=/);
   });
 
@@ -61,7 +62,7 @@ describe("todayModules v3 — planToday", () => {
     // the morning is unchanged by the flag
     expect(planToday({ ...STATES.morning, practiceShown: false })).toEqual(planToday(STATES.morning));
     // the container feeds the flag from the dose, the pin, the day impression and the pointer — and records the impression in day mode only
-    const tab = stripComments(read("components/tabs/OverviewTab.tsx"));
+    const tab = stripComments(todayLiveSource());
     expect(tab).toMatch(/practiceShown\s*=\s*!!dose \|\| tonightEarly \|\| !!readTodayPin\(/);
     expect(tab).toMatch(/plan\.practiceMode === "card"[\s\S]{0,200}markPracticeShown\(/);
   });
@@ -82,10 +83,13 @@ describe("todayModules v3 — planToday", () => {
     const c = contractFor("overview");
     expect(c?.moduleBudget).toBe(TODAY_MODULE_BUDGET);
     expect(c?.primaryMove).toBe("choose-next-step");
-    const ov = stripComments(read("components/tabs/OverviewTab.tsx"));
-    expect(ov.match(/data-primary-move/g)?.length).toBe(1);
-    // P5 design r1 P0-1: the prop form — one literal, placed on the answers.
-    expect(ov).toContain('"data-primary-move": "do-practice"');
+    // Parity 9 Oct: the leaf (NowView) keeps ONE literal; the loop blocks one,
+    // in the prop form placed on the answers, carrying the contract's move.
+    expect(stripComments(todayFile("NowView.tsx")).match(/data-primary-move/g)?.length).toBe(1);
+    const blocks = stripComments(todayFile("NowLoopBlocks.tsx"));
+    expect(blocks.match(/data-primary-move/g)?.length).toBe(1);
+    expect(blocks).toContain('const MOVE = "choose-next-step";');
+    expect(blocks).toContain('const stamp = { "data-primary-move": MOVE } as const;');
   });
 
   it("P1-B: the plan never consults a content-publish gate", () => {

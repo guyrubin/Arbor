@@ -1,7 +1,8 @@
-import React, { useId, useMemo, useState } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
+import type { JournalRequest } from "../../ai/journalContext";
 import { ageYearsOf, knownAgeMonthsOf } from "../../lib/age/forChild";
 import { focusBodyFor, focusHeadlineFor, whyLineFor } from "../../lib/todayFocus";
 import { localizeActivity } from "../../playbank/content";
@@ -11,13 +12,17 @@ import Icon from "../ui/Icon";
 import { TrustLink } from "../trust/TrustLink";
 import { dailyPlayForNow, focusSignalsForNow } from "./nowRecommendationModel";
 import { NOW_COPY } from "./nowViewCopy";
+import { trackActionOffered } from "../../lib/loopEvents";
 
 /** Mounted only when a chosen step/program does not already lead Now. The
  * parent keys this by child/language, so cached or in-flight AI from another
  * context cannot become the next child's recommendation. */
-export default function NowRecommendation({ name, onTalkOpen }: {
+export default function NowRecommendation({ name, onTalkOpen, journal }: {
   name: string;
   onTalkOpen: (prompt?: string) => void;
+  /** B-LOOP-13: the shelves, open milestones and night answers the step is
+   *  grounded in (ids and counts only; the same request the practice lead makes). */
+  journal?: JournalRequest;
 }) {
   const { childProfile, behaviorLogs, playLogs, milestones, actionLoop, acceptTodayAction, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
@@ -26,7 +31,7 @@ export default function NowRecommendation({ name, onTalkOpen }: {
   const id = useId();
   const now = useMemo(() => new Date(), [childProfile, behaviorLogs, playLogs, milestones, actionLoop]);
   const signals = useMemo(() => focusSignalsForNow({ behaviorLogs, playLogs, milestones, actionLoop }, now), [behaviorLogs, playLogs, milestones, actionLoop, now]);
-  const { focus, loading, error, regenerate } = useTodaysFocus(childProfile, signals);
+  const { focus, loading, error, regenerate } = useTodaysFocus(childProfile, signals, journal);
   const [libraryIndex, setLibraryIndex] = useState(0);
   const [preferLibrary, setPreferLibrary] = useState(false);
   const [stepsOpen, setStepsOpen] = useState(false);
@@ -58,6 +63,9 @@ export default function NowRecommendation({ name, onTalkOpen }: {
       : pick?.reason === "concern-match" ? copy.momentsWhy
         : pick?.reason === "interest-match" && pick.matchedInterest ? copy.interestWhy(pick.matchedInterest)
           : copy.curatedWhy;
+  // The funnel's first step (offered → accepted → outcome): one event per
+  // distinct AI step a parent is shown, never per render.
+  useEffect(() => { if (useAi && aiStep) trackActionOffered("now"); }, [useAi, aiStep]);
   const accept = async () => {
     // Only a genuine screened model step can enter the AI action ledger.
     if (!useAi || !aiStep || saving) return;
@@ -80,7 +88,7 @@ export default function NowRecommendation({ name, onTalkOpen }: {
     </div>
     <h2 id={`${id}-title`} className="now-lead-title" dir="auto">{headline}</h2>
     {body && <p className="now-lead-body" dir="auto">{body}</p>}
-    {useAi && focus?.sayThis && <div className="now-say"><span>{copy.say}</span><blockquote dir="auto">“{focus.sayThis}”</blockquote></div>}
+    {useAi && focus?.sayThis && <div className="now-say"><span>{copy.say}</span><blockquote dir="auto">{t("elev.loop.ms.quoted", { text: focus.sayThis })}</blockquote></div>}
 
     {!useAi && activity && stepsOpen && <div className="now-activity-steps" id={`${id}-steps`}>
       {!!activity.householdItems.length && <p className="now-materials"><b>{copy.materials}</b> {activity.householdItems.join(" · ")}</p>}

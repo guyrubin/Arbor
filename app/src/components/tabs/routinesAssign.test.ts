@@ -47,7 +47,7 @@ describe("GP-29 · the dead assign control is gone from the surface", () => {
     expect(TAB).not.toContain("openKidMode");
     expect(read("components/kidmode/useKidModeEntry.tsx")).toContain("openKidMode(target)");
     expect(read("components/layout/KidModeButton.tsx")).toContain("useKidModeEntry");
-    expect(read("components/practice/PracticeStudioTab.tsx")).toContain("requestKidMode(");
+    expect(read("components/companion/TogetherView.tsx")).toContain("requestKidMode(");
   });
 
   it("the sentence is gone from BOTH dictionaries, not just unmounted", () => {

@@ -4,7 +4,8 @@ import * as path from "node:path";
 import { planToday } from "./todayModules";
 import { LIFECYCLE_STICKY_KINDS } from "./useLifecycleMoment";
 import { resolveLifecycle } from "../../lib/lifecycle";
-import { en as lifecycleEn } from "../../lib/i18nElevation/lifecycle";
+import { en as lifecycleEn } from "../../lib/i18nElevation/lifecycle";
+import { todayFile, todayLiveSource } from "../../testTodaySource";
 
 /**
  * Wave E surface acceptance — the lifecycle module on Today (ENG-09, ENG-L0/L1/
@@ -29,7 +30,7 @@ function read(rel: string): string {
 const stripComments = (code: string) =>
   code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-const overviewRaw = read("components/tabs/OverviewTab.tsx");
+const overviewRaw = todayLiveSource();
 const cardRaw = read("components/overview/LifecycleMomentCard.tsx");
 const hookRaw = read("components/overview/useLifecycleMoment.ts");
 const overview = stripComments(overviewRaw);
@@ -39,7 +40,7 @@ const hook = stripComments(hookRaw);
 describe("the scans actually read the files they claim to", () => {
   it("every source is non-empty after normalisation and comment-stripping", () => {
     for (const [name, src] of [
-      ["OverviewTab.tsx", overview],
+      ["Today (NowView + loop)", overview],
       ["LifecycleMomentCard.tsx", card],
       ["useLifecycleMoment.ts", hook],
     ] as const) {
@@ -97,12 +98,15 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
   // B-TODAY-21: the since-strip is gone; the ONE What-changed card sits in the
   // anchor ROW (the seat the dev-map card held), so the lifecycle moment now
   // renders after that row — still after the day's action (P1-A).
-  it("never leads the page: the note sits inside the first block's header; What changed stays behind the door", () => {
-    const blocks = overview.indexOf("plan.order.map((id) => (");
-    const changed = overview.indexOf("<WhatChanged");
-    expect(blocks).toBeGreaterThan(-1);
-    expect(changed).toBeGreaterThan(blocks);
-    expect(overview.indexOf("headerNote={lifecycleNote}")).toBeGreaterThan(-1);
+  it("never leads the page: the note sits inside the practice card's header, else right after the lead; What changed stays behind the door", () => {
+    // Parity 9 Oct: Now places the note; the door is NowMoreForToday.
+    const view = stripComments(todayFile("NowView.tsx"));
+    expect(view).toContain("headerNote={lifecycleNote}");
+    const note = view.indexOf('className="now-lifecycle-note"');
+    expect(note).toBeGreaterThan(view.indexOf("<NowRecommendation"));
+    expect(note).toBeLessThan(view.indexOf("{showNotice &&"));
+    const door = stripComments(todayFile("NowMoreForToday.tsx"));
+    expect(door.indexOf("<WhatChanged")).toBeGreaterThan(door.indexOf('data-testid="today-door"'));
   });
 
   it("the budget has no lifecycle module id (todayModules v3: practice · notice · tonight · door)", () => {

@@ -16,7 +16,7 @@ const gate = vi.hoisted(() => ({ kid: true }));
 vi.mock("../../../lib/kidModeGate", () => ({ isKidModeActive: () => gate.kid, subscribeKidMode: () => () => {} }));
 vi.mock("../../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: "en", aiLang: "en", t: (k: string) => k }) }));
 vi.mock("../../../context/ArborContext", () => ({ useArborOptional: () => ({ childProfile: { id: "c1", kidTheme: "film3d" } }), useArbor: () => ({ childProfile: { id: "c1" } }) }));
-vi.mock("../../../lib/voice", () => ({ speakText: vi.fn(), stopVoice: vi.fn(), voiceSupported: () => true }));
+vi.mock("../../../lib/voice", () => ({ speakText: vi.fn(), stopVoice: vi.fn(), voiceSupported: () => true, voiceState: () => ({ speaking: false, engine: "basic" }) }));
 vi.mock("../../ui/HeroAvatar", () => ({ HeroAvatar: () => <span data-hero="" />, useHeroAvatar: () => ({ url: null }) }));
 // B-KID-94: the finish moment reads the child's souvenir ledger (per-child store).
 vi.mock("../rewards/useKidSouvenirs", () => ({ useKidSouvenirs: () => ({ items: [], loaded: true, upsert: async () => {} }) }));

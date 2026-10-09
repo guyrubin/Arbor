@@ -50,7 +50,7 @@ export const CHILD_DATA_ROWS: readonly ChildDataRow[] = [
     icon: "sports_esports",
     collections: [
       "playLogs", "practiceEvents", "speechAttempts", "mimicSessions", "missionRecords",
-      "heroRuns", "heroRenders", "journeyObjectives", "adventureResults", "savedStories", "savedComics", "kidSouvenirs",
+      "heroRuns", "heroRenders", "heroSheet", "journeyObjectives", "adventureResults", "savedStories", "savedComics", "kidSouvenirs",
     ],
   },
   // B-BOOK release: the child's own picture-book files (hero sheet, prints,

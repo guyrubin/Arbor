@@ -241,6 +241,10 @@ export interface CoachContract {
   frameRouting: FrameRouting;
   memoryProposals: { fact: string; source: string; retention: string }[];
   handoffNotes: { teacher: string; professional: string };
+  /** Parity 9 Oct: a file turn the FILE SAFETY GATE declined (text only). */
+  fileDeclined?: boolean;
+  /** Parity 9 Oct: what a child-related document says (file turns only). */
+  document?: { documentType: string; keyPoints: string[]; questionsForProfessional: string[]; handoffNote: string; suggestedMemory: string[] };
   /** ASK-4: anticipated next questions (2-3 short strings, localized via the
    *  languageDirective; zod-capped server-side and screened via
    *  renderCoachResponse). Client falls back to the static trio when absent. */
@@ -625,7 +629,8 @@ export interface HeroJourneyRun {
   startedAt: string;
   completedAt?: string;
   choiceId?: string;
-  metricsEarned: Partial<DevelopmentMetrics>;
+  /** Legacy (written before B-BOOK-60, 9 Oct 2026); never written now, never read. */
+  metricsEarned?: Partial<DevelopmentMetrics>;
   render: HeroJourneyRender;
 }
 

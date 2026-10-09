@@ -16,7 +16,8 @@ import {
   weekAnchorSeenKey,
 } from "./weekAnchor";
 import { isRecapUnopened, recapWeekId } from "../../hooks/useWeeklyRecap";
-import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
+import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
+import { todayLiveSource } from "../../testTodaySource";
 
 /** Minimal in-memory Storage stand-in (the suite runs in `environment: "node"`). */
 function fakeStorage(): Storage {
@@ -156,17 +157,14 @@ describe("ENG-24 — the anchor card is a door, not a second recap", () => {
  * there, and this test passes.
  */
 describe("ENG-24 — the anchor may only be mounted WITH a real recap signal", () => {
-  const OVERVIEW = readFileSync(
-    path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "tabs", "OverviewTab.tsx"),
-    "utf8",
-  )
+  const OVERVIEW = todayLiveSource()
     .replace(/\r\n/g, "\n")
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/^\s*\/\/.*$/gm, "");
 
   it("the Today hub source was actually read", () => {
     expect(OVERVIEW.length).toBeGreaterThan(20_000);
-    expect(OVERVIEW).toContain("export default function OverviewTab");
+    expect(OVERVIEW).toContain("export default function NowView");
   });
 
   it("the copy really does claim a written report is waiting", () => {

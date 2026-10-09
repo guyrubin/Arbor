@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { en, he } from "./i18n";
+import { en, he } from "./i18n";
+import { todayLiveSource } from "../testTodaySource";
 
 /**
  * AIX-S4 — "coach me on this" seeds are localized on every listed surface.
@@ -22,10 +23,9 @@ const SRC_ROOT = path.resolve(__dirname, "..");
 const SEED_SURFACES = [
   "components/tabs/DailyPlayTab.tsx",
   "components/tabs/LanguageLabTab.tsx",
-  "components/tabs/OverviewTab.tsx",
+  "components/companion/NowView.tsx",
   "components/tabs/MilestonesTab.tsx",
   "components/tabs/PlansTab.tsx",
-  "components/coach/ArborVision.tsx",
 ];
 
 function read(rel: string): string {
@@ -58,15 +58,15 @@ describe("AIX-S4 — no raw-English template literal reaches a coach seed", () =
     expect(read("components/tabs/DailyPlayTab.tsx")).toContain('t("seed.play.withGoal"');
     // B-LOOP-07: Today seeds no coach prompt (the practice is the move); the
     // seed.todayFocus key stays for the step card wherever it renders.
-    expect(read("components/tabs/OverviewTab.tsx")).not.toMatch(/seedCoach\(/);
+    // Parity 9 Oct: Now's ONE seed is talk()'s fallback, carrying NOW_COPY (EN/HE)
+    // prompts or the parent's own topic title.
+    expect(todayLiveSource().match(/seedCoach\(/g) ?? []).toHaveLength(1);
+    expect(todayLiveSource()).toContain('seedCoach({ prompt: prompt ?? "", source: "companion-now" })');
     // B-GROWTH-12: the gap-analysis seed left with its analyzer; the ONE door seeds this key.
     expect(read("components/tabs/MilestonesTab.tsx")).toContain('t("seed.milestone.ask"');
     expect(read("components/tabs/PlansTab.tsx")).toContain('t("seed.planCoreg"');
     expect(read("components/tabs/LanguageLabTab.tsx")).toContain('t("seed.langWeekPlan"');
     expect(read("components/tabs/LanguageLabTab.tsx")).toContain('t("seed.langActivity"');
-    expect(read("components/coach/ArborVision.tsx")).toContain('t("vis.seed.observe"');
-    expect(read("components/coach/ArborVision.tsx")).toContain('t("vis.seed.observeWithNote"');
-    expect(read("components/coach/ArborVision.tsx")).toContain('t("vis.seed.document"');
   });
 });
 
@@ -80,9 +80,6 @@ describe("AIX-S4 — seed keys exist in BOTH dictionaries with matching placehol
     "seed.planCoreg",
     "seed.langWeekPlan",
     "seed.langActivity",
-    "vis.seed.observe",
-    "vis.seed.observeWithNote",
-    "vis.seed.document",
   ];
 
   it("every seed key has a non-empty en + he value", () => {

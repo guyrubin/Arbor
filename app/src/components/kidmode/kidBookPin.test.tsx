@@ -38,7 +38,7 @@ vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ 
 vi.mock("../../lib/api", () => ({ api: { generateHeroJourney: () => { apiCalls.n += 1; return new Promise(() => {}); } } }));
 vi.mock("../../lib/kidModeGate", () => ({ isKidModeActive: () => true, subscribeKidMode: () => () => {}, noteKidActivity: () => {} }));
 vi.mock("../../lib/tts", () => ({ stopSpeaking: vi.fn() }));
-vi.mock("../../lib/voice", () => ({ speakText: vi.fn(() => 0), stopVoice: vi.fn(), voiceSupported: () => false }));
+vi.mock("../../lib/voice", () => ({ speakText: vi.fn(() => 0), stopVoice: vi.fn(), voiceSupported: () => false, voiceState: () => ({ speaking: false, engine: "basic" }) }));
 
 import HeroJourneyTab, { kidBookOpening, kidLateRenderApplies, kidPinKey, rememberJourney, journeyMemoKey, clearJourneyMemo, runRestorable } from "../tabs/HeroJourneyTab";
 import { kidBookOpenable, kidBooks } from "./kidBooks";

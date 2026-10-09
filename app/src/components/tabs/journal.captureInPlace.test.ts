@@ -20,7 +20,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildMomentLog, MOMENT_BEHAVIOR_TYPE } from "../../content/behaviorTaxonomy";
-import { translate } from "../../lib/i18n";
+import { translate } from "../../lib/i18n";
+import { todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..", "..");
@@ -29,7 +30,7 @@ const stripComments = (code: string) =>
   code.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 const JOURNAL = stripComments(read("components/tabs/JournalTab.tsx"));
-const TODAY = stripComments(read("components/tabs/OverviewTab.tsx"));
+const TODAY = stripComments(todayLiveSource());
 const MODAL = stripComments(read("components/overview/QuickLogModal.tsx"));
 const CONTEXT = stripComments(read("context/ArborContext.tsx"));
 
@@ -41,7 +42,9 @@ const startCaptureOf = (src: string) => {
 };
 
 describe("B-TODAY-19 · every capture tile opens the one sheet in place", () => {
-  for (const [name, src] of [["Journal", JOURNAL], ["Today", TODAY]] as const) {
+  // Parity 9 Oct: Today (NowView) has no startCapture of its own — its doors
+  // call the context seam openCaptureSheet (pinned below).
+  for (const [name, src] of [["Journal", JOURNAL]] as const) {
     const body = startCaptureOf(src);
     it(`${name}: startCapture never switches hubs or hands off`, () => {
       expect(body).not.toContain('setActiveTab("behaviors")');
@@ -64,9 +67,9 @@ describe("B-TODAY-19 · every capture tile opens the one sheet in place", () => 
     expect(JOURNAL).toMatch(/setOpenSignal\(null\);\s*openCaptureSheet\(\{ editLogId: logId \}\);/);
   });
 
-  it("Today's capture tiles open the one sheet in place (no prompt card on Today since B-LOOP-07)", () => {
-    expect(TODAY).toContain('onText={() => startCapture("text")}');
-    expect(TODAY).toContain("<QuickLogModal open={quickLogOpen} mode={quickLogMode} promptKey={quickLogPromptKey}");
+  it("Today's capture doors open the one sheet in place (Now's side card: write · dictate · photo)", () => {
+    for (const mode of ["text", "voice", "photo"]) expect(TODAY).toContain(`openCaptureSheet({ mode: "${mode}" })`);
+    expect(TODAY).not.toContain("requestCapture(");
   });
 
   it("the Journal's tapped writing prompt rides in as the sheet's cue", () => {
@@ -142,7 +145,7 @@ describe("B-TODAY-19 · addMoment stores the photo (unit)", () => {
 
   it("ArborContext.addMoment writes the builder's record (one path)", () => {
     // B-LOOP-07/10: the opts also carry the shelf + milestone Tonight files the line on; the builder gets the rest.
-    expect(CONTEXT).toMatch(/const addMoment = async \(\s*text: string,\s*opts: \{ photoAttachment\?: string; promptKey\?: string; shelf\?: ShelfId; milestoneId\?: string; context\?: BehaviorContext; notes\?: string \} = \{\},/);
+    expect(CONTEXT).toMatch(/const addMoment = async \(\s*text: string,\s*opts: \{ photoAttachment\?: string; promptKey\?: string; shelf\?: ShelfId; milestoneId\?: string; context\?: BehaviorContext; notes\?: string; callerShowsFailure\?: boolean \} = \{\},/);
     expect(CONTEXT).toContain('buildMomentLog(text, context ?? "", buildOpts)');
   });
 
@@ -202,7 +205,7 @@ describe("B-ASKJB-30 · edit and review in place", () => {
     expect(MODAL).toContain("if (editLogId) cancelEditLog();");
     // handleAddLog is called from confirm only — the review step is the one write.
     expect(MODAL.match(/handleAddLog\(/g)?.length).toBe(1);
-    expect(MODAL.slice(MODAL.indexOf("const confirm = "), MODAL.indexOf("const discard = "))).toContain("handleAddLog(e)");
+    expect(MODAL.slice(MODAL.indexOf("const confirm = "), MODAL.indexOf("const discard = "))).toContain("handleAddLog(e, { callerShowsFailure: true })");
     expect(CTX).toContain("editingLogSnapshotRef.current?.id === editingLogId");
     expect(CTX).toContain("...existing,");
   });

@@ -1,6 +1,27 @@
 .now-page { max-inline-size: 1100px; padding-block-start: 8px; container-type: inline-size; container-name: now; }
 .now-page button { overflow-wrap: anywhere; }
 .now-heading { margin-block-end: 28px; }
+.now-identity { display: flex; align-items: center; gap: 10px; min-inline-size: 0; }
+.now-identity .companion-eyebrow { min-inline-size: 0; }
+.now-lifecycle-note { margin-block-start: 8px; font-size: var(--t-sm); color: var(--arbor-clay-deep); }
+.now-loop-lead { min-inline-size: 0; }
+.now-loop-adapt { margin-block-start: 10px; }
+.now-notice { margin-block-start: 26px; min-inline-size: 0; }
+.now-notice-card { margin-block-start: 12px; padding-inline: 18px; border-radius: var(--r-lg); background: var(--arbor-paper-elevated); }
+.now-notice-row.is-next { border-block-start: 1px solid var(--arbor-rule); }
+.now-tonight-pointer { border-block-start: 0; margin-block-start: 6px; }
+.now-program-line { margin-block-start: 18px; }
+.now-more { margin-block-start: 12px; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); }
+.now-more > summary { display: flex; align-items: center; gap: 12px; min-block-size: 44px; padding: 12px 16px; cursor: pointer; list-style: none; }
+.now-more > summary::-webkit-details-marker { display: none; }
+.now-more > summary > span { flex: 1; min-inline-size: 0; }
+.now-more > summary b, .now-more > summary small { display: block; }
+.now-more > summary b { font-size: var(--t-sm); font-weight: 600; color: var(--arbor-ink-soft); }
+.now-more > summary small { font-size: var(--t-xs); color: var(--arbor-muted); margin-block-start: 2px; }
+.now-more-body { display: grid; gap: 4px; padding: 0 8px 12px; }
+.now-more-line { display: flex; align-items: center; gap: 12px; inline-size: 100%; min-block-size: 44px; padding: 0 12px; border: 0; border-radius: var(--r); background: transparent; color: var(--arbor-ink); font-size: var(--t-sm); font-weight: 600; text-align: start; }
+.now-more-line > span { flex: 1; min-inline-size: 0; }
+.now-more-line > .msr { color: var(--arbor-muted); flex-shrink: 0; }
 .now-heading .companion-eyebrow { letter-spacing: .025em; }
 .now-heading h1 { margin-block: 7px 9px; line-height: 1.2; }
 .now-heading > div > p:last-child { color: var(--arbor-muted); font-size: var(--t-base); }

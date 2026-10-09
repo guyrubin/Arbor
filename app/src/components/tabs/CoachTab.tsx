@@ -283,6 +283,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // card a server outage produces. Now the surface says so BEFORE the send,
   // and drafting stays possible (the words are not thrown away).
   const [online, setOnline] = useState(() => browserOnline());
+  // Files the persistent input is holding (CompanionComposer reports a count).
+  const [composerFiles, setComposerFiles] = useState(0);
   useEffect(() => {
     const up = () => setOnline(true);
     const down = () => setOnline(false);
@@ -965,7 +967,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           <CompanionComposer key={childProfile.id} childId={childProfile.id} conversationRevision={conversationRevision} language={uiLang === "he" ? "he" : "en"}
             value={chatInput} onChange={setChatInput} busy={isChatLoading} visible={visible}
             onSend={handleChatSend} onVoice={() => void toggleVoice()} voiceActive={voicePhase !== "off"} voiceLabel={voiceLabel}
-            onKeep={(text, photo) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo })} />
+            onKeep={(text, photo) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo })}
+            onAttachmentsChange={setComposerFiles} />
           {!online && <p data-testid="coach-offline-note" role="status" className="text-xs py-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.aierrors.offline.composer")}</p>}
           {/* Critic r2 (coach design P1): the one-time data-use notice reads
               AFTER the field and the capture chips, as a quiet --t-xs line with
@@ -1349,11 +1352,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                       // for ArborVision's handoff. Same seam, same contract.
                       // B-CAREPRO-13: the note is FOR a teacher, so the
                       // audience lands on "teacher" (not the stored default).
-                      onAddToHandoff={(note) => {
-                        requestConsultPrefill({ note, audience: "teacher" });
+                      onAddToHandoff={(note, audience = "teacher") => {
+                        requestConsultPrefill({ note, audience });
                         setActiveTab("consult");
-                        toast(t("coach.toast.teacherNoteCopied"), "info");
+                        // Nothing is copied: the note is prefilled, editable, in Consult.
+                        toast(t("coach.toast.handoffPrefilled"), "info");
                       }}
+                      onProposeMemory={(fact) => proposeMemory(fact, { source: "document", prompt: "companion:document" })}
                     />
                     </>
                   ) : (
@@ -1624,7 +1629,12 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               decideValuePreview's named reasons. */}
           <ValuePreview
             threadEmpty={chatMessages.length === 0}
-            surfaceIdle={!embedded && !isChatLoading && !failureCopy && voicePhase === "off" }
+            // Parity 9 Oct: the conversation is always embedded now, so
+            // `!embedded` meant the free -> Plus card could never show. It shows
+            // again in the panel, but only while the input holds NOTHING (no
+            // draft, no file, no dictation): a composition in progress never
+            // meets a commercial card.
+            surfaceIdle={!isChatLoading && !failureCopy && voicePhase === "off" && (!embedded || (!chatInput.trim() && composerFiles === 0))}
             online={online}
           />
         </div>

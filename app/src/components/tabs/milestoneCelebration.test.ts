@@ -25,7 +25,8 @@ import {
   hasCelebrated,
   loadCelebratedIds,
   markCelebrated,
-} from "../ui/CelebrationMoment";
+} from "../ui/CelebrationMoment";
+import { todayLiveSource } from "../../testTodaySource";
 
 const SRC_ROOT = path.resolve(__dirname, "../..");
 const read = (rel: string) => fs.readFileSync(path.join(SRC_ROOT, rel), "utf8");
@@ -61,7 +62,7 @@ describe("W5 mounts — the celebration chain is actually wired", () => {
   });
 
   it("OverviewTab (Rule A budget) did NOT gain the card — trigger-hook wiring only", () => {
-    const overview = read("components/tabs/OverviewTab.tsx");
+    const overview = todayLiveSource();
     expect(overview).not.toContain("PrideMomentCard");
     expect(overview).not.toContain("<CelebrationMoment");
   });

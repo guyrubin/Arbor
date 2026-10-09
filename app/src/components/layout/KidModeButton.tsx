@@ -1,9 +1,12 @@
+import { useEffect } from "react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 import { readParentPin } from "../kidmode/parentGate";
 import { useArborOptional } from "../../context/ArborContext";
 import { kidModeOpenFor } from "../../lib/age/playGate";
+import { ensureHeroSheet } from "../kidmode/hero/buildHeroSheet";
+import { PROOF_HERO_CHILD_IDS } from "../kidmode/hero/useHeroSheet";
 
 /**
  * The single affordance to hand the device to the child (enter Kid Mode).
@@ -30,6 +33,12 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
   // B-PLAY-24: under three the door is hidden, not removed (Practice says
   // "From 3, {name} can play on her own"). No profile in scope = shown as before.
   const child = useArborOptional()?.childProfile;
+  // K1: the parent shell starts the pose sheet of a hero made before sheets
+  // existed (B-GAME-13), so the child plays as their own hero. Deduped per
+  // child and hero inside ensureHeroSheet; quota-checked by the server.
+  // The proof child keeps the proof sheet Guy approved: no auto-drawn sheet
+  // may outrank it in the chain (useHeroSheet: own sheet first).
+  useEffect(() => { if (child && !PROOF_HERO_CHILD_IDS.includes(child.id)) void ensureHeroSheet(child); }, [child?.id, child?.photoUrl]); // eslint-disable-line react-hooks/exhaustive-deps
   if (child && !kidModeOpenFor(child)) return <>{step}</>;
 
   if (compact) {

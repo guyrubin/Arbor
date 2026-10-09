@@ -206,27 +206,10 @@ describe("AI-23 — the day-0 hero never claims memory it does not have", () => 
   });
 });
 
-describe("AI-06 — Arbor Vision stops speaking the server's English at the parent", () => {
-  const vision = stripComments(read("components/coach/ArborVision.tsx"));
-
-  it("the vision failure is classified, not echoed", () => {
-    expect(vision).toMatch(/classifyAiFailure\(e, \{/);
-    expect(vision).toMatch(/retryAfterSeconds: e instanceof ApiError \? e\.retryAfterSeconds : undefined/);
-    expect(vision).toMatch(/data-testid="vision-failure"/);
-    expect(vision).toMatch(/t\(failure\.bodyKey, failure\.bodyParams\)/);
-    expect(vision).toMatch(/failure\.retryable && \(/);
-  });
-
-  it("NEGATIVE CONTROL — the pre-change catch rendered e.message verbatim", () => {
-    const preFix = `} catch (e: any) {
-      setError(e?.message || t("vis.analyzeError"));
-    }`;
-    expect(/classifyAiFailure/.test(preFix)).toBe(false);
-    expect(/setError\(e\?\.message/.test(preFix)).toBe(true);
-    // …and that shape no longer exists on the live surface.
-    expect(vision).not.toMatch(/setError\(e\?\.message/);
-  });
-
+// AI-06's client half pinned ArborVision.tsx, deleted 2026-10-09: nothing
+// mounted it, and it routed the /vision 451 to the face_processing grant while
+// the route gates on companion_attachments. The server pin stays.
+describe("AI-06 — /api/vision consent and quota gate", () => {
   it("/api/vision is exactly the endpoint that can answer BOTH 429 and 451", () => {
     // The server gate: requireConsent(consentStore, "companion_attachments", …) →
     // 451 fail-closed; the shared AI quota → 429. One surface, two opposite

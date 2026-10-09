@@ -130,7 +130,7 @@ describe("HubHero compact mode", () => {
 describe("HubHero — lane G hubs pass the translated teach line", () => {
   // W2-GROWTH r1: Growth's stat hero is cut — no stats, so no zero wall to teach over.
   it("Development mounts no statistical hero (no zero wall possible)", () => {
-    const dev = read("components/tabs/DevelopmentTab.tsx");
+    const dev = ["components/companion/ChildPortrait.tsx", "components/companion/PortraitWatchRow.tsx", "components/companion/PortraitKeepsakes.tsx"].map(read).join("\n");
     expect(dev).not.toMatch(/<HubHero\b/);
     expect(dev).not.toMatch(/stats=\{\[/);
   });

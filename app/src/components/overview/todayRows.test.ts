@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import { elevationEn as en, elevationHe as he } from "../../lib/i18nElevation";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDay } from "../../lib/formatDate";
+import { todayLiveSource } from "../../testTodaySource";
 
 /**
  * TJB-08 / TJB-28 / TJB-29 / OBJ-TODAY-05 — four Today objects that were doing
@@ -30,23 +31,18 @@ const read = (rel: string) => readFileSync(path.join(app, "src", rel), "utf8");
 const strip = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 describe("TJB-08 — voice captures on Today, not on Behaviors", () => {
-  const overview = strip(read("components/tabs/OverviewTab.tsx"));
+  const overview = strip(todayLiveSource());
   const modal = strip(read("components/overview/QuickLogModal.tsx"));
 
-  it("every mode (B-TODAY-19: voice AND photo) opens the modal in place and never switches hub", () => {
-    const fn = overview.slice(overview.indexOf("const startCapture"), overview.indexOf("const activeGoals"));
-    expect(fn).toMatch(/setQuickLogMode\(mode\);[\s\S]{0,80}setQuickLogOpen\(true\);/);
-    expect((fn.match(/setActiveTab\("behaviors"\)/g) ?? []).length).toBe(0);
-    expect(overview).toMatch(/<QuickLogModal open=\{quickLogOpen\} mode=\{quickLogMode\}/);
+  it("every mode (B-TODAY-19: voice AND photo) opens the capture sheet in place and never switches hub", () => {
+    // Parity 9 Oct: Now's doors open the ONE capture sheet (openCaptureSheet, the context seam).
+    for (const mode of ["text", "voice", "photo"]) expect(overview).toContain(`openCaptureSheet({ mode: "${mode}" })`);
+    expect((overview.match(/setActiveTab\("behaviors"\)/g) ?? []).length).toBe(0);
   });
 
-  it("every opener goes through startCapture or resets the mode, so text capture is unchanged", () => {
-    const openers = overview.match(/setQuickLogOpen\(true\)/g) ?? [];
-    const resets = overview.match(/setQuickLogMode\("text"\)/g) ?? [];
-    // one opener is startCapture itself (it sets the tapped mode); the ENG-01
-    // nudge consumer resets to text.
-    expect(openers.length - resets.length).toBe(1);
-    expect(overview).toMatch(/onMode=\{\(mode\) => startCapture\(mode\)\}/);
+  it("every opener goes through the one sheet; a pending request (the ENG-01 nudge) is consumed once", () => {
+    expect(overview).toContain("consumeCaptureRequest();\n    openCaptureSheet({ mode: pendingCaptureMode });");
+    expect(overview).not.toMatch(/setQuickLogOpen\(|<QuickLogModal/);
   });
 
   it("the modal reuses the existing dictation and extraction seams — no new capture path", () => {
@@ -121,7 +117,7 @@ describe("TJB-28 — the receipt reads back what the parent said", () => {
 });
 
 describe("OBJ-TODAY-05 — a feed row older than today carries its date", () => {
-  const overview = strip(read("components/tabs/OverviewTab.tsx"));
+  const overview = strip(todayLiveSource());
 
   // B-TODAY-17 deleted the feed (and the drawer it lived in): no time-only
   // row can come back on Today. The date seam itself stays pinned below.

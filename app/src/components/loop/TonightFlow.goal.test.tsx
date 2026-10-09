@@ -28,7 +28,8 @@ import { PRACTICES } from "../../content/practices";
 import { ALL_MILESTONES } from "../../lib/milestoneData";
 import { scoreGoal, type FamilyGoal } from "../../lib/goals";
 import { loopFirewallHits } from "../../lib/loop/firewall";
-import type { PracticePick } from "../../lib/practice/choosePractice";
+import type { PracticePick } from "../../lib/practice/choosePractice";
+import { todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const practice = PRACTICES.find((p) => p.shelf === "words")!;
@@ -124,11 +125,13 @@ describe("B-PROG-07 Tonight — the weekly goal question", () => {
   });
 
   it("container: goals only on the program week's LAST day, never while a coach step is open; the chip upserts scoreGoal", () => {
-    const ov = readFileSync(path.join(here, "..", "tabs", "OverviewTab.tsx"), "utf8");
+    const ov = todayLiveSource();
     expect(ov).toContain('if (activeTodayAction?.status === "accepted") return undefined;');
     expect(ov).toContain("programDayKey(now) !== programWeekDays(active.enrolment, active.week).to");
     expect(ov).toContain("void familyGoals.upsert(scoreGoal(goal, value, new Date()))");
-    expect(ov).toMatch(/<TonightFlow[\s\S]*weeklyGoals=\{weeklyGoals\}/);
+    // Parity 9 Oct: Now spreads the loop's tonight props (weeklyGoals among them).
+    expect(ov).toContain("<TonightFlow {...loop.tonight}");
+    expect(ov).toMatch(/const tonight = \{[\s\S]*\n    weeklyGoals,\n/);
   });
 
   it("scoreGoal keeps one mark per local day (a later chip that evening replaces it)", () => {

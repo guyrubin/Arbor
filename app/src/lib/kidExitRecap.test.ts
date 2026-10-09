@@ -188,7 +188,7 @@ describe("B-SHELL-04 · the recap names hero stories and stays until kept or dis
     expect(recap).toMatch(/useChildCollection<HeroJourneyRun>\(childProfile\.id, "heroRuns"\)/);
     expect(recap).toContain("ledgersRef.current = kidActivityLedgers(practice, heroRuns.items);");
     expect(recap).not.toMatch(/completedAt \|\| x\.startedAt/);
-    expect(read("components/practice/PracticeStudioTab.tsx")).toContain("ledgers: kidActivityLedgers(data),");
+    expect(read("components/companion/TogetherView.tsx")).toContain("ledgers: kidActivityLedgers(practiceData),");
   });
 
   it("B-KID-31: 2 check-ins + 1 started-not-finished story → nothing to say", async () => {
@@ -211,7 +211,9 @@ describe("B-SHELL-04 · the recap names hero stories and stays until kept or dis
   });
 
   it("the toast carries a Keep action (so it never auto-removes) that writes one moment", () => {
-    expect(recap).toMatch(/toast\(line, "info", \{/);
+    expect(recap).toContain("const offerKeep = (retry: boolean) => toast(");
+    expect(recap).toContain('retry ? "error" : "info",');
+    expect(recap).toContain("offerKeep(false);");
     expect(recap).toContain('t("elev.learnCare.kidExit.keep")');
     expect((recap.match(/addMoment\(/g) ?? []).length).toBe(1);
     const toastCtx = read("context/ToastContext.tsx");
@@ -220,9 +222,24 @@ describe("B-SHELL-04 · the recap names hero stories and stays until kept or dis
     expect(toastCtx).toMatch(/if \(isKidModeActive\(\)\) \{\s*queueRef\.current\.push/);
   });
 
-  it("the Keep label exists in EN and HE", () => {
+  it("a failed Keep shows ONE message: the re-offered error toast, never the seam's toast as well", () => {
+    // addMoment stays quiet (callerShowsFailure) because the re-offer IS the
+    // failure notice: it names the line and carries the same Keep action.
+    expect(recap).toContain("if (!await addMoment(kept, { callerShowsFailure: true })) offerKeep(true);");
+    expect(recap).toContain('retry ? t("elev.learnCare.kidExit.keepFailed", { line }) : line,');
+    // NEGATIVE CONTROL — the pre-fix retry re-offered the plain info toast on
+    // top of addMoment's own "couldn't save" toast: two messages, one failure.
+    const preFix = `onClick: async () => { if (!await addMoment(kept)) offerKeep(); },`;
+    expect(preFix).toContain("addMoment(kept))");
+    expect(recap).not.toContain("addMoment(kept))");
+  });
+
+  it("the Keep label and the not-kept line exist in EN and HE", () => {
     expect(en["elev.learnCare.kidExit.keep"]).toBeTruthy();
     expect(he["elev.learnCare.kidExit.keep"]).toBeTruthy();
     expect(he["elev.learnCare.kidExit.keep"]).not.toBe(en["elev.learnCare.kidExit.keep"]);
+    expect(en["elev.learnCare.kidExit.keepFailed"]).toContain("{line}");
+    expect(he["elev.learnCare.kidExit.keepFailed"]).toContain("{line}");
+    expect(he["elev.learnCare.kidExit.keepFailed"]).not.toBe(en["elev.learnCare.kidExit.keepFailed"]);
   });
 });

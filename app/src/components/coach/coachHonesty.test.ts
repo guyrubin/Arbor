@@ -157,7 +157,9 @@ describe("MOB-14 — bottom-docked elements under components/tabs clear the Mobi
         if (bad.length > 0) failures.push(`${path.relative(srcRoot, file)}: ${bad.join(", ")}`);
       }
     }
-    expect(docked, "the scan found no bottom-docked element at all — walker broken?").toBeGreaterThanOrEqual(2);
+    // Parity 9 Oct: OverviewTab's pinned capture bar left with the Today hub
+    // (Now docks nothing); CoachTab's composer is the one docked element left.
+    expect(docked, "the scan found no bottom-docked element at all — walker broken?").toBeGreaterThanOrEqual(1);
     expect(failures, failures.join("\n")).toEqual([]);
   });
 

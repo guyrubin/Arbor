@@ -12,7 +12,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildSinceVisitRows, SINCE_VISIT_MAX_ROWS } from "./sinceVisitEvents";
 import { buildTimeline } from "../../lib/signalTimeline";
-import { elevationEn, elevationHe } from "../../lib/i18nElevation";
+import { elevationEn, elevationHe } from "../../lib/i18nElevation";
+import { todayLiveSource } from "../../testTodaySource";
 
 const PREV = "2026-09-03T20:00:00.000Z";
 const base = {
@@ -97,7 +98,7 @@ describe("TJB-05 — the step is an event on the since-visit strip", () => {
   // reaches the card (this file's firewall, carried forward).
   it("Today feeds the ledger into the What-changed composer, which labels the parent's outcome in EN + HE", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
-    const overview = readFileSync(path.join(here, "../tabs/OverviewTab.tsx"), "utf8");
+    const overview = todayLiveSource();
     const composeCall = overview.slice(overview.indexOf("composeWhatChanged({"), overview.indexOf("});", overview.indexOf("composeWhatChanged({")));
     expect(composeCall).toContain("actionLoop,");
     const composer = readFileSync(path.join(here, "./whatChangedEvents.ts"), "utf8");
