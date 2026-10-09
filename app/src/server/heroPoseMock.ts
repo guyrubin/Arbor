@@ -6,7 +6,7 @@
  */
 import { deflateSync } from "node:zlib";
 import type { GeneratedImage } from "../ai/modelRouter.js";
-import type { HeroSheetPoseId } from "../lib/heroSheetContract.js";
+import type { HeroPoseId } from "../lib/heroSheetContract.js";
 import { mockHeroPoseRaster, type MockRaster } from "../lib/heroPoseMockArt.js";
 
 const CRC_TABLE = (() => {
@@ -52,6 +52,6 @@ export function encodePng(img: MockRaster): Buffer {
   return Buffer.concat([SIGNATURE, chunk("IHDR", head), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
 }
 
-export function mockHeroPoseImage(pose: HeroSheetPoseId): GeneratedImage {
+export function mockHeroPoseImage(pose: HeroPoseId): GeneratedImage {
   return { data: encodePng(mockHeroPoseRaster(pose)).toString("base64"), mimeType: "image/png" };
 }

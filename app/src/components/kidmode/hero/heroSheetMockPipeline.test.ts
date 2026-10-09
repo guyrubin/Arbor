@@ -4,12 +4,13 @@
  * chroma green, PNG) -> the device builder (PNG decode, the real keyer + QA
  * gate, head normalisation) -> the child's record. A complete sheet comes out.
  */
+import { createHash } from "node:crypto";
 import { inflateSync } from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
 import { MemoryCounterStore } from "../../../server/quotaStore";
 import { createHeroPoseHandler, LocalHeroPoseSource } from "../../../server/heroPoseRoute";
 import { mockHeroPoseImage } from "../../../server/heroPoseMock";
-import { HERO_SHEET_POSE_IDS, heroAvatarHash, type HeroSheetPoseId } from "../../../lib/heroSheetContract";
+import { HERO_BOOK_POSE_IDS, HERO_SHEET_POSE_IDS, heroAvatarHash, type HeroSheetPoseId } from "../../../lib/heroSheetContract";
 import { mockHeroPoseRaster } from "../../../lib/heroPoseMockArt";
 import { buildHeroSheet, type BuilderDeps, type PoseResponse } from "./buildHeroSheet";
 import { heroSheetStoreFor, sheetFromDocs } from "../../../lib/heroSheetStore";
@@ -105,4 +106,27 @@ describe("B-GAME-13d: sandbox dry run — route (mock) -> device builder -> reco
     // Sandbox: the server's anchor for the later poses is the idle it drew.
     expect((await source.load("local-sandbox", "kid1"))?.anchor).toMatch(/^data:image\/png;base64,/);
   }, 120_000);
+});
+
+describe("K2: the mock book poses", () => {
+  it("every book pose is a deterministic PNG that passes the same QA gate as a real render", () => {
+    const seen = new Set<string>();
+    for (const pose of HERO_BOOK_POSE_IDS) {
+      const a = mockHeroPoseImage(pose);
+      expect(a.mimeType).toBe("image/png");
+      expect(mockHeroPoseImage(pose).data).toBe(a.data);
+      const k = keySprite(decodePng(`data:image/png;base64,${a.data}`));
+      expect(k.qa.fails, `${pose}: ${k.qa.fails.join("; ")}`).toEqual([]);
+      seen.add(a.data);
+    }
+    // a drawn figure per pose (worried-tunic draws the worried pose)
+    expect(seen.size).toBe(HERO_BOOK_POSE_IDS.length - 1);
+    expect(mockHeroPoseImage("worried-tunic").data).toBe(mockHeroPoseImage("worried").data);
+  }, 120_000);
+
+  it("the game's eight synthetic rasters are byte-identical to K1", () => {
+    const h = createHash("sha256");
+    for (const pose of HERO_SHEET_POSE_IDS) h.update(Buffer.from(mockHeroPoseRaster(pose).data));
+    expect(h.digest("hex")).toBe("a48aa171edc950f9a8e0347f0d35cecc5b46abc424b1dd2e5c05f2ac7a68b353");
+  });
 });
