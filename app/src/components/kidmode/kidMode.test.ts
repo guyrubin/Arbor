@@ -300,7 +300,6 @@ describe("KID-1: kid.* i18n keys exist in BOTH language maps", () => {
   const CHROME_KEYS = [
     "kid.greeting",
     "kid.greetingSub",
-    "kid.stars.aria",
     "kid.exit.backToParent",
     "kid.exit.backToParentAria",
     "kid.exit.holdIdle",

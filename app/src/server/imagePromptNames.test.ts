@@ -116,3 +116,45 @@ describe("B-KID-40: /generate-comic sends no name to the image model", () => {
     expect(api).not.toMatch(/Hero name: \$\{/);
   });
 });
+
+describe("B-GAME-13b: /hero-pose sends no name and no free text to the image model", () => {
+  const calls: { prompt: string; images: number }[] = [];
+  const model = {
+    generateJson: async () => ({}),
+    generateImage: async (req: { prompt: string; images?: unknown[] }) => { calls.push({ prompt: req.prompt, images: req.images?.length ?? 0 }); return { data: "aGVybw==", mimeType: "image/png" }; },
+    async *streamText() {}, async *generateJsonStream() {},
+  } as unknown as ModelProvider;
+  let server: Server;
+  let baseUrl = "";
+  beforeAll(async () => {
+    const config = createTestConfig();
+    const entitlementStore = createEntitlementStore(config);
+    const app = express();
+    app.use(express.json());
+    app.use("/api", createApiRouter({ config, modelProvider: model, memoryStore: new LocalMemoryStore(), consentStore: new LocalConsentStore(),
+      shareStore: new LocalShareStore(), framework: loadFramework(), entitlementStore,
+      referralStore: createReferralStore(config, entitlementStore), counters: createCounterStore(config),
+      consultStore: createConsultStore(config), adminMetrics: createAdminMetricsStore(config), waitlistStore: createWaitlistStore(config) }));
+    await new Promise<void>((resolve) => { server = app.listen(0, "127.0.0.1", resolve); });
+    baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+  afterAll(async () => { await new Promise<void>((resolve) => server.close(() => resolve())); });
+  const post = (route: string, body: unknown) => fetch(`${baseUrl}/api/${route}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+  it("every pose prompt is fixed text: no name, no body text, the stored hero as the only reference (+ the idle after it)", async () => {
+    expect((await post("generate-avatar", { childId: "kid-z", style: "soft3d", descriptors: { hair: "curly" } })).status).toBe(200);
+    calls.length = 0;
+    const names = { heroName: "Zephyrina", name: "Zephyrina", childName: "Barnaby", notes: "Zephyrina loves dragons" };
+    for (const pose of ["idle", "tiptoe", "dash", "freeze-a", "freeze-b", "oops", "cheer", "hold-up"]) {
+      const r = await post("hero-pose", { childId: "kid-z", pose, ...names });
+      expect(r.status, pose).toBe(200);
+    }
+    expect(calls).toHaveLength(8);
+    for (const c of calls) {
+      expect(c.prompt).not.toMatch(/zephyrina|barnaby|dragons/i);
+      expect(c.prompt).toContain("#00B140");
+    }
+    expect(calls[0].images).toBe(1); // idle: the stored hero only
+    for (const c of calls.slice(1)) expect(c.images).toBe(2); // the approved idle + the stored hero
+  });
+});

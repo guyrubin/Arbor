@@ -17,7 +17,6 @@ import { isolateNameIn, langDir } from "../../lib/bidi";
 import {
   HERO_STORIES,
   PACKS,
-  applyChoice,
   getStorySpec,
   runTitle,
   storiesForLanguage,
@@ -540,7 +539,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const chooseOption = (id: string) => {
     kidPageMoved.current = true;
     setChoiceId(id);
-    celebrate({ kind: "choice" });
+    // B-BOOK-60: a choice is not an achievement — no confetti on a choice.
     setSceneIndex((i) => Math.min(scenes.length - 1, i + 1));
   };
 
@@ -659,7 +658,8 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     if (!activeStory || !render || finishingRef.current) return;
     finishingRef.current = true;
     setFinishing(true);
-    const metricsEarned = applyChoice(activeStory, choiceId);
+    // B-BOOK-60: a story choice is never evidence about the child — the run
+    // keeps which page the child chose (for the echo) and writes no metrics.
     const run: HeroJourneyRun = {
       id: `run-${Date.now()}`,
       storyId: activeStory.id,
@@ -668,7 +668,6 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       startedAt: startedAtRef.current || new Date().toISOString(),
       completedAt: new Date().toISOString(),
       choiceId,
-      metricsEarned,
       render,
     };
     try {

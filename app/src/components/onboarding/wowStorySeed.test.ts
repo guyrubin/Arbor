@@ -108,6 +108,7 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "programs", // B-PROG-01 (program engine): the child's program enrolments (programId, start day, week, status, own-first-week baseline) — exported and erased with the child
       "familyGoals", // B-PROG-07: the family's goals in their own words, their own scale labels and scores — exported and erased with the child
       "coachSessions", // B-PROG-10: the guided tier's booked sessions (slot, day, the family's agreed line) — exported and erased with the child
+      "heroSheet", // B-GAME-13c: the hero's pose sheet (generated art, registered for export + erase)
     ]);
   });
 });

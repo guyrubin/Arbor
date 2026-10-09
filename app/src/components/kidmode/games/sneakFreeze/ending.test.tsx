@@ -10,9 +10,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { startSitting, step, type SneakState } from "./rules";
-import { PICTURE, PICTURE_VARIANTS, pickVariant, pictureLayout, statueShot, toPicture } from "./statuePicture";
+import { PICTURE, PICTURE_SIZE, PICTURE_VARIANTS, pickVariant, pictureLayout, statueShot, toPicture } from "./statuePicture";
 import { STATUE_KEEP, keepStatuePicture, lastStatueVariant, readStatuePictures, statuesKey, type StatuePicture } from "./statueStore";
-import { Ending, captionKey } from "./Ending";
+import { Ending, captionKey, isUprightPhone } from "./Ending";
 import { devPlaceholderArt } from "./devPlaceholderArt";
 import { devPlaceholderSheet } from "../../hero/devPlaceholderSheet";
 import { translate } from "../../../../lib/i18n";
@@ -97,6 +97,47 @@ describe("the statue picture — composition", () => {
         }
       }
     }
+  });
+
+  it("B-GAME-09d: the upright close shot (3:4) keeps the same rules — hero large head to feet, the cat whole in the other lower corner, mirrored in Hebrew", () => {
+    const P = PICTURE_SIZE.portrait;
+    expect(P.h).toBeGreaterThan(P.w);
+    for (const at of [0.08, 0.3, 0.5, 0.7, 0.92]) {
+      for (const pose of ["freeze-a", "freeze-b"] as const) {
+        for (let v = 0; v < PICTURE_VARIANTS.length; v++) {
+          const l = pictureLayout({ pose, at }, v, "portrait");
+          const wide = pictureLayout({ pose, at }, v);
+          expect(l.crop.w / l.crop.h).toBeCloseTo(P.w / P.h, 6);
+          // The same moment: the same crop height and hero share, only the sides trimmed.
+          expect(l.crop.h).toBeCloseTo(wide.crop.h, 6);
+          expect(l.hero.h / P.h).toBeCloseTo(wide.hero.h / PICTURE.h, 6);
+          expect(l.hero.y - l.hero.h).toBeGreaterThan(P.h * 0.12);
+          expect(l.hero.y).toBeLessThanOrEqual(P.h * 0.95);
+          expect(l.watcher.y).toBeLessThanOrEqual(P.h);
+          expect(l.watcher.y - l.watcher.h).toBeGreaterThan(P.h * 0.4);
+          // The cat's anchor sits well inside the narrower frame, opposite the hero.
+          expect(Math.min(l.watcher.x, P.w - l.watcher.x)).toBeGreaterThanOrEqual(P.w * 0.2);
+          expect(Math.sign(l.watcher.x - P.w / 2)).toBe(-Math.sign(l.hero.x - P.w / 2));
+          expect(l.watcher.flip).toBe(l.hero.x < P.w / 2);
+          expect(toPicture({ x: l.hero.x, y: l.hero.y }, true, "portrait").x).toBeCloseTo(P.w - l.hero.x, 6);
+        }
+      }
+    }
+    // The 4:3 picture is unchanged by default.
+    expect(pictureLayout({ pose: "freeze-a", at: 0.5 }, 2)).toEqual(pictureLayout({ pose: "freeze-a", at: 0.5 }, 2, "landscape"));
+  });
+
+  it("B-GAME-09d: only a phone held upright gets the tall layout; the KEPT picture stays the 4:3 one", () => {
+    expect(isUprightPhone(375, 812)).toBe(true);
+    expect(isUprightPhone(375, 667)).toBe(true);
+    expect(isUprightPhone(412, 915)).toBe(true);
+    expect(isUprightPhone(812, 375)).toBe(false);
+    expect(isUprightPhone(768, 1024)).toBe(false);
+    expect(isUprightPhone(1920, 1080)).toBe(false);
+    const src = read("Ending.tsx");
+    // keepStatuePicture is fed the default-shape (4:3) url, never the upright one.
+    expect(src).toMatch(/composeStatuePicture\(\{ shot, art, sheet, rtl, variant \}\)/);
+    expect(src).toMatch(/if \(url\) keepStatuePicture\(childId, \{ id: state\.seed, at: new Date\(\)\.toISOString\(\), url,/);
   });
 
   it("is composed on the device: no fetch, no model, no network in the ending's code", () => {

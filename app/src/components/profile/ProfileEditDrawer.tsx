@@ -18,6 +18,7 @@ import { fmtDay } from "../../lib/formatDate";
 // value, and the months-precise label shown live while editing (GP-01).
 import { ageLabelForMonths, ageMonthsFromProfile, agePatchFromMonths } from "../../lib/childAge";
 import AvatarCreator from "./AvatarCreator";
+import HeroSheetPanel from "./HeroSheetPanel";
 import RewardsCard from "./RewardsCard";
 import { stampChangedFacts } from "../../lib/factsAsOf";
 // B-CAREPRO-35: the drawer no longer exports or deletes (GP-18's typed-name
@@ -246,6 +247,8 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                   </div>
                 </div>
               </div>
+              {/* B-GAME-13c: the hero's pose sheet (one calm line; resumes a build). */}
+              <HeroSheetPanel child={activeChild} />
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Name</label>

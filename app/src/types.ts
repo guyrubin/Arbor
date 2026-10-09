@@ -629,7 +629,8 @@ export interface HeroJourneyRun {
   startedAt: string;
   completedAt?: string;
   choiceId?: string;
-  metricsEarned: Partial<DevelopmentMetrics>;
+  /** Legacy (written before B-BOOK-60, 9 Oct 2026); never written now, never read. */
+  metricsEarned?: Partial<DevelopmentMetrics>;
   render: HeroJourneyRender;
 }
 

@@ -32,7 +32,7 @@ export type NaturalSynthHandle = { stop: () => void; prefetched?: boolean };
 
 /** A registered neural synth: plays `text`, drives the handlers, returns a stop handle
  *  (or null to decline, e.g. when the backend is unavailable → caller uses the floor). */
-export type NaturalSynth = (text: string, handlers: SpeakHandlers) => NaturalSynthHandle | null;
+export type NaturalSynth = (text: string, handlers: SpeakHandlers, lang?: "en" | "he") => NaturalSynthHandle | null;
 
 type Listener = (state: VoiceState) => void;
 
@@ -49,6 +49,11 @@ let activeNaturalStop: (() => void) | null = null;
 let ttfbTimer: ReturnType<typeof setTimeout> | null = null;
 // If the neural engine hasn't produced audio within this window, fall back to floor.
 const NATURAL_TTFB_MS = 1500;
+// B-BOOK-61: one slow or failed utterance falls back ALONE; the session
+// degrades to the floor only after this many consecutive fallbacks with no
+// neural start in between (a slow book page must not robot-voice the rest).
+const NATURAL_DEGRADE_AFTER = 3;
+let naturalMisses = 0;
 
 export function voiceSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
@@ -84,6 +89,7 @@ export function setNaturalSynth(fn: NaturalSynth | null): void {
 
 /** Seam hook for the neural-TTS upgrade: set the reported/active engine. */
 export function setVoiceEngine(next: VoiceEngine): void {
+  naturalMisses = 0;
   if (engine !== next) {
     engine = next;
     emit();
@@ -250,7 +256,8 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "
       }
       activeNaturalStop = null;
     }
-    setVoiceEngine("basic"); // degrade the session to the floor
+    naturalMisses++;
+    if (naturalMisses >= NATURAL_DEGRADE_AFTER) setVoiceEngine("basic"); // degrade the session to the floor
     startBrowser(id, text, handlers, lang); // re-dispatch THIS utterance
   };
 
@@ -258,6 +265,7 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "
     onStart: () => {
       if (!isActive(id)) return;
       started = true;
+      naturalMisses = 0;
       clearWatchdog();
       speaking = true;
       emit();
@@ -285,7 +293,7 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "
         handlers.onError?.();
       }
     },
-  });
+  }, lang);
 
   if (!handle) return false; // adapter declined → caller uses the browser floor
   activeNaturalStop = handle.stop;

@@ -243,8 +243,10 @@ function eventAccuracy(events: PracticeEvent[], kinds: PracticeEvent["kind"][], 
  * Milestones anchor the band; practice data refines it where it exists.
  * Deliberately returns bands — never "developmental age" point estimates.
  *
- * `events` (Feelings Lab, Words/Express modes, Memory Match) and `heroMetrics`
- * (story-choice deltas) extend the passive-assessment inputs when present.
+ * `events` extend the inputs only through the parent-register Words & Express
+ * practice. B-GAME-17 (ruling G10, 6 Oct) + B-BOOK-60: play moves no band —
+ * story-choice metrics (`heroMetrics`), pose, rhythm and calm counts and every
+ * kid-game kind are ignored; the parameters stay so callers need not change.
  */
 export function domainBands(
   milestones: Milestone[],
@@ -284,13 +286,9 @@ export function domainBands(
   // blend into any band. Only the parent-register Words & Express practice
   // (Word World, parentOnly) still contributes accuracy. Counts stay below.
   const languageAcc = eventAccuracy(events.filter((e) => !KID_GAME_EVENT_KINDS.has(e.kind)), ["vocab-naming", "vocab-category", "expressive"]);
-  const calmCount = events.filter((e) => e.kind === "calm").length;
-  const rhythmCount = events.filter((e) => e.kind === "rhythm").length;
-  const poseCount = events.filter((e) => e.kind === "pose").length;
-  // Story-choice metrics: empathy reads as social signal; courage/resilience as
-  // emotional regulation practice. Capped nudges, not drivers.
-  const heroSocial = Math.min((heroMetrics?.empathy ?? 0) * 2, 8);
-  const heroEmotional = Math.min(((heroMetrics?.courage ?? 0) + (heroMetrics?.resilience ?? 0)) * 1.5, 8);
+  // B-GAME-17 / B-BOOK-60: a story choice is never evidence about the child,
+  // and play volume (calm, Beat Keeper, Hero Pose) is not a developmental signal.
+  void heroMetrics;
 
   const domains: PracticeDomain[] = ["language", "speech", "cognition", "social", "emotional"];
   return domains.map((domain) => {
@@ -311,26 +309,6 @@ export function domainBands(
       if (domain === "language" && languageAcc !== null) {
         signal = signal * 0.6 + languageAcc * 0.4;
         basis.push("Words & Express practice");
-      }
-      if (domain === "emotional") {
-        if (calmCount > 0 || rhythmCount > 0) {
-          signal += Math.min(calmCount + rhythmCount, 5);
-          basis.push(rhythmCount > 0 ? "calm + Beat Keeper" : "calm-down practice");
-        }
-        if (heroEmotional > 0) {
-          signal += heroEmotional;
-          basis.push("story choices");
-        }
-      }
-      if (domain === "social") {
-        if (heroSocial > 0) {
-          signal += heroSocial;
-          basis.push("story choices");
-        }
-        if (poseCount > 0) {
-          signal += Math.min(poseCount, 5);
-          basis.push("Hero Pose");
-        }
       }
     }
     const boost = missionBoost(domain);
@@ -360,9 +338,11 @@ export function domainConfidence(
   const ms = milestones.filter((m) => m.checked).length > 0 ? 4 : 0;
   let n = ms + missions.filter((r) => r.completed && r.domain === domain).length;
   if (domain === "speech") n += speech.length;
-  if (domain === "cognition") n += adventures.length + events.filter((e) => e.kind === "memory").length;
-  if (domain === "language") n += events.filter((e) => ["vocab-naming", "vocab-category", "expressive", "phonics", "sight-word", "letter-trace"].includes(e.kind)).length;
-  if (domain === "emotional") n += events.filter((e) => ["emotion-id", "emotion-why", "calm"].includes(e.kind)).length;
+  // B-GAME-17 (ruling G10): play volume is not observation volume. Story Quest
+  // rounds, every kid-game kind and calm counts add nothing; only the
+  // parent-register Words & Express practice counts toward language.
+  void adventures;
+  if (domain === "language") n += events.filter((e) => !KID_GAME_EVENT_KINDS.has(e.kind) && ["vocab-naming", "vocab-category", "expressive"].includes(e.kind)).length;
   if (n >= 20) return "high";
   if (n >= 6) return "medium";
   return "low";
