@@ -137,7 +137,7 @@ describe("CR-13 · no physical inline offsets on layout seams", () => {
  * Anything else points the wrong way in Hebrew.
  */
 const DIRECTIONAL = /"(arrow_back|arrow_forward|chevron_left|chevron_right)"/;
-const MIRRORED = /rtl:-scale-x-100|rtl:rotate-180|isRtl\s*\?|uiLang\s*===\s*"he"\s*\?|\bhe\s*\?/;
+const MIRRORED = /rtl:-scale-x-100|rtl:rotate-180|\b(?:isRtl|rtl)\s*\?|uiLang\s*===\s*"he"\s*\?|\bhe\s*\?/;
 
 function unmirroredDirectionalSites(): string[] {
   const out: string[] = [];
@@ -166,6 +166,10 @@ describe("CR-13 · directional glyph ratchet", () => {
     expect(DIRECTIONAL.test(line) && !MIRRORED.test(line)).toBe(true);
     const fixed = `<Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />`;
     expect(DIRECTIONAL.test(fixed) && !MIRRORED.test(fixed)).toBe(false);
+    // A per-direction ligature swap on a reader's own `rtl` flag is mirrored
+    // too (the comic readers: rtl ? chevron_right : chevron_left).
+    const swapped = `{rtl ? <Icon name="chevron_right" size={16} /> : <Icon name="chevron_left" size={16} />}`;
+    expect(DIRECTIONAL.test(swapped) && !MIRRORED.test(swapped)).toBe(false);
   });
 
   it("the count of unmirrored directional glyphs never rises", () => {
@@ -273,9 +277,9 @@ describe("B-SHELL-07 · the onboarding Back control mirrors under RTL", () => {
   it("OnboardingFlow's back chevron carries the inline RTL mirror (rtl: variant is not emitted there)", () => {
     const flow = stripComments(fs.readFileSync(path.join(COMPONENTS, "auth", "OnboardingFlow.tsx"), "utf8"));
     const back = flow.slice(flow.indexOf("onClick={goBack}"), flow.indexOf("</button>", flow.indexOf("onClick={goBack}")));
-    expect(back).toContain("<ChevronLeft");
+    expect(back).toContain('<Icon name="chevron_left"');
     expect(back).toMatch(/isRtl \? \{ transform: "scaleX\(-1\)" \}/);
     // negative control: the pre-fix glyph had no mirror hint
-    expect(/scaleX\(-1\)|rtl:-scale-x-100/.test('<ChevronLeft className="w-4 h-4" />')).toBe(false);
+    expect(/scaleX\(-1\)|rtl:-scale-x-100/.test('<Icon name="chevron_left" size={16} />')).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ListChecks, Plus, Check, Trash2, RotateCcw } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -39,7 +39,7 @@ export default function RoutinesCard() {
   return (
     <div className={`${cardCls} p-6 space-y-4`}>
       <span className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
-        <ListChecks className="w-3.5 h-3.5" /> {t("elev.closeloop.routines.title")}
+        <Icon name="checklist" size={14} /> {t("elev.closeloop.routines.title")}
       </span>
 
       {routines.length === 0 && <p className="text-xs" style={{ color: "var(--arbor-muted)" }} dir="auto">{t("elev.closeloop.routines.empty")}</p>}
@@ -53,15 +53,15 @@ export default function RoutinesCard() {
                 <strong className="text-sm" style={{ color: "var(--arbor-ink)" }}>{r.name}</strong>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }} dir="auto">{t("elev.closeloop.routines.stepsDone", { done, total: r.steps.length })}</span>
-                  <button type="button" onClick={() => reset(r)} aria-label={t("aria.resetRoutine")} className="touch-target rounded-lg" style={{ color: "var(--arbor-muted)" }}><RotateCcw className="w-4 h-4" /></button>
-                  <button type="button" onClick={() => void col.remove(r.id)} aria-label={t("aria.deleteRoutine")} className="touch-target rounded-lg" style={{ color: "var(--arbor-muted)" }}><Trash2 className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => reset(r)} aria-label={t("aria.resetRoutine")} className="touch-target rounded-lg" style={{ color: "var(--arbor-muted)" }}><Icon name="restart_alt" size={16} /></button>
+                  <button type="button" onClick={() => void col.remove(r.id)} aria-label={t("aria.deleteRoutine")} className="touch-target rounded-lg" style={{ color: "var(--arbor-muted)" }}><Icon name="delete" size={16} /></button>
                 </div>
               </div>
               <div className="space-y-1">
                 {r.steps.map((s, i) => (
                   <button key={i} type="button" onClick={() => toggle(r, i)} className="min-h-11 w-full flex items-center gap-2 text-start text-[12px]">
                     <span className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style={s.done ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" } : { border: "1px solid var(--arbor-rule-strong)", color: "transparent" }}>
-                      <Check className="w-3 h-3" />
+                      <Icon name="check" size={12} />
                     </span>
                     <span style={{ color: s.done ? "var(--arbor-muted)" : "var(--arbor-ink)", textDecoration: s.done ? "line-through" : "none" }}>{s.text}</span>
                   </button>
@@ -76,7 +76,7 @@ export default function RoutinesCard() {
                   className="min-h-11 flex-1 rounded-lg px-2 py-1 text-[12px] focus:outline-none bg-white"
                   style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
                 />
-                <button type="button" onClick={() => addStep(r)} aria-label={t("aria.addStep")} className="touch-target rounded-lg" style={{ color: "var(--arbor-green-ink)" }}><Plus className="w-4 h-4" /></button>
+                <button type="button" onClick={() => addStep(r)} aria-label={t("aria.addStep")} className="touch-target rounded-lg" style={{ color: "var(--arbor-green-ink)" }}><Icon name="add" size={16} /></button>
               </div>
             </div>
           );
@@ -85,7 +85,7 @@ export default function RoutinesCard() {
 
       <form onSubmit={addRoutine} className="flex gap-2">
         <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t("elev.closeloop.routines.newName")} className="min-h-11 flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
-        <button type="submit" aria-label={t("elev.closeloop.routines.newName")} className="touch-target text-white font-extrabold px-3 rounded-xl" style={{ background: "var(--arbor-clay)" }}><Plus className="w-4 h-4" /></button>
+        <button type="submit" aria-label={t("elev.closeloop.routines.newName")} className="touch-target text-white font-extrabold px-3 rounded-xl" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /></button>
       </form>
     </div>
   );

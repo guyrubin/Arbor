@@ -1,6 +1,6 @@
 import React from "react";
 import { MotionConfig } from "motion/react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Icon } from "./components/ui/Icon";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ProfileProvider, useProfile } from "./context/ProfileContext";
 import { ArborProvider } from "./context/ArborContext";
@@ -33,7 +33,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         role="status"
         aria-label={t("aria.loading")}
       >
-        <RefreshCw className="w-5 h-5 animate-spin" style={{ color: "var(--arbor-clay)" }} />
+        <Icon name="refresh" size={20} className="animate-spin" style={{ color: "var(--arbor-clay)" }} />
       </div>
     );
   }
@@ -48,7 +48,7 @@ function ProductionAuthConfigError() {
       <div className="w-full max-w-xl rounded-2xl p-6 shadow-sm" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
         <div className="flex items-start gap-3">
           <div className="rounded-2xl p-2" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
-            <AlertTriangle className="w-5 h-5" />
+            <Icon name="warning" size={20} />
           </div>
           <div>
             <h1 className="text-xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>Arbor sign-in is not configured</h1>
@@ -86,7 +86,7 @@ function ProfileGate({ children }: { children: React.ReactNode }) {
         role="status"
         aria-label={t("aria.loading")}
       >
-        <RefreshCw className="w-5 h-5 animate-spin" style={{ color: "var(--arbor-clay)" }} />
+        <Icon name="refresh" size={20} className="animate-spin" style={{ color: "var(--arbor-clay)" }} />
       </div>
     );
   }

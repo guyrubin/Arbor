@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Camera, Sparkles, Check, Plus } from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -10,6 +9,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { ChildProfile } from "../../types";
 import { Avatar } from "../ui/Avatar";
+import { Icon } from "../ui/Icon";
 import { fileToThumbnail } from "../../lib/image";
 import { uploadChildPhoto } from "../../lib/storage";
 import { sanitizeInterestToken } from "../../playbank/select";
@@ -220,7 +220,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Edit profile</h3>
               <button onClick={requestClose} className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg transition" style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
-                <X className="w-4 h-4" />
+                <Icon name="close" size={16} />
               </button>
             </div>
 
@@ -234,11 +234,11 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                     className="inline-flex min-h-11 items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition"
                     style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-border)" }}
                   >
-                    <Sparkles className="w-3.5 h-3.5" /> {photoUrl ? "New avatar" : "Create avatar"}
+                    <Icon name="auto_awesome" size={14} /> {photoUrl ? "New avatar" : "Create avatar"}
                   </button>
                   <div className="flex items-center gap-3">
                     <label className="inline-flex min-h-11 items-center gap-1.5 text-[11px] font-bold cursor-pointer" style={{ color: "var(--arbor-muted)" }}>
-                      <Camera className="w-3 h-3" /> {photoBusy ? "Uploading…" : "Upload a photo instead"}
+                      <Icon name="photo_camera" size={12} /> {photoBusy ? "Uploading…" : "Upload a photo instead"}
                       <input type="file" accept="image/*" className="hidden" disabled={photoBusy} onChange={(e) => onPickPhoto(e.target.files?.[0])} />
                     </label>
                     {photoUrl && (
@@ -329,7 +329,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                           ? { background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-clay-border)", color: "var(--arbor-green-ink)" }
                           : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-muted)" }}
                       >
-                        {isActive && <Check className="w-3 h-3" />}
+                        {isActive && <Icon name="check" size={12} />}
                         {label}
                       </button>
                     );
@@ -351,7 +351,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                           className="ms-0.5 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full -my-3 -me-3 transition"
                           style={{ color: "var(--arbor-green-ink)" }}
                         >
-                          <X className="w-3 h-3" />
+                          <Icon name="close" size={12} />
                         </button>
                       </span>
                     ))}
@@ -375,7 +375,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                     className="inline-flex items-center gap-1 px-3 min-h-[44px] rounded-lg text-xs font-bold transition"
                     style={{ color: "var(--arbor-green-ink)" }}
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Icon name="add" size={14} />
                     {t("profile.interests.addBtn")}
                   </button>
                 </div>

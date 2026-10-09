@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Download } from "lucide-react";
 import { StoryIllustration } from "./StoryIllustration";
 import { ComicPage } from "../ui/playkit";
 import { SpeakButton } from "../ui/SpeakButton";
+import { Icon } from "../ui/Icon";
 import { stopSpeaking } from "../../lib/tts";
 import type { AvatarStyle } from "../../lib/api";
 import { clearJourneyPageFailure, generateJourneyPage, hasJourneyPageFailed, journeyPageKey, type JourneyPageArgs } from "../../lib/heroComics";
@@ -318,7 +318,7 @@ export function HeroScenePlayer({
                 `${(heroName || "hero").toLowerCase()}-comic-page-${beatNumber}.png`,
               )
             } className="touch-target flex items-center gap-1 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.saveComicPage")}>
-            <Download className="w-3.5 h-3.5" /> {t("learn.save")}
+            <Icon name="download" size={14} /> {t("learn.save")}
           </button>
         )}
       </div>

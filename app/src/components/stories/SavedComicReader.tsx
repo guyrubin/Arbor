@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { ComicPage, PlayButton, ProgressPips, Celebrate } from "../ui/playkit";
+import { Icon } from "../ui/Icon";
 import { nextPageIndex, prevPageIndex, swipeToDelta, tapToDelta, type ComicLang } from "../../lib/heroComics";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { isStrictComicImageDataUrl } from "../../lib/heroComics";
@@ -62,7 +62,7 @@ export default function SavedComicReader({
     return (
       <Celebrate title={kidsStoriesText("reader.end", lang)} subtitle={kidsStoriesText("reader.endBody", lang)}>
         <PlayButton tone="clay" onClick={() => { setPageIndex(0); setFinished(false); }}>
-          <RotateCcw className="h-4 w-4" /> {kidsStoriesText("reader.again", lang)}
+          <Icon name="restart_alt" size={16} /> {kidsStoriesText("reader.again", lang)}
         </PlayButton>
         <PlayButton variant="soft" tone="clay" onClick={onBack}>{kidsStoriesText("reader.back", lang)}</PlayButton>
       </Celebrate>
@@ -72,7 +72,7 @@ export default function SavedComicReader({
     <section role="region" aria-roledescription="comic book" aria-label={title} dir={rtl ? "rtl" : "ltr"} className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <PlayButton variant="ghost" tone="clay" size="md" onClick={onBack}>
-          {rtl ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />} {kidsStoriesText("reader.back", lang)}
+          {rtl ? <Icon name="chevron_right" size={16} /> : <Icon name="chevron_left" size={16} />} {kidsStoriesText("reader.back", lang)}
         </PlayButton>
         <ProgressPips total={total} current={pageIndex} />
       </div>
@@ -114,7 +114,7 @@ export default function SavedComicReader({
           onClick={() => go(-1)}
           ariaLabel={kidsStoriesText("reader.previous", lang)}
         >
-          {rtl ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          {rtl ? <Icon name="chevron_right" size={16} /> : <Icon name="chevron_left" size={16} />}
         </PlayButton>
         <PlayButton tone="clay" onClick={advance}>
           {pageIndex === total - 1 ? kidsStoriesText("reader.end", lang) : kidsStoriesText("reader.page", lang, { current: pageIndex + 2, total })}

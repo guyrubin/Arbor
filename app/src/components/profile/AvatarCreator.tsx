@@ -2,13 +2,13 @@ import React, { useRef, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Sparkles, Camera, Wand2, ShieldCheck, Crown, Shield, Compass, Pencil, Eraser } from "lucide-react";
 import { api, isImageResting, type AvatarStyle, type AvatarDescriptors, type AvatarCharacterIntent } from "../../lib/api";
 import { fileToThumbnail, shrinkDataUrlToBudget } from "../../lib/image";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { useArborOptional } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { Avatar } from "../ui/Avatar";
+import { Icon } from "../ui/Icon";
 import { resolveHeroUrl } from "../ui/HeroAvatar";
 import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { ShareButton } from "../ui/ShareButton";
@@ -44,12 +44,12 @@ const STYLES: { id: AvatarStyle; labelKey: string }[] = [
 ];
 
 /** The picker, in reading order. `none` is the visible clear (UX26-29). */
-const CHARACTERS: { id: CharacterChoice; labelKey: string; Icon: typeof Crown; imageSrc?: string }[] = [
-  { id: "princess", labelKey: "elev.hero.character.princess", Icon: Crown, imageSrc: "/visuals/characters/v1/princess-v1-160.webp" },
-  { id: "superhero", labelKey: "elev.hero.character.superhero", Icon: Shield, imageSrc: "/visuals/characters/v1/superhero-v1-160.webp" },
-  { id: "explorer", labelKey: "elev.hero.character.explorer", Icon: Compass, imageSrc: "/visuals/characters/v1/explorer-v1-160.webp" },
-  { id: "custom", labelKey: "elev.hero.character.custom", Icon: Pencil },
-  { id: "none", labelKey: "elev.hero.character.none", Icon: Eraser },
+const CHARACTERS: { id: CharacterChoice; labelKey: string; glyph: string; imageSrc?: string }[] = [
+  { id: "princess", labelKey: "elev.hero.character.princess", glyph: "workspace_premium", imageSrc: "/visuals/characters/v1/princess-v1-160.webp" },
+  { id: "superhero", labelKey: "elev.hero.character.superhero", glyph: "shield", imageSrc: "/visuals/characters/v1/superhero-v1-160.webp" },
+  { id: "explorer", labelKey: "elev.hero.character.explorer", glyph: "explore", imageSrc: "/visuals/characters/v1/explorer-v1-160.webp" },
+  { id: "custom", labelKey: "elev.hero.character.custom", glyph: "edit" },
+  { id: "none", labelKey: "elev.hero.character.none", glyph: "ink_eraser" },
 ];
 
 export default function AvatarCreator({
@@ -235,10 +235,10 @@ export default function AvatarCreator({
           >
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-lg font-extrabold tracking-tight flex items-center gap-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-                <Sparkles className="w-4 h-4" style={{ color: "var(--arbor-clay)" }} /> {t("elev.hero.creator.title", { name: childName })}
+                <Icon name="auto_awesome" size={16} style={{ color: "var(--arbor-clay)" }} /> {t("elev.hero.creator.title", { name: childName })}
               </h3>
               <button onClick={requestClose} className="touch-target p-1.5 rounded-lg transition" style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
-                <X className="w-4 h-4" />
+                <Icon name="close" size={16} />
               </button>
             </div>
             <p className="text-xs mb-4" style={{ color: "var(--arbor-muted)" }}>{t("trust.avatar.notRealPhoto")}</p>
@@ -256,7 +256,7 @@ export default function AvatarCreator({
                   clear is the "none" radio), arrows move the selection, and the
                   checked option is the only tab stop (roving tabindex). */}
               <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t("elev.hero.character.group")}>
-                {CHARACTERS.map(({ id, labelKey, Icon, imageSrc }, index) => {
+                {CHARACTERS.map(({ id, labelKey, glyph, imageSrc }, index) => {
                   const selected = isCharacterSelected(character, id);
                   return (
                     <button
@@ -284,7 +284,7 @@ export default function AvatarCreator({
                       {imageSrc ? (
                         <img src={imageSrc} alt="" aria-hidden="true" className="h-12 w-12 shrink-0 object-contain" />
                       ) : (
-                        <Icon className="w-5 h-5 shrink-0" aria-hidden="true" />
+                        <Icon name={glyph} size={20} className="shrink-0" />
                       )}
                       {t(labelKey)}
                     </button>
@@ -307,7 +307,7 @@ export default function AvatarCreator({
 
             {/* Mode toggle */}
             <div className="grid grid-cols-2 gap-2 mb-4">
-              {([["describe", "elev.hero.mode.describe", Wand2], ["photo", "elev.hero.mode.photo", Camera]] as const).map(([id, labelKey, Icon]) => (
+              {([["describe", "elev.hero.mode.describe", "auto_fix_high"], ["photo", "elev.hero.mode.photo", "photo_camera"]] as const).map(([id, labelKey, glyph]) => (
                 <button
                   key={id}
                   onClick={() => { draftRequestRef.current += 1; setMode(id); setResult(undefined); }}
@@ -316,7 +316,7 @@ export default function AvatarCreator({
                     ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }
                     : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
                 >
-                  <Icon className="w-3.5 h-3.5" /> {t(labelKey)}
+                  <Icon name={glyph} size={14} /> {t(labelKey)}
                 </button>
               ))}
             </div>
@@ -363,7 +363,7 @@ export default function AvatarCreator({
                     style={{ accentColor: "var(--arbor-clay)" }}
                   />
                   <span className="text-[11px] leading-snug" style={{ color: "var(--arbor-green-ink)" }}>
-                    <ShieldCheck className="w-3.5 h-3.5 inline me-1" />
+                    <Icon name="verified_user" size={14} className="inline me-1" />
                     {t("trust.avatar.consent.pre")} <strong>{t("trust.avatar.consent.claim")}</strong>
                   </span>
                 </label>
@@ -375,7 +375,7 @@ export default function AvatarCreator({
                   controls={[t("trust.avatar.controls.1")]}
                 />
                 <label className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition ${consent ? "cursor-pointer" : "opacity-50 cursor-not-allowed"}`} style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
-                  <Camera className="w-3.5 h-3.5" /> {refPhoto ? t("elev.hero.photo.change") : t("elev.hero.photo.choose")}
+                  <Icon name="photo_camera" size={14} /> {refPhoto ? t("elev.hero.photo.change") : t("elev.hero.photo.choose")}
                   <input type="file" accept="image/*" className="hidden" disabled={!consent} onChange={(e) => onPickPhoto(e.target.files?.[0])} />
                 </label>
                 {refPhoto && <img src={refPhoto} alt={t("elev.hero.photo.alt")} className="w-16 h-16 rounded-xl object-cover" style={{ border: "1px solid var(--arbor-rule)" }} />}

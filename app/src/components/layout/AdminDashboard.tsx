@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Users, CreditCard, Cpu, RefreshCw } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { api, type AdminOverview } from "../../lib/api";
 
@@ -35,7 +35,7 @@ export default function AdminDashboard({ open, onClose }: { open: boolean; onClo
             {data ? `As of ${new Date(data.generatedAt).toLocaleString()}` : "Live operational metrics"}
           </p>
           <button onClick={load} disabled={loading} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-1.5 disabled:opacity-50" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+            <Icon name="refresh" size={14} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
         </div>
 
@@ -45,14 +45,14 @@ export default function AdminDashboard({ open, onClose }: { open: boolean; onClo
 
         {/* Users + paying */}
         <div className="grid grid-cols-2 gap-3">
-          <Stat icon={<Users className="w-4 h-4" />} label="User profiles" value={data?.users ?? "—"} />
-          <Stat icon={<CreditCard className="w-4 h-4" />} label="Paying" value={data?.paying.total ?? "—"} sub={data ? `${data.paying.plus} Plus · ${data.paying.family} Family · ${data.paying.trialing} trial` : undefined} />
+          <Stat icon={<Icon name="group" size={16} />} label="User profiles" value={data?.users ?? "—"} />
+          <Stat icon={<Icon name="credit_card" size={16} />} label="Paying" value={data?.paying.total ?? "—"} sub={data ? `${data.paying.plus} Plus · ${data.paying.family} Family · ${data.paying.trialing} trial` : undefined} />
         </div>
 
         {/* Token spend today */}
         <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center gap-2 mb-2">
-            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg" style={{ background: "#fff", color: "var(--arbor-green-ink)" }}><Cpu className="w-4 h-4" /></span>
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg" style={{ background: "#fff", color: "var(--arbor-green-ink)" }}><Icon name="memory" size={16} /></span>
             <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>AI usage today {data ? `(${data.usageToday.date})` : ""}</p>
           </div>
           <div className="grid grid-cols-2 gap-y-1.5 gap-x-4 text-xs" style={{ color: "var(--arbor-muted)" }}>

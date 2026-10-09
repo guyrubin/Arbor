@@ -33,7 +33,7 @@
  * on prefers-reduced-motion.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Sparkles, MessageCircle, Camera, BookOpen, Check, X } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor, type ActiveTab } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { PASTEL, type PastelKey } from "../../lib/tokens";
@@ -55,12 +55,13 @@ const STEPS: ReadonlyArray<{
   /** null = the step opens in place through `onCapture` (no hub switch). */
   tab: ActiveTab | null;
   tone: PastelKey;
-  Glyph: typeof Sparkles;
+  /** Material Symbols Rounded ligature for the step's tone chip. */
+  glyph: string;
 }> = [
-  { id: "capture", labelKey: "elev.rail.step.capture", tab: null, tone: "sky", Glyph: Camera },
-  { id: "coach", labelKey: "elev.rail.step.coach", tab: "coach", tone: "lav", Glyph: MessageCircle },
-  { id: "avatar", labelKey: "elev.rail.step.avatar", tab: "profile", tone: "mint", Glyph: Sparkles },
-  { id: "comic", labelKey: "elev.rail.step.comic", tab: "comics", tone: "pink", Glyph: BookOpen },
+  { id: "capture", labelKey: "elev.rail.step.capture", tab: null, tone: "sky", glyph: "photo_camera" },
+  { id: "coach", labelKey: "elev.rail.step.coach", tab: "coach", tone: "lav", glyph: "chat_bubble" },
+  { id: "avatar", labelKey: "elev.rail.step.avatar", tab: "profile", tone: "mint", glyph: "auto_awesome" },
+  { id: "comic", labelKey: "elev.rail.step.comic", tab: "comics", tone: "pink", glyph: "menu_book" },
 ];
 
 export interface FirstStepsRailState {
@@ -186,7 +187,7 @@ export function FirstStepsRail({ onCapture }: { onCapture: () => void }) {
           className="flex items-center justify-center w-11 h-11 -mt-1 rounded-xl flex-shrink-0 transition"
           style={{ color: "var(--arbor-muted)", background: "transparent", border: "none", cursor: "pointer" }}
         >
-          <X aria-hidden="true" style={{ width: "18px", height: "18px" }} />
+          <Icon name="close" size={18} />
         </button>
       </div>
 
@@ -223,9 +224,9 @@ export function FirstStepsRail({ onCapture }: { onCapture: () => void }) {
                 }
               >
                 {isDone ? (
-                  <Check style={{ width: "14px", height: "14px" }} />
+                  <Icon name="check" size={14} />
                 ) : (
-                  <s.Glyph style={{ width: "14px", height: "14px" }} />
+                  <Icon name={s.glyph} size={14} />
                 )}
               </span>
               <span className="min-w-0 flex-1 text-[var(--t-sm)] font-bold leading-tight" style={{ color: "var(--arbor-ink)" }}>
