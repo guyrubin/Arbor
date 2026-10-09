@@ -237,18 +237,19 @@ export interface BookSheetApi {
   fetchSpriteBlob(rel: string): Promise<Blob | null>;
 }
 
-export function bookSheetApi(childId: string, bookId: string = DEFAULT_SHEET_BOOK): BookSheetApi {
-  const base = `/api/children/${encodeURIComponent(childId)}/book-assets/${encodeURIComponent(bookId)}`;
+/** `origin` = "" in the app (same origin); the dry-run test passes its server's. */
+export function bookSheetApi(childId: string, bookId: string = DEFAULT_SHEET_BOOK, origin = ""): BookSheetApi {
+  const base = `${origin}/api/children/${encodeURIComponent(childId)}/book-assets/${encodeURIComponent(bookId)}`;
   const post = async (body: unknown) => fetch(`${base}/commit`, { method: "POST", headers: await authHeaders(), body: JSON.stringify(body) });
   const fetchSpriteBlob = async (rel: string): Promise<Blob | null> => {
     const headers = await authHeaders();
     delete headers["Content-Type"];
-    const res = await fetch(bookAssetUrl(childId, bookId, rel), { headers, credentials: "same-origin" });
+    const res = await fetch(`${origin}${bookAssetUrl(childId, bookId, rel)}`, { headers, credentials: "same-origin" });
     return res.ok ? res.blob() : null;
   };
   return {
     async requestPose(body) {
-      const res = await fetch("/api/hero-pose", { method: "POST", headers: await authHeaders(), body: JSON.stringify(body) });
+      const res = await fetch(`${origin}/api/hero-pose`, { method: "POST", headers: await authHeaders(), body: JSON.stringify(body) });
       if (!res.ok) return { ok: false, status: res.status, code: await codeOf(res) };
       const d = (await res.json().catch(() => null)) as { dataUrl?: unknown } | null;
       return typeof d?.dataUrl === "string" ? { ok: true, dataUrl: d.dataUrl } : { ok: false, status: res.status, code: "bad_response" };
