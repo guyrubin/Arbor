@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import { apiRateLimit } from "./apiRateLimits.js";
 import type { ArborConfig } from "../config/env.js";
 import { createModelProvider, type GenerateJsonOptions, type ModelProvider } from "../ai/modelRouter.js";
 import { CapabilityRegistry } from "../ai/capabilities/registry.js";
@@ -170,16 +170,8 @@ export const createApp = (config: ArborConfig) => {
   // B-DIST-01: the sandbox's demo-family bundle — null (not mounted) in prod.
   const demoFamilyRouter = createDemoFamilyRouter(config);
   if (demoFamilyRouter) app.use(demoFamilyRouter);
-  app.use("/api", rateLimit({
-    windowMs: 60_000,
-    limit: 30,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-      error: "Rate limit exceeded",
-      details: "Too many Arbor requests from this IP. Please wait a minute and try again."
-    }
-  }));
+  // The per-IP limit; the book-asset routes have their own per-account one (K2).
+  app.use("/api", apiRateLimit());
   // Vision/document images need a larger body than the default API limit.
   app.use("/api/vision", express.json({ limit: "12mb" }));
   // Image-generation endpoints receive the child's generated avatar (a ~1-2MB

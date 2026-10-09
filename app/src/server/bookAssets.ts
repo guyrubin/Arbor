@@ -1,6 +1,7 @@
 import express, { type RequestHandler } from "express";
 import { BOOK_ASSET_ID, bookAssetContentType, bookAssetObject, childBookAssetPrefix, isBookAssetRel } from "../lib/library/bookAssetPaths.js";
 import { logger, requestIdOf } from "./logger.js";
+import { bookAssetLimiter } from "./apiRateLimits.js";
 
 /**
  * B-BOOK release — a child's private book files (hero sheet, choice cards,
@@ -65,8 +66,10 @@ export async function eraseChildBookAssets(bucket: BookAssetBucket | null, child
   }
 }
 
-export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAssetBucket | null>; requireOwnership: RequestHandler; allowLocal?: boolean }): express.Router {
+export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAssetBucket | null>; requireOwnership: RequestHandler; allowLocal?: boolean; readsPerMin?: number }): express.Router {
   const router = express.Router();
+  // K2: off the per-IP /api limit; its own per-account limit (a first open reads every file)
+  const limit = bookAssetLimiter("read", deps.readsPerMin);
   const verified: RequestHandler = (req, res, next) => {
     const uid = (req as { user?: { uid?: string } }).user?.uid;
     if (deps.allowLocal && (!uid || uid === "local-sandbox")) return next();
@@ -76,7 +79,7 @@ export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAsse
     }
     next();
   };
-  router.get("/children/:childId/book-assets/:bookId/file", verified, deps.requireOwnership, async (req, res) => {
+  router.get("/children/:childId/book-assets/:bookId/file", verified, limit, deps.requireOwnership, async (req, res) => {
     const { childId, bookId } = req.params;
     const rel = typeof req.query.path === "string" ? req.query.path : "";
     if (!BOOK_ASSET_ID.test(childId) || !BOOK_ASSET_ID.test(bookId) || !isBookAssetRel(rel)) {

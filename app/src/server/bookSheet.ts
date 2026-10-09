@@ -40,6 +40,7 @@ import type { HeroPoseSource } from "./heroPoseRoute.js";
 import type { EntitlementStore } from "./entitlements.js";
 import { HERO_BOOK_POSES_BY_PLAN, imagePlanFor } from "./imageQuota.js";
 import { logger, requestIdOf } from "./logger.js";
+import { bookAssetLimiter } from "./apiRateLimits.js";
 
 /** The child's book docs (users/{uid}/children/{cid}/bookAssets/{bookId}). */
 export interface BookAssetsDocStore {
@@ -111,6 +112,8 @@ export interface BookSheetDeps {
   docs: BookAssetsDocStore;
   /** Sandbox (MEMORY_ADAPTER=local): the unauthenticated local caller may write. */
   local?: boolean;
+  /** The per-account write limit (default: BOOK_ASSET_WRITES_PER_MIN, 120). */
+  writesPerMin?: number;
   now?: () => string;
 }
 
@@ -122,6 +125,8 @@ const refuse: Refuse = (res, status, code, error, extra = {}) => {
 export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
   const router = express.Router();
   const now = deps.now ?? (() => new Date().toISOString());
+  // K2: off the per-IP /api limit; its own per-account limit
+  const limit = bookAssetLimiter("write", deps.writesPerMin);
   const uidOf = (req: express.Request) => (req as { user?: { uid?: string } }).user?.uid;
   const verified: RequestHandler = (req, res, next) => {
     const uid = uidOf(req);
@@ -169,6 +174,7 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
   router.put(
     "/children/:childId/book-assets/:bookId/file",
     verified,
+    limit,
     deps.requireOwnership,
     express.raw({ type: () => true, limit: "1mb" }),
     async (req, res) => {
@@ -209,7 +215,7 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
     },
   );
 
-  router.post("/children/:childId/book-assets/:bookId/commit", verified, deps.requireOwnership, async (req, res) => {
+  router.post("/children/:childId/book-assets/:bookId/commit", verified, limit, deps.requireOwnership, async (req, res) => {
     const body = (req.body ?? {}) as { avatarHash?: unknown; dryRun?: unknown };
     const g = await gate(req, res, body.avatarHash);
     if (!g) return;
