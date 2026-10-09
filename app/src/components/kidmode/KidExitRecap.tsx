@@ -88,9 +88,9 @@ export default function KidExitRecap() {
     // addMoment's own failure toast stays quiet.
     if (line) {
       const kept = line;
-      const offerKeep = (failed: boolean) => toast(
-        failed ? t("elev.learnCare.kidExit.keepFailed", { line }) : line,
-        failed ? "error" : "info",
+      const offerKeep = (retry: boolean) => toast(
+        retry ? t("elev.learnCare.kidExit.keepFailed", { line }) : line,
+        retry ? "error" : "info",
         {
           label: t("elev.learnCare.kidExit.keep"),
           onClick: async () => { if (!await addMoment(kept, { callerShowsFailure: true })) offerKeep(true); },

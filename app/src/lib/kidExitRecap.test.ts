@@ -211,8 +211,8 @@ describe("B-SHELL-04 · the recap names hero stories and stays until kept or dis
   });
 
   it("the toast carries a Keep action (so it never auto-removes) that writes one moment", () => {
-    expect(recap).toContain("const offerKeep = (failed: boolean) => toast(");
-    expect(recap).toContain('failed ? "error" : "info",');
+    expect(recap).toContain("const offerKeep = (retry: boolean) => toast(");
+    expect(recap).toContain('retry ? "error" : "info",');
     expect(recap).toContain("offerKeep(false);");
     expect(recap).toContain('t("elev.learnCare.kidExit.keep")');
     expect((recap.match(/addMoment\(/g) ?? []).length).toBe(1);
@@ -226,7 +226,7 @@ describe("B-SHELL-04 · the recap names hero stories and stays until kept or dis
     // addMoment stays quiet (callerShowsFailure) because the re-offer IS the
     // failure notice: it names the line and carries the same Keep action.
     expect(recap).toContain("if (!await addMoment(kept, { callerShowsFailure: true })) offerKeep(true);");
-    expect(recap).toContain('failed ? t("elev.learnCare.kidExit.keepFailed", { line }) : line,');
+    expect(recap).toContain('retry ? t("elev.learnCare.kidExit.keepFailed", { line }) : line,');
     // NEGATIVE CONTROL — the pre-fix retry re-offered the plain info toast on
     // top of addMoment's own "couldn't save" toast: two messages, one failure.
     const preFix = `onClick: async () => { if (!await addMoment(kept)) offerKeep(); },`;
