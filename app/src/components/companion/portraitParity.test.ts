@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { toObservations } from "../../lib/observations";
+import { quoteKeepsakeDoc } from "../../lib/loop/tonight";
 
 /** Parity 9 Oct — My child regains what the Growth hub carried. */
 const read = (rel: string) => readFileSync(path.resolve(__dirname, "..", "..", rel), "utf8")
@@ -34,20 +35,14 @@ describe("CLINICAL FIREWALL on the thread map", () => {
   });
 });
 
-describe("a kept quote is part of the record (B-GROWTH-36)", () => {
-  const child = { id: "child-a", ageMonths: 40 } as never;
-  it("files under talking with its own id, instead of being dropped for having no milestone", () => {
-    const out = toObservations({ keepsakes: [{ id: "quote-2026-10-08-abc", kind: "quote", milestoneId: "", note: "The moon is following us", noticedOn: "2026-10-08", createdAt: "2026-10-08T19:00:00Z", updatedAt: "2026-10-08T19:00:00Z" }] } as never, child);
-    const quote = out.find((o) => o.id === "keepsakes:quote-2026-10-08-abc");
-    expect(quote).toBeDefined();
-    expect(quote!.domains).toEqual(["talking"]);
-    expect(quote!.value).toMatchObject({ type: "keepsake", milestoneId: "", note: "The moon is following us" });
+describe("kept quotes show on My child through the Words view (B-GROWTH-36)", () => {
+  it("the Words view is the ledger, which lists 'Things {name} said' from 3", () => {
+    const ledger = read("components/growth/FirstWordsLedger.tsx");
+    expect(keepsakes).toContain('{view === "words" ? <FirstWordsLedger />');
+    expect(ledger).toContain("<SaidList ");
   });
-  it("NEGATIVE CONTROL: a milestone keepsake still resolves through its milestone", () => {
-    const out = toObservations({ keepsakes: [{ milestoneId: "unknown-ms", note: "x", noticedOn: "2026-10-08", createdAt: "2026-10-08T19:00:00Z", updatedAt: "2026-10-08T19:00:00Z" }] } as never, child);
-    expect(out.find((o) => o.id === "keepsakes:unknown-ms")).toBeUndefined();
-  });
-  it("opening a kept quote goes where quotes live", () => {
-    expect(portrait).toContain('if (o.origin === "keepsakes" && o.value.type === "keepsake" && !o.value.milestoneId) { setActiveTab("language"); return; }');
+  it("B-LOOP-10 holds: a quote never becomes a record observation (no shelf, no coverage count)", () => {
+    const doc = quoteKeepsakeDoc("The moon is following us", new Date("2026-10-08T19:00:00Z"))!;
+    expect(toObservations({ keepsakes: [doc] } as never, { id: "child-a" } as never)).toEqual([]);
   });
 });

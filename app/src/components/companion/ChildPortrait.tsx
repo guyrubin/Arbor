@@ -158,7 +158,6 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     setSelection(null);
     if (o.origin === "behaviorLogs") { openCaptureSheet({ editLogId: o.id.slice("behaviorLogs:".length), editLog: logMap.get(o.id) }); return; }
     if (o.origin === "milestones" && milestones.some(m => `milestones:${m.id}` === o.id)) { requestJournalFocus(`milestone-${o.id.slice("milestones:".length)}`); setActiveTab("journal"); return; }
-    if (o.origin === "keepsakes" && o.value.type === "keepsake" && !o.value.milestoneId) { setActiveTab("language"); return; }
     const routes: Partial<Record<ObservationOrigin, Parameters<typeof setActiveTab>[0]>> = { milestones: "milestones", keepsakes: "milestones", growthEntries: "profile", langObs: "language", screenings: "screening", memory: "memory", goalObservations: "practice", actionLoops: "journal", playLogs: "journal", practiceEvents: "journal", speechAttempts: "speech", mimicSessions: "mimic", adventureResults: "adventures", missionRecords: "journal" };
     setActiveTab(routes[o.origin] ?? "journal");
   };

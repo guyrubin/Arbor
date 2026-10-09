@@ -62,8 +62,8 @@ export default function TogetherView() {
     ledgers: kidActivityLedgers(practiceData),
     stories: heroRuns.items.map((r) => ({ title: runTitle(r, lang), completedAt: r.completedAt })),
     sinceMs: playWindow.sinceMs, sinceIsFallback: playWindow.isFallback, nowMs: Date.now(), total: counts.total,
-    uiLang: lang, gender: childProfile.gender, t: withChildSignals(t, he), childName: name,
-  }), [practiceData, heroRuns.items, playWindow, counts.total, lang, childProfile.gender, t, he, name]);
+    uiLang: lang, gender: childProfile.gender, t: withChildSignals(t, uiLang === "he"), childName: name,
+  }), [practiceData, heroRuns.items, playWindow, counts.total, lang, childProfile.gender, t, uiLang, name]);
   const sinceText = since ? `${since.before}${since.title ?? ""}${since.after}` : "";
   // B-SHELL-NEW-1b: the sentence can be kept as ONE parent moment; the inline
   // line below is this write's one failure message (the seam stays quiet).
