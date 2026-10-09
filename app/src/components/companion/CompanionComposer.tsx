@@ -11,14 +11,18 @@ import CompanionConsentReview from "./CompanionConsentReview";
 import { COMPANION_CONSENT_COPY } from "./companionConsentCopy";
 import "./companionComposer.css";
 
-export default function CompanionComposer({ childId, conversationRevision, language, value, onChange, busy, visible, onSend, onVoice, voiceActive, voiceLabel, onKeep }: {
+export default function CompanionComposer({ childId, conversationRevision, language, value, onChange, busy, visible, onSend, onVoice, voiceActive, voiceLabel, onKeep, onAttachmentsChange }: {
   childId: string; conversationRevision: number; language: "en" | "he"; value: string; onChange: (value: string) => void;
   busy: boolean; visible: boolean; onSend: (prompt?: string, options?: { attachments?: ComposerAttachment[] }) => Promise<boolean | undefined>;
   onVoice: () => void; voiceActive: boolean; voiceLabel: string; onKeep: (text: string, photo?: string) => void;
+  /** How many files the input holds (a count, never the files). */
+  onAttachmentsChange?: (count: number) => void;
 }) {
   const he = language === "he";
   const consent = useCompanionConsent(childId);
   const [attachments, setAttachments] = useState<ComposerAttachment[]>([]);
+  // The host keeps commercial previews out of a composition in progress.
+  useEffect(() => { onAttachmentsChange?.(attachments.length); }, [attachments.length, onAttachmentsChange]);
   const [preparing, setPreparing] = useState(false);
   const [error, setError] = useState("");
   const [listening, setListening] = useState(false);

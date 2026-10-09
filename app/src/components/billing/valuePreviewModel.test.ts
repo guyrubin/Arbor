@@ -394,12 +394,17 @@ describe("placement — exactly one mount, on the calm coach surface", () => {
     expect(mounts.map((f) => path.relative(SRC, f).replace(/\\/g, "/"))).toEqual(["components/tabs/CoachTab.tsx"]);
   });
 
-  it("it is eligible only on an empty idle standalone thread, never the active companion workspace", () => {
+  it("it is eligible only on an empty idle thread, and in the workspace only while the input holds nothing", () => {
     const coach = stripComments(readFileSync(path.join(SRC, "components", "tabs", "CoachTab.tsx"), "utf8").replace(/\r\n/g, "\n"));
     expect(coach.length).toBeGreaterThan(20_000);
     expect(coach).toContain("<ValuePreview");
     expect(coach).toContain("threadEmpty={chatMessages.length === 0}");
-    expect(coach).toMatch(/surfaceIdle=\{!embedded && !isChatLoading && !failureCopy && voicePhase === "off"\s*\}/);
+    expect(coach).toMatch(/surfaceIdle=\{!isChatLoading && !failureCopy && voicePhase === "off" && \(!embedded \|\| \(!chatInput\.trim\(\) && composerFiles === 0\)\)\}/);
+    // The composer reports its file count, so a file in progress keeps the card away.
+    expect(coach).toContain("onAttachmentsChange={setComposerFiles}");
+    // NEGATIVE CONTROL: the shipped gate excluded the workspace outright, and
+    // the workspace is the only host — the card could never render.
+    expect(/!embedded && !isChatLoading/.test(coach)).toBe(false);
     // Preparing media and dictation belong to the persistent input. Its host
     // excludes this commercial preview throughout that flow.
     expect(stripComments(readFileSync(path.join(SRC, "components", "companion", "CompanionWorkspace.tsx"), "utf8"))).toContain("embedded visible={visible}");
