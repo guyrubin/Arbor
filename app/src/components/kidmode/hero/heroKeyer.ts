@@ -283,8 +283,10 @@ const dominant = (key: readonly number[]): 0 | 1 | 2 => (key[1] >= key[0] && key
 /**
  * Key one generated pose (one figure on a flat key colour) and run the QA gate.
  * `ok` is false on any gate failure; `sprite` is still returned for review.
+ * `pad`: the trim's padding as a fraction of the figure (the game's 4 %
+ * default; the BOOK mode trims tight, 0: keyBookSprite).
  */
-export function keySprite(img: RgbaImage): KeyedSprite {
+export function keySprite(img: RgbaImage, opts: { pad?: number } = {}): KeyedSprite {
   const { width: W, height: H, data: src } = img;
   const fails: string[] = [];
   const key = sampleKey(img);
@@ -377,7 +379,7 @@ export function keySprite(img: RgbaImage): KeyedSprite {
 
   // Trim + 4 % padding; only this figure's alpha in the crop.
   const fh = fig.y1 - fig.y0 + 1, fw = fig.x1 - fig.x0 + 1;
-  const pad = Math.round(QA_LIMITS.pad * Math.max(fh, fw));
+  const pad = Math.round((opts.pad ?? QA_LIMITS.pad) * Math.max(fh, fw));
   const cx0 = Math.max(0, fig.x0 - pad), cy0 = Math.max(0, fig.y0 - pad);
   const cx1 = Math.min(W, fig.x1 + pad + 1), cy1 = Math.min(H, fig.y1 + pad + 1);
   const sw = cx1 - cx0, sh = cy1 - cy0;
@@ -399,6 +401,35 @@ export function keySprite(img: RgbaImage): KeyedSprite {
     figureH: fh,
     qa: { fails, borderDeltaE: worst, margins, residue, holes, figures: figs.length },
   };
+}
+
+/* ── K2 4c: the BOOK mode ─────────────────────────────────────────────────────
+ * A book page places a sprite by its feet: slot (x, y) = the feet centre,
+ * slot.scale = the sprite's height / the plate's height (lib/library/
+ * bookPageLayout heroRect). So a book sprite is trimmed TIGHT (no padding, the
+ * lowest opaque row is the image's last row) and measured like the art
+ * pipeline's alpha_meta (app/scripts/import-book-art.py): aspect = w / h;
+ * footX / footW = the centre / width of the opaque columns in the lowest 6 % of
+ * the image (alpha > 80), as fractions of the width.
+ */
+export interface BookSpriteAnchor { aspect: number; footX: number; footW: number; bottom: number }
+
+export function bookSpriteAnchor(img: RgbaImage): BookSpriteAnchor {
+  const { width: W, height: H, data } = img;
+  const a = (x: number, y: number) => data[(y * W + x) * 4 + 3];
+  let bot = -1;
+  for (let y = H - 1; y >= 0 && bot < 0; y--) for (let x = 0; x < W; x++) if (a(x, y) > 80) { bot = y; break; }
+  if (bot < 0) return { aspect: W / Math.max(1, H), footX: 0.5, footW: 0, bottom: 0 };
+  let x0 = W, x1 = -1;
+  for (let y = Math.max(0, Math.floor(bot - 0.06 * H)); y <= bot; y++) for (let x = 0; x < W; x++) if (a(x, y) > 80) { if (x < x0) x0 = x; if (x > x1) x1 = x; }
+  const r4 = (v: number) => Math.round(v * 10000) / 10000;
+  return { aspect: r4(W / H), footX: r4((x0 + x1) / 2 / W), footW: r4((x1 - x0) / W), bottom: r4(bot / H) };
+}
+
+/** Key a BOOK pose: the same cut-out and QA gate, a tight trim, its anchors. */
+export function keyBookSprite(img: RgbaImage): KeyedSprite & { anchor: BookSpriteAnchor | null } {
+  const keyed = keySprite(img, { pad: 0 });
+  return { ...keyed, anchor: keyed.sprite ? bookSpriteAnchor(keyed.sprite) : null };
 }
 
 /* ── Anchors ──────────────────────────────────────────────────────────────── */
