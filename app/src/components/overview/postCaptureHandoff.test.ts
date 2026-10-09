@@ -102,13 +102,14 @@ describe("AI-CAP-7 — both gated confirms offer, once each, with the write path
 
   it("B-TODAY-20: QuickLogModal no longer offers the strip — its reply panel carries the one next move", () => {
     expect(modal).not.toContain("offerPostCaptureCoach");
-    const confirm = /const confirm = \(e: React\.FormEvent\) => \{[\s\S]*?\n  \};/.exec(modal)?.[0] ?? "";
+    const confirm = /const confirm = async \(e: React\.FormEvent\) => \{[\s\S]*?\n  \};/.exec(modal)?.[0] ?? "";
     expect(confirm).toBeTruthy();
     // The confirmed fields are still snapshotted BEFORE handleAddLog resets
     // the form — as the reply's fallback seed, prefill only.
     expect(confirm).toMatch(/beh\.postCapture\.prompt/);
     expect(confirm.indexOf("confirmedPrompt")).toBeLessThan(confirm.indexOf("handleAddLog(e)"));
-    expect(confirm).toMatch(/setReply\(\{ log: written, hard: true, seed: confirmedPrompt \}\)/);
+    // The reply is built from the DURABLY written record; "hard" follows its own type.
+    expect(confirm).toMatch(/setReply\(\{ log: written, hard: isIncidentType\(written\.behaviorType\), seed: confirmedPrompt \}\)/);
     // The reply's Ask is the ONE seedCoach seam, source post-capture, never a send.
     expect(modal).toMatch(/seedCoach\(\{ prompt: reply\.seed, source: "post-capture" \}\)/);
     expect(modal).not.toMatch(/handleSend|sendMessage|api\.chat/);

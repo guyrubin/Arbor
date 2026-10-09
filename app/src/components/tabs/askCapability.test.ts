@@ -35,6 +35,7 @@ const coach = stripComments(coachRaw);
 const ctx = stripComments(read("context/ArborContext.tsx"));
 const cards = stripComments(read("components/coach/CoachAnswerCards.tsx"));
 const contracts = stripComments(read("contracts/coach.ts"));
+const councilLib = stripComments(read("lib/councilConversation.ts"));
 
 describe("ASK-4 — anticipated follow-ups", () => {
   it("the chips render contract.followUps with the static trio as FALLBACK only", () => {
@@ -54,8 +55,10 @@ describe("ASK-4 — anticipated follow-ups", () => {
   it("Council with an empty composer re-asks the last user question", () => {
     const councilSend = /const handleCouncilSend = async[\s\S]*?\n  \};/.exec(ctx)?.[0] ?? "";
     expect(councilSend).not.toBe("");
-    expect(councilSend).toContain('find((m) => m.sender === "user")');
-    expect(councilSend).toContain("chatInput.trim() || lastUserTurn?.text");
+    expect(councilSend).toContain("councilConversation({ thread: eligibleThread, childId: childProfile.id, draft: chatInput, customPrompt, answerIndex: opts?.answerIndex })");
+    // The re-ask rule lives in the one continuation seam: custom prompt, else draft, else the last parent turn.
+    expect(councilLib).toContain('find(turn => turn.sender === "user")');
+    expect(councilLib).toContain("input.customPrompt || input.draft.trim() || parent?.text");
   });
 
   it("B-ASKJB-05: the council is convened from an ANSWER ('Go deeper' inside More), so a prior turn always exists", () => {
@@ -63,7 +66,8 @@ describe("ASK-4 — anticipated follow-ups", () => {
     // composer; the only door is the answer card's "Go deeper", which renders
     // only on an answer — i.e. after a turn — and re-asks that question.
     expect(coach).not.toContain('t("coach.council")');
-    expect(coach).toMatch(/onGoDeeper=\{\(\) => handleCouncilSend\(\)\}/);
+    // Go deeper is bound to THIS answer, so an older report re-asks its own question.
+    expect(coach).toMatch(/onGoDeeper=\{\(\) => handleCouncilSend\(undefined, \{ answerIndex: idx \}\)\}/);
     for (const lang of ["en", "he"] as const) {
       expect(translate(lang, "coach.cards.goDeeper").trim()).not.toBe("");
     }

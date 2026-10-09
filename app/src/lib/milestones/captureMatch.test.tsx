@@ -136,7 +136,8 @@ describe("the filed moment lands on its shelf (read model)", () => {
     expect(w.provenance).toBe("cdc-24m-3");
     expect(toObservations({ behaviorLogs: [{ ...base, shelf: "sleep" }] }, { id: "k" })[0].shelf).toBe("sleep");
     expect(toObservations({ behaviorLogs: [{ ...base, shelf: "food" }] }, { id: "k" })[0].shelf).toBe("food");
-    expect(toObservations({ behaviorLogs: [base] }, { id: "k" })[0].shelf).toBe("feelings");
+    // A plain moment the parent never filed carries no developmental meaning (no inferred shelf).
+    expect(toObservations({ behaviorLogs: [base] }, { id: "k" })[0].shelf).toBeUndefined();
   });
 });
 

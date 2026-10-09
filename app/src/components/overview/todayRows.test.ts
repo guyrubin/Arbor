@@ -63,8 +63,8 @@ describe("TJB-08 — voice captures on Today, not on Behaviors", () => {
     expect(modal).toMatch(/uiLang === "he" \? "he-IL" : "en-US"/);
     expect(modal).toMatch(/speechSupported\(\)/);
     expect(modal).toMatch(/stopRef\.current\?\.\(\)/);
-    // Closing the modal stops the microphone.
-    expect(modal).toMatch(/if \(!open\) \{[\s\S]{0,260}stopRef\.current\?\.\(\)/);
+    // Closing the modal (or switching child) stops the microphone.
+    expect(modal).toMatch(/if \(!open \|\| childChanged\) \{[\s\S]{0,900}stopRef\.current\?\.\(\)/);
   });
 
   it("the Stop control is keyed in both locales and clears the touch floor", () => {

@@ -114,7 +114,7 @@ describe("AI-06 — the failure card branches, and only offers Retry when retryi
     expect(coach).toMatch(/t\(failureCopy\.titleKey\)/);
     expect(coach).toMatch(/t\(failureCopy\.bodyKey, failureCopy\.bodyParams\)/);
     expect(coach).toMatch(/failureCopy\.retryable && lastUserText/);
-    expect(coach).toMatch(/failureCopy\.actionKey && failureCopy\.actionRoute/);
+    expect(coach).toMatch(/failureCopy\.actionKey && \(failureCopy\.actionRoute \|\| fileConsentFailure\)/);
   });
 
   it("the voice path stops pretending a quota/consent refusal is a transport hiccup", () => {
@@ -149,7 +149,7 @@ describe("AI-24 — offline is said out loud, before the send", () => {
     expect(coach).toMatch(/handleChatSend: sendToCoach/);
     expect(coach).toMatch(/handleCouncilSend: convenceCouncil/);
     expect(coach).toMatch(/const handleChatSend = async \(customPrompt\?: string, opts\?: \{ displayText\?: string; attachments\?: ComposerAttachment\[\] \}\) => \{\s*if \(!online\) \{/);
-    expect(coach).toMatch(/const handleCouncilSend = \(customPrompt\?: string\) => \{\s*if \(!online\) \{/);
+    expect(coach).toMatch(/const handleCouncilSend = \(customPrompt\?: string, opts\?: \{ answerIndex\?: number \}\) => \{\s*if \(!online\) \{/);
     expect(coach).toMatch(/classifyAiFailure\(null, \{ online: false/);
     expect(coach).toMatch(/data-testid="coach-offline-note"/);
     expect(coach).toMatch(/elev\.aierrors\.offline\.composer/);

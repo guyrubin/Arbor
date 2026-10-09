@@ -261,7 +261,8 @@ describe("the shelf's entries — filtered by shelfOf only", () => {
     expect([...shelfSignalIds(observations, "words")]).toEqual(["moment-b"]);
     const signals = ["moment-a", "moment-b", "moment-c", "plan-x"].map((id) => ({ id, kind: "moment", at: "2026-10-05T08:00:00Z", tone: "lav" }) as TimelineSignal);
     expect(signalsOnShelf(signals, observations, "words").map((s) => s.id)).toEqual(["moment-b"]);
-    expect(signalsOnShelf(signals, observations, "feelings").map((s) => s.id)).toEqual(["moment-c"]);
+    // An unfiled plain moment is not guessed onto feelings (or any shelf).
+    expect(signalsOnShelf(signals, observations, "feelings").map((s) => s.id)).toEqual([]);
   });
 });
 

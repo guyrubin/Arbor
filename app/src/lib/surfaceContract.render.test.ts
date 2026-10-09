@@ -64,7 +64,7 @@ describe("SurfaceFrame — the contract reaches the DOM without changing layout"
     expect(SHELL).toContain('import { contractFor } from "../../lib/surfaceContract";');
     const framed = SHELL.slice(SHELL.indexOf('<SurfaceFrame route={activeTab}>'), SHELL.indexOf('</SurfaceFrame>'));
     expect(framed).toContain('<OverviewTab topic={activeFamilyTopic}');
-    expect(framed).toContain('<DevelopmentTab onDiscuss={createTopic}');
+    expect(framed).toContain('<DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) =>');
     expect(framed).toContain('<ActiveTabComponent/>');
     const frame = SHELL.slice(SHELL.indexOf("function SurfaceFrame"), SHELL.indexOf("export default function Shell"));
     expect(frame).toContain("const contract = contractFor(route);");
