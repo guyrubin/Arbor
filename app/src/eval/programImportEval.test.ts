@@ -14,7 +14,7 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url));
 
 describe("home-program-import eval contract", () => {
   it("has a pinned valid suite, real runner inputs, both file kinds and safety/edge scenarios", () => {
-    expect(validateSuite(suite, ["gemini-2.5-pro"])).toEqual([]);
+    expect(validateSuite(suite, ["gemini-3.8-flash"])).toEqual([]);
     expect(deterministicGateErrors(suite, repo)).toEqual([]);
     expect(suite.scenarios).toHaveLength(8);
     expect(suite.scenarios.filter((scenario) => scenario.id.startsWith("edge-")).length).toBeGreaterThanOrEqual(2);

@@ -1,4 +1,5 @@
 import { liveExceptionFromEnv } from "../ai/liveResidency.js";
+import { isVertexMultiRegion } from "../ai/vertexEndpoint.js";
 
 export type ArborEnvironment = "local" | "dev" | "stage" | "prod";
 /** B-INF-04: "mock" = deterministic fixtures for the sandbox audit lanes
@@ -145,6 +146,14 @@ export const loadConfig = (): ArborConfig => {
   const modelProvider = parseModelProvider(process.env.MODEL_PROVIDER, arborEnv);
   const memoryAdapter = parseMemoryAdapter(process.env.MEMORY_ADAPTER, arborEnv);
   const enableLocalMemoryAdapter = boolFromEnv(process.env.ENABLE_LOCAL_MEMORY_ADAPTER, arborEnv !== "prod");
+  // B-GA-27 (9 Oct 2026): Gemini text routes run on the Vertex `eu` multi-region
+  // endpoint (gemini-3.5-flash is not served in europe-west4). Images keep a
+  // regional primary: GCP_REGION (europe-west4) when the text location is a
+  // multi-region.
+  const vertexLocation = process.env.VERTEX_LOCATION || "eu";
+  const imagePrimaryLocation = isVertexMultiRegion(vertexLocation)
+    ? process.env.GCP_REGION || "europe-west4"
+    : vertexLocation;
 
   const config: ArborConfig = {
     nodeEnv: process.env.NODE_ENV || "development",
@@ -164,7 +173,7 @@ export const loadConfig = (): ArborConfig => {
     ])),
     gcpProjectId: process.env.GCP_PROJECT_ID,
     gcpRegion: process.env.GCP_REGION || "europe-west4",
-    vertexLocation: process.env.VERTEX_LOCATION || process.env.GCP_REGION || "europe-west4",
+    vertexLocation,
     // B-PROV-03: Claude on the Vertex `eu` multi-region endpoint by default.
     vertexClaudeLocation: (process.env.VERTEX_CLAUDE_LOCATION || "").trim() || "eu",
     // AIR-4: default coach model is the current Claude Sonnet generation on
@@ -173,17 +182,16 @@ export const loadConfig = (): ArborConfig => {
     // eval:safety + the hard-moment suite must re-run green against the new
     // resolved id, and evals/pinned-models.json is refreshed in the same PR.
     vertexModelChat: process.env.VERTEX_MODEL_CHAT || "claude-sonnet-5@anthropic",
-    vertexModelStory: process.env.VERTEX_MODEL_STORY || "gemini-2.5-flash",
-    vertexModelAnalysis: process.env.VERTEX_MODEL_ANALYSIS || "gemini-2.5-flash",
-    vertexModelHandoff: process.env.VERTEX_MODEL_HANDOFF || "gemini-2.5-flash",
+    // B-GA-27: gemini-2.5-flash retires on Vertex 20 Oct 2026; gemini-3.5-flash
+    // is GA with retirement no earlier than 19 May 2027.
+    vertexModelStory: process.env.VERTEX_MODEL_STORY || "gemini-3.5-flash",
+    vertexModelAnalysis: process.env.VERTEX_MODEL_ANALYSIS || "gemini-3.5-flash",
+    vertexModelHandoff: process.env.VERTEX_MODEL_HANDOFF || "gemini-3.5-flash",
     vertexModelImage: process.env.VERTEX_MODEL_IMAGE || "gemini-2.5-flash-image",
     // 22 Sep 2026: europe-west4 returned 429 "Resource exhausted" on 26 of 35
     // scene requests with project quota at 0 % — regional capacity, not quota.
     // Family imagery stays in the EU: the fallback list is EU-only by default.
-    vertexImageRegions: imageRegionsFromEnv(
-      process.env.VERTEX_IMAGE_REGIONS,
-      process.env.VERTEX_LOCATION || process.env.GCP_REGION || "europe-west4"
-    ),
+    vertexImageRegions: imageRegionsFromEnv(process.env.VERTEX_IMAGE_REGIONS, imagePrimaryLocation),
     modelProvider,
     geminiApiKey: process.env.GEMINI_API_KEY,
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",

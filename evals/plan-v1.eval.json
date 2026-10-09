@@ -2,13 +2,14 @@
   "suite": "plan-v1",
   "version": "1.0.0",
   "feature": "Plan generation (/api/generate-plan) from the record: the topic, the parent's behaviour COUNTS over 21 days (canonical type -> number of logs; never a moment's text, Guy G6), the approved facts CompanionContext admits (none in private mode or without memory permission), and the parent's own step outcomes (a step reported 'not today' twice is not repeated unchanged). B-ASKJB-27 authors the suite with generate_plan 1.2.0.",
-  "judgeModel": "gemini-2.5-pro",
+  "judgeModel": "gemini-3.8-flash",
   "judgeNote": "interim — same-vendor judge, self-preference risk; replace with claude-opus-5-5 on Vertex eu when B-PROV-03 lands",
   "promptVersions": {
     "generate_plan": "1.2.0",
     "non_diagnostic_contract": "1.0.0"
   },
   "runner": {
+    "judge-repin-2026-10-09": "B-GA-27 (9 Oct 2026): judgeModel gemini-2.5-pro -> gemini-3.8-flash (gemini-2.5-pro and gemini-2.5-flash retire on Vertex 20 Oct 2026; gemini-3.8-flash is GA with no retirement date and answers on Vertex eu from arborprd-westeu; claude-opus-5-5 on eu returned 429, no quota). Route model gemini-2.5-flash @ europe-west4 -> gemini-3.5-flash @ eu (VERTEX_LOCATION=eu). Suite and prompt versions unchanged; the first rows on the new pair are in the results file.",
     "offlineGate": "app/src/routes/planPrompt.test.ts reads this suite and runs the deterministic contract against the REAL /api/generate-plan handler with a stub provider and a stub ledger: counts reach the prompt as type: number only (free-text types and text fields dropped), private mode and a refused memory permission render no memory block, a step reported 'not today' twice is named as avoid-repeating-unchanged, generate_plan is 1.2.0. app/src/ai/prompts.test.ts pins the generate_plan fingerprint.",
     "liveJudge": "npm run eval:judge -- plan-v1 - each scenario runs through the live /api/generate-plan route (analysis_structured); approved facts are seeded through the real propose->approve seam; one judge call per scenario on the pinned judgeModel returning {scores, safe, pass, rationale}; rows append to evals/plan-v1.results.jsonl keyed by the resolved route model id. The 'not today twice' behaviour needs a seeded action ledger, which the live runner cannot seed over HTTP: it is covered by the offline gate only.",
     "first-run-2026-10-04": "Authored by the builder with B-ASKJB-27 (generate_plan 1.1.0 -> 1.2.0). NOT RUN on the live tier: the judge run is Fable's (Guy gate G5, judge key). A red first run is a result, not a reason to edit the prompt."

@@ -158,6 +158,10 @@ describe("per-route Gemini thinking budget (AIR-3)", () => {
   it("turns thinking OFF for analysis_structured on 2.5 Flash (covers /extract-log, /voice streamText, /digest, Today's Focus)", () => {
     expect(thinkingConfigForRoute("analysis_structured", "gemini-2.5-flash")).toEqual({ thinkingBudget: 0 });
     expect(thinkingConfigForRoute("analysis_structured", "gemini-2.5-flash-lite")).toEqual({ thinkingBudget: 0 });
+    // B-GA-27: the 3.x Flash successors accept a zero budget too (probed on Vertex eu, 9 Oct).
+    expect(thinkingConfigForRoute("analysis_structured", "gemini-3.5-flash")).toEqual({ thinkingBudget: 0 });
+    expect(thinkingConfigForRoute("analysis_structured", "gemini-3.8-flash")).toEqual({ thinkingBudget: 0 });
+    expect(thinkingConfigForRoute("coach_high_stakes", "gemini-3.5-flash")).toBeUndefined();
   });
 
   it("keeps the model default (dynamic thinking) for coach and creative routes", () => {

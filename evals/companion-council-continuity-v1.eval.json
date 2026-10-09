@@ -2,9 +2,9 @@
   "suite": "companion-council-continuity-v1",
   "version": "1.0.0",
   "feature": "Go deeper continues the selected answer, using the bounded same-child thread and explicit unavailable-original policy for every perspective and synthesis.",
-  "judgeModel": "gemini-2.5-pro",
+  "judgeModel": "gemini-3.8-flash",
   "promptVersions": { "council_synthesis": "1.4.0", "companion_attachments": "1.1.0" },
-  "runner": { "deterministicCiGate": "app/src/routes/councilStreaming.test.ts and app/src/lib/councilConversation.test.ts", "liveJudge": "app/scripts/eval-judge.mts; synthetic data only" },
+  "runner": { "judge-repin-2026-10-09": "B-GA-27 (9 Oct 2026): judgeModel gemini-2.5-pro -> gemini-3.8-flash (gemini-2.5-pro and gemini-2.5-flash retire on Vertex 20 Oct 2026; gemini-3.8-flash is GA with no retirement date and answers on Vertex eu from arborprd-westeu; claude-opus-5-5 on eu returned 429, no quota). Route model gemini-2.5-flash @ europe-west4 -> gemini-3.5-flash @ eu (VERTEX_LOCATION=eu). Suite and prompt versions unchanged; the first rows on the new pair are in the results file.", "deterministicCiGate": "app/src/routes/councilStreaming.test.ts and app/src/lib/councilConversation.test.ts", "liveJudge": "app/scripts/eval-judge.mts; synthetic data only" },
   "rubric": {
     "dimensions": {
       "continuity": "Build on the selected prior question and answer, with a useful explanation beyond mere repetition. Never invent a family outcome. Score 0-1.",

@@ -11,7 +11,7 @@
  * A model with no row yields NO estimate (`undefined`, never 0): an unpriced
  * call must read "unknown", not "free". Re-date the table when a price moves.
  */
-export const PRICE_TABLE_AS_OF = "2026-10-04";
+export const PRICE_TABLE_AS_OF = "2026-10-09";
 
 export type ModelPrice = {
   /** USD per 1M input (prompt) tokens. */
@@ -29,6 +29,11 @@ export const PRICE_TABLE: Readonly<Record<string, ModelPrice>> = Object.freeze({
   "gemini-2.5-flash-lite": { inputPerM: 0.1, outputPerM: 0.4, audioInputPerM: 0.3 },
   // Image output is priced per output token at the image rate.
   "gemini-2.5-flash-image": { inputPerM: 0.3, outputPerM: 30 },
+  // B-GA-27: the Gemini 3.x Flash rows are the NON-GLOBAL rate (the `eu`
+  // endpoint is non-global; global is ~10 % lower). 3.8 Flash is on its
+  // introductory price to 31 Dec 2026, then $1.65 / $8.25 non-global.
+  "gemini-3.5-flash": { inputPerM: 1.65, outputPerM: 9.9, audioInputPerM: 1.65 },
+  "gemini-3.8-flash": { inputPerM: 0.825, outputPerM: 4.125, audioInputPerM: 0.825 },
   // Sonnet-class list price (the Claude on Vertex rate card for the Sonnet line).
   "claude-sonnet-4": { inputPerM: 3, outputPerM: 15 },
   "claude-sonnet-5": { inputPerM: 3, outputPerM: 15 },

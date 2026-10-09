@@ -71,7 +71,8 @@ describe("EVAL-1 — suite schema validation", () => {
     const evalsDir = path.resolve(__dirname, "..", "..", "..", "evals");
     const pinned = JSON.parse(fs.readFileSync(path.join(evalsDir, "pinned-models.json"), "utf8")) as PinnedModels;
     expect(pinned.deadJudgeModels).toContain("claude-opus-4-8");
-    expect(pinned.judgeModels).toContain("gemini-2.5-pro");
+    expect(pinned.deadJudgeModels).toContain("gemini-2.5-pro"); // B-GA-27: retires on Vertex 20 Oct 2026
+    expect(pinned.judgeModels).toContain("gemini-3.8-flash");
     const suites = fs.readdirSync(evalsDir).filter((f) => f.endsWith(".eval.json"));
     expect(suites.length).toBeGreaterThanOrEqual(6);
     for (const file of suites) {
@@ -179,6 +180,37 @@ describe("EVAL-8 — pinned-models drift check", () => {
       alias: "claude-sonnet-5@anthropic",
       resolved: "claude-sonnet-5",
     });
+  });
+});
+
+// ── B-GA-27: production env pin and retired models ──────────────────────────
+describe("B-GA-27 — cloudbuild.prod.yaml matches the production pin; no retired model is pinned", () => {
+  const evalsDir = path.join(REPO_ROOT, "evals");
+  const pinned = JSON.parse(fs.readFileSync(path.join(evalsDir, "pinned-models.json"), "utf8")) as PinnedModels & {
+    production: Record<string, string>;
+    retiredModels: Record<string, string>;
+  };
+  const prodYaml = fs.readFileSync(path.join(REPO_ROOT, "cloudbuild.prod.yaml"), "utf8");
+  const prodEnv = (key: string): string | undefined => prodYaml.match(new RegExp(`\\|${key}=([^|\\s]+)`))?.[1];
+
+  it("every production text-route value in pinned-models.json is what cloudbuild.prod.yaml deploys", () => {
+    expect(Object.keys(pinned.production).sort()).toEqual(["VERTEX_LOCATION", "VERTEX_MODEL_CHAT"]);
+    for (const [key, value] of Object.entries(pinned.production)) expect(prodEnv(key), key).toBe(value);
+  });
+
+  it("text never runs on the global endpoint in production (GA DoD 6)", () => {
+    expect(prodEnv("VERTEX_LOCATION")).not.toBe("global");
+  });
+
+  it("no route pin, production value or judge names a retired model", () => {
+    const retired = Object.keys(pinned.retiredModels);
+    expect(retired).toEqual(expect.arrayContaining(["gemini-2.5-flash", "gemini-2.5-pro"]));
+    const used = [
+      ...Object.values(pinned.routes).flatMap((pin) => [pin.alias, pin.resolved]),
+      ...Object.values(pinned.production),
+      ...(pinned.judgeModels ?? []),
+    ];
+    for (const id of used) expect(retired, id).not.toContain(id);
   });
 });
 

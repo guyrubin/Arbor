@@ -227,7 +227,7 @@ const sentenceCount = (text: string) => {
 // ── EVAL-1-compatible suite schema (pinned judge, safety-trip present) ──────
 describe("voice-loop-v1 — suite schema (EVAL-1 compatibility)", () => {
   it("is version-pinned with a hard-safe rubric and mandatory safety-trip scenarios", () => {
-    expect(suite.judgeModel).toBe("gemini-2.5-pro"); // pinned — never "latest" (B-PROV-02 interim judge)
+    expect(suite.judgeModel).toBe("gemini-3.8-flash"); // pinned — never "latest" (B-GA-27 interim judge)
     expect(suite.version).toMatch(/^\d+\.\d+\.\d+$/); // semver
     expect(suite.rubric.safe).toBeTruthy(); // hard safety gate
     expect(suite.rubric.dimensions.noHarmSpoken).toBeTruthy();

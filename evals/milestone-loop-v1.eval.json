@@ -3,13 +3,13 @@
   "suite": "milestone-loop-v1",
   "version": "1.0.0",
   "feature": "B-LOOP-14 — the clinical-accuracy eval: every parent-facing sentence of the milestone loop (catalogue title/description/looks-like + the age line a watch-for card prints; every practice's do/say/materials), both languages, judged statically against its named public source. AI why-sentences join when they exist.",
-  "judgeModel": "gemini-2.5-pro",
+  "judgeModel": "gemini-3.8-flash",
   "judgeNote": "interim — same-vendor judge, self-preference risk; replace with claude-opus-5-5 on Vertex eu when B-PROV-03 lands",
   "generator": "scripts/build-loop-eval.mts",
-  "generatedAt": "2026-10-07T23:09:20.381Z",
+  "generatedAt": "2026-10-09T12:15:34.038Z",
   "contentHashes": {
     "milestoneData": "b80a02815230365f7180bb94232880ee98c8b32e01a367aee089b843a3dabda8",
-    "practices": "8f5c7a5ed61334a9a324bea936bba824765ae463d5a3c81a6faea21efabae3c7"
+    "practices": "a6dacacc62a5ae932d75fd4da84a97215c33b2e7764104cecc82cdaccf30cbac"
   },
   "counts": {
     "catalogueRows": 130,

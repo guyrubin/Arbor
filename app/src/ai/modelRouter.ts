@@ -8,6 +8,7 @@ import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate 
 import type { AiEntitlement, CapabilityRequest } from "./capabilities/contracts.js";
 import { candidatesFor, defaultCandidateFor } from "./capabilities/candidates.js";
 import { MockModelProvider } from "./mockProvider.js";
+import { isVertexMultiRegion, vertexApiEndpoint } from "./vertexEndpoint.js";
 
 export { withModelRetry, isAbortError, newAbortError, type ModelCallBudget } from "./modelRetry.js";
 
@@ -49,8 +50,10 @@ export type GenerateImageOptions = {
  * reply, digest, Today's Focus) were paying seconds of invisible thinking
  * tokens for no quality gain. `analysis_structured` (which also carries the
  * /voice streamText replies) turns thinking OFF; coach/creative routes keep the
- * model default (dynamic). Only applied to models that accept a zero budget
- * (2.5 Flash family — 2.5 Pro rejects 0, and non-2.5 models reject the field).
+ * model default (dynamic). Only applied to models that accept a zero budget:
+ * the 2.5 Flash family and the 3.x Flash line (B-GA-27: gemini-3.5-flash and
+ * 3.8-flash take thinkingBudget 0 — 0 thought tokens, ~1 s instead of ~17 s
+ * on a voice-sized prompt, probed on Vertex eu 9 Oct). 2.5 Pro rejects 0.
  * Note: this also covers the optional semantic classifier call — acceptable by
  * design (default-OFF, fails open); the lexical floor is untouched.
  */
@@ -58,7 +61,7 @@ export const thinkingConfigForRoute = (
   route: ModelRoute,
   model: string,
 ): { thinkingBudget: number } | undefined =>
-  route === "analysis_structured" && /gemini-2\.5-flash/i.test(model) && !/image/i.test(model)
+  route === "analysis_structured" && /gemini-(?:2\.5|3(?:\.\d+)?)-flash/i.test(model) && !/image/i.test(model)
     ? { thinkingBudget: 0 }
     : undefined;
 
@@ -345,16 +348,20 @@ export class VertexGeminiProvider {
     private readonly config: ArborConfig,
     private readonly vertexFactory: VertexClientFactory = async (location) => {
       const { VertexAI } = await import("@google-cloud/vertexai");
-      return new VertexAI({ project: this.config.gcpProjectId, location });
+      const apiEndpoint = vertexApiEndpoint(location);
+      return new VertexAI({ project: this.config.gcpProjectId, location, ...(apiEndpoint ? { apiEndpoint } : {}) });
     }
   ) {}
 
-  /** Ordered image regions admitted by the route policy (EU-only in prod). The
-   *  primary `vertexLocation` is always first; a configured non-EU fallback is
-   *  dropped here rather than silently moving family imagery out of region. */
+  /** Ordered image regions admitted by the route policy (EU-only in prod). A
+   *  regional `vertexLocation` is first; a configured non-EU fallback is
+   *  dropped here rather than silently moving family imagery out of region.
+   *  B-GA-27: a multi-region text location (`eu`) is not an image region; the
+   *  image model keeps its regional list (prod: europe-west4 first). */
   imageRegions(): string[] {
     const policy = routePolicyFor(this.config);
-    const ordered = Array.from(new Set([this.config.vertexLocation, ...(this.config.vertexImageRegions ?? [])]));
+    const ordered = Array.from(new Set([this.config.vertexLocation, ...(this.config.vertexImageRegions ?? [])]))
+      .filter((location) => !isVertexMultiRegion(location));
     return ordered.filter((location) => policy.allowedRegions.includes(providerRegion(location)));
   }
 

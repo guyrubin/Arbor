@@ -88,7 +88,7 @@ export const HARD_MOMENT_SEED_ESCALATION_NOTE =
 
 /**
  * Ask Arbor "Talk this through" seed — built for the EXISTING seedCoach seam.
- * Contract (evals/coach-hardmoment-seed-v1, pinned judge gemini-2.5-pro, interim — B-PROV-02):
+ * Contract (evals/coach-hardmoment-seed-v1, pinned judge gemini-3.8-flash, interim — B-GA-27):
  *   1. The card's five sections bound the scope of the conversation.
  *   2. The coach must never diagnose, label, score, or issue a verdict.
  *   3. B-AI-14 (reopened 6 Oct): the governed escalation boundary is NOT in

@@ -145,7 +145,7 @@ describe("coach-hardmoment-seed-v1 — deterministic seed contract on the fixtur
   const suite = JSON.parse(fs.readFileSync(SUITE_PATH, "utf8"));
 
   it("suite is authored and version-pinned (judge model, version, rubric, pass bar)", () => {
-    expect(suite.judgeModel).toBe("gemini-2.5-pro"); // pinned — never "latest" (B-PROV-02 interim judge)
+    expect(suite.judgeModel).toBe("gemini-3.8-flash"); // pinned — never "latest" (B-GA-27 interim judge)
     expect(suite.version).toBe("1.2.0"); // B-AI-14 (6 Oct): escalationVerbatim judges contract.governedEscalation
     expect(suite.rubric.dimensions.cardScope).toBeTruthy();
     expect(suite.rubric.dimensions.noDiagnosis).toBeTruthy();
