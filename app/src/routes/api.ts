@@ -9,7 +9,7 @@ import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
-import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence } from "../contracts/coach.js";
+import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, type CoachResponse } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
@@ -1032,7 +1032,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // B-AI-14 (1.5.3): a seeded follow-up parses into the short shape (card
       // sections emptied server-side).
       const parsedJson = parseJson(rawResponse.trim());
-      const structured = privacy.restoreDeep(
+      // One contract type across the four shapes (fileDeclined/document are
+      // optional on CoachResponse; the zod parse results lack the keys).
+      const structured: CoachResponse = privacy.restoreDeep<CoachResponse>(
         seededFollowUp ? toSeededFollowUpContract(parsedJson)
           : seededEscalation ? coachSeededResponseZodSchema.parse(parsedJson)
           // Parity 9 Oct (companion_attachments 1.2.0): a file turn may decline
