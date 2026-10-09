@@ -28,9 +28,10 @@ describe("B-PLAY-16 · deterministic, family-shaped pick", () => {
   });
 
   it("a read story is never re-picked while unread ones exist (30 nights)", () => {
+    // B-BOOK-29 re-pin: proven over the full catalogue (injected), as before.
     const read = HERO_STORIES.slice(0, HERO_STORIES.length - 2).map((s) => s.id);
     for (const d of days) {
-      const { story, reason } = pickTonightsStory(d, "child-a", { readIds: read, ageMonths: SIX_YEARS });
+      const { story, reason } = pickTonightsStory(d, "child-a", { readIds: read, ageMonths: SIX_YEARS, stories: HERO_STORIES });
       expect(read).not.toContain(story!.id);
       expect(reason.kind).toBe("unread");
     }
@@ -104,5 +105,15 @@ describe("B-PLAY-16 · both call sites pass the same inputs; the cover shows the
     expect(en[TONIGHT_AIM_REASON_KEY.courage]).toBe("A courage story — your family chose courage");
     expect(en["elev.stories.tonight.reason.unread"]).toContain("{name}");
     expect(he["elev.stories.tonight.reason.unread"]).toContain("{name}");
+  });
+});
+
+describe("B-BOOK-29: Tonight picks from the kid shelf", () => {
+  it("over 30 nights the default pick is always a canonical-text book", async () => {
+    const { KID_SHELF_STORY_IDS } = await import("../../lib/heroJourneys");
+    for (const d of days) {
+      const { story } = pickTonightsStory(d, "child-a", { ageMonths: SIX_YEARS });
+      expect(KID_SHELF_STORY_IDS.has(story!.id), story!.id).toBe(true);
+    }
   });
 });

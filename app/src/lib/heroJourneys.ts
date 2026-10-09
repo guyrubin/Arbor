@@ -993,3 +993,23 @@ export const STORY_HE_REVIEW: Readonly<Record<string, "ai-first-pass">> = {
 /** `list` narrowed to the stories that can be told in `lang` (order kept). */
 export const storiesForLanguage = <S extends HeroStorySpec>(list: readonly S[], lang: "en" | "he"): S[] =>
   list.filter((s) => storyHasLanguage(s, lang));
+
+/**
+ * B-BOOK-29 (9 Oct): the books Kid Mode shows - the stories told from the
+ * canonical text. Retired from the kid library: the disguised and unfaithful
+ * (the-two-gifts, leave-the-tent, the-two-mothers-and-the-quiet-judge, the
+ * king-solomons-choice draft, the-found-acorn-crown). Held: the originals,
+ * kept for the Everyday shelf of wave 3. Every saved render stays readable
+ * from the parent door; nothing here deletes a story.
+ */
+export const KID_RETIRED_STORY_IDS: readonly string[] = [
+  "the-two-gifts", "leave-the-tent", "the-two-mothers-and-the-quiet-judge", "king-solomons-choice", "the-found-acorn-crown",
+];
+export const KID_SHELF_STORY_IDS: ReadonlySet<string> = new Set(
+  HERO_STORIES.filter((s) => s.origin === "biblical" && !KID_RETIRED_STORY_IDS.includes(s.id)).map((s) => s.id),
+);
+/** A catalogue story Kid Mode does not show (retired or held). */
+export const kidShelfHolds = (id: string): boolean => HERO_STORIES.some((s) => s.id === id) && !KID_SHELF_STORY_IDS.has(id);
+/** The catalogue as Kid Mode sees it. */
+export const KID_SHELF_STORIES: HeroStorySpec[] = HERO_STORIES.filter((s) => KID_SHELF_STORY_IDS.has(s.id));
+

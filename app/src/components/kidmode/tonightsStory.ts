@@ -21,7 +21,7 @@
  * Pure — no clock, no storage, no model call: the caller passes `today`, the
  * read ids, the aims and the child's age.
  */
-import { HERO_STORIES, storiesForLanguage } from "../../lib/heroJourneys";
+import { KID_SHELF_STORIES, storiesForLanguage } from "../../lib/heroJourneys";
 import { filterByAge, windowFromRange } from "../../lib/ageFilter";
 import type { HeroStorySpec, DevelopmentMetricId } from "../../types";
 
@@ -51,7 +51,7 @@ export interface TonightContext {
   ageMonths?: number | null;
   /** The Stories page's "Show all ages" preference. */
   showAllAges?: boolean;
-  /** The catalogue (defaults to HERO_STORIES; injectable for tests). */
+  /** The catalogue (defaults to the kid shelf, B-BOOK-29; injectable for tests). */
   stories?: readonly HeroStorySpec[];
   /** B-KID-70 (R-4b): stories to lead with — those with a cover in the child's
    *  theme. Applied after the age view: when at least one age-visible story
@@ -81,7 +81,8 @@ export function pickTonightsStory(
 ): { story: HeroStorySpec | null; reason: TonightReason } {
   // B-KID-46: rule order — language availability, then the age view, then
   // illustrated-first (prefer), then the family logic below.
-  const all = storiesForLanguage(ctx.stories ?? HERO_STORIES, ctx.lang ?? "en");
+  // B-BOOK-29: Tonight picks from the kid shelf unless a list is injected.
+  const all = storiesForLanguage(ctx.stories ?? KID_SHELF_STORIES, ctx.lang ?? "en");
   const ageVisible =
     ctx.showAllAges || ctx.ageMonths == null
       ? [...all]

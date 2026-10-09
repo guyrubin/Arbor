@@ -13,7 +13,7 @@
  *
  * Pure: no clock, no storage, no model call. The caller passes the runs.
  */
-import { HERO_STORIES, storiesForLanguage, storyHasLanguage } from "../../lib/heroJourneys";
+import { KID_SHELF_STORIES, kidShelfHolds, storiesForLanguage, storyHasLanguage } from "../../lib/heroJourneys";
 import { filterByAge, windowFromRange } from "../../lib/ageFilter";
 import type { HeroStorySpec } from "../../types";
 
@@ -33,12 +33,13 @@ export interface KidBooksInput {
   hasCover: (storyId: string) => boolean;
   /** The child's heroRuns (storyId + completion + start time). */
   runs: readonly { storyId: string; startedAt?: string; completedAt?: string }[];
-  /** Test seam: the catalogue (defaults to HERO_STORIES). */
+  /** Test seam: the catalogue (defaults to the kid shelf, B-BOOK-29). */
   stories?: readonly HeroStorySpec[];
 }
 
 export function kidBooks(input: KidBooksInput): KidBook[] {
-  const told = storiesForLanguage(input.stories ?? HERO_STORIES, input.lang);
+  // B-BOOK-29: the kid shelf (canonical-text books only) unless a list is injected.
+  const told = storiesForLanguage(input.stories ?? KID_SHELF_STORIES, input.lang);
   // Latest run per story → its state and recency.
   const opened = new Map<string, { state: KidBookState; at: string }>();
   for (const r of input.runs) {
@@ -73,6 +74,7 @@ export function kidBookOpenable(
   story: HeroStorySpec,
   ctx: { lang: "en" | "he"; ageMonths: number | null; showAllAges: boolean },
 ): boolean {
+  if (kidShelfHolds(story.id)) return false; // B-BOOK-29: retired or held
   if (!storyHasLanguage(story, ctx.lang)) return false;
   return ctx.showAllAges || filterByAge([story], (s) => windowFromRange(s.ageRange), ctx.ageMonths).visible.length > 0;
 }
