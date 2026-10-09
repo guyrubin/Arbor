@@ -13,7 +13,7 @@
  * but the pose id. SPRITE_STYLE, STAGE's background and TAIL are verbatim.
  * Prompt order (as in the proof): SPRITE_STYLE REFS HERO STAGE POSE TAIL.
  */
-import type { HeroSheetPoseId } from "../lib/heroSheetContract.js";
+import { isHeroBookPose, type HeroBookPoseId, type HeroPoseId, type HeroSheetPoseId } from "../lib/heroSheetContract.js";
 
 /** ONE CHARACTER EVERYWHERE (Guy, 8 Oct): the hero looks the same on every kid
  *  surface - tiles, books, games. The finish is the stored hero's own; the pose
@@ -117,8 +117,198 @@ export const POSES: Readonly<Record<HeroSheetPoseId, string>> = {
 };
 
 /** The full prompt for one pose: idle = the anchor (stored hero only); the
- *  rest = anchored on the approved idle. Fixed text only. */
-export function heroPosePrompt(pose: HeroSheetPoseId): string {
-  const refs = pose === "idle" ? REFS_ANCHOR : REFS_POSE;
-  return [SPRITE_STYLE, refs, HERO, STAGE, POSES[pose], TAIL].join(" ").replace(/ {2,}/g, " ");
+ *  rest = anchored on the approved idle; a book pose = the book prompt (K2,
+ *  below). Fixed text only. */
+export function heroPosePrompt(pose: HeroPoseId): string {
+  if (isHeroBookPose(pose)) return bookPosePrompt(pose);
+  const game = pose as HeroSheetPoseId;
+  const refs = game === "idle" ? REFS_ANCHOR : REFS_POSE;
+  return [SPRITE_STYLE, refs, HERO, STAGE, POSES[game], TAIL].join(" ").replace(/ {2,}/g, " ");
+}
+
+/* ── K2: the BOOK poses ───────────────────────────────────────────────────────
+ * Ported from the proof's sprite prompts (kids-books-proof-2026-10-06
+ * proof-art/david/jobs_lib.py: POSES, rounds 1-4) and generalised from one
+ * child to any family's hero, on the SAME SPRITE_STYLE / REFS_POSE / HERO
+ * blocks as the game, so the book's hero is the game's hero:
+ *  - no name, no costume of one child: the hero wears the hero's own clothes
+ *    (HERO), plus the shepherd's bag OVER them; the armour goes over the
+ *    hero's own clothes; the proof's second costume is dropped (worried-tunic
+ *    draws the worried pose; Book.poseFallbacks maps it to `worried`);
+ *  - the hero is the same age as the reference (no age clause of one child);
+ *  - he/his/the boy -> the hero; boots -> shoes; the sling stays in the hands
+ *    or tucked into the bag's strap (a hero's clothes may have no belt);
+ *  - sit-hunched is the round-3 rewording that passed the safety filter;
+ *  - STAGE_BOOK: the book's camera (profile, three-quarter, three-quarter
+ *    back, as each pose says), not the game's front-facing one; props named
+ *    by the pose are allowed; TAIL_BOOK: only the named sling and staff.
+ * Always anchored on the approved game idle (image 1). Fixed text only.
+ */
+const SLING = "a simple shepherd's sling: two thin brown leather cords joined by a small leather pouch";
+const STAFF = "a plain straight wooden shepherd's staff a little taller than the hero, with a gentle crook at the top";
+const BAG = "Over the hero's own clothes, a small brown leather shepherd's bag on a thin leather strap across the body, from one shoulder to the opposite hip.";
+const ARMOUR = "The hero's own clothes and shoes show at the lower arms and lower legs, but OVER the hero's own clothes the hero wears an "
+  + "OVERSIZED adult's coat of bronze scale mail, far too big: it hangs from the shoulders down past the knees and its sleeves swallow "
+  + "the upper arms; a wide leather sword belt sags crookedly at the hip (an empty belt, nothing hanging from it). The head is BARE: no "
+  + "helmet, the hair fully visible. No shepherd's bag.";
+const UPRIGHT = "The posture is unmistakably UPRIGHT and proud: back straight, shoulders pulled back and down, chest open, chin level, head "
+  + "high, feet planted a little apart, weight even; ";
+const WORRIED = "standing facing the viewer straight on, arms hanging at the sides, the eyes glancing to one side (toward the viewer's "
+  + "left), lower lip caught between the teeth, a small worried frown.";
+const ONLY_BAG = "Props: only the shepherd's bag.";
+
+export const CAMERA_BOOK = "Camera: a picture-book camera at the hero's chest height, 50 mm lens, no perspective distortion; the body "
+  + "turned exactly as the pose says (front, three-quarter, profile or three-quarter back view) and the face always visible, never "
+  + "the back of the head.";
+
+export const STAGE_BOOK = "THE PICTURE: a character sprite for a painted picture-book page, on a flat chroma-key background. Exactly one "
+  + "child, the hero, alone: no bunny, no companion, no second child, no reflection; in the hands only the props the pose names. The "
+  + "hero is the same age as the reference, with the reference's own proportions. FULL BODY head to toe, nothing cropped: the whole "
+  + "hair, the whole outfit, both hands with all fingers, both feet and every named prop inside the frame, with at least 10 percent "
+  + "empty green background on EVERY side. " + CAMERA_BOOK + " The hero fills about 75 percent of the image height. " + BACKGROUND;
+
+/** The game's TAIL, with the book's props: only the named sling and staff. */
+export const TAIL_BOOK = TAIL.replace("No weapons, no blood,", "In the hands, only the named sling and staff and only where the pose names "
+  + "them: nothing sharp, no sword, no spear, no knife; no blood,");
+
+export interface BookPose {
+  /** What the hero wears over the hero's own clothes (default: the bag). */
+  outfit?: string;
+  pose: string;
+  props: string;
+  /** What must be inside the frame besides the whole body. */
+  extent: string;
+}
+
+export const BOOK_POSES: Readonly<Record<HeroBookPoseId, BookPose>> = {
+  "sling-swing": {
+    pose: "standing with the feet planted apart in a three-quarter view facing the viewer's right; the right arm raised straight up "
+      + "with the hand just above the head, whirling the short sling: the sling's cords and pouch form ONE small, tight, perfectly "
+      + "round ring spinning flat just above the top of the head, like a halo seen slightly from below, no wider than the shoulders, "
+      + "drawn crisp and sharp; the cords are SHORT (no longer than the forearm), never a long rope or lasso; NO motion blur, no speed "
+      + "lines, no streaks; the other arm forward for balance; eyes fixed ahead to the right, determined, mouth set.",
+    props: `Props: ${SLING} (short, in the raised hand).`,
+    extent: "the whole body from the top of the sling ring down to both shoes, with plain green visible below the shoes (do NOT crop at the knees)",
+  },
+  "sling-swing-face-right": {
+    pose: "a three-quarter BACK-right view: the hero seen partly from behind the left shoulder, the whole body and the face turned "
+      + "toward the viewer's RIGHT and up, so the face shows in profile or three-quarter (cheek, eye, nose and mouth clearly visible; "
+      + "NOT the back of the head); feet planted wide apart; the right arm raised with the hand just above the head whirling the short "
+      + "sling as ONE small, tight, crisp ring just above the top of the head (no wider than the shoulders, no motion blur, no speed "
+      + "lines); the other arm forward for balance; chin up, determined, looking UP to the right at something enormous.",
+    props: `Props: ${SLING} (short, in the raised hand).`,
+    extent: "the whole body from the top of the sling ring down to both shoes, with plain green visible below the shoes",
+  },
+  "sling-release": {
+    pose: "a three-quarter BACK-right view: the hero seen partly from behind the left shoulder, body and face turned to the viewer's "
+      + "RIGHT so the face shows in profile (eye, nose, cheek visible; not the back of the head); the instant after a throw: the right "
+      + "arm extended straight forward and slightly up toward the right at the end of the swing, the empty sling's two short cords and "
+      + "empty pouch trailing loosely from the hand; weight on the front foot, back heel lifted; eyes fixed far ahead to the right and "
+      + "up, following a flying stone, determined.",
+    props: `Props: ${SLING} (empty, trailing from the outstretched hand).`,
+    extent: "the outstretched hand with the trailing sling and both shoes",
+  },
+  "run-staff": {
+    pose: "running lightly in full profile toward the viewer's right, mid-stride with one foot off the ground, the trailing hand "
+      + "holding the staff angled back behind, the shepherd's bag bouncing at the hip, the sling tucked into the bag's strap; bright "
+      + "eager face, mouth open in a joyful grin.",
+    props: `Props: ${STAFF}; ${SLING}, tucked into the bag's strap.`,
+    extent: "the whole staff and both shoes",
+  },
+  // Left-facing, not mirrored: mirroring would put the key light on the wrong side.
+  "run-staff-left": {
+    pose: "running lightly in full profile toward the viewer's LEFT, mid-stride with one foot off the ground, one hand holding the "
+      + "staff, the shepherd's bag bouncing at the hip, the sling tucked into the bag's strap; bright eager face, mouth open in a "
+      + "joyful grin.",
+    props: `Props: ${STAFF}; ${SLING}, tucked into the bag's strap.`,
+    extent: "the whole staff and both shoes",
+  },
+  "walk-bread": {
+    pose: "walking eagerly to the viewer's RIGHT in a three-quarter view, one foot forward, mid-stride; over the right shoulder a "
+      + "short wooden stick with a knotted cream cloth bundle of bread loaves tied to its end; in the left hand the plain wooden "
+      + "staff; bright eager face looking ahead to the right.",
+    props: `Props: ${STAFF} (in the left hand); a short stick over the shoulder with a cream cloth bundle of bread tied to it.`,
+    extent: "the bread bundle, the staff and both shoes",
+  },
+  "look-up": {
+    pose: "standing in a three-quarter view facing the viewer's LEFT, head tilted well back, looking up at someone much taller; "
+      + "eyebrows raised, mouth set in a brave but worried line; hands at the sides.",
+    props: ONLY_BAG,
+    extent: "both shoes",
+  },
+  "look-up-unsure": {
+    pose: "standing in a three-quarter view facing the viewer's LEFT, head tilted back, looking UP at something being held out; both "
+      + "hands half raised in front of the chest, palms open and up, hesitant, not touching anything; eyebrows raised, mouth slightly "
+      + "open, unsure.",
+    props: `${ONLY_BAG} Nothing in the hands.`,
+    extent: "both half-raised hands and both shoes",
+  },
+  "look-across": {
+    pose: "standing in a three-quarter BACK-left view: the hero seen partly from behind the right shoulder, the body turned toward the "
+      + "viewer's LEFT and into the distance, the head turned to the left so the face shows in three-quarter profile (eye, nose, cheek "
+      + "and mouth visible; NOT the back of the head); one foot a little forward as if just stopped walking; hands at the sides; "
+      + "looking far across and slightly up at something huge in the distance, brave and curious, mouth closed.",
+    props: ONLY_BAG,
+    extent: "both shoes",
+  },
+  worried: { pose: WORRIED, props: ONLY_BAG, extent: "both shoes" },
+  "worried-tunic": { pose: WORRIED, props: ONLY_BAG, extent: "both shoes" },
+  "stand-tall-hand": {
+    pose: "standing in a three-quarter view facing the viewer's LEFT. " + UPRIGHT + "the RIGHT hand raised to shoulder height with the "
+      + "palm open and facing forward (volunteering: 'I will go'), the left hand holding the strap of the bag; the face calm and set, "
+      + "eyes looking up to the left at a much taller person, mouth closed and firm.",
+    props: `${ONLY_BAG} Nothing in the hands.`,
+    extent: "the raised hand and both shoes",
+  },
+  "stand-tall": {
+    pose: "standing in a three-quarter view facing the viewer's LEFT. " + UPRIGHT + "both arms down at the sides, the sling's cords "
+      + "held loosely in the right hand, the staff held upright in the left hand; eyes looking forward to the left, mouth set, brave "
+      + "even though a little scared.",
+    props: `Props: ${STAFF} (upright in the left hand); ${SLING} (hanging from the right hand).`,
+    extent: "the whole staff and both shoes",
+  },
+  "armour-stuck": {
+    outfit: ARMOUR,
+    pose: "front three-quarter view facing slightly to the viewer's right, knees bent under the weight, arms held stiffly out from "
+      + "the body, comic strain on the face: cheeks puffed, one eye squeezed half shut, teeth gritted.",
+    props: "Props: none (nothing in the hands).",
+    extent: "the whole coat of mail and both shoes",
+  },
+  "free-stretch": {
+    pose: "standing facing the viewer, both arms stretched wide up and out in a big relieved stretch, chin up, a big relieved open "
+      + "grin showing the upper teeth.",
+    props: ONLY_BAG,
+    extent: "both raised hands and both shoes",
+  },
+  sit: {
+    pose: "sitting on an invisible low seat at knee height (no seat drawn: the hero simply sits in the air on the flat green, the "
+      + "thighs level), in a three-quarter view facing the viewer's LEFT, knees bent, feet flat, the staff lying across the knees with "
+      + "both hands resting on it, a calm, content small smile.",
+    props: `Props: ${STAFF}, lying across the knees.`,
+    extent: "the whole staff and both shoes",
+  },
+  // Round 3's rewording (the first draft did not pass the safety filter).
+  "sit-hunched": {
+    pose: "sitting on an invisible low seat (no seat drawn: the hero sits in the air on the flat green) in a three-quarter view "
+      + "facing the viewer's LEFT, curled up small: knees pulled up high to the chest, both arms hugging the knees, shoulders raised, "
+      + "back rounded, chin resting on top of the knees, eyes looking up to the left, a small uncertain expression; the staff lying "
+      + "flat beside the shoes.",
+    props: `Props: ${STAFF} lying flat beside the shoes.`,
+    extent: "the whole staff and both shoes",
+  },
+  "squat-stones": {
+    pose: "squatting low on the heels in a three-quarter view facing the viewer's RIGHT; the right hand held out in front with the "
+      + "palm OPEN and up, holding three smooth, round, pale grey river stones; the left hand dropping one more smooth stone into the "
+      + "open mouth of the leather shepherd's bag at the hip; eyes looking down at the stones in the palm, a small concentrated smile.",
+    props: "Props: the shepherd's bag (open at the hip); four smooth pale grey river stones (three in the open palm, one falling into the bag).",
+    extent: "both shoes and the outstretched palm with the stones",
+  },
+};
+
+/** The prompt of one book pose: anchored on the approved idle (REFS_POSE). */
+function bookPosePrompt(pose: HeroBookPoseId): string {
+  const b = BOOK_POSES[pose];
+  return [SPRITE_STYLE, REFS_POSE, HERO, STAGE_BOOK, b.outfit ?? BAG, `POSE: ${b.pose}`, b.props, `Inside the frame, besides the whole body: ${b.extent}.`, TAIL_BOOK]
+    .join(" ")
+    .replace(/ {2,}/g, " ");
 }

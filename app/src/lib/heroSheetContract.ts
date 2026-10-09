@@ -19,11 +19,37 @@ export const HERO_SHEET_ANCHOR: HeroSheetPoseId = "idle";
 export const HERO_SHEET_META_ID = "_meta";
 export const HERO_SHEET_VERSION = 1;
 export const HERO_SHEET_MODEL = "gemini-2.5-flash-image";
-/** Bumped whenever a pose prompt changes (stamped into every response). */
-export const HERO_SHEET_PROMPT_VERSION = "hero-pose-2026-10-06";
+/** Bumped whenever a pose prompt changes (stamped into every response).
+ *  2026-10-09 (K2): the book poses' prompts were added; the game's eight are
+ *  byte-identical (pinned in server/heroPosePrompts.test.ts). */
+export const HERO_SHEET_PROMPT_VERSION = "hero-pose-2026-10-09";
 
 export const isHeroSheetPose = (v: unknown): v is HeroSheetPoseId =>
   typeof v === "string" && (HERO_SHEET_POSE_IDS as readonly string[]).includes(v);
+
+/* ── K2: the BOOK poses, on the ONE hero pipeline ─────────────────────────────
+ * A book's poses are drawn by the same route, the same SPRITE_STYLE / REFS /
+ * HERO prompt blocks and the same per-sheet allowance as the game's eight,
+ * always anchored on the child's approved game `idle` (image 1) — so the hero
+ * of the book IS the hero of the game. Pose ids are one global, open set
+ * (RULINGS ruling 2): a book names a pose, the sheet resolves it; they never
+ * collide with the game's ids (tested). Five Smooth Stones: the 18 poses its
+ * pages, repair ends, costume slot and art states name (lib/library/bookPoses
+ * bookPoseIds — pinned by test). No caller yet. */
+export const HERO_BOOK_POSE_SETS = {
+  "five-smooth-stones": [
+    "armour-stuck", "free-stretch", "look-across", "look-up", "look-up-unsure", "run-staff", "run-staff-left", "sit", "sit-hunched",
+    "sling-release", "sling-swing", "sling-swing-face-right", "squat-stones", "stand-tall", "stand-tall-hand", "walk-bread", "worried", "worried-tunic",
+  ],
+} as const;
+export type HeroBookPoseId = (typeof HERO_BOOK_POSE_SETS)[keyof typeof HERO_BOOK_POSE_SETS][number];
+/** Every book pose id (all books), once. */
+export const HERO_BOOK_POSE_IDS: readonly HeroBookPoseId[] = [...new Set(Object.values(HERO_BOOK_POSE_SETS).flatMap((set) => [...set]))];
+export const isHeroBookPose = (v: unknown): v is HeroBookPoseId =>
+  typeof v === "string" && (HERO_BOOK_POSE_IDS as readonly string[]).includes(v);
+/** A pose the route draws: a game pose or a book pose. */
+export type HeroPoseId = HeroSheetPoseId | HeroBookPoseId;
+export const isHeroPose = (v: unknown): v is HeroPoseId => isHeroSheetPose(v) || isHeroBookPose(v);
 
 export interface HeroSheetPoseDoc {
   id: HeroSheetPoseId;
@@ -93,6 +119,8 @@ export const HERO_POSE_REFUSALS = {
   photo: "hero_photo_source",
   changed: "hero_changed",
   anchor: "hero_anchor_missing",
+  /** K2: a book pose asked before the child's approved game idle exists. */
+  bookAnchor: "hero_book_anchor_missing",
   resting: "hero_sheet_resting",
 } as const;
 
