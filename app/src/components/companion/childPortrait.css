@@ -202,3 +202,21 @@
   .portrait-environment-heading { padding: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { .child-portrait *, .portrait-evidence * { transition: none !important; } }
+
+/* Parity 9 Oct — the watch focus and the keepsake disclosure (tokens only). */
+.portrait-watch { margin-block: 22px 6px; padding: 20px 22px; border-radius: var(--r-xl); background: var(--arbor-paper-elevated); }
+.portrait-watch h2 { margin-block: 6px 6px; font-family: var(--font-display); font-size: var(--t-title); line-height: 1.35; overflow-wrap: anywhere; }
+.portrait-watch-body { color: var(--arbor-ink-soft); font-size: var(--t-base); max-inline-size: 62ch; }
+.portrait-watch-prompt { margin-block-start: 16px; font-size: var(--t-xs); font-weight: 700; color: var(--arbor-ink); }
+.portrait-watch-answers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-inline-size: 28rem; margin-block: 8px 6px; }
+.portrait-watch-answers button { min-block-size: 44px; padding-inline: 6px; border-radius: var(--r); border: 1px solid var(--arbor-rule-strong); background: var(--arbor-paper-elevated); color: var(--arbor-ink); font-size: var(--t-sm); font-weight: 700; }
+.portrait-watch-answers button[aria-pressed="true"] { background: var(--arbor-green-soft); color: var(--arbor-green-ink); border-color: var(--arbor-green-ink); }
+.portrait-watch-note { font-size: var(--t-xs); font-weight: 700; color: var(--arbor-green-ink); }
+.portrait-watch-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-block: 10px 6px; }
+.portrait-keepsakes { margin-block: 14px 4px; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); }
+.portrait-keepsakes > summary { display: flex; align-items: center; gap: 12px; min-block-size: 44px; padding: 12px 16px; cursor: pointer; list-style: none; }
+.portrait-keepsakes > summary::-webkit-details-marker { display: none; }
+.portrait-keepsakes > summary > span { flex: 1; min-inline-size: 0; display: grid; }
+.portrait-keepsakes > summary strong { font-size: var(--t-sm); }
+.portrait-keepsakes > summary span span { font-size: var(--t-xs); color: var(--arbor-muted); }
+.portrait-keepsakes-body { display: grid; gap: 14px; padding: 4px 14px 16px; }

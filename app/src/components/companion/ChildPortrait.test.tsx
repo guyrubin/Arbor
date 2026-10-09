@@ -16,6 +16,9 @@ vi.mock("../../context/LanguageContext", async () => {
 });
 vi.mock("../../hooks/useObservationRecord", () => ({ useObservationRecord: () => ({ ...state, sources: { behaviorLogs: [] }, reload: vi.fn() }) }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null }));
+// Parity 9 Oct: the watch row and the keepsake disclosure have their own tests.
+vi.mock("./PortraitWatchRow", () => ({ default: () => null }));
+vi.mock("./PortraitKeepsakes", () => ({ default: () => null }));
 const capture = (type: unknown, props: unknown) => { if (type === "button" && props && typeof props === "object") state.buttons.push(props as typeof state.buttons[number]); };
 vi.mock("react/jsx-runtime", async original => {
   const runtime = await original<typeof import("react/jsx-runtime")>();

@@ -127,7 +127,7 @@ describe("persistent companion · mobile chrome", () => {
   });
 
   it("a page change from inside the conversation closes the full-screen panel (phones) but keeps the docked one", () => {
-    const effect = /useEffect\(\(\) => \{\s*if \(routeIsConversation\) \{ show\(\); setExpanded\(true\); \}\s*else \{([\s\S]*?)\}\s*\}, \[activeTab\]\);/.exec(workspace);
+    const effect = /useEffect\(\(\) => \{\s*if \(routeIsConversation\) \{ show\("route"\); setExpanded\(true\); \}\s*else \{([\s\S]*?)\}\s*\}, \[activeTab\]\);/.exec(workspace);
     expect(effect, "the activeTab effect in CompanionWorkspace").toBeTruthy();
     expect(effect![1]).toContain("returnTab.current = activeTab; setExpanded(false);");
     expect(effect![1]).toContain("if (!wide) setOpen(false);");

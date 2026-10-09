@@ -226,6 +226,20 @@ export function toObservations(sources: ObservationSources, child: ObservationCh
   }
 
   for (const k of sources.keepsakes ?? []) {
+    // B-GROWTH-36 (parity 9 Oct): a quote keepsake ("Things {name} said",
+    // kind "quote", no milestone) is the child's own words. It files under
+    // talking, keyed by its own id, instead of being dropped for having no
+    // milestone domain (the record never showed a kept quote).
+    if (k.kind === "quote" || !k.milestoneId) {
+      const quoteId = (k as { id?: string }).id || `quote-${k.noticedOn}`;
+      push("keepsakes", quoteId, k.noticedOn, ["talking"], {
+        kind: "parent_reflection",
+        value: { type: "keepsake", milestoneId: "", note: k.note },
+        source: "parent_typed",
+        provenance: quoteId,
+      });
+      continue;
+    }
     const m = milestoneById.get(k.milestoneId);
     push("keepsakes", k.milestoneId, k.noticedOn, m ? toDomains("developmental", m.domain) : [], {
       kind: "parent_reflection",
