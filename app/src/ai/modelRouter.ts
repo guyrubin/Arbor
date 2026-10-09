@@ -1,4 +1,4 @@
-import { GoogleGenAI, type Schema } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, type Schema } from "@google/genai";
 import type { ArborConfig } from "../config/env.js";
 import { withDefaultModelDeadlines } from "./modelDeadlines.js";
 import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
@@ -50,20 +50,26 @@ export type GenerateImageOptions = {
  * reply, digest, Today's Focus) were paying seconds of invisible thinking
  * tokens for no quality gain. `analysis_structured` (which also carries the
  * /voice streamText replies) turns thinking OFF; coach/creative routes keep the
- * model default (dynamic). Only applied to models that accept a zero budget:
- * the 2.5 Flash family and the 3.x Flash line (B-GA-27: gemini-3.5-flash and
- * 3.8-flash take thinkingBudget 0 — 0 thought tokens, ~1 s instead of ~17 s
- * on a voice-sized prompt, probed on Vertex eu 9 Oct). 2.5 Pro rejects 0.
+ * model default (dynamic). The 2.5 Flash family takes a zero budget (2.5 Pro
+ * rejects 0). B-GA-27 (probed on Vertex 9 Oct): the 3.x Flash line is switched
+ * with thinkingLevel — gemini-3.5-flash rejects thinkingBudget when a document
+ * or image rides with a responseSchema (400 "Thinking budget is not supported
+ * for this model": every /vision import failed); MINIMAL gives 0 thought
+ * tokens and ~1 s instead of ~17 s on a voice-sized prompt. gemini-3.8-flash
+ * rejects MINIMAL; LOW is its lowest level.
  * Note: this also covers the optional semantic classifier call — acceptable by
  * design (default-OFF, fails open); the lexical floor is untouched.
  */
 export const thinkingConfigForRoute = (
   route: ModelRoute,
   model: string,
-): { thinkingBudget: number } | undefined =>
-  route === "analysis_structured" && /gemini-(?:2\.5|3(?:\.\d+)?)-flash/i.test(model) && !/image/i.test(model)
-    ? { thinkingBudget: 0 }
-    : undefined;
+): { thinkingBudget: number } | { thinkingLevel: ThinkingLevel } | undefined => {
+  if (route !== "analysis_structured" || /image/i.test(model)) return undefined;
+  if (/gemini-2\.5-flash/i.test(model)) return { thinkingBudget: 0 };
+  if (/gemini-3\.5-flash/i.test(model)) return { thinkingLevel: ThinkingLevel.MINIMAL };
+  if (/gemini-3(?:\.\d+)?-flash/i.test(model)) return { thinkingLevel: ThinkingLevel.LOW };
+  return undefined;
+};
 
 /** A generated image returned as raw base64 (no `data:` prefix). */
 export type GeneratedImage = { data: string; mimeType: string };
