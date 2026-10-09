@@ -27,7 +27,7 @@ describe("AIX-S3(a) — attached media stays in the unified report and explicit 
   const composer = read("components/companion/CompanionComposer.tsx");
 
   it("the report receives the note argument and threads it into the same editable prefill seam", () => {
-    expect(code).toMatch(/onAddToHandoff=\{\(note\) => \{\s*requestConsultPrefill\(\{ note, audience: "teacher" \}\);/);
+    expect(code).toMatch(/onAddToHandoff=\{\(note, audience = "teacher"\) => \{\s*requestConsultPrefill\(\{ note, audience \}\);/);
     expect(code).not.toContain("<ArborVision");
   });
 

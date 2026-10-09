@@ -1349,11 +1349,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                       // for ArborVision's handoff. Same seam, same contract.
                       // B-CAREPRO-13: the note is FOR a teacher, so the
                       // audience lands on "teacher" (not the stored default).
-                      onAddToHandoff={(note) => {
-                        requestConsultPrefill({ note, audience: "teacher" });
+                      onAddToHandoff={(note, audience = "teacher") => {
+                        requestConsultPrefill({ note, audience });
                         setActiveTab("consult");
-                        toast(t("coach.toast.teacherNoteCopied"), "info");
+                        // Nothing is copied: the note is prefilled, editable, in Consult.
+                        toast(t("coach.toast.handoffPrefilled"), "info");
                       }}
+                      onProposeMemory={(fact) => proposeMemory(fact, { source: "document", prompt: "companion:document" })}
                     />
                     </>
                   ) : (

@@ -9,7 +9,7 @@ import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
-import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence } from "../contracts/coach.js";
+import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
@@ -410,6 +410,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const seededCoachResponseSchema = createSeededCoachResponseGeminiSchema(framework);
   // B-AI-14 (coach_chat 1.5.3): a seeded FOLLOW-UP turn's short shape.
   const seededFollowUpCoachResponseSchema = createSeededFollowUpCoachResponseGeminiSchema(framework);
+  // Parity 9 Oct: a file turn may decline (FILE SAFETY GATE) or carry a document block.
+  const fileTurnCoachResponseSchema = createFileTurnCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
   router.use(createCoParentRouter({ config, shareStore, requireOwnership }));
@@ -1001,7 +1003,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         route: "coach_high_stakes",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         ...(attachments.length ? { images: attachments.map(a => ({ mimeType: a.mimeType, data: a.dataUrl.split(",")[1] })) } : {}),
-        schema: seededFollowUp ? seededFollowUpCoachResponseSchema : seededEscalation ? seededCoachResponseSchema : coachResponseSchema,
+        schema: seededFollowUp ? seededFollowUpCoachResponseSchema : seededEscalation ? seededCoachResponseSchema : attachments.length ? fileTurnCoachResponseSchema : coachResponseSchema,
         temperature: 0.45,
         budget: budget.budget,
         promptVersion: PROMPT_VERSIONS.coach_chat.version
@@ -1031,7 +1033,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // sections emptied server-side).
       const parsedJson = parseJson(rawResponse.trim());
       const structured = privacy.restoreDeep(
-        seededFollowUp ? toSeededFollowUpContract(parsedJson) : (seededEscalation ? coachSeededResponseZodSchema : coachResponseZodSchema).parse(parsedJson),
+        seededFollowUp ? toSeededFollowUpContract(parsedJson)
+          : seededEscalation ? coachSeededResponseZodSchema.parse(parsedJson)
+          // Parity 9 Oct (companion_attachments 1.2.0): a file turn may decline
+          // (text only, sections emptied here) or carry the document block.
+          : attachments.length ? toFileTurnContract(parsedJson, language === "he" ? "he" : "en")
+          : coachResponseZodSchema.parse(parsedJson),
       );
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
         structured.sourceCardsUsed = knowledgeCards.map((card) => card.id);
@@ -1076,14 +1083,16 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         // step 1 in the parent's own words (memoryFactUse groundTodayPlanOnFact).
         // Never on a seeded follow-up (no todayPlan in the short shape).
         const top = companion.approvedFacts[0];
-        if (top && !seededFollowUp) {
+        if (top && !seededFollowUp && !structured.fileDeclined) {
           groundTodayPlanOnFact(structured, top, factStepText(translate(renderLanguage, "coach.memory.factStep"), top.text, renderLanguage));
           logger.info("memory_fact_step_inserted", { requestId: requestIdOf(req) });
         }
       }
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
-      let renderedText = seededFollowUp ? renderCoachFollowUpResponse(structured, renderLanguage) : renderCoachResponse(structured, renderLanguage);
+      let renderedText = seededFollowUp ? renderCoachFollowUpResponse(structured, renderLanguage)
+        : structured.fileDeclined ? renderFileDeclinedResponse(structured)
+        : renderCoachResponse(structured, renderLanguage);
       let outputVerdict = await screenModelOutput(modelProvider, renderedText);
       // B-AI-14 (coach-core 1.5.1) — escalateIf-drop rule ratified by the
       // orchestrator 6 Oct (four conditions; safety/routineThresholds). A

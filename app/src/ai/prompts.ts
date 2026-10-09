@@ -157,7 +157,7 @@ export type PromptKey =
  * that prompt version (see each suite's `promptVersions` block).
  */
 export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: string }> = {
-  companion_attachments: { version: ATTACHMENT_SOURCE_POLICY_VERSION, sha256: "3ee63fb2508161d3bef27ca3b48678734ddc486312011273e61e68fccdcc348d" },
+  companion_attachments: { version: ATTACHMENT_SOURCE_POLICY_VERSION, sha256: "cbaa6d6b73340e9054a37449ccd41f3805fe86493950f9bdd7c5dfe7ca7d70e8" },
   non_diagnostic_contract: { version: "1.0.0", sha256: "b9179613d1346f25bfc95c4f10a0bbada56a2c2bae5202bceb5fbb769555763a" },
   // 1.1.0 — masterplan 1.3: optional recentTurns transcript block + optional
   // weeklyContext line (both between the scholar-lens paragraph and "Parent

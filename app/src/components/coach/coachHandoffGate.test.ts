@@ -42,7 +42,9 @@ const OLD_HANDOFF = `                      onAddToHandoff={() => {
                       }}`;
 /** The note must be BOUND (a parameter) and CONSUMED (through the prefill seam). */
 // B-CAREPRO-13: the teacher note travels with audience "teacher".
-const HANDOFF_CONSUMES_NOTE = /onAddToHandoff=\{\(note\) => \{[\s\S]{0,300}?requestConsultPrefill\(\{ note, audience: "teacher" \}\)/;
+// Parity 9 Oct: the same seam carries the professional / document note, with
+// the teacher as the default audience.
+const HANDOFF_CONSUMES_NOTE = /onAddToHandoff=\{\(note, audience = "teacher"\) => \{[\s\S]{0,300}?requestConsultPrefill\(\{ note, audience \}\)/;
 
 describe("AI-05(a) — the teacher note is consumed, not dropped", () => {
   it("negative control: the regex does NOT match the pre-fix zero-argument callback", () => {
@@ -58,6 +60,19 @@ describe("AI-05(a) — the teacher note is consumed, not dropped", () => {
   it("CoachTab binds the note and prefills the Consult composer with it", () => {
     expect(coachSrc).toMatch(HANDOFF_CONSUMES_NOTE);
     expect(coachSrc).not.toMatch(/onAddToHandoff=\{\(\) =>/);
+  });
+
+  it("the toast says what happened: the note is PREFILLED in Consult, nothing was copied", () => {
+    const handler = /onAddToHandoff=\{\(note, audience = "teacher"\) => \{([\s\S]{0,400}?)\n\s*\}\}/.exec(coachSrc);
+    expect(handler).toBeTruthy();
+    expect(handler![1]).toContain('toast(t("coach.toast.handoffPrefilled"), "info");');
+    // NEGATIVE CONTROL: the shipped toast claimed a clipboard copy that never happened.
+    expect(OLD_HANDOFF).toContain("coach.toast.teacherNoteCopied");
+    expect(handler![1]).not.toContain("teacherNoteCopied");
+  });
+
+  it("the card offers the professional note through the same seam (pediatrician audience)", () => {
+    expect(cardsSrc).toContain('onAddToHandoff(contract.handoffNotes.professional, "pediatrician")');
   });
 
   it("the unified report has one explicit prefill seam, with no separate Vision handoff", () => {
