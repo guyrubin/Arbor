@@ -22,6 +22,8 @@
 @media (min-width: 1280px) {
   .companion-workspace.is-open:not(.is-expanded) { grid-template-columns: minmax(0,1fr) minmax(440px,46%); }
   .companion-conversation { position: relative; inset: auto; z-index: 25; }
-  .companion-workspace.is-expanded > .companion-conversation { position: fixed; inset-block: 24px; inset-inline: max(24px,calc((100vw - 960px)/2)); border: 1px solid var(--arbor-rule-strong); border-radius: var(--r-xl); z-index: 46; }
+  .companion-workspace.is-expanded .companion-conversation { position: fixed; inset-block: 24px; inset-inline: max(24px,calc((100vw - 960px)/2)); border: 1px solid var(--arbor-rule-strong); border-radius: var(--r-xl); z-index: 46; }
   .companion-workspace.is-open > main { padding-inline: 24px; }
 }
+
+.companion-panel-layer { display: contents; }

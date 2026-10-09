@@ -60,8 +60,12 @@ export default function QuickLogModal({
   review,
   editLogId,
   shelf,
+  initialText,
+  initialPhoto,
 }: {
   open: boolean;
+  initialText?: string;
+  initialPhoto?: string;
   onClose: () => void;
   mode?: CaptureMode;
   /** B-TODAY-19: the elev.prompt.* key of the question being answered. */
@@ -180,6 +184,11 @@ export default function QuickLogModal({
       toast(t("beh.toast.imageError"), "error");
     }
   };
+  useEffect(() => {
+    if (!open) return;
+    if (initialText !== undefined) setNewLogTrigger(initialText);
+    if (initialPhoto) attachPhoto(initialPhoto);
+  }, [open, initialText, initialPhoto]);
   useEffect(() => {
     if (!open) {
       setReviewing(false);

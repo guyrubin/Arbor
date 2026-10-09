@@ -645,6 +645,8 @@ export default function Shell() {
           in place (openCaptureSheet); it portals to body, the route stays. */}
       {!kidLocked && (
         <QuickLogModal
+          initialText={captureSheet.initialText}
+          initialPhoto={captureSheet.initialPhoto}
           open={captureSheet.open}
           mode={captureSheet.mode}
           review={captureSheet.review}

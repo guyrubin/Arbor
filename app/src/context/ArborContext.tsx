@@ -337,7 +337,7 @@ function useArborState() {
    */
   const seedCoach = (opts: { prompt?: string; lens?: string; source?: string }) => {
     if (activeConversationId && conversationTopicRef.current !== activeFamilyTopic?.id) newConversation();
-    if (opts.prompt !== undefined) setChatInput(opts.prompt);
+    if (opts.prompt !== undefined) setChatInput(current => current.trim() && current.trim() !== opts.prompt?.trim() ? `${current}\n\n${opts.prompt}` : opts.prompt ?? current);
     if (opts.lens) setSelectedLens(opts.lens);
     requestCompanionConversation({ source: opts.source });
     try { track("coach_seed", { source: opts.source ?? "unknown" }); } catch { /* noop */ }
@@ -1197,6 +1197,7 @@ function useArborState() {
       // renders t("coach.error") — never the raw err.message). No error bubble
       // is appended, so no Firestore/index/provider internals ever land in a
       // stressed parent's thread or in the persisted conversation.
+      if (!customPrompt) setChatInput(current => current.trim() ? current : promptValue);
       setApiErrorStatus(err instanceof ApiError ? err.status : null);
       setApiError(err.message || "An exception occurred while connecting to Arbor services.");
       setChatMessages((prev) => abortChatStream(prev));
@@ -1419,8 +1420,8 @@ function useArborState() {
   //    updates the row through handleAddLog's editingLogId branch.
   // capture_started is emitted here for a capture (an edit is not one), and
   // pendingCaptureMode is NOT armed — Behaviors must not re-open it later.
-  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string }>({ open: false });
-  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string } = {}) => {
+  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string; initialText?: string; initialPhoto?: string }>({ open: false });
+  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string; initialText?: string; initialPhoto?: string } = {}) => {
     if (opts.editLogId) startEditLog(opts.editLogId);
     else trackCaptureStarted(opts.review === "ai-draft" ? "ai-draft" : opts.mode ?? "text");
     setCaptureSheet({ open: true, ...opts });

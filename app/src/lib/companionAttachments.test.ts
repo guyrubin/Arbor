@@ -17,7 +17,8 @@ describe("explicit transient companion attachments", () => {
     expect(() => parseCompanionAttachments([attachment, { ...attachment, id: "p2", dataUrl: `data:image/png;base64,${largeData}` }, { ...attachment, id: "p3", dataUrl: `data:image/png;base64,${largeData}` }], "synthetic-a")).toThrow();
   });
   it("only persists an allow-listed file receipt, never bytes or arbitrary fields", () => {
-    const receipt = attachmentMetadata([{ ...attachment, secret: "do not persist" }]);
+    const extra = { ...attachment, secret: "do not persist" };
+    const receipt = attachmentMetadata([extra]);
     expect(receipt).toEqual([{ id: "photo-1", kind: "photo", name: "blocks.png", mimeType: "image/png", originalAvailable: false }]);
     expect(JSON.stringify(receipt)).not.toContain("base64");
     expect(JSON.stringify(receipt)).not.toContain("secret");

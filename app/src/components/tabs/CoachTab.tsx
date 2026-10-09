@@ -872,9 +872,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     liveCtlRef.current = null;
   }, []);
 
+  const voiceConversationRef = useRef(activeConversationId);
   useEffect(() => {
-    if (!visible) stopVoice();
-    return () => { stopVoice(); };
+    const switched = voiceConversationRef.current !== null && voiceConversationRef.current !== activeConversationId;
+    voiceConversationRef.current = activeConversationId;
+    if (!visible || switched) stopVoice();
   }, [visible, activeConversationId]);
 
   const voiceLabel = voicePhase === "connecting" ? t("coach.voice.connecting") : voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
@@ -960,10 +962,10 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               </button>
             </div>
           )}
-          <CompanionComposer key={childProfile.id + ":" + activeConversationId} childId={childProfile.id} language={uiLang === "he" ? "he" : "en"}
+          <CompanionComposer key={childProfile.id} childId={childProfile.id} conversationId={activeConversationId} language={uiLang === "he" ? "he" : "en"}
             value={chatInput} onChange={setChatInput} busy={isChatLoading} visible={visible}
             onSend={handleChatSend} onVoice={() => void toggleVoice()} voiceActive={voicePhase !== "off"} voiceLabel={voiceLabel}
-            onKeep={() => openCaptureSheet({ mode: "text" })} />
+            onKeep={(text, photo) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo })} />
           {!online && <p data-testid="coach-offline-note" role="status" className="text-xs py-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.aierrors.offline.composer")}</p>}
           {/* Critic r2 (coach design P1): the one-time data-use notice reads
               AFTER the field and the capture chips, as a quiet --t-xs line with
@@ -1364,7 +1366,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   // localized chip label) — msg.text stays the canonical
                   // prompt that went to the model.
                   <>
-                    {msg.attachments?.map(file => <div key={file.id} className="companion-file-receipt"><Icon name={file.kind === "photo" ? "photo" : "description"} size={20}/><span>{file.name}<small className="block">{uiLang === "he" ? "נותח בשיחה זו · המקור לא נשמר" : "Shared in this conversation · original not saved"}</small></span></div>)}
+                    {msg.attachments?.map(file => <div key={file.id} className="companion-file-receipt"><Icon name={file.kind === "photo" ? "photo" : "description"} size={20}/><span>{file.name}<small className="block">{uiLang === "he" ? "נותח בשיחה זו · המקור לא נשמר" : "Attached to this turn · original not saved"}</small></span></div>)}
                     <MarkdownBlock text={msg.displayText || msg.text} />
                   </>
                 )}
@@ -1574,7 +1576,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   {t(failureCopy.bodyKey, failureCopy.bodyParams)}
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
-                  {failureCopy.retryable && lastUserText && (
+                  {failureCopy.retryable && lastUserText && ![...chatMessages].reverse().find(m => m.sender === "user")?.attachments?.length && (
                     <button
                       type="button"
                       onClick={() => handleChatSend(lastUserText)}

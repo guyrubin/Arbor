@@ -318,12 +318,15 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
     return sseTranscript(await res.text());
   }
 
+  const attachmentData = input.documentKind && Array.isArray(input.sourceLines) ? await syntheticDocumentDataUrl(input, locale) : null;
   const res = await fetch(`${baseUrl}${route === "/api/council" ? route : "/api/chat"}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       message,
       childProfile: scenarioProfile,
+      ...(attachmentData ? { childId: scenarioProfile.id, attachments: [{ id: "synthetic-document", childId: scenarioProfile.id, kind: input.documentKind === "photo" ? "photo" : "document", name: "synthetic-note", mimeType: attachmentData.slice(5, attachmentData.indexOf(";")), dataUrl: attachmentData }] } : {}),
+      ...(Array.isArray(input.recentTurns) ? { recentTurns: input.recentTurns } : {}),
       language: locale,
       ...(input.privateMode === true ? { privateMode: true } : {}),
       ...(typeof input.topicId === "string" ? { topicId: input.topicId } : {}),

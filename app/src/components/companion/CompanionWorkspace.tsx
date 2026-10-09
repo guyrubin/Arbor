@@ -46,7 +46,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     const receive = (event: Event) => {
       if (kidLocked) return;
       const detail = (event as CustomEvent<CompanionConversationRequest>).detail;
-      if (typeof detail?.prompt === "string") setChatInput(detail.prompt);
+      if (typeof detail?.prompt === "string") setChatInput(current => current.trim() && current.trim() !== detail.prompt?.trim() ? `${current}\n\n${detail.prompt}` : detail.prompt ?? current);
       show();
     };
     window.addEventListener(COMPANION_CONVERSATION_EVENT, receive);
@@ -62,6 +62,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
 
   return <div className={`companion-workspace${visible ? " is-open" : ""}${expanded ? " is-expanded" : ""}`}>
     {children}
+    <div className="companion-panel-layer" data-arbor-dialog-layer>
     {modal && <button type="button" tabIndex={-1} className="companion-workspace-backdrop" aria-label={he ? "סגירת השיחה" : "Close conversation"} onClick={close} />}
     {mounted && !kidLocked && <aside ref={panelRef} hidden={!visible} className="arbor-parent companion-conversation" role={modal ? "dialog" : "complementary"} aria-modal={modal || undefined} aria-labelledby="companion-conversation-title">
       <header className="companion-conversation-heading">
@@ -77,6 +78,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
         <CoachTab key={childProfile.id} embedded visible={visible} />
       </Suspense></ErrorBoundary>
     </aside>}
+    </div>
     {!visible && !kidLocked && <div className="arbor-parent companion-launcher" data-testid="companion-launcher">
       <button ref={launchRef} type="button" className="companion-launch-main" onClick={show} aria-haspopup="dialog" aria-label={he ? "לדבר עם Arbor — טקסט, תמונה או קול" : "Talk with Arbor — text, photo or voice"}>
         <ArborMark size={27} /><span>{chatInput.trim() ? (he ? "להמשיך את הטיוטה" : "Continue your draft") : (he ? "מה תרצו לשתף?" : "What would you like to share?")}<small>{he ? "לכתוב, להראות, לדבר" : "Write, show, talk"}</small></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" />
