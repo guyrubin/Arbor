@@ -10,12 +10,17 @@
  *      file loader never reach a generate / TTS endpoint or speech synthesis,
  *      and the loader's only request is the owner-checked book-asset proxy;
  *   4. a child without complete private files sees no change (the hook is
- *      cloud-only and returns nothing until the collection has loaded).
+ *      cloud-only and returns nothing until the collection has loaded);
+ *   5. (K2) the only narration in the bundle is a book's SHARED set: exactly
+ *      its name-free files (lib/library/narrationFiles), and no file that
+ *      says the child's name exists anywhere under public/audio.
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { allBooks } from "../../lib/library/books";
+import { nameBearingFiles, sharedNarrationShipped, SHARED_NARRATION_SETS, VOICE_FOLDERS } from "../../lib/library/narrationFiles";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..", "..");
@@ -104,5 +109,66 @@ describe("R2: a child without complete private files sees no change", () => {
     expect(dash).toContain("const tonightLib = onOpenBook ? libraryBooks[0] ?? null : null;");
     expect(dash).toContain("const moreLib = onOpenBook ? libraryBooks.slice(1) : [];");
     expect(read("components/kidmode/KidModeOverlay.tsx")).toContain("onOpenBook={setOpenBookId}");
+  });
+});
+
+// ── K2: the shared narration ─────────────────────────────────────────────────
+const AUDIO = path.join(APP, "public", "audio");
+/** `p10.a.mp3` / `p9.cues.json` → `p10.a` / `p9`. */
+const stemOf = (file: string) => file.replace(/\.(mp3|wav|m4a|ogg|aac|opus|webm|json)$/i, "").replace(/\.cues$/, "");
+const bookById = new Map(allBooks().map((b) => [b.id, b]));
+const nameStems = (bookId: string) => {
+  const b = bookById.get(bookId);
+  return new Set(b ? VOICE_FOLDERS.flatMap((v) => nameBearingFiles(b, v)).map(stemOf) : []);
+};
+const everyNameStem = new Set([...bookById.keys()].flatMap((id) => [...nameStems(id)]));
+
+/** The paths (relative to public/audio) that would put a child's name in the bundle. */
+export function nameBearingUnderAudio(rels: readonly string[]): string[] {
+  return rels.filter((rel) => {
+    const parts = rel.split("/");
+    const stem = stemOf(parts[parts.length - 1]);
+    if (parts[0] !== "books") return everyNameStem.has(stem);
+    // a book folder must be a known book with a shared set; its name-bearing ids never ship
+    return !Object.prototype.hasOwnProperty.call(SHARED_NARRATION_SETS, parts[1] ?? "") || nameStems(parts[1]).has(stem);
+  });
+}
+
+describe("K2: the bundle's narration is the shared, name-free set only", () => {
+  const rels = existsSync(AUDIO) ? walk(AUDIO).map((f) => path.relative(AUDIO, f).split(path.sep).join("/")) : [];
+
+  it("no name-bearing file id exists anywhere under public/audio", () => {
+    expect(rels.some((r) => r.startsWith("books/"))).toBe(true);
+    expect(nameBearingUnderAudio(rels)).toEqual([]);
+  });
+
+  it("negative controls: a name-bearing id is caught in the shared set, in another folder and under an unknown book", () => {
+    expect(
+      nameBearingUnderAudio([
+        "books/five-smooth-stones/shared-v3/en/p1.mp3",
+        "books/five-smooth-stones/shared-v3/he-m/p10.b.wav",
+        "books/five-smooth-stones/dylan-v3/he-f/cover.mp3",
+        "kid/sneak/en/p10.c.m4a",
+        "books/no-such-book/shared/en/p2.mp3",
+        "books/five-smooth-stones/shared-v3/en/p2.mp3",
+      ]),
+    ).toEqual([
+      "books/five-smooth-stones/shared-v3/en/p1.mp3",
+      "books/five-smooth-stones/shared-v3/he-m/p10.b.wav",
+      "books/five-smooth-stones/dylan-v3/he-f/cover.mp3",
+      "kid/sneak/en/p10.c.m4a",
+      "books/no-such-book/shared/en/p2.mp3",
+    ]);
+  });
+
+  it("each book's shared folder holds exactly its name-free list (no more, no less), and nothing else is under public/audio/books", () => {
+    const expected: string[] = [];
+    for (const [bookId, setId] of Object.entries(SHARED_NARRATION_SETS)) {
+      const book = bookById.get(bookId);
+      expect(book, bookId).toBeTruthy();
+      const shipped = sharedNarrationShipped(book!);
+      for (const folder of VOICE_FOLDERS) for (const f of shipped[folder]) expected.push(`books/${bookId}/${setId}/${folder}/${f}`);
+    }
+    expect(rels.filter((r) => r.startsWith("books/")).sort()).toEqual(expected.sort());
   });
 });

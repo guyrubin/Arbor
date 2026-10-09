@@ -37,12 +37,24 @@ export interface NarrationKey {
   voiceKey: string;
 }
 
+/** A voice folder: `en`, `he-m` or `he-f`. */
+export type VoiceFolder = "en" | "he-m" | "he-f";
+
+/** The voice folder of a language + Hebrew gender. */
+export function voiceFolder(lang: BookLang, gender: HeGender): VoiceFolder {
+  return lang === "he" ? (gender === "f" ? "he-f" : "he-m") : "en";
+}
+
+/** A narration file's name inside its voice folder: `<pageId>[.<choiceId>].mp3`. */
+export function narrationFileName(pageId: string, choiceId?: string | null): string {
+  return `${pageId}${choiceId ? `.${choiceId}` : ""}.mp3`;
+}
+
 /** The conventional path, or null when a segment is not path-safe. */
 export function narrationKey(k: NarrationKey, root: string = NARRATION_ROOT): string | null {
   const segs = [k.bookId, k.voiceKey, k.pageId, ...(k.choiceId ? [k.choiceId] : [])];
   if (!segs.every((s) => SEGMENT.test(s))) return null;
-  const voice = k.lang === "he" ? `he-${k.gender}` : "en";
-  return `${root}/${k.bookId}/${k.voiceKey}/${voice}/${k.pageId}${k.choiceId ? `.${k.choiceId}` : ""}.mp3`;
+  return `${root}/${k.bookId}/${k.voiceKey}/${voiceFolder(k.lang, k.gender)}/${narrationFileName(k.pageId, k.choiceId)}`;
 }
 
 /** A declared file in an AudioSet for this language / gender. */

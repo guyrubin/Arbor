@@ -13,62 +13,20 @@
  * closing frame line]).
  */
 import { getLibraryBook, DEFAULT_REVIEW_BOOK } from "../src/lib/library/books/index.ts";
-import { narrationKey, DEV_NARRATION_ROOT, NARRATION_ROOT } from "../src/lib/library/narration.ts";
-import type { BookLang, HeGender, Page } from "../src/lib/library/types.ts";
+import { DEV_NARRATION_ROOT, NARRATION_ROOT } from "../src/lib/library/narration.ts";
+import { bookNarrationFiles, type VoiceFolder } from "../src/lib/library/narrationFiles.ts";
 
 const bookId = process.argv[2] ?? DEFAULT_REVIEW_BOOK;
 const voiceKey = process.argv[3] ?? "dylan-v2";
 const book = getLibraryBook(bookId);
 if (!book) throw new Error(`no book ${bookId}`);
 
-type Voice = { lang: BookLang; gender: HeGender; label: string };
-const VOICES: Voice[] = [
-  { lang: "en", gender: "m", label: "EN" },
-  { lang: "he", gender: "m", label: "HE-m (boy)" },
-  { lang: "he", gender: "f", label: "HE-f (girl)" },
+// The file list itself (names, texts, play moments) is lib/library/narrationFiles.ts.
+const VOICES: { folder: VoiceFolder; label: string }[] = [
+  { folder: "en", label: "EN" },
+  { folder: "he-m", label: "HE-m (boy)" },
+  { folder: "he-f", label: "HE-f (girl)" },
 ];
-
-const pick = (l: { en: string; he: { m: string; f: string } }, v: Voice) => (v.lang === "he" ? l.he[v.gender] : l.en);
-const label = (l: { en: string; he: string }, v: Voice) => (v.lang === "he" ? l.he : l.en);
-const join = (...parts: (string | undefined)[]) => parts.filter(Boolean).join(" ");
-
-interface Row {
-  file: string;
-  when: string;
-  text: string;
-}
-
-function rows(v: Voice): Row[] {
-  const out: Row[] = [];
-  const key = (pageId: string, choiceId?: string) => narrationKey({ bookId: book!.id, voiceKey, lang: v.lang, gender: v.gender, pageId, choiceId }, DEV_NARRATION_ROOT)!.split("/").pop()!;
-  out.push({ file: key("cover"), when: "the child taps the cover picture (never on its own)", text: join(`${label(book!.title, v)}.`, book!.coverNameLine ? `${label(book!.coverNameLine, v)}.` : undefined, label(book!.coverLine, v)) });
-  const pages: Page[] = [...book!.pages.slice(0, book!.pages.findIndex((p) => p.id === book!.decision.pageId) + 1)];
-  const after = book!.pages.slice(book!.pages.findIndex((p) => p.id === book!.rejoinPageId));
-  const add = (p: Page, when: string) => {
-    if (p.echo) {
-      for (const c of book!.decision.choices) {
-        const echo = p.echo[c.id];
-        out.push({ file: key(p.id, c.id), when: `${when}, path ${c.id} (${c.type})`, text: join(pick(p.text, v), echo ? pick(echo, v) : undefined, p.closing ? pick(p.closing, v) : undefined) });
-      }
-      return;
-    }
-    if (p.repair) {
-      out.push({ file: key(p.id), when: `${when}: page shown (before the taps)`, text: pick(p.text, v) });
-      out.push({ file: key(`${p.id}-prompt`), when: `${when}: once the before-text has finished (the hint)`, text: label(p.repair.promptLabel, v) });
-      p.repair.items.forEach((it, n) => {
-        if (it.line) out.push({ file: key(`${p.id}-${it.id}`), when: `${when}: tap on ${it.id}${p.repair!.ordered ? ` (tap ${["one", "two", "three", "four", "five"][n] ?? "next"} of the fixed order)` : ""}`, text: pick(it.line, v) });
-      });
-      out.push({ file: key(`${p.id}-after`), when: `${when}: every item done`, text: pick(p.repair.textAfter, v) });
-      return;
-    }
-    out.push({ file: key(p.id), when, text: join(pick(p.text, v), p.closing ? pick(p.closing, v) : undefined) });
-  };
-  for (const p of pages) add(p, p.id);
-  for (const c of book!.decision.choices) out.push({ file: key(`${book!.decision.pageId}-choice`, c.id), when: `choice card ${c.id} (${c.type}) tapped`, text: label(c.label, v) });
-  for (const c of book!.decision.choices) for (const p of c.branch) add(p, `${p.id} (path ${c.id})`);
-  for (const p of after) add(p, p.id);
-  return out;
-}
 
 const lines: string[] = [];
 lines.push(`---`, `type: brief`, `title: Narration files for "${book.title.en}" (${book.id})`, `generated: by app/scripts/book-narration-list.mts from the book data — do not hand-edit; re-run after any text change`, `---`, ``);
@@ -84,8 +42,8 @@ lines.push(`- Not played by the reader (safe to delete): \`p7b-item.<id>.mp3\` (
 lines.push(`- **Picture-state cues (p9):** the reader shows the stone in flight at "The stone flew" / "האבן עפה" and the dust at "BOOM" / "בּוּם". Per voice, put a sidecar next to the file: \`p9.cues.json\` = \`{"flight": <ms>, "boom": <ms>}\` (the onset of each phrase, ms from the file's start; same folder as \`p9.mp3\`). Without it the reader uses 0.80 and 0.93 of the file's duration; the quiet picture comes when the file ends. No extra audio file.`);
 lines.push(`- **Narration sets:** a set is a folder (\`voiceKey\`); the DEV review URL \`&voice=<setId>\` reads another set (e.g. \`dylan-v2-expressive\`) without replacing files. A set may deliver \`.wav\` instead of \`.mp3\` (the reader tries .mp3, then .wav; cue sidecars keep the \`.cues.json\` name).`, ``);
 for (const v of VOICES) {
-  const r = rows(v);
-  lines.push(`## ${v.label} — folder \`${v.lang === "he" ? `he-${v.gender}` : "en"}/\` (${r.length} files)`, ``);
+  const r = bookNarrationFiles(book, v.folder);
+  lines.push(`## ${v.label} — folder \`${v.folder}/\` (${r.length} files)`, ``);
   lines.push(`| File | Plays when | Exact text |`, `|---|---|---|`);
   for (const row of r) lines.push(`| \`${row.file}\` | ${row.when} | ${row.text.replace(/\|/g, "\\|")} |`);
   lines.push(``);
