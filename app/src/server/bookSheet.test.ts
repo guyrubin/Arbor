@@ -124,6 +124,9 @@ describe("K2 4a: PUT a book sheet file", () => {
     expect(r.status).toBe(200);
     const o = s.objects.get(`children/kid1/books/${BOOK}/${poseRel("look-up")}`);
     expect(o?.metadata).toEqual({ aspect: "0.5", footX: "0.5", footW: "0.4" });
+    // the parent's one Redraw is marked on the file (the commit carries it into the manifest)
+    expect((await s.put(poseRel("sit"), webp(200, 400), { ...ANCHOR, redrawn: 1 })).status).toBe(200);
+    expect(s.objects.get(`children/kid1/books/${BOOK}/${poseRel("sit")}`)?.metadata.redrawn).toBe("1");
     // a choice card needs no anchors
     expect((await s.put(`hero-sheets/h-${HASH}/choices/a.webp`, webp(800, 600))).status).toBe(200);
   });
@@ -188,6 +191,7 @@ describe("K2 4a: commit", () => {
     expect(await s.docs.read("owner", "kid1", BOOK)).toBeNull();
     for (const pose of draw.slice(5)) await s.put(poseRel(pose), webp(200, 400), ANCHOR);
     await s.put(`hero-sheets/h-${HASH}/choices/b.webp`, webp(800, 600));
+    await s.put(poseRel("sit"), webp(200, 400), { ...ANCHOR, redrawn: 1 });
     expect(await (await s.commit({ avatarHash: HASH, dryRun: true })).json()).toMatchObject({ complete: true, missing: [], committed: false, admin: false });
     const r = await s.commit({ avatarHash: HASH });
     expect(r.status).toBe(200);
@@ -199,6 +203,8 @@ describe("K2 4a: commit", () => {
     expect(doc).toMatchObject({ id: BOOK, bookId: BOOK, sheetId: `h-${HASH}`, setId: "none", createdAt: "2026-10-09T12:00:00.000Z" });
     expect(Object.keys(doc!.sheetManifest.poses).sort()).toEqual(draw);
     expect(doc!.sheetManifest.poses["look-up"]).toEqual({ file: "look-up.webp", ...ANCHOR });
+    expect(doc!.sheetManifest.poses["look-up"].redrawn).toBeUndefined();
+    expect(doc!.sheetManifest.poses.sit).toEqual({ file: "sit.webp", ...ANCHOR, redrawn: true });
     expect(doc!.sheetManifest.choices).toEqual({ b: "choices/b.webp" });
     expect(doc!.files).toContain(`hero-sheets/h-${HASH}/choices/b.webp`);
     // the older hero's folder is gone; the reader would open the book

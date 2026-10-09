@@ -103,6 +103,15 @@ export const en: Record<string, string> = {
   "elev.hero.sheet.pose.oops": "Oops",
   "elev.hero.sheet.pose.cheer": "Cheer",
   "elev.hero.sheet.pose.hold-up": "Holding up",
+  // K2 4d: the hero's pictures in the book (the review strip's second row)
+  "elev.hero.sheet.book.title": "{name}'s hero in the book. Redraw a picture that does not look like {name}.",
+  "elev.hero.sheet.book.title.boy": "{name}'s hero in the book. Redraw a picture that does not look like {name}.",
+  "elev.hero.sheet.book.title.girl": "{name}'s hero in the book. Redraw a picture that does not look like {name}.",
+  "elev.hero.sheet.book.building": "{name}'s hero is stepping into the book — ready in a few minutes",
+  "elev.hero.sheet.book.building.boy": "{name}'s hero is stepping into the book — ready in a few minutes",
+  "elev.hero.sheet.book.building.girl": "{name}'s hero is stepping into the book — ready in a few minutes",
+  "elev.hero.sheet.book.alt": "{name} in the book",
+  "elev.hero.sheet.book.failed": "This picture rests for today; the book keeps the one it has.",
 };
 
 export const he: Record<string, string> = {
@@ -182,4 +191,12 @@ export const he: Record<string, string> = {
   "elev.hero.sheet.pose.oops": "אופס",
   "elev.hero.sheet.pose.cheer": "שמחה",
   "elev.hero.sheet.pose.hold-up": "הרמה",
+  "elev.hero.sheet.book.title": "הדמות של {name} בספר. אפשר לצייר מחדש תמונה שלא נראית כמו {name}.",
+  "elev.hero.sheet.book.title.boy": "הגיבור של {name} בספר. אפשר לצייר מחדש תמונה שלא נראית כמו {name}.",
+  "elev.hero.sheet.book.title.girl": "הגיבורה של {name} בספר. אפשר לצייר מחדש תמונה שלא נראית כמו {name}.",
+  "elev.hero.sheet.book.building": "הדמות של {name} נכנסת לספר — מוכנה בעוד כמה דקות",
+  "elev.hero.sheet.book.building.boy": "הגיבור של {name} נכנס לספר — מוכן בעוד כמה דקות",
+  "elev.hero.sheet.book.building.girl": "הגיבורה של {name} נכנסת לספר — מוכנה בעוד כמה דקות",
+  "elev.hero.sheet.book.alt": "{name} בספר",
+  "elev.hero.sheet.book.failed": "התמונה הזו נחה היום — הספר שומר את זו שיש לו.",
 };

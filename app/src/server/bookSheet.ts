@@ -6,7 +6,8 @@
  *
  *   PUT  /api/children/:childId/book-assets/:bookId/file?path=<rel>[&aspect=&footX=&footW=]
  *        body: the WebP bytes (Content-Type image/webp, <= 300 KB, RIFF/WEBP magic)
- *        rel:  hero-sheets/h-<avatarHash>/<pose>.webp          (a pose of this book; anchors required)
+ *        rel:  hero-sheets/h-<avatarHash>/<pose>.webp          (a pose of this book; anchors required;
+ *                                                              redrawn=1 marks the parent's one Redraw)
  *              hero-sheets/h-<avatarHash>/choices/<choice>.webp (a choice of this book; 4:3)
  *   POST /api/children/:childId/book-assets/:bookId/commit { avatarHash, dryRun? }
  *        lists the hero's folder; every pose the book needs (a pose or its
@@ -193,7 +194,7 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
       if (!isChoice) {
         const a = readSpriteAnchor({ aspect: req.query.aspect, footX: req.query.footX, footW: req.query.footW });
         if (!a || Math.abs(a.aspect - size.w / size.h) > 0.02) return refuse(res, 400, "book_sheet_bad_anchor", "A sprite needs its measured anchors");
-        custom = { aspect: String(a.aspect), footX: String(a.footX), footW: String(a.footW) };
+        custom = { aspect: String(a.aspect), footX: String(a.footX), footW: String(a.footW), ...(req.query.redrawn === "1" ? { redrawn: "1" } : {}) };
       }
       try {
         const bucket = await deps.getBucket();
@@ -224,7 +225,7 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
       for (const pose of HERO_BOOK_POSE_SETS[g.bookId as keyof typeof HERO_BOOK_POSE_SETS]) {
         const f = byRel.get(bookSheetPoseRel(sheetId, pose));
         const a = f ? readSpriteAnchor(f.metadata?.metadata ?? null) : null;
-        if (a) poses[pose] = { file: `${pose}.webp`, ...a };
+        if (a) poses[pose] = { file: `${pose}.webp`, ...a, ...(f?.metadata?.metadata?.redrawn === "1" ? { redrawn: true } : {}) };
       }
       const missing = missingBookPoses(book, Object.keys(poses));
       const have = [...byRel.keys()].filter((rel) => rel.startsWith(`hero-sheets/${sheetId}/`)).sort();

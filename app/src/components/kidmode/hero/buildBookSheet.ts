@@ -56,7 +56,7 @@ export interface BookBuilderDeps {
   decode(dataUrl: string): Promise<RgbaImage>;
   /** WebP with alpha, at most `maxBytes` (shrinks as needed); null when the device cannot encode WebP. */
   encodeWebp(img: RgbaImage, maxBytes: number): Promise<Blob | null>;
-  upload(rel: string, body: Blob, anchor?: BookSpriteAnchor): Promise<BookCall>;
+  upload(rel: string, body: Blob, anchor?: BookSpriteAnchor, opts?: { redrawn?: boolean }): Promise<BookCall>;
   probe(avatarHash: string): Promise<CommitProbe>;
   commitSheet(avatarHash: string): Promise<CommitResult>;
   /** 4e: the child's choice cards (crops of the book's composites), or none. */
@@ -192,6 +192,31 @@ export async function buildBookSheet(input: { childId: string; avatarHash: strin
   return { status: "complete", drawn, skipped, calls, doc: ok.doc };
 }
 
+/* ── K2 4d: the parent's Redraw of one book pose ─────────────────────────────
+ * From the review strip (components/profile/BookSheetStrip.tsx): the pose is
+ * drawn once more for the same hero (counted on the book's own per-sheet
+ * calls), uploaded over the old file with `redrawn`, and the sheet recommitted
+ * (a new createdAt: the child's device fetches the new picture). One per pose:
+ * the strip offers it only while the manifest entry is not `redrawn`.
+ */
+export async function redrawBookPose(input: { childId: string; avatarHash: string; pose: string; bookId?: string }, deps: BookBuilderDeps): Promise<{ ok: boolean; reason?: string; doc?: BookAssetsDoc }> {
+  const { childId, avatarHash, pose } = input;
+  const book = getLibraryBook(input.bookId ?? DEFAULT_SHEET_BOOK);
+  if (!book || !bookSheetDrawPoses(book).includes(pose)) return { ok: false, reason: "not-in-sheet" };
+  const d = await drawBookPose(childId, pose, avatarHash, deps, () => undefined);
+  if (!d.ok) { const miss = d as { stop?: string; skip?: string }; return { ok: false, reason: miss.stop ?? miss.skip ?? "qa" }; }
+  const s = (d as { sprite: BookSprite }).sprite;
+  const body = await deps.encodeWebp(s.sprite, BOOK_SPRITE_MAX_BYTES).catch(() => null);
+  if (!body) return { ok: false, reason: "webp_unsupported" };
+  const up = await callWithRetry(() => deps.upload(bookSheetPoseRel(bookSheetId(avatarHash), pose), body, s.anchor, { redrawn: true }), deps);
+  if (!up.ok) return { ok: false, reason: (up as { code: string }).code };
+  const done = await callWithRetry(() => deps.commitSheet(avatarHash), deps);
+  if (!done.ok) return { ok: false, reason: (done as { code: string }).code };
+  const ok = done as Extract<CommitResult, { ok: true }>;
+  if (ok.local) await deps.keepLocalDoc(ok.doc).catch(() => undefined);
+  return { ok: true, doc: ok.doc };
+}
+
 /* ── Browser wiring ──────────────────────────────────────────────────────── */
 
 const codeOf = async (res: Response): Promise<string> => {
@@ -228,8 +253,8 @@ export function bookSheetApi(childId: string, bookId: string = DEFAULT_SHEET_BOO
       const d = (await res.json().catch(() => null)) as { dataUrl?: unknown } | null;
       return typeof d?.dataUrl === "string" ? { ok: true, dataUrl: d.dataUrl } : { ok: false, status: res.status, code: "bad_response" };
     },
-    async upload(rel, body, anchor) {
-      const q = new URLSearchParams({ path: rel, ...(anchor ? { aspect: String(anchor.aspect), footX: String(anchor.footX), footW: String(anchor.footW) } : {}) });
+    async upload(rel, body, anchor, opts) {
+      const q = new URLSearchParams({ path: rel, ...(anchor ? { aspect: String(anchor.aspect), footX: String(anchor.footX), footW: String(anchor.footW) } : {}), ...(opts?.redrawn ? { redrawn: "1" } : {}) });
       const headers = await authHeaders();
       headers["Content-Type"] = "image/webp";
       const res = await fetch(`${base}/file?${q}`, { method: "PUT", headers, body });

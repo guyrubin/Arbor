@@ -75,7 +75,8 @@ export interface BookAssetsDoc {
   sets?: string[];
   /** The hero sheet's manifest (poses with anchors, prints, choices). */
   sheetManifest: {
-    poses: Record<string, { file: string; aspect?: number; footX?: number; footW?: number }>;
+    /** `redrawn`: the parent's one Redraw of a built book pose is spent (K2 4d). */
+    poses: Record<string, { file: string; aspect?: number; footX?: number; footW?: number; redrawn?: boolean }>;
     prints?: Record<string, { file: string; w?: number; h?: number }>;
     choices?: Record<string, string>;
   };

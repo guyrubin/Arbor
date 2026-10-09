@@ -10,7 +10,7 @@ import { bookSheetDrawPoses } from "../../../lib/library/bookSheet";
 import { fiveSmoothStones as book } from "../../../lib/library/books/fiveSmoothStones";
 import type { BookAssetsDoc } from "../../../lib/library/bookAssetPaths";
 import type { HeroPoseId } from "../../../lib/heroSheetContract";
-import { buildBookSheet, keepLocalBookDoc, startBookSheet, type BookBuilderDeps, type BookPoseResponse, type CommitProbe } from "./buildBookSheet";
+import { buildBookSheet, keepLocalBookDoc, redrawBookPose, startBookSheet, type BookBuilderDeps, type BookPoseResponse, type CommitProbe } from "./buildBookSheet";
 
 const HASH = "0123456789abcdef";
 const DRAW = bookSheetDrawPoses(book);
@@ -23,18 +23,19 @@ function fakeDeps(opts: Partial<BookBuilderDeps> & { have?: string[]; probeResul
   const poses: string[] = [];
   const kept: BookAssetsDoc[] = [];
   const commits: string[] = [];
+  const redrawn: string[] = [];
   const deps: BookBuilderDeps = {
     requestPose: vi.fn(async ({ pose }: { pose: HeroPoseId }): Promise<BookPoseResponse> => { poses.push(pose); return { ok: true, dataUrl: `mock:${pose}` }; }),
     decode: async (u) => mockHeroPoseRaster(u.slice(5) as HeroPoseId),
     encodeWebp: async () => new Blob(["RIFF"]),
-    upload: async (r, _b, anchor) => { uploads.push({ rel: r, anchor }); return { ok: true }; },
+    upload: async (r, _b, anchor, o) => { uploads.push({ rel: r, anchor }); if (o?.redrawn) redrawn.push(r); return { ok: true }; },
     probe: async () => probeResult ?? { ok: true, complete: false, missing: [], have: have ?? [], committed: false, admin: false },
     commitSheet: async (h) => { commits.push(h); return { ok: true, doc: DOC, local: !!commitLocal }; },
     keepLocalDoc: async (d) => void kept.push(d),
     sleep: async () => {},
     ...over,
   };
-  return { deps, uploads, poses, kept, commits };
+  return { deps, uploads, poses, kept, commits, redrawn };
 }
 
 describe("K2 4b: the book sheet builder", () => {
@@ -137,5 +138,19 @@ describe("K2 4b: the book sheet builder", () => {
     expect((await a).stoppedBy).toBe("superseded");
     expect((await b).status).toBe("complete");
     expect(commits).toEqual([NEW]);
+  }, 60_000);
+
+  it("4d: the parent's Redraw draws one pose again, uploads it marked redrawn and recommits; only a drawn book pose", async () => {
+    const f = fakeDeps({ commitLocal: true });
+    const r = await redrawBookPose({ childId: "kid1", avatarHash: HASH, pose: "sit" }, f.deps);
+    expect(r).toMatchObject({ ok: true, doc: DOC });
+    expect(f.poses).toEqual(["sit"]);
+    expect(f.redrawn).toEqual([rel("sit")]);
+    expect(f.commits).toEqual([HASH]);
+    expect(f.kept).toEqual([DOC]);
+    for (const pose of ["worried-tunic", "idle", "kneel"]) expect((await redrawBookPose({ childId: "kid1", avatarHash: HASH, pose }, f.deps)).reason).toBe("not-in-sheet");
+    const quota = fakeDeps({ requestPose: async () => ({ ok: false, status: 429, code: "hero_sheet_resting" }) });
+    expect(await redrawBookPose({ childId: "kid1", avatarHash: HASH, pose: "sit" }, quota.deps)).toEqual({ ok: false, reason: "hero_sheet_resting" });
+    expect(quota.commits).toEqual([]);
   }, 60_000);
 });

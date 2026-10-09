@@ -9,6 +9,8 @@
  *    Yes / Redraw. Redraw removes the pose from the record at once (the game
  *    falls back to another pose; the child never sees a rejected one) and draws
  *    it once more for the same hero (counted, not re-charged). One per pose.
+ *  - K2 4d: below it, the hero's pictures in the BOOK, each with Redraw
+ *    (BookSheetStrip).
  */
 import React, { useEffect, useState } from "react";
 import { Icon } from "../ui/Icon";
@@ -17,6 +19,7 @@ import { HERO_SHEET_POSE_IDS, heroAvatarHash, type HeroSheetPoseId } from "../..
 import { browserBuilderDeps, markHeroPoseOk, redrawHeroPose, resumeHeroSheet } from "../kidmode/hero/buildHeroSheet";
 import { heroSheetStoreFor } from "../../lib/heroSheetStore";
 import { useHeroSheetDocs } from "../kidmode/hero/useHeroSheet";
+import BookSheetStrip from "./BookSheetStrip";
 import type { ChildProfile } from "../../types";
 
 /** The parent-register key for this child's grammatical form (HE). */
@@ -109,6 +112,7 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
           );
         })}
       </ul>
+      <BookSheetStrip child={child} avatarHash={hash} />
     </section>
   );
 }
