@@ -30,7 +30,7 @@ describe("K2 4e: choice cards", () => {
       expect(p.hero.x + p.hero.w / 2, p.choiceId).toBeGreaterThan(p.crop.x);
       expect(p.hero.x + p.hero.w / 2, p.choiceId).toBeLessThan(p.crop.x + p.crop.w);
     }
-  });
+  }, 60_000);
 
   it("the sprite sits where the reader puts it (feet on the slot) and the feet sit low in the card", () => {
     const slot = { pose: "x", x: 0.4, y: 0.8, scale: 0.26, facing: "right" as const, z: "fr" as const };

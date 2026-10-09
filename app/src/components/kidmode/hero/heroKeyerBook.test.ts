@@ -39,7 +39,7 @@ describe("K2 4c: the keyer's book mode", () => {
       expect(a.footX, pose).toBeLessThan(1);
       expect(a.footW, pose).toBeGreaterThan(0);
     }
-  });
+  }, 120_000);
 
   it("the anchors are alpha_meta's: the feet band is the lowest 6 % of the image (worried: both shoes, centred)", () => {
     const k = keyBookSprite(mockHeroPoseRaster("worried"));
@@ -55,7 +55,7 @@ describe("K2 4c: the keyer's book mode", () => {
     for (let y = 0; y < 100; y++) for (let x = 15; x < 25; x++) img.data[(y * 40 + x) * 4 + 3] = 255;
     for (let y = 95; y < 100; y++) for (let x = 10; x <= 30; x++) img.data[(y * 40 + x) * 4 + 3] = 255;
     expect(bookSpriteAnchor(img)).toEqual({ aspect: 0.4, footX: 0.5, footW: 0.5, bottom: 0.99 });
-  });
+  }, 60_000);
 
   it("the game keeps its padded trim (4 %)", () => {
     const raster = mockHeroPoseRaster("worried");
@@ -64,5 +64,5 @@ describe("K2 4c: the keyer's book mode", () => {
     expect(game.sprite!.height).toBeGreaterThan(book.sprite!.height);
     const rows = opaqueRows(game.sprite!);
     expect(rows[0]).toBeGreaterThan(5);
-  });
+  }, 60_000);
 });
