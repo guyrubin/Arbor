@@ -28,6 +28,7 @@ vi.mock("../../context/LanguageContext", async () => {
 });
 
 import { programKidWorldDoor, programKidWorldStudioId } from "./programKidWorld";
+import type { AgedChild } from "../../lib/age/forChild";
 import ProgramKidWorldDoor from "./ProgramKidWorldDoor";
 import { ProgramPageView } from "./ProgramPage";
 import { programPageModel, programStoryTheme } from "../../lib/programPage";
@@ -41,7 +42,8 @@ const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8").replace(
 const strip = (s: string) => s.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 const NOW = new Date(2026, 9, 10, 12, 0, 0);
-const child = (birthDate: string) => ({ id: "child-1", birthDate });
+// AgedChild requires the whole-year `age`; derive it from the birth date at NOW so the fixture stays one fact.
+const child = (birthDate: string): AgedChild => ({ id: "child-1", birthDate, age: Math.floor((NOW.getTime() - new Date(birthDate).getTime()) / (365.25 * 86_400_000)) });
 const FIVE = child("2021-06-01"); // 64 months
 const TWO = child("2024-05-01"); // 29 months — Kid Mode opens from 36
 
