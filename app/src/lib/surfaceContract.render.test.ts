@@ -508,7 +508,7 @@ export function freshTopLevelModules(source: string): { stamped: string[]; unsta
   const end = src.indexOf("\n    </motion.div>", start);
   const body = src.slice(start, end).split("\n").slice(2);
   // Overlays that render nothing at rest on a fresh thread.
-  const REST_NULL = /^<(ConversationProposalTray|ArborVision|ToneSheet)\b/;
+  const REST_NULL = /^<(ConversationProposalTray|ToneSheet)\b/;
   const stamped: string[] = [];
   const unstamped: string[] = [];
   for (let i = 0; i < body.length; i++) {

@@ -292,9 +292,10 @@ function useArborState() {
   const consumeJournalFocus = () => setPendingJournalFocusId(null);
 
   /**
-   * AIX-S3 — Vision handoff-note → Consult composer prefill seam (mirrors the
-   * capture seam above). ArborVision's document flow produces a handoffNote;
-   * CoachTab threads it here and the Consult flow (AskSpecialist) consumes it
+   * AIX-S3 — handoff-note → Consult composer prefill seam (mirrors the
+   * capture seam above). Born for ArborVision (deleted 2026-10-09); today a
+   * coach answer's teacher note (CoachTab onAddToHandoff) threads here and
+   * the Consult flow (AskSpecialist) consumes it
    * into a PARENT-EDITABLE note field. Prefill is NOT consent: nothing is
    * shared or sent without the existing explicit consult act (copy / download
    * / export / send), all of which stay behind the reviewed-checkbox gate.
