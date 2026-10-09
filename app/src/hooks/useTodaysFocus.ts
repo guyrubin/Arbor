@@ -121,14 +121,27 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
   const remote = firebaseEnabled && !!user && user.uid !== "local-sandbox" && !!db;
   const uid = user?.uid;
   const lsKey = `arbor.todaysFocus.${child.id}.${focusLang}`;
-
-  const [focus, setFocus] = useState<Focus | null>(null);
-  const [loading, setLoading] = useState(false);
+  const scope = `${remote ? "remote" : "local"}:${uid ?? "anonymous"}:${child.id}:${focusLang}`;
+  const scopeLease = useRef({ scope, active: true, request: 0, pending: false });
+  // A→B→A must get a new lease too: matching child IDs alone would let the
+  // first A request overwrite a newer A cache load after returning to A.
+  if (scopeLease.current.scope !== scope) scopeLease.current = { scope, active: true, request: 0, pending: false };
+  const lease = scopeLease.current;
+  const [cacheReadyScope, setCacheReadyScope] = useState<typeof lease | null>(null);
+  const [storedFocus, setStoredFocus] = useState<{ scope: string; value: Focus | null }>({ scope, value: null });
+  const focus = cacheReadyScope === lease && storedFocus.scope === scope ? storedFocus.value : null;
+  const setFocus = (value: Focus | null) => setStoredFocus({ scope, value });
+  const [pending, setLoading] = useState(false);
+  // Cache loading is loading too. This makes readiness a dependency of the
+  // existing auto effect, while preventing a first-render null from causing
+  // an unnecessary request before getDoc has answered.
+  const loading = cacheReadyScope !== lease || pending;
   // N2-errfocus: a failed generation used to be swallowed silently — the Today
   // overview then showed only the guaranteed-action fallback with no signal
   // that the AI focus was ever attempted. The flag lets the surface render an
   // inline error + retry ALONGSIDE the fallback (never instead of it).
-  const [error, setError] = useState(false);
+  const [storedError, setError] = useState(false);
+  const error = cacheReadyScope === lease && storedError;
   const triedAuto = useRef(false);
   // B-TODAY-11: one content refresh per Today mount (never reset by a re-render).
   const refreshedThisMount = useRef(false);
@@ -136,6 +149,10 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
   const ref = () => (remote && db && uid ? doc(db, `users/${uid}/children/${child.id}/insights/todaysFocus`) : null);
 
   const generate = useCallback(async () => {
+    if (cacheReadyScope !== lease || scopeLease.current !== lease || !lease.active || lease.pending) return;
+    lease.pending = true;
+    const request = ++lease.request;
+    const ownsRequest = () => scopeLease.current === lease && lease.active && lease.request === request;
     setLoading(true);
     setError(false);
     try {
@@ -149,9 +166,11 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
       // carries only flat parent-log counts + the top pattern (a parent-tagged
       // category) — never the intensity average nor the milestone percentage,
       // both verdict primitives (pinned by lib/todayFocus.test.ts).
+      const headers = await authHeaders();
+      if (!ownsRequest()) return;
       const res = await fetch("/api/todays-focus", {
         method: "POST",
-        headers: await authHeaders(),
+        headers,
         body: JSON.stringify({
           childProfile: child,
           signals: {
@@ -170,6 +189,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
       });
       if (!res.ok) throw new Error("focus generation failed");
       const data = await res.json();
+      if (!ownsRequest()) return;
       // The server already returns a short, screened focus; the clamp stays as
       // a safety net for any cached long text.
       const cleaned = String(data.text || "").replace(/[#*]/g, "").replace(/\s+/g, " ").trim();
@@ -226,21 +246,22 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
         }
       }
     } catch {
-      // Keep any prior focus, but surface the failure — the Today surface
-      // renders an inline retry next to the guaranteed-action fallback.
-      setError(true);
+      if (ownsRequest()) setError(true);
     } finally {
-      setLoading(false);
+      if (ownsRequest()) setLoading(false);
+      if (lease.request === request) lease.pending = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [child, signals, journal, remote, uid, focusLang]);
+  }, [child, signals, journal, remote, uid, focusLang, cacheReadyScope]);
 
   // Load cache when the active child — or the language — changes.
   useEffect(() => {
     let cancelled = false;
+    lease.active = true;
     triedAuto.current = false;
-    // A child/language switch is a fresh context: drop any stale error banner.
     setError(false);
+    setLoading(false);
+    refreshedThisMount.current = false;
     (async () => {
       let cached: Focus | null = null;
       const r = ref();
@@ -261,10 +282,16 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
       }
       // A cached record from another language is NOT a cache hit: drop it so
       // the card never renders cross-language text while the rewrite runs.
-      if (!cancelled) setFocus(isFocusStale(cached, todayKey(), focusLang) ? null : cached);
+      if (!cancelled && scopeLease.current === lease) {
+        setFocus(isFocusStale(cached, todayKey(), focusLang) ? null : cached);
+        setCacheReadyScope(lease);
+      }
     })();
     return () => {
       cancelled = true;
+      lease.active = false;
+      lease.request += 1;
+      lease.pending = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [child.id, remote, uid, focusLang]);
@@ -273,7 +300,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
   // B-TODAY-11: refresh at most once per mount when a capture or an outcome
   // landed after the focus was generated.
   useEffect(() => {
-    if (loading) return;
+    if (loading || cacheReadyScope !== lease) return;
     const decision = focusRefreshDecision({
       focus,
       day: todayKey(),

@@ -29,6 +29,7 @@
  * byte-identical to the legacy prompt.
  */
 
+import type { AttachmentReceipt, AttachmentContext } from "../lib/companionAttachments.js";
 import type { JournalRequest } from "./journalContext.js";
 
 export type RecentTurnRole = "parent" | "coach";
@@ -196,6 +197,8 @@ export const shouldShowWeeklyContextNotice = (childId: string): boolean => {
 
 /** Structural view of ArborContext's ChatMessage — no import, no cycle. */
 export type ThreadTurnLike = {
+  attachments?: AttachmentReceipt[];
+  attachmentContext?: AttachmentContext;
   sender: "user" | "ai";
   text: string;
   chatAck?: boolean;
@@ -266,7 +269,7 @@ const settledTurns = (thread: ReadonlyArray<ThreadTurnLike>): RecentTurn[] =>
   sanitizeRecentTurns(
     thread
       .filter((m) => !m.chatAck && !m.chatLive && !m.voiceLive && m.text.trim())
-      .map<RecentTurn>((m) => ({ role: m.sender === "user" ? "parent" : "coach", text: m.text })),
+      .map<RecentTurn>((m) => ({ role: m.sender === "user" ? "parent" : "coach", text: (m.attachments?.length ? "[Parent supplied files; original files are unavailable in this turn.] " : m.attachmentContext ? "[Model interpretation of previously supplied files, not a parent-confirmed fact. Originals unavailable.] " : "") + m.text })),
   );
 
 /**

@@ -29,7 +29,7 @@ export function badgeText(
 }
 
 export default function Sidebar() {
-  const { activeTab, setActiveTab, pendingReviewCount } = useArbor();
+  const { activeTab, setActiveTab } = useArbor();
   const { user, signOut, firebaseEnabled } = useAuth();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
@@ -89,18 +89,15 @@ export default function Sidebar() {
         })}
         <div className="mt-5 pt-5 space-y-1" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
           {([
-            { tab: "coach", icon: "forum", en: "Talk with Arbor", he: "לדבר עם Arbor" },
             { tab: "masterclasses", icon: "school", en: "For you, the parent", he: "בשבילך, ההורה" },
             { tab: "consult", icon: "diversity_1", en: "Care, together", he: "יחד עם אנשי המקצוע" },
           ] as const).map(link => {
             const label = he ? link.he : link.en;
-            const reviewAria = link.tab === "coach" && pendingReviewCount > 0
-              ? t("elev.sidebar.badge.review", { label, count: pendingReviewCount }) : undefined;
-            return <button key={link.tab} onClick={() => setActiveTab(link.tab)} aria-current={activeTab === link.tab ? "page" : undefined} aria-label={reviewAria}
+            return <button key={link.tab} onClick={() => setActiveTab(link.tab)} aria-current={activeTab === link.tab ? "page" : undefined}
             className="w-full min-h-11 flex items-center gap-3 px-3 py-3 rounded-xl text-start text-sm font-semibold"
             style={{ color: activeTab === link.tab ? "var(--arbor-clay-deep)" : "var(--arbor-muted)", background: activeTab === link.tab ? "var(--arbor-clay-dim)" : "transparent" }}>
             <Icon name={link.icon} size={21}/>{label}
-            {link.tab === "coach" && pendingReviewCount > 0 && <span aria-hidden="true" className="rounded-full px-2 text-xs" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{pendingReviewCount}</span>}
+
           </button>; })}
         </div>
       </nav>

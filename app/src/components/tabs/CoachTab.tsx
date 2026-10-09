@@ -31,7 +31,8 @@ import ToneSheet, { toneLabel } from "../coach/ToneSheet";
 import ValuePreview from "../billing/ValuePreview";
 import { ShareButton } from "../ui/ShareButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
-import ArborVision from "../coach/ArborVision";
+import CompanionComposer from "../companion/CompanionComposer";
+import type { ComposerAttachment } from "../../lib/companionAttachments";
 import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError } from "../../lib/api";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
@@ -135,7 +136,7 @@ const ECHO_PROMPTS: Readonly<Record<string, string>> = {
 };
 const ECHO_FALLBACK_PROMPT = "This keeps happening: {type}. What may be happening, and what do I do next time it starts?";
 
-export default function CoachTab() {
+export default function CoachTab({ embedded = false, visible = true }: { embedded?: boolean; visible?: boolean }) {
   const {
     selectedLens,
     setSelectedLens,
@@ -309,7 +310,7 @@ export default function CoachTab() {
   // element, not just its fill). Editing it registers as new unresolved debt,
   // and that ratchet may only be retired by proving the fill. Wrapping the
   // handler covers strictly more entry points anyway.
-  const handleChatSend = (customPrompt?: string, opts?: { displayText?: string }) => {
+  const handleChatSend = async (customPrompt?: string, opts?: { displayText?: string; attachments?: ComposerAttachment[] }) => {
     if (!online) {
       setAiFailure(classifyAiFailure(null, { online: false, childName: childFirst }));
       return;
@@ -369,7 +370,6 @@ export default function CoachTab() {
   }, [isChatLoading, chatStreamStatus, apiError]);
 
   // Arbor Vision (photo / document capture)
-  const [visionMode, setVisionMode] = useState<null | "observe" | "document">(null);
 
   // Which answer's overflow ("…") menu is open. Only Copy stays inline; Log /
   // Plan / Share fold into this menu so a settled answer reads as calm text.
@@ -872,6 +872,11 @@ export default function CoachTab() {
     liveCtlRef.current = null;
   }, []);
 
+  useEffect(() => {
+    if (!visible) stopVoice();
+    return () => { stopVoice(); };
+  }, [visible, activeConversationId]);
+
   const voiceLabel = voicePhase === "connecting" ? t("coach.voice.connecting") : voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
   // COACH-2: live caption text on the voicePhase chip while the answer streams
   // in / is spoken (the same screened text that fills the thread bubble).
@@ -886,7 +891,7 @@ export default function CoachTab() {
   // COACH-4 single-input invariant holds: this JSX renders in exactly ONE of
   // the two positions, so there is always exactly one textarea in the DOM,
   // and the voice/photo capture chips travel with it.
-  const composerDocked = userTurnExists;
+  const composerDocked = embedded || userTurnExists;
   // Fresh state has no transcript messages, status, or failure card. Keep the
   // coach header and footer reachable without reserving a blank message canvas.
   const hasThreadContent = chatMessages.length > 0 || isChatLoading || !!failureCopy;
@@ -955,91 +960,11 @@ export default function CoachTab() {
               </button>
             </div>
           )}
-          {/* Critic r2: the composer is raised (elevated paper, strong rule,
-              shadow-xs, --r-xl); the textarea is field-bare so the global
-              input fill never draws a field inside it. */}
-          <div data-testid="coach-composer-well" className="flex items-end gap-2 rounded-[var(--r-xl)] p-2" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-xs)" }}>
-            <textarea
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleChatSend(); } }}
-              disabled={isChatLoading}
-              rows={2}
-              placeholder={t("coach.placeholder", { name: childFirst })}
-              // OBJ-ASK-01: a placeholder is not an accessible name (it
-              // disappears on first keystroke, and axe reports the field as
-              // unlabelled). The label says what the field is FOR.
-              aria-label={tcc("elev.coachcontract.composer.aria")}
-              className="field-bare flex-1 resize-none px-2.5 py-2 text-sm leading-relaxed focus:outline-none min-h-[58px]"
-              style={{ color: "var(--arbor-ink)" }}
-            />
-            {/* Critic r2: --gradient-cta appears only once there is something
-                to send; at rest the send is a solid --arbor-clay-dim well with
-                a clay arrow (no 40 % gradient that reads louder than nothing). */}
-            {chatInput.trim() && !isChatLoading ? (
-              <button
-                type="button"
-                data-testid="coach-send"
-                data-state="ready"
-                onClick={() => handleChatSend()}
-                aria-label={t("coach.send.aria")}
-                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white flex-shrink-0 transition motion-safe:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                style={{ background: "var(--gradient-cta)" }}
-              >
-                <Icon name={uiLang === "he" ? "arrow_back" : "arrow_forward"} size={20} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                data-testid="coach-send"
-                data-state="rest"
-                disabled
-                aria-label={t("coach.send.aria")}
-                className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 cursor-not-allowed"
-                style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay)" }}
-              >
-                <Icon name={uiLang === "he" ? "arrow_back" : "arrow_forward"} size={20} />
-              </button>
-            )}
-          </div>
-          {/* AI-24: the honest offline line, on the composer itself, so the
-              parent learns it before pressing send rather than after. */}
-          {!online && (
-            <p
-              data-testid="coach-offline-note"
-              role="status"
-              className="mt-2 flex items-center gap-1.5 text-[12px] font-bold"
-              style={{ color: "var(--arbor-muted)" }}
-            >
-              <Icon name="cloud_off" size={13} /> {t("elev.aierrors.offline.composer")}
-            </p>
-          )}
-          {/* Multimodal capture entry points (photo / document / voice) — the ONLY
-              instances on the surface (COACH-4 firewall condition: they survive
-              the composer consolidation). */}
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <button type="button" onClick={() => setVisionMode("observe")} className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="photo_camera" size={14} /> {t("coach.photo")}</button>
-            <button type="button" onClick={() => setVisionMode("document")} className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-full text-[11px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="description" size={14} /> {t("coach.document")}</button>
-            <button
-              type="button"
-              onClick={toggleVoice}
-              aria-pressed={voicePhase !== "off"}
-              aria-label={voiceLabel}
-              className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-full text-[11px] font-bold"
-              style={voicePhase !== "off"
-                ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
-                : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
-            >
-              {/* AI-V7: the truncated 180px chip caption moved into the
-                  VoiceOverlay bottom sheet (full-width, dir="auto", aria-live)
-                  — the chip stays the sole ENTRY point. */}
-              {voicePhase === "off" ? <Icon name="mic" size={14} /> : <Icon name="stop" size={14} />} {voiceLabel}
-              {voicePhase !== "off" && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
-            </button>
-            {/* EU AI Act Art. 50 — persistent AI-interaction transparency line.
-                Always visible on the Ask surface, never behind a toggle. */}
-            <span className="ms-auto inline-flex items-center gap-1 text-[10px]" style={{ color: "var(--arbor-muted)" }}><Icon name="shield" size={13} /> {t("coach.aiDisclosure")}</span>
-          </div>
+          <CompanionComposer key={childProfile.id + ":" + activeConversationId} childId={childProfile.id} language={uiLang === "he" ? "he" : "en"}
+            value={chatInput} onChange={setChatInput} busy={isChatLoading} visible={visible}
+            onSend={handleChatSend} onVoice={() => void toggleVoice()} voiceActive={voicePhase !== "off"} voiceLabel={voiceLabel}
+            onKeep={() => openCaptureSheet({ mode: "text" })} />
+          {!online && <p data-testid="coach-offline-note" role="status" className="text-xs py-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.aierrors.offline.composer")}</p>}
           {/* Critic r2 (coach design P1): the one-time data-use notice reads
               AFTER the field and the capture chips, as a quiet --t-xs line with
               no fill — the composer is the only raised object here. */}
@@ -1081,13 +1006,14 @@ export default function CoachTab() {
   );
 
   return (
-    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1040px] space-y-6">
+    <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`mx-auto w-full min-w-0 max-w-[1040px] space-y-6${embedded ? " companion-coach" : ""}`}>
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
       {/* One coaching workspace: orientation, conversation, composer. */}
       <div data-module="coach-orientation" className="space-y-4">
+        {embedded && !userTurnExists && <div className="companion-welcome"><h3>{uiLang === "he" ? "בואו נבין את זה יחד." : "Let’s make sense of it, together."}</h3><p>{uiLang === "he" ? "רגע קטן, שאלה גדולה, תמונה מהיום. התחילו איפה שנוח לכם — ונמצא יחד את הצעד הבא." : "A little moment, a big question, a photo from today. Start wherever feels natural, and we’ll find a next step together."}</p></div>}
         <header className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="max-w-2xl">
             <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.hero.ask.eyebrow")}</p>
@@ -1386,9 +1312,9 @@ export default function CoachTab() {
                     {/* ASK-1: the streamed prose lead stays visible after the
                         cards settle — the words the parent watched arrive
                         never vanish at done. */}
-                    {msg.contract.text?.trim() && <MarkdownBlock text={msg.contract.text} className="mb-3" />}
                     <CoachAnswerCards
                       contract={msg.contract}
+                      renderKeepAction={idx === chatMessages.length - 1 && !isChatLoading && !msg.chatLive && !msg.voiceLive ? (field, text) => <CaptureProposalsTray surface="coach" inline={{ field, text }} /> : undefined}
                       lens={msg.lens}
                       council={msg.council}
                       lang={uiLang}
@@ -1437,7 +1363,10 @@ export default function CoachTab() {
                   // ASK-5: user bubbles show what the parent SAW (the tapped
                   // localized chip label) — msg.text stays the canonical
                   // prompt that went to the model.
-                  <MarkdownBlock text={msg.displayText || msg.text} />
+                  <>
+                    {msg.attachments?.map(file => <div key={file.id} className="companion-file-receipt"><Icon name={file.kind === "photo" ? "photo" : "description"} size={20}/><span>{file.name}<small className="block">{uiLang === "he" ? "נותח בשיחה זו · המקור לא נשמר" : "Shared in this conversation · original not saved"}</small></span></div>)}
+                    <MarkdownBlock text={msg.displayText || msg.text} />
+                  </>
                 )}
 
                 {msg.sender === "ai" && !msg.contract && !msg.voiceLive && !msg.chatLive && (
@@ -1588,7 +1517,7 @@ export default function CoachTab() {
               parent who asked here saw no Keep. Hidden while a new turn
               streams (it would offer the previous answer's lines). Kept rows
               land in the Journal feed. */}
-          {!isChatLoading && <CaptureProposalsTray surface="coach" />}
+
 
           {/* F-08: the chat-status live region — ALWAYS mounted (twin:
               VoiceOverlay's captions, "always mounted so aria-live announces
@@ -1692,7 +1621,7 @@ export default function CoachTab() {
               decideValuePreview's named reasons. */}
           <ValuePreview
             threadEmpty={chatMessages.length === 0}
-            surfaceIdle={!isChatLoading && !failureCopy && voicePhase === "off" && !visionMode}
+            surfaceIdle={!isChatLoading && !failureCopy && voicePhase === "off" }
             online={online}
           />
         </div>
@@ -1792,26 +1721,7 @@ export default function CoachTab() {
         />
       )}
 
-      <ArborVision
-        open={!!visionMode}
-        mode={visionMode || "observe"}
-        onClose={() => setVisionMode(null)}
-        childProfile={childProfile}
-        onSeedCoach={(prompt) => { setChatInput(prompt); }}
-        // AIX-S3(a): the handoff note is CONSUMED, not dropped — it prefills
-        // the Consult composer (parent-editable) via the context seam. Prefill
-        // is not consent: sharing still requires the explicit consult act.
-        onGoHandoff={(note) => { requestConsultPrefill({ note }); setActiveTab("consult"); toast(t("coach.toast.handoffPrefilled"), "info"); }}
-        // AIX-S3(b): suggestedMemory items route through the EXISTING parent-
-        // approved propose seam — they land ONLY in the pending-approval queue
-        // (Profile › Child Memory); nothing auto-approves.
-        onProposeMemory={(fact) => proposeMemory(fact, { source: "vision", prompt: "vision:document" })}
-        // AI-05: the Vision hand-off writes a MODEL-AUTHORED note into the log
-        // draft, so it goes through the same fail-closed ai-draft gate as every
-        // other AI-authored draft — armed BEFORE the tab switch, because the
-        // Behaviors consumer reads pendingCaptureMode on arrival.
-        onGoBehaviors={(noteText) => { setNewLogNotes(noteText.slice(0, 400)); openCaptureSheet({ review: "ai-draft" }); toast(t("coach.toast.photoCaptured"), "info"); }}
-      />
+
     </motion.div>
   );
 }

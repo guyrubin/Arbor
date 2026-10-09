@@ -9,6 +9,8 @@ import { useHashQuery } from "../../hooks/useHashQuery";
 import { sectionForTab, pillRowFor, isCompactHiddenTool } from "../../lib/navigation";
 import { contractFor } from "../../lib/surfaceContract";
 import Sidebar from "./Sidebar";
+import CompanionWorkspace from "../companion/CompanionWorkspace";
+import { requestCompanionConversation } from "../../lib/companionConversation";
 import Topbar from "./Topbar";
 import KidModeButton from "./KidModeButton";
 // IA-01 / IA-18: the Safety life-ring takes the strip slot the duplicate Ask
@@ -380,6 +382,7 @@ export default function Shell() {
             dashboard content area ONLY. KidModeOverlay renders at position:fixed z-70
             as a sibling of the grid — it carries its own .arbor-play scope and does
             NOT inherit from this <main>. See index.css .arbor-parent block. */}
+        <CompanionWorkspace kidLocked={kidLocked}>
         <main id="main" tabIndex={-1} ref={mainRef} className="arbor-parent focus:outline-none w-full min-w-0 px-4 py-5 pb-24 sm:px-5 md:px-6 md:py-8 lg:pb-10 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
           {/* IA-03 / IA-16 / MOB-26 — ONE mobile chrome strip, not three rows.
               The separate 34 px brand row is GONE: the 28 px mark folds into
@@ -601,7 +604,7 @@ export default function Shell() {
                       is counting inside instead of re-deriving it. Presentation
                       is untouched: display:contents, no box, no style. */}
                   <SurfaceFrame route={activeTab}>
-                    {activeTab === "overview" ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic}/>
+                    {["overview", "coach", "scholar"].includes(activeTab) ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
                       : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab onDiscuss={createTopic}/>)
                       : <>
                         {activeTab === "coach" && activeFamilyTopic && <button className="min-h-11 w-full mb-4 px-4 py-3 rounded-xl text-start text-sm" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }} onClick={openTopic}>
@@ -615,6 +618,7 @@ export default function Shell() {
             </AnimatePresence>
           </Suspense>
         </main>
+        </CompanionWorkspace>
         </div>{/* end right column (AP-044: topbar + main) */}
 
       </div>

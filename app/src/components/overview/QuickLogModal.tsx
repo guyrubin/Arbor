@@ -610,6 +610,7 @@ export default function QuickLogModal({
           <p className="pt-1 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.capture.hard.logLead")}</p>
         </section>
       )}
+      {!reply && !reviewing && !escalationMarkdown && <button type="button" onClick={startVoice} aria-pressed={listening} className="inline-flex min-h-11 items-center gap-2 mb-3 px-3 rounded-xl text-sm" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-deep)" }}><Icon name={listening ? "stop" : "mic"} size={20}/>{uiLang === "he" ? (listening ? "סיום ההכתבה" : "להכתיב את הרגע") : (listening ? "Finish dictating" : "Dictate your moment")}</button>}
       {voiceNotice && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={startVoice} onDismiss={() => setVoiceNotice(null)} />}
       {escalationMarkdown ? (
         <div role="alert" dir="auto" data-testid="quicklog-escalation" className="space-y-3 text-sm">
@@ -651,7 +652,7 @@ export default function QuickLogModal({
             {t(promptKey)}
           </p>
         )}
-        {(mode === "photo" || photo) && (
+        {(
           <div className="space-y-1.5" data-testid="quicklog-photo">
             {photo ? (
               <div className="flex items-center gap-3">

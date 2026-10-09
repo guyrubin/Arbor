@@ -79,7 +79,7 @@ export const applyChatDelta = (prev: ChatMessage[], delta: string, lens?: string
 export const settleChatTurn = (prev: ChatMessage[], payload: ChatResponsePayload, lens?: string): ChatMessage[] => {
   const settled: ChatMessage = (payload as { outputBlocked?: boolean }).outputBlocked
     ? { sender: "ai", text: payload.text, lens }
-    : { sender: "ai", text: payload.text, lens, contract: payload.contract, council: payload.council };
+    : { sender: "ai", text: payload.text, lens, contract: payload.contract, attachmentContext: payload.attachmentContext, council: payload.council };
   const last = prev[prev.length - 1];
   if (last && last.sender === "ai" && last.chatLive) {
     return [...prev.slice(0, -1), settled];

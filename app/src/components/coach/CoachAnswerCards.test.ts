@@ -344,7 +344,6 @@ describe("COACH-1 — uiLang=he renders zero English chrome", () => {
     "אפשר להגיד",             // say this
     "ממה להימנע",             // avoid
     "למה לשים לב",            // watch for
-    "עוד",                    // More (B-ASKJB-05 disclosure)
     "פתק למורה",              // teacher note
   ];
   const EN_CHROME = [
@@ -389,7 +388,7 @@ describe("COACH-1 — uiLang=he renders zero English chrome", () => {
         onAddToHandoff: noop,
       })
     );
-    for (const s of ["Why this might be happening", "Try today", "Say this", "Watch for", "Turn into a plan", "More", "Teacher note"]) {
+    for (const s of ["Why this might be happening", "Try today", "Say this", "Watch for", "Turn into a plan", "Teacher note"]) {
       expect(html, `missing EN chrome "${s}"`).toContain(s);
     }
   });
@@ -492,7 +491,7 @@ describe("ASK-6 — memory footer rendering", () => {
  * "marriage", "shepherd") never renders on the parent surface — it stays in
  * the contract for telemetry/evals only.
  */
-describe("ASK-3 — script + plan lead, hypotheses collapse, frames never render", () => {
+describe("Unified report — explanation, steps and script stay visible; frames never render", () => {
   function renderFullEn(): string {
     return renderToStaticMarkup(
       React.createElement(CoachAnswerCards, {
@@ -504,18 +503,19 @@ describe("ASK-3 — script + plan lead, hypotheses collapse, frames never render
     );
   }
 
-  it("B-ASKJB-05 order: Try this, then Say this, then More (which holds the hypotheses)", () => {
+  it("explains before the ordered steps and usable script, with no More wrapper", () => {
     const html = renderFullEn();
-    const script = html.indexOf("Say this");
-    const plan = html.indexOf("Try today");
-    const more = html.indexOf('data-testid="coach-answer-more"');
     const why = html.indexOf("Why this might be happening");
-    expect(script).toBeGreaterThan(-1);
-    expect(plan).toBeGreaterThan(-1);
+    const plan = html.indexOf("Try today");
+    const script = html.indexOf("Say this");
     expect(why).toBeGreaterThan(-1);
-    expect(plan, "the one step leads the stack").toBeLessThan(script);
-    expect(script, "the script precedes More").toBeLessThan(more);
-    expect(more, "the hypotheses live inside More").toBeLessThan(why);
+    expect(why).toBeLessThan(plan);
+    expect(plan).toBeLessThan(script);
+    expect(html).not.toContain('data-testid="coach-answer-more"');
+    const explanation = html.slice(html.indexOf('data-testid="coach-report-understanding"'), html.indexOf('data-testid="coach-report-next"'));
+    expect(explanation).not.toContain("hidden");
+    expect(explanation).not.toContain("aria-expanded");
+    expect(explanation).not.toContain("(possible)");
   });
 
   it("the frameRouting panel and its values are never visible to the parent", () => {
@@ -526,7 +526,7 @@ describe("ASK-3 — script + plan lead, hypotheses collapse, frames never render
     expect(html).not.toContain("Warm but firm");    // frameRouting.twoAxes value
   });
 
-  it("hypotheses disclosure is collapsed by default but the content stays in the DOM", () => {
+  it("explanation content remains visible by default", () => {
     const html = renderFullEn();
     expect(html).toContain("Why this might be happening");
     // Content present (hidden, never unmounted) — same idiom as the citation drawer.
@@ -562,140 +562,109 @@ describe("B-ASKJB-04 — the try-it control renders per state, 44 px, EN + HE", 
 });
 
 /**
- * B-ASKJB-05 — ONE recommendation. The card is read · Try this · Say this ·
- * (escalate) · More, then the footer: at most five top-level blocks plus the
- * footer, More collapsed by default, ONE plan door (inside More), escalation
- * never inside More, every control ≥44 px, EN + HE.
+ * The user intentionally superseded B-ASKJB-05's collapsed five-block
+ * layout. Preserve the actual safety and action contracts, while guarding
+ * the new visible, ordered report rather than freezing the regressed layout.
  */
-describe("B-ASKJB-05 — one-recommendation answer", () => {
-  const VOID = new Set(["br", "img", "input", "hr", "meta", "link", "source", "wbr"]);
-  /** Direct element children of the root (`data-testid="coach-answer-cards"`). */
-  function topLevelChildren(html: string): string[] {
-    const root = html.indexOf('data-testid="coach-answer-cards"');
-    expect(root, "root testid present").toBeGreaterThan(-1);
-    const start = html.indexOf(">", root) + 1;
-    const children: string[] = [];
-    let depth = 0;
-    const re = /<\/?([a-zA-Z][a-zA-Z0-9-]*)([^>]*?)(\/?)>/g;
-    re.lastIndex = start;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(html))) {
-      const closing = m[0].startsWith("</");
-      const selfClosing = m[3] === "/" || VOID.has(m[1].toLowerCase());
-      if (closing) {
-        if (depth === 0) break; // the root's own close
-        depth -= 1;
-        continue;
-      }
-      if (depth === 0) children.push(m[0]);
-      if (!selfClosing) depth += 1;
-    }
-    return children;
-  }
+describe("Unified report — depth without duplicate cards", () => {
   function full(riskLevel: string, extra: Partial<CoachContract> = {}): CoachContract {
     return {
       ...makeFullContract(riskLevel),
+      text: "A hard transition can need a smaller next step.",
       todayPlan: ["Give a two-minute warning before leaving.", "Name the next thing.", "Hold the hand at the door."],
       sourceCardsUsed: ["transition-warnings"],
       sourceCards: [{ id: "transition-warnings", title: "Transition warnings", type: "practice_card" }],
       approvedMemoryFactsUsed: 2,
-      memoryProposals: [{ fact: "Leaves the park hard", source: "parent", retention: "long" }],
+      memoryProposals: [{ fact: "PRIVATE FACT", source: "parent", retention: "long" }],
       ...extra,
-    } as CoachContract;
+    };
   }
-  function render(contract: CoachContract, lang: "en" | "he" = "en", props: Record<string, unknown> = {}): string {
-    return renderToStaticMarkup(
-      React.createElement(CoachAnswerCards, {
-        contract, lang, lens: "Dr. Becky Kennedy",
-        onSaveToPlan: noop, onAddToHandoff: noop, onManageMemory: noop, onGoDeeper: noop,
-        onTryIt: noop, onUndoTryIt: noop, todayStep: null,
-        ...props,
-      } as any)
-    );
+  function render(contract: CoachContract, lang: "en" | "he" = "en", props: Partial<Parameters<typeof CoachAnswerCards>[0]> = {}): string {
+    return renderToStaticMarkup(React.createElement(CoachAnswerCards, {
+      contract, lang, lens: "Dr. Becky Kennedy",
+      onSaveToPlan: noop, onAddToHandoff: noop, onManageMemory: noop, onGoDeeper: noop,
+      onTryIt: noop, onUndoTryIt: noop, todayStep: null,
+      ...props,
+    }));
   }
 
   for (const lang of ["en", "he"] as const) {
-    it(`[${lang}] a contract with all fields renders ≤5 blocks + footer; More is collapsed`, () => {
-      const html = render(full("low"), lang);
-      const kids = topLevelChildren(html);
-      expect(kids.length, kids.join("\n")).toBe(6);
-      expect(kids.length - 1, "blocks above the footer").toBeLessThanOrEqual(5);
-      expect(kids[4]).toContain('data-testid="coach-answer-more"');
-      expect(kids[5]).toContain('data-testid="coach-answer-footer"');
-      // More: one aria-expanded toggle, collapsed, its body hidden (not unmounted).
-      const more = html.slice(html.indexOf('data-testid="coach-answer-more"'));
-      expect(more).toMatch(/^[^]*?<button type="button" aria-expanded="false"/);
-      expect(more).toMatch(/<div hidden="" class="space-y-2\.5 px-3\.5/);
+    it("[" + lang + "] owns the lead once, then visible understanding and all ordered steps", () => {
+      const contract = full("low");
+      const html = render(contract, lang);
+      expect(html.split(contract.text!).length - 1).toBe(1);
+      expect(html).toContain('dir="' + (lang === "he" ? "rtl" : "ltr") + '"');
+      expect(html.indexOf('data-testid="coach-report-opening"')).toBeLessThan(html.indexOf('data-testid="coach-report-understanding"'));
+      const start = html.indexOf('data-testid="coach-report-next"');
+      const end = html.indexOf('class="coach-report__section coach-report__script"');
+      const steps = html.slice(start, end);
+      for (const step of contract.todayPlan) expect(steps.split(step).length - 1).toBe(1);
+      expect(steps).not.toMatch(/class="[^"]*\bhidden\b|<details|style="[^"]*display:none/);
+      expect(steps).toContain("<ol");
+      expect(steps.split('data-testid="coach-try-it"').length - 1).toBe(1);
+      expect(html).not.toContain('data-testid="coach-answer-more"');
+      expect(html).not.toContain("PRIVATE FACT");
     });
 
-    it(`[${lang}] prominent escalation renders OUTSIDE More, as its own block`, () => {
+    it("[" + lang + "] urgent governed help precedes even the lead; no diagnosis grade is exposed", () => {
       const html = render(full("moderate"), lang);
-      const kids = topLevelChildren(html);
-      expect(kids.length).toBe(6);
-      const headline = lang === "he" ? "פנו לעזרה מקצועית אם" : "Reach out for help if";
-      expect(html.indexOf(headline)).toBeGreaterThan(-1);
-      expect(html.indexOf(headline), "escalation precedes More").toBeLessThan(html.indexOf('data-testid="coach-answer-more"'));
+      expect(html.indexOf('data-testid="coach-report-urgent-help"')).toBeLessThan(html.indexOf('data-testid="coach-report-opening"'));
       expect(html).toContain(ESCALATE_ITEM);
+      expect(html).not.toContain("(moderate)");
+      expect(html).not.toContain("(possible)");
     });
 
-    it(`[${lang}] no escalation, no script → fewer blocks, More + footer still last`, () => {
-      const kids = topLevelChildren(render(full("low", { escalateIf: [], parentScript: "" }), lang));
-      expect(kids.length).toBe(4);
-      expect(kids[2]).toContain('data-testid="coach-answer-more"');
-    });
-
-    it(`[${lang}] exactly ONE plan door, inside More; no header "Save as plan", no KeepBar`, () => {
+    it("[" + lang + "] keeps one plan door, teacher handoff and optional council", () => {
       const html = render(full("low"), lang);
       expect(html.split('data-testid="coach-plan-door"').length - 1).toBe(1);
-      const more = html.indexOf('data-testid="coach-answer-more"');
-      expect(html.indexOf('data-testid="coach-plan-door"')).toBeGreaterThan(more);
-      expect(html).toContain(lang === "he" ? "להפוך לתוכנית" : "Turn into a plan");
-      for (const old of ["Save as plan", "Save to plan", "שמירה כתוכנית", "שמירה לתוכנית"]) expect(html).not.toContain(old);
-    });
-
-    it(`[${lang}] Try this shows the FIRST step only; steps 2–3 sit inside More`, () => {
-      const html = render(full("low"), lang);
-      const more = html.indexOf('data-testid="coach-answer-more"');
-      expect(html.indexOf("Give a two-minute warning before leaving.")).toBeLessThan(more);
-      expect(html.indexOf("Name the next thing.")).toBeGreaterThan(more);
-      expect(html.indexOf("Hold the hand at the door.")).toBeGreaterThan(more);
-      expect(html).toContain(lang === "he" ? "הצעדים הבאים" : "Next steps");
-      expect(html).toContain(lang === "he" ? "אנסה את זה" : "I&#x27;ll try it");
-    });
-
-    it(`[${lang}] "Go deeper" only while no council exists; council takes replace it`, () => {
-      const label = lang === "he" ? "להעמיק" : "Go deeper";
-      expect(render(full("low"), lang)).toContain(label);
+      expect(html).toContain(lang === "he" ? "פתק למורה" : "Teacher note");
+      expect(html).toContain('data-testid="coach-go-deeper"');
       const withCouncil = render(full("low"), lang, { council: [{ scholarId: "s1", name: "Dr. Ross Greene", concept: "CPS", takeaway: "Skill, not will.", suggestion: "Solve it together." }] });
       expect(withCouncil).not.toContain('data-testid="coach-go-deeper"');
       expect(withCouncil).toContain("Dr. Ross Greene");
       expect(render(full("low"), lang, { onGoDeeper: undefined })).not.toContain('data-testid="coach-go-deeper"');
     });
-
-    it(`[${lang}] every control on the card is ≥44 px`, () => {
-      const html = render(full("low"), lang);
-      const buttons = html.match(/<button\b[^>]*>/g) ?? [];
-      expect(buttons.length).toBeGreaterThanOrEqual(10);
-      for (const b of buttons) {
-        expect(b, `under 44 px: ${b}`).toMatch(/min-h-11|min-h-\[44px\]|touch-target/);
-      }
-    });
   }
 
-  it("the dead onCreateLog prop, the ML avatar and the bottom-row Council button are gone (source)", () => {
-    const fs = require("node:fs") as typeof import("node:fs");
-    const path = require("node:path") as typeof import("node:path");
-    const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
-    const cards = strip(fs.readFileSync(path.join(__dirname, "CoachAnswerCards.tsx"), "utf8"));
-    const tab = strip(fs.readFileSync(path.join(__dirname, "..", "tabs", "CoachTab.tsx"), "utf8"));
-    expect(cards).not.toContain("onCreateLog");
-    expect(cards).not.toContain("KeepBar");
-    expect(cards).not.toContain("coach.cards.saveAsPlan");
-    expect(tab).not.toContain("onCreateLog");
-    expect(tab).not.toMatch(/>\s*ML\s*</);
-    expect(tab).toContain('t("coach.coachName")');
-    // The council is convened from inside More ("Go deeper"), not a bottom-row button.
-    expect(tab).not.toContain('t("coach.council")');
-    expect(tab).toMatch(/onGoDeeper=\{\(\) => handleCouncilSend\(\)\}/);
+  it("offers keep controls only beside allow-listed original content, never hypotheses or safety", () => {
+    const calls: { field: string; text: string }[] = [];
+    const contract = full("low");
+    const html = render(contract, "en", { renderKeepAction: (field, text) => {
+      calls.push({ field, text });
+      return React.createElement("button", { type: "button" }, "Keep advice");
+    } });
+    expect(calls).toEqual([
+      ...contract.todayPlan.map((text) => ({ field: "todayPlan", text })),
+      { field: "parentScript", text: contract.parentScript },
+      ...contract.observe.map((text) => ({ field: "observe", text })),
+    ]);
+    expect(html.split(contract.todayPlan[0]).length - 1).toBe(1);
+    expect(calls.some(({ text }) => text === ESCALATE_ITEM)).toBe(false);
+    expect(calls.some(({ text }) => text === contract.nonDiagnosticHypotheses[0].label)).toBe(false);
+  });
+
+  it("omits empty scaffolding for a short follow-up", () => {
+    const html = render({ ...makeContract("low"), text: "Yes, that is enough.", escalateIf: [] }, "en", { onGoDeeper: undefined });
+    expect(html).toContain("Yes, that is enough.");
+    for (const id of ["coach-report-understanding", "coach-report-next", "say-this", "coach-plan-door", "coach-report-help"]) expect(html).not.toContain('data-testid="' + id + '"');
+  });
+
+  it("source guard: copy confirmation follows successful clipboard write and a failed copy has a manual fallback", () => {
+    const source = readFileSync(path.resolve(__dirname, "CoachAnswerCards.tsx"), "utf8");
+    expect(source.indexOf("await navigator.clipboard.writeText(text)")).toBeLessThan(source.indexOf("setCopied(key)"));
+    expect(source).toContain("setCopyFallback(text)");
+    expect(source).toContain("event.currentTarget.select()");
+  });
+
+  it("all report controls have a 44px minimum and visible focus, without relying on viewport width", () => {
+    const css = readFileSync(path.resolve(__dirname, "coachReport.css"), "utf8");
+    for (const selector of [".coach-report__tools button", ".coach-report__disclosure > button", ".coach-report__memory button", ".coach-report__keep button"]) {
+      expect(css).toContain(selector);
+    }
+    expect(css).toContain("min-block-size: var(--touch-min)");
+    expect(css).toContain("button:focus-visible");
+    expect(css).toContain("@container (min-width: 580px)");
+    expect(css).toContain("minmax(0, 1fr)");
+    expect(css).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
 });

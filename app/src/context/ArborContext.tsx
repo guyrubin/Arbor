@@ -175,7 +175,12 @@ export async function pollMemoryReview(deps: {
   return { tries, waited, failure, items: [] };
 }
 
+import { attachmentMetadata, parseCompanionAttachments, type ComposerAttachment, type AttachmentReceipt, type AttachmentContext } from "../lib/companionAttachments";
+import { requestCompanionConversation } from "../lib/companionConversation";
+
 export type ChatMessage = {
+  attachments?: AttachmentReceipt[];
+  attachmentContext?: AttachmentContext;
   sender: "user" | "ai";
   text: string;
   /** ASK-5: what the parent actually SAW and tapped (localized chip label /
@@ -195,7 +200,7 @@ export type ChatMessage = {
    *  (never appended to) by the first real streamed delta. */
   chatAck?: boolean;
 };
-export type ChatResponsePayload = { text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract; council?: CouncilTake[] };
+export type ChatResponsePayload = { attachmentContext?: AttachmentContext; text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract; council?: CouncilTake[] };
 export type Conversation = { topicId?: string; id: string; title: string; messages: ChatMessage[]; updatedAt: string };
 
 // ASK-7: the English WELCOME_MESSAGE bubble was deleted — a fresh thread is
@@ -334,7 +339,7 @@ function useArborState() {
     if (activeConversationId && conversationTopicRef.current !== activeFamilyTopic?.id) newConversation();
     if (opts.prompt !== undefined) setChatInput(opts.prompt);
     if (opts.lens) setSelectedLens(opts.lens);
-    setActiveTab("coach");
+    requestCompanionConversation({ source: opts.source });
     try { track("coach_seed", { source: opts.source ?? "unknown" }); } catch { /* noop */ }
   };
 
@@ -455,10 +460,10 @@ function useArborState() {
   // until rated or MAX_CARRY_DAYS pass (framer ruling, 1 Oct).
   // B-ASKJB-26: a plan step passes its PlanStepRef, stored on the row, so its
   // outcome moves that step (recordTodayOutcome below).
-  const acceptTodayAction = (recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry["source"] = "today-guidance", planStep?: PlanStepRef) => {
+  const acceptTodayAction = async (recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry["source"] = "today-guidance", planStep?: PlanStepRef) => {
     const { entry: item, superseded } = planAcceptedAction(actionLoop, { recommendation, source, capacity, ...(planStep ? { planStep } : {}) }, todayActionId(childProfile.id));
-    for (const old of superseded) void actionLoopCol.upsert(old);
-    void actionLoopCol.upsert({ ...item, ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}) });
+    for (const old of superseded) await actionLoopCol.upsert(old);
+    await actionLoopCol.upsert({ ...item, ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}) });
     try { track("today_action_accepted", { capacity, source }); } catch { /* noop */ }
   };
   // B-TODAY-15: `via` = where the outcome was rated (the step card or the
@@ -1059,9 +1064,12 @@ function useArborState() {
   // label the parent actually tapped (scenario / follow-up chip) — the bubble
   // shows their words while the canonical prompt goes to the model (the
   // approved hardMomentSurface pattern).
-  const handleChatSend = async (customPrompt?: string, opts?: { displayText?: string }) => {
-    const promptValue = customPrompt || chatInput;
-    if (!promptValue.trim() || isChatLoading) return;
+  const handleChatSend = async (customPrompt?: string, opts?: { displayText?: string; attachments?: ComposerAttachment[] }) => {
+    let attachments: ComposerAttachment[];
+    try { attachments = parseCompanionAttachments(opts?.attachments, childProfile.id); }
+    catch { setApiError("Please attach these files again for the current child."); return false; }
+    const promptValue = customPrompt || chatInput || (attachments.length ? (getAiLanguage() === "he" ? "מה אפשר להבין ממה שצירפתי, ומה אפשר לעשות יחד עכשיו?" : "Help me understand what I shared and suggest something we could try together.") : "");
+    if (!promptValue.trim() || isChatLoading) return false;
     const topicThread = prepareTopicConversation();
 
     if (!customPrompt) setChatInput("");
@@ -1075,7 +1083,11 @@ function useArborState() {
     // ASK-8: appendChatUser dedupes the retry path — after a failed turn the
     // thread already ends with this exact question, so Retry never re-appends.
     setChatMessages((prev) =>
-      appendChatAck(appendChatUser(prev, promptValue, selectedLens, opts?.displayText), t("coach.ack"), selectedLens),
+      appendChatAck((() => {
+        const next = appendChatUser(prev, promptValue, selectedLens, opts?.displayText);
+        if (!attachments.length) return next;
+        return [...next.slice(0, -1), { ...next[next.length - 1], attachments: attachmentMetadata(attachments) }];
+      })(), t("coach.ack"), selectedLens),
     );
     setIsChatLoading(true);
 
@@ -1090,6 +1102,8 @@ function useArborState() {
         signal: controller.signal,
         body: JSON.stringify({
           message: promptValue,
+          childId: childProfile.id,
+          ...(attachments.length ? { attachments } : {}),
           childProfile: childProfile,
           ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}),
           scholarLens: selectedLens || "Integrated Balanced",
@@ -1144,7 +1158,7 @@ function useArborState() {
             ...abortChatStream(prev),
             { sender: "ai", text: `### ${t("coach.paywall.title")}\n${t("coach.paywall.body")}` },
           ]);
-          return;
+          return false;
         }
         // AI-06: throw the STATUS, not just a message. /chat is the one AI path
         // that used a raw fetch and a bare Error, so a 429 (quota) and a 451
@@ -1159,7 +1173,7 @@ function useArborState() {
       }
 
       const data = await readChatPayload(res, isCurrent);
-      if (!isCurrent()) return;
+      if (!isCurrent()) return false;
       if (data.memoryReviewItems) {
         setMemoryReviewItems(data.memoryReviewItems);
       }
@@ -1168,15 +1182,16 @@ function useArborState() {
       // streamed prose and replaces it with the blocked/crisis markdown.
       setChatMessages((prev) => settleChatTurn(prev, data, selectedLens));
       track("coach_message", { lens: selectedLens });
+      return true;
     } catch (err: any) {
-      if (!isCurrent()) return;
+      if (!isCurrent()) return false;
       if (err.name === "AbortError") {
         // ASK-8: keep any screened partial prose (parity with the voice loop);
         // an ack-only bubble is dropped so no placeholder survives the stop.
         // No cancel bubble is appended — a stop is the parent's own action,
         // not a message from Arbor, and it must never persist into the thread.
         setChatMessages((prev) => abortChatStream(prev));
-        return;
+        return false;
       }
       // ASK-8: a failure surfaces as ONE calm role=alert retry card (CoachTab
       // renders t("coach.error") — never the raw err.message). No error bubble
@@ -1185,6 +1200,7 @@ function useArborState() {
       setApiErrorStatus(err instanceof ApiError ? err.status : null);
       setApiError(err.message || "An exception occurred while connecting to Arbor services.");
       setChatMessages((prev) => abortChatStream(prev));
+      return false;
     } finally {
       if (isCurrent()) {
         setIsChatLoading(false);

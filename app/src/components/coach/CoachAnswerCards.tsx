@@ -3,7 +3,10 @@ import Icon from "../ui/Icon";
 import type { CoachContract, CouncilTake } from "../../types";
 import type { UiLang } from "../../lib/i18n";
 import { translate } from "../../lib/i18n";
-import { AiBlock, SayThis } from "../ui/AiBlock";
+import { SayThis } from "../ui/AiBlock";
+import { MarkdownBlock } from "../ui/MarkdownBlock";
+import type { KeepableField } from "../../lib/captureProposals";
+import "./coachReport.css";
 import { TrustLink } from "../trust/TrustLink";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { track } from "../../lib/analytics";
@@ -317,7 +320,7 @@ function AnswerFeedback({ contract, lens, surface, lang, sources }: {
   const buttonStyle = (active: boolean) =>
     active
       ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }
-      : { background: "white", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" };
+      : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" };
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1">
@@ -356,34 +359,16 @@ function AnswerFeedback({ contract, lens, surface, lang, sources }: {
 }
 
 /**
- * Generative answer surface (v6 UX-3 / v5 GUI-1·2·3). Renders the coach's real
- * structured `contract` as an attributed, actionable card stack instead of a
- * markdown wall — each block is a thing the parent can DO (check off, say aloud,
- * save to a plan, prefill a log, hand off). The data already exists server-side;
- * this stops it being flattened to prose and regex-scraped.
+ * One report owns the lead, reasoning and actions. The host must not print
+ * contract.text above it. Optional keep controls sit beside their original
+ * text; they never repeat it in a second proposal card.
  */
-
-// Risk-tone verdict palette removed: Arbor renders counts and observations, never a graded
-// child risk verdict on a parent-facing surface (clinical firewall). See council 2026-07-18.
-
-// ASK-3: the six-frame routing panel is GONE from the parent render — frame
-// ids ("shadow", "marriage", "shepherd") are internal orchestration vocabulary,
-// pure noise on a parent surface. frameRouting stays in the contract for
-// telemetry/evals (and inside the screened renderCoachResponse text) — it is
-// simply never rendered here.
-
-// AI-17: the section frame, the say-this block, the checklist and the action
-// row used to live here and were re-implemented on two other surfaces. They
-// are now the shared primitives in ui/AiBlock.tsx — lifted from THIS file
-// unchanged, so this surface renders exactly what it rendered before (pinned
-// by coachAnswerCardsMarkup.test.ts). B-ASKJB-05 re-pinned that snapshot on
-// purpose: ONE recommendation (read · Try this · Say this · escalate · More),
-// with the KeepBar, the checklist and the header "Save as plan" gone.
-
-export default function CoachAnswerCards({ contract, lens, council, lang = "en", onSaveToPlan, onGoDeeper, onAddToHandoff, onManageMemory, reviewUnavailable = false, todayStep, onTryIt, onUndoTryIt }: {
+export default function CoachAnswerCards({
+  contract, lens, council, lang = "en", onSaveToPlan, onGoDeeper,
+  onAddToHandoff, onManageMemory, reviewUnavailable = false,
+  todayStep, onTryIt, onUndoTryIt, renderKeepAction,
+}: {
   contract: CoachContract;
-  /** B-ASKJB-04: today's step (context activeTodayAction) + the accept seam.
-   *  Absent handlers ⇒ no control (render-only callers and fixtures). */
   todayStep?: CoachTodayStep | null;
   onTryIt?: (step: string) => void;
   onUndoTryIt?: (id: string) => void;
@@ -391,373 +376,232 @@ export default function CoachAnswerCards({ contract, lens, council, lang = "en",
   council?: CouncilTake[];
   lang?: UiLang;
   onSaveToPlan: (topic: string) => void;
-  /** B-ASKJB-05: "Go deeper" inside More when no council exists yet (calls
-   *  handleCouncilSend). Absent ⇒ no button. */
   onGoDeeper?: () => void;
   onAddToHandoff: (note: string) => void;
-  /** ASK-6: deep link to Profile › Child Memory (route "memory"). */
   onManageMemory?: () => void;
-  /** OWN-1: true while the memory review ledger is unreadable — suppresses the
-   *  review-invite chip so the footer never deep-links into a broken queue. */
   reviewUnavailable?: boolean;
+  /** Only provide this for the latest settled typed turn. Persistence remains
+   *  in CaptureProposalsTray's shared explicit commit / edit / undo seam. */
+  renderKeepAction?: (field: KeepableField, text: string) => React.ReactNode;
 }) {
-  // B-ASKJB-05: no per-step tick state here — the first step enters the loop
-  // through "I'll try it"; steps 2-3 read as a list inside More. The copied state stays HERE because this surface has two
-  // copy targets (the script and the hand-off note) and clears them as one.
   const [copied, setCopied] = useState<string | null>(null);
+  const [copyFallback, setCopyFallback] = useState<string | null>(null);
   const [citationsOpen, setCitationsOpen] = useState(false);
   const [escalateOpen, setEscalateOpen] = useState(false);
-  // B-AI-14: the governed sentence when the server set it, else the model's lines.
-  const escalation = escalationLines(contract);
-  // ASK-3: hypotheses are analysis, not action — collapsed by default behind
-  // a "Why this might be happening" disclosure (same idiom as the citation
-  // drawer). Hidden, never unmounted, so the content stays in the DOM.
-  const [whyOpen, setWhyOpen] = useState(false);
-  // B-ASKJB-05: everything past the one recommendation lives behind "More".
-  const [moreOpen, setMoreOpen] = useState(false);
-
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
-  // COACH-6: real titles + type chips from the server registry, slug fallback.
   const sources = citationRows(contract);
-  const hasSources = sources.length > 0;
-
+  const escalation = escalationLines(contract);
+  const prominentHelp = escalation.length > 0 && escalationTier(contract.riskLevel) === "prominent";
   const showLens = lens && lens !== "Integrated Balanced";
-
-  const copy = (text: string, key: string) => {
-    // Growth loop (P0-4): copying an answer card is a share intent → completion.
+  const hasPlan = Boolean(contract.todayPlan?.length || contract.nonDiagnosticHypotheses?.length);
+  const copy = async (text: string, key: string) => {
+    setCopied(null);
+    setCopyFallback(null);
     trackShareInitiated("answer_card", "coach");
-    void Promise.resolve(navigator.clipboard?.writeText(text)).then(() =>
-      trackShareCompleted("answer_card", "clipboard")
-    );
-    setCopied(key);
-    setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500);
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(text);
+      trackShareCompleted("answer_card", "clipboard");
+      setCopied(key);
+    } catch {
+      // A success label must mean the clipboard actually received the text.
+      setCopyFallback(text);
+    }
   };
 
   return (
-    // B-ASKJB-05 — ONE recommendation: read · Try this · Say this · (escalate)
-    // · More, then the footer. The answer's prose (contract.text) renders in
-    // CoachTab right above this stack; block 1 here is its trust link.
-    <div className="space-y-2.5" data-testid="coach-answer-cards">
-      {/* 1 · read — the why → Trust Center chain (fixed label, no copy injected). */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <TrustLink surface="coach-answer" />
-      </div>
-
-      {/* 2 · Try this — the first step, and the ONE way it enters the loop. */}
-      {contract.todayPlan?.length > 0 && (
-        <AiBlock icon={<Icon name="checklist" size={12} />} title={t("coach.cards.tryToday")} tint="var(--arbor-green-ink)">
-          {/* The step is text; "I'll try it" is its ONE control (no ephemeral
-              tick box beside the loop — B-ASKJB-05). */}
-          <p className="text-[13px] leading-snug" style={{ color: "var(--arbor-ink)" }}>{contract.todayPlan[0]}</p>
-          {onTryIt && onUndoTryIt && (
-            <CoachTryIt step={contract.todayPlan[0]} today={todayStep} lang={lang} onTryIt={onTryIt} onUndo={onUndoTryIt} />
-          )}
-        </AiBlock>
+    <article className="coach-report" data-testid="coach-answer-cards" dir={lang === "he" ? "rtl" : "ltr"}>
+      {/* Acute help stays ahead of every explanation and optional action.
+          Only presentation tier changes; the server-governed sentence is
+          never rewritten, replaced, scored, or made keepable here. */}
+      {prominentHelp && (
+        <section className="coach-report__help" data-testid="coach-report-urgent-help">
+          <h3><Icon name="warning" size={18} />{t("coach.escalate.headline")}</h3>
+          <ul>{escalation.map((e, i) => <li key={i}>{e}</li>)}</ul>
+        </section>
       )}
 
-      {/* 3 · Say this — unchanged. */}
-      {/* Parent script — say aloud */}
-      {contract.parentScript && (
-        <SayThis
-          text={contract.parentScript}
-          title={t("coach.cards.sayThis")}
-          lang={lang}
-          copyLabel={t("coach.action.copy")}
-          copiedLabel={t("coach.cards.copied")}
-          copied={copied === "script"}
-          onCopy={() => copy(contract.parentScript, "script")}
-        />
+      {contract.text?.trim() && (
+        <header className="coach-report__opening" data-testid="coach-report-opening">
+          <p className="coach-report__eyebrow">{lang === "he" ? "נעשה סדר" : "Making sense of it"}</p>
+          <MarkdownBlock text={contract.text} className="coach-report__lead" />
+        </header>
       )}
 
-      {/* Escalate — content is ALWAYS rendered when present; only its PROMINENCE
-          is tiered by riskLevel. Low risk gets a calm, collapsed disclosure (same
-          idiom as the citation drawer) so routine questions don't read as alarms;
-          moderate and above keep the full pink warning panel untouched. The list
-          is identical in both tiers and is never conditionally dropped — when
-          collapsed it is hidden, not unmounted, so it stays in the DOM. */}
-      {escalation.length > 0 && (escalationTier(contract.riskLevel) === "prominent" ? (
-        <AiBlock icon={<Icon name="warning" size={12} />} title={t("coach.escalate.headline")} tint="var(--arbor-pink-ink)">
-          <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-pink-ink)" }}>
-            {escalation.map((e, i) => <li key={i}>{e}</li>)}
+      {contract.nonDiagnosticHypotheses?.length > 0 && (
+        <section className="coach-report__section" data-testid="coach-report-understanding">
+          <h3>{t("coach.cards.why")}</h3>
+          <ul className="coach-report__understanding">
+            {contract.nonDiagnosticHypotheses.map((h, i) => (
+              <li key={i} dir="auto">
+                <strong>{h.label}</strong>
+                {h.rationale && <p>{h.rationale}</p>}
+              </li>
+            ))}
           </ul>
-        </AiBlock>
-      ) : (
-        <div className="rounded-xl" style={{ border: "1px solid var(--arbor-rule)", overflow: "hidden" }}>
-          <button
-            onClick={() => setEscalateOpen((o) => !o)}
-            aria-expanded={escalateOpen}
-            className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 min-h-[44px] transition"
-            style={{ background: "var(--arbor-paper-deep)" }}
-          >
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>
-              <Icon name="health_and_safety" size={12} /> {t("coach.escalate.title")}
-            </span>
-            <span className="text-[10px] font-bold inline-flex items-center gap-0.5" style={{ color: "var(--arbor-muted)" }}>
-              {escalateOpen
-                ? <><Icon name="expand_less" size={14} />{t("coach.escalate.toggle.close")}</>
-                : <><Icon name="expand_more" size={14} />{t("coach.escalate.toggle.open")}</>}
-            </span>
-          </button>
-          <div hidden={!escalateOpen} className="px-3.5 pb-3 pt-2" style={{ background: "white", borderTop: "1px solid var(--arbor-rule)" }}>
-            <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
-              {escalation.map((e, i) => <li key={i}>{e}</li>)}
-            </ul>
-          </div>
-        </div>
-      ))}
+        </section>
+      )}
 
-      {/* 4 · More — ONE disclosure, collapsed by default. Hidden, never
-          unmounted, so every block stays in the DOM (and testable). */}
-      <div className="rounded-xl" data-testid="coach-answer-more" style={{ border: "1px solid var(--arbor-rule)", overflow: "hidden" }}>
-        <button
-          type="button"
-          onClick={() => setMoreOpen((o) => !o)}
-          aria-expanded={moreOpen}
-          className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 min-h-[44px] transition"
-          style={{ background: "var(--arbor-paper-deep)" }}
-        >
-          <span className="text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{moreOpen ? t("coach.cards.less") : t("coach.cards.more")}</span>
-          <Icon name={moreOpen ? "expand_less" : "expand_more"} size={16} style={{ color: "var(--arbor-muted)" }} />
-        </button>
-        <div hidden={!moreOpen} className="space-y-2.5 px-3.5 pb-3 pt-2.5" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-          {contract.todayPlan?.length > 1 && (
-            <AiBlock icon={<Icon name="checklist" size={12} />} title={t("coach.cards.moreSteps")} tint="var(--arbor-green-ink)">
-              <ol start={2} className="space-y-1 text-[12.5px] leading-snug list-decimal ps-4" style={{ color: "var(--arbor-ink)" }}>
-                {contract.todayPlan.slice(1).map((step, i) => <li key={i}>{step}</li>)}
-              </ol>
-            </AiBlock>
-          )}
-          {/* ASK-3: "Why this might be happening" — the hypotheses collapse into a
-              calm disclosure (citation-drawer idiom). Content identical, hidden
-              rather than unmounted when collapsed. */}
-          {contract.nonDiagnosticHypotheses?.length > 0 && (
-            <div className="rounded-xl" style={{ border: "1px solid var(--arbor-rule)", overflow: "hidden" }}>
-              <button
-                onClick={() => setWhyOpen((o) => !o)}
-                aria-expanded={whyOpen}
-                className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 min-h-[44px] transition"
-                style={{ background: "var(--arbor-paper-deep)" }}
-              >
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>
-                  <Icon name="lightbulb" size={12} /> {t("coach.cards.why")}
-                </span>
-                <span className="text-[10px] font-bold inline-flex items-center gap-0.5" style={{ color: "var(--arbor-muted)" }}>
-                  {whyOpen
-                    ? <><Icon name="expand_less" size={14} />{t("coach.escalate.toggle.close")}</>
-                    : <><Icon name="expand_more" size={14} />{t("coach.escalate.toggle.open")}</>}
-                </span>
-              </button>
-              <div hidden={!whyOpen} className="px-3.5 pb-3 pt-2" style={{ background: "white", borderTop: "1px solid var(--arbor-rule)" }}>
-                <ul className="space-y-1.5">
-                  {contract.nonDiagnosticHypotheses.map((h, i) => (
-                    <li key={i} className="text-[12.5px] leading-snug" style={{ color: "var(--arbor-ink)" }}>
-                      <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{h.label}</span>
-                      {h.confidence && <span className="ms-1.5 text-[10px] font-bold" style={{ color: "var(--arbor-muted)" }}>({h.confidence})</span>}
-                      {h.rationale && <span className="block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{h.rationale}</span>}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
+      {contract.todayPlan?.length > 0 && (
+        <section className="coach-report__section coach-report__next" data-testid="coach-report-next">
+          <h3><Icon name="checklist" size={19} />{t("coach.cards.tryToday")}</h3>
+          <ol className="coach-report__steps">
+            {contract.todayPlan.map((step, index) => (
+              <li key={index}>
+                <span className="coach-report__step-number" aria-hidden="true">{index + 1}</span>
+                <div className="coach-report__step-content">
+                  <p dir="auto">{step}</p>
+                  {index === 0 && onTryIt && onUndoTryIt && (
+                    <CoachTryIt step={step} today={todayStep} lang={lang} onTryIt={onTryIt} onUndo={onUndoTryIt} />
+                  )}
+                  {renderKeepAction?.("todayPlan", step)}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
-          {/* Avoid / Observe */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {contract.avoid?.length > 0 && (
-              <AiBlock icon={<Icon name="block" size={12} />} title={t("coach.cards.avoid")} tint="var(--arbor-peach-ink)">
-                <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
-                  {contract.avoid.map((a, i) => <li key={i}>{a}</li>)}
-                </ul>
-              </AiBlock>
-            )}
-            {contract.observe?.length > 0 && (
-              <AiBlock icon={<Icon name="visibility" size={12} />} title={t("coach.cards.watchFor")} tint="var(--arbor-lav-ink)">
-                <ul className="space-y-1 text-[12px] leading-snug list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
-                  {contract.observe.map((o, i) => <li key={i}>{o}</li>)}
-                </ul>
-              </AiBlock>
-            )}
-          </div>
+      {contract.parentScript && (
+        <section className="coach-report__section coach-report__script">
+          <SayThis
+            text={contract.parentScript}
+            title={t("coach.cards.sayThis")}
+            lang={lang}
+            copyLabel={t("coach.action.copy")}
+            copiedLabel={t("coach.cards.copied")}
+            copied={copied === "script"}
+            onCopy={() => void copy(contract.parentScript, "script")}
+          />
+          {renderKeepAction?.("parentScript", contract.parentScript)}
+        </section>
+      )}
 
-          {/* Scholar council — each agent's lens, before the synthesis (SAGE-2) */}
-          {council && council.length > 0 ? (
-            <AiBlock icon={<Icon name="group" size={12} />} title={t("coach.cards.council", { n: council.length })} tint="var(--arbor-sky-ink)">
-              <ul className="space-y-2">
-                {council.map((c) => (
-                  <li key={c.scholarId} className="text-[12.5px] leading-snug">
-                    <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{c.name}</span>
-                    <span className="text-[10px] font-bold" style={{ color: "var(--arbor-muted)" }}> · {c.concept}</span>
-                    {c.takeaway && <span className="block mt-0.5" style={{ color: "var(--arbor-muted)" }}>{c.takeaway}</span>}
-                    {c.suggestion && <span className="block mt-0.5" style={{ color: "var(--arbor-ink)" }}>→ {c.suggestion}</span>}
-                  </li>
+      {(contract.observe?.length > 0 || contract.avoid?.length > 0) && (
+        <div className="coach-report__considerations">
+          {contract.observe?.length > 0 && (
+            <section className="coach-report__section" data-testid="coach-report-observe">
+              <h3><Icon name="visibility" size={18} />{t("coach.cards.watchFor")}</h3>
+              <ul className="coach-report__list">
+                {contract.observe.map((line, index) => (
+                  <li key={index}><p dir="auto">{line}</p>{renderKeepAction?.("observe", line)}</li>
                 ))}
               </ul>
-            </AiBlock>
-          ) : onGoDeeper ? (
-            <button
-              type="button"
-              data-testid="coach-go-deeper"
-              onClick={onGoDeeper}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] font-bold"
-              style={{ color: "var(--arbor-sky-ink)", border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
-            >
-              <Icon name="group" size={14} /> {t("coach.cards.goDeeper")}
-            </button>
-          ) : null}
-          {/* Citation panel (R1) — visible grounding; badge + disclosure drawer.
-              G2 gate: copy states mechanism/source only — never an outcome claim.
-              Hidden when no sources present; no empty-state clutter. */}
-          {hasSources && (
-            <div className="rounded-xl" style={{ border: "1px solid var(--arbor-rule)", overflow: "hidden" }}>
-              {/* Toggle row — 44px min tap target, reduced-motion respected */}
-              <button
-                onClick={() => setCitationsOpen((o) => !o)}
-                aria-expanded={citationsOpen}
-                className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 min-h-[44px] transition"
-                style={{ background: "var(--arbor-paper-deep)" }}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  {/* Calm "Cited" badge */}
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold"
-                    style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
-                  >
-                    <Icon name="menu_book" size={12} />
-                    {t("cite.badge")}
-                  </span>
-                  <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                    {sourcesLabel(sources.length, lang)}
-                  </span>
-                </span>
-                <span className="text-[10px] font-bold inline-flex items-center gap-0.5" style={{ color: "var(--arbor-muted)" }}>
-                  {citationsOpen
-                    ? <><Icon name="expand_less" size={14} />{t("cite.toggle.close")}</>
-                    : <><Icon name="expand_more" size={14} />{t("cite.toggle.open")}</>}
-                </span>
-              </button>
-
-              {/* Disclosure drawer — real source titles + type chips (COACH-6).
-                  Collapsed = hidden, not unmounted (same idiom as the escalation
-                  disclosure) so the rows are testable and stay in the DOM. */}
-              <div
-                hidden={!citationsOpen}
-                className="px-3.5 pb-3 pt-2 space-y-1.5"
-                style={{ background: "white", borderTop: "1px solid var(--arbor-rule)" }}
-                dir={lang === "he" ? "rtl" : "ltr"}
-              >
-                {sources.map((src) => (
-                  <div
-                    key={src.id}
-                    className="rounded-lg px-2.5 py-1.5 text-[11.5px] leading-snug flex flex-wrap items-center gap-x-2 gap-y-1"
-                    style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                  >
-                    {src.title ? (
-                      <>
-                        <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{src.title}</span>
-                        {src.type && (
-                          <span
-                            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: "white", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                          >
-                            {src.type.replace(/_/g, " ")}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      // Slug fallback: no registry metadata for this id.
-                      <span>{t("cite.based", { source: src.id.replace(/-/g, " ") })}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+            </section>
           )}
-
-          {/* Attribution chips (lens · age band · domains) — counts/observations
-              only, never a graded verdict (clinical firewall). */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {showLens && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{t("coach.alignedWith", { lens: lens! })}</span>
-            )}
-            {contract.ageBand && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{ageBandChipLabel(contract.ageBand, lang)}</span>}
-            {Array.from(new Set(contract.domains ?? [])).slice(0, 3).map((d) => (
-              <span key={d} className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{domainChipLabel(d, lang)}</span>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {contract.handoffNotes?.teacher && (
-              <button
-                type="button"
-                onClick={() => { onAddToHandoff(contract.handoffNotes.teacher); copy(contract.handoffNotes.teacher, "handoff"); }}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] font-bold"
-                style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
-              >
-                {copied === "handoff"
-                  ? <><Icon name="check" size={14} /> {t("coach.cards.copiedNote")}</>
-                  : <><Icon name="send" size={14} /> {t("coach.cards.teacherNote")}</>}
-              </button>
-            )}
-            {/* The ONE "Turn into a plan" door on the card. */}
-            <button
-              type="button"
-              data-testid="coach-plan-door"
-              onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan?.[0] || "")}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] font-bold"
-              style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
-            >
-              <Icon name="playlist_add" size={14} /> {t("coach.cards.turnIntoPlan")}
-            </button>
-          </div>
+          {contract.avoid?.length > 0 && (
+            <section className="coach-report__section" data-testid="coach-report-avoid">
+              <h3>{t("coach.cards.avoid")}</h3>
+              <ul className="coach-report__list">
+                {contract.avoid.map((line, index) => <li key={index} dir="auto">{line}</li>)}
+              </ul>
+            </section>
+          )}
         </div>
+      )}
+
+      {escalation.length > 0 && !prominentHelp && (
+        <section className="coach-report__disclosure" data-testid="coach-report-help">
+          <button type="button" onClick={() => setEscalateOpen((open) => !open)} aria-expanded={escalateOpen}>
+            <span><Icon name="health_and_safety" size={17} />{t("coach.escalate.title")}</span>
+            <Icon name={escalateOpen ? "expand_less" : "expand_more"} size={19} />
+          </button>
+          <div hidden={!escalateOpen} className="coach-report__disclosure-body">
+            <ul className="coach-report__list">{escalation.map((e, i) => <li key={i}>{e}</li>)}</ul>
+          </div>
+        </section>
+      )}
+
+      {/* These actions extend the answer; none hide its reasoning or steps. */}
+      <div className="coach-report__tools">
+        {hasPlan && (
+          <button type="button" data-testid="coach-plan-door" onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan?.[0] || "")}>
+            <Icon name="playlist_add" size={18} />{t("coach.cards.turnIntoPlan")}
+          </button>
+        )}
+        {contract.handoffNotes?.teacher && (
+          <button type="button" onClick={() => onAddToHandoff(contract.handoffNotes.teacher)}>
+            <Icon name="send" size={17} />{t("coach.cards.teacherNote")}
+          </button>
+        )}
+        {!council?.length && onGoDeeper && (
+          <button type="button" data-testid="coach-go-deeper" onClick={onGoDeeper}>
+            <Icon name="group" size={18} />{t("coach.cards.goDeeper")}
+          </button>
+        )}
       </div>
 
-      {/* Footer — the memory count line + review chip (44 px) and the thumbs. */}
-      <div className="space-y-1.5" data-testid="coach-answer-footer">
-        {/* ASK-6: felt memory — a calm counts-only footer. CLINICAL FIREWALL:
-            the grounded row renders an integer COUNT only (no fact content, no
-            percentage/confidence wording) and the review chip names THAT
-            something is pending, never WHAT — zero memory content in-thread.
-            Queue mechanics live untouched in Profile › Child Memory. */}
+      {council && council.length > 0 && (
+        <section className="coach-report__section coach-report__council">
+          <h3>{t("coach.cards.council", { n: council.length })}</h3>
+          <ul className="coach-report__understanding">
+            {council.map((c) => (
+              <li key={c.scholarId} dir="auto">
+                <strong>{c.name}</strong><span className="coach-report__meta"> · {c.concept}</span>
+                {c.takeaway && <p>{c.takeaway}</p>}
+                {c.suggestion && <p>{c.suggestion}</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {sources.length > 0 && (
+        <section className="coach-report__disclosure" data-testid="coach-report-sources">
+          <button type="button" onClick={() => setCitationsOpen((open) => !open)} aria-expanded={citationsOpen}>
+            <span><Icon name="menu_book" size={17} />{sourcesLabel(sources.length, lang)}</span>
+            <span className="coach-report__meta">{t("cite.badge")}<Icon name={citationsOpen ? "expand_less" : "expand_more"} size={19} /></span>
+          </button>
+          <div hidden={!citationsOpen} className="coach-report__disclosure-body">
+            <ul className="coach-report__source-list">
+              {sources.map((src) => (
+                <li key={src.id}>
+                  <span>{src.title || t("cite.based", { source: src.id.replace(/-/g, " ") })}</span>
+                  {src.type && <span className="coach-report__meta">{src.type.replace(/_/g, " ")}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      <footer className="coach-report__footer" data-testid="coach-answer-footer">
+        <div className="coach-report__attribution">
+          <TrustLink surface="coach-answer" />
+          {showLens && <span>{t("coach.alignedWith", { lens: lens! })}</span>}
+          {contract.ageBand && <span>{ageBandChipLabel(contract.ageBand, lang)}</span>}
+          {Array.from(new Set(contract.domains ?? [])).slice(0, 3).map((d) => (
+            <span key={d}>{domainChipLabel(d, lang)}</span>
+          ))}
+        </div>
         {(memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" || (!reviewUnavailable && (contract.memoryProposals?.length ?? 0) > 0)) && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
+          <div className="coach-report__memory">
             {memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" && (
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-                <Icon name="psychology" size={13} aria-hidden />
-                {memoryFooterLabel(contract.approvedMemoryFactsUsed, lang)}
-                <span aria-hidden>·</span>
-                <button
-                  type="button"
-                  onClick={onManageMemory}
-                  className="inline-flex min-h-11 items-center font-extrabold underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded"
-                  style={{ color: "var(--arbor-green-ink)" }}
-                >
-                  {t("coach.memory.manage")}
-                </button>
-              </span>
+              <div>
+                <Icon name="psychology" size={17} aria-hidden />
+                <span>{memoryFooterLabel(contract.approvedMemoryFactsUsed, lang)}</span>
+                {onManageMemory && <button type="button" onClick={onManageMemory}>{t("coach.memory.manage")}</button>}
+              </div>
             )}
-            {!reviewUnavailable && (contract.memoryProposals?.length ?? 0) > 0 && (
-              <button
-                type="button"
-                onClick={onManageMemory}
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 min-h-11 rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
-              >
-                <Icon name="lightbulb" size={13} aria-hidden /> {t("coach.memory.reviewChip")}
+            {!reviewUnavailable && onManageMemory && (contract.memoryProposals?.length ?? 0) > 0 && (
+              <button type="button" onClick={onManageMemory}>
+                <Icon name="lightbulb" size={17} aria-hidden />{t("coach.memory.reviewChip")}
               </button>
             )}
           </div>
         )}
-
-        {/* AI-10: the in-product quality signal. Last row on the card, after the
-            answer has fully settled — it never gates or delays the answer. */}
         <AnswerFeedback
-          contract={contract}
-          lens={lens}
-          surface={council && council.length > 0 ? "council" : "coach"}
-          lang={lang}
-          sources={sources.length}
+          key={answerSignature(contract)}
+          contract={contract} lens={lens} surface={council && council.length > 0 ? "council" : "coach"}
+          lang={lang} sources={sources.length}
         />
-      </div>
-    </div>
+      </footer>
+      {copyFallback !== null && (
+        <label className="coach-report__copy-fallback">
+          <span>{lang === "he" ? "אפשר לבחור ולהעתיק את הטקסט" : "Select the text to copy it"}</span>
+          <textarea readOnly value={copyFallback} dir="auto" autoFocus onFocus={(event) => event.currentTarget.select()} />
+        </label>
+      )}
+    </article>
   );
 }

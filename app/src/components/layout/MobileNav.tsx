@@ -14,8 +14,8 @@ import { requestOpenSettings } from "./settingsBus"; // IA-03: Settings moved ou
 import { badgeText } from "./Sidebar"; // IA-16: ONE badge derivation, shared with the sidebar
 
 /** Three primary places, a conversation door, and utilities available at any scroll position. */
-const PRIMARY_SECTION_IDS = ["today", "growth", "practice", "ask"] as const;
-const EMPHASIZED_SECTION_IDS = new Set<string>(["today", "growth", "practice", "ask"]);
+const PRIMARY_SECTION_IDS = ["today", "growth", "practice"] as const;
+const EMPHASIZED_SECTION_IDS = new Set<string>(["today", "growth", "practice"]);
 
 export default function MobileNav() {
   const { activeTab, setActiveTab, milestones, actionPlans, pendingReviewCount } = useArbor();
@@ -29,7 +29,7 @@ export default function MobileNav() {
   const primary = PRIMARY_SECTION_IDS
     .map((id) => SECTIONS.find((section) => section.id === id))
     .filter((section): section is (typeof SECTIONS)[number] => Boolean(section));
-  const overflow = SECTIONS.filter((section) => !PRIMARY_SECTION_IDS.includes(section.id as (typeof PRIMARY_SECTION_IDS)[number]));
+  const overflow = SECTIONS.filter((section) => section.id !== "ask" && !PRIMARY_SECTION_IDS.includes(section.id as (typeof PRIMARY_SECTION_IDS)[number]));
   const overflowActive = moreOpen;
 
   // The sheet is hidden at lg; it must not retain focus/scroll ownership there.

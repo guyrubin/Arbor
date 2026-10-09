@@ -95,7 +95,7 @@ export default function VoiceOverlay({
       dir={lang === "he" ? "rtl" : "ltr"}
       data-phase={phase}
       data-orb-mode={mode}
-      className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[640px] rounded-t-[28px] border border-b-0 px-5 pb-6 pt-4"
+      className="fixed inset-x-0 bottom-0 z-[60] mx-auto w-full max-w-[640px] rounded-t-[28px] border border-b-0 px-5 pb-6 pt-4"
       style={{ background: "var(--arbor-paper-elevated)", borderColor: "var(--arbor-rule)", boxShadow: "var(--shadow-lg)" }}
     >
       {!reducedMotion && (

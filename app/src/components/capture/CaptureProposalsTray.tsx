@@ -6,7 +6,7 @@ import { useToastOptional } from "../../context/ToastContext";
 import type { ToastAction } from "../../context/ToastContext";
 import { PASTEL } from "../ui/kit";
 import { attachProposalConflicts } from "../../lib/conversationProposals";
-import { buildTypedCaptureProposals, noteTypedKeepCommitted, TYPED_TURN_PROMPT } from "../../lib/captureProposals";
+import { buildTypedCaptureProposals, noteTypedKeepCommitted, TYPED_TURN_PROMPT, type KeepableField } from "../../lib/captureProposals";
 import { recordCaptureProvenance } from "../../lib/captureProvenance";
 import { undoKeptCapture, undoRefusalOf } from "../../lib/captureUndo";
 import { track } from "../../lib/analytics";
@@ -43,7 +43,13 @@ import { trackKeepUndone } from "../../lib/kpiEvents";
  * for). Risk levels, domain pointers and hypotheses can never reach a kept
  * row. Nothing here is scored, ranked, or compared.
  */
-export default function CaptureProposalsTray({ surface }: { surface: string }) {
+export default function CaptureProposalsTray({ surface, inline }: {
+  surface: string;
+  /** The report already renders this sentence. Offer the existing explicit
+   *  keep/edit actions beside it without duplicating the sentence in a tray.
+   *  The host mounts these only on the latest settled typed answer. */
+  inline?: { field: KeepableField; text: string };
+}) {
   const {
     chatMessages, childProfile, behaviorLogs, milestones,
     conversationChanges, commitConversationProposal, undoConversationChange,
@@ -84,7 +90,9 @@ export default function CaptureProposalsTray({ surface }: { surface: string }) {
     return built.map((b, i) => ({ ...b, proposal: checked[i] }));
   }, [chatMessages, childProfile.id, uiLang, behaviorLogs, milestones, conversationChanges]);
 
-  const visible = proposals.filter((p) => !dismissed.has(p.proposal.id));
+  const visible = proposals.filter((p) => !dismissed.has(p.proposal.id) && (!inline || (
+    p.field === inline.field && p.proposal.summary === inline.text.replace(/\s+/g, " ").trim().slice(0, 600)
+  )));
   if (!visible.length) return null;
 
   const summaryOf = (id: string, fallback: string) => edits[id] ?? fallback;
@@ -180,6 +188,25 @@ export default function CaptureProposalsTray({ surface }: { surface: string }) {
     openCaptureSheet({ review: "ai-draft" });
     setDismissed((prev) => new Set([...prev, entry.proposal.id]));
   };
+
+  if (inline) {
+    // Save keeps advice WITH its source; it does not assert that the child
+    // did this. The same write seam stamps the typed-answer provenance.
+    const entry = visible[0];
+    const busy = busyId === entry.proposal.id;
+    return (
+      <div className="coach-report__keep" data-testid="coach-report-keep">
+        <button type="button" disabled={busy} onClick={() => void keep(entry)} data-testid="capture-proposal-keep">
+          <Icon name="bookmark_add" size={16} />
+          {busy ? (uiLang === "he" ? "שומר…" : "Keeping…") : (uiLang === "he" ? "לשמור את העצה" : "Keep this advice")}
+        </button>
+        <button type="button" disabled={busy} onClick={() => editFirst(entry)} data-testid="capture-proposal-edit">
+          {t("elev.waveR.capture.edit")}
+        </button>
+        {entry.proposal.conflict && <p role="alert">{t("elev.waveR.capture.duplicate")}</p>}
+      </div>
+    );
+  }
 
   return (
     <section

@@ -3,45 +3,56 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
+import type { ActionLoopEntry } from "../../actionLoop/model";
 import { nextChosenAction } from "./companionChoices";
+import { NOW_COPY } from "./nowViewCopy";
+import NowRecommendation from "./NowRecommendation";
 import Icon from "../ui/Icon";
 import "./companionExperience.css";
+import "./nowView.css";
 
 export interface NowViewProps {
   topic?: { id: string; title: string; intent?: string } | null;
   onTopicCreate?: (title: string) => void;
   onTopicOpen?: () => void;
-  /** Shell owns voice entry, so this never creates a second voice session. */
+  /** Shell owns one persistent multimodal conversation above the routes. */
+  onTalkOpen?: (prompt?: string) => void;
+  /** Compatibility for older Shell callers; no second voice session here. */
   onVoiceOpen?: () => void;
 }
 
-export default function NowView({ topic, onTopicCreate, onTopicOpen, onVoiceOpen }: NowViewProps) {
+/** A fresh child/language owns its own focus request, outcomes and disclosures. */
+export default function NowView(props: NowViewProps) {
+  const { childProfile } = useArbor();
+  const { uiLang } = useLanguage();
+  return <NowContent key={`${childProfile.id}:${uiLang}`} {...props} />;
+}
+
+function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
   const { childProfile, actionLoop, seedCoach, setActiveTab, openCaptureSheet, openHardMomentNow,
     saveTodayOutcome, pendingCaptureMode, consumeCaptureRequest } = useArbor();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
-  const name = childProfile.name?.split(" ")[0] || (t("companion.now-view.your-child"));
+  const copy = NOW_COPY[lang];
+  const name = childProfile.name?.split(" ")[0] || t("companion.now-view.your-child");
   const programs = useChildCollection<{ id: string }>(childProfile.id, "programs");
   const program = useMemo(() => activeProgramWeek(programs.items), [programs.items]);
   const action = useMemo(() => nextChosenAction(actionLoop, topic?.id), [actionLoop, topic?.id]);
-  const [questionDraft, setQuestionDraft] = useState({ childId: childProfile.id, value: "" });
-  const question = questionDraft.childId === childProfile.id ? questionDraft.value : "";
-  const setQuestion = (value: string) => setQuestionDraft({ childId: childProfile.id, value });
-  const [receiptChild, setReceiptChild] = useState<string | null>(null);
-  const receipt = receiptChild === childProfile.id;
-  const setReceipt = (value: boolean) => setReceiptChild(value ? childProfile.id : null);
+  const [receiptAction, setReceiptAction] = useState<ActionLoopEntry | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
-  const inputId = useId();
+  const id = useId();
+  const chosen = receiptAction ?? action;
+  const talk = (prompt?: string) => onTalkOpen ? onTalkOpen(prompt) : seedCoach({ prompt: prompt ?? "", source: "companion-now" });
   const saveOutcome = async (outcome: "helped" | "not_today") => {
     if (!action || saving) return;
     setSaving(true); setSaveError(false);
-    try { await saveTodayOutcome(action.id, outcome); setReceipt(true); }
+    try { await saveTodayOutcome(action.id, outcome); setReceiptAction(action); }
     catch { setSaveError(true); }
     finally { setSaving(false); }
   };
-  useEffect(() => { setQuestion(""); setReceipt(false); }, [childProfile.id, topic?.id]);
+  useEffect(() => { setReceiptAction(null); setSaveError(false); }, [topic?.id]);
   useEffect(() => {
     if (!pendingCaptureMode) return;
     consumeCaptureRequest();
@@ -49,70 +60,61 @@ export default function NowView({ topic, onTopicCreate, onTopicOpen, onVoiceOpen
     // The pending request is consumed once; handler identities are render-local.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCaptureMode]);
-  const ask = () => seedCoach({ prompt: question.trim() || topic?.title || "", source: "companion-now" });
   const openProgram = () => { setActiveTab("development"); window.location.hash = "#/development?view=program"; };
 
-  return (
-    <div className="companion-page companion-now" dir={he ? "rtl" : "ltr"}>
-      <header className="companion-heading">
-        <span className="companion-eyebrow">{t("companion.now-view.now-room-to-pause-and-choose")}</span>
-        <h1 className="arbor-type-hero">{t("companion.now-view.what-would-help-with", { value0: name })}</h1>
-        <p>{t("companion.now-view.start-with-what-matters-to-you-there-is-no")}</p>
-      </header>
+  return <div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
+    <header className="now-heading">
+      <div><p className="companion-eyebrow">{new Date().toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "long" })}</p><h1 className="arbor-type-hero">{copy.title(name)}</h1><p>{copy.subtitle}</p></div>
+    </header>
 
-      <div className="companion-now-grid">
-        <section data-module="now-focus" className="companion-focus arbor-depth-primary" aria-labelledby={`${inputId}-focus`}>
-          <div className="companion-kicker"><Icon name="chat_bubble" size={19} /><span>{topic ? (t("companion.now-view.the-question-you-re-exploring")) : (t("companion.now-view.a-place-for-your-question"))}</span></div>
-          <h2 id={`${inputId}-focus`} className="companion-family-words" dir="auto">{topic?.title || (t("companion.now-view.something-hard-something-curious-a-moment"))}</h2>
-          {onTopicOpen && <button type="button" className="companion-text-button" onClick={onTopicOpen}>{topic ? (t("companion.now-view.see-the-moments-and-steps-behind-this-ques")) : (t("companion.now-view.our-saved-questions"))}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>}
-          <form className="companion-question" onSubmit={(event) => { event.preventDefault(); ask(); }}>
-            <label htmlFor={inputId}>{topic ? (t("companion.now-view.what-would-you-like-to-understand-now")) : (t("companion.now-view.what-s-on-your-mind"))}</label>
-            <textarea id={inputId} value={question} maxLength={1200} rows={2} onChange={(event) => setQuestion(event.target.value)} placeholder={t("companion.now-view.for-example-mornings-have-become-a-struggl")} />
-            <div className="companion-question-actions">
-              <button type="submit" className="companion-primary" data-primary-move="choose-next-step"><Icon name="chat_bubble" size={19} />{t("companion.now-view.think-it-through-with-arbor")}</button>
-              {onVoiceOpen && <button type="button" className="companion-icon-button" onClick={onVoiceOpen} aria-label={t("companion.now-view.talk-to-arbor-by-voice")}><Icon name="mic" size={21} /></button>}
-            </div>
-            {!topic && onTopicCreate && question.trim() && <button type="button" className="companion-text-button" onClick={() => onTopicCreate(question.trim())}><Icon name="bookmark_add" size={17} />{t("companion.now-view.keep-as-a-question-to-return-to")}</button>}
-          </form>
-          <div className="companion-quiet-note"><Icon name="auto_awesome" size={16} /><span>{t("companion.now-view.arbor-offers-possibilities-you-decide-what")}</span></div>
+    <div className="now-main-grid">
+      <div className="now-main-column">
+        {chosen ? <section className="now-lead arbor-depth-primary" data-module="now-step" aria-labelledby={`${id}-step`}>
+          <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name={receiptAction ? "check" : "bookmark"} size={24} /></span><div><p className="companion-eyebrow">{copy.chosen}</p><p className="now-provenance">{receiptAction ? copy.saved : copy.today}</p></div></div>
+          <h2 id={`${id}-step`} className="now-lead-title">{receiptAction ? copy.finishedTitle : copy.chosenTitle}</h2>
+          <p className="now-chosen-words" dir="auto">{chosen.recommendation}</p>
+          <p className="now-lead-body" role={receiptAction ? "status" : undefined}>{receiptAction ? copy.finished : copy.chosenWhy}</p>
+          {!receiptAction && <div className="now-lead-actions" role="group" aria-label={copy.outcomes}>
+            <button type="button" className="companion-primary" data-primary-move="choose-next-step" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.helped}</button>
+            <button type="button" className="companion-secondary" disabled={saving} onClick={() => void saveOutcome("not_today")}>{copy.notToday}</button>
+          </div>}
+          <button type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(chosen.recommendation))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></button>
+          {saveError && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
+        </section> : program ? <section className="now-lead arbor-depth-primary" data-module="now-program" aria-labelledby={`${id}-program`}>
+          <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name="menu_book" size={24} /></span><p className="companion-eyebrow">{copy.programLabel}</p></div>
+          <h2 id={`${id}-program`} className="now-lead-title">{program.content.skill[lang]}</h2>
+          <p className="now-lead-body">{copy.programWhy(program.week)}</p>
+          <div className="now-lead-actions"><button type="button" className="companion-primary" data-primary-move="choose-next-step" onClick={openProgram}>{copy.continueProgram}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button></div>
+          <button type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(program.content.skill[lang]))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></button>
+        </section> : <NowRecommendation name={name} onTalkOpen={talk} />}
+
+        <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}><Icon name="volunteer_activism" size={24} /><span><b>{copy.hardTitle}</b><small>{copy.hardBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
+      </div>
+
+      <aside className="now-side-column">
+        <section className="now-conversation" data-module="now-focus" aria-labelledby={`${id}-talk`}>
+          <div className="now-section-icon" aria-hidden="true"><Icon name="chat_bubble" size={25} /></div>
+          {topic && <p className="companion-eyebrow">{copy.topic}</p>}
+          <h2 id={`${id}-talk`} dir="auto">{topic?.title || copy.talkTitle}</h2>
+          <p>{copy.talkBody}</p>
+          <button type="button" className="companion-secondary" onClick={() => talk(topic?.title)}>{copy.talk}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></button>
+          {onTopicOpen && <button type="button" className="companion-text-button" onClick={onTopicOpen}>{copy.topics}<Icon name="bookmark" size={17} /></button>}
         </section>
-
-        <aside className="companion-next" data-module="now-step" aria-labelledby={`${inputId}-next`}>
-          <span className="companion-eyebrow">{t("companion.now-view.your-next-small-step")}</span>
-          {action ? <>
-            <h2 id={`${inputId}-next`}>{topic && action.topicId !== topic.id ? (t("companion.now-view.another-step-you-chose")) : (t("companion.now-view.continue-what-you-chose"))}</h2>
-            <p className="companion-chosen-step" dir="auto">{action.recommendation}</p>
-            <p className="companion-caption">{t("companion.now-view.a-step-you-already-chose-come-back-to-it-w")}</p>
-            <div className="companion-outcomes" role="group" aria-label={t("companion.now-view.how-did-it-go-for-you")}>
-              <button type="button" className="companion-secondary" disabled={saving} onClick={() => void saveOutcome("helped")}>{t("companion.now-view.it-helped")}</button>
-              <button type="button" className="companion-secondary" disabled={saving} onClick={() => void saveOutcome("not_today")}>{t("companion.now-view.not-this-time")}</button>
-            </div>
-            <button type="button" className="companion-text-button" onClick={() => seedCoach({ prompt: t("companion.now-view.we-chose-to-try-help-us-adapt-it-to-what-i", { value0: action.recommendation }), source: "companion-action" })}>{t("companion.now-view.adapt-this-step")}<Icon name="arrow_forward" size={17} className="companion-arrow rtl:-scale-x-100" /></button>
-          </> : program ? <>
-            <h2 id={`${inputId}-next`}>{program.content.skill[lang]}</h2>
-            <p>{t("companion.now-view.week-of-your-chosen-program-one-step-on-yo", { value0: program.week })}</p>
-            <button type="button" className="companion-secondary" onClick={openProgram}>{t("companion.now-view.continue-your-program")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>
-          </> : <>
-            <h2 id={`${inputId}-next`}>{receipt ? (t("companion.now-view.you-can-pause-here")) : (t("companion.now-view.a-good-moment-is-a-place-to-start"))}</h2>
-            <p>{receipt ? (t("companion.now-view.your-response-stays-with-this-step-continu")) : (t("companion.now-view.a-story-a-game-or-a-small-idea-for-time-to"))}</p>
-            <button type="button" className="companion-secondary" onClick={() => setActiveTab("practice")}>{t("companion.now-view.find-something-to-enjoy-together")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>
-          </>}
-          {saveError && <p role="alert" className="companion-caption">{t("companion.now-view.your-response-wasn-t-saved-please-try-agai")}</p>}
-          {receipt && <p role="status" className="companion-caption">{t("companion.now-view.your-response-is-saved-with-your-step")}</p>}
-          <img src="/visuals/companion/together-table.webp" width="960" height="640" alt="" className="companion-now-art" loading="lazy" />
-        </aside>
-      </div>
-
-      <div className="companion-support-strip" aria-label={t("companion.now-view.support-and-capture")}>
-        <button type="button" onClick={() => openHardMomentNow()}><Icon name="volunteer_activism" size={21} /><span><b>{t("companion.now-view.a-hard-moment")}</b><small>{t("companion.now-view.words-and-one-step-for-right-now")}</small></span><Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>
-        <button type="button" onClick={() => openCaptureSheet({ mode: "text" })}><Icon name="edit_note" size={22} /><span><b>{t("companion.now-view.a-moment-worth-keeping")}</b><small>{t("companion.now-view.in-words-by-voice-or-with-a-photo")}</small></span><Icon name="add" size={20} /></button>
-      </div>
-
-      <section className="companion-explore" data-module="now-explore" aria-label={t("companion.now-view.understand-more-with-support")}>
-        <button type="button" className="companion-editorial-door" onClick={() => setActiveTab("learn")}><Icon name="menu_book" size={27} /><span><span className="companion-eyebrow">{t("companion.now-view.for-you")}</span><h2>{t("companion.now-view.understand-more-at-your-pace")}</h2><p>{t("companion.now-view.a-library-of-ideas-and-courses-that-connec")}</p><span className="companion-door-link">{t("companion.now-view.explore-learning")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></span></span></button>
-        <button type="button" className="companion-editorial-door" onClick={() => setActiveTab("consult")}><Icon name="group" size={27} /><span><span className="companion-eyebrow">{t("companion.now-view.you-don-t-have-to-do-it-alone")}</span><h2>{t("companion.now-view.a-shared-picture-with-the-people-who-help")}</h2><p>{t("companion.now-view.prepare-for-a-conversation-and-choose-what")}</p><span className="companion-door-link">{t("companion.now-view.care-and-collaboration")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></span></span></button>
-      </section>
+        <section className="now-capture" aria-labelledby={`${id}-capture`}>
+          <h2 id={`${id}-capture`}>{copy.capture}</h2><p>{copy.captureBody}</p>
+          <div className="now-capture-modes" role="group" aria-label={copy.quickSave}>
+            <button type="button" onClick={() => openCaptureSheet({ mode: "text" })}><Icon name="edit_note" size={21} />{copy.write}</button>
+            <button type="button" onClick={() => openCaptureSheet({ mode: "voice" })}><Icon name="mic" size={21} />{copy.dictate}</button>
+            <button type="button" onClick={() => openCaptureSheet({ mode: "photo" })}><Icon name="photo_camera" size={21} />{copy.photo}</button>
+          </div>
+        </section>
+      </aside>
     </div>
-  );
-}
 
+    <section className="now-open-doors" data-module="now-explore" aria-label={t("companion.now-view.understand-more-with-support")}>
+      <button type="button" className="now-picture-door" onClick={() => setActiveTab("development")}><span className="now-door-icon" aria-hidden="true"><Icon name="auto_stories" size={29} /></span><span><h2>{copy.pictureTitle(name)}</h2><p>{copy.pictureBody}</p></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" /></button>
+      <button type="button" className="now-together-door" onClick={() => setActiveTab("practice")}><img src="/visuals/companion/together-table.webp" width="960" height="640" alt="" loading="lazy" /><span><h2>{copy.togetherTitle}</h2><p>{copy.togetherBody}</p></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" /></button>
+    </section>
+    <footer className="now-footer"><button type="button" className="companion-text-button" onClick={() => setActiveTab("learn")}><Icon name="menu_book" size={18} />{copy.learning}</button><button type="button" className="companion-text-button" onClick={() => setActiveTab("consult")}><Icon name="group" size={19} />{copy.care}</button></footer>
+  </div>;
+}
