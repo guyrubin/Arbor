@@ -16,7 +16,7 @@
  *   the shared set reads the shared sidecar (static JSON, loadStaticJson).
  * - Never a model call.
  */
-import { fetchBookAsset } from "./bookAssetStore";
+import { fetchBookAsset, fetchBookAssetResult } from "./bookAssetStore";
 import type { BookAssetsDoc } from "./library/bookAssetPaths";
 import { readCues, type CueTimes } from "./library/bookArtStates";
 import { getLibraryBook } from "./library/books";
@@ -50,7 +50,7 @@ export function libraryBookEntries(docs: readonly BookAssetsDoc[]): LibraryBookE
 }
 
 /** A few requests at a time. */
-async function inBatches<T>(items: readonly T[], size: number, fn: (item: T) => Promise<void>): Promise<void> {
+async function inBatches<T>(items: readonly T[], size: number, fn: (item: T) => Promise<unknown>): Promise<void> {
   for (let i = 0; i < items.length; i += size) await Promise.all(items.slice(i, i + size).map(fn));
 }
 
@@ -62,53 +62,106 @@ export interface ResolvedBookAssets {
   revoke: () => void;
 }
 
-/** The child's hero sheet (blob URLs) and the narration of one voice folder. */
-export async function resolveBookAssets(childId: string, doc: BookAssetsDoc, folder: "en" | "he-m" | "he-f"): Promise<ResolvedBookAssets> {
+/** The waits between the background retries of a file that failed for a
+ *  passing reason (after its own quick retries): ~1 minute in all. */
+export const LATE_RETRY_MS = [2000, 4000, 8000, 16000, 30000];
+
+/**
+ * The child's hero sheet (blob URLs) and the narration of one voice folder.
+ * K2: a file that fails for a passing reason (429, 5xx, network) after its
+ * quick retries is never treated as absent: it is retried in the background
+ * and `onLate` hands the reader a new snapshot the moment it arrives (the page
+ * shows the hero then). Only a 404 is absent. `revoke` also stops the retries.
+ */
+export async function resolveBookAssets(
+  childId: string,
+  doc: BookAssetsDoc,
+  folder: "en" | "he-m" | "he-f",
+  opts: { onLate?: (next: ResolvedBookAssets) => void; lateRetryMs?: readonly number[]; sleep?: (ms: number) => Promise<void> } = {},
+): Promise<ResolvedBookAssets> {
   const urls: string[] = [];
-  const url = async (rel: string): Promise<string | null> => {
-    const blob = await fetchBookAsset(childId, doc, rel);
-    if (!blob) return null;
+  let stopped = false;
+  const late: { rel: string; apply: (blob: Blob) => Promise<void> }[] = [];
+  const blobUrl = (blob: Blob) => {
     const u = URL.createObjectURL(blob);
     urls.push(u);
     return u;
   };
+  /** Fetch one file and apply it; a passing failure goes to the late list. */
+  const take = async (rel: string, apply: (blob: Blob) => Promise<void>) => {
+    const r = await fetchBookAssetResult(childId, doc, rel);
+    if ("blob" in r) await apply(r.blob);
+    else if ("transient" in r) late.push({ rel, apply });
+  };
   const base = `hero-sheets/${doc.sheetId}/`;
   const m = doc.sheetManifest;
   const sheet: HeroSheet = { id: doc.sheetId, poses: {}, anchors: {}, prints: {}, choices: {} };
-  await inBatches(Object.entries(m.poses), 6, async ([pose, v]) => {
-    const u = await url(base + v.file);
-    if (!u) return;
-    sheet.poses[pose] = u;
-    if (typeof v.aspect === "number" && typeof v.footX === "number" && typeof v.footW === "number") sheet.anchors![pose] = { aspect: v.aspect, footX: v.footX, footW: v.footW };
-  });
-  await inBatches(Object.entries(m.prints ?? {}), 3, async ([pageId, v]) => {
-    const u = await url(base + v.file);
-    if (u) sheet.prints![pageId] = { url: u, width: v.w ?? 1920, height: v.h ?? 1280 };
-  });
-  await inBatches(Object.entries(m.choices ?? {}), 3, async ([cid, file]) => {
-    const u = await url(base + file);
-    if (u) sheet.choices![cid] = u;
-  });
+  await inBatches(Object.entries(m.poses), 6, ([pose, v]) =>
+    take(base + v.file, async (blob) => {
+      sheet.poses[pose] = blobUrl(blob);
+      if (typeof v.aspect === "number" && typeof v.footX === "number" && typeof v.footW === "number") sheet.anchors![pose] = { aspect: v.aspect, footX: v.footX, footW: v.footW };
+    }),
+  );
+  await inBatches(Object.entries(m.prints ?? {}), 3, ([pageId, v]) =>
+    take(base + v.file, async (blob) => {
+      sheet.prints![pageId] = { url: blobUrl(blob), width: v.w ?? 1920, height: v.h ?? 1280 };
+    }),
+  );
+  await inBatches(Object.entries(m.choices ?? {}), 3, ([cid, file]) =>
+    take(base + file, async (blob) => {
+      sheet.choices![cid] = blobUrl(blob);
+    }),
+  );
   const files: Record<string, string> = {};
   const cues: Record<string, CueTimes> = {};
   const dir = `narration/${doc.setId}/${folder}/`;
-  await inBatches(doc.files.filter((f) => f.startsWith(dir)), 6, async (rel) => {
+  await inBatches(doc.files.filter((f) => f.startsWith(dir)), 6, (rel) => {
     const name = rel.slice(dir.length);
     if (name.endsWith(".cues.json")) {
-      const blob = await fetchBookAsset(childId, doc, rel);
-      if (!blob) return;
-      try {
-        cues[`${folder}/${name.slice(0, -".cues.json".length)}`] = readCues(JSON.parse(await blob.text()));
-      } catch {
-        /* a bad sidecar = the fractions */
-      }
-      return;
+      return take(rel, async (blob) => {
+        try {
+          cues[`${folder}/${name.slice(0, -".cues.json".length)}`] = readCues(JSON.parse(await blob.text()));
+        } catch {
+          /* a bad sidecar = the fractions */
+        }
+      });
     }
-    const u = await url(rel);
-    if (u) files[`${folder}/${name}`] = u;
+    return take(rel, async (blob) => {
+      files[`${folder}/${name}`] = blobUrl(blob);
+    });
   });
   await fillSharedNarration(doc.bookId, folder, files, cues);
-  return { sheet, narration: { files, cues }, revoke: () => urls.forEach((u) => URL.revokeObjectURL(u)) };
+  const revoke = () => {
+    stopped = true;
+    urls.forEach((u) => URL.revokeObjectURL(u));
+  };
+  const snapshot = (): ResolvedBookAssets => ({
+    sheet: { ...sheet, poses: { ...sheet.poses }, anchors: { ...sheet.anchors }, prints: { ...sheet.prints }, choices: { ...sheet.choices } },
+    narration: { files: { ...files }, cues: { ...cues } },
+    revoke,
+  });
+  if (late.length && opts.onLate) {
+    const onLate = opts.onLate;
+    const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+    void (async () => {
+      for (const wait of opts.lateRetryMs ?? LATE_RETRY_MS) {
+        if (stopped || !late.length) return;
+        await sleep(wait);
+        if (stopped) return;
+        const round = late.splice(0);
+        let arrived = false;
+        for (const job of round) {
+          const r = await fetchBookAssetResult(childId, doc, job.rel, 1);
+          if ("blob" in r) {
+            await job.apply(r.blob);
+            arrived = true;
+          } else if ("transient" in r) late.push(job);
+        }
+        if (arrived && !stopped) onLate(snapshot());
+      }
+    })();
+  }
+  return snapshot();
 }
 
 /** K2: the book's shared name-free files fill the gaps in the child's own

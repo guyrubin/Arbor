@@ -7,6 +7,9 @@
  * createdAt + path, so a re-upload fetches fresh copies. Purged with the child
  * (lib/childData erase) and on sign-out (AuthContext). Never a model call.
  * Small on purpose: childData and AuthContext import it without the books.
+ * K2: a file that fails to load for a passing reason (429, 5xx, a network
+ * error) is retried with backoff (Retry-After honoured) and is NEVER cached as
+ * absent; only a 404 (or a path the doc does not list) is absent.
  */
 import { authHeaders } from "./api";
 import { bookAssetUrl, isBookAssetRel, type BookAssetsDoc } from "./library/bookAssetPaths";
@@ -79,28 +82,63 @@ export function setBookAssetBackend(next: BookAssetBackend | null): void {
   backend = next;
 }
 
-/** One file as a Blob: the device copy, else the owner-checked proxy. */
-export async function fetchBookAsset(childId: string, doc: BookAssetsDoc, rel: string): Promise<Blob | null> {
-  if (!isBookAssetRel(rel) || !doc.files.includes(rel)) return null;
+/** A file's fate: its bytes, absent for good, or a passing failure (retry later). */
+export type BookAssetFetch = { blob: Blob } | { missing: true } | { transient: true; retryAfterMs?: number };
+
+let sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** Test seam: the backoff's clock. */
+export function setBookAssetSleep(next: ((ms: number) => Promise<void>) | null): void {
+  sleep = next ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+}
+
+/** One attempt: the device copy, else the owner-checked proxy. */
+async function fetchOnce(childId: string, doc: BookAssetsDoc, rel: string): Promise<BookAssetFetch> {
   const id = `${childId}|${doc.bookId}|${doc.createdAt}|${rel}`;
   const c = cache();
   try {
     const hit = await c?.get(id);
-    if (hit) return hit.blob;
+    if (hit) return { blob: hit.blob };
   } catch {
     /* cache unavailable: fetch */
   }
-  const headers = await authHeaders();
-  delete headers["Content-Type"];
-  const res = await fetch(bookAssetUrl(childId, doc.bookId, rel), { headers, credentials: "same-origin" });
-  if (!res.ok) return null;
+  let res: Response;
+  try {
+    const headers = await authHeaders();
+    delete headers["Content-Type"];
+    res = await fetch(bookAssetUrl(childId, doc.bookId, rel), { headers, credentials: "same-origin" });
+  } catch {
+    return { transient: true };
+  }
+  if (res.status === 429 || res.status >= 500) {
+    const after = Number(res.headers.get("retry-after"));
+    return { transient: true, ...(Number.isFinite(after) && after > 0 ? { retryAfterMs: Math.min(after * 1000, 8000) } : {}) };
+  }
+  if (!res.ok) return { missing: true };
   const blob = await res.blob();
   try {
     await c?.put({ id, childId, blob });
   } catch {
     /* quota: play from memory this time */
   }
-  return blob;
+  return { blob };
+}
+
+/** One file, retried on a passing failure (backoff 0.5 s, 1 s, 2 s...). */
+export async function fetchBookAssetResult(childId: string, doc: BookAssetsDoc, rel: string, tries = 4): Promise<BookAssetFetch> {
+  if (!isBookAssetRel(rel) || !doc.files.includes(rel)) return { missing: true };
+  let last: BookAssetFetch = { transient: true };
+  for (let i = 0; i < tries; i++) {
+    last = await fetchOnce(childId, doc, rel);
+    if (!("transient" in last)) return last;
+    if (i < tries - 1) await sleep(last.retryAfterMs ?? 500 * 2 ** i);
+  }
+  return last;
+}
+
+/** One file as a Blob (retried on a passing failure), else null. */
+export async function fetchBookAsset(childId: string, doc: BookAssetsDoc, rel: string): Promise<Blob | null> {
+  const r = await fetchBookAssetResult(childId, doc, rel);
+  return "blob" in r ? r.blob : null;
 }
 
 /** Remove every cached file of one child (erase), or of everyone (sign-out). */

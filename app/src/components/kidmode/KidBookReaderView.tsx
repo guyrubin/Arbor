@@ -31,7 +31,8 @@ export default function KidBookReaderView({ bookId, onClose }: { bookId: string;
     let live = true;
     let got: ResolvedBookAssets | null = null;
     setResolved(null);
-    resolveBookAssets(childProfile.id, doc, folder)
+    // K2: a file that arrives late (a passing failure, retried) re-renders the page with it
+    resolveBookAssets(childProfile.id, doc, folder, { onLate: (next) => { if (live) setResolved(next); } })
       .then((r) => {
         got = r;
         if (live) setResolved(r);

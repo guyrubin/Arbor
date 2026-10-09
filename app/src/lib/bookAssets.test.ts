@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./api", () => ({ authHeaders: async () => ({ "Content-Type": "application/json", Authorization: "Bearer T" }) }));
 
-import { fetchBookAsset, purgeBookAssets, setBookAssetBackend, type BookAssetBackend, type CachedFile } from "./bookAssetStore";
+import { fetchBookAsset, fetchBookAssetResult, purgeBookAssets, setBookAssetBackend, setBookAssetSleep, type BookAssetBackend, type CachedFile } from "./bookAssetStore";
 import { fillSharedNarration, libraryBookEntries, resolveBookAssets } from "./bookAssets";
 import { bookPoseIds, missingBookPoses } from "./library/bookPoses";
 import { fiveSmoothStones as book } from "./library/books/fiveSmoothStones";
@@ -181,5 +181,67 @@ describe("reading the private files", () => {
     expect([...backend.recs.values()].map((r) => r.childId)).toEqual(["kid2"]);
     await purgeBookAssets();
     expect(backend.recs.size).toBe(0);
+  });
+});
+
+describe("K2: a file that fails for a passing reason is retried, never cached as absent", () => {
+  let backend: ReturnType<typeof memoryBackend>;
+  const sleeps: number[] = [];
+  beforeEach(() => {
+    backend = memoryBackend();
+    setBookAssetBackend(backend);
+    setBookAssetSleep(async (ms) => void sleeps.push(ms));
+    sleeps.length = 0;
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    setBookAssetBackend(null);
+    setBookAssetSleep(null);
+  });
+  const rel = "narration/dylan-v3/en/p1.mp3";
+
+  it("429, 503 and a network error are retried with backoff (Retry-After honoured); the bytes are cached only once they arrive", async () => {
+    const answers: (() => Response)[] = [
+      () => new Response("", { status: 429, headers: { "retry-after": "2" } }),
+      () => new Response("", { status: 503 }),
+      () => { throw new TypeError("network"); },
+      () => new Response("BYTES", { status: 200 }),
+    ];
+    let n = 0;
+    vi.stubGlobal("fetch", async () => answers[n++]());
+    const r = await fetchBookAssetResult("kid1", docWith(POSES), rel);
+    expect("blob" in r).toBe(true);
+    expect(n).toBe(4);
+    expect(sleeps).toEqual([2000, 1000, 2000]);
+    expect(backend.recs.size).toBe(1);
+  });
+
+  it("a 404 is absent at once; a file that keeps failing is reported as passing, and nothing is cached", async () => {
+    let n = 0;
+    vi.stubGlobal("fetch", async () => { n++; return new Response("", { status: 404 }); });
+    expect(await fetchBookAssetResult("kid1", docWith(POSES), rel)).toEqual({ missing: true });
+    expect(n).toBe(1);
+    vi.stubGlobal("fetch", async () => new Response("", { status: 500 }));
+    expect(await fetchBookAssetResult("kid1", docWith(POSES), rel)).toEqual({ transient: true });
+    expect(await fetchBookAsset("kid1", docWith(POSES), rel)).toBeNull();
+    expect(backend.recs.size).toBe(0);
+  });
+
+  it("a pose still failing after its quick retries arrives late: the reader gets a new snapshot with the hero", async () => {
+    let failsLeft = 6;
+    vi.stubGlobal("fetch", async (url: string) => {
+      if (url.includes("look-up.webp") && failsLeft-- > 0) return new Response("", { status: 503 });
+      return new Response("BYTES", { status: 200 });
+    });
+    let late!: (r: Awaited<ReturnType<typeof resolveBookAssets>>) => void;
+    const arrived = new Promise<Awaited<ReturnType<typeof resolveBookAssets>>>((res) => { late = res; });
+    const first = await resolveBookAssets("kid1", docWith(POSES), "en", { onLate: late, lateRetryMs: [0, 0, 0], sleep: async () => {} });
+    expect(first.sheet.poses["look-up"]).toBeUndefined();
+    expect(first.sheet.poses.sit).toMatch(/^blob:/);
+    const next = await arrived;
+    expect(next.sheet.poses["look-up"]).toMatch(/^blob:/);
+    expect(next.sheet.anchors?.["look-up"]).toEqual({ aspect: 0.6, footX: 0.5, footW: 0.3 });
+    expect(next.sheet).not.toBe(first.sheet);
+    next.revoke();
   });
 });
