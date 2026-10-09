@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Icon } from "./Icon";
 import { trackErrorBannerShown } from "../../lib/loopEvents";
 import { useLanguage } from "../../context/LanguageContext";
 import { statesText } from "../../lib/i18nElevation/states";
@@ -44,7 +44,7 @@ export function ErrorState({
         className="w-12 h-12 rounded-2xl flex items-center justify-center"
         style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}
       >
-        <AlertTriangle className="w-6 h-6" />
+        <Icon name="warning" size={24} />
       </span>
       <h3
         dir="auto"
@@ -65,7 +65,7 @@ export function ErrorState({
           className="inline-flex items-center justify-center gap-2 max-w-full font-bold text-sm rounded-2xl px-5 min-h-[44px] min-w-[44px] mt-1 transition disabled:opacity-60 disabled:cursor-not-allowed"
           style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
         >
-          <RefreshCw aria-hidden="true" className={`w-4 h-4 shrink-0 ${retrying ? "motion-safe:animate-spin" : ""}`} />
+          <Icon name="refresh" size={16} className={`shrink-0 ${retrying ? "motion-safe:animate-spin" : ""}`} />
           <span dir="auto" className="min-w-0 [overflow-wrap:anywhere]">
             {retryLabel ?? statesText(retrying ? "elev.states.retrying" : "elev.states.retry", heMode)}
           </span>

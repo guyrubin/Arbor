@@ -12,7 +12,7 @@
  * a11y: real <button>, descriptive aria-label, 44 px, focus-visible ring.
  */
 import React, { useState } from "react";
-import { Share2 } from "lucide-react";
+import { Icon } from "./Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import { resolveCaptionKey } from "../../lib/shareCaption";
@@ -87,7 +87,7 @@ export function ShareButton({
             : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }
         }
       >
-        <Share2 className="w-4 h-4" aria-hidden />
+        <Icon name="share" size={16} />
         {defaultLabel}
       </button>
       {open && <SendSheet open={open} onClose={() => setOpen(false)} text={text} artifact={artifact} surface={surface} />}

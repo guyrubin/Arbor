@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import type { LucideIcon } from "lucide-react";
+import { Icon } from "./Icon";
 import { PASTEL, type PastelKey } from "../../lib/tokens";
 import { prefersReducedMotion } from "../../lib/devscore";
 
@@ -63,8 +63,9 @@ export interface HubHeroProps {
    *  stat is zero (a day-0 parent never meets a wall of "0 · 0 · 0"). When
    *  omitted, an all-zero trio renders nothing at all — never a numeral. */
   zeroLine?: string;
-  /** Oversized, faint lucide glyph rendered at the inline-end. Decorative. */
-  icon?: LucideIcon;
+  /** Oversized, faint Material Symbols Rounded glyph (ligature name, e.g.
+   *  "event_available") rendered at the inline-end. Decorative. */
+  icon?: string;
   testId?: string;
   className?: string;
   /** Compact hub treatment for dense destination pages. Opt-in keeps legacy callers unchanged. */
@@ -79,7 +80,7 @@ export function HubHero({
   cta,
   stats,
   zeroLine,
-  icon: GhostIcon,
+  icon: ghostIcon,
   testId,
   className = "",
   compact = false,
@@ -114,11 +115,11 @@ export function HubHero({
         transition: "opacity 0.45s ease, transform 0.45s ease",
       }}
     >
-      {!compact && GhostIcon && (
-        <GhostIcon
-          aria-hidden="true"
+      {!compact && ghostIcon && (
+        <Icon
+          name={ghostIcon}
           size={112}
-          strokeWidth={1.1}
+          weight={300}
           className="pointer-events-none absolute top-1/2 -translate-y-1/2 hidden sm:block"
           style={{ insetInlineEnd: "-0.75rem", color: p.ink, opacity: 0.08 }}
         />

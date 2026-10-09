@@ -1,5 +1,5 @@
 import React from "react";
-import { BookOpenCheck } from "lucide-react";
+import { Icon } from "./Icon";
 import { PASTEL } from "../../lib/tokens";
 import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
@@ -37,7 +37,7 @@ export function EvidenceChip({ className = "" }: { className?: string }) {
       // CTA. Sibling recipe: TrustLink. The sky register survives in the ink.
       style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: p.ink }}
     >
-      <BookOpenCheck aria-hidden="true" size={13} strokeWidth={2.4} />
+      <Icon name="menu_book" size={13} weight={600} />
       {t("elev.evidence.label")}
     </button>
   );

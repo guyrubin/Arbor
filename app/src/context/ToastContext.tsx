@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { CheckCircle2, AlertTriangle, Info, X } from "lucide-react";
+import { Icon } from "../components/ui/Icon";
 import { useLanguage } from "./LanguageContext";
 import { isKidModeActive, subscribeKidMode } from "../lib/kidModeGate";
 
@@ -21,9 +21,9 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 // TODO(m5): gate toast motion on prefers-reduced-motion
 const STYLES: Record<ToastType, { border: string; icon: React.ReactNode }> = {
-  success: { border: "rgba(52,178,119,0.40)", icon: <CheckCircle2 className="w-4 h-4" style={{ color: "var(--arbor-clay-deep)" }} /> },
-  error: { border: "rgba(214,86,111,0.40)", icon: <AlertTriangle className="w-4 h-4" style={{ color: "var(--arbor-danger)" }} /> },
-  info: { border: "rgba(63,140,201,0.40)", icon: <Info className="w-4 h-4" style={{ color: "var(--arbor-sky)" }} /> },
+  success: { border: "rgba(52,178,119,0.40)", icon: <Icon name="check_circle" size={16} style={{ color: "var(--arbor-clay-deep)" }} /> },
+  error: { border: "rgba(214,86,111,0.40)", icon: <Icon name="warning" size={16} style={{ color: "var(--arbor-danger)" }} /> },
+  info: { border: "rgba(63,140,201,0.40)", icon: <Icon name="info" size={16} style={{ color: "var(--arbor-sky)" }} /> },
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -112,7 +112,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   dismiss colour and focus ring, which never matched before
                   because the toast layer has always sat above Shell. */}
               <button onClick={() => remove(tc.id)} className="touch-target arbor-toast-dismiss -me-1.5" aria-label={t("aria.dismiss")}>
-                <X className="w-3.5 h-3.5" />
+                <Icon name="close" size={14} />
               </button>
             </motion.div>
           ))}

@@ -1,7 +1,7 @@
 import React, { useId, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { X } from "lucide-react";
+import { Icon } from "./Icon";
 import { useLanguage } from "../../context/LanguageContext";
 
 import { useDialog } from "../../hooks/useDialog";
@@ -126,7 +126,7 @@ export function Sheet({
                 style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                 aria-label={t("aria.close")}
               >
-                <X className="w-4 h-4" />
+                <Icon name="close" size={16} />
               </button>
               </div>
             </div>
