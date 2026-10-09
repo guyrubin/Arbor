@@ -82,10 +82,11 @@ describe("§3f row 3 — the parent door leads with tonight's cover", () => {
     expect(contract.primaryMove).toBe("read-tonights-story");
     const tonight = parent.indexOf('data-module="stories-tonight"');
     const catalogue = parent.indexOf('data-module="stories-catalogue"');
-    const library = parent.indexOf('data-module="stories-library"');
     expect(tonight).toBeGreaterThan(-1);
     expect(tonight).toBeLessThan(catalogue);
-    expect(catalogue).toBeLessThan(library);
+    // B-PLAY-12: the "Your library" module moved to the Comics shelf (every
+    // run read is a comic or a text book there — lib/storyShelf).
+    expect(parent).not.toContain('data-module="stories-library"');
     expect(parent).toContain('data-primary-move="read-tonights-story"');
     // The move is inside the cover module, not somewhere below the shelf.
     expect(parent.indexOf('data-primary-move="read-tonights-story"')).toBeLessThan(catalogue);
@@ -248,9 +249,13 @@ describe("B-PLAY-11 — Tonight cover: no virtue tallies, insight first, catalog
     expect(runTitle({ storyId: "nope", title: "Custom", language: "en" }, "he")).toBe("Custom");
     expect(HERO).not.toMatch(/>\{run\.title\}</);
     expect(HERO).not.toContain("aria-label={run.title}");
-    // B-KID-85: the kid library tiles left with the kid catalogue; the parent
-    // Library tile keeps its title + aria-label (2).
-    expect((HERO.match(/runTitle\(run, uiLang === "he" \? "he" : "en"\)/g) || []).length).toBe(2);
+    // B-KID-85: the kid library tiles left with the kid catalogue. B-PLAY-12:
+    // the parent Library tile left #/stories too — it is a text book on the
+    // Comics shelf, whose title and aria-label both resolve in the UI language.
+    expect((HERO.match(/runTitle\(run, uiLang === "he" \? "he" : "en"\)/g) || []).length).toBe(0);
+    const comics = stripComments(read("components/tabs/ComicsTab.tsx"));
+    expect(comics).toContain('const title = runTitle(run, uiLang === "he" ? "he" : "en");');
+    expect(comics).toContain('aria-label={t("elev.comics.storyBook.readAria", { title })}');
   });
 
   it("W2-SHELLPLAY r1 (law 4): the parent branch carries no raw hex", () => {

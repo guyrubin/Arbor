@@ -33,8 +33,12 @@ import { normalizeAvatarStyle } from "../../lib/avatarStyle";
 import { classifyAgeFit, loadShowAllAges, saveShowAllAges, windowFromRange } from "../../lib/ageFilter";
 import { agefilterText } from "../../lib/i18nElevation/agefilter";
 import { ageMonthsFromProfile } from "../../lib/childAge";
-import { getStorySpec, HERO_STORIES, storiesForLanguage, storyLanguage } from "../../lib/heroJourneys";
+import { getStorySpec, HERO_STORIES, runTitle, storiesForLanguage, storyHasLanguage, storyLanguage } from "../../lib/heroJourneys";
 import { StoryCard, STORY_PACK_LABEL, STORY_PACK_SOFT } from "../stories/StoryCard";
+// B-PLAY-12: the Stories library lives on this shelf — a run with no comic is a text book.
+import StoryTextReader from "../stories/StoryTextReader";
+import { storyShelfTextBooks } from "../../lib/storyShelf";
+import { fmtDay } from "../../lib/formatDate";
 import { kidArt, storyCoverKey } from "../../lib/kidThemeManifest";
 import { useKidTheme } from "../../hooks/useKidTheme";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
@@ -46,7 +50,7 @@ import { track } from "../../lib/analytics";
 import { closeDay, deriveReturnSignals } from "../../lib/tomorrowReason";
 import { readRitualRecord } from "../../lib/familyRitualsCadence";
 import { resolveWatchFocus } from "../../lib/screeningWatch";
-import type { HeroPackId } from "../../types";
+import type { HeroJourneyRun, HeroPackId } from "../../types";
 import { comicShelfReadIsCurrent } from "../../lib/comicShelfScope";
 
 /**
@@ -104,6 +108,11 @@ export default function ComicsTab() {
   // sits at the adventureId; the comic the child made by reading the same
   // story sits at `<adventureId>:journey` (M3 — they are two books).
   const savedCol = useChildCollection<SavedComicMeta>(childProfile.id, "savedComics");
+  // B-PLAY-12: the child's hero runs — the Stories library's source. A run
+  // whose read-along comic is on this shelf is that comic; every other run is
+  // a text book here, reread in the inline reader (openRunId).
+  const runsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
+  const [openRunId, setOpenRunId] = useState<string | null>(null);
   // Every authored adventure is a tile; every saved book that is NOT one of
   // those slots (a read-along comic, including one for a story with no
   // authored copy) is a tile of its own — so the shelf lists what it counts.
@@ -200,6 +209,7 @@ export default function ComicsTab() {
   useEffect(() => {
     openRequestRef.current += 1;
     setOpenBook(null);
+    setOpenRunId(null);
     setFullyCached({ scope: "", values: {} });
     setCoverThumbs({ scope: "", values: {} });
   }, [partitionKey]);
@@ -294,6 +304,68 @@ export default function ComicsTab() {
     requestStoryOpen(storyId);
     nav("stories");
   };
+
+  // ── B-PLAY-12: the Stories library, on this shelf ──────────────────────────
+  // Every run the Stories library listed (its language filter, unchanged) is
+  // reachable here: as its read-along comic when the shelf draws that comic
+  // and it can open on this device, otherwise as a text book — title, date,
+  // "Read the story" → the inline reader (zero model calls). A family with no
+  // hero sees every run as a text book (no comic tiles are drawn for them).
+  const tellable = (storyId: string) => {
+    const spec = getStorySpec(storyId);
+    return !spec || storyHasLanguage(spec, storyLang);
+  };
+  const shownJourneyIds = new Set(journeyBooks.map((b) => b.id));
+  const storyBooks = storyShelfTextBooks({
+    runs: runsCol.items,
+    savedComics: savedCol.items,
+    tellable,
+    comicShown: (docId) => hasHero && shownJourneyIds.has(docId) && scopedCached[docId] !== false,
+  });
+  const openRun = openRunId ? runsCol.items.find((r) => r.id === openRunId) ?? null : null;
+  const storyBookTile = (run: HeroJourneyRun) => {
+    const spec = getStorySpec(run.storyId);
+    const title = runTitle(run, uiLang === "he" ? "he" : "en");
+    const face = kidArt(kidTheme, storyCoverKey(run.storyId));
+    return (
+      <div key={`run-${run.id}`} className="comic-panel overflow-hidden" data-book-kind="story" data-testid="comics-story-book">
+        <div className="relative" style={{ aspectRatio: "3 / 2", borderBottom: "var(--comic-line)" }}>
+          <button
+            type="button"
+            onClick={() => setOpenRunId(run.id)}
+            aria-label={t("elev.comics.storyBook.readAria", { title })}
+            className="absolute inset-0 grid place-items-center"
+            style={{ background: spec ? STORY_PACK_SOFT[spec.pack] : "var(--arbor-paper-deep)" }}
+          >
+            {face ? (
+              <img src={face.src480} alt="" aria-hidden="true" loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: face.objectPosition }} />
+            ) : (
+              <Icon name="auto_stories" size={40} style={{ color: "var(--arbor-muted)" }} />
+            )}
+            <span
+              className="absolute bottom-2 inline-flex items-center gap-1 text-[12px] font-black rounded-full px-3 py-1"
+              style={{ insetInlineStart: 8, background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", color: "var(--arbor-ink)" }}
+            >
+              <Icon name="menu_book" size={14} /> {t("elev.comics.storyBook.read")}
+            </span>
+          </button>
+        </div>
+        <div className="p-3.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="min-w-0 font-black text-[15px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+              {title}
+            </span>
+            <span className="ms-auto inline-block text-[10px] font-black px-2 py-0.5 rounded-full" style={{ border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
+              {t("elev.comics.storyBook.chip")}
+            </span>
+          </div>
+          <p className="text-[11px] mt-2" style={{ color: "var(--arbor-muted)" }}>
+            {run.completedAt ? fmtDay(run.completedAt, uiLang) : t("elev.comics.storyBook.inProgress")}
+          </p>
+        </div>
+      </div>
+    );
+  };
   const ourBooksSection = (
     <section data-module="comics-our-books" data-testid="comics-our-books" className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -336,6 +408,20 @@ export default function ComicsTab() {
     </section>
   );
 
+  // B-PLAY-12: a text book reread in place — hero or not.
+  if (openRun) {
+    return (
+      <RegisterShell kidMode={false} title={t("nav.tab.comics")}>
+        <StoryTextReader
+          key={`${partitionKey}|${openRun.id}`}
+          run={openRun}
+          hero={{ name: childProfile.name, gender: childProfile.gender }}
+          onBack={() => setOpenRunId(null)}
+        />
+      </RegisterShell>
+    );
+  }
+
   // No hero yet → invite the parent to create one (cross-domain entry point).
   // AIX-S7: the entry-gate bookend follows the file's he? pattern — Hebrew
   // families must not hit English exactly where register matters most.
@@ -367,6 +453,18 @@ export default function ComicsTab() {
           childName={name}
           onClose={() => setHeroDialogOpen(false)}
         />
+        {/* B-PLAY-12: a hero-less story is not a comic, so with no hero every
+            run the Stories library listed is a text book here (law 6). */}
+        {storyBooks.length > 0 && (
+          <section data-testid="comics-story-books" aria-labelledby="comics-story-books-title" className="mt-6 space-y-3">
+            <h2 id="comics-story-books-title" className="m-0 text-[1.05rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+              {t("elev.comics.storyBooks.title")}
+            </h2>
+            <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+              {storyBooks.map(storyBookTile)}
+            </div>
+          </section>
+        )}
         {/* B-KID-87 (KB-29): the hero invitation is ONE card; the library
             below is readable without a hero (nothing is gated). */}
         <div className="mt-6">{ourBooksSection}</div>
@@ -671,6 +769,9 @@ export default function ComicsTab() {
             </div>
           );
         })}
+        {/* B-PLAY-12: the stories read with no comic on this shelf — text
+            books after the comic books, newest first. */}
+        {storyBooks.map(storyBookTile)}
       </div>
 
       {/* AIX-S7: trust/safety bookend in the file's he? pattern. The

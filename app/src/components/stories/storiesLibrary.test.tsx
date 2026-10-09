@@ -74,7 +74,11 @@ describe("#/stories — Tonight shows the book; More stories is the library grid
   });
 
   it("More stories draws StoryCard per book; no WorldScene, no emoji motif, no SFX burst", () => {
-    const grid = HERO.slice(HERO.indexOf('data-testid="stories-library-grid"'), HERO.indexOf('data-module="stories-library"'));
+    // B-PLAY-12: the "Your library" module left for #/comics; the More stories
+    // grid ends with its disclosure.
+    const gridAt = HERO.indexOf('data-testid="stories-library-grid"');
+    expect(gridAt).toBeGreaterThan(-1);
+    const grid = HERO.slice(gridAt, HERO.indexOf("</details>", gridAt));
     expect(grid).toContain("<StoryCard");
     expect(grid).toContain("onOpen={() => { void startJourney(story); }}");
     expect(HERO).not.toContain("<WorldScene");

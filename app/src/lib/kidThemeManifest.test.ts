@@ -123,9 +123,11 @@ describe("B-KID-70 (c): kid components reference art only through the manifest",
     const tab = readFileSync(path.join(SRC, "components", "tabs", "HeroJourneyTab.tsx"), "utf8");
     expect(tab).toContain("const storyCover = (id: string) => kidArt(kidTheme, storyCoverKey(id));");
     expect(tab).toContain("fallbackArtUrl={storyCover(activeStory.id)?.src}");
-    // B-KID-85: the parent Library keeps its run tiles; the kid shelf is
-    // KidLibrary, whose covers come from the manifest through KidBookCover.
-    expect(tab.match(/const cover = storyCover\(run\.storyId\);/g)).toHaveLength(1);
+    // B-KID-85: the kid shelf is KidLibrary, whose covers come from the
+    // manifest through KidBookCover. B-PLAY-12: the parent Library's run tiles
+    // moved to the Comics shelf (text books), faced from the same manifest.
+    expect(tab.match(/const cover = storyCover\(run\.storyId\);/g)).toBeNull();
+    expect(readFileSync(path.join(SRC, "components", "tabs", "ComicsTab.tsx"), "utf8")).toContain("const face = kidArt(kidTheme, storyCoverKey(run.storyId));");
     expect(tab).toContain("hasCover: (id) => storyCover(id) !== null");
     const kidCover = readFileSync(path.join(SRC, "components", "kidmode", "KidBookCover.tsx"), "utf8");
     expect(kidCover).toContain("kidArt(theme, storyCoverKey(storyId))");
