@@ -18,6 +18,7 @@ import Icon from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { OFFSCREEN_IDEAS, STORY_DOORS, WORLD_ART, type TogetherCategory } from "./companionChoices";
 import { trackCompanionPlaceOpen, trackPracticeStudioOpen, trackPracticeTogetherDid } from "../../lib/kpiEvents";
+import { TOGETHER_ART } from "../../lib/parentArt";
 import "./companionExperience.css";
 
 type Preview = { kind: "world"; world: StudioWorld } | { kind: "offscreen"; id: string };
@@ -136,7 +137,7 @@ export default function TogetherView() {
           {/* B-KID-11: a labelled hand-over on the page (the chrome icon has no label on a phone). */}
           {kidAvailable && <button type="button" className="companion-secondary companion-handover" data-testid="together-handover" onClick={() => { trackPracticeStudioOpen("kidmode", "hero"); requestKidMode(); }}><Icon name="sports_esports" size={19} />{t("practice.studio.kidmode.cta")}</button>}
         </div>
-        <figure className="companion-together-art"><img src="/visuals/companion/together-table.webp" width="960" height="640" alt={t("companion.together-view.illustration-of-an-open-book-building-bloc")} fetchPriority="high" /></figure>
+        <figure className="companion-together-art"><img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt={t("companion.together-view.illustration-of-an-open-book-building-bloc")} fetchPriority="high" /></figure>
       </section>
 
       {activeFamilyTopic && <div className="companion-topic-context"><Icon name="bookmark" size={18} /><span>{t("companion.together-view.your-question-stays-with-you")}<b dir="auto">{activeFamilyTopic.title}</b></span><span className="companion-caption">{t("companion.together-view.here-it-is-also-enough-just-to-enjoy")}</span></div>}
@@ -181,7 +182,7 @@ export default function TogetherView() {
           <button type="button" className="companion-primary" onClick={() => openWorld(preview.world)}><Icon name="play_arrow" size={20} />{worksInLanguage(preview.world, lang) && opensInKidMode(preview.world) ? (t("companion.together-view.start-playing")) : (t("companion.together-view.open"))}</button>
         </div>}
         {preview?.kind === "offscreen" && <div className="companion-preview" dir={he ? "rtl" : "ltr"}>
-          <img src="/visuals/companion/together-table.webp" width="960" height="640" alt="" />
+          <img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt="" />
           <p>{offline(preview.id).detail}</p><blockquote className="companion-say" dir="auto">{t("elev.loop.ms.quoted", { text: offline(preview.id).say })}</blockquote>
           <p className="companion-caption">{t("companion.together-view.you-can-put-the-screen-down-and-try-it-the")}</p>
           <button type="button" className="companion-primary" onClick={() => setPreview(null)}>{t("companion.together-view.let-s-give-it-a-try")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>

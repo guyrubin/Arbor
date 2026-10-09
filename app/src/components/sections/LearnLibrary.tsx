@@ -50,6 +50,7 @@ import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
 import { TrustLink } from "../trust/TrustLink";
 import { MasterclassReader, loadDone as loadCourseDone } from "./Masterclasses";
 import { MASTERCLASSES } from "../../lib/masterclasses";
+import { EMPTY_ART, type ParentArt } from "../../lib/parentArt";
 
 // B-PLAY-17: "courses" lists the Masterclasses inside the Library (same age switch).
 type Filter = "all" | "saved" | "courses" | LearnCategoryId;
@@ -555,6 +556,7 @@ export default function LearnLibrary() {
       ) : (
         <EmptyState
           icon={filter === "saved" ? "bookmark" : "search_off"}
+          illustration={filter === "saved" ? EMPTY_ART.learn : undefined}
           text={
             filter === "saved"
               ? t("learn.emptySaved")
@@ -1046,19 +1048,28 @@ function EmptyState({
   icon,
   text,
   action,
+  illustration,
 }: {
   icon: string;
   text: string;
   action?: { label: string; onClick: () => void };
+  /** P7-DESIGN art: the saved shelf's picture in place of the icon tile (decorative). */
+  illustration?: ParentArt;
 }) {
   return (
     <div className={`${cardCls} p-8 flex flex-col items-center text-center gap-3`}>
-      <span
-        className="inline-flex items-center justify-center rounded-2xl w-12 h-12"
-        style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
-      >
-        <Icon name={icon} size={24} />
-      </span>
+      {illustration ? (
+        <figure aria-hidden data-testid="learn-empty-art" className="m-0 overflow-hidden" style={{ inlineSize: "min(280px, 100%)", borderRadius: "var(--r-xl)", background: "var(--arbor-paper-deep)" }}>
+          <img src={illustration.src} srcSet={illustration.srcSet} width={illustration.width} height={illustration.height} alt="" loading="lazy" decoding="async" style={{ display: "block", inlineSize: "100%", blockSize: "auto", aspectRatio: `${illustration.width} / ${illustration.height}`, objectFit: "cover" }} />
+        </figure>
+      ) : (
+        <span
+          className="inline-flex items-center justify-center rounded-2xl w-12 h-12"
+          style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+        >
+          <Icon name={icon} size={24} />
+        </span>
+      )}
       <p className="text-[13px] max-w-[40ch]" style={{ color: "var(--arbor-muted)" }}>
         {text}
       </p>

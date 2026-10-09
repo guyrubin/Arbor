@@ -26,7 +26,7 @@ export const STORY_DOORS: readonly { id: string; tab: ActiveTab; icon: string; a
   { id: "library", tab: "stories", icon: "auto_stories", art: "/visuals/worlds/v2/tonight-story-v2-480.webp", title: pair("companion.story.library.title"), detail: pair("companion.story.library.detail") },
   { id: "bedtime", tab: "bedtime-stories", icon: "bedtime", art: "/visuals/worlds/v2/story-quest-v2-480.webp", title: pair("companion.story.bedtime.title"), detail: pair("companion.story.bedtime.detail") },
   { id: "comics", tab: "comics", icon: "menu_book", art: "/visuals/cards/web/story-david-and-goliath-480.webp", title: pair("companion.story.comics.title"), detail: pair("companion.story.comics.detail") },
-  { id: "family", tab: "family", icon: "favorite", art: "/visuals/companion/together-table.webp", title: pair("companion.story.family.title"), detail: pair("companion.story.family.detail") },
+  { id: "family", tab: "family", icon: "favorite", art: "/visuals/parent/v1/together-480.webp", title: pair("companion.story.family.title"), detail: pair("companion.story.family.detail") },
 ];
 
 export const OFFSCREEN_IDEAS = [

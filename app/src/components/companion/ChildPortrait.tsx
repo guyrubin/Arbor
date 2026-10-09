@@ -15,9 +15,11 @@ import { portraitEvidenceLines, reviewedPortraitDraft } from "./portraitEvidence
 import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import PortraitWatchRow from "./PortraitWatchRow";
 import PortraitKeepsakes from "./PortraitKeepsakes";
+import { DOMAIN_ART, EMPTY_ART, MOMENT_ART } from "../../lib/parentArt";
 import "./childPortrait.css";
 
-const icons: Record<DomainId, string> = { talking: "chat_bubble", moving: "directions_run", hands: "pan_tool", thinking: "psychology", playing: "group", feelings: "favorite", body: "spa", family: "home" };
+// One glyph per concept: hands and family match their shelves (lib/shelves/registry.ts); `home` stays the Now place and the Home context.
+const icons: Record<DomainId, string> = { talking: "chat_bubble", moving: "directions_run", hands: "front_hand", thinking: "psychology", playing: "group", feelings: "favorite", body: "spa", family: "diversity_3" };
 
 
 export interface ChildPortraitProps { onDiscuss?: (prompt: string, childId: string) => void; onSaveQuestion?: (prompt: string, observationIds: string[]) => void }
@@ -185,7 +187,7 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     </div>
     {/* Parity 9 Oct: words, firsts, the tree and the month — one collapsed disclosure. */}
     <PortraitKeepsakes />
-    {!record.loading && !record.error && record.confirmed && inView.length === 0 && <div className="portrait-empty"><div className="portrait-empty-mark" aria-hidden="true"><Icon name="auto_stories" size={52} /></div><div><h2>{observations.length ? c.periodEmpty : c.emptyAll}</h2><p>{observations.length ? c.periodEmptySub : c.emptyAllSub}</p><button type="button" className="portrait-primary" onClick={() => openCaptureSheet()}><Icon name="add" size={20} />{c.capture}</button></div></div>}
+    {!record.loading && !record.error && record.confirmed && inView.length === 0 && <div className="portrait-empty"><figure className="portrait-empty-art" aria-hidden="true" data-testid="portrait-empty-art"><img src={EMPTY_ART.portrait.src} srcSet={EMPTY_ART.portrait.srcSet} width={EMPTY_ART.portrait.width} height={EMPTY_ART.portrait.height} alt="" loading="lazy" decoding="async" /></figure><div><h2>{observations.length ? c.periodEmpty : c.emptyAll}</h2><p>{observations.length ? c.periodEmptySub : c.emptyAllSub}</p><button type="button" className="portrait-primary" onClick={() => openCaptureSheet()}><Icon name="add" size={20} />{c.capture}</button></div></div>}
     </div>
 
     <div data-module="child-portrait-evidence">
@@ -193,10 +195,12 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
       <div className="portrait-chapters">{chapters.map(chapter => {
         const featured = chapter.observations.find(o => !!logMap.get(o.id)?.photoAttachment) ?? chapter.observations.find(o => ["moment", "keepsake", "word", "goal_note"].includes(o.value.type)) ?? chapter.observations[0];
         const photo = featured ? logMap.get(featured.id)?.photoAttachment : undefined;
+        // P7-DESIGN art: a memory without a photo shows its area's painted still life, an unfiled one the journal's (decorative, never evidence).
+        const art = !photo && featured ? (featured.domains[0] ? DOMAIN_ART[featured.domains[0]] : MOMENT_ART) : undefined;
         return <article className="portrait-chapter" key={chapter.id}>
           <div className="portrait-chapter-date"><span>{chapterLabel(chapter)}</span><span className="portrait-date-line" /></div>
-          {featured ? <button type="button" className={`portrait-memory ${photo ? "portrait-memory-photo" : ""}`} onClick={() => select(chapter.observations, chapterLabel(chapter))}>
-            {photo ? <img src={photo} alt={c.photo} loading="lazy" /> : <div className="portrait-memory-art" aria-hidden="true"><Icon name={icons[featured.domains[0]] ?? "auto_stories"} size={52} /></div>}
+          {featured ? <button type="button" className={`portrait-memory ${photo ? "portrait-memory-photo" : art ? "portrait-memory-photo portrait-memory-illustrated" : ""}`} onClick={() => select(chapter.observations, chapterLabel(chapter))}>
+            {photo ? <img src={photo} alt={c.photo} loading="lazy" /> : art ? <img src={art.src} srcSet={art.srcSet} width={art.width} height={art.height} alt="" aria-hidden="true" loading="lazy" decoding="async" data-testid="portrait-memory-art" /> : <div className="portrait-memory-art" aria-hidden="true"><Icon name={icons[featured.domains[0]] ?? "auto_stories"} size={52} /></div>}
             <div className="portrait-memory-copy"><span className="portrait-meta">{sourceLabel(featured)} · {date(featured.at)}</span><p dir="auto">{title(featured)}</p><span className="portrait-memory-link">{c.view}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></span></div>
           </button> : <button type="button" className="portrait-memory portrait-memory-empty" onClick={() => openCaptureSheet()}><Icon name="add_a_photo" size={28} /><strong>{c.emptyChapter}</strong><span>{c.emptySub}</span></button>}
         </article>;

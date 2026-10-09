@@ -36,6 +36,7 @@ import { ageYearsOf } from "../../lib/age/forChild";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { hashQuery, routeHash } from "../../lib/routes";
 import JournalShelves, { shelfFromQuery } from "../journal/JournalShelves";
+import { EMPTY_ART } from "../../lib/parentArt";
 
 /**
  * UC-1 Journal (wireframe-reconciled) — a single calm column of logged moments.
@@ -743,6 +744,7 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
           <EmptyState
             className="py-6"
             icon={<IconBadge tone="lav" size={48}><Icon name="edit_note" size={26} fill={1} /></IconBadge>}
+            illustration={EMPTY_ART.journal}
             headline={statesText("elev.states.journal.head", uiLang === "he")}
             body={statesText("elev.states.journal.body", uiLang === "he", { name: childFirstName })}
             cta={statesText("elev.states.journal.cta", uiLang === "he")}

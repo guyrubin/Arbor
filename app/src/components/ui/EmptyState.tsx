@@ -1,4 +1,5 @@
 import React from "react";
+import type { ParentArt } from "../../lib/parentArt";
 
 /**
  * EmptyState — the ONE empty-state shape (masterplan 4.3: "EmptyStates that
@@ -18,6 +19,10 @@ import React from "react";
  *  - Clinical firewall applies to empty copy too: plain activity facts only —
  *    no %, verdicts, or trend language.
  *
+ * ILLUSTRATION (P7-DESIGN art): an optional parent-register picture
+ * (`lib/parentArt.ts` EMPTY_ART) framed like the live Together art, in place
+ * of the icon. Decorative (alt=""), lazy, never a child or a family's photo.
+ *
  * BACK-COMPAT: the original API (icon / headline / body / action / className)
  * is unchanged — existing consumers render byte-identically when the new
  * props are omitted.
@@ -32,8 +37,11 @@ export function EmptyState({
   cta,
   onCta,
   ctaTestId,
+  illustration,
 }: {
   icon?: React.ReactNode;
+  /** A parent-register picture shown instead of the icon (decorative). */
+  illustration?: ParentArt;
   headline: string;
   body?: string;
   /** Freeform node under the body (legacy slot — e.g. a code sample). */
@@ -61,7 +69,27 @@ export function EmptyState({
           {preview}
         </div>
       )}
-      {icon && <div style={{ color: "var(--arbor-green-ink)" }}>{icon}</div>}
+      {illustration ? (
+        <figure
+          aria-hidden
+          data-testid="empty-state-art"
+          className="m-0 mb-1 overflow-hidden"
+          style={{ inlineSize: "min(300px, 100%)", borderRadius: "var(--r-xl)", background: "var(--arbor-paper-deep)" }}
+        >
+          <img
+            src={illustration.src}
+            srcSet={illustration.srcSet}
+            width={illustration.width}
+            height={illustration.height}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            style={{ display: "block", inlineSize: "100%", blockSize: "auto", aspectRatio: `${illustration.width} / ${illustration.height}`, objectFit: "cover" }}
+          />
+        </figure>
+      ) : (
+        icon && <div style={{ color: "var(--arbor-green-ink)" }}>{icon}</div>
+      )}
       <h3 className="text-xl font-extrabold tracking-tight" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{headline}</h3>
       {body && <p className="text-xs max-w-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{body}</p>}
       {cta && onCta && (

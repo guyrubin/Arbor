@@ -13,6 +13,7 @@ import { ShelfGlyph, shelfTone } from "../ui/ShelfGlyph";
 import { SectionHead } from "../ui/SectionHead";
 import { FreeText } from "../ui/FreeText";
 import { shelfCountKey } from "./ShelfGrid";
+import { SHELF_ART } from "../../lib/parentArt";
 
 /** One row of the shelf's thread, already labelled by the caller (the journal's own engine). */
 export interface ShelfEntryRow {
@@ -290,6 +291,14 @@ export default function ShelfPage({
             <span className="block t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.add.sub", { shelf: name })}</span>
           </span>
         </button>
+        {listGroups.length === 0 && (
+          /* P7-DESIGN art: an empty shelf ends on its area's painted still life,
+             below every action (never pushes the practice or the add row down);
+             decorative, the same picture for every child and count. */
+          <figure aria-hidden="true" data-testid="shelf-page-art" className="m-0 mx-auto mt-5 overflow-hidden" style={{ inlineSize: "min(300px, 100%)", borderRadius: "var(--r-xl)", background: "var(--arbor-paper-deep)" }}>
+            <img src={SHELF_ART[shelf].src} srcSet={SHELF_ART[shelf].srcSet} width={SHELF_ART[shelf].width} height={SHELF_ART[shelf].height} alt="" loading="lazy" decoding="async" style={{ display: "block", inlineSize: "100%", blockSize: "auto", aspectRatio: "1 / 1", objectFit: "cover" }} />
+          </figure>
+        )}
         {listGroups.map((g) => (
           <div key={g.key} className="mt-3">
             <h3 className="t-sm font-semibold"><span style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}>{g.label}</span></h3>
