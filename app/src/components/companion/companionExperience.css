@@ -133,3 +133,16 @@
   .companion-together-footer { flex-wrap: wrap; align-items: start; }
   .companion-together-footer p { min-inline-size: 220px; }
 }
+
+/* Parity 9 Oct — Together's since-line, hand-over, counts, PIN nudge and trust chips (tokens only). */
+.companion-since { margin-block-start: 14px; padding: 12px 14px; border-radius: var(--r-lg); background: var(--arbor-paper-deep); }
+.companion-since > p { font-size: var(--t-sm); color: var(--arbor-ink); }
+.companion-since i { font-family: var(--font-editorial); }
+.companion-handover { margin-block-start: 10px; }
+.companion-world-count { display: inline-block; margin-block: 2px 4px; padding: 1px 8px; border-radius: 999px; font-size: var(--t-xs); font-weight: 700; color: var(--arbor-ink-soft); background: var(--arbor-paper-deep); }
+.companion-pin-nudge { display: flex; align-items: center; gap: 12px; inline-size: 100%; min-block-size: 44px; margin-block: 18px 0; padding: 12px 16px; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); background: var(--arbor-paper-deep); color: var(--arbor-ink-soft); font-size: var(--t-sm); text-align: start; }
+.companion-pin-nudge > span:nth-child(2) { flex: 1; min-inline-size: 0; }
+.companion-pin-nudge b, .companion-pin-nudge-cta { color: var(--arbor-ink); font-weight: 700; }
+.companion-trust-chips { display: flex; flex-wrap: wrap; gap: 6px; inline-size: 100%; margin: 6px 0 0; padding: 0; list-style: none; }
+.companion-trust-chips li { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--arbor-rule); background: var(--arbor-paper-elevated); color: var(--arbor-ink-soft); font-size: var(--t-xs); font-weight: 700; }
+.companion-play-note { inline-size: 100%; }

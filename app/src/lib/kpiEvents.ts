@@ -506,13 +506,13 @@ export function trackLoopContinued(source: string): void {
  * shipped with no event at all, so neither per-place reach nor the panel
  * could be read. One family, ids only, the same allow-list law as above.
  * Kid Mode never emits (kid egress gate). */
-export const COMPANION_PLACES = ["now", "child", "together"] as const;
+export const COMPANION_PLACE_IDS = ["now", "child", "together"] as const;
 export const COMPANION_PANEL_VIA = ["launcher", "seed", "route"] as const;
 export const PRACTICE_OPEN_VIA = ["kidmode", "direct", "hero"] as const;
 
 export function trackCompanionPlaceOpen(place: string): void {
   if (isKidModeActive()) return;
-  track(KpiEvent.CompanionPlaceOpen, { place: oneOf(COMPANION_PLACES, place) });
+  track(KpiEvent.CompanionPlaceOpen, { place: oneOf(COMPANION_PLACE_IDS, place) });
 }
 
 export function trackCompanionPanelOpen(via: string): void {
