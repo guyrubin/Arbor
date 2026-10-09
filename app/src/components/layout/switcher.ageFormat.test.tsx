@@ -61,7 +61,7 @@ describe("B-INF-10 · the switcher prints months under three, years from three",
     for (const rel of [
       "components/layout/TopbarKidSwitcher.tsx",
       "components/profile/ProfileSwitcher.tsx",
-      "components/tabs/OverviewTab.tsx",
+      "components/companion/NowView.tsx",
       "components/sections/ChildProfile.tsx",
       "consult/packet.ts",
     ]) {

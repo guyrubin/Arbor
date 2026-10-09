@@ -12,7 +12,8 @@ import { fileURLToPath } from "node:url";
 import { chooseContinuation, isContinuationKind } from "./continuation";
 import { chooseOffer, type OfferState } from "../../lib/companionOffer";
 import { DEFAULT_PREFS } from "../../growth/jitaiPrefs";
-import { translate } from "../../lib/i18n";
+import { translate } from "../../lib/i18n";
+import { todayFile, todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.join(here, rel), "utf8");
@@ -61,17 +62,18 @@ describe("B-TODAY-18 · precedence table (coordinator → continuation)", () => 
 });
 
 describe("B-TODAY-18 · placement on Today", () => {
-  const overview = strip(read("../tabs/OverviewTab.tsx"));
+  const overview = strip(todayLiveSource());
   const slot = strip(read("./CompanionOfferSlot.tsx"));
   const cont = strip(read("./TodayContinuation.tsx"));
 
   // B-LOOP-07 re-pin: the continuation slot (carry-over ask, tomorrow's
   // reason) is the coordinator's ONE slot behind Today's door, below the blocks.
-  it("the slot renders behind the door, after the three blocks", () => {
-    const blocks = overview.indexOf("plan.order.map((id) => (");
+  it("the slot renders behind the door, after the lead", () => {
+    // Parity 9 Oct: the door is Now's NowMoreForToday, mounted after the lead.
+    const view = strip(todayFile("NowView.tsx"));
+    expect(view.indexOf("<NowMoreForToday")).toBeGreaterThan(view.indexOf("<NowRecommendation"));
     const slotAt = overview.indexOf("<CompanionOfferSlot");
-    expect(blocks).toBeGreaterThan(-1);
-    expect(slotAt).toBeGreaterThan(blocks);
+    expect(slotAt).toBeGreaterThan(-1);
     expect(slotAt).toBeGreaterThan(overview.indexOf('data-testid="today-door"'));
   });
 
@@ -117,7 +119,7 @@ describe("negative control", () => {
 });
 
 describe("B-TODAY-18 · the family line renders through the coordinator", () => {
-  const overview = strip(read("../tabs/OverviewTab.tsx"));
+  const overview = strip(todayLiveSource());
   const family = strip(read("./FamilyOfferLines.tsx"));
 
   it("one line per sibling, built by familyOfferLines from that child's own state", () => {

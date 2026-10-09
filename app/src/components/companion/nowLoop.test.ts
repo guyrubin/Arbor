@@ -62,11 +62,21 @@ describe("every loop seam has a live caller", () => {
     expect(more).toContain("<FamilyOfferLines");
   });
   it("the door is ONE collapsed disclosure, never a module", () => {
-    expect(more).toContain('data-module-disclosure="now-more"');
+    expect(more).toContain('data-module-disclosure="today-more"');
+    expect(more).toContain('data-testid="today-door"');
     expect(more).not.toMatch(/\bdata-module=/);
+    expect(more).not.toMatch(/<details[^>]*\bopen=/);
   });
   it("the loop blocks carry #/overview's contract move, never a move of their own", () => {
     expect(blocks).toContain('const MOVE = "choose-next-step";');
     expect(blocks).not.toContain("do-practice");
+  });
+  it("gates the hard-moment door like every door to the sheet (B-ASKJB-31)", () => {
+    expect(now).toContain("availableHardMomentCards({ now: at, ageMonths: ageMonthsFromProfile(childProfile, at), locale: lang }).length > 0");
+    expect(now).toContain('{hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}>');
+  });
+  it("keeps the night's story to ONE door line (critic c2 r1)", () => {
+    expect(blocks).not.toMatch(/onStory=/);
+    expect(more).toContain('{evening && storyFits && line("today-door-story"');
   });
 });

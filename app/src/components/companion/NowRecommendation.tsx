@@ -88,7 +88,7 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
     </div>
     <h2 id={`${id}-title`} className="now-lead-title" dir="auto">{headline}</h2>
     {body && <p className="now-lead-body" dir="auto">{body}</p>}
-    {useAi && focus?.sayThis && <div className="now-say"><span>{copy.say}</span><blockquote dir="auto">“{focus.sayThis}”</blockquote></div>}
+    {useAi && focus?.sayThis && <div className="now-say"><span>{copy.say}</span><blockquote dir="auto">{t("elev.loop.ms.quoted", { text: focus.sayThis })}</blockquote></div>}
 
     {!useAi && activity && stepsOpen && <div className="now-activity-steps" id={`${id}-steps`}>
       {!!activity.householdItems.length && <p className="now-materials"><b>{copy.materials}</b> {activity.householdItems.join(" · ")}</p>}

@@ -169,7 +169,8 @@ import { bedtimeDoorOpen } from "../../lib/timeOfDay";
 import { chooseContinuation, dayCloseDue, DAY_CLOSE_LINE_HOUR } from "./continuation";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath } from "node:url";
+import { todayLiveSource } from "../../testTodaySource";
 
 describe("B-TODAY-26 — Tonight and the day-close: the hour table", () => {
   const FOCUS = { ...BASE, focusHeadline: "Mornings ran smoother this week" };
@@ -218,7 +219,7 @@ describe("B-TODAY-26 — Tonight and the day-close: the hour table", () => {
 describe("B-TODAY-26 — Today wiring: one voice, no generation, no timer", () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const strip = (c: string) => c.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-  const overview = strip(readFileSync(path.join(here, "../tabs/OverviewTab.tsx"), "utf8"));
+  const overview = strip(todayLiveSource());
   const card = strip(readFileSync(path.join(here, "TonightCard.tsx"), "utf8"));
 
   // B-LOOP-07 re-pin: Today no longer runs this chain (chooseTodayAction stays
@@ -238,7 +239,7 @@ describe("B-TODAY-26 — Today wiring: one voice, no generation, no timer", () =
 
   it("Tonight's story door navigates and generates nothing; the card it replaced stays inert", () => {
     // critic c2 r1: the story moved from under the Tonight card into the door
-    expect(overview).toContain('doorLine("today-door-story", "auto_stories", t("elev.loop.tonight.story"), () => setActiveTab("bedtime-stories"))');
+    expect(overview).toContain('line("today-door-story", "auto_stories", t("elev.loop.tonight.story"), () => setActiveTab("bedtime-stories"))');
     expect(card).not.toMatch(/fetch\(|api\.|generate|setTimeout|setInterval|streak|tomorrow/i);
   });
 

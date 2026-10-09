@@ -17,7 +17,8 @@ let lang: UiLang = "en";
 vi.mock("../../context/LanguageContext", () => ({
   useLanguage: () => ({ t: (k: string, v?: Record<string, string | number>) => translate(lang, k, v), uiLang: lang }),
 }));
-import TodayStarterCard from "../../components/overview/TodayStarterCard";
+import TodayStarterCard from "../../components/overview/TodayStarterCard";
+import { todayLiveSource } from "../../testTodaySource";
 
 const NOW = new Date(2026, 9, 6, 12);
 const ISO = "2026-10-06";
@@ -94,7 +95,7 @@ describe("B-TODAY-35 · the card, EN + HE, gendered for a girl, no verdict", () 
     const SRC = path.resolve(__dirname, "../..");
     const card = readFileSync(path.join(SRC, "components/overview/TodayStarterCard.tsx"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
     expect(card).not.toMatch(/#[0-9a-fA-F]{3,8}\b|gradient|uppercase|text-\[(?:[0-9]|1[01])(?:\.\d+)?px\]/);
-    const overview = readFileSync(path.join(SRC, "components/tabs/OverviewTab.tsx"), "utf8");
+    const overview = todayLiveSource();
     expect(overview).not.toContain("<TodayStarterCard");
     expect(overview).toContain("<PracticeCard");
   });

@@ -67,7 +67,7 @@ export function NowNoticeBlock({ loop, name, practiceLeads }: { loop: Loop; name
   const { t } = useLanguage();
   const id = useId();
   if (!loop.blockNotices.length) return null;
-  return <section className="now-notice" data-testid="now-notice" aria-labelledby={`${id}-notice`}>
+  return <section className="now-notice" data-testid="today-notice" aria-labelledby={`${id}-notice`}>
     <SectionHead id={`${id}-notice`} icon="visibility" title={t("elev.loop.today.notice.title")} sub={t("elev.loop.today.notice.sub")} />
     <div className="now-notice-card">
       {loop.blockNotices.map((c, i) => (
@@ -81,15 +81,16 @@ export function NowNoticeBlock({ loop, name, practiceLeads }: { loop: Loop; name
   </section>;
 }
 
-/** Tonight's three questions (B-LOOP-10) and, at the week's end, the goal marks (B-PROG-07). */
-export function NowTonightLead({ loop, onStory }: { loop: Loop; onStory?: () => void }) {
-  return <TonightFlow {...loop.tonight} onStory={loop.storyFits ? onStory : undefined} stampMove={MOVE} />;
+/** Tonight's three questions (B-LOOP-10) and, at the week's end, the goal marks
+ *  (B-PROG-07). The story is the door's line at night (critic c2 r1), never here. */
+export function NowTonightLead({ loop }: { loop: Loop }) {
+  return <TonightFlow {...loop.tonight} stampMove={MOVE} />;
 }
 
 /** Before the evening (or behind a chosen step): ONE pointer line, never a module. */
 export function NowTonightPointer({ onOpen }: { onOpen: () => void }) {
   const { t } = useLanguage();
-  return <button type="button" className="now-weekly-door now-tonight-pointer" data-testid="now-tonight-pointer" onClick={onOpen}>
+  return <button type="button" className="now-weekly-door now-tonight-pointer" data-testid="today-tonight-pointer" onClick={onOpen}>
     <Icon name="dark_mode" size={24} />
     <span><b>{t("elev.loop.today.tonight")}</b><small>{t("elev.loop.today.tonightSub")}</small></span>
     <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />

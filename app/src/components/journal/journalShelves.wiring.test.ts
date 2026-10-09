@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { contractFor } from "../../lib/surfaceContract";
-import type { ActiveTab } from "../../lib/routes";
+import type { ActiveTab } from "../../lib/routes";
+import { todayLiveSource } from "../../testTodaySource";
 
 /* B-LOOP-11 — the wiring, as source facts (no jsdom in this repo): JournalTab
    v2 dispatches on the hash query, the ONE stamp literal moved to open-shelf
@@ -58,7 +59,7 @@ describe("the doors and seams", () => {
   });
   it('"Try it today" pins the practice and Today\'s chooser honours the pin (a dose row wins)', () => {
     expect(shelves).toContain("writeTodayPin(childProfile.id, practicePick.practice.id);");
-    expect(strip(src("tabs/OverviewTab.tsx"))).toContain("todayPracticeId: dose?.practiceId ?? readTodayPin(childProfile.id, now),");
+    expect(strip(todayLiveSource())).toContain("todayPracticeId: dose?.practiceId ?? readTodayPin(childProfile.id, now),");
   });
   it("no runtime image generation and no Kid Mode import on the journal's new screens", () => {
     for (const f of ["journal/JournalShelves.tsx", "journal/ShelfGrid.tsx", "journal/ShelfPage.tsx"]) {

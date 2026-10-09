@@ -18,7 +18,8 @@ import { fileURLToPath } from "node:url";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import { HARD_MOMENT_PILOT } from "../../content/pilotRelease";
 import { recentBehaviorTypes } from "../../content/hardMomentSurface";
-import { translate } from "../../lib/i18n";
+import { translate } from "../../lib/i18n";
+import { todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..", "..");
@@ -27,7 +28,7 @@ const strip = (code: string) =>
   code.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 const BAR = strip(read("components/overview/QuickCaptureBar.tsx"));
-const TODAY = strip(read("components/tabs/OverviewTab.tsx"));
+const TODAY = strip(todayLiveSource());
 const MODAL = strip(read("components/overview/QuickLogModal.tsx"));
 
 describe("B-TODAY-10 · four tiles, each ≥44 px", () => {
@@ -80,9 +81,10 @@ describe("B-TODAY-10 · four tiles, each ≥44 px", () => {
 describe("B-TODAY-10 · gating and opener", () => {
   it("the tile renders only when Today passes an opener, gated on available pilot guides", () => {
     expect(BAR).toMatch(/\{onHardMoment && \(/);
+    // Parity 9 Oct: Now's hard-moment door carries the same gate (the bar left with the Today hub).
     expect(TODAY).toMatch(/availableHardMomentCards\(\{ now: at, ageMonths: ageMonthsFromProfile\(childProfile, at\), locale: lang \}\)\.length > 0/);
-    // B-ASKJB-31: the tile opens the ONE "Hard moment now" sheet (context seam).
-    expect(TODAY).toContain("onHardMoment={hardMomentTile ? () => openHardMomentNow() : undefined}");
+    // B-ASKJB-31: the door opens the ONE "Hard moment now" sheet (context seam).
+    expect(TODAY).toContain('{hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}>');
   });
 
   it("after HARD_MOMENT_PILOT.expiresAt no guide is available, so the tile is absent", () => {
@@ -107,15 +109,13 @@ describe("B-TODAY-10 · gating and opener", () => {
 });
 
 describe("NEXTLEVEL critic r1 · Today at 1280 is two tracks, not a stretched phone column", () => {
-  it("capture is the inline-end track (a vertical list) and the anchor the main track; capture stays first in the DOM", () => {
-    expect(TODAY).toMatch(/data-today-tracks="" className="[^"]*lg:grid lg:grid-cols-\[minmax\(0,1fr\)_18rem\]/);
-    // The capture wrapper sits in column 2, the anchor grid in column 1, same row.
-    expect(TODAY).toMatch(/max-md:fixed[^"]*lg:col-start-2 lg:row-start-1/);
-    expect(TODAY).toMatch(/grid min-w-0 grid-cols-1 items-start gap-4 md:gap-5 lg:col-start-1 lg:row-start-1/);
-    expect(TODAY).toMatch(/<QuickCaptureBar[\s\S]{0,80}\bstack\b/);
-    // The old stretched layouts are gone (820 px cap, 1.55fr split).
-    expect(TODAY).not.toContain("lg:max-w-[820px]");
-    expect(TODAY).not.toContain("lg:grid-cols-[1.55fr_1fr]");
+  it("Now at 1280 is two tracks: the lead column and the side column (conversation, then capture)", () => {
+    // Parity 9 Oct: the stacked QuickCaptureBar track left with the Today hub.
+    expect(TODAY).toContain('<div className="now-main-grid">');
+    expect(TODAY.indexOf('<div className="now-main-column">')).toBeLessThan(TODAY.indexOf('<aside className="now-side-column">'));
+    expect(TODAY.indexOf('<aside className="now-side-column">')).toBeLessThan(TODAY.indexOf('<section className="now-capture"'));
+    expect(read("components/companion/nowView.css")).toMatch(/\.now-main-grid \{[^}]*grid-template-columns: minmax\(0, 1\.65fr\) minmax\(0, 1fr\)/);
+    expect(TODAY).not.toContain("<QuickCaptureBar");
   });
 
   it("the stacked bar is one column at lg with icon beside a start-aligned label; #/behaviors keeps the bar", () => {

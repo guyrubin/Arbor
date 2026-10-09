@@ -21,7 +21,8 @@ import RecapStoryCards, { buildRecapCards, type RecapCard, type RecapRecord } fr
 import { weeklyChipIds, isEmptyCurrentWeek } from "./weeklySelection";
 import { en as rcEn, he as rcHe } from "../../lib/i18nElevation/recap";
 import { recapWeekId, recapWeekStartMs, type WeeklyReport } from "../../hooks/useWeeklyRecap";
-import type { WeeklyDigest } from "../../lib/api";
+import type { WeeklyDigest } from "../../lib/api";
+import { todayLiveSource } from "../../testTodaySource";
 
 /**
  * W2 2.1/2.2/2.3 — the weekly recap ritual (masterplan 2026-08-11 §4 ·
@@ -358,7 +359,7 @@ describe("What-changed integration — recap entry line + continuity counter", (
 
   it("reads the app-open auto-generate mount, which Today owns since B-TODAY-08", () => {
     // OverviewTab mounts useWeeklyRecap() once and passes it to the strip.
-    expect(stripComments(read("components/tabs/OverviewTab.tsx"))).toContain("useWeeklyRecap()");
+    expect(stripComments(todayLiveSource())).toContain("useWeeklyRecap()");
     expect(code).toContain("recap: ReturnType<typeof useWeeklyRecap>;");
     expect(code).not.toContain("useWeeklyRecap()");
   });

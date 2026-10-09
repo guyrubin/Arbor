@@ -74,7 +74,7 @@ beforeEach(() => {
 describe("Now leads with the milestone loop (parity 9 Oct)", () => {
   it("a known-age child gets today's practice as the lead, with Did it as the one primary move", () => {
     const html = renderToStaticMarkup(<NowView />);
-    expect(html).toContain('data-module="now-practice"');
+    expect(html).toContain('data-module="today-practice"');
     expect(html).not.toContain('data-module="now-recommendation"');
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     const did = state.buttons.find((item) => item["data-answer"] === "did");
@@ -93,13 +93,13 @@ describe("Now leads with the milestone loop (parity 9 Oct)", () => {
   it("an active program is a line beside the practice, never a competing lead", () => {
     state.program = PROGRAM;
     const html = renderToStaticMarkup(<NowView />);
-    expect(html).toContain('data-module="now-practice"');
+    expect(html).toContain('data-module="today-practice"');
     expect(html).toContain('data-testid="now-program-line"');
     expect(html).toContain("Follow their story");
   });
   it("Tonight's pointer is a line under the morning practice", () => {
     renderToStaticMarkup(<NowView />);
-    expect(state.buttons.some((item) => item["data-testid"] === "now-tonight-pointer")).toBe(true);
+    expect(state.buttons.some((item) => item["data-testid"] === "today-tonight-pointer")).toBe(true);
   });
 });
 
@@ -120,7 +120,7 @@ describe("Now's restored recommendations and one conversation entrance", () => {
     expect(html).toContain('data-module="now-step"');
     expect(html).toContain("Sit together for one page.");
     expect(html).not.toContain('data-module="now-recommendation"');
-    expect(html).not.toContain('data-module="now-practice"');
+    expect(html).not.toContain('data-module="today-practice"');
     expect(state.focusCalls).not.toHaveBeenCalled();
   });
   it("keeps an active chosen program ahead of a new daily offer", () => {

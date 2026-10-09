@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { isFocusStale } from "./useTodaysFocus";
+import { isFocusStale } from "./useTodaysFocus";
+import { todayLiveSource } from "../testTodaySource";
 
 /**
  * P1 language defect (2026-08-12), second instance: the AI focus sentence was
@@ -81,7 +82,7 @@ describe("useTodaysFocus source — language in the key, the record, and the req
  */
 describe("N2-errfocus — focus fetch failure surfaces an inline error + retry", () => {
   const hookSrc = read("hooks/useTodaysFocus.ts");
-  const overviewSrc = read("components/tabs/OverviewTab.tsx");
+  const overviewSrc = todayLiveSource();
   const i18nSrc = read("lib/i18n.ts");
 
   it("the hook exposes the error flag and the retry alongside the focus", () => {
@@ -109,7 +110,7 @@ describe("N2-errfocus — focus fetch failure surfaces an inline error + retry",
 
   it("the practice renders whether or not the focus fetch succeeded (the AI pick only wins inside the candidates)", () => {
     // B-LOOP-13 re-pin: only the AI's OWN pick (practiceVia "ai") reaches the chooser.
-    expect(overviewSrc).toContain('const aiPracticeId = focus?.practiceVia === "ai" ? focus.practiceId : undefined;');
+    expect(overviewSrc).toContain('aiPracticeId: focus?.practiceVia === "ai" ? focus.practiceId : undefined,');
     expect(overviewSrc).toContain("aiPracticeId,");
   });
 
@@ -120,10 +121,13 @@ describe("N2-errfocus — focus fetch failure surfaces an inline error + retry",
     expect(hookSrc).toContain("...(journal ? { journal } : {}),");
     expect(hookSrc).toContain('const whyRaw = practiceVia === "ai" && practiceId ?');
     expect(hookSrc).toContain("...(practiceId && practiceVia ? { practiceId, practiceVia } : {}),");
-    expect(overviewSrc).toContain("}, journal);");
-    expect(overviewSrc).toContain('whyText={pick.via === "ai" ? focus?.why : null}');
+    // Parity 9 Oct: Now's two focus readers (the practice lead's PracticeFocus and
+    // the fallback recommendation lead) never mount together — one request a day.
+    expect(overviewSrc.match(/useTodaysFocus\(childProfile, signals, journal\)/g)).toHaveLength(2);
+    expect(overviewSrc).toContain('whyText={pick.via === "ai" ? whyText ?? null : null}');
     expect(overviewSrc).toContain("candidatePracticeIds: todaysCandidates(base).map((c) => c.practice.id),");
-    expect((overviewSrc.match(/useTodaysFocus\(/g) ?? []).length).toBe(1);
+    expect((overviewSrc.match(/useTodaysFocus\(/g) ?? []).length).toBe(2);
+    expect(overviewSrc).toContain('{lead === "practice" && <PracticeFocus journal={loop.journal} onFocus={setFocus} />}');
     // the Tonight line lands on the day's dose row (the night answer; never the quote keepsake)
     // (P5-LOOP c2 r1: through the named builder lib/loop/tonight tonightLineEntry,
     //  which the demo seed uses too — so yesterday's line is Today's line 1)
@@ -179,9 +183,12 @@ describe("B-TODAY-11 — focus refresh", () => {
   });
 
   it("Today's count = behaviourLogs + playLogs + milestones noticed in 7 days; latestAt rides the signals", () => {
-    const overview = fs.readFileSync(path.join(__dirname, "..", "components", "tabs", "OverviewTab.tsx"), "utf8");
-    expect(overview).toMatch(/behaviorLogs\.filter\(\(l\) => inWindow\(l\.timestamp\)\)\.length \+\s*playLogs\.filter\(\(p\) => inWindow\(p\.timestamp\)\)\.length \+\s*milestones\.filter\(\(m\) => m\.checked && inWindow\(m\.observationUpdatedAt\)\)\.length/);
-    expect(overview).toContain("latestAt: latestRecordAt,");
-    expect(overview).toContain("for (const a of actionLoop) consider(a.outcomeAt);");
+    // Parity 9 Oct: Now computes the signals once, in focusSignalsForNow (both focus readers use it).
+    const model = read("components/companion/nowRecommendationModel.ts");
+    expect(model).toContain("const moments = input.behaviorLogs.filter((row) => inWindow(row.timestamp));");
+    expect(model).toContain("count: moments.length + input.playLogs.filter((row) => inWindow(row.timestamp)).length + input.milestones.filter((row) => row.checked && inWindow(row.observationUpdatedAt)).length,");
+    expect(model).toContain("...(stamps.length ? { latestAt: Math.max(...stamps) } : {}),");
+    expect(model).toContain("...input.actionLoop.filter((row) => inWindow(row.outcomeAt)).map((row) => row.outcomeAt),");
+    expect(todayLiveSource().match(/focusSignalsForNow\(/g)).toHaveLength(2);
   });
 });

@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import { whyLineParts, whyLineFor } from "./todayFocus";
-import { en, he } from "./i18n";
+import { en, he } from "./i18n";
+import { todayLiveSource } from "../testTodaySource";
 
 /**
  * OBJ-TODAY-02 — the Today why-line may only name inputs that exist.
@@ -91,7 +92,7 @@ describe("OBJ-TODAY-02 — the live ledger decides whether there are moments", (
 
 describe("OBJ-TODAY-02 — the prompt card stops asserting unused inputs", () => {
   const card = read("components/overview/PromptCaptureCard.tsx");
-  const overview = read("components/tabs/OverviewTab.tsx");
+  const overview = todayLiveSource();
 
   it("PromptCaptureCard no longer prints the authored whySimple claim", () => {
     // Comments stripped: the prop's doc-comment names the retired key on

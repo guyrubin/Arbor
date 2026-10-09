@@ -23,7 +23,8 @@ import {
   type CarryOverEntry,
 } from "./carryOverAction";
 import { coldStartLineKey } from "./whatChangedEvents";
-import { todayActionId } from "../../actionLoop/model";
+import { todayActionId } from "../../actionLoop/model";
+import { todayLiveSource } from "../../testTodaySource";
 
 const NOW = Date.parse("2026-09-04T08:00:00.000Z");
 const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
@@ -118,7 +119,7 @@ describe("ENG-12 — the step that outlived its day", () => {
 
   it("is mounted on Today, and NOT as a second primary CTA", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
-    const overview = readFileSync(path.join(here, "../tabs/OverviewTab.tsx"), "utf8");
+    const overview = todayLiveSource();
     // B-AI-06: mounted through the single-offer slot (kind "follow-up");
     // B-LOOP-07: that one slot instance sits behind Today's "More for today" door.
     expect(overview).toMatch(/<CompanionOfferSlot\s+surface="today"/);
@@ -153,8 +154,10 @@ describe("ENG-18 — the cold-start progress line", () => {
   // "What changed since you left" card.
   it("Today passes predictRhythm's own daysNeeded into the What-changed card", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
-    const overview = readFileSync(path.join(here, "../tabs/OverviewTab.tsx"), "utf8");
-    expect(overview).toContain("rhythmDaysNeeded={rhythm.daysNeeded}");
+    const overview = todayLiveSource();
+    // Parity 9 Oct: Now hands the loop's rhythm to its door, the door to the card.
+    expect(overview).toContain("rhythmDaysNeeded={loop.rhythm.daysNeeded}");
+    expect(overview).toContain("rhythmDaysNeeded={rhythmDaysNeeded}");
     const narrative = readFileSync(path.join(here, "./WhatChanged.tsx"), "utf8");
     expect(narrative).toContain('data-testid="today-coldstart-line"');
     // FIREWALL: the line may only interpolate the days Arbor needs and the

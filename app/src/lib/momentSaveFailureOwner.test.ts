@@ -27,10 +27,8 @@ const SEAM_TOASTS = [
   // Tonight's "What happened?" on Now (parity 9 Oct): TonightFlow has no inline error.
   "components/companion/useNowLoop.ts",
   "components/kidmode/SneakHandBackCard.tsx",
-  "components/practice/PracticeStudioTab.tsx",
   "components/tabs/BedtimeStoriesTab.tsx",
   "components/tabs/BehaviorsTab.tsx",
-  "components/tabs/OverviewTab.tsx",
 ];
 
 const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");

@@ -34,7 +34,8 @@ vi.mock("../../context/LanguageContext", async () => {
 import TodaySayBackLine, { sayBackDoorLine } from "./TodaySayBackLine";
 import { translate } from "../../lib/i18n";
 import { fromRecordEntry, type FromRecordOpener } from "../../lib/today/fromRecord";
-import type { ActionLoopEntry } from "../../actionLoop/model";
+import type { ActionLoopEntry } from "../../actionLoop/model";
+import { todayLiveSource } from "../../testTodaySource";
 
 const NOW = new Date(2026, 9, 6, 8, 0, 0); // the morning of 6 Oct (local)
 const GUY = ["Hebrew (Native)", "English (Transition)"];
@@ -146,11 +147,13 @@ describe("TodaySayBackLine — rendered (EN + HE)", () => {
 });
 
 describe("the door mounts the line after the step line (Law 6 order)", () => {
-  const OV = fs.readFileSync(path.resolve(__dirname, "../tabs/OverviewTab.tsx"), "utf8");
-  it("inside the door, once, after <TodayStepLine />", () => {
+  const OV = todayLiveSource();
+  it("inside the door, once, after the offer slot", () => {
+    // Parity 9 Oct: the door is Now's NowMoreForToday; the step line left with
+    // the Today hub (an accepted step leads Now).
     const door = OV.slice(OV.indexOf('data-testid="today-door"'), OV.indexOf("</details>"));
     expect(door.match(/<TodaySayBackLine /g)).toHaveLength(1);
-    expect(door.indexOf("<TodayStepLine />")).toBeLessThan(door.indexOf("<TodaySayBackLine "));
-    expect(door).toContain("<TodaySayBackLine keepsakeDocs={keepsakes.items} now={now} />");
+    expect(door.indexOf("<CompanionOfferSlot ")).toBeLessThan(door.indexOf("<TodaySayBackLine "));
+    expect(door).toContain("<TodaySayBackLine keepsakeDocs={keepsakeDocs} now={now} />");
   });
 });

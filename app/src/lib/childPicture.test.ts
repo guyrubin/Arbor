@@ -4,7 +4,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { asksForHero, childPicture } from "./childPicture";
+import { asksForHero, childPicture } from "./childPicture";
+import { todayLiveSource } from "../testTodaySource";
 
 const read = (p: string) => fs.readFileSync(path.resolve(__dirname, p), "utf8");
 const HERO = "https://storage.example/heroes/dylan.webp";
@@ -41,6 +42,6 @@ describe("B-SHELL-27 — every mount reads the one resolver (the same URL everyw
     expect(profile).toContain("<Avatar name={childProfile.name} photoURL={picture.url} size={40} />");
     expect(profile).not.toMatch(/<HeroAvatar size=\{56\}/);
     expect(read("../components/tabs/HeroJourneyTab.tsx")).toContain("{!kidMode && asksForHero(childProfile) && (");
-    expect(read("../components/tabs/OverviewTab.tsx")).toContain("photoURL={childPicture(childProfile).url} size={28}");
+    expect(todayLiveSource()).toContain("photoURL={childPicture(childProfile).url} size={28}");
   });
 });

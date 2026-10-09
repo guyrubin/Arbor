@@ -19,7 +19,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { RESTING_GUIDES, restingGuides } from "./HardMomentsSection";
+import { RESTING_GUIDES, restingGuides } from "./HardMomentsSection";
+import { todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..", "..");
@@ -132,7 +133,7 @@ describe("B-ASKJB-31 — the Hard moment now sheet and its doors", async () => {
   const SHEET = strip(read("components/behaviors/HardMomentNowSheet.tsx"));
   const SHELF = strip(read("components/behaviors/HardMomentsSection.tsx"));
   const COACH = strip(read("components/tabs/CoachTab.tsx"));
-  const TODAY = strip(read("components/tabs/OverviewTab.tsx"));
+  const TODAY = strip(todayLiveSource());
   const SHELL = strip(read("components/layout/Shell.tsx"));
   const CTX = strip(read("context/ArborContext.tsx"));
   const inPilot = new Date(Date.parse(HARD_MOMENT_PILOT.expiresAt) - 7 * 86_400_000);
@@ -175,13 +176,14 @@ describe("B-ASKJB-31 — the Hard moment now sheet and its doors", async () => {
     expect(COACH).toContain("onClick={() => openHardMomentNow()}");
     expect(SHELF).toMatch(/if\s*\(cards\.length\s*===\s*0\)\s*return null/);
     expect(SHELF).toContain("onClick={() => openHardMomentNow(card.id)}");
-    expect(TODAY).toContain("onHardMoment={hardMomentTile ? () => openHardMomentNow() : undefined}");
+    // Parity 9 Oct: Today's door is Now's hard-moment line, gated the same way.
+    expect(TODAY).toContain('{hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}>');
   });
 
   it("one sheet, mounted once in Shell, opened through the context seam", () => {
     expect((SHELL.match(/<HardMomentNowSheet\b/g) ?? []).length).toBe(1);
     expect(CTX).toContain("const openHardMomentNow = (cardId?: string) =>");
-    for (const rel of ["components/tabs/CoachTab.tsx", "components/behaviors/HardMomentsSection.tsx", "components/tabs/OverviewTab.tsx"]) {
+    for (const rel of ["components/tabs/CoachTab.tsx", "components/behaviors/HardMomentsSection.tsx", "components/companion/NowView.tsx"]) {
       expect(strip(read(rel)), rel).not.toMatch(/<HardMomentNowSheet\b/);
     }
   });

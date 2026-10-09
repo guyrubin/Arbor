@@ -15,14 +15,15 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { en as spineEn, he as spineHe } from "../lib/i18nElevation/spine";
+import { en as spineEn, he as spineHe } from "../lib/i18nElevation/spine";
+import { todayLiveSource } from "../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.join(here, rel), "utf8");
 
 const journal = read("tabs/JournalTab.tsx");
 const academy = read("sections/Masterclasses.tsx");
-const overview = read("tabs/OverviewTab.tsx");
+const overview = todayLiveSource();
 const onboarding = read("auth/OnboardingFlow.tsx");
 
 describe("masterplan 1.5 — SpineRibbon mounts", () => {

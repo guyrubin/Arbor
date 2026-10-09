@@ -19,13 +19,14 @@ vi.mock("../../context/LanguageContext", () => ({
 }));
 vi.mock("motion/react", () => ({ motion: { p: (p: Record<string, unknown>) => { const { initial: _i, animate: _a, transition: _t, ...rest } = p; return React.createElement("p", rest); } } }));
 
-import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
+import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
+import { todayLiveSource } from "../../testTodaySource";
 
 const NOTE = "Calmed and put shoes on within 8 mins instead of usual 25.";
 const planOpener: FromRecordOpener = { key: "plan:p1", kind: "plan", topic: "Morning Departure Support Plan", quote: NOTE, quoteSource: "parent", quoteAt: "2026-07-09T08:10:00.000Z" };
 const factOpener: FromRecordOpener = { key: "fact:m1", kind: "fact", topic: null, quote: "דילן started a bilingual kindergarten.", quoteSource: "fact", quoteAt: "2026-08-24T10:00:00.000Z" };
 
-const SRC = fs.readFileSync(path.resolve(__dirname, "OverviewTab.tsx"), "utf8");
+const SRC = todayLiveSource();
 
 beforeEach(() => { harness.lang = "en"; });
 
@@ -89,7 +90,7 @@ describe("B-TODAY-28 — the record card (rendered)", () => {
       expect(html).not.toMatch(/celebrat|confetti|🎉|!|%/);
     }
     // B-LOOP-07: Today quotes the parent's words in the practice card (THEN and NOW on its shelf).
-    expect(SRC).toContain("quotes={quotes}");
+    expect(SRC).toContain("quotes={loop.quotes}");
   });
 });
 
@@ -124,8 +125,9 @@ describe("NEXTLEVEL critic r1 — a named topic, a joy opener, the chips are the
   it("OverviewTab: no standalone record card; the first block carries the one stamp; the rail sits behind the door", () => {
     expect(SRC).not.toContain("<FromRecordCard");
     // P5 design r1 P0-1: the stamp is on the first block's answers, not a wrapper.
-    expect(SRC).toContain('const primaryStamp = { "data-primary-move": "do-practice" } as const;');
-    expect(SRC).not.toContain('<div data-primary-move="do-practice"');
+    // Parity 9 Oct: Now's loop blocks pass ONE stamp const through their props.
+    expect(SRC).toContain('const stamp = { "data-primary-move": MOVE } as const;');
+    expect(SRC).not.toContain("<div data-primary-move=");
     // P5 r1 pass A5: the rail is superseded by the three blocks on Today.
     expect(SRC).not.toContain("<FirstStepsRail");
   });
@@ -136,17 +138,16 @@ describe("B-TODAY-28 — OverviewTab wiring (source pin)", () => {
     expect(SRC).not.toContain("today.greeting.");
     expect(SRC).not.toContain('t("today.header.prompt")');
     expect(SRC).toContain('data-testid="today-identity"');
-    // P5 design r1 P0-1: name · age on ONE line; the weekday is in the eyebrow.
+    // Parity 9 Oct: name · age on ONE line after the date in Now's eyebrow.
     expect(SRC).toMatch(/"elev\.loop\.today\.identity"/);
-    expect(SRC).toMatch(/"elev\.loop\.today\.eyebrow"/);
   });
 
-  it("critic r1 (Law 8): the identity h1 inherits the page direction — no dir=auto, no outer bdi", () => {
+  it("critic r1 (Law 8): the identity line inherits the page direction — no dir=auto, no outer bdi", () => {
     const at = SRC.indexOf('data-testid="today-identity"');
-    const h1 = SRC.slice(SRC.lastIndexOf("<h1", at), SRC.indexOf("</h1>", at));
-    expect(h1).not.toMatch(/dir=/);
-    expect(h1).not.toMatch(/<bdi/);
-    expect(h1).toMatch(/var\(--t-lg\)/);
+    const line = SRC.slice(SRC.lastIndexOf("<p", at), SRC.indexOf("</p>", at));
+    expect(line).not.toMatch(/dir=/);
+    expect(line).not.toMatch(/<bdi/);
+    expect(line).toContain('t("elev.loop.today.identity", { name, age: ageText })');
   });
 
   // P5 r1 pass A1 re-pin: the parent's words sit right under the TITLE (the

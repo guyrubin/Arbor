@@ -22,8 +22,9 @@ import Icon from "../ui/Icon";
  *  · the say-back question (B-GROWTH-36), the watch signal (C1 — clinical,
  *    "worth mentioning to your pediatrician", no other push home) and the
  *    sibling lines (B-TODAY-18);
- *  · lines to bedtime (evening, age-fit), Daily Play, Day Windows and Gentle
- *    Reminders (the Today tools the pill row used to carry).
+ *  · lines to bedtime (evening, age-fit) and Daily Play. Day Windows keeps
+ *    its B-TODAY-13 door (the rhythm cue's "See the hours", via the offer
+ *    slot) and Settings; Gentle Reminders lives in Settings.
  * Lines only; nothing here competes with the lead's one move.
  */
 export default function NowMoreForToday({ now, evening, storyFits, rhythmDaysNeeded, keepsakeDocs, previousVisitAt, isReturning, todayOffer }: {
@@ -74,7 +75,7 @@ export default function NowMoreForToday({ now, evening, storyFits, rhythmDaysNee
     </button>
   );
 
-  return <details className="now-more" data-module-disclosure="now-more" data-testid="now-more" open={changedWould || undefined}>
+  return <details className="now-more" data-module-disclosure="today-more" data-testid="today-door">
     <summary>
       <span><b>{t("elev.loop.today.door")}</b><small>{t("elev.loop.today.doorSub")}</small></span>
       <Icon name="expand_more" size={20} />
@@ -85,10 +86,8 @@ export default function NowMoreForToday({ now, evening, storyFits, rhythmDaysNee
       <TodaySayBackLine keepsakeDocs={keepsakeDocs} now={now} />
       {!dayZero && <ArborNoticedCard />}
       <FamilyOfferLines activeChildId={childProfile.id} />
-      {evening && storyFits && line("now-more-story", "auto_stories", t("elev.loop.tonight.story"), () => setActiveTab("bedtime-stories"))}
-      {line("now-more-play", "sports_esports", t("elev.loop.door.play"), () => setActiveTab("daily-play"))}
-      {line("now-more-windows", "schedule", t("nav.tab.day-windows"), () => setActiveTab("day-windows"))}
-      {line("now-more-reminders", "notifications", t("nav.tab.smart-reminders"), () => setActiveTab("smart-reminders"))}
+      {evening && storyFits && line("today-door-story", "auto_stories", t("elev.loop.tonight.story"), () => setActiveTab("bedtime-stories"))}
+      {line("today-door-play", "sports_esports", t("elev.loop.door.play"), () => setActiveTab("daily-play"))}
     </div>
   </details>;
 }

@@ -33,7 +33,11 @@ const GRADIENT = /--arbor-gradient-primary|--gradient-cta|\bgradient-cta\b/;
 const SCOPE_DIRS = ["overview", "onboarding", "trust", "ui", "weekly"];
 /** Individually scoped leaves outside those directories. */
 const SCOPE_FILES = [
-  "tabs/OverviewTab.tsx",
+  // Parity 9 Oct: Today is NowView and the loop it runs.
+  "companion/NowView.tsx",
+  "companion/NowLoopBlocks.tsx",
+  "companion/NowMoreForToday.tsx",
+  "companion/NowRecommendation.tsx",
   "tabs/JournalTab.tsx",
   "tabs/WeeklyTab.tsx",
 ];

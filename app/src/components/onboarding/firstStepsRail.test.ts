@@ -10,12 +10,13 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.join(here, rel), "utf8").replace(/\r\n/g, "\n");
 const rail = read("FirstStepsRail.tsx");
-const overview = read("../tabs/OverviewTab.tsx");
+const overview = todayLiveSource();
 const steps = rail.slice(rail.indexOf("const STEPS"), rail.indexOf("export interface FirstStepsRailState"));
 
 /** The pre-fix capture row, verbatim — the negative control. */
@@ -54,7 +55,10 @@ describe("B-TODAY-07 · rail order and capture target", () => {
     // blocks (practice · notice · tonight are the first steps); it is no
     // longer mounted there. The capture seam it used stays pinned below.
     expect(overview).not.toContain("<FirstStepsRail");
-    expect(overview).toMatch(/const startCapture = \(mode: CaptureMode[^)]*\) => \{\s*setQuickLogMode\(mode\);[\s\S]{0,120}setQuickLogOpen\(true\);/);
+    // Parity 9 Oct: Now's capture doors open the ONE sheet in place through the
+    // context seam (openCaptureSheet) — the route stays #/overview.
+    expect(overview).toContain('openCaptureSheet({ mode: "text" })');
+    expect(overview).not.toContain('setActiveTab("behaviors")');
     expect(overview).not.toMatch(/FirstStepsRail onCapture=\{\(\) => setActiveTab\(/);
   });
 });

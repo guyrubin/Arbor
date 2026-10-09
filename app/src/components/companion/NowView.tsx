@@ -20,6 +20,8 @@ import { useCompanionOffer } from "../overview/useCompanionOffer";
 import { practiceText } from "../loop/PracticeCard";
 import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import { trackActionOffered } from "../../lib/loopEvents";
+import { availableHardMomentCards } from "../../content/selectCards";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 import Icon from "../ui/Icon";
 import { Avatar } from "../ui/Avatar";
 import "./companionExperience.css";
@@ -103,6 +105,12 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCaptureMode]);
   const openProgram = () => { setActiveTab("development"); window.location.hash = "#/development?view=program"; };
+  // B-TODAY-10 / B-ASKJB-31: the hard-moment door shows only while a pilot
+  // guide fits this child and language — the gate every door to the sheet shares.
+  const hardMomentDoor = useMemo(() => {
+    const at = new Date();
+    return availableHardMomentCards({ now: at, ageMonths: ageMonthsFromProfile(childProfile, at), locale: lang }).length > 0;
+  }, [childProfile, lang]);
 
   // ── The milestone loop (parity 9 Oct): practice → Did it → Tonight → notice. ──
   const [focus, setFocus] = useState<Focus | null>(null);
@@ -135,18 +143,17 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
       <div>
         <div className="now-identity">
           <Avatar name={childProfile.name} photoURL={childPicture(childProfile).url} size={28} />
-          <p className="companion-eyebrow">{dateLine}{ageText ? <> · <bdi>{t("elev.loop.today.identity", { name, age: ageText })}</bdi></> : null}</p>
+          <p className="companion-eyebrow" data-testid="today-identity">{dateLine}{ageText ? <> · {t("elev.loop.today.identity", { name, age: ageText })}</> : null}</p>
         </div>
         <h1 className="arbor-type-hero">{copy.title(name)}</h1><p>{copy.subtitle}</p>
-        {lifecycleNote && lead !== "practice" && <p className="now-lifecycle-note" role="note">{lifecycleNote}</p>}
       </div>
     </header>
 
     <div className="now-main-grid">
       <div className="now-main-column">
         {lead === "practice" && <PracticeFocus journal={loop.journal} onFocus={setFocus} />}
-        {lead === "tonight" ? <section className="now-loop-lead" data-module="now-tonight" aria-label={t("elev.loop.today.tonight")}>
-          <NowTonightLead loop={loop} onStory={() => setActiveTab("bedtime-stories")} />
+        {lead === "tonight" ? <section className="now-loop-lead" data-module="today-tonight" aria-label={t("elev.loop.today.tonight")}>
+          <NowTonightLead loop={loop} />
         </section> : lead === "step" && chosen ? <section className="now-lead arbor-depth-primary" data-module="now-step" aria-labelledby={`${id}-step`}>
           <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name={receiptAction ? "check" : "bookmark"} size={24} /></span><div><p className="companion-eyebrow">{copy.chosen}</p><p className="now-provenance">{receiptAction ? copy.saved : copy.today}</p></div></div>
           <h2 id={`${id}-step`} className="now-lead-title">{receiptAction ? copy.finishedTitle : copy.chosenTitle}</h2>
@@ -158,10 +165,10 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
           </div>}
           <PrimaryMove primary={!!receiptAction} type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(chosen.recommendation))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></PrimaryMove>
           {saveError && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
-        </section> : lead === "practice" && loop.pick ? <section className="now-loop-lead" data-module="now-practice" aria-label={copy.today}>
+        </section> : lead === "practice" && loop.pick ? <section className="now-loop-lead" data-module="today-practice" aria-label={copy.today}>
           <NowPracticeLead loop={loop} name={name} whyText={focus?.why} headerNote={lifecycleNote} adaptLabel={copy.adapt}
             onAdapt={() => talk(copy.adaptPrompt(practiceText(loop.pick!.practice, "do", lang, childProfile.gender)))} />
-        </section> : lead === "notice" ? <section className="now-loop-lead" data-module="now-notice-lead" aria-label={t("elev.loop.today.notice.title")}>
+        </section> : lead === "notice" ? <section className="now-loop-lead" data-module="today-practice" aria-label={t("elev.loop.today.notice.title")}>
           <NowNoticeLead loop={loop} name={name} />
         </section> : lead === "program" && program ? <section className="now-lead arbor-depth-primary" data-module="now-program" aria-labelledby={`${id}-program`}>
           <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name="menu_book" size={24} /></span><p className="companion-eyebrow">{copy.programLabel}</p></div>
@@ -170,11 +177,12 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
           <div className="now-lead-actions"><PrimaryMove type="button" className="companion-primary" onClick={openProgram}>{copy.continueProgram}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove></div>
           <button type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(program.content.skill[lang]))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></button>
         </section> : <NowRecommendation name={name} onTalkOpen={talk} journal={loop.journal} />}
+        {lifecycleNote && lead !== "practice" && <p className="now-lifecycle-note" role="note">{lifecycleNote}</p>}
 
-        {showNotice && <div data-module="now-notice"><NowNoticeBlock loop={loop} name={name} practiceLeads={lead === "practice"} /></div>}
+        {showNotice && <div data-module="today-notice"><NowNoticeBlock loop={loop} name={name} practiceLeads={lead === "practice"} /></div>}
         {showPointer && <NowTonightPointer onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }} />}
 
-        <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}><Icon name="volunteer_activism" size={24} /><span><b>{copy.hardTitle}</b><small>{copy.hardBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
+        {hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}><Icon name="volunteer_activism" size={24} /><span><b>{copy.hardTitle}</b><small>{copy.hardBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>}
         <button type="button" className="now-weekly-door" onClick={() => setActiveTab("weekly")}><Icon name="calendar_month" size={24} /><span><b>{copy.weeklyTitle}</b><small>{copy.weeklyBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
         <NowMoreForToday now={loop.now} evening={loop.evening} storyFits={loop.storyFits} rhythmDaysNeeded={loop.rhythm.daysNeeded}
           keepsakeDocs={loop.keepsakeDocs} previousVisitAt={previousVisitAt} isReturning={isReturning} todayOffer={todayOffer} />
