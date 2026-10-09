@@ -498,7 +498,6 @@ export default function Shell() {
             >
               {pillRowFor(section, activeTab).map((it) => {
                 const on = it.tab === activeTab;
-                const PillIcon = it.icon;
                 return (
                   <button
                     key={it.tab}
@@ -514,7 +513,7 @@ export default function Shell() {
                         : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }),
                     }}
                   >
-                    <PillIcon className="w-3.5 h-3.5" /> {t("nav.tab." + it.tab)}
+                    <Icon name={it.msIcon} size={14} /> {t("nav.tab." + it.tab)}
                   </button>
                 );
               })}

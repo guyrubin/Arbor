@@ -96,13 +96,13 @@ describe("B-GROWTH-06 — grep acceptance over app/src (non-test)", () => {
 });
 
 describe("B-GROWTH-06 — no gauge metaphor, no Latin domain label under he", () => {
-  it("DevScoreCard wears eco, not speed; the Development nav item a Sprout, not a Gauge", () => {
+  it("DevScoreCard wears eco, not speed; the Development nav item a sprout (eco), not a gauge", () => {
     const card = stripComments(read("components/sections/DevScoreCard.tsx"));
     expect(card).not.toContain('name="speed"');
     expect(card).toContain('<Icon name="eco" size={15} />');
     const nav = stripComments(read("lib/navigation.ts"));
-    expect(nav).not.toMatch(/\bGauge\b/);
-    expect(nav.match(/\{ tab: "development", label: "Development", icon: Sprout \}/g)?.length).toBe(2);
+    expect(nav).not.toMatch(/\bGauge\b|"speed"/);
+    expect(nav.match(/\{ tab: "development", label: "Development", msIcon: "eco" \}/g)?.length).toBe(2);
   });
 
   it("the sr-only domain labels go through the domain registry (B-GROWTH-26) — Hebrew for every framework domain", () => {

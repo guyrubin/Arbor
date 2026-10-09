@@ -59,6 +59,10 @@ export default function MobileNav() {
         style={{ borderTop: "1px solid var(--arbor-rule)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         {primary.map((sec) => {
+          // One glyph per place: the dock takes Now / My child / Together's
+          // glyph from lib/companionPlaces.ts, the same source the desktop
+          // sidebar reads (iconFamily.guard.test.ts holds both). The section
+          // glyph is only a fallback for a dock section that is not a place.
           const place = COMPANION_PLACES.find(p => p.tab === primaryTabOf(sec));
           const on = sec.id === "ask" ? activeTab === "coach" : activeTab !== "coach" && place?.id === placeForTab(activeTab).id;
           const label = place ? (uiLang === "he" ? place.he : place.en) : t("companion.mobile-nav.talk");
@@ -90,7 +94,7 @@ export default function MobileNav() {
               style={{ color: on ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
             >
               <span className="relative inline-flex">
-                <Icon name={sec.msIcon} size={emphasized ? 21 : 18} chrome active={on} />
+                <Icon name={place?.icon ?? sec.msIcon} size={emphasized ? 21 : 18} chrome active={on} />
                 {showBadge && (
                   <span
                     aria-hidden="true"
