@@ -188,12 +188,13 @@ describe("K2 4a: commit", () => {
     expect(await s.docs.read("owner", "kid1", BOOK)).toBeNull();
     for (const pose of draw.slice(5)) await s.put(poseRel(pose), webp(200, 400), ANCHOR);
     await s.put(`hero-sheets/h-${HASH}/choices/b.webp`, webp(800, 600));
-    expect((await (await s.commit({ avatarHash: HASH, dryRun: true })).json()).complete).toBe(true);
+    expect(await (await s.commit({ avatarHash: HASH, dryRun: true })).json()).toMatchObject({ complete: true, missing: [], committed: false, admin: false });
     const r = await s.commit({ avatarHash: HASH });
     expect(r.status).toBe(200);
     const out = await r.json();
     expect(out.removed).toBe(1);
     expect(out.local).toBeUndefined();
+    expect((await (await s.commit({ avatarHash: HASH, dryRun: true })).json()).committed).toBe(true);
     const doc = await s.docs.read("owner", "kid1", BOOK);
     expect(doc).toMatchObject({ id: BOOK, bookId: BOOK, sheetId: `h-${HASH}`, setId: "none", createdAt: "2026-10-09T12:00:00.000Z" });
     expect(Object.keys(doc!.sheetManifest.poses).sort()).toEqual(draw);
@@ -219,6 +220,7 @@ describe("K2 4a: commit", () => {
     expect((await s.commit({ avatarHash: HASH }, "stranger")).status).toBe(403);
     expect((await (await s.commit({ avatarHash: OTHER })).json()).code).toBe("hero_changed");
     expect((await s.commit({ avatarHash: "../x" })).status).toBe(400);
+    expect((await (await s.commit({ avatarHash: HASH, dryRun: true })).json()).admin).toBe(true);
     const admin = await s.commit({ avatarHash: HASH });
     expect(admin.status).toBe(409);
     expect((await admin.json()).code).toBe("book_sheet_admin");

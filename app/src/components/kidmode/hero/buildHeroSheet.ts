@@ -285,6 +285,13 @@ export const browserImageDeps: Pick<BuilderDeps, "decode" | "encodeSprite" | "en
 
 const running = new Map<string, Promise<BuildResult>>();
 
+/** K2 4b: once the game's idle of this hero exists, the child's BOOK sheet
+ *  follows on this device (buildBookSheet: the book poses are anchored on that
+ *  idle). Loaded on demand; the browser path only (an injected build is a test). */
+function chainBookSheet(childId: string, avatarHash: string): void {
+  void import("./buildBookSheet").then((m) => m.startBrowserBookSheet(childId, avatarHash)).catch(() => undefined);
+}
+
 /** The browser builder for one child (Firestore when signed in, else the device copy). */
 export function browserBuilderDeps(childId: string): BuilderDeps {
   return {
@@ -311,6 +318,7 @@ export function startHeroSheet(input: { childId: string; photoUrl: string; sourc
     .catch((): BuildResult => ({ status: "stopped", stored: [], skipped: [], stoppedBy: "error", calls: 0 }))
     .finally(() => running.delete(key));
   running.set(key, job);
+  if (!deps) void job.then((r) => { if (r.stored.includes(HERO_SHEET_ANCHOR)) chainBookSheet(input.childId, avatarHash); });
   return job;
 }
 
@@ -338,7 +346,11 @@ export async function ensureHeroSheet(child: { id: string; photoUrl?: string | n
   ensured.add(key);
   const d = deps ?? browserBuilderDeps(child.id);
   const docs = await d.store.read().catch(() => null);
-  if (docs?.meta?.avatarHash === avatarHash && docs.meta.status !== "building") return null;
+  if (docs?.meta?.avatarHash === avatarHash && docs.meta.status !== "building") {
+    // The game sheet exists: the book sheet follows (it skips itself when the book already shows this hero).
+    if (!deps && docs.poses[HERO_SHEET_ANCHOR]?.avatarHash === avatarHash) chainBookSheet(child.id, avatarHash);
+    return null;
+  }
   return startHeroSheet({ childId: child.id, photoUrl: child.photoUrl, source: "descriptor" }, d);
 }
 /** Test seam. */

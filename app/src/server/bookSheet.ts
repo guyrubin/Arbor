@@ -13,8 +13,8 @@
  *        stopgap, lib/library/bookPoses) must be there; writes
  *        users/{uid}/children/{cid}/bookAssets/{bookId} (the BookAssetsDoc the
  *        reader and useChildLibraryBooks read) and removes an older hero's
- *        sheet folder. dryRun answers { complete, missing, have } and changes
- *        nothing (the builder's resume probe).
+ *        sheet folder. dryRun answers { complete, missing, have, committed,
+ *        admin } and changes nothing (the builder's resume probe).
  *
  * Refusals (route-tested): no verified caller 401 (fail-closed unless the
  * sandbox's `local`), another family 403 (requireOwnership), Free 403
@@ -228,10 +228,14 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
       }
       const missing = missingBookPoses(book, Object.keys(poses));
       const have = [...byRel.keys()].filter((rel) => rel.startsWith(`hero-sheets/${sheetId}/`)).sort();
-      if (body.dryRun === true) return void res.json({ complete: missing.length === 0, missing, have });
-      if (missing.length) return refuse(res, 409, "book_sheet_incomplete", "The sheet is not complete", { missing, have });
       const existing = await deps.docs.read(g.owner, g.childId, g.bookId).catch(() => null);
-      if (existing?.sheetId && !isHeroBookSheetId(existing.sheetId)) return refuse(res, 409, "book_sheet_admin", "This book has an uploaded sheet");
+      const admin = !!existing?.sheetId && !isHeroBookSheetId(existing.sheetId);
+      if (body.dryRun === true) {
+        // committed: the book already shows THIS hero; admin: an uploaded sheet the pipeline never replaces
+        return void res.json({ complete: missing.length === 0, missing, have, committed: existing?.sheetId === sheetId, admin });
+      }
+      if (missing.length) return refuse(res, 409, "book_sheet_incomplete", "The sheet is not complete", { missing, have });
+      if (admin) return refuse(res, 409, "book_sheet_admin", "This book has an uploaded sheet");
       const choices: Record<string, string> = {};
       for (const c of book.decision.choices) if (byRel.has(bookSheetChoiceRel(sheetId, c.id))) choices[c.id] = `choices/${c.id}.webp`;
       // The child's narration set (Block 2) stays with the book across a recommit.

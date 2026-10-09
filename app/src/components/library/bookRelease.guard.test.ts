@@ -104,7 +104,9 @@ describe("R3: no model call on the book path", () => {
 
 describe("R2: a child without complete private files sees no change", () => {
   it("the hook is cloud-only and empty until loaded; the kid home shows library books only with the opener", () => {
-    expect(read("components/kidmode/useChildLibraryBooks.ts")).toContain("col.remote && col.loaded ? libraryBookEntries(col.items) : []");
+    // K2: the device copy only in a build WITHOUT Firebase (the local sandbox)
+    expect(read("components/kidmode/useChildLibraryBooks.ts")).toContain("col.loaded && (col.remote || bookDocsOnDevice()) ? libraryBookEntries(col.items) : []");
+    expect(read("lib/bookAssets.ts")).toContain("export const bookDocsOnDevice = (): boolean => !firebaseEnabled;");
     const dash = read("components/kidmode/KidDashboard.tsx");
     expect(dash).toContain("const tonightLib = onOpenBook ? libraryBooks[0] ?? null : null;");
     expect(dash).toContain("const moreLib = onOpenBook ? libraryBooks.slice(1) : [];");

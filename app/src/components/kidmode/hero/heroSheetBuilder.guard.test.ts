@@ -23,7 +23,8 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 const rel = (p: string) => path.relative(SRC, p).split(path.sep).join("/");
-const BUILDER_FILES = new Set(["components/kidmode/hero/buildHeroSheet.ts"]);
+// K2 4b: the book sheet builder is the same kind of parent-side file.
+const BUILDER_FILES = new Set(["components/kidmode/hero/buildHeroSheet.ts", "components/kidmode/hero/buildBookSheet.ts", "components/kidmode/hero/choiceCards.ts"]);
 
 describe("B-GAME-13c: Kid Mode never draws a hero", () => {
   const kid = walk(KIDMODE);
@@ -36,7 +37,7 @@ describe("B-GAME-13c: Kid Mode never draws a hero", () => {
   it("no Kid Mode module imports the builder or calls the pose route", () => {
     const offenders = kid
       .filter((f) => !BUILDER_FILES.has(rel(f)))
-      .filter((f) => { const s = readFileSync(f, "utf8"); return /from\s+["'][^"']*buildHeroSheet["']/.test(s) || s.includes("/api/hero-pose"); })
+      .filter((f) => { const s = readFileSync(f, "utf8"); return /from\s+["'][^"']*(buildHeroSheet|buildBookSheet|choiceCards)["']/.test(s) || /import\(["'][^"']*buildBookSheet["']\)/.test(s) || s.includes("/api/hero-pose") || s.includes("/commit`"); })
       .map(rel);
     expect(offenders).toEqual([]);
   });
@@ -46,6 +47,14 @@ describe("B-GAME-13c: Kid Mode never draws a hero", () => {
     for (const f of games) expect(readFileSync(f, "utf8"), rel(f)).not.toMatch(/heroKeyer|buildHeroSheet/);
     const writers = kid.filter((f) => /\.(writePose|writeMeta)\(/.test(readFileSync(f, "utf8"))).map(rel);
     expect(writers).toEqual(["components/kidmode/hero/buildHeroSheet.ts"]);
+  });
+
+  it("K2 4b: the book sheet follows the game's idle from the parent-side builder only (never an injected build, never Kid Mode)", () => {
+    const b = readFileSync(path.join(SRC, "components/kidmode/hero/buildHeroSheet.ts"), "utf8");
+    expect(b).toContain('void import("./buildBookSheet").then((m) => m.startBrowserBookSheet(childId, avatarHash))');
+    expect(b).toContain("if (!deps) void job.then((r) => { if (r.stored.includes(HERO_SHEET_ANCHOR)) chainBookSheet(input.childId, avatarHash); });");
+    expect(b).toContain("if (!deps && docs.poses[HERO_SHEET_ANCHOR]?.avatarHash === avatarHash) chainBookSheet(child.id, avatarHash);");
+    expect((b.match(/chainBookSheet\(/g) ?? []).length).toBe(3);
   });
 
   it("the parent side starts it from the accept, not from a render", () => {

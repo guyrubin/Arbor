@@ -25,6 +25,12 @@ import type { HeroSheet } from "./library/heroSheet";
 import { cueFileOf, sharedNarrationUrls } from "./library/narrationFiles";
 import { loadStaticJson } from "./library/staticJson";
 import type { Book } from "./library/types";
+import { firebaseEnabled } from "./firebase";
+
+/** K2 sandbox: a build WITHOUT Firebase (the local sandbox) keeps the book
+ *  docs on the device (the builder's local commit, components/kidmode/hero/
+ *  buildBookSheet.ts); a Firebase build reads the cloud collection only. */
+export const bookDocsOnDevice = (): boolean => !firebaseEnabled;
 
 export interface LibraryBookEntry {
   book: Book;
