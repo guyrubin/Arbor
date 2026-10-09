@@ -182,7 +182,7 @@ export default function TogetherView() {
         </div>}
         {preview?.kind === "offscreen" && <div className="companion-preview" dir={he ? "rtl" : "ltr"}>
           <img src="/visuals/companion/together-table.webp" width="960" height="640" alt="" />
-          <p>{offline(preview.id).detail}</p><blockquote className="companion-say" dir="auto">“{offline(preview.id).say}”</blockquote>
+          <p>{offline(preview.id).detail}</p><blockquote className="companion-say" dir="auto">{t("elev.loop.ms.quoted", { text: offline(preview.id).say })}</blockquote>
           <p className="companion-caption">{t("companion.together-view.you-can-put-the-screen-down-and-try-it-the")}</p>
           <button type="button" className="companion-primary" onClick={() => setPreview(null)}>{t("companion.together-view.let-s-give-it-a-try")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>
           <button type="button" className="companion-text-button" disabled={saving || kept.includes(preview.id)} onClick={() => void keepOffline(preview.id)}><Icon name={kept.includes(preview.id) ? "check" : "bookmark_add"} size={18} />{kept.includes(preview.id) ? (t("companion.together-view.a-moment-from-your-time-together-is-saved")) : (t("companion.together-view.we-already-tried-it-keep-the-moment"))}</button>

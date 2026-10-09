@@ -233,6 +233,8 @@ describe("B-KID-06 · Word World never claims a Kid Mode seat", async () => {
     expect(baseEn["practice.studio.openIn"]).toContain("{tab}");
     expect(baseHe["practice.studio.openIn"]).toContain("{tab}");
     expect(baseHe["nav.tab.language"]).toMatch(/[֐-׿]/);
-    expect(read("../practice/PracticeStudioTab.tsx")).toContain('t("practice.studio.openIn", { tab: t(world.tabNameKey) })');
+    // Parity 9 Oct: Together opens a world that has no Kid Mode seat (or does
+    // not work in the UI language) on its own parent tab — honest navigation.
+    expect(read("../companion/TogetherView.tsx")).toContain("if (direct && world.tab) setActiveTab(world.tab);");
   });
 });

@@ -706,7 +706,8 @@ describe("RUN-21: the sub-greeting derives from real state", () => {
     expect(src).not.toContain("kid.safety.");
     expect(src).toContain("lastPlayedWorldYesterday(");
     // …and the chips now live on the parent-side door.
-    const door = stripComments(readFileSync(path.join(__dirname, "..", "practice", "PracticeStudioTab.tsx"), "utf8"));
+    // Parity 9 Oct: #/practice is Together; the chips are in its parent footer.
+    const door = stripComments(readFileSync(path.join(__dirname, "..", "companion", "TogetherView.tsx"), "utf8"));
     for (const k of ["elev.practice.door.locked", "elev.practice.door.private", "elev.practice.door.stars"]) expect(door).toContain(k);
   });
 });

@@ -240,7 +240,7 @@ describe("KID-21 — the parent challenge is not the same sum on every device", 
   });
 
   it("the nudge renders on the PARENT door, in the parent register", () => {
-    const studio = stripComments(read("components/practice/PracticeStudioTab.tsx"));
+    const studio = stripComments(read("components/companion/TogetherView.tsx"));
     expect(studio).toContain("shouldNudgeForPin()");
     expect(studio).toContain("markPinNudgeShown()");
     expect(studio).toContain('t("elev.gate.set.title")');

@@ -322,7 +322,7 @@ describe("OBJ-PRACTICE-02 — hardcoded English on the practice doors is a shrin
 
   it("JourneyTab, the launcher and the Full Picture are CLEAN", () => {
     expect(englishLines("components/practice/JourneyTab.tsx")).toEqual([]);
-    expect(englishLines("components/practice/PracticeStudioTab.tsx")).toEqual([]);
+    expect(englishLines("components/companion/TogetherView.tsx")).toEqual([]);
     // R22 (Builder L) — the ratchet reached zero on this file; pinned so a
     // future edit cannot re-add a literal under a restored freeze entry.
     expect(englishLines("components/practice/DevelopmentCopilot.tsx")).toEqual([]);

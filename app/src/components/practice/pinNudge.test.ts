@@ -1,5 +1,6 @@
 /**
- * B-PLAY-06 — the PIN nudge on #/practice becomes a button.
+ * B-PLAY-06 — the PIN nudge on #/practice becomes a button. (Parity 9 Oct:
+ * #/practice is Together; the nudge lives there, once, above the footer.)
  *
  * It was a static <p> ending "… · Settings": a parent had to find Settings and
  * then the PIN row on their own. It is now a 44 px button that asks the shell
@@ -14,18 +15,20 @@ import { consumeSettingsFocus, requestOpenSettings, SETTINGS_FOCUS_ANCHOR, SETTI
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.join(here, rel), "utf8").replace(/\r\n/g, "\n");
-const studio = read("PracticeStudioTab.tsx");
+const studio = read("../companion/TogetherView.tsx");
+const css = read("../companion/companionExperience.css");
 const settings = read("../layout/SettingsModal.tsx");
 
 describe("B-PLAY-06 · the nudge is a button that lands on the PIN row", () => {
-  const at = studio.indexOf('data-testid="gate-pin-nudge"');
+  const at = studio.indexOf('data-testid="together-pin-nudge"');
   const tagStart = studio.lastIndexOf("<", at);
   const tag = studio.slice(tagStart, studio.indexOf(">\n", at));
 
   it("gate-pin-nudge sits on a <button> (not a <p>), at the 44 px floor", () => {
     expect(at).toBeGreaterThan(-1);
     expect(tag).toMatch(/^<button\b/);
-    expect(tag).toContain("min-h-11");
+    expect(tag).toContain('className="companion-pin-nudge"');
+    expect(css).toMatch(/\.companion-pin-nudge \{[^}]*min-block-size: 44px/);
     expect(tag).toContain('type="button"');
   });
 
