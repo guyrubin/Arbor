@@ -32,9 +32,10 @@ import {
 import { keySprite, normalisePose, sheetReference, type KeyedSprite, type RgbaImage, type SheetReference } from "./heroKeyer";
 import { heroSheetStoreFor, type HeroSheetDocs, type HeroSheetStore } from "./heroSheetStore";
 
+export type PoseRefusal = { ok: false; status: number; code: string };
 export type PoseResponse =
   | { ok: true; dataUrl: string; avatarHash: string; model?: string }
-  | { ok: false; status: number; code: string };
+  | PoseRefusal;
 
 export interface BuilderDeps {
   requestPose(body: { childId: string; pose: HeroSheetPoseId; avatarHash: string }): Promise<PoseResponse>;
@@ -66,7 +67,10 @@ const SAVE_WAIT_MS = 5000;
 const SAVE_WAITS = 24;
 const BUSY_RETRIES = 3;
 
-type Drawn = { ok: true; keyed: KeyedSprite } | { ok: false; stop?: string; skip?: string };
+type NotDrawn = { ok: false; stop?: string; skip?: string };
+// The app compiles without strictNullChecks, so `!x.ok` does not narrow a
+// boolean-literal union: the failure halves are read through explicit casts.
+type Drawn = { ok: true; keyed: KeyedSprite } | NotDrawn;
 
 /**
  * Draw one pose: route call (waiting for the save, backing off when busy),
@@ -79,8 +83,9 @@ async function drawPose(childId: string, pose: HeroSheetPoseId, avatarHash: stri
       count();
       res = await deps.requestPose({ childId, pose, avatarHash }).catch(() => ({ ok: false as const, status: 0, code: "network" }));
       if (res.ok) break;
-      if (res.code === HERO_POSE_REFUSALS.changed && wait < SAVE_WAITS) { wait++; await deps.sleep(SAVE_WAIT_MS); continue; }
-      if (TERMINAL.has(res.code) || res.code === HERO_POSE_REFUSALS.changed) return { ok: false, stop: res.code };
+      const { code } = res as PoseRefusal;
+      if (code === HERO_POSE_REFUSALS.changed && wait < SAVE_WAITS) { wait++; await deps.sleep(SAVE_WAIT_MS); continue; }
+      if (TERMINAL.has(code) || code === HERO_POSE_REFUSALS.changed) return { ok: false, stop: code };
       if (busy < BUSY_RETRIES) { busy++; await deps.sleep(4000 * 2 ** (busy - 1)); continue; }
       return { ok: false, skip: "busy" };
     }
@@ -144,10 +149,11 @@ export async function buildHeroSheet(input: { childId: string; avatarHash: strin
   if (!ref) {
     const drawn = await drawPose(childId, HERO_SHEET_ANCHOR, avatarHash, deps, count);
     if (!drawn.ok) {
+      const miss = drawn as NotDrawn;
       // A refusal before anything was drawn (Free plan, photo hero, no hero):
       // nothing is written; an old sheet of another hero stays stale (unplayed).
-      if (!stored.length && drawn.stop && !existing.meta) return { status: "not-started", stored, skipped: [HERO_SHEET_ANCHOR], stoppedBy: drawn.stop, calls };
-      const stop = drawn.stop ?? drawn.skip ?? "qa";
+      if (!stored.length && miss.stop && !existing.meta) return { status: "not-started", stored, skipped: [HERO_SHEET_ANCHOR], stoppedBy: miss.stop, calls };
+      const stop = miss.stop ?? miss.skip ?? "qa";
       await deps.store.writeMeta(meta("stopped", stop)).catch(() => undefined);
       return { status: "stopped", stored, skipped: [HERO_SHEET_ANCHOR], stoppedBy: stop, calls };
     }
@@ -170,7 +176,8 @@ export async function buildHeroSheet(input: { childId: string; avatarHash: strin
     for (let p = queue.shift(); p && !stopped; p = queue.shift()) {
       const drawn = await drawPose(childId, p, avatarHash, deps, count);
       if (!drawn.ok) {
-        if (drawn.stop) stopped = drawn.stop;
+        const miss = drawn as NotDrawn;
+        if (miss.stop) stopped = miss.stop;
         else skipped.push(p);
         continue;
       }
@@ -353,7 +360,7 @@ export async function redrawHeroPose(input: { childId: string; avatarHash: strin
     ref = sheetReference(img);
   }
   const drawn = await drawPose(childId, pose, avatarHash, deps, () => undefined);
-  if (!drawn.ok) return { ok: false, reason: drawn.stop ?? drawn.skip ?? "qa" };
+  if (!drawn.ok) { const miss = drawn as NotDrawn; return { ok: false, reason: miss.stop ?? miss.skip ?? "qa" }; }
   const sprite = drawn.keyed.sprite as RgbaImage;
   await storePose(pose, drawn.keyed, ref ?? sheetReference(sprite), avatarHash, deps, { redrawn: true });
   await writeMeta([...others, pose]);

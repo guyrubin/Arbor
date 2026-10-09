@@ -184,7 +184,8 @@ export function createHeroPoseHandler(deps: HeroPoseDeps): RequestHandler {
 
     // 4. The sheet allowance (own counters + breaker; never the scene buckets).
     const charge = await chargeHeroSheetCall(deps.counters, { plan, uid: owner, childId, avatarHash });
-    if (!charge.ok) { res.status(charge.status).json(charge.body); return; }
+    // No strictNullChecks in this app: `!charge.ok` does not narrow, so the refusal is read through a cast.
+    if (!charge.ok) { const refusal = charge as Extract<typeof charge, { ok: false }>; res.status(refusal.status).json(refusal.body); return; }
 
     // 5. One image call; a failure gives the per-sheet call unit back.
     try {
