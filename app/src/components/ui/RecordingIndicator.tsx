@@ -1,5 +1,6 @@
 /* RecordingIndicator — the ONE "the microphone is on" surface for parent-register
- * dictation (the capture sheet and the Behaviours capture).
+ * dictation (the capture sheet, the Behaviours capture and, B-STATUS-02, Ask's
+ * composer dictation; Ask's voice overlay carries the one-line RecordingLine).
  *
  * Why it exists (Guy, 8 Oct 2026: "when I'm recording a voice, there is no
  * indication of recording"): the capture sheet started the mic the moment it
@@ -45,6 +46,48 @@ export function formatElapsed(totalSeconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+/** Seconds since the caller mounted — the indicator is mounted only while the
+ *  microphone is open, so this is the recording's own time. */
+function useElapsedSeconds(): number {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => setElapsed((Date.now() - startedAt) / 1000), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return elapsed;
+}
+
+/** The pulsing dot — --arbor-danger, the platform's "microphone is live" mark. */
+function RecordingDot() {
+  return (
+    <span className="relative inline-flex h-3 w-3 flex-none" aria-hidden="true">
+      <span className="absolute inline-flex h-full w-full rounded-full animate-pulse" style={{ background: "var(--arbor-danger)", opacity: 0.45 }} />
+      <span className="relative inline-flex h-3 w-3 rounded-full" style={{ background: "var(--arbor-danger)" }} />
+    </span>
+  );
+}
+
+/**
+ * B-STATUS-02 — the same REC-01 signal as ONE line, for a surface that already
+ * owns its stop control and caption (Ask's voice overlay keeps its orb, its X
+ * and its captions; it gains "Recording · m:ss"). Same dot, same word, same
+ * clock; the clock is aria-hidden for the same reason as above.
+ */
+export function RecordingLine({ label, testId = "recording-line" }: { label: string; testId?: string }) {
+  const elapsed = useElapsedSeconds();
+  return (
+    <p data-testid={testId} className="t-sm inline-flex items-center gap-2 font-semibold" style={{ color: "var(--arbor-ink)" }}>
+      <RecordingDot />
+      <span style={{ whiteSpace: "nowrap" }}>{label}</span>
+      <span aria-hidden="true" style={{ color: "var(--arbor-muted)" }}>·</span>
+      <span aria-hidden="true" data-testid={`${testId}-time`} className="font-normal tabular-nums" style={{ color: "var(--arbor-muted)" }}>
+        {formatElapsed(elapsed)}
+      </span>
+    </p>
+  );
+}
+
 export default function RecordingIndicator({
   interim,
   hint,
@@ -55,13 +98,7 @@ export default function RecordingIndicator({
   testId = "recording-indicator",
   captionTestId = "recording-caption",
 }: RecordingIndicatorProps) {
-  const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    const startedAt = Date.now();
-    const timer = window.setInterval(() => setElapsed((Date.now() - startedAt) / 1000), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
+  const elapsed = useElapsedSeconds();
 
   return (
     <div
@@ -75,10 +112,7 @@ export default function RecordingIndicator({
       }}
     >
       <div className="flex items-center gap-3">
-        <span className="relative inline-flex h-3 w-3 flex-none" aria-hidden="true">
-          <span className="absolute inline-flex h-full w-full rounded-full animate-pulse" style={{ background: "var(--arbor-danger)", opacity: 0.45 }} />
-          <span className="relative inline-flex h-3 w-3 rounded-full" style={{ background: "var(--arbor-danger)" }} />
-        </span>
+        <RecordingDot />
         {/* Layout as inline styles: the app's unlayered CSS outranks Tailwind's
             layered utilities here (white-space measured 'normal' with the class).
             The label never breaks; the timer wraps under it on a narrow phone

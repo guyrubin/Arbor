@@ -1,6 +1,7 @@
 import { translate as inputText } from "../../lib/i18n";
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "../ui/Icon";
+import RecordingIndicator from "../ui/RecordingIndicator";
 import { fileToThumbnail } from "../../lib/image";
 import { startDictation, speechSupported } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
@@ -136,7 +137,11 @@ export default function CompanionComposer({ childId, conversationRevision, langu
         aria-label={inputText(language, "companion.input.what-would-you-like-to-share-with-arbor")} />
       <button type="button" data-testid="coach-send" onClick={() => void send()} disabled={busy || sending || !!consent.busy || preparing || listening || voiceActive || (!value.trim() && !attachments.length)} aria-label={inputText(language, "companion.input.send")}><Icon name="arrow_forward" size={23} /></button>
     </div>
-    {listening && <p className="companion-recording" role="status"><span aria-hidden />{interim || (inputText(language, "companion.input.listening-your-words-will-appear-in-the-draft"))}</p>}
+    {/* B-STATUS-02: dictation into the draft shows the ONE REC-01 indicator
+        (dot, "Recording", m:ss, a 44 px Stop, the parent's own words live). */}
+    {listening && <RecordingIndicator interim={interim} hint={inputText(language, "companion.input.listening-your-words-will-appear-in-the-draft")}
+      label={inputText(language, "elev.rec.on")} stopLabel={inputText(language, "companion.input.done")} stopAria={inputText(language, "elev.rec.stopAria")}
+      onStop={() => stopRef.current?.()} testId="composer-listening" captionTestId="composer-listening-caption" />}
     {error && <p className="companion-composer-error" role="alert">{error}</p>}
     {preparing && <p role="status">{inputText(language, "companion.input.preparing-your-files")}</p>}
     <div className="companion-composer-tools">

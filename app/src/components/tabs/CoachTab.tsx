@@ -1756,6 +1756,10 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           answerText={liveVoiceText}
           canInterrupt={voicePhase === "speaking" && !liveSession}
           reducedMotion={reducedMotion}
+          // B-STATUS-02: "Recording · m:ss" whenever the microphone is open —
+          // the fallback loop listens only in its listening turn; a Live call
+          // streams the microphone for the whole session.
+          recording={voicePhase === "listening" || liveSession}
           onOrbTap={() => { if (voicePhase === "speaking" && !liveCtlRef.current && voiceOnRef.current) bargeInVoice(); }}
           onClose={stopVoice}
         />

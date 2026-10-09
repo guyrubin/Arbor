@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useDialog } from "../../hooks/useDialog";
 import Icon from "../ui/Icon";
 import MicrophoneNotice from "../ui/MicrophoneNotice";
+import { RecordingLine } from "../ui/RecordingIndicator";
 import { translate, type UiLang } from "../../lib/i18n";
 
 /**
@@ -63,10 +64,13 @@ export default function VoiceOverlay({
   answerText,
   canInterrupt,
   reducedMotion,
+  recording = false,
   onOrbTap,
   onClose,
 }: {
   phase: VoiceOverlayPhase;
+  /** B-STATUS-02: true while the microphone is open — shows "Recording · m:ss". */
+  recording?: boolean;
   notice?: string | null;
   lang: UiLang;
   /** The parent's own words, live while they speak (dir="auto"). */
@@ -176,6 +180,14 @@ export default function VoiceOverlay({
             )}
           </button>
         </div>
+        {/* B-STATUS-02: the REC-01 signal as one line while the microphone is
+            open (the owner passes `recording`: the fallback loop's listening
+            turn, or a whole Live call). The orb, X and captions are unchanged. */}
+        {recording && (
+          <div className="mt-2">
+            <RecordingLine label={t("elev.rec.on")} testId="voice-recording-line" />
+          </div>
+        )}
         {canInterrupt && (
           <p className="mt-2 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
             {t("coach.voice.interrupt")}
