@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { heroAvatarHash, type HeroSheetPoseDoc, type HeroSheetPoseId } from "../../../lib/heroSheetContract";
-import { parseHeroSheetDocs, sheetFromDocs, type HeroSheetDocs } from "./heroSheetStore";
+import { parseHeroSheetDocs, sheetFromDocs, type HeroSheetDocs } from "../../../lib/heroSheetStore";
 import { proofAllowedFor, resolveHeroSheetChain, stockSheetUrl, type ChainSources } from "./useHeroSheet";
 import type { HeroSheet } from "./heroSheet";
 

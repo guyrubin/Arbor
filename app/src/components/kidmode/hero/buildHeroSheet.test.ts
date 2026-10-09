@@ -7,8 +7,8 @@
 import { describe, expect, it } from "vitest";
 import { HERO_SHEET_POSE_IDS, heroAvatarHash, type HeroSheetPoseId } from "../../../lib/heroSheetContract";
 import { buildHeroSheet, markHeroPoseOk, redrawHeroPose, startHeroSheet, type BuilderDeps, type PoseResponse } from "./buildHeroSheet";
-import { sheetFromDocs } from "./heroSheetStore";
-import { heroSheetStoreFor } from "./heroSheetStore";
+import { sheetFromDocs } from "../../../lib/heroSheetStore";
+import { heroSheetStoreFor } from "../../../lib/heroSheetStore";
 import type { RgbaImage } from "./heroKeyer";
 
 type RGB = [number, number, number];

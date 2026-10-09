@@ -12,7 +12,7 @@ import { mockHeroPoseImage } from "../../../server/heroPoseMock";
 import { HERO_SHEET_POSE_IDS, heroAvatarHash, type HeroSheetPoseId } from "../../../lib/heroSheetContract";
 import { mockHeroPoseRaster } from "../../../lib/heroPoseMockArt";
 import { buildHeroSheet, type BuilderDeps, type PoseResponse } from "./buildHeroSheet";
-import { heroSheetStoreFor, sheetFromDocs } from "./heroSheetStore";
+import { heroSheetStoreFor, sheetFromDocs } from "../../../lib/heroSheetStore";
 import { keySprite, type RgbaImage } from "./heroKeyer";
 
 /** Decode the PNGs our mock writes (8-bit RGBA, filter 0). */

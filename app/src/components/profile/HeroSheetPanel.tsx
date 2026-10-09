@@ -15,7 +15,7 @@ import { Check, RefreshCw } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { HERO_SHEET_POSE_IDS, heroAvatarHash, type HeroSheetPoseId } from "../../lib/heroSheetContract";
 import { browserBuilderDeps, markHeroPoseOk, redrawHeroPose, resumeHeroSheet } from "../kidmode/hero/buildHeroSheet";
-import { heroSheetStoreFor } from "../kidmode/hero/heroSheetStore";
+import { heroSheetStoreFor } from "../../lib/heroSheetStore";
 import { useHeroSheetDocs } from "../kidmode/hero/useHeroSheet";
 import type { ChildProfile } from "../../types";
 

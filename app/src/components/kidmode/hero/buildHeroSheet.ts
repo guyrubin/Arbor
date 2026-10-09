@@ -30,7 +30,7 @@ import {
   type HeroSheetStatus,
 } from "../../../lib/heroSheetContract";
 import { keySprite, normalisePose, sheetReference, type KeyedSprite, type RgbaImage, type SheetReference } from "./heroKeyer";
-import { heroSheetStoreFor, type HeroSheetDocs, type HeroSheetStore } from "./heroSheetStore";
+import { heroSheetStoreFor, type HeroSheetDocs, type HeroSheetStore } from "../../../lib/heroSheetStore";
 
 export type PoseRefusal = { ok: false; status: number; code: string };
 export type PoseResponse =

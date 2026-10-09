@@ -601,7 +601,7 @@ const MAX_UPSCALE = 2;
  * px tall; every other pose is resampled so its head width equals the idle's.
  * A resample capped by MAX_OUT_H / MAX_UPSCALE carries the rest in `scale`.
  */
-export function normalisePoses<P extends string>(sprites: Partial<Record<P, RgbaImage>>, idlePose: P): Partial<Record<P, NormalisedPose>> {
+export function normalisePoses<P extends string>(sprites: Partial<Record<P, RgbaImage>>, idlePose: NoInfer<P>): Partial<Record<P, NormalisedPose>> {
   const idle = sprites[idlePose];
   const out: Partial<Record<P, NormalisedPose>> = {};
   if (!idle) return out;

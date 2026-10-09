@@ -13,7 +13,7 @@
  */
 import { collection, deleteDoc, doc, getDocs, onSnapshot, setDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth, db, firebaseEnabled } from "../../../lib/firebase";
+import { auth, db, firebaseEnabled } from "./firebase";
 import {
   HERO_SHEET_META_ID,
   HERO_SHEET_POSE_IDS,
@@ -21,8 +21,8 @@ import {
   type HeroSheetMetaDoc,
   type HeroSheetPoseDoc,
   type HeroSheetPoseId,
-} from "../../../lib/heroSheetContract";
-import { heroSheetKey, type HeroSheet, type HeroSprite } from "./heroSheet";
+} from "./heroSheetContract";
+import { heroSheetKey, type HeroSheet, type HeroSprite } from "../components/kidmode/hero/heroSheet";
 
 export const HERO_SHEET_COLLECTION = "heroSheet";
 /** Fired on window when the sandbox copy changes (same-tab listeners). */

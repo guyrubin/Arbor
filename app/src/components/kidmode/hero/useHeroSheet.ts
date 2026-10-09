@@ -20,7 +20,7 @@ import { heroAvatarHash } from "../../../lib/heroSheetContract";
 import { fetchProofJson } from "../proofAssets";
 import { devPlaceholderSheet } from "./devPlaceholderSheet";
 import { loadProofHeroSheet, parseHeroSheet, readStoredHeroSheet, type HeroSheet } from "./heroSheet";
-import { sheetFromDocs, subscribeHeroSheetDocs, type HeroSheetDocs } from "./heroSheetStore";
+import { sheetFromDocs, subscribeHeroSheetDocs, type HeroSheetDocs } from "../../../lib/heroSheetStore";
 
 /**
  * The children who may play as the proof hero (the owner's son). Child ids,

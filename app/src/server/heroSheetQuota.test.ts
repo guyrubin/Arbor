@@ -61,7 +61,7 @@ describe("B-GAME-13b: the hero sheet allowance", () => {
     for (let i = 1; i <= 4; i++) expect((await q.chargeHeroSheetCall(c, { plan: "plus", uid: "u1", childId: "c1", avatarHash: `h${i}` })).ok).toBe(true);
     const fifth = await q.chargeHeroSheetCall(c, { plan: "plus", uid: "u1", childId: "c1", avatarHash: "h5" });
     expect(fifth).toMatchObject({ ok: false, status: 429 });
-    if (!fifth.ok) expect(fifth.body).toMatchObject({ code: "hero_sheet_resting", window: "month", retryable: false });
+    if (!fifth.ok) expect((fifth as Extract<typeof fifth, { ok: false }>).body).toMatchObject({ code: "hero_sheet_resting", window: "month", retryable: false });
     expect((await c.peek("img_sheet_30d", "u1:c1", MONTH)).count).toBe(4);
     // Another child of the same family has its own sheets.
     expect((await q.chargeHeroSheetCall(c, { plan: "plus", uid: "u1", childId: "c2", avatarHash: "h1" })).ok).toBe(true);
@@ -76,7 +76,7 @@ describe("B-GAME-13b: the hero sheet allowance", () => {
     await q.chargeHeroSheetCall(c, at);
     const over = await q.chargeHeroSheetCall(c, at);
     expect(over).toMatchObject({ ok: false, status: 429 });
-    if (!over.ok) expect(over.body.window).toBe("sheet");
+    if (!over.ok) expect((over as Extract<typeof over, { ok: false }>).body.window).toBe("sheet");
     if (a.ok) { await a.release(); await a.release(); }
     expect((await c.peek("img_sheet_calls_30d", "u1:c1:h1", MONTH)).count).toBe(2);
     expect((await q.chargeHeroSheetCall(c, at)).ok).toBe(true);
@@ -91,7 +91,7 @@ describe("B-GAME-13b: the hero sheet allowance", () => {
     if (b.ok) await b.release();
     const third = await q.chargeHeroSheetCall(c, { plan: "plus", uid: "c", childId: "c", avatarHash: "h" });
     expect(third).toMatchObject({ ok: false, status: 429 });
-    if (!third.ok) expect(third.body).toMatchObject({ code: "hero_sheet_resting", window: "day" });
+    if (!third.ok) expect((third as Extract<typeof third, { ok: false }>).body).toMatchObject({ code: "hero_sheet_resting", window: "day" });
     expect((await c.peek("img_sheet_global_daily", "all", DAY)).count).toBe(3);
   });
 
@@ -101,7 +101,7 @@ describe("B-GAME-13b: the hero sheet allowance", () => {
     for (const plan of ["free", "signed_out"] as const) {
       const r = await q.chargeHeroSheetCall(c, { plan, uid: "u1", childId: "c1", avatarHash: "h1" });
       expect(r).toMatchObject({ ok: false, status: 403 });
-      if (!r.ok) expect(r.body.code).toBe("hero_sheet_plan");
+      if (!r.ok) expect((r as Extract<typeof r, { ok: false }>).body.code).toBe("hero_sheet_plan");
     }
     expect((await c.peek("img_sheet_global_daily", "all", DAY)).count).toBe(0);
   });
