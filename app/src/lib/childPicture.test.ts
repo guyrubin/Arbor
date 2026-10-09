@@ -43,5 +43,9 @@ describe("B-SHELL-27 — every mount reads the one resolver (the same URL everyw
     expect(profile).not.toMatch(/<HeroAvatar size=\{56\}/);
     expect(read("../components/tabs/HeroJourneyTab.tsx")).toContain("{!kidMode && asksForHero(childProfile) && (");
     expect(todayLiveSource()).toContain("photoURL={childPicture(childProfile).url} size={28}");
+    // Wave 2 (9 Oct): the My child identity line and the family glance rows were the last two raw reads.
+    expect(read("../components/companion/ChildPortrait.tsx")).toContain("photoURL={childPicture(childProfile).url ?? undefined} size={52}");
+    expect(read("../hooks/useFamilyGlance.ts")).toContain("photoUrl: childPicture(p).url ?? undefined,");
+    expect(read("../components/companion/ChildPortrait.tsx")).not.toMatch(/photoURL=\{childProfile\.photoUrl\}/);
   });
 });
