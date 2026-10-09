@@ -106,7 +106,7 @@ export async function resolveBookAssets(childId: string, doc: BookAssetsDoc, fol
 }
 
 /** K2: the book's shared name-free files fill the gaps in the child's own
- *  narration (`files` / `cues`, keyed `<folder>/<file>`, filled in place). A
+ *  narration (the file and cue maps, keyed `<folder>/<file>`, filled in place). A
  *  page the child has as .mp3 or .wav keeps the child's file and sidecar. */
 export async function fillSharedNarration(
   bookId: string,
