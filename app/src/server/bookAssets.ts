@@ -15,13 +15,27 @@ import { logger, requestIdOf } from "./logger.js";
  *   - answers `Cache-Control: private` (the client keeps its own IndexedDB copy).
  * The erase sweep (eraseChildBookAssets) runs from /privacy/erase and from the
  * account deletion, and returns the number of files it removed.
+ * K2: the sandbox (MEMORY_ADAPTER=local, no Firebase) serves the same paths
+ * from a local folder (server/localBookAssetBucket.ts) with `allowLocal`: the
+ * unauthenticated "local-sandbox" caller is let through there only; with
+ * Firestore the proxy stays fail-closed. The write path: server/bookSheet.ts.
  */
+
+/** GCS File.save options (the subset the book write path uses). */
+export interface BookAssetSaveOptions {
+  contentType: string;
+  resumable?: boolean;
+  metadata?: { cacheControl?: string; metadata?: Record<string, string> };
+}
 
 export interface BookAssetFile {
   name: string;
+  /** Object metadata as listed (GCS: size as a string, custom keys under `metadata`). */
+  metadata?: { size?: string | number; metadata?: Record<string, string> };
   exists(): Promise<[boolean]>;
   createReadStream(): NodeJS.ReadableStream;
   delete(): Promise<unknown>;
+  save?(data: Buffer, opts: BookAssetSaveOptions): Promise<unknown>;
 }
 
 export interface BookAssetBucket {
@@ -51,10 +65,11 @@ export async function eraseChildBookAssets(bucket: BookAssetBucket | null, child
   }
 }
 
-export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAssetBucket | null>; requireOwnership: RequestHandler }): express.Router {
+export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAssetBucket | null>; requireOwnership: RequestHandler; allowLocal?: boolean }): express.Router {
   const router = express.Router();
   const verified: RequestHandler = (req, res, next) => {
     const uid = (req as { user?: { uid?: string } }).user?.uid;
+    if (deps.allowLocal && (!uid || uid === "local-sandbox")) return next();
     if (!uid || uid === "local-sandbox") {
       res.status(401).json({ error: "Unauthorized" });
       return;

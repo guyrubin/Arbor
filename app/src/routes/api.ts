@@ -55,6 +55,8 @@ import { assembleHeroJourneyScreenable } from "../safety/heroJourneyScreenable.j
 import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
 import { createBookAssetsRouter, defaultBookAssetBucket, eraseChildBookAssets, type BookAssetBucket } from "../server/bookAssets.js";
+import { createBookAssetsDocStore, createBookSheetRouter } from "../server/bookSheet.js";
+import { localBookAssetBucket } from "../server/localBookAssetBucket.js";
 import { requireConsent } from "../server/requireConsent.js";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
 import { buildConsent, type ConsentPurpose, type ConsentStore } from "../sharing/consent.js";
@@ -421,9 +423,17 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   router.use(createCoParentRouter({ config, shareStore, requireOwnership }));
   // B-BOOK release: a child's private book files (hero sheet, prints, narration)
   // — read only through this owner-checked proxy (server/bookAssets.ts).
-  router.use(createBookAssetsRouter({ getBucket: () => defaultBookAssetBucket(config.storageBucket), requireOwnership }));
+  // K2: the sandbox (MEMORY_ADAPTER=local, no Firebase) keeps them in a
+  // git-ignored local folder (app/.data/book-assets) served by the same proxy.
+  const localBooks = config.memoryAdapter !== "firestore";
+  const localBookBucket = localBooks ? localBookAssetBucket() : null;
+  const getBookBucket = (): Promise<BookAssetBucket | null> => (localBookBucket ? Promise.resolve(localBookBucket) : defaultBookAssetBucket(config.storageBucket));
+  router.use(createBookAssetsRouter({ getBucket: getBookBucket, requireOwnership, allowLocal: localBooks }));
   // B-GAME-13b: the stored-hero read behind /hero-pose.
   const heroSource = heroPoseSource ?? createHeroPoseSource(config);
+  // K2 4a: the book sheet's write path (PUT a file, POST commit): the child's
+  // own hero on every page of a library book (server/bookSheet.ts).
+  router.use(createBookSheetRouter({ getBucket: getBookBucket, requireOwnership, heroSource, entitlements: entitlementStore, docs: createBookAssetsDocStore(config), local: localBooks }));
   const sendImageFailure = (res: express.Response, error: unknown, fallback: string): void => {
     // B-KID-05: quota exhaustion → 429 image_resting (no Retry-After);
     // transient → 503 + Retry-After 15; anything else → 500 with the fallback.
