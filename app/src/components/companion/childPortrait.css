@@ -49,6 +49,8 @@
 .portrait-memory-photo .portrait-memory-copy { padding: 14px 18px; }
 .portrait-memory-photo .portrait-memory-copy > p { font-size: 19px; -webkit-line-clamp: 2; margin-block: 6px 8px; }
 .portrait-memory-photo .portrait-memory-link { margin-block-start: auto; }
+/* P7-DESIGN art: a photo-less memory borrows the photo layout with its area's painted still life. */
+.portrait-memory-illustrated > img { object-position: 50% 58%; background: var(--arbor-paper-deep); }
 .portrait-memory-empty { justify-content: center; align-items: center; gap: 14px; border: 1px dashed var(--arbor-rule-strong); background: transparent; text-align: center; }
 .portrait-memory-empty strong { font-family: var(--font-display); font-size: 23px; font-weight: 500; }
 .portrait-memory-empty > span:last-child { color: var(--arbor-muted); font-size: 13px; line-height: 1.6; }
@@ -88,6 +90,8 @@
 .portrait-record-tools > div > button { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--arbor-clay); }
 .portrait-empty { display: flex; align-items: center; gap: 32px; padding: 32px; margin-block-end: 28px; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); background: var(--arbor-paper-elevated); }
 .portrait-empty-mark { display: grid; place-items: center; width: 112px; height: 112px; border: 1px solid var(--arbor-rule-strong); border-radius: 50%; flex-shrink: 0; }
+.portrait-empty-art { margin: 0; inline-size: 240px; aspect-ratio: 3 / 2; border-radius: var(--r-lg); overflow: hidden; flex-shrink: 0; background: var(--arbor-paper-deep); }
+.portrait-empty-art > img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
 .portrait-primary { display: inline-flex; align-items: center; gap: 10px; padding: 12px 18px; background: var(--arbor-clay); color: var(--arbor-on-accent); border-radius: var(--r); font-size: 14px; font-weight: 600; margin-block-start: 18px; }
 .portrait-primary:hover { background: var(--arbor-clay-deep); }
 .portrait-environments { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
@@ -196,6 +200,7 @@
   .portrait-empty { padding: 22px; gap: 14px; flex-direction: column; align-items: flex-start; }
   .portrait-empty-mark { width: 66px; height: 66px; }
   .portrait-empty-mark .msr { font-size: 32px !important; }
+  .portrait-empty-art { inline-size: min(280px, 100%); }
   .portrait-domain-detail { gap: 12px; }
   .portrait-domain-index { display: none; }
   .portrait-domain-detail > .msr { font-size: 27px !important; }

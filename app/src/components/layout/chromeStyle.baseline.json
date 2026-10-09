@@ -1,0 +1,17 @@
+{
+  "components/layout/AdminDashboard.tsx": {
+    "under12px": 2
+  },
+  "components/capture/CaptureProposalsTray.tsx": {
+    "uppercase": 2,
+    "letterSpacedLabel": 1,
+    "under12px": 4,
+    "extraBold": 4
+  },
+  "components/profile/FamilyGlanceCard.tsx": {
+    "uppercase": 1,
+    "letterSpacedLabel": 1,
+    "under12px": 3,
+    "extraBold": 1
+  }
+}

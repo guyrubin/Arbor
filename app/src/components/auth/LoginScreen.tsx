@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { Mail, Lock, RefreshCw } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
@@ -143,7 +143,7 @@ export default function LoginScreen() {
           style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
         >
           {busy === "google" ? (
-            <RefreshCw className="w-4 h-4 animate-spin" />
+            <Icon name="refresh" size={16} className="animate-spin" />
           ) : (
             <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#FFC107" d="M43.6 20.5h-1.9V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8a12 12 0 1 1 7.9-21l5.7-5.7A20 20 0 1 0 24 44c11 0 20-8 20-20 0-1.3-.1-2.3-.4-3.5z" />
@@ -167,12 +167,12 @@ export default function LoginScreen() {
             className="w-full font-bold text-sm px-5 py-3 rounded-2xl transition flex items-center justify-center gap-2 bg-white"
             style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
           >
-            <Mail className="w-4 h-4" style={{ color: "var(--arbor-green-ink)" }} /> {t("auth.continueEmail")}
+            <Icon name="mail" size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t("auth.continueEmail")}
           </button>
         ) : (
           <form onSubmit={handleEmail} className="space-y-3">
             <div className="relative">
-              <Mail className="w-4 h-4 absolute start-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
+              <Icon name="mail" size={16} className="absolute start-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
               <input
                 type="email"
                 name="email"
@@ -186,7 +186,7 @@ export default function LoginScreen() {
               />
             </div>
             <div className="relative">
-              <Lock className="w-4 h-4 absolute start-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
+              <Icon name="lock" size={16} className="absolute start-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--arbor-muted)" }} />
               <input
                 type="password"
                 name="password"
@@ -204,7 +204,7 @@ export default function LoginScreen() {
               className="w-full text-white font-extrabold text-sm px-5 py-3 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60"
               style={{ background: "var(--arbor-gradient-primary)" }}
             >
-              {busy === "email" ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+              {busy === "email" ? <Icon name="refresh" size={16} className="animate-spin" /> : null}
               {t("auth.signIn")}
             </button>
             <div className="flex items-center justify-between">

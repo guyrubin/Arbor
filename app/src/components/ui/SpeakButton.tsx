@@ -1,4 +1,4 @@
-import { Volume2, VolumeX } from "lucide-react";
+import { Icon } from "./Icon";
 import { useArborVoice } from "../../hooks/useArborVoice";
 import { useToastOptional } from "../../context/ToastContext";
 import { translate, type UiLang } from "../../lib/i18n";
@@ -39,7 +39,7 @@ export function SpeakButton({
   const idle = label ?? (he ? "הקראה" : "Read aloud");
   const stopLabel = he ? "עצירה" : "Stop";
   const engineNote = engine === "natural" ? (he ? "קול טבעי" : "Natural voice") : he ? "קול בסיסי" : "Basic voice";
-  const dim = size === "md" ? "w-4 h-4" : "w-3.5 h-3.5";
+  const dim = size === "md" ? 16 : 14;
 
   const onError = () => {
     const message = translate(uiLang, "voice.toast.blocked");
@@ -54,14 +54,16 @@ export function SpeakButton({
       aria-pressed={speaking}
       aria-label={speaking ? stopLabel : `${idle} — ${engineNote}`}
       title={engineNote}
-      dir="auto"
+      // The control opens with an <Icon> ligature (Latin text), so dir="auto"
+      // would resolve a Hebrew label LTR; the label's language is `lang`.
+      dir={he ? "rtl" : "ltr"}
       className={`inline-flex items-center gap-1 font-bold transition ${className}`}
       style={{ color: speaking ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
     >
       {speaking ? (
-        <VolumeX className={`${dim} motion-safe:animate-pulse`} aria-hidden />
+        <Icon name="volume_off" size={dim} className="motion-safe:animate-pulse" />
       ) : (
-        <Volume2 className={dim} aria-hidden />
+        <Icon name="volume_up" size={dim} />
       )}
       <span>{speaking ? stopLabel : idle}</span>
     </button>

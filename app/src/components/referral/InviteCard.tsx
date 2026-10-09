@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Copy, Share2, Check } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useReducedMotion } from "motion/react";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
@@ -144,7 +144,7 @@ export default function InviteCard() {
           className="inline-flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px] transition"
           style={{ background: "var(--arbor-blue)", color: T.onAccent }}
         >
-          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? <Icon name="check" size={14} /> : <Icon name="content_copy" size={14} />}
           {copied ? t("set.referral.copied") : t("set.referral.copy")}
         </button>
         <button
@@ -153,7 +153,7 @@ export default function InviteCard() {
           className="inline-flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px] transition"
           style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
         >
-          <Share2 className="w-3.5 h-3.5" /> {t("set.referral.share")}
+          <Icon name="share" size={14} /> {t("set.referral.share")}
         </button>
       </div>
       <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }} aria-live="polite">

@@ -22,6 +22,7 @@ import { fetchDigestEmailStatus, readEmailOptIn, writeEmailOptIn, type DigestEma
 import type { WeeklyDigest } from "../../lib/api";
 import WhatWorkedCard, { whatWorkedThisWeek } from "../weekly/WhatWorkedCard";
 import InviteCard from "../referral/InviteCard";
+import { EMPTY_ART } from "../../lib/parentArt";
 
 /* B-OCCL-02 (6 Oct): the route's ONE data-primary-move literal. It is spread
    on the control that performs the move — the letter's "Make it today's step"
@@ -301,6 +302,10 @@ export default function WeeklyTab() {
               a parent taps the header button — so the sentence is now what
               actually happens, and the move it asks for is on the screen instead
               of being described. */}
+          {/* P7-DESIGN art: the week's still life above the honest line (decorative). */}
+          <figure aria-hidden="true" data-testid="weekly-empty-art" className="m-0 mx-auto mb-4 overflow-hidden" style={{ inlineSize: "min(300px, 100%)", borderRadius: "var(--r-xl)", background: "var(--arbor-paper-deep)" }}>
+            <img src={EMPTY_ART.weekly.src} srcSet={EMPTY_ART.weekly.srcSet} width={EMPTY_ART.weekly.width} height={EMPTY_ART.weekly.height} alt="" loading="lazy" decoding="async" style={{ display: "block", inlineSize: "100%", blockSize: "auto", aspectRatio: "3 / 2", objectFit: "cover" }} />
+          </figure>
           <p>{emptyCurrentWeek ? t("elev.wk.emptyThisWeek") : t("wk.noReports")}</p>
           <button
             type="button"

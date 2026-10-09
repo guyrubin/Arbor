@@ -7,11 +7,11 @@
  * one switcher chip (TopbarKidSwitcher), one row up.
  */
 import React from "react";
-import { Users } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useFamilyGlance } from "../../hooks/useFamilyGlance";
 import { Avatar } from "../ui/Avatar";
+import { Icon } from "../ui/Icon";
 // GP-01: the months-precise age label is THE parent-facing age render.
 import { formatChildAge } from "../../lib/age/format";
 
@@ -44,7 +44,7 @@ export default function FamilyGlanceCard() {
         className="flex items-center gap-1.5 px-3.5 py-2.5"
         style={{ borderBottom: `1px solid ${RULE}`, background: GREEN_SOFT }}
       >
-        <Users className="w-3.5 h-3.5 flex-shrink-0" style={{ color: GREEN }} aria-hidden="true" />
+        <Icon name="group" size={14} className="flex-shrink-0" style={{ color: GREEN }} />
         <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: GREEN }}>
           {t("family.glance.eyebrow")}
         </span>

@@ -26,6 +26,7 @@ import Icon from "../ui/Icon";
 import { Avatar } from "../ui/Avatar";
 import "./companionExperience.css";
 import "./nowView.css";
+import { TOGETHER_ART } from "../../lib/parentArt";
 
 export interface NowViewProps {
   topic?: { id: string; title: string; intent?: string } | null;
@@ -215,7 +216,7 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
     {/* Navigation to the other two places: chrome, never a counted module. */}
     <nav className="now-open-doors" aria-label={t("companion.now-view.understand-more-with-support")}>
       <button type="button" className="now-picture-door" onClick={() => setActiveTab("development")}><span className="now-door-icon" aria-hidden="true"><Icon name="auto_stories" size={29} /></span><span><h2>{copy.pictureTitle(name)}</h2><p>{copy.pictureBody}</p></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" /></button>
-      <button type="button" className="now-together-door" onClick={() => setActiveTab("practice")}><img src="/visuals/companion/together-table.webp" width="960" height="640" alt="" loading="lazy" /><span><h2>{copy.togetherTitle}</h2><p>{copy.togetherBody}</p></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" /></button>
+      <button type="button" className="now-together-door" onClick={() => setActiveTab("practice")}><img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt="" loading="lazy" /><span><h2>{copy.togetherTitle}</h2><p>{copy.togetherBody}</p></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" /></button>
     </nav>
     <footer className="now-footer"><button type="button" className="companion-text-button" onClick={() => setActiveTab("learn")}><Icon name="menu_book" size={18} />{copy.learning}</button><button type="button" className="companion-text-button" onClick={() => setActiveTab("consult")}><Icon name="group" size={19} />{copy.care}</button></footer>
   </div>;

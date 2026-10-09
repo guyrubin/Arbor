@@ -207,7 +207,7 @@ function ReceiptRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
       <span style={{ color: "var(--arbor-muted)" }}>{label}</span>
-      <span className="font-extrabold" style={{ color: "var(--arbor-ink)" }}>{value}</span>
+      <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{value}</span>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { Download, Share2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { ComicPage, PlayButton, PlayPanel, ProgressPips, Celebrate, usePrefersReducedMotion } from "../ui/playkit";
 import { HeroAvatar } from "../ui/HeroAvatar";
+import { Icon } from "../ui/Icon";
 import { track } from "../../lib/analytics";
 import { PaywallError } from "../../lib/api";
 import type { AvatarStyle } from "../../lib/api";
@@ -315,7 +315,7 @@ export function ComicReader({
         </p>
         <div className="flex justify-center gap-2.5">
           <PlayButton tone="clay" onClick={() => { setBookError(false); setPages(initialPages.map((p) => ({ ...p }))); }}>
-            <RefreshCw className="w-4 h-4" /> {kidsStoriesText("comic.tryAgain", lang)}
+            <Icon name="refresh" size={16} /> {kidsStoriesText("comic.tryAgain", lang)}
           </PlayButton>
           <PlayButton variant="soft" tone="clay" onClick={onClose}>{kidsStoriesText("comic.back", lang)}</PlayButton>
         </div>
@@ -327,9 +327,9 @@ export function ComicReader({
   if (finished) {
     return (
       <Celebrate title={kidsStoriesText("comic.end", lang)} subtitle={kidsStoriesText("comic.endBody", lang, { name: isolate(heroName) })}>
-        <PlayButton tone="clay" onClick={handleSave}><Download className="w-4 h-4" /> {kidsStoriesText("comic.save", lang)}</PlayButton>
-        <PlayButton variant="soft" tone="clay" onClick={handleShare}><Share2 className="w-4 h-4" /> {kidsStoriesText("comic.share", lang)}</PlayButton>
-        <PlayButton variant="soft" tone="clay" onClick={onClose}><RefreshCw className="w-4 h-4" /> {kidsStoriesText("comic.another", lang)}</PlayButton>
+        <PlayButton tone="clay" onClick={handleSave}><Icon name="download" size={16} /> {kidsStoriesText("comic.save", lang)}</PlayButton>
+        <PlayButton variant="soft" tone="clay" onClick={handleShare}><Icon name="share" size={16} /> {kidsStoriesText("comic.share", lang)}</PlayButton>
+        <PlayButton variant="soft" tone="clay" onClick={onClose}><Icon name="refresh" size={16} /> {kidsStoriesText("comic.another", lang)}</PlayButton>
       </Celebrate>
     );
   }
@@ -345,7 +345,7 @@ export function ComicReader({
     >
       <div className="flex items-center justify-between gap-3">
         <PlayButton variant="ghost" tone="clay" size="md" onClick={onClose}>
-          {rtl ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />} {kidsStoriesText("comic.bookshelf", lang)}
+          {rtl ? <Icon name="chevron_right" size={16} /> : <Icon name="chevron_left" size={16} />} {kidsStoriesText("comic.bookshelf", lang)}
         </PlayButton>
         <ProgressPips total={total} current={pageIndex} />
       </div>
@@ -410,13 +410,13 @@ export function ComicReader({
       <div className="flex items-center justify-center gap-3">
         {/* B-KID-54 (KB-04): Back goes BACK in both directions (RTL went forward). */}
         <PlayButton variant="soft" tone="clay" onClick={() => go(-1)} disabled={pageIndex === 0}>
-          {rtl ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />} {kidsStoriesText("comic.back", lang)}
+          {rtl ? <Icon name="chevron_right" size={20} /> : <Icon name="chevron_left" size={20} />} {kidsStoriesText("comic.back", lang)}
         </PlayButton>
         {current?.cover ? (
           <PlayButton tone="clay" onClick={advance}>{kidsStoriesText("comic.read", lang, { name: isolate(heroName) })}</PlayButton>
         ) : (
           <PlayButton tone="clay" onClick={advance}>
-            {onLastPage ? kidsStoriesText("comic.finish", lang) : kidsStoriesText("journey.next", lang)} {rtl ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+            {onLastPage ? kidsStoriesText("comic.finish", lang) : kidsStoriesText("journey.next", lang)} {rtl ? <Icon name="chevron_left" size={20} /> : <Icon name="chevron_right" size={20} />}
           </PlayButton>
         )}
       </div>

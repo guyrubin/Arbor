@@ -197,7 +197,7 @@ describe("B-SHELL-07 — onboarding Hebrew and target fixes", () => {
     const back = flow.slice(flow.indexOf("onClick={goBack}"), flow.indexOf("</button>", flow.indexOf("onClick={goBack}")));
     expect(back).toContain("touch-target");
     expect(back).not.toMatch(/width: 36, height: 36/);
-    expect(back).toContain('<ChevronLeft className="w-4 h-4" style={isRtl ? { transform: "scaleX(-1)" } : undefined} />');
+    expect(back).toContain('<Icon name="chevron_left" size={16} style={isRtl ? { transform: "scaleX(-1)" } : undefined} />');
   });
 
   it("'Add languages' is a 44 px row and the language chips are min-h-11", () => {

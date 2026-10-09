@@ -10,7 +10,6 @@
  */
 import { describe, expect, it } from "vitest";
 import React from "react";
-import { Circle } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -113,7 +112,7 @@ describe("HubHero compact mode", () => {
     const html = renderToStaticMarkup(React.createElement(HubHero, {
       ...base,
       compact: true,
-      icon: Circle,
+      icon: "circle",
       cta: { label: "Open", onClick: () => undefined },
       stats: [{ value: 1, label: "one" }, { value: 2, label: "two" }, { value: 3, label: "three" }],
     }));

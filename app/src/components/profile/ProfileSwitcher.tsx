@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import ProfileEditDrawer from "./ProfileEditDrawer";
@@ -40,7 +40,7 @@ export default function ProfileSwitcher() {
           className="inline-flex flex-shrink-0 items-center justify-center min-h-[44px] min-w-[44px] rounded-lg transition"
           style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
         >
-          <Pencil className="w-3.5 h-3.5" />
+          <Icon name="edit" size={14} />
         </button>
       </div>
 

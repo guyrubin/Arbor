@@ -70,7 +70,7 @@ export default function Sidebar() {
         <ArborMark size={38} />
         {/* CR-21: this was a second <h1> on every desktop route — the page's one
             heading belongs to the hub, not to the chrome's wordmark. */}
-        <p className="text-[21px] font-extrabold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</p>
+        <p className="text-[21px] font-bold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</p>
       </div>
 
       {/* Child profile card */}
@@ -157,7 +157,7 @@ export default function Sidebar() {
           <Avatar name={user?.displayName} photoURL={user?.photoURL} size={34} ring />
           <div className="min-w-0 flex-1 text-start">
             <p className="text-[12px] font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{user?.displayName || t("nav.parent")}</p>
-            {user?.email && <p className="text-[10px] truncate" style={{ color: "var(--arbor-muted)" }}>{user.email}</p>}
+            {user?.email && <p className="text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{user.email}</p>}
           </div>
           <Icon name="expand_less" size={18} style={{ color: "var(--arbor-muted)", transform: popoverOpen ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 150ms ease" }} />
         </button>

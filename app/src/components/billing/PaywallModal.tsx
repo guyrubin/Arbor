@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 // MOB-28 / CR-22: below `lg` this dialog is a bottom SHEET, not a centred
 // card. Same contract, same dialogStack ownership — only the box moves.
@@ -85,7 +85,7 @@ export default function PaywallModal() {
       <div className="space-y-4 text-sm">
         <div className="flex items-start gap-3">
           <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-            <Sparkles className="w-4.5 h-4.5" />
+            <Icon name="auto_awesome" size={18} />
           </span>
           <p className="leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{body}</p>
         </div>

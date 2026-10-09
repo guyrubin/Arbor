@@ -59,6 +59,10 @@ export default function MobileNav() {
         style={{ borderTop: "1px solid var(--arbor-rule)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         {primary.map((sec) => {
+          // One glyph per place: the dock takes Now / My child / Together's
+          // glyph from lib/companionPlaces.ts, the same source the desktop
+          // sidebar reads (iconFamily.guard.test.ts holds both). The section
+          // glyph is only a fallback for a dock section that is not a place.
           const place = COMPANION_PLACES.find(p => p.tab === primaryTabOf(sec));
           const on = sec.id === "ask" ? activeTab === "coach" : activeTab !== "coach" && place?.id === placeForTab(activeTab).id;
           const label = place ? (uiLang === "he" ? place.he : place.en) : t("companion.mobile-nav.talk");
@@ -86,15 +90,15 @@ export default function MobileNav() {
               onClick={() => go(sec.id)}
               aria-current={on ? "page" : undefined}
               aria-label={reviewAria}
-              className={`min-h-[64px] min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2.5 font-bold transition ${emphasized ? "text-[12px]" : "text-[11px]"}`}
+              className={`min-h-[64px] min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2.5 font-bold transition text-[12px]`}
               style={{ color: on ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
             >
               <span className="relative inline-flex">
-                <Icon name={sec.msIcon} size={emphasized ? 21 : 18} chrome active={on} />
+                <Icon name={place?.icon ?? sec.msIcon} size={emphasized ? 21 : 18} chrome active={on} />
                 {showBadge && (
                   <span
                     aria-hidden="true"
-                    className="absolute -top-1.5 text-[10px] font-extrabold rounded-full px-1.5 leading-4 text-center"
+                    className="absolute -top-1.5 text-xs font-bold rounded-full px-1.5 leading-4 text-center"
                     style={{ insetInlineStart: "100%", marginInlineStart: "-7px", background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
                   >
                     {badge}
@@ -113,7 +117,7 @@ export default function MobileNav() {
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
           aria-current={overflowActive ? "page" : undefined}
-          className="min-h-[64px] min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-bold transition"
+          className="min-h-[64px] min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[12px] font-bold transition"
           style={{ color: overflowActive ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
         >
           <Icon name="more_horiz" size={18} chrome active={overflowActive} />
@@ -168,7 +172,7 @@ export default function MobileNav() {
                 <span className="min-w-0 flex-1">
                   <span className="block break-words leading-snug">{t("nav.cat." + sec.id)}</span>
                   {pulseText ? (
-                    <span className="mt-0.5 block break-words text-[11px] leading-snug" style={{ color: "var(--arbor-muted)", fontWeight: 500 }}>
+                    <span className="mt-0.5 block break-words text-[12px] leading-snug" style={{ color: "var(--arbor-muted)", fontWeight: 500 }}>
                       {pulseText}
                     </span>
                   ) : null}

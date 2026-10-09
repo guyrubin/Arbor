@@ -31,7 +31,7 @@
  * existing gated components/paths listed above.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X, Sparkles, BookOpen } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -302,7 +302,7 @@ export function WowOnboarding() {
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl px-6 py-3 text-[var(--t-sm)] font-extrabold transition active:scale-[0.97]"
                 style={{ ...primaryBtn, background: lav.ink }}
               >
-                <Sparkles aria-hidden="true" style={{ width: 16, height: 16 }} />
+                <Icon name="auto_awesome" size={16} />
                 {t("elev.wow.avatar.cta")}
               </button>
               <button
@@ -389,7 +389,7 @@ export function WowOnboarding() {
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl px-6 py-3 text-[var(--t-sm)] font-extrabold transition active:scale-[0.97]"
                 style={{ ...primaryBtn, background: pink.ink }}
               >
-                <BookOpen aria-hidden="true" style={{ width: 16, height: 16 }} />
+                <Icon name="menu_book" size={16} />
                 {t("elev.wow.done.enter")}
               </button>
             </div>
@@ -429,7 +429,7 @@ export function WowOnboarding() {
           className="absolute top-4 flex items-center justify-center w-11 h-11 rounded-xl transition"
           style={{ insetInlineEnd: "1rem", color: "var(--arbor-muted)", background: "transparent", border: "none", cursor: "pointer" }}
         >
-          <X aria-hidden="true" style={{ width: 20, height: 20 }} />
+          <Icon name="close" size={20} />
         </button>
 
         <div className="w-full max-w-xl">

@@ -1,9 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import {
-  Heart, MessageCircle, Users, Moon, BookOpen, Repeat2, Utensils,
-  ShieldCheck, RefreshCw, ChevronLeft, Sun, CalendarDays,
-} from "lucide-react";
 import { useProfile } from "../../context/ProfileContext";
 import { findIncompleteOnboardingChild } from "../../lib/onboardingGate";
 import { ageLabelForMonths, ageMonthsFromProfile, isoDateOf } from "../../lib/childAge";
@@ -14,6 +10,7 @@ import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: policy links besi
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
+import { Icon } from "../ui/Icon";
 import { api } from "../../lib/api";
 // MOB-22 — pre-generate the first comic while the parent picks domains.
 import { heroFirstName, prewarmFirstComic } from "../../lib/firstComic";
@@ -32,13 +29,13 @@ type Step = 1 | 2 | 3 | 4;
 
 /** Exported for Add child (B-SHELL-17): the same domain list, the same names. */
 export const DOMAINS: { id: string; nameKey: string; subKey: string; icon: React.ReactNode }[] = [
-  { id: "feelings", nameKey: "ob.step.domains.feelings", subKey: "ob.step.domains.feelings.sub", icon: <Heart className="w-5 h-5" /> },
-  { id: "language", nameKey: "ob.step.domains.language", subKey: "ob.step.domains.language.sub", icon: <MessageCircle className="w-5 h-5" /> },
-  { id: "social", nameKey: "ob.step.domains.social", subKey: "ob.step.domains.social.sub", icon: <Users className="w-5 h-5" /> },
-  { id: "sleep", nameKey: "ob.step.domains.sleep", subKey: "ob.step.domains.sleep.sub", icon: <Moon className="w-5 h-5" /> },
-  { id: "focus", nameKey: "ob.step.domains.focus", subKey: "ob.step.domains.focus.sub", icon: <BookOpen className="w-5 h-5" /> },
-  { id: "behavior", nameKey: "ob.step.domains.behavior", subKey: "ob.step.domains.behavior.sub", icon: <Repeat2 className="w-5 h-5" /> },
-  { id: "eating", nameKey: "ob.step.domains.eating", subKey: "ob.step.domains.eating.sub", icon: <Utensils className="w-5 h-5" /> },
+  { id: "feelings", nameKey: "ob.step.domains.feelings", subKey: "ob.step.domains.feelings.sub", icon: <Icon name="favorite" size={20} /> },
+  { id: "language", nameKey: "ob.step.domains.language", subKey: "ob.step.domains.language.sub", icon: <Icon name="chat_bubble" size={20} /> },
+  { id: "social", nameKey: "ob.step.domains.social", subKey: "ob.step.domains.social.sub", icon: <Icon name="group" size={20} /> },
+  { id: "sleep", nameKey: "ob.step.domains.sleep", subKey: "ob.step.domains.sleep.sub", icon: <Icon name="bedtime" size={20} /> },
+  { id: "focus", nameKey: "ob.step.domains.focus", subKey: "ob.step.domains.focus.sub", icon: <Icon name="menu_book" size={20} /> },
+  { id: "behavior", nameKey: "ob.step.domains.behavior", subKey: "ob.step.domains.behavior.sub", icon: <Icon name="repeat" size={20} /> },
+  { id: "eating", nameKey: "ob.step.domains.eating", subKey: "ob.step.domains.eating.sub", icon: <Icon name="restaurant" size={20} /> },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -393,7 +390,7 @@ export function StepChild({
         }}
       >
         <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>
-          <ShieldCheck className="w-3.5 h-3.5" /> {t("ob.consent.heading")}
+          <Icon name="verified_user" size={14} /> {t("ob.consent.heading")}
         </span>
         <label className="flex items-start gap-2.5 cursor-pointer">
           <input
@@ -426,7 +423,7 @@ export function StepChild({
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
         style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
       >
-        {creating && <RefreshCw className="w-4 h-4 animate-spin" aria-hidden />}
+        {creating && <Icon name="refresh" size={16} className="animate-spin" />}
         {creating ? t("ob.settingUp") : t("ob.step.continue")}
       </button>
     </div>
@@ -577,9 +574,9 @@ function PromiseCard({ name }: { name: string }) {
   }, []);
 
   const rhythms = [
-    { icon: <Sun className="w-4 h-4" aria-hidden />, label: p("elev.promise.daily.label"), text: p("elev.promise.daily") },
-    { icon: <CalendarDays className="w-4 h-4" aria-hidden />, label: p("elev.promise.weekly.label"), text: p("elev.promise.weekly") },
-    { icon: <BookOpen className="w-4 h-4" aria-hidden />, label: p("elev.promise.months.label"), text: p("elev.promise.months") },
+    { icon: <Icon name="wb_sunny" size={16} />, label: p("elev.promise.daily.label"), text: p("elev.promise.daily") },
+    { icon: <Icon name="calendar_month" size={16} />, label: p("elev.promise.weekly.label"), text: p("elev.promise.weekly") },
+    { icon: <Icon name="menu_book" size={16} />, label: p("elev.promise.months.label"), text: p("elev.promise.months") },
   ];
 
   return (
@@ -607,13 +604,15 @@ function PromiseCard({ name }: { name: string }) {
         ))}
       </div>
 
-      {/* Data-lock line — ships verbatim from the mockup (green lock). */}
+      {/* Data-lock line — ships verbatim from the mockup (green lock). The
+          line opens with an <Icon> ligature (Latin text), so its direction
+          comes from the locale, never dir="auto" (bidiIconLead guard). */}
       <p
         className="flex items-start gap-2 border-t pt-2.5 text-[11.5px] font-bold leading-snug"
-        dir="auto"
+        dir={heMode ? "rtl" : "ltr"}
         style={{ borderColor: "color-mix(in srgb, var(--arbor-green-ink) 25%, transparent)", color: "var(--arbor-green-ink)" }}
       >
-        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+        <Icon name="verified_user" size={14} className="mt-0.5 flex-shrink-0" />
         <span className="min-w-0">{p("elev.promise.lock")}</span>
       </p>
     </div>
@@ -697,7 +696,7 @@ export function StepReady({
         className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
         style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
       >
-        {saving && <RefreshCw className="w-4 h-4 animate-spin" />}
+        {saving && <Icon name="refresh" size={16} className="animate-spin" />}
         {t("ob.step.ready.cta")}
       </button>
 
@@ -711,7 +710,7 @@ export function StepReady({
           style={{ color: "var(--arbor-muted)", minHeight: 44 }}
           aria-label={t("ob.demo.relaunch")}
         >
-          <RefreshCw className="w-3.5 h-3.5" aria-hidden />
+          <Icon name="refresh" size={14} />
           {t("ob.demo.relaunch")}
         </button>
       )}
@@ -962,7 +961,7 @@ export default function OnboardingFlow() {
               aria-label={t("ob.step.back")}
               data-testid="onboarding-back"
             >
-              <ChevronLeft className="w-4 h-4" style={isRtl ? { transform: "scaleX(-1)" } : undefined} />
+              <Icon name="chevron_left" size={16} style={isRtl ? { transform: "scaleX(-1)" } : undefined} />
             </button>
           ) : (
             <div style={{ width: 44 }} />

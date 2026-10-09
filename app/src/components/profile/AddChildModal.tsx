@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { Sheet } from "../ui/Sheet";
 import { useProfile } from "../../context/ProfileContext";
@@ -81,7 +81,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
       <Modal open={open} onClose={close} title={t("ac.title")}>
         <div className="space-y-4 text-sm">
           <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "linear-gradient(120deg,var(--arbor-paper-tinted),var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-green-ink)" }}><Sparkles className="w-4 h-4" /></span>
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={16} /></span>
             <div>
               {/* 3.6 — the at-limit state names its gate: multi-child is a Plus feature. */}
               <p className="font-bold flex items-center gap-2 flex-wrap" style={{ color: "var(--arbor-ink)" }}>

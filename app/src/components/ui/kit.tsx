@@ -1,8 +1,4 @@
 import React from "react";
-import {
-  Heart, Languages, Brain, Users, Sprout, Hand, Globe, Moon,
-  type LucideIcon,
-} from "lucide-react";
 import type { DevelopmentalDomainId } from "../../types";
 import { translate, type UiLang } from "../../lib/i18n";
 import { useLanguage } from "../../context/LanguageContext";
@@ -346,29 +342,32 @@ export function Badge({
   );
 }
 
-/* ── Development Map domain → {lucide icon, layout-kit tone} ──────────────────
+/* ── Development Map domain → {Material Symbols glyph, layout-kit tone} ──────
    The single source of truth for how each of the 7 framework.json clinical
    domains is rendered across Growth, Academy, Journal, Care and Today. Tones are
    drawn from the layout-kit set ONLY (mint|coral|lav|yellow|pink|sky) — never a
    PlayKit tone (clay/peach), which would render blank on these parent surfaces.
    7 domains over 6 tones: ecosystem reuses `mint` (its framing is whole-system,
-   like attachment). framework.json labels remain the source of truth for text. */
-export type DomainVisual = { icon: LucideIcon; tone: PastelKey };
+   like attachment). framework.json labels remain the source of truth for text.
+   `icon` is a Material Symbols Rounded ligature for <Icon name>; where a domain
+   is a shelf's own (feelings, play, hands, sleep) it is that shelf's glyph in
+   lib/shelves/registry.ts. */
+export type DomainVisual = { icon: string; tone: PastelKey };
 
 export const DOMAIN_VISUALS: Record<DevelopmentalDomainId, DomainVisual> = {
-  attachment_regulation:        { icon: Heart,     tone: "mint" },
-  language_communication:       { icon: Languages, tone: "sky" },
-  cognition_executive_function: { icon: Brain,     tone: "lav" },
-  social_development:           { icon: Users,     tone: "coral" },
-  independence_adaptive_skills: { icon: Sprout,    tone: "yellow" },
-  sensory_motor_patterns:       { icon: Hand,      tone: "pink" },
-  ecosystem_stressors:          { icon: Globe,     tone: "mint" },
+  attachment_regulation:        { icon: "favorite",       tone: "mint" },
+  language_communication:       { icon: "translate",      tone: "sky" },
+  cognition_executive_function: { icon: "lightbulb",      tone: "lav" },
+  social_development:           { icon: "group",          tone: "coral" },
+  independence_adaptive_skills: { icon: "eco",            tone: "yellow" },
+  sensory_motor_patterns:       { icon: "front_hand",     tone: "pink" },
+  ecosystem_stressors:          { icon: "public",         tone: "mint" },
   // B-GROWTH-26 (Guy D1): the 8th domain — body, sleep & eating.
-  health_sleep_feeding:         { icon: Moon,      tone: "sky" },
+  health_sleep_feeding:         { icon: "bedtime",        tone: "sky" },
 };
 
-/** Lookup the icon+tone for a domain id, with a safe mint/Sprout fallback for
+/** Lookup the icon+tone for a domain id, with a safe mint/eco fallback for
  *  any non-canonical id so consumers never render blank. */
 export function domainVisual(id: string): DomainVisual {
-  return DOMAIN_VISUALS[id as DevelopmentalDomainId] ?? { icon: Sprout, tone: "mint" };
+  return DOMAIN_VISUALS[id as DevelopmentalDomainId] ?? { icon: "eco", tone: "mint" };
 }

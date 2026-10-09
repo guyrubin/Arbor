@@ -1,25 +1,14 @@
-import type { LucideIcon } from "lucide-react";
-import {
-  Home, Sprout, HeartHandshake, GraduationCap,
-  LayoutDashboard, Activity, Languages,
-  FileBarChart, Calendar,
-  Share2, BookOpen, Sliders, Waypoints, ShieldAlert,
-  Target, Map, School,
-  MessageCircle, NotebookPen, UserCircle,
-  Clock, BarChart3, Bell,
-  Sparkles, Heart, Library,
-} from "lucide-react";
 import type { ActiveTab } from "../context/ArborContext";
 import type { HubId } from "./surfaceContract";
 
 export type NavItem = {
   tab: ActiveTab;
   label: string;
-  icon: LucideIcon;
-  /** Optional Material Symbols Rounded ligature for the shared <Icon> component
-   *  (UC-2 visual-match). Carried on a hub's `tools` items for the contextual
-   *  pill row; lucide `icon` remains the fallback / pill-row glyph. */
-  msIcon?: string;
+  /** Material Symbols Rounded ligature for the shared <Icon>: the glyph on this
+   *  destination's pill in the hub's contextual pill row (Shell). One glyph per
+   *  destination — components/ui/iconFamily.guard.test.ts fails when two
+   *  different destinations share one. */
+  msIcon: string;
 };
 /** Generalized sidebar badge: the two legacy app-state badges
  *  ("milestone" | "plans") OR a free-form { kind: "count" } slot that any
@@ -32,11 +21,10 @@ export type NavSection = {
    *  (the pulse map is a Record<HubId, …> consumed by section id). */
   id: HubId;
   label: string;
-  icon: LucideIcon;
-  /** Material Symbols Rounded ligature for the section rail glyph (UC-2
-   *  visual-match). The shell rails (Sidebar / MobileNav) render this via the
-   *  shared <Icon>; `icon` (lucide) is retained as a fallback / for any
-   *  non-shell consumer. */
+  /** Material Symbols Rounded ligature for the hub's glyph (UC-2 visual-match),
+   *  rendered via the shared <Icon> (MobileNav's More sheet). The three
+   *  companion places — Now / My child / Together — take their glyphs from
+   *  lib/companionPlaces.ts, never from here. */
   msIcon: string;
   /** optional sidebar badge fed from app state */
   badge?: NavBadge;
@@ -84,29 +72,27 @@ export const SECTIONS: NavSection[] = [
   {
     id: "today",
     label: "Today",
-    icon: Home,
     msIcon: "home",
     items: [
-      { tab: "overview", label: "Overview", icon: LayoutDashboard },
-      { tab: "day-windows", label: "Day Windows", icon: Map },
-      { tab: "smart-reminders", label: "Smart Reminders", icon: Calendar },
+      { tab: "overview", label: "Overview", msIcon: "dashboard" },
+      { tab: "day-windows", label: "Day Windows", msIcon: "schedule" },
+      { tab: "smart-reminders", label: "Smart Reminders", msIcon: "notifications" },
     ],
     // Today is a single-surface hub; its tools (Day Windows, Reminders, and —
     // Heartwood D3 — the Weekly Report, re-homed from Profile as the week's
     // rhythm readout) render as contextual pills inside the hub.
     primaryTabs: [
-      { tab: "overview", label: "Overview", icon: LayoutDashboard },
+      { tab: "overview", label: "Overview", msIcon: "dashboard" },
     ],
     tools: [
-      { tab: "day-windows", label: "Day Windows", icon: Clock, msIcon: "schedule" },
-      { tab: "smart-reminders", label: "Reminders", icon: Bell, msIcon: "notifications" },
-      { tab: "weekly", label: "Weekly Report", icon: BarChart3, msIcon: "bar_chart" },
+      { tab: "day-windows", label: "Day Windows", msIcon: "schedule" },
+      { tab: "smart-reminders", label: "Reminders", msIcon: "notifications" },
+      { tab: "weekly", label: "Weekly Report", msIcon: "bar_chart" },
     ],
   },
   {
     id: "journal",
     label: "Journal",
-    icon: NotebookPen,
     msIcon: "edit_note",
     // Journal and Story are two DENSITIES of one timeline surface (TimelineTab),
     // not two capabilities: they render the same ledger stream. The density
@@ -116,58 +102,55 @@ export const SECTIONS: NavSection[] = [
     // leaf; it stays a valid deep-link route that resolves back to this section
     // via TAB_SECTION_FALLBACK.
     items: [
-      { tab: "journal", label: "Journal", icon: NotebookPen },
+      { tab: "journal", label: "Journal", msIcon: "edit_note" },
     ],
     primaryTabs: [
-      { tab: "journal", label: "Journal", icon: NotebookPen },
+      { tab: "journal", label: "Journal", msIcon: "edit_note" },
     ],
     tools: [],
   },
   {
     id: "ask",
     label: "Ask Arbor",
-    icon: MessageCircle,
     msIcon: "forum",
     badge: { kind: "count" },
     items: [
-      { tab: "coach", label: "Ask Arbor", icon: MessageCircle },
+      { tab: "coach", label: "Ask Arbor", msIcon: "forum" },
     ],
     primaryTabs: [
-      { tab: "coach", label: "Ask Arbor", icon: MessageCircle },
+      { tab: "coach", label: "Ask Arbor", msIcon: "forum" },
     ],
     tools: [],
   },
   {
     id: "behaviors",
     label: "Behaviors",
-    icon: Activity,
     msIcon: "monitoring",
     items: [
-      { tab: "behaviors", label: "Behaviors", icon: Activity },
-      { tab: "plans", label: "Action Plans", icon: Sliders },
+      { tab: "behaviors", label: "Behaviors", msIcon: "monitoring" },
+      { tab: "plans", label: "Action Plans", msIcon: "tune" },
     ],
     primaryTabs: [
-      { tab: "behaviors", label: "Behaviors", icon: Activity },
+      { tab: "behaviors", label: "Behaviors", msIcon: "monitoring" },
     ],
     // Action Plans moved here from Growth (clarity): every plan template is a
     // behavior challenge (morning departure, screen shutdown, sibling conflict),
     // so "turn a challenge into a step-by-step plan" is a Behaviors tool.
     tools: [
-      { tab: "plans", label: "Action Plans", icon: Sliders, msIcon: "tune" },
+      { tab: "plans", label: "Action Plans", msIcon: "tune" },
     ],
   },
   {
     id: "growth",
     label: "Growth",
-    icon: Sprout,
     msIcon: "eco",
     badge: "milestone",
     items: [
       // B-GROWTH-06: a sprout, not a gauge — no meter metaphor on a child.
-      { tab: "development", label: "Development", icon: Sprout },
-      { tab: "milestones", label: "Milestones", icon: Sprout },
-      { tab: "language", label: "Language & Communication", icon: Languages },
-      { tab: "daily-play", label: "Daily Play", icon: Map },
+      { tab: "development", label: "Development", msIcon: "eco" },
+      { tab: "milestones", label: "Milestones", msIcon: "check_circle" },
+      { tab: "language", label: "Language & Communication", msIcon: "translate" },
+      { tab: "daily-play", label: "Daily Play", msIcon: "playing_cards" },
     ],
     // Growth is now purely developmental: Development hub + the two clinical
     // spines (milestones, language), with Daily Play and the Development Check as
@@ -176,23 +159,22 @@ export const SECTIONS: NavSection[] = [
     // stays homed here per canon (fallback → growth).
     primaryTabs: [
       // B-GROWTH-06: a sprout, not a gauge — no meter metaphor on a child.
-      { tab: "development", label: "Development", icon: Sprout },
-      { tab: "milestones", label: "Milestones", icon: Sprout },
-      { tab: "language", label: "Language & Communication", icon: Languages },
+      { tab: "development", label: "Development", msIcon: "eco" },
+      { tab: "milestones", label: "Milestones", msIcon: "check_circle" },
+      { tab: "language", label: "Language & Communication", msIcon: "translate" },
     ],
     tools: [
       // B-GROWTH-25: the Routines pill is gone — #/routines retired to Plans,
       // where the twelve boards are one-tap plan templates.
-      { tab: "daily-play", label: "Daily Play", icon: Map, msIcon: "playing_cards" },
+      { tab: "daily-play", label: "Daily Play", msIcon: "playing_cards" },
       // M4 surfacing (IA masterplan): the quick-check screener was fallback-only
       // (reachable via one ChildProfile JumpLink) — now a visible Growth pill.
-      { tab: "screening", label: "Development Check", icon: ShieldAlert, msIcon: "fact_check" },
+      { tab: "screening", label: "Development Check", msIcon: "fact_check" },
     ],
   },
   {
     id: "practice",
     label: "Practice",
-    icon: Target,
     msIcon: "extension",
     // Heartwood D3: Practice promoted from a Growth tools pill to a depth-0 hub.
     // #/practice hosts the parent-register Practice Studio LAUNCHER (the door
@@ -210,27 +192,26 @@ export const SECTIONS: NavSection[] = [
     // one click from parent chrome with no such framing, and the routes stay
     // valid deep links via TAB_SECTION_FALLBACK (`check:floors` walks them).
     items: [
-      { tab: "practice", label: "Practice Studio", icon: Target },
+      { tab: "practice", label: "Practice Studio", msIcon: "extension" },
     ],
     primaryTabs: [
-      { tab: "practice", label: "Practice Studio", icon: Target },
+      { tab: "practice", label: "Practice Studio", msIcon: "extension" },
     ],
     tools: [],
   },
   {
     id: "stories",
     label: "Stories",
-    icon: BookOpen,
     msIcon: "auto_stories",
     // Heartwood D2 (Academy split, register seam): STORIES is the child-starring
     // half — Story Journeys render AS personalized comics starring the child's
     // hero; Bedtime Stories and Hero Comics are the hub's tools. The parent-
     // learning half lives in the LEARN hub.
     items: [
-      { tab: "stories", label: "Story Journeys", icon: BookOpen },
+      { tab: "stories", label: "Story Journeys", msIcon: "auto_stories" },
     ],
     primaryTabs: [
-      { tab: "stories", label: "Story Journeys", icon: BookOpen },
+      { tab: "stories", label: "Story Journeys", msIcon: "auto_stories" },
     ],
     tools: [
       // W2-SHELLPLAY r2 (stories): ONE evening door. The Bedtime pill rendered
@@ -241,13 +222,12 @@ export const SECTIONS: NavSection[] = [
       // into "stories" (surfaceContract demotionTarget). No capability is lost.
       // M4 surfacing (IA masterplan): Hero Comics is THE viral surface — an
       // in-hub tile AND a one-click pill; resolves here via fallback.
-      { tab: "comics", label: "Hero Comics", icon: Sparkles, msIcon: "auto_awesome" },
+      { tab: "comics", label: "Hero Comics", msIcon: "auto_awesome" },
     ],
   },
   {
     id: "learn",
     label: "Learn",
-    icon: GraduationCap,
     msIcon: "school",
     // Heartwood D2 (Academy split, register seam): LEARN is the parent-learning
     // half — Masterclasses (hub) + Learn Library, with Family Formation as the
@@ -256,61 +236,59 @@ export const SECTIONS: NavSection[] = [
     // #/learn deep-links land on the Library (routes are canon and always win
     // over aliases) while the sidebar hub button opens Masterclasses.
     items: [
-      { tab: "masterclasses", label: "Parent Masterclasses", icon: GraduationCap },
-      { tab: "learn", label: "Learn Library", icon: Library },
+      { tab: "masterclasses", label: "Parent Masterclasses", msIcon: "school" },
+      { tab: "learn", label: "Learn Library", msIcon: "local_library" },
     ],
     primaryTabs: [
-      { tab: "masterclasses", label: "Parent Masterclasses", icon: GraduationCap },
-      { tab: "learn", label: "Learn Library", icon: Library },
+      { tab: "masterclasses", label: "Parent Masterclasses", msIcon: "school" },
+      { tab: "learn", label: "Learn Library", msIcon: "local_library" },
     ],
     tools: [
-      { tab: "family", label: "Family Formation", icon: Heart, msIcon: "favorite" },
+      { tab: "family", label: "Family Formation", msIcon: "favorite" },
     ],
   },
   {
     id: "care",
     label: "Care Network",
-    icon: HeartHandshake,
     msIcon: "diversity_1",
     items: [
-      { tab: "consult", label: "Consult", icon: FileBarChart },
-      { tab: "school-brief", label: "School Brief", icon: School },
-      { tab: "sharing", label: "Trusted Sharing", icon: Share2 },
-      { tab: "appointments", label: "Appointments", icon: Calendar },
-      { tab: "safety", label: "Safety & Escalation", icon: ShieldAlert },
+      { tab: "consult", label: "Consult", msIcon: "assessment" },
+      { tab: "school-brief", label: "School Brief", msIcon: "backpack" },
+      { tab: "sharing", label: "Trusted Sharing", msIcon: "share" },
+      { tab: "appointments", label: "Appointments", msIcon: "calendar_month" },
+      { tab: "safety", label: "Safety & Escalation", msIcon: "gpp_maybe" },
     ],
     // Hub (Consult) + Safety (the load-bearing escalation surface). School Brief,
     // Trusted Sharing and Appointments are the hub's contextual tools (folded out
     // of the drawer). W4.4: My Care Team merged into Trusted Sharing — one
     // roster surface over the same share grants.
     primaryTabs: [
-      { tab: "consult", label: "Consult", icon: FileBarChart },
-      { tab: "safety", label: "Safety & Escalation", icon: ShieldAlert },
+      { tab: "consult", label: "Consult", msIcon: "assessment" },
+      { tab: "safety", label: "Safety & Escalation", msIcon: "gpp_maybe" },
     ],
     tools: [
-      { tab: "school-brief", label: "School Brief", icon: School, msIcon: "school" },
-      { tab: "sharing", label: "Trusted Sharing", icon: Share2, msIcon: "share" },
-      { tab: "appointments", label: "Appointments", icon: Calendar, msIcon: "calendar_month" },
+      { tab: "school-brief", label: "School Brief", msIcon: "backpack" },
+      { tab: "sharing", label: "Trusted Sharing", msIcon: "share" },
+      { tab: "appointments", label: "Appointments", msIcon: "calendar_month" },
     ],
   },
   {
     id: "profile",
     label: "Profile",
-    icon: UserCircle,
     msIcon: "person",
     items: [
-      { tab: "profile", label: "Development Profile", icon: UserCircle },
-      { tab: "memory", label: "Child Memory", icon: Waypoints },
+      { tab: "profile", label: "Development Profile", msIcon: "person" },
+      { tab: "memory", label: "Child Memory", msIcon: "neurology" },
     ],
     // Hub only; Child Memory is the hub's contextual tool. B-CAREPRO-24: The
     // Science left the pill row — it still resolves to Profile via
     // TAB_SECTION_FALLBACK (highlight) and keeps its TrustLink, EvidenceChip
     // and Settings doors. Heartwood D3: the Weekly Report re-homed to Today.
     primaryTabs: [
-      { tab: "profile", label: "Development Profile", icon: UserCircle },
+      { tab: "profile", label: "Development Profile", msIcon: "person" },
     ],
     tools: [
-      { tab: "memory", label: "Child Memory", icon: Waypoints, msIcon: "neurology" },
+      { tab: "memory", label: "Child Memory", msIcon: "neurology" },
     ],
   },
 ];

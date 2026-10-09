@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CalendarCheck } from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { HubHero } from "../ui/HubHero";
 import { ProgressBar } from "../ui/kit";
@@ -137,7 +136,7 @@ export default function RoutinesTab() {
         compact
         zeroLine={t("elev.growthTruth.hero.empty")}
         tone="sky"
-        icon={CalendarCheck}
+        icon="event_available"
         eyebrow={t("routines.eyebrow")}
         title={t("routines.title")}
         subtitle={heroSub}

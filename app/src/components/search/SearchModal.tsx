@@ -58,7 +58,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
         </div>
 
         <div className="max-sm:flex-1 max-sm:min-h-0 sm:max-h-[50vh] overflow-y-auto space-y-1">
-          {!term && <p className="text-[10px] font-bold uppercase tracking-wider px-1 pb-1" style={{ color: "var(--arbor-muted)" }}>{t("sm.goTo")}</p>}
+          {!term && <p className="text-xs font-semibold px-1 pb-1" style={{ color: "var(--arbor-muted)" }}>{t("sm.goTo")}</p>}
           {!term && !indexReady && open && (
             <p className="text-xs py-6 text-center" style={{ color: "var(--arbor-muted)" }}>{searchnavText("elev.searchnav.loading", heLang)}</p>
           )}
@@ -76,10 +76,10 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
               <span className="flex-shrink-0"><Icon name={r.icon} size={16} style={{ color: r.color }} /></span>
               <span className="min-w-0 flex-1">
                 <span className="text-sm font-bold truncate block" style={{ color: "var(--arbor-ink)" }}>{r.label}</span>
-                <span className="text-[11px] truncate block" style={{ color: "var(--arbor-muted)" }}>{r.sub}</span>
+                <span className="text-xs truncate block" style={{ color: "var(--arbor-muted)" }}>{r.sub}</span>
               </span>
               {i === 0 && <Icon name="keyboard_return" size={16} className="opacity-0 group-hover:opacity-100" style={{ color: "var(--arbor-muted)" }} />}
-              <span className="text-[9px] uppercase font-black tracking-wider flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>{kindLabel(r.kind)}</span>
+              <span className="text-xs font-medium flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>{kindLabel(r.kind)}</span>
             </button>
           ))}
         </div>

@@ -100,7 +100,7 @@ describe("navigation IA", () => {
     for (const s of SECTIONS)
       for (const it of s.items) {
         expect(it.label.trim().length).toBeGreaterThan(0);
-        expect(it.icon).toBeTruthy();
+        expect(it.msIcon).toMatch(/^[a-z][a-z0-9_]+$/);
       }
   });
 
@@ -192,7 +192,7 @@ describe("navigation IA", () => {
     for (const s of SECTIONS)
       for (const tl of s.tools) {
         expect(tl.label.trim().length).toBeGreaterThan(0);
-        expect(tl.icon).toBeTruthy();
+        expect(tl.msIcon).toMatch(/^[a-z][a-z0-9_]+$/);
         expect(ALL_TABS).toContain(tl.tab);
       }
   });

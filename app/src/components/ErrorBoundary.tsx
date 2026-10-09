@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, RotateCcw } from "lucide-react";
+import { Icon } from "./ui/Icon";
 import { track } from "../lib/analytics";
 import { statesText } from "../lib/i18nElevation/states";
 
@@ -79,7 +79,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}
         >
           <div aria-hidden="true" className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center" style={{ background: "var(--arbor-peach-soft)" }}>
-            <AlertTriangle className="w-6 h-6" style={{ color: "var(--arbor-peach-ink)" }} />
+            <Icon name="warning" size={24} style={{ color: "var(--arbor-peach-ink)" }} />
           </div>
           <h3 dir="auto" className="text-lg font-extrabold [overflow-wrap:anywhere]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {statesText("elev.states.error.head", heMode)}
@@ -94,7 +94,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               className="inline-flex items-center justify-center gap-2 max-w-full min-h-[44px] min-w-[44px] font-extrabold text-sm px-4 py-2.5 rounded-xl transition motion-safe:active:scale-[0.98]"
               style={{ background: "var(--arbor-clay-deep)", color: "var(--arbor-on-accent)" }}
             >
-              <RotateCcw aria-hidden="true" className="w-4 h-4 shrink-0" />
+              <Icon name="restart_alt" size={16} className="shrink-0" />
               <span dir="auto" className="min-w-0 [overflow-wrap:anywhere]">{statesText("elev.states.retry", heMode)}</span>
             </button>
             <a

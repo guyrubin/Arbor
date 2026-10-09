@@ -20,6 +20,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { lastPlanOutcomes, planDoneSteps, planEcho, suggestedChallenges, todaysPlanStep } from "../../lib/plans";
 import { dayKey } from "../../practice/signals";
 import { HeroAvatar } from "../ui/HeroAvatar";
+import { EMPTY_ART } from "../../lib/parentArt";
 
 /* R22g (Builder M) — Builder L's local isolate-Latin workaround is GONE, not moved.
    Builder L wrapped the phase name here because isolate() (lib/bidi.ts) was
@@ -204,6 +205,7 @@ export default function PlansTab() {
            keys; only the CTA label is new (elev.states.plans.cta). */
         <EmptyState
           icon={<Icon name="tune" size={32} />}
+          illustration={EMPTY_ART.plans}
           headline={t("plan.empty.head")}
           body={t("plan.empty.body")}
           cta={statesText("elev.states.plans.cta", uiLang === "he")}
