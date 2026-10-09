@@ -97,8 +97,8 @@ describe("voice controller — natural engine + browser-floor fallback", () => {
     const onEnd = vi.fn();
     speakText("hi", { onEnd });
     expect(spoken).toHaveLength(0);
-    calls[0].handlers.onError?.(); // never started → fallback to floor
-    expect(voiceState().engine).toBe("basic"); // session degraded to the floor
+    calls[0].handlers.onError?.(); // never started → THIS utterance falls back to the floor
+    expect(voiceState().engine).toBe("natural"); // B-BOOK-61: one miss does not degrade the session
     expect(spoken).toHaveLength(1); // browser floor spoke the SAME text
     expect(spoken[0].text).toBe("hi");
     expect(onEnd).not.toHaveBeenCalled();
@@ -114,7 +114,7 @@ describe("voice controller — natural engine + browser-floor fallback", () => {
     vi.advanceTimersByTime(1600);
     expect(spoken).toHaveLength(1);
     expect(spoken[0].text).toBe("slow one");
-    expect(voiceState().engine).toBe("basic");
+    expect(voiceState().engine).toBe("natural"); // B-BOOK-61: one slow utterance falls back alone
     // A late natural error must NOT double-speak (one-shot fallback guard).
     calls[0].handlers.onError?.();
     expect(spoken).toHaveLength(1);
@@ -302,7 +302,36 @@ describe("voice controller — AI-V4 lang/voice + AI-V5 watchdog", () => {
     setVoiceEngine("natural");
     speakText("a cold-start sentence");
     vi.advanceTimersByTime(1_600);
-    expect(voiceState().engine).toBe("basic");
+    expect(voiceState().engine).toBe("natural");
     expect(spoken).toHaveLength(1);
+  });
+
+  it("B-BOOK-61: three pages keep the natural engine after ONE 2 s first-byte delay; three consecutive misses degrade the session", () => {
+    vi.useFakeTimers();
+    const calls: { handlers: SpeakHandlers }[] = [];
+    setNaturalSynth((_text, handlers) => { calls.push({ handlers }); return { stop: vi.fn() }; });
+    setVoiceEngine("natural");
+    speakText("page one"); // slow: the watchdog fires
+    vi.advanceTimersByTime(2_000);
+    expect(spoken.map((u) => u.text)).toEqual(["page one"]);
+    for (const page of ["page two", "page three", "page four"]) {
+      speakText(page);
+      calls[calls.length - 1].handlers.onStart?.();
+      expect(voiceState().engine, page).toBe("natural");
+      calls[calls.length - 1].handlers.onEnd?.();
+    }
+    expect(spoken).toHaveLength(1); // only the slow page fell to the floor
+    // Three consecutive misses with no neural start between them degrade the session.
+    for (const page of ["x", "y", "z"]) { speakText(page); vi.advanceTimersByTime(1_600); }
+    expect(voiceState().engine).toBe("basic");
+  });
+
+  it("B-BOOK-61: the synth receives the utterance's language, not the session's", () => {
+    const seen: (string | undefined)[] = [];
+    setNaturalSynth((_t, _h, lang) => { seen.push(lang); return { stop: vi.fn() }; });
+    setVoiceEngine("natural");
+    speakText("שלום", {}, "he");
+    speakText("hello", {}, "en");
+    expect(seen).toEqual(["he", "en"]);
   });
 });

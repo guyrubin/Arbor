@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 
 const voice = vi.hoisted(() => ({
   supported: true,
+  engine: "basic" as "basic" | "natural",
   spoken: [] as { text: string; lang: string; onEnd?: () => void }[],
   stops: 0,
 }));
@@ -18,6 +19,7 @@ vi.mock("../../../lib/voice", () => ({
   voiceSupported: () => voice.supported,
   speakText: (text: string, handlers: { onEnd?: () => void }, lang: string) => { voice.spoken.push({ text, lang, onEnd: handlers.onEnd }); return voice.spoken.length; },
   stopVoice: () => { voice.stops++; },
+  voiceState: () => ({ speaking: false, engine: voice.engine }),
 }));
 
 import {
@@ -91,6 +93,15 @@ describe("voice: one path, a queue, cancel", () => {
     voice.supported = false;
     expect(kidSay("c1", "hi", "en")).toBe(0);
     expect(voice.spoken).toHaveLength(0);
+  });
+
+  it("B-BOOK-61: speaks through the neural engine on a device without speechSynthesis", () => {
+    voice.supported = false;
+    voice.engine = "natural";
+    expect(kidSay("c1", "שלום", "he")).toBeGreaterThan(0);
+    expect(voice.spoken.at(-1)).toMatchObject({ text: "שלום", lang: "he" });
+    voice.engine = "basic";
+    voice.supported = true;
   });
 });
 

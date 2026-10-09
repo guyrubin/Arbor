@@ -24,7 +24,7 @@
  * Fail-quiet: no AudioContext / no speech = silence, never an error.
  */
 import { useSyncExternalStore } from "react";
-import { speakText, stopVoice, voiceSupported } from "../../../lib/voice";
+import { speakText, stopVoice, voiceState, voiceSupported } from "../../../lib/voice";
 
 /* ── the per-child mute (persisted, device-local UI state) ─────────────────── */
 
@@ -83,7 +83,9 @@ let queueToken = 0;
  *  spoken). */
 export function kidSay(childId: string, text: string | readonly string[], lang: "en" | "he"): number {
   const lines = (typeof text === "string" ? [text] : text).map((l) => l.trim()).filter(Boolean);
-  if (lines.length === 0 || isKidReadAloudMuted(childId) || !voiceSupported() || !pageHasUserGesture() || pageHidden()) return 0;
+  // B-BOOK-61: a device with only the neural engine (no speechSynthesis) still speaks.
+  const canSpeak = voiceSupported() || voiceState().engine === "natural";
+  if (lines.length === 0 || isKidReadAloudMuted(childId) || !canSpeak || !pageHasUserGesture() || pageHidden()) return 0;
   const token = ++queueToken;
   if (lines.length === 1) return speakText(lines[0], {}, lang);
   const next = (i: number): number => {
