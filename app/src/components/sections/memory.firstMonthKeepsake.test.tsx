@@ -16,7 +16,7 @@ const h = vi.hoisted(() => ({
 }));
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({
-    childProfile: { id: "c1", name: "Dylan Rubin", onboardingCompletedAt: h.anchor },
+    childProfile: { id: "c1", name: "Alex Example", onboardingCompletedAt: h.anchor },
     behaviorLogs: h.logs,
     playLogs: [{ timestamp: "2026-08-06T10:00:00.000Z" }],
   }),
@@ -32,7 +32,7 @@ import { todayLiveSource } from "../../testTodaySource";
 
 const NOW = new Date(2026, 9, 7, 9, 0, 0); // 7 Oct, local — day 64 after the anchor
 const LOGS = [{ timestamp: "2026-08-04T18:00:00.000Z" }, { timestamp: "2026-08-04T19:00:00.000Z" }, { timestamp: "2026-08-20T08:00:00.000Z" }];
-/** renderToStaticMarkup escapes text ("Dylan's" → "Dylan&#x27;s"). */
+/** renderToStaticMarkup escapes text ("Alex's" → "Alex&#x27;s"). */
 const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf8").replace(/\r\n/g, "\n");
 
@@ -73,7 +73,7 @@ describe("#/memory renders the row (EN + HE)", () => {
       h.lang = lang;
       const html = renderToStaticMarkup(<FirstMonthKeepsakeRow now={NOW} />);
       expect(html.match(/data-testid="memory-first-month-row"/g)).toHaveLength(1);
-      expect(html).toContain(esc(translate(lang, "elev.l4.keepsake.title", { name: "Dylan" })));
+      expect(html).toContain(esc(translate(lang, "elev.l4.keepsake.title", { name: "Alex" })));
       expect(html).toContain(esc(translate(lang, "elev.l4.moments.many", { n: 4 })));
       expect(html).toContain(esc(translate(lang, "elev.l4.days.many", { n: 3 })));
       expect(html).toContain(esc(keptOnLabel("2026-09-03", lang)));
