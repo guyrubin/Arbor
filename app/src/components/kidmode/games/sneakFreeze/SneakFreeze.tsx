@@ -268,7 +268,7 @@ export function SneakPoster() {
   const { art, sheet } = useSneakAssets(childProfile ?? null);
   // The frame: the hero two-thirds up the path, tiptoeing toward the cat that
   // counts — close enough to be recognised at tile size ("is it him?").
-  const v = useMemo<SneakView>(() => ({ ...viewOf(startSitting({ seed: 1, track: "A", level: 1, intro: false })), progress: 0.7, heroPose: "tiptoe" }), []);
+  const v = useMemo<SneakView>(() => ({ ...viewOf(startSitting({ seed: "poster", track: "A", level: 1, intro: false })), progress: 0.7, heroPose: "tiptoe" }), []);
   return (
     <PlayField
       aria-hidden="true"
