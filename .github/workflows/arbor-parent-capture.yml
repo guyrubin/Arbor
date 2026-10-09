@@ -1,0 +1,66 @@
+name: Arbor synthetic Parent capture
+
+on:
+  # The initial run is a branch push: dispatch requires a workflow registered on
+  # the default branch. Never merge this branch just to obtain screenshots.
+  push:
+    branches: ['codex/parent-ui-capture']
+    paths: ['app/**', 'knowledge/**', '.github/workflows/arbor-parent-capture.yml']
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: Synthetic route inventory
+        type: choice
+        options: [all, priorities]
+        default: all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arbor-parent-capture-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build isolated capture image (dependencies only use the network)
+        run: docker build --file app/scripts/capture/Dockerfile --tag arbor-parent-capture .
+      - name: Capture synthetic sandbox with no external network
+        env:
+          CAPTURE_SCOPE: ${{ inputs.scope || 'all' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          container=$(docker create --network none --shm-size=1g \
+            --env ARBOR_CAPTURE_SHA="$GITHUB_SHA" \
+            --env ARBOR_CAPTURE_SCOPE="$CAPTURE_SCOPE" \
+            arbor-parent-capture)
+          trap 'docker rm -f "$container" >/dev/null' EXIT
+          set +e
+          docker start --attach "$container"
+          result=$?
+          set -e
+          mkdir -p "$RUNNER_TEMP/arbor-parent-capture"
+          docker cp "$container:/capture-output/." "$RUNNER_TEMP/arbor-parent-capture/"
+          exit "$result"
+      - name: Keep synthetic PNGs and JSON evidence, including unreachable states
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arbor-parent-synthetic-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/arbor-parent-capture/capture.json
+            ${{ runner.temp }}/arbor-parent-capture/sweep.json
+            ${{ runner.temp }}/arbor-parent-capture/unreachables.json
+            ${{ runner.temp }}/arbor-parent-capture/diagnostics.json
+            ${{ runner.temp }}/arbor-parent-capture/route-inventory.json
+            ${{ runner.temp }}/arbor-parent-capture/shots/*.png
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 7
