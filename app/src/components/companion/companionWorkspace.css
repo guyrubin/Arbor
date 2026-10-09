@@ -5,7 +5,7 @@
 .companion-conversation-heading { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-block-end: 1px solid var(--arbor-rule); flex-shrink: 0; }
 .companion-conversation-identity { flex: 1; min-inline-size: 0; }
 .companion-conversation-identity h2 { font-family: var(--font-display); font-size: 23px; font-weight: 500; margin: 0; }
-.companion-conversation-identity span { display: block; font-size: 13px; color: var(--arbor-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: match-parent; }
+.companion-conversation-identity span { display: block; font-size: 13px; color: var(--arbor-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .companion-chrome-button { display: inline-flex; align-items: center; justify-content: center; min-inline-size: 44px; min-block-size: 44px; border-radius: var(--r-sm); color: var(--arbor-muted); background: transparent; }
 .companion-chrome-button:hover { background: var(--arbor-paper-deep); }
 .companion-workspace-backdrop { position: fixed; inset: 0; z-index: 45; background: color-mix(in srgb,var(--arbor-ink) 22%,transparent); }

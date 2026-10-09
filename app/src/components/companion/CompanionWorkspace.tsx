@@ -72,7 +72,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
         <ArborMark size={30} />
         <div className="companion-conversation-identity">
           <h2 id="companion-conversation-title">Arbor</h2>
-          <span dir="auto">{childProfile.name}{activeFamilyTopic ? ` · ${activeFamilyTopic.title}` : ""}</span>
+          <span><bdi dir="auto">{childProfile.name}{activeFamilyTopic ? ` · ${activeFamilyTopic.title}` : ""}</bdi></span>
         </div>
         {wide && <button type="button" className="companion-chrome-button" onClick={() => setExpanded(value => !value)} aria-label={expanded ? (inputText(uiLang, "companion.input.show-beside-the-page")) : (inputText(uiLang, "companion.input.expand-conversation"))}><Icon name={expanded ? "expand_less" : "fullscreen"} size={20} /></button>}
         <button type="button" className="companion-chrome-button" onClick={close} aria-label={inputText(uiLang, "companion.input.close-conversation-and-return-to-the-page")}><Icon name="close" size={22} /></button>

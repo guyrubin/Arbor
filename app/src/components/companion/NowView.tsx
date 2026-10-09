@@ -28,6 +28,10 @@ export default function NowView(props: NowViewProps) {
   return <NowContent key={`${childProfile.id}:${uiLang}`} {...props} />;
 }
 
+function PrimaryMove({ primary = true, ...props }: React.ComponentProps<"button"> & { primary?: boolean }) {
+  return <button {...props} data-primary-move={primary ? "choose-next-step" : undefined} />;
+}
+
 function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
   const { childProfile, actionLoop, seedCoach, setActiveTab, openCaptureSheet, openHardMomentNow,
     saveTodayOutcome, pendingCaptureMode, consumeCaptureRequest } = useArbor();
@@ -75,16 +79,16 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
           <p className="now-chosen-words" dir="auto">{chosen.recommendation}</p>
           <p className="now-lead-body" role={receiptAction ? "status" : undefined}>{receiptAction ? copy.finished : copy.chosenWhy}</p>
           {!receiptAction && <div className="now-lead-actions" role="group" aria-label={copy.outcomes}>
-            <button type="button" className="companion-primary" data-primary-move="choose-next-step" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.helped}</button>
+            <PrimaryMove type="button" className="companion-primary" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.helped}</PrimaryMove>
             <button type="button" className="companion-secondary" disabled={saving} onClick={() => void saveOutcome("not_today")}>{copy.notToday}</button>
           </div>}
-          <button type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(chosen.recommendation))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></button>
+          <PrimaryMove primary={!!receiptAction} type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(chosen.recommendation))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></PrimaryMove>
           {saveError && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
         </section> : program ? <section className="now-lead arbor-depth-primary" data-module="now-program" aria-labelledby={`${id}-program`}>
           <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name="menu_book" size={24} /></span><p className="companion-eyebrow">{copy.programLabel}</p></div>
           <h2 id={`${id}-program`} className="now-lead-title">{program.content.skill[lang]}</h2>
           <p className="now-lead-body">{copy.programWhy(program.week)}</p>
-          <div className="now-lead-actions"><button type="button" className="companion-primary" data-primary-move="choose-next-step" onClick={openProgram}>{copy.continueProgram}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button></div>
+          <div className="now-lead-actions"><PrimaryMove type="button" className="companion-primary" onClick={openProgram}>{copy.continueProgram}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove></div>
           <button type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(program.content.skill[lang]))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></button>
         </section> : <NowRecommendation name={name} onTalkOpen={talk} />}
 
