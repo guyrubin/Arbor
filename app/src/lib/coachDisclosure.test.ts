@@ -24,7 +24,7 @@ const t = (key: string, vars?: Record<string, string | number>) => {
 
 const PROFILES: Array<{ label: string; profile: Record<string, unknown> }> = [
   { label: "empty", profile: {} },
-  { label: "name only", profile: { name: "Dylan Rubin" } },
+  { label: "name only", profile: { name: "Alex Example" } },
   {
     label: "rich",
     profile: {

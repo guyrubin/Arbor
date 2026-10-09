@@ -33,7 +33,7 @@ vi.mock("../../context/LanguageContext", async () => {
 });
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({
-    childProfile: { id: "child-1", name: "Dylan Rubin", gender: state.gender, dateOfBirth: state.dob, dob: state.dob },
+    childProfile: { id: "child-1", name: "Alex Example", gender: state.gender, dateOfBirth: state.dob, dob: state.dob },
     actionLoop: state.actionLoop,
   }),
 }));

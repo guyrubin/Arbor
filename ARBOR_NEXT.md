@@ -8,7 +8,7 @@
 
 ## 0. Context — What Arbor Is
 
-Arbor is a **parent development support app** for a single parent (Guy) raising a child named **Dylan**, age ~4–5, bilingual (Hebrew/English), navigating school transition. The app is not a consumer product — it is a personal AI-powered parenting OS.
+Arbor is a **parent development support app** for caregivers supporting children through everyday routines and developmental transitions. It supports English and Hebrew. Public documentation and examples must use fictional profiles rather than personal family details.
 
 **Current stack:**
 - React 18 + TypeScript + Vite + Tailwind CSS v4

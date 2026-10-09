@@ -28,7 +28,7 @@ Git-backed knowledge base, an event-sourced memory ledger, and safety screening 
 *in front of* the model.
 
 ### Deployment reality (today)
-- Single-tenant private beta (parent "Guy", child "Dylan"), but the data model and rules
+- Single-tenant private beta, but the data model and rules
   are already multi-family / multi-child / multi-org capable.
 - Region: **`europe-west4`** (Netherlands) for data residency.
 - Live surface: six-capability IA (Home · Ask Arbor · Child Intelligence · Growth Plans ·

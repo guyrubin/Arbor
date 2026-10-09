@@ -21,7 +21,7 @@ vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({
     actionLoop: h.loop,
     activeTodayAction: h.step,
-    childProfile: { id: "c1", name: "Dylan Rubin", languages: ["Hebrew (Native)", "English (Transition)"] },
+    childProfile: { id: "c1", name: "Alex Example", languages: ["Hebrew (Native)", "English (Transition)"] },
     recordFromRecordAnswer: h.record,
   }),
 }));
