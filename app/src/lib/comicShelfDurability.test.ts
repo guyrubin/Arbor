@@ -199,6 +199,7 @@ describe("AIX-S5 — firewall condition: device-local ONLY (no network reads the
       // path only, no network or upload consumer.
       "lib/comicShelfJourneyBooks.test.ts",
       "lib/heroComics.journey.test.ts",
+      "lib/heroJourneyAuthDispatch.test.ts", // offline store reset + fetch spy; proves cancellation, no upload consumer
       "lib/heroComics.identity.test.ts",
       "lib/heroComics.ts", // read/write-through for page art
       "lib/childData.ts", // GDPR erase purge

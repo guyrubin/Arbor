@@ -267,7 +267,8 @@ describe("KID-25 — a second Play of the same story makes no network call", () 
     expect(memoAt).toBeGreaterThan(-1);
     expect(apiAt).toBeGreaterThan(memoAt);
     expect(hero).toContain("const r = memoed ?? (await personalisedFor(story, storyLang)).render;");
-    expect(hero).toContain("generate: () => api.generateHeroJourney({");
+    expect(hero).toContain("generate: (beforeDispatch) => api.generateHeroJourney({");
+    expect(hero).toContain("language: lang }, beforeDispatch)");
     expect(hero).toContain("if (!memoed) rememberJourney(memoKey, r);"); // B-KID-121 re-pin: one writer
   });
 
