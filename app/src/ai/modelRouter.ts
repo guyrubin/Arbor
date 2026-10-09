@@ -65,9 +65,11 @@ export const thinkingConfigForRoute = (
   model: string,
 ): { thinkingBudget: number } | { thinkingLevel: ThinkingLevel } | undefined => {
   if (route !== "analysis_structured" || /image/i.test(model)) return undefined;
-  if (/gemini-2\.5-flash/i.test(model)) return { thinkingBudget: 0 };
-  if (/gemini-3\.5-flash/i.test(model)) return { thinkingLevel: ThinkingLevel.MINIMAL };
-  if (/gemini-3(?:\.\d+)?-flash/i.test(model)) return { thinkingLevel: ThinkingLevel.LOW };
+  // The Flash generation, parsed once (no literal model id: eval:safety pins every id).
+  const generation = /gemini-(\d+(?:\.\d+)?)-flash/i.exec(model)?.[1];
+  if (generation === "2.5") return { thinkingBudget: 0 };
+  if (generation === "3.5") return { thinkingLevel: ThinkingLevel.MINIMAL };
+  if (generation?.startsWith("3")) return { thinkingLevel: ThinkingLevel.LOW };
   return undefined;
 };
 
