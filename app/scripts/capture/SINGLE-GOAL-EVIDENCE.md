@@ -14,7 +14,7 @@ review of the goal-only provider/session lifetime correction. The exact checkout
 commit and app/src tree travel through the existing capture, inventory and cell
 receipts. This document is preparation, not a claim that rendering has run.
 
-The workflow's candidate branch is `codex/parent-single-goal-capture`. The parent
+The workflow's candidate branch is `codex/single-goal-capture`. The parent
 must separately authorize publication and execution. No push, hosting, deployment,
 merge, dependency change or font binary is part of this work.
 
