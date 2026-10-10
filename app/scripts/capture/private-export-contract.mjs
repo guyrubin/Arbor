@@ -91,7 +91,8 @@ export function validPrivacyResponseSettlement(receipt, reason) {
 }
 export function validPrivateExportNetwork(evidence) {
   return Number.isInteger(evidence?.privateExportNarrationRefusals) && evidence.privateExportNarrationRefusals >= 0
-    && ['privateExportDenied', 'privateExportPrivateReads', 'privateExportUnexpectedDownloads', 'privateExportAuthHeaders', 'deniedActions'].every(key => evidence?.[key] === 0);
+    && Number.isInteger(evidence?.privateExportHeaderChecks) && evidence.privateExportHeaderChecks > 0
+    && ['privateExportDenied', 'privateExportPrivateReads', 'privateExportUnexpectedDownloads', 'privateExportAuthHeaders', 'privateExportHeaderReadFailures', 'privateExportHeaderReadsPending', 'deniedActions', 'deniedExternal'].every(key => evidence?.[key] === 0);
 }
 export function validPrivateExportCell(cell) {
   const required = privateExportRequiredAssertions(cell?.state);

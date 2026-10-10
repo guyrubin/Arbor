@@ -26,7 +26,7 @@ const dataFor = (fixture: any) => ({
 const receiptFor = (lang: string) => ({ passed: true, delivery: 'actual-browser-download', syntheticOnly: true, deleted: true, status: 'incomplete', privateFileStatus: 'unauthorized', bytes: 1000, sha256: 'c'.repeat(64), childId: 'capture-private-export-a', filename: lang === 'he' ? 'arbor-child-data.partial.json' : 'arbor-noa-data.partial.json' });
 const readyReceipt = () => ({ responseReady: true, responseStatus: 200, released: false, releasedAfterReady: false, releaseReason: null, outcome: 'pending' });
 const settledReceipt = (reason = 'deliver') => ({ ...readyReceipt(), released: true, releasedAfterReady: true, releaseReason: reason, outcome: 'fulfilled' });
-const safeNetwork = () => ({ privateExportDenied: 0, privateExportPrivateReads: 0, privateExportUnexpectedDownloads: 0, privateExportAuthHeaders: 0, deniedActions: 0, privateExportNarrationRefusals: 0 });
+const safeNetwork = () => ({ privateExportDenied: 0, privateExportPrivateReads: 0, privateExportUnexpectedDownloads: 0, privateExportAuthHeaders: 0, privateExportHeaderChecks: 1, privateExportHeaderReadFailures: 0, privateExportHeaderReadsPending: 0, deniedActions: 0, deniedExternal: 0, privateExportNarrationRefusals: 0 });
 const cellFor = (state: string, viewport: any) => ({ route: 'shell', state, group: 'private-export', ...identity, viewport: `${viewport.w}x${viewport.h}`, lang: viewport.lang, reached: true,
   shot: `shots/${viewport.id}.${state}.png`, failures: [], frames: [{ ready: true }], assertions: privateExportRequiredAssertions(state).map((id: string) => ({ id, passed: true })),
   networkEvidence: safeNetwork(), heldResponse: { ready: readyReceipt(), closedBeforeRelease: true, settled: settledReceipt(state === 'interrupted-closed' ? 'after-close' : 'deliver') }, downloadReceipt: receiptFor(viewport.lang) });
@@ -230,7 +230,8 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     }
     expect(validPrivateExportNetwork({ ...safeNetwork(), privateExportNarrationRefusals: 2 })).toBe(true);
     for (const invalid of [-1, 0.5, '0', undefined]) expect(validPrivateExportNetwork({ ...safeNetwork(), privateExportNarrationRefusals: invalid })).toBe(false);
-    for (const key of Object.keys(safeNetwork()).filter(key => key !== 'privateExportNarrationRefusals')) {
+    for (const invalid of [0, -1, 0.5, '1', undefined]) expect(validPrivateExportNetwork({ ...safeNetwork(), privateExportHeaderChecks: invalid })).toBe(false);
+    for (const key of Object.keys(safeNetwork()).filter(key => !['privateExportNarrationRefusals', 'privateExportHeaderChecks'].includes(key))) {
       const afterScreenshot = { ...cells[0], networkEvidence: { ...safeNetwork(), [key]: 1 } };
       // Every named assertion still says passed, including the pre-shot guard.
       expect(validPrivateExportCell(afterScreenshot)).toBe(false);

@@ -26,6 +26,7 @@ import { collectPracticeStates, PRACTICE_FIXTURE, practiceClockScript } from './
 import { KID_ENTRY_STATES, KID_ENTRY_LIMITATIONS, kidEntryFixture, kidEntryApiDisposition, validKidEntryCell } from './kid-entry-contract.mjs';
 import { PRIVATE_EXPORT_STATES, PRIVATE_EXPORT_LIMITATIONS, privateExportFixture, isExactPrivateExportFixtureUrl, privateExportApiDisposition, validPrivateExportCell, validPrivateExportNetwork } from './private-export-contract.mjs';
 import { createPrivacyResponseGate } from './private-export-download.mjs';
+import { installPrivateExportAdmissionBoundary } from './private-export-admission.mjs';
 import { collectPrivateExportStates } from './private-export-states.mjs';
 
 import { collectKidEntryStates } from './kid-entry-states.mjs';
@@ -203,11 +204,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     let selectedReportFixture = null;
     const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, deniedActionCategories: {}, ttsCapabilityReads: 0, shareListReads: 0, apiCacheHits: 0, localRateLimits: 0 };
     const privacyGate = privateExport ? createPrivacyResponseGate(apiState) : null;
-    if (privateExport) Object.assign(apiState, { privateExportReads: 0, privateExportResponses: 0, privateExportLastStatus: null, privateExportDownloads: 0, privateExportUnexpectedDownloads: 0, privateExportDenied: 0, privateExportPrivateReads: 0, privateExportAuthHeaders: 0, privateExportExpectedDownload: false, privateExportNarrationRefusals: 0, privateExportDownloadObservations: [] });
+    if (privateExport) Object.assign(apiState, { privateExportReads: 0, privateExportResponses: 0, privateExportLastStatus: null, privateExportDownloads: 0, privateExportUnexpectedDownloads: 0, privateExportDenied: 0, privateExportPrivateReads: 0, privateExportAuthHeaders: 0, privateExportHeaderChecks: 0, privateExportHeaderReadsPending: 0, privateExportHeaderReadFailures: 0, privateExportExpectedDownload: false, privateExportNarrationRefusals: 0, privateExportDownloadObservations: [] });
     if (kidEntry) Object.assign(apiState, { kidEntryNarrationRefusals: 0, kidEntryDeniedMutations: 0 });
     await context.route('**/*', route => {
       if (new URL(route.request().url()).origin === BASE) {
-        if (privateExport && route.request().headers().authorization) { apiState.privateExportAuthHeaders++; apiState.deniedActions++; return route.abort(); }
         if (privateExport && !['GET', 'HEAD'].includes(route.request().method())) { apiState.privateExportDenied++; apiState.deniedActions++; return route.abort(); }
         return route.continue();
       }
@@ -222,7 +222,6 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
       if (privateExport) {
         const disposition = privateExportApiDisposition(request.method(), url.pathname, fixture.childId);
-        if (request.headers().authorization) { apiState.privateExportAuthHeaders++; apiState.deniedActions++; return route.abort(); }
         if (/\/book-assets(?:\/|$)/.test(url.pathname)) apiState.privateExportPrivateReads++;
         if (disposition === 'deny') { apiState.privateExportDenied++; apiState.deniedActions++; return route.abort(); }
         if (disposition === 'synthetic-narration-refusal') { apiState.privateExportNarrationRefusals++; return json(409, { code: 'synthetic_capture_media_disabled' }); }
@@ -272,13 +271,14 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       return route.continue();
     });
     await context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : '**/sandbox/demo-family.json', route => {
-      if (privateExport && (route.request().method() !== 'GET' || route.request().headers().authorization)) {
-        if (route.request().headers().authorization) apiState.privateExportAuthHeaders++;
+      if (privateExport && route.request().method() !== 'GET') {
         apiState.privateExportDenied++; apiState.deniedActions++; return route.abort();
       }
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) });
     });
     await installOfflineFonts(context);
+    // No route may be registered after this first-executed admission boundary.
+    if (privateExport) await installPrivateExportAdmissionBoundary(context, apiState);
     if (kidEntry) await context.addInitScript(initializeSyntheticOnline, { lang, preserveKidMode: true });
     else await context.addInitScript(initializeSyntheticOnline, { lang });
     if (practiceCapture) await context.addInitScript({ content: practiceClockScript(fixture.parsed) });

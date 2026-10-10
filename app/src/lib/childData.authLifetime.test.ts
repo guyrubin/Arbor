@@ -111,7 +111,9 @@ describe("whole-child export lifetime ownership", () => {
     expect(download).not.toHaveBeenCalled();
     const sheet = readFileSync(new URL("../components/layout/YourDataSheet.tsx", import.meta.url), "utf8");
     expect(sheet).toContain("await withChildExportSession(user?.uid, run.controller.signal");
-    expect(sheet.indexOf("session.assertCurrent();")).toBeLessThan(sheet.indexOf("downloadJson(`"));
+    const downloadCall = sheet.indexOf("downloadJson(childExportFilename(");
+    expect(downloadCall).toBeGreaterThan(-1);
+    expect(sheet.indexOf("session.assertCurrent();")).toBeLessThan(downloadCall);
   });
 
   it("returns a normal owned export and explicitly permits unconfigured local sandbox data without a fake owner", async () => {

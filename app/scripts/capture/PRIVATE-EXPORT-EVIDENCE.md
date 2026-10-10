@@ -85,6 +85,35 @@ unexpected-download, auth-header or denied-action counters fail even if earlier
 assertions passed. There are no real accounts or child records,
 external recipients, provider calls, uploads, hosting changes or new permissions.
 
+### Complete-header admission follow-up
+
+The private-export context now registers a capture-only universal admission
+boundary after the API, demo and offline-font routes. Playwright runs matching
+routes in reverse registration order, so no handler can fulfill, fetch, continue
+or return the exact current-child narration HTTP 409 before this boundary awaits
+`request.allHeaders()`. The synchronous `headers()` API omits security/cookie
+headers and is not used for this claim. Header values and metadata error text
+never enter capture evidence. Presence of a credential header, including an empty
+one, aborts the request. Rejected, missing or malformed complete-header metadata
+also aborts; it cannot fall back as credential-free.
+
+Successful metadata inspection only calls unmodified `route.fallback()`. The
+existing exact privacy/demo, private-file, mutation, foreign-origin and verified
+offline-font handlers retain their decisions. The boundary installs only for
+private-export capture. A valid final network receipt requires a positive integer
+`privateExportHeaderChecks`, zero pending full-header reads, zero metadata-read
+failures, and every forbidden counter at zero, including denied external
+requests. An uninstalled, unresolved or failed observer cannot produce acceptance
+by reporting zero credential headers.
+
+The existing `61cb8c4cd519feb18ddf2dfeec8d626d38bf842d` run remains historical:
+its 40 accepted original screenshots, 12 actual partial-download receipts and
+cancellation observations do not acquire this strengthened credential assurance
+retroactively. A new bounded private-export run on the published follow-up source
+must supply the new counters while retaining all forty states, twelve validated
+and deleted downloads, honest partial status and interruption assertions. This
+change itself does not constitute new browser evidence or authenticated export.
+
 The aggregate requires all named assertions, settled real dialog frames, exact
 source identity, safe request counts, validated/deleted download receipts and
 exact-font screenshots. A green bounded capture means only these forty sandbox
@@ -107,3 +136,7 @@ one Vitest file/process with `--maxWorkers=1`, from `app`:
 
 Also run the existing `captureRelease.test.ts`, `captureKidEntry.test.ts` and
 `captureHarness.test.ts` serially after changes to the shared capture wiring.
+`capturePrivateExportAdmission.test.ts` adds pure negative controls and exercises
+the collector's actual route registration with stubbed Chromium, filesystem
+writes and font serving; it stops before creating a page. Those tests establish
+ordering and fail-closed behavior, not a live browser capture.

@@ -268,9 +268,11 @@ describe("Settings export interruptions and repeat clicks", () => {
   it("the mounted Settings flow checks lifecycle before download, marks partial receipts, and never exports through the cache", () => {
     const sheet = readFileSync(new URL("../components/layout/YourDataSheet.tsx", import.meta.url), "utf8");
     expect(sheet).toContain("!exportRun.current.current(run, scopeRef.current)");
-    expect(sheet.indexOf("!exportRun.current.current(run, scopeRef.current)")).toBeLessThan(sheet.indexOf("downloadJson(`"));
+    const downloadCall = sheet.indexOf("downloadJson(childExportFilename(");
+    expect(downloadCall).toBeGreaterThan(-1);
+    expect(sheet.indexOf("!exportRun.current.current(run, scopeRef.current)")).toBeLessThan(downloadCall);
     expect(sheet).toContain("run.controller.signal");
-    expect(sheet).toContain('status === "incomplete" ? ".partial"');
+    expect(readFileSync(new URL("./childExportFilename.ts", import.meta.url), "utf8")).toContain('status === "incomplete" ? ".partial"');
     expect(sheet).toContain('data-testid="your-data-export-receipt"');
     const implementation = readFileSync(new URL("./bookAssetExport.ts", import.meta.url), "utf8");
     expect(implementation).not.toMatch(/fetchBookAsset|bookAssetStore|\.put\(|console\.|logger\.|\/tts|generate|signedUrl/);
