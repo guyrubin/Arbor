@@ -25,6 +25,7 @@
  */
 import { useSyncExternalStore } from "react";
 import { speakText, stopVoice, voiceState, voiceSupported } from "../../../lib/voice";
+import { stopKidVoice } from "../../../lib/kidVoicePlayer";
 
 /* ── the per-child mute (persisted, device-local UI state) ─────────────────── */
 
@@ -225,6 +226,7 @@ export function kidSfx(name: KidSfx): void {
 export function kidAudioVisibility(hidden: boolean): void {
   if (hidden) {
     kidHush();
+    stopKidVoice();
     try { void ctx?.suspend?.(); } catch { /* ignore */ }
   } else {
     try { void ctx?.resume?.(); } catch { /* ignore */ }
@@ -234,6 +236,7 @@ export function kidAudioVisibility(hidden: boolean): void {
 /** Kid Mode closed: release the shared context, stop the voice, forget the child. */
 export function closeKidAudio(): void {
   kidHush();
+  stopKidVoice();
   activeChild = null;
   const live = ctx;
   ctx = null;

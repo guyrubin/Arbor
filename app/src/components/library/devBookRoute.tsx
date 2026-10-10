@@ -32,6 +32,7 @@ import { createRoot } from "react-dom/client";
 import { BookReader } from "./BookReader";
 import { DEFAULT_REVIEW_BOOK, getLibraryBook } from "../../lib/library/books";
 import { closeKidAudio, setKidAudioChild } from "../kidmode/audio/kidAudio";
+import { installKidVoiceUnlock } from "../../lib/kidVoicePlayer";
 import { loadHeroSheet, type HeroSheet } from "../../lib/library/heroSheet";
 import type { BookLang, BookReaderChild } from "../../lib/library/types";
 
@@ -88,7 +89,11 @@ export function DevBookRoute({ params }: { params: DevBookParams }) {
     // The kid audio bus: page-turn and tap cues play for this child; Sound
     // is the same per-child mute the kid shell uses.
     setKidAudioChild(params.child.id);
-    return () => closeKidAudio();
+    const uninstallVoiceUnlock = installKidVoiceUnlock();
+    return () => {
+      uninstallVoiceUnlock();
+      closeKidAudio();
+    };
   }, [params, book]);
   return (
     <div className="arbor-play" data-dev-book-route="">

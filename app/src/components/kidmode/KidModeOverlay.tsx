@@ -35,6 +35,7 @@ import { ArborMascot } from "../ui/ArborMascot";
 import { useArbor } from "../../context/ArborContext";
 import { KidSoundToggle } from "./kidReadAloud";
 import { closeKidAudio, kidAudioVisibility, kidHush, setKidAudioChild } from "./audio/kidAudio";
+import { installKidVoiceUnlock } from "../../lib/kidVoicePlayer";
 import { hydrateHeroRenders } from "../../lib/heroRenderStore";
 import { setKidHome, useKidStage } from "./kidChrome";
 import { KidStage } from "./KidStage";
@@ -183,9 +184,13 @@ export default function KidModeOverlay() {
     setKidAudioChild(childProfile.id);
     // B-KID-127: warm the child's kept stories so a tapped book opens on them.
     void hydrateHeroRenders(childProfile.id);
+    // iOS: the child's first tap blesses the reused voice channels, so a book
+    // page's narration can start after the turn without a gesture of its own.
+    const uninstallVoiceUnlock = installKidVoiceUnlock();
     const onVisibility = () => kidAudioVisibility(document.visibilityState === "hidden");
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
+      uninstallVoiceUnlock();
       document.removeEventListener("visibilitychange", onVisibility);
       closeKidAudio();
     };

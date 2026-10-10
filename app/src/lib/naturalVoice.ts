@@ -1,5 +1,7 @@
 import { authHeaders, getAiLanguage } from "./api";
 import { setNaturalSynth, setVoiceEngine, type NaturalSynth, type NaturalSynthHandle, type SpeakHandlers } from "./voice";
+import { isKidModeActive } from "./kidModeGate";
+import { kidVoiceElement } from "./kidVoicePlayer";
 
 /**
  * Client neural-voice adapter (Epic A) — bridges the voice controller to the server
@@ -72,7 +74,30 @@ const prefetchCache = new Map<string, Promise<FetchedAudio | null>>();
  *  (the two-letter prefix keeps the key unambiguous). */
 const cacheKey = (text: string, lang: "en" | "he") => `${lang}:${text}`;
 
+/** Kid Mode read-aloud (10 Oct 2026): a book's authored lines are the same on
+ *  every read, so each line's audio is fetched once per session and replayed
+ *  from memory (a re-read makes no /api/tts call). Bounded FIFO; the parent
+ *  register's dynamic replies are never kept here. */
+const KID_LINE_MAX = 120;
+const kidLineCache = new Map<string, FetchedAudio>();
+function keepKidLine(key: string, audio: FetchedAudio): void {
+  if (kidLineCache.size >= KID_LINE_MAX) {
+    const oldest = kidLineCache.keys().next().value;
+    if (oldest !== undefined) kidLineCache.delete(oldest);
+  }
+  kidLineCache.set(key, audio);
+}
+
 async function fetchTtsAudio(text: string, lang: "en" | "he"): Promise<FetchedAudio | null> {
+  const kid = isKidModeActive();
+  const kept = kid ? kidLineCache.get(cacheKey(text, lang)) : undefined;
+  if (kept) return kept;
+  const fetched = await fetchTtsAudioOnce(text, lang);
+  if (fetched && kid) keepKidLine(cacheKey(text, lang), fetched);
+  return fetched;
+}
+
+async function fetchTtsAudioOnce(text: string, lang: "en" | "he"): Promise<FetchedAudio | null> {
   try {
     const res = await fetch("/api/tts", {
       method: "POST",
@@ -114,13 +139,19 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers, lang: 
   // this element while the gesture is still live; its rejection (no source yet)
   // is expected and swallowed. onplay is attached only AFTER src is set, so the
   // bless-play can never fire onStart.
-  const audio = new Audio();
-  try {
-    audio.play().catch(() => {
-      /* expected: no src yet — the bless is best-effort */
-    });
-  } catch {
-    /* some engines throw synchronously on a src-less play() */
+  // Kid Mode: the ONE page voice channel, already blessed by the child's
+  // first tap (lib/kidVoicePlayer) — the read-aloud starts 400 ms after a
+  // page opens, outside any gesture, which iOS refuses for a fresh element.
+  const shared = isKidModeActive() ? kidVoiceElement("page") : null;
+  const audio = shared ?? new Audio();
+  if (!shared) {
+    try {
+      audio.play().catch(() => {
+        /* expected: no src yet — the bless is best-effort */
+      });
+    } catch {
+      /* some engines throw synchronously on a src-less play() */
+    }
   }
 
   let url: string | null = null;
@@ -196,6 +227,7 @@ export function resetNaturalVoiceForTest(): void {
   initialized = false;
   tokenRegistry.clear();
   prefetchCache.clear();
+  kidLineCache.clear();
 }
 
 /** Bootstrap the neural engine. AI-V4: driven SOLELY by the server-side
