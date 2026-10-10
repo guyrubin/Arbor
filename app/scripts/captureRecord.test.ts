@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { RECORD_LIMITATIONS, RECORD_STATES, RETIRED_MONTH_IDS, RECORD_SOURCE_NAMES, recordFixture, recordVariant } from './capture/record-contract.mjs';
@@ -13,6 +13,7 @@ import { journalRecordSignals } from '../src/lib/journalRecordSignals';
 import { matchesJournalFilter } from '../src/lib/journalFilters';
 import { CDC_MILESTONES } from '../src/lib/milestoneData';
 import { CHILD_SUBCOLLECTIONS } from '../src/lib/childData';
+import { observeRecordChildFrame } from './capture/record-child-frame.mjs';
 const root = path.resolve(__dirname, '../..');
 const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
 const body = () => ({ child: { id: 'synthetic-capture-child', name: 'Capture Child', demo: true }, collections: { milestones: [{ ...CDC_MILESTONES[0], checked: false }], actionLoops: [] } });
@@ -22,6 +23,7 @@ const receipt = () => ({ ...identity, passed: true, delivery: 'download-html', m
   rendering: 'print-media-viewport', pdfRendering: 'chromium-paginated-css-page', preferCSSPageSize: true, pdfValid: true, pdfBytes: 8000, pdfSha256: 'd'.repeat(64), pdf: 'print/kept-month.mobile-he.pdf',
   htmlSha256: 'c'.repeat(64), htmlBytes: 4000, expectedRows: 4, renderedRows: 4, textMatches: true, viewport: { width: 794, height: 1123 },
   fonts: [{ familyName: 'Liberation Serif', glyphCount: 10, isCustomFont: false }], html: 'print/kept-month.mobile-he.html', shot: 'print/kept-month.mobile-he.png' });
+afterEach(() => vi.unstubAllGlobals());
 
 describe('bounded record capture pure contracts; no browser or sockets', () => {
   it('adds four prioritized shards while preserving every baseline cell', () => {
@@ -104,6 +106,40 @@ describe('bounded record capture pure contracts; no browser or sockets', () => {
     expect(arrival).toContain('firstFoldFrame'); expect(arrival).not.toMatch(/scrollIntoView|scrollTo\(/);
     expect(capture).toContain("page.keyboard.press('Enter')"); expect(capture).toContain("page.keyboard.press('Space')");
     expect(capture).toContain('SYNTHETIC_EMPTY_SIBLING_REQUIRED');
+    expect(capture).toContain("load('journal?view=all')");
+    expect(capture).toContain("hash === '#/journal?view=all'");
+  });
+  it('rejects outgoing, faded, moving or wrong-child frames before font sampling', () => {
+    const setup = () => {
+      const motion: any = { parentElement: null, style: {} };
+      const heading = { getBoundingClientRect: () => ({ top: 120, bottom: 150, width: 250, height: 30 }) };
+      const route: any = { parentElement: motion, querySelector: vi.fn(() => heading) };
+      const outgoing = { isConnected: false };
+      const main = { scrollTop: 0, getBoundingClientRect: () => ({ top: 74, bottom: 720 }) };
+      const storage = { getItem: vi.fn(() => 'capture-child') };
+      const document = { querySelector: vi.fn(() => main), querySelectorAll: vi.fn(() => [route]) };
+      vi.stubGlobal('document', document); vi.stubGlobal('localStorage', storage);
+      vi.stubGlobal('getComputedStyle', (el: any) => ({ opacity: '1', transform: 'none', visibility: 'visible', display: 'block', ...el.style }));
+      return { outgoing, childId: 'capture-child', motion, route, heading, storage, document };
+    };
+    let f = setup(); expect(observeRecordChildFrame(f)).toMatchObject({ ready: true, outgoingRetired: true, replacementMounted: true });
+    f.heading.getBoundingClientRect = () => ({ top: -120, bottom: -90, width: 250, height: 30 });
+    expect(observeRecordChildFrame(f)).toMatchObject({ ready: true, headingRendered: true, headingWithinMain: false });
+    for (const change of [
+      (f: any) => { f.outgoing.isConnected = true; },
+      (f: any) => { f.motion.style.opacity = '0.5'; },
+      (f: any) => { f.motion.style.transform = 'matrix(1, 0, 0, 1, 0, 10)'; },
+      (f: any) => { f.motion.style.visibility = 'hidden'; },
+      (f: any) => f.storage.getItem.mockReturnValue('other-child'),
+      (f: any) => f.route.querySelector.mockReturnValue(null),
+      (f: any) => f.document.querySelectorAll.mockReturnValue([]),
+      (f: any) => f.document.querySelectorAll.mockReturnValue([f.route, f.route]),
+    ]) { f = setup(); change(f); expect(observeRecordChildFrame(f).ready).toBe(false); expect(observeRecordChildFrame({ ...f, waitUntilReady: true })).toBe(false); }
+    const capture = read('app/scripts/capture/record-states.mjs');
+    expect(capture).toContain('cell.childTransition.lastObserved');
+    expect(capture).toContain('waitUntilReady: true }, { timeout: 10000 }');
+    expect(capture).not.toContain("getByText(he ? 'תמונת ההתפתחות' : 'Growth picture', { exact: true })");
+    expect(capture).toContain(".portrait-keepsakes-body > section");
   });
   it('pins retired names and the real preserved firsts/tree/editor/Timeline doors', () => {
     expect(RETIRED_MONTH_IDS).toEqual(['growth-month-in-review', 'month-keepsake', 'memory-first-month']);

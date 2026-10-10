@@ -118,7 +118,8 @@ describe('final release evidence contracts, no sockets or browser', () => {
   });
   it('keeps publication, providers, real data and font binaries out of the branch-specific workflow', () => {
     const workflow = read('.github/workflows/arbor-parent-release-capture.yml');
-    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity']");
+    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic']");
+    expect(workflow).toContain('"codex/parent-record-diagnostic" ]]; then scope=record-only;');
     expect(workflow).toContain('contents: read');
     expect(workflow).toContain('fail-fast: false');
     expect(workflow).toContain('max-parallel: 4');

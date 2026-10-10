@@ -18,8 +18,14 @@ Only the release owner publishes the source candidate and branch.
   CI step deadline, per-cell checkpoint and partial-artifact preservation.
 - Nearest narrow runtime target is group `record`, viewport `mobile-he`, shard
   `0`, through the existing isolated Docker `run-release.mjs`. `record-only` is
-  available as a pure aggregation/matrix scope; this change adds no second branch
-  or manual workflow to publish it.
+  the four-variant aggregation/matrix scope used by the diagnostic path below.
+
+For a harness-only replay, the same read-only workflow also accepts
+`codex/parent-record-diagnostic` and selects `record-only`: four shards and 192
+app cells, retaining the already captured baseline separately. The owner must
+compare exact app-source tree receipts; distinct workflow/source commit IDs are
+never silently treated as one aggregate. This path changes no app source,
+permissions, font origin/guard, or publication ownership.
 
 ## Actual flows
 
@@ -74,6 +80,14 @@ first fold and verifies it can receive focus. These three added states retain
 all original 45 record states. Child switching uses the real picker after closing
 the modal; the picker is not reachable through an open modal. Open-sheet child
 retirement remains source lifecycle coverage, not simulated browser evidence.
+
+The empty feed is loaded at its actual `#/journal?view=all` deep link; bare
+`#/journal` is the shelf landing. Child-switch sampling waits for the outgoing
+Shell frame to detach and a single replacement at the selected child identity
+to become opaque with its final transform. Raw before/after/failure frame
+receipts retain ancestor styles, heading/main bounds and scroll position without
+forcing scroll or extending an arbitrary sleep. Firsts card checks its rendered
+card text, including the child, rather than exact text on an icon-bearing span.
 
 ## Print receipts
 

@@ -1,6 +1,7 @@
 /** Actual bounded UI flows against synthetic storage. No app component is mocked. */
 import { RETIRED_MONTH_IDS, SEARCH_ROUTES, recordVariant } from './record-contract.mjs';
 import { captureRecordPrint } from './record-print.mjs';
+import { observeRecordChildFrame } from './record-child-frame.mjs';
 
 export async function collectRecordStates({ page, context, fixture, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId }) {
   const he = viewport.lang === 'he';
@@ -147,22 +148,33 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
     check(cell, 'REPEATED_STALE_ATTEMPTS_NO_EGRESS', (await sink()).calls === 0 && (await sink()).clipboardCalls === 0);
     cell.fixture = 'same-document-storage-deletion-existing-context-retained-until-refresh';
   });
-  const switchChild = async name => {
+  const switchChild = async (name, childId, cell) => {
+    const outgoing = await page.locator('#main [data-route="development"]').elementHandle();
+    if (!outgoing) throw new Error('OUTGOING_CHILD_FRAME_MISSING');
+    cell.childTransition = { before: await page.evaluate(observeRecordChildFrame, { outgoing, childId }) };
     const control = page.locator('button[aria-haspopup="listbox"]:visible').first();
-    await control.click();
-    await page.getByRole('listbox').getByRole('option').filter({ hasText: name }).click();
+    try {
+      await control.click();
+      await page.getByRole('listbox').getByRole('option').filter({ hasText: name }).click();
+      const settled = await page.waitForFunction(observeRecordChildFrame, { outgoing, childId, waitUntilReady: true }, { timeout: 10000 });
+      try { cell.childTransition.after = await settled.jsonValue(); } finally { await settled.dispose(); }
+      check(cell, 'CHILD_KEYED_REPLACEMENT_FRAME_SETTLED', cell.childTransition.after.ready);
+    } catch (error) {
+      cell.childTransition.lastObserved = await page.evaluate(observeRecordChildFrame, { outgoing, childId }).catch(() => ({ unavailable: true }));
+      throw error;
+    } finally { await outgoing.dispose(); }
   };
   await screen('development', 'child-switch', async cell => {
     await reset(); await open(); await filters().nth(1).click(); await count(fixture.expected.said);
     await byId('kept-item-send').first().click(); await closeReview();
-    await switchChild(fixture.siblingName); await open(); await count(0);
+    await switchChild(fixture.siblingName, fixture.siblingId, cell); await open(); await count(0);
     check(cell, 'ACTUAL_SWITCHER_CHANGED_CHILD', await page.evaluate(() => localStorage.getItem('arbor.activeChildId')) === fixture.siblingId);
     check(cell, 'OLD_CHILD_WORDS_ABSENT', !await reader().textContent().then(text => text.includes(fixture.text.quote)));
     check(cell, 'CHILD_SWITCH_RESETS_FILTER_AND_REVIEW', await filters().first().getAttribute('aria-pressed') === 'true' && await sendSheet().count() === 0);
     await expose(reader());
   });
   await screen('development', 'child-return', async cell => {
-    await switchChild(fixture.childName); await open(); await checkRows(cell, fixture.expected.all);
+    await switchChild(fixture.childName, fixture.childId, cell); await open(); await checkRows(cell, fixture.expected.all);
     check(cell, 'RETURN_RESETS_FILTER', await filters().first().getAttribute('aria-pressed') === 'true');
     check(cell, 'RETURN_HAS_NO_STALE_REVIEW', await sendSheet().count() === 0);
     await expose(reader().locator('h2'));
@@ -210,9 +222,13 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
     await tabs.nth(1).click();
     // This bounded fixture has no current-age score confidence. The real
     // Firsts card intentionally shows its empty picture, without a CDC footer.
-    check(cell, 'FIRSTS_CONTROL_AND_ACTUAL_CONTENT', await tabs.nth(1).getAttribute('aria-pressed') === 'true' && await reader().count() === 0
-      && await disclosure().getByText(he ? 'תמונת ההתפתחות' : 'Growth picture', { exact: true }).isVisible()
-      && (await disclosure().innerText()).includes(fixture.childName));
+    // The heading's span includes Material Symbols own text, so exact
+    // getByText(label) is not its accessible/rendered content boundary.
+    const card = disclosure().locator('.portrait-keepsakes-body > section');
+    const observed = { selected: await tabs.nth(1).getAttribute('aria-pressed') === 'true', keptReaders: await reader().count(),
+      cardCount: await card.count(), cardVisible: await card.isVisible(), label: (await card.innerText()).includes(he ? 'תמונת ההתפתחות' : 'Growth picture'),
+      child: (await card.innerText()).includes(fixture.childName) };
+    check(cell, 'FIRSTS_CONTROL_AND_ACTUAL_CONTENT', observed.selected && observed.keptReaders === 0 && observed.cardCount === 1 && observed.cardVisible && observed.label && observed.child, observed);
     cell.fixture = 'existing-firsts-empty-picture-no-current-age-score-confidence';
     await expose(tabs.nth(1));
   });

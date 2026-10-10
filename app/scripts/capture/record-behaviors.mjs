@@ -179,7 +179,10 @@ export async function collectBehaviorRecordStates({ page, fixture, viewport, loa
     await page.evaluate(({ id, names }) => { for (const name of names) localStorage.setItem(`arbor.${name}.${id}`, '[]'); }, { id: fixture.siblingId, names: JOURNAL_EMPTY_SOURCES });
     await page.locator('button[aria-haspopup="listbox"]:visible').first().click();
     await page.getByRole('listbox').getByRole('option').filter({ hasText: fixture.siblingName }).click();
-    await load('journal'); await visible(cell, 'REAL_EMPTY_ACTION_VISIBLE', byId('journal-empty-cta'));
+    // The feed is the existing query-addressable subroute; plain #/journal
+    // deliberately opens shelves. This is a real full feed deep-link load.
+    await load('journal?view=all'); await visible(cell, 'REAL_EMPTY_ACTION_VISIBLE', byId('journal-empty-cta'));
+    check(cell, 'REAL_EMPTY_FEED_SUBROUTE', new URL(page.url()).hash === '#/journal?view=all');
     check(cell, 'EMPTY_CHILD_HAS_NO_RENDERED_RECORDS', await byId('journal-record-row').count() === 0);
     const frame = await firstFoldFrame(byId('journal-empty-cta'));
     check(cell, 'EMPTY_ACTION_VISIBLE_AND_HITTABLE_BEFORE_SCROLL', journalControlAtFirstFold(frame), frame);
