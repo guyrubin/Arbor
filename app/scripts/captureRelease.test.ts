@@ -104,6 +104,8 @@ describe('final release evidence contracts, no sockets or browser', () => {
     expect(sweep.match(/await installOfflineFonts\(context\)/g)).toHaveLength(2);
     expect(sweep.match(/await captureScreenshot\(page/g)).toHaveLength(2);
     expect(sweep).not.toContain('await page.screenshot(');
+    expect(sweep).toContain('document-extent-only-not-full-main-content');
+    expect(sweep).toContain('rec.mainScrollport =');
     expect(sweep).toContain('const VIEWPORTS = RELEASE_VIEWPORTS');
     expect(sweep).not.toContain('EXTRA_VIEWPORTS');
     expect(sweep).toContain('expectedSeedMarker(seedFields.bundle, vp.lang)');

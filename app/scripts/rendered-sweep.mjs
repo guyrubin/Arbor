@@ -1545,12 +1545,14 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       await captureScreenshot(page, { path: shotFile, fullPage: false, animations: "disabled", caret: "hide" });
       shot = path.relative(path.dirname(path.dirname(shotFile)), shotFile).split(path.sep).join("/");
     } catch (error) { shot = null; rec.fontFailure = /^FONT_[A-Z_]+$/.test(error?.message ?? "") ? error.message : "SCREENSHOT_FAILED"; }
-    // P5 pass A9: a full-page shot per 375 BASE cell, so the blocks below the
-    // fold (Notice, Tonight's line, the door) have rendered evidence.
+    // Document extent only: fullPage does not expand the bounded #main
+    // scrollport. Actual below-fold frames are separate focused states.
     if (!run && vp.w < 768) {
       try {
         const fullFile = shotFile.replace(/\.png$/, ".full.png");
         await captureScreenshot(page, { path: fullFile, fullPage: true, animations: "disabled", caret: "hide" });
+        rec.fullShotScope = "document-extent-only-not-full-main-content";
+        rec.mainScrollport = await page.locator("#main").evaluate(el => ({ scrollTop: el.scrollTop, clientHeight: el.clientHeight, scrollHeight: el.scrollHeight }));
         rec.fullShot = path.relative(path.dirname(path.dirname(fullFile)), fullFile).split(path.sep).join("/");
       } catch { /* the viewport shot stands */ }
     }

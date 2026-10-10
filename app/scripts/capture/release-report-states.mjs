@@ -21,6 +21,38 @@ export function preservedReportFields(response) {
     ...c.sourceCards.map(item => item.title), ...response.council.flatMap(item => [item.name, item.concept, item.takeaway, item.suggestion])].filter(Boolean);
 }
 
+/** Scope each value to its semantic field, so a short phrase reused inside
+ * another sentence is not mistaken for a duplicate rendering of this field. */
+export function reportFieldGroups(response) {
+  const c = response.contract;
+  const group = (id, selector, expected) => ({ id, selector, expected });
+  return [
+    group('opening', '[data-testid="coach-report-opening"] .coach-report__lead', [c.text]),
+    group('steps', '.coach-report__step-content > p', c.todayPlan),
+    group('script', '[data-testid="say-this"] p', [`“${c.parentScript}”`]),
+    group('hypothesis-labels', '[data-testid="coach-report-understanding"] li > strong', c.nonDiagnosticHypotheses.map(item => item.label)),
+    group('hypothesis-reasons', '[data-testid="coach-report-understanding"] li > p', c.nonDiagnosticHypotheses.map(item => item.rationale).filter(Boolean)),
+    group('observe', '[data-testid="coach-report-observe"] li', c.observe),
+    group('avoid', '[data-testid="coach-report-avoid"] li', c.avoid),
+    group('help', '[data-testid="coach-report-help"] li', c.escalateIf),
+    group('document-points', '.coach-report__document > section:nth-of-type(1) > ul > li', c.document.keyPoints),
+    group('document-questions', '.coach-report__document > section:nth-of-type(2) > ul > li', c.document.questionsForProfessional),
+    group('document-note', '.coach-report__document > p', [c.document.handoffNote]),
+    group('document-memory', '[data-testid="coach-doc-memory"] > li > p', c.document.suggestedMemory),
+    group('source-titles', '[data-testid="coach-report-sources"] li > span:first-child', c.sourceCards.map(item => item.title)),
+    group('council-names', '[data-testid="coach-report-council"] li > strong', response.council.map(item => item.name)),
+    group('council-concepts', '[data-testid="coach-report-council"] li > span', response.council.map(item => ` · ${item.concept}`)),
+    group('council-advice', '[data-testid="coach-report-council"] li > p', response.council.flatMap(item => [item.takeaway, item.suggestion].filter(Boolean))),
+  ];
+}
+
+/** Only safe group IDs, lengths and booleans are retained as artifact evidence. */
+export function reportFieldEvidence(groups, actual) {
+  const norm = text => String(text).replace(/\s+/g, ' ').trim();
+  return groups.map((group, index) => ({ id: group.id, expectedCount: group.expected.length, actualCount: actual[index]?.length ?? 0,
+    exactMatch: Array.isArray(actual[index]) && actual[index].length === group.expected.length && actual[index].every((text, i) => norm(text) === norm(group.expected[i])) }));
+}
+
 export async function collectReportStates(h) {
   const { page, screen, lang, check, visible, byId, composer, load, openConversation, syntheticReleaseReport, setReportFixture } = h;
   const fixture = completeReportFixture(syntheticReleaseReport(lang), lang);
@@ -71,11 +103,11 @@ export async function collectReportStates(h) {
   await screen('shell', 'report-all-fields-once', async cell => {
     if (!baseline) throw new Error('DEPENDENT_STATE_UNREACHED');
     for (const section of REPORT_DISCLOSURES) await visible(cell, `ALL_${section.toUpperCase()}_EXPOSED`, report.locator(`[data-testid="coach-report-${section}"] .coach-report__disclosure-body`));
-    const counts = await report.evaluate((el, fields) => {
-      const text = el.textContent.replace(/\s+/g, ' ').trim();
-      return fields.map(field => text.split(field.replace(/\s+/g, ' ').trim()).length - 1);
-    }, preservedReportFields(fixture));
-    check(cell, 'EVERY_SUPPLIED_VISIBLE_FIELD_ONCE', counts.every(count => count === 1), counts);
+    const groups = reportFieldGroups(fixture);
+    // Text is compared transiently in memory, never added to the evidence JSON.
+    const actual = await Promise.all(groups.map(group => report.locator(group.selector).allTextContents()));
+    const evidence = reportFieldEvidence(groups, actual);
+    check(cell, 'EVERY_SUPPLIED_VISIBLE_FIELD_ONCE', evidence.every(field => field.exactMatch), evidence);
   });
   await screen('shell', 'report-footer', async cell => { if (!baseline) throw new Error('DEPENDENT_STATE_UNREACHED'); const footer = report.locator('[data-testid="coach-answer-footer"]'); await footer.scrollIntoViewIfNeeded(); await visible(cell, 'FOOTER_PRESERVED', footer); });
   await screen('shell', 'report-go-deeper', async cell => {

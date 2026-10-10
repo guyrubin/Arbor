@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { completeReportFixture, preservedReportFields, REPORT_CAPTURE_STATES, REPORT_DISCLOSURES } from './capture/release-report-states.mjs';
+import { completeReportFixture, preservedReportFields, reportFieldGroups, reportFieldEvidence, REPORT_CAPTURE_STATES, REPORT_DISCLOSURES } from './capture/release-report-states.mjs';
 import { expectedReleaseInteractionStates, syntheticReleaseReport } from './capture/release-interactions.mjs';
 
 const source = readFileSync(new URL('./capture/release-report-states.mjs', import.meta.url), 'utf8');
@@ -35,9 +35,27 @@ describe('release report disclosure contracts, no browser or provider', () => {
     }
   });
 
+  it('allows Hebrew phrase collisions across fields but rejects duplicate, missing or changed semantic fields', () => {
+    const fixture = completeReportFixture(syntheticReleaseReport('he'), 'he');
+    const concept = fixture.council[0].concept;
+    const flattened = preservedReportFields(fixture).join(' ');
+    // Negative control for the old whole-report substring algorithm.
+    expect(flattened.split(concept).length - 1).toBe(6);
+    const groups = reportFieldGroups(fixture);
+    const actual = groups.map(group => [...group.expected]);
+    expect(reportFieldEvidence(groups, actual).every(field => field.exactMatch)).toBe(true);
+    const index = groups.findIndex(group => group.id === 'council-concepts');
+    for (const changed of [[...actual[index], actual[index][0]], [], ['different field value']]) {
+      const bad = actual.map(values => [...values]); bad[index] = changed;
+      expect(reportFieldEvidence(groups, bad)[index].exactMatch).toBe(false);
+    }
+    expect(JSON.stringify(reportFieldEvidence(groups, actual))).not.toContain(concept);
+    expect(source).not.toContain('text.split(field');
+  });
+
   it('requires real disclosed content, once-only fields and ungated urgent/text-only explanations', () => {
     for (const required of ['ONLY_FIRST_STEP_LEADS', 'SCRIPT_INITIALLY_VISIBLE', 'DISCLOSURE_PANEL_ID_PRESENT', 'DISCLOSURE_EXPANDED_STATE', 'DISCLOSURE_CONTENT_VISIBILITY', 'ALL_REMAINING_STEPS_VISIBLE', 'EVERY_SUPPLIED_VISIBLE_FIELD_ONCE', 'URGENT_HELP_PRECEDES_FIRST_STEP', 'URGENT_HELP_NO_DISCLOSURE_GATE', 'ROUTINE_HELP_NOT_DUPLICATED', 'TEXT_ONLY_NO_DISCLOSURE_GATE', 'NO_INVENTED_STEP']) expect(source).toContain(required);
-    expect(source).toContain('counts.every(count => count === 1), counts');
+    expect(source).toContain('evidence.every(field => field.exactMatch), evidence');
     expect(source).toContain('ALL_${section.toUpperCase()}_EXPOSED');
     expect(source).not.toMatch(/setContent|innerHTML\s*=|addStyleTag|\.coach-report__council/);
     expect(source).not.toMatch(/(?:coach-plan-door|coach-professional-note|coach-doc-handoff|coach-go-deeper).*\.click\(/);

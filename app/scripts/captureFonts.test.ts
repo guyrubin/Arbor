@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { FONT_FAMILIES, SOURCE_CSS_URL, assertFontUrl, chromiumUserAgent, cssFontResources, fontMode, readPublicResource, sha256, sourceFontUrl } from './capture/font-cache.mjs';
-import { validateFontCache } from './capture/font-runtime.mjs';
+import { collectFontSampleCandidates, platformTextFontEvidence, preserveUnacceptedScreenshot, validateFontCache } from './capture/font-runtime.mjs';
 
 const root = path.resolve(__dirname, '../..');
 const read = (name: string) => readFileSync(path.join(root, name), 'utf8');
@@ -50,6 +50,53 @@ describe('source-font cache contracts, stubbed fetch only', () => {
       writeFileSync(path.join(dir, resources[1].file), 'changed');
       expect(() => validateFontCache(dir, source)).toThrow('FONT_CACHE_HASH_MISMATCH');
     } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+  it('rejects icon-only and fallback glyphs without confusing mixed text/icon parents', () => {
+    const icon = { familyName: 'Material Symbols Rounded', isCustomFont: true, glyphCount: 1 };
+    const text = { familyName: 'Instrument Sans', isCustomFont: true, glyphCount: 12 };
+    expect(platformTextFontEvidence([icon])).toEqual({ fonts: [], custom: false });
+    expect(platformTextFontEvidence([text, icon])).toEqual({ fonts: [text], custom: true });
+    expect(platformTextFontEvidence([{ ...text, isCustomFont: false }]).custom).toBe(false);
+    expect(platformTextFontEvidence([text, { familyName: 'Arial', isCustomFont: false, glyphCount: 3 }]).custom).toBe(false);
+    expect(platformTextFontEvidence([{ ...text, glyphCount: 0 }]).custom).toBe(false);
+    const sampler = collectFontSampleCandidates.toString();
+    expect(sampler).toContain('node.nodeType !== Node.TEXT_NODE');
+    expect(sampler).toContain('range.getClientRects()');
+    expect(sampler).toContain('if (!ownText) continue');
+    expect(sampler).toContain('[role="dialog"][aria-modal="true"]');
+    expect(sampler).toContain('[aria-hidden="true"], .msr');
+    expect(sampler).not.toMatch(/textContent:|innerHTML|appendChild|setAttribute|style\.[a-z]+\s*=(?!=)/);
+  });
+  it('samples real modal text but never the inherited font of an icon-only button', () => {
+    const box = { width: 200, height: 100, left: 0, top: 0, right: 200, bottom: 100 };
+    const scope: any = { tagName: 'DIV', parentElement: null, children: [], getBoundingClientRect: () => box };
+    const element = (tagName: string, childNodes: any[], excluded = false): any => ({ tagName, childNodes, parentElement: scope, closest: () => excluded ? {} : null });
+    const iconParent = element('BUTTON', [{ nodeType: 1 }]);
+    const icon = element('SPAN', [{ nodeType: 3, textContent: 'close' }], true);
+    const text = element('SPAN', [{ nodeType: 3, textContent: 'Synthetic modal text' }]);
+    const whitespace = element('BUTTON', [{ nodeType: 3, textContent: '  ' }, { nodeType: 1 }]);
+    scope.children = [iconParent, icon, text, whitespace]; scope.querySelectorAll = () => scope.children;
+    try {
+      vi.stubGlobal('document', { querySelectorAll: (selector: string) => selector.startsWith('[role=') ? [scope] : [], createRange: () => ({ selectNodeContents() {}, getClientRects: () => [box] }) });
+      vi.stubGlobal('Node', Object.assign(class {}, { TEXT_NODE: 3 })); vi.stubGlobal('innerHeight', 812); vi.stubGlobal('innerWidth', 375);
+      vi.stubGlobal('getComputedStyle', () => ({ visibility: 'visible', display: 'block', fontFamily: 'Instrument Sans' }));
+      expect(collectFontSampleCandidates()).toEqual([{ selector: 'div:nth-child(1) > span:nth-child(3)', scope: 'modal', ownText: true }]);
+      expect(JSON.stringify(collectFontSampleCandidates())).not.toContain('Synthetic modal text');
+    } finally { vi.unstubAllGlobals(); }
+  });
+  it('keeps rejected pixels separately and never promotes them to accepted font evidence', async () => {
+    const writes: any[] = [];
+    const entry: any = { shot: 'sample.exact.png', passed: false, failure: 'FONT_RENDERED_GLYPHS_UNPROVEN' };
+    await preserveUnacceptedScreenshot({ screenshot: async (options: any) => { writes.push(options); } }, { path: '/tmp/sample.exact.png', fullPage: false }, entry);
+    expect(writes).toEqual([{ path: '/tmp/sample.unaccepted.png', fullPage: false }]);
+    expect(entry).toMatchObject({ passed: false, diagnosticAccepted: false, diagnosticShot: 'sample.unaccepted.png', diagnosticLabel: 'UNACCEPTED_FONT_OR_SCREENSHOT_EVIDENCE', failure: 'FONT_RENDERED_GLYPHS_UNPROVEN' });
+    const failed: any = { passed: false };
+    await preserveUnacceptedScreenshot({ screenshot: async () => { throw new Error('private browser exception'); } }, { path: '/tmp/sample.png' }, failed);
+    expect(failed).toEqual({ passed: false, diagnosticAccepted: false, diagnosticFailure: 'DIAGNOSTIC_SCREENSHOT_FAILED' });
+    const runtime = read('app/scripts/capture/font-runtime.mjs');
+    expect(runtime).toContain('await preserveUnacceptedScreenshot(page, options, entry);');
+    expect(runtime).toContain('throw new Error(entry.failure)');
+    expect(runtime).toContain('entry.rendered.some((sample) => !sample.custom)');
   });
   it('gates downloads to an explicit disposable CI container, never app execution', () => {
     const prep = read('app/scripts/capture/prepare-font-cache.mjs');

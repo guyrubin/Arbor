@@ -10,15 +10,18 @@ import { BASE, assertLoopbackOnly, captureRevision } from './config.mjs';
 import { REPORT_CAPTURE_STATES, collectReportStates } from './release-report-states.mjs';
 import { SMALL_FIXTURE, initializeSyntheticOnline } from './small-state.mjs';
 import { createRuntimeDiagnostics, createAssetDiagnostics } from './runtime-diagnostics.mjs';
+import { installStylesheetObservation, observeAskDependency } from './readiness-probes.mjs';
 export { classifyReleaseConsole, sanitizedReleaseLocation } from './runtime-diagnostics.mjs';
 import { SOURCE_FONT_NOTE, captureFontContextOptions, installOfflineFonts, captureScreenshot } from './font-runtime.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
   navigation: [
-    ...rows('shell', ['keep-closed', 'keep-open', 'keep-toggle-closed', 'keep-escape', 'keep-write']),
-    ...rows('overview', ['practice-compact', 'practice-details', 'practice-outcome', 'practice-undo', 'now-bottom-reachable']),
+    ...rows('shell', ['keep-closed', 'keep-open', 'keep-toggle-closed', 'keep-escape', 'keep-write', 'keep-close-focus']),
+    ...rows('overview', ['practice-compact', 'practice-details', 'practice-outcome', 'practice-undo', 'now-scroll-initial', 'now-scroll-middle', 'now-bottom-reachable']),
     ...rows('practice', ['together-first-ready', 'together-settled', 'together-dock-open', 'together-dock-settled', 'together-dock-closed', 'together-return-card', 'together-early-back', 'together-how-to-begin', 'together-bottom-reachable']),
+    ...['milestones', 'daily-play'].flatMap(route => rows(route, ['initial', 'middle', 'last-action'].map(position => `${route}-scroll-${position}`))),
+    ...rows('development', ['scroll-route-reset']),
     ...rows('timeline', ['recordnav-initial', 'recordnav-scrolled']),
     ...rows('shell', ['more-records', 'more-profile-current', 'more-memory-current']).map(item => ({ ...item, mobileOnly: true })),
     ...rows('profile', ['record-profile']), ...rows('memory', ['record-memory']),
@@ -100,6 +103,15 @@ export function deniedCaptureApiCategory(method, pathname) {
     ['BILLING', /^\/api\/billing(?:\/|$)/], ['CONSENT', /^\/api\/consent(?:\/|$)/],
   ]) if (pattern.test(pathname)) return category;
   return null;
+}
+
+/** Click-time facts cannot be substituted with a sample taken before Playwright
+ * actionability scrolling or animation waits. */
+export function observedEarlyBackClick(evidence) {
+  return evidence?.sampledAt === 'captured-click' && evidence.trusted === true && evidence.outgoingVisible === true && evidence.destinationVisible === false;
+}
+export function observedScrolledNavigationClick(evidence) {
+  return evidence?.sampledAt === 'captured-click' && evidence.trusted === true && evidence.outsideMain === true && Number.isFinite(evidence.mainScrollTop) && evidence.mainScrollTop > 0;
 }
 
 const knownFailure = error => /^FONT_[A-Z_]+$/.test(error?.message ?? '') || ['DEPENDENT_STATE_UNREACHED', 'SYNTHETIC_WATCH_MILESTONE_MISSING'].includes(error?.message) ? error.message : error?.name === 'TimeoutError' ? 'SELECTOR_OR_ACTION_TIMEOUT' : 'INTERACTION_FAILED';
@@ -185,6 +197,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     await context.route('**/sandbox/demo-family.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) }));
     await installOfflineFonts(context);
     await context.addInitScript(initializeSyntheticOnline, { lang });
+    if (group === 'ask-diagnostic') await context.addInitScript(installStylesheetObservation);
     const page = await context.newPage();
     page.setDefaultTimeout(8000);
     const diagnostics = createRuntimeDiagnostics();
@@ -228,28 +241,66 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       await composer().locator('textarea').waitFor({ state: 'visible', timeout: 15000 });
     };
     const closeConversation = async () => { await conversation().locator('.companion-conversation-heading > button').last().click(); await byId('companion-launcher').waitFor({ state: 'visible' }); };
-    const bottomReachable = async (cell, route) => {
+    const clickWithEvidence = async target => {
+      // Observation only: no preventDefault, state mutation or synthetic event.
+      await target.evaluate(el => {
+        const state = { evidence: null, listener: null };
+        state.listener = event => {
+          if (!event.composedPath().includes(el)) return;
+          const visible = selector => { const item = document.querySelector(selector); if (!item) return false; const box = item.getBoundingClientRect(); return box.width > 0 && box.height > 0 && getComputedStyle(item).visibility !== 'hidden'; };
+          state.evidence = { sampledAt: 'captured-click', trusted: event.isTrusted, outsideMain: !el.closest('#main'), mainScrollTop: document.querySelector('#main')?.scrollTop ?? null,
+            outgoingVisible: visible('[data-module="together-invitation"]'), destinationVisible: visible('[data-route="stories"] [data-module="stories-tonight"]') };
+          document.removeEventListener('click', state.listener, true);
+        };
+        window.__arborCaptureClickObservation = state;
+        document.addEventListener('click', state.listener, { capture: true, passive: true });
+      });
+      try {
+        await target.click();
+        return await page.evaluate(() => window.__arborCaptureClickObservation?.evidence ?? null);
+      } finally {
+        await page.evaluate(() => { const state = window.__arborCaptureClickObservation; if (state?.listener) document.removeEventListener('click', state.listener, true); delete window.__arborCaptureClickObservation; });
+      }
+    };
+    const mainScrollFrame = async (cell, route, position = 'last-action') => {
       await load(route);
-      const result = await page.evaluate(route => {
-        const main = document.querySelector('main');
-        const content = document.querySelector(`[data-route="${route}"]`) ?? main;
-        const actions = [...content.querySelectorAll('button:not([disabled]), a[href], summary')].filter(el => { const box = el.getBoundingClientRect(); return box.width > 0 && box.height > 0 && !el.closest('[hidden]'); });
-        const target = actions.at(-1);
-        if (!target) return { targetFound: false };
-        main.scrollTop = main.scrollHeight; window.scrollTo(0, document.documentElement.scrollHeight);
-        const box = target.getBoundingClientRect(); const viewport = { width: innerWidth, height: innerHeight };
-        const blockers = [...document.querySelectorAll('[data-testid="companion-launcher"], nav')].map(el => ({ box: el.getBoundingClientRect(), position: getComputedStyle(el).position })).filter(({ box: b, position }) => ['fixed', 'sticky'].includes(position) && b.height > 0 && b.top >= innerHeight * 0.4 && b.top < innerHeight && b.left < box.right && b.right > box.left);
-        const fold = Math.min(innerHeight, ...blockers.map(item => item.box.top));
-        const center = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-        const hit = document.elementFromPoint(center.x, center.y);
-        return { targetFound: true, tag: target.tagName, rect: { x: box.x, y: box.y, width: box.width, height: box.height }, viewport, fold,
-          mainScroll: main.scrollTop, windowScroll: window.scrollY, fullyAboveDock: box.top >= 0 && box.bottom <= fold,
+      await page.locator(`#main [data-route="${route}"]`).waitFor({ state: 'attached' });
+      const result = await page.evaluate(async ({ route, position }) => {
+        const main = document.querySelector('#main');
+        const rail = document.querySelector('[data-testid="companion-launcher-rail"]');
+        const content = main?.querySelector(`[data-route="${route}"]`);
+        if (!main || !rail || !content) return { surfaceFound: false };
+        const boxOf = el => { const b = el.getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height, top: b.top, bottom: b.bottom }; };
+        const max = Math.max(0, main.scrollHeight - main.clientHeight);
+        main.scrollTop = position === 'initial' ? 0 : position === 'middle' ? max / 2 : max;
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const mainBox = boxOf(main), railBox = boxOf(rail);
+        const nav = document.querySelector('.arbor-app > nav');
+        const navBox = nav && nav.getBoundingClientRect().height > 0 ? boxOf(nav) : null;
+        const workspace = main.closest('.companion-workspace');
+        const reservedNavHeight = parseFloat(getComputedStyle(workspace).getPropertyValue('--companion-navigation-height')) || 0;
+        const actions = [...content.querySelectorAll('button:not([disabled]), a[href], summary')].filter(el => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0 && !el.closest('[hidden]'); });
+        const inView = actions.filter(el => { const b = el.getBoundingClientRect(); return b.top >= mainBox.top && b.bottom <= mainBox.bottom; });
+        const target = position === 'last-action' ? actions.at(-1) : inView[0];
+        const targetBox = target ? boxOf(target) : null;
+        const hit = targetBox ? document.elementFromPoint(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2) : null;
+        return { surfaceFound: true, screenshotScope: 'main-scrollport-frame', position, main: mainBox, rail: railBox, nav: navBox, reservedNavHeight,
+          scrollTop: main.scrollTop, scrollMax: max, windowScroll: window.scrollY, targetFound: !!target, target: targetBox,
+          fullyAboveDock: !!targetBox && targetBox.top >= mainBox.top && targetBox.bottom <= Math.min(mainBox.bottom, railBox.top, navBox?.top ?? innerHeight),
           hitTarget: !!hit && (hit === target || target.contains(hit)) };
-      }, route);
-      cell.bottomLayout = result;
-      check(cell, 'FINAL_ACTION_FOUND', result.targetFound === true);
-      check(cell, 'FINAL_ACTION_VISIBLE_ABOVE_DOCK', result.fullyAboveDock === true);
-      check(cell, 'FINAL_ACTION_NOT_OCCLUDED', result.hitTarget === true);
+      }, { route, position });
+      cell.scrollFrame = result;
+      check(cell, 'MAIN_SCROLLPORT_AND_RAIL_FOUND', result.surfaceFound === true);
+      check(cell, 'MAIN_ENDS_ABOVE_LAUNCHER_RAIL', result.surfaceFound && result.main.bottom <= result.rail.top + 1);
+      check(cell, 'RAIL_ENDS_ABOVE_MOBILE_NAV', result.surfaceFound && (!result.nav || result.rail.bottom <= result.nav.top + 1));
+      check(cell, 'MEASURED_NAV_HEIGHT_RESERVED', result.surfaceFound && (!result.nav || Math.abs(result.reservedNavHeight - result.nav.height) <= 1));
+      check(cell, 'WINDOW_NOT_USED_AS_SCROLLPORT', result.windowScroll === 0);
+      check(cell, 'REQUESTED_MAIN_SCROLL_POSITION', result.surfaceFound && Math.abs(result.scrollTop - (position === 'initial' ? 0 : position === 'middle' ? result.scrollMax / 2 : result.scrollMax)) <= 1);
+      if (position === 'last-action') {
+        check(cell, 'FINAL_ACTION_FOUND', result.targetFound === true);
+        check(cell, 'FINAL_ACTION_VISIBLE_ABOVE_DOCK', result.fullyAboveDock === true);
+        check(cell, 'FINAL_ACTION_NOT_OCCLUDED', result.hitTarget === true);
+      }
     };
     const screen = async (route, state, action) => {
       const cell = { route, state, group, lang, viewport: viewportId, sourceSha, sourceTreeSha, reached: false, fontMode: 'exact', assertions: [], failures: [], shot: null };
@@ -274,9 +325,20 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       cell.assetDiagnostics = assets.snapshot();
       cell.readiness = await readinessSnapshot().catch(() => ({ unavailable: true }));
       if (cell.readiness.suspenseFallbackVisible && !cell.readiness.composerVisible) cell.readiness.classification = cell.assetDiagnostics.pending.length ? 'SUSPENSE_WITH_PENDING_LOCAL_ASSETS' : 'SUSPENSE_NO_PENDING_LOCAL_ASSETS';
+      if (group === 'ask-diagnostic') cell.dependencyBoundary = await page.evaluate(observeAskDependency).catch(() => ({ unavailable: true }));
       cell.runtimeDiagnostics = diagnostics.snapshot();
       cell.reached = cell.failures.length === 0 && cell.assertions.length > 0 && cell.shot !== null;
       save();
+      // Preserve the failed real attempt BEFORE any import probe. Probe recovery
+      // is diagnostic evidence only and can never turn this cell into a pass.
+      if (group === 'ask-diagnostic' && ['launcher-composer', 'direct-composer'].includes(state) && !cell.reached && cell.readiness.suspenseFallbackVisible && !cell.readiness.composerVisible) {
+        const module = cell.assetDiagnostics.recent.find(item => /^\/assets\/CoachTab-[a-zA-Z0-9_-]{1,100}\.js$/.test(item.path) && item.state === 'finished' && item.status === 200 && item.mime === 'javascript');
+        cell.postFailureProbe = module
+          ? await page.evaluate(observeAskDependency, { probeModulePath: module.path }).catch(() => ({ unavailable: true }))
+          : { unavailable: true, reason: 'NO_SUCCESSFUL_OBSERVED_COACH_ASSET' };
+        cell.afterProbeReadiness = await readinessSnapshot().catch(() => ({ unavailable: true }));
+        save();
+      }
       return cell.reached;
     };
 
@@ -288,6 +350,13 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       await screen('shell', 'keep-escape', async cell => { dependent(launcherReady); await menu().locator('summary').click(); await menu().locator('.companion-capture-options button').first().focus(); await page.keyboard.press('Escape'); check(cell, 'KEEP_ESCAPE_CLOSED', !await menu().evaluate(el => el.open)); check(cell, 'KEEP_FOCUS_RETURNED', await menu().locator('summary').evaluate(el => document.activeElement === el)); });
       await screen('shell', 'keep-write', async cell => { dependent(launcherReady); await menu().locator('summary').click(); await menu().locator('.companion-capture-options button').first().click(); await visible(cell, 'WRITE_FORM_VISIBLE', byId('quicklog-moment-form')); await visible(cell, 'WRITE_INPUT_VISIBLE', page.locator('#quick-log-moment')); check(cell, 'KEEP_CLOSED_BEHIND_WRITE', !await menu().evaluate(el => el.open)); check(cell, 'NO_RECORDING_STARTED', await byId('composer-listening').count() === 0); });
 
+      await screen('shell', 'keep-close-focus', async cell => {
+        await visible(cell, 'WRITE_FORM_BEFORE_CLOSE', byId('quicklog-moment-form'));
+        await page.keyboard.press('Escape'); await byId('quicklog-moment-form').waitFor({ state: 'hidden' });
+        await page.waitForFunction(() => document.activeElement?.matches('.companion-capture-menu > summary'));
+        check(cell, 'KEEP_CLOSE_RETURNS_TO_VISIBLE_SUMMARY', await menu().locator('summary').isVisible() && await menu().locator('summary').evaluate(el => document.activeElement === el));
+      });
+
       const practice = byId('practice-card');
       let practiceId;
       const practiceReady = await screen('overview', 'practice-compact', async cell => { await load('overview'); await visible(cell, 'PRACTICE_VISIBLE', practice); practiceId = await practice.getAttribute('data-practice-id'); check(cell, 'PRACTICE_ACTION_FIRST', await practice.getAttribute('data-presentation') === 'action-first'); check(cell, 'PRACTICE_DETAILS_CLOSED', !await byId('practice-details').evaluate(el => el.open)); await visible(cell, 'PRACTICE_OUTCOMES_VISIBLE', byId('practice-answers')); });
@@ -295,7 +364,21 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       const outcome = await screen('overview', 'practice-outcome', async cell => { dependent(practiceReady); await byId('practice-answers').locator('[data-answer="did"]').click(); await visible(cell, 'PRACTICE_RECEIPT_VISIBLE', byId('practice-receipt')); await visible(cell, 'PRACTICE_UNDO_VISIBLE', byId('practice-undo')); check(cell, 'PRACTICE_ANSWERS_REPLACED', await byId('practice-answers').count() === 0); });
       await screen('overview', 'practice-undo', async cell => { dependent(outcome); await byId('practice-undo').click(); await visible(cell, 'PRACTICE_OUTCOMES_RESTORED', byId('practice-answers')); check(cell, 'PRACTICE_RECEIPT_REMOVED', await byId('practice-receipt').count() === 0); check(cell, 'PRACTICE_SAME_CARD', await practice.getAttribute('data-practice-id') === practiceId); });
 
-      await screen('overview', 'now-bottom-reachable', cell => bottomReachable(cell, 'overview'));
+      for (const [state, position] of [['now-scroll-initial', 'initial'], ['now-scroll-middle', 'middle'], ['now-bottom-reachable', 'last-action']]) await screen('overview', state, cell => mainScrollFrame(cell, 'overview', position));
+      for (const route of ['milestones', 'daily-play']) for (const position of ['initial', 'middle', 'last-action']) await screen(route, `${route}-scroll-${position}`, cell => mainScrollFrame(cell, route, position));
+      await screen('development', 'scroll-route-reset', async cell => {
+        await load('milestones');
+        const before = await page.locator('#main').evaluate(el => { el.scrollTop = el.scrollHeight; return el.scrollTop; });
+        check(cell, 'MAIN_SCROLLED_BEFORE_ROUTE_CHANGE', before > 0);
+        const navigation = viewport.w < 1024 ? page.locator('.arbor-app > nav') : byId('app-sidebar').locator('nav');
+        const childDoor = navigation.getByRole('button', { name: he ? /^הילד שלי/ : /^My child/ });
+        cell.navigationAtClick = await clickWithEvidence(childDoor);
+        check(cell, 'MAIN_STILL_SCROLLED_AT_NAVIGATION_CLICK', observedScrolledNavigationClick(cell.navigationAtClick));
+        await page.locator('#main [data-route="development"] [data-module]').first().waitFor({ state: 'visible' });
+        const offsets = await page.evaluate(() => ({ main: document.querySelector('#main').scrollTop, window: scrollY }));
+        cell.scrollOffsets = offsets;
+        check(cell, 'MAIN_RESET_ON_ROUTE_CHANGE', offsets.main === 0 && offsets.window === 0);
+      });
 
       const invitation = page.locator('[data-module="together-invitation"]');
       const story = page.locator('[data-together-return="story-library"]');
@@ -304,16 +387,15 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       await screen('practice', 'together-settled', async cell => { dependent(together); await page.waitForTimeout(3000); cell.geometry = await rect(story); check(cell, 'TOGETHER_CLOSED_STABLE_AFTER_3S', geometryStable(closedGeometry, cell.geometry), { before: closedGeometry, after: cell.geometry, tolerancePx: 2 }); });
       const dock = await screen('practice', 'together-dock-open', async cell => { dependent(together); await openConversation(); await visible(cell, 'CONVERSATION_VISIBLE', conversation()); openGeometry = await rect(story); cell.geometry = openGeometry; check(cell, 'TOGETHER_STILL_MOUNTED', await invitation.count() === 1); check(cell, 'DOCK_MODE_MATCHES_VIEWPORT', await conversation().getAttribute('role') === (viewport.w >= 1280 ? 'complementary' : 'dialog')); });
       await screen('practice', 'together-dock-settled', async cell => { dependent(dock); await page.waitForTimeout(3000); cell.geometry = await rect(story); check(cell, 'TOGETHER_OPEN_STABLE_AFTER_3S', geometryStable(openGeometry, cell.geometry), { before: openGeometry, after: cell.geometry, tolerancePx: 2 }); });
-      await screen('practice', 'together-dock-closed', async cell => { dependent(dock); await closeConversation(); await visible(cell, 'TOGETHER_REVEALED', invitation); await page.waitForTimeout(3000); cell.geometry = await rect(story); check(cell, 'TOGETHER_RESTORED_AFTER_DOCK', geometryStable(closedGeometry, cell.geometry), { before: closedGeometry, after: cell.geometry, tolerancePx: 2 }); });
+      await screen('practice', 'together-dock-closed', async cell => { dependent(dock); await closeConversation(); await visible(cell, 'TOGETHER_REVEALED', invitation); await page.waitForTimeout(3000); cell.geometry = await rect(story); check(cell, 'DOCK_CLOSE_FOCUS_RETURNS_TO_LAUNCHER', await byId('companion-launcher').locator('.companion-launch-main').evaluate(el => document.activeElement === el)); check(cell, 'TOGETHER_RESTORED_AFTER_DOCK', geometryStable(closedGeometry, cell.geometry), { before: closedGeometry, after: cell.geometry, tolerancePx: 2 }); });
       await screen('practice', 'together-return-card', async cell => { await load('practice'); await story.click(); await byId('secondary-place-back').waitFor({ state: 'visible' }); check(cell, 'STORY_DESTINATION_REACHED', new URL(page.url()).hash.startsWith('#/stories')); await page.locator('[data-route="stories"] [data-module="stories-tonight"]').waitFor({ state: 'visible' }); await invitation.waitFor({ state: 'hidden' }); check(cell, 'STORY_CONTENT_MOUNTED', true); await byId('secondary-place-back').click(); await story.waitFor({ state: 'visible' }); await page.waitForFunction(() => document.activeElement?.getAttribute('data-together-return') === 'story-library'); check(cell, 'EXACT_RETURN_CARD_FOCUSED', await story.evaluate(el => document.activeElement === el)); check(cell, 'RETURN_TO_TOGETHER', new URL(page.url()).hash.startsWith('#/practice')); cell.returnMarker = 'story-library'; });
 
       await screen('practice', 'together-early-back', async cell => {
         await load('practice'); await story.click();
         const back = byId('secondary-place-back'); await back.waitFor({ state: 'visible' });
-        const destination = page.locator('[data-route="stories"] [data-module="stories-tonight"]');
-        cell.transitionAtBack = { outgoingVisible: await invitation.isVisible(), destinationVisible: await destination.isVisible() };
-        await back.click(); await story.waitFor({ state: 'visible' });
-        check(cell, 'EARLY_BACK_WINDOW_OBSERVED', cell.transitionAtBack.outgoingVisible && !cell.transitionAtBack.destinationVisible);
+        cell.transitionAtBack = await clickWithEvidence(back);
+        await story.waitFor({ state: 'visible' });
+        check(cell, 'EARLY_BACK_WINDOW_OBSERVED', observedEarlyBackClick(cell.transitionAtBack));
         check(cell, 'EARLY_BACK_RETURN_ROUTE', new URL(page.url()).hash.startsWith('#/practice'));
         try { await page.waitForFunction(() => document.activeElement?.getAttribute('data-together-return') === 'story-library', null, { timeout: 8000 }); }
         catch { /* Keep an explicit failed focus assertion, not a selector excuse. */ }
@@ -336,7 +418,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         await visible(cell, 'TRY_ACTIVITY_CONTROL_VISIBLE', preview.locator('.companion-primary'));
         check(cell, 'KEEP_ACTION_REMAINS_DISTINCT', await preview.locator('.companion-text-button').count() === 1);
       });
-      await screen('practice', 'together-bottom-reachable', cell => bottomReachable(cell, 'practice'));
+      await screen('practice', 'together-bottom-reachable', cell => mainScrollFrame(cell, 'practice'));
 
       const recordNav = async cell => {
         const back = byId('secondary-place-back'); const nav = page.locator('[data-density-toggle]');
@@ -347,7 +429,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         check(cell, 'RECORD_BACK_NO_VISIBLE_NAV_OVERLAP', clippedOverlap(geometry.back, geometry.nav, geometry.clip) === 0, clippedOverlap(geometry.back, geometry.nav, geometry.clip));
       };
       const record = await screen('timeline', 'recordnav-initial', async cell => { await load('timeline'); await recordNav(cell); });
-      await screen('timeline', 'recordnav-scrolled', async cell => { dependent(record); cell.scroll = await page.evaluate(() => { const main = document.querySelector('main'); const max = main.scrollHeight - main.clientHeight; main.scrollTop = Math.min(Math.max(100, main.clientHeight / 2), max); if (main.scrollTop < 1) window.scrollTo(0, 240); return { main: main.scrollTop, window: window.scrollY }; }); check(cell, 'RECORD_ACTUALLY_SCROLLED', cell.scroll.main > 0 || cell.scroll.window > 0); await recordNav(cell); });
+      await screen('timeline', 'recordnav-scrolled', async cell => { dependent(record); cell.scroll = await page.evaluate(() => { const main = document.querySelector('#main'); const max = main.scrollHeight - main.clientHeight; main.scrollTop = Math.min(Math.max(100, main.clientHeight / 2), max); return { main: main.scrollTop, window: window.scrollY }; }); check(cell, 'RECORD_ACTUALLY_SCROLLED', cell.scroll.main > 0 && cell.scroll.window === 0); await recordNav(cell); });
 
       const more = () => page.locator('nav button[aria-expanded]').last();
       const records = byId('more-records-group');

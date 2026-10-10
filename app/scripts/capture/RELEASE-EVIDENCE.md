@@ -61,8 +61,9 @@ No raw server/browser logs, request payloads or environment dumps are uploaded.
 
 Every base route has the same four-way locale/viewport matrix. The historical
 sweep's single-route Hebrew-desktop exception is gone. Seed verification matches
-the real locale-aware hydration marker (`version@time@language`). Full mobile PNGs
-are supplemental; the primary viewport PNG remains required for each route cell.
+the real locale-aware hydration marker (`version@time@language`). Full-page mobile PNGs show only the document extent; they do not expand the
+bounded main scrollport and are explicitly labeled as not full main content.
+The primary viewport PNG remains required for each route cell.
 
 ## Local verification limits
 
@@ -95,3 +96,16 @@ Separate states preserve urgent help ahead of the first step, ungated text-only
 explanations, the footer and the real optional action controls without invoking
 provider, plan, sharing or memory writes. These are labeled renderer fixtures;
 they never stand in for either independently verified real mock response.
+
+The intrinsic launcher rail is measured explicitly: main.bottom must remain at
+or above rail.top, the rail ends above the fixed mobile nav, and the reserved nav
+height must match its actual translated height. Now, milestones and daily-play
+have initial, middle and last-action main-scrollport PNG states; Together also
+checks its last action. These states scroll #main itself and require no window
+scroll. A real milestones-to-My-child fixed-nav/sidebar click checks the route-change reset; main must still be scrolled at the captured click event.
+Keep sheet dismissal and conversation close must return focus to visible rail
+controls. All of these states run in both languages and both matrix widths.
+Native browser zoom is not established by this harness; device scale factor or
+fullPage output must never be presented as native zoom verification.
+
+Early Back timing and route-reset preconditions are sampled in a passive capture-phase listener at the actual trusted click, after Playwright actionability waits. Report preservation checks exact ordered values within each semantic field group; recurring phrases across different fields are permitted, while duplicate, missing or changed field nodes fail.
