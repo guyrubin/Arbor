@@ -84,7 +84,7 @@ describe("GP-03 · a child's age is never written in pieces", () => {
     expect(firstRun).toContain("age: Math.floor(ageMonths / 12), ageMonths");
     expect(firstRun).toContain("ageMonthsAsOf: isoDateOf(now)");
     expect(firstRun).toContain("services.addChild({ ...about");
-    expect(firstRun).toContain("services.updateChild(state.childId, about)");
+    expect(firstRun).toContain("services.updateChild(state.childId, about, { isCurrent: current })");
   });
 
   it("every age write carries birthDate and ageMonths, or goes through a helper", () => {

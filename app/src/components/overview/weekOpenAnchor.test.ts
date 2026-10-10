@@ -403,9 +403,11 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
     // step is Now's lead and its outcome writes through saveTodayOutcome.
     expect(OVERVIEW).toContain("const action = useMemo(() => nextChosenAction(actionLoop, topic?.id), [actionLoop, topic?.id]);");
     expect(OVERVIEW).toContain("const target = retryAction?.scope === scopeLease ? retryAction.action : action;");
-    const save = "await saveTodayOutcome(target.id, outcome, \"card\", undefined, { awaitServer: true });";
+    const save = "(await saveTodayOutcome(target.id, outcome, \"card\", undefined, { awaitServer: true }), target)";
+    expect(OVERVIEW).toContain("const saved = typeof outcome === \"object\"");
+    expect(OVERVIEW).toContain("await saveTodayObservation(target.id, outcome.whatHappened, { isCurrent: () => outcomeMounted.current && currentOutcomeScope.current === scopeLease })");
     expect(OVERVIEW).toContain(save);
-    expect(OVERVIEW.indexOf("setReceiptAction({ scope: scopeLease, action: target })")).toBeGreaterThan(OVERVIEW.indexOf(save));
+    expect(OVERVIEW.indexOf("setReceiptAction({ scope: scopeLease, action: saved })")).toBeGreaterThan(OVERVIEW.indexOf(save));
     expect(OVERVIEW).toContain("outcomeMounted.current && currentOutcomeScope.current === scopeLease");
     const chain = stripComments(read("chooseTodayAction.ts"));
     const at = (s: string) => chain.indexOf(s);
