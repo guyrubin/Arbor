@@ -17,13 +17,17 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>({ open, onClos
   const latest = useRef({ onClose, initialFocusRef, returnFocusRef, parentRef });
   latest.current = { onClose, initialFocusRef, returnFocusRef, parentRef };
   const handle = useRef<DialogHandle | null>(null);
+  // React applies a child's autoFocus before the parent's layout effect. Take
+  // the opener from this render, before that commit; the opening effect keeps
+  // its own snapshot across later renders and StrictMode effect replay.
+  const openerBeforeCommit = typeof document === "undefined" ? null : document.activeElement as HTMLElement | null;
   useDialogEffect(() => {
     if (!open || !ref.current) return;
     const registration = registerDialog({
       root: ref.current,
       onClose: () => latest.current.onClose(),
       initialFocus: () => latest.current.initialFocusRef?.current ?? null,
-      returnFocus: () => latest.current.returnFocusRef?.current ?? null,
+      returnFocus: () => latest.current.returnFocusRef?.current ?? openerBeforeCommit,
       parentRoot: () => latest.current.parentRef?.current ?? null,
       persistentLayer,
     });

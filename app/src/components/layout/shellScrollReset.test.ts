@@ -2,8 +2,8 @@
  * F-02 — tab switches must land at the top of the new tab (no carried scroll,
  * no ghost frame).
  *
- * <main> in Shell.tsx is the desktop scrollport (overflow-y-auto); below lg
- * the window itself scrolls. Switching tabs used to keep the previous tab's
+ * <main> in Shell.tsx is the scrollport at every width (overflow-y-auto).
+ * Keyboard focus can also pan the mobile window. Tabs used to keep the previous tab's
  * scroll offset, opening the new tab mid-page. The fix resets BOTH scroll
  * owners in AnimatePresence's onExitComplete — exactly the tab-swap moment,
  * after the outgoing tab has finished exiting (mode="wait") — never in
@@ -40,7 +40,7 @@ describe("F-02 — Shell resets scroll on tab swap (onExitComplete)", () => {
     expect(presence!).toMatch(/mainRef\.current\?\.scrollTo\(\{\s*top:\s*0,\s*left:\s*0\s*\}\)/);
   });
 
-  it("…and resets the mobile window scroll in the same handler", () => {
+  it("…and clears a mobile keyboard/window offset in the same handler", () => {
     expect(presence!).toMatch(/window\.scrollTo\(0,\s*0\)/);
   });
 

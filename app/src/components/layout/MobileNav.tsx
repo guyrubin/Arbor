@@ -11,15 +11,18 @@ import { Sheet } from "../ui/Sheet";
 import SafetyRing from "./SafetyRing"; // IA-01: Safety life-ring in the More-sheet header row
 import KidModeButton from "./KidModeButton"; // IA-24: the Kid Mode door, in the sheet that never scrolls away
 import { requestOpenSettings } from "./settingsBus"; // IA-03: Settings moved out of the mobile strip
+import { PARENT_RECORD_COPY } from "../companion/parentRecordCopy";
 import { badgeText } from "./Sidebar"; // IA-16: ONE badge derivation, shared with the sidebar
 
 /** Three primary places, a conversation door, and utilities available at any scroll position. */
 const PRIMARY_SECTION_IDS = ["today", "growth", "practice"] as const;
 const EMPHASIZED_SECTION_IDS = new Set<string>(["today", "growth", "practice"]);
+const RECORD_SECTION_IDS = new Set<string>(["journal", "profile"]);
 
 export default function MobileNav() {
   const { activeTab, setActiveTab, milestones, actionPlans, pendingReviewCount } = useArbor();
   const { t, uiLang } = useLanguage();
+  const copy = PARENT_RECORD_COPY[uiLang === "he" ? "he" : "en"];
   const pulses = usePulses(); // E1 living pulses — shown on the More-sheet rows
   const activeSectionId = sectionForTab(activeTab).id;
   const milestonesNoticed = milestones.filter((m) => m.checked).length;
@@ -153,24 +156,28 @@ export default function MobileNav() {
           <Icon name="search" size={20} />
           <span>{t("top.search")}</span>
         </button>
-        <div className="space-y-1">
-          {overflow.map((sec) => {
-            const on = sec.id === activeSectionId;
+        <div className="space-y-5">
+          {(["records", "support"] as const).map(group => <section key={group} aria-labelledby={`more-${group}-heading`} data-testid={`more-${group}-group`}>
+          <h3 id={`more-${group}-heading`} className="px-3 mb-2 text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>{group === "records" ? copy.records : copy.toolsAndSupport}</h3>
+          <div className="space-y-1">
+          {overflow.filter(sec => RECORD_SECTION_IDS.has(sec.id) === (group === "records")).map((sec) => {
+            const on = sec.id === activeSectionId && !(sec.id === "profile" && activeTab === "memory");
             const pulse = pulses[sec.id];
-            const pulseText = pulse ? t(pulse.key, pulse.params) : "";
+            const pulseText = sec.id === "profile" ? copy.profileDetail : pulse ? t(pulse.key, pulse.params) : "";
             return (
               <button
                 key={sec.id}
+                data-more-destination={primaryTabOf(sec)}
                 onClick={() => go(sec.id)}
                 aria-current={on ? "page" : undefined}
-                className="flex min-h-11 w-full items-start gap-2.5 rounded-2xl px-3 py-2.5 text-start text-sm font-bold transition"
+                className={`flex min-h-11 w-full items-start gap-2.5 rounded-2xl px-3 py-2.5 text-start text-sm transition ${group === "records" ? "font-semibold" : "font-medium"}`}
                 style={on
                   ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
-                  : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
+                  : { background: group === "records" ? "var(--arbor-paper-deep)" : "transparent", color: "var(--arbor-ink-soft)" }}
               >
                 <Icon name={sec.msIcon} size={20} fill={on ? 1 : 0} />
                 <span className="min-w-0 flex-1">
-                  <span className="block break-words leading-snug">{t("nav.cat." + sec.id)}</span>
+                  <span className="block break-words leading-snug">{sec.id === "profile" ? copy.profile : t("nav.cat." + sec.id)}</span>
                   {pulseText ? (
                     <span className="mt-0.5 block break-words text-[12px] leading-snug" style={{ color: "var(--arbor-muted)", fontWeight: 500 }}>
                       {pulseText}
@@ -180,6 +187,19 @@ export default function MobileNav() {
               </button>
             );
           })}
+          {group === "records" && <button type="button" data-more-destination="memory" onClick={() => { void selectionHaptic(); setActiveTab("memory"); setMoreOpen(false); }}
+            aria-current={activeTab === "memory" ? "page" : undefined}
+            className="flex min-h-11 w-full items-start gap-2.5 rounded-2xl px-3 py-2.5 text-start text-sm font-semibold transition"
+            style={activeTab === "memory"
+              ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
+              : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }}>
+            <Icon name="psychology" size={20} fill={activeTab === "memory" ? 1 : 0} />
+            <span className="min-w-0 flex-1"><span className="block break-words leading-snug">{copy.memory}</span>
+              <span className="mt-0.5 block break-words text-[12px] leading-snug font-medium" style={{ color: "var(--arbor-muted)" }}>{copy.memoryDetail}</span>
+            </span>
+          </button>}
+          </div>
+          </section>)}
         </div>
       </Sheet>
     </>

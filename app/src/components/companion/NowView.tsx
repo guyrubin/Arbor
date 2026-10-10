@@ -154,7 +154,7 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
           <Avatar name={childProfile.name} photoURL={childPicture(childProfile).url} size={28} />
           <p className="companion-eyebrow" data-testid="today-identity">{dateLine}{ageText ? <> · {t("elev.loop.today.identity", { name, age: ageText })}</> : null}</p>
         </div>
-        <h1 className="arbor-type-hero">{copy.title(name)}</h1><p>{copy.subtitle}</p>
+        <h1 className="arbor-type-title">{copy.title(name)}</h1>
       </div>
     </header>
 
@@ -165,8 +165,8 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
           <NowTonightLead loop={loop} />
         </section> : lead === "step" && chosen ? <section className="now-lead arbor-depth-primary" data-module="now-step" aria-labelledby={`${id}-step`}>
           <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name={receiptAction ? "check" : "bookmark"} size={24} /></span><div><p className="companion-eyebrow">{copy.chosen}</p><p className="now-provenance">{receiptAction ? copy.saved : copy.today}</p></div></div>
-          <h2 id={`${id}-step`} className="now-lead-title">{receiptAction ? copy.finishedTitle : copy.chosenTitle}</h2>
-          <p className="now-chosen-words" dir="auto">{chosen.recommendation}</p>
+          <h2 id={`${id}-step`} className="now-lead-title" dir="auto">{receiptAction ? copy.finishedTitle : chosen.recommendation}</h2>
+          {receiptAction && <p className="now-lead-body" dir="auto">{chosen.recommendation}</p>}
           <p className="now-lead-body" role={receiptAction ? "status" : undefined}>{receiptAction ? copy.finished : copy.chosenWhy}</p>
           {!receiptAction && <div className="now-lead-actions" role="group" aria-label={copy.outcomes}>
             <PrimaryMove type="button" className="companion-primary" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.helped}</PrimaryMove>
@@ -192,28 +192,20 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
         {showPointer && <NowTonightPointer onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }} />}
 
         {hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}><Icon name="volunteer_activism" size={24} /><span><b>{copy.hardTitle}</b><small>{copy.hardBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>}
-        <button type="button" className="now-weekly-door" onClick={() => setActiveTab("weekly")}><Icon name="calendar_month" size={24} /><span><b>{copy.weeklyTitle}</b><small>{copy.weeklyBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
-        <NowMoreForToday now={loop.now} evening={loop.evening} storyFits={loop.storyFits} rhythmDaysNeeded={loop.rhythm.daysNeeded}
-          keepsakeDocs={loop.keepsakeDocs} previousVisitAt={previousVisitAt} isReturning={isReturning} todayOffer={todayOffer} />
       </div>
 
       <aside className="now-side-column">
-        <section className="now-conversation" data-module="now-focus" aria-labelledby={`${id}-talk`}>
-          <div className="now-section-icon" aria-hidden="true"><Icon name="chat_bubble" size={25} /></div>
-          {topic && <p className="companion-eyebrow">{copy.topic}</p>}
-          <h2 id={`${id}-talk`} dir="auto">{topic?.title || copy.talkTitle}</h2>
-          <p>{copy.talkBody}</p>
-          <button type="button" className="companion-secondary" onClick={() => talk(topic?.title)}>{copy.talk}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></button>
-          {onTopicOpen && <button type="button" className="companion-text-button" onClick={onTopicOpen}>{copy.topics}<Icon name="bookmark" size={17} /></button>}
-        </section>
-        <section className="now-capture" aria-labelledby={`${id}-capture`}>
-          <h2 id={`${id}-capture`}>{copy.capture}</h2><p>{copy.captureBody}</p>
-          <div className="now-capture-modes" role="group" aria-label={copy.quickSave}>
-            <button type="button" onClick={() => openCaptureSheet({ mode: "text" })}><Icon name="edit_note" size={21} />{copy.write}</button>
-            <button type="button" onClick={() => openCaptureSheet({ mode: "voice" })}><Icon name="mic" size={21} />{copy.dictate}</button>
-            <button type="button" onClick={() => openCaptureSheet({ mode: "photo" })}><Icon name="photo_camera" size={21} />{copy.photo}</button>
-          </div>
-        </section>
+        {/* General conversation lives in the persistent launcher. Only a real
+            saved question earns a contextual door here. */}
+        {topic && <section className="now-conversation" data-module="now-focus" aria-labelledby={`${id}-talk`}>
+          <p className="companion-eyebrow">{copy.topic}</p>
+          <h2 id={`${id}-talk`} dir="auto">{topic.title}</h2>
+          <button type="button" className="companion-text-button" onClick={() => talk(topic.title)}>{copy.continueTopic}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></button>
+        </section>}
+        {onTopicOpen && <button type="button" className="companion-text-button now-topics" onClick={onTopicOpen}><Icon name="bookmark" size={17} />{copy.topics}</button>}
+        <button type="button" className="now-weekly-door" onClick={() => setActiveTab("weekly")}><Icon name="calendar_month" size={24} /><span><b>{copy.weeklyTitle}</b><small>{copy.weeklyBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
+        <NowMoreForToday now={loop.now} evening={loop.evening} storyFits={loop.storyFits} rhythmDaysNeeded={loop.rhythm.daysNeeded}
+          keepsakeDocs={loop.keepsakeDocs} previousVisitAt={previousVisitAt} isReturning={isReturning} todayOffer={todayOffer} />
         {/* B-PROG-03: the program is Today's frame — one line beside the practice, never a second lead. */}
         {program && lead !== "program" && <button type="button" className="now-weekly-door now-program-line" data-testid="now-program-line" onClick={openProgram}>
           <Icon name="menu_book" size={24} /><span><b>{copy.programLabel}</b><small dir="auto">{program.content.skill[lang]}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />

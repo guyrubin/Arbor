@@ -54,12 +54,24 @@ class Doc {
   body = new Node(this, "body");
   documentElement = this.body;
   activeElement: Node = this.body;
-  events = new Map<string, Set<(event: any) => void>>();
+  events = new Map<string, Set<{ listener: (event: any) => void; capture: boolean }>>();
   defaultView = { getComputedStyle: (node: Node) => ({ visibility: node.visibility, zIndex: node.style.getPropertyValue("z-index") || "50" }) };
   querySelectorAll(selector: string) { return this.body.querySelectorAll(selector); }
-  addEventListener(name: string, listener: (event: any) => void) { if (!this.events.has(name)) this.events.set(name, new Set()); this.events.get(name)!.add(listener); }
-  removeEventListener(name: string, listener: (event: any) => void) { this.events.get(name)?.delete(listener); }
-  emit(name: string, event: any) { for (const listener of [...this.events.get(name) ?? []]) listener(event); }
+  addEventListener(name: string, listener: (event: any) => void, capture = false) {
+    if (!this.events.has(name)) this.events.set(name, new Set());
+    const entries = this.events.get(name)!;
+    if (![...entries].some(entry => entry.listener === listener && entry.capture === capture)) entries.add({ listener, capture });
+  }
+  removeEventListener(name: string, listener: (event: any) => void, capture = false) {
+    const entries = this.events.get(name);
+    for (const entry of entries ?? []) if (entry.listener === listener && entry.capture === capture) entries?.delete(entry);
+  }
+  emit(name: string, event: any, target?: (event: any) => void) {
+    const listeners = [...this.events.get(name) ?? []];
+    for (const { listener, capture } of listeners) if (capture) listener(event);
+    if (!event.cancelBubble) target?.(event);
+    if (!event.cancelBubble) for (const { listener, capture } of listeners) if (!capture) listener(event);
+  }
 }
 const html = (node: Node) => node as unknown as HTMLElement;
 function fixture() {
@@ -85,9 +97,10 @@ function fixture() {
     const last = root.append(new Node(doc, "button"));
     return { root, first, last };
   };
-  const key = (key: string, shiftKey = false, extras = {}) => {
-    const event = { key, shiftKey, repeat: false, isComposing: false, defaultPrevented: false, preventDefault: vi.fn(), stopPropagation: vi.fn(), ...extras };
-    doc.emit("keydown", event); return event;
+  const key = (key: string, shiftKey = false, extras = {}, target?: (event: any) => void) => {
+    const event = { key, shiftKey, repeat: false, isComposing: false, defaultPrevented: false, cancelBubble: false,
+      preventDefault: vi.fn(() => { event.defaultPrevented = true; }), stopPropagation: vi.fn(() => { event.cancelBubble = true; }), ...extras };
+    doc.emit("keydown", event, target); return event;
   };
   return { doc, shell, main, opener, stack, flush, layer, key, jobs,
     block: (value: boolean) => { blocked = value; blockedListener?.(); },
@@ -95,6 +108,43 @@ function fixture() {
 }
 
 describe("dialog stack: production event and lifetime ownership", () => {
+  it("lets an inner disclosure consume Escape before dismissing the host dialog", () => {
+    const f = fixture(), panel = f.layer(), onClose = vi.fn();
+    const dialog = f.stack.register({ root: html(panel.root), onClose }); f.flush();
+    panel.last.focus();
+    let toolsOpen = true;
+    const disclosure = vi.fn(event => {
+      if (!toolsOpen || event.key !== "Escape") return;
+      event.preventDefault(); event.stopPropagation(); toolsOpen = false; panel.first.focus();
+    });
+    f.key("Escape", false, {}, disclosure); f.flush();
+    expect(disclosure).toHaveBeenCalledOnce(); expect(toolsOpen).toBe(false);
+    expect(onClose).not.toHaveBeenCalled(); expect(f.stack.depth).toBe(1);
+    expect(f.doc.activeElement).toBe(panel.first);
+    f.key("Escape", false, {}, disclosure); f.flush();
+    expect(onClose).toHaveBeenCalledOnce();
+    dialog.dispose(); f.flush();
+    expect(f.doc.events.get("keydown")?.size).toBe(0);
+  });
+
+  it("document capture preempts the inner handler (negative control)", () => {
+    const f = fixture(), legacyClose = vi.fn(), disclosure = vi.fn();
+    f.doc.addEventListener("keydown", event => { event.preventDefault(); event.stopPropagation(); legacyClose(); }, true);
+    f.key("Escape", false, {}, disclosure);
+    expect(legacyClose).toHaveBeenCalledOnce(); expect(disclosure).not.toHaveBeenCalled();
+  });
+
+  it("a handled target Escape cannot close the parent after synchronous child removal", () => {
+    const f = fixture(), outer = f.layer(), inner = f.layer();
+    const outerClose = vi.fn();
+    const a = f.stack.register({ root: html(outer.root), onClose: outerClose }); f.flush();
+    const b = f.stack.register({ root: html(inner.root), onClose: vi.fn() }); f.flush();
+    f.key("Escape", false, {}, event => { event.preventDefault(); b.dispose(); inner.root.remove(); }); f.flush();
+    expect(f.stack.depth).toBe(1); expect(outerClose).not.toHaveBeenCalled();
+    f.key("Escape"); expect(outerClose).toHaveBeenCalledOnce();
+    a.dispose(); f.flush();
+  });
+
   it("one Escape closes only the nested top, including synchronous cleanup", () => {
     const f = fixture(), outer = f.layer(), inner = f.layer();
     const closeOuter = vi.fn();
@@ -107,7 +157,7 @@ describe("dialog stack: production event and lifetime ownership", () => {
     expect(closeOuter).not.toHaveBeenCalled();
     expect(f.doc.activeElement).toBe(outer.last);
     expect(f.shell.hasAttribute("inert")).toBe(true);
-    expect(f.doc.events.get("keydown")?.size).toBe(1);
+    expect(f.doc.events.get("keydown")?.size).toBe(2);
     f.key("Escape", false, { repeat: true });
     expect(closeOuter).not.toHaveBeenCalled();
     a.dispose(); f.flush();
@@ -251,6 +301,15 @@ describe("dialog focus, shielding and scroll contract", () => {
     a.dispose(); f.flush();
   });
 
+  it("keeps Tab trapping in capture before any descendant can redirect boundary focus", () => {
+    const f = fixture(), d = f.layer(), redirect = vi.fn();
+    const a = f.stack.register({ root: html(d.root), onClose: vi.fn() }); f.flush();
+    d.last.focus();
+    f.key("Tab", false, {}, redirect);
+    expect(redirect).not.toHaveBeenCalled(); expect(f.doc.activeElement).toBe(d.first);
+    a.dispose(); f.flush();
+  });
+
   it("an empty dialog focuses its container and cannot tab into the page", () => {
     const f = fixture(), d = f.layer(); d.first.remove(); d.last.remove();
     const a = f.stack.register({ root: html(d.root), onClose: vi.fn() }); f.flush();
@@ -264,6 +323,27 @@ describe("dialog focus, shielding and scroll contract", () => {
     d.last.setAttribute("autofocus", "");
     const a = f.stack.register({ root: html(d.root), onClose: vi.fn(), initialFocus: () => html(f.opener) }); f.flush();
     expect(f.doc.activeElement).toBe(d.last); a.dispose(); f.flush();
+  });
+
+  it("returns to the opening snapshot even when autofocus already moved inside before registration", () => {
+    const f = fixture(), d = f.layer();
+    const openerBeforeCommit = f.doc.activeElement;
+    d.last.focus();
+    const a = f.stack.register({ root: html(d.root), onClose: vi.fn(), returnFocus: () => html(openerBeforeCommit) }); f.flush();
+    expect(f.doc.activeElement).toBe(d.last);
+    a.dispose(); d.root.remove(); f.flush();
+    expect(f.doc.activeElement).toBe(f.opener);
+  });
+
+  it.each(["removed", "hidden", "disabled"])("skips a %s opening target and restores a usable fallback", state => {
+    const f = fixture(), d = f.layer();
+    const openingTarget = f.main.append(new Node(f.doc, "button"));
+    const a = f.stack.register({ root: html(d.root), onClose: vi.fn(), returnFocus: () => html(openingTarget) }); f.flush();
+    if (state === "removed") openingTarget.remove();
+    if (state === "hidden") openingTarget.shown = false;
+    if (state === "disabled") openingTarget.disabled = true;
+    a.dispose(); d.root.remove(); f.flush();
+    expect(f.doc.activeElement).toBe(f.opener);
   });
 
   it("a portal scope wrapper containing the top dialog is never inerted", () => {

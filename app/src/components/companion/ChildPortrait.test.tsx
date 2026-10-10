@@ -17,7 +17,7 @@ vi.mock("../../context/LanguageContext", async () => {
 vi.mock("../../hooks/useObservationRecord", () => ({ useObservationRecord: () => ({ ...state, sources: { behaviorLogs: [] }, reload: vi.fn() }) }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 // Parity 9 Oct: the watch row and the keepsake disclosure have their own tests.
-vi.mock("./PortraitWatchRow", () => ({ default: () => null }));
+vi.mock("./PortraitWatchRow", () => ({ default: () => <div data-testid="watch-row" /> }));
 vi.mock("./PortraitKeepsakes", () => ({ default: () => null }));
 const capture = (type: unknown, props: unknown) => { if (type === "button" && props && typeof props === "object") state.buttons.push(props as typeof state.buttons[number]); };
 vi.mock("react/jsx-runtime", async original => {
@@ -43,6 +43,12 @@ describe("Growth record coverage and restored doors", () => {
     older?.onClick?.(); expect(state.loadMore).toHaveBeenCalledOnce();
     state.more = false; html = renderToStaticMarkup(<ChildPortrait />); expect(html).toContain('data-history-state="complete"');
     state.error = true; html = renderToStaticMarkup(<ChildPortrait />); expect(html).toContain('data-history-state="error"');
+  });
+  it("puts the core record lenses before the optional watch controls", () => {
+    const html = renderToStaticMarkup(<ChildPortrait />);
+    expect(html.indexOf('class="portrait-toolbar"')).toBeGreaterThan(-1);
+    expect(html.indexOf('class="portrait-toolbar"')).toBeLessThan(html.indexOf('data-testid="watch-row"'));
+    expect(html).toContain('data-primary-move="explore-child-record"');
   });
   it("renders a neutral moment with a neutral glyph and a visible unfiled door", () => {
     state.observations = [{ id: "behaviorLogs:a", childId: "child-a", at: new Date().toISOString(), domains: [], kind: "moment", origin: "behaviorLogs", source: "parent_typed", value: { type: "moment", behaviorType: "Moment" }, ageAtObservationMonths: null, pretermCorrected: false }];

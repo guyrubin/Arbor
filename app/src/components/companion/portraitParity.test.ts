@@ -13,7 +13,8 @@ const keepsakes = read("components/companion/PortraitKeepsakes.tsx");
 describe("the portrait mounts the restored pieces inside its existing modules", () => {
   it("the watch row and the keepsake disclosure sit in the overview module (budget unchanged)", () => {
     const overview = portrait.slice(portrait.indexOf('data-module="child-portrait-overview"'), portrait.indexOf('data-module="child-portrait-evidence"'));
-    expect(overview).toContain("<PortraitWatchRow />");
+    expect(overview).toContain("<PortraitWatchRow key={childProfile.id} />");
+    expect(overview.indexOf('className="portrait-toolbar"')).toBeLessThan(overview.indexOf("<PortraitWatchRow"));
     expect(overview).toContain("<PortraitKeepsakes />");
     expect((portrait.match(/\bdata-module=/g) ?? []).length).toBe(3);
     expect(keepsakes).not.toMatch(/\bdata-module=/);

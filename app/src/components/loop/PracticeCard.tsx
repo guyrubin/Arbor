@@ -90,6 +90,8 @@ export interface PracticeCardProps {
   /** The parent owns this preview. Only onAnswer records it. */
   adaptation?: PracticeAdaptationKey | null;
   onAdapt?: (key: PracticeAdaptationKey | null) => void;
+  /** Now only: keep the action first; words, materials and history stay in a native disclosure. */
+  actionFirstDetailsLabel?: string;
 }
 
 /**
@@ -125,6 +127,7 @@ export default function PracticeCard({
   mode = "day",
   adaptation,
   onAdapt,
+  actionFirstDetailsLabel,
 }: PracticeCardProps) {
   const { t, uiLang } = useLanguage();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
@@ -150,12 +153,59 @@ export default function PracticeCard({
     setAdaptOpen(false);
     adaptTrigger.current?.focus();
   };
+  const words = (
+    <div data-testid="practice-words" className="mt-2 arbor-accent-rule">
+        {hasQuotes && (
+          <div data-testid="practice-quotes" className="space-y-1">
+            {quotes!.map((q, i) => (
+              <p key={i} data-testid="practice-quote" title={q.text} className={actionFirstDetailsLabel ? "leading-relaxed" : "truncate leading-snug"} style={{ color: "var(--arbor-ink)", fontFamily: actionFirstDetailsLabel ? "var(--font-sans)" : "var(--font-editorial)", fontSize: "var(--t-base)" }}>
+                {(q.lead || q.date) && (
+                  <span style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
+                    {q.lead ?? `${t("elev.loop.practice.quoteMeta", { date: q.date ?? "" })} ·`}{" "}
+                  </span>
+                )}
+                <FreeText text={t("elev.loop.ms.quoted", { text: q.text })} />
+                {q.shelf && (
+                  <span data-testid="practice-quote-shelf" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
+                    {" · "}<bdi>{q.shelf}</bdi>
+                  </span>
+                )}
+              </p>
+            ))}
+          </div>
+        )}
+        <blockquote data-testid="practice-say" className={`${hasQuotes ? "mt-3 " : ""}${actionFirstDetailsLabel ? "t-base leading-relaxed" : "arbor-type-say"}`} style={{ color: "var(--arbor-ink)", fontFamily: actionFirstDetailsLabel ? "var(--font-sans)" : undefined }}>
+          <span data-testid="practice-say-label" className="t-sm font-semibold" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>
+            {t(mode === "tonight" ? "elev.loop.practice.sayTonight" : "elev.loop.practice.say")}
+          </span>{" "}
+          <FreeText text={t("elev.loop.ms.quoted", { text: sayText })} />
+        </blockquote>
+      </div>
+  );
+  const doLine = !titleIsWholeDo(titleText, doText) && (
+        <p data-testid="practice-do" className={`mt-2 t-base ${actionFirstDetailsLabel ? "leading-relaxed" : "leading-snug"}`} style={{ color: "var(--arbor-ink-soft)" }}>
+          {doText}
+        </p>
+      );
+  const materialsLine = materials && (
+        <p data-testid="practice-meta" className="mt-3 t-sm" style={{ color: "var(--arbor-muted)" }}>{materials}</p>
+      );
+  const whyLine = (
+    <p
+        data-testid="practice-why"
+        className={`${materials ? "mt-1" : "mt-3"} t-base leading-snug${lang === "he" || actionFirstDetailsLabel ? "" : " italic"}`}
+        style={{ color: "var(--arbor-muted)", fontFamily: actionFirstDetailsLabel ? "var(--font-sans)" : "var(--font-editorial)" }}
+      >
+        {whyText?.trim() || t(whyReason && (whyReason !== "since" || whyDate) ? WHY_KEY[whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfName, name: childName || t("today.record.childFallback"), date: whyDate ?? "" })}
+      </p>
+  );
   return (
     <section
       data-testid="practice-card"
       data-practice-id={practice.id}
       data-shelf={shelf}
       data-mode={mode}
+      data-presentation={actionFirstDetailsLabel ? "action-first" : undefined}
       aria-label={caption}
       className="arbor-depth-primary overflow-hidden px-4 pb-4 pt-3.5 sm:px-5 sm:pb-5"
       style={{ background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-xl)" }}
@@ -181,45 +231,9 @@ export default function PracticeCard({
       <h2 data-testid="practice-title" className="mt-2.5 arbor-type-title" style={{ color: "var(--arbor-ink)" }}>
         {titleText}
       </h2>
-      {/* P5 r1 pass A1: the parent's OWN words, dated, right under the title
-          — last night's line on yesterday's practice first (P5-LOOP c2 r1),
-          else THEN and NOW on this shelf (lib/today/shelfWords). ONE line
-          each (lead first, the words after; the full sentence in the title
-          attribute) so "Did it" stays <= 640 at 375. The words and the say
-          share ONE 2 px --arbor-ink inline-start rule: the screen's one warm
-          accent (B-DESIGN-04; .arbor-accent-rule). */}
-      <div data-testid="practice-words" className="mt-2 arbor-accent-rule">
-        {hasQuotes && (
-          <div data-testid="practice-quotes" className="space-y-1">
-            {quotes!.map((q, i) => (
-              <p key={i} data-testid="practice-quote" title={q.text} className="truncate leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-base)" }}>
-                {(q.lead || q.date) && (
-                  <span style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
-                    {q.lead ?? `${t("elev.loop.practice.quoteMeta", { date: q.date ?? "" })} ·`}{" "}
-                  </span>
-                )}
-                <FreeText text={t("elev.loop.ms.quoted", { text: q.text })} />
-                {q.shelf && (
-                  <span data-testid="practice-quote-shelf" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)", fontSize: "var(--t-sm)" }}>
-                    {" · "}<bdi>{q.shelf}</bdi>
-                  </span>
-                )}
-              </p>
-            ))}
-          </div>
-        )}
-        <blockquote data-testid="practice-say" className={`${hasQuotes ? "mt-3" : ""} arbor-type-say`} style={{ color: "var(--arbor-ink)" }}>
-          <span data-testid="practice-say-label" className="t-sm font-semibold" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>
-            {t(mode === "tonight" ? "elev.loop.practice.sayTonight" : "elev.loop.practice.say")}
-          </span>{" "}
-          <FreeText text={t("elev.loop.ms.quoted", { text: sayText })} />
-        </blockquote>
-      </div>
-      {!titleIsWholeDo(titleText, doText) && (
-        <p data-testid="practice-do" className="mt-2 t-base leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
-          {doText}
-        </p>
-      )}
+      {/* The default keeps the family's words first. Now opts into an
+          action-first layout, with the exact same words in the disclosure. */}
+      {actionFirstDetailsLabel ? doLine : <>{words}{doLine}</>}
       {answered ? (
         /* B-STATUS-01: the ONE receipt line — what it says is unchanged; a
            "Did it" links to the shelf it was filed on. pass A1: "next to your
@@ -305,19 +319,14 @@ export default function PracticeCard({
           )}
         </div>
       )}
-      {/* P5 r1 pass A1/A3: the materials and the reason sit UNDER the answers,
-          so the parent's words fit above "Did it" at 375 (bottom ≤ 640). The
-          minutes moved to the kicker row's tag (B-DESIGN-04). */}
-      {materials && (
-        <p data-testid="practice-meta" className="mt-3 t-sm" style={{ color: "var(--arbor-muted)" }}>{materials}</p>
-      )}
-      <p
-        data-testid="practice-why"
-        className={`${materials ? "mt-1" : "mt-3"} t-base leading-snug${lang === "he" ? "" : " italic"}`}
-        style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-editorial)" }}
-      >
-        {whyText?.trim() || t(whyReason && (whyReason !== "since" || whyDate) ? WHY_KEY[whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfName, name: childName || t("today.record.childFallback"), date: whyDate ?? "" })}
-      </p>
+      {/* Default surfaces keep materials and reason below the answers. Now
+          keeps all supporting words and history reachable in one disclosure. */}
+      {actionFirstDetailsLabel ? <details className="practice-details" data-testid="practice-details">
+        <summary>{actionFirstDetailsLabel}<Icon name="expand_more" size={20} /></summary>
+        {words}
+        {materialsLine}
+        {whyLine}
+      </details> : <>{materialsLine}{whyLine}</>}
     </section>
   );
 }

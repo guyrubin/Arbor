@@ -97,7 +97,7 @@ const NUDGE_TYPES: Array<{
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function SmartRemindersPanel() {
   const push = usePushPriming();
-  const { setActiveTab, childProfile, behaviorLogs } = useArbor();
+  const { childProfile, behaviorLogs } = useArbor();
   const { t, uiLang } = useLanguage();
 
   // Load prefs from localStorage on first render — no Firestore, no child data.
@@ -190,24 +190,6 @@ export default function SmartRemindersPanel() {
       transition={{ duration: 0.2 }}
       className="space-y-6 max-w-[680px]"
     >
-      {/* Back navigation.
-          OBJ-SHELL-07: the button said "Back to Settings" and went to #/coach —
-          Ask Arbor, which is neither where the parent came from nor what the
-          label promised. There is no Settings ROUTE to go back to (Settings is
-          a modal), so the honest target is the hub that owns this surface:
-          Smart Reminders is one of Today's tools (navigation.ts SECTIONS
-          today.tools), and the label now says so. */}
-      <button
-        onClick={() => setActiveTab("overview")}
-        className="inline-flex items-center gap-2 font-bold text-sm rounded-full px-4"
-        style={{ minHeight: 44, minWidth: 44, color: GREEN, background: GREEN_SOFT }}
-        aria-label={t("elev.sr.back")}
-      >
-        {/* OBJ-TODAY-08: mirrored like the Day Windows and WeeklyTab backs. */}
-        <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" />
-        {t("elev.sr.back")}
-      </button>
-
       {/* Header */}
       <div>
         <h1

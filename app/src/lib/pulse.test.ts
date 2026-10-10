@@ -102,10 +102,10 @@ describe("B-SHELL-19 · pulses carry no denominator; the hub line and the strip 
     expect("שמתם לב ל‑{count} מתוך {total} אבני דרך").toMatch(/מתוך/);
   });
 
-  it("below lg the hub line renders the counted pulse, else nav.sub.<hub>", () => {
-    expect(shell).toContain("const pulses = usePulses();");
-    expect(shell).toContain('{hubPulse ? t(hubPulse.key, hubPulse.params) : t("nav.sub." + hubSubKey, { name: childProfile.name })}');
-    expect(shell).toMatch(/countedPulse\.count > 0 \? countedPulse : null/);
+  it("the shell does not repeat a hub pulse above a page’s own introduction", () => {
+    expect(shell).not.toContain("const pulses = usePulses();");
+    expect(shell).not.toContain('{hubPulse ?');
+    expect(shell).not.toContain('t("nav.sub." + hubSubKey');
   });
 
   it("W2-GROWTH r2: the Growth pulse carries no `count`, so no total sits above #/development's H1", () => {

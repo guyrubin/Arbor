@@ -1,0 +1,26 @@
+# An allowlisted build context, never .git, credentials, local demo records,
+# generated sweeps, dev photos or the canceled font candidate.
+**
+!app/
+!app/package.json
+!app/package-lock.json
+!app/server.ts
+!app/vite.config.ts
+!app/tsconfig.json
+!app/index.html
+!app/src/
+!app/src/**
+!app/public/
+!app/public/**
+!app/scripts/
+!app/scripts/**
+!knowledge/
+!knowledge/**
+**/.env*
+**/.data/**
+**/node_modules/**
+**/*.log
+**/*.pem
+**/*.key
+app/public/_dev/**
+app/public/mediapipe/wasm/**

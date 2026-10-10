@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
@@ -15,9 +15,8 @@ import type { CoachContract } from "../../types";
  *   - Empty sourceCardsUsed yields no badge (empty string).
  *   - Singular / plural strings are correct in both languages.
  *
- * No full-component render test — the component uses browser APIs (clipboard,
- * speech) that require a DOM harness. The pure helper covers the logic that
- * would otherwise have no test surface.
+ * Pure helpers and static markup are covered here. Clipboard, speech and
+ * callback interactions require their separate interaction harness.
  */
 describe("sourcesLabel (R1 citation helper)", () => {
   it("returns empty string for 0 sources — no badge on empty array", () => {
@@ -213,10 +212,12 @@ describe("citation drawer rendering (COACH-6)", () => {
     expect(html).not.toContain("transition bridge 3 5y"); // the old debug-looking row
   });
 
-  it("keeps the calm Cited badge + grounded-in count header", () => {
+  it("keeps the source-count disclosure named and the source title mounted once", () => {
     const html = renderWithSources();
-    expect(html).toContain("Cited");
     expect(html).toContain("Grounded in 1 source");
+    expect(html).toContain('data-testid="coach-report-sources"');
+    expect(html.split("Transition Bridge (3-5y)")).toHaveLength(2);
+    expect(html).toContain('aria-expanded="false"');
   });
 });
 
@@ -485,13 +486,13 @@ describe("ASK-6 — memory footer rendering", () => {
 
 /**
  * ASK-3 — answer stack reorder: the first screenful of any contract answer is
- * the exact words ("Say this") + the 1-3 steps ("Try today"); hypotheses are
+ * the first practical step ("Try today") and usable words ("Say this"); hypotheses are
  * analysis and collapse into a "Why this might be happening" disclosure; the
  * six-frame routing panel (internal orchestration vocabulary: "shadow",
  * "marriage", "shepherd") never renders on the parent surface — it stays in
  * the contract for telemetry/evals only.
  */
-describe("Unified report — explanation, steps and script stay visible; frames never render", () => {
+describe("Structured report — first action and script before optional reasoning; frames never render", () => {
   function renderFullEn(): string {
     return renderToStaticMarkup(
       React.createElement(CoachAnswerCards, {
@@ -503,18 +504,20 @@ describe("Unified report — explanation, steps and script stay visible; frames 
     );
   }
 
-  it("explains before the ordered steps and usable script, with no More wrapper", () => {
+  it("places the first action and usable script before collapsed, mounted reasoning", () => {
     const html = renderFullEn();
-    const why = html.indexOf("Why this might be happening");
-    const plan = html.indexOf("Try today");
-    const script = html.indexOf("Say this");
-    expect(why).toBeGreaterThan(-1);
-    expect(why).toBeLessThan(plan);
+    const why = html.indexOf('data-testid="coach-report-understanding"');
+    const plan = html.indexOf('data-testid="coach-report-next"');
+    const script = html.indexOf('data-testid="say-this"');
+    expect(plan).toBeGreaterThan(-1);
     expect(plan).toBeLessThan(script);
-    expect(html).not.toContain('data-testid="coach-answer-more"');
-    const explanation = html.slice(html.indexOf('data-testid="coach-report-understanding"'), html.indexOf('data-testid="coach-report-next"'));
-    expect(explanation).not.toContain("hidden");
-    expect(explanation).not.toContain("aria-expanded");
+    expect(script).toBeLessThan(why);
+    const explanation = html.slice(why, html.indexOf('data-testid="coach-report-details"'));
+    expect(explanation).toContain('aria-expanded="false"');
+    expect(explanation).toContain('role="region"');
+    expect(explanation).toContain('hidden=""');
+    expect(explanation).toContain("Transition fatigue");
+    expect(explanation).toContain("Long day, short notice.");
     expect(explanation).not.toContain("(possible)");
   });
 
@@ -526,12 +529,12 @@ describe("Unified report — explanation, steps and script stay visible; frames 
     expect(html).not.toContain("Warm but firm");    // frameRouting.twoAxes value
   });
 
-  it("explanation content remains visible by default", () => {
+  it("explanation content remains mounted exactly once while collapsed", () => {
     const html = renderFullEn();
     expect(html).toContain("Why this might be happening");
     // Content present (hidden, never unmounted) — same idiom as the citation drawer.
-    expect(html).toContain("Transition fatigue");
-    expect(html).toContain("Long day, short notice.");
+    expect(html.split("Transition fatigue")).toHaveLength(2);
+    expect(html.split("Long day, short notice.")).toHaveLength(2);
   });
 
   it("hypotheses disclosure renders in Hebrew with zero English chrome", () => {
@@ -562,11 +565,11 @@ describe("B-ASKJB-04 — the try-it control renders per state, 44 px, EN + HE", 
 });
 
 /**
- * The user intentionally superseded B-ASKJB-05's collapsed five-block
- * layout. Preserve the actual safety and action contracts, while guarding
- * the new visible, ordered report rather than freezing the regressed layout.
+ * Preserve every structured value without allowing optional depth or a second
+ * save surface to displace the first action. Static assertions establish
+ * mounting/order, not rendered layout or callback behavior.
  */
-describe("Unified report — depth without duplicate cards", () => {
+describe("Structured report — complete depth without duplicate advice", () => {
   function full(riskLevel: string, extra: Partial<CoachContract> = {}): CoachContract {
     return {
       ...makeFullContract(riskLevel),
@@ -589,20 +592,27 @@ describe("Unified report — depth without duplicate cards", () => {
   }
 
   for (const lang of ["en", "he"] as const) {
-    it("[" + lang + "] owns the lead once, then visible understanding and all ordered steps", () => {
+    it("[" + lang + "] owns the short lead once, then first action and script before optional depth", () => {
       const contract = full("low");
       const html = render(contract, lang);
       expect(html.split(contract.text!).length - 1).toBe(1);
       expect(html).toContain('dir="' + (lang === "he" ? "rtl" : "ltr") + '"');
-      expect(html.indexOf('data-testid="coach-report-opening"')).toBeLessThan(html.indexOf('data-testid="coach-report-understanding"'));
-      const start = html.indexOf('data-testid="coach-report-next"');
-      const end = html.indexOf('class="coach-report__section coach-report__script"');
-      const steps = html.slice(start, end);
-      for (const step of contract.todayPlan) expect(steps.split(step).length - 1).toBe(1);
-      expect(steps).not.toMatch(/class="[^"]*\bhidden\b|<details|style="[^"]*display:none/);
-      expect(steps).toContain("<ol");
-      expect(steps.split('data-testid="coach-try-it"').length - 1).toBe(1);
-      expect(html).not.toContain('data-testid="coach-answer-more"');
+      const ids = ["coach-report-opening", "coach-report-next", "say-this", "coach-report-understanding", "coach-report-details"];
+      const positions = ids.map(id => html.indexOf('data-testid="' + id + '"'));
+      expect(positions.every(position => position >= 0)).toBe(true);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+      const first = html.slice(positions[1], positions[2]);
+      expect(first).toContain(contract.todayPlan[0]);
+      expect(first).not.toContain(contract.todayPlan[1]);
+      expect(first).not.toContain('hidden=""');
+      expect(first).toContain("<ol");
+      expect(html.split('data-testid="coach-try-it"').length - 1).toBe(1);
+      for (const step of contract.todayPlan) expect(html.split(step).length - 1).toBe(1);
+      expect(html).toContain('<ol class="coach-report__steps" start="2">');
+      const details = html.slice(positions[4], html.indexOf('data-testid="coach-report-help"'));
+      expect(details).toContain('aria-expanded="false"');
+      expect(details).toContain('hidden=""');
+      expect(details.indexOf(contract.todayPlan[1])).toBeLessThan(details.indexOf(contract.todayPlan[2]));
       expect(html).not.toContain("PRIVATE FACT");
     });
 
@@ -626,7 +636,7 @@ describe("Unified report — depth without duplicate cards", () => {
     });
   }
 
-  it("offers keep controls only beside allow-listed original content, never hypotheses or safety", () => {
+  it("groups Keep slots using only exact allow-listed original content, never hypotheses or safety", () => {
     const calls: { field: string; text: string }[] = [];
     const contract = full("low");
     const html = render(contract, "en", { renderKeepAction: (field, text) => {
@@ -649,6 +659,50 @@ describe("Unified report — depth without duplicate cards", () => {
     for (const id of ["coach-report-understanding", "coach-report-next", "say-this", "coach-plan-door", "coach-report-help"]) expect(html).not.toContain('data-testid="' + id + '"');
   });
 
+  for (const lang of ["en", "he"] as const) {
+    it(`[${lang}] an empty contract has no invented lead, action, script or optional panels`, () => {
+      const html = render({ ...makeContract("low"), escalateIf: [] }, lang, { onGoDeeper: undefined });
+      expect(html).toContain('data-testid="coach-answer-footer"');
+      for (const id of ["coach-report-opening", "coach-report-next", "say-this", "coach-report-understanding", "coach-report-details", "coach-report-document", "coach-report-help", "coach-report-actions", "coach-report-council", "coach-report-sources"]) {
+        expect(html).not.toContain(`data-testid="${id}"`);
+      }
+    });
+
+    it(`[${lang}] saved history without optional prose retains structured values and no Keep or try-it control`, () => {
+      const contract = { ...full("low"), text: undefined };
+      const html = render(contract, lang, { renderKeepAction: undefined, onTryIt: undefined, onUndoTryIt: undefined });
+      expect(html).not.toContain('data-testid="coach-report-opening"');
+      expect(html).not.toContain('data-testid="coach-try-it"');
+      expect(html).not.toContain('class="coach-report__save-list"');
+      for (const value of [...contract.todayPlan, contract.parentScript, ...contract.observe, ...contract.avoid, ...contract.nonDiagnosticHypotheses.flatMap(h => [h.label, h.rationale])]) {
+        expect(html.split(value), value).toHaveLength(2);
+      }
+    });
+
+    for (const fileDeclined of [false, true]) {
+      it(`[${lang}] long text-only ${fileDeclined ? "declined-file" : "follow-up"} prose stays exposed without a fabricated primary action`, () => {
+        const text = lang === "he" ? "אפשר להקשיב בקצב שמתאים לכם ולחזור לנושא כשיהיה זמן. ".repeat(15).trim() : "You can take time to listen and return to this conversation when you are ready. ".repeat(12).trim();
+        const html = render({ ...makeContract("low"), text, fileDeclined, escalateIf: [] }, lang, { onGoDeeper: undefined });
+        const opening = html.slice(html.indexOf('<header class="coach-report__opening"'), html.indexOf("</header>") + "</header>".length);
+        expect(opening).toContain(text);
+        expect(opening).not.toContain('hidden=""');
+        expect(opening).not.toContain("aria-expanded");
+        expect(html.split(text)).toHaveLength(2);
+        expect(html).not.toContain(lang === "he" ? "רקע נוסף" : "More context");
+        for (const id of ["coach-report-next", "say-this", "coach-report-document", "coach-report-actions"]) expect(html).not.toContain(`data-testid="${id}"`);
+      });
+    }
+
+    it(`[${lang}] static rendering never accepts, saves, proposes, hands off or opens another flow`, () => {
+      const callbacks = { onSaveToPlan: vi.fn(), onAddToHandoff: vi.fn(), onManageMemory: vi.fn(), onGoDeeper: vi.fn(), onTryIt: vi.fn(), onUndoTryIt: vi.fn(), onProposeMemory: vi.fn(async () => {}) };
+      const contract = full("low", { handoffNotes: { teacher: "Exact teacher prefill", professional: "Exact professional prefill" } });
+      const before = JSON.stringify(contract);
+      render(contract, lang, callbacks);
+      expect(JSON.stringify(contract)).toBe(before);
+      for (const callback of Object.values(callbacks)) expect(callback).not.toHaveBeenCalled();
+    });
+  }
+
   it("source guard: copy confirmation follows successful clipboard write and a failed copy has a manual fallback", () => {
     const source = readFileSync(path.resolve(__dirname, "CoachAnswerCards.tsx"), "utf8");
     expect(source.indexOf("await navigator.clipboard.writeText(text)")).toBeLessThan(source.indexOf("setCopied(key)"));
@@ -656,7 +710,7 @@ describe("Unified report — depth without duplicate cards", () => {
     expect(source).toContain("event.currentTarget.select()");
   });
 
-  it("all report controls have a 44px minimum and visible focus, without relying on viewport width", () => {
+  it("scoped CSS declares touch floors and focus styles with container-query reflow", () => {
     const css = readFileSync(path.resolve(__dirname, "coachReport.css"), "utf8");
     for (const selector of [".coach-report__tools button", ".coach-report__disclosure > button", ".coach-report__memory button", ".coach-report__keep button"]) {
       expect(css).toContain(selector);

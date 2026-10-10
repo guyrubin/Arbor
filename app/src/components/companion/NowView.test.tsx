@@ -143,14 +143,25 @@ describe("Now's restored recommendations and one conversation entrance", () => {
   it("opens the shared contextual conversation without navigating to a separate chat", () => {
     const open = vi.fn();
     renderToStaticMarkup(<NowView onTalkOpen={open} topic={{ id: "topic-a", title: "Our mornings" }} />);
-    button(NOW_COPY.en.talk).onClick?.();
+    button(NOW_COPY.en.continueTopic).onClick?.();
     expect(open).toHaveBeenCalledWith("Our mornings");
     expect(state.seedCoach).not.toHaveBeenCalled();
   });
-  it("has working explicit text, dictation and photo quick-capture doors", () => {
-    renderToStaticMarkup(<NowView />);
-    button(NOW_COPY.en.write).onClick?.(); button(NOW_COPY.en.dictate).onClick?.(); button(NOW_COPY.en.photo).onClick?.();
-    expect(state.openCaptureSheet.mock.calls.map(([args]) => args.mode)).toEqual(["text", "voice", "photo"]);
+  it("leaves general conversation and capture to the persistent launcher", () => {
+    const html = renderToStaticMarkup(<NowView />);
+    expect(html).not.toContain('class="now-conversation"');
+    expect(html).not.toContain('class="now-capture"');
+    expect(html).not.toContain(NOW_COPY.en.talkTitle);
+    expect(html).not.toContain(NOW_COPY.en.captureBody);
+    expect(html).toContain('data-presentation="action-first"');
+    expect(html.indexOf('data-testid="practice-answers"')).toBeLessThan(html.indexOf('data-testid="practice-details"'));
+  });
+  it("keeps saved questions reachable without a duplicate general Ask card", () => {
+    const open = vi.fn();
+    const html = renderToStaticMarkup(<NowView onTopicOpen={open} />);
+    button(NOW_COPY.en.topics).onClick?.();
+    expect(open).toHaveBeenCalledOnce();
+    expect(html).not.toContain('class="now-conversation"');
   });
   it("renders native Hebrew labels with the RTL parent surface", () => {
     state.lang = "he";
@@ -158,7 +169,7 @@ describe("Now's restored recommendations and one conversation entrance", () => {
     const html = renderToStaticMarkup(<NowView />);
     expect(html).toContain('dir="rtl"');
     expect(html).toContain(NOW_COPY.he.curatedWhy);
-    expect(html).toContain(NOW_COPY.he.dictate);
+    expect(html).not.toContain(NOW_COPY.en.continueTopic);
     expect(html).not.toContain(NOW_COPY.en.curatedWhy);
     expect(html).not.toContain(NOW_COPY.en.talkTitle);
   });

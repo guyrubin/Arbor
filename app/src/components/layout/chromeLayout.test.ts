@@ -184,13 +184,14 @@ describe("UC-8b — the sticky sub-tab row is flush with the scrollport", () => 
   // to reach past them to the sticky-inset lines this guard is about.
   const stickyRow = shell.slice(shell.indexOf('role="tablist"') - 400, shell.indexOf('role="tablist"') + 2600);
 
-  it("cancels the scrollport top inset instead of using a bare top-0", () => {
+  it("keeps the sticky row in flow below Back, without an overlapping negative inset", () => {
     expect(stickyRow).toContain("sticky");
-    expect(stickyRow).not.toMatch(/className="sticky top-0/);
-    expect(stickyRow).toMatch(/top:\s*"calc\(-1 \* var\(--arbor-main-pt\)\)"/);
-    expect(stickyRow).toMatch(/marginBlockStart:\s*"calc\(-1 \* var\(--arbor-main-pt\)\)"/);
-    // …and pads the band back out so the pills do not move at rest.
-    expect(stickyRow).toMatch(/paddingBlockStart:\s*"calc\(var\(--arbor-main-pt\)[^"]*\)"/);
+    expect(stickyRow).toMatch(/top:\s*0/);
+    expect(stickyRow).not.toContain("marginBlockStart:");
+    expect(stickyRow).not.toContain("paddingBlockStart:");
+    const negativeInset = /marginBlockStart:\s*"calc\(-1 \* var\(--arbor-main-pt\)\)"/;
+    expect(negativeInset.test(stickyRow)).toBe(false);
+    expect(negativeInset.test('marginBlockStart: "calc(-1 * var(--arbor-main-pt))"')).toBe(true);
   });
 
   it("--arbor-main-pt matches <main>'s actual Tailwind top padding", () => {
@@ -320,10 +321,9 @@ describe("IA-04 / IA-17 — exactly one child switcher at every width", () => {
 
 /* ── IA-21 · the hub one-liner reaches the phone ─────────────────────────── */
 
-describe("IA-21 — hub one-liners are no longer desktop-only", () => {
-  it("Shell renders nav.sub.<hub> below lg, where there is no topbar to carry it", () => {
-    const src = stripComments(shell);
-    expect(src).toMatch(/<p className="lg:hidden[^"]*"[\s\S]{0,200}t\("nav\.sub\." \+ hubSubKey, \{ name: childProfile\.name \}\)/);
+describe("hub context belongs to the desktop topbar, not a duplicate page preamble", () => {
+  it("Shell leaves the page’s own introduction to describe its purpose", () => {
+    expect(stripComments(shell)).not.toContain('t("nav.sub." + hubSubKey');
   });
 
   it("it is the SAME key the topbar uses — one sentence per hub, not two", () => {

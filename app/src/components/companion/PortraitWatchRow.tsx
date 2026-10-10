@@ -4,7 +4,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { ageMonthsOf } from "../../lib/age/forChild";
 import { comparisonAgeMonths, milestoneText, selectWeeklyFocus } from "../../lib/milestoneData";
-import { clearWatchFocus, resolveWatchFocus } from "../../lib/screeningWatch";
+import { clearWatchFocus, readWatchFocus, resolveWatchFocus, writeWatchFocus, type WatchFocus } from "../../lib/screeningWatch";
 import { latestRecheckDueAt } from "../../lib/screeningRecheck";
 import { closeDay, deriveReturnSignals } from "../../lib/tomorrowReason";
 import { readRitualRecord } from "../../lib/familyRitualsCadence";
@@ -14,6 +14,7 @@ import { fmtDay, fmtDayShort } from "../../lib/formatDate";
 import { tGCare } from "../../lib/growthCareText";
 import { ContentWhyLine } from "../ui/ContentActionBar";
 import Icon from "../ui/Icon";
+import { PARENT_RECORD_COPY } from "./parentRecordCopy";
 
 type ObserveStatus = "yes" | "not_sure" | "not_yet";
 
@@ -36,6 +37,8 @@ type ObserveStatus = "yes" | "not_sure" | "not_yet";
 export default function PortraitWatchRow() {
   const { childProfile, milestones, behaviorLogs, playLogs, setMilestoneObservation, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
+  const copy = PARENT_RECORD_COPY[uiLang === "he" ? "he" : "en"];
+  const [clearedWatch, setClearedWatch] = useState<{ childId: string; focus: WatchFocus } | null>(null);
   const firstName = (childProfile.name || "").split(" ")[0];
   const heGender = useMemo(() => ({ gender: childProfile.gender ?? null }), [childProfile.gender]);
   const [watchTick, setWatchTick] = useState(0);
@@ -91,9 +94,12 @@ export default function PortraitWatchRow() {
   const today = new Date().toISOString();
 
   return <section className="portrait-watch" data-testid="portrait-watch" aria-labelledby="portrait-watch-title">
-    <p className="portrait-kicker">{t("growth.focus.eyebrow")}</p>
-    {focus ? <>
-      <h2 id="portrait-watch-title" dir="auto">{focus.title}</h2>
+    {focus ? <details key={`${childProfile.id}:${focus.id}:${focus.chosen}`} open={focus.chosen} data-testid="portrait-watch-details">
+      <summary className="portrait-watch-summary">
+        <span><span className="portrait-kicker">{focus.chosen ? copy.chosenFocus : copy.suggestedFocus}</span><span id="portrait-watch-title" className="portrait-watch-title" dir="auto">{focus.title}</span><span className="portrait-meta">{copy.reviewObservation}</span></span>
+        <Icon name="expand_more" size={20} />
+      </summary>
+      <div className="portrait-watch-detail">
       {focus.body && <p className="portrait-watch-body" dir="auto">{focus.body}</p>}
       {focus.hint && <p className="portrait-meta">{focus.hint}</p>}
       <p className="portrait-watch-prompt">{t("elev.waveR.growth.observe.prompt")}</p>
@@ -120,14 +126,29 @@ export default function PortraitWatchRow() {
         <button type="button" className="portrait-text-button" onClick={() => setActiveTab("daily-play")}><Icon name="play_arrow" size={18} />{t("growth.focus.try")}</button>
         <button type="button" className="portrait-text-button" onClick={() => setActiveTab("milestones")}><Icon name="edit_note" size={18} />{t("growth.focus.review")}</button>
         {/* A choice the parent made has to be a choice they can unmake. */}
-        {focus.chosen && <button type="button" className="portrait-text-button" data-testid="portrait-unwatch" onClick={() => { clearWatchFocus(childProfile.id); setWatchTick((n) => n + 1); }}>{tGCare(uiLang, "elev.gcare.growth.watch.clear")}</button>}
+        {focus.chosen && <button type="button" className="portrait-text-button" data-testid="portrait-unwatch" onClick={() => {
+          const previous = readWatchFocus(childProfile.id);
+          clearWatchFocus(childProfile.id);
+          setClearedWatch(previous ? { childId: childProfile.id, focus: previous } : null);
+          setWatchTick((n) => n + 1);
+        }}>{tGCare(uiLang, "elev.gcare.growth.watch.clear")}</button>}
       </div>
-    </> : <>
+      <ContentWhyLine why={t("elev.waveR.why.focus")} trustLink surface="growth-focus" />
+      </div>
+    </details> : <>
       <h2 id="portrait-watch-title">{t("growth.focus.empty.title")}</h2>
       <p className="portrait-watch-body">{t("growth.focus.empty.body")}</p>
       <div className="portrait-watch-links"><button type="button" className="portrait-text-button" onClick={() => setActiveTab("screening")}><Icon name="assignment_turned_in" size={18} />{t("growth.focus.check")}</button></div>
+      <ContentWhyLine why={t("elev.waveR.why.focus")} trustLink surface="growth-focus" />
     </>}
     {recheckDueAt && <p className="portrait-meta" data-testid="portrait-recheck-date">{t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })}</p>}
-    <ContentWhyLine why={t("elev.waveR.why.focus")} trustLink surface="growth-focus" />
+    {clearedWatch?.childId === childProfile.id && !chosenWatch && <div className="portrait-watch-undo" role="status">
+      <span>{copy.watchCleared}</span>
+      <button type="button" className="portrait-text-button" data-testid="portrait-watch-undo" onClick={() => {
+        writeWatchFocus(childProfile.id, clearedWatch.focus);
+        setClearedWatch(null);
+        setWatchTick((n) => n + 1);
+      }}>{copy.undo}</button>
+    </div>}
   </section>;
 }

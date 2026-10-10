@@ -1,0 +1,131 @@
+name: Arbor final Parent release evidence
+on:
+  # Dedicated candidate branch only. This never changes the active small capture
+  # or production workflows, and never merges/deploys to obtain evidence.
+  push:
+    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic']
+    paths: ['app/**', 'knowledge/**', '.github/workflows/arbor-parent-release-capture.yml']
+permissions:
+  contents: read
+concurrency:
+  group: arbor-parent-release-evidence-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      cells: ${{ steps.matrix.outputs.cells }}
+      source-tree: ${{ steps.matrix.outputs.source-tree }}
+      scope: ${{ steps.matrix.outputs.scope }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: matrix
+        name: Derive the bounded matrix from its pure source contract
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_NAME" == "codex/parent-final-ask-diagnostic" ]]; then scope=ask-diagnostic; else scope=all; fi
+          CAPTURE_SCOPE="$scope" node --input-type=module -e 'import { releaseMatrix } from "./app/scripts/capture/release-config.mjs"; console.log("cells=" + JSON.stringify(releaseMatrix(process.env.CAPTURE_SCOPE)));' >> "$GITHUB_OUTPUT"
+          echo "scope=$scope" >> "$GITHUB_OUTPUT"
+          echo "source-tree=$(git rev-parse HEAD:app/src)" >> "$GITHUB_OUTPUT"
+  capture:
+    needs: matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 42
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.cells) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build isolated capture image (no app execution with network)
+        timeout-minutes: 15
+        run: docker build --file app/scripts/capture/Dockerfile --tag arbor-parent-release-base .
+      - name: Cache exact source fonts in a dedicated disposable CI container
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          fonts=$(docker create --network bridge \
+            --env CAPTURE_FONT_MODE=exact --env CAPTURE_DISPOSABLE_CI=true \
+            arbor-parent-release-base node scripts/capture/prepare-font-cache.mjs)
+          trap 'docker rm -f "$fonts" >/dev/null' EXIT
+          docker start --attach "$fonts"
+          # CI-local image only; font files/images never go to artifacts or registries.
+          docker commit "$fonts" arbor-parent-release >/dev/null
+      - name: Render one bounded final-source shard, with no external network
+        timeout-minutes: 20
+        env:
+          CAPTURE_VIEWPORT: ${{ matrix.viewport }}
+          CAPTURE_GROUP: ${{ matrix.group }}
+          CAPTURE_SHARD: ${{ matrix.shard }}
+          CAPTURE_SOURCE_TREE: ${{ needs.matrix.outputs.source-tree }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          container=$(docker create --network none --shm-size=1g \
+            --env ARBOR_CAPTURE_SHA="$GITHUB_SHA" \
+            --env ARBOR_CAPTURE_SOURCE_TREE_SHA="$CAPTURE_SOURCE_TREE" \
+            --env ARBOR_CAPTURE_FONT_MODE=exact \
+            --env ARBOR_CAPTURE_VIEWPORT="$CAPTURE_VIEWPORT" \
+            --env ARBOR_CAPTURE_GROUP="$CAPTURE_GROUP" \
+            --env ARBOR_CAPTURE_SHARD="$CAPTURE_SHARD" \
+            arbor-parent-release node scripts/capture/run-release.mjs)
+          preserve() {
+            mkdir -p "$RUNNER_TEMP/arbor-parent-release"
+            docker cp "$container:/capture-output/." "$RUNNER_TEMP/arbor-parent-release/" || true
+            docker rm -f "$container" >/dev/null || true
+          }
+          trap preserve EXIT
+          trap 'exit 124' TERM INT
+          docker start --attach "$container"
+      - name: Retain completed and partial screenshots with evidence JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arbor-parent-release-${{ github.sha }}-${{ matrix.viewport }}-${{ matrix.group }}-${{ matrix.shard }}
+          path: |
+            ${{ runner.temp }}/arbor-parent-release/capture.json
+            ${{ runner.temp }}/arbor-parent-release/sweep.json
+            ${{ runner.temp }}/arbor-parent-release/evidence.json
+            ${{ runner.temp }}/arbor-parent-release/route-inventory.json
+            ${{ runner.temp }}/arbor-parent-release/font-provenance.json
+            ${{ runner.temp }}/arbor-parent-release/font-evidence.sweep.json
+            ${{ runner.temp }}/arbor-parent-release/font-evidence.diagnostics.json
+            ${{ runner.temp }}/arbor-parent-release/shots/*.png
+          if-no-files-found: warn
+          retention-days: 7
+          include-hidden-files: false
+  coverage:
+    if: always() && needs.matrix.result == 'success'
+    needs: [matrix, capture]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: arbor-parent-release-${{ github.sha }}-*
+          path: ${{ runner.temp }}/arbor-parent-release-artifacts
+      - name: Verify every source route, required interaction and exact-font PNG
+        if: always()
+        env:
+          CAPTURE_SOURCE_TREE: ${{ needs.matrix.outputs.source-tree }}
+          CAPTURE_SCOPE: ${{ needs.matrix.outputs.scope }}
+        run: node app/scripts/capture/summarize-release.mjs --root "$RUNNER_TEMP/arbor-parent-release-artifacts" --out "$RUNNER_TEMP/arbor-parent-release-summary" --sha "$GITHUB_SHA" --tree "$CAPTURE_SOURCE_TREE" --scope "$CAPTURE_SCOPE"
+      - name: Retain the complete or incomplete coverage verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arbor-parent-release-summary-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/arbor-parent-release-summary/release-summary.json
+            ${{ runner.temp }}/arbor-parent-release-summary/release-summary.md
+          if-no-files-found: warn
+          retention-days: 7

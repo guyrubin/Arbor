@@ -20,7 +20,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildMomentLog, MOMENT_BEHAVIOR_TYPE } from "../../content/behaviorTaxonomy";
-import { translate } from "../../lib/i18n";
+import { translate } from "../../lib/i18n";
 import { todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -67,8 +67,13 @@ describe("B-TODAY-19 · every capture tile opens the one sheet in place", () => 
     expect(JOURNAL).toMatch(/setOpenSignal\(null\);\s*openCaptureSheet\(\{ editLogId: logId \}\);/);
   });
 
-  it("Today's capture doors open the one sheet in place (Now's side card: write · dictate · photo)", () => {
-    for (const mode of ["text", "voice", "photo"]) expect(TODAY).toContain(`openCaptureSheet({ mode: "${mode}" })`);
+  it("the shared launcher opens all three capture modes in place on Today", () => {
+    const launcher = stripComments(read("components/companion/CompanionWorkspace.tsx"));
+    for (const mode of ["text", "voice", "photo"]) expect(launcher).toContain(`capture("${mode}")`);
+    const capture = launcher.slice(launcher.indexOf("const capture ="), launcher.indexOf("const visible ="));
+    expect(capture).toContain("openCaptureSheet({ mode });");
+    expect(capture).not.toContain("setActiveTab(");
+    expect(capture).not.toContain("requestCapture(");
     expect(TODAY).not.toContain("requestCapture(");
   });
 

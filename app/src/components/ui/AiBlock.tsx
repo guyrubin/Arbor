@@ -142,7 +142,7 @@ export function SayThis({
         </div>
       }
     >
-      <p className="text-[13px] leading-relaxed italic" style={{ color: "var(--arbor-ink)" }}>&ldquo;{text}&rdquo;</p>
+      <p className="t-base leading-relaxed" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)", fontStyle: "normal" }}>&ldquo;{text}&rdquo;</p>
       {copyFallback && <textarea aria-label={copyLabel} readOnly value={text} dir="auto" autoFocus onFocus={(event) => event.currentTarget.select()} className="mt-3 min-h-11 w-full rounded-lg border p-3 text-sm" style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", borderColor: "var(--arbor-rule-strong)" }} />}
     </AiBlock>
   );

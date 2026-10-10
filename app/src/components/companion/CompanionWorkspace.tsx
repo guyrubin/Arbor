@@ -1,15 +1,17 @@
 import { translate as inputText } from "../../lib/i18n";
-import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDialog } from "../../hooks/useDialog";
 import { COMPANION_CONVERSATION_EVENT, type CompanionConversationRequest } from "../../lib/companionConversation";
 import { trackCompanionPanelOpen } from "../../lib/kpiEvents";
+import { isKidModeActive } from "../../lib/kidModeGate";
 import Icon from "../ui/Icon";
 import { ArborMark } from "../ui/ArborMark";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { availableHardMomentCards } from "../../content/selectCards";
 import { ageMonthsFromProfile } from "../../lib/childAge";
+import { NOW_COPY } from "./nowViewCopy";
 import "./companionWorkspace.css";
 
 const CoachTab = lazy(() => import("../tabs/CoachTab"));
@@ -32,13 +34,43 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   const previousChild = useRef(childProfile.id);
   const returnTab = useRef<"overview" | typeof activeTab>("overview");
   const launchRef = useRef<HTMLButtonElement>(null);
+  const closeFocus = useRef<{ childId: string; tab: typeof activeTab } | null>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const launcherRef = useRef<HTMLDivElement>(null);
+  const captureRef = useRef<HTMLDetailsElement>(null);
+  const captureLabelRef = useRef<HTMLElement>(null);
+  const copy = NOW_COPY[uiLang === "he" ? "he" : "en"];
+  const capture = (mode: "text" | "voice" | "photo") => {
+    if (captureRef.current) captureRef.current.open = false;
+    // The sheet must return focus to a visible control after it closes.
+    captureLabelRef.current?.focus();
+    openCaptureSheet({ mode });
+  };
   const visible = open && !kidLocked;
   const modal = visible && (!wide || expanded);
   const close = () => {
+    closeFocus.current = { childId: childProfile.id, tab: routeIsConversation ? returnTab.current : activeTab };
     setOpen(false);
     if (routeIsConversation) setActiveTab(returnTab.current);
-    else requestAnimationFrame(() => launchRef.current?.focus());
   };
+  // Direct Coach/Scholar entry has no mounted launcher until close commits.
+  // Restore only an explicit close, after route/dialog cleanup; newer context
+  // owns focus and cancels this return rather than moving or scrolling it.
+  // Layout timing keeps an older opening effect from consuming a newer close.
+  useLayoutEffect(() => {
+    const request = closeFocus.current;
+    if (!request) return;
+    if (open || kidLocked || childProfile.id !== request.childId || activeTab !== request.tab) {
+      closeFocus.current = null;
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      if (closeFocus.current !== request) return;
+      closeFocus.current = null;
+      if (!isKidModeActive()) launchRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, kidLocked, childProfile.id, activeTab]);
   const { ref: panelRef } = useDialog<HTMLElement>({ open: modal, onClose: close, returnFocusRef: launchRef, persistentLayer: true });
   useEffect(() => {
     if (visible && !modal) panelRef.current?.focus();
@@ -47,6 +79,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   const openRef = useRef(open);
   openRef.current = open;
   const show = (via: "launcher" | "seed" | "route") => {
+    if (captureRef.current) captureRef.current.open = false;
     if (!openRef.current) trackCompanionPanelOpen(via);
     openRef.current = true;
     setMounted(true); setOpen(true);
@@ -58,6 +91,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     return () => query.removeEventListener("change", update);
   }, []);
   useEffect(() => {
+    if (captureRef.current) captureRef.current.open = false;
     if (routeIsConversation) { show("route"); setExpanded(true); }
     else {
       returnTab.current = activeTab; setExpanded(false);
@@ -82,12 +116,37 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   useEffect(() => {
     if (previousChild.current === childProfile.id) return;
     previousChild.current = childProfile.id;
+    if (captureRef.current) captureRef.current.open = false;
     setOpen(false); setMounted(false); setExpanded(false);
     if (routeIsConversation) setActiveTab("overview");
   }, [childProfile.id]);
   useEffect(() => { if (kidLocked) setOpen(false); }, [kidLocked]);
 
-  return <div className={`companion-workspace${visible ? " is-open" : ""}${expanded ? " is-expanded" : ""}`}>
+  // The launcher owns an intrinsic-height row outside the main scrollport.
+  // Measure translated/wrapped chrome for keyboard clearance and the actual
+  // fixed mobile nav (its buttons can be taller than the old --mobile-nav-h).
+  useEffect(() => {
+    const workspace = workspaceRef.current;
+    if (!workspace) return;
+    const launcher = launcherRef.current;
+    const navigation = workspace.closest(".arbor-app")?.querySelector<HTMLElement>(":scope > nav");
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && captureRef.current && !captureRef.current.contains(event.target)) captureRef.current.open = false;
+    };
+    const measure = () => {
+      workspace.style.setProperty("--companion-launcher-height", `${launcher?.getBoundingClientRect().height ?? 0}px`);
+      if (navigation) workspace.style.setProperty("--companion-navigation-height", `${navigation.getBoundingClientRect().height}px`);
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    if (launcher) observer?.observe(launcher);
+    if (navigation) observer?.observe(navigation);
+    window.addEventListener("resize", measure);
+    document.addEventListener("pointerdown", closeOutside);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", measure); document.removeEventListener("pointerdown", closeOutside); };
+  }, [visible, kidLocked, uiLang, activeTab, chatInput]);
+
+  return <div ref={workspaceRef} className={`companion-workspace${visible ? " is-open" : ""}${expanded ? " is-expanded" : ""}`}>
     {children}
     <div className="companion-panel-layer" data-arbor-dialog-layer>
     {modal && <button type="button" tabIndex={-1} className="companion-workspace-backdrop" aria-label={inputText(uiLang, "companion.input.close-conversation")} onClick={close} />}
@@ -106,12 +165,23 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
       </Suspense></ErrorBoundary>
     </aside>}
     </div>
-    {!visible && !kidLocked && <div className="arbor-parent companion-launcher" data-testid="companion-launcher">
+    {!visible && !kidLocked && <div className="arbor-parent companion-launcher-rail" data-testid="companion-launcher-rail"><div ref={launcherRef} className="arbor-parent companion-launcher" data-testid="companion-launcher">
       <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.input.talk-with-arbor-text-photo-or-voice")}>
-        <ArborMark size={27} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : (inputText(uiLang, "companion.input.what-would-you-like-to-share"))}<small>{inputText(uiLang, "companion.input.write-show-talk")}</small></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" />
+        <ArborMark size={24} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : copy.talk}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
       </button>
       {hardMomentDoor && activeTab !== "overview" && <button type="button" className="companion-launch-save companion-launch-hard" data-testid="launcher-hard-moment" onClick={() => openHardMomentNow()} aria-label={inputText(uiLang, "companion.input.hard-moment-aria")}><Icon name="volunteer_activism" size={21} /><span className="companion-launch-save-label">{inputText(uiLang, "companion.input.hard-moment")}</span></button>}
-      <button type="button" className="companion-launch-save" onClick={() => openCaptureSheet({ mode: "text" })} aria-label={inputText(uiLang, "companion.input.just-keep-a-moment")}><Icon name="add_a_photo" size={21} /><span className="companion-launch-save-label">{inputText(uiLang, "companion.input.keep-a-moment")}</span></button>
-    </div>}
+      <details ref={captureRef} className="companion-capture-menu" onKeyDown={event => {
+        if (event.key === "Escape" && captureRef.current?.open) { event.stopPropagation(); captureRef.current.open = false; captureLabelRef.current?.focus(); }
+      }} onBlur={event => {
+        if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+      }}>
+        <summary ref={captureLabelRef} className="companion-launch-save" aria-label={inputText(uiLang, "companion.input.just-keep-a-moment")}><Icon name="edit_note" size={21} /><span className="companion-launch-save-label">{copy.captureShort}</span></summary>
+        <div className="companion-capture-options" role="group" aria-label={copy.quickSave}>
+          <button type="button" onClick={() => capture("text")}><Icon name="edit_note" size={21} />{copy.write}</button>
+          <button type="button" onClick={() => capture("voice")}><Icon name="mic" size={21} />{copy.dictate}</button>
+          <button type="button" onClick={() => capture("photo")}><Icon name="photo_camera" size={21} />{copy.photo}</button>
+        </div>
+      </details>
+    </div></div>}
   </div>;
 }

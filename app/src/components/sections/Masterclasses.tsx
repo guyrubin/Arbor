@@ -604,7 +604,7 @@ export function MasterclassReader({ m, isDone: isDoneProp, onDone: onDoneProp, o
         <p className="text-xs uppercase tracking-widest font-bold mb-1.5 inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
           <Icon name="format_quote" size={15} fill={1} /> {t("master.whatToSay")}
         </p>
-        <p className="text-[15px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)", fontStyle: "italic" }}>{he ? m.parentScriptHe : m.parentScript}</p>
+        <p className="t-base leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)", fontStyle: "normal" }}>{he ? m.parentScriptHe : m.parentScript}</p>
       </div>
 
       {/* Try tonight */}

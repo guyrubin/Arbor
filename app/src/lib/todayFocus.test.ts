@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import { focusHeadlineFrom, focusHeadlineFor, focusBodyFor, whyLineFor, whyLineParts } from "./todayFocus";
-import { en, he, translate } from "./i18n";
+import { en, he, translate } from "./i18n";
 import { todayFile, todayLiveSource } from "../testTodaySource";
 
 /**
@@ -355,11 +355,13 @@ describe("Today hero asset budget (CODEX-3)", () => {
 });
 
 describe("mobile pinned capture bar exists as documented (TODAY-4)", () => {
-  it("Now docks nothing over the MobileNav: capture is the side column's card (no fixed bar to reserve)", () => {
+  it("Now delegates capture to the one shared launcher with measured clearance", () => {
     // Parity 9 Oct: the pinned QuickCaptureBar left with the Today hub.
     const src = todayLiveSource();
     expect(src).not.toMatch(/max-md:fixed|max-md:sticky/);
-    expect(src).toContain('<section className="now-capture"');
+    expect(src).not.toContain('<section className="now-capture"');
+    expect(read("components/companion/CompanionWorkspace.tsx")).toContain('className="companion-capture-options"');
+    expect(read("components/companion/companionWorkspace.css")).toContain("var(--companion-launcher-height)");
     expect(src).not.toContain("order-last");
     expect(read("components/companion/nowView.css")).not.toMatch(/position:\s*(fixed|sticky)/);
   });

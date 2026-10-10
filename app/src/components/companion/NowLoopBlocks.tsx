@@ -7,6 +7,7 @@ import TonightFlow from "../loop/TonightFlow";
 import { SectionHead } from "../ui/SectionHead";
 import Icon from "../ui/Icon";
 import { PendingLine } from "../ui/Receipt";
+import { NOW_COPY } from "./nowViewCopy";
 import type { useNowLoop } from "./useNowLoop";
 
 type Loop = ReturnType<typeof useNowLoop>;
@@ -28,7 +29,7 @@ export function NowPracticeLead({ loop, name, whyText, headerNote, onAdapt, adap
   choosing?: boolean;
 }) {
   const { childProfile } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   if (!loop.pick) return null;
   const pick = loop.pick;
   return <>
@@ -39,6 +40,7 @@ export function NowPracticeLead({ loop, name, whyText, headerNote, onAdapt, adap
       shelf={pick.shelf}
       childName={name}
       gender={childProfile.gender}
+      actionFirstDetailsLabel={NOW_COPY[uiLang === "he" ? "he" : "en"].practiceDetails}
       answered={loop.doseAnswer}
       onAnswer={loop.answerPractice}
       onUndo={loop.undoPractice}

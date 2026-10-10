@@ -329,3 +329,57 @@ describe("critic r2 — the echo reads both progress sources", async () => {
     expect(src).not.toMatch(/text-\[10px\]/);
   });
 });
+
+/** Font-exact phone QA: the progress count is ordinary body copy. Keep the
+ *  existing editorial role for quoted steps and Profile's kept parent words. */
+describe("plan progress typography roles", async () => {
+  const { default: PlanTrackCard } = await import("./PlanTrackCard");
+  const ref = { planId: plan.id, phaseIdx: 0, stepIdx: 1 };
+  const card = (lang: "en" | "he", echo: NonNullable<React.ComponentProps<typeof PlanTrackCard>["echo"]>) =>
+    renderToStaticMarkup(React.createElement(PlanTrackCard, {
+      plan, step: { ...ref, text: "Same three books", day: 1, next: null, offerNext: false }, today: null, lang, now: 0,
+      onTryIt: () => {}, onUndo: () => {}, onCheck: () => {}, onAdjust: () => {}, echo, childName: "Dylan",
+    }));
+  const echoParagraph = (html: string) => html.match(/<p data-testid="plan-echo"[^>]*>[\s\S]*?<\/p>/)?.[0] ?? "";
+  const isBodyProgress = (html: string) => {
+    const p = echoParagraph(html);
+    return p.includes('data-echo="progress"') && p.includes('dir="auto"')
+      && p.includes('class="t-base leading-relaxed"') && p.includes("font-family:var(--font-sans)")
+      && !/font-editorial|arbor-type-say/.test(p);
+  };
+
+  it.each(["en", "he"] as const)("renders the singular and plural progress text with existing body tokens (%s)", lang => {
+    for (const done of [1, 3]) {
+      const html = card(lang, { kind: "progress", done });
+      expect(isBodyProgress(html)).toBe(true);
+      const expectedText = translate(lang, `elev.plans.echo.progress.${done === 1 ? "one" : "many"}`, { n: done, name: "Dylan" });
+      expect(echoParagraph(html)).toContain(renderToStaticMarkup(React.createElement("span", { className: "min-w-0 line-clamp-2" }, expectedText)));
+      // The next action stays after the progress sentence, with its own type.
+      expect(html).toMatch(/<p dir="auto" class="t-md font-bold leading-snug"[^>]*>Same three books<\/p>/);
+      expect(html.indexOf('data-testid="plan-echo"')).toBeLessThan(html.indexOf("Same three books"));
+    }
+  });
+
+  it("rejects the actual pre-fix phone typography", () => {
+    const before = '<p data-testid="plan-echo" data-echo="progress" dir="auto" class="t-sm leading-snug" style="font-family:var(--font-editorial);color:var(--arbor-ink-soft)"><span class="min-w-0 line-clamp-2">3 steps done with Dylan so far. Today, one small step more.</span></p>';
+    expect(echoParagraph(before)).not.toBe("");
+    expect(isBodyProgress(before)).toBe(false);
+    expect(isBodyProgress("")).toBe(false);
+  });
+
+  it.each(["en", "he"] as const)("preserves the editorial quoted-step echo (%s)", lang => {
+    for (const kind of ["helped", "somewhat"] as const) {
+      const p = echoParagraph(card(lang, { kind, step: "Same three books", yesterday: true }));
+      expect(p).toContain(`data-echo="${kind}"`);
+      expect(p).toContain('class="t-sm leading-snug"');
+      expect(p).toContain("font-family:var(--font-editorial)");
+      expect(p).toContain("Same three books");
+      expect(p).not.toContain("font-family:var(--font-sans)");
+    }
+  });
+
+  it("keeps Profile's parent quote in the editorial role rather than applying a blanket sans rule", () => {
+    const profile = readFileSync(path.join(here, "..", "sections", "ChildProfile.tsx"), "utf8");
+    expect(profile).toMatch(/<p style=\{\{ fontFamily: "var\(--font-editorial\)", fontWeight: 400, fontSize: "var\(--t-md\)", color: "var\(--arbor-ink\)" \}\}>\s*\{writtenPrefix\(toParentWords\(m\.fact\), m\.createdAt\)\}<FreeText text=\{toParentWords\(m\.fact\)\} \/>/);
+  });
+});

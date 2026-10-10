@@ -83,20 +83,20 @@ describe("W2-CAREPRO r2 — the talk line never crosses a border", () => {
   });
 });
 
-describe("W2-CAREPRO r2 — the Hebrew script is upright; the fold is two columns at lg", () => {
+describe("Parent script readability — both languages are upright; the fold stays two columns at lg", () => {
   const scriptTag = (html: string) => /<p data-testid="safety-crisis-script"[^>]*>/.exec(html)?.[0] ?? "";
 
-  it("HE: no italic, the display face", () => {
+  it("HE: upright body face", () => {
     const tag = scriptTag(render("he"));
     expect(tag).not.toContain("italic");
-    expect(tag).toContain("var(--font-display)");
+    expect(tag).toContain("var(--font-sans)");
     expect(tag).not.toContain("var(--font-editorial)");
   });
 
-  it("EN (control): editorial italic", () => {
+  it("EN: the same upright body face", () => {
     const tag = scriptTag(render("en"));
-    expect(tag).toContain("italic");
-    expect(tag).toContain("var(--font-editorial)");
+    expect(tag).not.toContain("italic");
+    expect(tag).toContain("var(--font-sans)");
   });
 
   it("the fold grid holds the one tap + the crisis card; the disclosure is outside it", () => {

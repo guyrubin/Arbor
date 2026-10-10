@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import { elevationEn as en, elevationHe as he } from "../../lib/i18nElevation";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDay } from "../../lib/formatDate";
 import { todayLiveSource } from "../../testTodaySource";
 
 /**
@@ -35,8 +35,10 @@ describe("TJB-08 — voice captures on Today, not on Behaviors", () => {
   const modal = strip(read("components/overview/QuickLogModal.tsx"));
 
   it("every mode (B-TODAY-19: voice AND photo) opens the capture sheet in place and never switches hub", () => {
-    // Parity 9 Oct: Now's doors open the ONE capture sheet (openCaptureSheet, the context seam).
-    for (const mode of ["text", "voice", "photo"]) expect(overview).toContain(`openCaptureSheet({ mode: "${mode}" })`);
+    // The persistent launcher owns general capture; Now retains contextual requests.
+    const launcher = strip(read("components/companion/CompanionWorkspace.tsx"));
+    for (const mode of ["text", "voice", "photo"]) expect(launcher).toContain(`capture("${mode}")`);
+    expect(launcher).toContain("openCaptureSheet({ mode });");
     expect((overview.match(/setActiveTab\("behaviors"\)/g) ?? []).length).toBe(0);
   });
 

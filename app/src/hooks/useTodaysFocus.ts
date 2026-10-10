@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db, firebaseEnabled } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
@@ -325,9 +325,12 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
   // live count is what Today is showing right now. Reconcile on the way out —
   // `liveInputsUsed` is what every consumer (the why-line) reads, so no caller
   // can accidentally print a count the ledger contradicts.
-  const liveFocus = focus
+  // PracticeFocus mirrors this value into its parent's state from an effect.
+  // Keep its identity stable until either the stored focus or live count changes;
+  // allocating on every render creates a self-sustaining parent/child update loop.
+  const liveFocus = useMemo(() => focus
     ? { ...focus, inputsUsed: liveInputsUsed(focus.inputsUsed, signals.count) }
-    : focus;
+    : focus, [focus, signals.count]);
 
   return { focus: liveFocus, loading, error, regenerate: generate };
 }

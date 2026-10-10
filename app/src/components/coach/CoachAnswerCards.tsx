@@ -1,5 +1,5 @@
 import { translate as inputText } from "../../lib/i18n";
-import React, { useState } from "react";
+import React, { useId, useRef, useState } from "react";
 import Icon from "../ui/Icon";
 import type { CoachContract, CouncilTake } from "../../types";
 import type { UiLang } from "../../lib/i18n";
@@ -359,11 +359,29 @@ function AnswerFeedback({ contract, lens, surface, lang, sources }: {
   );
 }
 
-/**
- * One report owns the lead, reasoning and actions. The host must not print
- * contract.text above it. Optional keep controls sit beside their original
- * text; they never repeat it in a second proposal card.
- */
+/** Optional sections stay mounted: closing one must not discard a pending
+ * Keep, document proposal, receipt or clipboard state. Native buttons provide
+ * Enter/Space behavior and retain focus when their panel closes. */
+function ReportDisclosure({ id, title, open, onToggle, children, testId, icon }: {
+  id: string; title: string; open: boolean; onToggle: () => void;
+  children: React.ReactNode; testId: string; icon?: React.ReactNode;
+}) {
+  return (
+    <section className="coach-report__disclosure" data-testid={testId}>
+      <button type="button" id={`${id}-toggle`} aria-expanded={open} aria-controls={id} onClick={onToggle}>
+        <span>{icon}{title}</span>
+        <Icon name={open ? "expand_less" : "expand_more"} size={19} />
+      </button>
+      <div id={id} role="region" aria-labelledby={`${id}-toggle`} hidden={!open} className="coach-report__disclosure-body">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** One report owns every original sentence. The first action and usable words
+ * lead; optional depth and secondary actions have named, accessible doors.
+ * Keep/Edit reuse the host's provenance-aware seam without repeating advice. */
 export default function CoachAnswerCards({
   contract, lens, council, lang = "en", onSaveToPlan, onGoDeeper,
   onAddToHandoff, onManageMemory, reviewUnavailable = false,
@@ -390,17 +408,33 @@ export default function CoachAnswerCards({
    *  in CaptureProposalsTray's shared explicit commit / edit / undo seam. */
   renderKeepAction?: (field: KeepableField, text: string) => React.ReactNode;
 }) {
-  const [copied, setCopied] = useState<string | null>(null);
-  const [copyFallback, setCopyFallback] = useState<string | null>(null);
-  const [citationsOpen, setCitationsOpen] = useState(false);
-  const [escalateOpen, setEscalateOpen] = useState(false);
-  const [proposed, setProposed] = useState<Record<number, "saving" | "saved" | "error">>({});
+  const [copyState, setCopyState] = useState<{ contract: CoachContract; copied: string | null; fallback: string | null }>({ contract, copied: null, fallback: null });
+  const copied = copyState.contract === contract ? copyState.copied : null;
+  const copyFallback = copyState.contract === contract ? copyState.fallback : null;
+  const reportId = useId();
+  const [openPanels, setOpenPanels] = useState<Record<string, boolean>>({});
+  const toggle = (panel: string) => setOpenPanels((state) => ({ ...state, [panel]: !state[panel] }));
+  // The host can reuse a message index after changing child or conversation.
+  // Scope receipts and in-flight callbacks to this contract instance, not a
+  // document row number; an old promise may never mark a new answer saved.
+  const proposalScope = useRef({ contract, pending: new Set<number>() });
+  if (proposalScope.current.contract !== contract) proposalScope.current = { contract, pending: new Set<number>() };
+  const scope = proposalScope.current;
+  type ProposalRows = Record<number, "saving" | "saved" | "error">;
+  const [proposalState, setProposalState] = useState<{ scope: typeof scope; rows: ProposalRows }>({ scope, rows: {} });
+  const proposed = proposalState.scope === scope ? proposalState.rows : {};
   const doc = contract.fileDeclined ? undefined : contract.document;
   const proposeFact = async (fact: string, index: number) => {
-    if (!onProposeMemory || proposed[index] === "saving" || proposed[index] === "saved") return;
-    setProposed((state) => ({ ...state, [index]: "saving" }));
-    try { await onProposeMemory(fact); setProposed((state) => ({ ...state, [index]: "saved" })); }
-    catch { setProposed((state) => ({ ...state, [index]: "error" })); }
+    if (!onProposeMemory || scope.pending.has(index) || proposed[index] === "saved") return;
+    scope.pending.add(index);
+    const update = (status: ProposalRows[number]) => {
+      if (proposalScope.current !== scope) return;
+      setProposalState((state) => ({ scope, rows: { ...(state.scope === scope ? state.rows : {}), [index]: status } }));
+    };
+    update("saving");
+    try { await onProposeMemory(fact); update("saved"); }
+    catch { update("error"); }
+    finally { scope.pending.delete(index); }
   };
   const docNote = doc ? [doc.handoffNote, ...doc.questionsForProfessional.map((q) => `- ${q}`)].filter(Boolean).join("\n") : "";
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
@@ -409,6 +443,38 @@ export default function CoachAnswerCards({
   const prominentHelp = escalation.length > 0 && escalationTier(contract.riskLevel) === "prominent";
   const showLens = lens && lens !== "Integrated Balanced";
   const hasPlan = Boolean(contract.todayPlan?.length || contract.nonDiagnosticHypotheses?.length);
+  // Bound the lead when there is a practical action to lead with. A text-only
+  // declined file or short follow-up must never hide its entire answer.
+  const longOpening = Boolean((contract.todayPlan?.length || contract.parentScript) && contract.text && contract.text.length > 360);
+  const hasDetails = Boolean(contract.todayPlan?.length > 1 || contract.observe?.length || contract.avoid?.length);
+  const hasTools = Boolean(hasPlan || contract.handoffNotes?.teacher || contract.handoffNotes?.professional || docNote || (!council?.length && onGoDeeper));
+  const keepable = [
+    ...(contract.todayPlan ?? []).map((text, index) => ({ field: "todayPlan" as const, text, label: t("coach.report.step", { n: index + 1 }), sourceId: `${reportId}-step-${index}` })),
+    ...(contract.parentScript ? [{ field: "parentScript" as const, text: contract.parentScript, label: t("coach.cards.sayThis"), sourceId: `${reportId}-script` }] : []),
+    ...(contract.observe ?? []).map((text, index) => ({ field: "observe" as const, text, label: t("coach.report.observation", { n: index + 1 }), sourceId: `${reportId}-observe-${index}` })),
+  ];
+  // A host may decline a candidate (for example after applying its proposal
+  // cap). Do not emit orphaned labels. Preserve the original candidate key and
+  // source id when earlier candidates disappear; retained actions keep state.
+  const keepActions = renderKeepAction ? keepable.flatMap((candidate, index) => {
+    const action = renderKeepAction(candidate.field, candidate.text);
+    return React.Children.toArray(action).length > 0
+      ? [{ ...candidate, key: `${candidate.field}-${index}`, action }]
+      : [];
+  }) : [];
+  const disclosure = (panel: string, title: string, testId: string, children: React.ReactNode, icon?: React.ReactNode) => (
+    <ReportDisclosure id={`${reportId}-${panel}`} title={title} testId={testId} open={Boolean(openPanels[panel])} onToggle={() => toggle(panel)} icon={icon}>
+      {children}
+    </ReportDisclosure>
+  );
+  const setCopied = (value: string | null) => {
+    if (proposalScope.current !== scope) return;
+    setCopyState((state) => ({ contract, copied: value, fallback: state.contract === contract ? state.fallback : null }));
+  };
+  const setCopyFallback = (value: string | null) => {
+    if (proposalScope.current !== scope) return;
+    setCopyState((state) => ({ contract, copied: state.contract === contract ? state.copied : null, fallback: value }));
+  };
   const copy = async (text: string, key: string) => {
     setCopied(null);
     setCopyFallback(null);
@@ -436,83 +502,31 @@ export default function CoachAnswerCards({
         </section>
       )}
 
-      {contract.text?.trim() && (
+      {contract.text?.trim() && !longOpening && (
         <header className="coach-report__opening" data-testid="coach-report-opening">
-          <p className="coach-report__eyebrow">{inputText(lang, "companion.input.making-sense-of-it")}</p>
           <MarkdownBlock text={contract.text} className="coach-report__lead" />
         </header>
-      )}
-
-      {doc && (
-        <section className="coach-report__section coach-report__document" data-testid="coach-report-document">
-          <h3><Icon name="description" size={18} />{doc.documentType ? t("coach.doc.titleTyped", { type: doc.documentType }) : t("coach.doc.title")}</h3>
-          {doc.keyPoints.length > 0 && <>
-            <p className="coach-report__eyebrow">{t("coach.doc.keyPoints")}</p>
-            <ul className="coach-report__list">{doc.keyPoints.map((point, i) => <li key={i} dir="auto">{point}</li>)}</ul>
-          </>}
-          {doc.questionsForProfessional.length > 0 && <>
-            <p className="coach-report__eyebrow">{t("coach.doc.askPro")}</p>
-            <ul className="coach-report__list">{doc.questionsForProfessional.map((q, i) => <li key={i} dir="auto">{q}</li>)}</ul>
-          </>}
-          {docNote && (
-            <button type="button" className="coach-report__doc-handoff" data-testid="coach-doc-handoff" onClick={() => onAddToHandoff(docNote, "pediatrician")}>
-              <Icon name="send" size={17} />{t("coach.doc.toConsult")}
-            </button>
-          )}
-          {doc.suggestedMemory.length > 0 && onProposeMemory && <>
-            <p className="coach-report__eyebrow">{t("coach.doc.remember")}</p>
-            <ul className="coach-report__list" data-testid="coach-doc-memory">
-              {doc.suggestedMemory.map((fact, i) => (
-                <li key={i}>
-                  <p dir="auto">{fact}</p>
-                  <button type="button" disabled={proposed[i] === "saving" || proposed[i] === "saved"} onClick={() => void proposeFact(fact, i)}>
-                    <Icon name={proposed[i] === "saved" ? "check" : "bookmark_add"} size={16} />
-                    {proposed[i] === "saved" ? t("coach.doc.saved") : proposed[i] === "error" ? t("coach.doc.retry") : t("coach.doc.save")}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <p className="coach-report__meta">{t("coach.doc.pendingNote")}</p>
-          </>}
-        </section>
-      )}
-
-      {contract.nonDiagnosticHypotheses?.length > 0 && (
-        <section className="coach-report__section" data-testid="coach-report-understanding">
-          <h3>{t("coach.cards.why")}</h3>
-          <ul className="coach-report__understanding">
-            {contract.nonDiagnosticHypotheses.map((h, i) => (
-              <li key={i} dir="auto">
-                <strong>{h.label}</strong>
-                {h.rationale && <p>{h.rationale}</p>}
-              </li>
-            ))}
-          </ul>
-        </section>
       )}
 
       {contract.todayPlan?.length > 0 && (
         <section className="coach-report__section coach-report__next" data-testid="coach-report-next">
           <h3><Icon name="checklist" size={19} />{t("coach.cards.tryToday")}</h3>
           <ol className="coach-report__steps">
-            {contract.todayPlan.map((step, index) => (
-              <li key={index}>
-                <span className="coach-report__step-number" aria-hidden="true">{index + 1}</span>
-                <div className="coach-report__step-content">
-                  <p dir="auto">{step}</p>
-                  {index === 0 && onTryIt && onUndoTryIt && (
-                    <CoachTryIt step={step} today={todayStep} lang={lang} onTryIt={onTryIt} onUndo={onUndoTryIt} />
-                  )}
-                  {renderKeepAction?.("todayPlan", step)}
-                </div>
-              </li>
-            ))}
+            <li>
+              <span className="coach-report__step-number" aria-hidden="true">1</span>
+              <div className="coach-report__step-content">
+                <p id={`${reportId}-step-0`} dir="auto">{contract.todayPlan[0]}</p>
+                {onTryIt && onUndoTryIt && (
+                  <CoachTryIt step={contract.todayPlan[0]} today={todayStep} lang={lang} onTryIt={onTryIt} onUndo={onUndoTryIt} />
+                )}
+              </div>
+            </li>
           </ol>
         </section>
       )}
 
       {contract.parentScript && (
-        <section className="coach-report__section coach-report__script">
+        <section className="coach-report__section coach-report__script" id={`${reportId}-script`}>
           <SayThis
             text={contract.parentScript}
             title={t("coach.cards.sayThis")}
@@ -522,101 +536,152 @@ export default function CoachAnswerCards({
             copied={copied === "script"}
             onCopy={() => void copy(contract.parentScript, "script")}
           />
-          {renderKeepAction?.("parentScript", contract.parentScript)}
         </section>
       )}
 
-      {(contract.observe?.length > 0 || contract.avoid?.length > 0) && (
+      {longOpening && disclosure("context", t("coach.report.context"), "coach-report-opening",
+        <MarkdownBlock text={contract.text!} className="coach-report__lead" />
+      )}
+
+      {contract.nonDiagnosticHypotheses?.length > 0 && disclosure("why", t("coach.cards.why"), "coach-report-understanding",
+        <ul className="coach-report__understanding">
+          {contract.nonDiagnosticHypotheses.map((h, i) => (
+            <li key={i} dir="auto"><strong>{h.label}</strong>{h.rationale && <p>{h.rationale}</p>}</li>
+          ))}
+        </ul>
+      )}
+
+      {hasDetails && disclosure("details", t("coach.report.details"), "coach-report-details", <>
+        {contract.todayPlan?.length > 1 && (
+          <section className="coach-report__section">
+            <h4>{t("coach.cards.moreSteps")}</h4>
+            <ol className="coach-report__steps" start={2}>
+              {contract.todayPlan.slice(1).map((step, index) => (
+                <li key={index}>
+                  <span className="coach-report__step-number" aria-hidden="true">{index + 2}</span>
+                  <div className="coach-report__step-content"><p id={`${reportId}-step-${index + 1}`} dir="auto">{step}</p></div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
         <div className="coach-report__considerations">
           {contract.observe?.length > 0 && (
             <section className="coach-report__section" data-testid="coach-report-observe">
-              <h3><Icon name="visibility" size={18} />{t("coach.cards.watchFor")}</h3>
+              <h4><Icon name="visibility" size={18} />{t("coach.cards.watchFor")}</h4>
               <ul className="coach-report__list">
-                {contract.observe.map((line, index) => (
-                  <li key={index}><p dir="auto">{line}</p>{renderKeepAction?.("observe", line)}</li>
-                ))}
+                {contract.observe.map((line, index) => <li key={index} id={`${reportId}-observe-${index}`} dir="auto">{line}</li>)}
               </ul>
             </section>
           )}
           {contract.avoid?.length > 0 && (
             <section className="coach-report__section" data-testid="coach-report-avoid">
-              <h3>{t("coach.cards.avoid")}</h3>
-              <ul className="coach-report__list">
-                {contract.avoid.map((line, index) => <li key={index} dir="auto">{line}</li>)}
-              </ul>
+              <h4>{t("coach.cards.avoid")}</h4>
+              <ul className="coach-report__list">{contract.avoid.map((line, index) => <li key={index} dir="auto">{line}</li>)}</ul>
             </section>
           )}
         </div>
-      )}
+      </>)}
 
-      {escalation.length > 0 && !prominentHelp && (
-        <section className="coach-report__disclosure" data-testid="coach-report-help">
-          <button type="button" onClick={() => setEscalateOpen((open) => !open)} aria-expanded={escalateOpen}>
-            <span><Icon name="health_and_safety" size={17} />{t("coach.escalate.title")}</span>
-            <Icon name={escalateOpen ? "expand_less" : "expand_more"} size={19} />
-          </button>
-          <div hidden={!escalateOpen} className="coach-report__disclosure-body">
-            <ul className="coach-report__list">{escalation.map((e, i) => <li key={i}>{e}</li>)}</ul>
-          </div>
-        </section>
-      )}
-
-      {/* These actions extend the answer; none hide its reasoning or steps. */}
-      <div className="coach-report__tools">
-        {hasPlan && (
-          <button type="button" data-testid="coach-plan-door" onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan?.[0] || "")}>
-            <Icon name="playlist_add" size={18} />{t("coach.cards.turnIntoPlan")}
-          </button>
-        )}
-        {contract.handoffNotes?.teacher && (
-          <button type="button" onClick={() => onAddToHandoff(contract.handoffNotes.teacher)}>
-            <Icon name="send" size={17} />{t("coach.cards.teacherNote")}
-          </button>
-        )}
-        {contract.handoffNotes?.professional && (
-          <button type="button" data-testid="coach-professional-note" onClick={() => onAddToHandoff(contract.handoffNotes.professional, "pediatrician")}>
-            <Icon name="send" size={17} />{t("coach.cards.professionalNote")}
-          </button>
-        )}
-        {!council?.length && onGoDeeper && (
-          <button type="button" data-testid="coach-go-deeper" onClick={onGoDeeper}>
-            <Icon name="group" size={18} />{t("coach.cards.goDeeper")}
-          </button>
-        )}
-      </div>
-
-      {council && council.length > 0 && (
-        <section className="coach-report__section coach-report__council">
-          <h3>{t("coach.cards.council", { n: council.length })}</h3>
-          <ul className="coach-report__understanding">
-            {council.map((c) => (
-              <li key={c.scholarId} dir="auto">
-                <strong>{c.name}</strong><span className="coach-report__meta"> · {c.concept}</span>
-                {c.takeaway && <p>{c.takeaway}</p>}
-                {c.suggestion && <p>{c.suggestion}</p>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {sources.length > 0 && (
-        <section className="coach-report__disclosure" data-testid="coach-report-sources">
-          <button type="button" onClick={() => setCitationsOpen((open) => !open)} aria-expanded={citationsOpen}>
-            <span><Icon name="menu_book" size={17} />{sourcesLabel(sources.length, lang)}</span>
-            <span className="coach-report__meta">{t("cite.badge")}<Icon name={citationsOpen ? "expand_less" : "expand_more"} size={19} /></span>
-          </button>
-          <div hidden={!citationsOpen} className="coach-report__disclosure-body">
-            <ul className="coach-report__source-list">
-              {sources.map((src) => (
-                <li key={src.id}>
-                  <span>{src.title || t("cite.based", { source: src.id.replace(/-/g, " ") })}</span>
-                  {src.type && <span className="coach-report__meta">{src.type.replace(/_/g, " ")}</span>}
+      {doc && disclosure("document", doc.documentType ? t("coach.doc.titleTyped", { type: doc.documentType }) : t("coach.doc.title"), "coach-report-document",
+        <div className="coach-report__document">
+          {doc.keyPoints.length > 0 && <section className="coach-report__section">
+            <h4>{t("coach.doc.keyPoints")}</h4>
+            <ul className="coach-report__list">{doc.keyPoints.map((point, i) => <li key={i} dir="auto">{point}</li>)}</ul>
+          </section>}
+          {doc.questionsForProfessional.length > 0 && <section className="coach-report__section">
+            <h4>{t("coach.doc.askPro")}</h4>
+            <ul className="coach-report__list">{doc.questionsForProfessional.map((q, i) => <li key={i} dir="auto">{q}</li>)}</ul>
+          </section>}
+          {doc.handoffNote && <p dir="auto">{doc.handoffNote}</p>}
+          {doc.suggestedMemory.length > 0 && onProposeMemory && <section className="coach-report__section">
+            <h4>{t("coach.doc.remember")}</h4>
+            <ul className="coach-report__list" data-testid="coach-doc-memory">
+              {doc.suggestedMemory.map((fact, i) => (
+                <li key={i}>
+                  <p dir="auto">{fact}</p>
+                  <button type="button" aria-busy={proposed[i] === "saving"} disabled={proposed[i] === "saving" || proposed[i] === "saved"} onClick={() => void proposeFact(fact, i)}>
+                    <Icon name={proposed[i] === "saved" ? "check" : "bookmark_add"} size={16} />
+                    {proposed[i] === "saving" ? t("coach.doc.saving") : proposed[i] === "saved" ? t("coach.doc.saved") : proposed[i] === "error" ? t("coach.doc.retry") : t("coach.doc.save")}
+                  </button>
+                  {proposed[i] === "saved" && <span className="sr-only" role="status">{t("coach.doc.saved")}</span>}
+                  {proposed[i] === "error" && <p role="alert" className="coach-report__meta">{t("coach.doc.error")}</p>}
                 </li>
               ))}
             </ul>
-          </div>
-        </section>
+            <p className="coach-report__meta">{t("coach.doc.pendingNote")}</p>
+          </section>}
+        </div>, <Icon name="description" size={18} />
+      )}
+
+      {escalation.length > 0 && !prominentHelp && disclosure("help", t("coach.escalate.title"), "coach-report-help",
+        <ul className="coach-report__list">{escalation.map((e, i) => <li key={i}>{e}</li>)}</ul>, <Icon name="health_and_safety" size={17} />
+      )}
+
+      {(hasTools || keepActions.length > 0) && disclosure("actions", t("coach.report.actions"), "coach-report-actions", <>
+        {keepActions.length > 0 && (
+          <section className="coach-report__section coach-report__save-advice">
+            <h4>{t("coach.report.keepAdvice")}</h4>
+            <div className="coach-report__save-list">
+              {keepActions.map(({ key, label, sourceId, action }) => (
+                <div key={key} className="coach-report__save-row" role="group" aria-label={label} aria-describedby={sourceId}>
+                  <span className="coach-report__save-label">{label}</span>
+                  {action}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+        {hasTools && <div className="coach-report__tools">
+          {hasPlan && (
+            <button type="button" data-testid="coach-plan-door" onClick={() => onSaveToPlan(contract.nonDiagnosticHypotheses?.[0]?.label || contract.todayPlan?.[0] || "")}>
+              <Icon name="playlist_add" size={18} />{t("coach.cards.turnIntoPlan")}
+            </button>
+          )}
+          {contract.handoffNotes?.teacher && (
+            <button type="button" onClick={() => onAddToHandoff(contract.handoffNotes.teacher)}>
+              <Icon name="send" size={17} />{t("coach.cards.teacherNote")}
+            </button>
+          )}
+          {contract.handoffNotes?.professional && (
+            <button type="button" data-testid="coach-professional-note" onClick={() => onAddToHandoff(contract.handoffNotes.professional, "pediatrician")}>
+              <Icon name="send" size={17} />{t("coach.cards.professionalNote")}
+            </button>
+          )}
+          {docNote && (
+            <button type="button" className="coach-report__doc-handoff" data-testid="coach-doc-handoff" onClick={() => onAddToHandoff(docNote, "pediatrician")}>
+              <Icon name="send" size={17} />{t("coach.doc.toConsult")}
+            </button>
+          )}
+          {!council?.length && onGoDeeper && (
+            <button type="button" data-testid="coach-go-deeper" onClick={onGoDeeper}>
+              <Icon name="group" size={18} />{t("coach.cards.goDeeper")}
+            </button>
+          )}
+        </div>}
+      </>)}
+
+      {council && council.length > 0 && disclosure("council", t("coach.cards.council", { n: council.length }), "coach-report-council",
+        <ul className="coach-report__understanding">
+          {council.map((c) => (
+            <li key={c.scholarId} dir="auto">
+              <strong>{c.name}</strong><span className="coach-report__meta"> · {c.concept}</span>
+              {c.takeaway && <p>{c.takeaway}</p>}
+              {c.suggestion && <p>{c.suggestion}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {sources.length > 0 && disclosure("sources", sourcesLabel(sources.length, lang), "coach-report-sources",
+        <ul className="coach-report__source-list">
+          {sources.map((src) => (
+            <li key={src.id}>
+              <span>{src.title || t("cite.based", { source: src.id.replace(/-/g, " ") })}</span>
+              {src.type && <span className="coach-report__meta">{src.type.replace(/_/g, " ")}</span>}
+            </li>
+          ))}
+        </ul>, <Icon name="menu_book" size={17} />
       )}
 
       <footer className="coach-report__footer" data-testid="coach-answer-footer">

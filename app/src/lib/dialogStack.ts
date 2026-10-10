@@ -116,10 +116,13 @@ export function createDialogStack(env: Environment) {
       }
     }
   };
+  const onTabCapture = (event: KeyboardEvent) => { if (event.key === "Tab") onKey(event); };
+  const onEscapeBubble = (event: KeyboardEvent) => { if (event.key === "Escape") onKey(event); };
   const onFocus = () => { const entry = top(); if (entry) focusInside(entry); };
   const stopListening = () => {
     if (!listening) return;
-    doc.removeEventListener("keydown", onKey, true);
+    doc.removeEventListener("keydown", onTabCapture, true);
+    doc.removeEventListener("keydown", onEscapeBubble);
     doc.removeEventListener("focusin", onFocus, true);
     observer?.disconnect(); observer = null;
     unsubscribe?.(); unsubscribe = undefined;
@@ -172,7 +175,11 @@ export function createDialogStack(env: Environment) {
   const startListening = () => {
     if (listening) return;
     listening = true;
-    doc.addEventListener("keydown", onKey, true);
+    // Nested controls (for example the composer's Add or save disclosure)
+    // own their first Escape. React handles it before document bubbling; a
+    // capture listener would dismiss the dialog before that handler can run.
+    doc.addEventListener("keydown", onEscapeBubble);
+    doc.addEventListener("keydown", onTabCapture, true);
     doc.addEventListener("focusin", onFocus, true);
     const Observer = doc.defaultView?.MutationObserver;
     if (Observer) { observer = new Observer(queue); observer.observe(doc.body, { childList: true, subtree: true }); }

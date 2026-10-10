@@ -59,6 +59,7 @@ import * as lifecycle from "./lifecycle";
 import * as loop from "./loop";
 import * as memorydisclosure from "./memorydisclosure";
 import * as milestoneCatalogue from "./milestoneCatalogue";
+import * as mimicContent from "./mimicContent";
 import * as offer from "./offer";
 import * as personal from "./personal";
 import * as pilotSix from "./pilotSix";
@@ -136,6 +137,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   loop,
   memorydisclosure,
   milestoneCatalogue,
+  mimicContent,
   offer,
   personal,
   pilotSix,

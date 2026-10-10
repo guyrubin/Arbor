@@ -280,7 +280,10 @@ describe("W2-SHELLPLAY r2 · B-SHELL-NEW-2l — the first turn names the family'
     expect(cardSrc).toContain("{!valueSentence && (");
     expect(cardSrc).toContain('data-testid="ritual-turn-value"');
     expect(cardSrc).toContain('background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)"');
-    expect(cardSrc).toContain('fontFamily: "var(--font-editorial)"');
+    const closing = /<p data-testid="ritual-turn-closing"[^>]*>/.exec(cardSrc)?.[0] ?? "";
+    expect(closing).toContain("t-base leading-relaxed");
+    expect(closing).toContain('fontFamily: "var(--font-sans)", fontStyle: "normal"');
+    expect(closing).not.toMatch(/font-editorial|font-display|italic/);
     for (const k of ["elev.rh.ritual.value.onCharter", "elev.rh.ritual.value.truth-practice-weekly", "elev.rh.ritual.value.responsibility-ladder", "elev.rh.ritual.closing.truth-practice-weekly"]) {
       expect(en[k], k).toBeTruthy();
       expect(he[k], k).toBeTruthy();

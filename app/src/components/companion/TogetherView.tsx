@@ -19,7 +19,9 @@ import { Modal } from "../ui/Modal";
 import { OFFSCREEN_IDEAS, STORY_DOORS, WORLD_ART, type TogetherCategory } from "./companionChoices";
 import { trackCompanionPlaceOpen, trackPracticeStudioOpen, trackPracticeTogetherDid } from "../../lib/kpiEvents";
 import { TOGETHER_ART } from "../../lib/parentArt";
+import { useTogetherNavigation } from "./togetherNavigation";
 import "./companionExperience.css";
+import "./togetherDiscovery.css";
 
 type Preview = { kind: "world"; world: StudioWorld } | { kind: "offscreen"; id: string };
 
@@ -31,7 +33,6 @@ export default function TogetherView() {
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
   const name = childProfile.name?.split(" ")[0] || (t("companion.together-view.your-child"));
-  const [category, setCategory] = useState<TogetherCategory>("all");
   const [previewState, setPreviewState] = useState<{ childId: string; value: Preview | null }>({ childId: childProfile.id, value: null });
   const preview = previewState.childId === childProfile.id ? previewState.value : null;
   const setPreview = (value: Preview | null) => setPreviewState({ childId: childProfile.id, value });
@@ -40,8 +41,9 @@ export default function TogetherView() {
   const { request: requestKidMode, step: heroStep } = useKidModeEntry();
   const { worlds } = studioWorldsForChild(lang, childProfile);
   const kidAvailable = kidModeOpenFor(childProfile);
+  const { category, setCategory, pageRef, rememberDoor } = useTogetherNavigation(childProfile.id, kidAvailable && worlds.length > 0);
   const filterId = useId();
-  useEffect(() => { setPreview(null); setKeptState({ childId: childProfile.id, ids: [] }); setCategory("all"); }, [childProfile.id]);
+  useEffect(() => { setPreview(null); setKeptState({ childId: childProfile.id, ids: [] }); }, [childProfile.id]);
   useEffect(() => { trackCompanionPlaceOpen("together"); }, [childProfile.id]);
 
   // ── Parity 9 Oct: what Practice Studio's door said, back on Together. ──
@@ -65,6 +67,9 @@ export default function TogetherView() {
     sinceMs: playWindow.sinceMs, sinceIsFallback: playWindow.isFallback, nowMs: Date.now(), total: counts.total,
     uiLang: lang, gender: childProfile.gender, t: withChildSignals(t, uiLang === "he"), childName: name,
   }), [practiceData, heroRuns.items, playWindow, counts.total, lang, childProfile.gender, t, uiLang, name]);
+  const playCollections = [practiceData.speech, practiceData.mimic, practiceData.missions, practiceData.adventures, practiceData.events, heroRuns];
+  const playLoaded = playCollections.every((collection) => collection.loaded);
+  const playError = playCollections.some((collection) => collection.error);
   const sinceText = since ? `${since.before}${since.title ?? ""}${since.after}` : "";
   // B-SHELL-NEW-1b: the sentence can be kept as ONE parent moment; the inline
   // line below is this write's one failure message (the seam stays quiet).
@@ -93,7 +98,7 @@ export default function TogetherView() {
     setPreview(null);
     const direct = (!opensInKidMode(world) || !worksInLanguage(world, lang)) && !!world.tab;
     trackPracticeStudioOpen(world.id, direct ? "direct" : "kidmode");
-    if (direct && world.tab) setActiveTab(world.tab);
+    if (direct && world.tab) { rememberDoor(`world-${world.id}`); setActiveTab(world.tab); }
     else requestKidMode({ view: "arcade", worldId: world.id });
   };
   const offlineIds: readonly string[] = kidAvailable ? OFFSCREEN_IDEAS.map((idea) => idea.id) : TOGETHER_CARDS;
@@ -102,6 +107,7 @@ export default function TogetherView() {
     return idea ? { title: idea.title[lang], detail: idea.detail[lang], say: idea.say[lang], icon: idea.icon }
       : { title: t(`elev.ages.together.${id}.title`), detail: t(`elev.ages.together.${id}.do`), say: t(`elev.ages.together.${id}.say`), icon: "favorite" };
   };
+  const suggestedIdea = offline(offlineIds[0]);
   const previewTitle = preview?.kind === "world" ? t(preview.world.kidNameKey) : preview ? offline(preview.id).title : "";
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -120,24 +126,41 @@ export default function TogetherView() {
   };
 
   return (
-    <div className="companion-page companion-together" dir={he ? "rtl" : "ltr"}>
+    <div ref={pageRef} className="companion-page companion-together" dir={he ? "rtl" : "ltr"}>
       <section className="companion-together-hero" data-module="together-invitation" aria-labelledby={`${filterId}-title`}>
-        <div>
-          <span className="companion-eyebrow">{t("companion.together-view.together-room-for-curiosity-and-connection")}</span>
-          <h1 id={`${filterId}-title`} className="arbor-type-hero">{t("companion.together-view.a-little-world-to-discover-with", { value0: name })}</h1>
-          <p>{t("companion.together-view.a-story-to-get-lost-in-a-game-to-wonder-at")}</p>
-          {kidAvailable && since && <div className="companion-since" data-testid="together-since">
-            <p dir="auto">{since.before}{since.title && <i><bdi>{since.title}</bdi></i>}{since.after}</p>
-            <button type="button" className="companion-text-button" data-testid="together-since-keep" disabled={sinceIsKept} onClick={() => void keepSince()}>
-              <Icon name={sinceIsKept ? "check" : "bookmark_add"} size={17} />{sinceIsKept ? t("elev.practice.door.kept") : t("elev.practice.door.keep")}
-            </button>
-            {sinceError && <p role="alert" className="companion-caption">{t("companion.together-view.the-moment-wasn-t-saved-please-try-again")}</p>}
-          </div>}
-          <button type="button" className="companion-primary" data-primary-move="choose-together" onClick={() => setPreview({ kind: "offscreen", id: offlineIds[0] })}><Icon name="favorite" size={19} />{t("companion.together-view.one-small-idea-for-time-together")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>
-          {/* B-KID-11: a labelled hand-over on the page (the chrome icon has no label on a phone). */}
-          {kidAvailable && <button type="button" className="companion-secondary companion-handover" data-testid="together-handover" onClick={() => { trackPracticeStudioOpen("kidmode", "hero"); requestKidMode(); }}><Icon name="sports_esports" size={19} />{t("practice.studio.kidmode.cta")}</button>}
+        <header className="together-heading">
+          <h1 id={`${filterId}-title`}>{t("companion.together-view.a-little-world-to-discover-with", { value0: name })}</h1>
+          <figure className="companion-together-art" aria-hidden="true"><img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt="" /></figure>
+        </header>
+        <div className="together-suggestion">
+          <div>
+            <p className="together-suggestion-label">{t("companion.together-view.one-small-idea-for-time-together")}</p>
+            <h2>{suggestedIdea.title}</h2>
+            <p className="companion-say" dir="auto">{t("elev.loop.ms.quoted", { text: suggestedIdea.say })}</p>
+          </div>
+          <button type="button" className="companion-primary" data-primary-move="choose-together" onClick={() => setPreview({ kind: "offscreen", id: offlineIds[0] })}>{t("companion.together-view.how-to-begin")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>
         </div>
-        <figure className="companion-together-art"><img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt={t("companion.together-view.illustration-of-an-open-book-building-bloc")} fetchPriority="high" /></figure>
+        {kidAvailable && <div className="together-parent-tools">
+          {/* A labelled, manual hand-over remains reachable on phones. */}
+          <button type="button" className="companion-secondary companion-handover" data-testid="together-handover" onClick={() => { trackPracticeStudioOpen("kidmode", "hero"); requestKidMode(); }}><Icon name="sports_esports" size={19} />{t("practice.studio.kidmode.cta")}</button>
+          {/* The summary is present before any listener resolves. Updates inside
+              a closed disclosure cannot push the parent's activity choices. */}
+          <details key={childProfile.id} className="together-play-history" data-testid="together-play-history">
+            <summary>{t("cp.activity.title", { name })}</summary>
+            <div className="companion-since" data-testid="together-since" aria-busy={!playLoaded}>
+              {!playLoaded ? <p role="status">{t("aria.loading")}</p> : <>
+                {playError && <p>{t("elev.sync.error")}</p>}
+                {since ? <>
+                  <p dir="auto">{since.before}{since.title && <i><bdi>{since.title}</bdi></i>}{since.after}</p>
+                  <button type="button" className="companion-text-button" data-testid="together-since-keep" disabled={sinceIsKept} onClick={() => void keepSince()}>
+                    <Icon name={sinceIsKept ? "check" : "bookmark_add"} size={17} />{sinceIsKept ? t("elev.practice.door.kept") : t("elev.practice.door.keep")}
+                  </button>
+                </> : !playError && <p>{t("companion.portrait.noRecord")}</p>}
+              </>}
+              {sinceError && <p role="alert" className="companion-caption">{t("companion.together-view.the-moment-wasn-t-saved-please-try-again")}</p>}
+            </div>
+          </details>
+        </div>}
       </section>
 
       {activeFamilyTopic && <div className="companion-topic-context"><Icon name="bookmark" size={18} /><span>{t("companion.together-view.your-question-stays-with-you")}<b dir="auto">{activeFamilyTopic.title}</b></span><span className="companion-caption">{t("companion.together-view.here-it-is-also-enough-just-to-enjoy")}</span></div>}
@@ -146,20 +169,20 @@ export default function TogetherView() {
         {filters.map((filter) => <button key={filter.id} type="button" className="companion-filter" aria-pressed={category === filter.id} onClick={() => setCategory(filter.id)}><Icon name={filter.icon} size={19} />{filter.label}</button>)}
       </div>
 
-      {show("stories") && <section className="companion-collection" data-module="together-stories" aria-labelledby={`${filterId}-stories`}>
+      <section hidden={!show("stories")} className="companion-collection" data-module="together-stories" aria-labelledby={`${filterId}-stories`}>
         <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.read-imagine-talk")}</span><h2 id={`${filterId}-stories`}>{t("companion.together-view.which-story-shall-we-step-into")}</h2></div>{category === "all" && <button type="button" className="companion-text-button" onClick={() => setCategory("stories")}>{t("companion.together-view.all-stories")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>}</div>
-        <div className="companion-story-grid">{STORY_DOORS.slice(0, category === "all" ? 2 : undefined).map((story) => <button key={story.id} type="button" className="companion-story-card" onClick={() => setActiveTab(story.tab)}><div className="companion-card-art"><img src={story.art} alt="" loading="lazy" width="480" height="320" /><span className="companion-art-label"><Icon name={story.icon} size={16} />{t("companion.together-view.choose-and-preview")}</span></div><div className="companion-card-copy"><h3>{story.title[lang]}</h3><p>{story.detail[lang]}</p><span className="companion-door-link">{t("companion.together-view.explore")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></span></div></button>)}</div>
-      </section>}
+        <div className="companion-story-grid">{STORY_DOORS.slice(0, category === "all" ? 2 : undefined).map((story) => <button key={story.id} type="button" className="companion-story-card" data-together-return={`story-${story.id}`} onClick={() => { rememberDoor(`story-${story.id}` as "story-library" | "story-bedtime" | "story-comics" | "story-family"); setActiveTab(story.tab); }}><div className="companion-card-art"><img src={story.art} alt="" loading="lazy" width="480" height="320" /><span className="companion-art-label"><Icon name={story.icon} size={16} />{t("companion.together-view.choose-and-preview")}</span></div><div className="companion-card-copy"><h3>{story.title[lang]}</h3><p>{story.detail[lang]}</p><span className="companion-door-link">{t("companion.together-view.explore")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></span></div></button>)}</div>
+      </section>
 
-      {kidAvailable && show("games") && <section className="companion-collection" data-module="together-games" aria-labelledby={`${filterId}-games`}>
+      {kidAvailable && <section hidden={!show("games")} className="companion-collection" data-module="together-games" aria-labelledby={`${filterId}-games`}>
         <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.first-choose-then-play")}</span><h2 id={`${filterId}-games`}>{t("companion.together-view.little-invitations-to-play")}</h2></div>{category === "all" && worlds.length > 3 && <button type="button" className="companion-text-button" onClick={() => setCategory("games")}>{t("companion.together-view.all-games")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>}</div>
-        {worlds.length ? <div className="companion-world-grid">{worlds.slice(0, category === "all" ? 3 : undefined).map((world) => <button key={world.id} type="button" className="companion-world-card" onClick={() => setPreview({ kind: "world", world })}><img src={`/visuals/cards/web/game-${WORLD_ART[world.id]}-480.webp`} srcSet={`/visuals/cards/web/game-${WORLD_ART[world.id]}-480.webp 1x, /visuals/cards/web/game-${WORLD_ART[world.id]}-1024.webp 2x`} alt="" width="480" height="320" loading="lazy" decoding="async" /><div><h3>{t(world.kidNameKey)}</h3>{category === "games" && (counts.byWorld[world.id] ?? 0) > 0 && <span className="companion-world-count" data-testid="together-world-count">{t(studioCountKey(world.unit, counts.byWorld[world.id]), { n: counts.byWorld[world.id] })}</span>}<p>{t(`practice.world.${world.key}.skill`)}</p><span className="companion-door-link">{t("companion.together-view.preview-before-playing")}<Icon name="arrow_forward" size={17} className="companion-arrow rtl:-scale-x-100" /></span></div></button>)}</div> : <p className="companion-caption">{t("companion.together-view.there-are-no-listed-screen-games-for-this")}</p>}
+        {worlds.length ? <div className="companion-world-grid">{worlds.slice(0, category === "all" ? 3 : undefined).map((world) => <button key={world.id} type="button" data-together-return={`world-${world.id}`} className="companion-world-card" onClick={() => setPreview({ kind: "world", world })}><img src={`/visuals/cards/web/game-${WORLD_ART[world.id]}-480.webp`} srcSet={`/visuals/cards/web/game-${WORLD_ART[world.id]}-480.webp 1x, /visuals/cards/web/game-${WORLD_ART[world.id]}-1024.webp 2x`} alt="" width="480" height="320" loading="lazy" decoding="async" /><div><h3>{t(world.kidNameKey)}</h3>{category === "games" && <div className="together-world-count-slot" aria-busy={!playLoaded}>{category === "games" && (counts.byWorld[world.id] ?? 0) > 0 && <span className="companion-world-count" data-testid="together-world-count">{t(studioCountKey(world.unit, counts.byWorld[world.id]), { n: counts.byWorld[world.id] })}</span>}</div>}<p>{t(`practice.world.${world.key}.skill`)}</p><span className="companion-door-link">{t("companion.together-view.preview-before-playing")}<Icon name="arrow_forward" size={17} className="companion-arrow rtl:-scale-x-100" /></span></div></button>)}</div> : <p className="companion-caption">{t("companion.together-view.there-are-no-listed-screen-games-for-this")}</p>}
       </section>}
 
-      {show("offscreen") && <section className="companion-collection" data-module="together-offscreen" aria-labelledby={`${filterId}-offscreen`}>
-        <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.in-everyday-life")}</span><h2 id={`${filterId}-offscreen`}>{t("companion.together-view.something-small-to-do-together")}</h2></div><button type="button" className="companion-text-button" onClick={() => setActiveTab("daily-play")}>{t("companion.together-view.more-ideas")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button></div>
-        <div className="companion-offscreen-grid">{offlineIds.map((id) => { const idea = offline(id); return <button key={id} type="button" className="companion-offscreen-card" onClick={() => setPreview({ kind: "offscreen", id })}><Icon name={idea.icon} size={26} /><h3>{idea.title}</h3><p className="companion-say" dir="auto">“{idea.say}”</p><span className="companion-door-link">{t("companion.together-view.how-to-begin")}<Icon name="arrow_forward" size={17} className="companion-arrow rtl:-scale-x-100" /></span></button>; })}</div>
-      </section>}
+      <section hidden={!show("offscreen")} className="companion-collection" data-module="together-offscreen" aria-labelledby={`${filterId}-offscreen`}>
+        <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.in-everyday-life")}</span><h2 id={`${filterId}-offscreen`}>{t("companion.together-view.something-small-to-do-together")}</h2></div><button type="button" className="companion-text-button" data-together-return="more-ideas" onClick={() => { rememberDoor("more-ideas"); setActiveTab("daily-play"); }}>{t("companion.together-view.more-ideas")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button></div>
+        <div className="companion-offscreen-grid">{offlineIds.filter((id) => category !== "all" || id !== offlineIds[0]).map((id) => { const idea = offline(id); return <button key={id} type="button" className="companion-offscreen-card" onClick={() => setPreview({ kind: "offscreen", id })}><Icon name={idea.icon} size={26} /><h3>{idea.title}</h3><p className="companion-say" dir="auto">“{idea.say}”</p><span className="companion-door-link">{t("companion.together-view.how-to-begin")}<Icon name="arrow_forward" size={17} className="companion-arrow rtl:-scale-x-100" /></span></button>; })}</div>
+      </section>
 
       {/* KID-21 / B-PLAY-06: the one-time PIN nudge, only after the grown-up question let a parent in. */}
       {kidAvailable && nudgePin && <button type="button" className="companion-pin-nudge" data-testid="together-pin-nudge" onClick={() => requestOpenSettings({ focus: "pin" })}>

@@ -209,7 +209,7 @@ export default function RitualTurnCard({ nowMs, onStart, started, primaryMovePro
             </p>
           )}
           {valueSentence && closingKey && (
-            <p data-testid="ritual-turn-closing" className="mt-1.5 t-base" dir="auto" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>
+            <p data-testid="ritual-turn-closing" className="mt-1.5 t-base leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)", fontStyle: "normal" }}>
               “{t(closingKey)}”
             </p>
           )}

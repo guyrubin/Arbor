@@ -30,7 +30,8 @@ const shell = read("../layout/Shell.tsx");
 
 describe("1 · the back control goes where its label says", () => {
   it("Smart Reminders returns to Today, not to Ask Arbor", () => {
-    expect(panel).toContain('setActiveTab("overview")');
+    expect(panel).not.toContain('setActiveTab("overview")');
+    expect(shell).toContain("setActiveTab(placeForTab(activeTab).tab)");
     expect(panel).not.toContain('setActiveTab("coach")');
   });
 
@@ -48,8 +49,8 @@ describe("1 · the back control goes where its label says", () => {
       expect(translate(lang, "elev.sr.back")).not.toBe("elev.sr.back");
     }
     expect(translate("en", "elev.sr.back")).toBe("Back to Today");
-    expect(panel).toContain('t("elev.sr.back")');
-    expect(panel).toMatch(/minHeight: 44, minWidth: 44/);
+    expect(panel).not.toContain('t("elev.sr.back")');
+    expect(shell).toMatch(/data-testid="secondary-place-back"[\s\S]{0,220}min-h-11/);
   });
 
   it("negative control: the shipped pair said Settings and went to coach", () => {

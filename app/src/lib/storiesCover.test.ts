@@ -306,7 +306,8 @@ describe("W2-SHELLPLAY r2 · #/stories — one filled button, honest 'starring',
 
   it("no hero: the cover's first act is the hero row (before Play), and the shell says 'starring' only once a hero exists", () => {
     expect(cover.indexOf('data-testid="hero-first-gate"')).toBeLessThan(cover.indexOf('data-primary-move="read-tonights-story"'));
-    for (const f of ["components/layout/Shell.tsx", "components/layout/Topbar.tsx"]) {
+    expect(read("components/layout/Shell.tsx")).not.toContain('t("nav.sub." + hubSubKey');
+    for (const f of ["components/layout/Topbar.tsx"]) {
       // 74d5790: the sub-line key is one visible dynamic prefix ("nav.sub." + hubSubKey); the no-hero rule lives in hubSubKey
       const src = read(f);
       expect(src, f).toContain('const hubSubKey = section.id === "stories" && !childProfile.avatar ? "stories.noHero" : section.id;');

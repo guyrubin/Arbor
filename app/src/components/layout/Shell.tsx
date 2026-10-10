@@ -25,7 +25,6 @@ import SearchModal, { SEARCH_OPEN_EVENT, requestOpenSearch, type SearchOpenSurfa
 import { track } from "../../lib/analytics";
 import SettingsModal from "./SettingsModal";
 import ProfileEditDrawer from "../profile/ProfileEditDrawer";
-import { usePulses } from "../../lib/pulse";
 import PaywallModal from "../billing/PaywallModal";
 import HardMomentNowSheet from "../behaviors/HardMomentNowSheet";
 import QuickLogModal from "../overview/QuickLogModal";
@@ -119,17 +118,6 @@ const BedtimeStoriesTab = lazy(() => import("../tabs/BedtimeStoriesTab"));
 
 // Wireframe: Ready-made Routines — the research-backed routine library (Growth).
 const RoutinesTab = lazy(() => import("../tabs/RoutinesTab"));
-
-/** W2-CAREPRO r2 — routes where the phone hub one-liner stays quiet (the
- *  route's first decision needs the fold; the pill row names the hub).
- *  W2-SHELLPLAY critic r1: practice / feelings / adventures — the Practice
- *  hub's "N rounds played this week" count disagreed with each page's own
- *  count of play (the door sentence, the feelings line); one count per screen. */
-// P5 design r1 P0-1 (6 Oct): "overview" — Today's own eyebrow line says what
-// the screen is for; the hub line repeated it and pushed "Did it" under the dock.
-// P7-DESIGN fix r1 (framer ruling R4): "milestones" — the "{name}'s development
-// map" kicker gives its room to the jump rail's printed names at 375.
-export const HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set(["memory", "sharing", "safety", "school-brief", "practice", "feelings", "adventures", "overview", "milestones", "development"]);
 
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
@@ -245,15 +233,7 @@ export default function Shell() {
   // B-SHELL-19: the strip's "Working on:" label opens the profile editor
   // (it is challenges[0] — parent-chosen and editable).
   const [profileEditOpen, setProfileEditOpen] = useState(false);
-  // B-SHELL-19: below lg the hub one-liner is the hub's LIVE count when its
-  // pulse carries one (count-only, never a denominator), else the standing
-  // nav.sub.<hub> sentence.
-  const pulses = usePulses();
-  const countedPulse = pulses[section.id];
-  const hubPulse = countedPulse && typeof countedPulse.count === "number" && countedPulse.count > 0 ? countedPulse : null;
-  // One key per hub; a hero-less child gets the Stories line that does not promise "starring {name}".
-  const hubSubKey = section.id === "stories" && !childProfile.avatar ? "stories.noHero" : section.id;
-  // F-02: <main> is the desktop scrollport (overflow-y-auto below), so a tab
+  // F-02: <main> is the scrollport at every width, so a tab
   // switch kept the previous tab's scroll offset and showed the new tab
   // mid-page (plus a ghost frame of clipped old content during the exit).
   // The reset lives on AnimatePresence onExitComplete — exactly the tab-swap
@@ -359,7 +339,7 @@ export default function Shell() {
     // KidModeProvider is pure UI state — no Firestore write, no child-data mutation.
     <KidModeProvider>
     {/* select-none removed: parents must be able to select/copy scripts and guidance (a11y + core utility) */}
-    <div className="arbor-app min-h-screen text-sans antialiased overflow-x-hidden relative">
+    <div className="arbor-app h-dvh text-sans antialiased overflow-hidden relative">
       {/* B-SHELL-23: the first Tab stop is a skip link to <main>. Hash routing
           owns #/<tab>, so the link focuses <main> instead of changing the hash. */}
       <a
@@ -373,19 +353,19 @@ export default function Shell() {
       </a>
       <div
         // B-SHELL-01: two columns at every width — the third (AI rail) track is gone.
-        className="page-shell grid grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] min-h-screen relative transition-all duration-300 max-w-full overflow-x-hidden"
+        className="page-shell grid grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] h-full min-h-0 relative transition-all duration-300 max-w-full overflow-x-hidden"
       >
         <Sidebar />
 
-        {/* AP-044: Right column — topbar placeholder (desktop) + scrollable content area */}
-        <div className="flex flex-col min-h-0 min-w-0 lg:h-screen overflow-hidden">
+        {/* The viewport-bounded column gives main and the launcher separate space at every width. */}
+        <div className="flex flex-col min-h-0 min-w-0 h-full overflow-hidden">
           <Topbar />
         {/* arbor-parent: scopes the flat-white clinical token overrides to the parent
             dashboard content area ONLY. KidModeOverlay renders at position:fixed z-70
             as a sibling of the grid — it carries its own .arbor-play scope and does
             NOT inherit from this <main>. See index.css .arbor-parent block. */}
         <CompanionWorkspace kidLocked={kidLocked}>
-        <main id="main" tabIndex={-1} ref={mainRef} className="arbor-parent focus:outline-none w-full min-w-0 px-4 py-5 pb-24 sm:px-5 md:px-6 md:py-8 lg:pb-10 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
+        <main id="main" tabIndex={-1} ref={mainRef} className="arbor-parent focus:outline-none w-full min-w-0 px-4 py-5 sm:px-5 md:px-6 md:py-8 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
           {/* IA-03 / IA-16 / MOB-26 — ONE mobile chrome strip, not three rows.
               The separate 34 px brand row is GONE: the 28 px mark folds into
               the strip below, which is where the eye already goes. The strip
@@ -451,7 +431,7 @@ export default function Shell() {
             </div>
           }/>
 
-          {!isCompanionHome(activeTab) && <button onClick={() => setActiveTab(placeForTab(activeTab).tab)} className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: "var(--arbor-muted)" }}>
+          {!isCompanionHome(activeTab) && <button data-testid="secondary-place-back" onClick={() => setActiveTab(placeForTab(activeTab).tab)} className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: "var(--arbor-muted)" }}>
             <Icon name="arrow_back" size={18} className="rtl:-scale-x-100"/>{uiLang === "he" ? placeForTab(activeTab).he : placeForTab(activeTab).en}
           </button>}
           {/* UC-6 hub contextual pill row — the hub's FULL capability set: its
@@ -463,6 +443,7 @@ export default function Shell() {
           {!isCompanionHome(activeTab) && pillRowFor(section, activeTab).length > 1 && (
             <div
               role="tablist"
+              data-testid="secondary-sibling-nav"
               aria-label={`${section.label} sections`}
               className="sticky z-20 flex gap-2 overflow-x-auto mb-4 -mx-[14px] px-[14px] pb-2 no-scrollbar"
               style={{
@@ -485,17 +466,9 @@ export default function Shell() {
                    now only ever covers a pill that is actually scrolled past. */
                 scrollPaddingInline: "14px",
                 scrollSnapType: "x mandatory",
-                /* <main> is the scrollport and carries a top padding, so a plain
-                   `top: 0` parked this band one padding-height below the
-                   scrollport edge — leaving a live 32px sliver where content
-                   scrolled through and got clipped by the opaque band. Pulling
-                   the sticky inset (and the box) up by that padding makes the
-                   stuck band flush with the scrollport top; the matching
-                   padding-block-start keeps the pills exactly where they were
-                   at rest. See --arbor-main-pt in index.css. */
-                top: "calc(-1 * var(--arbor-main-pt))",
-                marginBlockStart: "calc(-1 * var(--arbor-main-pt))",
-                paddingBlockStart: "calc(var(--arbor-main-pt) + 0.5rem)",
+                /* Stick to the scrollport edge without pulling the row over
+                   the preceding Back link in normal document flow. */
+                top: 0,
               }}
             >
               {pillRowFor(section, activeTab).map((it) => {
@@ -522,22 +495,8 @@ export default function Shell() {
             </div>
           )}
 
-          {/* IA-21 — the hub one-liner was desktop-only. Topbar renders
-              `nav.sub.<hub>` in the control band on lg+, and below lg there is
-              no topbar at all, so a phone got the hub's pills and its h1 with
-              nothing saying what the hub is FOR. Same key, same sentence, same
-              position relative to the content (immediately above it), rendered
-              only where the topbar cannot. EN + HE already exist for all ten
-              hubs in lib/i18n.ts — no new string, and none invented. */}
-          {/* W2-CAREPRO r2: on a route whose first decision must sit above the
-              phone tab bar (memory: Remember this; sharing: the live roster;
-              safety: the page's own promise is its subtitle) the hub line is
-              quiet — the pills already name the hub. */}
-          {!HUB_LINE_QUIET_TABS.has(activeTab) && (
-          <p className="lg:hidden text-xs leading-snug mb-3 min-w-0" style={{ color: "var(--arbor-muted)" }}>
-            {hubPulse ? t(hubPulse.key, hubPulse.params) : t("nav.sub." + hubSubKey, { name: childProfile.name })}
-          </p>
-          )}
+          {/* Secondary pages own their heading and context. The shell adds
+              navigation only; another hub sentence repeats their introduction. */}
 
           {/* W0.5+W0.6: global freshness banner — offline / sync-error, mounted
               ONCE here so 18 useChildCollection screens don't each grow one.
@@ -574,9 +533,9 @@ export default function Shell() {
           <Suspense fallback={<TabSkeleton />}>
             <AnimatePresence
               mode="wait"
-              /* F-02: reset BOTH scroll owners at the tab-swap moment — the
-                 desktop <main> scrollport and the mobile window scroll (below
-                 lg the page itself scrolls). Guarded by shellScrollReset.test.ts. */
+              /* F-02: reset the main scrollport at the tab-swap moment. Also
+                 clear any window offset left by mobile keyboard focus/panning.
+                 Guarded by shellScrollReset.test.ts. */
               onExitComplete={() => {
                 mainRef.current?.scrollTo({ top: 0, left: 0 });
                 window.scrollTo(0, 0);

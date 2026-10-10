@@ -31,6 +31,8 @@ export type ShareCardOpts = {
   /** growth_card: milestone headline + sub (real data supplied by mk-p2-6). */
   headline?: string;
   sub?: string;
+  /** Optional growth-card label supplied by a localized practice stamp. */
+  growthEyebrow?: string;
 };
 
 export type RenderedCard = { dataUrl: string; blob: Blob };
@@ -247,9 +249,11 @@ async function renderQuoteCard(opts: {
   const innerX = pad + 70;
   const innerW = pw - 140;
 
+  // Canvas direction alone does not move an explicit left alignment: RTL
+  // copy must be right-aligned at the panel's right edge to stay inside it.
   // Eyebrow.
-  ctx.textAlign = "left";
   ctx.direction = hasRtl(opts.eyebrow) ? "rtl" : "ltr";
+  ctx.textAlign = ctx.direction === "rtl" ? "right" : "left";
   ctx.fillStyle = "#1f8a5a";
   ctx.font = "800 38px system-ui, sans-serif";
   ctx.fillText(opts.eyebrow.toUpperCase(), ctx.direction === "rtl" ? innerX + innerW : innerX, py + 110);
@@ -258,6 +262,7 @@ async function renderQuoteCard(opts: {
   ctx.fillStyle = "#29333f";
   ctx.font = "700 64px Georgia, 'Times New Roman', serif";
   ctx.direction = hasRtl(opts.primary) ? "rtl" : "ltr";
+  ctx.textAlign = ctx.direction === "rtl" ? "right" : "left";
   const primaryLines = wrapLines(ctx, opts.primary, innerW, 6);
   let ty = py + 220;
   for (const line of primaryLines) {
@@ -271,6 +276,7 @@ async function renderQuoteCard(opts: {
     ctx.fillStyle = "#3a4651";
     ctx.font = "500 44px system-ui, sans-serif";
     ctx.direction = hasRtl(opts.secondary) ? "rtl" : "ltr";
+    ctx.textAlign = ctx.direction === "rtl" ? "right" : "left";
     const secLines = wrapLines(ctx, opts.secondary, innerW, 5);
     for (const line of secLines) {
       ctx.fillText(line, ctx.direction === "rtl" ? innerX + innerW : innerX, ty);
@@ -318,7 +324,7 @@ function renderStoryCard(opts: ShareCardOpts): Promise<RenderedCard> {
 /** growth_card — placeholder template; real data wired by mk-p2-6. */
 function renderGrowthCard(opts: ShareCardOpts): Promise<RenderedCard> {
   return renderQuoteCard({
-    eyebrow: "Progress",
+    eyebrow: opts.growthEyebrow ?? "Progress",
     primary: opts.headline || (opts.name ? `${isolate(opts.name)}'s progress` : "Progress this month"),
     secondary: opts.sub,
     imageUrl: opts.imageUrl,
