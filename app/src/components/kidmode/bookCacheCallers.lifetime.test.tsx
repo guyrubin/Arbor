@@ -49,14 +49,14 @@ const reader = () => { h.cursor = 0; return KidBookReaderView({ bookId: "synthet
 const strip = () => { h.cursor = 0; return BookSheetStrip({ child: { id: h.childId, name: "Synthetic", gender: "boy" } as ChildProfile, avatarHash: "synthetic" }); };
 const elements = (value: any): any[] => Array.isArray(value) ? value.flatMap(elements) : value && typeof value === "object" ? [value, ...elements(value.props?.children)] : [];
 let fetcher: ReturnType<typeof vi.fn>;
-let created: ReturnType<typeof vi.fn>;
-let revoked: ReturnType<typeof vi.fn>;
+let created: ReturnType<typeof vi.fn<typeof URL.createObjectURL>>;
+let revoked: ReturnType<typeof vi.fn<typeof URL.revokeObjectURL>>;
 beforeEach(() => {
   h.owner = { uid: "owner-a" }; h.childId = "kid-a"; h.doc = doc(); h.cursor = 0; h.slots = []; h.effects = [];
   const records = new Map<string, CachedFile>();
   setBookAssetBackend({ get: async id => records.get(id), put: async rec => { records.set(rec.id, rec); }, deleteWhere: async pred => { for (const [id, rec] of records) if (pred(rec)) records.delete(id); } });
   fetcher = vi.fn(async () => new Response("synthetic bytes")); vi.stubGlobal("fetch", fetcher);
-  let id = 0; created = vi.fn(() => `blob:synthetic-${++id}`); revoked = vi.fn();
+  let id = 0; created = vi.fn<typeof URL.createObjectURL>(() => `blob:synthetic-${++id}`); revoked = vi.fn<typeof URL.revokeObjectURL>();
   vi.spyOn(URL, "createObjectURL").mockImplementation(created); vi.spyOn(URL, "revokeObjectURL").mockImplementation(revoked);
 });
 afterEach(() => { unmount(); setBookAssetBackend(null); vi.restoreAllMocks(); vi.unstubAllGlobals(); });

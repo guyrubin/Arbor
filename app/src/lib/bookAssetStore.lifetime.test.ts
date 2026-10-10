@@ -20,15 +20,15 @@ const deferred = <T,>() => {
 const tick = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 let records: Map<string, CachedFile>;
 let backend: BookAssetBackend;
-let get: ReturnType<typeof vi.fn>;
-let put: ReturnType<typeof vi.fn>;
+let get: ReturnType<typeof vi.fn<BookAssetBackend["get"]>>;
+let put: ReturnType<typeof vi.fn<BookAssetBackend["put"]>>;
 let fetcher: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   h.owner = { uid: "owner-a" };
   h.headers.mockReset().mockResolvedValue({ Authorization: "Bearer synthetic-token" });
   records = new Map();
-  get = vi.fn(async (id: string) => records.get(id));
-  put = vi.fn(async (r: CachedFile) => { records.set(r.id, r); });
+  get = vi.fn<BookAssetBackend["get"]>(async (id) => records.get(id));
+  put = vi.fn<BookAssetBackend["put"]>(async (r) => { records.set(r.id, r); });
   backend = { get, put, deleteWhere: async (pred) => { for (const [id, r] of records) if (pred(r)) records.delete(id); } };
   setBookAssetBackend(backend);
   setBookAssetSleep(async () => {});
@@ -66,7 +66,7 @@ describe("private book owner and erase lifetimes", () => {
   });
   it.each(["get", "headers", "fetch", "body"])("owner change during %s suppresses bytes and all later writes", async (step) => {
     const gate = deferred<unknown>();
-    if (step === "get") get.mockImplementationOnce(() => gate.promise);
+    if (step === "get") get.mockImplementationOnce(async () => { await gate.promise; return undefined; });
     if (step === "headers") h.headers.mockImplementationOnce(() => gate.promise);
     if (step === "fetch") fetcher.mockImplementationOnce(() => gate.promise);
     if (step === "body") fetcher.mockResolvedValueOnce({ ok: true, status: 200, blob: () => gate.promise });

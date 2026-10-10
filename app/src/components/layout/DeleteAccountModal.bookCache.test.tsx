@@ -39,7 +39,7 @@ vi.mock("../../lib/heroRenderStore", () => ({ purgeAllHeroRenders: h.hero }));
 vi.mock("../kidmode/parentGate", () => ({ commerceAllowed: () => h.allowed }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 import DeleteAccountModal from "./DeleteAccountModal";
-import { createBookAssetScope, fetchBookAssetResult, setBookAssetBackend, type CachedFile } from "../../lib/bookAssetStore";
+import { createBookAssetScope, fetchBookAssetResult, setBookAssetBackend, type BookAssetBackend, type CachedFile } from "../../lib/bookAssetStore";
 import { accountDeletionLeases } from "../../lib/accountDeletionLease";
 import { setAuthTokenProvider } from "../../lib/api";
 const { api: productionApi } = await vi.importActual<typeof import("../../lib/api")>("../../lib/api");
@@ -58,7 +58,9 @@ const confirm = () => {
   expect(button.props.disabled).toBe(false); button.props.onClick();
 };
 let records: Map<string, CachedFile>;
-let fetcher: ReturnType<typeof vi.fn>, put: ReturnType<typeof vi.fn>, deleted: ReturnType<typeof vi.fn>;
+let fetcher: ReturnType<typeof vi.fn>;
+let put: ReturnType<typeof vi.fn<BookAssetBackend["put"]>>;
+let deleted: ReturnType<typeof vi.fn<BookAssetBackend["deleteWhere"]>>;
 let settlements: (() => void)[];
 let counter = 0;
 beforeEach(() => {
@@ -66,8 +68,8 @@ beforeEach(() => {
   h.renderedOwner = h.owner; h.listeners.clear(); setAuthTokenProvider(async () => "synthetic-token");
   h.cursor = 0; h.slots = []; h.effects = []; settlements = [];
   h.accountDelete.mockReset().mockResolvedValue({ complete: true, classes: [] }); h.comic.mockReset().mockResolvedValue(undefined); h.hero.mockReset().mockResolvedValue(undefined); h.signOut.mockReset().mockResolvedValue(undefined);
-  records = new Map(); put = vi.fn(async (rec: CachedFile) => { records.set(rec.id, rec); });
-  deleted = vi.fn(async (pred: (rec: CachedFile) => boolean) => { for (const [id, rec] of records) if (pred(rec)) records.delete(id); });
+  records = new Map(); put = vi.fn<BookAssetBackend["put"]>(async (rec) => { records.set(rec.id, rec); });
+  deleted = vi.fn<BookAssetBackend["deleteWhere"]>(async (pred) => { for (const [id, rec] of records) if (pred(rec)) records.delete(id); });
   setBookAssetBackend({ get: async id => records.get(id), put, deleteWhere: deleted });
   fetcher = vi.fn(async () => new Response("synthetic book bytes")); vi.stubGlobal("fetch", fetcher);
   vi.stubGlobal("localStorage", { "arbor.synthetic": "private", removeItem: h.removeItem });
