@@ -45,7 +45,7 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
     }
     expect(releaseMatrix('confirmed-actions-release')).toEqual([...isolated, ...releaseMatrix('record-release')]);
     const workflow = read('.github/workflows/arbor-parent-release-capture.yml');
-    expect(workflow).toContain('"codex/parent-confirmed-action-loops" ]]; then scope=confirmed-actions-only;');
+    expect(workflow).toContain('"codex/parent-confirmed-action-loops" ]]; then scope=confirmed-actions-release;');
     expect(workflow).toContain('docker create --network none');
     expect(workflow).toContain('persist-credentials: false');
     expect(workflow).not.toMatch(/workflow_dispatch|--network host|secrets\.|id-token:|firebase deploy|docker push/);

@@ -25,7 +25,7 @@ jobs:
         name: Derive the bounded matrix from its pure source contract
         shell: bash
         run: |
-          if [[ "$GITHUB_REF_NAME" == "codex/parent-confirmed-action-loops" ]]; then scope=confirmed-actions-only;
+          if [[ "$GITHUB_REF_NAME" == "codex/parent-confirmed-action-loops" ]]; then scope=confirmed-actions-release;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-record-clarity" ]]; then scope=record-release;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-record-diagnostic" ]]; then scope=record-only;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-close-return-diagnostic" ]]; then scope=report-close-only;
