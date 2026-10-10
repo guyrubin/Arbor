@@ -281,6 +281,16 @@ export async function collectConfirmedActionStates(helpers) {
           check(cell, 'FAILED_SAYBACK_HAS_NO_FALSE_SAVED_OR_RECORD_RECEIPT', await byId('today-door-saidback-receipt').count() === 0 && await byId('today-record-receipt').count() === 0 && await line.locator('[data-answer]').count() === 2);
         });
         await frame(cell, 'SAYBACK_RETRY_REACHABLE', line.locator(`[data-answer="${answer}"]`));
+        const readable = await line.evaluate(el => {
+          const question = el.querySelector('[data-testid="today-door-saidback-question"]');
+          const error = el.querySelector('[role="alert"]');
+          const controls = el.querySelector('[role="group"]');
+          const q = question.getBoundingClientRect(), e = error.getBoundingClientRect(), c = controls.getBoundingClientRect();
+          return { questionNotClipped: question.scrollHeight <= question.clientHeight + 1 && question.scrollWidth <= question.clientWidth + 1,
+            noLineClamp: getComputedStyle(question).webkitLineClamp === 'none',
+            errorBelowQuestionAndControls: e.top >= Math.max(q.bottom, c.bottom) - 1 };
+        });
+        check(cell, 'SAYBACK_FULL_QUESTION_AND_SEPARATE_RETRY_ERROR', Object.values(readable).every(Boolean), readable);
       });
       await run('overview', `sayback-${answer}-saved`, async cell => {
         await byId('today-door-saidback').locator(`[data-answer="${answer}"]`).click();

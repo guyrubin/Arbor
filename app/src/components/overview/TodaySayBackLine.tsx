@@ -116,10 +116,9 @@ export default function TodaySayBackLine({ keepsakeDocs, now }: { keepsakeDocs: 
   return (
     <div data-testid="today-door-saidback" className="flex min-h-11 flex-wrap items-center gap-2 rounded-xl px-3 py-1.5">
       <Icon name="record_voice_over" size={18} style={{ color: "var(--arbor-muted)" }} />
-      <span className="line-clamp-2 min-w-0 flex-1 font-semibold leading-snug" style={{ color: "var(--arbor-ink)", fontSize: "var(--t-base)" }}>
+      <span data-testid="today-door-saidback-question" className="min-w-0 flex-[1_1_12rem] font-semibold leading-snug" style={{ color: "var(--arbor-ink)", fontSize: "var(--t-base)" }}>
         {question}
       </span>
-      {write?.status === "failed" && <p role="alert">{t("companion.arbor-context.your-response-wasn-t-saved-please-try-agai")}</p>}
       <span className="flex gap-2" role="group" aria-label={question}>
         {SAID_ANSWERS.map((answer) => (
           <button
@@ -134,6 +133,7 @@ export default function TodaySayBackLine({ keepsakeDocs, now }: { keepsakeDocs: 
           </button>
         ))}
       </span>
+      {write?.status === "failed" && <p role="alert" className="basis-full">{t("companion.arbor-context.your-response-wasn-t-saved-please-try-agai")}</p>}
     </div>
   );
 }

@@ -180,3 +180,18 @@ it("keeps say-back pending until acknowledgement and permits a failed optimistic
   h.writes[row.id] = { opener, status: "saved", entry: row };
   expect(renderToStaticMarkup(<TodaySayBackLine keepsakeDocs={[quoteDoc()]} now={NOW} />)).toContain("today-door-saidback-receipt");
 });
+
+for (const lang of ["en", "he"] as const) it(`${lang}: retry keeps the full question and moves the error after its answers`, () => {
+  h.lang = lang;
+  const opener = (sayBackDoorLine(input()) as { opener: FromRecordOpener }).opener;
+  const row = fromRecordEntry(opener, "yes", "c1", NOW);
+  h.writes[row.id] = { opener, status: "failed" };
+  const html = renderToStaticMarkup(<TodaySayBackLine keepsakeDocs={[quoteDoc()]} now={NOW} />);
+  expect(html).toContain('data-testid="today-door-saidback-question"');
+  expect(html).toContain("flex-[1_1_12rem]");
+  expect(html).not.toContain("line-clamp");
+  expect(html).toContain(translate(lang, "elev.words.today.q.cross", { kept: translate(lang, "ob.lang.hebrew") }));
+  expect(html).toContain('role="alert" class="basis-full"');
+  expect(html.indexOf('role="alert"')).toBeGreaterThan(html.lastIndexOf("</button>"));
+  expect(html.match(/data-answer=/g)).toHaveLength(2);
+});
