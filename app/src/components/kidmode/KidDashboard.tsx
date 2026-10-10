@@ -27,7 +27,7 @@
  * Firewall: the star reads a MONOTONIC field (lifetime sessions), never a
  * streak. Styling is token-only and RTL-safe (logical CSS properties).
  */
-import React, { Suspense, lazy, useEffect, useMemo } from "react";
+import React, { Suspense, lazy, useEffect, useMemo, useSyncExternalStore } from "react";
 import { BookOpen, Brain, Footprints, Gamepad2, Heart, Map, Mic, Music, PersonStanding, Shapes, Smile, Sparkles, Star, ChevronRight, Type } from "lucide-react";
 import { useArbor } from "../../context/ArborContext";
 import type { AvatarStyle } from "../../lib/api";
@@ -227,6 +227,27 @@ export const KID_HOME_GAME_TITLE_SIZE = "clamp(20px, 5vw, 24px)";
 export const KID_HOME_GAME_TITLE_MIN_PX = 20;
 
 
+/** 10 Oct 2026 (Guy: "not every button is visible at every resolution"): at
+ *  1366x768 the one game sat under the books with 90 px of it above the fold,
+ *  and half of it at 1920x1080. From this width the books and the game sit
+ *  side by side and the game's tile is landscape (its stage has a landscape
+ *  plate), so both are on the first screen of a laptop or a tablet. */
+export const KID_HOME_PAIR_MIN_PX = 900;
+export const KID_HOME_WIDE_GAME_ASPECT = "16 / 10";
+const pairQuery = `(min-width: ${KID_HOME_PAIR_MIN_PX}px)`;
+function subscribePair(fn: () => void): () => void {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+  const mq = window.matchMedia(pairQuery);
+  mq.addEventListener?.("change", fn);
+  return () => mq.removeEventListener?.("change", fn);
+}
+function pairNow(): boolean {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(pairQuery).matches;
+}
+function useKidHomePair(): boolean {
+  return useSyncExternalStore(subscribePair, pairNow, () => false);
+}
+
 /** A themed tile whose background is an avatar-in-scene render (WorldScene),
  *  degrading to a centered themed icon. A bottom ink scrim keeps the title
  *  legible over both the generated art and the icon fallback. */
@@ -244,6 +265,7 @@ function SceneTile({
   big,
   index,
   scene,
+  aspect,
 }: {
   worldId: string;
   accent: Accent;
@@ -260,6 +282,9 @@ function SceneTile({
   index: number;
   /** B-GAME-15b: a composed picture that replaces the WorldScene render. */
   scene?: React.ReactNode;
+  /** A portrait-theme tile's aspect (default 3:4); the wide home sets the
+   *  game landscape so it sits beside the books, above the fold. */
+  aspect?: string;
 }) {
   // R-2b: the theme decides the tile shape (KID_THEME_TILE_SHAPE), not this file.
   const portrait = KID_THEME_TILE_SHAPE[theme] === "portrait";
@@ -276,7 +301,7 @@ function SceneTile({
         cursor: "pointer",
         padding: 0,
         background: ACCENT_BG[accent],
-        aspectRatio: KID_HOME_PORTRAIT_ASPECT,
+        aspectRatio: aspect ?? KID_HOME_PORTRAIT_ASPECT,
         minBlockSize: 44,
         inlineSize: "100%",
         animationDelay: `${index * 40}ms`,
@@ -427,6 +452,7 @@ export default function KidDashboard({
     : kt("elev.kid.greeting.ready");
 
 
+  const pair = useKidHomePair();
   return (
     <div style={{ maxInlineSize: "1100px", marginInline: "auto", display: "flex", flexDirection: "column", gap: `${KID_HOME_SECTION_GAP}px` }}>
       {/* ── Greeting header ─────────────────────────────────────────────── */}
@@ -493,6 +519,7 @@ export default function KidDashboard({
         </span>
       </button>
 
+      <div data-kid-home-pair={pair ? "" : undefined} style={pair ? { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", alignItems: "start", gap: `${KID_HOME_SECTION_GAP}px` } : { display: "flex", flexDirection: "column", gap: `${KID_HOME_SECTION_GAP}px` }}>
       {/* ── My books ────────────────────────────────────────────────────── */}
       {/* B-KID-88: directly under Tonight's book - the child's own shelf, one
           tap per book; See all opens the library (the story surface, no arg).
@@ -559,7 +586,7 @@ export default function KidDashboard({
           </h2>
         </div>
         {/* B-GAME-19: the one game is shown large (one column, up to 420 px). */}
-        <div className={tilePortrait && homeGames.length ? PORTRAIT_GRID : undefined} style={!homeGames.length ? { display: "grid", gridTemplateColumns: "minmax(0, 420px)", gap: `${KID_HOME_TILE_GAP}px` } : tilePortrait ? { gap: `${KID_HOME_TILE_GAP}px` } : { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
+        <div className={tilePortrait && homeGames.length ? PORTRAIT_GRID : undefined} style={!homeGames.length ? { display: "grid", gridTemplateColumns: pair ? "minmax(0, 1fr)" : "minmax(0, 420px)", gap: `${KID_HOME_TILE_GAP}px` } : tilePortrait ? { gap: `${KID_HOME_TILE_GAP}px` } : { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: `${KID_HOME_TILE_GAP}px` }}>
           {homeGames.map((g, i) => (
             <SceneTile key={g.id} worldId={g.worldId} accent={g.accent} Icon={g.Icon} title={kt(g.nameKey)} sub={kt(g.subKey)} imagePrompt={g.imagePrompt} heroUrl={hero.url ?? undefined} heroStyle={hero.style} theme={kidTheme} index={i} onClick={() => onOpenSurface("arcade", g.worldId)} />
           ))}
@@ -568,10 +595,11 @@ export default function KidDashboard({
               so no scene is generated. */}
           {sneakFreezeFlagOn() && (
             <SceneTile key={SNEAK_FREEZE_WORLD.id} worldId={SNEAK_FREEZE_WORLD.worldId} accent={SNEAK_FREEZE_WORLD.accent} Icon={Footprints} title={kt(SNEAK_FREEZE_WORLD.nameKey)} sub={kt(SNEAK_FREEZE_WORLD.subKey)} imagePrompt="" theme={kidTheme} index={homeGames.length} onClick={() => onOpenSurface("arcade", SNEAK_FREEZE_WORLD.worldId)}
-              scene={<Suspense fallback={null}><SneakPoster /></Suspense>} />
+              scene={<Suspense fallback={null}><SneakPoster /></Suspense>} aspect={pair ? KID_HOME_WIDE_GAME_ASPECT : undefined} />
           )}
         </div>
       </section>
+      </div>
       {/* B-KID-96: "My stickers" — the souvenirs the child kept (hidden while none). */}
       <KidStickerStrip
         items={souvenirs.items}
