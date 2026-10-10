@@ -15,7 +15,17 @@ export function sourceFontUrl(source) {
 }
 export function assertFontUrl(raw) {
   const url = new URL(raw);
-  if (url.origin !== 'https://fonts.gstatic.com' || url.username || url.password || url.search || url.hash || raw !== url.href || !/^\/s\/[a-z0-9]+\/v\d+\/[a-zA-Z0-9_-]+\.woff2$/.test(url.pathname)) throw new Error('FONT_RESOURCE_URL_DENIED');
+  if (url.origin !== 'https://fonts.gstatic.com' || url.username || url.password || url.search || url.hash || raw !== url.href || !/^\/s\/[a-z0-9]+\/v\d+\/[a-zA-Z0-9_-]+\.woff2$/.test(url.pathname)) {
+    // Diagnose only the public stylesheet's resource shape. Never request a
+    // rejected URL or log credentials, query values, unknown hosts or raw CSS.
+    throw Object.assign(new Error('FONT_RESOURCE_URL_DENIED'), { fontResource: {
+      origin: url.origin === 'https://fonts.gstatic.com' ? url.origin : 'UNAPPROVED_ORIGIN',
+      pathname: url.origin === 'https://fonts.gstatic.com' && /^\/[a-zA-Z0-9_./-]{1,240}$/.test(url.pathname) ? url.pathname : 'WITHHELD',
+      queryKeys: [...new Set(url.searchParams.keys())].slice(0, 12).map(key => /^[a-zA-Z0-9_-]{1,32}$/.test(key) ? key : 'WITHHELD'),
+      hasCredentials: !!(url.username || url.password), hasFragment: !!url.hash,
+      canonical: raw === url.href, urlSha256: sha256(raw),
+    } });
+  }
   return raw;
 }
 export function cssFontResources(css) {

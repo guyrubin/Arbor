@@ -47,6 +47,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   prepareFontCache().catch((error) => {
     const code = /^FONT_[A-Z0-9_]+$/.test(error?.message ?? '') ? error.message : 'FONT_FETCH_UNAVAILABLE';
     console.error(`${code}: public font setup stopped; no redirects, alternate origin or fallback attempted.`);
+    if (code === 'FONT_RESOURCE_URL_DENIED' && error.fontResource) console.error(JSON.stringify({ code, resource: error.fontResource }));
     process.exitCode = 1;
   });
 }

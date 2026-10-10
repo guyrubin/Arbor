@@ -1,9 +1,14 @@
-import { useState, type ReactElement } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import { useKidMode, type KidModeTarget } from "./KidModeContext";
 import { useArborOptional } from "../../context/ArborContext";
 import { resolveHeroUrl } from "../ui/HeroAvatar";
 import HeroFirstStep from "./HeroFirstStep";
 import { markHeroStepOffered, shouldOfferHeroStep } from "./heroPromptGate";
+import { kidModeOpenFor } from "../../lib/age/playGate";
+import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+
+type EntryScope = { childId: string | undefined; eligible: boolean; active: boolean };
+type PendingEntry = { scope: EntryScope; target: KidModeTarget };
 
 /**
  * B-KID-11 — the ONE entry seam into Kid Mode.
@@ -22,14 +27,54 @@ export function useKidModeEntry(onBeforeOpen?: () => void): {
   step: ReactElement | null;
 } {
   const { openKidMode } = useKidMode();
-  // Optional context so a door stays renderable outside ArborProvider (it
-  // behaves exactly as before there — straight into Kid Mode).
+  // A door remains renderable outside ArborProvider, but cannot hand over
+  // until an eligible child is in scope.
   const arbor = useArborOptional();
   const child = arbor?.childProfile;
-  // null = the step is closed; a target = the step is open for that door.
-  const [stepFor, setStepOpen] = useState<KidModeTarget | null>(null);
+  const eligible = Boolean(child?.id) && kidModeOpenFor(child);
+  const childRef = useRef(child);
+  childRef.current = child;
+  const scopeRef = useRef<EntryScope | null>(null);
+  // Retire during render, before effect cleanup, and never revive A's old
+  // callbacks when the selected child goes A → B → A.
+  if (!scopeRef.current || scopeRef.current.childId !== child?.id || scopeRef.current.eligible !== eligible) {
+    if (scopeRef.current) scopeRef.current.active = false;
+    scopeRef.current = { childId: child?.id, eligible, active: true };
+  }
+  const scope = scopeRef.current;
+  const pendingRef = useRef<PendingEntry | null>(null);
+  const [stepState, setStepState] = useState<PendingEntry | null>(null);
+  if (pendingRef.current?.scope !== scope) pendingRef.current = null;
+  const current = () => scope.active && scopeRef.current === scope && scope.eligible
+    && childRef.current?.id === scope.childId && kidModeOpenFor(childRef.current) && !isKidModeActive();
+  const setStepOpen = (target: KidModeTarget) => {
+    const pending = { scope, target: { ...target } };
+    pendingRef.current = pending;
+    setStepState(pending);
+  };
+  const dismiss = (pending: PendingEntry) => {
+    if (pendingRef.current !== pending) return;
+    pendingRef.current = null;
+    setStepState(null);
+  };
+  useEffect(() => {
+    scope.active = true;
+    const retireStep = () => {
+      if (pendingRef.current?.scope === scope) dismiss(pendingRef.current);
+    };
+    // Another existing door may lock Kid Mode while this parent step waits.
+    // Latch that transition even if it unlocks before our next render.
+    const unsubscribe = subscribeKidMode(locked => { if (locked) retireStep(); });
+    if (isKidModeActive()) retireStep();
+    return () => {
+      scope.active = false;
+      if (pendingRef.current?.scope === scope) pendingRef.current = null;
+      unsubscribe();
+    };
+  }, [scope]);
 
   const request = (target: KidModeTarget = {}) => {
+    if (!current() || pendingRef.current) return;
     // Hero-first: a child with no hero gets their parent one step first —
     // offered once per session per child, never a block on the child.
     // onBeforeOpen (e.g. a mobile sheet's close) is deliberately NOT fired
@@ -42,14 +87,22 @@ export function useKidModeEntry(onBeforeOpen?: () => void): {
     onBeforeOpen?.();
     openKidMode(target);
   };
-  const enterKidMode = () => { const target = stepFor ?? {}; setStepOpen(null); onBeforeOpen?.(); openKidMode(target); };
-  const step = child ? (
+  const pending = stepState && pendingRef.current === stepState && current() ? stepState : null;
+  const enterKidMode = () => {
+    if (!pending || pendingRef.current !== pending || !current()) return;
+    const target = pending.target;
+    dismiss(pending); // Consume before closing a mobile sheet or opening Kid Mode.
+    onBeforeOpen?.();
+    openKidMode(target);
+  };
+  // Unmount the whole step, including its nested creator, when it retires.
+  const step = child && pending ? (
     <HeroFirstStep
-      open={stepFor !== null}
+      open
       childId={child.id}
       childName={child.name}
       onEnterKidMode={enterKidMode}
-      onClose={() => setStepOpen(null)}
+      onClose={() => dismiss(pending)}
     />
   ) : null;
   return { request, step };
