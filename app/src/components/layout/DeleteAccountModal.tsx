@@ -1,3 +1,5 @@
+import { onAuthStateChanged } from "firebase/auth";
+import { auth as firebaseAuth } from "../../lib/firebase";
 import React, { useCallback, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Modal } from "../ui/Modal";
 import { useLanguage } from "../../context/LanguageContext";
@@ -7,6 +9,7 @@ import { api, type AccountDeletionReceipt } from "../../lib/api";
 import { accountDeletionLeases } from "../../lib/accountDeletionLease";
 import { purgeAllComicPages } from "../../lib/comicPageStore";
 import { purgeAllHeroRenders } from "../../lib/heroRenderStore";
+import { purgeBookAssets } from "../../lib/bookAssetStore";
 import { commerceAllowed } from "../kidmode/parentGate";
 
 /**
@@ -65,12 +68,14 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
     // Device-local stores: IndexedDB comic pages (all children) + every
     // arbor-prefixed localStorage key (child collections, attribution, prefs).
     if (!ownsAccount()) return;
+    const bookPurge = purgeBookAssets(); // A complete receipt retires private reads before any other purge yields.
     try {
       await purgeAllComicPages();
       await purgeAllHeroRenders(); // B-KID-127
     } catch {
       /* best effort */
     }
+    await bookPurge;
     // The purge can outlive this dialog or account. Never remove a later
     // session's keys after that await (also recheck before every removal).
     if (!ownsAccount()) return;
@@ -94,22 +99,33 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
       toast(t("elev.gate.blocked"), "info");
       return;
     }
+    // React may still show the requester after the SDK has changed accounts.
+    const owner = firebaseAuth?.currentUser;
+    if (!owner || owner.uid !== current.uid) return;
     // Acquisition is synchronous and shared with every instance for this UID.
     const lease = accountDeletionLeases.acquire(current.uid);
     if (!lease) return;
     setError(null);
     const requestRevision = revision.current;
     const requestUid = current.uid;
-    const ownsAccount = () => active.current && latest.current.firebaseEnabled && latest.current.uid === requestUid;
+    let retired = false;
+    let unsubscribe: () => void = () => undefined;
+    const ownsAccount = () => !retired && firebaseAuth?.currentUser === owner
+      && active.current && latest.current.firebaseEnabled && latest.current.uid === requestUid;
+    const beforeDispatch = () => {
+      if (!ownsAccount()) throw new DOMException("The account deletion session is no longer active", "AbortError");
+    };
     const isCurrent = () => ownsAccount() && revision.current === requestRevision && latest.current.open;
     try {
+      // Latch every observed transition, even A → B → the original A object.
+      unsubscribe = onAuthStateChanged(firebaseAuth!, next => { if (next !== owner) retired = true; });
       // The dialog refuses to close while the lease is held, and the dialog
       // stack inerts the app behind it, so an fetch that never settles used to
       // leave the parent with no way out but a reload. Bound the wait: on
       // timeout we surface the same unknown-result state as any other network
       // failure, the finally releases the lease, and close/retry come back.
       const receipt = await Promise.race([
-        api.accountDelete(),
+        api.accountDelete(beforeDispatch),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("account deletion timed out")), DELETION_TIMEOUT_MS)),
       ]);
@@ -129,6 +145,8 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
       // No server receipt means an unknown result, not invented partial counts.
       if (isCurrent()) setError("network");
     } finally {
+      retired = true;
+      unsubscribe();
       lease.release();
     }
   };

@@ -281,7 +281,10 @@ describe('current React root and commit-stage diagnostics', () => {
     const segment = source.slice(source.indexOf('cell.nativeDispatch ='), source.indexOf('cell.postFailureProbe ='));
     expect(segment.indexOf('save();')).toBeLessThan(segment.indexOf("if (cell.nativeDispatch.cleanup !== 'confirmed') throw"));
     expect(segment.indexOf("if (cell.nativeDispatch.cleanup !== 'confirmed') throw")).toBeLessThan(segment.indexOf('cell.afterDispatchReactStage ='));
-    expect(source).toContain('if (context) await context.close().catch(() => {})');
+    const teardown = source.slice(source.lastIndexOf('} finally {'));
+    expect(teardown).toContain('if (context) await context.close().then(() => { contextClosed = true; }).catch(() => {})');
+    expect(teardown).toContain('await browser.close().then(() => { browserClosed = true; })');
+    expect(teardown.indexOf('await context.close()')).toBeLessThan(teardown.indexOf('await browser.close()'));
     expect(vi.getTimerCount()).toBe(0);
   });
 

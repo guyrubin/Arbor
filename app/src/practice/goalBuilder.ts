@@ -9,7 +9,7 @@
  *   output, so screenModelOutput is not triggered by this module itself (gate §C
  *   conditional). Any future dynamic mapping must pass screenModelOutputLexical.
  * - Observation link = flat count only; no score, %, bar, ring, streak, or trend.
- * - Goal cap: 1–3 active goals (product constraint, not clinical).
+ * - One displayed choice; earlier stored goals and model context are preserved.
  * - Non-diagnostic: the label list receives a build-time lint check (see bottom)
  *   against condition-name and effect-verb token lists (gate §A).
  * - "developmentally informed, grounded in CDC/AAP/ASHA/WHO" — copy authority.
@@ -204,5 +204,31 @@ export function activeGoalDomains(activeGoals: ActiveGoal[]): PlayDomain[] {
   return [...new Set(activeGoals.map((g) => g.domainId))];
 }
 
-/** Maximum goals a parent can set concurrently (product constraint, not clinical). */
-export const MAX_ACTIVE_GOALS = 3;
+/** B-GROWTH-40: a read projection, not a migration or a practice override.
+ * Invalid legacy dates sort before valid dates. Equal dates use stored order,
+ * with the last entry winning, so a reload always picks the same goal.
+ */
+export function focusGoal(activeGoals: readonly ActiveGoal[] = []): ActiveGoal | null {
+  return activeGoals.reduce<ActiveGoal | null>((latest, goal) => {
+    const at = Date.parse(goal.addedAt);
+    const previous = latest ? Date.parse(latest.addedAt) : Number.NaN;
+    return !latest || (Number.isFinite(at) ? at : -Infinity) >= (Number.isFinite(previous) ? previous : -Infinity) ? goal : latest;
+  }, null);
+}
+
+/** Parent-confirmed choice only. Never cap, drop or backfill stored goals.
+ * Reselecting Earlier moves that same record to the end and refreshes addedAt;
+ * all of its other fields and every other record survive unchanged.
+ */
+export function selectFocusGoal(activeGoals: readonly ActiveGoal[], goal: Omit<ActiveGoal, "addedAt">, now: string): ActiveGoal[] {
+  const time = Date.parse(now);
+  if (!Number.isFinite(time)) throw new Error("A goal choice needs a valid date");
+  const latestAt = Date.parse(focusGoal(activeGoals)?.addedAt ?? "");
+  const addedAt = new Date(Math.max(time, Number.isFinite(latestAt) ? latestAt + 1 : time)).toISOString();
+  const index = activeGoals.findIndex(entry => entry.goalId === goal.goalId);
+  const selected = index < 0 ? goal : activeGoals[index];
+  return [...activeGoals.filter((_, i) => i !== index), { ...selected, addedAt }];
+}
+
+/** One NEW choice at a time. This is never a limit on stored history. */
+export const MAX_ACTIVE_GOALS = 1;

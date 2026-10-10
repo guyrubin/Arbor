@@ -73,7 +73,7 @@ export const en: Record<string, string> = {
   "elev.growth.recheck.date": "Check again around {date}",
 
   // B-GROWTH-20 — Daily Play: the plan shows without a goal; the focus is optional.
-  "elev.growth.play.setFocusOptional": "Set a focus to match it to what you're working on",
+  "elev.growth.play.setFocusOptional": "Choose what you're working on",
 
   // B-GROWTH-30 — the Record by area (spine Option A). Counts of things the
   // parent noticed and dates only; never a share, a total or a trend.
@@ -175,7 +175,7 @@ export const he: Record<string, string> = {
   "elev.growth.recheck.date": "לבדוק שוב בסביבות {date}",
 
   // B-GROWTH-20 — התוכנית מוצגת גם בלי מטרה; המיקוד הוא רשות
-  "elev.growth.play.setFocusOptional": "הגדירו מיקוד כדי להתאים אותה למה שאתם עובדים עליו",
+  "elev.growth.play.setFocusOptional": "בחרו על מה אתם עובדים",
 
   // B-GROWTH-30 — התיעוד לפי תחום
   "elev.growth.record.sub": "כל מה שרשמתם, מקובץ לפי תחום. הקישו על תחום לרשימה עם תאריכים.",

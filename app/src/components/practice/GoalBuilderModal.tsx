@@ -1,24 +1,9 @@
-/**
- * CI-28 — GoalBuilderModal
- *
- * A bottom-sheet modal (mobile) / centered modal (desktop) that lets the parent
- * select 1–3 curated developmental focus goals. Two internal states:
- *   - Selection state (no activeGoals): tile grid picker
- *   - Status state (activeGoals exist): list of active goals with observation count
- *     and remove action
- *
- * Clinical-gate compliance (verdict: build-ready-narrowed):
- * - Labels: 100% static curated strings from GOAL_TILES (no model output).
- * - No score, %, progress bar, completion ring, streak, or trend line (gate §B).
- * - Observation count = flat integer only.
- * - Concern pre-fill highlights a tile, never pre-selects it (gate §D).
- * - Banned strings: none present (checked by goalBuilder.ts lint at module load).
- * - "developmentally informed, grounded in CDC/AAP/ASHA/WHO" — framing authority.
- * - Non-diagnostic: no condition names, no effect-verb claims, no assessment verdicts.
- * - Gate §E (COPPA): activeGoals write path tagged — requires arbor-safety review.
+/** B-GROWTH-40: one explicit parent choice, earlier records retained.
+ * Goal selection never changes P5's practice/program ownership or AI context.
+ * Flat observation counts only; no deletion, area colour or progress verdict.
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useDialog } from "../../hooks/useDialog";
@@ -26,35 +11,21 @@ import { createPortal } from "react-dom";
 import { AnimatePresence } from "motion/react";
 import {
   GOAL_TILES,
-  MAX_ACTIVE_GOALS,
+  focusGoal,
   goalLabel,
   prefillGoalIdsForConcern,
   type ActiveGoal,
-  type GoalTile,
 } from "../../practice/goalBuilder";
 import type { BehaviorLog } from "../../types";
 import { domainForBehaviorType } from "../../playbank/select";
 import { useLanguage } from "../../context/LanguageContext";
-
-// ── Icon map (tile icon names → Lucide components) ───────────────────────────
-
-const ICON_MAP: Record<string, React.ReactNode> = {
-  ListChecks: <Icon name="checklist" size={20} />,
-  DoorOpen: <Icon name="door_open" size={20} />,
-  Users: <Icon name="group" size={20} />,
-  Utensils: <Icon name="restaurant" size={20} />,
-  Moon: <Icon name="dark_mode" size={20} />,
-  Heart: <Icon name="favorite" size={20} />,
-  MessageCircle: <Icon name="chat_bubble" size={20} />,
-  RefreshCw: <Icon name="refresh" size={20} />,
-};
+import { useProfile, type GoalAttempt } from "../../context/ProfileContext";
+import { goalGlyph } from "./GoalFocusLine";
 
 // ── Token shorthands ─────────────────────────────────────────────────────────
 
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
-const GREEN = "var(--arbor-green-ink)";
-const GREEN_SOFT = "var(--arbor-green-soft)";
 const RULE = "var(--arbor-rule)";
 const RULE_STRONG = "var(--arbor-rule-strong)";
 const PAPER = "var(--arbor-paper-elevated)";
@@ -100,344 +71,130 @@ function daysAgoLabel(isoTs: string | null, t: (key: string, vars?: Record<strin
 export interface GoalBuilderModalProps {
   open: boolean;
   onClose: () => void;
+  childId: string;
   childName: string;
-  activeGoals: ActiveGoal[];
-  /** Onboarding concern id used for pre-fill highlighting (gate §D). */
   concernId?: string;
-  onSave: (goals: ActiveGoal[]) => void;
-  /** BehaviorLogs used for observation count (flat count, gate §B). */
   behaviorLogs?: BehaviorLog[];
 }
 
-export default function GoalBuilderModal({
-  open,
-  onClose,
-  childName,
-  activeGoals,
-  concernId,
-  onSave,
-  behaviorLogs = [],
-}: GoalBuilderModalProps) {
-  const { t } = useLanguage();
-  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose });
+type PickerScope = { owner: object; childId: string; open: boolean; closed: boolean; flight: boolean };
+type Choice = { goal: Omit<ActiveGoal, "addedAt">; basis: string; scope: PickerScope; restored?: GoalAttempt };
+
+export default function GoalBuilderModal({ open, onClose, childId, childName, concernId, behaviorLogs = [] }: GoalBuilderModalProps) {
+  const { t, uiLang } = useLanguage();
+  const { goalSession: owner, getGoalSelection, saveChildGoal, cancelGoalAttempt } = useProfile();
+  const selection = getGoalSelection(childId);
+  const activeGoals = selection?.goals ?? [];
+  const attempt = selection?.attempt;
   const firstName = (childName || t("elev.goal.modal.yourChild")).split(" ")[0];
-  const hasGoals = activeGoals.length > 0;
-
-  // ── Selection state (tile grid) ──────────────────────────────────────────
-  const [selected, setSelected] = useState<string[]>([]);
-  // Pre-fill: tiles to highlight (not pre-select) from the onboarding concern.
-  const prefillIds = useMemo(
-    () => (concernId ? prefillGoalIdsForConcern(concernId) : []),
-    [concernId]
-  );
-
-  // ── Remove confirmation state (Goal Status view) ─────────────────────────
-  const [removePending, setRemovePending] = useState<string | null>(null);
-
-  const toggleTile = (tile: GoalTile) => {
-    setSelected((prev) => {
-      if (prev.includes(tile.id)) return prev.filter((id) => id !== tile.id);
-      if (prev.length >= MAX_ACTIVE_GOALS) return prev; // cap; tile is muted/disabled
-      return [...prev, tile.id];
-    });
+  const current = focusGoal(activeGoals);
+  const version = JSON.stringify(activeGoals);
+  const [choiceState, setChoice] = useState<Choice | null>(null);
+  const saving = attempt?.status === "pending";
+  const error = attempt?.status === "failed";
+  const confirmationRef = useRef<HTMLDivElement | null>(null);
+  const scopeRef = useRef<PickerScope>({ owner, childId, open, closed: false, flight: false });
+  if (scopeRef.current.owner !== owner || scopeRef.current.childId !== childId || scopeRef.current.open !== open) {
+    scopeRef.current = { owner, childId, open, closed: false, flight: false };
+  }
+  const scope = scopeRef.current;
+  const choice = choiceState?.scope === scope ? choiceState : null;
+  const live = useRef(false);
+  const latest = useRef({ choice, version });
+  latest.current = { choice, version };
+  const valid = () => live.current && scopeRef.current === scope && scope.open && !scope.closed;
+  const close = () => { if (!valid()) return; scope.closed = true; onClose(); };
+  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose: close });
+  useEffect(() => { live.current = true; return () => { live.current = false; }; }, []);
+  useEffect(() => { setChoice(null); }, [scope]);
+  useEffect(() => {
+    if (attempt) setChoice(previous => previous?.scope === scope && !previous.restored
+      ? previous : { goal: attempt.goal, basis: attempt.basis, scope, restored: attempt });
+    else setChoice(previous => previous?.restored ? null : previous);
+  }, [scope, attempt]);
+  const prefillIds = useMemo(() => concernId ? prefillGoalIdsForConcern(concernId) : [], [concernId]);
+  const earlier = activeGoals.filter(goal => goal.goalId !== current?.goalId);
+  // The clicked tile leaves the DOM. Keep keyboard focus in the replacement
+  // question, and return to the dialog when Cancel restores the choices.
+  useEffect(() => { if (choice) confirmationRef.current?.focus(); }, [choice]);
+  const choose = (goal: Omit<ActiveGoal, "addedAt">) => {
+    if (!valid() || scope.flight || saving || !selection) return;
+    const next = { goal, basis: version, scope };
+    latest.current.choice = next; setChoice(next);
   };
-
-  const handleSave = () => {
-    if (selected.length === 0) return;
-    const newGoals: ActiveGoal[] = selected.map((id) => {
-      const tile = GOAL_TILES.find((t) => t.id === id)!;
-      return {
-        goalId: tile.id,
-        label: tile.label,
-        domainId: tile.domainId,
-        addedAt: new Date().toISOString(),
-      };
-    });
-    // Merge with existing goals, deduplicate by goalId.
-    const merged = [...activeGoals, ...newGoals].filter(
-      (g, i, arr) => arr.findIndex((x) => x.goalId === g.goalId) === i
-    );
-    onSave(merged);
-    setSelected([]);
-    onClose();
-  };
-
-  const handleRemove = (goalId: string) => {
-    if (removePending === goalId) {
-      const next = activeGoals.filter((g) => g.goalId !== goalId);
-      onSave(next);
-      setRemovePending(null);
-    } else {
-      setRemovePending(goalId);
+  const save = async () => {
+    if (!choice || !valid() || scope.flight || saving || latest.current.choice !== choice) return;
+    if (latest.current.version !== choice.basis) {
+      const next = { goal: choice.goal, basis: latest.current.version, scope };
+      latest.current.choice = next; setChoice(next); return;
+    }
+    scope.flight = true;
+    try {
+      const result = await saveChildGoal(childId, choice.goal, choice.basis);
+      if (!valid()) return;
+      if (result === "saved") close();
+      else if (result === "changed") {
+        const source = getGoalSelection(childId);
+        if (source) { const next = { goal: choice.goal, basis: JSON.stringify(source.goals), scope }; latest.current.choice = next; setChoice(next); }
+      }
+    } finally {
+      scope.flight = false;
     }
   };
+  const cancel = () => { if (valid() && !scope.flight && !saving) { cancelGoalAttempt(childId); latest.current.choice = null; setChoice(null); dialogRef.current?.focus(); } };
+  const obsCount = current ? countLinkedObservations(current, behaviorLogs) : 0;
+  const lastTs = current ? lastLinkedObservation(current, behaviorLogs) : null;
 
-  const cancelRemove = () => setRemovePending(null);
-
-  // ── Decide which state to render ─────────────────────────────────────────
-  const showSelectionGrid = !hasGoals || (hasGoals && activeGoals.length < MAX_ACTIVE_GOALS && selected.length > 0);
-  const showAddLink = hasGoals && activeGoals.length < MAX_ACTIVE_GOALS;
-
-  return createPortal(
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="arbor-app fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onBackdropClick}
-          data-arbor-dialog-layer
-        >
-          <motion.div
-            ref={dialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label={hasGoals ? t("elev.goal.modal.status") : t("elev.goal.modal.pick", { name: firstName })}
-            tabIndex={-1}
-            className="w-full sm:max-w-lg rounded-t-[22px] sm:rounded-3xl overflow-hidden"
-            style={{
-              background: PAPER,
-              border: `1px solid ${RULE}`,
-              boxShadow: "var(--shadow-lg)",
-              maxHeight: "90vh",
-              overflowY: "auto",
-            }}
-            initial={{ y: "100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "100%", opacity: 0 }}
-            transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 pb-4" style={{ borderBottom: `1px solid ${RULE}` }}>
-              <div>
-                <h3
-                  className="text-lg font-extrabold leading-tight"
-                  style={{ fontFamily: "var(--font-display)", color: INK }}
-                >
-                  {hasGoals && selected.length === 0
-                    ? t("elev.goal.modal.status")
-                    : t("elev.goal.modal.pick", { name: firstName })}
-                </h3>
-                {!hasGoals && (
-                  <p className="text-[13px] mt-0.5" style={{ color: MUTED }}>
-                    {t("elev.goal.modal.pickSub")}
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={requestClose}
-                aria-label={t("aria.close")}
-                className="flex-shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg ms-3 transition"
-                style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", border: `1px solid ${RULE}`, color: MUTED }}
-              >
-                <Icon name="close" size={16} />
-              </button>
+  return createPortal(<AnimatePresence>{open && <motion.div
+    className="arbor-app fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm"
+    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+    onClick={onBackdropClick} data-arbor-dialog-layer
+  >
+    <motion.div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t("elev.goal.profile.title")} tabIndex={-1}
+      dir={uiLang === "he" ? "rtl" : "ltr"}
+      className="w-full sm:max-w-lg rounded-t-[22px] sm:rounded-3xl overflow-y-auto"
+      style={{ background: PAPER, border: `1px solid ${RULE}`, boxShadow: "var(--shadow-lg)", maxHeight: "90vh" }}
+      initial={{ y: "100%", opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: "100%", opacity: 0 }}
+      transition={{ type: "spring", damping: 28, stiffness: 300 }} onClick={event => event.stopPropagation()}
+    >
+      <div className="flex items-start justify-between gap-3 p-5" style={{ borderBottom: `1px solid ${RULE}` }}>
+        <h3 className="text-lg leading-tight" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("elev.goal.profile.title")}</h3>
+        <button type="button" onClick={requestClose} aria-label={t("aria.close")} className="shrink-0 min-w-11 min-h-11 rounded-lg" style={{ border: `1px solid ${RULE}`, color: MUTED }}><Icon name="close" size={18} /></button>
+      </div>
+      <div className="p-5 space-y-5">
+        {current && <div data-testid="goal-current" className="space-y-2">
+          <p className="flex items-start gap-2 text-base" style={{ color: INK }}><Icon name={goalGlyph(current)} size={20} /><bdi>{goalLabel(current, t)}</bdi></p>
+          <p className="text-xs" style={{ color: MUTED }}>{obsCount === 0 ? t("elev.goal.modal.obs.none") : obsCount === 1 ? t("elev.goal.modal.obs.one") : t("elev.goal.modal.obs.many", { n: obsCount })}{lastTs && ` · ${t("elev.goal.modal.lastLinked", { when: daysAgoLabel(lastTs, t) })}`}</p>
+        </div>}
+        {choice ? <div ref={confirmationRef} tabIndex={-1} data-testid="goal-confirm" className="space-y-3" aria-live="polite">
+          <p className="text-sm" style={{ color: INK }}>{current && current.goalId !== choice.goal.goalId ? t("elev.goal.modal.replace", { goal: goalLabel(current, t) }) : t("elev.goal.modal.keepNotes")}</p>
+          <p className="text-base font-semibold" style={{ color: INK }}><bdi>{goalLabel(choice.goal, t)}</bdi></p>
+          {error && <p role="alert" className="text-sm" style={{ color: INK }}>{t("elev.goal.modal.saveError")}</p>}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" data-testid="goal-save" disabled={saving} onClick={() => void save()} className="min-h-11 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{saving ? t("elev.goal.modal.saving") : error ? t("elev.goal.modal.retry") : t("elev.goal.modal.makeCurrent")}</button>
+            <button type="button" data-testid="goal-cancel" disabled={saving} onClick={cancel} className="min-h-11 rounded-xl px-4 py-2 text-sm" style={{ color: MUTED, border: `1px solid ${RULE}` }}>{t("elev.goal.modal.cancel")}</button>
+          </div>
+        </div> : <>
+          <div>
+            <p className="mb-3 text-sm" style={{ color: MUTED }}>{t("elev.goal.modal.pick", { name: firstName })}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {GOAL_TILES.filter(tile => !activeGoals.some(goal => goal.goalId === tile.id)).map(tile => <button type="button" key={tile.id} data-testid={`goal-choice-${tile.id}`}
+                disabled={saving || !selection} onClick={() => choose({ goalId: tile.id, label: tile.label, domainId: tile.domainId })}
+                className="min-h-11 flex items-start gap-3 rounded-xl p-3 text-start text-sm"
+                style={{ background: PAPER_DEEP, border: `1px solid ${prefillIds.includes(tile.id) ? RULE_STRONG : RULE}`, color: INK }}
+              ><Icon name={goalGlyph(tile)} size={20} /><span>{goalLabel({ goalId: tile.id, label: tile.label }, t)}</span></button>)}
             </div>
-
-            <div className="p-5 space-y-5">
-              {/* ── Goal Status view (goals exist) ────────────────────────── */}
-              {hasGoals && selected.length === 0 && (
-                <div className="space-y-3">
-                  {activeGoals.map((goal) => {
-                    const obsCount = countLinkedObservations(goal, behaviorLogs);
-                    const lastTs = lastLinkedObservation(goal, behaviorLogs);
-                    const isRemoving = removePending === goal.goalId;
-
-                    return (
-                      <div
-                        key={goal.goalId}
-                        className="rounded-2xl p-4"
-                        style={{ background: PAPER_DEEP, border: `1px solid ${RULE}` }}
-                      >
-                        <div className="flex items-center gap-3">
-                          {/* Domain colour dot */}
-                          <span
-                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                            style={{
-                              background:
-                                GOAL_TILES.find((t) => t.id === goal.goalId)?.domainColor ?? GREEN,
-                            }}
-                            aria-hidden="true"
-                          />
-                          <span className="flex-1 text-[14px] font-semibold" style={{ color: INK }}>
-                            {goalLabel(goal, t)}
-                          </span>
-                          {!isRemoving && (
-                            <button
-                              onClick={() => handleRemove(goal.goalId)}
-                              aria-label={t("elev.goal.modal.remove", { goal: goalLabel(goal, t) })}
-                              className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg transition"
-                              style={{ color: MUTED }}
-                            >
-                              <Icon name="delete" size={16} />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Observation count — flat integer only (gate §B) */}
-                        <p className="text-[12px] mt-2" style={{ color: MUTED }}>
-                          {obsCount > 0 ? (
-                            <>
-                              <span className="font-bold" style={{ color: GREEN }}>
-                                {obsCount === 1 ? t("elev.goal.modal.obs.one") : t("elev.goal.modal.obs.many", { n: obsCount })}
-                              </span>
-                              {lastTs && (
-                                <span style={{ color: MUTED }}>
-                                  {" · "}{t("elev.goal.modal.lastLinked", { when: daysAgoLabel(lastTs, t) })}
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            t("elev.goal.modal.obs.none")
-                          )}
-                        </p>
-
-                        {/* Remove confirmation (inline, no modal-within-modal) */}
-                        {isRemoving && (
-                          <div className="mt-3 flex items-center gap-2 flex-wrap">
-                            <span className="text-[13px] font-semibold" style={{ color: INK }}>
-                              {t("elev.goal.modal.removeConfirm", { goal: goalLabel(goal, t) })}
-                            </span>
-                            <button
-                              onClick={() => handleRemove(goal.goalId)}
-                              className="rounded-lg px-4 min-h-[44px] text-[12px] font-bold transition"
-                              style={{ background: "var(--arbor-danger, #d6566f)", color: "#fff" }}
-                            >
-                              {t("elev.goal.modal.removeYes")}
-                            </button>
-                            <button
-                              onClick={cancelRemove}
-                              className="rounded-lg px-4 min-h-[44px] text-[12px] font-bold transition"
-                              style={{ background: PAPER, color: MUTED, border: `1px solid ${RULE}` }}
-                            >
-                              {t("elev.goal.modal.keep")}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {/* + Add another focus link (when room remains) */}
-                  {showAddLink && (
-                    <button
-                      onClick={() => setSelected([])} // triggers the grid to appear below
-                      className="inline-flex items-center gap-1.5 text-[13px] font-bold transition"
-                      style={{ color: GREEN }}
-                    >
-                      <Icon name="add" size={16} /> {t("elev.goal.modal.addAnother")}
-                    </button>
-                  )}
-
-                  {/* Observation link explanation */}
-                  <p className="text-[12px] leading-relaxed" style={{ color: MUTED }}>
-                    {t("elev.goal.modal.obsHint")}
-                  </p>
-                </div>
-              )}
-
-              {/* ── Tile selection grid (no goals, or adding more) ─────────── */}
-              {(!hasGoals || selected.length > 0 || (hasGoals && showAddLink)) && (
-                <div>
-                  {hasGoals && (
-                    <p className="text-[13px] mb-3" style={{ color: MUTED }}>
-                      {MAX_ACTIVE_GOALS - activeGoals.length === 1
-                        ? t("elev.goal.modal.more.one")
-                        : t("elev.goal.modal.more.many", { n: MAX_ACTIVE_GOALS - activeGoals.length })}
-                    </p>
-                  )}
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {GOAL_TILES.filter(
-                      (t) => !activeGoals.some((g) => g.goalId === t.id)
-                    ).map((tile) => {
-                      const isSelected = selected.includes(tile.id);
-                      const isPrefill = prefillIds.includes(tile.id) && !isSelected;
-                      const isDisabled =
-                        !isSelected &&
-                        selected.length + activeGoals.length >= MAX_ACTIVE_GOALS;
-
-                      return (
-                        <button
-                          key={tile.id}
-                          onClick={() => !isDisabled && toggleTile(tile)}
-                          aria-pressed={isSelected}
-                          aria-disabled={isDisabled}
-                          title={isDisabled ? t("elev.goal.modal.cap") : undefined}
-                          className="flex items-center gap-3 rounded-2xl p-3.5 text-start transition"
-                          style={{
-                            background: isSelected
-                              ? GREEN_SOFT
-                              : isPrefill
-                              ? "var(--arbor-lav-soft, #ece9f9)"
-                              : PAPER_DEEP,
-                            border: `1.5px solid ${
-                              isSelected
-                                ? GREEN
-                                : isPrefill
-                                ? "var(--arbor-lav, #7a6bd8)"
-                                : RULE
-                            }`,
-                            opacity: isDisabled ? 0.45 : 1,
-                            cursor: isDisabled ? "not-allowed" : "pointer",
-                          }}
-                        >
-                          <span
-                            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                            style={{
-                              background: isSelected ? GREEN : PAPER,
-                              color: isSelected ? "#fff" : MUTED,
-                            }}
-                          >
-                            {isSelected ? (
-                              <Icon name="check" size={16} />
-                            ) : (
-                              ICON_MAP[tile.icon] ?? <Icon name="favorite" size={20} />
-                            )}
-                          </span>
-                          <span
-                            className="text-[13px] font-semibold leading-snug flex-1"
-                            style={{ color: isSelected ? GREEN : INK }}
-                          >
-                            {goalLabel({ goalId: tile.id, label: tile.label }, t)}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Sticky bottom bar — appears when at least 1 tile is selected */}
-            <AnimatePresence>
-              {selected.length > 0 && (
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: 20, opacity: 0 }}
-                  className="sticky bottom-0 px-5 py-4"
-                  style={{ background: PAPER, borderTop: `1px solid ${RULE}` }}
-                >
-                  <button
-                    onClick={handleSave}
-                    className="w-full inline-flex items-center justify-center gap-2 font-extrabold text-[15px] text-white rounded-2xl py-3.5 transition active:scale-[0.98]"
-                    style={{
-                      background: "var(--arbor-gradient-primary)",
-                      boxShadow: "var(--shadow-green)",
-                    }}
-                  >
-                    <Icon name="check" size={20} />
-                    {selected.length === 1 ? t("elev.goal.modal.save.one") : t("elev.goal.modal.save.many", { n: selected.length })}
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body
-  );
+          </div>
+          {earlier.length > 0 && <details data-testid="goal-earlier">
+            <summary className="min-h-11 py-3 text-sm font-semibold cursor-pointer" style={{ color: INK }}>{t("elev.goal.modal.earlier")}</summary>
+            <div className="space-y-3">{earlier.map((goal, index) => <div key={`${goal.goalId}:${index}`} className="border-t pt-3" style={{ borderColor: RULE }}>
+              <p className="text-sm" style={{ color: INK }}><bdi>{goalLabel(goal, t)}</bdi></p>
+              <button type="button" data-testid={`goal-earlier-${goal.goalId}`} disabled={saving || !selection} onClick={() => choose(goal)} className="min-h-11 py-2 text-start text-sm font-semibold" style={{ color: "var(--arbor-clay)" }}>{t("elev.goal.modal.makeCurrent")}</button>
+            </div>)}</div>
+          </details>}
+          <p className="text-xs leading-relaxed" style={{ color: MUTED }}>{t("elev.goal.modal.keepNotes")}</p>
+        </>}
+      </div>
+    </motion.div>
+  </motion.div>}</AnimatePresence>, document.body);
 }

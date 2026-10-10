@@ -330,3 +330,15 @@ describe("clinical firewall — #/journal shelf washes are identity, never a sta
     for (const rel of ["ShelfGrid.tsx", "ShelfPage.tsx"]) expect(read(rel)).not.toMatch(/--arbor-(?:danger|success|warning|error|amber|red)\b/);
   });
 });
+
+/* B-GROWTH-40: the one goal is identified by a glyph and plain words. */
+describe("one-goal presentation has no area colour", () => {
+  it("the real picker and read line never consume a colour-per-area field", () => {
+    for (const rel of ["practice/GoalBuilderModal.tsx", "practice/GoalFocusLine.tsx"]) {
+      const src = readDrill(rel);
+      expect(src).not.toMatch(/domainColor|DOMAIN_COLOR|tone=\"lav\"|--arbor-(?:lav|pink|peach|yellow|sky|green)/);
+      expect(src).toContain("goalGlyph");
+    }
+    expect('GOAL_TILES.find((t) => t.id === goal.goalId)?.domainColor').toMatch(/domainColor/);
+  });
+});

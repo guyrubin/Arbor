@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+import * as goalsModule from "../practice/goalBuilder";
 import type { ChildProfile } from "../types";
 import { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS } from "../lib/childAge";
 
@@ -35,6 +36,7 @@ function harness() {
     "../lib/api": {}, "../lib/loopEvents": {}, "../lib/screening": {},
     "../lib/onboardingGate": { computeNeedsOnboarding: () => false },
     "../lib/childAge": { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS },
+    "../practice/goalBuilder": goalsModule,
   };
   const code = ts.transpileModule(readFileSync(new URL("./ProfileContext.tsx", import.meta.url), "utf8"), { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React, esModuleInterop: true,

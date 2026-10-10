@@ -98,7 +98,7 @@ describe("CR-03 actual consumer wiring", () => {
     expect(contract(avatar).close).toBe("close");
     expect(avatar).toContain("const close = () => { reset(); onClose(); }");
     expect(avatar).toContain("runAvatarGeneration");
-    expect(read("practice/GoalBuilderModal.tsx")).toContain("onSave(merged)");
+    expect(read("practice/GoalBuilderModal.tsx")).toContain("saveChildGoal(childId, choice.goal, choice.basis)");
     expect(voice).toContain('"connecting" | "listening" | "thinking" | "speaking"');
     expect(voice).not.toContain(".getUserMedia(");
     expect(voice).toContain('typeof document === "undefined" ? overlay : createPortal(');

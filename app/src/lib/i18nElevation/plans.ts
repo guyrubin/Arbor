@@ -34,7 +34,7 @@ export const en: Record<string, string> = {
   "elev.plans.delete.cta": "Delete plan",
 
   // ── Board header
-  "elev.plans.focusIssue": "Focus: {issue}",
+  "elev.plans.focusIssue": "Working on: {issue}",
   // B-ASKJB-26: days since creation, said as such (was "{n} days running").
   "elev.plans.startedAgo": "Started {n} days ago",
   "elev.plans.startedToday": "Started today",
@@ -93,7 +93,7 @@ export const he: Record<string, string> = {
   "elev.plans.delete.title": "מחיקת תוכנית",
   "elev.plans.delete.cta": "מחיקת תוכנית",
 
-  "elev.plans.focusIssue": "במוקד: {issue}",
+  "elev.plans.focusIssue": "עובדים על: {issue}",
   "elev.plans.startedAgo": "התחלתם לפני {n} ימים",
   "elev.plans.startedToday": "התחלתם היום",
   "elev.plans.steps.title": "הצעדים",

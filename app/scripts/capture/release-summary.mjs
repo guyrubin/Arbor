@@ -1,6 +1,8 @@
 /** Pure aggregate verdict. Filesystem adapter lives in summarize-release.mjs. */
 import { expectedReleaseInteractionStates, missingReleaseInteractionEvidence } from './release-interactions.mjs';
 import { releaseMatrix, RELEASE_VIEWPORTS, releaseIdentity, releaseInventory, missingBaseEvidence, shardRoutes } from './release-config.mjs';
+import { SINGLE_GOAL_STATES } from './single-goal-contract.mjs';
+import { validSingleGoalNetwork } from './single-goal-network.mjs';
 import { validRecordPrintReceipt } from './record-print.mjs';
 import { FIRST_RUN_PREVIEW_STATES, firstRunPreviewPrimaryShot } from './first-run-preview-contract.mjs';
 
@@ -15,7 +17,8 @@ export function summarizeRelease(records, identity, scope = 'all') {
   let printPreviews = 0;
   let routeIds;
   const shards = [];
-  const expected = new Set(releaseMatrix(scope).map((cell) => `${cell.viewport}-${cell.group}-${cell.shard}`));
+  const matrix = releaseMatrix(scope);
+  const expected = new Set(matrix.map((cell) => `${cell.viewport}-${cell.group}-${cell.shard}`));
   for (const record of records) {
     const { capture, inventory, evidence, fonts, shotNames = [] } = record;
     const id = capture?.cell?.id;
@@ -39,11 +42,13 @@ export function summarizeRelease(records, identity, scope = 'all') {
       const routes = shardRoutes(ids, capture.cell.shard);
       if (cells.length !== routes.length || missingBaseEvidence(cells, routes, viewport).length) reasons.push('BASE_EVIDENCE_MISSING');
       baseCells += cells.filter((cell) => cell.mounted && cell.shot).length;
-    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry', 'first-run-preview', 'private-export'].includes(group) && viewport) {
+    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry', 'single-goal', 'first-run-preview', 'private-export'].includes(group) && viewport) {
       if (evidence?.sourceSha !== identity.sourceSha || evidence?.sourceTreeSha !== identity.sourceTreeSha) reasons.push('INTERACTION_IDENTITY_MISMATCH');
       if (missingReleaseInteractionEvidence(cells, { group, viewport, ...identity }).length || !cells.length || cells.some((cell) => !cell.reached || !cell.shot)) reasons.push('INTERACTION_EVIDENCE_MISSING');
+      if (group === 'single-goal' && (cells.length !== SINGLE_GOAL_STATES.length || new Set(cells.map(cell => cell.state)).size !== SINGLE_GOAL_STATES.length)) reasons.push('SINGLE_GOAL_STATE_INVENTORY_INVALID');
       interactionCells += cells.filter((cell) => cell.reached && cell.shot).length;
     } else reasons.push('SHARD_SCOPE_INVALID');
+    if (group === 'single-goal' && !validSingleGoalNetwork(evidence?.singleGoalFinalNetwork, 'after-context-browser-close')) reasons.push('SINGLE_GOAL_FINAL_NETWORK_INVALID');
     if (group === 'first-run-preview' && viewport) {
       const requiredShots = new Set(FIRST_RUN_PREVIEW_STATES.map(({ state }) => firstRunPreviewPrimaryShot({ state, viewport: `${viewport.w}x${viewport.h}`, lang: viewport.lang })));
       if (new Set(cells.map(cell => cell.shot)).size !== requiredShots.size) reasons.push('FIRST_RUN_PRIMARY_SHOTS_NOT_DISTINCT');
@@ -87,9 +92,9 @@ export function summarizeRelease(records, identity, scope = 'all') {
   for (const id of expected) if (!seen.has(id)) failures.push({ id, reasons: ['SHARD_NOT_RETURNED'] });
   const expectedBaseCells = ['all', 'record-release', 'confirmed-actions-release', 'kept-search-release', 'kid-entry-release', 'parent-kid-release'].includes(scope) ? 172 : 0;
   if (baseCells !== expectedBaseCells) failures.push({ id: 'base-matrix', reasons: ['BASE_MATRIX_INCOMPLETE'] });
-  const expectedFirstRunPrimaryShots = scope === 'first-run-preview-only' ? expected.size * FIRST_RUN_PREVIEW_STATES.length : 0;
-  if (scope === 'first-run-preview-only' && firstRunPrimaryShots.size !== expectedFirstRunPrimaryShots) failures.push({ id: 'first-run-primary-matrix', reasons: ['FIRST_RUN_PRIMARY_MATRIX_INCOMPLETE'] });
-  return { schema: 1, scope, ...(scope === 'first-run-preview-only' ? { expectedPrimaryScreenshots: expectedFirstRunPrimaryShots, primaryScreenshots: firstRunPrimaryShots.size } : {}), ...identity, completed: failures.length === 0, expectedShards: expected.size, returnedShards: records.length,
+  const expectedFirstRunPrimaryShots = matrix.filter(cell => cell.group === 'first-run-preview').length * FIRST_RUN_PREVIEW_STATES.length;
+  if (expectedFirstRunPrimaryShots > 0 && firstRunPrimaryShots.size !== expectedFirstRunPrimaryShots) failures.push({ id: 'first-run-primary-matrix', reasons: ['FIRST_RUN_PRIMARY_MATRIX_INCOMPLETE'] });
+  return { schema: 1, scope, ...(expectedFirstRunPrimaryShots > 0 ? { expectedPrimaryScreenshots: expectedFirstRunPrimaryShots, primaryScreenshots: firstRunPrimaryShots.size } : {}), ...identity, completed: failures.length === 0, expectedShards: expected.size, returnedShards: records.length,
     expectedBaseCells, baseCells, interactionCells, screenshots, printPreviews, routeIds: routeIds ?? [], shards, failures,
-    note: (scope === 'first-run-preview-only' ? 'DEV preview only. Production ProfileGate, remote empty-account entry and server acknowledgement remain BLOCKED. ' : '') + (scope === 'private-export-only' ? 'This bounded scope covers only the sandbox partial JSON flow. Complete authenticated private-file export and native-device download remain unverified. ' : '') + 'Coverage is rendered evidence, not a visual-quality sign-off. Review PNGs and interaction assertions. Synthetic records/mock replies do not establish production/provider behavior.' };
+    note: (expectedFirstRunPrimaryShots > 0 ? (scope === 'first-run-goal-only' ? 'First-run cells are DEV preview only. ' : 'DEV preview only. ') + 'Production ProfileGate, remote empty-account entry and server acknowledgement remain BLOCKED. ' : '') + (scope === 'private-export-only' ? 'This bounded scope covers only the sandbox partial JSON flow. Complete authenticated private-file export and native-device download remain unverified. ' : '') + 'Coverage is rendered evidence, not a visual-quality sign-off. Review PNGs and interaction assertions. Synthetic records/mock replies do not establish production/provider behavior.' };
 }
