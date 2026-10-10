@@ -3,7 +3,7 @@ import { BASE } from './config.mjs';
 
 /** Inspect strings transiently; only a bounded enum leaves the classifier. */
 export function classifyReleaseConsole(message) {
-  const minified = /^Minified React error #(\d{1,3})(?:\D|$)/.exec(message);
+  const minified = /\bMinified React error #(\d{1,3})(?!\d)/.exec(message);
   if (minified) return `REACT_MINIFIED_${minified[1]}`;
   if (/service worker registration blocked by playwright/i.test(message)) return 'SERVICE_WORKER_BLOCKED';
   if (/a component suspended.*uncached promise|uncached promise.*suspend/i.test(message)) return 'REACT_UNCACHED_PROMISE';
@@ -15,6 +15,12 @@ export function classifyReleaseConsole(message) {
   if (/referenceerror|is not defined/i.test(message)) return 'REFERENCE_ERROR';
   if (/arbor tab error/i.test(message)) return 'APP_ERROR_BOUNDARY';
   if (/an error occurred in the|the above error occurred in/i.test(message)) return 'REACT_ERROR_BOUNDARY';
+  if (/getSnapshot should be cached|result of getSnapshot/i.test(message)) return 'REACT_UNCACHED_SNAPSHOT';
+  if (/cannot update a component.*while rendering a different/i.test(message)) return 'REACT_RENDER_PHASE_UPDATE';
+  if (/multiple renderers concurrently rendering/i.test(message)) return 'REACT_MULTIPLE_RENDERERS';
+  if (/useInsertionEffect must not schedule/i.test(message)) return 'REACT_INSERTION_UPDATE';
+  if (/cannot be a descendant of|cannot appear as a descendant|validateDOMNesting/i.test(message)) return 'HTML_NESTING';
+  if (/autofocus processing was blocked|already has a focused element/i.test(message)) return 'FOCUS_WARNING';
   if (/maximum update depth|too many re-renders/i.test(message)) return 'REACT_UPDATE_DEPTH';
   if (/invalid hook call|rendered (?:more|fewer) hooks|change in the order of hooks/i.test(message)) return 'REACT_HOOKS';
   if (/optimized dep|outdated optimize dep|504.*optimi|dependency pre-bundl/i.test(message)) return 'OPTIMIZED_DEPENDENCY';
@@ -34,20 +40,40 @@ export function sanitizedReleaseLocation(location) {
   } catch { return undefined; }
 }
 
+/** Exception names and local static-module frames only. Never retain the
+ * exception message, stack text, function names, URL query, hash or API path. */
+export function safeReleaseException(error) {
+  const names = ['Error', 'TypeError', 'ReferenceError', 'RangeError', 'SyntaxError', 'URIError', 'EvalError', 'AggregateError', 'DOMException'];
+  const errorName = names.includes(error?.name) ? error.name : 'OtherError';
+  const frames = [];
+  if (typeof error?.stack === 'string') for (const line of error.stack.split('\n').slice(1, 41)) {
+    // V8 and Firefox module frames. Restrict after parsing to static app paths.
+    const match = /(?:\(|@|\s)(https?:\/\/[^\s)]+):(\d+):(\d+)\)?$/.exec(line.trim());
+    if (!match) continue;
+    const source = sanitizedReleaseLocation({ url: match[1], lineNumber: Number(match[2]), columnNumber: Number(match[3]) });
+    if (!source || !/^\/(?:assets|src)\//.test(source.path)) continue;
+    frames.push(source);
+    if (frames.length === 5) break;
+  }
+  return { errorName, ...(frames.length ? { frames } : {}) };
+}
+
 /** Bounded snapshots contain only enums, counts and sanitized module locations. */
 export function createRuntimeDiagnostics() {
   const counts = {};
   const recent = [];
+  const record = (message, location, exception) => {
+    const kind = classifyReleaseConsole(message);
+    counts[kind] = Math.min((counts[kind] ?? 0) + 1, 1_000_000);
+    const source = sanitizedReleaseLocation(location);
+    recent.push({ kind, ...(source ? { source } : {}), ...(exception ?? {}) });
+    if (recent.length > 20) recent.shift();
+    return kind;
+  };
   return {
-    record(message, location) {
-      const kind = classifyReleaseConsole(message);
-      counts[kind] = Math.min((counts[kind] ?? 0) + 1, 1_000_000);
-      const source = sanitizedReleaseLocation(location);
-      recent.push({ kind, ...(source ? { source } : {}) });
-      if (recent.length > 20) recent.shift();
-      return kind;
-    },
-    snapshot() { return { counts: { ...counts }, recent: recent.map(item => ({ ...item, ...(item.source ? { source: { ...item.source } } : {}) })) }; },
+    record,
+    recordPageError(error) { return record(error?.message, undefined, safeReleaseException(error)); },
+    snapshot() { return { counts: { ...counts }, recent: recent.map(item => ({ ...item, ...(item.source ? { source: { ...item.source } } : {}), ...(item.frames ? { frames: item.frames.map(frame => ({ ...frame })) } : {}) })) }; },
   };
 }
 

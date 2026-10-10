@@ -28,10 +28,14 @@ describe('release interaction contracts, without browser or sockets', () => {
   });
 
   it('limits the narrow diagnostic to actual composer and mock readiness', () => {
-    expect(expectedReleaseInteractionStates('ask-diagnostic', mobile).map((item: any) => item.state)).toEqual(['launcher-composer', 'ask-mock-answer']);
+    expect(expectedReleaseInteractionStates('ask-diagnostic', mobile).map((item: any) => item.state)).toEqual(['launcher-composer', 'ask-mock-answer', 'direct-composer', 'direct-mock-answer']);
     const actualFlow = source.indexOf("await screen('shell', 'ask-mock-answer'");
     expect(actualFlow).toBeLessThan(source.indexOf("await screen('shell', 'tools-open'"));
-    expect(actualFlow).toBeLessThan(source.indexOf("apiState.chat = 'report'"));
+    expect(actualFlow).toBeLessThan(source.indexOf("await collectReportStates("));
+    expect(actualFlow).toBeLessThan(source.indexOf("await screen('coach', 'direct-composer'"));
+    expect(source).toContain("DIRECT_ENTRY_WITHOUT_LAUNCHER_CLICK");
+    expect(source).toContain("apiState.mockRequests > before.requests");
+    expect(source).toContain("apiState.mockResponses > before.responses");
     expect(source).toContain("cell.fixture = 'actual-local-mock-server-response'");
     expect(source).toContain("cell.fixture = 'bilingual-report-presentation-fixture'");
   });
@@ -45,6 +49,16 @@ describe('release interaction contracts, without browser or sockets', () => {
     expect(expectedReleaseInteractionStates('focused', desktop).some((item: any) => item.state === 'record-profile')).toBe(true);
     expect(source).toContain('_priorCells: navigation.cells');
     expect(source).toContain('cells: [..._priorCells]');
+  });
+
+  it('preserves interrupted flows, bottom reachability and useful activity context', () => {
+    const states = expectedReleaseInteractionStates('navigation', mobile).map(item => item.state);
+    for (const state of ['now-bottom-reachable', 'together-bottom-reachable', 'together-early-back', 'together-how-to-begin']) expect(states).toContain(state);
+    for (const assertion of ['STORY_CONTENT_MOUNTED', 'EXACT_RETURN_CARD_FOCUSED', 'EARLY_BACK_WINDOW_OBSERVED', 'EARLY_BACK_EXACT_CARD_FOCUS', 'FINAL_ACTION_VISIBLE_ABOVE_DOCK', 'FINAL_ACTION_NOT_OCCLUDED', 'CONCRETE_ACTIVITY_DETAIL', 'EXACT_SAY_THIS_PRESERVED', 'TWO_DENSITY_TABS', 'NO_DUPLICATE_SHELL_NAV']) expect(source).toContain(assertion);
+    expect(source).toContain("page.locator('[data-density-toggle]')");
+    expect(source).toContain('dependent(profileReached)');
+    expect(source).toContain('dependent(memoryReached)');
+    expect(source).toContain("dialog.getByRole('heading').first()");
   });
 
   it('rejects unknown groups and non-matrix viewports', () => {

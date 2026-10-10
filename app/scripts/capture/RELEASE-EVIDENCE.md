@@ -10,8 +10,9 @@ Only PNG screenshots and explicit evidence JSON/summary files are uploaded.
 1. Integrate the final reviewed UI source and these harness scripts on a dedicated
    candidate branch. A capture from another source commit is not final evidence.
 2. Review and push `codex/parent-final-ask-diagnostic` for one mobile-EN Ask pass.
-   This first establishes actual launcher/composer readiness and a real local mock
-   response in the built client. API-error/consent/report fixtures are labeled
+   This attempts launcher/composer readiness and a real local mock response first,
+   then separately full-loads the supported `#/coach` route and tests its composer
+   and a fresh mock response. Direct-route success never passes a failed launcher. API-error/consent/report fixtures are labeled
    separately. A fixture response is never evidence that the mock request worked.
 3. After the UI and Ask readiness are settled, review and push the exact final
    candidate to `codex/parent-final-capture`. The matrix has eight independent jobs:
@@ -69,3 +70,28 @@ Only source contracts and direct installed Vitest run locally with the offline
 network guard. Do not launch a browser, provider or full sweep on a denied host.
 A passing source test does not establish rendered behavior. The actual final
 screenshots and interactions must be collected in the dedicated CI container.
+
+## Surface readiness and focused regressions
+
+Coach and Scholar base evidence requires an actually visible composer. A mounted
+background Today page or the conversation Suspense fallback is not a ready cell;
+a real conversation error boundary is recorded but remains rejected evidence.
+Exceptions export only bounded enum categories, allowlisted JavaScript error
+names and up to five local static-module frame paths with line/column positions.
+No raw exception messages, stacks, function names or URL queries leave the classifier.
+
+Together's normal return waits for the real destination content; a separate early
+Back state preserves the interrupted-transition focus requirement. If the capture
+misses that brief transition window it records the named unobserved-window failure,
+not a pass. Now and Together test the final actionable content at maximum scroll
+against the actual sticky/fixed launcher and navigation, including a hit test.
+Together's “How to begin” opens the real activity preview and checks its context,
+exact Say this text and separate Try/Keep controls without saving an observation.
+
+Structured-report fixtures target the reviewed disclosure layout: the first step
+and Say this lead, every optional section is photographed closed and open, and
+all supplied display prose is counted once only with every section exposed.
+Separate states preserve urgent help ahead of the first step, ungated text-only
+explanations, the footer and the real optional action controls without invoking
+provider, plan, sharing or memory writes. These are labeled renderer fixtures;
+they never stand in for either independently verified real mock response.

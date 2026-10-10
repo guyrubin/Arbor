@@ -44,13 +44,18 @@ export function releaseSweepArguments(output, routeIds, cell) {
   if (cell.group !== 'base') throw new Error('RELEASE_BASE_CELL_REQUIRED');
   return ['scripts/rendered-sweep.mjs', '--base', BASE, '--out', output, '--seed', 'demo', '--no-states', '--routes', shardRoutes(routeIds, cell.shard).join(','), '--viewport', cell.viewport.id];
 }
+export function requiresConversationReadiness(route) {
+  return ['coach', 'scholar'].includes(String(route).split('?')[0]);
+}
 export function missingBaseEvidence(cells, routeIds, viewport) {
   return routeIds.flatMap((route) => {
     const item = cells.find((cell) => cell.route === route && (cell.state ?? 'base') === 'base' && cell.viewport === `${viewport.w}x${viewport.h}` && cell.lang === viewport.lang);
-    return item?.mounted && item.shot && !item.readyTimedOut && item.seedHydrated && item.browserFixture?.connectivity === 'synthetic-online' && item.navigatorOnline === true
+    const actualSurface = !requiresConversationReadiness(route) || item?.conversationReadiness === 'composer';
+    return actualSurface && item?.mounted && item.shot && !item.readyTimedOut && item.seedHydrated && item.browserFixture?.connectivity === 'synthetic-online' && item.navigatorOnline === true
       ? [] : [{ route, viewport: viewport.id, failure: item?.fontFailure ?? (item ? 'BASE_EVIDENCE_INCOMPLETE' : 'NOT_ATTEMPTED') }];
   });
 }
+
 export function releaseIdentity(sourceSha, sourceTreeSha) {
   return { sourceSha: captureRevision(sourceSha), sourceTreeSha: captureRevision(sourceTreeSha) };
 }

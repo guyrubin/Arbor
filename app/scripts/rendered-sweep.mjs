@@ -75,7 +75,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { networkInterfaces } from "node:os";
 import { assertLoopbackOnly, captureRevision } from "./capture/config.mjs";
-import { RELEASE_VIEWPORTS, expectedSeedMarker } from "./capture/release-config.mjs";
+import { RELEASE_VIEWPORTS, expectedSeedMarker, requiresConversationReadiness } from "./capture/release-config.mjs";
 import { classifyReleaseConsole, createRuntimeDiagnostics } from "./capture/runtime-diagnostics.mjs";
 import { initializeSyntheticOnline } from "./capture/small-state.mjs";
 import { captureFontContextOptions, installOfflineFonts, captureScreenshot } from "./capture/font-runtime.mjs";
@@ -1420,6 +1420,9 @@ let cbCounter = Date.now();
  */
 async function visit(context, base, route, vp, allowLatin, shotPath, run = null) {
   const loadRoute = run?.state.from ?? route;
+  const conversationRoute = requiresConversationReadiness(loadRoute);
+  const conversationComposer = '.companion-conversation:not([hidden]) [data-testid="companion-composer"] textarea';
+  const conversationError = '.companion-conversation:not([hidden]) [role="alert"]';
   // B-LOOP-17: a state's page clock (`now`: "HH:MM" local or ISO) rides the query, before the
   // hash — lib/devClock honours it on the dev server only.
   const clockQuery = run?.state.now ? `&now=${encodeURIComponent(run.state.now)}` : "";
@@ -1437,7 +1440,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     if (/status of 429\b/.test(message.text())) rateLimited++;
     else errors.add(diagnostics.record(message.text(), message.location()));
   });
-  page.on("pageerror", (error) => errors.add(diagnostics.record(error?.message)));
+  page.on("pageerror", (error) => errors.add(diagnostics.recordPageError(error)));
   page.on("request", () => { inflight++; lastNet = Date.now(); });
   const done = (req) => {
     inflight = Math.max(0, inflight - 1); lastNet = Date.now();
@@ -1465,7 +1468,9 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     while (Date.now() < deadline) {
       // A read held for the /api limiter window extends the budget instead of failing the cell.
       if (limiterHoldUntil > Date.now()) deadline = Math.max(deadline, limiterHoldUntil + READY_BUDGET_MS);
-      if (!present) present = await page.locator(READY_SELECTOR).count().then((n) => n > 0, () => false);
+      if (!present) present = conversationRoute
+        ? await page.locator(conversationComposer).first().isVisible().catch(() => false) || await page.locator(conversationError).first().isVisible().catch(() => false)
+        : await page.locator(READY_SELECTOR).count().then((n) => n > 0, () => false);
       if (present && inflight === 0 && Date.now() - lastNet >= QUIET_MS) break;
       await page.waitForTimeout(100);
     }
@@ -1524,6 +1529,14 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     rec = await page.evaluate(collect, { lang: vp.lang, allowLatin });
   } catch (err) {
     rec = { mounted: false, collectError: classifyReleaseConsole(err?.message) };
+  }
+  if (conversationRoute) {
+    const composer = await page.locator(conversationComposer).first().isVisible().catch(() => false);
+    const boundary = await page.locator(conversationError).first().isVisible().catch(() => false);
+    rec.conversationReadiness = composer ? "composer" : boundary ? "error-boundary" : "pending";
+    // Background Today modules cannot prove that the conversation route mounted.
+    rec.mounted = composer;
+    rec.errorBoundary = boundary;
   }
   let shot = null;
   const shotFile = typeof shotPath === "function" ? shotPath(stateRec.state) : shotPath;

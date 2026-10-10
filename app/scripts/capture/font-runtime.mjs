@@ -81,7 +81,7 @@ export async function captureScreenshot(page, options) {
     const { root } = await session.send('DOM.getDocument');
     const seen = new Set();
     // Actual rendered glyph families, not merely CSS font-family declarations.
-    for (const selector of ['.companion-conversation:not([hidden]) h3, .companion-conversation:not([hidden]) p', 'main h1, main h2, main h3, main p']) {
+    for (const selector of ['[role=dialog][aria-modal=true] h2, [role=dialog][aria-modal=true] h3, [role=dialog][aria-modal=true] p, [role=dialog][aria-modal=true] button', '.companion-conversation:not([hidden]) h3, .companion-conversation:not([hidden]) p', 'main h1, main h2, main h3, main p']) {
       const { nodeIds } = await session.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector });
       for (const nodeId of nodeIds.slice(0, 12)) {
         if (seen.has(nodeId)) continue; seen.add(nodeId);
