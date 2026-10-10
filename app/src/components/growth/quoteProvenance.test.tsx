@@ -38,6 +38,8 @@ vi.mock("../share/SendSheet", () => ({ SendButton: (props: { getText: () => stri
 vi.mock("../../lib/reportExport", () => ({ openPrintableReport: h.print }));
 vi.mock("../../lib/share", async original => ({ ...await original<typeof import("../../lib/share")>(), shareWordsText: h.share }));
 vi.mock("../sections/Reports", () => ({ useConsultPdf: () => h.print }));
+// B-SHELL-39: the kept-description card has its own tests (components/describe).
+vi.mock("../describe/KeptDescription", () => ({ default: () => null }));
 vi.mock("../kidmode/useKidModeEntry", () => ({ useKidModeEntry: () => ({ request: vi.fn(), step: null }) }));
 vi.mock("../overview/QuickLogModal", () => ({ default: () => null }));
 vi.mock("../sections/FirstsMoment", () => ({ default: () => null }));

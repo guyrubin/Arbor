@@ -1,0 +1,46 @@
+/* B-SHELL-39 — "Tell Arbor about {name}": the describe surface, the readback
+   and the kept list. Parent register; tokens only; logical properties (RTL). */
+.describe-surface, .describe-readback, .describe-modal, .describe-kept-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; color: var(--arbor-ink); }
+.describe-title { font-family: var(--font-display); font-size: clamp(20px, 4.6vw, 24px); line-height: 1.2; font-weight: 700; margin: 0; }
+.describe-sub, .describe-note, .describe-said, .describe-count, .describe-hints-label { font-size: 13px; line-height: 1.45; color: var(--arbor-muted); margin: 0; }
+.describe-hints { border: 1px solid var(--arbor-rule); border-radius: 14px; padding: 10px 14px; background: var(--arbor-paper-deep); }
+.describe-hints ul { margin: 4px 0 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 2px; font-size: 14px; line-height: 1.4; }
+.describe-field { display: flex; flex-direction: column; gap: 5px; font-size: 14px; font-weight: 600; }
+.describe-field textarea, .describe-edit input { min-width: 0; width: 100%; min-height: 44px; border: 1px solid var(--arbor-rule-strong); border-radius: 12px; padding: 10px 12px; background: var(--arbor-paper-deep); color: var(--arbor-ink); font-size: 16px; font-weight: 400; line-height: 1.45; }
+.describe-field textarea { resize: vertical; }
+.describe-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.describe-mic { display: flex; flex-direction: column; gap: 8px; flex: 1 1 220px; min-width: 0; }
+.describe-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--arbor-rule-strong); border-radius: 12px; background: var(--arbor-paper); color: var(--arbor-ink); font-size: 14px; font-weight: 700; align-self: flex-start; }
+.describe-link { min-height: 44px; min-width: 44px; padding: 8px 10px; border-radius: 10px; color: var(--arbor-green-ink); font-size: 14px; font-weight: 700; background: none; }
+.describe-fills > div { display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: 6px; }
+.describe-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 12px; border: 1px solid var(--arbor-rule); border-radius: 999px; background: var(--arbor-paper-deep); color: var(--arbor-ink); font-size: 13px; }
+.describe-group { display: flex; flex-direction: column; gap: 6px; }
+.describe-group h3 { font-size: 13px; font-weight: 800; color: var(--arbor-lav-ink); margin: 0; }
+.describe-group ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.describe-item, .describe-question { border: 1px solid var(--arbor-rule); border-radius: 14px; padding: 10px 12px; background: var(--arbor-paper-elevated); display: flex; flex-direction: column; gap: 4px; }
+.describe-keep { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; cursor: pointer; }
+.describe-keep input { flex: none; width: 22px; height: 22px; margin-block-start: 2px; accent-color: var(--arbor-green-ink); }
+.describe-words { font-size: 15px; line-height: 1.45; margin: 0; overflow-wrap: anywhere; }
+.describe-said { overflow-wrap: anywhere; }
+.describe-tag { display: inline-block; margin-inline-end: 6px; padding: 1px 8px; border-radius: 999px; background: var(--arbor-lav-soft); color: var(--arbor-lav-ink); font-size: 12px; font-weight: 700; }
+.describe-milestone { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; margin: 0; color: var(--arbor-ink); }
+.describe-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.describe-edit { display: flex; flex-direction: column; gap: 6px; }
+.describe-ai-line { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; line-height: 1.45; color: var(--arbor-muted); margin: 0; }
+.describe-keep-these { width: 100%; min-height: 48px; border-radius: 14px; background: var(--arbor-green-ink); color: var(--arbor-on-accent); font-size: 15px; font-weight: 700; padding: 12px; }
+.describe-keep-these:disabled, .describe-secondary:disabled, .describe-link:disabled, .describe-chip:disabled { opacity: .55; cursor: default; }
+.describe-kept-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 14px; margin: 0; padding: 8px 12px; border-radius: 14px; background: var(--arbor-green-soft); color: var(--arbor-green-ink); }
+.describe-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.describe-footer .describe-keep-these { width: auto; flex: 1 1 200px; }
+.describe-kept-card { border: 1px solid var(--arbor-rule); border-radius: 18px; padding: 16px; background: var(--arbor-paper-elevated); }
+.describe-kept-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.describe-kept-head > div { min-width: 0; flex: 1 1 220px; display: flex; flex-direction: column; gap: 4px; }
+@media (max-width: 390px) { .describe-item, .describe-question { padding: 9px 10px; } .describe-chip { font-size: 12px; } }
+/* The guided conversation: Arbor's question, the parent's answer. */
+.describe-ask { font-family: var(--font-display); font-size: 18px; line-height: 1.35; font-weight: 700; margin: 0; color: var(--arbor-ink); }
+.describe-thread { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.describe-thread ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.describe-turn { display: flex; flex-direction: column; gap: 6px; }
+.describe-turn .describe-ask { font-size: 16px; padding: 10px 12px; border-radius: 14px; background: var(--arbor-lav-soft); color: var(--arbor-lav-ink); max-width: 92%; }
+.describe-answer { margin: 0; padding: 10px 12px; border-radius: 14px; background: var(--arbor-paper-deep); border: 1px solid var(--arbor-rule); font-size: 15px; line-height: 1.45; max-width: 92%; align-self: flex-end; overflow-wrap: anywhere; white-space: pre-wrap; }
+.describe-answer-box { display: flex; flex-direction: column; gap: 8px; }

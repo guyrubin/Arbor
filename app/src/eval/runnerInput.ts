@@ -41,6 +41,8 @@ export function runnerInputError(scenario: Pick<EvalScenario, "route" | "input" 
   if (route === "/api/describe-child") {
     if (typeof input.text !== "string") return "has no text input for /api/describe-child";
     if (input.keptItems !== undefined && !Array.isArray(input.keptItems)) return "has a non-array keptItems input";
+    if (input.question !== undefined && typeof input.question !== "string") return "has a non-string question input";
+    if (input.askedQuestions !== undefined && !Array.isArray(input.askedQuestions)) return "has a non-array askedQuestions input";
     return null;
   }
   if (route === "/api/generate-handoff") {

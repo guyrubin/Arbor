@@ -1,13 +1,17 @@
 /**
- * B-SHELL-39 — "Tell Arbor about {name}": the parent describes the child by
- * voice or text; Arbor plays back what it heard as items the parent keeps,
- * edits or removes, and asks up to three follow-up questions.
+ * B-SHELL-39 — "Tell Arbor about {name}": one guided conversation. Arbor
+ * asks "Tell me about {name}", then one follow-up at a time (≤ 4), each about
+ * the parent's last answer; the parent answers by voice or text; Arbor plays
+ * back what it heard as items the parent keeps, edits or removes.
  *
  * This module is the pure half shared by the server (types, limits) and the
  * client (the readback session, the profile projection and the commit plan).
  * No React, no network, no storage: the network and the writes are injected
  * services, so onboarding's FirstRunController and the "Tell Arbor more"
  * door run the same session and the same tests.
+ *
+ * @icon-font-ignore — a pure module: its string literals ("commit", "add") are
+ * states and operations, never Material Symbols icon names.
  *
  * Rules it carries (Guy, 10 Oct; ROS decision 2026-10-10):
  *  - D2: no raw transcript is stored — only the items the parent keeps.
@@ -31,9 +35,8 @@ export const DESCRIBE_TEXT_MAX = 2000;
 export const DESCRIBE_ITEM_MAX = 120;
 export const MAX_FOCUS_AREAS = 3;
 export const MAX_PARENT_PREFERENCES = 8;
-export const MAX_FOLLOW_UPS = 3;
-/** Follow-up answers re-run extraction at most twice. */
-export const MAX_FOLLOW_UP_ROUNDS = 2;
+/** Follow-up questions after the opening, one at a time (server-enforced too). */
+export const MAX_FOLLOW_UPS = 4;
 /** The whole-readback Undo window after "Keep these". */
 export const DESCRIBE_UNDO_MS = 10_000;
 
@@ -76,7 +79,15 @@ export interface DescribeDraftItem {
   milestoneId?: string;
   milestoneTitle?: string;
 }
-export interface DescribeDraft { items: DescribeDraftItem[]; followUps: string[] }
+export interface DescribeDraft {
+  items: DescribeDraftItem[];
+  /** ONE question about the answer just given, or null when nothing worth
+   *  asking remains (always null after the 4th follow-up). */
+  nextQuestion: string | null;
+  /** The question's language, and a screened-sentence token for /api/tts. */
+  nextQuestionLang?: "en" | "he";
+  nextQuestionToken?: string;
+}
 
 /** The body the client posts to /api/describe-child. */
 export interface DescribeRequest {
@@ -85,6 +96,10 @@ export interface DescribeRequest {
   language: "en" | "he";
   keptItems: { id: string; kind: ProfileKind; words: string }[];
   milestoneCandidateIds?: string[];
+  /** The follow-up this text answers (absent for the opening answer). */
+  question?: string;
+  /** Follow-ups already asked, oldest first. */
+  askedQuestions?: string[];
 }
 
 // ── Small helpers ────────────────────────────────────────────────────────────
@@ -304,18 +319,28 @@ export const READBACK_GROUPS: readonly ReadbackGroup[] = ["about", "hard", "focu
 export const groupOf = (kind: DescribeKind): ReadbackGroup =>
   kind === "worry" ? "hard" : kind === "focus" ? "focus" : kind === "preference" ? "help" : kind === "milestone" ? "milestones" : "about";
 
-// ── The readback session (an external store; onboarding and the door) ───────
+// ── The guided conversation + readback (an external store; onboarding and the door) ──
 
-export interface FollowUpState { id: string; question: string; round: number; status: "open" | "answering" | "answered" | "skipped" }
-export type DescribeStatus = "idle" | "drafting" | "ready" | "committing" | "kept" | "failed";
+/** One turn of the thread: Arbor's question and the parent's answer. Turn 0
+ *  is the opening ("Tell me about {name}"); up to MAX_FOLLOW_UPS follow. */
+export interface ThreadTurn {
+  id: string;
+  question: string;
+  answer?: string;
+  status: "open" | "answering" | "answered" | "skipped";
+  /** The question's language and its screened-sentence TTS token (follow-ups). */
+  lang?: "en" | "he";
+  ttsToken?: string;
+}
+/** idle → drafting (the opening answer) → asking (one open follow-up) ⇄
+ *  drafting → ready (the readback) → committing → kept. */
+export type DescribeStatus = "idle" | "drafting" | "asking" | "ready" | "committing" | "kept" | "failed";
 export interface DescribeSessionState {
   status: DescribeStatus;
   items: ReadbackItem[];
-  followUps: FollowUpState[];
-  /** Follow-up rounds used (≤ MAX_FOLLOW_UP_ROUNDS). */
-  rounds: number;
-  /** Why the last request did not produce a readback. */
-  error: "" | "model" | "crisis" | "commit" | "followUp";
+  thread: ThreadTurn[];
+  /** Why the last request did not produce what was asked for. */
+  error: "" | "model" | "crisis" | "keepFailed" | "followUp";
   /** After "Keep these": what was written, for Undo. */
   receipt: DescribeReceipt | null;
   /** Epoch ms when the Undo window closes. */
@@ -331,10 +356,21 @@ export interface DescribeReceipt {
   milestonesBefore: unknown[];
 }
 
+/** One request: the answer, the question it answers, and every item so far. */
+export interface DescribeDraftInput {
+  text: string;
+  /** The follow-up this answers (absent for the opening answer). */
+  question?: string;
+  /** Follow-ups already asked, oldest first (the server stops after the 4th). */
+  askedQuestions: string[];
+  /** Kept items on the child doc AND the items drafted so far. */
+  keptItems: KeptDescribeItem[];
+}
+
 export interface DescribeServices {
   /** POST /api/describe-child. Throws on failure; an escalation throws an
    *  error whose `status` is 409. */
-  draft: (input: { text: string; keptItems: KeptDescribeItem[] }) => Promise<DescribeDraft>;
+  draft: (input: DescribeDraftInput) => Promise<DescribeDraft>;
   /** The child doc the plan is computed against, read at Keep time. */
   profile: () => Partial<DescribeFields> | null;
   /** Writes the plan; resolves with what to undo. */
@@ -343,8 +379,8 @@ export interface DescribeServices {
   now?: () => Date;
 }
 
-const emptySession = (): DescribeSessionState => ({ status: "idle", items: [], followUps: [], rounds: 0, error: "", receipt: null, undoUntil: 0 });
-/** An idle readback (nothing asked, nothing kept). */
+const emptySession = (): DescribeSessionState => ({ status: "idle", items: [], thread: [], error: "", receipt: null, undoUntil: 0 });
+/** An idle conversation (nothing asked, nothing kept). */
 export const emptyDescribeState = (): DescribeSessionState => emptySession();
 
 /** The worries a parent kept from a readback that are still in `challenges`:
@@ -360,7 +396,7 @@ export function describedWorries(profile: Partial<DescribeFields> | null | undef
 
 const isEscalation = (error: unknown): boolean => !!error && typeof error === "object" && (error as { status?: unknown }).status === 409;
 
-/** A draft from the server → readback rows (keep on by default) + open questions. */
+/** A draft from the server → readback rows (keep on by default). */
 export function readbackRows(draft: DescribeDraft, round: number, existing: readonly ReadbackItem[] = []): ReadbackItem[] {
   const taken = new Set(existing.map((item) => item.id));
   return draft.items.map((item, index) => {
@@ -370,6 +406,38 @@ export function readbackRows(draft: DescribeDraft, round: number, existing: read
     return { ...item, id, keep: true, round };
   });
 }
+
+/**
+ * A later answer's rows joined to the readback. A row that replaces or
+ * removes an item DRAFTED earlier in this conversation updates that row in
+ * place (the earlier row was never written); a row acting on a kept item
+ * stays a replace/remove of the child doc; anything already said is dropped.
+ */
+export function mergeRows(existing: readonly ReadbackItem[], fresh: readonly ReadbackItem[]): ReadbackItem[] {
+  let out = [...existing];
+  for (const row of fresh) {
+    const drafted = row.itemId ? out.find((item) => item.id === row.itemId) : undefined;
+    if (drafted && row.op === "remove") { out = out.filter((item) => item.id !== drafted.id); continue; }
+    if (drafted && row.op === "replace") {
+      out = out.map((item) => (item.id === drafted.id ? { ...item, kind: row.kind, text: row.text, quote: row.quote, edited: undefined, ...(row.domainId ? { domainId: row.domainId } : {}), ...(row.parentReported ? { parentReported: true as const } : {}), round: row.round } : item));
+      continue;
+    }
+    if (out.some((item) => item.kind === row.kind && item.op === row.op && same(readbackWords(item), row.text))) continue;
+    out.push(row);
+  }
+  return out;
+}
+
+/** The items a request carries: what the child doc holds plus the profile-kind
+ *  rows drafted so far (ids are the readback's own, so an answer can replace one). */
+export function keptAndDrafted(profile: Partial<DescribeFields> | null, rows: readonly ReadbackItem[]): KeptDescribeItem[] {
+  const drafted: KeptDescribeItem[] = rows
+    .filter((row) => row.op === "add" && (PROFILE_KINDS as readonly string[]).includes(row.kind))
+    .map((row) => ({ id: row.id, kind: row.kind as ProfileKind, words: readbackWords(row), ...(row.domainId ? { domainId: row.domainId } : {}), source: "describe" as const }));
+  return [...keptItemsFromProfile(profile), ...drafted];
+}
+
+export type DescribeOutcome = "asking" | "ready" | "failed" | "crisis" | "empty";
 
 export class DescribeSession {
   private state: DescribeSessionState = emptySession();
@@ -382,27 +450,43 @@ export class DescribeSession {
   private put(next: Partial<DescribeSessionState>) { this.state = { ...this.state, ...next }; this.listeners.forEach((fn) => fn()); }
   private now() { return this.services.now?.() ?? new Date(); }
 
-  /** Back to an empty session (a new description, or the parent left). */
+  /** Back to an empty conversation (a new description, or the parent left). */
   reset() { this.generation++; this.state = emptySession(); this.listeners.forEach((fn) => fn()); }
 
-  /** The first description. Resolves with the outcome so a caller can take
-   *  its fallback path: "crisis" (no request was made), "failed" (model
-   *  error or timeout — the caller keeps today's path, no retry loop),
-   *  "empty" (nothing to play back) or "ready". */
-  async start(text: string): Promise<"ready" | "failed" | "crisis" | "empty"> {
+  /** The follow-ups asked so far (not the opening). */
+  private asked(): ThreadTurn[] { return this.state.thread.slice(1); }
+
+  /** The turn after an answer: one open follow-up, or the readback. */
+  private next(draft: DescribeDraft, round: number, items: ReadbackItem[], thread: ThreadTurn[]): DescribeOutcome {
+    const question = typeof draft.nextQuestion === "string" ? draft.nextQuestion.trim() : "";
+    const already = new Set(thread.map((turn) => normalize(turn.question)));
+    if (question && thread.length - 1 < MAX_FOLLOW_UPS && !already.has(normalize(question))) {
+      const turn: ThreadTurn = { id: `q${round + 1}`, question, status: "open", ...(draft.nextQuestionLang ? { lang: draft.nextQuestionLang } : {}), ...(draft.nextQuestionToken ? { ttsToken: draft.nextQuestionToken } : {}) };
+      this.put({ status: "asking", items, thread: [...thread, turn], error: "" });
+      return "asking";
+    }
+    this.put({ status: "ready", items, thread, error: "" });
+    return "ready";
+  }
+
+  /** The opening answer. Resolves with the outcome so a caller can take its
+   *  fallback path: "crisis" (no request was made), "failed" (model error or
+   *  timeout — the caller keeps today's path, no retry loop), "empty"
+   *  (nothing to play back and nothing to ask), "asking" (one follow-up is
+   *  open) or "ready" (the readback). */
+  async start(text: string, openingQuestion = ""): Promise<DescribeOutcome> {
     const words = text.trim().slice(0, DESCRIBE_TEXT_MAX);
     if (!words || this.state.status === "drafting" || this.state.status === "committing") return "empty";
     if (screenForImmediateEscalation({ message: words })) { this.put({ ...emptySession(), status: "failed", error: "crisis" }); return "crisis"; }
     const generation = ++this.generation;
-    this.put({ ...emptySession(), status: "drafting" });
+    const opening: ThreadTurn = { id: "q0", question: openingQuestion, answer: words, status: "answered" };
+    this.put({ ...emptySession(), status: "drafting", thread: [opening] });
     try {
-      const draft = await this.services.draft({ text: words, keptItems: keptItemsFromProfile(this.services.profile()) });
+      const draft = await this.services.draft({ text: words, askedQuestions: [], keptItems: keptItemsFromProfile(this.services.profile()) });
       if (generation !== this.generation) return "failed";
       const items = readbackRows(draft, 0);
-      const followUps = draft.followUps.slice(0, MAX_FOLLOW_UPS).map((question, index) => ({ id: `q0-${index}`, question, round: 0, status: "open" as const }));
-      if (!items.length && !followUps.length) { this.put({ status: "idle" }); return "empty"; }
-      this.put({ status: "ready", items, followUps, error: "" });
-      return "ready";
+      if (!items.length && !draft.nextQuestion) { this.put({ ...emptySession() }); return "empty"; }
+      return this.next(draft, 0, items, [opening]);
     } catch (error) {
       if (generation !== this.generation) return "failed";
       const crisis = isEscalation(error);
@@ -411,40 +495,45 @@ export class DescribeSession {
     }
   }
 
-  /** A follow-up answer re-runs extraction on that answer only (≤ 2 rounds). */
-  async answer(followUpId: string, text: string): Promise<void> {
+  /** The open follow-up's answer: extraction on that answer only, with the
+   *  question it answers and every item so far; then the next question or
+   *  the readback. A failure keeps the question open (the parent can retry,
+   *  skip or finish) — the items so far are never lost. */
+  async answer(text: string): Promise<DescribeOutcome> {
     const words = text.trim().slice(0, DESCRIBE_TEXT_MAX);
-    const question = this.state.followUps.find((q) => q.id === followUpId);
-    if (!words || !question || question.status !== "open" || this.state.status !== "ready" || this.state.rounds >= MAX_FOLLOW_UP_ROUNDS) return;
-    if (screenForImmediateEscalation({ message: words })) { this.put({ error: "crisis" }); return; }
+    const turn = this.state.thread.find((t) => t.status === "open");
+    if (!words || !turn || this.state.status !== "asking") return this.state.status === "ready" ? "ready" : "empty";
+    if (screenForImmediateEscalation({ message: words })) { this.put({ error: "crisis" }); return "crisis"; }
     const generation = this.generation;
-    const round = this.state.rounds + 1;
-    this.put({ followUps: this.state.followUps.map((q) => (q.id === followUpId ? { ...q, status: "answering" } : q)), error: "" });
+    const round = this.state.thread.length - 1;
+    const answered = this.state.thread.map((t) => (t.id === turn.id ? { ...t, answer: words, status: "answering" as const } : t));
+    this.put({ status: "drafting", thread: answered, error: "" });
     try {
-      // Kept items on the child doc plus what this readback already proposes,
-      // so an answer can replace a line instead of repeating it.
-      const draft = await this.services.draft({ text: words, keptItems: keptItemsFromProfile(this.services.profile()) });
-      if (generation !== this.generation) return;
-      const fresh = readbackRows(draft, round, this.state.items).filter((row) => !this.state.items.some((item) => item.kind === row.kind && same(readbackWords(item), row.text)));
-      const asked = new Set(this.state.followUps.map((q) => normalize(q.question)));
-      const nextQuestions = round < MAX_FOLLOW_UP_ROUNDS
-        ? draft.followUps.filter((q) => !asked.has(normalize(q))).slice(0, MAX_FOLLOW_UPS).map((q, index) => ({ id: `q${round}-${index}`, question: q, round, status: "open" as const }))
-        : [];
-      this.put({
-        rounds: round,
-        items: [...this.state.items, ...fresh],
-        // Once the round cap is reached, the remaining questions close quietly.
-        followUps: [...this.state.followUps.map((q) => (q.id === followUpId ? { ...q, status: "answered" as const } : round >= MAX_FOLLOW_UP_ROUNDS && q.status === "open" ? { ...q, status: "skipped" as const } : q)), ...nextQuestions],
+      const draft = await this.services.draft({
+        text: words,
+        question: turn.question,
+        askedQuestions: this.asked().map((t) => t.question),
+        keptItems: keptAndDrafted(this.services.profile(), this.state.items),
       });
+      if (generation !== this.generation) return "failed";
+      const items = mergeRows(this.state.items, readbackRows(draft, round, this.state.items));
+      const thread = this.state.thread.map((t) => (t.id === turn.id ? { ...t, status: "answered" as const } : t));
+      return this.next(draft, round, items, thread);
     } catch (error) {
-      if (generation !== this.generation) return;
-      this.put({ followUps: this.state.followUps.map((q) => (q.id === followUpId ? { ...q, status: "open" } : q)), error: isEscalation(error) ? "crisis" : "followUp" });
+      if (generation !== this.generation) return "failed";
+      this.put({ status: "asking", thread: this.state.thread.map((t) => (t.id === turn.id ? { ...t, answer: undefined, status: "open" as const } : t)), error: isEscalation(error) ? "crisis" : "followUp" });
+      return isEscalation(error) ? "crisis" : "failed";
     }
   }
 
-  skip(followUpId: string) {
-    this.put({ followUps: this.state.followUps.map((q) => (q.id === followUpId && q.status === "open" ? { ...q, status: "skipped" } : q)) });
+  /** Skip the open question: no answer, so nothing more to ask — the readback. */
+  skip() {
+    if (this.state.status !== "asking") return;
+    this.put({ status: "ready", thread: this.state.thread.map((t) => (t.status === "open" ? { ...t, status: "skipped" as const } : t)), error: "" });
   }
+  /** "Done" at any point: straight to the readback. */
+  done() { this.skip(); }
+
   toggle(itemId: string) { if (this.state.status === "ready") this.put({ items: this.state.items.map((i) => (i.id === itemId ? { ...i, keep: !i.keep } : i)) }); }
   edit(itemId: string, words: string) {
     if (this.state.status !== "ready") return;
@@ -475,7 +564,7 @@ export class DescribeSession {
       return true;
     } catch {
       if (generation !== this.generation) return false;
-      this.put({ status: "ready", error: "commit" });
+      this.put({ status: "ready", error: "keepFailed" });
       return false;
     }
   }
@@ -491,7 +580,7 @@ export class DescribeSession {
       this.put({ status: "ready", receipt: null, undoUntil: 0 });
       return true;
     } catch {
-      this.put({ status: "kept", error: "commit" });
+      this.put({ status: "kept", error: "keepFailed" });
       return false;
     }
   }

@@ -1,4 +1,10 @@
-/** B-SHELL-36 supersedes B-SHELL-08. All choices/cards are authored, on device. */
+/** B-SHELL-36 supersedes B-SHELL-08. All choices/cards are authored, on device.
+ * B-SHELL-39 (Guy D3, 10 Oct): step 2's description opens the ONE guided
+ * conversation — an injected service (no network code here). Follow-up
+ * questions stay in step 2, one at a time; the readback is in step 3 before
+ * the card. Nothing is written before "Keep these"; the raw words are never
+ * stored when Arbor played them back (D2); Skip, a crisis line and a model
+ * failure take today's path unchanged. */
 import type { ChildProfile } from "../types";
 import { ageMonthsFromBirthMonth, ageMonthsFromProfile, isoDateOf } from "./childAge";
 import { domainName, isDomainId, type DomainId } from "./domains/registry";
@@ -11,6 +17,7 @@ import { bandForAge, type PlayBand } from "../playbank/content";
 import { fnv1a } from "./promptBank";
 import { hasOnboardingNoticeReview } from "../content/onboardingNoticeRelease";
 import { screenForImmediateEscalation } from "../safety/escalation";
+import { DescribeSession, describedWorries, emptyDescribeState, type DescribeServices, type DescribeSessionState } from "./describeChild";
 
 export type OnboardingChoice = DomainId | "hard-moment" | "nothing";
 export interface OnboardingDraft {
@@ -33,6 +40,8 @@ export interface FirstRunState {
   busy: boolean;
   error: boolean;
   complete: boolean;
+  /** B-SHELL-39: the describe readback (in memory only). */
+  describe: DescribeSessionState;
 }
 const blankWorry = (): OnboardingDraft => ({ step: 2, choice: "nothing", words: "", quote: "", hardMomentId: "" });
 export function initialFirstRunState(child?: ChildProfile | null): FirstRunState {
@@ -42,7 +51,7 @@ export function initialFirstRunState(child?: ChildProfile | null): FirstRunState
   const birthMonth = child?.birthDate?.slice(0, 7) || child?.birthMonth || "";
   return { step: child && ageMonthsFromBirthMonth(birthMonth) !== null ? worry.step : 1,
     childId: child?.id ?? null, name: child?.name ?? "", birthMonth, exactBirthDate: child?.birthDate,
-    languages: child?.languages ?? [], consent: !!child, worry, busy: false, error: false, complete: false };
+    languages: child?.languages ?? [], consent: !!child, worry, busy: false, error: false, complete: false, describe: emptyDescribeState() };
 }
 export function firstRunAgeMonths(state: Pick<FirstRunState, "birthMonth" | "exactBirthDate">, now = new Date()): number | null {
   return ageMonthsFromProfile({ age: Number.NaN, birthDate: state.exactBirthDate, birthMonth: state.birthMonth }, now);
@@ -124,13 +133,41 @@ interface FirstRunServices {
   lang: () => UiLang;
   now?: () => Date;
   onComplete?: () => void;
+  /** B-SHELL-39: the describe readback's network and writes. Absent ⇒ today's path. */
+  describe?: DescribeServices;
 }
 /** One synchronous in-flight latch covers double taps, Back during writes,
  * retry after failure and remount hydration. UI and offline tests use this exact controller. */
 export class FirstRunController {
   private state: FirstRunState;
   private listeners = new Set<() => void>();
-  constructor(child: ChildProfile | null | undefined, public services: FirstRunServices) { this.state = initialFirstRunState(child); }
+  /** B-SHELL-39: the words the current readback was drafted from. */
+  private describedText = "";
+  /** B-SHELL-39: one readback session; it calls the services current at call time. */
+  readonly describe: DescribeSession;
+  constructor(child: ChildProfile | null | undefined, public services: FirstRunServices) {
+    this.state = initialFirstRunState(child);
+    const describe = () => { if (!this.services.describe) throw new Error("Describe is not available"); return this.services.describe; };
+    this.describe = new DescribeSession({
+      draft: input => describe().draft(input),
+      profile: () => this.services.describe?.profile() ?? null,
+      commit: plan => describe().commit(plan),
+      undo: receipt => describe().undo(receipt),
+      now: () => this.services.now?.() ?? new Date(),
+    });
+    this.describe.subscribe(() => this.put({ describe: this.describe.snapshot() }));
+  }
+  /** D2: once Arbor played the words back, they are not stored as written. */
+  private persistable(worry: OnboardingDraft): OnboardingDraft {
+    const status = this.describe.snapshot().status;
+    return this.describedText && (status === "ready" || status === "committing" || status === "kept") ? { ...worry, words: "" } : worry;
+  }
+  /** Today's one-worry line, plus any worry the parent kept from the readback. */
+  private challengesFor(worry: OnboardingDraft, lang: UiLang): string[] {
+    const base = onboardingChallenges(this.persistable(worry), lang);
+    const kept = describedWorries(this.services.describe?.profile() ?? null);
+    return [...base, ...kept.filter(words => !base.some(line => line.trim().toLocaleLowerCase() === words.trim().toLocaleLowerCase()))];
+  }
   snapshot = () => this.state;
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn); }; };
   private put(next: Partial<FirstRunState>) { this.state = { ...this.state, ...next }; this.listeners.forEach(fn => fn()); }
@@ -183,7 +220,22 @@ export class FirstRunController {
         }
       } else if (state.childId) {
         if (!current()) return;
-        const saved = await services.updateChild(state.childId, { challenges: onboardingChallenges(worry, services.lang()), onboardingDraft: worry }, { isCurrent: current });
+        const words = worry.words.trim();
+        if (words && services.describe && !screenForImmediateEscalation({ message: words, childQuote: worry.quote })) {
+          const now = this.describe.snapshot().status;
+          // Continue while a question is open is "Done": straight to the readback.
+          if (now === "asking" && this.describedText === words) this.describe.done();
+          else if (this.describedText !== words || (now !== "ready" && now !== "kept")) {
+            this.describedText = words;
+            const outcome = await this.describe.start(words);
+            if (!current()) return;
+            // One follow-up is open: the conversation stays in step 2.
+            if (outcome === "asking") return;
+            // A failure, a timeout or nothing to play back keeps today's path (no retry loop).
+            if (outcome !== "ready") this.describedText = "";
+          }
+        } else if (this.describe.snapshot().status !== "kept") { this.describe.reset(); this.describedText = ""; }
+        const saved = await services.updateChild(state.childId, { challenges: this.challengesFor(worry, services.lang()), onboardingDraft: this.persistable(worry) }, { isCurrent: current });
         if (!current()) return;
         if (!saved) throw new Error("Worry was not saved");
       }
@@ -191,8 +243,28 @@ export class FirstRunController {
     } catch { if (current(targetId)) this.put({ error: true }); }
     finally { if (current(targetId)) this.put({ busy: false }); }
   }
+  /** B-SHELL-39: the open follow-up's answer; when the conversation ends, step 3. */
+  async describeAnswer(text: string): Promise<void> {
+    if (this.state.busy || this.state.complete || this.state.step !== 2) return;
+    if (await this.describe.answer(text) === "ready") await this.next();
+  }
+  /** Skip this question, or "Done": the readback (step 3). */
+  describeFinish(): Promise<void> {
+    if (this.state.busy || this.state.complete || this.state.step !== 2) return Promise.resolve();
+    this.describe.done();
+    return this.describe.snapshot().status === "ready" ? this.next() : Promise.resolve();
+  }
+  /** B-SHELL-39: Skip is one tap — the description is dropped and today's path runs. */
+  skipDescribe(): Promise<void> {
+    if (this.state.busy || this.state.complete || this.state.step !== 2) return Promise.resolve();
+    this.describe.reset(); this.describedText = "";
+    this.worry({ words: "" });
+    return this.next();
+  }
   async finish(renderedCard: FirstRunCard): Promise<void> {
     if (this.state.busy || this.state.complete || this.state.step !== 3 || !this.state.childId) return;
+    const describing = this.describe.snapshot().status;
+    if (describing === "drafting" || describing === "committing") return;
     const state = this.state;
     const { services, current: stillCurrent } = this.operation(state.childId);
     if (!stillCurrent()) return;
@@ -208,7 +280,7 @@ export class FirstRunController {
       // must never turn its retry into a different, neutral action.
       if (!stillCurrent()) return;
       const checkpointed = await services.updateChild(state.childId!, {
-        onboardingDraft: { ...state.worry, step: 3 }, challenges: onboardingChallenges(state.worry, lang),
+        onboardingDraft: { ...this.persistable(state.worry), step: 3 }, challenges: this.challengesFor(state.worry, lang),
       }, { isCurrent: stillCurrent });
       if (!stillCurrent()) return;
       if (!checkpointed) throw new Error("The reviewed draft was not saved");
@@ -223,7 +295,7 @@ export class FirstRunController {
         services.onComplete?.();
       };
       const completed = await services.updateChild(state.childId!, { onboardingComplete: true, onboardingCompletedAt: now.toISOString(),
-        challenges: onboardingChallenges(state.worry, lang), onboardingDraft: undefined }, { isCurrent: stillCurrent, onPersisted: complete });
+        challenges: this.challengesFor(state.worry, lang), onboardingDraft: undefined }, { isCurrent: stillCurrent, onPersisted: complete });
       if (!stillCurrent()) return;
       if (!completed) throw new Error("Completion was not saved");
       complete();

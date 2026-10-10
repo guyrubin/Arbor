@@ -10,8 +10,9 @@
  *    `parentReported`; a term the model introduced drops the item;
  *  - a replace or remove may only name an item the parent already kept;
  *  - Focus is capped at 3 and preferences at 8;
- *  - a follow-up question that probes for a condition, a diagnosis or a test
- *    is dropped (questions are about what the parent raised, never diagnostic).
+ *  - the ONE next question is dropped (null) when it probes for a condition,
+ *    a diagnosis or a test, repeats a question already asked, or would be
+ *    the 5th follow-up — whatever the model says.
  * Pure and deterministic: no network, no storage.
  */
 import { findClinicalDiagnosisTerm } from "../lib/clinicalScan.js";
@@ -38,6 +39,12 @@ export const MAX_KEPT_ITEMS = 40;
 /** The most raw items read from one model reply. */
 const MAX_RAW_ITEMS = 24;
 const FOLLOW_UP_MAX = 160;
+
+/** The request's follow-ups already asked (strings, ≤ 200 characters each). */
+export function sanitizeAskedQuestions(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((q): q is string => typeof q === "string" && !!q.trim()).slice(0, MAX_FOLLOW_UPS + 1).map((q) => q.trim().slice(0, 200));
+}
 
 export type KeptRef = { id: string; kind: ProfileKind; words: string };
 
@@ -104,7 +111,7 @@ type RawItem = Record<string, unknown>;
  */
 export function finalizeDescribeDraft(
   raw: unknown,
-  ctx: { parentText: string; kept: readonly KeptRef[]; candidates: readonly MilestoneMatchCandidate[] },
+  ctx: { parentText: string; kept: readonly KeptRef[]; candidates: readonly MilestoneMatchCandidate[]; askedQuestions?: readonly string[] },
 ): DescribeDraft {
   const reply = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const rawItems = Array.isArray(reply.items) ? (reply.items as unknown[]).slice(0, MAX_RAW_ITEMS) : [];
@@ -163,22 +170,31 @@ export function finalizeDescribeDraft(
       ...milestone,
     });
   });
-  const followUps: string[] = [];
-  for (const entry of Array.isArray(reply.followUps) ? (reply.followUps as unknown[]) : []) {
-    if (followUps.length >= MAX_FOLLOW_UPS) break;
-    if (typeof entry !== "string") continue;
-    const question = clipWords(entry, FOLLOW_UP_MAX);
-    if (!question || !followUpIsSafe(question)) continue;
-    const plain = toParentWords(question);
-    if (!plain || followUps.some((q) => groundingForm(q) === groundingForm(plain))) continue;
-    followUps.push(plain);
-  }
-  return { items, followUps };
+  return { items, nextQuestion: nextQuestionOf(reply.nextQuestion, ctx.askedQuestions ?? []) };
+}
+
+/** Only the question: a comment about the child before it ("She sounds
+ *  like a wonderful girl. What…?", live judge 10 Oct) is Arbor reading the
+ *  child, so the first sentence that asks is kept, else the last sentence. */
+export function onlyTheQuestion(text: string): string {
+  const parts = text.split(/(?<=[.!?\u2026\uFF1F])\s+/).map((part) => part.trim()).filter(Boolean);
+  return (parts.find((part) => /[?\uFF1F]$/.test(part)) ?? parts[parts.length - 1] ?? "").trim();
+}
+
+/** The ONE next question, or null: none after the 4th follow-up, none that
+ *  probes for a diagnosis, a test or a symptom, none already asked. */
+export function nextQuestionOf(raw: unknown, askedQuestions: readonly string[]): string | null {
+  if (askedQuestions.length >= MAX_FOLLOW_UPS || typeof raw !== "string") return null;
+  const question = clipWords(onlyTheQuestion(raw), FOLLOW_UP_MAX);
+  if (!question || !followUpIsSafe(question)) return null;
+  const plain = toParentWords(question);
+  if (!plain || askedQuestions.some((q) => groundingForm(q) === groundingForm(plain))) return null;
+  return plain;
 }
 
 /** The model-authored text the output screen reads. A parent-reported item
  *  shows the parent's own quote — their words, not model output — and quotes
  *  are spans of the parent's input, so neither is screened as model output. */
-export function describeScreenable(draft: DescribeDraft): { items: string[]; followUps: string[] } {
-  return { items: draft.items.filter((item) => !item.parentReported).map((item) => item.text), followUps: draft.followUps };
+export function describeScreenable(draft: DescribeDraft): { items: string[]; nextQuestion: string } {
+  return { items: draft.items.filter((item) => !item.parentReported).map((item) => item.text), nextQuestion: draft.nextQuestion ?? "" };
 }

@@ -79,7 +79,7 @@ function mountedPortraitProof(duplicateKey: boolean) {
     "./portraitModel": { buildPortraitChapters: () => [], buildPortraitEnvironments: () => [], buildPortraitThreads: () => [] },
     "./portraitCopy": { PORTRAIT_COPY: { en: copy, he: copy } }, "./portraitEvidence": {},
     "../../lib/kpiEvents": { trackCompanionPlaceOpen() {} }, "./PortraitWatchRow": { default: Watch },
-    "./PortraitKeepsakes": { default: empty }, "../../lib/parentArt": {}, "./childPortrait.css": {},
+    "./PortraitKeepsakes": { default: empty }, "../describe/KeptDescription": { default: empty }, "../../lib/parentArt": {}, "./childPortrait.css": {},
     "../../lib/childPicture": { childPicture: () => ({}) },
   }, source => duplicateKey ? source.replace('key={`goal-picker:${childProfile.id}`}', 'key={childProfile.id}') : source).default;
   function Shell() {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useSyncExternalStore } from "react";
+import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
@@ -25,6 +25,12 @@ import "./onboardingFirstRun.css";
 import { screenForImmediateEscalation } from "../../safety/escalation";
 
 import { UrgentSupport } from "../safety/UrgentSupport";
+import DescribeChild from "../describe/DescribeChild";
+import DescribeReadback from "../describe/DescribeReadback";
+import DescribeThread from "../describe/DescribeThread";
+import { describeServices, primeQuestionVoice, type QuestionVoice } from "../../lib/describeChildClient";
+import type { DescribeSession } from "../../lib/describeChild";
+import type { ChildProfile } from "../../types";
 
 const LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 export const ONBOARDING_CHOICES: readonly OnboardingChoice[] = [...DOMAIN_IDS, "hard-moment", "nothing"];
@@ -57,11 +63,25 @@ export function StepChild({ state, onEdit, onNext }: {
   </section>;
 }
 
-export function StepDomains({ state, onWorry, onNext }: {
-  state: FirstRunState; onWorry: FirstRunController["worry"]; onNext: () => void;
+export function StepDomains({ state, onWorry, onNext, onSkip, describe, onAnswer, onFinish }: {
+  state: FirstRunState; onWorry: FirstRunController["worry"]; onNext: () => void | Promise<void>;
+  /** B-SHELL-39: one tap drops the description and takes today's path. */
+  onSkip?: () => void;
+  /** B-SHELL-39: the guided conversation (onboarding's controller owns it). */
+  describe?: DescribeSession; onAnswer?: (text: string) => Promise<void>; onFinish?: () => Promise<void>;
 }) {
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
+  const [viaMic, setViaMic] = useState(false);
+  const primed = useRef<QuestionVoice | null>(null);
+  const conversing = !!describe && (state.describe.status === "asking" || (state.describe.status === "drafting" && state.describe.thread.length > 1));
+  const proceed = async () => {
+    // Inside the tap: a mic answer primes the voice for the first question.
+    primed.current?.cancel();
+    primed.current = viaMic && state.worry.words.trim() ? primeQuestionVoice() : null;
+    await onNext();
+    if (describe?.snapshot().status !== "asking") { primed.current?.cancel(); primed.current = null; }
+  };
   const guides = availableHardMomentCards({ ageMonths: firstRunAgeMonths(state), locale: lang });
   return <section className="first-run-step" data-testid="onboarding-worry">
     <h1>{t("ob.first.worry", { name: state.name.trim() })}</h1>
@@ -72,28 +92,36 @@ export function StepDomains({ state, onWorry, onNext }: {
         <span>{choiceName(choice, lang)}</span>
       </button>)}
     </div>
-    <label className="first-run-field">{t("ob.first.optional")}<textarea rows={2} maxLength={240} value={state.worry.words} disabled={state.busy}
-      onChange={e => onWorry({ words: e.target.value })} /></label>
+    {/* B-SHELL-39: the guided conversation replaces the one-line field. */}
+    {!conversing && <DescribeChild name={state.name.trim()} lang={lang} value={state.worry.words} disabled={state.busy} onChange={words => onWorry({ words })} onVoiceText={() => setViaMic(true)} />}
+    {conversing && <DescribeThread name={state.name.trim()} lang={lang} session={describe!} onAnswer={onAnswer} onSkip={onFinish} onDone={onFinish} primedVoice={primed} />}
     {screenForImmediateEscalation({ message: state.worry.words, childQuote: state.worry.quote }) && <UrgentSupport />}
     {state.worry.choice === "hard-moment" && guides.length > 0 && <label className="first-run-field">{t("ob.first.pickMoment")}
       <select value={state.worry.hardMomentId} onChange={e => onWorry({ hardMomentId: e.target.value })} disabled={state.busy}>
         <option value="">{t("ob.first.pickMoment")}</option>{guides.map(card => <option key={card.id} value={card.id}>{locText(card.title, lang)}</option>)}
       </select>
     </label>}
-    <div className="first-run-footer"><button type="button" className="first-run-primary" onClick={onNext} disabled={state.busy || (state.worry.choice === "hard-moment" && guides.length > 0 && !state.worry.hardMomentId)} aria-busy={state.busy}>
-      {state.busy ? t("ob.settingUp") : t("ob.step.continue")}
-    </button></div>
+    <div className="first-run-footer">
+      {onSkip && !!state.worry.words.trim() && <button type="button" className="first-run-skip" onClick={onSkip} disabled={state.busy || state.describe.status === "drafting"} data-testid="onboarding-describe-skip">{t("elev.describe.skip")}</button>}
+      {!conversing && <button type="button" className="first-run-primary" onClick={() => void proceed()} disabled={state.busy || (state.worry.choice === "hard-moment" && guides.length > 0 && !state.worry.hardMomentId)} aria-busy={state.busy}>
+      {state.describe.status === "drafting" ? t("elev.describe.drafting") : state.busy ? t("ob.settingUp") : t("ob.step.continue")}
+    </button>}</div>
   </section>;
 }
 
-export function StepReady({ state, card, onWorry, onSubmit, ready }: {
+export function StepReady({ state, card, onWorry, onSubmit, ready, describe, profile }: {
   state: FirstRunState; card: FirstRunCard; onWorry: FirstRunController["worry"]; onSubmit: () => void; ready: boolean;
+  /** B-SHELL-39: the readback session (onboarding's controller owns it). */
+  describe?: DescribeSession; profile?: Partial<ChildProfile> | null;
 }) {
   const { t, uiLang } = useLanguage();
   const locale: "en" | "he" = uiLang === "he" ? "he" : "en";
   const context = { ageMonths: firstRunAgeMonths(state), locale };
   const pilot = card.guide && hardMomentPublication(card.guide, context) === "editorial-pilot";
+  const readback = !!describe && ["ready", "committing", "kept"].includes(state.describe.status);
   return <section className="first-run-step" data-testid="onboarding-card">
+    {readback && <DescribeReadback name={state.name.trim()} lang={locale} session={describe!} profile={profile ?? null} />}
+    {!card.urgent && state.describe.status === "failed" && state.describe.error === "model" && <p className="first-run-hint" role="status">{t("elev.describe.failedKept")}</p>}
     <p className="first-run-hint">{t("ob.first.card")}</p><h1>{card.title}</h1>
     <div className="first-run-authored-card">
       {card.urgent ? <div role="alert" className="flex flex-col gap-3.5">
@@ -115,8 +143,10 @@ export function StepReady({ state, card, onWorry, onSubmit, ready }: {
   </section>;
 }
 
-/** Signed-in → about → one worry → authored card → the accepted step in Now.
- * No model request, coach seed, comic prewarm or journey mutation belongs here. */
+/** Signed-in → about → one worry + "Tell Arbor about {name}" → readback and the
+ * authored card → the accepted step in Now. The ONE model request is the
+ * parent-initiated describe readback (B-SHELL-39, an injected service); no
+ * coach seed, comic prewarm or journey mutation belongs here. */
 export default function OnboardingFlow() {
   const { profiles, addChild, updateChild, setActiveChild, isCurrentSession, captureOnboardingLifetime } = useProfile();
   const { user } = useAuth();
@@ -150,6 +180,12 @@ export default function OnboardingFlow() {
       assertCurrent();
       accepted.current = entry;
     },
+    // B-SHELL-39: the readback's request and writes (nothing before "Keep these").
+    describe: describeServices({
+      profile: () => profiles.find(child => child.id === collection.current.childId) ?? null,
+      language: () => uiLang === "he" ? "he" : "en",
+      updateChild: (id, patch) => updateChild(id, patch, { isCurrent: () => mounted.current && collection.current.owner === originalOwner.current && isCurrentSession() }),
+    }),
     onComplete: () => {
       if (state.childId) setActiveChild(state.childId);
       window.location.hash = "#/overview";
@@ -165,8 +201,10 @@ export default function OnboardingFlow() {
       </div>
     </header>
       {state.step === 1 && <StepChild state={state} onEdit={edit => controller.edit(edit)} onNext={() => void controller.next()} />}
-      {state.step === 2 && <StepDomains state={state} onWorry={worry => controller.worry(worry)} onNext={() => void controller.next()} />}
-      {card && <StepReady state={state} card={card} onWorry={worry => controller.worry(worry)} onSubmit={() => void controller.finish(card)} ready={actions.loaded && !actions.error} />}
+      {state.step === 2 && <StepDomains state={state} onWorry={worry => controller.worry(worry)} onNext={() => controller.next()} onSkip={() => void controller.skipDescribe()}
+        describe={controller.describe} onAnswer={text => controller.describeAnswer(text)} onFinish={() => controller.describeFinish()} />}
+      {card && <StepReady state={state} card={card} onWorry={worry => controller.worry(worry)} onSubmit={() => void controller.finish(card)} ready={actions.loaded && !actions.error}
+        describe={controller.describe} profile={profiles.find(child => child.id === state.childId) ?? null} />}
       {state.error && <p role="alert" className="first-run-error">{t("ob.fail")}</p>}
     </div>
   </main>;

@@ -19,6 +19,8 @@ vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 // Parity 9 Oct: the watch row and the keepsake disclosure have their own tests.
 vi.mock("./PortraitWatchRow", () => ({ default: () => <div data-testid="watch-row" /> }));
 vi.mock("./PortraitKeepsakes", () => ({ default: () => null }));
+// B-SHELL-39: the kept-description card has its own tests (components/describe).
+vi.mock("../describe/KeptDescription", () => ({ default: () => null }));
 const capture = (type: unknown, props: unknown) => { if (type === "button" && props && typeof props === "object") state.buttons.push(props as typeof state.buttons[number]); };
 vi.mock("react/jsx-runtime", async original => {
   const runtime = await original<typeof import("react/jsx-runtime")>();

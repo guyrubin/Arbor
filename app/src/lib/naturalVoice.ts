@@ -189,6 +189,64 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers, lang: 
   };
 };
 
+/**
+ * B-SHELL-39 — speak a sentence that does not exist yet (the describe
+ * conversation's next question). Call INSIDE the gesture that sends the
+ * parent's mic answer: the audio element is created and blessed now (the F-03
+ * rule above), and `speak` fetches /api/tts later — with the route's
+ * screened-sentence token — and plays on that element. A failed fetch or a
+ * refused play resolves false and the question simply stays as text.
+ */
+export function primeNaturalAudio(): { speak: (text: string, lang: "en" | "he", token?: string) => Promise<boolean>; cancel: () => void } {
+  const audio = new Audio();
+  try {
+    audio.play().catch(() => {
+      /* expected: no src yet — the bless is best-effort */
+    });
+  } catch {
+    /* some engines throw synchronously on a src-less play() */
+  }
+  let url: string | null = null;
+  let cancelled = false;
+  const cleanup = () => {
+    if (url) {
+      URL.revokeObjectURL(url);
+      url = null;
+    }
+  };
+  return {
+    speak: async (text, lang, token) => {
+      const trimmed = text.trim();
+      if (cancelled || !trimmed) return false;
+      if (token) registerTtsToken(trimmed, token);
+      const fetched = await fetchTtsAudio(trimmed, lang);
+      if (cancelled || !fetched) return false;
+      url = URL.createObjectURL(base64ToBlob(fetched.b64, fetched.mime));
+      audio.src = url;
+      audio.onended = cleanup;
+      audio.onerror = cleanup;
+      try {
+        await audio.play();
+        return true;
+      } catch {
+        cleanup();
+        return false;
+      }
+    },
+    cancel: () => {
+      cancelled = true;
+      audio.onended = null;
+      audio.onerror = null;
+      try {
+        audio.pause();
+      } catch {
+        /* ignore */
+      }
+      cleanup();
+    },
+  };
+}
+
 let initialized = false;
 
 /** Test seam: reset module state (init latch, caches). */

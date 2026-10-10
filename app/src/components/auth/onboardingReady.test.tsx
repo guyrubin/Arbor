@@ -81,7 +81,8 @@ describe("three-step authored first run", () => {
     expect((html.match(/aria-pressed="true"/g) ?? [])).toHaveLength(1);
     state.buttons.find(button => button["data-choice"] === "talking")!.onClick();
     expect(edit).toHaveBeenCalledWith({ choice: "talking", hardMomentId: "", quote: "" });
-    state.inputs.find(input => input.rows === 2)!.onChange({ target: { value: "My words" } }); expect(edit).toHaveBeenLastCalledWith({ words: "My words" });
+    // B-SHELL-39: the describe field (2,000 characters) replaced the one-line field.
+    state.inputs.find(input => input.maxLength === 2000)!.onChange({ target: { value: "My words" } }); expect(edit).toHaveBeenLastCalledWith({ words: "My words" });
   });
   it.each(["en", "he"] as const)("an area card has one primary accept, with no replay or model answer (%s)", lang => {
     state.lang = lang; const s = base(); s.worry.choice = "thinking"; const submit = vi.fn();

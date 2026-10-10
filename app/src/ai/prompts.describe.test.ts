@@ -101,24 +101,35 @@ describe("B-SHELL-39 — describe_child 1.0.0", () => {
     expect(p).toContain("\"she's not shy anymore\" is a change the parent noticed, never \"shy\"");
     expect(p).toContain("Another child (a sibling, a cousin, a friend) is not [Child]");
     expect(p).toContain("Never ask about symptoms, tests, a diagnosis");
-    expect(p).toContain("Items the parent already kept: none.");
+    expect(p).toContain("ONE short, warm question to the parent about what they said in THESE words");
+    expect(p).toContain("Items so far: none.");
+    expect(p).not.toContain("Arbor asked the parent");
     expect(p).toContain("(4 years)");
     expect(p).not.toContain("Milestone match");
-    expect(p).toContain("Write the followUps in English.");
+    expect(p).toContain("Write nextQuestion in English.");
   });
-  it("lists kept items by id so an item can replace or remove one; Hebrew follow-ups; milestone block only with candidates", () => {
+  it("lists items so far by id so an answer can replace or remove one; the question answered; Hebrew; milestone block only with candidates", () => {
     const p = buildDescribeChildPrompt({
       ageLabel: null,
       text,
       keptItems: [{ id: "strength:abc", kind: "strength", words: "loves trains" }],
+      question: "What does she love doing most?",
+      askedQuestions: ["What does she love doing most?"],
       language: "he",
       milestoneCandidates: [{ id: "cdc-48m-1", shelf: "words", title: "Tells a story" }],
     });
     expect(p).toContain('- strength:abc · strength · "loves trains"');
-    expect(p).toContain("Only use ids listed above.");
-    expect(p).toContain("Write the followUps in natural, warm Hebrew");
+    expect(p).toContain("Only use ids listed above; never repeat an item listed above.");
+    expect(p).toContain('Arbor asked the parent: "What does she love doing most?"');
+    expect(p).toContain("Questions already asked (never repeat one)");
+    expect(p).toContain("Write nextQuestion in natural, warm Hebrew");
     expect(p).toContain('- cdc-48m-1 · "Tells a story"');
     expect(p).toContain("never a milestone");
     expect(p).not.toContain("(null)");
+  });
+  it("after the 4th follow-up the prompt tells the model to ask nothing more", () => {
+    const p = buildDescribeChildPrompt({ ageLabel: null, text, keptItems: [], question: "q4", askedQuestions: ["q1", "q2", "q3", "q4"], language: "en" });
+    expect(p).toContain('Four questions have been asked: set nextQuestion to "" (empty).');
+    expect(p).not.toContain("ONE short, warm question");
   });
 });

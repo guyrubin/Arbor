@@ -97,7 +97,7 @@ import { countAnalyzeLogs, toAnalyzeLogInputs } from "../lib/analyzeLogPayload.j
 import { toDigestLogInputs, toDigestMilestoneInputs } from "../lib/digestPayload.js";
 import { sanitizeTypeCounts } from "../lib/planRecord.js";
 import { buildMilestoneCandidates, validateMilestoneMatch } from "../server/milestoneMatch.js";
-import { describeScreenable, finalizeDescribeDraft, sanitizeKeptItems } from "../server/describeChild.js";
+import { describeScreenable, finalizeDescribeDraft, sanitizeAskedQuestions, sanitizeKeptItems } from "../server/describeChild.js";
 import { DESCRIBE_KINDS, DESCRIBE_TEXT_MAX } from "../lib/describeChild.js";
 import { DOMAIN_IDS } from "../lib/domains/registry.js";
 import { SHELF_IDS } from "../lib/shelves/registry.js";
@@ -2030,15 +2030,16 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     }
   });
 
-  // B-SHELL-39 — "Tell Arbor about {name}". The parent's words (typed or
-  // dictated, ≤ 2,000 characters) become items the parent checks, keeps,
-  // edits or removes, plus up to three follow-up questions. This route owns
+  // B-SHELL-39 — "Tell Arbor about {name}", one guided conversation. Called
+  // once per answer (typed or dictated, ≤ 2,000 characters) with the question
+  // it answers and every item so far; returns new or changed items and ONE
+  // next question (null after the 4th follow-up). This route owns
   // no store and writes nothing: the client commits only what the parent
   // keeps (D2: the raw words are never stored). Crisis screen FIRST (no
   // model call), then name/PII redaction; the reply passes the deterministic
   // checks in server/describeChild.ts and the output screen.
   router.post("/describe-child", async (req, res) => {
-    const { text, childProfile, language, keptItems, milestoneCandidateIds } = req.body ?? {};
+    const { text, childProfile, language, keptItems, milestoneCandidateIds, question, askedQuestions } = req.body ?? {};
     if (typeof text !== "string" || !text.trim()) {
       res.status(400).json({ error: "A description (text) is required" });
       return;
@@ -2050,6 +2051,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       return;
     }
     const kept = sanitizeKeptItems(keptItems);
+    const asked = sanitizeAskedQuestions(askedQuestions);
+    const answering = typeof question === "string" && question.trim() ? question.trim().slice(0, 200) : null;
+    const lang = captureLanguage(language, parentText);
     const budget = createRouteBudget(res, "analysis");
     try {
       const candidates = buildMilestoneCandidates(milestoneCandidateIds, childProfile);
@@ -2057,7 +2061,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         ageLabel: promptProfile(childProfile)?.ageLabel ?? null,
         text: parentText,
         keptItems: kept,
-        language: captureLanguage(language, parentText),
+        ...(answering ? { question: answering } : {}),
+        ...(asked.length ? { askedQuestions: asked } : {}),
+        language: lang,
         ...(candidates.length ? { milestoneCandidates: candidates } : {}),
       });
       const privacy = createRedaction(childProfile?.name);
@@ -2069,7 +2075,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         promptVersion: PROMPT_VERSIONS.describe_child.version,
         schema: {
           type: Type.OBJECT,
-          required: ["items", "followUps"],
+          required: ["items", "nextQuestion"],
           properties: {
             items: {
               type: Type.ARRAY,
@@ -2087,18 +2093,20 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
                 },
               },
             },
-            followUps: { type: Type.ARRAY, items: { type: Type.STRING } },
+            nextQuestion: { type: Type.STRING },
           },
         },
       }), budget.signal);
       budget.settle();
-      const draft = finalizeDescribeDraft(privacy.restoreDeep(raw), { parentText, kept, candidates });
+      const draft = finalizeDescribeDraft(privacy.restoreDeep(raw), { parentText, kept, candidates, askedQuestions: asked });
       const verdict = await screenStructuredModelOutput(modelProvider, describeScreenable(draft));
       if (verdict.flagged) {
         res.status(422).json({ error: "Arbor could not safely complete this draft. Please try a different request.", outputBlocked: true, blockedCategory: verdict.category });
         return;
       }
-      res.json(draft);
+      // The question passed the output screen: a screened-sentence token lets
+      // /api/tts read it aloud after a mic answer (its lexical floor still runs).
+      res.json(draft.nextQuestion ? { ...draft, nextQuestionLang: lang, nextQuestionToken: mintTtsToken(draft.nextQuestion, lang) } : draft);
     } catch (error: any) {
       budget.settle();
       if (budget.clientGone()) return;

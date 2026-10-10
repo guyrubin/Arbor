@@ -279,6 +279,9 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
         childProfile: input.childProfile && typeof input.childProfile === "object" ? input.childProfile : scenarioProfile,
         language: locale,
         keptItems: Array.isArray(input.keptItems) ? input.keptItems : [],
+        // The conversation: the question this answers and the ones already asked.
+        ...(typeof input.question === "string" ? { question: input.question } : {}),
+        ...(Array.isArray(input.askedQuestions) ? { askedQuestions: input.askedQuestions } : {}),
       }),
     });
     return `HTTP ${res.status}\n${await res.text()}`;
