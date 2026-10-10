@@ -177,6 +177,20 @@ describe('release interaction contracts, without browser or sockets', () => {
     expect(source).not.toContain('textContent:');
   });
 
+  it('permits only the exact local owner-grant list read and counts no query or payload', () => {
+    expect(deniedCaptureApiCategory('GET', '/api/shares')).toBeNull();
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']) expect(deniedCaptureApiCategory(method, '/api/shares')).toBe('SHARING');
+    for (const path of ['/api/share', '/api/share/', '/api/shares/', '/api/shares/private', '/api/share/private']) {
+      for (const method of ['GET', 'POST', 'PUT', 'DELETE']) expect(deniedCaptureApiCategory(method, path)).toBe('SHARING');
+    }
+    const counter = "if (request.method() === 'GET' && url.pathname === '/api/shares') apiState.shareListReads++";
+    expect(source).toContain('shareListReads: 0');
+    expect(source).toContain(counter);
+    expect(source.indexOf("if (url.origin !== BASE)")).toBeLessThan(source.indexOf(counter));
+    expect(source.indexOf('const denied = deniedCaptureApiCategory')).toBeLessThan(source.indexOf(counter));
+    expect(source.match(/apiState\.shareListReads[^;]*;/g)).toEqual(['apiState.shareListReads++;']);
+  });
+
   it('caches only successful synthetic reads, sharing them across the focused groups', () => {
     expect(source).toContain('_apiCache = new Map()');
     expect(source).toContain("_reportGroup: 'focused', _apiCache");

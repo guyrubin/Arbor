@@ -72,6 +72,17 @@ export function collectFontSampleCandidates() {
       let count = 0;
       for (const el of [...scope.querySelectorAll('*')].slice(0, 600)) {
         if (seen.has(el) || el.closest('[hidden], [aria-hidden="true"], .msr, .material-symbols-rounded, svg')) continue;
+        // Native details hides its content without a hidden attribute or a
+        // display:none computed style on each descendant. Range geometry can
+        // still be present there, but no text glyphs are painted. Only the
+        // FIRST direct summary remains visible, and every closed ancestor counts.
+        let closedDisclosure = false;
+        for (let ancestor = el; ancestor; ancestor = ancestor.parentElement) {
+          if (ancestor.tagName !== 'DETAILS' || ancestor.open) continue;
+          const summary = [...ancestor.children].find(child => child.tagName === 'SUMMARY');
+          if (!summary?.contains(el)) { closedDisclosure = true; break; }
+        }
+        if (closedDisclosure) continue;
         const style = getComputedStyle(el);
         if (style.visibility === 'hidden' || style.display === 'none' || /Material Symbols|Material Icons/i.test(style.fontFamily)) continue;
         const ownText = [...el.childNodes].some(node => {
@@ -130,7 +141,7 @@ export async function captureScreenshot(page, options) {
     await session.send('DOM.enable'); await session.send('CSS.enable');
     const { root } = await session.send('DOM.getDocument');
     const candidates = await page.evaluate(collectFontSampleCandidates);
-    entry.sampleMethod = 'visible-own-text-nodes';
+    entry.sampleMethod = 'visible-own-text-nodes-native-disclosures';
     for (const candidate of candidates) {
       const { nodeId } = await session.send('DOM.querySelector', { nodeId: root.nodeId, selector: candidate.selector });
       if (!nodeId || candidate.ownText !== true) continue;
@@ -139,7 +150,7 @@ export async function captureScreenshot(page, options) {
       if (!FONT_FAMILIES.some(family => normalize(requested).includes(normalize(family)))) continue;
       const { fonts } = await session.send('CSS.getPlatformFontsForNode', { nodeId });
       const proof = platformTextFontEvidence(fonts);
-      entry.rendered.push({ requested, ...proof, scope: candidate.scope, ownText: true });
+      entry.rendered.push({ requested, ...proof, scope: candidate.scope, ownText: true, nodePath: candidate.selector });
     }
     if (!entry.rendered.length || entry.rendered.some((sample) => !sample.custom)) throw new Error('FONT_RENDERED_GLYPHS_UNPROVEN');
     if (evidence.deniedFontRequests) throw new Error('FONT_UNCACHED_REQUEST');

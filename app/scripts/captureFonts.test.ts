@@ -84,6 +84,36 @@ describe('source-font cache contracts, stubbed fetch only', () => {
       expect(JSON.stringify(collectFontSampleCandidates())).not.toContain('Synthetic modal text');
     } finally { vi.unstubAllGlobals(); }
   });
+  it('rejects closed native disclosure contents despite nonzero text ranges, preserving summaries and reopened content', () => {
+    const box = { width: 200, height: 100, left: 0, top: 0, right: 200, bottom: 100 };
+    const scope: any = { tagName: 'MAIN', parentElement: null, children: [], getBoundingClientRect: () => box };
+    const element = (tagName: string, parentElement: any, text = ''): any => ({ tagName, parentElement, children: [], childNodes: text ? [{ nodeType: 3, textContent: text }] : [], closest: () => null,
+      contains(el: any) { for (let node = el; node; node = node.parentElement) if (node === this) return true; return false; } });
+    const details = element('DETAILS', scope); details.open = false;
+    const summary = element('SUMMARY', details, 'Words and details');
+    const body = element('P', details, 'Hidden supporting prose');
+    const nested = element('DETAILS', details); nested.open = true;
+    const nestedSummary = element('SUMMARY', nested, 'Nested summary');
+    details.children = [summary, body, nested]; nested.children = [nestedSummary]; scope.children = [details];
+    scope.querySelectorAll = () => [details, summary, body, nested, nestedSummary];
+    try {
+      vi.stubGlobal('document', { querySelectorAll: (selector: string) => selector === 'main' ? [scope] : [], createRange: () => ({ selectNodeContents() {}, getClientRects: () => [box] }) });
+      vi.stubGlobal('Node', Object.assign(class {}, { TEXT_NODE: 3 })); vi.stubGlobal('innerHeight', 812); vi.stubGlobal('innerWidth', 375);
+      vi.stubGlobal('getComputedStyle', () => ({ visibility: 'visible', display: 'block', fontFamily: 'Instrument Sans' }));
+      // Old rectangle/style-only sampling would accept all three text nodes.
+      expect([summary, body, nestedSummary].every(el => el.childNodes[0].textContent.trim() && box.width > 0)).toBe(true);
+      const closed = collectFontSampleCandidates();
+      expect(closed).toHaveLength(1); expect(closed[0].selector).toContain('summary:nth-child(1)');
+      details.open = true;
+      expect(collectFontSampleCandidates()).toHaveLength(3);
+      // Native visibility cannot turn a still-empty CDP font result into proof.
+      expect(platformTextFontEvidence([]).custom).toBe(false);
+    } finally { vi.unstubAllGlobals(); }
+    const runtime = read('app/scripts/capture/font-runtime.mjs');
+    expect(runtime).toContain('if (closedDisclosure) continue');
+    expect(runtime).toContain('nodePath: candidate.selector');
+    expect(runtime).toContain('entry.rendered.some((sample) => !sample.custom)');
+  });
   it('keeps rejected pixels separately and never promotes them to accepted font evidence', async () => {
     const writes: any[] = [];
     const entry: any = { shot: 'sample.exact.png', passed: false, failure: 'FONT_RENDERED_GLYPHS_UNPROVEN' };

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { lazy } from 'react';
-import { installStylesheetObservation, observeAskDependency } from './capture/readiness-probes.mjs';
+import { installStylesheetObservation, observeAskDependency, observeReactStage } from './capture/readiness-probes.mjs';
 
 const secret = 'FAKE_API_KEY_sk_test_never_export_42';
 const child = 'Synthetic Child Rowan Private';
@@ -124,5 +124,68 @@ describe('bounded read-only Suspense dependency probes', () => {
     expect(screen.slice(screen.indexOf('cell.postFailureProbe ='))).not.toContain('cell.reached =');
     expect(screen).toContain("item.state === 'finished' && item.status === 200 && item.mime === 'javascript'");
     expect(screen).not.toContain('waitForTimeout');
+  });
+
+  it('keeps same-document reopen separate from first-entry failures and the unchanged fresh direct-route attempt', () => {
+    const source = readFileSync(new URL('./capture/release-interactions.mjs', import.meta.url), 'utf8');
+    const start = source.indexOf("if (group === 'ask-diagnostic' && !launcherReady) {");
+    const end = source.indexOf("const ready = await screen('coach', 'direct-composer'", start);
+    const flow = source.slice(start, end);
+    expect(start).toBeGreaterThan(source.indexOf("await screen('shell', 'ask-mock-answer'"));
+    expect(flow).toContain('doc.sameDocumentLauncherReopen = repeated; save()');
+    expect(flow.indexOf('await closeConversation()')).toBeLessThan(flow.indexOf('await openConversation()'));
+    expect(flow).not.toMatch(/launcherReady\s*=|cell\.(?:reached|failures|readiness)\s*=|waitForTimeout|probeModulePath|import\(/);
+    expect(source.slice(end, end + 160)).toContain("await load('coach'); await openConversation();");
+  });
+});
+
+describe('current React root and commit-stage diagnostics', () => {
+  function rootFixture() {
+    const host: any = {};
+    const app = { contains: (item: unknown) => item === host };
+    const actualBoundary: any = { tag: 13, memoizedState: {}, flags: 128, subtreeFlags: 8192, lanes: 0, childLanes: 4194304, updateQueue: new Set([secret]) };
+    const attachedBoundary: any = { tag: 13, alternate: actualBoundary };
+    const current: any = { tag: 3, child: actualBoundary };
+    const root: any = { current, containerInfo: app, pendingLanes: 4194304, suspendedLanes: 4194304, pingedLanes: 0, expiredLanes: 0, callbackPriority: 0, callbackNode: null, cancelPendingCommit: () => secret, props: { secret, child } };
+    const attached: any = { tag: 3, stateNode: root };
+    current.stateNode = root;
+    attachedBoundary.return = attached;
+    host.__reactFiber$test = { tag: 5, return: attachedBoundary };
+    vi.stubGlobal('document', { getElementById: (id: string) => id === 'root' ? app : null, querySelector: () => host });
+    return { host, app, root, current, actualBoundary, attachedBoundary, attached };
+  }
+
+  it('finds the current alternate boundary and emits only lane masks, counts and stage booleans', () => {
+    const f = rootFixture();
+    const payload = { _status: 0, get _result() { throw new Error('Do not read pending promise values'); } };
+    f.actualBoundary.child = { tag: 22, flags: 0, child: { tag: 16, flags: 32768, elementType: { $$typeof: Symbol.for('react.lazy'), _payload: payload }, sibling: { tag: 26, flags: 0 } } };
+    Object.defineProperty(f.actualBoundary, 'memoizedProps', { get() { throw new Error('Do not read private props'); } });
+    const result = observeReactStage();
+    expect(result).toMatchObject({ appRootVerified: true, attachedBranchCurrent: false, boundaryFoundInCurrent: true,
+      root: { pendingLanes: 4194304, suspendedLanes: 4194304, pingedLanes: 0, callbackPresent: false, cancelPendingCommit: true },
+      boundary: { fallbackActive: true, flags: 128, retryQueueCount: 1, current: { visited: 3, resources: 1, offscreen: 1, incomplete: 1, lazy: { pending: 1 } } } });
+    expect(JSON.stringify(result)).not.toMatch(/FAKE_API_KEY|Rowan|Private|memoized|_result|props|=>|function\s*\(|promise/);
+  });
+
+  it('refuses a non-Arbor root even when its fiber is reachable from a matching host selector', () => {
+    const f = rootFixture(); f.root.containerInfo = { private: secret };
+    expect(observeReactStage()).toEqual({ appRootVerified: false });
+  });
+
+  it('refuses a selected host outside the existing app container', () => {
+    const f = rootFixture(); f.app.contains = () => false;
+    expect(observeReactStage()).toEqual({ appRootVerified: false });
+  });
+
+  it('bounds traversals and rejects malformed lane-mask values without leaking them', () => {
+    const f = rootFixture(); f.root.pendingLanes = secret; f.root.callbackPriority = Infinity;
+    let last = f.actualBoundary;
+    for (let n = 0; n < 2100; n++) { last.child = { tag: 5, flags: 0 }; last = last.child; }
+    const result = observeReactStage();
+    if (!('root' in result)) throw new Error('Expected the verified synthetic app root');
+    expect(result.root).toMatchObject({ pendingLanes: null, callbackPriority: null });
+    expect(result.rootSearch).toEqual({ visited: 2000, truncated: true });
+    expect(result.boundary.current).toMatchObject({ visited: 500, truncated: true });
+    expect(JSON.stringify(result)).not.toContain(secret);
   });
 });
