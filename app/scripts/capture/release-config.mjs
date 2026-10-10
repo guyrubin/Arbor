@@ -10,13 +10,14 @@ export const RELEASE_VIEWPORTS = Object.freeze([
   { id: 'desktop-en', w: 1280, h: 800, lang: 'en' },
   { id: 'desktop-he', w: 1280, h: 800, lang: 'he' },
 ]);
-export const RELEASE_GROUPS = Object.freeze(['base', 'navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry']);
+export const RELEASE_GROUPS = Object.freeze(['base', 'navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry', 'portrait-care']);
 export const RELEASE_MATRIX = Object.freeze(RELEASE_VIEWPORTS.flatMap((viewport) => [
   { viewport: viewport.id, group: 'base', shard: 0 },
   { viewport: viewport.id, group: 'focused', shard: 0 },
 ]));
 export function releaseMatrix(scope = 'all') {
   if (scope === 'all') return RELEASE_MATRIX;
+  if (scope === 'portrait-care-only') return RELEASE_VIEWPORTS.map(viewport => ({ viewport: viewport.id, group: 'portrait-care', shard: 0 }));
   if (scope === 'parent-kid-release') return [...releaseMatrix('kept-search-only'), ...releaseMatrix('kid-entry-only'), ...releaseMatrix('confirmed-actions-release')];
   if (scope === 'kept-search-only') return RELEASE_VIEWPORTS.map(viewport => ({ viewport: viewport.id, group: 'kept-search', shard: 0 }));
   if (scope === 'kept-search-release') return [...releaseMatrix('kept-search-only'), ...releaseMatrix('confirmed-actions-release')];
@@ -32,7 +33,7 @@ export function releaseMatrix(scope = 'all') {
   throw new Error('RELEASE_SCOPE_INVALID');
 }
 export function captureDeadlineMs(cell) {
-  return (cell.group === 'base' ? 12 : ['ask', 'ask-diagnostic', 'report-close-only'].includes(cell.group) ? 4 : 10) * 60_000;
+  return (cell.group === 'base' ? 12 : ['ask', 'ask-diagnostic', 'report-close-only', 'portrait-care'].includes(cell.group) ? 4 : 10) * 60_000;
 }
 
 /** @param {{ viewport: string, group: string, shard?: string | number }} input */

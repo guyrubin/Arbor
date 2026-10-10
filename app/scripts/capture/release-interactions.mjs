@@ -25,12 +25,15 @@ import { collectKeptSearchStates } from './kept-search-states.mjs';
 import { collectPracticeStates, PRACTICE_FIXTURE, practiceClockScript } from './practice-states.mjs';
 import { KID_ENTRY_STATES, KID_ENTRY_LIMITATIONS, kidEntryFixture, kidEntryApiDisposition, validKidEntryCell } from './kid-entry-contract.mjs';
 import { collectKidEntryStates } from './kid-entry-states.mjs';
+import { PORTRAIT_CARE_STATES, PORTRAIT_CARE_LIMITATIONS, portraitCareApiDisposition, validPortraitCareCell } from './portrait-care-contract.mjs';
+import { collectPortraitCareStates } from './portrait-care-states.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
   record: RECORD_STATES,
   'kept-search': KEPT_SEARCH_STATES,
   'kid-entry': KID_ENTRY_STATES,
+  'portrait-care': PORTRAIT_CARE_STATES,
   'confirmed-actions': CONFIRMED_ACTION_STATES,
   navigation: [
     ...rows('shell', ['keep-closed', 'keep-open', 'keep-toggle-closed', 'keep-escape', 'keep-write', 'keep-close-focus']),
@@ -63,7 +66,7 @@ export function expectedReleaseInteractionStates(group, viewport) {
 export function missingReleaseInteractionEvidence(cells, { group, viewport, sourceSha, sourceTreeSha }) {
   return expectedReleaseInteractionStates(group, viewport).flatMap(({ route, state, group: part }) => {
     const cell = cells.find(item => item.route === route && item.state === state && item.group === part && item.lang === viewport.lang && item.viewport === `${viewport.w}x${viewport.h}` && item.sourceSha === sourceSha && (!sourceTreeSha || item.sourceTreeSha === sourceTreeSha));
-    const valid = (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
+    const valid = (part !== 'portrait-care' || validPortraitCareCell(cell)) && (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
     return valid ? [] : [{ route, state, group: part, lang: viewport.lang, viewport: `${viewport.w}x${viewport.h}`, failure: cell?.failures?.[0] ?? (cell ? 'INCOMPLETE_ASSERTIONS_OR_SCREENSHOT' : 'NOT_ATTEMPTED') }];
   });
 }
@@ -186,6 +189,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     doc.fixtures.push('preloaded-ai-draft-and-unverified-lineage-not-model-proof', 'synthetic-browser-share-sink', 'synthetic-Date-only-native-animation-time');
   }
   if (kidEntry) { doc.kidEntryBoundaries = KID_ENTRY_LIMITATIONS; doc.fixtures = ['synthetic-family', 'local-mock-server', 'synthetic-three-child-entry-profiles', 'synthetic-book-narration-refusal']; }
+  if (group === 'portrait-care') { doc.portraitCareBoundaries = PORTRAIT_CARE_LIMITATIONS; doc.fixtures = ['synthetic-family', 'local-mock-server', 'synthetic-Date-only-native-animation-time', 'synthetic-current-child-book-narration-refusal']; }
   if (practiceCapture) doc.fixtures.push(PRACTICE_FIXTURE, 'practice-only-Date-native-animation-time');
   save();
   const { chromium } = await import('playwright');
@@ -195,6 +199,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, locale: he ? 'he-IL' : 'en-US', timezoneId: 'Asia/Jerusalem', serviceWorkers: 'block', permissions: [], ...captureFontContextOptions() });
     let selectedReportFixture = null;
     const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, deniedActionCategories: {}, ttsCapabilityReads: 0, shareListReads: 0, apiCacheHits: 0, localRateLimits: 0 };
+    if (group === 'portrait-care') Object.assign(apiState, { portraitCareDeniedMutations: 0, portraitCareNarrationRefusals: 0 });
     if (kidEntry) Object.assign(apiState, { kidEntryNarrationRefusals: 0, kidEntryDeniedMutations: 0 });
     await context.route('**/*', route => {
       if (new URL(route.request().url()).origin === BASE) return route.continue();
@@ -207,6 +212,11 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       const url = new URL(request.url());
       if (url.origin !== BASE) { apiState.deniedExternal++; return route.abort(); }
       const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+      if (group === 'portrait-care') {
+        const disposition = portraitCareApiDisposition(request.method(), url.pathname, fixture.childId);
+        if (disposition === 'synthetic-narration-refusal') { apiState.portraitCareNarrationRefusals++; return json(409, { code: 'synthetic_capture_media_disabled' }); }
+        if (disposition === 'deny') { apiState.portraitCareDeniedMutations++; apiState.deniedActions++; return route.abort(); }
+      }
       if (kidEntry) {
         const disposition = kidEntryApiDisposition(request.method(), url.pathname, kidEntry.childIds);
         if (disposition === 'synthetic-narration-refusal') { apiState.kidEntryNarrationRefusals++; return json(409, { code: 'synthetic_capture_media_disabled' }); }
@@ -379,7 +389,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       // cell remains unreached; screenshots cannot convert missing evidence.
       try {
         const shot = `shots/release.${group}.${viewportId}.${lang}.${state}.exact.png`;
-        await captureScreenshot(page, { path: `${output}/${shot}`, timeout: 12000, animations: 'disabled' });
+        await captureScreenshot(page, { path: `${output}/${shot}`, timeout: 12000, animations: group === 'portrait-care' ? 'allow' : 'disabled' });
         cell.shot = shot;
       } catch (error) { cell.failures.push(knownFailure(error)); }
       // Bounded follow-through can run after preserving an honest first-fold
@@ -427,7 +437,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       return cell.reached;
     };
 
-    if (group === 'kept-search') {
+    if (group === 'portrait-care') {
+      await collectPortraitCareStates({ page, fixture, viewport, load, screen, check, byId, apiState, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }) });
+    } else if (group === 'kept-search') {
       await collectKeptSearchStates({ page, context, fixture: keptSearch, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }) });
     } else if (group === 'kid-entry') {
       await collectKidEntryStates({ page, fixture: kidEntry, viewport, load, screen, check, byId, apiState });

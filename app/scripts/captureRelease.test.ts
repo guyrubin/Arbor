@@ -198,12 +198,13 @@ describe('final release evidence contracts, no sockets or browser', () => {
   });
   it('keeps publication, providers, real data and font binaries out of the branch-specific workflow', () => {
     const workflow = read('.github/workflows/arbor-parent-release-capture.yml');
-    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release', 'codex/kid-entry-safety-diagnostic', 'codex/kid-entry-safety-release']");
+    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release', 'codex/kid-entry-safety-diagnostic', 'codex/kid-entry-safety-release', 'codex/portrait-care-capture']");
     for (const [branch, scope] of Object.entries({
       'codex/parent-capture-search-release': 'parent-kid-release',
       'codex/parent-confirmed-action-loops': 'confirmed-actions-release',
       'codex/kid-entry-safety-diagnostic': 'kid-entry-only',
       'codex/kid-entry-safety-release': 'kid-entry-release',
+      'codex/portrait-care-capture': 'portrait-care-only',
       'codex/parent-record-clarity': 'record-release',
       'codex/parent-record-diagnostic': 'record-only',
       'codex/parent-close-return-diagnostic': 'report-close-only',
