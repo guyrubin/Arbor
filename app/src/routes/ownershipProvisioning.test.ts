@@ -278,6 +278,13 @@ describe("OWN-1 — a child owned by another family cannot be claimed by posting
     await store.families.ensureChild("some-other-family", "kid-1");
     expect(store.childDoc("kid-1")?.familyId).toBe(ownerFamilyId);
   });
+  it("a parent with a second family doc (concurrent first-login provisioning) keeps access to the first family's child", async () => {
+    await store.families.ensureFamilyMembership("parent-1-second-family", "parent-1");
+    expect(await store.families.ensureChild("parent-1-second-family", "kid-1")).toBe(false);
+    expect(store.childDoc("kid-1")?.familyId).toBe(ownerFamilyId);
+    expect(await store.ownsChild("parent-1", "kid-1")).toBe(true);
+    expect((await getJson(owner, "/api/memory/kid-1")).status).toBe(200);
+  });
 });
 
 describe("OWN-1 — 'default-family' backfill (existing accounts)", () => {

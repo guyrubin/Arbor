@@ -277,8 +277,7 @@ export function behaviorTypeLabel(
   if (entry) return t(keyOf(entry));
   // Rows a parent accepted from a conversation proposal (ArborContext) carry
   // these app-written types; they are Arbor's words, so they always localize.
-  const proposalKey = PROPOSAL_TYPE_KEYS[raw];
-  if (proposalKey) return t(proposalKey);
+  if (Object.hasOwn(PROPOSAL_TYPE_KEYS, raw)) return t(PROPOSAL_TYPE_KEYS[raw]);
   const { type: mapped, matched } = mapLabelToType(raw);
   if (!matched) return raw;
   const legacy = BEHAVIOR_TYPES.find((b) => b.value === mapped);

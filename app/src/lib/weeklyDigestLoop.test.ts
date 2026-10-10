@@ -52,7 +52,8 @@ describe("AIX-S6 — acceptTodayAction carries provenance", () => {
     expect(code).toMatch(/acceptTodayAction = \(recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry\["source"\] = "today-guidance", planStep\?: PlanStepRef, options\?: \{ awaitServer\?: boolean; isCurrent\?: \(\) => boolean \}\)/);
     // B-AI-05: the entry is built by actionLoop/model planAcceptedAction
     // (trimmed text + source + capacity), which never overwrites a row.
-    expect(code).toContain("await persistAcceptedTodayAction({ childId: childProfile.id, items: actionLoop,");
+    // The seam reads the ledger as stored (hidden urgent first-run rows included), so it supersedes them instead of reusing their id.
+    expect(code).toContain("await persistAcceptedTodayAction({ childId: childProfile.id, items: actionLoopCol.items,");
     expect(code).toMatch(/recommendation, capacity, source,\s*\.\.\.\(planStep \? \{ planStep \} : \{\}\)/);
     const seam = read("actionLoop/accept.ts");
     expect(seam).toContain("planAcceptedAction(input.items, input, todayActionId(input.childId, now), now)");
