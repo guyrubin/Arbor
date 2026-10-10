@@ -179,6 +179,6 @@ export const he: Record<string, string> = {
   "elev.mimic.content.prompt.no.focus": `${target("N")} · ראש וקול יחד`,
   "elev.mimic.stamp.eyebrow": "התקדמות",
   "elev.mimic.stamp.save": "שמירת חותמת",
-  "elev.mimic.stamp.headline": "הערכה {pack} הושלמה!",
+  "elev.mimic.stamp.headline": "סיימנו את {pack}!",
   "elev.mimic.stamp.sub": "כל {count} הסיבובים של {name} הושלמו",
 };
