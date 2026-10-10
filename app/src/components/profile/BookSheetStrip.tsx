@@ -7,11 +7,11 @@
  * on this device: one calm line. Nothing when the book does not show this hero.
  * The pictures come through the owner-checked proxy (lib/bookAssetStore).
  */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { fetchBookAsset } from "../../lib/bookAssetStore";
+import { createBookAssetScope, fetchBookAsset } from "../../lib/bookAssetStore";
 import type { BookAssetsDoc } from "../../lib/library/bookAssetPaths";
 import { getLibraryBook } from "../../lib/library/books";
 import { bookSheetDrawPoses, bookSheetId } from "../../lib/library/bookSheet";
@@ -30,7 +30,11 @@ export default function BookSheetStrip({ child, avatarHash }: { child: Pick<Chil
   const doc = override && override.sheetId === sheetId && (!stored || override.createdAt > stored.createdAt) ? override : stored;
   const book = getLibraryBook(DEFAULT_SHEET_BOOK);
   const poses = useMemo(() => (book && doc ? bookSheetDrawPoses(book).filter((p) => doc.sheetManifest.poses[p]) : []), [book, doc]);
-  const [urls, setUrls] = useState<Record<string, string>>({});
+  const readKey = useMemo(() => ({ childId: child.id, doc }), [child.id, doc]);
+  const currentRead = useRef(readKey);
+  currentRead.current = readKey;
+  const [storedUrls, setUrls] = useState<{ readKey: typeof readKey; values: Record<string, string> } | null>(null);
+  const urls = storedUrls?.readKey === readKey ? storedUrls.values : {};
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [failed, setFailed] = useState<Record<string, boolean>>({});
 
@@ -38,20 +42,31 @@ export default function BookSheetStrip({ child, avatarHash }: { child: Pick<Chil
     if (!doc) return;
     let live = true;
     const made: string[] = [];
+    const scope = createBookAssetScope(child.id, () => live && currentRead.current === readKey);
+    const retired = () => {
+      made.splice(0).forEach((u) => URL.revokeObjectURL(u));
+      if (live) setUrls(null);
+    };
+    scope.signal.addEventListener("abort", retired, { once: true });
+    setUrls(null);
     void (async () => {
       const next: Record<string, string> = {};
       for (const pose of poses) {
-        const blob = await fetchBookAsset(child.id, doc, `hero-sheets/${doc.sheetId}/${doc.sheetManifest.poses[pose].file}`).catch(() => null);
-        if (!blob || !live) continue;
+        if (!scope.current()) return;
+        const blob = await fetchBookAsset(child.id, doc, `hero-sheets/${doc.sheetId}/${doc.sheetManifest.poses[pose].file}`, scope).catch(() => null);
+        if (!scope.current()) return;
+        if (!blob) continue;
         const u = URL.createObjectURL(blob);
         made.push(u);
         next[pose] = u;
       }
-      if (live) setUrls(next);
+      if (scope.current()) setUrls({ readKey, values: next });
     })();
     return () => {
       live = false;
-      made.forEach((u) => URL.revokeObjectURL(u));
+      scope.signal.removeEventListener("abort", retired);
+      scope.close();
+      retired();
     };
   }, [child.id, doc, poses]);
 

@@ -18,7 +18,7 @@ import { trackSessionOpen } from "../lib/loopEvents";
 import { recordRetentionSession } from "../lib/retentionRollup";
 import { purgeAllComicPages } from "../lib/comicPageStore";
 import { purgeAllHeroRenders } from "../lib/heroRenderStore";
-import { purgeBookAssets } from "../lib/bookAssetStore";
+import { purgeBookAssets, retireBookAssetScopes } from "../lib/bookAssetStore";
 import { clearPrewarmedComic } from "../lib/comicPrewarm";
 import { clearMathExit } from "../components/kidmode/parentGate";
 
@@ -72,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!firebaseEnabled || !auth) return;
     const unsubscribe = onAuthStateChanged(auth, (u) => {
+      retireBookAssetScopes(); // Cancel private reads before owner-transition paint (including A → B → A).
       setUser(u ? toAuthUser(u) : null);
       setLoading(false);
       // STORE-2: RevenueCat keys native purchases on its App User ID, and the
@@ -82,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .then((m) => m.syncNativeBillingUser(u ? u.uid : null))
         .catch(() => undefined);
     });
-    return unsubscribe;
+    return () => { retireBookAssetScopes(); unsubscribe(); };
   }, []);
 
   const signInWithGoogle = async () => {
@@ -126,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    const bookPurge = purgeBookAssets(); // Revoke immediately, before any other asynchronous device purge.
     // AIX-S5 firewall condition: sign-out purges the device-local IndexedDB
     // comic-page store (all children) — child-derivative art never outlives
     // the session owner on a shared device. Best effort, before auth teardown,
@@ -138,10 +140,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // B-KID-127: the kept story text (device copy) leaves with the session too.
     try {
       await purgeAllHeroRenders();
-      await purgeBookAssets(); // B-BOOK release: every child's private book files on this device
     } catch {
       /* best effort */
     }
+    await bookPurge;
     // Same rule for the in-memory prewarm slot: it holds a generated page with
     // a child's NAME drawn into it. clearPrewarmedComic() documented that it
     // was called here and had no call site anywhere, so on a shared tab the

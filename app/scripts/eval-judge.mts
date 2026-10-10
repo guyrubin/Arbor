@@ -26,7 +26,7 @@
  * `--ids a,b,c` judges a subset (scenario ids, or catalogue/practice ids).
  *
  * B-PROV-10 LIVE TIER ONLY (opt-in): a suite whose runner declares
- * `deterministicCiGate` (voice-loop-v1) is judged on its `tier: "live"`
+ * `deterministicCiGate` (for example voice-loop-v1) is judged on its `tier: "live"`
  * scenarios only — its deterministic scenarios carry stubbed model replies /
  * screening-down conditions no live route can reproduce, so the row lists
  * them as `skippedDeterministic` with `skippedReason: "CI gate: <file>"` and
@@ -59,7 +59,7 @@ import { createAdminMetricsStore } from "../src/server/adminMetrics.js";
 import { createWaitlistStore } from "../src/server/waitlist.js";
 import { hardMomentCards } from "../src/content/hardMomentCards.js";
 import { hardMomentEvalSeedMessage } from "../src/eval/acceptance.js";
-import { appendResultsRow, isStaticSuite, judgeVisibleInput, runSuiteWithDeps, type ScenarioVerdict } from "../src/eval/judge.js";
+import { appendResultsRow, isStaticSuite, judgeVisibleInput, requireLiveScenarios, runSuiteWithDeps, type ScenarioVerdict } from "../src/eval/judge.js";
 import { changedContentKeys } from "../src/eval/contentHashes.js";
 import type { EvalScenario, EvalSuite } from "../src/eval/acceptance.js";
 import { handoffWireBody, planWireBody, routeChildProfile, runnerInputError, todaysFocusWireBody } from "../src/eval/runnerInput.js";
@@ -451,6 +451,7 @@ export const runLiveSuite = async (suiteName: string, opts: { ids?: string[] } =
     suite.scenarios = selectScenarios(suite, opts.ids);
     subset = suite.scenarios.map((scenario) => scenario.id);
   }
+  requireLiveScenarios(suite);
   if (isStaticSuite(suite)) return runStaticSuite(suiteName, suite, subset);
   // The judge must see the exact synthetic profile supplied to the route;
   // otherwise a correctly restored child name appears to be hallucinated.
