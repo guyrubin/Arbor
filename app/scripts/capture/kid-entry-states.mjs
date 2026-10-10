@@ -1,5 +1,25 @@
 /** Actual controls only; no app callbacks, generation, state reset or forced click. */
-import { observeKidEntry, kidEntryHomeFacts, compareKidEntryProfiles } from './kid-entry-contract.mjs';
+import { observeKidEntry, observeKidEntryPicker, kidEntryHomeFacts, compareKidEntryProfiles } from './kid-entry-contract.mjs';
+
+/** The preceding real Tab may expose the skip link over a mobile picker.
+ * Continue with the button's real keyboard path, never a forced pointer hit. */
+export async function openKidEntryPicker({ page, cell, check }) {
+  const picker = page.locator('button[aria-haspopup="listbox"]:visible').first();
+  const receipt = { before: await picker.evaluate(observeKidEntryPicker), focused: null, opened: null };
+  (cell.pickerOpens ??= []).push(receipt);
+  await picker.focus();
+  const focused = await picker.evaluate(observeKidEntryPicker); receipt.focused = focused;
+  if (!focused.pickerFocused || focused.pickerInert) {
+    check(cell, 'ACTUAL_KEYBOARD_CHILD_PICKER_OPEN', false, receipt);
+    throw new Error('CHILD_PICKER_KEYBOARD_FOCUS_MISSING');
+  }
+  await page.keyboard.press('Enter');
+  await page.getByRole('listbox').waitFor({ state: 'visible' });
+  const opened = await picker.evaluate(observeKidEntryPicker); receipt.opened = opened;
+  const passed = opened.pickerFocused && !opened.pickerInert && opened.expanded && opened.visibleListboxCount === 1;
+  check(cell, 'ACTUAL_KEYBOARD_CHILD_PICKER_OPEN', passed, receipt);
+  if (!passed) throw new Error('CHILD_PICKER_KEYBOARD_OPEN_MISSING');
+}
 
 export async function collectKidEntryStates({ page, fixture, viewport, load, screen, check, byId, apiState }) {
   const he = viewport.lang === 'he';
@@ -87,7 +107,7 @@ export async function collectKidEntryStates({ page, fixture, viewport, load, scr
     // Rapid ABA may legitimately retain A's DOM; do not manufacture a remount.
     const outgoing = settle === true ? await page.locator(parentSelector).elementHandle() : null;
     try {
-      await page.locator('button[aria-haspopup="listbox"]:visible').first().click();
+      await openKidEntryPicker({ page, cell, check });
       await page.getByRole('listbox').getByRole('option').filter({ hasText: child.name }).click();
       await page.waitForFunction(id => localStorage.getItem('arbor.activeChildId') === id, child.id);
       visitedChildIds.add(child.id);

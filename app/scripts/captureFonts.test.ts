@@ -22,6 +22,23 @@ describe('source-font cache contracts, stubbed fetch only', () => {
     expect(fontMode()).toBe('fallback');
     expect(() => fontMode('remote')).toThrow();
   });
+  it('reports a bounded rejected public-resource shape without requesting it or exposing values', async () => {
+    const rejected = 'https://fonts.gstatic.com/l/font?kit=DO_NOT_LOG_VALUE&skey=DO_NOT_LOG_KEY';
+    const fetcher = vi.fn();
+    let failure: any;
+    try { await readPublicResource(rejected, 'test', 'woff2', fetcher); } catch (error) { failure = error; }
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(failure.message).toBe('FONT_RESOURCE_URL_DENIED');
+    expect(failure.fontResource).toEqual({ origin: 'https://fonts.gstatic.com', pathname: '/l/font', queryKeys: ['kit', 'skey'], hasCredentials: false, hasFragment: false, canonical: true, urlSha256: sha256(rejected) });
+    expect(JSON.stringify(failure.fontResource)).not.toMatch(/DO_NOT_LOG/);
+    for (const raw of ['https://private-host.invalid/private-person?email=DO_NOT_LOG', 'https://DO_NOT_LOG:DO_NOT_LOG@fonts.gstatic.com/l/font#DO_NOT_LOG']) {
+      try { assertFontUrl(raw); } catch (error: any) {
+        expect(error.message).toBe('FONT_RESOURCE_URL_DENIED');
+        expect(JSON.stringify(error.fontResource)).not.toMatch(/DO_NOT_LOG|private-host|private-person/);
+      }
+    }
+    expect(read('app/scripts/capture/prepare-font-cache.mjs')).toContain("code === 'FONT_RESOURCE_URL_DENIED' && error.fontResource");
+  });
   it('never follows a redirect or sends credentials and enforces types and lengths', async () => {
     let options: any;
     const fetcher = async (_url: string, opts: any) => { options = opts; return new Response('wOF2synthetic-test-only', { headers: { 'content-type': 'font/woff2' } }); };

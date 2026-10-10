@@ -9,11 +9,13 @@ lifetime correction `616237baf3c3bdd472dfe1678cb9a681282583e3` cherry-picked as
 authorized pre-paint lock correction follows the reproduced reload failure below.
 No held Kids feature is imported.
 
-**Current result: release blocked.** The owner-run second diagnostic renders all
-18 states but accepts 17/18; reload's first-ready parent shield still fails. The
-pre-paint correction below has offline lifecycle evidence only and requires new
-exact-source cloud types, diagnostic and release evidence. No local browser,
-Docker run, typecheck, provider call or publication was performed by this author.
+**Current result: release blocked.** The later owner-run four-variant Kids subset
+accepts 67/72 states. First-ready reload shielding now passes in every variant;
+mobile EN fails before sibling selection with a focused skip link covering the
+picker. The capture-only keyboard correction below still needs real recapture
+of all four variants. The full release run remains the owner's responsibility.
+No local browser, Docker run, typecheck, provider call or publication was
+performed by this author.
 
 ## Additive matrix
 
@@ -234,3 +236,60 @@ stamp. All optional timestamp accesses were inspected together. No assertion
 changed, no `any` was added, and no local typecheck was run. Fresh exact-source
 cloud typecheck, the unchanged 18-state diagnostic, then full release evidence
 remain required before acceptance.
+
+## Four-variant Kids result and capture-only keyboard opener
+
+The owner-run full release source `b1a9dded1f375eaef5614915728c7f86fe295796`
+uses app source tree `f64c7c1e01cf204eed9fa04c4a474452fb554e66`. Its retained
+Kids shards accept desktop EN 18/18, desktop HE 18/18, mobile HE 18/18, mobile
+EN 13/18. This is **67/72**, not full-release acceptance. The full 930-state run
+was still running when this correction was prepared.
+
+All four first-ready reload frames have both inert and aria-hidden on
+page-shell: mobile EN 180.9 ms, mobile HE 159.9 ms, desktop EN 246.9 ms,
+desktop HE 319.1 ms. No first-ready lock assertion was weakened or delayed.
+
+Mobile EN's first failure, `sibling-hero-first`, follows a successful real gate
+return and unlocked Noa body. `answer()` deliberately presses Tab to prove
+parent keyboard reachability; the first stop is Shell's skip link. The failed
+PNG shows that focused, fixed z-80 link over the mobile picker, with Noa's
+complete parent body still present. Four subsequent sibling/under-three/ABA
+states also time out. The final receipt still has only A in `visitedChildIds`,
+no sibling visit delta, and three narration refusals. All other variants
+actually visit B and under-three, and record their source-defined first visits.
+
+This does not show the separate Parent child-switch blank/wait-mode deadlock:
+there is no completed sibling selection or missing parent body. Exact picker
+rectangles and raw Playwright hit-test errors were not retained in that attempt,
+so center interception is a strong PNG/source inference, not claimed as a
+recorded DOM hit-test. The failed attempt remains unchanged. No Shell change
+is included as a remedy for this capture failure.
+
+The corrected capture retains the prior parent-focus assertion and now uses
+the existing button's real keyboard opener. Before any input, it records the
+picker/skip-link rectangles, focus, center hit owner, expanded state and visible
+listbox count. It focuses the visible picker, verifies actual non-inert focus,
+sends real Enter, and requires the focused expanded button plus one visible
+listbox before the unchanged actual option click. Every switch-bearing state
+requires `ACTUAL_KEYBOARD_CHILD_PICKER_OPEN` in addition to existing visible
+identity, outgoing retirement, storage, profile, destination and lock facts.
+There is no force-click, blur/DOM mutation, route reset or widened timeout.
+
+Five new helper cases use an explicitly synthetic focused/occluding skip link.
+The mouse opener fails there, while the actual observer/keyboard helper passes;
+lost focus, an inert picker, missing expansion or absent visible listbox fail
+closed. They establish helper sequencing, not browser event delivery. Separate
+offline one-worker processes pass captureKidEntry 21, captureRelease 11 and
+release-interactions 17 (**49/49**). One initial command named a nonexistent
+test path and ran zero tests; the corrected path passed. Syntax/diff checks
+pass; the dependency link is removed and serial slot released.
+
+Only capture contract, helper, tests and this receipt change. App source and
+workflow are unchanged. All four Kids variants must be recaptured with the new
+required fact; no old passing Kids shard is represented as satisfying it. Any
+reconciliation with the still-running full release must explicitly identify
+unchanged evidence and its source, rather than relabel the failed attempt.
+
+## Four-viewport correction verification
+
+The diagnostic branch now selects existing `kid-entry-only` (72 cells) after the mobile-English keyboard-opener correction. The full b1a9dde 930-cell run and every failure remain historical evidence; this bounded run cannot itself assert that all Parent cells passed. App source is unchanged. Font resource preflight remains unchanged and fail-closed; rejected public-resource shape diagnostics omit credentials, query values, unknown hosts and raw CSS.

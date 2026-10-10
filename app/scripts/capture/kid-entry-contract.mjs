@@ -81,6 +81,7 @@ export function observeKidEntry({ selector, contentSelector = null, childId, out
 const common = ['ACTUAL_SETTLED_DESTINATION_BODY', 'PROFILE_IDENTITY_AGE_HERO_AND_OTHER_FIELDS_UNCHANGED', 'VISIT_STAMP_TRANSITIONS_ACCOUNTED', 'CHILD_COLLECTIONS_UNCHANGED', 'NO_GENERATION_OR_MUTATION_DISPATCH', 'SYNTHETIC_ONLINE', 'NO_PROHIBITED_ACTIONS'];
 const entered = ['ACTUAL_HOME_GREETING_NAMES_CURRENT_CHILD', 'EXACT_CURRENT_CHILD_HOME_AND_PARENT_SHIELD', 'NO_RETIRED_STEP_OR_CREATOR', 'KEYBOARD_FOCUS_INSIDE_KID_OVERLAY'];
 const parent = ['PARENT_BODY_UNLOCKED_WITHOUT_RETIRED_MODAL', 'PARENT_HEADING_NAMES_CURRENT_CHILD'];
+const switched = ['ACTUAL_VISIBLE_CHILD_IDENTITY', 'ACTUAL_KEYBOARD_CHILD_PICKER_OPEN'];
 export const KID_ENTRY_REQUIRED_ASSERTIONS = Object.freeze({
   'hero-first': [...parent, 'CURRENT_CHILD_HERO_FIRST_BEFORE_ENTRY', 'FOCUS_TRAPPED_IN_PARENT_HERO_MODAL'],
   'creator-open': ['ACTUAL_DESCRIPTOR_CREATOR_WITHOUT_GENERATION'],
@@ -94,11 +95,11 @@ export const KID_ENTRY_REQUIRED_ASSERTIONS = Object.freeze({
   'gate-dismiss': entered,
   'gate-return': [...parent, 'REAL_HOLD_OPENS_CHALLENGE_WITHOUT_UNLOCK', 'CHALLENGE_INPUT_HAS_FOCUS', 'PARENT_KEYBOARD_FOCUS_REACHABLE_AFTER_GATE'],
   'same-session-reload-entry': [...parent, ...entered],
-  'sibling-hero-first': [...parent, 'ACTUAL_VISIBLE_CHILD_IDENTITY', 'FRESH_ELIGIBLE_SIBLING_GETS_OWN_OFFER'],
+  'sibling-hero-first': [...parent, ...switched, 'FRESH_ELIGIBLE_SIBLING_GETS_OWN_OFFER'],
   'sibling-sprout-entry': entered,
-  'sibling-parent-return': [...parent, 'ACTUAL_VISIBLE_CHILD_IDENTITY', 'PARENT_KEYBOARD_FOCUS_REACHABLE_AFTER_GATE'],
-  'under-three-child-switch': [...parent, 'ACTUAL_VISIBLE_CHILD_IDENTITY', 'UNDER_THREE_HAS_NO_ENTRY_DOOR_OR_OLD_MODAL', 'INELIGIBLE_CHILD_NOT_MARKED_OFFERED'],
-  'child-aba-return': [...parent, 'ACTUAL_VISIBLE_CHILD_IDENTITY', 'SAME_PERSISTENT_DOOR_AFTER_ELIGIBLE_A_B_A', 'A_UNDER_THREE_A_DOES_NOT_REVIVE_CANCELLED_STEP'],
+  'sibling-parent-return': [...parent, ...switched, 'PARENT_KEYBOARD_FOCUS_REACHABLE_AFTER_GATE'],
+  'under-three-child-switch': [...parent, ...switched, 'UNDER_THREE_HAS_NO_ENTRY_DOOR_OR_OLD_MODAL', 'INELIGIBLE_CHILD_NOT_MARKED_OFFERED'],
+  'child-aba-return': [...parent, ...switched, 'SAME_PERSISTENT_DOOR_AFTER_ELIGIBLE_A_B_A', 'A_UNDER_THREE_A_DOES_NOT_REVIVE_CANCELLED_STEP'],
   'current-child-entry': entered,
 });
 export function kidEntryRequiredAssertions(state) {
@@ -109,6 +110,19 @@ export function validKidEntryCell(cell) {
   return ids.length > 0 && ids.every(id => cell.assertions?.some(assertion => assertion.id === id && assertion.passed === true))
     && cell.frames?.length > 0 && cell.frames.every(frame => frame.ready === true)
     && cell.networkEvidence?.kidEntryDeniedMutations === 0;
+}
+
+/** Passive, bounded hit/focus facts; no text, profile or DOM mutation. */
+export function observeKidEntryPicker(picker) {
+  const bounds = node => { if (!node) return null; const box = node.getBoundingClientRect(); return { x: box.x, y: box.y, width: box.width, height: box.height }; };
+  const skip = document.querySelector('[data-testid="skip-to-content"]');
+  const box = bounds(picker);
+  const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+  const visible = node => { const rect = bounds(node); const style = getComputedStyle(node); return rect.width > 0 && rect.height > 0 && !node.closest('[hidden], [inert]') && style.display !== 'none' && style.visibility !== 'hidden'; };
+  return { picker: box, skipLink: bounds(skip), skipLinkFocused: document.activeElement === skip,
+    pickerFocused: document.activeElement === picker, pickerInert: !!picker.closest('[inert]'), focusedTag: document.activeElement?.tagName ?? null,
+    centerHitOwner: !hit ? 'none' : picker === hit || picker.contains(hit) ? 'picker' : skip && (skip === hit || skip.contains(hit)) ? 'skip-link' : 'other',
+    expanded: picker.getAttribute('aria-expanded') === 'true', visibleListboxCount: [...document.querySelectorAll('[role="listbox"]')].filter(visible).length };
 }
 
 

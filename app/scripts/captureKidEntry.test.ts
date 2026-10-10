@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { KID_ENTRY_STATES, KID_ENTRY_LIMITATIONS, KID_ENTRY_REQUIRED_ASSERTIONS, kidEntryRequiredAssertions, kidEntryFixture, kidEntryApiDisposition, validKidEntryCell, observeKidEntry, kidEntryHomeFacts, compareKidEntryProfiles } from './capture/kid-entry-contract.mjs';
+import { KID_ENTRY_STATES, KID_ENTRY_LIMITATIONS, KID_ENTRY_REQUIRED_ASSERTIONS, kidEntryRequiredAssertions, kidEntryFixture, kidEntryApiDisposition, validKidEntryCell, observeKidEntry, observeKidEntryPicker, kidEntryHomeFacts, compareKidEntryProfiles } from './capture/kid-entry-contract.mjs';
+import { openKidEntryPicker } from './capture/kid-entry-states.mjs';
 import { initializeSyntheticOnline } from './capture/small-state.mjs';
 import { releaseMatrix, releaseCell } from './capture/release-config.mjs';
 import { expectedReleaseInteractionStates, missingReleaseInteractionEvidence } from './capture/release-interactions.mjs';
@@ -20,6 +21,41 @@ const observation = (args: Parameters<typeof observeKidEntry>[0]) => {
   if (result === false) throw new Error('EXPECTED_OBSERVATION_OBJECT');
   return result;
 };
+
+// Synthetic control boundary: the focused skip link covers the mouse center.
+// Execute the real opener/observer, not a replacement app selection callback.
+function pickerHarness({ focusWorks = true, opens = true, expandedOnly = false, inert = false } = {}) {
+  type Rect = { x: number; y: number; width: number; height: number };
+  type Control = { tagName: string; getBoundingClientRect(): Rect; getAttribute(name: string): string | null; closest(selector: string): object | null; contains(node: unknown): boolean };
+  const pickerRect = { x: 50, y: 20, width: 128, height: 44 }, skipRect = { x: 8, y: 8, width: 128, height: 44 };
+  let expanded = false;
+  const events: string[] = [];
+  const base = (tagName: string, rect: Rect): Control => ({ tagName, getBoundingClientRect: () => rect, getAttribute: () => null, closest: () => null, contains: () => false });
+  const skip = base('A', skipRect), picker = base('BUTTON', pickerRect), listbox = base('DIV', { x: 50, y: 72, width: 200, height: 160 });
+  let active: Control = skip;
+  picker.getAttribute = name => name === 'aria-expanded' ? String(expanded) : null;
+  picker.closest = () => inert ? {} : null;
+  skip.getBoundingClientRect = () => active === skip ? skipRect : { x: 0, y: 0, width: 1, height: 1 };
+  vi.stubGlobal('document', { get activeElement() { return active; },
+    querySelector: (selector: string) => selector === '[data-testid="skip-to-content"]' ? skip : null,
+    querySelectorAll: (selector: string) => selector === '[role="listbox"]' && expanded && !expandedOnly ? [listbox] : [],
+    elementFromPoint: (x: number, y: number) => active === skip && x >= skipRect.x && x <= skipRect.x + skipRect.width && y >= skipRect.y && y <= skipRect.y + skipRect.height ? skip : picker,
+  });
+  vi.stubGlobal('getComputedStyle', () => ({ display: 'block', visibility: 'visible' }));
+  const locator = {
+    evaluate: async (observe: (node: Control) => unknown) => { events.push('observe'); return observe(picker); },
+    focus: async () => { events.push('focus-picker'); if (focusWorks) active = picker; },
+    click: async () => { events.push('mouse-click'); if (observeKidEntryPicker(picker).centerHitOwner === 'skip-link') throw new Error('SKIP_LINK_INTERCEPTS_POINTER'); },
+  };
+  const page = {
+    locator: (selector: string) => { expect(selector).toBe('button[aria-haspopup="listbox"]:visible'); return { first: () => locator }; },
+    keyboard: { press: async (key: string) => { events.push(`key-${key}`); expect(key).toBe('Enter'); expect(active).toBe(picker); if (opens) expanded = true; } },
+    getByRole: (role: string) => { expect(role).toBe('listbox'); return { waitFor: async (options: { state: string }) => { events.push('visible-listbox'); expect(options).toEqual({ state: 'visible' }); } }; },
+  };
+  const cell: { pickerOpens?: unknown[]; assertions: { id: string; passed: boolean }[] } = { assertions: [] };
+  const check = (_cell: typeof cell, id: string, passed: boolean) => { cell.assertions.push({ id, passed }); };
+  return { page, cell, check, events, locator, picker, pickerRect, skipRect };
+}
 
 describe('bounded Kids entry capture contract, no browser or provider', () => {
   it('adds 18-state diagnostic and 72-state release without changing current Parent858', () => {
@@ -45,6 +81,36 @@ describe('bounded Kids entry capture contract, no browser or provider', () => {
       for (const patch of [{ frames: [] }, { frames: [{ ready: false }] }, { networkEvidence: {} }, { networkEvidence: { kidEntryDeniedMutations: 1 } }]) expect(validKidEntryCell({ ...original, ...patch })).toBe(false);
     }
     expect(validKidEntryCell({ state: 'made-up' })).toBe(false);
+  });
+  it('continues from a focused occluding skip link through the actual keyboard picker helper', async () => {
+    const harness = pickerHarness();
+    expect(observeKidEntryPicker(harness.picker)).toMatchObject({ skipLinkFocused: true, pickerFocused: false, centerHitOwner: 'skip-link', expanded: false, visibleListboxCount: 0 });
+    await expect(harness.locator.click()).rejects.toThrow('SKIP_LINK_INTERCEPTS_POINTER');
+    harness.events.length = 0;
+    await openKidEntryPicker(harness);
+    expect(harness.events).toEqual(['observe', 'focus-picker', 'observe', 'key-Enter', 'visible-listbox', 'observe']);
+    expect(harness.cell.pickerOpens).toEqual([{
+      before: expect.objectContaining({ picker: harness.pickerRect, skipLink: harness.skipRect, skipLinkFocused: true, pickerFocused: false, centerHitOwner: 'skip-link' }),
+      focused: expect.objectContaining({ skipLinkFocused: false, pickerFocused: true, centerHitOwner: 'picker' }),
+      opened: expect.objectContaining({ pickerFocused: true, expanded: true, visibleListboxCount: 1 }),
+    }]);
+    expect(harness.cell.assertions).toEqual([{ id: 'ACTUAL_KEYBOARD_CHILD_PICKER_OPEN', passed: true }]);
+    const src = source();
+    expect(src).toContain("'PARENT_KEYBOARD_FOCUS_REACHABLE_AFTER_GATE'");
+    expect(src.indexOf('await openKidEntryPicker({ page, cell, check });')).toBeLessThan(src.indexOf("await page.getByRole('listbox').getByRole('option')"));
+    for (const state of ['sibling-hero-first', 'sibling-parent-return', 'under-three-child-switch', 'child-aba-return']) expect(kidEntryRequiredAssertions(state)).toContain('ACTUAL_KEYBOARD_CHILD_PICKER_OPEN');
+    expect(src).not.toMatch(/force:\s*true|\.blur\(|waitForTimeout/);
+  });
+  it.each([{ focusWorks: false }, { inert: true }])('never dispatches Enter when actual picker focus is unavailable: %j', async options => {
+    const harness = pickerHarness(options);
+    await expect(openKidEntryPicker(harness)).rejects.toThrow('CHILD_PICKER_KEYBOARD_FOCUS_MISSING');
+    expect(harness.events).not.toContain('key-Enter');
+    expect(harness.cell.assertions).toEqual([{ id: 'ACTUAL_KEYBOARD_CHILD_PICKER_OPEN', passed: false }]);
+  });
+  it.each([{ opens: false }, { expandedOnly: true }])('rejects an Enter that does not produce both expanded state and a visible listbox: %j', async options => {
+    const harness = pickerHarness(options);
+    await expect(openKidEntryPicker(harness)).rejects.toThrow('CHILD_PICKER_KEYBOARD_OPEN_MISSING');
+    expect(harness.cell.assertions).toEqual([{ id: 'ACTUAL_KEYBOARD_CHILD_PICKER_OPEN', passed: false }]);
   });
   for (const lang of ['en', 'he']) it(`uses invented 4y/3y/2y no-hero profiles (${lang})`, () => {
     const before = JSON.stringify(seed); const fixture = kidEntryFixture(seed, lang); expect(JSON.stringify(seed)).toBe(before);
@@ -84,7 +150,7 @@ describe('bounded Kids entry capture contract, no browser or provider', () => {
   });
   it('retains network-none/exact ephemeral font isolation with bounded diagnostic branch', () => {
     const workflow = read('../../.github/workflows/arbor-parent-release-capture.yml');
-    expect(workflow).toContain('"codex/kid-entry-safety-diagnostic" ]]; then scope=kid-entry-diagnostic;');
+    expect(workflow).toContain('"codex/kid-entry-safety-diagnostic" ]]; then scope=kid-entry-only;');
     expect(workflow).toContain('"codex/kid-entry-safety-release" ]]; then scope=kid-entry-release;');
     expect(workflow).toContain('docker create --network none'); expect(workflow).toContain('CAPTURE_FONT_MODE=exact'); expect(workflow).toContain('font files/images never go to artifacts or registries');
   });
