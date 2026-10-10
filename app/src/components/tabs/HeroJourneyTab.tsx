@@ -65,6 +65,7 @@ import { kidBookOpenable, kidBooks, kidShelfFor } from "../kidmode/kidBooks";
 import { useChildLibraryBooks } from "../kidmode/useChildLibraryBooks";
 import { adoptSavedRender, hydrateHeroRenders, resolvePersonalisedRender, type SavedHeroRender } from "../../lib/heroRenderStore";
 import { KidBookTitleCard } from "../kidmode/KidBookCover";
+import { autoReadPage } from "../kidmode/kidReadAloud";
 import { kidSfx } from "../kidmode/audio/kidAudio";
 import { KidFinishMoment } from "../kidmode/rewards/KidSouvenir";
 import { stopVoice } from "../../lib/voice";
@@ -367,13 +368,36 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       : scenes[sceneIndex]
     : undefined;
 
-  // B-BOOK-28: these legacy books have no prerecorded page narration.
-  // Keep local page-turn effects, but never synthesize their words at runtime.
-  // Also stop any parent narration when the gate or page changes.
+  // B-KID-76 (b): read-to-me. In Kid Mode each page reads itself aloud once it
+  // opens (400 ms after it settles); the per-child Sound in the top bar and the
+  // gesture rule live in kidReadAloud. The Decision page reads its question
+  // and then each choice (B-KID-73), so a child who cannot read yet hears what
+  // is asked. Guy, 10 Oct 2026: the read-aloud is back (PR 118 had removed it
+  // with B-BOOK-28). The words are the AUTHORED ones (B-BOOK-28 stands: no
+  // text or image generation in a kid read); each line's audio is fetched
+  // once per session (lib/naturalVoice) and plays on the blessed voice
+  // channel, which an iPhone allows outside the tap (lib/kidVoicePlayer).
+  // Turning the page, closing the book or leaving Kid Mode stops it.
+  const kidSpeech = !kidMode || !activeStory || !render
+    ? ""
+    : atEnd
+      ? kidsStoriesText("journey.end", aiLang)
+      : onCover
+        ? (render.title || activeStory.title)
+        : isDecision && !choiceId && displayScene
+          ? [`${displayScene.narration} ${kidsStoriesText("journey.decision", renderLang, { name: childProfile.name?.split(" ")[0] ?? "" })}`, ...choices.map((c) => c.label)].join("\n")
+          : displayScene?.narration ?? "";
   useEffect(() => {
-    stopVoice();
-    return () => stopVoice();
-  }, [kidMode, activeStory?.id, sceneIndex, onCover, atEnd]);
+    if (!kidSpeech) {
+      stopVoice();
+      return;
+    }
+    const timer = setTimeout(() => {
+      autoReadPage(childProfile.id, kidSpeech.split("\n"), atEnd ? (aiLang === "he" ? "he" : "en") : renderLang);
+    }, 400);
+    return () => { clearTimeout(timer); stopVoice(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kidSpeech, kidMode, activeStory?.id, sceneIndex, onCover, atEnd]);
   useEffect(() => { setAtEnd(false); }, [activeStory?.id]);
 
   const visibleStories = storiesForLanguage(
@@ -722,11 +746,13 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const renderChoices = () =>
     isDecision &&
     !choiceId && (
-      <div className="space-y-2 w-full max-w-xl mx-auto">
+      <div className="space-y-2 w-full max-w-xl mx-auto" data-kid-question={kidMode ? "" : undefined}>
         <p lang={renderLang} dir={langDir(renderLang)} className="text-[11px] uppercase tracking-widest font-bold text-center" style={{ color: "var(--arbor-green-ink)" }}>
           {kidsStoriesText("journey.decision", renderLang, { name: isolate(childProfile.name ?? "", renderLang) })}
         </p>
-        <DecisionChoices choices={choices} lang={renderLang} heroName={childProfile.name?.split(" ")[0]} onChoose={chooseOption} />
+        {kidMode
+          ? <div data-kid-choices="" className="space-y-2"><DecisionChoices choices={choices} lang={renderLang} heroName={childProfile.name?.split(" ")[0]} onChoose={chooseOption} /></div>
+          : <DecisionChoices choices={choices} lang={renderLang} heroName={childProfile.name?.split(" ")[0]} onChoose={chooseOption} />}
       </div>
     );
 
@@ -1526,7 +1552,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             >
               <Icon name="chevron_left" size={24} style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined} />
             </button>
-            <button
+            {/* The Decision page moves on by its answers (a tap turns the
+                page); a Next that cannot work until then is not shown. */}
+            {(onCover || canAdvance) && <button
               type="button"
               onClick={isLastBeat ? toEnding : goNext}
               disabled={!onCover && !canAdvance}
@@ -1535,7 +1563,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               style={{ ...bigButton, flex: 1, background: "var(--arbor-green-cta-start)", color: "var(--arbor-on-accent)" }}
             >
               {isLastBeat ? kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en") : kidsStoriesText("journey.next", uiLang === "he" ? "he" : "en")}
-            </button>
+            </button>}
           </div>
     );
     const bookSide = (
@@ -1587,6 +1615,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                 fallbackArtHasHero={storyCover(activeStory.id)?.hasHero ?? false}
                 textLang={renderLang}
                 aside={bookSide}
+                decision={isDecision && !choiceId}
               />
             </motion.div>
           ) : null}
