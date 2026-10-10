@@ -198,8 +198,9 @@ describe('final release evidence contracts, no sockets or browser', () => {
   });
   it('keeps publication, providers, real data and font binaries out of the branch-specific workflow', () => {
     const workflow = read('.github/workflows/arbor-parent-release-capture.yml');
-    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release', 'codex/kid-entry-safety-diagnostic', 'codex/kid-entry-safety-release', 'codex/private-export-release']");
+    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release', 'codex/kid-entry-safety-diagnostic', 'codex/kid-entry-safety-release', 'codex/first-run-capture', 'codex/private-export-release']");
     for (const [branch, scope] of Object.entries({
+      'codex/first-run-capture': 'first-run-preview-only',
       'codex/private-export-release': 'private-export-only',
       'codex/parent-capture-search-release': 'parent-kid-release',
       'codex/parent-confirmed-action-loops': 'confirmed-actions-release',

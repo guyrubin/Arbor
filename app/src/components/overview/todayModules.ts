@@ -12,12 +12,13 @@
                 questions"), not a module.
      door     — "More for today": chrome, never counted (what changed since
                 you left, hard-moment words, the week, Daily Play, an accepted
-                step, a lifecycle moment, first steps).
+                step, a lifecycle moment).
 
    Order: morning practice → notice (+ tonight pointer); evening tonight →
    notice — unless the evening never showed the practice (critic c2 r2
-   P1-2): then practice (tonight mode) → notice (+ tonight pointer). `lifecycle`, `changed`, `noticed`, `rail` are no
-   longer modules — they live behind the door, so they can never be siblings.
+   P1-2): then practice (tonight mode) → notice (+ tonight pointer). `lifecycle`, `changed`, `noticed` are no
+   longer modules — they live behind the door. B-SHELL-36 permanently retires
+   the first-steps rail; it is not a module or a budget input.
 
    The budget still counts the modules that ACTUALLY render (P1-B lesson): the
    inputs are each block's real render condition, never a governance gate.

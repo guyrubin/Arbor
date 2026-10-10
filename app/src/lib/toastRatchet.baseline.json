@@ -1,9 +1,6 @@
 {
   "$comment": "B-STATUS-01 \u2014 toast( call sites per file by ratcheted kind (success / info / dynamic). Shrink-only: see src/lib/toastRatchet.guard.test.ts. Errors and toasts carrying an action (Undo) are not counted.",
   "files": {
-    "components/auth/OnboardingFlow.tsx": {
-      "success": 1
-    },
     "components/capture/CaptureProposalsTray.tsx": {
       "dynamic": 1,
       "info": 1

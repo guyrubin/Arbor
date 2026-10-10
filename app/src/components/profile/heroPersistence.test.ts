@@ -58,7 +58,7 @@ describe("persistHero", () => {
 describe("a failed child-doc write is visible to the parent", () => {
   it("ProfileContext.updateChild reports the failure instead of swallowing it", () => {
     const ctx = read("..", "context", "ProfileContext.tsx");
-    expect(ctx).toContain("updateChild: (id: string, patch: Partial<ChildProfile>) => Promise<boolean>;");
+    expect(ctx).toContain("updateChild: (id: string, patch: Partial<ChildProfile>, options?: ProfileWriteOptions) => Promise<boolean>;");
     expect(ctx).toMatch(/} catch \{[\s\S]{0,400}persisted = false;/);
     expect(ctx).toContain("return persisted;");
     // Current-owner edits remain visible after a failed save; stale owners

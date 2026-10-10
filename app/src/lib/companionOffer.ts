@@ -47,6 +47,7 @@
    chose) or plain facts (an appointment date, a re-check that came due). No
    count about the child, no score, no verdict, no comparison.
    ════════════════════════════════════════════════════════════════════════════ */
+import { isObservationAction, type ActionLoopEntry } from "../actionLoop/model";
 import type { Nudge } from "./jitai";
 import type { ActiveTab } from "./routes";
 import { isInQuietHours, isUnderDailyCeiling, nudgeDayKey, type JitaiPrefs } from "../growth/jitaiPrefs";
@@ -83,7 +84,7 @@ export interface OfferState {
   nowMs: number;
   surface: OfferSurface;
   /** The single unrated step from a previous day (carryOverAction selector). */
-  pendingFollowUp: { id: string; recommendation: string } | null;
+  pendingFollowUp: { id: string; recommendation: string; observation?: true } | null;
   /** B-TODAY-18: the reason left at a previous day's close (reasonForThisOpen). */
   tomorrowReason?: { kind: string } | null;
   /** The lifecycle re-entry moment, when Today has one to show. */
@@ -101,6 +102,13 @@ export interface OfferState {
   shownToday: readonly string[];
   /** The child's suppression ledger (readOfferLedger). */
   ledger: OfferLedger;
+}
+
+/** Both the active-child coordinator and sibling lines keep the semantics of
+ * the original choice. Never infer an intervention from a question's text. */
+export function pendingActionFollowUp(entry: ActionLoopEntry | null): OfferState["pendingFollowUp"] {
+  return entry ? { id: entry.id, recommendation: entry.recommendation,
+    ...(isObservationAction(entry) ? { observation: true as const } : {}) } : null;
 }
 
 export interface CompanionOffer {
@@ -255,9 +263,9 @@ export function offerCandidates(state: OfferState): CompanionOffer[] {
   if (state.pendingFollowUp) {
     out.push({
       kind: "follow-up",
-      reasonKey: "elev.offer.reason.followUp",
+      reasonKey: state.pendingFollowUp.observation ? "elev.offer.reason.observation" : "elev.offer.reason.followUp",
       reasonVars: { step: firstWords(state.pendingFollowUp.recommendation) },
-      cta: { labelKey: "elev.offer.cta.followUp", action: "overview" },
+      cta: { labelKey: state.pendingFollowUp.observation ? "ob.first.observation.resume" : "elev.offer.cta.followUp", action: "overview" },
       ledgerKind: "follow-up",
     });
   }

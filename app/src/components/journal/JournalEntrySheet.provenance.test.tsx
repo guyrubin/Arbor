@@ -2,7 +2,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../lib/i18n";
-import { buildTimeline, SIGNAL_PROVENANCE } from "../../lib/signalTimeline";
+import { buildTimeline, SIGNAL_PROVENANCE, signalDetail, signalTitle } from "../../lib/signalTimeline";
+import type { ActionLoopEntry } from "../../actionLoop/model";
 import type { BehaviorLog } from "../../types";
 
 const h = vi.hoisted(() => ({ lang: "en" as "en" | "he", share: null as any, edit: null as any, hardActions: false }));
@@ -41,6 +42,48 @@ const row = (contentSource?: BehaviorLog["contentSource"]): BehaviorLog => ({ id
 beforeEach(() => { h.share = null; h.edit = null; h.hardActions = false; });
 
 for (const lang of ["en", "he"] as const) describe(`${lang}: Journal content-source boundary`, () => {
+  it.each(["accepted", "completed"] as const)("keeps the %s observation prompt and parent words separate, exact and line-preserving", status => {
+    h.lang = lang;
+    const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
+    const prompt = lang === "en" ? "What happened with Noa today?\nSay it back: Yes, ball!" : "מה קרה עם נועה היום?\nאפשר לומר: כן, כדור!";
+    const words = lang === "en" ? "She said ball.\nThen rolled it to me." : "היא אמרה כדור.\nואז גלגלה אותו אליי.";
+    const entry: ActionLoopEntry = Object.freeze({ id: "today.fixture.observation", source: "onboarding", observation: true, status, capacity: "tiny", acceptedAt: "2026-10-10T08:00:00Z", recommendation: prompt, ...(status === "completed" ? { whatHappened: words, completedAt: "2026-10-10T09:00:00Z" } : {}) });
+    const signal = buildTimeline({ actionOutcomes: [entry] })[0];
+    const detail = signalDetail(signal, t);
+    const html = renderToStaticMarkup(<JournalEntrySheet signal={signal} domain={null} domainLabel="" prov="manual" provLabel={t("journal.manual")} when="10 Oct" title={signalTitle(signal, t)} detail={detail} onClose={vi.fn()} />);
+    const promptSection = html.match(/<div data-testid="journal-entry-observation-prompt"[\s\S]*?<\/div>/)?.[0];
+    const wordsSection = html.match(/<div data-testid="journal-entry-observation-words"[\s\S]*?<\/div>/)?.[0];
+    expect(promptSection).toBeDefined();
+    expect(promptSection).toContain(t("ob.first.observation.chosen"));
+    expect(promptSection).toContain(t("elev.closeloop.entry.suggested"));
+    expect(promptSection).toContain(prompt);
+    expect(promptSection).toContain("white-space:pre-wrap");
+    expect(promptSection).not.toContain(words);
+    expect(html.split(prompt)).toHaveLength(2);
+    expect(html).not.toContain(t("elev.closeloop.entry.noted"));
+    if (status === "completed") {
+      expect(wordsSection).toContain(t("ob.first.observation.answer"));
+      expect(wordsSection).toContain(t("journal.manual"));
+      expect(wordsSection).toContain(words);
+      expect(wordsSection).toContain("white-space:pre-wrap");
+      expect(wordsSection).not.toContain(t("elev.closeloop.entry.suggested"));
+      expect(html.split(words)).toHaveLength(2);
+    } else expect(wordsSection).toBeUndefined();
+    expect(entry.recommendation).toBe(prompt);
+    expect(entry.whatHappened).toBe(status === "completed" ? words : undefined);
+    expect(h.share.getCardOpts().takeaway).toBe(detail);
+  });
+  it.each(["hard-moment", "historical-outcome"] as const)("keeps existing %s action detail and attribution", kind => {
+    h.lang = lang;
+    const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
+    const entry: ActionLoopEntry = { id: "today.fixture.guide", source: kind === "hard-moment" ? "hard-moment" : "onboarding", status: "completed", capacity: "tiny", acceptedAt: "2026-10-10T08:00:00Z", recommendation: "The original accepted suggestion.", acceptanceKey: "onboarding-v1.fixture.legacy", outcome: "helped", outcomeAt: "2026-10-10T09:00:00Z" };
+    const signal = buildTimeline({ actionOutcomes: [entry] })[0];
+    const html = renderToStaticMarkup(<JournalEntrySheet signal={signal} domain={null} domainLabel="" prov="manual" provLabel={t("journal.manual")} when="10 Oct" title={signalTitle(signal, t)} detail={signalDetail(signal, t)} onClose={vi.fn()} />);
+    expect(html).toContain(entry.recommendation);
+    expect(html).toContain(t("elev.closeloop.entry.noted"));
+    expect(html).toContain(t("elev.closeloop.entry.suggested"));
+    expect(html).not.toContain("journal-entry-observation-");
+  });
   it.each(["ai_draft", "unverified", undefined] as const)("%s survives projection, detail and final Send text without changing edit ownership", contentSource => {
     h.lang = lang;
     const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);

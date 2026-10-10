@@ -14,7 +14,7 @@ import { PlanBadge } from "../ui/PlanBadge";
 // the SAME StepDomains, rendered in a Sheet. No second form, no second age
 // control. Strengths live in the profile drawer (ProfileEditDrawer), their
 // named home; the avatar is out of scope (made in Wow / at the Kid Mode door).
-import { StepChild, StepDomains, DOMAINS } from "../auth/OnboardingFlow";
+import { StepChild, StepDomains, DOMAINS } from "./AddChildFields";
 
 export default function AddChildModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { addChild, profiles } = useProfile();

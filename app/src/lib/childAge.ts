@@ -23,7 +23,7 @@ import type { ChildProfile } from "../types";
  * identity, language, or internal assessment fields to format an age. */
 export type ChildAgeProfile = Pick<
   ChildProfile,
-  "age" | "birthDate" | "ageMonths" | "ageMonthsAsOf" | "onboardingCompletedAt"
+  "age" | "birthDate" | "birthMonth" | "ageMonths" | "ageMonthsAsOf" | "onboardingCompletedAt"
 >;
 
 /** AAP: stop correcting for prematurity at 24 months chronological age. */
@@ -67,6 +67,15 @@ export function monthsSince(anchor: string | undefined, now?: Date): number {
  */
 export function ageAnchorOf(profile: ChildAgeProfile, now?: Date): string {
   return profile.ageMonthsAsOf ?? profile.onboardingCompletedAt ?? isoDateOf(now);
+}
+
+/** Month precision stays month precision: invalid/future values are unknown. */
+export function ageMonthsFromBirthMonth(value: string | undefined, now: Date = new Date()): number | null {
+  if (!value || !/^\d{4}-(0[1-9]|1[0-2])$/.test(value) || !Number.isFinite(now.getTime())) return null;
+  const [year, month] = value.split("-").map(Number);
+  if (year < 1900) return null;
+  const months = (now.getFullYear() - year) * 12 + now.getMonth() + 1 - month;
+  return months >= 0 ? months : null;
 }
 
 // ── Core arithmetic ──────────────────────────────────────────────────────────
@@ -136,6 +145,8 @@ export function ageMonthsFromProfile(profile: ChildAgeProfile, now?: Date): numb
   if (profile.birthDate) {
     return chronologicalAgeMonths(profile.birthDate, now);
   }
+  const fromMonth = ageMonthsFromBirthMonth(profile.birthMonth, now);
+  if (fromMonth !== null) return fromMonth;
   // Explicit months fallback — aged forward from the date it was true on.
   // Without the anchor a child entered as "14 months" would still read 14
   // months a year later (the cost of dropping the fabricated birthDate).
@@ -245,6 +256,7 @@ export interface AgePatch {
    * the months the parent just typed is what every reader sees.
    */
   birthDate: undefined;
+  birthMonth: undefined;
   /** The date `ageMonths` is true on, so a DOB-less profile still ages. */
   ageMonthsAsOf: string;
 }
@@ -258,7 +270,7 @@ export interface AgePatch {
  * replaces the hero with a real photo must DELETE the hero metadata, or
  * resolveHeroUrl reads the real photo as the hero.
  */
-export const CLEARABLE_PROFILE_FIELDS: readonly string[] = ["birthDate", "avatar", "comicAvatarUrl"];
+export const CLEARABLE_PROFILE_FIELDS: readonly string[] = ["birthDate", "birthMonth", "onboardingDraft", "avatar", "comicAvatarUrl"];
 
 /**
  * B-CAREPRO-34 — the migration: profile fields that are RETIRED from the child
@@ -289,6 +301,7 @@ export function agePatchFromMonths(ageMonths: number, now?: Date): AgePatch {
     age: Math.floor(months / 12),
     ageMonths: months,
     birthDate: undefined,
+    birthMonth: undefined,
     ageMonthsAsOf: isoDateOf(now),
   };
 }

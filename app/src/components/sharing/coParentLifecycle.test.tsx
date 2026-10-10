@@ -10,7 +10,7 @@ import { coParentCopy } from "../../lib/i18nElevation/coParent";
 // no duplicated controller logic or production scheduler is used here.
 const h = vi.hoisted(() => ({
   slots: [] as any[], at: 0, effects: [] as (() => void)[], mountKey: "", lang: "en" as "en" | "he",
-  uid: "recipient-a", focus: new Set<() => void>(),
+  uid: "recipient-a", profileLoading: false, profileError: false, focus: new Set<() => void>(),
   api: { invitations: vi.fn(), workspace: vi.fn(), accept: vi.fn(), note: vi.fn(), complete: vi.fn(), activities: vi.fn(), chooseActivity: vi.fn(), completeOwnedActivity: vi.fn(), invite: vi.fn() },
   signOut: vi.fn(),
 }));
@@ -39,7 +39,7 @@ vi.mock("react", async (original) => {
   };
 });
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { uid: h.uid, email: `${h.uid}@example.test` }, signOut: h.signOut }) }));
-vi.mock("../../context/ProfileContext", () => ({ useProfile: () => ({ loading: false, needsOnboarding: true }) }));
+vi.mock("../../context/ProfileContext", () => ({ useProfile: () => ({ loading: h.profileLoading, loadError: h.profileError, needsOnboarding: true }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: h.lang }) }));
 vi.mock("../../lib/coParentApi", () => ({
   coParentApi: h.api,
@@ -86,7 +86,7 @@ const workspace = (label: string) => ({ childId: "child-a", childName: "Private 
 const selection = (label: string | null, completed = false) => ({ activity: label ? { id: label, practiceId: "practice-a", text: label, do: label, acceptedAt: "2026-10-08T10:00:00Z", completedAt: completed ? "2026-10-08T11:00:00Z" : null } : null, choices: [{ id: "practice-a", do: "Choose this activity", say: "Together", minutes: 5 }] });
 
 beforeEach(() => {
-  h.slots = []; h.at = 0; h.effects = []; h.mountKey = ""; h.lang = "en"; h.uid = "recipient-a"; h.focus.clear();
+  h.slots = []; h.at = 0; h.effects = []; h.mountKey = ""; h.lang = "en"; h.uid = "recipient-a"; h.profileLoading = false; h.profileError = false; h.focus.clear();
   for (const mock of Object.values(h.api)) mock.mockReset();
   h.api.invitations.mockResolvedValue({ shares: [{ id: "grant-a", acceptedAt: "2026-10-08", childId: "child-a", childName: "Private child" }] });
   h.api.workspace.mockResolvedValue(workspace("initial"));
@@ -161,6 +161,29 @@ describe("co-parent recipient authorization lifetime", () => {
     expect(h.api.invitations).toHaveBeenCalledTimes(2);
     button(gate(), coParentCopy.en.join).props.onClick(); await settle();
     expect(sharedActivity(gate())).toBeDefined();
+  });
+
+  it("profile error exposes Retry, discards a late invite response, and resumes the requested family after recovery", async () => {
+    const old = deferred<ReturnType<typeof workspace>>(); h.api.workspace.mockReturnValueOnce(old.promise);
+    gate(); await settle(); h.profileError = true; h.profileLoading = true;
+    expect(text(gate())).toBe("Own family"); // the inner ProfileGate owns its Retry UI
+    old.resolve(workspace("stale before profile retry")); await settle();
+    expect(text(gate())).toBe("Own family"); expect(h.api.accept).not.toHaveBeenCalled();
+    h.profileError = false; expect(text(gate())).toContain(coParentCopy.en.loading);
+    const reads = h.api.invitations.mock.calls.length; await settle(); expect(h.api.invitations).toHaveBeenCalledTimes(reads);
+    h.profileLoading = false; gate(); await settle();
+    expect(sharedActivity(gate())).toBeDefined(); expect(text(gate())).not.toContain("stale before profile retry");
+    expect(h.api.workspace).toHaveBeenLastCalledWith("grant-a");
+  });
+  it("account A→B→A does not revive an old invitation acceptance or open its workspace", async () => {
+    h.api.invitations.mockResolvedValue({ shares: [{ id: "grant-a", acceptedAt: null, childId: "child-a", childName: "Private child" }] });
+    const old = deferred<unknown>(); h.api.accept.mockReturnValueOnce(old.promise);
+    gate(); await settle(); button(gate(), coParentCopy.en.join).props.onClick(); await settle();
+    h.uid = "recipient-b"; gate(); await settle(); h.uid = "recipient-a"; gate(); await settle();
+    old.resolve({}); await settle(); expect(h.api.workspace).not.toHaveBeenCalled();
+    expect(sharedActivity(gate())).toBeUndefined();
+    button(gate(), coParentCopy.en.join).props.onClick(); await settle();
+    expect(h.api.accept).toHaveBeenCalledTimes(2); expect(h.api.workspace).toHaveBeenCalledExactlyOnceWith("grant-a");
   });
 
   it("a rejected save clears a later refresh and keeps its private response out", async () => {
