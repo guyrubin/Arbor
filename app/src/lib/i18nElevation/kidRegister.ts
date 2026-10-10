@@ -275,7 +275,7 @@ export const he: Record<string, string> = {
   "elev.play.mimic.rated.nailed": "🎉 מדהים!",
   "elev.play.mimic.rated.close": "👏 ניסיון יפה!",
   "elev.play.mimic.rated.tried": "💪 הניסיון הוא ההצלחה!",
-  "elev.play.mimic.packComplete.title": "סיימתם את הערכה!",
+  "elev.play.mimic.packComplete.title": "סיימתם את כל הסבבים!",
   "elev.play.mimic.packComplete.sub": "{name} עבר/ה את כל הסיבובים ב{pack}. זה היה סיבוב טוב.",
   "elev.play.mimic.playPack": "לשחק ב{pack}",
   "elev.play.mimic.stay": "להישאר כאן",
@@ -323,7 +323,7 @@ export const he: Record<string, string> = {
   "elev.play.pattern.title": "Pattern Power", // GD-6
   "elev.play.pattern.say": "מה בא עכשיו? הקישו על הצורה שמשלימה את התבנית.",
   "elev.play.pattern.done.title": "סיימתם את כל התבניות, {name}!",
-  "elev.play.pattern.done.sub": "זו כל הערכה. ערכה חדשה של צורות מחכה לכם כשתחזרו.",
+  "elev.play.pattern.done.sub": "זה כל הסט. סט חדש של צורות מחכה לכם כשתחזרו.",
   "elev.play.pattern.done.again": "לשחק שוב בערכה הזו",
   "elev.play.beat.say": "הקשיבו לנקישה, ואז הקישו על הכפתור הגדול בדיוק לפי המקצב!",
   "elev.play.mic.unavailable": "המכשיר לא מקשיב עכשיו — תגידו בקול רם יחד!",

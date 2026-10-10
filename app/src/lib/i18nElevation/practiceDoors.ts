@@ -411,7 +411,7 @@ export const he: Record<string, string> = {
   "elev.practice.speech.almost": "כשזה יוצא כמעט — חייכו ואמרו את המילה שוב, לאט. לשמוע אותה שוב זה כל התיקון.",
   "elev.practice.speech.littleOften": "מעט ולעתים קרובות עובד הכי טוב — כמה דקות ברוב הימים, ולעצור כשעוד כיף.",
   "elev.practice.speech.he.title": "ערכת צלילים בעברית בדרך",
-  "elev.practice.speech.he.body": "תרגול הצלילים כאן בנוי על מילים באנגלית. עד שהערכה בעברית תהיה מוכנה, העבודה על השפה העברית של {name} נמצאת בשפה ותקשורת.",
+  "elev.practice.speech.he.body": "תרגול הצלילים כאן בנוי על מילים באנגלית. עד שסט המילים בעברית יהיה מוכן, העבודה על השפה העברית של {name} נמצאת בשפה ותקשורת.",
   "elev.practice.speech.he.cta": "לפתוח את שפה ותקשורת",
   "elev.practice.speech.roundDone": "{n} מילים נאמרו יחד בסבב הזה.",
   "elev.practice.speech.roundDone.one": "מילה אחת נאמרה יחד בסבב הזה.",
