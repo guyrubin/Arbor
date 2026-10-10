@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { lazy } from 'react';
-import { installStylesheetObservation, observeAskDependency } from './capture/readiness-probes.mjs';
+import { installStylesheetObservation, observeAskDependency, observeReactStage, observeNativeDispatch, collectNativeDispatch } from './capture/readiness-probes.mjs';
 
 const secret = 'FAKE_API_KEY_sk_test_never_export_42';
 const child = 'Synthetic Child Rowan Private';
@@ -121,8 +122,176 @@ describe('bounded read-only Suspense dependency probes', () => {
     const screen = source.slice(source.indexOf('const screen = async'), source.indexOf("if (group === 'navigation')"));
     expect(screen).toContain("group === 'ask-diagnostic' && ['launcher-composer', 'direct-composer'].includes(state) && !cell.reached");
     expect(screen.indexOf('cell.reached =')).toBeLessThan(screen.indexOf('cell.postFailureProbe ='));
+    expect(screen.indexOf('cell.nativeDispatch =')).toBeGreaterThan(screen.indexOf('cell.reached ='));
+    expect(screen.indexOf('cell.nativeDispatch =')).toBeLessThan(screen.indexOf('cell.postFailureProbe ='));
+    expect(screen.slice(screen.indexOf('cell.nativeDispatch ='))).not.toMatch(/cell\.(?:reached|failures|readiness)\s*=/);
     expect(screen.slice(screen.indexOf('cell.postFailureProbe ='))).not.toContain('cell.reached =');
     expect(screen).toContain("item.state === 'finished' && item.status === 200 && item.mime === 'javascript'");
     expect(screen).not.toContain('waitForTimeout');
+  });
+
+  it('keeps same-document reopen separate from first-entry failures and the unchanged fresh direct-route attempt', () => {
+    const source = readFileSync(new URL('./capture/release-interactions.mjs', import.meta.url), 'utf8');
+    const start = source.indexOf("if (group === 'ask-diagnostic' && !launcherReady) {");
+    const end = source.indexOf("const ready = await screen('coach', 'direct-composer'", start);
+    const flow = source.slice(start, end);
+    expect(start).toBeGreaterThan(source.indexOf("await screen('shell', 'ask-mock-answer'"));
+    expect(flow).toContain('doc.sameDocumentLauncherReopen = repeated; save()');
+    expect(flow.indexOf('await closeConversation()')).toBeLessThan(flow.indexOf('await openConversation()'));
+    expect(flow).not.toMatch(/launcherReady\s*=|cell\.(?:reached|failures|readiness)\s*=|waitForTimeout|probeModulePath|import\(/);
+    expect(source.slice(end, end + 160)).toContain("await load('coach'); await openConversation();");
+  });
+});
+
+describe('current React root and commit-stage diagnostics', () => {
+  function rootFixture() {
+    const host: any = {};
+    const app = { contains: (item: unknown) => item === host };
+    const actualBoundary: any = { tag: 13, memoizedState: {}, flags: 128, subtreeFlags: 8192, lanes: 0, childLanes: 4194304, updateQueue: new Set([secret]) };
+    const attachedBoundary: any = { tag: 13, alternate: actualBoundary };
+    const current: any = { tag: 3, child: actualBoundary };
+    const root: any = { current, containerInfo: app, pendingLanes: 4194304, suspendedLanes: 4194304, pingedLanes: 0, expiredLanes: 0, callbackPriority: 0, callbackNode: null, cancelPendingCommit: () => secret, props: { secret, child } };
+    const attached: any = { tag: 3, stateNode: root };
+    current.stateNode = root;
+    attachedBoundary.return = attached;
+    host.__reactFiber$test = { tag: 5, return: attachedBoundary };
+    vi.stubGlobal('document', { getElementById: (id: string) => id === 'root' ? app : null, querySelector: () => host });
+    return { host, app, root, current, actualBoundary, attachedBoundary, attached };
+  }
+
+  it('finds the current alternate boundary and emits only lane masks, counts and stage booleans', () => {
+    const f = rootFixture();
+    const payload = { _status: 0, get _result() { throw new Error('Do not read pending promise values'); } };
+    f.actualBoundary.child = { tag: 22, flags: 0, child: { tag: 16, flags: 32768, elementType: { $$typeof: Symbol.for('react.lazy'), _payload: payload }, sibling: { tag: 26, flags: 0 } } };
+    Object.defineProperty(f.actualBoundary, 'memoizedProps', { get() { throw new Error('Do not read private props'); } });
+    const result = observeReactStage();
+    expect(result).toMatchObject({ appRootVerified: true, attachedBranchCurrent: false, boundaryFoundInCurrent: true,
+      root: { pendingLanes: 4194304, suspendedLanes: 4194304, pingedLanes: 0, callbackPresent: false, cancelPendingCommit: true },
+      boundary: { fallbackActive: true, flags: 128, retryQueueCount: 1, current: { visited: 3, resources: 1, offscreen: 1, incomplete: 1, lazy: { pending: 1 } } } });
+    expect(JSON.stringify(result)).not.toMatch(/FAKE_API_KEY|Rowan|Private|memoized|_result|props|=>|function\s*\(|promise/);
+  });
+
+  it('refuses a non-Arbor root even when its fiber is reachable from a matching host selector', () => {
+    const f = rootFixture(); f.root.containerInfo = { private: secret };
+    expect(observeReactStage()).toEqual({ appRootVerified: false });
+  });
+
+  it('refuses a selected host outside the existing app container', () => {
+    const f = rootFixture(); f.app.contains = () => false;
+    expect(observeReactStage()).toEqual({ appRootVerified: false });
+  });
+
+  it('bounds traversals and rejects malformed lane-mask values without leaking them', () => {
+    const f = rootFixture(); f.root.pendingLanes = secret; f.root.callbackPriority = Infinity;
+    let last = f.actualBoundary;
+    for (let n = 0; n < 2100; n++) { last.child = { tag: 5, flags: 0 }; last = last.child; }
+    const result = observeReactStage();
+    if (!('root' in result)) throw new Error('Expected the verified synthetic app root');
+    expect(result.root).toMatchObject({ pendingLanes: null, callbackPriority: null });
+    expect(result.rootSearch).toEqual({ visited: 2000, truncated: true });
+    expect(result.boundary.current).toMatchObject({ visited: 500, truncated: true });
+    expect(JSON.stringify(result)).not.toContain(secret);
+  });
+
+  it('reports stale canceled scheduler tasks as scalar metadata without exporting callbacks or absolute timestamps', () => {
+    const f = rootFixture();
+    vi.stubGlobal('performance', { now: () => 30_000 });
+    f.root.callbackNode = { callback: null, priorityLevel: 3, startTime: 1000, expirationTime: 6000, private: secret };
+    f.root.timeoutHandle = 17;
+    const result = observeReactStage();
+    expect(result).toMatchObject({ root: { timeoutPending: true, schedulerTask: { callback: 'null', priority: 3, ageMs: 29000, expiresInMs: -24000 } } });
+    f.root.callbackNode.callback = () => secret;
+    f.root.callbackNode.startTime = secret;
+    f.root.callbackNode.expirationTime = Infinity;
+    f.root.callbackNode.priorityLevel = secret;
+    expect(observeReactStage()).toMatchObject({ root: { schedulerTask: { callback: 'function', priority: null, ageMs: null, expiresInMs: null } } });
+    expect(JSON.stringify(result)).not.toMatch(/FAKE_API_KEY|Rowan|Private|startTime|expirationTime|=>|function\s*\(/);
+  });
+
+  it('observes native dispatch and clock progress with bounded identity changes, without exporting identities', async () => {
+    vi.useFakeTimers();
+    const f = rootFixture();
+    vi.stubGlobal('location', { origin: 'http://127.0.0.1:4805' });
+    vi.stubGlobal('window', { __arborCaptureFixture: { connectivity: 'synthetic-online' } });
+    const closes = vi.fn();
+    const originalCallback = { private: secret }; f.root.callbackNode = originalCallback;
+    class Channel {
+      port1 = { onmessage: null as (() => void) | null, close: closes };
+      port2 = { postMessage: () => setTimeout(() => {
+        f.root.current = { tag: 3, secret }; f.root.callbackNode = { secret }; f.root.pendingLanes = 8388608;
+        this.port1.onmessage?.();
+      }, 0), close: closes };
+    }
+    vi.stubGlobal('MessageChannel', Channel);
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => setTimeout(callback, 16));
+    vi.stubGlobal('cancelAnimationFrame', clearTimeout);
+    const result = observeNativeDispatch().completion;
+    await vi.advanceTimersByTimeAsync(250);
+    const observation = await result;
+    expect(observation).toMatchObject({ state: 'observed', budgetMs: 250, dispatch: { messageChannel: 'dispatched', timer: 'dispatched', animationFrame: 'dispatched' }, samples: 4, commitIdentityChanges: 1, callbackIdentityChanges: 1, pendingLaneMasks: [4194304, 8388608], clock: { performanceAdvanced: true, dateAdvanced: true, elapsedMs: 250 } });
+    expect(closes).toHaveBeenCalledTimes(2); expect(vi.getTimerCount()).toBe(0);
+    expect(JSON.stringify(observation)).not.toMatch(/FAKE_API_KEY|Rowan|Private|startTime|expirationTime|objectId|memoized|private/);
+  });
+
+  it('refuses native observations outside the verified synthetic app and keeps an outer deadline for broken browser timers', async () => {
+    const f = rootFixture();
+    vi.stubGlobal('location', { origin: 'https://outside.invalid' });
+    vi.stubGlobal('window', { __arborCaptureFixture: { connectivity: 'synthetic-online' } });
+    expect(await observeNativeDispatch().completion).toEqual({ state: 'not-isolated-fixture' });
+    vi.stubGlobal('location', { origin: 'http://127.0.0.1:4805' });
+    f.root.containerInfo = {};
+    expect(await observeNativeDispatch().completion).toEqual({ state: 'not-current-coach-boundary' });
+  });
+
+  it('cancels stalled browser timers, ports and callbacks before returning the Node wall deadline', async () => {
+    vi.useFakeTimers(); rootFixture();
+    const handles = new Map<number, unknown>(); let nextHandle = 0;
+    const schedule = (callback: unknown) => { handles.set(++nextHandle, callback); return nextHandle; };
+    const clear = (id: number) => { handles.delete(id); };
+    const closes = vi.fn();
+    const port1 = { onmessage: null, close: closes }, port2 = { postMessage: vi.fn(), close: closes };
+    const controller = runInNewContext(`(${observeNativeDispatch.toString()})()`, {
+      location: { origin: 'http://127.0.0.1:4805' },
+      window: { __arborCaptureFixture: { connectivity: 'synthetic-online' } }, document,
+      performance: { now: () => 0 }, setTimeout: schedule, clearTimeout: clear,
+      requestAnimationFrame: schedule, cancelAnimationFrame: clear,
+      MessageChannel: class { port1 = port1; port2 = port2; },
+    });
+    expect(handles.size).toBe(3); expect(port1.onmessage).not.toBeNull();
+    const release = vi.fn(async () => {});
+    const handle = { evaluate: async (fn: (probe: typeof controller) => unknown) => fn(controller), dispose: release };
+    const pending = collectNativeDispatch({ evaluateHandle: async () => handle });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(await pending).toEqual({ state: 'native-dispatch-deadline', cleanup: 'confirmed' });
+    expect(handles.size).toBe(0); expect(closes).toHaveBeenCalledTimes(2); expect(port1.onmessage).toBeNull();
+    expect(await controller.completion).toEqual({ state: 'native-dispatch-cancelled' });
+    expect(release).toHaveBeenCalledOnce(); expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('marks unconfirmed cleanup for fail-closed teardown before subsequent probes', async () => {
+    vi.useFakeTimers();
+    const controller = { completion: Promise.resolve({ state: 'observed' }), dispose: () => new Promise(() => {}) };
+    const release = vi.fn(async () => {});
+    const pending = collectNativeDispatch({ evaluateHandle: async () => ({ evaluate: async (fn: (probe: typeof controller) => unknown) => fn(controller), dispose: release }) });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(await pending).toEqual({ state: 'observed', cleanup: 'unconfirmed' });
+    expect(release).toHaveBeenCalledOnce(); expect(vi.getTimerCount()).toBe(0);
+    expect(await collectNativeDispatch({ evaluateHandle: async () => { throw new Error(secret); } })).toEqual({ state: 'unavailable', cleanup: 'unconfirmed' });
+    const source = readFileSync(new URL('./capture/release-interactions.mjs', import.meta.url), 'utf8');
+    const segment = source.slice(source.indexOf('cell.nativeDispatch ='), source.indexOf('cell.postFailureProbe ='));
+    expect(segment.indexOf('save();')).toBeLessThan(segment.indexOf("if (cell.nativeDispatch.cleanup !== 'confirmed') throw"));
+    expect(segment.indexOf("if (cell.nativeDispatch.cleanup !== 'confirmed') throw")).toBeLessThan(segment.indexOf('cell.afterDispatchReactStage ='));
+    expect(source).toContain('if (context) await context.close().catch(() => {})');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('dispatches a real in-process MessageChannel without replacing scheduling primitives', async () => {
+    rootFixture();
+    vi.stubGlobal('location', { origin: 'http://127.0.0.1:4805' });
+    vi.stubGlobal('window', { __arborCaptureFixture: { connectivity: 'synthetic-online' } });
+    const timer = setTimeout, channel = MessageChannel, clock = performance.now;
+    const result = await observeNativeDispatch().completion;
+    expect(result).toMatchObject({ state: 'observed', dispatch: { messageChannel: 'dispatched', timer: 'dispatched' }, samples: 4, commitIdentityChanges: 0, callbackIdentityChanges: 0, clock: { performanceAdvanced: true, dateAdvanced: true } });
+    expect(setTimeout).toBe(timer); expect(MessageChannel).toBe(channel); expect(performance.now).toBe(clock);
   });
 });

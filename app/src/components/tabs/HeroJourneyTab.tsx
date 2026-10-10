@@ -1033,7 +1033,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                   {tonightAskAfter && (
                     <div className="flex gap-2">
                       <dt className="font-extrabold flex-shrink-0" style={{ color: "var(--arbor-ink)" }}>{t("elev.stories.tonight.askAfter")} ·</dt>
-                      <dd className="m-0 text-[15px] leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }} dir="auto">{tonightAskAfter}</dd>
+                      <dd className="m-0 t-base leading-relaxed" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)", fontStyle: "normal" }} dir="auto">{tonightAskAfter}</dd>
                     </div>
                   )}
                 </dl>

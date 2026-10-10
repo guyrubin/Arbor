@@ -67,6 +67,8 @@ export type HeroAvatarCanvasOpts = {
   headline?: string;
   /** practice_stamp / milestone: sub-line. */
   sub?: string;
+  /** practice_stamp only: localized label; other templates keep their labels. */
+  eyebrow?: string;
 };
 
 /**
@@ -94,6 +96,8 @@ export function renderHeroAvatarCanvas(
     takeaway: opts.takeaway,
     headline: opts.headline,
     sub:      opts.sub,
+    ...(template === "practice_stamp" && opts.eyebrow !== undefined
+      ? { growthEyebrow: opts.eyebrow } : {}),
   };
   return renderShareCard(artifact, cardOpts);
 }
@@ -188,13 +192,14 @@ export function renderPracticeStampCanvas(opts: {
   name?: string;
   headline?: string;
   sub?: string;
+  eyebrow?: string;
 }): Promise<RenderedCard> {
   return renderHeroAvatarCanvas("practice_stamp", opts);
 }
 
 /** Convenience download for the Practice Stamp surface. */
 export function downloadPracticeStampCanvas(
-  opts: { imageUrl?: string; name?: string; headline?: string; sub?: string },
+  opts: { imageUrl?: string; name?: string; headline?: string; sub?: string; eyebrow?: string },
   filename?: string,
 ): Promise<void> {
   return downloadHeroAvatarCanvas(

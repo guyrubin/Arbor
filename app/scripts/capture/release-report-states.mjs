@@ -53,6 +53,52 @@ export function reportFieldEvidence(groups, actual) {
     exactMatch: Array.isArray(actual[index]) && actual[index].length === group.expected.length && actual[index].every((text, i) => norm(text) === norm(group.expected[i])) }));
 }
 
+/** Measure the control against the actual conversation scrollport, not just
+ * CSS visibility. Only geometry and hit-test booleans enter artifact evidence. */
+export function reportControlFrame(el) {
+  const scrollport = el.closest('[data-companion-scroll="true"]');
+  const view = el.ownerDocument.defaultView;
+  if (!scrollport || !view) return { scrollportFound: false, fullyWithinScrollport: false, unoccluded: false, probeCount: 0 };
+  const box = el.getBoundingClientRect();
+  const frame = scrollport.getBoundingClientRect();
+  const target = { left: box.left, top: box.top, right: box.right, bottom: box.bottom, width: box.width, height: box.height };
+  const clip = {
+    left: Math.max(0, frame.left + scrollport.clientLeft),
+    top: Math.max(0, frame.top + scrollport.clientTop),
+    right: Math.min(view.innerWidth, frame.left + scrollport.clientLeft + scrollport.clientWidth),
+    bottom: Math.min(view.innerHeight, frame.top + scrollport.clientTop + scrollport.clientHeight),
+  };
+  const scrollportScrollable = /^(auto|scroll)$/.test(view.getComputedStyle(scrollport).overflowY);
+  const finite = [...Object.values(target), ...Object.values(clip)].every(Number.isFinite);
+  const fullyWithinScrollport = finite && scrollportScrollable && target.width > 0 && target.height > 0
+    && clip.right > clip.left && clip.bottom > clip.top && target.left >= clip.left && target.right <= clip.right
+    && target.top >= clip.top && target.bottom <= clip.bottom;
+  const insetX = Math.min(8, target.width / 4), insetY = Math.min(8, target.height / 4);
+  const probes = fullyWithinScrollport ? [
+    [target.left + target.width / 2, target.top + target.height / 2],
+    [target.left + insetX, target.top + insetY], [target.right - insetX, target.top + insetY],
+    [target.left + insetX, target.bottom - insetY], [target.right - insetX, target.bottom - insetY],
+  ] : [];
+  const hits = probes.map(([x, y]) => {
+    const hit = el.ownerDocument.elementFromPoint(x, y);
+    return !!hit && (hit === el || el.contains(hit));
+  });
+  const unoccluded = hits.length === 5 && hits.every(Boolean);
+  return { scrollportFound: true, scrollportScrollable, target, scrollport: clip, fullyWithinScrollport, unoccluded, probeCount: probes.length };
+}
+
+/** Scroll and observe only. The council/provider action must never be invoked
+ * merely to obtain a screenshot of its control. */
+export async function exposeReportGoDeeper(target, cell, { visible, check }) {
+  await target.scrollIntoViewIfNeeded();
+  await visible(cell, 'GO_DEEPER_REACHABLE_WITHOUT_INVOKING', target);
+  const frame = await target.evaluate(reportControlFrame);
+  cell.reportControlFrame = frame;
+  check(cell, 'GO_DEEPER_REAL_SCROLLPORT_FOUND', frame.scrollportFound === true && frame.scrollportScrollable === true);
+  check(cell, 'GO_DEEPER_WITHIN_SCROLLPORT', frame.fullyWithinScrollport === true);
+  check(cell, 'GO_DEEPER_NOT_OCCLUDED', frame.unoccluded === true);
+}
+
 export async function collectReportStates(h) {
   const { page, screen, lang, check, visible, byId, composer, load, openConversation, syntheticReleaseReport, setReportFixture } = h;
   const fixture = completeReportFixture(syntheticReleaseReport(lang), lang);
@@ -113,7 +159,7 @@ export async function collectReportStates(h) {
   await screen('shell', 'report-go-deeper', async cell => {
     await requestFixture({ ...structuredClone(fixture), council: [] });
     await report.locator('[data-testid="coach-report-actions"] > button').click();
-    await visible(cell, 'GO_DEEPER_REACHABLE_WITHOUT_INVOKING', report.locator('[data-testid="coach-go-deeper"]'));
+    await exposeReportGoDeeper(report.locator('[data-testid="coach-go-deeper"]'), cell, { visible, check });
   });
   await screen('shell', 'report-urgent-priority', async cell => {
     const urgent = structuredClone(fixture); urgent.contract.riskLevel = 'High';

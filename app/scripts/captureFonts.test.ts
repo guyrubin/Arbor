@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { FONT_FAMILIES, SOURCE_CSS_URL, assertFontUrl, chromiumUserAgent, cssFontResources, fontMode, readPublicResource, sha256, sourceFontUrl } from './capture/font-cache.mjs';
-import { collectFontSampleCandidates, platformTextFontEvidence, preserveUnacceptedScreenshot, validateFontCache } from './capture/font-runtime.mjs';
+import { collectFontSampleCandidates, SOURCE_PICTOGRAPH_RULES, platformPictographEvidence, platformTextFontEvidence, preserveUnacceptedScreenshot, validateFontCache } from './capture/font-runtime.mjs';
 
 const root = path.resolve(__dirname, '../..');
 const read = (name: string) => readFileSync(path.join(root, name), 'utf8');
@@ -83,6 +83,70 @@ describe('source-font cache contracts, stubbed fetch only', () => {
       expect(collectFontSampleCandidates()).toEqual([{ selector: 'div:nth-child(1) > span:nth-child(3)', scope: 'modal', ownText: true }]);
       expect(JSON.stringify(collectFontSampleCandidates())).not.toContain('Synthetic modal text');
     } finally { vi.unstubAllGlobals(); }
+  });
+  it('rejects closed native disclosure contents despite nonzero text ranges, preserving summaries and reopened content', () => {
+    const box = { width: 200, height: 100, left: 0, top: 0, right: 200, bottom: 100 };
+    const scope: any = { tagName: 'MAIN', parentElement: null, children: [], getBoundingClientRect: () => box };
+    const element = (tagName: string, parentElement: any, text = ''): any => ({ tagName, parentElement, children: [], childNodes: text ? [{ nodeType: 3, textContent: text }] : [], closest: () => null,
+      contains(el: any) { for (let node = el; node; node = node.parentElement) if (node === this) return true; return false; } });
+    const details = element('DETAILS', scope); details.open = false;
+    const summary = element('SUMMARY', details, 'Words and details');
+    const body = element('P', details, 'Hidden supporting prose');
+    const nested = element('DETAILS', details); nested.open = true;
+    const nestedSummary = element('SUMMARY', nested, 'Nested summary');
+    details.children = [summary, body, nested]; nested.children = [nestedSummary]; scope.children = [details];
+    scope.querySelectorAll = () => [details, summary, body, nested, nestedSummary];
+    try {
+      vi.stubGlobal('document', { querySelectorAll: (selector: string) => selector === 'main' ? [scope] : [], createRange: () => ({ selectNodeContents() {}, getClientRects: () => [box] }) });
+      vi.stubGlobal('Node', Object.assign(class {}, { TEXT_NODE: 3 })); vi.stubGlobal('innerHeight', 812); vi.stubGlobal('innerWidth', 375);
+      vi.stubGlobal('getComputedStyle', () => ({ visibility: 'visible', display: 'block', fontFamily: 'Instrument Sans' }));
+      // Old rectangle/style-only sampling would accept all three text nodes.
+      expect([summary, body, nestedSummary].every(el => el.childNodes[0].textContent.trim() && box.width > 0)).toBe(true);
+      const closed = collectFontSampleCandidates();
+      expect(closed).toHaveLength(1); expect(closed[0].selector).toContain('summary:nth-child(1)');
+      details.open = true;
+      expect(collectFontSampleCandidates()).toHaveLength(3);
+      // Native visibility cannot turn a still-empty CDP font result into proof.
+      expect(platformTextFontEvidence([]).custom).toBe(false);
+    } finally { vi.unstubAllGlobals(); }
+    const runtime = read('app/scripts/capture/font-runtime.mjs');
+    expect(runtime).toContain('if (closedDisclosure) continue');
+    expect(runtime).toContain('nodePath: candidate.selector');
+    expect(runtime).toContain('entry.rendered.some((sample) => !sample.custom)');
+  });
+  it('classifies only exact source Mimic leaf icons, never mixed text or a family-wide exception', () => {
+    expect(SOURCE_PICTOGRAPH_RULES.map(rule => rule.glyph)).toEqual(['🦁', '😜', '🥁', '🍪']);
+    const content = read('app/src/practice/content.ts');
+    for (const rule of SOURCE_PICTOGRAPH_RULES) expect(content).toContain(`emoji: "${rule.glyph}"`);
+    expect(read('app/src/components/practice/MimicStudioTab.tsx')).toContain('<span className="text-2xl">{p.emoji}</span>');
+    const box = { width: 200, height: 100, left: 0, top: 0, right: 200, bottom: 100 };
+    const scope: any = { tagName: 'MAIN', parentElement: null, children: [], getBoundingClientRect: () => box };
+    const element = (text: string, slot = true, children: any[] = []): any => ({ tagName: 'SPAN', parentElement: scope, children, childNodes: [{ nodeType: 3, textContent: text }], closest: () => null, matches: (selector: string) => slot && selector === SOURCE_PICTOGRAPH_RULES[0].selector });
+    scope.children = [element('🦁'), element('😜'), element('🦁 advice'), element('מילים 😜'), element('🦁', false), element('😜', true, [{}]), element('🐱')];
+    scope.querySelectorAll = () => scope.children;
+    let samples: any[];
+    try {
+      vi.stubGlobal('document', { querySelectorAll: (selector: string) => selector === 'main' ? [scope] : [], createRange: () => ({ selectNodeContents() {}, getClientRects: () => [box] }) });
+      vi.stubGlobal('Node', Object.assign(class {}, { TEXT_NODE: 3 })); vi.stubGlobal('innerHeight', 812); vi.stubGlobal('innerWidth', 375);
+      vi.stubGlobal('getComputedStyle', () => ({ visibility: 'visible', display: 'block', fontFamily: 'Instrument Sans' }));
+      samples = collectFontSampleCandidates(SOURCE_PICTOGRAPH_RULES);
+    } finally { vi.unstubAllGlobals(); }
+    expect(samples.map(item => item.pictograph)).toEqual(['MIMIC_LION', 'MIMIC_FACE', undefined, undefined, undefined, undefined, undefined]);
+    const emoji = [{ familyName: 'Noto Color Emoji', isCustomFont: false, glyphCount: 1 }];
+    const face = [{ familyName: 'DejaVu Sans', isCustomFont: false, glyphCount: 1 }];
+    expect(platformPictographEvidence('MIMIC_LION', emoji)).toMatchObject({ present: true, countsAsTextFontProof: false });
+    expect(platformPictographEvidence('MIMIC_FACE', face).present).toBe(true);
+    expect(platformPictographEvidence('UNKNOWN', emoji).present).toBe(false);
+    expect(platformPictographEvidence('MIMIC_LION', []).present).toBe(false);
+    expect(platformPictographEvidence('MIMIC_FACE', [{ ...face[0], glyphCount: 2 }]).present).toBe(false);
+    expect(platformPictographEvidence('MIMIC_FACE', [{ ...face[0], familyName: 'Arial' }]).present).toBe(false);
+    // The same families on prose or mixed text still fail text-font acceptance.
+    expect(platformTextFontEvidence(emoji).custom).toBe(false);
+    expect(platformTextFontEvidence(face).custom).toBe(false);
+    expect(platformTextFontEvidence([{ familyName: 'Instrument Sans', isCustomFont: true, glyphCount: 4 }, ...emoji]).custom).toBe(false);
+    const runtime = read('app/scripts/capture/font-runtime.mjs');
+    expect(runtime).toContain('entry.pictographs.push');
+    expect(runtime).toContain('if (!entry.rendered.length || entry.rendered.some((sample) => !sample.custom))');
   });
   it('keeps rejected pixels separately and never promotes them to accepted font evidence', async () => {
     const writes: any[] = [];

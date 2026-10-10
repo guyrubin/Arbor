@@ -61,9 +61,23 @@ export async function installOfflineFonts(context) {
   });
 }
 
+/** Exact source pictographs, not a Unicode or font-family exemption. This leaf
+ * slot contains only MIMIC_PACKS.emoji; adjacent titles/prose are separate nodes. */
+export const SOURCE_PICTOGRAPH_RULES = Object.freeze([
+  ['MIMIC_LION', '🦁'], ['MIMIC_FACE', '😜'], ['MIMIC_DRUM', '🥁'], ['MIMIC_COOKIE', '🍪'],
+].map(([id, glyph]) => Object.freeze({ id, glyph, selector: '[data-module="mimic-packs"] > button > span:first-child' })));
+
+export function platformPictographEvidence(id, fonts) {
+  const painted = fonts.filter(font => font.glyphCount > 0);
+  const known = SOURCE_PICTOGRAPH_RULES.some(rule => rule.id === id);
+  const present = known && painted.length === 1 && painted[0].glyphCount === 1 && ['Noto Color Emoji', 'DejaVu Sans'].includes(painted[0].familyName);
+  return { source: known ? id : 'UNKNOWN_PICTOGRAPH', fonts: painted, present, countsAsTextFontProof: false };
+}
+
 /** Runs in the page, without DOM/style changes. Ancestors whose only glyphs
  * belong to an icon child are not text samples. Return selectors, never text. */
-export function collectFontSampleCandidates() {
+/** @param {ReadonlyArray<{ id: string, glyph: string, selector: string }>} pictographRules */
+export function collectFontSampleCandidates(pictographRules = []) {
   const samples = [], seen = new Set();
   for (const scopeSelector of ['[role="dialog"][aria-modal="true"]', '.companion-conversation:not([hidden])', 'main']) {
     for (const scope of [...document.querySelectorAll(scopeSelector)].slice(0, 4)) {
@@ -72,6 +86,17 @@ export function collectFontSampleCandidates() {
       let count = 0;
       for (const el of [...scope.querySelectorAll('*')].slice(0, 600)) {
         if (seen.has(el) || el.closest('[hidden], [aria-hidden="true"], .msr, .material-symbols-rounded, svg')) continue;
+        // Native details hides its content without a hidden attribute or a
+        // display:none computed style on each descendant. Range geometry can
+        // still be present there, but no text glyphs are painted. Only the
+        // FIRST direct summary remains visible, and every closed ancestor counts.
+        let closedDisclosure = false;
+        for (let ancestor = el; ancestor; ancestor = ancestor.parentElement) {
+          if (ancestor.tagName !== 'DETAILS' || ancestor.open) continue;
+          const summary = [...ancestor.children].find(child => child.tagName === 'SUMMARY');
+          if (!summary?.contains(el)) { closedDisclosure = true; break; }
+        }
+        if (closedDisclosure) continue;
         const style = getComputedStyle(el);
         if (style.visibility === 'hidden' || style.display === 'none' || /Material Symbols|Material Icons/i.test(style.fontFamily)) continue;
         const ownText = [...el.childNodes].some(node => {
@@ -85,7 +110,9 @@ export function collectFontSampleCandidates() {
           const index = current.parentElement ? [...current.parentElement.children].indexOf(current) + 1 : 1;
           parts.unshift(`${current.tagName.toLowerCase()}:nth-child(${index})`);
         }
-        seen.add(el); samples.push({ selector: parts.join(' > '), scope: scopeSelector.startsWith('[role') ? 'modal' : scopeSelector === 'main' ? 'main' : 'conversation', ownText: true });
+        const pictograph = pictographRules.find(rule => el.children.length === 0 && el.matches(rule.selector)
+          && [...el.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent ?? '').join('').trim() === rule.glyph);
+        seen.add(el); samples.push({ selector: parts.join(' > '), scope: scopeSelector.startsWith('[role') ? 'modal' : scopeSelector === 'main' ? 'main' : 'conversation', ownText: true, ...(pictograph ? { pictograph: pictograph.id } : {}) });
         if (++count === 12 || samples.length === 48) break;
       }
       if (samples.length === 48) return samples;
@@ -116,7 +143,7 @@ export async function preserveUnacceptedScreenshot(page, options, entry) {
  * preserves separately named diagnostic pixels; fallback is never labeled exact. */
 export async function captureScreenshot(page, options) {
   if (!exact()) return page.screenshot(options);
-  const entry = { shot: path.basename(options.path), passed: false, checkedAt: new Date().toISOString(), rendered: [] };
+  const entry = { shot: path.basename(options.path), passed: false, checkedAt: new Date().toISOString(), rendered: [], pictographs: [] };
   let session;
   try {
     const state = await page.evaluate(async () => {
@@ -129,8 +156,8 @@ export async function captureScreenshot(page, options) {
     session = await page.context().newCDPSession(page);
     await session.send('DOM.enable'); await session.send('CSS.enable');
     const { root } = await session.send('DOM.getDocument');
-    const candidates = await page.evaluate(collectFontSampleCandidates);
-    entry.sampleMethod = 'visible-own-text-nodes';
+    const candidates = await page.evaluate(collectFontSampleCandidates, SOURCE_PICTOGRAPH_RULES);
+    entry.sampleMethod = 'visible-own-text-nodes-native-disclosures';
     for (const candidate of candidates) {
       const { nodeId } = await session.send('DOM.querySelector', { nodeId: root.nodeId, selector: candidate.selector });
       if (!nodeId || candidate.ownText !== true) continue;
@@ -138,8 +165,14 @@ export async function captureScreenshot(page, options) {
       const requested = computedStyle.find(style => style.name === 'font-family')?.value ?? '';
       if (!FONT_FAMILIES.some(family => normalize(requested).includes(normalize(family)))) continue;
       const { fonts } = await session.send('CSS.getPlatformFontsForNode', { nodeId });
+      if (candidate.pictograph) {
+        const glyph = platformPictographEvidence(candidate.pictograph, fonts);
+        entry.pictographs.push({ ...glyph, nodePath: candidate.selector });
+        if (!glyph.present) throw new Error('FONT_SOURCE_PICTOGRAPH_GLYPHS_UNPROVEN');
+        continue; // Separately recorded; never contributes a text-font proof.
+      }
       const proof = platformTextFontEvidence(fonts);
-      entry.rendered.push({ requested, ...proof, scope: candidate.scope, ownText: true });
+      entry.rendered.push({ requested, ...proof, scope: candidate.scope, ownText: true, nodePath: candidate.selector });
     }
     if (!entry.rendered.length || entry.rendered.some((sample) => !sample.custom)) throw new Error('FONT_RENDERED_GLYPHS_UNPROVEN');
     if (evidence.deniedFontRequests) throw new Error('FONT_UNCACHED_REQUEST');

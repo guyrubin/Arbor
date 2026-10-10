@@ -111,9 +111,9 @@ const sayThis = (copied: boolean) =>
   );
 
 describe("AI-17 — SayThis is the parent script, quoted and copyable", () => {
-  it("renders the words in curly quotes, in the italic script treatment", () => {
+  it("renders the exact words in readable body typography, retaining quotation marks", () => {
     const html = sayThis(false);
-    expect(html).toContain('<p class="text-[13px] leading-relaxed italic" style="color:var(--arbor-ink)">“I am right here.”</p>');
+    expect(html).toContain('<p class="t-base leading-relaxed" style="color:var(--arbor-ink);font-family:var(--font-sans);font-style:normal">“I am right here.”</p>');
   });
 
   it("sits in the card frame the coach answer uses", () => {

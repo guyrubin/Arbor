@@ -108,6 +108,6 @@ describe("Together's compact discovery", () => {
     expect(css).toMatch(/\.together-play-history \.companion-since[^}]*min-block-size: 9rem/);
     expect(css).not.toMatch(/line-clamp|text-overflow|overflow:\s*hidden/);
     expect(css.match(/font-family:/g)).toHaveLength(1);
-    expect(css).toMatch(/\.companion-together \.companion-say \{ font-family: var\(--font-sans\); font-size: var\(--t-base\); font-style: normal; line-height: 1\.6;/);
+    expect(css).toMatch(/\.companion-together \.companion-say,\s*\.companion-preview \.companion-say \{ font-family: var\(--font-sans\); font-size: var\(--t-base\); font-style: normal; line-height: 1\.6 !important;/);
   });
 });

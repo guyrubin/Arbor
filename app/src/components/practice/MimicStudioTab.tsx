@@ -12,6 +12,7 @@ import { mediaControlHidden, resolveMediaPermission, type MediaPermission } from
 import { useHeroAvatar } from "../ui/HeroAvatar";
 import { T } from "../../lib/tokens";
 import { MIMIC_PACKS, type MimicPack } from "../../practice/content";
+import { localizedMimicPacks } from "../../practice/mimicContent";
 import { usePracticeData } from "../../practice/usePracticeData";
 import MimicMatch from "./MimicMatch";
 import type { MimicSession } from "../../types";
@@ -39,7 +40,8 @@ export default function MimicStudioTab() {
   const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
 
   const [packId, setPackId] = useState<string>(MIMIC_PACKS[0].id);
-  const pack: MimicPack = MIMIC_PACKS.find((p) => p.id === packId) ?? MIMIC_PACKS[0];
+  const packs = useMemo(() => localizedMimicPacks(t), [t]);
+  const pack: MimicPack = packs.find((p) => p.id === packId) ?? packs[0];
   const [promptIdx, setPromptIdx] = useState(0);
   useEffect(() => setPromptIdx(0), [packId]);
   const prompt = pack.prompts[Math.min(promptIdx, pack.prompts.length - 1)];
@@ -187,7 +189,7 @@ export default function MimicStudioTab() {
           stamp goes on a wrapping <section> that adds no box of its own. */}
       {/* Sound packs (feature 5) */}
       <div data-module="mimic-packs" className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {MIMIC_PACKS.map((p) => {
+        {packs.map((p) => {
           const on = p.id === packId;
           const done = packDone(p);
           return (
@@ -305,7 +307,7 @@ export default function MimicStudioTab() {
 
       {/* Pack-complete win beat — fires once per pack per mount. */}
       {wonPackId && (() => {
-        const wonPack = MIMIC_PACKS.find((p) => p.id === wonPackId) ?? pack;
+        const wonPack = packs.find((p) => p.id === wonPackId) ?? pack;
         return (
           <Celebrate
             title={t("elev.play.mimic.packComplete.title")}
@@ -316,7 +318,7 @@ export default function MimicStudioTab() {
             starsTotal={kidMode ? undefined : wonPack.prompts.length}
           >
             {kidMode && <KidFinishMoment childId={childProfile.id} kind="world" refId="mimic" lang={uiLang === "he" ? "he" : "en"} hero={false} />}
-            {MIMIC_PACKS.filter((p) => p.id !== wonPackId).slice(0, 1).map((p) => (
+            {packs.filter((p) => p.id !== wonPackId).slice(0, 1).map((p) => (
               <PlayButton key={p.id} onClick={() => { setPackId(p.id); setWonPackId(null); }} tone="clay" size="md">
                 {p.emoji} {t("elev.play.mimic.playPack", { pack: p.title })}
               </PlayButton>
@@ -334,13 +336,14 @@ export default function MimicStudioTab() {
                     {
                       imageUrl: heroDataUrl,
                       name: first,
-                      headline: `${wonPack.title} complete!`,
-                      sub: `${first} finished all ${wonPack.prompts.length} rounds`,
+                      eyebrow: t("elev.mimic.stamp.eyebrow"),
+                      headline: t("elev.mimic.stamp.headline", { pack: wonPack.title }),
+                      sub: t("elev.mimic.stamp.sub", { name: first, count: wonPack.prompts.length }),
                     },
                   );
                 }}
               >
-                Save stamp
+                {t("elev.mimic.stamp.save")}
               </PlayButton>
             )}
             <PlayButton onClick={() => setWonPackId(null)} variant="soft" tone="lav" size="md">

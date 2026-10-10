@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { completeReportFixture, preservedReportFields, reportFieldGroups, reportFieldEvidence, REPORT_CAPTURE_STATES, REPORT_DISCLOSURES } from './capture/release-report-states.mjs';
+import { completeReportFixture, preservedReportFields, reportFieldGroups, reportFieldEvidence, reportControlFrame, exposeReportGoDeeper, REPORT_CAPTURE_STATES, REPORT_DISCLOSURES } from './capture/release-report-states.mjs';
 import { expectedReleaseInteractionStates, syntheticReleaseReport } from './capture/release-interactions.mjs';
 
 const source = readFileSync(new URL('./capture/release-report-states.mjs', import.meta.url), 'utf8');
@@ -60,5 +60,71 @@ describe('release report disclosure contracts, no browser or provider', () => {
     expect(source).not.toMatch(/setContent|innerHTML\s*=|addStyleTag|\.coach-report__council/);
     expect(source).not.toMatch(/(?:coach-plan-door|coach-professional-note|coach-doc-handoff|coach-go-deeper).*\.click\(/);
     expect(source).toContain("await load('coach'); await openConversation(); setReportFixture(response)");
+  });
+});
+
+
+/** DOM-shaped measurements only: these tests do not launch a browser. */
+describe('Go deeper capture requires actual scrollport and hit-test evidence', () => {
+  const rect = (left: number, top: number, width: number, height: number) => ({ left, top, right: left + width, bottom: top + height, width, height });
+  const fixture = (targetBox = rect(24, 200, 210, 44)) => {
+    const scrollport = { getBoundingClientRect: () => rect(0, 80, 375, 500), clientLeft: 0, clientTop: 0, clientWidth: 375, clientHeight: 500 };
+    const child = {};
+    const view = { innerWidth: 375, innerHeight: 812, getComputedStyle: vi.fn(() => ({ overflowY: 'auto' })) };
+    const element: any = { closest: vi.fn(() => scrollport), getBoundingClientRect: () => targetBox, contains: (hit: unknown) => hit === child };
+    element.ownerDocument = { defaultView: view, elementFromPoint: vi.fn(() => child) };
+    return { element, scrollport, view };
+  };
+
+  it('requires the entire control inside the real scrollport, not just inside the window', () => {
+    const good = fixture();
+    expect(reportControlFrame(good.element)).toMatchObject({ scrollportFound: true, scrollportScrollable: true, fullyWithinScrollport: true, unoccluded: true, probeCount: 5 });
+    expect(good.element.closest).toHaveBeenCalledWith('[data-companion-scroll="true"]');
+    expect(good.element.ownerDocument.elementFromPoint).toHaveBeenCalledTimes(5);
+    // Both controls can satisfy Playwright isVisible and lie in the 812px
+    // window, while being partly or wholly below the 580px transcript edge.
+    for (const box of [rect(24, 560, 210, 44), rect(24, 650, 210, 44), rect(-1, 200, 210, 44), rect(24, 200, 0, 44), rect(24, NaN, 210, 44)]) {
+      expect(reportControlFrame(fixture(box).element)).toMatchObject({ fullyWithinScrollport: false, unoccluded: false, probeCount: 0 });
+    }
+    const clippedByWindow = fixture(); clippedByWindow.view.innerHeight = 220;
+    expect(reportControlFrame(clippedByWindow.element).fullyWithinScrollport).toBe(false);
+    const notScrollable = fixture(); notScrollable.view.getComputedStyle.mockReturnValue({ overflowY: 'visible' });
+    expect(reportControlFrame(notScrollable.element).fullyWithinScrollport).toBe(false);
+    const missing = fixture(); missing.element.closest.mockReturnValue(null);
+    expect(reportControlFrame(missing.element).scrollportFound).toBe(false);
+  });
+
+  it('rejects center or edge occlusion instead of blessing CSS visibility alone', () => {
+    for (const blockedProbe of [1, 4]) {
+      const { element } = fixture(); let calls = 0;
+      const child = element.ownerDocument.elementFromPoint();
+      element.ownerDocument.elementFromPoint.mockClear();
+      element.ownerDocument.elementFromPoint.mockImplementation(() => ++calls === blockedProbe ? {} : child);
+      const frame = reportControlFrame(element);
+      expect(frame.fullyWithinScrollport).toBe(true);
+      expect(frame.unoccluded).toBe(false);
+      expect(element.ownerDocument.elementFromPoint).toHaveBeenCalledTimes(5);
+    }
+  });
+
+  it('scrolls then measures and checks before capture, without invoking Go deeper', async () => {
+    const calls: string[] = [];
+    const cell: any = {};
+    const target = {
+      scrollIntoViewIfNeeded: vi.fn(async () => { calls.push('scroll'); }),
+      evaluate: vi.fn(async (read: typeof reportControlFrame) => { calls.push('measure'); return read(fixture().element); }),
+      click: vi.fn(),
+    };
+    const visible = vi.fn(async () => { calls.push('visible'); });
+    const check = vi.fn((_cell: any, id: string, passed: boolean) => { calls.push(id); expect(passed).toBe(true); });
+    await exposeReportGoDeeper(target, cell, { visible, check });
+    calls.push('capture');
+    expect(calls).toEqual(['scroll', 'visible', 'measure', 'GO_DEEPER_REAL_SCROLLPORT_FOUND', 'GO_DEEPER_WITHIN_SCROLLPORT', 'GO_DEEPER_NOT_OCCLUDED', 'capture']);
+    expect(target.click).not.toHaveBeenCalled();
+    expect(target.evaluate).toHaveBeenCalledWith(reportControlFrame);
+    expect(cell.reportControlFrame.unoccluded).toBe(true);
+    const block = source.slice(source.indexOf("await screen('shell', 'report-go-deeper'"), source.indexOf("await screen('shell', 'report-urgent-priority'"));
+    expect(block).toContain("await exposeReportGoDeeper(report.locator('[data-testid=\"coach-go-deeper\"]'), cell, { visible, check })");
+    expect(block).not.toContain("await visible(cell, 'GO_DEEPER_REACHABLE_WITHOUT_INVOKING'");
   });
 });

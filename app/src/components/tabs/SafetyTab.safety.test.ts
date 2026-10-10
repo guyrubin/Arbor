@@ -328,10 +328,10 @@ describe("B-CAREPRO-NEW-1m / 1n — the crisis card names the child, shows the r
     expect(safetyEnRecord["elev.safety.numbersChecked" as keyof typeof safetyEnRecord]).toContain("{date}");
     expect(safetyHeRecord["elev.safety.numbersChecked" as keyof typeof safetyHeRecord]).toContain("{date}");
   });
-  it("1n: the kicker names the child (fallback to the generic kicker); the script uses the editorial face at 60ch", () => {
+  it("1n: the kicker names the child (fallback to the generic kicker); the script uses the readable body face at 60ch", () => {
     expect(tabSource).toContain('crisisFirstName ? t("elev.safety.crisis.kickerNamed", { name: `\u2068${crisisFirstName}\u2069` }) : t("elev.safety.crisis.kicker")');
     expect(tabSource).toContain("max-w-[60ch]");
-    expect(tabSource).toContain('fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)"');
+    expect(tabSource).toContain('fontFamily: "var(--font-sans)", fontStyle: "normal"');
     for (const rec of [safetyEnRecord, safetyHeRecord]) expect(rec["elev.safety.crisis.kickerNamed" as keyof typeof rec]).toContain("{name}");
   });
   it("1n: the first saved contact is a 44 px tel: row under the one tap — not a module, not a stamp", () => {

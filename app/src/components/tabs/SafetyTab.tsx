@@ -207,15 +207,12 @@ export default function SafetyTab() {
         <span className={`text-xs font-extrabold flex items-center gap-1.5 ${uiLang === "he" ? "" : "uppercase tracking-wider"}`} style={{ color: "var(--arbor-pink-ink)" }}>
           <Icon name="warning" size={16} /> <span>{crisisFirstName ? t("elev.safety.crisis.kickerNamed", { name: `⁨${crisisFirstName}⁩` }) : t("elev.safety.crisis.kicker")}</span>
         </span>
-        {/* B-CAREPRO-NEW-1n: the script names the child (kicker) and reads as
-            something to say, in the editorial face, at a readable measure. */}
-        {/* W2-CAREPRO r2: Hebrew has no italic convention and the editorial
-            face has no Hebrew glyphs (the browser faked an oblique) — HE reads
-            upright in the display face; EN keeps the editorial italic. */}
+        {/* Words to use in a difficult moment: the same readable upright
+            body face in both languages. This is not an editorial quotation. */}
         <p
           data-testid="safety-crisis-script"
-          className={`t-base leading-relaxed max-w-[60ch] ${uiLang === "he" ? "" : "italic"}`}
-          style={{ color: "var(--arbor-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}
+          className="t-base leading-relaxed max-w-[60ch]"
+          style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)", fontStyle: "normal" }}
         >
           {t("elev.safety.crisis.script")}
         </p>

@@ -10,7 +10,7 @@ import { BASE, assertLoopbackOnly, captureRevision } from './config.mjs';
 import { REPORT_CAPTURE_STATES, collectReportStates } from './release-report-states.mjs';
 import { SMALL_FIXTURE, initializeSyntheticOnline } from './small-state.mjs';
 import { createRuntimeDiagnostics, createAssetDiagnostics } from './runtime-diagnostics.mjs';
-import { installStylesheetObservation, observeAskDependency } from './readiness-probes.mjs';
+import { installStylesheetObservation, observeAskDependency, observeReactStage, observeCurrentRetryCache, collectNativeDispatch } from './readiness-probes.mjs';
 export { classifyReleaseConsole, sanitizedReleaseLocation } from './runtime-diagnostics.mjs';
 import { SOURCE_FONT_NOTE, captureFontContextOptions, installOfflineFonts, captureScreenshot } from './font-runtime.mjs';
 
@@ -92,10 +92,11 @@ export function syntheticReleaseReport(lang) {
   return { text: contract.text, contract, council: [{ scholarId: 'release-fixture', name: choose('Capture fixture', 'דוגמה לצילום'), concept: choose('Shared reading', 'קריאה משותפת'), takeaway: choose('Offer a small choice.', 'להציע בחירה קטנה.'), suggestion: choose('Keep the invitation short.', 'לשמור על הזמנה קצרה.') }] };
 }
 
-/** A capability read is not a media action. Everything else retains the
- * existing strict action deny; the local server still has TTS_DISABLED=true. */
+/** Exact read-only capability/owner-grant lists in the isolated mock server.
+ * Every media or sharing mutation/subpath retains the strict action deny. */
 export function deniedCaptureApiCategory(method, pathname) {
   if (method === 'GET' && pathname === '/api/tts') return null;
+  if (method === 'GET' && pathname === '/api/shares') return null;
   for (const [category, pattern] of [
     ['LIVE', /^\/api\/live\//], ['VOICE', /^\/api\/voice(?:\/|$)/],
     ['TTS', /^\/api\/tts(?:\/|$)/], ['VISION', /^\/api\/vision(?:\/|$)/],
@@ -145,7 +146,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   try {
     context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, locale: he ? 'he-IL' : 'en-US', timezoneId: 'Asia/Jerusalem', serviceWorkers: 'block', permissions: [], ...captureFontContextOptions() });
     let selectedReportFixture = null;
-    const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, deniedActionCategories: {}, ttsCapabilityReads: 0, apiCacheHits: 0, localRateLimits: 0 };
+    const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, deniedActionCategories: {}, ttsCapabilityReads: 0, shareListReads: 0, apiCacheHits: 0, localRateLimits: 0 };
     await context.route('**/*', route => {
       if (new URL(route.request().url()).origin === BASE) return route.continue();
       apiState.deniedExternal++;
@@ -176,6 +177,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       const denied = deniedCaptureApiCategory(request.method(), url.pathname);
       if (denied) { apiState.deniedActions++; apiState.deniedActionCategories[denied] = (apiState.deniedActionCategories[denied] ?? 0) + 1; return route.abort(); }
       if (request.method() === 'GET' && url.pathname === '/api/tts') apiState.ttsCapabilityReads++;
+      if (request.method() === 'GET' && url.pathname === '/api/shares') apiState.shareListReads++;
 
       // The same safe read cache as the canonical sweep, shared across the
       // focused groups. Prevent the fixture's 30/min limiter from manufacturing
@@ -325,18 +327,32 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       cell.assetDiagnostics = assets.snapshot();
       cell.readiness = await readinessSnapshot().catch(() => ({ unavailable: true }));
       if (cell.readiness.suspenseFallbackVisible && !cell.readiness.composerVisible) cell.readiness.classification = cell.assetDiagnostics.pending.length ? 'SUSPENSE_WITH_PENDING_LOCAL_ASSETS' : 'SUSPENSE_NO_PENDING_LOCAL_ASSETS';
-      if (group === 'ask-diagnostic') cell.dependencyBoundary = await page.evaluate(observeAskDependency).catch(() => ({ unavailable: true }));
+      if (group === 'ask-diagnostic') {
+        cell.dependencyBoundary = await page.evaluate(observeAskDependency).catch(() => ({ unavailable: true }));
+        cell.reactStage = await page.evaluate(observeReactStage).catch(() => ({ unavailable: true }));
+      }
       cell.runtimeDiagnostics = diagnostics.snapshot();
       cell.reached = cell.failures.length === 0 && cell.assertions.length > 0 && cell.shot !== null;
       save();
       // Preserve the failed real attempt BEFORE any import probe. Probe recovery
       // is diagnostic evidence only and can never turn this cell into a pass.
       if (group === 'ask-diagnostic' && ['launcher-composer', 'direct-composer'].includes(state) && !cell.reached && cell.readiness.suspenseFallbackVisible && !cell.readiness.composerVisible) {
+        cell.retryCache = await observeCurrentRetryCache(page, { retainedFailure: true });
+        save();
+        cell.nativeDispatch = await collectNativeDispatch(page);
+        save();
+        // Stop and tear down this context in the enclosing finally if a stuck
+        // browser cannot acknowledge disposal. Never overlap later probes.
+        if (cell.nativeDispatch.cleanup !== 'confirmed') throw new Error('NATIVE_DISPATCH_CLEANUP_UNCONFIRMED');
+        cell.afterDispatchReactStage = await page.evaluate(observeReactStage).catch(() => ({ unavailable: true }));
+        cell.afterDispatchReadiness = await readinessSnapshot().catch(() => ({ unavailable: true }));
+        save();
         const module = cell.assetDiagnostics.recent.find(item => /^\/assets\/CoachTab-[a-zA-Z0-9_-]{1,100}\.js$/.test(item.path) && item.state === 'finished' && item.status === 200 && item.mime === 'javascript');
         cell.postFailureProbe = module
           ? await page.evaluate(observeAskDependency, { probeModulePath: module.path }).catch(() => ({ unavailable: true }))
           : { unavailable: true, reason: 'NO_SUCCESSFUL_OBSERVED_COACH_ASSET' };
         cell.afterProbeReadiness = await readinessSnapshot().catch(() => ({ unavailable: true }));
+        cell.afterProbeReactStage = await page.evaluate(observeReactStage).catch(() => ({ unavailable: true }));
         save();
       }
       return cell.reached;
@@ -478,6 +494,28 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         cell.fixture = 'actual-local-mock-server-response';
       };
       await screen('shell', 'ask-mock-answer', async cell => { dependent(launcherReady); await mockAnswer(cell); });
+      // A repeated real user flow is diagnostic only. Keep both original failed
+      // cells intact, and reload the fresh direct route afterward as before.
+      if (group === 'ask-diagnostic' && !launcherReady) {
+        const repeated = { scope: 'post-failure-same-document-close-and-reopen', failures: [], closedToLauncher: false, reopenedWithComposer: false, shot: null };
+        doc.sameDocumentLauncherReopen = repeated; save();
+        repeated.before = await page.evaluate(observeReactStage).catch(() => ({ unavailable: true }));
+        try {
+          await closeConversation();
+          repeated.closedToLauncher = await byId('companion-launcher').isVisible();
+          await openConversation();
+          repeated.reopenedWithComposer = await composer().locator('textarea').isVisible();
+        } catch (error) { repeated.failures.push(knownFailure(error)); }
+        repeated.readiness = await readinessSnapshot().catch(() => ({ unavailable: true }));
+        repeated.reactStage = await page.evaluate(observeReactStage).catch(() => ({ unavailable: true }));
+        repeated.dependencyBoundary = await page.evaluate(observeAskDependency).catch(() => ({ unavailable: true }));
+        try {
+          const shot = `shots/release.ask-diagnostic.${viewportId}.${lang}.launcher-reopen.exact.png`;
+          await captureScreenshot(page, { path: `${output}/${shot}`, timeout: 12000, animations: 'disabled' });
+          repeated.shot = shot;
+        } catch (error) { repeated.failures.push(knownFailure(error)); }
+        save();
+      }
       const ready = await screen('coach', 'direct-composer', async cell => {
         await load('coach'); await openConversation();
         await visible(cell, 'DIRECT_ROUTE_COMPOSER_VISIBLE', composer());

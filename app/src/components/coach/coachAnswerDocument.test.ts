@@ -160,3 +160,30 @@ describe("EN + HE parity for document and hierarchy copy", () => {
     }
   });
 });
+
+// These two neighboring controls prepare the same audience from DIFFERENT
+// source fields. Distinct IDs alone do not make their visible labels clear.
+describe("source-specific professional-note labels", () => {
+  const labels = {
+    en: { answer: "Answer note for the professional", document: "Document note for the professional" },
+    he: { answer: "פתק מהתשובה לאיש המקצוע", document: "פתק מהמסמך לאיש המקצוע" },
+  };
+  const buttonText = (html: string, id: string) => {
+    const body = new RegExp(`<button[^>]*data-testid="${id}"[^>]*>([\\s\\S]*?)</button>`).exec(html)?.[1] ?? "";
+    return body.replace(/<span\b[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/span>/g, "").replace(/<[^>]*>/g, "").trim();
+  };
+  const sourceLabelsMatch = (html: string, lang: "en" | "he") => buttonText(html, "coach-professional-note") === labels[lang].answer && buttonText(html, "coach-doc-handoff") === labels[lang].document;
+  for (const lang of ["en", "he"] as const) {
+    it(`[${lang}] identifies answer and document sources without claiming an upload or send`, () => {
+      const html = render(base({ document: DOC, handoffNotes: { teacher: "Teacher context", professional: "Answer context" } }), { lang });
+      expect(sourceLabelsMatch(html, lang)).toBe(true);
+      expect(buttonText(html, "coach-professional-note")).not.toBe(buttonText(html, "coach-doc-handoff"));
+      expect([labels[lang].answer, labels[lang].document].join(" ")).not.toMatch(/uploaded|sent|הועלה|נשלח/i);
+      const old = lang === "en" ? ["Note for the professional", "Add to a note for the professional"] : ["פתק לאיש המקצוע", "להוסיף לפתק לאיש המקצוע"];
+      // Negative controls: the screenshot's former ambiguous pair and two
+      // identical labels must fail even when both control IDs still exist.
+      expect(sourceLabelsMatch(html.replace(labels[lang].answer, old[0]).replace(labels[lang].document, old[1]), lang)).toBe(false);
+      expect(sourceLabelsMatch(html.replace(labels[lang].document, labels[lang].answer), lang)).toBe(false);
+    });
+  }
+});

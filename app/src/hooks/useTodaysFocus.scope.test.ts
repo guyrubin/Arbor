@@ -46,6 +46,11 @@ function harness() {
       if (!slots[index] || !same(slots[index].deps, deps)) slots[index] = { deps, callback };
       return slots[index].callback;
     },
+    useMemo: (compute: () => unknown, deps: unknown[]) => {
+      const index = cursor++;
+      if (!slots[index] || !same(slots[index].deps, deps)) slots[index] = { deps, value: compute() };
+      return slots[index].value;
+    },
     useEffect: (callback: () => void | (() => void), deps?: unknown[]) => {
       const index = cursor++, previous = slots[index];
       if (!previous || !same(previous.deps, deps)) {

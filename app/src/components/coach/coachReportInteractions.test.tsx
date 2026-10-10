@@ -148,12 +148,25 @@ describe("document proposals belong to their answer", () => {
 });
 
 describe("distinct action destinations", () => {
-  it("prepares exact teacher, professional and document notes for existing editable audiences", () => {
-    const props = setup(); const tree = render(props);
-    namedButton(tree, "Teacher note").props.onClick(); byId(tree, "coach-professional-note").props.onClick(); byId(tree, "coach-doc-handoff").props.onClick();
-    expect(vi.mocked(props.onAddToHandoff).mock.calls).toEqual([["Teacher exact note"], ["Professional exact note", "pediatrician"], ["Document handoff\n- Document question?", "pediatrician"]]);
-    expect(props.onProposeMemory).not.toHaveBeenCalled();
-  });
+  for (const lang of ["en", "he"] as const) {
+    it(`[${lang}] source-specific note controls preserve separate, exact editable professional contexts`, () => {
+      const props = setup({ lang }); const tree = render(props);
+      const answerLabel = lang === "he" ? "פתק מהתשובה לאיש המקצוע" : "Answer note for the professional";
+      const documentLabel = lang === "he" ? "פתק מהמסמך לאיש המקצוע" : "Document note for the professional";
+      const handoff = vi.mocked(props.onAddToHandoff);
+      namedButton(tree, answerLabel).props.onClick();
+      expect(handoff.mock.calls).toEqual([["Professional exact note", "pediatrician"]]);
+      handoff.mockClear();
+      namedButton(tree, documentLabel).props.onClick();
+      expect(handoff.mock.calls).toEqual([["Document handoff\n- Document question?", "pediatrician"]]);
+      handoff.mockClear();
+      namedButton(tree, lang === "he" ? "פתק למורה" : "Teacher note").props.onClick();
+      expect(handoff.mock.calls).toEqual([["Teacher exact note"]]);
+      expect(props.onProposeMemory).not.toHaveBeenCalled();
+      expect(props.onSaveToPlan).not.toHaveBeenCalled();
+      expect(props.onGoDeeper).not.toHaveBeenCalled();
+    });
+  }
   it("Plan and Go deeper invoke only their respective host callbacks", () => {
     const props = setup(); const tree = render(props); byId(tree, "coach-plan-door").props.onClick(); byId(tree, "coach-go-deeper").props.onClick();
     expect(props.onSaveToPlan).toHaveBeenCalledWith("Possible context"); expect(props.onGoDeeper).toHaveBeenCalledOnce();

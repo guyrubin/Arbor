@@ -299,7 +299,7 @@ describe("AI-17 — structured hierarchy preserves the complete answer", () => {
   it("renders the parent script as a quoted, copyable block", () => {
     expect(html).toContain("Say this");
     expect(html).toContain("“I am right here. I will check on you in two minutes.”");
-    expect(html).toContain("italic");
+    expect(html).toContain("font-family:var(--font-sans);font-style:normal");
     expect(html).toContain("Copy");
   });
 
