@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Exercise the actual hook callbacks and effect cleanup with a controlled hook
 // scheduler; this is not a claim of mounted React/browser evidence.
@@ -9,7 +9,7 @@ vi.mock("react", () => {
     const index = runtime.cursor++;
     const old = runtime.slots[index];
     if (!old || deps.some((value, i) => !Object.is(value, old.deps[i]))) {
-      runtime.jobs.push(() => { old?.cleanup?.(); runtime.slots[index] = { deps, cleanup: setup() }; });
+      runtime.jobs.push(() => { old?.cleanup?.(); runtime.slots[index] = { deps, setup, cleanup: setup() }; });
     }
   };
   return {
@@ -22,16 +22,51 @@ vi.mock("react", () => {
   };
 });
 import { useDialog } from "./useDialog";
-const render = (open: boolean, onClose: () => void) => {
+const render = (open: boolean, onClose: () => void, options: { beforeCommit?: () => void; returnFocusRef?: { current: HTMLElement | null } } = {}) => {
   runtime.cursor = 0;
-  const dialog = useDialog({ open, onClose });
+  const dialog = useDialog({ open, onClose, returnFocusRef: options.returnFocusRef });
   dialog.ref.current = {} as HTMLDivElement;
+  options.beforeCommit?.();
   while (runtime.jobs.length) runtime.jobs.shift()!();
   return dialog;
 };
 beforeEach(() => { runtime.slots = []; runtime.jobs = []; runtime.cursor = 0; runtime.register.mockReset(); });
+afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("useDialog production callback wiring", () => {
+  it("captures the opener before child autofocus and retains it through later renders and effect replay", () => {
+    const opener = { name: "Keep summary" }, input = { name: "Moment input" };
+    const document = { activeElement: opener };
+    vi.stubGlobal("document", document);
+    runtime.register.mockReturnValue({ close: vi.fn(), dispose: vi.fn() });
+    render(true, vi.fn(), { beforeCommit: () => { document.activeElement = input; } });
+    const opening = runtime.register.mock.calls[0][0];
+    expect(document.activeElement).toBe(input); expect(opening.returnFocus()).toBe(opener);
+    render(true, vi.fn());
+    expect(runtime.register).toHaveBeenCalledOnce(); expect(opening.returnFocus()).toBe(opener);
+    const effect = runtime.slots.find(slot => slot?.setup);
+    effect.cleanup(); effect.setup();
+    expect(runtime.register.mock.calls[1][0].returnFocus()).toBe(opener);
+  });
+
+  it("a reopened dialog captures its new opener and explicit return refs still take precedence", () => {
+    const first = { name: "First opener" }, second = { name: "Second opener" }, input = { name: "Input" };
+    const document = { activeElement: first };
+    vi.stubGlobal("document", document);
+    runtime.register.mockReturnValue({ close: vi.fn(), dispose: vi.fn() });
+    render(true, vi.fn(), { beforeCommit: () => { document.activeElement = input; } });
+    render(false, vi.fn());
+    document.activeElement = second;
+    render(true, vi.fn(), { beforeCommit: () => { document.activeElement = input; } });
+    expect(runtime.register.mock.calls[1][0].returnFocus()).toBe(second);
+    const explicit = {} as HTMLElement, updated = {} as HTMLElement;
+    const returnFocusRef = { current: explicit };
+    render(true, vi.fn(), { returnFocusRef });
+    expect(runtime.register.mock.calls[1][0].returnFocus()).toBe(explicit);
+    returnFocusRef.current = updated;
+    expect(runtime.register.mock.calls[1][0].returnFocus()).toBe(updated);
+  });
+
   it("inline close changes use the latest callback without re-registering or refocusing", () => {
     const close = vi.fn(), dispose = vi.fn();
     runtime.register.mockReturnValue({ close, dispose });

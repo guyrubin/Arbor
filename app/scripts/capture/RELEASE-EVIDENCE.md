@@ -109,3 +109,12 @@ Native browser zoom is not established by this harness; device scale factor or
 fullPage output must never be presented as native zoom verification.
 
 Early Back timing and route-reset preconditions are sampled in a passive capture-phase listener at the actual trusted click, after Playwright actionability waits. Report preservation checks exact ordered values within each semantic field group; recurring phrases across different fields are permitted, while duplicate, missing or changed field nodes fail.
+
+Report capture scrolls only the real `[data-companion-scroll]` transcript. It never
+uses native ancestor-scrolling helpers or repairs panel/window scroll offsets.
+Panel, header, title and Close bounds plus five-point hit tests are recorded before
+sending, immediately after each response (before capture scrolling), and after
+every report interaction. All transcript ancestors and the window must retain
+their pre-send offsets; an app auto-scroll defect therefore stays a failed cell.
+The final report state clicks the real Close control and checks return to the
+visible launcher with focus. Actual CI PNG review remains required.

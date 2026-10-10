@@ -127,7 +127,16 @@ describe('final release evidence contracts, no sockets or browser', () => {
   it('aggregates only the exact final-source complete four-way base matrix and font-proven PNGs', () => {
     const full = summarizeRelease(records(), identity);
     expect(summarizeRelease(records(releaseMatrix('ask-diagnostic')), identity, 'ask-diagnostic')).toMatchObject({ completed: true, expectedBaseCells: 0, baseCells: 0, returnedShards: 1, interactionCells: 4 });
-    expect(full).toMatchObject({ completed: true, baseCells: 172, expectedShards: 8, returnedShards: 8 });
+    expect(full).toMatchObject({ completed: true, baseCells: 172, interactionCells: 294, screenshots: 466, expectedShards: 8, returnedShards: 8 });
+    for (const viewport of RELEASE_VIEWPORTS) {
+      const missingClose = records();
+      const focused = missingClose.find(record => record.capture.cell.viewport.id === viewport.id && record.capture.cell.group === 'focused');
+      expect(focused.evidence.cells.filter(cell => cell.state === 'report-close-return')).toHaveLength(1);
+      focused.evidence.cells = focused.evidence.cells.filter(cell => cell.state !== 'report-close-return');
+      const result = summarizeRelease(missingClose, identity);
+      expect(result.completed).toBe(false);
+      expect(result.failures.find(failure => failure.id === focused.capture.cell.id)?.reasons).toContain('INTERACTION_EVIDENCE_MISSING');
+    }
     expect(summarizeRelease(records().slice(1), identity).completed).toBe(false);
     expect(summarizeRelease([...records(), records()[0]], identity).completed).toBe(false);
     const stale = records(); stale[0].capture.sourceSha = 'c'.repeat(40);

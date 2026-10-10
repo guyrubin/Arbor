@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { completeReportFixture, preservedReportFields, reportFieldGroups, reportFieldEvidence, reportControlFrame, exposeReportGoDeeper, REPORT_CAPTURE_STATES, REPORT_DISCLOSURES } from './capture/release-report-states.mjs';
+import { scrollConversationTranscript } from './capture/conversation-frame.mjs';
 import { expectedReleaseInteractionStates, syntheticReleaseReport } from './capture/release-interactions.mjs';
 
 const source = readFileSync(new URL('./capture/release-report-states.mjs', import.meta.url), 'utf8');
@@ -61,6 +62,23 @@ describe('release report disclosure contracts, no browser or provider', () => {
     expect(source).not.toMatch(/(?:coach-plan-door|coach-professional-note|coach-doc-handoff|coach-go-deeper).*\.click\(/);
     expect(source).toContain("await load('coach'); await openConversation(); setReportFixture(response)");
   });
+  it('preserves chrome before harness scrolling, throughout disclosures, and through an actual close', () => {
+    expect(source).not.toMatch(/scrollIntoView/);
+    expect(source).toContain("finally { await checkConversationFrame(conversation(), cell, { check, baseline: frameBaseline, phase: 'AFTER_INTERACTION' }); }");
+    const request = source.slice(source.indexOf('async function requestFixture'), source.indexOf('const baseline ='));
+    expect(request.indexOf("phase: 'BEFORE_SEND'")).toBeLessThan(request.indexOf('coach-send'));
+    expect(request.indexOf("phase: 'AFTER_RESPONSE'")).toBeLessThan(request.indexOf('report.evaluate(scrollConversationTranscript)'));
+    // Only dismissal bypasses the wrapper that requires the panel to be open.
+    expect([...source.matchAll(/await screen\('shell', '([^']+)'/g)].map(match => match[1])).toEqual(['report-close-return']);
+    expect(REPORT_CAPTURE_STATES.at(-1)).toBe('report-close-return');
+    for (const required of ['await closeConversation()', 'REPORT_CLOSE_RETURNS_TO_LAUNCHER', 'REPORT_CLOSE_FOCUS_RETURNS_TO_LAUNCHER', 'REPORT_PANEL_CLOSED', 'DISCLOSURE_TOGGLE_IN_SCROLLPORT', 'ACTIONS_TOGGLE_IN_SCROLLPORT']) expect(source).toContain(required);
+    const interactionSource = readFileSync(new URL('./capture/release-interactions.mjs', import.meta.url), 'utf8');
+    const mock = interactionSource.slice(interactionSource.indexOf('const mockAnswer ='), interactionSource.indexOf("await screen('shell', 'ask-mock-answer'"));
+    expect(mock).not.toContain('scrollIntoView');
+    expect(mock.indexOf("phase: 'AFTER_RESPONSE'")).toBeLessThan(mock.indexOf('answer.evaluate(scrollConversationTranscript)'));
+    expect(mock).toContain("phase: 'AFTER_CAPTURE_SCROLL'");
+  });
+
 });
 
 
@@ -111,8 +129,7 @@ describe('Go deeper capture requires actual scrollport and hit-test evidence', (
     const calls: string[] = [];
     const cell: any = {};
     const target = {
-      scrollIntoViewIfNeeded: vi.fn(async () => { calls.push('scroll'); }),
-      evaluate: vi.fn(async (read: typeof reportControlFrame) => { calls.push('measure'); return read(fixture().element); }),
+      evaluate: vi.fn(async (read: typeof reportControlFrame) => { if (read === scrollConversationTranscript) { calls.push('scroll'); return; } calls.push('measure'); return read(fixture().element); }),
       click: vi.fn(),
     };
     const visible = vi.fn(async () => { calls.push('visible'); });
@@ -121,9 +138,10 @@ describe('Go deeper capture requires actual scrollport and hit-test evidence', (
     calls.push('capture');
     expect(calls).toEqual(['scroll', 'visible', 'measure', 'GO_DEEPER_REAL_SCROLLPORT_FOUND', 'GO_DEEPER_WITHIN_SCROLLPORT', 'GO_DEEPER_NOT_OCCLUDED', 'capture']);
     expect(target.click).not.toHaveBeenCalled();
-    expect(target.evaluate).toHaveBeenCalledWith(reportControlFrame);
+    expect(target.evaluate).toHaveBeenNthCalledWith(1, scrollConversationTranscript);
+    expect(target.evaluate).toHaveBeenNthCalledWith(2, reportControlFrame);
     expect(cell.reportControlFrame.unoccluded).toBe(true);
-    const block = source.slice(source.indexOf("await screen('shell', 'report-go-deeper'"), source.indexOf("await screen('shell', 'report-urgent-priority'"));
+    const block = source.slice(source.indexOf("await reportScreen('shell', 'report-go-deeper'"), source.indexOf("await reportScreen('shell', 'report-urgent-priority'"));
     expect(block).toContain("await exposeReportGoDeeper(report.locator('[data-testid=\"coach-go-deeper\"]'), cell, { visible, check })");
     expect(block).not.toContain("await visible(cell, 'GO_DEEPER_REACHABLE_WITHOUT_INVOKING'");
   });

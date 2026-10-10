@@ -1,6 +1,8 @@
+import { scrollConversationTranscript, checkConversationFrame } from './conversation-frame.mjs';
+
 /** Actual rendered disclosure checks. API fixtures are explicitly synthetic. */
 export const REPORT_DISCLOSURES = ['opening', 'understanding', 'details', 'document', 'help', 'actions', 'council', 'sources'];
-export const REPORT_CAPTURE_STATES = ['report-fixture', ...REPORT_DISCLOSURES.flatMap(section => [`report-${section}-closed`, `report-${section}-open`]), 'report-all-fields-once', 'report-footer', 'report-go-deeper', 'report-urgent-priority', 'report-text-only'];
+export const REPORT_CAPTURE_STATES = ['report-fixture', ...REPORT_DISCLOSURES.flatMap(section => [`report-${section}-closed`, `report-${section}-open`]), 'report-all-fields-once', 'report-footer', 'report-go-deeper', 'report-urgent-priority', 'report-text-only', 'report-close-return'];
 
 export function completeReportFixture(base, lang) {
   const result = structuredClone(base);
@@ -90,7 +92,7 @@ export function reportControlFrame(el) {
 /** Scroll and observe only. The council/provider action must never be invoked
  * merely to obtain a screenshot of its control. */
 export async function exposeReportGoDeeper(target, cell, { visible, check }) {
-  await target.scrollIntoViewIfNeeded();
+  await target.evaluate(scrollConversationTranscript);
   await visible(cell, 'GO_DEEPER_REACHABLE_WITHOUT_INVOKING', target);
   const frame = await target.evaluate(reportControlFrame);
   cell.reportControlFrame = frame;
@@ -100,21 +102,30 @@ export async function exposeReportGoDeeper(target, cell, { visible, check }) {
 }
 
 export async function collectReportStates(h) {
-  const { page, screen, lang, check, visible, byId, composer, load, openConversation, syntheticReleaseReport, setReportFixture } = h;
+  const { page, screen, lang, check, visible, byId, composer, load, openConversation, closeConversation, syntheticReleaseReport, setReportFixture } = h;
   const fixture = completeReportFixture(syntheticReleaseReport(lang), lang);
   const he = lang === 'he';
-  let report;
-  async function requestFixture(response) {
+  let report, frameBaseline;
+  const conversation = () => page.locator('.companion-conversation:not([hidden])');
+  // Every report frame receives final chrome/ancestor evidence, including a
+  // failed interaction. A request also observes app behavior before we scroll.
+  const reportScreen = (route, state, action) => screen(route, state, async cell => {
+    try { await action(cell); }
+    finally { await checkConversationFrame(conversation(), cell, { check, baseline: frameBaseline, phase: 'AFTER_INTERACTION' }); }
+  });
+  async function requestFixture(response, cell) {
     await load('coach'); await openConversation(); setReportFixture(response);
+    frameBaseline = await checkConversationFrame(conversation(), cell, { check, phase: 'BEFORE_SEND' });
     const before = await byId('coach-answer-cards').count();
     await composer().locator('textarea').fill(he ? 'נא להציג את הדוגמה המומצאת לצילום.' : 'Show the invented capture example.');
     await composer().locator('[data-testid="coach-send"]').click();
     report = byId('coach-answer-cards').nth(before);
     await report.waitFor({ state: 'visible', timeout: 30000 });
-    await report.evaluate(el => el.scrollIntoView({ block: 'start' }));
+    await checkConversationFrame(conversation(), cell, { check, baseline: frameBaseline, phase: 'AFTER_RESPONSE' });
+    await report.evaluate(scrollConversationTranscript);
   }
-  const baseline = await screen('shell', 'report-fixture', async cell => {
-    await requestFixture(fixture);
+  const baseline = await reportScreen('shell', 'report-fixture', async cell => {
+    await requestFixture(fixture, cell);
     cell.fixture = 'bilingual-report-presentation-fixture';
     await visible(cell, 'FIRST_STEP_VISIBLE', report.locator('[data-testid="coach-report-next"]'));
     await visible(cell, 'SCRIPT_INITIALLY_VISIBLE', report.locator('[data-testid="say-this"]'));
@@ -122,12 +133,14 @@ export async function collectReportStates(h) {
     check(cell, 'REPORT_DIRECTION', await report.getAttribute('dir') === (he ? 'rtl' : 'ltr'));
     for (const section of REPORT_DISCLOSURES) check(cell, `INITIAL_${section.toUpperCase()}_COLLAPSED`, await report.locator(`[data-testid="coach-report-${section}"] > button`).getAttribute('aria-expanded') === 'false');
   });
-  for (const section of REPORT_DISCLOSURES) for (const open of [false, true]) await screen('shell', `report-${section}-${open ? 'open' : 'closed'}`, async cell => {
+  for (const section of REPORT_DISCLOSURES) for (const open of [false, true]) await reportScreen('shell', `report-${section}-${open ? 'open' : 'closed'}`, async cell => {
     if (!baseline) throw new Error('DEPENDENT_STATE_UNREACHED');
     cell.fixture = 'bilingual-report-presentation-fixture';
     const target = report.locator(`[data-testid="coach-report-${section}"]`);
     const toggle = target.locator(':scope > button');
-    await toggle.scrollIntoViewIfNeeded();
+    await toggle.evaluate(scrollConversationTranscript);
+    const frame = await toggle.evaluate(reportControlFrame);
+    check(cell, 'DISCLOSURE_TOGGLE_IN_SCROLLPORT', frame.fullyWithinScrollport === true && frame.unoccluded === true);
     if (open) await toggle.click();
     const panelId = await toggle.getAttribute('aria-controls');
     check(cell, 'DISCLOSURE_PANEL_ID_PRESENT', !!panelId);
@@ -146,7 +159,7 @@ export async function collectReportStates(h) {
       check(cell, 'TEACHER_HANDOFF_PRESERVED', await panel.getByRole('button', { name: he ? /למורה/ : /teacher/i }).count() === 1);
     }
   });
-  await screen('shell', 'report-all-fields-once', async cell => {
+  await reportScreen('shell', 'report-all-fields-once', async cell => {
     if (!baseline) throw new Error('DEPENDENT_STATE_UNREACHED');
     for (const section of REPORT_DISCLOSURES) await visible(cell, `ALL_${section.toUpperCase()}_EXPOSED`, report.locator(`[data-testid="coach-report-${section}"] .coach-report__disclosure-body`));
     const groups = reportFieldGroups(fixture);
@@ -155,15 +168,19 @@ export async function collectReportStates(h) {
     const evidence = reportFieldEvidence(groups, actual);
     check(cell, 'EVERY_SUPPLIED_VISIBLE_FIELD_ONCE', evidence.every(field => field.exactMatch), evidence);
   });
-  await screen('shell', 'report-footer', async cell => { if (!baseline) throw new Error('DEPENDENT_STATE_UNREACHED'); const footer = report.locator('[data-testid="coach-answer-footer"]'); await footer.scrollIntoViewIfNeeded(); await visible(cell, 'FOOTER_PRESERVED', footer); });
-  await screen('shell', 'report-go-deeper', async cell => {
-    await requestFixture({ ...structuredClone(fixture), council: [] });
-    await report.locator('[data-testid="coach-report-actions"] > button').click();
+  await reportScreen('shell', 'report-footer', async cell => { if (!baseline) throw new Error('DEPENDENT_STATE_UNREACHED'); const footer = report.locator('[data-testid="coach-answer-footer"]'); await footer.evaluate(scrollConversationTranscript); await visible(cell, 'FOOTER_PRESERVED', footer); });
+  await reportScreen('shell', 'report-go-deeper', async cell => {
+    await requestFixture({ ...structuredClone(fixture), council: [] }, cell);
+    const actions = report.locator('[data-testid="coach-report-actions"] > button');
+    await actions.evaluate(scrollConversationTranscript);
+    const frame = await actions.evaluate(reportControlFrame);
+    check(cell, 'ACTIONS_TOGGLE_IN_SCROLLPORT', frame.fullyWithinScrollport === true && frame.unoccluded === true);
+    await actions.click();
     await exposeReportGoDeeper(report.locator('[data-testid="coach-go-deeper"]'), cell, { visible, check });
   });
-  await screen('shell', 'report-urgent-priority', async cell => {
+  await reportScreen('shell', 'report-urgent-priority', async cell => {
     const urgent = structuredClone(fixture); urgent.contract.riskLevel = 'High';
-    await requestFixture(urgent);
+    await requestFixture(urgent, cell);
     const help = report.locator('[data-testid="coach-report-urgent-help"]');
     await visible(cell, 'URGENT_HELP_IMMEDIATELY_EXPOSED', help);
     check(cell, 'URGENT_HELP_NO_DISCLOSURE_GATE', await help.locator('button[aria-expanded]').count() === 0);
@@ -174,14 +191,24 @@ export async function collectReportStates(h) {
     }));
     check(cell, 'ROUTINE_HELP_NOT_DUPLICATED', await report.locator('[data-testid="coach-report-help"]').count() === 0);
   });
-  await screen('shell', 'report-text-only', async cell => {
+  await reportScreen('shell', 'report-text-only', async cell => {
     const decline = structuredClone(fixture);
     Object.assign(decline.contract, { todayPlan: [], parentScript: '', nonDiagnosticHypotheses: [], observe: [], avoid: [], escalateIf: [], document: undefined, handoffNotes: { teacher: '', professional: '' }, sourceCards: [], sourceCardsUsed: [] });
     decline.council = [];
-    await requestFixture(decline);
+    await requestFixture(decline, cell);
     const opening = report.locator('[data-testid="coach-report-opening"]');
     await visible(cell, 'TEXT_ONLY_EXPLANATION_EXPOSED', opening);
     check(cell, 'TEXT_ONLY_NO_DISCLOSURE_GATE', await opening.locator('button[aria-expanded]').count() === 0);
     check(cell, 'NO_INVENTED_STEP', await report.locator('[data-testid="coach-report-next"]').count() === 0);
   });
+  await screen('shell', 'report-close-return', async cell => {
+    await checkConversationFrame(conversation(), cell, { check, baseline: frameBaseline, phase: 'BEFORE_CLOSE' });
+    await closeConversation();
+    const launcher = byId('companion-launcher').locator('.companion-launch-main');
+    await visible(cell, 'REPORT_CLOSE_RETURNS_TO_LAUNCHER', launcher);
+    await page.waitForFunction(() => document.activeElement?.matches('.companion-launch-main'));
+    check(cell, 'REPORT_CLOSE_FOCUS_RETURNS_TO_LAUNCHER', await launcher.evaluate(el => document.activeElement === el));
+    check(cell, 'REPORT_PANEL_CLOSED', await conversation().count() === 0);
+  });
+
 }

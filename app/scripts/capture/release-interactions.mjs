@@ -8,10 +8,12 @@ import { networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { BASE, assertLoopbackOnly, captureRevision } from './config.mjs';
 import { REPORT_CAPTURE_STATES, collectReportStates } from './release-report-states.mjs';
+import { scrollConversationTranscript, checkConversationFrame } from './conversation-frame.mjs';
 import { SMALL_FIXTURE, initializeSyntheticOnline } from './small-state.mjs';
 import { createRuntimeDiagnostics, createAssetDiagnostics } from './runtime-diagnostics.mjs';
 import { installStylesheetObservation, observeAskDependency, observeReactStage, observeCurrentRetryCache, collectNativeDispatch } from './readiness-probes.mjs';
 export { classifyReleaseConsole, sanitizedReleaseLocation } from './runtime-diagnostics.mjs';
+import { observeTogetherGeometry, togetherLayoutGeometry, togetherScrollStable } from './together-geometry.mjs';
 import { SOURCE_FONT_NOTE, captureFontContextOptions, installOfflineFonts, captureScreenshot } from './font-runtime.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
@@ -398,12 +400,45 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
 
       const invitation = page.locator('[data-module="together-invitation"]');
       const story = page.locator('[data-together-return="story-library"]');
-      let closedGeometry, openGeometry;
-      const together = await screen('practice', 'together-first-ready', async cell => { await load('practice'); await visible(cell, 'TOGETHER_INVITATION_VISIBLE', invitation); await visible(cell, 'STORY_DOOR_VISIBLE', story); check(cell, 'HISTORY_INITIALLY_CLOSED', !await byId('together-play-history').evaluate(el => el.open)); closedGeometry = await rect(story); cell.geometry = closedGeometry; });
-      await screen('practice', 'together-settled', async cell => { dependent(together); await page.waitForTimeout(3000); cell.geometry = await rect(story); check(cell, 'TOGETHER_CLOSED_STABLE_AFTER_3S', geometryStable(closedGeometry, cell.geometry), { before: closedGeometry, after: cell.geometry, tolerancePx: 2 }); });
-      const dock = await screen('practice', 'together-dock-open', async cell => { dependent(together); await openConversation(); await visible(cell, 'CONVERSATION_VISIBLE', conversation()); openGeometry = await rect(story); cell.geometry = openGeometry; check(cell, 'TOGETHER_STILL_MOUNTED', await invitation.count() === 1); check(cell, 'DOCK_MODE_MATCHES_VIEWPORT', await conversation().getAttribute('role') === (viewport.w >= 1280 ? 'complementary' : 'dialog')); });
-      await screen('practice', 'together-dock-settled', async cell => { dependent(dock); await page.waitForTimeout(3000); cell.geometry = await rect(story); check(cell, 'TOGETHER_OPEN_STABLE_AFTER_3S', geometryStable(openGeometry, cell.geometry), { before: openGeometry, after: cell.geometry, tolerancePx: 2 }); });
-      await screen('practice', 'together-dock-closed', async cell => { dependent(dock); await closeConversation(); await visible(cell, 'TOGETHER_REVEALED', invitation); await page.waitForTimeout(3000); cell.geometry = await rect(story); check(cell, 'DOCK_CLOSE_FOCUS_RETURNS_TO_LAUNCHER', await byId('companion-launcher').locator('.companion-launch-main').evaluate(el => document.activeElement === el)); check(cell, 'TOGETHER_RESTORED_AFTER_DOCK', geometryStable(closedGeometry, cell.geometry), { before: closedGeometry, after: cell.geometry, tolerancePx: 2 }); });
+      const togetherGeometry = async () => { await fontReady(); return story.evaluate(observeTogetherGeometry); };
+      let firstGeometry, preDockGeometry, openGeometry;
+      const together = await screen('practice', 'together-first-ready', async cell => {
+        await load('practice'); await visible(cell, 'TOGETHER_INVITATION_VISIBLE', invitation); await visible(cell, 'STORY_DOOR_VISIBLE', story);
+        check(cell, 'HISTORY_INITIALLY_CLOSED', !await byId('together-play-history').evaluate(el => el.open));
+        firstGeometry = await togetherGeometry(); cell.geometryObservation = firstGeometry; cell.geometry = firstGeometry.geometry;
+        check(cell, 'TOGETHER_ENTRY_GEOMETRY_OBSERVED', togetherLayoutGeometry(firstGeometry, true) !== null);
+      });
+      await screen('practice', 'together-settled', async cell => {
+        dependent(together); await page.waitForTimeout(3000);
+        const after = await togetherGeometry(); cell.geometryObservation = after; cell.geometry = after.geometry;
+        const beforeLayout = togetherLayoutGeometry(firstGeometry, true), afterLayout = togetherLayoutGeometry(after);
+        check(cell, 'TOGETHER_CLOSED_STABLE_AFTER_3S', geometryStable(beforeLayout, afterLayout), { before: beforeLayout, after: afterLayout, tolerancePx: 2 });
+        check(cell, 'TOGETHER_CLOSED_SCROLL_UNCHANGED', togetherScrollStable(firstGeometry.scrollOffsets, after.scrollOffsets), { before: firstGeometry.scrollOffsets, after: after.scrollOffsets });
+      });
+      const dock = await screen('practice', 'together-dock-open', async cell => {
+        dependent(together);
+        // The dock restores the settled viewport it was opened from. Do not
+        // compare its dismissal with a sample taken during the route entrance.
+        preDockGeometry = await togetherGeometry(); cell.beforeDockGeometry = preDockGeometry;
+        check(cell, 'TOGETHER_PRE_DOCK_ENTRANCE_FINISHED', togetherLayoutGeometry(preDockGeometry) !== null);
+        await openConversation(); await visible(cell, 'CONVERSATION_VISIBLE', conversation());
+        openGeometry = await togetherGeometry(); cell.geometryObservation = openGeometry; cell.geometry = openGeometry.geometry;
+        check(cell, 'TOGETHER_STILL_MOUNTED', await invitation.count() === 1);
+        check(cell, 'DOCK_MODE_MATCHES_VIEWPORT', await conversation().getAttribute('role') === (viewport.w >= 1280 ? 'complementary' : 'dialog'));
+      });
+      await screen('practice', 'together-dock-settled', async cell => {
+        dependent(dock); await page.waitForTimeout(3000);
+        const after = await togetherGeometry(); cell.geometryObservation = after; cell.geometry = after.geometry;
+        check(cell, 'TOGETHER_OPEN_STABLE_AFTER_3S', geometryStable(openGeometry.geometry, after.geometry), { before: openGeometry.geometry, after: after.geometry, tolerancePx: 2 });
+        check(cell, 'TOGETHER_OPEN_SCROLL_UNCHANGED', togetherScrollStable(openGeometry.scrollOffsets, after.scrollOffsets), { before: openGeometry.scrollOffsets, after: after.scrollOffsets });
+      });
+      await screen('practice', 'together-dock-closed', async cell => {
+        dependent(dock); await closeConversation(); await visible(cell, 'TOGETHER_REVEALED', invitation); await page.waitForTimeout(3000);
+        const after = await togetherGeometry(); cell.geometryObservation = after; cell.geometry = after.geometry;
+        check(cell, 'DOCK_CLOSE_FOCUS_RETURNS_TO_LAUNCHER', await byId('companion-launcher').locator('.companion-launch-main').evaluate(el => document.activeElement === el));
+        check(cell, 'TOGETHER_RESTORED_AFTER_DOCK', geometryStable(preDockGeometry.geometry, after.geometry), { before: preDockGeometry.geometry, after: after.geometry, tolerancePx: 2 });
+        check(cell, 'TOGETHER_DOCK_SCROLL_RESTORED', togetherScrollStable(preDockGeometry.scrollOffsets, after.scrollOffsets), { before: preDockGeometry.scrollOffsets, after: after.scrollOffsets });
+      });
       await screen('practice', 'together-return-card', async cell => { await load('practice'); await story.click(); await byId('secondary-place-back').waitFor({ state: 'visible' }); check(cell, 'STORY_DESTINATION_REACHED', new URL(page.url()).hash.startsWith('#/stories')); await page.locator('[data-route="stories"] [data-module="stories-tonight"]').waitFor({ state: 'visible' }); await invitation.waitFor({ state: 'hidden' }); check(cell, 'STORY_CONTENT_MOUNTED', true); await byId('secondary-place-back').click(); await story.waitFor({ state: 'visible' }); await page.waitForFunction(() => document.activeElement?.getAttribute('data-together-return') === 'story-library'); check(cell, 'EXACT_RETURN_CARD_FOCUSED', await story.evaluate(el => document.activeElement === el)); check(cell, 'RETURN_TO_TOGETHER', new URL(page.url()).hash.startsWith('#/practice')); cell.returnMarker = 'story-library'; });
 
       await screen('practice', 'together-early-back', async cell => {
@@ -482,12 +517,15 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       // never converts a failed launcher cell into success or preloads it.
       const mockAnswer = async cell => {
         apiState.chat = 'mock';
+        const frameBaseline = await checkConversationFrame(conversation(), cell, { check, phase: 'BEFORE_SEND' });
         const before = { requests: apiState.mockRequests, responses: apiState.mockResponses, answers: await byId('coach-answer-cards').count() };
         await composer().locator('textarea').fill(he ? 'איך אפשר לבחור ספר לקריאה יחד?' : 'How can we choose a book to read together?');
         await composer().locator('[data-testid="coach-send"]').click();
         const answer = byId('coach-answer-cards').nth(before.answers);
         await answer.waitFor({ state: 'visible', timeout: 30000 });
-        await answer.evaluate(el => el.scrollIntoView({ block: 'start' }));
+        await checkConversationFrame(conversation(), cell, { check, baseline: frameBaseline, phase: 'AFTER_RESPONSE' });
+        await answer.evaluate(scrollConversationTranscript);
+        await checkConversationFrame(conversation(), cell, { check, baseline: frameBaseline, phase: 'AFTER_CAPTURE_SCROLL' });
         check(cell, 'ACTUAL_MOCK_REQUEST_OBSERVED', apiState.mockRequests > before.requests);
         check(cell, 'ACTUAL_MOCK_RESPONSE_OBSERVED', apiState.mockResponses > before.responses);
         await visible(cell, 'ACTUAL_MOCK_ANSWER_RENDERED', answer);
@@ -532,7 +570,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       await screen('shell', 'consent-grant-error', async cell => { dependent(permission); await consent().locator('input[type="checkbox"]').check(); await consent().locator('.companion-consent-allow').click(); await visible(cell, 'CONSENT_GRANT_ERROR_VISIBLE', consent().locator('[role="alert"]')); check(cell, 'ONLY_SYNTHETIC_GRANT_ATTEMPT', apiState.consentWrites === 1); check(cell, 'CONSENT_REMAINS_REVIEWABLE', await consent().locator('input[type="checkbox"]').isChecked()); });
       await screen('shell', 'consent-draft-return', async cell => { dependent(permission); await closeReview(); await visible(cell, 'COMPOSER_DRAFT_RETURNED', composer().locator('textarea')); check(cell, 'DRAFT_PRESERVED_THROUGH_ERRORS', await composer().locator('textarea').inputValue() === draft); check(cell, 'NO_FILES_SELECTED', await composer().locator('.companion-attachments').count() === 0); });
       for (const kind of ['generic', 'quota']) await screen('shell', `ask-error-${kind}`, async cell => { dependent(ready); apiState.chat = kind; await composer().locator('textarea').fill(draft); await composer().locator('[data-testid="coach-send"]').click(); const failure = byId('coach-failure-card'); await visible(cell, 'CHAT_FAILURE_VISIBLE', failure); await page.waitForFunction(expected => document.querySelector('[data-testid="coach-failure-card"]')?.getAttribute('data-failure-kind') === expected, kind); check(cell, 'CORRECT_CHAT_FAILURE_KIND', await failure.getAttribute('data-failure-kind') === kind); check(cell, 'CHAT_RETRY_MATCHES_FAILURE', kind === 'generic' ? await failure.locator('button').count() === 1 : await failure.locator('button').count() === 0); cell.fixture = 'bounded-chat-error-response'; });
-      await collectReportStates({ page, lang, check, visible, byId, composer, load, openConversation, syntheticReleaseReport,
+      await collectReportStates({ page, lang, check, visible, byId, composer, load, openConversation, closeConversation, syntheticReleaseReport,
         screen: (route, state, action) => screen(route, state, async cell => { cell.fixture = 'bilingual-report-presentation-fixture'; await action(cell); }),
         setReportFixture: response => { selectedReportFixture = response; apiState.chat = 'report'; },
       });

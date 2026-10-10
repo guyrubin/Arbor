@@ -60,6 +60,34 @@ beforeEach(() => {
 afterEach(() => { unmount(); vi.unstubAllGlobals(); });
 
 describe("Together return presentation state", () => {
+  it.each(["all", "stories", "games", "offscreen"] as const)("never moves focus or scroll on an ordinary %s visit or rerender without a pending return", (category) => {
+    writeTogetherView("a", { category });
+    const target = page();
+    // Data arriving or a dock opening/closing rerenders the mounted page. None
+    // is a request to restore a catalogue door or move the parent's viewport.
+    for (let update = 0; update < 4; update++) {
+      expect(render("a", true, target).category).toBe(category); paint();
+    }
+    expect(requestAnimationFrame).not.toHaveBeenCalled();
+    expect(target.querySelector).not.toHaveBeenCalled();
+    expect(target.door.focus).not.toHaveBeenCalled();
+    expect(target.door.scrollIntoView).not.toHaveBeenCalled();
+    expect(readTogetherView("a", true)).toEqual({ category });
+  });
+
+  it("does not replay a consumed return during later rerenders or presence changes", () => {
+    writeTogetherView("a", { category: "stories", returnDoor: "story-library" });
+    const target = page(); render("a", true, target); paint();
+    expect(target.door.focus).toHaveBeenCalledOnce();
+    expect(target.door.scrollIntoView).toHaveBeenCalledOnce();
+    expect(readTogetherView("a", true)).toEqual({ category: "stories" });
+    render("a", true, target); paint();
+    h.present = false; render("a", true, target); paint();
+    h.present = true; render("a", true, target); paint();
+    expect(target.door.focus).toHaveBeenCalledOnce();
+    expect(target.door.scrollIntoView).toHaveBeenCalledOnce();
+  });
+
   it.each(["story-library", "story-bedtime", "story-comics", "story-family", "world-word-world", "world-speech", "more-ideas"])("restores the specific visible door %s after a normal destination-ready return, once", (returnDoor) => {
     const category = returnDoor.startsWith("world-") ? "games" : returnDoor === "more-ideas" ? "offscreen" : "stories";
     const outgoing = page(); let view = render("a", true, outgoing);
