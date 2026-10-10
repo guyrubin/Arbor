@@ -1,5 +1,5 @@
 /** Actual controls only; no app callbacks, generation, state reset or forced click. */
-import { observeKidEntry } from './kid-entry-contract.mjs';
+import { observeKidEntry, kidEntryHomeFacts, compareKidEntryProfiles } from './kid-entry-contract.mjs';
 
 export async function collectKidEntryStates({ page, fixture, viewport, load, screen, check, byId, apiState }) {
   const he = viewport.lang === 'he';
@@ -12,7 +12,10 @@ export async function collectKidEntryStates({ page, fixture, viewport, load, scr
   const hero = () => page.locator(heroSelector);
   const overlay = () => page.locator(overlaySelector);
   const challenge = () => page.locator(challengeSelector);
-  let profilesBefore, collectionsBefore, opener, stepNode, creatorNode;
+  let profilesBefore, earliestStampMs, collectionsBefore, opener, stepNode, creatorNode;
+  const visitedChildIds = new Set([fixture.child.id]);
+  let profileFieldsIntact = true, profileVisitsIntact = true;
+  const profileSnapshot = () => page.evaluate(() => ({ profiles: JSON.parse(localStorage.getItem('arbor.children') ?? 'null'), atMs: Date.now() }));
   const collections = () => page.evaluate(({ childIds, collectionNames }) => JSON.stringify(childIds.flatMap(id => collectionNames.map(name => [id, name, localStorage.getItem(`arbor.${name}.${id}`)]))), fixture);
   const wait = async (cell, selector, childId = fixture.child.id, outgoing = null) => {
     const contentSelector = selector === parentSelector ? 'h1' : selector === overlaySelector ? '[data-kid-view="home"] > div > header' : null;
@@ -23,7 +26,15 @@ export async function collectKidEntryStates({ page, fixture, viewport, load, scr
   const run = (state, action) => screen('shell', state, async cell => {
     cell.fixture = 'synthetic-kid-entry-actual-controls-no-generation';
     await action(cell);
-    check(cell, 'INVENTED_PROFILES_UNCHANGED', await page.evaluate(() => localStorage.getItem('arbor.children')) === profilesBefore);
+    const snapshot = await profileSnapshot();
+    cell.profileComparison = compareKidEntryProfiles({ previous: profilesBefore, current: snapshot.profiles, allowedChildIds: fixture.childIds, visitedChildIds: [...visitedChildIds], earliestStampMs, observedAtMs: snapshot.atMs });
+    // Latch violations: advancing the transition baseline cannot turn a
+    // forbidden mutation into a later passing state.
+    profileFieldsIntact &&= cell.profileComparison.identitiesMatch && cell.profileComparison.fieldsUnchanged;
+    profileVisitsIntact &&= cell.profileComparison.visitTransitionsValid;
+    check(cell, 'PROFILE_IDENTITY_AGE_HERO_AND_OTHER_FIELDS_UNCHANGED', profileFieldsIntact, cell.profileComparison);
+    check(cell, 'VISIT_STAMP_TRANSITIONS_ACCOUNTED', profileVisitsIntact, cell.profileComparison);
+    profilesBefore = snapshot.profiles;
     check(cell, 'CHILD_COLLECTIONS_UNCHANGED', await collections() === collectionsBefore);
     check(cell, 'NO_GENERATION_OR_MUTATION_DISPATCH', apiState.kidEntryDeniedMutations === 0, apiState.kidEntryDeniedMutations);
   });
@@ -36,11 +47,15 @@ export async function collectKidEntryStates({ page, fixture, viewport, load, scr
   };
   const entered = async (cell, child = fixture.child) => {
     const frame = await wait(cell, overlaySelector, child.id);
+    const observation = { phase: 'first-ready-home-body', frame }; (cell.lockObservations ??= []).push(observation);
     await overlay().getByRole('button', { name: he ? 'החזיקו כדי לחזור להורה' : 'Hold to go back to parent', exact: true }).waitFor({ state: 'visible' });
     check(cell, 'ACTUAL_HOME_GREETING_NAMES_CURRENT_CHILD', frame.text.includes(he ? `היי ${child.name}!` : `Hi ${child.name}!`), frame.text);
-    check(cell, 'EXACT_CURRENT_CHILD_HOME_AND_PARENT_SHIELD', frame.state.open === true && frame.state.view === 'home' && frame.state.worldId === null && frame.overlayCount === 1 && frame.mainInert && frame.hash === '#/overview');
+    const facts = kidEntryHomeFacts(frame);
+    check(cell, 'EXACT_CURRENT_CHILD_HOME_AND_PARENT_SHIELD', Object.values(facts).every(Boolean), facts);
     check(cell, 'NO_RETIRED_STEP_OR_CREATOR', frame.heroStepCount === 0 && frame.creatorCount === 0);
+    (cell.lockObservations ??= []).push({ phase: 'after-exit-control-visible', frame: await page.evaluate(observeKidEntry, { selector: overlaySelector, contentSelector: '[data-kid-view="home"] > div > header', childId: child.id }) });
     await page.keyboard.press('Tab');
+    (cell.lockObservations ??= []).push({ phase: 'after-real-tab', frame: await page.evaluate(observeKidEntry, { selector: overlaySelector, contentSelector: '[data-kid-view="home"] > div > header', childId: child.id }) });
     check(cell, 'KEYBOARD_FOCUS_INSIDE_KID_OVERLAY', await overlay().evaluate(el => el.contains(document.activeElement)));
     return frame;
   };
@@ -75,6 +90,7 @@ export async function collectKidEntryStates({ page, fixture, viewport, load, scr
       await page.locator('button[aria-haspopup="listbox"]:visible').first().click();
       await page.getByRole('listbox').getByRole('option').filter({ hasText: child.name }).click();
       await page.waitForFunction(id => localStorage.getItem('arbor.activeChildId') === id, child.id);
+      visitedChildIds.add(child.id);
       if (settle) {
         const frame = await parent(cell, child, outgoing);
         check(cell, 'ACTUAL_VISIBLE_CHILD_IDENTITY', frame.childIdentities.includes(child.id), frame.childIdentities);
@@ -83,7 +99,8 @@ export async function collectKidEntryStates({ page, fixture, viewport, load, scr
   };
   try {
     await run('hero-first', async cell => {
-      await load('overview'); profilesBefore = await page.evaluate(() => localStorage.getItem('arbor.children')); collectionsBefore = await collections();
+      earliestStampMs = await page.evaluate(() => Date.now());
+      await load('overview'); profilesBefore = (await profileSnapshot()).profiles; collectionsBefore = await collections();
       await parent(cell); opener = await door().elementHandle(); await door().click();
       const frame = await wait(cell, heroSelector); stepNode = await hero().elementHandle();
       check(cell, 'CURRENT_CHILD_HERO_FIRST_BEFORE_ENTRY', frame.text.includes(fixture.child.name) && !frame.state.open && frame.offered.length === 1 && frame.offered[0] === fixture.child.id);

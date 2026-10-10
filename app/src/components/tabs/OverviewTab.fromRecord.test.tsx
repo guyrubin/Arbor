@@ -32,12 +32,13 @@ beforeEach(() => { harness.lang = "en"; });
 
 describe("B-TODAY-28 — the record card (rendered)", () => {
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: quote verbatim in the editorial serif inside an inline-start rule, the date line, ONE question, three ≥44 px answers`, () => {
+    it(`${lang}: quote verbatim in readable body type inside an inline-start rule, the date line, ONE question, three ≥44 px answers`, () => {
       harness.lang = lang;
       const html = renderToStaticMarkup(<FromRecordCard opener={planOpener} childName="Dylan" onAnswer={() => {}} />);
       expect(html).toContain(NOTE);
       expect(html).toMatch(/data-testid="today-record-quote"[^>]*class="[^"]*border-s-2 ps-3[^"]*text-\[17px\]/);
-      expect(html).toContain("var(--font-editorial)");
+      expect(html).toMatch(/data-testid="today-record-quote"[^>]*style="[^"]*font-family:var\(--font-sans\);font-style:normal/);
+      expect(html).not.toContain("var(--font-editorial)");
       expect(html).toContain(translate(lang, "today.record.meta.note", { date: lang === "he" ? "9 ביולי" : "9 Jul" }).split("·")[0].trim());
       expect(html).toContain(translate(lang, "today.record.q.plan", { name: "Dylan" }).replace(/[⁨⁩]/g, "").split("Dylan")[0]);
       expect(html.match(/data-answer="/g)).toHaveLength(3);
@@ -84,7 +85,7 @@ describe("B-TODAY-28 — the record card (rendered)", () => {
     }
   });
 
-  it("NEXTLEVEL r1 — the receipt says the parent's words back, verbatim, in the editorial serif (EN + HE)", () => {
+  it("the receipt says the parent's words back verbatim in the same readable body type (EN + HE)", () => {
     for (const lang of ["en", "he"] as const) {
       harness.lang = lang;
       const html = renderToStaticMarkup(<FromRecordReceipt quote="Calmed and put shoes on within 8 mins" />);
@@ -92,7 +93,9 @@ describe("B-TODAY-28 — the record card (rendered)", () => {
       expect(html).toContain("Calmed and put shoes on within 8 mins");
       expect(html).toContain('data-testid="today-record-receipt-quote"');
       expect(html).toContain("var(--arbor-green-ink)");
-      expect(html).toContain("var(--font-editorial)");
+      expect(html).toMatch(/data-testid="today-record-receipt-quote"[^>]*class="[^"]*leading-relaxed/);
+      expect(html).toContain("font-family:var(--font-sans);font-style:normal;font-size:var(--t-base)");
+      expect(html).not.toContain("var(--font-editorial)");
       expect(html).toContain('role="status"');
       expect(html).not.toMatch(/celebrat|confetti|🎉|!|%/);
     }

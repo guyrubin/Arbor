@@ -63,9 +63,9 @@ export function observeKidEntry({ selector, contentSelector = null, childId, out
   const main = document.querySelector('#main');
   const overlay = document.querySelector('[data-kid-mode-layer][role="dialog"]');
   const childIdentities = [...document.querySelectorAll('[data-child-identity]')].filter(visible).map(node => node.getAttribute('data-child-identity'));
-  const frame = { childIdentities, outgoingRetired: !outgoing || !outgoing.isConnected, selector, contentSelector, count: nodes.length, contentCount: contents.length, rootBounds: bounds(nodes[0]), contentBounds: bounds(target), contentConnected: !!target?.isConnected, visibleCount: contents.filter(visible).length, text: target?.textContent?.trim() ?? '',
+  const frame = { sampledAtMs: performance.now(), documentReadyState: document.readyState, childIdentities, outgoingRetired: !outgoing || !outgoing.isConnected, selector, contentSelector, count: nodes.length, contentCount: contents.length, rootBounds: bounds(nodes[0]), contentBounds: bounds(target), contentConnected: !!target?.isConnected, visibleCount: contents.filter(visible).length, text: target?.textContent?.trim() ?? '',
     activeChildId: localStorage.getItem('arbor.activeChildId'), hash: location.hash, state, offered,
-    mainInert: !!main?.closest('[inert]'), overlayCount: document.querySelectorAll('[data-kid-mode-layer][role="dialog"]').length,
+    mainInert: !!main?.closest('[inert]'), parentAriaHidden: !!main?.closest('[aria-hidden="true"]'), parentShieldOwner: main?.closest('[inert]')?.classList?.contains('page-shell') ? 'page-shell' : main?.closest('[inert]') ? 'other-ancestor' : 'none', overlayCount: document.querySelectorAll('[data-kid-mode-layer][role="dialog"]').length,
     focus: { tag: active?.tagName ?? null, connected: !!active?.isConnected, insideTarget: !!target?.contains(active), insideKidOverlay: !!overlay?.contains(active), insideInert: !!active?.closest('[inert]') },
     heroStepCount: document.querySelectorAll('[data-testid="hero-step-continue"]').length,
     creatorCount: document.querySelectorAll('[data-testid="avatar-character-princess"]').length,
@@ -78,7 +78,7 @@ export function observeKidEntry({ selector, contentSelector = null, childId, out
   return waitUntilReady && !frame.ready ? false : frame;
 }
 
-const common = ['ACTUAL_SETTLED_DESTINATION_BODY', 'INVENTED_PROFILES_UNCHANGED', 'CHILD_COLLECTIONS_UNCHANGED', 'NO_GENERATION_OR_MUTATION_DISPATCH', 'SYNTHETIC_ONLINE', 'NO_PROHIBITED_ACTIONS'];
+const common = ['ACTUAL_SETTLED_DESTINATION_BODY', 'PROFILE_IDENTITY_AGE_HERO_AND_OTHER_FIELDS_UNCHANGED', 'VISIT_STAMP_TRANSITIONS_ACCOUNTED', 'CHILD_COLLECTIONS_UNCHANGED', 'NO_GENERATION_OR_MUTATION_DISPATCH', 'SYNTHETIC_ONLINE', 'NO_PROHIBITED_ACTIONS'];
 const entered = ['ACTUAL_HOME_GREETING_NAMES_CURRENT_CHILD', 'EXACT_CURRENT_CHILD_HOME_AND_PARENT_SHIELD', 'NO_RETIRED_STEP_OR_CREATOR', 'KEYBOARD_FOCUS_INSIDE_KID_OVERLAY'];
 const parent = ['PARENT_BODY_UNLOCKED_WITHOUT_RETIRED_MODAL', 'PARENT_HEADING_NAMES_CURRENT_CHILD'];
 export const KID_ENTRY_REQUIRED_ASSERTIONS = Object.freeze({
@@ -109,4 +109,49 @@ export function validKidEntryCell(cell) {
   return ids.length > 0 && ids.every(id => cell.assertions?.some(assertion => assertion.id === id && assertion.passed === true))
     && cell.frames?.length > 0 && cell.frames.every(frame => frame.ready === true)
     && cell.networkEvidence?.kidEntryDeniedMutations === 0;
+}
+
+
+/** Raw storage omits null worldId; parseKidModeState maps absence back to null. */
+export function kidEntryHomeFacts(frame) {
+  return { open: frame.state?.open === true, home: frame.state?.view === 'home',
+    noWorld: !!frame.state && (!Object.hasOwn(frame.state, 'worldId') || frame.state.worldId === null),
+    oneOverlay: frame.overlayCount === 1, parentInert: frame.mainInert === true, parentRoute: frame.hash === '#/overview' };
+}
+
+/** Compare every synthetic profile field. Only the source-defined useLastVisit
+ * transition may differ, and only for actually selected fixture identities.
+ * Receipts retain bounded field names + valid visit timestamps, never profiles. */
+export function compareKidEntryProfiles({ previous, current, allowedChildIds, visitedChildIds, earliestStampMs, observedAtMs }) {
+  const stable = value => JSON.stringify(value, (_, item) => item && typeof item === 'object' && !Array.isArray(item)
+    ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
+  const expectedIds = JSON.stringify(allowedChildIds);
+  const ids = profiles => Array.isArray(profiles) ? JSON.stringify(profiles.map(profile => profile?.id)) : null;
+  const identitiesMatch = ids(previous) === expectedIds && ids(current) === expectedIds;
+  const changes = [];
+  let fieldsUnchanged = identitiesMatch, visitTransitionsValid = identitiesMatch;
+  if (identitiesMatch) for (let index = 0; index < previous.length; index++) {
+    const before = previous[index], after = current[index], childId = allowedChildIds[index];
+    const fields = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(key => stable(before[key]) !== stable(after[key]));
+    const visitFields = fields.filter(key => key === 'lastVisitAt' || key === 'lastVisitPreviousAt');
+    if (fields.some(key => !visitFields.includes(key))) fieldsUnchanged = false;
+    let expectedTransition = 'unchanged', valid = true;
+    if (visitFields.length) {
+      const oldMs = typeof before.lastVisitAt === 'string' ? Date.parse(before.lastVisitAt) : NaN;
+      const nextMs = typeof after.lastVisitAt === 'string' ? Date.parse(after.lastVisitAt) : NaN;
+      const gap = nextMs - oldMs;
+      expectedTransition = !Number.isFinite(oldMs) ? 'first-visit' : gap >= 30 * 60_000 ? 'rotate-visit' : 'bump-visit';
+      const expectedPrevious = expectedTransition === 'rotate-visit' ? before.lastVisitAt : before.lastVisitPreviousAt;
+      valid = visitedChildIds.includes(childId) && fields.includes('lastVisitAt') && Number.isFinite(nextMs)
+        && after.lastVisitAt === new Date(nextMs).toISOString() && nextMs >= earliestStampMs && nextMs <= observedAtMs
+        && (!Number.isFinite(oldMs) || gap >= 60_000)
+        && stable(after.lastVisitPreviousAt) === stable(expectedPrevious);
+      if (!valid) visitTransitionsValid = false;
+    }
+    const stamp = value => value === undefined ? null : typeof value === 'string' && Number.isFinite(Date.parse(value)) ? value : '[invalid-stamp]';
+    if (fields.length) changes.push({ childId, fields: fields.slice(0, 40), totalFields: fields.length, expectedTransition,
+      visitTransitionValid: valid, ...(visitFields.length ? { before: { lastVisitAt: stamp(before.lastVisitAt), lastVisitPreviousAt: stamp(before.lastVisitPreviousAt) },
+        after: { lastVisitAt: stamp(after.lastVisitAt), lastVisitPreviousAt: stamp(after.lastVisitPreviousAt) } } : {}) });
+  }
+  return { earliestStampMs, observedAtMs, visitedChildIds: visitedChildIds.filter(id => allowedChildIds.includes(id)), identitiesMatch, fieldsUnchanged, visitTransitionsValid, changes, passed: identitiesMatch && fieldsUnchanged && visitTransitionsValid };
 }

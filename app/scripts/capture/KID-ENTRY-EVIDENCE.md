@@ -48,8 +48,10 @@ Ordinary switches retain the outgoing DOM handle and wait for its retirement,
 the settled current route body, current child and visible identity. Rapid ABA
 waits for the final body but allows legitimate reuse of A's original node. The
 same persistent door node is compared across eligible ABA. Hash alone never
-constitutes arrival evidence. Every state checks unchanged invented profiles and
-child collection storage; accepted local mode/session writes are observed.
+constitutes arrival evidence. Every state compares every invented profile field and unchanged child collection
+storage. Only separately validated source-defined visit-stamp transitions on
+actually selected synthetic IDs are accepted; local mode/session writes are
+observed.
 
 `kid-entry-contract.mjs` lists the exact required assertions for each state.
 Missing destination, focus, lock, persistence or action facts cannot be replaced
@@ -76,10 +78,10 @@ by a generic passing assertion, a screenshot or a reached flag.
 
 ## Offline validation
 
-183 tests pass across 10 files, each its own installed Vitest process with
+186 tests pass across 10 files, each its own installed Vitest process with
 `--maxWorkers=1`, `MODEL_PROVIDER=mock`, and the existing offline network guard:
 
-- captureKidEntry: 13
+- captureKidEntry: 16
 - captureRelease: 11 (including unchanged Parent858 and additive 930 contracts)
 - release-interactions: 17
 - captureConfirmedActions: 19
@@ -118,3 +120,57 @@ After these changes the three affected files were rerun separately: captureKidEn
 13, captureRelease 11 and release-interactions 17 (41 passing tests). The remaining
 142 previously passing tests exercise unchanged source. This remains prepared
 verification, not a browser result or release approval.
+
+## First real diagnostic, retained failure and correction
+
+The owner ran the first real desktop-EN diagnostic at exact source
+`e833d52567e314af0b728b83fa225e5691d09138` / app source tree
+`a6464019f80334183faf672b600ded3c14882f5e`. Its 18 exact-font PNGs and evidence
+remain untouched at the retained `e833d52/desktop-en-kid-entry-0` artifact.
+Only **7/18** cells were accepted. The failed attempt is not reclassified as green.
+
+The JSON plus actual entry, reload, sibling-offer and under-three PNGs establish:
+
+- Correct child greetings and home destination render. The source serializer
+  deliberately omits a null `worldId`; the fixture incorrectly required the raw
+  JSON property to equal null. The corrected assertion accepts absence or null
+  only, still rejects any named/empty/invalid world, and still requires open=true,
+  one overlay, the parent route and inert parent. Pure regression invokes the
+  actual serializer.
+- After selecting a new sibling, raw profile JSON changes. The first artifact
+  did not preserve field differences, so it cannot prove the change was benign.
+  `NowView` mounts `useLastVisit`, which writes first-visit, one-minute bump or
+  thirty-minute rotation timestamps through the existing ProfileContext. The
+  next diagnostic records bounded exact changed field names and before/after
+  visit stamps, with observation-time bounds. It accepts only those transitions
+  on actually selected synthetic IDs. Identity, age, hero and every other field
+  remain exact; collection data remains unchanged. It does not discard the
+  timestamp fields, reset baselines to hide a failure or presume this hypothesis
+  was proven by the first artifact.
+- The first ready home frame after a real locked reload recorded
+  `mainInert=false`, even though open=true, the right child rendered, and the real
+  Tab stayed inside the Kid overlay. Later challenge frames recorded inert=true.
+  This is a separate unresolved initial-frame shielding observation. The
+  corrected capture retains the first-frame failure and adds passive timing,
+  document readiness, aria-hidden/shield-owner and after-control/after-Tab
+  snapshots. It does not wait longer for inertness or weaken the assertion.
+  The overlay's existing passive-effect shield timing is a source hypothesis,
+  not a proved cause or an approved runtime change.
+
+Initial cloud CI stopped at typechecking: test code read `.ready` from the
+observer's false-or-object union. An explicit narrowing helper now throws if a
+non-polling observation unexpectedly returns false. The legitimate polling false
+branch remains. No `any` workaround or local typecheck was used; cloud typecheck
+on the corrected SHA remains necessary.
+
+After the owner carried reviewed Parent practice-capture and quotation-typography
+changes, all three shared collector seams were inspected: independent Kids and
+practice fixture selection, Kid-only lock preservation versus navigation-only
+practice clock, and independent collector dispatch. They were left unchanged.
+
+Latest local verification: captureKidEntry 16 + captureRelease 11 +
+release-interactions 17 = **44/44**, each a separate offline installed Vitest
+process. The other 142 tests above previously passed on unchanged relevant source.
+No local browser/provider/typecheck/publication was performed. The next real
+bounded diagnostic is still needed; a repeated first-ready unshielded parent
+must continue to fail and be investigated before release.
