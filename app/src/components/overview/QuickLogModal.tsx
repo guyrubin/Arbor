@@ -410,6 +410,15 @@ export default function QuickLogModal({
   // placeholder. Extraction failure (non-escalation) leaves today's manual
   // form untouched — the typed sentence stays in the trigger field.
   const TYPED_EXTRACT_MIN_CHARS = 25;
+  // The typed or dictated words are already in the field when extraction
+  // escalates. An escalated transcript may never survive in an ordinary
+  // editable draft: dismissing the alert must not hand back a saveable form
+  // holding the crisis text (the contract the Behaviors form kept before it
+  // moved to this sheet). Clears only; never fills a field.
+  const dropEscalatedDraft = () => {
+    setNewLogTrigger(""); setNewLogNotes(""); setNewLogResponse("");
+    setKeepDraft(freshCaptureKeep()); setReviewing(false); setSource("text");
+  };
   // B-TODAY-01: `from` names the form the words were captured in. From the
   // ONE-field moment form, the incident review opens ONLY when the model's
   // label really is an incident type (extractionOpensIncidentReview);
@@ -441,6 +450,7 @@ export default function QuickLogModal({
       if (!isCurrent()) return;
       // FAIL-CLOSED: the escalation branch runs FIRST and writes no draft field.
       if (err instanceof EscalationRequiredError) {
+        dropEscalatedDraft();
         const match =
           escalationCategories.find((c) => c.category === err.category) ??
           escalationCategories[0];

@@ -97,6 +97,11 @@ describe("AI-CAP-3 — QuickLogModal typed capture", () => {
     expect(branch).toBeTruthy();
     expect(branch).not.toMatch(/setNewLog/);
     expect(branch).toMatch(/setEscalationMarkdown\(renderEscalationMarkdown\(/);
+    // ...and the words already in the field are dropped, never kept saveable.
+    expect(branch).toMatch(/dropEscalatedDraft\(\);/);
+    const drop = /const dropEscalatedDraft = \(\) => \{([\s\S]*?)\n  \};/.exec(modal)?.[1] ?? "";
+    for (const clear of ['setNewLogTrigger("")', 'setNewLogNotes("")', 'setNewLogResponse("")', "setReviewing(false)"]) expect(drop).toContain(clear);
+    expect(drop).not.toMatch(/setNewLog\w+\((?!"")/);
     expect(modal).toContain('data-testid="quicklog-escalation"');
     expect(modal).toMatch(/role="alert"/);
     expect(modal).toMatch(/<MarkdownBlock text=\{escalationMarkdown\}/);
