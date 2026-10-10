@@ -25,7 +25,7 @@ export interface ChildCollection<T extends WithId> {
   /** True when backed by Firestore (vs localStorage sandbox). */
   remote: boolean;
   /** Create or replace a single item. */
-  upsert: (item: T, options?: { awaitServer?: boolean }) => Promise<void>;
+  upsert: (item: T, options?: { awaitServer?: boolean; requireAcknowledgement?: boolean }) => Promise<void>;
   /** Delete an item by id. */
   remove: (id: string) => Promise<void>;
   /** Replace the whole collection in one shot (sandbox: state; remote: batch). */
@@ -179,14 +179,15 @@ export function useChildCollection<T extends WithId>(
   }, [items, remote, loaded, lsKey]);
 
   const upsert = useCallback(
-    async (item: T, options?: { awaitServer?: boolean }) => {
+    async (item: T, options?: { awaitServer?: boolean; requireAcknowledgement?: boolean }) => {
       if (scopeRef.current !== scope) throw new Error("The active child changed");
       if (remote && db && uid) {
         const write = setDoc(doc(db, `users/${uid}/children/${childId}/${name}`, item.id), item as Record<string, unknown>);
         // Existing callers retain queued-write semantics. A receipt that claims
         // acknowledgement opts in and stays pending while offline.
         if (options?.awaitServer) await write;
-        else await settleOrQueue(write);
+        else await settleOrQueue(write, options);
+        if (scopeRef.current !== scope) throw new Error("The active child changed");
       } else {
         const previous = itemsRef.current;
         const next = previous.some(value => value.id === item.id)

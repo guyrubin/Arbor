@@ -144,7 +144,7 @@ describe("B-AI-05 — every ActionSource writes the thread", () => {
   it("ACTION_SOURCES lists the companion sources (exhaustive over the union)", () => {
     expect([...ACTION_SOURCES].sort()).toEqual(
       // B-LOOP-09: + "practice" (the daily practice's dose row)
-      ["coach", "digest", "family-ritual", "from-record", "hard-moment", "learn-read", "plan", "practice", "today-guidance", "vision"],
+      ["coach", "digest", "family-ritual", "from-record", "hard-moment", "learn-read", "onboarding", "plan", "practice", "today-guidance", "vision"],
     );
   });
 

@@ -7,6 +7,7 @@ import { useLastVisit } from "../../hooks/useLastVisit";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
 import { formatChildAge } from "../../lib/age/format";
 import { childPicture } from "../../lib/childPicture";
+import { dayKey } from "../../practice/signals";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import { nextChosenAction } from "./companionChoices";
 import { NOW_COPY } from "./nowViewCopy";
@@ -48,8 +49,10 @@ export interface NowViewProps {
 
 /** A fresh child/language owns its own focus request, outcomes and disclosures. */
 export default function NowView(props: NowViewProps) {
-  const { childProfile } = useArbor();
-  const { uiLang } = useLanguage();
+  const { childProfile, actionLoopReady } = useArbor();
+  const { uiLang, t } = useLanguage();
+  // Do not start a focus request while the accepted onboarding step is loading.
+  if (actionLoopReady === false) return <p role="status" className="companion-caption">{t("aria.loading")}</p>;
   return <NowContent key={`${childProfile.id}:${uiLang}`} {...props} />;
 }
 
@@ -222,7 +225,7 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
           <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name={receipt ? "check" : "bookmark"} size={24} /></span><div><p className="companion-eyebrow">{copy.chosen}</p><p className="now-provenance">{receipt ? copy.saved : copy.today}</p></div></div>
           <h2 id={`${id}-step`} className="now-lead-title" dir="auto">{receipt ? copy.finishedTitle : chosen.recommendation}</h2>
           {receipt && <p className="now-lead-body" dir="auto">{chosen.recommendation}</p>}
-          <p className="now-lead-body" role={receipt ? "status" : undefined}>{receipt ? copy.finished : copy.chosenWhy}</p>
+          <p className="now-lead-body" role={receipt ? "status" : undefined}>{receipt ? copy.finished : chosen.acceptanceKey?.startsWith("onboarding-v1.") && dayKey(new Date(chosen.acceptedAt)) === dayKey(now) ? t("ob.first.tomorrow") : copy.chosenWhy}</p>
           {!receipt && <div className="now-lead-actions" role="group" aria-label={copy.outcomes}>
             <PrimaryMove type="button" className="companion-primary" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.helped}</PrimaryMove>
             <button type="button" className="companion-secondary" disabled={saving} onClick={() => void saveOutcome("not_today")}>{copy.notToday}</button>

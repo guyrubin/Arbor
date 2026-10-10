@@ -25,12 +25,16 @@ import { collectKeptSearchStates } from './kept-search-states.mjs';
 import { collectPracticeStates, PRACTICE_FIXTURE, practiceClockScript } from './practice-states.mjs';
 import { KID_ENTRY_STATES, KID_ENTRY_LIMITATIONS, kidEntryFixture, kidEntryApiDisposition, validKidEntryCell } from './kid-entry-contract.mjs';
 import { collectKidEntryStates } from './kid-entry-states.mjs';
+import { FIRST_RUN_PREVIEW_STATES, FIRST_RUN_PREVIEW_BOUNDARY, FIRST_RUN_PREVIEW_LIMITATIONS, firstRunPreviewApiDisposition, firstRunPreviewPrimaryShot, validFirstRunPreviewCell } from './first-run-preview-contract.mjs';
+import { collectFirstRunPreviewStates } from './first-run-preview-states.mjs';
+import { installFirstRunPreviewBoundary, isCaptureDemoFamilyUrl } from './first-run-preview-network.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
   record: RECORD_STATES,
   'kept-search': KEPT_SEARCH_STATES,
   'kid-entry': KID_ENTRY_STATES,
+  'first-run-preview': FIRST_RUN_PREVIEW_STATES,
   'confirmed-actions': CONFIRMED_ACTION_STATES,
   navigation: [
     ...rows('shell', ['keep-closed', 'keep-open', 'keep-toggle-closed', 'keep-escape', 'keep-write', 'keep-close-focus']),
@@ -63,7 +67,7 @@ export function expectedReleaseInteractionStates(group, viewport) {
 export function missingReleaseInteractionEvidence(cells, { group, viewport, sourceSha, sourceTreeSha }) {
   return expectedReleaseInteractionStates(group, viewport).flatMap(({ route, state, group: part }) => {
     const cell = cells.find(item => item.route === route && item.state === state && item.group === part && item.lang === viewport.lang && item.viewport === `${viewport.w}x${viewport.h}` && item.sourceSha === sourceSha && (!sourceTreeSha || item.sourceTreeSha === sourceTreeSha));
-    const valid = (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
+    const valid = (part !== 'first-run-preview' || validFirstRunPreviewCell(cell)) && (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
     return valid ? [] : [{ route, state, group: part, lang: viewport.lang, viewport: `${viewport.w}x${viewport.h}`, failure: cell?.failures?.[0] ?? (cell ? 'INCOMPLETE_ASSERTIONS_OR_SCREENSHOT' : 'NOT_ATTEMPTED') }];
   });
 }
@@ -160,6 +164,8 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     const navigation = await collectReleaseInteractions({ output, bundle, viewport, group: 'navigation', sourceSha, sourceTreeSha, _reportGroup: 'focused', _apiCache });
     return collectReleaseInteractions({ output, bundle, viewport, group: 'ask', sourceSha, sourceTreeSha, _priorCells: navigation.cells, _reportGroup: 'focused', _apiCache });
   }
+  const firstRunPreview = group === 'first-run-preview';
+  if (firstRunPreview && process.env.NODE_ENV !== 'development') throw new Error('FIRST_RUN_DEV_PREVIEW_REQUIRED');
   const record = group === 'record' ? recordFixture(bundle, viewport.lang) : null;
   const confirmed = group === 'confirmed-actions' ? confirmedActionsFixture(bundle, viewport.lang) : null;
   const keptSearch = group === 'kept-search' ? keptSearchFixture(bundle, viewport.lang) : null;
@@ -172,6 +178,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   mkdirSync(`${output}/shots`, { recursive: true });
   const doc = { schema: 1, scope: 'release-interactions', sourceSha, sourceTreeSha, group: _reportGroup, activeGroup: group, viewport: viewportId, lang, fixture: SMALL_FIXTURE, fontMode: 'exact', fontLimitation: SOURCE_FONT_NOTE, expectedStates: _reportGroup === group ? expectedStates : expectedReleaseInteractionStates(_reportGroup, viewport), completed: false, finished: false, cells: [..._priorCells], fixtures: ['synthetic-family', 'local-mock-server', 'synthetic-local-watch-choice', 'bounded-consent-error-responses', 'bounded-chat-error-responses', 'bilingual-report-presentation-fixture'] };
   const save = () => { doc.missingEvidence = missingReleaseInteractionEvidence(doc.cells, { group: _reportGroup, viewport, sourceSha, sourceTreeSha }); writeFileSync(`${output}/evidence.json`, JSON.stringify(doc, null, 2)); };
+  if (firstRunPreview) { doc.scope = 'first-run-dev-preview'; doc.firstRunPreview = FIRST_RUN_PREVIEW_BOUNDARY; doc.firstRunPreviewBoundaries = FIRST_RUN_PREVIEW_LIMITATIONS; doc.fixtures = ['existing-dev-onboarding-preview', 'existing-seeded-synthetic-family', 'real-disposable-local-writes']; }
   if (record) {
     doc.recordBoundaries = RECORD_LIMITATIONS;
     doc.fixtures.push('synthetic-record-local-storage', 'synthetic-browser-share-sink');
@@ -195,8 +202,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, locale: he ? 'he-IL' : 'en-US', timezoneId: 'Asia/Jerusalem', serviceWorkers: 'block', permissions: [], ...captureFontContextOptions() });
     let selectedReportFixture = null;
     const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, deniedActionCategories: {}, ttsCapabilityReads: 0, shareListReads: 0, apiCacheHits: 0, localRateLimits: 0 };
+    if (firstRunPreview) apiState.firstRunDeniedWrites = 0;
     if (kidEntry) Object.assign(apiState, { kidEntryNarrationRefusals: 0, kidEntryDeniedMutations: 0 });
     await context.route('**/*', route => {
+      if (Object.hasOwn(apiState, 'firstRunDeniedWrites') && !['GET', 'HEAD'].includes(route.request().method())) { apiState.firstRunDeniedWrites++; apiState.deniedActions++; return route.abort(); }
       if (new URL(route.request().url()).origin === BASE) return route.continue();
       apiState.deniedExternal++;
       return route.abort();
@@ -206,6 +215,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       const request = route.request();
       const url = new URL(request.url());
       if (url.origin !== BASE) { apiState.deniedExternal++; return route.abort(); }
+      if (firstRunPreview && firstRunPreviewApiDisposition(request.method(), url.pathname) === 'deny') { apiState.firstRunDeniedWrites++; apiState.deniedActions++; return route.abort(); }
       const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
       if (kidEntry) {
         const disposition = kidEntryApiDisposition(request.method(), url.pathname, kidEntry.childIds);
@@ -250,8 +260,15 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       }
       return route.continue();
     });
-    await context.route('**/sandbox/demo-family.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) }));
+    await context.route(isCaptureDemoFamilyUrl, route => {
+      if (Object.hasOwn(apiState, 'firstRunDeniedWrites') && !['GET', 'HEAD'].includes(route.request().method())) { apiState.firstRunDeniedWrites++; apiState.deniedActions++; return route.abort(); }
+      if (route.request().method() !== 'GET') return route.fallback();
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) });
+    });
     await installOfflineFonts(context);
+    // Playwright runs matching routes in reverse registration order. This must
+    // be last: safe same-origin reads fall back to the existing handlers.
+    if (firstRunPreview) await installFirstRunPreviewBoundary(context, apiState);
     if (kidEntry) await context.addInitScript(initializeSyntheticOnline, { lang, preserveKidMode: true });
     else await context.addInitScript(initializeSyntheticOnline, { lang });
     if (practiceCapture) await context.addInitScript({ content: practiceClockScript(fixture.parsed) });
@@ -378,7 +395,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       // Even an assertion failure keeps its actual exact-font pixels. Such a
       // cell remains unreached; screenshots cannot convert missing evidence.
       try {
-        const shot = `shots/release.${group}.${viewportId}.${lang}.${state}.exact.png`;
+        const shot = firstRunPreview ? firstRunPreviewPrimaryShot({ state, viewport: viewportId, lang }) : `shots/release.${group}.${viewportId}.${lang}.${state}.exact.png`;
         await captureScreenshot(page, { path: `${output}/${shot}`, timeout: 12000, animations: 'disabled' });
         cell.shot = shot;
       } catch (error) { cell.failures.push(knownFailure(error)); }
@@ -427,7 +444,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       return cell.reached;
     };
 
-    if (group === 'kept-search') {
+    if (firstRunPreview) {
+      entryMode = 'existing-dev-onboarding-preview';
+      await collectFirstRunPreviewStates({ page, viewport, screen, check, apiState });
+    } else if (group === 'kept-search') {
       await collectKeptSearchStates({ page, context, fixture: keptSearch, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }) });
     } else if (group === 'kid-entry') {
       await collectKidEntryStates({ page, fixture: kidEntry, viewport, load, screen, check, byId, apiState });

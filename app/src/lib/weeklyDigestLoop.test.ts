@@ -52,7 +52,10 @@ describe("AIX-S6 — acceptTodayAction carries provenance", () => {
     expect(code).toMatch(/acceptTodayAction = \(recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry\["source"\] = "today-guidance", planStep\?: PlanStepRef, options\?: \{ awaitServer\?: boolean; isCurrent\?: \(\) => boolean \}\)/);
     // B-AI-05: the entry is built by actionLoop/model planAcceptedAction
     // (trimmed text + source + capacity), which never overwrites a row.
-    expect(code).toMatch(/planAcceptedAction\(actionLoop, \{ recommendation, source, capacity, \.\.\.\(planStep \? \{ planStep \} : \{\}\) \}, todayActionId\(childProfile\.id\)\)/);
+    expect(code).toContain("await persistAcceptedTodayAction({ childId: childProfile.id, items: actionLoop,");
+    expect(code).toMatch(/recommendation, capacity, source,\s*\.\.\.\(planStep \? \{ planStep \} : \{\}\)/);
+    const seam = read("actionLoop/accept.ts");
+    expect(seam).toContain("planAcceptedAction(input.items, input, todayActionId(input.childId, now), now)");
     const model = read("actionLoop/model.ts");
     expect(model).toMatch(/recommendation: input\.recommendation\.trim\(\),\s*source: input\.source,\s*capacity: input\.capacity,/);
   });

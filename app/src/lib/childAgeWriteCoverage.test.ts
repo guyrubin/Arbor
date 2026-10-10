@@ -18,6 +18,7 @@
 import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import ts from "typescript";
 
 const SRC = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
 
@@ -34,22 +35,56 @@ const listSources = (dir: string): string[] =>
  *  invented from months (see childAge.test.ts for the tree scan). */
 const AGE_WRITE_HELPERS = ["agePatchFromMonths", "buildNewChildInput"];
 
-/** `addChild(...)` / `updateChild(...)` call text across the tree. */
+/** AST scan covers single-line calls and named patches as well as literals. */
 const ageWrites = listSources(SRC).flatMap((file) => {
-  const src = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
-  const stripped = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-  return [...stripped.matchAll(/\b(?:addChild|updateChild)\s*\([\s\S]{0,1400}?\n\s{0,8}\}\s*\)/g)]
-    .map((m) => ({ file: path.relative(SRC, file).split(path.sep).join("/"), call: m[0] }))
-    .filter(({ call }) => /\bage\s*:|\bageMonths\s*:/.test(call));
+  const source = fs.readFileSync(file, "utf8");
+  const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith("tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const definitions = new Map<string, ts.Expression>();
+  const collect = (node: ts.Node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) definitions.set(node.name.text, node.initializer);
+    ts.forEachChild(node, collect);
+  };
+  collect(tree);
+  const expanded = (node: ts.Node, seen = new Set<string>()): string => {
+    let text = node.getText(tree);
+    const scan = (part: ts.Node) => {
+      if (ts.isIdentifier(part) && definitions.has(part.text) && !seen.has(part.text)) {
+        const next = new Set(seen); next.add(part.text);
+        text += "\n" + expanded(definitions.get(part.text)!, next);
+      } else ts.forEachChild(part, scan);
+    };
+    ts.forEachChild(node, scan);
+    if (ts.isIdentifier(node) && definitions.has(node.text) && !seen.has(node.text)) {
+      const next = new Set(seen); next.add(node.text); text += "\n" + expanded(definitions.get(node.text)!, next);
+    }
+    return text;
+  };
+  const writes: { file: string; call: string }[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node) && /(?:^|\.)(addChild|updateChild)$/.test(node.expression.getText(tree))) {
+      const call = node.arguments.map(arg => expanded(arg)).join("\n");
+      if (/\bage\s*:|\bageMonths\s*[:,}]|agePatchFromMonths|buildNewChildInput/.test(call)) writes.push({ file: path.relative(SRC, file).split(path.sep).join("/"), call });
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(tree); return writes;
 });
 
 describe("GP-03 · a child's age is never written in pieces", () => {
   it("the scan is real and finds the known write sites", () => {
     const files = new Set(ageWrites.map((w) => w.file));
     expect(ageWrites.length).toBeGreaterThan(0);
+    expect(files.has("lib/onboardingFirstRun.ts")).toBe(true);
+    expect(files.has("components/profile/ProfileEditDrawer.tsx")).toBe(true);
     // Named anchors: if these move or are renamed, fail loudly rather than
     // quietly scanning nothing and reporting success.
-    expect(files.has("components/auth/OnboardingFlow.tsx")).toBe(true);
+    // B-SHELL-36: first-run writes moved into its executable state machine;
+    // the about patch is shared by create and Back-edit rather than duplicated.
+    const firstRun = fs.readFileSync(path.join(SRC, "lib/onboardingFirstRun.ts"), "utf8");
+    expect(firstRun).toContain("age: Math.floor(ageMonths / 12), ageMonths");
+    expect(firstRun).toContain("ageMonthsAsOf: isoDateOf(now)");
+    expect(firstRun).toContain("services.addChild({ ...about");
+    expect(firstRun).toContain("services.updateChild(state.childId, about)");
   });
 
   it("every age write carries birthDate and ageMonths, or goes through a helper", () => {

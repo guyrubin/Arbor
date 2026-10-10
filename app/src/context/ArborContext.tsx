@@ -1,3 +1,4 @@
+import { acceptTodayAction as persistAcceptedTodayAction } from "../actionLoop/accept";
 import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from "react";
 import {
   ChildProfile,
@@ -50,7 +51,7 @@ import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
 import { observeMilestoneDoc, type ObserveOptions, type ObserveStatus } from "../lib/milestones/observe";
 import type { ShelfId } from "../lib/shelves/registry";
 import { hydrateMilestones } from "./milestoneHydration";
-import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
+import { activeActionFor, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
 import { answeredToday, fromRecordRowId, fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
 import { recentTypeCounts } from "../lib/planRecord";
@@ -489,13 +490,12 @@ function useArborState() {
       };
       // Lifetime checks belong here, never in the persisted collection payload.
       const { isCurrent: _isCurrent, ...writeOptions } = options ?? {};
-      const { entry: item, superseded } = planAcceptedAction(actionLoop, { recommendation, source, capacity, ...(planStep ? { planStep } : {}) }, todayActionId(childProfile.id));
-      for (const old of superseded) {
-        assertCurrent();
-        await actionLoopCol.upsert(old, options ? writeOptions : undefined);
-      }
-      assertCurrent();
-      await actionLoopCol.upsert({ ...item, ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}) }, options ? writeOptions : undefined);
+      await persistAcceptedTodayAction({ childId: childProfile.id, items: actionLoop,
+        upsert: item => {
+          assertCurrent();
+          return actionLoopCol.upsert(item, options ? writeOptions : undefined);
+        }, recommendation, capacity, source,
+        ...(planStep ? { planStep } : {}), ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}) });
       assertCurrent();
       try { track("today_action_accepted", { capacity, source }); } catch { /* noop */ }
     })();
@@ -1883,6 +1883,7 @@ function useArborState() {
     commitConversationProposal,
     undoConversationChange,
     activeTodayAction,
+    actionLoopReady: actionLoopCol.loaded && !actionLoopCol.error,
     acceptTodayAction,
     recordTodayOutcome,
     saveTodayOutcome,

@@ -29,6 +29,7 @@ import { FAMILY_RITUALS } from "../../lib/familyRituals";
 import { translate } from "../../lib/i18n";
 import { CoachTryIt } from "../coach/CoachAnswerCards";
 import { settleOrQueue } from "../../lib/firestoreWrite";
+import { acceptTodayAction as persistAcceptedTodayAction } from "../../actionLoop/accept";
 import { activeActionFor, planAcceptedAction, todayActionId } from "../../actionLoop/model";
 
 type El = React.ReactElement<Record<string, any>>;
@@ -237,7 +238,7 @@ describe("actual acceptTodayAction acknowledgement seam", () => {
   const visit = (node: ts.Node) => { if (ts.isVariableStatement(node) && node.declarationList.declarations.some(d => ts.isIdentifier(d.name) && d.name.text === "acceptTodayAction")) declaration = node.getText(source); ts.forEachChild(node, visit); }; visit(source);
   function setup(upsert: ReturnType<typeof vi.fn>, loop: any[] = [], topic = "original-topic") {
     if (h.acceptScopeRef.current.writer !== upsert) h.acceptScopeRef.current = { writer: upsert, sequence: 0 };
-    const env = { acceptScopeRef: h.acceptScopeRef, acceptScope: h.acceptScopeRef.current, actionLoop: loop, actionLoopCol: { upsert }, childProfile: { id: "a" }, activeFamilyTopic: { id: topic }, planAcceptedAction, todayActionId, track: vi.fn() };
+    const env = { acceptScopeRef: h.acceptScopeRef, acceptScope: h.acceptScopeRef.current, actionLoop: loop, actionLoopCol: { upsert }, childProfile: { id: "a" }, activeFamilyTopic: { id: topic }, planAcceptedAction, todayActionId, persistAcceptedTodayAction, track: vi.fn() };
     const code = ts.transpileModule(`${declaration}; return acceptTodayAction;`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
     return { ...env, call: new Function(...Object.keys(env), code)(...Object.values(env)) };
   }

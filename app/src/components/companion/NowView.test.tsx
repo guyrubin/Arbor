@@ -10,7 +10,7 @@ const KNOWN_AGE = { id: "child-a", name: "Noa", age: 4, interests: [], activeGoa
 const state = vi.hoisted(() => ({
   lang: "en" as "en" | "he",
   childProfile: { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] } as Record<string, unknown>,
-  actionLoop: [] as ActionLoopEntry[],
+  actionLoop: [] as ActionLoopEntry[], actionLoopReady: true,
   actionPlans: [] as unknown[], approvedMemoryItems: [] as unknown[], behaviorLogs: [] as unknown[],
   appointments: [] as unknown[], recordFromRecordAnswer: vi.fn(async () => {}),
   evening: false, moreProps: null as any,
@@ -73,7 +73,7 @@ const PROGRAM = { week: 2, program: { shelf: "words" }, enrolment: { programId: 
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 9, 12, 8));
   state.actionPlans = []; state.approvedMemoryItems = []; state.behaviorLogs = []; state.appointments = []; state.evening = false; state.moreProps = null;
-  vi.clearAllMocks(); state.setActiveTab.mockReset(); state.buttons = []; state.lang = "en"; state.focus = null; state.program = null; state.actionLoop = []; state.childProfile = { ...KNOWN_AGE }; state.noPractice = false;
+  vi.clearAllMocks(); state.actionLoopReady = true; state.setActiveTab.mockReset(); state.buttons = []; state.lang = "en"; state.focus = null; state.program = null; state.actionLoop = []; state.childProfile = { ...KNOWN_AGE }; state.noPractice = false;
 });
 
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
@@ -259,5 +259,27 @@ describe("Now record and visit leads", () => {
     const html = renderToStaticMarkup(<NowView />);
     expect(html).toContain(new Date(2026, 9, 14, 20, 30).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }));
     expect(state.moreProps.now.getTime()).toBe(Date.now());
+  });
+});
+
+describe("B-SHELL-36 first-run handoff", () => {
+  it("waits for the accepted-action snapshot before mounting any automatic focus", () => {
+    state.actionLoopReady = false;
+    const html = renderToStaticMarkup(<NowView />);
+    expect(html).toContain('role="status"'); expect(html).not.toContain('data-module="today-practice"');
+    expect(state.focusCalls).not.toHaveBeenCalled();
+  });
+  it.each(["en", "he"] as const)("an accepted onboarding step leads with the tomorrow line and zero focus calls (%s)", lang => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-09T12:00:00Z"));
+    try {
+      state.lang = lang;
+      state.actionLoop = [{ id: "today.child-a.2026-10-09", recommendation: "Notice one moment together.", source: "onboarding", status: "accepted", acceptedAt: "2026-10-09T11:00:00Z", capacity: "tiny", acceptanceKey: "onboarding-v1.child-a.test" }];
+      const html = renderToStaticMarkup(<NowView />);
+      expect(html).toContain('data-module="now-step"'); expect(html).toContain("Notice one moment together.");
+      expect(html).toContain(lang === "he" ? "מחר נשאל איך היה." : "Tomorrow we&#x27;ll ask how it went.");
+      expect(html).not.toContain("1 of 4"); expect(html).not.toContain("First steps"); expect(state.focusCalls).not.toHaveBeenCalled();
+      vi.setSystemTime(new Date("2026-10-10T12:00:00Z"));
+      expect(renderToStaticMarkup(<NowView />)).not.toContain(lang === "he" ? "מחר נשאל איך היה." : "Tomorrow we&#x27;ll ask how it went.");
+    } finally { vi.useRealTimers(); }
   });
 });

@@ -16,6 +16,7 @@ export type ActionOutcome = "helped" | "somewhat" | "not_today";
  *  live in the screen lanes (B-ASKJB-04 / -26 / -31); this module owns the
  *  ledger they write through. */
 export type ActionSource =
+  | "onboarding"
   | "today-guidance"
   | "digest"
   | "learn-read"
@@ -31,6 +32,7 @@ export type ActionSource =
  *  when a source is added to the union and not listed here (exhaustiveness
  *  guard: signalTimeline.actionThread.test.ts). */
 const ACTION_SOURCE_MAP: { [K in ActionSource]: true } = {
+  onboarding: true,
   "today-guidance": true,
   digest: true,
   "learn-read": true,
@@ -49,6 +51,8 @@ export const ACTION_SOURCES = Object.keys(ACTION_SOURCE_MAP) as readonly ActionS
 export type ActionStatus = "accepted" | "completed" | "superseded";
 
 export interface ActionLoopEntry {
+  /** Stable explicit accept identity for retry after interrupted profile completion. */
+  acceptanceKey?: string;
   /** Explicitly selected parent question; references the existing action ledger. */
   topicId?: string;
   id: string;

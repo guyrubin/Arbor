@@ -4,7 +4,7 @@ import ts from "typescript";
 import type { ChildProfile } from "../types";
 import { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS } from "../lib/childAge";
 
-const child = (id: string, name = id): ChildProfile => ({ id, name, age: 4, languages: ["English"], schoolContext: "", strengths: [], challenges: [], onboardingComplete: false });
+const child = (id: string, name = id): ChildProfile => ({ id, name, age: 4, birthMonth: "2022-04", languages: ["English"], schoolContext: "", strengths: [], challenges: [], onboardingComplete: false });
 function deferred<T = void>() {
   let resolve!: (value: T) => void;
   let reject!: (error: Error) => void;
@@ -124,6 +124,29 @@ describe("profile lifetime boundaries", () => {
     expect(await old.updateChild("A-child", { name: "A edit" })).toBe(false); expect(h.calls.updates).toHaveLength(writes);
     const { id: _id, ...input } = child("ignored"); await expect(old.addChild(input)).rejects.toThrow("session changed"); expect(h.calls.sets).toHaveLength(0);
   });
+  it("failed draft checkpoint stays incomplete through provider rerender", async () => {
+    const h = harness(); h.effects(); await h.flush(); h.transport.update = async () => { throw Error("offline"); };
+    expect(await h.value.updateChild("A-child", { onboardingDraft: { step: 3, choice: "hands", words: "Buttons", quote: "", hardMomentId: "" } })).toBe(false);
+    await h.flush(); expect(h.value.profiles[0].onboardingDraft).toBeUndefined();
+  });
+  it("child A→B→A retires a pending onboarding checkpoint even when selection returns", async () => {
+    const h = harness({ rows: [child("child-a"), child("child-b")] }); h.effects(); await h.flush();
+    h.value.setActiveChild("child-a"); await h.flush();
+    const pending = deferred(); h.transport.update = () => pending.promise;
+    const saving = h.value.updateChild("child-a", { onboardingComplete: true });
+    h.value.setActiveChild("child-b"); await h.flush(); h.value.setActiveChild("child-a"); await h.flush();
+    pending.resolve(); expect(await saving).toBe(false); await h.flush();
+    expect(h.value.profiles.find(p => p.id === "child-a")?.onboardingComplete).toBe(false);
+  });
+  it("same-render child A→B→A retires a pending first-child create", async () => {
+    const h = harness({ rows: [child("child-a"), child("child-b")] }); h.effects(); await h.flush();
+    const pending = deferred(); h.transport.set = () => pending.promise;
+    const { id: _id, ...input } = child("ignored"); const creating = h.value.addChild(input);
+    const rejected = expect(creating).rejects.toThrow("session changed");
+    h.value.setActiveChild("child-b"); h.value.setActiveChild("child-a");
+    pending.resolve(); await rejected; await h.flush();
+    expect(h.value.profiles).toHaveLength(2);
+  });
   it("same-account explicit retry recovers without local data", async () => {
     const h = harness(); h.transport.read = async () => { throw Error("offline"); }; h.effects(); await h.flush();
     h.transport.read = async () => [child("A-child", "Recovered")]; h.value.retryProfiles(); await h.flush();
@@ -163,7 +186,9 @@ describe("profile lifetime boundaries", () => {
   });
   it("raw A→B→original A is latched, while a fresh same-account load can recover", async () => {
     const h = harness(), original = h.actualUser, token = deferred<{ Authorization: string }>(); h.transport.headers = () => token.promise;
-    h.effects(); await h.flush(); h.setActualUser({ uid: "B" }); h.setActualUser(original);
+    const originalSession = h.value.isCurrentSession;
+    h.effects(); await h.flush(); expect(originalSession()).toBe(true); h.setActualUser({ uid: "B" }); h.setActualUser(original);
+    expect(originalSession()).toBe(false);
     // Prevent a new load from itself provisioning until we inspect cancellation.
     const reload = deferred<ChildProfile[]>(); h.transport.read = () => reload.promise;
     token.resolve({ Authorization: "old-A" }); await h.flush(); expect(provisionedIds(h)).toEqual([]);

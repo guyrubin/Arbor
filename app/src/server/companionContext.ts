@@ -163,6 +163,7 @@ const DEFAULT_MAX_FACTS = 8;
 /** Runtime mirror of the client ActionSource union. The mapped type fails to
  *  compile when actionLoop/model.ts adds a source that is not listed here. */
 const ACTION_SOURCE_SET: { [K in ActionSource]: true } = {
+  onboarding: true,
   "today-guidance": true,
   digest: true,
   "learn-read": true,

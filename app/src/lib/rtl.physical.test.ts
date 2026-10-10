@@ -276,9 +276,9 @@ describe("OBJ-SHELL-03 · no dir-keyed border override on the shell asides", () 
 describe("B-SHELL-07 · the onboarding Back control mirrors under RTL", () => {
   it("OnboardingFlow's back chevron carries the inline RTL mirror (rtl: variant is not emitted there)", () => {
     const flow = stripComments(fs.readFileSync(path.join(COMPONENTS, "auth", "OnboardingFlow.tsx"), "utf8"));
-    const back = flow.slice(flow.indexOf("onClick={goBack}"), flow.indexOf("</button>", flow.indexOf("onClick={goBack}")));
+    const back = flow.slice(flow.indexOf("onClick={() => controller.back()}"), flow.indexOf("</button>", flow.indexOf("onClick={() => controller.back()}")));
     expect(back).toContain('<Icon name="chevron_left"');
-    expect(back).toMatch(/isRtl \? \{ transform: "scaleX\(-1\)" \}/);
+    expect(back).toContain('style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined}');
     // negative control: the pre-fix glyph had no mirror hint
     expect(/scaleX\(-1\)|rtl:-scale-x-100/.test('<Icon name="chevron_left" size={16} />')).toBe(false);
   });

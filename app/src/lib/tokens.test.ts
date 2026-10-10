@@ -699,7 +699,7 @@ describe("W4.1 token-leak freeze — flat block mirrors :root byte-for-byte", ()
    ═══════════════════════════════════════════════════════════════════════════ */
 const RGBA_BASELINE: Record<string, number> = {
   "components/auth/LoginScreen.tsx": 1,
-  "components/auth/OnboardingFlow.tsx": 3, // B-SHELL-07: six rgba(52,178,119,…) → green-ink color-mix tokens
+  "components/profile/AddChildFields.tsx": 3, // B-SHELL-07: six rgba(52,178,119,…) → green-ink color-mix tokens
   "components/ErrorBoundary.tsx": 2,
   "components/kidmode/ParentChallenge.tsx": 1,
   "components/layout/MobileNav.tsx": 2,
