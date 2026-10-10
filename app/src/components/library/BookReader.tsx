@@ -232,6 +232,10 @@ export function BookReader({
   const shownPose = authoredSlot ? resolvePose(sheet, authoredSlot.pose, book.poseFallbacks) : null;
   const slot = authoredSlot && shownPose !== authoredSlot.pose ? { ...authoredSlot, pose: shownPose! } : authoredSlot;
 
+  // The decision page's second state (its cards) is laid out on its own: on a
+  // phone the picture yields room so the cards stay large and "This one!"
+  // stays on screen.
+  const [choosingAt, setChoosingAt] = useState<string | null>(() => (initialChoosing || (decision && state.selected) ? state.at : null));
   const endFrame = atEnd && lastPage.closing ? lineFor(lastPage.closing, lang, gender) : "";
   const content: LayoutContent = atEnd
     ? { paras: [endFrame.length || 1], title: bookString("theEnd", lang).length }
@@ -243,6 +247,7 @@ export function BookReader({
     : {
         paras: paragraphChars(paras, name),
         choices: decision ? book.decision.choices.length : undefined,
+        choosing: decision && choosingAt === state.at,
         prompt: pending,
       };
 
@@ -356,7 +361,6 @@ export function BookReader({
   // ("second": the words first with a Choose toy, then the cards) ───────────
   const plan = decision ? layout.choicePlan : null;
   const twoState = plan?.mode === "second";
-  const [choosingAt, setChoosingAt] = useState<string | null>(() => (initialChoosing || (decision && state.selected) ? state.at : null));
   const choosing = twoState && choosingAt === state.at;
   // coming back to the decision page with a choice made: show the cards
   useEffect(() => {

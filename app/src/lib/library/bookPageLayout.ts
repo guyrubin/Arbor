@@ -31,7 +31,17 @@
  * centre is the page's phoneCrop (else the plate's authored window), moved
  * only as far as needed to hold the hero, the after-repair hero and every
  * repair item. The decision page's cards never cover the art (or the hero):
- * on a phone they take the sheet's place after the words (two states).
+ * on a phone they take the sheet's place after the words (two states). In the
+ * cards state the window yields height (to nothing on a landscape phone) until
+ * the three cards have pictures a child can see and labels that do not wrap
+ * into a column: the iPhone's visible height (~664 px under Safari's bars), not
+ * the 812 px emulator, is the box that has to work.
+ *
+ * A phone held sideways (landscape, under 900 px wide) is an open book too
+ * (facing), never the portrait stack: the stack put a 400 px window in a
+ * 334 px stage and the words, Choose and the cards fell off the screen. Its
+ * text page may run wider than a page is tall, and its cards state uses the
+ * whole book (the picture steps aside) so three cards sit in a row large.
  */
 import type { BookLang, Page, Slot } from "./types";
 
@@ -57,6 +67,8 @@ export interface LayoutContent {
   prompt?: boolean;
   /** Characters of a title set above the words (the cover). */
   title?: number;
+  /** The decision page shows its cards (the second state), not its words. */
+  choosing?: boolean;
 }
 
 export interface LayoutPlate {
@@ -322,6 +334,8 @@ interface Ctx {
   tokenPx: number;
   floors: number[];
   cover: boolean;
+  /** A phone held sideways (isSidewaysPhone). */
+  sideways: boolean;
 }
 
 /** Largest type in [max, floor] whose words fit in the room left at this width. */
@@ -336,8 +350,12 @@ const PLAN_LABEL_W = 120;
 const PLAN_LABEL_H = 54;
 const PIC_ASPECT = 3 / 4; // pictures are 4:3
 
-/** The largest picture three choice cards can have in a w x h box. */
-export function planChoices(w: number, h: number, mode: ChoicePlan["mode"], n = 3): ChoicePlan | null {
+/** The largest picture three choice cards can have in a w x h box.
+ *  `minAcrossPic`: a card whose label sits UNDER its picture ("grid21",
+ *  "row") is only a candidate when the picture (= the label's width) is at
+ *  least this wide; a narrower one wraps "Wear the king's armour" into a
+ *  column of single words (the phone's cards state). */
+export function planChoices(w: number, h: number, mode: ChoicePlan["mode"], n = 3, opts: { minAcrossPic?: number } = {}): ChoicePlan | null {
   if (w <= 0 || h <= 0) return null;
   const g = PLAN_GAP;
   const pd = PLAN_PAD;
@@ -363,8 +381,16 @@ export function planChoices(w: number, h: number, mode: ChoicePlan["mode"], n = 
     const picW = Math.floor(Math.min(byW, byH));
     if (picW > 0) cand.push({ mode, arrangement: "row", picW, picH: Math.floor(picW * PIC_ASPECT), cardW: picW + 2 * pd, cardH: Math.ceil(picW * PIC_ASPECT + 2 * pd + PLAN_LABEL_H), gap: g });
   }
-  return cand.sort((a, b) => b.picW - a.picW)[0] ?? null;
+  const minAcross = opts.minAcrossPic ?? 0;
+  return cand.filter((c) => c.arrangement === "threeDown" || c.picW >= minAcross).sort((a, b) => b.picW - a.picW)[0] ?? null;
 }
+
+/** Phone cards state: the smallest picture a choice card may have, and the
+ *  narrowest label a card with its label under the picture may have. */
+export const PHONE_CARD_PIC_MIN = 96;
+const PHONE_ACROSS_PIC_MIN = 150;
+/** The gap between the cards and the nav row on the phone sheet (CSS gap). */
+const SHEET_GAP = 10;
 
 /** The second state's controls row (the "This one!" toy). */
 const SECOND_NAV = 88;
@@ -396,8 +422,10 @@ function layoutFacing(c: Ctx): BookPageLayout {
   // Fix round 2: the decision page is laid out exactly like every other page
   // (same art page, column and type rule — its cards never size the page);
   // its cards are planned into the text box afterwards.
+  // a sideways phone may widen its text page past the page's height
+  const widths = c.sideways ? [0.66, 0.74, 0.82, 0.9, 1.0, 1.15, 1.3] : [0.66, 0.74, 0.82, 0.9, 1.0];
   for (const floor of c.floors) {
-    for (const t of [0.66, 0.74, 0.82, 0.9, 1.0]) {
+    for (const t of widths) {
       let P = availH;
       let pm = Math.round(clamp(P * 0.016, 8, 16));
       const widthAt = (p: number, margin: number) => (p - 2 * margin) * aspect + 2 * margin + t * p;
@@ -657,7 +685,21 @@ function layoutStacked(c: Ctx): BookPageLayout {
   // the reader's DOM net shrinks further only if it must) — never the token
   const typePx = types.find((t) => artAt(t) >= targetArtH) ?? types.find((t) => artAt(t) >= floorArtH) ?? lowTypes.find((t) => artAt(t) >= floorArtH) ?? lowTypes[lowTypes.length - 1] ?? floorType;
   const natural = artAt(typePx);
-  const artH = Math.floor(Math.max(natural, floorArtH));
+  const wordsArtH = Math.floor(Math.max(natural, floorArtH));
+  // The cards state: keep the words' window when the cards fit under it at a
+  // size a child can read; else step the window down (to none at all) until
+  // they do. The cards never ride over the art.
+  const cardsIn = (a: number) => (content.choices ? planChoices(textW, H - a - 2 * padB - navPx - SHEET_GAP - 4, "second", content.choices, { minAcrossPic: PHONE_ACROSS_PIC_MIN }) : null);
+  let artH = wordsArtH;
+  let choosingPlan: ChoicePlan | null = null;
+  if (content.choices && content.choosing) {
+    const steps = [wordsArtH, ...[0.4, 0.32, 0.24, 0.16].map((f) => Math.min(wordsArtH, Math.floor(H * f))), 0];
+    for (const a of steps) {
+      const p = cardsIn(a);
+      if (p && p.picH >= PHONE_CARD_PIC_MIN) { artH = a; choosingPlan = p; break; }
+      if (a === 0) { artH = 0; choosingPlan = p; }
+    }
+  }
   const sheetOverlap = 0;
   const fits = natural >= floorArtH - 0.5;
   const artW = Math.floor(artH * PHONE_WINDOW);
@@ -668,7 +710,7 @@ function layoutStacked(c: Ctx): BookPageLayout {
   const sheetY = artH - sheetOverlap;
   const textPage: Rect = { x: colX, y: sheetY, w: colW, h: Math.max(0, H - sheetY) };
   const text: Rect = { x: colX + padI, y: sheetY + padB, w: textW, h: Math.max(0, H - sheetY - 2 * padB) };
-  const plan = decisionPlan(content, textW, text.h, navPx, 0, 0, false);
+  const plan = choosingPlan ?? (content.choices ? cardsIn(artH) ?? decisionPlan(content, textW, text.h, navPx, 0, 0, false) : null);
   const anchor = anchorFor(c, c.slot);
   const hero = heroRect(c.slot, plate, art, anchor);
   return {
@@ -701,6 +743,38 @@ function layoutStacked(c: Ctx): BookPageLayout {
   };
 }
 
+/** A phone held sideways: landscape, under the open-book width, and wide
+ *  enough for two pages (an iPhone SE sideways is 667 x 375). */
+export function isSidewaysPhone(box: Box): boolean {
+  return box.width < SPREAD_MIN_WIDTH && box.width >= 560 && box.width >= box.height * 1.25;
+}
+
+/** The sideways cards state's padding: the stage is ~334 px tall. */
+const SIDEWAYS_PAD = 12;
+
+/** The sideways cards state: the open book's whole rect is the text page and
+ *  the picture steps aside (a zero rect), so the three cards can sit large. */
+function sidewaysCards(f: BookPageLayout, n: number): BookPageLayout {
+  // a row of three under a short stage: a 120 px label still holds two lines
+  const plan = planChoices(f.book.w - 2 * SIDEWAYS_PAD, f.book.h - 2 * SIDEWAYS_PAD - SECOND_NAV - 4, "second", n, { minAcrossPic: 120 });
+  const none: Rect = { x: f.book.x, y: f.book.y, w: 0, h: 0 };
+  return {
+    ...f,
+    artPage: none,
+    art: none,
+    plate: none,
+    textPage: f.book,
+    text: { x: f.book.x + SIDEWAYS_PAD, y: f.book.y + SIDEWAYS_PAD, w: f.book.w - 2 * SIDEWAYS_PAD, h: f.book.h - 2 * SIDEWAYS_PAD },
+    hero: null,
+    heroBody: null,
+    shadow: null,
+    cardsPx: plan ? plansHeight(plan) : 0,
+    cardW: plan?.cardW ?? 0,
+    cardPicH: plan?.picH ?? 0,
+    choicePlan: plan ? { ...plan, pad: { inline: SIDEWAYS_PAD, block: SIDEWAYS_PAD } } : f.choicePlan,
+  };
+}
+
 export function computeBookPageLayout(page: Page, box: Box, lang: BookLang, opts: LayoutOpts = {}): BookPageLayout {
   const plate = opts.plate ?? MASTER;
   const tokenPx = kidBookTokenPx(box.width);
@@ -720,8 +794,10 @@ export function computeBookPageLayout(page: Page, box: Box, lang: BookLang, opts
     // at most 4 px (never below 20) before the words are declared not to fit.
     floors: [Math.ceil(tokenPx), Math.max(20, Math.ceil(tokenPx) - 4)],
     cover: !!opts.cover,
+    sideways: isSidewaysPhone(box),
   };
-  if (c.box.width >= SPREAD_MIN_WIDTH && c.box.width >= c.box.height) {
+  if (c.sideways && c.content.choices && c.content.choosing) return sidewaysCards(layoutFacing(c), c.content.choices);
+  if ((c.box.width >= SPREAD_MIN_WIDTH && c.box.width >= c.box.height) || c.sideways) {
     if (c.cover) {
       const cover = layoutCover(c);
       if (cover) return cover;
