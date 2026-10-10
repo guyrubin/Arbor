@@ -24,12 +24,17 @@ import { KEPT_SEARCH_STATES, KEPT_SEARCH_LIMITATIONS, keptSearchFixture } from '
 import { collectKeptSearchStates } from './kept-search-states.mjs';
 import { collectPracticeStates, PRACTICE_FIXTURE, practiceClockScript } from './practice-states.mjs';
 import { KID_ENTRY_STATES, KID_ENTRY_LIMITATIONS, kidEntryFixture, kidEntryApiDisposition, validKidEntryCell } from './kid-entry-contract.mjs';
+import { PRIVATE_EXPORT_STATES, PRIVATE_EXPORT_LIMITATIONS, privateExportFixture, privateExportApiDisposition, validPrivateExportCell, validPrivateExportNetwork } from './private-export-contract.mjs';
+import { createPrivacyResponseGate } from './private-export-download.mjs';
+import { collectPrivateExportStates } from './private-export-states.mjs';
+
 import { collectKidEntryStates } from './kid-entry-states.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
   record: RECORD_STATES,
   'kept-search': KEPT_SEARCH_STATES,
+  'private-export': PRIVATE_EXPORT_STATES,
   'kid-entry': KID_ENTRY_STATES,
   'confirmed-actions': CONFIRMED_ACTION_STATES,
   navigation: [
@@ -63,7 +68,7 @@ export function expectedReleaseInteractionStates(group, viewport) {
 export function missingReleaseInteractionEvidence(cells, { group, viewport, sourceSha, sourceTreeSha }) {
   return expectedReleaseInteractionStates(group, viewport).flatMap(({ route, state, group: part }) => {
     const cell = cells.find(item => item.route === route && item.state === state && item.group === part && item.lang === viewport.lang && item.viewport === `${viewport.w}x${viewport.h}` && item.sourceSha === sourceSha && (!sourceTreeSha || item.sourceTreeSha === sourceTreeSha));
-    const valid = (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
+    const valid = (part !== 'private-export' || validPrivateExportCell(cell)) && (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
     return valid ? [] : [{ route, state, group: part, lang: viewport.lang, viewport: `${viewport.w}x${viewport.h}`, failure: cell?.failures?.[0] ?? (cell ? 'INCOMPLETE_ASSERTIONS_OR_SCREENSHOT' : 'NOT_ATTEMPTED') }];
   });
 }
@@ -164,8 +169,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   const confirmed = group === 'confirmed-actions' ? confirmedActionsFixture(bundle, viewport.lang) : null;
   const keptSearch = group === 'kept-search' ? keptSearchFixture(bundle, viewport.lang) : null;
   const kidEntry = group === 'kid-entry' ? kidEntryFixture(bundle, viewport.lang) : null;
+  const privateExport = group === 'private-export' ? privateExportFixture(bundle, viewport.lang) : null;
   const practiceCapture = group === 'navigation';
-  const fixture = releaseFixture(keptSearch?.parsed ?? kidEntry?.parsed ?? confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
+  const fixture = releaseFixture(keptSearch?.parsed ?? privateExport?.parsed ?? kidEntry?.parsed ?? confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
   const { lang } = viewport;
   const he = lang === 'he';
   const viewportId = `${viewport.w}x${viewport.h}`;
@@ -186,6 +192,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     doc.fixtures.push('preloaded-ai-draft-and-unverified-lineage-not-model-proof', 'synthetic-browser-share-sink', 'synthetic-Date-only-native-animation-time');
   }
   if (kidEntry) { doc.kidEntryBoundaries = KID_ENTRY_LIMITATIONS; doc.fixtures = ['synthetic-family', 'local-mock-server', 'synthetic-three-child-entry-profiles', 'synthetic-book-narration-refusal']; }
+  if (privateExport) { doc.privateExportBoundaries = PRIVATE_EXPORT_LIMITATIONS; doc.fixtures = ['synthetic-family', 'local-mock-server', 'synthetic-private-export-metadata-only', 'held-unchanged-local-privacy-response']; }
   if (practiceCapture) doc.fixtures.push(PRACTICE_FIXTURE, 'practice-only-Date-native-animation-time');
   save();
   const { chromium } = await import('playwright');
@@ -195,6 +202,8 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, locale: he ? 'he-IL' : 'en-US', timezoneId: 'Asia/Jerusalem', serviceWorkers: 'block', permissions: [], ...captureFontContextOptions() });
     let selectedReportFixture = null;
     const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, deniedActionCategories: {}, ttsCapabilityReads: 0, shareListReads: 0, apiCacheHits: 0, localRateLimits: 0 };
+    const privacyGate = privateExport ? createPrivacyResponseGate(apiState) : null;
+    if (privateExport) Object.assign(apiState, { privateExportReads: 0, privateExportResponses: 0, privateExportLastStatus: null, privateExportDownloads: 0, privateExportUnexpectedDownloads: 0, privateExportDenied: 0, privateExportPrivateReads: 0, privateExportAuthHeaders: 0, privateExportExpectedDownload: false });
     if (kidEntry) Object.assign(apiState, { kidEntryNarrationRefusals: 0, kidEntryDeniedMutations: 0 });
     await context.route('**/*', route => {
       if (new URL(route.request().url()).origin === BASE) return route.continue();
@@ -207,6 +216,13 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       const url = new URL(request.url());
       if (url.origin !== BASE) { apiState.deniedExternal++; return route.abort(); }
       const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+      if (privateExport) {
+        const disposition = privateExportApiDisposition(request.method(), url.pathname, fixture.childId);
+        if (request.headers().authorization) { apiState.privateExportAuthHeaders++; apiState.deniedActions++; return route.abort(); }
+        if (/\/book-assets(?:\/|$)/.test(url.pathname)) apiState.privateExportPrivateReads++;
+        if (disposition === 'deny') { apiState.privateExportDenied++; apiState.deniedActions++; return route.abort(); }
+        if (disposition === 'local-privacy-read') return privacyGate.route(route);
+      }
       if (kidEntry) {
         const disposition = kidEntryApiDisposition(request.method(), url.pathname, kidEntry.childIds);
         if (disposition === 'synthetic-narration-refusal') { apiState.kidEntryNarrationRefusals++; return json(409, { code: 'synthetic_capture_media_disabled' }); }
@@ -269,6 +285,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     page.on('pageerror', error => diagnostics.recordPageError(error));
     page.on('filechooser', () => { apiState.deniedActions++; });
     page.on('download', download => {
+      if (privateExport) {
+        if (apiState.privateExportExpectedDownload && download.url().startsWith(`blob:${BASE}/`) && download.suggestedFilename() === privateExport.filename) { apiState.privateExportDownloads++; apiState.privateExportExpectedDownload = false; return; }
+        apiState.privateExportUnexpectedDownloads++;
+      }
       if (record && apiState.expectedPrintDownload && download.url().startsWith(`blob:${BASE}/`) && /\.html$/.test(download.suggestedFilename())) { apiState.printDownloads = (apiState.printDownloads ?? 0) + 1; return; }
       apiState.deniedActions++; void download.cancel();
     });
@@ -401,6 +421,12 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         cell.reactStage = await page.evaluate(observeReactStage).catch(() => ({ unavailable: true }));
       }
       cell.runtimeDiagnostics = diagnostics.snapshot();
+      if (privateExport) {
+        // Re-sample after screenshot and diagnostic awaits. An earlier pass
+        // cannot hide an unexpected download/auth/mutation arriving later.
+        cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories } };
+        check(cell, 'FINAL_EXPORT_NETWORK_GUARD', validPrivateExportNetwork(cell.networkEvidence));
+      }
       cell.reached = cell.failures.length === 0 && cell.assertions.length > 0 && cell.shot !== null;
       save();
       // Preserve the failed real attempt BEFORE any import probe. Probe recovery
@@ -429,6 +455,8 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
 
     if (group === 'kept-search') {
       await collectKeptSearchStates({ page, context, fixture: keptSearch, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }) });
+    } else if (group === 'private-export') {
+      await collectPrivateExportStates({ page, fixture: privateExport, viewport, apiState, privacyGate, load, screen, check, byId });
     } else if (group === 'kid-entry') {
       await collectKidEntryStates({ page, fixture: kidEntry, viewport, load, screen, check, byId, apiState });
     } else if (group === 'confirmed-actions') {

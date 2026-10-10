@@ -25,9 +25,6 @@
       "dynamic": 1,
       "info": 1
     },
-    "components/layout/YourDataSheet.tsx": {
-      "success": 1
-    },
     "components/milestones/FirstKeepsakeSheet.tsx": {
       "dynamic": 1,
       "success": 1,
