@@ -18,6 +18,13 @@ describe("profile lifetime boundaries", () => {
     expect(h.value.profiles).toEqual([]); expect(h.calls.localReads).not.toContain("arbor.children");
     expect(h.value.loadError).toBe(true); expect(h.value.needsOnboarding).toBe(false);
   });
+  it("an empty answer from the offline cache is not 'no children': Retry, never onboarding", async () => {
+    const h = harness(); h.transport.read = async () => []; h.transport.fromCache = true; h.effects(); await h.flush();
+    expect(h.value.loadError).toBe(true); expect(h.value.needsOnboarding).toBe(false);
+    // Control: the same empty answer confirmed by the server is a new account.
+    const fresh = harness(); fresh.transport.read = async () => []; fresh.effects(); await fresh.flush();
+    expect(fresh.value.loadError).toBe(false); expect(fresh.value.needsOnboarding).toBe(true);
+  });
   it("late A load neither displays nor provisions after B", async () => {
     const h = harness(), a = deferred<ChildProfile[]>();
     h.transport.read = path => path.includes("/A/") ? a.promise : Promise.resolve([child("B-child")]);

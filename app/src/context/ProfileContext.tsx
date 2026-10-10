@@ -222,6 +222,11 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           const snap = await getDocs(collection(db, profilesPath));
           if (!current()) return;
           // Only a confirmed empty remote result may start new-account onboarding.
+          // Offline (or with Firestore blocked) getDocs answers from the local
+          // cache; an empty cached answer on a fresh device is "unknown", not
+          // "no children" — it shows Retry instead of onboarding an existing
+          // parent into a duplicate child.
+          if (snap.empty && snap.metadata?.fromCache) throw new Error("Profiles not confirmed by the server");
           const loaded = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ChildProfile, "id">) }));
           setProfiles(loaded); setLoadedScope(scope);
           for (const child of loaded) {

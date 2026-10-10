@@ -26,6 +26,8 @@ export function harness({ owner = "A", rows = [child("A-child")], local = [child
     set: async (_path: string, _data: unknown) => {},
     update: async (_path: string, _data: unknown) => {},
     headers: async () => ({ Authorization: `test-${actualUser?.uid}` }),
+    /** Firestore answered from the local cache (offline or blocked), not the server. */
+    fromCache: false,
   };
   const changed = (a?: unknown[], b?: unknown[]) => !a || !b || a.length !== b.length || a.some((v, i) => !Object.is(v, b[i]));
   const react = {
@@ -54,7 +56,7 @@ export function harness({ owner = "A", rows = [child("A-child")], local = [child
     react: { __esModule: true, default: react, ...react },
     "firebase/firestore": {
       collection: (_db: unknown, path: string) => path, doc: (_db: unknown, ...parts: string[]) => parts.join("/"), deleteField: () => Symbol.for("delete"),
-      getDocs: async (path: string) => { calls.reads.push(path); return { docs: (await transport.read(path)).map(c => ({ id: c.id, data: () => c })) }; },
+      getDocs: async (path: string) => { calls.reads.push(path); const rows = await transport.read(path); return { docs: rows.map(c => ({ id: c.id, data: () => c })), empty: rows.length === 0, metadata: { fromCache: transport.fromCache } }; },
       setDoc: async (path: string, data: unknown) => { calls.sets.push(path); await transport.set(path, data); },
       updateDoc: async (path: string, data: unknown) => { calls.updates.push(path); await transport.update(path, data); },
     },
