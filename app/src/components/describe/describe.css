@@ -44,3 +44,5 @@
 .describe-turn .describe-ask { font-size: 16px; padding: 10px 12px; border-radius: 14px; background: var(--arbor-lav-soft); color: var(--arbor-lav-ink); max-width: 92%; }
 .describe-answer { margin: 0; padding: 10px 12px; border-radius: 14px; background: var(--arbor-paper-deep); border: 1px solid var(--arbor-rule); font-size: 15px; line-height: 1.45; max-width: 92%; align-self: flex-end; overflow-wrap: anywhere; white-space: pre-wrap; }
 .describe-answer-box { display: flex; flex-direction: column; gap: 8px; }
+.describe-kept-fold { display: flex; flex-direction: column; gap: 10px; }
+.describe-kept-fold > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 14px; font-weight: 700; color: var(--arbor-green-ink); }

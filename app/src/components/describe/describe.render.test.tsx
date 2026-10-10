@@ -15,7 +15,12 @@ vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return { useLanguage: () => ({ uiLang: h.lang, aiLang: h.lang, t: (key: string, vars?: Record<string, string | number>) => translate(h.lang, key, vars) }) };
 });
+vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: { id: "synthetic-kid", name: "Noa", strengths: ["Funny"], challenges: ["Mornings are hard"], interests: [],
+  focusAreas: [{ id: "f1", words: "Getting dressed", domainId: "body", since: "2026-10-10", source: "describe", confirmedAt: "x" }] }, milestones: [] }) }));
+vi.mock("../../context/ProfileContext", () => ({ useProfile: () => ({ updateChild: async () => true }) }));
+vi.mock("./TellArborMore", () => ({ default: () => null }));
 import { translate } from "../../lib/i18n";
+import KeptDescription from "./KeptDescription";
 import DescribeChild from "./DescribeChild";
 import DescribeReadback from "./DescribeReadback";
 import DescribeThread from "./DescribeThread";
@@ -79,5 +84,17 @@ describe.each(["en", "he"] as const)("describe surface (%s)", (lang) => {
     expect(html).toContain("What makes her laugh?");
     expect((html.match(/data-testid="describe-answer-box"/g) ?? [])).toHaveLength(1);
     for (const id of ["describe-answer-send", "describe-question-skip", "describe-done"]) expect(html).toContain(`data-testid="${id}"`);
+  });
+  it("What you told me lists each kept item with Edit and Remove, and the door; My child folds it", () => {
+    h.lang = lang;
+    const open = renderToStaticMarkup(<KeptDescription testId="kept" />);
+    expect((open.match(/data-testid="describe-kept-item"/g) ?? [])).toHaveLength(3);
+    expect((open.match(/data-testid="describe-kept-remove"/g) ?? [])).toHaveLength(3);
+    expect(open).toContain('data-testid="describe-door"');
+    expect(open).toContain(translate(lang, "elev.describe.door"));
+    expect(open).not.toMatch(VERDICT);
+    const folded = renderToStaticMarkup(<KeptDescription testId="kept" collapsible />);
+    expect(folded).toContain('data-testid="kept-fold"');
+    expect(folded).toContain(translate(lang, "elev.describe.kept.show"));
   });
 });

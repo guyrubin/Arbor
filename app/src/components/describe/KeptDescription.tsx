@@ -43,7 +43,11 @@ function KeptRow({ item, onEdit, onRemove, busy }: { item: KeptDescribeItem; onE
   </li>;
 }
 
-export default function KeptDescription({ testId = "describe-kept-list" }: { testId?: string }) {
+export default function KeptDescription({ testId = "describe-kept-list", collapsible = false }: {
+  testId?: string;
+  /** My child: the list folds under one line so the record stays on top. */
+  collapsible?: boolean;
+}) {
   const { childProfile } = useArbor();
   const { updateChild } = useProfile();
   const { t } = useLanguage();
@@ -75,6 +79,14 @@ export default function KeptDescription({ testId = "describe-kept-list" }: { tes
     if (await write(removed.previous)) setRemoved(null);
   };
   const receipt = removed?.childId === childProfile.id;
+  const groups = PROFILE_KINDS.map((kind) => {
+    const group = items.filter((item) => item.kind === kind);
+    if (!group.length) return null;
+    return <div className="describe-group" key={kind} data-group={kind}>
+      <h3>{t(KIND_KEY[kind], { name })}</h3>
+      <ul>{group.map((item) => <KeptRow key={item.id} item={item} busy={busy} onEdit={(words) => void edit(item.id, words)} onRemove={() => void remove(item.id)} />)}</ul>
+    </div>;
+  });
   return <section className="describe-kept-card" data-testid={testId} dir="auto">
     <div className="describe-kept-head">
       <div>
@@ -85,14 +97,12 @@ export default function KeptDescription({ testId = "describe-kept-list" }: { tes
         <Icon name="edit_note" size={20} /><span>{t("elev.describe.door")}</span>
       </button>
     </div>
-    {PROFILE_KINDS.map((kind) => {
-      const group = items.filter((item) => item.kind === kind);
-      if (!group.length) return null;
-      return <div className="describe-group" key={kind} data-group={kind}>
-        <h3>{t(KIND_KEY[kind], { name })}</h3>
-        <ul>{group.map((item) => <KeptRow key={item.id} item={item} busy={busy} onEdit={(words) => void edit(item.id, words)} onRemove={() => void remove(item.id)} />)}</ul>
-      </div>;
-    })}
+    {collapsible && !!items.length
+      ? <details className="describe-kept-fold" data-testid={`${testId}-fold`}>
+          <summary>{t("elev.describe.kept.show")}</summary>
+          {groups}
+        </details>
+      : groups}
     {receipt && <p className="describe-kept-line" role="status"><span>{t("elev.describe.kept.removed")}</span>
       <button type="button" className="describe-link" disabled={busy} onClick={() => void undo()} data-testid="describe-kept-undo">{t("elev.describe.undo")}</button>
     </p>}
