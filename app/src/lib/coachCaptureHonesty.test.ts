@@ -109,7 +109,7 @@ describe("COACH-8 — Behaviors capture is an honest launcher (critic r2)", () =
   it("zero duplicate writers — the sheet confirms through the existing one write seam", () => {
     const modal = read("components/overview/QuickLogModal.tsx");
     expect(code).not.toMatch(/handleAddLog\(|addMoment\(/);
-    expect(count(modal, "handleAddLog(e, { callerShowsFailure: true })")).toBe(1);
+    expect(count(modal, "handleAddLog(e, { callerShowsFailure: true, ...contentProvenance })")).toBe(1);
     expect(modal).toContain('onConfirm={confirm}');
     const submit = /const submit = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
     expect(submit).toContain("setReviewing(true)");

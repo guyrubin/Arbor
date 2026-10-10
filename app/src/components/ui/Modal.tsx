@@ -53,11 +53,11 @@ export function Modal({
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
-              {title && <h3 id={titleId} className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h3>}
+            <div className="flex items-center justify-between gap-3 mb-4">
+              {title && <h3 id={titleId} className="min-w-0 flex-1 break-words text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h3>}
               <button
                 onClick={requestClose}
-                className="touch-target ms-auto p-1.5 rounded-lg transition"
+                className="touch-target shrink-0 ms-auto p-1.5 rounded-lg transition"
                 style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
                 aria-label={t("aria.close")}
               >

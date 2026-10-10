@@ -664,7 +664,9 @@ function LearnGridCard({
       >
         {/* Body */}
         <div className="p-4 flex flex-col gap-2 flex-1">
-          <div className="flex items-center gap-2 flex-wrap pe-12">
+          {/* Keep the full 44px bookmark footprint above the title, even when
+              this metadata fits on one line. */}
+          <div className="flex min-h-11 items-center gap-2 flex-wrap pe-12">
             <span
               className="inline-flex items-center gap-1.5 text-xs font-semibold"
               style={{ background: tone.soft, color: tone.ink }}

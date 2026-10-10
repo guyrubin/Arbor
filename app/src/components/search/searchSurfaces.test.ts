@@ -21,6 +21,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { en as searchnavEn, he as searchnavHe, searchnavText } from "../../lib/i18nElevation/searchnav";
+import { normalizeSearchText } from "../../lib/searchNormalize";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.join(__dirname, "..", "..");
@@ -185,7 +186,8 @@ describe("TopbarSearch hit target is the whole 44 px pill", () => {
     expect(topbarSearch).toContain('height: "44px"');
     expect(topbarSearch).not.toContain('height: "40px"');
     // Critic r2: field-bare keeps the global input fill off (one surface).
-    expect(topbarSearch).toMatch(/<input[\s\S]{0,1500}className="field-bare min-h-11 self-stretch"/);
+    const inputClasses = topbarSearch.match(/<input[\s\S]{0,1500}?className="([^"]+)"/)?.[1].split(/\s+/);
+    expect(inputClasses).toEqual(expect.arrayContaining(["field-bare", "min-h-11", "self-stretch"]));
     // A 1px border would take 2 px from the input; the hairline is an inset shadow.
     expect(topbarSearch).not.toMatch(/border:\s*open/);
   });
@@ -246,7 +248,7 @@ describe("B-SHELL-14 · localized record matching + the ask copy (EN + HE)", () 
     const heLabel = translate("he", sensory.labelKey);
     expect(/[\u0590-\u05FF]/.test(heLabel)).toBe(true);
     const text = logSearchText({ behaviorType: "Sensory Overload", trigger: "loud mall", response: "", notes: "" });
-    expect(text).toContain(heLabel.toLowerCase());
+    expect(text).toContain(normalizeSearchText(heLabel));
     expect(text).toContain("sensory overload");
     expect(text).toContain("loud mall");
     // NEGATIVE CONTROL: the pre-change haystack (raw fields only) misses the Hebrew query.

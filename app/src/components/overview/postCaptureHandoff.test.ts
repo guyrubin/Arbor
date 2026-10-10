@@ -105,7 +105,7 @@ describe("AI-CAP-7 — both gated confirms offer, once each, with the write path
     // The confirmed fields are still snapshotted BEFORE handleAddLog resets
     // the form — as the reply's fallback seed, prefill only.
     expect(confirm).toMatch(/beh\.postCapture\.prompt/);
-    expect(confirm.indexOf("confirmedPrompt")).toBeLessThan(confirm.indexOf("handleAddLog(e, { callerShowsFailure: true })"));
+    expect(confirm.indexOf("confirmedPrompt")).toBeLessThan(confirm.indexOf("handleAddLog(e, { callerShowsFailure: true, ...contentProvenance })"));
     // The reply is built from the DURABLY written record; "hard" follows its own type.
     expect(confirm).toMatch(/setReply\(\{ log: written, hard: isIncidentType\(written\.behaviorType\), seed: confirmedPrompt \}\)/);
     // The reply's Ask is the ONE seedCoach seam, source post-capture, never a send.

@@ -20,14 +20,16 @@ import { collectRecordStates } from './record-states.mjs';
 import { collectBehaviorRecordStates } from './record-behaviors.mjs';
 import { CONFIRMED_ACTION_STATES, CONFIRMED_ACTION_LIMITATIONS, confirmedActionsFixture } from './confirmed-actions-contract.mjs';
 import { collectConfirmedActionStates } from './confirmed-actions-states.mjs';
+import { KEPT_SEARCH_STATES, KEPT_SEARCH_LIMITATIONS, keptSearchFixture } from './kept-search-contract.mjs';
+import { collectKeptSearchStates } from './kept-search-states.mjs';
 import { collectPracticeStates, PRACTICE_FIXTURE, practiceClockScript } from './practice-states.mjs';
-
 import { KID_ENTRY_STATES, KID_ENTRY_LIMITATIONS, kidEntryFixture, kidEntryApiDisposition, validKidEntryCell } from './kid-entry-contract.mjs';
 import { collectKidEntryStates } from './kid-entry-states.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
   record: RECORD_STATES,
+  'kept-search': KEPT_SEARCH_STATES,
   'kid-entry': KID_ENTRY_STATES,
   'confirmed-actions': CONFIRMED_ACTION_STATES,
   navigation: [
@@ -160,9 +162,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   }
   const record = group === 'record' ? recordFixture(bundle, viewport.lang) : null;
   const confirmed = group === 'confirmed-actions' ? confirmedActionsFixture(bundle, viewport.lang) : null;
+  const keptSearch = group === 'kept-search' ? keptSearchFixture(bundle, viewport.lang) : null;
   const kidEntry = group === 'kid-entry' ? kidEntryFixture(bundle, viewport.lang) : null;
   const practiceCapture = group === 'navigation';
-  const fixture = releaseFixture(kidEntry?.parsed ?? confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
+  const fixture = releaseFixture(keptSearch?.parsed ?? kidEntry?.parsed ?? confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
   const { lang } = viewport;
   const he = lang === 'he';
   const viewportId = `${viewport.w}x${viewport.h}`;
@@ -177,6 +180,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   if (confirmed) {
     doc.confirmedActionBoundaries = CONFIRMED_ACTION_LIMITATIONS;
     doc.fixtures.push('synthetic-confirmed-actions-local-storage', 'scoped-local-storage-quota-fault', 'synthetic-browser-share-sink', 'synthetic-Date-only-native-animation-time');
+  }
+  if (keptSearch) {
+    doc.keptSearchBoundaries = KEPT_SEARCH_LIMITATIONS;
+    doc.fixtures.push('preloaded-ai-draft-and-unverified-lineage-not-model-proof', 'synthetic-browser-share-sink', 'synthetic-Date-only-native-animation-time');
   }
   if (kidEntry) { doc.kidEntryBoundaries = KID_ENTRY_LIMITATIONS; doc.fixtures = ['synthetic-family', 'local-mock-server', 'synthetic-three-child-entry-profiles', 'synthetic-book-narration-refusal']; }
   if (practiceCapture) doc.fixtures.push(PRACTICE_FIXTURE, 'practice-only-Date-native-animation-time');
@@ -248,7 +255,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     if (kidEntry) await context.addInitScript(initializeSyntheticOnline, { lang, preserveKidMode: true });
     else await context.addInitScript(initializeSyntheticOnline, { lang });
     if (practiceCapture) await context.addInitScript({ content: practiceClockScript(fixture.parsed) });
-    if (record || confirmed) await context.addInitScript(installRecordShareSink);
+    if (record || confirmed || keptSearch) await context.addInitScript(installRecordShareSink);
     if (group === 'ask-diagnostic') await context.addInitScript(installStylesheetObservation);
     const page = await context.newPage();
     page.setDefaultTimeout(8000);
@@ -420,7 +427,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       return cell.reached;
     };
 
-    if (group === 'kid-entry') {
+    if (group === 'kept-search') {
+      await collectKeptSearchStates({ page, context, fixture: keptSearch, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }) });
+    } else if (group === 'kid-entry') {
       await collectKidEntryStates({ page, fixture: kidEntry, viewport, load, screen, check, byId, apiState });
     } else if (group === 'confirmed-actions') {
       await collectConfirmedActionStates({ page, context, fixture: confirmed, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }), recordBootstrapClock: trace => { doc.confirmedActionBootstrap = trace; save(); } });

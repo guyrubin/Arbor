@@ -128,7 +128,7 @@ describe("B-TODAY-01 — QuickLogModal voice names the branch it was spoken into
     const onResult = /onResult: \(text\) => \{[\s\S]*?\n        \},/.exec(modal)?.[0] ?? "";
     expect(onResult).toBeTruthy();
     expect(onResult.indexOf("setNewLogTrigger(said)")).toBeLessThan(onResult.indexOf("extractFromTyped("));
-    expect(onResult).toMatch(/setSource\("voice"\)/);
+    expect(onResult).toContain('setSource(current => current === "ai-draft" ? current : "voice")');
   });
   it("the 409 branch in the modal still writes zero draft fields", () => {
     const branch = /if \(err instanceof EscalationRequiredError\) \{([\s\S]*?)\} else \{/.exec(modal)?.[1] ?? "";

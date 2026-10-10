@@ -17,6 +17,7 @@
  */
 import type { ContentConcern, LocalizedText } from "../content/governance";
 import { fitsYears } from "../lib/age/forChild";
+import { normalizeSearchText } from "../lib/searchNormalize";
 
 export type LearnCategoryId =
   | "minds"
@@ -302,11 +303,11 @@ export function matchLearnCards(
   return scored.slice(0, max).map((e) => e.card);
 }
 
-/** Locale-aware search over title, hook and key points. */
+/** Locale-aware search over title, hook and key points, with shared HE/EN normalization. */
 export function searchLearnCards(cards: LearnCard[], query: string, he: boolean): LearnCard[] {
-  const q = query.trim().toLowerCase();
+  const q = normalizeSearchText(query);
   if (!q) return cards;
-  const pick = (t: LocalizedText) => (he ? t.he : t.en).toLowerCase();
+  const pick = (t: LocalizedText) => normalizeSearchText(he ? t.he : t.en);
   return cards.filter(
     (c) =>
       pick(c.title).includes(q) ||

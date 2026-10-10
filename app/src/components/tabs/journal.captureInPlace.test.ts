@@ -150,7 +150,7 @@ describe("B-TODAY-19 · addMoment stores the photo (unit)", () => {
 
   it("ArborContext.addMoment writes the builder's record (one path)", () => {
     // B-LOOP-07/10: the opts also carry the shelf + milestone Tonight files the line on; the builder gets the rest.
-    expect(CONTEXT).toMatch(/const addMoment = async \(\s*text: string,\s*opts: \{ photoAttachment\?: string; promptKey\?: string; shelf\?: ShelfId; milestoneId\?: string; context\?: BehaviorContext; notes\?: string; callerShowsFailure\?: boolean \} = \{\},/);
+    expect(CONTEXT).toMatch(/const addMoment = async \(\s*text: string,\s*opts: \{ photoAttachment\?: string; promptKey\?: string; kept\?: BehaviorLog\["kept"\]; contentSource\?: BehaviorLog\["contentSource"\]; shelf\?: ShelfId; milestoneId\?: string; context\?: BehaviorContext; notes\?: string; callerShowsFailure\?: boolean \} = \{\},/);
     expect(CONTEXT).toContain('buildMomentLog(text, context ?? "", buildOpts)');
   });
 
@@ -210,7 +210,7 @@ describe("B-ASKJB-30 · edit and review in place", () => {
     expect(MODAL).toContain("if (editLogId) cancelEditLog();");
     // handleAddLog is called from confirm only — the review step is the one write.
     expect(MODAL.match(/handleAddLog\(/g)?.length).toBe(1);
-    expect(MODAL.slice(MODAL.indexOf("const confirm = "), MODAL.indexOf("const discard = "))).toContain("handleAddLog(e, { callerShowsFailure: true })");
+    expect(MODAL.slice(MODAL.indexOf("const confirm = "), MODAL.indexOf("const discard = "))).toContain("handleAddLog(e, { callerShowsFailure: true, ...contentProvenance })");
     expect(CTX).toContain("editingLogSnapshotRef.current?.id === editingLogId");
     expect(CTX).toContain("...existing,");
   });
@@ -348,14 +348,15 @@ describe("Journal: real modules, expandable entry context at every width, one se
     expect(JOURNAL).toContain('ctaTestId="journal-empty-cta"');
   });
 
-  it("the last entry is a native, initially closed disclosure at every width; the full words retain their editorial treatment", () => {
+  it("the last entry is a native, initially closed disclosure at every width; the full words use the readable bilingual body treatment", () => {
     const context = JOURNAL.slice(JOURNAL.indexOf('<details data-testid="journal-last-context"'), JOURNAL.indexOf("</details>", JOURNAL.indexOf('<details data-testid="journal-last-context"')));
     expect(context).toBeTruthy();
     expect(context.split(">")[0]).not.toMatch(/\bopen[=> ]/);
     expect(context).toContain('<summary');
     expect(context).toContain('data-testid="journal-last-context-toggle"');
     expect(context).toContain('<bdi dir="auto">{lastKept!.words}</bdi>');
-    expect(context).toContain("var(--font-editorial)");
+    expect(context).toContain("var(--font-sans)");
+    expect(context).toContain("font-normal leading-relaxed");
     expect(context).toContain("line-clamp-2");
     expect(context).not.toMatch(/hidden md:block/);
     expect(JOURNAL).not.toMatch(/lastKeptDoor|journal-story-door|journal-last-kept-next/);
@@ -386,7 +387,8 @@ describe("Journal: real modules, expandable entry context at every width, one se
     // The scoped rule beats `.arbor-app input` (both !important; higher specificity).
     expect(CSS).toMatch(/\.arbor-app input\.field-bare,[\s\S]{0,200}\{\s*background-color: transparent !important;/);
     expect(CSS).toMatch(/\.arbor-app \.field-pill \{\s*background-color: var\(--arbor-paper-elevated\) !important;/);
-    expect(read("components/search/TopbarSearch.tsx")).toContain('className="field-bare min-h-11 self-stretch"');
+    const topbarInputClasses = read("components/search/TopbarSearch.tsx").match(/<input[\s\S]{0,1500}?className="([^"]+)"/)?.[1].split(/\s+/);
+    expect(topbarInputClasses).toEqual(expect.arrayContaining(["field-bare", "min-h-11", "self-stretch"]));
   });
 });
 
@@ -395,12 +397,13 @@ describe("Journal: real modules, expandable entry context at every width, one se
 describe("NEXTLEVEL r1 — Journal: the parent's words are the row; sentence case", () => {
   const JOURNAL = stripComments(read("components/tabs/JournalTab.tsx"));
   const SHEET = stripComments(read("components/journal/JournalEntrySheet.tsx"));
-  it("a parent-written moment row leads with the words verbatim (editorial, t-lg, FreeText); the type label + time are one quiet caption; no provenance chip", () => {
+  it("a parent-written moment row leads with the words verbatim (body face, t-lg, FreeText); the type label + time are one quiet caption; no provenance chip", () => {
     expect(JOURNAL).toContain('const parentLead = prov === "manual" && (signal.kind === "moment" || signal.kind === "memory") && !!detail.trim();');
     const lead = JOURNAL.slice(JOURNAL.indexOf(": parentLead ? ("), JOURNAL.indexOf(") : (", JOURNAL.indexOf(": parentLead ? (")));
     expect(lead).toContain('data-testid="journal-row-words"');
     expect(lead).toContain("<FreeText text={detail} />");
-    expect(lead).toContain('fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)"');
+    expect(lead).toContain('fontFamily: "var(--font-sans)", fontSize: "var(--t-lg)"');
+    expect(lead).toContain("font-normal leading-relaxed");
     expect(lead).toContain('data-testid="journal-row-caption"');
     expect(lead.indexOf("journal-row-words")).toBeLessThan(lead.indexOf("<bdi>{title}</bdi>"));
     expect(lead).not.toContain("{provLabel}");

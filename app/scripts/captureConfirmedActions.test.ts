@@ -235,7 +235,7 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
     expect(observer).toContain('documentTimelineCurrentTime');
     expect(observer).toContain('performanceTimeOrigin');
     const shell = read('app/src/components/layout/Shell.tsx');
-    expect(shell).toContain('<Suspense fallback={<TabSkeleton />}>');
+    expect(shell).toContain('<Suspense key={childProfile.id} fallback={<TabSkeleton />}>');
     expect(shell).toContain('mode="wait"');
     expect(shell).toContain('key={`${activeTab}@${childProfile.id}`}');
     expect(observer).not.toMatch(/\.finish\(|\.cancel\(|dispatchEvent|forceUpdate|\.style\.[a-zA-Z]+\s*=/);
@@ -349,7 +349,7 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
     expect(existing).toContain("note.locator('[data-testid=\"ms-keepsake-edit\"]').click()");
     expect(existing).not.toContain("note.getByRole('button').click()");
     const integration = read('app/scripts/capture/release-interactions.mjs');
-    expect(integration).toContain('if (record || confirmed) await context.addInitScript(installRecordShareSink)');
+    expect(integration).toContain('if (record || confirmed || keptSearch) await context.addInitScript(installRecordShareSink)');
     expect(integration).toContain('doc.confirmedActionBoundaries = CONFIRMED_ACTION_LIMITATIONS');
   });
 });

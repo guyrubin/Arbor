@@ -75,7 +75,7 @@ describe("TODAY-3 — every capture uses the shared review gate", () => {
   it("voice enters the one extraction function with truthful provenance", () => {
     const voice = /const startVoice = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
     expect(voice).toBeTruthy();
-    expect(voice).toContain('setSource("voice")');
+    expect(voice).toContain('setSource(current => current === "ai-draft" ? current : "voice")');
     expect(voice).toContain('void extractFromTyped(said, hardMomentRef.current ? "incident" : "moment")');
     const extract = /const extractFromTyped = async[\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
     expect(extract).toBeTruthy();
@@ -101,7 +101,7 @@ describe("TODAY-3 — no incident write without explicit confirm", () => {
     expect(submit).toContain('setReviewing(true)');
     expect(submit).not.toMatch(/handleAddLog\(|addMoment\(/);
     expect(count(modal, /handleAddLog\(/g)).toBe(1);
-    expect(confirm).toContain('await handleAddLog(e, { callerShowsFailure: true })');
+    expect(confirm).toContain('await handleAddLog(e, { callerShowsFailure: true, ...contentProvenance })');
     expect(modal).toContain('onConfirm={confirm}');
     // Negative control: the retired direct-submit shape violates this gate.
     expect('const submitLog = (e) => handleAddLog(e);').toMatch(/handleAddLog\(/);

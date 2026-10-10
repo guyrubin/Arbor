@@ -77,6 +77,8 @@ export interface TimelineSignal {
   refTitle?: string;
   /** Raw source-record detail (user/content data, never UI copy). */
   detail?: string;
+  /** Content lineage is separate from parent ownership/edit permissions. */
+  contentSource?: BehaviorLog["contentSource"];
   /**
    * B-GROWTH-11 (kind "milestone" only) — the milestone's stable id, so the
    * render helpers resolve a CATALOGUE title/description/age label in the page
@@ -177,6 +179,13 @@ export const isAutoSignal = (kind: SignalKind): boolean => SIGNAL_PROVENANCE[kin
 
 /** Shape of the app's `t()` — kept structural so this module stays framework-free. */
 export type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
+
+/** One factual label follows negative-lineage content through record views
+ * and the final plain-text share; it never changes who owns the record. */
+export function signalContentSource(signal: Pick<TimelineSignal, "contentSource">, t: TranslateFn): string {
+  return signal.contentSource === undefined ? ""
+    : t(signal.contentSource === "ai_draft" ? "kept.capture.source.ai_draft" : "kept.capture.source.unverified");
+}
 
 /** B-GROWTH-11 — a milestone signal's stored text, resolved by stable id
  *  (catalogue rows in the page language; parent-added rows as typed). */
@@ -457,6 +466,7 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       at: log.timestamp || null,
       refTitle: log.behaviorType || undefined,
       detail: log.trigger || log.notes || "",
+      ...(log.contentSource !== undefined ? { contentSource: log.contentSource } : {}),
       // B-DATA-10: tone derives from kind only (like action rows below);
       // `resolved` travels as data and renders as a label, never a colour.
       tone: "lav",

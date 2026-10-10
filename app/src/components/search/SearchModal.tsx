@@ -73,7 +73,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
               onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
-              <span className="flex-shrink-0"><Icon name={r.icon} size={16} style={{ color: r.color }} /></span>
+              <span className="flex-shrink-0"><Icon name={r.icon} size={16} className={r.kind === "route" ? "rtl:-scale-x-100" : undefined} style={{ color: r.color }} /></span>
               <span className="min-w-0 flex-1">
                 <span className="text-sm font-bold truncate block" style={{ color: "var(--arbor-ink)" }}>{r.label}</span>
                 <span className="text-xs truncate block" style={{ color: "var(--arbor-muted)" }}>{r.sub}</span>

@@ -78,6 +78,7 @@ const generated = quote("capture-record-ai", FORBIDDEN, { source: "ai_proposed_p
 const prohibited = [
   ...["ai_proposed_parent_confirmed", "ai_proposed_unconfirmed", "kid_practice", "professional_entered", "document_extracted", "future_source", "", null, {}]
     .flatMap(source => [{ source }, { observationSource: source }]),
+  ...["ai_draft", "unverified", "future_source", null].map(contentSource => ({ contentSource })),
   { captureSource: "co_parent" }, { conversationProposalId: "proposal-1" },
   { source: "parent_typed", observationSource: "ai_proposed_parent_confirmed" },
   { source: "parent_voice", captureSource: "co_parent" },

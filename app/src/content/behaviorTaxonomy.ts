@@ -1,3 +1,5 @@
+import type { BehaviorLog } from "../types";
+
 /**
  * AI-CAP-8 — the ONE shared behavior-type taxonomy.
  *
@@ -129,7 +131,7 @@ export function keptMomentFields(behaviorType: string, kept?: "said" | "by_herse
 export function buildMomentLog(
   text: string,
   context: string,
-  opts: { photoAttachment?: string; promptKey?: string; kept?: "said" | "by_herself" | "first" } = {},
+  opts: { photoAttachment?: string; promptKey?: string; kept?: "said" | "by_herself" | "first"; contentSource?: BehaviorLog["contentSource"] } = {},
   now: Date = new Date(),
 ) {
   const fields = momentLogFields(text, context);
@@ -144,6 +146,7 @@ export function buildMomentLog(
     context: fields.context,
     resolved: true,
     ...keptMomentFields(fields.behaviorType, opts.kept),
+    ...(opts.contentSource ? { contentSource: opts.contentSource } : {}),
     ...(opts.photoAttachment ? { photoAttachment: opts.photoAttachment } : {}),
     ...(opts.promptKey ? { promptKey: opts.promptKey } : {}),
   };

@@ -8,7 +8,7 @@ import { statesText } from "../../lib/i18nElevation/states";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import {
-  groupByDay, journalFeedCountKey, SIGNAL_PROVENANCE, signalDetail, signalTitle, weekMomentCount,
+  groupByDay, journalFeedCountKey, SIGNAL_PROVENANCE, signalDetail, signalTitle, signalContentSource, weekMomentCount,
   type SignalKind, type SignalProvenance, type TimelineSignal,
 } from "../../lib/signalTimeline";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
@@ -126,6 +126,7 @@ function JournalRow({
   title,
   detail,
   originLabel = "",
+  contentSourceLabel = "",
   resolvedLabel = "",
   focused = false,
   onOpen,
@@ -143,6 +144,8 @@ function JournalRow({
    *  above still reads "You" — keeping it was the parent's act — but the words
    *  are Arbor's, and a row that does not say so is the defect AI-04 closes. */
   originLabel?: string;
+  /** Factual wording source, independent of the parent-owned record. */
+  contentSourceLabel?: string;
   /** B-DATA-10: the "Resolved" label (beh.resolved), shown only on a resolved moment. */
   resolvedLabel?: string;
   /** TODAY-6: true while this row is the target of an evidence deep-link —
@@ -205,12 +208,13 @@ function JournalRow({
       </div>
       ) : parentLead ? (
       <div className="min-w-0 flex-1">
-        <p data-testid="journal-row-words" className="leading-snug line-clamp-3" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+        <p data-testid="journal-row-words" className="font-normal leading-relaxed line-clamp-3" style={{ fontFamily: "var(--font-sans)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
           <FreeText text={detail} />
         </p>
         <p data-testid="journal-row-caption" className="mt-1 t-sm" style={{ color: "var(--arbor-muted)" }}>
           <bdi>{title}</bdi>
           {when && <>{" · "}<bdi>{when}</bdi></>}
+          {contentSourceLabel && <>{" · "}<span data-testid="journal-row-content-source">{contentSourceLabel}</span></>}
           {signal.resolved && <>{" · "}<span data-testid="journal-row-resolved">{resolvedLabel}</span></>}
         </p>
       </div>
@@ -596,9 +600,10 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
                 onClick={() => setOpenSignal(lastKeptSignal)}
                 className="flex min-h-11 w-full flex-col items-start gap-1 py-1 text-start"
               >
-                <span dir="auto" className="block border-s-2 ps-3 t-lg leading-snug line-clamp-2" style={{ borderColor: "var(--arbor-clay-dim)", fontFamily: "var(--font-editorial)", lineHeight: 1.35, color: "var(--arbor-ink)" }}>
+                <span dir="auto" className="block border-s-2 ps-3 t-lg font-normal leading-relaxed line-clamp-2" style={{ borderColor: "var(--arbor-clay-dim)", fontFamily: "var(--font-sans)", color: "var(--arbor-ink)" }}>
                   {quotedLastKept ? <>“<bdi dir="auto">{lastKept!.words}</bdi>”</> : <bdi dir="auto">{signalTitle(lastKeptSignal, tt)}</bdi>}
                 </span>
+                {lastKeptSignal.contentSource !== undefined && <span data-testid="journal-last-content-source" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{signalContentSource(lastKeptSignal, tt)}</span>}
                 <span className="t-sm font-semibold underline underline-offset-2" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.journal.lastEntry.open")}</span>
               </button>
               {weekCount > 0 && <p data-testid="journal-week-line" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{storyCopy}</p>}
@@ -871,6 +876,7 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
                     title={signalTitle(s, tt)}
                     detail={signalDetail(s, tt)}
                     originLabel={provenanceForSignal(keptProvenance, s.id) ? originLabel : ""}
+                    contentSourceLabel={signalContentSource(s, tt)}
                     resolvedLabel={t("beh.resolved")}
                     focused={s.id === focusId}
                     onOpen={() => setOpenSignal(s)}

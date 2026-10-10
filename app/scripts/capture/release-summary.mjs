@@ -35,13 +35,21 @@ export function summarizeRelease(records, identity, scope = 'all') {
       const routes = shardRoutes(ids, capture.cell.shard);
       if (cells.length !== routes.length || missingBaseEvidence(cells, routes, viewport).length) reasons.push('BASE_EVIDENCE_MISSING');
       baseCells += cells.filter((cell) => cell.mounted && cell.shot).length;
-    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kid-entry'].includes(group) && viewport) {
+    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry'].includes(group) && viewport) {
       if (evidence?.sourceSha !== identity.sourceSha || evidence?.sourceTreeSha !== identity.sourceTreeSha) reasons.push('INTERACTION_IDENTITY_MISMATCH');
       if (missingReleaseInteractionEvidence(cells, { group, viewport, ...identity }).length || !cells.length || cells.some((cell) => !cell.reached || !cell.shot)) reasons.push('INTERACTION_EVIDENCE_MISSING');
       interactionCells += cells.filter((cell) => cell.reached && cell.shot).length;
     } else reasons.push('SHARD_SCOPE_INVALID');
     for (const cell of cells) {
-      for (const file of [cell.shot, cell.fullShot].filter(Boolean)) {
+      const supplements = Array.isArray(cell.supplementalShots) ? cell.supplementalShots : [];
+      if (group === 'kept-search' && cell.state === 'search-prepare-arrival' && viewport) {
+        const expectedShot = `shots/release.kept-search.${viewport.w}x${viewport.h}.${viewport.lang}.search-prepare-arrival.scrolled.exact.png`;
+        const extra = supplements[0];
+        if (supplements.length !== 1 || extra?.stage !== 'actual-consult-build-summary-after-scroll'
+          || extra?.initialShot !== cell.shot || extra?.shot !== expectedShot || extra.shot === cell.shot) reasons.push('CONSULT_SCROLLED_EVIDENCE_INVALID');
+      }
+      for (const file of [cell.shot, cell.fullShot, ...supplements.map(item => item?.shot)].filter(Boolean)) {
+        if (typeof file !== 'string') { reasons.push('SCREENSHOT_PATH_INVALID'); continue; }
         const name = file.split('/').pop();
         if (!shotNames.includes(name)) reasons.push(`PNG_MISSING:${name}`);
         if (!fonts?.shots?.some((shot) => shot.shot === name && shot.passed === true && shot.rendered?.length && shot.rendered.every((sample) => sample.custom === true))) reasons.push(`FONT_EVIDENCE_MISSING:${name}`);
@@ -59,7 +67,7 @@ export function summarizeRelease(records, identity, scope = 'all') {
     if (unique.length) failures.push({ id: id ?? 'unknown', reasons: unique });
   }
   for (const id of expected) if (!seen.has(id)) failures.push({ id, reasons: ['SHARD_NOT_RETURNED'] });
-  const expectedBaseCells = ['all', 'record-release', 'confirmed-actions-release', 'kid-entry-release'].includes(scope) ? 172 : 0;
+  const expectedBaseCells = ['all', 'record-release', 'confirmed-actions-release', 'kept-search-release', 'kid-entry-release', 'parent-kid-release'].includes(scope) ? 172 : 0;
   if (baseCells !== expectedBaseCells) failures.push({ id: 'base-matrix', reasons: ['BASE_MATRIX_INCOMPLETE'] });
   return { schema: 1, scope, ...identity, completed: failures.length === 0, expectedShards: expected.size, returnedShards: records.length,
     expectedBaseCells, baseCells, interactionCells, screenshots, printPreviews, routeIds: routeIds ?? [], shards, failures,

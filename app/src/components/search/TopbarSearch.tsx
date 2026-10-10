@@ -115,7 +115,7 @@ export default function TopbarSearch() {
           stretches to fill it; the hairline is an inset shadow so it takes no
           height from the input. */}
       <label
-        className="flex min-h-11 items-stretch rounded-xl px-3"
+        className="flex min-h-11 items-stretch rounded-xl ps-3 pe-0"
         style={{
           width: "100%",
           height: "44px",
@@ -163,7 +163,7 @@ export default function TopbarSearch() {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
-          className="field-bare min-h-11 self-stretch"
+          className="field-bare arbor-topbar-search-input min-h-11 self-stretch"
           style={{
             flex: 1,
             minWidth: 0,
@@ -174,13 +174,16 @@ export default function TopbarSearch() {
             color: "var(--arbor-ink)",
             fontSize: "var(--t-sm)",
             lineHeight: "1",
-            // Suppress browser-default search cancel button — we render our own.
+            // The scoped ::-webkit-search-cancel-button rule suppresses the
+            // native duplicate; appearance on the input alone does not.
             WebkitAppearance: "none",
           }}
         />
         {query && (
           <button
+            type="button"
             aria-label={t("aria.clearSearch")}
+            className="touch-target w-11 h-11 rounded-xl"
             onClick={(e) => { e.preventDefault(); setQuery(""); setOpen(false); inputRef.current?.focus(); }}
             style={{
               alignSelf: "center",
@@ -191,6 +194,7 @@ export default function TopbarSearch() {
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
+              justifyContent: "center",
               color: "var(--arbor-faint)",
             }}
           >
@@ -259,7 +263,7 @@ export default function TopbarSearch() {
                 }}
               >
                 {/* Kind icon — the same glyph + token the modal shows */}
-                <Icon name={entry.icon} size={16} style={{ color: entry.color, flexShrink: 0 }} />
+                <Icon name={entry.icon} size={16} className={entry.kind === "route" ? "rtl:-scale-x-100" : undefined} style={{ color: entry.color, flexShrink: 0 }} />
 
                 {/* Text block */}
                 <span style={{ flex: 1, minWidth: 0 }}>

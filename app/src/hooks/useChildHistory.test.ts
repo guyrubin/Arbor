@@ -41,12 +41,12 @@ vi.mock("firebase/firestore", () => ({
     const listener = { ...q, next, fail, stop: vi.fn() }; h.listeners.push(listener); return listener.stop;
   },
 }));
-import { useChildHistory } from "./useChildHistory";
+import { useChildHistory, type SandboxHistory } from "./useChildHistory";
 
 type Row = { id: string; timestamp: string };
 let child = "child-a";
 let name = "behaviorLogs";
-let sandboxItems: Row[] | undefined;
+let sandboxItems: Row[] | SandboxHistory<Row> | undefined;
 const render = (flush = true) => {
   h.cursor = 0;
   const value = useChildHistory<Row>(child, name, "timestamp", sandboxItems);
@@ -64,6 +64,38 @@ beforeEach(() => {
 });
 
 describe("bounded child history reads", () => {
+  it("keeps an empty source with hydrated defaults current without writing those defaults", () => {
+    h.enabled = false; sandboxItems = { items: rows(3), sourceItems: [] };
+    settle(); const initial = render();
+    expect(initial.items).toHaveLength(3); expect(initial.isCurrent()).toBe(true);
+    sandboxItems = { items: rows(3), sourceItems: [] }; render(false);
+    expect(initial.isCurrent()).toBe(true);
+    vi.mocked(localStorage.getItem).mockReturnValue(JSON.stringify(rows(1)));
+    expect(initial.isCurrent()).toBe(false);
+    expect(localStorage.setItem).not.toHaveBeenCalled();
+  });
+  it("binds filtered display rows to all raw rows and rejects stale context after reload", () => {
+    h.enabled = false;
+    const raw = rows(3), display = raw.slice(1);
+    sandboxItems = { items: display, sourceItems: raw };
+    vi.mocked(localStorage.getItem).mockReturnValue(JSON.stringify(raw));
+    settle(); const initial = render();
+    expect(initial.items).toEqual(display); expect(initial.isCurrent()).toBe(true);
+    // The removed source row was already absent from the projection. Equal
+    // visible words must not make an edited raw collection look unchanged.
+    vi.mocked(localStorage.getItem).mockReturnValue(JSON.stringify(display));
+    expect(initial.isCurrent()).toBe(false);
+    initial.reload(); settle(); expect(render().isCurrent()).toBe(false);
+    sandboxItems = { items: display, sourceItems: display };
+    expect(render().isCurrent()).toBe(true); expect(initial.isCurrent()).toBe(false);
+  });
+  it.each(["display", "source"])("retires a held guard when only the %s side of a projection changes before commit", side => {
+    h.enabled = false;
+    sandboxItems = { items: rows(3), sourceItems: [] };
+    settle(); const initial = render(); expect(initial.isCurrent()).toBe(true);
+    sandboxItems = side === "display" ? { items: rows(2), sourceItems: [] } : { items: rows(3), sourceItems: rows(1) };
+    render(false); expect(initial.isCurrent()).toBe(false);
+  });
   it.each(["child", "account"])("retires a captured guard across immediate %s ABA without effects", kind => {
     render(); deliver(0, rows(2)); const before = render();
     if (kind === "child") child = "child-b"; else h.uid = "account-b";

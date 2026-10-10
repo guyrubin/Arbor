@@ -46,6 +46,7 @@ import type { ShelfId } from "../../lib/shelves/registry";
 // B-STATUS-01: the one receipt line and the one pending line of parent mode.
 import { PendingLine, Receipt } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
+import { freshCaptureKeep, typedCaptureKeep, selectedCaptureKeep } from "../../lib/kept/captureKeep";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
  *
@@ -143,12 +144,29 @@ export default function QuickLogModal({
   // what you tried) is opt-in behind "This was a hard moment", so a joyful
   // moment never has to invent a challenge type or a parent response.
   const [hardMoment, setHardMoment] = useState(false);
+  const [keepDraft, setKeepDraft] = useState(() => freshCaptureKeep(initialText ?? newLogTrigger));
+  const keepAllowed = !editLogId && !review && source !== "ai-draft" && keepDraft.parentWritten && keepDraft.text === newLogTrigger && !!newLogTrigger.trim();
+  const kept = keepAllowed ? selectedCaptureKeep(keepDraft, newLogTrigger, hardMoment) : undefined;
+  // Full translation keys keep grammatical variants explicit. These are
+  // wording choices, not icon names or a different capture/persistence kind.
+  const keepLabels = childProfile.gender === "girl"
+    ? { said: "kept.capture.said.female", by_herself: "kept.capture.by_herself.female" }
+    : childProfile.gender === "boy"
+      ? { said: "kept.capture.said.male", by_herself: "kept.capture.by_herself.male" }
+      : { said: "kept.capture.said.neutral", by_herself: "kept.capture.by_herself.neutral" };
+  // Extraction may fill notes/response too, so its negative lineage lasts
+  // for this capture even if the parent replaces only the main text.
+  const contentSource: BehaviorLog["contentSource"] = source === "ai-draft" ? "ai_draft"
+    : keepDraft.parentWritten && keepDraft.text === newLogTrigger ? undefined
+    : initialText !== undefined || source === "photo" ? "unverified" : undefined;
+  const contentProvenance = contentSource ? { contentSource } : {};
   // B-TODAY-01: the dictation callback outlives the render that armed it, so
   // the branch it was spoken into is read through a ref, not a stale closure.
   const hardMomentRef = useRef(false);
   hardMomentRef.current = hardMoment;
   const toggleHardMoment = (on: boolean) => {
     setHardMoment(on);
+    if (on) setKeepDraft(draft => ({ ...draft, selected: undefined, manual: true }));
     if (on && !isIncidentType(newLogType)) { setNewLogType(DEFAULT_BEHAVIOR_TYPE); setNewLogDuration(15); }
     if (!on) { setNewLogType("Moment"); setNewLogDuration(0); }
   };
@@ -209,7 +227,10 @@ export default function QuickLogModal({
   };
   useEffect(() => {
     if (!open) return;
-    if (initialText !== undefined) setNewLogTrigger(initialText);
+    if (initialText !== undefined) {
+      setNewLogTrigger(initialText);
+      setKeepDraft(freshCaptureKeep(initialText));
+    }
     if (initialPhoto) attachPhoto(initialPhoto);
     else if (editLogId) setPhoto(newLogPhoto);
   }, [open, initialText, initialPhoto]);
@@ -231,6 +252,7 @@ export default function QuickLogModal({
       setListening(false);
       setVoiceInterim("");
       setSource("text");
+      setKeepDraft(freshCaptureKeep());
       setEscalationMarkdown(null);
       setHardMoment(false);
       setVoiceNotice(null);
@@ -263,6 +285,7 @@ export default function QuickLogModal({
   }, [open, review, editLogId]);
   const closeSheet = () => {
     sessionRef.current.invalidate();
+    setKeepDraft(freshCaptureKeep());
     stopRef.current?.();
     // An edit that is closed without saving must not leave editingLogId armed.
     if (editLogId) cancelEditLog();
@@ -408,6 +431,7 @@ export default function QuickLogModal({
       setNewLogDuration(n.durationMinutes);
       setNewLogContext(n.context as BehaviorContext);
       setNewLogTrigger(n.trigger);
+      setKeepDraft(freshCaptureKeep(n.trigger));
       setNewLogResponse(n.response || t("beh.extract.noResponse"));
       if (n.notes) setNewLogNotes(n.notes);
       setSource("ai-draft");
@@ -465,7 +489,8 @@ export default function QuickLogModal({
           const said = text.trim();
           if (!said) return;
           setNewLogTrigger(said);
-          setSource("voice");
+          setKeepDraft(freshCaptureKeep(said, true));
+          setSource(current => current === "ai-draft" ? current : "voice");
           if (said.length >= TYPED_EXTRACT_MIN_CHARS) void extractFromTyped(said, hardMomentRef.current ? "incident" : "moment");
         },
         onInterim: (text) => { if (isCurrent()) setVoiceInterim(text); },
@@ -508,6 +533,7 @@ export default function QuickLogModal({
   const changeTrigger = (text: string) => {
     stopCaptureWork();
     setNewLogTrigger(text);
+    setKeepDraft(draft => typedCaptureKeep(draft, newLogTrigger, text));
   };
   const saveMoment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -524,6 +550,8 @@ export default function QuickLogModal({
         ...(photo ? { photoAttachment: photo } : {}),
         ...(promptKey ? { promptKey } : {}),
         ...(shelf ? { shelf } : {}),
+        ...(kept ? { kept } : {}),
+        ...contentProvenance,
         ...(newLogContext ? { context: newLogContext } : {}),
         ...(newLogNotes.trim() ? { notes: newLogNotes.trim() } : {}),
         // The inline alert below is this failure's one message (draft kept).
@@ -532,6 +560,7 @@ export default function QuickLogModal({
       if (!isCurrent()) return;
       if (!written) { setSaveError(t("companion.capture.saveError")); return; }
       setNewLogTrigger(""); setNewLogNotes(""); setNewLogContext(""); attachPhoto("");
+      setKeepDraft(freshCaptureKeep());
       setReply({ log: written, hard: false, seed: t("elev.capture.reply.seed", { name: firstName, text: written.trigger }) });
       setMsProposal(null); setMsDone(false);
       if (milestoneMatchAllowed(written, { childId: childProfile.id, hard: false, photoOnly: !typedWords })) {
@@ -582,7 +611,7 @@ export default function QuickLogModal({
     const isCurrent = sessionRef.current.lease("write");
     busyRef.current = true; setSaving(true); setSaveError(null);
     try {
-      const written = await handleAddLog(e, { callerShowsFailure: true });
+      const written = await handleAddLog(e, { callerShowsFailure: true, ...contentProvenance });
       if (!isCurrent()) return;
       if (!written) { setSaveError(t("companion.capture.saveError")); return; }
       setReviewing(false); setSource("text");
@@ -843,6 +872,7 @@ export default function QuickLogModal({
           <label htmlFor="quick-log-moment" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{mode === "photo" || photo ? t("elev.capture.photo.label") : t("ql.moment.label")}</label>
           <input
             id="quick-log-moment"
+            dir="auto"
             value={newLogTrigger}
             onChange={(e) => changeTrigger(e.target.value)}
             placeholder={t("ql.moment.ph")}
@@ -851,6 +881,18 @@ export default function QuickLogModal({
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
           />
         </div>
+        {!editLogId && <fieldset data-testid="quicklog-keep-as" className="min-w-0 space-y-2 border-0 p-0" lang={uiLang} dir={uiLang === "he" ? "rtl" : "ltr"}>
+          <legend className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("kept.capture.label")}</legend>
+          <div className="flex flex-wrap gap-2">
+            {(["said", "by_herself", "first"] as const).map(kind => <button
+              key={kind} type="button" data-kept-kind={kind} aria-pressed={kept === kind} disabled={!keepAllowed}
+              onClick={() => { if (keepAllowed && !busyRef.current) setKeepDraft(draft => ({ ...draft, selected: draft.selected === kind ? undefined : kind, manual: true })); }}
+              className="min-h-11 rounded-xl px-3 text-xs disabled:opacity-60"
+              style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)", background: kept === kind ? "var(--arbor-paper-deep)" : "transparent" }}
+            >{t(kind === "first" ? "kept.capture.first" : keepLabels[kind])}</button>)}
+          </div>
+          {!!newLogTrigger.trim() && !keepAllowed && <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t(source === "ai-draft" ? "kept.capture.freshMoment" : "kept.capture.ownNote")}</p>}
+        </fieldset>}
         <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
           <input type="checkbox" checked={hardMoment} onChange={(e) => toggleHardMoment(e.target.checked)} className="h-5 w-5" style={{ accentColor: "var(--arbor-clay)" }} />
           <span className="min-w-0">

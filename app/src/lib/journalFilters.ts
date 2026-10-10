@@ -10,6 +10,7 @@
 import type { TimelineSignal } from "./signalTimeline";
 import type { BehaviorLog } from "../types";
 import { isIncidentType } from "../content/behaviorTaxonomy";
+import { normalizeSearchText } from "./searchNormalize";
 
 export type JournalFilter = "all" | "hard" | "kept";
 export const JOURNAL_FILTERS: readonly JournalFilter[] = ["all", "hard", "kept"];
@@ -18,8 +19,8 @@ export const JOURNAL_FILTERS: readonly JournalFilter[] = ["all", "hard", "kept"]
 export const momentLogId = (s: Pick<TimelineSignal, "id" | "kind">): string | null =>
   s.kind === "moment" && s.id.startsWith("moment-") ? s.id.slice("moment-".length) : null;
 
-/** Case-folded for HE + EN; trims the query. */
-export const foldText = (text: string): string => text.toLocaleLowerCase().normalize("NFC").trim();
+/** Shared HE/EN normalization; keep the existing local-filter export. */
+export const foldText = normalizeSearchText;
 
 /** Everything a row can be found by, folded once. */
 export function journalSearchText(

@@ -27,6 +27,7 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import { translate } from "../../lib/i18n";
 import { searchnavText } from "../../lib/i18nElevation/searchnav";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
+import { normalizeSearchText } from "../../lib/searchNormalize";
 import type { HardMomentContext } from "../../content/pilotRelease";
 import type { SearchEntry, SearchKind } from "../../lib/searchIndex";
 
@@ -79,7 +80,7 @@ export const KIND_ICON: Partial<Record<SearchKind, string>> = {
  *  the stored type and the parent's own words. Pure — tested directly. */
 export function logSearchText(l: { behaviorType: string; trigger?: string; response?: string; notes?: string }): string {
   const tr = (lang: "en" | "he") => (k: string) => translate(lang, k);
-  return [
+  return normalizeSearchText([
     l.behaviorType,
     behaviorTypeLabel(l.behaviorType, tr("en"), "full"),
     behaviorTypeLabel(l.behaviorType, tr("en"), "short"),
@@ -88,7 +89,7 @@ export function logSearchText(l: { behaviorType: string; trigger?: string; respo
     l.trigger ?? "",
     l.response ?? "",
     l.notes ?? "",
-  ].join(" ").toLowerCase();
+  ].join(" "));
 }
 
 /** "?" at the end of the query asks first. */
@@ -154,7 +155,8 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
 
   // The active child's records — on-device only, never in searchIndex.
   const record = useMemo<SearchRow[]>(() => {
-    const needle = term.toLowerCase();
+    const needle = normalizeSearchText(term);
+    // Marks alone are not a private-record query; never enumerate records.
     if (!needle) return [];
     const out: SearchRow[] = [];
     for (const l of behaviorLogs) {
@@ -168,23 +170,26 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
       });
     }
     for (const c of conversations) {
-      if (c.title.toLowerCase().includes(needle) || c.messages.some((m) => m.text.toLowerCase().includes(needle)))
+      if (normalizeSearchText(c.title).includes(needle) || c.messages.some((m) => normalizeSearchText(m.text).includes(needle)))
         out.push({ id: "thread-" + c.id, kind: "thread", label: c.title, sub: t("sm.threadSub"), icon: "psychology", color: "var(--arbor-peach-ink)", go: () => { openConversation(c.id); setActiveTab("coach"); } });
     }
     for (const m of milestones) {
-      if (m.title.toLowerCase().includes(needle))
+      if (normalizeSearchText(m.title).includes(needle))
         out.push({ id: "ms-" + m.id, kind: "milestone-record", label: m.title, sub: m.description, icon: "check_circle", color: "var(--arbor-green-ink)", go: () => setActiveTab("milestones") });
     }
     for (const p of actionPlans) {
-      if (`${p.title} ${p.issue}`.toLowerCase().includes(needle))
+      if (normalizeSearchText(`${p.title} ${p.issue}`).includes(needle))
         out.push({ id: "plan-" + p.id, kind: "plan", label: p.title, sub: p.issue, icon: "tune", color: "var(--arbor-lav-ink)", go: () => setActiveTab("plans") });
     }
     return out.slice(0, opts.recordLimit ?? 12);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [term, behaviorLogs, conversations, milestones, actionPlans, t, opts.recordLimit]);
 
-  // "Ask Arbor about …" — prefill only; the parent sends.
-  const ask: SearchRow | null = term
+  // "Ask Arbor about …" — prefill only; the parent sends. Standalone
+  // diacritics have no question text and must not become an Ask affordance.
+  // Normalization is eligibility-only: meaningful questions keep their exact
+  // original words, punctuation and marks in the label and composer.
+  const ask: SearchRow | null = normalizeSearchText(term)
     ? {
         id: "ask", kind: "ask",
         label: t("sm.askAbout", { q: term }), sub: t("sm.askAbout.sub"),

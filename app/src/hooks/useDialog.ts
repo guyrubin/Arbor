@@ -41,6 +41,11 @@ export function useDialog<T extends HTMLElement = HTMLDivElement>({ open, onClos
   const onBackdropClick = useCallback((event: MouseEvent<HTMLElement>) => {
     // React portal events still bubble through the owning drawer's ancestry.
     event.stopPropagation();
+    // A successful action can shrink the dialog before the next click in a
+    // double/triple click lands, exposing the backdrop under the same pointer.
+    // Only a fresh click sequence can dismiss; the browser owns its timing.
+    // Explicit Close/Escape and non-pointer activations stay unaffected.
+    if (event.detail > 1) return;
     if (event.target === event.currentTarget) requestClose();
   }, [requestClose]);
   return { ref, requestClose, onBackdropClick };

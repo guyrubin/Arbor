@@ -1427,7 +1427,7 @@ function useArborState() {
   // B-TODAY-20: returns the written row (null when invalid) so the capture
   // sheet's reply panel can echo and Undo exactly that row.
   // `callerShowsFailure`: see addMoment — one failed write, one message.
-  const handleAddLog = async (e: React.FormEvent, { callerShowsFailure = false }: { callerShowsFailure?: boolean } = {}): Promise<BehaviorLog | null> => {
+  const handleAddLog = async (e: React.FormEvent, { callerShowsFailure = false, contentSource }: { callerShowsFailure?: boolean; contentSource?: BehaviorLog["contentSource"] } = {}): Promise<BehaviorLog | null> => {
     e.preventDefault();
     const invalid = validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse });
     if (invalid) {
@@ -1438,6 +1438,7 @@ function useArborState() {
     if (editingLogId && !existing) return null;
     const logItem: BehaviorLog = {
       ...existing,
+      ...(contentSource ? { contentSource } : {}),
       id: existing ? existing.id : `log-${Date.now()}`,
       timestamp: existing ? existing.timestamp : new Date().toISOString(),
       behaviorType: newLogType,
@@ -1457,6 +1458,11 @@ function useArborState() {
       resolutionNotes: existing?.resolutionNotes,
       photoAttachment: newLogPhoto || undefined,
     };
+
+    // A problem's dormant marker cannot turn into a kept thing on conversion.
+    // Otherwise preserve the marker/history: negative contentSource excludes
+    // generated replacements without discarding genuine parent typo edits.
+    if (existing && (existing.behaviorType !== MOMENT_BEHAVIOR_TYPE || newLogType !== MOMENT_BEHAVIOR_TYPE)) delete logItem.kept;
 
     const writeKey = `${childProfile.id}:draft`;
     if (captureWritesRef.current.has(writeKey) || captureScopeRef.current !== captureScope) return null;
@@ -1490,7 +1496,7 @@ function useArborState() {
    * draft and its retry (QuickLogModal, TogetherView, KidExitRecap). */
   const addMoment = async (
     text: string,
-    opts: { photoAttachment?: string; promptKey?: string; shelf?: ShelfId; milestoneId?: string; context?: BehaviorContext; notes?: string; callerShowsFailure?: boolean } = {},
+    opts: { photoAttachment?: string; promptKey?: string; kept?: BehaviorLog["kept"]; contentSource?: BehaviorLog["contentSource"]; shelf?: ShelfId; milestoneId?: string; context?: BehaviorContext; notes?: string; callerShowsFailure?: boolean } = {},
   ): Promise<BehaviorLog | null> => {
     const { callerShowsFailure = false, ...writeOpts } = opts;
     const { shelf, milestoneId, context, notes, ...buildOpts } = writeOpts;
@@ -1862,6 +1868,9 @@ function useArborState() {
     behaviorLogs,
     logsLoaded: logsCol.loaded,
     milestones,
+    // History freshness belongs to the raw collection, while its rendered
+    // rows retain the catalogue fallback and retired-row read filtering.
+    milestoneHistory: { items: milestones, sourceItems: milestonesCol.items },
     actionPlans,
     plansLoaded: plansCol.loaded,
     // c2 — Daily Play completion moat (single source of truth)

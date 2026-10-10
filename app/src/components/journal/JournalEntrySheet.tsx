@@ -8,7 +8,7 @@ import { useArbor } from "../../context/ArborContext";
 import type { ShareCardOpts } from "../../lib/shareCard";
 import { fmtDay } from "../../lib/formatDate";
 import type { KeptProvenance } from "../../lib/captureProvenance";
-import type { TimelineSignal, SignalProvenance } from "../../lib/signalTimeline";
+import { signalContentSource, type TimelineSignal, type SignalProvenance } from "../../lib/signalTimeline";
 import JournalMomentDetails from "./JournalMomentDetails";
 import type { BehaviorLog, DevelopmentalDomainId } from "../../types";
 
@@ -73,6 +73,7 @@ export default function JournalEntrySheet({
   const { t, uiLang } = useLanguage();
   const { childProfile } = useArbor();
   const childName = (childProfile?.name || "").split(" ")[0];
+  const contentSourceLabel = signalContentSource({ contentSource: signal?.contentSource ?? momentLog?.contentSource }, t);
   const tone: PastelKey = signal
     ? (domain ? domainVisual(domain).tone : (signal.tone as PastelKey))
     : "lav";
@@ -151,9 +152,9 @@ export default function JournalEntrySheet({
             )}
             <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)" }}>
               <dt className="font-bold" style={{ color: "var(--arbor-faint)" }}>
-                {t("elev.closeloop.entry.noted")}
+                {t(contentSourceLabel ? "kept.capture.sourceLabel" : "elev.closeloop.entry.noted")}
               </dt>
-              <dd className="mt-1 font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{provLabel}</dd>
+              <dd className="mt-1 font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }} data-testid="journal-entry-content-source">{contentSourceLabel || provLabel}</dd>
               {/* Accepting the step and saying how it went are the parent's own
                   acts, so "You" is right — but the SENTENCE above is Arbor's
                   wording. This thread feeds clinician handoffs, where "noted by
@@ -197,13 +198,8 @@ export default function JournalEntrySheet({
             <Chip tone={tone}>{domainLabel}</Chip>
           )}
 
-          {/* ENG-16: a journal moment had no keepsake at all. Offered only on
-              the parent's OWN moment, and the card carries the parent's words
-              and nothing else — no domain label, no provenance, no time, no
-              photo, nothing Arbor derived. The caption is explicit
-              (elev.share.caption.journal) so the answer_card fallback, which
-              reads "What Arbor told me about {name}", can never claim these
-              words came from Arbor. */}
+          {/* The parent owns this record. Its factual content-source line
+              travels in the real text payload, not the unused caption. */}
           {prov === "manual" && (
             <ShareButton
               artifact="answer_card"
@@ -211,7 +207,7 @@ export default function JournalEntrySheet({
               childName={childName}
               captionKey="elev.share.caption.journal"
               label={t("elev.keepsake.journal.share")}
-              getCardOpts={(): ShareCardOpts => ({ name: childName, question: title, takeaway: detail })}
+              getCardOpts={(): ShareCardOpts => ({ name: childName, question: title, takeaway: detail, ...(contentSourceLabel ? { sub: contentSourceLabel } : {}) })}
             />
           )}
 

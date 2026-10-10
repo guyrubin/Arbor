@@ -407,6 +407,13 @@ body {
   border: 0 !important;
   box-shadow: none !important;
 }
+/* Desktop search keeps one named, 44px Clear control. WebKit's native cancel
+   glyph is otherwise drawn beside it even with appearance:none on the input. */
+.arbor-app input.arbor-topbar-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
 /* The pill a bare control sits in, and a select that sits beside it. */
 .arbor-app .field-pill {
   background-color: var(--arbor-paper-elevated) !important;

@@ -23,6 +23,7 @@ const input = (docs: readonly unknown[]) => ({
 const forbidden = [
   ...["ai_proposed_parent_confirmed", "ai_proposed_unconfirmed", "kid_practice", "professional_entered", "document_extracted", "future_source", "", null, {}]
     .flatMap(source => [{ source }, { observationSource: source }]),
+  ...["ai_draft", "unverified", "future_source", null].map(contentSource => ({ contentSource })),
   { captureSource: "co_parent" }, { conversationProposalId: "synthetic-proposal" },
   { source: "parent_typed", observationSource: "ai_proposed_parent_confirmed" },
 ];

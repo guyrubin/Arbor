@@ -19,14 +19,14 @@ export function keptMonthLabel(monthKey: string, lang: "en" | "he", currentYear 
 /** Current My child disclosure. Reads only the four existing kept sources;
  * older records load explicitly and child changes reset filters and sheets. */
 export default function KeptThingsPage() {
-  const { childProfile, behaviorLogs, milestones, setActiveTab } = useArbor();
+  const { childProfile, behaviorLogs, milestoneHistory, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
   const [filter, setFilter] = useState<"all" | KeptKind>("all");
   const [changed, setChanged] = useState(false);
   const childId = childProfile.id;
   const moments = useChildHistory<BehaviorLog>(childId, "behaviorLogs", "timestamp", behaviorLogs);
-  const noticed = useChildHistory<Milestone>(childId, "milestones", undefined, milestones);
+  const noticed = useChildHistory<Milestone>(childId, "milestones", undefined, milestoneHistory);
   const notes = useChildHistory<KeepsakeDoc>(childId, "keepsakes");
   const words = useChildHistory<LangObservation>(childId, "langObs", "timestamp");
   const sources = [moments, noticed, notes, words];

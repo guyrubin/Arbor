@@ -326,6 +326,9 @@ export interface BehaviorLog {
   promptKey?: string;
   /** Optional parent-selected keepsake kind on a plain Moment; never inferred. */
   kept?: "said" | "by_herself" | "first";
+  /** Negative authorship lineage on future capture writes. Editing or parent
+   * confirmation must never erase it or certify generated text as a quote. */
+  contentSource?: "ai_draft" | "unverified";
   /** Parent-confirmed Harbor conversation provenance; never written by the realtime provider. */
   conversationProposalId?: string;
   sourceExcerpt?: string;
