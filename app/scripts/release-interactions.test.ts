@@ -7,6 +7,19 @@ import {
 } from './capture/release-interactions.mjs';
 
 const source = readFileSync(new URL('./capture/release-interactions.mjs', import.meta.url), 'utf8');
+const askBranchMarker = "const toggle = () => composer().locator('.companion-tools-toggle');";
+function actualAskPrecedesFixtures(input: string): boolean {
+  // A separate report-close-only branch intentionally uses its own fixture.
+  // The cold-entry invariant belongs to the actual Ask/full branch below it.
+  const start = input.indexOf(askBranchMarker);
+  if (start < 0) return false;
+  const branch = input.slice(start);
+  const actualFlow = branch.indexOf("await screen('shell', 'ask-mock-answer'");
+  return actualFlow >= 0 && [
+    "await screen('shell', 'tools-open'", "await collectReportStates(",
+    "await screen('coach', 'direct-composer'",
+  ].every(marker => branch.indexOf(marker) > actualFlow);
+}
 const sourceSha = 'a'.repeat(40);
 const sourceTreeSha = 'b'.repeat(40);
 const mobile = { w: 375, h: 812, lang: 'en' };
@@ -29,15 +42,18 @@ describe('release interaction contracts, without browser or sockets', () => {
 
   it('limits the narrow diagnostic to actual composer and mock readiness', () => {
     expect(expectedReleaseInteractionStates('ask-diagnostic', mobile).map((item: any) => item.state)).toEqual(['launcher-composer', 'ask-mock-answer', 'direct-composer', 'direct-mock-answer']);
-    const actualFlow = source.indexOf("await screen('shell', 'ask-mock-answer'");
-    expect(actualFlow).toBeLessThan(source.indexOf("await screen('shell', 'tools-open'"));
-    expect(actualFlow).toBeLessThan(source.indexOf("await collectReportStates("));
-    expect(actualFlow).toBeLessThan(source.indexOf("await screen('coach', 'direct-composer'"));
+    expect(actualAskPrecedesFixtures(source)).toBe(true);
     expect(source).toContain("DIRECT_ENTRY_WITHOUT_LAUNCHER_CLICK");
     expect(source).toContain("apiState.mockRequests > before.requests");
     expect(source).toContain("apiState.mockResponses > before.responses");
     expect(source).toContain("cell.fixture = 'actual-local-mock-server-response'");
     expect(source).toContain("cell.fixture = 'bilingual-report-presentation-fixture'");
+  });
+
+  it('rejects a report fixture before cold Ask readiness inside the actual Ask branch', () => {
+    expect(actualAskPrecedesFixtures(source.replace(askBranchMarker, `${askBranchMarker}\n await collectReportStates(injected);`))).toBe(false);
+    expect(actualAskPrecedesFixtures(source.replace("await screen('shell', 'ask-mock-answer'", "await screen('shell', 'removed-readiness'"))).toBe(false);
+    expect(actualAskPrecedesFixtures(source.replace(askBranchMarker, ''))).toBe(false);
   });
 
   it('unions focused groups without inventing a desktop More interaction', () => {
