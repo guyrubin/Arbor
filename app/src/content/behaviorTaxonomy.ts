@@ -247,6 +247,12 @@ export function normalizeExtractedLog(d: ExtractedLogDraft, fallbackTrigger = ""
   };
 }
 
+const PROPOSAL_TYPE_KEYS: Readonly<Record<string, string>> = {
+  "Journal moment": "beh.type.proposal.journal",
+  Observation: "beh.type.proposal.observation",
+  "Report fact": "beh.type.proposal.report",
+};
+
 /**
  * Localized display label for a stored behaviorType.
  *
@@ -269,6 +275,10 @@ export function behaviorTypeLabel(
   const keyOf = (b: (typeof BEHAVIOR_TYPES)[number]) => (variant === "short" ? b.shortLabelKey : b.labelKey);
   const entry = BEHAVIOR_TYPES.find((b) => b.value === raw);
   if (entry) return t(keyOf(entry));
+  // Rows a parent accepted from a conversation proposal (ArborContext) carry
+  // these app-written types; they are Arbor's words, so they always localize.
+  const proposalKey = PROPOSAL_TYPE_KEYS[raw];
+  if (proposalKey) return t(proposalKey);
   const { type: mapped, matched } = mapLabelToType(raw);
   if (!matched) return raw;
   const legacy = BEHAVIOR_TYPES.find((b) => b.value === mapped);

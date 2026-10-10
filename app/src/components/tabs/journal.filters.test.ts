@@ -83,6 +83,14 @@ describe("B-ASKJB-14 — filter predicates (pure)", () => {
     expect(ids(ctx("he", { query: heLabel }))).toContain("moment-a");
   });
 
+  it("types written by accepting a conversation proposal localize instead of printing English in Hebrew", () => {
+    for (const type of ["Journal moment", "Observation", "Report fact"]) {
+      expect(behaviorTypeLabel(type, (k: string) => translate("en", k))).toBe(type);
+      const he = behaviorTypeLabel(type, (k: string) => translate("he", k));
+      expect(he).not.toMatch(/[A-Za-z]/);
+    }
+  });
+
   it("Hard moments = incident types only; Kept from Arbor = provenance ids", () => {
     expect(ids(ctx("en", { filter: "hard" }))).toEqual(["moment-a", "moment-c"]);
     expect(isHardMomentSignal(signals[1], logs)).toBe(false);
