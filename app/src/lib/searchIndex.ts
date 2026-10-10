@@ -15,6 +15,7 @@
  *   - app/src/content/selectCards.ts (contextual reviewed/editorial-pilot gate;
  *     only explicitly released cards index)
  *   - app/src/lib/navigation.ts + i18n.ts (route/tab entries + their labels)
+ *   - app/src/lib/companionPlaces.ts      (catalogue-free current place labels)
  *   - app/src/lib/routes.ts               (ROUTE_IDS — the canonical route-id
  *     list the router itself uses; ids only, no child record anywhere near it.
  *     Added for IA-20: deriving coverage from the router is what stops a route
@@ -48,6 +49,7 @@ import { scholarsInfo } from "../initialData";
 import { availableHardMomentCards } from "../content/selectCards";
 import type { HardMomentContext } from "../content/pilotRelease";
 import { SECTIONS } from "./navigation";
+import { placeForTab } from "./companionPlaces";
 import { translate } from "./i18n";
 import type { ActiveTab } from "../context/ArborContext";
 
@@ -76,7 +78,7 @@ export interface SearchEntry {
   id: string;
   kind: SearchKind;
   title: LocalizedPair;
-  /** Sub-label shown under the title (domain/shelf/pack — descriptive only). */
+  /** Display sub-label: current place for routes; domain/shelf/pack for content. */
   sub: LocalizedPair;
   /** Extra matchable terms per language (hooks, theories, shelf names). */
   keywords: { en: string[]; he: string[] };
@@ -126,7 +128,11 @@ function entry(
 ): SearchEntry {
   const normTitles = [...new Set([normalizeSearchText(title.en), normalizeSearchText(title.he)])].filter(Boolean);
   const normKeywords = [...new Set([...keywords.en, ...keywords.he, sub.en, sub.he].map(normalizeSearchText))].filter(Boolean);
-  return { id, kind, title, sub, keywords, tab, normTitles, normKeywords };
+  // B-SHELL-37: display the destination's current place, while retaining the
+  // existing search terms above so a subtitle change cannot alter matching or
+  // ranking. Content entries keep their real shelf/domain/pack labels.
+  const place = kind === "route" ? placeForTab(tab) : undefined;
+  return { id, kind, title, sub: place ? pair(place.en, place.he) : sub, keywords, tab, normTitles, normKeywords };
 }
 
 /** Consolidated views reachable only via search (labels: sm.extra.*). */
@@ -160,10 +166,7 @@ function buildIndex(): readonly SearchEntry[] {
         `route:${it.tab}`,
         "route",
         pair(translate("en", "nav.tab." + it.tab), translate("he", "nav.tab." + it.tab)),
-        // OBJ-SHELL-04: the hub eyebrow. `nav.<sec.id>` was never a key, so
-        // translate() fell back to the key and every search row printed
-        // "nav.journal" / "nav.behaviors" at the parent. `nav.cat.*` is the
-        // real hub-name namespace and exists in EN and HE for all ten hubs.
+        // Retain the existing hub search terms; entry() displays its current place.
         pair(translate("en", "nav.cat." + sec.id), translate("he", "nav.cat." + sec.id)),
         { en: [], he: [] },
         it.tab,

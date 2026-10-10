@@ -38,11 +38,12 @@ const modal = stripComments(read("components/overview/QuickLogModal.tsx"));
 const behaviors = stripComments(read("components/tabs/BehaviorsTab.tsx"));
 
 describe("TODAY-3 — one shared confirmed-capture contract (no forked path)", () => {
-  it("QuickLogModal and BehaviorsTab both render the SAME ConfirmCaptureReview", () => {
+  it("QuickLogModal owns the single review; Behaviors only launches that sheet", () => {
     expect(modal).toMatch(/import ConfirmCaptureReview from ["']\.\/ConfirmCaptureReview["']/);
-    expect(behaviors).toMatch(/import ConfirmCaptureReview.* from ["']\.\.\/overview\/ConfirmCaptureReview["']/);
+    expect(behaviors).toContain("openCaptureSheet");
+    expect(behaviors).not.toMatch(/import ConfirmCaptureReview/);
     expect(count(modal, /<ConfirmCaptureReview/g)).toBe(1);
-    expect(count(behaviors, /<ConfirmCaptureReview/g)).toBe(1);
+    expect(count(behaviors, /<ConfirmCaptureReview/g)).toBe(0);
   });
 
   it("neither surface re-implements the review block inline (the copy lives in the shared component only)", () => {
@@ -67,45 +68,53 @@ describe("TODAY-3 — one shared confirmed-capture contract (no forked path)", (
   });
 });
 
-describe("TODAY-3 — the voice path is driven through review", () => {
-  it("parseVoice (the only dictation-transcript consumer) arms the confirm gate with voice provenance", () => {
-    const parse = /const parseVoice = async[\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
-    expect(parse).toBeTruthy();
-    expect(parse).toMatch(/setCaptureSource\(\s*["']voice["']\s*\)/);
-    expect(parse).toMatch(/setNeedsReview\(true\)/);
-    // and the gate is armed BEFORE either fill branch runs (top of the function)
-    expect(parse.indexOf("setNeedsReview(true)")).toBeLessThan(parse.indexOf("try {"));
+describe("TODAY-3 — every capture uses the shared review gate", () => {
+  const context = stripComments(read("context/ArborContext.tsx"));
+  const shell = stripComments(read("components/layout/Shell.tsx"));
+
+  it("voice enters the one extraction function with truthful provenance", () => {
+    const voice = /const startVoice = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
+    expect(voice).toBeTruthy();
+    expect(voice).toContain('setSource("voice")');
+    expect(voice).toContain('void extractFromTyped(said, hardMomentRef.current ? "incident" : "moment")');
+    const extract = /const extractFromTyped = async[\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
+    expect(extract).toBeTruthy();
+    expect(extract).toContain('setSource("ai-draft")');
+    expect(extract).toContain('setReviewing(true)');
+    expect(extract).not.toMatch(/handleAddLog\(|addMoment\(/);
   });
 
-  it("every pendingCaptureMode handoff (Today QuickCaptureBar / Journal tiles) arms the gate", () => {
-    const effect = /if\s*\(!pendingCaptureMode\)\s*return;[\s\S]*?consumeCaptureRequest\(\);/.exec(behaviors)?.[0] ?? "";
-    expect(effect).toBeTruthy();
-    expect(effect).toMatch(/setNeedsReview\(true\)/);
-    // the gate arms before the mode's onClick fires
-    expect(effect.indexOf("setNeedsReview(true)")).toBeLessThan(effect.indexOf("onClick()"));
+  it("the context handoff reaches the shell-mounted modal; AI drafts open directly in review", () => {
+    expect(context).toContain('setCaptureSheet({ open: true, ...opts })');
+    expect(shell).toMatch(/<QuickLogModal[\s\S]{0,500}review=\{captureSheet\.review\}/);
+    expect(modal).toMatch(/if \(review\) \{\s*setSource\(review\);\s*setHardMoment\(true\);\s*setReviewing\(true\);/);
+    expect(behaviors).not.toMatch(/pendingCaptureMode|consumeCaptureRequest|<ConfirmCaptureReview/);
   });
 });
 
-describe("TODAY-3 — no behavior-log write without explicit confirm", () => {
-  it("submitLog interposes the review BEFORE handleAddLog and returns while the gate is armed", () => {
-    const submit = /const submitLog = [\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
+describe("TODAY-3 — no incident write without explicit confirm", () => {
+  it("submit opens review and never writes; confirm alone reaches handleAddLog", () => {
+    const submit = /const submit = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
+    const confirm = /const confirm = async[\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
     expect(submit).toBeTruthy();
-    expect(submit).toMatch(/if\s*\(needsReview\)\s*\{\s*setReviewOpen\(true\);\s*return;/);
-    expect(submit.indexOf("needsReview")).toBeLessThan(submit.indexOf("handleAddLog"));
+    expect(confirm).toBeTruthy();
+    expect(submit).toContain('setReviewing(true)');
+    expect(submit).not.toMatch(/handleAddLog\(|addMoment\(/);
+    expect(count(modal, /handleAddLog\(/g)).toBe(1);
+    expect(confirm).toContain('await handleAddLog(e, { callerShowsFailure: true })');
+    expect(modal).toContain('onConfirm={confirm}');
+    // Negative control: the retired direct-submit shape violates this gate.
+    expect('const submitLog = (e) => handleAddLog(e);').toMatch(/handleAddLog\(/);
+    expect(behaviors).not.toMatch(/handleAddLog\(|addMoment\(|const submitLog/);
   });
 
-  it("handleAddLog is reachable from exactly two seams: ungated submitLog and confirmReview", () => {
-    expect(count(behaviors, /handleAddLog\(e\)/g)).toBe(2);
-    const confirm = /const confirmReview = [\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
-    expect(confirm).toMatch(/handleAddLog\(e\)/);
-    expect(confirm).toMatch(/setNeedsReview\(false\)/);
-  });
-
-  it("discard never writes — it resets the draft instead", () => {
-    const discard = /const discardReview = [\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
+  it("discard clears the draft and closes without writing", () => {
+    const discard = /const discard = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
     expect(discard).toBeTruthy();
-    expect(discard).not.toMatch(/handleAddLog/);
-    expect(discard).toMatch(/cancelEditLog\(\)/);
+    expect(discard).not.toMatch(/handleAddLog|addMoment/);
+    for (const field of ["Trigger", "Response", "Notes"]) expect(discard).toContain(`setNewLog${field}("")`);
+    expect(discard).toContain('setReviewing(false)');
+    expect(discard).toContain('closeSheet()');
   });
 });
 
@@ -158,8 +167,8 @@ describe("AI-CAP-5 — review honesty: the AI-guessed fields are visible and inl
     expect(review).toMatch(/ql\.review\.tapToEdit/);
   });
 
-  it("BOTH consumers pass the intensity/context/duration draft state + text setters into the SAME component (no fork)", () => {
-    for (const surface of [modal, behaviors]) {
+  it("the one consumer passes the complete editable draft into the shared review", () => {
+    for (const surface of [modal]) {
       expect(surface).toMatch(/intensity=\{(?:isIncidentType\(newLogType\) \? )?newLogIntensity(?: : undefined)?\}/);
       expect(surface).toMatch(/onIntensityChange=\{setNewLogIntensity\}/);
       expect(surface).toMatch(/context=\{newLogContext\}/);
@@ -193,7 +202,7 @@ describe("AI-CAP-5 — review honesty: the AI-guessed fields are visible and inl
     // BehaviorsTab: the review's setters are the context draft setters — the
     // confirmed write (handleAddLog) reads newLogIntensity/newLogContext/etc.
     // directly, so a stepper tap inside review is already in the write.
-    expect(behaviors).toMatch(/onContextChange=\{\(c\) => setNewLogContext\(c as BehaviorContext\)\}/);
+    expect(behaviors).not.toContain("setNewLogContext");
     expect(modal).toMatch(/onContextChange=\{\(c\) => setNewLogContext\(c as BehaviorContext \| ""\)\}/);
   });
 });

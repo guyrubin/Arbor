@@ -19,8 +19,8 @@ describe("the portrait mounts the restored pieces inside its existing modules", 
     expect((portrait.match(/\bdata-module=/g) ?? []).length).toBe(3);
     expect(keepsakes).not.toMatch(/\bdata-module=/);
   });
-  it("the keepsake views are the Growth hub's own: words, firsts, tree and the month", () => {
-    for (const view of ["<FirstWordsLedger />", "<DevScoreCard />", "<ArborTreeCard />", "<MonthInReview />"]) expect(keepsakes).toContain(view);
+  it("the keepsake views retain firsts/tree and use the unified month reader", () => {
+    for (const view of ["<KeptThingsPage key={childProfile.id} />", "<DevScoreCard />", "<ArborTreeCard />"]) expect(keepsakes).toContain(view);
   });
 });
 
@@ -36,11 +36,11 @@ describe("CLINICAL FIREWALL on the thread map", () => {
   });
 });
 
-describe("kept quotes show on My child through the Words view (B-GROWTH-36)", () => {
-  it("the Words view is the ledger, which lists 'Things {name} said' from 3", () => {
-    const ledger = read("components/growth/FirstWordsLedger.tsx");
-    expect(keepsakes).toContain('{view === "words" ? <FirstWordsLedger />');
-    expect(ledger).toContain("<SaidList ");
+describe("kept quotes show on My child through the unified reader (B-ASKJB-36)", () => {
+  it("the kept view reads explicit quote documents at every age", () => {
+    const reader = read("components/kept/KeptThingsPage.tsx");
+    expect(keepsakes).toContain('{view === "kept" ? <KeptThingsPage');
+    expect(reader).toContain('useChildHistory<KeepsakeDoc>(childId, "keepsakes")');
   });
   it("B-LOOP-10 holds: a quote never becomes a record observation (no shelf, no coverage count)", () => {
     const doc = quoteKeepsakeDoc("The moon is following us", new Date("2026-10-08T19:00:00Z"))!;

@@ -32,7 +32,7 @@ const MARKERS = [
   { name: "capture", re: /aria-label=\{t\("beh\.captureTitle"\)\}/ },
   { name: "echo", re: /behaviors-pattern-echo/ },
   { name: "guides", re: /<HardMomentsSection/ },
-  { name: "logs", re: /t\("beh\.activeLogs"\)/ },
+  { name: "patterns", re: /data-module="behaviors-patterns"/ },
 ];
 
 /** null when the order holds; else the first pair that is out of order. */
@@ -52,9 +52,12 @@ function outOfOrder(source: string): string | null {
 describe("TJB-21 — Behaviors section order", () => {
   const source = read("components/tabs/BehaviorsTab.tsx");
 
-  it("renders capture → echo → guides → logs (no hero)", () => {
+  it("renders capture → echo → guides → patterns, with the record linked to Journal", () => {
     expect(source).not.toMatch(/<HubHero/);
     expect(outOfOrder(source)).toBeNull();
+    expect(source).toContain('data-testid="behaviors-journal-link"');
+    expect(source).toContain('requestJournalFilter("hard")');
+    expect(source).not.toMatch(/grouped\.map|beh\.activeLogs/);
   });
 
   it("the static YOUR NEXT STEP banner is gone", () => {
@@ -71,10 +74,10 @@ describe("TJB-21 — Behaviors section order", () => {
       't("beh.next.title")',
       'aria-label={t("beh.captureTitle")}',
       "behaviors-pattern-echo",
-      't("beh.activeLogs")',
+      'data-module="behaviors-patterns"',
       "<HardMomentsSection />",
     ].join("\n");
-    expect(outOfOrder(prefix)).toBe("logs before guides");
+    expect(outOfOrder(prefix)).toBe("patterns before guides");
     expect(prefix).toMatch(/t\("beh\.next\.title"\)/);
   });
 });
@@ -279,10 +282,12 @@ describe("critic r1 — behaviors capture reads first, one primary fill", async 
   it("one primary fill at rest: none on the hub's capture (QuickCaptureBar is neutral); Find the pattern is outline", () => {
     const find = BEH.slice(BEH.indexOf('data-testid="behaviors-find-pattern"') - 200, BEH.indexOf('data-testid="behaviors-find-pattern"') + 400);
     expect(find).not.toMatch(/gradientCta|gradient-cta|gradient-primary/);
-    // The only fill left is the opened inline form's own submit.
+    // Capture opens the shared sheet: no competing inline-form primary.
     const fills = BEH.split("\n").filter((l) => /<button\b/.test(l) && /T\.gradientCta/.test(l));
-    expect(fills).toHaveLength(1);
-    expect(fills[0]).toContain('type="submit"');
+    expect(fills).toHaveLength(0);
+    expect(BEH).not.toMatch(/<form|<motion\.form/);
+    const modal = strip(read("components/overview/QuickLogModal.tsx"));
+    expect(modal).toMatch(/type="submit"[^\n]+--arbor-gradient-primary/);
   });
   it("the hero zero line is muted, regular weight", () => {
     const zero = HERO.slice(HERO.indexOf("{allZero && zeroLine && ("), HERO.indexOf("{zeroLine}"));
@@ -331,15 +336,16 @@ describe("critic r2 — behaviors: guides under the capture, one warm line, no s
   });
   it("at lg: a 7/5 grid — capture in the start column, the shelf as the end rail", () => {
     expect(BEH).toContain("lg:grid lg:grid-cols-12");
-    expect(BEH).toMatch(/<div className="min-w-0 space-y-6 lg:col-span-7 lg:col-start-1 lg:row-start-1">\s*<section data-module="behaviors-capture"/);
+    expect(BEH).toMatch(/<section data-module="behaviors-capture"[^\n]*lg:col-span-7 lg:col-start-1 lg:row-start-1/);
     expect(BEH).toContain('<div data-module="behaviors-hard-moments" className="min-w-0 lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1"><HardMomentsSection /></div>');
   });
-  it("NEXTLEVEL critic r1 — at lg the record follows capture in the start column (row 2); the shelf rail spans both rows", () => {
-    expect(BEH).toContain('data-module="behaviors-record" className="grid min-w-0 grid-cols-1 items-start gap-6 lg:col-span-7 lg:col-start-1 lg:row-start-2"');
+  it("B-ASKJB-23 — patterns follow capture in row 2; the shelf rail spans both rows", () => {
+    expect(BEH).toContain('data-module="behaviors-patterns" className="min-w-0 space-y-6 lg:col-span-7 lg:col-start-1 lg:row-start-2"');
+    expect(BEH).not.toContain('data-module="behaviors-record"');
     // DOM order unchanged: capture → shelf → record (below lg the shelf sits under capture).
     const cap = BEH.indexOf('data-module="behaviors-capture"');
     const shelf = BEH.indexOf('data-module="behaviors-hard-moments"');
-    const record = BEH.indexOf('data-module="behaviors-record"');
+    const record = BEH.indexOf('data-module="behaviors-patterns"');
     expect(cap).toBeLessThan(shelf);
     expect(shelf).toBeLessThan(record);
     // The old full-width second row with its own 1.5fr split is gone.

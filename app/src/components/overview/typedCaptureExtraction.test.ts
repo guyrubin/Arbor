@@ -38,96 +38,45 @@ const modal = stripComments(read("components/overview/QuickLogModal.tsx"));
 const coach = stripComments(read("components/tabs/CoachTab.tsx"));
 const context = stripComments(read("context/ArborContext.tsx"));
 
-describe("AI-CAP-3 — BehaviorsTab typed capture goes through the extraction seam", () => {
-  const extract = /const extractFromTyped = async[\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
+describe("AI-CAP-3 — the hard-moments launcher reaches the one typed extraction owner", () => {
+  const extract = /const extractFromTyped = async[\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
 
-  it("extractFromTyped exists, arms the gate with 'ai-draft' provenance BEFORE the call, and opens review directly", () => {
-    expect(extract).toBeTruthy();
-    expect(extract).toMatch(/setCaptureSource\(\s*["']ai-draft["']\s*\)/);
-    expect(extract).toMatch(/setNeedsReview\(true\)/);
-    expect(extract.indexOf("setNeedsReview(true)")).toBeLessThan(extract.indexOf("try {"));
-    expect(extract).toMatch(/setReviewOpen\(true\)/);
-    expect(extract).toMatch(/api\.extractLog\(\{ message: text, childProfile, language: getAiLanguage\(\) \}\)/);
-  });
-
-  it("FAIL-CLOSED: the typed 409 branch renders the escalation surface and leaves ZERO draft fields", () => {
-    const branch = /if \(err instanceof EscalationRequiredError\) \{([\s\S]*?)\} else \{/.exec(extract)?.[1] ?? "";
-    expect(branch).toBeTruthy();
-    // Nothing in this branch may WRITE a draft field…
-    expect(branch).not.toMatch(/setNewLog/);
-    expect(branch).not.toMatch(/applyExtractedDraft/);
-    expect(branch).not.toMatch(/toast\(/);
-    expect(branch).toMatch(/setEscalationMarkdown\(renderEscalationMarkdown\(/);
-    // …and TJB-09 (optimistic draft) makes the ROLLBACK part of this contract:
-    // the parent's sentence is now prefilled BEFORE the call, so a 409 must
-    // clear it through the shared reset seam (the one discardReview uses)
-    // rather than leaving an escalated transcript editable in the form.
-    expect(branch).toMatch(/cancelEditLog\(\)/);
-    expect(branch).toMatch(/setCaptureOpen\(false\)/);
-  });
-
-  it("TJB-09: the typed sentence is in a VISIBLE draft BEFORE the model is called", () => {
-    const prefillIdx = extract.indexOf("openFromBar(text)");
-    const callIdx = extract.indexOf("api.extractLog(");
-    expect(prefillIdx).toBeGreaterThan(-1);
-    expect(callIdx).toBeGreaterThan(-1);
-    // NEGATIVE CONTROL for this assertion: in the shipped pre-change shape the
-    // ONLY openFromBar(text) sat inside the catch — i.e. AFTER the call — so
-    // this ordering check fails on it. Reconstruct that shape and prove it.
-    const shipped = `const extractFromTyped = async (text) => {
-      setParsing(true);
-      try { const d = await api.extractLog({ message: text }); }
-      catch (err) { openFromBar(text); }
-    };`;
-    expect(shipped.indexOf("openFromBar(text)")).toBeGreaterThan(shipped.indexOf("api.extractLog("));
-    expect(prefillIdx).toBeLessThan(callIdx);
-    // …and it is not awaited, so nothing blocks on the round-trip.
-    expect(extract).not.toMatch(/await\s+openFromBar/);
-  });
-
-  it("extraction failure (non-escalation) degrades to today's ungated behavior", () => {
-    const elseBranch = /\} else \{([\s\S]*?)\}\s*\n\s*\} finally/.exec(extract)?.[1] ?? "";
-    expect(elseBranch).toMatch(/setNeedsReview\(false\)/);
-    expect(elseBranch).toMatch(/setCaptureSource\(\s*["']text["']\s*\)/);
-    // The sentence is ALREADY in the trigger field from the optimistic
-    // prefill, so this branch must not re-write (and re-scroll) it.
-    expect(elseBranch).not.toMatch(/openFromBar/);
-  });
-
-  it("W2-ASKJB critic r2: the hub's own capture bar is gone — typed extraction stays reachable through the inline form AND the one capture sheet", () => {
-    // The bar's 2-row field opened the inline form on every keystroke, so its
-    // Enter router was unreachable by typing. The hub now mounts Today's
-    // QuickCaptureBar (every tile opens the ONE capture sheet, which carries
-    // its own typed extraction); the inline form's long-text path stays.
-    expect(behaviors).not.toMatch(/openFromBarOrDraft|barText/);
+  it("the hub launches the sheet and owns no second form, extraction or draft setters", () => {
     expect(behaviors).toContain('onText={() => openCaptureSheet({ mode: "text" })}');
-    expect(behaviors).toMatch(/typed\.length > TYPED_EXTRACT_MIN_CHARS[\s\S]{0,120}void extractFromTyped\(typed\)/);
-    const sheet = read("components/overview/QuickLogModal.tsx");
-    expect(sheet).toContain("api.extractLog(");
+    expect(behaviors).not.toMatch(/openFromBar|extractFromTyped|setNewLog|<form|handleAddLog/);
+    expect(extract).toBeTruthy();
+    expect(extract).toContain('setSource("ai-draft")');
+    expect(extract).toContain('setReviewing(true)');
+    expect(extract).not.toMatch(/handleAddLog\(|addMoment\(/);
   });
 
-  it("the trigger input (where the bar redirects typing) also drafts on Enter for long fresh input only", () => {
-    expect(behaviors).toMatch(/!editingLogId && !needsReview && !newLogResponse\.trim\(\) && typed\.length > TYPED_EXTRACT_MIN_CHARS/);
+  it("the parent's input is immediately visible and remains untouched on non-escalation failure", () => {
+    expect(modal).toContain('value={newLogTrigger}');
+    expect(modal).toContain('onChange={(e) => changeTrigger(e.target.value)}');
+    expect(modal).toMatch(/const changeTrigger = \(text: string\) => \{\s*stopCaptureWork\(\);\s*setNewLogTrigger\(text\);/);
+    const fallback = /\} else \{([\s\S]*?)\}\s*\n\s*\} finally/.exec(extract)?.[1] ?? "";
+    expect(fallback).toBeTruthy();
+    expect(fallback).toContain('toast(t("beh.toast.voiceFallback"), "info")');
+    expect(fallback).not.toMatch(/setNewLog|setSource|setReviewing/);
+    // Negative control: resetting in fallback would lose the parent's words.
+    expect('setNewLogTrigger("");').toMatch(/setNewLog/);
   });
 
-  it("an empty extracted response prefills the neutral editable placeholder (never hard-blocks)", () => {
-    const apply = /const applyExtractedDraft = [\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
-    expect(apply).toMatch(/setNewLogResponse\(n\.response \|\| t\("beh\.extract\.noResponse"\)\)/);
+  it("an empty extracted response is a visible editable placeholder", () => {
+    expect(extract).toContain('setNewLogResponse(n.response || t("beh.extract.noResponse"))');
+    expect(modal).toContain('value: newLogResponse, onChange: setNewLogResponse');
   });
 
-  it("a late extraction never writes into another child's draft (lease taken before the request, checked after it)", () => {
-    expect(behaviors).toMatch(/const captureLease = \(\) => \{\s*const scope = captureChildScopeRef\.current;\s*return \(\) => captureAliveRef\.current && captureChildScopeRef\.current === scope;/);
-    for (const fn of ["parseVoice", "extractFromTyped"]) {
-      const body = new RegExp(`const ${fn} = async [\\s\\S]*?\\n  };`).exec(behaviors)?.[0] ?? "";
-      expect(body, fn).not.toBe("");
-      const lease = body.indexOf("const isCurrent = captureLease();");
-      const request = body.indexOf("await api.extractLog(");
-      expect(lease, fn).toBeGreaterThan(-1);
-      expect(lease, fn).toBeLessThan(request);
-      // The success write is gated, and the non-escalation fallback is gated.
-      expect(body.slice(request), fn).toMatch(/await api\.extractLog\([^;]*\);\s*if \(!isCurrent\(\)\) return;\s*applyExtractedDraft/);
-      expect((body.match(/if \(!isCurrent\(\)\) return;/g) ?? []).length, fn).toBe(2);
-    }
+  it("late extraction is fenced from another child, capture, or edited draft", () => {
+    expect(modal).toContain('sessionRef.current.sync(`${childProfile.id}:${editLogId ?? "new"}`, open)');
+    const lease = extract.indexOf('const isCurrent = sessionRef.current.lease("extract")');
+    const request = extract.indexOf('await api.extractLog(');
+    expect(lease).toBeGreaterThan(-1);
+    expect(request).toBeGreaterThan(lease);
+    expect(extract.slice(request)).toMatch(/await api\.extractLog\([^;]*\);\s*if \(!isCurrent\(\)\) return;\s*const n = normalizeExtractedLog/);
+    expect(extract.match(/if \(!isCurrent\(\)\) return;/g)).toHaveLength(2);
+    expect(modal).toContain('sessionRef.current.retire("extract")');
+    expect(modal).toContain('sessionRef.current.invalidate()');
   });
 });
 
@@ -181,12 +130,10 @@ describe("AI-CAP-4 — coach AI drafts land in the review-gated sheet (B-ASKJB-0
     expect(context).toMatch(/export type CaptureMode = "voice" \| "photo" \| "text" \| "ai-draft"/);
   });
 
-  it("BehaviorsTab consumes the ai-draft handoff: gate armed, ai-draft provenance, form opened into view", () => {
-    const effect = /if\s*\(!pendingCaptureMode\)\s*return;[\s\S]*?consumeCaptureRequest\(\);/.exec(behaviors)?.[0] ?? "";
-    expect(effect).toBeTruthy();
-    expect(effect).toMatch(/["']ai-draft["']\s*\?\s*["']ai-draft["']/);
-    expect(effect).toMatch(/if \(pendingCaptureMode === "ai-draft"\) focusForm\(\)/);
-    expect(effect.indexOf("setNeedsReview(true)")).toBeLessThan(effect.indexOf("focusForm()"));
+  it("AI draft handoffs open the shared modal in review, without reactivating the retired hub form", () => {
+    expect(modal).toMatch(/if \(review\) \{\s*setSource\(review\);\s*setHardMoment\(true\);\s*setReviewing\(true\);/);
+    expect(behaviors).not.toMatch(/pendingCaptureMode|consumeCaptureRequest|focusForm|setNeedsReview/);
+    expect(context).toContain('setCaptureSheet({ open: true, ...opts })');
   });
 });
 

@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import {
   firstGroupOfMonth, isHardMomentSignal, journalMonthKeys, journalSearchText, matchesJournalFilter, monthLabel,
   type JournalFilterContext,
@@ -21,13 +22,34 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..", "..");
 const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
 
+/** JSX parsing keeps arrow functions and nested expressions inside their
+ * attributes. A regex stopping at `>` would skip the classes after `=>`. */
+function recordFilterSelects(source: string) {
+  const ast = ts.createSourceFile("JournalTab.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const controls: { id: string; ariaLabel: string; classes: string }[] = [];
+  const visit = (node: ts.Node) => {
+    if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && node.tagName.getText(ast) === "select") {
+      const attrs = node.attributes.properties.filter(ts.isJsxAttribute);
+      const attr = (name: string) => attrs.find((value) => value.name.getText(ast) === name)?.initializer;
+      const id = attr("data-testid");
+      if (id && ts.isStringLiteral(id) && /^journal-(type|intensity|status)-filter$/.test(id.text)) {
+        const classes = attr("className");
+        controls.push({ id: id.text, ariaLabel: attr("aria-label")?.getText(ast) ?? "", classes: classes && ts.isStringLiteral(classes) ? classes.text : "" });
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(ast);
+  return controls;
+}
+
 const sig = (id: string, over: Partial<TimelineSignal> = {}): TimelineSignal =>
   ({ id, kind: "moment", at: "2026-09-20T10:00:00.000Z", tone: "lav", ...over }) as TimelineSignal;
 
 const logs = new Map([
-  ["a", { behaviorType: "Transition Refusal", trigger: "Would not put shoes on", response: "Gave two choices", notes: "" }],
-  ["b", { behaviorType: "Moment", trigger: "Sang in the bath", response: "", notes: "loves bubbles" }],
-  ["c", { behaviorType: "Sleep Meltdown", trigger: "נעליים בבוקר", response: "חיבוק", notes: "" }],
+  ["a", { behaviorType: "Transition Refusal", trigger: "Would not put shoes on", response: "Gave two choices", notes: "", intensity: 3, resolved: false }],
+  ["b", { behaviorType: "Moment", trigger: "Sang in the bath", response: "", notes: "loves bubbles", intensity: 3, resolved: true }],
+  ["c", { behaviorType: "Sleep Meltdown", trigger: "נעליים בבוקר", response: "חיבוק", notes: "", resolved: true }],
 ]);
 const signals = [
   sig("moment-a", { refTitle: "Transition Refusal", detail: "Would not put shoes on" }),
@@ -69,6 +91,29 @@ describe("B-ASKJB-14 — filter predicates (pure)", () => {
     expect(ids(ctx("en", { filter: "hard", query: "shoes" }))).toEqual(["moment-a"]);
   });
 
+  it("B-ASKJB-23: moved type, observed intensity and status facets compose with search", () => {
+    expect(ids(ctx("en", { type: "Transition Refusal" }))).toEqual(["moment-a"]);
+    expect(ids(ctx("en", { intensity: "3" }))).toEqual(["moment-a"]);
+    expect(ids(ctx("en", { status: "open" }))).toEqual(["moment-a"]);
+    expect(ids(ctx("en", { status: "resolved" }))).toEqual(["moment-b", "moment-c"]);
+    expect(ids(ctx("en", { filter: "hard", type: "Transition Refusal", intensity: "3", status: "open", query: "shoes" }))).toEqual(["moment-a"]);
+    expect(ids(ctx("en", { filter: "hard", type: "Transition Refusal", intensity: "3", status: "resolved" }))).toEqual([]);
+    expect(ids(ctx("en", { intensity: "5" }))).toEqual([]);
+  });
+
+  it("B-ASKJB-23: intensity never matches a legacy Moment or an unrecorded number", () => {
+    // The legacy Moment fixture deliberately stores 3, just like the old bug.
+    expect(logs.get("b")?.intensity).toBe(3);
+    expect(matchesJournalFilter(signals[1], ctx("en", { intensity: "3" }))).toBe(false);
+    expect(matchesJournalFilter(signals[2], ctx("en", { intensity: "3" }))).toBe(false);
+    for (const facet of [{ type: "Transition Refusal" }, { intensity: "3" }, { status: "open" }, { status: "resolved" }]) {
+      expect(matchesJournalFilter(signals[3], ctx("en", facet))).toBe(false);
+      expect(matchesJournalFilter(sig("moment-missing"), ctx("en", facet))).toBe(false);
+    }
+    // Negative control: the former intensity-only predicate wrongly includes it.
+    expect(logs.get("b")?.intensity === Number("3")).toBe(true);
+  });
+
   it("empty query + All shows everything; a miss shows nothing (the empty state)", () => {
     expect(ids(ctx("en"))).toEqual(signals.map((s) => s.id));
     expect(ids(ctx("en", { query: "zebra" }))).toEqual([]);
@@ -102,13 +147,17 @@ describe("B-ASKJB-14 — the export moved with the function (same PDF as Behavio
     expect(html).toContain(`<td>3/5</td><td>5m</td><td>${t("beh.open")}</td>`);
   });
 
-  it("Behaviors and the Journal both print through lib/behaviorExport", () => {
+  it("Journal alone prints the same export from its currently visible saved rows", () => {
     const beh = read("components/tabs/BehaviorsTab.tsx");
-    expect(beh).toContain("const exportPdf = () => exportBehaviorPdf(filtered, { t, lang: uiLang });");
+    expect(beh).not.toContain("exportBehaviorPdf");
+    expect(beh).toContain('requestJournalFilter("hard")');
     expect(beh).not.toContain("w.document.write(html)");
     const journal = read("components/tabs/JournalTab.tsx");
     expect(journal).toContain("exportBehaviorPdf(rows, { t, lang: uiLang });");
-    expect(journal).toMatch(/journalFilter === "hard" && visibleSignals\.some/);
+    expect(journal).toContain("visibleSignals.some((sig) => momentLogId(sig) && logsById.has(momentLogId(sig)!))");
+    const exportFn = /const exportHardMoments = [\s\S]*?\n  };/.exec(journal)?.[0] ?? "";
+    expect(exportFn).toContain("visibleSignals");
+    expect(exportFn).toContain("momentLogId");
   });
 });
 
@@ -125,6 +174,27 @@ describe("B-ASKJB-14 — the filter row (source facts)", () => {
     }
     expect(row).not.toMatch(/\b(ml|mr|pl|pr)-\d|text-left|text-right/);
     expect(journal).toContain('id={`journal-day-${group.key}`}');
+  });
+
+  it("all moved facets are real labeled controls, share the predicate, clear together and keep 44 px targets", () => {
+    const facets = journal.slice(journal.indexOf('data-testid="journal-record-filters"'), journal.indexOf('data-testid="journal-filter-empty"'));
+    for (const name of ["type", "intensity", "status"]) expect(facets).toContain(`data-testid="journal-${name}-filter"`);
+    const controls = recordFilterSelects(journal);
+    expect(controls.map((control) => control.id).sort()).toEqual(["journal-intensity-filter", "journal-status-filter", "journal-type-filter"]);
+    for (const control of controls) {
+      expect(control.ariaLabel, control.id).toMatch(/t\("beh\.(allTypes|anyIntensity|allStatus)"\)/);
+      expect(control.classes, control.id).toMatch(/\bmin-h-11\b/);
+    }
+    // Negative control: the same parser sees past an arrow and catches both
+    // a missing accessible label and the original sub-44 target shape.
+    const broken = recordFilterSelects('<select data-testid="journal-type-filter" onChange={(e) => setFilter(e.target.value)} className="min-h-9" />');
+    expect(broken).toHaveLength(1);
+    expect(broken[0].ariaLabel).toBe("");
+    expect(broken[0].classes).not.toMatch(/\bmin-h-11\b/);
+    expect(journal).toContain("type: typeFilter, intensity: intensityFilter, status: resolvedFilter");
+    const clear = /const clearJournalFilters = [^\n]+/.exec(journal)?.[0] ?? "";
+    for (const setter of ["setTypeFilter", "setIntensityFilter", "setResolvedFilter"]) expect(clear).toContain(`${setter}("all")`);
+    expect(clear).toContain('setJournalQuery("")');
   });
 
   it("search state is per session: no storage, no request", () => {

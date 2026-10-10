@@ -142,9 +142,22 @@ describe("GP-33 — the ledger card keeps the record's register", () => {
     expect(childData).toContain('"langObs"'); // still export/erase swept
   });
 
-  it("is MOUNTED on the Growth hub (not another capability built and left unwired)", () => {
-    expect(HUB).toContain('import FirstWordsLedger from "../growth/FirstWordsLedger"');
-    expect(HUB).toMatch(/<FirstWordsLedger \/>/);
+  it("keeps the current My child reader on the same words source and preserves the Lab door", () => {
+    const reader = read("components/kept/KeptThingsPage.tsx");
+    const lab = read("components/tabs/LanguageLabVocabView.tsx");
+    const wired = (hub: string, page: string) => hub.includes('import KeptThingsPage from "../kept/KeptThingsPage"')
+      && hub.includes('<KeptThingsPage key={childProfile.id} />')
+      && page.includes('useChildHistory<LangObservation>(childId, "langObs", "timestamp")')
+      && page.includes('langObs: words.items')
+      && page.includes('setActiveTab("language")');
+    expect(wired(HUB, reader)).toBe(true);
+    // The new count-free reader replaces the old hub ledger, not its records,
+    // input door or the Lab's neutral combined/per-language observation counts.
+    expect(lab).toContain("aggregateLangCounts(observations)");
+    expect(lab).toContain("profileLangCounts(languages, counts)");
+    expect(wired(HUB.replace('<KeptThingsPage key={childProfile.id} />', ''), reader)).toBe(false);
+    expect(wired(HUB, reader.replace('langObs: words.items', 'langObs: []'))).toBe(false);
+    expect(wired(HUB, reader.replace('setActiveTab("language")', 'setActiveTab("overview")'))).toBe(false);
   });
 
   it("renders counts and dates, and offers the write path back to the Lab", () => {

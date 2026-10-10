@@ -114,6 +114,12 @@ export const momentLogFields = (text: string, context: string = "Home") => ({
   context,
 });
 
+/** A keep marker is valid only on a plain Moment, never on a problem. */
+export function keptMomentFields(behaviorType: string, kept?: "said" | "by_herself" | "first") {
+  return !isIncidentType(behaviorType) && behaviorType === MOMENT_BEHAVIOR_TYPE
+    && (kept === "said" || kept === "by_herself" || kept === "first") ? { kept } : {};
+}
+
 /**
  * B-TODAY-19 — the ONE plain-moment record `addMoment` writes: the moment
  * fields, resolved, plus the optional in-doc photo and the answered prompt's
@@ -123,7 +129,7 @@ export const momentLogFields = (text: string, context: string = "Home") => ({
 export function buildMomentLog(
   text: string,
   context: string,
-  opts: { photoAttachment?: string; promptKey?: string } = {},
+  opts: { photoAttachment?: string; promptKey?: string; kept?: "said" | "by_herself" | "first" } = {},
   now: Date = new Date(),
 ) {
   const fields = momentLogFields(text, context);
@@ -137,6 +143,7 @@ export function buildMomentLog(
     trigger: fields.trigger,
     context: fields.context,
     resolved: true,
+    ...keptMomentFields(fields.behaviorType, opts.kept),
     ...(opts.photoAttachment ? { photoAttachment: opts.photoAttachment } : {}),
     ...(opts.promptKey ? { promptKey: opts.promptKey } : {}),
   };

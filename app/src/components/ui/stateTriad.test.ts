@@ -216,9 +216,12 @@ describe("JournalTab — bespoke empty replaced by the shared teach-empty", () =
     expect(source).toContain('ctaTestId="journal-empty-cta"');
   });
 
-  it("the ghost preview is composed from static GhostBlocks", () => {
-    expect(source).toMatch(/import \{ EmptyState, GhostBlock \} from "\.\.\/ui\/EmptyState"/);
-    expect(source).toContain("<GhostBlock");
+  it("the journal keeps one concise teach-empty with its action before decorative content", () => {
+    const empty = source.slice(source.indexOf('data-testid="journal-teach-empty"'), source.indexOf('<section aria-labelledby="journal-timeline-title"'));
+    expect(empty).toContain("<EmptyState");
+    expect(empty).toContain('statesText("elev.states.journal.body"');
+    expect(empty).toContain('ctaTestId="journal-empty-cta"');
+    expect(empty).not.toMatch(/preview=|illustration=|<GhostBlock/);
   });
 });
 

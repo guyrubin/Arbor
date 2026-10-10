@@ -28,23 +28,37 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..", "..");
 const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
 const BEH = read("components/tabs/BehaviorsTab.tsx");
+const DETAILS = read("components/journal/JournalMomentDetails.tsx");
+const FILTERS = read("lib/journalFilters.ts");
 const CTX = read("context/ArborContext.tsx");
 
 describe("OBJ-BEH-02 · the toast names the fields the form shows", () => {
-  it("the two keys the toast interpolates are the two the form renders as labels", () => {
-    // The labels, read off the form.
-    expect(BEH).toContain("happened: t(\"beh.capture.happened\")");
-    expect(BEH).toContain("tried: t(\"beh.capture.tried\")");
-    // The toast, built from the same two.
-    expect(BEH).toMatch(/t\("elev\.closeloop\.validate\.both", \{ happened: captureCopy\.happened, tried: captureCopy\.tried \}\)/);
-    expect(BEH).toMatch(/t\("elev\.closeloop\.validate\.one", \{ happened: captureCopy\.happened \}\)/);
+  it("the shared sheet's validation message names the two labels it actually renders", () => {
+    const modal = read("components/overview/QuickLogModal.tsx");
+    expect(modal).toContain('htmlFor="quick-log-trigger"');
+    expect(modal).toContain('>{t("ql.trigger")}</label>');
+    expect(modal).toContain('>{t("ql.response")}</label>');
+    expect(modal.match(/toast\(t\("ql\.errToast"\), "error"\)/g)).toHaveLength(2);
+    expect(en["ql.trigger"]).toContain("triggered");
+    expect(en["ql.response"]).toContain("respond");
+    expect(en["ql.errToast"]).toContain("triggered");
+    expect(en["ql.errToast"]).toContain("responded");
+    expect(he["ql.trigger"]).toContain("עורר");
+    expect(he["ql.errToast"]).toContain("עורר");
+    expect(he["ql.response"]).toContain("הגבתם");
+    expect(he["ql.errToast"]).toContain("הגבתם");
+    expect(BEH).not.toMatch(/validationToast|setNewLog|<form|<motion\.form/);
   });
 
-  it("every write path routes through the one toast builder", () => {
-    // submitLog and confirmReview — the two places a draft can fail validation.
-    expect(BEH.match(/toast\(validationToast\(invalid\), "error"\)/g)).toHaveLength(2);
-    // NEGATIVE CONTROL: the pre-fix call, which toasted the raw key.
-    expect(BEH).not.toMatch(/toast\(t\(invalid\), "error"\)/);
+  it("both shared-sheet write gates retain the taxonomy rule before review or write", () => {
+    const modal = read("components/overview/QuickLogModal.tsx");
+    for (const fn of ["submit", "confirm"]) {
+      const body = new RegExp(`const ${fn} = [\\s\\S]*?\\n  };`).exec(modal)?.[0] ?? "";
+      expect(body, fn).toBeTruthy();
+      expect(body).toContain('validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse })');
+      expect(body).toContain('toast(t("ql.errToast"), "error")');
+      expect(body).not.toMatch(/toast\(t\(invalid\), "error"\)/);
+    }
   });
 
   it("the new strings exist in EN and HE and carry both field tokens", () => {
@@ -104,12 +118,12 @@ describe("OBJ-BEH-03 · a Moment is not graded", () => {
   });
 
   it("the list applies that predicate, and hides the meter and level for a Moment", () => {
-    expect(BEH).toMatch(/intensityFilter !== "all" && \(!isIncidentType\(l\.behaviorType\) \|\| l\.intensity !== Number\(intensityFilter\)\)/);
+    expect(FILTERS).toContain('ctx.intensity !== "all" && (!log || !isIncidentType(log.behaviorType) || log.intensity !== Number(ctx.intensity))');
     // B-DATA-09: the row's colour-coded IntensityMeter is a verdict
     // (REVIEW-PRODUCTION §6) — its mount is gone; the level pill renders only
     // for an incident with a recorded number.
-    expect(BEH).not.toMatch(/<IntensityMeter\b/);
-    expect(BEH).toMatch(/\{isIncidentType\(log\.behaviorType\) && typeof log\.intensity === "number" && <span[^\n]*beh\.level/);
+    expect(DETAILS).not.toMatch(/<IntensityMeter\b/);
+    expect(DETAILS).toMatch(/\{isIncidentType\(log\.behaviorType\) && typeof log\.intensity === "number" && <div[^\n]*beh\.level/);
   });
 
   it("NEGATIVE CONTROL: the pre-fix predicate matched a Moment stored at 3", () => {

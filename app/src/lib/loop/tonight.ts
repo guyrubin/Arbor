@@ -14,6 +14,7 @@
 import type { BehaviorLog } from "../../types";
 import type { ActionLoopEntry, ActionOutcome } from "../../actionLoop/model";
 import type { KeepsakeDoc } from "../firstsKeepsake";
+import { parentWritten } from "../kept/parentWritten";
 import { dayKey } from "../../practice/signals";
 import { localDay } from "../milestones/observe";
 import { WHAT_HAPPENED_CAP } from "../../ai/journalContext";
@@ -85,13 +86,16 @@ export interface KeptQuote {
   noticedOn: string;
 }
 
-/** The quote keepsakes, newest first (anything else in the collection is skipped). */
+/** Parent-written quote keepsakes, newest first. Check provenance before
+ * projecting it away: every words reader and its Send/Print/packet path
+ * shares this boundary. Parent confirmation never makes AI text verbatim. */
 export function quotesFromDocs(docs: readonly unknown[]): KeptQuote[] {
   const out: KeptQuote[] = [];
   for (const raw of docs) {
     if (!raw || typeof raw !== "object") continue;
     const d = raw as Record<string, unknown>;
     if (d.kind !== "quote" || typeof d.id !== "string" || typeof d.note !== "string" || !d.note.trim()) continue;
+    if (!parentWritten(d)) continue;
     const on = typeof d.noticedOn === "string" ? d.noticedOn : "";
     out.push({ id: d.id, note: d.note, noticedOn: on });
   }

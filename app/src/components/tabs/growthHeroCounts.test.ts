@@ -28,7 +28,7 @@ const HUB_FILES = [
   "components/companion/PortraitWatchRow.tsx",
   "components/companion/PortraitKeepsakes.tsx",
   "components/sections/DevScoreCard.tsx",
-  "components/growth/MonthInReview.tsx",
+  "components/kept/KeptThingsPage.tsx",
   "components/growth/FirstWordsLedger.tsx",
   "components/growth/ArborTreeCard.tsx",
   // W2-GROWTH r1 (profile critic F3): the Profile milestones chapter printed

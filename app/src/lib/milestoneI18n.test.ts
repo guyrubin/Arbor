@@ -179,7 +179,7 @@ describe("B-GROWTH-11 — render sites print through the resolver (source scan)"
       /\bselected\.milestone\.(?:title|description)\b/,
       /title:\s*m\.title\b/,
     ],
-    "components/growth/MonthInReview.tsx": [/\{\s*nextToWatch\.title\s*\}/],
+    "components/kept/KeptThingsPage.tsx": [/title:\s*item\.title\b/],
     "components/tabs/StoryTimelineTab.tsx": [/title:\s*m\.refTitle/],
   };
   for (const [rel, patterns] of Object.entries(FORBIDDEN)) {
@@ -194,6 +194,6 @@ describe("B-GROWTH-11 — render sites print through the resolver (source scan)"
     expect("<span>{item.title}</span>").toMatch(FORBIDDEN["components/tabs/MilestonesTab.tsx"][0]);
     expect("{band.label}").toMatch(FORBIDDEN["components/tabs/MilestonesTab.tsx"][1]);
     expect("title: chosenWatch.title,").toMatch(FORBIDDEN["components/companion/PortraitWatchRow.tsx"][0]);
-    expect("{nextToWatch.title}").toMatch(FORBIDDEN["components/growth/MonthInReview.tsx"][0]);
+    expect("title: item.title").toMatch(FORBIDDEN["components/kept/KeptThingsPage.tsx"][0]);
   });
 });

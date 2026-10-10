@@ -172,6 +172,9 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     primaryMove: "log-behavior", moduleBudget: 3, demotionTarget: "plans",
     // Pattern echo is a COUNT observation, never a verdict; after 3 similar
     // logs one contextual CTA routes to plans (the demotion target's job).
+    // B-ASKJB-23: QuickLogModal owns capture; Journal Hard moments owns the
+    // list, filters, edit/resolve/delete/PDF and per-log scripts. The live
+    // owners are guarded by hardMomentCapabilities.json in both source gates.
     threadWrite: "behaviorLogs",
   },
   {

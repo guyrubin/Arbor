@@ -113,6 +113,7 @@ export default function QuickLogModal({
     childProfile,
     behaviorLogs,
     handleAddLog,
+    autofillLogTemplate,
     addMoment,
     deleteLog,
     seedCoach,
@@ -611,6 +612,18 @@ export default function QuickLogModal({
     <details open={detailsOpen} onToggle={(e) => setDetailsOpen(e.currentTarget.open)} className="rounded-xl px-3" style={{ border: "1px solid var(--arbor-rule)" }}>
       <summary className="min-h-11 cursor-pointer py-3 text-xs font-bold" style={{ color: "var(--arbor-ink-soft)" }}>{t("companion.capture.details")}</summary>
       <div className="space-y-3 pb-3">
+        {hardMoment && <div data-testid="quicklog-starters" className="space-y-2">
+          <p className="t-sm font-bold">{t("beh.quickFill")}</p>
+          <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("beh.starters.hint")}</p>
+          <div className="flex flex-wrap gap-2">
+            {(["morning", "screen", "sibling"] as const).map((starter) => (
+              <button key={starter} type="button" data-log-starter={starter} onClick={() => { stopCaptureWork(); autofillLogTemplate(starter); }} className="min-h-11 rounded-xl px-3 t-sm font-semibold" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}>
+                {t(`beh.qf.${starter}`)}
+              </button>
+            ))}
+          </div>
+        </div>}
+
         <div className="space-y-1">
           <label htmlFor="quick-log-context" className="block text-xs font-bold">{t("ql.review.context")}</label>
           <select id="quick-log-context" value={newLogContext} onChange={(e) => setNewLogContext(e.target.value as BehaviorContext | "")} className="min-h-11 w-full rounded-xl p-2 text-sm" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>

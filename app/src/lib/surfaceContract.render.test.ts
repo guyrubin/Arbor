@@ -633,3 +633,25 @@ describe("B-SHELL-20 (a) · the stamp must match the contract", () => {
     expect(primaryMoveLiterals(sharing).has(moves.get("sharing")!)).toBe(true);
   });
 });
+
+/** B-ASKJB-23: exactly the three promised hard-moment modules. Geometry at
+ * 390px remains a rendered CI assertion, never a claim from this source test. */
+describe("B-ASKJB-23 — capture, guides and patterns", () => {
+  const behaviors = read("src/components/tabs/BehaviorsTab.tsx");
+  it("keeps the action-first capture before guides and patterns, with no record grid", () => {
+    const modules = [...behaviors.matchAll(/data-module="([^"]+)"/g)].map((m) => m[1]);
+    expect(modules).toEqual(["behaviors-capture", "behaviors-hard-moments", "behaviors-patterns"]);
+    expect(modules.length).toBeLessThanOrEqual(contractFor("behaviors")!.moduleBudget);
+    expect((behaviors.match(/data-primary-move="log-behavior"/g) ?? []).length).toBe(1);
+    expect(behaviors).not.toContain('data-module="behaviors-record"');
+  });
+  it("declares each retained capability's real owner to both source gates", () => {
+    const manifest = JSON.parse(read("src/lib/hardMomentCapabilities.json"));
+    expect(manifest.map((entry: { id: string }) => entry.id).sort()).toEqual([
+      "capture", "delete", "edit", "export", "guide", "log", "patterns", "photo", "record", "resolve", "review", "script", "starters", "voice",
+    ]);
+    for (const entry of manifest) for (const marker of entry.markers) expect(read(`src/${entry.owner}`), entry.id).toContain(marker);
+    expect(CHECK).toContain("hardMomentCapabilityFailures(appRoot)");
+    expect(read("scripts/capability-floors.mjs")).toContain("hardMomentCapabilityFailures(root)");
+  });
+});

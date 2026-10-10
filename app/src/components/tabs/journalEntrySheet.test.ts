@@ -83,6 +83,13 @@ describe("TJB-13 — the sheet reads the entry and routes to the ONE editor", ()
 
   it("FIREWALL: the sheet shows the entry's own content, nothing derived", () => {
     expect(sheet).not.toMatch(/intensity|score|percent|trend|delta|avg/i);
+    const details = strip(read("../journal/JournalMomentDetails.tsx"));
+    expect(sheet).toContain('momentLog && prov === "manual" && <JournalMomentDetails log={momentLog} />');
+    expect(details).not.toMatch(/score|percent|trend|delta|avg|IntensityMeter|Sparkline/i);
+    expect(details).toContain('isIncidentType(log.behaviorType) && typeof log.intensity === "number"');
+    expect(details).toContain('t("beh.level", { n: log.intensity })');
+    // Negative control: a derived severity meter is not raw parent-observed text.
+    expect('<IntensityMeter score={averageIntensity} />').toMatch(/score|avg|IntensityMeter/i);
   });
 
   it("uses the shared Modal (focus trap + restore), not a hand-rolled overlay", () => {

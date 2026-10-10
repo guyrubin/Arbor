@@ -33,7 +33,10 @@ export function journalSearchText(
 export interface JournalFilterContext {
   filter: JournalFilter;
   query: string;
-  logsById: ReadonlyMap<string, Pick<BehaviorLog, "behaviorType" | "trigger" | "response" | "notes">>;
+  type?: string;
+  intensity?: string;
+  status?: string;
+  logsById: ReadonlyMap<string, Pick<BehaviorLog, "behaviorType" | "trigger" | "response" | "notes" | "intensity" | "resolved">>;
   /** Signal ids kept from an Arbor answer (captureProvenance). */
   keptIds: ReadonlySet<string>;
   /** The localized title of a row (signalTitle → behaviorTypeLabel for moments). */
@@ -50,10 +53,15 @@ export function isHardMomentSignal(s: TimelineSignal, logsById: JournalFilterCon
 export function matchesJournalFilter(s: TimelineSignal, ctx: JournalFilterContext): boolean {
   if (ctx.filter === "hard" && !isHardMomentSignal(s, ctx.logsById)) return false;
   if (ctx.filter === "kept" && !ctx.keptIds.has(s.id)) return false;
+  const id = momentLogId(s);
+  const log = id ? ctx.logsById.get(id) : undefined;
+  if (ctx.type && ctx.type !== "all" && (!log || log.behaviorType !== ctx.type)) return false;
+  if (ctx.intensity && ctx.intensity !== "all" && (!log || !isIncidentType(log.behaviorType) || log.intensity !== Number(ctx.intensity))) return false;
+  if (ctx.status === "resolved" && (!log || !log.resolved)) return false;
+  if (ctx.status === "open" && (!log || log.resolved)) return false;
   const q = foldText(ctx.query);
   if (!q) return true;
-  const id = momentLogId(s);
-  return journalSearchText(s, id ? ctx.logsById.get(id) : undefined, ctx.labelOf(s)).includes(q);
+  return journalSearchText(s, log, ctx.labelOf(s)).includes(q);
 }
 
 /** "YYYY-MM" months present in groupByDay's day keys, newest first; "ongoing" skipped. */

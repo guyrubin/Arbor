@@ -15,9 +15,13 @@ import { installStylesheetObservation, observeAskDependency, observeReactStage, 
 export { classifyReleaseConsole, sanitizedReleaseLocation } from './runtime-diagnostics.mjs';
 import { observeTogetherGeometry, togetherLayoutGeometry, togetherScrollStable } from './together-geometry.mjs';
 import { SOURCE_FONT_NOTE, captureFontContextOptions, installOfflineFonts, captureScreenshot } from './font-runtime.mjs';
+import { RECORD_STATES, RECORD_LIMITATIONS, recordFixture, installRecordShareSink } from './record-contract.mjs';
+import { collectRecordStates } from './record-states.mjs';
+import { collectBehaviorRecordStates } from './record-behaviors.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
+  record: RECORD_STATES,
   navigation: [
     ...rows('shell', ['keep-closed', 'keep-open', 'keep-toggle-closed', 'keep-escape', 'keep-write', 'keep-close-focus']),
     ...rows('overview', ['practice-compact', 'practice-details', 'practice-outcome', 'practice-undo', 'now-scroll-initial', 'now-scroll-middle', 'now-bottom-reachable']),
@@ -34,6 +38,7 @@ export const RELEASE_INTERACTION_STATES = Object.freeze({
     ...rows('shell', ['tools-closed', 'tools-open', 'tools-escape', 'consent-review', 'consent-read-error', 'consent-read-retry', 'consent-grant-error', 'consent-draft-return', 'ask-error-generic', 'ask-error-quota', 'ask-mock-answer']),
     ...rows('shell', REPORT_CAPTURE_STATES),
   ],
+  'report-close-only': rows('shell', ['report-text-only', 'report-close-return']),
   'ask-diagnostic': [...rows('shell', ['launcher-composer', 'ask-mock-answer']), ...rows('coach', ['direct-composer', 'direct-mock-answer'])],
 });
 
@@ -134,13 +139,19 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     const navigation = await collectReleaseInteractions({ output, bundle, viewport, group: 'navigation', sourceSha, sourceTreeSha, _reportGroup: 'focused', _apiCache });
     return collectReleaseInteractions({ output, bundle, viewport, group: 'ask', sourceSha, sourceTreeSha, _priorCells: navigation.cells, _reportGroup: 'focused', _apiCache });
   }
-  const fixture = releaseFixture(bundle, viewport.lang);
+  const record = group === 'record' ? recordFixture(bundle, viewport.lang) : null;
+  const fixture = releaseFixture(record?.parsed ?? bundle, viewport.lang);
   const { lang } = viewport;
   const he = lang === 'he';
   const viewportId = `${viewport.w}x${viewport.h}`;
   mkdirSync(`${output}/shots`, { recursive: true });
   const doc = { schema: 1, scope: 'release-interactions', sourceSha, sourceTreeSha, group: _reportGroup, activeGroup: group, viewport: viewportId, lang, fixture: SMALL_FIXTURE, fontMode: 'exact', fontLimitation: SOURCE_FONT_NOTE, expectedStates: _reportGroup === group ? expectedStates : expectedReleaseInteractionStates(_reportGroup, viewport), completed: false, finished: false, cells: [..._priorCells], fixtures: ['synthetic-family', 'local-mock-server', 'synthetic-local-watch-choice', 'bounded-consent-error-responses', 'bounded-chat-error-responses', 'bilingual-report-presentation-fixture'] };
   const save = () => { doc.missingEvidence = missingReleaseInteractionEvidence(doc.cells, { group: _reportGroup, viewport, sourceSha, sourceTreeSha }); writeFileSync(`${output}/evidence.json`, JSON.stringify(doc, null, 2)); };
+  if (record) {
+    doc.recordBoundaries = RECORD_LIMITATIONS;
+    doc.fixtures.push('synthetic-record-local-storage', 'synthetic-browser-share-sink');
+    doc.recordFixture = { childId: record.childId, eligibleRows: record.expected.all, months: record.expected.months, sourceCollections: Object.keys(record.collections), negativeControls: record.text.forbidden.length };
+  }
   save();
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ headless: true });
@@ -201,6 +212,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     await context.route('**/sandbox/demo-family.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) }));
     await installOfflineFonts(context);
     await context.addInitScript(initializeSyntheticOnline, { lang });
+    if (record) await context.addInitScript(installRecordShareSink);
     if (group === 'ask-diagnostic') await context.addInitScript(installStylesheetObservation);
     const page = await context.newPage();
     page.setDefaultTimeout(8000);
@@ -213,7 +225,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     page.on('console', message => { if (message.type() === 'error' || message.type() === 'warning') diagnostics.record(message.text(), message.location()); });
     page.on('pageerror', error => diagnostics.recordPageError(error));
     page.on('filechooser', () => { apiState.deniedActions++; });
-    page.on('download', download => { apiState.deniedActions++; void download.cancel(); });
+    page.on('download', download => {
+      if (record && apiState.expectedPrintDownload && download.url().startsWith(`blob:${BASE}/`) && /\.html$/.test(download.suggestedFilename())) { apiState.printDownloads = (apiState.printDownloads ?? 0) + 1; return; }
+      apiState.deniedActions++; void download.cancel();
+    });
     page.on('response', response => { const url = new URL(response.url()); if (apiState.chat === 'mock' && url.origin === BASE && url.pathname === '/api/chat' && response.ok()) apiState.mockResponses++; });
     const readinessSnapshot = () => page.evaluate(() => {
       const visible = selector => { const el = document.querySelector(selector); if (!el) return false; const box = el.getBoundingClientRect(); return box.width > 0 && box.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
@@ -306,7 +321,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         check(cell, 'FINAL_ACTION_NOT_OCCLUDED', result.hitTarget === true);
       }
     };
-    const screen = async (route, state, action) => {
+    const screen = async (route, state, action, afterCapture) => {
       const cell = { route, state, group, lang, viewport: viewportId, sourceSha, sourceTreeSha, reached: false, fontMode: 'exact', assertions: [], failures: [], shot: null };
       doc.cells.push(cell); save();
       console.log(`Release interaction: ${group}/${state}/${lang}; cells=${doc.cells.length}.`);
@@ -324,6 +339,15 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         await captureScreenshot(page, { path: `${output}/${shot}`, timeout: 12000, animations: 'disabled' });
         cell.shot = shot;
       } catch (error) { cell.failures.push(knownFailure(error)); }
+      // Bounded follow-through can run after preserving an honest first-fold
+      // image. Its failures still fail the same cell; no second image or
+      // changed scroll position is passed off as the initial viewport.
+      if (afterCapture && cell.shot && cell.failures.length === 0) {
+        try {
+          await afterCapture(cell);
+          check(cell, 'NO_PROHIBITED_ACTIONS_AFTER_CAPTURE', apiState.deniedActions === 0, apiState.deniedActions);
+        } catch (error) { cell.failures.push(knownFailure(error)); }
+      }
       cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories } };
       cell.entryMode = entryMode;
       cell.assetDiagnostics = assets.snapshot();
@@ -360,7 +384,11 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       return cell.reached;
     };
 
-    if (group === 'navigation') {
+    if (group === 'record') {
+      const helpers = { page, context, fixture: record, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId };
+      await collectRecordStates(helpers);
+      await collectBehaviorRecordStates(helpers);
+    } else if (group === 'navigation') {
       const menu = () => byId('companion-launcher').locator('.companion-capture-menu');
       const launcherReady = await screen('shell', 'keep-closed', async cell => { await load('overview'); await visible(cell, 'KEEP_SUMMARY_VISIBLE', menu().locator('summary')); check(cell, 'KEEP_INITIALLY_CLOSED', !await menu().evaluate(el => el.open)); });
       await screen('shell', 'keep-open', async cell => { dependent(launcherReady); await menu().locator('summary').click(); check(cell, 'KEEP_OPEN', await menu().evaluate(el => el.open)); check(cell, 'THREE_KEEP_OPTIONS', await menu().locator('.companion-capture-options button:visible').count() === 3); });
@@ -500,6 +528,11 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       const watch = await screen('development', 'watch-chosen', async cell => { if (!fixture.watch) throw new Error('SYNTHETIC_WATCH_MILESTONE_MISSING'); await page.evaluate(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: watchKey, value: fixture.watch }); await load('development'); await visible(cell, 'CHOSEN_WATCH_CLEAR_VISIBLE', byId('portrait-unwatch')); await byId('portrait-watch').scrollIntoViewIfNeeded(); watchTitle = await page.locator('#portrait-watch-title').textContent(); check(cell, 'CHOSEN_WATCH_DETAILS_OPEN', await byId('portrait-watch-details').evaluate(el => el.open)); cell.fixture = 'synthetic-local-watch-choice'; });
       const cleared = await screen('development', 'watch-cleared', async cell => { dependent(watch); await byId('portrait-unwatch').click(); await visible(cell, 'WATCH_UNDO_VISIBLE', byId('portrait-watch-undo')); check(cell, 'WATCH_STORAGE_CLEARED', await page.evaluate(key => localStorage.getItem(key), watchKey) === null); check(cell, 'WATCH_CLEAR_CONTROL_REMOVED', await byId('portrait-unwatch').count() === 0); });
       await screen('development', 'watch-undo', async cell => { dependent(cleared); await byId('portrait-watch-undo').click(); await visible(cell, 'WATCH_CLEAR_RESTORED', byId('portrait-unwatch')); check(cell, 'WATCH_EXACT_CHOICE_RESTORED', await page.evaluate(key => localStorage.getItem(key), watchKey) === JSON.stringify(fixture.watch)); check(cell, 'WATCH_SAME_TITLE', await page.locator('#portrait-watch-title').textContent() === watchTitle); check(cell, 'WATCH_UNDO_REMOVED', await byId('portrait-watch-undo').count() === 0); });
+    } else if (group === 'report-close-only') {
+      await collectReportStates({ page, lang, check, visible, byId, composer, load, openConversation, closeConversation, syntheticReleaseReport,
+        screen: (route, state, action) => screen(route, state, async cell => { cell.fixture = 'bilingual-report-presentation-fixture'; await action(cell); }),
+        setReportFixture: response => { selectedReportFixture = response; apiState.chat = 'report'; },
+      }, { closeOnly: true });
     } else {
       const toggle = () => composer().locator('.companion-tools-toggle');
       const tools = () => composer().locator('.companion-secondary-tools');

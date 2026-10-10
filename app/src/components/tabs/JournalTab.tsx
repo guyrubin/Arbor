@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { FreeText } from "../ui/FreeText";
 import { Skeleton } from "../ui/Skeleton";
-import { EmptyState, GhostBlock } from "../ui/EmptyState";
+import { EmptyState } from "../ui/EmptyState";
 import { statesText } from "../../lib/i18nElevation/states";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -27,16 +27,16 @@ import QuickLogModal from "../overview/QuickLogModal";
 // of its actions run existing seams (commitConversationProposal for the
 // one-tap keep, requestCapture("ai-draft") for the edit-first route).
 import { provenanceForSignal, readCaptureProvenance, type KeptProvenance } from "../../lib/captureProvenance";
-import { JOURNAL_FILTERS, firstGroupOfMonth, isHardMomentSignal, journalMonthKeys, matchesJournalFilter, momentLogId, monthLabel, type JournalFilter } from "../../lib/journalFilters";
+import { JOURNAL_FILTERS, firstGroupOfMonth, journalMonthKeys, matchesJournalFilter, momentLogId, monthLabel, type JournalFilter } from "../../lib/journalFilters";
+import { journalRecordSignals } from "../../lib/journalRecordSignals";
 import { exportBehaviorPdf } from "../../lib/behaviorExport";
 import { journalStoryState, lastKeptMoment } from "../../lib/journalLastKept";
 import { fmtDay } from "../../lib/formatDate";
-import { isIncidentType } from "../../content/behaviorTaxonomy";
+import { behaviorTypeLabel, isIncidentType } from "../../content/behaviorTaxonomy";
 import { ageYearsOf } from "../../lib/age/forChild";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { hashQuery, routeHash } from "../../lib/routes";
 import JournalShelves, { shelfFromQuery } from "../journal/JournalShelves";
-import { EMPTY_ART } from "../../lib/parentArt";
 
 /**
  * UC-1 Journal (wireframe-reconciled) — a single calm column of logged moments.
@@ -178,6 +178,7 @@ function JournalRow({
     <button
       type="button"
       id={`journal-signal-${signal.id}`}
+      data-testid="journal-record-row"
       onClick={onOpen}
       aria-label={signal.resolved ? `${title} — ${resolvedLabel}` : title}
       className="flex w-full gap-3.5 border-b py-4 text-start last:border-b-0 rounded-xl transition-colors"
@@ -306,26 +307,26 @@ function JournalRow({
  * "All shelves", its first item — P5-LOOP c2 r1).
  */
 export default function JournalTab({ primaryMoveProps, densityToggle }: { primaryMoveProps?: Record<string, string>; densityToggle?: ReactNode } = {}) {
-  const { pendingJournalFocusId } = useArbor();
+  const { pendingJournalFocusId, pendingJournalFilter, childProfile } = useArbor();
   const query = useHashQuery();
   const view = query.get("view");
   const shelf = shelfFromQuery(query.get("shelf"));
   useEffect(() => {
-    if (!pendingJournalFocusId) return;
+    if (!pendingJournalFocusId && !pendingJournalFilter) return;
     try {
       if (hashQuery(window.location.hash).get("view") === "all") return;
       window.history.replaceState(null, "", `#${routeHash("journal", { view: "all" })}`);
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     } catch { /* SSR / tests */ }
-  }, [pendingJournalFocusId]);
-  if (view === "all") return <JournalFeed primaryMoveProps={primaryMoveProps} densityToggle={densityToggle} />;
+  }, [pendingJournalFocusId, pendingJournalFilter]);
+  if (view === "all" || pendingJournalFilter || pendingJournalFocusId) return <JournalFeed key={childProfile.id} primaryMoveProps={primaryMoveProps} densityToggle={densityToggle} />;
   return <JournalShelves shelf={shelf} pro={view === "pro"} intakeFor={query.get("for")} primaryMoveProps={primaryMoveProps} />;
 }
 
 /** `primaryMoveProps`: TimelineTab's contract stamp, spread on "All shelves"
  *  (the page's first item, P5-LOOP c2 r1) — the control, not the wrapper. */
 function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: Record<string, string>; densityToggle?: ReactNode } = {}) {
-  const { milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, requestJournalFocus, childProfile, openCaptureSheet, toggleLogResolved, deleteLog } = useArbor();
+  const { milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, pendingJournalFilter, consumeJournalFilter, childProfile, openCaptureSheet, toggleLogResolved, deleteLog } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
   // elev.childsignals.* keys (practice-kind titles) resolve from the module
@@ -337,7 +338,8 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
 
   // The ONE timeline read (hooks/useTimeline) — the same stream the Story
   // density renders. No second read, no new write path.
-  const signals = useTimeline();
+  const timeline = useTimeline();
+  const signals = useMemo(() => journalRecordSignals(timeline, behaviorLogs), [timeline, behaviorLogs]);
 
   // AI-04 — the origin ledger for rows kept from an Arbor answer. Re-read when
   // the log ledger changes, which is exactly when a keep has just landed (the
@@ -418,7 +420,7 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
   // TJB-13: the tapped row. Journal rows were inert — a saved moment could be
   // seen (clamped to two lines) but never read in full or corrected. The sheet
   // is READ + ROUTE: for the parent's own moments it hands off to the ONE
-  // existing editor (startEditLog + the Behaviors capture form), never a
+  // existing editor (the shared capture sheet), never a
   // second copy of the log form.
   const [openSignal, setOpenSignal] = useState<TimelineSignal | null>(null);
   const openMomentLogId = (s: TimelineSignal | null): string | null =>
@@ -465,19 +467,33 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
   // label (never sent anywhere, never stored — session state only) · a month
   // jump built from groupByDay keys. The filtered list feeds the SAME
   // groupByDay, so a filter narrows rows within the render that typed it.
-  const [journalFilter, setJournalFilter] = useState<JournalFilter>("all");
+  const [journalFilter, setJournalFilter] = useState<JournalFilter>(pendingJournalFilter ?? "all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [intensityFilter, setIntensityFilter] = useState("all");
+  const [resolvedFilter, setResolvedFilter] = useState("all");
+  const types = useMemo(() => Array.from(new Set(behaviorLogs.map((log) => log.behaviorType))), [behaviorLogs]);
   const [journalQuery, setJournalQuery] = useState("");
+  useEffect(() => {
+    if (!pendingJournalFilter && !pendingJournalFocusId) return;
+    setJournalFilter(pendingJournalFilter ?? "all");
+    setJournalQuery("");
+    setTypeFilter("all"); setIntensityFilter("all"); setResolvedFilter("all");
+    setOpenSignal(null);
+    if (pendingJournalFilter) consumeJournalFilter();
+    // Newer handoffs must not inherit an earlier query or record selection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingJournalFilter, pendingJournalFocusId]);
   const logsById = useMemo(() => new Map((behaviorLogs || []).map((l) => [l.id, l])), [behaviorLogs]);
   const keptIds = useMemo(
     () => new Set(signals.filter((s) => provenanceForSignal(keptProvenance, s.id)).map((s) => s.id)),
     [signals, keptProvenance],
   );
-  const filtering = journalFilter !== "all" || journalQuery.trim() !== "";
+  const filtering = journalFilter !== "all" || journalQuery.trim() !== "" || typeFilter !== "all" || intensityFilter !== "all" || resolvedFilter !== "all";
   const visibleSignals = useMemo(
     () => filtering
-      ? signals.filter((s) => matchesJournalFilter(s, { filter: journalFilter, query: journalQuery, logsById, keptIds, labelOf: (x) => signalTitle(x, tt) }))
+      ? signals.filter((s) => matchesJournalFilter(s, { filter: journalFilter, query: journalQuery, type: typeFilter, intensity: intensityFilter, status: resolvedFilter, logsById, keptIds, labelOf: (x) => signalTitle(x, tt) }))
       : signals,
-    [filtering, signals, journalFilter, journalQuery, logsById, keptIds, tt],
+    [filtering, signals, journalFilter, journalQuery, typeFilter, intensityFilter, resolvedFilter, logsById, keptIds, tt],
   );
   const groups = useMemo(
     () => groupByDay(visibleSignals, Date.now(), { locale, ongoingLabel: t("timeline.ongoing") }),
@@ -489,11 +505,11 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
     if (!key) return;
     try { document.getElementById(`journal-day-${key}`)?.scrollIntoView({ block: "start", behavior: "smooth" }); } catch { /* jsdom/SSR */ }
   };
-  const clearJournalFilters = () => { setJournalFilter("all"); setJournalQuery(""); };
-  // The Hard moments view prints the SAME PDF Behaviors prints (lib/behaviorExport).
+  const clearJournalFilters = () => { setJournalFilter("all"); setJournalQuery(""); setTypeFilter("all"); setIntensityFilter("all"); setResolvedFilter("all"); };
+  // The Journal owns the SAME log PDF as the retired Behaviors record.
   const exportHardMoments = () => {
     const rows = visibleSignals
-      .filter((s) => isHardMomentSignal(s, logsById))
+      .filter((s) => momentLogId(s) && logsById.has(momentLogId(s)!))
       .map((s) => logsById.get(momentLogId(s)!)!)
       .filter(Boolean);
     exportBehaviorPdf(rows, { t, lang: uiLang });
@@ -529,104 +545,68 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
       ? t("elev.journal.story.quietWeek", { title: signalTitle(lastKeptSignal, tt), date: lastKeptDate })
       : t("journal.story.empty");
   const feedCount = journalFeedCountKey(signals);
-  // Critic r2: the quiet week quotes the parent at every width when the row
-  // has words; the type label stays the fallback for a row without words.
-  // NEXTLEVEL critic r1 (B-NEXTLEVEL-NEW-1f): the parent's last words lead
-  // the header on EVERY week, not only a quiet one; a populated week keeps its
-  // count as one quiet line under the quote (said once). No words → the count
-  // line alone; never a machine entry.
+  // The latest overall entry stays available even under a narrower filter.
+  // Its full words/date open in the existing entry sheet, without resetting
+  // the parent's filtered record. Empty guidance lives only in teach-empty.
   const quotedLastKept = !!lastKept?.words;
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,42rem)_20rem] lg:items-start lg:justify-between lg:gap-x-10">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto flex w-full min-w-0 max-w-[1080px] flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,42rem)_20rem] lg:items-start lg:justify-between lg:gap-x-10">
       {/* NEXTLEVEL critic r1 (journal · design · P1): at lg the page is a
           reading column (≤ 42rem: header + thread, so a row's time sits next
           to its words) and a sticky inline-end rail (20rem) holding the
           compose card — not a stretched phone column. Placement by
           col/row-start only; the DOM order is unchanged. */}
-      <header data-module="journal-header" className="border-b pb-5 lg:col-start-1 lg:row-start-1" style={{ borderColor: "var(--arbor-rule)" }}>
-        <div className="grid min-w-0 items-end gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(220px,.75fr)]">
-          <div>
-            {/* P5-LOOP c2 r1 (journal design P1): "All shelves" is the page's
-                FIRST item and carries TimelineTab's ONE stamp (open-shelf) —
-                this view is the door behind the shelves, and the way back to
-                them is its move; the capture tiles sit after the thread below lg. */}
-            <button
-              type="button"
-              data-testid="journal-all-back"
-              onClick={() => goToRoute("journal")}
-              {...primaryMoveProps}
-              className="-ms-1 inline-flex min-h-11 items-center gap-1 px-1 t-sm font-bold focus:outline-none focus-visible:ring-2"
+      <header data-module="journal-header" className="min-w-0 border-b pb-3 lg:col-start-1 lg:row-start-1" style={{ borderColor: "var(--arbor-rule)" }}>
+        {/* Records first: the two navigation controls share one row. The
+            shelves control keeps the route's ONE primary-move stamp. */}
+        <div data-testid="journal-header-nav" className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <button
+            type="button"
+            data-testid="journal-all-back"
+            onClick={() => goToRoute("journal")}
+            {...primaryMoveProps}
+            className="-ms-1 inline-flex min-h-11 items-center gap-1 px-1 t-sm font-bold focus:outline-none focus-visible:ring-2"
+            style={{ color: "var(--arbor-muted)" }}
+          >
+            <Icon name="arrow_back" size={18} aria-hidden className="rtl:-scale-x-100" />
+            {t("elev.shelfJournal.back")}
+          </button>
+          {densityToggle}
+        </div>
+        <h1 className="mt-2 t-lg leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+          {t("journal.title")}
+        </h1>
+        {/* Keep the latest record's context available without placing a second
+            copy of its words above the actual feed. Native details supplies
+            keyboard/disclosure semantics; it starts closed at every width. */}
+        {lastKeptSignal ? (
+          <details data-testid="journal-last-context" className="mt-1">
+            <summary
+              data-testid="journal-last-context-toggle"
+              aria-label={`${t("elev.journal.lastEntry.summary", { date: lastKeptDate })} · ${childFirstName}`}
+              className="min-h-11 cursor-pointer py-3 t-sm font-semibold focus:outline-none focus-visible:ring-2"
               style={{ color: "var(--arbor-muted)" }}
             >
-              <Icon name="arrow_back" size={18} aria-hidden className="rtl:-scale-x-100" />
-              {t("elev.shelfJournal.back")}
-            </button>
-            {/* Critic r2: TimelineTab's density toggle rides in the header on
-                #/journal (one module with the H1, not a stamp of its own). */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              {/* NEXTLEVEL critic r1: the "Catch the moment before it's gone"
-                  eyebrow is gone — it repeated the topbar subtitle and competed
-                  with the H1. */}
-              <span aria-hidden="true" />
-              {densityToggle}
+              {t("elev.journal.lastEntry.summary", { date: lastKeptDate })}
+            </summary>
+            <div data-testid="journal-story-line" data-story={quotedLastKept ? "quoted" : "entry"} className="max-w-2xl space-y-1 pb-2">
+              <button
+                type="button"
+                data-testid="journal-last-words"
+                onClick={() => setOpenSignal(lastKeptSignal)}
+                className="flex min-h-11 w-full flex-col items-start gap-1 py-1 text-start"
+              >
+                <span dir="auto" className="block border-s-2 ps-3 t-lg leading-snug line-clamp-2" style={{ borderColor: "var(--arbor-clay-dim)", fontFamily: "var(--font-editorial)", lineHeight: 1.35, color: "var(--arbor-ink)" }}>
+                  {quotedLastKept ? <>“<bdi dir="auto">{lastKept!.words}</bdi>”</> : <bdi dir="auto">{signalTitle(lastKeptSignal, tt)}</bdi>}
+                </span>
+                <span className="t-sm font-semibold underline underline-offset-2" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.journal.lastEntry.open")}</span>
+              </button>
+              {weekCount > 0 && <p data-testid="journal-week-line" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{storyCopy}</p>}
             </div>
-            <h1 className="mt-2 t-2xl leading-[1.08] tracking-[-0.03em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              {t("journal.title")}
-            </h1>
-            {quotedLastKept ? (
-              /* Critic r2 (journal design P1 G2 + B-ASKJB-NEW-2d): the parent's
-                 own words are the story line at EVERY width — the date as the
-                 fact, the quote in the editorial face, then one door to the
-                 tiles (below md; at md+ the door sits in the aside). Real row
-                 text only, never generated; no new colour, gradient or chip. */
-              <div data-testid="journal-story-line" data-story="quoted" className="mt-3 max-w-2xl space-y-1">
-                <p className="t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>
-                  {t("elev.journal.lastWrote.caption", { name: childFirstName, date: lastKeptDate })}
-                </p>
-                {/* Tapping the words opens that entry in place (the thread's focus seam). */}
-                <button
-                  type="button"
-                  data-testid="journal-last-words"
-                  onClick={() => requestJournalFocus(lastKept!.id)}
-                  className="flex min-h-11 w-full items-center py-1 text-start"
-                >
-                  {/* P1-NEXTLEVEL critic r2 (G0): the quote is a 44 px target;
-                      the clay rule stays at the text height on the inner span. */}
-                  <span dir="auto" className="block border-s-2 ps-3 t-lg leading-snug line-clamp-2" style={{ borderColor: "var(--arbor-clay-dim)", fontFamily: "var(--font-editorial)", lineHeight: 1.35, color: "var(--arbor-ink)" }}>
-                    {"“"}<bdi dir="auto">{lastKept!.words}</bdi>{"”"}
-                  </span>
-                </button>
-                {weekCount > 0 && <p data-testid="journal-week-line" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{storyCopy}</p>}
-              </div>
-            ) : (
-              <p data-testid="journal-story-line" dir="auto" className="mt-3 max-w-2xl t-base leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{storyCopy}</p>
-            )}
-          </div>
-          {/* Critic r1: below md the week aside steps out — the story line
-              above already carries the week count or the last moment, and
-              the capture tiles move up into the first viewport.
-              NEXTLEVEL critic r1 (P1, Law 9): the aside never prints a
-              numeral — the week count is said ONCE, in the story line; the
-              old lavender "6 · moments and insights" tile repeated it 600 px
-              away and did not say what it counted. The aside keeps only the
-              door to the parent's last kept words, or the day-0 teach line. */}
-          {/* P5-LOOP c2 r1 (journal design P1): the "From the story" aside and
-              its "What happened with {name} today?" door are gone at every
-              width — they repeated the compose card's own question. The aside
-              keeps only the day-0 teach line. */}
-          {!lastKept && weekCount === 0 && (
-          <div data-testid="journal-week-aside" className="hidden border-t pt-4 md:block md:border-s md:border-t-0 md:ps-5 md:pt-0" style={{ borderColor: "var(--arbor-rule-strong)" }}>
-            <p
-              data-testid="journal-week-zero-line"
-              className="t-sm leading-snug"
-              style={{ color: "var(--arbor-ink-soft)" }}
-              dir="auto"
-            >
-              {t("elev.journal.week.zero")}
-            </p>
-          </div>
-          )}
-        </div>
+          </details>
+        ) : weekCount > 0 ? (
+          <p data-testid="journal-story-line" dir="auto" className="mt-1 t-sm" style={{ color: "var(--arbor-muted)" }}>{storyCopy}</p>
+        ) : null}
       </header>
       {/* W2 2.6 — active writing cue: the tapped guiding question, visible
           ABOVE the compose card while the parent captures. Display only —
@@ -735,44 +715,17 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
           <Skeleton className="h-20" />
         </div>
       ) : signals.length === 0 ? (
-        /* Masterplan 4.3 — shared teach-empty: a ghosted miniature of a filled
-           day-group teaches what saved moments become; the ONE CTA focuses the
-           capture bar above. Copy = elev.states.journal.* (en+he, encouraging,
-           never celebrating the zero). Replaces the bespoke card+IconBadge+
-           editorial-font shape (one of the 3 competing EmptyState shapes). */
-        <div className={`${cardCls} p-6 sm:p-8 lg:col-start-1`} data-testid="journal-teach-empty">
+        /* The shared teach-empty keeps one explanation and its working CTA.
+           Decorative preview/art must not push that first action below the fold. */
+        <div className={`${cardCls} p-4 lg:col-start-1`} data-testid="journal-teach-empty">
           <EmptyState
             className="py-6"
             icon={<IconBadge tone="lav" size={48}><Icon name="edit_note" size={26} fill={1} /></IconBadge>}
-            illustration={EMPTY_ART.journal}
             headline={statesText("elev.states.journal.head", uiLang === "he")}
             body={statesText("elev.states.journal.body", uiLang === "he", { name: childFirstName })}
             cta={statesText("elev.states.journal.cta", uiLang === "he")}
             onCta={focusCaptureBar}
             ctaTestId="journal-empty-cta"
-            preview={
-              /* Ghost of a filled day-group: day header rule + two moment rows
-                 (icon tile, provenance line, text line) — same anatomy as
-                 JournalRow so the promise matches the real filled state. */
-              <div className="mx-auto w-full max-w-md space-y-4 text-start">
-                <div className="flex items-center gap-3">
-                  <GhostBlock className="h-3 w-16 rounded-full" />
-                  <span className="h-px flex-1" style={{ background: "var(--arbor-rule)" }} />
-                </div>
-                {[0, 1].map((i) => (
-                  <div key={i} className="flex gap-3.5">
-                    <GhostBlock className="h-10 w-10 rounded-full flex-shrink-0" />
-                    <div className="min-w-0 flex-1 space-y-2 pt-0.5">
-                      <div className="flex items-center gap-2">
-                        <GhostBlock className="h-4 w-14 rounded-md" />
-                        <GhostBlock className="h-4 w-20 rounded-full" />
-                      </div>
-                      <GhostBlock className={i === 0 ? "h-3 w-4/5" : "h-3 w-3/5"} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            }
           />
         </div>
       ) : (
@@ -805,7 +758,7 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
                   {t(`journal.filter.${f}`)}
                 </button>
               ))}
-              {journalFilter === "hard" && visibleSignals.some((sig) => isHardMomentSignal(sig, logsById)) && (
+              {visibleSignals.some((sig) => momentLogId(sig) && logsById.has(momentLogId(sig)!)) && (
                 <button
                   type="button"
                   data-testid="journal-export-pdf"
@@ -851,6 +804,23 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
               )}
             </div>
           </div>
+          <details className="mb-3" data-testid="journal-record-filters">
+            <summary className="min-h-11 cursor-pointer py-3 t-sm font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>{t("journal.filter.more")}</summary>
+            <div className="flex flex-wrap gap-2 pb-2">
+              <select aria-label={t("beh.allTypes")} data-testid="journal-type-filter" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="field-pill min-h-11 min-w-0 flex-[1_1_150px] rounded-xl px-3 t-sm">
+                <option value="all">{t("beh.allTypes")}</option>
+                {types.map((type) => <option key={type} value={type}>{behaviorTypeLabel(type, t)}</option>)}
+              </select>
+              <select aria-label={t("beh.anyIntensity")} data-testid="journal-intensity-filter" value={intensityFilter} onChange={(e) => setIntensityFilter(e.target.value)} className="field-pill min-h-11 min-w-0 flex-[1_1_130px] rounded-xl px-3 t-sm">
+                <option value="all">{t("beh.anyIntensity")}</option>
+                {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{t("beh.level", { n })}</option>)}
+              </select>
+              <select aria-label={t("beh.allStatus")} data-testid="journal-status-filter" value={resolvedFilter} onChange={(e) => setResolvedFilter(e.target.value)} className="field-pill min-h-11 min-w-0 flex-[1_1_130px] rounded-xl px-3 t-sm">
+                <option value="all">{t("beh.allStatus")}</option><option value="open">{t("beh.open")}</option><option value="resolved">{t("beh.resolved")}</option>
+              </select>
+              <button type="button" onClick={clearJournalFilters} className="min-h-11 px-3 t-sm font-semibold">{t("beh.reset")}</button>
+            </div>
+          </details>
           {filtering && visibleSignals.length === 0 && (
             <div data-testid="journal-filter-empty" role="status" className="flex flex-wrap items-center gap-2 py-4">
               <p className="text-sm" style={{ color: "var(--arbor-ink-soft)" }}>{t("journal.filter.empty")}</p>
@@ -921,7 +891,9 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
       {/* TJB-13 — the row's detail sheet. Rendered once for the whole feed;
           `signal === null` keeps it closed. */}
       <JournalEntrySheet
+        key={childProfile.id}
         signal={openSignal}
+        momentLog={openLog ?? undefined}
         domain={openSignal ? (domainOf.get(openSignal.id) ?? null) : null}
         domainLabel={(() => {
           const d = openSignal ? (domainOf.get(openSignal.id) ?? null) : null;

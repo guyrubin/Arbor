@@ -322,7 +322,7 @@ describe("critic r1 — the journal's primary move is the capture tiles", async 
  *  · the parent's own words hid below md — the phone read a type label;
  *  · the search pill drew a field inside a field (global input fill).
  */
-describe("critic r2 — Journal: real modules, an honest aside, the quote at every width, one search surface", async () => {
+describe("Journal: real modules, expandable entry context at every width, one search surface", async () => {
   const JOURNAL = stripComments(read("components/tabs/JournalTab.tsx"));
   const TIMELINE = stripComments(read("components/tabs/TimelineTab.tsx"));
   const CSS = read("index.css");
@@ -338,44 +338,41 @@ describe("critic r2 — Journal: real modules, an honest aside, the quote at eve
     expect(header.indexOf("{densityToggle}")).toBeLessThan(header.indexOf('t("journal.title")'));
   });
 
-  it("NEXTLEVEL critic r1 (Law 9): the aside never prints a numeral — the week count is said once, in the story line; its title is 'From the story' (EN + HE), sentence case", () => {
-    const aside = JOURNAL.slice(JOURNAL.indexOf('data-testid="journal-week-aside"'), JOURNAL.indexOf("</header>"));
-    expect(aside).not.toContain("{weekCount}");
-    expect(aside).not.toContain('"journal.week.sub"');
-    expect(aside).not.toContain('"journal.week.title"');
-    expect(aside).not.toMatch(/\buppercase\b|tracking-/);
-    // P5-LOOP c2 r1 (design P1): the "From the story" aside and its door are gone at every width
-    expect(aside).not.toContain('t("elev.journal.lastKept.title")');
-    expect(JOURNAL).not.toContain("elev.journal.lastKept.next");
-    expect(dict.en["elev.journal.lastKept.title"]).toBe("From the story");
-    expect(dict.he["elev.journal.lastKept.title"]).toBe("מהסיפור");
-    for (const d of [dict.en, dict.he]) expect(d["elev.journal.lastKept.title"]).not.toMatch(/week|השבוע/i);
-    expect(translate("en", "journal.week.title")).toMatch(/week/i);
+  it("the empty-record guidance appears only in teach-empty, with no duplicate aside or zero count", () => {
+    const header = JOURNAL.slice(JOURNAL.indexOf('data-module="journal-header"'), JOURNAL.indexOf("</header>"));
+    expect(header).not.toContain("journal-week-aside");
+    expect(header).not.toContain('t("elev.journal.week.zero")');
+    expect(header).toContain(') : weekCount > 0 ? (');
+    expect(header).not.toMatch(/\buppercase\b|tracking-/);
+    expect(JOURNAL).toContain('statesText("elev.states.journal.head"');
+    expect(JOURNAL).toContain('ctaTestId="journal-empty-cta"');
   });
 
-  it("the quiet week quotes the parent in the story line at every width (no md-only quote), the type label is the fallback", () => {
-    // NEXTLEVEL r1 (1f): the quote leads on every week, not only a quiet one.
-    expect(JOURNAL).toContain("const quotedLastKept = !!lastKept?.words;");
-    const line = JOURNAL.slice(JOURNAL.indexOf('data-story="quoted"'), JOURNAL.indexOf('data-story="quoted"') + 900);
-    expect(line).toContain('<bdi dir="auto">{lastKept!.words}</bdi>');
-    expect(line).toContain("var(--font-editorial)");
-    expect(line).toContain("line-clamp-2");
-    expect(line).not.toMatch(/hidden md:block/);
-    // The aside no longer repeats the quote.
-    const aside = JOURNAL.slice(JOURNAL.indexOf('data-testid="journal-last-kept"'), JOURNAL.indexOf("journal-week-zero-line"));
-    expect(aside).not.toContain("lastKept.words");
-    // P5-LOOP c2 r1: no second "What happened with {name} today?" at any width
-    // (it repeated the compose card's H2) — the door is gone.
+  it("the last entry is a native, initially closed disclosure at every width; the full words retain their editorial treatment", () => {
+    const context = JOURNAL.slice(JOURNAL.indexOf('<details data-testid="journal-last-context"'), JOURNAL.indexOf("</details>", JOURNAL.indexOf('<details data-testid="journal-last-context"')));
+    expect(context).toBeTruthy();
+    expect(context.split(">")[0]).not.toMatch(/\bopen[=> ]/);
+    expect(context).toContain('<summary');
+    expect(context).toContain('data-testid="journal-last-context-toggle"');
+    expect(context).toContain('<bdi dir="auto">{lastKept!.words}</bdi>');
+    expect(context).toContain("var(--font-editorial)");
+    expect(context).toContain("line-clamp-2");
+    expect(context).not.toMatch(/hidden md:block/);
     expect(JOURNAL).not.toMatch(/lastKeptDoor|journal-story-door|journal-last-kept-next/);
   });
 
-  it("NEXTLEVEL critic r1 (B-NEXTLEVEL-NEW-1f) — 'Last thing you wrote about {name}' under the H1 on every week; tap opens the entry; the week count stays one quiet line", () => {
-    const line = JOURNAL.slice(JOURNAL.indexOf('data-story="quoted"'), JOURNAL.indexOf('data-story="quoted"') + 1800);
-    expect(line).toContain('t("elev.journal.lastWrote.caption", { name: childFirstName, date: lastKeptDate })');
-    expect(line).toContain("onClick={() => requestJournalFocus(lastKept!.id)}");
-    expect(line).toContain('borderColor: "var(--arbor-clay-dim)"');
-    expect(line).toContain('{weekCount > 0 && <p data-testid="journal-week-line"');
-    expect(line).not.toMatch(/uppercase|tracking-/);
+  it("latest-entry date and child context stay available; opening full words uses the real entry sheet without changing filters", () => {
+    const context = JOURNAL.slice(JOURNAL.indexOf('<details data-testid="journal-last-context"'), JOURNAL.indexOf("</details>", JOURNAL.indexOf('<details data-testid="journal-last-context"')));
+    expect(context).toContain('aria-label={`${t("elev.journal.lastEntry.summary", { date: lastKeptDate })} · ${childFirstName}`}');
+    expect(context).toContain('t("elev.journal.lastEntry.summary", { date: lastKeptDate })');
+    expect(context).toContain("onClick={() => setOpenSignal(lastKeptSignal)}");
+    expect(context).not.toContain("requestJournalFocus(");
+    expect(context).toContain('borderColor: "var(--arbor-clay-dim)"');
+    expect(context).toContain('{weekCount > 0 && <p data-testid="journal-week-line"');
+    for (const lang of ["en", "he"] as const) {
+      expect(translate(lang, "elev.journal.lastEntry.summary", { date: "date-probe" })).toContain("date-probe");
+      expect(translate(lang, "elev.journal.lastEntry.open")).not.toContain("elev.");
+    }
     expect(dict.en["elev.journal.lastWrote.caption"]).toBe("Last thing you wrote about {name} · {date}");
     expect(dict.he["elev.journal.lastWrote.caption"]).toBe("הדבר האחרון שכתבתם על {name} · {date}");
   });

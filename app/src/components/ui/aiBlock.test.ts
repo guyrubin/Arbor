@@ -156,7 +156,7 @@ describe("B-ASKJB-24 — every say-this surface renders the shared SayThis", () 
     ["components/coach/CoachAnswerCards.tsx", /<SayThis[\s\S]{0,200}?contract\.parentScript/],
     ["components/behaviors/HardMomentsSection.tsx", /hm\.section\.sayThis"\s*\?\s*\([\s\S]{0,200}?<SayThis/],
     ["components/tabs/PlansTab.tsx", /<SayThis text=\{sc\.say\}/],
-    ["components/tabs/BehaviorsTab.tsx", /<SayThis text=\{inlineCoRegulationScripts\[log\.id\]\.explanation\}/],
+    ["components/journal/JournalMomentDetails.tsx", /<SayThis text=\{inlineCoRegulationScripts\[log\.id\]\.explanation\}/],
   ];
   for (const [rel, re] of SURFACES) {
     it(`${rel} renders its script through SayThis`, () => {
@@ -172,6 +172,7 @@ describe("B-ASKJB-24 — every say-this surface renders the shared SayThis", () 
   // lens literals (validation §4, lane GROWTH) — not this item's files.
   const LENS_SCOPED = [
     "components/tabs/BehaviorsTab.tsx",
+    "components/journal/JournalMomentDetails.tsx",
     "components/tabs/PlansTab.tsx",
     "components/behaviors/HardMomentsSection.tsx",
     "components/behaviors/HardMomentNowSheet.tsx",
@@ -185,7 +186,7 @@ describe("B-ASKJB-24 — every say-this surface renders the shared SayThis", () 
   }
 
   it("the per-log seed is keyed (seed.logCoreg), never an English literal", () => {
-    const beh = strip(read("components/tabs/BehaviorsTab.tsx"));
+    const beh = strip(read("components/journal/JournalMomentDetails.tsx"));
     expect(beh).toContain('t("seed.logCoreg"');
     expect(beh).not.toContain("Regarding the log event");
   });

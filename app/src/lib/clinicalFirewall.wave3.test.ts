@@ -176,6 +176,8 @@ describe("Wave-3 clinical firewall — prose paths emit no intensity-trend verdi
     expect(code).not.toContain("Sparkline");
     expect(code).not.toContain("sparkSeries");
     expect(code).not.toContain("beh.trendLabel");
+    const details = stripComments(read("components/journal/JournalMomentDetails.tsx"));
+    expect(details).not.toMatch(/Sparkline|sparkSeries|beh\.trendLabel|intensityTrend|avgIntensity/);
   });
 });
 

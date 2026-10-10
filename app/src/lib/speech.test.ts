@@ -66,11 +66,11 @@ describe("AI-CAP-2 — startDictation recognition language", () => {
 });
 
 describe("AI-CAP-2 — both dictation call sites thread the parent's language (structural)", () => {
-  it("BehaviorsTab passes uiLang-derived he-IL/en-US into startDictation", async () => {
+  it("the shared capture sheet passes uiLang-derived he-IL/en-US into startDictation", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const code = fs.readFileSync(
-      path.resolve(__dirname, "..", "components", "tabs", "BehaviorsTab.tsx"),
+      path.resolve(__dirname, "..", "components", "overview", "QuickLogModal.tsx"),
       "utf8",
     );
     // AI-CAP-6 loosened the tail: an opts object (continuous dictation) may

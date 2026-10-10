@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { hardMomentCapabilityFailures } from "./hard-moment-capabilities.mjs";
 import path from "node:path";
 import { primaryMoveLiterals, contractMoves, retiredRouteIds } from "./primaryMoveLiterals.mjs";
 
@@ -10,7 +11,7 @@ const docPath = path.join(repoRoot, "docs", "developmental-ai-operating-model.md
 const framework = JSON.parse(fs.readFileSync(frameworkPath, "utf8"));
 const doc = fs.readFileSync(docPath, "utf8");
 
-const failures = [];
+const failures = hardMomentCapabilityFailures(appRoot);
 
 for (const domain of framework.domains) {
   if (!doc.includes(domain.label)) {

@@ -17,12 +17,15 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\
 describe("JournalTab v2 — the grid is the journal's top", () => {
   const journal = strip(src("tabs/JournalTab.tsx"));
   it("no query → the shelves; ?view=all → the day-grouped thread (every feed capability intact)", () => {
-    expect(journal).toContain('if (view === "all") return <JournalFeed primaryMoveProps={primaryMoveProps} densityToggle={densityToggle} />;');
+    const feedDoor = 'if (view === "all" || pendingJournalFilter || pendingJournalFocusId) return <JournalFeed key={childProfile.id} primaryMoveProps={primaryMoveProps} densityToggle={densityToggle} />;';
+    expect(journal).toContain(feedDoor);
+    expect(journal.replace(' || pendingJournalFilter', '')).not.toContain(feedDoor);
+    expect(journal.replace('key={childProfile.id}', '')).not.toContain(feedDoor);
     expect(journal).toContain('return <JournalShelves shelf={shelf} pro={view === "pro"} intakeFor={query.get("for")} primaryMoveProps={primaryMoveProps} />;');
     expect(journal).toContain("function JournalFeed(");
   });
   it("an evidence deep-link always lands on the thread, where its row is rendered", () => {
-    expect(journal).toMatch(/if \(!pendingJournalFocusId\) return;[\s\S]*routeHash\("journal", \{ view: "all" \}\)/);
+    expect(journal).toMatch(/if \(!pendingJournalFocusId && !pendingJournalFilter\) return;[\s\S]*routeHash\("journal", \{ view: "all" \}\)/);
   });
 });
 

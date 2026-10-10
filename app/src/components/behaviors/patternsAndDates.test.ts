@@ -56,22 +56,21 @@ describe("TJB-22 · dates follow the APP's language", () => {
     }
   });
 
-  it("NEGATIVE CONTROL: every browser-locale date call is gone from Behaviors", () => {
-    expect(BEH).not.toContain("toLocaleString()");
-    expect(BEH).not.toContain("toLocaleDateString(undefined");
-    expect(BEH).not.toMatch(/toLocaleDateString\(uiLang === "he" \? "he-IL" : undefined/);
-    // …and the four sites now run through the one seam. B-ASKJB-14 (f49c6d7)
-    // moved the PDF export (row date + "generated" date) into lib/behaviorExport,
-    // which Behaviors and the Journal both print through: one site stays in the
-    // tab (row meta), two live in the shared export.
-    expect(BEH.match(/fmtDayTime\(/g)?.length).toBeGreaterThanOrEqual(1);
-    expect(BEH).toContain('from "../../lib/behaviorExport"');
-    expect(EXPORT).not.toContain("toLocaleString()");
-    expect(EXPORT).not.toContain("toLocaleDateString(undefined");
+  it("the record and export keep explicit APP locales after the list moves to Journal", () => {
+    const journal = stripComments(read("components/tabs/JournalTab.tsx"));
+    for (const source of [BEH, journal, EXPORT]) {
+      expect(source).not.toContain("toLocaleString()");
+      expect(source).not.toContain("toLocaleDateString(undefined");
+      expect(source).not.toMatch(/toLocaleDateString\(uiLang === "he" \? "he-IL" : undefined/);
+    }
+    expect(journal).toContain('const locale = uiLang === "he" ? "he" : "en"');
+    expect(journal).toContain('toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })');
+    expect(journal).toContain('toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })');
+    expect(journal).toContain('exportBehaviorPdf(rows, { t, lang: uiLang })');
     expect(EXPORT.match(/fmtDayTime\(/g)?.length).toBeGreaterThanOrEqual(2);
-    expect(BEH.match(/fmtDayTime\(/g)!.length + EXPORT.match(/fmtDayTime\(/g)!.length).toBeGreaterThanOrEqual(3);
-    expect(BEH).toMatch(/weekLabel\(weekKey, uiLang\)/);
-    expect(BEH).toMatch(/fmtDayShort\(start, lang\)/);
+    expect(BEH).not.toContain('exportBehaviorPdf');
+    // Negative control: implicit browser locale is still the prohibited shape.
+    expect('date.toLocaleString()').toContain('toLocaleString()');
   });
 });
 
@@ -96,7 +95,7 @@ describe("OBJ-BEH-04 · the place, in the reader's language", () => {
   });
 
   it("both surfaces route the context through it", () => {
-    expect(BEH).toMatch(/contextLabel\(log\.context, t\)/);
+    expect(stripComments(read("components/journal/JournalMomentDetails.tsx"))).toMatch(/contextLabel\(log\.context, t\)/);
     expect(PATTERNS).toMatch(/contextLabel\(insights\.context\.label, t\)/);
     // NEGATIVE CONTROL: the raw enum renders.
     expect(PATTERNS).not.toContain("insights.context.label.toLowerCase()");

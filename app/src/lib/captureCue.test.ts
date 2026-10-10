@@ -82,19 +82,23 @@ describe("TJB-12 — both ends of the handoff are wired", () => {
     expect(modal).not.toMatch(/setNewLog\w+\([^)]*promptKey/);
   });
 
-  it("the capture form RENDERS the cue and never merges it into the draft", () => {
-    expect(behaviors).toContain("useCaptureCue()");
-    expect(behaviors).toContain('data-testid="capture-prompt-cue"');
-    expect(behaviors).toContain("{t(captureCue)}");
-    // The cue is display-only: it must not reach any draft-field setter.
-    expect(behaviors).not.toMatch(/setNewLog\w+\([^)]*captureCue/);
-    expect(behaviors).not.toMatch(/openFromBar\([^)]*captureCue/);
+  it("the shared sheet renders the cue and never merges it into the draft", () => {
+    const modal = strip(read("../components/overview/QuickLogModal.tsx"));
+    expect(modal).toContain('data-testid="quicklog-prompt-cue"');
+    expect(modal).toContain("{t(promptKey)}");
+    expect(modal).not.toMatch(/setNewLog\w+\([^)]*promptKey/);
+    expect(behaviors).not.toMatch(/useCaptureCue|capture-prompt-cue|openFromBar/);
+    // Negative control: the original handoff lost the selected cue entirely.
+    expect('requestCapture(mode);').not.toContain("promptKey");
   });
 
-  it("the cue retires once the prompt is answered or the draft is discarded", () => {
-    for (const fn of ["submitLog", "confirmReview", "discardReview"]) {
-      const body = new RegExp(`const ${fn} = [\\s\\S]*?\\n  \\};`).exec(behaviors)?.[0] ?? "";
-      expect(body, fn).toContain("clearCaptureCue()");
-    }
+  it("each opening snapshots the selected cue, and the saved record receives it as metadata only", () => {
+    const start = /const startCapture = \(mode: CaptureMode\) => \{[\s\S]*?\n  \};/.exec(journal)?.[0] ?? "";
+    expect(start).toContain("setQuickLogPromptKey(activePromptKey)");
+    expect(journal).toContain("promptKey={quickLogPromptKey}");
+    const modal = strip(read("../components/overview/QuickLogModal.tsx"));
+    expect(modal).toContain("...(promptKey ? { promptKey } : {})");
+    expect(modal).toContain("const words = newLogTrigger.trim()");
+    expect(modal).not.toMatch(/const words =[^;]*promptKey/);
   });
 });

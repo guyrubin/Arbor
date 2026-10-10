@@ -40,12 +40,12 @@ const strip = stripComments(read("components/overview/PostCaptureCoachStrip.tsx"
 const shell = stripComments(read("components/layout/Shell.tsx"));
 
 describe("AI-CAP-6 — live interim transcript in the capture area", () => {
-  it("BehaviorsTab wires onInterim into its dictation and renders the caption in the calm register", () => {
-    expect(behaviors).toMatch(/onInterim: \(text\) => setVoiceInterim\(text\)/);
+  it("QuickLogModal wires live dictation into the same calm indicator", () => {
+    expect(modal).toMatch(/onInterim: \(text\) => \{ if \(isCurrent\(\)\) setVoiceInterim\(text\); \}/);
     // REC-01 (8 Oct): the caption moved into the shared RecordingIndicator;
     // Behaviours passes its pinned id, the component owns the calm register.
-    expect(behaviors).toMatch(/<RecordingIndicator[\s\S]{0,500}interim=\{voiceInterim\}/);
-    expect(behaviors).toMatch(/<RecordingIndicator[\s\S]{0,500}captionTestId="voice-interim-caption"/);
+    expect(modal).toMatch(/<RecordingIndicator[\s\S]{0,500}interim=\{voiceInterim\}/);
+    expect(modal).toMatch(/<RecordingIndicator[\s\S]{0,500}captionTestId="quicklog-listening-caption"/);
     // calm register + a11y + RTL: muted token, polite live region, dir=auto
     const indicator = stripComments(read("components/ui/RecordingIndicator.tsx"));
     const caption = /<p\s+dir="auto"[^>]*?data-testid=\{captionTestId\}[\s\S]*?<\/p>/.exec(indicator)?.[0] ?? "";
@@ -56,11 +56,12 @@ describe("AI-CAP-6 — live interim transcript in the capture area", () => {
   });
 
   it("dictation runs continuous with the silence-finalize window (a pause never truncates the moment)", () => {
-    expect(behaviors).toMatch(/\{ continuous: true, silenceFinalizeMs: 4500 \}/);
+    expect(modal).toMatch(/\{ continuous: true \}/);
+    expect(stripComments(read("lib/speech.ts"))).toContain("opts.silenceFinalizeMs ?? 4500");
   });
 
   it("the interim caption resets when the session ends (no stale words on the next capture)", () => {
-    const onEnd = /onEnd: \(\) => \{([\s\S]*?)\}/.exec(behaviors)?.[1] ?? "";
+    const onEnd = /onEnd: \(\) => \{([\s\S]*?)\}/.exec(modal)?.[1] ?? "";
     expect(onEnd).toMatch(/setVoiceInterim\(""\)/);
   });
 
@@ -90,14 +91,11 @@ describe("AI-CAP-7 — the post-confirm coach handoff seam (ArborContext)", () =
 });
 
 describe("AI-CAP-7 — both gated confirms offer, once each, with the write path untouched", () => {
-  it("BehaviorsTab confirmReview snapshots the confirmed fields BEFORE handleAddLog resets the form", () => {
-    const confirm = /const confirmReview = [\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
-    expect(confirm).toBeTruthy();
-    expect(confirm).toMatch(/beh\.postCapture\.prompt/);
-    expect(confirm.indexOf("confirmedPrompt")).toBeLessThan(confirm.indexOf("handleAddLog(e)"));
-    // one offer per NEW confirm — edits don't re-nag
-    expect(confirm).toMatch(/if \(!wasEditing\) offerPostCaptureCoach\(confirmedPrompt\)/);
-    expect(count(confirm, /offerPostCaptureCoach\(/g)).toBe(1);
+  it("the hub owns no confirm or duplicate coach offer after consolidation", () => {
+    expect(behaviors).not.toMatch(/confirmReview|handleAddLog|offerPostCaptureCoach/);
+    expect(behaviors).toContain('openCaptureSheet');
+    // The write's one next move lives in QuickLogModal's persisted reply.
+    expect(modal).toContain('setReply({ log: written, hard: isIncidentType(written.behaviorType), seed: confirmedPrompt })');
   });
 
   it("B-TODAY-20: QuickLogModal no longer offers the strip — its reply panel carries the one next move", () => {

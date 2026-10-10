@@ -18,7 +18,6 @@ import * as path from "node:path";
 import { en, he } from "./waveE";
 import { elevationEn, elevationHe } from "./index";
 import { FIRST_KINDS } from "../firsts";
-import { MONTH_CARD_IDS } from "../keepsakeMonth";
 
 const read = (rel: string) =>
   fs
@@ -49,10 +48,6 @@ describe("registration — an unregistered module is invisible to the app", () =
       expect(en[`elev.firsts.${kind}.title`]).toBeTruthy();
       expect(en[`elev.firsts.${kind}.sub`]).toBeTruthy();
       expect(he[`elev.firsts.${kind}.title`]).toBeTruthy();
-    }
-    for (const id of MONTH_CARD_IDS) {
-      expect(en[`elev.keepsake.month.card.${id}`]).toBeTruthy();
-      expect(he[`elev.keepsake.month.card.${id}`]).toBeTruthy();
     }
   });
 });
@@ -115,25 +110,25 @@ describe("mounts — capability built AND wired", () => {
   const childMemory = read("components/sections/ChildMemory.tsx");
   const knowsTile = read("components/sections/ArborKnowsTile.tsx");
   const firstsCard = read("components/sections/FirstsMoment.tsx");
-  const monthCard = read("components/weekly/MonthKeepsake.tsx");
+  const monthPage = read("components/kept/KeptMonthPage.tsx");
   const bedtime = read("components/tabs/BedtimeStoriesTab.tsx");
   const journal = read("components/journal/JournalEntrySheet.tsx");
 
   it("the scanned files are real (a vacuous scan is not a pass)", () => {
-    for (const src of [childMemory, knowsTile, firstsCard, monthCard, bedtime, journal]) {
+    for (const src of [childMemory, knowsTile, firstsCard, monthPage, bedtime, journal]) {
       expect(src).toBeTruthy();
       expect(src.length).toBeGreaterThan(300);
     }
   });
 
-  it("ENG-13/14: ChildMemory mounts the firsts card, the knows tile and the month keepsake", () => {
+  it("ENG-13/14: ChildMemory retains firsts and knows, while the single month page lives on My child", () => {
     expect(childMemory).toContain("<FirstsMoment />");
     expect(childMemory).toContain("<ArborKnowsTile />");
-    expect(childMemory).toContain("<MonthKeepsake />");
+    expect(childMemory).not.toContain("<MonthKeepsake />");
     // Imported, not just referenced in prose.
     expect(childMemory).toMatch(/import ArborKnowsTile from "\.\/ArborKnowsTile"/);
     expect(childMemory).toMatch(/import FirstsMoment from "\.\/FirstsMoment"/);
-    expect(childMemory).toMatch(/import MonthKeepsake from "\.\.\/weekly\/MonthKeepsake"/);
+    expect(monthPage).toContain("openPrintableReport(monthPageDoc(");
   });
 
   it("ENG-14: the tile renders a count and NEVER a ring, bar or denominator", () => {
@@ -153,11 +148,9 @@ describe("mounts — capability built AND wired", () => {
     expect(firstsCard).not.toContain("celebrate(");
   });
 
-  it("ENG-14: the month card offers once and cannot see a second month", () => {
-    expect(monthCard).toContain("shouldOfferMonthKeepsake(");
-    expect(monthCard).toContain("monthKeepsakeStorageKey(childId)");
-    // Negative control: no comparison against a previous keepsake anywhere.
-    expect(monthCard).not.toMatch(/previousKeepsake|lastMonthCount|delta|vsLastMonth/);
+  it("B-ASKJB-37: the month page contains dated words, without a branded count card", () => {
+    expect(monthPage).toContain('presentation: "kept-month"');
+    expect(monthPage).not.toMatch(/renderShareCard|previousKeepsake|lastMonthCount/);
   });
 
   it("ENG-16: a journal moment can be kept, in the parent's OWN words only", () => {

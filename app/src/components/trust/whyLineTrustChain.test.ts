@@ -233,7 +233,6 @@ describe("GP-22 — the Growth lane why-lines reach the Trust Center", () => {
     // W2-CAREPRO r2: the approval promise is said once, in the subtitle.
     ["components/sections/ChildMemory.tsx", /t\("sec\.mem\.sub"/, "child-memory"],
     // GP-32 / GP-33 — the two new Growth records carry the chain from day one.
-    ["components/growth/MonthInReview.tsx", /elev\.waveR\.month\.eyebrow/, "growth-month-review"],
     ["components/growth/FirstWordsLedger.tsx", /elev\.waveR\.words\.eyebrow/, "growth-first-words"],
   ];
 

@@ -1,4 +1,5 @@
 import { scrollConversationTranscript, checkConversationFrame } from './conversation-frame.mjs';
+import { waitForReportCloseDestination } from './report-close-frame.mjs';
 
 /** Actual rendered disclosure checks. API fixtures are explicitly synthetic. */
 export const REPORT_DISCLOSURES = ['opening', 'understanding', 'details', 'document', 'help', 'actions', 'council', 'sources'];
@@ -101,7 +102,7 @@ export async function exposeReportGoDeeper(target, cell, { visible, check }) {
   check(cell, 'GO_DEEPER_NOT_OCCLUDED', frame.unoccluded === true);
 }
 
-export async function collectReportStates(h) {
+export async function collectReportStates(h, { closeOnly = false } = {}) {
   const { page, screen, lang, check, visible, byId, composer, load, openConversation, closeConversation, syntheticReleaseReport, setReportFixture } = h;
   const fixture = completeReportFixture(syntheticReleaseReport(lang), lang);
   const he = lang === 'he';
@@ -124,6 +125,7 @@ export async function collectReportStates(h) {
     await checkConversationFrame(conversation(), cell, { check, baseline: frameBaseline, phase: 'AFTER_RESPONSE' });
     await report.evaluate(scrollConversationTranscript);
   }
+  if (!closeOnly) {
   const baseline = await reportScreen('shell', 'report-fixture', async cell => {
     await requestFixture(fixture, cell);
     cell.fixture = 'bilingual-report-presentation-fixture';
@@ -191,6 +193,7 @@ export async function collectReportStates(h) {
     }));
     check(cell, 'ROUTINE_HELP_NOT_DUPLICATED', await report.locator('[data-testid="coach-report-help"]').count() === 0);
   });
+  }
   await reportScreen('shell', 'report-text-only', async cell => {
     const decline = structuredClone(fixture);
     Object.assign(decline.contract, { todayPlan: [], parentScript: '', nonDiagnosticHypotheses: [], observe: [], avoid: [], escalateIf: [], document: undefined, handoffNotes: { teacher: '', professional: '' }, sourceCards: [], sourceCardsUsed: [] });
@@ -209,6 +212,7 @@ export async function collectReportStates(h) {
     await page.waitForFunction(() => document.activeElement?.matches('.companion-launch-main'));
     check(cell, 'REPORT_CLOSE_FOCUS_RETURNS_TO_LAUNCHER', await launcher.evaluate(el => document.activeElement === el));
     check(cell, 'REPORT_PANEL_CLOSED', await conversation().count() === 0);
+    await waitForReportCloseDestination(page, cell, { check });
   });
 
 }

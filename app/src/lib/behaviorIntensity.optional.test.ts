@@ -152,11 +152,12 @@ describe("B-DATA-09 — absence renders nothing", () => {
     expect(html).toMatch(/<td><\/td><td>0m<\/td>/);
   });
 
-  it("BehaviorsTab: the row's colour-coded IntensityMeter mount is gone; the level pill renders only for a recorded number", () => {
-    const tab = read("components/tabs/BehaviorsTab.tsx");
+  it("Journal details: no colour-coded meter, and observed intensity renders only for an incident with a recorded number", () => {
+    const tab = read("components/journal/JournalMomentDetails.tsx");
     expect(tab).not.toMatch(/<IntensityMeter\b/);
-    expect(tab).toContain('isIncidentType(log.behaviorType) && typeof log.intensity === "number" && <span');
-    expect(tab).toContain('if (typeof n.intensity === "number") setNewLogIntensity(n.intensity);');
+    expect(tab).toContain('isIncidentType(log.behaviorType) && typeof log.intensity === "number" && <div');
+    expect(tab).not.toMatch(/avgIntensity|intensityTrend|Sparkline|ProgressBar/);
+    expect(tab).toContain('t("beh.level", { n: log.intensity })');
   });
 
   it("QuickLogModal: an extraction without intensity leaves the sheet's own value", () => {

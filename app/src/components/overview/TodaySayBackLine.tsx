@@ -4,6 +4,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { languageName } from "../../lib/languageName";
 import { ageMonthsOf } from "../../lib/age/forChild";
+import { parentWritten } from "../../lib/kept/parentWritten";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import {
   SAID_ANSWERS,
@@ -29,6 +30,7 @@ export function saidQuoteRows(docs: readonly unknown[]): SaidQuoteRow[] {
     if (!raw || typeof raw !== "object") continue;
     const d = raw as Record<string, unknown>;
     if (d.kind !== "quote" || typeof d.id !== "string" || typeof d.note !== "string" || !d.note.trim()) continue;
+    if (!parentWritten(d)) continue;
     out.push({
       id: d.id,
       note: d.note,

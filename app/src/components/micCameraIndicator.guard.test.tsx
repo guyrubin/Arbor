@@ -96,7 +96,6 @@ describe("B-STATUS-02 · one rule for the microphone and camera", () => {
     for (const known of [
       "components/companion/CompanionComposer.tsx",
       "components/overview/QuickLogModal.tsx",
-      "components/tabs/BehaviorsTab.tsx",
       "components/tabs/CoachTab.tsx",
       "components/practice/SpeechCoachTab.tsx",
     ]) expect(CALLERS, known).toContain(known);
@@ -117,7 +116,7 @@ describe("B-STATUS-02 · one rule for the microphone and camera", () => {
   it("each parent caller's indicator is gated on the live state (real presence, never decoration)", () => {
     expect(strip(read("components/companion/CompanionComposer.tsx"))).toMatch(/\{listening && <RecordingIndicator /);
     expect(strip(read("components/overview/QuickLogModal.tsx"))).toMatch(/\{listening && \(\s*<div className="mb-4">\s*<RecordingIndicator/);
-    expect(strip(read("components/tabs/BehaviorsTab.tsx"))).toMatch(/\{listening && \(\s*<div className="mt-3">\s*<RecordingIndicator/);
+    expect(strip(read("components/tabs/BehaviorsTab.tsx"))).not.toMatch(OPENS_MEDIA);
     expect(strip(read("components/coach/VoiceOverlay.tsx"))).toMatch(/\{recording && \(\s*<div className="mt-2">\s*<RecordingLine/);
   });
 });

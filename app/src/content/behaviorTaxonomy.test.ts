@@ -121,8 +121,9 @@ describe("AI-CAP-8 — both capture selects render from the shared module (struc
   const behaviors = stripComments(read("components/tabs/BehaviorsTab.tsx"));
   const modal = stripComments(read("components/overview/QuickLogModal.tsx"));
 
-  it("both forms map BEHAVIOR_TYPES into their <option> lists", () => {
-    for (const surface of [behaviors, modal]) {
+  it("the shared form maps BEHAVIOR_TYPES into its <option> list; the launcher has none", () => {
+    expect(behaviors).not.toMatch(/<select|<option|setNewLogType/);
+    for (const surface of [modal]) {
       expect(surface).toMatch(/import \{[^}]*BEHAVIOR_TYPES[^}]*\} from ["'].*content\/behaviorTaxonomy["']/);
       expect(surface).toMatch(/BEHAVIOR_TYPES\.map\(/);
     }
@@ -243,8 +244,9 @@ describe("TJB-01 — no capture surface renders a blocking alert()", () => {
     expect(modal).not.toMatch(/!newLogTrigger\.trim\(\) \|\| !newLogResponse\.trim\(\)/);
   });
 
-  it("BehaviorsTab's two write paths validate through the shared rule (no fillBoth hard-block)", () => {
-    const tab = readSrc("components/tabs/BehaviorsTab.tsx");
+  it("the shared sheet validates both submit and confirm through the shared rule", () => {
+    const tab = readSrc("components/overview/QuickLogModal.tsx");
+    expect(readSrc("components/tabs/BehaviorsTab.tsx")).not.toMatch(/validateLogDraft|handleAddLog/);
     expect(tab).not.toMatch(/!newLogTrigger\.trim\(\) \|\| !newLogResponse\.trim\(\)/);
     expect((tab.match(/validateLogDraft\(\{ behaviorType: newLogType/g) ?? []).length).toBeGreaterThanOrEqual(2);
   });

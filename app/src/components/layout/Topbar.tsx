@@ -33,7 +33,10 @@ export default function Topbar() {
     <header
       /* B-DESIGN-03 (chrome): the sticky band takes the chrome glass — paper
          80 % + blur 14 px (index.css .arbor-chrome-glass); content stays opaque. */
-      className="arbor-chrome-glass hidden lg:flex items-center gap-4 px-5 xl:px-7 flex-none min-w-0"
+      /* The glass establishes a stacking context. Lift that context above the
+         later scrolling main, so search results remain visible and clickable;
+         keep it below modal sheets (50) and the skip link (80). */
+      className="arbor-chrome-glass relative z-30 hidden lg:flex items-center gap-4 px-5 xl:px-7 flex-none min-w-0"
       style={{
         height: "74px",
         borderBottom: "1px solid var(--arbor-rule)",
