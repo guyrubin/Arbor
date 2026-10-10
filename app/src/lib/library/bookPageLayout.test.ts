@@ -371,6 +371,53 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
     }
   });
 
+  // 10 Oct 2026 (Guy, on his iPhone: "the questions to the child do not
+  // work"): the 375x812 box above is an emulator; Safari's visible height
+  // under its bars is ~664 px. There the cards state kept the words' picture
+  // and squeezed three cards into 40 px columns, with "This one!" under the
+  // screen's edge. The cards state is checked at the real phone boxes.
+  it("the cards state at real phone boxes: cards a child can read and tap, all inside the screen, never over the art", () => {
+    const REAL: Box[] = [
+      { width: 375, height: 667 - 56 }, // iPhone SE / mini, Safari
+      { width: 390, height: 664 - 56 }, // iPhone 15, Safari with its bars
+      { width: 430, height: 740 - 56 }, // Pro Max, Safari
+      { width: 844, height: 390 - 56 }, // iPhone 15 landscape
+      { width: 768, height: 1024 - 56 }, // iPad portrait
+      PHONE,
+    ];
+    const page = dPages.find((p) => p.id === david.decision.pageId)!;
+    for (const box of REAL) {
+      for (const lang of LANGS) {
+        const paras = paragraphChars(pageParagraphs(page, { lang, gender: "f", choiceId: null, repaired: [] }), NAME);
+        const opts = (choosing: boolean) => ({ content: { paras, choices: 3, choosing }, plate: getPlate(david.id, page.plateId)! });
+        const words = computeBookPageLayout(page, box, lang, opts(false));
+        const cards = computeBookPageLayout(page, box, lang, opts(true));
+        const tag = `${box.width}x${box.height} ${lang}`;
+        const sideways = box.width > box.height;
+        // a phone held sideways is an open book; upright, the stack
+        expect(words.mode, tag).toBe(sideways ? "wide" : "stacked");
+        expect(words.choicePlan?.mode, tag).toBe("second");
+        // every rect of the words state is inside the stage
+        for (const r of [words.art, words.textPage]) {
+          expect(r.y, tag).toBeGreaterThanOrEqual(0);
+          expect(r.y + r.h, tag).toBeLessThanOrEqual(box.height + 0.5);
+        }
+        const plan = cards.choicePlan!;
+        expect(plan, tag).toBeTruthy();
+        // pictures a child can see; a label under its picture is never a column of single words
+        expect(plan.picH, tag).toBeGreaterThanOrEqual(96);
+        if (plan.arrangement !== "threeDown") expect(plan.picW, tag).toBeGreaterThanOrEqual(150);
+        // the cards and the nav row (This one!) fit the page: nothing under the screen's edge
+        const pad = plan.pad?.block ?? cards.pad.block;
+        const nav = sideways ? 88 : 10 + cards.navPx;
+        expect(cards.textPage.y + 2 * pad + plansHeight(plan) + nav, tag).toBeLessThanOrEqual(Math.min(box.height, cards.textPage.y + cards.textPage.h) + 0.5);
+        // the picture only ever yields room; the cards never ride over it
+        expect(cards.art.h, tag).toBeLessThanOrEqual(words.art.h);
+        expect(overlapArea(cards.textPage, cards.art), tag).toBe(0);
+      }
+    }
+  });
+
   it("planChoices picks the arrangement with the largest picture", () => {
     expect(planChoices(466, 700, "second")!.arrangement).toBe("threeDown");
     expect(planChoices(1000, 260, "below")!.arrangement).toBe("row");

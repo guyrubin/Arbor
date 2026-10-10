@@ -477,8 +477,13 @@ describe("Hebrew, the phone sheet, and what the child never sees", () => {
     const p5 = render(run(...toDecision), { box: PHONE });
     expect(widthOf(p5)).toBeGreaterThanOrEqual(300);
     expect(p5).toContain("data-book-choose");
+    // 10 Oct 2026: in the cards state the window yields height so the three
+    // cards are large enough to read and tap (it was 54 px pictures here and
+    // 40 px columns on a real iPhone); David stays on screen above them.
     const cards = render(run(...toDecision), { box: PHONE, choosing: true });
-    expect(widthOf(cards)).toBe(widthOf(p5));
+    expect(widthOf(cards)).toBeLessThanOrEqual(widthOf(p5));
+    expect(widthOf(cards)).toBeGreaterThan(0);
+    expect(Number(/--pic-h:([\d.]+)px/.exec(cards)![1])).toBeGreaterThanOrEqual(96);
     expect(cards.match(/data-choice-card="/g)).toHaveLength(3);
     expect(cards).not.toContain("data-overlap");
     const s10 = run(...toDecision, { type: "choose", choiceId: "a" }, { type: "go" }, { type: "next" }, { type: "next" }, { type: "next" }, { type: "next" });
