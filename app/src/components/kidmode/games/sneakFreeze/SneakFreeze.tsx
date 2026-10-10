@@ -16,7 +16,13 @@
  * sitting on a device opens with the hero DEMONSTRATING the game (rules.ts);
  * any touch takes over at once. Nothing on screen needs reading (the sentence is the
  * stage's aria-label). No instruction paragraph, no progress dots, no digits,
- * no timer, no level. Mounted inside GameShell's
+ * no timer, no level. Guy, 10 Oct 2026 ("it is not clear how to play - add
+ * arrows or something"): the two rules are on screen without a word, a GO /
+ * STOP pad in the thumb zone (green with a walking figure: hold anywhere to
+ * tiptoe; red with an open hand the moment the cat's ears twitch: let go and
+ * freeze) and arrows flowing along the floor from the hero to the cat while
+ * it is safe to go (overturns ruling G7's "no pad" for this one cue). Mounted
+ * inside GameShell's
  * fullBleed: the overlay's top bar is the only chrome.
  */
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -44,6 +50,7 @@ import { sittingRecord } from "./record";
 import { usePracticeData } from "../../../../practice/usePracticeData";
 import { noteKidActivity } from "../../../../lib/kidModeGate";
 import { Ending, captionKey } from "./Ending";
+import { Icon } from "../../../ui/Icon";
 import { CourtyardPetals, DustPuff, LanternGlint, TagBurst } from "./courtyardLife";
 
 /** HE lines addressed to the child: `.boy` / `.girl`, else the plural base. */
@@ -58,6 +65,8 @@ export function sameView(a: SneakView, b: SneakView): boolean {
 }
 
 const LAYOUTS: Record<FieldOrientation, SneakLayout> = { landscape: sneakLayout("landscape"), portrait: sneakLayout("portrait") };
+/** The GO / STOP pad: a thumb-sized target at the thumb-zone anchor. */
+const PAD_PX = 96;
 
 /** How much of a cover's visible width touches the floor (the pot, the lantern's
  *  foot, the bench's legs) — its contact shadow's width. */
@@ -113,6 +122,115 @@ function HandGlyph({ size, mode }: { size: number; mode: HandCue }) {
       />
     </svg>
     </div>
+  );
+}
+
+/** GO or STOP for the pad and the floor arrows (null = no cue: the tag, the
+ *  ending). STOP from the cat's tell (its ears twitch: letting go is always
+ *  safe there) through the look and the verdict; GO otherwise, and GO while
+ *  the cat wears its sunglasses (it cannot see). The demonstration shows the
+ *  same two signals with its own steps. */
+export type SneakSignal = "go" | "stop";
+export function signalOf(v: SneakView): SneakSignal | null {
+  if (v.done || v.phase === "tagged") return null;
+  if (v.phase === "intro") return v.demo === "count" ? "go" : "stop";
+  if (v.watcher.sunglasses) return "go";
+  if (v.phase === "tell" || v.phase === "looking" || v.phase === "verdict") return "stop";
+  if (v.phase === "fake") return v.watcher.pose === "tell" ? "stop" : "go";
+  return "go";
+}
+
+/** The GO / STOP pad (controls layer, screen px; the whole stage stays the
+ *  hold surface, so the pad never takes a tap of its own). GO = green with a
+ *  walking figure, breathing until the child holds, pressed in while held.
+ *  STOP = red with an open hand. Token colours, transform / opacity only. */
+function GoStopPad({ size, signal, held }: { size: number; signal: SneakSignal; held: boolean }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const go = signal === "go";
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || prefersReducedMotion() || typeof el.animate !== "function") return;
+    if (go && !held) {
+      const a = el.animate([{ transform: "scale(1)" }, { transform: "scale(1.08)" }, { transform: "scale(1)" }], { duration: 1200, iterations: Infinity, easing: "ease-in-out" });
+      return () => a.cancel();
+    }
+    if (!go) {
+      const a = el.animate([{ transform: "scale(0.9)" }, { transform: "scale(1)" }], { duration: 220, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+      return () => a.cancel();
+    }
+    return undefined;
+  }, [go, held]);
+  return (
+    <div
+      ref={ref}
+      aria-hidden="true"
+      data-sneak-signal={signal}
+      data-sneak-held={held ? "" : undefined}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        display: "grid",
+        placeItems: "center",
+        background: go ? "var(--arbor-success)" : "var(--arbor-danger)",
+        color: "var(--arbor-on-accent)",
+        border: "4px solid var(--arbor-paper-elevated)",
+        boxShadow: held
+          ? "0 2px 0 color-mix(in oklab, var(--arbor-ink) 45%, transparent)"
+          : "0 7px 0 color-mix(in oklab, var(--arbor-ink) 45%, transparent), 0 14px 24px -10px color-mix(in oklab, var(--arbor-ink) 70%, transparent)",
+        transform: held ? "translateY(5px)" : undefined,
+        transition: "background-color 160ms linear, transform 120ms ease-out",
+      }}
+    >
+      <Icon name={go ? "directions_walk" : "front_hand"} size={Math.round(size * 0.56)} fill={1} />
+    </div>
+  );
+}
+
+/** GO: four arrows on the floor between the hero and the cat (design units,
+ *  in the art group, so a Hebrew stage mirrors them with the path), each
+ *  scaled by depth and pointing along the path, lighting up in turn toward the
+ *  cat. Gone on STOP and once the hero is nearly there. */
+function PathArrows({ path, progress }: { path: SneakLayout["heroPath"]; progress: number }) {
+  const from = progress + 0.1;
+  if (from >= 0.94) return null;
+  const n = 4;
+  const marks = Array.from({ length: n }, (_, i) => {
+    const t = from + ((0.97 - from) * (i + 0.5)) / n;
+    const p = pointOnPath(path, t);
+    const q = pointOnPath(path, Math.min(1, t + 0.03));
+    const angle = (Math.atan2(q.y - p.y, q.x - p.x) * 180) / Math.PI;
+    return { i, x: p.x, y: p.y, size: Math.max(28, p.h * 0.2), angle };
+  });
+  return (
+    <div data-sneak-arrows="" aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      {marks.map((m) => <PathArrow key={m.i} {...m} />)}
+    </div>
+  );
+}
+
+function PathArrow({ i, x, y, size, angle }: { i: number; x: number; y: number; size: number; angle: number }) {
+  const ref = useRef<SVGSVGElement | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current as unknown as HTMLElement | null;
+    if (!el || prefersReducedMotion() || typeof el.animate !== "function") return;
+    const a = el.animate([{ opacity: 0.35 }, { opacity: 1 }, { opacity: 0.35 }], { duration: 1100, delay: i * 180, iterations: Infinity, easing: "ease-in-out" });
+    return () => a.cancel();
+  }, [i]);
+  return (
+    <svg
+      ref={ref}
+      data-sneak-arrow={i}
+      viewBox="0 0 40 40"
+      width={size}
+      height={size}
+      style={{ position: "absolute", left: x - size / 2, top: y - size * 0.55, overflow: "visible", transform: `rotate(${angle}deg)`, opacity: 0.9, zIndex: Math.round(y) }}
+    >
+      {/* a whole arrow (shaft + head): a lone chevron, turned along the
+          path, read as a tick */}
+      <path d="M5 20 H31 M20 8 L32 20 L20 32" style={{ fill: "none", stroke: "var(--arbor-ink)", strokeWidth: 11, strokeLinecap: "round", strokeLinejoin: "round", opacity: 0.35 }} />
+      <path d="M5 20 H31 M20 8 L32 20 L20 32" style={{ fill: "none", stroke: "var(--arbor-paper-elevated)", strokeWidth: 7, strokeLinecap: "round", strokeLinejoin: "round" }} />
+    </svg>
   );
 }
 
@@ -466,6 +584,8 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
     setSitting(n);
   };
 
+  const signal = signalOf(v);
+  const held = holding();
   const title = t(SNEAK_FREEZE_WORLD.nameKey);
   const firstName = (childProfile?.name ?? "").trim().split(/\s+/)[0] ?? "";
   const stageAria = kidIsolate(t(formKey("kid.game.sneak-freeze.stageAria", gender)));
@@ -510,21 +630,37 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
             <img src={art.plate[fit.orientation]} alt="" draggable={false} data-sneak-plate={art.source} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", maxWidth: "none", objectFit: "cover" }} />
           )}
           actors={(ctx) => <Scene ctx={ctx} v={v} art={art} sheet={sheet} prevProgress={prevProgress.current} />}
-          effects={(ctx) => <CourtyardPetals orientation={ctx.fit.orientation} />}
+          effects={(ctx) => (
+            <>
+              <CourtyardPetals orientation={ctx.fit.orientation} />
+              {signal === "go" && <PathArrows path={LAYOUTS[ctx.fit.orientation].heroPath} progress={v.progress} />}
+            </>
+          )}
           punch={(ctx) => {
             // B-GAME-07f: the tag punches in around the hero's face.
             const tag = LAYOUTS[ctx.fit.orientation].heroPath[LAYOUTS[ctx.fit.orientation].heroPath.length - 1];
             return { key: v.phase === "tagged" ? "tag" : null, x: tag.x, y: tag.y - tag.h * 0.85 };
           }}
           controls={(ctx) => {
-            if (!v.hand) return null;
             const lay = LAYOUTS[ctx.fit.orientation];
             const at = toPx(ctx.fit, lay.hand, rtl);
             const size = 76;
+            const pad = PAD_PX;
             return (
-              <div data-sneak-hand="" style={{ position: "absolute", left: at.x - size / 2, top: at.y - size / 2, width: size, height: size }}>
-                <HandGlyph size={size} mode={v.hand} />
-              </div>
+              <>
+                {signal && (
+                  <div data-sneak-pad="" style={{ position: "absolute", left: at.x - pad / 2, top: at.y - pad / 2, width: pad, height: pad }}>
+                    <GoStopPad size={pad} signal={signal} held={held} />
+                  </div>
+                )}
+                {/* The demonstration's hand presses the pad: its fingertip
+                    (the upper part of the glyph) lands on the pad's centre. */}
+                {v.hand && (
+                  <div data-sneak-hand="" style={{ position: "absolute", left: at.x - size / 2, top: at.y - size * 0.25, width: size, height: size }}>
+                    <HandGlyph size={size} mode={v.hand} />
+                  </div>
+                )}
+              </>
             );
           }}
         />
