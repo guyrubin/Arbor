@@ -106,6 +106,30 @@ describe("useDialog production callback wiring", () => {
     expect(close).toHaveBeenCalledOnce(); expect(parentClose).not.toHaveBeenCalled();
   });
 
+  it("ignores retargeted repeat clicks while preserving a fresh backdrop click and explicit dismissal", () => {
+    const close = vi.fn(); runtime.register.mockReturnValue({ close, dispose: vi.fn() });
+    const result = render(true, vi.fn());
+    const backdrop = {}, submit = {};
+    const event = (target: object, detail: number) => ({ currentTarget: backdrop, target, detail, stopPropagation: vi.fn() });
+    // Saving replaces a tall form with a shorter receipt. The same screen
+    // coordinate is now outside the dialog, but still in the Save click burst.
+    result.onBackdropClick(event(submit, 1) as any);
+    for (const detail of [2, 3]) {
+      const repeated = event(backdrop, detail);
+      result.onBackdropClick(repeated as any);
+      expect(repeated.stopPropagation).toHaveBeenCalledOnce();
+      expect(close).not.toHaveBeenCalled();
+    }
+    // The browser owns click-sequence timing. No app timeout delays a later
+    // deliberate dismissal; explicit Close/Escape bypass this pointer guard.
+    result.onBackdropClick(event(backdrop, 1) as any);
+    expect(close).toHaveBeenCalledTimes(1);
+    result.requestClose();
+    expect(close).toHaveBeenCalledTimes(2);
+    result.onBackdropClick(event(backdrop, 0) as any);
+    expect(close).toHaveBeenCalledTimes(3);
+  });
+
   it("pre-fix raw backdrop callbacks bubble through both portal ancestors (negative control)", () => {
     const inner = vi.fn(), parent = vi.fn();
     inner(); parent();

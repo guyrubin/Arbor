@@ -126,14 +126,31 @@ describe("private query activation, literal symbols and ownership boundaries", (
     const result = render(query);
     expect(result.record).toEqual([]);
     expect(result.catalog).toEqual([]);
+    expect(result.ask).toBeNull();
+    expect(h.actions.seedCoach).not.toHaveBeenCalled();
     if (query.trim()) {
-      expect(result.ordered.map(row => row.id)).toEqual(["ask"]);
-      result.ask!.go();
-      expect(h.actions.seedCoach).toHaveBeenCalledWith({ prompt: query.trim(), source: "search" });
+      // Diacritics alone are neither a private-record query nor a useful
+      // question. Do not fabricate an Ask affordance from standalone marks.
+      expect(result.ordered).toEqual([]);
     } else {
       expect(result.ask).toBeNull();
       expect(result.ordered.length).toBeGreaterThan(0);
       expect(result.ordered.every(row => row.kind === "route")).toBe(true);
+    }
+  });
+
+  it.each(["en", "he"] as const)("keeps marks-only results empty before and after a real query in %s", (lang) => {
+    h.lang = lang;
+    for (const index of [null, { getSearchIndex, searchCatalog: catalogSearch }]) {
+      h.index = index;
+      expect(render("\u05B0\u05B7\u0301").ordered).toEqual([]);
+      const meaningful = render("  שָׁלוֹם?  ");
+      expect(meaningful.ask).not.toBeNull();
+      meaningful.ask!.go();
+      expect(h.actions.seedCoach).toHaveBeenLastCalledWith({ prompt: "שָׁלוֹם?", source: "search" });
+      h.actions.seedCoach.mockClear();
+      expect(render("\u05B0\u05B7\u0301").ordered).toEqual([]);
+      expect(h.actions.seedCoach).not.toHaveBeenCalled();
     }
   });
 

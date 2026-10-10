@@ -208,7 +208,7 @@ function JournalRow({
       </div>
       ) : parentLead ? (
       <div className="min-w-0 flex-1">
-        <p data-testid="journal-row-words" className="leading-snug line-clamp-3" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+        <p data-testid="journal-row-words" className="font-normal leading-relaxed line-clamp-3" style={{ fontFamily: "var(--font-sans)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
           <FreeText text={detail} />
         </p>
         <p data-testid="journal-row-caption" className="mt-1 t-sm" style={{ color: "var(--arbor-muted)" }}>
@@ -600,7 +600,7 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
                 onClick={() => setOpenSignal(lastKeptSignal)}
                 className="flex min-h-11 w-full flex-col items-start gap-1 py-1 text-start"
               >
-                <span dir="auto" className="block border-s-2 ps-3 t-lg leading-snug line-clamp-2" style={{ borderColor: "var(--arbor-clay-dim)", fontFamily: "var(--font-editorial)", lineHeight: 1.35, color: "var(--arbor-ink)" }}>
+                <span dir="auto" className="block border-s-2 ps-3 t-lg font-normal leading-relaxed line-clamp-2" style={{ borderColor: "var(--arbor-clay-dim)", fontFamily: "var(--font-sans)", color: "var(--arbor-ink)" }}>
                   {quotedLastKept ? <>“<bdi dir="auto">{lastKept!.words}</bdi>”</> : <bdi dir="auto">{signalTitle(lastKeptSignal, tt)}</bdi>}
                 </span>
                 {lastKeptSignal.contentSource !== undefined && <span data-testid="journal-last-content-source" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{signalContentSource(lastKeptSignal, tt)}</span>}

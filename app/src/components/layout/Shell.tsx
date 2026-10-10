@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect, useRef, useSyncExternalStore } from "react";
+import React, { lazy, Suspense, useState, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
@@ -241,6 +241,15 @@ export default function Shell() {
   // NOT in ArborContext.setActiveTab (which would also fire for non-visual
   // state churn and would scroll-jump under the still-visible outgoing tab).
   const mainRef = useRef<HTMLElement>(null);
+  // Child changes retire the entire route boundary immediately. There is no
+  // outgoing-child exit to await, so reset its scroll before the new paint.
+  const scrollChildRef = useRef(childProfile.id);
+  useLayoutEffect(() => {
+    if (scrollChildRef.current === childProfile.id) return;
+    scrollChildRef.current = childProfile.id;
+    mainRef.current?.scrollTo({ top: 0, left: 0 });
+    window.scrollTo(0, 0);
+  }, [childProfile.id]);
   // IA-07: the ACTIVE pill must be on screen after every navigation — arriving
   // on a hub by deep link, by sidebar or by MobileNav all land on a tab whose
   // pill may sit past either edge of the band. Scrolled to nearest, not
@@ -530,7 +539,13 @@ export default function Shell() {
               ≤5-module budget like every other Today module. Parent register
               only (inside .arbor-parent <main>); self-hides when done/dismissed. */}
 
-          <Suspense fallback={<TabSkeleton />}>
+          {/* A child switch is a privacy/lifetime boundary, not a route exit.
+              Retaining an outgoing route lets its context consumers remount
+              child-keyed exit descendants already absent from Motion. Those
+              descendants can strand wait-mode forever. Retire the whole
+              boundary (including a suspended route) before showing the new
+              child; same-child navigation keeps its normal wait-mode exit. */}
+          <Suspense key={childProfile.id} fallback={<TabSkeleton />}>
             <AnimatePresence
               mode="wait"
               /* F-02: reset the main scrollport at the tab-swap moment. Also

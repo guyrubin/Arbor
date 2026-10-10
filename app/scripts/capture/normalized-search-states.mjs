@@ -1,6 +1,27 @@
 /** Current search surfaces: no new routes, filters, model or Kids actions. */
 import { KEPT_SEARCH_QUERIES as Q, KEPT_SEARCH_LEARN } from './kept-search-contract.mjs';
 import { waitConfirmedFrame } from './confirmed-frame.mjs';
+
+/** Passive DOM inventory: the fixture retains the demo plan and approved memory. */
+export function observeKeptJournalInventory({ moments, approvedMemory, baseline = null, waitUntilReady = false }) {
+  const rows = Array.from(document.querySelectorAll('[data-testid="journal-record-row"]'), row => ({
+    id: row.id,
+    words: row.querySelector('[data-testid="journal-row-words"]')?.textContent ?? null,
+  })).sort((a, b) => a.id.localeCompare(b.id));
+  const memoryRows = rows.filter(row => row.id.startsWith('journal-signal-memory-') && row.id.length > 'journal-signal-memory-'.length);
+  const momentIds = moments.map(row => `journal-signal-moment-${row.id}`);
+  const expectedIds = new Set([...momentIds, 'journal-signal-plan-plan-1', ...memoryRows.map(row => row.id)]);
+  const ready = moments.length === 4 && new Set(momentIds).size === 4
+    && typeof approvedMemory === 'string' && approvedMemory.trim().length > 0
+    && memoryRows.length === 1 && memoryRows[0].words === approvedMemory
+    && rows.length === 6 && new Set(rows.map(row => row.id)).size === 6
+    && expectedIds.size === 6 && rows.every(row => expectedIds.has(row.id))
+    && moments.every(moment => typeof moment.trigger === 'string' && moment.trigger.length > 0
+      && rows.some(row => row.id === `journal-signal-moment-${moment.id}` && row.words === moment.trigger))
+    && (!baseline || JSON.stringify(rows) === JSON.stringify(baseline));
+  return waitUntilReady && !ready ? false : { ready, rows };
+}
+
 export async function collectNormalizedSearchStates(h) {
   const { page, fixture, viewport, load, run, reset, journalFeed, frame, check, byId, captureDiagnostics = () => null } = h;
   const he = viewport.lang === 'he', mobile = viewport.w < 1024;
@@ -27,6 +48,14 @@ export async function collectNormalizedSearchStates(h) {
 
   await run('journal', 'journal-normalized-search', async cell => {
     await reset(); await journalFeed(cell);
+    const body = fixture.parsed.locales?.[viewport.lang] ?? fixture.parsed;
+    const inventorySpec = { moments: fixture.collections.behaviorLogs, approvedMemory: body.memory?.approved?.fact };
+    const inventory = async baseline => {
+      const handle = await page.waitForFunction(observeKeptJournalInventory, { ...inventorySpec, baseline, waitUntilReady: true });
+      try { return await handle.jsonValue(); } finally { await handle.dispose(); }
+    };
+    const initialInventory = await inventory(null);
+    check(cell, 'JOURNAL_EXACT_SEEDED_AND_DEMO_INVENTORY', initialInventory.ready, initialInventory);
     const search = byId('journal-search');
     for (const query of [Q.hebrew, Q.latin, Q.punctuation, Q.bidi]) {
       await search.fill(query);
@@ -38,8 +67,8 @@ export async function collectNormalizedSearchStates(h) {
       check(cell, 'LOCAL_JOURNAL_PRESERVES_PUNCTUATION_BIDI', await byId('journal-record-row').count() === 0, { query });
     }
     await search.fill(Q.empty);
-    await page.waitForFunction(() => document.querySelectorAll('[data-testid="journal-record-row"]').length === 4);
-    check(cell, 'JOURNAL_MARKS_ONLY_RETAINS_EXISTING_UNFILTERED_SEMANTICS', await byId('journal-record-row').count() === fixture.collections.behaviorLogs.length);
+    const restoredInventory = await inventory(initialInventory.rows);
+    check(cell, 'JOURNAL_MARKS_ONLY_RETAINS_EXISTING_UNFILTERED_SEMANTICS', restoredInventory.ready, { baseline: initialInventory.rows, restored: restoredInventory.rows });
     await search.fill(Q.hebrew); await frame(cell, 'LOCAL_JOURNAL_SEARCH_44PX', search);
     check(cell, 'LOCAL_JOURNAL_SEARCH_ACCESSIBLE_AUTO_DIRECTION', await search.getAttribute('dir') === 'auto' && !!await search.getAttribute('aria-label'));
   });
@@ -74,11 +103,13 @@ export async function collectNormalizedSearchStates(h) {
   await run('shell', 'search-normalized-empty', async cell => {
     await openGlobal(Q.hebrew); await privateResult().waitFor({ state: 'visible' });
     await globalInput().fill(Q.empty); await privateResult().waitFor({ state: 'hidden' });
+    const noMatches = surface().getByText(he ? 'אין התאמות.' : 'No matches.', { exact: true });
+    await noMatches.waitFor({ state: 'visible' });
     const text = await surface().innerText();
     check(cell, 'MARKS_ONLY_NEVER_ENUMERATES_SYNTHETIC_PRIVATE_ROWS', fixture.collections.behaviorLogs.every(row => !text.includes(row.trigger)));
-    check(cell, 'MARKS_ONLY_HAS_NO_CATALOGUE_FALLBACK_ENUMERATION', await results().count() === 1 && await byId('search-ask-row').count() === 1);
-    // The existing Ask row is inspected but never invoked or sent.
-    cell.normalizedEmptyBoundary = 'global-private-record-non-enumeration; existing-Ask-prefill-row-not-activated';
+    check(cell, 'MARKS_ONLY_HAS_NO_CATALOGUE_FALLBACK_ENUMERATION', await results().count() === 0 && await byId('search-ask-row').count() === 0);
+    check(cell, 'MARKS_ONLY_VISIBLE_NO_MATCH_STATE', await noMatches.isVisible());
+    cell.normalizedEmptyBoundary = 'global-private-record-non-enumeration; normalized-empty-query-has-no-Ask-prefill';
     await globalInput().fill('');
     // The topbar deliberately closes its overlay for a truly empty input.
     // Empty public commands live in the existing Ctrl+K modal on both sizes.
@@ -96,7 +127,8 @@ export async function collectNormalizedSearchStates(h) {
       await commands.getByRole('button', { name: he ? 'סגור' : 'Close', exact: true }).click();
       await commands.waitFor({ state: 'detached' });
     }
-    await globalInput().fill(Q.empty); await frame(cell, 'MARKS_ONLY_QUERY_INPUT_REACHABLE', globalInput());
+    await globalInput().fill(Q.empty); await noMatches.waitFor({ state: 'visible' });
+    await frame(cell, 'MARKS_ONLY_QUERY_INPUT_REACHABLE', globalInput());
   });
   for (const [kind, query, label, route] of [
     ['visit', he ? 'בִּיקוּרִימ' : 'VÍSIT', he ? 'פגישות' : 'Appointments', 'appointments'],

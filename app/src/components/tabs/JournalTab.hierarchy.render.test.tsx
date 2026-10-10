@@ -110,6 +110,21 @@ for (const lang of ["en", "he"] as const) describe(`${lang}: Journal record hier
     expect(harness.controls.get("journal-last-words").className).toContain("min-h-11");
   });
 
+  it("uses the readable bilingual body face for original words and optional context", () => {
+    const words = "שָׁלוֹם Café אב־גד";
+    harness.logs = [log("latest", latestAt, words)];
+    const html = render();
+    const row = harness.controls.get("journal-row-words");
+    expect(row.style.fontFamily).toBe("var(--font-sans)");
+    expect(row.className).toContain("font-normal");
+    expect(row.className).toContain("leading-relaxed");
+    expect(header(html)).toMatch(/font-family:var\(--font-sans\)/);
+    expect(header(html)).not.toContain("--font-editorial");
+    expect(html).toContain(words);
+    harness.controls.get("journal-last-words").onClick(); render();
+    expect(harness.sheet.detail).toBe(words);
+  });
+
   it("opens the complete latest overall entry even under the hard filter, then closes without resetting that filter", () => {
     harness.logs = [log("latest", latestAt, latestWords), log("hard", "2026-10-08T08:00:00.000Z", "Hard moment words", "Sleep Meltdown")];
     harness.filter = "hard";

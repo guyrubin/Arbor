@@ -185,8 +185,11 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [term, behaviorLogs, conversations, milestones, actionPlans, t, opts.recordLimit]);
 
-  // "Ask Arbor about …" — prefill only; the parent sends.
-  const ask: SearchRow | null = term
+  // "Ask Arbor about …" — prefill only; the parent sends. Standalone
+  // diacritics have no question text and must not become an Ask affordance.
+  // Normalization is eligibility-only: meaningful questions keep their exact
+  // original words, punctuation and marks in the label and composer.
+  const ask: SearchRow | null = normalizeSearchText(term)
     ? {
         id: "ask", kind: "ask",
         label: t("sm.askAbout", { q: term }), sub: t("sm.askAbout.sub"),

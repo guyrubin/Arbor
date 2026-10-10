@@ -12,6 +12,7 @@ import { toObservations } from "../../lib/observations";
 import { translate } from "../../lib/i18n";
 import { createCaptureSession } from "../../lib/captureSession";
 import { undoSavedCapture } from "../../lib/savedCaptureUndo";
+import { routeHash } from "../../lib/routes";
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), "src", path), "utf8");
 const modalSource = read("components/overview/QuickLogModal.tsx");
@@ -52,6 +53,7 @@ function renderer(code: string, imports: Record<string, unknown> = {}) {
       }];
     },
     useRef: (initial: any) => { const index = cursor++; return slots[index] ??= { current: initial }; },
+    useCallback: (callback: unknown) => callback,
     useEffect: (callback: () => void | (() => void), deps?: unknown[]) => {
       const index = cursor++, previous = slots[index];
       if (!previous || !same(previous.deps, deps)) {
@@ -68,10 +70,11 @@ function renderer(code: string, imports: Record<string, unknown> = {}) {
     return imports[name];
   }, module, module.exports, NodeFile);
   return {
-    render: (props: any) => {
+    render: (props: any, beforeEffects?: (result: any) => void) => {
       for (let index = 0; index < 20; index++) {
         cursor = 0; dirty = false; effects = [];
         const result = module.exports.default(props);
+        beforeEffects?.(result);
         effects.forEach(run => run());
         if (!dirty) return result;
       }
@@ -143,6 +146,7 @@ function captureHarness(options: { save?: () => Promise<any>; edit?: boolean; ch
     "../../lib/captureSession": { createCaptureSession },
     "../../lib/kept/captureKeep": captureKeep,
     "../../lib/savedCaptureUndo": { undoSavedCapture },
+    "../../lib/routes": { routeHash },
     "../../lib/image": { fileToThumbnail: () => { const pending = deferred<string>(); photos.push(pending); return pending.promise; } },
     "../../lib/api": { api: { extractLog: () => { const pending = deferred<any>(); extracts.push(pending); return pending.promise; } }, getAiLanguage: () => "en", EscalationRequiredError },
     "../../safety/escalation": { escalationCategories: [{ category: "self-harm", label: "Safety", resources: [] }], renderEscalationMarkdown: () => "Seek immediate support" },
@@ -355,6 +359,46 @@ describe("one capture sheet — real rendered handlers with deferred I/O", () =>
     h.state.addMoment.mockResolvedValueOnce(saved);
     await one(tree, n => n.props["data-testid"] === "quicklog-moment-form").props.onSubmit(formEvent());
     expect(nodes(h.render()).some(n => n.props["data-testid"] === "quicklog-reply")).toBe(true);
+  });
+  it.each(["en", "he"] as const)("%s retains the receipt after Save's second click lands on the backdrop", async lang => {
+    for (const dismiss of ["done", "open", "backdrop"] as const) {
+      const h = captureHarness({ lang });
+      h.close.mockImplementation(() => { h.props.open = false; });
+      // Compose the production sheet's Modal props with the actual shared
+      // hook. This replays the trusted browser trace's target/detail changes;
+      // it does not simulate layout, hit testing, or mounted React scheduling.
+      const dialog = renderer(compile(read("hooks/useDialog.ts") + "\nexport default useDialog;"), {
+        "../lib/dialogStack": { registerDialog: ({ onClose }: { onClose: () => void }) => ({ close: onClose, dispose: vi.fn() }) },
+      });
+      const root = {}, backdrop = {};
+      const bind = (tree: View) => dialog.render(tree.props, result => { result.ref.current = root; });
+      const click = (target: object, detail: number) => ({ target, currentTarget: backdrop, detail, stopPropagation: vi.fn() });
+      let tree = h.render();
+      const first = bind(tree);
+      const submit = one(tree, n => n.type === "button" && n.props.type === "submit");
+      first.onBackdropClick(click(submit, 1));
+      await one(tree, n => n.props["data-testid"] === "quicklog-moment-form").props.onSubmit(formEvent());
+      tree = h.render();
+      const afterSave = bind(tree);
+      expect(nodes(tree).some(n => n.type === "form")).toBe(false);
+      expect(one(tree, n => n.props["data-testid"] === "quicklog-reply")).toBeTruthy();
+      afterSave.onBackdropClick(click(backdrop, 2));
+      expect(h.close).not.toHaveBeenCalled();
+      expect(h.props.open).toBe(true);
+      tree = h.render();
+      expect(one(tree, n => n.type === "fieldset").props.disabled).toBe(false);
+      const done = one(tree, n => n.props["data-testid"] === "quicklog-reply-done");
+      const receipt = one(tree, n => n.props.testId === "quicklog-reply-line1");
+      expect(receipt.props.link).toMatchObject({ testId: "quicklog-reply-open", href: "#/journal" });
+      if (dismiss === "done") done.props.onClick();
+      if (dismiss === "open") receipt.props.link.onOpen();
+      if (dismiss === "backdrop") afterSave.onBackdropClick(click(backdrop, 1));
+      expect(h.close).toHaveBeenCalledOnce();
+      expect(h.props.open).toBe(false);
+      expect(h.state.addMoment).toHaveBeenCalledOnce();
+      expect(h.state.handleAddLog).not.toHaveBeenCalled();
+      dialog.unmount(); h.view.unmount();
+    }
   });
   it("a failed save shows ONE message: the inline alert beside the kept draft, not the seam's toast too", async () => {
     // Production addMoment resolves null on a failed write; it never throws.

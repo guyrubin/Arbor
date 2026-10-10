@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { KEPT_SEARCH_STATES, KEPT_SEARCH_LIMITATIONS, KEPT_SEARCH_LEARN, KEPT_SEARCH_QUERIES, keptSearchFixture } from './capture/kept-search-contract.mjs';
 import { installKeptCaptureProbe, finishKeptCaptureProbe } from './capture/kept-capture-states.mjs';
+import * as normalizedCapture from './capture/normalized-search-states.mjs';
 import { releaseMatrix, releaseCell, captureDeadlineMs, RELEASE_MATRIX } from './capture/release-config.mjs';
 import { expectedReleaseInteractionStates, missingReleaseInteractionEvidence } from './capture/release-interactions.mjs';
 import { CONFIRMED_ACTION_STATES } from './capture/confirmed-actions-contract.mjs';
@@ -186,6 +187,67 @@ describe('bounded additive kept capture and search contract, no browser', () => 
     expect(code).toContain("commands.locator('button.group')");
     expect(code).toContain("'TRUE_EMPTY_PUBLIC_COMMANDS_KEEP_THREE_PLACES'");
     expect(code).toContain("await commands.getByRole('button', { name: he ? 'סגור' : 'Close', exact: true }).click()");
+  });
+  it('requires exact Journal fixture, demo plan and approved-memory identities before and after a marks-only query', () => {
+    const observe = (normalizedCapture as any).observeKeptJournalInventory;
+    for (const lang of ['en', 'he'] as const) {
+      const fixture = keptSearchFixture(bundle(), lang);
+      const spec = { moments: fixture.collections.behaviorLogs, approvedMemory: lang === 'he' ? 'עובדה סינתטית שאושרה' : 'An approved synthetic fact' };
+      const expected = [
+        ...spec.moments.map((row: any) => ({ id: `journal-signal-moment-${row.id}`, words: row.trigger })),
+        { id: 'journal-signal-plan-plan-1', words: null },
+        { id: 'journal-signal-memory-synthetic-approved', words: spec.approvedMemory },
+      ].sort((a, b) => a.id.localeCompare(b.id));
+      let rows = expected;
+      vi.stubGlobal('document', { querySelectorAll: (selector: string) => {
+        expect(selector).toBe('[data-testid="journal-record-row"]');
+        return rows.map(row => ({ id: row.id, querySelector: (wordsSelector: string) => {
+          expect(wordsSelector).toBe('[data-testid="journal-row-words"]');
+          return row.words === null ? null : { textContent: row.words };
+        } }));
+      } });
+      try {
+        const initial = observe(spec);
+        expect(initial).toMatchObject({ ready: true, rows: expected });
+        rows = [...expected].reverse();
+        expect(observe({ ...spec, baseline: initial.rows })).toMatchObject({ ready: true, rows: expected });
+        for (const invalid of [
+          expected.slice(1),
+          [...expected, { id: 'journal-signal-moment-extra', words: 'Unexpected row' }],
+          expected.map((row, i) => i === 0 ? expected[1] : row),
+          expected.map(row => row.id.endsWith('plan-plan-1') ? { ...row, id: 'journal-signal-plan-plan-2' } : row),
+          expected.map(row => row.id.includes('moment-') ? { ...row, words: `${row.words} changed` } : row),
+          expected.map(row => row.id.includes('memory-') ? { ...row, words: 'Unapproved fact' } : row),
+          expected.map(row => row.id.includes('memory-') ? { ...row, id: 'journal-signal-unknown-source' } : row),
+        ]) {
+          rows = invalid;
+          expect(observe(spec).ready).toBe(false);
+          expect(observe({ ...spec, baseline: initial.rows, waitUntilReady: true })).toBe(false);
+        }
+        rows = expected.map(row => row.id.includes('memory-') ? { ...row, id: 'journal-signal-memory-another-approved' } : row);
+        expect(observe(spec).ready).toBe(true);
+        expect(observe({ ...spec, baseline: initial.rows }).ready).toBe(false);
+        rows = expected;
+        expect(observe({ ...spec, approvedMemory: '' }).ready).toBe(false);
+        expect(observe({ ...spec, moments: spec.moments.slice(1) }).ready).toBe(false);
+      } finally { vi.unstubAllGlobals(); }
+    }
+    const code = read('app/scripts/capture/normalized-search-states.mjs');
+    expect(code).toContain('await page.waitForFunction(observeKeptJournalInventory');
+    expect(code).toContain('baseline: initialInventory.rows');
+    expect(code).toContain("'JOURNAL_EXACT_SEEDED_AND_DEMO_INVENTORY'");
+    expect(code).not.toContain("querySelectorAll('[data-testid=\"journal-record-row\"]').length === 4");
+  });
+  it('requires a visible global no-match state without a marks-only Ask prefill or fallback catalogue', () => {
+    const code = read('app/scripts/capture/normalized-search-states.mjs');
+    expect(code).toContain("await results().count() === 0 && await byId('search-ask-row').count() === 0");
+    expect(code).toContain("'MARKS_ONLY_VISIBLE_NO_MATCH_STATE'");
+    expect(code).toContain("surface().getByText(he ? 'אין התאמות.' : 'No matches.', { exact: true })");
+    expect(code).toContain('fixture.collections.behaviorLogs.every(row => !text.includes(row.trigger))');
+    expect(code).toContain("await globalInput().fill('')");
+    expect(code).toContain("'TRUE_EMPTY_PUBLIC_COMMANDS_KEEP_THREE_PLACES'");
+    expect(translate('en', 'sm.noMatches')).toBe('No matches.');
+    expect(translate('he', 'sm.noMatches')).toBe('אין התאמות.');
   });
   it('retains passive bounded evidence when a repeated native click lands outside a resized receipt', () => {
     const listeners = new Map<string, (event: any) => void>();
