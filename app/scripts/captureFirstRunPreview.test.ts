@@ -123,14 +123,14 @@ describe('bounded existing first-run DEV preview evidence', () => {
     const apiState = { firstRunDeniedWrites: 0, firstRunNarrationRefusals: 0, deniedActions: 0, deniedExternal: 0 };
     const base = 'http://127.0.0.1:4805';
     const extract = (pattern: string, end: string, values: Record<string, unknown>) => {
-      const start = pattern === '**/sandbox/demo-family.json' ? 'await context.route(isCaptureDemoFamilyUrl, ' : `await context.route('${pattern}', `, from = source.indexOf(start), to = source.indexOf(end, from + start.length);
+      const start = pattern === '**/sandbox/demo-family.json' ? 'await context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : isCaptureDemoFamilyUrl, ' : `await context.route('${pattern}', `, from = source.indexOf(start), to = source.indexOf(end, from + start.length);
       expect(from).toBeGreaterThan(-1); expect(to).toBeGreaterThan(from);
       return new Function(...Object.keys(values), `return (${source.slice(from + start.length, to)});`)(...Object.values(values));
     };
     const context = { route: async (pattern: any, handler: any) => { handlers.push({ pattern, handler }); } };
-    await context.route('**/*', extract('**/*', ");\n    await context.routeWebSocket", { apiState, BASE: base }));
-    await context.route('**/api/**', extract('**/api/**', ");\n    await context.route(isCaptureDemoFamilyUrl", { apiState, BASE: base, firstRunPreview: true, firstRunPreviewApiDisposition, kidEntry: null, deniedCaptureApiCategory, _apiCache: new Map(), fixture: { childId: 'synthetic' } }));
-    await context.route(isCaptureDemoFamilyUrl, extract('**/sandbox/demo-family.json', ");\n    await installOfflineFonts", { apiState, fixture: { parsed: {} } }));
+    await context.route('**/*', extract('**/*', ");\n    await context.routeWebSocket", { apiState, BASE: base, privateExport: null }));
+    await context.route('**/api/**', extract('**/api/**', ");\n    await context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : isCaptureDemoFamilyUrl", { apiState, BASE: base, privateExport: null, firstRunPreview: true, firstRunPreviewApiDisposition, kidEntry: null, deniedCaptureApiCategory, _apiCache: new Map(), fixture: { childId: 'synthetic' } }));
+    await context.route(isCaptureDemoFamilyUrl, extract('**/sandbox/demo-family.json', ");\n    await installOfflineFonts", { apiState, privateExport: null, fixture: { parsed: {} } }));
     const fontUrl = 'https://fonts.gstatic.com/exact-cached.woff2';
     await context.route((url: URL) => url.href === fontUrl, (route: any) => route.fulfill({ status: 200 }));
     await installFirstRunPreviewBoundary(context, apiState);
@@ -167,8 +167,8 @@ describe('bounded existing first-run DEV preview evidence', () => {
       ['**/sandbox/demo-family.json', ");\n    await installOfflineFonts", '/sandbox/demo-family.json', 'fallback'],
     ]) {
       const apiState: any = { deniedActions: 0, deniedExternal: 0, ...(preview ? { firstRunDeniedWrites: 0 } : {}) };
-      const start = pattern === '**/sandbox/demo-family.json' ? 'await context.route(isCaptureDemoFamilyUrl, ' : `await context.route('${pattern}', `, from = source.indexOf(start), to = source.indexOf(end, from + start.length);
-      const handler = new Function('apiState', 'BASE', 'fixture', `return (${source.slice(from + start.length, to)});`)(apiState, 'http://127.0.0.1:4805', { parsed: {} });
+      const start = pattern === '**/sandbox/demo-family.json' ? 'await context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : isCaptureDemoFamilyUrl, ' : `await context.route('${pattern}', `, from = source.indexOf(start), to = source.indexOf(end, from + start.length);
+      const handler = new Function('apiState', 'BASE', 'fixture', 'privateExport', `return (${source.slice(from + start.length, to)});`)(apiState, 'http://127.0.0.1:4805', { parsed: {} }, null);
       const effects: string[] = [];
       await handler({ request: () => ({ method: () => 'POST', url: () => 'http://127.0.0.1:4805' + path }), abort: () => effects.push('abort'), continue: () => effects.push('continue'), fallback: () => effects.push('fallback'), fulfill: ({ status }: any) => effects.push(`fulfill:${status}`) });
       expect(effects).toEqual([preview ? 'abort' : ordinaryEffect]);

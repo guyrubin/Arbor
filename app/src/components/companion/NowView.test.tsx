@@ -277,6 +277,11 @@ describe("B-SHELL-36 first-run handoff", () => {
       const html = renderToStaticMarkup(<NowView />);
       expect(html).toContain('data-module="now-step"'); expect(html).toContain("Notice one moment together.");
       expect(html).toContain('data-testid="now-observation-answer"');
+      const save = html.match(/<button[^>]*class="companion-primary now-observation-save"[^>]*>[\s\S]*?<\/button>/)?.[0];
+      expect(save).toBeDefined(); expect(save).toContain('disabled=""'); expect(save).toContain("aria-describedby=");
+      expect(save).not.toContain(">check</span>");
+      expect(html).toContain('data-testid="now-observation-required"');
+      expect(html).toContain(lang === "he" ? "כדי לשמור, כתבו רגע אחד למעלה." : "Write a moment above to keep it.");
       expect(html).not.toContain(lang === "he" ? "מחר נשאל איך היה." : "Tomorrow we&#x27;ll ask how it went.");
       expect(html).not.toContain(NOW_COPY[lang].helped);
       expect(html).not.toContain(NOW_COPY[lang].notToday);

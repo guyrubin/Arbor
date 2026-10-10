@@ -34,9 +34,20 @@ vi.mock("react/jsx-dev-runtime", async original => {
   return { ...real, jsxDEV: (...args: Parameters<typeof real.jsxDEV>) => { capture(args[0], args[1]); return real.jsxDEV(...args); } };
 });
 import OnboardingFlow, { StepChild, StepDomains, StepReady, ONBOARDING_CHOICES } from "./OnboardingFlow";
+import { UrgentSupport } from "../safety/UrgentSupport";
 const NOW = new Date("2026-10-09T12:00:00Z");
 const base = () => ({ ...initialFirstRunState(), name: "Noa", birthMonth: "2022-04", languages: ["English"], consent: true });
 const nothing = () => {};
+const escapedText = (text: string) => renderToStaticMarkup(<span>{text}</span>).slice(6, -7);
+function expectCompleteUrgentAlert(html: string, lang: "en" | "he") {
+  expect(html.match(/role="alert"/g)).toHaveLength(1);
+  const alert = html.match(/<(div|aside)\b[^>]*role="alert"[^>]*>([\s\S]*?)<\/\1>/)?.[2];
+  expect(alert).toBeDefined();
+  for (const key of ["elev.safety.crisis.danger", "screen.safetyNote"]) {
+    expect(alert!.split(escapedText(translate(lang, key))).length - 1).toBe(1);
+  }
+  expect([...alert!.matchAll(/href="(tel:[^"]+)"/g)].map(match => match[1])).toEqual(["tel:1201", "tel:101", "tel:100", "tel:118"]);
+}
 const flow = readFileSync(new URL("./OnboardingFlow.tsx", import.meta.url), "utf8");
 beforeEach(() => { state.lang = "en"; state.buttons = []; state.inputs = []; vi.useFakeTimers(); vi.setSystemTime(NOW); vi.stubGlobal("fetch", vi.fn(() => { throw new Error("First run must stay local"); })); });
 afterEach(() => { expect(globalThis.fetch).not.toHaveBeenCalled(); vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -104,6 +115,45 @@ describe("three-step authored first run", () => {
     expect(renderToStaticMarkup(<StepDomains state={s} onWorry={nothing} onNext={nothing} />)).toContain('href="tel:101"');
     state.buttons = []; const html = renderToStaticMarkup(<StepReady state={s} card={firstRunCard(s, "en", NOW)} onWorry={nothing} onSubmit={nothing} ready />);
     expect(html).not.toContain("I'll try it today"); expect(html).toContain("emergency services");
+  });
+  it.each(["en", "he"] as const)("urgent instructions appear once with every existing help target (%s)", lang => {
+    state.lang = lang; const s = base(); s.worry.words = "he wants to hurt himself";
+    const card = firstRunCard(s, lang, NOW);
+    expect(card.urgent).toBe(true);
+    const escape = (text: string) => renderToStaticMarkup(<span>{text}</span>).slice(6, -7);
+    const ready = renderToStaticMarkup(<StepReady state={s} card={card} onWorry={nothing} onSubmit={nothing} ready />);
+    expect(ready).toContain(`<p class="first-run-notice" dir="auto">${escape(card.notice)}</p>`);
+    // The worry screen and shared default (including Now) must retain their own instructions.
+    for (const html of [ready, renderToStaticMarkup(<StepDomains state={s} onWorry={nothing} onNext={nothing} />), renderToStaticMarkup(<UrgentSupport />)]) {
+      expectCompleteUrgentAlert(html, lang);
+      for (const key of ["elev.safety.crisis.danger", "screen.safetyNote"]) {
+        expect(html.split(escape(translate(lang, key))).length - 1).toBe(1);
+      }
+      expect([...html.matchAll(/href="(tel:[^"]+)"/g)].map(match => match[1])).toEqual(["tel:1201", "tel:101", "tel:100", "tel:118"]);
+      for (const [id, number] of [["il_eran", "1201"], ["il_mda", "101"], ["il_police", "100"], ["il_welfare", "118"]]) {
+        expect(html).toContain(`${escape(translate(lang, `elev.safety.helpline.${id}`))} · ${number}</a>`);
+      }
+    }
+  });
+  it.each(["en", "he"] as const)("an in-place step-3 Talking quote edit introduces one complete urgent alert (%s)", async lang => {
+    state.lang = lang;
+    const c = new FirstRunController(null, { addChild: async input => ({ ...input, id: "new" }), updateChild: async () => true, accept: async () => {}, lang: () => lang, now: () => NOW });
+    c.edit({ name: "Noa", birthMonth: "2022-04", languages: ["English"], consent: true });
+    await c.next(); c.worry({ choice: "talking", quote: "ball" }); await c.next();
+    const render = () => {
+      state.inputs = [];
+      return renderToStaticMarkup(<StepReady state={c.snapshot()} card={firstRunCard(c.snapshot(), lang, NOW)} onWorry={patch => c.worry(patch)} onSubmit={nothing} ready />);
+    };
+    expect(c.snapshot().step).toBe(3);
+    expect(render()).not.toContain('role="alert"');
+    state.inputs.find(input => input.maxLength === 160)!.onChange({ target: { value: "I want to hurt myself" } });
+    expect(c.snapshot().step).toBe(3);
+    const urgent = render(); expectCompleteUrgentAlert(urgent, lang);
+    for (const key of ["elev.safety.crisis.danger", "screen.safetyNote"]) {
+      expect(urgent.split(escapedText(translate(lang, key))).length - 1).toBe(1);
+    }
+    state.inputs.find(input => input.maxLength === 160)!.onChange({ target: { value: "ball" } });
+    expect(render()).not.toContain('role="alert"'); expect(c.snapshot().step).toBe(3);
   });
   it("a cold/erroring action collection keeps acceptance disabled", () => {
     const s = base(); renderToStaticMarkup(<StepReady state={s} card={firstRunCard(s, "en", NOW)} onWorry={nothing} onSubmit={nothing} ready={false} />);

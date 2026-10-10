@@ -5,7 +5,7 @@ on:
   # Dedicated candidate branch only. This never changes the active small capture
   # or production workflows, and never merges/deploys to obtain evidence.
   push:
-    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release', 'codex/kid-entry-safety-diagnostic', 'codex/kid-entry-safety-release', 'codex/first-run-capture']
+    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release', 'codex/kid-entry-safety-diagnostic', 'codex/kid-entry-safety-release', 'codex/first-run-capture', 'codex/private-export-release']
     paths: ['app/**', 'knowledge/**', '.github/workflows/arbor-parent-release-capture.yml']
 permissions:
   contents: read
@@ -29,6 +29,7 @@ jobs:
         run: |
           if [[ "$GITHUB_REF_NAME" == "codex/first-run-capture" ]]; then scope=first-run-preview-only;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-capture-search-release" ]]; then scope=parent-kid-release;
+          elif [[ "$GITHUB_REF_NAME" == "codex/private-export-release" ]]; then scope=private-export-only;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-confirmed-action-loops" ]]; then scope=confirmed-actions-release;
           elif [[ "$GITHUB_REF_NAME" == "codex/kid-entry-safety-diagnostic" ]]; then scope=kid-entry-only;
           elif [[ "$GITHUB_REF_NAME" == "codex/kid-entry-safety-release" ]]; then scope=kid-entry-release;

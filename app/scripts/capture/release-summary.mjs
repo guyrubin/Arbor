@@ -39,7 +39,7 @@ export function summarizeRelease(records, identity, scope = 'all') {
       const routes = shardRoutes(ids, capture.cell.shard);
       if (cells.length !== routes.length || missingBaseEvidence(cells, routes, viewport).length) reasons.push('BASE_EVIDENCE_MISSING');
       baseCells += cells.filter((cell) => cell.mounted && cell.shot).length;
-    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry', 'first-run-preview'].includes(group) && viewport) {
+    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry', 'first-run-preview', 'private-export'].includes(group) && viewport) {
       if (evidence?.sourceSha !== identity.sourceSha || evidence?.sourceTreeSha !== identity.sourceTreeSha) reasons.push('INTERACTION_IDENTITY_MISMATCH');
       if (missingReleaseInteractionEvidence(cells, { group, viewport, ...identity }).length || !cells.length || cells.some((cell) => !cell.reached || !cell.shot)) reasons.push('INTERACTION_EVIDENCE_MISSING');
       interactionCells += cells.filter((cell) => cell.reached && cell.shot).length;
@@ -91,5 +91,5 @@ export function summarizeRelease(records, identity, scope = 'all') {
   if (scope === 'first-run-preview-only' && firstRunPrimaryShots.size !== expectedFirstRunPrimaryShots) failures.push({ id: 'first-run-primary-matrix', reasons: ['FIRST_RUN_PRIMARY_MATRIX_INCOMPLETE'] });
   return { schema: 1, scope, ...(scope === 'first-run-preview-only' ? { expectedPrimaryScreenshots: expectedFirstRunPrimaryShots, primaryScreenshots: firstRunPrimaryShots.size } : {}), ...identity, completed: failures.length === 0, expectedShards: expected.size, returnedShards: records.length,
     expectedBaseCells, baseCells, interactionCells, screenshots, printPreviews, routeIds: routeIds ?? [], shards, failures,
-    note: (scope === 'first-run-preview-only' ? 'DEV preview only. Production ProfileGate, remote empty-account entry and server acknowledgement remain BLOCKED. ' : '') + 'Coverage is rendered evidence, not a visual-quality sign-off. Review PNGs and interaction assertions. Synthetic records/mock replies do not establish production/provider behavior.' };
+    note: (scope === 'first-run-preview-only' ? 'DEV preview only. Production ProfileGate, remote empty-account entry and server acknowledgement remain BLOCKED. ' : '') + (scope === 'private-export-only' ? 'This bounded scope covers only the sandbox partial JSON flow. Complete authenticated private-file export and native-device download remain unverified. ' : '') + 'Coverage is rendered evidence, not a visual-quality sign-off. Review PNGs and interaction assertions. Synthetic records/mock replies do not establish production/provider behavior.' };
 }

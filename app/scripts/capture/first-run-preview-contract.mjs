@@ -49,7 +49,7 @@ export const FIRST_RUN_PREVIEW_REQUIRED_ASSERTIONS = Object.freeze({
   'observation-multiline': ['FULL_QUESTION_AND_DETAILS_VISIBLE', 'MULTILINE_WORDS_RETAINED', 'REAL_TAB_REACHES_SAVE', 'OBSERVATION_SAVE_REACHABLE', 'ONE_OBSERVATION_MODULE_AND_PRIMARY', 'NO_EFFICACY_CONTROLS', 'NO_PREMATURE_RECEIPT'],
   'observation-local-receipt': ['LOCAL_HANDLER_RECEIPT_ONLY', 'EXACT_COMPLETED_OBSERVATION', 'FULL_QUESTION_AND_DETAILS_VISIBLE', 'SAVED_WORDS_VISIBLE', 'ONE_OBSERVATION_MODULE_AND_PRIMARY', 'ONE_RECEIPT', 'NO_EFFICACY_CONTROLS', 'OPEN_RECORD_REACHABLE'],
   'observation-history-row': ['EXACT_HISTORY_ROUTE_AND_ROW', 'FACTUAL_OBSERVATION_HISTORY_TITLE', 'HISTORY_RECORD_UNCHANGED', 'NO_HISTORY_EFFICACY_OR_DURATION'],
-  'observation-history-details': ['FULL_HISTORY_QUESTION_AND_WORDS_VISIBLE', 'NO_HISTORY_EFFICACY_OR_DURATION', 'REAL_ROW_OPENED_DETAILS'],
+  'observation-history-details': ['FULL_HISTORY_QUESTION_AND_WORDS_VISIBLE', 'HISTORY_SEPARATE_ATTRIBUTION', 'HISTORY_RAW_TEXT_WHITESPACE', 'NO_HISTORY_EFFICACY_OR_DURATION', 'REAL_ROW_OPENED_DETAILS'],
   'observation-details-close': ['REAL_DETAILS_CLOSE', 'FOCUS_RESTORED_TO_EXACT_ROW', 'HISTORY_RECORD_UNCHANGED'],
   'observation-completed-reload': ['COMPLETED_ROW_SURVIVES_RELOAD', 'NO_REPEATED_OBSERVATION_TASK', 'NO_STALE_RECEIPT', 'SAME_CHILD_NO_DUPLICATE'],
 });
@@ -106,6 +106,10 @@ export function firstRunPreviewText(lang) {
     receipt: lang === 'he' ? 'הרגע נשמר ברשומות שלכם.' : 'Moment kept in your record.',
     open: lang === 'he' ? 'לפתוח את הרשומות' : 'Open record',
     purpose: lang === 'he' ? 'כתבו רגע אחד ששמתם לב אליו. המילים שלכם יישמרו לצד השאלה ברשומות שלכם.' : 'Write one moment you noticed. Your words will stay with this question in your record.',
+    chosen: lang === 'he' ? 'השאלה שבחרתם' : 'The question you chose',
+    answer: lang === 'he' ? 'מה שמתם לב אליו' : 'What you noticed',
+    suggested: lang === 'he' ? 'הניסוח הוצע על ידי Arbor' : 'Wording suggested by Arbor',
+    parentAuthor: lang === 'he' ? 'אתם' : 'You',
     history: lang === 'he' ? 'תיעדתם את מה ששמתם לב אליו' : 'You recorded what you noticed',
     try: lang === 'he' ? 'ננסה את זה היום' : "I'll try it today",
     about: lang === 'he' ? 'קצת על הילד או הילדה' : 'About your child', neutral: lang === 'he' ? `מה קרה היום עם ${name}?` : `What happened with ${name} today?` };

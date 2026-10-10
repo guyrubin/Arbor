@@ -43,6 +43,38 @@ function setup(lang: "en" | "he" = "en") {
 }
 async function flush() { for (let i = 0; i < 10; i++) await Promise.resolve(); }
 describe("actual Now observation form lifecycle", () => {
+  it.each(["en", "he"] as const)("%s explains blank/whitespace gating and changes only the observation save affordance", lang => {
+    const h = setup(lang); h.render();
+    for (const words of ["", "  \n  ", "A moment."]) {
+      h.fill(words); const tree = h.render(); const button = h.find("primary-move");
+      const blank = !words.trim();
+      expect(button.disabled).toBe(blank);
+      expect(button.className).toContain("now-observation-save");
+      const hint = tree.find(el => el.props["data-testid"] === "now-observation-required");
+      expect(Boolean(hint)).toBe(blank);
+      if (blank) {
+        expect(hint!.props.children).toBe(translate(lang, "ob.first.observation.required"));
+        expect(button["aria-describedby"]).toBe(hint!.props.id);
+        expect(h.find("textarea")["aria-describedby"]).toContain(hint!.props.id);
+        expect(React.Children.toArray(button.children).flatMap(nodes).some(el => el.type === "icon" && el.props.name === "check")).toBe(false);
+        h.submit(); expect(h.state.saveTodayObservation).not.toHaveBeenCalled();
+      } else {
+        expect(button["aria-describedby"]).toBeUndefined();
+        expect(React.Children.toArray(button.children).flatMap(nodes).some(el => el.type === "icon" && el.props.name === "check")).toBe(true);
+      }
+    }
+    h.unmount();
+  });
+  it("scopes disabled neutral styling to the observation submit button without dimming its text", () => {
+    const css = readFileSync("src/components/companion/nowView.css", "utf8");
+    const rule = css.match(/\.companion-primary\.now-observation-save:disabled\s*\{([^}]+)\}/)?.[1];
+    expect(rule).toBeDefined();
+    expect(rule).toContain("background: var(--arbor-paper-deep)");
+    expect(rule).toContain("color: var(--arbor-muted)");
+    expect(rule).toContain("border-color: var(--arbor-rule-strong)");
+    expect(rule).toContain("cursor: not-allowed");
+    expect(rule).not.toContain("opacity");
+  });
   it.each(["en", "he"] as const)("%s keeps parent words through pending and failure, then acknowledges the exact saved row once", async lang => {
     const h = setup(lang); let resolve!: () => void, reject!: (error: unknown) => void;
     const pending = new Promise<void>((yes, no) => { resolve = yes; reject = no; });
@@ -50,6 +82,8 @@ describe("actual Now observation form lifecycle", () => {
     h.render(); expect(h.find("primary-move").disabled).toBe(true);
     h.fill("He said bus.\nThen waved."); h.render(); h.submit(); h.submit();
     const during = h.render(); expect(h.find("textarea").value).toBe("He said bus.\nThen waved."); expect(h.find("textarea").disabled).toBe(true);
+    expect(h.find("primary-move").disabled).toBe(true); expect(h.find("primary-move")["aria-busy"]).toBe(true);
+    expect(during.some(el => el.props["data-testid"] === "now-observation-required")).toBe(false);
     expect(during.some(el => el.type === "receipt")).toBe(false); expect(h.state.saveTodayObservation).toHaveBeenCalledOnce();
     reject(Error("rules")); await flush(); const failed = h.render();
     expect(failed.some(el => el.props.role === "alert")).toBe(true); expect(h.find("textarea").value).toBe("He said bus.\nThen waved.");

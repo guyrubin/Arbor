@@ -183,7 +183,12 @@ export async function collectFirstRunPreviewStates({ page, viewport, screen, che
     await back().click(); await step(2); await worry().locator('[data-choice="hard-moment"]').click();
     const guides = worry().locator('select'); await ready(guides);
     await guides.selectOption({ index: 1 }); await primary().click(); await step(3); await ready(card());
-    check(cell, 'HARD_MOMENT_GUIDE_VISIBLE', await card().locator('.first-run-say').isVisible() && await card().locator('[data-testid="onboarding-escalation"]').isVisible() && await card().locator('details summary').count() === 1);
+    // The guide contains its own nested Sources disclosure. Count only the
+    // outer, visible entry point rather than every descendant summary.
+    const guideSummary = card().locator('.first-run-authored-card > details > summary');
+    const guideFrame = await element('[data-testid="onboarding-card"] .first-run-authored-card > details > summary');
+    check(cell, 'HARD_MOMENT_GUIDE_VISIBLE', await card().locator('.first-run-say').isVisible() && await card().locator('[data-testid="onboarding-escalation"]').isVisible()
+      && await guideSummary.count() === 1 && guideFrame.visible && guideFrame.reachable, guideFrame);
     check(cell, 'HARD_MOMENT_CTA_UNCHANGED', await primary().innerText() === text.try);
     check(cell, 'NO_ACTION_ACCEPTED', (await actions()).length === 0);
   });
@@ -243,7 +248,9 @@ export async function collectFirstRunPreviewStates({ page, viewport, screen, che
   const observationFrame = { selector: '[data-module="now-step"]', titleSelector: 'h2' };
   await run('observation-blank', async cell => {
     await stepModule().scrollIntoViewIfNeeded(); await fullQuestion(cell);
-    check(cell, 'OBSERVATION_PURPOSE_EXACT', await stepModule().locator('form > p').innerText() === text.purpose);
+    const purposeSelector = '[data-module="now-step"] form > p[id$="-observation-purpose"]';
+    const purpose = await element(purposeSelector);
+    check(cell, 'OBSERVATION_PURPOSE_EXACT', await page.locator(purposeSelector).count() === 1 && purpose.visible && purpose.reachable && purpose.text === text.purpose, purpose);
     const initiallyBlank = await answer().inputValue() === '' && await save().isDisabled();
     await answer().fill('   '); const whitespaceDisabled = await save().isDisabled(); await answer().fill('');
     check(cell, 'BLANK_SUBMISSION_DISABLED', initiallyBlank && whitespaceDisabled && await save().isDisabled());
@@ -259,6 +266,10 @@ export async function collectFirstRunPreviewStates({ page, viewport, screen, che
   }, { selector: '[data-testid="now-observation-urgent-support"]', titleSelector: 'p' });
   await run('observation-multiline', async cell => {
     await answer().fill(text.words); await answer().focus(); await page.keyboard.press('Tab');
+    // Removing the taller urgent-support panel can retain its previous scroll.
+    // Restore the actual module without changing keyboard focus, then require
+    // the full question AND focused save control in the same viewport.
+    await stepModule().scrollIntoViewIfNeeded();
     const frame = await element('[data-module="now-step"] button[type="submit"]');
     check(cell, 'REAL_TAB_REACHES_SAVE', frame.focused && !await save().isDisabled(), frame);
     check(cell, 'OBSERVATION_SAVE_REACHABLE', frame.reachable && frame.text.endsWith(text.keep), frame);
@@ -301,10 +312,22 @@ export async function collectFirstRunPreviewStates({ page, viewport, screen, che
   await run('observation-history-details', async cell => {
     await page.locator(rowSelector()).click(); const dialog = page.getByRole('dialog'); await ready(dialog);
     const content = await dialog.innerText();
-    const detail = await element('[role="dialog"] p[dir="auto"]:nth-of-type(2)');
+    const promptSection = '[role="dialog"] [data-testid="journal-entry-observation-prompt"]';
+    const wordsSection = '[role="dialog"] [data-testid="journal-entry-observation-words"]';
+    const prompt = await element(`${promptSection} > dd`), words = await element(`${wordsSection} > dd`);
+    const promptLabel = await element(`${promptSection} > dt`), wordsLabel = await element(`${wordsSection} > dt`);
+    const promptSource = await element(`${promptSection} > dt > span`), wordsSource = await element(`${wordsSection} > dt > span`);
     check(cell, 'REAL_ROW_OPENED_DETAILS', await dialog.count() === 1 && content.includes(text.history));
-    check(cell, 'FULL_HISTORY_QUESTION_AND_WORDS_VISIBLE', detail.visible && detail.reachable
-      && detail.text === `${text.recommendation}\n\n${text.words}`, detail);
+    check(cell, 'FULL_HISTORY_QUESTION_AND_WORDS_VISIBLE', await page.locator(`${promptSection} > dd`).count() === 1 && await page.locator(`${wordsSection} > dd`).count() === 1
+      && prompt.visible && prompt.reachable && words.visible && words.reachable && prompt.rawText === text.recommendation && words.rawText === text.words, { prompt, words });
+    check(cell, 'HISTORY_RAW_TEXT_WHITESPACE', prompt.whiteSpace === 'pre-wrap' && words.whiteSpace === 'pre-wrap'
+      && prompt.rawText === text.recommendation && words.rawText === text.words && words.rawText.includes('\n'), { prompt: prompt.whiteSpace, words: words.whiteSpace });
+    check(cell, 'HISTORY_SEPARATE_ATTRIBUTION', promptLabel.visible && promptLabel.reachable && wordsLabel.visible && wordsLabel.reachable
+      && promptSource.visible && promptSource.reachable && wordsSource.visible && wordsSource.reachable
+      && (await page.locator(`${promptSection} > dt`).innerText()).replace(/\s+/g, ' ') === `${text.chosen} ${text.suggested}`
+      && (await page.locator(`${wordsSection} > dt`).innerText()).replace(/\s+/g, ' ') === `${text.answer} ${text.parentAuthor}`
+      && promptSource.rawText === text.suggested && wordsSource.rawText === text.parentAuthor
+      && await dialog.locator('[data-testid="journal-entry-content-source"]').count() === 0, { promptSource, wordsSource });
     await noHistoryGrade(cell, '[role="dialog"]');
   }, { selector: '[role="dialog"]', titleSelector: 'h3' });
   await run('observation-details-close', async cell => {

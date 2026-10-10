@@ -94,7 +94,7 @@ describe('bounded additive kept capture and search contract, no browser', () => 
     expect(workflow).not.toMatch(/secrets\.|workflow_dispatch|id-token:|docker push|firebase deploy|--privileged|--network host/);
     const collector = read('app/scripts/capture/release-interactions.mjs');
     expect(collector).toContain("'kept-search': KEPT_SEARCH_STATES");
-    expect(collector).toContain('keptSearch?.parsed ?? kidEntry?.parsed ?? confirmed?.parsed');
+    expect(collector).toContain('keptSearch?.parsed ?? privateExport?.parsed ?? kidEntry?.parsed ?? confirmed?.parsed');
     expect(collector).toContain('if (record || confirmed || keptSearch) await context.addInitScript(installRecordShareSink)');
     expect(collector).toContain('doc.keptSearchBoundaries = KEPT_SEARCH_LIMITATIONS');
     expect(collector).toContain('await collectKeptSearchStates(');

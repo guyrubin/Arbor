@@ -133,6 +133,7 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
   const observationWords = observationDraft?.scope === scopeLease && observationDraft.id === chosen?.id ? observationDraft.words : "";
   const observation = !!chosen && isObservationAction(chosen);
   const saving = !!chosen && savingAction.current.has(chosen.id);
+  const observationNeedsWords = !observationWords.trim();
   const talk = (prompt?: string) => onTalkOpen ? onTalkOpen(prompt) : seedCoach({ prompt: prompt ?? "", source: "companion-now" });
   const saveOutcome = async (outcome: "helped" | "not_today" | { whatHappened: string }) => {
     const target = retryAction?.scope === scopeLease ? retryAction.action : action;
@@ -251,10 +252,12 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
             <p id={`${id}-observation-purpose`} className="now-lead-body">{t("ob.first.observation.purpose")}</p>
             <label className="now-observation-field" htmlFor={`${id}-observation`}>{t("ob.first.observation.answer")}</label>
             <textarea id={`${id}-observation`} data-testid="now-observation-answer" className="now-observation-input" dir="auto" rows={3} maxLength={240} required
-              aria-describedby={`${id}-observation-purpose`} disabled={saving} value={observationWords}
+              aria-describedby={`${id}-observation-purpose${!saving && observationNeedsWords ? ` ${id}-observation-required` : ""}`} disabled={saving} value={observationWords}
               onChange={event => setObservationDraft({ scope: scopeLease, id: chosen.id, words: event.target.value })} />
             {screenForImmediateEscalation({ message: observationWords }) && <UrgentSupport testId="now-observation-urgent-support" className="now-lead-body" />}
-            <div className="now-lead-actions"><PrimaryMove type="submit" className="companion-primary" disabled={saving || !observationWords.trim()} aria-busy={saving}><Icon name="check" size={19} />{saving ? copy.saving : t("ob.first.observation.keep")}</PrimaryMove></div>
+            {!saving && observationNeedsWords && <p id={`${id}-observation-required`} data-testid="now-observation-required" className="now-observation-required">{t("ob.first.observation.required")}</p>}
+            <div className="now-lead-actions"><PrimaryMove type="submit" className="companion-primary now-observation-save" disabled={saving || observationNeedsWords} aria-busy={saving}
+              aria-describedby={!saving && observationNeedsWords ? `${id}-observation-required` : undefined}>{!saving && !observationNeedsWords && <Icon name="check" size={19} />}{saving ? copy.saving : t("ob.first.observation.keep")}</PrimaryMove></div>
           </form>)}
           {!observation && !receipt && <div className="now-lead-actions" role="group" aria-label={copy.outcomes}>
             <PrimaryMove type="button" className="companion-primary" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.helped}</PrimaryMove>

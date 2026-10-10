@@ -26,7 +26,7 @@ describe('fresh first-run observation capture evidence', () => {
     const card = firstRunCard(state, lang, new Date('2026-10-10T12:00:00Z'));
     expect(card).toMatchObject({ observation: true, recommendation: text.recommendation, notice: text.neutral });
     expect(`${card.sayBack!.heading} ${card.sayBack!.line}`).toBe(text.sayBack);
-    for (const [field, key] of Object.entries({ notice: 'ob.first.notice', keep: 'ob.first.observation.keep', purpose: 'ob.first.observation.purpose', receipt: 'ob.first.observation.saved', open: 'ob.first.observation.open', history: 'ob.first.observation.history.completed', try: 'ob.first.try' })) expect(text[field as keyof typeof text]).toBe(translate(lang, key));
+    for (const [field, key] of Object.entries({ chosen: 'ob.first.observation.chosen', answer: 'ob.first.observation.answer', suggested: 'elev.closeloop.entry.suggested', parentAuthor: 'journal.manual', notice: 'ob.first.notice', keep: 'ob.first.observation.keep', purpose: 'ob.first.observation.purpose', receipt: 'ob.first.observation.saved', open: 'ob.first.observation.open', history: 'ob.first.observation.history.completed', try: 'ob.first.try' })) expect(text[field as keyof typeof text]).toBe(translate(lang, key));
   });
   it('accepts only one completed row with exact original identity, question and submitted words', () => {
     const words = 'He said ball.\nThen rolled it to me.';
@@ -58,9 +58,102 @@ describe('fresh first-run observation capture evidence', () => {
     expect(source).toContain("await page.keyboard.press('Enter')");
     expect(source).toContain("await page.getByRole('dialog').locator('button[aria-label]').first().click()");
   });
+  it('the actual guide capture counts the visible outer disclosure without counting nested Sources', async () => {
+    const source = read('./capture/first-run-preview-states.mjs');
+    const marker = "await run('hard-moment-card', async cell => {";
+    const start = source.indexOf(marker) + marker.length;
+    const body = source.slice(start, source.indexOf("\n  });", start));
+    // This is the existing runtime's real nested structure, not a new guide.
+    expect(read('../src/components/auth/OnboardingFlow.tsx')).toContain('<details><summary>');
+    expect(read('../src/components/behaviors/HardMomentsSection.tsx')).toContain('<summary className="min-h-11');
+    const run = async (script: string, visible = true, outerCount = 1) => {
+      const checks: Record<string, boolean> = {};
+      const locator = (selector: string) => ({
+        click: async () => {}, selectOption: async () => {}, isVisible: async () => true,
+        count: async () => selector === 'details summary' ? 2 : outerCount,
+      });
+      const env = { back: () => locator('back'), step: async () => {}, worry: () => ({ locator }), primary: () => ({ ...locator('primary'), innerText: async () => 'Try' }),
+        ready: async () => {}, card: () => ({ locator }), element: async () => ({ visible, reachable: visible }), text: { try: 'Try' }, actions: async () => [],
+        check: (_cell: unknown, id: string, passed: boolean) => { checks[id] = passed; } };
+      await new Function(...Object.keys(env), `return async cell => {${script}}`)(...Object.values(env))({});
+      return checks;
+    };
+    expect((await run(body)).HARD_MOMENT_GUIDE_VISIBLE).toBe(true);
+    expect((await run(body.replace("locator('.first-run-authored-card > details > summary')", "locator('details summary')"))).HARD_MOMENT_GUIDE_VISIBLE).toBe(false);
+    expect((await run(body, false)).HARD_MOMENT_GUIDE_VISIBLE).toBe(false);
+    expect((await run(body, true, 0)).HARD_MOMENT_GUIDE_VISIBLE).toBe(false);
+    expect((await run(body, true, 2)).HARD_MOMENT_GUIDE_VISIBLE).toBe(false);
+  });
+  it('the actual multiline capture restores module scroll after Tab and still requires the full question', async () => {
+    const source = read('./capture/first-run-preview-states.mjs');
+    const marker = "await run('observation-multiline', async cell => {";
+    const start = source.indexOf(marker) + marker.length;
+    const body = source.slice(start, source.indexOf("\n  }, observationFrame);", start));
+    const run = async (script: string) => {
+      const events: string[] = []; let scrolled = false, focused = false;
+      const env = { text: { words: 'One\nTwo', keep: 'Keep' }, answer: () => ({ fill: async () => { events.push('fill'); }, focus: async () => { events.push('focus'); }, inputValue: async () => 'One\nTwo' }),
+        page: { keyboard: { press: async (key: string) => { events.push(key); focused = key === 'Tab'; } } },
+        stepModule: () => ({ scrollIntoViewIfNeeded: async () => { events.push('scroll-module'); scrolled = true; } }),
+        element: async () => { events.push('observe-save'); return { focused, reachable: true, text: 'Keep' }; }, save: () => ({ isDisabled: async () => false }),
+        fullQuestion: async () => { events.push('observe-full-question'); if (!scrolled) throw new Error('QUESTION_ABOVE_VIEWPORT'); },
+        check: (_cell: unknown, _id: string, passed: boolean) => { if (!passed) throw new Error('ASSERTION_FAILED'); }, oneMove: async () => {}, noEfficacy: async () => {}, noReceipt: async () => {} };
+      await new Function(...Object.keys(env), `return async cell => {${script}}`)(...Object.values(env))({});
+      return events;
+    };
+    expect(await run(body)).toEqual(['fill', 'focus', 'Tab', 'scroll-module', 'observe-save', 'observe-full-question']);
+    await expect(run(body.replace('await stepModule().scrollIntoViewIfNeeded();', ''))).rejects.toThrow('QUESTION_ABOVE_VIEWPORT');
+    expect(body).toContain('await fullQuestion(cell)');
+  });
+  it('the actual blank capture selects the unique purpose rather than the new required-words hint', async () => {
+    const source = read('./capture/first-run-preview-states.mjs'), marker = "await run('observation-blank', async cell => {";
+    const start = source.indexOf(marker) + marker.length, body = source.slice(start, source.indexOf("\n  }, observationFrame);", start));
+    const runtime = read('../src/components/companion/NowView.tsx');
+    expect(runtime).toContain('id={`${id}-observation-purpose`}');
+    expect(runtime).toContain('data-testid="now-observation-required"');
+    const run = async (script: string) => {
+      const checks: Record<string, boolean> = {};
+      const env = { stepModule: () => ({ scrollIntoViewIfNeeded: async () => {} }), fullQuestion: async () => {}, text: { purpose: 'Purpose' },
+        element: async (selector: string) => { if (!selector.includes('observation-purpose')) throw new Error('STRICT_DUPLICATE_PURPOSE_AND_HINT'); return { visible: true, reachable: true, text: 'Purpose' }; },
+        page: { locator: () => ({ count: async () => 1 }) }, answer: () => ({ inputValue: async () => '', fill: async () => {} }), save: () => ({ isDisabled: async () => true }),
+        check: (_cell: unknown, id: string, passed: boolean) => { checks[id] = passed; }, oneMove: async () => {}, noEfficacy: async () => {}, noReceipt: async () => {} };
+      await new Function(...Object.keys(env), `return async cell => {${script}}`)(...Object.values(env))({}); return checks;
+    };
+    expect((await run(body)).OBSERVATION_PURPOSE_EXACT).toBe(true);
+    await expect(run(body.replace('form > p[id$="-observation-purpose"]', 'form > p'))).rejects.toThrow('STRICT_DUPLICATE_PURPOSE_AND_HINT');
+  });
+  it.each(['en', 'he'] as const)('%s actual history capture requires separate raw fields, local attribution and preserved whitespace', async lang => {
+    const source = read('./capture/first-run-preview-states.mjs'), marker = "await run('observation-history-details', async cell => {";
+    const start = source.indexOf(marker) + marker.length, body = source.slice(start, source.indexOf('\n  }, { selector:', start));
+    const runtime = read('../src/components/journal/JournalEntrySheet.tsx');
+    expect(runtime).toContain('data-testid="journal-entry-observation-prompt"'); expect(runtime).toContain('data-testid="journal-entry-observation-words"');
+    expect(runtime).toContain('whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{signal.refTitle}</dd>');
+    expect(runtime).toContain('whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{signal.detail}</dd>');
+    const text = firstRunPreviewText(lang);
+    const run = async (script = body, patch: Record<string, unknown> = {}) => {
+      const checks: Record<string, boolean> = {};
+      const promptSection = '[role="dialog"] [data-testid="journal-entry-observation-prompt"]', wordsSection = '[role="dialog"] [data-testid="journal-entry-observation-words"]';
+      const frame = (rawText: string) => ({ visible: true, reachable: true, rawText, whiteSpace: 'pre-wrap' });
+      const frames: Record<string, any> = { [`${promptSection} > dd`]: frame(text.recommendation), [`${wordsSection} > dd`]: { ...frame(text.words), ...patch },
+        [`${promptSection} > dt`]: frame(text.chosen), [`${wordsSection} > dt`]: frame(text.answer),
+        [`${promptSection} > dt > span`]: frame(text.suggested), [`${wordsSection} > dt > span`]: frame(text.parentAuthor) };
+      const dialog = { count: async () => 1, innerText: async () => text.history, locator: () => ({ count: async () => 0 }) };
+      const env = { text, rowSelector: () => 'row', ready: async () => {}, noHistoryGrade: async () => {},
+        element: async (selector: string) => { if (!frames[selector]) throw new Error('OLD_MIXED_PARAGRAPH_ABSENT'); return frames[selector]; },
+        page: { getByRole: () => dialog, locator: (selector: string) => ({ click: async () => {}, count: async () => 1,
+          innerText: async () => selector.startsWith(promptSection) ? `${text.chosen}\n${text.suggested}` : `${text.answer}\n${text.parentAuthor}` }) },
+        check: (_cell: unknown, id: string, passed: boolean) => { checks[id] = passed; } };
+      await new Function(...Object.keys(env), `return async cell => {${script}}`)(...Object.values(env))({}); return checks;
+    };
+    expect(await run()).toMatchObject({ FULL_HISTORY_QUESTION_AND_WORDS_VISIBLE: true, HISTORY_RAW_TEXT_WHITESPACE: true, HISTORY_SEPARATE_ATTRIBUTION: true });
+    await expect(run(body.replace('`${promptSection} > dd`', '\'[role="dialog"] p[dir="auto"]:nth-of-type(2)\''))).rejects.toThrow('OLD_MIXED_PARAGRAPH_ABSENT');
+    expect((await run(body, { rawText: text.words.replace('\n', ' ') })).FULL_HISTORY_QUESTION_AND_WORDS_VISIBLE).toBe(false);
+    expect((await run(body, { whiteSpace: 'normal' })).HISTORY_RAW_TEXT_WHITESPACE).toBe(false);
+    expect((await run(body, { visible: false })).FULL_HISTORY_QUESTION_AND_WORDS_VISIBLE).toBe(false);
+    expect((await run(body.replace('promptSource.rawText === text.suggested', 'promptSource.rawText === text.parentAuthor'))).HISTORY_SEPARATE_ATTRIBUTION).toBe(false);
+  });
   it('requires real visible check glyphs and rejects occlusion, clipping, hidden and inert frames', () => {
     const box = { left: 20, right: 320, top: 30, bottom: 80, width: 300, height: 50 };
-    const style: any = { display: 'block', visibility: 'visible', opacity: '1', overflowX: 'visible', overflowY: 'visible' };
+    const style: any = { display: 'block', visibility: 'visible', opacity: '1', whiteSpace: 'pre-wrap', overflowX: 'visible', overflowY: 'visible' };
     const parent: any = { parentElement: null, getBoundingClientRect: () => ({ left: 0, right: 375, top: 0, bottom: 812 }) };
     const mark: any = { getBoundingClientRect: () => ({ left: 25, right: 41, top: 40, bottom: 56, width: 16, height: 16 }) };
     const el: any = { parentElement: parent, isConnected: true, textContent: 'checkEnglish', scrollHeight: 50, clientHeight: 50, scrollWidth: 300, clientWidth: 300,
@@ -74,7 +167,7 @@ describe('fresh first-run observation capture evidence', () => {
       if (typeof frame === 'boolean') throw new Error('Expected a DOM evidence frame');
       return frame;
     };
-    expect(observe()).toMatchObject({ visible: true, reachable: true, focused: true, pressed: 'true', glyph: 'check', checkVisible: true });
+    expect(observe()).toMatchObject({ visible: true, reachable: true, focused: true, pressed: 'true', glyph: 'check', checkVisible: true, rawText: 'checkEnglish', whiteSpace: 'pre-wrap' });
     hit = {}; expect(observe().reachable).toBe(false); hit = el;
     parent.inert = true; expect(observe().visible).toBe(false); parent.inert = false;
     style.opacity = '0.5'; expect(observe().visible).toBe(false); style.opacity = '1';

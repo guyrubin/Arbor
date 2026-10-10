@@ -4,6 +4,9 @@ import { api } from "./api";
 import { purgeComicPages } from "./comicPageStore";
 import { purgeHeroRenders } from "./heroRenderStore";
 import { purgeBookAssets } from "./bookAssetStore";
+import { exportPrivateBookAssets } from "./bookAssetExport";
+import { withChildExportSession } from "./childExportSession";
+import type { PortableBookAssets } from "./library/bookAssetExportContract";
 import { clearChildLocalState } from "./childLocalState";
 import { ChildProfile, DeletionReceipt } from "../types";
 
@@ -79,7 +82,8 @@ export const CHILD_SUBCOLLECTIONS = [
   // B-BOOK release: the metadata of the child's private book files (hero
   // sheet, prints, narration in the child's name) — the files themselves sit
   // in Storage under children/{childId}/books/ and are swept by
-  // /privacy/erase and the account deletion. Export lists the metadata.
+  // /privacy/erase and the account deletion. Export includes bounded bytes
+  // plus a per-file completeness receipt in privateBookAssets.
   "bookAssets",
   // B-PROG-06 (Steady Nights): the sleep diary — one doc per night (bedtime
   // routine tap + the morning's times; lib/sleepDiary.ts). Export + erase.
@@ -102,45 +106,70 @@ const remoteActive = (uid?: string) =>
   firebaseEnabled && !!db && !!uid && uid !== "local-sandbox";
 
 /** Gather a full export of one child's data (profile + all subcollections). */
-export async function exportChildData(uid: string | undefined, child: ChildProfile) {
-  const out: {
-    exportedAt: string;
-    profile: ChildProfile;
-    collections: Record<string, unknown[]>;
-    serverData?: { memoryEvents: unknown[]; shares: unknown[] };
-  } = {
-    exportedAt: new Date().toISOString(),
-    profile: child,
-    collections: {},
-  };
+export async function exportChildData(uid: string | undefined, child: ChildProfile, options: { signal?: AbortSignal } = {}) {
+  return withChildExportSession(uid, options.signal, async (session) => {
+    const out: {
+      exportedAt: string;
+      profile: ChildProfile;
+      collections: Record<string, unknown[]>;
+      serverData?: { memoryEvents: unknown[]; shares: unknown[] };
+      privateBookAssets?: PortableBookAssets;
+      exportReceipt: { status: "complete" | "incomplete"; scope: string; serverData: "included" | "unavailable"; collections: Record<string, "included" | "unavailable"> };
+    } = {
+      exportedAt: new Date().toISOString(),
+      profile: child,
+      collections: {},
+      exportReceipt: { status: "incomplete", scope: "profile-registered-collections-server-ledger-shares-private-book-assets", serverData: "unavailable", collections: {} },
+    };
+    session.assertCurrent();
 
-  // CMP-2 (GDPR Art. 15/20): include the server-side data (memory ledger +
-  // share grants) so the export is complete, not just the client collections.
-  try {
-    const server = await api.privacyExport(child.id);
-    out.serverData = server.serverData;
-  } catch {
-    /* server export unavailable — client collections still export */
-  }
+    // CMP-2 (GDPR Art. 15/20): include the server-side data (memory ledger +
+    // share grants) so the export is complete, not just the client collections.
+    try {
+      const server = await session.read(() => api.privacyExport(child.id, session.signal, session.assertCurrent));
+      if (!Array.isArray(server.serverData?.memoryEvents) || !Array.isArray(server.serverData?.shares)) throw new Error("Invalid server export");
+      out.serverData = server.serverData;
+      out.exportReceipt.serverData = "included";
+    } catch {
+      session.assertCurrent();
+      /* server export unavailable — client collections still export */
+    }
 
-  for (const name of CHILD_SUBCOLLECTIONS) {
-    if (remoteActive(uid) && db) {
-      try {
-        const snap = await getDocs(collection(db, `users/${uid}/children/${child.id}/${name}`));
-        out.collections[name] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      } catch {
-        out.collections[name] = [];
-      }
-    } else {
-      try {
-        const raw = localStorage.getItem(`arbor.${name}.${child.id}`);
-        out.collections[name] = raw ? JSON.parse(raw) : [];
-      } catch {
-        out.collections[name] = [];
+    for (const name of CHILD_SUBCOLLECTIONS) {
+      session.assertCurrent();
+      out.exportReceipt.collections[name] = "included";
+      if (remoteActive(uid) && db) {
+        try {
+          const snap = await session.read(() => getDocs(collection(db, `users/${uid}/children/${child.id}/${name}`)));
+          out.collections[name] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        } catch {
+          session.assertCurrent();
+          out.collections[name] = [];
+          out.exportReceipt.collections[name] = "unavailable";
+        }
+      } else {
+        try {
+          const raw = localStorage.getItem(`arbor.${name}.${child.id}`);
+          out.collections[name] = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(out.collections[name])) throw new Error("Invalid collection export");
+        } catch {
+          session.assertCurrent();
+          out.collections[name] = [];
+          out.exportReceipt.collections[name] = "unavailable";
+        }
       }
     }
-  }
-  return out;
+    session.assertCurrent();
+    out.privateBookAssets = await session.read(() => exportPrivateBookAssets(uid, child.id, out.collections.bookAssets, {
+      signal: session.signal, metadataComplete: out.exportReceipt.collections.bookAssets === "included",
+    }));
+    session.assertCurrent();
+    out.exportReceipt.status = out.exportReceipt.serverData === "included"
+      && Object.values(out.exportReceipt.collections).every((s) => s === "included")
+      && out.privateBookAssets.status === "complete" ? "complete" : "incomplete";
+    session.assertCurrent();
+    return out;
+  });
 }
 
 /** Client-side wipe only: all subcollections + the child doc (Firestore or
@@ -228,12 +257,20 @@ export async function eraseEverything(uid: string | undefined, childId: string):
 }
 
 /** Trigger a browser download of a JSON object. */
-export function downloadJson(filename: string, data: unknown) {
+export function downloadJson(filename: string, data: unknown, assertCurrent: () => void = () => undefined) {
+  assertCurrent();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  assertCurrent();
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    // Keep authorization through the final browser side effect, not just the
+    // asynchronous reads. Always revoke a prepared URL if the lifetime ends.
+    assertCurrent();
+    a.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

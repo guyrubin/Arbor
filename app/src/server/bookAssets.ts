@@ -2,6 +2,7 @@ import express, { type RequestHandler } from "express";
 import { BOOK_ASSET_ID, bookAssetContentType, bookAssetObject, childBookAssetPrefix, isBookAssetRel } from "../lib/library/bookAssetPaths.js";
 import { logger, requestIdOf } from "./logger.js";
 import { bookAssetLimiter } from "./apiRateLimits.js";
+import { inventoryChildBookAssets } from "./bookAssetExport.js";
 
 /**
  * B-BOOK release — a child's private book files (hero sheet, choice cards,
@@ -41,7 +42,7 @@ export interface BookAssetFile {
 
 export interface BookAssetBucket {
   file(name: string): BookAssetFile;
-  getFiles(opts: { prefix: string }): Promise<[BookAssetFile[]]>;
+  getFiles(opts: { prefix: string; autoPaginate?: boolean; maxResults?: number }): Promise<[BookAssetFile[], unknown?]>;
 }
 
 /** The configured bucket, or null when none is configured. */
@@ -79,7 +80,24 @@ export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAsse
     }
     next();
   };
-  router.get("/children/:childId/book-assets/:bookId/file", verified, limit, deps.requireOwnership, async (req, res) => {
+  // Export never inherits the anonymous local-sandbox reader exception.
+  const exportVerified: RequestHandler = (req, res, next) => {
+    const uid = (req as { user?: { uid?: string } }).user?.uid;
+    if (!uid || uid === "local-sandbox") { res.status(401).json({ error: "Unauthorized" }); return; }
+    res.setHeader("Cache-Control", "private, no-store");
+    next();
+  };
+  router.get("/children/:childId/book-assets/export-manifest", exportVerified, limit, deps.requireOwnership, async (req, res) => {
+    if (!BOOK_ASSET_ID.test(req.params.childId)) { res.status(400).json({ error: "Bad child id" }); return; }
+    try {
+      res.json(await inventoryChildBookAssets(await deps.getBucket(), req.params.childId));
+    } catch {
+      // Do not log storage errors: they may contain private object names or URLs.
+      res.status(503).json({ error: "Book file inventory unavailable" });
+    }
+  });
+  const verifiedRead: RequestHandler = (req, res, next) => req.query.export === "1" ? exportVerified(req, res, next) : verified(req, res, next);
+  router.get("/children/:childId/book-assets/:bookId/file", verifiedRead, limit, deps.requireOwnership, async (req, res) => {
     const { childId, bookId } = req.params;
     const rel = typeof req.query.path === "string" ? req.query.path : "";
     if (!BOOK_ASSET_ID.test(childId) || !BOOK_ASSET_ID.test(bookId) || !isBookAssetRel(rel)) {
@@ -99,17 +117,18 @@ export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAsse
         return;
       }
       res.setHeader("Content-Type", bookAssetContentType(rel));
-      res.setHeader("Cache-Control", "private, max-age=86400");
+      res.setHeader("Cache-Control", req.query.export === "1" ? "private, no-store" : "private, max-age=86400");
       res.setHeader("X-Content-Type-Options", "nosniff");
       const stream = file.createReadStream();
       stream.on("error", (err: Error) => {
-        logger.error("Book asset stream error", err, { requestId: requestIdOf(req) });
+        if (req.query.export !== "1") logger.error("Book asset stream error", err, { requestId: requestIdOf(req) });
         if (!res.headersSent) res.status(500).end();
-        else res.end();
+        else res.destroy(); // a partial stream must never look like a complete 200
       });
+      res.on("close", () => { if ("destroy" in stream) (stream as import("node:stream").Readable).destroy(); });
       stream.pipe(res);
     } catch (error: unknown) {
-      logger.error("Book asset error", error instanceof Error ? error : new Error(String(error)), { requestId: requestIdOf(req) });
+      if (req.query.export !== "1") logger.error("Book asset error", error instanceof Error ? error : new Error(String(error)), { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to read the book file" });
     }
   });

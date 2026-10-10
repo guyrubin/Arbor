@@ -31,7 +31,7 @@ export function observeFirstRunElement({ selector, waitUntilReady = false }) {
   const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
   const reachable = visible && !!hit && (hit === el || el.contains(hit));
   const text = el.textContent?.trim() ?? '';
-  const frame = { visible, reachable, text, focused: document.activeElement === el,
+  const frame = { visible, reachable, text, rawText: el.textContent ?? '', whiteSpace: getComputedStyle(el).whiteSpace, focused: document.activeElement === el,
     pressed: el.getAttribute('aria-pressed'), glyph: el.querySelector('[data-selection-check] .msr')?.textContent?.trim() ?? '',
     checkVisible: !!el.querySelector('[data-selection-check]') && [...el.querySelectorAll('[data-selection-check]')].every(mark => {
       const r = mark.getBoundingClientRect();

@@ -96,8 +96,10 @@ export function StepReady({ state, card, onWorry, onSubmit, ready }: {
   return <section className="first-run-step" data-testid="onboarding-card">
     <p className="first-run-hint">{t("ob.first.card")}</p><h1>{card.title}</h1>
     <div className="first-run-authored-card">
-      <p className="first-run-notice" dir="auto">{card.notice}</p>
-      {card.urgent && <UrgentSupport />}
+      {card.urgent ? <div role="alert" className="flex flex-col gap-3.5">
+        <p className="first-run-notice" dir="auto">{card.notice}</p>
+        <UrgentSupport showInstructions={false} />
+      </div> : <p className="first-run-notice" dir="auto">{card.notice}</p>}
       {card.guide && <><p className="first-run-say" dir="auto">{locText(renderSayThis(card.guide, state.name.trim()), locale)}</p>
         {pilot && <p className="first-run-hint">{hardMomentPilotText(locale).status}: {hardMomentPilotText(locale).explanation}</p>}
         <p className="first-run-hint" data-testid="onboarding-escalation">{escalationText(card.guide, locale)}</p>

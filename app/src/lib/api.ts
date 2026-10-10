@@ -575,8 +575,8 @@ export const api = {
   digest: (payload: { childProfile: ChildProfile; logs: BehaviorLog[]; milestones: Milestone[]; language?: "en" | "he" }) =>
     post<WeeklyDigest>("/api/digest", { ...payload, logs: toDigestLogInputs(payload.logs), milestones: toDigestMilestoneInputs(payload.milestones) }),
   // CMP-2: GDPR server-side export + erasure.
-  privacyExport: (childId: string) =>
-    get<{ exportedAt: string; childId: string; serverData: { memoryEvents: unknown[]; shares: unknown[] } }>(`/api/privacy/export/${encodeURIComponent(childId)}`),
+  privacyExport: (childId: string, signal?: AbortSignal, beforeDispatch?: () => void) =>
+    request<{ exportedAt: string; childId: string; serverData: { memoryEvents: unknown[]; shares: unknown[] } }>(`/api/privacy/export/${encodeURIComponent(childId)}`, "GET", undefined, signal, beforeDispatch),
   privacyErase: (childId: string) =>
     post<{ erased: { memoryEvents: number; shares: number; consents?: number }; erasedAt: string }>("/api/privacy/erase", { childId }),
   // STORE-4: FULL account deletion (Apple 5.1.1(v) / Play / GDPR Art. 17) — the

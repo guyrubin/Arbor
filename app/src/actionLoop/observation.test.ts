@@ -23,7 +23,8 @@ describe("the chosen first-run observation is not an intervention outcome", () =
     expect(isObservationAction({ ...original, source: "hard-moment" })).toBe(false);
     expect(isObservationAction({ ...original, acceptanceKey: "onboarding-urgent.child-a.exact" })).toBe(false);
     expect(isObservationAction({ ...original, acceptanceKey: undefined })).toBe(false);
-    expect(isObservationAction({ ...original, outcome: "helped", status: "completed" })).toBe(false);
+    const factualOutcome: ActionLoopEntry = { ...original, outcome: "helped", status: "completed" };
+    expect(isObservationAction(factualOutcome)).toBe(false);
   });
   it("keeps an explicitly submitted moment on the same row without any efficacy field", () => {
     const completed = completeObservation(original, "  He watched a bus, then said bus.  ", at);
