@@ -26,8 +26,10 @@ import "./describe.css";
 
 /** A mic for one text field: starts dictation in the AI language, shows the
  *  RecordingIndicator while it is live, and appends the parent's words. */
-export function DictateButton({ lang, value, onChange, disabled, label, aria, testId = "describe-mic", onListen, onVoiceText }: {
+export function DictateButton({ lang, value, onChange, disabled, label, aria, testId = "describe-mic", onListen, onVoiceText, dataUse = true }: {
   lang: "en" | "he"; value: string; onChange: (text: string) => void; disabled?: boolean; label: string; aria: string; testId?: string;
+  /** The first-use data line; the thread's answer boxes leave it to the opening. */
+  dataUse?: boolean;
   /** The parent tapped the mic (e.g. stop a question being read aloud). */
   onListen?: () => void;
   /** Dictated words arrived: the answer came by voice. */
@@ -60,8 +62,9 @@ export function DictateButton({ lang, value, onChange, disabled, label, aria, te
     }, lang === "he" ? "he-IL" : "en-US", { continuous: true });
   };
   return <div className="describe-mic">
-    {/* The voice-door data line, once per device (lib/voiceDoor). */}
-    {firstUse && <p className="describe-note" data-testid={`${testId}-data-use`}>{t("elev.wave2Daily.capture.voice.dataUse", { residency: t("elev.coachcontract.uses.liveResidencyUndated") })}</p>}
+    {/* The voice-door data line, once per device (lib/voiceDoor): this flow
+        has no Live, so it says what dictation and the spoken question do. */}
+    {firstUse && dataUse && <p className="describe-note" data-testid={`${testId}-data-use`}>{t("elev.describe.voiceDataUse")}</p>}
     {!listening && <button type="button" className="describe-secondary" onClick={toggle} disabled={disabled} aria-label={aria} data-testid={testId}>
       <Icon name="mic" size={20} /><span>{label}</span>
     </button>}

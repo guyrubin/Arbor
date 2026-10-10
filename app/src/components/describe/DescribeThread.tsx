@@ -35,7 +35,7 @@ function AnswerBox({ turn, lang, busy, onSend, onSkip, onDone, onListen }: {
     </label>
     <div className="describe-row">
       <DictateButton lang={lang} value={answer} onChange={setAnswer} disabled={busy} label={t("elev.describe.speak")} aria={t("elev.describe.speak")}
-        testId={`describe-answer-mic-${turn.id}`} onListen={onListen} onVoiceText={() => setViaMic(true)} />
+        testId={`describe-answer-mic-${turn.id}`} onListen={onListen} onVoiceText={() => setViaMic(true)} dataUse={false} />
       <div className="describe-actions">
         <button type="button" className="describe-secondary" disabled={busy || !answer.trim()} onClick={() => onSend(answer, viaMic)} data-testid="describe-answer-send">
           {busy ? t("elev.describe.adding") : t("elev.describe.answer")}

@@ -109,18 +109,20 @@ export function StepDomains({ state, onWorry, onNext, onSkip, describe, onAnswer
   </section>;
 }
 
-export function StepReady({ state, card, onWorry, onSubmit, ready, describe, profile }: {
+export function StepReady({ state, card, onWorry, onSubmit, ready, describe, profile, onDiscard }: {
   state: FirstRunState; card: FirstRunCard; onWorry: FirstRunController["worry"]; onSubmit: () => void; ready: boolean;
   /** B-SHELL-39: the readback session (onboarding's controller owns it). */
-  describe?: DescribeSession; profile?: Partial<ChildProfile> | null;
+  describe?: DescribeSession; profile?: Partial<ChildProfile> | null; onDiscard?: () => void;
 }) {
   const { t, uiLang } = useLanguage();
   const locale: "en" | "he" = uiLang === "he" ? "he" : "en";
   const context = { ageMonths: firstRunAgeMonths(state), locale };
   const pilot = card.guide && hardMomentPublication(card.guide, context) === "editorial-pilot";
   const readback = !!describe && ["ready", "committing", "kept"].includes(state.describe.status);
+  // The card waits until the readback is answered (Keep these, or Not now).
+  const pending = readback && state.describe.status !== "kept";
   return <section className="first-run-step" data-testid="onboarding-card">
-    {readback && <DescribeReadback name={state.name.trim()} lang={locale} session={describe!} profile={profile ?? null} />}
+    {readback && <DescribeReadback name={state.name.trim()} lang={locale} session={describe!} profile={profile ?? null} onDiscard={onDiscard} />}
     {!card.urgent && state.describe.status === "failed" && state.describe.error === "model" && <p className="first-run-hint" role="status">{t("elev.describe.failedKept")}</p>}
     <p className="first-run-hint">{t("ob.first.card")}</p><h1>{card.title}</h1>
     <div className="first-run-authored-card">
@@ -137,7 +139,7 @@ export function StepReady({ state, card, onWorry, onSubmit, ready, describe, pro
         {!card.urgent && (card.sayBack ? <div className="first-run-say"><p>{card.sayBack.heading}</p><p dir="auto">{card.sayBack.line}</p></div> : <p className="first-run-hint">{t("ob.first.whyQuote")}</p>)}
       </>}
     </div>
-    <div className="first-run-footer"><button type="button" className="first-run-primary" onClick={onSubmit} disabled={state.busy || !ready} aria-busy={state.busy}>
+    <div className="first-run-footer"><button type="button" className="first-run-primary" onClick={onSubmit} disabled={state.busy || !ready || pending} aria-busy={state.busy}>
       {state.busy ? t("ob.settingUp") : card.urgent ? t("ob.step.continue") : card.observation ? t("ob.first.notice") : t("ob.first.try")}
     </button></div>
   </section>;
@@ -204,7 +206,7 @@ export default function OnboardingFlow() {
       {state.step === 2 && <StepDomains state={state} onWorry={worry => controller.worry(worry)} onNext={() => controller.next()} onSkip={() => void controller.skipDescribe()}
         describe={controller.describe} onAnswer={text => controller.describeAnswer(text)} onFinish={() => controller.describeFinish()} />}
       {card && <StepReady state={state} card={card} onWorry={worry => controller.worry(worry)} onSubmit={() => void controller.finish(card)} ready={actions.loaded && !actions.error}
-        describe={controller.describe} profile={profiles.find(child => child.id === state.childId) ?? null} />}
+        describe={controller.describe} profile={profiles.find(child => child.id === state.childId) ?? null} onDiscard={() => controller.describeDiscard()} />}
       {state.error && <p role="alert" className="first-run-error">{t("ob.fail")}</p>}
     </div>
   </main>;

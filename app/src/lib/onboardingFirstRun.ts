@@ -254,6 +254,15 @@ export class FirstRunController {
     this.describe.done();
     return this.describe.snapshot().status === "ready" ? this.next() : Promise.resolve();
   }
+  /** "Not now — keep nothing" on the step-3 readback: nothing is written and
+   *  the words are dropped too (D2) — today's path for an empty description. */
+  describeDiscard() {
+    if (this.state.busy || this.state.complete || this.state.step !== 3) return;
+    const status = this.describe.snapshot().status;
+    if (status !== "ready") return;
+    this.describe.reset(); this.describedText = "";
+    this.put({ worry: { ...this.state.worry, words: "" }, error: false });
+  }
   /** B-SHELL-39: Skip is one tap — the description is dropped and today's path runs. */
   skipDescribe(): Promise<void> {
     if (this.state.busy || this.state.complete || this.state.step !== 2) return Promise.resolve();
@@ -263,8 +272,9 @@ export class FirstRunController {
   }
   async finish(renderedCard: FirstRunCard): Promise<void> {
     if (this.state.busy || this.state.complete || this.state.step !== 3 || !this.state.childId) return;
+    // The readback is answered first: Keep these, or "Not now — keep nothing".
     const describing = this.describe.snapshot().status;
-    if (describing === "drafting" || describing === "committing") return;
+    if (describing === "drafting" || describing === "committing" || describing === "ready") return;
     const state = this.state;
     const { services, current: stillCurrent } = this.operation(state.childId);
     if (!stillCurrent()) return;

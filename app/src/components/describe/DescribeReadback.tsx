@@ -81,9 +81,11 @@ export interface DescribeReadbackProps {
   /** The child doc now (for "Replace '…'" and the Focus / preference caps). */
   profile: Partial<ChildProfile> | null;
   milestoneTitle?: (id: string) => string | undefined;
+  /** Onboarding: "Not now — keep nothing" closes the readback with no write. */
+  onDiscard?: () => void;
 }
 
-export default function DescribeReadback({ name, session, profile, milestoneTitle }: DescribeReadbackProps) {
+export default function DescribeReadback({ name, session, profile, milestoneTitle, onDiscard }: DescribeReadbackProps) {
   const { t } = useLanguage();
   const state = useSyncExternalStore(session.subscribe, session.snapshot, session.snapshot);
   const [now, setNow] = useState(() => Date.now());
@@ -128,5 +130,6 @@ export default function DescribeReadback({ name, session, profile, milestoneTitl
     <button type="button" className="describe-keep-these" disabled={busy || keepCount === 0} onClick={() => void session.keep()} data-testid="describe-keep-these">
       {busy ? t("elev.describe.saving") : keepCount ? t("elev.describe.keepCount", { n: keepCount }) : t("elev.describe.keepThese")}
     </button>
+    {onDiscard && <button type="button" className="describe-link" disabled={busy} onClick={onDiscard} data-testid="describe-not-now">{t("elev.describe.notNow")}</button>}
   </section>;
 }

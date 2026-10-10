@@ -255,6 +255,19 @@ describe("B-SHELL-39 — 'Tell Arbor about {name}' in step 2", () => {
     expect(h.draft).toHaveBeenCalledOnce();
   });
 
+  it("the card waits for the readback; Not now keeps nothing and drops the words (D2)", async () => {
+    h.draft = vi.fn(async () => ({ items: [{ id: "i0", kind: "worry", text: "Mornings are hard", quote: "Mornings are hard", op: "add" }], nextQuestion: null }));
+    const worry = await about(); worry.onWorry({ choice: "talking", words: TEXT }); await worry.onNext(); await flush();
+    step(StepReady).onSubmit(); await flush();
+    expect(h.profiles.get("A")![0].onboardingComplete).toBe(false);
+    step(StepReady).onDiscard(); await flush();
+    expect(step(StepReady).state.describe.status).toBe("idle");
+    step(StepReady).onSubmit(); await flush();
+    expect(h.profiles.get("A")![0]).toMatchObject({ onboardingComplete: true, challenges: ["Talking & understanding"] });
+    expect(JSON.stringify(h.update.mock.calls)).not.toContain("Mornings");
+    expect(h.commit).not.toHaveBeenCalled();
+  });
+
   it("crisis words show the escalation card and run no extraction", async () => {
     const worry = await about(); worry.onWorry({ choice: "nothing", words: "Some nights I want to hurt myself." }); worry.onNext(); await flush();
     expect(h.draft).not.toHaveBeenCalled();
