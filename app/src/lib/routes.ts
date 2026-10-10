@@ -86,6 +86,9 @@ export const HASH_ALIASES: Readonly<Record<string, ActiveTab>> = {
   // reads on screen is a name they can type. Aliases are cheap; a dead deep
   // link is not.
   "my-child": "profile",
+  "full-picture": "copilot",
+  "the-full-picture": "copilot",
+  "development-dashboard": "copilot",
   // B-PLAY-10: #/journey retired to Practice; the label slug follows it.
   "growth-journey": "practice",
   home: "overview",
@@ -139,6 +142,9 @@ export const HASH_ALIASES: Readonly<Record<string, ActiveTab>> = {
  */
 export const RETIRED_ROUTES: Readonly<Record<string, ActiveTab>> = {
   strengths: "profile",
+  // B-GROWTH-22: the duplicate Full Picture lives in the existing Record
+  // and Consult leaves. Keep the typed/floor seat for stored and old links.
+  copilot: "development",
   // B-CAREPRO-19 (G3): the professional directory has zero records and its
   // consult requests 404. The route returns with the first real record; until
   // then #/find-pro lands on Consult, which prepares the same visit.
@@ -230,6 +236,18 @@ export function resolveRouteId(raw: string): ActiveTab | null {
   const aliased = HASH_ALIASES[key.toLowerCase()];
   if (!aliased) return null;
   return RETIRED_ROUTES[aliased] ?? aliased;
+}
+
+/** B-GROWTH-22: replace only the retired Copilot URL (including its old
+ * labels). The existing hash query is preserved verbatim and no history entry
+ * is added. Other route/alias URL behavior is outside this bounded retirement. */
+export function copilotRedirectHash(raw: string): string | null {
+  const key = splitHash(raw).key.toLowerCase();
+  if (key !== "copilot" && HASH_ALIASES[key] !== "copilot") return null;
+  const target = RETIRED_ROUTES.copilot;
+  if (!target) return null;
+  const queryAt = raw.indexOf("?");
+  return `#/${target}${queryAt < 0 ? "" : raw.slice(queryAt)}`;
 }
 
 /**

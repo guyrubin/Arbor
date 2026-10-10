@@ -88,7 +88,6 @@ const MimicStudioTab = lazy(() => import("../practice/MimicStudioTab"));
 const FeelingsLabTab = lazy(() => import("../practice/FeelingsLabTab"));
 const JourneyTab = lazy(() => import("../practice/JourneyTab"));
 const AdventuresTab = lazy(() => import("../practice/AdventuresTab"));
-const DevelopmentCopilot = lazy(() => import("../practice/DevelopmentCopilot"));
 
 // IA v3: consolidation hubs (merge confusable/duplicate leaves).
 const DevelopmentTab = lazy(() => import("../companion/ChildPortrait"));
@@ -163,7 +162,8 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   feelings: FeelingsLabTab,
   journey: JourneyTab,
   adventures: AdventuresTab,
-  copilot: DevelopmentCopilot,
+  // B-GROWTH-22: retired hash; preserve its registry seat with the live leaf.
+  copilot: DevelopmentTab,
   development: DevelopmentTab,
   "daily-play": DailyPlayTab,
   practice: PracticeStudioTab,

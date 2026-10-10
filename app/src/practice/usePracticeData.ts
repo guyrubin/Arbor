@@ -50,31 +50,36 @@ export interface PracticeData {
  * weekly signal. Firestore-backed when authed, localStorage in sandbox —
  * same adapter the rest of the app uses.
  */
-export function usePracticeData(childId: string): PracticeData {
+export function usePracticeData(childId: string, trackConfirmation = false): PracticeData {
   const speech = useChildCollection<SpeechAttempt>(childId, "speechAttempts", {
     orderByField: "timestamp",
     orderDir: "desc",
     max: 500,
+    trackConfirmation,
   });
   const mimic = useChildCollection<MimicSession>(childId, "mimicSessions", {
     orderByField: "timestamp",
     orderDir: "desc",
     max: 300,
+    trackConfirmation,
   });
   const missions = useChildCollection<MissionRecord>(childId, "missionRecords", {
     orderByField: "timestamp",
     orderDir: "desc",
     max: 300,
+    trackConfirmation,
   });
   const adventures = useChildCollection<AdventureResult>(childId, "adventureResults", {
     orderByField: "timestamp",
     orderDir: "desc",
     max: 500,
+    trackConfirmation,
   });
   const events = useChildCollection<PracticeEvent>(childId, "practiceEvents", {
     orderByField: "timestamp",
     orderDir: "desc",
     max: 800,
+    trackConfirmation,
   });
 
   const today = dayKey(new Date());
@@ -98,7 +103,7 @@ export interface CopilotData {
   /**
    * LEGACY weekly band snapshots, read-only. B-GROWTH-22a (6 Oct) stopped the
    * writer: no new document is ever stored. The read stays only because the
-   * two history cards (Journey, Development Copilot) still list the documents
+   * legacy Journey history still lists the documents
    * already stored, as counts; W4-R2 / W4-P1 retire the read and the documents.
    */
   snapshots: BandSnapshot[];

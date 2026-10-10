@@ -352,13 +352,14 @@ describe("R25 — every leaf renders within its declared moduleBudget", () => {
     // Every route R25 named, with the disclosure it now carries. find-pro is the
     // exception ON PURPOSE: its two stamps were one module in two mutually
     // exclusive branches, so the fix was one wrapper stamp and zero demotions.
-    for (const route of ["profile", "safety", "memory", "weekly", "copilot", "sharing", "appointments", "smart-reminders", "language"]) {
+    for (const route of ["profile", "safety", "memory", "weekly", "sharing", "appointments", "smart-reminders", "language"]) {
       const c = countModules(leaves.get(route)!);
       expect(c.demoted, `${route} must demote, not delete, the modules it folded away`).toBeGreaterThan(0);
       expect(c.disclosures, `${route} must carry exactly one disclosure`).toBe(1);
     }
     // B-CAREPRO-19: #/find-pro is retired to Consult — its seat renders the
     // Consult leaf (like #/handoff), which stays inside the same budget of 2.
+    expect(leaves.get("copilot")).toBe(leaves.get("development"));
     const findPro = countModules(leaves.get("find-pro")!);
     expect(findPro.topLevel).toBeLessThanOrEqual(2);
     expect(leaves.get("find-pro")).toBe(leaves.get("consult"));

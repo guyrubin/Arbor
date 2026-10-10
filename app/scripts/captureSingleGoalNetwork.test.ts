@@ -39,7 +39,7 @@ async function routingHarness() {
   const fixture = { childId: childIds[0], children: fixtureChildren, parsed: { synthetic: 'current-only' } };
   const installFonts = async (ctx: any) => ctx.route((url: URL) => fontUrls.includes(url.href), (route: any) => route.fulfill({ status: 200, body: 'exact-cache-font' }));
   const execute = new AsyncFunction('context', 'BASE', 'singleGoal', 'kidEntry', 'fixture', 'kidEntryApiDisposition', 'deniedCaptureApiCategory', '_apiCache', 'syntheticReleaseReport', 'lang', 'installOfflineFonts', 'installSingleGoalNetworkGuard', 'recordSingleGoalDenial', 'singleGoalAssetPaths', 'validateFontCache', 'isCaptureDemoFamilyUrl',
-    'let singleGoalApiState; const privateExport = false, firstRunPreview = false;\n' + registration + '\nreturn apiState;');
+    'let singleGoalApiState; const privateExport = false, firstRunPreview = false, copilot = false;\n' + registration + '\nreturn apiState;');
   const api = await execute(context, BASE, fixture, false, fixture, null, deniedCaptureApiCategory, new Map(), syntheticReleaseReport, 'en', installFonts, installSingleGoalNetworkGuard, recordSingleGoalDenial, () => assetPaths, () => ({ resources: new Map(fontUrls.map(url => [url, {}])) }), isCaptureDemoFamilyUrl);
   const dispatch = async (method: string, url: string, extras: any = {}) => {
     const before = { ...api }; let outcome = 'unhandled', fetchOptions: any = null, responseBody: any = null, responseStatus: number | null = null;
