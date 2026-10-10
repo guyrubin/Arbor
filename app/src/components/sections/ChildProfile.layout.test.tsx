@@ -125,20 +125,20 @@ describe("B-CAREPRO-29 · Profile shows the parent's chosen goals", () => {
     expect(PROFILE_SRC).not.toMatch(/\/anx\|regulat|\/school\|kindergarten/);
     expect(PROFILE_SRC).not.toContain("cp.focus.");
     expect(PROFILE_SRC).not.toContain('data-module="profile-next"');
-    expect(PROFILE_SRC).toContain("goalLabel(g, t)");
+    expect(PROFILE_SRC).toContain("<GoalFocusLine goals={childProfile.activeGoals ?? []}");
     // NEGATIVE CONTROL: the pre-change derivation is caught by the same rule
     expect("/anx|regulat|meltdown|emotion|sensory/i.test(challengeText)").toMatch(/\/anx\|regulat/);
   });
 
-  it("HE parent with Hebrew challenges sees their chosen goals in Hebrew; no derived chip", () => {
+  it("HE parent sees only their newest chosen goal in Hebrew; no derived chip", () => {
     harness.locale = "he";
     harness.challenges = ["התקפי זעם במעברים", "חרדה"];
     harness.goals = GOALS;
     const html = renderToStaticMarkup(<ChildProfile />);
     expect(html).toContain(goalsHe["elev.goal.profile.title"]);
-    expect(html).toContain(goalsHe["elev.goal.tile.transitions"]);
+    expect(html).not.toContain(goalsHe["elev.goal.tile.transitions"]);
     expect(html).toContain(goalsHe["elev.goal.tile.early-talking"]);
-    expect(html).toContain(goalsHe["elev.goal.profile.edit"]);
+    expect(html).toContain('data-testid="profile-goals-edit"');
     expect(html).not.toContain("Moving between activities");
     expect(html).not.toMatch(/ויסות רגשי|Emotional Regulation/);
   });

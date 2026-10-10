@@ -129,7 +129,7 @@ describe('bounded existing first-run DEV preview evidence', () => {
     };
     const context = { route: async (pattern: any, handler: any) => { handlers.push({ pattern, handler }); } };
     await context.route('**/*', extract('**/*', ");\n    await context.routeWebSocket", { apiState, BASE: base, privateExport: null }));
-    await context.route('**/api/**', extract('**/api/**', ");\n    await context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : isCaptureDemoFamilyUrl", { apiState, BASE: base, privateExport: null, firstRunPreview: true, firstRunPreviewApiDisposition, kidEntry: null, deniedCaptureApiCategory, _apiCache: new Map(), fixture: { childId: 'synthetic' } }));
+    await context.route('**/api/**', extract('**/api/**', ");\n    await context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : isCaptureDemoFamilyUrl", { apiState, BASE: base, privateExport: null, firstRunPreview: true, firstRunPreviewApiDisposition, singleGoal: null, kidEntry: null, deniedCaptureApiCategory, _apiCache: new Map(), fixture: { childId: 'synthetic' } }));
     await context.route(isCaptureDemoFamilyUrl, extract('**/sandbox/demo-family.json', ");\n    await installOfflineFonts", { apiState, privateExport: null, fixture: { parsed: {} } }));
     const fontUrl = 'https://fonts.gstatic.com/exact-cached.woff2';
     await context.route((url: URL) => url.href === fontUrl, (route: any) => route.fulfill({ status: 200 }));
@@ -164,7 +164,7 @@ describe('bounded existing first-run DEV preview evidence', () => {
     const source = read('./capture/release-interactions.mjs');
     for (const preview of [true, false]) for (const [pattern, end, path, ordinaryEffect] of [
       ['**/*', ");\n    await context.routeWebSocket", '/webhooks/billing/revenuecat', 'continue'],
-      ['**/sandbox/demo-family.json', ");\n    await installOfflineFonts", '/sandbox/demo-family.json', 'fallback'],
+      ['**/sandbox/demo-family.json', ");\n    await installOfflineFonts", '/sandbox/demo-family.json', 'abort'],
     ]) {
       const apiState: any = { deniedActions: 0, deniedExternal: 0, ...(preview ? { firstRunDeniedWrites: 0 } : {}) };
       const start = pattern === '**/sandbox/demo-family.json' ? 'await context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : isCaptureDemoFamilyUrl, ' : `await context.route('${pattern}', `, from = source.indexOf(start), to = source.indexOf(end, from + start.length);
@@ -172,7 +172,7 @@ describe('bounded existing first-run DEV preview evidence', () => {
       const effects: string[] = [];
       await handler({ request: () => ({ method: () => 'POST', url: () => 'http://127.0.0.1:4805' + path }), abort: () => effects.push('abort'), continue: () => effects.push('continue'), fallback: () => effects.push('fallback'), fulfill: ({ status }: any) => effects.push(`fulfill:${status}`) });
       expect(effects).toEqual([preview ? 'abort' : ordinaryEffect]);
-      expect(apiState.deniedActions).toBe(preview ? 1 : 0);
+      expect(apiState.deniedActions).toBe(preview || ordinaryEffect === 'abort' ? 1 : 0);
       if (preview) expect(apiState.firstRunDeniedWrites).toBe(1);
     }
   });

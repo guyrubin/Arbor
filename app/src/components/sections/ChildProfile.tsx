@@ -29,8 +29,7 @@ import { noticedMilestoneCounts } from "../../lib/record/counts";
 import { languageName } from "../../lib/languageName";
 import { fmtDay } from "../../lib/formatDate";
 // B-CAREPRO-29: "What we're working on" = the parent's chosen goals (CI-28 tiles).
-import GoalBuilderModal from "../practice/GoalBuilderModal";
-import { goalLabel, type ActiveGoal } from "../../practice/goalBuilder";
+import { GoalFocusLine } from "../practice/GoalFocusLine";
 // B-CAREPRO-33: the quoted facts carry an as-of date and ask "Still true?" after 90 days.
 import { confirmFact, factMonthLabel, isFactStale, type FactField } from "../../lib/factsAsOf";
 import { FreeText } from "../ui/FreeText";
@@ -110,13 +109,7 @@ export default function ChildProfile() {
     [shownApproved],
   );
 
-  // B-CAREPRO-29: "What we're working on" is what the PARENT chose (the 1–3
-  // curated activeGoals the coach already reads) — never a focus derived from
-  // an English regex over free-text challenges, which no Hebrew family matched.
-  // The plan "next step" chapter is gone with it (Plans keeps its own door).
-  const activeGoals: ActiveGoal[] = childProfile.activeGoals ?? [];
-  const [goalsOpen, setGoalsOpen] = useState(false);
-
+  // B-GROWTH-40: the stored list remains intact; the child page owns the choice.
   // B-CAREPRO-33: "as of {month}" under a dated fact; after 90 days a quiet
   // "Still true? Keep · Edit" — Keep stamps today, Edit opens the drawer.
   const factLine = (field: FactField, hasValue: boolean): React.ReactNode => {
@@ -257,33 +250,8 @@ export default function ChildProfile() {
             </p>
           </div>
         </div>
-        {/* What we're working on — the parent's chosen goals (B-CAREPRO-29),
-            above the fold with the identity, one tap to choose. */}
-        <div className="mt-4">
-          <p className="text-xs font-bold mb-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.goal.profile.title")}</p>
-          <div className="flex flex-wrap items-center gap-1.5" data-testid="profile-goals">
-            {activeGoals.map((g) => <Chip key={g.goalId} tone="lav">{goalLabel(g, t)}</Chip>)}
-            <button
-              type="button"
-              data-testid="profile-goals-edit"
-              onClick={() => setGoalsOpen(true)}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-sm font-bold"
-              style={{ color: "var(--arbor-clay)" }}
-            >
-              <Icon name={activeGoals.length > 0 ? "edit" : "add"} size={16} />
-              {activeGoals.length > 0 ? t("elev.goal.profile.edit") : t("elev.goal.profile.empty")}
-            </button>
-          </div>
-          {goalsOpen && (
-            <GoalBuilderModal
-              open={goalsOpen}
-              onClose={() => setGoalsOpen(false)}
-              childName={childProfile.name}
-              activeGoals={activeGoals}
-              behaviorLogs={behaviorLogs}
-              onSave={(goals) => { void updateChild(childProfile.id, { activeGoals: goals }); }}
-            />
-          )}
+        <div className="mt-4" data-testid="profile-goals">
+          <GoalFocusLine goals={childProfile.activeGoals ?? []} testId="profile-goals-edit" navigate onClick={() => setActiveTab("development")} />
         </div>
         {/* B-SHELL-26: the knows-line closes the header, then the route's one
             door — "Add a fact" / "Tell Arbor one thing" (capture-moment), in

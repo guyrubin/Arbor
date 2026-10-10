@@ -236,3 +236,4 @@
 .portrait-watch-summary:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 4px; border-radius: var(--r); }
 .portrait-watch-detail { padding-block-start: 12px; }
 .portrait-watch-undo { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; font-size: var(--t-sm); color: var(--arbor-muted); }
+.portrait-watch-undo > button { min-inline-size: var(--touch-min); min-block-size: var(--touch-min); }

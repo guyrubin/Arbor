@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { FirstRunController, firstRunCard } from "../lib/onboardingFirstRun";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+import * as goalsModule from "../practice/goalBuilder";
 import type { ChildProfile } from "../types";
 import { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS } from "../lib/childAge";
 
@@ -72,6 +73,7 @@ function harness({ owner = "A", rows = [child("A-child")], local = [child("local
     "../lib/loopEvents": { trackProfileCreated: () => {} }, "../lib/screening": { bandForAge: () => ({ id: "preschool" }) },
     "../lib/onboardingGate": { computeNeedsOnboarding: (remote: boolean, loading: boolean, profiles: ChildProfile[]) => remote && !loading && (!profiles.length || profiles.some(p => p.onboardingComplete === false)) },
     "../lib/childAge": { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS },
+    "../practice/goalBuilder": goalsModule,
   };
   const code = ts.transpileModule(readFileSync(new URL("./ProfileContext.tsx", import.meta.url), "utf8"), { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React, esModuleInterop: true,

@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import GoalBuilderModal from "../practice/GoalBuilderModal";
+import { GoalFocusLine } from "../practice/GoalFocusLine";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useObservationRecord } from "../../hooks/useObservationRecord";
@@ -104,6 +106,8 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     countLabel: t("companion.portrait.countLabel"),
     noPlace: t("companion.portrait.noPlace")
   };
+  const [goalOwner, setGoalOwner] = useState<string | null>(null);
+  useEffect(() => { setGoalOwner(null); }, [childProfile.id]);
   const record = useObservationRecord();
   const allObservations = record.observations;
   const [view, setView] = useState<"time" | "context" | "domain">("time");
@@ -184,6 +188,10 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
       {record.more && !record.error && <button type="button" className="portrait-text-button" disabled={record.loading} onClick={record.loadMore}>{record.loading ? copy.loading : copy.more}<Icon name="expand_more" size={18} /></button>}
       {record.error && <button type="button" className="portrait-text-button" onClick={record.reload}>{copy.retry}</button>}
     </div>
+    <GoalFocusLine goals={childProfile.activeGoals ?? []} testId="portrait-goals-edit" onClick={() => setGoalOwner(childProfile.id)} />
+    {goalOwner === childProfile.id && <GoalBuilderModal key={`goal-picker:${childProfile.id}`} open childId={childProfile.id} childName={childProfile.name}
+      behaviorLogs={record.sources.behaviorLogs ?? []}
+      onClose={() => setGoalOwner(null)} />}
     {/* The record lenses come first; an automatic focus stays compact until requested. */}
     <PortraitWatchRow key={childProfile.id} />
     {/* Parity 9 Oct: words, firsts, the tree and the month — one collapsed disclosure. */}
