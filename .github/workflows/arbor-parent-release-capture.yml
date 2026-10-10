@@ -1,5 +1,6 @@
 name: Arbor final Parent release evidence
 on:
+  # The Kids release branch verifies Parent858 + Kids72 = 930 required cells.
   # Dedicated candidate branch only. This never changes the active small capture
   # or production workflows, and never merges/deploys to obtain evidence.
   push:
