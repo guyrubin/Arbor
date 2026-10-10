@@ -25,9 +25,9 @@ import { collectKeptSearchStates } from './kept-search-states.mjs';
 import { collectPracticeStates, PRACTICE_FIXTURE, practiceClockScript } from './practice-states.mjs';
 import { KID_ENTRY_STATES, KID_ENTRY_LIMITATIONS, kidEntryFixture, kidEntryApiDisposition, validKidEntryCell } from './kid-entry-contract.mjs';
 import { collectKidEntryStates } from './kid-entry-states.mjs';
-import { FIRST_RUN_PREVIEW_STATES, FIRST_RUN_PREVIEW_BOUNDARY, FIRST_RUN_PREVIEW_LIMITATIONS, firstRunPreviewApiDisposition, firstRunPreviewPrimaryShot, validFirstRunPreviewCell } from './first-run-preview-contract.mjs';
+import { FIRST_RUN_PREVIEW_STATES, FIRST_RUN_PREVIEW_BOUNDARY, FIRST_RUN_PREVIEW_LIMITATIONS, firstRunPreviewApiDisposition, firstRunPreviewPrimaryShot, validFirstRunPreviewCell, validFirstRunNetworkEvidence } from './first-run-preview-contract.mjs';
 import { collectFirstRunPreviewStates } from './first-run-preview-states.mjs';
-import { installFirstRunPreviewBoundary, isCaptureDemoFamilyUrl } from './first-run-preview-network.mjs';
+import { installFirstRunPreviewBoundary, isCaptureDemoFamilyUrl, createFirstRunPreviewScope, firstRunNetworkSnapshot } from './first-run-preview-network.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
@@ -165,6 +165,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     return collectReleaseInteractions({ output, bundle, viewport, group: 'ask', sourceSha, sourceTreeSha, _priorCells: navigation.cells, _reportGroup: 'focused', _apiCache });
   }
   const firstRunPreview = group === 'first-run-preview';
+  const firstRunScope = firstRunPreview ? createFirstRunPreviewScope() : null;
   if (firstRunPreview && process.env.NODE_ENV !== 'development') throw new Error('FIRST_RUN_DEV_PREVIEW_REQUIRED');
   const record = group === 'record' ? recordFixture(bundle, viewport.lang) : null;
   const confirmed = group === 'confirmed-actions' ? confirmedActionsFixture(bundle, viewport.lang) : null;
@@ -202,7 +203,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, locale: he ? 'he-IL' : 'en-US', timezoneId: 'Asia/Jerusalem', serviceWorkers: 'block', permissions: [], ...captureFontContextOptions() });
     let selectedReportFixture = null;
     const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, deniedActionCategories: {}, ttsCapabilityReads: 0, shareListReads: 0, apiCacheHits: 0, localRateLimits: 0 };
-    if (firstRunPreview) apiState.firstRunDeniedWrites = 0;
+    if (firstRunPreview) Object.assign(apiState, { firstRunDeniedWrites: 0, firstRunNarrationRefusals: 0, firstRunRequestDiagnostics: { counts: {}, recent: [] } });
     if (kidEntry) Object.assign(apiState, { kidEntryNarrationRefusals: 0, kidEntryDeniedMutations: 0 });
     await context.route('**/*', route => {
       if (Object.hasOwn(apiState, 'firstRunDeniedWrites') && !['GET', 'HEAD'].includes(route.request().method())) { apiState.firstRunDeniedWrites++; apiState.deniedActions++; return route.abort(); }
@@ -268,7 +269,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     await installOfflineFonts(context);
     // Playwright runs matching routes in reverse registration order. This must
     // be last: safe same-origin reads fall back to the existing handlers.
-    if (firstRunPreview) await installFirstRunPreviewBoundary(context, apiState);
+    if (firstRunPreview) await installFirstRunPreviewBoundary(context, apiState, firstRunScope);
     if (kidEntry) await context.addInitScript(initializeSyntheticOnline, { lang, preserveKidMode: true });
     else await context.addInitScript(initializeSyntheticOnline, { lang });
     if (practiceCapture) await context.addInitScript({ content: practiceClockScript(fixture.parsed) });
@@ -408,7 +409,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
           check(cell, 'NO_PROHIBITED_ACTIONS_AFTER_CAPTURE', apiState.deniedActions === 0, apiState.deniedActions);
         } catch (error) { cell.failures.push(knownFailure(error)); }
       }
-      cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories } };
+      cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories }, ...(firstRunPreview ? firstRunNetworkSnapshot(apiState) : {}) };
       cell.entryMode = entryMode;
       cell.assetDiagnostics = assets.snapshot();
       cell.readiness = await readinessSnapshot().catch(() => ({ unavailable: true }));
@@ -418,6 +419,12 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         cell.reactStage = await page.evaluate(observeReactStage).catch(() => ({ unavailable: true }));
       }
       cell.runtimeDiagnostics = diagnostics.snapshot();
+      if (firstRunPreview) {
+        // Resample after screenshot and every asynchronous observation. A late
+        // prohibited request cannot inherit an earlier zero-counter pass.
+        cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories }, ...firstRunNetworkSnapshot(apiState) };
+        check(cell, 'FIRST_RUN_FINAL_NETWORK_GUARD', validFirstRunNetworkEvidence(cell.networkEvidence));
+      }
       cell.reached = cell.failures.length === 0 && cell.assertions.length > 0 && cell.shot !== null;
       save();
       // Preserve the failed real attempt BEFORE any import probe. Probe recovery
@@ -446,7 +453,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
 
     if (firstRunPreview) {
       entryMode = 'existing-dev-onboarding-preview';
-      await collectFirstRunPreviewStates({ page, viewport, screen, check, apiState });
+      await collectFirstRunPreviewStates({ page, viewport, screen, check, apiState, recordCreatedChild: firstRunScope.recordCreatedChild });
     } else if (group === 'kept-search') {
       await collectKeptSearchStates({ page, context, fixture: keptSearch, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }) });
     } else if (group === 'kid-entry') {

@@ -1,8 +1,8 @@
 # Authored first-run: bounded DEV preview evidence
 
 This is an additive **development-preview capture scope**, not production onboarding
-acceptance. No rendered result is claimed by this source document. The release owner
-must authorize and run the existing CI workflow, then review its real PNGs and JSON.
+acceptance. The recorded CI run below produced real PNGs but remains incomplete.
+The release owner must authorize each new CI run and review its real PNGs and JSON.
 No app runtime patch was added to enable this capture.
 
 ## Exact source integration
@@ -72,7 +72,9 @@ states each, **56 required cells/primary PNGs**; no 43-route sweep is implied.
 14. Real browser Forward: actual Now destination and accepted recommendation.
 
 Every cell carries a DEV-only boundary, observed ready/title/direction frame,
-unchanged original-family proof and zero attempted model/remote writes. Exact
+unchanged original-family proof and zero prohibited model/remote writes. The one
+exact recorded-child narration request can receive only the separately counted
+local 409 refusal described below. Exact
 named assertion requirements are fail-closed. Missing cells, duplicate states,
 wrong source/tree identity, aliased/unlabelled/cross-state primary PNGs, missing or nonexact-font PNGs and any claimed remote
 acknowledgement or production gate fail aggregation.
@@ -92,13 +94,14 @@ partial-evidence retention and aggregate are reused. Only this group chooses
 second broad runner or package installation was added. Public exact font bytes
 stay within the existing ephemeral CI image and never enter the repository.
 
-A last-registered, first-executed same-origin request guard aborts all HTTP
+A last-registered, first-executed same-origin request guard aborts HTTP
 mutations, including non-API webhook paths, before any fixture or generic API
-handler. Catchall/demo handlers also reject preview mutations directly. The demo
+handler. Its only exception is the exact recorded-child narration POST receiving
+a local 409 refusal, never a successful write or a request to the server. Catchall/demo handlers also reject preview mutations directly. The demo
 fixture matches only the exact BASE origin and /sandbox/demo-family.json path,
 and only fulfills GET; foreign origins and private API suffixes never receive
-its synthetic success. Model/media endpoints remain denied. Read-only capability queries retain the existing local
-handling. A denied attempt fails the receipt; the harness never substitutes a
+its synthetic success. Other model/media endpoints remain denied. Read-only
+capability queries retain the existing local handling. A denied attempt fails the receipt; the harness never substitutes a
 successful write. Browser storage is read only by this collector; application
 handlers own its real local writes. The usual locale/connectivity bootstrap and
 existing demo hydrator remain shared harness fixtures, not real authentication.
@@ -139,3 +142,60 @@ Correction validation: six installed offline capture-contract files pass 79
 tests, and the separate adapted replay of the original independent proof passes
 6/6. These synthetic contract tests create no rendered PNG evidence. The earlier
 13-file / 233-test runtime result applies to the identical unchanged app/src tree.
+
+
+## Actual capture hold and bounded narration refusal
+
+The owner-run `c21011f7f579fbcb846584f320d39f97ae33c312` capture is tree-equivalent
+to local `8825dfeef207a6de7dfaf3daf4dad36f195d25f8`: **56 actual PNGs, 44/56
+accepted cells**. All first eleven states passed in all four variants. Explicit
+Now exit, browser Back and browser Forward failed the network guards; cumulative
+denied counts were 1, 1 and 2 respectively. These original images and receipts
+remain unchanged. The old receipts did not retain denied endpoint categories,
+so their counters alone cannot establish which exact request was blocked.
+
+Actual source inspection and an offline test executing `ensureBookNarration`
+confirm the automatic shell path: `Shell` mounts `KidModeButton`, whose effect
+calls the real builder and issues `POST /api/children/{childId}/book-narration`.
+The test routes that actual request to the actual capture boundary and verifies
+one 409 stops generation before any media/completion storage. This is unit
+request-path evidence, not retrospective attribution of the old browser run.
+
+The native collector records only the one child observed after the real About
+form creates it, its fields and active selection match, and the original family
+remains unchanged. No browser state is written by this recording. The scope
+cannot switch to another child. Only that exact same-origin path, POST method,
+and query-free URL may receive `409 {code: synthetic_capture_media_disabled}`.
+No fixture child, sibling, arbitrary endpoint or provider success is added.
+Before every same-origin admission, the capture guard awaits `request.allHeaders()`
+(the narrower `headers()` omits security/cookie headers), rejects credential
+header presence or URL credentials, and fails closed if complete metadata cannot
+be read. Neither header names/values nor error text is exported. This guard
+changes only capture admission, never application authentication. Other requests
+retain the existing guards.
+
+Every cell must include `firstRunNarrationRefusals` and matching bounded
+method/category/disposition counts, with at most eight recent entries. No raw
+child ID, path, query, body or header is exported by these diagnostics. Missing
+or inconsistent accounting fails the contract. The collector resamples counters
+after the screenshot and all asynchronous readiness observations and requires
+`FIRST_RUN_FINAL_NETWORK_GUARD`; earlier failures are never erased.
+
+Seven one-file offline invocations pass 87 focused tests: narration 6, preview
+17, release 17, harness 7, kid entry 21, evidence 9 and fonts 10. This includes the
+owner's three type-safe readiness assertions correcting the prior CI TS2339
+errors. An initial wrong-directory invocation failed before collecting tests;
+it is retained separately. No local typecheck, build or browser was run. The
+original independent red proof remains untouched; it was not replayed in this
+follow-on. A fresh CI run and independent review are still required.
+
+Pixel review also found a neutral-question/accepted-action semantic mismatch.
+That runtime/UI correction belongs to a separate source lane. This harness-only
+commit preserves the exact app/src tree and does not claim release readiness,
+clinical approval, real auth, server acknowledgement or ProfileGate recovery.
+
+Complete-header admission follow-on: the two affected files were rerun, passing
+9 narration and 17 preview cases. The final focused set is 90 tests across seven
+files. Negative controls cover Cookie visible only in `allHeaders()`, missing or
+failed metadata, credential-header presence, and a deferred metadata read that
+cannot fulfill/fall back before its result. Earlier logs remain preserved.

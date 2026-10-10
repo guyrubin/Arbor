@@ -15,6 +15,8 @@
 .first-run-step legend { font-size: 14px; font-weight: 600; margin-block-end: 5px; }
 .first-run-languages { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .first-run-languages button, .first-run-choices button { min-height: 44px; border: 1px solid var(--arbor-rule); border-radius: 10px; background: var(--arbor-paper-deep); padding: 8px; font-size: 13px; color: var(--arbor-ink); }
+.first-run-languages button { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.first-run-languages button > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 .first-run-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .first-run-choices button { display: flex; align-items: center; gap: 7px; text-align: start; line-height: 1.25; }
 .first-run-choices button span:last-child { min-width: 0; overflow-wrap: anywhere; }

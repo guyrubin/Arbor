@@ -269,14 +269,18 @@ describe("B-SHELL-36 first-run handoff", () => {
     expect(html).toContain('role="status"'); expect(html).not.toContain('data-module="today-practice"');
     expect(state.focusCalls).not.toHaveBeenCalled();
   });
-  it.each(["en", "he"] as const)("an accepted onboarding step leads with the tomorrow line and zero focus calls (%s)", lang => {
+  it.each(["en", "he"] as const)("an accepted onboarding observation leads with an explicit record form and zero focus calls (%s)", lang => {
     vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-09T12:00:00Z"));
     try {
       state.lang = lang;
       state.actionLoop = [{ id: "today.child-a.2026-10-09", recommendation: "Notice one moment together.", source: "onboarding", status: "accepted", acceptedAt: "2026-10-09T11:00:00Z", capacity: "tiny", acceptanceKey: "onboarding-v1.child-a.test" }];
       const html = renderToStaticMarkup(<NowView />);
       expect(html).toContain('data-module="now-step"'); expect(html).toContain("Notice one moment together.");
-      expect(html).toContain(lang === "he" ? "מחר נשאל איך היה." : "Tomorrow we&#x27;ll ask how it went.");
+      expect(html).toContain('data-testid="now-observation-answer"');
+      expect(html).not.toContain(lang === "he" ? "מחר נשאל איך היה." : "Tomorrow we&#x27;ll ask how it went.");
+      expect(html).not.toContain(NOW_COPY[lang].helped);
+      expect(html).not.toContain(NOW_COPY[lang].notToday);
+      expect(html.match(/data-primary-move=/g)).toHaveLength(1);
       expect(html).not.toContain("1 of 4"); expect(html).not.toContain("First steps"); expect(state.focusCalls).not.toHaveBeenCalled();
       vi.setSystemTime(new Date("2026-10-10T12:00:00Z"));
       expect(renderToStaticMarkup(<NowView />)).not.toContain(lang === "he" ? "מחר נשאל איך היה." : "Tomorrow we&#x27;ll ask how it went.");

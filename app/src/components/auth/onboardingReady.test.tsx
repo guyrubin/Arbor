@@ -59,7 +59,7 @@ describe("three-step authored first run", () => {
   it("actual month, languages and consent controls call the supplied editor", () => {
     const edit = vi.fn(); renderToStaticMarkup(<StepChild state={{ ...base(), languages: [] }} onEdit={edit} onNext={nothing} />);
     state.inputs.find(input => input.type === "month")!.onChange({ target: { value: "2023-08" } });
-    state.buttons.find(button => button.children === "Hebrew")!.onClick();
+    state.buttons.find(button => button["data-language"] === "Hebrew")!.onClick();
     state.inputs.find(input => input.type === "checkbox")!.onChange({ target: { checked: true } });
     expect(edit.mock.calls).toEqual([[{ birthMonth: "2023-08" }], [{ languages: ["Hebrew"] }], [{ consent: true }]]);
   });
@@ -75,9 +75,20 @@ describe("three-step authored first run", () => {
   it.each(["en", "he"] as const)("an area card has one primary accept, with no replay or model answer (%s)", lang => {
     state.lang = lang; const s = base(); s.worry.choice = "thinking"; const submit = vi.fn();
     const html = renderToStaticMarkup(<StepReady state={s} card={firstRunCard(s, lang, NOW)} onWorry={nothing} onSubmit={submit} ready />);
-    expect((html.match(/<button\b/g) ?? [])).toHaveLength(1); expect(html).toContain(translate(lang, "ob.first.try").replace(/'/g, "&#x27;"));
+    expect((html.match(/<button\b/g) ?? [])).toHaveLength(1); expect(html).toContain(translate(lang, "ob.first.notice").replace(/'/g, "&#x27;"));
     state.buttons[0].onClick(); expect(submit).toHaveBeenCalledOnce();
     expect(html).not.toMatch(/demo|AI-powered|1 of 4/i);
+  });
+  it.each(["en", "he"] as const)("selection has a visible check as well as aria-pressed (%s)", lang => {
+    state.lang = lang;
+    for (const view of [<StepChild state={base()} onEdit={nothing} onNext={nothing} />, <StepDomains state={base()} onWorry={nothing} onNext={nothing} />]) {
+      const html = renderToStaticMarkup(view);
+      const selected = html.match(/<button[^>]*aria-pressed="true"[^>]*>[\s\S]*?<\/button>/g) ?? [];
+      expect(selected).toHaveLength(1);
+      expect(selected[0]).toContain('data-selection-check=""');
+      expect(selected[0]).toContain('aria-hidden="true"');
+      expect(selected[0]).toContain('>check</span>');
+    }
   });
   it("hard-moment preview keeps pilot disclosure and escalation verbatim; expiry becomes Feelings", () => {
     const s = base(); s.worry = { ...s.worry, choice: "hard-moment", hardMomentId: "tantrum" };

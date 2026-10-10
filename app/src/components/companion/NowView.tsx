@@ -8,7 +8,7 @@ import { activeProgramWeek } from "../../lib/programs/enrolment";
 import { formatChildAge } from "../../lib/age/format";
 import { childPicture } from "../../lib/childPicture";
 import { dayKey } from "../../practice/signals";
-import type { ActionLoopEntry } from "../../actionLoop/model";
+import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
 import { nextChosenAction } from "./companionChoices";
 import { NOW_COPY } from "./nowViewCopy";
 import NowRecommendation from "./NowRecommendation";
@@ -32,6 +32,9 @@ import { trackActionOffered } from "../../lib/loopEvents";
 import { availableHardMomentCards } from "../../content/selectCards";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import Icon from "../ui/Icon";
+import { Receipt } from "../ui/Receipt";
+import { UrgentSupport } from "../safety/UrgentSupport";
+import { screenForImmediateEscalation } from "../../safety/escalation";
 import { Avatar } from "../ui/Avatar";
 import "./companionExperience.css";
 import "./nowView.css";
@@ -90,7 +93,7 @@ const LIFECYCLE_NOTE: Partial<Record<string, string>> = {
 
 function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
   const { childProfile, actionLoop, seedCoach, setActiveTab, openCaptureSheet, openHardMomentNow,
-    saveTodayOutcome, pendingCaptureMode, consumeCaptureRequest } = useArbor();
+    saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest } = useArbor();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
@@ -107,28 +110,43 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
   const id = useId();
   useEffect(() => { trackCompanionPlaceOpen("now"); }, []);
   const outcomeScope = `${childProfile.id}:${topic?.id ?? ""}`;
-  const currentOutcomeScope = useRef({ key: outcomeScope });
-  if (currentOutcomeScope.current.key !== outcomeScope) currentOutcomeScope.current = { key: outcomeScope };
+  const currentOutcomeScope = useRef({ key: outcomeScope, action });
+  const previousChoice = currentOutcomeScope.current.action;
+  // A newer explicit choice retires the old pending/retry/receipt lease.
+  // An optimistic completion may expose an OLDER open row; that must not
+  // cancel this choice's acknowledgement or make its receipt disappear.
+  if (currentOutcomeScope.current.key !== outcomeScope || (action && action.id !== previousChoice?.id
+    && (!previousChoice || action.acceptedAt >= previousChoice.acceptedAt))) {
+    currentOutcomeScope.current = { key: outcomeScope, action };
+  }
   const scopeLease = currentOutcomeScope.current;
   const outcomeMounted = useRef(true);
   useEffect(() => { outcomeMounted.current = true; return () => { outcomeMounted.current = false; }; }, []);
   const savingAction = useRef(new Map<string, { scope: object; action: ActionLoopEntry }>());
   const completedAction = useRef(new Set<string>());
   const [retryAction, setRetryAction] = useState<{ scope: object; action: ActionLoopEntry } | null>(null);
+  const currentSaveError = saveError && retryAction?.scope === scopeLease;
   const receipt = receiptAction?.scope === scopeLease ? receiptAction.action : null;
   const pendingAction = [...savingAction.current.values()].find(write => write.scope === scopeLease)?.action;
   const chosen = receipt ?? pendingAction ?? (retryAction?.scope === scopeLease ? retryAction.action : null) ?? action;
+  const [observationDraft, setObservationDraft] = useState<{ scope: object; id: string; words: string } | null>(null);
+  const observationWords = observationDraft?.scope === scopeLease && observationDraft.id === chosen?.id ? observationDraft.words : "";
+  const observation = !!chosen && isObservationAction(chosen);
   const saving = !!chosen && savingAction.current.has(chosen.id);
   const talk = (prompt?: string) => onTalkOpen ? onTalkOpen(prompt) : seedCoach({ prompt: prompt ?? "", source: "companion-now" });
-  const saveOutcome = async (outcome: "helped" | "not_today") => {
+  const saveOutcome = async (outcome: "helped" | "not_today" | { whatHappened: string }) => {
     const target = retryAction?.scope === scopeLease ? retryAction.action : action;
     if (!target || savingAction.current.has(target.id) || completedAction.current.has(target.id) || currentOutcomeScope.current !== scopeLease || !outcomeMounted.current) return;
+    const isObservation = isObservationAction(target);
+    if (isObservation !== (typeof outcome === "object") || (typeof outcome === "object" && (!outcome.whatHappened.trim() || outcome.whatHappened.trim().length > 240))) return;
     savingAction.current.set(target.id, { scope: scopeLease, action: target });
     refreshSaving(n => n + 1); setSaveError(false);
     try {
-      await saveTodayOutcome(target.id, outcome, "card", undefined, { awaitServer: true });
+      const saved = typeof outcome === "object"
+        ? await saveTodayObservation(target.id, outcome.whatHappened, { isCurrent: () => outcomeMounted.current && currentOutcomeScope.current === scopeLease })
+        : (await saveTodayOutcome(target.id, outcome, "card", undefined, { awaitServer: true }), target);
       completedAction.current.add(target.id);
-      if (outcomeMounted.current && currentOutcomeScope.current === scopeLease) setReceiptAction({ scope: scopeLease, action: target });
+      if (outcomeMounted.current && currentOutcomeScope.current === scopeLease) setReceiptAction({ scope: scopeLease, action: saved });
     } catch {
       if (outcomeMounted.current && currentOutcomeScope.current === scopeLease) { setRetryAction({ scope: scopeLease, action: target }); setSaveError(true); }
     } finally {
@@ -136,7 +154,7 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
       if (outcomeMounted.current) refreshSaving(n => n + 1);
     }
   };
-  useEffect(() => { setReceiptAction(null); setRetryAction(null); setSaveError(false); }, [topic?.id]);
+  useEffect(() => { setReceiptAction(null); setRetryAction(null); setSaveError(false); }, [scopeLease]);
   useEffect(() => {
     if (!pendingCaptureMode) return;
     consumeCaptureRequest();
@@ -168,7 +186,7 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
   const visit = todayOffer.appointment;
   const lead = selectNowLead({
     chosen: !!chosen,
-    chosenPending: saving || saveError,
+    chosenPending: saving || currentSaveError,
     manualTonight: tonightOpen,
     visit,
     tonight: loop.plan.order[0] === "tonight",
@@ -222,16 +240,28 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
         </section> : lead === "tonight" ? <section className="now-loop-lead" data-module="today-tonight" aria-label={t("elev.loop.today.tonight")}>
           <NowTonightLead loop={loop} />
         </section> : lead === "step" && chosen ? <section className="now-lead arbor-depth-primary" data-module="now-step" aria-labelledby={`${id}-step`}>
-          <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name={receipt ? "check" : "bookmark"} size={24} /></span><div><p className="companion-eyebrow">{copy.chosen}</p><p className="now-provenance">{receipt ? copy.saved : copy.today}</p></div></div>
-          <h2 id={`${id}-step`} className="now-lead-title" dir="auto">{receipt ? copy.finishedTitle : chosen.recommendation}</h2>
-          {receipt && <p className="now-lead-body" dir="auto">{chosen.recommendation}</p>}
-          <p className="now-lead-body" role={receipt ? "status" : undefined}>{receipt ? copy.finished : chosen.acceptanceKey?.startsWith("onboarding-v1.") && dayKey(new Date(chosen.acceptedAt)) === dayKey(now) ? t("ob.first.tomorrow") : copy.chosenWhy}</p>
-          {!receipt && <div className="now-lead-actions" role="group" aria-label={copy.outcomes}>
+          <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name={receipt ? "check" : "bookmark"} size={24} /></span><div><p className="companion-eyebrow">{observation ? t("ob.first.observation.chosen") : copy.chosen}</p><p className="now-provenance">{receipt ? copy.saved : copy.today}</p></div></div>
+          <h2 id={`${id}-step`} className="now-lead-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
+          {receipt && <p className="now-lead-body" dir="auto" style={{ whiteSpace: "pre-wrap" }}>{observation ? chosen.whatHappened : chosen.recommendation}</p>}
+          {!observation && <p className="now-lead-body" role={receipt ? "status" : undefined}>{receipt ? copy.finished : chosen.acceptanceKey?.startsWith("onboarding-v1.") && dayKey(new Date(chosen.acceptedAt)) === dayKey(now) ? t("ob.first.tomorrow") : copy.chosenWhy}</p>}
+          {observation && (receipt ? <>
+            <Receipt testId="now-observation-receipt">{t("ob.first.observation.saved")}</Receipt>
+            <PrimaryMove type="button" className="companion-text-button" onClick={() => { requestJournalFocus(`action-${chosen.id}`); goToRoute("journal", { view: "all" }); }}>{t("ob.first.observation.open")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></PrimaryMove>
+          </> : <form onSubmit={event => { event.preventDefault(); void saveOutcome({ whatHappened: observationWords }); }}>
+            <p id={`${id}-observation-purpose`} className="now-lead-body">{t("ob.first.observation.purpose")}</p>
+            <label className="now-observation-field" htmlFor={`${id}-observation`}>{t("ob.first.observation.answer")}</label>
+            <textarea id={`${id}-observation`} data-testid="now-observation-answer" className="now-observation-input" dir="auto" rows={3} maxLength={240} required
+              aria-describedby={`${id}-observation-purpose`} disabled={saving} value={observationWords}
+              onChange={event => setObservationDraft({ scope: scopeLease, id: chosen.id, words: event.target.value })} />
+            {screenForImmediateEscalation({ message: observationWords }) && <UrgentSupport testId="now-observation-urgent-support" className="now-lead-body" />}
+            <div className="now-lead-actions"><PrimaryMove type="submit" className="companion-primary" disabled={saving || !observationWords.trim()} aria-busy={saving}><Icon name="check" size={19} />{saving ? copy.saving : t("ob.first.observation.keep")}</PrimaryMove></div>
+          </form>)}
+          {!observation && !receipt && <div className="now-lead-actions" role="group" aria-label={copy.outcomes}>
             <PrimaryMove type="button" className="companion-primary" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.helped}</PrimaryMove>
             <button type="button" className="companion-secondary" disabled={saving} onClick={() => void saveOutcome("not_today")}>{copy.notToday}</button>
           </div>}
-          <PrimaryMove primary={!!receipt} type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(chosen.recommendation))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></PrimaryMove>
-          {saveError && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
+          {!observation && <PrimaryMove primary={!!receipt} type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(chosen.recommendation))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></PrimaryMove>}
+          {currentSaveError && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
         </section> : lead === "practice" && loop.pick ? <section className="now-loop-lead" data-module="today-practice" aria-label={copy.today}>
           <NowPracticeLead loop={loop} name={name} whyText={focus?.why} headerNote={lifecycleNote} adaptLabel={copy.adapt} choosing={focusPending}
             onAdapt={() => talk(copy.adaptPrompt(practiceText(loop.pick!.practice, "do", lang, childProfile.gender)))} />

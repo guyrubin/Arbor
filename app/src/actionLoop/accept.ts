@@ -13,6 +13,7 @@ export async function acceptTodayAction(input: {
   planStep?: PlanStepRef;
   topicId?: string;
   acceptanceKey?: string;
+  observation?: true;
   /** First-run replay may be an optimistic cached snapshot. Establish a
    * confirmed, idempotent write barrier before allowing profile completion. */
   confirmExisting?: boolean;

@@ -51,7 +51,7 @@ import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
 import { observeMilestoneDoc, type ObserveOptions, type ObserveStatus } from "../lib/milestones/observe";
 import type { ShelfId } from "../lib/shelves/registry";
 import { hydrateMilestones } from "./milestoneHydration";
-import { activeActionFor, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
+import { completeObservation, isObservationAction, activeActionFor, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
 import { answeredToday, fromRecordRowId, fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
 import { recentTypeCounts } from "../lib/planRecord";
@@ -234,7 +234,7 @@ function useArborState() {
 
   // Active child comes from ProfileContext so every AI call, log, and plan is
   // scoped to the selected child rather than a hardcoded profile.
-  const { activeChild, updateChild } = useProfile();
+  const { activeChild, updateChild, captureOnboardingLifetime } = useProfile();
   const childProfile: ChildProfile = activeChild;
   const topicState = useFamilyTopics(childProfile.id);
   const { activeFamilyTopic } = topicState;
@@ -511,6 +511,7 @@ function useArborState() {
   const saveTodayOutcome = async (id: string, outcome: ActionOutcome, via: TodayOutcomeVia = "card", held?: HeldAnswer, options?: { awaitServer?: boolean }) => {
     const item = actionLoop.find((entry) => entry.id === id);
     if (!item) throw new Error("The selected action is no longer available");
+    if (isObservationAction(item)) throw new Error("Observations record a moment, not an efficacy outcome");
     await actionLoopCol.upsert({ ...item, status: "completed", outcome, outcomeAt: new Date().toISOString(), ...(held ? { held } : {}) }, options);
     // B-ASKJB-26: a plan step's outcome moves the step — helped → done (the
     // next step becomes today's), somewhat → in progress (kept, next offered),
@@ -520,6 +521,22 @@ function useArborState() {
       if (next) setPlanStepStatus(item.planId, item.phaseIdx, item.stepIdx, next);
     }
     try { track("today_action_outcome", todayOutcomeProps({ outcome, capacity: item.capacity, via, acceptedAt: item.acceptedAt })); } catch { /* noop */ }
+  };
+  /** Reuse the same child-scoped action ledger and strict receipt barrier.
+   * The caller pins its visible question while an optimistic snapshot changes. */
+  const observationAcceptSequence = acceptScope.sequence;
+  const observationLifetime = captureOnboardingLifetime?.(childProfile.id);
+  const saveTodayObservation = async (id: string, words: string, options?: { isCurrent?: () => boolean }) => {
+    const assertCurrent = () => {
+      if (acceptScopeRef.current !== acceptScope || acceptScope.sequence !== observationAcceptSequence || observationLifetime?.() === false || options?.isCurrent?.() === false) throw new Error("The observation request is no longer current");
+    };
+    assertCurrent();
+    const item = actionLoop.find(entry => entry.id === id);
+    if (!item) throw new Error("The selected observation is no longer available");
+    const completed = completeObservation(item, words);
+    await actionLoopCol.upsert(completed, { awaitServer: true });
+    assertCurrent();
+    return completed;
   };
   const recordTodayOutcome = (...args: Parameters<typeof saveTodayOutcome>) => {
     void saveTodayOutcome(...args).catch(() => toast(t("companion.arbor-context.your-response-wasn-t-saved-please-try-agai"), "error"));
@@ -1887,6 +1904,7 @@ function useArborState() {
     acceptTodayAction,
     recordTodayOutcome,
     saveTodayOutcome,
+    saveTodayObservation,
     removeTodayAction,
     recordPracticeDose,
     recordFromRecordAnswer,

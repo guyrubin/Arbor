@@ -78,6 +78,8 @@ describe("mounted authored first-run release seam", () => {
   it.each(["en", "he"] as const)("%s: explicit acceptance lands on Now once after one child and confirmed action", async lang => {
     h.lang = lang; const card = await ready(); card.onSubmit(); card.onSubmit(); await flush();
     expect(h.add).toHaveBeenCalledOnce(); expect(h.write).toHaveBeenCalledOnce();
+    expect(h.write.mock.calls[0][2]).toMatchObject({ observation: true, recommendation: card.card.recommendation });
+    expect(h.write.mock.calls[0][2].outcome).toBeUndefined();
     expect(h.write.mock.calls[0][3]).toEqual({ requireAcknowledgement: true });
     expect(h.profiles.get("A")?.[0]).toMatchObject({ onboardingComplete: true, challenges: ["Our own words"] });
     expect(h.selected).toHaveBeenCalledExactlyOnceWith("A", "A-child");

@@ -135,3 +135,8 @@
 
 /* The record question is the largest UI line; the parent quotation keeps its editorial face. */
 .arbor-app .now-page [data-testid="today-record-question"] { font-family: var(--font-sans) !important; }
+
+/* The first-run question is answered in the existing chosen-step module. */
+.now-observation-field { display: block; margin-block: 14px 6px; font-size: var(--t-sm); font-weight: 600; }
+.now-observation-input { display: block; inline-size: 100%; min-block-size: 88px; resize: vertical; padding: 12px; border: 1px solid var(--arbor-rule-strong); border-radius: var(--r); color: var(--arbor-ink); background: var(--arbor-paper-elevated); font-size: 16px; }
+.now-observation-input:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }

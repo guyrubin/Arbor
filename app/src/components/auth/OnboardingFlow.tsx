@@ -22,20 +22,13 @@ import { Icon } from "../ui/Icon";
 import { ArborMark } from "../ui/ArborMark";
 import { languageName } from "../../lib/languageName";
 import "./onboardingFirstRun.css";
-import { HELPLINE_DIRECTORY, screenForImmediateEscalation } from "../../safety/escalation";
+import { screenForImmediateEscalation } from "../../safety/escalation";
+
+import { UrgentSupport } from "../safety/UrgentSupport";
 
 const LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 export const ONBOARDING_CHOICES: readonly OnboardingChoice[] = [...DOMAIN_IDS, "hard-moment", "nothing"];
 
-/** Existing urgent-support wording and dial targets, available before setup completes. */
-function UrgentSupport() {
-  const { t } = useLanguage();
-  return <aside role="alert" data-testid="onboarding-urgent-support" className="first-run-hint">
-    <p>{t("elev.safety.crisis.danger")}</p><p>{t("screen.safetyNote")}</p>
-    {HELPLINE_DIRECTORY.filter(line => ["il_mda", "il_police", "il_welfare", "il_eran"].includes(line.id)).map(line =>
-      <a key={line.id} className="inline-flex min-h-11 items-center underline px-2" href={`tel:${line.tel}`}>{t(`elev.safety.helpline.${line.id}`)} · {line.number}</a>)}
-  </aside>;
-}
 
 export function StepChild({ state, onEdit, onNext }: {
   state: FirstRunState; onEdit: FirstRunController["edit"]; onNext: () => void;
@@ -50,9 +43,10 @@ export function StepChild({ state, onEdit, onNext }: {
       readOnly={!!state.exactBirthDate} onChange={e => onEdit({ birthMonth: e.target.value })} disabled={state.busy} required data-testid="onboarding-birth-month" /></label>
     <p className="first-run-hint">{t("ob.first.birthHint")}</p>
     <fieldset disabled={state.busy}><legend>{t("ob.first.languages")}</legend><div className="first-run-languages">
-      {LANGUAGES.map(language => <button type="button" key={language} aria-pressed={state.languages.includes(language)}
+      {LANGUAGES.map(language => <button type="button" key={language} data-language={language} aria-pressed={state.languages.includes(language)}
         onClick={() => onEdit({ languages: state.languages.includes(language) ? state.languages.filter(value => value !== language) : [...state.languages, language] })}>
-        {language === "Other" ? t("ob.lang.other") : languageName(language, t)}
+        {state.languages.includes(language) && <span data-selection-check="" aria-hidden="true"><Icon name="check" size={16} /></span>}
+        <span>{language === "Other" ? t("ob.lang.other") : languageName(language, t)}</span>
       </button>)}
     </div></fieldset>
     <div className="first-run-consent"><label><input type="checkbox" checked={state.consent} disabled={state.busy}
@@ -74,7 +68,7 @@ export function StepDomains({ state, onWorry, onNext }: {
     <div className="first-run-choices" role="group" aria-label={t("ob.first.worry", { name: state.name.trim() })}>
       {ONBOARDING_CHOICES.map(choice => <button type="button" key={choice} data-choice={choice} disabled={state.busy}
         aria-pressed={state.worry.choice === choice} onClick={() => onWorry({ choice, hardMomentId: "", quote: "" })}>
-        <Icon name={choice === "hard-moment" ? "volunteer_activism" : choice === "nothing" ? "wb_sunny" : DOMAIN_ICONS[choice]} size={20} />
+        <span data-selection-check={state.worry.choice === choice ? "" : undefined} aria-hidden="true"><Icon name={state.worry.choice === choice ? "check" : choice === "hard-moment" ? "volunteer_activism" : choice === "nothing" ? "wb_sunny" : DOMAIN_ICONS[choice]} size={20} /></span>
         <span>{choiceName(choice, lang)}</span>
       </button>)}
     </div>
@@ -114,7 +108,7 @@ export function StepReady({ state, card, onWorry, onSubmit, ready }: {
       </>}
     </div>
     <div className="first-run-footer"><button type="button" className="first-run-primary" onClick={onSubmit} disabled={state.busy || !ready} aria-busy={state.busy}>
-      {state.busy ? t("ob.settingUp") : card.urgent ? t("ob.step.continue") : t("ob.first.try")}
+      {state.busy ? t("ob.settingUp") : card.urgent ? t("ob.step.continue") : card.observation ? t("ob.first.notice") : t("ob.first.try")}
     </button></div>
   </section>;
 }
@@ -150,7 +144,7 @@ export default function OnboardingFlow() {
       };
       const entry = await acceptTodayAction({ childId, items: [...current.actions.items, ...prior],
         upsert: item => { assertCurrent(); return current.actions.upsert(item, { requireAcknowledgement: true }); }, confirmExisting: true,
-        recommendation: card.recommendation, source: card.source, capacity: "tiny", acceptanceKey });
+        recommendation: card.recommendation, source: card.source, capacity: "tiny", acceptanceKey, ...(card.observation ? { observation: true as const } : {}) });
       assertCurrent();
       accepted.current = entry;
     },

@@ -74,6 +74,7 @@ export interface FirstRunCard {
   recommendation: string;
   source: "onboarding" | "hard-moment";
   guide?: HardMomentCard;
+  observation?: true;
   urgent?: true;
   sayBack?: { heading: string; line: string };
 }
@@ -105,7 +106,7 @@ export function firstRunCard(state: FirstRunState, lang: UiLang, now = new Date(
     line: translate(back.lineLocale, back.lineKey, back.lineVars),
   } : undefined;
   return { key: `${key}:${visibleKey}`, title: area ? choiceName(area, lang) : tr("elev.prompt.lead"), notice,
-    recommendation: sayBack ? `${notice}\n${sayBack.heading} ${sayBack.line}` : notice, source: "onboarding", ...(sayBack ? { sayBack } : {}) };
+    recommendation: sayBack ? `${notice}\n${sayBack.heading} ${sayBack.line}` : notice, source: "onboarding", observation: true, ...(sayBack ? { sayBack } : {}) };
 }
 export function onboardingAcceptanceKey(childId: string, card: FirstRunCard): string {
   return `${card.urgent ? "onboarding-urgent" : "onboarding-v1"}.${childId}.${fnv1a(`${card.key}|${card.recommendation}`).toString(16)}`;

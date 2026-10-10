@@ -1,4 +1,4 @@
-import { capacityMinutes, type ActionLoopEntry } from "../actionLoop/model";
+import { isObservationAction, capacityMinutes, type ActionLoopEntry } from "../actionLoop/model";
 import { behaviorTypeLabel } from "../content/behaviorTaxonomy";
 import type {
   ActionPlan,
@@ -108,6 +108,7 @@ export interface TimelineSignal {
    * every action signal carries the SAME tone (see buildTimeline): colouring
    * "helped" green and "not_today" coral would make the row a verdict strip.
    */
+  actionObservation?: true;
   actionStatus?: "accepted" | "helped" | "somewhat" | "not_today" | "done";
   /**
    * B-DATA-10 (kind "moment" only) — the parent marked this moment resolved.
@@ -230,7 +231,7 @@ export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
       // TJB-05: the lifecycle is the TITLE ("You made this today's step" →
       // "You tried today's step — it helped"); the step text itself is the
       // detail line, so one row visibly evolves rather than two rows racing.
-      return t(`elev.closeloop.thread.title.${s.actionStatus ?? "accepted"}`);
+      return s.actionObservation ? t(`ob.first.observation.history.${s.actionStatus === "done" ? "completed" : "accepted"}`) : t(`elev.closeloop.thread.title.${s.actionStatus ?? "accepted"}`);
     case "kept":
       return t("elev.kept.thread.title");
   }
@@ -244,7 +245,7 @@ export const signalDetail = (s: TimelineSignal, t: TranslateFn): string => {
       : "";
   }
   // TJB-05: the accepted step's own words — raw record content, never UI copy.
-  if (s.kind === "action") return s.refTitle ?? "";
+  if (s.kind === "action") return s.actionObservation ? [s.refTitle, s.detail].filter(Boolean).join("\n\n") : s.refTitle ?? "";
   // B-ASKJB-34: the folded day's disclosure — each activity's own warm line.
   if (s.kind === "practice" && s.folded?.length) return s.folded.map((f) => signalTitle(f, t)).join(" · ");
   if (s.kind === "milestone" && !s.milestoneRef?.noteDetail) return milestoneSignalText(s, "desc", t);
@@ -547,19 +548,20 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
   // `at` walks forward to the outcome moment so the updated row re-sorts to
   // the top of the day it was closed out on.
   for (const entry of sources.actionOutcomes || []) {
+    const observation = isObservationAction(entry);
     const status: TimelineSignal["actionStatus"] =
       entry.status === "completed" ? (entry.outcome ?? "done") : "accepted";
     signals.push({
       id: `action-${entry.id}`,
       kind: "action",
-      at: (entry.status === "completed" ? entry.outcomeAt : null) || entry.acceptedAt || null,
+      at: (entry.status === "completed" ? (observation ? entry.completedAt : entry.outcomeAt) : null) || entry.acceptedAt || null,
       refTitle: entry.recommendation || undefined,
       // FIREWALL: ONE tone for every lifecycle state. Tone-coding the outcome
       // (green "helped" vs coral "not_today") would turn the parent's read of
       // a suggestion into a coloured verdict sitting in the child's story.
       tone: "sky",
       actionStatus: status,
-      durationMinutes: capacityMinutes[entry.capacity] ?? undefined,
+      ...(observation ? { actionObservation: true as const, detail: entry.whatHappened } : { durationMinutes: capacityMinutes[entry.capacity] ?? undefined }),
     });
   }
 

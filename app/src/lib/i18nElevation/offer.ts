@@ -13,6 +13,7 @@
  */
 export const en: Record<string, string> = {
   "elev.offer.reason.followUp": "You chose to try “{step}” — how did it go?",
+  "elev.offer.reason.observation": "You chose this question: “{step}”",
   // B-TODAY-18: the reason line for tomorrow's reason (the parent's own note).
   "elev.offer.reason.tomorrow": "You left this for today at the end of a previous day.",
   "elev.offer.reason.whatChanged": "Something new since you were last here.",
@@ -44,6 +45,7 @@ export const en: Record<string, string> = {
 
 export const he: Record<string, string> = {
   "elev.offer.reason.followUp": "בחרתם לנסות „{step}” — איך זה הלך?",
+  "elev.offer.reason.observation": "בחרתם את השאלה: „{step}”",
   "elev.offer.reason.tomorrow": "השארתם את זה להיום בסוף אחד הימים הקודמים.",
   "elev.offer.reason.whatChanged": "יש משהו חדש מאז הביקור האחרון שלכם.",
   "elev.offer.reason.apptToday": "יש לכם פגישה היום.",
