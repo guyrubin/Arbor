@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { acceptTodayAction } from "./accept";
-import { completeObservation, isObservationAction, type ActionLoopEntry } from "./model";
+import { completeObservation, isObservationAction, isUrgentOnboardingAction, type ActionLoopEntry } from "./model";
+import { selectCarryOverAction } from "../components/overview/carryOverAction";
 import { buildTimeline, signalDetail, signalTitle } from "../lib/signalTimeline";
 import { translate } from "../lib/i18n";
 import { buildJournalRequest } from "../ai/journalContext";
@@ -57,5 +58,19 @@ describe("the chosen first-run observation is not an intervention outcome", () =
     expect(focusSignalsForNow({ behaviorLogs: [], playLogs: [], milestones: [], actionLoop: [completed] }, at)).not.toHaveProperty("lastActionOutcome");
     expect(computeWeeklyContext({ behaviorLogs: [], milestones: [], actionLoop: [completed] }, at)).not.toHaveProperty("lastActionOutcome");
     expect(projectAcceptedActions([{ ...original, status: "completed", outcome: "helped" }])[0].outcome).toBe("helped");
+  });
+});
+
+describe("a first-run safety notice saved before the fix is never a chosen step", () => {
+  const urgent: ActionLoopEntry = { ...original, id: "today.child-a.2026-10-08", recommendation: "If there is immediate danger to your child or others, contact local emergency services first.", acceptanceKey: "onboarding-urgent.child-a.exact" };
+  it("is recognised by its acceptance key only", () => {
+    expect(isUrgentOnboardingAction(urgent)).toBe(true);
+    expect(isUrgentOnboardingAction(original)).toBe(false);
+    expect(isUrgentOnboardingAction({ ...urgent, acceptanceKey: undefined })).toBe(false);
+  });
+  it("never reaches the companion context, the history, or the carry-over question", () => {
+    expect(projectAcceptedActions([urgent, { ...urgent, status: "completed", outcome: "helped" }])).toEqual([]);
+    expect(buildTimeline({ actionOutcomes: [urgent] })).toEqual([]);
+    expect(selectCarryOverAction([urgent], "today.child-a.2026-10-10", at.getTime())).toBeNull();
   });
 });
