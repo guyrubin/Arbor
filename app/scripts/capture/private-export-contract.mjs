@@ -10,6 +10,9 @@ export const PRIVATE_EXPORT_LIMITATIONS = Object.freeze([
   { state: 'device-download', status: 'disposable-ci-chromium-only', reason: 'Actual app-produced partial JSON bytes are read and deleted inside the network-none container. Only a bounded validation/hash receipt leaves it. Native-device and real authenticated download acceptance remain pending.' },
 ]);
 
+// Explicit fixture expectations, independent of the app helper and browser output.
+export const PRIVATE_EXPORT_FILENAMES = Object.freeze({ en: 'arbor-noa-data.partial.json', he: 'arbor-child-data.partial.json' });
+
 export function privateExportFixture(bundle, lang) {
   const parsed = JSON.parse(typeof bundle === 'string' ? bundle : JSON.stringify(bundle));
   const body = parsed?.locales?.[lang] ?? parsed;
@@ -27,7 +30,7 @@ export function privateExportFixture(bundle, lang) {
   const siblingMarker = 'capture-sibling-must-never-export';
   body.child = child; body.collections = collections;
   body.siblings = [{ child: sibling, collections: { ...structuredClone(collections), heroSheet: [{ id: siblingMarker }] } }];
-  return { parsed, child, sibling, childId: child.id, collections, siblingMarker, filename: `arbor-${child.name.toLowerCase()}-data.partial.json` };
+  return { parsed, child, sibling, childId: child.id, collections, siblingMarker, filename: PRIVATE_EXPORT_FILENAMES[lang] };
 }
 
 /** Match only the deliberate fixture resource; no suffix or origin aliases. */
@@ -102,7 +105,7 @@ export function validPrivateExportCell(cell) {
     && (cell.state !== 'interrupted-closed' || (cell.heldResponse?.closedBeforeRelease === true && validPrivacyResponseSettlement(cell.heldResponse?.settled, 'after-close')))
     && (!needsDownload || (receipt?.passed === true && receipt.delivery === 'actual-browser-download' && receipt.syntheticOnly === true && receipt.deleted === true
       && receipt.status === 'incomplete' && receipt.privateFileStatus === 'unauthorized' && receipt.bytes > 0 && receipt.bytes <= EXPORT_DOWNLOAD_LIMIT && /^[a-f0-9]{64}$/.test(receipt.sha256 ?? '')
-      && receipt.childId === 'capture-private-export-a' && receipt.filename === (cell.lang === 'he' ? 'arbor-נועה-data.partial.json' : 'arbor-noa-data.partial.json')));
+      && receipt.childId === 'capture-private-export-a' && Object.hasOwn(PRIVATE_EXPORT_FILENAMES, cell.lang) && receipt.filename === PRIVATE_EXPORT_FILENAMES[cell.lang]));
 }
 
 /** Passive observations only, no DOM/auth/storage writes or event dispatch. */

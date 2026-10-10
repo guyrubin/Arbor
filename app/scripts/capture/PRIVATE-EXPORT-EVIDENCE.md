@@ -58,7 +58,14 @@ byte/digest interruption and Kid Mode lifetime cases remain the reviewed source
 and offline callback tests' evidence; they are not claimed as browser coverage.
 
 The app's native blob download must match `arbor-noa-data.partial.json` or
-`arbor-נועה-data.partial.json`. Its real stream is bounded to 256 KiB, parsed,
+`arbor-child-data.partial.json` (the Hebrew fixture). These are explicit fixture
+expectations, never learned from the observed browser filename. The app uses a
+bounded portable ASCII label only for this download; the original Hebrew/English
+profile name remains in the JSON and the visible receipt stays localized.
+Chromium's generic `download` fallback is rejected. The earlier `d2ef42a` Hebrew
+capture diagnosed exactly that fallback for `arbor-נועה-data.partial.json`;
+its failed evidence remains historical, not a passing filename alternative.
+The real stream is bounded to 256 KiB, parsed,
 checked for the invented current child, 43 registered collection receipts,
 fixture markers, absence of sibling identifiers/marker, empty actual local server
 ledger/shares, and an explicit unauthorized private-file receipt with zero files.

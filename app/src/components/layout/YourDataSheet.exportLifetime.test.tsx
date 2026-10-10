@@ -4,9 +4,11 @@
 import { webcrypto } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChildProfile } from "../../types";
+import { translate, type UiLang } from "../../lib/i18n";
 
 const h = vi.hoisted(() => ({
   child: { id: "child-a", name: "Synthetic" } as ChildProfile,
+  lang: "en" as UiLang, partial: false, filenames: [] as string[],
   currentUser: { uid: "owner" } as { uid: string } | null,
   renderedUser: { uid: "owner" } as { uid: string } | null,
   authListeners: new Set<(user: { uid: string } | null) => void>(),
@@ -32,7 +34,7 @@ vi.mock("react", async (original) => ({
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: h.child, setActiveTab: vi.fn() }) }));
 vi.mock("../../context/ProfileContext", () => ({ useProfile: () => ({ deleteChild: vi.fn() }) }));
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: h.renderedUser }) }));
-vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (key: string) => key, uiLang: "en" }) }));
+vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (key: string, vars?: Record<string, string | number>) => translate(h.lang, key, vars), uiLang: h.lang }) }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast: h.toast }) }));
 vi.mock("../ui/Icon", () => ({ default: () => null }));
 vi.mock("../ui/Modal", () => ({ default: () => null }));
@@ -85,6 +87,7 @@ function pause(stage: string) {
 }
 beforeEach(() => {
   vi.clearAllMocks(); h.child = { id: "child-a", name: "Synthetic" } as ChildProfile;
+  h.lang = "en"; h.partial = false; h.filenames = [];
   h.currentUser = { uid: "owner" }; h.renderedUser = h.currentUser; h.locked = false;
   h.cursor = 0; h.slots = []; h.effects = []; h.paths = []; h.requests = []; h.wait = async () => {};
   let tokens = 0;
@@ -97,6 +100,7 @@ beforeEach(() => {
     }
     if (url.endsWith("export-manifest")) {
       await h.wait("inventory response");
+      if (h.partial) return new Response("Unavailable", { status: 503 });
       return body("inventory body", JSON.stringify({ version: 1, childId: "child-a", status: "complete", issues: [], files: [{ bookId: "book", path: "manifest.json", bytes: 4 }] }));
     }
     await h.wait("file response"); return body("file body", "DATA");
@@ -107,7 +111,7 @@ beforeEach(() => {
   h.createUrl.mockReturnValue("blob:synthetic");
   vi.spyOn(URL, "createObjectURL").mockImplementation(h.createUrl);
   vi.spyOn(URL, "revokeObjectURL").mockImplementation(h.revokeUrl);
-  vi.stubGlobal("document", { createElement: () => ({ href: "", download: "", click: h.click }) });
+  vi.stubGlobal("document", { createElement: () => ({ href: "", download: "", click() { h.filenames.push(this.download); h.click(); } }) });
 });
 afterEach(async () => {
   unmount(); await flush();
@@ -139,6 +143,26 @@ describe.each(stages)("real parent export interrupted at %s", stage => {
 });
 
 describe("final browser boundary and fresh parent action", () => {
+  it.each([
+    { lang: "en", name: "Noa Levi נועה", token: "noa", partial: false },
+    { lang: "en", name: "Noa Levi נועה", token: "noa", partial: true },
+    { lang: "he", name: "נועה לוי Noa", token: "child", partial: false },
+    { lang: "he", name: "נועה לוי Noa", token: "child", partial: true },
+  ] as const)("keeps original profile and localized receipt with a portable filename: $lang, partial=$partial", async ({ lang, name, token, partial }) => {
+    h.lang = lang; h.child = { ...h.child, name }; h.partial = partial;
+    const tree = render(); commit(); await clickExport(tree);
+    expect(h.filenames).toEqual([`arbor-${token}-data${partial ? ".partial" : ""}.json`]);
+    const data = JSON.parse(await (h.createUrl.mock.calls[0][0] as Blob).text());
+    expect(data.profile.name).toBe(name); expect(h.child.name).toBe(name);
+    expect(data.exportReceipt.status).toBe(partial ? "incomplete" : "complete");
+    expect(data.exportNote).toBe(translate(lang, "sec.sharing.data.exportNote"));
+    expect(Object.keys(data.collections)).toHaveLength(43);
+    const after = elements(render());
+    expect(after.find(e => e.props?.["data-testid"] === "your-data-export-receipt").props.children)
+      .toBe(translate(lang, partial ? "elev.yourData.exportPartial" : "elev.yourData.exportComplete"));
+    expect(after.find(e => e.props?.["data-testid"] === "your-data-export").props.children)
+      .toContain(translate(lang, "elev.yourData.export", { name: name.split(" ")[0] }));
+  });
   it("downloads once only after the parent's action, with bounded complete bytes", async () => {
     const tree = render(); commit(); expect(fetch).not.toHaveBeenCalled(); expect(h.click).not.toHaveBeenCalled();
     const first = clickExport(tree); await clickExport(tree); await first;

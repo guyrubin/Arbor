@@ -8,6 +8,27 @@ const bounded = async promise => {
   finally { clearTimeout(timer); }
 };
 
+/** A post-timeout observation explains failure; it never replaces ready evidence. */
+export async function waitForExportSurface(page, cell, { selector, childId }) {
+  let handle;
+  try {
+    handle = await page.waitForFunction(observeExportSurface, { selector, childId, waitUntilReady: true });
+    return await handle.jsonValue();
+  } catch (error) {
+    if (error?.name === 'TimeoutError') {
+      try {
+        const frame = await page.evaluate(observeExportSurface, { selector, childId });
+        cell.surfaceReadinessTimeout = { observedAfterTimeout: true, frame };
+      } catch {
+        cell.surfaceReadinessTimeout = { observedAfterTimeout: true, unavailable: true };
+      }
+    }
+    throw error;
+  } finally {
+    await handle?.dispose();
+  }
+}
+
 export async function collectPrivateExportStates({ page, fixture, viewport, apiState, privacyGate, load, screen, check, byId }) {
   const he = viewport.lang === 'he';
   const sheet = () => byId('your-data-sheet');
@@ -24,8 +45,7 @@ export async function collectPrivateExportStates({ page, fixture, viewport, apiS
   let baselineRecords = null;
   const records = () => page.evaluate(observeExportRecords, [fixture.child.id, fixture.sibling.id]);
   const waitFrame = async (cell, selector = sheetSelector) => {
-    const handle = await page.waitForFunction(observeExportSurface, { selector, childId: fixture.childId, waitUntilReady: true });
-    const frame = await handle.jsonValue(); await handle.dispose();
+    const frame = await waitForExportSurface(page, cell, { selector, childId: fixture.childId });
     (cell.frames ??= []).push(frame);
     check(cell, 'CHILD_COLLECTIONS_UNCHANGED', baselineRecords !== null && await records() === baselineRecords);
     check(cell, 'SETTLED_REAL_SURFACE', frame.ready);

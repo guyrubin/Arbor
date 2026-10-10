@@ -8,6 +8,7 @@ import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
 import { downloadJson, exportChildData } from "../../lib/childData";
 import { createChildExportRun } from "../../lib/childExportRun";
+import { childExportFilename } from "../../lib/childExportFilename";
 import { withChildExportSession } from "../../lib/childExportSession";
 import { fmtDay } from "../../lib/formatDate";
 import type { DeletionReceipt } from "../../types";
@@ -85,7 +86,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
         };
         assertCurrent();
         const status = data.exportReceipt.status;
-        downloadJson(`arbor-${first.toLowerCase() || "child"}-data${status === "incomplete" ? ".partial" : ""}.json`, { ...data, exportNote: t("sec.sharing.data.exportNote") }, assertCurrent);
+        downloadJson(childExportFilename(childProfile.name || "", status), { ...data, exportNote: t("sec.sharing.data.exportNote") }, assertCurrent);
         setExportResult(status);
       });
     } catch (error) {

@@ -3,8 +3,9 @@ import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { PRIVATE_EXPORT_STATES, PRIVATE_EXPORT_LIMITATIONS, privateExportFixture, isExactPrivateExportFixtureUrl, privateExportApiDisposition, validatePartialExport, privateExportRequiredAssertions, validPrivateExportCell, validPrivateExportNetwork, validPrivacyResponseReady, validPrivacyResponseSettlement, EXPORT_DOWNLOAD_LIMIT } from './capture/private-export-contract.mjs';
+import { PRIVATE_EXPORT_STATES, PRIVATE_EXPORT_LIMITATIONS, privateExportFixture, isExactPrivateExportFixtureUrl, privateExportApiDisposition, validatePartialExport, privateExportRequiredAssertions, validPrivateExportCell, validPrivateExportNetwork, validPrivacyResponseReady, validPrivacyResponseSettlement, observeExportSurface, EXPORT_DOWNLOAD_LIMIT } from './capture/private-export-contract.mjs';
 import { createPrivacyResponseGate, inspectPartialDownload } from './capture/private-export-download.mjs';
+import { waitForExportSurface } from './capture/private-export-states.mjs';
 import { releaseMatrix, releaseCell, RELEASE_MATRIX } from './capture/release-config.mjs';
 import { missingReleaseInteractionEvidence, expectedReleaseInteractionStates } from './capture/release-interactions.mjs';
 import { summarizeRelease } from './capture/release-summary.mjs';
@@ -22,7 +23,7 @@ const dataFor = (fixture: any) => ({
   exportReceipt: { status: 'incomplete', serverData: 'included', collections: Object.fromEntries(collectionNames.map(name => [name, 'included'])) },
   privateBookAssets: { format: 'arbor-private-book-assets-v1', status: 'incomplete', inventory: 'unavailable', issues: ['unauthorized'], includedFiles: 0, includedBytes: 0, files: [] },
 });
-const receiptFor = (lang: string) => ({ passed: true, delivery: 'actual-browser-download', syntheticOnly: true, deleted: true, status: 'incomplete', privateFileStatus: 'unauthorized', bytes: 1000, sha256: 'c'.repeat(64), childId: 'capture-private-export-a', filename: lang === 'he' ? 'arbor-נועה-data.partial.json' : 'arbor-noa-data.partial.json' });
+const receiptFor = (lang: string) => ({ passed: true, delivery: 'actual-browser-download', syntheticOnly: true, deleted: true, status: 'incomplete', privateFileStatus: 'unauthorized', bytes: 1000, sha256: 'c'.repeat(64), childId: 'capture-private-export-a', filename: lang === 'he' ? 'arbor-child-data.partial.json' : 'arbor-noa-data.partial.json' });
 const readyReceipt = () => ({ responseReady: true, responseStatus: 200, released: false, releasedAfterReady: false, releaseReason: null, outcome: 'pending' });
 const settledReceipt = (reason = 'deliver') => ({ ...readyReceipt(), released: true, releasedAfterReady: true, releaseReason: reason, outcome: 'fulfilled' });
 const safeNetwork = () => ({ privateExportDenied: 0, privateExportPrivateReads: 0, privateExportUnexpectedDownloads: 0, privateExportAuthHeaders: 0, deniedActions: 0, privateExportNarrationRefusals: 0 });
@@ -47,7 +48,7 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     expect(fixture.child.id).toBe('capture-private-export-a');
     expect(fixture.child.demo).toBe(true); expect(fixture.child.avatar).toBeUndefined(); expect(fixture.child.photoUrl).toBeUndefined();
     expect(fixture.parsed.siblings[0].collections.heroSheet[0].id).toBe(fixture.siblingMarker);
-    expect(fixture.filename).toBe(lang === 'he' ? 'arbor-נועה-data.partial.json' : 'arbor-noa-data.partial.json');
+    expect(fixture.filename).toBe(lang === 'he' ? 'arbor-child-data.partial.json' : 'arbor-noa-data.partial.json');
     expect(fixture.collections.bookAssets).toEqual([{ id: 'capture-export-book', bookId: 'capture-export-book', files: ['manifest.json'], fixture: 'invented-private-export-metadata-only' }]);
     const localized = { ...seed, locales: { he: { child: seed.child, collections: seed.collections } } };
     expect(privateExportFixture(localized, 'he').parsed.locales.he.child.name).toBe('נועה');
@@ -104,18 +105,67 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     mutate(d => { d.serverData.memoryEvents = [{ unrelated: true }]; });
     mutate(d => { d.exportNote = ''; });
     expect(validatePartialExport(JSON.stringify(data), fixture.filename.replace('.partial', ''), fixture)).toBe(false);
+    expect(validatePartialExport(JSON.stringify(data), 'download', fixture)).toBe(false);
+    expect(validatePartialExport(JSON.stringify(data), 'arbor-נועה-data.partial.json', fixture)).toBe(false);
     expect(validatePartialExport('{}', fixture.filename, fixture)).toBe(false);
     expect(validatePartialExport('x'.repeat(EXPORT_DOWNLOAD_LIMIT + 1), fixture.filename, fixture)).toBe(false);
   });
-  it('reads the real delivery stream and deletes the payload; artifacts receive only bounded receipts', async () => {
-    const fixture = privateExportFixture(seed, 'en'); const text = JSON.stringify(dataFor(fixture));
+  it.each(['en', 'he'])('reads the real delivery stream and deletes the payload; artifacts receive only bounded receipts (%s)', async lang => {
+    const fixture = privateExportFixture(seed, lang); const text = JSON.stringify(dataFor(fixture));
     const download = { url: () => 'blob:http://127.0.0.1:4805/id', suggestedFilename: () => fixture.filename, createReadStream: async () => Readable.from([Buffer.from(text)]), delete: vi.fn(async () => {}) };
     const receipt = await inspectPartialDownload(download, fixture);
     expect(receipt).toMatchObject({ passed: true, deleted: true, bytes: Buffer.byteLength(text), sha256: createHash('sha256').update(text).digest('hex'), status: 'incomplete', includedPrivateFiles: 0 });
     expect(JSON.stringify(receipt)).not.toContain('exportNote'); expect(download.delete).toHaveBeenCalledOnce();
-    for (const failed of [{ ...download, suggestedFilename: () => 'other.json' }, { ...download, url: () => 'https://unrelated.invalid/file' }, { ...download, createReadStream: async () => Readable.from([Buffer.alloc(EXPORT_DOWNLOAD_LIMIT + 1)]) }, { ...download, createReadStream: async () => Readable.from([Buffer.from('{}')]) }]) {
+    for (const failed of [{ ...download, suggestedFilename: () => 'other.json' }, { ...download, suggestedFilename: () => 'download' }, { ...download, suggestedFilename: () => 'arbor-נועה-data.partial.json' }, { ...download, url: () => 'https://unrelated.invalid/file' }, { ...download, createReadStream: async () => Readable.from([Buffer.alloc(EXPORT_DOWNLOAD_LIMIT + 1)]) }, { ...download, createReadStream: async () => Readable.from([Buffer.from('{}')]) }]) {
       failed.delete.mockClear(); await expect(inspectPartialDownload(failed, fixture)).rejects.toThrow(); expect(failed.delete).toHaveBeenCalledOnce();
     }
+  });
+  it.each(['en', 'he'])('never treats a generic or previous Unicode filename as accepted delivery (%s)', lang => {
+    const cell = cellFor('partial-download', { lang, w: 1280, h: 800, id: `desktop-${lang}` });
+    expect(validPrivateExportCell(cell)).toBe(true);
+    for (const filename of ['download', 'arbor-נועה-data.partial.json', 'other.json', cell.downloadReceipt.filename.replace('.partial', '')]) {
+      expect(validPrivateExportCell({ ...cell, downloadReceipt: { ...cell.downloadReceipt, filename } })).toBe(false);
+    }
+    expect(validPrivateExportCell({ ...cell, lang: 'fr' })).toBe(false);
+  });
+  it('keeps successful surface readiness unchanged without another observation', async () => {
+    const options = { selector: '[data-testid="your-data-sheet"]', childId: 'capture-private-export-a' };
+    const frame = { ready: true, focusInsideDialog: true };
+    const handle = { jsonValue: vi.fn(async () => frame), dispose: vi.fn(async () => {}) };
+    const page = { waitForFunction: vi.fn(async () => handle), evaluate: vi.fn() };
+    const cell: any = {};
+    await expect(waitForExportSurface(page, cell, options)).resolves.toBe(frame);
+    expect(page.waitForFunction).toHaveBeenCalledExactlyOnceWith(observeExportSurface, { ...options, waitUntilReady: true });
+    expect(handle.dispose).toHaveBeenCalledOnce(); expect(page.evaluate).not.toHaveBeenCalled();
+    expect(cell.surfaceReadinessTimeout).toBeUndefined();
+  });
+  it.each([false, true])('retains a passive post-timeout frame without accepting it, ready=%s', async ready => {
+    const options = { selector: '[data-testid="your-data-sheet"]', childId: 'capture-private-export-a' };
+    const frame = { ready, focusInsideDialog: ready, count: 1, connected: true, width: 462, height: 186, activeChildId: options.childId };
+    const timeout = Object.assign(new Error('readiness timed out'), { name: 'TimeoutError' });
+    const page = { waitForFunction: vi.fn(async () => { throw timeout; }), evaluate: vi.fn(async () => frame) };
+    const cell: any = { ...cellFor('interrupted-pending', { lang: 'en', w: 1280, h: 800 }), frames: [] };
+    await expect(waitForExportSurface(page, cell, options)).rejects.toBe(timeout);
+    expect(page.waitForFunction).toHaveBeenCalledExactlyOnceWith(observeExportSurface, { ...options, waitUntilReady: true });
+    expect(page.evaluate).toHaveBeenCalledExactlyOnceWith(observeExportSurface, options);
+    expect(cell.surfaceReadinessTimeout).toEqual({ observedAfterTimeout: true, frame });
+    expect(cell.frames).toEqual([]); expect(validPrivateExportCell(cell)).toBe(false);
+  });
+  it('preserves the original readiness timeout if the passive diagnostic fails', async () => {
+    const timeout = Object.assign(new Error('original readiness timeout'), { name: 'TimeoutError' });
+    const page = { waitForFunction: vi.fn(async () => { throw timeout; }), evaluate: vi.fn(async () => { throw new Error('page unavailable'); }) };
+    const cell: any = {};
+    await expect(waitForExportSurface(page, cell, { selector: 'sheet', childId: 'synthetic' })).rejects.toBe(timeout);
+    expect(page.evaluate).toHaveBeenCalledOnce();
+    expect(cell.surfaceReadinessTimeout).toEqual({ observedAfterTimeout: true, unavailable: true });
+    expect(cell.frames).toBeUndefined();
+  });
+  it('does not recast a non-timeout error as readiness evidence', async () => {
+    const failure = new Error('page closed');
+    const page = { waitForFunction: vi.fn(async () => { throw failure; }), evaluate: vi.fn() };
+    const cell: any = {};
+    await expect(waitForExportSurface(page, cell, { selector: 'sheet', childId: 'synthetic' })).rejects.toBe(failure);
+    expect(page.evaluate).not.toHaveBeenCalled(); expect(cell.surfaceReadinessTimeout).toBeUndefined();
   });
   it('does not call request arrival a ready response; holds the unchanged HTTP-200 response until release', async () => {
     const state: any = { privateExportReads: 0, privateExportResponses: 0 };
