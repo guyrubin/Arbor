@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { RECORD_LIMITATIONS, RECORD_STATES, RETIRED_MONTH_IDS, RECORD_SOURCE_NAMES, recordFixture, recordVariant, recordQuoteProjection, recordFiltersFit, SEARCH_ROUTES } from './capture/record-contract.mjs';
-import { collisionFixture, JOURNAL_EMPTY_SOURCES, journalControlAtFirstFold } from './capture/record-behaviors.mjs';
+import { collisionFixture, JOURNAL_EMPTY_SOURCES, journalControlAtFirstFold, observeJournalCaptureFocus } from './capture/record-behaviors.mjs';
 import { validateRecordPrintHtml, validRecordPrintReceipt } from './capture/record-print.mjs';
 import { releaseMatrix, RELEASE_MATRIX, releaseCell, captureDeadlineMs } from './capture/release-config.mjs';
 import { expectedReleaseInteractionStates, missingReleaseInteractionEvidence } from './capture/release-interactions.mjs';
@@ -16,7 +16,7 @@ import { quotesFromDocs } from '../src/lib/loop/tonight';
 import { saidSendText, saidPrintDoc } from '../src/components/growth/SaidPage';
 import { buildIntakePacket } from '../src/consult/packet';
 import { CHILD_SUBCOLLECTIONS } from '../src/lib/childData';
-import { observeRecordChildFrame, observeRecordDestinationFrame } from './capture/record-child-frame.mjs';
+import { observeRecordChildFrame, observeRecordDestinationFrame, observeRecordKeepsakeEditor } from './capture/record-child-frame.mjs';
 const root = path.resolve(__dirname, '../..');
 const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
 const body = () => ({ child: { id: 'synthetic-capture-child', name: 'Capture Child', demo: true }, collections: { milestones: [{ ...CDC_MILESTONES[0], checked: false }], actionLoops: [] } });
@@ -124,6 +124,11 @@ describe('bounded record capture pure contracts; no browser or sockets', () => {
     for (const patch of [{ scrollTop: 120 }, { hit: false }, { bottomLimit: 600 }, { row: { ...frame.row, bottom: 825 } }, { row: { ...frame.row, right: 390 } }, { row: { ...frame.row, bottom: 550 } }, { row: { ...frame.row, top: -1 } }, { rail: { top: 620, bottom: 720 } }, { rail: null }]) expect(journalControlAtFirstFold({ ...frame, ...patch })).toBe(false);
     // The center remains visible/hittable, but its bottom is hidden by Ask/Keep.
     expect(journalControlAtFirstFold({ ...frame, row: { ...frame.row, bottom: 700 } })).toBe(false);
+    // Exact observed translated DOMRect subtraction for a CSS min-height44 CTA.
+    expect(journalControlAtFirstFold({ ...frame, row: { ...frame.row, top: 484.1438293457031, bottom: 528.143798828125 } })).toBe(true);
+    for (const height of [43.99, 43]) expect(journalControlAtFirstFold({ ...frame, row: { ...frame.row, bottom: frame.row.top + height } })).toBe(false);
+    // The tiny size tolerance must not relax any viewport or rail bound.
+    expect(journalControlAtFirstFold({ ...frame, row: { ...frame.row, bottom: frame.rail.top + 0.00001 } })).toBe(false);
     expect(journalControlAtFirstFold({})).toBe(false);
     expect(JOURNAL_EMPTY_SOURCES.every(name => CHILD_SUBCOLLECTIONS.includes(name))).toBe(true);
     expect(JOURNAL_EMPTY_SOURCES).toContain('actionPlans'); // prevent the sandbox fallback plan from masquerading as an empty record
@@ -226,5 +231,40 @@ describe('bounded record capture pure contracts; no browser or sockets', () => {
     }
     expect(recordFiltersFit({ ...frame, buttons: frame.buttons.slice(1) })).toBe(false);
     expect(read('app/scripts/capture/record-states.mjs')).toContain('ALL_FILTER_LABELS_AND_FOCUS_OUTLINES_UNCLIPPED');
+  });
+  it('observes the actual first compose tile before deliberately choosing safe text capture', () => {
+    const tiles = ['voice', 'photo', 'text'].map(mode => ({ getAttribute: (name: string) => name === 'data-capture-tile' ? mode : null }));
+    const document = { querySelectorAll: vi.fn(() => tiles), activeElement: tiles[0] };
+    vi.stubGlobal('document', document);
+    expect(observeJournalCaptureFocus()).toMatchObject({ ready: true, firstMode: 'voice', activeMode: 'voice', tileCount: 3 });
+    document.activeElement = tiles[2];
+    expect(observeJournalCaptureFocus({ waitUntilReady: true })).toBe(false);
+    expect(observeJournalCaptureFocus()).toMatchObject({ ready: false, firstMode: 'voice', activeMode: 'text' });
+    document.querySelectorAll.mockReturnValue([]);
+    expect(observeJournalCaptureFocus({ waitUntilReady: true })).toBe(false);
+    const collector = read('app/scripts/capture/record-behaviors.mjs');
+    expect(collector).toContain('cell.emptyActivation.lastObserved');
+    const followThrough = collector.slice(collector.indexOf("cell.shotPhase = 'unscrolled-empty-before-activation'"));
+    expect(followThrough).not.toMatch(/getUserMedia|dispatchEvent|\.focus\(/);
+    expect(collector).toContain('const tile = page.locator(\'#main [data-capture-bar] [data-capture-tile="text"]\')');
+  });
+  it('waits for actual effect-seeded editor values without changing the controls', () => {
+    const note = { value: '' }; const date = { value: '' };
+    const sheet = { querySelector: (selector: string) => selector.includes('-note') ? note : date };
+    const document = { querySelectorAll: vi.fn(() => [sheet]) };
+    vi.stubGlobal('document', document);
+    const args = { expectedNote: 'Three steps toward me', expectedDate: '2026-10-04' };
+    expect(observeRecordKeepsakeEditor(args)).toMatchObject({ ready: false, note: '', date: '' });
+    expect(observeRecordKeepsakeEditor({ ...args, waitUntilReady: true })).toBe(false);
+    note.value = args.expectedNote; date.value = args.expectedDate;
+    expect(observeRecordKeepsakeEditor(args)).toMatchObject({ ready: true, note: args.expectedNote, date: args.expectedDate });
+    date.value = '2026-10-05';
+    expect(observeRecordKeepsakeEditor({ ...args, waitUntilReady: true })).toBe(false);
+    date.value = args.expectedDate; document.querySelectorAll.mockReturnValue([sheet, sheet]);
+    expect(observeRecordKeepsakeEditor({ ...args, waitUntilReady: true })).toBe(false);
+    const collector = read('app/scripts/capture/record-states.mjs');
+    const editor = collector.slice(collector.indexOf("'preserved-milestone-editor'"), collector.indexOf("'professional-quote-record'"));
+    expect(editor).toContain('cell.keepsakeEditor.lastObserved');
+    expect(editor).not.toMatch(/\.fill\(|setTimeout|waitForTimeout/);
   });
 });

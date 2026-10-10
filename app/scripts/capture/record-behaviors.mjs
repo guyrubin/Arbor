@@ -10,7 +10,20 @@ export function journalControlAtFirstFold(frame) {
   const values = [frame?.row?.top, frame?.row?.bottom, frame?.row?.left, frame?.row?.right, frame?.main?.top, frame?.main?.bottom, frame?.rail?.top, frame?.rail?.bottom, frame?.width, frame?.height, frame?.bottomLimit, frame?.scrollTop];
   return values.every(Number.isFinite) && Math.abs(frame.scrollTop) <= 1 && frame.hit === true
     && frame.row.top >= Math.max(0, frame.main.top) && frame.row.bottom <= Math.min(frame.height, frame.main.bottom, frame.bottomLimit, frame.rail.top, frame.nav?.top ?? frame.height)
-    && frame.row.bottom - frame.row.top >= 44 && frame.row.left >= 0 && frame.row.right <= frame.width && frame.row.right > frame.row.left;
+    // DOMRect edges can be separately rounded after a translated frame (the
+    // observed 44px control measured 43.9999694824). Permit <1/1024 CSS px
+    // only in this size subtraction, never in viewport/rail/occlusion bounds.
+    && frame.row.bottom - frame.row.top + 1 / 1024 >= 44 && frame.row.left >= 0 && frame.row.right <= frame.width && frame.row.right > frame.row.left;
+}
+/** The empty CTA's actual contract focuses the first compose tile. Its source
+ * order is voice/photo/text; observing voice focus does not start recording. */
+export function observeJournalCaptureFocus({ waitUntilReady = false } = {}) {
+  const tiles = [...document.querySelectorAll('#main [data-module="journal-compose"] [data-capture-bar] button')];
+  const active = document.activeElement;
+  const frame = { tileCount: tiles.length, firstMode: tiles[0]?.getAttribute('data-capture-tile') ?? null,
+    activeMode: active?.getAttribute('data-capture-tile') ?? null, activeTestId: active?.getAttribute('data-testid') ?? null,
+    ready: tiles.length === 3 && active === tiles[0] };
+  return waitUntilReady && !frame.ready ? false : frame;
 }
 export function collisionFixture() {
   const first = { id: 'capture-collision-first', timestamp: '2026-10-06T10:00:10Z', behaviorType: 'Transition Refusal', trigger: 'CAPTURE SAME MINUTE SHOES', response: 'CAPTURE FIRST RESPONSE', notes: 'CAPTURE FIRST NOTE', intensity: 3, durationMinutes: 5, context: 'Home', resolved: false };
@@ -195,17 +208,29 @@ export async function collectBehaviorRecordStates({ page, fixture, viewport, loa
     // Save the unscrolled PNG first. Then exercise the CTA's real destination:
     // focus the compose tile, open its actual capture form, and cancel cleanly.
     cell.shotPhase = 'unscrolled-empty-before-activation';
-    await byId('journal-empty-cta').click();
+    cell.emptyActivation = { phase: 'before-cta', destination: 'journal-compose-first-tile-then-explicit-text', afterInitialScreenshot: true,
+      before: await page.evaluate(observeJournalCaptureFocus) };
+    let ready;
+    try {
+      await byId('journal-empty-cta').click(); cell.emptyActivation.phase = 'cta-clicked';
+      ready = await page.waitForFunction(observeJournalCaptureFocus, { waitUntilReady: true }, { timeout: 8000 });
+      cell.emptyActivation.after = await ready.jsonValue();
+      check(cell, 'EMPTY_CTA_FOCUSES_REAL_CAPTURE_TILE', cell.emptyActivation.after.ready && cell.emptyActivation.after.firstMode === 'voice', cell.emptyActivation.after);
+    } catch (error) {
+      cell.emptyActivation.lastObserved = await page.evaluate(observeJournalCaptureFocus).catch(() => ({ observationFailed: true }));
+      throw error;
+    } finally { await ready?.dispose(); }
+    // Choose the existing text option explicitly. Do not activate the focused
+    // voice tile or substitute focus/DOM events for the real CTA behavior.
     const tile = page.locator('#main [data-capture-bar] [data-capture-tile="text"]');
-    await page.waitForFunction(() => document.activeElement?.matches('#main [data-capture-bar] [data-capture-tile="text"]'));
-    check(cell, 'EMPTY_CTA_FOCUSES_REAL_CAPTURE_TILE', await tile.evaluate(el => document.activeElement === el));
     await tile.click(); await visible(cell, 'EMPTY_CTA_DESTINATION_OPENS_REAL_CAPTURE', byId('quicklog-moment-form'));
+    cell.emptyActivation.phase = 'text-capture-open';
     check(cell, 'EMPTY_CAPTURE_RETAINS_CHILD_AND_FEED', new URL(page.url()).hash === '#/journal?view=all'
       && await page.evaluate(() => localStorage.getItem('arbor.activeChildId')) === fixture.siblingId);
     check(cell, 'EMPTY_CAPTURE_STARTS_WITHOUT_INVENTED_TEXT', await page.locator('#quick-log-moment').inputValue() === '');
     await page.keyboard.press('Escape'); await page.getByRole('dialog').waitFor({ state: 'detached' });
     const empty = await page.evaluate(({ id, names }) => names.every(name => JSON.parse(localStorage.getItem(`arbor.${name}.${id}`) || '[]').length === 0), { id: fixture.siblingId, names: JOURNAL_EMPTY_SOURCES });
     check(cell, 'EMPTY_CAPTURE_CANCEL_WRITES_NOTHING', empty && await byId('journal-record-row').count() === 0);
-    cell.emptyActivation = { destination: 'journal-compose-text-then-shared-capture', opened: true, canceled: true, wroteRecords: !empty, afterInitialScreenshot: true };
+    Object.assign(cell.emptyActivation, { phase: 'canceled', opened: true, canceled: true, wroteRecords: !empty });
   });
 }

@@ -13,7 +13,7 @@ const h = vi.hoisted(() => ({
   lang: "en" as "en" | "he", docs: [] as QuoteDoc[], buttons: [] as Button[],
   sends: [] as { getText: () => string; disabled?: boolean }[],
   print: vi.fn(), share: vi.fn().mockResolvedValue("copied"), write: vi.fn(),
-  profile: { id: "quote-child", name: "Dylan", age: 3, birthDate: "2023-08-01", gender: "boy", languages: ["English"], strengths: [], challenges: [], schoolContext: "" },
+  profile: { id: "quote-child", name: "Dylan", age: 3, birthDate: "2023-08-01", gender: "boy" as const, languages: ["English"], strengths: [], challenges: [], schoolContext: "" },
 }));
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({ childProfile: h.profile, behaviorLogs: [], milestones: [], actionLoop: [], actionPlans: [],

@@ -146,6 +146,18 @@ reader, viewport and actual clipping ancestors. Keyboard-visible outline width
 and offset come from computed CSS; a visible center cannot excuse clipped text
 or focus decoration. Journal empty first-fold pixels are saved before its CTA
 is activated. A bounded post-image continuation then proves that the real CTA
-focuses the compose tile, that tile opens shared capture, and Escape cancels
+focuses the first compose tile (voice, without activating it), an explicit real
+click on the text tile opens shared capture, and Escape cancels
 without writing a record. Failures still fail that same cell; the saved PNG is
 explicitly labeled as the initial unscrolled frame, not the later destination.
+
+
+Residual evidence reconciliation keeps the same 49 states and app source.
+The empty CTA contract follows the actual source tile order, rather than
+assuming that the first focused tile is Text. Before/after/failure focus
+receipts preserve that distinction without requesting microphone permission.
+The 44px minimum allows less than 1/1024 CSS px of DOMRect subtraction error;
+viewport, fixed-rail and occlusion bounds remain strict. The actual Firsts
+editor note/date are observed until its existing mount effect seeds them,
+with an eight-second bound and raw before/after/failure values. No capture
+writes values into these controls or increases an existing arbitrary sleep.

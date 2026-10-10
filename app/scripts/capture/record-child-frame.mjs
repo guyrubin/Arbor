@@ -58,3 +58,14 @@ export function observeRecordDestinationFrame({ outgoing, childId, routeName, co
       && ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(style.transform) && style.visibility !== 'hidden' && style.display !== 'none');
   return waitUntilReady && !frame.ready ? false : frame;
 }
+
+/** FirstKeepsakeSheet seeds existing values in an effect after the dialog
+ * mounts. Observe the actual controls; never fill them to satisfy readiness. */
+export function observeRecordKeepsakeEditor({ expectedNote, expectedDate, waitUntilReady = false }) {
+  const sheets = [...document.querySelectorAll('[data-testid="first-keepsake-sheet"]')];
+  const note = sheets[0]?.querySelector('[data-testid="first-keepsake-note"]');
+  const date = sheets[0]?.querySelector('[data-testid="first-keepsake-date"]');
+  const frame = { sheetCount: sheets.length, expectedNote, expectedDate, note: note?.value ?? null, date: date?.value ?? null,
+    ready: sheets.length === 1 && !!note && !!date && note.value === expectedNote && date.value === expectedDate };
+  return waitUntilReady && !frame.ready ? false : frame;
+}

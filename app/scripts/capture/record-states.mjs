@@ -1,7 +1,7 @@
 /** Actual bounded UI flows against synthetic storage. No app component is mocked. */
 import { RETIRED_MONTH_IDS, SEARCH_ROUTES, recordVariant, recordQuoteProjection, recordFiltersFit } from './record-contract.mjs';
 import { captureRecordPrint } from './record-print.mjs';
-import { observeRecordChildFrame, observeRecordDestinationFrame } from './record-child-frame.mjs';
+import { observeRecordChildFrame, observeRecordDestinationFrame, observeRecordKeepsakeEditor } from './record-child-frame.mjs';
 
 export async function collectRecordStates({ page, context, fixture, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId }) {
   const he = viewport.lang === 'he';
@@ -308,7 +308,17 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
     await visible(cell, 'EXISTING_PARENT_NOTE_ROW', note);
     await note.getByRole('button').click();
     await visible(cell, 'EXISTING_KEEPSAKE_EDITOR', byId('first-keepsake-sheet'));
-    check(cell, 'EXISTING_NOTE_AND_DATE_PRESERVED', await byId('first-keepsake-note').inputValue() === fixture.text.first && await byId('first-keepsake-date').inputValue() === '2026-10-04');
+    const expected = { expectedNote: fixture.text.first, expectedDate: '2026-10-04' };
+    cell.keepsakeEditor = { before: await page.evaluate(observeRecordKeepsakeEditor, expected) };
+    let ready;
+    try {
+      ready = await page.waitForFunction(observeRecordKeepsakeEditor, { ...expected, waitUntilReady: true }, { timeout: 8000 });
+      cell.keepsakeEditor.after = await ready.jsonValue();
+      check(cell, 'EXISTING_NOTE_AND_DATE_PRESERVED', cell.keepsakeEditor.after.ready, cell.keepsakeEditor.after);
+    } catch (error) {
+      cell.keepsakeEditor.lastObserved = await page.evaluate(observeRecordKeepsakeEditor, expected).catch(() => ({ observationFailed: true }));
+      throw error;
+    } finally { await ready?.dispose(); }
     check(cell, 'EXISTING_OPTIONAL_PHOTO_CONTROL_RETAINED', await byId('first-keepsake-sheet').locator('input[type="file"][accept="image/*"]').count() === 1);
     cell.boundary = 'Existing editor/note/photo path is read-only; no file chooser, upload or child record mutation is exercised here.';
   });
