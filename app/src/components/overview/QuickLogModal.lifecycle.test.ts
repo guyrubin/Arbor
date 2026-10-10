@@ -312,13 +312,14 @@ describe("one capture sheet — real rendered handlers with deferred I/O", () =>
     const h = captureHarness();
     one(h.render(), n => n.type === "button" && n.props.onClick?.name === "startVoice").props.onClick();
     h.speech[0].callbacks.onResult("A long parent sentence describing a dangerous situation needing support");
-    const original = h.state.newLogTrigger;
+    expect(h.state.newLogTrigger).not.toBe("");
     h.extracts[0].reject(new h.EscalationRequiredError("blocked"));
     await tick();
     const tree = h.render();
     expect(one(tree, n => n.props["data-testid"] === "quicklog-escalation").props.role).toBe("alert");
     expect(nodes(tree).some(n => n.type === "form" || typeof n.props.onConfirm === "function")).toBe(false);
-    expect(h.state.newLogTrigger).toBe(original);
+    // The escalated transcript never survives in the draft the dismissed alert returns to.
+    expect(h.state.newLogTrigger).toBe("");
     expect(h.state.handleAddLog).not.toHaveBeenCalled();
     expect(h.state.addMoment).not.toHaveBeenCalled();
     expect(h.toast).not.toHaveBeenCalled();
