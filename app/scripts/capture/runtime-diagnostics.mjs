@@ -1,0 +1,89 @@
+/** Pure diagnostic allowlist. Raw browser strings are never stored or exported. */
+import { BASE } from './config.mjs';
+
+/** Inspect strings transiently; only a bounded enum leaves the classifier. */
+export function classifyReleaseConsole(message) {
+  const minified = /^Minified React error #(\d{1,3})(?:\D|$)/.exec(message);
+  if (minified) return `REACT_MINIFIED_${minified[1]}`;
+  if (/service worker registration blocked by playwright/i.test(message)) return 'SERVICE_WORKER_BLOCKED';
+  if (/a component suspended.*uncached promise|uncached promise.*suspend/i.test(message)) return 'REACT_UNCACHED_PROMISE';
+  if (/suspense exception/i.test(message)) return 'REACT_SUSPENSE_EXCEPTION';
+  if (/lazy: expected|lazy element type|element type is invalid.*promise/i.test(message)) return 'REACT_LAZY_RESOLUTION';
+  if (/cannot access .+ before initialization/i.test(message)) return 'MODULE_INITIALIZATION';
+  if (/does not provide an export named|export .+ was not found/i.test(message)) return 'MODULE_EXPORT';
+  if (/cannot read properties of|cannot set properties of|is not a function/i.test(message)) return 'TYPE_ERROR';
+  if (/referenceerror|is not defined/i.test(message)) return 'REFERENCE_ERROR';
+  if (/arbor tab error/i.test(message)) return 'APP_ERROR_BOUNDARY';
+  if (/an error occurred in the|the above error occurred in/i.test(message)) return 'REACT_ERROR_BOUNDARY';
+  if (/maximum update depth|too many re-renders/i.test(message)) return 'REACT_UPDATE_DEPTH';
+  if (/invalid hook call|rendered (?:more|fewer) hooks|change in the order of hooks/i.test(message)) return 'REACT_HOOKS';
+  if (/optimized dep|outdated optimize dep|504.*optimi|dependency pre-bundl/i.test(message)) return 'OPTIMIZED_DEPENDENCY';
+  if (/content security policy|\bcsp\b|refused to (?:load|execute|connect)/i.test(message)) return 'CSP';
+  if (/dynamically imported module|module script|loading chunk|failed to fetch.*module/i.test(message)) return 'MODULE_LOAD';
+  if (/minified react error/i.test(message)) return 'REACT_MINIFIED';
+  if (/networkerror|failed to fetch|err_connection|net::err/i.test(message)) return 'NETWORK';
+  if (/resizeobserver loop/i.test(message)) return 'RESIZE_OBSERVER';
+  return 'OTHER_ERROR';
+}
+
+export function sanitizedReleaseLocation(location) {
+  try {
+    const url = new URL(location?.url);
+    if (url.origin !== BASE || !/^\/(?:src\/|assets\/|node_modules\/|@vite\/|@react-refresh)/.test(url.pathname) || !/^[a-zA-Z0-9_./@-]{1,200}$/.test(url.pathname)) return undefined;
+    return { path: url.pathname, ...(Number.isSafeInteger(location.lineNumber) ? { line: location.lineNumber } : {}), ...(Number.isSafeInteger(location.columnNumber) ? { column: location.columnNumber } : {}) };
+  } catch { return undefined; }
+}
+
+/** Bounded snapshots contain only enums, counts and sanitized module locations. */
+export function createRuntimeDiagnostics() {
+  const counts = {};
+  const recent = [];
+  return {
+    record(message, location) {
+      const kind = classifyReleaseConsole(message);
+      counts[kind] = Math.min((counts[kind] ?? 0) + 1, 1_000_000);
+      const source = sanitizedReleaseLocation(location);
+      recent.push({ kind, ...(source ? { source } : {}) });
+      if (recent.length > 20) recent.shift();
+      return kind;
+    },
+    snapshot() { return { counts: { ...counts }, recent: recent.map(item => ({ ...item, ...(item.source ? { source: { ...item.source } } : {}) })) }; },
+  };
+}
+
+/** Local script/CSS evidence only. No request headers, bodies, URL queries or
+ * browser error text are retained. The request object is only an in-memory key. */
+export function createAssetDiagnostics() {
+  const active = new Map();
+  const recent = [];
+  const counts = { started: 0, finished: 0, failed: 0, httpErrors: 0, omitted: 0 };
+  const keep = entry => { recent.push(entry); if (recent.length > 120) recent.shift(); };
+  return {
+    request(key, url, resourceType) {
+      if (!['script', 'stylesheet'].includes(resourceType)) return;
+      const source = sanitizedReleaseLocation({ url });
+      if (!source) return;
+      counts.started++;
+      if (active.size >= 120) { counts.omitted++; return; }
+      active.set(key, { path: source.path, type: resourceType, startedAt: Date.now() });
+    },
+    response(key, status, contentType) {
+      const entry = active.get(key);
+      if (!entry) return;
+      entry.status = Number.isInteger(status) && status >= 100 && status <= 599 ? status : 0;
+      entry.mime = /(?:java|ecma)script/i.test(contentType) ? 'javascript' : /text\/css/i.test(contentType) ? 'css' : /text\/html/i.test(contentType) ? 'html' : 'other';
+      if (entry.status >= 400) counts.httpErrors++;
+    },
+    finish(key, failed = false) {
+      const entry = active.get(key);
+      if (!entry) return;
+      active.delete(key);
+      counts[failed ? 'failed' : 'finished']++;
+      const { startedAt, ...safe } = entry;
+      keep({ ...safe, state: failed ? 'failed' : 'finished', elapsedMs: Math.max(0, Date.now() - startedAt) });
+    },
+    snapshot() {
+      return { counts: { ...counts }, pending: [...active.values()].map(({ startedAt, ...safe }) => ({ ...safe, state: 'pending', elapsedMs: Math.max(0, Date.now() - startedAt) })), recent: recent.map(item => ({ ...item })) };
+    },
+  };
+}

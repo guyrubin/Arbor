@@ -24,6 +24,7 @@ export function captureDeadlineMs(cell) {
   return (cell.group === 'base' ? 12 : ['ask', 'ask-diagnostic'].includes(cell.group) ? 4 : 10) * 60_000;
 }
 
+/** @param {{ viewport: string, group: string, shard?: string | number }} input */
 export function releaseCell({ viewport, group, shard = '0' }) {
   const size = RELEASE_VIEWPORTS.find((item) => item.id === viewport);
   if (!size || !RELEASE_GROUPS.includes(group) || !/^0$/.test(String(shard)) || (group !== 'base' && Number(shard) !== 0)) throw new Error('RELEASE_CELL_INVALID');

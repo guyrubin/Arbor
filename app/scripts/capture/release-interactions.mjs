@@ -8,6 +8,8 @@ import { networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { BASE, assertLoopbackOnly, captureRevision } from './config.mjs';
 import { SMALL_FIXTURE, initializeSyntheticOnline } from './small-state.mjs';
+import { createRuntimeDiagnostics, createAssetDiagnostics } from './runtime-diagnostics.mjs';
+export { classifyReleaseConsole, sanitizedReleaseLocation } from './runtime-diagnostics.mjs';
 import { SOURCE_FONT_NOTE, captureFontContextOptions, installOfflineFonts, captureScreenshot } from './font-runtime.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
@@ -85,30 +87,20 @@ export function syntheticReleaseReport(lang) {
   return { text: contract.text, contract, council: [{ scholarId: 'release-fixture', name: choose('Capture fixture', 'דוגמה לצילום'), concept: choose('Shared reading', 'קריאה משותפת'), takeaway: choose('Offer a small choice.', 'להציע בחירה קטנה.'), suggestion: choose('Keep the invitation short.', 'לשמור על הזמנה קצרה.') }] };
 }
 
+/** A capability read is not a media action. Everything else retains the
+ * existing strict action deny; the local server still has TTS_DISABLED=true. */
+export function deniedCaptureApiCategory(method, pathname) {
+  if (method === 'GET' && pathname === '/api/tts') return null;
+  for (const [category, pattern] of [
+    ['LIVE', /^\/api\/live\//], ['VOICE', /^\/api\/voice(?:\/|$)/],
+    ['TTS', /^\/api\/tts(?:\/|$)/], ['VISION', /^\/api\/vision(?:\/|$)/],
+    ['SHARING', /^\/api\/shares?(?:\/|$)/], ['EXPORT', /^\/api\/export(?:\/|$)/],
+    ['BILLING', /^\/api\/billing(?:\/|$)/], ['CONSENT', /^\/api\/consent(?:\/|$)/],
+  ]) if (pattern.test(pathname)) return category;
+  return null;
+}
+
 const knownFailure = error => /^FONT_[A-Z_]+$/.test(error?.message ?? '') || ['DEPENDENT_STATE_UNREACHED', 'SYNTHETIC_WATCH_MILESTONE_MISSING'].includes(error?.message) ? error.message : error?.name === 'TimeoutError' ? 'SELECTOR_OR_ACTION_TIMEOUT' : 'INTERACTION_FAILED';
-
-/** Inspect strings transiently; only a bounded enum leaves the classifier. */
-export function classifyReleaseConsole(message) {
-  const minified = /^Minified React error #(\d{1,3})(?:\D|$)/.exec(message);
-  if (minified) return `REACT_MINIFIED_${minified[1]}`;
-  if (/maximum update depth|too many re-renders/i.test(message)) return 'REACT_UPDATE_DEPTH';
-  if (/invalid hook call|rendered (?:more|fewer) hooks|change in the order of hooks/i.test(message)) return 'REACT_HOOKS';
-  if (/optimized dep|outdated optimize dep|504.*optimi|dependency pre-bundl/i.test(message)) return 'OPTIMIZED_DEPENDENCY';
-  if (/content security policy|\bcsp\b|refused to (?:load|execute|connect)/i.test(message)) return 'CSP';
-  if (/dynamically imported module|module script|loading chunk|failed to fetch.*module/i.test(message)) return 'MODULE_LOAD';
-  if (/minified react error/i.test(message)) return 'REACT_MINIFIED';
-  if (/networkerror|failed to fetch|err_connection|net::err/i.test(message)) return 'NETWORK';
-  if (/resizeobserver loop/i.test(message)) return 'RESIZE_OBSERVER';
-  return 'OTHER_ERROR';
-}
-
-export function sanitizedReleaseLocation(location) {
-  try {
-    const url = new URL(location?.url);
-    if (url.origin !== BASE || !/^\/(?:src\/|assets\/|node_modules\/|@vite\/|@react-refresh)/.test(url.pathname) || !/^[a-zA-Z0-9_./@-]{1,200}$/.test(url.pathname)) return undefined;
-    return { path: url.pathname, ...(Number.isSafeInteger(location.lineNumber) ? { line: location.lineNumber } : {}), ...(Number.isSafeInteger(location.columnNumber) ? { column: location.columnNumber } : {}) };
-  } catch { return undefined; }
-}
 
 export async function collectReleaseInteractions({ output, bundle, viewport, group, sourceSha, sourceTreeSha, _priorCells = [], _reportGroup = group, _apiCache = new Map() }) {
   // Keep these guards inside the entry point so pure contracts can be tested
@@ -138,7 +130,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   let context;
   try {
     context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, locale: he ? 'he-IL' : 'en-US', timezoneId: 'Asia/Jerusalem', serviceWorkers: 'block', permissions: [], ...captureFontContextOptions() });
-    const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, apiCacheHits: 0, localRateLimits: 0 };
+    const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, deniedActionCategories: {}, ttsCapabilityReads: 0, apiCacheHits: 0, localRateLimits: 0 };
     await context.route('**/*', route => {
       if (new URL(route.request().url()).origin === BASE) return route.continue();
       apiState.deniedExternal++;
@@ -166,7 +158,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         if (apiState.chat === 'report') return json(200, syntheticReleaseReport(lang));
         return route.fulfill({ status: apiState.chat === 'quota' ? 429 : 503, contentType: 'application/json', headers: { 'retry-after': '60' }, body: JSON.stringify({ error: 'Synthetic capture response failure' }) });
       }
-      if (/^\/api\/(?:live\/|voice(?:\/|$)|tts(?:\/|$)|vision(?:\/|$)|shares?(?:\/|$)|export(?:\/|$)|billing(?:\/|$)|consent(?:\/|$))/.test(url.pathname)) { apiState.deniedActions++; return route.abort(); }
+      const denied = deniedCaptureApiCategory(request.method(), url.pathname);
+      if (denied) { apiState.deniedActions++; apiState.deniedActionCategories[denied] = (apiState.deniedActionCategories[denied] ?? 0) + 1; return route.abort(); }
+      if (request.method() === 'GET' && url.pathname === '/api/tts') apiState.ttsCapabilityReads++;
+
       // The same safe read cache as the canonical sweep, shared across the
       // focused groups. Prevent the fixture's 30/min limiter from manufacturing
       // later UI failures; actual chat and consent requests above stay uncached.
@@ -189,20 +184,27 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     await context.addInitScript(initializeSyntheticOnline, { lang });
     const page = await context.newPage();
     page.setDefaultTimeout(8000);
-    const diagnosticCounts = {};
-    const diagnosticRecent = [];
-    const recordError = (message, location) => {
-      const kind = classifyReleaseConsole(message);
-      diagnosticCounts[kind] = (diagnosticCounts[kind] ?? 0) + 1;
-      const source = sanitizedReleaseLocation(location);
-      diagnosticRecent.push({ kind, ...(source ? { source } : {}) });
-      if (diagnosticRecent.length > 20) diagnosticRecent.shift();
-    };
-    page.on('console', message => { if (message.type() === 'error' || message.type() === 'warning') recordError(message.text(), message.location()); });
-    page.on('pageerror', error => recordError(error.message));
+    const diagnostics = createRuntimeDiagnostics();
+    const assets = createAssetDiagnostics();
+    page.on('request', request => assets.request(request, request.url(), request.resourceType()));
+    page.on('response', response => assets.response(response.request(), response.status(), response.headers()['content-type'] ?? ''));
+    page.on('requestfinished', request => assets.finish(request));
+    page.on('requestfailed', request => assets.finish(request, true));
+    page.on('console', message => { if (message.type() === 'error' || message.type() === 'warning') diagnostics.record(message.text(), message.location()); });
+    page.on('pageerror', error => diagnostics.record(error.message));
     page.on('filechooser', () => { apiState.deniedActions++; });
     page.on('download', download => { apiState.deniedActions++; void download.cancel(); });
     page.on('response', response => { const url = new URL(response.url()); if (apiState.chat === 'mock' && url.origin === BASE && url.pathname === '/api/chat' && response.ok()) apiState.mockResponses++; });
+    const readinessSnapshot = () => page.evaluate(() => {
+      const visible = selector => { const el = document.querySelector(selector); if (!el) return false; const box = el.getBoundingClientRect(); return box.width > 0 && box.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
+      const stylesheets = [...document.querySelectorAll('link[rel="stylesheet"]')].flatMap(link => {
+        try { const url = new URL(link.href); return url.origin === location.origin && /^\/assets\/[a-zA-Z0-9_.-]{1,150}\.css$/.test(url.pathname) ? [{ path: url.pathname, sheetReady: link.sheet !== null, disabled: link.disabled === true }] : []; } catch { return []; }
+      }).slice(0, 100);
+      return { visibility: document.visibilityState, readyState: document.readyState,
+        conversationVisible: visible('.companion-conversation:not([hidden])'), suspenseFallbackVisible: visible('.companion-conversation .companion-loading'),
+        composerVisible: visible('.companion-conversation [data-testid="companion-composer"]'), composerCount: document.querySelectorAll('[data-testid="companion-composer"]').length,
+        errorBoundaryVisible: visible('.companion-conversation [role="alert"]'), stylesheets };
+    });
     const byId = id => page.locator(`[data-testid="${id}"]`);
     const composer = () => page.locator('.companion-conversation:not([hidden]) [data-testid="companion-composer"]');
     const conversation = () => page.locator('.companion-conversation:not([hidden])');
@@ -239,8 +241,11 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         await captureScreenshot(page, { path: `${output}/${shot}`, timeout: 12000, animations: 'disabled' });
         cell.shot = shot;
       } catch (error) { cell.failures.push(knownFailure(error)); }
-      cell.networkEvidence = { ...apiState };
-      cell.runtimeDiagnostics = { counts: { ...diagnosticCounts }, recent: [...diagnosticRecent] };
+      cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories } };
+      cell.assetDiagnostics = assets.snapshot();
+      cell.readiness = await readinessSnapshot().catch(() => ({ unavailable: true }));
+      if (cell.readiness.suspenseFallbackVisible && !cell.readiness.composerVisible) cell.readiness.classification = cell.assetDiagnostics.pending.length ? 'SUSPENSE_WITH_PENDING_LOCAL_ASSETS' : 'SUSPENSE_NO_PENDING_LOCAL_ASSETS';
+      cell.runtimeDiagnostics = diagnostics.snapshot();
       cell.reached = cell.failures.length === 0 && cell.assertions.length > 0 && cell.shot !== null;
       save();
       return cell.reached;

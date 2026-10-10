@@ -76,6 +76,7 @@ import path from "node:path";
 import { networkInterfaces } from "node:os";
 import { assertLoopbackOnly, captureRevision } from "./capture/config.mjs";
 import { RELEASE_VIEWPORTS, expectedSeedMarker } from "./capture/release-config.mjs";
+import { classifyReleaseConsole, createRuntimeDiagnostics } from "./capture/runtime-diagnostics.mjs";
 import { initializeSyntheticOnline } from "./capture/small-state.mjs";
 import { captureFontContextOptions, installOfflineFonts, captureScreenshot } from "./capture/font-runtime.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -1427,17 +1428,16 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
   const api = [];
   let inflight = 0;
   let lastNet = Date.now();
-  const norm = (s) => String(s).replace(/([?&])cb=\d+/g, "$1cb=N").split("\n")[0].slice(0, 300);
+  const diagnostics = createRuntimeDiagnostics();
   let rateLimited = 0;
-  page.on("console", (m) => {
-    if (m.type() !== "error") return;
-    const text = norm(m.text());
-    // A 429 is the local /api limiter (30/min/IP) reacting to the sweep's own traffic — an
-    // instrument artefact, counted apart so consoleErrors stays an app signal.
-    if (/status of 429\b/.test(text)) rateLimited++;
-    else errors.add(text);
+  page.on("console", (message) => {
+    if (message.type() !== "error") return;
+    // Inspect only transiently. Neither the original message nor its stack,
+    // embedded page text, query strings or request payload enter sweep.json.
+    if (/status of 429\b/.test(message.text())) rateLimited++;
+    else errors.add(diagnostics.record(message.text(), message.location()));
   });
-  page.on("pageerror", (e) => errors.add(norm(`pageerror: ${e?.message ?? e}`)));
+  page.on("pageerror", (error) => errors.add(diagnostics.record(error?.message)));
   page.on("request", () => { inflight++; lastNet = Date.now(); });
   const done = (req) => {
     inflight = Math.max(0, inflight - 1); lastNet = Date.now();
@@ -1471,7 +1471,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     }
     readyTimedOut = !(present && inflight === 0 && Date.now() - lastNet >= QUIET_MS);
   } catch (err) {
-    navError = String(err?.message ?? err).split("\n")[0];
+    navError = classifyReleaseConsole(err?.message);
     readyTimedOut = true;
   }
   const loadMs = Date.now() - t0;
@@ -1506,14 +1506,13 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       while (Date.now() < settle && !(inflight === 0 && Date.now() - lastNet >= QUIET_MS)) await page.waitForTimeout(100);
       stateRec = { state: stateName, reached: true, stateMs: Date.now() - tState, ...(state.now ? { clock: state.now } : {}), ...(state.from ? { opened: `#/${state.from}` } : {}), ...(state.writes ? { writes: state.writes } : {}), ...(out?.via ? { via: out.via } : {}) };
     } catch (err) {
-      // The page's own first error says WHY (e.g. the sandbox's hourly AI quota) — keep it.
-      const firstErr = [...errors][0];
-      const reason = `${String(err?.message ?? err).split("\n")[0].slice(0, 300)}${firstErr ? ` · page: ${firstErr.slice(0, 160)}` : ""}`;
+      // Preserve only known diagnostic categories, never state exception text.
+      const reason = err instanceof Unreached ? "STATE_PRECONDITION_ABSENT" : classifyReleaseConsole(err?.message);
       await page.close();
       return {
         route, viewport: `${vp.w}x${vp.h}`, lang: vp.lang, ...seedRec,
         state: state.name, reached: false, reason, retryable: !(err instanceof Unreached),
-        consoleErrors: [...errors], rateLimited, apiRequests: api.sort(), loadMs, shot: null,
+        consoleErrors: [...errors], runtimeDiagnostics: diagnostics.snapshot(), rateLimited, apiRequests: api.sort(), loadMs, shot: null,
       };
     }
   } else {
@@ -1524,7 +1523,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
   try {
     rec = await page.evaluate(collect, { lang: vp.lang, allowLatin });
   } catch (err) {
-    rec = { mounted: false, collectError: String(err?.message ?? err).split("\n")[0] };
+    rec = { mounted: false, collectError: classifyReleaseConsole(err?.message) };
   }
   let shot = null;
   const shotFile = typeof shotPath === "function" ? shotPath(stateRec.state) : shotPath;
@@ -1550,7 +1549,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       stateRec.undone = await undo();
     } catch (err) {
       stateRec.undone = false;
-      stateRec.undoError = String(err?.message ?? err).split("\n")[0].slice(0, 200);
+      stateRec.undoError = classifyReleaseConsole(err?.message);
     }
   }
   const fixture = syntheticOnline ? await page.evaluate(() => ({ navigatorOnline: navigator.onLine, browserFixture: window.__arborCaptureFixture })).catch(() => ({})) : {};
@@ -1564,6 +1563,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     ...stateRec,
     ...rec,
     consoleErrors: [...errors],
+    runtimeDiagnostics: diagnostics.snapshot(),
     rateLimited,
     apiRequests: api.sort(),
     loadMs,

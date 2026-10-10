@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
-  classifyReleaseConsole, clippedOverlap, expectedReleaseInteractionStates,
+  classifyReleaseConsole, deniedCaptureApiCategory, clippedOverlap, expectedReleaseInteractionStates,
   geometryStable, missingReleaseInteractionEvidence, releaseFixture,
   sanitizedReleaseLocation, syntheticReleaseReport,
 } from './capture/release-interactions.mjs';
@@ -114,7 +114,21 @@ describe('release interaction contracts, without browser or sockets', () => {
     expect(sanitizedReleaseLocation({ url: 'https://example.com/assets/private.js?token=SECRET' })).toBeUndefined();
     expect(sanitizedReleaseLocation({ url: 'http://127.0.0.1:4805/api/chat?prompt=SECRET' })).toBeUndefined();
     expect(sanitizedReleaseLocation({ url: 'http://127.0.0.1:4805/src/private%20name.tsx' })).toBeUndefined();
-    expect(source).toContain('if (diagnosticRecent.length > 20) diagnosticRecent.shift()');
+    expect(source).toContain('const diagnostics = createRuntimeDiagnostics()');
+    expect(source).toContain('cell.runtimeDiagnostics = diagnostics.snapshot()');
+  });
+
+
+  it('permits only the TTS capability read while preserving synthesis/media/export denial', () => {
+    expect(deniedCaptureApiCategory('GET', '/api/tts')).toBeNull();
+    for (const method of ['POST', 'PUT', 'DELETE']) expect(deniedCaptureApiCategory(method, '/api/tts')).toBe('TTS');
+    expect(deniedCaptureApiCategory('GET', '/api/tts/private')).toBe('TTS');
+    for (const [endpoint, category] of [['/api/voice', 'VOICE'], ['/api/live/token', 'LIVE'], ['/api/vision', 'VISION'], ['/api/shares', 'SHARING'], ['/api/export', 'EXPORT'], ['/api/billing/checkout', 'BILLING'], ['/api/consent', 'CONSENT']]) expect(deniedCaptureApiCategory('POST', endpoint)).toBe(category);
+    expect(source).toContain("if (request.method() === 'GET' && url.pathname === '/api/tts') apiState.ttsCapabilityReads++");
+    expect(source).toContain('cell.assetDiagnostics = assets.snapshot()');
+    expect(source).toContain("'SUSPENSE_NO_PENDING_LOCAL_ASSETS'");
+    expect(source).toContain('sheetReady: link.sheet !== null');
+    expect(source).not.toContain('textContent:');
   });
 
   it('caches only successful synthetic reads, sharing them across the focused groups', () => {
