@@ -44,7 +44,7 @@ describe('Close-return captures settled Now, never an empty transition', () => {
       (f: any) => f.document.querySelector.mockImplementation((s: string) => s === '#main' ? f.main : {}),
     ]) {
       const f = fixture(); change(f);
-      expect(observeReportCloseDestination().ready).toBe(false);
+      expect(observeReportCloseDestination()).toMatchObject({ ready: false });
       expect(observeReportCloseDestination(true)).toBe(false);
     }
   });
