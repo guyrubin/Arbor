@@ -9,6 +9,7 @@ export const RECORD_STATES = Object.freeze([
   { route: 'timeline', state: 'preserved-timeline-months' },
   { route: 'language', state: 'preserved-said-page' },
   { route: 'milestones', state: 'preserved-milestone-editor' },
+  { route: 'consult', state: 'professional-quote-record' },
   ...['overview', 'memory'].map(route => ({ route, state: `retired-${route}` })),
   ...['milestones', 'language', 'timeline'].flatMap(route => [
     { route: 'shell', state: `search-${route}-label` }, { route, state: `search-${route}-arrived` },
@@ -23,10 +24,31 @@ export const RECORD_LIMITATIONS = Object.freeze([
 export const RETIRED_MONTH_IDS = Object.freeze(['growth-month-in-review', 'month-keepsake', 'memory-first-month']);
 export const RECORD_SOURCE_NAMES = Object.freeze(['behaviorLogs', 'milestones', 'keepsakes', 'langObs']);
 export const SEARCH_ROUTES = Object.freeze([
-  { route: 'milestones', en: 'Milestones', he: 'אבני דרך' },
-  { route: 'language', en: 'Language & Communication', he: 'שפה ותקשורת' },
-  { route: 'timeline', en: 'Story', he: 'סיפור' },
+  { route: 'milestones', en: 'Milestones', he: 'אבני דרך', contentSelector: '[data-testid="ms-header"]' },
+  { route: 'language', en: 'Language & Communication', he: 'שפה ותקשורת', contentSelector: '[data-module="language-capture"]' },
+  { route: 'timeline', en: 'Story', he: 'סיפור', contentSelector: '[data-testid="timeline-context-group"]' },
 ]);
+
+/** Keep the real provenance-negative fixture in storage. This checks only
+ * quote projections: incident/practice records can legitimately appear in
+ * other professional sections, but must not become a child's quote. */
+export function recordQuoteProjection(text, fixture) {
+  const negative = fixture.collections.keepsakes.find(row => row.id === 'capture-record-ai');
+  return { genuinePresent: typeof text === 'string' && text.includes(fixture.text.quote),
+    generatedAbsent: typeof text === 'string' && !!negative && !text.includes(negative.note),
+    negativeFixtureIntact: negative?.source === 'ai_proposed_parent_confirmed' && negative?.note === fixture.text.forbidden[1] };
+}
+
+/** Horizontal usability includes every filter, and the actual focus outline
+ * inside clipping ancestors. A hittable center alone can hide the first glyph. */
+export function recordFiltersFit(frame) {
+  return frame?.buttons?.length === 4 && frame.buttons.every(button => {
+    const values = [frame.width, frame.reader?.left, frame.reader?.right, button.left, button.right, button.clipLeft, button.clipRight, button.outline];
+    return values.every(Number.isFinite) && button.right > button.left && button.outline >= 0
+      && button.left >= Math.max(0, frame.reader.left) && button.right <= Math.min(frame.width, frame.reader.right)
+      && button.left - button.outline >= button.clipLeft && button.right + button.outline <= button.clipRight;
+  });
+}
 
 export function recordFixture(bundle, lang) {
   const parsed = JSON.parse(typeof bundle === 'string' ? bundle : JSON.stringify(bundle));

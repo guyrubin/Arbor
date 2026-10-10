@@ -1,4 +1,5 @@
 import React from "react";
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../lib/i18n";
@@ -37,6 +38,13 @@ const button = (key: string) => h.buttons.find(row => row.children === translate
 beforeEach(() => { vi.clearAllMocks(); h.lang = "en"; h.childId = "child-a"; h.filter = "all"; h.loading = false; h.error = false; h.confirmed = true; h.more = false; h.empty = false; h.current = true; h.changed = false; });
 
 describe("current My child kept disclosure", () => {
+  it("wraps every filter instead of clipping keyboard focus in a horizontal scroller", () => {
+    const css = readFileSync(new URL("./kept.css", import.meta.url), "utf8");
+    const filters = css.match(/\.kept-filters\s*\{([^}]+)\}/)?.[1] ?? "";
+    expect(filters).toMatch(/flex-wrap:\s*wrap/);
+    expect(filters).not.toMatch(/overflow(?:-x)?:\s*(?:auto|scroll|hidden|clip)/);
+  });
+
   for (const lang of ["en", "he"] as const) it(`${lang}: filters without count chips and prints the whole month even from a filtered view`, () => {
     h.lang = lang;
     const html = render();

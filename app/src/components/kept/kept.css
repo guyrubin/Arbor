@@ -1,6 +1,6 @@
 .kept-reader { min-inline-size: 0; color: var(--arbor-ink); }
 .kept-reader h2 { font-family: var(--font-display); font-size: 24px; line-height: 1.25; margin-block: 8px 12px; }
-.kept-filters { display: flex; gap: 4px; overflow-x: auto; padding-block-end: 4px; }
+.kept-filters { display: flex; flex-wrap: wrap; gap: 4px; padding-block-end: 4px; }
 .kept-filters button { flex: 0 0 auto; min-block-size: 44px; padding-inline: 12px; border-radius: 24px; font-size: 14px; color: var(--arbor-ink-soft); }
 .kept-filters button[aria-pressed="true"] { background: var(--arbor-paper-deep); color: var(--arbor-ink); }
 .kept-reader-status { font-size: 14px; line-height: 1.6; color: var(--arbor-ink-soft); margin-block: 12px; }

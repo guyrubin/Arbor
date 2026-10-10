@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { RECORD_LIMITATIONS, RECORD_STATES, RETIRED_MONTH_IDS, RECORD_SOURCE_NAMES, recordFixture, recordVariant } from './capture/record-contract.mjs';
+import { RECORD_LIMITATIONS, RECORD_STATES, RETIRED_MONTH_IDS, RECORD_SOURCE_NAMES, recordFixture, recordVariant, recordQuoteProjection, recordFiltersFit, SEARCH_ROUTES } from './capture/record-contract.mjs';
 import { collisionFixture, JOURNAL_EMPTY_SOURCES, journalControlAtFirstFold } from './capture/record-behaviors.mjs';
 import { validateRecordPrintHtml, validRecordPrintReceipt } from './capture/record-print.mjs';
 import { releaseMatrix, RELEASE_MATRIX, releaseCell, captureDeadlineMs } from './capture/release-config.mjs';
@@ -12,7 +12,11 @@ import { readTimeline } from '../src/lib/timelineFold';
 import { journalRecordSignals } from '../src/lib/journalRecordSignals';
 import { matchesJournalFilter } from '../src/lib/journalFilters';
 import { CDC_MILESTONES } from '../src/lib/milestoneData';
+import { quotesFromDocs } from '../src/lib/loop/tonight';
+import { saidSendText, saidPrintDoc } from '../src/components/growth/SaidPage';
+import { buildIntakePacket } from '../src/consult/packet';
 import { CHILD_SUBCOLLECTIONS } from '../src/lib/childData';
+import { observeRecordChildFrame, observeRecordDestinationFrame } from './capture/record-child-frame.mjs';
 const root = path.resolve(__dirname, '../..');
 const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
 const body = () => ({ child: { id: 'synthetic-capture-child', name: 'Capture Child', demo: true }, collections: { milestones: [{ ...CDC_MILESTONES[0], checked: false }], actionLoops: [] } });
@@ -22,6 +26,7 @@ const receipt = () => ({ ...identity, passed: true, delivery: 'download-html', m
   rendering: 'print-media-viewport', pdfRendering: 'chromium-paginated-css-page', preferCSSPageSize: true, pdfValid: true, pdfBytes: 8000, pdfSha256: 'd'.repeat(64), pdf: 'print/kept-month.mobile-he.pdf',
   htmlSha256: 'c'.repeat(64), htmlBytes: 4000, expectedRows: 4, renderedRows: 4, textMatches: true, viewport: { width: 794, height: 1123 },
   fonts: [{ familyName: 'Liberation Serif', glyphCount: 10, isCustomFont: false }], html: 'print/kept-month.mobile-he.html', shot: 'print/kept-month.mobile-he.png' });
+afterEach(() => vi.unstubAllGlobals());
 
 describe('bounded record capture pure contracts; no browser or sockets', () => {
   it('adds four prioritized shards while preserving every baseline cell', () => {
@@ -30,11 +35,11 @@ describe('bounded record capture pure contracts; no browser or sockets', () => {
     expect(matrix.slice(4)).toEqual(RELEASE_MATRIX); expect(matrix.slice(0, 4)).toEqual(releaseMatrix('record-only'));
     for (const spec of matrix.slice(0, 4)) {
       const cell = releaseCell(spec); expect(captureDeadlineMs(cell)).toBe(600_000);
-      expect(expectedReleaseInteractionStates('record', cell.viewport)).toHaveLength(48);
-      expect(new Set(RECORD_STATES.map(item => `${item.route}:${item.state}`)).size).toBe(48);
-      expect(missingReleaseInteractionEvidence([], { group: 'record', viewport: cell.viewport, ...identity })).toHaveLength(48);
+      expect(expectedReleaseInteractionStates('record', cell.viewport)).toHaveLength(49);
+      expect(new Set(RECORD_STATES.map(item => `${item.route}:${item.state}`)).size).toBe(49);
+      expect(missingReleaseInteractionEvidence([], { group: 'record', viewport: cell.viewport, ...identity })).toHaveLength(49);
     }
-    for (const state of ['kept-reader', 'item-review', 'month-print', 'stale-final-send', 'child-switch', 'kept-incomplete', 'preserved-firsts', 'preserved-tree', 'preserved-timeline-months', 'preserved-said-page', 'hard-review-cancel', 'hard-confirm', 'journal-detail-edit', 'journal-collision-second', 'journal-context-expanded', 'journal-context-last-entry', 'journal-empty-first-fold']) expect(RECORD_STATES.some(item => item.state === state), state).toBe(true);
+    for (const state of ['kept-reader', 'item-review', 'month-print', 'stale-final-send', 'child-switch', 'kept-incomplete', 'preserved-firsts', 'preserved-tree', 'preserved-timeline-months', 'preserved-said-page', 'hard-review-cancel', 'hard-confirm', 'journal-detail-edit', 'journal-collision-second', 'journal-context-expanded', 'journal-context-last-entry', 'journal-empty-first-fold', 'professional-quote-record']) expect(RECORD_STATES.some(item => item.state === state), state).toBe(true);
   });
   it('exercises the real selector and UTC boundary with synthetic sources', () => {
     for (const lang of ['en', 'he']) {
@@ -65,6 +70,29 @@ describe('bounded record capture pure contracts; no browser or sockets', () => {
     expect(capture).not.toMatch(/__react|\.isCurrent\s*=|confirmed:\s*true|fromCache:\s*false|dispatchEvent|\.setContent\(/);
     expect(capture).toContain("'{invalid-synthetic-json'");
     expect(capture).toContain('same-document-storage-deletion-existing-context-retained-until-refresh');
+  });
+  it('retains the generated provenance negative through real Said and professional consumers', () => {
+    for (const lang of ['en', 'he'] as const) {
+      const fixture = recordFixture(bundle(), lang);
+      const negative = fixture.collections.keepsakes.find((row: any) => row.id === 'capture-record-ai');
+      expect(negative).toMatchObject({ source: 'ai_proposed_parent_confirmed', kind: 'quote', note: fixture.text.forbidden[1] });
+      const quotes = quotesFromDocs(fixture.collections.keepsakes);
+      expect(quotes.map(quote => quote.note)).toEqual([fixture.text.quote]);
+      const send = saidSendText(quotes, { lang, closing: 'Synthetic close' });
+      const print = saidPrintDoc(quotes, { lang, title: fixture.childName, subtitle: '', month: '2026-10' });
+      const packet = buildIntakePacket('slp', { child: { id: fixture.childId, name: fixture.childName, demo: true },
+        milestones: fixture.collections.milestones, behaviorLogs: fixture.collections.behaviorLogs as Parameters<typeof buildIntakePacket>[1]['behaviorLogs'], actionLoops: [], quotes, lang, nowMs: Date.parse('2026-10-10T12:00:00Z') });
+      for (const projected of [send, JSON.stringify(print), JSON.stringify(packet)]) {
+        expect(recordQuoteProjection(projected.replaceAll('\\"', '"'), fixture)).toEqual({ genuinePresent: true, generatedAbsent: true, negativeFixtureIntact: true });
+      }
+      expect(renderPrintableHtml(print, fixture.childName, lang)).not.toContain(negative.note);
+      expect(recordQuoteProjection(`${fixture.text.quote} ${negative.note}`, fixture).generatedAbsent).toBe(false);
+      expect(recordQuoteProjection('', fixture).genuinePresent).toBe(false);
+      const stripped = { ...fixture, collections: { ...fixture.collections, keepsakes: fixture.collections.keepsakes.filter((row: any) => row.id !== negative.id) } };
+      expect(recordQuoteProjection(fixture.text.quote, stripped).negativeFixtureIntact).toBe(false);
+    }
+    const collector = read('app/scripts/capture/record-states.mjs');
+    for (const id of ['SAID_SANDBOX_EXPORT_PRESERVES_PARENT_QUOTE_EXCLUDES_GENERATED', 'MILESTONE_CONTEXT_EXCLUDES_GENERATED_QUOTE', 'PROFESSIONAL_PREVIEW_PRESERVES_PARENT_QUOTE_EXCLUDES_GENERATED']) expect(collector).toContain(id);
   });
   it('requires actual app print HTML/pixels/hash and separately labeled source-system fonts', () => {
     const fixture = recordFixture(bundle(), 'he');
@@ -104,6 +132,46 @@ describe('bounded record capture pure contracts; no browser or sockets', () => {
     expect(arrival).toContain('firstFoldFrame'); expect(arrival).not.toMatch(/scrollIntoView|scrollTo\(/);
     expect(capture).toContain("page.keyboard.press('Enter')"); expect(capture).toContain("page.keyboard.press('Space')");
     expect(capture).toContain('SYNTHETIC_EMPTY_SIBLING_REQUIRED');
+    expect(capture).toContain("load('journal?view=all')");
+    expect(capture).toContain("hash === '#/journal?view=all'");
+    expect(capture).toContain("await byId('journal-empty-cta').click()");
+    expect(capture).toContain('EMPTY_CTA_DESTINATION_OPENS_REAL_CAPTURE');
+    expect(capture).toContain('EMPTY_CAPTURE_CANCEL_WRITES_NOTHING');
+    const runner = read('app/scripts/capture/release-interactions.mjs');
+    expect(runner.indexOf('await afterCapture(cell)')).toBeGreaterThan(runner.indexOf('await captureScreenshot(page'));
+    expect(runner).toContain('afterCapture && cell.shot && cell.failures.length === 0');
+  });
+  it('rejects outgoing, faded, moving or wrong-child frames before font sampling', () => {
+    const setup = () => {
+      const motion: any = { parentElement: null, style: {} };
+      const heading = { getBoundingClientRect: () => ({ top: 120, bottom: 150, width: 250, height: 30 }) };
+      const route: any = { parentElement: motion, querySelector: vi.fn(() => heading) };
+      const outgoing = { isConnected: false };
+      const main = { scrollTop: 0, getBoundingClientRect: () => ({ top: 74, bottom: 720 }) };
+      const storage = { getItem: vi.fn(() => 'capture-child') };
+      const document = { querySelector: vi.fn(() => main), querySelectorAll: vi.fn(() => [route]) };
+      vi.stubGlobal('document', document); vi.stubGlobal('localStorage', storage);
+      vi.stubGlobal('getComputedStyle', (el: any) => ({ opacity: '1', transform: 'none', visibility: 'visible', display: 'block', ...el.style }));
+      return { outgoing, childId: 'capture-child', motion, route, heading, storage, document };
+    };
+    let f = setup(); expect(observeRecordChildFrame(f)).toMatchObject({ ready: true, outgoingRetired: true, replacementMounted: true });
+    f.heading.getBoundingClientRect = () => ({ top: -120, bottom: -90, width: 250, height: 30 });
+    expect(observeRecordChildFrame(f)).toMatchObject({ ready: true, headingRendered: true, headingWithinMain: false });
+    for (const change of [
+      (f: any) => { f.outgoing.isConnected = true; },
+      (f: any) => { f.motion.style.opacity = '0.5'; },
+      (f: any) => { f.motion.style.transform = 'matrix(1, 0, 0, 1, 0, 10)'; },
+      (f: any) => { f.motion.style.visibility = 'hidden'; },
+      (f: any) => f.storage.getItem.mockReturnValue('other-child'),
+      (f: any) => f.route.querySelector.mockReturnValue(null),
+      (f: any) => f.document.querySelectorAll.mockReturnValue([]),
+      (f: any) => f.document.querySelectorAll.mockReturnValue([f.route, f.route]),
+    ]) { f = setup(); change(f); const observed = observeRecordChildFrame(f); expect(observed).not.toBe(false); if (observed === false) throw new Error('EXPECTED_DIAGNOSTIC_FRAME'); expect(observed.ready).toBe(false); expect(observeRecordChildFrame({ ...f, waitUntilReady: true })).toBe(false); }
+    const capture = read('app/scripts/capture/record-states.mjs');
+    expect(capture).toContain('cell.childTransition.lastObserved');
+    expect(capture).toContain('waitUntilReady: true }, { timeout: 10000 }');
+    expect(capture).not.toContain("getByText(he ? 'תמונת ההתפתחות' : 'Growth picture', { exact: true })");
+    expect(capture).toContain(".portrait-keepsakes-body > section");
   });
   it('pins retired names and the real preserved firsts/tree/editor/Timeline doors', () => {
     expect(RETIRED_MONTH_IDS).toEqual(['growth-month-in-review', 'month-keepsake', 'memory-first-month']);
@@ -111,5 +179,52 @@ describe('bounded record capture pure contracts; no browser or sockets', () => {
     for (const id of ['portrait-keepsakes', 'growth-arbor-tree', 'timeline-months-disclosure', 'said-page-door', 'first-keepsake-sheet']) expect(collector).toContain(id);
     const app = read('app/src/components/companion/PortraitKeepsakes.tsx'); expect(app).toContain('<KeptThingsPage key={childProfile.id} />');
     expect(app).toContain('<DevScoreCard />'); expect(app).toContain('<ArborTreeCard />'); expect(read('app/src/components/tabs/StoryTimelineTab.tsx')).toContain('<MonthsSpine');
+  });
+  it('requires a retired outgoing route and settled destination content after the real search click', () => {
+    const setup = () => {
+      const motion: any = { parentElement: null, style: {} };
+      const content: any = { parentElement: motion, textContent: 'Actual destination record', getBoundingClientRect: () => ({ top: 140, bottom: 270, left: 16, right: 359, width: 343, height: 130 }) };
+      const route = { getAttribute: () => 'language', querySelectorAll: vi.fn(() => [content]) };
+      const outgoing = { isConnected: false };
+      const main = { scrollTop: 0, getBoundingClientRect: () => ({ top: 74, bottom: 720, left: 0, right: 375 }) };
+      const storage = { getItem: vi.fn(() => 'capture-child') };
+      const document = { querySelector: vi.fn(() => main), querySelectorAll: vi.fn(() => [route]) };
+      const location = { hash: '#/language' };
+      vi.stubGlobal('document', document); vi.stubGlobal('localStorage', storage); vi.stubGlobal('location', location);
+      vi.stubGlobal('innerWidth', 375); vi.stubGlobal('innerHeight', 812);
+      vi.stubGlobal('getComputedStyle', (el: any) => ({ opacity: '1', transform: 'none', visibility: 'visible', display: 'block', ...el.style }));
+      return { outgoing, childId: 'capture-child', routeName: 'language', contentSelector: '[data-module="language-capture"]', motion, route, content, storage, document, location };
+    };
+    expect(observeRecordDestinationFrame(setup())).toMatchObject({ ready: true, replacementMounted: true, contentCount: 1 });
+    for (const change of [
+      (f: ReturnType<typeof setup>) => { f.outgoing.isConnected = true; },
+      (f: ReturnType<typeof setup>) => { f.content.textContent = ''; },
+      (f: ReturnType<typeof setup>) => { f.content.getBoundingClientRect = () => ({ top: 850, bottom: 980, left: 16, right: 359, width: 343, height: 130 }); },
+      (f: ReturnType<typeof setup>) => { f.motion.style.opacity = '0'; },
+      (f: ReturnType<typeof setup>) => { f.motion.style.transform = 'matrix(1, 0, 0, 1, 0, 10)'; },
+      (f: ReturnType<typeof setup>) => { f.content.style = { display: 'none' }; },
+      (f: ReturnType<typeof setup>) => { f.location.hash = '#/overview'; },
+      (f: ReturnType<typeof setup>) => f.storage.getItem.mockReturnValue('other-child'),
+      (f: ReturnType<typeof setup>) => f.route.querySelectorAll.mockReturnValue([]),
+      (f: ReturnType<typeof setup>) => f.document.querySelectorAll.mockReturnValue([f.route, f.route]),
+    ]) {
+      const f = setup(); change(f);
+      expect(observeRecordDestinationFrame({ ...f, waitUntilReady: true })).toBe(false);
+      expect(observeRecordDestinationFrame(f)).toMatchObject({ ready: false });
+    }
+    expect(new Set(SEARCH_ROUTES.map(route => route.contentSelector)).size).toBe(3);
+    const collector = read('app/scripts/capture/record-states.mjs');
+    const arrival = collector.slice(collector.indexOf('`search-${entry.route}-arrived`'));
+    expect(arrival).toContain('await result().click()'); expect(arrival).toContain('cell.searchTransition.lastObserved');
+    expect(arrival).not.toMatch(/await load\(|page.goto|scrollIntoView|setTimeout|waitForTimeout/);
+  });
+  it('rejects clipped filter labels and focus outlines even with a visible center', () => {
+    const frame = { width: 375, reader: { left: 16, right: 359 }, buttons: Array.from({ length: 4 }, (_, index) => ({ left: 24 + index % 2 * 130, right: 124 + index % 2 * 130, clipLeft: 16, clipRight: 359, outline: index === 0 ? 4 : 0 })) };
+    expect(recordFiltersFit(frame)).toBe(true);
+    for (const patch of [{ left: 14 }, { right: 360 }, { clipLeft: 27 }, { clipRight: 121 }, { outline: 10 }, { outline: NaN }]) {
+      expect(recordFiltersFit({ ...frame, buttons: [{ ...frame.buttons[0], ...patch }, ...frame.buttons.slice(1)] })).toBe(false);
+    }
+    expect(recordFiltersFit({ ...frame, buttons: frame.buttons.slice(1) })).toBe(false);
+    expect(read('app/scripts/capture/record-states.mjs')).toContain('ALL_FILTER_LABELS_AND_FOCUS_OUTLINES_UNCLIPPED');
   });
 });

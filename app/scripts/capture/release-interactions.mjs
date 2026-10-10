@@ -321,7 +321,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         check(cell, 'FINAL_ACTION_NOT_OCCLUDED', result.hitTarget === true);
       }
     };
-    const screen = async (route, state, action) => {
+    const screen = async (route, state, action, afterCapture) => {
       const cell = { route, state, group, lang, viewport: viewportId, sourceSha, sourceTreeSha, reached: false, fontMode: 'exact', assertions: [], failures: [], shot: null };
       doc.cells.push(cell); save();
       console.log(`Release interaction: ${group}/${state}/${lang}; cells=${doc.cells.length}.`);
@@ -339,6 +339,15 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         await captureScreenshot(page, { path: `${output}/${shot}`, timeout: 12000, animations: 'disabled' });
         cell.shot = shot;
       } catch (error) { cell.failures.push(knownFailure(error)); }
+      // Bounded follow-through can run after preserving an honest first-fold
+      // image. Its failures still fail the same cell; no second image or
+      // changed scroll position is passed off as the initial viewport.
+      if (afterCapture && cell.shot && cell.failures.length === 0) {
+        try {
+          await afterCapture(cell);
+          check(cell, 'NO_PROHIBITED_ACTIONS_AFTER_CAPTURE', apiState.deniedActions === 0, apiState.deniedActions);
+        } catch (error) { cell.failures.push(knownFailure(error)); }
+      }
       cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories } };
       cell.entryMode = entryMode;
       cell.assetDiagnostics = assets.snapshot();

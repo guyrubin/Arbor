@@ -1,4 +1,5 @@
 import type { BehaviorLog, Milestone } from "../../types";
+import { parentWritten } from "./parentWritten";
 import type { LangObservation } from "../../growth/vocabAgg";
 import type { KeepsakeDoc } from "../firstsKeepsake";
 import { toObservations, type ObservationChild, type ObservationSources } from "../observations";
@@ -18,17 +19,6 @@ export type KeptThing = {
 export type KeptSources = Pick<ObservationSources, "behaviorLogs" | "milestones" | "langObs"> & {
   keepsakes?: readonly KeepsakeDoc[];
 };
-
-/** Existing parent-write schemas have no source field. Fail closed if a row
- * does carry different provenance, including future AI/practice imports. */
-function parentWritten(row: object): boolean {
-  if (!row || typeof row !== "object") return false;
-  const value = row as Record<string, unknown>;
-  return !value.conversationProposalId
-    && value.captureSource !== "co_parent"
-    && (value.source === undefined || value.source === "parent_typed" || value.source === "parent_voice")
-    && (value.observationSource === undefined || value.observationSource === "parent_typed" || value.observationSource === "parent_voice");
-}
 
 /** Milestone.source is a bibliographic citation, not observation authorship.
  * Keep its known schema separate from observationSource, without accepting

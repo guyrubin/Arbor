@@ -179,7 +179,10 @@ export async function collectBehaviorRecordStates({ page, fixture, viewport, loa
     await page.evaluate(({ id, names }) => { for (const name of names) localStorage.setItem(`arbor.${name}.${id}`, '[]'); }, { id: fixture.siblingId, names: JOURNAL_EMPTY_SOURCES });
     await page.locator('button[aria-haspopup="listbox"]:visible').first().click();
     await page.getByRole('listbox').getByRole('option').filter({ hasText: fixture.siblingName }).click();
-    await load('journal'); await visible(cell, 'REAL_EMPTY_ACTION_VISIBLE', byId('journal-empty-cta'));
+    // The feed is the existing query-addressable subroute; plain #/journal
+    // deliberately opens shelves. This is a real full feed deep-link load.
+    await load('journal?view=all'); await visible(cell, 'REAL_EMPTY_ACTION_VISIBLE', byId('journal-empty-cta'));
+    check(cell, 'REAL_EMPTY_FEED_SUBROUTE', new URL(page.url()).hash === '#/journal?view=all');
     check(cell, 'EMPTY_CHILD_HAS_NO_RENDERED_RECORDS', await byId('journal-record-row').count() === 0);
     const frame = await firstFoldFrame(byId('journal-empty-cta'));
     check(cell, 'EMPTY_ACTION_VISIBLE_AND_HITTABLE_BEFORE_SCROLL', journalControlAtFirstFold(frame), frame);
@@ -188,5 +191,21 @@ export async function collectBehaviorRecordStates({ page, fixture, viewport, loa
     check(cell, 'EMPTY_CHILD_RETIRES_PRIOR_CONTEXT', await byId('journal-last-context').count() === 0 && await page.getByRole('dialog').count() === 0);
     cell.firstFold = { ...frame, captureOwnedScroll: false };
     cell.fixture = 'declared-synthetic-empty-sibling-existing-local-ledgers';
+  }, async cell => {
+    // Save the unscrolled PNG first. Then exercise the CTA's real destination:
+    // focus the compose tile, open its actual capture form, and cancel cleanly.
+    cell.shotPhase = 'unscrolled-empty-before-activation';
+    await byId('journal-empty-cta').click();
+    const tile = page.locator('#main [data-capture-bar] [data-capture-tile="text"]');
+    await page.waitForFunction(() => document.activeElement?.matches('#main [data-capture-bar] [data-capture-tile="text"]'));
+    check(cell, 'EMPTY_CTA_FOCUSES_REAL_CAPTURE_TILE', await tile.evaluate(el => document.activeElement === el));
+    await tile.click(); await visible(cell, 'EMPTY_CTA_DESTINATION_OPENS_REAL_CAPTURE', byId('quicklog-moment-form'));
+    check(cell, 'EMPTY_CAPTURE_RETAINS_CHILD_AND_FEED', new URL(page.url()).hash === '#/journal?view=all'
+      && await page.evaluate(() => localStorage.getItem('arbor.activeChildId')) === fixture.siblingId);
+    check(cell, 'EMPTY_CAPTURE_STARTS_WITHOUT_INVENTED_TEXT', await page.locator('#quick-log-moment').inputValue() === '');
+    await page.keyboard.press('Escape'); await page.getByRole('dialog').waitFor({ state: 'detached' });
+    const empty = await page.evaluate(({ id, names }) => names.every(name => JSON.parse(localStorage.getItem(`arbor.${name}.${id}`) || '[]').length === 0), { id: fixture.siblingId, names: JOURNAL_EMPTY_SOURCES });
+    check(cell, 'EMPTY_CAPTURE_CANCEL_WRITES_NOTHING', empty && await byId('journal-record-row').count() === 0);
+    cell.emptyActivation = { destination: 'journal-compose-text-then-shared-capture', opened: true, canceled: true, wroteRecords: !empty, afterInitialScreenshot: true };
   });
 }

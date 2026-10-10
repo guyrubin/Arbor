@@ -118,7 +118,8 @@ describe('final release evidence contracts, no sockets or browser', () => {
   });
   it('keeps publication, providers, real data and font binaries out of the branch-specific workflow', () => {
     const workflow = read('.github/workflows/arbor-parent-release-capture.yml');
-    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity']");
+    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic']");
+    expect(workflow).toContain('"codex/parent-record-diagnostic" ]]; then scope=record-only;');
     expect(workflow).toContain('contents: read');
     expect(workflow).toContain('fail-fast: false');
     expect(workflow).toContain('max-parallel: 4');
@@ -131,8 +132,8 @@ describe('final release evidence contracts, no sockets or browser', () => {
   });
   it('requires the additive record matrix and actual delivered print artifacts without reducing the baseline', () => {
     const extended = records(releaseMatrix('record-release'));
-    expect(summarizeRelease(extended, identity, 'record-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 486, screenshots: 658, printPreviews: 4, expectedShards: 12, returnedShards: 12 });
-    expect(summarizeRelease(records(releaseMatrix('record-only')), identity, 'record-only')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 192, printPreviews: 4 });
+    expect(summarizeRelease(extended, identity, 'record-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 490, screenshots: 662, printPreviews: 4, expectedShards: 12, returnedShards: 12 });
+    expect(summarizeRelease(records(releaseMatrix('record-only')), identity, 'record-only')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 196, printPreviews: 4 });
     extended[0].printHashes = {};
     expect(summarizeRelease(extended, identity, 'record-release').failures[0].reasons).toContain('ACTUAL_PRINT_DELIVERY_EVIDENCE_MISSING');
     expect(summarizeRelease(records(), identity, 'record-release').completed).toBe(false);

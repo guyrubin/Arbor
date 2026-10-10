@@ -1,6 +1,7 @@
 /** Actual bounded UI flows against synthetic storage. No app component is mocked. */
-import { RETIRED_MONTH_IDS, SEARCH_ROUTES, recordVariant } from './record-contract.mjs';
+import { RETIRED_MONTH_IDS, SEARCH_ROUTES, recordVariant, recordQuoteProjection, recordFiltersFit } from './record-contract.mjs';
 import { captureRecordPrint } from './record-print.mjs';
+import { observeRecordChildFrame, observeRecordDestinationFrame } from './record-child-frame.mjs';
 
 export async function collectRecordStates({ page, context, fixture, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId }) {
   const he = viewport.lang === 'he';
@@ -12,6 +13,10 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
   const review = () => page.locator('#send-sheet-text');
   const dialog = () => page.getByRole('dialog').filter({ has: sendSheet() });
   const sink = () => page.evaluate(() => ({ ...window.__arborRecordShareSink }));
+  const quoteProjection = (cell, id, text) => {
+    const observed = recordQuoteProjection(text, fixture);
+    check(cell, id, observed.genuinePresent && observed.generatedAbsent && observed.negativeFixtureIntact, observed);
+  };
   const noRetired = async cell => {
     for (const id of RETIRED_MONTH_IDS) check(cell, `RETIRED_${id.toUpperCase().replaceAll('-', '_')}_ABSENT`, await byId(id).count() === 0);
   };
@@ -41,6 +46,25 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
     await reader().waitFor({ state: 'visible' });
   };
   const count = async expected => page.waitForFunction(expected => document.querySelectorAll('[data-testid="kept-reader"] [data-testid="kept-item"]').length === expected, expected);
+  const filterBounds = async cell => {
+    const frame = await filters().evaluateAll(buttons => {
+      const reader = buttons[0]?.closest('[data-testid="kept-reader"]')?.getBoundingClientRect();
+      return { width: innerWidth, reader: reader ? { left: reader.left, right: reader.right } : null, buttons: buttons.map(button => {
+        const box = button.getBoundingClientRect(); const style = getComputedStyle(button);
+        let clipLeft = 0, clipRight = innerWidth;
+        for (let node = button.parentElement; node; node = node.parentElement) {
+          if (['hidden', 'clip', 'auto', 'scroll'].includes(getComputedStyle(node).overflowX)) {
+            const clip = node.getBoundingClientRect(); clipLeft = Math.max(clipLeft, clip.left + node.clientLeft); clipRight = Math.min(clipRight, clip.left + node.clientLeft + node.clientWidth);
+          }
+        }
+        const focusVisible = button.matches(':focus-visible');
+        const outline = focusVisible && style.outlineStyle !== 'none' ? Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset)) : 0;
+        return { text: button.textContent, left: box.left, right: box.right, top: box.top, bottom: box.bottom, clipLeft, clipRight, focusVisible, outline };
+      }) };
+    });
+    cell.filterBounds = frame;
+    check(cell, 'ALL_FILTER_LABELS_AND_FOCUS_OUTLINES_UNCLIPPED', recordFiltersFit(frame), frame);
+  };
   const closeReview = async () => {
     await dialog().getByRole('button', { name: he ? 'סגור' : 'Close', exact: true }).click();
     await sendSheet().waitFor({ state: 'detached' });
@@ -66,6 +90,7 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
     check(cell, 'FOUR_COUNT_FREE_FILTERS', await filters().count() === 4 && (await filters().allTextContents()).every(text => !/\d/.test(text)));
     check(cell, 'BIDI_PARENT_WORDS', await rows().locator('bdi[dir="auto"]').count() === fixture.expected.all);
     await reachable(cell, 'MONTH_PRINT_REACHABLE', byId('kept-month-print').first());
+    await filterBounds(cell);
     cell.fixture = 'synthetic-confirmed-local-history-no-remote-metadata';
   });
   for (const [index, state, expected, expectedTexts] of [
@@ -76,11 +101,13 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
     await filters().nth(index).click(); await checkRows(cell, expected, expectedTexts);
     check(cell, 'FILTER_SELECTED', await filters().nth(index).getAttribute('aria-pressed') === 'true');
     await expose(filters().nth(index));
+    await filterBounds(cell);
   });
   await screen('development', 'filter-keyboard-all', async cell => {
     await filters().first().focus(); await page.keyboard.press('Enter'); await count(fixture.expected.all);
     check(cell, 'ALL_SELECTED_BY_KEYBOARD', await filters().first().getAttribute('aria-pressed') === 'true');
     await checkRows(cell, fixture.expected.all);
+    await filterBounds(cell);
   });
   let itemText;
   await screen('development', 'item-review', async cell => {
@@ -147,22 +174,33 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
     check(cell, 'REPEATED_STALE_ATTEMPTS_NO_EGRESS', (await sink()).calls === 0 && (await sink()).clipboardCalls === 0);
     cell.fixture = 'same-document-storage-deletion-existing-context-retained-until-refresh';
   });
-  const switchChild = async name => {
+  const switchChild = async (name, childId, cell) => {
+    const outgoing = await page.locator('#main [data-route="development"]').elementHandle();
+    if (!outgoing) throw new Error('OUTGOING_CHILD_FRAME_MISSING');
+    cell.childTransition = { before: await page.evaluate(observeRecordChildFrame, { outgoing, childId }) };
     const control = page.locator('button[aria-haspopup="listbox"]:visible').first();
-    await control.click();
-    await page.getByRole('listbox').getByRole('option').filter({ hasText: name }).click();
+    try {
+      await control.click();
+      await page.getByRole('listbox').getByRole('option').filter({ hasText: name }).click();
+      const settled = await page.waitForFunction(observeRecordChildFrame, { outgoing, childId, waitUntilReady: true }, { timeout: 10000 });
+      try { cell.childTransition.after = await settled.jsonValue(); } finally { await settled.dispose(); }
+      check(cell, 'CHILD_KEYED_REPLACEMENT_FRAME_SETTLED', cell.childTransition.after.ready);
+    } catch (error) {
+      cell.childTransition.lastObserved = await page.evaluate(observeRecordChildFrame, { outgoing, childId }).catch(() => ({ unavailable: true }));
+      throw error;
+    } finally { await outgoing.dispose(); }
   };
   await screen('development', 'child-switch', async cell => {
     await reset(); await open(); await filters().nth(1).click(); await count(fixture.expected.said);
     await byId('kept-item-send').first().click(); await closeReview();
-    await switchChild(fixture.siblingName); await open(); await count(0);
+    await switchChild(fixture.siblingName, fixture.siblingId, cell); await open(); await count(0);
     check(cell, 'ACTUAL_SWITCHER_CHANGED_CHILD', await page.evaluate(() => localStorage.getItem('arbor.activeChildId')) === fixture.siblingId);
     check(cell, 'OLD_CHILD_WORDS_ABSENT', !await reader().textContent().then(text => text.includes(fixture.text.quote)));
     check(cell, 'CHILD_SWITCH_RESETS_FILTER_AND_REVIEW', await filters().first().getAttribute('aria-pressed') === 'true' && await sendSheet().count() === 0);
     await expose(reader());
   });
   await screen('development', 'child-return', async cell => {
-    await switchChild(fixture.childName); await open(); await checkRows(cell, fixture.expected.all);
+    await switchChild(fixture.childName, fixture.childId, cell); await open(); await checkRows(cell, fixture.expected.all);
     check(cell, 'RETURN_RESETS_FILTER', await filters().first().getAttribute('aria-pressed') === 'true');
     check(cell, 'RETURN_HAS_NO_STALE_REVIEW', await sendSheet().count() === 0);
     await expose(reader().locator('h2'));
@@ -210,9 +248,13 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
     await tabs.nth(1).click();
     // This bounded fixture has no current-age score confidence. The real
     // Firsts card intentionally shows its empty picture, without a CDC footer.
-    check(cell, 'FIRSTS_CONTROL_AND_ACTUAL_CONTENT', await tabs.nth(1).getAttribute('aria-pressed') === 'true' && await reader().count() === 0
-      && await disclosure().getByText(he ? 'תמונת ההתפתחות' : 'Growth picture', { exact: true }).isVisible()
-      && (await disclosure().innerText()).includes(fixture.childName));
+    // The heading's span includes Material Symbols own text, so exact
+    // getByText(label) is not its accessible/rendered content boundary.
+    const card = disclosure().locator('.portrait-keepsakes-body > section');
+    const observed = { selected: await tabs.nth(1).getAttribute('aria-pressed') === 'true', keptReaders: await reader().count(),
+      cardCount: await card.count(), cardVisible: await card.isVisible(), label: (await card.innerText()).includes(he ? 'תמונת ההתפתחות' : 'Growth picture'),
+      child: (await card.innerText()).includes(fixture.childName) };
+    check(cell, 'FIRSTS_CONTROL_AND_ACTUAL_CONTENT', observed.selected && observed.keptReaders === 0 && observed.cardCount === 1 && observed.cardVisible && observed.label && observed.child, observed);
     cell.fixture = 'existing-firsts-empty-picture-no-current-age-score-confidence';
     await expose(tabs.nth(1));
   });
@@ -229,12 +271,33 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
     await expose(byId('timeline-months-disclosure').locator('summary'));
   });
   await screen('language', 'preserved-said-page', async cell => {
-    await load('language'); await byId('said-page-door').click();
+    await load('language');
+    const negativeStored = await page.evaluate(id => JSON.parse(localStorage.getItem(`arbor.keepsakes.${id}`) || '[]').find(row => row.id === 'capture-record-ai'), fixture.childId);
+    check(cell, 'REAL_GENERATED_NEGATIVE_STILL_STORED', negativeStored?.source === 'ai_proposed_parent_confirmed' && negativeStored?.note === fixture.text.forbidden[1]);
+    quoteProjection(cell, 'LANGUAGE_LIST_PRESERVES_PARENT_QUOTE_EXCLUDES_GENERATED', await byId('said-list').innerText());
+    await byId('said-page-door').click();
     await page.waitForURL(url => url.hash.includes('view=said')); check(cell, 'EXISTING_SAID_PAGE_ROUTE', new URL(page.url()).hash === '#/language?view=said');
     await visible(cell, 'EXISTING_SAID_PAGE', byId('said-page'));
+    quoteProjection(cell, 'SAID_PAGE_PRESERVES_PARENT_QUOTE_EXCLUDES_GENERATED', await byId('said-sheet').innerText());
+    check(cell, 'EXACT_ONE_PARENT_QUOTE_IN_SAID_MONTH', await byId('said-month').locator('li').count() === 1);
+    const before = await sink();
+    await byId('said-send').click(); await sendSheet().waitFor({ state: 'visible' });
+    const reviewedText = await review().inputValue();
+    quoteProjection(cell, 'SAID_REVIEW_PRESERVES_PARENT_QUOTE_EXCLUDES_GENERATED', reviewedText);
+    await byId('send-sheet-send').click(); await sendSheet().waitFor({ state: 'detached' });
+    const sent = await sink();
+    quoteProjection(cell, 'SAID_SANDBOX_EXPORT_PRESERVES_PARENT_QUOTE_EXCLUDES_GENERATED', sent.lastText);
+    check(cell, 'SAID_REVIEW_SENT_ONLY_TO_SANDBOX', sent.calls === before.calls + 1 && sent.lastText === reviewedText
+      && sent.clipboardCalls === before.clipboardCalls && JSON.stringify(sent.keys) === '["text"]');
+    cell.quoteExport = { kind: sent.kind, destination: 'synthetic-browser-share-sink', reviewedText, payloadKeys: sent.keys };
+    await expose(byId('said-sheet'));
   });
   await screen('milestones', 'preserved-milestone-editor', async cell => {
     await load('milestones'); await visible(cell, 'EXISTING_MILESTONE_MAP', byId('ms-shelf-map'));
+    const headerText = await byId('ms-header').innerText();
+    const quoteState = recordQuoteProjection(headerText, fixture);
+    check(cell, 'MILESTONE_CONTEXT_EXCLUDES_GENERATED_QUOTE', quoteState.generatedAbsent && quoteState.negativeFixtureIntact, quoteState);
+    check(cell, 'MILESTONE_CONTEXT_RETAINS_GENUINE_PARENT_WORDS', headerText.includes(fixture.text.first) || quoteState.genuinePresent);
     const doors = byId('ms-shelf-door');
     for (let n = 0; n < Math.min(8, await doors.count()) && await byId('ms-keepsake').count() === 0; n++) await doors.nth(n).click();
     const note = byId('ms-keepsake').filter({ hasText: fixture.text.first });
@@ -248,6 +311,21 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
     check(cell, 'EXISTING_NOTE_AND_DATE_PRESERVED', await byId('first-keepsake-note').inputValue() === fixture.text.first && await byId('first-keepsake-date').inputValue() === '2026-10-04');
     check(cell, 'EXISTING_OPTIONAL_PHOTO_CONTROL_RETAINED', await byId('first-keepsake-sheet').locator('input[type="file"][accept="image/*"]').count() === 1);
     cell.boundary = 'Existing editor/note/photo path is read-only; no file chooser, upload or child record mutation is exercised here.';
+  });
+  await screen('consult', 'professional-quote-record', async cell => {
+    // Existing profession intake deep-link; the actual app builds its own
+    // scoped packet and preview. No packet builder or source state is replaced.
+    await load('consult?intake=slp');
+    check(cell, 'REAL_SLP_INTAKE_ROUTE', new URL(page.url()).hash === '#/consult?intake=slp');
+    await byId('consult-build').click();
+    const all = byId('consult-preview-all');
+    if (await all.isVisible()) await all.click();
+    await visible(cell, 'ACTUAL_PROFESSIONAL_RECORD_PREVIEW', byId('consult-export-preview'));
+    quoteProjection(cell, 'PROFESSIONAL_PREVIEW_PRESERVES_PARENT_QUOTE_EXCLUDES_GENERATED', await byId('consult-export-preview').innerText());
+    const quote = byId('consult-export-preview').locator('p').filter({ hasText: fixture.text.quote });
+    check(cell, 'EXACT_ONE_PARENT_QUOTE_IN_PROFESSIONAL_PREVIEW', await quote.count() === 1);
+    await reachable(cell, 'PROFESSIONAL_PARENT_QUOTE_VISIBLE', quote);
+    cell.boundary = 'Actual SLP intake preview only; no professional recipient, copy, PDF or send is triggered.';
   });
   for (const route of ['overview', 'memory']) await screen(route, `retired-${route}`, async cell => { await load(route); await noRetired(cell); check(cell, 'CURRENT_ROUTE_STILL_MOUNTED', new URL(page.url()).hash === `#/${route}`); });
 
@@ -271,9 +349,20 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
       cell.search = { route: entry.route, surface: viewport.w < 1024 ? 'mobile-search-modal' : 'desktop-topbar-search', expectedPlace: 'child' };
     });
     await screen(entry.route, `search-${entry.route}-arrived`, async cell => {
-      await result().click(); await page.waitForURL(url => url.hash === `#/${entry.route}`);
-      await page.locator('main h1, main [data-module]').first().waitFor({ state: 'visible' });
-      check(cell, 'SEARCH_REAL_DESTINATION_REACHED', new URL(page.url()).hash === `#/${entry.route}`);
+      const outgoing = await page.locator('#main [data-route="overview"]').elementHandle();
+      if (!outgoing) throw new Error('SEARCH_OUTGOING_FRAME_MISSING');
+      const args = { outgoing, childId: fixture.childId, routeName: entry.route, contentSelector: entry.contentSelector };
+      cell.searchTransition = { before: await page.evaluate(observeRecordDestinationFrame, args) };
+      let ready;
+      try {
+        await result().click(); await page.waitForURL(url => url.hash === `#/${entry.route}`);
+        ready = await page.waitForFunction(observeRecordDestinationFrame, { ...args, waitUntilReady: true }, { timeout: 10000 });
+        cell.searchTransition.after = await ready.jsonValue();
+        check(cell, 'SEARCH_REAL_SETTLED_DESTINATION_REACHED', cell.searchTransition.after.ready, cell.searchTransition.after);
+      } catch (error) {
+        cell.searchTransition.lastObserved = await page.evaluate(observeRecordDestinationFrame, args).catch(() => ({ observationFailed: true }));
+        throw error;
+      } finally { await ready?.dispose(); await outgoing.dispose(); }
     });
   }
 }

@@ -10,16 +10,22 @@ Only the release owner publishes the source candidate and branch.
 
 - Unchanged baseline: 43 routes × 4 variants = 172 base cells, plus 294 focused
   interaction cells = 466 required app PNG cells.
-- Additive record scope: 48 real UI states × 4 variants = 192 app PNG cells.
-- Total required app evidence: 658 cells, with four separately classified actual
+- Additive record scope: 49 real UI states × 4 variants = 196 app PNG cells.
+- Total required app evidence: 662 cells, with four separately classified actual
   month-print HTML/PDF and print-media viewport PNGs. Platform print fonts do not count as app
   custom-font proof.
 - Every record shard retains the existing 10-minute runtime deadline, 20-minute
   CI step deadline, per-cell checkpoint and partial-artifact preservation.
 - Nearest narrow runtime target is group `record`, viewport `mobile-he`, shard
   `0`, through the existing isolated Docker `run-release.mjs`. `record-only` is
-  available as a pure aggregation/matrix scope; this change adds no second branch
-  or manual workflow to publish it.
+  the four-variant aggregation/matrix scope used by the diagnostic path below.
+
+For a harness-only replay, the same read-only workflow also accepts
+`codex/parent-record-diagnostic` and selects `record-only`: four shards and 196
+app cells, retaining the already captured baseline separately. The owner must
+compare exact app-source tree receipts; distinct workflow/source commit IDs are
+never silently treated as one aggregate. This path changes no app source,
+permissions, font origin/guard, or publication ownership.
 
 ## Actual flows
 
@@ -75,6 +81,14 @@ all original 45 record states. Child switching uses the real picker after closin
 the modal; the picker is not reachable through an open modal. Open-sheet child
 retirement remains source lifecycle coverage, not simulated browser evidence.
 
+The empty feed is loaded at its actual `#/journal?view=all` deep link; bare
+`#/journal` is the shelf landing. Child-switch sampling waits for the outgoing
+Shell frame to detach and a single replacement at the selected child identity
+to become opaque with its final transform. Raw before/after/failure frame
+receipts retain ancestor styles, heading/main bounds and scroll position without
+forcing scroll or extending an arbitrary sleep. Firsts card checks its rendered
+card text, including the child, rather than exact text on an icon-bearing span.
+
 ## Print receipts
 
 The collector clicks the real app Print control and waits for the existing
@@ -106,3 +120,32 @@ builder removals; no claim is made that every month-oriented view was removed.
 No host browser, local tsc/build, production data, provider, font binary, secret or
 private proof asset is used or uploaded. Pure tests do not establish rendered
 acceptance. Review actual CI PNGs and failures before approving the candidate.
+
+## Provenance and settled destination acceptance
+
+The unchanged negative keepsake retains `source: ai_proposed_parent_confirmed`
+in storage. Said's actual list, month page, editable review and browser-only
+share sink must include the genuine quote and exclude that generated text.
+The Milestones context must exclude it while keeping real parent words. One
+bounded SLP intake deep-link builds the app's actual professional preview;
+its genuine quote must remain and the generated quote must be absent. The
+professional state does not send, copy or export to any recipient. Pure
+fixture contracts also exercise the real quote selector, Said print/send
+builders and SLP packet builder. They are not a substitute for these pixels.
+
+Each real search result click now retains the outgoing route node and records
+before/after/failure observations. A changed hash alone is insufficient: the
+old node must retire, one exact destination must mount for the same child,
+and destination-specific content must be rendered, intersect the main viewport,
+and have opaque, visible, settled ancestors (including nested animations).
+The deadline is ten seconds; no sleep extension, navigation replacement or
+capture-owned scrolling makes this pass.
+
+Existing reader/filter states measure all four button bounds against the
+reader, viewport and actual clipping ancestors. Keyboard-visible outline width
+and offset come from computed CSS; a visible center cannot excuse clipped text
+or focus decoration. Journal empty first-fold pixels are saved before its CTA
+is activated. A bounded post-image continuation then proves that the real CTA
+focuses the compose tile, that tile opens shared capture, and Escape cancels
+without writing a record. Failures still fail that same cell; the saved PNG is
+explicitly labeled as the initial unscrolled frame, not the later destination.
