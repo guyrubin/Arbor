@@ -147,7 +147,9 @@ async function readPath(tab: ReturnType<typeof harness<any>>, story: HeroStorySp
     }
     const decision = find(tab.tree, node => node.type === DecisionChoices);
     if (decision) {
-      expect(marker(tab.tree, "data-kid-book-next")?.props.disabled).toBe(true);
+      // 10 Oct 2026: the question page moves on by its answers; the Next
+      // that could not work before an answer is not shown at all.
+      expect(marker(tab.tree, "data-kid-book-next")).toBeUndefined();
       words.push(...decision.props.choices.map((choice: any) => `${choice.label}: ${choice.consequence}`));
       decision.props.onChoose(choiceId ?? decision.props.choices[0].id);
     } else {
