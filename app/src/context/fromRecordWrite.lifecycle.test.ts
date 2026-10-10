@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import ts from "typescript";
+import { isObservationAction } from "../actionLoop/model";
 import { answeredToday, fromRecordEntry, fromRecordRowId, type FromRecordOpener } from "../lib/today/fromRecord";
 const source = ts.createSourceFile("ArborContext.tsx", readFileSync("src/context/ArborContext.tsx", "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 let declaration = "";
@@ -44,7 +45,7 @@ describe("chosen outcome acknowledgement remains opt-in", () => {
     const find = (node: ts.Node) => { if (ts.isVariableStatement(node) && node.declarationList.declarations.some(d => ts.isIdentifier(d.name) && d.name.text === "saveTodayOutcome")) outcomeDeclaration = node.getText(source); ts.forEachChild(node, find); }; find(source);
     let reject!: (error: unknown) => void;
     const pending = new Promise<void>((_yes, no) => { reject = no; });
-    const env = { actionLoop: [{ id: "step", source: "coach" }], actionLoopCol: { upsert: vi.fn(() => pending) }, setPlanStepStatus: vi.fn(), planStepStatusAfter: vi.fn(), track: vi.fn(), todayOutcomeProps: vi.fn() };
+    const env = { isObservationAction, actionLoop: [{ id: "step", source: "coach" }], actionLoopCol: { upsert: vi.fn(() => pending) }, setPlanStepStatus: vi.fn(), planStepStatusAfter: vi.fn(), track: vi.fn(), todayOutcomeProps: vi.fn() };
     const code = ts.transpileModule(`${outcomeDeclaration}; return saveTodayOutcome;`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
     const call = new Function(...Object.keys(env), code)(...Object.values(env));
     const save = call("step", "helped", "card", undefined, { awaitServer: true });

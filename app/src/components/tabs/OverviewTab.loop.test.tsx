@@ -62,7 +62,8 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
     // The loop planner still decides evening eligibility; the coordinator protects in-flight answers.
     expect(OV).toContain("const lead = selectNowLead({");
     expect(OV).toContain("chosen: !!chosen,");
-    expect(OV).toContain("chosenPending: saving || saveError,");
+    expect(OV).toContain("const currentSaveError = saveError && retryAction?.scope === scopeLease;");
+    expect(OV).toContain("chosenPending: saving || currentSaveError,");
     expect(OV).toContain("manualTonight: tonightOpen,");
     expect(OV).toContain('tonight: loop.plan.order[0] === "tonight",');
     expect(OV).toContain("recordPending: record.saving || record.error,");

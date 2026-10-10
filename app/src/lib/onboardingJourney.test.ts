@@ -181,12 +181,9 @@ describe("B-SHELL-09 — four onboarding steps; a new child meets the hero quest
     expect(readJourney().wow).toBe("done");
   });
 
-  it("OnboardingFlow: 4 dots, no avatar step, no skip-flag writes", () => {
-    expect(flow).toContain("<ProgressDots step={step} total={4} />");
-    expect(flow).toContain("type Step = 1 | 2 | 3 | 4;");
-    expect(flow).toContain("Math.min(s + 1, 4)");
-    expect(flow).not.toMatch(/StepAvatar|AvatarCreator|markAvatarSkipped|clearAvatarSkipped/);
-    expect(flow).toMatch(/\{step === 4 && \(\s*<StepReady/);
+  it("B-SHELL-36: three steps and no new journey flag writes", () => {
+    expect(flow).toContain("aria-valuemax={3}");
+    expect(flow).not.toMatch(/StepAvatar|AvatarCreator|markWowPending|setCoachSeed/);
     expect(journey).not.toMatch(/export function (markAvatarSkipped|clearAvatarSkipped)/);
   });
 
@@ -197,9 +194,9 @@ describe("B-SHELL-09 — four onboarding steps; a new child meets the hero quest
     expect(wow).toContain('t("elev.storeshell.wow.sproutStars", { name })');
   });
 
-  it("replay still makes zero writes: no avatar path exists in the flow to fire one", () => {
-    // the only writes left are addChild (guarded by `if (replaying)`) and the submit patch
-    expect(flow).toMatch(/if \(replaying\) \{\s*goNext\(\);\s*return;\s*\}/);
+  it("B-SHELL-36 retires automatic wow without deleting journey history", () => {
+    expect(wow).toContain("export function WowOnboarding() { return null; }");
     expect(flow).not.toContain("patch.photoUrl");
+    expect(flow).not.toMatch(/removeItem|markWowDone|readJourney/);
   });
 });

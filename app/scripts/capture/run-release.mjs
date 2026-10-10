@@ -64,15 +64,17 @@ async function main() {
   cell = releaseCell({ viewport: process.env.ARBOR_CAPTURE_VIEWPORT, group: process.env.ARBOR_CAPTURE_GROUP, shard: process.env.ARBOR_CAPTURE_SHARD });
   if (process.env.ARBOR_CAPTURE_FONT_MODE !== 'exact') throw new Error('RELEASE_REQUIRES_EXACT_FONTS');
   if (readdirSync(app).some((name) => name.startsWith('.env') || name === '.data')) throw new Error('INHERITED_DATA_REFUSED');
-  const env = { ...releaseEnvironment(identity.sourceSha), ARBOR_CAPTURE_SHA: identity.sourceSha, ARBOR_CAPTURE_SOURCE_TREE_SHA: identity.sourceTreeSha,
+  const env = { ...releaseEnvironment(identity.sourceSha, cell.group), ARBOR_CAPTURE_SHA: identity.sourceSha, ARBOR_CAPTURE_SOURCE_TREE_SHA: identity.sourceTreeSha,
     ARBOR_CAPTURE_CONNECTIVITY: 'synthetic-online', ARBOR_CAPTURE_FONT_MODE: 'exact', ARBOR_CAPTURE_FONT_PHASE: cell.group === 'base' ? 'sweep' : 'diagnostics',
     ARBOR_CAPTURE_VIEWPORT: cell.viewport.id, ARBOR_CAPTURE_GROUP: cell.group, ARBOR_CAPTURE_SHARD: String(cell.shard) };
   for (const key of Object.keys(process.env)) delete process.env[key];
   Object.assign(process.env, env);
   process.chdir(app);
   for (const dir of [output, `${output}/shots`, scratch, env.HOME]) mkdirSync(dir, { recursive: true });
-  metadata = { ...identity, cell, scope: 'parent-release', fixture: SMALL_FIXTURE, runtimeNetwork: 'none', syntheticOnly: true,
-    clientMode: 'vite-production-build', serverMode: 'existing-static-handler-with-local-config', fontMode: 'exact', fontLimitation: SOURCE_FONT_NOTE, completed: false, missingEvidence: [{ failure: 'NOT_STARTED' }], deadlineMs: captureDeadlineMs(cell) };
+  metadata = { ...identity, cell, scope: cell.group === 'first-run-preview' ? 'first-run-dev-preview' : 'parent-release', fixture: SMALL_FIXTURE, runtimeNetwork: 'none', syntheticOnly: true,
+    clientMode: cell.group === 'first-run-preview' ? 'existing-dev-onboarding-preview' : 'vite-production-build',
+    serverMode: cell.group === 'first-run-preview' ? 'existing-local-vite-handler' : 'existing-static-handler-with-local-config',
+    ...(cell.group === 'first-run-preview' ? { evidenceBoundary: 'DEV preview only; production ProfileGate and remote acknowledgement are blocked' } : {}), fontMode: 'exact', fontLimitation: SOURCE_FONT_NOTE, completed: false, missingEvidence: [{ failure: 'NOT_STARTED' }], deadlineMs: captureDeadlineMs(cell) };
   progress('font-cache');
   write('font-provenance.json', validateFontCache().manifest);
   const { tsImport } = await import('tsx/esm/api');
@@ -81,14 +83,16 @@ async function main() {
   const routeIds = releaseInventory(routes.ROUTE_IDS, contracts.SURFACE_CONTRACTS);
   sourceRoutes = cell.group === 'base' ? shardRoutes(routeIds, cell.shard) : [];
   write('route-inventory.json', { ...identity, routeIds, shardRouteIds: sourceRoutes, contracts: contracts.SURFACE_CONTRACTS.map(({ route, hub }) => ({ route, hub })), aliases: routes.HASH_ALIASES, retired: routes.RETIRED_ROUTES,
-    note: 'All 43 canonical IDs are loaded across the base shards. Aliases/retirements are recorded honestly; they are not additional distinct screens.' });
+    note: cell.group === 'first-run-preview' ? 'Canonical inventory only; this scope exercises the existing DEV preview, not production route or auth acceptance.' : 'All 43 canonical IDs are loaded across the base shards. Aliases/retirements are recorded honestly; they are not additional distinct screens.' });
   progress('seed');
   await run(['--import', 'tsx', 'scripts/seed-demo-family.mjs', '--target', 'sandbox', '--apply'], env, 'seed', 30_000);
   const family = JSON.parse(readFileSync('.data/demo-family.json', 'utf8'));
   if (family.child?.demo !== true || family.parent?.demo !== true || !family.collections) throw new Error('SYNTHETIC_FIXTURE_REQUIRED');
-  progress('offline-client-build');
-  await run(['node_modules/vite/bin/vite.js', 'build'], env, 'offline-client-build', 4 * 60_000);
-  if (!existsSync('dist/index.html')) throw new Error('BUILT_CLIENT_MISSING');
+  if (cell.group !== 'first-run-preview') {
+    progress('offline-client-build');
+    await run(['node_modules/vite/bin/vite.js', 'build'], env, 'offline-client-build', 4 * 60_000);
+    if (!existsSync('dist/index.html')) throw new Error('BUILT_CLIENT_MISSING');
+  }
   progress('sandbox-start');
   const log = openSync(`${scratch}/server.log`, 'w');
   server = spawn(process.execPath, ['--import', 'tsx', 'server.ts'], { cwd: app, env, stdio: ['ignore', log, log] });

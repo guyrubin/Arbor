@@ -54,7 +54,12 @@ import { ShareButton } from "../ui/ShareButton";
 type WowStep = "avatar" | "comic" | "closing";
 const STEP_ORDER: readonly WowStep[] = ["avatar", "comic", "closing"];
 
-export function WowOnboarding() {
+/** B-SHELL-36: no automatic first-run comic. Stored journey keys are untouched;
+ * stories and the hero remain reachable through Together. */
+export function WowOnboarding() { return null; }
+
+/** Retained implementation for historical journeys; never mounted automatically. */
+function LegacyWowOnboarding() {
   const { setActiveTab } = useArbor();
   const { activeChild, updateChild } = useProfile();
   const { t, aiLang } = useLanguage();

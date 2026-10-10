@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { capacityMinutes, type ActionOutcome } from "../../actionLoop/model";
+import { isObservationAction, capacityMinutes, type ActionOutcome } from "../../actionLoop/model";
 import HeldPlanAsk, { heldStage } from "./HeldPlanAsk";
 
 /**
@@ -24,6 +24,11 @@ export default function TodayActionLoop() {
   };
 
   if (!activeTodayAction) return null;
+
+  if (isObservationAction(activeTodayAction)) return <section className="rounded-[20px] p-5" data-testid="today-observation">
+    <p>{t("ob.first.observation.chosen")}</p><h2 dir="auto">{activeTodayAction.recommendation}</h2>
+    {activeTodayAction.status === "completed" ? <><p dir="auto">{activeTodayAction.whatHappened}</p><p>{t("ob.first.observation.saved")}</p></> : <a href="#/overview" className="inline-flex min-h-11 items-center">{t("ob.first.observation.resume")}</a>}
+  </section>;
 
   // AIX-S6: honest provenance — a step accepted from the weekly digest says so;
   // LL-A6: same rule for steps accepted from a Learn Library read.

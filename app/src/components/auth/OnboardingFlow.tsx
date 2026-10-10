@@ -1,1033 +1,173 @@
-import React, { useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import React, { useEffect, useRef, useSyncExternalStore } from "react";
 import { useProfile } from "../../context/ProfileContext";
-import { findIncompleteOnboardingChild } from "../../lib/onboardingGate";
-import { ageLabelForMonths, ageMonthsFromProfile, isoDateOf } from "../../lib/childAge";
-import { translate, type UiLang } from "../../lib/i18n";
-import { markWowPending, setCoachSeed } from "../../lib/onboardingJourney";
-import { useEntitlement } from "../../hooks/useEntitlement"; // MOB-12: admin gate for the replay affordance
-import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: policy links beside the consent checkbox
-import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
-import { Icon } from "../ui/Icon";
-import { api } from "../../lib/api";
-// MOB-22 — pre-generate the first comic while the parent picks domains.
-import { heroFirstName, prewarmFirstComic } from "../../lib/firstComic";
-import { promiseText } from "../../lib/i18nElevation/promise";
-import { track } from "../../lib/analytics";
+import { useAuth } from "../../context/AuthContext";
+import { findIncompleteOnboardingChild } from "../../lib/onboardingGate";
+import { isoDateOf } from "../../lib/childAge";
+import { DOMAIN_IDS } from "../../lib/domains/registry";
+import { DOMAIN_ICONS } from "../../lib/domains/icons";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { acceptTodayAction } from "../../actionLoop/accept";
+import type { ActionLoopEntry } from "../../actionLoop/model";
+import { choiceName, firstRunCard, firstRunAgeMonths, FirstRunController, validAbout, type FirstRunState, type FirstRunCard, type OnboardingChoice } from "../../lib/onboardingFirstRun";
+import { availableHardMomentCards } from "../../content/selectCards";
+import { locText, escalationText } from "../../content/hardMomentSurface";
+import { renderSayThis } from "../../content/hardMomentCards";
+import { hardMomentPilotText } from "../../content/hardMomentPilotText";
+import { hardMomentPublication } from "../../content/pilotRelease";
+import { HardMomentGuideContent } from "../behaviors/HardMomentsSection";
 import { trackOnboardingCompleted } from "../../lib/kpiEvents";
-import { isUnderThree } from "../../lib/age/forChild";
+import { LegalLinks } from "../billing/LegalLinks";
+import { Icon } from "../ui/Icon";
+import { ArborMark } from "../ui/ArborMark";
+import { languageName } from "../../lib/languageName";
+import "./onboardingFirstRun.css";
+import { screenForImmediateEscalation } from "../../safety/escalation";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
-// B-SHELL-09: four steps — the avatar step was removed; the hero is made in the
-// wow overlay's first card (every new child, once) or at the Kid Mode door.
-type Step = 1 | 2 | 3 | 4;
-
-// ── Step 3 domain tiles (AP-049; copy VERBATIM from GATED-CLEARANCES-CLINICAL §2) ─
-
-/** Exported for Add child (B-SHELL-17): the same domain list, the same names. */
-export const DOMAINS: { id: string; nameKey: string; subKey: string; icon: React.ReactNode }[] = [
-  { id: "feelings", nameKey: "ob.step.domains.feelings", subKey: "ob.step.domains.feelings.sub", icon: <Icon name="favorite" size={20} /> },
-  { id: "language", nameKey: "ob.step.domains.language", subKey: "ob.step.domains.language.sub", icon: <Icon name="chat_bubble" size={20} /> },
-  { id: "social", nameKey: "ob.step.domains.social", subKey: "ob.step.domains.social.sub", icon: <Icon name="group" size={20} /> },
-  { id: "sleep", nameKey: "ob.step.domains.sleep", subKey: "ob.step.domains.sleep.sub", icon: <Icon name="bedtime" size={20} /> },
-  { id: "focus", nameKey: "ob.step.domains.focus", subKey: "ob.step.domains.focus.sub", icon: <Icon name="menu_book" size={20} /> },
-  { id: "behavior", nameKey: "ob.step.domains.behavior", subKey: "ob.step.domains.behavior.sub", icon: <Icon name="repeat" size={20} /> },
-  { id: "eating", nameKey: "ob.step.domains.eating", subKey: "ob.step.domains.eating.sub", icon: <Icon name="restaurant" size={20} /> },
-];
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function ArborMark() {
-  return <ArborMarkIcon size={56} />;
-}
-
-/**
- * B-SHELL-07 (KSH-V C9) — the coach seed is MODEL INPUT, so it is built in
- * `aiLang` from one keyed template (elev.auth.ob.seed), with the domain name
- * and the age label (ageLabelForMonths) in the same language. It used to be an
- * English literal with an English-only age string inside a Hebrew session.
- */
-export function buildOnboardingCoachSeed(input: {
-  aiLang: UiLang;
-  domainNameKey: string | null;
-  domainFallback: string;
-  name: string;
-  totalAgeMonths: number;
-}): string {
-  const tr = (key: string, vars?: Record<string, string | number>) => translate(input.aiLang, key, vars);
-  const domain = input.domainNameKey ? tr(input.domainNameKey) : input.domainFallback;
-  const age = ageLabelForMonths(input.totalAgeMonths, (key, vars) => tr(key, vars));
-  return tr("elev.auth.ob.seed", { domain, name: input.name.trim(), age });
-}
-
-function ageString(totalMonths: number): string {
-  if (totalMonths < 12) return `${totalMonths} month${totalMonths !== 1 ? "s" : ""}`;
-  const years = Math.floor(totalMonths / 12);
-  const months = totalMonths % 12;
-  if (months === 0) return `${years} year${years !== 1 ? "s" : ""}`;
-  return `${years} year${years !== 1 ? "s" : ""} ${months} month${months !== 1 ? "s" : ""}`;
-}
-
-// ── Step error boundary ────────────────────────────────────────────────────
-// Onboarding is the one surface where a render crash is a permanent lockout:
-// the in-flight profile makes the gate re-open the flow on every reload, so a
-// crashing step would strand the account forever (this happened in prod when
-// the avatar step threw outside ArborProvider). The boundary keeps the card
-// shell — and the Back button — alive and offers a local retry.
-
-class StepErrorBoundary extends React.Component<
-  { retryLabel: string; message: string; children: React.ReactNode },
-  { crashed: boolean }
-> {
-  state = { crashed: false };
-  static getDerivedStateFromError() {
-    return { crashed: true };
-  }
-  render() {
-    if (!this.state.crashed) return this.props.children;
-    return (
-      <div className="flex flex-col items-center text-center space-y-4 py-6">
-        <ArborMark />
-        <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{this.props.message}</p>
-        <button
-          type="button"
-          onClick={() => this.setState({ crashed: false })}
-          className="px-6 py-2.5 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
-          style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
-        >
-          {this.props.retryLabel}
-        </button>
-      </div>
-    );
-  }
-}
-
-// ── Progress dots ──────────────────────────────────────────────────────────
-
-function ProgressDots({ step, total }: { step: Step; total: number }) {
-  // TODAY-5/PLAT-4: aria-label via i18n (was hardcoded English on the first-run journey).
-  const { t } = useLanguage();
-  return (
-    <div className="flex items-center justify-center gap-2" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={total} aria-label={t("ob.progress.step", { step, total })}>
-      {Array.from({ length: total }, (_, i) => {
-        const s = (i + 1) as Step;
-        const active = s === step;
-        const done = s < step;
-        return (
-          <span
-            key={i}
-            className="rounded-full transition-all duration-300"
-            style={{
-              width: active ? 20 : 8,
-              height: 8,
-              background: active
-                ? "var(--arbor-green-ink)"
-                : done
-                  ? "color-mix(in srgb, var(--arbor-green-ink) 45%, transparent)"
-                  : "var(--arbor-rule-strong)",
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Step 1 — Welcome ───────────────────────────────────────────────────────
-
-function StepWelcome({ onNext }: { onNext: () => void }) {
-  const { t } = useLanguage();
-  return (
-    <div className="flex flex-col items-center text-center space-y-6">
-      <ArborMark />
-      <div className="space-y-2">
-        <h1 className="text-2xl font-black tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-          {t("ob.step.welcome.title")}
-        </h1>
-        <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-          {t("ob.step.welcome.subtitle")}
-        </p>
-      </div>
-      <button
-        onClick={onNext}
-        className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
-        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
-      >
-        {t("ob.step.welcome.cta")}
-      </button>
-    </div>
-  );
-}
-
-// ── Step 2 — Child name + age ──────────────────────────────────────────────
-
-/** Clamp a number-input value; an emptied field reads as the low bound rather
- *  than NaN, which is what a slider could never produce and a text field can. */
-function clampInt(raw: string, lo: number, hi: number): number {
-  const n = parseInt(raw, 10);
-  if (!Number.isFinite(n)) return lo;
-  return Math.max(lo, Math.min(hi, n));
-}
-
-interface StepChildProps {
-  name: string;
-  setName: (v: string) => void;
-  ageYears: number;
-  setAgeYears: (v: number) => void;
-  ageMonthsPart: number;
-  setAgeMonthsPart: (v: number) => void;
-  /** MOB-11: "" until the parent chooses to give one. Never derived. */
-  birthDate: string;
-  setBirthDate: (v: string) => void;
-  languages: string[];
-  setLanguages: (v: string[]) => void;
-  controllerConsent: boolean;
-  setControllerConsent: (v: boolean) => void;
-  creating: boolean;
-  onNext: () => void;
-}
+import { UrgentSupport } from "../safety/UrgentSupport";
 
 const LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
+export const ONBOARDING_CHOICES: readonly OnboardingChoice[] = [...DOMAIN_IDS, "hard-moment", "nothing"];
 
-/** Exported for the guard test, as StepReady is (MOB-12 precedent). */
-export function StepChild({
-  name, setName, ageYears, setAgeYears, ageMonthsPart, setAgeMonthsPart,
-  birthDate, setBirthDate,
-  languages, setLanguages, controllerConsent, setControllerConsent, creating, onNext,
-}: StepChildProps) {
-  const { t } = useLanguage();
-  const [showLangs, setShowLangs] = useState(false);
-  const [showBirthday, setShowBirthday] = useState(false);
 
-  // Anti-trap: the continue button stays enabled; a tap with a missing field
-  // moves focus to that field and marks it, instead of silently doing nothing.
-  const nameRef = useRef<HTMLInputElement>(null);
-  const consentRef = useRef<HTMLInputElement>(null);
-  const [missing, setMissing] = useState<"name" | "consent" | null>(null);
-
-  const handleContinue = () => {
-    if (creating) return;
-    if (!name.trim()) {
-      setMissing("name");
-      nameRef.current?.focus();
-      return;
-    }
-    if (!controllerConsent) {
-      setMissing("consent");
-      consentRef.current?.focus();
-      return;
-    }
-    setMissing(null);
-    onNext();
-  };
-
-  const isUnder3 = isUnderThree({ age: ageYears });
-
-  const handleYearsChange = (years: number) => {
-    setAgeYears(years);
-    if (years >= 3) setAgeMonthsPart(0);
-  };
-
-  const toggleLang = (l: string) =>
-    setLanguages(languages.includes(l) ? languages.filter((x) => x !== l) : [...languages, l]);
-
-  const totalAgeMonths = ageYears * 12 + ageMonthsPart;
-  const ageDisplayLabel =
-    totalAgeMonths === 0
-      ? "newborn"
-      : isUnder3
-        ? ageYears === 0
-          ? `${ageMonthsPart} month${ageMonthsPart !== 1 ? "s" : ""}`
-          : ageMonthsPart === 0
-            ? `${ageYears} year${ageYears !== 1 ? "s" : ""}`
-            : `${ageYears}y ${ageMonthsPart}m`
-        : `${ageYears} year${ageYears !== 1 ? "s" : ""}`;
-
-  const inputStyle: React.CSSProperties = {
-    background: "var(--arbor-paper-deep)",
-    border: "1px solid var(--arbor-rule-strong)",
-    color: "var(--arbor-ink)",
-  };
-
-  return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-xl font-black tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-          {t("ob.step.child.title")}
-        </h2>
-        <p className="text-sm mt-1" style={{ color: "var(--arbor-muted)" }}>{t("ob.step.child.subtitle")}</p>
-      </div>
-
-      {/* Name + age picker row */}
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 items-start">
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.name")}</label>
-          <input
-            autoFocus
-            ref={nameRef}
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              if (missing === "name" && e.target.value.trim()) setMissing(null);
-            }}
-            placeholder={t("ob.namePlaceholder")}
-            aria-invalid={missing === "name"}
-            className="w-full rounded-xl px-4 py-2.5 focus:outline-none"
-            style={
-              missing === "name"
-                ? { ...inputStyle, border: "1.5px solid var(--arbor-clay)", boxShadow: "0 0 0 3px rgba(224,122,95,0.18)" }
-                : inputStyle
-            }
-          />
-        </div>
-
-        {/* MOB-11 · one ChildAgeField, the drawer's shape.
-            Two range sliders used to stand here, and what they wrote was a
-            BIRTHDAY: "3 years" became birthDate "2023-09-01", a day nobody
-            entered, which then drove bands, screening windows and monitoring.
-            The profile drawer (GP-03) already asks Years + Months as two number
-            inputs; this is that field, so the two places a parent states an age
-            now agree, and an exact birthday is an OPTIONAL disclosure rather
-            than something inferred from a slider. */}
-        <div className="space-y-1.5 sm:w-[190px]" data-testid="child-age-field">
-          <label className="text-xs font-bold flex items-center gap-1" style={{ color: "var(--arbor-muted)" }}>
-            {t("ob.ageMonths.label")}
-            <span className="font-extrabold" style={{ color: "var(--arbor-green-ink)" }}>{ageDisplayLabel}</span>
-          </label>
-
-          <div className="grid grid-cols-2 gap-2">
-            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-              {t("ob.ageMonths.years")}
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={18}
-                value={ageYears}
-                onChange={(e) => handleYearsChange(clampInt(e.target.value, 0, 18))}
-                className="w-full rounded-xl px-3 py-2.5 min-h-[44px] focus:outline-none"
-                style={inputStyle}
-                aria-label={t("ob.ageMonths.years")}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: isUnder3 ? "var(--arbor-muted)" : "var(--arbor-faint)" }}>
-              {t("ob.ageMonths.months")}
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={11}
-                disabled={!isUnder3}
-                value={ageMonthsPart}
-                onChange={(e) => setAgeMonthsPart(clampInt(e.target.value, 0, 11))}
-                className="w-full rounded-xl px-3 py-2.5 min-h-[44px] focus:outline-none disabled:opacity-50"
-                style={inputStyle}
-                aria-label={t("ob.ageMonths.months")}
-              />
-            </label>
-          </div>
-
-          {/* Optional, never required: a parent who wants the exact date can
-              give it, and nobody is asked for a child's birthday to proceed. */}
-          {!showBirthday ? (
-            <button type="button" onClick={() => setShowBirthday(true)} className="text-[11px] font-bold" style={{ color: "var(--arbor-green-ink)", minHeight: 44 }}>
-              {t("elev.ob.birthday.add")}
-            </button>
-          ) : (
-            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
-              {t("elev.ob.birthday.label")}
-              <input
-                type="date"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                data-testid="ob-birthdate"
-                className="w-full rounded-xl px-3 py-2.5 min-h-[44px] focus:outline-none"
-                style={inputStyle}
-              />
-            </label>
-          )}
-        </div>
-      </div>
-
-      {/* Languages (optional) */}
-      {!showLangs ? (
-        <button type="button" onClick={() => setShowLangs(true)} className="inline-flex min-h-11 w-full items-center text-start text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-          {t("ob.addLangs")}
-        </button>
-      ) : (
-        <div className="space-y-2">
-          <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("ob.langsAtHome")}</label>
-          <div className="flex flex-wrap gap-2">
-            {LANGUAGES.map((l) => (
-              <button
-                key={l}
-                type="button"
-                onClick={() => toggleLang(l)}
-                className="min-h-11 px-3 py-1.5 rounded-xl text-xs font-bold transition"
-                style={
-                  languages.includes(l)
-                    ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 40%, transparent)" }
-                    : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
-                }
-              >
-                {t("ob.lang." + l.toLowerCase())}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Consent block */}
-      <div
-        className="space-y-2.5 rounded-2xl p-3.5 transition-shadow"
-        style={{
-          background: "var(--arbor-green-soft)",
-          border: missing === "consent" ? "1px solid var(--arbor-clay)" : "1px solid color-mix(in srgb, var(--arbor-green-ink) 30%, transparent)",
-          boxShadow: missing === "consent" ? "0 0 0 3px rgba(224,122,95,0.18)" : "none",
-        }}
-      >
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>
-          <Icon name="verified_user" size={14} /> {t("ob.consent.heading")}
-        </span>
-        <label className="flex items-start gap-2.5 cursor-pointer">
-          <input
-            type="checkbox"
-            ref={consentRef}
-            checked={controllerConsent}
-            onChange={(e) => {
-              setControllerConsent(e.target.checked);
-              if (missing === "consent" && e.target.checked) setMissing(null);
-            }}
-            aria-invalid={missing === "consent"}
-            className="mt-0.5 flex-shrink-0"
-            /* MOB-11: the control that records controller consent for a child's
-               data measured 13x18 on a phone. 24px is the floor for a control
-               this consequential, and the label reads at 14px beside it. */
-            style={{ accentColor: "var(--arbor-green-ink)", width: 24, height: 24, minWidth: 24, minHeight: 24 }}
-          />
-          <span className="text-[14px] leading-snug" style={{ color: "var(--arbor-ink)" }}>{t("ob.consent.controller")}</span>
-        </label>
-        {/* MOB-01: a parent giving controller consent for child data can read
-            what they are consenting to — Privacy · Terms · Support, in-app. */}
-        <LegalLinks />
-      </div>
-
-      <button
-        type="button"
-        onClick={handleContinue}
-        disabled={creating}
-        aria-busy={creating}
-        className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
-        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
-      >
-        {creating && <Icon name="refresh" size={16} className="animate-spin" />}
-        {creating ? t("ob.settingUp") : t("ob.step.continue")}
-      </button>
-    </div>
-  );
-}
-
-// ── Step 3 — Focus domain picker ───────────────────────────────────────────
-
-/** Exported for the guard test, as StepReady is (MOB-12 precedent). */
-export function StepDomains({
-  selectedDomains,
-  setSelectedDomains,
-  onNext,
-  onSkip,
-}: {
-  selectedDomains: string[];
-  setSelectedDomains: (v: string[]) => void;
-  onNext: () => void;
-  onSkip: () => void;
+export function StepChild({ state, onEdit, onNext }: {
+  state: FirstRunState; onEdit: FirstRunController["edit"]; onNext: () => void;
 }) {
   const { t } = useLanguage();
-
-  const toggle = (id: string) =>
-    setSelectedDomains(
-      selectedDomains.includes(id)
-        ? selectedDomains.filter((d) => d !== id)
-        : [...selectedDomains, id],
-    );
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-black tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-          {t("ob.step.domains.title")}
-        </h2>
-        <p className="text-sm mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-          {t("ob.step.domains.subtitle")}
-        </p>
-        <p className="text-xs mt-2 font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-          {t("ob.step.domains.multiHint")}
-        </p>
-      </div>
-
-      {/* 7 domain tiles — multi-select; no score/status/warning/red styling */}
-      <div className="grid grid-cols-1 gap-2">
-        {DOMAINS.map((d) => {
-          const on = selectedDomains.includes(d.id);
-          return (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => toggle(d.id)}
-              className="flex items-start gap-3 px-4 py-3 rounded-2xl text-start transition active:scale-[0.99]"
-              style={
-                on
-                  ? { background: "var(--arbor-green-soft)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 40%, transparent)" }
-                  : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }
-              }
-              aria-pressed={on}
-            >
-              <span
-                className="mt-0.5 flex-shrink-0"
-                style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
-              >
-                {d.icon}
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-sm font-extrabold" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>
-                  {t(d.nameKey)}
-                </span>
-                <span className="block text-xs leading-snug mt-0.5" style={{ color: "var(--arbor-muted)" }}>
-                  {t(d.subKey)}
-                </span>
-              </span>
-              {on && (
-                <span className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center self-center" style={{ background: "var(--arbor-green-ink)" }}>
-                  <svg viewBox="0 0 10 8" width="10" height="8" fill="none">
-                    <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Footer reassurance — VERBATIM copy from clearance */}
-      <p className="text-[11px] text-center" style={{ color: "var(--arbor-muted)" }}>
-        {t("ob.step.domains.footer")}
-      </p>
-
-      {/* OBJ-ONB-01 · sticky footer.
-          Seven tiles push Continue to y960 and Skip to y1020 at 390 × 844: both
-          ways out of the step sat below the fold, on the last screen before a
-          parent reaches the product. The pair now rides the bottom of the step
-          container, so scrolling the tiles never hides the exit. The reassurance
-          line above scrolls with the tiles — it is content, not an exit.
-
-          Anti-trap (kept): continue is never disabled. With zero picks it takes
-          the skip path (all areas stay in view), matching the "choose as many as
-          you like" copy instead of contradicting it with a dead button. */}
-      <div
-        className="sticky bottom-0 -mx-1 px-1 pt-3 pb-2 space-y-2"
-        data-testid="onboarding-domains-footer"
-        style={{ background: "var(--arbor-paper-elevated)", borderTop: "1px solid var(--arbor-rule)" }}
-      >
-        <button
-          type="button"
-          onClick={selectedDomains.length === 0 ? onSkip : onNext}
-          className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98]"
-          style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)", minHeight: 44 }}
-        >
-          {t("ob.step.continue")}
-        </button>
-
-        <button
-          type="button"
-          onClick={onSkip}
-          className="w-full text-xs font-bold py-2"
-          style={{ color: "var(--arbor-muted)", minHeight: 44 }}
-        >
-          {t("ob.step.domains.skip")}
-        </button>
-      </div>
-    </div>
-  );
+  const max = isoDateOf().slice(0, 7);
+  return <section className="first-run-step" data-testid="onboarding-about">
+    <h1>{t("ob.first.about")}</h1>
+    <label className="first-run-field">{t("ob.name")}<input autoFocus autoComplete="off" value={state.name} maxLength={80}
+      onChange={e => onEdit({ name: e.target.value })} disabled={state.busy} required /></label>
+    <label className="first-run-field">{t("ob.first.birthMonth")}<input type="month" value={state.birthMonth} max={max}
+      readOnly={!!state.exactBirthDate} onChange={e => onEdit({ birthMonth: e.target.value })} disabled={state.busy} required data-testid="onboarding-birth-month" /></label>
+    <p className="first-run-hint">{t("ob.first.birthHint")}</p>
+    <fieldset disabled={state.busy}><legend>{t("ob.first.languages")}</legend><div className="first-run-languages">
+      {LANGUAGES.map(language => <button type="button" key={language} data-language={language} aria-pressed={state.languages.includes(language)}
+        onClick={() => onEdit({ languages: state.languages.includes(language) ? state.languages.filter(value => value !== language) : [...state.languages, language] })}>
+        {state.languages.includes(language) && <span data-selection-check="" aria-hidden="true"><Icon name="check" size={16} /></span>}
+        <span>{language === "Other" ? t("ob.lang.other") : languageName(language, t)}</span>
+      </button>)}
+    </div></fieldset>
+    <div className="first-run-consent"><label><input type="checkbox" checked={state.consent} disabled={state.busy}
+      onChange={e => onEdit({ consent: e.target.checked })} /><span>{t("ob.consent.controller")}</span></label><LegalLinks /></div>
+    <div className="first-run-footer"><button type="button" className="first-run-primary" onClick={onNext} disabled={state.busy || !validAbout(state)} aria-busy={state.busy}>
+      {state.busy ? t("ob.settingUp") : t("ob.step.continue")}
+    </button></div>
+  </section>;
 }
 
-// ── First-run promise card (masterplan 1.6; mockup Row-2 #2, de-jargoned) ──
-// The FINAL card of the Ready step — the one screenful a parent sees ONCE at
-// the end of setup, before their first Today: the one-sentence promise, the
-// three rhythms (daily / weekly / over months), and the data-lock line.
-// Strings live in i18nElevation/promise.ts (elev.promise.*) — de-jargoned per
-// masterplan 1.6: the promise says what Arbor does for the parent, never how.
-
-function PromiseCard({ name }: { name: string }) {
-  const { uiLang } = useLanguage();
-  const heMode = uiLang === "he";
-  const p = (key: string) => promiseText(key, heMode, { name });
-
-  // track("promise_shown") exactly once per Ready-step mount (StrictMode's
-  // double-invoke of effects is guarded by the ref).
-  const tracked = useRef(false);
-  useEffect(() => {
-    if (tracked.current) return;
-    tracked.current = true;
-    track("promise_shown");
-  }, []);
-
-  const rhythms = [
-    { icon: <Icon name="wb_sunny" size={16} />, label: p("elev.promise.daily.label"), text: p("elev.promise.daily") },
-    { icon: <Icon name="calendar_month" size={16} />, label: p("elev.promise.weekly.label"), text: p("elev.promise.weekly") },
-    { icon: <Icon name="menu_book" size={16} />, label: p("elev.promise.months.label"), text: p("elev.promise.months") },
-  ];
-
-  return (
-    <div
-      data-testid="onboarding-promise-card"
-      className="rounded-2xl p-4 space-y-3"
-      style={{ background: "var(--arbor-green-soft)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 30%, transparent)" }}
-    >
-      <p className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>
-        {p("elev.promise.eyebrow")}
-      </p>
-      <p className="text-sm font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-        {p("elev.promise.headline")}
-      </p>
-
-      <div className="space-y-2">
-        {rhythms.map((r) => (
-          <div key={r.label} className="flex items-start gap-2.5">
-            <span className="mt-0.5 flex-shrink-0" style={{ color: "var(--arbor-green-ink)" }}>{r.icon}</span>
-            <span className="min-w-0 text-[12px] leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-              <span className="font-extrabold">{r.label}</span>
-              <span style={{ color: "var(--arbor-muted)" }}> — {r.text}</span>
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Data-lock line — ships verbatim from the mockup (green lock). The
-          line opens with an <Icon> ligature (Latin text), so its direction
-          comes from the locale, never dir="auto" (bidiIconLead guard). */}
-      <p
-        className="flex items-start gap-2 border-t pt-2.5 text-[11.5px] font-bold leading-snug"
-        dir={heMode ? "rtl" : "ltr"}
-        style={{ borderColor: "color-mix(in srgb, var(--arbor-green-ink) 25%, transparent)", color: "var(--arbor-green-ink)" }}
-      >
-        <Icon name="verified_user" size={14} className="mt-0.5 flex-shrink-0" />
-        <span className="min-w-0">{p("elev.promise.lock")}</span>
-      </p>
-    </div>
-  );
-}
-
-// ── Step 4 — Ready ─────────────────────────────────────────────────────────
-
-export function StepReady({
-  name,
-  ageYears,
-  ageMonthsPart,
-  selectedDomains,
-  saving,
-  onSubmit,
-  onReplay,
-  showReplay = false,
-}: {
-  name: string;
-  ageYears: number;
-  ageMonthsPart: number;
-  selectedDomains: string[];
-  saving: boolean;
-  onSubmit: () => void;
-  /** Triggers a non-persisting replay of the full flow from Step 1. */
-  onReplay: () => void;
-  /** MOB-12: the replay is a QA affordance — DEV builds / admins only. A
-   *  parent's real setup screen has exactly ONE button (Enter Arbor). */
-  showReplay?: boolean;
+export function StepDomains({ state, onWorry, onNext }: {
+  state: FirstRunState; onWorry: FirstRunController["worry"]; onNext: () => void;
 }) {
-  const { t } = useLanguage();
-  const totalAgeMonths = ageYears * 12 + ageMonthsPart;
-
-  const ageLabel =
-    totalAgeMonths === 0
-      ? "newborn"
-      : ageString(totalAgeMonths);
-
-  const domainLabels = selectedDomains
-    .map((id) => {
-      const d = DOMAINS.find((x) => x.id === id);
-      return d ? t(d.nameKey) : id;
-    })
-    .join(", ");
-
-  const row = (label: string, value: string) => (
-    <div key={label} className="flex items-start justify-between gap-4 py-2" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
-      <span className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{label}</span>
-      <span className="text-xs font-extrabold text-end" style={{ color: "var(--arbor-ink)" }}>{value}</span>
+  const { t, uiLang } = useLanguage();
+  const lang = uiLang === "he" ? "he" : "en";
+  const guides = availableHardMomentCards({ ageMonths: firstRunAgeMonths(state), locale: lang });
+  return <section className="first-run-step" data-testid="onboarding-worry">
+    <h1>{t("ob.first.worry", { name: state.name.trim() })}</h1>
+    <div className="first-run-choices" role="group" aria-label={t("ob.first.worry", { name: state.name.trim() })}>
+      {ONBOARDING_CHOICES.map(choice => <button type="button" key={choice} data-choice={choice} disabled={state.busy}
+        aria-pressed={state.worry.choice === choice} onClick={() => onWorry({ choice, hardMomentId: "", quote: "" })}>
+        <span data-selection-check={state.worry.choice === choice ? "" : undefined} aria-hidden="true"><Icon name={state.worry.choice === choice ? "check" : choice === "hard-moment" ? "volunteer_activism" : choice === "nothing" ? "wb_sunny" : DOMAIN_ICONS[choice]} size={20} /></span>
+        <span>{choiceName(choice, lang)}</span>
+      </button>)}
     </div>
-  );
-
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-col items-center text-center space-y-2">
-        <ArborMark />
-        <h2 className="text-xl font-black tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-          {t("ob.step.ready.title", { name })}
-        </h2>
-        <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("ob.step.ready.subtitle")}</p>
-      </div>
-
-      <div className="rounded-2xl p-4 space-y-0" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-        {row(t("ob.step.ready.labelName"), name)}
-        {row(t("ob.step.ready.labelAge"), ageLabel)}
-        {row(
-          t("ob.step.ready.labelDomains"),
-          selectedDomains.length > 0 ? domainLabels : t("ob.step.ready.noDomains"),
-        )}
-      </div>
-
-      {/* Masterplan 1.6 — the first-run promise, the FINAL card before the
-          submit CTA. Additive only: steps, summary rows, and submit behavior
-          above/below are unchanged. */}
-      <PromiseCard name={name} />
-
-      <button
-        type="button"
-        onClick={onSubmit}
-        disabled={saving}
-        className="w-full py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-        style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
-      >
-        {saving && <Icon name="refresh" size={16} className="animate-spin" />}
-        {t("ob.step.ready.cta")}
-      </button>
-
-      {/* AP-049 AC-1: re-launchable demo entry point — MOB-12: gated to DEV /
-          admin (the `?onboarding=1` dev preview in App.tsx already covers QA). */}
-      {showReplay && (
-        <button
-          type="button"
-          onClick={onReplay}
-          className="w-full text-xs font-bold py-2 flex items-center justify-center gap-1.5"
-          style={{ color: "var(--arbor-muted)", minHeight: 44 }}
-          aria-label={t("ob.demo.relaunch")}
-        >
-          <Icon name="refresh" size={14} />
-          {t("ob.demo.relaunch")}
-        </button>
-      )}
-    </div>
-  );
+    <label className="first-run-field">{t("ob.first.optional")}<textarea rows={2} maxLength={240} value={state.worry.words} disabled={state.busy}
+      onChange={e => onWorry({ words: e.target.value })} /></label>
+    {screenForImmediateEscalation({ message: state.worry.words, childQuote: state.worry.quote }) && <UrgentSupport />}
+    {state.worry.choice === "hard-moment" && guides.length > 0 && <label className="first-run-field">{t("ob.first.pickMoment")}
+      <select value={state.worry.hardMomentId} onChange={e => onWorry({ hardMomentId: e.target.value })} disabled={state.busy}>
+        <option value="">{t("ob.first.pickMoment")}</option>{guides.map(card => <option key={card.id} value={card.id}>{locText(card.title, lang)}</option>)}
+      </select>
+    </label>}
+    <div className="first-run-footer"><button type="button" className="first-run-primary" onClick={onNext} disabled={state.busy || (state.worry.choice === "hard-moment" && guides.length > 0 && !state.worry.hardMomentId)} aria-busy={state.busy}>
+      {state.busy ? t("ob.settingUp") : t("ob.step.continue")}
+    </button></div>
+  </section>;
 }
 
-// ── Root component ─────────────────────────────────────────────────────────
+export function StepReady({ state, card, onWorry, onSubmit, ready }: {
+  state: FirstRunState; card: FirstRunCard; onWorry: FirstRunController["worry"]; onSubmit: () => void; ready: boolean;
+}) {
+  const { t, uiLang } = useLanguage();
+  const locale: "en" | "he" = uiLang === "he" ? "he" : "en";
+  const context = { ageMonths: firstRunAgeMonths(state), locale };
+  const pilot = card.guide && hardMomentPublication(card.guide, context) === "editorial-pilot";
+  return <section className="first-run-step" data-testid="onboarding-card">
+    <p className="first-run-hint">{t("ob.first.card")}</p><h1>{card.title}</h1>
+    <div className="first-run-authored-card">
+      {card.urgent ? <div role="alert" className="flex flex-col gap-3.5">
+        <p className="first-run-notice" dir="auto">{card.notice}</p>
+        <UrgentSupport showInstructions={false} />
+      </div> : <p className="first-run-notice" dir="auto">{card.notice}</p>}
+      {card.guide && <><p className="first-run-say" dir="auto">{locText(renderSayThis(card.guide, state.name.trim()), locale)}</p>
+        {pilot && <p className="first-run-hint">{hardMomentPilotText(locale).status}: {hardMomentPilotText(locale).explanation}</p>}
+        <p className="first-run-hint" data-testid="onboarding-escalation">{escalationText(card.guide, locale)}</p>
+        <details><summary>{t("ob.first.details")}</summary><HardMomentGuideContent card={card.guide} context={context} childName={state.name.trim()} t={t} /></details>
+      </>}
+      {state.worry.choice === "talking" && <><label className="first-run-field">{t("ob.first.quote")}<input value={state.worry.quote} maxLength={160} onChange={e => onWorry({ quote: e.target.value })} disabled={state.busy} /></label>
+        {!card.urgent && (card.sayBack ? <div className="first-run-say"><p>{card.sayBack.heading}</p><p dir="auto">{card.sayBack.line}</p></div> : <p className="first-run-hint">{t("ob.first.whyQuote")}</p>)}
+      </>}
+    </div>
+    <div className="first-run-footer"><button type="button" className="first-run-primary" onClick={onSubmit} disabled={state.busy || !ready} aria-busy={state.busy}>
+      {state.busy ? t("ob.settingUp") : card.urgent ? t("ob.step.continue") : card.observation ? t("ob.first.notice") : t("ob.first.try")}
+    </button></div>
+  </section>;
+}
 
-/** AP-049 — 4-step structured onboarding. Reskins the original single-screen stub
- *  into a stepped flow with progress dots, back/continue/skip, and a demo mode.
- *  All child data writes go through ProfileContext.addChild (no schema change).
- *  B-SHELL-09: four steps (welcome · child · domains · ready); the avatar step
- *  was removed — the wow overlay asks for the hero once, for every new child. */
+/** Signed-in → about → one worry → authored card → the accepted step in Now.
+ * No model request, coach seed, comic prewarm or journey mutation belongs here. */
 export default function OnboardingFlow() {
-  const { addChild, updateChild, profiles } = useProfile();
-  const { toast } = useToast();
-  const { t, aiLang, uiLang } = useLanguage();
-  const isRtl = uiLang === "he";
-  // MOB-12: the "Relaunch onboarding demo" replay is a QA affordance, never a
-  // parent-facing control — DEV builds or admin accounts only.
-  const { entitlement } = useEntitlement();
-  const showReplay = import.meta.env.DEV || entitlement.isAdmin === true;
-
-  // P0.4 — resume: if a profile was created but onboarding never finished
-  // (onboardingComplete === false), pick up where the parent left off instead of
-  // creating a duplicate child. Computed once at mount (the gate only renders this
-  // flow when profiles is loaded).
-  const resumeChild = findIncompleteOnboardingChild(profiles);
-  // Through the one age seam, so a resumed profile shows the age it is today
-  // (birthDate first, then the anchored ageMonths), not the raw stored number.
-  const resumeMonths = resumeChild ? (ageMonthsFromProfile(resumeChild) ?? 0) : 0;
-
-  // Navigation — resume past the create step (Step 3) when continuing an in-flight setup.
-  const [step, setStep] = useState<Step>(resumeChild ? 3 : 1);
-
-  /**
-   * REPLAY / DEMO MODE (AP-049 AC-1):
-   * When replaying=true the flow is a preview-only pass. No profile writes,
-   * no consent calls, and no avatar path exists in the flow (B-SHELL-09). The real first-run
-   * path (replaying=false, profile created once in handleStep2Next) is unchanged.
-   */
-  const [replaying, setReplaying] = useState(false);
-
-  // Step 2 state (name + age + consent) — keep months-precise picker exactly.
-  // On resume, hydrate from the in-flight profile: the parent already entered these
-  // (and gave consent — the profile exists), so stepping back to Step 2 must show
-  // their data, not blank fields behind a blocked continue.
-  const [name, setName] = useState(resumeChild?.name ?? "");
-  const [ageYears, setAgeYears] = useState(resumeChild ? Math.floor(resumeMonths / 12) : 0);
-  const [ageMonthsPart, setAgeMonthsPart] = useState(resumeChild ? resumeMonths % 12 : 0);
-  // MOB-11: EMPTY unless the parent chooses to give an exact date. Onboarding
-  // never derives one from an age.
-  const [birthDate, setBirthDate] = useState<string>(resumeChild?.birthDate ?? "");
-  const [languages, setLanguages] = useState<string[]>(
-    resumeChild?.languages?.length ? resumeChild.languages : ["English"],
-  );
-  const [controllerConsent, setControllerConsent] = useState(resumeChild !== null);
-  const [creating, setCreating] = useState(false);
-
-  // Step 3 state (domain multi-select)
-  const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
-
-  // childId is available after addChild (step 2 creates the profile).
-  // On resume, preset it to the in-flight child so we never create a duplicate.
-  const [createdChildId, setCreatedChildId] = useState<string | null>(resumeChild?.id ?? null);
-
-  // MOB-22 — time-to-wow. The domain step is ~30 unhurried seconds with an idle
-  // network, and the very next thing this account sees is the wow overlay
-  // waiting on an image generation. Start that exact page now (lib/firstComic
-  // owns the request, so the two sides cannot drift) and the overlay takes the
-  // finished one. GATES: the PLAIN variant only — no avatar, therefore no photo
-  // and no face_processing consent involved, and the prewarm key records that,
-  // so a parent who creates an avatar in the wow gets a fresh generation instead.
-  // Never in replay mode (a demo pass writes nothing and must cost nothing) and
-  // never before a real child exists. Fire-and-forget: a failure is a miss.
-  const prewarmStarted = useRef(false);
-  useEffect(() => {
-    if (step !== 3 || replaying || !createdChildId || prewarmStarted.current) return;
-    const first = heroFirstName(name);
-    if (!first.trim()) return;
-    prewarmStarted.current = true;
-    prewarmFirstComic({ name: first, he: aiLang === "he" });
-  }, [step, replaying, createdChildId, name, aiLang]);
-
-  // Step 4 (Ready) state
-  const [saving, setSaving] = useState(false);
-
-  // Derived
-  const totalAgeMonths = ageYears * 12 + ageMonthsPart;
-  const ageLegacyYears = Math.floor(totalAgeMonths / 12);
-
-  // ── Step transitions ────────────────────────────────────────────────────
-
-  const goNext = () => setStep((s) => Math.min(s + 1, 4) as Step);
-  const goBack = () => setStep((s) => Math.max(s - 1, 1) as Step);
-
-  // After step 2 confirmed: create the profile so later steps have a childId.
-  const handleStep2Next = async () => {
-    if (!name.trim() || !controllerConsent || creating) return;
-
-    // DEMO-MODE GUARD: in replay mode skip all profile writes — just advance.
-    if (replaying) {
-      goNext();
-      return;
-    }
-
-    // RESUME / RE-ENTRY GUARD (P0.4): the profile already exists (resumed in-flight
-    // setup, or we stepped back to Step 2). Never create a second child — just advance.
-    if (createdChildId) {
-      goNext();
-      return;
-    }
-
-    // Create the child profile now so the remaining steps have a real childId.
-    // `creating` holds the button in a visible busy state for the duration of the
-    // write and blocks the re-tap that would otherwise create a duplicate child.
-    setCreating(true);
-    try {
-      const child = await addChild({
-        name: name.trim(),
-        age: ageLegacyYears,
-        // MOB-11: a birthDate was DERIVED from the months value right here, so
-        // "3 years" was written as a day-01 birthday nobody entered — and
-        // ageMonthsFromProfile PREFERS birthDate, so that invented date, not the
-        // months the parent actually stated, is what drove bands, screening
-        // windows and monitoring from then on. The field is now written only
-        // when the parent filled the optional date input; otherwise the profile
-        // carries the months it was given and nothing more.
-        ...(birthDate ? { birthDate } : {}),
-        ageMonths: totalAgeMonths,
-        // ...and the date that months value is true on, so a profile without a
-        // DOB still ages. Without the anchor, dropping the invented birthDate
-        // froze the child at the age they were entered at.
-        ageMonthsAsOf: isoDateOf(),
-        languages: languages.length ? languages : ["English"],
-        schoolContext: "",
-        strengths: [],
-        challenges: [],
-        // P0.4: mark setup as in-flight so the gate keeps the flow mounted through
-        // every step and resumes (not restarts) if interrupted. Flipped true at submit.
-        onboardingComplete: false,
-      });
-      setCreatedChildId(child.id);
-      goNext();
-    } catch {
-      toast(t("ob.fail"), "error");
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  // ── Start a non-persisting replay of the flow from Step 1 ─────────────────
-
-  const startReplay = () => {
-    setReplaying(true);
-    setStep(1);
-  };
-
-  // ── Final submit (step 4, Ready) ───────────────────────────────────────────────
-
-  const submit = async () => {
-    // DEMO-MODE GUARD (AP-049 AC-1): the replay pass itself (steps 1–3) makes no
-    // writes. The final CTA is the demo's exit — it ends replay mode and falls
-    // through to the REAL submit for the already-created profile. (Previously this
-    // early-returned with replaying never reset, leaving the parent permanently
-    // stuck on the Ready step with a dead button.)
-    if (replaying) setReplaying(false);
-
-    if (!createdChildId || saving) return;
-    setSaving(true);
-    try {
-      // Build challenges from selected domains (maps domain ids to display names).
-      const challenges = selectedDomains.map((id) => {
-        const d = DOMAINS.find((x) => x.id === id);
-        return d ? t(d.nameKey) : id;
-      });
-
-      // Patch the existing profile with domain choices, and
-      // P0.4: stamp explicit completion. This patch always has the two completion
-      // keys, so the write always runs — flipping the gate from "in-flight" to done.
-      const patch: Record<string, unknown> = {
-        onboardingComplete: true,
-        onboardingCompletedAt: new Date().toISOString(),
+  const { profiles, addChild, updateChild, setActiveChild, isCurrentSession, captureOnboardingLifetime } = useProfile();
+  const { user } = useAuth();
+  const { t, uiLang } = useLanguage();
+  const owner = user?.uid;
+  const controllerRef = useRef<FirstRunController | null>(null);
+  const originalOwner = useRef(owner);
+  const sessionKey = useRef({}).current;
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  if (!controllerRef.current) controllerRef.current = new FirstRunController(findIncompleteOnboardingChild(profiles), {
+    addChild, updateChild, lang: () => uiLang === "he" ? "he" : "en", accept: async () => { throw new Error("Collection not ready"); },
+  });
+  const controller = controllerRef.current;
+  const state = useSyncExternalStore(controller.subscribe, controller.snapshot, controller.snapshot);
+  const actions = useChildCollection<ActionLoopEntry>(state.childId ?? "", "actionLoops");
+  const collection = useRef({ actions, childId: state.childId, owner });
+  collection.current = { actions, childId: state.childId, owner };
+  const accepted = useRef<ActionLoopEntry | null>(null);
+  controller.services = { sessionKey, captureLifetime: captureOnboardingLifetime, isCurrent: () => mounted.current && collection.current.owner === originalOwner.current && isCurrentSession(), addChild, updateChild, lang: () => uiLang === "he" ? "he" : "en",
+    accept: async (childId, card, acceptanceKey, operationCurrent) => {
+      const current = collection.current;
+      if (!mounted.current || current.owner !== originalOwner.current || current.childId !== childId || !current.actions.loaded || current.actions.error) throw new Error("Child record is not ready");
+      const prior = accepted.current?.acceptanceKey === acceptanceKey && !current.actions.items.some(item => item.id === accepted.current!.id) ? [accepted.current] : [];
+      const assertCurrent = () => {
+        if (operationCurrent?.() === false || !mounted.current || !isCurrentSession() || collection.current.owner !== originalOwner.current || collection.current.childId !== childId) throw new Error("The profile session changed");
       };
-      if (challenges.length) patch.challenges = challenges;
-      // B-SHELL-09: no avatar is written here any more — the wow overlay's
-      // first card creates the hero (the avatar creator + the canonical patch).
-
-      await updateChild(createdChildId, patch as Parameters<typeof updateChild>[1]);
-
-      // W6.1: a REAL first-run just completed → queue the wow (E0 hero-comic
-      // overlay) to fire exactly once when Shell mounts. Submit is inherently
-      // the real path — the demo replay's exit CTA falls through to this same
-      // real completion, so no replay guard belongs here.
-      // ENG-22: setup had `wow_onboarding_*` but no completion event for the
-      // real flow, so the install → activated funnel had no middle. Counts and
-      // a boolean only — never the name, the age, or the domain labels.
-      trackOnboardingCompleted({ domainCount: selectedDomains.length, hasAvatar: false });
-      markWowPending();
-
-      // Seed the coach if domains were picked.
-      if (selectedDomains.length > 0) {
-        const firstDomain = DOMAINS.find((d) => d.id === selectedDomains[0]);
-        setCoachSeed(
-          buildOnboardingCoachSeed({
-            aiLang: aiLang === "he" ? "he" : "en",
-            domainNameKey: firstDomain ? firstDomain.nameKey : null,
-            domainFallback: selectedDomains[0],
-            name,
-            totalAgeMonths,
-          }),
-        );
-      }
-
-      toast(t("ob.ready", { name: name.trim() }), "success");
-    } catch {
-      toast(t("ob.fail"), "error");
-      setSaving(false);
-    }
+      const entry = await acceptTodayAction({ childId, items: [...current.actions.items, ...prior],
+        upsert: item => { assertCurrent(); return current.actions.upsert(item, { requireAcknowledgement: true }); }, confirmExisting: true,
+        recommendation: card.recommendation, source: card.source, capacity: "tiny", acceptanceKey, ...(card.observation ? { observation: true as const } : {}) });
+      assertCurrent();
+      accepted.current = entry;
+    },
+    onComplete: () => {
+      if (state.childId) setActiveChild(state.childId);
+      window.location.hash = "#/overview";
+      trackOnboardingCompleted({ domainCount: DOMAIN_IDS.includes(state.worry.choice as typeof DOMAIN_IDS[number]) ? 1 : 0, hasAvatar: false });
+    },
   };
-
-  // ── Shared card wrapper ─────────────────────────────────────────────────
-
-  const canGoBack = step > 1;
-  const reduceMotion = useReducedMotion();
-
-  return (
-    <div className="arbor-app min-h-screen flex items-center justify-center px-4 py-10 antialiased text-sans">
-      <motion.div
-        initial={reduceMotion ? false : { opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="w-full max-w-lg bg-white rounded-3xl p-6 md:p-8 space-y-5"
-        style={{ border: "1px solid var(--arbor-rule)", boxShadow: "0 24px 60px rgba(41,51,63,0.12)" }}
-      >
-        {/* Top bar: back chevron + progress dots */}
-        <div className="flex items-center gap-3">
-          {canGoBack ? (
-            <button
-              type="button"
-              onClick={goBack}
-              // B-SHELL-07: 44×44 (touch-target) and the chevron points to the
-              // reading start — mirrored inline under RTL, as PracticeStudioTab
-              // does, because the rtl: variant is not emitted here.
-              className="touch-target rounded-lg transition flex items-center justify-center"
-              style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
-              aria-label={t("ob.step.back")}
-              data-testid="onboarding-back"
-            >
-              <Icon name="chevron_left" size={16} style={isRtl ? { transform: "scaleX(-1)" } : undefined} />
-            </button>
-          ) : (
-            <div style={{ width: 44 }} />
-          )}
-          <div className="flex-1">
-            <ProgressDots step={step} total={4} />
-          </div>
-          <div style={{ width: 44 }} />
-        </div>
-
-        {/* Step content with an entrance-only slide. Deliberately NO AnimatePresence
-            exit animation: mode="wait" gates the next step's mount on an exit
-            callback that never fires when rAF is throttled (backgrounded tab,
-            webview, low-power modes) — the dots advance but the screen freezes on
-            the old step. Entrance-only keeps the motion without the stuck-vector.
-            The boundary is keyed by step so navigating (Back) out of a crashed
-            step resets it. */}
-        <StepErrorBoundary key={step} retryLabel={t("err.retry")} message={t("ob.fail")}>
-          <motion.div
-            initial={reduceMotion ? false : { opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.22 }}
-          >
-            {step === 1 && <StepWelcome onNext={goNext} />}
-
-            {step === 2 && (
-              <StepChild
-                name={name} setName={setName}
-                ageYears={ageYears} setAgeYears={setAgeYears}
-                ageMonthsPart={ageMonthsPart} setAgeMonthsPart={setAgeMonthsPart}
-                birthDate={birthDate} setBirthDate={setBirthDate}
-                languages={languages} setLanguages={setLanguages}
-                controllerConsent={controllerConsent} setControllerConsent={setControllerConsent}
-                creating={creating}
-                onNext={handleStep2Next}
-              />
-            )}
-
-            {step === 3 && (
-              <StepDomains
-                selectedDomains={selectedDomains}
-                setSelectedDomains={setSelectedDomains}
-                onNext={goNext}
-                onSkip={goNext}
-              />
-            )}
-
-            {step === 4 && (
-              <StepReady
-                name={name.trim()}
-                ageYears={ageYears}
-                ageMonthsPart={ageMonthsPart}
-                selectedDomains={selectedDomains}
-                saving={saving}
-                onSubmit={submit}
-                onReplay={startReplay}
-                showReplay={showReplay}
-              />
-            )}
-          </motion.div>
-        </StepErrorBoundary>
-
-        <p className="text-[11px] text-center" style={{ color: "var(--arbor-muted)" }}>
-          {t("ob.footer")}
-        </p>
-      </motion.div>
+  const card = state.step === 3 ? firstRunCard(state, uiLang === "he" ? "he" : "en") : null;
+  return <main className="arbor-app first-run" dir={uiLang === "he" ? "rtl" : "ltr"}>
+    <div className="first-run-shell"><header className="first-run-header">
+      {state.step > 1 ? <button type="button" className="touch-target" onClick={() => controller.back()} disabled={state.busy} aria-label={t("ob.step.back")} data-testid="onboarding-back"><Icon name="chevron_left" size={20} style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined} /></button> : <ArborMark size={32} />}
+      <div role="progressbar" aria-valuemin={1} aria-valuemax={3} aria-valuenow={state.step} aria-label={t("ob.progress.step", { step: state.step, total: 3 })} className="first-run-progress">
+        {[1, 2, 3].map(step => <span key={step} data-active={step === state.step} />)}
+      </div>
+    </header>
+      {state.step === 1 && <StepChild state={state} onEdit={edit => controller.edit(edit)} onNext={() => void controller.next()} />}
+      {state.step === 2 && <StepDomains state={state} onWorry={worry => controller.worry(worry)} onNext={() => void controller.next()} />}
+      {card && <StepReady state={state} card={card} onWorry={worry => controller.worry(worry)} onSubmit={() => void controller.finish(card)} ready={actions.loaded && !actions.error} />}
+      {state.error && <p role="alert" className="first-run-error">{t("ob.fail")}</p>}
     </div>
-  );
+  </main>;
 }

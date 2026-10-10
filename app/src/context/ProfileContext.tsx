@@ -17,6 +17,9 @@ const LS_PROFILES = "arbor.children";
 const LS_ACTIVE = "arbor.activeChildId";
 
 export type NewChildInput = Omit<ChildProfile, "id">;
+export type ProfileWriteOptions = { isCurrent?: () => boolean; onPersisted?: () => void };
+type FirstCreateReservation = { child: ChildProfile; write: Promise<void>; status: "pending" | "acknowledged" | "rejected"; installed: boolean; adopter: object };
+
 
 type ProfileContextValue = {
   /** All child profiles for the signed-in parent. */
@@ -27,14 +30,17 @@ type ProfileContextValue = {
   /** Signed-in profile reads fail closed; Retry never imports another device-local family. */
   loadError: boolean;
   retryProfiles: () => void;
+  /** Read-only owner lifetime fence for multi-write first-run continuations. */
+  isCurrentSession: () => boolean;
+  captureOnboardingLifetime: (childId: string | null) => () => boolean;
   /** True for a new authenticated account with no children yet. */
   needsOnboarding: boolean;
   setActiveChild: (id: string) => void;
-  addChild: (input: NewChildInput) => Promise<ChildProfile>;
+  addChild: (input: NewChildInput, options?: ProfileWriteOptions) => Promise<ChildProfile>;
   /** Applies the patch locally and remotely. Resolves FALSE when the remote
    *  write failed (M4): the caller raises a parent-visible error rather than
    *  letting a lost save look like a saved one. */
-  updateChild: (id: string, patch: Partial<ChildProfile>) => Promise<boolean>;
+  updateChild: (id: string, patch: Partial<ChildProfile>, options?: ProfileWriteOptions) => Promise<boolean>;
   /** Permanently delete a child and all of their data (GDPR/COPPA). Returns a
    *  provable deletion receipt from the server when available. */
   deleteChild: (id: string) => Promise<DeletionReceipt | null>;
@@ -125,6 +131,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     writeScope.current = { retry: loadVersion, key: writeScopeKey, owner: actualOwner, remote: useFirestore, active: true, changed: false };
   }
   const ownerScope = writeScope.current;
+  // A selection is a lifetime, not only an ID: A→B→A must not revive a save.
+  const selectedChildRef = useRef({ id: activeChildId });
+  if (selectedChildRef.current.id !== activeChildId) selectedChildRef.current = { id: activeChildId };
   useEffect(() => {
     const scope = ownerScope; scope.active = true;
     const unsubscribe = useFirestore && auth ? onAuthStateChanged(auth, current => {
@@ -171,6 +180,22 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     },
     [writeScopeKey, ownerScope]
   );
+
+  const isCurrentSession = useCallback(
+    () => liveProfileScope(ownerScope, writeScope.current, writeScopeKey),
+    [ownerScope, writeScopeKey]
+  );
+
+  const captureOnboardingLifetime = useCallback((childId: string | null) => {
+    const scope = ownerScope, selected = selectedChildRef.current;
+    // A brand-new child selects itself only after persistence. Existing-child
+    // operations retain this exact selection lease through their final write.
+    return () => liveProfileScope(scope, writeScope.current, writeScopeKey)
+      && (childId === null || selectedChildRef.current === selected);
+  }, [ownerScope, writeScopeKey]);
+  // Survives OnboardingFlow close/reopen. It is not a cross-tab transaction.
+  // Never discard an uncertain issued write merely because its UI retired.
+  const firstCreates = useRef(new Map<string, FirstCreateReservation>());
 
   const profilesPath = user ? `users/${user.uid}/children` : "";
   // Load profiles on mount / owner change / explicit retry. Signed-in failure
@@ -225,37 +250,72 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     }
   }, [profiles, activeChildId]);
 
-  const setActiveChild = useCallback((id: string) => setActiveChildId(id), []);
+  const setActiveChild = useCallback((id: string) => {
+    // Retire callbacks before React renders, including two rapid selections.
+    if (selectedChildRef.current.id !== id) selectedChildRef.current = { id };
+    setActiveChildId(id);
+  }, []);
 
   const addChild = useCallback(
-    async (input: NewChildInput): Promise<ChildProfile> => {
-      const scope = ownerScope;
-      const current = () => liveProfileScope(scope, writeScope.current, writeScopeKey);
-      if (!current()) throw new Error("The profile session changed");
-      const newChild: ChildProfile = { ...input, id: `child-${Date.now()}` };
-      if (useFirestore && db) {
-        try {
-          await setDoc(doc(db, profilesPath, newChild.id), newChild);
-        } catch {
-          /* fall through to local state update */
+    async (input: NewChildInput, options?: ProfileWriteOptions): Promise<ChildProfile> => {
+      const scope = ownerScope, selected = selectedChildRef.current;
+      const ownerCurrent = () => liveProfileScope(scope, writeScope.current, writeScopeKey);
+      const callerCurrent = () => ownerCurrent() && options?.isCurrent?.() !== false;
+      const onboarding = input.onboardingComplete === false;
+      let reservation: FirstCreateReservation | undefined;
+      const adopter = {};
+      const current = () => callerCurrent() && (!onboarding || (selectedChildRef.current === selected && reservation?.adopter === adopter));
+      if (!callerCurrent()) throw new Error("The profile session changed");
+      let newChild: ChildProfile;
+      if (onboarding) {
+        reservation = firstCreates.current.get(writeScopeKey);
+        if (!reservation) {
+          reservation = { child: { ...input, id: `child-${Date.now()}` }, write: Promise.resolve(), status: "rejected", installed: false, adopter };
+          firstCreates.current.set(writeScopeKey, reservation);
+        }
+        reservation.adopter = adopter;
+        const reserved = reservation;
+        const issue = (child: ChildProfile) => {
+          reserved.child = child; reserved.status = "pending";
+          reserved.write = useFirestore && db ? setDoc(doc(db, profilesPath, child.id), child) : Promise.resolve();
+          // Observe settlement without installing anything for an obsolete UI.
+          void reserved.write.then(() => { reserved.status = "acknowledged"; }, () => { reserved.status = "rejected"; });
+        };
+        if (reserved.status === "rejected") issue({ ...input, id: reserved.child.id });
+        await reserved.write;
+        if (!current()) throw new Error("The profile session changed");
+        newChild = { ...input, id: reserved.child.id };
+        // A reopened parent may have corrected the form. Persist those exact
+        // reviewed fields on the same reserved child, never a second identity.
+        if (JSON.stringify(newChild) !== JSON.stringify(reserved.child)) {
+          issue(newChild); await reserved.write;
+          if (!current()) throw new Error("The profile session changed");
+        }
+        if (reserved.installed) return newChild;
+      } else {
+        newChild = { ...input, id: `child-${Date.now()}` };
+        if (useFirestore && db) {
+          try { await setDoc(doc(db, profilesPath, newChild.id), newChild); }
+          catch { /* existing add-child paths retain their local fallback */ }
         }
         if (!current()) throw new Error("The profile session changed");
-        // OWN-1: provision the server-side ownership docs right after the
-        // child doc write so the new child's memory/privacy routes work
-        // immediately (fire-and-forget; the load-time backfill is the net).
+      }
+      if (!current()) throw new Error("The profile session changed");
+      if (useFirestore && db) {
+        // Admit provisioning only for the live acknowledged adopter. Once
+        // admitted, the provider owns this child's existing owner-scoped work;
+        // closing its UI must not strand an installed child's ownership.
         void ensureOwnership(newChild);
       }
       if (!current()) throw new Error("The profile session changed");
       let count = 0;
       setProfiles((prev) => {
-        if (!current()) return prev;
-        count = prev.length + 1;
-        return [...prev, newChild];
+        if (!callerCurrent()) return prev;
+        if (reservation) reservation.installed = true;
+        if (prev.some(child => child.id === newChild.id)) return prev;
+        count = prev.length + 1; return [...prev, newChild];
       });
       setActiveChildId(newChild.id);
-      // Activation signal — fired outside the updater so React StrictMode's
-      // double-invoke in dev doesn't double-count. Carry the child's coarse age
-      // band (non-PII) so activation is sliceable by band in the dashboard.
       try { trackProfileCreated(count, bandForAge(newChild.age).id); } catch { /* noop */ }
       return newChild;
     },
@@ -263,9 +323,12 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   );
 
   const updateChild = useCallback(
-    async (id: string, patch: Partial<ChildProfile>): Promise<boolean> => {
+    async (id: string, patch: Partial<ChildProfile>, options?: ProfileWriteOptions): Promise<boolean> => {
       const scope = ownerScope;
-      const current = () => liveProfileScope(scope, writeScope.current, writeScopeKey);
+      const selected = selectedChildRef.current;
+      const onboarding = Object.prototype.hasOwnProperty.call(patch, "onboardingDraft") || patch.onboardingComplete === true;
+      const current = () => liveProfileScope(scope, writeScope.current, writeScopeKey)
+        && (!onboarding || selectedChildRef.current === selected) && options?.isCurrent?.() !== false;
       if (!current()) return false;
       let persisted = true;
       // B-DATA-03: an own `undefined` on a clearable field (birthDate after a
@@ -293,7 +356,18 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         }
       }
       if (!current()) return false;
-      setProfiles((prev) => current() ? prev.map((p) => (p.id === id ? applyLocal(p) : p)) : prev);
+      // B-SHELL-36: keep the setup gate open until completion really persists.
+      if (!persisted && onboarding) return false;
+      if (persisted && patch.onboardingComplete === true && firstCreates.current.get(writeScopeKey)?.child.id === id) {
+        firstCreates.current.delete(writeScopeKey);
+      }
+      if (persisted && options?.onPersisted) {
+        // Finish navigation after acknowledgement but before ProfileGate can
+        // unmount the flow when the completed profile becomes visible.
+        options.onPersisted();
+        setProfiles(prev => liveProfileScope(scope, writeScope.current, writeScopeKey)
+          ? prev.map(p => p.id === id ? applyLocal(p) : p) : prev);
+      } else setProfiles((prev) => current() ? prev.map((p) => (p.id === id ? applyLocal(p) : p)) : prev);
       return persisted;
     },
     [useFirestore, profilesPath, writeScopeKey, ownerScope]
@@ -331,6 +405,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     loading: profileLoading,
     loadError,
     retryProfiles,
+    isCurrentSession,
+    captureOnboardingLifetime,
     needsOnboarding,
     setActiveChild,
     addChild,

@@ -13,6 +13,7 @@ import { ageMonthsFromProfile } from "../../lib/childAge";
 import type { Appointment } from "../../lib/careTrack";
 import {
   appointmentInWindow,
+  pendingActionFollowUp,
   decideOffer,
   dismissOfferIn,
   readOfferLedger,
@@ -81,7 +82,7 @@ export function useCompanionOffer(surface: OfferSurface, opts: { whatChanged?: {
   const decision = decideOffer({
     nowMs: now,
     surface,
-    pendingFollowUp: pending ? { id: pending.id, recommendation: pending.recommendation } : null,
+    pendingFollowUp: pendingActionFollowUp(pending),
     // B-TODAY-18: tomorrow's reason is a coordinator candidate (Today renders
     // it; Ask shows the same one offer per visit).
     tomorrowReason: (() => {

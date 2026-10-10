@@ -10,13 +10,14 @@ export const RELEASE_VIEWPORTS = Object.freeze([
   { id: 'desktop-en', w: 1280, h: 800, lang: 'en' },
   { id: 'desktop-he', w: 1280, h: 800, lang: 'he' },
 ]);
-export const RELEASE_GROUPS = Object.freeze(['base', 'navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry', 'private-export']);
+export const RELEASE_GROUPS = Object.freeze(['base', 'navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry', 'first-run-preview', 'private-export']);
 export const RELEASE_MATRIX = Object.freeze(RELEASE_VIEWPORTS.flatMap((viewport) => [
   { viewport: viewport.id, group: 'base', shard: 0 },
   { viewport: viewport.id, group: 'focused', shard: 0 },
 ]));
 export function releaseMatrix(scope = 'all') {
   if (scope === 'all') return RELEASE_MATRIX;
+  if (scope === 'first-run-preview-only') return RELEASE_VIEWPORTS.map(viewport => ({ viewport: viewport.id, group: 'first-run-preview', shard: 0 }));
   if (scope === 'parent-kid-release') return [...releaseMatrix('kept-search-only'), ...releaseMatrix('kid-entry-only'), ...releaseMatrix('confirmed-actions-release')];
   if (scope === 'kept-search-only') return RELEASE_VIEWPORTS.map(viewport => ({ viewport: viewport.id, group: 'kept-search', shard: 0 }));
   if (scope === 'kept-search-release') return [...releaseMatrix('kept-search-only'), ...releaseMatrix('confirmed-actions-release')];
@@ -73,8 +74,9 @@ export function releaseIdentity(sourceSha, sourceTreeSha) {
 }
 
 /** Built client + existing static server; all provider/auth/data gates stay local. */
-export function releaseEnvironment(sourceSha) {
-  return { ...smallCaptureEnvironment(), NODE_ENV: 'production', GITHUB_SHA: captureRevision(sourceSha) };
+export function releaseEnvironment(sourceSha, group) {
+  // Only this additive scope uses App.tsx's existing DEV-only ?onboarding seam.
+  return { ...smallCaptureEnvironment(), NODE_ENV: group === 'first-run-preview' ? 'development' : 'production', GITHUB_SHA: captureRevision(sourceSha) };
 }
 
 export function expectedSeedMarker(bundle, lang) {

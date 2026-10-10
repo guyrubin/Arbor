@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { todayActionId, type ActionOutcome } from "../../actionLoop/model";
+import { isObservationAction, todayActionId, type ActionOutcome } from "../../actionLoop/model";
 import HeldPlanAsk from "./HeldPlanAsk";
 import {
   readSkippedCarryOvers,
@@ -77,11 +77,11 @@ export default function CarryOverActionAsk({ onSkip }: { onSkip?: () => void } =
             {entry.recommendation}
           </p>
           <p className="mt-1 text-[11.5px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
-            {t("elev.closeloop.carry.ask", { date: when })}
+            {isObservationAction(entry) ? t("ob.first.observation.purpose") : t("elev.closeloop.carry.ask", { date: when })}
           </p>
         </div>
       </div>
-      {entry.source === "hard-moment" ? (
+      {isObservationAction(entry) ? <a href="#/overview" className="inline-flex min-h-11 items-center">{t("ob.first.observation.resume")}</a> : entry.source === "hard-moment" ? (
         /* B-ASKJB-33: a hard-moment step asks "Did you manage to hold the plan calmly?" */
         <div className="mt-3"><HeldPlanAsk row={entry} via="carry" /></div>
       ) : (

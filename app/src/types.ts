@@ -77,6 +77,10 @@ export interface ChildProfile {
    * Append-only: never reorder or remove existing ChildProfile members.
    */
   birthDate?: string;
+  /** Parent-entered YYYY-MM. Never fabricated into an exact birthday. */
+  birthMonth?: string;
+  /** Interrupted first-run draft on the existing exportable/erasable child record. */
+  onboardingDraft?: import("./lib/onboardingFirstRun").OnboardingDraft;
   ageMonths?: number;
   /**
    * MOB-11 follow-through — the anchor date `ageMonths` was true on (ISO
