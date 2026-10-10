@@ -89,6 +89,8 @@ describe("B-ASKJB-14 — filter predicates (pure)", () => {
       const he = behaviorTypeLabel(type, (k: string) => translate("he", k));
       expect(he).not.toMatch(/[A-Za-z]/);
     }
+    // A free label that names an Object.prototype member stays the parent's label.
+    for (const type of ["constructor", "toString"]) expect(behaviorTypeLabel(type, (k: string) => translate("he", k))).toBe(type);
   });
 
   it("Hard moments = incident types only; Kept from Arbor = provenance ids", () => {

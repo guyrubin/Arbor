@@ -490,7 +490,9 @@ function useArborState() {
       };
       // Lifetime checks belong here, never in the persisted collection payload.
       const { isCurrent: _isCurrent, ...writeOptions } = options ?? {};
-      await persistAcceptedTodayAction({ childId: childProfile.id, items: actionLoop,
+      // The ledger as stored (urgent first-run rows included): the accept seam
+      // supersedes or skips past a hidden row instead of reusing its id.
+      await persistAcceptedTodayAction({ childId: childProfile.id, items: actionLoopCol.items,
         upsert: item => {
           assertCurrent();
           return actionLoopCol.upsert(item, options ? writeOptions : undefined);
