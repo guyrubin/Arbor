@@ -87,6 +87,10 @@ const syntheticProfileFor = (suite: EvalSuite, scenario: EvalScenario) => ({
   ...SYNTHETIC_PROFILE,
   id: "eval-" + suite.suite + "-" + scenario.id,
   ...(typeof scenario.input?.gender === "string" ? { gender: scenario.input.gender } : {}),
+  // B-SHELL-39 (coach_chat 1.9.0): the parent's stated wishes ride the child
+  // profile the route receives (and the judge is shown the same profile).
+  ...(Array.isArray(scenario.input?.focusAreas) ? { focusAreas: scenario.input.focusAreas } : {}),
+  ...(Array.isArray(scenario.input?.parentPreferences) ? { parentPreferences: scenario.input.parentPreferences } : {}),
 });
 
 const modelRouteFor = (route: string): ModelRoute =>
@@ -257,6 +261,25 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role: input.role ?? "model", text, language: locale }),
+    });
+    return `HTTP ${res.status}\n${await res.text()}`;
+  }
+
+  // B-SHELL-39 (describe-child-v1): "Tell Arbor about {name}". The body is
+  // what the describe surface posts: the parent's words, the scenario's own
+  // child (two-children scenarios name theirs) or the synthetic one, the
+  // language and the kept items. The transcript is the raw status + JSON so
+  // the judge sees exactly the readback (or the 409 contract) a parent would.
+  if (route === "/api/describe-child") {
+    const res = await fetch(`${baseUrl}/api/describe-child`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: String(input.text ?? ""),
+        childProfile: input.childProfile && typeof input.childProfile === "object" ? input.childProfile : scenarioProfile,
+        language: locale,
+        keptItems: Array.isArray(input.keptItems) ? input.keptItems : [],
+      }),
     });
     return `HTTP ${res.status}\n${await res.text()}`;
   }

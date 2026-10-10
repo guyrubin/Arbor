@@ -102,6 +102,7 @@ describe("Wave L i18n modules — register rules", () => {
     for (const f of [
       "name", "age", "ageLabel", "languages", "schoolContext", "strengths",
       "challenges", "activeGoals", "interests", "preterm", "gender",
+      "focusAreas", "parentPreferences",
     ]) {
       expect(memorydisclosure.en[`elev.memdisc.field.${f}`], `missing label for ${f}`).toBeTruthy();
       expect(memorydisclosure.he[`elev.memdisc.field.${f}`], `missing he label for ${f}`).toBeTruthy();

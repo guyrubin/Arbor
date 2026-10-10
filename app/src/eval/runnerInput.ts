@@ -9,7 +9,7 @@
 import type { EvalScenario } from "./acceptance.js";
 
 /** Routes the live runner can drive. */
-export const RUNNER_ROUTES = ["/api/chat", "/api/council", "/api/voice", "/api/live/turn", "/api/extract-log", "/api/generate-handoff", "/api/todays-focus", "/api/generate-plan", "/api/vision"] as const;
+export const RUNNER_ROUTES = ["/api/chat", "/api/council", "/api/voice", "/api/live/turn", "/api/extract-log", "/api/generate-handoff", "/api/todays-focus", "/api/generate-plan", "/api/vision", "/api/describe-child"] as const;
 
 const DAY = 86_400_000;
 
@@ -36,6 +36,13 @@ export function runnerInputError(scenario: Pick<EvalScenario, "route" | "input" 
   }
   // live/turn and extract-log take their text as-is (empty is a scenario).
   if (route === "/api/live/turn" || route === "/api/extract-log") return null;
+  // B-SHELL-39 (describe-child-v1): the parent's words as-is (empty is a
+  // scenario); kept items, when present, are the request's own list.
+  if (route === "/api/describe-child") {
+    if (typeof input.text !== "string") return "has no text input for /api/describe-child";
+    if (input.keptItems !== undefined && !Array.isArray(input.keptItems)) return "has a non-array keptItems input";
+    return null;
+  }
   if (route === "/api/generate-handoff") {
     if (!Array.isArray(input.logs)) return "has no logs input for /api/generate-handoff";
     if (input.milestones !== undefined && !Array.isArray(input.milestones)) return "has a non-array milestones input";
@@ -149,7 +156,7 @@ export function routeChildProfile(
   extractFallback: Record<string, unknown>,
 ): Record<string, unknown> {
   const own = input.childProfile && typeof input.childProfile === "object" ? (input.childProfile as Record<string, unknown>) : undefined;
-  if (route === "/api/todays-focus" || route === "/api/generate-plan") return own ?? scenarioProfile;
+  if (route === "/api/todays-focus" || route === "/api/generate-plan" || route === "/api/describe-child") return own ?? scenarioProfile;
   if (route === "/api/extract-log") return own ?? extractFallback;
   return scenarioProfile;
 }

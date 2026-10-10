@@ -10,7 +10,7 @@ import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider }
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, type CoachResponse } from "../contracts/coach.js";
-import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
+import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
@@ -97,6 +97,9 @@ import { countAnalyzeLogs, toAnalyzeLogInputs } from "../lib/analyzeLogPayload.j
 import { toDigestLogInputs, toDigestMilestoneInputs } from "../lib/digestPayload.js";
 import { sanitizeTypeCounts } from "../lib/planRecord.js";
 import { buildMilestoneCandidates, validateMilestoneMatch } from "../server/milestoneMatch.js";
+import { describeScreenable, finalizeDescribeDraft, sanitizeKeptItems } from "../server/describeChild.js";
+import { DESCRIBE_KINDS, DESCRIBE_TEXT_MAX } from "../lib/describeChild.js";
+import { DOMAIN_IDS } from "../lib/domains/registry.js";
 import { SHELF_IDS } from "../lib/shelves/registry.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
@@ -2024,6 +2027,88 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       }
       logger.error("Arbor Log Extraction Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to draft a log", details: error.message });
+    }
+  });
+
+  // B-SHELL-39 — "Tell Arbor about {name}". The parent's words (typed or
+  // dictated, ≤ 2,000 characters) become items the parent checks, keeps,
+  // edits or removes, plus up to three follow-up questions. This route owns
+  // no store and writes nothing: the client commits only what the parent
+  // keeps (D2: the raw words are never stored). Crisis screen FIRST (no
+  // model call), then name/PII redaction; the reply passes the deterministic
+  // checks in server/describeChild.ts and the output screen.
+  router.post("/describe-child", async (req, res) => {
+    const { text, childProfile, language, keptItems, milestoneCandidateIds } = req.body ?? {};
+    if (typeof text !== "string" || !text.trim()) {
+      res.status(400).json({ error: "A description (text) is required" });
+      return;
+    }
+    const parentText = text.trim().slice(0, DESCRIBE_TEXT_MAX);
+    const escalationMatch = screenForImmediateEscalation({ message: parentText });
+    if (escalationMatch) {
+      res.status(409).json({ error: "Professional support recommended", escalationCategory: escalationMatch.category });
+      return;
+    }
+    const kept = sanitizeKeptItems(keptItems);
+    const budget = createRouteBudget(res, "analysis");
+    try {
+      const candidates = buildMilestoneCandidates(milestoneCandidateIds, childProfile);
+      const prompt = buildDescribeChildPrompt({
+        ageLabel: promptProfile(childProfile)?.ageLabel ?? null,
+        text: parentText,
+        keptItems: kept,
+        language: captureLanguage(language, parentText),
+        ...(candidates.length ? { milestoneCandidates: candidates } : {}),
+      });
+      const privacy = createRedaction(childProfile?.name);
+      const raw = await raceWithAbort(modelProvider.generateJson({
+        route: "analysis_structured",
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
+        temperature: 0.1,
+        budget: budget.budget,
+        promptVersion: PROMPT_VERSIONS.describe_child.version,
+        schema: {
+          type: Type.OBJECT,
+          required: ["items", "followUps"],
+          properties: {
+            items: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                required: ["kind", "text", "quote", "op"],
+                properties: {
+                  kind: { type: Type.STRING, enum: [...DESCRIBE_KINDS] },
+                  text: { type: Type.STRING },
+                  quote: { type: Type.STRING },
+                  op: { type: Type.STRING, enum: ["add", "replace", "remove"] },
+                  itemId: { type: Type.STRING },
+                  domainId: { type: Type.STRING, enum: [...DOMAIN_IDS] },
+                  ...(candidates.length ? { milestoneId: { type: Type.STRING } } : {}),
+                },
+              },
+            },
+            followUps: { type: Type.ARRAY, items: { type: Type.STRING } },
+          },
+        },
+      }), budget.signal);
+      budget.settle();
+      const draft = finalizeDescribeDraft(privacy.restoreDeep(raw), { parentText, kept, candidates });
+      const verdict = await screenStructuredModelOutput(modelProvider, describeScreenable(draft));
+      if (verdict.flagged) {
+        res.status(422).json({ error: "Arbor could not safely complete this draft. Please try a different request.", outputBlocked: true, blockedCategory: verdict.category });
+        return;
+      }
+      res.json(draft);
+    } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor describe-child deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
+      logger.error("Arbor describe-child error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Could not prepare the readback" });
     }
   });
 

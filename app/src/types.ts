@@ -119,6 +119,21 @@ export interface ChildProfile {
    * which ignore a value that is not a selectable theme.
    */
   kidTheme?: import('./lib/kidThemeManifest').KidThemeId;
+  /**
+   * B-SHELL-39 — what the parent wants to work on now, in their own words,
+   * kept from "Tell Arbor about {name}" (≤ 3). A parent wish, never an
+   * assessment. Fields ON the child doc: they ride the existing profile
+   * export/erase paths (no subcollection).
+   */
+  focusAreas?: import('./lib/describeChild').FocusArea[];
+  /** B-SHELL-39 — how the parent wants Arbor to help (≤ 8), in their words.
+   *  Shapes tone and which suggestions are chosen; never overrides safety,
+   *  escalation or the clinical firewall (ai/prompts PARENT_WISHES_RULE). */
+  parentPreferences?: import('./lib/describeChild').ParentPreference[];
+  /** B-SHELL-39 — provenance for strengths / interests / challenges kept from
+   *  the describe readback: source "describe", confirmedAt, and the area a
+   *  worry belongs to. The words also stay in the plain arrays. */
+  describedItems?: import('./lib/describeChild').DescribedItem[];
 }
 
 export type BehaviorContext = 'Home' | 'School' | 'Transit' | 'Public';

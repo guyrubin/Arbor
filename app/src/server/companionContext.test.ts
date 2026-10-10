@@ -410,7 +410,7 @@ describe("B-AI-01 — routes consume CompanionContext", () => {
     expect(chatPrompt).toContain('- "Name the feeling first"');
     expect(chatPrompt).not.toContain("CHILD_B_FACT");
     expect(body.contract?.approvedMemoryFactsUsed ?? body.approvedMemoryFactsUsed).toBe(1);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.8.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
   });
 });
 

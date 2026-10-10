@@ -427,7 +427,7 @@ describe("B-AI-14 (coach_chat 1.5.2) — a seeded follow-up is answered first; t
   };
 
   it("the block carries the rule: latest line first, sections never re-rendered, a summarise request = one pointer sentence then the follow-up", () => {
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.8.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toContain(FOLLOW_UP_FIRST);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toContain("Never re-render the guide's sections (do now, say this, avoid, what to notice) or repeat the earlier answer wholesale.");
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toContain("On the turn that only shares the guide, coach within it as usual.");
