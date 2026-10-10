@@ -155,10 +155,10 @@ describe('current portrait care proof, pure offline contracts', () => {
     vi.stubGlobal('window', { __arborConfirmedDateClock: { snapshot: () => ({ nativeTimingPreserved: true }) } });
     vi.stubGlobal('getComputedStyle', () => style); vi.stubGlobal('location', { hash: '#/care-team' }); vi.stubGlobal('localStorage', { getItem: () => 'demo' });
     const args = { routeName: 'care-team', childId: 'demo' };
-    expect(observeConfirmedFrame(args).ready).toBe(true);
+    expect(observeConfirmedFrame(args)).toMatchObject({ ready: true });
     style.opacity = '0'; expect(observeConfirmedFrame({ ...args, waitUntilReady: true })).toBe(false);
-    style.opacity = '1'; parent.getAnimations = () => [{ playState: 'running', pending: true }]; expect(observeConfirmedFrame(args).ready).toBe(false);
-    parent.getAnimations = () => []; expect(observeConfirmedFrame({ ...args, outgoing: { ...route, isConnected: true } }).ready).toBe(false);
+    style.opacity = '1'; parent.getAnimations = () => [{ playState: 'running', pending: true }]; expect(observeConfirmedFrame(args)).toMatchObject({ ready: false });
+    parent.getAnimations = () => []; expect(observeConfirmedFrame({ ...args, outgoing: { ...route, isConnected: true } })).toMatchObject({ ready: false });
   });
   it('keeps the eight-second failed trace and sanitized diagnostics instead of retrying or repairing', async () => {
     const failure = new Error('bounded failure');
