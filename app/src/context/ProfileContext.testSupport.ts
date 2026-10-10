@@ -5,7 +5,7 @@ import type { ChildProfile } from "../types";
 import * as goalsModule from "../practice/goalBuilder";
 import { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS } from "../lib/childAge";
 
-const child = (id: string, name = id): ChildProfile => ({ id, name, age: 4, languages: ["English"], schoolContext: "", strengths: [], challenges: [], onboardingComplete: false });
+const child = (id: string, name = id): ChildProfile => ({ id, name, age: 4, birthMonth: "2022-04", languages: ["English"], schoolContext: "", strengths: [], challenges: [], onboardingComplete: false });
 type Provider = ReturnType<typeof import("./ProfileContext").useProfile>;
 type HookSlot = { value?: any; deps?: unknown[]; cleanup?: () => void };
 

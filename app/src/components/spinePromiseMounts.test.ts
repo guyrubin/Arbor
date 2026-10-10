@@ -15,7 +15,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { en as spineEn, he as spineHe } from "../lib/i18nElevation/spine";
+import { en as spineEn, he as spineHe } from "../lib/i18nElevation/spine";
+
 import { todayLiveSource } from "../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -62,51 +63,13 @@ describe("masterplan 1.5 — SpineRibbon mounts", () => {
   });
 });
 
-describe("masterplan 1.6 — first-run promise in the Ready step", () => {
-  it("OnboardingFlow imports the promise module and analytics", () => {
-    expect(onboarding).toMatch(/import \{ promiseText \} from "\.\.\/\.\.\/lib\/i18nElevation\/promise"/);
-    expect(onboarding).toMatch(/import \{ track \} from "\.\.\/\.\.\/lib\/analytics"/);
+describe("B-SHELL-36 supersedes the first-run promise tour", () => {
+  it("Ready is the authored card with one accept; the summary and promise modules are retired", () => {
+    expect(onboarding).toContain("export function StepReady");
+    expect(onboarding).toContain('t("ob.first.try")');
+    expect(onboarding).not.toMatch(/PromiseCard|promiseText|promise_shown|ob.step.ready.labelDomains/);
   });
-
-  it("the promise card renders inside StepReady, before the submit CTA", () => {
-    const stepReady = onboarding.slice(
-      onboarding.indexOf("function StepReady"),
-      onboarding.indexOf("// ── Root component"),
-    );
-    expect(stepReady).toContain("<PromiseCard name={name} />");
-    // FINAL card: after the summary rows, before the submit CTA.
-    const mount = stepReady.indexOf("<PromiseCard");
-    // B-SHELL-09: the last summary row is Domains (the Avatar row went with the step).
-    expect(stepReady.indexOf("ob.step.ready.labelDomains")).toBeGreaterThan(-1);
-    expect(mount).toBeGreaterThan(stepReady.indexOf("ob.step.ready.labelDomains"));
-    expect(mount).toBeLessThan(stepReady.indexOf("onClick={onSubmit}"));
-  });
-
-  it("renders the full screenful: headline, three rhythms, data-lock line", () => {
-    for (const key of [
-      "elev.promise.headline",
-      "elev.promise.daily", "elev.promise.weekly", "elev.promise.months",
-      "elev.promise.lock",
-    ]) {
-      expect(onboarding).toContain(key);
-    }
-  });
-
-  it('fires track("promise_shown") once (ref-guarded effect)', () => {
-    expect(onboarding).toContain('track("promise_shown")');
-    const card = onboarding.slice(
-      onboarding.indexOf("function PromiseCard"),
-      onboarding.indexOf("function StepReady"),
-    );
-    expect(card).toMatch(/tracked\.current\s*=\s*true/);
-  });
-
-  it('no "AI-powered" language anywhere in the onboarding flow', () => {
+  it("no AI-powered claim is introduced", () => {
     expect(onboarding).not.toMatch(/AI-powered|artificial intelligence|בינה מלאכותית/i);
-  });
-
-  it("zero-regression guard: submit still stamps completion + queues the wow", () => {
-    expect(onboarding).toContain("onboardingComplete: true");
-    expect(onboarding).toContain("markWowPending()");
   });
 });

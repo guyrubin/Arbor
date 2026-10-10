@@ -33,6 +33,9 @@ import { collectKidEntryStates } from './kid-entry-states.mjs';
 import { SINGLE_GOAL_STATES, SINGLE_GOAL_LIMITATIONS, singleGoalFixture, initializeSingleGoalWatch, validSingleGoalCell } from './single-goal-contract.mjs';
 import { collectSingleGoalStates } from './single-goal-states.mjs';
 import { installSingleGoalNetworkGuard, recordSingleGoalDenial, singleGoalAssetPaths, finalizeSingleGoalCell, singleGoalNetworkReceipt, validSingleGoalNetwork } from './single-goal-network.mjs';
+import { FIRST_RUN_PREVIEW_STATES, FIRST_RUN_PREVIEW_BOUNDARY, FIRST_RUN_PREVIEW_LIMITATIONS, firstRunPreviewApiDisposition, firstRunPreviewPrimaryShot, validFirstRunPreviewCell, validFirstRunNetworkEvidence } from './first-run-preview-contract.mjs';
+import { collectFirstRunPreviewStates } from './first-run-preview-states.mjs';
+import { installFirstRunPreviewBoundary, isCaptureDemoFamilyUrl, createFirstRunPreviewScope, firstRunNetworkSnapshot } from './first-run-preview-network.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
@@ -41,6 +44,7 @@ export const RELEASE_INTERACTION_STATES = Object.freeze({
   'private-export': PRIVATE_EXPORT_STATES,
   'kid-entry': KID_ENTRY_STATES,
   'single-goal': SINGLE_GOAL_STATES,
+  'first-run-preview': FIRST_RUN_PREVIEW_STATES,
   'confirmed-actions': CONFIRMED_ACTION_STATES,
   navigation: [
     ...rows('shell', ['keep-closed', 'keep-open', 'keep-toggle-closed', 'keep-escape', 'keep-write', 'keep-close-focus']),
@@ -73,7 +77,7 @@ export function expectedReleaseInteractionStates(group, viewport) {
 export function missingReleaseInteractionEvidence(cells, { group, viewport, sourceSha, sourceTreeSha }) {
   return expectedReleaseInteractionStates(group, viewport).flatMap(({ route, state, group: part }) => {
     const cell = cells.find(item => item.route === route && item.state === state && item.group === part && item.lang === viewport.lang && item.viewport === `${viewport.w}x${viewport.h}` && item.sourceSha === sourceSha && (!sourceTreeSha || item.sourceTreeSha === sourceTreeSha));
-    const valid = (part !== 'single-goal' || validSingleGoalCell(cell)) && (part !== 'private-export' || validPrivateExportCell(cell)) && (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
+    const valid = (part !== 'first-run-preview' || validFirstRunPreviewCell(cell)) && (part !== 'single-goal' || validSingleGoalCell(cell)) && (part !== 'private-export' || validPrivateExportCell(cell)) && (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
     return valid ? [] : [{ route, state, group: part, lang: viewport.lang, viewport: `${viewport.w}x${viewport.h}`, failure: cell?.failures?.[0] ?? (cell ? 'INCOMPLETE_ASSERTIONS_OR_SCREENSHOT' : 'NOT_ATTEMPTED') }];
   });
 }
@@ -170,6 +174,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     const navigation = await collectReleaseInteractions({ output, bundle, viewport, group: 'navigation', sourceSha, sourceTreeSha, _reportGroup: 'focused', _apiCache });
     return collectReleaseInteractions({ output, bundle, viewport, group: 'ask', sourceSha, sourceTreeSha, _priorCells: navigation.cells, _reportGroup: 'focused', _apiCache });
   }
+  const firstRunPreview = group === 'first-run-preview';
+  const firstRunScope = firstRunPreview ? createFirstRunPreviewScope() : null;
+  if (firstRunPreview && process.env.NODE_ENV !== 'development') throw new Error('FIRST_RUN_DEV_PREVIEW_REQUIRED');
   const record = group === 'record' ? recordFixture(bundle, viewport.lang) : null;
   const confirmed = group === 'confirmed-actions' ? confirmedActionsFixture(bundle, viewport.lang) : null;
   const keptSearch = group === 'kept-search' ? keptSearchFixture(bundle, viewport.lang) : null;
@@ -184,6 +191,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   mkdirSync(`${output}/shots`, { recursive: true });
   const doc = { schema: 1, scope: 'release-interactions', sourceSha, sourceTreeSha, group: _reportGroup, activeGroup: group, viewport: viewportId, lang, fixture: SMALL_FIXTURE, fontMode: 'exact', fontLimitation: SOURCE_FONT_NOTE, expectedStates: _reportGroup === group ? expectedStates : expectedReleaseInteractionStates(_reportGroup, viewport), completed: false, finished: false, cells: [..._priorCells], fixtures: ['synthetic-family', 'local-mock-server', 'synthetic-local-watch-choice', 'bounded-consent-error-responses', 'bounded-chat-error-responses', 'bilingual-report-presentation-fixture'] };
   const save = () => { doc.missingEvidence = missingReleaseInteractionEvidence(doc.cells, { group: _reportGroup, viewport, sourceSha, sourceTreeSha }); writeFileSync(`${output}/evidence.json`, JSON.stringify(doc, null, 2)); };
+  if (firstRunPreview) { doc.scope = 'first-run-dev-preview'; doc.firstRunPreview = FIRST_RUN_PREVIEW_BOUNDARY; doc.firstRunPreviewBoundaries = FIRST_RUN_PREVIEW_LIMITATIONS; doc.fixtures = ['existing-dev-onboarding-preview', 'existing-seeded-synthetic-family', 'real-disposable-local-writes']; }
   if (record) {
     doc.recordBoundaries = RECORD_LIMITATIONS;
     doc.fixtures.push('synthetic-record-local-storage', 'synthetic-browser-share-sink');
@@ -210,10 +218,12 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     let selectedReportFixture = null;
     const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, deniedActionCategories: {}, ttsCapabilityReads: 0, shareListReads: 0, apiCacheHits: 0, localRateLimits: 0 };
     if (singleGoal) { Object.assign(apiState, { singleGoalDeniedMutations: 0, singleGoalDeniedRequests: 0 }); singleGoalApiState = apiState; }
+    if (firstRunPreview) Object.assign(apiState, { firstRunDeniedWrites: 0, firstRunNarrationRefusals: 0, firstRunRequestDiagnostics: { counts: {}, recent: [] } });
     const privacyGate = privateExport ? createPrivacyResponseGate(apiState) : null;
     if (privateExport) Object.assign(apiState, { privateExportReads: 0, privateExportResponses: 0, privateExportLastStatus: null, privateExportDownloads: 0, privateExportUnexpectedDownloads: 0, privateExportDenied: 0, privateExportPrivateReads: 0, privateExportAuthHeaders: 0, privateExportHeaderChecks: 0, privateExportHeaderReadsPending: 0, privateExportHeaderReadFailures: 0, privateExportExpectedDownload: false, privateExportNarrationRefusals: 0, privateExportDownloadObservations: [] });
     if (kidEntry) Object.assign(apiState, { kidEntryNarrationRefusals: 0, kidEntryDeniedMutations: 0 });
     await context.route('**/*', route => {
+      if (Object.hasOwn(apiState, 'firstRunDeniedWrites') && !['GET', 'HEAD'].includes(route.request().method())) { apiState.firstRunDeniedWrites++; apiState.deniedActions++; return route.abort(); }
       if (new URL(route.request().url()).origin === BASE) {
         if (privateExport && !['GET', 'HEAD'].includes(route.request().method())) { apiState.privateExportDenied++; apiState.deniedActions++; return route.abort(); }
         return route.continue();
@@ -226,6 +236,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       const request = route.request();
       const url = new URL(request.url());
       if (url.origin !== BASE) { apiState.deniedExternal++; return route.abort(); }
+      if (firstRunPreview && firstRunPreviewApiDisposition(request.method(), url.pathname) === 'deny') { apiState.firstRunDeniedWrites++; apiState.deniedActions++; return route.abort(); }
       const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
       if (privateExport) {
         const disposition = privateExportApiDisposition(request.method(), url.pathname, fixture.childId);
@@ -278,18 +289,25 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       }
       return route.continue();
     });
-    await context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : '**/sandbox/demo-family.json', route => {
+    await context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : isCaptureDemoFamilyUrl, route => {
       if (privateExport && route.request().method() !== 'GET') {
         apiState.privateExportDenied++; apiState.deniedActions++; return route.abort();
       }
-      const request = route.request(), url = new URL(request.url());
-      if (url.origin !== BASE || url.pathname !== '/sandbox/demo-family.json' || url.search || request.method() !== 'GET') { apiState.deniedActions++; if (url.origin !== BASE) apiState.deniedExternal++; return route.abort(); }
+      if (Object.hasOwn(apiState, 'firstRunDeniedWrites')) {
+        if (!['GET', 'HEAD'].includes(route.request().method())) { apiState.firstRunDeniedWrites++; apiState.deniedActions++; return route.abort(); }
+        if (route.request().method() !== 'GET') return route.fallback();
+      } else {
+        const request = route.request(), url = new URL(request.url());
+        if (url.origin !== BASE || url.pathname !== '/sandbox/demo-family.json' || url.search || request.method() !== 'GET') { apiState.deniedActions++; if (url.origin !== BASE) apiState.deniedExternal++; return route.abort(); }
+      }
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) });
     });
     await installOfflineFonts(context);
-    // Last registration is first in Playwright's route stack. Nothing may
-    // register a later handler in this bounded group.
+    // Playwright runs matching routes in reverse registration order. These
+    // mutually exclusive boundaries register last, after fonts, and let safe
+    // reads fall back to the existing handlers. No route registers after them.
     if (singleGoal) await installSingleGoalNetworkGuard(context, { fixture: singleGoal, apiState, lang, assetPaths: singleGoalAssetPaths('dist'), fontUrls: [...validateFontCache().resources.keys()] });
+    if (firstRunPreview) await installFirstRunPreviewBoundary(context, apiState, firstRunScope);
     if (privateExport) await installPrivateExportAdmissionBoundary(context, apiState);
     if (kidEntry) await context.addInitScript(initializeSyntheticOnline, { lang, preserveKidMode: true });
     else await context.addInitScript(initializeSyntheticOnline, { lang });
@@ -424,7 +442,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       // Even an assertion failure keeps its actual exact-font pixels. Such a
       // cell remains unreached; screenshots cannot convert missing evidence.
       try {
-        const shot = `shots/release.${group}.${viewportId}.${lang}.${state}.exact.png`;
+        const shot = firstRunPreview ? firstRunPreviewPrimaryShot({ state, viewport: viewportId, lang }) : `shots/release.${group}.${viewportId}.${lang}.${state}.exact.png`;
         await captureScreenshot(page, { path: `${output}/${shot}`, timeout: 12000, animations: 'disabled' });
         cell.shot = shot;
       } catch (error) { cell.failures.push(knownFailure(error)); }
@@ -437,7 +455,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
           check(cell, 'NO_PROHIBITED_ACTIONS_AFTER_CAPTURE', apiState.deniedActions === 0, apiState.deniedActions);
         } catch (error) { cell.failures.push(knownFailure(error)); }
       }
-      cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories }, ...(privateExport ? { privateExportDownloadObservations: apiState.privateExportDownloadObservations.map(row => ({ ...row })) } : {}) };
+      cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories }, ...(firstRunPreview ? firstRunNetworkSnapshot(apiState) : {}), ...(privateExport ? { privateExportDownloadObservations: apiState.privateExportDownloadObservations.map(row => ({ ...row })) } : {}) };
       cell.entryMode = entryMode;
       cell.assetDiagnostics = assets.snapshot();
       cell.readiness = await readinessSnapshot().catch(() => ({ unavailable: true }));
@@ -448,6 +466,12 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       }
       cell.runtimeDiagnostics = diagnostics.snapshot();
       if (singleGoal) finalizeSingleGoalCell(cell, apiState, check);
+      if (firstRunPreview) {
+        // Resample after screenshot and every asynchronous observation. A late
+        // prohibited request cannot inherit an earlier zero-counter pass.
+        cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories }, ...firstRunNetworkSnapshot(apiState) };
+        check(cell, 'FIRST_RUN_FINAL_NETWORK_GUARD', validFirstRunNetworkEvidence(cell.networkEvidence));
+      }
       if (privateExport) {
         // Re-sample after screenshot and diagnostic awaits. An earlier pass
         // cannot hide an unexpected download/auth/mutation arriving later.
@@ -480,7 +504,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       return cell.reached;
     };
 
-    if (group === 'single-goal') {
+    if (firstRunPreview) {
+      entryMode = 'existing-dev-onboarding-preview';
+      await collectFirstRunPreviewStates({ page, viewport, screen, check, apiState, recordCreatedChild: firstRunScope.recordCreatedChild });
+    } else if (group === 'single-goal') {
       await collectSingleGoalStates({ page, fixture: singleGoal, viewport, load, screen, check, byId, apiState });
     } else if (group === 'kept-search') {
       await collectKeptSearchStates({ page, context, fixture: keptSearch, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }) });

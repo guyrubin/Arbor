@@ -140,7 +140,7 @@ describe('bounded single-goal capture, without a browser or socket', () => {
     expect(source).toContain('singleGoalBoundaries = SINGLE_GOAL_LIMITATIONS');
     expect(source).toContain('await context.addInitScript(initializeSingleGoalWatch');
     expect(source).toContain("assertLoopbackOnly(networkInterfaces())"); expect(source).toContain("await installOfflineFonts(context)");
-    expect(workflow).toContain('"codex/single-goal-capture" ]]; then scope=single-goal-only;');
+    expect(workflow).toContain('"codex/single-goal-capture" ]]; then scope=first-run-goal-only;');
     expect(workflow).toContain('docker create --network none'); expect(workflow).toContain('CAPTURE_FONT_MODE=exact'); expect(workflow).toContain('font files/images never go to artifacts or registries');
     expect(workflow).not.toMatch(/workflow_dispatch|--network host|secrets\.|docker push|firebase deploy/);
     const collector = read('./capture/single-goal-states.mjs');

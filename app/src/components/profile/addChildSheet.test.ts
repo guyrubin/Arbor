@@ -14,11 +14,11 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const add = readFileSync(path.join(here, "AddChildModal.tsx"), "utf8").replace(/\r\n/g, "\n");
-const onboarding = readFileSync(path.join(here, "..", "auth", "OnboardingFlow.tsx"), "utf8").replace(/\r\n/g, "\n");
+const onboarding = readFileSync(path.join(here, "AddChildFields.tsx"), "utf8").replace(/\r\n/g, "\n");
 
 describe("B-SHELL-17 · one implementation of the child step", () => {
-  it("AddChildModal imports the SAME StepChild + StepDomains as onboarding (one age field)", () => {
-    expect(add).toContain('import { StepChild, StepDomains, DOMAINS } from "../auth/OnboardingFlow";');
+  it("AddChildModal preserves its existing fields when B-SHELL-36 replaces first run", () => {
+    expect(add).toContain('import { StepChild, StepDomains, DOMAINS } from "./AddChildFields";');
     expect(onboarding).toContain("export function StepChild(");
     expect(onboarding).toContain("export function StepDomains(");
     // the one age field lives in StepChild: years + months, never a slider

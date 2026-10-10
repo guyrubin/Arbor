@@ -6,7 +6,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { todayActionId, type ActionLoopEntry } from "../../actionLoop/model";
 import { readSkippedCarryOvers, selectCarryOverAction } from "./carryOverAction";
 import { reasonForThisOpen } from "../../lib/tomorrowReason";
-import { familyOfferLines, readOfferLedger, type OfferState } from "../../lib/companionOffer";
+import { pendingActionFollowUp, familyOfferLines, readOfferLedger, type OfferState } from "../../lib/companionOffer";
 import { loadPrefs, shownNudgesToday } from "../../growth/jitaiPrefs";
 import { isolate } from "../../lib/bidi";
 import { isContinuationKind } from "./continuation";
@@ -29,7 +29,7 @@ function SiblingLine({ childId, name, onOpen }: { childId: string; name: string;
   const state: OfferState = {
     nowMs: now,
     surface: "today",
-    pendingFollowUp: pending ? { id: pending.id, recommendation: pending.recommendation } : null,
+    pendingFollowUp: pendingActionFollowUp(pending),
     tomorrowReason: reason ? { kind: reason.kind } : null,
     whatChanged: null,
     appointment: null,

@@ -73,7 +73,7 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     expect(isExactPrivateExportFixtureUrl(new URL(`${base}/sandbox/demo-family.json?capture=1`), base)).toBe(true);
     for (const value of ['https://example.test/sandbox/demo-family.json', `${base}/api/children/capture-private-export-a/book-assets/sandbox/demo-family.json`, `${base}/sandbox/demo-family.json/other`, 'invalid']) expect(isExactPrivateExportFixtureUrl(value, base)).toBe(false);
     const interactions = read('scripts/capture/release-interactions.mjs');
-    expect(interactions).toContain("context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : '**/sandbox/demo-family.json'");
+    expect(interactions).toContain("context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : isCaptureDemoFamilyUrl");
   });
   it('allows only the exact current child read and safe existing reads', () => {
     const id = 'capture-private-export-a';

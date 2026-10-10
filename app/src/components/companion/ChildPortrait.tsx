@@ -22,7 +22,7 @@ import "./childPortrait.css";
 import { childPicture } from "../../lib/childPicture";
 
 // One glyph per concept: hands and family match their shelves (lib/shelves/registry.ts); `home` stays the Now place and the Home context.
-const icons: Record<DomainId, string> = { talking: "chat_bubble", moving: "directions_run", hands: "front_hand", thinking: "psychology", playing: "group", feelings: "favorite", body: "spa", family: "diversity_3" };
+import { DOMAIN_ICONS as icons } from "../../lib/domains/icons";
 
 
 export interface ChildPortraitProps { onDiscuss?: (prompt: string, childId: string) => void; onSaveQuestion?: (prompt: string, observationIds: string[]) => void }

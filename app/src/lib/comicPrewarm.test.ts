@@ -177,15 +177,10 @@ describe("MOB-22 — both call sites are wired", () => {
     expect(/takeFirstComic|prewarmFirstComic/.test(shipped)).toBe(false);
   });
 
-  it("onboarding starts the prewarm at the DOMAIN step, and never in replay mode", () => {
-    expect(flow).toContain("prewarmFirstComic(");
-    const effect = flow.match(/if \(step !== 3[\s\S]{0,400}?prewarmFirstComic\([\s\S]{0,120}?\);/)?.[0];
-    expect(effect).toBeTruthy();
-    expect(effect, "a demo replay must not cost a generation").toContain("replaying");
-    expect(effect, "never before a real child exists").toContain("createdChildId");
-    // The PLAIN variant only: no avatar reaches this call, so no photo and no
-    // face_processing consent is involved at the domain step.
-    expect(effect).not.toMatch(/heroDataUrl|avatarResult|photoUrl/);
+  it("B-SHELL-36 retires all automatic onboarding prewarming", () => {
+    expect(flow).not.toContain("prewarmFirstComic(");
+    expect(flow).not.toContain("firstComic");
+    expect(wow).toContain("export function WowOnboarding() { return null; }");
   });
 
   it("the wow overlay takes the prewarmed page before generating anything", () => {

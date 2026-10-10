@@ -7,7 +7,8 @@
  *   arbor.firstSteps  → journey.rail       (E11 FirstStepsRail dismissed/clicked)
  *   arbor.coachSeed   → journey.coachSeed  (OnboardingFlow → coach composer handoff)
  *
- * The journey is strictly sequential: OnboardingFlow (Firestore-gated identity
+ * HISTORICAL CONTRACT (B-SHELL-36 retires all first-run triggers):
+ * The journey was strictly sequential: OnboardingFlow (Firestore-gated identity
  * + consent capture, pre-Shell) calls markWowPending() at real submit; the wow
  * overlay shows IFF wow === "pending" and marks itself done; the rail nudges
  * from then on. Firestore keeps exactly what it had (onboardingComplete on the
@@ -182,7 +183,7 @@ export function setRailClicked(id: string): void {
   writeJourney({ ...j, rail: { ...j.rail, clicked: { ...j.rail.clicked, [id]: true } } });
 }
 
-/** OnboardingFlow leaves the parent's first concern for the coach composer. */
+/** Legacy seed compatibility. B-SHELL-36 first run no longer writes it. */
 export function setCoachSeed(seed: string): void {
   writeJourney({ ...readJourney(), coachSeed: seed });
 }

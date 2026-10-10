@@ -73,6 +73,7 @@ function mountedPortraitProof(duplicateKey: boolean) {
     "../../context/LanguageContext": language,
     "../../hooks/useObservationRecord": { useObservationRecord: () => ({ observations: [], sources: { behaviorLogs: [] }, loading: true }) },
     "../../lib/domains/registry": { DOMAIN_IDS: [], domainName: id => id },
+    "../../lib/domains/icons": load("src/lib/domains/icons.ts", {}),
     "../../lib/milestoneData": {}, "../../content/behaviorTaxonomy": {},
     "../ui/Icon": { Icon: empty }, "../ui/Avatar": { Avatar: empty }, "../ui/Modal": { Modal: empty },
     "./portraitModel": { buildPortraitChapters: () => [], buildPortraitEnvironments: () => [], buildPortraitThreads: () => [] },

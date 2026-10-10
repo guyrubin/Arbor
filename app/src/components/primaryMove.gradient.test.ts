@@ -197,7 +197,7 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
      ratchet-down and must shrink this list in the same commit. */
   const KNOWN_GRADIENT_FILES: readonly string[] = [
     "auth/LoginScreen.tsx",
-    "auth/OnboardingFlow.tsx",
+    "profile/AddChildFields.tsx", // B-SHELL-36: first-run primary moved to its CSS; add-child fields retain their existing primary.
     "journal/JournalEntrySheet.tsx",
     "overview/ConfirmCaptureReview.tsx",
     "overview/DailyPlanCard.tsx",

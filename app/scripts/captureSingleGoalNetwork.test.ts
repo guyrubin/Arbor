@@ -7,6 +7,7 @@ import { SINGLE_GOAL_NETWORK_VERSION, singleGoalNarrationRefusals, recordSingleG
 import { deniedCaptureApiCategory, syntheticReleaseReport } from './capture/release-interactions.mjs';
 import { buildBookNarration, narrationFolder } from '../src/components/kidmode/hero/buildBookNarration';
 import { BASE } from './capture/config.mjs';
+import { isCaptureDemoFamilyUrl } from './capture/first-run-preview-network.mjs';
 
 const source = readFileSync(new URL('./capture/release-interactions.mjs', import.meta.url), 'utf8');
 const childIds = ['capture-goal-history', 'capture-goal-empty', 'capture-goal-long'];
@@ -37,9 +38,9 @@ async function routingHarness() {
   const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
   const fixture = { childId: childIds[0], children: fixtureChildren, parsed: { synthetic: 'current-only' } };
   const installFonts = async (ctx: any) => ctx.route((url: URL) => fontUrls.includes(url.href), (route: any) => route.fulfill({ status: 200, body: 'exact-cache-font' }));
-  const execute = new AsyncFunction('context', 'BASE', 'singleGoal', 'kidEntry', 'fixture', 'kidEntryApiDisposition', 'deniedCaptureApiCategory', '_apiCache', 'syntheticReleaseReport', 'lang', 'installOfflineFonts', 'installSingleGoalNetworkGuard', 'recordSingleGoalDenial', 'singleGoalAssetPaths', 'validateFontCache',
-    'let singleGoalApiState; const privateExport = false;\n' + registration + '\nreturn apiState;');
-  const api = await execute(context, BASE, fixture, false, fixture, null, deniedCaptureApiCategory, new Map(), syntheticReleaseReport, 'en', installFonts, installSingleGoalNetworkGuard, recordSingleGoalDenial, () => assetPaths, () => ({ resources: new Map(fontUrls.map(url => [url, {}])) }));
+  const execute = new AsyncFunction('context', 'BASE', 'singleGoal', 'kidEntry', 'fixture', 'kidEntryApiDisposition', 'deniedCaptureApiCategory', '_apiCache', 'syntheticReleaseReport', 'lang', 'installOfflineFonts', 'installSingleGoalNetworkGuard', 'recordSingleGoalDenial', 'singleGoalAssetPaths', 'validateFontCache', 'isCaptureDemoFamilyUrl',
+    'let singleGoalApiState; const privateExport = false, firstRunPreview = false;\n' + registration + '\nreturn apiState;');
+  const api = await execute(context, BASE, fixture, false, fixture, null, deniedCaptureApiCategory, new Map(), syntheticReleaseReport, 'en', installFonts, installSingleGoalNetworkGuard, recordSingleGoalDenial, () => assetPaths, () => ({ resources: new Map(fontUrls.map(url => [url, {}])) }), isCaptureDemoFamilyUrl);
   const dispatch = async (method: string, url: string, extras: any = {}) => {
     const before = { ...api }; let outcome = 'unhandled', fetchOptions: any = null, responseBody: any = null, responseStatus: number | null = null;
     const visited: string[] = []; let fetched = false;

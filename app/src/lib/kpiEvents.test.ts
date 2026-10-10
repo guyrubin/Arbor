@@ -232,7 +232,7 @@ describe("ENG-22 — the new call sites are LIVE (source pins + negative control
   it("onboarding: completion fires on the real submit path", () => {
     const call = onboarding.match(/trackOnboardingCompleted\(\{[^}]*\}\)/)?.[0];
     expect(call).toBeTruthy();
-    expect(call).toContain("domainCount: selectedDomains.length");
+    expect(call).toContain("domainCount: DOMAIN_IDS.includes");
     // B-SHELL-09: onboarding has no avatar step, so the flag is false here
     // (the hero is made in the wow); the prop keeps its shape.
     expect(call).toContain("hasAvatar: false");

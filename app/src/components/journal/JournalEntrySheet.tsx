@@ -73,6 +73,7 @@ export default function JournalEntrySheet({
   const { t, uiLang } = useLanguage();
   const { childProfile } = useArbor();
   const childName = (childProfile?.name || "").split(" ")[0];
+  const observation = signal?.kind === "action" && signal.actionObservation === true;
   const contentSourceLabel = signalContentSource({ contentSource: signal?.contentSource ?? momentLog?.contentSource }, t);
   const tone: PastelKey = signal
     ? (domain ? domainVisual(domain).tone : (signal.tone as PastelKey))
@@ -122,13 +123,30 @@ export default function JournalEntrySheet({
                   {t("beh.resolved")}
                 </p>
               )}
-              {detail && !momentLog && (
+              {detail && !momentLog && !observation && (
                 <p className="mt-1.5 text-[13.5px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
                   {detail}
                 </p>
               )}
             </div>
           </div>
+
+          {observation && <dl className="space-y-4 text-[13.5px] leading-relaxed">
+            <div data-testid="journal-entry-observation-prompt">
+              <dt className="font-bold" style={{ color: "var(--arbor-ink)" }}>
+                {t("ob.first.observation.chosen")}
+                <span className="block text-[12px] font-normal" style={{ color: "var(--arbor-muted)" }}>{t("elev.closeloop.entry.suggested")}</span>
+              </dt>
+              <dd className="mt-1.5" dir="auto" style={{ color: "var(--arbor-ink-soft)", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{signal.refTitle}</dd>
+            </div>
+            {signal.detail && <div data-testid="journal-entry-observation-words">
+              <dt className="font-bold" style={{ color: "var(--arbor-ink)" }}>
+                {t("ob.first.observation.answer")}
+                <span className="block text-[12px] font-normal" style={{ color: "var(--arbor-muted)" }}>{provLabel}</span>
+              </dt>
+              <dd className="mt-1.5" dir="auto" style={{ color: "var(--arbor-ink-soft)", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{signal.detail}</dd>
+            </div>}
+          </dl>}
 
           {momentLog && prov === "manual" && <JournalMomentDetails log={momentLog} />}
 
@@ -150,7 +168,7 @@ export default function JournalEntrySheet({
                 <dd className="mt-1 font-bold" style={{ color: "var(--arbor-ink)" }}>{when}</dd>
               </div>
             )}
-            <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)" }}>
+            {!observation && <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)" }}>
               <dt className="font-bold" style={{ color: "var(--arbor-faint)" }}>
                 {t(contentSourceLabel ? "kept.capture.sourceLabel" : "elev.closeloop.entry.noted")}
               </dt>
@@ -164,7 +182,7 @@ export default function JournalEntrySheet({
                   {t("elev.closeloop.entry.suggested")}
                 </dd>
               )}
-            </div>
+            </div>}
           </dl>
 
           {/* AI-04 — the kept row's origin, in full. The Journal feed shows a

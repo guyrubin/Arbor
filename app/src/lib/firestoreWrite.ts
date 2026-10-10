@@ -13,9 +13,26 @@ export const QUEUED_ACK_MS = 4000;
 
 export async function settleOrQueue(
   write: Promise<void>,
-  opts: { online?: () => boolean; ackMs?: number } = {},
+  opts: { online?: () => boolean; ackMs?: number; requireAcknowledgement?: boolean } = {},
 ): Promise<"acknowledged" | "queued"> {
   const online = opts.online ?? (() => typeof navigator === "undefined" || navigator.onLine !== false);
+  if (opts.requireAcknowledgement) {
+    // Critical multi-write flows cannot treat the local Firestore queue as a
+    // durable receipt. Timeout/offline keeps the caller's explicit retry open.
+    // Firestore may still finish later; retry must use the same document ID.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      if (!online()) {
+        void write.catch(() => {});
+        throw new Error("The write needs an online confirmation");
+      }
+      const timeout = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("The write was not confirmed; please retry")), opts.ackMs ?? QUEUED_ACK_MS);
+      });
+      await Promise.race([write, timeout]);
+      return "acknowledged";
+    } finally { clearTimeout(timer); }
+  }
   const late = (err: unknown) => console.warn("[arbor] a queued write was rejected after it was kept", err);
   if (!online()) {
     write.catch(late);

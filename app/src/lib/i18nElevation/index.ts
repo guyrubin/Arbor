@@ -69,6 +69,7 @@ import * as practice from "./practice";
 import * as practiceAdaptation from "./practiceAdaptation";
 import * as practiceDoors from "./practiceDoors";
 import * as professions from "./professions";
+import * as onboarding from "./onboarding";
 import * as promise from "./promise";
 import * as publicGuides from "./publicGuides";
 import * as recap from "./recap";
@@ -147,6 +148,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   practiceAdaptation,
   practiceDoors,
   professions,
+  onboarding,
   promise,
   publicGuides,
   recap,

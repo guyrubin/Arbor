@@ -16,6 +16,7 @@ export type ActionOutcome = "helped" | "somewhat" | "not_today";
  *  live in the screen lanes (B-ASKJB-04 / -26 / -31); this module owns the
  *  ledger they write through. */
 export type ActionSource =
+  | "onboarding"
   | "today-guidance"
   | "digest"
   | "learn-read"
@@ -31,6 +32,7 @@ export type ActionSource =
  *  when a source is added to the union and not listed here (exhaustiveness
  *  guard: signalTimeline.actionThread.test.ts). */
 const ACTION_SOURCE_MAP: { [K in ActionSource]: true } = {
+  onboarding: true,
   "today-guidance": true,
   digest: true,
   "learn-read": true,
@@ -49,6 +51,10 @@ export const ACTION_SOURCES = Object.keys(ACTION_SOURCE_MAP) as readonly ActionS
 export type ActionStatus = "accepted" | "completed" | "superseded";
 
 export interface ActionLoopEntry {
+  /** Stable explicit accept identity for retry after interrupted profile completion. */
+  acceptanceKey?: string;
+  /** An explicitly chosen observation question, never an intervention rating. */
+  observation?: true;
   /** Explicitly selected parent question; references the existing action ledger. */
   topicId?: string;
   id: string;
@@ -109,6 +115,27 @@ export interface ActionLoopEntry {
   completedVia?: "co_parent";
 }
 
+/** Legacy v1 notices were saved before the observation flag existed. The
+ * source excludes hard-moment guides; urgent keys and prior factual outcomes
+ * are never reinterpreted. This is a read projection, not a migration. */
+export function isObservationAction(entry: { source?: unknown; observation?: unknown; acceptanceKey?: unknown; outcome?: unknown }): boolean {
+  return entry.source === "onboarding" && entry.outcome === undefined && (entry.observation === true
+    || (typeof entry.acceptanceKey === "string" && entry.acceptanceKey.startsWith("onboarding-v1.")));
+}
+
+/** The parent explicitly keeps words against the full question. No efficacy
+ * enum, practice dose, quote extraction or model request is manufactured. */
+export function completeObservation(entry: ActionLoopEntry, words: string, at = new Date()): ActionLoopEntry {
+  const whatHappened = words.trim();
+  if (!isObservationAction(entry) || entry.status === "superseded") throw new Error("The selected observation is no longer available");
+  if (!whatHappened || whatHappened.length > 240) throw new Error("A moment of up to 240 characters is required");
+  if (entry.status === "completed") {
+    if (entry.whatHappened !== whatHappened) throw new Error("The observation already has a recorded moment");
+    return entry;
+  }
+  return { ...entry, observation: true, status: "completed", whatHappened, completedAt: at.toISOString() };
+}
+
 export type HeldAnswer = "yes" | "no";
 export type ChildResponse = "calmer" | "same" | "harder";
 /** "Held the plan" → the ledger's outcome enum, so every existing reader
@@ -162,7 +189,7 @@ export function nextTodayActionId(items: readonly ActionLoopEntry[], todayId: st
  *  `superseded`. */
 export function planAcceptedAction(
   items: readonly ActionLoopEntry[],
-  input: { recommendation: string; source: ActionSource; capacity: ActionCapacity; planStep?: PlanStepRef },
+  input: { recommendation: string; source: ActionSource; capacity: ActionCapacity; planStep?: PlanStepRef; observation?: true },
   todayId: string,
   at: Date = new Date(),
 ): { entry: ActionLoopEntry; superseded: ActionLoopEntry[] } {
@@ -173,6 +200,7 @@ export function planAcceptedAction(
     capacity: input.capacity,
     status: "accepted",
     acceptedAt: at.toISOString(),
+    ...(input.observation && input.source === "onboarding" ? { observation: true as const } : {}),
     ...(input.planStep ? { planId: input.planStep.planId, phaseIdx: input.planStep.phaseIdx, stepIdx: input.planStep.stepIdx } : {}),
   };
   const superseded = items
