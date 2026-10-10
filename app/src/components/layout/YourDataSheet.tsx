@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Icon from "../ui/Icon";
 import Modal from "../ui/Modal";
 import { useArbor } from "../../context/ArborContext";
@@ -7,6 +7,9 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
 import { downloadJson, exportChildData } from "../../lib/childData";
+import { createChildExportRun } from "../../lib/childExportRun";
+import { childExportFilename } from "../../lib/childExportFilename";
+import { withChildExportSession } from "../../lib/childExportSession";
 import { fmtDay } from "../../lib/formatDate";
 import type { DeletionReceipt } from "../../types";
 
@@ -18,7 +21,7 @@ import type { DeletionReceipt } from "../../types";
  * with no receipt, English literals, refusing the only child), Settings' data
  * row (which opened #/profile, not the controls) and account deletion in
  * Settings. This sheet is the one place that:
- *   - exports the active child — the COMPLETE record via `exportChildData`
+ *   - exports the active child with explicit completeness via `exportChildData`
  *     (profile + every CHILD_SUBCOLLECTIONS sink + the server memory ledger
  *     and share grants), with the parent-facing note as a top-level field;
  *   - deletes the active child — typed child-name confirmation →
@@ -44,17 +47,61 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
 
   // ── Export ────────────────────────────────────────────────────────────────
   const [exporting, setExporting] = useState(false);
+  const [exportResult, setExportResult] = useState<"complete" | "incomplete" | null>(null);
+  const exportRun = useRef(createChildExportRun());
+  const exportButtonRef = useRef<HTMLButtonElement | null>(null);
+  const scope = `${open}|${user?.uid ?? ""}|${childProfile.id}`;
+  const scopeRef = useRef(scope);
+  const lifetimeRef = useRef({ active: true });
+  // Invalidate during render, not only effect cleanup: A→B→A cannot revive A.
+  if (scopeRef.current !== scope) {
+    exportRun.current.cancel();
+    scopeRef.current = scope;
+    lifetimeRef.current = { active: true };
+  }
+  const lifetime = lifetimeRef.current;
+  useEffect(() => {
+    lifetime.active = true;
+    setExporting(false);
+    setExportResult(null);
+    return () => {
+      lifetime.active = false;
+      if (lifetimeRef.current === lifetime) exportRun.current.cancel();
+    };
+  }, [lifetime]);
   const exportData = async () => {
-    if (exporting) return;
+    if (!open || !lifetime.active || lifetimeRef.current !== lifetime) return;
+    const run = exportRun.current.begin(scope);
+    if (!run) return;
+    // Disabling a focused native button can send focus to body without a
+    // focusin event. Keep it on this stable, non-destructive dialog root before
+    // that commit; Close remains keyboard-accessible throughout the request.
+    const button = exportButtonRef.current;
+    if (button && document.activeElement === button) {
+      button.closest<HTMLElement>('[role="dialog"]')?.focus({ preventScroll: true });
+    }
     setExporting(true);
+    setExportResult(null);
     try {
-      const data = await exportChildData(user?.uid, childProfile);
-      downloadJson(`arbor-${first.toLowerCase() || "child"}-data.json`, { ...data, exportNote: t("sec.sharing.data.exportNote") });
-      toast(t("sec.sharing.audit.exported", { name: first }), "success");
-    } catch {
-      toast(t("elev.yourData.exportFailed"), "error");
+      await withChildExportSession(user?.uid, run.controller.signal, async (session) => {
+        const data = await exportChildData(user?.uid, childProfile, { signal: session.signal });
+        session.assertCurrent();
+        const assertCurrent = () => {
+          session.assertCurrent();
+          if (!lifetime.active || lifetimeRef.current !== lifetime || !exportRun.current.current(run, scopeRef.current)) {
+            throw new DOMException("The export is no longer active", "AbortError");
+          }
+        };
+        assertCurrent();
+        const status = data.exportReceipt.status;
+        downloadJson(childExportFilename(childProfile.name || "", status), { ...data, exportNote: t("sec.sharing.data.exportNote") }, assertCurrent);
+        setExportResult(status);
+      });
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError") && exportRun.current.current(run, scopeRef.current)) toast(t("elev.yourData.exportFailed"), "error");
     } finally {
-      setExporting(false);
+      if (exportRun.current.current(run, scopeRef.current)) setExporting(false);
+      exportRun.current.finish(run);
     }
   };
 
@@ -74,6 +121,9 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
 
   const closeAll = () => {
     if (erasing) return; // never abandon an erasure mid-flight
+    lifetime.active = false;
+    exportRun.current.cancel();
+    setExporting(false);
     const hadReceipt = receipt != null;
     setDeleting(false);
     setConfirmName("");
@@ -169,6 +219,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
         <div className="space-y-3" data-testid="your-data-sheet">
           <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.yourData.sub", { name: first })}</p>
           <button
+            ref={exportButtonRef}
             onClick={exportData}
             disabled={exporting}
             data-testid="your-data-export"
@@ -177,8 +228,13 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
           >
             <Icon name={exporting ? "progress_activity" : "download"} size={18} className={exporting ? "animate-spin" : undefined} /> {t("elev.yourData.export", { name: first })}
           </button>
+          <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.yourData.exportLimits")}</p>
+          {exportResult && <p role="status" data-testid="your-data-export-receipt" className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
+            {t(exportResult === "complete" ? "elev.yourData.exportComplete" : "elev.yourData.exportPartial")}
+          </p>}
           <button
             onClick={() => setDeleting(true)}
+            disabled={exporting}
             data-testid="delete-child-btn"
             className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 min-h-11"
             style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
@@ -188,6 +244,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
           {onDeleteAccount && (
             <button
               type="button"
+              disabled={exporting}
               onClick={() => { onClose(); onDeleteAccount(); }}
               aria-haspopup="dialog"
               data-testid="your-data-delete-account"
