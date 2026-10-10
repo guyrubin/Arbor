@@ -43,7 +43,6 @@ import * as firstMoment from "./firstMoment";
 import * as firstMonth from "./firstMonth";
 import * as growthCare from "./growthCare";
 import * as foundation from "./foundation";
-import * as fullpicture from "./fullpicture";
 import * as gate from "./gate";
 import * as goals from "./goals";
 import * as growth from "./growth";
@@ -122,7 +121,6 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   firstMonth,
   growthCare,
   foundation,
-  fullpicture,
   gate,
   goals,
   growth,

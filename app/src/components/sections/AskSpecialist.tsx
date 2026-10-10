@@ -136,7 +136,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   /** NEXTLEVEL critic r1: the page H1 follows the chosen audience. */
   onAudienceChange?: (a: ExportAudience) => void;
 } = {}) {
-  const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, actionLoop, setActiveTab, pendingConsultPrefill, consumeConsultPrefill } = useArbor();
+  const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, actionLoop, setActiveTab, pendingConsultPrefill, consumeConsultPrefill, consultAudienceReceipt } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const reduceMotion = useReducedMotion();
@@ -151,7 +151,11 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // Step 1: the audience (= the preset); remembered per device.
   const [audience, setAudienceState] = useState<ExportAudience>(() => (intakeProp ? INTAKE_AUDIENCE[intakeProp] : anchorAudience ?? readStoredAudience()));
   const [intake, setIntake] = useState<IntakeProfession | undefined>(intakeProp);
+  // The actual selector publishes synchronously; a host effect is too late
+  // to retire an already captured clinician-summary callback.
+  consultAudienceReceipt?.publish((pendingConsultPrefill && resolveConsultPrefill(pendingConsultPrefill).audience) || audience);
   const setAudience = (a: ExportAudience) => {
+    consultAudienceReceipt?.publish(a);
     if (intake && a !== audience) setIntake(undefined);
     // Consent applies to the exact outgoing audience. Clear it in this click
     // transaction, rather than waiting for the effect below, so an immediate
@@ -215,7 +219,10 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     const patch = resolveConsultPrefill(pendingConsultPrefill);
     if (patch.reason !== undefined) setReason(patch.reason);
     if (patch.note !== undefined) setVisionNote(patch.note);
-    if (patch.audience !== undefined) setAudienceState(patch.audience);
+    if (patch.audience !== undefined) {
+      consultAudienceReceipt?.publish(patch.audience);
+      setAudienceState(patch.audience);
+    }
     setReviewed(false);
     consumeConsultPrefill();
     // eslint-disable-next-line react-hooks/exhaustive-deps

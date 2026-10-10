@@ -194,7 +194,7 @@ describe("domainBands + recommend", () => {
     const rec = recommend(bands, []);
     expect(["language", "emotional", "social", "speech", "cognition"]).toContain(rec.domain);
     expect(rec.missionId).toBeTruthy();
-    expect(rec.headline).toMatch(/Increase/);
+    expect(rec).not.toHaveProperty("headline");
     expect(rec.whyKey).toMatch(/^elev\./);
   });
 });
@@ -511,7 +511,7 @@ describe("B-KID-02 · mood-checkin never enters accuracy or stars", async () => 
  * no reader — the bands, the watch rules, the clinician export — reads it. */
 describe("W2-SHELLPLAY r2 · no reader of adventures.items touches .correct", () => {
   const SRC = nodePath.resolve(nodePath.dirname(fileURLToPath(import.meta.url)), "..");
-  const READERS = ["practice/signals.ts", "practice/watch.ts", "components/practice/DevelopmentCopilot.tsx"];
+  const READERS = ["practice/signals.ts", "practice/watch.ts", "consult/clinicianSummary.ts", "components/consult/PracticeSummary.tsx"];
   const READ_CORRECT = /adventures?[\w.]*\.(?:items\.)?filter\(\(\w+\) => \w+\.correct\)|advCorrect|adventureCorrect|first-try correct/;
 
   it("bands, watch and the clinician export never read adventure correctness", () => {

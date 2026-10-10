@@ -186,7 +186,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/overview/CourseCard.tsx": ["#fff"],
   "components/overview/DailyPlanCard.tsx": ["#fff"],
   "components/overview/DailyPlayCard.tsx": ["#fff"],
-  "components/practice/DevelopmentCopilot.tsx": ["#fff"],
   "components/practice/EarlyReadingTrack.tsx": ["#fff", "#ffffff"],
   "components/practice/MemoryMatch.tsx": ["#fff"],
   "components/practice/MimicMatch.tsx": ["#1c222b", "#5fce97", "#a8a093"], // game canvas art

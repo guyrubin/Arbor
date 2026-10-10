@@ -99,18 +99,15 @@ describe("LC-09 · the reports deep link is not a general door (shrink-only)", (
   const ALLOWED: Record<string, number> = {
     "components/sections/Reports.tsx": Number.POSITIVE_INFINITY,
     "components/sections/AskSpecialist.tsx": Number.POSITIVE_INFINITY,
-    "components/practice/DevelopmentCopilot.tsx": 2,
   };
 
   it("Appointments no longer holds one", () => {
     expect(appts.match(/setActiveTab\("reports"\)/g)).toBeNull();
   });
 
-  it("the known remaining doors have not multiplied", () => {
-    const copilot = read("components/practice/DevelopmentCopilot.tsx");
-    expect(copilot.length).toBeGreaterThan(500);
-    const count = (copilot.match(/setActiveTab\("reports"\)/g) ?? []).length;
-    expect(count).toBeLessThanOrEqual(ALLOWED["components/practice/DevelopmentCopilot.tsx"]);
+  it("the retired Copilot no longer adds a duplicate reports door", () => {
+    expect(read("components/layout/Shell.tsx")).not.toContain("DevelopmentCopilot");
+    expect(read("components/consult/PracticeSummary.tsx")).not.toContain('setActiveTab("reports")');
   });
 });
 

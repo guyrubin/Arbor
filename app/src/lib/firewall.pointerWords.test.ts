@@ -46,7 +46,7 @@ function scanTargets(): { name: string; text: string }[] {
   for (const rel of [
     ["components", "sections", "AcademyForYou.tsx"],
     ["components", "sections", "ScholarHubCard.tsx"],
-    ["components", "practice", "DevelopmentCopilot.tsx"],
+    ["consult", "clinicianSummary.ts"],
     ["lib", "i18n.ts"],
   ]) {
     out.push({ name: rel.join("/"), text: readFileSync(path.join(SRC, ...rel), "utf8") });

@@ -47,7 +47,7 @@ const SCANNED = [
   "components/companion/PortraitKeepsakes.tsx",
   ...GROWTH_FILES,
   "components/sections/ChildProfile.tsx",
-  "components/practice/DevelopmentCopilot.tsx",
+  "components/consult/PracticeSummary.tsx",
   "components/sections/AcademyForYou.tsx",
 ];
 

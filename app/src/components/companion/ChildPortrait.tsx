@@ -237,7 +237,6 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     <div className="portrait-next" data-module="child-portrait-support">
       <section className="portrait-care"><Icon name="diversity_1" size={38} /><div><h2>{c.care}</h2><p>{c.careSub}</p><button type="button" className="portrait-text-button" onClick={() => setActiveTab("care-team")}>{c.careAction}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button></div></section>
       <section className="portrait-record-tools"><h2>{copy.understanding}</h2>
-        <button type="button" onClick={() => setActiveTab("copilot")}><Icon name="auto_stories" size={22} /><span><strong>{copy.copilot}</strong><span>{copy.copilotSub}</span></span><Icon name="chevron_right" size={20} className="portrait-arrow rtl:-scale-x-100" /></button>
         <button type="button" onClick={() => setActiveTab("memory")}><Icon name="psychology" size={22} /><span><strong>{c.memory}</strong><span>{c.memorySub}</span></span><Icon name="chevron_right" size={20} className="portrait-arrow rtl:-scale-x-100" /></button>
         <div>{([
           ["reports", copy.reports], ["milestones", c.milestones], ["language", c.language],

@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useMemo } from "react";
+import { readFileSync } from "node:fs";
+import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Real component functions and collection listener callbacks under deterministic
 // hook lifetimes. The real Modal/createPortal target is inspected, never printed.
 const h = vi.hoisted(() => ({
   cursor: 0, slots: [] as any[], owners: new Map<string, any[]>(), effects: [] as (() => void)[], dirty: false,
-  remote: true, child: "a", account: "parent-a", query: "appointment=teacher-visit", listeners: [] as any[],
+  recordData: null as any, audienceReceipt: null as any, prefill: null as any, remote: true, child: "a", account: "parent-a", query: "appointment=teacher-visit", listeners: [] as any[],
   print: vi.fn(), pdf: vi.fn(), copy: vi.fn(), generate: vi.fn(), toast: vi.fn(), record: vi.fn(), storage: new Map<string, string>(),
 }));
 vi.mock("react", async original => {
@@ -28,7 +30,7 @@ const profiles = {
 };
 const empty: any[] = [];
 function noop() {}
-vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: profiles[h.child as keyof typeof profiles], activeTab: "consult", behaviorLogs: empty, milestones: empty, actionPlans: empty, approvedMemoryItems: empty, actionLoop: empty, setActiveTab: noop, openPaywall: noop, pendingConsultPrefill: null, consumeConsultPrefill: noop }) }));
+vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: profiles[h.child as keyof typeof profiles], activeTab: "consult", behaviorLogs: h.recordData?.logs ?? empty, milestones: h.recordData?.milestones ?? empty, consultRecordSources: h.recordData?.sources, consultAudienceReceipt: h.audienceReceipt, actionPlans: empty, approvedMemoryItems: empty, actionLoop: empty, setActiveTab: noop, openPaywall: noop, pendingConsultPrefill: h.prefill, consumeConsultPrefill: () => { h.prefill = null; } }) }));
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { uid: h.account } }) }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast: h.toast }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: "en", t: translate }) }));
@@ -51,6 +53,10 @@ vi.mock("motion/react", async original => ({ ...await original<typeof import("mo
 import { translate as translateKey } from "../../lib/i18n";
 function translate(key: string, vars?: Record<string, any>) { return translateKey("en", key, vars); }
 import ConsultTab from "./ConsultTab";
+import PracticeSummary from "../consult/PracticeSummary";
+import { createConsultAudienceReceipt } from "../../consult/audienceReceipt";
+import { hydrateMilestones } from "../../context/milestoneHydration";
+import { initialMilestones } from "../../initialData";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import AskSpecialist from "../sections/AskSpecialist";
 import SchoolBrief from "../sections/SchoolBrief";
@@ -67,14 +73,20 @@ const find = (node: React.ReactNode, predicate: (el: El) => boolean) => elements
 const byId = (node: React.ReactNode, id: string) => find(node, el => el.props["data-testid"] === id);
 function owner(key: string, component: any, props: any = {}) { h.cursor = 0; h.slots = h.owners.get(key) ?? []; h.owners.set(key, h.slots); return component(props); }
 function dispose(key: string) { h.owners.get(key)?.forEach(slot => slot?.cleanup?.()); h.owners.delete(key); }
-let activeKey = "", schoolMounted = false;
+let activeKey = "", schoolMounted = false, summaryMounted = false;
+function recordRead() {
+  const milestones = useChildCollection<any>(h.child, "milestones", { trackConfirmation: true });
+  const logs = useChildCollection<any>(h.child, "behaviorLogs", { trackConfirmation: true, orderByField: "timestamp", orderDir: "desc", max: 300 });
+  return { milestones: useMemo(() => hydrateMilestones(milestones.loaded ? milestones.items : empty, initialMilestones), [milestones.loaded ? milestones.items : empty]), logs: logs.loaded ? logs.items : empty, sources: { milestones, behaviorLogs: logs } };
+}
 function render() {
-  let result: { outer: React.ReactNode; ask?: El; packet?: React.ReactNode; brief?: React.ReactNode } = { outer: null };
+  let result: { outer: React.ReactNode; ask?: El; packet?: React.ReactNode; brief?: React.ReactNode; summary?: React.ReactNode } = { outer: null };
   for (let n = 0; n < 12; n++) {
     h.dirty = false;
+    h.recordData = owner("records", recordRead);
     const content = owner("wrapper", ConsultTab) as El;
     const nextKey = String(content.key);
-    if (activeKey && activeKey !== nextKey) { dispose("content"); dispose("ask"); dispose("school"); schoolMounted = false; }
+    if (activeKey && activeKey !== nextKey) { dispose("content"); dispose("ask"); dispose("school"); dispose("summary"); schoolMounted = false; summaryMounted = false; }
     activeKey = nextKey;
     const outer = owner("content", content.type, content.props);
     const ask = find(outer, el => el.type === AskSpecialist);
@@ -83,7 +95,11 @@ function render() {
     if (!school && schoolMounted) dispose("school");
     schoolMounted = !!school;
     const brief = school ? owner("school", SchoolBrief, school.props) : null;
-    result = { outer, ask, packet, brief };
+    const summaryElement = find(outer, el => el.type === PracticeSummary);
+    if (!summaryElement && summaryMounted) dispose("summary");
+    summaryMounted = !!summaryElement;
+    const summary = summaryElement ? owner("summary", PracticeSummary, summaryElement.props) : null;
+    result = { outer, ask, packet, brief, summary };
     h.effects.splice(0).forEach(effect => effect());
     if (!h.dirty) return result;
   }
@@ -108,7 +124,7 @@ function start(profession = "teacher") { render(); source([visit("teacher-visit"
 function setAudience(audience: string) { find(render().packet, el => el.props.role === "radio" && elements(el).length > 0 && React.Children.toArray(el.props.children).includes(translate(`elev.carehonesty.consult.audience.${audience}`))).props.onClick(); render(); }
 function approvePacket() { byId(render().packet, "consult-reason-input").props.onChange({ target: { value: "What helps with classroom transitions?" } }); byId(render().packet, "consult-reviewed").props.onClick(); return render().packet; }
 beforeEach(() => {
-  h.cursor = 0; h.slots = []; h.owners.clear(); h.effects = []; h.dirty = false; h.listeners = []; h.remote = true; h.child = "a"; h.account = "parent-a"; h.query = "appointment=teacher-visit"; activeKey = ""; schoolMounted = false; h.storage.clear();
+  h.recordData = null; h.audienceReceipt = createConsultAudienceReceipt(); h.prefill = null; summaryMounted = false; h.cursor = 0; h.slots = []; h.owners.clear(); h.effects = []; h.dirty = false; h.listeners = []; h.remote = true; h.child = "a"; h.account = "parent-a"; h.query = "appointment=teacher-visit"; activeKey = ""; schoolMounted = false; h.storage.clear();
   for (const mock of [h.print, h.pdf, h.copy, h.generate, h.toast, h.record]) mock.mockReset();
   vi.stubGlobal("localStorage", { getItem: (key: string) => h.storage.get(key) ?? null, setItem: (key: string, value: string) => h.storage.set(key, value) });
   vi.stubGlobal("document", { body: { nodeType: 1, synthetic: true } });
@@ -116,7 +132,124 @@ beforeEach(() => {
 });
 afterEach(() => { [...h.owners.keys()].forEach(dispose); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
+const contextSource = ts.createSourceFile("ArborContext.tsx", readFileSync(new URL("../../context/ArborContext.tsx", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+let prefillDeclaration: ts.VariableDeclaration | undefined;
+function findPrefill(node: ts.Node) { if (ts.isVariableDeclaration(node) && node.name.getText(contextSource) === "requestConsultPrefill") prefillDeclaration = node; ts.forEachChild(node, findPrefill); }
+findPrefill(contextSource);
+const prefillCode = ts.transpileModule(`const ${prefillDeclaration!.getText(contextSource)}; return requestConsultPrefill;`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+function requestPrefill(prefill: unknown) {
+  new Function("consultAudienceReceipt", "setPendingConsultPrefill", prefillCode)(h.audienceReceipt, (value: unknown) => { h.prefill = value; })(prefill);
+}
+
+function confirmPracticeSources() {
+  for (const listener of h.listeners.filter(l => !l.stopped && !l.path.endsWith("/appointments"))) {
+    listener.next({ empty: true, docs: [], metadata: { fromCache: false, hasPendingWrites: false } });
+  }
+  render();
+}
+function openPracticeCopy() {
+  byId(render().summary, "consult-practice-summary").props.onToggle({ currentTarget: { open: true } });
+  return byId(render().summary, "consult-practice-copy").props.onClick as () => Promise<void>;
+}
+function recordSnapshot(collection: "milestones" | "behaviorLogs", state: "cache" | "pending" | "error" | "change" | "deleted" | "confirmed") {
+  const listener = h.listeners.find(l => !l.stopped && l.path === `users/${h.account}/children/${h.child}/${collection}`)!;
+  expect(listener.options).toEqual({ includeMetadataChanges: true });
+  if (state === "error") listener.fail();
+  else listener.next({ empty: state !== "change", docs: state === "change" ? [{ id: "new-record", data: () => collection === "milestones" ? { title: "Parent words", domain: "language_communication", checked: true, ageMonths: 60 } : { timestamp: new Date().toISOString(), behaviorType: "Transition Refusal", intensity: 3 } }] : [], metadata: { fromCache: state === "cache", hasPendingWrites: state === "pending" } });
+}
+
+describe("practice summary actual data and audience boundaries", () => {
+  it("the actual context readers opt into confirmation and expose their own receipts", () => {
+    const declarations = new Map<string, ts.VariableDeclaration>();
+    let receipts: ts.PropertyAssignment | undefined;
+    function visit(node: ts.Node) {
+      if (ts.isVariableDeclaration(node)) declarations.set(node.name.getText(contextSource), node);
+      if (ts.isPropertyAssignment(node) && node.name.getText(contextSource) === "consultRecordSources") receipts = node;
+      ts.forEachChild(node, visit);
+    }
+    visit(contextSource);
+    const readers = new Map<string, object>();
+    const collect = (_child: string, name: string, options: { trackConfirmation?: boolean }) => {
+      expect(options.trackConfirmation).toBe(true);
+      const receipt = { loaded: true, error: false, confirmed: true, isCurrent: () => name === "milestones" };
+      readers.set(name, receipt); return receipt;
+    };
+    const code = ts.transpileModule(`const ${declarations.get("logsCol")!.getText(contextSource)}; const ${declarations.get("milestonesCol")!.getText(contextSource)}; return ${receipts!.initializer.getText(contextSource)};`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+    const exposed = new Function("useChildCollection", "childProfile", "demoSeed", "initialMilestones", code)(collect, { id: "a" }, { logs: [] }, []);
+    expect(exposed).toEqual({ milestones: readers.get("milestones"), behaviorLogs: readers.get("behaviorLogs") });
+  });
+  for (const collection of ["milestones", "behaviorLogs"] as const) {
+    it(`${collection}: loading cannot become a hydrated-catalogue export`, async () => {
+      start("slp");
+      // Confirm every other real listener, leaving the consumed source loading.
+      for (const listener of h.listeners.filter(l => !l.stopped && !l.path.endsWith("/appointments") && !l.path.endsWith(`/${collection}`))) listener.next({ empty: true, docs: [], metadata: { fromCache: false, hasPendingWrites: false } });
+      const summary = render().summary;
+      expect(byId(summary, "consult-practice-copy").props.disabled).toBe(true);
+      expect(byId(summary, "consult-practice-preview")).toBeUndefined();
+      await openPracticeCopy()(); expect(h.copy).not.toHaveBeenCalled();
+    });
+    for (const state of ["cache", "pending", "error", "change", "deleted"] as const) it(`${collection} ${state} invalidates a held copy before render and after recovery`, async () => {
+      start("slp"); confirmPracticeSources();
+      if (state === "deleted") { recordSnapshot(collection, "change"); render(); }
+      const held = openPracticeCopy();
+      recordSnapshot(collection, state); await held(); expect(h.copy).not.toHaveBeenCalled();
+      recordSnapshot(collection, "confirmed"); await held(); expect(h.copy).not.toHaveBeenCalled();
+      render(); await openPracticeCopy()(); expect(h.copy).toHaveBeenCalledOnce();
+    });
+  }
+  for (const collection of ["milestones", "behaviorLogs"] as const) it(`${collection}: same-tab sandbox storage changes retire the actual held copy`, async () => {
+    h.remote = false; h.query = ""; h.storage.set("arbor.consultExportAudience", "slp");
+    render(); const held = openPracticeCopy();
+    h.storage.set(`arbor.${collection}.${h.child}`, JSON.stringify([{ id: "external-same-tab-record" }]));
+    await held(); expect(h.copy).not.toHaveBeenCalled();
+  });
+  it("an actual teacher click invalidates a held practice copy before effects or host render", async () => {
+    start("slp"); confirmPracticeSources();
+    byId(render().summary, "consult-practice-summary").props.onToggle({ currentTarget: { open: true } });
+    const current = render();
+    const held = byId(current.summary, "consult-practice-copy").props.onClick as () => Promise<void>;
+    const audienceClick = (audience: string) => find(current.packet, el => el.props.role === "radio" && React.Children.toArray(el.props.children).includes(translate(`elev.carehonesty.consult.audience.${audience}`))).props.onClick();
+    // Positive control from this exact render: no host rerender can retire the
+    // callback before the selector boundary we are trying to exercise.
+    await held(); expect(h.copy).toHaveBeenCalledOnce(); h.copy.mockClear();
+    audienceClick("teacher");
+    await held(); expect(h.copy).not.toHaveBeenCalled();
+    audienceClick("slp"); await held(); expect(h.copy).not.toHaveBeenCalled();
+    audienceClick("teacher");
+    render(); expect(render().summary).toBeNull();
+    setAudience("slp"); confirmPracticeSources(); await held(); expect(h.copy).not.toHaveBeenCalled();
+    await openPracticeCopy()(); expect(h.copy).toHaveBeenCalledOnce();
+  });
+  it("negative control: removing synchronous audience publication exposes the same-render held copy", async () => {
+    start("slp"); confirmPracticeSources();
+    byId(render().summary, "consult-practice-summary").props.onToggle({ currentTarget: { open: true } });
+    const current = render();
+    const held = byId(current.summary, "consult-practice-copy").props.onClick as () => Promise<void>;
+    const teacher = find(current.packet, el => el.props.role === "radio" && React.Children.toArray(el.props.children).includes(translate("elev.carehonesty.consult.audience.teacher")));
+    // Seed the former delayed-effect-only behavior at the actual receipt seam.
+    h.audienceReceipt.publish = noop;
+    teacher.props.onClick();
+    await held(); expect(h.copy).toHaveBeenCalledOnce();
+  });
+  it("prefill invalidation blocks held copy before the pending teacher prefill is consumed", async () => {
+    start("slp"); confirmPracticeSources(); const held = openPracticeCopy();
+    // The real context request seam invalidates synchronously, before setState.
+    requestPrefill({ audience: "teacher" });
+    await held(); expect(h.copy).not.toHaveBeenCalled();
+    render(); expect(render().summary).toBeNull();
+  });
+});
+
 describe("targeted Consult owns every outgoing action, including the body portal", () => {
+
+  it("keeps the clinician practice disclosure out of the teacher flow and follows the chosen audience", () => {
+    const teacher = start();
+    expect(find(teacher.outer, el => el.type === PracticeSummary)).toBeUndefined();
+    setAudience("slp");
+    expect(find(render().outer, el => el.type === PracticeSummary)).toBeDefined();
+    setAudience("teacher");
+    expect(find(render().outer, el => el.type === PracticeSummary)).toBeUndefined();
+  });
   for (const loss of ["cache", "pending", "error", "deleted", "unconfirmed"] as const) it(`${loss}: retires an open review and held approval before React commits, preserves the edited draft on recovery`, () => {
     start();
     byId(render().brief, "school-brief-edit").props.onClick();

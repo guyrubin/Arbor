@@ -10,13 +10,14 @@ export const RELEASE_VIEWPORTS = Object.freeze([
   { id: 'desktop-en', w: 1280, h: 800, lang: 'en' },
   { id: 'desktop-he', w: 1280, h: 800, lang: 'he' },
 ]);
-export const RELEASE_GROUPS = Object.freeze(['base', 'navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry', 'single-goal', 'first-run-preview', 'private-export']);
+export const RELEASE_GROUPS = Object.freeze(['base', 'navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry', 'single-goal', 'first-run-preview', 'private-export', 'copilot-retirement']);
 export const RELEASE_MATRIX = Object.freeze(RELEASE_VIEWPORTS.flatMap((viewport) => [
   { viewport: viewport.id, group: 'base', shard: 0 },
   { viewport: viewport.id, group: 'focused', shard: 0 },
 ]));
 export function releaseMatrix(scope = 'all') {
   if (scope === 'all') return RELEASE_MATRIX;
+  if (scope === 'copilot-retirement-only') return RELEASE_VIEWPORTS.map(viewport => ({ viewport: viewport.id, group: 'copilot-retirement', shard: 0 }));
   if (scope === 'first-run-goal-only') return [...releaseMatrix('first-run-preview-only'), ...releaseMatrix('single-goal-only')];
   if (scope === 'single-goal-only') return RELEASE_VIEWPORTS.map(viewport => ({ viewport: viewport.id, group: 'single-goal', shard: 0 }));
   if (scope === 'first-run-preview-only') return RELEASE_VIEWPORTS.map(viewport => ({ viewport: viewport.id, group: 'first-run-preview', shard: 0 }));

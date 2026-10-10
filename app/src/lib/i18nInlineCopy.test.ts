@@ -325,7 +325,7 @@ describe("OBJ-PRACTICE-02 — hardcoded English on the practice doors is a shrin
     expect(englishLines("components/companion/TogetherView.tsx")).toEqual([]);
     // R22 (Builder L) — the ratchet reached zero on this file; pinned so a
     // future edit cannot re-add a literal under a restored freeze entry.
-    expect(englishLines("components/practice/DevelopmentCopilot.tsx")).toEqual([]);
+    expect(englishLines("components/consult/PracticeSummary.tsx")).toEqual([]);
   });
 
   it("NEGATIVE CONTROL: the pre-fix JourneyTab literals are what the scan rejects", () => {
@@ -458,56 +458,17 @@ describe("R22 — the practice domain names and the Full Picture body carry both
     }
   });
 
-  it("the Full Picture chrome is keyed in both languages at every render site", () => {
-    const src = stripComments(readSrc("components/practice/DevelopmentCopilot.tsx"));
-    for (const key of [
-      "elev.growthTruth.copilot.eyebrow",
-      "elev.growthTruth.copilot.trustNote",
-      "elev.growthTruth.copilot.domains.title",
-      "elev.growthTruth.copilot.domains.count",
-      "elev.growthTruth.copilot.domains.mechanism",
-      "elev.growthTruth.copilot.domains.limits",
-      "elev.growthTruth.copilot.focus.title",
-      "elev.growthTruth.copilot.focus.cta",
-      "elev.growthTruth.copilot.watch.evidence",
-      "elev.growthTruth.copilot.watch.prepare",
-      "elev.growthTruth.copilot.history.title",
-      "elev.growthTruth.copilot.history.empty",
-      "elev.growthTruth.copilot.history.count",
-      "elev.growthTruth.copilot.share.title",
-      "elev.growthTruth.copilot.share.body",
-      "elev.growthTruth.copilot.share.copy",
-      "elev.growthTruth.copilot.share.copied",
-      "elev.growthTruth.copilot.share.reports",
-      "elev.growthTruth.copilot.share.blocked",
-    ]) {
-      expect(src, `Full Picture: ${key} not resolved at render`).toContain(key);
-      expect(growthTruthEn[key], `${key} has no EN value`).toBeTruthy();
-      expect(HEBREW_SCRIPT.test(growthTruthHe[key] ?? ""), `${key} has no Hebrew value`).toBe(true);
+  it("the migrated practice summary keeps bilingual chrome and an explicitly English preview", () => {
+    const src = stripComments(readSrc("components/consult/PracticeSummary.tsx"));
+    for (const suffix of ["title", "copy", "copied", "blocked", "lang"]) {
+      const key = `elev.growthTruth.copilot.share.${suffix}`;
+      expect(src).toContain(key);
+      expect(growthTruthEn[key]).toBeTruthy();
+      expect(HEBREW_SCRIPT.test(growthTruthHe[key] ?? "")).toBe(true);
     }
-    // The rendered domain row and the watch row take the KEYED label.
-    expect(src).toContain('domainLabel("practice", b.domain, t)');
-    expect(src).toContain("domainText(w.area, w.domain)");
-  });
-
-  it("NEGATIVE CONTROL: the Full Picture's own pre-fix literals are gone", () => {
-    const src = stripComments(readSrc("components/practice/DevelopmentCopilot.tsx"));
-    for (const preFix of [
-      'eyebrow="Growth"',
-      "Counts reflect parent-observed data only",
-      'title="This week',
-      'title="Weekly history"',
-      'title="Share with a professional"',
-      "Prepare a professional summary",
-      "Full reports",
-      "const MECHANISM_NOTE =",
-    ]) {
-      expect(src, `pre-fix literal survives: ${preFix}`).not.toContain(preFix);
-    }
-    // The clinician EXPORT keeps its English on purpose — one stable language
-    // for the professional reading it — and the parent is now told so.
-    expect(src).toContain("milestones noticed by parent");
-    expect(src).toContain("elev.growthTruth.copilot.share.lang");
+    expect(src).toContain('dir="ltr"');
+    expect(readSrc("consult/clinicianSummary.ts")).toContain("milestones noticed by parent");
+    expect(src).not.toContain('title="Share with a professional"');
   });
 
   it("the four other chrome residues resolve through a resolver that already shipped", () => {
