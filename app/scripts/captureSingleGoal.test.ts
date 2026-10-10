@@ -180,8 +180,8 @@ describe('non-vacuous keyboard and passive rendered-frame probes', () => {
     const args = { route: 'development', childId: 'child-a', selector: '#line', expectedText: 'Current choice', outgoing: { isConnected: false } };
     expect(observeSingleGoalFrame(args)).toMatchObject({ ready: true, matches: 1, targetText: 'Current choice' });
     for (const patch of [{ childId: 'other' }, { expectedText: 'Different' }, { outgoing: { isConnected: true } }, { route: 'profile' }]) expect(observeSingleGoalFrame({ ...args, ...patch, waitUntilReady: true })).toBe(false);
-    style.opacity = '0'; expect(observeSingleGoalFrame(args).ready).toBe(false); style.opacity = '1';
-    style.transform = 'matrix(1, 0, 0, 1, 0, 8)'; expect(observeSingleGoalFrame(args).ready).toBe(false); style.transform = 'none';
-    target.isConnected = false; expect(observeSingleGoalFrame(args).ready).toBe(false);
+    style.opacity = '0'; expect(observeSingleGoalFrame(args)).toMatchObject({ ready: false }); style.opacity = '1';
+    style.transform = 'matrix(1, 0, 0, 1, 0, 8)'; expect(observeSingleGoalFrame(args)).toMatchObject({ ready: false }); style.transform = 'none';
+    target.isConnected = false; expect(observeSingleGoalFrame(args)).toMatchObject({ ready: false });
   });
 });

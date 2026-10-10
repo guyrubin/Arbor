@@ -155,8 +155,29 @@ const LEGACY = new Set([
 ]);
 const walk = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap(entry =>
   entry.isDirectory() ? walk(path.join(directory, entry.name)) : entry.name.endsWith(".tsx") ? [path.join(directory, entry.name)] : []);
+function hasRawDialog(source: string): boolean {
+  const file = ts.createSourceFile("consumer.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let found = false;
+  const visit = (node: ts.Node) => {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      for (const attribute of node.attributes.properties) {
+        if (!ts.isJsxAttribute(attribute) || attribute.name.getText(file) !== "role") continue;
+        const initializer = attribute.initializer;
+        const value = initializer && ts.isJsxExpression(initializer) ? initializer.expression : initializer;
+        if (value && (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) && /^(?:dialog|alertdialog)$/.test(value.text)) found = true;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return found;
+}
+it("raw-dialog discovery distinguishes JSX ownership from selectors and test strings", () => {
+  for (const source of ['<div role="dialog" />', "<section role='alertdialog'>Hello</section>", '<div role={"dialog"} />', "<div role={'alertdialog'} />", '<div role={`dialog`} />']) expect(hasRawDialog(source), source).toBe(true);
+  for (const source of ["button.closest('[role=\"dialog\"]')", "expect(selector).toBe('[role=\"dialog\"]')", "const example = '<div role=\"dialog\" />';", '// <div role="dialog" />', '<div role="region" />']) expect(hasRawDialog(source), source).toBe(false);
+});
 it("new raw dialogs cannot evade the explicit owner list", () => {
-  const unmanaged = walk(root).filter(file => /role=["'](?:dialog|alertdialog)["']/.test(readFileSync(file, "utf8")))
+  const unmanaged = walk(root).filter(file => hasRawDialog(readFileSync(file, "utf8")))
     .map(file => path.relative(root, file).replace(/\\/g, "/"))
     .filter(file => !(file in TARGETS) && !LEGACY.has(file));
   expect(unmanaged).toEqual([]);

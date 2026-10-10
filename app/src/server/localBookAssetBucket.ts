@@ -55,8 +55,10 @@ export class LocalFsBookAssetBucket implements BookAssetBucket {
     return f;
   }
 
-  async getFiles(opts: { prefix: string }): Promise<[BookAssetFile[]]> {
+  async getFiles(opts: { prefix: string; autoPaginate?: boolean; maxResults?: number }): Promise<[BookAssetFile[], unknown?]> {
     const out: BookAssetFile[] = [];
+    const limit = opts.autoPaginate === false && opts.maxResults ? opts.maxResults : Infinity;
+    let hasMore = false;
     // walk the deepest existing folder the prefix names
     const prefixPath = this.pathOf(opts.prefix || ".");
     let dir = opts.prefix.endsWith("/") ? prefixPath : path.dirname(prefixPath);
@@ -64,16 +66,20 @@ export class LocalFsBookAssetBucket implements BookAssetBucket {
     if (!statSync(dir).isDirectory()) dir = path.dirname(dir);
     const walk = (d: string) => {
       for (const e of readdirSync(d)) {
+        if (hasMore) return;
         const p = path.join(d, e);
         if (statSync(p).isDirectory()) walk(p);
         else if (!e.endsWith(META)) {
           const name = path.relative(this.root, p).split(path.sep).join("/");
-          if (name.startsWith(opts.prefix)) out.push(this.file(name));
+          if (name.startsWith(opts.prefix)) {
+            if (out.length >= limit) { hasMore = true; return; }
+            out.push(this.file(name));
+          }
         }
       }
     };
     walk(dir);
-    return [out];
+    return hasMore ? [out, { hasMore: true }] : [out];
   }
 }
 

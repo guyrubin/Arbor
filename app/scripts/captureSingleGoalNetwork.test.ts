@@ -3,15 +3,17 @@ import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
-import { SINGLE_GOAL_NETWORK_VERSION, singleGoalAssetPaths, singleGoalRequestDisposition, installSingleGoalNetworkGuard, singleGoalNetworkReceipt, validSingleGoalNetwork, finalizeSingleGoalCell } from './capture/single-goal-network.mjs';
+import { SINGLE_GOAL_NETWORK_VERSION, singleGoalNarrationRefusals, recordSingleGoalDenial, singleGoalAssetPaths, singleGoalRequestDisposition, installSingleGoalNetworkGuard, singleGoalNetworkReceipt, validSingleGoalNetwork, finalizeSingleGoalCell } from './capture/single-goal-network.mjs';
 import { deniedCaptureApiCategory, syntheticReleaseReport } from './capture/release-interactions.mjs';
+import { buildBookNarration, narrationFolder } from '../src/components/kidmode/hero/buildBookNarration';
 import { BASE } from './capture/config.mjs';
 
 const source = readFileSync(new URL('./capture/release-interactions.mjs', import.meta.url), 'utf8');
 const childIds = ['capture-goal-history', 'capture-goal-empty', 'capture-goal-long'];
 const fontUrls = ['https://fonts.googleapis.com/css2?family=Exact', 'https://fonts.gstatic.com/s/exact.woff2'];
 const assetPaths = ['/index.html', '/assets/current.js', '/assets/current.css', '/brand/arbor-mark-128.webp'];
-const scope = { childIds, fontUrls, assetPaths };
+const fixtureChildren = childIds.map(id => ({ id, demo: true, gender: 'girl' }));
+const scope = { childIds, fontUrls, assetPaths, narrationRefusals: singleGoalNarrationRefusals({ children: fixtureChildren }, 'en') };
 const cleanApi = () => ({ singleGoalGuardVersion: SINGLE_GOAL_NETWORK_VERSION, deniedActions: 0, deniedExternal: 0, singleGoalDeniedMutations: 0, singleGoalDeniedRequests: 0 });
 const classify = (method: string, path: string, extra = {}) => singleGoalRequestDisposition({ method, rawUrl: path.startsWith('http') ? path : BASE + path, ...extra }, scope);
 const roots: string[] = [];
@@ -33,13 +35,13 @@ async function routingHarness() {
   const registration = source.slice(start, end);
   expect(registration.lastIndexOf('installSingleGoalNetworkGuard')).toBeGreaterThan(registration.indexOf('await installOfflineFonts(context)'));
   const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
-  const fixture = { childId: childIds[0], children: childIds.map(id => ({ id })), parsed: { synthetic: 'current-only' } };
+  const fixture = { childId: childIds[0], children: fixtureChildren, parsed: { synthetic: 'current-only' } };
   const installFonts = async (ctx: any) => ctx.route((url: URL) => fontUrls.includes(url.href), (route: any) => route.fulfill({ status: 200, body: 'exact-cache-font' }));
-  const execute = new AsyncFunction('context', 'BASE', 'singleGoal', 'kidEntry', 'fixture', 'kidEntryApiDisposition', 'deniedCaptureApiCategory', '_apiCache', 'syntheticReleaseReport', 'lang', 'installOfflineFonts', 'installSingleGoalNetworkGuard', 'singleGoalAssetPaths', 'validateFontCache',
-    'let singleGoalApiState;\n' + registration + '\nreturn apiState;');
-  const api = await execute(context, BASE, fixture, false, fixture, null, deniedCaptureApiCategory, new Map(), syntheticReleaseReport, 'en', installFonts, installSingleGoalNetworkGuard, () => assetPaths, () => ({ resources: new Map(fontUrls.map(url => [url, {}])) }));
+  const execute = new AsyncFunction('context', 'BASE', 'singleGoal', 'kidEntry', 'fixture', 'kidEntryApiDisposition', 'deniedCaptureApiCategory', '_apiCache', 'syntheticReleaseReport', 'lang', 'installOfflineFonts', 'installSingleGoalNetworkGuard', 'recordSingleGoalDenial', 'singleGoalAssetPaths', 'validateFontCache',
+    'let singleGoalApiState; const privateExport = false;\n' + registration + '\nreturn apiState;');
+  const api = await execute(context, BASE, fixture, false, fixture, null, deniedCaptureApiCategory, new Map(), syntheticReleaseReport, 'en', installFonts, installSingleGoalNetworkGuard, recordSingleGoalDenial, () => assetPaths, () => ({ resources: new Map(fontUrls.map(url => [url, {}])) }));
   const dispatch = async (method: string, url: string, extras: any = {}) => {
-    const before = { ...api }; let outcome = 'unhandled', fetchOptions: any = null, responseBody: any = null;
+    const before = { ...api }; let outcome = 'unhandled', fetchOptions: any = null, responseBody: any = null, responseStatus: number | null = null;
     const visited: string[] = []; let fetched = false;
     const headers = vi.fn(() => extras.headers ?? {});
     const allHeaders = vi.fn(async () => {
@@ -50,12 +52,12 @@ async function routingHarness() {
     const matches = routes.filter(item => typeof item.match === 'function' ? item.match(new URL(url)) : new RegExp(globCompiler(item.match)).test(url));
     const routeAt = (index: number): any => ({ request: () => request,
       continue: async () => { outcome = 'continue'; }, abort: async () => { outcome = 'abort'; },
-      fulfill: async (value: any) => { responseBody = value.body; outcome = fetched ? 'fetch-then-fulfill' : 'fulfill'; },
+      fulfill: async (value: any) => { responseBody = value.body; responseStatus = value.status; outcome = fetched ? 'fetch-then-fulfill' : 'fulfill'; },
       fetch: async (options: any) => { fetched = true; fetchOptions = options; return { status: () => extras.status ?? 200, headers: () => ({}), body: async () => Buffer.from('{}') }; },
       fallback: async () => { if (!matches[index + 1]) throw new Error('UNGUARDED_FALLBACK'); return invoke(index + 1); } });
     const invoke = async (index: number): Promise<any> => { visited.push(typeof matches[index].match === 'function' ? 'exact-font-cache' : matches[index].match); return matches[index].handler(routeAt(index)); };
     await invoke(0);
-    return { outcome, fetched, fetchOptions, responseBody, visited, headerReads: { filtered: headers.mock.calls.length, complete: allHeaders.mock.calls.length }, delta: Object.fromEntries(['deniedActions', 'deniedExternal', 'singleGoalDeniedMutations', 'singleGoalDeniedRequests'].map(key => [key, api[key] - before[key]])) };
+    return { outcome, fetched, fetchOptions, responseBody, responseStatus, visited, headerReads: { filtered: headers.mock.calls.length, complete: allHeaders.mock.calls.length }, delta: Object.fromEntries(['deniedActions', 'deniedExternal', 'singleGoalDeniedMutations', 'singleGoalDeniedRequests'].map(key => [key, api[key] - before[key]])) };
   };
   return { api, dispatch, routes, webSockets };
 }
@@ -114,6 +116,61 @@ describe('actual single-goal routing precedence, without browser or network', ()
     for (const path of ['/?capture=release-single-goal-1234', ...assetPaths]) expect(await h.dispatch('GET', BASE + path)).toMatchObject({ outcome: 'continue', fetched: false, visited: ['**/*'], delta: { deniedActions: 0 } });
     for (const url of fontUrls) expect(await h.dispatch('GET', url)).toMatchObject({ outcome: 'fulfill', fetched: false, responseBody: 'exact-cache-font', visited: ['**/*', 'exact-font-cache'], delta: { deniedActions: 0, deniedExternal: 0 } });
     expect(await h.dispatch('GET', fontUrls[1] + '?private=1')).toMatchObject({ outcome: 'abort', fetched: false, delta: { deniedActions: 1, deniedExternal: 1 } });
+  });
+  it('counts only the exact automatic first narration request as a local refusal after complete metadata checks', async () => {
+    const h = await routingHarness();
+    for (const row of scope.narrationRefusals) {
+      const result = await h.dispatch('POST', BASE + row.path, { body: JSON.stringify(row.body) });
+      expect(result).toMatchObject({ outcome: 'fulfill', fetched: false, visited: ['**/*'], responseStatus: 409,
+        responseBody: JSON.stringify({ code: 'synthetic_capture_media_disabled' }), headerReads: { filtered: 0, complete: 1 },
+        delta: { deniedActions: 0, singleGoalDeniedRequests: 0, singleGoalDeniedMutations: 0 } });
+    }
+    expect(singleGoalNetworkReceipt(h.api, 'after-cell-awaits')).toMatchObject({ singleGoalNarrationRefusals: 3, deniedReasons: {}, deniedCategories: {} });
+    const row = scope.narrationRefusals[0];
+    for (const [method, url, extras] of [
+      ['GET', BASE + row.path, { body: JSON.stringify(row.body) }],
+      ['POST', BASE + row.path + '/extra', { body: JSON.stringify(row.body) }],
+      ['POST', BASE + row.path + '?childId=foreign', { body: JSON.stringify(row.body) }],
+      ['POST', BASE + row.path + '#private', { body: JSON.stringify(row.body) }],
+      ['POST', BASE + row.path.replace('capture-goal-history', 'sibling-real'), { body: JSON.stringify(row.body) }],
+      ['POST', 'https://foreign.invalid' + row.path, { body: JSON.stringify(row.body) }],
+      ['POST', BASE + row.path.replace('book-narration', 'book-assets'), { body: JSON.stringify(row.body) }],
+      ...['PUT', 'PATCH', 'DELETE'].map(method => [method, BASE + row.path, { body: JSON.stringify(row.body) }]),
+      ...[null, 'not json', '{}', '[]', JSON.stringify({ ...row.body, childId: childIds[0] }),
+        JSON.stringify({ ...row.body, file: 'p9.mp3' }), JSON.stringify({ ...row.body, lang: 'he-f' }),
+        JSON.stringify({ ...row.body, bookId: 'another-book' })].map(body => ['POST', BASE + row.path, { body }]),
+      ['POST', BASE + row.path, { body: JSON.stringify(row.body), allHeaders: { Cookie: 'private-never-record' } }],
+      ['POST', BASE + row.path, { body: JSON.stringify(row.body), headers: { authorization: 'private-never-record' } }],
+      ['POST', BASE + row.path, { body: JSON.stringify(row.body), metadataError: true }],
+      ['POST', BASE + row.path, { body: JSON.stringify(row.body), allHeaders: { other: null } }],
+    ] as [string, string, any][]) expect(await h.dispatch(method, url, extras)).toMatchObject({ outcome: 'abort', fetched: false, visited: ['**/*'], delta: { deniedActions: 1, singleGoalDeniedRequests: 1 } });
+    expect(h.api.singleGoalNarrationRefusals).toBe(3);
+    const receipt = singleGoalNetworkReceipt(h.api, 'after-cell-awaits');
+    expect(receipt.deniedCategories.BOOK_NARRATION).toBeGreaterThan(0);
+    expect(receipt.deniedReasons.CREDENTIALS_REFUSED).toBe(2);
+    expect(JSON.stringify(receipt)).not.toMatch(/private-never-record|sibling-real|another-book|childId|https?:/);
+    expect(receipt.deniedSamples.length).toBeLessThanOrEqual(24);
+  });
+  it.each(['en', 'he'] as const)('%s refusal matches the first request made by the actual source builder and stops it without success', async lang => {
+    for (const gender of ['girl', 'boy'] as const) {
+      const child = { id: childIds[0], gender, demo: true };
+      const [row] = singleGoalNarrationRefusals({ children: [child] }, lang);
+      const render = vi.fn(async () => ({ ok: false as const, status: 409, code: 'synthetic_capture_media_disabled' }));
+      const keepLocalDoc = vi.fn(), sleep = vi.fn();
+      expect(await buildBookNarration({ childId: child.id, folder: narrationFolder(lang, gender) }, { render, keepLocalDoc, sleep })).toMatchObject({ status: 'not-started', rendered: 0, stoppedBy: 'synthetic_capture_media_disabled' });
+      expect(render).toHaveBeenCalledExactlyOnceWith(row.body);
+      expect(keepLocalDoc).not.toHaveBeenCalled(); expect(sleep).not.toHaveBeenCalled();
+    }
+    expect(() => singleGoalNarrationRefusals({ children: [{ id: 'foreign', demo: true }] }, lang)).toThrow();
+    expect(() => singleGoalNarrationRefusals({ children: [{ id: childIds[0], demo: false }] }, lang)).toThrow();
+  });
+  it('caps passive denial samples while preserving every fixed-category count', async () => {
+    const h = await routingHarness();
+    for (let n = 0; n < 27; n++) await h.dispatch('POST', BASE + '/api/children/private-' + n + '/book-narration', { body: 'private-body' });
+    const receipt = singleGoalNetworkReceipt(h.api, 'after-cell-awaits');
+    expect(receipt).toMatchObject({ singleGoalDeniedRequests: 27, deniedCategories: { BOOK_NARRATION: 27 }, deniedReasons: { API_SCOPE_REFUSED: 27 }, deniedSamplesOmitted: 3 });
+    expect(receipt.deniedSamples).toHaveLength(24); expect(JSON.stringify(receipt)).not.toMatch(/private-/);
+    expect(validSingleGoalNetwork(receipt)).toBe(false);
   });
   it('refuses redirects from mock reads and records WebSocket attempts', async () => {
     const h = await routingHarness();

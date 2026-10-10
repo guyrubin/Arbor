@@ -6,9 +6,9 @@ This additive group is `single-goal`; its dedicated CI scope is `single-goal-onl
 It contains 49 named states at 375×812 and 1280×800 in English and Hebrew:
 196 distinct state-named PNGs and 196 corresponding exact-font receipts.
 The authoritative state/required-fact manifest is `single-goal-contract.mjs`.
-The prior release scopes and all app runtime files are unchanged.
+The prior release scopes are unchanged. Capture corrections do not edit app runtime files; the separately reviewed keyboard correction is documented below.
 
-Prepared against corrected source b5806a2e4b76e6646bef23c4c45d4bb09fa63c69
+Initially prepared against corrected source b5806a2e4b76e6646bef23c4c45d4bb09fa63c69
 (app/src tree 6347329332f59714ab3f320b7353c99dd09b8796), after independent
 review of the goal-only provider/session lifetime correction. The exact checkout
 commit and app/src tree travel through the existing capture, inventory and cell
@@ -85,15 +85,81 @@ stubs, including real LIFO/fallback order, without launching a browser or socket
 - Watch chosen, actual clear receipt and actual undo in both languages, including
   the corrected Hebrew receipt and forbidden `focus`/`מיקוד` text gate.
 
-## Fail-closed keyboard gate
+## Failed first render and bounded correction
 
-The collector traverses the native visible sequence including Earlier's `<summary>`
-using real Tab/Shift+Tab. Directly focusing the final summary cannot make the test
-pass. At the source baseline, `dialogStack` omits `summary` from its tabbable selector,
-while GoalBuilderModal supplies a native summary without an explicit tabindex.
-The source-level probe preserves this omission as an unresolved gate. It is not
-browser reproduction. Do not patch runtime or weaken the harness to pass it.
-A separately reviewed source correction would require new exact-source parity.
+Run 38037463715 at source 33ec607df6be50a427677b81b377f33bbc5435b3
+produced 140 exact-font PNGs, with **0/196 accepted states**. All four
+viewport/language variants attempted the same 35 of 49 states. Each final
+receipt reported 14 denied actions/requests/mutations and zero external requests.
+The old receipt did not retain endpoint categories; those 14 historical requests
+cannot be conclusively identified after the fact.
+
+Source tracing identifies an automatic request made by `KidModeButton` on each
+full load: `ensureBookNarration` starts the default book's first name-bearing
+file, `cover.mp3`. A network abort causes the source builder's 8s/16s retry path.
+The corrected guard recognizes only the exact local POST for one of the three
+invented demo child IDs, with exactly the source book/file and the fixture's
+EN/HE voice folder. It returns a separately counted, labeled local 409 refusal
+before fallback or fetch. Source-builder tests prove the refusal stops without
+retry, a successful generation, or a saved narration document. This is not
+retroactive proof of the old requests. Every other method, child, sibling path,
+query, extra body field, book/file/language, credential-bearing request or
+unavailable metadata remains fail-closed. Complete `allHeaders` admission stays
+first, ahead of fixture/static/API/font handlers. New denied-reason/category
+counters and at most 24 fixed-enum samples travel through cell and shutdown
+receipts; no raw request URL, body, header value or arbitrary error text is kept.
+
+The old collector also performed a full route load and final picker cleanup
+outside named cells. An exception there aborted the remaining long-label/watch
+coverage. Setup now occurs in the named picker cells, and the following named
+route load owns retirement. A remaining modal makes reopen explicitly fail.
+No forced close, changed DOM, wider timeout, altered app callback, restored
+fixture, or invented successful save is used. The same 49 unique intended states
+remain required per variant, totaling 196; a diagnostic screenshot never passes a
+failed state.
+
+Each failed real action now records its exact operation (click, detachment,
+focus return, storage/readiness, navigation), a fixed error category, and passive
+bounded control count/geometry, hit testing, inert/hidden state, focus and storage
+shape. This separates a click that never dispatched from a picker that remained
+after dispatch, duplicate selectors, and a detached-picker focus-return failure.
+It does not change the settled-frame, 44px, history, vocabulary, font, or terminal
+zero-denial gates.
+
+### Offline proof and remaining rendered gates
+
+Installed Vitest, one file at a time with `--maxWorkers=1`: request admission and
+actual source-builder checks 13/13; passive diagnostics and all-state scheduling
+13/13; existing 196-state capture contract 27/27. Replacing only the collector
+with its actual pre-correction 235f0e3f source makes the new scheduling test fail
+at its unrecorded route load; restoring this correction passes. No browser,
+typecheck, build, network, model/provider or publication ran locally.
+
+The four archived variants have identical unresolved interaction results:
+
+- Keyboard reverse traversal: actual receipt `[0, 0]`. Separately corrected in
+  runtime commit 98e8882a5b23dd00002209f7f3c0d53aacf7070f, with native summary and
+  collapsed-details filtering. Capture still uses real Tab/Shift+Tab and must
+  verify this corrected source in all four rendered variants.
+- Timeouts: `picker-close`, `replacement-save`, `earlier-question`, `earlier-save`,
+  `browser-back`, `daily-picker`, `daily-question`, `daily-cancel`, `daily-save`,
+  `daily-escape`, and `empty-reopen`.
+- `browser-forward` failed its no-stale-picker assertion. `empty-save` failed
+  with the old generic interaction category.
+- Never attempted: `long-profile`, `long-development`, `long-daily-play`,
+  `long-plans`, `long-picker`, `long-earlier`, `long-question`, `long-cancel`,
+  `long-save`, `long-reopen`, `history-child-return`, `watch-chosen`,
+  `watch-cleared`, and `watch-undo`.
+
+Pixels show the original picker retained after Close/replacement-save; the Back
+font receipt has `#/profile` while still sampling the modal. Empty-save pixels
+show a changed current choice but do not prove closure or preserved history.
+Source tracing through GoalBuilderModal → useDialog → dialogStack and the
+parent's close handler did not establish the cause. These observations do not
+justify a selector substitution, timeout extension or runtime repair. The next
+bounded exact-source diagnostic replay must identify that boundary and remains
+an acceptance gate. All 196 states remain unaccepted until fresh evidence meets
+the complete contract.
 
 ## Explicit non-claims
 

@@ -1,7 +1,7 @@
 import { isKidModeActive, subscribeKidMode } from "./kidModeGate";
 
 export const DIALOG_LAYER = "data-arbor-dialog-layer";
-const FOCUSABLE = 'a[href],button,input,select,textarea,[tabindex],[contenteditable="true"]';
+const FOCUSABLE = 'a[href],button,input,select,textarea,summary,[tabindex],[contenteditable="true"]';
 export type DialogRegistration = {
   root: HTMLElement;
   onClose: () => void;
@@ -26,6 +26,15 @@ function element(value: unknown): HTMLElement | null {
 }
 function visible(el: HTMLElement): boolean {
   if (!el.isConnected || el.closest('[inert],[hidden],[aria-hidden="true"]')) return false;
+  // A closed native disclosure keeps only its first summary interactive.
+  // Its other descendants can retain layout boxes while rejecting focus, so
+  // client rects alone would make reverse Tab target an invisible control.
+  for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+    if (parent.matches("details") && !parent.hasAttribute("open")) {
+      const summary = Array.from(parent.children).find(child => child.matches("summary"));
+      if (!summary?.contains(el)) return false;
+    }
+  }
   const style = el.ownerDocument.defaultView?.getComputedStyle(el);
   return style?.visibility !== "hidden" && style?.visibility !== "collapse" && el.getClientRects().length > 0;
 }

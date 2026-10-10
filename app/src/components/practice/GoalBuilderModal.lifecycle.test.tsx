@@ -60,7 +60,8 @@ let goals: ActiveGoal[];
 type El = React.ReactElement<Record<string, any>>;
 function elements(node: React.ReactNode): El[] {
   if (!React.isValidElement<Record<string, any>>(node)) return [];
-  return [node, ...React.Children.toArray(node.props.children).flatMap(elements)];
+  const element = node as El;
+  return [element, ...React.Children.toArray(element.props.children).flatMap(elements)];
 }
 function render() {
   for (let i = 0; i < 12; i++) {
