@@ -209,9 +209,10 @@ describe("wiring", () => {
     expect(shell).toContain("autoReadPage(childId, instruction, lang)");
     const reader = read("..", "..", "tabs", "HeroJourneyTab.tsx");
     expect(reader.match(/kidSfx\("pageTurn"\)/g)?.length).toBe(2);
-    // B-BOOK-28: the legacy book keeps local page-turn effects, without live narration.
-    expect(reader).not.toContain("autoReadPage");
-    expect(reader).not.toContain("kidSay");
+    // Guy, 10 Oct 2026: the legacy book reads its pages aloud again, and its
+    // Decision page speaks the question and then each choice (B-KID-73).
+    expect(reader).toContain("autoReadPage(childProfile.id, kidSpeech.split(");
+    expect(reader).toContain("...choices.map((c) => c.label)].join(");
     const kit = read("..", "..", "ui", "playkit.tsx");
     expect(kit).toContain('if (state === "correct") kidSfx("correct");');
     expect(kit).toContain('else if (state === "wrong") kidSfx("tryAgain");');

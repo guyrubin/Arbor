@@ -1283,6 +1283,38 @@ html[lang="he"] .arbor-play,
 @media (min-width: 640px) {
   .arbor-play .kid-page-plate { border-radius: var(--kid-r-l, 32px); padding-block: 12px; align-self: stretch; }
 }
+/* 10 Oct 2026 (Guy, on his iPhone: "the questions to the child do not
+   work"): a legacy book's Decision page put its 4:5 picture (~490 px on an
+   iPhone) above the question, so the answers sat under the screen's edge and
+   the one control in view was a Next that cannot work before an answer. On
+   the Decision page the picture is a short band (none on a short landscape
+   screen), the answers are kid-size, and sideways they sit three across. */
+.arbor-play [data-kid-decision] [data-kid-book-art] {
+  aspect-ratio: auto;
+  block-size: 22dvh;
+}
+@media (min-width: 640px) {
+  .arbor-play [data-kid-decision] [data-kid-book-art] { aspect-ratio: 3 / 4; block-size: min(56vh, calc(100dvh - 220px)); }
+}
+/* The band keeps the hero's face (the covers carry it in their upper third). */
+.arbor-play [data-kid-decision] [data-kid-book-art] img { object-position: 50% 22% !important; transform: none !important; }
+/* Every other page at a phone: the picture never pushes Back / Next under the
+   screen's edge (the top bar, three lines of words and the nav row stay). */
+@media (max-width: 639px) {
+  .arbor-play [data-kid-book-art] { max-block-size: max(180px, calc(100dvh - 310px)); }
+}
+@media (max-height: 520px) {
+  .arbor-play [data-kid-decision] { grid-template-columns: minmax(0, 1fr) !important; max-inline-size: 760px; margin-inline: auto; }
+  .arbor-play [data-kid-decision] [data-kid-book-art] { display: none; }
+  .arbor-play [data-kid-decision] [data-kid-book-text] { font-size: 20px !important; padding-block-start: 8px !important; min-block-size: 0 !important; }
+  .arbor-play [data-kid-decision] [data-kid-question] { max-inline-size: none; }
+  .arbor-play [data-kid-decision] [data-kid-question] > p { display: none; }
+  .arbor-play [data-kid-decision] [data-kid-book-nav] { padding-block: 6px 8px; }
+  .arbor-play [data-kid-decision] [data-kid-choices] { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .arbor-play [data-kid-decision] [data-kid-choices] > * { margin: 0; }
+}
+.arbor-play [data-kid-choices] [data-testid="decision-choice"] { min-block-size: 56px; align-items: center; }
+.arbor-play [data-kid-choices] [data-testid="decision-choice"] > span:last-child { font-size: var(--kid-t-say, 20px); font-weight: 800; line-height: 1.2; }
 
 /* ════════════════════════════════════════════════════════════════════════════
    NATIVE SAFE AREAS — Capacitor iOS/Android (notch, status bar, home indicator).
