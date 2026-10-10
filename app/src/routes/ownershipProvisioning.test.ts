@@ -88,7 +88,7 @@ class MockDb {
     return makeQuery();
   }
   async runTransaction<T>(fn: (t: unknown) => Promise<T>): Promise<T> {
-    return fn({ set: (ref: MockDoc, data: Record<string, unknown>, opts?: { merge?: boolean }) => ref.set(data, opts) });
+    return fn({ get: (ref: MockDoc) => ref.get(), set: (ref: MockDoc, data: Record<string, unknown>, opts?: { merge?: boolean }) => ref.set(data, opts) });
   }
 }
 
@@ -259,6 +259,24 @@ describe("OWN-1 — client-supplied familyId/userId are IGNORED (IDOR closed)", 
     // The child belongs to the owner's family; the attacker still 403s.
     expect((await getJson(owner, "/api/memory/kid-2")).status).toBe(200);
     expect((await getJson(attacker, "/api/memory/kid-2")).status).toBe(403);
+  });
+});
+
+describe("OWN-1 — a child owned by another family cannot be claimed by posting its id", () => {
+  it("the attacker gets 403, the child stays with its family, and nothing of the attacker's is written", async () => {
+    const before = { ...store.childDoc("kid-1") };
+    const claim = await postJson(attacker, "/api/onboarding/family-child", { childId: "kid-1", childProfile: { name: "Overwritten" } });
+    expect(claim.status).toBe(403);
+    expect(store.childDoc("kid-1")).toEqual(before);
+    expect(store.childDoc("kid-1")?.familyId).toBe(ownerFamilyId);
+    expect([...store.db.docs.keys()].some((p) => p.endsWith("/childRefs/kid-1") && !p.startsWith(`families/${ownerFamilyId}/`))).toBe(false);
+    // Ownership-gated reads stay closed to the attacker and open to the owner.
+    expect((await getJson(attacker, "/api/memory/kid-1")).status).toBe(403);
+    expect((await getJson(owner, "/api/memory/kid-1")).status).toBe(200);
+  });
+  it("a memory append under another family never re-parents the child", async () => {
+    await store.families.ensureChild("some-other-family", "kid-1");
+    expect(store.childDoc("kid-1")?.familyId).toBe(ownerFamilyId);
   });
 });
 

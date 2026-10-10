@@ -780,6 +780,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       }
       const { familyId } = await memoryStore.ensureFamilyForUser(uid);
       await memoryStore.ensureFamilyChild({ familyId, childId, userId: uid, childProfile });
+      // A child already owned by another family is left untouched by
+      // ensureChild; posting its id must not read as a successful claim.
+      if (memoryStore.ownsChild && !(await memoryStore.ownsChild(uid, childId))) {
+        res.status(403).json({ error: "Not authorized for this child." });
+        return;
+      }
       res.json({ familyId, childId, userId: uid, adapter: "firestore", created: true });
     } catch (error: any) {
       logger.error("Arbor Onboarding Error", error, { requestId: requestIdOf(req) });
