@@ -189,7 +189,7 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
       {record.error && <button type="button" className="portrait-text-button" onClick={record.reload}>{copy.retry}</button>}
     </div>
     <GoalFocusLine goals={childProfile.activeGoals ?? []} testId="portrait-goals-edit" onClick={() => setGoalOwner(childProfile.id)} />
-    {goalOwner === childProfile.id && <GoalBuilderModal key={childProfile.id} open childId={childProfile.id} childName={childProfile.name}
+    {goalOwner === childProfile.id && <GoalBuilderModal key={`goal-picker:${childProfile.id}`} open childId={childProfile.id} childName={childProfile.name}
       behaviorLogs={record.sources.behaviorLogs ?? []}
       onClose={() => setGoalOwner(null)} />}
     {/* The record lenses come first; an automatic focus stays compact until requested. */}

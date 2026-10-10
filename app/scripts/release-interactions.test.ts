@@ -235,7 +235,12 @@ describe('release interaction contracts, without browser or sockets', () => {
     expect(source).not.toMatch(/(?:companion-live-button|photoRef|documentRef).*\.click\(/);
     expect(source.indexOf('doc.cells.push(cell); save()')).toBeLessThan(source.indexOf('await action(cell)'));
     expect(source).toContain('cell.reached = cell.failures.length === 0');
-    expect(source).toContain('doc.completed = doc.missingEvidence.length === 0');
+    // Ordinary captures complete at collection end. Single-goal evidence must
+    // also survive the final screenshot/diagnostic awaits and real teardown.
+    expect(source).toContain('doc.completed = !singleGoal && doc.missingEvidence.length === 0');
+    const teardown = source.slice(source.lastIndexOf('} finally {'));
+    expect(teardown).toContain("doc.completed = doc.finished === true && doc.missingEvidence.length === 0 && validSingleGoalNetwork(doc.singleGoalFinalNetwork, 'after-context-browser-close')");
+    expect(teardown.indexOf('doc.completed =')).toBeGreaterThan(teardown.indexOf('await browser.close()'));
     expect(source).toContain("return json(503, { error: 'Synthetic capture grant failure' })");
   });
 });
