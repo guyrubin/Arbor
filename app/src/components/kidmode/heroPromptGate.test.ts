@@ -107,12 +107,15 @@ describe("heroPromptGate — how the Kid Mode entry seam uses it (B-KID-11)", ()
   });
 
   it("a child WITH a hero still goes straight into Kid Mode", () => {
-    // The early return is the only branch that skips openKidMode().
+    // After admission and the hero-first branch, the target opens directly.
     expect(button).toMatch(/setStepOpen\(target\);\s*\n\s*return;\s*\n\s*\}\s*\n\s*onBeforeOpen\?\.\(\);\s*\n\s*openKidMode\(target\);/);
   });
 
   it("the step hands over to Kid Mode itself — the child is never blocked", () => {
-    expect(button).toMatch(/const enterKidMode = \(\) => \{ const target = stepFor \?\? \{\}; setStepOpen\(null\); onBeforeOpen\?\.\(\); openKidMode\(target\); \}/);
+    // The actual-hook suite proves stale/cancelled callbacks cannot hand over.
+    expect(button).toContain("if (!pending || pendingRef.current !== pending || !current()) return;");
+    expect(button).toContain("const target = pending.target;");
+    expect(button).toContain("dismiss(pending);");
     expect(button).toContain("onEnterKidMode={enterKidMode}");
   });
 });

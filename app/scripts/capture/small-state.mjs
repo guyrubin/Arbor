@@ -18,7 +18,7 @@ export function smallCaptureEnvironment() {
 }
 
 /** Serialized by Playwright and run before app startup in each fresh document. */
-export function initializeSyntheticOnline({ lang }) {
+export function initializeSyntheticOnline({ lang, preserveKidMode = false }) {
   const originalNavigatorOnline = navigator.onLine;
   Object.defineProperty(navigator, 'onLine', { get: () => true, configurable: false });
   Object.defineProperty(window, '__arborCaptureFixture', {
@@ -27,7 +27,8 @@ export function initializeSyntheticOnline({ lang }) {
   });
   localStorage.setItem('arbor.uiLang', lang);
   localStorage.setItem('arbor.aiLang', lang);
-  localStorage.setItem('arbor.kidmode.active', JSON.stringify({ open: false }));
+  // Entry-lock captures must preserve the app's own state across a real reload.
+  if (!preserveKidMode || localStorage.getItem('arbor.kidmode.active') === null) localStorage.setItem('arbor.kidmode.active', JSON.stringify({ open: false }));
 }
 
 export const SMALL_STATES = Object.freeze([

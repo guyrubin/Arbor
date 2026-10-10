@@ -21,9 +21,13 @@ import { collectBehaviorRecordStates } from './record-behaviors.mjs';
 import { CONFIRMED_ACTION_STATES, CONFIRMED_ACTION_LIMITATIONS, confirmedActionsFixture } from './confirmed-actions-contract.mjs';
 import { collectConfirmedActionStates } from './confirmed-actions-states.mjs';
 
+import { KID_ENTRY_STATES, KID_ENTRY_LIMITATIONS, kidEntryFixture, kidEntryApiDisposition, validKidEntryCell } from './kid-entry-contract.mjs';
+import { collectKidEntryStates } from './kid-entry-states.mjs';
+
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
   record: RECORD_STATES,
+  'kid-entry': KID_ENTRY_STATES,
   'confirmed-actions': CONFIRMED_ACTION_STATES,
   navigation: [
     ...rows('shell', ['keep-closed', 'keep-open', 'keep-toggle-closed', 'keep-escape', 'keep-write', 'keep-close-focus']),
@@ -56,7 +60,7 @@ export function expectedReleaseInteractionStates(group, viewport) {
 export function missingReleaseInteractionEvidence(cells, { group, viewport, sourceSha, sourceTreeSha }) {
   return expectedReleaseInteractionStates(group, viewport).flatMap(({ route, state, group: part }) => {
     const cell = cells.find(item => item.route === route && item.state === state && item.group === part && item.lang === viewport.lang && item.viewport === `${viewport.w}x${viewport.h}` && item.sourceSha === sourceSha && (!sourceTreeSha || item.sourceTreeSha === sourceTreeSha));
-    const valid = cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
+    const valid = (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
     return valid ? [] : [{ route, state, group: part, lang: viewport.lang, viewport: `${viewport.w}x${viewport.h}`, failure: cell?.failures?.[0] ?? (cell ? 'INCOMPLETE_ASSERTIONS_OR_SCREENSHOT' : 'NOT_ATTEMPTED') }];
   });
 }
@@ -155,7 +159,8 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   }
   const record = group === 'record' ? recordFixture(bundle, viewport.lang) : null;
   const confirmed = group === 'confirmed-actions' ? confirmedActionsFixture(bundle, viewport.lang) : null;
-  const fixture = releaseFixture(confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
+  const kidEntry = group === 'kid-entry' ? kidEntryFixture(bundle, viewport.lang) : null;
+  const fixture = releaseFixture(kidEntry?.parsed ?? confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
   const { lang } = viewport;
   const he = lang === 'he';
   const viewportId = `${viewport.w}x${viewport.h}`;
@@ -171,6 +176,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     doc.confirmedActionBoundaries = CONFIRMED_ACTION_LIMITATIONS;
     doc.fixtures.push('synthetic-confirmed-actions-local-storage', 'scoped-local-storage-quota-fault', 'synthetic-browser-share-sink', 'synthetic-Date-only-native-animation-time');
   }
+  if (kidEntry) { doc.kidEntryBoundaries = KID_ENTRY_LIMITATIONS; doc.fixtures = ['synthetic-family', 'local-mock-server', 'synthetic-three-child-entry-profiles', 'synthetic-book-narration-refusal']; }
   save();
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ headless: true });
@@ -179,6 +185,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, locale: he ? 'he-IL' : 'en-US', timezoneId: 'Asia/Jerusalem', serviceWorkers: 'block', permissions: [], ...captureFontContextOptions() });
     let selectedReportFixture = null;
     const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, deniedActionCategories: {}, ttsCapabilityReads: 0, shareListReads: 0, apiCacheHits: 0, localRateLimits: 0 };
+    if (kidEntry) Object.assign(apiState, { kidEntryNarrationRefusals: 0, kidEntryDeniedMutations: 0 });
     await context.route('**/*', route => {
       if (new URL(route.request().url()).origin === BASE) return route.continue();
       apiState.deniedExternal++;
@@ -190,6 +197,11 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       const url = new URL(request.url());
       if (url.origin !== BASE) { apiState.deniedExternal++; return route.abort(); }
       const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+      if (kidEntry) {
+        const disposition = kidEntryApiDisposition(request.method(), url.pathname, kidEntry.childIds);
+        if (disposition === 'synthetic-narration-refusal') { apiState.kidEntryNarrationRefusals++; return json(409, { code: 'synthetic_capture_media_disabled' }); }
+        if (disposition === 'deny') { apiState.kidEntryDeniedMutations++; apiState.deniedActions++; return route.abort(); }
+      }
       if (url.pathname === '/api/live/availability') return json(200, { available: false });
       if (url.pathname === `/api/consent/${encodeURIComponent(fixture.childId)}` && request.method() === 'GET') {
         apiState.consentReads++;
@@ -230,7 +242,8 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     });
     await context.route('**/sandbox/demo-family.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) }));
     await installOfflineFonts(context);
-    await context.addInitScript(initializeSyntheticOnline, { lang });
+    if (kidEntry) await context.addInitScript(initializeSyntheticOnline, { lang, preserveKidMode: true });
+    else await context.addInitScript(initializeSyntheticOnline, { lang });
     if (record || confirmed) await context.addInitScript(installRecordShareSink);
     if (group === 'ask-diagnostic') await context.addInitScript(installStylesheetObservation);
     const page = await context.newPage();
@@ -403,7 +416,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       return cell.reached;
     };
 
-    if (group === 'confirmed-actions') {
+    if (group === 'kid-entry') {
+      await collectKidEntryStates({ page, fixture: kidEntry, viewport, load, screen, check, byId, apiState });
+    } else if (group === 'confirmed-actions') {
       await collectConfirmedActionStates({ page, context, fixture: confirmed, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }), recordBootstrapClock: trace => { doc.confirmedActionBootstrap = trace; save(); } });
     } else if (group === 'record') {
       const helpers = { page, context, fixture: record, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId };
