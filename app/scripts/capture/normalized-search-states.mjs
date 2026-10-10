@@ -2,7 +2,7 @@
 import { KEPT_SEARCH_QUERIES as Q, KEPT_SEARCH_LEARN } from './kept-search-contract.mjs';
 import { waitConfirmedFrame } from './confirmed-frame.mjs';
 export async function collectNormalizedSearchStates(h) {
-  const { page, fixture, viewport, load, run, reset, frame, check, byId, captureDiagnostics = () => null } = h;
+  const { page, fixture, viewport, load, run, reset, journalFeed, frame, check, byId, captureDiagnostics = () => null } = h;
   const he = viewport.lang === 'he', mobile = viewport.w < 1024;
   const surface = () => mobile ? page.getByRole('dialog') : page.locator('#topbar-search-results');
   const globalInput = () => mobile ? surface().locator('input') : page.locator('input[aria-controls="topbar-search-results"]');
@@ -15,17 +15,18 @@ export async function collectNormalizedSearchStates(h) {
     await surface().waitFor({ state: 'visible' });
   };
   const currentResult = label => results().filter({ has: page.getByText(label, { exact: true }) }).filter({ has: page.getByText(he ? 'הילד שלי' : 'My child', { exact: true }) });
-  const arrive = async (cell, target, route) => {
+  const arrive = async (cell, target, destination) => {
+    const route = destination.split('?')[0];
     const outgoing = await page.locator('#main [data-route]').first().elementHandle();
     try {
-      await target.click(); await page.waitForURL(url => url.hash === `#/${route}`);
+      await target.click(); await page.waitForURL(url => url.hash === `#/${destination}`);
       const settled = await waitConfirmedFrame(page, cell, { outgoing, routeName: route, childId: fixture.childId }, 'normalized-search-destination', captureDiagnostics);
-      check(cell, 'ACTUAL_SEARCH_DESTINATION_SETTLED', settled.ready && new URL(page.url()).hash === `#/${route}`, settled);
+      check(cell, 'ACTUAL_SEARCH_DESTINATION_SETTLED', settled.ready && new URL(page.url()).hash === `#/${destination}`, settled);
     } finally { await outgoing?.dispose(); }
   };
 
   await run('journal', 'journal-normalized-search', async cell => {
-    await reset();
+    await reset(); await journalFeed(cell);
     const search = byId('journal-search');
     for (const query of [Q.hebrew, Q.latin, Q.punctuation, Q.bidi]) {
       await search.fill(query);
@@ -52,7 +53,7 @@ export async function collectNormalizedSearchStates(h) {
     cell.searchSurface = mobile ? 'existing-search-modal' : 'existing-desktop-topbar';
   });
   await run('journal', 'search-private-arrival', async cell => {
-    await arrive(cell, privateResult(), 'journal');
+    await arrive(cell, privateResult(), 'journal?view=all');
     const row = page.locator('[id="journal-signal-moment-capture-search-private"]');
     await frame(cell, 'ACTUAL_PRIVATE_JOURNAL_DESTINATION', row); await row.click();
     check(cell, 'PRIVATE_RESULT_OPENS_EXISTING_RECORD_DETAIL', await byId('journal-entry-content-source').isVisible() && (await page.getByRole('dialog').innerText()).includes(fixture.words.search));
@@ -79,10 +80,22 @@ export async function collectNormalizedSearchStates(h) {
     // The existing Ask row is inspected but never invoked or sent.
     cell.normalizedEmptyBoundary = 'global-private-record-non-enumeration; existing-Ask-prefill-row-not-activated';
     await globalInput().fill('');
-    await results().filter({ has: page.getByText(he ? 'פגישות' : 'Appointments', { exact: true }) }).waitFor({ state: 'visible' });
-    const publicText = await surface().innerText();
+    // The topbar deliberately closes its overlay for a truly empty input.
+    // Empty public commands live in the existing Ctrl+K modal on both sizes.
+    if (!mobile) {
+      await surface().waitFor({ state: 'detached' });
+      check(cell, 'DESKTOP_TRUE_EMPTY_DISMISSES_EXISTING_OVERLAY', await globalInput().getAttribute('aria-expanded') === 'false');
+      await page.keyboard.press('Control+k');
+    }
+    const commands = page.getByRole('dialog');
+    await commands.locator('button.group').filter({ has: page.getByText(he ? 'פגישות' : 'Appointments', { exact: true }) }).waitFor({ state: 'visible' });
+    const publicText = await commands.innerText();
     check(cell, 'TRUE_EMPTY_PUBLIC_COMMANDS_KEEP_THREE_PLACES', (he ? ['עכשיו', 'הילד שלי', 'ביחד'] : ['Now', 'My child', 'Together']).every(label => publicText.includes(label)) && fixture.collections.behaviorLogs.every(row => !publicText.includes(row.trigger)));
     check(cell, 'NO_RETIRED_HUB_LABELS_IN_PUBLIC_COMMANDS', !/Journal & Memories|יומן וזיכרונות/.test(publicText));
+    if (!mobile) {
+      await commands.getByRole('button', { name: he ? 'סגור' : 'Close', exact: true }).click();
+      await commands.waitFor({ state: 'detached' });
+    }
     await globalInput().fill(Q.empty); await frame(cell, 'MARKS_ONLY_QUERY_INPUT_REACHABLE', globalInput());
   });
   for (const [kind, query, label, route] of [
@@ -99,11 +112,17 @@ export async function collectNormalizedSearchStates(h) {
     await run(route, `search-${kind}-arrival`, async cell => {
       await arrive(cell, currentResult(label), route);
       check(cell, 'CURRENT_ROUTE_CONTENT_EXISTS', await page.locator(`#main [data-route="${route}"]`).isVisible());
-      if (route === 'consult') check(cell, 'ACTUAL_PREPARATION_HEADING', await byId('consult-h1').innerText() === (he ? 'מתכוננים לפגישה' : 'Prepare for a visit'));
+      if (route === 'consult') {
+        const audience = byId('consult-audience-row').getByRole('radio', { name: he ? 'רופא/ת ילדים' : 'Pediatrician', exact: true });
+        const heading = he ? 'מתכוננים לפגישה עם רופא/ת ילדים' : 'Prepare for the pediatrician';
+        await page.waitForFunction(heading => document.querySelector('[data-testid="consult-h1"]')?.textContent === heading, heading);
+        check(cell, 'ACTUAL_DEFAULT_AUDIENCE_SELECTED', await audience.getAttribute('aria-checked') === 'true');
+        check(cell, 'ACTUAL_PREPARATION_HEADING', await byId('consult-h1').innerText() === heading);
+      }
     });
   }
-  await run('academy', 'learn-normalized-search', async cell => {
-    await load('academy');
+  await run('learn', 'learn-normalized-search', async cell => {
+    await load('learn');
     const search = page.locator('#main input').first(); const spec = KEPT_SEARCH_LEARN[viewport.lang];
     await search.fill(spec.query);
     const title = page.getByRole('heading', { name: spec.title, exact: true });
@@ -115,11 +134,11 @@ export async function collectNormalizedSearchStates(h) {
     await search.fill(spec.query); await title.waitFor({ state: 'visible' });
     await frame(cell, 'REAL_LEARN_MATCH_CARD_44PX', page.locator('#main button').filter({ has: title }));
   });
-  await run('academy', 'learn-normalized-arrival', async cell => {
+  await run('learn', 'learn-normalized-arrival', async cell => {
     const spec = KEPT_SEARCH_LEARN[viewport.lang];
     await page.locator('#main button').filter({ has: page.getByRole('heading', { name: spec.title, exact: true }) }).click();
     await byId('learn-reader-heading').waitFor({ state: 'visible' });
-    check(cell, 'REAL_LEARN_READER_AND_EXISTING_HISTORY_DESTINATION', await byId('learn-reader-heading').innerText() === spec.title && await page.evaluate(() => history.state?.arborLearnCard) === 'executive-function' && new URL(page.url()).hash === '#/academy');
+    check(cell, 'REAL_LEARN_READER_AND_EXISTING_HISTORY_DESTINATION', await byId('learn-reader-heading').innerText() === spec.title && await page.evaluate(() => history.state?.arborLearnCard) === 'executive-function' && new URL(page.url()).hash === '#/learn');
     await byId('learn-reader-heading').scrollIntoViewIfNeeded();
   });
 }

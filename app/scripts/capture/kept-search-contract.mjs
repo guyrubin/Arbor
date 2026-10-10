@@ -12,7 +12,7 @@ export const KEPT_SEARCH_STATES = Object.freeze([
   ...rows('journal', ['search-private-arrival']),
   ...rows('appointments', ['search-visit-arrival']),
   ...rows('consult', ['search-prepare-arrival']),
-  ...rows('academy', ['learn-normalized-search', 'learn-normalized-arrival']),
+  ...rows('learn', ['learn-normalized-search', 'learn-normalized-arrival']),
 ]);
 export const KEPT_SEARCH_LIMITATIONS = Object.freeze([
   { state: 'lineage', status: 'synthetic-preload', reason: 'AI-draft and unverified rows are preloaded fixtures with dormant kept markers. Real edit/confirm, Journal projection and final text Send are exercised; no model extraction, transcription, provider quality or authorship inference is claimed.' },

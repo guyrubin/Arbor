@@ -147,7 +147,13 @@ export default function QuickLogModal({
   const [keepDraft, setKeepDraft] = useState(() => freshCaptureKeep(initialText ?? newLogTrigger));
   const keepAllowed = !editLogId && !review && source !== "ai-draft" && keepDraft.parentWritten && keepDraft.text === newLogTrigger && !!newLogTrigger.trim();
   const kept = keepAllowed ? selectedCaptureKeep(keepDraft, newLogTrigger, hardMoment) : undefined;
-  const keepGender = childProfile.gender === "girl" ? "female" : childProfile.gender === "boy" ? "male" : "neutral";
+  // Full translation keys keep grammatical variants explicit. These are
+  // wording choices, not icon names or a different capture/persistence kind.
+  const keepLabels = childProfile.gender === "girl"
+    ? { said: "kept.capture.said.female", by_herself: "kept.capture.by_herself.female" }
+    : childProfile.gender === "boy"
+      ? { said: "kept.capture.said.male", by_herself: "kept.capture.by_herself.male" }
+      : { said: "kept.capture.said.neutral", by_herself: "kept.capture.by_herself.neutral" };
   // Extraction may fill notes/response too, so its negative lineage lasts
   // for this capture even if the parent replaces only the main text.
   const contentSource: BehaviorLog["contentSource"] = source === "ai-draft" ? "ai_draft"
@@ -883,7 +889,7 @@ export default function QuickLogModal({
               onClick={() => { if (keepAllowed && !busyRef.current) setKeepDraft(draft => ({ ...draft, selected: draft.selected === kind ? undefined : kind, manual: true })); }}
               className="min-h-11 rounded-xl px-3 text-xs disabled:opacity-60"
               style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)", background: kept === kind ? "var(--arbor-paper-deep)" : "transparent" }}
-            >{t(kind === "first" ? "kept.capture.first" : `kept.capture.${kind}.${keepGender}`)}</button>)}
+            >{t(kind === "first" ? "kept.capture.first" : keepLabels[kind])}</button>)}
           </div>
           {!!newLogTrigger.trim() && !keepAllowed && <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t(source === "ai-draft" ? "kept.capture.freshMoment" : "kept.capture.ownNote")}</p>}
         </fieldset>}

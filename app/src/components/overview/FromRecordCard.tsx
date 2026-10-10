@@ -23,7 +23,7 @@ export function recordDate(iso: string | null, lang: string): string {
 
 /**
  * B-TODAY-28 — Today's first card when the record holds something to say
- * back: the parent's own words (editorial serif inside a 2 px inline-start
+ * back: the parent's own words (readable body type inside a 2 px inline-start
  * rule), the date they were written, ONE question (the card's largest sans
  * line) and three answer pills ≥ 44 px. No illustration, no greeting, no
  * count. Answering writes one reflection row (recordFromRecordAnswer) and
@@ -76,8 +76,8 @@ export default function FromRecordCard({
         <figure className={topicLine ? "mt-2" : ""}>
           <blockquote
             data-testid="today-record-quote"
-            className="border-s-2 ps-3 text-[17px] leading-snug sm:text-[19px]"
-            style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}
+            className="border-s-2 ps-3 text-[17px] leading-relaxed sm:text-[19px]"
+            style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-ink)", fontFamily: "var(--font-sans)", fontStyle: "normal" }}
           >
             <FreeText text={opener.quote} />
           </blockquote>
@@ -115,7 +115,7 @@ export default function FromRecordCard({
 }
 
 /** The receipt after an answer. NEXTLEVEL critic r1: it says the parent's
- *  own words back ("Noted today, next to your words: '…'"), one editorial
+ *  own words back ("Noted today, next to your words: '…'"), one readable body
  *  line in --arbor-green-ink behind the same clay rule as the card — never a
  *  celebration, never a count. With no quote it stays "Noted · today". */
 export function FromRecordReceipt({ quote }: { quote?: string | null } = {}) {
@@ -134,8 +134,8 @@ export function FromRecordReceipt({ quote }: { quote?: string | null } = {}) {
         </figcaption>
         <blockquote
           data-testid="today-record-receipt-quote"
-          className="mt-1.5 border-s-2 ps-3 leading-snug"
-          style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-green-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)" }}
+          className="mt-1.5 border-s-2 ps-3 leading-relaxed"
+          style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-green-ink)", fontFamily: "var(--font-sans)", fontStyle: "normal", fontSize: "var(--t-base)" }}
         >
           <FreeText text={words} />
         </blockquote>

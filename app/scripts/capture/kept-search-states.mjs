@@ -43,6 +43,15 @@ export async function collectKeptSearchStates(helpers) {
     }, { id: fixture.childId, siblingId: fixture.siblingId, collections: fixture.collections });
     await load(route);
   };
+  const journalFeed = async cell => {
+    // Journal's default is the shelf grid. Use its real door to the existing
+    // day-grouped feed, rather than asserting that rows exist on the grid.
+    if (!await byId('journal-search').isVisible()) await byId('shelf-all-by-date').click();
+    await page.waitForURL(url => url.hash === '#/journal?view=all');
+    await byId('journal-search').waitFor({ state: 'visible' });
+    const settled = await waitConfirmedFrame(page, cell, { routeName: 'journal', childId: fixture.childId }, 'kept-search-journal-feed', captureDiagnostics);
+    check(cell, 'ACTUAL_JOURNAL_FEED_DESTINATION', settled.ready && new URL(page.url()).hash === '#/journal?view=all', settled);
+  };
   const frame = async (cell, id, target) => {
     await target.scrollIntoViewIfNeeded();
     const element = await target.elementHandle();
@@ -76,7 +85,7 @@ export async function collectKeptSearchStates(helpers) {
   await page.addInitScript(installConfirmedDate, Date.parse(KEPT_SEARCH_NOW));
   try {
     await load('journal');
-    const shared = { ...helpers, load, run, reset, frame, close, storage, sink, childSwitch, nextDate };
+    const shared = { ...helpers, load, run, reset, journalFeed, frame, close, storage, sink, childSwitch, nextDate };
     await collectKeptCaptureStates(shared);
     await collectNormalizedSearchStates(shared);
   } finally { await page.evaluate(restoreConfirmedDate).catch(() => null); }

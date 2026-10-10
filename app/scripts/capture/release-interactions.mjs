@@ -22,6 +22,7 @@ import { CONFIRMED_ACTION_STATES, CONFIRMED_ACTION_LIMITATIONS, confirmedActions
 import { collectConfirmedActionStates } from './confirmed-actions-states.mjs';
 import { KEPT_SEARCH_STATES, KEPT_SEARCH_LIMITATIONS, keptSearchFixture } from './kept-search-contract.mjs';
 import { collectKeptSearchStates } from './kept-search-states.mjs';
+import { collectPracticeStates, PRACTICE_FIXTURE, practiceClockScript } from './practice-states.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
@@ -159,6 +160,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   const record = group === 'record' ? recordFixture(bundle, viewport.lang) : null;
   const confirmed = group === 'confirmed-actions' ? confirmedActionsFixture(bundle, viewport.lang) : null;
   const keptSearch = group === 'kept-search' ? keptSearchFixture(bundle, viewport.lang) : null;
+  const practiceCapture = group === 'navigation';
   const fixture = releaseFixture(keptSearch?.parsed ?? confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
   const { lang } = viewport;
   const he = lang === 'he';
@@ -179,6 +181,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     doc.keptSearchBoundaries = KEPT_SEARCH_LIMITATIONS;
     doc.fixtures.push('preloaded-ai-draft-and-unverified-lineage-not-model-proof', 'synthetic-browser-share-sink', 'synthetic-Date-only-native-animation-time');
   }
+  if (practiceCapture) doc.fixtures.push(PRACTICE_FIXTURE, 'practice-only-Date-native-animation-time');
   save();
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ headless: true });
@@ -239,6 +242,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     await context.route('**/sandbox/demo-family.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) }));
     await installOfflineFonts(context);
     await context.addInitScript(initializeSyntheticOnline, { lang });
+    if (practiceCapture) await context.addInitScript({ content: practiceClockScript(fixture.parsed) });
     if (record || confirmed || keptSearch) await context.addInitScript(installRecordShareSink);
     if (group === 'ask-diagnostic') await context.addInitScript(installStylesheetObservation);
     const page = await context.newPage();
@@ -272,9 +276,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     const conversation = () => page.locator('.companion-conversation:not([hidden])');
     const fontReady = () => page.evaluate(async () => { await Promise.race([document.fonts.ready, new Promise((_, reject) => setTimeout(() => reject(new Error('FONT_READY_TIMEOUT')), 15000))]); });
     let entryMode = 'full-route-load';
-    const load = async route => {
+    const load = async (route, { practiceFixture = false } = {}) => {
       entryMode = route === 'coach' ? 'direct-coach-route' : 'full-route-load';
-      await page.goto(`${BASE}/?capture=release-${group}-${Date.now()}#/${route}`, { waitUntil: 'domcontentloaded', timeout: 90000 });
+      await page.goto(`${BASE}/?capture=release-${group}-${Date.now()}${practiceFixture ? '&capturePractice=1' : ''}#/${route}`, { waitUntil: 'domcontentloaded', timeout: 90000 });
       await page.locator('main h1, main [data-module]').first().waitFor({ state: 'visible', timeout: 30000 });
       await fontReady();
     };
@@ -434,12 +438,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         check(cell, 'KEEP_CLOSE_RETURNS_TO_VISIBLE_SUMMARY', await menu().locator('summary').isVisible() && await menu().locator('summary').evaluate(el => document.activeElement === el));
       });
 
-      const practice = byId('practice-card');
-      let practiceId;
-      const practiceReady = await screen('overview', 'practice-compact', async cell => { await load('overview'); await visible(cell, 'PRACTICE_VISIBLE', practice); practiceId = await practice.getAttribute('data-practice-id'); check(cell, 'PRACTICE_ACTION_FIRST', await practice.getAttribute('data-presentation') === 'action-first'); check(cell, 'PRACTICE_DETAILS_CLOSED', !await byId('practice-details').evaluate(el => el.open)); await visible(cell, 'PRACTICE_OUTCOMES_VISIBLE', byId('practice-answers')); });
-      await screen('overview', 'practice-details', async cell => { dependent(practiceReady); await byId('practice-details').locator('summary').click(); check(cell, 'PRACTICE_DETAILS_OPEN', await byId('practice-details').evaluate(el => el.open)); await byId('practice-details').scrollIntoViewIfNeeded(); check(cell, 'PRACTICE_ID_UNCHANGED', await practice.getAttribute('data-practice-id') === practiceId); });
-      const outcome = await screen('overview', 'practice-outcome', async cell => { dependent(practiceReady); await byId('practice-answers').locator('[data-answer="did"]').click(); await visible(cell, 'PRACTICE_RECEIPT_VISIBLE', byId('practice-receipt')); await visible(cell, 'PRACTICE_UNDO_VISIBLE', byId('practice-undo')); check(cell, 'PRACTICE_ANSWERS_REPLACED', await byId('practice-answers').count() === 0); });
-      await screen('overview', 'practice-undo', async cell => { dependent(outcome); await byId('practice-undo').click(); await visible(cell, 'PRACTICE_OUTCOMES_RESTORED', byId('practice-answers')); check(cell, 'PRACTICE_RECEIPT_REMOVED', await byId('practice-receipt').count() === 0); check(cell, 'PRACTICE_SAME_CARD', await practice.getAttribute('data-practice-id') === practiceId); });
+      await collectPracticeStates({ page, fixture, load, screen, check, visible, byId });
 
       for (const [state, position] of [['now-scroll-initial', 'initial'], ['now-scroll-middle', 'middle'], ['now-bottom-reachable', 'last-action']]) await screen('overview', state, cell => mainScrollFrame(cell, 'overview', position));
       for (const route of ['milestones', 'daily-play']) for (const position of ['initial', 'middle', 'last-action']) await screen(route, `${route}-scroll-${position}`, cell => mainScrollFrame(cell, route, position));

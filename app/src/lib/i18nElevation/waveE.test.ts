@@ -161,10 +161,13 @@ describe("mounts — capability built AND wired", () => {
     // {name}" — on the parent's own sentence that is a false attribution, so
     // an explicit caption key is mandatory here.
     expect(journal).toContain('captionKey="elev.share.caption.journal"');
-    const opts = journal.match(/getCardOpts=\{\(\): ShareCardOpts => \(\{[^}]*\}\)\}/)?.[0];
+    // The truthful source-label spread contains its own braces. Keep the
+    // entire single-line callback rather than stopping at the nested object.
+    const opts = journal.match(/getCardOpts=\{\(\): ShareCardOpts => \(\{[^\n]*\}\)\}/)?.[0];
     expect(opts).toBeTruthy();
     expect(opts).toContain("question: title");
     expect(opts).toContain("takeaway: detail");
+    expect(opts).toContain("...(contentSourceLabel ? { sub: contentSourceLabel } : {})");
     // Nothing Arbor derived, and no photo, may reach the card.
     expect(opts).not.toMatch(/domainLabel|provLabel|photo|when/);
   });

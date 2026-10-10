@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { KEPT_SEARCH_STATES, KEPT_SEARCH_LIMITATIONS, KEPT_SEARCH_LEARN, KEPT_SEARCH_QUERIES, keptSearchFixture } from './capture/kept-search-contract.mjs';
+import { installKeptCaptureProbe, finishKeptCaptureProbe } from './capture/kept-capture-states.mjs';
 import { releaseMatrix, releaseCell, captureDeadlineMs, RELEASE_MATRIX } from './capture/release-config.mjs';
 import { expectedReleaseInteractionStates, missingReleaseInteractionEvidence } from './capture/release-interactions.mjs';
 import { CONFIRMED_ACTION_STATES } from './capture/confirmed-actions-contract.mjs';
@@ -15,7 +16,7 @@ import { searchLearnCards } from '../src/learn/learnLibrary';
 import { LEARN_CARDS } from '../src/learn/learnCards';
 import { searchCatalog, getSearchIndex } from '../src/lib/searchIndex';
 import { placeForTab } from '../src/lib/companionPlaces';
-import { RETIRED_ROUTES, ROUTE_IDS } from '../src/lib/routes';
+import { HASH_ALIASES, RETIRED_ROUTES, ROUTE_IDS } from '../src/lib/routes';
 import { translate } from '../src/lib/i18n';
 const root = path.resolve(__dirname, '../..');
 const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
@@ -139,5 +140,85 @@ describe('bounded additive kept capture and search contract, no browser', () => 
     expect(normalize).not.toMatch(/^import /m);
     const hook = read('app/src/components/search/useSearchResults.ts');
     expect(hook.indexOf('if (!needle) return [];')).toBeLessThan(hook.indexOf('for (const l of behaviorLogs)'));
+  });
+  it('enters the current Journal feed through its real shelf control before inspecting rows', () => {
+    const helpers = read('app/scripts/capture/kept-search-states.mjs');
+    const capture = read('app/scripts/capture/kept-capture-states.mjs');
+    const search = read('app/scripts/capture/normalized-search-states.mjs');
+    expect(read('app/src/components/journal/ShelfGrid.tsx')).toContain('data-testid="shelf-all-by-date"');
+    expect(read('app/src/components/journal/JournalShelves.tsx')).toContain('onOpenAll={() => goToRoute("journal", { view: "all" })}');
+    expect(helpers).toContain("byId('shelf-all-by-date').click()");
+    expect(capture).toContain("await byId('quicklog-reply-open').click();");
+    expect(capture).toContain('await journalFeed(cell);');
+    expect(search).toContain('await reset(); await journalFeed(cell);');
+    expect(search).toContain("await arrive(cell, privateResult(), 'journal?view=all')");
+    expect(search).toContain("const route = destination.split('?')[0]");
+  });
+  it('uses the stable dialog checkbox across actual moment/incident form replacement', () => {
+    const code = read('app/scripts/capture/kept-capture-states.mjs');
+    expect(code).toContain("page.getByRole('dialog').getByRole('checkbox')");
+    expect(code).not.toContain("form().locator('input[type=\"checkbox\"]')");
+    expect(code).not.toContain("incident.locator('input[type=\"checkbox\"]')");
+    expect(read('app/src/components/overview/QuickLogModal.tsx')).toContain('onChange={(e) => toggleHardMoment(e.target.checked)}');
+  });
+  it('keeps Learn on its current route and checks the actual default Consult audience', () => {
+    const code = read('app/scripts/capture/normalized-search-states.mjs');
+    expect(KEPT_SEARCH_STATES.filter((row: any) => row.state.startsWith('learn-')).map((row: any) => row.route)).toEqual(['learn', 'learn']);
+    expect(HASH_ALIASES.academy).toBe('masterclasses');
+    expect(code).toContain("await load('learn')");
+    expect(code).toContain("new URL(page.url()).hash === '#/learn'");
+    expect(code).toContain("byId('consult-audience-row').getByRole('radio'");
+    expect(code).toContain("'ACTUAL_DEFAULT_AUDIENCE_SELECTED'");
+    expect(code).toContain('Prepare for the pediatrician');
+    expect(code).toContain('מתכוננים לפגישה עם רופא/ת ילדים');
+    expect(read('app/src/consult/packet.ts')).toContain('DEFAULT_EXPORT_AUDIENCE: ExportAudience = "pediatrician"');
+    expect(read('app/src/components/sections/AskSpecialist.tsx')).toContain('onAudienceChange?.(audience)');
+    for (const lang of ['en', 'he'] as const) {
+      const audience = translate(lang, 'elev.carehonesty.consult.audience.pediatrician');
+      expect(translate(lang, 'elev.consult.h1.audience', { audience: lang === 'en' ? audience.toLowerCase() : audience })).toBe(lang === 'en' ? 'Prepare for the pediatrician' : 'מתכוננים לפגישה עם רופא/ת ילדים');
+    }
+  });
+  it('distinguishes desktop empty-input dismissal from the existing modal command catalogue', () => {
+    const code = read('app/scripts/capture/normalized-search-states.mjs');
+    expect(read('app/src/components/search/TopbarSearch.tsx')).toContain('const showOverlay = open && query.trim().length > 0');
+    expect(code).toContain("'DESKTOP_TRUE_EMPTY_DISMISSES_EXISTING_OVERLAY'");
+    expect(code).toContain("const commands = page.getByRole('dialog')");
+    expect(code).toContain("commands.locator('button.group')");
+    expect(code).toContain("'TRUE_EMPTY_PUBLIC_COMMANDS_KEEP_THREE_PLACES'");
+    expect(code).toContain("await commands.getByRole('button', { name: he ? 'סגור' : 'Close', exact: true }).click()");
+  });
+  it('retains passive bounded evidence when a repeated native click lands outside a resized receipt', () => {
+    const listeners = new Map<string, (event: any) => void>();
+    let receipt = false;
+    const dialog = { getBoundingClientRect: () => ({ x: 16, y: receipt ? 260 : 100, width: 343, height: receipt ? 300 : 600 }) };
+    const doc = {
+      querySelector: (selector: string) => selector === '[role="dialog"]' ? dialog : selector.includes('quicklog-moment-form') ? !receipt : selector.includes('quicklog-reply') ? receipt : null,
+      addEventListener: (name: string, listener: any, capture: boolean) => { expect(capture).toBe(true); listeners.set(name, listener); },
+      removeEventListener: (name: string, listener: any, capture: boolean) => { expect(capture).toBe(true); expect(listeners.get(name)).toBe(listener); listeners.delete(name); },
+    };
+    const target = (submit: boolean, backdrop = false) => ({ matches: () => submit, getAttribute: () => null, hasAttribute: () => backdrop, tagName: submit ? 'BUTTON' : 'DIV' });
+    const event = (type: string, node: any, detail: number) => ({ type, target: node, detail, isTrusted: true,
+      preventDefault: () => { throw new Error('passive probe cannot cancel'); }, stopPropagation: () => { throw new Error('passive probe cannot intercept'); } });
+    vi.stubGlobal('window', {}); vi.stubGlobal('document', doc);
+    try {
+      installKeptCaptureProbe();
+      listeners.get('click')!(event('click', target(true), 1));
+      listeners.get('submit')!(event('submit', target(false), 0));
+      receipt = true;
+      listeners.get('click')!(event('click', target(false, true), 2));
+      for (let n = 0; n < 15; n++) listeners.get('click')!(event('click', target(false), 1));
+      const result = finishKeptCaptureProbe();
+      expect(result.events).toHaveLength(12);
+      expect(result).toMatchObject({ observed: 18, omitted: 6, formPresent: false, receiptPresent: true });
+      expect(result.events[0]).toMatchObject({ trusted: true, target: 'submit', detail: 1, formPresent: true, receiptPresent: false, dialog: { height: 600 } });
+      expect(result.events[2]).toMatchObject({ trusted: true, target: 'modal-backdrop', detail: 2, formPresent: false, receiptPresent: true, dialog: { height: 300 } });
+      expect(listeners.size).toBe(0);
+      expect((window as any).__arborKeptCaptureProbe).toBeUndefined();
+      expect(finishKeptCaptureProbe()).toEqual({ unavailable: true });
+    } finally { vi.unstubAllGlobals(); }
+    const code = read('app/scripts/capture/kept-capture-states.mjs');
+    expect(code).toContain('finally { cell.captureEvents = await page.evaluate(finishKeptCaptureProbe); }');
+    expect(code).toContain("click({ clickCount: 2 })");
+    expect(code).toContain("cell.captureStage = 'actual-receipt-done'");
   });
 });
