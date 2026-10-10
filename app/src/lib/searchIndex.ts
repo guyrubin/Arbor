@@ -2,7 +2,9 @@
  * W2.4 (masterplan 2026-08-11): Static content-catalog search index —
  * "search that works": index ALL content libraries, forgiving HE+EN matching.
  *
- * AC-6 SAFETY CONTRACT — this module imports ONLY approved STATIC catalogs:
+ * AC-6 SAFETY CONTRACT — this module imports ONLY approved STATIC catalogs
+ * and the import-free search normalizer:
+ *   - app/src/lib/searchNormalize.ts      (string normalization only)
  *   - app/src/playbank/content.ts         (activity names + domain)
  *   - app/src/lib/milestoneData.ts        (milestone names + domain)
  *   - app/src/lib/heroJourneys.ts         (journey titles)
@@ -35,6 +37,10 @@
  * initial Today parse. Do NOT static-import this module from eager code;
  * `import type` is fine (erased at build).
  */
+
+import { normalizeSearchText } from "./searchNormalize";
+// Keep existing search consumers compatible; eager filters import the helper directly.
+export { normalizeSearchText } from "./searchNormalize";
 
 import { ROUTE_IDS, RETIRED_ROUTES } from "./routes";
 import { PLAY_ACTIVITIES } from "../playbank/content";
@@ -91,25 +97,6 @@ export interface SearchEntry {
   /** Precomputed normalized haystacks (both languages, always searched). */
   normTitles: string[];
   normKeywords: string[];
-}
-
-/* ── Forgiving normalization ─────────────────────────────────────────────── */
-
-const HE_FINALS: Record<string, string> = { "ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ" };
-
-/**
- * Case-insensitive, diacritic-insensitive (Latin combining marks + Hebrew
- * niqqud/cantillation), Hebrew final-letter–insensitive (ך=כ ם=מ ן=נ ף=פ ץ=צ).
- * Applied identically to index text and query, so matching is symmetric.
- */
-export function normalizeSearchText(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // Latin combining diacritics
-    .replace(/[֑-ׇ]/g, "") // Hebrew niqqud + cantillation
-    .replace(/[ךםןףץ]/g, (c) => HE_FINALS[c])
-    .trim();
 }
 
 /* ── Index construction (lazy, memoized) ─────────────────────────────────── */
@@ -352,12 +339,22 @@ export function getSearchIndex(context?: HardMomentContext): readonly SearchEntr
 
 /* ── Forgiving matching + simple ranking ─────────────────────────────────── */
 
+/** B-SHELL-37: the historical Visits intent uses today's existing routes.
+ * Appointments owns the visit lifecycle (B-CAREPRO-31/37); Consult owns the
+ * preparation flow and supplies its own bilingual heading. Exact aliases
+ * only: no new route/label, and partial or unrelated queries rank as before. */
+const EXACT_ROUTE_QUERIES: Partial<Record<ActiveTab, readonly string[]>> = {
+  appointments: ["visit", "visits", "ביקור", "ביקורים"].map(normalizeSearchText),
+  consult: [translate("en", "elev.consult.h1"), translate("he", "elev.consult.h1")].map(normalizeSearchText),
+};
+
 /**
  * Score one entry against a normalized query. Both languages are always
  * searched regardless of UI language. Simple startsWith/substring ranking —
  * no fuzzy dependency (hygiene bar: fast, forgiving, HE+EN).
  */
 function scoreEntry(e: SearchEntry, q: string): number {
+  if (e.kind === "route" && EXACT_ROUTE_QUERIES[e.tab]?.includes(q)) return 110;
   let best = 0;
   for (const title of e.normTitles) {
     if (title.startsWith(q)) { best = Math.max(best, 100); continue; }
@@ -374,8 +371,9 @@ function scoreEntry(e: SearchEntry, q: string): number {
 
 /**
  * Search the static catalog. Case/diacritic/HE-final-insensitive, EN+HE
- * always, ranked title-startsWith > word-startsWith > title-substring >
- * keyword. Stable within a rank (catalog order). Returns up to `limit`.
+ * always, ranked exact route intent > title-startsWith > word-startsWith >
+ * title-substring > keyword. Stable within a rank (catalog order).
+ * Returns up to `limit`.
  */
 export function searchCatalog(query: string, limit = 12, context?: HardMomentContext): SearchEntry[] {
   const q = normalizeSearchText(query);

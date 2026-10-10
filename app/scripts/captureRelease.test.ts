@@ -118,7 +118,7 @@ describe('final release evidence contracts, no sockets or browser', () => {
   });
   it('keeps publication, providers, real data and font binaries out of the branch-specific workflow', () => {
     const workflow = read('.github/workflows/arbor-parent-release-capture.yml');
-    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops']");
+    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release']");
     expect(workflow).toContain('"codex/parent-record-diagnostic" ]]; then scope=record-only;');
     expect(workflow).toContain('contents: read');
     expect(workflow).toContain('fail-fast: false');
@@ -147,6 +147,11 @@ describe('final release evidence contracts, no sockets or browser', () => {
     expect(summarizeRelease(records(releaseMatrix('confirmed-actions-release')), identity, 'confirmed-actions-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 686, screenshots: 858, printPreviews: 4, expectedShards: 16 });
     bounded[0].evidence.cells.pop();
     expect(summarizeRelease(bounded, identity, 'confirmed-actions-only').completed).toBe(false);
+  });
+  it('adds bounded kept/search evidence without shrinking the previous 858-state release', () => {
+    expect(summarizeRelease(records(releaseMatrix('kept-search-only')), identity, 'kept-search-only')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 116, screenshots: 116, expectedShards: 4 });
+    expect(summarizeRelease(records(releaseMatrix('kept-search-release')), identity, 'kept-search-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 802, screenshots: 974, printPreviews: 4, expectedShards: 20 });
+    expect(summarizeRelease(records(releaseMatrix('kept-search-only')), identity, 'kept-search-release').completed).toBe(false);
   });
   it('aggregates only the exact final-source complete four-way base matrix and font-proven PNGs', () => {
     const full = summarizeRelease(records(), identity);

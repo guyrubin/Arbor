@@ -130,7 +130,7 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     return from === until ? from : `${from} – ${until}`;
   };
   const contextLabel = (context: string) => ({ Home: c.Home, School: c.School, Transit: c.Transit, Public: c.Public, unspecified: c.unspecified }[context] ?? context);
-  const sourceLabel = (o: Observation) => ({ parent_typed: c.parentTyped, parent_voice: c.parentVoice, ai_proposed_parent_confirmed: c.confirmed, kid_practice: c.childPractice, professional_entered: c.professional, document_extracted: c.document }[o.source]);
+  const sourceLabel = (o: Observation) => ({ parent_typed: c.parentTyped, parent_voice: c.parentVoice, ai_proposed_parent_confirmed: c.confirmed, kid_practice: c.childPractice, professional_entered: c.professional, document_extracted: c.document, unverified: t("companion.portrait.unverified") }[o.source]);
   const title = (o: Observation): string => {
     const v = o.value;
     switch (v.type) {

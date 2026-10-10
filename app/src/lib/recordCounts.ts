@@ -1,6 +1,7 @@
 /* W2-CAREPRO r2 — counts from the record (pure; law 1: numerators only).
  * Shared by #/reports (B-CAREPRO-NEW-2e lead line) and Consult's step-2 head. */
 import type { BehaviorLog } from "../types";
+import { parentWritten } from "./kept/parentWritten";
 import { appointmentStartMs, consultAudienceForProfession, type Appointment, type AppointmentFollowUp, type AppointmentProfession } from "./careTrack";
 
 /** B-GROWTH-35: the lead-line counts are computed by the ONE count reader
@@ -14,7 +15,8 @@ export { reportsLeadCounts } from "./record/counts";
  *  form writes `notes`. Three readers (Reports' kept quote, Appointments'
  *  worth-bringing well, Consult's since-moment) filtered on `notes` alone and
  *  never rendered for a real moment. Never `response`, never AI text. */
-export function parentWords(log: { behaviorType?: string; trigger?: string; notes?: string }): string {
+export function parentWords(log: { behaviorType?: string; trigger?: string; notes?: string; contentSource?: BehaviorLog["contentSource"] }): string {
+  if (!parentWritten(log)) return "";
   const notes = (log.notes ?? "").trim();
   if (notes) return notes;
   return log.behaviorType === "Moment" ? (log.trigger ?? "").trim() : "";

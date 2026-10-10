@@ -35,7 +35,7 @@ export function summarizeRelease(records, identity, scope = 'all') {
       const routes = shardRoutes(ids, capture.cell.shard);
       if (cells.length !== routes.length || missingBaseEvidence(cells, routes, viewport).length) reasons.push('BASE_EVIDENCE_MISSING');
       baseCells += cells.filter((cell) => cell.mounted && cell.shot).length;
-    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions'].includes(group) && viewport) {
+    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search'].includes(group) && viewport) {
       if (evidence?.sourceSha !== identity.sourceSha || evidence?.sourceTreeSha !== identity.sourceTreeSha) reasons.push('INTERACTION_IDENTITY_MISMATCH');
       if (missingReleaseInteractionEvidence(cells, { group, viewport, ...identity }).length || !cells.length || cells.some((cell) => !cell.reached || !cell.shot)) reasons.push('INTERACTION_EVIDENCE_MISSING');
       interactionCells += cells.filter((cell) => cell.reached && cell.shot).length;
@@ -59,7 +59,7 @@ export function summarizeRelease(records, identity, scope = 'all') {
     if (unique.length) failures.push({ id: id ?? 'unknown', reasons: unique });
   }
   for (const id of expected) if (!seen.has(id)) failures.push({ id, reasons: ['SHARD_NOT_RETURNED'] });
-  const expectedBaseCells = ['all', 'record-release', 'confirmed-actions-release'].includes(scope) ? 172 : 0;
+  const expectedBaseCells = ['all', 'record-release', 'confirmed-actions-release', 'kept-search-release'].includes(scope) ? 172 : 0;
   if (baseCells !== expectedBaseCells) failures.push({ id: 'base-matrix', reasons: ['BASE_MATRIX_INCOMPLETE'] });
   return { schema: 1, scope, ...identity, completed: failures.length === 0, expectedShards: expected.size, returnedShards: records.length,
     expectedBaseCells, baseCells, interactionCells, screenshots, printPreviews, routeIds: routeIds ?? [], shards, failures,

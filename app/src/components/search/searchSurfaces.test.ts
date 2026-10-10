@@ -21,6 +21,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { en as searchnavEn, he as searchnavHe, searchnavText } from "../../lib/i18nElevation/searchnav";
+import { normalizeSearchText } from "../../lib/searchNormalize";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.join(__dirname, "..", "..");
@@ -246,7 +247,7 @@ describe("B-SHELL-14 · localized record matching + the ask copy (EN + HE)", () 
     const heLabel = translate("he", sensory.labelKey);
     expect(/[\u0590-\u05FF]/.test(heLabel)).toBe(true);
     const text = logSearchText({ behaviorType: "Sensory Overload", trigger: "loud mall", response: "", notes: "" });
-    expect(text).toContain(heLabel.toLowerCase());
+    expect(text).toContain(normalizeSearchText(heLabel));
     expect(text).toContain("sensory overload");
     expect(text).toContain("loud mall");
     // NEGATIVE CONTROL: the pre-change haystack (raw fields only) misses the Hebrew query.

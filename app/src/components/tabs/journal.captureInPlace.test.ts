@@ -150,7 +150,7 @@ describe("B-TODAY-19 · addMoment stores the photo (unit)", () => {
 
   it("ArborContext.addMoment writes the builder's record (one path)", () => {
     // B-LOOP-07/10: the opts also carry the shelf + milestone Tonight files the line on; the builder gets the rest.
-    expect(CONTEXT).toMatch(/const addMoment = async \(\s*text: string,\s*opts: \{ photoAttachment\?: string; promptKey\?: string; shelf\?: ShelfId; milestoneId\?: string; context\?: BehaviorContext; notes\?: string; callerShowsFailure\?: boolean \} = \{\},/);
+    expect(CONTEXT).toMatch(/const addMoment = async \(\s*text: string,\s*opts: \{ photoAttachment\?: string; promptKey\?: string; kept\?: BehaviorLog\["kept"\]; contentSource\?: BehaviorLog\["contentSource"\]; shelf\?: ShelfId; milestoneId\?: string; context\?: BehaviorContext; notes\?: string; callerShowsFailure\?: boolean \} = \{\},/);
     expect(CONTEXT).toContain('buildMomentLog(text, context ?? "", buildOpts)');
   });
 
@@ -210,7 +210,7 @@ describe("B-ASKJB-30 · edit and review in place", () => {
     expect(MODAL).toContain("if (editLogId) cancelEditLog();");
     // handleAddLog is called from confirm only — the review step is the one write.
     expect(MODAL.match(/handleAddLog\(/g)?.length).toBe(1);
-    expect(MODAL.slice(MODAL.indexOf("const confirm = "), MODAL.indexOf("const discard = "))).toContain("handleAddLog(e, { callerShowsFailure: true })");
+    expect(MODAL.slice(MODAL.indexOf("const confirm = "), MODAL.indexOf("const discard = "))).toContain("handleAddLog(e, { callerShowsFailure: true, ...contentProvenance })");
     expect(CTX).toContain("editingLogSnapshotRef.current?.id === editingLogId");
     expect(CTX).toContain("...existing,");
   });

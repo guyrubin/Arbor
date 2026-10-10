@@ -1,5 +1,18 @@
 /** Parent-kept reader and month page. No counts, grades, or inferred quotes. */
 export const keptEn = {
+  "kept.capture.sourceLabel": "Text source",
+  "kept.capture.source.ai_draft": "Contains wording drafted by Arbor",
+  "kept.capture.source.unverified": "Text source not verified",
+  "kept.capture.label": "Keep it as (optional)",
+  "kept.capture.said.female": "Something she said",
+  "kept.capture.said.male": "Something he said",
+  "kept.capture.said.neutral": "Something they said",
+  "kept.capture.by_herself.female": "She did it herself",
+  "kept.capture.by_herself.male": "He did it himself",
+  "kept.capture.by_herself.neutral": "They did it themselves",
+  "kept.capture.first": "A first",
+  "kept.capture.ownNote": "To mark a kept thing, clear this text and write your own note.",
+  "kept.capture.freshMoment": "Start a new moment to keep your own words.",
   "kept.title": "Kept for {name}",
   "kept.view": "Kept things",
   "kept.noted": "You noted this",
@@ -25,6 +38,19 @@ export const keptEn = {
 };
 
 export const keptHe: Record<keyof typeof keptEn, string> = {
+  "kept.capture.sourceLabel": "מקור הטקסט",
+  "kept.capture.source.ai_draft": "כולל ניסוח שנכתב על ידי ארבור",
+  "kept.capture.source.unverified": "מקור הטקסט לא אומת",
+  "kept.capture.label": "לשמור בתור (לא חובה)",
+  "kept.capture.said.female": "משהו שהיא אמרה",
+  "kept.capture.said.male": "משהו שהוא אמר",
+  "kept.capture.said.neutral": "מילים שנאמרו",
+  "kept.capture.by_herself.female": "היא עשתה בעצמה",
+  "kept.capture.by_herself.male": "הוא עשה בעצמו",
+  "kept.capture.by_herself.neutral": "עשייה עצמאית",
+  "kept.capture.first": "פעם ראשונה",
+  "kept.capture.ownNote": "כדי לסמן רגע לשמירה, יש למחוק את הטקסט ולכתוב במילים שלכם.",
+  "kept.capture.freshMoment": "כדי לשמור במילים שלכם, יש לפתוח רגע חדש.",
   "kept.title": "מה ששמרתם ל{name}",
   "kept.view": "מה ששמרתם",
   "kept.noted": "רשמתם את זה",

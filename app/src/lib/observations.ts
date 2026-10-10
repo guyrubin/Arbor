@@ -53,7 +53,8 @@ export type ObservationSource =
   | "ai_proposed_parent_confirmed"
   | "kid_practice"
   | "professional_entered"
-  | "document_extracted";
+  | "document_extracted"
+  | "unverified";
 
 /** Which existing collection the observation was read from. */
 export type ObservationOrigin =
@@ -189,7 +190,9 @@ export function toObservations(sources: ObservationSources, child: ObservationCh
     push("behaviorLogs", l.id, l.timestamp, filed ? [filed.domain] : doms, {
       kind: "moment",
       value: { type: "moment", behaviorType: l.behaviorType, ...(l.context ? { context: l.context } : {}) },
-      source: l.conversationProposalId ? "ai_proposed_parent_confirmed" : "parent_typed",
+      source: l.contentSource === "ai_draft" ? "ai_proposed_parent_confirmed"
+        : l.contentSource !== undefined ? "unverified"
+        : l.conversationProposalId ? "ai_proposed_parent_confirmed" : "parent_typed",
       ...(l.conversationProposalId ? { provenance: l.conversationProposalId } : l.milestoneId ? { provenance: l.milestoneId } : {}),
       ...(filedSubArea ? { subArea: filedSubArea } : {}),
       ...(l.shelf ? { shelf: l.shelf } : {}),

@@ -349,7 +349,7 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
     expect(existing).toContain("note.locator('[data-testid=\"ms-keepsake-edit\"]').click()");
     expect(existing).not.toContain("note.getByRole('button').click()");
     const integration = read('app/scripts/capture/release-interactions.mjs');
-    expect(integration).toContain('if (record || confirmed) await context.addInitScript(installRecordShareSink)');
+    expect(integration).toContain('if (record || confirmed || keptSearch) await context.addInitScript(installRecordShareSink)');
     expect(integration).toContain('doc.confirmedActionBoundaries = CONFIRMED_ACTION_LIMITATIONS');
   });
 });

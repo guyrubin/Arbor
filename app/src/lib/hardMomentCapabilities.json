@@ -36,7 +36,7 @@
     "id": "log",
     "owner": "components/overview/QuickLogModal.tsx",
     "markers": [
-      "handleAddLog(e, { callerShowsFailure: true })",
+      "handleAddLog(e, { callerShowsFailure: true, ...contentProvenance })",
       "addMoment("
     ]
   },

@@ -159,3 +159,24 @@ for (const lang of ["en", "he"] as const) describe(`${lang}: Journal record hier
     expect(harness.sheet.when).toBeTruthy();
   });
 });
+
+for (const lang of ["en", "he"] as const) describe(`${lang}: latest entry and feed retain content lineage`, () => {
+  it.each(["ai_draft", "unverified", undefined] as const)("%s is factual on both visible entry surfaces, while edit stays available", contentSource => {
+    harness.lang = lang;
+    harness.logs = [{ ...log("lineage", latestAt, latestWords), ...(contentSource ? { contentSource } : {}) }];
+    const html = decode(render());
+    if (contentSource) {
+      const label = translate(lang, `kept.capture.source.${contentSource}`);
+      expect(html).toContain(`data-testid="journal-last-content-source"`);
+      expect(html).toContain(`data-testid="journal-row-content-source"`);
+      expect(html.split(label)).toHaveLength(3);
+    } else {
+      expect(html).not.toContain('data-testid="journal-last-content-source"');
+      expect(html).not.toContain('data-testid="journal-row-content-source"');
+    }
+    harness.controls.get("journal-last-words").onClick(); render();
+    expect(harness.sheet.signal.contentSource).toBe(contentSource);
+    expect(harness.sheet.prov).toBe("manual");
+    expect(harness.sheet.onEdit).toEqual(expect.any(Function));
+  });
+});
