@@ -5,13 +5,15 @@
 Prepared on `codex/kid-entry-safety-release` from Parent source
 `788a3594e5070241c1913692970518dc8408844b`, with the reviewed three-file entry
 lifetime correction `616237baf3c3bdd472dfe1678cb9a681282583e3` cherry-picked as
-`14ccb21`. This fixture changes capture tooling only. No other app runtime or
-held Kids feature is imported.
+`14ccb21`. The initial fixture changed capture tooling only. A later, separately
+authorized pre-paint lock correction follows the reproduced reload failure below.
+No held Kids feature is imported.
 
-**Prepared, not rendered:** no browser, Docker build/run, local typecheck,
-provider, publication, cloud CI, PR or deployment was performed here.
-Source/pure tests cannot establish that these 18 rendered states pass. Run the
-bounded diagnostic first and review its real PNG/JSON before the release matrix.
+**Current result: release blocked.** The owner-run second diagnostic renders all
+18 states but accepts 17/18; reload's first-ready parent shield still fails. The
+pre-paint correction below has offline lifecycle evidence only and requires new
+exact-source cloud types, diagnostic and release evidence. No local browser,
+Docker run, typecheck, provider call or publication was performed by this author.
 
 ## Additive matrix
 
@@ -174,3 +176,61 @@ process. The other 142 tests above previously passed on unchanged relevant sourc
 No local browser/provider/typecheck/publication was performed. The next real
 bounded diagnostic is still needed; a repeated first-ready unshielded parent
 must continue to fail and be investigated before release.
+
+## Second real diagnostic and authorized pre-paint correction
+
+Owner-run source `82402b810fd259a2f1d1a8bbab8feaa1e7842ff2`, app source tree
+`af85c979b16c88a09d0a656bcd70c5dee6b1844d`, renders 18 exact-font desktop-EN PNGs
+and accepts **17/18**. Archive digests, source identity for every cell, PNG
+dimensions and loaded/rendered font receipts were verified; the local pure
+aggregate exactly matches the cloud failed verdict. Both failed attempts are
+retained. Capture run: `38029298319`.
+
+Only `lock-reload` fails. Its passive trace, in the reloaded document's
+`performance.now()`, records:
+
+- 214.9 ms, first settled current-child home: open/home, one overlay, main
+  inert=false, parent aria-hidden=false, shield owner=none, focus=BODY.
+- 400.4 ms, after exit control visibility: inert=true, aria-hidden=true,
+  shield owner=page-shell, focus=BODY.
+- 407.5 ms, after real Tab: shield retained, focus on a button inside Kid home.
+
+This reproduces the initial unshielded ready frame. It brackets a change, not
+a continuous 185.5 ms gap or a successful focus escape. The observer already
+uses `main.closest('[inert]')`; ancestor-versus-property is not the issue.
+Post-action screenshots are not first-ready paint snapshots. No required
+first-ready assertion, observer, timeout or capture guard was changed.
+
+The bounded field receipts establish only two first-visit changes: Mira's
+`lastVisitAt` is added at `2026-10-10T06:00:27.895Z`; Tal's is added at
+`2026-10-10T06:00:34.414Z`. Their previous stamps remain absent. Both identities
+were actually selected and both timestamps are inside the recorded observation
+window. Every other compared field and all collections stay unchanged, and all
+other state deltas are empty. No browser bump/rotation is claimed; Noa's baseline
+is after hydration. Five labeled local narration refusals remain; no generation
+or prohibited mutation request occurred.
+
+Based on this repeated defect, the owner separately authorized the smallest
+runtime correction: move the existing Escape capture, sibling inert/aria-hidden
+shield and Tab capture from `useEffect` to `useLayoutEffect` in KidModeOverlay.
+Their callback bodies, late-sibling MutationObserver and exact cleanup are
+unchanged. This installs the boundary during the commit's layout phase, before
+the persisted-open surface can paint. Media, admission, parent gate and entry
+lifetimes are unchanged. This new app source still requires fresh rendered proof.
+
+The actual-component deterministic lifecycle harness runs the real shield/trap
+callbacks with separate layout/passive queues. It covers persisted-open and
+closed-to-open setup, unchanged renders, late/removed siblings, pre-existing
+attributes, close/reopen, unmount, effect replay and keyboard behavior. It is
+not a real React DOM/browser scheduler. Exact pre-fix source gives **6 red + 3
+green controls**; corrected source gives **9/9**. Existing kidLock gives **42/42**
+and captureKidEntry **16/16**, each a separate one-worker offline process. The
+temporary baseline module/test and dependency link were removed.
+
+Second CI run `38029298394` stopped at three test-fixture timestamp union errors
+before tests. Base/first/bump/rotation profiles are now explicitly typed tuples;
+visited children have required current stamps and rotations a required previous
+stamp. All optional timestamp accesses were inspected together. No assertion
+changed, no `any` was added, and no local typecheck was run. Fresh exact-source
+cloud typecheck, the unchanged 18-state diagnostic, then full release evidence
+remain required before acceptance.

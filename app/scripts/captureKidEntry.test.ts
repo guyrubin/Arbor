@@ -160,14 +160,16 @@ describe('bounded Kids entry capture contract, no browser or provider', () => {
   it('accounts for only observed visit transitions on selected synthetic identities while preserving every other field', () => {
     expect(source()).toContain('profileFieldsIntact &&=');
     expect(source()).toContain('profileVisitsIntact &&=');
-    const base = [{ id: 'a', name: 'Noa', age: 4, avatar: { source: 'descriptor' } }, { id: 'b', name: 'Mira', age: 3 }];
+    type VisitProfileFixture = { id: string; name: string; age: number; avatar?: { source: string }; lastVisitAt?: string; lastVisitPreviousAt?: string };
+    type VisitedProfileFixture = VisitProfileFixture & { lastVisitAt: string };
+    const base: [VisitProfileFixture, VisitProfileFixture] = [{ id: 'a', name: 'Noa', age: 4, avatar: { source: 'descriptor' } }, { id: 'b', name: 'Mira', age: 3 }];
     const start = Date.parse('2026-10-10T06:00:00.000Z');
     const compare = (previous: unknown, current: unknown, extra = {}) => compareKidEntryProfiles({ previous, current, allowedChildIds: ['a', 'b'], visitedChildIds: ['a'], earliestStampMs: start, observedAtMs: start + 3_600_000, ...extra });
-    const first = [{ ...base[0], lastVisitAt: '2026-10-10T06:00:10.000Z' }, base[1]];
+    const first: [VisitedProfileFixture, VisitProfileFixture] = [{ ...base[0], lastVisitAt: '2026-10-10T06:00:10.000Z' }, base[1]];
     expect(compare(base, first)).toMatchObject({ passed: true, fieldsUnchanged: true, changes: [{ childId: 'a', fields: ['lastVisitAt'], expectedTransition: 'first-visit', visitTransitionValid: true }] });
-    const bump = [{ ...first[0], lastVisitAt: '2026-10-10T06:01:10.000Z' }, base[1]];
+    const bump: [VisitedProfileFixture, VisitProfileFixture] = [{ ...first[0], lastVisitAt: '2026-10-10T06:01:10.000Z' }, base[1]];
     expect(compare(first, bump)).toMatchObject({ passed: true, changes: [{ expectedTransition: 'bump-visit' }] });
-    const rotate = [{ ...bump[0], lastVisitAt: '2026-10-10T06:31:10.000Z', lastVisitPreviousAt: bump[0].lastVisitAt }, base[1]];
+    const rotate: [VisitedProfileFixture & { lastVisitPreviousAt: string }, VisitProfileFixture] = [{ ...bump[0], lastVisitAt: '2026-10-10T06:31:10.000Z', lastVisitPreviousAt: bump[0].lastVisitAt }, base[1]];
     expect(compare(bump, rotate)).toMatchObject({ passed: true, changes: [{ expectedTransition: 'rotate-visit' }] });
     for (const [field, value] of [['name', 'Other'], ['age', 2], ['photoUrl', 'not-a-generated-hero'], ['avatar', { source: 'photo' }], ['extra', true]]) {
       const result = compare(first, [{ ...first[0], [String(field)]: value }, base[1]]);
