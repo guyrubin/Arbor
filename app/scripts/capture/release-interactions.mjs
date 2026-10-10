@@ -24,7 +24,7 @@ import { KEPT_SEARCH_STATES, KEPT_SEARCH_LIMITATIONS, keptSearchFixture } from '
 import { collectKeptSearchStates } from './kept-search-states.mjs';
 import { collectPracticeStates, PRACTICE_FIXTURE, practiceClockScript } from './practice-states.mjs';
 import { KID_ENTRY_STATES, KID_ENTRY_LIMITATIONS, kidEntryFixture, kidEntryApiDisposition, validKidEntryCell } from './kid-entry-contract.mjs';
-import { PRIVATE_EXPORT_STATES, PRIVATE_EXPORT_LIMITATIONS, privateExportFixture, privateExportApiDisposition, validPrivateExportCell, validPrivateExportNetwork } from './private-export-contract.mjs';
+import { PRIVATE_EXPORT_STATES, PRIVATE_EXPORT_LIMITATIONS, privateExportFixture, isExactPrivateExportFixtureUrl, privateExportApiDisposition, validPrivateExportCell, validPrivateExportNetwork } from './private-export-contract.mjs';
 import { createPrivacyResponseGate } from './private-export-download.mjs';
 import { collectPrivateExportStates } from './private-export-states.mjs';
 
@@ -203,10 +203,14 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     let selectedReportFixture = null;
     const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, deniedActionCategories: {}, ttsCapabilityReads: 0, shareListReads: 0, apiCacheHits: 0, localRateLimits: 0 };
     const privacyGate = privateExport ? createPrivacyResponseGate(apiState) : null;
-    if (privateExport) Object.assign(apiState, { privateExportReads: 0, privateExportResponses: 0, privateExportLastStatus: null, privateExportDownloads: 0, privateExportUnexpectedDownloads: 0, privateExportDenied: 0, privateExportPrivateReads: 0, privateExportAuthHeaders: 0, privateExportExpectedDownload: false });
+    if (privateExport) Object.assign(apiState, { privateExportReads: 0, privateExportResponses: 0, privateExportLastStatus: null, privateExportDownloads: 0, privateExportUnexpectedDownloads: 0, privateExportDenied: 0, privateExportPrivateReads: 0, privateExportAuthHeaders: 0, privateExportExpectedDownload: false, privateExportNarrationRefusals: 0, privateExportDownloadObservations: [] });
     if (kidEntry) Object.assign(apiState, { kidEntryNarrationRefusals: 0, kidEntryDeniedMutations: 0 });
     await context.route('**/*', route => {
-      if (new URL(route.request().url()).origin === BASE) return route.continue();
+      if (new URL(route.request().url()).origin === BASE) {
+        if (privateExport && route.request().headers().authorization) { apiState.privateExportAuthHeaders++; apiState.deniedActions++; return route.abort(); }
+        if (privateExport && !['GET', 'HEAD'].includes(route.request().method())) { apiState.privateExportDenied++; apiState.deniedActions++; return route.abort(); }
+        return route.continue();
+      }
       apiState.deniedExternal++;
       return route.abort();
     });
@@ -221,6 +225,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         if (request.headers().authorization) { apiState.privateExportAuthHeaders++; apiState.deniedActions++; return route.abort(); }
         if (/\/book-assets(?:\/|$)/.test(url.pathname)) apiState.privateExportPrivateReads++;
         if (disposition === 'deny') { apiState.privateExportDenied++; apiState.deniedActions++; return route.abort(); }
+        if (disposition === 'synthetic-narration-refusal') { apiState.privateExportNarrationRefusals++; return json(409, { code: 'synthetic_capture_media_disabled' }); }
         if (disposition === 'local-privacy-read') return privacyGate.route(route);
       }
       if (kidEntry) {
@@ -266,7 +271,13 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       }
       return route.continue();
     });
-    await context.route('**/sandbox/demo-family.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) }));
+    await context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : '**/sandbox/demo-family.json', route => {
+      if (privateExport && (route.request().method() !== 'GET' || route.request().headers().authorization)) {
+        if (route.request().headers().authorization) apiState.privateExportAuthHeaders++;
+        apiState.privateExportDenied++; apiState.deniedActions++; return route.abort();
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) });
+    });
     await installOfflineFonts(context);
     if (kidEntry) await context.addInitScript(initializeSyntheticOnline, { lang, preserveKidMode: true });
     else await context.addInitScript(initializeSyntheticOnline, { lang });
@@ -286,6 +297,8 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     page.on('filechooser', () => { apiState.deniedActions++; });
     page.on('download', download => {
       if (privateExport) {
+        // Synthetic-only bounded diagnostics: no payload, blob URL, token or private record.
+        if (apiState.privateExportDownloadObservations.length < 6) apiState.privateExportDownloadObservations.push({ expected: apiState.privateExportExpectedDownload, sameOriginBlob: download.url().startsWith(`blob:${BASE}/`), suggestedFilename: download.suggestedFilename().slice(0, 120), expectedFilename: privateExport.filename });
         if (apiState.privateExportExpectedDownload && download.url().startsWith(`blob:${BASE}/`) && download.suggestedFilename() === privateExport.filename) { apiState.privateExportDownloads++; apiState.privateExportExpectedDownload = false; return; }
         apiState.privateExportUnexpectedDownloads++;
       }
@@ -411,7 +424,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
           check(cell, 'NO_PROHIBITED_ACTIONS_AFTER_CAPTURE', apiState.deniedActions === 0, apiState.deniedActions);
         } catch (error) { cell.failures.push(knownFailure(error)); }
       }
-      cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories } };
+      cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories }, ...(privateExport ? { privateExportDownloadObservations: apiState.privateExportDownloadObservations.map(row => ({ ...row })) } : {}) };
       cell.entryMode = entryMode;
       cell.assetDiagnostics = assets.snapshot();
       cell.readiness = await readinessSnapshot().catch(() => ({ unavailable: true }));
@@ -424,7 +437,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       if (privateExport) {
         // Re-sample after screenshot and diagnostic awaits. An earlier pass
         // cannot hide an unexpected download/auth/mutation arriving later.
-        cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories } };
+        cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories }, ...(privateExport ? { privateExportDownloadObservations: apiState.privateExportDownloadObservations.map(row => ({ ...row })) } : {}) };
         check(cell, 'FINAL_EXPORT_NETWORK_GUARD', validPrivateExportNetwork(cell.networkEvidence));
       }
       cell.reached = cell.failures.length === 0 && cell.assertions.length > 0 && cell.shot !== null;

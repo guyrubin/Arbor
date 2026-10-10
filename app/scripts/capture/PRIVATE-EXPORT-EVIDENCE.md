@@ -69,7 +69,7 @@ are compared after every state and are not retained in artifacts.
 
 ## Safety and verdict
 
-Only the exact current child's privacy GET enters the response gate. All other
+Only the exact current child's privacy GET enters the response gate. The existing shell's automatic current-child book-narration POST is explicitly refused locally with HTTP409 and counted separately; it never reaches the server or succeeds. Other children, suffixes and all other mutations remain denied. Bounded synthetic download-name observations retain only the expected/suggested filename and two booleans, never a blob URL or payload. All other
 privacy routes, private-book reads, mutation/generation requests and unexpected
 downloads fail the capture. Existing exact-font/network/denied-action guards and
 source-SHA/tree checks still apply. Final network evidence is re-sampled after

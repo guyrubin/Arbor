@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { PRIVATE_EXPORT_STATES, PRIVATE_EXPORT_LIMITATIONS, privateExportFixture, privateExportApiDisposition, validatePartialExport, privateExportRequiredAssertions, validPrivateExportCell, validPrivateExportNetwork, validPrivacyResponseReady, validPrivacyResponseSettlement, EXPORT_DOWNLOAD_LIMIT } from './capture/private-export-contract.mjs';
+import { PRIVATE_EXPORT_STATES, PRIVATE_EXPORT_LIMITATIONS, privateExportFixture, isExactPrivateExportFixtureUrl, privateExportApiDisposition, validatePartialExport, privateExportRequiredAssertions, validPrivateExportCell, validPrivateExportNetwork, validPrivacyResponseReady, validPrivacyResponseSettlement, EXPORT_DOWNLOAD_LIMIT } from './capture/private-export-contract.mjs';
 import { createPrivacyResponseGate, inspectPartialDownload } from './capture/private-export-download.mjs';
 import { releaseMatrix, releaseCell, RELEASE_MATRIX } from './capture/release-config.mjs';
 import { missingReleaseInteractionEvidence, expectedReleaseInteractionStates } from './capture/release-interactions.mjs';
@@ -25,7 +25,7 @@ const dataFor = (fixture: any) => ({
 const receiptFor = (lang: string) => ({ passed: true, delivery: 'actual-browser-download', syntheticOnly: true, deleted: true, status: 'incomplete', privateFileStatus: 'unauthorized', bytes: 1000, sha256: 'c'.repeat(64), childId: 'capture-private-export-a', filename: lang === 'he' ? 'arbor-נועה-data.partial.json' : 'arbor-noa-data.partial.json' });
 const readyReceipt = () => ({ responseReady: true, responseStatus: 200, released: false, releasedAfterReady: false, releaseReason: null, outcome: 'pending' });
 const settledReceipt = (reason = 'deliver') => ({ ...readyReceipt(), released: true, releasedAfterReady: true, releaseReason: reason, outcome: 'fulfilled' });
-const safeNetwork = () => ({ privateExportDenied: 0, privateExportPrivateReads: 0, privateExportUnexpectedDownloads: 0, privateExportAuthHeaders: 0, deniedActions: 0 });
+const safeNetwork = () => ({ privateExportDenied: 0, privateExportPrivateReads: 0, privateExportUnexpectedDownloads: 0, privateExportAuthHeaders: 0, deniedActions: 0, privateExportNarrationRefusals: 0 });
 const cellFor = (state: string, viewport: any) => ({ route: 'shell', state, group: 'private-export', ...identity, viewport: `${viewport.w}x${viewport.h}`, lang: viewport.lang, reached: true,
   shot: `shots/${viewport.id}.${state}.png`, failures: [], frames: [{ ready: true }], assertions: privateExportRequiredAssertions(state).map((id: string) => ({ id, passed: true })),
   networkEvidence: safeNetwork(), heldResponse: { ready: readyReceipt(), closedBeforeRelease: true, settled: settledReceipt(state === 'interrupted-closed' ? 'after-close' : 'deliver') }, downloadReceipt: receiptFor(viewport.lang) });
@@ -66,10 +66,21 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     expect(states).toContain('await exportButton().dblclick()'); expect(states).toContain('await exportButton().click()');
     expect(states).toContain('await sheetDialog().getByRole');
   });
+  it('matches the exact fixture origin and pathname, never foreign/private suffix routes', () => {
+    const base = 'http://127.0.0.1:4810';
+    expect(isExactPrivateExportFixtureUrl(`${base}/sandbox/demo-family.json`, base)).toBe(true);
+    expect(isExactPrivateExportFixtureUrl(new URL(`${base}/sandbox/demo-family.json?capture=1`), base)).toBe(true);
+    for (const value of ['https://example.test/sandbox/demo-family.json', `${base}/api/children/capture-private-export-a/book-assets/sandbox/demo-family.json`, `${base}/sandbox/demo-family.json/other`, 'invalid']) expect(isExactPrivateExportFixtureUrl(value, base)).toBe(false);
+    const interactions = read('scripts/capture/release-interactions.mjs');
+    expect(interactions).toContain("context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : '**/sandbox/demo-family.json'");
+  });
   it('allows only the exact current child read and safe existing reads', () => {
     const id = 'capture-private-export-a';
     expect(privateExportApiDisposition('GET', `/api/privacy/export/${id}`, id)).toBe('local-privacy-read');
     for (const [method, url] of [['POST', '/api/privacy/erase'], ['GET', '/api/privacy/export/sibling'], ['POST', `/api/privacy/export/${id}`], ['GET', `/api/children/${id}/book-assets/export-manifest`], ['GET', `/api/children/${id}/book-assets/book/file`], ['POST', '/api/chat'], ['POST', '/api/consent'], ['DELETE', '/api/children/x'], ['POST', '/api/children/x/book-narration']]) expect(privateExportApiDisposition(method, url, id)).toBe('deny');
+    expect(privateExportApiDisposition('POST', `/api/children/${id}/book-narration`, id)).toBe('synthetic-narration-refusal');
+    expect(privateExportApiDisposition('GET', `/api/children/${id}/book-narration`, id)).toBe('read');
+    expect(privateExportApiDisposition('POST', `/api/children/${id}/book-narration/other`, id)).toBe('deny');
     expect(privateExportApiDisposition('GET', '/api/entitlement', id)).toBe('read');
     expect(privateExportApiDisposition('POST', '/api/todays-focus', id)).toBe('read');
   });
@@ -167,7 +178,9 @@ describe('bounded private export capture contract, no browser or sockets', () =>
       for (const assertion of cell.assertions) expect(validPrivateExportCell({ ...cell, assertions: cell.assertions.filter(a => a !== assertion) })).toBe(false);
       for (const patch of [{ frames: [] }, { frames: [{ ready: false }] }, { networkEvidence: {} }, { networkEvidence: { privateExportDenied: 1, privateExportPrivateReads: 0 } }]) expect(validPrivateExportCell({ ...cell, ...patch })).toBe(false);
     }
-    for (const key of Object.keys(safeNetwork())) {
+    expect(validPrivateExportNetwork({ ...safeNetwork(), privateExportNarrationRefusals: 2 })).toBe(true);
+    for (const invalid of [-1, 0.5, '0', undefined]) expect(validPrivateExportNetwork({ ...safeNetwork(), privateExportNarrationRefusals: invalid })).toBe(false);
+    for (const key of Object.keys(safeNetwork()).filter(key => key !== 'privateExportNarrationRefusals')) {
       const afterScreenshot = { ...cells[0], networkEvidence: { ...safeNetwork(), [key]: 1 } };
       // Every named assertion still says passed, including the pre-shot guard.
       expect(validPrivateExportCell(afterScreenshot)).toBe(false);

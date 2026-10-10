@@ -30,8 +30,15 @@ export function privateExportFixture(bundle, lang) {
   return { parsed, child, sibling, childId: child.id, collections, siblingMarker, filename: `arbor-${child.name.toLowerCase()}-data.partial.json` };
 }
 
+/** Match only the deliberate fixture resource; no suffix or origin aliases. */
+export function isExactPrivateExportFixtureUrl(value, base) {
+  try { const url = new URL(value); return url.origin === base && url.pathname === '/sandbox/demo-family.json'; }
+  catch { return false; }
+}
+
 /** No arbitrary export, private file, mutation, generation or sharing route. */
 export function privateExportApiDisposition(method, pathname, childId) {
+  if (method === 'POST' && pathname === `/api/children/${encodeURIComponent(childId)}/book-narration`) return 'synthetic-narration-refusal';
   if (method === 'GET' && pathname === `/api/privacy/export/${encodeURIComponent(childId)}`) return 'local-privacy-read';
   if (/^\/api\/privacy(?:\/|$)/.test(pathname) || /\/book-assets(?:\/|$)/.test(pathname)) return 'deny';
   if (method !== 'GET' && !(method === 'POST' && ['/api/todays-focus', '/api/digest'].includes(pathname))) return 'deny';
@@ -80,7 +87,8 @@ export function validPrivacyResponseSettlement(receipt, reason) {
     && receipt.releaseReason === reason && (receipt.outcome === 'fulfilled' || (reason === 'after-close' && receipt.outcome === 'browser-cancelled-after-close'));
 }
 export function validPrivateExportNetwork(evidence) {
-  return ['privateExportDenied', 'privateExportPrivateReads', 'privateExportUnexpectedDownloads', 'privateExportAuthHeaders', 'deniedActions'].every(key => evidence?.[key] === 0);
+  return Number.isInteger(evidence?.privateExportNarrationRefusals) && evidence.privateExportNarrationRefusals >= 0
+    && ['privateExportDenied', 'privateExportPrivateReads', 'privateExportUnexpectedDownloads', 'privateExportAuthHeaders', 'deniedActions'].every(key => evidence?.[key] === 0);
 }
 export function validPrivateExportCell(cell) {
   const required = privateExportRequiredAssertions(cell?.state);
