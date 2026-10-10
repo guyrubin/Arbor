@@ -128,7 +128,8 @@ describe("N2-errfocus — focus fetch failure surfaces an inline error + retry",
     expect(overviewSrc).toContain("candidatePracticeIds: todaysCandidates(base).map((c) => c.practice.id),");
     expect((overviewSrc.match(/useTodaysFocus\(/g) ?? []).length).toBe(2);
     // B-STATUS-01: the practice lead also reports its pending state (the 400 ms PendingLine on Now).
-    expect(overviewSrc).toContain('{lead === "practice" && <PracticeFocus journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}');
+    expect(overviewSrc).toContain('{lead === "practice" && <PracticeFocus now={now} journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}');
+    expect(overviewSrc).toContain("focusSignalsForNow({ behaviorLogs, playLogs, milestones, actionLoop }, now)");
     // the Tonight line lands on the day's dose row (the night answer; never the quote keepsake)
     // (P5-LOOP c2 r1: through the named builder lib/loop/tonight tonightLineEntry,
     //  which the demo seed uses too — so yesterday's line is Today's line 1)

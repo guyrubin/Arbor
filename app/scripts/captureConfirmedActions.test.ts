@@ -16,12 +16,17 @@ import { ritualOfTheMoment } from '../src/lib/familyRitualsCadence';
 import { translate } from '../src/lib/i18n';
 import { resolveRouteId } from '../src/lib/routes';
 import { observeConfirmedFrame } from './capture/confirmed-frame.mjs';
+import { installConfirmedDate, changeConfirmedDate, restoreConfirmedDate } from './capture/confirmed-date-clock.mjs';
 const root = path.resolve(__dirname, '../..');
 const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
 const body = () => ({ child: { id: 'synthetic-capture-child', name: 'Capture Child', demo: true, age: 4, birthDate: '2022-01-01' }, collections: { milestones: [{ ...CDC_MILESTONES[0], checked: false }], actionLoops: [] } });
 const bundle = () => ({ parent: { demo: true }, ...body(), version: 'capture', seededAt: '2026-10-10', locales: { en: body(), he: body() } });
 const identity = { sourceSha: 'a'.repeat(40), sourceTreeSha: 'b'.repeat(40) };
-afterEach(() => { if ((globalThis as any).window?.__arborConfirmedStorageFault) restoreConfirmedStorageFault(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  if ((globalThis as any).window?.__arborConfirmedStorageFault) restoreConfirmedStorageFault();
+  if ((globalThis as any).window?.__arborConfirmedDateClock) restoreConfirmedDate();
+  vi.unstubAllGlobals();
+});
 
 describe('additive confirmed Parent action capture, no browser or sockets', () => {
   it('adds exactly four bounded shards and keeps the existing 662-state release contract unchanged', () => {
@@ -196,17 +201,25 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
       getBoundingClientRect: () => ({ width: 100, height: 44 }), getAnimations: () => [] as any[] };
     const route = { ...target, querySelectorAll: () => [target], getAttribute: () => 'plans' };
     vi.stubGlobal('document', { querySelectorAll: (selector: string) => selector === '#main [data-route]' ? [route] : [] });
+    const clock = { nativeTimingPreserved: true };
+    vi.stubGlobal('window', { __arborConfirmedDateClock: { snapshot: () => clock, restore: () => {} } });
     vi.stubGlobal('getComputedStyle', () => style);
     vi.stubGlobal('location', { hash: '#/plans' });
     vi.stubGlobal('localStorage', { getItem: () => 'child-a' });
     const args = { routeName: 'plans', childId: 'child-a' };
     expect(observeConfirmedFrame(args)).toMatchObject({ ready: true });
+    clock.nativeTimingPreserved = false;
+    expect(observeConfirmedFrame(args)).toMatchObject({ ready: false });
+    clock.nativeTimingPreserved = true;
     style.transform = 'matrix(0.9766, 0, 0, 0.9766, 0, 5)';
     expect(observeConfirmedFrame({ ...args, waitUntilReady: true })).toBe(false);
     style.transform = 'none'; style.opacity = '0';
     expect(observeConfirmedFrame(args)).toMatchObject({ ready: false });
-    style.opacity = '1'; target.getAnimations = () => [{ playState: 'running' }];
-    expect(observeConfirmedFrame(args)).toMatchObject({ ready: false });
+    style.opacity = '1'; target.getAnimations = () => [{ playState: 'running', pending: false,
+      currentTime: -20_000, startTime: 21_000, playbackRate: 1, timeline: { currentTime: 1_000 },
+      effect: { getComputedTiming: () => ({ duration: 220, delay: 0, iterations: 1, endTime: 220, localTime: -20_000, progress: 0 }) } }];
+    expect(observeConfirmedFrame(args)).toMatchObject({ ready: false, ancestors: [{ runningAnimations: 1,
+      animations: [{ currentTime: -20_000, startTime: 21_000, playbackRate: 1, timelineCurrentTime: 1_000, effect: { duration: 220, progress: 0 } }] }] });
     target.getAnimations = () => [];
     expect(observeConfirmedFrame({ ...args, outgoing: { ...route, isConnected: true } })).toMatchObject({ ready: false });
     expect(observeConfirmedFrame({ ...args, childId: 'child-b' })).toMatchObject({ ready: false });
@@ -218,11 +231,54 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
     expect(observer).toContain('outgoingMotionParent');
     expect(observer).toContain('tabSkeletonCandidates');
     expect(observer).toContain('diagnosticsAtFailure');
+    expect(observer).toContain('documentTimelineCurrentTime');
+    expect(observer).toContain('performanceTimeOrigin');
     const shell = read('app/src/components/layout/Shell.tsx');
     expect(shell).toContain('<Suspense fallback={<TabSkeleton />}>');
     expect(shell).toContain('mode="wait"');
     expect(shell).toContain('key={`${activeTab}@${childProfile.id}`}');
     expect(observer).not.toMatch(/\.finish\(|\.cancel\(|dispatchEvent|forceUpdate|\.style\.[a-zA-Z]+\s*=/);
+  });
+
+  it('fixes only synthetic Date and preserves native monotonic clocks, timers and animation APIs across reload setup', () => {
+    const native = { Date, performance, setTimeout, setInterval, requestAnimationFrame: () => 1, cancelAnimationFrame: () => {},
+      document: { timeline: { currentTime: 91 } }, Element: { prototype: { animate: () => {} } } };
+    for (const epoch of [Date.parse(CONFIRMED_ACTIONS_NOW), Date.parse(CONFIRMED_ACTIONS_EXPIRED)]) {
+      const win = { ...native } as typeof native & { __arborConfirmedDateClock?: unknown };
+      vi.stubGlobal('window', win);
+      const descriptor = Object.getOwnPropertyDescriptor(win, 'Date');
+      expect(installConfirmedDate(epoch)).toEqual({ mode: 'synthetic-Date-only-native-animation-time', fixedEpoch: epoch, nativeTimingPreserved: true });
+      expect(win.Date.now()).toBe(epoch);
+      expect(new win.Date().getTime()).toBe(epoch);
+      expect(win.Date()).toBe(new Date(epoch).toString());
+      expect(new win.Date('2020-01-02').toISOString()).toBe('2020-01-02T00:00:00.000Z');
+      expect(new win.Date(2020, 0, 2).getTime()).toBe(new Date(2020, 0, 2).getTime());
+      expect(new win.Date(undefined as unknown as number).getTime()).toBeNaN();
+      expect(new win.Date() instanceof win.Date).toBe(true);
+      expect(win.Date.parse).toBe(Date.parse); expect(win.Date.UTC).toBe(Date.UTC);
+      class DerivedDate extends win.Date {}
+      expect(new DerivedDate().getTime()).toBe(epoch); expect(new DerivedDate() instanceof DerivedDate).toBe(true);
+      expect(() => installConfirmedDate(epoch)).toThrow('CONFIRMED_DATE_ALREADY_INSTALLED');
+      expect(() => changeConfirmedDate(NaN)).toThrow('CONFIRMED_DATE_INVALID');
+      expect(changeConfirmedDate(epoch + 1000).nativeTimingPreserved).toBe(true);
+      expect(win.Date.now()).toBe(epoch + 1000);
+      for (const key of ['performance', 'setTimeout', 'setInterval', 'requestAnimationFrame', 'cancelAnimationFrame', 'document', 'Element'] as const) expect(win[key]).toBe(native[key]);
+      expect(restoreConfirmedDate()?.nativeTimingPreserved).toBe(true);
+      expect(Object.getOwnPropertyDescriptor(win, 'Date')).toEqual(descriptor);
+      expect(win.__arborConfirmedDateClock).toBeUndefined();
+      expect(restoreConfirmedDate()).toBeNull();
+      expect(() => changeConfirmedDate(epoch)).toThrow('CONFIRMED_DATE_NOT_INSTALLED');
+    }
+    const flow = read('app/scripts/capture/confirmed-actions-states.mjs');
+    expect(flow).toContain('page.addInitScript(installConfirmedDate');
+    expect(flow).toContain('page.evaluate(restoreConfirmedDate)');
+    expect(flow).toContain('DATE_ONLY_FIXTURE_PRESERVES_NATIVE_TIMING');
+    expect(flow).toContain('activeCell.reloadClockObservations');
+    expect(flow).toContain('before: await clock()');
+    expect(flow).toContain('trace.after = await clock()');
+    expect(flow).toContain('{ ...helpers, load, run, reset');
+    const portal = read('app/scripts/capture/confirmed-consult-portal-state.mjs');
+    expect(flow + portal).not.toMatch(/page\.clock\.|\.finish\(|\.cancel\(/);
   });
 
   it('preserves original rapid navigation and a real interrupted child round trip', () => {
@@ -252,8 +308,8 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
   it('keeps UI actions real, labels unproved remote transitions, and makes restoration unconditional', () => {
     const flows = ['confirmed-frame', 'confirmed-actions-states', 'confirmed-milestone-states', 'confirmed-routine-states', 'confirmed-family-states', 'confirmed-consult-portal-state'].map(name => read(`app/scripts/capture/${name}.mjs`)).join('\n');
     expect(flows).not.toMatch(/__react|_react|\.useState|hasPendingWrites|fromCache|setConfirmed|forceUpdate|dispatchEvent|\bel\.click\(|\bnode\.click\(/);
-    for (const action of ['.click()', '.fill(', '.goBack()', '.goForward()', '.setFixedTime(']) expect(flows).toContain(action);
-    expect(flows).toContain('finally { await page.evaluate(restoreConfirmedStorageFault).catch(() => null); }');
+    for (const action of ['.click()', '.fill(', '.goBack()', '.goForward()', 'page.evaluate(changeConfirmedDate,']) expect(flows).toContain(action);
+    expect(flows).toContain('await page.evaluate(restoreConfirmedStorageFault).catch(() => null);');
     expect(flows).toContain('!outgoing.isConnected');
     expect(flows).toContain('EXACT_DOM_EDITOR_IDENTITY_AND_TYPED_DRAFT_SURVIVE');
     expect(flows).toContain('RETAINED_EDITOR_CANNOT_BYPASS_FINAL_FRESHNESS_GUARD');

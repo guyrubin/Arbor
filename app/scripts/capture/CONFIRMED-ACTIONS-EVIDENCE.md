@@ -4,6 +4,8 @@ This is the bounded diagnostic extension for the next Parent batch. The first ac
 run at `8802cea` retained all 196 frames but passed only 130 cells. It is not a rendered
 pass, a Firestore acknowledgement, full-backlog completion or release approval. See
 `CONFIRMED-ACTIONS-8802CEA-REVIEW.md` for the retained failures and corrections.
+The next run at `73ad139` passed 40/196; its pre-shot traces exposed the synthetic
+clock/native animation timing mismatch described in `CONFIRMED-ACTIONS-73AD139-REVIEW.md`.
 
 ## Scope and isolation
 
@@ -67,8 +69,9 @@ passing assertions, exact source identity and screenshot evidence cannot pass ag
 - All records are invented. Storage setup uses the existing hydrator and registered child
   collection keys. The original incident/AI/practice/unknown/co-parent negatives and genuine
   catalogue citation are preserved in every relevant variant.
-- The browser clock fixes 10 October 2026, 09:00 Asia/Jerusalem. Consult expiry/recovery uses
-  clock changes and ordinary same-target hash-query rerenders. It proves mounted editor
+- A synthetic Date-only fixture fixes 10 October 2026, 09:00 Asia/Jerusalem; native
+  performance, timers, rAF and WAAPI time remain unchanged. Consult expiry/recovery uses
+  business-date changes and ordinary same-target hash-query rerenders. It proves mounted editor
   identity and blocking under that eligibility transition only. It does not simulate a
   Firestore snapshot, listener failure, reconnect, durable draft save or remote metadata.
 - A local failure is armed only after hydration for one known synthetic child's exact
@@ -155,3 +158,13 @@ The rapid amendment passed the affected confirmed-action file (17 tests) and rel
 aggregation file (10 tests), each serially with the same offline/mock guard. The existing
 62-test five-file result above remains the preceding correction's result. Syntax and
 diff checks passed. Blank outcomes are still hard failures pending real rendered proof.
+
+## Date-only correction verification
+
+On integrated base `691c489`, final affected contracts passed 44/44: confirmed actions
+18, release aggregation 10, and interactions 16, in three separate serial installed
+Vitest processes with one worker, the offline network preload and mock provider.
+A test-only observer stub initially lacked its cleanup method; that failed run is
+retained separately, the stub was corrected, and the final rerun passed. JavaScript
+syntax and diff checks passed. No local browser, typecheck, build or provider ran.
+Exact-source CI and native-timeline/rendered confirmation remain required.

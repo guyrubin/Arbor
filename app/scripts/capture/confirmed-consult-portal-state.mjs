@@ -1,5 +1,6 @@
 /** Portal regression: a hidden Consult subtree must not leave PDF approval usable. */
 import { CONFIRMED_ACTIONS_NOW, CONFIRMED_ACTIONS_EXPIRED } from './confirmed-actions-contract.mjs';
+import { changeConfirmedDate } from './confirmed-date-clock.mjs';
 
 export async function collectConfirmedConsultPortalState({ page, fixture, viewport, apiState, run, frame, check, byId }) {
   const he = viewport.lang === 'he';
@@ -25,7 +26,7 @@ export async function collectConfirmedConsultPortalState({ page, fixture, viewpo
       previousApproval = await byId('school-brief-review-approve').elementHandle();
       check(cell, 'ACTUAL_TEACHER_PDF_REVIEW_OPENED', !!previousApproval && await page.getByRole('dialog').filter({ has: byId('school-brief-review-approve') }).count() === 1);
       await frame(cell, 'TEACHER_APPROVAL_REACHABLE_BEFORE_EXPIRY', byId('school-brief-review-approve'));
-      await page.clock.setFixedTime(new Date(CONFIRMED_ACTIONS_EXPIRED));
+      await page.evaluate(changeConfirmedDate, Date.parse(CONFIRMED_ACTIONS_EXPIRED));
       await page.evaluate(id => { location.hash = `#/consult?appointment=${id}&captureEligibility=teacher-expired`; }, fixture.visit.id);
       await byId('consult-visit-unavailable').waitFor({ state: 'visible' });
       await byId('school-brief-review-approve').waitFor({ state: 'hidden' });
@@ -39,7 +40,7 @@ export async function collectConfirmedConsultPortalState({ page, fixture, viewpo
       cell.persistenceBoundary = 'synthetic-clock-eligibility-retirement-not-Firestore';
     }, async cell => {
       // Preserve the expired/no-portal pixels before this bounded recovery check.
-      await page.clock.setFixedTime(new Date(CONFIRMED_ACTIONS_NOW));
+      await page.evaluate(changeConfirmedDate, Date.parse(CONFIRMED_ACTIONS_NOW));
       await page.evaluate(id => { location.hash = `#/consult?appointment=${id}&captureEligibility=teacher-restored`; }, fixture.visit.id);
       await byId('school-brief-review-open').waitFor({ state: 'visible' });
       check(cell, 'ELIGIBILITY_RECOVERY_DOES_NOT_REVIVE_OLD_REVIEW', await byId('school-brief-review-approve').count() === 0);
@@ -57,6 +58,6 @@ export async function collectConfirmedConsultPortalState({ page, fixture, viewpo
   } finally {
     page.off('download', onDownload); page.off('popup', onPopup);
     await Promise.all(closedPopups); await previousApproval?.dispose(); await teacherDraft?.dispose();
-    await page.clock.setFixedTime(new Date(CONFIRMED_ACTIONS_NOW));
+    await page.evaluate(changeConfirmedDate, Date.parse(CONFIRMED_ACTIONS_NOW));
   }
 }

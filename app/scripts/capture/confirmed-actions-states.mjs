@@ -6,10 +6,19 @@ import { collectConfirmedRoutineStates } from './confirmed-routine-states.mjs';
 import { collectConfirmedFamilyStates } from './confirmed-family-states.mjs';
 import { collectConfirmedConsultPortalState } from './confirmed-consult-portal-state.mjs';
 import { observeConfirmedFrame, waitConfirmedFrame } from './confirmed-frame.mjs';
+import { installConfirmedDate, changeConfirmedDate, restoreConfirmedDate } from './confirmed-date-clock.mjs';
 
 export async function collectConfirmedActionStates(helpers) {
-  const { page, fixture, viewport, load, screen, check, visible, byId, captureDiagnostics = () => null } = helpers;
+  const { page, fixture, viewport, load: loadRoute, screen, check, visible, byId, captureDiagnostics = () => null } = helpers;
   const waitFrame = (cell, args, label) => waitConfirmedFrame(page, cell, args, label, captureDiagnostics);
+  let activeCell = null;
+  const load = async route => {
+    const clock = async () => (await page.evaluate(observeConfirmedFrame, {})).clock;
+    const trace = { requestedRoute: route, before: await clock() };
+    if (activeCell) (activeCell.reloadClockObservations ??= []).push(trace);
+    try { await loadRoute(route); }
+    finally { trace.after = await clock().catch(() => ({ unavailable: true })); }
+  };
   const he = viewport.lang === 'he';
   const module = name => page.locator(`[data-module="${name}"]`);
   const storage = name => page.evaluate(({ id, name }) => JSON.parse(localStorage.getItem(`arbor.${name}.${id}`) ?? '[]'), { id: fixture.childId, name });
@@ -31,7 +40,7 @@ export async function collectConfirmedActionStates(helpers) {
   };
   const reset = async (variant = 'base', route = 'overview', { settleRoute = true } = {}) => {
     await page.evaluate(restoreConfirmedStorageFault);
-    await page.clock.setFixedTime(new Date(CONFIRMED_ACTIONS_NOW));
+    await page.evaluate(changeConfirmedDate, Date.parse(CONFIRMED_ACTIONS_NOW));
     const collections = confirmedActionVariant(fixture, variant);
     await page.evaluate(({ id, siblingId, collections }) => {
       for (const [name, values] of Object.entries(collections)) {
@@ -122,11 +131,13 @@ export async function collectConfirmedActionStates(helpers) {
     await byId(id).waitFor({ state: 'detached' });
   };
   const run = (route, state, action, afterCapture) => screen(route, state, async cell => {
+    activeCell = cell;
     cell.fixture = 'synthetic-confirmed-actions-local-persistence-only';
     try {
       await action(cell);
       cell.actionStage = 'wait-settled-frame-before-screenshot';
-      await waitFrame(cell, { routeName: route }, 'before-screenshot');
+      const settledFrame = await waitFrame(cell, { routeName: route }, 'before-screenshot');
+      check(cell, 'DATE_ONLY_FIXTURE_PRESERVES_NATIVE_TIMING', settledFrame.clock.fixture?.nativeTimingPreserved === true, settledFrame.clock);
       for (const dialog of await page.getByRole('dialog').all()) {
         const element = await dialog.elementHandle();
         try { await waitFrame(cell, { element }, 'dialog-before-screenshot'); }
@@ -136,11 +147,11 @@ export async function collectConfirmedActionStates(helpers) {
       cell.failureDiagnostics = captureDiagnostics();
       cell.failureFrame = await page.evaluate(observeConfirmedFrame, { routeName: route }).catch(() => ({ unavailable: true }));
       throw error;
-    }
+    } finally { activeCell = null; }
   }, afterCapture);
-  await page.clock.setFixedTime(new Date(CONFIRMED_ACTIONS_NOW));
-  await load('overview'); // real hydrator, before any direct setup writes or faults
+  await page.addInitScript(installConfirmedDate, Date.parse(CONFIRMED_ACTIONS_NOW));
   try {
+    await load('overview'); // real hydrator, before any direct setup writes or faults
     for (const source of ['parent', 'step']) await run('overview', `record-${source}-source`, async cell => {
       await reset(`record-${source}`); await singleLead(cell, 'now-record');
       check(cell, 'EXACT_SAVED_SOURCE_WORDS', await byId('today-record-quote').innerText() === fixture.words[source]);
@@ -222,7 +233,7 @@ export async function collectConfirmedActionStates(helpers) {
       await frame(cell, 'DRAFT_INPUT_REACHABLE', byId('consult-reason-input'));
     });
     await run('consult', 'consult-expired-inert', async cell => {
-      await page.clock.setFixedTime(new Date(CONFIRMED_ACTIONS_EXPIRED));
+      await page.evaluate(changeConfirmedDate, Date.parse(CONFIRMED_ACTIONS_EXPIRED));
       await page.evaluate(id => { location.hash = `#/consult?appointment=${id}&captureEligibility=expired`; }, fixture.visit.id);
       await visible(cell, 'EXPIRED_TARGET_NOTICE', byId('consult-visit-unavailable'));
       const retained = draftNode && await draftNode.evaluate(el => ({ connected: el.isConnected, value: el.value, hiddenInert: !!el.closest('[hidden][inert]'), height: el.getBoundingClientRect().height }));
@@ -233,7 +244,7 @@ export async function collectConfirmedActionStates(helpers) {
       cell.persistenceBoundary = 'browser-clock-expiry-with-same-target-hash-rerender-not-Firestore-source-loss';
     });
     await run('consult', 'consult-restored-draft', async cell => {
-      await page.clock.setFixedTime(new Date(CONFIRMED_ACTIONS_NOW));
+      await page.evaluate(changeConfirmedDate, Date.parse(CONFIRMED_ACTIONS_NOW));
       await page.evaluate(id => { location.hash = `#/consult?appointment=${id}&captureEligibility=restored`; }, fixture.visit.id);
       await byId('consult-reason-input').waitFor({ state: 'visible' });
       check(cell, 'EXACT_DOM_EDITOR_IDENTITY_AND_TYPED_DRAFT_SURVIVE', !!draftNode && await byId('consult-reason-input').evaluate((el, previous) => el === previous, draftNode) && await byId('consult-reason-input').inputValue() === fixture.words.draft);
@@ -297,9 +308,12 @@ export async function collectConfirmedActionStates(helpers) {
         await expose(module('now-step'));
       });
     }
-    const shared = { ...helpers, run, reset, frame, fault, storage, sink, expose, childSwitch, rapidChildRoundTrip, modalClose };
+    const shared = { ...helpers, load, run, reset, frame, fault, storage, sink, expose, childSwitch, rapidChildRoundTrip, modalClose };
     await collectConfirmedMilestoneStates(shared);
     await collectConfirmedRoutineStates(shared);
     await collectConfirmedFamilyStates(shared);
-  } finally { await page.evaluate(restoreConfirmedStorageFault).catch(() => null); }
+  } finally {
+    await page.evaluate(restoreConfirmedStorageFault).catch(() => null);
+    await page.evaluate(restoreConfirmedDate).catch(() => null);
+  }
 }

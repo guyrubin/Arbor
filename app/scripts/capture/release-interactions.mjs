@@ -158,7 +158,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   }
   if (confirmed) {
     doc.confirmedActionBoundaries = CONFIRMED_ACTION_LIMITATIONS;
-    doc.fixtures.push('synthetic-confirmed-actions-local-storage', 'scoped-local-storage-quota-fault', 'synthetic-browser-share-sink', 'fixed-browser-clock');
+    doc.fixtures.push('synthetic-confirmed-actions-local-storage', 'scoped-local-storage-quota-fault', 'synthetic-browser-share-sink', 'synthetic-Date-only-native-animation-time');
   }
   save();
   const { chromium } = await import('playwright');

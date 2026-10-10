@@ -118,7 +118,16 @@ describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
   it("names the day through the locale's calendar (no hardcoded Good morning)", () => {
     // Parity 9 Oct: Now's eyebrow is the local date (he-IL / en-GB) · the child's
     // identity line (B-TODAY-28); CODEX-2's local-time rule stands.
-    expect(src).toContain('new Date().toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "long" })');
+    expect(src).toContain("const now = useNowClock();");
+    expect(src).toContain('now.toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "long" })');
+    expect(src).toContain("formatChildAge(childProfile, t, now)");
+    // The identity, loop and lifecycle share the clock that refreshes on re-entry.
+    expect(src).toMatch(/useNowLoop\(\{\s*now,/);
+    const clock = todayFile("useNowClock.ts");
+    expect(clock).toContain("return new Date();");
+    expect(clock).toContain("window.setInterval(refresh, 60_000)");
+    expect(clock).toContain('window.addEventListener("focus", refresh)');
+    expect(clock).toContain('document.addEventListener("visibilitychange", refresh)');
     expect(src).toContain('"elev.loop.today.identity"');
     expect(src).not.toContain("Good morning");
     expect(src).not.toContain("בוקר טוב");

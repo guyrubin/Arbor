@@ -117,11 +117,16 @@ describe("LC-28 / OBJ-CARE-02 · the packet, not the hero", () => {
     // B-CAREPRO-36: the teacher branch's act is the inline brief's "Save as
     // PDF" — the route's stamp VALUE is handed to the editor, which spreads it
     // on that button (one stamp in the DOM; the old "Open" door is gone).
-    expect(CONSULT).toContain('<SchoolBrief embedded teacherNote={visionNote} primaryMove={primaryMoveStamp?.["data-primary-move"]} />');
+    expect(CONSULT).toContain('<SchoolBrief embedded teacherNote={visionNote} primaryMove={primaryMoveStamp?.["data-primary-move"]} egressGuard={egressGuard} />');
     expect(CONSULT).not.toContain('data-testid="consult-teacher-open"');
     const BRIEF = read("components/sections/SchoolBrief.tsx");
     expect(BRIEF).toContain('const primaryMove = { "data-primary-move": routeMove ?? "build-school-brief" };');
     expect((BRIEF.match(/\{\.\.\.primaryMove\}/g) ?? []).length).toBe(1);
+    expect(BRIEF).toMatch(/<button\s+\{\.\.\.primaryMove\}\s+data-testid="school-brief-review-open"\s+onClick=\{openReview\}/);
+    expect(BRIEF).toContain("onClick={onApprove}");
+    const openReview = BRIEF.slice(BRIEF.indexOf("const openReview ="), BRIEF.indexOf("const [editing"));
+    expect(openReview).toContain("if (!egress.isCurrent() || latestReviewContext.current !== reviewContext) return;");
+    expect(openReview).not.toContain("openPrintableReport");
   });
 
   it("B-CAREPRO-36: #/school-brief renders this page with the teacher preselected (the route stays live)", () => {

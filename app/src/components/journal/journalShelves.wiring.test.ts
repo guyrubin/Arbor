@@ -85,12 +85,17 @@ describe("B-LOOP-12 — the professional view reuses the ONE consult egress", ()
     }
   });
   it("Consult reads the preset and the step-3 egress carries the intake packet behind the same reviewed gate", () => {
-    expect(consult).toContain('const intakeRaw = useHashQuery().get("intake");');
+    expect(consult).toContain("const query = useHashQuery();");
+    expect(consult).toContain("query={query}");
+    expect(consult).toContain('const intakeRaw = query.get("intake");');
+    expect(consult).toContain("const intake = isIntakeProfession(intakeRaw) ? intakeRaw : undefined;");
     expect(consult).toContain("intake={intake}");
     expect(ask).toContain("const packet = useMemo(() => intakePacket ?? presetPacket(audience, fullPacket), [intakePacket, audience, fullPacket]);");
     expect(ask).toContain('const egressAudience: ExportAudience = intakePacket ? "self" : audience;');
     expect(ask).toContain("serializeForExport(egressAudience, packet, excluded, visionNote");
     expect(ask).toContain("exportPrintSections(egressAudience, packet, excluded, visionNote");
-    expect(ask).toContain("const noneSelected = includedCount === 0 || !reviewed || exportText == null;");
+    expect(ask).toContain("const noneSelected = includedCount === 0 || !reviewed || exportText == null || !canExportCurrent();");
+    expect(ask).toContain("const canExportCurrent = () => includedCount > 0 && reviewed && approval.current === exportReceipt");
+    expect(ask).toContain("latestExport.current === exportReceipt && egress.isCurrent()");
   });
 });

@@ -80,11 +80,17 @@ describe("AIX-S3(a) — AskSpecialist: parent-editable prefill, explicit-act sha
     // LC-20: and so is the reason-for-visit line — it is parent-authored text
     // that rides into every export, so editing it must re-arm the gate as well.
     // W2-CAREPRO c2 r1: the same effect also collapses the phone preview.
-    const deps = /setReviewed\(false\);(?: setPreviewAll\(false\);)? \}, \[([^\]]+)\]/.exec(code);
+    // Match the edit/preview effect specifically, not the separate receipt invalidation.
+    const deps = /useEffect\(\(\) => \{ setReviewed\(false\); setPreviewAll\(false\); \}, \[([^\]]+)\]\);/.exec(code);
     expect(deps).toBeTruthy();
     for (const dep of ["excluded", "visionNote", "reason", "audience", "childProfile.id"]) {
       expect(deps![1]).toContain(dep);
     }
+    // Fresh text or a changed child/source receipt invalidates approval as well.
+    expect(code).toContain("const exportReceipt = useMemo(() => ({}), [exportText, audience, intake, childProfile.id, egress.receipt]);");
+    expect(code).toContain("useEffect(() => { setReviewed(false); }, [exportReceipt]);");
+    expect(code).toContain("if (!egress.isCurrent() || approval.current !== exportReceipt) approval.current = null;");
+    expect(code).toContain("latestExport.current === exportReceipt && egress.isCurrent()");
   });
 });
 

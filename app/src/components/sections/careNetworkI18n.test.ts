@@ -22,6 +22,8 @@ import { elevationEn, elevationHe } from "../../lib/i18nElevation";
 import { translate } from "../../lib/i18n";
 import { ARBOR_PROFESSIONALS } from "../../services/professionals";
 import { RETIRED_ROUTES, resolveRouteId } from "../../lib/routes";
+import { appointmentRoleLabel, PROFESSION_KEY } from "../../lib/appointmentLabel";
+import { APPOINTMENT_PROFESSIONS } from "../../lib/careTrack";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const APPTS = readFileSync(path.join(here, "Appointments.tsx"), "utf8").replace(/\r\n/g, "\n");
@@ -51,18 +53,34 @@ describe("registration", () => {
     }
   });
 
-  it("every key the module defines is rendered by Appointments, and every key it asks for exists", () => {
+  it("every key the module defines is used by Appointments or its shared label helper, and every requested key exists", () => {
     expect(APPTS.length).toBeGreaterThan(2000);
-    const unused = Object.keys(en).filter((k) => !APPTS.includes(k));
+    const labels = readFileSync(path.join(here, "../../lib/appointmentLabel.ts"), "utf8");
+    expect(labels).toContain("export function appointmentRoleLabel");
+    expect(APPTS).toContain('import { appointmentRoleLabel, PROFESSION_KEY } from "../../lib/appointmentLabel";');
+    expect(APPTS).toContain("{t(PROFESSION_KEY[p])}");
+    expect(APPTS).toContain("{appointmentRoleLabel(appt, t)}");
+    const live = `${APPTS}\n${labels}`.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const unused = Object.keys(en).filter((k) => !live.includes(k));
     expect(unused, "dead copy — delete it or wire it").toEqual([]);
-    const asked = [...APPTS.matchAll(/"(elev\.careNet\.[a-zA-Z0-9.]+)"/g)].map((m) => m[1]);
+    const asked = [...live.matchAll(/"(elev\.careNet\.[a-zA-Z0-9.]+)"/g)].map((m) => m[1]);
     expect(asked.length).toBeGreaterThan(2);
     for (const key of asked) {
       expect(en[key], `${key} is asked for but undefined`).toBeTruthy();
       expect(he[key], `${key} has no Hebrew`).toBeTruthy();
     }
     // NEGATIVE CONTROL: a key no screen renders is reported dead.
-    expect(["elev.careNet.ghost.neverRendered"].filter((k) => !APPTS.includes(k))).toHaveLength(1);
+    expect(["elev.careNet.ghost.neverRendered"].filter((k) => !live.includes(k))).toHaveLength(1);
+    // Every stored profession reaches the shared localized renderer, including the fallback.
+    expect(Object.keys(PROFESSION_KEY).sort()).toEqual([...APPOINTMENT_PROFESSIONS].sort());
+    for (const lang of ["en", "he"] as const) {
+      const t = (key: string) => translate(lang, key);
+      for (const profession of APPOINTMENT_PROFESSIONS) {
+        expect(appointmentRoleLabel({ profession, role: "Professional" }, t)).toBe(t(PROFESSION_KEY[profession]));
+      }
+      expect(appointmentRoleLabel({ role: "Professional" }, t)).toBe(t("elev.careNet.appt.professional"));
+      expect(appointmentRoleLabel({ role: "" }, t)).toBe(t("elev.careNet.appt.professional"));
+    }
   });
 });
 
