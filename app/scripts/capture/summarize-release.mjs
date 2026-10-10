@@ -17,8 +17,8 @@ const dirs = existsSync(root) ? readdirSync(root, { withFileTypes: true }).filte
 const records = dirs.map((dir) => {
   const capture = read(dir, 'capture.json');
   const base = capture?.cell?.group === 'base';
-  const printFiles = existsSync(path.join(dir, 'print')) ? readdirSync(path.join(dir, 'print')).filter(name => /^kept-month\.(mobile|desktop)-(en|he)\.(html|png)$/.test(name)).map(name => `print/${name}`) : [];
-  const printHashes = Object.fromEntries(printFiles.filter(name => name.endsWith('.html')).map(name => [name, createHash('sha256').update(readFileSync(path.join(dir, name))).digest('hex')]));
+  const printFiles = existsSync(path.join(dir, 'print')) ? readdirSync(path.join(dir, 'print')).filter(name => /^kept-month\.(mobile|desktop)-(en|he)\.(html|png|pdf)$/.test(name)).map(name => `print/${name}`) : [];
+  const printHashes = Object.fromEntries(printFiles.filter(name => /\.(html|pdf)$/.test(name)).map(name => [name, createHash('sha256').update(readFileSync(path.join(dir, name))).digest('hex')]));
   return { capture, inventory: read(dir, 'route-inventory.json'), evidence: read(dir, base ? 'sweep.json' : 'evidence.json'), fonts: read(dir, base ? 'font-evidence.sweep.json' : 'font-evidence.diagnostics.json'),
     printFiles, printHashes,
     shotNames: existsSync(path.join(dir, 'shots')) ? readdirSync(path.join(dir, 'shots')).filter((name) => name.endsWith('.png')) : [] };

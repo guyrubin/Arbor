@@ -10,9 +10,9 @@ Only the release owner publishes the source candidate and branch.
 
 - Unchanged baseline: 43 routes × 4 variants = 172 base cells, plus 294 focused
   interaction cells = 466 required app PNG cells.
-- Additive record scope: 45 real UI states × 4 variants = 180 app PNG cells.
-- Total required app evidence: 646 cells, with four separately classified actual
-  month-print HTML/PNG previews. Platform print fonts do not count as app
+- Additive record scope: 48 real UI states × 4 variants = 192 app PNG cells.
+- Total required app evidence: 658 cells, with four separately classified actual
+  month-print HTML/PDF and print-media viewport PNGs. Platform print fonts do not count as app
   custom-font proof.
 - Every record shard retains the existing 10-minute runtime deadline, 20-minute
   CI step deadline, per-cell checkpoint and partial-artifact preservation.
@@ -61,17 +61,37 @@ status/notes filters intersect, and two same-minute same-word logs retain separa
 identities and their own detail fields. Voice/photo controls are checked without
 recording, choosing or uploading a file.
 
+Journal arrival measures the whole first record inside the initial viewport and
+above both the observed Ask/Keep rail and fixed dock, with an actual center
+hit-test, raw bounds and no capture-owned scroll.
+The native latest-entry context starts collapsed, expands with Enter, opens the
+existing full entry with exact fields while preserving hash/filter/query even
+when the query hides that overall latest parent record. Repeated open/Escape
+returns focus to the actual context action; Space closes context before editing.
+A declared synthetic empty sibling, using only the
+existing local timeline ledgers, separately requires the empty action above the
+first fold and verifies it can receive focus. These three added states retain
+all original 45 record states. Child switching uses the real picker after closing
+the modal; the picker is not reachable through an open modal. Open-sheet child
+retirement remains source lifecycle coverage, not simulated browser evidence.
+
 ## Print receipts
 
 The collector clicks the real app Print control and waits for the existing
 HTML download or populated popup. It never invokes a builder, overrides
 window.open/print, or fabricates a printable document. The received HTML is
 validated, hashed and saved, then those exact bytes are rendered at a capture-owned
-local URL with print media and A4 CSS pixel dimensions. Escaped parent words,
+local URL with print media and a 794×1123 viewport. That PNG is explicitly a
+print-media viewport, not paginated A4 pixels: screenshots do not apply page-box
+margins. Chromium `page.pdf({ preferCSSPageSize: true })` separately prints the
+same unchanged app-delivered HTML, honoring its A4 `@page` size and margins.
+The retained PDF can be rendered independently for page/margin review; no browser
+or extra CI rendering package is required for that review. Escaped parent words,
 chronological complete-month text, name, dates, bidi and absence of report
 branding/external assets are checked. CDP records the actual installed serif/system
 font glyphs. Print output is explicitly not native print-dialog or printer proof.
-The aggregate requires the received HTML hash and both actual HTML/PNG files.
+Undeclared note/moment languages remain honestly `und`, not the interface locale.
+The aggregate requires matching HTML and PDF hashes and all three actual files.
 
 ## Prior evidence and acceptance limits
 

@@ -3,6 +3,7 @@ import { keptByMonth, keptDay, keptThings, type KeptSources } from "./keptThings
 import { buildMomentLog, keptMomentFields } from "../../content/behaviorTaxonomy";
 import type { BehaviorLog, Milestone } from "../../types";
 import { quoteKeepsakeDoc } from "../loop/tonight";
+import { CDC_MILESTONES } from "../milestoneData";
 
 const child = { id: "child-a" };
 const moment = (id: string, patch: Partial<BehaviorLog> = {}): BehaviorLog => ({ id, timestamp: "2026-10-06T12:00:00Z", behaviorType: "Moment", durationMinutes: 0, trigger: "The moon is following us", kept: "said", ...patch });
@@ -18,6 +19,20 @@ const sources: KeptSources = {
 };
 
 describe("parent-kept selector", () => {
+  it("keeps a parent-noticed catalogue first without mistaking its citation for authorship", () => {
+    const first = { ...CDC_MILESTONES[0], checked: true, observationStatus: "yes" as const, observationSource: "parent_typed" as const, observedAt: "2026-10-04" };
+    const note = { ...sources.keepsakes![0], id: first.id, milestoneId: first.id };
+    const kept = keptThings({ milestones: [first], keepsakes: [note] }, child);
+    expect(kept).toHaveLength(1);
+    expect(kept[0]).toMatchObject({ id: `milestones:${first.id}`, text: note.note, attribution: "parent" });
+    expect(first.source).toEqual(CDC_MILESTONES[0].source);
+    expect(keptThings({ milestones: [{ ...first, observationSource: "ai_proposed_parent_confirmed" }], keepsakes: [note] }, child)).toEqual([]);
+    expect(keptThings({ milestones: [{ ...first, source: "ai_proposed_parent_confirmed" } as unknown as Milestone], keepsakes: [note] }, child)).toEqual([]);
+    expect(keptThings({ milestones: [{ ...first, source: { kind: "ai" } } as unknown as Milestone], keepsakes: [note] }, child)).toEqual([]);
+    expect(keptThings({ milestones: [{ ...first, captureSource: "co_parent" } as Milestone], keepsakes: [note] }, child)).toEqual([]);
+    expect(keptThings({ keepsakes: [{ ...note, kind: "quote", milestoneId: undefined, source: first.source }] as any }, child)).toEqual([]);
+  });
+
   it("folds two words, a noticed first plus its note, and an explicitly kept Moment into four dated items", () => {
     const items = keptThings({ ...sources, practiceEvents: [{ id: "practice", source: "kid_practice", phrase: "invented quote", timestamp: "2026-10-09" }] } as KeptSources, child);
     expect(items.map(item => item.id)).toEqual(["behaviorLogs:kept", "langObs:word-b", "milestones:ms-a", "langObs:word-a"]);

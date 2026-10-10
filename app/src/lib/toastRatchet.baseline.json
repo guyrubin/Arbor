@@ -1,5 +1,5 @@
 {
-  "$comment": "B-STATUS-01 — toast( call sites per file by ratcheted kind (success / info / dynamic). Shrink-only: see src/lib/toastRatchet.guard.test.ts. Errors and toasts carrying an action (Undo) are not counted.",
+  "$comment": "B-STATUS-01 \u2014 toast( call sites per file by ratcheted kind (success / info / dynamic). Shrink-only: see src/lib/toastRatchet.guard.test.ts. Errors and toasts carrying an action (Undo) are not counted.",
   "files": {
     "components/auth/OnboardingFlow.tsx": {
       "success": 1
@@ -61,10 +61,6 @@
     },
     "components/tabs/BedtimeStoriesTab.tsx": {
       "success": 2
-    },
-    "components/tabs/BehaviorsTab.tsx": {
-      "success": 3,
-      "info": 2
     },
     "components/tabs/CoachTab.tsx": {
       "info": 5,

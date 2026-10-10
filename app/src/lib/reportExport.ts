@@ -339,13 +339,13 @@ function renderKeptMonthHtml(doc: ReportDoc, lang: UiLang): string {
   <style>
     @page { size: A4; margin: 24mm 18mm; }
     * { box-sizing: border-box; }
-    body { max-width: 720px; margin: 0 auto; padding: 24px; color: #1b295c; font-family: Georgia, "Times New Roman", serif; }
+    body { max-width: 720px; margin: 0 auto; padding: 24px; color: #29333f; font-family: Georgia, "Times New Roman", serif; }
     h1 { font-size: 28px; font-weight: 400; margin: 0 0 8px; overflow-wrap: anywhere; }
     .month { font-size: 19px; margin: 0 0 28px; }
     ul { list-style: none; padding: 0; margin: 0; }
-    li { break-inside: avoid; border-bottom: 1px solid #dce2e1; padding: 16px 0; }
+    li { break-inside: avoid; border-bottom: 1px solid #e8edea; padding: 16px 0; }
     li p { font-size: 19px; line-height: 1.5; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .date { font-family: system-ui, sans-serif; font-size: 12px; color: #465673; margin-top: 8px; }
+    .date { font-family: system-ui, sans-serif; font-size: 12px; color: #69747f; margin-top: 8px; }
     @media print { body { max-width: none; padding: 0; } }
   </style></head><body><h1>${esc(doc.title)}</h1><p class="month">${esc(doc.subtitle ?? "")}</p><ul>${rows}</ul>
   <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script></body></html>`;

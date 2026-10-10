@@ -120,14 +120,14 @@ describe("RUN-08 · Journal and Story zero branches", () => {
   const journal = read("components/tabs/JournalTab.tsx");
   const story = read("components/tabs/StoryTimelineTab.tsx");
 
-  it("the Journal aside never prints a week numeral; at zero it carries the teach line", () => {
-    // NEXTLEVEL r1 (Law 9): the week count is said once, in the story line.
-    // P5-LOOP c2 r1: the aside now carries ONLY the day-0 teach line
-    expect(journal).toMatch(/\{!lastKept && weekCount === 0 && \(/);
-    expect(journal).toContain('data-testid="journal-week-zero-line"');
-    expect(journal).toContain('t("elev.journal.week.zero")');
-    const aside = journal.slice(journal.indexOf('data-testid="journal-week-aside"'), journal.indexOf("</header>"));
-    expect(aside).not.toContain("{weekCount}");
+  it("the Journal has one useful empty explanation/action, without header zero numerals or duplicate guidance", () => {
+    const header = journal.slice(journal.indexOf('data-module="journal-header"'), journal.indexOf("</header>"));
+    expect(header).not.toContain("journal-week-aside");
+    expect(header).not.toContain('t("elev.journal.week.zero")');
+    expect(header).toContain(') : weekCount > 0 ? (');
+    expect(journal).toContain('statesText("elev.states.journal.body"');
+    expect(journal).toContain('ctaTestId="journal-empty-cta"');
+    expect(journal).toContain("onCta={focusCaptureBar}");
   });
 
   it("B-ASKJB-19: the Story stat grid is gone — no zero wall because no wall", () => {

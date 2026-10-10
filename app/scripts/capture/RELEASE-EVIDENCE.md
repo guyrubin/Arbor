@@ -123,5 +123,5 @@ visible launcher with focus. Actual CI PNG review remains required.
 
 `codex/parent-record-clarity` uses the same workflow with `record-release` scope:
 four prioritized bounded record shards followed by all eight unchanged baseline
-shards. See `RECORD-EVIDENCE.md` for its real source seams, 180 added states,
+shards. See `RECORD-EVIDENCE.md` for its real source seams, 192 added state cells,
 separate actual print-delivery receipts and explicitly unexercised remote states.

@@ -59,7 +59,7 @@ export function recordFixture(bundle, lang) {
   const sibling = { child: { ...body.child, id: 'capture-record-sibling', name: he ? 'מירה' : 'Mira', demo: true }, collections: Object.fromEntries(Object.keys(body.collections).map(key => [key, []])) };
   body.siblings = [sibling];
   return { parsed, collections, childId: body.child.id, childName: body.child.name.split(' ')[0], siblingId: sibling.child.id, siblingName: sibling.child.name, text,
-    expected: { all: 5, said: 3, first: 1, by_herself: 1, months: 2, octoberText: [text.word, text.quote, text.first, text.alone] } };
+    expected: { all: 5, said: 3, first: 1, by_herself: 1, months: 2, octoberText: [text.word, text.quote, text.first, text.alone], octoberLanguages: [lang, 'und', 'und', 'und'] } };
 }
 
 export function recordVariant(fixture, variant) {

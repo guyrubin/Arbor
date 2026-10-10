@@ -30,6 +30,21 @@ function parentWritten(row: object): boolean {
     && (value.observationSource === undefined || value.observationSource === "parent_typed" || value.observationSource === "parent_voice");
 }
 
+/** Milestone.source is a bibliographic citation, not observation authorship.
+ * Keep its known schema separate from observationSource, without accepting
+ * arbitrary imported source objects on milestones or any other collection. */
+function parentObservedMilestone(row: Milestone): boolean {
+  const source: unknown = row.source;
+  if (source === undefined || typeof source === "string") return parentWritten(row);
+  if (!source || typeof source !== "object" || Array.isArray(source)) return false;
+  const citation = source as Record<string, unknown>;
+  const knownCitation = ["CDC", "ASHA", "AAP", "WHO", "NHS", "JGZ", "IL-CDI", "arbor"].includes(String(citation.org))
+    && typeof citation.title === "string" && !!citation.title.trim()
+    && typeof citation.year === "number" && Number.isFinite(citation.year)
+    && ["most_children_by", "average_onset", "range", "unstated"].includes(String(citation.ageSemantics));
+  return knownCitation && parentWritten({ ...row, source: undefined });
+}
+
 /** Date-only parent entries retain their chosen day; instants use UTC. Reject
  * invalid calendar days rather than rolling February 30 into another month. */
 export function keptDay(at: string): string | null {
@@ -53,7 +68,7 @@ export function keptThings(sources: KeptSources, child: ObservationChild): KeptT
   const notesByMilestone = new Map(notes.filter(row => !row.kind && row.milestoneId && typeof row.note === "string" && row.note.trim() && keptDay(row.noticedOn)).map(row => [row.milestoneId, row]));
   // Older seen milestones may predate observation timestamps; the parent's
   // saved note has its own honest date and supplies it without a migration.
-  const milestones = (sources.milestones ?? []).filter(parentWritten).map(row => ({ ...row,
+  const milestones = (sources.milestones ?? []).filter(parentObservedMilestone).map(row => ({ ...row,
     observedAt: notesByMilestone.get(row.id)?.noticedOn ?? row.observedAt,
   }));
   const observations = toObservations({ milestones, langObs: words, behaviorLogs: moments }, child);

@@ -18,15 +18,19 @@ export function useChildHistory<T extends { id: string }>(
   const { user } = useAuth();
   const remote = firebaseEnabled && !!db && !!user && user.uid !== "local-sandbox";
   const scope = `${remote ? user?.uid : "local"}:${childId}:${name}`;
+  const receiptRef = useRef(0);
   const scopeRef = useRef(scope);
-  scopeRef.current = scope;
-  const renderToken = {};
-  const latestRender = useRef(renderToken);
-  latestRender.current = renderToken;
+  if (scopeRef.current !== scope) {
+    scopeRef.current = scope;
+    receiptRef.current++;
+  }
+  // An unchanged render can bail out before a child receives new callbacks.
+  // Fence actual scope/snapshot/context changes, not each render attempt.
+  const sandboxItemsRef = useRef(sandboxItems);
+  sandboxItemsRef.current = sandboxItems;
   const [window, setWindow] = useState({ scope, size: 200, retry: 0 });
   const size = window.scope === scope ? window.size : 200;
   const retry = window.scope === scope ? window.retry : 0;
-  const receiptRef = useRef(0);
   const [snapshot, setSnapshot] = useState<{ receipt: number; scope: string; size: number; rows: T[]; more: boolean; confirmed: boolean; error: boolean; raw?: string } | null>(null);
   if (window.scope !== scope) {
     // Retire the previous scope even on A → B → A; an earlier expanded
@@ -92,14 +96,15 @@ export function useChildHistory<T extends { id: string }>(
    * do not fire a storage event. Never export a cached local row after it has
    * changed or been removed. The caller reloads instead of writing anything. */
   const isCurrent = () => {
-    if (latestRender.current !== renderToken || scopeRef.current !== scope || current?.receipt !== receiptRef.current || loading || error || !confirmed) return false;
+    if (scopeRef.current !== scope || current?.receipt !== receiptRef.current || loading || error || !confirmed) return false;
     if (remote) return true;
     try {
       // Bind the fingerprint to the same snapshot as the rendered rows. An
       // effect may have read new storage before React commits those new rows.
       const raw = localStorage.getItem(`arbor.${name}.${childId}`) || "[]";
       return current?.raw !== undefined && current.raw === raw
-        && (!sandboxItems || sameLocalHistoryRows(sandboxItems, raw));
+        && (!sandboxItems || sameLocalHistoryRows(sandboxItems, raw))
+        && (!sandboxItemsRef.current || sameLocalHistoryRows(sandboxItemsRef.current, raw));
     } catch { return false; }
   };
   return { items: local?.rows ?? current?.rows ?? [], loading, error, more, confirmed, loadMore, reload, isCurrent };

@@ -207,7 +207,13 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
   });
   await screen('development', 'preserved-firsts', async cell => {
     await reset(); await open(); const tabs = disclosure().locator('.portrait-views button');
-    await tabs.nth(1).click(); check(cell, 'FIRSTS_CONTROL_AND_ACTUAL_CONTENT', await tabs.nth(1).getAttribute('aria-pressed') === 'true' && await reader().count() === 0 && /CDC|AAP/.test(await disclosure().innerText()));
+    await tabs.nth(1).click();
+    // This bounded fixture has no current-age score confidence. The real
+    // Firsts card intentionally shows its empty picture, without a CDC footer.
+    check(cell, 'FIRSTS_CONTROL_AND_ACTUAL_CONTENT', await tabs.nth(1).getAttribute('aria-pressed') === 'true' && await reader().count() === 0
+      && await disclosure().getByText(he ? 'תמונת ההתפתחות' : 'Growth picture', { exact: true }).isVisible()
+      && (await disclosure().innerText()).includes(fixture.childName));
+    cell.fixture = 'existing-firsts-empty-picture-no-current-age-score-confidence';
     await expose(tabs.nth(1));
   });
   await screen('development', 'preserved-tree', async cell => {
@@ -232,6 +238,10 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
     const doors = byId('ms-shelf-door');
     for (let n = 0; n < Math.min(8, await doors.count()) && await byId('ms-keepsake').count() === 0; n++) await doors.nth(n).click();
     const note = byId('ms-keepsake').filter({ hasText: fixture.text.first });
+    // The copied catalogue row retains its honest age/citation. Traverse the
+    // existing Earlier disclosure instead of changing that fixture metadata.
+    const band = byId('ms-shelf-band').filter({ has: note });
+    if (await band.count() === 1 && await band.evaluate(el => el.tagName === 'DETAILS' && !el.open)) await band.locator(':scope > summary').click();
     await visible(cell, 'EXISTING_PARENT_NOTE_ROW', note);
     await note.getByRole('button').click();
     await visible(cell, 'EXISTING_KEEPSAKE_EDITOR', byId('first-keepsake-sheet'));
@@ -244,12 +254,17 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
   for (const entry of SEARCH_ROUTES) {
     const label = entry[viewport.lang];
     const searchSurface = () => viewport.w < 1024 ? page.getByRole('dialog') : page.locator('#topbar-search-results');
-    const result = () => viewport.w < 1024 ? searchSurface().getByRole('button').filter({ has: page.getByText(label, { exact: true }) }) : searchSurface().getByRole('option').filter({ has: page.getByText(label, { exact: true }) });
+    // Catalogue results can repeat this text as a subtitle. Require the real
+    // route's My child subtitle too, rather than choosing an arbitrary first.
+    const result = () => searchSurface().getByRole(viewport.w < 1024 ? 'button' : 'option')
+      .filter({ has: page.getByText(label, { exact: true }) })
+      .filter({ has: page.getByText(he ? 'הילד שלי' : 'My child', { exact: true }) });
     await screen('shell', `search-${entry.route}-label`, async cell => {
       await load('overview');
       if (viewport.w < 1024) { await page.keyboard.press('Control+k'); await page.getByRole('dialog').locator('input').fill(label); }
       else await page.locator('input[aria-controls="topbar-search-results"]').fill(label);
       await result().waitFor({ state: 'visible' });
+      check(cell, 'EXACTLY_ONE_CURRENT_ROUTE_RESULT', await result().count() === 1);
       check(cell, 'CURRENT_MY_CHILD_PLACE_LABEL', (await result().innerText()).includes(he ? 'הילד שלי' : 'My child'));
       check(cell, 'NO_LEGACY_HUB_SUBTITLE', !/Growth|Journal & Memories|צמיחה|יומן וזיכרונות/.test(await result().innerText()));
       await reachable(cell, 'SEARCH_RESULT_REACHABLE', result());

@@ -17,10 +17,11 @@ const records = (matrix = RELEASE_MATRIX) => matrix.map((spec: any) => {
   const cell = releaseCell(spec);
   const cells = spec.group === 'base' ? shardRoutes(routes, spec.shard).map((route: string) => baseCell(route, cell.viewport)) : expectedReleaseInteractionStates(spec.group, cell.viewport).map((state: any) => ({ ...state, ...identity, lang: cell.viewport.lang, viewport: `${cell.viewport.w}x${cell.viewport.h}`, reached: true, assertions: [{ id: 'REAL_INTERACTION_VERIFIED', passed: true }], failures: [], shot: `shots/${state.state}.png` }));
   const print = spec.group === 'record' ? { ...identity, passed: true, delivery: 'download-html', media: 'print', fontMode: 'source-platform-serif', paper: 'A4', exactAppPayload: true,
+    rendering: 'print-media-viewport', pdfRendering: 'chromium-paginated-css-page', preferCSSPageSize: true, pdfValid: true, pdfBytes: 8000, pdfSha256: 'd'.repeat(64), pdf: `print/kept-month.${spec.viewport}.pdf`,
     htmlSha256: 'c'.repeat(64), htmlBytes: 4000, expectedRows: 4, renderedRows: 4, textMatches: true, viewport: { width: 794, height: 1123 },
     fonts: [{ familyName: 'Liberation Serif', glyphCount: 10 }], html: `print/kept-month.${spec.viewport}.html`, shot: `print/kept-month.${spec.viewport}.png` } : null;
   if (print) Object.assign(cells.find((item: any) => item.state === 'month-print'), { printPreview: print });
-  return { printFiles: print ? [print.html, print.shot] : [], printHashes: print ? { [print.html]: print.htmlSha256 } : {}, capture: { ...identity, cell, completed: true, fontMode: 'exact', runtimeNetwork: 'none', fixture: { browserConnectivity: 'synthetic-online' } }, inventory: { ...identity, routeIds: routes, contracts: SURFACE_CONTRACTS }, evidence: { ...identity, sha: identity.sourceSha, completed: true, missingEvidence: [], cells }, fonts: { mode: 'exact', deniedFontRequests: 0, shots: cells.map((c: any) => ({ shot: c.shot.split('/').pop(), passed: true, rendered: [{ custom: true }] })) }, shotNames: cells.map((c: any) => c.shot.split('/').pop()) };
+  return { printFiles: print ? [print.html, print.shot, print.pdf] : [], printHashes: print ? { [print.html]: print.htmlSha256, [print.pdf]: print.pdfSha256 } : {}, capture: { ...identity, cell, completed: true, fontMode: 'exact', runtimeNetwork: 'none', fixture: { browserConnectivity: 'synthetic-online' } }, inventory: { ...identity, routeIds: routes, contracts: SURFACE_CONTRACTS }, evidence: { ...identity, sha: identity.sourceSha, completed: true, missingEvidence: [], cells }, fonts: { mode: 'exact', deniedFontRequests: 0, shots: cells.map((c: any) => ({ shot: c.shot.split('/').pop(), passed: true, rendered: [{ custom: true }] })) }, shotNames: cells.map((c: any) => c.shot.split('/').pop()) };
 });
 
 describe('final release evidence contracts, no sockets or browser', () => {
@@ -130,8 +131,8 @@ describe('final release evidence contracts, no sockets or browser', () => {
   });
   it('requires the additive record matrix and actual delivered print artifacts without reducing the baseline', () => {
     const extended = records(releaseMatrix('record-release'));
-    expect(summarizeRelease(extended, identity, 'record-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 474, screenshots: 646, printPreviews: 4, expectedShards: 12, returnedShards: 12 });
-    expect(summarizeRelease(records(releaseMatrix('record-only')), identity, 'record-only')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 180, printPreviews: 4 });
+    expect(summarizeRelease(extended, identity, 'record-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 486, screenshots: 658, printPreviews: 4, expectedShards: 12, returnedShards: 12 });
+    expect(summarizeRelease(records(releaseMatrix('record-only')), identity, 'record-only')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 192, printPreviews: 4 });
     extended[0].printHashes = {};
     expect(summarizeRelease(extended, identity, 'record-release').failures[0].reasons).toContain('ACTUAL_PRINT_DELIVERY_EVIDENCE_MISSING');
     expect(summarizeRelease(records(), identity, 'record-release').completed).toBe(false);

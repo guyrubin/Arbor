@@ -64,6 +64,24 @@ beforeEach(() => {
 });
 
 describe("bounded child history reads", () => {
+  it.each(["child", "account"])("retires a captured guard across immediate %s ABA without effects", kind => {
+    render(); deliver(0, rows(2)); const before = render();
+    if (kind === "child") child = "child-b"; else h.uid = "account-b";
+    render(false);
+    if (kind === "child") child = "child-a"; else h.uid = "account-a";
+    render(false);
+    expect(before.isCurrent()).toBe(false);
+  });
+  it("retains an unchanged sandbox callback but rejects changed current context before commit", () => {
+    h.enabled = false; sandboxItems = rows(3);
+    vi.mocked(localStorage.getItem).mockReturnValue(JSON.stringify(sandboxItems));
+    settle(); const before = render();
+    sandboxItems = rows(3); render(false);
+    expect(before.isCurrent()).toBe(true);
+    sandboxItems = rows(2); render(false);
+    expect(before.isCurrent()).toBe(false);
+  });
+
   it("does not confirm a server-connected snapshot whose writes are still pending", () => {
     render();
     h.listeners[0].next({ docs: rows(2).map(value => ({ id: value.id, data: () => value })), metadata: { fromCache: false, hasPendingWrites: true } });
@@ -170,7 +188,9 @@ describe("bounded child history reads", () => {
     const before = render(); expect(before.isCurrent()).toBe(true);
     const after = render();
     expect(after.isCurrent()).toBe(true);
-    expect(before.isCurrent()).toBe(false);
+    // React may bail out an unchanged parent render and keep the child's
+    // previous callback. Unchanged source identity must remain usable.
+    expect(before.isCurrent()).toBe(true);
   });
   it("does not validate old rows when a reload effect has read new storage before commit", () => {
     h.enabled = false;

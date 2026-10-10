@@ -101,6 +101,7 @@ jobs:
             ${{ runner.temp }}/arbor-parent-release/shots/*.png
             ${{ runner.temp }}/arbor-parent-release/print/*.html
             ${{ runner.temp }}/arbor-parent-release/print/*.png
+            ${{ runner.temp }}/arbor-parent-release/print/*.pdf
           if-no-files-found: warn
           retention-days: 7
           include-hidden-files: false
