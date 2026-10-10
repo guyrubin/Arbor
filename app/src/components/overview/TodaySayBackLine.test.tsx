@@ -15,11 +15,13 @@ const h = vi.hoisted(() => ({
   lang: "en" as "en" | "he",
   step: null as null | { id: string; status: string; recommendation: string },
   loop: [] as unknown[],
+  writes: {} as Record<string, any>, confirmed: true,
   record: (() => undefined) as (...a: unknown[]) => void,
 }));
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({
     actionLoop: h.loop,
+    recordAnswerWrites: h.writes, recordAnswersConfirmed: h.confirmed,
     activeTodayAction: h.step,
     childProfile: { id: "c1", name: "Alex Example", languages: ["Hebrew (Native)", "English (Transition)"] },
     recordFromRecordAnswer: h.record,
@@ -34,7 +36,7 @@ vi.mock("../../context/LanguageContext", async () => {
 import TodaySayBackLine, { sayBackDoorLine } from "./TodaySayBackLine";
 import { translate } from "../../lib/i18n";
 import { fromRecordEntry, type FromRecordOpener } from "../../lib/today/fromRecord";
-import type { ActionLoopEntry } from "../../actionLoop/model";
+import type { ActionLoopEntry } from "../../actionLoop/model";
 import { todayLiveSource } from "../../testTodaySource";
 
 const NOW = new Date(2026, 9, 6, 8, 0, 0); // the morning of 6 Oct (local)
@@ -73,7 +75,8 @@ const buttons = (node: React.ReactNode, out: El[] = []): El[] => {
 beforeEach(() => {
   h.step = null;
   h.loop = [];
-  h.record = vi.fn();
+  h.writes = {}; h.confirmed = true;
+  h.record = vi.fn(async () => undefined);
 });
 
 describe("sayBackDoorLine — the door's line selection", () => {
@@ -84,6 +87,11 @@ describe("sayBackDoorLine — the door's line selection", () => {
     expect(opener.kind).toBe("said");
     expect(opener.sayBackMode).toBe("cross");
     expect(opener.sayBackIn).toBe("Hebrew");
+  });
+
+  it("a saved record reflection owns the daily row and is never replaced by a say-back answer", () => {
+    const opener: FromRecordOpener = { key: "note:older", kind: "note", topic: null, quote: "The parent wrote this earlier.", quoteAt: "2026-07-09", quoteSource: "parent" };
+    expect(sayBackDoorLine(input({ loop: [fromRecordEntry(opener, "easier", "c1", NOW)] }))).toBeNull();
   });
 
   it("an open coach step → no say-back line (one question line at a time, the step first)", () => {
@@ -128,7 +136,7 @@ describe("TodaySayBackLine — rendered (EN + HE)", () => {
       const chips = buttons(TodaySayBackLine({ keepsakeDocs: [quoteDoc()], now: NOW }));
       expect(chips.map((b) => b.props["data-answer"])).toEqual(["yes", "not_today"]);
       chips[1].props.onClick?.();
-      expect(h.record).toHaveBeenCalledWith(expect.objectContaining({ kind: "said", key: "said:quote-2026-10-05-aa" }), "not_today");
+      expect(h.record).toHaveBeenCalledWith(expect.objectContaining({ kind: "said", key: "said:quote-2026-10-05-aa" }), "not_today", NOW);
     });
 
     it(`${lang}: beside an open step nothing renders; after an answer, the receipt (no chips)`, () => {
@@ -156,4 +164,19 @@ describe("the door mounts the line after the step line (Law 6 order)", () => {
     expect(door.indexOf("<CompanionOfferSlot ")).toBeLessThan(door.indexOf("<TodaySayBackLine "));
     expect(door).toContain("<TodaySayBackLine keepsakeDocs={keepsakeDocs} now={now} />");
   });
+});
+
+it("keeps say-back pending until acknowledgement and permits a failed optimistic answer to retry", () => {
+  const opener = (sayBackDoorLine(input()) as { opener: FromRecordOpener }).opener;
+  const row = fromRecordEntry(opener, "yes", "c1", NOW);
+  h.confirmed = false;
+  expect(renderToStaticMarkup(<TodaySayBackLine keepsakeDocs={[quoteDoc()]} now={NOW} />)).toContain("today-door-saidback-pending");
+  h.loop = [row]; h.writes[row.id] = { opener, status: "saving" };
+  let html = renderToStaticMarkup(<TodaySayBackLine keepsakeDocs={[quoteDoc()]} now={NOW} />);
+  expect(html).toContain("today-door-saidback-pending"); expect(html).not.toContain("today-door-saidback-receipt");
+  h.writes[row.id] = { opener, status: "failed" };
+  html = renderToStaticMarkup(<TodaySayBackLine keepsakeDocs={[quoteDoc()]} now={NOW} />);
+  expect(html).toContain('role="alert"'); expect(html.match(/data-answer=/g)).toHaveLength(2); expect(html).not.toContain("today-door-saidback-receipt");
+  h.writes[row.id] = { opener, status: "saved", entry: row };
+  expect(renderToStaticMarkup(<TodaySayBackLine keepsakeDocs={[quoteDoc()]} now={NOW} />)).toContain("today-door-saidback-receipt");
 });

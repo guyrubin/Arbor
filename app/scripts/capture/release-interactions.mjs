@@ -18,10 +18,13 @@ import { SOURCE_FONT_NOTE, captureFontContextOptions, installOfflineFonts, captu
 import { RECORD_STATES, RECORD_LIMITATIONS, recordFixture, installRecordShareSink } from './record-contract.mjs';
 import { collectRecordStates } from './record-states.mjs';
 import { collectBehaviorRecordStates } from './record-behaviors.mjs';
+import { CONFIRMED_ACTION_STATES, CONFIRMED_ACTION_LIMITATIONS, confirmedActionsFixture } from './confirmed-actions-contract.mjs';
+import { collectConfirmedActionStates } from './confirmed-actions-states.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
   record: RECORD_STATES,
+  'confirmed-actions': CONFIRMED_ACTION_STATES,
   navigation: [
     ...rows('shell', ['keep-closed', 'keep-open', 'keep-toggle-closed', 'keep-escape', 'keep-write', 'keep-close-focus']),
     ...rows('overview', ['practice-compact', 'practice-details', 'practice-outcome', 'practice-undo', 'now-scroll-initial', 'now-scroll-middle', 'now-bottom-reachable']),
@@ -140,7 +143,8 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     return collectReleaseInteractions({ output, bundle, viewport, group: 'ask', sourceSha, sourceTreeSha, _priorCells: navigation.cells, _reportGroup: 'focused', _apiCache });
   }
   const record = group === 'record' ? recordFixture(bundle, viewport.lang) : null;
-  const fixture = releaseFixture(record?.parsed ?? bundle, viewport.lang);
+  const confirmed = group === 'confirmed-actions' ? confirmedActionsFixture(bundle, viewport.lang) : null;
+  const fixture = releaseFixture(confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
   const { lang } = viewport;
   const he = lang === 'he';
   const viewportId = `${viewport.w}x${viewport.h}`;
@@ -151,6 +155,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     doc.recordBoundaries = RECORD_LIMITATIONS;
     doc.fixtures.push('synthetic-record-local-storage', 'synthetic-browser-share-sink');
     doc.recordFixture = { childId: record.childId, eligibleRows: record.expected.all, months: record.expected.months, sourceCollections: Object.keys(record.collections), negativeControls: record.text.forbidden.length };
+  }
+  if (confirmed) {
+    doc.confirmedActionBoundaries = CONFIRMED_ACTION_LIMITATIONS;
+    doc.fixtures.push('synthetic-confirmed-actions-local-storage', 'scoped-local-storage-quota-fault', 'synthetic-browser-share-sink', 'fixed-browser-clock');
   }
   save();
   const { chromium } = await import('playwright');
@@ -212,7 +220,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     await context.route('**/sandbox/demo-family.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) }));
     await installOfflineFonts(context);
     await context.addInitScript(initializeSyntheticOnline, { lang });
-    if (record) await context.addInitScript(installRecordShareSink);
+    if (record || confirmed) await context.addInitScript(installRecordShareSink);
     if (group === 'ask-diagnostic') await context.addInitScript(installStylesheetObservation);
     const page = await context.newPage();
     page.setDefaultTimeout(8000);
@@ -384,7 +392,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       return cell.reached;
     };
 
-    if (group === 'record') {
+    if (group === 'confirmed-actions') {
+      await collectConfirmedActionStates({ page, context, fixture: confirmed, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId });
+    } else if (group === 'record') {
       const helpers = { page, context, fixture: record, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId };
       await collectRecordStates(helpers);
       await collectBehaviorRecordStates(helpers);

@@ -123,5 +123,13 @@ visible launcher with focus. Actual CI PNG review remains required.
 
 `codex/parent-record-clarity` uses the same workflow with `record-release` scope:
 four prioritized bounded record shards followed by all eight unchanged baseline
-shards. See `RECORD-EVIDENCE.md` for its real source seams, 192 added state cells,
+shards. See `RECORD-EVIDENCE.md` for its real source seams, 196 added state cells,
 separate actual print-delivery receipts and explicitly unexercised remote states.
+
+## Next bounded Parent action batch
+
+`CONFIRMED-ACTIONS-EVIDENCE.md` describes the additive `confirmed-actions-only`
+contract: 49 real-action states per EN/HE mobile/desktop shard, reusing this harness's
+isolation and exact-font evidence. The existing 662 `record-release` requirements are
+unchanged. The new branch selects only the 196-state bounded pass; final full-sweep
+requirements remain the release owner's decision.

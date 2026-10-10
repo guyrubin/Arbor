@@ -60,6 +60,10 @@ export interface RitualTurnCardProps {
   onStart?: (ritual: FamilyRitual) => void;
   /** Whether that ritual's first step is already on today's list. */
   started?: (ritual: FamilyRitual) => boolean;
+  /** An unacknowledged start is disabled without claiming it is already saved. */
+  startDisabled?: boolean;
+  /** The host owns write feedback; the card only places it beside its Start. */
+  startFeedback?: (ritual: FamilyRitual) => React.ReactNode;
   /** The host's primary-move stamp (spread onto the start control), so the
    *  route's leaf file keeps the one stamp check:framework counts. */
   primaryMoveProps?: Record<string, string>;
@@ -73,7 +77,7 @@ export interface RitualTurnCardProps {
   childAge?: number;
 }
 
-export default function RitualTurnCard({ nowMs, onStart, started, primaryMoveProps, onTurnChange, charterValues, childName, childAge }: RitualTurnCardProps) {
+export default function RitualTurnCard({ nowMs, onStart, started, startDisabled, startFeedback, primaryMoveProps, onTurnChange, charterValues, childName, childAge }: RitualTurnCardProps) {
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   const now = nowMs ?? Date.now();
@@ -118,7 +122,7 @@ export default function RitualTurnCard({ nowMs, onStart, started, primaryMovePro
             {...primaryMoveProps}
             data-testid="ritual-plan-next"
             onClick={() => onStart(nextUp)}
-            disabled={nextStarted}
+            disabled={startDisabled || nextStarted}
             className="inline-flex items-center gap-2 rounded-2xl px-5 t-sm font-extrabold transition active:scale-[0.97] disabled:cursor-default"
             style={
               nextStarted
@@ -130,6 +134,7 @@ export default function RitualTurnCard({ nowMs, onStart, started, primaryMovePro
             {nextStarted ? t("elev.learnCare.ritual.started") : t("elev.rh.ritual.planNext", { title: he ? nextUp.titleHe : nextUp.title })}
           </button>
         )}
+        {onStart && nextUp && startFeedback?.(nextUp)}
       </div>
     );
   }
@@ -228,7 +233,7 @@ export default function RitualTurnCard({ nowMs, onStart, started, primaryMovePro
             {...primaryMoveProps}
             data-testid="ritual-turn-start"
             onClick={() => onStart(ritual)}
-            disabled={started?.(ritual)}
+            disabled={startDisabled || started?.(ritual)}
             className="inline-flex items-center gap-2 rounded-2xl px-5 text-[13px] font-extrabold transition active:scale-[0.97] disabled:cursor-default"
             style={
               started?.(ritual)
@@ -251,6 +256,7 @@ export default function RitualTurnCard({ nowMs, onStart, started, primaryMovePro
           {t("elev.rh.ritual.did")}
         </button>
       </div>
+      {onStart && startFeedback?.(ritual)}
       {/* SHIP-FIX (W2-SHELLPLAY r3 P1): reason -> action -> detail. "How it
           goes" follows the CTA row as a quiet 44 px disclosure (no deep well),
           so the stamped start clears the fixed bottom nav at 375. */}

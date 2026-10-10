@@ -41,11 +41,11 @@ describe("LC-22 · a family ritual can be started", () => {
   });
 
   it("Start accepts the FIRST step into today, at tiny capacity, with its own provenance", () => {
-    expect(CHARTER).toContain('acceptTodayAction(step, "tiny", "family-ritual")');
+    expect(CHARTER).toContain('await acceptTodayAction(step, "tiny", "family-ritual", undefined, { awaitServer: true, isCurrent })');
     expect(CHARTER).toContain("const firstStep = (r: FamilyRitual)");
     // Idempotent: a started ritual shows as started rather than double-writing.
     expect(CHARTER).toContain('a.source === "family-ritual" && a.recommendation === firstStep(r)');
-    expect(CHARTER).toContain("disabled={ritualStarted(r)}");
+    expect(CHARTER).toContain("disabled={startPending() || ritualStarted(r)}");
   });
 
   it("the accordion announces its own state", () => {

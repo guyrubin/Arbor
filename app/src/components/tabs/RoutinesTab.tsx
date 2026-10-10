@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { HubHero } from "../ui/HubHero";
@@ -6,14 +6,14 @@ import { ProgressBar } from "../ui/kit";
 import { PASTEL } from "../../lib/tokens";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { useToast } from "../../context/ToastContext";
+import { Receipt } from "../ui/Receipt";
 import { ROUTINES, routineById, localized } from "../../lib/routines";
 import { isolate } from "../../lib/i18n";
 
 /* ════════════════════════════════════════════════════════════════════════════
    Ready-made Routines — a library of seven research-backed, parent-run daily
-   routines. Pick one from the grid, run it with the child by toggling steps
-   done; the board celebrates a fully-completed routine and drops a star.
+   routines. Pick one from the grid and run it with the child by toggling
+   steps done. Completion records a local checklist, never a child reward.
 
    CLINICAL FIREWALL: routine progress is shown as a COUNT ("{done}/{total}")
    and bar-width ONLY — never a percentage number, never a score or verdict on
@@ -26,6 +26,14 @@ import { isolate } from "../../lib/i18n";
 
 /** Persisted shape: routine id → array of completed step keys. */
 type DoneMap = Record<string, string[]>;
+type BoardState = {
+  childId: string;
+  selectedId: string;
+  doneMap: DoneMap;
+  receipt: "saved" | "unsaved" | null;
+  // Selection, reset and child changes retire callbacks from the old board.
+  lifetime: object;
+};
 
 const lsKey = (childId: string) => `arbor.routines.done.${childId}`;
 
@@ -62,21 +70,37 @@ function StepSwitch({ on, tone, label }: { on: boolean; tone: keyof typeof PASTE
 export default function RoutinesTab() {
   const { childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
-  const { toast } = useToast();
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
-  // Selected routine id — local state, default the first (morning) routine.
-  const [selectedId, setSelectedId] = useState<string>(ROUTINES[0].id);
-
-  // Completed step keys per child, persisted in localStorage (follows the
-  // sessionLength pattern in OverviewTab).
-  const [doneMap, setDoneMap] = useState<DoneMap>(() => readDone(childProfile.id));
+  // Keep the existing per-child localStorage shape. The receipt is only for
+  // an action in this visit: loading a completed checklist never replays it.
+  const [boardState, setBoard] = useState<BoardState>(() => ({
+    childId: childProfile.id,
+    selectedId: ROUTINES[0].id,
+    doneMap: readDone(childProfile.id),
+    receipt: null,
+    lifetime: {},
+  }));
+  const currentBoard = useRef(boardState);
+  let board = boardState;
+  // Shell keys this tab by child, but also keep a forced same-instance switch
+  // safe before paint. Never persist the previous child's checklist as theirs.
+  if (board.childId !== childProfile.id) {
+    board = { ...board, childId: childProfile.id, doneMap: readDone(childProfile.id), receipt: null, lifetime: {} };
+    currentBoard.current = board;
+    setBoard(board);
+  }
+  const { doneMap, selectedId, lifetime } = board;
 
   const persist = useCallback(
-    (next: DoneMap) => {
-      setDoneMap(next);
-      try { localStorage.setItem(lsKey(childProfile.id), JSON.stringify(next)); } catch { /* ignore */ }
+    (next: BoardState, completed = false) => {
+      let saved = true;
+      try { localStorage.setItem(lsKey(childProfile.id), JSON.stringify(next.doneMap)); } catch { saved = false; }
+      // A storage failure must not undo an in-memory toggle or claim a save.
+      const updated: BoardState = { ...next, receipt: completed ? (saved ? "saved" : "unsaved") : null };
+      currentBoard.current = updated;
+      setBoard(updated);
     },
     [childProfile.id]
   );
@@ -87,30 +111,36 @@ export default function RoutinesTab() {
   const total = selected.steps.length;
   const allDone = total > 0 && doneCount === total;
 
+  const selectRoutine = useCallback((id: string) => {
+    const latest = currentBoard.current;
+    if (latest.lifetime !== lifetime || latest.selectedId === id) return;
+    const next: BoardState = { ...latest, selectedId: id, receipt: null, lifetime: {} };
+    currentBoard.current = next;
+    setBoard(next);
+  }, [lifetime]);
+
   const toggleStep = useCallback(
     (stepKey: string) => {
-      const current = doneMap[selected.id] ?? [];
+      const latest = currentBoard.current;
+      if (latest.lifetime !== lifetime) return;
+      // Read the latest snapshot even when several clicks arrive before React
+      // renders again. A second tap undoes the first; no stale receipt survives.
+      const current = latest.doneMap[selected.id] ?? [];
       const wasOn = current.includes(stepKey);
       const nextKeys = wasOn ? current.filter((k) => k !== stepKey) : [...current, stepKey];
-      persist({ ...doneMap, [selected.id]: nextKeys });
-
-      // B-GROWTH-24: the completion toast fires only on the transition INTO
-      // all-done. It used to say "⭐ {name} earned a star in their world!" —
-      // no star is written anywhere, and a reward aimed at the child is a
-      // pressure mechanic (law 3). It now names what happened, to the parent.
-      const nowComplete = nextKeys.length === total && total > 0;
-      if (!wasOn && nowComplete) {
-        toast(t("routines.doneToast"), "success");
-      }
+      const nowComplete = total > 0 && selected.steps.every((step) => nextKeys.includes(step.key));
+      persist({ ...latest, doneMap: { ...latest.doneMap, [selected.id]: nextKeys } }, !wasOn && nowComplete);
     },
-    [doneMap, selected.id, total, persist, toast, t]
+    [lifetime, selected, total, persist]
   );
 
   const resetRoutine = useCallback(() => {
-    const next = { ...doneMap };
+    const latest = currentBoard.current;
+    if (latest.lifetime !== lifetime) return;
+    const next = { ...latest.doneMap };
     delete next[selected.id];
-    persist(next);
-  }, [doneMap, selected.id, persist]);
+    persist({ ...latest, doneMap: next, receipt: null, lifetime: {} });
+  }, [lifetime, selected.id, persist]);
 
   // Per-tile completed counts for the library grid's progress bars.
   const tileDone = useCallback(
@@ -159,7 +189,7 @@ export default function RoutinesTab() {
             <button
               key={r.id}
               type="button"
-              onClick={() => setSelectedId(r.id)}
+              onClick={() => selectRoutine(r.id)}
               aria-pressed={isSel}
               data-testid={`routine-tile-${r.id}`}
               className="flex flex-col items-start gap-3 rounded-2xl p-4 text-start transition active:scale-[0.98]"
@@ -271,6 +301,12 @@ export default function RoutinesTab() {
             );
           })}
         </div>
+
+        {board.receipt && (
+          <Receipt testId="routines-completion-receipt" className="mt-4">
+            {t(board.receipt === "saved" ? "routines.doneReceipt" : "routines.doneReceiptUnsaved")}
+          </Receipt>
+        )}
 
         {/* Celebration banner — shows only when ALL steps are done. */}
         <AnimatePresence>

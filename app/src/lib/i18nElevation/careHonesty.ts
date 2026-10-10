@@ -89,6 +89,9 @@ export const en: Record<string, string> = {
   "elev.learnCare.ritual.start": "Start tonight",
   "elev.learnCare.ritual.started": "On today’s list",
   "elev.learnCare.ritual.added": "Added to today — the first step only.",
+  "elev.learnCare.ritual.pending": "Adding the first step to today…",
+  "elev.learnCare.ritual.failed": "The first step couldn’t be added to today. Please try again.",
+  "elev.learnCare.ritual.retry": "Try again",
   "elev.learnCare.trusted.send": "Send to someone you trust",
   "elev.learnCare.trusted.subject": "About {name} — context for our conversation",
   // ── Builder G · item 8 — the consult PACKET's own scaffold ────────────────
@@ -340,6 +343,9 @@ export const he: Record<string, string> = {
   "elev.learnCare.ritual.start": "להתחיל הערב",
   "elev.learnCare.ritual.started": "ברשימה של היום",
   "elev.learnCare.ritual.added": "נוסף להיום — הצעד הראשון בלבד.",
+  "elev.learnCare.ritual.pending": "הצעד הראשון מתווסף להיום…",
+  "elev.learnCare.ritual.failed": "לא הצלחנו להוסיף את הצעד הראשון להיום. אפשר לנסות שוב.",
+  "elev.learnCare.ritual.retry": "לנסות שוב",
   "elev.learnCare.trusted.send": "לשלוח למישהו שאתם סומכים עליו",
   "elev.learnCare.trusted.subject": "על {name} — הקשר לשיחה שלנו",
   // ── Builder G · item 8 — the consult PACKET's own scaffold ────────────────

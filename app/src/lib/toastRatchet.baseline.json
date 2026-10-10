@@ -46,9 +46,6 @@
     "components/sections/AskSpecialist.tsx": {
       "success": 1
     },
-    "components/sections/FamilyFormation.tsx": {
-      "success": 1
-    },
     "components/sections/SchoolBrief.tsx": {
       "success": 1
     },
@@ -73,9 +70,6 @@
       "success": 5
     },
     "components/tabs/HeroJourneyTab.tsx": {
-      "success": 1
-    },
-    "components/tabs/RoutinesTab.tsx": {
       "success": 1
     },
     "context/ArborContext.tsx": {

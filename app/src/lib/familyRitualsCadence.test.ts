@@ -179,7 +179,7 @@ describe("ENG-25 → B-GROWTH-03 — the cadence is surfaced on #/family", () =>
     // W2-SHELLPLAY r1: the card is mounted inside the rituals module and
     // carries the route's ONE stamp on its start control (spread from the leaf).
     // W2-SHELLPLAY r2 (B-SHELL-NEW-2l): the host also passes the charter and the child
-    expect(growth).toMatch(/<RitualTurnCard onStart=\{startRitual\} started=\{ritualStarted\} primaryMoveProps=\{RITUAL_MOVE\} onTurnChange=\{onTurnChange\} charterValues=\{saved \? values : \[\]\} childName=\{childProfile\?\.name\} childAge=\{childProfile\?\.age\} \/>/);
+    expect(growth).toMatch(/<RitualTurnCard onStart=\{startRitual\} started=\{ritualStarted\} primaryMoveProps=\{RITUAL_MOVE\} onTurnChange=\{onTurnChange\} charterValues=\{saved \? values : \[\]\} childName=\{childProfile\?\.name\} childAge=\{childProfile\?\.age\} startDisabled=\{startPending\(\)\} startFeedback=\{startFeedback\} \/>/);
     const mod = growth.indexOf('data-module="family-rituals"');
     expect(mod).toBeGreaterThan(-1);
     expect(growth.indexOf("<RitualTurnCard")).toBeGreaterThan(mod);

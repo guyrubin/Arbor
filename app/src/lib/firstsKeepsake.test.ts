@@ -272,3 +272,14 @@ describe("a shared first never claims a month of progress", () => {
     ).toBe(FIRSTS_KEEPSAKE_CAPTION_KEY);
   });
 });
+
+// A saved draft must not shed imported provenance when the parent edits it.
+describe("keepsake edits preserve source provenance", () => {
+  it("does not turn AI/quote/other-source content into a parent first merely by saving", () => {
+    const original = { milestoneId: "first", note: "Imported words", noticedOn: "2026-10-04", createdAt: "2026-10-04", updatedAt: "2026-10-04", source: "ai_proposed_parent_confirmed", observationSource: "document_extracted", captureSource: "co_parent", conversationProposalId: "proposal", kind: "quote" as const, photoUrl: "old-photo" };
+    const updated = upsertKeepsake({ first: original }, { milestoneId: "first", note: original.note, noticedOn: original.noticedOn }, "2026-10-05").first;
+    for (const field of ["source", "observationSource", "captureSource", "conversationProposalId", "kind"] as const) expect(updated).toHaveProperty(field, original[field]);
+    expect(updated).not.toHaveProperty("photoUrl");
+    expect(updated.updatedAt).toBe("2026-10-05");
+  });
+});

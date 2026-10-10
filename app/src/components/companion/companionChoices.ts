@@ -9,7 +9,7 @@ const pair = (key: CopyKey) => ({ en: companionEn[key], he: companionHe[key] });
 /** A parent's still-open choice survives midnight. Completed/superseded rows
  * never become a new task, and a different topic never borrows its outcome. */
 export function nextChosenAction(rows: readonly ActionLoopEntry[], topicId?: string): ActionLoopEntry | null {
-  const open = rows.filter((row) => row.status === "accepted" && row.recommendation.trim());
+  const open = rows.filter((row) => row.status === "accepted" && !row.outcome && row.recommendation.trim());
   const linked = topicId ? open.filter((row) => (row as ActionLoopEntry & { topicId?: string }).topicId === topicId) : [];
   return [...(linked.length ? linked : open)].sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt))[0] ?? null;
 }

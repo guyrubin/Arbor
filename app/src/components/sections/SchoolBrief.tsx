@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useConsultEgress, type ConsultEgressGuard } from "../../consult/egressGuard";
 import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -103,6 +104,7 @@ export interface SchoolBriefProps {
   /** B-CAREPRO-36: the editor sits INLINE under Consult's teacher preset (the
    *  page already carries the H1 and the teacher line) — no header of its own. */
   embedded?: boolean;
+  egressGuard?: ConsultEgressGuard;
   /** B-CAREPRO-27/36: the parent's note for the teacher (Consult's prefill),
    *  placed in the draft the parent reviews line by line; it follows the note
    *  until the parent edits the brief. Never stored, never sent on its own. */
@@ -112,11 +114,12 @@ export interface SchoolBriefProps {
   primaryMove?: string;
 }
 
-export default function SchoolBrief({ embedded = false, teacherNote, primaryMove: routeMove }: SchoolBriefProps = {}) {
+export default function SchoolBrief({ embedded = false, teacherNote, primaryMove: routeMove, egressGuard }: SchoolBriefProps = {}) {
   const { childProfile, behaviorLogs, milestones, actionPlans, setActiveTab, openPaywall } = useArbor();
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
   const reduceMotion = useReducedMotion();
+  const egress = useConsultEgress(egressGuard);
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
   // B-CAREPRO-27 → 36: the note Consult's teacher branch carries (a prop now
@@ -153,6 +156,7 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
   // Once the parent edits (or Arbor drafts), the free draft no longer follows the record.
   const [owned, setOwned] = useState(false);
   const [generating, setGenerating] = useState(false);
+  useEffect(() => { setGenerating(false); }, [egress.receipt]);
   // The draft is rendered on open, so the approval state machine starts there.
   const [exportState, setExportState] = useState<ExportState>(() => markRendered(initialExportState()));
   useEffect(() => {
@@ -160,7 +164,23 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
     setDraft(freeDraft);
     setExportState(markRendered(initialExportState()));
   }, [freeDraft, owned]);
-  const [reviewOpen, setReviewOpen] = useState(false);
+  // A review is a single-use capability for this exact draft and source read.
+  // Closing the body portal does not discard the unsaved editor underneath.
+  const reviewContext = useMemo(() => ({}), [draft, uiLang, childProfile.id, egress.receipt]);
+  const latestReviewContext = useRef(reviewContext);
+  latestReviewContext.current = reviewContext;
+  const [review, setReview] = useState<{ context: object } | null>(null);
+  const activeReview = useRef<typeof review>(null);
+  if (activeReview.current?.context !== reviewContext || !egress.isCurrent()) activeReview.current = null;
+  const reviewOpen = !!review && activeReview.current === review;
+  const closeReview = () => { activeReview.current = null; setReview(null); };
+  const openReview = () => {
+    if (!egress.isCurrent() || latestReviewContext.current !== reviewContext) return;
+    const next = { context: reviewContext };
+    activeReview.current = next;
+    setExportState(markRendered(initialExportState()));
+    setReview(next);
+  };
   const [editing, setEditing] = useState(false);
   // B-CAREPRO-01: the server's escalation screen (409) blocked the generate.
   // A blocked generate has no draft, so the parent-only escalation card renders
@@ -197,6 +217,8 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
   // re-approve the edited brief before it can leave the app. The state machine
   // stays idle → rendered → approved (no edit-bypass phase).
   const resetApproval = useCallback(() => {
+    activeReview.current = null;
+    setReview(null);
     setOwned(true);
     setExportState((s) => markRendered(s));
   }, []);
@@ -229,6 +251,8 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
   };
 
   const generate = async () => {
+    if (!egress.isCurrent()) return;
+    closeReview();
     setGenerating(true);
     setEscalationBlocked(false);
     // B-CAREPRO-12: screen the full record on the device before anything is sent.
@@ -256,12 +280,14 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
         // weakened for a Hebrew brief but absent. See lib/clinicalScan.ts.
         language: uiLang === "he" ? "he" : "en",
       });
+      if (!egress.isCurrent()) return;
       setDraft(data);
       setOwned(true);
       setEditing(false);
       // A fresh brief is rendered but NOT approved — approval is per-export.
       setExportState(markRendered(initialExportState()));
     } catch (err: any) {
+      if (!egress.isCurrent()) return;
       // B-CAREPRO-01: branch on the TYPED 409 before the generic toast. The old
       // "Professional support" substring match never fired — request() puts
       // the server's `details` string in the message, which outranks `error`.
@@ -271,12 +297,15 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
       else if (err instanceof PaywallError) openPaywall(err.feature, err.plan);
       else toast(t("elev.learnCare.brief.buildFailed"), "error");
     } finally {
-      setGenerating(false);
+      if (egress.isCurrent()) setGenerating(false);
     }
   };
 
   // Condition 1: the explicit per-export approval. Only valid from `rendered`.
   const onApprove = () => {
+    if (!review || activeReview.current !== review || latestReviewContext.current !== reviewContext || !egress.isCurrent()) return;
+    // Consume synchronously before calling the print seam, including double clicks.
+    closeReview();
     const approved = approveExport(exportState, new Date().toISOString());
     setExportState(approved);
     if (!canExport(approved)) {
@@ -299,7 +328,6 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
         childProfile.name,
         uiLang
       );
-      setReviewOpen(false);
       toast(t("elev.learnCare.brief.printed"), "success");
     } catch (err) {
       // Condition 3 fail-closed: a diagnosis term (incl. one edited in) means we DO NOT export.
@@ -384,7 +412,9 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
             {/* Opening the review is NOT an export — export only fires after approve. */}
             <button
               {...primaryMove}
-              onClick={() => setReviewOpen(true)}
+              data-testid="school-brief-review-open"
+              onClick={openReview}
+              disabled={!egress.isCurrent()}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-4 py-3 min-h-[44px] whitespace-nowrap flex-shrink-0"
               style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
             >
@@ -503,7 +533,7 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
 
       {/* Approval screen (Condition 1 + 5) — the parent sees the exact brief,
           reads the outside-erase-reach notice, and must click approve to export. */}
-      <Modal open={reviewOpen} onClose={() => setReviewOpen(false)} title={t("schoolBrief.reviewTitle")} maxWidth="max-w-xl">
+      <Modal open={reviewOpen} onClose={closeReview} title={t("schoolBrief.reviewTitle")} maxWidth="max-w-xl">
         <div className="space-y-4">
           <p className="text-[13px] leading-relaxed" style={{ color: MUTED }}>{t("schoolBrief.reviewBody", { name: firstName })}</p>
 
@@ -517,14 +547,16 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
 
           <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
             <button
-              onClick={() => setReviewOpen(false)}
+              onClick={closeReview}
               className="inline-flex items-center font-bold text-sm rounded-xl px-4 py-3 min-h-[44px]"
               style={{ background: "var(--arbor-paper-sunk)", color: MUTED, border: `1px solid ${RULE}` }}
             >
               {t("schoolBrief.cancel")}
             </button>
             <button
+              data-testid="school-brief-review-approve"
               onClick={onApprove}
+              disabled={!reviewOpen || !egress.isCurrent()}
               className="inline-flex items-center gap-2 text-white font-bold text-sm rounded-xl px-5 py-3 min-h-[44px]"
               style={{ background: "var(--arbor-gradient-primary)", boxShadow: "var(--arbor-clay-glow)" }}
             >

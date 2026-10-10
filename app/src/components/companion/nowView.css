@@ -132,3 +132,6 @@
 .now-say-details { margin-block-start: 12px; border-block-start: 1px solid var(--arbor-rule); }
 .now-say-details .now-say { margin-block: 8px 14px; }
 .now-say-details .now-say blockquote { font: 400 var(--t-base)/1.6 var(--font-sans); font-size-adjust: none; }
+
+/* The record question is the largest UI line; the parent quotation keeps its editorial face. */
+.arbor-app .now-page [data-testid="today-record-question"] { font-family: var(--font-sans) !important; }

@@ -160,10 +160,15 @@ export function parseKeepsakes(raw: string | null | undefined): KeepsakeMap {
  */
 export function upsertKeepsake(map: KeepsakeMap, draft: KeepsakeDraft, now: string): KeepsakeMap {
   const existing = map[draft.milestoneId];
+  // Editing words/date/photo is not a provenance conversion. Keep imported
+  // source/kind metadata; an absent photo must still remove the old image.
+  const { photoUrl: _previousPhoto, ...preserved } = existing ?? {};
+  void _previousPhoto;
   const photoUrl = draft.photoUrl?.trim();
   return {
     ...map,
     [draft.milestoneId]: {
+      ...preserved,
       milestoneId: draft.milestoneId,
       note: draft.note.trim().slice(0, KEEPSAKE_NOTE_MAX),
       noticedOn: draft.noticedOn,

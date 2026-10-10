@@ -183,7 +183,7 @@ describe("LC-11b · one teacher door — every door, not one named file", () => 
     expect(branch).toBeTruthy();
     // B-CAREPRO-27/36: the teacher note goes into the inline brief, which
     // carries the route's ONE stamp; nothing navigates away any more.
-    expect(branch![0]).toContain('<SchoolBrief embedded teacherNote={visionNote} primaryMove={primaryMoveStamp?.["data-primary-move"]} />');
+    expect(branch![0]).toContain('<SchoolBrief embedded teacherNote={visionNote} primaryMove={primaryMoveStamp?.["data-primary-move"]} egressGuard={egressGuard} />');
     expect(branch![0]).not.toContain('setActiveTab("school-brief")');
     expect(consult).toContain('import SchoolBrief from "./SchoolBrief";');
     // no Copy / PDF / send text for a teacher: the build and the PDF both stop first

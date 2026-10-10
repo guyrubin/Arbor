@@ -11,7 +11,7 @@
  *
  * a11y: real <button>, descriptive aria-label, 44 px, focus-visible ring.
  */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
@@ -46,6 +46,8 @@ export function ShareButton({
   label,
   variant = "ghost",
   childName,
+  beforeShare,
+  disabled = false,
 }: {
   artifact: LoopArtifact;
   surface: string;
@@ -57,16 +59,21 @@ export function ShareButton({
   variant?: "solid" | "ghost";
   /** Child name for the aria-label and the closing line. */
   childName?: string;
+  /** Optional source guard for record-backed callers, checked again on Send. */
+  beforeShare?: () => boolean;
+  disabled?: boolean;
 }) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
+  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
   const defaultLabel = label ?? t("elev.words.page.send");
   const caption = resolveCaptionKey({ artifact, surface, captionKey });
   const parent = (user?.displayName || t("nav.parent")).split(" ")[0];
 
   const onShare = () => {
+    if (disabled || (beforeShare && !beforeShare())) return;
     setText(shareButtonText(getCardOpts(), { caption, parent, childName, t }));
     setOpen(true);
   };
@@ -79,6 +86,7 @@ export function ShareButton({
       <button
         type="button"
         onClick={onShare}
+        disabled={disabled}
         aria-label={aria}
         className="inline-flex items-center justify-center gap-1.5 font-semibold text-[13px] rounded-full px-4 min-h-[44px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--arbor-clay)] focus-visible:ring-offset-1"
         style={
@@ -90,7 +98,7 @@ export function ShareButton({
         <Icon name="share" size={16} />
         {defaultLabel}
       </button>
-      {open && <SendSheet open={open} onClose={() => setOpen(false)} text={text} artifact={artifact} surface={surface} />}
+      {open && !disabled && <SendSheet open={open} onClose={() => setOpen(false)} text={text} artifact={artifact} surface={surface} beforeSend={beforeShare} />}
     </div>
   );
 }

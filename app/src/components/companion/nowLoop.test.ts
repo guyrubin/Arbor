@@ -53,7 +53,7 @@ describe("every loop seam has a live caller", () => {
   });
   it("return hooks: the visit stamp, a lifecycle note and the ONE today offer", () => {
     expect(now).toContain("useLastVisit(childProfile)");
-    expect(now).toContain("useLifecycleMoment({ previousVisitAt })");
+    expect(now).toContain("useLifecycleMoment({ previousVisitAt, now: now.getTime() })");
     expect(now).toContain('useCompanionOffer("today",');
     expect(more).toContain('<CompanionOfferSlot surface="today"');
     expect(more).toContain("<WhatChanged");

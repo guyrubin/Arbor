@@ -17,6 +17,9 @@ describe("Now's parent-chosen step", () => {
   it("never revives a completed or replaced step", () => {
     expect(nextChosenAction([row("done", "2026-10-08", { status: "completed" }), row("replaced", "2026-10-09", { status: "superseded" })])).toBeNull();
   });
+  it("never re-asks a row that already carries an outcome even if its status is stale", () => {
+    expect(nextChosenAction([row("already-rated", "2026-10-09", { outcome: "helped" })])).toBeNull();
+  });
   it("gives the selected question's step precedence over a newer unrelated choice", () => {
     const linked = row("linked", "2026-10-01", { topicId: "question-a" });
     const unrelated = row("other", "2026-10-07", { topicId: "question-b" });

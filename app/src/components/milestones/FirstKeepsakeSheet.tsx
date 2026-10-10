@@ -51,6 +51,8 @@ export default function FirstKeepsakeSheet({
   childId,
   childName,
   keepsake,
+  canShare,
+  beforeShare,
   onSave,
   onRemove,
   onClose,
@@ -62,6 +64,9 @@ export default function FirstKeepsakeSheet({
   childName: string;
   /** The keepsake already kept for this milestone, or null for a new one. */
   keepsake: FirstKeepsake | null;
+  /** Same selected-note eligibility and confirmed history as the saved row. */
+  canShare: boolean;
+  beforeShare: () => boolean;
   onSave: (draft: KeepsakeDraft) => void;
   onRemove: () => void;
   onClose: () => void;
@@ -234,13 +239,16 @@ export default function FirstKeepsakeSheet({
           )}
         </div>
 
-        {/* The keepsake is shareable ONLY once it exists. The caption is
+        {/* Sharing requires the same eligible, confirmed source as the row.
+            The guard runs at opening and final Send. The caption is
             declared, never inherited: the growth_card fallback would publish
             "{name}'s progress this month" from one first. The card carries the
             milestone and the parent's own words — no photo of the child, no
             date maths, nothing Arbor derived. */}
-        {keepsake && (
+        {keepsake && canShare && (
           <ShareButton
+            key={JSON.stringify([childId, milestoneId, milestoneTitle, childName, keepsake])}
+            beforeShare={beforeShare}
             artifact="growth_card"
             surface={FIRSTS_KEEPSAKE_SURFACE}
             childName={childName}

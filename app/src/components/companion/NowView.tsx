@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -14,6 +14,14 @@ import NowRecommendation from "./NowRecommendation";
 import NowMoreForToday from "./NowMoreForToday";
 import { NowNoticeBlock, NowNoticeLead, NowPracticeLead, NowTonightLead, NowTonightPointer } from "./NowLoopBlocks";
 import { focusSignalsForNow } from "./nowRecommendationModel";
+import { useNowClock } from "./useNowClock";
+import { useNowRecord } from "./useNowRecord";
+import { selectNowLead } from "../../lib/today/dayCard";
+import { markPracticeShown } from "../../lib/practice/todayPin";
+import { appointmentRoleLabel } from "../../lib/appointmentLabel";
+import { isKidModeActive } from "../../lib/kidModeGate";
+import { goToRoute } from "../../hooks/useHashQuery";
+import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
 import { useNowLoop } from "./useNowLoop";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
@@ -53,14 +61,14 @@ function PrimaryMove({ primary = true, ...props }: React.ComponentProps<"button"
  *  NowRecommendation makes (same signals, same journal, one cached call a day),
  *  mounted only while the practice leads. A chosen step or a program never
  *  triggers a request. */
-function PracticeFocus({ journal, onFocus, onPending }: {
+function PracticeFocus({ journal, onFocus, onPending, now }: {
+  now: Date;
   journal: ReturnType<typeof useNowLoop>["journal"];
   onFocus: (focus: Focus | null) => void;
   /** B-STATUS-01: while the focus request runs, the practice lead shows the pending line. */
   onPending: (pending: boolean) => void;
 }) {
   const { childProfile, behaviorLogs, playLogs, milestones, actionLoop } = useArbor();
-  const now = useMemo(() => new Date(), [childProfile, behaviorLogs, playLogs, milestones, actionLoop]);
   const signals = useMemo(() => focusSignalsForNow({ behaviorLogs, playLogs, milestones, actionLoop }, now), [behaviorLogs, playLogs, milestones, actionLoop, now]);
   const { focus, loading } = useTodaysFocus(childProfile, signals, journal);
   useEffect(() => { onFocus(focus); }, [focus, onFocus]);
@@ -77,8 +85,6 @@ const LIFECYCLE_NOTE: Partial<Record<string, string>> = {
   "first-moment": "elev.lifecycle.first.title",
 };
 
-type Lead = "step" | "tonight" | "practice" | "notice" | "program" | "recommendation";
-
 function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
   const { childProfile, actionLoop, seedCoach, setActiveTab, openCaptureSheet, openHardMomentNow,
     saveTodayOutcome, pendingCaptureMode, consumeCaptureRequest } = useArbor();
@@ -86,25 +92,48 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
   const copy = NOW_COPY[lang];
+  const now = useNowClock();
+  const record = useNowRecord(now);
   const name = childProfile.name?.split(" ")[0] || t("companion.now-view.your-child");
   const programs = useChildCollection<{ id: string }>(childProfile.id, "programs");
-  const program = useMemo(() => activeProgramWeek(programs.items), [programs.items]);
+  const program = useMemo(() => activeProgramWeek(programs.items, now), [programs.items, now]);
   const action = useMemo(() => nextChosenAction(actionLoop, topic?.id), [actionLoop, topic?.id]);
-  const [receiptAction, setReceiptAction] = useState<ActionLoopEntry | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [receiptAction, setReceiptAction] = useState<{ scope: object; action: ActionLoopEntry } | null>(null);
+  const [, refreshSaving] = useState(0);
   const [saveError, setSaveError] = useState(false);
   const id = useId();
   useEffect(() => { trackCompanionPlaceOpen("now"); }, []);
-  const chosen = receiptAction ?? action;
+  const outcomeScope = `${childProfile.id}:${topic?.id ?? ""}`;
+  const currentOutcomeScope = useRef({ key: outcomeScope });
+  if (currentOutcomeScope.current.key !== outcomeScope) currentOutcomeScope.current = { key: outcomeScope };
+  const scopeLease = currentOutcomeScope.current;
+  const outcomeMounted = useRef(true);
+  useEffect(() => { outcomeMounted.current = true; return () => { outcomeMounted.current = false; }; }, []);
+  const savingAction = useRef(new Map<string, { scope: object; action: ActionLoopEntry }>());
+  const completedAction = useRef(new Set<string>());
+  const [retryAction, setRetryAction] = useState<{ scope: object; action: ActionLoopEntry } | null>(null);
+  const receipt = receiptAction?.scope === scopeLease ? receiptAction.action : null;
+  const pendingAction = [...savingAction.current.values()].find(write => write.scope === scopeLease)?.action;
+  const chosen = receipt ?? pendingAction ?? (retryAction?.scope === scopeLease ? retryAction.action : null) ?? action;
+  const saving = !!chosen && savingAction.current.has(chosen.id);
   const talk = (prompt?: string) => onTalkOpen ? onTalkOpen(prompt) : seedCoach({ prompt: prompt ?? "", source: "companion-now" });
   const saveOutcome = async (outcome: "helped" | "not_today") => {
-    if (!action || saving) return;
-    setSaving(true); setSaveError(false);
-    try { await saveTodayOutcome(action.id, outcome); setReceiptAction(action); }
-    catch { setSaveError(true); }
-    finally { setSaving(false); }
+    const target = retryAction?.scope === scopeLease ? retryAction.action : action;
+    if (!target || savingAction.current.has(target.id) || completedAction.current.has(target.id) || currentOutcomeScope.current !== scopeLease || !outcomeMounted.current) return;
+    savingAction.current.set(target.id, { scope: scopeLease, action: target });
+    refreshSaving(n => n + 1); setSaveError(false);
+    try {
+      await saveTodayOutcome(target.id, outcome, "card", undefined, { awaitServer: true });
+      completedAction.current.add(target.id);
+      if (outcomeMounted.current && currentOutcomeScope.current === scopeLease) setReceiptAction({ scope: scopeLease, action: target });
+    } catch {
+      if (outcomeMounted.current && currentOutcomeScope.current === scopeLease) { setRetryAction({ scope: scopeLease, action: target }); setSaveError(true); }
+    } finally {
+      savingAction.current.delete(target.id);
+      if (outcomeMounted.current) refreshSaving(n => n + 1);
+    }
   };
-  useEffect(() => { setReceiptAction(null); setSaveError(false); }, [topic?.id]);
+  useEffect(() => { setReceiptAction(null); setRetryAction(null); setSaveError(false); }, [topic?.id]);
   useEffect(() => {
     if (!pendingCaptureMode) return;
     consumeCaptureRequest();
@@ -116,36 +145,50 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
   // B-TODAY-10 / B-ASKJB-31: the hard-moment door shows only while a pilot
   // guide fits this child and language — the gate every door to the sheet shares.
   const hardMomentDoor = useMemo(() => {
-    const at = new Date();
+    const at = now;
     return availableHardMomentCards({ now: at, ageMonths: ageMonthsFromProfile(childProfile, at), locale: lang }).length > 0;
-  }, [childProfile, lang]);
+  }, [childProfile, lang, now]);
 
   // ── The milestone loop (parity 9 Oct): practice → Did it → Tonight → notice. ──
   const [focus, setFocus] = useState<Focus | null>(null);
   const [focusPending, setFocusPending] = useState(false);
   const loop = useNowLoop({
+    now,
     aiPracticeId: focus?.practiceVia === "ai" ? focus.practiceId : undefined,
     openPhotoCapture: () => openCaptureSheet({ mode: "photo" }),
   });
   const [tonightOpen, setTonightOpen] = useState(false);
-  // Lead order: the parent's own chosen step; Tonight (evening, or opened from
-  // its pointer); today's practice; the thinnest shelf's notice; the program;
-  // the AI/library recommendation. ONE lead, ONE primary move.
-  const tonightLeads = tonightOpen || (!chosen && loop.plan.order[0] === "tonight");
-  const lead: Lead = tonightLeads ? "tonight" : chosen ? "step" : loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation";
+  // ── Return hooks (parity 9 Oct): the visit stamp, a lifecycle note, the offer. ──
+  const { previousVisitAt, isReturning } = useLastVisit(childProfile);
+  const lifecycle = useLifecycleMoment({ previousVisitAt, now: now.getTime() });
+  const todayOffer = useCompanionOffer("today", { now, whatChanged: lifecycle.moment ? { id: lifecycle.moment.kind } : null });
+  const visit = todayOffer.appointment;
+  const lead = selectNowLead({
+    chosen: !!chosen,
+    chosenPending: saving || saveError,
+    manualTonight: tonightOpen,
+    visit,
+    tonight: loop.plan.order[0] === "tonight",
+    record: !!record.opener || !!record.receipt || record.saving,
+    recordPending: record.saving || record.error,
+    fallback: loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation",
+  });
   const showNotice = lead !== "notice" && loop.plan.order.includes("notice") && loop.blockNotices.length > 0;
   const showPointer = lead !== "tonight" && loop.tonightHasQuestions && (loop.plan.tonightPointer || (lead === "step" && loop.evening));
   const pickId = loop.pick?.practice.id;
   useEffect(() => { if (lead === "practice" && pickId) trackActionOffered("now-practice"); }, [lead, pickId]);
-
-  // ── Return hooks (parity 9 Oct): the visit stamp, a lifecycle note, the offer. ──
-  const { previousVisitAt, isReturning } = useLastVisit(childProfile);
-  const lifecycle = useLifecycleMoment({ previousVisitAt });
-  const todayOffer = useCompanionOffer("today", { whatChanged: lifecycle.moment ? { id: lifecycle.moment.kind } : null });
+  // Only an actually rendered daytime practice earns a Tonight premise.
+  useEffect(() => {
+    if (lead === "practice" && loop.plan.practiceMode === "card" && pickId) markPracticeShown(childProfile.id, pickId, now);
+  }, [lead, loop.plan.practiceMode, pickId, childProfile.id, now]);
+  const openVisit = () => {
+    if (!visit || isKidModeActive()) return;
+    goToRoute("consult", { appointment: visit.id });
+  };
   const lifecycleKey = lifecycle.moment && todayOffer.offer?.kind === "what-changed" ? LIFECYCLE_NOTE[lifecycle.moment.kind] : undefined;
   const lifecycleNote = lifecycleKey ? t(lifecycleKey, { name }) : null;
-  const ageText = formatChildAge(childProfile, t);
-  const dateLine = new Date().toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
+  const ageText = formatChildAge(childProfile, t, now);
+  const dateLine = now.toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
 
   return <div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
     <header className="now-heading">
@@ -160,19 +203,31 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
 
     <div className="now-main-grid">
       <div className="now-main-column">
-        {lead === "practice" && <PracticeFocus journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
-        {lead === "tonight" ? <section className="now-loop-lead" data-module="today-tonight" aria-label={t("elev.loop.today.tonight")}>
+        {lead === "practice" && <PracticeFocus now={now} journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
+        {lead === "record" ? <section className="now-loop-lead" data-module="now-record" aria-label={t("today.record.aria")}>
+          {record.receipt ? <FromRecordReceipt /> : record.opener && <FromRecordCard opener={record.opener} childName={name} stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)} />}
+          {record.saving && <p role="status" className="now-inline-status">{record.confirming ? t("elev.today.record.confirming") : copy.saving}</p>}
+          {record.error && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
+        </section> : lead === "visit" && visit ? <section className="now-lead arbor-depth-primary" data-module="now-visit" aria-labelledby={`${id}-visit`}>
+          <p className="companion-eyebrow">{copy.visit}</p>
+          <h2 id={`${id}-visit`} className="now-lead-title" dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</h2>
+          <p className="now-lead-body">{copy.visitBody}</p>
+          <div className="now-lead-actions">
+            <PrimaryMove type="button" className="companion-primary" onClick={openVisit}>{copy.visitOpen}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove>
+            <button type="button" className="companion-secondary" onClick={() => todayOffer.snooze("appointment")}>{copy.visitLater}</button>
+          </div>
+        </section> : lead === "tonight" ? <section className="now-loop-lead" data-module="today-tonight" aria-label={t("elev.loop.today.tonight")}>
           <NowTonightLead loop={loop} />
         </section> : lead === "step" && chosen ? <section className="now-lead arbor-depth-primary" data-module="now-step" aria-labelledby={`${id}-step`}>
-          <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name={receiptAction ? "check" : "bookmark"} size={24} /></span><div><p className="companion-eyebrow">{copy.chosen}</p><p className="now-provenance">{receiptAction ? copy.saved : copy.today}</p></div></div>
-          <h2 id={`${id}-step`} className="now-lead-title" dir="auto">{receiptAction ? copy.finishedTitle : chosen.recommendation}</h2>
-          {receiptAction && <p className="now-lead-body" dir="auto">{chosen.recommendation}</p>}
-          <p className="now-lead-body" role={receiptAction ? "status" : undefined}>{receiptAction ? copy.finished : copy.chosenWhy}</p>
-          {!receiptAction && <div className="now-lead-actions" role="group" aria-label={copy.outcomes}>
+          <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name={receipt ? "check" : "bookmark"} size={24} /></span><div><p className="companion-eyebrow">{copy.chosen}</p><p className="now-provenance">{receipt ? copy.saved : copy.today}</p></div></div>
+          <h2 id={`${id}-step`} className="now-lead-title" dir="auto">{receipt ? copy.finishedTitle : chosen.recommendation}</h2>
+          {receipt && <p className="now-lead-body" dir="auto">{chosen.recommendation}</p>}
+          <p className="now-lead-body" role={receipt ? "status" : undefined}>{receipt ? copy.finished : copy.chosenWhy}</p>
+          {!receipt && <div className="now-lead-actions" role="group" aria-label={copy.outcomes}>
             <PrimaryMove type="button" className="companion-primary" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.helped}</PrimaryMove>
             <button type="button" className="companion-secondary" disabled={saving} onClick={() => void saveOutcome("not_today")}>{copy.notToday}</button>
           </div>}
-          <PrimaryMove primary={!!receiptAction} type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(chosen.recommendation))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></PrimaryMove>
+          <PrimaryMove primary={!!receipt} type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(chosen.recommendation))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></PrimaryMove>
           {saveError && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
         </section> : lead === "practice" && loop.pick ? <section className="now-loop-lead" data-module="today-practice" aria-label={copy.today}>
           <NowPracticeLead loop={loop} name={name} whyText={focus?.why} headerNote={lifecycleNote} adaptLabel={copy.adapt} choosing={focusPending}
@@ -205,7 +260,7 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
         {onTopicOpen && <button type="button" className="companion-text-button now-topics" onClick={onTopicOpen}><Icon name="bookmark" size={17} />{copy.topics}</button>}
         <button type="button" className="now-weekly-door" onClick={() => setActiveTab("weekly")}><Icon name="calendar_month" size={24} /><span><b>{copy.weeklyTitle}</b><small>{copy.weeklyBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
         <NowMoreForToday now={loop.now} evening={loop.evening} storyFits={loop.storyFits} rhythmDaysNeeded={loop.rhythm.daysNeeded}
-          keepsakeDocs={loop.keepsakeDocs} previousVisitAt={previousVisitAt} isReturning={isReturning} todayOffer={todayOffer} />
+          keepsakeDocs={loop.keepsakeDocs} previousVisitAt={previousVisitAt} isReturning={isReturning} todayOffer={todayOffer} suppressVisit={lead === "visit"} suppressSayBack={lead === "record"} />
         {/* B-PROG-03: the program is Today's frame — one line beside the practice, never a second lead. */}
         {program && lead !== "program" && <button type="button" className="now-weekly-door now-program-line" data-testid="now-program-line" onClick={openProgram}>
           <Icon name="menu_book" size={24} /><span><b>{copy.programLabel}</b><small dir="auto">{program.content.skill[lang]}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />

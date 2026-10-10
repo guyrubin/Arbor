@@ -13,7 +13,7 @@ import { choosePractice, practiceDoseEntry, recentPracticeIds, restedShelves, to
 import { buildJournalRequest } from "../../ai/journalContext";
 import { selectNextMilestones } from "../../lib/milestoneData";
 import { dayKey } from "../../practice/signals";
-import { readTodayPin, readPracticeShown, markPracticeShown } from "../../lib/practice/todayPin";
+import { readTodayPin, readPracticeShown } from "../../lib/practice/todayPin";
 import { shelfCoverage } from "../../lib/milestones/selectByShelf";
 import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
 import { activeProgramWeek, dayKey as programDayKey } from "../../lib/programs/enrolment";
@@ -45,7 +45,7 @@ import { planToday } from "../overview/todayModules";
  * CLINICAL FIREWALL: no count, %, streak, score or verdict; the dose is
  * logged, never scored; the only age sentence is the Notice card's sourced line.
  */
-export function useNowLoop({ aiPracticeId, openPhotoCapture }: { aiPracticeId?: string; openPhotoCapture: () => void }) {
+export function useNowLoop({ aiPracticeId, openPhotoCapture, now }: { aiPracticeId?: string; openPhotoCapture: () => void; now: Date }) {
   const {
     milestones, behaviorLogs, childProfile, playLogs, actionLoop, activeTodayAction,
     setMilestoneObservation, restoreMilestone, recordPracticeDose, removeTodayAction, addMoment,
@@ -55,12 +55,11 @@ export function useNowLoop({ aiPracticeId, openPhotoCapture }: { aiPracticeId?: 
 
   // ── The evening door: bedtimeDoorOpen is the ONE evening rule (18:00 on, or
   //    the family's own wind-down hour); the parent may open Tonight early. ──
-  const ageYears = ageYearsOf(childProfile);
+  const ageYears = ageYearsOf(childProfile, now);
   const rhythm = useMemo(
-    () => predictRhythm(behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity })), Date.now(), { ageYears }),
-    [behaviorLogs, ageYears],
+    () => predictRhythm(behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity })), now.getTime(), { ageYears }),
+    [behaviorLogs, ageYears, now],
   );
-  const now = useMemo(() => new Date(), [behaviorLogs, actionLoop, milestones]);
   const [tonightEarly, setTonightEarly] = useState(false);
   const evening = bedtimeDoorOpen(now.getHours(), rhythm.windDownHour) || tonightEarly;
 
@@ -215,12 +214,6 @@ export function useNowLoop({ aiPracticeId, openPhotoCapture }: { aiPracticeId?: 
     practiceAnswered: !!dose,
     practiceShown: pick ? practiceShown : true,
   });
-  // The impression is written by the DAY card only.
-  const shownPracticeId = plan.practiceMode === "card" && pick ? pick.practice.id : null;
-  useEffect(() => {
-    if (shownPracticeId) markPracticeShown(childProfile.id, shownPracticeId, now);
-  }, [childProfile.id, shownPracticeId, now]);
-
   const tonight = {
     childName: (childProfile.name || "").split(" ")[0],
     gender: childProfile.gender,

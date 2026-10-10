@@ -52,7 +52,7 @@ import type { ShelfId } from "../lib/shelves/registry";
 import { hydrateMilestones } from "./milestoneHydration";
 import { activeActionFor, planAcceptedAction, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
-import { fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
+import { answeredToday, fromRecordRowId, fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
 import { recentTypeCounts } from "../lib/planRecord";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
 import type { ConversationChangeRecord, ConversationProposal } from "../lib/conversationProposals";
@@ -396,6 +396,7 @@ function useArborState() {
     orderByField: "acceptedAt",
     orderDir: "desc",
     max: 100,
+    trackConfirmation: true,
   });
   // Harbor voice proposals are an append/update audit ledger. Drafts remain
   // ephemeral in CoachTab; only an explicit parent confirmation creates a row.
@@ -467,19 +468,50 @@ function useArborState() {
   // until rated or MAX_CARRY_DAYS pass (framer ruling, 1 Oct).
   // B-ASKJB-26: a plan step passes its PlanStepRef, stored on the row, so its
   // outcome moves that step (recordTodayOutcome below).
-  const acceptTodayAction = async (recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry["source"] = "today-guidance", planStep?: PlanStepRef) => {
-    const { entry: item, superseded } = planAcceptedAction(actionLoop, { recommendation, source, capacity, ...(planStep ? { planStep } : {}) }, todayActionId(childProfile.id));
-    for (const old of superseded) await actionLoopCol.upsert(old);
-    await actionLoopCol.upsert({ ...item, ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}) });
-    try { track("today_action_accepted", { capacity, source }); } catch { /* noop */ }
+  // All surfaces share ownership of acceptance, even when Family stays mounted
+  // behind the global Ask panel. The stable collection writer is child/auth
+  // scoped; retire its requests synchronously when that identity changes.
+  const acceptScopeRef = useRef({ writer: actionLoopCol.upsert, sequence: 0 });
+  if (acceptScopeRef.current.writer !== actionLoopCol.upsert) acceptScopeRef.current = { writer: actionLoopCol.upsert, sequence: 0 };
+  const acceptScope = acceptScopeRef.current;
+  // B-STATUS-01: receipt callers opt in to acknowledgement of every write;
+  // existing callers retain queued-write behaviour. The newest explicit choice
+  // owns every unissued continuation. Already-issued writes are not rolled back;
+  // this remains non-atomic and does not serialize work across browser tabs.
+  const acceptTodayAction = (recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry["source"] = "today-guidance", planStep?: PlanStepRef, options?: { awaitServer?: boolean; isCurrent?: () => boolean }) => {
+    const operation = (async () => {
+      const inScope = () => acceptScopeRef.current === acceptScope && options?.isCurrent?.() !== false;
+      // A captured stale callback must not steal ownership from the live scope.
+      if (!inScope()) throw new Error("The action request is no longer current");
+      const sequence = ++acceptScope.sequence;
+      const assertCurrent = () => {
+        if (!inScope() || acceptScope.sequence !== sequence) throw new Error("The action request is no longer current");
+      };
+      // Lifetime checks belong here, never in the persisted collection payload.
+      const { isCurrent: _isCurrent, ...writeOptions } = options ?? {};
+      const { entry: item, superseded } = planAcceptedAction(actionLoop, { recommendation, source, capacity, ...(planStep ? { planStep } : {}) }, todayActionId(childProfile.id));
+      for (const old of superseded) {
+        assertCurrent();
+        await actionLoopCol.upsert(old, options ? writeOptions : undefined);
+      }
+      assertCurrent();
+      await actionLoopCol.upsert({ ...item, ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}) }, options ? writeOptions : undefined);
+      assertCurrent();
+      try { track("today_action_accepted", { capacity, source }); } catch { /* noop */ }
+    })();
+    // Coach/Plans/Learn/Weekly event callbacks may ignore the return value.
+    // Observe that rejection, but return the SAME original Promise: awaiting
+    // callers still reject and cannot turn a cancelled write into a Receipt.
+    void operation.catch(() => {});
+    return operation;
   };
   // B-TODAY-15: `via` = where the outcome was rated (the step card or the
   // carry-over ask); the event carries via + daysLate (ids/enums/counts only).
   // B-ASKJB-33: a hard-moment row also stores `held` (the two-tap ask).
-  const saveTodayOutcome = async (id: string, outcome: ActionOutcome, via: TodayOutcomeVia = "card", held?: HeldAnswer) => {
+  const saveTodayOutcome = async (id: string, outcome: ActionOutcome, via: TodayOutcomeVia = "card", held?: HeldAnswer, options?: { awaitServer?: boolean }) => {
     const item = actionLoop.find((entry) => entry.id === id);
     if (!item) throw new Error("The selected action is no longer available");
-    await actionLoopCol.upsert({ ...item, status: "completed", outcome, outcomeAt: new Date().toISOString(), ...(held ? { held } : {}) });
+    await actionLoopCol.upsert({ ...item, status: "completed", outcome, outcomeAt: new Date().toISOString(), ...(held ? { held } : {}) }, options);
     // B-ASKJB-26: a plan step's outcome moves the step — helped → done (the
     // next step becomes today's), somewhat → in progress (kept, next offered),
     // not_today → unchanged (tomorrow's step).
@@ -512,9 +544,33 @@ function useArborState() {
   // B-TODAY-28 — Today's "From your record" answer: ONE row on the same
   // actionLoops ledger (source "from-record", the parent's reflection), never
   // a new collection. ids/enums only in the event.
-  const recordFromRecordAnswer = (opener: FromRecordOpener, answer: FromRecordAnswer) => {
-    void actionLoopCol.upsert(fromRecordEntry(opener, answer, childProfile.id));
-    try { track("today_record_answer", { kind: opener.kind, answer }); } catch { /* noop */ }
+  const [recordAnswerWrites, setRecordAnswerWrites] = useState<Record<string, { opener: FromRecordOpener; status: "saving" | "failed" | "saved"; entry?: ActionLoopEntry }>>({});
+  const recordWritesRef = useRef(new Map<string, Promise<ActionLoopEntry> | null>());
+  const recordFromRecordAnswer = (opener: FromRecordOpener, answer: FromRecordAnswer, at = new Date()): Promise<ActionLoopEntry> => {
+    if (currentChildRef.current !== childProfile.id) return Promise.reject(new Error("The active child changed"));
+    const key = fromRecordRowId(childProfile.id, at);
+    const pending = recordWritesRef.current.get(key);
+    if (pending) return pending;
+    if (!recordWritesRef.current.has(key) && !actionLoopCol.confirmed) return Promise.reject(new Error("The answer ledger is not confirmed yet"));
+    const saved = answeredToday(actionLoop, childProfile.id, at);
+    if (saved && !recordWritesRef.current.has(key)) return Promise.resolve(saved);
+    const entry = fromRecordEntry(opener, answer, childProfile.id, at);
+    setRecordAnswerWrites(rows => ({ ...rows, [key]: { opener, status: "saving" } }));
+    const write = actionLoopCol.upsert(entry, { awaitServer: true })
+      .then(() => {
+        try { track("today_record_answer", { kind: opener.kind, answer }); } catch { /* noop */ }
+        setRecordAnswerWrites(rows => ({ ...rows, [key]: { opener, status: "saved", entry } }));
+        return entry;
+      })
+      .catch((error: unknown) => {
+        recordWritesRef.current.set(key, null);
+        setRecordAnswerWrites(rows => ({ ...rows, [key]: { opener, status: "failed" } }));
+        throw error;
+      });
+    // Keep a resolved same-day promise too: late repeated taps cannot replace
+    // the first answer while the collection snapshot catches up.
+    recordWritesRef.current.set(key, write);
+    return write;
   };
   // B-ASKJB-31 — the ONE "Hard moment now" sheet (mounted once in Shell).
   // Doors: Ask's fast-start chip, a Behaviors shelf card (opens on that card),
@@ -1813,6 +1869,7 @@ function useArborState() {
     donePlayIds,
     logPlayCompletion,
     actionLoop,
+    actionLoopConfirmed: actionLoopCol.confirmed,
     conversationChanges: conversationChangesCol.items,
     commitConversationProposal,
     undoConversationChange,
@@ -1823,6 +1880,8 @@ function useArborState() {
     removeTodayAction,
     recordPracticeDose,
     recordFromRecordAnswer,
+    recordAnswerWrites,
+    recordAnswersConfirmed: actionLoopCol.confirmed,
     recordChildResponse,
     captureSheet,
     openCaptureSheet,

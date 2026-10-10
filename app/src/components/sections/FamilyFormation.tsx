@@ -1,10 +1,10 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { PageHeader, SectionCard, cardCls, IconBadge, type PastelKey } from "../ui/kit";
 import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
-import { useToast } from "../../context/ToastContext";
+import { PendingLine, Receipt } from "../ui/Receipt";
 import { FAMILY_RITUALS, type FamilyRitual } from "../../lib/familyRituals";
 import RitualTurnCard from "../nextopen/RitualTurnCard";
 import { hasSavedFamilyCharter, initialCharterValues, saveFamilyCharter } from "../../lib/familyCharter";
@@ -42,6 +42,8 @@ const FRAME_TONE: Record<FrameId, PastelKey> = {
 /** W2-SHELLPLAY critic r1: the route's ONE primary-move stamp, spread onto the
  *  turn card's start control (check:framework counts it in this leaf). */
 const RITUAL_MOVE = { "data-primary-move": "start-family-ritual" } as const;
+type StartStatus = "saving" | "saved" | "failed";
+type StartScope = { key: string; attempts: Map<string, StartStatus> };
 
 export default function FamilyFormation() {
   const { t, aiLang, uiLang } = useLanguage();
@@ -49,9 +51,8 @@ export default function FamilyFormation() {
   // no way to actually start one. "Start" accepts the ritual's FIRST step
   // into today through the existing action loop (the same seam the Learn
   // reader's "Add to today" uses), so the practice reaches the day.
-  const { acceptTodayAction, actionLoop, selectedLens, setSelectedLens, childProfile } = useArbor();
+  const { acceptTodayAction, actionLoop, actionLoopConfirmed, selectedLens, setSelectedLens, childProfile, activeFamilyTopic } = useArbor();
   const [toneOpen, setToneOpen] = useState(false);
-  const { toast } = useToast();
   const he = aiLang === "he";
   const [values, setValues] = useState<string[]>(() => initialCharterValues(undefined, uiLang));
   // SHIP-FIX (W2-SHELLPLAY r3 product P1-1, truth): until the family saves a
@@ -74,13 +75,63 @@ export default function FamilyFormation() {
 
   /** The ritual's first step, in the family's language — the thing to do next. */
   const firstStep = (r: FamilyRitual) => ((he ? r.stepsHe : r.steps)[0] ?? "").trim();
-  const ritualStarted = (r: FamilyRitual) =>
-    actionLoop.some((a) => a.source === "family-ritual" && a.recommendation === firstStep(r));
-  const startRitual = (r: FamilyRitual) => {
+  // A Firestore snapshot may echo a queued write before it is acknowledged.
+  // Own attempts override that echo, including a rejected row awaiting rollback.
+  // After retirement/remount, only a confirmed ledger may restore a saved label.
+  // Changing child/topic/language retires the whole attempt lifetime, even on
+  // A → B → A; finishing an issued write can never revive its old feedback.
+  const scopeKey = JSON.stringify([childProfile.id, activeFamilyTopic?.id ?? null, uiLang, aiLang]);
+  const currentScope = useRef<StartScope>({ key: scopeKey, attempts: new Map() });
+  if (currentScope.current.key !== scopeKey) currentScope.current = { key: scopeKey, attempts: new Map() };
+  const scope = currentScope.current;
+  const [, refreshStart] = useState(0);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const isCurrent = () => mounted.current && currentScope.current === scope;
+  const startPending = () => [...scope.attempts.values()].some(status => status === "saving");
+  const ritualStarted = (r: FamilyRitual) => {
+    const attempt = scope.attempts.get(r.id);
+    if (attempt) return attempt === "saved";
+    return actionLoopConfirmed === true && actionLoop.some((a) => a.source === "family-ritual" && a.recommendation === firstStep(r));
+  };
+  const startRitual = async (r: FamilyRitual) => {
     const step = firstStep(r);
-    if (!step || ritualStarted(r)) return;
-    acceptTodayAction(step, "tiny", "family-ritual");
-    toast(t("elev.learnCare.ritual.added"), "success");
+    if (!isCurrent() || !step || startPending() || ritualStarted(r)) return;
+    // Lock before the first await so repeated taps in one render stay one write.
+    scope.attempts.set(r.id, "saving");
+    refreshStart(value => value + 1);
+    try {
+      await acceptTodayAction(step, "tiny", "family-ritual", undefined, { awaitServer: true, isCurrent });
+      if (!isCurrent()) return;
+      scope.attempts.set(r.id, "saved");
+    } catch {
+      if (!isCurrent()) return;
+      scope.attempts.set(r.id, "failed");
+    }
+    refreshStart(value => value + 1);
+  };
+  const startFeedback = (r: FamilyRitual) => {
+    const status = scope.attempts.get(r.id);
+    if (!status) return null;
+    return (
+      <div key={`${scopeKey}:${r.id}`} className="mt-2">
+        <PendingLine active={status === "saving"} testId={`ritual-pending-${r.id}`}>{t("elev.learnCare.ritual.pending")}</PendingLine>
+        {status === "saved" && (
+          <Receipt testId={`ritual-receipt-${r.id}`} link={{ href: "#/overview", where: t("nav.today") }}>
+            {t("elev.learnCare.ritual.added")}
+          </Receipt>
+        )}
+        {status === "failed" && (
+          <div className="flex flex-wrap items-center gap-2">
+            <p role="alert" className="t-sm" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.learnCare.ritual.failed")}</p>
+            <button type="button" data-testid={`ritual-retry-${r.id}`} onClick={() => startRitual(r)} disabled={startPending()}
+              className="inline-flex min-h-11 items-center rounded-xl px-3 t-sm font-semibold" style={{ color: "var(--arbor-clay)" }}>
+              {t("elev.learnCare.ritual.retry")}
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -188,7 +239,7 @@ export default function FamilyFormation() {
         {/* B-GROWTH-03 / ENG-25 — the ritual whose turn has come round, beside
             the rituals it belongs to (moved from #/development). Renders
             nothing when no ritual is due. */}
-        <div className="mb-4 empty:hidden"><RitualTurnCard onStart={startRitual} started={ritualStarted} primaryMoveProps={RITUAL_MOVE} onTurnChange={onTurnChange} charterValues={saved ? values : []} childName={childProfile?.name} childAge={childProfile?.age} /></div>
+        <div className="mb-4 empty:hidden"><RitualTurnCard onStart={startRitual} started={ritualStarted} primaryMoveProps={RITUAL_MOVE} onTurnChange={onTurnChange} charterValues={saved ? values : []} childName={childProfile?.name} childAge={childProfile?.age} startDisabled={startPending()} startFeedback={startFeedback} /></div>
         <div className="grid sm:grid-cols-2 gap-4">
           {FAMILY_RITUALS.filter((r) => r.id !== turnId).map((r) => {
             const glyph = RITUAL_ICON[r.id] ?? "history_edu";
@@ -230,7 +281,7 @@ export default function FamilyFormation() {
                         "tiny": a first step is meant to be doable tonight. */}
                     <button
                       onClick={() => startRitual(r)}
-                      disabled={ritualStarted(r)}
+                      disabled={startPending() || ritualStarted(r)}
                       data-testid={`ritual-start-${r.id}`}
                       className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 min-h-11 transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 disabled:opacity-70"
                       style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
@@ -238,6 +289,7 @@ export default function FamilyFormation() {
                       <Icon name={ritualStarted(r) ? "check_circle" : "add_task"} size={16} fill={ritualStarted(r) ? 1 : 0} />
                       {ritualStarted(r) ? t("elev.learnCare.ritual.started") : t("elev.learnCare.ritual.start")}
                     </button>
+                    {startFeedback(r)}
                   </div>
                 )}
               </div>

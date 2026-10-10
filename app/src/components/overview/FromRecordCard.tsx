@@ -39,13 +39,15 @@ export default function FromRecordCard({
   onAnswer,
   childName,
   stampMove = false,
+  disabled = false,
 }: {
   opener: FromRecordOpener;
   onAnswer: (answer: FromRecordAnswer) => void;
   /** The child's first name — the question names the child. */
   childName?: string;
   /** NEXTLEVEL critic r1: the answer chips ARE Today's primary move. */
-  stampMove?: boolean;
+  stampMove?: boolean | string;
+  disabled?: boolean;
 }) {
   const { t, uiLang } = useLanguage();
   // B-GROWTH-36: the say-back opener names the language the family is keeping.
@@ -89,15 +91,16 @@ export default function FromRecordCard({
       <h2
         data-testid="today-record-question"
         className="mt-3 font-semibold leading-tight"
-        style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontSize: "var(--t-xl)" }}
+        style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)", fontSize: "var(--t-xl)" }}
       >
         {question}
       </h2>
-      <div role="group" aria-label={question} data-testid="today-record-answers" {...(stampMove ? { "data-primary-move": "do-today-action" } : {})} className="mt-3 flex flex-wrap gap-2">
+      <div role="group" aria-label={question} data-testid="today-record-answers" {...(stampMove ? { "data-primary-move": typeof stampMove === "string" ? stampMove : "do-today-action" } : {})} className="mt-3 flex flex-wrap gap-2">
         {answersFor(opener).map((answer) => (
           <button
             key={answer}
             type="button"
+            disabled={disabled}
             data-answer={answer}
             onClick={() => onAnswer(answer)}
             className="inline-flex min-h-[44px] items-center rounded-full px-4 text-[14px] font-semibold transition active:scale-[0.98]"

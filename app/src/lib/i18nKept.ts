@@ -20,6 +20,7 @@ export const keptEn = {
   "kept.allWords": "Add or see all words",
   "kept.month": "{month} with {name}",
   "kept.print": "Print month page",
+  "kept.notesPending": "Load the remaining history to check all saved notes before sending.",
   "kept.monthPending": "Load all saved things before printing or sending a month page.",
 };
 
@@ -44,5 +45,6 @@ export const keptHe: Record<keyof typeof keptEn, string> = {
   "kept.allWords": "להוספה או להצגת כל המילים",
   "kept.month": "{month} עם {name}",
   "kept.print": "הדפסת דף החודש",
+  "kept.notesPending": "יש לטעון את שאר הרשומות כדי לבדוק את כל ההערות השמורות לפני שליחה.",
   "kept.monthPending": "יש לטעון את כל מה ששמרתם לפני הדפסה או שליחה של דף החודש.",
 };

@@ -40,9 +40,11 @@ describe("settleOrQueue — a capture never waits on the network to be kept", ()
     warn.mockRestore();
   });
 
-  it("every remote single-document write in useChildCollection goes through it", () => {
+  it("remote writes keep queued defaults and require an explicit opt-in for server acknowledgement", () => {
     const hook = readFileSync(fileURLToPath(new URL("../hooks/useChildCollection.ts", import.meta.url)), "utf8");
-    expect(hook).toContain("await settleOrQueue(setDoc(");
+    const upsert = hook.slice(hook.indexOf("const upsert = useCallback("), hook.indexOf("const remove = useCallback("));
+    expect(upsert).toContain("const write = setDoc(");
+    expect(upsert).toMatch(/if\s*\(options\?\.awaitServer\)\s*await write;\s*else\s*await settleOrQueue\(write\);/);
     expect(hook).toContain("await settleOrQueue(deleteDoc(");
     expect(hook).not.toMatch(/await setDoc\(|await deleteDoc\(/);
   });

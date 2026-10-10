@@ -1,6 +1,6 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import type { Focus } from "../../hooks/useTodaysFocus";
 import { NOW_COPY } from "./nowViewCopy";
@@ -11,6 +11,9 @@ const state = vi.hoisted(() => ({
   lang: "en" as "en" | "he",
   childProfile: { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] } as Record<string, unknown>,
   actionLoop: [] as ActionLoopEntry[],
+  actionPlans: [] as unknown[], approvedMemoryItems: [] as unknown[], behaviorLogs: [] as unknown[],
+  appointments: [] as unknown[], recordFromRecordAnswer: vi.fn(async () => {}),
+  evening: false, moreProps: null as any,
   focus: null as Focus | null,
   program: null as null | { week: number; program: { shelf: string }; enrolment: Record<string, string>; content: { skill: { en: string; he: string }; watchFor: string[] } },
   openCaptureSheet: vi.fn(), seedCoach: vi.fn(), setActiveTab: vi.fn(),
@@ -19,21 +22,21 @@ const state = vi.hoisted(() => ({
   buttons: [] as { children?: React.ReactNode; onClick?: () => void; className?: string; "data-answer"?: string; "data-testid"?: string }[],
 }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
-  ...state, behaviorLogs: [], playLogs: [], milestones: [], pendingCaptureMode: null, consumeCaptureRequest: vi.fn(),
+  ...state, playLogs: [], milestones: [], pendingCaptureMode: null, consumeCaptureRequest: vi.fn(),
   activeTodayAction: null, setMilestoneObservation: vi.fn(), restoreMilestone: vi.fn(), removeTodayAction: vi.fn(), addMoment: vi.fn(async () => null),
 }) }));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };
 });
-vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ items: [], loaded: true, upsert: vi.fn() }) }));
+vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: (_id: string, collection: string) => ({ items: collection === "appointments" ? state.appointments : [], loaded: true, upsert: vi.fn() }) }));
 vi.mock("../../hooks/useObservations", () => ({ useObservations: () => [] }));
 vi.mock("../../hooks/useLastVisit", () => ({ useLastVisit: () => ({ previousVisitAt: null, isReturning: false }) }));
 vi.mock("../overview/useLifecycleMoment", () => ({ useLifecycleMoment: () => ({ moment: null }) }));
-vi.mock("../overview/useCompanionOffer", () => ({ useCompanionOffer: () => ({ offer: null }) }));
-vi.mock("./NowMoreForToday", () => ({ default: () => null }));
+vi.mock("../overview/useCompanionOffer", () => ({ useCompanionOffer: () => ({ offer: null, appointment: state.appointments[0] ?? null, ledger: {}, snooze: vi.fn() }) }));
+vi.mock("./NowMoreForToday", () => ({ default: (props: unknown) => { state.moreProps = props; return null; } }));
 vi.mock("../../lib/programs/enrolment", () => ({ activeProgramWeek: () => state.program, dayKey: (d: Date) => d.toISOString().slice(0, 10) }));
-vi.mock("../../lib/timeOfDay", () => ({ bedtimeDoorOpen: () => false }));
+vi.mock("../../lib/timeOfDay", () => ({ bedtimeDoorOpen: () => state.evening }));
 vi.mock("../../lib/programs/measures", () => ({ programWeekDays: () => ({ from: "2026-10-05", to: "2026-10-11" }) }));
 // A known-age child whose catalogue has nothing for today: the fallbacks lead.
 vi.mock("../../lib/practice/choosePractice", async (original) => {
@@ -68,8 +71,12 @@ function button(label: string) {
 const PROGRAM = { week: 2, program: { shelf: "words" }, enrolment: { programId: "talk-together", startedAt: "2026-10-05T00:00:00Z" }, content: { skill: { en: "Follow their story", he: "מקשיבים לסיפור שלהם" }, watchFor: [] } };
 
 beforeEach(() => {
-  vi.clearAllMocks(); state.buttons = []; state.lang = "en"; state.focus = null; state.program = null; state.actionLoop = []; state.childProfile = { ...KNOWN_AGE }; state.noPractice = false;
+  vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 9, 12, 8));
+  state.actionPlans = []; state.approvedMemoryItems = []; state.behaviorLogs = []; state.appointments = []; state.evening = false; state.moreProps = null;
+  vi.clearAllMocks(); state.setActiveTab.mockReset(); state.buttons = []; state.lang = "en"; state.focus = null; state.program = null; state.actionLoop = []; state.childProfile = { ...KNOWN_AGE }; state.noPractice = false;
 });
+
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe("Now leads with the milestone loop (parity 9 Oct)", () => {
   it("a known-age child gets today's practice as the lead, with Did it as the one primary move", () => {
@@ -180,5 +187,77 @@ describe("Now's restored recommendations and one conversation entrance", () => {
     expect(state.setActiveTab).toHaveBeenCalledWith("weekly");
     expect(html).toContain(NOW_COPY.en.weeklyTitle);
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+  });
+});
+
+
+describe("Now record and visit leads", () => {
+  const note = { id: "parent-note", timestamp: "2026-07-09T08:10:00", behaviorType: "Moment", trigger: "Calmed and put shoes on within eight minutes.", notes: "", response: "Never quote this generated response." };
+  const appointment = { id: "visit-specific", who: "", role: "Speech therapist", profession: "slp", when: "", whenIso: "2026-10-14T10:00:00", mode: "In person", status: "confirmed" };
+  it.each(["en", "he"] as const)("%s: opens with the real parent note and three touch answers, with no model call", lang => {
+    state.lang = lang; state.behaviorLogs = [note];
+    const html = renderToStaticMarkup(<NowView />);
+    expect(html).toContain('data-module="now-record"');
+    expect(html).toContain(note.trigger);
+    expect(html).not.toContain(note.response);
+    expect(html.match(/data-answer=/g)).toHaveLength(3);
+    expect(html.match(/data-primary-move="choose-next-step"/g)).toHaveLength(1);
+    expect(html).not.toContain('data-module="today-practice"');
+    expect(state.focusCalls).not.toHaveBeenCalled();
+  });
+  it("opens the actual visit in two days without another visit offer or a focus call", () => {
+    state.appointments = [appointment]; state.behaviorLogs = [note];
+    let hash = "#/overview"; const history = [hash];
+    const location = { get hash() { return hash; }, set hash(value: string) { hash = value.startsWith("#") ? value : `#${value}`; history.push(hash); } }; vi.stubGlobal("window", { location });
+    state.setActiveTab.mockImplementationOnce((tab: string) => { location.hash = `/${tab}`; });
+    const html = renderToStaticMarkup(<NowView />);
+    expect(html).toContain('data-module="now-visit"');
+    expect(html).toContain("Speech therapist");
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    button("Look over the page").onClick?.();
+    expect(location.hash).toBe("#/consult?appointment=visit-specific");
+    expect(history).toEqual(["#/overview", "#/consult?appointment=visit-specific"]);
+    expect(state.setActiveTab).not.toHaveBeenCalled();
+    expect(state.moreProps.suppressVisit).toBe(true);
+    expect(state.focusCalls).not.toHaveBeenCalled();
+  });
+  it("the existing evening Tonight flow precedes a record opener", () => {
+    state.evening = true; state.noPractice = true; state.behaviorLogs = [note];
+    vi.setSystemTime(new Date(2026, 9, 12, 20, 30));
+    const html = renderToStaticMarkup(<NowView />);
+    expect(html).toContain('data-module="today-tonight"');
+    expect(html).not.toContain('data-module="now-record"');
+    expect(state.focusCalls).not.toHaveBeenCalled();
+  });
+  it("an unanswered prior step outranks visit, record and evening", () => {
+    state.evening = true; state.appointments = [appointment]; state.behaviorLogs = [note];
+    state.actionLoop = [{ id: "pending", recommendation: "A step I chose yesterday.", status: "accepted", acceptedAt: "2026-10-11T21:00:00", source: "coach", capacity: "tiny" }];
+    const html = renderToStaticMarkup(<NowView />);
+    expect(html).toContain('data-module="now-step"');
+    expect(html).not.toContain('data-module="now-visit"');
+    expect(html).not.toContain('data-module="now-record"');
+  });
+  it("an already-saved record answer stays a quiet receipt after re-entry without a second question", () => {
+    state.behaviorLogs = [note];
+    state.actionLoop = [{ id: "record.child-a.2026-10-12", recommendation: note.trigger, recordKey: "note:parent-note", reflection: "easier", source: "from-record", capacity: "tiny", status: "completed", acceptedAt: "2026-10-12T07:00:00", outcomeAt: "2026-10-12T07:00:00" }];
+    const html = renderToStaticMarkup(<NowView />);
+    expect(html).toContain('data-testid="today-record-receipt"');
+    expect(html).not.toContain('data-testid="today-record-answers"');
+    expect(state.focusCalls).not.toHaveBeenCalled();
+  });
+  it("does not send a chosen outcome twice on rapid taps before a render", async () => {
+    let resolve!: () => void;
+    state.saveTodayOutcome.mockReturnValueOnce(new Promise<void>(yes => { resolve = yes; }));
+    state.actionLoop = [{ id: "chosen", recommendation: "Read one page together.", source: "coach", status: "accepted", acceptedAt: "2026-10-11T20:00:00", capacity: "tiny" }];
+    renderToStaticMarkup(<NowView />);
+    button(NOW_COPY.en.helped).onClick?.(); button(NOW_COPY.en.helped).onClick?.();
+    expect(state.saveTodayOutcome).toHaveBeenCalledTimes(1);
+    resolve(); await Promise.resolve();
+  });
+  it("uses the loop clock in the visible identity, including a date override", () => {
+    vi.setSystemTime(new Date(2026, 9, 14, 20, 30));
+    const html = renderToStaticMarkup(<NowView />);
+    expect(html).toContain(new Date(2026, 9, 14, 20, 30).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }));
+    expect(state.moreProps.now.getTime()).toBe(Date.now());
   });
 });

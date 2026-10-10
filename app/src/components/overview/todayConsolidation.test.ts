@@ -46,7 +46,9 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
   it("Now renders ONE lead: the chosen step, Tonight, the practice, a Notice card, the program or the recommendation", () => {
     // Parity 9 Oct: the loop blocks pass the stamp through their own props (one
     // literal in NowLoopBlocks); an accepted step LEADS Now (no door line).
-    expect(overview).toContain('const lead: Lead = tonightLeads ? "tonight" : chosen ? "step" : loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation";');
+    expect(overview).toContain('const lead = selectNowLead({');
+    expect(overview).toContain('recordPending: record.saving || record.error');
+    expect(overview).toContain('fallback: loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation"');
     expect(overview).toContain('const stamp = { "data-primary-move": MOVE } as const;');
     expect(count(overview, /<TodayActionLoop/g)).toBe(0);
     expect(count(overview, /<TodayStepLine/g)).toBe(0);
@@ -275,7 +277,7 @@ describe("B-TODAY-17 — the drawer is gone: no feed, no check-in, no displaced 
     // Notice block and the conversation card; the pointer, doors and lines are chrome.
     const view = stripComments(todayFile("NowView.tsx"));
     const modules = new Set(view.match(/data-module="[a-z-]+"/g) ?? []);
-    expect(modules).toEqual(new Set(['data-module="today-tonight"', 'data-module="now-step"', 'data-module="today-practice"', 'data-module="now-program"', 'data-module="today-notice"', 'data-module="now-focus"']));
+    expect(modules).toEqual(new Set(['data-module="now-record"', 'data-module="now-visit"', 'data-module="today-tonight"', 'data-module="now-step"', 'data-module="today-practice"', 'data-module="now-program"', 'data-module="today-notice"', 'data-module="now-focus"']));
     expect(stripComments(todayFile("NowMoreForToday.tsx"))).not.toMatch(/\bdata-module=/);
     const budget = read("components/overview/todayModules.ts").match(/TODAY_MODULE_BUDGET = (\d+)/)?.[1];
     expect(Number(budget)).toBe(3);

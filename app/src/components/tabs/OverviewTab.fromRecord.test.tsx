@@ -57,6 +57,13 @@ describe("B-TODAY-28 — the record card (rendered)", () => {
     expect(html).toContain(translate("en", "today.record.a.fact.hard_again"));
   });
 
+  it("Now can stamp its own move and disable all chips while the answer is being kept", () => {
+    const html = renderToStaticMarkup(<FromRecordCard opener={planOpener} childName="Dylan" onAnswer={() => {}} stampMove="choose-next-step" disabled />);
+    expect(html).toContain('data-primary-move="choose-next-step"');
+    expect(html.match(/disabled=""/g)).toHaveLength(3);
+    expect(html).toMatch(/data-testid="today-record-question"[^>]*style="[^"]*var\(--font-sans\)/);
+  });
+
   it("an answer calls back with the enum (the context writes ONE row)", () => {
     const onAnswer = vi.fn();
     const el = FromRecordCard({ opener: planOpener, onAnswer }) as React.ReactElement<{ children: React.ReactNode }>;
@@ -122,8 +129,10 @@ describe("NEXTLEVEL critic r1 — a named topic, a joy opener, the chips are the
   // B-LOOP-07 re-pin: the record card's quote slot moved INTO the practice
   // card (the parent's own words on the practice's shelf, then and now); the
   // standalone mount is gone and the first block carries the one stamp.
-  it("OverviewTab: no standalone record card; the first block carries the one stamp; the rail sits behind the door", () => {
-    expect(SRC).not.toContain("<FromRecordCard");
+  it("Now: the record card occupies the same one-lead branch; the rail stays behind the door", () => {
+    expect(SRC).toContain('lead === "record" ? <section');
+    expect(SRC.match(/<FromRecordCard /g)).toHaveLength(1);
+    expect(SRC).toContain('stampMove="choose-next-step" disabled={record.saving}');
     // P5 design r1 P0-1: the stamp is on the first block's answers, not a wrapper.
     // Parity 9 Oct: Now's loop blocks pass ONE stamp const through their props.
     expect(SRC).toContain('const stamp = { "data-primary-move": MOVE } as const;');
