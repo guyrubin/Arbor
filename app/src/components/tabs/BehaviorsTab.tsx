@@ -12,6 +12,7 @@ import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/
 import { locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
+import { parentWritten } from "../../lib/kept/parentWritten";
 import { ContentActionBar } from "../ui/ContentActionBar";
 import { fmtDay, fmtDayShort } from "../../lib/formatDate";
 import { patternEchoFor } from "../../lib/patternEcho";
@@ -78,8 +79,11 @@ export default function BehaviorsTab() {
   // serif), the capture card's last-words line is quiet body text.
   const heldRowShown = heldRowsSince(actionLoop ?? [], 0).length > 0;
   const warmLine = useMemo((): { kind: "quote"; words: string; day: string } | { kind: "guide"; guide: string } | null => {
+    // "Last time you wrote" quotes only a row the parent wrote: never a
+    // conversation proposal, an Arbor draft or a co-parent's note
+    // (kept/parentWritten, the provenance rule every quote reader shares).
     const latest = [...behaviorLogs]
-      .filter((l) => (l.trigger || "").trim())
+      .filter((l) => (l.trigger || "").trim() && parentWritten(l))
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
     if (latest) {
       const words = latest.trigger.trim();

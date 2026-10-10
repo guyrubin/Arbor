@@ -30,6 +30,7 @@ import {
 } from "./learnLibrary";
 import { concernsForBehaviors } from "../content/selectCards";
 import { fitsYears } from "../lib/age/forChild";
+import { parentWritten } from "../lib/kept/parentWritten";
 
 /** UTC day key (YYYY-MM-DD) — the day half of the tiebreak seed. */
 export function pickDayKey(now: Date): string {
@@ -167,6 +168,9 @@ export function pickMoment(
   for (const { l, at } of ordered) {
     const text = String(l.trigger ?? "").trim();
     if (!text) continue;
+    // Shown as "Today you wrote:" — only a row the parent wrote (an extracted
+    // draft, a conversation proposal or a co-parent's note is never quoted).
+    if (!parentWritten(l)) continue;
     const own = concernsForBehaviors([String(l.behaviorType ?? "")]);
     if (own.length === 0) continue;
     if (learnCardScore(card, { ...signals, recentConcerns: own }) > base) return { text, at };

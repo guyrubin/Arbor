@@ -133,6 +133,11 @@ describe("B-SHELL-NEW-2j — today's pick quotes the note that moved it, never a
     expect(pickMoment(card!, signals, [{ behaviorType: "Transition Refusal", timestamp: new Date(2026, 8, 1).toISOString(), trigger: "old" }], now)).toBeNull();
     expect(pickMoment(card!, signals, [{ behaviorType: "Transition Refusal", timestamp: new Date(2026, 9, 6).toISOString(), trigger: "future" }], now)).toBeNull();
     expect(pickMoment(card!, signals, [{ behaviorType: "Moment", timestamp: new Date(2026, 9, 5, 8).toISOString(), trigger: "Sang the bath song" }], now)).toBeNull();
+    // Provenance: the newest row is skipped when the parent did not write it.
+    for (const notParent of [{ contentSource: "ai_draft" }, { conversationProposalId: "proposal" }, { captureSource: "co_parent" }]) {
+      const newest = { behaviorType: "Transition Refusal", timestamp: new Date(2026, 9, 5, 8).toISOString(), trigger: "Drafted by Arbor", ...notParent };
+      expect(pickMoment(card!, signals, [...logs, newest], now)).toEqual({ text: "Cried at the daycare door", at: new Date(2026, 9, 4, 8) });
+    }
   });
 
   it("todaysLearnPick carries fromMoment only when concerns exist; null without logs", () => {
