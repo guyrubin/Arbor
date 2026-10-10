@@ -393,7 +393,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     };
 
     if (group === 'confirmed-actions') {
-      await collectConfirmedActionStates({ page, context, fixture: confirmed, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId });
+      await collectConfirmedActionStates({ page, context, fixture: confirmed, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }) });
     } else if (group === 'record') {
       const helpers = { page, context, fixture: record, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId };
       await collectRecordStates(helpers);

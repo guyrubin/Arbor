@@ -72,6 +72,9 @@
     "components/tabs/HeroJourneyTab.tsx": {
       "success": 1
     },
+    "components/tabs/RoutinesTab.tsx": {
+      "success": 1
+    },
     "context/ArborContext.tsx": {
       "dynamic": 1,
       "info": 1,

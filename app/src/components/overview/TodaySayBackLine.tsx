@@ -127,7 +127,7 @@ export default function TodaySayBackLine({ keepsakeDocs, now }: { keepsakeDocs: 
             type="button"
             data-answer={answer}
             onClick={() => { void recordFromRecordAnswer(opener, answer, now).catch(() => { /* The unchanged question remains available to retry. */ }); }}
-            className="inline-flex min-h-11 items-center rounded-full px-3 font-semibold"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-3 font-semibold"
             style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", fontSize: "var(--t-sm)" }}
           >
             {t(fromRecordAnswerKey(opener, answer))}

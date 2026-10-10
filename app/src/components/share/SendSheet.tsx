@@ -84,7 +84,7 @@ export function SendSheet({
           disabled={!draft.trim()}
           onClick={() => void send()}
           className="inline-flex min-h-[44px] items-center rounded-xl px-5 text-[15px] font-semibold disabled:opacity-60"
-          style={{ background: "var(--arbor-blue)", color: "var(--arbor-on-accent)" }}
+          style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
         >
           {t("elev.words.send.send")}
         </button>
@@ -137,7 +137,7 @@ export function SendButton({
         }}
         className="inline-flex min-h-[44px] items-center justify-center rounded-xl px-5 text-[15px] font-semibold disabled:opacity-60"
         style={variant === "solid"
-          ? { background: "var(--arbor-blue)", color: "var(--arbor-on-accent)" }
+          ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }
           : { color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
       >
         {label ?? t("elev.words.page.send")}

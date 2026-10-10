@@ -25,7 +25,7 @@ export function useNowRecord(now: Date) {
   const pending = shared?.status === "saving" || shared?.status === "failed";
   const saved = answeredToday(actionLoop, childProfile.id, now);
   // Say-back owns its existing disclosure, including pending/error states.
-  const selected = !saved && !saidOwnsRow ? selectFromRecord({ now, plans: actionPlans, logs: behaviorLogs, facts: approvedMemoryItems, loop: actionLoop }) : null;
+  const selected = !saved && !saidOwnsRow ? selectFromRecord({ now, plans: actionPlans, logs: behaviorLogs, facts: approvedMemoryItems.map(({ memoryId, fact, createdAt, status }) => ({ id: memoryId, fact, createdAt, status })), loop: actionLoop }) : null;
   const confirming = !saidOwnsRow && !!(selected || saved?.reflection) && recordAnswersConfirmed === false && !shared;
   const receipt = saidOwnsRow || pending || confirming ? null : ownAttempt ? ownAttempt.receipt : shared?.entry?.reflection ? shared.entry : saved?.reflection ? saved : null;
   const opener = saidOwnsRow ? null : ownAttempt?.opener ?? (pending ? shared.opener : selected);

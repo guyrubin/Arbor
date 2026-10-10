@@ -34,7 +34,11 @@ import { activeActionFor, planAcceptedAction, todayActionId } from "../../action
 type El = React.ReactElement<Record<string, any>>;
 const ritual = FAMILY_RITUALS[0], other = FAMILY_RITUALS[1];
 const store = new Map<string, string>();
-const elements = (node: React.ReactNode): El[] => React.isValidElement<Record<string, any>>(node) ? [node, ...React.Children.toArray(node.props.children).flatMap(elements)] : [];
+function elements(node: React.ReactNode): El[] {
+  if (!React.isValidElement<Record<string, any>>(node)) return [];
+  const element = node as React.ReactElement<{ children?: React.ReactNode }>;
+  return [element, ...React.Children.toArray(element.props.children).flatMap(elements)];
+}
 const effects = () => h.effects.splice(0).forEach(fn => fn());
 const render = () => { h.cursor = 0; const result = FamilyFormation(); effects(); return result; };
 const turn = (tree = render()) => elements(tree).find(el => el.type === RitualTurnCard)!;

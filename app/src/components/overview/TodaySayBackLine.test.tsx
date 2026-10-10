@@ -130,7 +130,7 @@ describe("TodaySayBackLine — rendered (EN + HE)", () => {
       if (lang === "en") expect(html).toContain("Did you get to say it back in Hebrew?");
       else expect(html).toContain("הספקתם להגיד את זה בחזרה בעברית?");
       for (const a of ["yes", "not_today"]) expect(html).toContain(translate(lang, `elev.words.today.a.${a}`));
-      for (const b of html.match(/<button[^>]*>/g) ?? []) expect(b).toMatch(/min-h-11/);
+      for (const b of html.match(/<button[^>]*>/g) ?? []) { expect(b).toMatch(/min-h-11/); expect(b).toMatch(/min-w-11/); }
       // parent register: no count, %, verdict, the child's words are not re-shown here
       expect(html).not.toMatch(/%|\bscore\b|on track|uppercase|gradient/i);
       const chips = buttons(TodaySayBackLine({ keepsakeDocs: [quoteDoc()], now: NOW }));

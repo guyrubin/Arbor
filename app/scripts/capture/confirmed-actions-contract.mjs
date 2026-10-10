@@ -16,8 +16,8 @@ export const CONFIRMED_ACTION_STATES = Object.freeze([
     'milestone-stale-final-send', 'milestone-editor-stale-final-send', 'milestone-child-return']),
   ...rows('family', ['ritual-start-local-failure', 'ritual-start-local-saved', 'ritual-reload-repeat', 'ritual-library-start', 'ritual-failed-child-retirement', 'ritual-saved-child-return']),
   { route: 'overview', state: 'ritual-now-destination' },
-  ...rows('routines', ['routine-partial', 'routine-complete', 'routine-repeat-toggle', 'routine-reload',
-    'routine-selection-return', 'routine-reset', 'routine-sibling-return', 'routine-local-failure', 'routine-local-retry']),
+  ...rows('plans', ['routine-partial', 'routine-complete', 'routine-repeat-toggle', 'routine-reload',
+    'routine-card-isolation', 'routine-reset', 'routine-sibling-return', 'routine-local-failure', 'routine-local-retry']),
 ]);
 export const CONFIRMED_ACTION_LIMITATIONS = Object.freeze([
   { state: 'remote-acknowledgement-and-metadata', status: 'not-exercised', reason: 'The sandbox acknowledges successful localStorage writes only. No Firestore cache, pending, error, SDK write promise, rules or cross-device confirmation is fabricated.' },
@@ -39,6 +39,17 @@ export function confirmedActionsFixture(bundle, lang) {
     draft: he ? 'טיוטה מומצאת לביקור, עוד לא נשמרה או נשלחה.' : 'Invented visit draft, not yet saved or sent.',
     edited: he ? 'מילים מומצאות שההורה ערך לפני השליחה.' : 'Invented words edited by the parent before sending.',
   };
+  const routineRows = [
+    { id: 'capture-morning', name: he ? 'בוקר מומצא יחד' : 'Invented morning together', steps: [
+      { text: he ? 'לבחור חולצה מוכרת' : 'Choose a familiar shirt', done: false },
+      { text: he ? 'להניח נעליים ליד הדלת' : 'Put shoes by the door', done: false },
+      { text: he ? 'לבחור ספר לדרך' : 'Choose a book to take', done: false },
+    ] },
+    { id: 'capture-goodbye', name: he ? 'פרידה מומצאת' : 'Invented goodbye', steps: [
+      { text: he ? 'לנופף לשלום יחד' : 'Wave goodbye together', done: false },
+      { text: he ? 'ללכת יחד אל הדלת' : 'Walk to the door together', done: false },
+    ] },
+  ];
   const plan = { id: 'capture-confirmed-plan', title: he ? 'בוקר יחד' : 'Mornings together', issue: 'morning shoes', createdAt: '2026-10-01T09:00:00Z', phases: [{ id: 'phase', title: 'First', steps: [{ id: 'step', text: words.step, status: 'pending' }] }] };
   const chosen = { id: 'capture-confirmed-chosen', recommendation: words.chosen, source: 'coach', status: 'accepted', acceptedAt: '2026-10-10T05:00:00Z', capacity: 'tiny' };
   const visit = { id: 'capture-confirmed-visit', who: '', profession: 'slp', role: 'CAPTURE LEGACY ROLE MUST STAY OUT', when: '', whenIso: '2026-10-11T09:00:00.000Z', mode: 'In person', status: 'confirmed' };
@@ -49,10 +60,10 @@ export function confirmedActionsFixture(bundle, lang) {
     visit,
     { ...visit, id: 'capture-other-visit', profession: 'ot', whenIso: '2026-10-12T09:00:00.000Z' },
   ];
-  const collections = { ...body.collections, actionPlans: [], actionLoops: [], appointments: [], apptFollowUps: [], apptQuestions: [], programs: [], familyGoals: [], familyTopics: [], playLogs: [] };
+  const collections = { ...body.collections, actionPlans: [], actionLoops: [], appointments: [], apptFollowUps: [], apptQuestions: [], programs: [], familyGoals: [], familyTopics: [], playLogs: [], routines: [] };
   body.collections = collections;
   body.siblings[0].collections = Object.fromEntries(Object.keys(collections).map(name => [name, []]));
-  return { ...fixture, collections, words, plan, chosen, visit, appointments, lang };
+  return { ...fixture, collections, words, routineRows, plan, chosen, visit, appointments, lang };
 }
 
 export function confirmedActionVariant(fixture, variant) {
@@ -64,15 +75,16 @@ export function confirmedActionVariant(fixture, variant) {
   if (variant === 'record-step') collections.actionLoops = [{ ...fixture.chosen, id: 'capture-tried-plan-step', source: 'plan', status: 'completed', planId: fixture.plan.id, recommendation: fixture.words.step, outcome: 'helped', outcomeAt: '2026-10-08T09:00:00Z' }];
   if (variant === 'visit' || variant === 'chosen') collections.appointments = fixture.appointments;
   if (variant === 'chosen') collections.actionLoops = [fixture.chosen];
+  if (variant === 'routines') collections.routines = structuredClone(fixture.routineRows);
   if (variant === 'sayback') collections.keepsakes.push({ id: 'capture-confirmed-sayback', kind: 'quote', note: 'Another book please', language: 'English', noticedOn: '2026-10-09', createdAt: '2026-10-09', updatedAt: '2026-10-09' });
-  if (!['base', 'record-parent', 'record-step', 'visit', 'chosen', 'sayback'].includes(variant)) throw new Error('CONFIRMED_ACTION_VARIANT_INVALID');
+  if (!['base', 'record-parent', 'record-step', 'visit', 'chosen', 'sayback', 'routines'].includes(variant)) throw new Error('CONFIRMED_ACTION_VARIANT_INVALID');
   return collections;
 }
 
 /** Install AFTER hydration only. Fault the actual local persistence boundary,
  * never application state/metadata. Restore the original descriptor in finally. */
 export function installConfirmedStorageFault({ childId, kind }) {
-  if (!/^[\w-]{1,100}$/.test(childId) || !['actionLoops', 'routines.done'].includes(kind)) throw new Error('CONFIRMED_STORAGE_FAULT_SCOPE_INVALID');
+  if (!/^[\w-]{1,100}$/.test(childId) || !['actionLoops', 'routines'].includes(kind)) throw new Error('CONFIRMED_STORAGE_FAULT_SCOPE_INVALID');
   if (window.__arborConfirmedStorageFault) throw new Error('CONFIRMED_STORAGE_FAULT_ALREADY_ARMED');
   const key = `arbor.${kind}.${childId}`;
   if (localStorage.getItem('arbor.activeChildId') !== childId) throw new Error('CONFIRMED_STORAGE_FAULT_CHILD_MISMATCH');

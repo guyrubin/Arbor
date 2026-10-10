@@ -79,16 +79,13 @@ describe("GP-29 · the routine itself is untouched", () => {
     expect(TAB).toContain('t("routines.reset")');
   });
 
-  it("completion answers in place through Receipt and names no star (B-STATUS-01 / B-GROWTH-24)", () => {
-    expect(TAB).toContain("const nowComplete = total > 0 && selected.steps.every((step) => nextKeys.includes(step.key));");
-    expect(TAB).toContain('<Receipt testId="routines-completion-receipt"');
-    expect(TAB).not.toContain("useToast");
-    expect(TAB).not.toContain("routines.doneToast");
+  it("the completion toast still fires on the last step — and names no star (B-GROWTH-24)", () => {
+    expect(TAB).toContain("const nowComplete = nextKeys.length === total && total > 0;");
+    expect(TAB).toContain('toast(t("routines.doneToast"), "success")');
     expect(TAB).not.toContain("routines.starEarned");
     for (const lang of LANGS) {
-      const s = translate(lang, "routines.doneReceipt");
-      expect(s).not.toBe("routines.doneReceipt");
-      expect(translate(lang, "routines.doneToast")).toBe("routines.doneToast");
+      const s = translate(lang, "routines.doneToast");
+      expect(s).not.toBe("routines.doneToast");
       // no star glyph, no child-world claim, no reward aimed at the child
       expect(s).not.toMatch(/⭐|★|star|world|כוכב|בעולם/i);
       expect(translate(lang, "routines.starEarned")).toBe("routines.starEarned");

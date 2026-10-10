@@ -1,18 +1,21 @@
 /** Family starts run through the actual acknowledged action-loop writer. */
-export async function collectConfirmedFamilyStates({ page, fixture, viewport, load, run, reset, frame, fault, storage, expose, childSwitch, check, visible, byId }) {
+export async function collectConfirmedFamilyStates({ page, fixture, viewport, load, run, reset, frame, fault, storage, expose, childSwitch, rapidChildRoundTrip, check, visible, byId }) {
   const he = viewport.lang === 'he';
   const turnId = 'truth-practice-weekly';
   const libraryId = 'family-story-canon';
   const receipts = () => page.locator('[data-testid^="ritual-receipt-"]');
   const receipt = id => byId(`ritual-receipt-${id}`);
+  const receiptRow = id => page.locator('[data-receipt-row]').filter({ has: receipt(id) });
+  const receiptOpen = id => receiptRow(id).locator('[data-testid="receipt-open"][href="#/overview"]');
   const libraryStart = () => byId(`ritual-start-${libraryId}`);
   const libraryDoor = () => page.locator(`button[aria-controls="ritual-${libraryId}"]`);
   let firstStep;
   const openLibrary = async () => { if (await libraryDoor().getAttribute('aria-expanded') !== 'true') await libraryDoor().click(); await libraryStart().waitFor({ state: 'visible' }); };
   const checkReceipt = async (cell, id) => {
     await visible(cell, 'ONE_ACKNOWLEDGED_RITUAL_RECEIPT', receipt(id));
-    check(cell, 'SHARED_RITUAL_RECEIPT_POINTS_TO_NOW', await receipt(id).locator('a[href="#/overview"]').count() === 1 && await receipt(id).getAttribute('data-receipt') === 'muted');
+    check(cell, 'SHARED_RITUAL_RECEIPT_POINTS_TO_NOW', await receiptRow(id).count() === 1 && await receiptOpen(id).count() === 1 && await receipt(id).getAttribute('data-receipt') === 'muted');
     check(cell, 'LOCALIZED_RITUAL_FEEDBACK', await receipt(id).getAttribute('dir') === (he ? 'rtl' : 'ltr') && await receipt(id).getAttribute('lang') === viewport.lang);
+    await frame(cell, 'RITUAL_OPEN_REACHABLE_44PX', receiptOpen(id));
     await expose(receipt(id));
   };
   await run('family', 'ritual-start-local-failure', async cell => {
@@ -33,7 +36,7 @@ export async function collectConfirmedFamilyStates({ page, fixture, viewport, lo
     check(cell, 'REPEATED_START_DISABLED_AFTER_LOCAL_ACK', await byId('ritual-turn-start').isDisabled() && await receipts().count() === 1);
   });
   await run('overview', 'ritual-now-destination', async cell => {
-    await receipt(turnId).locator('a[href="#/overview"]').click();
+    await receiptOpen(turnId).click();
     await page.locator('[data-module="now-step"]').waitFor({ state: 'visible' });
     check(cell, 'RECEIPT_OPEN_ARRIVES_AT_ACTUAL_SAVED_NEXT_STEP', new URL(page.url()).hash === '#/overview' && await page.locator('[data-module="now-step"] h2').innerText() === firstStep);
     check(cell, 'OPEN_LINK_DID_NOT_CREATE_ANOTHER_ROW', (await storage('actionLoops')).length === 1);
@@ -65,6 +68,8 @@ export async function collectConfirmedFamilyStates({ page, fixture, viewport, lo
   });
   await run('family', 'ritual-saved-child-return', async cell => {
     await byId('ritual-turn-start').click(); await checkReceipt(cell, turnId);
+    await rapidChildRoundTrip(cell);
+    check(cell, 'RAPID_CHILD_RETURN_RETIRES_FEEDBACK_AND_PRESERVES_ONE_LOCAL_ROW', await byId('ritual-turn-start').isDisabled() && await receipts().count() === 0 && (await storage('actionLoops')).length === 1);
     await childSwitch(cell, fixture.siblingId, fixture.siblingName); await byId('ritual-turn-start').waitFor({ state: 'visible' });
     check(cell, 'SIBLING_DOES_NOT_INHERIT_SAVED_RITUAL', await byId('ritual-turn-start').isEnabled() && await receipts().count() === 0);
     await childSwitch(cell, fixture.childId, fixture.childName); await byId('ritual-turn-start').waitFor({ state: 'visible' });

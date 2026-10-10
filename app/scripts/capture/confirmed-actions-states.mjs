@@ -5,9 +5,11 @@ import { collectConfirmedMilestoneStates } from './confirmed-milestone-states.mj
 import { collectConfirmedRoutineStates } from './confirmed-routine-states.mjs';
 import { collectConfirmedFamilyStates } from './confirmed-family-states.mjs';
 import { collectConfirmedConsultPortalState } from './confirmed-consult-portal-state.mjs';
+import { observeConfirmedFrame, waitConfirmedFrame } from './confirmed-frame.mjs';
 
 export async function collectConfirmedActionStates(helpers) {
-  const { page, fixture, viewport, load, screen, check, visible, byId } = helpers;
+  const { page, fixture, viewport, load, screen, check, visible, byId, captureDiagnostics = () => null } = helpers;
+  const waitFrame = (cell, args, label) => waitConfirmedFrame(page, cell, args, label, captureDiagnostics);
   const he = viewport.lang === 'he';
   const module = name => page.locator(`[data-module="${name}"]`);
   const storage = name => page.evaluate(({ id, name }) => JSON.parse(localStorage.getItem(`arbor.${name}.${id}`) ?? '[]'), { id: fixture.childId, name });
@@ -15,6 +17,9 @@ export async function collectConfirmedActionStates(helpers) {
   const expose = locator => locator.scrollIntoViewIfNeeded();
   const frame = async (cell, id, locator) => {
     await expose(locator);
+    const element = await locator.elementHandle();
+    try { await waitFrame(cell, { element }, id); }
+    finally { await element?.dispose(); }
     const observed = await locator.evaluate(el => {
       const box = el.getBoundingClientRect(), main = el.closest('#main')?.getBoundingClientRect();
       const x = box.x + box.width / 2, y = box.y + box.height / 2, hit = document.elementFromPoint(x, y);
@@ -24,7 +29,7 @@ export async function collectConfirmedActionStates(helpers) {
     });
     check(cell, id, validConfirmedActionFrame(observed), observed);
   };
-  const reset = async (variant = 'base', route = 'overview') => {
+  const reset = async (variant = 'base', route = 'overview', { settleRoute = true } = {}) => {
     await page.evaluate(restoreConfirmedStorageFault);
     await page.clock.setFixedTime(new Date(CONFIRMED_ACTIONS_NOW));
     const collections = confirmedActionVariant(fixture, variant);
@@ -43,6 +48,7 @@ export async function collectConfirmedActionStates(helpers) {
       localStorage.setItem('arbor.activeChildId', id);
     }, { id: fixture.childId, siblingId: fixture.siblingId, collections });
     await load(route);
+    if (settleRoute) await waitFrame(null, { routeName: route, childId: fixture.childId }, 'reset-route-ready');
   };
   const fault = async (cell, kind, action) => {
     await page.evaluate(installConfirmedStorageFault, { childId: fixture.childId, kind });
@@ -60,15 +66,55 @@ export async function collectConfirmedActionStates(helpers) {
     check(cell, 'EXACT_SINGLE_EXPECTED_LEAD', found.length === 1 && found[0] === expected, found);
     if (primary) check(cell, 'ONE_CURRENT_PRIMARY_MOVE', await page.locator('#main [data-primary-move]').count() === 1);
   };
-  const childSwitch = async (cell, childId, name) => {
+  const childSwitch = async (cell, childId, name, { settleBefore = true } = {}) => {
+    const routeName = await page.locator('#main [data-route]').first().getAttribute('data-route');
+    if (settleBefore) await waitFrame(cell, { routeName }, 'before-child-switch');
+    else cell.unsettledChildStart = await page.evaluate(observeConfirmedFrame, { routeName });
     const outgoing = await page.locator('#main [data-route]').first().elementHandle();
     if (!outgoing) throw new Error('CONFIRMED_ACTION_OUTGOING_FRAME_MISSING');
-    await page.locator('button[aria-haspopup="listbox"]:visible').first().click();
-    await page.getByRole('listbox').getByRole('option').filter({ hasText: name }).click();
     try {
-      await page.waitForFunction(({ outgoing, id }) => !outgoing.isConnected && localStorage.getItem('arbor.activeChildId') === id && document.querySelectorAll('#main [data-route]').length === 1, { outgoing, id: childId });
+      cell.actionStage = 'open-actual-child-switcher';
+      await page.locator('button[aria-haspopup="listbox"]:visible').first().click();
+      cell.actionStage = 'select-actual-child-option';
+      await page.getByRole('listbox').getByRole('option').filter({ hasText: name }).click();
+      cell.actionStage = 'wait-child-route-replacement';
+      await waitFrame(cell, { outgoing, routeName, childId }, 'after-child-switch');
     } finally { await outgoing.dispose(); }
     check(cell, 'ACTUAL_CHILD_SWITCHER_SELECTED_TARGET', await page.evaluate(() => localStorage.getItem('arbor.activeChildId')) === childId);
+  };
+  const rapidChildRoundTrip = async cell => {
+    const routeName = await page.locator('#main [data-route]').first().getAttribute('data-route');
+    const outgoing = await page.locator('#main [data-route]').first().elementHandle();
+    if (!outgoing) throw new Error('RAPID_CHILD_OUTGOING_FRAME_MISSING');
+    const observe = childId => page.evaluate(observeConfirmedFrame, { outgoing, routeName, childId });
+    cell.rapidChildTransition = { before: await observe(fixture.childId), diagnosticsBefore: captureDiagnostics(),
+      sequence: 'actual-A-to-B-to-A-without-waiting-for-B-body-or-animation' };
+    const select = async (id, name) => {
+      await page.locator('button[aria-haspopup="listbox"]:visible').first().click();
+      await page.getByRole('listbox').getByRole('option').filter({ hasText: name }).click();
+      // Observe the actual profile selection only, never wait for its route body.
+      await page.waitForFunction(id => localStorage.getItem('arbor.activeChildId') === id, id, { timeout: 8_000 });
+    };
+    try {
+      cell.actionStage = 'rapid-select-sibling';
+      await select(fixture.siblingId, fixture.siblingName);
+      cell.rapidChildTransition.afterSiblingSelection = await observe(fixture.siblingId);
+      cell.actionStage = 'rapid-return-before-sibling-body-settles';
+      await select(fixture.childId, fixture.childName);
+      cell.rapidChildTransition.afterReturnSelection = await observe(fixture.childId);
+      // AnimatePresence may legitimately retain A's original DOM during A-B-A.
+      // Require the actual final body, not a fabricated replacement identity.
+      await waitFrame(cell, { routeName, childId: fixture.childId }, 'rapid-child-final-body');
+      cell.rapidChildTransition.final = await page.evaluate(observeConfirmedFrame, { routeName, childId: fixture.childId });
+      cell.rapidChildTransition.originalFrameRetained = await outgoing.evaluate(node => node.isConnected);
+      check(cell, 'RAPID_CHILD_RETURN_HAS_NONBLANK_SETTLED_BODY', cell.rapidChildTransition.final.ready);
+    } catch (error) {
+      cell.rapidChildTransition.lastObserved = await observe(fixture.childId).catch(() => ({ unavailable: true }));
+      throw error;
+    } finally {
+      cell.rapidChildTransition.diagnosticsAfter = captureDiagnostics();
+      await outgoing.dispose();
+    }
   };
   const modalClose = async id => {
     const dialog = page.getByRole('dialog').filter({ has: byId(id) }).last();
@@ -77,7 +123,20 @@ export async function collectConfirmedActionStates(helpers) {
   };
   const run = (route, state, action, afterCapture) => screen(route, state, async cell => {
     cell.fixture = 'synthetic-confirmed-actions-local-persistence-only';
-    await action(cell);
+    try {
+      await action(cell);
+      cell.actionStage = 'wait-settled-frame-before-screenshot';
+      await waitFrame(cell, { routeName: route }, 'before-screenshot');
+      for (const dialog of await page.getByRole('dialog').all()) {
+        const element = await dialog.elementHandle();
+        try { await waitFrame(cell, { element }, 'dialog-before-screenshot'); }
+        finally { await element?.dispose(); }
+      }
+    } catch (error) {
+      cell.failureDiagnostics = captureDiagnostics();
+      cell.failureFrame = await page.evaluate(observeConfirmedFrame, { routeName: route }).catch(() => ({ unavailable: true }));
+      throw error;
+    }
   }, afterCapture);
   await page.clock.setFixedTime(new Date(CONFIRMED_ACTIONS_NOW));
   await load('overview'); // real hydrator, before any direct setup writes or faults
@@ -129,9 +188,19 @@ export async function collectConfirmedActionStates(helpers) {
     });
     let visitHistoryLength;
     await run('consult', 'visit-target-arrival', async cell => {
-      await reset('visit'); await module('now-visit').waitFor({ state: 'visible' });
+      // Preserve the first run's rapid fresh-Now → Consult sequence: no added
+      // route-animation settlement before the real Prepare click.
+      await reset('visit', 'overview', { settleRoute: false }); await module('now-visit').waitFor({ state: 'visible' });
+      cell.rapidSequence = 'fresh-Now-load-visible-visit-then-Prepare-without-added-settlement';
       visitHistoryLength = await page.evaluate(() => history.length);
-      await module('now-visit').locator('[data-primary-move]').click();
+      const outgoing = await page.locator('#main [data-route="overview"]').elementHandle();
+      try {
+        cell.visitTransitionBefore = await page.evaluate(observeConfirmedFrame, { outgoing, routeName: 'overview', childId: fixture.childId });
+        cell.actionStage = 'click-actual-visit-prepare';
+        await module('now-visit').locator('[data-primary-move]').click();
+        cell.actionStage = 'wait-actual-consult-destination';
+        await waitFrame(cell, { outgoing, routeName: 'consult', childId: fixture.childId }, 'visit-target-arrival');
+      } finally { await outgoing?.dispose(); }
       await visible(cell, 'EXACT_TARGET_CONSULT_MOUNTED', byId('consult-h1'));
       check(cell, 'EXACT_APPOINTMENT_DEEP_LINK_ONE_HISTORY_ENTRY', new URL(page.url()).hash === `#/consult?appointment=${fixture.visit.id}` && await page.evaluate(() => history.length) === visitHistoryLength + 1);
       check(cell, 'VISIT_PROFESSION_AND_PRESET_MATCH', (await byId('consult-h1').innerText()).includes(he ? 'קלינאי' : 'Speech therapist') && (await byId('consult-audience-row').locator('[aria-checked="true"]').innerText()).includes(he ? 'קלינאי' : 'Speech'));
@@ -228,7 +297,7 @@ export async function collectConfirmedActionStates(helpers) {
         await expose(module('now-step'));
       });
     }
-    const shared = { ...helpers, run, reset, frame, fault, storage, sink, expose, childSwitch, modalClose };
+    const shared = { ...helpers, run, reset, frame, fault, storage, sink, expose, childSwitch, rapidChildRoundTrip, modalClose };
     await collectConfirmedMilestoneStates(shared);
     await collectConfirmedRoutineStates(shared);
     await collectConfirmedFamilyStates(shared);

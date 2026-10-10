@@ -57,7 +57,12 @@ import SchoolBrief from "../sections/SchoolBrief";
 import { Modal } from "../ui/Modal";
 
 type El = React.ReactElement<Record<string, any>>;
-const elements = (node: React.ReactNode): El[] => Array.isArray(node) ? node.flatMap(elements) : React.isValidElement<Record<string, any>>(node) ? [node, ...React.Children.toArray(node.props.children).flatMap(elements)] : [];
+function elements(node: React.ReactNode): El[] {
+  if (Array.isArray(node)) return node.flatMap(elements);
+  if (!React.isValidElement<Record<string, any>>(node)) return [];
+  const element = node as React.ReactElement<{ children?: React.ReactNode }>;
+  return [element, ...React.Children.toArray(element.props.children).flatMap(elements)];
+}
 const find = (node: React.ReactNode, predicate: (el: El) => boolean) => elements(node).find(predicate)!;
 const byId = (node: React.ReactNode, id: string) => find(node, el => el.props["data-testid"] === id);
 function owner(key: string, component: any, props: any = {}) { h.cursor = 0; h.slots = h.owners.get(key) ?? []; h.owners.set(key, h.slots); return component(props); }

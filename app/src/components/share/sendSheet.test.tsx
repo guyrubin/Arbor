@@ -26,7 +26,7 @@ vi.mock("../../lib/loopEvents", async (orig) => {
 vi.mock("../ui/Modal", () => ({ Modal: ({ title, children }: { title?: string; children: React.ReactNode }) => <div data-stub="modal" aria-label={title}>{children}</div> }));
 vi.mock("../ui/Sheet", () => ({ Sheet: () => null, useCompactSurface: () => false }));
 
-import { SendSheet, sendSheetText } from "./SendSheet";
+import { SendButton, SendSheet, sendSheetText } from "./SendSheet";
 import { shareButtonText } from "../ui/ShareButton";
 import { sendTextShare, textFromCardOpts } from "../../lib/share";
 import { saidSendText } from "../growth/SaidPage";
@@ -99,6 +99,10 @@ describe("B-SHELL-29 · the sheet", () => {
       expect(html).toContain("“Daddy, the moon”");
       expect(html).toContain(translate(lang, "elev.words.send.onlyText"));
       expect(html.match(/data-testid="send-sheet-send"/g)).toHaveLength(1);
+      expect(html.match(/<button[^>]*data-testid="send-sheet-send"[^>]*>/)?.[0]).toContain("background:var(--arbor-clay)");
+      const solid = renderToStaticMarkup(<SendButton getText={() => "Parent-reviewed words"} artifact="growth_card" surface="said_page" variant="solid" />);
+      expect(solid).toContain("background:var(--arbor-clay)");
+      expect(solid).not.toContain("background:var(--arbor-blue)");
       expect(html).not.toMatch(/<img|<canvas|href=/);
       expect(html).not.toMatch(/gradient|uppercase/);
     });

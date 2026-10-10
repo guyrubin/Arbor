@@ -14,6 +14,8 @@ import { CHILD_SUBCOLLECTIONS } from '../src/lib/childData';
 import { FAMILY_RITUALS } from '../src/lib/familyRituals';
 import { ritualOfTheMoment } from '../src/lib/familyRitualsCadence';
 import { translate } from '../src/lib/i18n';
+import { resolveRouteId } from '../src/lib/routes';
+import { observeConfirmedFrame } from './capture/confirmed-frame.mjs';
 const root = path.resolve(__dirname, '../..');
 const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
 const body = () => ({ child: { id: 'synthetic-capture-child', name: 'Capture Child', demo: true, age: 4, birthDate: '2022-01-01' }, collections: { milestones: [{ ...CDC_MILESTONES[0], checked: false }], actionLoops: [] } });
@@ -76,7 +78,7 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
 
     it(`${lang}: retains real catalogue citations and all five negative controls across every variant`, () => {
       const fixture = confirmedActionsFixture(bundle(), lang);
-      for (const variant of ['base', 'record-parent', 'record-step', 'visit', 'chosen', 'sayback']) {
+      for (const variant of ['base', 'record-parent', 'record-step', 'visit', 'chosen', 'sayback', 'routines']) {
         const data = confirmedActionVariant(fixture, variant);
         expect(data.milestones[0].source).toEqual(CDC_MILESTONES[0].source);
         expect(data.keepsakes.find((row: any) => row.id === 'capture-record-ai')).toMatchObject({ source: 'ai_proposed_parent_confirmed', note: fixture.text.forbidden[1] });
@@ -98,7 +100,7 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
         expect(saved).toMatchObject({ id: `record.${fixture.childId}.2026-10-10`, source: 'from-record', sayBack: answer });
         expect(saved.reflection).toBeUndefined(); expect(saved.outcome).toBeUndefined();
       }
-      expect(translate(lang as 'en' | 'he', 'routines.doneReceipt')).toContain(lang === 'en' ? 'saved on this device' : 'נשמרה במכשיר הזה');
+      expect(translate(lang as 'en' | 'he', 'elev.closeloop.routines.savedLocal')).toContain(lang === 'en' ? 'saved on this device' : 'נשמרה במכשיר הזה');
       expect(translate(lang as 'en' | 'he', 'elev.learnCare.ritual.started')).toBe(lang === 'en' ? 'On today’s list' : 'ברשימה של היום');
     });
   }
@@ -115,7 +117,9 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
     expect(ritualOfTheMoment(Date.parse(CONFIRMED_ACTIONS_NOW), {})?.ritual.id).toBe('truth-practice-weekly');
     expect(FAMILY_RITUALS.find(ritual => ritual.id === 'family-story-canon')?.steps[0]).toBeTruthy();
     const family = read('app/scripts/capture/confirmed-family-states.mjs');
-    expect(family).toContain("locator('a[href=\"#/overview\"]').click()");
+    expect(family).toContain("page.locator('[data-receipt-row]').filter({ has: receipt(id) })");
+    expect(family).toContain('await receiptOpen(turnId).click()');
+    expect(family).not.toContain("receipt(turnId).locator('a");
     expect(family).toContain("'RECEIPT_OPEN_ARRIVES_AT_ACTUAL_SAVED_NEXT_STEP'");
     expect(family).toContain('settled-local-failure-then-actual-child-switch');
     expect(family).not.toMatch(/\.dispatchEvent\(|\.evaluate\([^]*?onClick/);
@@ -145,7 +149,7 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
     vi.stubGlobal('window', win); vi.stubGlobal('Storage', FakeStorage); vi.stubGlobal('localStorage', local);
     local.setItem('arbor.activeChildId', 'synthetic-child');
     const original = Object.getOwnPropertyDescriptor(FakeStorage.prototype, 'setItem');
-    for (const kind of ['actionLoops', 'routines.done']) {
+    for (const kind of ['actionLoops', 'routines']) {
       const key = `arbor.${kind}.synthetic-child`; local.setItem(key, 'original');
       installConfirmedStorageFault({ childId: 'synthetic-child', kind });
       expect(() => local.setItem(key, 'optimistic')).toThrow('Synthetic capture quota failure');
@@ -164,6 +168,81 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
     expect(Object.getOwnPropertyDescriptor(FakeStorage.prototype, 'setItem')).toEqual(original);
   });
 
+  it('targets the actual Plans routine collection and keeps the retired alias unchanged', () => {
+    expect(resolveRouteId('routines')).toBe('plans');
+    expect(CONFIRMED_ACTION_STATES.filter(item => item.state.startsWith('routine-'))).toHaveLength(9);
+    expect(CONFIRMED_ACTION_STATES.filter(item => item.state.startsWith('routine-')).every(item => item.route === 'plans')).toBe(true);
+    for (const lang of ['en', 'he']) {
+      const fixture = confirmedActionsFixture(bundle(), lang);
+      const records = confirmedActionVariant(fixture, 'routines').routines;
+      expect(records).toEqual(fixture.routineRows);
+      expect(records.map((row: any) => row.id)).toEqual(['capture-morning', 'capture-goodbye']);
+      expect(records.flatMap((row: any) => row.steps).every((step: any) => step.text && !step.done)).toBe(true);
+    }
+    const flow = read('app/scripts/capture/confirmed-routine-states.mjs');
+    expect(flow).toContain("byId('plans-routines-row')");
+    expect(flow).toContain("fault(cell, 'routines'");
+    expect(flow).toContain('FAILED_LOCAL_WRITE_LEAVES_FINAL_STEP_UNCOMPLETED');
+    expect(flow).toContain('routine-card-isolation');
+    const live = read('app/src/components/plans/RoutinesCard.tsx');
+    for (const id of ['routines-card', 'routine-row-', 'routine-step-', 'routine-reset-', 'routine-receipt-', 'routine-failed-', 'routine-retry-']) expect(live).toContain(id);
+    expect(live).toContain('aria-pressed={s.done}');
+    expect(flow).not.toMatch(/routines-board|routines.done|routine-tile|load\('routines'|reset\('base', 'routines'/);
+  });
+
+  it('observes actual route ownership, rendered content and settled animations without mutating them', () => {
+    const style = { opacity: '1', transform: 'none', visibility: 'visible', display: 'block' };
+    const target = { isConnected: true, parentElement: null, closest: () => null,
+      getBoundingClientRect: () => ({ width: 100, height: 44 }), getAnimations: () => [] as any[] };
+    const route = { ...target, querySelectorAll: () => [target], getAttribute: () => 'plans' };
+    vi.stubGlobal('document', { querySelectorAll: (selector: string) => selector === '#main [data-route]' ? [route] : [] });
+    vi.stubGlobal('getComputedStyle', () => style);
+    vi.stubGlobal('location', { hash: '#/plans' });
+    vi.stubGlobal('localStorage', { getItem: () => 'child-a' });
+    const args = { routeName: 'plans', childId: 'child-a' };
+    expect(observeConfirmedFrame(args)).toMatchObject({ ready: true });
+    style.transform = 'matrix(0.9766, 0, 0, 0.9766, 0, 5)';
+    expect(observeConfirmedFrame({ ...args, waitUntilReady: true })).toBe(false);
+    style.transform = 'none'; style.opacity = '0';
+    expect(observeConfirmedFrame(args)).toMatchObject({ ready: false });
+    style.opacity = '1'; target.getAnimations = () => [{ playState: 'running' }];
+    expect(observeConfirmedFrame(args)).toMatchObject({ ready: false });
+    target.getAnimations = () => [];
+    expect(observeConfirmedFrame({ ...args, outgoing: { ...route, isConnected: true } })).toMatchObject({ ready: false });
+    expect(observeConfirmedFrame({ ...args, childId: 'child-b' })).toMatchObject({ ready: false });
+    route.querySelectorAll = () => [];
+    expect(observeConfirmedFrame(args)).toMatchObject({ ready: false });
+    const observer = read('app/scripts/capture/confirmed-frame.mjs');
+    expect(observer).toContain('trace.lastObserved');
+    expect(observer).toContain('timeout: 8_000');
+    expect(observer).toContain('outgoingMotionParent');
+    expect(observer).toContain('tabSkeletonCandidates');
+    expect(observer).toContain('diagnosticsAtFailure');
+    const shell = read('app/src/components/layout/Shell.tsx');
+    expect(shell).toContain('<Suspense fallback={<TabSkeleton />}>');
+    expect(shell).toContain('mode="wait"');
+    expect(shell).toContain('key={`${activeTab}@${childProfile.id}`}');
+    expect(observer).not.toMatch(/\.finish\(|\.cancel\(|dispatchEvent|forceUpdate|\.style\.[a-zA-Z]+\s*=/);
+  });
+
+  it('preserves original rapid navigation and a real interrupted child round trip', () => {
+    const flow = read('app/scripts/capture/confirmed-actions-states.mjs');
+    expect(flow).toContain("reset('visit', 'overview', { settleRoute: false })");
+    expect(flow).toContain('fresh-Now-load-visible-visit-then-Prepare-without-added-settlement');
+    const interrupted = flow.slice(flow.indexOf('await select(fixture.siblingId'), flow.indexOf('await select(fixture.childId'));
+    expect(interrupted).toContain('afterSiblingSelection');
+    expect(interrupted).not.toContain('waitFrame');
+    expect(flow).toContain("'rapid-child-final-body'");
+    const milestones = read('app/scripts/capture/confirmed-milestone-states.mjs');
+    expect(milestones).toContain('fixture.siblingName, { settleBefore: false }');
+    const family = read('app/scripts/capture/confirmed-family-states.mjs');
+    expect(family).toContain('await rapidChildRoundTrip(cell)');
+    const savedReturn = family.slice(family.indexOf("'ritual-saved-child-return'"));
+    expect(savedReturn.indexOf('await checkReceipt(cell, turnId)')).toBeLessThan(savedReturn.indexOf('await rapidChildRoundTrip(cell)'));
+    expect(savedReturn.indexOf('await rapidChildRoundTrip(cell)')).toBeLessThan(savedReturn.indexOf('await childSwitch(cell,'));
+    expect(family).toContain('RAPID_CHILD_RETURN_RETIRES_FEEDBACK_AND_PRESERVES_ONE_LOCAL_ROW');
+  });
+
   it('rejects tiny, occluded, off-scrollport and overflowing action frames', () => {
     const good = { visible: true, hit: true, inMain: true, enabled: true, width: 60, height: 44, pageWidth: 375, viewportWidth: 375 };
     expect(validConfirmedActionFrame(good)).toBe(true);
@@ -171,9 +250,9 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
   });
 
   it('keeps UI actions real, labels unproved remote transitions, and makes restoration unconditional', () => {
-    const flows = ['confirmed-actions-states', 'confirmed-milestone-states', 'confirmed-routine-states', 'confirmed-family-states', 'confirmed-consult-portal-state'].map(name => read(`app/scripts/capture/${name}.mjs`)).join('\n');
+    const flows = ['confirmed-frame', 'confirmed-actions-states', 'confirmed-milestone-states', 'confirmed-routine-states', 'confirmed-family-states', 'confirmed-consult-portal-state'].map(name => read(`app/scripts/capture/${name}.mjs`)).join('\n');
     expect(flows).not.toMatch(/__react|_react|\.useState|hasPendingWrites|fromCache|setConfirmed|forceUpdate|dispatchEvent|\bel\.click\(|\bnode\.click\(/);
-    for (const action of ['.click()', '.fill(', '.dblclick()', '.goBack()', '.goForward()', '.setFixedTime(']) expect(flows).toContain(action);
+    for (const action of ['.click()', '.fill(', '.goBack()', '.goForward()', '.setFixedTime(']) expect(flows).toContain(action);
     expect(flows).toContain('finally { await page.evaluate(restoreConfirmedStorageFault).catch(() => null); }');
     expect(flows).toContain('!outgoing.isConnected');
     expect(flows).toContain('EXACT_DOM_EDITOR_IDENTITY_AND_TYPED_DRAFT_SURVIVE');

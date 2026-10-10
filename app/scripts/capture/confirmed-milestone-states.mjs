@@ -118,7 +118,8 @@ export async function collectConfirmedMilestoneStates({ page, fixture, viewport,
     await note().locator('[data-testid="ms-keepsake-edit"]').click(); await editorReady(cell); await byId('first-keepsake-note').fill(fixture.words.edited);
     // Close with the actual modal control, then use the real child switcher.
     await modalClose('first-keepsake-sheet');
-    await childSwitch(cell, fixture.siblingId, fixture.siblingName); await byId('ms-header').waitFor({ state: 'visible' });
+    // Preserve the original close-editor → child-switch interruption opportunity.
+    await childSwitch(cell, fixture.siblingId, fixture.siblingName, { settleBefore: false }); await byId('ms-header').waitFor({ state: 'visible' });
     await page.waitForFunction(text => !document.querySelector('#main')?.innerText.includes(text), fixture.text.first);
     check(cell, 'SIBLING_HAS_NO_PARENT_NOTE_OR_STALE_EDITOR', await byId('first-keepsake-sheet').count() === 0 && await note().count() === 0);
     await childSwitch(cell, fixture.childId, fixture.childName); await reveal();
