@@ -15,6 +15,9 @@ import { behaviorTypeLabel } from "../content/behaviorTaxonomy";
 
 export type ReportSection = { heading: string; body: string | string[] };
 export type ReportDoc = {
+  /** Plain parent-kept month: name, month, dated words only. */
+  presentation?: "kept-month";
+  keptItems?: { text: string; date: string; language: string }[];
   title: string;
   subtitle?: string;
   sections: ReportSection[];
@@ -62,7 +65,7 @@ export function isProfessionalReportType(type: ReportType): type is Professional
 }
 
 const esc = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
 function recentLogs(logs: BehaviorLog[], days: number) {
   const cutoff = Date.now() - days * 86_400_000;
@@ -283,7 +286,8 @@ const slugForFile = (value: string) =>
 /** LC-13 / item 8: the printable shell carries `lang` and `dir`, so a Hebrew
  *  report actually renders right-to-left instead of a Hebrew document laid out
  *  left-to-right with its list bullets on the wrong side. */
-function renderPrintableHtml(doc: ReportDoc, childName: string, lang: UiLang = "en"): string {
+export function renderPrintableHtml(doc: ReportDoc, childName: string, lang: UiLang = "en"): string {
+  if (doc.presentation === "kept-month") return renderKeptMonthHtml(doc, lang);
   const sectionsHtml = doc.sections.map((s) => {
     const items = Array.isArray(s.body) ? s.body.filter(Boolean) : [s.body];
     const body = items.length
@@ -325,6 +329,26 @@ function renderPrintableHtml(doc: ReportDoc, childName: string, lang: UiLang = "
   <div class="footer">${esc(translate(lang, "elev.reports.printFooter"))}</div>
   <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
   </body></html>`;
+}
+
+/** The month uses the same delivery shell, with no report branding, metrics,
+ * created-today metadata, images, or clinical footer added to parent words. */
+function renderKeptMonthHtml(doc: ReportDoc, lang: UiLang): string {
+  const rows = (doc.keptItems ?? []).map(item => `<li><p><bdi dir="auto" lang="${esc(item.language)}">${esc(item.text)}</bdi></p><p class="date">${esc(item.date)}</p></li>`).join("");
+  return `<!doctype html><html lang="${lang}" dir="${lang === "he" ? "rtl" : "ltr"}"><head><meta charset="utf-8"><title>${esc(doc.title)} — ${esc(doc.subtitle ?? "")}</title>
+  <style>
+    @page { size: A4; margin: 24mm 18mm; }
+    * { box-sizing: border-box; }
+    body { max-width: 720px; margin: 0 auto; padding: 24px; color: #1b295c; font-family: Georgia, "Times New Roman", serif; }
+    h1 { font-size: 28px; font-weight: 400; margin: 0 0 8px; overflow-wrap: anywhere; }
+    .month { font-size: 19px; margin: 0 0 28px; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { break-inside: avoid; border-bottom: 1px solid #dce2e1; padding: 16px 0; }
+    li p { font-size: 19px; line-height: 1.5; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .date { font-family: system-ui, sans-serif; font-size: 12px; color: #465673; margin-top: 8px; }
+    @media print { body { max-width: none; padding: 0; } }
+  </style></head><body><h1>${esc(doc.title)}</h1><p class="month">${esc(doc.subtitle ?? "")}</p><ul>${rows}</ul>
+  <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script></body></html>`;
 }
 
 /** W2-CAREPRO c2 r1 (B-CAREPRO-NEW-c2-1e) — the ONE "{name}'s record" document

@@ -32,71 +32,49 @@ function stripComments(code: string): string {
 const behaviors = stripComments(read("components/tabs/BehaviorsTab.tsx"));
 const coach = stripComments(read("components/tabs/CoachTab.tsx"));
 
-describe("AI-CAP-1 — voice capture goes through the ONE hardened extraction seam", () => {
-  it("no fetch('/api/chat') — or any /api/chat reference — remains in BehaviorsTab", () => {
-    expect(behaviors).not.toContain("/api/chat");
-    expect(behaviors).not.toMatch(/fetch\(/);
+describe("AI-CAP-1 — voice capture goes through the ONE hardened extraction owner", () => {
+  const modal = stripComments(read("components/overview/QuickLogModal.tsx"));
+  const extract = /const extractFromTyped = async[\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
+  it("the launcher has no transcription path; the sheet uses only schema-enforced extraction", () => {
+    expect(behaviors).not.toMatch(/parseVoice|startDictation|api\.extractLog|\/api\/chat|fetch\(/);
+    expect(modal).not.toMatch(/\/api\/chat|fetch\(|JSON\.parse\(match/);
+    expect(extract).toBeTruthy();
+    expect(extract).toContain('api.extractLog({ message: text, childProfile, language: getAiLanguage() })');
+    expect(modal).toContain('void extractFromTyped(said, hardMomentRef.current ? "incident" : "moment")');
+    // Negative control: the shipped raw chat path bypassed schema/safety.
+    expect('fetch("/api/chat").then(() => JSON.parse(match[0]))').toMatch(/\/api\/chat|JSON\.parse\(match/);
   });
 
-  it("parseVoice calls api.extractLog (schema-enforced, server-screened, redacted) with the parent's AI language (AI-CAP-2)", () => {
-    const parse = /const parseVoice = async[\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
-    expect(parse).toBeTruthy();
-    expect(parse).toMatch(/api\.extractLog\(\{ message: text, childProfile, language: getAiLanguage\(\) \}\)/);
+  it("all extracted fields are normalized before touching the shared draft", () => {
+    const normalize = extract.indexOf('const n = normalizeExtractedLog(d, text)');
+    expect(normalize).toBeGreaterThan(-1);
+    for (const field of ['Type', 'Intensity', 'Duration', 'Context', 'Trigger', 'Response', 'Notes']) {
+      expect(extract.indexOf(`setNewLog${field}(`), field).toBeGreaterThan(normalize);
+    }
+    expect(extract).not.toMatch(/setNewLog\w+\(d\./);
   });
 
-  it("the greedy JSON-regex extraction path is deleted", () => {
-    // The old code carried the literal source sequence `[\s\S]*` (the greedy
-    // brace-matcher) and JSON.parse(match[0]). Neither may return.
-    expect(behaviors).not.toContain("[\\s\\S]*");
-    expect(behaviors).not.toMatch(/JSON\.parse\(match/);
-  });
-
-  it("every extracted field is clamped/validated through the shared taxonomy module before touching the draft (AI-CAP-8)", () => {
-    // The clamp seam moved into normalizeExtractedLog (one shared module for
-    // voice, typed, and coach-handoff extraction) — its clamps (intensity
-    // 1..5, duration >= 1, context enum w/ safe default, free-label
-    // preservation) are unit-tested in content/behaviorTaxonomy.test.ts.
-    expect(behaviors).toMatch(/import \{[^}]*normalizeExtractedLog[^}]*\} from ["']\.\.\/\.\.\/content\/behaviorTaxonomy["']/);
-    const apply = /const applyExtractedDraft = [\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
-    expect(apply).toBeTruthy();
-    expect(apply).toMatch(/normalizeExtractedLog\(d, fallbackTrigger\)/);
-    const parse = /const parseVoice = async[\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
-    expect(parse).toMatch(/applyExtractedDraft\(d, text\)/);
-    // No extraction field reaches a draft setter without normalization.
-    expect(parse).not.toMatch(/setNewLogType\(String\(/);
-  });
-
-  it("FAIL-CLOSED order: the escalation branch runs BEFORE the raw-transcript fallback", () => {
-    const parse = /const parseVoice = async[\s\S]*?\n  };/.exec(behaviors)?.[0] ?? "";
-    const escalationIdx = parse.indexOf("err instanceof EscalationRequiredError");
-    const fallbackIdx = parse.indexOf("setNewLogTrigger(text)");
-    expect(escalationIdx).toBeGreaterThan(-1);
-    expect(fallbackIdx).toBeGreaterThan(-1);
-    expect(escalationIdx).toBeLessThan(fallbackIdx);
-    // and the fallback is the ELSE of the escalation check, so a 409 can never
-    // fall through into the draft.
-    expect(parse).toMatch(/if \(err instanceof EscalationRequiredError\) \{[\s\S]*?\} else \{[\s\S]*?setNewLogTrigger\(text\);/);
-  });
-
-  it("the escalation branch writes ZERO draft fields and shows no toast", () => {
-    const branch = /if \(err instanceof EscalationRequiredError\) \{([\s\S]*?)\} else \{/.exec(behaviors)?.[1] ?? "";
+  it("FAIL-CLOSED: a 409 never takes the fallback, writes fields, or shows a success toast", () => {
+    const branch = /if \(err instanceof EscalationRequiredError\) \{([\s\S]*?)\} else \{/.exec(extract)?.[1] ?? "";
     expect(branch).toBeTruthy();
-    expect(branch).not.toMatch(/setNewLog/);
-    expect(branch).not.toMatch(/toast\(/);
-    expect(branch).toMatch(/setEscalationMarkdown\(renderEscalationMarkdown\(/);
+    expect(branch).not.toMatch(/setNewLog|toast\(|handleAddLog|addMoment/);
+    expect(branch).toContain('setEscalationMarkdown(renderEscalationMarkdown(');
+    expect(extract).toMatch(/if \(err instanceof EscalationRequiredError\) \{[\s\S]*?\} else \{\s*toast\(t\("beh\.toast\.voiceFallback"\), "info"\)/);
+    // Unlike the old parseVoice catch, neither catch branch invents a new draft.
+    expect(extract.slice(extract.indexOf('catch (err)'))).not.toMatch(/setNewLog/);
   });
 
-  it("the crisis resources render as a visible alert surface (renderEscalationMarkdown content, never a toast)", () => {
-    expect(behaviors).toContain('data-testid="voice-capture-escalation"');
-    expect(behaviors).toMatch(/role="alert"/);
-    expect(behaviors).toMatch(/<MarkdownBlock text=\{escalationMarkdown\}/);
-    // Resources come from the shared safety module — the same approved
-    // renderEscalationMarkdown contract the /chat surface shows.
-    expect(behaviors).toMatch(/import \{ escalationCategories, renderEscalationMarkdown \} from ["']\.\.\/\.\.\/safety\/escalation["']/);
+  it("the alert replaces review and both save forms, with shared crisis resources", () => {
+    expect(modal).toContain('data-testid="quicklog-escalation"');
+    expect(modal).toMatch(/\{escalationMarkdown \? \([\s\S]*?role="alert"[\s\S]*?<MarkdownBlock text=\{escalationMarkdown\}[\s\S]*?\) : reviewing \? <ConfirmCaptureReview/);
+    expect(modal).toContain('from "../../safety/escalation"');
+    const alert = modal.indexOf('data-testid="quicklog-escalation"');
+    expect(alert).toBeGreaterThan(-1);
+    expect(alert).toBeLessThan(modal.indexOf('data-testid="quicklog-moment-form"'));
   });
 
-  it("an unknown escalation category still over-blocks toward crisis resources (safe failure)", () => {
-    expect(behaviors).toMatch(/escalationCategories\.find\(\(c\) => c\.category === err\.category\) \?\?\s*escalationCategories\[0\]/);
+  it("an unknown escalation category still over-blocks toward crisis resources", () => {
+    expect(extract).toMatch(/escalationCategories\.find\(\(c\) => c\.category === err\.category\) \?\?\s*escalationCategories\[0\]/);
   });
 
   it("escalation surface chrome has EN+HE keys", () => {

@@ -14,7 +14,13 @@ vi.mock("react", () => ({
     return [h.slots[index], (next: unknown) => { h.slots[index] = typeof next === "function" ? next(h.slots[index]) : next; }];
   },
   useRef: (initial: unknown) => { const index = h.cursor++; return h.slots[index] ?? (h.slots[index] = { current: initial }); },
-  useCallback: (callback: unknown) => callback,
+  useCallback: (callback: unknown, deps: unknown[]) => {
+    const index = h.cursor++;
+    const previous = h.slots[index] as { deps: unknown[]; callback: unknown } | undefined;
+    if (previous && deps.every((value, i) => Object.is(value, previous.deps[i]))) return previous.callback;
+    h.slots[index] = { deps, callback };
+    return callback;
+  },
   useEffect: (effect: () => void | (() => void), deps: unknown[]) => {
     const index = h.cursor++;
     const previous = h.slots[index] as { deps: unknown[]; cleanup?: () => void } | undefined;
@@ -40,9 +46,10 @@ import { useChildHistory } from "./useChildHistory";
 type Row = { id: string; timestamp: string };
 let child = "child-a";
 let name = "behaviorLogs";
+let sandboxItems: Row[] | undefined;
 const render = (flush = true) => {
   h.cursor = 0;
-  const value = useChildHistory<Row>(child, name, "timestamp");
+  const value = useChildHistory<Row>(child, name, "timestamp", sandboxItems);
   if (flush) { const pending = h.pending.splice(0); pending.forEach(effect => effect()); }
   return value;
 };
@@ -52,7 +59,7 @@ const deliver = (index: number, values: Row[], fromCache = false) => h.listeners
 
 beforeEach(() => {
   h.slots = []; h.pending = []; h.listeners = []; h.cursor = 0; h.uid = "account-a"; h.enabled = true;
-  child = "child-a"; name = "behaviorLogs";
+  child = "child-a"; name = "behaviorLogs"; sandboxItems = undefined;
   vi.stubGlobal("localStorage", { getItem: vi.fn(() => "[]"), setItem: vi.fn() });
 });
 
@@ -95,5 +102,63 @@ describe("bounded child history reads", () => {
     settle(); expect(render().items).toHaveLength(200); render().loadMore(); settle();
     expect(render().items).toHaveLength(400); expect(localStorage.setItem).not.toHaveBeenCalled();
     render().loadMore(); settle(); expect(render().items).toHaveLength(450); expect(render().more).toBe(false);
+  });
+  it("revalidates same-document local edits and deletions before egress without writing", () => {
+    h.enabled = false;
+    vi.mocked(localStorage.getItem).mockReturnValue(JSON.stringify(rows(3)));
+    settle();
+    const initial = render();
+    expect(initial.isCurrent()).toBe(true);
+    vi.mocked(localStorage.getItem).mockReturnValue(JSON.stringify(rows(2)));
+    expect(initial.isCurrent()).toBe(false);
+    initial.reload(); settle();
+    const fresh = render();
+    expect(fresh.items).toHaveLength(2); expect(fresh.isCurrent()).toBe(true);
+    vi.mocked(localStorage.getItem).mockReturnValue("[]");
+    expect(fresh.isCurrent()).toBe(false);
+    expect(localStorage.setItem).not.toHaveBeenCalled();
+  });
+  it("rejects a captured egress callback after account/child ABA or a cache/error update", () => {
+    render(); deliver(0, rows(2));
+    const original = render(); expect(original.isCurrent()).toBe(true);
+    child = "child-b"; settle(); child = "child-a"; settle();
+    deliver(h.listeners.length - 1, rows(2));
+    const current = render(); expect(current.isCurrent()).toBe(true); expect(original.isCurrent()).toBe(false);
+    h.listeners.at(-1)!.fail();
+    expect(render().isCurrent()).toBe(false);
+    expect(current.isCurrent()).toBe(false);
+  });
+  it("keeps the current egress guard valid across an unchanged React rerender", () => {
+    render(); deliver(0, rows(2));
+    const before = render(); expect(before.isCurrent()).toBe(true);
+    const after = render();
+    expect(after.isCurrent()).toBe(true);
+    expect(before.isCurrent()).toBe(false);
+  });
+  it("does not validate old rows when a reload effect has read new storage before commit", () => {
+    h.enabled = false;
+    vi.mocked(localStorage.getItem).mockReturnValue(JSON.stringify(rows(3)));
+    settle(); const initial = render();
+    vi.mocked(localStorage.getItem).mockReturnValue(JSON.stringify(rows(2)));
+    initial.reload();
+    // This returns the old rows, then flushes the read effect. React has not
+    // rerendered the new snapshot yet, so this callback must remain invalid.
+    const beforeCommit = render();
+    expect(beforeCommit.items).toHaveLength(3);
+    expect(beforeCommit.isCurrent()).toBe(false);
+    const committed = render();
+    expect(committed.items).toHaveLength(2); expect(committed.isCurrent()).toBe(true);
+  });
+  it("cannot pair stale sandbox context rows with a freshly reloaded cross-tab storage snapshot", () => {
+    h.enabled = false; sandboxItems = rows(3);
+    vi.mocked(localStorage.getItem).mockReturnValue(JSON.stringify(sandboxItems));
+    settle(); expect(render().isCurrent()).toBe(true);
+    vi.mocked(localStorage.getItem).mockReturnValue(JSON.stringify(rows(2)));
+    render().reload(); settle();
+    expect(render().items).toHaveLength(3);
+    expect(render().isCurrent()).toBe(false);
+    sandboxItems = rows(2);
+    expect(render().isCurrent()).toBe(true);
+    expect(localStorage.setItem).not.toHaveBeenCalled();
   });
 });

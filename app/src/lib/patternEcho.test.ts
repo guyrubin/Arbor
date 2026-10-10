@@ -115,18 +115,26 @@ describe("TJB-06 — the echo is actually mounted on the save path", () => {
     expect(shipped).not.toContain("patternEchoFor(");
   });
 
-  it("both write paths arm it — the review-gated one too", () => {
-    const submit = /const submitLog = [\s\S]*?\n  };/.exec(stripped)?.[0] ?? "";
-    const confirm = /const confirmReview = [\s\S]*?\n  };/.exec(stripped)?.[0] ?? "";
-    expect(submit).toMatch(/setEchoType\(savedType\)/);
-    expect(confirm).toMatch(/setEchoType\(savedType\)/);
+  it("only a current saved-row identity arms the echo; removed rows cannot echo", () => {
+    expect(stripped).toContain('lastSavedBehavior?.childId === childProfile.id');
+    expect(stripped).toContain('behaviorLogs.find((log) => log.id === lastSavedBehavior.id)');
+    expect(stripped).toContain('echoLog?.behaviorType ?? null');
+    expect(stripped).toContain('dismissBehaviorEcho(echoLog?.id ?? "")');
+    // Negative control: remembered type alone survives Undo and child changes.
+    const stale = 'patternEchoFor(behaviorLogs, savedType, today)';
+    expect(stale).not.toContain('lastSavedBehavior?.childId');
+    expect(stale).not.toContain('behaviorLogs.find');
   });
 
-  it("an EDIT never counts as a new occurrence", () => {
-    for (const fn of ["submitLog", "confirmReview"]) {
-      const body = new RegExp(`const ${fn} = [\\s\\S]*?\\n  };`).exec(stripped)?.[0] ?? "";
-      expect(body, fn).toMatch(/const savedType = wasEditing \? null : newLogType;/);
-    }
+  it("a new durable context write arms it; EDIT and stale child writes never do", () => {
+    const ctx = readFileSync(path.join(here, "../context/ArborContext.tsx"), "utf8");
+    const write = /const handleAddLog = [\s\S]*?\n  };/.exec(ctx)?.[0] ?? "";
+    expect(write).toBeTruthy();
+    expect(write).toMatch(/if \(!existing\) \{\s*setLastSavedBehavior\(\{ childId: childProfile\.id, id: logItem\.id \}\)/);
+    const publish = write.indexOf('setLastSavedBehavior(');
+    expect(publish).toBeGreaterThan(write.indexOf('await logsCol.upsert(logItem)'));
+    expect(write.slice(write.indexOf('await logsCol.upsert(logItem)'), publish)).toContain('captureScopeRef.current !== captureScope');
+    expect(stripped).not.toMatch(/submitLog|confirmReview|handleAddLog/);
   });
 
   it("the CTA routes to the surface contract's declared demotion target", () => {

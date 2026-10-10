@@ -36,7 +36,7 @@ const stripComments = (code: string) =>
 /** The three surfaces that consume the explain route. */
 const SURFACES = [
   "components/tabs/MilestonesTab.tsx",
-  "components/tabs/BehaviorsTab.tsx",
+  "components/journal/JournalMomentDetails.tsx",
   "context/ArborContext.tsx",
 ] as const;
 
@@ -100,7 +100,7 @@ describe("AI-17 — no surface re-flattens the explain route into markdown", () 
   }
 
   it("the co-regulation script is no longer a markdown wall", () => {
-    const code = stripComments(read("components/tabs/BehaviorsTab.tsx"));
+    const code = stripComments(read("components/journal/JournalMomentDetails.tsx"));
     expect(code).not.toMatch(/<MarkdownBlock text=\{inlineCoRegulationScripts/);
     expect(code).toMatch(/<ExplainAnswerBlock answer=\{inlineCoRegulationScripts\[log\.id\]\}/);
   });
@@ -118,7 +118,7 @@ describe("AI-17 — no surface re-flattens the explain route into markdown", () 
     // Not a wall: it is safety copy whose bare helpline numbers only become
     // tap targets because MarkdownBlock links them. Converting it would break
     // a call button for a parent in crisis.
-    const code = stripComments(read("components/tabs/BehaviorsTab.tsx"));
+    const code = stripComments(read("components/overview/QuickLogModal.tsx"));
     expect(code).toMatch(/<MarkdownBlock text=\{escalationMarkdown\}/);
   });
 });

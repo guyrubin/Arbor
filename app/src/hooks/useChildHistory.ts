@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { collection, documentId, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { db, firebaseEnabled } from "../lib/firebase";
-import { historyWindow, nextHistoryWindow } from "../lib/historyWindow";
+import { historyWindow, nextHistoryWindow, sameLocalHistoryRows } from "../lib/historyWindow";
 
 /** Read-only historical view. Every expansion is an explicit bounded live query.
  * A one-row lookahead distinguishes a full page from the end of a collection.
@@ -20,10 +20,13 @@ export function useChildHistory<T extends { id: string }>(
   const scope = `${remote ? user?.uid : "local"}:${childId}:${name}`;
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
+  const renderToken = {};
+  const latestRender = useRef(renderToken);
+  latestRender.current = renderToken;
   const [window, setWindow] = useState({ scope, size: 200, retry: 0 });
   const size = window.scope === scope ? window.size : 200;
   const retry = window.scope === scope ? window.retry : 0;
-  const [snapshot, setSnapshot] = useState<{ scope: string; size: number; rows: T[]; more: boolean; confirmed: boolean; error: boolean } | null>(null);
+  const [snapshot, setSnapshot] = useState<{ scope: string; size: number; rows: T[]; more: boolean; confirmed: boolean; error: boolean; raw?: string } | null>(null);
   if (window.scope !== scope) {
     // Retire the previous scope even on A → B → A; an earlier expanded
     // window or cached rows must not be revived before a fresh read.
@@ -34,10 +37,10 @@ export function useChildHistory<T extends { id: string }>(
   useEffect(() => {
     if (!childId) return;
     let active = true;
-    const accept = (rows: T[], confirmed: boolean, error = false) => {
+    const accept = (rows: T[], confirmed: boolean, error = false, raw?: string) => {
       if (!active || scopeRef.current !== scope) return;
       const page = historyWindow(rows, size);
-      setSnapshot({ scope, size, rows: page.rows, more: page.more, confirmed, error });
+      setSnapshot({ scope, size, rows: page.rows, more: page.more, confirmed, error, raw });
     };
     if (remote && db && user) {
       const ref = collection(db, `users/${user.uid}/children/${childId}/${name}`);
@@ -53,10 +56,11 @@ export function useChildHistory<T extends { id: string }>(
       return () => { active = false; stop(); };
     }
     try {
-      const value: unknown = JSON.parse(localStorage.getItem(`arbor.${name}.${childId}`) || "[]");
+      const raw = localStorage.getItem(`arbor.${name}.${childId}`) || "[]";
+      const value: unknown = JSON.parse(raw);
       const rows = Array.isArray(value) ? value as T[] : [];
       if (dateField) rows.sort((a, b) => String((b as Record<string, unknown>)[dateField] ?? "").localeCompare(String((a as Record<string, unknown>)[dateField] ?? "")) || b.id.localeCompare(a.id));
-      accept(rows, true);
+      accept(rows, true, false, raw);
     } catch { accept([], false, true); }
     return () => { active = false; };
   }, [scope, remote, user?.uid, childId, name, dateField, size, retry]);
@@ -77,5 +81,19 @@ export function useChildHistory<T extends { id: string }>(
     if (scopeRef.current !== scope) return;
     setWindow(previous => ({ scope, size: previous.scope === scope ? previous.size : 200, retry: (previous.scope === scope ? previous.retry : 0) + 1 }));
   }, [scope]);
-  return { items: local?.rows ?? current?.rows ?? [], loading, error, more, confirmed, loadMore, reload };
+  /** Read-only egress revalidation for local snapshots: same-document writes
+   * do not fire a storage event. Never export a cached local row after it has
+   * changed or been removed. The caller reloads instead of writing anything. */
+  const isCurrent = () => {
+    if (latestRender.current !== renderToken || scopeRef.current !== scope || loading || error || !confirmed) return false;
+    if (remote) return true;
+    try {
+      // Bind the fingerprint to the same snapshot as the rendered rows. An
+      // effect may have read new storage before React commits those new rows.
+      const raw = localStorage.getItem(`arbor.${name}.${childId}`) || "[]";
+      return current?.raw !== undefined && current.raw === raw
+        && (!sandboxItems || sameLocalHistoryRows(sandboxItems, raw));
+    } catch { return false; }
+  };
+  return { items: local?.rows ?? current?.rows ?? [], loading, error, more, confirmed, loadMore, reload, isCurrent };
 }

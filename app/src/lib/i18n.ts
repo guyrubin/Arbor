@@ -8,6 +8,7 @@
  * before wide release (child-health product).
  */
 import { companionEn, companionHe } from "./i18nCompanion";
+import { keptEn, keptHe } from "./i18nKept";
 import { isolate } from "./bidi";
 import { elevationEn, elevationHe } from "./i18nElevation";
 
@@ -16,6 +17,7 @@ export type UiLang = "en" | "he";
 type Dict = Record<string, string>;
 
 export const en: Dict = {
+  ...keptEn,
   ...companionEn,
   // AP-005 — JITAI home-nudge strings (were hardcoded EN on the #1 retention surface).
   "nudge.prep.headline": "Get ahead of {hour}",
@@ -617,6 +619,8 @@ export const en: Dict = {
   "beh.editMoment": "Edit this moment",
   // COACH-5 — quick-capture composer copy (was an inline uiLang ternary table).
   "beh.capture.intro": "Two lines is enough — add detail only when it will help later.",
+  "journal.filter.more": "More filters",
+  "beh.journal.hardMoments": "All hard moments are in Journal",
   "beh.capture.label": "What happened with {name} today?",
   "beh.warm.quote": "Last time you wrote: “{words}” · {day}",
   "beh.warm.quoteLead": "Last time you wrote:",
@@ -638,7 +642,8 @@ export const en: Dict = {
   "beh.speak": "Speak",
   "beh.stop": "Stop",
   "beh.parsing": "Arbor is filling in the form for you…",
-  "beh.quickFill": "Quick-fill scenarios",
+  "beh.quickFill": "Start with a situation",
+  "beh.starters.hint": "Choose a type, then add what happened and what you tried. Your words stay unchanged.",
   "beh.typeLabel": "Type of challenge",
   "beh.whereLabel": "Where did it happen?",
   "beh.intensity": "Intensity (1-5)",
@@ -2594,6 +2599,7 @@ export const en: Dict = {
 };
 
 export const he: Dict = {
+  ...keptHe,
   ...companionHe,
   // AP-005 — JITAI home-nudge strings (HE; were hardcoded EN). Flagged for arbor-localization native review.
   "nudge.prep.headline": "להתכונן ל{hour}",
@@ -3161,6 +3167,8 @@ export const he: Dict = {
   "beh.editMoment": "עריכת הרגע",
   // COACH-5 — quick-capture composer copy (he; was an inline uiLang ternary table).
   "beh.capture.intro": "שתי שורות מספיקות — פרטים רק אם יעזרו אחר כך.",
+  "journal.filter.more": "מסננים נוספים",
+  "beh.journal.hardMoments": "כל הרגעים הקשים נמצאים ביומן",
   "beh.capture.label": "מה קרה היום עם {name}?",
   "beh.warm.quote": "בפעם הקודמת כתבתם: „{words}” · {day}",
   "beh.warm.quoteLead": "בפעם הקודמת כתבתם:",
@@ -3182,7 +3190,8 @@ export const he: Dict = {
   "beh.speak": "דברו",
   "beh.stop": "עצור",
   "beh.parsing": "ארבור ממלאת את הטופס בשבילכם…",
-  "beh.quickFill": "מילוי מהיר",
+  "beh.quickFill": "התחילו מבחירת מצב",
+  "beh.starters.hint": "בחרו סוג, ואז הוסיפו מה קרה ומה ניסיתם. המילים שלכם נשארות ללא שינוי.",
   "beh.typeLabel": "סוג האתגר",
   "beh.whereLabel": "היכן זה קרה?",
   "beh.intensity": "עוצמה (1-5)",

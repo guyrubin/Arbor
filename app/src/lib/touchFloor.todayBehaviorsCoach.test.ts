@@ -31,6 +31,7 @@ const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
 const FILES = {
   play: "components/overview/DailyPlayCard.tsx",
   behaviors: "components/tabs/BehaviorsTab.tsx",
+  journal: "components/tabs/JournalTab.tsx",
   coach: "components/tabs/CoachTab.tsx",
   language: "components/tabs/LanguageLabVocabView.tsx",
   // B-SHELL-21: the shell-mounted post-capture strip (CTA was 36 px, dismiss 32).
@@ -44,8 +45,8 @@ const WIDTH_FLOOR = /min-w-11\b|min-w-\[4[4-9]px\]|touch-target|var\(--touch-min
 
 const CONTROLS: { id: string; file: keyof typeof FILES; near: string; width?: true }[] = [
   { id: "Today play-card citation link", file: "play", near: "{activity.source.org}", width: true },
-  { id: "Behaviors filter reset", file: "behaviors", near: "onClick={resetFilters}" },
-  { id: "Behaviors week-group header", file: "behaviors", near: "setCollapsedWeeks((p) =>" },
+  { id: "Journal record filter reset", file: "journal", near: "onClick={clearJournalFilters}" },
+  { id: "Journal month navigation", file: "journal", near: 'data-testid="journal-month"' },
   { id: "Coach contract disclosure", file: "coach", near: 'data-testid="coach-contract-toggle"', width: true },
   { id: "Language vocab ideas chevron", file: "language", near: "setShowActivities((v) => !v)", width: true },
   { id: "Post-capture strip CTA", file: "strip", near: "onClick={acceptPostCaptureCoach}" },
@@ -78,8 +79,8 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
   const RETIRED: [keyof typeof FILES, string][] = [
     // The citation was a bare inline <a> whose only styling was the underline.
     ["play", '            <a\n              href={activity.source.url}\n              target="_blank"\n              rel="noopener noreferrer"\n              style={{ color: "var(--arbor-muted)"'],
-    ["behaviors", 'onClick={resetFilters} className="flex items-center gap-1"'],
-    ["behaviors", 'className="w-full flex items-center justify-between text-[11px] font-bold rounded-lg px-3 py-2"'],
+    ["journal", 'onClick={resetFilters} className="flex items-center gap-1"'],
+    ["journal", 'className="w-full flex items-center justify-between text-[11px] font-bold rounded-lg px-3 py-2"'],
     ["coach", "min-h-[36px]"],
     ["language", 'className="inline-flex items-center gap-1 text-xs min-h-[44px]"'],
     ["strip", "min-h-9 flex-shrink-0"],
@@ -104,12 +105,14 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     expect(preFixChevron).not.toMatch(WIDTH_FLOOR);
     // …and each post-fix shell passes both.
     expect(shellAround(read(FILES.coach), 'data-testid="coach-contract-toggle"')).toMatch(FLOOR);
-    expect(shellAround(read(FILES.behaviors), "setCollapsedWeeks((p) =>")).toMatch(FLOOR);
+    expect(shellAround(read(FILES.journal), 'data-testid="journal-month"')).toMatch(FLOOR);
+    expect(read(FILES.behaviors)).not.toContain("setCollapsedWeeks");
     expect(shellAround(read(FILES.language), "setShowActivities((v) => !v)")).toMatch(WIDTH_FLOOR);
   });
 
   it("the glyphs themselves did not grow — only the hit boxes", () => {
-    expect(read(FILES.behaviors)).toContain('<Icon name="restart_alt" size={13} />');
+    expect(read(FILES.journal)).toContain('data-testid="journal-month"');
+    expect(read(FILES.behaviors)).not.toContain("resetFilters");
     expect(read(FILES.coach)).toContain('<Icon name="shield" size={13} />');
     expect(read(FILES.language)).toContain('<Icon name="expand_more" size={16} />');
   });

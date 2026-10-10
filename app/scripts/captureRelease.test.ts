@@ -113,7 +113,7 @@ describe('final release evidence contracts, no sockets or browser', () => {
   });
   it('keeps publication, providers, real data and font binaries out of the branch-specific workflow', () => {
     const workflow = read('.github/workflows/arbor-parent-release-capture.yml');
-    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic']");
+    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic']");
     expect(workflow).toContain('contents: read');
     expect(workflow).toContain('fail-fast: false');
     expect(workflow).toContain('max-parallel: 4');
@@ -127,6 +127,7 @@ describe('final release evidence contracts, no sockets or browser', () => {
   it('aggregates only the exact final-source complete four-way base matrix and font-proven PNGs', () => {
     const full = summarizeRelease(records(), identity);
     expect(summarizeRelease(records(releaseMatrix('ask-diagnostic')), identity, 'ask-diagnostic')).toMatchObject({ completed: true, expectedBaseCells: 0, baseCells: 0, returnedShards: 1, interactionCells: 4 });
+    expect(summarizeRelease(records(releaseMatrix('report-close-only')), identity, 'report-close-only')).toMatchObject({ completed: true, expectedBaseCells: 0, baseCells: 0, returnedShards: 4, interactionCells: 8 });
     expect(full).toMatchObject({ completed: true, baseCells: 172, interactionCells: 294, screenshots: 466, expectedShards: 8, returnedShards: 8 });
     for (const viewport of RELEASE_VIEWPORTS) {
       const missingClose = records();

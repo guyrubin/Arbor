@@ -29,6 +29,7 @@ export function SendSheet({
   text,
   artifact,
   surface,
+  beforeSend,
 }: {
   open: boolean;
   onClose: () => void;
@@ -36,6 +37,9 @@ export function SendSheet({
   text: string;
   artifact: LoopArtifact;
   surface: string;
+  /** Optional source-freshness guard. A changed source closes this review
+   * before any text reaches the OS share/copy seam. */
+  beforeSend?: () => boolean;
 }) {
   const { t } = useLanguage();
   const compact = useCompactSurface();
@@ -50,6 +54,7 @@ export function SendSheet({
   }, [open, text]);
 
   const send = async () => {
+    if (beforeSend && !beforeSend()) { onClose(); return; }
     const r = await sendTextShare({ artifact, surface, text: draft });
     if (r === "shared") onClose();
     else if (r === "copied") setStatus("copied");

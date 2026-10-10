@@ -97,19 +97,25 @@ describe("COACH-8 — Behaviors capture is an honest launcher (critic r2)", () =
     expect(/onChange=\{\(e\) => \{ setBarText\(e\.target\.value\); openFromBar/.test(r1)).toBe(true);
   });
 
-  it("the inline form keeps its prefill seam (extraction fallback) — focus moves to the trigger field", () => {
-    expect(code).toMatch(/const openFromBar = \(text: string\) => \{\s*if \(text\.trim\(\)\) setNewLogTrigger\(text\);/);
-    expect(code).toContain("triggerInputRef.current");
-    expect(code).toMatch(/el\.focus\(\)/);
+  it("the shared sheet owns the immediately editable input without a hub focus jump", () => {
+    const modal = read("components/overview/QuickLogModal.tsx");
+    expect(code).not.toMatch(/openFromBar|triggerInputRef|<form|<motion\.form/);
+    expect(modal).toContain('id="quick-log-moment"');
+    expect(modal).toContain('value={newLogTrigger}');
+    expect(modal).toContain('onChange={(e) => changeTrigger(e.target.value)}');
+    expect(modal).toMatch(/const changeTrigger = \(text: string\) => \{\s*stopCaptureWork\(\);\s*setNewLogTrigger\(text\);/);
   });
 
-  it("zero new capture paths — saving still goes only through the one write seam", () => {
-    // Exactly two call sites into the SAME existing handleAddLog seam:
-    // ungated submitLog, and confirmReview (TODAY-3 wave-3: the explicit
-    // ConfirmCaptureReview confirm for voice/photo/handoff captures — an
-    // interposed review on the existing seam, not a new capture path;
-    // pinned in detail by confirmCaptureReview.test.ts).
-    expect(count(code, "handleAddLog(e)")).toBe(2);
+  it("zero duplicate writers — the sheet confirms through the existing one write seam", () => {
+    const modal = read("components/overview/QuickLogModal.tsx");
+    expect(code).not.toMatch(/handleAddLog\(|addMoment\(/);
+    expect(count(modal, "handleAddLog(e, { callerShowsFailure: true })")).toBe(1);
+    expect(modal).toContain('onConfirm={confirm}');
+    const submit = /const submit = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
+    expect(submit).toContain("setReviewing(true)");
+    expect(submit).not.toContain("handleAddLog");
+    // Negative control: the retired second writer is detected, not ignored.
+    expect('const submitLog = (e) => handleAddLog(e);').toMatch(/handleAddLog\(/);
   });
 });
 

@@ -110,9 +110,13 @@ describe("REC-01 · the capture sheet is never silent while the mic is on", () =
   });
 });
 
-describe("REC-01 · Behaviours uses the same indicator", () => {
+describe("REC-01 · Behaviours delegates recording to the guarded sheet", () => {
   const behaviors = stripComments(read("components/tabs/BehaviorsTab.tsx"));
-  it("mounts RecordingIndicator with the pinned caption id while listening", () => {
-    expect(behaviors).toMatch(/\{listening && \(\s*<div className="mt-3">\s*<RecordingIndicator[\s\S]{0,500}captionTestId="voice-interim-caption"/);
+  it("launches voice through the one capture sheet and cannot open an unindicated microphone", () => {
+    expect(behaviors).toContain("onMode={(mode) => openCaptureSheet({ mode })}");
+    expect(behaviors).not.toMatch(/startDictation|listening|<RecordingIndicator/);
+    const modal = stripComments(read("components/overview/QuickLogModal.tsx"));
+    expect(modal).toContain('captionTestId="quicklog-listening-caption"');
+    expect(modal).toMatch(/\{listening && \(\s*<div className="mb-4">\s*<RecordingIndicator/);
   });
 });

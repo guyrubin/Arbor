@@ -1,0 +1,118 @@
+[
+  {
+    "id": "capture",
+    "owner": "components/tabs/BehaviorsTab.tsx",
+    "markers": [
+      "<QuickCaptureBar",
+      "openCaptureSheet({ mode: \"text\" })"
+    ]
+  },
+  {
+    "id": "photo",
+    "owner": "components/overview/QuickLogModal.tsx",
+    "markers": [
+      "data-testid=\"quicklog-photo-input\"",
+      "fileToThumbnail",
+      "photoAttachment: photo"
+    ]
+  },
+  {
+    "id": "voice",
+    "owner": "components/overview/QuickLogModal.tsx",
+    "markers": [
+      "startDictation(",
+      "extractFromTyped(said,"
+    ]
+  },
+  {
+    "id": "review",
+    "owner": "components/overview/QuickLogModal.tsx",
+    "markers": [
+      "<ConfirmCaptureReview",
+      "onConfirm={confirm}"
+    ]
+  },
+  {
+    "id": "log",
+    "owner": "components/overview/QuickLogModal.tsx",
+    "markers": [
+      "handleAddLog(e, { callerShowsFailure: true })",
+      "addMoment("
+    ]
+  },
+  {
+    "id": "record",
+    "owner": "components/tabs/BehaviorsTab.tsx",
+    "markers": [
+      "requestJournalFilter(\"hard\")",
+      "setActiveTab(\"journal\")"
+    ]
+  },
+  {
+    "id": "edit",
+    "owner": "components/tabs/JournalTab.tsx",
+    "markers": [
+      "openCaptureSheet({ editLogId: logId })",
+      "onEdit={openMomentLogId(openSignal) ? editOpenSignal : undefined}"
+    ]
+  },
+  {
+    "id": "resolve",
+    "owner": "components/journal/JournalEntrySheet.tsx",
+    "markers": [
+      "data-testid=\"journal-entry-resolve\"",
+      "onClick={onToggleResolved}"
+    ]
+  },
+  {
+    "id": "delete",
+    "owner": "components/journal/JournalEntrySheet.tsx",
+    "markers": [
+      "data-testid=\"journal-entry-delete\"",
+      "data-testid=\"journal-entry-delete-confirm\"",
+      "await onDelete()"
+    ]
+  },
+  {
+    "id": "export",
+    "owner": "components/tabs/JournalTab.tsx",
+    "markers": [
+      "data-testid=\"journal-export-pdf\"",
+      "exportBehaviorPdf(rows"
+    ]
+  },
+  {
+    "id": "guide",
+    "owner": "components/tabs/BehaviorsTab.tsx",
+    "markers": [
+      "<HardMomentsSection",
+      "openHardMomentNow()"
+    ]
+  },
+  {
+    "id": "patterns",
+    "owner": "components/tabs/BehaviorsTab.tsx",
+    "markers": [
+      "<PatternInsights",
+      "data-testid=\"behaviors-find-pattern\"",
+      "onClick={handleAnalyzeBehaviors}"
+    ]
+  },
+  {
+    "id": "script",
+    "owner": "components/journal/JournalMomentDetails.tsx",
+    "markers": [
+      "handleGetInlineCoRegulationScript(log)",
+      "<SayThis",
+      "seed.logCoreg"
+    ]
+  },
+  {
+    "id": "starters",
+    "owner": "components/overview/QuickLogModal.tsx",
+    "markers": [
+      "data-testid=\"quicklog-starters\"",
+      "autofillLogTemplate(starter)"
+    ]
+  }
+]

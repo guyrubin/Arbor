@@ -62,6 +62,7 @@ import { buildChatContext, readWeeklyContextConsent } from "../ai/chatContext";
 import { buildJournalRequest } from "../ai/journalContext";
 import { readTodayPin } from "../lib/practice/todayPin";
 import { dayKey } from "../practice/signals";
+import type { JournalFilter } from "../lib/journalFilters";
 import type { CaptureSource } from "../components/overview/ConfirmCaptureReview";
 import { useLanguage } from "./LanguageContext";
 import { threadForTopic } from "../lib/topicConversation";
@@ -265,9 +266,8 @@ function useArborState() {
 
   /**
    * Capture hand-off: a surface that offers "log a moment" entry tiles (Journal)
-   * can name the modality it promised, and the capture surface (Behaviors) opens
-   * in that mode and clears the request. Without this the entry tiles were
-   * decoys — a bare setActiveTab("behaviors") that ignored the chosen mode.
+   * can name the modality it promised. Today consumes the legacy nudge request
+   * into the shared capture sheet; direct capture doors use openCaptureSheet.
    */
   const [pendingCaptureMode, setPendingCaptureMode] = useState<CaptureMode | null>(null);
   // ENG-22: the ONE seam every capture entry goes through (bar, bell nudge,
@@ -288,8 +288,13 @@ function useArborState() {
    * derived score, verdict, or any other payload.
    */
   const [pendingJournalFocusId, setPendingJournalFocusId] = useState<string | null>(null);
-  const requestJournalFocus = (signalId: string) => setPendingJournalFocusId(signalId);
+  const requestJournalFocus = (signalId: string) => { setPendingJournalFilter(null); setPendingJournalFocusId(signalId); };
   const consumeJournalFocus = () => setPendingJournalFocusId(null);
+  // B-ASKJB-23: selecting the Journal record is a consume-once handoff.
+  // A newer filter request replaces a stale row focus, and vice versa.
+  const [pendingJournalFilter, setPendingJournalFilter] = useState<JournalFilter | null>(null);
+  const requestJournalFilter = (filter: JournalFilter) => { setPendingJournalFocusId(null); setPendingJournalFilter(filter); };
+  const consumeJournalFilter = () => setPendingJournalFilter(null);
 
   /**
    * AIX-S3 — handoff-note → Consult composer prefill seam (mirrors the
@@ -714,33 +719,12 @@ function useArborState() {
     }
   };
 
+  // B-ASKJB-23: retain the three situation starters without fabricating
+  // observations. Choosing one changes classification only; the parent's
+  // words, notes, intensity and duration remain their own editable inputs.
   const autofillLogTemplate = (type: "morning" | "screen" | "sibling") => {
-    if (type === "morning") {
-      setNewLogType("Transition Refusal");
-      setNewLogIntensity(4);
-      setNewLogDuration(20);
-      setNewLogTrigger("Asked to put down the red wooden truck and put boots on to leave for nursery school");
-      setNewLogResponse(
-        "Lowered physical height to eye level, named the feeling ('You really want to keep playing with the truck'), and offered to place truck on 'safe shelf' until returning home."
-      );
-      setNewLogNotes("Calmed and put shoes on within 8 mins instead of usual 25. No screaming, just mild protest.");
-    } else if (type === "screen") {
-      setNewLogType("Screentime Dispute");
-      setNewLogIntensity(5);
-      setNewLogDuration(25);
-      setNewLogTrigger("Told that nursery class ipad/tablet must be powered off for bedtime story sequence");
-      setNewLogResponse(
-        "Lowered voice volume to a whisper, counted down ('3 minutes remaining for ipad, then bunny bedtime begins'), and handed Hebrew/English co-regulation comfort cards."
-      );
-      setNewLogNotes("Exhibited high intensity crying initially, but shifted focus quickly once comfort cards were hold.");
-    } else {
-      setNewLogType("Sibling Conflict");
-      setNewLogIntensity(3);
-      setNewLogDuration(10);
-      setNewLogTrigger("Dispute over sharing coloring markers during afternoon quiet playtime");
-      setNewLogResponse("Did not yell. Walked over, structured drawing turns using sandbox egg-timer visual cues.");
-      setNewLogNotes("Resolved marker dispute within 2 turns without tearing coloring pages.");
-    }
+    const types = { morning: "Transition Refusal", screen: "Screentime Dispute", sibling: "Sibling Conflict" };
+    setNewLogType(types[type]);
   };
 
   // Auto Scroll Chat
@@ -1351,6 +1335,13 @@ function useArborState() {
     }
   };
 
+  // The Behaviors echo remembers only a newly saved row identity, never a
+  // second draft. Its current record is read after save and disappears on Undo.
+  const [lastSavedBehavior, setLastSavedBehavior] = useState<{ childId: string; id: string } | null>(null);
+
+  const dismissBehaviorEcho = (id: string) => setLastSavedBehavior((previous) =>
+    previous?.childId === childProfile.id && previous.id === id ? null : previous);
+
   // Add a Custom Behavior Log
   const captureScopeRef = useRef({ childId: childProfile.id });
   if (captureScopeRef.current.childId !== childProfile.id) captureScopeRef.current = { childId: childProfile.id };
@@ -1420,8 +1411,11 @@ function useArborState() {
       await logsCol.upsert(logItem);
       if (captureScopeRef.current !== captureScope) return null;
       if (!existing) {
+        setLastSavedBehavior({ childId: childProfile.id, id: logItem.id });
         track("log_created", { type: newLogType, intensity: logItem.intensity, context: logItem.context });
         trackCaptureSaved("log");
+      } else {
+        dismissBehaviorEcho(existing.id);
       }
       if (captureRevisionRef.current === revision && currentCaptureDraftRef.current === draftSnapshot) resetLogForm();
       return logItem;
@@ -1515,7 +1509,10 @@ function useArborState() {
   useEffect(() => {
     resetLogForm();
     setCaptureSheet({ open: false });
-    // Child changes retire every capture draft, including unfinished edits.
+    setLastSavedBehavior(null);
+    setPendingJournalFilter(null);
+    setPendingJournalFocusId(null);
+    // Child changes retire every capture draft and Journal handoff.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childProfile.id]);
 
@@ -1852,6 +1849,11 @@ function useArborState() {
     pendingCaptureMode,
     requestCapture,
     consumeCaptureRequest,
+    lastSavedBehavior,
+    dismissBehaviorEcho,
+    pendingJournalFilter,
+    requestJournalFilter,
+    consumeJournalFilter,
     pendingJournalFocusId,
     requestJournalFocus,
     consumeJournalFocus,

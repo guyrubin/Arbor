@@ -324,6 +324,8 @@ export interface BehaviorLog {
   /** B-TODAY-19: the promptBank question this moment answered (elev.prompt.*
    *  key) — stored so "prompt answered" is a fact, never the question text. */
   promptKey?: string;
+  /** Optional parent-selected keepsake kind on a plain Moment; never inferred. */
+  kept?: "said" | "by_herself" | "first";
   /** Parent-confirmed Harbor conversation provenance; never written by the realtime provider. */
   conversationProposalId?: string;
   sourceExcerpt?: string;

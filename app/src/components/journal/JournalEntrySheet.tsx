@@ -9,7 +9,8 @@ import type { ShareCardOpts } from "../../lib/shareCard";
 import { fmtDay } from "../../lib/formatDate";
 import type { KeptProvenance } from "../../lib/captureProvenance";
 import type { TimelineSignal, SignalProvenance } from "../../lib/signalTimeline";
-import type { DevelopmentalDomainId } from "../../types";
+import JournalMomentDetails from "./JournalMomentDetails";
+import type { BehaviorLog, DevelopmentalDomainId } from "../../types";
 
 /**
  * TJB-13 — the tapped journal row.
@@ -18,7 +19,7 @@ import type { DevelopmentalDomainId } from "../../types";
  * and had no way to read the rest of what they wrote, let alone fix a typo.
  * The moment they captured was, in practice, write-only. This sheet is the
  * detail view, and for a moment (a behaviorLog the PARENT owns) it hands off
- * to the one existing edit seam — `startEditLog` + the Behaviors capture form
+ * to the one existing edit seam — the shared capture sheet
  * — rather than forking a second editor.
  *
  * READ + ROUTE only: no new write path, no second copy of the log form.
@@ -41,6 +42,7 @@ export default function JournalEntrySheet({
   onClose,
   onEdit,
   hardMoment,
+  momentLog,
   onToggleResolved,
   onDelete,
 }: {
@@ -64,6 +66,7 @@ export default function JournalEntrySheet({
   /** B-ASKJB-30: present for a hard moment (an incident-type log) — resolve
    *  and delete live here now, not on the Behaviors list. */
   hardMoment?: { resolved: boolean };
+  momentLog?: BehaviorLog;
   onToggleResolved?: () => void;
   onDelete?: () => void | Promise<void>;
 }) {
@@ -118,13 +121,15 @@ export default function JournalEntrySheet({
                   {t("beh.resolved")}
                 </p>
               )}
-              {detail && (
+              {detail && !momentLog && (
                 <p className="mt-1.5 text-[13.5px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
                   {detail}
                 </p>
               )}
             </div>
           </div>
+
+          {momentLog && prov === "manual" && <JournalMomentDetails log={momentLog} />}
 
           {signal.photo && (
             <img
@@ -210,7 +215,7 @@ export default function JournalEntrySheet({
             />
           )}
 
-          {/* The ONE edit route — the existing Behaviors form. Offered only for
+          {/* The ONE edit route — the existing capture sheet. Offered only for
               the parent's own moments; an Arbor- or child-authored row is a
               record, not a draft (prov is read here so that stays explicit). */}
           {onEdit && prov === "manual" && (
@@ -225,19 +230,19 @@ export default function JournalEntrySheet({
             </button>
           )}
 
-          {hardMoment && prov === "manual" && (onToggleResolved || onDelete) && (
+          {prov === "manual" && (onToggleResolved || onDelete) && (
             <div className="flex flex-wrap items-center gap-2" data-testid="journal-entry-hard-actions">
               {onToggleResolved && (
                 <button
                   type="button"
                   onClick={onToggleResolved}
-                  aria-pressed={hardMoment.resolved}
+                  aria-pressed={(hardMoment?.resolved ?? !!momentLog?.resolved)}
                   data-testid="journal-entry-resolve"
                   className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-[13px] font-bold"
                   style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}
                 >
-                  <Icon name={hardMoment.resolved ? "replay" : "check_circle"} size={16} />
-                  {hardMoment.resolved ? t("journal.entry.reopen") : t("journal.entry.markResolved")}
+                  <Icon name={(hardMoment?.resolved ?? !!momentLog?.resolved) ? "replay" : "check_circle"} size={16} />
+                  {(hardMoment?.resolved ?? !!momentLog?.resolved) ? t("journal.entry.reopen") : t("journal.entry.markResolved")}
                 </button>
               )}
               {onDelete && (

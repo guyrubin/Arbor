@@ -33,7 +33,7 @@ export function summarizeRelease(records, identity, scope = 'all') {
       const routes = shardRoutes(ids, capture.cell.shard);
       if (cells.length !== routes.length || missingBaseEvidence(cells, routes, viewport).length) reasons.push('BASE_EVIDENCE_MISSING');
       baseCells += cells.filter((cell) => cell.mounted && cell.shot).length;
-    } else if (['navigation', 'ask', 'ask-diagnostic', 'focused'].includes(group) && viewport) {
+    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused'].includes(group) && viewport) {
       if (evidence?.sourceSha !== identity.sourceSha || evidence?.sourceTreeSha !== identity.sourceTreeSha) reasons.push('INTERACTION_IDENTITY_MISMATCH');
       if (missingReleaseInteractionEvidence(cells, { group, viewport, ...identity }).length || !cells.length || cells.some((cell) => !cell.reached || !cell.shot)) reasons.push('INTERACTION_EVIDENCE_MISSING');
       interactionCells += cells.filter((cell) => cell.reached && cell.shot).length;

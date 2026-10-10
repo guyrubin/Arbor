@@ -28,7 +28,6 @@ const SEAM_TOASTS = [
   "components/companion/useNowLoop.ts",
   "components/kidmode/SneakHandBackCard.tsx",
   "components/tabs/BedtimeStoriesTab.tsx",
-  "components/tabs/BehaviorsTab.tsx",
 ];
 
 const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");

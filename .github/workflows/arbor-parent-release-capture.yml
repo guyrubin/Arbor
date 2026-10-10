@@ -3,7 +3,7 @@ on:
   # Dedicated candidate branch only. This never changes the active small capture
   # or production workflows, and never merges/deploys to obtain evidence.
   push:
-    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic']
+    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic']
     paths: ['app/**', 'knowledge/**', '.github/workflows/arbor-parent-release-capture.yml']
 permissions:
   contents: read
@@ -25,7 +25,8 @@ jobs:
         name: Derive the bounded matrix from its pure source contract
         shell: bash
         run: |
-          if [[ "$GITHUB_REF_NAME" == "codex/parent-final-ask-diagnostic" ]]; then scope=ask-diagnostic; else scope=all; fi
+          if [[ "$GITHUB_REF_NAME" == "codex/parent-close-return-diagnostic" ]]; then scope=report-close-only;
+          elif [[ "$GITHUB_REF_NAME" == "codex/parent-final-ask-diagnostic" ]]; then scope=ask-diagnostic; else scope=all; fi
           CAPTURE_SCOPE="$scope" node --input-type=module -e 'import { releaseMatrix } from "./app/scripts/capture/release-config.mjs"; console.log("cells=" + JSON.stringify(releaseMatrix(process.env.CAPTURE_SCOPE)));' >> "$GITHUB_OUTPUT"
           echo "scope=$scope" >> "$GITHUB_OUTPUT"
           echo "source-tree=$(git rev-parse HEAD:app/src)" >> "$GITHUB_OUTPUT"

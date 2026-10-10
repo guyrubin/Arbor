@@ -1,11 +1,9 @@
 /**
  * keepsake.test.ts — ENG-14: compounding value made visible, and kept safe.
  *
- * Two pure modules under test: keepsakeCounts ("Arbor knows {n} things") and
- * keepsakeMonth (the month keepsake). Both fail without the change — neither
- * existed, and no code in the app produced a day-0 count of what Arbor holds
- * or a month-in-review of any kind (grep for month-in-review returned only
- * billing).
+ * The existing keepsakeCounts module remains covered here. B-ASKJB-37
+ * replaces the old month count object; its dated page is covered separately
+ * in keepsakeMonth.test.ts.
  *
  * The firewall cases are the point: a count must stay a count. Any denominator,
  * ratio, target or month-over-month delta appearing in these shapes is the
@@ -13,14 +11,6 @@
  */
 import { describe, it, expect } from "vitest";
 import { arborKnows, countProfileFacts, type KnowsInput } from "./keepsakeCounts";
-import {
-  MONTH_CARD_IDS,
-  buildMonthKeepsake,
-  monthKeyOf,
-  monthKeepsakeStorageKey,
-  shouldOfferMonthKeepsake,
-} from "./keepsakeMonth";
-
 /* ── ENG-14(a) · Arbor knows {n} things ──────────────────────────────────── */
 
 const zero: KnowsInput = { profileFacts: 0, moments: 0, milestones: 0, memories: 0 };
@@ -75,78 +65,5 @@ describe("what Arbor knows is a COUNT", () => {
     for (const banned of ["max", "of", "target", "percent", "pct", "ratio", "delta", "trend", "score"]) {
       expect(knows).not.toHaveProperty(banned);
     }
-  });
-});
-
-/* ── ENG-14(b) · The month keepsake ──────────────────────────────────────── */
-
-describe("the month keepsake", () => {
-  it("builds a card per non-empty count, in order", () => {
-    const keepsake = buildMonthKeepsake({ monthKey: "2026-08", moments: 12, milestones: 2, stories: 1 });
-    expect(keepsake).not.toBeNull();
-    expect(keepsake!.cards.map((c) => c.id)).toEqual(["moments", "milestones", "stories"]);
-    expect(keepsake!.month).toBe(8);
-    expect(keepsake!.year).toBe(2026);
-  });
-
-  it("adds the parent's own words VERBATIM as a fourth card", () => {
-    const quote = "  She asked to read it again, twice.  ";
-    const keepsake = buildMonthKeepsake({ monthKey: "2026-08", moments: 3, milestones: 0, stories: 0, parentQuote: quote });
-    expect(keepsake!.cards.map((c) => c.id)).toEqual(["moments", "quote"]);
-    expect(keepsake!.cards[1].quote).toBe("She asked to read it again, twice.");
-  });
-
-  it("a month that held nothing gets NO card, not three zeros", () => {
-    expect(buildMonthKeepsake({ monthKey: "2026-08", moments: 0, milestones: 0, stories: 0 })).toBeNull();
-  });
-
-  it("rejects a malformed month key instead of inventing a month", () => {
-    expect(buildMonthKeepsake({ monthKey: "", moments: 3, milestones: 0, stories: 0 })).toBeNull();
-    expect(buildMonthKeepsake({ monthKey: "2026-13", moments: 3, milestones: 0, stories: 0 })).toBeNull();
-  });
-
-  it("CLINICAL FIREWALL: a card is a count or a quote — it cannot carry a delta", () => {
-    const keepsake = buildMonthKeepsake({ monthKey: "2026-08", moments: 12, milestones: 2, stories: 1 })!;
-    for (const card of keepsake.cards) {
-      const keys = Object.keys(card).sort();
-      expect(keys).toEqual(keys.includes("quote") ? ["id", "quote"] : ["count", "id"]);
-    }
-    // Negative control: the builder sees ONE month and so CANNOT compare two.
-    expect(buildMonthKeepsake.length).toBe(1);
-    expect([...MONTH_CARD_IDS]).toEqual(["moments", "milestones", "stories", "quote"]);
-  });
-});
-
-describe("offering the month keepsake — once, and never for a half month", () => {
-  const keepsake = buildMonthKeepsake({ monthKey: "2026-08", moments: 5, milestones: 1, stories: 0 });
-
-  it("offers on the first open of the following month", () => {
-    expect(
-      shouldOfferMonthKeepsake({ lastOfferedMonthKey: null, keepsake, currentMonthKey: "2026-09" }),
-    ).toBe(true);
-  });
-
-  it("never offers the month the family is still living in", () => {
-    expect(
-      shouldOfferMonthKeepsake({ lastOfferedMonthKey: null, keepsake, currentMonthKey: "2026-08" }),
-    ).toBe(false);
-  });
-
-  it("never nags: once offered, never again", () => {
-    expect(
-      shouldOfferMonthKeepsake({ lastOfferedMonthKey: "2026-08", keepsake, currentMonthKey: "2026-09" }),
-    ).toBe(false);
-  });
-
-  it("offers nothing when the month held nothing", () => {
-    expect(
-      shouldOfferMonthKeepsake({ lastOfferedMonthKey: null, keepsake: null, currentMonthKey: "2026-09" }),
-    ).toBe(false);
-  });
-
-  it("month keys are stable and per-child storage is namespaced", () => {
-    expect(monthKeyOf("2026-08-31T22:00:00Z")).toBe("2026-08");
-    expect(monthKeyOf("nope")).toBeNull();
-    expect(monthKeepsakeStorageKey("child-7")).toBe("arbor.keepsake.month.child-7");
   });
 });

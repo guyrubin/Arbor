@@ -27,11 +27,12 @@ import QuickLogModal from "../overview/QuickLogModal";
 // of its actions run existing seams (commitConversationProposal for the
 // one-tap keep, requestCapture("ai-draft") for the edit-first route).
 import { provenanceForSignal, readCaptureProvenance, type KeptProvenance } from "../../lib/captureProvenance";
-import { JOURNAL_FILTERS, firstGroupOfMonth, isHardMomentSignal, journalMonthKeys, matchesJournalFilter, momentLogId, monthLabel, type JournalFilter } from "../../lib/journalFilters";
+import { JOURNAL_FILTERS, firstGroupOfMonth, journalMonthKeys, matchesJournalFilter, momentLogId, monthLabel, type JournalFilter } from "../../lib/journalFilters";
+import { journalRecordSignals } from "../../lib/journalRecordSignals";
 import { exportBehaviorPdf } from "../../lib/behaviorExport";
 import { journalStoryState, lastKeptMoment } from "../../lib/journalLastKept";
 import { fmtDay } from "../../lib/formatDate";
-import { isIncidentType } from "../../content/behaviorTaxonomy";
+import { behaviorTypeLabel, isIncidentType } from "../../content/behaviorTaxonomy";
 import { ageYearsOf } from "../../lib/age/forChild";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { hashQuery, routeHash } from "../../lib/routes";
@@ -306,26 +307,26 @@ function JournalRow({
  * "All shelves", its first item — P5-LOOP c2 r1).
  */
 export default function JournalTab({ primaryMoveProps, densityToggle }: { primaryMoveProps?: Record<string, string>; densityToggle?: ReactNode } = {}) {
-  const { pendingJournalFocusId } = useArbor();
+  const { pendingJournalFocusId, pendingJournalFilter, childProfile } = useArbor();
   const query = useHashQuery();
   const view = query.get("view");
   const shelf = shelfFromQuery(query.get("shelf"));
   useEffect(() => {
-    if (!pendingJournalFocusId) return;
+    if (!pendingJournalFocusId && !pendingJournalFilter) return;
     try {
       if (hashQuery(window.location.hash).get("view") === "all") return;
       window.history.replaceState(null, "", `#${routeHash("journal", { view: "all" })}`);
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     } catch { /* SSR / tests */ }
-  }, [pendingJournalFocusId]);
-  if (view === "all") return <JournalFeed primaryMoveProps={primaryMoveProps} densityToggle={densityToggle} />;
+  }, [pendingJournalFocusId, pendingJournalFilter]);
+  if (view === "all" || pendingJournalFilter || pendingJournalFocusId) return <JournalFeed key={childProfile.id} primaryMoveProps={primaryMoveProps} densityToggle={densityToggle} />;
   return <JournalShelves shelf={shelf} pro={view === "pro"} intakeFor={query.get("for")} primaryMoveProps={primaryMoveProps} />;
 }
 
 /** `primaryMoveProps`: TimelineTab's contract stamp, spread on "All shelves"
  *  (the page's first item, P5-LOOP c2 r1) — the control, not the wrapper. */
 function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: Record<string, string>; densityToggle?: ReactNode } = {}) {
-  const { milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, requestJournalFocus, childProfile, openCaptureSheet, toggleLogResolved, deleteLog } = useArbor();
+  const { milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, requestJournalFocus, pendingJournalFilter, consumeJournalFilter, childProfile, openCaptureSheet, toggleLogResolved, deleteLog } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
   // elev.childsignals.* keys (practice-kind titles) resolve from the module
@@ -337,7 +338,8 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
 
   // The ONE timeline read (hooks/useTimeline) — the same stream the Story
   // density renders. No second read, no new write path.
-  const signals = useTimeline();
+  const timeline = useTimeline();
+  const signals = useMemo(() => journalRecordSignals(timeline, behaviorLogs), [timeline, behaviorLogs]);
 
   // AI-04 — the origin ledger for rows kept from an Arbor answer. Re-read when
   // the log ledger changes, which is exactly when a keep has just landed (the
@@ -418,7 +420,7 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
   // TJB-13: the tapped row. Journal rows were inert — a saved moment could be
   // seen (clamped to two lines) but never read in full or corrected. The sheet
   // is READ + ROUTE: for the parent's own moments it hands off to the ONE
-  // existing editor (startEditLog + the Behaviors capture form), never a
+  // existing editor (the shared capture sheet), never a
   // second copy of the log form.
   const [openSignal, setOpenSignal] = useState<TimelineSignal | null>(null);
   const openMomentLogId = (s: TimelineSignal | null): string | null =>
@@ -465,19 +467,33 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
   // label (never sent anywhere, never stored — session state only) · a month
   // jump built from groupByDay keys. The filtered list feeds the SAME
   // groupByDay, so a filter narrows rows within the render that typed it.
-  const [journalFilter, setJournalFilter] = useState<JournalFilter>("all");
+  const [journalFilter, setJournalFilter] = useState<JournalFilter>(pendingJournalFilter ?? "all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [intensityFilter, setIntensityFilter] = useState("all");
+  const [resolvedFilter, setResolvedFilter] = useState("all");
+  const types = useMemo(() => Array.from(new Set(behaviorLogs.map((log) => log.behaviorType))), [behaviorLogs]);
   const [journalQuery, setJournalQuery] = useState("");
+  useEffect(() => {
+    if (!pendingJournalFilter && !pendingJournalFocusId) return;
+    setJournalFilter(pendingJournalFilter ?? "all");
+    setJournalQuery("");
+    setTypeFilter("all"); setIntensityFilter("all"); setResolvedFilter("all");
+    setOpenSignal(null);
+    if (pendingJournalFilter) consumeJournalFilter();
+    // Newer handoffs must not inherit an earlier query or record selection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingJournalFilter, pendingJournalFocusId]);
   const logsById = useMemo(() => new Map((behaviorLogs || []).map((l) => [l.id, l])), [behaviorLogs]);
   const keptIds = useMemo(
     () => new Set(signals.filter((s) => provenanceForSignal(keptProvenance, s.id)).map((s) => s.id)),
     [signals, keptProvenance],
   );
-  const filtering = journalFilter !== "all" || journalQuery.trim() !== "";
+  const filtering = journalFilter !== "all" || journalQuery.trim() !== "" || typeFilter !== "all" || intensityFilter !== "all" || resolvedFilter !== "all";
   const visibleSignals = useMemo(
     () => filtering
-      ? signals.filter((s) => matchesJournalFilter(s, { filter: journalFilter, query: journalQuery, logsById, keptIds, labelOf: (x) => signalTitle(x, tt) }))
+      ? signals.filter((s) => matchesJournalFilter(s, { filter: journalFilter, query: journalQuery, type: typeFilter, intensity: intensityFilter, status: resolvedFilter, logsById, keptIds, labelOf: (x) => signalTitle(x, tt) }))
       : signals,
-    [filtering, signals, journalFilter, journalQuery, logsById, keptIds, tt],
+    [filtering, signals, journalFilter, journalQuery, typeFilter, intensityFilter, resolvedFilter, logsById, keptIds, tt],
   );
   const groups = useMemo(
     () => groupByDay(visibleSignals, Date.now(), { locale, ongoingLabel: t("timeline.ongoing") }),
@@ -489,11 +505,11 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
     if (!key) return;
     try { document.getElementById(`journal-day-${key}`)?.scrollIntoView({ block: "start", behavior: "smooth" }); } catch { /* jsdom/SSR */ }
   };
-  const clearJournalFilters = () => { setJournalFilter("all"); setJournalQuery(""); };
-  // The Hard moments view prints the SAME PDF Behaviors prints (lib/behaviorExport).
+  const clearJournalFilters = () => { setJournalFilter("all"); setJournalQuery(""); setTypeFilter("all"); setIntensityFilter("all"); setResolvedFilter("all"); };
+  // The Journal owns the SAME log PDF as the retired Behaviors record.
   const exportHardMoments = () => {
     const rows = visibleSignals
-      .filter((s) => isHardMomentSignal(s, logsById))
+      .filter((s) => momentLogId(s) && logsById.has(momentLogId(s)!))
       .map((s) => logsById.get(momentLogId(s)!)!)
       .filter(Boolean);
     exportBehaviorPdf(rows, { t, lang: uiLang });
@@ -805,7 +821,7 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
                   {t(`journal.filter.${f}`)}
                 </button>
               ))}
-              {journalFilter === "hard" && visibleSignals.some((sig) => isHardMomentSignal(sig, logsById)) && (
+              {visibleSignals.some((sig) => momentLogId(sig) && logsById.has(momentLogId(sig)!)) && (
                 <button
                   type="button"
                   data-testid="journal-export-pdf"
@@ -851,6 +867,23 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
               )}
             </div>
           </div>
+          <details className="mb-3" data-testid="journal-record-filters">
+            <summary className="min-h-11 cursor-pointer py-3 t-sm font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>{t("journal.filter.more")}</summary>
+            <div className="flex flex-wrap gap-2 pb-2">
+              <select aria-label={t("beh.allTypes")} data-testid="journal-type-filter" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="field-pill min-h-11 min-w-0 flex-[1_1_150px] rounded-xl px-3 t-sm">
+                <option value="all">{t("beh.allTypes")}</option>
+                {types.map((type) => <option key={type} value={type}>{behaviorTypeLabel(type, t)}</option>)}
+              </select>
+              <select aria-label={t("beh.anyIntensity")} data-testid="journal-intensity-filter" value={intensityFilter} onChange={(e) => setIntensityFilter(e.target.value)} className="field-pill min-h-11 min-w-0 flex-[1_1_130px] rounded-xl px-3 t-sm">
+                <option value="all">{t("beh.anyIntensity")}</option>
+                {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{t("beh.level", { n })}</option>)}
+              </select>
+              <select aria-label={t("beh.allStatus")} data-testid="journal-status-filter" value={resolvedFilter} onChange={(e) => setResolvedFilter(e.target.value)} className="field-pill min-h-11 min-w-0 flex-[1_1_130px] rounded-xl px-3 t-sm">
+                <option value="all">{t("beh.allStatus")}</option><option value="open">{t("beh.open")}</option><option value="resolved">{t("beh.resolved")}</option>
+              </select>
+              <button type="button" onClick={clearJournalFilters} className="min-h-11 px-3 t-sm font-semibold">{t("beh.reset")}</button>
+            </div>
+          </details>
           {filtering && visibleSignals.length === 0 && (
             <div data-testid="journal-filter-empty" role="status" className="flex flex-wrap items-center gap-2 py-4">
               <p className="text-sm" style={{ color: "var(--arbor-ink-soft)" }}>{t("journal.filter.empty")}</p>
@@ -921,7 +954,9 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
       {/* TJB-13 — the row's detail sheet. Rendered once for the whole feed;
           `signal === null` keeps it closed. */}
       <JournalEntrySheet
+        key={childProfile.id}
         signal={openSignal}
+        momentLog={openLog ?? undefined}
         domain={openSignal ? (domainOf.get(openSignal.id) ?? null) : null}
         domainLabel={(() => {
           const d = openSignal ? (domainOf.get(openSignal.id) ?? null) : null;

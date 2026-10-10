@@ -256,6 +256,9 @@ const PRINT_SHELL_ALLOWLIST = new Set([
   // quote list and nothing else (no record, no milestone, no plan; pinned in
   // components/growth/SaidPage.test.tsx), so no clinical field can reach it.
   "components/growth/SaidPage.tsx",
+  // B-ASKJB-36/37: only provenance-filtered parent-kept words/firsts and dates
+  // reach this plain month document. No record/plan/report context is accepted.
+  "components/kept/KeptMonthPage.tsx",
 ]);
 
 describe("Wave-4 (c) — single-serializer seam (static source scan over src/components)", () => {
@@ -294,6 +297,10 @@ describe("Wave-4 (c) — single-serializer seam (static source scan over src/com
     // The said page's printable must come from its quotes-only builder.
     const said = COMPONENT_FILES.find((f) => f.rel === "components/growth/SaidPage.tsx")!.code;
     expect(said).toMatch(/openPrintableReport\(saidPrintDoc\(/);
+    const kept = COMPONENT_FILES.find((f) => f.rel === "components/kept/KeptMonthPage.tsx")!.code;
+    expect(kept).toMatch(/openPrintableReport\(monthPageDoc\(/);
+    expect(kept).toContain('presentation: "kept-month"');
+    expect(kept).not.toMatch(/buildReport|ReportContext|behaviorLogs|memoryFacts|diagnosis|effectivenessRating/);
   });
 
   it("B-CAREPRO-28: AskSpecialist prints ONLY through the seam's useConsultPdf, from ceiling-bound sections — never lib/reportExport directly", () => {

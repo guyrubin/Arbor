@@ -16,6 +16,7 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
+import { hardMomentCapabilityFailures } from "./hard-moment-capabilities.mjs";
 
 const root = process.cwd();
 const src = path.join(root, "src");
@@ -600,6 +601,10 @@ function readSrc(relPath) {
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────
+const hardMomentFailures = hardMomentCapabilityFailures(root);
+if (hardMomentFailures.length) fail("F18d", "hard-moment-live-owners", hardMomentFailures.join("; "));
+else pass("F18d", "hard-moment-live-owners", "capture, record and all retained actions reachable");
+
 console.log("\n--- Capability Floor Summary ---");
 const passCount = results.filter(function(r) { return r.endsWith(" PASS"); }).length;
 const failCount = results.filter(function(r) { return r.endsWith(" FAIL"); }).length;

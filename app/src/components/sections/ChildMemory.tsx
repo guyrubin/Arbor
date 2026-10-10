@@ -31,7 +31,6 @@ import { scrubMemoryProposals, toParentWords } from "../../server/parentWordsScr
 import { ContentWhyLine } from "../ui/ContentActionBar";
 import ArborKnowsTile from "./ArborKnowsTile";
 import FirstsMoment from "./FirstsMoment";
-import MonthKeepsake from "../weekly/MonthKeepsake";
 // B-CAREPRO-25: the pending queue reads as one group per topic (G6: no bulk approve).
 import { groupPendingMemory, dismissGroup, type PendingMemoryGroup, type MemoryTopic } from "../../lib/memoryGroups";
 import { domainName } from "../../lib/domains/registry";
@@ -39,7 +38,6 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { quotesFromDocs } from "../../lib/loop/tonight";
 import ThingsSaid from "../loop/ThingsSaid";
-import FirstMonthKeepsakeRow from "../loop/FirstMonthKeepsakeRow";
 
 const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : txt.en);
 
@@ -271,8 +269,6 @@ export default function ChildMemory() {
             month; one tap shares ONE quote as text. Demoted like its siblings. */}
         <div data-module="memory-quotes" data-module-demoted className="pt-1">
           <ThingsSaid quotes={keptQuotes} childName={(quoteChild.name || "").split(" ")[0]} gender={quoteChild.gender} />
-          {/* B-SHELL-NEW-keepsake: the first-month keepsake, once, with its own date (off Today since PASS A5). */}
-          <FirstMonthKeepsakeRow />
         </div>
         {/* demotionTarget: "profile" — the hub the contract sends these to. */}
         <button onClick={() => setActiveTab("profile")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
@@ -288,9 +284,6 @@ export default function ChildMemory() {
           could do. Never a completeness score: see lib/keepsakeCounts. */}
       <div data-module="memory-knows" data-module-demoted style={{ display: "contents" }}><ArborKnowsTile /></div>
 
-      {/* ENG-14(b) · the month keepsake, offered once on the first open of a
-          new month and never for a month the family is still living in. */}
-      <div data-module="memory-keepsake" data-module-demoted style={{ display: "contents" }}><MonthKeepsake /></div>
 
         </div>
       </details>
