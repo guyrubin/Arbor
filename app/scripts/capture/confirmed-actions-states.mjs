@@ -6,18 +6,22 @@ import { collectConfirmedRoutineStates } from './confirmed-routine-states.mjs';
 import { collectConfirmedFamilyStates } from './confirmed-family-states.mjs';
 import { collectConfirmedConsultPortalState } from './confirmed-consult-portal-state.mjs';
 import { observeConfirmedFrame, waitConfirmedFrame } from './confirmed-frame.mjs';
-import { installConfirmedDate, changeConfirmedDate, restoreConfirmedDate } from './confirmed-date-clock.mjs';
+import { installConfirmedDate, changeConfirmedDate, restoreConfirmedDate, observeConfirmedClock } from './confirmed-date-clock.mjs';
 
 export async function collectConfirmedActionStates(helpers) {
-  const { page, fixture, viewport, load: loadRoute, screen, check, visible, byId, captureDiagnostics = () => null } = helpers;
+  const { page, fixture, viewport, load: loadRoute, screen, check, visible, byId, captureDiagnostics = () => null, recordBootstrapClock = () => {} } = helpers;
   const waitFrame = (cell, args, label) => waitConfirmedFrame(page, cell, args, label, captureDiagnostics);
   let activeCell = null;
   const load = async route => {
-    const clock = async () => (await page.evaluate(observeConfirmedFrame, {})).clock;
+    const clock = () => page.evaluate(observeConfirmedClock);
     const trace = { requestedRoute: route, before: await clock() };
     if (activeCell) (activeCell.reloadClockObservations ??= []).push(trace);
+    else recordBootstrapClock(trace);
     try { await loadRoute(route); }
-    finally { trace.after = await clock().catch(() => ({ unavailable: true })); }
+    finally {
+      trace.after = await clock().catch(() => ({ unavailable: true }));
+      if (!activeCell) recordBootstrapClock(trace);
+    }
   };
   const he = viewport.lang === 'he';
   const module = name => page.locator(`[data-module="${name}"]`);

@@ -1,5 +1,14 @@
 /** Synthetic business-date fixture only. Native monotonic clocks and animation
  * APIs must remain untouched: Motion's WAAPI start times share their timeline. */
+/** Safe on the initial opaque-origin document. No storage, URL or route access. */
+export function observeConfirmedClock() {
+  const number = value => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const performanceNow = number(performance.now()), documentTimelineCurrentTime = number(document.timeline?.currentTime);
+  return { dateNow: Date.now(), performanceNow, performanceTimeOrigin: number(performance.timeOrigin), documentTimelineCurrentTime,
+    performanceMinusDocumentTimelineMs: performanceNow !== null && documentTimelineCurrentTime !== null ? performanceNow - documentTimelineCurrentTime : null,
+    fixture: window.__arborConfirmedDateClock?.snapshot() ?? null };
+}
+
 export function installConfirmedDate(epoch) {
   if (!Number.isFinite(epoch)) throw new Error('CONFIRMED_DATE_INVALID');
   if (window.__arborConfirmedDateClock) throw new Error('CONFIRMED_DATE_ALREADY_INSTALLED');

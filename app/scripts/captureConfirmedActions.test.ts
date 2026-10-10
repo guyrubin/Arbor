@@ -16,7 +16,8 @@ import { ritualOfTheMoment } from '../src/lib/familyRitualsCadence';
 import { translate } from '../src/lib/i18n';
 import { resolveRouteId } from '../src/lib/routes';
 import { observeConfirmedFrame } from './capture/confirmed-frame.mjs';
-import { installConfirmedDate, changeConfirmedDate, restoreConfirmedDate } from './capture/confirmed-date-clock.mjs';
+import { installConfirmedDate, changeConfirmedDate, restoreConfirmedDate, observeConfirmedClock } from './capture/confirmed-date-clock.mjs';
+import { collectConfirmedActionStates } from './capture/confirmed-actions-states.mjs';
 const root = path.resolve(__dirname, '../..');
 const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
 const body = () => ({ child: { id: 'synthetic-capture-child', name: 'Capture Child', demo: true, age: 4, birthDate: '2022-01-01' }, collections: { milestones: [{ ...CDC_MILESTONES[0], checked: false }], actionLoops: [] } });
@@ -279,6 +280,32 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
     expect(flow).toContain('{ ...helpers, load, run, reset');
     const portal = read('app/scripts/capture/confirmed-consult-portal-state.mjs');
     expect(flow + portal).not.toMatch(/page\.clock\.|\.finish\(|\.cancel\(/);
+  });
+
+  it('observes bootstrap clocks without touching opaque-origin storage and rethrows an actual navigation failure', async () => {
+    const storageError = new DOMException('Opaque-origin synthetic storage fixture', 'SecurityError');
+    let storageReads = 0;
+    vi.stubGlobal('localStorage', undefined);
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, get() { storageReads++; throw storageError; } });
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('document', { timeline: { currentTime: 90 }, querySelectorAll: () => [] });
+    vi.stubGlobal('location', { hash: '' });
+    expect(() => observeConfirmedFrame({})).toThrow(storageError); // Old bootstrap path is unsafe.
+    storageReads = 0;
+    expect(observeConfirmedClock()).toMatchObject({ documentTimelineCurrentTime: 90, fixture: null });
+    const navigationError = new TypeError('Synthetic navigation failure must remain visible');
+    const load = vi.fn(async () => { throw navigationError; });
+    const recordBootstrapClock = vi.fn();
+    const page = { addInitScript: vi.fn(async () => {}), evaluate: vi.fn(async (fn: () => unknown) => fn()) };
+    await expect(collectConfirmedActionStates({ page, fixture: {}, viewport: { lang: 'en' }, load, recordBootstrapClock })).rejects.toBe(navigationError);
+    expect(load).toHaveBeenCalledExactlyOnceWith('overview');
+    expect(storageReads).toBe(0);
+    expect(recordBootstrapClock).toHaveBeenCalledTimes(2);
+    const trace = recordBootstrapClock.mock.calls[1][0];
+    expect(trace).toMatchObject({ requestedRoute: 'overview', before: { documentTimelineCurrentTime: 90 }, after: { documentTimelineCurrentTime: 90 } });
+    expect(trace.before.performanceNow).toEqual(expect.any(Number));
+    expect(trace.after.performanceNow).toEqual(expect.any(Number));
+    expect(page.evaluate).toHaveBeenCalledWith(restoreConfirmedDate);
   });
 
   it('preserves original rapid navigation and a real interrupted child round trip', () => {

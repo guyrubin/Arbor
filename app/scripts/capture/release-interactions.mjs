@@ -127,6 +127,17 @@ export function observedScrolledNavigationClick(evidence) {
 
 const knownFailure = error => /^FONT_[A-Z_]+$/.test(error?.message ?? '') || ['DEPENDENT_STATE_UNREACHED', 'SYNTHETIC_WATCH_MILESTONE_MISSING'].includes(error?.message) ? error.message : error?.name === 'TimeoutError' ? 'SELECTOR_OR_ACTION_TIMEOUT' : 'INTERACTION_FAILED';
 
+/** Only fixed enums survive; wrapped browser exception text is transient. */
+export function sanitizedCollectorFailure(error) {
+  const types = ['Error', 'TypeError', 'ReferenceError', 'RangeError', 'SyntaxError', 'SecurityError', 'TimeoutError', 'DOMException'];
+  const message = typeof error?.message === 'string' ? error.message : '';
+  const wrapped = /\b(SecurityError|TypeError|ReferenceError|RangeError|SyntaxError):/.exec(message)?.[1];
+  const errorType = wrapped ?? (types.includes(error?.name) ? error.name : 'OtherError');
+  const code = errorType === 'SecurityError' && /\blocalStorage\b/.test(message) ? 'STORAGE_ACCESS_DENIED'
+    : errorType === 'TimeoutError' ? 'SELECTOR_OR_ACTION_TIMEOUT' : 'COLLECTOR_ABORTED';
+  return { errorType, code };
+}
+
 export async function collectReleaseInteractions({ output, bundle, viewport, group, sourceSha, sourceTreeSha, _priorCells = [], _reportGroup = group, _apiCache = new Map() }) {
   // Keep these guards inside the entry point so pure contracts can be tested
   // without importing Playwright, creating sockets or requiring a container.
@@ -393,7 +404,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     };
 
     if (group === 'confirmed-actions') {
-      await collectConfirmedActionStates({ page, context, fixture: confirmed, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }) });
+      await collectConfirmedActionStates({ page, context, fixture: confirmed, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }), recordBootstrapClock: trace => { doc.confirmedActionBootstrap = trace; save(); } });
     } else if (group === 'record') {
       const helpers = { page, context, fixture: record, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId };
       await collectRecordStates(helpers);
@@ -624,6 +635,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     doc.completed = doc.missingEvidence.length === 0;
     save();
     return doc;
+  } catch (error) {
+    doc.collectorFailure = { phase: doc.cells.length === 0 ? 'startup' : 'collection', ...sanitizedCollectorFailure(error) };
+    save();
+    throw error;
   } finally {
     save();
     if (context) await context.close().catch(() => {});

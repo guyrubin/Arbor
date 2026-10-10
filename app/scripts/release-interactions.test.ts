@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import {
   classifyReleaseConsole, deniedCaptureApiCategory, clippedOverlap, expectedReleaseInteractionStates,
   geometryStable, missingReleaseInteractionEvidence, observedEarlyBackClick, observedScrolledNavigationClick, releaseFixture,
-  sanitizedReleaseLocation, syntheticReleaseReport,
+  sanitizedReleaseLocation, sanitizedCollectorFailure, syntheticReleaseReport,
 } from './capture/release-interactions.mjs';
 
 const source = readFileSync(new URL('./capture/release-interactions.mjs', import.meta.url), 'utf8');
@@ -32,6 +32,18 @@ const complete = (group = 'focused', viewport = mobile) => expectedReleaseIntera
 }));
 
 describe('release interaction contracts, without browser or sockets', () => {
+  it('retains allowlisted startup failure types without exception text, URLs or private values', () => {
+    expect(sanitizedCollectorFailure(new Error("page.evaluate: SecurityError: Failed to read localStorage at https://private.example/person?token=secret")))
+      .toEqual({ errorType: 'SecurityError', code: 'STORAGE_ACCESS_DENIED' });
+    expect(sanitizedCollectorFailure({ name: 'TimeoutError', message: 'private text' }))
+      .toEqual({ errorType: 'TimeoutError', code: 'SELECTOR_OR_ACTION_TIMEOUT' });
+    expect(sanitizedCollectorFailure({ name: 'private name', message: 'private text', stack: 'private stack', code: 'private code' }))
+      .toEqual({ errorType: 'OtherError', code: 'COLLECTOR_ABORTED' });
+    expect(source).toContain("doc.cells.length === 0 ? 'startup' : 'collection'");
+    expect(source).toContain('...sanitizedCollectorFailure(error)');
+    expect(source).toContain('doc.confirmedActionBootstrap = trace; save();');
+    expect(source).toMatch(/doc\.collectorFailure =[^]*?save\(\);\s*throw error;/);
+  });
   it('imports pure helpers without launching a browser or executing app code', () => {
     const guard = source.indexOf('assertLoopbackOnly(networkInterfaces())');
     const browserImport = source.indexOf("await import('playwright')");

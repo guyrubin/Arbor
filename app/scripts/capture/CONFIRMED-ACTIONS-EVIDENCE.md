@@ -168,3 +168,24 @@ A test-only observer stub initially lacked its cleanup method; that failed run i
 retained separately, the stub was corrected, and the final rerun passed. JavaScript
 syntax and diff checks passed. No local browser, typecheck, build or provider ran.
 Exact-source CI and native-timeline/rendered confirmation remain required.
+
+## Opaque-origin bootstrap correction
+
+The desktop HE artifact for run `38026461649`, source
+`05f7164301a15bbe587fa80f19df34bc9559550f`, contains zero attempted cells and no PNGs.
+The new pre-navigation load observation incorrectly used the full frame observer on
+initial `about:blank`, where reading localStorage can throw SecurityError. The original
+artifact did not retain the exception type, so it cannot independently prove its text.
+
+Bootstrap/reload clock sampling now uses a clock-only observer with no storage, URL or
+route access. Actual before/after native clocks are retained, including the initial
+bootstrap. The post-navigation frame checks and mandatory native-timing acceptance gate
+are unchanged. Uncaught collector errors retain only allowlisted type/code and phase,
+then rethrow; raw messages, stacks, URLs and private values are not retained.
+
+A deterministic opaque-origin getter regression proves the former observer throws,
+the new clock/load path never reads storage, genuine navigation failures still rethrow,
+and both clock samples survive. Final offline serial contracts passed 36/36 (19 confirmed
+actions, 17 interactions), with the installed runner, one worker and mock provider.
+Syntax/diff checks passed. No browser/typecheck/build ran locally; exact-source rendered
+confirmation remains pending, and all earlier failed artifacts remain unmodified.
