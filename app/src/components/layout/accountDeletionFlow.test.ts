@@ -122,6 +122,7 @@ function boundaries() {
   const toast = vi.fn((_message: string, kind: string) => { order.push("toast:" + kind); });
   const api = { accountDelete: vi.fn(async () => receipt()) };
   const purgeAllComicPages = vi.fn(async () => { order.push("purge"); });
+  const purgeBookAssets = vi.fn(async () => { order.push("purgeBooks"); });
   const commerceAllowed = vi.fn(() => true);
   const storage: Record<string, any> = { "arbor.child": "private", "arbor.theme": "blue", unrelated: "keep" };
   const removeItem = vi.fn((key: string) => { order.push("remove:" + key); delete storage[key]; });
@@ -140,6 +141,9 @@ function boundaries() {
     "../../lib/accountDeletionLease": { accountDeletionLeases: leases },
     "../../lib/comicPageStore": { purgeAllComicPages },
     "../../lib/heroRenderStore": { purgeAllHeroRenders: async () => {} }, // B-KID-127
+    "../../lib/bookAssetStore": { purgeBookAssets },
+    "../../lib/firebase": { auth: { get currentUser() { return auth.user; } } },
+    "firebase/auth": { onAuthStateChanged: () => () => {} },
     "../kidmode/parentGate": { commerceAllowed },
   };
   return { imports, leases, auth, language, api, commerceAllowed, purgeAllComicPages, signOut, toast, storage, removeItem, order };
@@ -299,7 +303,7 @@ describe("production account-deletion callbacks", () => {
   it("only a complete receipt invokes the existing local purge, Arbor-key cleanup, close and sign-out sequence", async () => {
     const f = deletion(); f.api.accountDelete.mockResolvedValueOnce(receipt(true));
     f.type("DELETE"); button(f.tree, "set.acctDel.confirm").props.onClick(); await f.settle();
-    expect(f.order).toEqual(["purge", "remove:arbor.child", "remove:arbor.theme", "toast:success", "close", "signOut"]);
+    expect(f.order).toEqual(["purgeBooks", "purge", "remove:arbor.child", "remove:arbor.theme", "toast:success", "close", "signOut"]);
     expect(f.storage.unrelated).toBe("keep"); expect(f.signOut).toHaveBeenCalledOnce();
   });
   it("forced close/reopen keeps the pending lock but ignores the old receipt", async () => {

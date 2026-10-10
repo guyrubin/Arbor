@@ -582,7 +582,7 @@ export const api = {
   // STORE-4: FULL account deletion (Apple 5.1.1(v) / Play / GDPR Art. 17) — the
   // per-class receipt is honest: any failure ⇒ complete:false, account survives
   // for retry. Client wipes device-local stores only after a complete receipt.
-  accountDelete: () => post<AccountDeletionReceipt>("/api/account/delete", { confirm: "DELETE" }),
+  accountDelete: (beforeDispatch?: () => void) => post<AccountDeletionReceipt>("/api/account/delete", { confirm: "DELETE" }, beforeDispatch),
   // MON-3 v1: durable consultation request (email-based transaction).
   requestConsult: (payload: { professionalId: string; childId?: string; note?: string; preferredMode?: string }) =>
     post<{ request: { id: string; professionalName: string; status: string; createdAt: string }; mailto: string | null }>("/api/consult-requests", payload),
