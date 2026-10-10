@@ -166,7 +166,7 @@ async function readPath(tab: ReturnType<typeof harness<any>>, story: HeroStorySp
 }
 
 describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () => {
-  for (const fixture of fixtures) it(`${fixture.lang}/${fixture.gender}: every legacy book and choice reads twice without text, image or network calls; the read-aloud speaks authored words`, async () => {
+  for (const fixture of fixtures) it(`${fixture.lang}/${fixture.gender}: every legacy book and choice reads twice without text, image, TTS or network calls`, async () => {
     env.lang = fixture.lang;
     for (const story of KID_SHELF_STORIES.filter(value => storyHasLanguage(value, fixture.lang))) {
       env.profile = { ...env.profile, ...fixture, age: story.ageRange[0] };
@@ -185,16 +185,9 @@ describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () =
     expect(reads).not.toHaveBeenCalled();
     expect(env.text).not.toHaveBeenCalled();
     expect(env.image).not.toHaveBeenCalled();
-    // Guy, 10 Oct 2026: the read-aloud is back (PR 118 had removed it). It
-    // speaks the AUTHORED words through the one kid voice path, in the
-    // story's language; the read itself makes no text, image or network call.
-    expect(env.speech).toHaveBeenCalled();
-    for (const [, lines, lang] of env.speech.mock.calls as unknown as [string, string | string[], string][]) {
-      const said = Array.isArray(lines) ? lines : [lines];
-      expect(said.length).toBeGreaterThan(0);
-      for (const line of said) expect(typeof line === "string" && line.trim().length > 0).toBe(true);
-      expect(lang).toBe(fixture.lang);
-    }
+    // Guy, 10 Oct 2026: a child hears only the chosen narrator; until these
+    // books have files in that voice (B-BOOK-73) nothing is synthesized.
+    expect(env.speech).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
   it("ignores poisoned parent memo/store, still reads without a hero, and repins the same mounted tab", async () => {

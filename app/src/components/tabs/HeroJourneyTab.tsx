@@ -65,7 +65,6 @@ import { kidBookOpenable, kidBooks, kidShelfFor } from "../kidmode/kidBooks";
 import { useChildLibraryBooks } from "../kidmode/useChildLibraryBooks";
 import { adoptSavedRender, hydrateHeroRenders, resolvePersonalisedRender, type SavedHeroRender } from "../../lib/heroRenderStore";
 import { KidBookTitleCard } from "../kidmode/KidBookCover";
-import { autoReadPage } from "../kidmode/kidReadAloud";
 import { kidSfx } from "../kidmode/audio/kidAudio";
 import { KidFinishMoment } from "../kidmode/rewards/KidSouvenir";
 import { stopVoice } from "../../lib/voice";
@@ -368,36 +367,16 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       : scenes[sceneIndex]
     : undefined;
 
-  // B-KID-76 (b): read-to-me. In Kid Mode each page reads itself aloud once it
-  // opens (400 ms after it settles); the per-child Sound in the top bar and the
-  // gesture rule live in kidReadAloud. The Decision page reads its question
-  // and then each choice (B-KID-73), so a child who cannot read yet hears what
-  // is asked. Guy, 10 Oct 2026: the read-aloud is back (PR 118 had removed it
-  // with B-BOOK-28). The words are the AUTHORED ones (B-BOOK-28 stands: no
-  // text or image generation in a kid read); each line's audio is fetched
-  // once per session (lib/naturalVoice) and plays on the blessed voice
-  // channel, which an iPhone allows outside the tap (lib/kidVoicePlayer).
-  // Turning the page, closing the book or leaving Kid Mode stops it.
-  const kidSpeech = !kidMode || !activeStory || !render
-    ? ""
-    : atEnd
-      ? kidsStoriesText("journey.end", aiLang)
-      : onCover
-        ? (render.title || activeStory.title)
-        : isDecision && !choiceId && displayScene
-          ? [`${displayScene.narration} ${kidsStoriesText("journey.decision", renderLang, { name: childProfile.name?.split(" ")[0] ?? "" })}`, ...choices.map((c) => c.label)].join("\n")
-          : displayScene?.narration ?? "";
+  // B-BOOK-28: these legacy books have no prerecorded page narration yet.
+  // Guy, 10 Oct 2026: a child hears only the narrator he chose (Sulafat, the
+  // books standard section 6), never the runtime default voice, so they stay
+  // silent until their files are rendered in that voice (B-BOOK-73). Keep
+  // local page-turn effects; stop any parent narration when the gate or page
+  // changes.
   useEffect(() => {
-    if (!kidSpeech) {
-      stopVoice();
-      return;
-    }
-    const timer = setTimeout(() => {
-      autoReadPage(childProfile.id, kidSpeech.split("\n"), atEnd ? (aiLang === "he" ? "he" : "en") : renderLang);
-    }, 400);
-    return () => { clearTimeout(timer); stopVoice(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kidSpeech, kidMode, activeStory?.id, sceneIndex, onCover, atEnd]);
+    stopVoice();
+    return () => stopVoice();
+  }, [kidMode, activeStory?.id, sceneIndex, onCover, atEnd]);
   useEffect(() => { setAtEnd(false); }, [activeStory?.id]);
 
   const visibleStories = storiesForLanguage(

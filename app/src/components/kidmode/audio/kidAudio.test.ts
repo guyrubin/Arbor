@@ -209,10 +209,10 @@ describe("wiring", () => {
     expect(shell).toContain("autoReadPage(childId, instruction, lang)");
     const reader = read("..", "..", "tabs", "HeroJourneyTab.tsx");
     expect(reader.match(/kidSfx\("pageTurn"\)/g)?.length).toBe(2);
-    // Guy, 10 Oct 2026: the legacy book reads its pages aloud again, and its
-    // Decision page speaks the question and then each choice (B-KID-73).
-    expect(reader).toContain("autoReadPage(childProfile.id, kidSpeech.split(");
-    expect(reader).toContain("...choices.map((c) => c.label)].join(");
+    // B-BOOK-28 + Guy, 10 Oct 2026: no runtime voice in a legacy kid book;
+    // its narration comes as files in the chosen narrator's voice (B-BOOK-73).
+    expect(reader).not.toContain("autoReadPage");
+    expect(reader).not.toContain("kidSay");
     const kit = read("..", "..", "ui", "playkit.tsx");
     expect(kit).toContain('if (state === "correct") kidSfx("correct");');
     expect(kit).toContain('else if (state === "wrong") kidSfx("tryAgain");');
