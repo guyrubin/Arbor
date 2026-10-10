@@ -15,15 +15,6 @@ import "./companionWorkspace.css";
 
 const CoachTab = lazy(() => import("../tabs/CoachTab"));
 
-/** Bottom spacing alone cannot protect a keyboard-focused control mid-page. */
-export function revealLauncherObscuredControl(control: HTMLElement, launcher: HTMLElement) {
-  const target = control.getBoundingClientRect();
-  const dock = launcher.getBoundingClientRect();
-  if (target.bottom > dock.top - 12 && target.top < dock.bottom && target.right > dock.left && target.left < dock.right) {
-    control.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
-  }
-}
-
 /** Mounted above routes: changing a view must not restart a draft, turn or microphone session. */
 export default function CompanionWorkspace({ children, kidLocked }: { children: React.ReactNode; kidLocked: boolean }) {
   const { activeTab, setActiveTab, childProfile, activeFamilyTopic, setChatInput, chatInput, openCaptureSheet, openHardMomentNow } = useArbor();
@@ -111,27 +102,28 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   }, [childProfile.id]);
   useEffect(() => { if (kidLocked) setOpen(false); }, [kidLocked]);
 
-  // Reserve the actual launcher height, including wrapped translated/zoomed
-  // text. A fixed magic number leaves the last focused control under the dock.
+  // The launcher owns an intrinsic-height row outside the main scrollport.
+  // Measure translated/wrapped chrome for keyboard clearance and the actual
+  // fixed mobile nav (its buttons can be taller than the old --mobile-nav-h).
   useEffect(() => {
-    const launcher = launcherRef.current;
     const workspace = workspaceRef.current;
-    if (!launcher || !workspace) return;
+    if (!workspace) return;
+    const launcher = launcherRef.current;
+    const navigation = workspace.closest(".arbor-app")?.querySelector<HTMLElement>(":scope > nav");
     const closeOutside = (event: PointerEvent) => {
       if (event.target instanceof Node && captureRef.current && !captureRef.current.contains(event.target)) captureRef.current.open = false;
     };
-    const main = workspace.querySelector(":scope > main");
-    const revealFocus = (event: Event) => {
-      if (event.target instanceof HTMLElement) revealLauncherObscuredControl(event.target, launcher);
+    const measure = () => {
+      workspace.style.setProperty("--companion-launcher-height", `${launcher?.getBoundingClientRect().height ?? 0}px`);
+      if (navigation) workspace.style.setProperty("--companion-navigation-height", `${navigation.getBoundingClientRect().height}px`);
     };
-    document.addEventListener("pointerdown", closeOutside);
-    main?.addEventListener("focusin", revealFocus);
-    const measure = () => workspace.style.setProperty("--companion-launcher-height", `${launcher.getBoundingClientRect().height}px`);
     measure();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
-    observer?.observe(launcher);
+    if (launcher) observer?.observe(launcher);
+    if (navigation) observer?.observe(navigation);
     window.addEventListener("resize", measure);
-    return () => { observer?.disconnect(); window.removeEventListener("resize", measure); document.removeEventListener("pointerdown", closeOutside); main?.removeEventListener("focusin", revealFocus); };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", measure); document.removeEventListener("pointerdown", closeOutside); };
   }, [visible, kidLocked, uiLang, activeTab, chatInput]);
 
   return <div ref={workspaceRef} className={`companion-workspace${visible ? " is-open" : ""}${expanded ? " is-expanded" : ""}`}>
@@ -153,7 +145,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
       </Suspense></ErrorBoundary>
     </aside>}
     </div>
-    {!visible && !kidLocked && <div ref={launcherRef} className="arbor-parent companion-launcher" data-testid="companion-launcher">
+    {!visible && !kidLocked && <div className="arbor-parent companion-launcher-rail" data-testid="companion-launcher-rail"><div ref={launcherRef} className="arbor-parent companion-launcher" data-testid="companion-launcher">
       <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.input.talk-with-arbor-text-photo-or-voice")}>
         <ArborMark size={24} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : copy.talk}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
       </button>
@@ -170,6 +162,6 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
           <button type="button" onClick={() => capture("photo")}><Icon name="photo_camera" size={21} />{copy.photo}</button>
         </div>
       </details>
-    </div>}
+    </div></div>}
   </div>;
 }

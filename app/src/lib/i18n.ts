@@ -521,6 +521,12 @@ export const en: Dict = {
   // ASK-3 — hypotheses collapse into a calm disclosure below the script + plan.
   "coach.cards.why": "Why this might be happening",
   "coach.cards.tryToday": "Try today",
+  "coach.report.context": "More context",
+  "coach.report.details": "More steps and things to notice",
+  "coach.report.actions": "Keep or use this answer",
+  "coach.report.keepAdvice": "Keep or edit advice",
+  "coach.report.step": "Step {n}",
+  "coach.report.observation": "Watch for · {n}",
   // B-ASKJB-05 — one recommendation; everything else behind ONE "More".
   "coach.cards.more": "More",
   "coach.cards.less": "Less",
@@ -561,6 +567,8 @@ export const en: Dict = {
   "coach.doc.toConsult": "Add to a note for the professional",
   "coach.doc.remember": "Worth remembering",
   "coach.doc.save": "Save to memory",
+  "coach.doc.saving": "Saving…",
+  "coach.doc.error": "This was not saved. Try again.",
   "coach.doc.saved": "Waiting for your approval",
   "coach.doc.retry": "Try again",
   "coach.doc.pendingNote": "Saved items wait for your approval in Profile › Child Memory — nothing is used until you approve it.",
@@ -3057,6 +3065,12 @@ export const he: Dict = {
   // ASK-3 — ההשערות מתקפלות לגילוי רגוע מתחת לתסריט ולתוכנית.
   "coach.cards.why": "למה זה אולי קורה",
   "coach.cards.tryToday": "לנסות היום",
+  "coach.report.context": "רקע נוסף",
+  "coach.report.details": "צעדים נוספים ודברים לשים לב אליהם",
+  "coach.report.actions": "לשמור או להשתמש בתשובה",
+  "coach.report.keepAdvice": "לשמור או לערוך עצה",
+  "coach.report.step": "צעד {n}",
+  "coach.report.observation": "לשים לב · {n}",
   // B-ASKJB-05 — המלצה אחת; כל השאר מאחורי "עוד" אחד.
   "coach.cards.more": "עוד",
   "coach.cards.less": "פחות",
@@ -3097,6 +3111,8 @@ export const he: Dict = {
   "coach.doc.toConsult": "להוסיף לפתק לאיש המקצוע",
   "coach.doc.remember": "שווה לזכור",
   "coach.doc.save": "לשמור בזיכרון",
+  "coach.doc.saving": "שומר…",
+  "coach.doc.error": "הפריט לא נשמר. אפשר לנסות שוב.",
   "coach.doc.saved": "ממתין לאישור שלכם",
   "coach.doc.retry": "לנסות שוב",
   "coach.doc.pendingNote": "פריטים שנשמרו ממתינים לאישורכם בפרופיל › זיכרון הילד — שום דבר לא נכנס לשימוש עד שתאשרו.",

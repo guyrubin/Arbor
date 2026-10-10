@@ -1,0 +1,28 @@
+/* Story context is secondary to the dated ledger. Keep the two native
+   disclosures in one quiet group without padding around their touch targets. */
+.timeline-context-group > details + details {
+  border-block-start: 1px solid var(--arbor-rule);
+}
+
+.timeline-context-group > details > summary {
+  box-sizing: border-box;
+  min-block-size: 48px;
+  padding-block: 12px;
+  padding-inline: 16px;
+  font-size: 14px;
+  line-height: 24px;
+  font-weight: 600;
+  color: var(--arbor-ink);
+  cursor: pointer;
+}
+
+.timeline-context-group > details > summary:focus-visible {
+  outline: 2px solid var(--arbor-clay);
+  outline-offset: -3px;
+  border-radius: var(--r-sm);
+}
+
+.timeline-context-group .timeline-context-body {
+  padding-block-end: 16px;
+  padding-inline: 16px;
+}

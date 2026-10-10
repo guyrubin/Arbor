@@ -1,6 +1,10 @@
-.companion-workspace { --companion-launcher-height: 56px; --companion-launcher-offset: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom) + 8px); display: grid; grid-template-columns: minmax(0,1fr); flex: 1; min-block-size: 0; min-inline-size: 0; position: relative; }
-.companion-workspace > main { padding-block-end: calc(var(--companion-launcher-height) + var(--companion-launcher-offset) + 24px); scroll-padding-block-end: calc(var(--companion-launcher-height) + 24px); }
-.companion-workspace > main :where(button, a, input, textarea, summary) { scroll-margin-block-end: calc(var(--companion-launcher-height) + var(--companion-launcher-offset) + 24px); }
+/* The page and compact launcher have separate grid rows. Unlike a fixed
+   overlay plus bottom padding, this protects controls at every scroll position.
+   The mobile nav stays fixed; its measured height already includes safe area. */
+.companion-workspace { --companion-launcher-height: 56px; display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(0,1fr) auto; flex: 1; min-block-size: 0; min-inline-size: 0; position: relative; padding-block-end: var(--companion-navigation-height, calc(65px + env(safe-area-inset-bottom))); }
+.companion-workspace > main { grid-row: 1; grid-column: 1; min-block-size: 0; overflow-y: auto; padding-block-end: 24px; scroll-padding-block-end: calc(var(--companion-launcher-height) + 24px); }
+.companion-workspace > main :where(button, a, input, textarea, summary) { scroll-margin-block: 12px; }
+.companion-launcher-rail { grid-row: 2; grid-column: 1; min-inline-size: 0; padding: 8px 16px; background: var(--arbor-paper); }
 .companion-conversation[hidden] { display: none; }
 .companion-conversation { display: flex; flex-direction: column; min-inline-size: 0; min-block-size: 0; background: var(--arbor-paper-elevated); color: var(--arbor-ink); border-inline-start: 1px solid var(--arbor-rule-strong); position: fixed; inset: 0; z-index: 46; overflow: hidden; }
 .companion-conversation-heading { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-block-end: 1px solid var(--arbor-rule); flex-shrink: 0; }
@@ -11,18 +15,17 @@
 .companion-chrome-button:hover { background: var(--arbor-paper-deep); }
 .companion-workspace-backdrop { position: fixed; inset: 0; z-index: 45; background: color-mix(in srgb,var(--arbor-ink) 22%,transparent); }
 .companion-loading { padding: 24px; }
-.companion-launcher { display: flex; align-items: stretch; gap: 2px; position: fixed; z-index: 29; inset-inline: 16px; inset-block-end: var(--companion-launcher-offset); border: 1px solid var(--arbor-rule-strong); border-radius: var(--r-xl); background: var(--arbor-paper-elevated); box-shadow: var(--arbor-shadow-primary); max-inline-size: 560px; margin-inline: auto; padding: 4px; }
+.companion-launcher { display: flex; align-items: stretch; gap: 2px; position: relative; z-index: 29; inline-size: 100%; border: 1px solid var(--arbor-rule-strong); border-radius: var(--r-xl); background: var(--arbor-paper-elevated); box-shadow: var(--arbor-shadow-primary); max-inline-size: 560px; margin-inline: auto; padding: 4px; }
 .companion-launch-main { display: flex; align-items: center; gap: 8px; flex: 1; min-inline-size: 0; padding: 6px 8px; min-block-size: 44px; text-align: start; color: var(--arbor-ink); border-radius: var(--r-lg); }
 .companion-launch-copy { flex: 1; min-inline-size: 0; font-size: var(--t-sm); font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
 .companion-launch-save { display: flex; align-items: center; justify-content: center; gap: 8px; min-inline-size: 48px; min-block-size: 44px; padding: 6px 10px; border-inline-start: 1px solid var(--arbor-rule); color: var(--arbor-clay-deep); font-size: 13px; }
 .companion-launch-main:hover, .companion-launch-save:hover { background: var(--arbor-paper-deep); }
 .companion-workspace button:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 3px; }
 @media (max-width: 520px) { .companion-launch-save-label { display: none; } }
-@media (min-width: 1024px) { .companion-workspace { --companion-launcher-offset: 16px; } .companion-launcher { inset-inline-start: 264px; } }
-@media (min-width: 1280px) { .companion-launcher { inset-inline-start: 296px; } }
+@media (min-width: 1024px) { .companion-workspace { padding-block-end: 0; } .companion-launcher-rail { padding-block-end: max(16px, env(safe-area-inset-bottom)); } }
 @media (min-width: 1280px) {
   .companion-workspace.is-open:not(.is-expanded) { grid-template-columns: minmax(0,1fr) minmax(440px,46%); }
-  .companion-conversation { position: relative; inset: auto; z-index: 25; }
+  .companion-conversation { grid-row: 1; grid-column: 2; position: relative; inset: auto; z-index: 25; }
   .companion-workspace.is-expanded .companion-conversation { position: fixed; inset-block: 24px; inset-inline: max(24px,calc((100vw - 960px)/2)); border: 1px solid var(--arbor-rule-strong); border-radius: var(--r-xl); z-index: 46; }
   .companion-workspace.is-open > main { padding-inline: 24px; }
 }

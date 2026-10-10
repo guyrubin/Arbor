@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { RELEASE_MATRIX, RELEASE_ROUTE_COUNT, RELEASE_SHARDS, RELEASE_VIEWPORTS, expectedSeedMarker, missingBaseEvidence, captureDeadlineMs, releaseCell, releaseMatrix, releaseEnvironment, releaseIdentity, releaseInventory, releaseSweepArguments, shardRoutes } from './capture/release-config.mjs';
+import { requiresConversationReadiness, RELEASE_MATRIX, RELEASE_ROUTE_COUNT, RELEASE_SHARDS, RELEASE_VIEWPORTS, expectedSeedMarker, missingBaseEvidence, captureDeadlineMs, releaseCell, releaseMatrix, releaseEnvironment, releaseIdentity, releaseInventory, releaseSweepArguments, shardRoutes } from './capture/release-config.mjs';
 import { expectedReleaseInteractionStates } from './capture/release-interactions.mjs';
 import { summarizeRelease } from './capture/release-summary.mjs';
 import { ROUTE_IDS } from '../src/lib/routes';
@@ -12,7 +12,7 @@ const root = path.resolve(__dirname, '../..');
 const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
 const identity = { sourceSha: 'a'.repeat(40), sourceTreeSha: 'b'.repeat(40) };
 const routes = releaseInventory(ROUTE_IDS, SURFACE_CONTRACTS);
-const baseCell = (route: string, vp: any) => ({ route, state: 'base', viewport: `${vp.w}x${vp.h}`, lang: vp.lang, mounted: true, shot: `shots/${route}.${vp.id}.png`, readyTimedOut: false, seedHydrated: true, navigatorOnline: true, browserFixture: { connectivity: 'synthetic-online' } });
+const baseCell = (route: string, vp: any) => ({ route, state: 'base', viewport: `${vp.w}x${vp.h}`, lang: vp.lang, mounted: true, conversationReadiness: requiresConversationReadiness(route) ? 'composer' : undefined, shot: `shots/${route}.${vp.id}.png`, readyTimedOut: false, seedHydrated: true, navigatorOnline: true, browserFixture: { connectivity: 'synthetic-online' } });
 const records = (matrix = RELEASE_MATRIX) => matrix.map((spec: any) => {
   const cell = releaseCell(spec);
   const cells = spec.group === 'base' ? shardRoutes(routes, spec.shard).map((route: string) => baseCell(route, cell.viewport)) : expectedReleaseInteractionStates(spec.group, cell.viewport).map((state: any) => ({ ...state, ...identity, lang: cell.viewport.lang, viewport: `${cell.viewport.w}x${cell.viewport.h}`, reached: true, assertions: [{ id: 'REAL_INTERACTION_VERIFIED', passed: true }], failures: [], shot: `shots/${state.state}.png` }));
@@ -59,6 +59,20 @@ describe('final release evidence contracts, no sockets or browser', () => {
     for (const patch of [{ mounted: false }, { shot: null }, { seedHydrated: false }, { readyTimedOut: true }, { navigatorOnline: false }, { browserFixture: {} }]) expect(missingBaseEvidence([{ ...cell, ...patch }], ['overview'], vp)).toHaveLength(1);
     expect(missingBaseEvidence([], ['overview'], vp)[0].failure).toBe('NOT_ATTEMPTED');
   });
+  it('rejects a background Today shell and pending/error Coach readiness', () => {
+    const vp = RELEASE_VIEWPORTS[0];
+    for (const route of ['coach', 'scholar']) {
+      const cell = baseCell(route, vp);
+      expect(missingBaseEvidence([cell], [route], vp)).toEqual([]);
+      for (const conversationReadiness of [undefined, 'pending', 'error-boundary']) {
+        expect(missingBaseEvidence([{ ...cell, conversationReadiness }], [route], vp)).toHaveLength(1);
+      }
+    }
+    expect(requiresConversationReadiness('overview')).toBe(false);
+    const sweep = read('app/scripts/rendered-sweep.mjs');
+    expect(sweep).toContain('const conversationRoute = requiresConversationReadiness(loadRoute)');
+    expect(sweep).toContain("rec.mounted = composer");
+  });
   it('builds a production client while preserving the no-provider local server gates', () => {
     const previous = { ...process.env };
     try {
@@ -90,6 +104,8 @@ describe('final release evidence contracts, no sockets or browser', () => {
     expect(sweep.match(/await installOfflineFonts\(context\)/g)).toHaveLength(2);
     expect(sweep.match(/await captureScreenshot\(page/g)).toHaveLength(2);
     expect(sweep).not.toContain('await page.screenshot(');
+    expect(sweep).toContain('document-extent-only-not-full-main-content');
+    expect(sweep).toContain('rec.mainScrollport =');
     expect(sweep).toContain('const VIEWPORTS = RELEASE_VIEWPORTS');
     expect(sweep).not.toContain('EXTRA_VIEWPORTS');
     expect(sweep).toContain('expectedSeedMarker(seedFields.bundle, vp.lang)');
@@ -110,7 +126,7 @@ describe('final release evidence contracts, no sockets or browser', () => {
   });
   it('aggregates only the exact final-source complete four-way base matrix and font-proven PNGs', () => {
     const full = summarizeRelease(records(), identity);
-    expect(summarizeRelease(records(releaseMatrix('ask-diagnostic')), identity, 'ask-diagnostic')).toMatchObject({ completed: true, expectedBaseCells: 0, baseCells: 0, returnedShards: 1, interactionCells: 2 });
+    expect(summarizeRelease(records(releaseMatrix('ask-diagnostic')), identity, 'ask-diagnostic')).toMatchObject({ completed: true, expectedBaseCells: 0, baseCells: 0, returnedShards: 1, interactionCells: 4 });
     expect(full).toMatchObject({ completed: true, baseCells: 172, expectedShards: 8, returnedShards: 8 });
     expect(summarizeRelease(records().slice(1), identity).completed).toBe(false);
     expect(summarizeRelease([...records(), records()[0]], identity).completed).toBe(false);

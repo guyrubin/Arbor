@@ -10,8 +10,9 @@ Only PNG screenshots and explicit evidence JSON/summary files are uploaded.
 1. Integrate the final reviewed UI source and these harness scripts on a dedicated
    candidate branch. A capture from another source commit is not final evidence.
 2. Review and push `codex/parent-final-ask-diagnostic` for one mobile-EN Ask pass.
-   This first establishes actual launcher/composer readiness and a real local mock
-   response in the built client. API-error/consent/report fixtures are labeled
+   This attempts launcher/composer readiness and a real local mock response first,
+   then separately full-loads the supported `#/coach` route and tests its composer
+   and a fresh mock response. Direct-route success never passes a failed launcher. API-error/consent/report fixtures are labeled
    separately. A fixture response is never evidence that the mock request worked.
 3. After the UI and Ask readiness are settled, review and push the exact final
    candidate to `codex/parent-final-capture`. The matrix has eight independent jobs:
@@ -60,8 +61,9 @@ No raw server/browser logs, request payloads or environment dumps are uploaded.
 
 Every base route has the same four-way locale/viewport matrix. The historical
 sweep's single-route Hebrew-desktop exception is gone. Seed verification matches
-the real locale-aware hydration marker (`version@time@language`). Full mobile PNGs
-are supplemental; the primary viewport PNG remains required for each route cell.
+the real locale-aware hydration marker (`version@time@language`). Full-page mobile PNGs show only the document extent; they do not expand the
+bounded main scrollport and are explicitly labeled as not full main content.
+The primary viewport PNG remains required for each route cell.
 
 ## Local verification limits
 
@@ -69,3 +71,41 @@ Only source contracts and direct installed Vitest run locally with the offline
 network guard. Do not launch a browser, provider or full sweep on a denied host.
 A passing source test does not establish rendered behavior. The actual final
 screenshots and interactions must be collected in the dedicated CI container.
+
+## Surface readiness and focused regressions
+
+Coach and Scholar base evidence requires an actually visible composer. A mounted
+background Today page or the conversation Suspense fallback is not a ready cell;
+a real conversation error boundary is recorded but remains rejected evidence.
+Exceptions export only bounded enum categories, allowlisted JavaScript error
+names and up to five local static-module frame paths with line/column positions.
+No raw exception messages, stacks, function names or URL queries leave the classifier.
+
+Together's normal return waits for the real destination content; a separate early
+Back state preserves the interrupted-transition focus requirement. If the capture
+misses that brief transition window it records the named unobserved-window failure,
+not a pass. Now and Together test the final actionable content at maximum scroll
+against the actual sticky/fixed launcher and navigation, including a hit test.
+Together's “How to begin” opens the real activity preview and checks its context,
+exact Say this text and separate Try/Keep controls without saving an observation.
+
+Structured-report fixtures target the reviewed disclosure layout: the first step
+and Say this lead, every optional section is photographed closed and open, and
+all supplied display prose is counted once only with every section exposed.
+Separate states preserve urgent help ahead of the first step, ungated text-only
+explanations, the footer and the real optional action controls without invoking
+provider, plan, sharing or memory writes. These are labeled renderer fixtures;
+they never stand in for either independently verified real mock response.
+
+The intrinsic launcher rail is measured explicitly: main.bottom must remain at
+or above rail.top, the rail ends above the fixed mobile nav, and the reserved nav
+height must match its actual translated height. Now, milestones and daily-play
+have initial, middle and last-action main-scrollport PNG states; Together also
+checks its last action. These states scroll #main itself and require no window
+scroll. A real milestones-to-My-child fixed-nav/sidebar click checks the route-change reset; main must still be scrolled at the captured click event.
+Keep sheet dismissal and conversation close must return focus to visible rail
+controls. All of these states run in both languages and both matrix widths.
+Native browser zoom is not established by this harness; device scale factor or
+fullPage output must never be presented as native zoom verification.
+
+Early Back timing and route-reset preconditions are sampled in a passive capture-phase listener at the actual trusted click, after Playwright actionability waits. Report preservation checks exact ordered values within each semantic field group; recurring phrases across different fields are permitted, while duplicate, missing or changed field nodes fail.

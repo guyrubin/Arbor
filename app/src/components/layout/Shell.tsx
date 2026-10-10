@@ -233,7 +233,7 @@ export default function Shell() {
   // B-SHELL-19: the strip's "Working on:" label opens the profile editor
   // (it is challenges[0] — parent-chosen and editable).
   const [profileEditOpen, setProfileEditOpen] = useState(false);
-  // F-02: <main> is the desktop scrollport (overflow-y-auto below), so a tab
+  // F-02: <main> is the scrollport at every width, so a tab
   // switch kept the previous tab's scroll offset and showed the new tab
   // mid-page (plus a ghost frame of clipped old content during the exit).
   // The reset lives on AnimatePresence onExitComplete — exactly the tab-swap
@@ -339,7 +339,7 @@ export default function Shell() {
     // KidModeProvider is pure UI state — no Firestore write, no child-data mutation.
     <KidModeProvider>
     {/* select-none removed: parents must be able to select/copy scripts and guidance (a11y + core utility) */}
-    <div className="arbor-app min-h-screen text-sans antialiased overflow-x-hidden relative">
+    <div className="arbor-app h-dvh text-sans antialiased overflow-hidden relative">
       {/* B-SHELL-23: the first Tab stop is a skip link to <main>. Hash routing
           owns #/<tab>, so the link focuses <main> instead of changing the hash. */}
       <a
@@ -353,19 +353,19 @@ export default function Shell() {
       </a>
       <div
         // B-SHELL-01: two columns at every width — the third (AI rail) track is gone.
-        className="page-shell grid grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] min-h-screen relative transition-all duration-300 max-w-full overflow-x-hidden"
+        className="page-shell grid grid-cols-1 lg:grid-cols-[248px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] h-full min-h-0 relative transition-all duration-300 max-w-full overflow-x-hidden"
       >
         <Sidebar />
 
-        {/* AP-044: Right column — topbar placeholder (desktop) + scrollable content area */}
-        <div className="flex flex-col min-h-0 min-w-0 lg:h-screen overflow-hidden">
+        {/* The viewport-bounded column gives main and the launcher separate space at every width. */}
+        <div className="flex flex-col min-h-0 min-w-0 h-full overflow-hidden">
           <Topbar />
         {/* arbor-parent: scopes the flat-white clinical token overrides to the parent
             dashboard content area ONLY. KidModeOverlay renders at position:fixed z-70
             as a sibling of the grid — it carries its own .arbor-play scope and does
             NOT inherit from this <main>. See index.css .arbor-parent block. */}
         <CompanionWorkspace kidLocked={kidLocked}>
-        <main id="main" tabIndex={-1} ref={mainRef} className="arbor-parent focus:outline-none w-full min-w-0 px-4 py-5 pb-24 sm:px-5 md:px-6 md:py-8 lg:pb-10 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
+        <main id="main" tabIndex={-1} ref={mainRef} className="arbor-parent focus:outline-none w-full min-w-0 px-4 py-5 sm:px-5 md:px-6 md:py-8 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
           {/* IA-03 / IA-16 / MOB-26 — ONE mobile chrome strip, not three rows.
               The separate 34 px brand row is GONE: the 28 px mark folds into
               the strip below, which is where the eye already goes. The strip
@@ -533,9 +533,9 @@ export default function Shell() {
           <Suspense fallback={<TabSkeleton />}>
             <AnimatePresence
               mode="wait"
-              /* F-02: reset BOTH scroll owners at the tab-swap moment — the
-                 desktop <main> scrollport and the mobile window scroll (below
-                 lg the page itself scrolls). Guarded by shellScrollReset.test.ts. */
+              /* F-02: reset the main scrollport at the tab-swap moment. Also
+                 clear any window offset left by mobile keyboard focus/panning.
+                 Guarded by shellScrollReset.test.ts. */
               onExitComplete={() => {
                 mainRef.current?.scrollTo({ top: 0, left: 0 });
                 window.scrollTo(0, 0);

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
-  classifyReleaseConsole, clippedOverlap, expectedReleaseInteractionStates,
-  geometryStable, missingReleaseInteractionEvidence, releaseFixture,
+  classifyReleaseConsole, deniedCaptureApiCategory, clippedOverlap, expectedReleaseInteractionStates,
+  geometryStable, missingReleaseInteractionEvidence, observedEarlyBackClick, observedScrolledNavigationClick, releaseFixture,
   sanitizedReleaseLocation, syntheticReleaseReport,
 } from './capture/release-interactions.mjs';
 
@@ -28,10 +28,14 @@ describe('release interaction contracts, without browser or sockets', () => {
   });
 
   it('limits the narrow diagnostic to actual composer and mock readiness', () => {
-    expect(expectedReleaseInteractionStates('ask-diagnostic', mobile).map((item: any) => item.state)).toEqual(['launcher-composer', 'ask-mock-answer']);
+    expect(expectedReleaseInteractionStates('ask-diagnostic', mobile).map((item: any) => item.state)).toEqual(['launcher-composer', 'ask-mock-answer', 'direct-composer', 'direct-mock-answer']);
     const actualFlow = source.indexOf("await screen('shell', 'ask-mock-answer'");
     expect(actualFlow).toBeLessThan(source.indexOf("await screen('shell', 'tools-open'"));
-    expect(actualFlow).toBeLessThan(source.indexOf("apiState.chat = 'report'"));
+    expect(actualFlow).toBeLessThan(source.indexOf("await collectReportStates("));
+    expect(actualFlow).toBeLessThan(source.indexOf("await screen('coach', 'direct-composer'"));
+    expect(source).toContain("DIRECT_ENTRY_WITHOUT_LAUNCHER_CLICK");
+    expect(source).toContain("apiState.mockRequests > before.requests");
+    expect(source).toContain("apiState.mockResponses > before.responses");
     expect(source).toContain("cell.fixture = 'actual-local-mock-server-response'");
     expect(source).toContain("cell.fixture = 'bilingual-report-presentation-fixture'");
   });
@@ -40,11 +44,27 @@ describe('release interaction contracts, without browser or sockets', () => {
     const focused = expectedReleaseInteractionStates('focused', mobile);
     expect(focused).toEqual([...expectedReleaseInteractionStates('navigation', mobile), ...expectedReleaseInteractionStates('ask', mobile)]);
     expect(new Set(focused.map((item: any) => `${item.group}/${item.route}/${item.state}`)).size).toBe(focused.length);
+    expect(new Set(focused.map((item: any) => `${item.group}/${item.state}`)).size).toBe(focused.length);
     expect(focused.some((item: any) => item.state === 'more-records')).toBe(true);
     expect(expectedReleaseInteractionStates('focused', desktop).some((item: any) => item.state.startsWith('more-'))).toBe(false);
     expect(expectedReleaseInteractionStates('focused', desktop).some((item: any) => item.state === 'record-profile')).toBe(true);
     expect(source).toContain('_priorCells: navigation.cells');
     expect(source).toContain('cells: [..._priorCells]');
+  });
+
+  it('preserves interrupted flows, bottom reachability and useful activity context', () => {
+    const states = expectedReleaseInteractionStates('navigation', mobile).map(item => item.state);
+    for (const state of ['now-bottom-reachable', 'together-bottom-reachable', 'together-early-back', 'together-how-to-begin', 'now-scroll-initial', 'now-scroll-middle', 'scroll-route-reset', 'keep-close-focus']) expect(states).toContain(state);
+    for (const assertion of ['STORY_CONTENT_MOUNTED', 'EXACT_RETURN_CARD_FOCUSED', 'EARLY_BACK_WINDOW_OBSERVED', 'EARLY_BACK_EXACT_CARD_FOCUS', 'FINAL_ACTION_VISIBLE_ABOVE_DOCK', 'FINAL_ACTION_NOT_OCCLUDED', 'CONCRETE_ACTIVITY_DETAIL', 'EXACT_SAY_THIS_PRESERVED', 'TWO_DENSITY_TABS', 'NO_DUPLICATE_SHELL_NAV', 'MAIN_ENDS_ABOVE_LAUNCHER_RAIL', 'RAIL_ENDS_ABOVE_MOBILE_NAV', 'MEASURED_NAV_HEIGHT_RESERVED', 'WINDOW_NOT_USED_AS_SCROLLPORT', 'MAIN_RESET_ON_ROUTE_CHANGE', 'KEEP_CLOSE_RETURNS_TO_VISIBLE_SUMMARY', 'DOCK_CLOSE_FOCUS_RETURNS_TO_LAUNCHER']) expect(source).toContain(assertion);
+    expect(source).toContain("page.locator('[data-density-toggle]')");
+    expect(source).toContain('dependent(profileReached)');
+    expect(source).toContain('dependent(memoryReached)');
+    expect(source).toContain("dialog.getByRole('heading').first()");
+    for (const route of ['milestones', 'daily-play']) for (const state of ['scroll-initial', 'scroll-middle', 'scroll-last-action']) expect(expectedReleaseInteractionStates('navigation', mobile).some(item => item.route === route && item.state === `${route}-${state}`)).toBe(true);
+    expect(source).toContain("document.querySelector('#main')");
+    expect(source).toContain("screenshotScope: 'main-scrollport-frame'");
+    expect(source).not.toContain('window.scrollTo(0, 240)');
+
   });
 
   it('rejects unknown groups and non-matrix viewports', () => {
@@ -74,6 +94,32 @@ describe('release interaction contracts, without browser or sockets', () => {
     expect(clippedOverlap(rect, nav, { x: 0, y: 0, width: 375, height: 812 })).toBe(4000);
     expect(clippedOverlap(rect, nav, { x: 0, y: 70, width: 375, height: 742 })).toBe(0);
     expect(clippedOverlap(null, nav, rect)).toBeNull();
+  });
+
+  it('rejects pre-click observations that used to falsely pass interrupted and reset flows', () => {
+    const during = { sampledAt: 'captured-click', trusted: true, outgoingVisible: true, destinationVisible: false };
+    expect(observedEarlyBackClick(during)).toBe(true);
+    // The old pre-await sample was true, but the real click happened after settle.
+    expect(during.outgoingVisible && !during.destinationVisible).toBe(true);
+    expect(observedEarlyBackClick({ ...during, outgoingVisible: false, destinationVisible: true })).toBe(false);
+    expect(observedEarlyBackClick({ ...during, sampledAt: 'before-click' })).toBe(false);
+    expect(observedEarlyBackClick({ ...during, trusted: false })).toBe(false);
+    const scrolled = { sampledAt: 'captured-click', trusted: true, outsideMain: true, mainScrollTop: 320 };
+    expect(observedScrolledNavigationClick(scrolled)).toBe(true);
+    // Before Playwright scrolled Back into view was positive; click time was zero.
+    expect(scrolled.mainScrollTop > 0 && 0 === 0).toBe(true);
+    expect(observedScrolledNavigationClick({ ...scrolled, mainScrollTop: 0 })).toBe(false);
+    expect(observedScrolledNavigationClick({ ...scrolled, outsideMain: false })).toBe(false);
+    expect(observedScrolledNavigationClick({ ...scrolled, sampledAt: 'before-click' })).toBe(false);
+    expect(observedScrolledNavigationClick(null)).toBe(false);
+    expect(source).toContain("document.addEventListener('click', state.listener, { capture: true, passive: true })");
+    expect(source).toContain('event.isTrusted');
+    expect(source).toContain('cell.transitionAtBack = await clickWithEvidence(back)');
+    expect(source).toContain('cell.navigationAtClick = await clickWithEvidence(childDoor)');
+    const reset = source.slice(source.indexOf("await screen('development', 'scroll-route-reset'"), source.indexOf('const invitation ='));
+    expect(reset).not.toContain("byId('secondary-place-back').click()");
+    expect(reset).toContain("page.locator('.arbor-app > nav')");
+    expect(reset).toContain("byId('app-sidebar').locator('nav')");
   });
 
   it('requires explicitly demo-marked data and derives a real unchecked watch ID', () => {
@@ -116,6 +162,19 @@ describe('release interaction contracts, without browser or sockets', () => {
     expect(sanitizedReleaseLocation({ url: 'http://127.0.0.1:4805/src/private%20name.tsx' })).toBeUndefined();
     expect(source).toContain('const diagnostics = createRuntimeDiagnostics()');
     expect(source).toContain('cell.runtimeDiagnostics = diagnostics.snapshot()');
+  });
+
+
+  it('permits only the TTS capability read while preserving synthesis/media/export denial', () => {
+    expect(deniedCaptureApiCategory('GET', '/api/tts')).toBeNull();
+    for (const method of ['POST', 'PUT', 'DELETE']) expect(deniedCaptureApiCategory(method, '/api/tts')).toBe('TTS');
+    expect(deniedCaptureApiCategory('GET', '/api/tts/private')).toBe('TTS');
+    for (const [endpoint, category] of [['/api/voice', 'VOICE'], ['/api/live/token', 'LIVE'], ['/api/vision', 'VISION'], ['/api/shares', 'SHARING'], ['/api/export', 'EXPORT'], ['/api/billing/checkout', 'BILLING'], ['/api/consent', 'CONSENT']]) expect(deniedCaptureApiCategory('POST', endpoint)).toBe(category);
+    expect(source).toContain("if (request.method() === 'GET' && url.pathname === '/api/tts') apiState.ttsCapabilityReads++");
+    expect(source).toContain('cell.assetDiagnostics = assets.snapshot()');
+    expect(source).toContain("'SUSPENSE_NO_PENDING_LOCAL_ASSETS'");
+    expect(source).toContain('sheetReady: link.sheet !== null');
+    expect(source).not.toContain('textContent:');
   });
 
   it('caches only successful synthetic reads, sharing them across the focused groups', () => {

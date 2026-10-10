@@ -75,7 +75,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { networkInterfaces } from "node:os";
 import { assertLoopbackOnly, captureRevision } from "./capture/config.mjs";
-import { RELEASE_VIEWPORTS, expectedSeedMarker } from "./capture/release-config.mjs";
+import { RELEASE_VIEWPORTS, expectedSeedMarker, requiresConversationReadiness } from "./capture/release-config.mjs";
 import { classifyReleaseConsole, createRuntimeDiagnostics } from "./capture/runtime-diagnostics.mjs";
 import { initializeSyntheticOnline } from "./capture/small-state.mjs";
 import { captureFontContextOptions, installOfflineFonts, captureScreenshot } from "./capture/font-runtime.mjs";
@@ -1420,6 +1420,9 @@ let cbCounter = Date.now();
  */
 async function visit(context, base, route, vp, allowLatin, shotPath, run = null) {
   const loadRoute = run?.state.from ?? route;
+  const conversationRoute = requiresConversationReadiness(loadRoute);
+  const conversationComposer = '.companion-conversation:not([hidden]) [data-testid="companion-composer"] textarea';
+  const conversationError = '.companion-conversation:not([hidden]) [role="alert"]';
   // B-LOOP-17: a state's page clock (`now`: "HH:MM" local or ISO) rides the query, before the
   // hash — lib/devClock honours it on the dev server only.
   const clockQuery = run?.state.now ? `&now=${encodeURIComponent(run.state.now)}` : "";
@@ -1437,7 +1440,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     if (/status of 429\b/.test(message.text())) rateLimited++;
     else errors.add(diagnostics.record(message.text(), message.location()));
   });
-  page.on("pageerror", (error) => errors.add(diagnostics.record(error?.message)));
+  page.on("pageerror", (error) => errors.add(diagnostics.recordPageError(error)));
   page.on("request", () => { inflight++; lastNet = Date.now(); });
   const done = (req) => {
     inflight = Math.max(0, inflight - 1); lastNet = Date.now();
@@ -1465,7 +1468,9 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     while (Date.now() < deadline) {
       // A read held for the /api limiter window extends the budget instead of failing the cell.
       if (limiterHoldUntil > Date.now()) deadline = Math.max(deadline, limiterHoldUntil + READY_BUDGET_MS);
-      if (!present) present = await page.locator(READY_SELECTOR).count().then((n) => n > 0, () => false);
+      if (!present) present = conversationRoute
+        ? await page.locator(conversationComposer).first().isVisible().catch(() => false) || await page.locator(conversationError).first().isVisible().catch(() => false)
+        : await page.locator(READY_SELECTOR).count().then((n) => n > 0, () => false);
       if (present && inflight === 0 && Date.now() - lastNet >= QUIET_MS) break;
       await page.waitForTimeout(100);
     }
@@ -1525,6 +1530,14 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
   } catch (err) {
     rec = { mounted: false, collectError: classifyReleaseConsole(err?.message) };
   }
+  if (conversationRoute) {
+    const composer = await page.locator(conversationComposer).first().isVisible().catch(() => false);
+    const boundary = await page.locator(conversationError).first().isVisible().catch(() => false);
+    rec.conversationReadiness = composer ? "composer" : boundary ? "error-boundary" : "pending";
+    // Background Today modules cannot prove that the conversation route mounted.
+    rec.mounted = composer;
+    rec.errorBoundary = boundary;
+  }
   let shot = null;
   const shotFile = typeof shotPath === "function" ? shotPath(stateRec.state) : shotPath;
   if (shotFile) {
@@ -1532,12 +1545,14 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       await captureScreenshot(page, { path: shotFile, fullPage: false, animations: "disabled", caret: "hide" });
       shot = path.relative(path.dirname(path.dirname(shotFile)), shotFile).split(path.sep).join("/");
     } catch (error) { shot = null; rec.fontFailure = /^FONT_[A-Z_]+$/.test(error?.message ?? "") ? error.message : "SCREENSHOT_FAILED"; }
-    // P5 pass A9: a full-page shot per 375 BASE cell, so the blocks below the
-    // fold (Notice, Tonight's line, the door) have rendered evidence.
+    // Document extent only: fullPage does not expand the bounded #main
+    // scrollport. Actual below-fold frames are separate focused states.
     if (!run && vp.w < 768) {
       try {
         const fullFile = shotFile.replace(/\.png$/, ".full.png");
         await captureScreenshot(page, { path: fullFile, fullPage: true, animations: "disabled", caret: "hide" });
+        rec.fullShotScope = "document-extent-only-not-full-main-content";
+        rec.mainScrollport = await page.locator("#main").evaluate(el => ({ scrollTop: el.scrollTop, clientHeight: el.clientHeight, scrollHeight: el.scrollHeight }));
         rec.fullShot = path.relative(path.dirname(path.dirname(fullFile)), fullFile).split(path.sep).join("/");
       } catch { /* the viewport shot stands */ }
     }

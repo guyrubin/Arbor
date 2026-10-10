@@ -8,7 +8,7 @@
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
-.coach-report > * + * { margin-block-start: 24px; }
+.coach-report > * + * { margin-block-start: 20px; }
 .coach-report .coach-report__eyebrow {
   margin-block: 0 12px;
   color: var(--arbor-muted);
@@ -34,7 +34,7 @@
 .coach-report__understanding li + li { margin-block-start: 16px; }
 .coach-report__understanding strong { font-weight: 600; }
 .coach-report__understanding p { margin-block: 4px 0; color: var(--arbor-ink-soft); }
-.coach-report__next { padding-block: 24px; border-block: 1px solid var(--arbor-rule-strong); }
+.coach-report__next { padding: 20px; border: 1px solid var(--arbor-rule-strong); border-radius: var(--r); background: var(--arbor-paper-elevated); }
 .coach-report__steps { padding: 0; margin: 0; list-style: none; }
 .coach-report__steps > li { display: flex; align-items: flex-start; gap: 12px; }
 .coach-report__steps > li + li { margin-block-start: 20px; }
@@ -57,17 +57,21 @@
 .coach-report[dir="rtl"] [data-testid="say-this"] > p { font-family: var(--font-display); }
 .coach-report [data-testid="say-this"] button { min-block-size: var(--touch-min); min-inline-size: var(--touch-min); font-size: var(--t-sm); }
 .coach-report__considerations { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
-.coach-report__considerations .coach-report__section > h3 { font-family: var(--font-sans); font-size: var(--t-base); }
+.coach-report .coach-report__section > h4 { display: flex; align-items: center; gap: 8px; margin-block: 0 12px; font-family: var(--font-sans); font-size: var(--t-base); line-height: 1.5; font-weight: 600; }
 .coach-report__list { padding-inline-start: 20px; margin: 0; list-style: disc; }
 .coach-report__list > li + li { margin-block-start: 8px; }
 .coach-report__list p { margin: 0; }
 .coach-report__help { padding: 20px; border: 1px solid var(--arbor-pink-ink); border-radius: var(--r); background: var(--arbor-paper-elevated); color: var(--arbor-pink-ink); }
 .coach-report__help ul { list-style: disc; padding-inline-start: 20px; margin: 0; }
 .coach-report__help li + li { margin-block-start: 8px; }
-.coach-report__disclosure { border-block: 1px solid var(--arbor-rule); }
-.coach-report__disclosure > button { display: flex; inline-size: 100%; min-block-size: var(--touch-min); justify-content: space-between; gap: 12px; text-align: start; padding-block: 8px; font-size: var(--t-sm); color: var(--arbor-muted); }
+.coach-report__disclosure { border-block-start: 1px solid var(--arbor-rule); }
+.coach-report > .coach-report__disclosure + .coach-report__disclosure { margin-block-start: 0; }
+.coach-report__disclosure > button { display: flex; inline-size: 100%; min-block-size: var(--touch-min); justify-content: space-between; gap: 12px; text-align: start; padding-block: 12px; font-size: var(--t-base); font-weight: 600; color: var(--arbor-ink); }
 .coach-report__disclosure > button > span { display: inline-flex; align-items: center; gap: 8px; }
-.coach-report__disclosure-body { padding-block: 8px 16px; }
+.coach-report__disclosure-body { padding-block: 8px 20px; }
+.coach-report__disclosure-body > * + *,
+.coach-report__document > * + * { margin-block-start: 20px; }
+.coach-report [hidden] { display: none !important; }
 .coach-report__source-list { list-style: none; margin: 0; padding: 0; }
 .coach-report__source-list li { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .coach-report__source-list li + li { margin-block-start: 12px; }
@@ -91,7 +95,17 @@
 .coach-report__keep button { display: inline-flex; align-items: center; gap: 6px; min-block-size: var(--touch-min); padding-inline: 4px; color: var(--arbor-clay); font-size: var(--t-xs); font-weight: 600; }
 .coach-report__keep button:disabled { color: var(--arbor-muted); cursor: wait; }
 .coach-report__keep [role="alert"] { flex-basis: 100%; }
-.coach-report__script > .coach-report__keep { margin-inline-start: 20px; }
+/* The same slots remain mounted when closed, including during Keep/Undo.
+   The host caps proposals at four and may return null after a keep. Hide the
+   associated label with its absent slot, never leave orphaned save labels. */
+.coach-report__save-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; border-block-end: 1px solid var(--arbor-rule); padding-block: 8px; }
+.coach-report__save-label { font-size: var(--t-sm); font-weight: 600; }
+.coach-report__save-row > .coach-report__keep { margin-block-start: 0; }
+.coach-report__save-row:not(:has(.coach-report__keep)),
+.coach-report__save-advice:not(:has(.coach-report__keep)) { display: none; }
+.coach-report__document button { display: inline-flex; align-items: center; gap: 8px; min-block-size: var(--touch-min); max-inline-size: 100%; padding: 8px 12px; margin-block-start: 8px; border: 1px solid var(--arbor-rule-strong); border-radius: var(--r-sm); color: var(--arbor-clay); background: var(--arbor-paper-elevated); font-size: var(--t-sm); text-align: start; }
+.coach-report__document button:disabled { color: var(--arbor-muted); }
+
 @container (min-width: 580px) {
   .coach-report__considerations { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
 }

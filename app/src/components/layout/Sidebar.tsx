@@ -62,7 +62,7 @@ export default function Sidebar() {
     <aside
       data-testid="app-sidebar"
       data-arbor-seam="inline-end"
-      className="hidden lg:flex flex-col gap-5 px-4 py-6 h-screen sticky top-0 overflow-y-auto bg-white"
+      className="hidden lg:flex flex-col gap-5 px-4 py-6 h-full min-h-0 sticky top-0 overflow-y-auto bg-white"
       style={{ borderInlineEnd: "1px solid var(--arbor-rule)" }}
     >
       {/* Brand lockup — softer 38px rounded mark + wordmark (UC-1 density) */}

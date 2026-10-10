@@ -61,9 +61,59 @@ export async function installOfflineFonts(context) {
   });
 }
 
+/** Runs in the page, without DOM/style changes. Ancestors whose only glyphs
+ * belong to an icon child are not text samples. Return selectors, never text. */
+export function collectFontSampleCandidates() {
+  const samples = [], seen = new Set();
+  for (const scopeSelector of ['[role="dialog"][aria-modal="true"]', '.companion-conversation:not([hidden])', 'main']) {
+    for (const scope of [...document.querySelectorAll(scopeSelector)].slice(0, 4)) {
+      const bounds = scope.getBoundingClientRect();
+      if (!bounds.width || !bounds.height) continue;
+      let count = 0;
+      for (const el of [...scope.querySelectorAll('*')].slice(0, 600)) {
+        if (seen.has(el) || el.closest('[hidden], [aria-hidden="true"], .msr, .material-symbols-rounded, svg')) continue;
+        const style = getComputedStyle(el);
+        if (style.visibility === 'hidden' || style.display === 'none' || /Material Symbols|Material Icons/i.test(style.fontFamily)) continue;
+        const ownText = [...el.childNodes].some(node => {
+          if (node.nodeType !== Node.TEXT_NODE || !node.textContent?.trim()) return false;
+          const range = document.createRange(); range.selectNodeContents(node);
+          return [...range.getClientRects()].some(rect => rect.width > 0 && rect.height > 0 && rect.bottom > Math.max(0, bounds.top) && rect.top < Math.min(innerHeight, bounds.bottom) && rect.right > Math.max(0, bounds.left) && rect.left < Math.min(innerWidth, bounds.right));
+        });
+        if (!ownText) continue;
+        const parts = [];
+        for (let current = el; current && parts.length < 50; current = current.parentElement) {
+          const index = current.parentElement ? [...current.parentElement.children].indexOf(current) + 1 : 1;
+          parts.unshift(`${current.tagName.toLowerCase()}:nth-child(${index})`);
+        }
+        seen.add(el); samples.push({ selector: parts.join(' > '), scope: scopeSelector.startsWith('[role') ? 'modal' : scopeSelector === 'main' ? 'main' : 'conversation', ownText: true });
+        if (++count === 12 || samples.length === 48) break;
+      }
+      if (samples.length === 48) return samples;
+    }
+  }
+  return samples;
+}
+
+export function platformTextFontEvidence(fonts) {
+  const textFonts = fonts.filter(font => font.glyphCount > 0 && !/^material(?:symbols|icons)/.test(normalize(font.familyName)));
+  return { fonts: textFonts, custom: textFonts.length > 0 && textFonts.every(font => font.isCustomFont === true && FONT_FAMILIES.some(family => normalize(font.familyName).startsWith(normalize(family)))) };
+}
+
+/** Preserve pixels after rejection without creating an accepted exact shot. */
+export async function preserveUnacceptedScreenshot(page, options, entry) {
+  const parts = path.parse(options.path);
+  const file = path.join(parts.dir, `${parts.name.replace(/\.exact$/, '')}.unaccepted${parts.ext || '.png'}`);
+  entry.diagnosticAccepted = false;
+  try {
+    await page.screenshot({ ...options, path: file });
+    entry.diagnosticShot = path.basename(file);
+    entry.diagnosticLabel = 'UNACCEPTED_FONT_OR_SCREENSHOT_EVIDENCE';
+  } catch { entry.diagnosticFailure = 'DIAGNOSTIC_SCREENSHOT_FAILED'; }
+}
+
 /** Screenshot wrapper used by both context-creating paths of the canonical sweep
- * and the small/supplemental capture. A failed font check refuses that shot; it
- * never silently labels fallback pixels as exact-font evidence. */
+ * and the small/supplemental capture. A failed font check rejects acceptance but
+ * preserves separately named diagnostic pixels; fallback is never labeled exact. */
 export async function captureScreenshot(page, options) {
   if (!exact()) return page.screenshot(options);
   const entry = { shot: path.basename(options.path), passed: false, checkedAt: new Date().toISOString(), rendered: [] };
@@ -79,21 +129,17 @@ export async function captureScreenshot(page, options) {
     session = await page.context().newCDPSession(page);
     await session.send('DOM.enable'); await session.send('CSS.enable');
     const { root } = await session.send('DOM.getDocument');
-    const seen = new Set();
-    // Actual rendered glyph families, not merely CSS font-family declarations.
-    for (const selector of ['.companion-conversation:not([hidden]) h3, .companion-conversation:not([hidden]) p', 'main h1, main h2, main h3, main p']) {
-      const { nodeIds } = await session.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector });
-      for (const nodeId of nodeIds.slice(0, 12)) {
-        if (seen.has(nodeId)) continue; seen.add(nodeId);
-        const { computedStyle } = await session.send('CSS.getComputedStyleForNode', { nodeId });
-        const requested = computedStyle.find((style) => style.name === 'font-family')?.value ?? '';
-        const expectsWebFont = FONT_FAMILIES.some((family) => normalize(requested).includes(normalize(family)));
-        if (!expectsWebFont) continue;
-        const { fonts } = await session.send('CSS.getPlatformFontsForNode', { nodeId });
-        if (!fonts.some((font) => font.glyphCount > 0)) continue;
-        const custom = fonts.some((font) => font.isCustomFont && font.glyphCount > 0 && FONT_FAMILIES.some((family) => normalize(font.familyName).startsWith(normalize(family))));
-        entry.rendered.push({ requested, fonts, custom });
-      }
+    const candidates = await page.evaluate(collectFontSampleCandidates);
+    entry.sampleMethod = 'visible-own-text-nodes';
+    for (const candidate of candidates) {
+      const { nodeId } = await session.send('DOM.querySelector', { nodeId: root.nodeId, selector: candidate.selector });
+      if (!nodeId || candidate.ownText !== true) continue;
+      const { computedStyle } = await session.send('CSS.getComputedStyleForNode', { nodeId });
+      const requested = computedStyle.find(style => style.name === 'font-family')?.value ?? '';
+      if (!FONT_FAMILIES.some(family => normalize(requested).includes(normalize(family)))) continue;
+      const { fonts } = await session.send('CSS.getPlatformFontsForNode', { nodeId });
+      const proof = platformTextFontEvidence(fonts);
+      entry.rendered.push({ requested, ...proof, scope: candidate.scope, ownText: true });
     }
     if (!entry.rendered.length || entry.rendered.some((sample) => !sample.custom)) throw new Error('FONT_RENDERED_GLYPHS_UNPROVEN');
     if (evidence.deniedFontRequests) throw new Error('FONT_UNCACHED_REQUEST');
@@ -102,6 +148,7 @@ export async function captureScreenshot(page, options) {
     return screenshot;
   } catch (error) {
     entry.failure = /^FONT_[A-Z_]+$/.test(error?.message ?? '') ? error.message : 'FONT_OR_SCREENSHOT_CHECK_FAILED';
+    await preserveUnacceptedScreenshot(page, options, entry);
     throw new Error(entry.failure);
   } finally {
     if (session) await session.detach().catch(() => {});
