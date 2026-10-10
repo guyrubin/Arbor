@@ -34,6 +34,7 @@ export const RELEASE_INTERACTION_STATES = Object.freeze({
     ...rows('shell', ['tools-closed', 'tools-open', 'tools-escape', 'consent-review', 'consent-read-error', 'consent-read-retry', 'consent-grant-error', 'consent-draft-return', 'ask-error-generic', 'ask-error-quota', 'ask-mock-answer']),
     ...rows('shell', REPORT_CAPTURE_STATES),
   ],
+  'report-close-only': rows('shell', ['report-text-only', 'report-close-return']),
   'ask-diagnostic': [...rows('shell', ['launcher-composer', 'ask-mock-answer']), ...rows('coach', ['direct-composer', 'direct-mock-answer'])],
 });
 
@@ -500,6 +501,11 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       const watch = await screen('development', 'watch-chosen', async cell => { if (!fixture.watch) throw new Error('SYNTHETIC_WATCH_MILESTONE_MISSING'); await page.evaluate(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: watchKey, value: fixture.watch }); await load('development'); await visible(cell, 'CHOSEN_WATCH_CLEAR_VISIBLE', byId('portrait-unwatch')); await byId('portrait-watch').scrollIntoViewIfNeeded(); watchTitle = await page.locator('#portrait-watch-title').textContent(); check(cell, 'CHOSEN_WATCH_DETAILS_OPEN', await byId('portrait-watch-details').evaluate(el => el.open)); cell.fixture = 'synthetic-local-watch-choice'; });
       const cleared = await screen('development', 'watch-cleared', async cell => { dependent(watch); await byId('portrait-unwatch').click(); await visible(cell, 'WATCH_UNDO_VISIBLE', byId('portrait-watch-undo')); check(cell, 'WATCH_STORAGE_CLEARED', await page.evaluate(key => localStorage.getItem(key), watchKey) === null); check(cell, 'WATCH_CLEAR_CONTROL_REMOVED', await byId('portrait-unwatch').count() === 0); });
       await screen('development', 'watch-undo', async cell => { dependent(cleared); await byId('portrait-watch-undo').click(); await visible(cell, 'WATCH_CLEAR_RESTORED', byId('portrait-unwatch')); check(cell, 'WATCH_EXACT_CHOICE_RESTORED', await page.evaluate(key => localStorage.getItem(key), watchKey) === JSON.stringify(fixture.watch)); check(cell, 'WATCH_SAME_TITLE', await page.locator('#portrait-watch-title').textContent() === watchTitle); check(cell, 'WATCH_UNDO_REMOVED', await byId('portrait-watch-undo').count() === 0); });
+    } else if (group === 'report-close-only') {
+      await collectReportStates({ page, lang, check, visible, byId, composer, load, openConversation, closeConversation, syntheticReleaseReport,
+        screen: (route, state, action) => screen(route, state, async cell => { cell.fixture = 'bilingual-report-presentation-fixture'; await action(cell); }),
+        setReportFixture: response => { selectedReportFixture = response; apiState.chat = 'report'; },
+      }, { closeOnly: true });
     } else {
       const toggle = () => composer().locator('.companion-tools-toggle');
       const tools = () => composer().locator('.companion-secondary-tools');
