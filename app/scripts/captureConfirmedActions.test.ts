@@ -235,7 +235,7 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
     expect(observer).toContain('documentTimelineCurrentTime');
     expect(observer).toContain('performanceTimeOrigin');
     const shell = read('app/src/components/layout/Shell.tsx');
-    expect(shell).toContain('<Suspense fallback={<TabSkeleton />}>');
+    expect(shell).toContain('<Suspense key={childProfile.id} fallback={<TabSkeleton />}>');
     expect(shell).toContain('mode="wait"');
     expect(shell).toContain('key={`${activeTab}@${childProfile.id}`}');
     expect(observer).not.toMatch(/\.finish\(|\.cancel\(|dispatchEvent|forceUpdate|\.style\.[a-zA-Z]+\s*=/);

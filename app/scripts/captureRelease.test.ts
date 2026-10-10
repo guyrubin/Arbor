@@ -16,12 +16,18 @@ const baseCell = (route: string, vp: any) => ({ route, state: 'base', viewport: 
 const records = (matrix = RELEASE_MATRIX) => matrix.map((spec: any) => {
   const cell = releaseCell(spec);
   const cells = spec.group === 'base' ? shardRoutes(routes, spec.shard).map((route: string) => baseCell(route, cell.viewport)) : expectedReleaseInteractionStates(spec.group, cell.viewport).map((state: any) => ({ ...state, ...identity, lang: cell.viewport.lang, viewport: `${cell.viewport.w}x${cell.viewport.h}`, reached: true, assertions: [{ id: 'REAL_INTERACTION_VERIFIED', passed: true }], failures: [], shot: `shots/${state.state}.png` }));
+  if (spec.group === 'kept-search') {
+    const arrival = cells.find((item: any) => item.state === 'search-prepare-arrival') as any;
+    arrival.supplementalShots = [{ stage: 'actual-consult-build-summary-after-scroll', initialShot: arrival.shot,
+      shot: `shots/release.kept-search.${cell.viewport.w}x${cell.viewport.h}.${cell.viewport.lang}.search-prepare-arrival.scrolled.exact.png` }];
+  }
+  const shots = cells.flatMap((item: any) => [item.shot, ...(item.supplementalShots ?? []).map((extra: any) => extra.shot)]);
   const print = spec.group === 'record' ? { ...identity, passed: true, delivery: 'download-html', media: 'print', fontMode: 'source-platform-serif', paper: 'A4', exactAppPayload: true,
     rendering: 'print-media-viewport', pdfRendering: 'chromium-paginated-css-page', preferCSSPageSize: true, pdfValid: true, pdfBytes: 8000, pdfSha256: 'd'.repeat(64), pdf: `print/kept-month.${spec.viewport}.pdf`,
     htmlSha256: 'c'.repeat(64), htmlBytes: 4000, expectedRows: 4, renderedRows: 4, textMatches: true, viewport: { width: 794, height: 1123 },
     fonts: [{ familyName: 'Liberation Serif', glyphCount: 10 }], html: `print/kept-month.${spec.viewport}.html`, shot: `print/kept-month.${spec.viewport}.png` } : null;
   if (print) Object.assign(cells.find((item: any) => item.state === 'month-print'), { printPreview: print });
-  return { printFiles: print ? [print.html, print.shot, print.pdf] : [], printHashes: print ? { [print.html]: print.htmlSha256, [print.pdf]: print.pdfSha256 } : {}, capture: { ...identity, cell, completed: true, fontMode: 'exact', runtimeNetwork: 'none', fixture: { browserConnectivity: 'synthetic-online' } }, inventory: { ...identity, routeIds: routes, contracts: SURFACE_CONTRACTS }, evidence: { ...identity, sha: identity.sourceSha, completed: true, missingEvidence: [], cells }, fonts: { mode: 'exact', deniedFontRequests: 0, shots: cells.map((c: any) => ({ shot: c.shot.split('/').pop(), passed: true, rendered: [{ custom: true }] })) }, shotNames: cells.map((c: any) => c.shot.split('/').pop()) };
+  return { printFiles: print ? [print.html, print.shot, print.pdf] : [], printHashes: print ? { [print.html]: print.htmlSha256, [print.pdf]: print.pdfSha256 } : {}, capture: { ...identity, cell, completed: true, fontMode: 'exact', runtimeNetwork: 'none', fixture: { browserConnectivity: 'synthetic-online' } }, inventory: { ...identity, routeIds: routes, contracts: SURFACE_CONTRACTS }, evidence: { ...identity, sha: identity.sourceSha, completed: true, missingEvidence: [], cells }, fonts: { mode: 'exact', deniedFontRequests: 0, shots: shots.map((file: string) => ({ shot: file.split('/').pop()!, passed: true, rendered: [{ custom: true }] })) }, shotNames: shots.map((file: string) => file.split('/').pop()!) };
 });
 
 describe('final release evidence contracts, no sockets or browser', () => {
@@ -149,9 +155,56 @@ describe('final release evidence contracts, no sockets or browser', () => {
     expect(summarizeRelease(bounded, identity, 'confirmed-actions-only').completed).toBe(false);
   });
   it('adds bounded kept/search evidence without shrinking the previous 858-state release', () => {
-    expect(summarizeRelease(records(releaseMatrix('kept-search-only')), identity, 'kept-search-only')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 116, screenshots: 116, expectedShards: 4 });
-    expect(summarizeRelease(records(releaseMatrix('kept-search-release')), identity, 'kept-search-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 802, screenshots: 974, printPreviews: 4, expectedShards: 20 });
+    expect(summarizeRelease(records(releaseMatrix('kept-search-only')), identity, 'kept-search-only')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 116, screenshots: 120, expectedShards: 4 });
+    expect(summarizeRelease(records(releaseMatrix('kept-search-release')), identity, 'kept-search-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 802, screenshots: 978, printPreviews: 4, expectedShards: 20 });
     expect(summarizeRelease(records(releaseMatrix('kept-search-only')), identity, 'kept-search-release').completed).toBe(false);
+  });
+  it('requires exactly one canonical Consult scrolled supplement in every variant, preserving 116 cells and 120 PNGs', () => {
+    const full = () => records(releaseMatrix('kept-search-only'));
+    const arrival = (shard: any) => shard.evidence.cells.find((item: any) => item.state === 'search-prepare-arrival');
+    expect(summarizeRelease(full(), identity, 'kept-search-only')).toMatchObject({ completed: true, interactionCells: 116, screenshots: 120 });
+    for (const index of [0, 1, 2, 3]) {
+      for (const invalid of [undefined, null, [], [null], [{ shot: null }]]) {
+        const bounded = full(); arrival(bounded[index]).supplementalShots = invalid;
+        expect(summarizeRelease(bounded, identity, 'kept-search-only').failures.find((failure: any) => failure.id === bounded[index].capture.cell.id)?.reasons).toContain('CONSULT_SCROLLED_EVIDENCE_INVALID');
+      }
+      for (const patch of [
+        { shot: null }, { stage: 'initial-viewport' }, { initialShot: 'shots/different-primary.png' },
+        { shot: 'shots/wrong-name.scrolled.exact.png' }, { shot: 'shots/search-prepare-arrival.png' },
+      ]) {
+        const bounded = full(); const cell = arrival(bounded[index]); Object.assign(cell.supplementalShots[0], patch);
+        expect(summarizeRelease(bounded, identity, 'kept-search-only').completed).toBe(false);
+      }
+      const duplicate = full(); arrival(duplicate[index]).supplementalShots.push({ ...arrival(duplicate[index]).supplementalShots[0] });
+      expect(summarizeRelease(duplicate, identity, 'kept-search-only').completed).toBe(false);
+    }
+    for (const keptSupplements of [0, 1]) {
+      const partial = full();
+      for (const shard of partial.slice(keptSupplements)) {
+        const name = arrival(shard).supplementalShots[0].shot.split('/').pop();
+        delete arrival(shard).supplementalShots;
+        shard.shotNames = shard.shotNames.filter((shot: string) => shot !== name);
+        shard.fonts.shots = shard.fonts.shots.filter((shot: any) => shot.shot !== name);
+      }
+      expect(summarizeRelease(partial, identity, 'kept-search-only')).toMatchObject({ completed: false, interactionCells: 116, screenshots: 116 + keptSupplements });
+    }
+  });
+  it('requires each mandatory scrolled PNG and an independent exact-font receipt', () => {
+    for (const index of [0, 1, 2, 3]) {
+      const bounded = records(releaseMatrix('kept-search-only'));
+      const shard = bounded[index];
+      const cell = shard.evidence.cells.find((item: any) => item.state === 'search-prepare-arrival') as any;
+      const name = cell.supplementalShots[0].shot.split('/').pop();
+      shard.shotNames = shard.shotNames.filter((shot: string) => shot !== name);
+      expect(summarizeRelease(bounded, identity, 'kept-search-only').failures[0].reasons).toContain(`PNG_MISSING:${name}`);
+      shard.shotNames.push(name);
+      shard.fonts.shots = shard.fonts.shots.filter((shot: any) => shot.shot !== name);
+      expect(summarizeRelease(bounded, identity, 'kept-search-only').failures[0].reasons).toContain(`FONT_EVIDENCE_MISSING:${name}`);
+      shard.fonts.shots.push({ shot: name, passed: true, rendered: [{ custom: true }] });
+      expect(summarizeRelease(bounded, identity, 'kept-search-only')).toMatchObject({ completed: true, interactionCells: 116, screenshots: 120 });
+      shard.fonts.shots.at(-1)!.rendered[0].custom = false;
+      expect(summarizeRelease(bounded, identity, 'kept-search-only').completed).toBe(false);
+    }
   });
   it('aggregates only the exact final-source complete four-way base matrix and font-proven PNGs', () => {
     const full = summarizeRelease(records(), identity);

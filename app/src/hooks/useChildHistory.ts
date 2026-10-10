@@ -4,6 +4,10 @@ import { useAuth } from "../context/AuthContext";
 import { db, firebaseEnabled } from "../lib/firebase";
 import { historyWindow, nextHistoryWindow, sameLocalHistoryRows } from "../lib/historyWindow";
 
+/** A context projection and the unmodified collection that produced it.
+ * Hydrated defaults/filtered rows are display data, never storage receipts. */
+export type SandboxHistory<T> = { items: readonly T[]; sourceItems: readonly T[] };
+
 /** Read-only historical view. Every expansion is an explicit bounded live query.
  * A one-row lookahead distinguishes a full page from the end of a collection.
  * Re-reading the expanded window also removes deleted rows and avoids gaps when
@@ -13,7 +17,7 @@ export function useChildHistory<T extends { id: string }>(
   childId: string,
   name: string,
   dateField?: string,
-  sandboxItems?: readonly T[],
+  sandboxItems?: readonly T[] | SandboxHistory<T>,
 ) {
   const { user } = useAuth();
   const remote = firebaseEnabled && !!db && !!user && user.uid !== "local-sandbox";
@@ -26,8 +30,10 @@ export function useChildHistory<T extends { id: string }>(
   }
   // An unchanged render can bail out before a child receives new callbacks.
   // Fence actual scope/snapshot/context changes, not each render attempt.
-  const sandboxItemsRef = useRef(sandboxItems);
-  sandboxItemsRef.current = sandboxItems;
+  const sandbox = sandboxItems && ("items" in sandboxItems
+    ? sandboxItems : { items: sandboxItems, sourceItems: sandboxItems });
+  const sandboxRef = useRef(sandbox);
+  sandboxRef.current = sandbox;
   const [window, setWindow] = useState({ scope, size: 200, retry: 0 });
   const size = window.scope === scope ? window.size : 200;
   const retry = window.scope === scope ? window.retry : 0;
@@ -77,7 +83,7 @@ export function useChildHistory<T extends { id: string }>(
   const current = window.scope === scope && snapshot?.scope === scope ? snapshot : null;
   // The shared sandbox context owns live edits for these collections. A
   // second local read must not hide a new moment or resurrect an undone one.
-  const local = !remote && sandboxItems ? historyWindow(sandboxItems, size) : null;
+  const local = !remote && sandbox ? historyWindow(sandbox.items, size) : null;
   const loading = !local && (!current || current.size !== size);
   const error = !local && !!current?.error;
   const confirmed = !!local || !!current?.confirmed;
@@ -102,9 +108,14 @@ export function useChildHistory<T extends { id: string }>(
       // Bind the fingerprint to the same snapshot as the rendered rows. An
       // effect may have read new storage before React commits those new rows.
       const raw = localStorage.getItem(`arbor.${name}.${childId}`) || "[]";
+      const latest = sandboxRef.current;
       return current?.raw !== undefined && current.raw === raw
-        && (!sandboxItems || sameLocalHistoryRows(sandboxItems, raw))
-        && (!sandboxItemsRef.current || sameLocalHistoryRows(sandboxItemsRef.current, raw));
+        && (!sandbox || sameLocalHistoryRows(sandbox.sourceItems, raw))
+        && (!latest || sameLocalHistoryRows(latest.sourceItems, raw))
+        // A new projection must also retire a held review, even when its
+        // source rows have not changed (or have not reached storage yet).
+        && (!sandbox && !latest || !!sandbox && !!latest
+          && sameLocalHistoryRows(sandbox.items, JSON.stringify(latest.items)));
     } catch { return false; }
   };
   return { items: local?.rows ?? current?.rows ?? [], loading, error, more, confirmed, loadMore, reload, isCurrent };

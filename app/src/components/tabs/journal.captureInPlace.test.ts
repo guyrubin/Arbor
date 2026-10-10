@@ -348,14 +348,15 @@ describe("Journal: real modules, expandable entry context at every width, one se
     expect(JOURNAL).toContain('ctaTestId="journal-empty-cta"');
   });
 
-  it("the last entry is a native, initially closed disclosure at every width; the full words retain their editorial treatment", () => {
+  it("the last entry is a native, initially closed disclosure at every width; the full words use the readable bilingual body treatment", () => {
     const context = JOURNAL.slice(JOURNAL.indexOf('<details data-testid="journal-last-context"'), JOURNAL.indexOf("</details>", JOURNAL.indexOf('<details data-testid="journal-last-context"')));
     expect(context).toBeTruthy();
     expect(context.split(">")[0]).not.toMatch(/\bopen[=> ]/);
     expect(context).toContain('<summary');
     expect(context).toContain('data-testid="journal-last-context-toggle"');
     expect(context).toContain('<bdi dir="auto">{lastKept!.words}</bdi>');
-    expect(context).toContain("var(--font-editorial)");
+    expect(context).toContain("var(--font-sans)");
+    expect(context).toContain("font-normal leading-relaxed");
     expect(context).toContain("line-clamp-2");
     expect(context).not.toMatch(/hidden md:block/);
     expect(JOURNAL).not.toMatch(/lastKeptDoor|journal-story-door|journal-last-kept-next/);
@@ -395,12 +396,13 @@ describe("Journal: real modules, expandable entry context at every width, one se
 describe("NEXTLEVEL r1 — Journal: the parent's words are the row; sentence case", () => {
   const JOURNAL = stripComments(read("components/tabs/JournalTab.tsx"));
   const SHEET = stripComments(read("components/journal/JournalEntrySheet.tsx"));
-  it("a parent-written moment row leads with the words verbatim (editorial, t-lg, FreeText); the type label + time are one quiet caption; no provenance chip", () => {
+  it("a parent-written moment row leads with the words verbatim (body face, t-lg, FreeText); the type label + time are one quiet caption; no provenance chip", () => {
     expect(JOURNAL).toContain('const parentLead = prov === "manual" && (signal.kind === "moment" || signal.kind === "memory") && !!detail.trim();');
     const lead = JOURNAL.slice(JOURNAL.indexOf(": parentLead ? ("), JOURNAL.indexOf(") : (", JOURNAL.indexOf(": parentLead ? (")));
     expect(lead).toContain('data-testid="journal-row-words"');
     expect(lead).toContain("<FreeText text={detail} />");
-    expect(lead).toContain('fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)"');
+    expect(lead).toContain('fontFamily: "var(--font-sans)", fontSize: "var(--t-lg)"');
+    expect(lead).toContain("font-normal leading-relaxed");
     expect(lead).toContain('data-testid="journal-row-caption"');
     expect(lead.indexOf("journal-row-words")).toBeLessThan(lead.indexOf("<bdi>{title}</bdi>"));
     expect(lead).not.toContain("{provLabel}");

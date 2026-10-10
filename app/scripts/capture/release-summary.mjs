@@ -41,7 +41,15 @@ export function summarizeRelease(records, identity, scope = 'all') {
       interactionCells += cells.filter((cell) => cell.reached && cell.shot).length;
     } else reasons.push('SHARD_SCOPE_INVALID');
     for (const cell of cells) {
-      for (const file of [cell.shot, cell.fullShot].filter(Boolean)) {
+      const supplements = Array.isArray(cell.supplementalShots) ? cell.supplementalShots : [];
+      if (group === 'kept-search' && cell.state === 'search-prepare-arrival' && viewport) {
+        const expectedShot = `shots/release.kept-search.${viewport.w}x${viewport.h}.${viewport.lang}.search-prepare-arrival.scrolled.exact.png`;
+        const extra = supplements[0];
+        if (supplements.length !== 1 || extra?.stage !== 'actual-consult-build-summary-after-scroll'
+          || extra?.initialShot !== cell.shot || extra?.shot !== expectedShot || extra.shot === cell.shot) reasons.push('CONSULT_SCROLLED_EVIDENCE_INVALID');
+      }
+      for (const file of [cell.shot, cell.fullShot, ...supplements.map(item => item?.shot)].filter(Boolean)) {
+        if (typeof file !== 'string') { reasons.push('SCREENSHOT_PATH_INVALID'); continue; }
         const name = file.split('/').pop();
         if (!shotNames.includes(name)) reasons.push(`PNG_MISSING:${name}`);
         if (!fonts?.shots?.some((shot) => shot.shot === name && shot.passed === true && shot.rendered?.length && shot.rendered.every((sample) => sample.custom === true))) reasons.push(`FONT_EVIDENCE_MISSING:${name}`);

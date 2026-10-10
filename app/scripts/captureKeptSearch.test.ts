@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { KEPT_SEARCH_STATES, KEPT_SEARCH_LIMITATIONS, KEPT_SEARCH_LEARN, KEPT_SEARCH_QUERIES, keptSearchFixture } from './capture/kept-search-contract.mjs';
 import { installKeptCaptureProbe, finishKeptCaptureProbe } from './capture/kept-capture-states.mjs';
+import { observeKeptPixelTarget } from './capture/kept-search-states.mjs';
 import * as normalizedCapture from './capture/normalized-search-states.mjs';
 import { releaseMatrix, releaseCell, captureDeadlineMs, RELEASE_MATRIX } from './capture/release-config.mjs';
 import { expectedReleaseInteractionStates, missingReleaseInteractionEvidence } from './capture/release-interactions.mjs';
@@ -238,6 +239,23 @@ describe('bounded additive kept capture and search contract, no browser', () => 
     expect(code).toContain("'JOURNAL_EXACT_SEEDED_AND_DEMO_INVENTORY'");
     expect(code).not.toContain("querySelectorAll('[data-testid=\"journal-record-row\"]').length === 4");
   });
+  it('uses the actual top-level server memory fact even when locale metadata differs or is absent', () => {
+    const inventorySpec = (normalizedCapture as any).keptJournalInventorySpec;
+    const seeded = { ...bundle(), memory: { approved: { fact: 'The exact server-ledger fact', source: 'parent' } } };
+    for (const lang of ['en', 'he'] as const) {
+      const fixture = keptSearchFixture(seeded, lang);
+      expect(inventorySpec(fixture)).toEqual({ moments: fixture.collections.behaviorLogs, approvedMemory: seeded.memory.approved.fact });
+      fixture.parsed.locales[lang].memory = { approved: { fact: 'Different locale metadata must not replace the server fact' } };
+      expect(inventorySpec(fixture).approvedMemory).toBe(seeded.memory.approved.fact);
+      delete fixture.parsed.memory;
+      expect(inventorySpec(fixture).approvedMemory).toBeUndefined();
+    }
+    const code = read('app/scripts/capture/normalized-search-states.mjs');
+    expect(code).toContain('const inventorySpec = keptJournalInventorySpec(fixture)');
+    const seed = read('app/scripts/seed-demo-family.mjs');
+    expect(seed).toContain('await seedMemory(memoryStore, family, familyId)');
+    expect(seed).toContain('fact: family.memory.approved.fact');
+  });
   it('requires a visible global no-match state without a marks-only Ask prefill or fallback catalogue', () => {
     const code = read('app/scripts/capture/normalized-search-states.mjs');
     expect(code).toContain("await results().count() === 0 && await byId('search-ask-row').count() === 0");
@@ -283,4 +301,74 @@ describe('bounded additive kept capture and search contract, no browser', () => 
     expect(code).toContain("click({ clickCount: 2 })");
     expect(code).toContain("cell.captureStage = 'actual-receipt-done'");
   });
+  it('preserves the actual receipt and invalid form pixels before bounded follow-through', () => {
+    const helper = read('app/scripts/capture/kept-search-states.mjs');
+    const runner = read('app/scripts/capture/release-interactions.mjs');
+    expect(helper).toContain('const run = (route, state, action, afterCapture) => screen(');
+    expect(helper).toContain('}, afterCapture);');
+    expect(runner.indexOf('await afterCapture(cell)')).toBeGreaterThan(runner.indexOf('await captureScreenshot(page'));
+    expect(runner).toContain('afterCapture && cell.shot && cell.failures.length === 0');
+    const capture = read('app/scripts/capture/kept-capture-states.mjs');
+    const plain = capture.slice(capture.indexOf("await run('journal', 'capture-plain-saved'"), capture.indexOf("await run('journal', 'capture-quote-default'"));
+    const [receipt, opened] = plain.split('}, async cell => {');
+    expect(receipt).toContain("cell.pixelStage = 'actual-save-receipt-before-open-or-done'");
+    expect(receipt).toContain("'RECEIPT_OPEN_44PX'"); expect(receipt).toContain("'RECEIPT_DONE_44PX'");
+    expect(receipt).toContain('VISIBLE_BEFORE_PNG');
+    expect(receipt).not.toMatch(/reply-open'\)\.click|receiptDone\(/);
+    expect(opened).toContain('RETAINED_THROUGH_PNG');
+    expect(opened).toContain("await byId('quicklog-reply-open').click()");
+    expect(opened).toContain("'RECEIPT_OPENS_ACTUAL_JOURNAL_ROW'");
+    expect(opened).toContain("'PERSISTED_JOURNAL_ROW_REACHABLE'");
+    const required = capture.slice(capture.indexOf("await run('journal', 'capture-required-fields'"), capture.indexOf('for (const [key, id, source]'));
+    const [invalid, cleanup] = required.split('}, async cell => {');
+    for (const id of ['BLANK_WORDS_CANNOT_PERSIST_OR_RECEIPT', 'BLANK_WORDS_ACTUAL_LOCALIZED_ERROR_VISIBLE', 'INCIDENT_REQUIRES_RESPONSE_BEFORE_REVIEW', 'REQUIRED_RESPONSE_ACTUAL_LOCALIZED_ERROR_VISIBLE_BEFORE_PNG', 'INVALID_RESPONSE_FIELD_VISIBLE_BEFORE_PNG']) expect(invalid).toContain(id);
+    expect(invalid).not.toMatch(/uncheck\(|await close\(/);
+    expect(cleanup.indexOf('REQUIRED_RESPONSE_ERROR_RETAINED_THROUGH_PNG')).toBeLessThan(cleanup.indexOf('.uncheck()'));
+    expect(cleanup).toContain('RETURN_TO_MOMENT_HAS_NO_DORMANT_KEEP');
+    expect(cleanup).toContain("await close('quicklog-moment-form')");
+    for (const lang of ['en', 'he'] as const) for (const key of ['beh.toast.fillTrigger', 'ql.errToast']) expect(capture).toContain(translate(lang, key));
+    for (const file of ['kept-search-states', 'kept-capture-states', 'normalized-search-states']) expect(read(`app/scripts/capture/${file}.mjs`)).not.toMatch(/waitForTimeout|setTimeout|setInterval|addStyleTag|setContent|innerHTML\s*=|textContent\s*=(?!=)/);
+  });
+  it('retains the initial Consult pixels and separately records the real scrolled summary target', () => {
+    const source = read('app/scripts/capture/normalized-search-states.mjs');
+    const arrival = source.slice(source.indexOf('await run(route, `search-${kind}-arrival`'), source.indexOf("await run('learn', 'learn-normalized-search'"));
+    const [initial, followThrough] = arrival.split("}, route === 'consult' ? async cell => {");
+    expect(initial).toContain('actual-consult-arrival-initial-viewport-before-capture-scroll');
+    expect(initial).not.toMatch(/scrollIntoView|await frame\(|captureScreenshot/);
+    expect(followThrough).toContain("byId('consult-build')");
+    expect(followThrough).toContain('CONSULT_BUILD_SUMMARY_SCROLLED_44PX');
+    expect(followThrough).toContain('CONSULT_BUILD_SUMMARY_FULLY_VISIBLE_AND_HITTABLE');
+    expect(followThrough).toContain('initialShot: cell.shot');
+    expect(followThrough).toContain('cell.supplementalShots');
+    expect(followThrough).toContain('search-prepare-arrival.scrolled.exact.png');
+    expect(followThrough).toContain('await captureScreenshot(page,');
+    expect(followThrough).toContain('CONSULT_BUILD_SUMMARY_RETAINED_THROUGH_SCROLLED_PNG');
+    expect(followThrough).not.toMatch(/cell\.shot\s*=|page\.screenshot|\.click\(/);
+    expect(source).toContain("import { captureScreenshot } from './font-runtime.mjs'");
+    expect(read('app/src/components/sections/AskSpecialist.tsx')).toContain('data-testid="consult-build"');
+  });
+  it('rejects faded, clipped, missing and edge-occluded pixel targets even when their centers look valid', () => {
+    const box = (left: number, top: number, width: number, height: number) => ({ left, top, right: left + width, bottom: top + height, width, height });
+    const baseStyle = { opacity: '1', visibility: 'visible', display: 'block', overflowX: 'visible', overflowY: 'visible' };
+    const evaluate = (patch: any = {}) => {
+      const parent = { parentElement: null, getBoundingClientRect: () => patch.parentBox ?? box(0, 60, 375, 640) };
+      const target = { isConnected: patch.connected ?? true, disabled: patch.disabled ?? false, parentElement: parent, contains: () => false, getBoundingClientRect: () => patch.box ?? box(20, 610, 200, 44) };
+      vi.stubGlobal('innerWidth', 375); vi.stubGlobal('innerHeight', 812);
+      vi.stubGlobal('getComputedStyle', (el: any) => ({ ...baseStyle, ...(el === parent ? { overflowY: 'auto', ...patch.parentStyle } : patch.style) }));
+      vi.stubGlobal('document', { documentElement: { scrollWidth: patch.scrollWidth ?? 375 }, elementFromPoint: (_x: number, y: number) => patch.missingHit || (patch.edgeCovered && y > 650) ? null : target });
+      return observeKeptPixelTarget(target);
+    };
+    try {
+      expect(evaluate()).toMatchObject({ ready: true, fullyVisible: true, hits: [true, true, true, true, true] });
+      for (const patch of [
+        { connected: false }, { disabled: true }, { style: { opacity: '0.5' } }, { parentStyle: { visibility: 'hidden' } }, { parentStyle: { display: 'none' } },
+        { box: box(20, 680, 200, 44) }, { box: box(-1, 610, 200, 44) }, { box: box(200, 610, 200, 44) }, { box: box(20, 610, 200, 0) },
+        { parentBox: box(25, 60, 350, 640), parentStyle: { overflowX: 'hidden' } }, { scrollWidth: 380 }, { missingHit: true }, { edgeCovered: true },
+      ]) expect(evaluate(patch).ready, JSON.stringify(patch)).toBe(false);
+      const edge = evaluate({ edgeCovered: true });
+      expect(edge.hits[0]).toBe(true); expect(edge.hits[2]).toBe(false);
+      expect(evaluate({ box: box(20, 610, 200, 91) }).fullyVisible).toBe(false);
+    } finally { vi.unstubAllGlobals(); }
+  });
+
 });

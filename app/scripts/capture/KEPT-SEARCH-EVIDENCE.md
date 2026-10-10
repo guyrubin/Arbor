@@ -59,6 +59,38 @@ The exhaustive pure normalization, extraction clamp, capture lifecycle and
 ownership cases remain in the previously reviewed source suites. These rendered
 states are representative boundary checks, not a duplicate of every pure case.
 
+## Pixel stage and bounded follow-through
+
+The 29-state / 116-cell contract is unchanged. Each cell's `shot` remains its
+primary state image. The following controls stop before dismissal or scrolling:
+
+- `capture-plain-saved`: the actual Save receipt, including its line, Open and
+  Done, is measured and pictured before any destination action. Receipt controls
+  must be 44 px, wholly visible and hit-testable. After that PNG, the real Open
+  action still has to reach the exact persisted Journal row.
+- `capture-required-fields`: both actual localized validation messages must be
+  observed. The primary PNG holds the invalid incident form, blank response and
+  its response-required toast. The toast must be fully visible, opaque and
+  unobscured immediately before and after capture; an expired or hidden message
+  fails the cell. Only then does the real checkbox return to a moment and Close
+  dismiss it. The earlier blank-moment error is assertion evidence, not a claim
+  that both validation phases share one PNG. No timers are prolonged or frozen.
+- `search-prepare-arrival`: the primary PNG retains the real initial Consult
+  viewport. Only afterward does the existing scroll helper bring Build summary
+  into view and verify the full control, five hit-test positions and 44 px size.
+  A separately named `search-prepare-arrival.scrolled.exact.png` is stored in
+  `supplementalShots` with its actual scroll position and original image reference.
+  It uses the same exact-font screenshot helper. The aggregate requires exactly
+  one canonical scrolled image per Consult cell, with the matching stage and
+  initial-image reference plus its own PNG and exact-font receipt. Omitted,
+  null, duplicated or misnamed supplements fail. The action is not clicked and no summary is sent or exported.
+
+`pixelStage` describes the primary image; `afterCaptureStage` describes later
+assertions and never re-labels the original pixels. Both phases can fail the same
+cell. Four successful Consult supplemental images make 120 PNGs for 116 cells;
+they add evidence, not states. Current-source recapture and independent original
+PNG review remain required; harness tests do not provide a visual sign-off.
+
 ## Isolation and timing
 
 The existing Docker runtime, exact transient-font cache, source identities,

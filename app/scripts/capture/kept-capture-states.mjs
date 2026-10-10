@@ -30,7 +30,7 @@ export function finishKeptCaptureProbe() {
     receiptPresent: !!document.querySelector('[data-testid="quicklog-reply"]') };
 }
 export async function collectKeptCaptureStates(h) {
-  const { page, fixture, viewport, load, run, reset, journalFeed, frame, close, storage, sink, childSwitch, nextDate, check, byId } = h;
+  const { page, fixture, viewport, load, run, reset, journalFeed, frame, pixels, close, storage, sink, childSwitch, nextDate, check, byId } = h;
   const he = viewport.lang === 'he';
   const form = () => byId('quicklog-moment-form');
   const input = () => page.locator('#quick-log-moment');
@@ -93,6 +93,16 @@ export async function collectKeptCaptureStates(h) {
   await run('journal', 'capture-plain-saved', async cell => {
     await save(cell); const row = await storedOne(cell, fixture.words.plain, undefined);
     check(cell, 'REPEAT_SUBMIT_RETIRES_FORM', await form().count() === 0);
+    cell.savedMomentId = row?.id;
+    await frame(cell, 'RECEIPT_OPEN_44PX', byId('quicklog-reply-open'));
+    await frame(cell, 'RECEIPT_DONE_44PX', byId('quicklog-reply-done'));
+    cell.pixelStage = 'actual-save-receipt-before-open-or-done';
+    cell.receiptPixels = {};
+    for (const part of ['line1', 'open', 'done']) cell.receiptPixels[part] = await pixels(cell, `RECEIPT_${part.toUpperCase()}_VISIBLE_BEFORE_PNG`, byId(`quicklog-reply-${part}`));
+  }, async cell => {
+    for (const part of ['line1', 'open', 'done']) await pixels(cell, `RECEIPT_${part.toUpperCase()}_RETAINED_THROUGH_PNG`, byId(`quicklog-reply-${part}`), false);
+    cell.afterCaptureStage = 'actual-open-to-persisted-journal-row';
+    const row = { id: cell.savedMomentId };
     cell.captureStage = 'actual-receipt-open-journal';
     await byId('quicklog-reply-open').click();
     await byId('quicklog-reply').waitFor({ state: 'detached' });
@@ -141,10 +151,14 @@ export async function collectKeptCaptureStates(h) {
     await frame(cell, 'CAPTURE_OPENER_FOCUS_RETURNED_REACHABLE', page.locator('[data-capture-tile="text"]'));
     check(cell, 'CANCEL_RESTORES_OPENER_FOCUS', await page.locator('[data-capture-tile="text"]').evaluate(el => document.activeElement === el));
   });
+  const requiredError = key => page.getByRole('status').getByText(he
+    ? (key === 'moment' ? 'כתבו מה קרה, ואז שמרו.' : 'הוסיפו מה עורר את זה ואיך הגבתם, ואז שמרו.')
+    : (key === 'moment' ? 'Write what happened, then save.' : 'Add what triggered it and how you responded, then save.'), { exact: true });
   await run('journal', 'capture-required-fields', async cell => {
     await reset(); await openCapture(); const before = JSON.stringify(await storage());
     await input().fill('   '); await form().locator('button[type="submit"]').click();
     check(cell, 'BLANK_WORDS_CANNOT_PERSIST_OR_RECEIPT', JSON.stringify(await storage()) === before && await byId('quicklog-reply').count() === 0 && await form().isVisible());
+    await pixels(cell, 'BLANK_WORDS_ACTUAL_LOCALIZED_ERROR_VISIBLE', requiredError('moment'));
     // Report the source's actual input constraints; do not invent a maxLength cap.
     cell.fieldConstraints = await input().evaluate(el => ({ maxLength: el.maxLength, required: el.required, dir: el.dir, labels: el.labels.length }));
     await input().fill(fixture.words.plain); await page.getByRole('dialog').getByRole('checkbox').check();
@@ -152,6 +166,13 @@ export async function collectKeptCaptureStates(h) {
     check(cell, 'INCIDENT_RETIRES_OPTIONAL_KEEP', await byId('quicklog-keep-as').count() === 0);
     await page.locator('#quick-log-response').fill(''); await incident.locator('button[type="submit"]').click();
     check(cell, 'INCIDENT_REQUIRES_RESPONSE_BEFORE_REVIEW', JSON.stringify(await storage()) === before && await page.locator('#quick-log-response').isVisible());
+    cell.pixelStage = 'actual-invalid-incident-form-and-localized-response-error';
+    cell.validationPixels = await pixels(cell, 'REQUIRED_RESPONSE_ACTUAL_LOCALIZED_ERROR_VISIBLE_BEFORE_PNG', requiredError('incident'));
+    await pixels(cell, 'INVALID_RESPONSE_FIELD_VISIBLE_BEFORE_PNG', page.locator('#quick-log-response'));
+  }, async cell => {
+    await pixels(cell, 'REQUIRED_RESPONSE_ERROR_RETAINED_THROUGH_PNG', requiredError('incident'), false);
+    check(cell, 'INVALID_INCIDENT_FORM_RETAINED_THROUGH_PNG', await page.locator('#quick-log-response').isVisible() && await byId('quicklog-reply').count() === 0);
+    cell.afterCaptureStage = 'return-to-moment-and-close-after-invalid-form-pixels';
     await page.getByRole('dialog').getByRole('checkbox').uncheck();
     check(cell, 'RETURN_TO_MOMENT_HAS_NO_DORMANT_KEEP', await unselected());
     await close('quicklog-moment-form');

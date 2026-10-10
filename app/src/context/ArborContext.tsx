@@ -1868,6 +1868,9 @@ function useArborState() {
     behaviorLogs,
     logsLoaded: logsCol.loaded,
     milestones,
+    // History freshness belongs to the raw collection, while its rendered
+    // rows retain the catalogue fallback and retired-row read filtering.
+    milestoneHistory: { items: milestones, sourceItems: milestonesCol.items },
     actionPlans,
     plansLoaded: plansCol.loaded,
     // c2 — Daily Play completion moat (single source of truth)

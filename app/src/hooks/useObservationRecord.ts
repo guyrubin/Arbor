@@ -13,10 +13,10 @@ import type { AdventureResult, BehaviorLog, Milestone, MimicSession, MissionReco
 /** The portrait's expandable source record. Other bounded summaries retain
  * useObservations; only this explicit history browser requests older pages. */
 export function useObservationRecord() {
-  const { childProfile, behaviorLogs, milestones, playLogs, actionLoop, memoryReviewItems, memoryReviewError, memoryReviewLoaded, retryMemoryReview } = useArbor();
+  const { childProfile, behaviorLogs, milestoneHistory, playLogs, actionLoop, memoryReviewItems, memoryReviewError, memoryReviewLoaded, retryMemoryReview } = useArbor();
   const childId = childProfile.id;
   const moments = useChildHistory<BehaviorLog>(childId, "behaviorLogs", "timestamp", behaviorLogs);
-  const noticed = useChildHistory<Milestone>(childId, "milestones", undefined, milestones);
+  const noticed = useChildHistory<Milestone>(childId, "milestones", undefined, milestoneHistory);
   const play = useChildHistory<PlayLog>(childId, "playLogs", "timestamp", playLogs);
   const actions = useChildHistory<ActionLoopEntry>(childId, "actionLoops", "acceptedAt", actionLoop);
   const keepsakes = useChildHistory<KeepsakeDoc>(childId, "keepsakes");

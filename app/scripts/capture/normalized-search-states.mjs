@@ -1,6 +1,12 @@
 /** Current search surfaces: no new routes, filters, model or Kids actions. */
 import { KEPT_SEARCH_QUERIES as Q, KEPT_SEARCH_LEARN } from './kept-search-contract.mjs';
+import { captureScreenshot } from './font-runtime.mjs';
 import { waitConfirmedFrame } from './confirmed-frame.mjs';
+
+export function keptJournalInventorySpec(fixture) {
+  // The server ledger is seeded from the top-level family, not UI locale bodies.
+  return { moments: fixture.collections.behaviorLogs, approvedMemory: fixture.parsed.memory?.approved?.fact };
+}
 
 /** Passive DOM inventory: the fixture retains the demo plan and approved memory. */
 export function observeKeptJournalInventory({ moments, approvedMemory, baseline = null, waitUntilReady = false }) {
@@ -23,7 +29,7 @@ export function observeKeptJournalInventory({ moments, approvedMemory, baseline 
 }
 
 export async function collectNormalizedSearchStates(h) {
-  const { page, fixture, viewport, load, run, reset, journalFeed, frame, check, byId, captureDiagnostics = () => null } = h;
+  const { page, fixture, viewport, load, run, reset, journalFeed, frame, pixels, check, byId, output, captureDiagnostics = () => null } = h;
   const he = viewport.lang === 'he', mobile = viewport.w < 1024;
   const surface = () => mobile ? page.getByRole('dialog') : page.locator('#topbar-search-results');
   const globalInput = () => mobile ? surface().locator('input') : page.locator('input[aria-controls="topbar-search-results"]');
@@ -48,8 +54,7 @@ export async function collectNormalizedSearchStates(h) {
 
   await run('journal', 'journal-normalized-search', async cell => {
     await reset(); await journalFeed(cell);
-    const body = fixture.parsed.locales?.[viewport.lang] ?? fixture.parsed;
-    const inventorySpec = { moments: fixture.collections.behaviorLogs, approvedMemory: body.memory?.approved?.fact };
+    const inventorySpec = keptJournalInventorySpec(fixture);
     const inventory = async baseline => {
       const handle = await page.waitForFunction(observeKeptJournalInventory, { ...inventorySpec, baseline, waitUntilReady: true });
       try { return await handle.jsonValue(); } finally { await handle.dispose(); }
@@ -145,13 +150,27 @@ export async function collectNormalizedSearchStates(h) {
       await arrive(cell, currentResult(label), route);
       check(cell, 'CURRENT_ROUTE_CONTENT_EXISTS', await page.locator(`#main [data-route="${route}"]`).isVisible());
       if (route === 'consult') {
+        cell.pixelStage = 'actual-consult-arrival-initial-viewport-before-capture-scroll';
+        cell.consultInitialScrollTop = await page.locator('#main').evaluate(el => el.scrollTop);
         const audience = byId('consult-audience-row').getByRole('radio', { name: he ? 'רופא/ת ילדים' : 'Pediatrician', exact: true });
         const heading = he ? 'מתכוננים לפגישה עם רופא/ת ילדים' : 'Prepare for the pediatrician';
         await page.waitForFunction(heading => document.querySelector('[data-testid="consult-h1"]')?.textContent === heading, heading);
         check(cell, 'ACTUAL_DEFAULT_AUDIENCE_SELECTED', await audience.getAttribute('aria-checked') === 'true');
         check(cell, 'ACTUAL_PREPARATION_HEADING', await byId('consult-h1').innerText() === heading);
       }
-    });
+    }, route === 'consult' ? async cell => {
+      cell.afterCaptureStage = 'real-scroll-to-consult-build-summary';
+      const cta = byId('consult-build');
+      await frame(cell, 'CONSULT_BUILD_SUMMARY_SCROLLED_44PX', cta);
+      const observed = await pixels(cell, 'CONSULT_BUILD_SUMMARY_FULLY_VISIBLE_AND_HITTABLE', cta);
+      const scrollTop = await page.locator('#main').evaluate(el => el.scrollTop);
+      const supplemental = { stage: 'actual-consult-build-summary-after-scroll', initialShot: cell.shot, scrollTop, observed, shot: null };
+      (cell.supplementalShots ??= []).push(supplemental);
+      const shot = `shots/release.kept-search.${viewport.w}x${viewport.h}.${viewport.lang}.search-prepare-arrival.scrolled.exact.png`;
+      await captureScreenshot(page, { path: `${output}/${shot}`, timeout: 12000, animations: 'disabled' });
+      supplemental.shot = shot;
+      await pixels(cell, 'CONSULT_BUILD_SUMMARY_RETAINED_THROUGH_SCROLLED_PNG', cta, false);
+    } : undefined);
   }
   await run('learn', 'learn-normalized-search', async cell => {
     await load('learn');
