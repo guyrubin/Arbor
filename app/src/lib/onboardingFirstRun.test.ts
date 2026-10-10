@@ -157,6 +157,14 @@ describe("authored content, vocabulary and pilot boundaries", () => {
     const state = initialFirstRunState(child()); state.worry.words = words;
     const card = firstRunCard(state, "en", NOW); expect(card.urgent).toBe(true); expect(card.notice).toContain("emergency"); expect(card.guide).toBeUndefined();
   });
+  it.each(["she no longer speaks", "הפסיק לדבר"])("urgent setup completes without saving the safety notice as a chosen step: %s", async words => {
+    const h = await ready(); h.controller.worry({ choice: "talking", words });
+    const card = firstRunCard(h.controller.snapshot(), "en", NOW); expect(card.urgent).toBe(true);
+    await h.controller.finish(card);
+    expect(h.accepted).not.toHaveBeenCalled(); expect(h.rows).toHaveLength(0);
+    expect(h.controller.snapshot().complete).toBe(true); expect(h.onComplete).toHaveBeenCalledOnce();
+    expect(h.profiles[0].onboardingComplete).toBe(true);
+  });
 });
 
 describe("review: first-run lifetime and exact accept checkpoint", () => {

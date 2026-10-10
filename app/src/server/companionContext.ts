@@ -50,7 +50,7 @@ import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
 import type { WeeklyContext } from "../ai/chatContext.js";
 import { promptProfile, type ModelProfile } from "../ai/prompts.js";
-import { isObservationAction, type ActionSource } from "../actionLoop/model.js";
+import { isObservationAction, isUrgentOnboardingAction, type ActionSource } from "../actionLoop/model.js";
 import { enforceMemoryRetention, foldMemoryEvents, selectApprovedFacts } from "../memory/memoryService.js";
 import type { MemoryStore } from "../memory/types.js";
 import type { LocalizedText } from "../content/governance.js";
@@ -206,7 +206,7 @@ export const projectAcceptedActions = (rows: readonly unknown[]): CompanionActio
     if (r.status !== "accepted" && r.status !== "completed") continue;
     // B-TODAY-28: a "From your record" answer is the parent's read of how
     // things are, not a step tried — it never reaches the companion context.
-    if (r.source === "from-record" || isObservationAction(r)) continue;
+    if (r.source === "from-record" || isObservationAction(r) || isUrgentOnboardingAction(r)) continue;
     const source = typeof r.source === "string" && r.source in ACTION_SOURCE_SET ? (r.source as ActionSource) : "today-guidance";
     const action: CompanionAction = { recommendation, source, status: r.status, acceptedAt: r.acceptedAt };
     if (r.status === "completed" && typeof r.outcome === "string" && OUTCOMES.has(r.outcome)) {

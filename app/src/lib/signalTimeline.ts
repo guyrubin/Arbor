@@ -1,4 +1,4 @@
-import { isObservationAction, capacityMinutes, type ActionLoopEntry } from "../actionLoop/model";
+import { isObservationAction, isUrgentOnboardingAction, capacityMinutes, type ActionLoopEntry } from "../actionLoop/model";
 import { behaviorTypeLabel } from "../content/behaviorTaxonomy";
 import type {
   ActionPlan,
@@ -548,6 +548,7 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
   // `at` walks forward to the outcome moment so the updated row re-sorts to
   // the top of the day it was closed out on.
   for (const entry of sources.actionOutcomes || []) {
+    if (isUrgentOnboardingAction(entry)) continue;
     const observation = isObservationAction(entry);
     const status: TimelineSignal["actionStatus"] =
       entry.status === "completed" ? (entry.outcome ?? "done") : "accepted";

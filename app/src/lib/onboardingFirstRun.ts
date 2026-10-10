@@ -215,7 +215,9 @@ export class FirstRunController {
       // The checkpoint may have crossed pilot expiry. Recheck before the action write.
       const afterCheckpoint = firstRunCard(state, lang, services.now?.() ?? new Date());
       if (afterCheckpoint.key !== current.key || afterCheckpoint.recommendation !== current.recommendation) throw new Error("The card changed");
-      await services.accept(state.childId!, current, onboardingAcceptanceKey(state.childId!, current), stillCurrent);
+      // The urgent card is a safety notice the parent has just read with every
+      // help line, never a step to try: it is not written to the action ledger.
+      if (!current.urgent) await services.accept(state.childId!, current, onboardingAcceptanceKey(state.childId!, current), stillCurrent);
       if (!stillCurrent()) return;
       const complete = () => {
         if (!stillCurrent() || this.state.complete) return;

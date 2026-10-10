@@ -123,6 +123,15 @@ export function isObservationAction(entry: { source?: unknown; observation?: unk
     || (typeof entry.acceptanceKey === "string" && entry.acceptanceKey.startsWith("onboarding-v1.")));
 }
 
+/** A first-run safety notice (urgent words at onboarding) is never a step the
+ * parent chose: no outcome buttons, no "how did it go?", no coach adaptation,
+ * no companion context. New setups no longer write it (lib/onboardingFirstRun
+ * finish); rows saved before that fix are hidden by every reader through this
+ * one predicate. A read projection, not a migration. */
+export function isUrgentOnboardingAction(entry: { acceptanceKey?: unknown }): boolean {
+  return typeof entry.acceptanceKey === "string" && entry.acceptanceKey.startsWith("onboarding-urgent.");
+}
+
 /** The parent explicitly keeps words against the full question. No efficacy
  * enum, practice dose, quote extraction or model request is manufactured. */
 export function completeObservation(entry: ActionLoopEntry, words: string, at = new Date()): ActionLoopEntry {

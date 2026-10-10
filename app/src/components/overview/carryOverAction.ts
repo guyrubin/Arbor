@@ -18,6 +18,7 @@
 
    No React, no Date.now() baked in (callers pass `now`) — unit-testable.
    ════════════════════════════════════════════════════════════════════════════ */
+import { isUrgentOnboardingAction } from "../../actionLoop/model";
 
 export type CarryOverEntry = {
   id: string;
@@ -26,6 +27,7 @@ export type CarryOverEntry = {
   status: "accepted" | "completed" | "superseded";
   acceptedAt: string;
   recommendation: string;
+  acceptanceKey?: string;
 };
 
 /** How long a still-open step keeps asking. Beyond this it is history, not a
@@ -55,6 +57,7 @@ export function selectCarryOverAction<T extends CarryOverEntry>(
     // belong to the live card, not to the carry-over question.
     if (entry.id === todayId || entry.id.startsWith(`${todayId}.`)) continue;
     if (skipped.has(entry.id)) continue;
+    if (isUrgentOnboardingAction(entry)) continue;
     if (!entry.recommendation?.trim()) continue;
     const at = Date.parse(entry.acceptedAt);
     if (!Number.isFinite(at) || at < cutoff || at > now) continue;
