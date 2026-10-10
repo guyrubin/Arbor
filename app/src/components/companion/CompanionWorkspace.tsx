@@ -1,10 +1,11 @@
 import { translate as inputText } from "../../lib/i18n";
-import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDialog } from "../../hooks/useDialog";
 import { COMPANION_CONVERSATION_EVENT, type CompanionConversationRequest } from "../../lib/companionConversation";
 import { trackCompanionPanelOpen } from "../../lib/kpiEvents";
+import { isKidModeActive } from "../../lib/kidModeGate";
 import Icon from "../ui/Icon";
 import { ArborMark } from "../ui/ArborMark";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -33,6 +34,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   const previousChild = useRef(childProfile.id);
   const returnTab = useRef<"overview" | typeof activeTab>("overview");
   const launchRef = useRef<HTMLButtonElement>(null);
+  const closeFocus = useRef<{ childId: string; tab: typeof activeTab } | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<HTMLDetailsElement>(null);
@@ -47,10 +49,28 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   const visible = open && !kidLocked;
   const modal = visible && (!wide || expanded);
   const close = () => {
+    closeFocus.current = { childId: childProfile.id, tab: routeIsConversation ? returnTab.current : activeTab };
     setOpen(false);
     if (routeIsConversation) setActiveTab(returnTab.current);
-    else requestAnimationFrame(() => launchRef.current?.focus());
   };
+  // Direct Coach/Scholar entry has no mounted launcher until close commits.
+  // Restore only an explicit close, after route/dialog cleanup; newer context
+  // owns focus and cancels this return rather than moving or scrolling it.
+  // Layout timing keeps an older opening effect from consuming a newer close.
+  useLayoutEffect(() => {
+    const request = closeFocus.current;
+    if (!request) return;
+    if (open || kidLocked || childProfile.id !== request.childId || activeTab !== request.tab) {
+      closeFocus.current = null;
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      if (closeFocus.current !== request) return;
+      closeFocus.current = null;
+      if (!isKidModeActive()) launchRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, kidLocked, childProfile.id, activeTab]);
   const { ref: panelRef } = useDialog<HTMLElement>({ open: modal, onClose: close, returnFocusRef: launchRef, persistentLayer: true });
   useEffect(() => {
     if (visible && !modal) panelRef.current?.focus();
