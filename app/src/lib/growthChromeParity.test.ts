@@ -129,7 +129,7 @@ describe("the sites render through the keys", () => {
   });
 
   it("Daily Play, Language Lab, the course toggle and the lens picker are keyed", () => {
-    expect(play).toContain('t("elev.growth.play.setFocus")');
+    expect(play).toContain("<GoalFocusLine goals={activeGoals}");
     expect(play).not.toContain('"Set a focus"');
     expect(play).not.toMatch(/goal\$\{activeGoals\.length !== 1/);
     expect(lang).toContain('t("elev.growth.lang.duration.minutes"');

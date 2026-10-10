@@ -14,7 +14,7 @@ import { createRuntimeDiagnostics, createAssetDiagnostics } from './runtime-diag
 import { installStylesheetObservation, observeAskDependency, observeReactStage, observeCurrentRetryCache, collectNativeDispatch } from './readiness-probes.mjs';
 export { classifyReleaseConsole, sanitizedReleaseLocation } from './runtime-diagnostics.mjs';
 import { observeTogetherGeometry, togetherLayoutGeometry, togetherScrollStable } from './together-geometry.mjs';
-import { SOURCE_FONT_NOTE, captureFontContextOptions, installOfflineFonts, captureScreenshot } from './font-runtime.mjs';
+import { SOURCE_FONT_NOTE, captureFontContextOptions, installOfflineFonts, captureScreenshot, validateFontCache } from './font-runtime.mjs';
 import { RECORD_STATES, RECORD_LIMITATIONS, recordFixture, installRecordShareSink } from './record-contract.mjs';
 import { collectRecordStates } from './record-states.mjs';
 import { collectBehaviorRecordStates } from './record-behaviors.mjs';
@@ -25,12 +25,16 @@ import { collectKeptSearchStates } from './kept-search-states.mjs';
 import { collectPracticeStates, PRACTICE_FIXTURE, practiceClockScript } from './practice-states.mjs';
 import { KID_ENTRY_STATES, KID_ENTRY_LIMITATIONS, kidEntryFixture, kidEntryApiDisposition, validKidEntryCell } from './kid-entry-contract.mjs';
 import { collectKidEntryStates } from './kid-entry-states.mjs';
+import { SINGLE_GOAL_STATES, SINGLE_GOAL_LIMITATIONS, singleGoalFixture, initializeSingleGoalWatch, validSingleGoalCell } from './single-goal-contract.mjs';
+import { collectSingleGoalStates } from './single-goal-states.mjs';
+import { installSingleGoalNetworkGuard, singleGoalAssetPaths, finalizeSingleGoalCell, singleGoalNetworkReceipt, validSingleGoalNetwork } from './single-goal-network.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
   record: RECORD_STATES,
   'kept-search': KEPT_SEARCH_STATES,
   'kid-entry': KID_ENTRY_STATES,
+  'single-goal': SINGLE_GOAL_STATES,
   'confirmed-actions': CONFIRMED_ACTION_STATES,
   navigation: [
     ...rows('shell', ['keep-closed', 'keep-open', 'keep-toggle-closed', 'keep-escape', 'keep-write', 'keep-close-focus']),
@@ -63,7 +67,7 @@ export function expectedReleaseInteractionStates(group, viewport) {
 export function missingReleaseInteractionEvidence(cells, { group, viewport, sourceSha, sourceTreeSha }) {
   return expectedReleaseInteractionStates(group, viewport).flatMap(({ route, state, group: part }) => {
     const cell = cells.find(item => item.route === route && item.state === state && item.group === part && item.lang === viewport.lang && item.viewport === `${viewport.w}x${viewport.h}` && item.sourceSha === sourceSha && (!sourceTreeSha || item.sourceTreeSha === sourceTreeSha));
-    const valid = (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
+    const valid = (part !== 'single-goal' || validSingleGoalCell(cell)) && (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
     return valid ? [] : [{ route, state, group: part, lang: viewport.lang, viewport: `${viewport.w}x${viewport.h}`, failure: cell?.failures?.[0] ?? (cell ? 'INCOMPLETE_ASSERTIONS_OR_SCREENSHOT' : 'NOT_ATTEMPTED') }];
   });
 }
@@ -164,8 +168,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   const confirmed = group === 'confirmed-actions' ? confirmedActionsFixture(bundle, viewport.lang) : null;
   const keptSearch = group === 'kept-search' ? keptSearchFixture(bundle, viewport.lang) : null;
   const kidEntry = group === 'kid-entry' ? kidEntryFixture(bundle, viewport.lang) : null;
+  const singleGoal = group === 'single-goal' ? singleGoalFixture(bundle, viewport.lang) : null;
   const practiceCapture = group === 'navigation';
-  const fixture = releaseFixture(keptSearch?.parsed ?? kidEntry?.parsed ?? confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
+  const fixture = releaseFixture(singleGoal?.parsed ?? keptSearch?.parsed ?? kidEntry?.parsed ?? confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
   const { lang } = viewport;
   const he = lang === 'he';
   const viewportId = `${viewport.w}x${viewport.h}`;
@@ -186,15 +191,17 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     doc.fixtures.push('preloaded-ai-draft-and-unverified-lineage-not-model-proof', 'synthetic-browser-share-sink', 'synthetic-Date-only-native-animation-time');
   }
   if (kidEntry) { doc.kidEntryBoundaries = KID_ENTRY_LIMITATIONS; doc.fixtures = ['synthetic-family', 'local-mock-server', 'synthetic-three-child-entry-profiles', 'synthetic-book-narration-refusal']; }
+  if (singleGoal) { doc.singleGoalBoundaries = SINGLE_GOAL_LIMITATIONS; doc.singleGoalFixtureMethod = singleGoal.fixtureMethod; doc.fixtures = ['synthetic-family', 'local-mock-server', 'synthetic-three-child-goal-profiles', 'one-time-synthetic-local-watch']; }
   if (practiceCapture) doc.fixtures.push(PRACTICE_FIXTURE, 'practice-only-Date-native-animation-time');
   save();
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ headless: true });
-  let context;
+  let context, singleGoalApiState;
   try {
     context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, locale: he ? 'he-IL' : 'en-US', timezoneId: 'Asia/Jerusalem', serviceWorkers: 'block', permissions: [], ...captureFontContextOptions() });
     let selectedReportFixture = null;
     const apiState = { consent: 'empty', chat: 'mock', mockRequests: 0, mockResponses: 0, fixtureRequests: 0, consentReads: 0, consentWrites: 0, deniedExternal: 0, deniedActions: 0, deniedActionCategories: {}, ttsCapabilityReads: 0, shareListReads: 0, apiCacheHits: 0, localRateLimits: 0 };
+    if (singleGoal) { Object.assign(apiState, { singleGoalDeniedMutations: 0, singleGoalDeniedRequests: 0 }); singleGoalApiState = apiState; }
     if (kidEntry) Object.assign(apiState, { kidEntryNarrationRefusals: 0, kidEntryDeniedMutations: 0 });
     await context.route('**/*', route => {
       if (new URL(route.request().url()).origin === BASE) return route.continue();
@@ -213,7 +220,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         if (disposition === 'deny') { apiState.kidEntryDeniedMutations++; apiState.deniedActions++; return route.abort(); }
       }
       if (url.pathname === '/api/live/availability') return json(200, { available: false });
-      if (url.pathname === `/api/consent/${encodeURIComponent(fixture.childId)}` && request.method() === 'GET') {
+      if ((url.pathname === `/api/consent/${encodeURIComponent(fixture.childId)}` || (singleGoal && singleGoal.children.some(child => url.pathname === `/api/consent/${child.id}`))) && request.method() === 'GET') {
         apiState.consentReads++;
         return apiState.consent === 'read-error' ? json(503, { error: 'Synthetic capture read failure' }) : json(200, { grants: [] });
       }
@@ -241,7 +248,8 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         const key = `${request.method()} ${url.href} ${request.postData() ?? ''}`;
         if (_apiCache.has(key)) { apiState.apiCacheHits++; return route.fulfill(_apiCache.get(key)); }
         try {
-          const response = await route.fetch({ timeout: 15000 });
+          const response = await route.fetch({ timeout: 15000, ...(singleGoal ? { maxRedirects: 0 } : {}) });
+          if (singleGoal && response.status() >= 300 && response.status() < 400) { apiState.deniedActions++; apiState.singleGoalDeniedRequests++; return route.abort(); }
           if (response.status() === 429) apiState.localRateLimits++;
           const entry = { status: response.status(), headers: response.headers(), body: await response.body() };
           if (response.status() === 200) _apiCache.set(key, entry);
@@ -250,10 +258,18 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       }
       return route.continue();
     });
-    await context.route('**/sandbox/demo-family.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) }));
+    await context.route('**/sandbox/demo-family.json', route => {
+      const request = route.request(), url = new URL(request.url());
+      if (url.origin !== BASE || url.pathname !== '/sandbox/demo-family.json' || url.search || request.method() !== 'GET') { apiState.deniedActions++; if (url.origin !== BASE) apiState.deniedExternal++; return route.abort(); }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) });
+    });
     await installOfflineFonts(context);
+    // Last registration is first in Playwright's route stack. Nothing may
+    // register a later handler in this bounded group.
+    if (singleGoal) await installSingleGoalNetworkGuard(context, { fixture: singleGoal, apiState, assetPaths: singleGoalAssetPaths('dist'), fontUrls: [...validateFontCache().resources.keys()] });
     if (kidEntry) await context.addInitScript(initializeSyntheticOnline, { lang, preserveKidMode: true });
     else await context.addInitScript(initializeSyntheticOnline, { lang });
+    if (singleGoal) await context.addInitScript(initializeSingleGoalWatch, { childId: singleGoal.childId, watch: singleGoal.watch });
     if (practiceCapture) await context.addInitScript({ content: practiceClockScript(fixture.parsed) });
     if (record || confirmed || keptSearch) await context.addInitScript(installRecordShareSink);
     if (group === 'ask-diagnostic') await context.addInitScript(installStylesheetObservation);
@@ -401,6 +417,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         cell.reactStage = await page.evaluate(observeReactStage).catch(() => ({ unavailable: true }));
       }
       cell.runtimeDiagnostics = diagnostics.snapshot();
+      if (singleGoal) finalizeSingleGoalCell(cell, apiState, check);
       cell.reached = cell.failures.length === 0 && cell.assertions.length > 0 && cell.shot !== null;
       save();
       // Preserve the failed real attempt BEFORE any import probe. Probe recovery
@@ -427,7 +444,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       return cell.reached;
     };
 
-    if (group === 'kept-search') {
+    if (group === 'single-goal') {
+      await collectSingleGoalStates({ page, fixture: singleGoal, viewport, load, screen, check, byId, apiState });
+    } else if (group === 'kept-search') {
       await collectKeptSearchStates({ page, context, fixture: keptSearch, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }) });
     } else if (group === 'kid-entry') {
       await collectKidEntryStates({ page, fixture: kidEntry, viewport, load, screen, check, byId, apiState });
@@ -655,7 +674,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     }
     doc.finished = true;
     save();
-    doc.completed = doc.missingEvidence.length === 0;
+    doc.completed = !singleGoal && doc.missingEvidence.length === 0;
     save();
     return doc;
   } catch (error) {
@@ -664,7 +683,15 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     throw error;
   } finally {
     save();
-    if (context) await context.close().catch(() => {});
-    await browser.close();
+    let contextClosed = !context, browserClosed = false;
+    if (context) await context.close().then(() => { contextClosed = true; }).catch(() => {});
+    await browser.close().then(() => { browserClosed = true; });
+    if (singleGoal && singleGoalApiState) {
+      // This is after the final screenshot, diagnostic awaits and browser
+      // shutdown. Late denied requests cannot hide behind an earlier zero.
+      doc.singleGoalFinalNetwork = singleGoalNetworkReceipt(singleGoalApiState, 'after-context-browser-close', { contextClosed, browserClosed });
+      doc.completed = doc.finished === true && doc.missingEvidence.length === 0 && validSingleGoalNetwork(doc.singleGoalFinalNetwork, 'after-context-browser-close');
+      save();
+    }
   }
 }

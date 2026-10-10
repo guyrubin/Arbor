@@ -164,8 +164,8 @@ describe("activeGoalDomains", () => {
 // ── Product constraint: goal cap ─────────────────────────────────────────────
 
 describe("MAX_ACTIVE_GOALS", () => {
-  it("is 3 (product constraint, not clinical)", () => {
-    expect(MAX_ACTIVE_GOALS).toBe(3);
+  it("is 1 for new choices (stored history is not capped)", () => {
+    expect(MAX_ACTIVE_GOALS).toBe(1);
   });
 });
 

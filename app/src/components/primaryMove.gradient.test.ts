@@ -228,7 +228,6 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // data-primary-move="open-world-door" (surfaceContract feelings) and is the
     // only gradient in the file; practiceDoors.copy.test pins it.
     "practice/FeelingsLabTab.tsx",
-    "practice/GoalBuilderModal.tsx",
     // W2-SHELLPLAY critic r2: no result button wears it any more (law 1); the
     // ONE gradient is the Hebrew door CTA (the route's recorded HE exemption,
     // surfaceContract speech); practiceDoors.copy.test pins it.

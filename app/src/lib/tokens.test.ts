@@ -188,7 +188,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/overview/DailyPlayCard.tsx": ["#fff"],
   "components/practice/DevelopmentCopilot.tsx": ["#fff"],
   "components/practice/EarlyReadingTrack.tsx": ["#fff", "#ffffff"],
-  "components/practice/GoalBuilderModal.tsx": ["#7a6bd8", "#d6566f", "#ece9f9", "#fff"],
   "components/practice/MemoryMatch.tsx": ["#fff"],
   "components/practice/MimicMatch.tsx": ["#1c222b", "#5fce97", "#a8a093"], // game canvas art
   "components/practice/WordWorldTab.tsx": ["#fff"],

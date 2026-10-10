@@ -1,6 +1,8 @@
 /** Pure aggregate verdict. Filesystem adapter lives in summarize-release.mjs. */
 import { missingReleaseInteractionEvidence } from './release-interactions.mjs';
 import { releaseMatrix, RELEASE_VIEWPORTS, releaseIdentity, releaseInventory, missingBaseEvidence, shardRoutes } from './release-config.mjs';
+import { SINGLE_GOAL_STATES } from './single-goal-contract.mjs';
+import { validSingleGoalNetwork } from './single-goal-network.mjs';
 import { validRecordPrintReceipt } from './record-print.mjs';
 
 export function summarizeRelease(records, identity, scope = 'all') {
@@ -35,11 +37,13 @@ export function summarizeRelease(records, identity, scope = 'all') {
       const routes = shardRoutes(ids, capture.cell.shard);
       if (cells.length !== routes.length || missingBaseEvidence(cells, routes, viewport).length) reasons.push('BASE_EVIDENCE_MISSING');
       baseCells += cells.filter((cell) => cell.mounted && cell.shot).length;
-    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry'].includes(group) && viewport) {
+    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry', 'single-goal'].includes(group) && viewport) {
       if (evidence?.sourceSha !== identity.sourceSha || evidence?.sourceTreeSha !== identity.sourceTreeSha) reasons.push('INTERACTION_IDENTITY_MISMATCH');
       if (missingReleaseInteractionEvidence(cells, { group, viewport, ...identity }).length || !cells.length || cells.some((cell) => !cell.reached || !cell.shot)) reasons.push('INTERACTION_EVIDENCE_MISSING');
+      if (group === 'single-goal' && (cells.length !== SINGLE_GOAL_STATES.length || new Set(cells.map(cell => cell.state)).size !== SINGLE_GOAL_STATES.length)) reasons.push('SINGLE_GOAL_STATE_INVENTORY_INVALID');
       interactionCells += cells.filter((cell) => cell.reached && cell.shot).length;
     } else reasons.push('SHARD_SCOPE_INVALID');
+    if (group === 'single-goal' && !validSingleGoalNetwork(evidence?.singleGoalFinalNetwork, 'after-context-browser-close')) reasons.push('SINGLE_GOAL_FINAL_NETWORK_INVALID');
     for (const cell of cells) {
       const supplements = Array.isArray(cell.supplementalShots) ? cell.supplementalShots : [];
       if (group === 'kept-search' && cell.state === 'search-prepare-arrival' && viewport) {

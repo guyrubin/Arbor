@@ -11,12 +11,17 @@ import { authHeaders } from "../lib/api";
 import { trackProfileCreated } from "../lib/loopEvents";
 import { bandForAge } from "../lib/screening";
 import { computeNeedsOnboarding } from "../lib/onboardingGate";
+import { selectFocusGoal, type ActiveGoal } from "../practice/goalBuilder";
 import { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS } from "../lib/childAge";
 
 const LS_PROFILES = "arbor.children";
 const LS_ACTIVE = "arbor.activeChildId";
 
 export type NewChildInput = Omit<ChildProfile, "id">;
+
+export type GoalAttempt = { status: "pending" | "failed"; goal: Omit<ActiveGoal, "addedAt">; basis: string };
+export type GoalSelection = { goals: ActiveGoal[]; attempt?: GoalAttempt };
+export type GoalSaveResult = "saved" | "failed" | "pending" | "changed" | "obsolete";
 
 type ProfileContextValue = {
   /** All child profiles for the signed-in parent. */
@@ -35,6 +40,11 @@ type ProfileContextValue = {
    *  write failed (M4): the caller raises a parent-visible error rather than
    *  letting a lost save look like a saved one. */
   updateChild: (id: string, patch: Partial<ChildProfile>) => Promise<boolean>;
+  /** Goal-only session state survives picker/route/child unmounts. */
+  goalSession: object;
+  getGoalSelection: (id: string) => GoalSelection | undefined;
+  saveChildGoal: (id: string, goal: Omit<ActiveGoal, "addedAt">, basis: string) => Promise<GoalSaveResult>;
+  cancelGoalAttempt: (id: string) => void;
   /** Permanently delete a child and all of their data (GDPR/COPPA). Returns a
    *  provable deletion receipt from the server when available. */
   deleteChild: (id: string) => Promise<DeletionReceipt | null>;
@@ -299,6 +309,69 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     [useFirestore, profilesPath, writeScopeKey, ownerScope]
   );
 
+  // B-GROWTH-40: the goal writer owns its full-array basis and its pending /
+  // retry state at the owner-session + child lifetime, not at a dialog lifetime.
+  // Only this seam changes goal choices. Generic profile edits keep their M4
+  // behavior; an unacknowledged goal is never installed as the current choice.
+  const [, setGoalVersion] = useState(0);
+  const goalSessionRef = useRef({ scope: ownerScope, children: new Map<string, GoalSelection & { observed: ChildProfile["activeGoals"] }>() });
+  if (goalSessionRef.current.scope !== ownerScope) {
+    goalSessionRef.current = { scope: ownerScope, children: new Map() };
+  }
+  const goalSession = goalSessionRef.current;
+  if (loadedScope === ownerScope) {
+    for (const profile of profiles) {
+      const previous = goalSession.children.get(profile.id);
+      if (!previous || previous.observed !== profile.activeGoals) {
+        goalSession.children.set(profile.id, { ...previous, observed: profile.activeGoals, goals: profile.activeGoals ?? [] });
+      }
+    }
+    for (const id of goalSession.children.keys()) {
+      if (!profiles.some(profile => profile.id === id)) goalSession.children.delete(id);
+    }
+  }
+  const getGoalSelection = useCallback((id: string): GoalSelection | undefined => {
+    if (!liveProfileScope(ownerScope, writeScope.current, writeScopeKey)) return undefined;
+    return goalSession.children.get(id);
+  }, [goalSession, ownerScope, writeScopeKey]);
+  const cancelGoalAttempt = useCallback((id: string) => {
+    const state = getGoalSelection(id);
+    if (state?.attempt?.status === "failed") {
+      delete state.attempt;
+      setGoalVersion(version => version + 1);
+    }
+  }, [getGoalSelection]);
+  const saveChildGoal = useCallback(async (id: string, goal: Omit<ActiveGoal, "addedAt">, basis: string): Promise<GoalSaveResult> => {
+    const current = () => liveProfileScope(ownerScope, writeScope.current, writeScopeKey)
+      && goalSessionRef.current === goalSession && goalSession.children.has(id);
+    const state = getGoalSelection(id);
+    if (!current() || !state) return "obsolete";
+    if (state.attempt?.status === "pending") return "pending";
+    // Replacing a changed source always requires a newly rendered question.
+    if (JSON.stringify(state.goals) !== basis) return "changed";
+    const merged = selectFocusGoal(state.goals, goal, new Date().toISOString());
+    const attempt: GoalAttempt = { status: "pending", goal, basis };
+    state.attempt = attempt;
+    setGoalVersion(version => version + 1);
+    try {
+      if (useFirestore && db) await updateDoc(doc(db, profilesPath, id), { activeGoals: merged });
+      if (!current()) return "obsolete";
+      // Advance the admission basis before React renders the acknowledgement.
+      // `observed` still points at the previous rendered array until that render.
+      const latest = goalSession.children.get(id)!;
+      latest.goals = merged;
+      delete latest.attempt;
+      setProfiles(previous => current() ? previous.map(profile => profile.id === id ? { ...profile, activeGoals: merged } : profile) : previous);
+      setGoalVersion(version => version + 1);
+      return "saved";
+    } catch {
+      if (!current()) return "obsolete";
+      goalSession.children.get(id)!.attempt = { ...attempt, status: "failed" };
+      setGoalVersion(version => version + 1);
+      return "failed";
+    }
+  }, [getGoalSelection, goalSession, ownerScope, writeScopeKey, useFirestore, profilesPath]);
+
   const deleteChild = useCallback(
     async (id: string): Promise<DeletionReceipt | null> => {
       // M9: provable erasure — server wipe (memory + shares + consent) + client wipe.
@@ -335,6 +408,10 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     setActiveChild,
     addChild,
     updateChild,
+    goalSession,
+    getGoalSelection,
+    saveChildGoal,
+    cancelGoalAttempt,
     deleteChild,
   };
 

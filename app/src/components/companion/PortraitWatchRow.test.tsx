@@ -72,7 +72,7 @@ describe("the parent's watch choice shows, and can be answered in place", () => 
     const html = renderToStaticMarkup(<PortraitWatchRow />);
     expect(html).toContain('data-testid="portrait-watch-details"');
     expect(html).not.toMatch(/<details[^>]*open=/);
-    expect(html).toContain("Suggested focus");
+    expect(html).toContain("Something to watch for");
     for (const status of ["yes", "not_sure", "not_yet"]) expect(html).toContain(`data-testid="portrait-observe-${status}"`);
   });
   it("Not yet preserves the same observation seam without celebration", () => {
@@ -103,7 +103,9 @@ describe("the parent's watch choice shows, and can be answered in place", () => 
     const saved = { ...state.savedWatch! };
     const render = () => { state.cursor = 0; state.buttons = []; return renderToStaticMarkup(<PortraitWatchRow />); };
     render(); byTestId("portrait-unwatch")!.onClick?.();
-    expect(render()).toContain('data-testid="portrait-watch-undo"');
+    const cleared = render();
+    expect(cleared).toContain('data-testid="portrait-watch-undo"');
+    expect(cleared.replace(/<[^>]*>/g, " ")).not.toMatch(/focus|מיקוד/i);
     state.childId = "child-b";
     expect(render()).not.toContain('data-testid="portrait-watch-undo"');
     state.childId = "child-a"; render();
@@ -111,6 +113,7 @@ describe("the parent's watch choice shows, and can be answered in place", () => 
     expect(state.writeWatchFocus).toHaveBeenCalledWith("child-a", saved);
     expect(render()).not.toContain('data-testid="portrait-watch-undo"');
     expect(render()).toMatch(/<details[^>]*open=""/);
+    expect(render().replace(/<[^>]*>/g, " ")).not.toMatch(/focus|מיקוד/i);
   });
   it("the saved re-check date is plain text in neutral ink (no chip, no colour)", () => {
     state.recheck = [{ id: "s1", answeredAt: "2026-09-01T00:00:00Z", recheckDueAt: "2026-12-01T00:00:00Z" }];

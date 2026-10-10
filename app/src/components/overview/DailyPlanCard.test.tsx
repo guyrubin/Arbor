@@ -61,14 +61,14 @@ describe("B-GROWTH-20 — DailyPlanCard without a goal", () => {
     expect(html).toContain("We did this");
     expect(html).not.toContain("Set a focus goal to get today&#x27;s plan.");
     expect(html).toContain('data-testid="plan-set-focus-optional"');
-    expect(html).toContain("Set a focus to match it to what you&#x27;re working on");
+    expect(html).toContain("Choose what you&#x27;re working on");
   });
 
   it("Hebrew: the plan renders with the Hebrew optional-focus line", () => {
     const html = render(plan, true, "he");
     expect(html).toContain(localizeActivity(activity, "he").title.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;"));
     expect(html).toContain("עשינו את זה");
-    expect(html).toContain("הגדירו מיקוד כדי להתאים אותה למה שאתם עובדים עליו");
+    expect(html).toContain("בחרו על מה אתם עובדים");
   });
 
   it("with a goal: no optional-focus line", () => {
@@ -77,7 +77,8 @@ describe("B-GROWTH-20 — DailyPlanCard without a goal", () => {
 
   it("no plan: the empty state stays (and offers the goal)", () => {
     const html = render(null, true);
-    expect(html).toContain("Set a focus goal to get today&#x27;s plan.");
+    expect(html).toContain("You can choose one thing to work on together.");
+    expect(html).not.toMatch(/\bfocus\b/i);
     expect(html).not.toContain("We did this");
   });
 });
