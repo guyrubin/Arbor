@@ -49,6 +49,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<"complete" | "incomplete" | null>(null);
   const exportRun = useRef(createChildExportRun());
+  const exportButtonRef = useRef<HTMLButtonElement | null>(null);
   const scope = `${open}|${user?.uid ?? ""}|${childProfile.id}`;
   const scopeRef = useRef(scope);
   const lifetimeRef = useRef({ active: true });
@@ -72,6 +73,13 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
     if (!open || !lifetime.active || lifetimeRef.current !== lifetime) return;
     const run = exportRun.current.begin(scope);
     if (!run) return;
+    // Disabling a focused native button can send focus to body without a
+    // focusin event. Keep it on this stable, non-destructive dialog root before
+    // that commit; Close remains keyboard-accessible throughout the request.
+    const button = exportButtonRef.current;
+    if (button && document.activeElement === button) {
+      button.closest<HTMLElement>('[role="dialog"]')?.focus({ preventScroll: true });
+    }
     setExporting(true);
     setExportResult(null);
     try {
@@ -211,6 +219,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
         <div className="space-y-3" data-testid="your-data-sheet">
           <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.yourData.sub", { name: first })}</p>
           <button
+            ref={exportButtonRef}
             onClick={exportData}
             disabled={exporting}
             data-testid="your-data-export"

@@ -65,6 +65,24 @@ const render = (open = true) => { h.cursor = 0; return YourDataSheet({ open, onC
 const commit = () => { for (const effect of h.effects.splice(0)) effect(); };
 const unmount = () => { for (const slot of h.slots) slot.cleanup?.(); };
 const clickExport = (tree: any) => elements(tree).find(e => e.props?.["data-testid"] === "your-data-export").props.onClick() as Promise<void>;
+// Model the browser boundary that drops focus to body when React disables the
+// active button. No focusin or childList mutation is emitted for that change.
+// The sheet callback and its actual ref run unchanged; browser acceptance is
+// still the exact capture's focusInsideDialog assertion.
+function bindExportFocus(tree: any, focused = true) {
+  const doc = document as unknown as { activeElement: unknown };
+  const body = {}, close = {};
+  const dialog = { focus: vi.fn(() => { doc.activeElement = dialog; }) };
+  const button = { closest: vi.fn(() => dialog) };
+  const control = elements(tree).find(e => e.props?.["data-testid"] === "your-data-export");
+  if (control.props.ref) control.props.ref.current = button;
+  doc.activeElement = focused ? button : close;
+  return { doc, dialog, button, close, commitDisabled() {
+    const pending = elements(render()).find(e => e.props?.["data-testid"] === "your-data-export");
+    expect(pending.props.disabled).toBe(true);
+    if (doc.activeElement === button) doc.activeElement = body;
+  } };
+}
 const owner = (user: { uid: string } | null) => { h.currentUser = user; for (const listener of h.authListeners) listener(user); };
 const kid = (active: boolean) => { h.locked = active; for (const listener of h.kidListeners) listener(active); };
 const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
@@ -143,6 +161,42 @@ describe.each(stages)("real parent export interrupted at %s", stage => {
 });
 
 describe("final browser boundary and fresh parent action", () => {
+  it.each(["en", "he"] as const)("keeps focus inside the pending sheet before disabling, including a repeated interrupted run (%s)", async lang => {
+    h.lang = lang;
+    for (const interrupted of [false, true]) {
+      const gate = pause("privacy response"), tree = render(); commit();
+      const focus = bindExportFocus(tree);
+      const pending = clickExport(tree); focus.commitDisabled();
+      expect(focus.doc.activeElement).toBe(focus.dialog);
+      expect(focus.button.closest).toHaveBeenCalledExactlyOnceWith('[role="dialog"]');
+      expect(focus.dialog.focus).toHaveBeenCalledExactlyOnceWith({ preventScroll: true });
+      await gate.entered;
+      // The parent can reach Close while pending. Completion/cancellation must
+      // not reclaim focus or restart the old action.
+      focus.doc.activeElement = focus.close;
+      if (interrupted) tree.props.onClose();
+      gate.release(); await pending;
+      expect(focus.doc.activeElement).toBe(focus.close);
+      expect(focus.dialog.focus).toHaveBeenCalledTimes(1);
+      expect(h.click).toHaveBeenCalledTimes(1);
+      if (!interrupted) { tree.props.onClose(); render(false); commit(); }
+    }
+  });
+  it("does not steal focus from another sheet control when Export was not focused", async () => {
+    const gate = pause("privacy response"), tree = render(); commit();
+    const focus = bindExportFocus(tree, false), pending = clickExport(tree);
+    focus.commitDisabled();
+    expect(focus.doc.activeElement).toBe(focus.close);
+    expect(focus.dialog.focus).not.toHaveBeenCalled();
+    await gate.entered; tree.props.onClose(); gate.release(); await pending;
+    expect(h.click).not.toHaveBeenCalled();
+  });
+  it("a stale export callback cannot reclaim focus after the sheet closes", async () => {
+    const tree = render(); commit(); const focus = bindExportFocus(tree);
+    tree.props.onClose(); await clickExport(tree);
+    expect(focus.dialog.focus).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled(); expect(h.click).not.toHaveBeenCalled();
+  });
   it.each([
     { lang: "en", name: "Noa Levi נועה", token: "noa", partial: false },
     { lang: "en", name: "Noa Levi נועה", token: "noa", partial: true },
