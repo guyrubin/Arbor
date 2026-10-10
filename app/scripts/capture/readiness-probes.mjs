@@ -36,6 +36,15 @@ export function observeReactStage() {
   const root = attachedRoot?.stateNode;
   if (!root || root.containerInfo !== app || root.current?.tag !== 3) return { appRootVerified: false };
   const mask = value => Number.isInteger(value) && value >= 0 && value <= 0x7fffffff ? value : null;
+  const now = performance.now();
+  const duration = value => Number.isFinite(value) && Math.abs(value) <= 86_400_000 ? Math.round(value) : null;
+  const task = root.callbackNode;
+  const schedulerTask = task && typeof task === 'object' ? {
+    callback: typeof task.callback === 'function' ? 'function' : task.callback === null ? 'null' : 'other',
+    priority: [1, 2, 3, 4, 5].includes(task.priorityLevel) ? task.priorityLevel : null,
+    ageMs: Number.isFinite(task.startTime) ? duration(now - task.startTime) : null,
+    expiresInMs: Number.isFinite(task.expirationTime) ? duration(task.expirationTime - now) : null,
+  } : null;
   const traverse = (start, visit, limit = 2000) => {
     const todo = start ? [start] : [], seen = new Set();
     while (todo.length && seen.size < limit) {
@@ -77,9 +86,98 @@ export function observeReactStage() {
     attachedBranchCurrent: attachedRoot === root.current,
     boundaryFoundInCurrent: !!current,
     rootSearch: search,
-    root: { pendingLanes: mask(root.pendingLanes), suspendedLanes: mask(root.suspendedLanes), pingedLanes: mask(root.pingedLanes), expiredLanes: mask(root.expiredLanes), callbackPriority: mask(root.callbackPriority), callbackPresent: root.callbackNode != null, cancelPendingCommit: typeof root.cancelPendingCommit === 'function' },
+    root: { pendingLanes: mask(root.pendingLanes), suspendedLanes: mask(root.suspendedLanes), pingedLanes: mask(root.pingedLanes), expiredLanes: mask(root.expiredLanes), callbackPriority: mask(root.callbackPriority), callbackPresent: root.callbackNode != null, cancelPendingCommit: typeof root.cancelPendingCommit === 'function', timeoutPending: root.timeoutHandle != null && root.timeoutHandle !== -1, schedulerTask },
     ...(current ? { boundary: { fallbackActive: current.memoizedState !== null, lanes: mask(current.lanes), childLanes: mask(current.childLanes), flags: mask(current.flags), subtreeFlags: mask(current.subtreeFlags), retryQueueCount: current.updateQueue instanceof Set ? Math.min(current.updateQueue.size, 500) : null, current: subtree(current.child), alternate: subtree(current.alternate?.child) } } : {}),
   };
+}
+
+/** One separate, post-failure native event-loop check. No clock/scheduler
+ * overrides, app dispatches, imports, message payloads or identities exported.
+ * Four samples over 250 ms distinguish task replacement/commits from a single
+ * stuck callback. This can never alter the saved primary readiness verdict. */
+export function observeNativeDispatch() {
+  const completed = state => ({ completion: Promise.resolve({ state }), dispose: () => true });
+  if (location.origin !== 'http://127.0.0.1:4805' || window.__arborCaptureFixture?.connectivity !== 'synthetic-online') return completed('not-isolated-fixture');
+  const app = document.getElementById('root');
+  const host = document.querySelector('.companion-conversation .companion-loading');
+  if (!app || !host || !app.contains(host)) return completed('not-current-coach-boundary');
+  const key = Object.keys(host).find(name => name.startsWith('__reactFiber$'));
+  let fiber = key ? host[key] : null, root = null;
+  for (let depth = 0; fiber && depth < 60; depth++, fiber = fiber.return) {
+    if (fiber.tag === 3) { root = fiber.stateNode; break; }
+  }
+  if (!root || root.containerInfo !== app || root.current?.tag !== 3) return completed('not-current-coach-boundary');
+  const result = { state: 'observed', budgetMs: 250, dispatch: { messageChannel: 'unavailable', timer: 'not-observed', animationFrame: 'unavailable' }, samples: 0, commitIdentityChanges: 0, callbackIdentityChanges: 0, pendingLaneMasks: [], clock: { performanceAdvanced: false, dateAdvanced: false, elapsedMs: null }, documentFocused: typeof document.hasFocus === 'function' ? document.hasFocus() : null };
+  let current = root.current, callback = root.callbackNode;
+  const sample = () => {
+    if (result.samples >= 4) return;
+    if (root.current !== current) result.commitIdentityChanges++;
+    if (root.callbackNode !== callback) result.callbackIdentityChanges++;
+    current = root.current; callback = root.callbackNode;
+    const lane = root.pendingLanes;
+    if (Number.isInteger(lane) && lane >= 0 && lane <= 0x7fffffff && !result.pendingLaneMasks.includes(lane)) result.pendingLaneMasks.push(lane);
+    result.samples++;
+  };
+  sample();
+  const started = performance.now(), dateStarted = Date.now();
+  let channel, frame, tick, deadline, finishWait;
+  let disposed = false;
+  const dispose = () => {
+    if (disposed) return true;
+    clearTimeout(tick); clearTimeout(deadline);
+    if (frame !== undefined && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
+    if (channel) { channel.port1.onmessage = null; channel.port1.close(); channel.port2.close(); }
+    disposed = true;
+    finishWait?.();
+    return true;
+  };
+  const completion = (async () => { try {
+    await new Promise(resolve => {
+      finishWait = resolve;
+      deadline = setTimeout(resolve, 250);
+      tick = setTimeout(() => { result.dispatch.timer = 'dispatched'; sample(); }, 0);
+      if (typeof MessageChannel === 'function') {
+        channel = new MessageChannel(); result.dispatch.messageChannel = 'not-observed';
+        channel.port1.onmessage = () => { result.dispatch.messageChannel = 'dispatched'; sample(); };
+        channel.port2.postMessage(null);
+      }
+      if (typeof requestAnimationFrame === 'function') {
+        result.dispatch.animationFrame = 'not-observed';
+        frame = requestAnimationFrame(() => { result.dispatch.animationFrame = 'dispatched'; });
+      }
+    });
+    if (disposed) return { state: 'native-dispatch-cancelled' };
+    sample();
+    const elapsed = performance.now() - started;
+    result.clock = { performanceAdvanced: Number.isFinite(elapsed) && elapsed > 0, dateAdvanced: Date.now() > dateStarted, elapsedMs: Number.isFinite(elapsed) && elapsed >= 0 && elapsed <= 10_000 ? Math.round(elapsed) : null };
+    return result;
+  } finally { dispose(); } })();
+  // Only a JSHandle receives this controller. Its private function/promise are
+  // never serialized into evidence or attached to a window/global namespace.
+  return { completion, dispose };
+}
+
+/** Node-side wall deadline guards a broken browser timer, without installing
+ * fake clocks. Explicit cancellation and remote-handle release are acknowledged
+ * before any later probe. An unconfirmed cleanup makes the caller stop capture. */
+export async function collectNativeDispatch(page) {
+  const bounded = async (promise, ms, fallback) => {
+    let deadline;
+    try { return await Promise.race([promise, new Promise(resolve => { deadline = setTimeout(() => resolve(fallback), ms); })]); }
+    finally { clearTimeout(deadline); }
+  };
+  let observer, result = { state: 'unavailable' }, cleanup = false;
+  try {
+    observer = await bounded(page.evaluateHandle(observeNativeDispatch).catch(() => null), 1000, null);
+    if (observer) result = await bounded(observer.evaluate(probe => probe.completion).catch(() => ({ state: 'unavailable' })), 1000, { state: 'native-dispatch-deadline' });
+  } finally {
+    if (observer) {
+      cleanup = await bounded(observer.evaluate(probe => probe.dispose()).catch(() => false), 500, false) === true;
+      const released = await bounded(observer.dispose().then(() => true).catch(() => false), 500, false);
+      cleanup = cleanup && released === true;
+    }
+  }
+  return { ...result, cleanup: cleanup ? 'confirmed' : 'unconfirmed' };
 }
 
 /** CDP-only selector. A WeakSet handle stays in the isolated page/inspector and

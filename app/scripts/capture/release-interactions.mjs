@@ -10,7 +10,7 @@ import { BASE, assertLoopbackOnly, captureRevision } from './config.mjs';
 import { REPORT_CAPTURE_STATES, collectReportStates } from './release-report-states.mjs';
 import { SMALL_FIXTURE, initializeSyntheticOnline } from './small-state.mjs';
 import { createRuntimeDiagnostics, createAssetDiagnostics } from './runtime-diagnostics.mjs';
-import { installStylesheetObservation, observeAskDependency, observeReactStage, observeCurrentRetryCache } from './readiness-probes.mjs';
+import { installStylesheetObservation, observeAskDependency, observeReactStage, observeCurrentRetryCache, collectNativeDispatch } from './readiness-probes.mjs';
 export { classifyReleaseConsole, sanitizedReleaseLocation } from './runtime-diagnostics.mjs';
 import { SOURCE_FONT_NOTE, captureFontContextOptions, installOfflineFonts, captureScreenshot } from './font-runtime.mjs';
 
@@ -338,6 +338,14 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       // is diagnostic evidence only and can never turn this cell into a pass.
       if (group === 'ask-diagnostic' && ['launcher-composer', 'direct-composer'].includes(state) && !cell.reached && cell.readiness.suspenseFallbackVisible && !cell.readiness.composerVisible) {
         cell.retryCache = await observeCurrentRetryCache(page, { retainedFailure: true });
+        save();
+        cell.nativeDispatch = await collectNativeDispatch(page);
+        save();
+        // Stop and tear down this context in the enclosing finally if a stuck
+        // browser cannot acknowledge disposal. Never overlap later probes.
+        if (cell.nativeDispatch.cleanup !== 'confirmed') throw new Error('NATIVE_DISPATCH_CLEANUP_UNCONFIRMED');
+        cell.afterDispatchReactStage = await page.evaluate(observeReactStage).catch(() => ({ unavailable: true }));
+        cell.afterDispatchReadiness = await readinessSnapshot().catch(() => ({ unavailable: true }));
         save();
         const module = cell.assetDiagnostics.recent.find(item => /^\/assets\/CoachTab-[a-zA-Z0-9_-]{1,100}\.js$/.test(item.path) && item.state === 'finished' && item.status === 200 && item.mime === 'javascript');
         cell.postFailureProbe = module
