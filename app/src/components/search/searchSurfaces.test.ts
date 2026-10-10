@@ -186,7 +186,8 @@ describe("TopbarSearch hit target is the whole 44 px pill", () => {
     expect(topbarSearch).toContain('height: "44px"');
     expect(topbarSearch).not.toContain('height: "40px"');
     // Critic r2: field-bare keeps the global input fill off (one surface).
-    expect(topbarSearch).toMatch(/<input[\s\S]{0,1500}className="field-bare min-h-11 self-stretch"/);
+    const inputClasses = topbarSearch.match(/<input[\s\S]{0,1500}?className="([^"]+)"/)?.[1].split(/\s+/);
+    expect(inputClasses).toEqual(expect.arrayContaining(["field-bare", "min-h-11", "self-stretch"]));
     // A 1px border would take 2 px from the input; the hairline is an inset shadow.
     expect(topbarSearch).not.toMatch(/border:\s*open/);
   });

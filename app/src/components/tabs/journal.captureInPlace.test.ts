@@ -387,7 +387,8 @@ describe("Journal: real modules, expandable entry context at every width, one se
     // The scoped rule beats `.arbor-app input` (both !important; higher specificity).
     expect(CSS).toMatch(/\.arbor-app input\.field-bare,[\s\S]{0,200}\{\s*background-color: transparent !important;/);
     expect(CSS).toMatch(/\.arbor-app \.field-pill \{\s*background-color: var\(--arbor-paper-elevated\) !important;/);
-    expect(read("components/search/TopbarSearch.tsx")).toContain('className="field-bare min-h-11 self-stretch"');
+    const topbarInputClasses = read("components/search/TopbarSearch.tsx").match(/<input[\s\S]{0,1500}?className="([^"]+)"/)?.[1].split(/\s+/);
+    expect(topbarInputClasses).toEqual(expect.arrayContaining(["field-bare", "min-h-11", "self-stretch"]));
   });
 });
 

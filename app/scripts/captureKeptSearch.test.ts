@@ -88,13 +88,13 @@ describe('bounded additive kept capture and search contract, no browser', () => 
   });
   it('reuses isolated exact-font CI and the shared fail-closed aggregate without deployment or font uploads', () => {
     const workflow = read('.github/workflows/arbor-parent-release-capture.yml');
-    expect(workflow).toContain('"codex/parent-capture-search-release" ]]; then scope=kept-search-only;');
+    expect(workflow).toContain('"codex/parent-capture-search-release" ]]; then scope=parent-kid-release;');
     expect(workflow).toContain('"codex/parent-confirmed-action-loops" ]]; then scope=confirmed-actions-release;');
     for (const gate of ['docker create --network none', 'CAPTURE_DISPOSABLE_CI=true', 'ARBOR_CAPTURE_FONT_MODE=exact', 'persist-credentials: false', 'contents: read']) expect(workflow).toContain(gate);
     expect(workflow).not.toMatch(/secrets\.|workflow_dispatch|id-token:|docker push|firebase deploy|--privileged|--network host/);
     const collector = read('app/scripts/capture/release-interactions.mjs');
     expect(collector).toContain("'kept-search': KEPT_SEARCH_STATES");
-    expect(collector).toContain('keptSearch?.parsed ?? confirmed?.parsed');
+    expect(collector).toContain('keptSearch?.parsed ?? kidEntry?.parsed ?? confirmed?.parsed');
     expect(collector).toContain('if (record || confirmed || keptSearch) await context.addInitScript(installRecordShareSink)');
     expect(collector).toContain('doc.keptSearchBoundaries = KEPT_SEARCH_LIMITATIONS');
     expect(collector).toContain('await collectKeptSearchStates(');

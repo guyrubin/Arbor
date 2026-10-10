@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { requiresConversationReadiness, RELEASE_MATRIX, RELEASE_ROUTE_COUNT, RELEASE_SHARDS, RELEASE_VIEWPORTS, expectedSeedMarker, missingBaseEvidence, captureDeadlineMs, releaseCell, releaseMatrix, releaseEnvironment, releaseIdentity, releaseInventory, releaseSweepArguments, shardRoutes } from './capture/release-config.mjs';
 import { expectedReleaseInteractionStates } from './capture/release-interactions.mjs';
+import { kidEntryRequiredAssertions } from './capture/kid-entry-contract.mjs';
 import { summarizeRelease } from './capture/release-summary.mjs';
 import { ROUTE_IDS } from '../src/lib/routes';
 import { SURFACE_CONTRACTS } from '../src/lib/surfaceContract';
@@ -15,7 +16,7 @@ const routes = releaseInventory(ROUTE_IDS, SURFACE_CONTRACTS);
 const baseCell = (route: string, vp: any) => ({ route, state: 'base', viewport: `${vp.w}x${vp.h}`, lang: vp.lang, mounted: true, conversationReadiness: requiresConversationReadiness(route) ? 'composer' : undefined, shot: `shots/${route}.${vp.id}.png`, readyTimedOut: false, seedHydrated: true, navigatorOnline: true, browserFixture: { connectivity: 'synthetic-online' } });
 const records = (matrix = RELEASE_MATRIX) => matrix.map((spec: any) => {
   const cell = releaseCell(spec);
-  const cells = spec.group === 'base' ? shardRoutes(routes, spec.shard).map((route: string) => baseCell(route, cell.viewport)) : expectedReleaseInteractionStates(spec.group, cell.viewport).map((state: any) => ({ ...state, ...identity, lang: cell.viewport.lang, viewport: `${cell.viewport.w}x${cell.viewport.h}`, reached: true, assertions: [{ id: 'REAL_INTERACTION_VERIFIED', passed: true }], failures: [], shot: `shots/${state.state}.png` }));
+  const cells = spec.group === 'base' ? shardRoutes(routes, spec.shard).map((route: string) => baseCell(route, cell.viewport)) : expectedReleaseInteractionStates(spec.group, cell.viewport).map((state: any) => ({ ...state, ...identity, lang: cell.viewport.lang, viewport: `${cell.viewport.w}x${cell.viewport.h}`, reached: true, assertions: spec.group === 'kid-entry' ? kidEntryRequiredAssertions(state.state).map((id: string) => ({ id, passed: true })) : [{ id: 'REAL_INTERACTION_VERIFIED', passed: true }], ...(spec.group === 'kid-entry' ? { frames: [{ ready: true }], networkEvidence: { kidEntryDeniedMutations: 0 } } : {}), failures: [], shot: `shots/${state.state}.png` }));
   if (spec.group === 'kept-search') {
     const arrival = cells.find((item: any) => item.state === 'search-prepare-arrival') as any;
     arrival.supplementalShots = [{ stage: 'actual-consult-build-summary-after-scroll', initialShot: arrival.shot,
@@ -31,6 +32,79 @@ const records = (matrix = RELEASE_MATRIX) => matrix.map((spec: any) => {
 });
 
 describe('final release evidence contracts, no sockets or browser', () => {
+  it('keeps Parent858 and requires all 930 additive entry-release cells', () => {
+    const diagnostic = records(releaseMatrix('kid-entry-diagnostic'));
+    expect(summarizeRelease(diagnostic, identity, 'kid-entry-diagnostic')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 18, expectedShards: 1 });
+    expect(summarizeRelease(diagnostic, identity, 'kid-entry-release').completed).toBe(false);
+    const combined = records(releaseMatrix('kid-entry-release'));
+    expect(summarizeRelease(combined, identity, 'kid-entry-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 758, screenshots: 930, printPreviews: 4, expectedShards: 20 });
+    combined[0].evidence.cells[0].assertions.pop();
+    expect(summarizeRelease(combined, identity, 'kid-entry-release').completed).toBe(false);
+  });
+  it('requires the combined 1046-cell Parent/Kept/Kids release once in all four variants', () => {
+    const matrix = releaseMatrix('parent-kid-release');
+    expect(matrix).toEqual([...releaseMatrix('kept-search-only'), ...releaseMatrix('kid-entry-only'), ...releaseMatrix('confirmed-actions-release')]);
+    expect(matrix).toHaveLength(24);
+    expect(new Set(matrix.map((spec: any) => releaseCell(spec).id)).size).toBe(24);
+    for (const viewport of RELEASE_VIEWPORTS) {
+      expect(matrix.filter((spec: any) => spec.viewport === viewport.id).map((spec: any) => spec.group).sort()).toEqual(['base', 'confirmed-actions', 'focused', 'kept-search', 'kid-entry', 'record']);
+    }
+    const combined = records(matrix);
+    const count = (groups: string[]) => combined.filter(record => groups.includes(record.capture.cell.group)).reduce((sum, record) => sum + record.evidence.cells.length, 0);
+    expect(count(['base', 'focused', 'record', 'confirmed-actions'])).toBe(858);
+    expect(count(['kept-search'])).toBe(116);
+    expect(count(['kid-entry'])).toBe(72);
+    expect(summarizeRelease(combined, identity, 'parent-kid-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 874, screenshots: 1050, printPreviews: 4, expectedShards: 24, returnedShards: 24 });
+    for (const priorScope of ['confirmed-actions-release', 'kept-search-release', 'kid-entry-release']) {
+      expect(summarizeRelease(records(releaseMatrix(priorScope)), identity, 'parent-kid-release').completed).toBe(false);
+    }
+    for (const omitted of combined) {
+      const result = summarizeRelease(combined.filter(record => record !== omitted), identity, 'parent-kid-release');
+      expect(result.completed).toBe(false);
+      expect(result.failures.find(failure => failure.id === omitted.capture.cell.id)?.reasons).toContain('SHARD_NOT_RETURNED');
+    }
+  });
+  it('also requires both mobile base full-page PNGs and their exact-font receipts in the real 1136-PNG shape', () => {
+    const combined = records(releaseMatrix('parent-kid-release'));
+    const mobileBase = combined.filter(record => record.capture.cell.group === 'base' && record.capture.cell.viewport.w < 1024);
+    for (const record of mobileBase) for (const cell of record.evidence.cells as any[]) {
+      cell.fullShot = cell.shot.replace('.png', '.full.png');
+      const name = cell.fullShot.split('/').pop();
+      record.shotNames.push(name);
+      record.fonts.shots.push({ shot: name, passed: true, rendered: [{ custom: true }] });
+    }
+    expect(mobileBase.flatMap(record => record.evidence.cells)).toHaveLength(86);
+    expect(summarizeRelease(combined, identity, 'parent-kid-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 874, screenshots: 1136, printPreviews: 4, expectedShards: 24 });
+    for (const record of mobileBase) {
+      const name = (record.evidence.cells[0] as any).fullShot.split('/').pop();
+      record.shotNames = record.shotNames.filter(shot => shot !== name);
+      expect(summarizeRelease(combined, identity, 'parent-kid-release').completed).toBe(false);
+      record.shotNames.push(name);
+      const fonts = record.fonts.shots;
+      record.fonts.shots = fonts.filter(shot => shot.shot !== name);
+      expect(summarizeRelease(combined, identity, 'parent-kid-release').completed).toBe(false);
+      record.fonts.shots = fonts;
+    }
+    expect(summarizeRelease(combined, identity, 'parent-kid-release').completed).toBe(true);
+  });
+  it('keeps Kids required facts, Consult supplements, print delivery and exact source identity mandatory in the combined scope', () => {
+    const full = () => records(releaseMatrix('parent-kid-release'));
+    for (const viewport of RELEASE_VIEWPORTS) {
+      const kid = full();
+      kid.find(record => record.capture.cell.group === 'kid-entry' && record.capture.cell.viewport.id === viewport.id)!.evidence.cells[0].assertions.pop();
+      expect(summarizeRelease(kid, identity, 'parent-kid-release').completed).toBe(false);
+      const kept = full();
+      const arrival = kept.find(record => record.capture.cell.group === 'kept-search' && record.capture.cell.viewport.id === viewport.id)!.evidence.cells.find((cell: any) => cell.state === 'search-prepare-arrival') as any;
+      delete arrival.supplementalShots;
+      expect(summarizeRelease(kept, identity, 'parent-kid-release').completed).toBe(false);
+      const print = full();
+      print.find(record => record.capture.cell.group === 'record' && record.capture.cell.viewport.id === viewport.id)!.printFiles = [];
+      expect(summarizeRelease(print, identity, 'parent-kid-release').completed).toBe(false);
+      const stale = full();
+      stale.find(record => record.capture.cell.group === 'kid-entry' && record.capture.cell.viewport.id === viewport.id)!.capture.sourceTreeSha = 'c'.repeat(40);
+      expect(summarizeRelease(stale, identity, 'parent-kid-release').completed).toBe(false);
+    }
+  });
   it('covers all 43 canonical routes in EN/HE at both widths without duplicates', () => {
     expect(RELEASE_ROUTE_COUNT).toBe(43);
     expect(routes).toHaveLength(43);
@@ -124,7 +198,18 @@ describe('final release evidence contracts, no sockets or browser', () => {
   });
   it('keeps publication, providers, real data and font binaries out of the branch-specific workflow', () => {
     const workflow = read('.github/workflows/arbor-parent-release-capture.yml');
-    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release']");
+    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release', 'codex/kid-entry-safety-diagnostic', 'codex/kid-entry-safety-release']");
+    for (const [branch, scope] of Object.entries({
+      'codex/parent-capture-search-release': 'parent-kid-release',
+      'codex/parent-confirmed-action-loops': 'confirmed-actions-release',
+      'codex/kid-entry-safety-diagnostic': 'kid-entry-only',
+      'codex/kid-entry-safety-release': 'kid-entry-release',
+      'codex/parent-record-clarity': 'record-release',
+      'codex/parent-record-diagnostic': 'record-only',
+      'codex/parent-close-return-diagnostic': 'report-close-only',
+      'codex/parent-final-ask-diagnostic': 'ask-diagnostic',
+    })) expect(workflow).toContain(`"${branch}" ]]; then scope=${scope};`);
+    expect(workflow).not.toContain('codex/parent-kid-integrated-release');
     expect(workflow).toContain('"codex/parent-record-diagnostic" ]]; then scope=record-only;');
     expect(workflow).toContain('contents: read');
     expect(workflow).toContain('fail-fast: false');

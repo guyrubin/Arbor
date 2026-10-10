@@ -18,7 +18,7 @@
  * Styling: TOKEN-ONLY (var(--arbor-*), zero raw hex), RTL-safe (logical CSS
  * properties), scoped under `.arbor-play` for the child type scale.
  */
-import React, { lazy, Suspense, useState, useEffect, useRef } from "react";
+import React, { lazy, Suspense, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft } from "lucide-react";
 import { useKidMode } from "./KidModeContext";
@@ -215,8 +215,10 @@ export default function KidModeOverlay() {
   }, [isKidModeOpen, view, arcadeWorldId]);
 
   // Block Escape inside Kid Mode — a child must not press Escape to exit. The
-  // parent gate (hold button) is the only way out.
-  useEffect(() => {
+  // parent gate (hold button) is the only way out. Install all three lock
+  // boundaries in the layout phase: a persisted-open reload already paints
+  // the Kid surface on its first frame, before passive effects can run.
+  useLayoutEffect(() => {
     if (!isKidModeOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -237,7 +239,7 @@ export default function KidModeOverlay() {
   // the mount node's children change, so LATE-mounting siblings (e.g.
   // PostCaptureCoachStrip) get inerted too instead of staying tabbable behind
   // a one-shot snapshot. The cleanup restores the shell exactly on close.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isKidModeOpen) return;
     const parent = overlayRef.current?.parentElement;
     if (!parent) return;
@@ -260,7 +262,7 @@ export default function KidModeOverlay() {
   // Tab at document capture makes focus wrap within the overlay subtree and
   // recaptures any focus that escaped into a portal — no enumeration of
   // portal classes needed. Escape stays blocked by the capture above.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isKidModeOpen) return;
     const onTab = (e: KeyboardEvent) => {
       const root = overlayRef.current;

@@ -1,9 +1,11 @@
 name: Arbor final Parent release evidence
 on:
+  # PR124 verifies Parent858 + Kept116 + Kids72 = 1046 cells in 24 shards.
+  # The Kids release branch retains Parent858 + Kids72 = 930 required cells.
   # Dedicated candidate branch only. This never changes the active small capture
   # or production workflows, and never merges/deploys to obtain evidence.
   push:
-    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release']
+    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release', 'codex/kid-entry-safety-diagnostic', 'codex/kid-entry-safety-release']
     paths: ['app/**', 'knowledge/**', '.github/workflows/arbor-parent-release-capture.yml']
 permissions:
   contents: read
@@ -25,8 +27,10 @@ jobs:
         name: Derive the bounded matrix from its pure source contract
         shell: bash
         run: |
-          if [[ "$GITHUB_REF_NAME" == "codex/parent-capture-search-release" ]]; then scope=kept-search-only;
+          if [[ "$GITHUB_REF_NAME" == "codex/parent-capture-search-release" ]]; then scope=parent-kid-release;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-confirmed-action-loops" ]]; then scope=confirmed-actions-release;
+          elif [[ "$GITHUB_REF_NAME" == "codex/kid-entry-safety-diagnostic" ]]; then scope=kid-entry-only;
+          elif [[ "$GITHUB_REF_NAME" == "codex/kid-entry-safety-release" ]]; then scope=kid-entry-release;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-record-clarity" ]]; then scope=record-release;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-record-diagnostic" ]]; then scope=record-only;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-close-return-diagnostic" ]]; then scope=report-close-only;
