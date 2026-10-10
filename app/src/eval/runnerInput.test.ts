@@ -1,6 +1,6 @@
 /**
- * B-CAREPRO-12 residue — every scenario of every pinned suite has an input
- * shape the live judge runner can drive. `npm run eval:judge --
+ * B-CAREPRO-12 residue — every scenario actually selected for live judging
+ * has an input shape the live judge runner can drive. `npm run eval:judge --
  * school-handoff-v1` threw at its first scenario ("has no parentMessage/
  * followUp input") because the runner had no /api/generate-handoff branch.
  * The rule lives in src/eval/runnerInput.ts and the runner calls it.
@@ -11,6 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { handoffWireBody, planWireBody, routeChildProfile, runnerInputError, todaysFocusWireBody } from "./runnerInput";
 import type { EvalSuite } from "./acceptance";
+import { liveJudgePlan } from "./judge";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.resolve(here, "..", "..");
@@ -19,7 +20,7 @@ const suites = readdirSync(EVALS)
   .filter((f) => f.endsWith(".eval.json"))
   .map((f) => JSON.parse(readFileSync(path.join(EVALS, f), "utf8")) as EvalSuite);
 
-describe("every pinned scenario is drivable by the live runner", () => {
+describe("every selected live scenario is drivable by the live runner", () => {
   it("the scan read the suites (school-handoff-v1 among them)", () => {
     expect(suites.length).toBeGreaterThanOrEqual(6);
     expect(suites.map((s) => s.suite)).toContain("school-handoff-v1");
@@ -27,10 +28,22 @@ describe("every pinned scenario is drivable by the live runner", () => {
 
   for (const suite of suites) {
     it(`${suite.suite}: 0 scenarios the runner would throw on`, () => {
-      const bad = suite.scenarios.map((sc) => [sc.id, runnerInputError(sc)]).filter(([, e]) => e !== null);
+      // Use the runner's existing tier contract. A deterministic-only account
+      // deletion/control fixture must never be certified as a live request.
+      const bad = liveJudgePlan(suite).judged.map((sc) => [sc.id, runnerInputError(sc)]).filter(([, e]) => e !== null);
       expect(bad).toEqual([]);
     });
   }
+
+  it("only an explicit CI-tier gate excludes unsupported deterministic inputs", () => {
+    const companion = suites.find(s => s.suite === "companion-loop-v1")!;
+    expect(companion).toBeDefined();
+    const deletion = companion.scenarios.find(sc => sc.id === "account-delete-pending-follow-up")!;
+    expect(runnerInputError(deletion)).toMatch(/cannot drive/);
+    expect(liveJudgePlan(companion).judged).toEqual([]);
+    expect(liveJudgePlan(companion).skippedDeterministic).toContain(deletion.id);
+    expect(liveJudgePlan({ ...companion, runner: {} }).judged).toContain(deletion);
+  });
 
   it("NEGATIVE CONTROL: a coach scenario without a message, a handoff scenario without logs, an unknown route", () => {
     expect(runnerInputError({ route: "/api/chat", input: {} })).toMatch(/parentMessage/);
