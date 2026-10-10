@@ -36,6 +36,7 @@ const sheetRaw = read("components/milestones/FirstKeepsakeSheet.tsx");
  */
 const sheet = stripComments(sheetRaw.replace(/accept="image\/\*"/g, 'accept="image"'));
 const tab = stripComments(read("components/tabs/MilestonesTab.tsx"));
+const keptRow = stripComments(read("components/milestones/MilestoneKeptNote.tsx"));
 
 describe("the scan is real", () => {
   it("read actual files", () => {
@@ -60,11 +61,20 @@ describe("the keepsake is reachable from the milestone the parent just marked", 
     expect(tab).toContain('import FirstKeepsakeSheet from "../milestones/FirstKeepsakeSheet"');
     expect(tab).toContain("<FirstKeepsakeSheet");
     expect(tab).toContain('data-testid="ms-keepsake-add"');
-    expect(tab).toContain('data-testid="ms-keepsake"');
+    expect(tab).toContain("<MilestoneKeptNote");
+    expect(keptRow).toContain('data-testid="ms-keepsake"');
   });
 
   it("the offer appears on a MARKED milestone — a keepsake belongs to a first that happened", () => {
-    expect(tab).toMatch(/\{item\.checked && \(\s*<div className="pt-2">/);
+    // Existing notes remain editable after an answer is corrected. The add
+    // offer is the no-note branch, so a new note still requires checked.
+    const offer = tab.slice(tab.indexOf('{(item.checked || keepsakes[item.id]) && ('), tab.indexOf('{item.custom && renamingId'));
+    expect(offer).toContain('{keepsakes[item.id] ? (');
+    expect(offer).toContain('{renderKeepsake(item)}');
+    expect(offer).toMatch(/\) : \(\s*<button[\s\S]*data-testid="ms-keepsake-add"/);
+    const requiresSeenOrSaved = (code: string) => /\{\(item\.checked \|\| keepsakes\[item\.id\]\) && \(/.test(code);
+    expect(requiresSeenOrSaved(offer)).toBe(true);
+    expect(requiresSeenOrSaved(offer.replace('(item.checked || keepsakes[item.id])', 'true'))).toBe(false);
   });
 
   it("save and remove go through the pure helpers and this child's registered subcollection (B-GROWTH-10)", () => {
@@ -156,8 +166,11 @@ describe("the share caption is declared, never inherited", () => {
     expect(opts).not.toMatch(/photo|noticedOn|domain|age|count/);
   });
 
-  it("sharing is offered only once a keepsake exists", () => {
-    expect(sheet).toMatch(/\{keepsake && \(\s*<ShareButton/);
+  it("sharing requires an eligible saved note and forwards the shared freshness guard", () => {
+    expect(sheet).toMatch(/\{keepsake && canShare && \(\s*<ShareButton/);
+    expect(sheet).toContain('beforeShare={beforeShare}');
+    expect(tab).toContain('canShare={Boolean(openKeepsake && keptNotes.rows.has(openKeepsake.id)) && !keptNotes.disabled}');
+    expect(tab).toContain('beforeShare={keptNotes.beforeExport}');
   });
 });
 

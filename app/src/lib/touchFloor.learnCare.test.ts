@@ -57,7 +57,7 @@ const CONTROLS: { id: string; file: keyof typeof FILES; near: string }[] = [
   { id: "B-CAREPRO-16 brief remove item", file: "brief", near: "onClick={() => onRemove(field, i)}" },
   { id: "B-CAREPRO-16 brief add item", file: "brief", near: "onClick={() => onAdd(field)}" },
   { id: "B-CAREPRO-16 brief edit toggle", file: "brief", near: "onClick={() => setEditing((e) => !e)}" },
-  { id: "B-CAREPRO-16 brief review", file: "brief", near: "onClick={() => setReviewOpen(true)}" },
+  { id: "B-CAREPRO-16 brief review", file: "brief", near: 'data-testid="school-brief-review-open"' },
 ];
 
 /** The className/style of the element containing `near`. */

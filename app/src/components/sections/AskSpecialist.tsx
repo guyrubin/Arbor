@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useConsultEgress, type ConsultEgressGuard } from "../../consult/egressGuard";
 import { FreeText } from "../ui/FreeText";
 import { fmtDay } from "../../lib/formatDate";
 import { motion, useReducedMotion } from "motion/react";
@@ -122,8 +123,9 @@ type ExportBuild = { text: string; error: null } | { text: null; error: string }
 
 /** W2-CAREPRO r1: ConsultTab hands its route stamp here; it lands on the
  *  selected audience chip (one 44 px button in step 1), never on a wrapper. */
-export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange }: {
+export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard }: {
   primaryMoveStamp?: Record<string, string>;
+  egressGuard?: ConsultEgressGuard;
   /** B-LOOP-12: the professional view's profession preset — the packet is
    *  the intake packet (buildIntakePacket) and leaves through THIS step-3
    *  egress, behind the same reviewed gate. A different audience chip ends it. */
@@ -142,6 +144,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   const firstName = (childProfile.name || "your child").split(" ")[0];
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [reviewed, setReviewed] = useState(false);
+  const egress = useConsultEgress(egressGuard);
+  const approval = useRef<object | null>(null);
   const [previewAll, setPreviewAll] = useState(false);
 
   // Step 1: the audience (= the preset); remembered per device.
@@ -153,6 +157,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     // transaction, rather than waiting for the effect below, so an immediate
     // export cannot reuse approval for a different recipient.
     if (a !== audience) setReviewed(false);
+    if (a !== audience) approval.current = null;
     setAudienceState(a);
     try { localStorage.setItem(AUDIENCE_STORAGE_KEY, a); } catch { /* metadata only */ }
   };
@@ -165,6 +170,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   const selectSplit = (p: SplitClinicianAudience) => {
     setAudience(INTAKE_AUDIENCE[p]);
     setIntake(p);
+    approval.current = null;
     setReviewed(false);
   };
   useEffect(() => { onAudienceChange?.(audience); }, [audience, onAudienceChange]);
@@ -221,6 +227,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
    *  already trust, through the one export text (no second egress path). */
   const sendToTrusted = () => {
     if (exportText == null) return;
+    if (!canExportCurrent()) return;
     trackShareInitiated("story", "ask_specialist");
     const subject = t("elev.learnCare.trusted.subject", { name: firstName });
     const href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(exportText)}`;
@@ -418,22 +425,31 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // renders EXACTLY that string, one line per block.
   const exportLines = useMemo(() => (exportBuild.text == null ? null : exportPlainLines(exportBuild.text)), [exportBuild.text]);
   const exportText = exportLines == null ? null : exportLines.map((l) => l.text).join("\n");
-  const noneSelected = includedCount === 0 || !reviewed || exportText == null;
+  const exportReceipt = useMemo(() => ({}), [exportText, audience, intake, childProfile.id, egress.receipt]);
+  useEffect(() => { setReviewed(false); }, [exportReceipt]);
+  const latestExport = useRef(exportReceipt);
+  latestExport.current = exportReceipt;
+  if (!egress.isCurrent() || approval.current !== exportReceipt) approval.current = null;
+  const canExportCurrent = () => includedCount > 0 && reviewed && approval.current === exportReceipt
+    && latestExport.current === exportReceipt && egress.isCurrent();
+  const noneSelected = includedCount === 0 || !reviewed || exportText == null || !canExportCurrent();
 
   useEffect(() => { setReviewed(false); setPreviewAll(false); }, [excluded, visionNote, reason, audience, childProfile.id]);
 
   const copy = async () => {
     if (exportText == null) return;
+    if (!canExportCurrent()) return;
     // Growth loop (P0-4): the consult packet is a `story` artifact shared to a
     // professional — reuse the existing union value, don't mint a new one here.
     trackShareInitiated("story", "ask_specialist");
     try {
       await navigator.clipboard.writeText(exportText);
+      if (!canExportCurrent()) return;
       trackShareCompleted("story", "clipboard");
       recordExport(childProfile.id, audience);
       toast(t("elev.packet.copied"), "success");
     }
-    catch { toast(t("elev.packet.copyFailed"), "error"); }
+    catch { if (canExportCurrent()) toast(t("elev.packet.copyFailed"), "error"); }
   };
 
   // B-CAREPRO-28: ONE PDF for the chosen audience — the same preset, the same
@@ -442,6 +458,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // nothing and records nothing.
   const savePdf = () => {
     if (exportText == null || isTeacher) return;
+    if (!canExportCurrent()) return;
     try {
       const sections = exportPrintSections(egressAudience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang);
       printPdf(audience, sections);
@@ -611,7 +628,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
               </p>
             )}
           </div>
-          <SchoolBrief embedded teacherNote={visionNote} primaryMove={primaryMoveStamp?.["data-primary-move"]} />
+          <SchoolBrief embedded teacherNote={visionNote} primaryMove={primaryMoveStamp?.["data-primary-move"]} egressGuard={egressGuard} />
         </section>
       ) : (
         /* W2-CAREPRO r2: at lg a two-pane fold — the builder column (steps 2,
@@ -906,17 +923,22 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
               <button
                 type="button"
                 data-testid="consult-reviewed"
-                aria-pressed={reviewed}
-                onClick={() => setReviewed((r) => !r)}
+                aria-pressed={reviewed && approval.current === exportReceipt}
+                onClick={() => {
+                  if (!egress.isCurrent() || latestExport.current !== exportReceipt) return;
+                  const next = approval.current !== exportReceipt;
+                  approval.current = next ? exportReceipt : null;
+                  setReviewed(next);
+                }}
                 className="flex items-center gap-2 min-w-[220px] min-h-[44px] text-start t-xs font-bold leading-snug"
                 style={{ color: INK }}
               >
                 <span className="flex-shrink-0 w-11 h-11 -ms-2.5 flex items-center justify-center">
                   <span
                     className="w-6 h-6 rounded-md flex items-center justify-center"
-                    style={reviewed ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" } : { background: "var(--arbor-paper-elevated)", border: "1.5px solid var(--arbor-rule-strong)" }}
+                    style={reviewed && approval.current === exportReceipt ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" } : { background: "var(--arbor-paper-elevated)", border: "1.5px solid var(--arbor-rule-strong)" }}
                   >
-                    {reviewed && <Icon name="check" size={16} weight={600} />}
+                    {reviewed && approval.current === exportReceipt && <Icon name="check" size={16} weight={600} />}
                   </span>
                 </span>
                 <span>{t("consult.reviewed")}</span>

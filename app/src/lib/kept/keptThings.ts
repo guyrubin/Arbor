@@ -14,6 +14,8 @@ export type KeptThing = {
   language?: string;
   area?: string;
   attribution: "parent";
+  /** Read-only identity of the eligible note used for a milestone first. */
+  keepsakeId?: string;
 };
 
 export type KeptSources = Pick<ObservationSources, "behaviorLogs" | "milestones" | "langObs"> & {
@@ -78,7 +80,7 @@ export function keptThings(sources: KeptSources, child: ObservationChild): KeptT
       const milestone = milestoneById.get(observation.value.milestoneId);
       const note = notesByMilestone.get(observation.value.milestoneId);
       if (milestone?.checked && (!milestone.observationStatus || milestone.observationStatus === "yes")) {
-        add({ ...common, kind: "first", at: note?.noticedOn ?? common.at, text: note?.note ?? milestone.title });
+        add({ ...common, kind: "first", at: note?.noticedOn ?? common.at, text: note?.note ?? milestone.title, ...(note ? { keepsakeId: note.id } : {}) });
       }
     } else if (observation.origin === "behaviorLogs" && observation.value.type === "moment") {
       const moment = momentById.get(observation.id.slice("behaviorLogs:".length));

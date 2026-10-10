@@ -25,7 +25,7 @@ import { noticedMilestoneCounts } from "../../lib/record/counts";
 import { MILESTONE_AGE_BANDS, ageWindowMilestones, bandForAgeMonths, comparisonAgeMonths, correctedAge, explainMilestonePrompt, milestoneAgeGroupText, milestoneAgeWindow, milestoneBandLabel, milestoneText, selectNextMilestones } from "../../lib/milestoneData";
 import { useObservations } from "../../hooks/useObservations";
 import { ownWordsByShelf, shelfDayLabel, tileWordsExcept, type ShelfEntryWords } from "../../lib/journal/shelfView";
-import { quotesFromDocs } from "../../lib/loop/tonight";
+import { keptDay, keptThings } from "../../lib/kept/keptThings";
 // UND-7 — fail-closed gate for the governed milestone example-media slot
 // (missing reviewer/rightsRef → never renders; ships with zero media entries).
 import { isRenderableMilestoneMedia } from "../../content/governance";
@@ -44,6 +44,8 @@ import { HeroAvatar } from "../ui/HeroAvatar";
 // (beside lib/firsts, which owns the CELEBRATION of a first).
 // B-GROWTH-10 — persistence is the registered `keepsakes` subcollection.
 import FirstKeepsakeSheet from "../milestones/FirstKeepsakeSheet";
+import MilestoneKeptNote, { MilestoneKeptStatus } from "../milestones/MilestoneKeptNote";
+import { useMilestoneKeptNotes } from "../../hooks/useMilestoneKeptNotes";
 import {
   keepsakeDoc, keepsakeMapFromDocs, migrateLocalKeepsakes, upsertKeepsake,
   type KeepsakeDoc, type KeepsakeDraft,
@@ -154,7 +156,14 @@ export default function MilestonesTab() {
   // sibling's milestones.
   const keepsakeCol = useChildCollection<KeepsakeDoc>(childProfile.id, "keepsakes");
   const keepsakes = useMemo(() => keepsakeMapFromDocs(keepsakeCol.items), [keepsakeCol.items]);
-  const [keepsakeFor, setKeepsakeFor] = useState<string | null>(null);
+  const keptNotes = useMilestoneKeptNotes(childProfile.id, milestones, keepsakeCol);
+  const [keepsakeSelection, setKeepsakeSelection] = useState<{ scope: string; id: string | null }>({ scope: keptNotes.scope, id: null });
+  if (keepsakeSelection.scope !== keptNotes.scope) {
+    // Retire the selection during render, including A → B → A before effects.
+    setKeepsakeSelection({ scope: keptNotes.scope, id: null });
+  }
+  const keepsakeFor = keepsakeSelection.scope === keptNotes.scope ? keepsakeSelection.id : null;
+  const setKeepsakeFor = (id: string | null) => setKeepsakeSelection({ scope: keptNotes.scope, id });
   // One-time migration of the legacy device-local map
   // (`arbor.firstsKeepsakes.<childId>`): once per child per mount, and never
   // in the first commit after a child switch, when the collection still
@@ -256,7 +265,11 @@ export default function MilestonesTab() {
   // on Words, the child's kept quotes. The newest of the last 7 days opens the
   // map under the H1; its shelf's epigraph then shows that shelf's previous
   // line, so no sentence renders twice.
-  const keptQuotes = useMemo(() => quotesFromDocs(keepsakeCol.items), [keepsakeCol.items]);
+  // The headline, shelf epigraph and besideWords share the same provenance
+  // gate as the reader. Imported/AI quote text never becomes a child's quote.
+  const keptQuotes = useMemo(() => keptThings({ keepsakes: keepsakeCol.items }, childProfile)
+    .filter(item => item.kind === "said")
+    .map(item => ({ id: item.id.slice("keepsakes:".length), note: item.text, noticedOn: keptDay(item.at)! })), [keepsakeCol.items, childProfile]);
   const ownWords = useMemo(() => ownWordsByShelf(observations, behaviorLogs ?? [], keptQuotes, SHELF_IDS), [observations, behaviorLogs, keptQuotes]);
   const headerQuote = useMemo(() => {
     const since = noticeNow.getTime() - 7 * 86_400_000;
@@ -396,6 +409,20 @@ export default function MilestonesTab() {
     setNewTitle("");
     setShowAdd(false);
   };
+
+  // All saved-note paths use one row. The write-capable collection retains
+  // every note/photo/editor; only verified parent-seen pairs gain Send.
+  const renderKeepsake = (item: Milestone) => keepsakes[item.id] ? (
+    <MilestoneKeptNote
+      note={keepsakes[item.id]}
+      item={keptNotes.rows.get(item.id)}
+      childName={firstName}
+      scope={keptNotes.scope}
+      disabled={keptNotes.disabled}
+      beforeExport={keptNotes.beforeExport}
+      onEdit={() => setKeepsakeFor(item.id)}
+    />
+  ) : null;
 
   const renderItem = (item: Milestone) => (
     <div
@@ -547,43 +574,14 @@ export default function MilestonesTab() {
           </div>
           {/* GP-31 — the keepsake. `observationUpdatedAt` records the day the
               parent PRESSED the button; this records what they actually saw,
-              on the day it happened, in their own words. Offered only once the
-              milestone is marked — a keepsake belongs to a first that has
-              happened. A photo is optional; the note and the date are the
+              on the day it happened, in their own words. New notes are offered
+              once marked; an existing note stays editable after a correction.
+              A photo is optional; the note and the date are the
               whole thing. Descriptive record only: no score, no comparison. */}
-          {item.checked && (
+          {(item.checked || keepsakes[item.id]) && (
             <div className="pt-2">
               {keepsakes[item.id] ? (
-                <div
-                  data-testid="ms-keepsake"
-                  className="rounded-xl p-2.5"
-                  style={{ background: "var(--arbor-lav-soft)", border: "1px solid var(--arbor-rule)" }}
-                >
-                  <p className="text-[12.5px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-                    {keepsakes[item.id].note}
-                  </p>
-                  {keepsakes[item.id].photoUrl && (
-                    <img
-                      src={keepsakes[item.id].photoUrl}
-                      alt=""
-                      className="mt-2 w-full rounded-lg object-cover"
-                      style={{ maxHeight: 160 }}
-                    />
-                  )}
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] font-extrabold" style={{ color: "var(--arbor-lav-ink)" }}>
-                      {t("elev.waveR.keepsake.on", { date: fmtDay(keepsakes[item.id].noticedOn, uiLang) })}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.preventDefault(); setKeepsakeFor(item.id); }}
-                      className="min-h-11 text-[11px] font-bold"
-                      style={{ color: "var(--arbor-muted)" }}
-                    >
-                      {t("elev.waveR.keepsake.edit")}
-                    </button>
-                  </div>
-                </div>
+                <>{renderKeepsake(item)}</>
               ) : (
                 <button
                   type="button"
@@ -690,6 +688,7 @@ export default function MilestonesTab() {
   const [beforeRow, setBeforeRow] = useState<Record<string, Milestone>>({});
   const renderRow = (m: Milestone, shelf: ShelfId) =>
     m.custom ? renderItem(m) : (
+      <React.Fragment key={m.id}>
       <NoticeCard
         key={m.id}
         milestone={m}
@@ -712,6 +711,8 @@ export default function MilestonesTab() {
         onKeepQuote={(note) => saveKeepsake({ milestoneId: m.id, note, noticedOn: localDay(new Date()) })}
         onKeepPhoto={() => setKeepsakeFor(m.id)}
       />
+      {renderKeepsake(m)}
+      </React.Fragment>
     );
 
   /** B-LOOP-05 / P5 critic r2 (P0-3, 6 Oct) — one shelf behind its door, with
@@ -754,6 +755,7 @@ export default function MilestonesTab() {
               {next.map((m) => (
                 <li key={m.id} data-testid="ms-later-item" className="t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
                   {milestoneText(m, "title", t, msGender)}
+                  {renderKeepsake(m)}
                 </li>
               ))}
             </ul>
@@ -879,6 +881,7 @@ export default function MilestonesTab() {
             <h2 id="ms-map-title" className="arbor-type-title sr-only sm:not-sr-only" style={{ color: "var(--arbor-ink)" }}>
               {t("elev.loop.shelfMap.title")}
             </h2>
+            <MilestoneKeptStatus history={keptNotes} />
             {(searchOpen || !!query) && (
               <label className="field-pill mb-1 flex sm:mt-3 min-h-11 items-center gap-2 rounded-xl ps-3 pe-1">
                 <Icon name="search" size={18} style={{ color: "var(--arbor-muted)" }} />
@@ -913,9 +916,10 @@ export default function MilestonesTab() {
                     {/* P5 critic r2 (P2-3): the shelf's own Notice item is never answered twice. */}
                     {g.items.filter((m) => m.id !== noticeFor(g.shelf)?.id).map((m) =>
                       isLaterItem(m) ? (
-                        <p key={m.id} data-testid="ms-search-later" className="t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
+                        <div key={m.id} data-testid="ms-search-later" className="t-sm leading-snug" style={{ color: "var(--arbor-ink-soft)" }}>
                           {milestoneText(m, "title", t, msGender)}
-                        </p>
+                          {renderKeepsake(m)}
+                        </div>
                       ) : (
                         renderRow(m, g.shelf)
                       ),
@@ -992,6 +996,7 @@ export default function MilestonesTab() {
                           /* c2 r2 (B-LOOP-NEW-2f): "Seen it" is filed next to the shelf's newest kept line */
                           besideWords={ownWords[shelf]?.[0]?.text ?? null}
                         />
+                        {renderKeepsake(card)}
                         {heldNotice[shelf] === card.id && (() => {
                           const next = nextOnShelf(shelf, card.id);
                           return next ? (
@@ -1359,12 +1364,15 @@ export default function MilestonesTab() {
           helpers in lib/firstsKeepsake and persist to this child's own
           sweepable store — the milestone record itself is never touched. */}
       <FirstKeepsakeSheet
+        key={`${keptNotes.scope}:${keepsakeFor ?? "closed"}`}
         open={Boolean(openKeepsake)}
         milestoneId={openKeepsake?.id ?? ""}
         milestoneTitle={openKeepsake ? milestoneText(openKeepsake, "title", t, msGender) : ""}
         childId={childProfile.id}
         childName={firstName}
         keepsake={openKeepsake ? keepsakes[openKeepsake.id] ?? null : null}
+        canShare={Boolean(openKeepsake && keptNotes.rows.has(openKeepsake.id)) && !keptNotes.disabled}
+        beforeShare={keptNotes.beforeExport}
         onSave={saveKeepsake}
         onRemove={() => { if (openKeepsake) dropKeepsake(openKeepsake.id); }}
         onClose={() => setKeepsakeFor(null)}

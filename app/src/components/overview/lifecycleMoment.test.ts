@@ -77,7 +77,8 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
   // header (the pack), never a card in the door.
   it("mounts the hook; the moment is the practice header's note, never a card", () => {
     expect(overview).not.toMatch(/import LifecycleMomentCard/);
-    expect(overview).toMatch(/useLifecycleMoment\(\{ previousVisitAt \}\)/);
+    expect(overview).toContain("const now = useNowClock();");
+    expect(overview).toContain("useLifecycleMoment({ previousVisitAt, now: now.getTime() })");
     expect((overview.match(/<LifecycleMomentCard/g) ?? []).length).toBe(0);
     expect(overview).toContain("headerNote={lifecycleNote}");
   });

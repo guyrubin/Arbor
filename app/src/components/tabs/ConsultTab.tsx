@@ -1,11 +1,12 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { doc, writeBatch } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../context/AuthContext";
 import AskSpecialist from "../sections/AskSpecialist";
 import { isIntakeProfession, type ExportAudience } from "../../consult/packet";
+import { visitForConsult } from "../../lib/today/dayCard";
 import { useHashQuery } from "../../hooks/useHashQuery";
-import { appointmentRoleLabel } from "../sections/Appointments";
+import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
@@ -20,7 +21,6 @@ import {
   appointmentStatus,
   consultAudienceForProfession,
   makeFollowUp,
-  nextPrepareVisit,
   visitAwaitingOutcome,
   type Appointment,
   type AppointmentFollowUp,
@@ -60,21 +60,50 @@ export function consultHeading(input: { visitAudience?: ExportAudience; hasVisit
 const lowerFor = (lang: string, x: string) => (lang === "en" ? x.toLowerCase() : x);
 
 export default function ConsultTab() {
+  const { childProfile } = useArbor();
   const { user } = useAuth();
-  const { childProfile, activeTab } = useArbor();
+  const query = useHashQuery();
+  const scope = JSON.stringify([user?.uid ?? "local", childProfile.id, query.get("appointment")]);
+  const owner = useRef({ scope, token: {} });
+  if (owner.current.scope !== scope) owner.current = { scope, token: {} };
+  const token = owner.current.token;
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const isOwnerCurrent = useCallback(() => mounted.current && owner.current.token === token, [token]);
+  return <ConsultContent key={scope} query={query} isOwnerCurrent={isOwnerCurrent} />;
+}
+
+function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isOwnerCurrent: () => boolean }) {
+  const { user } = useAuth();
+  const { childProfile, activeTab, setActiveTab } = useArbor();
   const currentChild = useRef(childProfile.id);
   currentChild.current = childProfile.id;
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
   const firstName = (childProfile.name || "").split(" ")[0];
-  const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments");
+  const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments", { trackConfirmation: true });
   const followUpsCol = useChildCollection<AppointmentFollowUp>(childProfile.id, "apptFollowUps");
   const nowMs = Date.now();
   // B-PROG-09: the home program the professional gave (programs, home-* rows) and the goals the family accepted
   const programsCol = useChildCollection<HomeProgramEnrolment>(childProfile.id, "programs");
   const familyGoalsCol = useChildCollection<FamilyGoal>(childProfile.id, "familyGoals");
   const [homeOpen, setHomeOpen] = useState(false);
-  const visit = useMemo(() => nextPrepareVisit(apptsCol.items, nowMs), [apptsCol.items, nowMs]);
+  const appointmentId = query.get("appointment");
+  const appointmentReady = apptsCol.loaded && !apptsCol.error && apptsCol.confirmed;
+  const currentVisit = useMemo(() => appointmentId && !appointmentReady ? null : visitForConsult(apptsCol.items, nowMs, appointmentId), [apptsCol.items, nowMs, appointmentId, appointmentReady]);
+  // Keep an already-open target's editor identity through transient source loss.
+  // This ref never accepts cache/error rows and is reset by the child/target key.
+  const lastConfirmedTarget = useRef<Appointment | null>(null);
+  if (appointmentId && appointmentReady && currentVisit) lastConfirmedTarget.current = currentVisit;
+  const visit = appointmentId ? currentVisit ?? lastConfirmedTarget.current : currentVisit;
+  const targetBlocked = !!appointmentId && (!appointmentReady || !currentVisit);
+  const targetOpened = !appointmentId || !!lastConfirmedTarget.current;
+  // This read receipt also protects body portals and captured callbacks. A
+  // recovered source gets fresh approval; the unsaved editor stays mounted.
+  const egressGuard = useMemo(() => appointmentId ? {
+    isCurrent: () => isOwnerCurrent() && !targetBlocked && apptsCol.isCurrent()
+      && !!currentVisit && !!visitForConsult([currentVisit], Date.now(), appointmentId),
+  } : undefined, [appointmentId, targetBlocked, currentVisit, apptsCol.isCurrent, isOwnerCurrent]);
   const awaiting = useMemo(() => visitAwaitingOutcome(apptsCol.items, followUpsCol.items, nowMs), [apptsCol.items, followUpsCol.items, nowMs]);
   const anchorAudience = visit?.profession ? consultAudienceForProfession(visit.profession) : undefined;
   // B-CAREPRO-36 (closure): #/school-brief renders THIS page with the teacher
@@ -87,7 +116,7 @@ export default function ConsultTab() {
   // (`#/consult?intake=<profession>`) — the profession preset builds the
   // intake packet (consult/packet buildIntakePacket) and it leaves through
   // the ONE step-3 egress, behind the same reviewed gate.
-  const intakeRaw = useHashQuery().get("intake");
+  const intakeRaw = query.get("intake");
   const intake = isIntakeProfession(intakeRaw) ? intakeRaw : undefined;
   const [outcome, setOutcome] = useState("");
   // NEXTLEVEL critic r1 (P1): the H1 names the audience the parent CHOSE.
@@ -145,8 +174,15 @@ export default function ConsultTab() {
      "Save as PDF" (B-CAREPRO-36). */
   const primaryMoveStamp = { "data-primary-move": activeTab === "handoff" ? "copy-handoff-brief" : activeTab === "school-brief" ? "build-school-brief" : "build-share-packet" };
 
-  return (
-    <div>
+  // Initially unconfirmed targets mount no editor. Once opened, retain its
+  // unsaved state hidden/inert while blocked. Egress is independently guarded
+  // because a body portal is outside this wrapper.
+  return <>
+    {targetBlocked && <div className="max-w-5xl mx-auto" data-testid="consult-visit-unavailable">
+      <p role="status">{t(apptsCol.error || appointmentReady ? "elev.today.visit.unavailable" : "aria.loading")}</p>
+      {apptsCol.loaded && <button type="button" className="min-h-11 rounded-full px-4 text-sm font-semibold" onClick={() => setActiveTab("appointments")}>{t("nav.tab.appointments")}</button>}
+    </div>}
+    {targetOpened && <div hidden={targetBlocked} inert={targetBlocked}>
       <header className="mb-5">
         <h1 data-testid="consult-h1" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" } as React.CSSProperties}>
           {heading === "visit" && visit
@@ -230,8 +266,8 @@ export default function ConsultTab() {
             )}
           </section>
         )}
-        <AskSpecialist key={`${presetAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`} primaryMoveStamp={primaryMoveStamp} anchorAudience={presetAudience} intake={intake} onAudienceChange={setChosen} />
+        <AskSpecialist key={appointmentId ?? `${presetAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`} primaryMoveStamp={primaryMoveStamp} anchorAudience={presetAudience} intake={intake} onAudienceChange={setChosen} egressGuard={egressGuard} />
       </div>
-    </div>
-  );
+    </div>}
+  </>;
 }

@@ -306,7 +306,7 @@ export async function collectRecordStates({ page, context, fixture, viewport, ou
     const band = byId('ms-shelf-band').filter({ has: note });
     if (await band.count() === 1 && await band.evaluate(el => el.tagName === 'DETAILS' && !el.open)) await band.locator(':scope > summary').click();
     await visible(cell, 'EXISTING_PARENT_NOTE_ROW', note);
-    await note.getByRole('button').click();
+    await note.locator('[data-testid="ms-keepsake-edit"]').click();
     await visible(cell, 'EXISTING_KEEPSAKE_EDITOR', byId('first-keepsake-sheet'));
     const expected = { expectedNote: fixture.text.first, expectedDate: '2026-10-04' };
     cell.keepsakeEditor = { before: await page.evaluate(observeRecordKeepsakeEditor, expected) };

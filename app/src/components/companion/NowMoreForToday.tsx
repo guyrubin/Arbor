@@ -27,7 +27,7 @@ import Icon from "../ui/Icon";
  *    slot) and Settings; Gentle Reminders lives in Settings.
  * Lines only; nothing here competes with the lead's one move.
  */
-export default function NowMoreForToday({ now, evening, storyFits, rhythmDaysNeeded, keepsakeDocs, previousVisitAt, isReturning, todayOffer }: {
+export default function NowMoreForToday({ now, evening, storyFits, rhythmDaysNeeded, keepsakeDocs, previousVisitAt, isReturning, todayOffer, suppressVisit = false, suppressSayBack = false }: {
   now: Date;
   evening: boolean;
   storyFits: boolean;
@@ -35,6 +35,8 @@ export default function NowMoreForToday({ now, evening, storyFits, rhythmDaysNee
   keepsakeDocs: readonly unknown[];
   previousVisitAt: string | null;
   isReturning: boolean;
+  suppressVisit?: boolean;
+  suppressSayBack?: boolean;
   todayOffer: ReturnType<typeof useCompanionOffer>;
 }) {
   const { childProfile, behaviorLogs, playLogs, milestones, actionLoop, approvedMemoryItems, checkedMilestones, setActiveTab, requestJournalFocus } = useArbor();
@@ -82,8 +84,8 @@ export default function NowMoreForToday({ now, evening, storyFits, rhythmDaysNee
     </summary>
     <div className="now-more-body">
       {changedWould && <WhatChanged lines={changed.lines.slice(0, 3)} hiddenCount={0} recap={weeklyRecap} rhythmDaysNeeded={rhythmDaysNeeded} onLineTap={onChangedLineTap} onMore={() => setActiveTab("journal")} />}
-      <CompanionOfferSlot surface="today" offer={todayOffer.offer} controls={todayOffer} placement="under-step" />
-      <TodaySayBackLine keepsakeDocs={keepsakeDocs} now={now} />
+      {!(suppressVisit && todayOffer.offer?.kind === "appointment") && <CompanionOfferSlot surface="today" offer={todayOffer.offer} controls={todayOffer} placement="under-step" />}
+      {!suppressSayBack && <TodaySayBackLine keepsakeDocs={keepsakeDocs} now={now} />}
       {!dayZero && <ArborNoticedCard />}
       <FamilyOfferLines activeChildId={childProfile.id} />
       {evening && storyFits && line("today-door-story", "auto_stories", t("elev.loop.tonight.story"), () => setActiveTab("bedtime-stories"))}

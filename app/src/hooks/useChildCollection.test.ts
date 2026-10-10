@@ -57,7 +57,7 @@ describe("W0.5: ChildCollection interface exports error", () => {
   });
 
   it("the hook returns `error` alongside items/loaded", () => {
-    expect(src).toMatch(/return \{ items, loaded, error, remote, upsert, remove, replaceAll \};/);
+    expect(src).toMatch(/return \{ items, loaded, error, remote, upsert, remove, replaceAll, confirmed, isCurrent \};/);
   });
 });
 

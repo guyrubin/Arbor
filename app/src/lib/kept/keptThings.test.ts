@@ -37,6 +37,7 @@ describe("parent-kept selector", () => {
     const items = keptThings({ ...sources, practiceEvents: [{ id: "practice", source: "kid_practice", phrase: "invented quote", timestamp: "2026-10-09" }] } as KeptSources, child);
     expect(items.map(item => item.id)).toEqual(["behaviorLogs:kept", "langObs:word-b", "milestones:ms-a", "langObs:word-a"]);
     expect(items[2].text).toBe("Three steps to me");
+    expect(items[2]).toHaveProperty("keepsakeId", "ms-a");
     expect(keptByMonth(items).map(month => [month.monthKey, month.items.map(item => item.id)])).toEqual([
       ["2026-10", ["behaviorLogs:kept", "langObs:word-b", "milestones:ms-a"]], ["2026-09", ["langObs:word-a"]],
     ]);

@@ -32,12 +32,13 @@ beforeEach(() => { harness.lang = "en"; });
 
 describe("B-TODAY-28 — the record card (rendered)", () => {
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: quote verbatim in the editorial serif inside an inline-start rule, the date line, ONE question, three ≥44 px answers`, () => {
+    it(`${lang}: quote verbatim in readable body type inside an inline-start rule, the date line, ONE question, three ≥44 px answers`, () => {
       harness.lang = lang;
       const html = renderToStaticMarkup(<FromRecordCard opener={planOpener} childName="Dylan" onAnswer={() => {}} />);
       expect(html).toContain(NOTE);
       expect(html).toMatch(/data-testid="today-record-quote"[^>]*class="[^"]*border-s-2 ps-3[^"]*text-\[17px\]/);
-      expect(html).toContain("var(--font-editorial)");
+      expect(html).toMatch(/data-testid="today-record-quote"[^>]*style="[^"]*font-family:var\(--font-sans\);font-style:normal/);
+      expect(html).not.toContain("var(--font-editorial)");
       expect(html).toContain(translate(lang, "today.record.meta.note", { date: lang === "he" ? "9 ביולי" : "9 Jul" }).split("·")[0].trim());
       expect(html).toContain(translate(lang, "today.record.q.plan", { name: "Dylan" }).replace(/[⁨⁩]/g, "").split("Dylan")[0]);
       expect(html.match(/data-answer="/g)).toHaveLength(3);
@@ -55,6 +56,13 @@ describe("B-TODAY-28 — the record card (rendered)", () => {
     expect(html).toMatch(/<blockquote[^>]*><bdi dir="auto" data-free-text=""><bdi>דילן<\/bdi> started/);
     expect(html).toContain(translate("en", "today.record.q.fact"));
     expect(html).toContain(translate("en", "today.record.a.fact.hard_again"));
+  });
+
+  it("Now can stamp its own move and disable all chips while the answer is being kept", () => {
+    const html = renderToStaticMarkup(<FromRecordCard opener={planOpener} childName="Dylan" onAnswer={() => {}} stampMove="choose-next-step" disabled />);
+    expect(html).toContain('data-primary-move="choose-next-step"');
+    expect(html.match(/disabled=""/g)).toHaveLength(3);
+    expect(html).toMatch(/data-testid="today-record-question"[^>]*style="[^"]*var\(--font-sans\)/);
   });
 
   it("an answer calls back with the enum (the context writes ONE row)", () => {
@@ -77,7 +85,7 @@ describe("B-TODAY-28 — the record card (rendered)", () => {
     }
   });
 
-  it("NEXTLEVEL r1 — the receipt says the parent's words back, verbatim, in the editorial serif (EN + HE)", () => {
+  it("the receipt says the parent's words back verbatim in the same readable body type (EN + HE)", () => {
     for (const lang of ["en", "he"] as const) {
       harness.lang = lang;
       const html = renderToStaticMarkup(<FromRecordReceipt quote="Calmed and put shoes on within 8 mins" />);
@@ -85,7 +93,9 @@ describe("B-TODAY-28 — the record card (rendered)", () => {
       expect(html).toContain("Calmed and put shoes on within 8 mins");
       expect(html).toContain('data-testid="today-record-receipt-quote"');
       expect(html).toContain("var(--arbor-green-ink)");
-      expect(html).toContain("var(--font-editorial)");
+      expect(html).toMatch(/data-testid="today-record-receipt-quote"[^>]*class="[^"]*leading-relaxed/);
+      expect(html).toContain("font-family:var(--font-sans);font-style:normal;font-size:var(--t-base)");
+      expect(html).not.toContain("var(--font-editorial)");
       expect(html).toContain('role="status"');
       expect(html).not.toMatch(/celebrat|confetti|🎉|!|%/);
     }
@@ -122,8 +132,10 @@ describe("NEXTLEVEL critic r1 — a named topic, a joy opener, the chips are the
   // B-LOOP-07 re-pin: the record card's quote slot moved INTO the practice
   // card (the parent's own words on the practice's shelf, then and now); the
   // standalone mount is gone and the first block carries the one stamp.
-  it("OverviewTab: no standalone record card; the first block carries the one stamp; the rail sits behind the door", () => {
-    expect(SRC).not.toContain("<FromRecordCard");
+  it("Now: the record card occupies the same one-lead branch; the rail stays behind the door", () => {
+    expect(SRC).toContain('lead === "record" ? <section');
+    expect(SRC.match(/<FromRecordCard /g)).toHaveLength(1);
+    expect(SRC).toContain('stampMove="choose-next-step" disabled={record.saving}');
     // P5 design r1 P0-1: the stamp is on the first block's answers, not a wrapper.
     // Parity 9 Oct: Now's loop blocks pass ONE stamp const through their props.
     expect(SRC).toContain('const stamp = { "data-primary-move": MOVE } as const;');

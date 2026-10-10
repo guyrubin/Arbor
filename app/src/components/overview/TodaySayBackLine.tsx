@@ -9,6 +9,7 @@ import type { ActionLoopEntry } from "../../actionLoop/model";
 import {
   SAID_ANSWERS,
   answeredToday,
+  fromRecordRowId,
   fromRecordAnswerKey,
   fromRecordQuestionKey,
   selectFromRecord,
@@ -62,6 +63,7 @@ export function sayBackDoorLine(input: {
   if (input.stepOpen) return null;
   const answered = answeredToday(input.loop, input.childId, input.now);
   if (answered?.sayBack && answered.recordKey?.startsWith("said:")) return { kind: "answered", answer: answered.sayBack };
+  if (answered) return null;
   const opener = selectFromRecord({
     now: input.now,
     plans: [],
@@ -82,9 +84,10 @@ export function sayBackDoorLine(input: {
  * no rating of the child's language, never a card.
  */
 export default function TodaySayBackLine({ keepsakeDocs, now }: { keepsakeDocs: readonly unknown[]; now: Date }) {
-  const { actionLoop, activeTodayAction, childProfile, recordFromRecordAnswer } = useArbor();
+  const { actionLoop, activeTodayAction, childProfile, recordFromRecordAnswer, recordAnswerWrites, recordAnswersConfirmed } = useArbor();
   const { t } = useLanguage();
-  const line = sayBackDoorLine({
+  const write = recordAnswerWrites?.[fromRecordRowId(childProfile.id, now)];
+  const line: SayBackDoorLine = write?.status === "saved" && write.entry?.sayBack ? { kind: "answered", answer: write.entry.sayBack } : write?.status === "failed" && write.opener.kind === "said" ? { kind: "ask", opener: write.opener } : sayBackDoorLine({
     now,
     loop: actionLoop,
     keepsakeDocs,
@@ -93,6 +96,10 @@ export default function TodaySayBackLine({ keepsakeDocs, now }: { keepsakeDocs: 
     childId: childProfile.id,
     stepOpen: activeTodayAction?.status === "accepted",
   });
+  const waiting = write?.status === "saving" || (recordAnswersConfirmed === false && !!line && !write);
+  if (activeTodayAction?.status === "accepted") return null;
+  if (write && write.opener.kind !== "said") return null;
+  if (waiting) return <p role="status" className="now-inline-status" data-testid="today-door-saidback-pending">{t("elev.today.record.confirming")}</p>;
   if (!line) return null;
   if (line.kind === "answered") {
     return (
@@ -109,7 +116,7 @@ export default function TodaySayBackLine({ keepsakeDocs, now }: { keepsakeDocs: 
   return (
     <div data-testid="today-door-saidback" className="flex min-h-11 flex-wrap items-center gap-2 rounded-xl px-3 py-1.5">
       <Icon name="record_voice_over" size={18} style={{ color: "var(--arbor-muted)" }} />
-      <span className="line-clamp-2 min-w-0 flex-1 font-semibold leading-snug" style={{ color: "var(--arbor-ink)", fontSize: "var(--t-base)" }}>
+      <span data-testid="today-door-saidback-question" className="min-w-0 flex-[1_1_12rem] font-semibold leading-snug" style={{ color: "var(--arbor-ink)", fontSize: "var(--t-base)" }}>
         {question}
       </span>
       <span className="flex gap-2" role="group" aria-label={question}>
@@ -118,14 +125,15 @@ export default function TodaySayBackLine({ keepsakeDocs, now }: { keepsakeDocs: 
             key={answer}
             type="button"
             data-answer={answer}
-            onClick={() => recordFromRecordAnswer(opener, answer)}
-            className="inline-flex min-h-11 items-center rounded-full px-3 font-semibold"
+            onClick={() => { void recordFromRecordAnswer(opener, answer, now).catch(() => { /* The unchanged question remains available to retry. */ }); }}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-3 font-semibold"
             style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", fontSize: "var(--t-sm)" }}
           >
             {t(fromRecordAnswerKey(opener, answer))}
           </button>
         ))}
       </span>
+      {write?.status === "failed" && <p role="alert" className="basis-full">{t("companion.arbor-context.your-response-wasn-t-saved-please-try-agai")}</p>}
     </div>
   );
 }

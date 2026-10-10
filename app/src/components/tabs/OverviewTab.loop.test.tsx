@@ -30,6 +30,7 @@ import { loopFirewallHits } from "../../lib/loop/firewall";
 import { shelfWordsThenNow, THEN_GAP_DAYS } from "../../lib/today/shelfWords";
 import { contractFor } from "../../lib/surfaceContract";
 import { planToday } from "../overview/todayModules";
+import { selectNowLead } from "../../lib/today/dayCard";
 import type { BehaviorLog } from "../../types";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import { lastNightWords } from "../../lib/today/shelfWords";
@@ -43,19 +44,29 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[
 const OV = strip(todayLiveSource().replace(/\r\n/g, "\n"));
 
 describe("OverviewTab — three blocks and one door (source pins)", () => {
-  it("chooseTodayAction is retired for Today; the old step chain is gone", () => {
+  it("chooseTodayAction is retired; the record question is a single selected lead, never the old step chain", () => {
     expect(OV).not.toMatch(/chooseTodayAction/);
-    for (const tok of ["<TodayRecommendation", "<PromptCaptureCard", "<FromRecordCard", "<TonightCard", "<TodayStarterCard", "<WeekAnchorCard", "<WeekOpenAnchorCard", "<DailyPlayCard"]) {
+    for (const tok of ["<TodayRecommendation", "<PromptCaptureCard", "<TonightCard", "<TodayStarterCard", "<WeekAnchorCard", "<WeekOpenAnchorCard", "<DailyPlayCard"]) {
       expect(OV, tok).not.toContain(tok);
     }
+    expect(OV.match(/<FromRecordCard\b/g)).toHaveLength(1);
+    expect(OV).toContain('{lead === "record" ? <section');
+    expect(OV).toContain('record.receipt ? <FromRecordReceipt /> : record.opener && <FromRecordCard');
+    expect(OV).toContain('stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)}');
   });
 
   // P5 design r1 P0-1 re-pin: the ONE stamp literal sits on the first
   // block's ANSWER group (PracticeCard / TonightFlow stampMove, the slot
   // NoticeCard answersAttrs), never on a wrapper around the whole card.
-  it("the lead follows planToday's order (Tonight first in the evening); ONE primary-move literal per file, on the first block's answers", () => {
-    // Parity 9 Oct: #/overview is NowView; planToday still decides the loop's blocks.
-    expect(OV).toContain('const tonightLeads = tonightOpen || (!chosen && loop.plan.order[0] === "tonight");');
+  it("one coordinator selects the lead from planToday, explicit Tonight and pending answers; stamps stay on real answers", () => {
+    // The loop planner still decides evening eligibility; the coordinator protects in-flight answers.
+    expect(OV).toContain("const lead = selectNowLead({");
+    expect(OV).toContain("chosen: !!chosen,");
+    expect(OV).toContain("chosenPending: saving || saveError,");
+    expect(OV).toContain("manualTonight: tonightOpen,");
+    expect(OV).toContain('tonight: loop.plan.order[0] === "tonight",');
+    expect(OV).toContain("recordPending: record.saving || record.error,");
+    expect(OV).toContain("onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }}");
     expect(OV).toContain('const showNotice = lead !== "notice" && loop.plan.order.includes("notice") && loop.blockNotices.length > 0;');
     expect(strip(todayFile("NowView.tsx")).match(/data-primary-move/g)?.length).toBe(1);
     expect(strip(todayFile("NowLoopBlocks.tsx")).match(/data-primary-move/g)?.length).toBe(1);
@@ -63,6 +74,19 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
     expect(OV.match(/stampMove=\{MOVE\}/g)).toHaveLength(2);
     expect(OV).not.toMatch(/<div data-primary-move=/);
     expect(contractFor("overview")).toMatchObject({ primaryMove: "choose-next-step", moduleBudget: 3, demotionTarget: "disclosure" });
+  });
+
+  it("an explicit Tonight choice leads unless an answer is saving or awaiting retry", () => {
+    const base = { chosen: false, record: false, recordPending: false, tonight: false, visit: null, fallback: "practice" as const };
+    const visit = { id: "visit", when: "", who: "", role: "Speech therapist", mode: "In person" as const };
+    expect(selectNowLead({ ...base, tonight: true })).toBe("tonight");
+    expect(selectNowLead({ ...base, chosen: true, tonight: true })).toBe("step");
+    expect(selectNowLead({ ...base, visit, tonight: true, record: true })).toBe("visit");
+    for (const chosen of [false, true]) {
+      expect(selectNowLead({ ...base, chosen, visit, manualTonight: true })).toBe("tonight");
+    }
+    expect(selectNowLead({ ...base, chosen: true, chosenPending: true, manualTonight: true })).toBe("step");
+    expect(selectNowLead({ ...base, record: true, recordPending: true, visit, tonight: true, manualTonight: true })).toBe("record");
   });
 
   it("Tonight is a pointer line in the morning, the flow in the evening; the door is ONE collapsed disclosure", () => {
@@ -250,10 +274,18 @@ describe("B-DESIGN-04 · Today takes the blend frame", () => {
   it("the deep shadow belongs to the day's ONE primary card — the morning practice card or, at 21:00, the Tonight card (R6; they never render together); the door is a solid hairline", () => {
     // Parity 9 Oct: the loop blocks add no depth of their own (PracticeCard and
     // TonightFlow carry it); each Now lead that is not a loop card carries it
-    // itself — the chosen step, the program, the recommendation — and exactly
+    // itself — the visit, chosen step, program, recommendation — and exactly
     // one lead renders, so one deep card is on screen.
     expect(strip(todayFile("NowLoopBlocks.tsx"))).not.toMatch(/arbor-depth-primary|--arbor-shadow-primary/);
-    expect(strip(todayFile("NowView.tsx")).match(/arbor-depth-primary/g)).toHaveLength(2);
+    const view = strip(todayFile("NowView.tsx"));
+    expect(view.match(/arbor-depth-primary/g)).toHaveLength(3);
+    // These three deep cards are alternatives in the same lead expression.
+    for (const [lead, guard] of [["visit", "visit"], ["step", "chosen"], ["program", "program"]]) {
+      expect(view).toContain(`: lead === "${lead}" && ${guard} ? <section className="now-lead arbor-depth-primary" data-module="now-${lead}"`);
+    }
+    expect(view).toContain(': lead === "tonight" ? <section');
+    expect(view).toContain(': lead === "practice" && loop.pick ? <section');
+    expect(view).toContain(': <NowRecommendation name={name} onTalkOpen={talk} journal={loop.journal} />}');
     expect(strip(todayFile("NowRecommendation.tsx")).match(/arbor-depth-primary/g)).toHaveLength(1);
     // P7-DESIGN fix r1 (framer ruling R6, overview design P1-1): Tonight is the evening's primary card —
     // the morning card's depth on the token radius, the caption in the label style, "1 of 3" inside the

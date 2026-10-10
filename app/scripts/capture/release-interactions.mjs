@@ -18,10 +18,14 @@ import { SOURCE_FONT_NOTE, captureFontContextOptions, installOfflineFonts, captu
 import { RECORD_STATES, RECORD_LIMITATIONS, recordFixture, installRecordShareSink } from './record-contract.mjs';
 import { collectRecordStates } from './record-states.mjs';
 import { collectBehaviorRecordStates } from './record-behaviors.mjs';
+import { CONFIRMED_ACTION_STATES, CONFIRMED_ACTION_LIMITATIONS, confirmedActionsFixture } from './confirmed-actions-contract.mjs';
+import { collectConfirmedActionStates } from './confirmed-actions-states.mjs';
+import { collectPracticeStates, PRACTICE_FIXTURE, practiceClockScript } from './practice-states.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
   record: RECORD_STATES,
+  'confirmed-actions': CONFIRMED_ACTION_STATES,
   navigation: [
     ...rows('shell', ['keep-closed', 'keep-open', 'keep-toggle-closed', 'keep-escape', 'keep-write', 'keep-close-focus']),
     ...rows('overview', ['practice-compact', 'practice-details', 'practice-outcome', 'practice-undo', 'now-scroll-initial', 'now-scroll-middle', 'now-bottom-reachable']),
@@ -124,6 +128,17 @@ export function observedScrolledNavigationClick(evidence) {
 
 const knownFailure = error => /^FONT_[A-Z_]+$/.test(error?.message ?? '') || ['DEPENDENT_STATE_UNREACHED', 'SYNTHETIC_WATCH_MILESTONE_MISSING'].includes(error?.message) ? error.message : error?.name === 'TimeoutError' ? 'SELECTOR_OR_ACTION_TIMEOUT' : 'INTERACTION_FAILED';
 
+/** Only fixed enums survive; wrapped browser exception text is transient. */
+export function sanitizedCollectorFailure(error) {
+  const types = ['Error', 'TypeError', 'ReferenceError', 'RangeError', 'SyntaxError', 'SecurityError', 'TimeoutError', 'DOMException'];
+  const message = typeof error?.message === 'string' ? error.message : '';
+  const wrapped = /\b(SecurityError|TypeError|ReferenceError|RangeError|SyntaxError):/.exec(message)?.[1];
+  const errorType = wrapped ?? (types.includes(error?.name) ? error.name : 'OtherError');
+  const code = errorType === 'SecurityError' && /\blocalStorage\b/.test(message) ? 'STORAGE_ACCESS_DENIED'
+    : errorType === 'TimeoutError' ? 'SELECTOR_OR_ACTION_TIMEOUT' : 'COLLECTOR_ABORTED';
+  return { errorType, code };
+}
+
 export async function collectReleaseInteractions({ output, bundle, viewport, group, sourceSha, sourceTreeSha, _priorCells = [], _reportGroup = group, _apiCache = new Map() }) {
   // Keep these guards inside the entry point so pure contracts can be tested
   // without importing Playwright, creating sockets or requiring a container.
@@ -140,7 +155,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     return collectReleaseInteractions({ output, bundle, viewport, group: 'ask', sourceSha, sourceTreeSha, _priorCells: navigation.cells, _reportGroup: 'focused', _apiCache });
   }
   const record = group === 'record' ? recordFixture(bundle, viewport.lang) : null;
-  const fixture = releaseFixture(record?.parsed ?? bundle, viewport.lang);
+  const confirmed = group === 'confirmed-actions' ? confirmedActionsFixture(bundle, viewport.lang) : null;
+  const practiceCapture = group === 'navigation';
+  const fixture = releaseFixture(confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
   const { lang } = viewport;
   const he = lang === 'he';
   const viewportId = `${viewport.w}x${viewport.h}`;
@@ -152,6 +169,11 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     doc.fixtures.push('synthetic-record-local-storage', 'synthetic-browser-share-sink');
     doc.recordFixture = { childId: record.childId, eligibleRows: record.expected.all, months: record.expected.months, sourceCollections: Object.keys(record.collections), negativeControls: record.text.forbidden.length };
   }
+  if (confirmed) {
+    doc.confirmedActionBoundaries = CONFIRMED_ACTION_LIMITATIONS;
+    doc.fixtures.push('synthetic-confirmed-actions-local-storage', 'scoped-local-storage-quota-fault', 'synthetic-browser-share-sink', 'synthetic-Date-only-native-animation-time');
+  }
+  if (practiceCapture) doc.fixtures.push(PRACTICE_FIXTURE, 'practice-only-Date-native-animation-time');
   save();
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ headless: true });
@@ -212,7 +234,8 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     await context.route('**/sandbox/demo-family.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) }));
     await installOfflineFonts(context);
     await context.addInitScript(initializeSyntheticOnline, { lang });
-    if (record) await context.addInitScript(installRecordShareSink);
+    if (practiceCapture) await context.addInitScript({ content: practiceClockScript(fixture.parsed) });
+    if (record || confirmed) await context.addInitScript(installRecordShareSink);
     if (group === 'ask-diagnostic') await context.addInitScript(installStylesheetObservation);
     const page = await context.newPage();
     page.setDefaultTimeout(8000);
@@ -245,9 +268,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     const conversation = () => page.locator('.companion-conversation:not([hidden])');
     const fontReady = () => page.evaluate(async () => { await Promise.race([document.fonts.ready, new Promise((_, reject) => setTimeout(() => reject(new Error('FONT_READY_TIMEOUT')), 15000))]); });
     let entryMode = 'full-route-load';
-    const load = async route => {
+    const load = async (route, { practiceFixture = false } = {}) => {
       entryMode = route === 'coach' ? 'direct-coach-route' : 'full-route-load';
-      await page.goto(`${BASE}/?capture=release-${group}-${Date.now()}#/${route}`, { waitUntil: 'domcontentloaded', timeout: 90000 });
+      await page.goto(`${BASE}/?capture=release-${group}-${Date.now()}${practiceFixture ? '&capturePractice=1' : ''}#/${route}`, { waitUntil: 'domcontentloaded', timeout: 90000 });
       await page.locator('main h1, main [data-module]').first().waitFor({ state: 'visible', timeout: 30000 });
       await fontReady();
     };
@@ -384,7 +407,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       return cell.reached;
     };
 
-    if (group === 'record') {
+    if (group === 'confirmed-actions') {
+      await collectConfirmedActionStates({ page, context, fixture: confirmed, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }), recordBootstrapClock: trace => { doc.confirmedActionBootstrap = trace; save(); } });
+    } else if (group === 'record') {
       const helpers = { page, context, fixture: record, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId };
       await collectRecordStates(helpers);
       await collectBehaviorRecordStates(helpers);
@@ -403,12 +428,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         check(cell, 'KEEP_CLOSE_RETURNS_TO_VISIBLE_SUMMARY', await menu().locator('summary').isVisible() && await menu().locator('summary').evaluate(el => document.activeElement === el));
       });
 
-      const practice = byId('practice-card');
-      let practiceId;
-      const practiceReady = await screen('overview', 'practice-compact', async cell => { await load('overview'); await visible(cell, 'PRACTICE_VISIBLE', practice); practiceId = await practice.getAttribute('data-practice-id'); check(cell, 'PRACTICE_ACTION_FIRST', await practice.getAttribute('data-presentation') === 'action-first'); check(cell, 'PRACTICE_DETAILS_CLOSED', !await byId('practice-details').evaluate(el => el.open)); await visible(cell, 'PRACTICE_OUTCOMES_VISIBLE', byId('practice-answers')); });
-      await screen('overview', 'practice-details', async cell => { dependent(practiceReady); await byId('practice-details').locator('summary').click(); check(cell, 'PRACTICE_DETAILS_OPEN', await byId('practice-details').evaluate(el => el.open)); await byId('practice-details').scrollIntoViewIfNeeded(); check(cell, 'PRACTICE_ID_UNCHANGED', await practice.getAttribute('data-practice-id') === practiceId); });
-      const outcome = await screen('overview', 'practice-outcome', async cell => { dependent(practiceReady); await byId('practice-answers').locator('[data-answer="did"]').click(); await visible(cell, 'PRACTICE_RECEIPT_VISIBLE', byId('practice-receipt')); await visible(cell, 'PRACTICE_UNDO_VISIBLE', byId('practice-undo')); check(cell, 'PRACTICE_ANSWERS_REPLACED', await byId('practice-answers').count() === 0); });
-      await screen('overview', 'practice-undo', async cell => { dependent(outcome); await byId('practice-undo').click(); await visible(cell, 'PRACTICE_OUTCOMES_RESTORED', byId('practice-answers')); check(cell, 'PRACTICE_RECEIPT_REMOVED', await byId('practice-receipt').count() === 0); check(cell, 'PRACTICE_SAME_CARD', await practice.getAttribute('data-practice-id') === practiceId); });
+      await collectPracticeStates({ page, fixture, load, screen, check, visible, byId });
 
       for (const [state, position] of [['now-scroll-initial', 'initial'], ['now-scroll-middle', 'middle'], ['now-bottom-reachable', 'last-action']]) await screen('overview', state, cell => mainScrollFrame(cell, 'overview', position));
       for (const route of ['milestones', 'daily-play']) for (const position of ['initial', 'middle', 'last-action']) await screen(route, `${route}-scroll-${position}`, cell => mainScrollFrame(cell, route, position));
@@ -614,6 +634,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     doc.completed = doc.missingEvidence.length === 0;
     save();
     return doc;
+  } catch (error) {
+    doc.collectorFailure = { phase: doc.cells.length === 0 ? 'startup' : 'collection', ...sanitizedCollectorFailure(error) };
+    save();
+    throw error;
   } finally {
     save();
     if (context) await context.close().catch(() => {});

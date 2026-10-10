@@ -3,7 +3,7 @@ on:
   # Dedicated candidate branch only. This never changes the active small capture
   # or production workflows, and never merges/deploys to obtain evidence.
   push:
-    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic']
+    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops']
     paths: ['app/**', 'knowledge/**', '.github/workflows/arbor-parent-release-capture.yml']
 permissions:
   contents: read
@@ -25,7 +25,8 @@ jobs:
         name: Derive the bounded matrix from its pure source contract
         shell: bash
         run: |
-          if [[ "$GITHUB_REF_NAME" == "codex/parent-record-clarity" ]]; then scope=record-release;
+          if [[ "$GITHUB_REF_NAME" == "codex/parent-confirmed-action-loops" ]]; then scope=confirmed-actions-release;
+          elif [[ "$GITHUB_REF_NAME" == "codex/parent-record-clarity" ]]; then scope=record-release;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-record-diagnostic" ]]; then scope=record-only;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-close-return-diagnostic" ]]; then scope=report-close-only;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-final-ask-diagnostic" ]]; then scope=ask-diagnostic; else scope=all; fi

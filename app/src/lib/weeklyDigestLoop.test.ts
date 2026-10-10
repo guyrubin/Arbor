@@ -49,7 +49,7 @@ describe("AIX-S6 — acceptTodayAction carries provenance", () => {
   it("source defaults to today-guidance and is persisted on the entry", () => {
     // B-ASKJB-26 (912bb72) appended an optional plan-step ref AFTER the
     // defaulted source; the source default and its position are unchanged.
-    expect(code).toMatch(/acceptTodayAction = async \(recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry\["source"\] = "today-guidance", planStep\?: PlanStepRef\)/);
+    expect(code).toMatch(/acceptTodayAction = \(recommendation: string, capacity: ActionCapacity, source: ActionLoopEntry\["source"\] = "today-guidance", planStep\?: PlanStepRef, options\?: \{ awaitServer\?: boolean; isCurrent\?: \(\) => boolean \}\)/);
     // B-AI-05: the entry is built by actionLoop/model planAcceptedAction
     // (trimmed text + source + capacity), which never overwrites a row.
     expect(code).toMatch(/planAcceptedAction\(actionLoop, \{ recommendation, source, capacity, \.\.\.\(planStep \? \{ planStep \} : \{\}\) \}, todayActionId\(childProfile\.id\)\)/);

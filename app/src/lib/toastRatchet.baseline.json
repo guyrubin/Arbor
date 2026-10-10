@@ -46,9 +46,6 @@
     "components/sections/AskSpecialist.tsx": {
       "success": 1
     },
-    "components/sections/FamilyFormation.tsx": {
-      "success": 1
-    },
     "components/sections/SchoolBrief.tsx": {
       "success": 1
     },

@@ -9,6 +9,8 @@
  * no AI/tech framing); flagged for arbor-localization native review. */
 
 export const en: Record<string, string> = {
+  "elev.today.record.confirming": "Checking that your response was saved…",
+  "elev.today.visit.unavailable": "This visit is no longer available to prepare for. You can choose another visit from Appointments.",
   // ── E4 · Time-aware hero — play variant (morning / calm window)
   "elev.hero.today.play.eyebrow": "Today · Time together",
   "elev.hero.today.play.title": "A good moment for today's little quest with {name}",
@@ -97,6 +99,8 @@ export const en: Record<string, string> = {
 };
 
 export const he: Record<string, string> = {
+  "elev.today.record.confirming": "בודקים שהתשובה שלכם נשמרה…",
+  "elev.today.visit.unavailable": "הפגישה הזאת כבר לא זמינה להכנה. אפשר לבחור פגישה אחרת ברשימת הפגישות.",
   "elev.hero.today.play.eyebrow": "היום · זמן ביחד",
   "elev.hero.today.play.title": "רגע טוב למשימה הקטנה של היום עם {name}",
   "elev.hero.today.play.cta": "מתחילים את המשימה של היום",

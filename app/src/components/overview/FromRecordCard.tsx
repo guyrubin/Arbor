@@ -23,7 +23,7 @@ export function recordDate(iso: string | null, lang: string): string {
 
 /**
  * B-TODAY-28 — Today's first card when the record holds something to say
- * back: the parent's own words (editorial serif inside a 2 px inline-start
+ * back: the parent's own words (readable body type inside a 2 px inline-start
  * rule), the date they were written, ONE question (the card's largest sans
  * line) and three answer pills ≥ 44 px. No illustration, no greeting, no
  * count. Answering writes one reflection row (recordFromRecordAnswer) and
@@ -39,13 +39,15 @@ export default function FromRecordCard({
   onAnswer,
   childName,
   stampMove = false,
+  disabled = false,
 }: {
   opener: FromRecordOpener;
   onAnswer: (answer: FromRecordAnswer) => void;
   /** The child's first name — the question names the child. */
   childName?: string;
   /** NEXTLEVEL critic r1: the answer chips ARE Today's primary move. */
-  stampMove?: boolean;
+  stampMove?: boolean | string;
+  disabled?: boolean;
 }) {
   const { t, uiLang } = useLanguage();
   // B-GROWTH-36: the say-back opener names the language the family is keeping.
@@ -74,8 +76,8 @@ export default function FromRecordCard({
         <figure className={topicLine ? "mt-2" : ""}>
           <blockquote
             data-testid="today-record-quote"
-            className="border-s-2 ps-3 text-[17px] leading-snug sm:text-[19px]"
-            style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}
+            className="border-s-2 ps-3 text-[17px] leading-relaxed sm:text-[19px]"
+            style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-ink)", fontFamily: "var(--font-sans)", fontStyle: "normal" }}
           >
             <FreeText text={opener.quote} />
           </blockquote>
@@ -89,15 +91,16 @@ export default function FromRecordCard({
       <h2
         data-testid="today-record-question"
         className="mt-3 font-semibold leading-tight"
-        style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", fontSize: "var(--t-xl)" }}
+        style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)", fontSize: "var(--t-xl)" }}
       >
         {question}
       </h2>
-      <div role="group" aria-label={question} data-testid="today-record-answers" {...(stampMove ? { "data-primary-move": "do-today-action" } : {})} className="mt-3 flex flex-wrap gap-2">
+      <div role="group" aria-label={question} data-testid="today-record-answers" {...(stampMove ? { "data-primary-move": typeof stampMove === "string" ? stampMove : "do-today-action" } : {})} className="mt-3 flex flex-wrap gap-2">
         {answersFor(opener).map((answer) => (
           <button
             key={answer}
             type="button"
+            disabled={disabled}
             data-answer={answer}
             onClick={() => onAnswer(answer)}
             className="inline-flex min-h-[44px] items-center rounded-full px-4 text-[14px] font-semibold transition active:scale-[0.98]"
@@ -112,7 +115,7 @@ export default function FromRecordCard({
 }
 
 /** The receipt after an answer. NEXTLEVEL critic r1: it says the parent's
- *  own words back ("Noted today, next to your words: '…'"), one editorial
+ *  own words back ("Noted today, next to your words: '…'"), one readable body
  *  line in --arbor-green-ink behind the same clay rule as the card — never a
  *  celebration, never a count. With no quote it stays "Noted · today". */
 export function FromRecordReceipt({ quote }: { quote?: string | null } = {}) {
@@ -131,8 +134,8 @@ export function FromRecordReceipt({ quote }: { quote?: string | null } = {}) {
         </figcaption>
         <blockquote
           data-testid="today-record-receipt-quote"
-          className="mt-1.5 border-s-2 ps-3 leading-snug"
-          style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-green-ink)", fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)" }}
+          className="mt-1.5 border-s-2 ps-3 leading-relaxed"
+          style={{ borderColor: "var(--arbor-clay)", color: "var(--arbor-green-ink)", fontFamily: "var(--font-sans)", fontStyle: "normal", fontSize: "var(--t-base)" }}
         >
           <FreeText text={words} />
         </blockquote>

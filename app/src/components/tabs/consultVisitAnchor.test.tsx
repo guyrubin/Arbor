@@ -20,11 +20,14 @@ import { nextPrepareVisit, visitAwaitingOutcome } from "../../lib/careTrack";
 const DAY = 86_400_000;
 const harness = vi.hoisted(() => ({
   locale: "en" as "en" | "he",
+  query: "",
+  source: { loaded: true, error: false, confirmed: true },
   appts: [] as unknown[],
   followUps: [] as unknown[],
   logs: null as unknown[] | null,
 }));
 
+vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchParams(harness.query) }));
 vi.mock("../../context/ArborContext", () => ({
   // the Kid Mode entry seam reads the optional context; outside a provider it is null
   useArborOptional: () => null,
@@ -55,7 +58,8 @@ vi.mock("../../context/LanguageContext", () => ({
 vi.mock("../../hooks/useChildCollection", () => ({
   useChildCollection: (_id: string, name: string) => ({
     items: name === "appointments" ? harness.appts : name === "apptFollowUps" ? harness.followUps : [],
-    loaded: true,
+    ...harness.source,
+    isCurrent: () => harness.source.loaded && !harness.source.error && harness.source.confirmed,
     upsert: vi.fn(),
     remove: vi.fn(),
   }),
@@ -82,6 +86,8 @@ function installLocalStorage() {
 
 beforeEach(() => {
   harness.locale = "en";
+  harness.query = "";
+  harness.source = { loaded: true, error: false, confirmed: true };
   harness.appts = [];
   harness.followUps = [];
   harness.logs = null;
@@ -397,3 +403,27 @@ describe("NEXTLEVEL r1 · the H1 names the audience the parent chose", () => {
     }
   });
 });
+
+
+describe("Now's explicit visit handoff", () => {
+  it("uses the named appointment even when another visit is sooner", () => {
+    harness.appts = [{ ...upcomingSlp, id: "first", profession: "pediatrician", whenIso: new Date(Date.now() + DAY).toISOString() }, { ...upcomingSlp, id: "selected" }];
+    harness.query = "appointment=selected";
+    const html = renderToStaticMarkup(<ConsultTab />);
+    expect(h1Of(html).toLowerCase()).toContain("speech therapist");
+  });
+  it("a removed or other-child target never falls back to a different family's nearest visit", () => {
+    harness.appts = [upcomingSlp]; harness.query = "appointment=foreign";
+    const html = renderToStaticMarkup(<ConsultTab />);
+    expect(html).toContain('data-testid="consult-visit-unavailable"');
+    expect(html).not.toContain('data-primary-move=');
+  });
+});
+
+for (const source of [{ loaded: false, error: false, confirmed: false }, { loaded: true, error: false, confirmed: false }, { loaded: true, error: true, confirmed: false }, { loaded: true, error: true, confirmed: true }]) {
+  it(`targeted Consult never edits an unconfirmed or stale fallback (${JSON.stringify(source)})`, () => {
+    harness.appts = [upcomingSlp]; harness.query = "appointment=a1"; harness.source = source;
+    const html = renderToStaticMarkup(<ConsultTab />);
+    expect(html).toContain('data-testid="consult-visit-unavailable"'); expect(html).not.toContain('data-testid="consult-build"');
+  });
+}

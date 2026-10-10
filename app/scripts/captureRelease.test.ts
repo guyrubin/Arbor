@@ -118,7 +118,7 @@ describe('final release evidence contracts, no sockets or browser', () => {
   });
   it('keeps publication, providers, real data and font binaries out of the branch-specific workflow', () => {
     const workflow = read('.github/workflows/arbor-parent-release-capture.yml');
-    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic']");
+    expect(workflow).toContain("branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops']");
     expect(workflow).toContain('"codex/parent-record-diagnostic" ]]; then scope=record-only;');
     expect(workflow).toContain('contents: read');
     expect(workflow).toContain('fail-fast: false');
@@ -139,6 +139,14 @@ describe('final release evidence contracts, no sockets or browser', () => {
     expect(summarizeRelease(records(), identity, 'record-release').completed).toBe(false);
     const absent = records(releaseMatrix('record-only')); absent[0].printFiles.pop();
     expect(summarizeRelease(absent, identity, 'record-only').completed).toBe(false);
+  });
+  it('aggregates the bounded confirmed-action matrix without claiming the prior full sweep', () => {
+    const bounded = records(releaseMatrix('confirmed-actions-only'));
+    expect(summarizeRelease(bounded, identity, 'confirmed-actions-only')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 196, screenshots: 196, expectedShards: 4 });
+    expect(summarizeRelease(bounded, identity, 'confirmed-actions-release').completed).toBe(false);
+    expect(summarizeRelease(records(releaseMatrix('confirmed-actions-release')), identity, 'confirmed-actions-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 686, screenshots: 858, printPreviews: 4, expectedShards: 16 });
+    bounded[0].evidence.cells.pop();
+    expect(summarizeRelease(bounded, identity, 'confirmed-actions-only').completed).toBe(false);
   });
   it('aggregates only the exact final-source complete four-way base matrix and font-proven PNGs', () => {
     const full = summarizeRelease(records(), identity);

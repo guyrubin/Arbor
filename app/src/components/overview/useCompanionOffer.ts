@@ -24,6 +24,7 @@ import {
   type OfferSurface,
 } from "../../lib/companionOffer";
 import { trackOfferShown, trackOfferSuppressed } from "../../lib/kpiEvents";
+import { nextNowVisit } from "../../lib/today/dayCard";
 import { reasonForThisOpen } from "../../lib/tomorrowReason";
 import { ageYearsOf } from "../../lib/age/forChild";
 
@@ -44,23 +45,23 @@ const writeLedger = (childId: string, ledger: OfferLedger) => {
  * suppression ledger), asks `decideOffer` for the one offer, spends the shared
  * shown-ledger slot when it renders, and emits offer_shown / offer_suppressed.
  */
-export function useCompanionOffer(surface: OfferSurface, opts: { whatChanged?: { id: string } | null } = {}) {
+export function useCompanionOffer(surface: OfferSurface, opts: { whatChanged?: { id: string } | null; now?: Date } = {}) {
   const { childProfile, behaviorLogs, actionLoop, activeTodayAction } = useArbor();
   const { uiLang } = useLanguage();
   const childId = childProfile.id;
-  const appts = useChildCollection<Appointment>(childId, "appointments");
+  const appts = useChildCollection<Appointment>(childId, "appointments", { trackConfirmation: true });
   const screenings = useChildCollection<RecheckRecord & { id: string }>(childId, "screenings");
   const [ledger, setLedger] = useState<OfferLedger>(() => readOfferLedger(childId));
   const [tick, setTick] = useState(0);
   useEffect(() => setLedger(readOfferLedger(childId)), [childId]);
 
+  const now = opts.now?.getTime() ?? Date.now();
   const rhythm = useMemo(
-    () => predictRhythm(behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity })), Date.now(), { ageYears: ageYearsOf(childProfile) }),
+    () => predictRhythm(behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity })), now, { ageYears: ageYearsOf(childProfile) }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [behaviorLogs.length, ageYearsOf(childProfile)],
   );
 
-  const now = Date.now();
   const locale = uiLang === "he" ? "he" : "en";
   const startOfDay = new Date(now);
   startOfDay.setHours(0, 0, 0, 0);
@@ -71,11 +72,12 @@ export function useCompanionOffer(surface: OfferSurface, opts: { whatChanged?: {
   const firstName = (childProfile.name || "").split(" ")[0];
 
   const nudge = nextNudge({ nowMs: now, rhythm, loggedToday, recent7d, childName: firstName, shownToday }, prefs);
-  const pending = selectCarryOverAction(actionLoop, todayActionId(childId), now, readSkippedCarryOvers());
+  const pending = selectCarryOverAction(actionLoop, todayActionId(childId, new Date(now)), now, readSkippedCarryOvers());
   const hardMoment = activeTodayAction
     ? null
     : todayHardMomentOffer(behaviorLogs, undefined, new Date(now), ageMonthsFromProfile(childProfile, new Date(now)), locale);
 
+  const confirmedAppointments = appts.loaded && !appts.error && appts.confirmed ? appts.items : [];
   const decision = decideOffer({
     nowMs: now,
     surface,
@@ -87,7 +89,7 @@ export function useCompanionOffer(surface: OfferSurface, opts: { whatChanged?: {
       return r ? { kind: r.kind } : null;
     })(),
     whatChanged: opts.whatChanged ?? null,
-    appointment: appointmentInWindow(appts.items, now),
+    appointment: appointmentInWindow(confirmedAppointments, now),
     screeningRecheckDue: isRecheckDue(latestRecheckDueAt(screenings.items), now),
     nudge,
     groundedStep: hardMoment ? { id: hardMoment.card.id } : null,
@@ -96,6 +98,7 @@ export function useCompanionOffer(surface: OfferSurface, opts: { whatChanged?: {
     ledger,
   });
   const offer = decision.offer;
+  const appointment = nextNowVisit(confirmedAppointments, new Date(now), ledger);
 
   // Spend the ceiling slot where the offer renders (idempotent per kind per
   // day) and emit the coordinator's own events — once per day per surface.
@@ -126,11 +129,11 @@ export function useCompanionOffer(surface: OfferSurface, opts: { whatChanged?: {
     },
     [childId],
   );
-  const snooze = useCallback((kind: OfferKind) => apply(snoozeOfferIn(readOfferLedger(childId), kind, Date.now())), [apply, childId]);
-  const dismiss = useCallback((kind: OfferKind) => apply(dismissOfferIn(readOfferLedger(childId), kind, Date.now())), [apply, childId]);
+  const snooze = useCallback((kind: OfferKind) => apply(snoozeOfferIn(readOfferLedger(childId), kind, now)), [apply, childId, now]);
+  const dismiss = useCallback((kind: OfferKind) => apply(dismissOfferIn(readOfferLedger(childId), kind, now)), [apply, childId, now]);
   const undo = useCallback((kind: OfferKind) => apply(undoOfferIn(readOfferLedger(childId), kind)), [apply, childId]);
   /** A renderer resolved its own question (e.g. the carry-over "skip"). */
   const refresh = useCallback(() => setTick((n) => n + 1), []);
 
-  return { offer: offer as CompanionOffer | null, decision, snooze, dismiss, undo, refresh, tick };
+  return { offer: offer as CompanionOffer | null, appointment, decision, snooze, dismiss, undo, refresh, tick };
 }

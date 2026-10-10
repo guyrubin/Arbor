@@ -91,6 +91,12 @@ export const en: Record<string, string> = {
   "elev.closeloop.routines.newName": "New routine name…",
   "elev.closeloop.routines.addStep": "Add a step…",
   "elev.closeloop.routines.stepsDone": "{done} of {total} done",
+  "elev.closeloop.routines.pending": "Saving the checklist…",
+  "elev.closeloop.routines.saved": "Routine completed. Checklist saved.",
+  "elev.closeloop.routines.savedLocal": "Routine completed. Checklist saved on this device.",
+  "elev.closeloop.routines.failed": "The checklist couldn’t be saved.",
+  "elev.closeloop.routines.failedLocal": "The checklist couldn’t be saved on this device.",
+  "elev.closeloop.routines.retry": "Try again",
 
   // ── Builder E2 · OBJ-BEH-02: the capture form's validation toast, built from
   //    the labels the form actually renders (beh.capture.happened / .tried) so
@@ -173,6 +179,12 @@ export const he: Record<string, string> = {
   "elev.closeloop.routines.newName": "שם השגרה החדשה…",
   "elev.closeloop.routines.addStep": "להוסיף צעד…",
   "elev.closeloop.routines.stepsDone": "{done} מתוך {total} הושלמו",
+  "elev.closeloop.routines.pending": "הרשימה נשמרת…",
+  "elev.closeloop.routines.saved": "השגרה הושלמה. הרשימה נשמרה.",
+  "elev.closeloop.routines.savedLocal": "השגרה הושלמה. הרשימה נשמרה במכשיר הזה.",
+  "elev.closeloop.routines.failed": "לא ניתן היה לשמור את הרשימה.",
+  "elev.closeloop.routines.failedLocal": "לא ניתן היה לשמור את הרשימה במכשיר הזה.",
+  "elev.closeloop.routines.retry": "לנסות שוב",
 
   // ── Builder E2 · OBJ-BEH-02
   "elev.closeloop.validate.one": "מלאו את “{happened}” כדי לשמור.",
