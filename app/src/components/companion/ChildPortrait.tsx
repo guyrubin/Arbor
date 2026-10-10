@@ -173,8 +173,6 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     </header>
     {!!childProfile.interests?.length && <div className="portrait-interests"><span>{c.interests}</span><p dir="auto">{childProfile.interests.join(" · ")}</p></div>}
     {!!childProfile.strengths?.length && <p className="portrait-strengths"><strong>{copy.strengths}</strong><span dir="auto">{childProfile.strengths.join(" · ")}</span></p>}
-    {/* Parity 9 Oct: the watch focus, its three answers and the re-check date (GP-34/GP-06, UND-6, B-GROWTH-04). */}
-    <PortraitWatchRow />
     <div className="portrait-toolbar">
       <div className="portrait-views" role="group" aria-label={c.title}>{(["time", "context", "domain"] as const).map(key => <button type="button" key={key} aria-pressed={view === key} onClick={() => setView(key)}><Icon name={key === "time" ? "history" : key === "context" ? "home" : "grid_view"} size={18} />{c[key]}</button>)}</div>
       <label className="portrait-period"><span className="sr-only">{c.range}</span><Icon name="calendar_today" size={18} /><select aria-label={c.range} value={range} onChange={event => setRange(Number(event.target.value))}><option value={3}>{c.three}</option><option value={12}>{c.year}</option><option value={0}>{record.more || record.loading || record.error || !record.confirmed ? copy.loaded : c.entire}</option></select></label>
@@ -186,6 +184,8 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
       {record.more && !record.error && <button type="button" className="portrait-text-button" disabled={record.loading} onClick={record.loadMore}>{record.loading ? copy.loading : copy.more}<Icon name="expand_more" size={18} /></button>}
       {record.error && <button type="button" className="portrait-text-button" onClick={record.reload}>{copy.retry}</button>}
     </div>
+    {/* The record lenses come first; an automatic focus stays compact until requested. */}
+    <PortraitWatchRow key={childProfile.id} />
     {/* Parity 9 Oct: words, firsts, the tree and the month — one collapsed disclosure. */}
     <PortraitKeepsakes />
     {!record.loading && !record.error && record.confirmed && inView.length === 0 && <div className="portrait-empty"><figure className="portrait-empty-art" aria-hidden="true" data-testid="portrait-empty-art"><img src={EMPTY_ART.portrait.src} srcSet={EMPTY_ART.portrait.srcSet} width={EMPTY_ART.portrait.width} height={EMPTY_ART.portrait.height} alt="" loading="lazy" decoding="async" /></figure><div><h2>{observations.length ? c.periodEmpty : c.emptyAll}</h2><p>{observations.length ? c.periodEmptySub : c.emptyAllSub}</p><button type="button" className="portrait-primary" onClick={() => openCaptureSheet()}><Icon name="add" size={20} />{c.capture}</button></div></div>}

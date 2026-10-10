@@ -432,9 +432,7 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
 
   it("one count of play per screen: the phone hub line is quiet on practice / feelings / adventures", () => {
     const shell = read("components/layout/Shell.tsx");
-    for (const route of ["practice", "feelings", "adventures"]) {
-      expect(shell).toMatch(new RegExp(String.raw`HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set\(\[[^\]]*"${route}"`));
-    }
+    expect(shell).not.toContain('t("nav.sub." + hubSubKey');
   });
 
   it("B-KID-11: a kid-capable tile opens ITS world through the seam and says so; Word World alone opens a parent tab", async () => {

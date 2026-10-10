@@ -10,7 +10,7 @@
  *
  * Routes = every `route:` in SURFACE_CONTRACTS (src/lib/surfaceContract.ts); the run aborts
  * (exit 1) if that set differs from ROUTE_IDS (src/lib/routes.ts). Each route is a FULL LOAD
- * `${base}/?cb=<n>#/<route>` in three cells: 375×812 EN · 375×812 HE · 1280×800 EN, one
+ * `${base}/?cb=<n>#/<route>` in four cells: 375×812 EN/HE · 1280×800 EN/HE, one
  * isolated browser context per cell type; locale (arbor.uiLang + arbor.aiLang) and a CLOSED
  * kid mode (arbor.kidmode.active) are written to localStorage BEFORE load; animations and
  * transitions are disabled and prefers-reduced-motion = reduce. Never starts a server:
@@ -73,22 +73,24 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { networkInterfaces } from "node:os";
+import { assertLoopbackOnly, captureRevision } from "./capture/config.mjs";
+import { RELEASE_VIEWPORTS, expectedSeedMarker } from "./capture/release-config.mjs";
+import { classifyReleaseConsole, createRuntimeDiagnostics } from "./capture/runtime-diagnostics.mjs";
+import { initializeSyntheticOnline } from "./capture/small-state.mjs";
+import { captureFontContextOptions, installOfflineFonts, captureScreenshot } from "./capture/font-runtime.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const APP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const REPO_DIR = path.resolve(APP_DIR, "..");
 
-const VIEWPORTS = [
-  { w: 375, h: 812, lang: "en" },
-  { w: 375, h: 812, lang: "he" },
-  { w: 1280, h: 800, lang: "en" },
-];
-/** P5 critic r2 on #/milestones (P1-6, 6 Oct): extra viewports for ONE route —
- *  a 1280 HE cell (base + its states) where the desktop Hebrew layout is the
- *  evidence asked for; every other route keeps the three cells. */
-const EXTRA_VIEWPORTS = {
-  milestones: [{ w: 1280, h: 800, lang: "he" }],
-};
+// Every route has the same EN/HE × mobile/desktop matrix. No HE desktop exception.
+const VIEWPORTS = RELEASE_VIEWPORTS;
+const syntheticOnline = process.env.ARBOR_CAPTURE_CONNECTIVITY === "synthetic-online";
+if (syntheticOnline || process.env.ARBOR_CAPTURE_FONT_MODE === "exact") {
+  assertLoopbackOnly(networkInterfaces());
+  if (process.platform !== "linux" || !existsSync("/.dockerenv")) throw new Error("OFFLINE_CONTAINER_REQUIRED");
+}
 const READY_SELECTOR = "main h1, [data-module], [data-primary-move]";
 const READY_BUDGET_MS = 20_000;
 const QUIET_MS = 500;
@@ -98,7 +100,7 @@ const SHELL = "shell";
 
 /* ── args ─────────────────────────────────────────────────────────────────── */
 function parseArgs(argv) {
-  const out = { base: "http://localhost:4805", shots: true, apiCache: true, runs: 1, routes: null, diff: null, out: null, seed: "demo", states: null };
+  const out = { base: "http://localhost:4805", shots: true, apiCache: true, runs: 1, routes: null, diff: null, out: null, seed: "demo", states: null, viewport: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => {
@@ -109,6 +111,11 @@ function parseArgs(argv) {
     if (a === "--out") out.out = next();
     else if (a === "--base") out.base = next().replace(/\/+$/, "");
     else if (a === "--routes") out.routes = next().split(",").map((s) => s.trim()).filter(Boolean);
+    else if (a === "--viewport") {
+      const id = next();
+      out.viewport = RELEASE_VIEWPORTS.find((vp) => vp.id === id);
+      if (!out.viewport) fail("unknown release viewport");
+    }
     else if (a === "--diff") out.diff = next();
     else if (a === "--no-shots") out.shots = false;
     else if (a === "--no-api-cache") out.apiCache = false;
@@ -120,6 +127,7 @@ function parseArgs(argv) {
     else if (a === "--no-states") out.states = false;
     else fail(`unknown argument ${a}`);
   }
+  out.viewports = out.viewport ? [out.viewport] : VIEWPORTS;
   if (out.states === null) out.states = out.seed === "demo";
   if (!out.out) {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -198,6 +206,7 @@ function seededChildName() {
 }
 
 function gitSha() {
+  if (process.env.ARBOR_CAPTURE_SHA) return captureRevision(process.env.ARBOR_CAPTURE_SHA);
   try {
     return execFileSync("git", ["rev-parse", "HEAD"], { cwd: APP_DIR, encoding: "utf8" }).trim();
   } catch {
@@ -1419,17 +1428,16 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
   const api = [];
   let inflight = 0;
   let lastNet = Date.now();
-  const norm = (s) => String(s).replace(/([?&])cb=\d+/g, "$1cb=N").split("\n")[0].slice(0, 300);
+  const diagnostics = createRuntimeDiagnostics();
   let rateLimited = 0;
-  page.on("console", (m) => {
-    if (m.type() !== "error") return;
-    const text = norm(m.text());
-    // A 429 is the local /api limiter (30/min/IP) reacting to the sweep's own traffic — an
-    // instrument artefact, counted apart so consoleErrors stays an app signal.
-    if (/status of 429\b/.test(text)) rateLimited++;
-    else errors.add(text);
+  page.on("console", (message) => {
+    if (message.type() !== "error") return;
+    // Inspect only transiently. Neither the original message nor its stack,
+    // embedded page text, query strings or request payload enter sweep.json.
+    if (/status of 429\b/.test(message.text())) rateLimited++;
+    else errors.add(diagnostics.record(message.text(), message.location()));
   });
-  page.on("pageerror", (e) => errors.add(norm(`pageerror: ${e?.message ?? e}`)));
+  page.on("pageerror", (error) => errors.add(diagnostics.record(error?.message)));
   page.on("request", () => { inflight++; lastNet = Date.now(); });
   const done = (req) => {
     inflight = Math.max(0, inflight - 1); lastNet = Date.now();
@@ -1463,7 +1471,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     }
     readyTimedOut = !(present && inflight === 0 && Date.now() - lastNet >= QUIET_MS);
   } catch (err) {
-    navError = String(err?.message ?? err).split("\n")[0];
+    navError = classifyReleaseConsole(err?.message);
     readyTimedOut = true;
   }
   const loadMs = Date.now() - t0;
@@ -1473,7 +1481,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     .then((v) => v, () => null);
   const seedFields = SEED;
   const seedRec = seedFields
-    ? { seed: seedFields.seed, seedHydrated: seedFields.info ? seedHydrated === seedFields.info.marker : seedHydrated !== null }
+    ? { seed: seedFields.seed, seedHydrated: seedFields.info ? seedHydrated === expectedSeedMarker(seedFields.bundle, vp.lang) : seedHydrated !== null }
     : {};
 
   // ── the named state (v2) ──────────────────────────────────────────────────
@@ -1498,14 +1506,13 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       while (Date.now() < settle && !(inflight === 0 && Date.now() - lastNet >= QUIET_MS)) await page.waitForTimeout(100);
       stateRec = { state: stateName, reached: true, stateMs: Date.now() - tState, ...(state.now ? { clock: state.now } : {}), ...(state.from ? { opened: `#/${state.from}` } : {}), ...(state.writes ? { writes: state.writes } : {}), ...(out?.via ? { via: out.via } : {}) };
     } catch (err) {
-      // The page's own first error says WHY (e.g. the sandbox's hourly AI quota) — keep it.
-      const firstErr = [...errors][0];
-      const reason = `${String(err?.message ?? err).split("\n")[0].slice(0, 300)}${firstErr ? ` · page: ${firstErr.slice(0, 160)}` : ""}`;
+      // Preserve only known diagnostic categories, never state exception text.
+      const reason = err instanceof Unreached ? "STATE_PRECONDITION_ABSENT" : classifyReleaseConsole(err?.message);
       await page.close();
       return {
         route, viewport: `${vp.w}x${vp.h}`, lang: vp.lang, ...seedRec,
         state: state.name, reached: false, reason, retryable: !(err instanceof Unreached),
-        consoleErrors: [...errors], rateLimited, apiRequests: api.sort(), loadMs, shot: null,
+        consoleErrors: [...errors], runtimeDiagnostics: diagnostics.snapshot(), rateLimited, apiRequests: api.sort(), loadMs, shot: null,
       };
     }
   } else {
@@ -1516,21 +1523,21 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
   try {
     rec = await page.evaluate(collect, { lang: vp.lang, allowLatin });
   } catch (err) {
-    rec = { mounted: false, collectError: String(err?.message ?? err).split("\n")[0] };
+    rec = { mounted: false, collectError: classifyReleaseConsole(err?.message) };
   }
   let shot = null;
   const shotFile = typeof shotPath === "function" ? shotPath(stateRec.state) : shotPath;
   if (shotFile) {
     try {
-      await page.screenshot({ path: shotFile, fullPage: false, animations: "disabled", caret: "hide" });
+      await captureScreenshot(page, { path: shotFile, fullPage: false, animations: "disabled", caret: "hide" });
       shot = path.relative(path.dirname(path.dirname(shotFile)), shotFile).split(path.sep).join("/");
-    } catch { shot = null; }
+    } catch (error) { shot = null; rec.fontFailure = /^FONT_[A-Z_]+$/.test(error?.message ?? "") ? error.message : "SCREENSHOT_FAILED"; }
     // P5 pass A9: a full-page shot per 375 BASE cell, so the blocks below the
     // fold (Notice, Tonight's line, the door) have rendered evidence.
     if (!run && vp.w < 768) {
       try {
         const fullFile = shotFile.replace(/\.png$/, ".full.png");
-        await page.screenshot({ path: fullFile, fullPage: true, animations: "disabled", caret: "hide" });
+        await captureScreenshot(page, { path: fullFile, fullPage: true, animations: "disabled", caret: "hide" });
         rec.fullShot = path.relative(path.dirname(path.dirname(fullFile)), fullFile).split(path.sep).join("/");
       } catch { /* the viewport shot stands */ }
     }
@@ -1542,11 +1549,13 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       stateRec.undone = await undo();
     } catch (err) {
       stateRec.undone = false;
-      stateRec.undoError = String(err?.message ?? err).split("\n")[0].slice(0, 200);
+      stateRec.undoError = classifyReleaseConsole(err?.message);
     }
   }
+  const fixture = syntheticOnline ? await page.evaluate(() => ({ navigatorOnline: navigator.onLine, browserFixture: window.__arborCaptureFixture })).catch(() => ({})) : {};
   await page.close();
   return {
+    ...fixture,
     route,
     viewport: `${vp.w}x${vp.h}`,
     lang: vp.lang,
@@ -1554,6 +1563,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     ...stateRec,
     ...rec,
     consoleErrors: [...errors],
+    runtimeDiagnostics: diagnostics.snapshot(),
     rateLimited,
     apiRequests: api.sort(),
     loadMs,
@@ -1624,7 +1634,11 @@ async function cacheApiReads(context, cache) {
 /* ── warm-up: the first load of a Vite dev server compiles the module graph (≈60 s cold);
    absorb it once, unrecorded, so no cell's loadMs or mount verdict carries it. ──────────── */
 async function warmUp(browser, base) {
-  const context = await browser.newContext({ viewport: { width: 375, height: 812 }, serviceWorkers: "block" });
+  const context = await browser.newContext({ viewport: { width: 375, height: 812 }, serviceWorkers: "block", permissions: [], ...captureFontContextOptions() });
+  await initializeCaptureContext(context, { lang: "en", base });
+  await holdHmrSocket(context);
+  await applySeed(context, SEED);
+  await installOfflineFonts(context);
   const page = await context.newPage();
   const t0 = Date.now();
   try {
@@ -1638,6 +1652,14 @@ async function warmUp(browser, base) {
 }
 
 /* ── one full sweep ──────────────────────────────────────────────────────── */
+async function initializeCaptureContext(context, { lang, base }) {
+  if (!syntheticOnline && process.env.ARBOR_CAPTURE_FONT_MODE !== "exact") return;
+  // Register the general deny rule FIRST; seed/API/font handlers registered
+  // later are still constrained by Docker's mandatory --network none boundary.
+  await context.route("**/*", (route) => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
+  if (syntheticOnline) await context.addInitScript(initializeSyntheticOnline, { lang });
+}
+
 async function newSweepContext(browser, vp, opts, apiCache, setup = null) {
   const context = await browser.newContext({
     viewport: { width: vp.w, height: vp.h },
@@ -1646,13 +1668,17 @@ async function newSweepContext(browser, vp, opts, apiCache, setup = null) {
     locale: vp.lang === "he" ? "he-IL" : "en-US",
     timezoneId: "Asia/Jerusalem",
     serviceWorkers: "block",
+    permissions: [],
+    ...captureFontContextOptions(),
   });
+  await initializeCaptureContext(context, { lang: vp.lang, base: opts.base });
   await context.addInitScript(initScript, { lang: vp.lang });
   await holdHmrSocket(context);
   if (opts.apiCache) await cacheApiReads(context, apiCache);
   await applySeed(context, SEED);
   // Registered last = matched first (Playwright): a state's own overrides beat the cache.
   if (setup) await setup(context);
+  await installOfflineFonts(context);
   return context;
 }
 
@@ -1682,7 +1708,48 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
   const cells = [];
   const apiCache = new Map(); // one per run: run 2 re-reads the server
   const pageRoutes = routes.filter((r) => r !== SHELL);
-  for (const vp of VIEWPORTS) {
+  const checkpoint = (completed = false) => {
+    const isBase = (c) => (c.state ?? "base") === "base";
+    const reached = cells.filter((c) => isBase(c) || c.reached);
+    const baseCells = cells.filter(isBase);
+    const count = (list, fn) => list.filter(fn).length;
+    const doc = {
+      runId: path.basename(outDir),
+      base: opts.base,
+      sha,
+      ...(process.env.ARBOR_CAPTURE_SOURCE_TREE_SHA ? { sourceTreeSha: captureRevision(process.env.ARBOR_CAPTURE_SOURCE_TREE_SHA) } : {}),
+      ...(gitSha() !== sha ? { shaEnd: gitSha() } : {}),
+      seed: SEED.seed,
+      ...(SEED.info ? { seedBundle: SEED.info } : {}),
+      states: opts.states,
+      startedAt,
+      completed,
+      ...(completed ? { finishedAt: new Date().toISOString() } : {}),
+      totals: {
+        routes: pageRoutes.length,
+        cells: baseCells.length,
+        mounted: count(baseCells, (c) => c.mounted),
+        // The law totals read every rendered cell: base + reached states.
+        consoleErrorCells: count(reached, (c) => c.consoleErrors.length > 0),
+        pctCells: count(reached, (c) => (c.pctCount ?? 0) > 0),
+        latinHECells: count(reached, (c) => (c.latinChromeHECount ?? 0) > 0),
+        sub44Cells: count(reached, (c) => (c.sub44Count ?? 0) > 0),
+        occludedCells: count(reached, (c) => c.primaryMoveOccluded === true),
+        overflowCells: count(reached, (c) => c.overflow && c.overflow.scrollWidth > c.overflow.clientWidth),
+        rateLimitedCells: count(cells, (c) => (c.rateLimited ?? 0) > 0),
+        retriedCells: count(cells, (c) => !!c.firstAttempt),
+        seedHydratedCells: count(reached, (c) => c.seedHydrated === true),
+        stateCells: count(cells, (c) => !isBase(c) && c.reached),
+        statesUnreached: count(cells, (c) => !isBase(c) && !c.reached),
+        stateUndoFailed: count(cells, (c) => c.undone === false),
+      },
+      cells,
+    };
+    writeFileSync(path.join(outDir, "sweep.json"), JSON.stringify(doc, null, 2));
+    return doc;
+  };
+  checkpoint();
+  for (const vp of opts.viewports) {
     const context = await newSweepContext(browser, vp, opts, apiCache);
     for (const route of routes) {
       if (route !== SHELL) {
@@ -1695,63 +1762,19 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
           cell = { ...(await visit(context, opts.base, route, vp, allowLatin, shotPath)), firstAttempt: first };
         }
         cells.push(cell);
+        checkpoint();
+        console.log(`Release cell: ${route}/${vp.id}; cells=${cells.length}.`);
       }
       if (!opts.states) continue;
       for (const state of statesFor(route, vp)) {
         const shotFor = withShots ? (name) => path.join(outDir, "shots", `${route}.${vp.w}x${vp.h}.${vp.lang}.${name}.png`) : null;
         cells.push(await stateCell(browser, opts, apiCache, route, vp, state, allowLatin, shotFor, tr));
+        checkpoint();
       }
     }
     await context.close();
   }
-  for (const route of pageRoutes) {
-    for (const vp of EXTRA_VIEWPORTS[route] ?? []) {
-      const context = await newSweepContext(browser, vp, opts, apiCache);
-      const shotPath = withShots ? path.join(outDir, "shots", `${route}.${vp.w}x${vp.h}.${vp.lang}.png`) : null;
-      cells.push(await visit(context, opts.base, route, vp, allowLatin, shotPath));
-      await context.close();
-      if (!opts.states) continue;
-      for (const state of statesFor(route, vp)) {
-        const shotFor = withShots ? (name) => path.join(outDir, "shots", `${route}.${vp.w}x${vp.h}.${vp.lang}.${name}.png`) : null;
-        cells.push(await stateCell(browser, opts, apiCache, route, vp, state, allowLatin, shotFor, tr));
-      }
-    }
-  }
-  const isBase = (c) => (c.state ?? "base") === "base";
-  const reached = cells.filter((c) => isBase(c) || c.reached);
-  const baseCells = cells.filter(isBase);
-  const count = (list, fn) => list.filter(fn).length;
-  const doc = {
-    runId: path.basename(outDir),
-    base: opts.base,
-    sha,
-    ...(gitSha() !== sha ? { shaEnd: gitSha() } : {}),
-    seed: SEED.seed,
-    ...(SEED.info ? { seedBundle: SEED.info } : {}),
-    states: opts.states,
-    startedAt,
-    finishedAt: new Date().toISOString(),
-    totals: {
-      routes: pageRoutes.length,
-      cells: baseCells.length,
-      mounted: count(baseCells, (c) => c.mounted),
-      // The law totals read every rendered cell: base + reached states.
-      consoleErrorCells: count(reached, (c) => c.consoleErrors.length > 0),
-      pctCells: count(reached, (c) => (c.pctCount ?? 0) > 0),
-      latinHECells: count(reached, (c) => (c.latinChromeHECount ?? 0) > 0),
-      sub44Cells: count(reached, (c) => (c.sub44Count ?? 0) > 0),
-      occludedCells: count(reached, (c) => c.primaryMoveOccluded === true),
-      overflowCells: count(reached, (c) => c.overflow && c.overflow.scrollWidth > c.overflow.clientWidth),
-      rateLimitedCells: count(cells, (c) => (c.rateLimited ?? 0) > 0),
-      retriedCells: count(cells, (c) => !!c.firstAttempt),
-      seedHydratedCells: count(reached, (c) => c.seedHydrated === true),
-      stateCells: count(cells, (c) => !isBase(c) && c.reached),
-      statesUnreached: count(cells, (c) => !isBase(c) && !c.reached),
-      stateUndoFailed: count(cells, (c) => c.undone === false),
-    },
-    cells,
-  };
-  writeFileSync(path.join(outDir, "sweep.json"), JSON.stringify(doc, null, 2));
+  const doc = checkpoint(true);
   return doc;
 }
 
@@ -1845,10 +1868,10 @@ async function main() {
   const { browser, channel } = await launchBrowser();
   const warmMs = await warmUp(browser, opts.base);
   const pageRoutes = routes.filter((r) => r !== SHELL);
-  const stateCount = opts.states ? VIEWPORTS.reduce((n, vp) => n + routes.reduce((m, r) => m + statesFor(r, vp).length, 0), 0) : 0;
+  const stateCount = opts.states ? opts.viewports.reduce((n, vp) => n + routes.reduce((m, r) => m + statesFor(r, vp).length, 0), 0) : 0;
   console.error(
     `sweep: browser=${channel} warm-up=${warmMs}ms seed=${SEED.seed}${SEED.info ? ` (${SEED.info.marker})` : ""} ` +
-      `routes=${pageRoutes.length} cells/run=${pageRoutes.length * VIEWPORTS.length} stateCells/run=${stateCount}`,
+      `routes=${pageRoutes.length} cells/run=${pageRoutes.length * opts.viewports.length} stateCells/run=${stateCount}`,
   );
   const docs = [];
   try {

@@ -79,8 +79,8 @@ describe("OBJ-JOURNAL-05 · the queue renders the scrubbed list, and counts it",
     expect(STORY.match(/pendingMemoryItems/g)).toHaveLength(3);
     for (const site of [
       "{memoryQueue.length > 0 && (",
-      "memoryQueue.slice(0, 3).map",
-      "{memoryQueue.length > 3 && (",
+      'data-testid="timeline-memory-review"',
+      'onClick={() => setActiveTab("memory")}',
       'count: memoryQueue.length }',
     ]) {
       expect(STORY, `render site not on the scrubbed list: ${site}`).toContain(site);

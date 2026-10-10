@@ -10,6 +10,8 @@
  */
 
 export const en: Record<string, string> = {
+  "elev.mimic.mirror.privacyTitle": "Camera privacy",
+  "elev.mimic.mirror.privacyBody": "The mirror stays on this device. Camera images are not recorded, stored or uploaded. Saved practice details include the round, time and the rating you choose.",
   // ── B-PROG-05 · the program page ──
   "elev.program.back": "Growth",
   "elev.program.header": "{program} · week {n} of {total}",
@@ -162,6 +164,8 @@ export const en: Record<string, string> = {
 };
 
 export const he: Record<string, string> = {
+  "elev.mimic.mirror.privacyTitle": "פרטיות המצלמה",
+  "elev.mimic.mirror.privacyBody": "המראה פועלת רק במכשיר הזה. תמונות המצלמה לא מוקלטות, נשמרות או מועלות. פרטי התרגול שנשמרים כוללים את הסבב, השעה והדירוג שבחרתם.",
   // ── B-PROG-05 · the program page ──
   "elev.program.back": "התפתחות",
   "elev.program.header": "{program} · שבוע {n} מתוך {total}",

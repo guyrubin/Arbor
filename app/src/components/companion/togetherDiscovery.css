@@ -1,0 +1,56 @@
+/* Together responds to the space left by the conversation dock, not the
+   viewport. The existing parent tokens and artwork keep the same register. */
+.companion-together { container-type: inline-size; container-name: together; }
+.companion-together .companion-together-hero { display: block; margin-block-end: 16px; }
+.together-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-block-end: 18px; }
+.companion-together .together-heading h1 { max-inline-size: 30ch; margin: 0; font-size: var(--t-hero); line-height: 1.2; overflow-wrap: anywhere; }
+.companion-together .companion-together-art { flex: 0 0 96px; order: 0; border-radius: var(--r-lg); }
+.companion-together .companion-together-art img { aspect-ratio: 1; object-position: center; }
+.together-suggestion { display: flex; align-items: center; gap: 24px; padding: 20px 22px; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); background: var(--arbor-paper-elevated); }
+.together-suggestion > div { flex: 1; min-inline-size: 0; }
+.together-suggestion-label { color: var(--arbor-muted); font-size: var(--t-sm); }
+.together-suggestion h2 { margin-block: 5px 8px; font-size: var(--t-title); line-height: 1.3; }
+/* An instruction is something to read and use, not decorative display copy. */
+.companion-together .companion-say { font-family: var(--font-sans); font-size: var(--t-base); font-style: normal; line-height: 1.6; }
+.companion-together .together-suggestion .companion-primary { flex-shrink: 0; margin: 0; }
+.together-parent-tools { display: flex; flex-wrap: wrap; align-items: start; gap: 8px 20px; margin-block-start: 12px; }
+.companion-together .companion-handover { margin: 0; }
+.together-play-history { flex: 1; min-inline-size: min(220px, 100%); }
+.together-play-history > summary { cursor: pointer; min-block-size: var(--touch-min); padding-block: 12px; color: var(--arbor-clay-deep); font-size: var(--t-sm); }
+.together-play-history > summary:focus-visible { outline: 3px solid var(--arbor-clay); outline-offset: 3px; border-radius: var(--r); }
+.together-play-history .companion-since { margin-block-start: 0; min-block-size: 9rem; }
+.companion-together .companion-filter-row { margin-block-end: 20px; padding-block: 10px 16px; }
+.companion-together .companion-collection[hidden] { display: none; }
+.companion-together .companion-collection { margin-block: 24px; }
+.companion-together .companion-together-footer { flex-wrap: wrap; }
+.together-world-count-slot { min-block-size: 2.8em; font-size: var(--t-xs); }
+@container together (max-width: 760px) {
+  .companion-world-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .companion-offscreen-grid { grid-template-columns: minmax(0, 1fr); }
+  .companion-offscreen-card { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 13px; padding: 18px; }
+  .companion-offscreen-card > .msr { grid-column: 1; grid-row: 1 / span 3; }
+  .companion-offscreen-card h3 { grid-column: 2; margin-block: 0 8px; }
+  .companion-offscreen-card p, .companion-offscreen-card .companion-door-link { grid-column: 2; }
+  .companion-offscreen-card .companion-door-link { padding-block-start: 12px; }
+}
+@container together (max-width: 540px) {
+  .companion-together .together-heading h1 { font-size: var(--t-title); }
+  .companion-together .companion-together-art { flex-basis: 64px; }
+  .together-heading { gap: 14px; margin-block-end: 14px; }
+  .together-suggestion { flex-direction: column; align-items: stretch; gap: 14px; padding: 18px; }
+  .together-suggestion .companion-primary { align-self: flex-start; }
+  .together-parent-tools { gap: 4px 16px; }
+  .companion-story-grid { grid-template-columns: minmax(0, 1fr); }
+  .companion-card-art > img { aspect-ratio: 2.4; }
+  .companion-card-copy { padding: 16px; }
+  .companion-filter-row { gap: 7px; }
+  .companion-filter { padding-inline: 11px; gap: 5px; }
+  .companion-filter .msr { display: none; }
+  .companion-section-heading { align-items: start; gap: 9px; }
+  .companion-section-heading h2 { font-size: var(--t-title); }
+  .companion-section-heading > .companion-text-button { font-size: var(--t-sm); }
+  .companion-world-card > div { padding: 13px; }
+  .companion-world-card h3 { font-size: var(--t-lg); }
+  .companion-together-footer { align-items: start; }
+  .companion-together-footer p { min-inline-size: min(220px, 100%); }
+}

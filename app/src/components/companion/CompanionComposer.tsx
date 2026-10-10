@@ -1,5 +1,5 @@
 import { translate as inputText } from "../../lib/i18n";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import Icon from "../ui/Icon";
 import RecordingIndicator from "../ui/RecordingIndicator";
 import { fileToThumbnail } from "../../lib/image";
@@ -29,6 +29,9 @@ export default function CompanionComposer({ childId, conversationRevision, langu
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
   const [sending, setSending] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const toolsId = useId();
+  const toolsToggleRef = useRef<HTMLButtonElement>(null);
   const sendLock = useRef(false);
   const photoRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -46,14 +49,14 @@ export default function CompanionComposer({ childId, conversationRevision, langu
     if (accountRef.current !== consent.accountId) {
       accountRef.current = consent.accountId;
       scope.current++; speechScope.current++; stopRef.current?.(); stopRef.current = null;
-      setAttachments([]); setPreparing(false); setError(""); setListening(false); setInterim(""); setSending(false); sendLock.current = false;
+      setAttachments([]); setPreparing(false); setError(""); setListening(false); setInterim(""); setSending(false); setToolsOpen(false); sendLock.current = false;
     }
   }, [consent.accountId]);
   useEffect(() => {
-    if (!visible) { speechScope.current++; stopRef.current?.(); stopRef.current = null; setListening(false); setInterim(""); }
+    if (!visible) { speechScope.current++; stopRef.current?.(); stopRef.current = null; setListening(false); setInterim(""); setToolsOpen(false); }
   }, [visible]);
   useEffect(() => {
-    if (consent.reviewing) { speechScope.current++; stopRef.current?.(); stopRef.current = null; setListening(false); setInterim(""); }
+    if (consent.reviewing) { speechScope.current++; stopRef.current?.(); stopRef.current = null; setListening(false); setInterim(""); setToolsOpen(false); }
   }, [consent.reviewing]);
   useEffect(() => {
     // The revision changes on explicit New/history/topic actions, never first persistence.
@@ -61,7 +64,7 @@ export default function CompanionComposer({ childId, conversationRevision, langu
     previousConversation.current = conversationRevision;
     if (switched) {
       scope.current++; speechScope.current++; stopRef.current?.(); stopRef.current = null;
-      setAttachments([]); setPreparing(false); setError(""); setListening(false); setInterim(""); setSending(false); sendLock.current = false;
+      setAttachments([]); setPreparing(false); setError(""); setListening(false); setInterim(""); setSending(false); setToolsOpen(false); sendLock.current = false;
     }
   }, [conversationRevision]);
   useEffect(() => () => { scope.current++; speechScope.current++; stopRef.current?.(); stopRef.current = null; }, []);
@@ -118,6 +121,7 @@ export default function CompanionComposer({ childId, conversationRevision, langu
       if (turn === scope.current) onKeep(textRef.current, thumbnail);
     } catch { if (turn === scope.current) setError(inputText(language, "companion.input.we-couldn-t-prepare-the-photo-your-draft-is-still-here")); }
   };
+  const closeTools = () => { setToolsOpen(false); toolsToggleRef.current?.focus(); };
   const draftPending = !!value.trim() || attachments.length > 0 || listening;
   return <div className="companion-composer" data-testid="companion-composer">
     <CompanionConsentReview consent={consent} language={language} onReturnToDraft={() => { if (visibleRef.current) textareaRef.current?.focus(); }} />
@@ -144,16 +148,28 @@ export default function CompanionComposer({ childId, conversationRevision, langu
       onStop={() => stopRef.current?.()} testId="composer-listening" captionTestId="composer-listening-caption" />}
     {error && <p className="companion-composer-error" role="alert">{error}</p>}
     {preparing && <p role="status">{inputText(language, "companion.input.preparing-your-files")}</p>}
-    <div className="companion-composer-tools">
+    <div className="companion-composer-tools" onKeyDown={event => { if (toolsOpen && event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeTools(); } }}>
       <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={event => { void addFiles(event.target.files, "photo"); event.target.value = ""; }} />
       <input ref={documentRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple hidden onChange={event => { void addFiles(event.target.files, "document"); event.target.value = ""; }} />
-      <button type="button" disabled={busy || sending || preparing || voiceActive} onClick={() => photoRef.current?.click()}><Icon name="photo_camera" size={20} />{inputText(language, "companion.input.photo")}</button>
-      <button type="button" disabled={busy || sending || preparing || voiceActive} onClick={() => documentRef.current?.click()}><Icon name="attachment" size={20} />{inputText(language, "companion.input.file")}</button>
-      <button type="button" disabled={busy || sending || voiceActive} onClick={dictate} aria-pressed={listening}><Icon name={listening ? "stop_circle" : "mic"} size={20} />{listening ? (inputText(language, "companion.input.done")) : (inputText(language, "companion.input.dictate"))}</button>
+      <button ref={toolsToggleRef} type="button" className="companion-tools-toggle" aria-expanded={toolsOpen} aria-controls={toolsId}
+        onClick={() => setToolsOpen(open => !open)}>
+        <Icon name="add" size={20} />{inputText(language, "companion.input.add-or-save")}<Icon name={toolsOpen ? "expand_less" : "expand_more"} size={16} />
+      </button>
       <button type="button" className="companion-live-button" disabled={!voiceActive && (busy || preparing || draftPending)} onClick={onVoice} aria-pressed={voiceActive} aria-label={voiceLabel}><Icon name={voiceActive ? "stop" : "graphic_eq"} size={20} />{voiceActive ? (inputText(language, "companion.input.stop")) : (inputText(language, "companion.input.talk"))}</button>
+      <div id={toolsId} hidden={!toolsOpen} className="companion-secondary-tools" role="group" aria-label={inputText(language, "companion.input.sharing-options")}>
+        <div className="companion-input-options">
+          <button type="button" disabled={busy || sending || preparing || voiceActive} onClick={() => { closeTools(); photoRef.current?.click(); }}><Icon name="photo_camera" size={20} />{inputText(language, "companion.input.photo")}</button>
+          <button type="button" disabled={busy || sending || preparing || voiceActive} onClick={() => { closeTools(); documentRef.current?.click(); }}><Icon name="attachment" size={20} />{inputText(language, "companion.input.file")}</button>
+          <button type="button" disabled={busy || sending || voiceActive} onClick={() => { closeTools(); dictate(); }} aria-pressed={listening}><Icon name={listening ? "stop_circle" : "mic"} size={20} />{listening ? (inputText(language, "companion.input.done")) : (inputText(language, "companion.input.dictate"))}</button>
+        </div>
+        <div className="companion-save-options">
+          <button type="button" disabled={busy || sending || preparing || listening || voiceActive} onClick={() => { closeTools(); void keep(); }}>{inputText(language, "companion.input.just-keep-a-moment")}<Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" /></button>
+          <button type="button" disabled={busy || sending || !!consent.busy || voiceActive} onClick={() => { closeTools(); consent.review(); }}><Icon name="shield" size={15} />{COMPANION_CONSENT_COPY[language].control}</button>
+        </div>
+      </div>
     </div>
     {draftPending && !voiceActive && <p className="companion-media-note">{inputText(language, "companion.input.send-your-draft-then-continue-the-conversation-by-voice")}</p>}
-    <div className="companion-composer-foot"><span>{inputText(language, "companion.input.arbor-is-your-ai-companion")}</span><button type="button" disabled={busy || sending || !!consent.busy || voiceActive} onClick={consent.review}><Icon name="shield" size={15} />{COMPANION_CONSENT_COPY[language].control}</button><button type="button" disabled={busy || sending || preparing || listening || voiceActive} onClick={() => void keep()}>{inputText(language, "companion.input.just-keep-a-moment")}<Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" /></button></div>
     </>}
+    <p className="companion-composer-foot">{inputText(language, "companion.input.arbor-is-your-ai-companion")}</p>
   </div>;
 }

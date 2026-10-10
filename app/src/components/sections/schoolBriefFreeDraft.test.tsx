@@ -255,10 +255,10 @@ describe("W2-CAREPRO c2 r1 · real moves for a teacher, one gradient, one list d
     });
   }
 
-  it("the Care hub line is quiet on school-brief (HUB_LINE_QUIET_TABS), so the strengths reach the fold", async () => {
+  it("the shell does not repeat the Care introduction above school-brief", async () => {
     const { readFileSync } = await import("node:fs");
     const shell = readFileSync(new URL("../layout/Shell.tsx", import.meta.url), "utf8");
-    expect(shell).toMatch(/HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set\(\[[^\]]*"school-brief"[^\]]*\]\)/);
+    expect(shell).not.toContain('t("nav.sub." + hubSubKey');
   });
 
   it("teacherStrategies (pure): cap 3, dedupe, no plan with steps → its title only; NEGATIVE CONTROL: the pre-fix 'title — for issue' line trips the issue scan", async () => {

@@ -19,7 +19,7 @@ vi.mock("../../context/LanguageContext", () => ({
 }));
 vi.mock("motion/react", () => ({ motion: { p: (p: Record<string, unknown>) => { const { initial: _i, animate: _a, transition: _t, ...rest } = p; return React.createElement("p", rest); } } }));
 
-import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
+import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
 import { todayLiveSource } from "../../testTodaySource";
 
 const NOTE = "Calmed and put shoes on within 8 mins instead of usual 25.";
@@ -150,13 +150,13 @@ describe("B-TODAY-28 — OverviewTab wiring (source pin)", () => {
     expect(line).toContain('t("elev.loop.today.identity", { name, age: ageText })');
   });
 
-  // P5 r1 pass A1 re-pin: the parent's words sit right under the TITLE (the
-  // editorial quote), above the say, the do and the answers.
-  it("the parent's own words lead inside the practice card (quotes under the title), first block of the primary move", () => {
+  it("Now requests action-first details without removing the family's words or default layout", () => {
     const card = fs.readFileSync(path.resolve(__dirname, "../loop/PracticeCard.tsx"), "utf8");
-    expect(card.indexOf('data-testid="practice-quotes"')).toBeGreaterThan(card.indexOf('data-testid="practice-title"'));
-    expect(card.indexOf('data-testid="practice-quotes"')).toBeLessThan(card.indexOf('data-testid="practice-say"'));
-    expect(card.indexOf('data-testid="practice-quotes"')).toBeLessThan(card.indexOf('data-testid="practice-answers"'));
+    expect(SRC).toContain("actionFirstDetailsLabel={NOW_COPY[");
+    expect(card).toContain("<>{words}{doLine}</>");
+    expect(card).toContain('data-testid="practice-details"');
+    expect(card).toContain('data-testid="practice-quotes"');
+    expect(card).toContain('data-testid="practice-say"');
   });
 
   it("no generic capture prompt card on Today (the practice replaces it)", () => {

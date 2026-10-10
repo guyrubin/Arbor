@@ -441,24 +441,27 @@ describe("B-ASKJB-16 — Journal inside timeline-stream renders at most 3 module
 describe("B-ASKJB-19 — Story density to its budget", () => {
   const story = stripJsComments(read("src/components/tabs/StoryTimelineTab.tsx"));
 
-  it("no header CTAs, no screening sheet, no stat grid, no next-step card", () => {
+  it("only story export in the header; no screening, stat grid or next-step card", () => {
     expect(story).not.toContain("statGrid");
     expect(story).not.toContain("deriveNextStep");
     expect(story).not.toContain("ScreeningSheet");
     expect(story).not.toContain("mychild.quickcheck.short");
     expect(story).not.toContain("elev.childsignals.story.weeklyCta");
-    // The PageHeader carries no action slot.
+    // The header only exports this story; it does not start another workflow.
     const header = story.slice(story.indexOf("<PageHeader"), story.indexOf("/>", story.indexOf("<PageHeader")));
-    expect(header).not.toContain("action=");
+    expect(header).toContain('data-testid="timeline-save-story"');
+    expect(header).not.toContain("setActiveTab");
   });
 
-  it("inside the stream, at most 4 blocks precede the entries (header · story card · months · memory queue)", () => {
+  it("only compact context precedes the ledger: one title, two disclosures, one review door", () => {
     const body = story.slice(story.indexOf("<motion.div"), story.indexOf('data-testid="timeline-filter-chips"'));
-    const blocks = ["<PageHeader", "<SectionCard", "<MonthsSpine", "<StatTile", "rounded-[22px] p-5"]
-      .filter((tok) => body.includes(tok));
-    expect(blocks).toEqual(["<PageHeader", "<SectionCard", "<MonthsSpine"]);
-    // header + story card + months + (memory queue SectionCard, when pending) = 4
-    expect((body.match(/<PageHeader|<SectionCard|<MonthsSpine/g) || []).length).toBeLessThanOrEqual(4);
+    expect((body.match(/<PageHeader/g) || []).length).toBe(1);
+    expect(body).toContain('data-testid="timeline-story-disclosure"');
+    expect(body).toContain("<MonthsSpine");
+    expect(body).toContain('data-testid="timeline-memory-review"');
+    expect(body).not.toContain("<SectionCard");
+    expect(body).not.toContain("<MemoryRow");
+    expect(body).not.toContain("story.cardTitle");
   });
 
   it("the timeline leaf still renders within its contract (toggle + stream)", () => {

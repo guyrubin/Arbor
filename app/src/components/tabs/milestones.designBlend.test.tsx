@@ -114,7 +114,7 @@ describe("B-DESIGN-03 · the jump rail is navigation only (firewall)", () => {
     expect(rail.match(/className="text-center t-xs font-semibold leading-tight whitespace-nowrap"/g)).toHaveLength(2);
     expect(rail).not.toMatch(/hidden[^"]*sm:block/);
     expect(rail.match(/className="flex min-h-11 min-w-16 flex-col items-center gap-1"/g)).toHaveLength(2);
-    expect(SHELL).toMatch(/HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set\(\[[^\]]*"milestones"[^\]]*\]\)/);
+    expect(SHELL).not.toContain('t("nav.sub." + hubSubKey');
     expect(MS.match(/data-testid="ms-search-open"/g)).toHaveLength(1);
   });
 

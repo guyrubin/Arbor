@@ -10,8 +10,8 @@ import {
 } from "../../lib/signalTimeline";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
 import { useTimeline } from "../../hooks/useTimeline";
-import { PageHeader, PASTEL, IconBadge, Chip, SectionCard, cardCls, type PastelKey } from "../ui/kit";
-import { MemoryRow } from "../sections/ChildMemory";
+import { PageHeader, PASTEL, IconBadge, Chip, cardCls, type PastelKey } from "../ui/kit";
+import { PARENT_RECORD_COPY } from "../companion/parentRecordCopy";
 import { composeChildStory, childStoryToText } from "../../lib/childStory";
 import { isolate } from "../../lib/i18n";
 // OBJ-JOURNAL-05 (render half): the shared parent-words scrub. Pure and
@@ -147,12 +147,11 @@ function MonthsSpine({ nodes, locale, tt }: { nodes: MonthNode[]; locale: string
   const monthLabel = (key: string) =>
     new Date(`${key}-01T12:00:00Z`).toLocaleDateString(locale, { month: "long", year: "numeric" });
   return (
-    <SectionCard
-      title={tt("elev.childsignals.months.title")}
-      icon={<Icon name="calendar_month" size={20} fill={1} />}
-      tone="lav"
-    >
-      <div className="relative space-y-5">
+    <details className={`${cardCls} px-4 py-3`} data-testid="timeline-months-disclosure">
+      <summary className="min-h-11 cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--arbor-clay)]" style={{ color: "var(--arbor-ink)" }}>
+        {tt("elev.childsignals.months.title")}
+      </summary>
+      <div className="relative mt-4 space-y-5">
         {/* the connecting spine */}
         <span className="absolute start-[9px] top-1.5 bottom-1.5 w-px" style={{ background: "var(--arbor-rule)" }} aria-hidden />
         {visible.map((node) => (
@@ -191,7 +190,7 @@ function MonthsSpine({ nodes, locale, tt }: { nodes: MonthNode[]; locale: string
             : tt("elev.childsignals.months.showEarlier", { n: earlier })}
         </button>
       )}
-    </SectionCard>
+    </details>
   );
 }
 
@@ -199,11 +198,12 @@ export default function StoryTimelineTab() {
   const {
     behaviorLogs, milestones, actionPlans, memoryReviewItems,
     childProfile, setActiveTab, openCaptureSheet,
-    pendingMemoryItems, handleMemoryDecision, isMemoryUpdating,
+    pendingMemoryItems,
     playLogs,
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
+  const copy = PARENT_RECORD_COPY[uiLang === "he" ? "he" : "en"];
   const [filter, setFilter] = useState<SignalKind | "all">("all");
 
   const signals = useTimeline();
@@ -279,28 +279,21 @@ export default function StoryTimelineTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
       <PageHeader
-        eyebrow={tt("elev.childsignals.story.eyebrow")}
         title={tt("elev.childsignals.story.title", { name: isolate(firstName) })}
-        subtitle={tt("elev.childsignals.story.sub")}
-      />
-
-      {/* T4 — "The Story of {child}": the moat, narrated. Reads only approved
-          facts + momentum; parent-owned, exportable as plain text. */}
-      <SectionCard
-        title={tt("elev.childsignals.story.cardTitle", { name: isolate(firstName) })}
-        icon={<Icon name="edit_note" size={20} fill={1} />}
-        tone="lav"
+        flush
         action={!story.empty && (
-          <button
-            onClick={saveStory}
-            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-bold transition bg-white"
-            style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-rule)" }}
-          >
+          <button type="button" onClick={saveStory} data-testid="timeline-save-story"
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 self-start rounded-full px-3.5 py-2 text-[13px] font-bold transition"
+            style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-rule)" }}>
             <Icon name="download" size={18} /> {tt("elev.childsignals.story.save")}
           </button>
         )}
-      >
-        <div className="space-y-3">
+      />
+
+      {/* The narrative stays available without repeating the title or delaying the ledger. */}
+      <details className={`${cardCls} px-4 py-3`} data-testid="timeline-story-disclosure">
+        <summary className="min-h-11 cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--arbor-clay)]" style={{ color: "var(--arbor-ink)" }}>{copy.storySummary}</summary>
+        <div className="mt-3 space-y-3">
           {story.paragraphs.map((p, idx) => (
             <p
               key={idx}
@@ -317,49 +310,21 @@ export default function StoryTimelineTab() {
             </p>
           )}
         </div>
-      </SectionCard>
+      </details>
 
-      {/* B-ASKJB-19: Story renders to its budget — the two header CTAs (Quick
-          check + Weekly) and the screening sheet they opened, the stat grid
-          ("{done}/{total}" ratios) and the coral next-step card are gone. The
-          stream is header · story card · months · memory queue (when pending)
-          before the entries. deriveNextStep stays in lib/signalTimeline for
-          its tests. */}
-      {/* Masterplan 1.8 — the months spine: milestone crossings + cumulative
-          moments-captured totals, collapsed beyond the last 3 months. */}
       <MonthsSpine nodes={months} locale={locale} tt={tt} />
 
-      {/* Inline Memory review (b2): a contextual action queue, present only when
-          there are pending facts. Reuses MemoryRow verbatim — single source of
-          truth with the full ChildMemory page (deep-link "manage all" survives).
-          Reads + writes the memory moat: provenance chips are preserved. */}
+      {/* Decisions live in Memory: one review door, with the same scrubbed queue count. */}
       {memoryQueue.length > 0 && (
-        <SectionCard
-          title={tt(`elev.childsignals.story.memory.title.${memoryQueue.length === 1 ? "one" : "many"}`, { count: memoryQueue.length })}
-          icon={<Icon name="verified_user" size={20} fill={1} />}
-          tone="yellow"
-        >
-          <div className="space-y-3">
-            {memoryQueue.slice(0, 3).map((m) => (
-              <MemoryRow
-                key={m.memoryId}
-                m={m}
-                busy={isMemoryUpdating === m.memoryId}
-                onApprove={() => handleMemoryDecision(m.memoryId, "approved")}
-                onReject={() => handleMemoryDecision(m.memoryId, "rejected")}
-              />
-            ))}
-          </div>
-          {memoryQueue.length > 3 && (
-            <button
-              onClick={() => setActiveTab("memory")}
-              className="mt-3 text-xs font-bold"
-              style={{ color: "var(--arbor-green-ink)" }}
-            >
-              {tt("elev.childsignals.story.memory.all", { count: memoryQueue.length })}
-            </button>
-          )}
-        </SectionCard>
+        <button type="button" onClick={() => setActiveTab("memory")} data-testid="timeline-memory-review"
+          className="flex min-h-11 w-full items-center gap-3 rounded-2xl px-4 py-3 text-start"
+          style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
+          <Icon name="verified_user" size={20} />
+          <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{copy.reviewMemory}</span>
+            <span className="block text-xs" style={{ color: "var(--arbor-muted)" }}>{tt(`elev.childsignals.story.memory.title.${memoryQueue.length === 1 ? "one" : "many"}`, { count: memoryQueue.length })}</span>
+          </span>
+          <Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+        </button>
       )}
 
       {/* Filters */}

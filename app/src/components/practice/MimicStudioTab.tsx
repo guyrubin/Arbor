@@ -175,8 +175,8 @@ export default function MimicStudioTab() {
           an explainer about machinery in front of a child, so it is absent. */}
       {!kidMode && (
       <div className="rounded-2xl p-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-ink)" }}>
-        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="verified_user" size={16} /> Camera privacy</span>
-        <span style={{ color: "var(--arbor-muted)" }}>The mirror is local-only: nothing is recorded, stored, or uploaded — ever. Only your star rating is saved.</span>
+        <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="verified_user" size={16} />{t("elev.mimic.mirror.privacyTitle")}</span>
+        <span style={{ color: "var(--arbor-muted)" }}>{t("elev.mimic.mirror.privacyBody")}</span>
       </div>
       )}
 

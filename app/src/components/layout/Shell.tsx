@@ -25,7 +25,6 @@ import SearchModal, { SEARCH_OPEN_EVENT, requestOpenSearch, type SearchOpenSurfa
 import { track } from "../../lib/analytics";
 import SettingsModal from "./SettingsModal";
 import ProfileEditDrawer from "../profile/ProfileEditDrawer";
-import { usePulses } from "../../lib/pulse";
 import PaywallModal from "../billing/PaywallModal";
 import HardMomentNowSheet from "../behaviors/HardMomentNowSheet";
 import QuickLogModal from "../overview/QuickLogModal";
@@ -119,17 +118,6 @@ const BedtimeStoriesTab = lazy(() => import("../tabs/BedtimeStoriesTab"));
 
 // Wireframe: Ready-made Routines — the research-backed routine library (Growth).
 const RoutinesTab = lazy(() => import("../tabs/RoutinesTab"));
-
-/** W2-CAREPRO r2 — routes where the phone hub one-liner stays quiet (the
- *  route's first decision needs the fold; the pill row names the hub).
- *  W2-SHELLPLAY critic r1: practice / feelings / adventures — the Practice
- *  hub's "N rounds played this week" count disagreed with each page's own
- *  count of play (the door sentence, the feelings line); one count per screen. */
-// P5 design r1 P0-1 (6 Oct): "overview" — Today's own eyebrow line says what
-// the screen is for; the hub line repeated it and pushed "Did it" under the dock.
-// P7-DESIGN fix r1 (framer ruling R4): "milestones" — the "{name}'s development
-// map" kicker gives its room to the jump rail's printed names at 375.
-export const HUB_LINE_QUIET_TABS: ReadonlySet<string> = new Set(["memory", "sharing", "safety", "school-brief", "practice", "feelings", "adventures", "overview", "milestones", "development"]);
 
 const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   overview: OverviewTab,
@@ -245,14 +233,6 @@ export default function Shell() {
   // B-SHELL-19: the strip's "Working on:" label opens the profile editor
   // (it is challenges[0] — parent-chosen and editable).
   const [profileEditOpen, setProfileEditOpen] = useState(false);
-  // B-SHELL-19: below lg the hub one-liner is the hub's LIVE count when its
-  // pulse carries one (count-only, never a denominator), else the standing
-  // nav.sub.<hub> sentence.
-  const pulses = usePulses();
-  const countedPulse = pulses[section.id];
-  const hubPulse = countedPulse && typeof countedPulse.count === "number" && countedPulse.count > 0 ? countedPulse : null;
-  // One key per hub; a hero-less child gets the Stories line that does not promise "starring {name}".
-  const hubSubKey = section.id === "stories" && !childProfile.avatar ? "stories.noHero" : section.id;
   // F-02: <main> is the desktop scrollport (overflow-y-auto below), so a tab
   // switch kept the previous tab's scroll offset and showed the new tab
   // mid-page (plus a ghost frame of clipped old content during the exit).
@@ -451,7 +431,7 @@ export default function Shell() {
             </div>
           }/>
 
-          {!isCompanionHome(activeTab) && <button onClick={() => setActiveTab(placeForTab(activeTab).tab)} className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: "var(--arbor-muted)" }}>
+          {!isCompanionHome(activeTab) && <button data-testid="secondary-place-back" onClick={() => setActiveTab(placeForTab(activeTab).tab)} className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: "var(--arbor-muted)" }}>
             <Icon name="arrow_back" size={18} className="rtl:-scale-x-100"/>{uiLang === "he" ? placeForTab(activeTab).he : placeForTab(activeTab).en}
           </button>}
           {/* UC-6 hub contextual pill row — the hub's FULL capability set: its
@@ -463,6 +443,7 @@ export default function Shell() {
           {!isCompanionHome(activeTab) && pillRowFor(section, activeTab).length > 1 && (
             <div
               role="tablist"
+              data-testid="secondary-sibling-nav"
               aria-label={`${section.label} sections`}
               className="sticky z-20 flex gap-2 overflow-x-auto mb-4 -mx-[14px] px-[14px] pb-2 no-scrollbar"
               style={{
@@ -485,17 +466,9 @@ export default function Shell() {
                    now only ever covers a pill that is actually scrolled past. */
                 scrollPaddingInline: "14px",
                 scrollSnapType: "x mandatory",
-                /* <main> is the scrollport and carries a top padding, so a plain
-                   `top: 0` parked this band one padding-height below the
-                   scrollport edge — leaving a live 32px sliver where content
-                   scrolled through and got clipped by the opaque band. Pulling
-                   the sticky inset (and the box) up by that padding makes the
-                   stuck band flush with the scrollport top; the matching
-                   padding-block-start keeps the pills exactly where they were
-                   at rest. See --arbor-main-pt in index.css. */
-                top: "calc(-1 * var(--arbor-main-pt))",
-                marginBlockStart: "calc(-1 * var(--arbor-main-pt))",
-                paddingBlockStart: "calc(var(--arbor-main-pt) + 0.5rem)",
+                /* Stick to the scrollport edge without pulling the row over
+                   the preceding Back link in normal document flow. */
+                top: 0,
               }}
             >
               {pillRowFor(section, activeTab).map((it) => {
@@ -522,22 +495,8 @@ export default function Shell() {
             </div>
           )}
 
-          {/* IA-21 — the hub one-liner was desktop-only. Topbar renders
-              `nav.sub.<hub>` in the control band on lg+, and below lg there is
-              no topbar at all, so a phone got the hub's pills and its h1 with
-              nothing saying what the hub is FOR. Same key, same sentence, same
-              position relative to the content (immediately above it), rendered
-              only where the topbar cannot. EN + HE already exist for all ten
-              hubs in lib/i18n.ts — no new string, and none invented. */}
-          {/* W2-CAREPRO r2: on a route whose first decision must sit above the
-              phone tab bar (memory: Remember this; sharing: the live roster;
-              safety: the page's own promise is its subtitle) the hub line is
-              quiet — the pills already name the hub. */}
-          {!HUB_LINE_QUIET_TABS.has(activeTab) && (
-          <p className="lg:hidden text-xs leading-snug mb-3 min-w-0" style={{ color: "var(--arbor-muted)" }}>
-            {hubPulse ? t(hubPulse.key, hubPulse.params) : t("nav.sub." + hubSubKey, { name: childProfile.name })}
-          </p>
-          )}
+          {/* Secondary pages own their heading and context. The shell adds
+              navigation only; another hub sentence repeats their introduction. */}
 
           {/* W0.5+W0.6: global freshness banner — offline / sync-error, mounted
               ONCE here so 18 useChildCollection screens don't each grow one.

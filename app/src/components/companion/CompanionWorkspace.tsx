@@ -10,9 +10,19 @@ import { ArborMark } from "../ui/ArborMark";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { availableHardMomentCards } from "../../content/selectCards";
 import { ageMonthsFromProfile } from "../../lib/childAge";
+import { NOW_COPY } from "./nowViewCopy";
 import "./companionWorkspace.css";
 
 const CoachTab = lazy(() => import("../tabs/CoachTab"));
+
+/** Bottom spacing alone cannot protect a keyboard-focused control mid-page. */
+export function revealLauncherObscuredControl(control: HTMLElement, launcher: HTMLElement) {
+  const target = control.getBoundingClientRect();
+  const dock = launcher.getBoundingClientRect();
+  if (target.bottom > dock.top - 12 && target.top < dock.bottom && target.right > dock.left && target.left < dock.right) {
+    control.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+  }
+}
 
 /** Mounted above routes: changing a view must not restart a draft, turn or microphone session. */
 export default function CompanionWorkspace({ children, kidLocked }: { children: React.ReactNode; kidLocked: boolean }) {
@@ -32,6 +42,17 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   const previousChild = useRef(childProfile.id);
   const returnTab = useRef<"overview" | typeof activeTab>("overview");
   const launchRef = useRef<HTMLButtonElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const launcherRef = useRef<HTMLDivElement>(null);
+  const captureRef = useRef<HTMLDetailsElement>(null);
+  const captureLabelRef = useRef<HTMLElement>(null);
+  const copy = NOW_COPY[uiLang === "he" ? "he" : "en"];
+  const capture = (mode: "text" | "voice" | "photo") => {
+    if (captureRef.current) captureRef.current.open = false;
+    // The sheet must return focus to a visible control after it closes.
+    captureLabelRef.current?.focus();
+    openCaptureSheet({ mode });
+  };
   const visible = open && !kidLocked;
   const modal = visible && (!wide || expanded);
   const close = () => {
@@ -47,6 +68,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   const openRef = useRef(open);
   openRef.current = open;
   const show = (via: "launcher" | "seed" | "route") => {
+    if (captureRef.current) captureRef.current.open = false;
     if (!openRef.current) trackCompanionPanelOpen(via);
     openRef.current = true;
     setMounted(true); setOpen(true);
@@ -58,6 +80,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     return () => query.removeEventListener("change", update);
   }, []);
   useEffect(() => {
+    if (captureRef.current) captureRef.current.open = false;
     if (routeIsConversation) { show("route"); setExpanded(true); }
     else {
       returnTab.current = activeTab; setExpanded(false);
@@ -82,12 +105,36 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   useEffect(() => {
     if (previousChild.current === childProfile.id) return;
     previousChild.current = childProfile.id;
+    if (captureRef.current) captureRef.current.open = false;
     setOpen(false); setMounted(false); setExpanded(false);
     if (routeIsConversation) setActiveTab("overview");
   }, [childProfile.id]);
   useEffect(() => { if (kidLocked) setOpen(false); }, [kidLocked]);
 
-  return <div className={`companion-workspace${visible ? " is-open" : ""}${expanded ? " is-expanded" : ""}`}>
+  // Reserve the actual launcher height, including wrapped translated/zoomed
+  // text. A fixed magic number leaves the last focused control under the dock.
+  useEffect(() => {
+    const launcher = launcherRef.current;
+    const workspace = workspaceRef.current;
+    if (!launcher || !workspace) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && captureRef.current && !captureRef.current.contains(event.target)) captureRef.current.open = false;
+    };
+    const main = workspace.querySelector(":scope > main");
+    const revealFocus = (event: Event) => {
+      if (event.target instanceof HTMLElement) revealLauncherObscuredControl(event.target, launcher);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    main?.addEventListener("focusin", revealFocus);
+    const measure = () => workspace.style.setProperty("--companion-launcher-height", `${launcher.getBoundingClientRect().height}px`);
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(launcher);
+    window.addEventListener("resize", measure);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", measure); document.removeEventListener("pointerdown", closeOutside); main?.removeEventListener("focusin", revealFocus); };
+  }, [visible, kidLocked, uiLang, activeTab, chatInput]);
+
+  return <div ref={workspaceRef} className={`companion-workspace${visible ? " is-open" : ""}${expanded ? " is-expanded" : ""}`}>
     {children}
     <div className="companion-panel-layer" data-arbor-dialog-layer>
     {modal && <button type="button" tabIndex={-1} className="companion-workspace-backdrop" aria-label={inputText(uiLang, "companion.input.close-conversation")} onClick={close} />}
@@ -106,12 +153,23 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
       </Suspense></ErrorBoundary>
     </aside>}
     </div>
-    {!visible && !kidLocked && <div className="arbor-parent companion-launcher" data-testid="companion-launcher">
+    {!visible && !kidLocked && <div ref={launcherRef} className="arbor-parent companion-launcher" data-testid="companion-launcher">
       <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.input.talk-with-arbor-text-photo-or-voice")}>
-        <ArborMark size={27} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : (inputText(uiLang, "companion.input.what-would-you-like-to-share"))}<small>{inputText(uiLang, "companion.input.write-show-talk")}</small></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" />
+        <ArborMark size={24} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : copy.talk}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
       </button>
       {hardMomentDoor && activeTab !== "overview" && <button type="button" className="companion-launch-save companion-launch-hard" data-testid="launcher-hard-moment" onClick={() => openHardMomentNow()} aria-label={inputText(uiLang, "companion.input.hard-moment-aria")}><Icon name="volunteer_activism" size={21} /><span className="companion-launch-save-label">{inputText(uiLang, "companion.input.hard-moment")}</span></button>}
-      <button type="button" className="companion-launch-save" onClick={() => openCaptureSheet({ mode: "text" })} aria-label={inputText(uiLang, "companion.input.just-keep-a-moment")}><Icon name="add_a_photo" size={21} /><span className="companion-launch-save-label">{inputText(uiLang, "companion.input.keep-a-moment")}</span></button>
+      <details ref={captureRef} className="companion-capture-menu" onKeyDown={event => {
+        if (event.key === "Escape" && captureRef.current?.open) { event.stopPropagation(); captureRef.current.open = false; captureLabelRef.current?.focus(); }
+      }} onBlur={event => {
+        if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+      }}>
+        <summary ref={captureLabelRef} className="companion-launch-save" aria-label={inputText(uiLang, "companion.input.just-keep-a-moment")}><Icon name="edit_note" size={21} /><span className="companion-launch-save-label">{copy.captureShort}</span></summary>
+        <div className="companion-capture-options" role="group" aria-label={copy.quickSave}>
+          <button type="button" onClick={() => capture("text")}><Icon name="edit_note" size={21} />{copy.write}</button>
+          <button type="button" onClick={() => capture("voice")}><Icon name="mic" size={21} />{copy.dictate}</button>
+          <button type="button" onClick={() => capture("photo")}><Icon name="photo_camera" size={21} />{copy.photo}</button>
+        </div>
+      </details>
     </div>}
   </div>;
 }

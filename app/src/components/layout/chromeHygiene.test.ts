@@ -127,12 +127,17 @@ describe("persistent companion · mobile chrome", () => {
   });
 
   it("a page change from inside the conversation closes the full-screen panel (phones) but keeps the docked one", () => {
-    const effect = /useEffect\(\(\) => \{\s*if \(routeIsConversation\) \{ show\("route"\); setExpanded\(true\); \}\s*else \{([\s\S]*?)\}\s*\}, \[activeTab\]\);/.exec(workspace);
+    const routeEffect = /useEffect\(\(\) => \{\s*if \(captureRef\.current\) captureRef\.current\.open = false;\s*if \(routeIsConversation\) \{ show\("route"\); setExpanded\(true\); \}\s*else \{([\s\S]*?)\}\s*\}, \[activeTab\]\);/;
+    const effect = routeEffect.exec(workspace);
     expect(effect, "the activeTab effect in CompanionWorkspace").toBeTruthy();
     expect(effect![1]).toContain("returnTab.current = activeTab; setExpanded(false);");
     expect(effect![1]).toContain("if (!wide) setOpen(false);");
     // Closing never unmounts: the draft, thread and microphone survive.
     expect(effect![1]).not.toContain("setMounted(false)");
+    // A missing capture dismissal or narrow-screen close must not satisfy the guard.
+    expect(routeEffect.test(workspace.replace("if (captureRef.current) captureRef.current.open = false;\n    if (routeIsConversation)", "if (routeIsConversation)"))).toBe(false);
+    const withoutClose = routeEffect.exec(workspace.replace("if (!wide) setOpen(false);", ""));
+    expect(withoutClose?.[1]).not.toContain("if (!wide) setOpen(false);");
   });
 
   it("styles launcher labels separately so mobile keeps both the arrow and accessible save icon", () => {
@@ -146,10 +151,10 @@ describe("persistent companion · mobile chrome", () => {
     expect(affectsIconSpans(workspaceCss)).toBe(false);
     expect(affectsIconSpans(".companion-launch-main > span { flex: 1; }")).toBe(true);
     expect(affectsIconSpans(".companion-launch-save > span { display: none; }")).toBe(true);
-    const saveButton = /<button\b[^>]*className="companion-launch-save"[\s\S]*?<\/button>/.exec(workspace)?.[0];
+    const saveButton = /<summary\b[^>]*className="companion-launch-save"[\s\S]*?<\/summary>/.exec(workspace)?.[0];
     expect(saveButton).toBeTruthy();
     expect(saveButton).toContain('aria-label={inputText(uiLang, "companion.input.just-keep-a-moment")}');
-    expect(saveButton).toMatch(/<Icon name="add_a_photo"[^>]*\/><span className="companion-launch-save-label">/);
+    expect(saveButton).toMatch(/<Icon name="edit_note"[^>]*\/><span className="companion-launch-save-label">/);
     expect(workspaceCss).toMatch(/\.companion-launch-save\s*\{[^}]*min-inline-size:\s*48px;/);
   });
 });

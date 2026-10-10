@@ -25,13 +25,11 @@ const tab = fs.readFileSync(path.resolve(__dirname, "WeeklyTab.tsx"), "utf8");
 
 describe("1 · TJB-10 · back goes to the hub that owns Weekly, at 44 px", () => {
   it("the target is Today and the control declares the floor", () => {
-    expect(tab).toContain('setActiveTab("overview")');
+    expect(tab).not.toContain('t("elev.wk.back")');
     expect(tab).not.toContain('setActiveTab("timeline")');
-    const back = /elev\.wk\.back/.test(tab);
-    expect(back).toBe(true);
-    const btn = /<button\s+onClick=\{\(\) => setActiveTab\("overview"\)\}[\s\S]{0,400}?<\/button>/.exec(tab)?.[0] ?? "";
-    expect(btn).toContain("minHeight: 44");
-    expect(btn).toContain("minWidth: 44");
+    const shell = fs.readFileSync(path.resolve(__dirname, "../layout/Shell.tsx"), "utf8");
+    expect(shell).toContain("setActiveTab(placeForTab(activeTab).tab)");
+    expect(shell).toMatch(/data-testid="secondary-place-back"[\s\S]{0,220}min-h-11/);
   });
 
   it("Today genuinely owns the weekly route", () => {

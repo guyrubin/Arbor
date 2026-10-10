@@ -224,7 +224,7 @@ describe("GP-22 — the Growth lane why-lines reach the Trust Center", () => {
 
   const GROWTH_SURFACES: [string, RegExp, string][] = [
     // The hub's weekly-focus card — the pick the parent is asked to act on.
-    ["components/companion/PortraitWatchRow.tsx", /t\("growth\.focus\.eyebrow"\)/, "growth-focus"],
+    ["components/companion/PortraitWatchRow.tsx", /t\("elev\.waveR\.why\.focus"\)/, "growth-focus"],
     // (P5-LOOP c2 r1: "Gentle watch points" left #/milestones — its why-line went with it.)
     // The Full Picture's weekly recommendation + each conversation row.
     ["components/practice/DevelopmentCopilot.tsx", /\{recommendation\.why\}/, "copilot-focus"],

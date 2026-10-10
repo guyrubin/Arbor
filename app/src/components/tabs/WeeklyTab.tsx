@@ -240,16 +240,6 @@ export default function WeeklyTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
-      {/* TJB-10: back went to #/timeline — a route the parent did not come from
-          and which is not this surface's hub. Weekly is a Today tool
-          (navigation.ts SECTIONS today.tools), so back is Today, at 44 px. */}
-      <button
-        onClick={() => setActiveTab("overview")}
-        className="inline-flex items-center gap-1.5 text-sm font-bold"
-        style={{ color: "var(--arbor-muted)", minHeight: 44, minWidth: 44 }}
-      >
-        <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" /> {t("elev.wk.back")}
-      </button>
       {/* E6a — the child fronts their own week: small portrait through the ONE
           shared HeroAvatar engine (identity resolution + Sprout fallback live
           inside the engine; we never re-composite). Parent register: no idle

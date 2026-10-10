@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -47,7 +47,7 @@ describe("B-TODAY-07 · rail order and capture target", () => {
     expect(steps).toContain('labelKey: "elev.rail.step.capture"');
   });
 
-  it("Today passes the capture bar's own opener (text sheet), so the route stays #/overview", () => {
+  it("Today keeps capture in place through the shared launcher", () => {
     // B-TODAY-19 (07fea27): every capture door on Today goes through the ONE
     // in-place opener, startCapture(mode, promptKey?, hard?) — the same seam
     // the QuickCapture bar uses — which opens QuickLogModal on #/overview.
@@ -57,7 +57,11 @@ describe("B-TODAY-07 · rail order and capture target", () => {
     expect(overview).not.toContain("<FirstStepsRail");
     // Parity 9 Oct: Now's capture doors open the ONE sheet in place through the
     // context seam (openCaptureSheet) — the route stays #/overview.
-    expect(overview).toContain('openCaptureSheet({ mode: "text" })');
+    const launcher = read("../companion/CompanionWorkspace.tsx");
+    expect(launcher).toContain('capture("text")');
+    const capture = launcher.slice(launcher.indexOf("const capture ="), launcher.indexOf("const visible ="));
+    expect(capture).toContain("openCaptureSheet({ mode });");
+    expect(capture).not.toContain("setActiveTab(");
     expect(overview).not.toContain('setActiveTab("behaviors")');
     expect(overview).not.toMatch(/FirstStepsRail onCapture=\{\(\) => setActiveTab\(/);
   });

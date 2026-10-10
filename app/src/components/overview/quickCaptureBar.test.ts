@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import { HARD_MOMENT_PILOT } from "../../content/pilotRelease";
 import { recentBehaviorTypes } from "../../content/hardMomentSurface";
-import { translate } from "../../lib/i18n";
+import { translate } from "../../lib/i18n";
 import { todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -109,11 +109,12 @@ describe("B-TODAY-10 · gating and opener", () => {
 });
 
 describe("NEXTLEVEL critic r1 · Today at 1280 is two tracks, not a stretched phone column", () => {
-  it("Now at 1280 is two tracks: the lead column and the side column (conversation, then capture)", () => {
+  it("Now keeps its recommendation first and groups optional context separately", () => {
     // Parity 9 Oct: the stacked QuickCaptureBar track left with the Today hub.
     expect(TODAY).toContain('<div className="now-main-grid">');
     expect(TODAY.indexOf('<div className="now-main-column">')).toBeLessThan(TODAY.indexOf('<aside className="now-side-column">'));
-    expect(TODAY.indexOf('<aside className="now-side-column">')).toBeLessThan(TODAY.indexOf('<section className="now-capture"'));
+    expect(TODAY).not.toContain('<section className="now-capture"');
+    expect(read("components/companion/CompanionWorkspace.tsx")).toContain('className="companion-capture-options"');
     expect(read("components/companion/nowView.css")).toMatch(/\.now-main-grid \{[^}]*grid-template-columns: minmax\(0, 1\.65fr\) minmax\(0, 1fr\)/);
     expect(TODAY).not.toContain("<QuickCaptureBar");
   });

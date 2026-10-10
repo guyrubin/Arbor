@@ -123,7 +123,13 @@ describe("W2.7 nav de-overload — emphasis only", () => {
   });
 
   it("the More entry and overflow sheet still expose every remaining category", () => {
-    expect(mobileNav).toContain("overflow.map((sec)");
+    // The same overflow list is partitioned, not reduced, by these two groups.
+    // parentRecordHierarchy.test.tsx also renders EN/HE, asserts every original
+    // SECTIONS destination exactly once, and invokes each navigation callback.
+    expect(mobileNav).toContain('(["records", "support"] as const).map');
+    expect(mobileNav).toContain('overflow.filter(sec => RECORD_SECTION_IDS.has(sec.id) === (group === "records")).map');
+    expect(mobileNav).toContain("data-more-destination={primaryTabOf(sec)}");
+    expect(mobileNav).toContain('data-more-destination="memory"');
     expect(mobileNav).toContain("setMoreOpen(true)");
   });
 });

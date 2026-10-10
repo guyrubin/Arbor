@@ -88,8 +88,8 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
       {!useAi && activity && <span className="now-duration"><Icon name="schedule" size={16} />{copy.minutes(activity.durationMin)}</span>}
     </div>
     <h2 id={`${id}-title`} className="now-lead-title" dir="auto">{headline}</h2>
+    {(useAi || activity) && <div className="now-why"><Icon name="info" size={17} aria-hidden="true" /><div><p><b>{copy.why}</b> <span dir="auto">{why}</span></p><TrustLink surface="today-focus" /></div></div>}
     {body && <p className="now-lead-body" dir="auto">{body}</p>}
-    {useAi && focus?.sayThis && <div className="now-say"><span>{copy.say}</span><blockquote dir="auto">{t("elev.loop.ms.quoted", { text: focus.sayThis })}</blockquote></div>}
 
     {!useAi && activity && stepsOpen && <div className="now-activity-steps" id={`${id}-steps`}>
       {!!activity.householdItems.length && <p className="now-materials"><b>{copy.materials}</b> {activity.householdItems.join(" · ")}</p>}
@@ -104,8 +104,8 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
       {(useAi || activity) && <button type="button" className="companion-text-button" onClick={() => onTalkOpen(copy.adaptPrompt(useAi ? aiStep! : `${activity!.title}. ${activity!.steps.join(" ")}`))}>{copy.adapt}<Icon name="chat_bubble" size={17} /></button>}
     </div>
     {saveError && <p className="now-inline-status" role="alert">{copy.saveError}</p>}
+    {useAi && focus?.sayThis && <details className="now-say-details"><summary>{copy.say}<Icon name="expand_more" size={20} /></summary><div className="now-say"><blockquote dir="auto">{t("elev.loop.ms.quoted", { text: focus.sayThis })}</blockquote></div></details>}
 
-    {(useAi || activity) && <div className="now-why"><Icon name="info" size={17} aria-hidden="true" /><div><p><b>{copy.why}</b> <span dir="auto">{why}</span></p><TrustLink surface="today-focus" /></div></div>}
     <div className="now-alternatives">
       {(useAi ? picks.length > 0 : picks.length > 1) && <button type="button" className="companion-text-button" onClick={another}>{copy.otherIdea}<Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" /></button>}
       <button type="button" className="companion-text-button" onClick={() => setActiveTab("daily-play")}>{copy.library}</button>
