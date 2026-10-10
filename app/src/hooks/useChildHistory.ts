@@ -26,7 +26,8 @@ export function useChildHistory<T extends { id: string }>(
   const [window, setWindow] = useState({ scope, size: 200, retry: 0 });
   const size = window.scope === scope ? window.size : 200;
   const retry = window.scope === scope ? window.retry : 0;
-  const [snapshot, setSnapshot] = useState<{ scope: string; size: number; rows: T[]; more: boolean; confirmed: boolean; error: boolean; raw?: string } | null>(null);
+  const receiptRef = useRef(0);
+  const [snapshot, setSnapshot] = useState<{ receipt: number; scope: string; size: number; rows: T[]; more: boolean; confirmed: boolean; error: boolean; raw?: string } | null>(null);
   if (window.scope !== scope) {
     // Retire the previous scope even on A → B → A; an earlier expanded
     // window or cached rows must not be revived before a fresh read.
@@ -40,7 +41,10 @@ export function useChildHistory<T extends { id: string }>(
     const accept = (rows: T[], confirmed: boolean, error = false, raw?: string) => {
       if (!active || scopeRef.current !== scope) return;
       const page = historyWindow(rows, size);
-      setSnapshot({ scope, size, rows: page.rows, more: page.more, confirmed, error, raw });
+      // Retire captured Send/Print guards synchronously, before React commits
+      // this callback's replacement snapshot (including pending/cache data).
+      const receipt = ++receiptRef.current;
+      setSnapshot({ receipt, scope, size, rows: page.rows, more: page.more, confirmed, error, raw });
     };
     if (remote && db && user) {
       const ref = collection(db, `users/${user.uid}/children/${childId}/${name}`);
@@ -48,10 +52,11 @@ export function useChildHistory<T extends { id: string }>(
       // (milestones, keepsakes, checks) are read by id so no record is skipped.
       const sort = dateField ? [orderBy(dateField, "desc"), orderBy(documentId(), "desc")] : [orderBy(documentId())];
       const stop = onSnapshot(query(ref, ...sort, limit(size + 1)), { includeMetadataChanges: true }, snap => {
-        accept(snap.docs.map(row => ({ ...row.data(), id: row.id }) as T), !snap.metadata.fromCache);
+        accept(snap.docs.map(row => ({ ...row.data(), id: row.id }) as T), !snap.metadata.fromCache && !snap.metadata.hasPendingWrites);
       }, () => {
         if (!active || scopeRef.current !== scope) return;
-        setSnapshot(previous => ({ scope, size, rows: previous?.scope === scope ? previous.rows : [], more: previous?.scope === scope ? previous.more : false, confirmed: false, error: true }));
+        const receipt = ++receiptRef.current;
+        setSnapshot(previous => ({ receipt, scope, size, rows: previous?.scope === scope ? previous.rows : [], more: previous?.scope === scope ? previous.more : false, confirmed: false, error: true }));
       });
       return () => { active = false; stop(); };
     }
@@ -75,17 +80,19 @@ export function useChildHistory<T extends { id: string }>(
   const more = local?.more ?? current?.more ?? false;
   const loadMore = useCallback(() => {
     if (scopeRef.current !== scope || loading || error || !more) return;
+    receiptRef.current++;
     setWindow(previous => ({ scope, size: nextHistoryWindow(previous.scope === scope ? previous.size : 200), retry: previous.scope === scope ? previous.retry : 0 }));
   }, [scope, loading, error, more]);
   const reload = useCallback(() => {
     if (scopeRef.current !== scope) return;
+    receiptRef.current++;
     setWindow(previous => ({ scope, size: previous.scope === scope ? previous.size : 200, retry: (previous.scope === scope ? previous.retry : 0) + 1 }));
   }, [scope]);
   /** Read-only egress revalidation for local snapshots: same-document writes
    * do not fire a storage event. Never export a cached local row after it has
    * changed or been removed. The caller reloads instead of writing anything. */
   const isCurrent = () => {
-    if (latestRender.current !== renderToken || scopeRef.current !== scope || loading || error || !confirmed) return false;
+    if (latestRender.current !== renderToken || scopeRef.current !== scope || current?.receipt !== receiptRef.current || loading || error || !confirmed) return false;
     if (remote) return true;
     try {
       // Bind the fingerprint to the same snapshot as the rendered rows. An

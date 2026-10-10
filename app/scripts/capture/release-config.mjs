@@ -10,13 +10,15 @@ export const RELEASE_VIEWPORTS = Object.freeze([
   { id: 'desktop-en', w: 1280, h: 800, lang: 'en' },
   { id: 'desktop-he', w: 1280, h: 800, lang: 'he' },
 ]);
-export const RELEASE_GROUPS = Object.freeze(['base', 'navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused']);
+export const RELEASE_GROUPS = Object.freeze(['base', 'navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record']);
 export const RELEASE_MATRIX = Object.freeze(RELEASE_VIEWPORTS.flatMap((viewport) => [
   { viewport: viewport.id, group: 'base', shard: 0 },
   { viewport: viewport.id, group: 'focused', shard: 0 },
 ]));
 export function releaseMatrix(scope = 'all') {
   if (scope === 'all') return RELEASE_MATRIX;
+  if (scope === 'record-only') return RELEASE_VIEWPORTS.map(viewport => ({ viewport: viewport.id, group: 'record', shard: 0 }));
+  if (scope === 'record-release') return [...releaseMatrix('record-only'), ...RELEASE_MATRIX];
   if (scope === 'report-close-only') return RELEASE_VIEWPORTS.map(viewport => ({ viewport: viewport.id, group: 'report-close-only', shard: 0 }));
   if (scope === 'ask-diagnostic') return [{ viewport: 'mobile-en', group: 'ask-diagnostic', shard: 0 }];
   throw new Error('RELEASE_SCOPE_INVALID');

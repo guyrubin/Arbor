@@ -15,9 +15,13 @@ import { installStylesheetObservation, observeAskDependency, observeReactStage, 
 export { classifyReleaseConsole, sanitizedReleaseLocation } from './runtime-diagnostics.mjs';
 import { observeTogetherGeometry, togetherLayoutGeometry, togetherScrollStable } from './together-geometry.mjs';
 import { SOURCE_FONT_NOTE, captureFontContextOptions, installOfflineFonts, captureScreenshot } from './font-runtime.mjs';
+import { RECORD_STATES, RECORD_LIMITATIONS, recordFixture, installRecordShareSink } from './record-contract.mjs';
+import { collectRecordStates } from './record-states.mjs';
+import { collectBehaviorRecordStates } from './record-behaviors.mjs';
 
 const rows = (route, states) => states.map(state => ({ route, state }));
 export const RELEASE_INTERACTION_STATES = Object.freeze({
+  record: RECORD_STATES,
   navigation: [
     ...rows('shell', ['keep-closed', 'keep-open', 'keep-toggle-closed', 'keep-escape', 'keep-write', 'keep-close-focus']),
     ...rows('overview', ['practice-compact', 'practice-details', 'practice-outcome', 'practice-undo', 'now-scroll-initial', 'now-scroll-middle', 'now-bottom-reachable']),
@@ -135,13 +139,19 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     const navigation = await collectReleaseInteractions({ output, bundle, viewport, group: 'navigation', sourceSha, sourceTreeSha, _reportGroup: 'focused', _apiCache });
     return collectReleaseInteractions({ output, bundle, viewport, group: 'ask', sourceSha, sourceTreeSha, _priorCells: navigation.cells, _reportGroup: 'focused', _apiCache });
   }
-  const fixture = releaseFixture(bundle, viewport.lang);
+  const record = group === 'record' ? recordFixture(bundle, viewport.lang) : null;
+  const fixture = releaseFixture(record?.parsed ?? bundle, viewport.lang);
   const { lang } = viewport;
   const he = lang === 'he';
   const viewportId = `${viewport.w}x${viewport.h}`;
   mkdirSync(`${output}/shots`, { recursive: true });
   const doc = { schema: 1, scope: 'release-interactions', sourceSha, sourceTreeSha, group: _reportGroup, activeGroup: group, viewport: viewportId, lang, fixture: SMALL_FIXTURE, fontMode: 'exact', fontLimitation: SOURCE_FONT_NOTE, expectedStates: _reportGroup === group ? expectedStates : expectedReleaseInteractionStates(_reportGroup, viewport), completed: false, finished: false, cells: [..._priorCells], fixtures: ['synthetic-family', 'local-mock-server', 'synthetic-local-watch-choice', 'bounded-consent-error-responses', 'bounded-chat-error-responses', 'bilingual-report-presentation-fixture'] };
   const save = () => { doc.missingEvidence = missingReleaseInteractionEvidence(doc.cells, { group: _reportGroup, viewport, sourceSha, sourceTreeSha }); writeFileSync(`${output}/evidence.json`, JSON.stringify(doc, null, 2)); };
+  if (record) {
+    doc.recordBoundaries = RECORD_LIMITATIONS;
+    doc.fixtures.push('synthetic-record-local-storage', 'synthetic-browser-share-sink');
+    doc.recordFixture = { childId: record.childId, eligibleRows: record.expected.all, months: record.expected.months, sourceCollections: Object.keys(record.collections), negativeControls: record.text.forbidden.length };
+  }
   save();
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ headless: true });
@@ -202,6 +212,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     await context.route('**/sandbox/demo-family.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture.parsed) }));
     await installOfflineFonts(context);
     await context.addInitScript(initializeSyntheticOnline, { lang });
+    if (record) await context.addInitScript(installRecordShareSink);
     if (group === 'ask-diagnostic') await context.addInitScript(installStylesheetObservation);
     const page = await context.newPage();
     page.setDefaultTimeout(8000);
@@ -214,7 +225,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     page.on('console', message => { if (message.type() === 'error' || message.type() === 'warning') diagnostics.record(message.text(), message.location()); });
     page.on('pageerror', error => diagnostics.recordPageError(error));
     page.on('filechooser', () => { apiState.deniedActions++; });
-    page.on('download', download => { apiState.deniedActions++; void download.cancel(); });
+    page.on('download', download => {
+      if (record && apiState.expectedPrintDownload && download.url().startsWith(`blob:${BASE}/`) && /\.html$/.test(download.suggestedFilename())) { apiState.printDownloads = (apiState.printDownloads ?? 0) + 1; return; }
+      apiState.deniedActions++; void download.cancel();
+    });
     page.on('response', response => { const url = new URL(response.url()); if (apiState.chat === 'mock' && url.origin === BASE && url.pathname === '/api/chat' && response.ok()) apiState.mockResponses++; });
     const readinessSnapshot = () => page.evaluate(() => {
       const visible = selector => { const el = document.querySelector(selector); if (!el) return false; const box = el.getBoundingClientRect(); return box.width > 0 && box.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
@@ -361,7 +375,11 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       return cell.reached;
     };
 
-    if (group === 'navigation') {
+    if (group === 'record') {
+      const helpers = { page, context, fixture: record, viewport, output, sourceSha, sourceTreeSha, apiState, load, screen, check, visible, byId };
+      await collectRecordStates(helpers);
+      await collectBehaviorRecordStates(helpers);
+    } else if (group === 'navigation') {
       const menu = () => byId('companion-launcher').locator('.companion-capture-menu');
       const launcherReady = await screen('shell', 'keep-closed', async cell => { await load('overview'); await visible(cell, 'KEEP_SUMMARY_VISIBLE', menu().locator('summary')); check(cell, 'KEEP_INITIALLY_CLOSED', !await menu().evaluate(el => el.open)); });
       await screen('shell', 'keep-open', async cell => { dependent(launcherReady); await menu().locator('summary').click(); check(cell, 'KEEP_OPEN', await menu().evaluate(el => el.open)); check(cell, 'THREE_KEEP_OPTIONS', await menu().locator('.companion-capture-options button:visible').count() === 3); });

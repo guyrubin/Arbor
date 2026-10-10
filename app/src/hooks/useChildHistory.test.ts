@@ -64,6 +64,43 @@ beforeEach(() => {
 });
 
 describe("bounded child history reads", () => {
+  it("does not confirm a server-connected snapshot whose writes are still pending", () => {
+    render();
+    h.listeners[0].next({ docs: rows(2).map(value => ({ id: value.id, data: () => value })), metadata: { fromCache: false, hasPendingWrites: true } });
+    const pending = render();
+    expect(pending.confirmed).toBe(false);
+    expect(pending.isCurrent()).toBe(false);
+    deliver(0, rows(2));
+    expect(render().isCurrent()).toBe(true);
+  });
+  it.each(["changed", "pending", "error"])("invalidates a captured confirmed guard synchronously on a %s callback before React commits", change => {
+    render(); deliver(0, rows(2));
+    const confirmed = render();
+    expect(confirmed.isCurrent()).toBe(true);
+    if (change === "error") h.listeners[0].fail();
+    else h.listeners[0].next({ docs: rows(change === "changed" ? 1 : 2).map(value => ({ id: value.id, data: () => value })), metadata: { fromCache: false, hasPendingWrites: change === "pending" } });
+    // Deliberately no render: the native Send callback can run before commit.
+    expect(confirmed.isCurrent()).toBe(false);
+    const updated = render();
+    expect(updated.isCurrent()).toBe(change === "changed");
+    deliver(0, rows(2));
+    expect(render().isCurrent()).toBe(true);
+  });
+  it("an obsolete listener cannot invalidate the new child snapshot", () => {
+    render(); deliver(0, rows(2)); render();
+    child = "child-b"; settle();
+    deliver(1, rows(3)); const current = render();
+    expect(current.isCurrent()).toBe(true);
+    deliver(0, rows(1)); h.listeners[0].fail();
+    expect(current.isCurrent()).toBe(true);
+  });
+  it("requesting a reload invalidates the old export guard before its read effect runs", () => {
+    render(); deliver(0, rows(2)); const confirmed = render();
+    confirmed.reload();
+    expect(confirmed.isCurrent()).toBe(false);
+    render(); deliver(1, rows(2));
+    expect(render().isCurrent()).toBe(true);
+  });
   it.each(["behaviorLogs", "langObs"])("%s loads an older-than-limit source through a real larger query", collection => {
     name = collection;
     expect(render().loading).toBe(true);

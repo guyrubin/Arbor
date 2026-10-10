@@ -3,7 +3,7 @@ on:
   # Dedicated candidate branch only. This never changes the active small capture
   # or production workflows, and never merges/deploys to obtain evidence.
   push:
-    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic']
+    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity']
     paths: ['app/**', 'knowledge/**', '.github/workflows/arbor-parent-release-capture.yml']
 permissions:
   contents: read
@@ -25,7 +25,8 @@ jobs:
         name: Derive the bounded matrix from its pure source contract
         shell: bash
         run: |
-          if [[ "$GITHUB_REF_NAME" == "codex/parent-close-return-diagnostic" ]]; then scope=report-close-only;
+          if [[ "$GITHUB_REF_NAME" == "codex/parent-record-clarity" ]]; then scope=record-release;
+          elif [[ "$GITHUB_REF_NAME" == "codex/parent-close-return-diagnostic" ]]; then scope=report-close-only;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-final-ask-diagnostic" ]]; then scope=ask-diagnostic; else scope=all; fi
           CAPTURE_SCOPE="$scope" node --input-type=module -e 'import { releaseMatrix } from "./app/scripts/capture/release-config.mjs"; console.log("cells=" + JSON.stringify(releaseMatrix(process.env.CAPTURE_SCOPE)));' >> "$GITHUB_OUTPUT"
           echo "scope=$scope" >> "$GITHUB_OUTPUT"
@@ -98,6 +99,8 @@ jobs:
             ${{ runner.temp }}/arbor-parent-release/font-evidence.sweep.json
             ${{ runner.temp }}/arbor-parent-release/font-evidence.diagnostics.json
             ${{ runner.temp }}/arbor-parent-release/shots/*.png
+            ${{ runner.temp }}/arbor-parent-release/print/*.html
+            ${{ runner.temp }}/arbor-parent-release/print/*.png
           if-no-files-found: warn
           retention-days: 7
           include-hidden-files: false

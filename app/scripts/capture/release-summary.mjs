@@ -1,6 +1,7 @@
 /** Pure aggregate verdict. Filesystem adapter lives in summarize-release.mjs. */
 import { missingReleaseInteractionEvidence } from './release-interactions.mjs';
 import { releaseMatrix, RELEASE_VIEWPORTS, releaseIdentity, releaseInventory, missingBaseEvidence, shardRoutes } from './release-config.mjs';
+import { validRecordPrintReceipt } from './record-print.mjs';
 
 export function summarizeRelease(records, identity, scope = 'all') {
   releaseIdentity(identity.sourceSha, identity.sourceTreeSha);
@@ -9,6 +10,7 @@ export function summarizeRelease(records, identity, scope = 'all') {
   let baseCells = 0;
   let interactionCells = 0;
   let screenshots = 0;
+  let printPreviews = 0;
   let routeIds;
   const shards = [];
   const expected = new Set(releaseMatrix(scope).map((cell) => `${cell.viewport}-${cell.group}-${cell.shard}`));
@@ -33,7 +35,7 @@ export function summarizeRelease(records, identity, scope = 'all') {
       const routes = shardRoutes(ids, capture.cell.shard);
       if (cells.length !== routes.length || missingBaseEvidence(cells, routes, viewport).length) reasons.push('BASE_EVIDENCE_MISSING');
       baseCells += cells.filter((cell) => cell.mounted && cell.shot).length;
-    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused'].includes(group) && viewport) {
+    } else if (['navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record'].includes(group) && viewport) {
       if (evidence?.sourceSha !== identity.sourceSha || evidence?.sourceTreeSha !== identity.sourceTreeSha) reasons.push('INTERACTION_IDENTITY_MISMATCH');
       if (missingReleaseInteractionEvidence(cells, { group, viewport, ...identity }).length || !cells.length || cells.some((cell) => !cell.reached || !cell.shot)) reasons.push('INTERACTION_EVIDENCE_MISSING');
       interactionCells += cells.filter((cell) => cell.reached && cell.shot).length;
@@ -46,15 +48,20 @@ export function summarizeRelease(records, identity, scope = 'all') {
       }
     }
     if (fonts?.mode !== 'exact' || fonts?.deniedFontRequests !== 0) reasons.push('FONT_CACHE_REQUEST_FAILED');
+    if (group === 'record') {
+      const prints = cells.filter(cell => cell.state === 'month-print');
+      if (prints.length !== 1 || !validRecordPrintReceipt(prints[0]?.printPreview, identity, record.printFiles, record.printHashes)) reasons.push('ACTUAL_PRINT_DELIVERY_EVIDENCE_MISSING');
+      else printPreviews++;
+    }
     screenshots += shotNames.length;
     const unique = [...new Set(reasons)];
     shards.push({ id: id ?? 'unknown', completed: unique.length === 0, cells: cells.length, screenshots: shotNames.length, failures: unique });
     if (unique.length) failures.push({ id: id ?? 'unknown', reasons: unique });
   }
   for (const id of expected) if (!seen.has(id)) failures.push({ id, reasons: ['SHARD_NOT_RETURNED'] });
-  const expectedBaseCells = scope === 'all' ? 172 : 0;
+  const expectedBaseCells = ['all', 'record-release'].includes(scope) ? 172 : 0;
   if (baseCells !== expectedBaseCells) failures.push({ id: 'base-matrix', reasons: ['BASE_MATRIX_INCOMPLETE'] });
   return { schema: 1, scope, ...identity, completed: failures.length === 0, expectedShards: expected.size, returnedShards: records.length,
-    expectedBaseCells, baseCells, interactionCells, screenshots, routeIds: routeIds ?? [], shards, failures,
+    expectedBaseCells, baseCells, interactionCells, screenshots, printPreviews, routeIds: routeIds ?? [], shards, failures,
     note: 'Coverage is rendered evidence, not a visual-quality sign-off. Review PNGs and interaction assertions. Synthetic records/mock replies do not establish production/provider behavior.' };
 }

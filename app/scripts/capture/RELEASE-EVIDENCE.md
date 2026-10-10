@@ -118,3 +118,10 @@ every report interaction. All transcript ancestors and the window must retain
 their pre-send offsets; an app auto-scroll defect therefore stays a failed cell.
 The final report state clicks the real Close control and checks return to the
 visible launcher with focus. Actual CI PNG review remains required.
+
+## Additive record candidate
+
+`codex/parent-record-clarity` uses the same workflow with `record-release` scope:
+four prioritized bounded record shards followed by all eight unchanged baseline
+shards. See `RECORD-EVIDENCE.md` for its real source seams, 180 added states,
+separate actual print-delivery receipts and explicitly unexercised remote states.
