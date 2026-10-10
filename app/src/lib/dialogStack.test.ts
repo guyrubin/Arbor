@@ -18,10 +18,11 @@ class Node {
   shown = true;
   visibility = "visible";
   disabled = false;
+  acceptsFocus = true;
   offsetParent = null; // visible fixed-position controls must still be tabbable
   constructor(readonly ownerDocument: Doc, readonly tag = "div") {}
   get isConnected(): boolean { return this === this.ownerDocument.body || !!this.parentElement?.isConnected; }
-  get tabIndex() { return Number(this.attrs.get("tabindex") ?? (this.tag === "button" || this.tag === "input" ? 0 : -1)); }
+  get tabIndex() { return Number(this.attrs.get("tabindex") ?? (["button", "input", "summary"].includes(this.tag) ? 0 : -1)); }
   hasAttribute(name: string) { return this.attrs.has(name); }
   getAttribute(name: string) { return this.attrs.get(name) ?? null; }
   setAttribute(name: string, value: string) { this.attrs.set(name, value); }
@@ -44,7 +45,7 @@ class Node {
   querySelector(selector: string) { return this.querySelectorAll(selector)[0] ?? null; }
   getClientRects() { return this.shown ? [{}] : []; }
   focus() {
-    if (!this.isConnected || this.closest("[inert],[hidden]")) return;
+    if (!this.acceptsFocus || !this.isConnected || this.closest("[inert],[hidden]")) return;
     this.ownerDocument.activeElement = this;
     this.ownerDocument.emit("focusin", {});
   }
@@ -287,6 +288,72 @@ describe("dialog stack: production event and lifetime ownership", () => {
 });
 
 describe("dialog focus, shielding and scroll contract", () => {
+  it("wraps the goal picker's native Earlier summary without targeting its collapsed choice", () => {
+    const f = fixture(), d = f.layer();
+    // Close + six choices + native Earlier disclosure, matching the rendered
+    // picker. Closed details content can retain layout boxes but reject focus.
+    const choices = [d.last, ...Array.from({ length: 5 }, () => d.root.append(new Node(f.doc, "button")))];
+    const details = d.root.append(new Node(f.doc, "details"));
+    const summary = details.append(new Node(f.doc, "summary"));
+    const earlierChoice = details.append(new Node(f.doc, "button")); earlierChoice.acceptsFocus = false;
+    const expected = [d.first, ...choices, summary];
+    const a = f.stack.register({ root: html(d.root), onClose: vi.fn() }); f.flush();
+    const reverse = [expected.indexOf(f.doc.activeElement)];
+    f.key("Tab", true); reverse.push(expected.indexOf(f.doc.activeElement));
+    expect(reverse).toEqual([0, 7]); // pre-fix controller gives [0, 0]
+    expect(dialogTabbables(html(d.root))).toEqual(expected);
+    expect(f.key("Tab").defaultPrevented).toBe(true);
+    expect(f.doc.activeElement).toBe(d.first);
+    expect(details.hasAttribute("open")).toBe(false);
+
+    details.setAttribute("open", ""); earlierChoice.acceptsFocus = true;
+    expect(dialogTabbables(html(d.root))).toEqual([...expected, earlierChoice]);
+    f.key("Tab", true); expect(f.doc.activeElement).toBe(earlierChoice);
+    f.key("Tab"); expect(f.doc.activeElement).toBe(d.first);
+    expect(details.hasAttribute("open")).toBe(true);
+    a.dispose(); f.flush(); expect(f.doc.activeElement).toBe(f.opener);
+  });
+
+  it("checks every collapsed details ancestor while keeping its first summary and summary controls", () => {
+    const f = fixture(), d = f.layer();
+    const outer = d.root.append(new Node(f.doc, "details"));
+    const summary = outer.append(new Node(f.doc, "summary"));
+    const summaryControl = summary.append(new Node(f.doc, "button"));
+    const secondSummary = outer.append(new Node(f.doc, "summary")); secondSummary.setAttribute("tabindex", "0");
+    const inner = outer.append(new Node(f.doc, "details")); inner.setAttribute("open", "");
+    const innerSummary = inner.append(new Node(f.doc, "summary"));
+    const innerChoice = inner.append(new Node(f.doc, "button"));
+    expect(dialogTabbables(html(d.root))).toEqual([d.first, d.last, summary, summaryControl]);
+    outer.setAttribute("open", "");
+    expect(dialogTabbables(html(d.root))).toEqual([d.first, d.last, summary, summaryControl, secondSummary, innerSummary, innerChoice]);
+    inner.removeAttribute("open");
+    expect(dialogTabbables(html(d.root))).toEqual([d.first, d.last, summary, summaryControl, secondSummary, innerSummary]);
+  });
+
+  it.each(["Close", "Back", "Escape"])("restores an Earlier opener after nested %s, and skips it once its disclosure collapses", method => {
+    const f = fixture(), outer = f.layer();
+    const details = outer.root.append(new Node(f.doc, "details")); details.setAttribute("open", "");
+    const summary = details.append(new Node(f.doc, "summary"));
+    const earlierChoice = details.append(new Node(f.doc, "button"));
+    const parent = f.stack.register({ root: html(outer.root), onClose: vi.fn() }); f.flush();
+    const dismiss = (handle: { close(): void }) => {
+      if (method === "Close") handle.close();
+      else if (method === "Back") expect(f.stack.closeTop()).toBe(true);
+      else f.key("Escape");
+      f.flush();
+    };
+    earlierChoice.focus();
+    const inner = f.layer();
+    const child = f.stack.register({ root: html(inner.root), onClose: () => { child.dispose(); inner.root.remove(); } }); f.flush();
+    dismiss(child); expect(f.doc.activeElement).toBe(earlierChoice);
+    const next = f.layer();
+    const reopened = f.stack.register({ root: html(next.root), onClose: () => { reopened.dispose(); next.root.remove(); } }); f.flush();
+    details.removeAttribute("open"); earlierChoice.acceptsFocus = false;
+    dismiss(reopened); expect(f.doc.activeElement).toBe(outer.first);
+    expect(dialogTabbables(html(outer.root))).toEqual([outer.first, outer.last, summary]);
+    parent.dispose(); f.flush(); expect(f.doc.activeElement).toBe(f.opener);
+  });
+
   it("wraps both ways, recaptures outside focus and skips hidden/disabled/fixed-offset traps", () => {
     const f = fixture(), d = f.layer();
     const hidden = d.root.append(new Node(f.doc, "button")); hidden.shown = false;

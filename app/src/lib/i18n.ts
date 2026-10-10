@@ -1570,8 +1570,8 @@ export const en: Dict = {
   "wordworld.copied": "Copied",
   // CI-30: Daily Plan Card
   "plan.card.eyebrow": "Today's plan",
-  "plan.card.noGoalBody": "Set a focus goal to get today's plan.",
-  "plan.card.setGoalCta": "Set a focus goal",
+  "plan.card.noGoalBody": "You can choose one thing to work on together.",
+  "plan.card.setGoalCta": "Choose what you're working on",
   "plan.card.whyPrefix": "Matched to your goal —",
   "plan.card.andInterest": "and {name}'s interest in {interest}",
   "plan.card.firewall": "Developmentally informed, grounded in CDC/AAP/ASHA/WHO.",
@@ -4070,8 +4070,8 @@ export const he: Dict = {
   "wordworld.copied": "הועתק",
   // CI-30: Daily Plan Card (Hebrew)
   "plan.card.eyebrow": "התוכנית של היום",
-  "plan.card.noGoalBody": "הגדירו מטרת מיקוד כדי לקבל את התוכנית של היום.",
-  "plan.card.setGoalCta": "הגדירו מטרת מיקוד",
+  "plan.card.noGoalBody": "אפשר לבחור דבר אחד לעבוד עליו יחד.",
+  "plan.card.setGoalCta": "בחרו על מה אתם עובדים",
   "plan.card.whyPrefix": "תואם למטרה שלך —",
   "plan.card.andInterest": "ולאהבה של {name} ל{interest}",
   "plan.card.firewall": "מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",

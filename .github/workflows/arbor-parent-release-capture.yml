@@ -2,10 +2,11 @@ name: Arbor final Parent release evidence
 on:
   # PR124 verifies Parent858 + Kept116 + Kids72 = 1046 cells in 24 shards.
   # The Kids release branch retains Parent858 + Kids72 = 930 required cells.
+  # Combined first-run + goal scope preserves all 104 + 196 = 300 cells in 8 shards.
   # Dedicated candidate branch only. This never changes the active small capture
   # or production workflows, and never merges/deploys to obtain evidence.
   push:
-    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release', 'codex/kid-entry-safety-diagnostic', 'codex/kid-entry-safety-release', 'codex/first-run-capture', 'codex/private-export-release']
+    branches: ['codex/parent-final-capture', 'codex/parent-final-ask-diagnostic', 'codex/parent-close-return-diagnostic', 'codex/parent-record-clarity', 'codex/parent-record-diagnostic', 'codex/parent-confirmed-action-loops', 'codex/parent-capture-search-release', 'codex/kid-entry-safety-diagnostic', 'codex/kid-entry-safety-release', 'codex/single-goal-capture', 'codex/first-run-capture', 'codex/private-export-release']
     paths: ['app/**', 'knowledge/**', '.github/workflows/arbor-parent-release-capture.yml']
 permissions:
   contents: read
@@ -27,7 +28,8 @@ jobs:
         name: Derive the bounded matrix from its pure source contract
         shell: bash
         run: |
-          if [[ "$GITHUB_REF_NAME" == "codex/first-run-capture" ]]; then scope=first-run-preview-only;
+          if [[ "$GITHUB_REF_NAME" == "codex/single-goal-capture" ]]; then scope=first-run-goal-only;
+          elif [[ "$GITHUB_REF_NAME" == "codex/first-run-capture" ]]; then scope=first-run-preview-only;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-capture-search-release" ]]; then scope=parent-kid-release;
           elif [[ "$GITHUB_REF_NAME" == "codex/private-export-release" ]]; then scope=private-export-only;
           elif [[ "$GITHUB_REF_NAME" == "codex/parent-confirmed-action-loops" ]]; then scope=confirmed-actions-release;

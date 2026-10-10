@@ -1,3 +1,4 @@
+import { goalLabel } from "../../practice/goalBuilder";
 import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
@@ -24,10 +25,10 @@ import SessionLengthChips from "../practice/SessionLengthChips";
  * inherits document dir (set by LanguageContext on <html>).
  *
  * Empty states:
- *   - plan === null: renders the NO-PLAN state ("Set a focus goal to get today's plan.").
+ *   - plan === null: renders a choice invitation without promising an unavailable activity.
  *   - plan !== null && noGoal (B-GROWTH-20): the plan renders — buildDailyPlan picks
  *     an activity with or without a goal — plus ONE optional secondary line
- *     "Set a focus to match it to what you're working on" that opens the goal modal.
+ *     "Choose what you're working on" that opens the goal modal.
  *   - plan !== null && plan.sparse: activity IS shown, why-line reads "Gets more personalized as you log more days."
  *   - plan !== null: happy path.
  */
@@ -54,7 +55,7 @@ interface DailyPlanCardProps {
   /** KID-3: child's age in years — SessionLengthChips only offers
    *  honestly-stocked buckets for the child's band. */
   ageYears: number;
-  /** Called when parent taps "Set a focus goal" in the no-goal state. */
+  /** Called when parent taps "Choose what you're working on" in the no-goal state. */
   onSetGoal: () => void;
 }
 
@@ -312,7 +313,7 @@ export default function DailyPlanCard({
           {plan.goal && !plan.sparse ? (
             <>
               {t("plan.card.whyPrefix")}{" "}
-              <strong style={{ color: GREEN }}>{plan.goal.label}</strong>
+              <strong style={{ color: GREEN }}>{goalLabel(plan.goal, t)}</strong>
               {plan.matchedInterest
                 ? ` — ${t("plan.card.andInterest", { name: childName, interest: plan.matchedInterest })}`
                 : ""}

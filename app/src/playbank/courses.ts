@@ -68,7 +68,7 @@ export const READINESS_COURSES: PlayCourse[] = [
     domain: "social",
     goal: "school",
     bands: ["preschool", "early-school"],
-    whatItBuilds: "The everyday skills that make starting school easier: smooth transitions, listening, sharing, focus, and feeling capable.",
+    whatItBuilds: "The everyday skills that make starting school easier: smooth transitions, listening, sharing, attention, and feeling capable.",
     activityIds: ["transition-countdown", "two-step-helper", "turn-taking-tower", "treasure-hunt", "helper-of-the-day"],
   },
   {

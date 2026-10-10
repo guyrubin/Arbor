@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -10,12 +10,13 @@ import TomorrowTogether from "../practice/TomorrowTogether";
 import DailyPlanCard from "../overview/DailyPlanCard";
 import CourseCard from "../overview/CourseCard";
 import GoalBuilderModal from "../practice/GoalBuilderModal";
+import { GoalFocusLine } from "../practice/GoalFocusLine";
 import SessionLengthChips from "../practice/SessionLengthChips";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
 import { recommendCourse, READINESS_COURSES, localizeCourse, courseActivities, type PlayCourse } from "../../playbank/courses";
 import { type PlayActivity, bandForAge, playDomainLabel } from "../../playbank/content";
 import { ageYearsFromProfile } from "../../lib/childAge";
-import { activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
+import { focusGoal, goalLabel, activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { buildDailyPlan, buildGoalObservation, estimateLoggedDayCount, type DailyPlan } from "../../practice/dailyPlan";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import type { GoalObservation } from "../../practice/dailyPlan";
@@ -46,20 +47,18 @@ function AgeChip({ profile }: { profile: ChildProfile }) {
 }
 
 export default function DailyPlayTab() {
-  const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, updateChild, seedCoach, actionLoop } = useArbor();
+  const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, seedCoach, actionLoop } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const firstName = (childProfile.name || t("learn.yourChild")).split(" ")[0];
 
   // CI-28: Goal Builder — Goals chip in the DailyPlay tab header.
   const activeGoals: ActiveGoal[] = childProfile.activeGoals ?? [];
-  const [goalModalOpen, setGoalModalOpen] = useState(false);
-  const goalDomains = useMemo(() => activeGoalDomains(activeGoals), [activeGoals]);
-
-  const handleSaveGoals = async (goals: ActiveGoal[]) => {
-    await updateChild(childProfile.id, { activeGoals: goals });
-    toast(t("elev.growth.play.toast.focusSet"), "success");
-  };
+  const goal = focusGoal(activeGoals);
+  const displayGoals = useMemo(() => goal ? [goal] : [], [goal]);
+  const [goalModalOwner, setGoalModalOwner] = useState<string | null>(null);
+  useEffect(() => { setGoalModalOwner(null); }, [childProfile.id]);
+  const goalDomains = useMemo(() => activeGoalDomains(displayGoals), [displayGoals]);
 
   const [doneIds, setDoneIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(`arbor.play.done.${childProfile.id}`) || "[]"); }
@@ -189,13 +188,13 @@ export default function DailyPlayTab() {
     () =>
       buildDailyPlan({
         picks,
-        activeGoals,
+        activeGoals: displayGoals,
         childName: firstName,
         loggedDayCount,
         nowMs: Date.now(),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [picks, activeGoals, firstName, loggedDayCount]
+    [picks, displayGoals, firstName, loggedDayCount]
   );
 
   // Whether the plan card has been marked done today (per-child localStorage).
@@ -274,25 +273,8 @@ export default function DailyPlayTab() {
               {t("play.libSubtitle", { name: firstName })}
             </p>
           </div>
-          {/* CI-28: Goals chip — persistent entry to Goal Builder */}
-          <button
-            onClick={() => setGoalModalOpen(true)}
-            aria-label={t("aria.manageFocusGoals")}
-            className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 min-h-[44px] text-[12.5px] font-bold transition mt-1"
-            style={{
-              background: activeGoals.length > 0 ? "var(--arbor-green-soft)" : "var(--arbor-paper-elevated)",
-              color: activeGoals.length > 0 ? "var(--arbor-green-ink)" : "var(--arbor-muted)",
-              border: `1px solid ${activeGoals.length > 0 ? "var(--arbor-clay-border)" : "var(--arbor-rule)"}`,
-            }}
-          >
-            <Icon name="target" size={14} />
-            {activeGoals.length === 0
-              ? t("elev.growth.play.setFocus")
-              : activeGoals.length === 1
-                ? t("elev.growth.play.goalsOne")
-                : t("elev.growth.play.goalsMany", { n: activeGoals.length })}
-          </button>
         </div>
+        <div className="mt-3 max-w-[640px]"><GoalFocusLine goals={activeGoals} testId="daily-play-goals-edit" onClick={() => setGoalModalOwner(childProfile.id)} /></div>
       </header>
 
       {/* CI-30: DailyPlanCard hero — goal-linked daily plan, mounts above existing CourseCard.
@@ -307,7 +289,7 @@ export default function DailyPlayTab() {
         {dailyPlan && <div className="mb-1.5"><AgeChip profile={childProfile} /></div>}
         <DailyPlanCard
           plan={dailyPlan}
-          noGoal={activeGoals.length === 0}
+          noGoal={!goal}
           childName={firstName}
           done={planDone}
           onDid={handlePlanDid}
@@ -316,7 +298,7 @@ export default function DailyPlayTab() {
           sessionLength={planSessionLength}
           onSessionLengthChange={handlePlanSessionLength}
           ageYears={ageYearsOf(childProfile)}
-          onSetGoal={() => setGoalModalOpen(true)}
+          onSetGoal={() => setGoalModalOwner(childProfile.id)}
         />
       </div>
 
@@ -400,8 +382,8 @@ export default function DailyPlayTab() {
               onCoach={coach}
               concernLabel={p.reason === "concern-match" ? playDomainLabel(p.activity.domain, uiLang, p.activity.id) : undefined}
               goalLabel={
-                p.reason === "goal-match"
-                  ? activeGoals.find((g) => g.domainId === p.activity.domain)?.label
+                p.reason === "goal-match" && goal?.domainId === p.activity.domain
+                  ? goalLabel(goal, t)
                   : undefined
               }
               sessionLength={sessionLength}
@@ -420,14 +402,14 @@ export default function DailyPlayTab() {
       </button>
 
       {/* CI-28: Goal Builder modal — opened via Goals chip in the header */}
-      <GoalBuilderModal
-        open={goalModalOpen}
-        onClose={() => setGoalModalOpen(false)}
+      {goalModalOwner === childProfile.id && <GoalBuilderModal
+        key={childProfile.id}
+        open
+        childId={childProfile.id}
+        onClose={() => setGoalModalOwner(null)}
         childName={firstName}
-        activeGoals={activeGoals}
-        onSave={handleSaveGoals}
         behaviorLogs={behaviorLogs}
-      />
+      />}
     </motion.div>
   );
 }
