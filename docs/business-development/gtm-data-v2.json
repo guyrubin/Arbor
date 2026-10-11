@@ -17,7 +17,8 @@
     "brief_en": "https://docs.google.com/document/d/1X0mdpeFHajecqoNF3f96TaXy-NX2VvRkBKtuQ4y8eoM/edit",
     "brief_he": "https://docs.google.com/document/d/1GqeYSY8lhtHjoKpy-OE1kBoxV8Uq26SHe5WK5rhvK0o/edit",
     "sheet": "https://docs.google.com/spreadsheets/d/1XEKTo4UlIHICidtYqkXD0e-ee8GDhIMaKg1QSHRfGNM/edit",
-    "root": "https://drive.google.com/drive/folders/1F-Klz2CUSQHh0qDscFCPwy8AdHAyUS_v"
+    "root": "https://drive.google.com/drive/folders/1F-Klz2CUSQHh0qDscFCPwy8AdHAyUS_v",
+    "github": "https://github.com/guyrubin/Arbor/blob/main/docs/business-development/README.md"
   },
   "sheets": {
     "GTM": {
@@ -2896,5 +2897,6 @@
     "experiments": 7,
     "actions": 20,
     "formulaErrors": []
-  }
+  },
+  "renewalEligibilityNote": "Actual second-charge eligible paying households, including charges outside the D30 conversion window; not restricted to paid-D30 count."
 }

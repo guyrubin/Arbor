@@ -61,3 +61,7 @@ Partnerships — מקור יחיד לסטטוס הקשר והיסטוריית ה
 [תקציר לשותף בעברית](https://docs.google.com/document/d/1GqeYSY8lhtHjoKpy-OE1kBoxV8Uq26SHe5WK5rhvK0o/edit?usp=drivesdk)
 
 [תקציר לשותף באנגלית](https://docs.google.com/document/d/1X0mdpeFHajecqoNF3f96TaXy-NX2VvRkBKtuQ4y8eoM/edit?usp=drivesdk)
+
+[GitHub — תוכנית GTM, נתוני המעקב ובקלוג BD לסשנים האחרים](https://github.com/guyrubin/Arbor/blob/main/docs/business-development/README.md)
+
+JG מחזיק את המעקב החי; GitHub מחזיק את גרסת התוכנית והגדרות המדידה. שינוי בהנחות, יעדים או scope מחייב עדכון בשני המקומות. אין אישור שחרור או תוצאות מסחריות בעצם הסנכרון.
