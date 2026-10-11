@@ -31,6 +31,7 @@ function setup(lang: "en" | "he" = "en") {
     useNowLoop: () => ({ plan: { order: [] }, blockNotices: [], evening: false, rhythm: {} }), useLastVisit: () => ({}), useLifecycleMoment: () => ({}), useCompanionOffer: () => ({}),
     availableHardMomentCards: () => [], ageMonthsFromProfile: () => 48, formatChildAge: () => "", childPicture: () => ({}), trackCompanionPlaceOpen: vi.fn(), markPracticeShown: vi.fn(), trackActionOffered: vi.fn(),
     Avatar: "avatar", Icon: "icon", PrimaryMove: "primary-move", Receipt: "receipt", UrgentSupport: "urgent-support", NowRecommendation: "recommendation", NowMoreForToday: "more", NowNoticeBlock: "notice", NowTonightPointer: "tonight-pointer", TOGETHER_ART: {},
+    useObservations: () => [], NowQuestionRow: "question-row", NowPlanFrame: "plan-frame", NowKidWorld: "kid-world", NowWeekSoFar: "week-so-far",
   };
   const renderContent = new Function(...Object.keys(env), code)(...Object.values(env));
   let tree: React.ReactNode;

@@ -182,7 +182,8 @@ describe("Now's restored recommendations and one conversation entrance", () => {
   });
   it("offers a deliberate weekly reflection door without adding a competing primary action", () => {
     const html = renderToStaticMarkup(<NowView />);
-    const weekly = state.buttons.find(item => item.className === "now-weekly-door");
+    // v3: the door is the week card's Report link.
+    const weekly = state.buttons.find(item => item["data-testid"] === "now-week-report");
     expect(weekly).toBeDefined(); weekly!.onClick?.();
     expect(state.setActiveTab).toHaveBeenCalledWith("weekly");
     expect(html).toContain(NOW_COPY.en.weeklyTitle);

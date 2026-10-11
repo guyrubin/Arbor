@@ -448,8 +448,10 @@ export default function Shell() {
               drawer any more). Navy active fill / white inactive with a hairline
               border, sticky to the top of the scroll region. The first pill of
               each section is its Overview/hub. Renders only when there is more
-              than one capability. */}
-          {!isCompanionHome(activeTab) && pillRowFor(section, activeTab).length > 1 && (
+              than one capability. v3 (11 Oct 2026): Now carries the row too
+              (Now · … · Weekly Report); My child and Together stay bare until
+              their own v3 slices. Its first pill is the place, named as such. */}
+          {(!isCompanionHome(activeTab) || activeTab === "overview") && pillRowFor(section, activeTab).length > 1 && (
             <div
               role="tablist"
               data-testid="secondary-sibling-nav"
@@ -497,7 +499,9 @@ export default function Shell() {
                         : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }),
                     }}
                   >
-                    <Icon name={it.msIcon} size={14} /> {t("nav.tab." + it.tab)}
+                    {it.tab === "overview"
+                      ? <><Icon name={placeForTab(it.tab).icon} size={14} /> {uiLang === "he" ? placeForTab(it.tab).he : placeForTab(it.tab).en}</>
+                      : <><Icon name={it.msIcon} size={14} /> {t("nav.tab." + it.tab)}</>}
                   </button>
                 );
               })}

@@ -14,6 +14,7 @@ import { dailyPlayForNow, focusSignalsForNow } from "./nowRecommendationModel";
 import { NOW_COPY } from "./nowViewCopy";
 import { trackActionOffered } from "../../lib/loopEvents";
 import { PendingLine } from "../ui/Receipt";
+import NowPlanFrame from "./NowPlanFrame";
 
 /** Mounted only when a chosen step/program does not already lead Now. The
  * parent keys this by child/language, so cached or in-flight AI from another
@@ -81,14 +82,19 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
     setStepsOpen(false);
   };
 
-  return <section className="now-lead arbor-depth-primary" data-module="now-recommendation" data-recommendation-source={useAi ? "ai" : "library"} aria-labelledby={`${id}-title`}>
+  // v3: the screened "say this" words are the plan card's face; there is no second copy below.
+  const say = useAi && focus?.sayThis ? t("elev.loop.ms.quoted", { text: focus.sayThis }) : null;
+  return <NowPlanFrame kind="recommendation" tag={copy.planTag.recommendation} say={say}>
+  <section className="now-lead arbor-depth-primary" data-module="now-recommendation" data-recommendation-source={useAi ? "ai" : "library"} aria-labelledby={`${id}-title`}>
     <div className="now-lead-band">
       <span className="now-glyph" aria-hidden="true"><Icon name={useAi ? "auto_awesome" : "favorite"} size={24} /></span>
       <div><p className="companion-eyebrow">{copy.recommendation}</p><p className="now-provenance">{useAi ? "Arbor" : copy.curated}</p></div>
       {!useAi && activity && <span className="now-duration"><Icon name="schedule" size={16} />{copy.minutes(activity.durationMin)}</span>}
     </div>
     <h2 id={`${id}-title`} className="now-lead-title" dir="auto">{headline}</h2>
-    {(useAi || activity) && <div className="now-why"><Icon name="info" size={17} aria-hidden="true" /><div><p><b>{copy.why}</b> <span dir="auto">{why}</span></p><TrustLink surface="today-focus" /></div></div>}
+    {(useAi || activity) && <details className="now-why-details"><summary><Icon name="auto_awesome" size={18} />{copy.whySuggestion}<Icon name="expand_more" size={18} /></summary>
+      <div className="now-why"><Icon name="info" size={17} aria-hidden="true" /><div><p><b>{copy.why}</b> <span dir="auto">{why}</span></p><TrustLink surface="today-focus" /></div></div>
+    </details>}
     {body && <p className="now-lead-body" dir="auto">{body}</p>}
 
     {!useAi && activity && stepsOpen && <div className="now-activity-steps" id={`${id}-steps`}>
@@ -104,7 +110,6 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
       {(useAi || activity) && <button type="button" className="companion-text-button" onClick={() => onTalkOpen(copy.adaptPrompt(useAi ? aiStep! : `${activity!.title}. ${activity!.steps.join(" ")}`))}>{copy.adapt}<Icon name="chat_bubble" size={17} /></button>}
     </div>
     {saveError && <p className="now-inline-status" role="alert">{copy.saveError}</p>}
-    {useAi && focus?.sayThis && <details className="now-say-details"><summary>{copy.say}<Icon name="expand_more" size={20} /></summary><div className="now-say"><blockquote dir="auto">{t("elev.loop.ms.quoted", { text: focus.sayThis })}</blockquote></div></details>}
 
     <div className="now-alternatives">
       {(useAi ? picks.length > 0 : picks.length > 1) && <button type="button" className="companion-text-button" onClick={another}>{copy.otherIdea}<Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" /></button>}
@@ -114,5 +119,6 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
         quiet and only after 400 ms (a cached focus never flashes it). */}
     <PendingLine active={loading && !useAi && !preferLibrary} testId="now-recommendation-pending" className="now-inline-status">{copy.loading}</PendingLine>
     {error && !useAi && <div className="now-inline-status" role="status"><p>{copy.focusError}</p><button type="button" className="companion-text-button" disabled={loading} onClick={() => void regenerate()}>{copy.retry}</button></div>}
-  </section>;
+  </section>
+  </NowPlanFrame>;
 }

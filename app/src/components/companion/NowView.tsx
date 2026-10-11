@@ -39,6 +39,10 @@ import { Avatar } from "../ui/Avatar";
 import "./companionExperience.css";
 import "./nowView.css";
 import { TOGETHER_ART } from "../../lib/parentArt";
+import { useObservations } from "../../hooks/useObservations";
+import NowQuestionRow from "./NowQuestionRow";
+import NowPlanFrame, { type NowPlanKind } from "./NowPlanFrame";
+import { NowKidWorld, NowWeekSoFar } from "./NowDayPanels";
 
 export interface NowViewProps {
   topic?: { id: string; title: string; intent?: string } | null;
@@ -91,7 +95,7 @@ const LIFECYCLE_NOTE: Partial<Record<string, string>> = {
   "first-moment": "elev.lifecycle.first.title",
 };
 
-function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
+function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewProps) {
   const { childProfile, actionLoop, seedCoach, setActiveTab, openCaptureSheet, openHardMomentNow,
     saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest } = useArbor();
   const { t, uiLang } = useLanguage();
@@ -129,6 +133,9 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
   const receipt = receiptAction?.scope === scopeLease ? receiptAction.action : null;
   const pendingAction = [...savingAction.current.values()].find(write => write.scope === scopeLease)?.action;
   const chosen = receipt ?? pendingAction ?? (retryAction?.scope === scopeLease ? retryAction.action : null) ?? action;
+  // v3: "Haven't tried yet" writes nothing; the step simply stays. This only acknowledges it.
+  const [notYetFor, setNotYetFor] = useState<string | null>(null);
+  const observations = useObservations();
   const [observationDraft, setObservationDraft] = useState<{ scope: object; id: string; words: string } | null>(null);
   const observationWords = observationDraft?.scope === scopeLease && observationDraft.id === chosen?.id ? observationDraft.words : "";
   const observation = !!chosen && isObservationAction(chosen);
@@ -207,6 +214,11 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
     if (!visit || isKidModeActive()) return;
     goToRoute("consult", { appointment: visit.id });
   };
+  // The lead the chain below actually draws (its guards included). Every lead but
+  // the recommendation (which frames itself, to show its own words) sits in the v3 plan card.
+  const shownLead: NowPlanKind = lead === "record" ? "record" : lead === "visit" && visit ? "visit" : lead === "tonight" ? "tonight"
+    : lead === "step" && chosen ? "step" : lead === "practice" && loop.pick ? "practice" : lead === "notice" ? "notice"
+      : lead === "program" && program ? "program" : "recommendation";
   const lifecycleKey = lifecycle.moment && todayOffer.offer?.kind === "what-changed" ? LIFECYCLE_NOTE[lifecycle.moment.kind] : undefined;
   const lifecycleNote = lifecycleKey ? t(lifecycleKey, { name }) : null;
   const ageText = formatChildAge(childProfile, t, now);
@@ -222,10 +234,12 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
         <h1 className="arbor-type-title">{copy.title(name)}</h1>
       </div>
     </header>
+    {(topic || onTopicOpen) && <NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} onTalk={talk} />}
 
-    <div className="now-main-grid">
-      <div className="now-main-column">
+    <div className="now-main-column">
         {lead === "practice" && <PracticeFocus now={now} journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
+        {/* The recommendation frames itself (its screened words face the art panel), so its frame here is bare. */}
+        <NowPlanFrame kind={shownLead} tag={copy.planTag[shownLead]} bare={shownLead === "recommendation"}>
         {lead === "record" ? <section className="now-loop-lead" data-module="now-record" aria-label={t("today.record.aria")}>
           {record.receipt ? <FromRecordReceipt /> : record.opener && <FromRecordCard opener={record.opener} childName={name} stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)} />}
           {record.saving && <p role="status" className="now-inline-status">{record.confirming ? t("elev.today.record.confirming") : copy.saving}</p>}
@@ -259,10 +273,13 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
             <div className="now-lead-actions"><PrimaryMove type="submit" className="companion-primary now-observation-save" disabled={saving || observationNeedsWords} aria-busy={saving}
               aria-describedby={!saving && observationNeedsWords ? `${id}-observation-required` : undefined}>{!saving && !observationNeedsWords && <Icon name="check" size={19} />}{saving ? copy.saving : t("ob.first.observation.keep")}</PrimaryMove></div>
           </form>)}
-          {!observation && !receipt && <div className="now-lead-actions" role="group" aria-label={copy.outcomes}>
+          {!observation && !receipt && <div className="now-lead-actions now-followup" role="group" aria-labelledby={`${id}-followup`}>
+            <p id={`${id}-followup`} className="now-followup-q"><Icon name="nightlight" size={18} />{copy.outcomes}</p>
             <PrimaryMove type="button" className="companion-primary" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.helped}</PrimaryMove>
-            <button type="button" className="companion-secondary" disabled={saving} onClick={() => void saveOutcome("not_today")}>{copy.notToday}</button>
+            <button type="button" className="companion-secondary" disabled={saving} onClick={() => void saveOutcome("not_today")}><Icon name="replay" size={18} />{copy.notToday}</button>
+            <button type="button" className="companion-secondary" disabled={saving} aria-pressed={notYetFor === chosen.id} onClick={() => setNotYetFor(chosen.id)}>{copy.notYet}</button>
           </div>}
+          {!observation && !receipt && notYetFor === chosen.id && <p role="status" className="now-inline-status">{copy.notYetAck}</p>}
           {!observation && <PrimaryMove primary={!!receipt} type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(chosen.recommendation))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></PrimaryMove>}
           {currentSaveError && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
         </section> : lead === "practice" && loop.pick ? <section className="now-loop-lead" data-module="today-practice" aria-label={copy.today}>
@@ -277,32 +294,32 @@ function NowContent({ topic, onTopicOpen, onTalkOpen }: NowViewProps) {
           <div className="now-lead-actions"><PrimaryMove type="button" className="companion-primary" onClick={openProgram}>{copy.continueProgram}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove></div>
           <button type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(program.content.skill[lang]))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></button>
         </section> : <NowRecommendation name={name} onTalkOpen={talk} journal={loop.journal} />}
+        </NowPlanFrame>
         {lifecycleNote && lead !== "practice" && <p className="now-lifecycle-note" role="note">{lifecycleNote}</p>}
 
         {showNotice && <div data-module="today-notice"><NowNoticeBlock loop={loop} name={name} practiceLeads={lead === "practice"} /></div>}
+    </div>
+
+    <NowKidWorld observations={observations} now={now} name={name} onAll={() => setActiveTab("development")} />
+
+    <div className="now-day-grid">
+      <NowWeekSoFar observations={observations} now={now} onReport={() => setActiveTab("weekly")} />
+      <section className="now-glance" aria-labelledby={`${id}-glance`}>
+        <h2 id={`${id}-glance`} className="now-kicker">{copy.glanceTitle}</h2>
+        {visit && lead !== "visit" && <button type="button" className="now-weekly-door now-glance-visit" onClick={openVisit}>
+          <Icon name="event" size={24} /><span><b dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</b><small>{copy.visitPrep}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
+        </button>}
         {showPointer && <NowTonightPointer onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }} />}
-
-        {hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}><Icon name="volunteer_activism" size={24} /><span><b>{copy.hardTitle}</b><small>{copy.hardBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>}
-      </div>
-
-      <aside className="now-side-column">
-        {/* General conversation lives in the persistent launcher. Only a real
-            saved question earns a contextual door here. */}
-        {topic && <section className="now-conversation" data-module="now-focus" aria-labelledby={`${id}-talk`}>
-          <p className="companion-eyebrow">{copy.topic}</p>
-          <h2 id={`${id}-talk`} dir="auto">{topic.title}</h2>
-          <button type="button" className="companion-text-button" onClick={() => talk(topic.title)}>{copy.continueTopic}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></button>
-        </section>}
-        {onTopicOpen && <button type="button" className="companion-text-button now-topics" onClick={onTopicOpen}><Icon name="bookmark" size={17} />{copy.topics}</button>}
-        <button type="button" className="now-weekly-door" onClick={() => setActiveTab("weekly")}><Icon name="calendar_month" size={24} /><span><b>{copy.weeklyTitle}</b><small>{copy.weeklyBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
-        <NowMoreForToday now={loop.now} evening={loop.evening} storyFits={loop.storyFits} rhythmDaysNeeded={loop.rhythm.daysNeeded}
-          keepsakeDocs={loop.keepsakeDocs} previousVisitAt={previousVisitAt} isReturning={isReturning} todayOffer={todayOffer} suppressVisit={lead === "visit"} suppressSayBack={lead === "record"} />
-        {/* B-PROG-03: the program is Today's frame — one line beside the practice, never a second lead. */}
+        {/* B-PROG-03: the program is Today's frame: one line beside the practice, never a second lead. */}
         {program && lead !== "program" && <button type="button" className="now-weekly-door now-program-line" data-testid="now-program-line" onClick={openProgram}>
           <Icon name="menu_book" size={24} /><span><b>{copy.programLabel}</b><small dir="auto">{program.content.skill[lang]}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
         </button>}
-      </aside>
+        {hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}><Icon name="volunteer_activism" size={24} /><span><b>{copy.hardTitle}</b><small>{copy.hardBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>}
+        <button type="button" className="now-weekly-door now-glance-reminders" onClick={() => setActiveTab("smart-reminders")}><Icon name="notifications" size={24} /><span><b>{copy.remindersTitle}</b><small>{copy.remindersBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
+      </section>
     </div>
+    <NowMoreForToday now={loop.now} evening={loop.evening} storyFits={loop.storyFits} rhythmDaysNeeded={loop.rhythm.daysNeeded}
+      keepsakeDocs={loop.keepsakeDocs} previousVisitAt={previousVisitAt} isReturning={isReturning} todayOffer={todayOffer} suppressVisit={lead === "visit" || !!visit} suppressSayBack={lead === "record"} />
 
     {/* Navigation to the other two places: chrome, never a counted module. */}
     <nav className="now-open-doors" aria-label={t("companion.now-view.understand-more-with-support")}>

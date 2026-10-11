@@ -898,7 +898,7 @@ function useArborState() {
   };
   const updateFamilyTopic = async (...args: Parameters<typeof topicState.updateFamilyTopic>) => {
     await topicState.updateFamilyTopic(...args);
-    if (currentChildRef.current === childProfile.id && args[1].status === "archived" && activeFamilyTopic?.id === args[0]) newConversation();
+    if (currentChildRef.current === childProfile.id && (args[1].status === "archived" || args[1].aside) && activeFamilyTopic?.id === args[0]) newConversation();
   };
   const prepareTopicConversation = () => {
     const next = threadForTopic({ id: activeConversationId, topicId: conversationTopicRef.current, messages: chatMessages }, activeFamilyTopic?.id);

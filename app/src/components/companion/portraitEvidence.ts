@@ -5,7 +5,8 @@ import { PORTRAIT_COPY } from "./portraitCopy";
 
 export type EvidenceLine = { label: string; text: string };
 
-const activities: Record<string, [string, string]> = {
+/** Kid-world practice kinds in the parent's words (EN, HE); shared with Now's world strip. */
+export const PRACTICE_ACTIVITY_LABELS: Record<string, [string, string]> = {
   "emotion-id": ["Naming feelings", "לתת שם לרגשות"], "emotion-why": ["Exploring feelings", "להכיר רגשות"],
   calm: ["Calm breathing", "נשימה מרגיעה"], memory: ["Memory game", "משחק זיכרון"],
   "vocab-naming": ["Naming words", "לקרוא לדברים בשם"], "vocab-category": ["Sorting words", "למיין מילים"],
@@ -38,7 +39,7 @@ export function portraitEvidenceLines(observation: Observation, sources: Observa
   }
   if (observation.origin === "practiceEvents") {
     const row = sources.practiceEvents?.find(item => item.id === id);
-    const label = row && activities[row.kind];
+    const label = row && PRACTICE_ACTIVITY_LABELS[row.kind];
     if (label) add(c.activity, label[he ? 1 : 0]);
     add(c.observation, row?.emotion);
   }

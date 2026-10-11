@@ -8,6 +8,8 @@ export interface FamilyTopic {
   observationIds: string[];
   createdAt: string;
   updatedAt: string;
+  /** v3 Now: an active question the parent set aside — kept, but out of the quick row. */
+  asideAt?: string;
 }
 
 export function makeFamilyTopic(input: {
@@ -27,5 +29,11 @@ export function makeFamilyTopic(input: {
 
 export function activeTopicsFor(items: readonly FamilyTopic[], childId: string): FamilyTopic[] {
   return items.filter(topic => topic.childId === childId && topic.status === "active")
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+/** Finished questions, newest first: the sheet's "finished" list, never Now's row. */
+export function archivedTopicsFor(items: readonly FamilyTopic[], childId: string): FamilyTopic[] {
+  return items.filter(topic => topic.childId === childId && topic.status === "archived")
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }

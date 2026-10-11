@@ -6,6 +6,8 @@ import { Sheet } from "../ui/Sheet";
 import { Icon } from "../ui/Icon";
 import type { FamilyTopic } from "../../lib/familyTopics";
 import type { Observation } from "../../lib/observations";
+import "./companionExperience.css";
+import "./familyTopicSheet.css";
 
 function sourceLabel(observation: Observation, t: (key: string) => string): string {
   const v = observation.value;
@@ -22,76 +24,133 @@ function sourceLabel(observation: Observation, t: (key: string) => string): stri
   }
 }
 
-/** A question links existing records; it never creates inferred child facts. */
+const INTENTS: readonly FamilyTopic["intent"][] = ["understand", "support", "enjoy"];
+const INTENT_ICON: Record<FamilyTopic["intent"], string> = { understand: "lightbulb", support: "volunteer_activism", enjoy: "favorite" };
+const INTENT_KEY: Record<FamilyTopic["intent"], string> = {
+  understand: "companion.family-topic-sheet.intent.understand", support: "companion.family-topic-sheet.intent.support", enjoy: "companion.family-topic-sheet.intent.enjoy",
+};
+
+/**
+ * v3 "All questions" (11 Oct 2026): every saved question on its own row —
+ * tap to make it active; edit, set aside or finish it in place. Nothing is
+ * deleted: a finished question keeps its records and can be brought back.
+ * A question links existing records; it never creates inferred child facts.
+ */
 export default function FamilyTopicSheet({ onClose, draft, observationIds = [], startNew = false }: {
   onClose: () => void; draft?: string; observationIds?: string[]; startNew?: boolean;
 }) {
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
-  const { childProfile, familyTopics, activeFamilyTopic, createFamilyTopic, updateFamilyTopic,
+  const { childProfile, familyTopics, archivedFamilyTopics = [], activeFamilyTopic, createFamilyTopic, updateFamilyTopic,
     selectFamilyTopic, actionLoop, conversations, openConversation, newConversation, seedCoach, setActiveTab } = useArbor();
-  const [creating, setCreating] = useState(startNew || !activeFamilyTopic);
-  const [title, setTitle] = useState(draft ?? activeFamilyTopic?.title ?? "");
-  const [intent, setIntent] = useState<FamilyTopic["intent"]>(activeFamilyTopic?.intent ?? "understand");
-  const [busy, setBusy] = useState(false);
+  // null = the list; "new" = a new question; otherwise the id being edited.
+  const [editing, setEditing] = useState<string | null>(startNew || !familyTopics.length ? "new" : null);
+  const [title, setTitle] = useState(draft ?? "");
+  const [intent, setIntent] = useState<FamilyTopic["intent"]>("understand");
+  const [showFinished, setShowFinished] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const observations = useObservations();
-  const topic = creating ? null : activeFamilyTopic;
+  const topic = activeFamilyTopic;
   const evidence = topic ? observations.filter(item => topic.observationIds.includes(item.id)) : [];
   const actions = topic ? actionLoop.filter(item => item.topicId === topic.id) : [];
   const threads = topic ? conversations.filter(item => item.topicId === topic.id) : [];
-  const button = "min-h-11 rounded-xl px-4 py-3 text-sm font-semibold text-start";
-  async function save() {
-    setBusy(true); setError(false);
-    try {
-      if (creating) await createFamilyTopic(title, observationIds, intent);
-      else if (topic) await updateFamilyTopic(topic.id, { title, intent });
-      setCreating(false);
-    } catch { setError(true); } finally { setBusy(false); }
+  const rows = showFinished ? [...familyTopics, ...archivedFamilyTopics] : familyTopics;
+
+  // Every write waits for the store: a row changes only once its record is saved.
+  async function run(key: string, task: () => Promise<unknown>) {
+    setBusy(key); setError(false);
+    try { await task(); return true; } catch { setError(true); return false; } finally { setBusy(null); }
   }
+  function startEdit(item: FamilyTopic | null) {
+    setEditing(item ? item.id : "new"); setTitle(item?.title ?? ""); setIntent(item?.intent ?? "understand"); setError(false);
+  }
+  async function save() {
+    const words = title.trim();
+    if (!words || !editing) return;
+    const done = await run(editing, () => editing === "new" ? createFamilyTopic(words, observationIds, intent) : updateFamilyTopic(editing, { title: words, intent }));
+    if (done) { setEditing(null); setTitle(""); }
+  }
+  async function pick(item: FamilyTopic) {
+    // Choosing a set-aside question brings it back to the quick row first.
+    if (item.asideAt && !await run(item.id, () => updateFamilyTopic(item.id, { aside: false }))) return;
+    selectFamilyTopic(item.id);
+  }
+
   return <Sheet open onClose={onClose} title={t("companion.family-topic-sheet.what-we-re-exploring")}>
-    <div className="space-y-6 pb-4" dir={he ? "rtl" : "ltr"}>
-      <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("companion.family-topic-sheet.a-question-you-chose-for-it-connects-the-r", { value0: childProfile.name })}</p>
-      {familyTopics.length > 0 && <div className="flex flex-wrap gap-2" aria-label={t("companion.family-topic-sheet.our-questions")}>
-        {familyTopics.map(item => <button key={item.id} className={button} aria-pressed={!creating && topic?.id === item.id}
-          style={{ background: !creating && topic?.id === item.id ? "var(--arbor-clay-dim)" : "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
-          onClick={() => { selectFamilyTopic(item.id); setTitle(item.title); setIntent(item.intent); setCreating(false); setError(false); }}>{item.title}</button>)}
-        <button className={button} onClick={() => { setCreating(true); setTitle(""); setIntent("understand"); }}>{t("companion.family-topic-sheet.new-question")}</button>
-      </div>}
-      <form onSubmit={event => { event.preventDefault(); void save(); }} className="space-y-3">
-        <label htmlFor="family-question-title" className="block font-semibold text-sm">{t("companion.family-topic-sheet.in-your-words")}</label>
-        <textarea id="family-question-title" value={title} onChange={event => setTitle(event.target.value)} maxLength={160} required rows={2}
-          placeholder={t("companion.family-topic-sheet.for-example-how-could-mornings-feel-easier")}
-          className="w-full rounded-xl p-3 text-base" style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}/>
-        <fieldset><legend className="text-sm mb-2">{t("companion.family-topic-sheet.what-would-you-like")}</legend>
-          <div className="flex flex-wrap gap-2">{([
-            { id: "understand", en: "Understand", he: "להבין" }, { id: "support", en: "Find a way forward", he: "למצוא דרך" }, { id: "enjoy", en: "Enjoy together", he: "ליהנות יחד" },
-          ] as const).map(option => <button key={option.id} type="button" className={button} aria-pressed={intent === option.id} onClick={() => setIntent(option.id)}
-            style={{ background: intent === option.id ? "var(--arbor-clay-dim)" : "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>{he ? option.he : option.en}</button>)}</div>
+    <div className="topic-sheet" dir={he ? "rtl" : "ltr"}>
+      <p className="topic-sheet-sub">{t("companion.family-topic-sheet.a-question-you-chose-for-it-connects-the-r", { value0: childProfile.name })}</p>
+
+      {rows.length > 0 && <ul className="topic-rows" aria-label={t("companion.family-topic-sheet.our-questions")}>
+        {rows.map(item => {
+          const finished = item.status === "archived";
+          const active = !finished && topic?.id === item.id;
+          const name = { value0: item.title };
+          return <li key={item.id} className="topic-row" data-active={active || undefined} data-muted={finished || !!item.asideAt || undefined}>
+            <button type="button" className="topic-row-pick" aria-pressed={active} disabled={finished || busy === item.id} onClick={() => void pick(item)}>
+              <Icon name={INTENT_ICON[item.intent] ?? "help"} size={20} /><span dir="auto">{item.title}</span>
+            </button>
+            {active && <span className="topic-tag topic-tag-active">{t("companion.family-topic-sheet.tag.active")}</span>}
+            {!finished && item.asideAt && <span className="topic-tag">{t("companion.family-topic-sheet.tag.aside")}</span>}
+            {finished && <span className="topic-tag topic-tag-finished">{t("companion.family-topic-sheet.tag.finished")}</span>}
+            {!finished && <button type="button" className="topic-row-tool" aria-label={t("companion.family-topic-sheet.edit-named", name)} title={t("companion.family-topic-sheet.edit-named", name)} disabled={!!busy} onClick={() => startEdit(item)}><Icon name="edit" size={19} /></button>}
+            {!finished && <button type="button" className="topic-row-tool" disabled={!!busy}
+              aria-label={t(item.asideAt ? "companion.family-topic-sheet.bring-back-named" : "companion.family-topic-sheet.set-aside-named", name)}
+              title={t(item.asideAt ? "companion.family-topic-sheet.bring-back-named" : "companion.family-topic-sheet.set-aside-named", name)}
+              onClick={() => void run(item.id, () => updateFamilyTopic(item.id, { aside: !item.asideAt }))}><Icon name={item.asideAt ? "visibility" : "visibility_off"} size={19} /></button>}
+            <button type="button" className="topic-row-tool" disabled={!!busy}
+              aria-label={t(finished ? "companion.family-topic-sheet.bring-back-named" : "companion.family-topic-sheet.finish-named", name)}
+              title={t(finished ? "companion.family-topic-sheet.bring-back-named" : "companion.family-topic-sheet.finish-named", name)}
+              onClick={() => void run(item.id, () => updateFamilyTopic(item.id, { status: finished ? "active" : "archived" }))}><Icon name={finished ? "replay" : "task_alt"} size={19} /></button>
+          </li>;
+        })}
+      </ul>}
+
+      {editing && <form className="topic-edit" onSubmit={event => { event.preventDefault(); void save(); }}>
+        <label htmlFor="family-question-title" className="topic-edit-label">{t(editing === "new" ? "companion.family-topic-sheet.new-title" : "companion.family-topic-sheet.edit-title")}</label>
+        <textarea id="family-question-title" value={title} onChange={event => setTitle(event.target.value)} maxLength={160} required rows={2} dir="auto"
+          placeholder={t("companion.family-topic-sheet.for-example-how-could-mornings-feel-easier")} />
+        <fieldset><legend>{t("companion.family-topic-sheet.what-would-you-like")}</legend>
+          <div className="topic-intents">{INTENTS.map(option => <button key={option} type="button" aria-pressed={intent === option} onClick={() => setIntent(option)}>
+            <Icon name={INTENT_ICON[option]} size={17} />{t(INTENT_KEY[option])}</button>)}</div>
         </fieldset>
-        <button type="submit" disabled={busy || !title.trim()} className={button} style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
-          {busy ? (t("companion.family-topic-sheet.saving")) : creating ? (t("companion.family-topic-sheet.keep-this-question")) : (t("companion.family-topic-sheet.save-changes"))}</button>
-        {error && <p role="alert" className="text-sm">{t("companion.family-topic-sheet.that-change-wasn-t-saved-please-try-again")}</p>}
-      </form>
-      {topic && <>
-        <div className="grid gap-5" style={{ borderTop: "1px solid var(--arbor-rule)", paddingTop: 20 }}>
-          <section><h3 className="font-semibold flex items-center gap-2"><Icon name="edit_note" size={20}/>{t("companion.family-topic-sheet.what-we-recorded")}</h3>
-            {evidence.length ? evidence.map(item => <p key={item.id} className="mt-3 text-sm leading-relaxed" dir="auto"><time className="block text-xs" dateTime={item.at}>{new Date(item.at).toLocaleDateString(he ? "he-IL" : "en-GB")}</time>{sourceLabel(item, t)}</p>) : <p className="mt-2 text-sm" style={{ color: "var(--arbor-muted)" }}>{t("companion.family-topic-sheet.no-linked-records-yet-a-question-is-enough")}</p>}
-            <button className={button} onClick={() => { onClose(); setActiveTab("development"); }}>{t("companion.family-topic-sheet.see-the-whole-picture")}</button>
-          </section>
-          <section><h3 className="font-semibold">{t("companion.family-topic-sheet.what-we-chose-to-try")}</h3>
-            {actions.length ? actions.slice(0, 8).map(item => <div key={item.id} className="py-3 text-sm" style={{ borderBottom: "1px solid var(--arbor-rule)" }}><p dir="auto">{item.recommendation}</p><p className="mt-1 text-xs" style={{ color: "var(--arbor-muted)" }}>{item.outcome ? ({ helped: t("companion.family-topic-sheet.outcome.helped"), somewhat: t("companion.family-topic-sheet.outcome.somewhat"), not_today: t("companion.family-topic-sheet.outcome.not_today") })[item.outcome] : t("companion.family-topic-sheet.you-haven-t-shared-how-it-went-yet")}</p></div>) : <p className="mt-2 text-sm" style={{ color: "var(--arbor-muted)" }}>{t("companion.family-topic-sheet.a-step-you-choose-will-appear-here")}</p>}
-          </section>
-          <section><h3 className="font-semibold">{t("companion.family-topic-sheet.our-conversations")}</h3>
-            {threads.map(thread => <button key={thread.id} className={`${button} block w-full`} onClick={() => { openConversation(thread.id); onClose(); setActiveTab("coach"); }}>{thread.title}</button>)}
-            <button className={`${button} mt-2`} style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }} onClick={() => { newConversation(); seedCoach({ prompt: topic.title, source: "family-topic" }); onClose(); }}>{t("companion.family-topic-sheet.talk-this-through-with-arbor")}</button>
-          </section>
+        <div className="topic-edit-actions">
+          <button type="submit" className="companion-primary" disabled={!!busy || !title.trim()}><Icon name="check" size={18} />
+            {busy === editing ? t("companion.family-topic-sheet.saving") : editing === "new" ? t("companion.family-topic-sheet.keep-this-question") : t("companion.family-topic-sheet.save-changes")}</button>
+          {(familyTopics.length > 0 || editing !== "new") && <button type="button" className="companion-text-button" onClick={() => { setEditing(null); setTitle(""); setError(false); }}>{t("companion.family-topic-sheet.cancel")}</button>}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button className={button} onClick={() => { selectFamilyTopic(null); onClose(); }}>{t("companion.family-topic-sheet.set-aside-for-now")}</button>
-          <button disabled={busy} className={button} onClick={async () => { setBusy(true); try { await updateFamilyTopic(topic.id, { status: "archived" }); onClose(); } catch { setError(true); } finally { setBusy(false); } }}>{t("companion.family-topic-sheet.we-re-done-with-this-question")}</button>
+      </form>}
+      {error && <p role="alert" className="topic-sheet-error">{t("companion.family-topic-sheet.that-change-wasn-t-saved-please-try-again")}</p>}
+
+      <div className="topic-sheet-more">
+        {archivedFamilyTopics.length > 0 && <button type="button" className="companion-text-button" aria-expanded={showFinished} onClick={() => setShowFinished(value => !value)}>
+          {showFinished ? t("companion.family-topic-sheet.hide-finished") : t("companion.family-topic-sheet.show-finished", { value0: archivedFamilyTopics.length })}</button>}
+        {!editing && <button type="button" className="topic-new" onClick={() => startEdit(null)}><Icon name="add" size={20} />{t("companion.family-topic-sheet.new-question")}</button>}
+      </div>
+
+      {topic && <section className="topic-linked" aria-labelledby="family-question-linked">
+        <h3 id="family-question-linked" className="topic-linked-title" dir="auto">{t("companion.family-topic-sheet.linked-to", { value0: topic.title })}</h3>
+        <div className="topic-linked-grid">
+          <div><h4><Icon name="edit_note" size={18} />{t("companion.family-topic-sheet.what-we-recorded")}</h4>
+            {evidence.length ? evidence.map(item => <p key={item.id} className="topic-linked-row" dir="auto"><time dateTime={item.at}>{new Date(item.at).toLocaleDateString(he ? "he-IL" : "en-GB")}</time>{sourceLabel(item, t)}</p>)
+              : <p className="topic-linked-empty">{t("companion.family-topic-sheet.no-linked-records-yet-a-question-is-enough")}</p>}
+            <button type="button" className="companion-text-button" onClick={() => { onClose(); setActiveTab("development"); }}>{t("companion.family-topic-sheet.see-the-whole-picture")}</button>
+          </div>
+          <div><h4><Icon name="flag" size={18} />{t("companion.family-topic-sheet.what-we-chose-to-try")}</h4>
+            {actions.length ? actions.slice(0, 8).map(item => <div key={item.id} className="topic-linked-row"><p dir="auto">{item.recommendation}</p><small>{item.outcome ? ({ helped: t("companion.family-topic-sheet.outcome.helped"), somewhat: t("companion.family-topic-sheet.outcome.somewhat"), not_today: t("companion.family-topic-sheet.outcome.not_today") })[item.outcome] : t("companion.family-topic-sheet.you-haven-t-shared-how-it-went-yet")}</small></div>)
+              : <p className="topic-linked-empty">{t("companion.family-topic-sheet.a-step-you-choose-will-appear-here")}</p>}
+          </div>
+          <div><h4><Icon name="forum" size={18} />{t("companion.family-topic-sheet.our-conversations")}</h4>
+            {threads.map(thread => <button key={thread.id} type="button" className="topic-linked-row topic-linked-thread" dir="auto" onClick={() => { openConversation(thread.id); onClose(); setActiveTab("coach"); }}>{thread.title}</button>)}
+            <button type="button" className="companion-text-button" onClick={() => { newConversation(); seedCoach({ prompt: topic.title, source: "family-topic" }); onClose(); }}>{t("companion.family-topic-sheet.talk-this-through-with-arbor")}</button>
+          </div>
         </div>
-      </>}
+      </section>}
+
+      <div className="topic-sheet-foot">
+        <button type="button" className={editing ? "companion-secondary" : "companion-primary"} onClick={onClose}>{t("companion.family-topic-sheet.close")}</button>
+        <p>{t("companion.family-topic-sheet.manage-hint")}</p>
+      </div>
     </div>
   </Sheet>;
 }

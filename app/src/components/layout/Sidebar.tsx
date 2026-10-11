@@ -88,7 +88,9 @@ export default function Sidebar() {
           </button>;
         })}
         <div className="mt-5 pt-5 space-y-1" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+          {/* v3 (11 Oct 2026): Talk is a door again, beside the launcher that also opens it — no count badge (B-SHELL-26). */}
           {([
+            { tab: "coach", icon: "forum", en: "Talk with Arbor", he: "לדבר עם ארבור" },
             { tab: "masterclasses", icon: "school", en: "For you, the parent", he: "בשבילך, ההורה" },
             { tab: "consult", icon: "diversity_1", en: "Care, together", he: "יחד עם אנשי המקצוע" },
           ] as const).map(link => {
