@@ -378,6 +378,28 @@ export function sectionForTab(tab: ActiveTab): NavSection {
   return SECTIONS.find((s) => s.id === fallbackId) ?? SECTIONS[0];
 }
 
+/**
+ * v3 IA-04 (table A) — every route's v3 HOME: one of the three places a parent
+ * stands in (now · child · together) or one of the three doors they open
+ * (talk · learn · care). A route takes its hub's home, so a new route lands
+ * somewhere without a second edit; TAB_HOME names only the routes whose v3
+ * home differs from their hub's. lib/companionPlaces turns the id into its
+ * place or door (homeForTab) and into the place Back returns to (placeForTab).
+ * It lives here so companionPlaces keeps importing only this module and
+ * i18nCompanion. SECTIONS, TAB_SECTION_FALLBACK and the pill rows are
+ * untouched: a home is where a route belongs, not which hub highlights.
+ */
+export type HomeId = "now" | "child" | "together" | "talk" | "learn" | "care";
+const SECTION_HOME: Record<HubId, HomeId> = { today: "now", growth: "child", journal: "child", profile: "child", behaviors: "child", practice: "together", stories: "together", ask: "talk", learn: "learn", care: "care" };
+/** Daily Play is a Growth tool, but in v3 it is play the family shares, so it
+ *  lives in Together. plans and routines stay with Behaviors (My child) until
+ *  FEAT-07 moves them to Together, with the Together Routines entry. */
+const TAB_HOME: Partial<Record<ActiveTab, HomeId>> = { "daily-play": "together" };
+
+export function homeIdForTab(tab: ActiveTab): HomeId {
+  return TAB_HOME[tab] ?? SECTION_HOME[sectionForTab(tab).id];
+}
+
 export function primaryTabOf(section: NavSection): ActiveTab {
   return section.primaryTabs[0].tab;
 }

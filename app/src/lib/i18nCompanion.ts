@@ -296,6 +296,10 @@ export const companionEn = {
   "companion.place.together.detail": "Small moments. Shared discoveries.",
   // VIS-07: Together's first-time empty state (one sentence; the action reuses companion.portrait.capture).
   "companion.together-view.empty": "A good moment needs no other reason.",
+  // v3 IA-04: the three doors' names (COMPANION_DOORS in lib/companionPlaces).
+  "companion.door.talk": "Talk with Arbor",
+  "companion.door.learn": "For you, the parent",
+  "companion.door.care": "Care, together",
 };
 
 export const companionHe = {
@@ -594,4 +598,8 @@ export const companionHe = {
   "companion.place.together.detail": "רגעים קטנים, גילויים משותפים",
   // VIS-07: Together's first-time empty state (one sentence; the action reuses companion.portrait.capture).
   "companion.together-view.empty": "רגע טוב לא צריך שום סיבה אחרת.",
+  // v3 IA-04: the three doors' names (COMPANION_DOORS in lib/companionPlaces).
+  "companion.door.talk": "לדבר עם ארבור",
+  "companion.door.learn": "בשבילך, ההורה",
+  "companion.door.care": "יחד עם אנשי המקצוע",
 };
