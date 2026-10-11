@@ -296,6 +296,10 @@ export const companionEn = {
   "companion.place.together.detail": "Small moments. Shared discoveries.",
   // FEAT-05: the question chip in the conversation header opens the question sheet.
   "companion.topic-chip.open": "Open our questions: {value0}",
+  // v3 IA-04: the three doors' names (COMPANION_DOORS in lib/companionPlaces).
+  "companion.door.talk": "Talk with Arbor",
+  "companion.door.learn": "For you, the parent",
+  "companion.door.care": "Care, together",
 };
 
 export const companionHe = {
@@ -594,4 +598,10 @@ export const companionHe = {
   "companion.place.together.detail": "רגעים קטנים, גילויים משותפים",
   // FEAT-05: the question chip in the conversation header opens the question sheet.
   "companion.topic-chip.open": "לפתוח את השאלות שלנו: {value0}",
+  // v3 IA-04: the three doors' names (COMPANION_DOORS in lib/companionPlaces).
+  // v3 IA-01: Learn and Care take the v3 names, in the plural address the
+  // companion copy uses.
+  "companion.door.talk": "לדבר עם ארבור",
+  "companion.door.learn": "בשבילכם, ההורים",
+  "companion.door.care": "טיפול, ביחד",
 };

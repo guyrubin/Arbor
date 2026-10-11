@@ -9,6 +9,9 @@ export type NavItem = {
    *  destination — components/ui/iconFamily.guard.test.ts fails when two
    *  different destinations share one. */
   msIcon: string;
+  /** v3 IA-02: the pill's own short label key, when the nav.tab.<tab> name is
+   *  too long for a pill or repeats the place it sits in. Absent → nav.tab.<tab>. */
+  labelKey?: string;
 };
 /** Generalized sidebar badge: the two legacy app-state badges
  *  ("milestone" | "plans") OR a free-form { kind: "count" } slot that any
@@ -363,12 +366,52 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
  * attribution dashboard keeps its Care highlight (TAB_SECTION_FALLBACK) but is
  * not a Care capability a parent moves between, so it does not wear the Care
  * pills. Shell renders `pillRowFor`, never `hubTabsForSection` directly.
+ * v3 IA-02: the record's two densities (#/journal Feed, #/timeline Story)
+ * carry their own Feed · Story tablist (TimelineTab). A My child row above it
+ * would be a second nav over the same two routes under other names (the
+ * release capture's NO_DUPLICATE_SHELL_NAV), so they keep Back to My child
+ * and stay in the My child row as doors from its other pages.
  */
-export const NO_PILL_ROW_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>(["attribution"]);
+export const NO_PILL_ROW_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>(["attribution", "journal", "timeline"]);
 
-/** The pill row Shell renders for `tab` inside `section` (empty = none). */
-export function pillRowFor(section: NavSection, tab: ActiveTab): NavItem[] {
-  return NO_PILL_ROW_TABS.has(tab) ? [] : hubTabsForSection(section);
+/**
+ * v3 IA-02 (table A) — the pill row of each place a parent stands in, and the
+ * ONLY rendered pill order for a route whose home is that place. SECTIONS stays
+ * the hub index for More and search; its hub rows still serve the doors (Care,
+ * For you, the parent) until their own v3 rows. The place's home pill leads,
+ * then at most six. Together has no Shell row: its first level is the in-page
+ * filter row on #/practice (TogetherView), so a second row would repeat it.
+ * One glyph per destination, checked with SECTIONS by
+ * components/ui/iconFamily.guard.test.ts; `history` stays Talk's.
+ */
+export type PillPlace = "now" | "child";
+export const PLACE_PILLS: Readonly<Record<PillPlace, readonly NavItem[]>> = {
+  now: [
+    // The home pill is drawn from lib/companionPlaces (the place's own glyph
+    // and name); this glyph only keeps the row's one-glyph check whole.
+    { tab: "overview", label: "Now", msIcon: "home" },
+    { tab: "weekly", label: "Weekly report", msIcon: "bar_chart", labelKey: "nav.pill.weekly" },
+    { tab: "day-windows", label: "Day windows", msIcon: "schedule", labelKey: "nav.pill.day-windows" },
+    { tab: "smart-reminders", label: "Reminders", msIcon: "notifications", labelKey: "nav.pill.reminders" },
+  ],
+  child: [
+    { tab: "development", label: "Development map", msIcon: "map", labelKey: "nav.pill.development" },
+    { tab: "milestones", label: "Milestones", msIcon: "check_circle" },
+    { tab: "language", label: "Language", msIcon: "translate", labelKey: "nav.pill.language" },
+    { tab: "timeline", label: "Portrait", msIcon: "photo_library", labelKey: "nav.pill.portrait" },
+    { tab: "journal", label: "Journal", msIcon: "edit_note" },
+    { tab: "behaviors", label: "Moments", msIcon: "monitoring" },
+    { tab: "profile", label: "Profile", msIcon: "person", labelKey: "nav.pill.profile" },
+  ],
+};
+
+/** The pill row Shell renders for `tab` inside `section` (empty = none): its
+ *  place's row (v3 IA-02), none in Together, else the door's hub row. */
+export function pillRowFor(section: NavSection, tab: ActiveTab): readonly NavItem[] {
+  if (NO_PILL_ROW_TABS.has(tab)) return [];
+  const home = homeIdForTab(tab);
+  if (home === "now" || home === "child") return PLACE_PILLS[home];
+  return home === "together" ? [] : hubTabsForSection(section);
 }
 
 export function sectionForTab(tab: ActiveTab): NavSection {
@@ -376,6 +419,29 @@ export function sectionForTab(tab: ActiveTab): NavSection {
   if (direct) return direct;
   const fallbackId = TAB_SECTION_FALLBACK[tab];
   return SECTIONS.find((s) => s.id === fallbackId) ?? SECTIONS[0];
+}
+
+/**
+ * v3 IA-04 (table A) — every route's v3 HOME: one of the three places a parent
+ * stands in (now · child · together) or one of the three doors they open
+ * (talk · learn · care). A route takes its hub's home, so a new route lands
+ * somewhere without a second edit; TAB_HOME names only the routes whose v3
+ * home differs from their hub's. lib/companionPlaces turns the id into its
+ * place or door (homeForTab) and into the place Back returns to (placeForTab).
+ * It lives here so companionPlaces keeps importing only this module and
+ * i18nCompanion. SECTIONS and TAB_SECTION_FALLBACK are untouched: a home is
+ * where a route belongs, not which hub highlights. v3 IA-02: the home also
+ * picks the pill row (pillRowFor → PLACE_PILLS).
+ */
+export type HomeId = "now" | "child" | "together" | "talk" | "learn" | "care";
+const SECTION_HOME: Record<HubId, HomeId> = { today: "now", growth: "child", journal: "child", profile: "child", behaviors: "child", practice: "together", stories: "together", ask: "talk", learn: "learn", care: "care" };
+/** Daily Play is a Growth tool, but in v3 it is play the family shares, so it
+ *  lives in Together. plans and routines stay with Behaviors (My child) until
+ *  FEAT-07 moves them to Together, with the Together Routines entry. */
+const TAB_HOME: Partial<Record<ActiveTab, HomeId>> = { "daily-play": "together" };
+
+export function homeIdForTab(tab: ActiveTab): HomeId {
+  return TAB_HOME[tab] ?? SECTION_HOME[sectionForTab(tab).id];
 }
 
 export function primaryTabOf(section: NavSection): ActiveTab {
