@@ -151,7 +151,7 @@ describe("#/weekly — the week's glance (v3 EXTRA-WEEKLY)", () => {
     it(`${lang}: no share, no ratio, no trend sign on the page`, () => {
       const html = render(lang, [stored(lang, "ai")]);
       const glance = html.slice(html.indexOf('data-module="weekly-glance"'));
-      const read = glance.replace(/<span class="msr"[^>]*>[a-z_]+<\/span>/g, " ").replace(/<[^>]+>/g, " ").replace(/&[#\w]+;/g, " ");
+      const read = glance.replace(/<span class="msr"[^>]*>[a-z0-9_]+<\/span>/g, " ").replace(/<[^>]+>/g, " ").replace(/&[#\w]+;/g, " ");
       expect(read).not.toMatch(/%|\d\s*\/\s*\d|\+\s*\d/);
     });
   }

@@ -56,12 +56,12 @@ const render = (lang: "en" | "he", glance = GLANCE) => {
   state.lang = lang;
   return renderToStaticMarkup(<WeekGlance glance={glance} />);
 };
-/** What a reader meets: glyph ligatures (aria-hidden), tags and entities out, whitespace collapsed (the screen-reader table included). */
+/** What a reader meets: glyph ligatures (aria-hidden; some carry a digit, e.g. diversity_3), tags and entities out, whitespace collapsed (the screen-reader table included). */
 const text = (html: string) => html
-  .replace(/<span class="msr"[^>]*>[a-z_]+<\/span>/g, " ")
+  .replace(/<span class="msr"[^>]*>[a-z0-9_]+<\/span>/g, " ")
   .replace(/<[^>]+>/g, " ").replace(/&[#\w]+;/g, " ").replace(/\s+/g, " ").trim();
 /** The Material Symbols ligatures rendered, in order. */
-const glyphs = (html: string) => [...html.matchAll(/<span class="msr"[^>]*>([a-z_]+)<\/span>/g)].map((m) => m[1]);
+const glyphs = (html: string) => [...html.matchAll(/<span class="msr"[^>]*>([a-z0-9_]+)<\/span>/g)].map((m) => m[1]);
 const strip = (code: string) => code.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 beforeEach(() => { state.lang = "en"; });
