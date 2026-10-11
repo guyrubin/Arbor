@@ -12,14 +12,13 @@
  * only and is never imported under kidmode/ outside its own files).
  */
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth, firebaseEnabled } from "../../../lib/firebase";
+import { firebaseEnabled } from "../../../lib/firebase";
 import { resolveHeroUrl } from "../../../lib/heroIdentity";
 import { heroAvatarHash, stockHeroSheetUrl } from "../../../lib/heroSheetContract";
 import { fetchProofJson } from "../proofAssets";
 import { devPlaceholderSheet } from "./devPlaceholderSheet";
 import { loadProofHeroSheet, parseHeroSheet, readStoredHeroSheet, type HeroSheet } from "./heroSheet";
-import { sheetFromDocs, subscribeHeroSheetDocs, type HeroSheetDocs } from "../../../lib/heroSheetStore";
+import { heroSheetOwnerKey, sheetFromDocs, subscribeHeroSheetDocs, subscribeHeroSheetOwner, type HeroSheetDocs } from "../../../lib/heroSheetStore";
 
 /**
  * The children who may play as the proof hero (the owner's son). Child ids,
@@ -56,12 +55,6 @@ export function avatarFallbackSheet(url: string): HeroSheet {
 }
 
 const boundToAvatar = (sheet: HeroSheet | null, hash: string | null, allowUnbound: boolean): sheet is HeroSheet => !!sheet && (hash ? sheet.heroId === hash : allowUnbound);
-
-/** Authentication is part of every in-memory resolution/cache scope. */
-export function heroSheetOwnerKey(): string {
-  return firebaseEnabled ? auth?.currentUser?.uid ?? "signed-out" : "local-sandbox";
-}
-const subscribeHeroOwner = (changed: () => void): (() => void) => firebaseEnabled && auth ? onAuthStateChanged(auth, changed) : () => {};
 
 /** Review/status writes do not alter the drawing. Keep the exact sheet object
  * so a live game does not reload its assets when only bookkeeping changes. */
@@ -127,7 +120,7 @@ export async function loadStockHeroSheet(id: string): Promise<HeroSheet | null> 
 
 /** Live docs of the child's own sheet (undefined until the first read). */
 function useOwnedHeroSheetDocs(childId: string): { ownerKey: string; docs: HeroSheetDocs | null | undefined } {
-  const ownerKey = useSyncExternalStore(subscribeHeroOwner, heroSheetOwnerKey, heroSheetOwnerKey);
+  const ownerKey = useSyncExternalStore(subscribeHeroSheetOwner, heroSheetOwnerKey, heroSheetOwnerKey);
   const [state, setState] = useState<{ ownerKey: string; childId: string; docs: HeroSheetDocs | null } | undefined>(undefined);
   useEffect(() => {
     if (!childId) return;

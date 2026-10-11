@@ -122,7 +122,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-10-09T18:00:00Z"));
   env.kid = true; env.lang = "en"; env.collections = []; env.listeners.clear();
-  env.profile = { id: "synthetic-child", name: "Test Hero", age: 6, gender: "boy", avatar: { style: "comichero" }, photoUrl: "data:image/png;base64,c3ludGhldGlj" } as unknown as ChildProfile;
+  env.profile = { id: "synthetic-child", name: "Test Hero", age: 6, gender: "boy", avatar: { style: "comichero", source: "descriptor", createdAt: "2026-10-09T18:00:00Z" }, photoUrl: "data:image/png;base64,c3ludGhldGlj" } as unknown as ChildProfile;
   env.text.mockReset(); env.image.mockClear(); env.speech.mockClear(); env.upsert.mockClear();
   clearJourneyMemo(); backend = new Map(); reads = vi.fn();
   _setHeroRenderBackend({ get: async id => { reads(); return backend.get(id); }, put: async row => { backend.set(row.id, row); }, getAll: async () => { reads(); return [...backend.values()]; }, delete: async id => { backend.delete(id); }, clear: async () => backend.clear() });
@@ -211,6 +211,7 @@ describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () =
     const tab = harness(HeroJourneyTab, { initialStoryId: story.id, pinNonce: 1 });
     await settle(); tab.commit(); await settle(); tab.commit();
     expect(env.text).toHaveBeenCalledOnce(); expect(env.image).toHaveBeenCalled();
+    expect(env.image).toHaveBeenCalledWith(expect.objectContaining({ heroDataUrl: env.profile.photoUrl }));
     expect(env.text.mock.calls[0][1]).toEqual(expect.any(Function)); // forwards retirement through auth refresh
     expect(backend.size).toBe(1); expect(env.upsert).toHaveBeenCalled();
     // The real page effect remains enabled for the parent card.
@@ -307,6 +308,29 @@ describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () =
     expect(env.upsert).toHaveBeenCalledTimes(1);
     tab.unmount();
   });
+  it("parent artwork uses the profile's canonical comic override instead of the secondary image", async () => {
+    switchGate(false);
+    const story = HERO_STORIES[0]; env.profile.age = story.ageRange[0];
+    env.profile.comicAvatarUrl = "data:image/png;base64,Y2Fub25pY2Fs";
+    env.text.mockResolvedValue(authoredJourneyRender(story, "en", "parent art"));
+    const tab = harness(HeroJourneyTab, { initialStoryId: story.id, pinNonce: 1 });
+    await settle(); tab.commit(); await settle(); tab.commit();
+    expect(env.image).toHaveBeenCalledWith(expect.objectContaining({ heroDataUrl: env.profile.comicAvatarUrl }));
+    tab.unmount();
+  });
+
+  it("parent artwork never treats a photo with incomplete hero metadata as an approved reference", async () => {
+    switchGate(false);
+    const story = HERO_STORIES[0]; env.profile.age = story.ageRange[0];
+    env.profile.avatar = { style: "comichero" } as ChildProfile["avatar"];
+    env.text.mockResolvedValue(authoredJourneyRender(story, "en", "parent art"));
+    const tab = harness(HeroJourneyTab, { initialStoryId: story.id, pinNonce: 1 });
+    await settle(); tab.commit(); await settle(); tab.commit();
+    expect(env.text).toHaveBeenCalledOnce();
+    expect(env.image).not.toHaveBeenCalled();
+    tab.unmount();
+  });
+
   it("a stale parent Play callback routes into authored child reading without generation", async () => {
     switchGate(false);
     const story = HERO_STORIES[0]; env.profile.age = story.ageRange[0];
