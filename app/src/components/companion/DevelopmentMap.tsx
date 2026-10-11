@@ -20,8 +20,10 @@ import "./developmentMap.css";
  *
  * Clinical firewall (law 1): the only number is how many things the parent
  * marked "Seen it" in the domain (lib/milestones/domainMap). A domain with
- * none says "No record yet", never "Not yet": a blank is a missing record,
- * not a missing ability, and the legend line says so. No denominator, no
+ * no Seen-it skill and no kept moment says "No record yet", never "Not yet":
+ * a blank is a missing record, not a missing ability, and the legend line
+ * says so. A domain with a kept moment shows the moment instead, so a tile
+ * never says "no record" over an entry from the record. No denominator, no
  * fraction, no share, no bar, no not-yet number, no ordering by count.
  *
  * The map is part of the portrait's overview module: it stamps no module of
@@ -44,7 +46,8 @@ export default function DevelopmentMap({ name, milestones, observations, momentT
   const { t, uiLang } = useLanguage();
   const headingId = useId();
   const seen = useMemo(() => noticedByDomain(milestones), [milestones]);
-  const last = useMemo(() => lastMomentByDomain(observations), [observations]);
+  // The quote files a noticed skill on the one area its count uses (domainMap).
+  const last = useMemo(() => lastMomentByDomain(observations, milestones), [observations, milestones]);
   const day = (at: string) => new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" }).format(new Date(at));
   return (
     <section className="dev-map" data-testid="dev-map" aria-labelledby={headingId}>
@@ -69,9 +72,11 @@ export default function DevelopmentMap({ name, milestones, observations, momentT
                   <span className="dev-map-name">{domainName(domain, t)}</span>
                   <Icon name="chevron_right" size={18} className="dev-map-chevron rtl:-scale-x-100" />
                 </span>
-                <span className="dev-map-count">
-                  {seen[domain] > 0 ? <CountPips seen={seen[domain]} domain={domain} size={7} /> : <span className="dev-map-none" data-testid="dev-map-none">{t("companion.devMap.none")}</span>}
-                </span>
+                {seen[domain] > 0 ? (
+                  <span className="dev-map-count"><CountPips seen={seen[domain]} domain={domain} size={7} /></span>
+                ) : !moment && (
+                  <span className="dev-map-count"><span className="dev-map-none" data-testid="dev-map-none">{t("companion.devMap.none")}</span></span>
+                )}
                 {moment && (
                   <span className="dev-map-last" data-testid="dev-map-last">
                     <time dateTime={moment.at}>{day(moment.at)}</time>

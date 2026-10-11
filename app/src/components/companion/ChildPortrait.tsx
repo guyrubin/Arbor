@@ -174,10 +174,15 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     if (onDiscuss) onDiscuss(prompt, childProfile.id);
     else seedCoach({ prompt, source: "child-portrait" });
   };
+  // The tile quotes the newest entry of the whole loaded record, so its moments
+  // open over the entire record: the period switches to it and the dialog lists
+  // exactly what the area lens then shows for this area.
   const openDomainMoments = (domain: DomainId) => {
     setSheetDomain(null);
     setView("domain");
-    select(observations.filter(o => o.domains.includes(domain)), domainName(domain, t), domain);
+    setRange(0);
+    const whole = buildPortraitChapters(observations, childProfile.id, new Date(), 0).flatMap(chapter => chapter.observations);
+    select(whole.filter(o => o.domains.includes(domain)), domainName(domain, t), domain);
   };
   const openOriginal = (o: Observation) => {
     setSelection(null);

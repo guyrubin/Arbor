@@ -205,4 +205,25 @@ describe("v3 FEAT-03 — the development map on My child", () => {
     expect(html).not.toMatch(SHEET);
     expect(html.match(/data-primary-move="/g)).toHaveLength(1);
   });
+
+  it("Open the moments lists the area over the whole record, the set the area lens shows once the period reads the entire record", () => {
+    state.keepState = true;
+    const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+    const entry = (id: string, domains: DomainId[], at: string): Observation => ({ id, childId: "child-a", at, domains, kind: "moment", origin: "behaviorLogs", source: "parent_typed", value: { type: "moment", behaviorType: "Moment" }, ageAtObservationMonths: null, pretermCorrected: false });
+    // Invented entries: one Playing moment older than the default three-month period, one recent, one in another area.
+    state.observations = [entry("behaviorLogs:play-old", ["playing"], daysAgo(200)), entry("behaviorLogs:play-new", ["playing"], daysAgo(5)), entry("behaviorLogs:talk", ["talking"], daysAgo(5))];
+    let html = render();
+    expect(html).toContain('<option value="3" selected="">');
+    // The tile quotes the newest Playing moment of the whole loaded record.
+    expect(mapSlice(html)).toContain('data-testid="dev-map-last"');
+    tile("playing")!.onClick!();
+    render();
+    state.sheet!.onOpenMoments("playing");
+    html = render();
+    expect(html).toContain('<option value="0" selected="">');
+    const selection = state.hooks.find((h): h is { title: string; ids: string[]; domain?: DomainId } => !!h && typeof h === "object" && "ids" in h && "title" in h);
+    expect(selection?.domain).toBe("playing");
+    expect(selection?.title).toBe(domainName("playing", k => translate("en", k)));
+    expect([...(selection?.ids ?? [])].sort()).toEqual(["behaviorLogs:play-new", "behaviorLogs:play-old"]);
+  });
 });

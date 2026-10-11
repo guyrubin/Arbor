@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { Milestone } from "../../types";
 import { DOMAIN_IDS } from "../domains/registry";
 import { ALL_MILESTONES } from "../milestoneData";
-import type { Observation } from "../observations";
+import { toObservations, type Observation } from "../observations";
 import { noticedMilestoneCounts } from "../pulse";
 import { groupMilestonesByShelf } from "./shelfMap";
 import * as domainMap from "./domainMap";
@@ -92,5 +92,61 @@ describe("lastMomentByDomain — the newest entry the parent wrote", () => {
 
   it("an empty record has no last moment anywhere", () => {
     expect(lastMomentByDomain([])).toEqual({});
+  });
+
+  it("skips an entry dated after now: it is not on the portrait's record yet", () => {
+    const now = new Date("2026-09-15T00:00:00Z");
+    const last = lastMomentByDomain([entry("behaviorLogs:past", "2026-09-01T10:00:00Z"), entry("behaviorLogs:ahead", "2026-09-20T10:00:00Z")], [], now);
+    expect(last.talking?.id).toBe("behaviorLogs:past");
+  });
+});
+
+describe("lastMomentByDomain — one attribution with the Seen-it count", () => {
+  const row = (id: string): Milestone => {
+    const found = catalogue().find((m) => m.id === id);
+    if (!found) throw new Error(`catalogue row ${id} is gone`);
+    return { ...seen(found), observedAt: "2026-09-01T10:00:00.000Z" };
+  };
+  const counted = (ms: Milestone[]) => DOMAIN_IDS.filter((id) => noticedByDomain(ms)[id] > 0);
+  const quoted = (last: ReturnType<typeof lastMomentByDomain>) => DOMAIN_IDS.filter((id) => last[id]);
+
+  it("a motor skill the record files under Moving and Hands is quoted on Moving, the area that counts it", () => {
+    const motor = catalogue().find((m) => m.domain === "sensory_motor_patterns" && !m.tags?.length)!;
+    const ms = [row(motor.id)];
+    const observations = toObservations({ milestones: ms }, { id: "child-a" });
+    expect(observations[0].domains).toEqual(expect.arrayContaining(["moving", "hands"]));
+    expect(counted(ms)).toEqual(["moving"]);
+    expect(quoted(lastMomentByDomain(observations, ms))).toEqual(["moving"]);
+  });
+
+  it("a fine-motor row is quoted on Hands only, the area its count uses", () => {
+    const ms = [row("cdc-36m-9")];
+    const observations = toObservations({ milestones: ms }, { id: "child-a" });
+    expect(counted(ms)).toEqual(["hands"]);
+    expect(quoted(lastMomentByDomain(observations, ms))).toEqual(["hands"]);
+  });
+
+  it("the keepsake kept for a skill follows the same single area", () => {
+    const motor = catalogue().find((m) => m.domain === "sensory_motor_patterns" && !m.tags?.length)!;
+    const ms = [row(motor.id)];
+    const observations = toObservations({ milestones: ms, keepsakes: [{ milestoneId: motor.id, noticedOn: "2026-09-02", note: "An invented note", createdAt: "2026-09-02T10:00:00.000Z", updatedAt: "2026-09-02T10:00:00.000Z" }] }, { id: "child-a" });
+    const last = lastMomentByDomain(observations, ms);
+    expect(quoted(last)).toEqual(["moving"]);
+    expect(last.moving?.origin).toBe("keepsakes");
+  });
+
+  it("a skill the count and the record file on different areas is quoted on neither, never on a tile that does not count it", () => {
+    // A feeding row: the count folds it onto Body (the Food shelf); the record files it under Hands.
+    const ms = [row("asha-feed-9m")];
+    const observations = toObservations({ milestones: ms }, { id: "child-a" });
+    expect(observations[0].domains).not.toContain("body");
+    expect(counted(ms)).toEqual(["body"]);
+    expect(quoted(lastMomentByDomain(observations, ms))).toEqual([]);
+  });
+
+  it("without the milestone documents the entry's own derived shelf decides", () => {
+    const motor = catalogue().find((m) => m.domain === "sensory_motor_patterns" && !m.tags?.length)!;
+    const observations = toObservations({ milestones: [row(motor.id)] }, { id: "child-a" });
+    expect(quoted(lastMomentByDomain(observations))).toEqual(["moving"]);
   });
 });

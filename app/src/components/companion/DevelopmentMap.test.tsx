@@ -35,6 +35,7 @@ import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { translate } from "../../lib/i18n";
 import { ALL_MILESTONES } from "../../lib/milestoneData";
 import { groupMilestonesByShelf } from "../../lib/milestones/shelfMap";
+import { toObservations } from "../../lib/observations";
 
 const catalogue = (): Milestone[] => ALL_MILESTONES.map(m => ({ ...m }));
 const seen = (m: Milestone): Milestone => ({ ...m, checked: true, observationStatus: "yes" });
@@ -111,6 +112,29 @@ describe("v3 FEAT-03 — DevelopmentMap", () => {
     expect(tileOf(html, "feelings")).toContain("words of new-talk");
     for (const d of ["moving", "hands", "thinking"] as const) expect(tileOf(html, d)).not.toContain('data-testid="dev-map-last"');
     expect(html.match(/data-testid="dev-map-last"/g)).toHaveLength(2);
+    // A tile that quotes a kept moment never says "No record yet" over it, even with no Seen-it skill.
+    for (const d of ["talking", "feelings"] as const) {
+      expect(tileOf(html, d)).not.toContain("count-pips");
+      expect(tileOf(html, d)).not.toContain('data-testid="dev-map-none"');
+    }
+    expect(html.match(/data-testid="dev-map-none"/g)).toHaveLength(6);
+  });
+
+  it("a Seen-it skill is quoted only on the tile that counts it", () => {
+    // A motor row the record files under Moving AND Hands; the count puts it on the Moving shelf.
+    const row = catalogue().find(m => m.domain === "sensory_motor_patterns" && !m.tags?.length)!;
+    const marked: Milestone = { ...seen(row), observedAt: "2026-05-01T10:00:00.000Z" };
+    const observations = toObservations({ milestones: [marked] }, { id: "child-a" });
+    expect(observations).toHaveLength(1);
+    expect(observations[0].domains).toContain("moving");
+    expect(observations[0].domains).toContain("hands");
+    const html = render({ milestones: [marked], observations, momentText: o => `words of ${o.id}` });
+    expect(DOMAIN_IDS.filter(d => tileOf(html, d).includes('data-testid="count-pips"'))).toEqual(["moving"]);
+    expect(tileOf(html, "moving")).toContain(`words of milestones:${row.id}`);
+    expect(tileOf(html, "hands")).not.toContain('data-testid="dev-map-last"');
+    expect(tileOf(html, "hands")).toContain('data-testid="dev-map-none"');
+    expect(html.match(/data-testid="dev-map-last"/g)).toHaveLength(1);
+    expect(html.match(/data-testid="dev-map-none"/g)).toHaveLength(7);
   });
 
   it("a tile opens its own area; the check opens the 5-minute check", () => {
