@@ -294,6 +294,8 @@ export const companionEn = {
   "companion.place.child.detail": "The whole picture, over time",
   "companion.place.together": "Together",
   "companion.place.together.detail": "Small moments. Shared discoveries.",
+  // FEAT-05: the question chip in the conversation header opens the question sheet.
+  "companion.topic-chip.open": "Open our questions: {value0}",
 };
 
 export const companionHe = {
@@ -590,4 +592,6 @@ export const companionHe = {
   "companion.place.child.detail": "התמונה השלמה, לאורך זמן",
   "companion.place.together": "ביחד",
   "companion.place.together.detail": "רגעים קטנים, גילויים משותפים",
+  // FEAT-05: the question chip in the conversation header opens the question sheet.
+  "companion.topic-chip.open": "לפתוח את השאלות שלנו: {value0}",
 };

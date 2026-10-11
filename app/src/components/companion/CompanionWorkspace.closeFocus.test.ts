@@ -51,6 +51,7 @@ async function mountedCloseProof() {
     if (name === "../../content/selectCards") return { availableHardMomentCards: () => [] };
     if (name === "../../lib/childAge") return { ageMonthsFromProfile: () => 48 };
     if (name === "./nowViewCopy") return { NOW_COPY: { en: { talk: "Ask", captureShort: "Keep" } } };
+    if (name === "./familyTopicEvents") return { openFamilyTopicSheet() {} };
     if (name === "../ui/Icon") return { __esModule: true, default: () => null };
     if (name === "../ui/ArborMark") return { ArborMark: () => null };
     if (name === "../ErrorBoundary") return { ErrorBoundary: props => props.children };

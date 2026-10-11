@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import React, { lazy, Suspense, useCallback, useState, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
@@ -53,6 +53,8 @@ import SyncStatusBanner from "../ui/SyncStatusBanner";
 // strip identity slot below lg. It prints name + age; the strip does not repeat it.
 import TopbarKidSwitcher from "./TopbarKidSwitcher";
 import { SETTINGS_OPEN_EVENT } from "./settingsBus";
+// FEAT-05: the one door into the question sheet; Shell holds its only listener.
+import { FAMILY_TOPIC_SHEET_EVENT, type FamilyTopicSheetRequest } from "../companion/familyTopicEvents";
 
 // Existing leaf views (preserved).
 const OverviewTab = lazy(() => import("../companion/NowView"));
@@ -217,8 +219,21 @@ export default function Shell() {
   const { t, uiLang } = useLanguage();
   const query = useHashQuery();
   const [topicSheet, setTopicSheet] = useState<{ childId: string; draft?: string; observationIds?: string[]; startNew?: boolean } | null>(null);
-  const openTopic = () => setTopicSheet({ childId: childProfile.id });
-  const createTopic = (draft: string, observationIds: string[] = []) => setTopicSheet({ childId: childProfile.id, draft, observationIds, startNew: true });
+  const openTopic = useCallback(() => setTopicSheet({ childId: childProfile.id }), [childProfile.id]);
+  const createTopic = useCallback((draft: string, observationIds: string[] = []) => setTopicSheet({ childId: childProfile.id, draft, observationIds, startNew: true }), [childProfile.id]);
+  // FEAT-05: the question chip (conversation header, Together) and later doors
+  // dispatch openFamilyTopicSheet(); this is the event's single listener. The
+  // sheet is parent chrome, so the request is dropped while Kid Mode is open.
+  useEffect(() => {
+    const open = (event: Event) => {
+      if (isKidModeActive()) return;
+      const request = (event as CustomEvent<FamilyTopicSheetRequest | null>).detail;
+      if (request?.startNew) createTopic(request.draft ?? "", request.observationIds ?? []);
+      else openTopic();
+    };
+    window.addEventListener(FAMILY_TOPIC_SHEET_EVENT, open);
+    return () => window.removeEventListener(FAMILY_TOPIC_SHEET_EVENT, open);
+  }, [openTopic, createTopic]);
   const ActiveTabComponent = tabRegistry[activeTab];
   const section = sectionForTab(activeTab);
   const focusLabel = childProfile.languages.length > 1

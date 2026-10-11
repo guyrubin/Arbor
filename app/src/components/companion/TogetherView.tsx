@@ -20,8 +20,11 @@ import { OFFSCREEN_IDEAS, STORY_DOORS, WORLD_ART, type TogetherCategory } from "
 import { trackCompanionPlaceOpen, trackPracticeStudioOpen, trackPracticeTogetherDid } from "../../lib/kpiEvents";
 import { TOGETHER_ART } from "../../lib/parentArt";
 import { useTogetherNavigation } from "./togetherNavigation";
+import { openFamilyTopicSheet } from "./familyTopicEvents";
 import "./companionExperience.css";
 import "./togetherDiscovery.css";
+// FEAT-05: the shared question-chip rules (44px hit area, pill) live here.
+import "./companionWorkspace.css";
 
 type Preview = { kind: "world"; world: StudioWorld } | { kind: "offscreen"; id: string };
 
@@ -163,7 +166,13 @@ export default function TogetherView() {
         </div>}
       </section>
 
-      {activeFamilyTopic && <div className="companion-topic-context"><Icon name="bookmark" size={18} /><span>{t("companion.together-view.your-question-stays-with-you")}<b dir="auto">{activeFamilyTopic.title}</b></span><span className="companion-caption">{t("companion.together-view.here-it-is-also-enough-just-to-enjoy")}</span></div>}
+      {/* FEAT-05: the question line is the chip that opens the question sheet (no count, no dot). */}
+      {activeFamilyTopic && <div className="companion-topic-context">
+        <button type="button" className="companion-topic-chip" data-testid="together-topic-chip" aria-haspopup="dialog" onClick={() => openFamilyTopicSheet()}>
+          <span className="companion-topic-chip-pill"><Icon name="bookmark" size={18} className="companion-topic-chip-icon" /><span className="companion-topic-chip-text">{t("companion.together-view.your-question-stays-with-you")}<b dir="auto">{activeFamilyTopic.title}</b></span></span>
+        </button>
+        <span className="companion-caption">{t("companion.together-view.here-it-is-also-enough-just-to-enjoy")}</span>
+      </div>}
 
       <div className="companion-filter-row" role="group" aria-label={t("companion.together-view.what-feels-right-now")}>
         {filters.map((filter) => <button key={filter.id} type="button" className="companion-filter" aria-pressed={category === filter.id} onClick={() => setCategory(filter.id)}><Icon name={filter.icon} size={19} />{filter.label}</button>)}

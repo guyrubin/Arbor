@@ -12,6 +12,7 @@ import { ErrorBoundary } from "../ErrorBoundary";
 import { availableHardMomentCards } from "../../content/selectCards";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { NOW_COPY } from "./nowViewCopy";
+import { openFamilyTopicSheet } from "./familyTopicEvents";
 import "./companionWorkspace.css";
 
 const CoachTab = lazy(() => import("../tabs/CoachTab"));
@@ -155,7 +156,13 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
         <ArborMark size={30} />
         <div className="companion-conversation-identity">
           <h2 id="companion-conversation-title">Arbor</h2>
-          <span><bdi dir="auto">{childProfile.name}{activeFamilyTopic ? ` · ${activeFamilyTopic.title}` : ""}</bdi></span>
+          {/* FEAT-05: the active question is a chip that opens the question sheet; text only, never a count or dot. */}
+          <div className="companion-conversation-context">
+            <span className="companion-conversation-name"><bdi dir="auto">{childProfile.name}</bdi></span>
+            {activeFamilyTopic && <button type="button" className="companion-topic-chip" data-testid="conversation-topic-chip" aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.topic-chip.open", { value0: activeFamilyTopic.title })} onClick={() => openFamilyTopicSheet()}>
+              <span className="companion-topic-chip-pill"><Icon name="bookmark" size={16} className="companion-topic-chip-icon" /><span className="companion-topic-chip-text" dir="auto">{activeFamilyTopic.title}</span></span>
+            </button>}
+          </div>
         </div>
         {wide && <button type="button" className="companion-chrome-button" onClick={() => setExpanded(value => !value)} aria-label={expanded ? (inputText(uiLang, "companion.input.show-beside-the-page")) : (inputText(uiLang, "companion.input.expand-conversation"))}><Icon name={expanded ? "expand_less" : "fullscreen"} size={20} /></button>}
         <button type="button" className="companion-chrome-button" onClick={close} aria-label={inputText(uiLang, "companion.input.close-conversation-and-return-to-the-page")}><Icon name="close" size={22} /></button>
