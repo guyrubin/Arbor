@@ -294,6 +294,25 @@ export const companionEn = {
   "companion.place.child.detail": "The whole picture, over time",
   "companion.place.together": "Together",
   "companion.place.together.detail": "Small moments. Shared discoveries.",
+  // v3 FEAT-03 — the development map on My child and its domain sheet. Counts
+  // only (Seen it); no total, no fraction, no not-yet number anywhere.
+  "companion.devMap.title": "Where {name} is now, across the areas",
+  "companion.devMap.check": "Do a 5-minute development check",
+  "companion.devMap.none": "No record yet",
+  "companion.devMap.note": "Filled = you have seen it. A blank means no record, not a missing ability.",
+  "companion.devMap.explore": "Explore this with Arbor",
+  "companion.devMap.moments": "Open the moments",
+  "companion.devMap.saved": "Saved.",
+  "companion.devMap.saveFailed": "Not saved. Try again.",
+  "companion.devMap.empty": "Nothing to mark here around now.",
+  "companion.devMap.why.talking": "Words, sounds and gestures: how your child shares what is on their mind.",
+  "companion.devMap.why.moving": "Crawling, walking, climbing and balance: how your child gets around.",
+  "companion.devMap.why.hands": "Grasping, stacking, drawing and the small careful movements of the hands.",
+  "companion.devMap.why.thinking": "Curiosity, puzzles and figuring out how things work.",
+  "companion.devMap.why.playing": "Playing with others: taking turns, sharing a game, joining in.",
+  "companion.devMap.why.feelings": "Big and small feelings, and the ways your child finds calm again.",
+  "companion.devMap.why.body": "Sleep, food and the everyday rhythms of the body.",
+  "companion.devMap.why.family": "The people at home and the bonds that hold the day together.",
 };
 
 export const companionHe = {
@@ -590,4 +609,22 @@ export const companionHe = {
   "companion.place.child.detail": "התמונה השלמה, לאורך זמן",
   "companion.place.together": "ביחד",
   "companion.place.together.detail": "רגעים קטנים, גילויים משותפים",
+  // v3 FEAT-03 — the development map on My child and its domain sheet.
+  "companion.devMap.title": "איפה {name} עכשיו, בכל התחומים",
+  "companion.devMap.check": "בדיקת התפתחות של 5 דקות",
+  "companion.devMap.none": "עוד אין תיעוד",
+  "companion.devMap.note": "מלא = ראיתם. ריק = אין תיעוד, לא יכולת חסרה.",
+  "companion.devMap.explore": "לחשוב על זה עם ארבור",
+  "companion.devMap.moments": "לפתיחת הרגעים",
+  "companion.devMap.saved": "נשמר.",
+  "companion.devMap.saveFailed": "לא נשמר. נסו שוב.",
+  "companion.devMap.empty": "אין כאן כרגע מה לסמן.",
+  "companion.devMap.why.talking": "מילים, צלילים ומחוות: איך הילד משתף את מה שעובר עליו.",
+  "companion.devMap.why.moving": "זחילה, הליכה, טיפוס ושיווי משקל: איך הילד מתנייד.",
+  "companion.devMap.why.hands": "אחיזה, בנייה, ציור והתנועות הקטנות והמדויקות של הידיים.",
+  "companion.devMap.why.thinking": "סקרנות, פאזלים וגילוי איך דברים עובדים.",
+  "companion.devMap.why.playing": "משחק עם אחרים: לחכות לתור, לשתף במשחק, להצטרף.",
+  "companion.devMap.why.feelings": "רגשות גדולים וקטנים, והדרכים של הילד להירגע שוב.",
+  "companion.devMap.why.body": "שינה, אוכל והקצב היומיומי של הגוף.",
+  "companion.devMap.why.family": "האנשים בבית והקשרים שמחזיקים את היום.",
 };

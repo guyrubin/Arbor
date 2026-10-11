@@ -18,6 +18,8 @@ import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import PortraitWatchRow from "./PortraitWatchRow";
 import PortraitKeepsakes from "./PortraitKeepsakes";
 import KeptDescription from "../describe/KeptDescription";
+import DevelopmentMap from "./DevelopmentMap";
+import DomainSheet from "./DomainSheet";
 import { DOMAIN_ART, EMPTY_ART, MOMENT_ART } from "../../lib/parentArt";
 import "./childPortrait.css";
 import { childPicture } from "../../lib/childPicture";
@@ -115,6 +117,8 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
   const [range, setRange] = useState(3);
   const [selection, setSelection] = useState<{ childId: string; title: string; ids: string[]; domain?: DomainId } | null>(null);
   const [visible, setVisible] = useState(20);
+  // v3 FEAT-03: the development-map tile whose domain sheet is open (null = closed).
+  const [sheetDomain, setSheetDomain] = useState<DomainId | null>(null);
   const [reviewSelection, setReviewSelection] = useState<{ childId: string; ids: string[] }>({ childId: childProfile.id, ids: [] });
   const reviewedIds = reviewSelection.childId === childProfile.id ? reviewSelection.ids : [];
   const observations = useMemo(() => allObservations.filter(o => o.childId === childProfile.id), [allObservations, childProfile.id]);
@@ -162,6 +166,19 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     if (onDiscuss) onDiscuss(prompt, childProfile.id);
     else seedCoach({ prompt, source: "child-portrait" });
   };
+  // v3 FEAT-03: the domain sheet's doors. Explore asks about the area with no
+  // record attached; Open the moments shows the area lens and its entries.
+  const exploreDomain = (domain: DomainId) => {
+    setSheetDomain(null);
+    const prompt = portraitDiscussionPrompt([domain], area => domainName(area, t), uiLang === "he");
+    if (onDiscuss) onDiscuss(prompt, childProfile.id);
+    else seedCoach({ prompt, source: "child-portrait" });
+  };
+  const openDomainMoments = (domain: DomainId) => {
+    setSheetDomain(null);
+    setView("domain");
+    select(observations.filter(o => o.domains.includes(domain)), domainName(domain, t), domain);
+  };
   const openOriginal = (o: Observation) => {
     setSelection(null);
     if (o.origin === "behaviorLogs") { openCaptureSheet({ editLogId: o.id.slice("behaviorLogs:".length), editLog: logMap.get(o.id) }); return; }
@@ -180,6 +197,8 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     {!!childProfile.strengths?.length && <p className="portrait-strengths"><strong>{copy.strengths}</strong><span dir="auto">{childProfile.strengths.join(" · ")}</span></p>}
     {/* B-SHELL-39: what the parent told Arbor, editable here, and the "Tell Arbor more" door. */}
     <KeptDescription testId="portrait-describe" collapsible />
+    {/* v3 FEAT-03: the development map, part of this overview (Seen-it counts per area, no verdicts); a tile opens its domain sheet. */}
+    <DevelopmentMap name={name} milestones={milestones} observations={observations} momentText={title} onOpenDomain={setSheetDomain} onCheck={() => setActiveTab("screening")} />
     <div className="portrait-toolbar">
       <div className="portrait-views" role="group" aria-label={c.title}>{(["time", "context", "domain"] as const).map(key => <button type="button" key={key} aria-pressed={view === key} onClick={() => setView(key)}><Icon name={key === "time" ? "history" : key === "context" ? "home" : "grid_view"} size={18} />{c[key]}</button>)}</div>
       <label className="portrait-period"><span className="sr-only">{c.range}</span><Icon name="calendar_today" size={18} /><select aria-label={c.range} value={range} onChange={event => setRange(Number(event.target.value))}><option value={3}>{c.three}</option><option value={12}>{c.year}</option><option value={0}>{record.more || record.loading || record.error || !record.confirmed ? copy.loaded : c.entire}</option></select></label>
@@ -251,6 +270,7 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
       </section>
     </div>
 
+    <DomainSheet domain={sheetDomain} onClose={() => setSheetDomain(null)} onCheck={() => { setSheetDomain(null); setActiveTab("screening"); }} onExplore={exploreDomain} onOpenMoments={openDomainMoments} />
     <Modal open={!!selected} onClose={() => setSelection(null)} title={selected?.title ?? c.sourceTitle} maxWidth="max-w-2xl"><div className="portrait-evidence" dir={uiLang === "he" ? "rtl" : "ltr"}>
       {selectedObservations.length === 0 && <p>{c.noDomain}</p>}
       {!!selectedObservations.length && <p className="portrait-map-note">{copy.selectionHint}</p>}

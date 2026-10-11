@@ -81,6 +81,8 @@ function mountedPortraitProof(duplicateKey: boolean) {
     "../../lib/kpiEvents": { trackCompanionPlaceOpen() {} }, "./PortraitWatchRow": { default: Watch },
     "./PortraitKeepsakes": { default: empty }, "../describe/KeptDescription": { default: empty }, "../../lib/parentArt": {}, "./childPortrait.css": {},
     "../../lib/childPicture": { childPicture: () => ({}) },
+    // v3 FEAT-03: the development map and its domain sheet are seams here; their own suites prove them.
+    "./DevelopmentMap": { default: empty }, "./DomainSheet": { default: empty },
   }, source => duplicateKey ? source.replace('key={`goal-picker:${childProfile.id}`}', 'key={childProfile.id}') : source).default;
   function Shell() {
     const [route, changeRoute] = React.useState("development"), [, changeVersion] = React.useState(0);
