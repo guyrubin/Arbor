@@ -14,6 +14,7 @@ const env = vi.hoisted(() => ({
   text: vi.fn<(...args: any[]) => Promise<HeroJourneyRender>>(),
   image: vi.fn(async () => ({ key: "test-page", url: "/static-page.webp" })),
   speech: vi.fn(() => 7),
+  narrate: vi.fn((_units: readonly string[]) => () => {}),
 }));
 vi.mock("react", async original => {
   const real = await original<typeof import("react")>();
@@ -47,6 +48,8 @@ vi.mock("../../lib/kidModeGate", () => ({
   noteKidActivity: vi.fn(),
 }));
 vi.mock("./audio/kidAudio", () => ({ kidSfx: vi.fn(), kidSay: env.speech }));
+// B-BOOK-73: a legacy page asks the child's own narration FILES for its units (never a voice service).
+vi.mock("./useLegacyNarration", () => ({ useLegacyNarration: () => ({ ready: true, play: env.narrate }) }));
 vi.mock("../../lib/voice", () => ({ speakText: env.speech, stopVoice: vi.fn(), voiceSupported: () => true, voiceState: () => ({ speaking: false, engine: "natural" }) }));
 vi.mock("../../lib/tts", () => ({ stopSpeaking: vi.fn() }));
 vi.mock("../../lib/celebrate", () => ({ celebrate: vi.fn() }));
@@ -123,7 +126,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-09T18:00:00Z"));
   env.kid = true; env.lang = "en"; env.collections = []; env.listeners.clear();
   env.profile = { id: "synthetic-child", name: "Test Hero", age: 6, gender: "boy", avatar: { style: "comichero" }, photoUrl: "data:image/png;base64,c3ludGhldGlj" } as unknown as ChildProfile;
-  env.text.mockReset(); env.image.mockClear(); env.speech.mockClear(); env.upsert.mockClear();
+  env.text.mockReset(); env.image.mockClear(); env.speech.mockClear(); env.narrate.mockClear(); env.upsert.mockClear();
   clearJourneyMemo(); backend = new Map(); reads = vi.fn();
   _setHeroRenderBackend({ get: async id => { reads(); return backend.get(id); }, put: async row => { backend.set(row.id, row); }, getAll: async () => { reads(); return [...backend.values()]; }, delete: async id => { backend.delete(id); }, clear: async () => backend.clear() });
   fetchSpy = vi.fn(() => { throw new Error("Unexpected network request"); });
@@ -188,6 +191,12 @@ describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () =
     // Guy, 10 Oct 2026: a child hears only the chosen narrator; until these
     // books have files in that voice (B-BOOK-73) nothing is synthesized.
     expect(env.speech).not.toHaveBeenCalled();
+    // ... and each page asks for exactly its authored units: the cover's title,
+    // each beat, the Decision page's question and every answer, the chosen
+    // outcome, The End. Nothing else is ever requested.
+    const asked = new Set(env.narrate.mock.calls.flatMap(([units]) => [...units]));
+    expect(asked.has("decision") && asked.has("question") && asked.has("the-end")).toBe(true);
+    for (const unit of asked) expect(unit).toMatch(/^(title|call|challenge|fear|decision|question|growth|victory|reflection|the-end|choice\.[a-z0-9-]+|outcome\.[a-z0-9-]+)$/);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
   it("ignores poisoned parent memo/store, still reads without a hero, and repins the same mounted tab", async () => {

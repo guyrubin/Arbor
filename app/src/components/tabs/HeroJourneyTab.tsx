@@ -65,6 +65,8 @@ import { kidBookOpenable, kidBooks, kidShelfFor } from "../kidmode/kidBooks";
 import { useChildLibraryBooks } from "../kidmode/useChildLibraryBooks";
 import { adoptSavedRender, hydrateHeroRenders, resolvePersonalisedRender, type SavedHeroRender } from "../../lib/heroRenderStore";
 import { KidBookTitleCard } from "../kidmode/KidBookCover";
+import { useLegacyNarration } from "../kidmode/useLegacyNarration";
+import { legacyPageUnits } from "../../lib/library/legacyNarration";
 import { kidSfx } from "../kidmode/audio/kidAudio";
 import { KidFinishMoment } from "../kidmode/rewards/KidSouvenir";
 import { stopVoice } from "../../lib/voice";
@@ -367,16 +369,21 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       : scenes[sceneIndex]
     : undefined;
 
-  // B-BOOK-28: these legacy books have no prerecorded page narration yet.
-  // Guy, 10 Oct 2026: a child hears only the narrator he chose (Sulafat, the
-  // books standard section 6), never the runtime default voice, so they stay
-  // silent until their files are rendered in that voice (B-BOOK-73). Keep
-  // local page-turn effects; stop any parent narration when the gate or page
-  // changes.
+  // B-BOOK-73 (Guy, 10 Oct 2026: "This is not the voice"): a legacy book
+  // reads aloud only from the child's own files in the narrator he chose
+  // (Sulafat, the books standard section 6): each page, then on the Decision
+  // page the question and each answer. B-BOOK-28 stands: nothing is generated
+  // or synthesized while a child reads. No files = silence. Turning the page,
+  // closing the book or leaving Kid Mode stops it (and any parent narration).
+  const legacyVoice = useLegacyNarration(kidMode ? childProfile.id : null, kidMode ? activeStory?.id ?? null : null, renderLang, childProfile.gender);
   useEffect(() => {
     stopVoice();
-    return () => stopVoice();
-  }, [kidMode, activeStory?.id, sceneIndex, onCover, atEnd]);
+    const stop = kidMode && activeStory
+      ? legacyVoice.play(legacyPageUnits({ onCover, atEnd, beatId: beat?.id, choiceId, choiceIds: choices.map((c) => c.id) }))
+      : () => {};
+    return () => { stop(); stopVoice(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kidMode, activeStory?.id, sceneIndex, onCover, atEnd, choiceId, legacyVoice.play]);
   useEffect(() => { setAtEnd(false); }, [activeStory?.id]);
 
   const visibleStories = storiesForLanguage(
