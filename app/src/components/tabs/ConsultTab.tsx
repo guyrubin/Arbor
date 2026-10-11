@@ -173,6 +173,11 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
      summary" under step 1; in the teacher branch the inline School Brief's
      "Save as PDF" (B-CAREPRO-36). */
   const primaryMoveStamp = { "data-primary-move": activeTab === "handoff" ? "copy-handoff-brief" : activeTab === "school-brief" ? "build-school-brief" : "build-share-packet" };
+  /* v3 FEAT-09: #/handoff is the Care summary pill — the summary builder
+     alone (AskSpecialist: who it is for, what changed, what leaves), under its
+     own H1. The visit's open loop, the home program and the guided-coach line
+     stay on #/consult, so this page holds one job and the route's one stamp. */
+  const summary = activeTab === "handoff";
 
   // Initially unconfirmed targets mount no editor. Once opened, retain its
   // unsaved state hidden/inert while blocked. Egress is independently guarded
@@ -185,13 +190,18 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
     {targetOpened && <div hidden={targetBlocked} inert={targetBlocked}>
       <header className="mb-5">
         <h1 data-testid="consult-h1" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" } as React.CSSProperties}>
-          {heading === "visit" && visit
+          {summary
+            ? t("elev.consult.h1.summary")
+            : heading === "visit" && visit
             ? t("elev.consult.h1.visit", { profession: appointmentRoleLabel(visit, t), date: fmtDay(visit.whenIso!, uiLang) })
             : heading === "audience" && chosen
             ? t("elev.consult.h1.audience", { audience: lowerFor(uiLang, t(`elev.carehonesty.consult.audience.${chosen}`)) })
             : t("elev.consult.h1")}
         </h1>
-        {visit && heading !== "visit" && (
+        {summary && (
+          <p data-testid="consult-summary-lede" className="t-sm mt-1" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.consult.summary.lede")}</p>
+        )}
+        {visit && (summary || heading !== "visit") && (
           <p data-testid="consult-visit-line" className="t-sm mt-1" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.consult.visitLine", { profession: appointmentRoleLabel(visit, t), date: fmtDay(visit.whenIso!, uiLang) })}
           </p>
@@ -201,21 +211,21 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
         )}
         {/* B-PROG-10 (E3 canon): Care is a warm handoff to the family's own
             professionals and, in the guided pilot only, Arbor's light coach. */}
-        {guidedTierOn() && (
+        {!summary && guidedTierOn() && (
           <p data-testid="consult-guided-tier" className="t-sm mt-2 leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
             {t("elev.program.care.guided", { name: firstName || t("learn.yourChild") })}
           </p>
         )}
       </header>
       <div data-module="consult-packet">
-        {!awaiting && <section className="mb-5 rounded-[var(--r-lg)] border p-4" style={{ borderColor: "var(--arbor-rule)" }}>
+        {!summary && !awaiting && <section className="mb-5 rounded-[var(--r-lg)] border p-4" style={{ borderColor: "var(--arbor-rule)" }}>
           {!homeOpen ? <button type="button" className="min-h-11 rounded-full px-4 text-sm font-semibold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }} onClick={() => setHomeOpen(true)}>{t("elev.pilot.i.have.recommendations.for.home")}</button>
             : <HomeProgramEntry key={childProfile.id} childId={childProfile.id} profession={null} nextVisit={null} rows={programsCol.items} existingGoals={familyGoalsCol.items} onConfirm={saveHomeProgram} onCancel={() => setHomeOpen(false)} />}
         </section>}
-        {activeHome.map((e) => (
+        {!summary && activeHome.map((e) => (
           <HomeProgramDays key={e.id} enrolment={e} onSave={(exerciseId) => void programsCol.upsert(toggleExerciseDay(e, exerciseId))} />
         ))}
-        {awaiting && (
+        {!summary && awaiting && (
           <section data-testid="consult-visit-outcome" className="mb-5 border-y py-4 flex flex-col gap-2" style={{ borderColor: "var(--arbor-rule)" }}>
             <label htmlFor="consult-visit-outcome-input" className="t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>
               {t("elev.consult.visitOutcome.q", { profession: appointmentRoleLabel(awaiting, t), date: fmtDay(awaiting.whenIso!, uiLang) })}

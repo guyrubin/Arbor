@@ -136,7 +136,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   /** NEXTLEVEL critic r1: the page H1 follows the chosen audience. */
   onAudienceChange?: (a: ExportAudience) => void;
 } = {}) {
-  const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, actionLoop, setActiveTab, pendingConsultPrefill, consumeConsultPrefill } = useArbor();
+  const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, actionLoop, setActiveTab, pendingConsultPrefill, consumeConsultPrefill, activeFamilyTopic } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const reduceMotion = useReducedMotion();
@@ -189,6 +189,23 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // LC-20 — REASON FOR VISIT. Always shown; rides into every clinician packet
   // in the parent's own words. Device-local until an export the parent takes.
   const [reason, setReason] = useState("");
+
+  // v3 FEAT-09 — "Our question": the family question the parent has selected
+  // (ArborContext activeFamilyTopic) joins the summary as ONE line, only when
+  // the parent turns it on. Off by default and never auto-included: inclusion
+  // is held by the topic's id, so a different question selected meanwhile is
+  // off again. It leaves only through the same reviewed gate and egress.
+  const familyTopic = activeFamilyTopic && activeFamilyTopic.status === "active" && activeFamilyTopic.childId === childProfile.id ? activeFamilyTopic : null;
+  const [topicOnId, setTopicOnId] = useState<string | null>(null);
+  const topicIncluded = !!familyTopic && topicOnId === familyTopic.id;
+  const familyQuestionLine = familyTopic && topicIncluded ? t("elev.consult.topic.line", { title: familyTopic.title }) : "";
+  const toggleTopic = () => {
+    if (!familyTopic) return;
+    // Consent covers the exact outgoing text: withdraw it in this click.
+    setReviewed(false);
+    approval.current = null;
+    setTopicOnId(topicIncluded ? null : familyTopic.id);
+  };
 
   // The parent's prepared questions and the discipline-specific evidence — the
   // same registered per-child sinks Appointments, Language Lab and the growth
@@ -414,12 +431,12 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     if (isTeacher) return { text: null, error: "" };
     try {
       // LC-13 / item 8: `uiLang` renders the packet SCAFFOLD in the parent's language.
-      return { text: serializeForExport(egressAudience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang), error: null };
+      return { text: serializeForExport(egressAudience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang, familyQuestionLine), error: null };
     } catch (err) {
       // Fail closed: a forbidden token or a % in the note blocks every verb.
       return { text: null, error: err instanceof ClinicalLanguageError ? t("elev.carehonesty.consult.blocked.generic") : t("consult.exportError") };
     }
-  }, [isTeacher, egressAudience, packet, excluded, visionNote, t, uiLang]);
+  }, [isTeacher, egressAudience, packet, excluded, visionNote, t, uiLang, familyQuestionLine]);
   // W2-CAREPRO c2 r1: what leaves is clean plain text (title line, plain
   // heads, bullets — no #, ** or _ in a WhatsApp/SMS paste), and the preview
   // renders EXACTLY that string, one line per block.
@@ -460,7 +477,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     if (exportText == null || isTeacher) return;
     if (!canExportCurrent()) return;
     try {
-      const sections = exportPrintSections(egressAudience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang);
+      const sections = exportPrintSections(egressAudience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang, familyQuestionLine);
       printPdf(audience, sections);
       recordExport(childProfile.id, audience);
     } catch (err) {
@@ -699,6 +716,26 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           <p className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
             <Icon name="check_circle" size={14} fill={1} /> {t("elev.learnCare.appt.questions.toPacket")}
           </p>
+        )}
+        {/* v3 FEAT-09 — "Our question": the selected family question, off
+            until the parent turns it on; on, it is one line of the preview. */}
+        {familyTopic && (
+          <div className="mt-3">
+            <button
+              type="button"
+              data-testid="consult-include-topic"
+              aria-pressed={topicIncluded}
+              onClick={toggleTopic}
+              className="inline-flex max-w-full items-center gap-1.5 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px] text-start transition"
+              style={topicIncluded
+                ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
+                : { background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
+            >
+              <Icon name="bookmark" size={14} fill={topicIncluded ? 1 : 0} />
+              <span className="flex-shrink-0">{t("elev.consult.topic.include")}</span>
+              <span className="min-w-0 truncate font-medium"><FreeText text={familyTopic.title} /></span>
+            </button>
+          </div>
         )}
         {/* B-CAREPRO-20 · spine §5 — "At home while you wait": the two or three
             Practice worlds whose declared domains match this professional.

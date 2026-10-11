@@ -65,6 +65,13 @@ export const en: Record<string, string> = {
   "elev.profile.remembers.noticedAbout": "Arbor noticed something about {topic} — check it",
   "elev.profile.remembers.noticed": "Arbor noticed something to check with you",
   "elev.profile.who.title": "About {name}",
+  // v3 FEAT-09 — #/handoff is the care summary builder (the Care summary pill).
+  // "Our question" puts the family question the parent picked into the summary
+  // as one line; it is off until the parent turns it on.
+  "elev.consult.h1.summary": "Build a care summary",
+  "elev.consult.summary.lede": "Only the moments and questions you pick go in. Nothing leaves until you share it.",
+  "elev.consult.topic.include": "Our question",
+  "elev.consult.topic.line": "Our question: {title}",
 };
 
 export const he: Record<string, string> = {
@@ -113,4 +120,9 @@ export const he: Record<string, string> = {
   "elev.profile.remembers.noticedAbout": "ארבור שמה לב למשהו בנושא {topic} — לבדוק",
   "elev.profile.remembers.noticed": "ארבור שמה לב למשהו לבדוק איתכם",
   "elev.profile.who.title": "על {name}",
+  // v3 FEAT-09 — סיכום לצוות המטפל, ו"השאלה שלנו" כשורה אחת שההורה בוחר להוסיף.
+  "elev.consult.h1.summary": "להכין סיכום לצוות המטפל",
+  "elev.consult.summary.lede": "רק הרגעים והשאלות שתבחרו נכנסים. שום דבר לא יוצא עד שתשתפו.",
+  "elev.consult.topic.include": "השאלה שלנו",
+  "elev.consult.topic.line": "השאלה שלנו: {title}",
 };

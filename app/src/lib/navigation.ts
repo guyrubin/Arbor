@@ -252,7 +252,7 @@ export const SECTIONS: NavSection[] = [
   },
   {
     id: "care",
-    label: "Care Network",
+    label: "Care, together",
     msIcon: "diversity_1",
     items: [
       { tab: "consult", label: "Consult", msIcon: "assessment" },
@@ -260,18 +260,25 @@ export const SECTIONS: NavSection[] = [
       { tab: "sharing", label: "Trusted Sharing", msIcon: "share" },
       { tab: "appointments", label: "Appointments", msIcon: "calendar_month" },
       { tab: "safety", label: "Safety & Escalation", msIcon: "gpp_maybe" },
+      { tab: "handoff", label: "Care summary", msIcon: "description" },
     ],
     // Hub (Consult) + Safety (the load-bearing escalation surface). School Brief,
     // Trusted Sharing and Appointments are the hub's contextual tools (folded out
     // of the drawer). W4.4: My Care Team merged into Trusted Sharing — one
     // roster surface over the same share grants.
+    // v3 FEAT-09: the full Care row is Consult · Safety · Care summary · School
+    // brief · Trusted sharing · Appointments. Safety stays second (primaryTabs);
+    // Care summary (#/handoff, the summary builder) leads the tools. The pill
+    // names are short (nav.pill.*); nav.tab.* stays the long name search and the
+    // Safety ring read.
     primaryTabs: [
       { tab: "consult", label: "Consult", msIcon: "assessment" },
-      { tab: "safety", label: "Safety & Escalation", msIcon: "gpp_maybe" },
+      { tab: "safety", label: "Safety", msIcon: "gpp_maybe", labelKey: "nav.pill.safety" },
     ],
     tools: [
-      { tab: "school-brief", label: "School Brief", msIcon: "backpack" },
-      { tab: "sharing", label: "Trusted Sharing", msIcon: "share" },
+      { tab: "handoff", label: "Care summary", msIcon: "description" },
+      { tab: "school-brief", label: "School brief", msIcon: "backpack", labelKey: "nav.pill.school-brief" },
+      { tab: "sharing", label: "Trusted sharing", msIcon: "share", labelKey: "nav.pill.sharing" },
       { tab: "appointments", label: "Appointments", msIcon: "calendar_month" },
     ],
   },

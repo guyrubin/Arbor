@@ -2610,6 +2610,14 @@ export const en: Dict = {
   "nav.pill.portrait": "Portrait",
   "nav.pill.profile": "Profile",
   "nav.pills.aria": "{place}: sections",
+  // v3 FEAT-09 — the full Care row (Consult · Safety · Care summary · School
+  // brief · Trusted sharing · Appointments). nav.tab.handoff names #/handoff,
+  // the care summary builder, in the row and in search; the short pill names
+  // leave nav.tab.safety / school-brief / sharing as the long names.
+  "nav.tab.handoff": "Care summary",
+  "nav.pill.safety": "Safety",
+  "nav.pill.school-brief": "School brief",
+  "nav.pill.sharing": "Trusted sharing",
 };
 
 export const he: Dict = {
@@ -5064,6 +5072,11 @@ export const he: Dict = {
   "nav.pill.portrait": "דיוקן",
   "nav.pill.profile": "פרופיל",
   "nav.pills.aria": "{place}: אזורים",
+  // v3 FEAT-09 — שורת הטיפול המלאה: התייעצות · בטיחות · סיכום לצוות המטפל · תקציר לגן/בית הספר · שיתוף מהימן · פגישות.
+  "nav.tab.handoff": "סיכום לצוות המטפל",
+  "nav.pill.safety": "בטיחות",
+  "nav.pill.school-brief": "תקציר לגן/בית הספר",
+  "nav.pill.sharing": "שיתוף מהימן",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and
