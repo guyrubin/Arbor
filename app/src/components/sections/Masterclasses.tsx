@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useSyncExternalStore } from "react";
+import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
+import { FreeText } from "../ui/FreeText";
 import { SpeakButton } from "../ui/SpeakButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import { cardCls, IconBadge, PASTEL, type PastelKey } from "../ui/kit";
@@ -21,8 +22,11 @@ import { concernsForBehaviors } from "../../content/selectCards";
 import { recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { readLearnFeedback } from "../../learn/learnFeedback";
 import { LEARN_CARDS } from "../../learn/learnCards";
-import type { LearnRankSignals } from "../../learn/learnLibrary";
-import { devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
+import { learnCategoryById, rankLearnCards, topicBoost, type LearnCategoryId, type LearnRankSignals } from "../../learn/learnLibrary";
+import { ageVisibleLearnCards, devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
+// v3 EXTRA-FORYOU: courses by area (the Learn shelves) and the family-ritual door's picture.
+import { courseArea, courseAreaCounts } from "../../learn/courseAreas";
+import { TOGETHER_ART } from "../../lib/parentArt";
 import type { DevelopmentMetricId } from "../../types";
 // AP-055: Scholar Hub weekly concept feed
 import ScholarHubCard from "./ScholarHubCard";
@@ -45,6 +49,17 @@ const MASTERCLASS_VIRTUES: Record<string, DevelopmentMetricId[]> = {
   "repair-after-conflict": ["empathy", "truth"],
   "raising-courage-without-harshness": ["courage", "resilience"],
 };
+
+/** v3 EXTRA-FORYOU: a private-use mark the topic why-line is split on, so the
+ *  parent's question renders through FreeText (bidi-isolated) between the
+ *  translated lead and tail. It is never displayed. */
+const TOPIC_SLOT = "\uE000";
+
+/** v3 EXTRA-FORYOU: a "Courses by area" chip, in the Learn filter pill's shape and tokens. */
+const AREA_CHIP = "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-bold transition focus:outline-none focus-visible:ring-2";
+const areaChipStyle = (on: boolean): React.CSSProperties => on
+  ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
+  : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" };
 
 const DONE_KEY = "arbor.masterclasses.done";
 export const loadDone = (): Record<string, boolean> => {
@@ -83,7 +98,7 @@ const loadReflection = (): Record<string, string> => {
  *  the parent's own competence (the calm, competent adult). Text-first, bilingual. */
 export default function Masterclasses() {
   const { t, aiLang, uiLang } = useLanguage();
-  const { childProfile, behaviorLogs, savedLearnIds, requestLearnRead, setActiveTab } = useArbor();
+  const { childProfile, behaviorLogs, savedLearnIds, requestLearnRead, setActiveTab, activeFamilyTopic } = useArbor();
   const he = aiLang === "he";
   const [openId, setOpenId] = useState<string | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
@@ -96,6 +111,8 @@ export default function Masterclasses() {
   // W0.7 — default the catalog to the child's age band; "Show all ages"
   // (persisted per surface) keeps every course reachable (UC-1 rule).
   const [showAllAges, setShowAllAges] = useState<boolean>(() => loadShowAllAges("masterclasses"));
+  // v3 EXTRA-FORYOU: the "Courses by area" filter (null = every area). Page state only.
+  const [activeArea, setActiveArea] = useState<LearnCategoryId | null>(null);
   const childMonths = ageMonthsFromProfile(childProfile);
   const { visible: ageVisible, hidden: ageHidden, fits: ageFits } = filterByAge(
     MASTERCLASSES,
@@ -169,6 +186,8 @@ export default function Masterclasses() {
     recentConcerns: concernsForBehaviors(recentBehaviorTypes(behaviorLogs, new Date())),
     helpfulness: readLearnFeedback(),
     savedIds: savedLearnIds,
+    // v3 EXTRA-FORYOU: the open family question, in the parent's own words.
+    topicText: activeFamilyTopic?.title ?? null,
   };
   const todaysRead = todaysLearnPick(LEARN_CARDS, learnSignals, {
     childId: childProfile.id,
@@ -216,6 +235,33 @@ export default function Masterclasses() {
 
   // A plain duration fact about the ONE move (never a completion count).
   const pickMinutes = todaysRead ? todaysRead.card.minutes : nextCourse ? nextCourse.durationMin : null;
+
+  // v3 EXTRA-FORYOU: "Picked for your question". The tag and the quoting
+  // why-line render only when the open family question DEMONSTRABLY moved
+  // today's read (todaysRead.fromTopic, the pick's own re-derivation), never
+  // because a question merely exists. The question is the parent's words,
+  // quoted through FreeText (bidi-isolated), never paraphrased.
+  const pickTopic = todaysRead?.fromTopic && activeFamilyTopic ? activeFamilyTopic.title : null;
+  const [topicLead, topicTail = ""] = t("elev.learnCare.pick.why.topic", { title: TOPIC_SLOT }).split(TOPIC_SLOT);
+
+  // v3 EXTRA-FORYOU: short reads. The same ranking (the same signals, the
+  // question included) over the age-fit Learn catalogue, today's read left
+  // out. With a question open, only the reads that share a word with it,
+  // under a title that says so; when none does, the next three ranked reads
+  // under a plain title. Minutes on each card, never a count of reads done.
+  const readShelf = rankLearnCards(ageVisibleLearnCards(LEARN_CARDS, learnSignals.ageYears), learnSignals)
+    .filter((c) => c.id !== todaysRead?.card.id);
+  const topicTitle = activeFamilyTopic?.title ?? "";
+  const topicReads = topicTitle ? readShelf.filter((c) => topicBoost(c, topicTitle) > 0) : [];
+  const readsForTopic = topicReads.length > 0;
+  const shortReads = (readsForTopic ? topicReads : readShelf).slice(0, 3);
+  const showShortReads = readsForTopic || shortReads.length >= 3;
+
+  // v3 EXTRA-FORYOU: courses by area. Catalogue counts of the courses the
+  // parent can see (plain integers, never progress). A filter left on an area
+  // the age switch has since emptied falls back to every area.
+  const areaCounts = courseAreaCounts(catalog);
+  const selectedArea = activeArea && areaCounts.some((a) => a.area.id === activeArea) ? activeArea : null;
 
   // ── The Learning Map rail ───────────────────────────────────────
   // Declared ONCE and placed in exactly one of two mutually exclusive slots:
@@ -303,16 +349,31 @@ export default function Masterclasses() {
           surfaceContract.ts declares for this route — here the hero's pick CTA,
           passed to HubHero as a prop, so the stamp rides its wrapper. */}
       <header data-primary-move="open-todays-pick" data-testid="academy-hub-hero" className="mx-auto mb-6 w-full min-w-0 max-w-[1180px]">
-        <h1 className="text-2xl sm:text-3xl leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.hero.academy.title", { name: childName })}</h1>
+        {/* v3 EXTRA-FORYOU: the parent's own hub says so: a quiet sentence-case
+            kicker, the title, one line on what is here. */}
+        <p data-testid="academy-hero-kicker" className="mb-1 text-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.hero.academy.kicker")}</p>
+        <h1 className="text-2xl sm:text-3xl leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.hero.academy.title")}</h1>
+        <p data-testid="academy-hero-sub" className="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.hero.academy.sub")}</p>
         {(todaysRead || nextCourse) && <section className="mt-4 border-y py-4 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="min-w-0 max-w-[65ch] flex-1 basis-[240px]">
+            {pickTopic && (
+              <span data-testid="academy-pick-topic" className="mb-2 inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-bold" style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}>
+                <Icon name="auto_awesome" size={14} fill={1} />{t("elev.learnCare.pick.topicTag")}
+              </span>
+            )}
             <h2 className="text-xl font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{todaysRead ? (he ? todaysRead.card.title.he : todaysRead.card.title.en) : (he ? nextCourse!.titleHe : nextCourse!.title)}</h2>
             {/* W2-SHELLPLAY critic r2 (B-SHELL-NEW-2j): when the parent's own
                 note moved today's pick, the why-line QUOTES it (lead-in sans
                 muted, the note in the editorial face, a peach-ink inline-start
                 rule) — never a domain, a score or a count. Otherwise the
                 re-derived why-line as before. */}
-            {todaysRead && pickMoment ? (
+            {pickTopic ? (
+              <p data-testid="academy-pick-why" data-why="family-question" dir="auto" className="mt-2 leading-relaxed" style={{ borderInlineStart: "3px solid var(--arbor-lav-ink)", paddingInlineStart: 12 }}>
+                <span className="t-sm" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>{topicLead}</span>
+                <FreeText text={pickTopic} className="t-base" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }} />
+                <span className="t-sm" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>{topicTail}</span>
+              </p>
+            ) : todaysRead && pickMoment ? (
               <p data-testid="academy-pick-why" data-why="moment" dir="auto" className="mt-2 leading-relaxed" style={{ borderInlineStart: "3px solid var(--arbor-peach-ink)", paddingInlineStart: 12 }}>
                 <span className="t-sm" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>{pickMomentLead}</span>{" "}
                 <span className="t-base" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>“<bdi>{pickMoment.text}</bdi>”</span>{" "}
@@ -343,6 +404,48 @@ export default function Masterclasses() {
           courses, on the surface whose ONE job is courses. Nothing is removed
           (law 6): below `md` the rail becomes one collapsed disclosure BELOW the
           gallery, and from `md` up it is the left column exactly as designed. */}
+
+      {/* v3 EXTRA-FORYOU: short reads for the parent's question. Three-minute
+          Learn reads, one tap each into the Learn reader. A sibling module (the
+          route's budget is 3; this and the catalogue are two). Below sm the row
+          scrolls sideways (one card and a peek), so the courses stay near the
+          top on a phone; from sm up, three columns. Area and minutes only. */}
+      {showShortReads && (
+        <section data-module="academy-short-reads" data-testid="academy-short-reads" aria-labelledby="academy-short-reads-title" className="min-w-0 space-y-3">
+          <div className="px-1">
+            <h2 id="academy-short-reads-title" className="text-lg font-bold" style={{ color: "var(--arbor-ink)" }}>
+              {t(readsForTopic ? "elev.learnCare.shortReads.title" : "elev.learnCare.shortReads.titleAll")}
+            </h2>
+            <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.shortReads.sub")}</p>
+          </div>
+          <div className="flex min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:overflow-visible">
+            {shortReads.map((c) => {
+              const shelf = learnCategoryById(c.category);
+              const tone = PASTEL[shelf.tone];
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  data-testid="academy-short-read"
+                  onClick={() => requestLearnRead({ cardId: c.id, source: "learn-hub-short-read" })}
+                  className={`${cardCls} flex min-h-11 w-[78%] shrink-0 snap-start flex-col gap-2 p-4 text-start transition motion-safe:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 sm:w-auto`}
+                >
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: tone.soft, color: tone.ink }}>
+                      <Icon name={shelf.msIcon} size={14} /><span dir="auto">{he ? shelf.label.he : shelf.label.en}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
+                      <Icon name="schedule" size={13} />{t("learn.minutes", { n: c.minutes })}
+                    </span>
+                  </span>
+                  <span className="text-base font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? c.title.he : c.title.en}</span>
+                  <span className="line-clamp-3 text-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)", fontFamily: "var(--font-editorial)", borderInlineStart: "2px solid var(--arbor-rule)", paddingInlineStart: 10 }}>{he ? c.hook.he : c.hook.en}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Design's two-column shell: left = the Learning Map rail (the explicit
           development-map spine — courses matched to where the child is growing),
@@ -385,8 +488,39 @@ export default function Masterclasses() {
               </span>
             )}
           </div>
+          {/* v3 EXTRA-FORYOU: courses by area. One chip per Learn shelf that
+              holds a visible course, with the plain number of courses in it (a
+              catalogue count, never progress). The chips filter the grid below;
+              "All" clears the filter. One scrolling row below sm. */}
+          {areaCounts.length > 1 && (
+            <div className="min-w-0 space-y-1.5">
+              <p id="academy-by-area-label" className="px-1 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.byArea")}</p>
+              <div role="group" aria-labelledby="academy-by-area-label" data-testid="academy-by-area" className="flex min-w-0 flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap">
+                <button type="button" aria-pressed={selectedArea === null} onClick={() => setActiveArea(null)} className={AREA_CHIP} style={areaChipStyle(selectedArea === null)}>
+                  {t("elev.learnCare.byArea.all")}
+                </button>
+                {areaCounts.map(({ area, count }) => (
+                  <button
+                    key={area.id}
+                    type="button"
+                    data-area={area.id}
+                    aria-pressed={selectedArea === area.id}
+                    onClick={() => setActiveArea(selectedArea === area.id ? null : area.id)}
+                    className={AREA_CHIP}
+                    style={areaChipStyle(selectedArea === area.id)}
+                  >
+                    <Icon name={area.msIcon} size={15} />
+                    <span dir="auto">{he ? area.label.he : area.label.en}</span>
+                    <span className="tabular-nums" style={{ opacity: 0.75 }}>{count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="grid sm:grid-cols-2 gap-4">
             {catalog.map((c) => {
+              // v3 EXTRA-FORYOU: the area chips filter the grid (null = every area).
+              if (selectedArea && courseArea(c.id) !== selectedArea) return null;
               const p = PASTEL[FRAME_TONE[c.frame]];
               const isCardDone = !!done[c.id];
               // W0.7: out-of-band courses (reachable via "Show all ages") carry a
@@ -447,7 +581,7 @@ export default function Masterclasses() {
                       >
                         {isCardDone
                           ? <><Icon name="check" size={15} fill={1} /> {t("master.done")}</>
-                          : <>{t("master.read")} →</>}
+                          : <>{t("master.read")}<Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" /></>}
                       </span>
                     </div>
                   </div>
@@ -455,6 +589,27 @@ export default function Masterclasses() {
               );
             })}
           </div>
+
+          {/* v3 EXTRA-FORYOU: family formation as a door inside the catalogue
+              (not a module of its own: the route's budget is 3). One tap opens
+              #/family, where the parent chooses the ritual. */}
+          <button
+            type="button"
+            data-testid="academy-family-door"
+            onClick={() => setActiveTab("family")}
+            className={`${cardCls} flex w-full min-h-11 items-center gap-4 p-3 text-start transition motion-safe:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2`}
+          >
+            <img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt="" loading="lazy" className="h-auto w-24 shrink-0 rounded-xl object-cover sm:w-[140px]" />
+            <span className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("sec.family.title")}</span>
+              <span className="text-[17px] font-bold leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("elev.learnCare.family.headline")}</span>
+              <span className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.family.sub")}</span>
+              <span className="mt-1 inline-flex items-center gap-1 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+                {t("elev.learnCare.family.cta")}
+                <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
+              </span>
+            </span>
+          </button>
         </div>
 
         {/* ── Learning Map rail — left column at xl; on a phone it moves into
@@ -498,7 +653,7 @@ export function MasterclassReader({ m, isDone: isDoneProp, onDone: onDoneProp, o
   m: Masterclass; isDone?: boolean; onDone?: () => void; onBack: () => void; reflection?: string; onReflect?: (v: string) => void;
 }) {
   const { t, aiLang, uiLang } = useLanguage();
-  const { childProfile, actionLoop, acceptTodayAction, seedCoach } = useArbor();
+  const { childProfile, actionLoop, actionLoopConfirmed, acceptTodayAction, seedCoach } = useArbor();
   const he = aiLang === "he";
   const frameLabel = he ? FRAME_LABELS[m.frame].he : FRAME_LABELS[m.frame].en;
   const tone = FRAME_TONE[m.frame];
@@ -521,9 +676,25 @@ export function MasterclassReader({ m, isDone: isDoneProp, onDone: onDoneProp, o
   };
   const tryTonight = (he ? m.tryTonightHe : m.tryTonight).trim();
   const todayTaken = actionLoop.some((a) => a.source === "learn-read" && a.recommendation === tryTonight);
+  // v3 EXTRA-FORYOU: "Added to today" shows only after the write resolved.
+  // The action-loop row appears locally before the server has it (latency
+  // compensation), so the row alone is no receipt: the button says "Adding…"
+  // while this tap's write is in flight and "Added" once it resolved (server
+  // ack, or queued safely offline); a failed write says so under the actions.
+  // A row already in a CONFIRMED loop (an earlier visit) reads as added.
+  const [addState, setAddState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+  const readerMounted = useRef(true);
+  useEffect(() => { readerMounted.current = true; return () => { readerMounted.current = false; }; }, []);
+  const addedShown = addState === "saved" || (addState === "idle" && todayTaken && actionLoopConfirmed === true);
   const addToday = () => {
     if (todayTaken) return;
-    acceptTodayAction(tryTonight, "tiny", "learn-read");
+    if (addState === "saving") return;
+    setAddState("saving");
+    const write = acceptTodayAction(tryTonight, "tiny", "learn-read");
+    write.then(
+      () => { if (readerMounted.current) setAddState("saved"); },
+      () => { if (readerMounted.current) setAddState("failed"); },
+    );
     try { track("learn_add_today", { course: m.id }); } catch { /* noop */ }
   };
   const firstName = (childProfile.name || "").split(" ")[0];
@@ -567,16 +738,17 @@ export function MasterclassReader({ m, isDone: isDoneProp, onDone: onDoneProp, o
           type="button"
           onClick={addToday}
           disabled={todayTaken}
+          aria-busy={addState === "saving"}
           data-testid="course-add-today"
           className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-bold transition disabled:opacity-70"
-          style={todayTaken
+          style={addedShown
             ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
             : { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
         >
           {/* W2-SHELLPLAY r2 (learn design): the course reader's one --gradient-cta is the
               target's own move, "Add to today"; "Mark complete" below is a ghost. */}
-          <Icon name={todayTaken ? "check_circle" : "add_task"} size={16} fill={todayTaken ? 1 : 0} />
-          {todayTaken ? t("learn.addedToday") : t("learn.addToday")}
+          <Icon name={addedShown ? "check_circle" : "add_task"} size={16} fill={addedShown ? 1 : 0} />
+          {addState === "saving" ? t("elev.learnCare.addToday.saving") : addedShown ? t("learn.addedToday") : t("learn.addToday")}
         </button>
         <button
           type="button"
@@ -589,6 +761,9 @@ export function MasterclassReader({ m, isDone: isDoneProp, onDone: onDoneProp, o
         </button>
         <SpeakButton text={listenText} lang={uiLang} label={t("learn.listen")} size="md" className="touch-target" />
       </div>
+      {addState === "failed" && (
+        <p role="alert" data-testid="course-add-today-failed" className="t-sm" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.learnCare.addToday.failed")}</p>
+      )}
 
       <div className="space-y-5">
         {m.sections.map((s, i) => (

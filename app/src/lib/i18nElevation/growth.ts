@@ -24,8 +24,10 @@ export const en: Record<string, string> = {
 
   // ── E2 · Academy hub hero
   "elev.hero.academy.eyebrow": "Academy",
-  "elev.hero.academy.title": "Short courses, matched to where {name} is now",
-  "elev.hero.academy.sub": "A few practical minutes at a time — ready when you are.",
+  // v3 EXTRA-FORYOU: the For you, the parent header (a quiet kicker, the title, one line).
+  "elev.hero.academy.kicker": "For you",
+  "elev.hero.academy.title": "Understand more. At your pace.",
+  "elev.hero.academy.sub": "Ideas and short courses that connect to life at home.",
   "elev.hero.academy.cta": "Continue the next course",
   "elev.hero.academy.stat.courses": "courses",
   "elev.hero.academy.stat.completed": "completed",
@@ -133,8 +135,10 @@ export const he: Record<string, string> = {
   "elev.hero.growth.stat.momentsOne": "רגע השבוע",
 
   "elev.hero.academy.eyebrow": "אקדמיה",
-  "elev.hero.academy.title": "קורסים קצרים, מותאמים לשלב של {name}",
-  "elev.hero.academy.sub": "כמה דקות מעשיות בכל פעם — בדיוק כשנוח לכם.",
+  // v3 EXTRA-FORYOU (see the EN block).
+  "elev.hero.academy.kicker": "בשבילכם",
+  "elev.hero.academy.title": "להבין יותר. בקצב שלכם.",
+  "elev.hero.academy.sub": "רעיונות וקורסים קצרים שמתחברים לחיים בבית.",
   "elev.hero.academy.cta": "להמשיך לקורס הבא",
   "elev.hero.academy.stat.courses": "קורסים",
   "elev.hero.academy.stat.completed": "הושלמו",

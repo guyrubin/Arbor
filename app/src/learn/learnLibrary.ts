@@ -18,6 +18,7 @@
 import type { ContentConcern, LocalizedText } from "../content/governance";
 import { fitsYears } from "../lib/age/forChild";
 import { normalizeSearchText } from "../lib/searchNormalize";
+import { sharedTopicWords, topicWords } from "./topicMatch";
 
 export type LearnCategoryId =
   | "minds"
@@ -182,6 +183,11 @@ export const learnCategoryById = (id: LearnCategoryId): LearnCategory =>
  *    finished get a small +1 continuation boost ("continues what you saved" —
  *    the bookmark signal only, never an outcome claim); a completed card
  *    itself is never re-boosted. Absent → ranking is byte-identical.
+ *  - topicText (v3 EXTRA-FORYOU): the parent's open family question, in their
+ *    own words. +4 per question word the card's title, shelf or concern tags
+ *    share (learn/topicMatch), capped at +6, so the question the parent is
+ *    asking right now outranks the focus domain. Absent or empty → ranking is
+ *    byte-identical.
  * Ties keep catalogue order (stable sort) so results never shuffle.
  */
 export interface LearnRankSignals {
@@ -193,6 +199,26 @@ export interface LearnRankSignals {
   savedIds?: string[];
   /** W2 2.5: finished-read card ids (kept off the boost themselves). */
   completedIds?: string[];
+  /** v3 EXTRA-FORYOU: the active family question's title (the parent's words). */
+  topicText?: string | null;
+}
+
+/** v3 EXTRA-FORYOU: the family-question boost, per shared word and in total. */
+export const TOPIC_WORD_BOOST = 4;
+export const TOPIC_BOOST_CAP = 6;
+
+/** The text a family question is matched against: the card's title and its
+ *  shelf name in both languages, and its concern tags. Never the body. */
+export function cardTopicText(c: LearnCard): string {
+  const shelf = learnCategoryById(c.category).label;
+  return [c.title.en, c.title.he, shelf.en, shelf.he, ...cardConcerns(c)].join(" ");
+}
+
+/** How much the parent's question lifts this card (0 when they share no word). */
+export function topicBoost(c: LearnCard, topicText: string | null | undefined): number {
+  const topic = topicWords(topicText);
+  if (topic.length === 0) return 0;
+  return Math.min(sharedTopicWords(topic, cardTopicText(c)) * TOPIC_WORD_BOOST, TOPIC_BOOST_CAP);
 }
 
 /** W2 2.5: continuation boost for cards sharing a topic with a saved read. */
@@ -248,6 +274,7 @@ export function learnCardScore(c: LearnCard, s: LearnRankSignals): number {
   const pulse = s.helpfulness?.[c.id];
   if (pulse === 1) score += 1;
   else if (pulse === -1) score -= 2;
+  if (s.topicText) score += topicBoost(c, s.topicText);
   return score;
 }
 

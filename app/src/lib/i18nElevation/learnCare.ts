@@ -159,6 +159,23 @@ export const en: Record<string, string> = {
   "elev.learnCare.appt.worth.caption": "Worth bringing to the next visit · you noted this {date}",
   "elev.learnCare.appt.worth.add": "Add to my questions",
   "elev.learnCare.appt.more.door": "Open the consult flow",
+
+  // v3 EXTRA-FORYOU — For you, the parent: the family question as a pick
+  // signal (tag + quoting why-line), the short-reads row, courses by area, the
+  // family-formation door inside the catalogue, and the course reader's
+  // add-to-today states (the "added" label waits for the write).
+  "elev.learnCare.pick.topicTag": "Picked for your question",
+  "elev.learnCare.pick.why.topic": "Because you are asking: “{title}”",
+  "elev.learnCare.shortReads.title": "Short reads for your question",
+  "elev.learnCare.shortReads.titleAll": "More short reads",
+  "elev.learnCare.shortReads.sub": "A few minutes, one idea",
+  "elev.learnCare.byArea": "Courses by area",
+  "elev.learnCare.byArea.all": "All",
+  "elev.learnCare.family.headline": "A moment you return to as a family",
+  "elev.learnCare.family.sub": "Small rituals you repeat, like a weekly reset or a family story, build belonging. Pick one and make it yours.",
+  "elev.learnCare.family.cta": "Choose a ritual",
+  "elev.learnCare.addToday.saving": "Adding…",
+  "elev.learnCare.addToday.failed": "That did not reach today. Try again.",
 };
 
 export const he: Record<string, string> = {
@@ -281,4 +298,18 @@ export const he: Record<string, string> = {
   "elev.learnCare.appt.worth.caption": "שווה להביא לביקור הבא · רשמתם את זה ב־{date}",
   "elev.learnCare.appt.worth.add": "להוסיף לשאלות שלי",
   "elev.learnCare.appt.more.door": "פתחו את מסלול ההתייעצות",
+
+  // v3 EXTRA-FORYOU — For you, the parent (see the EN block).
+  "elev.learnCare.pick.topicTag": "נבחר בשביל השאלה שלכם",
+  "elev.learnCare.pick.why.topic": "כי אתם שואלים: „{title}”",
+  "elev.learnCare.shortReads.title": "קריאה קצרה לשאלה שלכם",
+  "elev.learnCare.shortReads.titleAll": "עוד קריאה קצרה",
+  "elev.learnCare.shortReads.sub": "כמה דקות, רעיון אחד",
+  "elev.learnCare.byArea": "קורסים לפי תחום",
+  "elev.learnCare.byArea.all": "הכול",
+  "elev.learnCare.family.headline": "רגע שחוזרים אליו כמשפחה",
+  "elev.learnCare.family.sub": "טקסים קטנים שחוזרים עליהם, כמו איפוס שבועי או סיפור משפחתי, בונים שייכות. בחרו אחד והפכו אותו לשלכם.",
+  "elev.learnCare.family.cta": "לבחור טקס משפחתי",
+  "elev.learnCare.addToday.saving": "מוסיפים…",
+  "elev.learnCare.addToday.failed": "זה לא נוסף להיום. נסו שוב.",
 };
