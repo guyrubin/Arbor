@@ -301,6 +301,8 @@ export const companionEn = {
   "companion.panel.new": "New conversation",
   "companion.panel.tone": "How Arbor talks with you",
   "companion.panel.remembers": "What Arbor remembers",
+  // FEAT-01: the Ask bar's second line names the active family question.
+  "companion.launcher.topic": "On: {title}",
 };
 
 export const companionHe = {
@@ -603,5 +605,7 @@ export const companionHe = {
   "companion.panel.menu": "אפשרויות שיחה",
   "companion.panel.new": "שיחה חדשה",
   "companion.panel.tone": "איך ארבור מדברת איתכם",
-  "companion.panel.remembers": "מה ארבור זוכרת",
+  "companion.panel.remembers": "מה ארבור זוכר",
+  // FEAT-01: the Ask bar's second line names the active family question.
+  "companion.launcher.topic": "בנושא: {title}",
 };

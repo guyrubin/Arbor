@@ -35,7 +35,7 @@ import { EvidenceChip } from "../ui/EvidenceChip";
 import CompanionComposer from "../companion/CompanionComposer";
 import type { ComposerAttachment } from "../../lib/companionAttachments";
 import { requestCompanionConsentReview } from "../../lib/companionConsent";
-import { COMPANION_CONVERSATION_EVENT, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
+import { COMPANION_CONVERSATION_EVENT, consumeConversationPanelRequest, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
 import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError } from "../../lib/api";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
@@ -421,6 +421,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [liveProbed, setLiveProbed] = useState(false);
   // B-VOICE-06: bumps when "Talk it through" is tapped while this panel is mounted.
   const [voiceAsk, setVoiceAsk] = useState(0);
+  // FEAT-01: bumps when the conversation header's menu asks for history or tone.
+  const [panelAsk, setPanelAsk] = useState(0);
   // B-VOICE-06: the one-line "tap Talk it through to start" after the door, until voice starts.
   const [voiceInvite, setVoiceInvite] = useState(false);
   useEffect(() => { if (voicePhase !== "off") setVoiceInvite(false); }, [voicePhase]);
@@ -898,7 +900,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // contract keeps "available" distinct from "listening". So the claimed
   // request focuses that button and shows one line saying so. The request is
   // claimed once and only while fresh (lib/companionConversation).
-  // FEAT-01: the conversation header's menu asks through the same door.
+  // FEAT-01: the conversation header's menu asks through the same door, and
+  // its request is claimed like a voice request: here on a tap while mounted,
+  // or on mount when the tap landed while this conversation was still loading.
   // "tone" opens the ONE ToneSheet; "history" brings the history row into view
   // and focuses its current conversation (else its first, else New).
   const historyRef = useRef<HTMLElement>(null);
@@ -906,17 +910,23 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     const onAsk = (event: Event) => {
       const detail = (event as CustomEvent<CompanionConversationRequest>).detail;
       if (detail?.voice) setVoiceAsk((n) => n + 1);
-      if (detail?.panel === "tone") setToneOpen(true);
-      if (detail?.panel === "history" && historyRef.current) {
-        const region = historyRef.current;
-        region.scrollIntoView({ block: "nearest", behavior: reducedMotion ? "auto" : "smooth" });
-        const chip = region.querySelector<HTMLElement>("[data-history-chip][aria-current]") ?? region.querySelector<HTMLElement>("[data-history-chip]") ?? region.querySelector<HTMLElement>("button");
-        chip?.focus({ preventScroll: true });
-      }
+      if (detail?.panel) setPanelAsk((n) => n + 1);
     };
     window.addEventListener(COMPANION_CONVERSATION_EVENT, onAsk);
     return () => window.removeEventListener(COMPANION_CONVERSATION_EVENT, onAsk);
-  }, [reducedMotion]);
+  }, []);
+  useEffect(() => {
+    if (!visible) return;
+    const panel = consumeConversationPanelRequest();
+    if (panel === "tone") setToneOpen(true);
+    if (panel === "history" && historyRef.current) {
+      const region = historyRef.current;
+      region.scrollIntoView({ block: "nearest", behavior: reducedMotion ? "auto" : "smooth" });
+      const chip = region.querySelector<HTMLElement>("[data-history-chip][aria-current]") ?? region.querySelector<HTMLElement>("[data-history-chip]") ?? region.querySelector<HTMLElement>("button");
+      chip?.focus({ preventScroll: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, panelAsk]);
   useEffect(() => {
     if (!visible || !liveProbed || !conversationVoiceRequestPending()) return;
     if (consumeConversationVoiceRequest() && voicePhase === "off") {

@@ -57,17 +57,25 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   };
   // FEAT-01: the header menu reaches existing controls only. New conversation
   // is the history row's own handler (the question stays); history and tone
-  // belong to the conversation, so they go through its one door; "What Arbor
-  // remembers" is the memory page, which the route effect below treats like an
-  // answer's own action (steps aside below 1280 px, stays docked beside it).
+  // belong to the conversation, so they go through its one door.
   const panelAction = (action: CompanionPanelAction) => {
     if (action === "new") newConversation();
     else if (action === "history" || action === "tone") requestCompanionConversation({ panel: action, source: "panel-menu" });
-    else if (action === "remembers") setActiveTab("memory");
+    else if (action === "remembers") {
+      // "What Arbor remembers" is a page, so the panel closes at every width
+      // (thread and draft stay mounted; the launcher brings them back) and
+      // focus lands on the launcher once the memory page has committed.
+      closeFocus.current = { childId: childProfile.id, tab: "memory" };
+      setOpen(false);
+      setActiveTab("memory");
+    }
     else setExpanded(value => !value);
   };
-  // The active question rides on the launcher as one quiet line (never with a draft).
+  // The active question rides on the launcher as one quiet line, "On: <question>"
+  // (never with a draft). The words sit in their own bdi so a long question ends
+  // in an ellipsis and a Latin title keeps its order inside Hebrew.
   const launcherTopic = !chatInput.trim() ? activeFamilyTopic?.title.trim() ?? "" : "";
+  const [topicBefore, topicAfter = ""] = inputText(uiLang, "companion.launcher.topic").split("{title}");
   // Direct Coach/Scholar entry has no mounted launcher until close commits.
   // Restore only an explicit close, after route/dialog cleanup; newer context
   // owns focus and cancels this return rather than moving or scrolling it.
@@ -188,7 +196,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     </div>
     {!visible && !kidLocked && <div className="arbor-parent companion-launcher-rail" data-testid="companion-launcher-rail"><div ref={launcherRef} className="arbor-parent companion-launcher" data-testid="companion-launcher">
       <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.input.talk-with-arbor-text-photo-or-voice")} aria-describedby={launcherTopic ? "companion-launch-topic" : undefined}>
-        <ArborMark size={24} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : copy.talk}{launcherTopic && <span id="companion-launch-topic" className="companion-launch-topic"><Icon name="bookmark" size={14} className="companion-launch-topic-icon" /><span className="sr-only">{inputText(uiLang, "companion.shell.our-question")}</span><bdi dir="auto" className="companion-launch-topic-text">{launcherTopic}</bdi></span>}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+        <ArborMark size={24} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : copy.talk}{launcherTopic && <span id="companion-launch-topic" className="companion-launch-topic">{topicBefore}<bdi dir="auto" className="companion-launch-topic-text">{launcherTopic}</bdi>{topicAfter || null}</span>}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
       </button>
       {hardMomentDoor && activeTab !== "overview" && <button type="button" className="companion-launch-save companion-launch-hard" data-testid="launcher-hard-moment" onClick={() => openHardMomentNow()} aria-label={inputText(uiLang, "companion.input.hard-moment-aria")}><Icon name="volunteer_activism" size={21} /><span className="companion-launch-save-label">{inputText(uiLang, "companion.input.hard-moment")}</span></button>}
       <details ref={captureRef} className="companion-capture-menu" onKeyDown={event => {

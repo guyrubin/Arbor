@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * FEAT-01 — the Ask Arbor bar on every screen. The bar carries the active
- * family question as one quiet caption line (FEAT-05 owns the chip that opens
+ * family question as one quiet caption line, "On: <question>" (FEAT-05 owns the chip that opens
  * the question sheet; the bar consumes it and never adds a second door), and
  * the conversation header gathers its options in one menu whose items reach
  * controls that already exist.
@@ -58,7 +58,7 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
 import CompanionWorkspace from "./CompanionWorkspace";
 import CompanionPanelMenu, { companionPanelItems } from "./CompanionPanelMenu";
 import { translate } from "../../lib/i18n";
-import { COMPANION_CONVERSATION_EVENT } from "../../lib/companionConversation";
+import { COMPANION_CONVERSATION_EVENT, CONVERSATION_VOICE_REQUEST_TTL_MS, consumeConversationPanelRequest, consumeConversationVoiceRequest, requestCompanionConversation } from "../../lib/companionConversation";
 
 const TOPIC = { id: "topic-a", title: "How could mornings feel easier?" };
 const renderWorkspace = (kidLocked = false) => renderToStaticMarkup(<CompanionWorkspace kidLocked={kidLocked}><main>Page content</main></CompanionWorkspace>);
@@ -81,7 +81,7 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("FEAT-01 — the Ask bar carries the active question as one quiet line", () => {
-  it.each(["en", "he"] as const)("renders the caption as a span inside Ask, text only (%s)", lang => {
+  it.each(["en", "he"] as const)("renders the caption as a span inside Ask reading 'On: <question>', text only (%s)", lang => {
     state.lang = lang; state.topic = TOPIC;
     const html = renderWorkspace();
     const line = caption();
@@ -94,11 +94,16 @@ describe("FEAT-01 — the Ask bar carries the active question as one quiet line"
     expect(words.type).toBe("bdi");
     expect(words.props.dir).toBe("auto");
     expect(words.props.children).toBe(TOPIC.title);
-    const prefix = translate(lang, "companion.shell.our-question");
-    expect(node(n => n.type === "span" && n.props.className === "sr-only" && n.props.children === prefix)).toBeDefined();
-    // The question's own glyph, a screen-reader prefix and the words: never a count, dot or badge.
+    // The visible line is the translated "On: {title}" with the words in their
+    // own bdi: no glyph, no screen-reader-only prefix, never a count, dot or badge.
+    const template = translate(lang, "companion.launcher.topic");
+    expect(template).toContain("{title}");
+    expect(template.split("{title}")[0].trim().length).toBeGreaterThan(0);
+    expect(line!.props.children[0]).toBe(template.split("{title}")[0]);
     const markup = html.match(/<span id="companion-launch-topic"[\s\S]*?<\/bdi><\/span>/)?.[0] ?? "";
-    expect(textOf(markup)).toBe(`bookmark${prefix}${TOPIC.title}`);
+    expect(textOf(markup)).toBe(template.replace("{title}", TOPIC.title));
+    expect(markup).not.toMatch(/sr-only|class="msr/);
+    expect(textOf(markup)).not.toMatch(/\d/);
     expect(html).not.toContain("<small");
     // B-ASKJB-39: the hard-moment door stays off the overview, question or not.
     expect(html).not.toContain('data-testid="launcher-hard-moment"');
@@ -200,14 +205,15 @@ describe("FEAT-01 — the conversation header's options menu", () => {
 
   it("draws every glyph from the shipped icon subset", () => {
     const icons = [...companionPanelItems({ wide: true, expanded: false }), ...companionPanelItems({ wide: true, expanded: true })].map(item => item.icon);
-    for (const name of [...icons, "more_horiz", "bookmark"]) expect(shipped.has(name), name).toBe(true);
+    for (const name of [...icons, "more_horiz"]) expect(shipped.has(name), name).toBe(true);
   });
 
-  it.each(["en", "he"] as const)("labels the menu, every item and the caption prefix in %s (Hebrew without Latin)", lang => {
+  it.each(["en", "he"] as const)("labels the menu, every item and the caption in %s (Hebrew without Latin)", lang => {
     const items = [...companionPanelItems({ wide: true, expanded: false }), ...companionPanelItems({ wide: true, expanded: true })];
-    const keys = [...new Set(["companion.panel.menu", "companion.shell.our-question", ...items.map(item => item.labelKey)])];
+    const keys = [...new Set(["companion.panel.menu", "companion.launcher.topic", ...items.map(item => item.labelKey)])];
     for (const key of keys) {
-      const label = translate(lang, key);
+      // A placeholder ({title}) is the only Latin a Hebrew value may carry.
+      const label = translate(lang, key).replace(/\{\w+\}/g, "");
       expect(label.trim().length, key).toBeGreaterThan(0);
       expect(label, key).not.toBe(key);
       expect(label, key).not.toMatch(/\d/);
@@ -369,17 +375,51 @@ describe("FEAT-01 — the conversation header's options menu", () => {
 });
 
 describe("FEAT-01 — the conversation answers the menu through its one door", () => {
-  const coach = readFileSync(new URL("../tabs/CoachTab.tsx", import.meta.url), "utf8");
+  const coach = readFileSync(new URL("../tabs/CoachTab.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
   it("tone opens the ONE ToneSheet and history brings the history row into view; neither sends", () => {
     const start = coach.indexOf("const onAsk = (event: Event) => {");
     expect(start).toBeGreaterThan(-1);
     const listener = coach.slice(start, coach.indexOf("window.addEventListener(COMPANION_CONVERSATION_EVENT, onAsk);"));
-    expect(listener).toContain('if (detail?.panel === "tone") setToneOpen(true);');
-    expect(listener).toMatch(/if \(detail\?\.panel === "history" && historyRef\.current\)/);
-    expect(listener).toContain("focus({ preventScroll: true })");
-    expect(listener).not.toMatch(/sendMessage|handleSend|setChatInput/);
+    // The tap only bumps a counter; the request itself is claimed below.
+    expect(listener).toContain("if (detail?.panel) setPanelAsk((n) => n + 1);");
+    const at = coach.indexOf("const panel = consumeConversationPanelRequest();");
+    expect(at).toBeGreaterThan(-1);
+    const claim = coach.slice(at, coach.indexOf("}, [visible, panelAsk]);"));
+    expect(claim.length).toBeGreaterThan(0);
+    // Claimed only while the conversation shows, so a hidden panel never opens a sheet.
+    expect(coach.slice(at - 80, at)).toContain("if (!visible) return;");
+    expect(claim).toContain('if (panel === "tone") setToneOpen(true);');
+    expect(claim).toMatch(/if \(panel === "history" && historyRef\.current\)/);
+    expect(claim).toContain("focus({ preventScroll: true })");
+    for (const part of [listener, claim]) expect(part).not.toMatch(/sendMessage|handleSend|setChatInput/);
     expect(coach.match(/<ToneSheet /g)).toHaveLength(1);
     expect(coach).toContain('<section data-module="coach-history" ref={historyRef}');
+  });
+
+  it("holds a menu request until the conversation claims it: once, the latest, and only while fresh", () => {
+    vi.stubGlobal("window", new EventTarget());
+    consumeConversationPanelRequest();
+    expect(consumeConversationPanelRequest()).toBeNull();
+
+    // Chosen while the conversation was still loading: claimed when it mounts.
+    requestCompanionConversation({ panel: "tone", source: "panel-menu" }, 1_000);
+    expect(consumeConversationPanelRequest(1_000 + CONVERSATION_VOICE_REQUEST_TTL_MS)).toBe("tone");
+    expect(consumeConversationPanelRequest(1_000)).toBeNull();
+
+    requestCompanionConversation({ panel: "tone", source: "panel-menu" }, 2_000);
+    requestCompanionConversation({ panel: "history", source: "panel-menu" }, 2_500);
+    expect(consumeConversationPanelRequest(3_000)).toBe("history");
+    expect(consumeConversationPanelRequest(3_000)).toBeNull();
+
+    // A stale request is dropped and cleared, never answered late.
+    requestCompanionConversation({ panel: "history", source: "panel-menu" }, 4_000);
+    expect(consumeConversationPanelRequest(4_001 + CONVERSATION_VOICE_REQUEST_TTL_MS)).toBeNull();
+    expect(consumeConversationPanelRequest(4_000)).toBeNull();
+
+    // A menu request never asks for the microphone, and a plain open holds no menu request.
+    expect(consumeConversationVoiceRequest(5_000)).toBe(false);
+    requestCompanionConversation({ source: "launcher" }, 6_000);
+    expect(consumeConversationPanelRequest(6_000)).toBeNull();
   });
 });
 

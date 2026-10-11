@@ -62,13 +62,13 @@
   .companion-launch-main { flex-basis: 100%; }
 }
 
-/* FEAT-01 — the Ask Arbor bar carries the family question as one quiet line
-   (the bookmark is the question chip's own glyph), and the conversation header
-   gathers its options in one menu. Text only: never a count, dot or badge.
+/* FEAT-01 — the Ask Arbor bar carries the family question as one quiet line,
+   "On: <question>", and the conversation header gathers its options in one
+   menu. Text only: never a count, dot or badge. The line never wraps: a long
+   question ends in an ellipsis at the inline end.
    Logical properties only, so Hebrew mirrors; every item keeps the 44 px floor. */
-.companion-launch-topic { display: flex; align-items: center; gap: 4px; min-inline-size: 0; max-inline-size: 100%; margin-block-start: 1px; color: var(--arbor-muted); font-size: 12px; font-weight: 500; line-height: 1.35; }
-.companion-launch-topic-icon { flex: none; color: var(--arbor-clay-deep); }
-.companion-launch-topic-text { min-inline-size: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.companion-launch-topic { display: block; min-inline-size: 0; max-inline-size: 100%; margin-block-start: 1px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--arbor-muted); font-size: 12px; font-weight: 500; line-height: 1.35; }
+.companion-launch-topic-text { color: var(--arbor-ink-soft); font-weight: 600; }
 .companion-panel-menu-wrap { position: relative; display: flex; flex: none; }
 .companion-panel-menu-wrap > [aria-expanded="true"] { background: var(--arbor-paper-deep); color: var(--arbor-ink); }
 .companion-panel-menu { position: absolute; inset-block-start: calc(100% + 6px); inset-inline-end: 0; z-index: 40; display: flex; flex-direction: column; gap: 2px; inline-size: min(280px, calc(100vw - 32px)); padding: 6px; border: 1px solid var(--arbor-rule-strong); border-radius: var(--r-lg); background: var(--arbor-paper-elevated); box-shadow: var(--arbor-shadow-primary); }
