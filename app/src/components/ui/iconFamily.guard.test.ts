@@ -15,13 +15,14 @@
  *       dock both read it, neither hardcodes a place glyph (they used to
  *       disagree: My child was `person` on desktop and `eco` on the phone);
  *   (c) inside lib/navigation.ts, no two different destinations share a glyph
- *       (School Brief and the Learn hub were both `school`).
+ *       (School Brief and the Learn hub were both `school`) — the hubs, and
+ *       since v3 IA-02 the place pill rows (PLACE_PILLS) with them.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { SECTIONS, primaryTabOf, type NavSection } from "../../lib/navigation";
+import { PLACE_PILLS, SECTIONS, primaryTabOf, type NavSection } from "../../lib/navigation";
 import { COMPANION_PLACES } from "../../lib/companionPlaces";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -204,5 +205,22 @@ describe("(c) navigation.ts — one glyph per destination", () => {
       });
     expect(glyphCollisions(withGlyph("school-brief", "school"))).toEqual(["school: masterclasses, school-brief"]);
     expect(glyphCollisions(withGlyph("milestones", "eco"))).toEqual(["eco: development, milestones"]);
+  });
+
+  // v3 IA-02: the place pill rows are destinations too. They join the same
+  // check as one section (its glyph is Now's home pill, so it adds nothing).
+  const placeRows = (swap?: { tab: string; msIcon: string }): NavSection => {
+    const items = [...PLACE_PILLS.now, ...PLACE_PILLS.child].map((it) => (swap && it.tab === swap.tab ? { ...it, msIcon: swap.msIcon } : it));
+    return { id: "today", label: "Place pill rows", msIcon: items[0].msIcon, items, primaryTabs: [items[0]], tools: [] };
+  };
+
+  it("v3 IA-02: every place pill carries a glyph, and none is shared with another destination", () => {
+    for (const it of placeRows().items) expect(it.msIcon, it.tab).toMatch(/^[a-z][a-z0-9_]+$/);
+    expect(glyphCollisions([...SECTIONS, placeRows()])).toEqual([]);
+  });
+
+  it("NEGATIVE CONTROL: a place pill sharing a glyph with another pill, or with a hub's destination, is caught", () => {
+    expect(glyphCollisions([...SECTIONS, placeRows({ tab: "milestones", msIcon: "map" })])).toEqual(["map: development, milestones"]);
+    expect(glyphCollisions([...SECTIONS, placeRows({ tab: "timeline", msIcon: "school" })])).toEqual(["school: masterclasses, timeline"]);
   });
 });

@@ -2599,6 +2599,17 @@ export const en: Dict = {
   "privacy.analytics.label": "Share how you use Arbor",
   "privacy.analytics.body": "When on, Arbor records which parts of the app you use, on which days, and how you first found Arbor. Never what you write, and never your child's name or notes.",
   "privacy.analytics.saveFailed": "Saved on this device. We could not reach your account, so it applies here for now.",
+  // v3 IA-02 — the place pill rows (lib/navigation PLACE_PILLS labelKey): short
+  // pill names where nav.tab.<tab> is long or repeats the place, and the
+  // row's tablist name ({place} is the place or door it belongs to).
+  "nav.pill.weekly": "Weekly report",
+  "nav.pill.day-windows": "Day windows",
+  "nav.pill.reminders": "Reminders",
+  "nav.pill.development": "Development map",
+  "nav.pill.language": "Language",
+  "nav.pill.portrait": "Portrait",
+  "nav.pill.profile": "Profile",
+  "nav.pills.aria": "{place}: sections",
 };
 
 export const he: Dict = {
@@ -5044,6 +5055,15 @@ export const he: Dict = {
   "privacy.analytics.label": "שיתוף אופן השימוש בארבור",
   "privacy.analytics.body": "כשהאפשרות פעילה, ארבור רושם באילו חלקים של האפליקציה השתמשתם, באילו ימים, ואיך הגעתם לארבור לראשונה. אף פעם לא את מה שכתבתם, ואף פעם לא את השם או ההערות על ילדכם.",
   "privacy.analytics.saveFailed": "נשמר במכשיר הזה. לא הצלחנו להגיע לחשבון שלכם, ולכן ההגדרה חלה כאן בינתיים.",
+  // v3 IA-02 — שורות הכפתורים של כל מקום (PLACE_PILLS): שמות קצרים לכפתורים, ושם רשימת הכרטיסיות.
+  "nav.pill.weekly": "דוח שבועי",
+  "nav.pill.day-windows": "חלונות היום",
+  "nav.pill.reminders": "תזכורות",
+  "nav.pill.development": "מפת התפתחות",
+  "nav.pill.language": "שפה",
+  "nav.pill.portrait": "דיוקן",
+  "nav.pill.profile": "פרופיל",
+  "nav.pills.aria": "{place}: אזורים",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and
