@@ -250,5 +250,10 @@
 }
 @container now (max-width: 540px) {
   .now-question-scroll { display: none; }
+  /* Phones: the question keeps its own line; Talk and Edit wrap beneath it, Talk under the text. */
+  .now-question-active { flex-wrap: wrap; row-gap: 2px; padding-block: 10px 6px; }
+  .now-question-text { flex-basis: calc(100% - 36px); }
+  .now-question-talk { margin-inline-start: 36px; }
+  .now-question-edit { margin-inline-start: auto; }
   .now-plan-say { max-inline-size: 70%; }
 }
