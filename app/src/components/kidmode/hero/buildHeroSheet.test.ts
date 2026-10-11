@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { HERO_SHEET_POSE_IDS, heroAvatarHash, type HeroSheetPoseId } from "../../../lib/heroSheetContract";
-import { buildHeroSheet, markHeroPoseOk, redrawHeroPose, startHeroSheet, type BuilderDeps, type PoseResponse } from "./buildHeroSheet";
+import { buildHeroSheet, markHeroPoseOk, redrawHeroPose, resumeHeroSheet, startHeroSheet, type BuilderDeps, type PoseResponse } from "./buildHeroSheet";
 import { sheetFromDocs } from "../../../lib/heroSheetStore";
 import { heroSheetStoreFor } from "../../../lib/heroSheetStore";
 import type { RgbaImage } from "./heroKeyer";
@@ -203,6 +203,23 @@ describe("B-GAME-14 parent review", () => {
 });
 
 describe("K1 ensureHeroSheet: a hero made before sheets existed gets one, once", () => {
+  it("builds the canonical comic identity instead of the secondary photo slot", async () => {
+    const { ensureHeroSheet, resetEnsuredHeroSheetsForTest } = await import("./buildHeroSheet");
+    resetEnsuredHeroSheetsForTest(); const f = fakes();
+    const comicAvatarUrl = "data:image/png;base64,Q09NSUM=", photoUrl = "data:image/png;base64,UEhPVE8=";
+    const result = await ensureHeroSheet({ id: "canonical-child", photoUrl, comicAvatarUrl, avatar: { source: "descriptor" } }, f.deps);
+    expect(result?.status).toBe("complete");
+    expect((await f.store.read()).meta?.avatarHash).toBe(heroAvatarHash(comicAvatarUrl));
+  });
+  it("never substitutes a secondary image for a remote canonical hero or resumes stale secondary-photo docs", async () => {
+    const { ensureHeroSheet, resetEnsuredHeroSheetsForTest } = await import("./buildHeroSheet");
+    resetEnsuredHeroSheetsForTest(); const f = fakes(), photoUrl = "data:image/png;base64,SEVSTw==";
+    expect(await ensureHeroSheet({ id: "c1", photoUrl, comicAvatarUrl: "https://example.invalid/approved.png", avatar: { source: "descriptor" } }, f.deps)).toBeNull();
+    expect(await ensureHeroSheet({ id: "c1", photoUrl }, f.deps)).toBeNull(); expect(f.calls).toEqual([]);
+    expect(resumeHeroSheet({ id: "c1", photoUrl, comicAvatarUrl: "data:image/png;base64,Q09NSUM=", avatar: { source: "descriptor" } }, {
+      meta: { id: "_meta", v: 1, heroId: HASH, source: "generated", avatarHash: HASH, poses: [], status: "building", updatedAt: "now" }, poses: {},
+    })).toBeNull();
+  });
   const HERO = "data:image/png;base64,SEVSTw==";
   it("draws the sheet of an existing described hero with no sheet; a second call (same hero) does nothing", async () => {
     const { ensureHeroSheet, resetEnsuredHeroSheetsForTest } = await import("./buildHeroSheet");

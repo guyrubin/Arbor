@@ -20,6 +20,8 @@ export interface ChildProfile {
   /** Optional profile image — a generated stylized avatar, or a raw photo
    *  (Firebase Storage URL, or an inlined data URL fallback). Rendered by `Avatar`. */
   photoUrl?: string;
+  /** Legacy generated hero override; superseded when a new avatar is saved. */
+  comicAvatarUrl?: string;
   /** Metadata for an AVA-1 generated avatar. The raw reference photo is never stored. */
   avatar?: {
     style: string;

@@ -5,9 +5,18 @@
  * K2: the book poses on the same route (contract, plan, anchor, shared cap, mock).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ArborConfig } from "../config/env.js";
+
+const firestore = vi.hoisted(() => ({ doc: vi.fn() }));
+vi.mock("firebase-admin/app", () => ({ getApps: () => [{}], initializeApp: vi.fn(), applicationDefault: vi.fn() }));
+vi.mock("firebase-admin/firestore", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("firebase-admin/firestore")>()),
+  getFirestore: () => firestore,
+}));
+
 import { MemoryCounterStore } from "./quotaStore.js";
 import type { EntitlementStore, Plan } from "./entitlements.js";
-import { createHeroPoseHandler, LocalHeroPoseSource, type HeroPoseSource, type StoredHero } from "./heroPoseRoute.js";
+import { createHeroPoseHandler, FirestoreHeroPoseSource, LocalHeroPoseSource, type HeroPoseSource, type StoredHero } from "./heroPoseRoute.js";
 import { HERO_BOOK_POSE_IDS, HERO_BOOK_POSE_SETS, HERO_SHEET_POSE_IDS, HERO_SHEET_PROMPT_VERSION, heroAvatarHash, isHeroPose } from "../lib/heroSheetContract.js";
 import { heroPosePrompt, POSES, STAGE_BOOK } from "./heroPosePrompts.js";
 import { mockHeroPoseImage } from "./heroPoseMock.js";
@@ -53,6 +62,98 @@ function setup(opts: { hero?: StoredHero | null; strict?: boolean; requireUid?: 
 
 beforeEach(() => { process.env.ENFORCE_ENTITLEMENTS = "true"; });
 afterEach(() => { delete process.env.ENFORCE_ENTITLEMENTS; });
+
+describe("stored pose anchor identity", () => {
+  async function loadStoredHero(idleData: Record<string, unknown>, profile: Record<string, unknown> = { photoUrl: HERO, avatar: { source: "descriptor" } }) {
+    const idle = { get: vi.fn(async () => ({ exists: true, data: () => idleData })) };
+    const collection = { doc: vi.fn(() => idle) };
+    firestore.doc.mockReturnValue({
+      get: vi.fn(async () => ({ exists: true, data: () => profile })),
+      collection: vi.fn(() => collection),
+    });
+    const loader = new FirestoreHeroPoseSource({ firebaseProjectId: "synthetic", firestoreDatabaseId: "synthetic" } as ArborConfig);
+    const loaded = await loader.load("u1", "c1");
+    expect(firestore.doc).toHaveBeenLastCalledWith("users/u1/children/c1");
+    expect(collection.doc).toHaveBeenCalledWith("idle");
+    return loaded;
+  }
+
+  it("retains an idle that belongs to the currently saved avatar", async () => {
+    const loaded = await loadStoredHero({ anchor: ANCHOR, avatarHash: heroAvatarHash(HERO) });
+    expect(loaded).toEqual({ photoUrl: HERO, source: "descriptor", anchor: ANCHOR });
+    const s = setup({ hero: loaded });
+    expect((await s.call({ childId: "c1", pose: "cheer" })).statusCode).toBe(200);
+    expect(s.gen.mock.calls[0][2].images).toEqual([
+      { mimeType: "image/jpeg", data: "SURMRQ==" },
+      { mimeType: "image/png", data: "SEVSTw==" },
+    ]);
+  });
+
+  it.each([true, false])("uses the canonical comic hero even when a secondary photo is present (%s)", async withSecondaryPhoto => {
+    const comicHero = "data:image/png;base64,Q09NSUM=";
+    const loaded = await loadStoredHero({ anchor: ANCHOR, avatarHash: heroAvatarHash(comicHero) }, {
+      ...(withSecondaryPhoto ? { photoUrl: HERO } : {}),
+      comicAvatarUrl: comicHero,
+      avatar: { source: "descriptor" },
+    });
+    expect(loaded).toEqual({ photoUrl: comicHero, source: "descriptor", anchor: ANCHOR });
+    const s = setup({ hero: loaded });
+    expect((await s.call({ childId: "c1", pose: "cheer", avatarHash: heroAvatarHash(comicHero) })).statusCode).toBe(200);
+    expect(s.gen.mock.calls[0][2].images).toEqual([
+      { mimeType: "image/jpeg", data: "SURMRQ==" },
+      { mimeType: "image/png", data: "Q09NSUM=" },
+    ]);
+  });
+
+  it("does not use a secondary-photo anchor for the canonical comic hero", async () => {
+    const comicHero = "data:image/png;base64,Q09NSUM=";
+    const loaded = await loadStoredHero({ anchor: ANCHOR, avatarHash: heroAvatarHash(HERO) }, {
+      photoUrl: HERO, comicAvatarUrl: comicHero, avatar: { source: "descriptor" },
+    });
+    expect(loaded?.anchor).toBeNull();
+    const s = setup({ hero: loaded });
+    expect((await s.call({ childId: "c1", pose: "cheer", avatarHash: heroAvatarHash(comicHero) })).body.code).toBe("hero_anchor_missing");
+    expect(s.gen).not.toHaveBeenCalled();
+  });
+
+  it("refuses a remote canonical reference instead of generating from a different secondary photo", async () => {
+    const loaded = await loadStoredHero({}, {
+      photoUrl: HERO, comicAvatarUrl: "https://example.test/approved-hero.png", avatar: { source: "descriptor" },
+    });
+    expect(loaded?.photoUrl).toBe("https://example.test/approved-hero.png");
+    const s = setup({ hero: loaded });
+    expect((await s.call({ childId: "c1", pose: "idle" })).body.code).toBe("hero_missing");
+    expect(s.gen).not.toHaveBeenCalled();
+  });
+
+  it("keeps generated-metadata and photo-source restrictions after canonical resolution", async () => {
+    for (const profile of [
+      { photoUrl: HERO },
+      { comicAvatarUrl: HERO },
+      { comicAvatarUrl: HERO, avatar: { source: "photo" } },
+    ]) {
+      const s = setup({ hero: await loadStoredHero({}, profile) });
+      expect((await s.call({ childId: "c1", pose: "idle" })).statusCode).toBe(409);
+      expect(s.gen).not.toHaveBeenCalled();
+    }
+  });
+
+  it.each([undefined, heroAvatarHash("data:image/png;base64,T0xE")])("rejects an unbound or previous-avatar anchor (%s) before generating or charging", async avatarHash => {
+    const loaded = await loadStoredHero({ anchor: ANCHOR, ...(avatarHash ? { avatarHash } : {}) });
+    expect(loaded?.anchor).toBeNull();
+    const s = setup({ hero: loaded });
+    for (const [pose, code] of [["cheer", "hero_anchor_missing"], ["sling-swing", "hero_book_anchor_missing"]]) {
+      const result = await s.call({ childId: "c1", pose, avatarHash: heroAvatarHash(HERO) });
+      expect(result.statusCode).toBe(409);
+      expect(result.body.code).toBe(code);
+    }
+    expect(s.gen).not.toHaveBeenCalled();
+    expect((await s.counters.peek("img_sheet_global_daily", "all", 86400000)).count).toBe(0);
+    // The current hero can still obtain its new idle using its portrait alone.
+    expect((await s.call({ childId: "c1", pose: "idle", avatarHash: heroAvatarHash(HERO) })).statusCode).toBe(200);
+    expect(s.gen.mock.calls[0][2].images).toEqual([{ mimeType: "image/png", data: "SEVSTw==" }]);
+  });
+});
 
 describe("B-GAME-13b /hero-pose — refusals", () => {
   it("refuses an uploaded image in the body, whatever the field, before reading anything", async () => {

@@ -8,10 +8,25 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FALLBACK, HERO_POSES, heroSheetKey, parseHeroSheet, readStoredHeroSheet, resolvePose, type HeroPoseId, type HeroSheet, type HeroSprite } from "./heroSheet";
 import { devPlaceholderSheet } from "./devPlaceholderSheet";
-import { HeroFigure, spriteBox } from "./HeroFigure";
+import { HeroFigure, heroSpriteKeys, spriteBox } from "./HeroFigure";
 
 const sprite = (tag: string, foot = { x: 50, y: 190 }): HeroSprite => ({ url: `data:image/png;base64,${tag}`, w: 100, h: 200, foot });
 const sheetWith = (poses: HeroPoseId[]): HeroSheet => ({ v: 1, heroId: "t", source: "proof", theme: "film3d", poses: Object.fromEntries(poses.map((p) => [p, sprite(p)])) });
+
+describe("HeroFigure source identity", () => {
+  it("remounts an image for a new hero or same-hero redraw, but keeps unchanged pose nodes", () => {
+    const original = sheetWith(["idle", "cheer"]), keys = heroSpriteKeys(original);
+    expect(heroSpriteKeys({ ...original, heroId: "another-child" }).idle).not.toBe(keys.idle);
+    const redrawn = heroSpriteKeys({ ...original, poses: { ...original.poses, idle: sprite("approved-redraw") } });
+    expect(redrawn.idle).not.toBe(keys.idle); expect(redrawn.cheer).toBe(keys.cheer);
+  });
+  it("contains an approved portrait without stretching or cropping its aspect ratio", () => {
+    const sheet: HeroSheet = { ...sheetWith(["idle"]), source: "avatar" };
+    const html = renderToStaticMarkup(<HeroFigure sheet={sheet} pose="cheer" height={120} x={0} y={0} />);
+    expect(html).toContain("object-fit:contain"); expect(html).toContain("object-position:center bottom");
+    expect(html).toContain('data-hero-figure="idle"');
+  });
+});
 
 describe("heroSheet — fallback map", () => {
   it("every pose resolves to itself when present", () => {

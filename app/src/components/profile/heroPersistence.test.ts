@@ -15,6 +15,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ChildProfile } from "../../types";
 import { heroPatch, persistHero } from "./heroPersistence";
+import { resolveHeroUrl } from "../ui/HeroAvatar";
+import { childPicture } from "../../lib/childPicture";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const read = (...p: string[]) => readFileSync(path.join(__dirname, "..", ...p), "utf8");
@@ -26,8 +28,17 @@ describe("heroPatch", () => {
   it("writes the image AND the metadata that makes it a hero", () => {
     expect(heroPatch(RESULT, now)).toEqual({
       photoUrl: RESULT.dataUrl,
+      comicAvatarUrl: undefined,
       avatar: { style: "comichero", source: "descriptor", createdAt: "2026-09-22T10:00:00.000Z" },
     });
+  });
+
+  it("a newly saved hero replaces the legacy comic identity in both profile and Kids", () => {
+    const previous = { name: "Alex", photoUrl: "data:image/png;base64,OLD", comicAvatarUrl: "data:image/png;base64,OLDER" };
+    const next = { ...previous, ...heroPatch(RESULT, now) };
+    expect(Object.hasOwn(heroPatch(RESULT, now), "comicAvatarUrl")).toBe(true);
+    expect(childPicture(next).url).toBe(RESULT.dataUrl);
+    expect(resolveHeroUrl(next)).toBe(RESULT.dataUrl);
   });
 
   it("is the same shape the profile drawer already writes", () => {
