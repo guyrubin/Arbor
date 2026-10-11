@@ -17,6 +17,19 @@ export const PRACTICE_ACTIVITY_LABELS: Record<string, [string, string]> = {
   "mood-checkin": ["A feeling the child chose", "רגש שהילד בחר"], "stop-signal": ["Sneak & Freeze", "להתגנב ולקפוא"],
 };
 
+/** v3 FEAT-04: the feelings a child can pick in Kid Mode (the Feelings Lab
+ *  ids), as the parent reads them (EN, HE noun). One word the child chose,
+ *  never a judgement of it; shared by the portrait and Now's world strip. */
+export const KID_FEELING_WORDS: Record<string, [string, string]> = {
+  happy: ["Happy", "שמחה"], sad: ["Sad", "עצב"], angry: ["Angry", "כעס"],
+  frustrated: ["Frustrated", "תסכול"], afraid: ["Afraid", "פחד"], excited: ["Excited", "התרגשות"],
+};
+
+/** The feeling word in the parent's language, or undefined for an unknown id. */
+export function kidFeelingWord(emotion: string | undefined, he: boolean): string | undefined {
+  return emotion ? KID_FEELING_WORDS[emotion]?.[he ? 1 : 0] : undefined;
+}
+
 /** Original descriptive fields only. Legacy practice scores, ratings and
  * clinical bands deliberately never enter this parent-facing projection. */
 export function portraitEvidenceLines(observation: Observation, sources: ObservationSources, he: boolean): EvidenceLine[] {
@@ -41,7 +54,7 @@ export function portraitEvidenceLines(observation: Observation, sources: Observa
     const row = sources.practiceEvents?.find(item => item.id === id);
     const label = row && PRACTICE_ACTIVITY_LABELS[row.kind];
     if (label) add(c.activity, label[he ? 1 : 0]);
-    add(c.observation, row?.emotion);
+    add(c.observation, kidFeelingWord(row?.emotion, he) ?? row?.emotion);
   }
   if (observation.origin === "screenings") {
     const row = sources.screenings?.find(item => item.id === id);
