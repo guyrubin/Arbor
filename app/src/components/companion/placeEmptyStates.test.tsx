@@ -95,7 +95,7 @@ const expectNoNumbers = (text: string) => {
 const occurrences = (html: string, needle: string) => html.split(needle).length - 1;
 /** Rendered pictures of the Together art: <img> tags only (React 19 also emits a
  *  <link rel="preload"> carrying the same srcset for an eager image). */
-const togetherPictures = (html: string) => (html.match(/<img[^>]*>/g) ?? []).filter((tag) => tag.includes(TOGETHER_ART.src)).length;
+const togetherPictures = (html: string) => [...html.matchAll(/<img\b[^>]*>/g)].filter(([tag]) => tag.includes(TOGETHER_ART.src)).length;
 const buttonsIn = (html: string) => (html.match(/<button\b/g) ?? []).length;
 const labelOf = (button: Record<string, any>) => React.Children.toArray(button.children).filter((child) => typeof child === "string").join("");
 
