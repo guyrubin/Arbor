@@ -898,13 +898,25 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // contract keeps "available" distinct from "listening". So the claimed
   // request focuses that button and shows one line saying so. The request is
   // claimed once and only while fresh (lib/companionConversation).
+  // FEAT-01: the conversation header's menu asks through the same door.
+  // "tone" opens the ONE ToneSheet; "history" brings the history row into view
+  // and focuses its current conversation (else its first, else New).
+  const historyRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const onAsk = (event: Event) => {
-      if ((event as CustomEvent<CompanionConversationRequest>).detail?.voice) setVoiceAsk((n) => n + 1);
+      const detail = (event as CustomEvent<CompanionConversationRequest>).detail;
+      if (detail?.voice) setVoiceAsk((n) => n + 1);
+      if (detail?.panel === "tone") setToneOpen(true);
+      if (detail?.panel === "history" && historyRef.current) {
+        const region = historyRef.current;
+        region.scrollIntoView({ block: "nearest", behavior: reducedMotion ? "auto" : "smooth" });
+        const chip = region.querySelector<HTMLElement>("[data-history-chip][aria-current]") ?? region.querySelector<HTMLElement>("[data-history-chip]") ?? region.querySelector<HTMLElement>("button");
+        chip?.focus({ preventScroll: true });
+      }
     };
     window.addEventListener(COMPANION_CONVERSATION_EVENT, onAsk);
     return () => window.removeEventListener(COMPANION_CONVERSATION_EVENT, onAsk);
-  }, []);
+  }, [reducedMotion]);
   useEffect(() => {
     if (!visible || !liveProbed || !conversationVoiceRequestPending()) return;
     if (consumeConversationVoiceRequest() && voicePhase === "off") {
@@ -1152,7 +1164,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       </div>
 
       {/* Conversation history stays available without reserving an empty tray. */}
-      <section data-module="coach-history" className="flex flex-wrap items-center gap-2 border-y py-2.5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("elev.wave2Daily.ask.history")}>
+      <section data-module="coach-history" ref={historyRef} className="flex flex-wrap items-center gap-2 border-y py-2.5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("elev.wave2Daily.ask.history")}>
         <span className="me-auto text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Daily.ask.history")}</span>
         <button
           onClick={newConversation}
@@ -1167,7 +1179,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               const on = c.id === activeConversationId;
               return (
                 <div key={c.id} className="flex flex-shrink-0 items-center gap-1.5 rounded-full ps-3 pe-1.5 py-1" style={on ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" } : { background: T.paperElevated, border: "1px solid var(--arbor-rule)" }}>
-                  <button onClick={() => openConversation(c.id)} className="flex min-h-11 max-w-[160px] items-center gap-1.5 truncate text-[12px] font-bold" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
+                  <button onClick={() => openConversation(c.id)} data-history-chip="" aria-current={on ? "true" : undefined} className="flex min-h-11 max-w-[160px] items-center gap-1.5 truncate text-[12px] font-bold" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
                     <Icon name="chat" size={12} className="flex-shrink-0" /> <span className="truncate">{c.title}</span>
                   </button>
                   <button onClick={() => deleteConversation(c.id)} aria-label={t("aria.deleteConversation")} className="touch-target transition" style={{ color: "var(--arbor-muted)" }}><Icon name="delete" size={12} /></button>

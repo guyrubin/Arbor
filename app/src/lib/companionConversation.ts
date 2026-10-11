@@ -4,7 +4,11 @@
  *  then through the conversation's ONE Talk path (CoachTab toggleVoice), never
  *  a second voice path. */
 export const COMPANION_CONVERSATION_EVENT = "arbor:open-conversation";
-export type CompanionConversationRequest = { prompt?: string; source?: string; voice?: boolean };
+/** FEAT-01: the conversation header's menu reaches controls the conversation
+ *  itself owns, through this same door — "history" brings the history row into
+ *  view, "tone" opens the ONE ToneSheet. Neither sends a message. */
+export type CompanionPanelRequest = "history" | "tone";
+export type CompanionConversationRequest = { prompt?: string; source?: string; voice?: boolean; panel?: CompanionPanelRequest };
 
 /** How long a spoken-conversation request stays claimable. The panel may still
  *  be loading when the tap lands; past this window the request is dropped, so

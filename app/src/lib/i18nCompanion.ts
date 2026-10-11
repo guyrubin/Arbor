@@ -296,6 +296,11 @@ export const companionEn = {
   "companion.place.together.detail": "Small moments. Shared discoveries.",
   // FEAT-05: the question chip in the conversation header opens the question sheet.
   "companion.topic-chip.open": "Open our questions: {value0}",
+  // FEAT-01: the conversation header's options menu.
+  "companion.panel.menu": "Conversation options",
+  "companion.panel.new": "New conversation",
+  "companion.panel.tone": "How Arbor talks with you",
+  "companion.panel.remembers": "What Arbor remembers",
 };
 
 export const companionHe = {
@@ -594,4 +599,9 @@ export const companionHe = {
   "companion.place.together.detail": "רגעים קטנים, גילויים משותפים",
   // FEAT-05: the question chip in the conversation header opens the question sheet.
   "companion.topic-chip.open": "לפתוח את השאלות שלנו: {value0}",
+  // FEAT-01: the conversation header's options menu.
+  "companion.panel.menu": "אפשרויות שיחה",
+  "companion.panel.new": "שיחה חדשה",
+  "companion.panel.tone": "איך ארבור מדברת איתכם",
+  "companion.panel.remembers": "מה ארבור זוכרת",
 };
