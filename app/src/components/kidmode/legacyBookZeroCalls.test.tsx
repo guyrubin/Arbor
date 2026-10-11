@@ -14,6 +14,8 @@ const env = vi.hoisted(() => ({
   text: vi.fn<(...args: any[]) => Promise<HeroJourneyRender>>(),
   image: vi.fn(async () => ({ key: "test-page", url: "/static-page.webp" })),
   speech: vi.fn(() => 7),
+  narrate: vi.fn((_units: readonly string[]) => () => {}),
+  voice: "files" as "files" | "none",
 }));
 vi.mock("react", async original => {
   const real = await original<typeof import("react")>();
@@ -47,6 +49,9 @@ vi.mock("../../lib/kidModeGate", () => ({
   noteKidActivity: vi.fn(),
 }));
 vi.mock("./audio/kidAudio", () => ({ kidSfx: vi.fn(), kidSay: env.speech }));
+// B-BOOK-73: with the child's own narration files a legacy page asks them for its units (never a voice
+// service); without them it falls back to the K2.1 read-aloud of the authored words.
+vi.mock("./useLegacyNarration", () => ({ useLegacyNarration: () => ({ status: env.voice, play: env.narrate }) }));
 vi.mock("../../lib/voice", () => ({ speakText: env.speech, stopVoice: vi.fn(), voiceSupported: () => true, voiceState: () => ({ speaking: false, engine: "natural" }) }));
 vi.mock("../../lib/tts", () => ({ stopSpeaking: vi.fn() }));
 vi.mock("../../lib/celebrate", () => ({ celebrate: vi.fn() }));
@@ -123,7 +128,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-09T18:00:00Z"));
   env.kid = true; env.lang = "en"; env.collections = []; env.listeners.clear();
   env.profile = { id: "synthetic-child", name: "Test Hero", age: 6, gender: "boy", avatar: { style: "comichero", source: "descriptor", createdAt: "2026-10-09T18:00:00Z" }, photoUrl: "data:image/png;base64,c3ludGhldGlj" } as unknown as ChildProfile;
-  env.text.mockReset(); env.image.mockClear(); env.speech.mockClear(); env.upsert.mockClear();
+  env.text.mockReset(); env.image.mockClear(); env.speech.mockClear(); env.narrate.mockClear(); env.upsert.mockClear(); env.voice = "files";
   clearJourneyMemo(); backend = new Map(); reads = vi.fn();
   _setHeroRenderBackend({ get: async id => { reads(); return backend.get(id); }, put: async row => { backend.set(row.id, row); }, getAll: async () => { reads(); return [...backend.values()]; }, delete: async id => { backend.delete(id); }, clear: async () => backend.clear() });
   fetchSpy = vi.fn(() => { throw new Error("Unexpected network request"); });
@@ -147,7 +152,7 @@ async function readPath(tab: ReturnType<typeof harness<any>>, story: HeroStorySp
     }
     const decision = find(tab.tree, node => node.type === DecisionChoices);
     if (decision) {
-      expect(marker(tab.tree, "data-kid-book-next")?.props.disabled).toBe(true);
+      expect(marker(tab.tree, "data-kid-book-next")).toBeUndefined(); // no dead Next: an answer turns the page
       words.push(...decision.props.choices.map((choice: any) => `${choice.label}: ${choice.consequence}`));
       decision.props.onChoose(choiceId ?? decision.props.choices[0].id);
     } else {
@@ -164,8 +169,8 @@ async function readPath(tab: ReturnType<typeof harness<any>>, story: HeroStorySp
 }
 
 describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () => {
-  for (const fixture of fixtures) it(`${fixture.lang}/${fixture.gender}: every legacy book and choice reads twice without text, image or network calls; the read-aloud speaks authored words`, async () => {
-    env.lang = fixture.lang;
+  for (const voice of ["files", "none"] as const) for (const fixture of fixtures) it(`${fixture.lang}/${fixture.gender} (${voice === "files" ? "narration files" : "no files yet"}): every legacy book and choice reads twice without text, image or network calls; the read-aloud speaks authored words`, async () => {
+    env.lang = fixture.lang; env.voice = voice;
     for (const story of KID_SHELF_STORIES.filter(value => storyHasLanguage(value, fixture.lang))) {
       env.profile = { ...env.profile, ...fixture, age: story.ageRange[0] };
       const choices = story.beats.find(beat => beat.id === "decision")?.choices ?? [];
@@ -183,15 +188,27 @@ describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () =
     expect(reads).not.toHaveBeenCalled();
     expect(env.text).not.toHaveBeenCalled();
     expect(env.image).not.toHaveBeenCalled();
-    // Guy, 10 Oct 2026: the read-aloud is back (PR 118 had removed it). It
-    // speaks the AUTHORED words through the one kid voice path, in the
-    // story's language; the read itself makes no text, image or network call.
-    expect(env.speech).toHaveBeenCalled();
-    for (const [, lines, lang] of env.speech.mock.calls as unknown as [string, string | string[], string][]) {
-      const said = Array.isArray(lines) ? lines : [lines];
-      expect(said.length).toBeGreaterThan(0);
-      for (const line of said) expect(typeof line === "string" && line.trim().length > 0).toBe(true);
-      expect(lang).toBe(fixture.lang);
+    if (voice === "files") {
+      // B-BOOK-73: with the child's files nothing is synthesized, and each page
+      // asks for exactly its authored units: the cover's title, each beat, the
+      // Decision page's question and every answer, the chosen outcome, The End.
+      expect(env.speech).not.toHaveBeenCalled();
+      const asked = new Set(env.narrate.mock.calls.flatMap(([units]) => [...units]));
+      expect(asked.has("decision") && asked.has("question") && asked.has("the-end")).toBe(true);
+      for (const unit of asked) expect(unit).toMatch(/^(title|call|challenge|fear|decision|question|growth|victory|reflection|the-end|choice\.[a-z0-9-]+|outcome\.[a-z0-9-]+)$/);
+    } else {
+      // Guy, 10 Oct 2026: the read-aloud is back (PR 118 had removed it). Until
+      // the child has files it speaks the AUTHORED words through the one kid
+      // voice path, in the story's language; the read makes no text, image or
+      // network call of its own.
+      expect(env.narrate).not.toHaveBeenCalled();
+      expect(env.speech).toHaveBeenCalled();
+      for (const [, lines, lang] of env.speech.mock.calls as unknown as [string, string | string[], string][]) {
+        const said = Array.isArray(lines) ? lines : [lines];
+        expect(said.length).toBeGreaterThan(0);
+        for (const line of said) expect(typeof line === "string" && line.trim().length > 0).toBe(true);
+        expect(lang).toBe(fixture.lang);
+      }
     }
     expect(fetchSpy).not.toHaveBeenCalled();
   });
