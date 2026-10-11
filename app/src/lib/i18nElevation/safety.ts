@@ -91,6 +91,9 @@ export const en: Record<string, string> = {
   // Builder M — R25 — #/safety demotion disclosure. The one-tap call and the crisis script stay above it.
   "elev.safety.more.title": "All helplines, warning signs and your contacts",
   "elev.safety.more.sub": "Every number by country, the review checklist, your saved contacts and how Arbor handles this.",
+
+  // FEAT-06: UrgentSupport's door to the Safety & escalation tab.
+  "elev.safety.open": "Open Safety & escalation",
 };
 
 export const he: Record<string, string> = {
@@ -173,6 +176,9 @@ export const he: Record<string, string> = {
   // Builder M — R25 — #/safety demotion disclosure. The one-tap call and the crisis script stay above it.
   "elev.safety.more.title": "כל קווי הסיוע, סימני אזהרה ואנשי הקשר שלכם",
   "elev.safety.more.sub": "כל המספרים לפי מדינה, רשימת הבדיקה, אנשי הקשר ששמרתם ואיך ארבור מטפל בזה.",
+
+  // FEAT-06: UrgentSupport's door to the Safety & escalation tab.
+  "elev.safety.open": "למעבר לבטיחות והסלמה",
 };
 
 // The masterplan names these records safetyEn/safetyHe; the index registry
