@@ -4,7 +4,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { recapWeekStartMs } from "../../hooks/useWeeklyRecap";
 import { childPicture } from "../../lib/childPicture";
-import type { Observation, ObservationOrigin, ObservationSource } from "../../lib/observations";
+import type { Observation, ObservationOrigin } from "../../lib/observations";
+import { KID_ORIGINS, WEEK_ORDER, weekGlance, type WeekCountKey } from "../../lib/weekGlance";
 import { dayKey } from "../../practice/signals";
 import type { PracticeEvent } from "../../types";
 import { Avatar } from "../ui/Avatar";
@@ -12,9 +13,6 @@ import Icon from "../ui/Icon";
 import { NOW_COPY } from "./nowViewCopy";
 import { PRACTICE_ACTIVITY_LABELS, kidFeelingWord } from "./portraitEvidence";
 
-/** Kid Mode's own records — what the child did, never the parent's notes. */
-const KID_ORIGINS: ReadonlySet<ObservationOrigin> = new Set(["practiceEvents", "mimicSessions", "adventureResults", "missionRecords"]);
-const PARENT_SOURCES: ReadonlySet<ObservationSource> = new Set(["parent_typed", "parent_voice", "ai_proposed_parent_confirmed"]);
 const KID_ICON: Partial<Record<ObservationOrigin, string>> = { practiceEvents: "extension", mimicSessions: "mood", adventureResults: "explore", missionRecords: "flag" };
 const KID_KIND: Partial<Record<ObservationOrigin, string>> = { practiceEvents: "practice", mimicSessions: "mimic", adventureResults: "adventure", missionRecords: "mission" };
 /** v3 FEAT-04: the existing name of what a tile was (mimic pack, adventure skill, mission), keyed by the record's activity suffix. */
@@ -89,13 +87,12 @@ export function NowKidWorld({ observations, now, name, onAll }: {
   </section>;
 }
 
-type WeekKey = "moments" | "helped" | "milestones" | "words" | "kid";
-const WEEK_ORDER: readonly WeekKey[] = ["moments", "helped", "milestones", "words", "kid"];
-
 /**
  * v3 Now: "This week so far" — counts of what was kept this report week (the
  * Weekly report's own week), day by day. Counts only: no %, no score, no
  * colour that judges; a zero category is simply not shown.
+ * v3 EXTRA-WEEKLY: the counting lives in lib/weekGlance (the Weekly tab's
+ * glance reads the same object); this card renders it unchanged.
  */
 export function NowWeekSoFar({ observations, now, onReport }: {
   observations: readonly Observation[]; now: Date; onReport: () => void;
@@ -104,32 +101,9 @@ export function NowWeekSoFar({ observations, now, onReport }: {
   const { uiLang } = useLanguage();
   const copy = NOW_COPY[uiLang === "he" ? "he" : "en"];
   const id = useId();
-  const week = useMemo(() => {
-    const start = recapWeekStartMs(now);
-    const first = new Date(start);
-    const days = Array.from({ length: 7 }, (_, i) => new Date(first.getFullYear(), first.getMonth(), first.getDate() + i).getTime());
-    const counts: Record<WeekKey, number> = { moments: 0, helped: 0, milestones: 0, words: 0, kid: 0 };
-    const perDay = days.map(() => ({ moments: 0, helped: 0, milestones: 0, words: 0, kid: 0 } as Record<WeekKey, number>));
-    const add = (key: WeekKey, iso?: string) => {
-      const ms = Date.parse(iso ?? "");
-      if (!Number.isFinite(ms) || ms < start || ms > now.getTime()) return;
-      counts[key] += 1;
-      let index = 0;
-      while (index < 6 && ms >= days[index + 1]) index += 1;
-      perDay[index][key] += 1;
-    };
-    for (const item of observations) {
-      if (item.kind === "moment" && PARENT_SOURCES.has(item.source)) add("moments", item.at);
-      else if (item.kind === "milestone") add("milestones", item.at);
-      else if (item.value.type === "word") add("words", item.at);
-      else if (KID_ORIGINS.has(item.origin)) add("kid", item.at);
-    }
-    for (const step of actionLoop) if (step.outcome === "helped") add("helped", step.outcomeAt);
-    const max = Math.max(1, ...perDay.map(day => WEEK_ORDER.reduce((sum, key) => sum + day[key], 0)));
-    return { counts, perDay, max };
-  }, [observations, actionLoop, now]);
+  const week = useMemo(() => weekGlance({ observations, actionLoop, now, weekStartMs: recapWeekStartMs(now) }), [observations, actionLoop, now]);
   const tiles = WEEK_ORDER.filter(key => week.counts[key] > 0).slice(0, 4);
-  const label: Record<WeekKey, string> = { moments: copy.weekMoments, helped: copy.weekHelped, milestones: copy.weekMilestones, words: copy.weekWords, kid: copy.weekKid };
+  const label: Record<WeekCountKey, string> = { moments: copy.weekMoments, helped: copy.weekHelped, milestones: copy.weekMilestones, words: copy.weekWords, kid: copy.weekKid };
   return <section className="now-week" aria-labelledby={`${id}-week`} data-testid="now-week">
     <div className="now-week-head">
       <Icon name="bar_chart" size={19} />
