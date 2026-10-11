@@ -300,6 +300,22 @@ export const companionEn = {
   "companion.door.talk": "Talk with Arbor",
   "companion.door.learn": "For you, the parent",
   "companion.door.care": "Care, together",
+  // v3 FEAT-07: Together → Routines (the pill, the tiles inside the everyday-life
+  // module, and the routine sheet). Counts and plain labels only.
+  "companion.together-view.routines": "Routines",
+  "companion.together-view.routines-kicker": "Every day, a little easier",
+  "companion.together-view.routines-title": "Ready-made routines",
+  "companion.together-view.routines-sub": "Start one as a plan, then tick its steps each day.",
+  "companion.together-view.routines-all": "All routines",
+  "companion.together-view.routines-steps": "{n} steps · {time}",
+  "companion.together-view.routines-in-plan": "In your plan",
+  "companion.together-view.routines-start": "Start as a plan",
+  "companion.together-view.routines-starting": "Adding it to your plans…",
+  "companion.together-view.routines-start-failed": "The routine wasn’t added. Please try again.",
+  "companion.together-view.routines-retry": "Try again",
+  "companion.together-view.routines-preview": "The steps",
+  "companion.together-view.routines-areas": "Areas: {areas}",
+  "companion.together-view.routines-close": "Close",
 };
 
 export const companionHe = {
@@ -602,4 +618,20 @@ export const companionHe = {
   "companion.door.talk": "לדבר עם ארבור",
   "companion.door.learn": "בשבילך, ההורה",
   "companion.door.care": "יחד עם אנשי המקצוע",
+  // v3 FEAT-07: Together → Routines (the pill, the tiles inside the everyday-life
+  // module, and the routine sheet). Counts and plain labels only.
+  "companion.together-view.routines": "שגרות",
+  "companion.together-view.routines-kicker": "כל יום, קצת יותר קל",
+  "companion.together-view.routines-title": "שגרות מוכנות",
+  "companion.together-view.routines-sub": "מתחילים שגרה כתוכנית, ובכל יום מסמנים את הצעדים שלה.",
+  "companion.together-view.routines-all": "כל השגרות",
+  "companion.together-view.routines-steps": "{n} צעדים · {time}",
+  "companion.together-view.routines-in-plan": "בתוכנית שלכם",
+  "companion.together-view.routines-start": "להתחיל כתוכנית",
+  "companion.together-view.routines-starting": "מוסיפים לתוכניות שלכם…",
+  "companion.together-view.routines-start-failed": "השגרה לא נוספה. אפשר לנסות שוב.",
+  "companion.together-view.routines-retry": "לנסות שוב",
+  "companion.together-view.routines-preview": "הצעדים",
+  "companion.together-view.routines-areas": "תחומים: {areas}",
+  "companion.together-view.routines-close": "סגירה",
 };

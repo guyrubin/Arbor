@@ -516,6 +516,13 @@ export interface ActionPlan {
   successIndicators: string[];
   /** B-ASKJB-26: the weekly "Signs it's working?" answers, oldest first. */
   weeklyChecks?: PlanWeeklyCheck[];
+  /**
+   * FEAT-07: a routine plan's per-day runs. Key = the local day (YYYY-MM-DD),
+   * value = the indices of the steps the family ran that day. Only a plan
+   * started from a routine template carries it; its `step.completed` is never
+   * written, so a routine runs again every day. Pruned to the last 14 days.
+   */
+  routineRuns?: Record<string, number[]>;
 }
 
 /** B-ASKJB-26: one weekly check-in on a plan — the parent's own answer, never a score. */

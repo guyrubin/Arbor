@@ -61,3 +61,27 @@
   .companion-together-footer { align-items: start; }
   .companion-together-footer p { min-inline-size: min(220px, 100%); }
 }
+/* v3 FEAT-07: the ready-made routines inside the everyday-life module, and the
+   routine sheet. Tokens and logical sides only; names wrap, nothing is clipped. */
+.companion-offscreen-grid + .together-routines { margin-block-start: 32px; }
+.together-routines-heading { align-items: center; margin-block-end: 6px; }
+.together-routines-heading h3 { margin: 0; font-size: var(--t-lg); line-height: 1.35; }
+.together-routines > .companion-caption { margin-block: 0 14px; }
+.together-routine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 12px; margin-block: 0; margin-inline: 0; padding: 0; list-style: none; }
+.together-routine-grid > li { display: flex; min-inline-size: 0; }
+.together-routine-tile { display: flex; flex: 1; flex-direction: column; align-items: flex-start; gap: 6px; min-block-size: var(--touch-min); padding: 14px; text-align: start; color: var(--arbor-ink); background: var(--arbor-paper); border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); transition: border-color 180ms; }
+.together-routine-tile:hover { border-color: var(--arbor-clay); }
+.together-routine-tile[data-in-plan="true"] { background: var(--arbor-paper-elevated); }
+.together-routine-icon { display: inline-flex; align-items: center; justify-content: center; inline-size: 44px; block-size: 44px; border-radius: var(--r); background: var(--arbor-paper-deep); color: var(--arbor-clay-deep); }
+.together-routine-name { font-size: var(--t-base); font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.together-routine-meta { font-size: var(--t-xs); color: var(--arbor-muted); line-height: 1.5; }
+.together-routine-in-plan { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t-xs); font-weight: 600; color: var(--arbor-ink-soft); }
+.together-routine-sheet-label { margin-block: 4px 10px; font-size: var(--t-sm); font-weight: 600; color: var(--arbor-muted); }
+.together-routine-steps { display: grid; gap: 8px; margin-block: 0 18px; margin-inline: 0; padding: 0; list-style: none; }
+.together-routine-steps > li { display: flex; align-items: center; gap: 10px; padding-block: 8px; padding-inline: 12px; border-radius: var(--r); background: var(--arbor-paper-deep); font-size: var(--t-base); line-height: 1.45; }
+.together-routine-sheet > .companion-caption { margin-block: 10px 0; }
+.together-routine-sheet-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; margin-block-start: 18px; padding-block-start: 12px; border-block-start: 1px solid var(--arbor-rule); }
+@container together (max-width: 540px) {
+  .together-routine-grid { gap: 10px; }
+  .together-routine-tile { padding: 12px; }
+}

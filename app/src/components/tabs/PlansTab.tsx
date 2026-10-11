@@ -15,6 +15,9 @@ import PlanTrackCard, { planAdjustSeed } from "../plans/PlanTrackCard";
 import RoutinesCard from "../plans/RoutinesCard";
 // B-GROWTH-25: the ready-made routines, as one-tap plan templates.
 import RoutineTemplates from "../plans/RoutineTemplates";
+// v3 FEAT-07: a routine plan runs again every day, on its own board.
+import RoutineRunBoard from "../plans/RoutineRunBoard";
+import { routineIdOfPlan } from "../../lib/routineTemplates";
 import { useChildCollection } from "../../hooks/useChildCollection";
 /* B-ASKJB-28: the routines row only counts docs; their shape stays RoutinesCard's. */
 import { lastPlanOutcomes, planDoneSteps, planEcho, suggestedChallenges, todaysPlanStep } from "../../lib/plans";
@@ -232,6 +235,18 @@ export default function PlansTab() {
             single primary move; every other plan sits in one disclosure. */}
         {actionPlans.map((plan, planIdx) => {
           if (planIdx > 0) return null;
+          // v3 FEAT-07: an active routine plan runs as its day board; the
+          // contract stamp lands on its first step still to do today.
+          if (routineIdOfPlan(plan) !== null) {
+            return (
+              <div key={plan.id} data-testid="plan-tracks" data-routine-plan="true" className="space-y-3 lg:grid lg:grid-cols-[minmax(0,360px)_minmax(0,640px)] lg:items-start lg:gap-6 lg:space-y-0">
+                <div className={`${cardCls} p-6 lg:sticky lg:top-4`}>
+                  <RoutineRunBoard plan={plan} primaryProps={primaryStamp} now={now} />
+                </div>
+                <PlanSteps plan={plan} now={now} />
+              </div>
+            );
+          }
           // B-ASKJB-26: today's step = the first not-done step of the current
           // phase; accept → action loop (source "plan"), outcome moves the step.
           const step = todaysPlanStep(plan, actionLoop, todayKey);

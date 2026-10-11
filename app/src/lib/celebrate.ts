@@ -36,7 +36,11 @@ export type CelebrationKind =
   /** A masterclass lesson marked complete. */
   | "lesson"
   /** A kid-register win screen (PlayKit `Celebrate`, practice tracks). */
-  | "play";
+  | "play"
+  /** FEAT-07: every step of a routine run for the day, after the run was saved. */
+  | "routine"
+  /** FEAT-07: a parent plan's run marked done (reserved for the plan run view). */
+  | "plan";
 
 const SHAPE: Record<CelebrationKind, { originY: number; spread: number }> = {
   milestone: { originY: 0.6, spread: 70 },
@@ -44,6 +48,8 @@ const SHAPE: Record<CelebrationKind, { originY: number; spread: number }> = {
   complete: { originY: 0.6, spread: 90 },
   lesson: { originY: 0.7, spread: 75 },
   play: { originY: 0.7, spread: 80 },
+  routine: { originY: 0.6, spread: 70 },
+  plan: { originY: 0.6, spread: 80 },
 };
 
 let stopTimer: number | undefined;

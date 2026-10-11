@@ -6,6 +6,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ActionPlan, StepStatus } from "../../types";
 import { planStartedDays, planStepStatus } from "../../lib/plans";
+import { routineDayKey, routineDaysComplete, routineIdOfPlan, routineRunToday } from "../../lib/routineTemplates";
 
 /**
  * B-ASKJB-26 — the plan as a track: ONE step list replaces the three Kanban
@@ -14,6 +15,11 @@ import { planStartedDays, planStepStatus } from "../../lib/plans";
  * one-tap cycle covers every move it made). Edit and delete stay keyed Modals.
  * The header reports "Started {n} days ago" — days since creation, said as
  * such — and a count of steps done, never a share.
+ *
+ * v3 FEAT-07: a plan started from a routine runs again every day, so its steps
+ * are ticked on RoutineRunBoard (per day), never cycled here: this list keeps
+ * only the plan's title, delete and a folded "Edit the steps", and its header
+ * counts today's run (ticked, still to go) instead of steps done for good.
  */
 
 type Item = { id: string; phaseIdx: number; stepIdx: number; text: string; status: StepStatus; phaseName: string };
@@ -34,14 +40,15 @@ const STATUS_GLYPH: Record<StepStatus, string> = {
   done: "check_circle",
 };
 
-function StepRow({ item, planId, isToday, onEdit }: { item: Item; planId: string; isToday: boolean; onEdit: (item: Item) => void }) {
+function StepRow({ item, planId, isToday, onEdit, routine = false }: { item: Item; planId: string; isToday: boolean; onEdit: (item: Item) => void; routine?: boolean }) {
   const { setPlanStepStatus } = useArbor();
   const { t } = useLanguage();
   const glyph = STATUS_GLYPH[item.status];
   const statusLabel = t(STATUS_LABEL[item.status]);
   // Critic r1: today's step is marked "Today" (clay chip + clay start border),
   // never "Not started" beside the track card's "I'll try it".
-  const showToday = isToday && item.status !== "done";
+  // FEAT-07: a routine row has no status (its run is per day, on the board).
+  const showToday = !routine && isToday && item.status !== "done";
   return (
     <li
       data-plan-step={`${item.phaseIdx}:${item.stepIdx}`}
@@ -55,6 +62,7 @@ function StepRow({ item, planId, isToday, onEdit }: { item: Item; planId: string
       }}
     >
       {/* The primary move. 44 px, always visible, cycles on tap. */}
+      {!routine && (
       <button
         type="button"
         onClick={() => setPlanStepStatus(planId, item.phaseIdx, item.stepIdx, NEXT_STATUS[item.status])}
@@ -65,7 +73,9 @@ function StepRow({ item, planId, isToday, onEdit }: { item: Item; planId: string
       >
         <Icon name={glyph} size={20} />
       </button>
-      <span dir="auto" className="flex-1 min-w-0" style={item.status === "done" ? { textDecoration: "line-through", color: "var(--arbor-muted)" } : undefined}>{item.text}</span>
+      )}
+      <span dir="auto" className={routine ? "flex-1 min-w-0 px-2" : "flex-1 min-w-0"} style={!routine && item.status === "done" ? { textDecoration: "line-through", color: "var(--arbor-muted)" } : undefined}>{item.text}</span>
+      {!routine && (
       <span
         data-step-chip={showToday ? "today" : item.status}
         className="t-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
@@ -75,6 +85,7 @@ function StepRow({ item, planId, isToday, onEdit }: { item: Item; planId: string
       >
         {showToday ? t("elev.plans.today.chip") : statusLabel}
       </span>
+      )}
       <button
         type="button"
         onClick={() => onEdit(item)}
@@ -113,6 +124,10 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
   const total = items.length;
   const done = items.filter((i) => i.status === "done").length;
   const days = planStartedDays(plan, now);
+  // FEAT-07: a routine plan counts today's run, and the days every step ran.
+  const routine = routineIdOfPlan(plan) !== null;
+  const ticked = routine ? routineRunToday(plan, routineDayKey(now)).length : 0;
+  const runDays = routine ? routineDaysComplete(plan) : 0;
 
   const openEdit = (item: Item) => { setEditing(item); setDraft(item.text); };
   const saveEdit = () => {
@@ -136,12 +151,23 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
               {days === 0 ? t("elev.plans.startedToday") : t("elev.plans.startedAgo", { n: days })}
             </p>
           )}
+          {runDays > 0 && (
+            <p data-testid="plan-routine-days" className="t-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
+              {runDays === 1 ? t("elev.plans.routineRun.days.one") : t("elev.plans.routineRun.days", { n: runDays })}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* TJB-16: a count of steps done, never a completion share. */}
+          {routine ? (
+            <span data-testid="plan-routine-today" className="t-xs font-bold" style={{ color: "var(--arbor-ink-soft)" }}>
+              {t("elev.plans.routineRun.today", { done: ticked, left: Math.max(0, total - ticked) })}
+            </span>
+          ) : (
           <span className="t-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>
             {t("plan.stepsCount", { done, total })}
           </span>
+          )}
           <button
             type="button"
             onClick={() => setConfirmDelete(true)}
@@ -154,6 +180,20 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
         </div>
       </div>
 
+      {/* FEAT-07: a routine plan's rows are for editing only, folded away. */}
+      {routine ? (
+        <details data-testid="plan-routine-steps" className="group/steps">
+          <summary className="list-none cursor-pointer inline-flex min-h-11 items-center gap-1.5 t-sm font-semibold" style={{ color: "var(--arbor-ink)" }}>
+            {t("elev.plans.routineRun.editSteps")}
+            <Icon name="expand_more" size={16} className="transition group-open/steps:rotate-180" />
+          </summary>
+          <ol className="mt-2 space-y-2" aria-label={t("elev.plans.steps.title")}>
+            {items.map((it) => (
+              <StepRow key={it.id} item={it} planId={plan.id} isToday={false} onEdit={openEdit} routine />
+            ))}
+          </ol>
+        </details>
+      ) : (
       <div className="space-y-4">
         {plan.phases.map((ph, phaseIdx) => {
           // B-ASKJB-35 (b): act-first display order inside the phase (an
@@ -179,8 +219,9 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
           );
         })}
       </div>
+      )}
 
-      <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.plans.hint")}</p>
+      <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>{routine ? t("elev.plans.routineRun.hint") : t("elev.plans.hint")}</p>
 
       {/* window.prompt cannot be styled, translated, or mirrored in RTL. */}
       <Modal open={editing !== null} onClose={() => setEditing(null)} title={t("elev.plans.edit.title")} maxWidth="max-w-md">
