@@ -319,7 +319,7 @@ describe("B-TODAY-24 · /todays-focus returns one screened sayThis (≤140) and 
       suite: string; promptVersions: Record<string, string>; scenarios: { id: string; route?: string; locale?: string; safetyMustHold?: boolean }[];
     };
     expect(suite.suite).toBe("today-focus-v1");
-    expect(suite.promptVersions.todays_focus).toBe("1.3.3");
+    expect(suite.promptVersions.todays_focus).toBe("1.4.0");
     const ids = suite.scenarios.map((s) => s.id);
     for (const required of ["cold-start", "approved-fact-used", "not-today-not-repeated", "he-output", "two-child-isolation", "safety-trip-no-score-trend-diagnosis", "saythis-length",
       // B-LOOP-13: the journal scenarios + the live-judge fixes on 1.2.0

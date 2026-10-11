@@ -42,6 +42,8 @@ export const en: Record<string, string> = {
   "elev.memdisc.field.interests": "interests you listed",
   "elev.memdisc.field.preterm": "weeks at birth",
   "elev.memdisc.field.gender": "gender",
+  "elev.memdisc.field.focusAreas": "what you want to work on now",
+  "elev.memdisc.field.parentPreferences": "how you asked Arbor to help",
 };
 
 export const he: Record<string, string> = {
@@ -66,4 +68,6 @@ export const he: Record<string, string> = {
   "elev.memdisc.field.interests": "תחומי עניין שציינתם",
   "elev.memdisc.field.preterm": "שבועות בלידה",
   "elev.memdisc.field.gender": "מגדר",
+  "elev.memdisc.field.focusAreas": "על מה תרצו לעבוד עכשיו",
+  "elev.memdisc.field.parentPreferences": "איך ביקשתם שארבור יעזור",
 };

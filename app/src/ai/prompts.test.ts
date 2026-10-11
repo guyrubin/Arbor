@@ -35,7 +35,7 @@ describe("EVAL-6 — PROMPT_VERSIONS hash guard", () => {
 
   it("covers the contract and every extracted route prompt", () => {
     expect(KEYS.sort()).toEqual(
-      ["companion_attachments", "coach_chat", "council_synthesis", "extract_log", "non_diagnostic_contract", "voice_reply", "live_session", "todays_focus", "weekly_digest", "generate_plan", "analyze_behavior"].sort(),
+      ["companion_attachments", "coach_chat", "council_synthesis", "extract_log", "non_diagnostic_contract", "voice_reply", "live_session", "todays_focus", "weekly_digest", "generate_plan", "analyze_behavior", "describe_child"].sort(),
     );
   });
 
@@ -221,7 +221,7 @@ describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", ()
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/Return "escalateIf": \[\]/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/shepherd/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/do not reword it/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.8.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
   });
 
   it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep the block-free bytes", () => {
@@ -502,7 +502,7 @@ describe("coach_chat 1.4.1 — field rules", () => {
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never write that condition's name or any label back/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/In a routine answer no field names self-harm/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never low, medium, high/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.8.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
   });
   it("coach_chat 1.5.1: escalateIf thresholds stay on the behaviour the parent described", () => {
     expect(COACH_CHAT_FIELD_RULES).toContain("Thresholds are about the behaviour the parent described and never introduce a danger the parent did not raise.");
@@ -628,8 +628,8 @@ describe("B-PROG-01 — the active-program line", () => {
     expect(buildLiveSystemInstruction("en", spoken)).toBe(strip(buildLiveSystemInstruction("en", { ...spoken!, program })));
     // an empty skill or name renders nothing
     expect(buildChatPrompt({ ...chatArgs, activeProgram: { ...program, skill: " " } })).toBe(buildChatPrompt(chatArgs));
-    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.3");
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.8.0");
+    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.4.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
     expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.10.6");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.6.0");
   });
@@ -719,9 +719,9 @@ describe("B-LOOP-13 — the journal block and today's practice line", () => {
     expect(warm).toContain("(the journal's notes per shelf cover the last 30 days)");
   });
 
-  it("versions: todays_focus 1.3.3 · coach_chat 1.7.0 · voice_reply 1.8.2 · live_session unchanged 1.5.0", () => {
-    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.3.3");
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.8.0");
+  it("versions: todays_focus 1.4.0 · coach_chat 1.9.0 (B-SHELL-39) · voice_reply 1.10.6 · live_session 1.6.0", () => {
+    expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.4.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
     expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.10.6");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.6.0");
   });

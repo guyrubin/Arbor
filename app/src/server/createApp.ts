@@ -203,6 +203,8 @@ export const createApp = (config: ArborConfig) => {
       "/api/generate-plan",
       "/api/generate-bedtime-story",
       "/api/conversation/proposals",
+      // B-SHELL-39: "Tell Arbor about {name}" calls the model per description.
+      "/api/describe-child",
       "/api/generate-adventure",
       "/api/generate-hero-journey",
       "/api/analyze-behavior",

@@ -270,7 +270,8 @@ export interface AgePatch {
  * replaces the hero with a real photo must DELETE the hero metadata, or
  * resolveHeroUrl reads the real photo as the hero.
  */
-export const CLEARABLE_PROFILE_FIELDS: readonly string[] = ["birthDate", "birthMonth", "onboardingDraft", "avatar", "comicAvatarUrl"];
+// B-SHELL-39: Undo of a describe readback restores fields that were absent before it.
+export const CLEARABLE_PROFILE_FIELDS: readonly string[] = ["birthDate", "birthMonth", "onboardingDraft", "avatar", "comicAvatarUrl", "interests", "interestsUpdatedAt", "focusAreas", "parentPreferences", "describedItems"];
 
 /**
  * B-CAREPRO-34 — the migration: profile fields that are RETIRED from the child

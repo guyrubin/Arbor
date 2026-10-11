@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { RESTING_GUIDES, restingGuides } from "./HardMomentsSection";
+import { RESTING_GUIDES, restingGuides } from "./HardMomentsSection";
 import { todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -366,6 +366,8 @@ describe("critic r2 — behaviors: guides under the capture, one warm line, no s
     expect(line).toContain("var(--font-editorial)");
     expect(line).toContain('background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)"');
     expect(BEH).toContain("words.length > 70 ? `${words.slice(0, 70).trimEnd()}");
+    // "Last time you wrote" never quotes a conversation proposal, an Arbor draft or a co-parent's note.
+    expect(BEH).toMatch(/\.filter\(\(l\) => \(l\.trigger \|\| ""\)\.trim\(\) && parentWritten\(l\)\)/);
     // NEXTLEVEL r1 (Law 8): the page direction on the paragraph, the words an auto island, the day its own.
     expect(line).toContain('dir={uiLang === "he" ? "rtl" : "ltr"}');
     expect(line).toContain("<bdi dir=\"auto\">{uiLang === \"he\" ? \"„\" : \"“\"}{warmLine.words}{\"”\"}</bdi>");

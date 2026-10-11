@@ -38,6 +38,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { quotesFromDocs } from "../../lib/loop/tonight";
 import ThingsSaid from "../loop/ThingsSaid";
+import KeptDescription from "../describe/KeptDescription";
 
 const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : txt.en);
 
@@ -180,6 +181,9 @@ export default function ChildMemory() {
           </div>
         )}
       </SectionCard>
+      {/* B-SHELL-39: what the parent told Arbor in their own words, editable
+          here, with the "Tell Arbor more" door. Inside the approved module. */}
+      <KeptDescription testId="memory-describe" />
       </div>
       )}
 

@@ -51,7 +51,7 @@ import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
 import { observeMilestoneDoc, type ObserveOptions, type ObserveStatus } from "../lib/milestones/observe";
 import type { ShelfId } from "../lib/shelves/registry";
 import { hydrateMilestones } from "./milestoneHydration";
-import { completeObservation, isObservationAction, activeActionFor, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
+import { completeObservation, isObservationAction, isUrgentOnboardingAction, activeActionFor, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
 import { answeredToday, fromRecordRowId, fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
 import { recentTypeCounts } from "../lib/planRecord";
@@ -455,7 +455,7 @@ function useArborState() {
     [playLogCol.items]
   );
   const donePlayIds = useMemo(() => playLogs.map((p) => p.activityId), [playLogs]);
-  const actionLoop = useMemo(() => sortActionLoop(actionLoopCol.items), [actionLoopCol.items]);
+  const actionLoop = useMemo(() => sortActionLoop(actionLoopCol.items.filter((entry) => !isUrgentOnboardingAction(entry))), [actionLoopCol.items]);
   const activeTodayAction = useMemo(
     () => activeActionFor(actionLoop, todayActionId(childProfile.id)),
     [actionLoop, childProfile.id]
@@ -490,7 +490,9 @@ function useArborState() {
       };
       // Lifetime checks belong here, never in the persisted collection payload.
       const { isCurrent: _isCurrent, ...writeOptions } = options ?? {};
-      await persistAcceptedTodayAction({ childId: childProfile.id, items: actionLoop,
+      // The ledger as stored (urgent first-run rows included): the accept seam
+      // supersedes or skips past a hidden row instead of reusing its id.
+      await persistAcceptedTodayAction({ childId: childProfile.id, items: actionLoopCol.items,
         upsert: item => {
           assertCurrent();
           return actionLoopCol.upsert(item, options ? writeOptions : undefined);

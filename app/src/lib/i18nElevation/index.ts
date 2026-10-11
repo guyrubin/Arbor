@@ -37,6 +37,7 @@ import * as coachcontract from "./coachcontract";
 import * as continueModule from "./continue";
 import * as coParent from "./coParent";
 import * as demoFamily from "./demoFamily";
+import * as describeChild from "./describeChild";
 import * as domains from "./domains";
 import * as evening from "./evening";
 import * as firstMoment from "./firstMoment";
@@ -116,6 +117,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   continueModule,
   coParent,
   demoFamily,
+  describeChild,
   domains,
   evening,
   firstMoment,

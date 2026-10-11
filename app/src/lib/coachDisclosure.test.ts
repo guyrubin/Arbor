@@ -46,6 +46,16 @@ const PROFILES: Array<{ label: string; profile: Record<string, unknown> }> = [
     },
   },
   { label: "blank-ish", profile: { name: "   ", languages: [], strengths: [""], activeGoals: [{}] } },
+  // B-SHELL-39: the parent's stated wishes reach the coach, so they are named.
+  {
+    label: "wishes",
+    profile: {
+      name: "Noa",
+      focusAreas: [{ id: "f1", words: "using words when she is upset", domainId: "feelings", since: "2026-10-10", source: "describe", confirmedAt: "2026-10-10T08:00:00.000Z" }],
+      parentPreferences: [{ id: "p1", words: "don't push reading", since: "2026-10-10", source: "describe", confirmedAt: "2026-10-10T08:00:00.000Z" }],
+    },
+  },
+  { label: "blank wishes", profile: { name: "Noa", focusAreas: [{ words: "  " }], parentPreferences: [{}] } },
 ];
 
 describe("GP-14 — the disclosure list cannot drift from the wire", () => {
@@ -55,7 +65,8 @@ describe("GP-14 — the disclosure list cannot drift from the wire", () => {
 
   it("for every fixture, the fields NAMED are exactly the fields promptProfile SENDS", () => {
     for (const { label, profile } of PROFILES) {
-      const sent = Object.keys(promptProfile(profile) ?? {}).sort();
+      // The coach's projection (B-SHELL-39: it asks for the parent's wishes).
+      const sent = Object.keys(promptProfile(profile, undefined, { parentWishes: true }) ?? {}).sort();
       const named = [...disclosedProfileFields(profile)].sort();
       expect(named, `drift on the "${label}" profile`).toEqual(sent);
     }

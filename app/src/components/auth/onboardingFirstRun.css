@@ -33,4 +33,8 @@
 .first-run-primary { width: 100%; min-height: 48px; border-radius: 14px; background: var(--arbor-gradient-primary); color: var(--arbor-on-accent); font-size: 15px; font-weight: 700; padding: 12px; }
 .first-run button:disabled { opacity: .55; cursor: default; }
 .first-run-error { font-size: 14px; margin-block-start: 12px; }
+/* B-SHELL-39: the describe surface in step 2; Skip beside Continue. */
+.first-run-footer:has(.first-run-skip) { display: flex; gap: 8px; align-items: center; }
+.first-run-footer:has(.first-run-skip) .first-run-primary { flex: 1 1 auto; width: auto; }
+.first-run-skip { min-height: 48px; padding: 8px 14px; border-radius: 14px; border: 1px solid var(--arbor-rule-strong); background: var(--arbor-paper); color: var(--arbor-ink); font-size: 14px; font-weight: 700; flex: none; }
 @media (max-width: 390px) { .first-run { padding: 8px; } .first-run-shell { padding: 16px; } .first-run-step { gap: 10px; } .first-run-choices button { font-size: 12px; } }

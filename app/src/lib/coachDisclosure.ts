@@ -44,6 +44,9 @@ export const DISCLOSED_PROFILE_FIELDS = [
   "interests",
   "preterm",
   "gender",
+  // B-SHELL-39: the parent's stated wishes (the coach receives them).
+  "focusAreas",
+  "parentPreferences",
 ] as const;
 
 export type DisclosedProfileField = (typeof DISCLOSED_PROFILE_FIELDS)[number];
@@ -79,6 +82,11 @@ export function disclosedProfileFields(profile: unknown, now?: Date): DisclosedP
   const weeks = (p.preterm as { gestationalWeeks?: unknown } | undefined)?.gestationalWeeks;
   if (typeof weeks === "number" && Number.isFinite(weeks)) out.push("preterm");
   if (hasText(p.gender)) out.push("gender");
+  // B-SHELL-39: mirrors promptProfile's parentWishes projection (the coach's).
+  const hasWords = (v: unknown): boolean =>
+    Array.isArray(v) && v.some((x) => !!x && typeof x === "object" && hasText((x as { words?: unknown }).words));
+  if (hasWords(p.focusAreas)) out.push("focusAreas");
+  if (hasWords(p.parentPreferences)) out.push("parentPreferences");
   return out;
 }
 

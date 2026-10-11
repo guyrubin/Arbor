@@ -469,6 +469,11 @@ export const api = {
       behaviorType: string; intensity: number; durationMinutes: number; context: string; trigger: string; response: string; notes: string;
       milestoneMatch?: { shelf: string; milestoneId?: string; confidence: "high" | "low" } | null;
     }>("/api/extract-log", payload),
+  // B-SHELL-39: "Tell Arbor about {name}" — the parent's words → readback items
+  // + up to three follow-up questions. The route writes nothing; the client
+  // commits only what the parent keeps (lib/describeChildClient).
+  describeChild: (payload: import("./describeChild").DescribeRequest) =>
+    post<import("./describeChild").DescribeDraft>("/api/describe-child", payload),
   // childId is REQUIRED by the server's COPPA gate (requireConsent reads it from
   // the body); without it /api/vision fails closed with 451. The caller passes the
   // active child's id. AIX-S1: `language` (getAiLanguage()) drives the server-side

@@ -4,6 +4,7 @@ Arbor is a private-beta parent support product for child-development concerns. T
 
 ## Current Artifacts
 
+- `docs/business-development/README.md` - strategic GTM and partnerships v2: Parent/Growth/Kids, distinct commercial/clinical/academic tracks, personas, measurable experiments, BD backlog and live JG workspace links.
 - `docs/arbor-prd.md` - product requirements, positioning, MVP scope, safety requirements, roadmap, and metrics.
 - `docs/arbor-backlog.md` - tracked M0/M1 architecture follow-ups and upstream issue/ADR references.
 - `docs/adr/` - short Architecture Decision Records anchoring M0/F-07 platform decisions.
