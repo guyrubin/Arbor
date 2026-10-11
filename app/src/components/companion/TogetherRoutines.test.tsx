@@ -186,7 +186,7 @@ for (const lang of ["en", "he"] as const) describe(`FEAT-07 · Together with rou
     expect(block.match(/data-in-plan="true"/g)).toHaveLength(1);
     expect(block.match(/data-testid="together-routine-in-plan"/g)).toHaveLength(1);
     expect(block).toContain(tr(lang, "companion.together-view.routines-in-plan"));
-    expect(block).toContain(tr(lang, "elev.plans.routineRun.today", { done: 1, left: 3 }));
+    expect(block).toContain(tr(lang, "elev.plans.routineRun.today", { done: 1, left: routineById("calm").steps.length - 1 }));
     expect(block).not.toMatch(BANNED);
   });
 });
