@@ -123,7 +123,11 @@ export type BookAssetFetch = { blob: Blob } | { missing: true } | { transient: t
  *  device copy's key) and the files it may serve. A library book passes its
  *  BookAssetsDoc; a legacy book's narration passes its manifest (lib/library/
  *  legacyNarration). */
-export type BookAssetSource = Pick<BookAssetsDoc, "bookId" | "createdAt" | "files">;
+export interface BookAssetSource {
+  bookId: BookAssetsDoc["bookId"];
+  createdAt: BookAssetsDoc["createdAt"];
+  files: readonly string[];
+}
 
 let sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 /** Test seam: the backoff's clock. */
