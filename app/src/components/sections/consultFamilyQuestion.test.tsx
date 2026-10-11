@@ -175,7 +175,9 @@ describe("v3 FEAT-09 · Our question — the chip", () => {
       expect(label).toContain(translate(lang, "elev.consult.topic.include"));
       expect(label).toContain(QUESTION[lang]);
       // the chip sits in step 2 ("What changed"), not in the packet card
-      expect(elements(byId(tree, "consult-reason-section")).includes(chip)).toBe(true);
+      // (Children.toArray clones elements, so this checks by test id, not identity)
+      expect(byId(byId(tree, "consult-reason-section"), "consult-include-topic")).toBeDefined();
+      expect(byId(byId(tree, "consult-review-export"), "consult-include-topic")).toBeUndefined();
       // off: the preview carries no question line
       expect(previewLines(tree).map((l) => l.text)).not.toContain(lineFor(lang));
     });
