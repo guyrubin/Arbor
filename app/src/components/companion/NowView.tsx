@@ -12,6 +12,7 @@ import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/mode
 import { nextChosenAction } from "./companionChoices";
 import { NOW_COPY } from "./nowViewCopy";
 import NowRecommendation from "./NowRecommendation";
+import { NowGuideHost } from "./NowGuideReader";
 import NowMoreForToday from "./NowMoreForToday";
 import { NowNoticeBlock, NowNoticeLead, NowPracticeLead, NowTonightLead, NowTonightPointer } from "./NowLoopBlocks";
 import { focusSignalsForNow } from "./nowRecommendationModel";
@@ -224,7 +225,9 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const ageText = formatChildAge(childProfile, t, now);
   const dateLine = now.toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
 
-  return <div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
+  // FEAT-02: the guide reader lives above the lead switch, so a guide that
+  // becomes the chosen step keeps its sheet, receipt and error.
+  return <NowGuideHost lang={lang}><div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
     <header className="now-heading">
       <div>
         <div className="now-identity">
@@ -327,5 +330,5 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       <button type="button" className="now-together-door" onClick={() => setActiveTab("practice")}><img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt="" loading="lazy" /><span><h2>{copy.togetherTitle}</h2><p>{copy.togetherBody}</p></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" /></button>
     </nav>
     <footer className="now-footer"><button type="button" className="companion-text-button" onClick={() => setActiveTab("learn")}><Icon name="menu_book" size={18} />{copy.learning}</button><button type="button" className="companion-text-button" onClick={() => setActiveTab("consult")}><Icon name="group" size={19} />{copy.care}</button></footer>
-  </div>;
+  </div></NowGuideHost>;
 }

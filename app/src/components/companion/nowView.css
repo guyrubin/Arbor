@@ -224,6 +224,7 @@
   .now-plan { grid-template-columns: minmax(0, 1fr); }
   .now-plan-art { min-block-size: 150px; }
   .now-plan-art[data-art="guide-art"] { min-block-size: 0; aspect-ratio: 16 / 9; }
+  .now-plan-art[data-art="guide-art"] .now-plan-img { -webkit-mask-image: none; mask-image: none; }
   .now-plan-medallion { inset-block-start: auto; inset-block-end: 18px; inline-size: 72px; block-size: 72px; }
   .now-plan-body { border-inline-start: 0; border-block-start: 1px solid var(--arbor-rule); }
   .now-day-grid { grid-template-columns: minmax(0, 1fr); }
@@ -252,16 +253,20 @@
 .now-guide-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin-block: 14px 0; padding: 0; list-style: none; font-size: var(--t-xs); color: var(--arbor-muted); }
 .now-guide-meta li { display: inline-flex; align-items: center; gap: 6px; }
 .now-guide-meta .msr { flex-shrink: 0; color: var(--arbor-ink-soft); }
-.now-guide-reader { display: flex; flex-direction: column; gap: 18px; padding-block-end: 8px; color: var(--arbor-ink); text-align: start; }
+.now-guide-reader { display: flex; flex-direction: column; gap: 18px; max-inline-size: 640px; padding-block-end: 8px; color: var(--arbor-ink); text-align: start; }
 .now-guide-section h3 { margin-block-end: 6px; font: 700 var(--t-sm)/1.3 var(--font-sans); color: var(--arbor-ink); }
 .now-guide-words { margin: 0; padding-inline-start: 14px; border-inline-start: 2px solid var(--arbor-ink); font: 600 var(--t-base)/1.4 var(--font-display); text-wrap: pretty; overflow-wrap: anywhere; }
 .now-guide-done { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding-block-start: 14px; border-block-start: 1px solid var(--arbor-rule); }
 .now-guide-reader button { min-block-size: 44px; }
 .now-guide-done .companion-primary { inline-size: 100%; }
 .now-guide-done .companion-primary:disabled { cursor: progress; }
-/* The guide art (lib/guideArt) fills the art panel at 16:9; the scrim fades
-   from the inline-start edge in paper tokens, and both mirror once in Hebrew. */
-.now-plan-img { position: absolute; inset-block: 0; inset-inline: 0; inline-size: 100%; block-size: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
-[dir="rtl"] .now-plan-img { transform: scaleX(-1); }
-.now-plan-scrim { position: absolute; inset-block: 0; inset-inline: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--arbor-paper) 92%, transparent), color-mix(in srgb, var(--arbor-paper) 55%, transparent) 45%, transparent 80%); }
-[dir="rtl"] .now-plan-scrim { transform: scaleX(-1); }
+/* The guide art (lib/guideArt) is a 16:9 band across the top of the art panel
+   at every width, never cropped to the panel: on a narrow card the panel itself
+   is 16:9 (container rule above); on a wide card the panel's own wash carries
+   on below the picture, which fades into it. The scrim fades from the
+   inline-start edge in paper tokens behind the tag; picture and scrim mirror
+   once in Hebrew (the art has no text and nothing handed). */
+.now-plan-img, .now-plan-scrim { position: absolute; inset-block-start: 0; inset-inline: 0; inline-size: 100%; block-size: auto; aspect-ratio: 16 / 9; }
+.now-plan-img { object-fit: cover; -webkit-mask-image: linear-gradient(to bottom, var(--arbor-ink) 80%, transparent); mask-image: linear-gradient(to bottom, var(--arbor-ink) 80%, transparent); }
+.now-plan-scrim { background: linear-gradient(90deg, color-mix(in srgb, var(--arbor-paper) 92%, transparent), color-mix(in srgb, var(--arbor-paper) 55%, transparent) 45%, transparent 80%); }
+[dir="rtl"] .now-plan-img, [dir="rtl"] .now-plan-scrim { transform: scaleX(-1); }
