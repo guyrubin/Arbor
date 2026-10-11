@@ -202,11 +202,31 @@ describe("wiring", () => {
     expect(title / barWidth).toBeGreaterThanOrEqual(0.4);
     expect(overlay).toContain('gap: "8px"');
   });
+  it("B-KID-142: no Kid Mode surface reaches the runtime voice (a child hears only the chosen narrator, from files)", () => {
+    const { readdirSync, statSync } = require("node:fs") as typeof import("node:fs");
+    const { join } = require("node:path") as typeof import("node:path");
+    const kidRoot = join(__dirname, "..");
+    const files: string[] = [];
+    const walk = (d: string) => {
+      for (const e of readdirSync(d)) {
+        const p = join(d, e);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (/\.(tsx?|mts)$/.test(e) && !/\.test\./.test(e)) files.push(p);
+      }
+    };
+    walk(kidRoot);
+    files.push(join(kidRoot, "..", "tabs", "HeroJourneyTab.tsx"), join(kidRoot, "..", "library", "BookReader.tsx"));
+    // the engine's own definitions are the only allowed mentions
+    const allowed = new Set([join(kidRoot, "audio", "kidAudio.ts"), join(kidRoot, "kidReadAloud.tsx")]);
+    const offenders = files.filter((f) => !allowed.has(f)).filter((f) => /\bkidSay\(|\bautoReadPage\(|\bspeakText\(|<KidHearItButton/.test(require("node:fs").readFileSync(f, "utf8")));
+    expect(offenders.map((f) => f.slice(kidRoot.length))).toEqual([]);
+  });
   it("GameShell taps + finish, the reader's page turn, choice tiles, and ONE voice path", () => {
     const shell = read("..", "game", "GameShell.tsx");
     expect(shell).toContain("onPointerDownCapture={onGamePiecePointerDown}");
     expect(shell).toContain('kidSfx("finish")');
-    expect(shell).toContain("autoReadPage(childId, instruction, lang)");
+    // Guy, 10 Oct 2026 (B-KID-142): the shell shows the instruction, it never speaks it.
+    expect(shell).not.toContain("autoReadPage(");
     const reader = read("..", "..", "tabs", "HeroJourneyTab.tsx");
     expect(reader.match(/kidSfx\("pageTurn"\)/g)?.length).toBe(2);
     // B-BOOK-28 + Guy, 10 Oct 2026: no runtime voice in a legacy kid book;
