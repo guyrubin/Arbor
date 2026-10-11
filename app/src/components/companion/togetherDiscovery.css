@@ -25,6 +25,11 @@
 .companion-together .companion-collection { margin-block: 24px; }
 .companion-together .companion-together-footer { flex-wrap: wrap; }
 .together-world-count-slot { min-block-size: 2.8em; font-size: var(--t-xs); }
+/* VIS-07: the first-time empty state is one framed, centred invitation; logical sides only, so RTL centres the same. */
+.companion-together .together-empty-card { margin-block: 0 24px; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); background: var(--arbor-paper-elevated); }
+.companion-together .together-empty { padding-block: 28px; padding-inline: 24px; }
+/* `.companion-page button { font: inherit }` outranks the layered utilities, so the one action restates its weight here. */
+.companion-together .together-empty button { font-weight: 600; padding-inline: 22px; }
 @container together (max-width: 760px) {
   .companion-world-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .companion-offscreen-grid { grid-template-columns: minmax(0, 1fr); }
@@ -41,6 +46,7 @@
   .together-suggestion { flex-direction: column; align-items: stretch; gap: 14px; padding: 18px; }
   .together-suggestion .companion-primary { align-self: flex-start; }
   .together-parent-tools { gap: 4px 16px; }
+  .companion-together .together-empty { padding-block: 20px; padding-inline: 16px; }
   .companion-story-grid { grid-template-columns: minmax(0, 1fr); }
   .companion-card-art > img { aspect-ratio: 2.4; }
   .companion-card-copy { padding: 16px; }

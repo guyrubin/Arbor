@@ -294,6 +294,8 @@ export const companionEn = {
   "companion.place.child.detail": "The whole picture, over time",
   "companion.place.together": "Together",
   "companion.place.together.detail": "Small moments. Shared discoveries.",
+  // VIS-07: Together's first-time empty state (one sentence; the action reuses companion.portrait.capture).
+  "companion.together-view.empty": "A good moment needs no other reason.",
 };
 
 export const companionHe = {
@@ -590,4 +592,6 @@ export const companionHe = {
   "companion.place.child.detail": "התמונה השלמה, לאורך זמן",
   "companion.place.together": "ביחד",
   "companion.place.together.detail": "רגעים קטנים, גילויים משותפים",
+  // VIS-07: Together's first-time empty state (one sentence; the action reuses companion.portrait.capture).
+  "companion.together-view.empty": "רגע טוב לא צריך שום סיבה אחרת.",
 };

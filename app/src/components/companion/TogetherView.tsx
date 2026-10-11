@@ -15,6 +15,7 @@ import type { HeroJourneyRun } from "../../types";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { opensInKidMode, studioCountKey, studioCountsSince, studioWorldsForChild, worksInLanguage, type StudioWorld } from "../practice/studioWorlds";
 import Icon from "../ui/Icon";
+import { EmptyState } from "../ui/EmptyState";
 import { Modal } from "../ui/Modal";
 import { OFFSCREEN_IDEAS, STORY_DOORS, WORLD_ART, type TogetherCategory } from "./companionChoices";
 import { trackCompanionPlaceOpen, trackPracticeStudioOpen, trackPracticeTogetherDid } from "../../lib/kpiEvents";
@@ -28,7 +29,7 @@ type Preview = { kind: "world"; world: StudioWorld } | { kind: "offscreen"; id: 
 /** Parent previews lead to the existing child-mode entry seam. Nothing on this
  * page starts a camera/microphone or writes an activity just because it is seen. */
 export default function TogetherView() {
-  const { childProfile, setActiveTab, saveMoment, activeFamilyTopic } = useArbor();
+  const { childProfile, setActiveTab, saveMoment, activeFamilyTopic, openCaptureSheet, behaviorLogs = [], logsLoaded = false } = useArbor();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
@@ -70,6 +71,11 @@ export default function TogetherView() {
   const playCollections = [practiceData.speech, practiceData.mimic, practiceData.missions, practiceData.adventures, practiceData.events, heroRuns];
   const playLoaded = playCollections.every((collection) => collection.loaded);
   const playError = playCollections.some((collection) => collection.error);
+  // VIS-07: the first-time empty state, decided only once every read resolved
+  // and none failed (a failed read is never "empty"): no play on record and
+  // no moment kept yet, the same "no records" that empties My child.
+  const firstTime = playLoaded && !playError && logsLoaded && behaviorLogs.length === 0
+    && playCollections.every((collection) => collection.items.length === 0);
   const sinceText = since ? `${since.before}${since.title ?? ""}${since.after}` : "";
   // B-SHELL-NEW-1b: the sentence can be kept as ONE parent moment; the inline
   // line below is this write's one failure message (the seam stays quiet).
@@ -130,7 +136,8 @@ export default function TogetherView() {
       <section className="companion-together-hero" data-module="together-invitation" aria-labelledby={`${filterId}-title`}>
         <header className="together-heading">
           <h1 id={`${filterId}-title`}>{t("companion.together-view.a-little-world-to-discover-with", { value0: name })}</h1>
-          <figure className="companion-together-art" aria-hidden="true"><img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt="" /></figure>
+          {/* VIS-07: while the empty state below carries the Together picture, the hero does not repeat it. */}
+          {!firstTime && <figure className="companion-together-art" aria-hidden="true"><img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt="" /></figure>}
         </header>
         <div className="together-suggestion">
           <div>
@@ -162,6 +169,11 @@ export default function TogetherView() {
           </details>
         </div>}
       </section>
+
+      {/* VIS-07: one calm first-time empty state: the Together picture, one sentence, one action (Keep a moment). */}
+      {firstTime && <section className="together-empty-card" data-testid="together-empty">
+        <EmptyState illustration={TOGETHER_ART} headline={t("companion.together-view.empty")} cta={t("companion.portrait.capture")} onCta={() => openCaptureSheet()} ctaTestId="together-empty-cta" className="together-empty" />
+      </section>}
 
       {activeFamilyTopic && <div className="companion-topic-context"><Icon name="bookmark" size={18} /><span>{t("companion.together-view.your-question-stays-with-you")}<b dir="auto">{activeFamilyTopic.title}</b></span><span className="companion-caption">{t("companion.together-view.here-it-is-also-enough-just-to-enjoy")}</span></div>}
 
