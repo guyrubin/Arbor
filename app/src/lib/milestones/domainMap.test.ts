@@ -21,6 +21,9 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\
 const SOURCE = strip(readFileSync(path.join(here, "domainMap.ts"), "utf8").replace(/\r\n/g, "\n"));
 const catalogue = (): Milestone[] => ALL_MILESTONES.map((m) => ({ ...m }));
 const seen = (m: Milestone): Milestone => ({ ...m, checked: true, observationStatus: "yes" });
+/** The catalogue carries no Sleep skill: the Sleep shelf fills from rows the
+ *  parent adds (tag `sleep`, lib/shelves/registry milestoneShelf). Invented. */
+const PARENT_SLEEP: Milestone = { id: "ms-sleep-own", custom: true, tags: ["sleep"], domain: "health_sleep_feeding", ageGroup: "Custom", title: "Falls asleep after one story", description: "x", checked: false };
 
 describe("noticedByDomain — Seen it per domain, nothing else", () => {
   it("returns every registry domain, in registry order, at zero on an empty record", () => {
@@ -32,10 +35,10 @@ describe("noticedByDomain — Seen it per domain, nothing else", () => {
 
   it("folds the Sleep and the Food shelf into body", () => {
     const by = groupMilestonesByShelf(catalogue());
-    expect(by.sleep.length).toBeGreaterThan(0);
     expect(by.food.length).toBeGreaterThan(0);
-    const marked = new Set([by.sleep[0].id, by.food[0].id]);
-    const counts = noticedByDomain(catalogue().map((m) => (marked.has(m.id) ? seen(m) : m)));
+    const ms = [...catalogue().map((m) => (m.id === by.food[0].id ? seen(m) : m)), seen(PARENT_SLEEP)];
+    expect(groupMilestonesByShelf(ms).sleep.map((m) => m.id)).toEqual([PARENT_SLEEP.id]);
+    const counts = noticedByDomain(ms);
     expect(counts.body).toBe(2);
     for (const id of DOMAIN_IDS) if (id !== "body") expect(counts[id]).toBe(0);
   });

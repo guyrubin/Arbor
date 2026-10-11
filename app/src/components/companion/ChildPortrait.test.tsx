@@ -37,9 +37,10 @@ vi.mock("./PortraitKeepsakes", () => ({ default: () => null }));
 // B-SHELL-39: the kept-description card has its own tests (components/describe).
 vi.mock("../describe/KeptDescription", () => ({ default: () => null }));
 // v3 FEAT-03: the domain sheet has its own tests (DomainSheet.test.tsx); here only its wiring.
+// The stand-in carries no role: only ui/Modal and ui/Sheet own a dialog (ui/overlays.test.ts).
 vi.mock("./DomainSheet", () => ({ default: (props: NonNullable<typeof state.sheet>) => {
   state.sheet = props;
-  return props.domain ? <div role="dialog" data-testid="domain-sheet-mock" data-domain={props.domain} /> : null;
+  return props.domain ? <div data-testid="domain-sheet-mock" data-domain={props.domain} /> : null;
 } }));
 const capture = (type: unknown, props: unknown) => { if (type === "button" && props && typeof props === "object") state.buttons.push(props as typeof state.buttons[number]); };
 vi.mock("react/jsx-runtime", async original => {
@@ -103,7 +104,7 @@ describe("v3 FEAT-03 — the development map on My child", () => {
   const mapSlice = (html: string) => html.slice(html.lastIndexOf("<section", html.indexOf('data-testid="dev-map"')), html.indexOf('class="portrait-toolbar"'));
   // Visible words: icon ligatures (<span class="msr">diversity_3</span>) are glyphs, not text.
   const words = (html: string) => html.replace(/<span class="msr[^"]*"[^>]*>[^<]*<\/span>/g, " ").replace(/<[^>]+>/g, " ");
-  const SHEET = /<div role="dialog" data-testid="domain-sheet-mock" data-domain="([a-z]+)"/;
+  const SHEET = /<div data-testid="domain-sheet-mock" data-domain="([a-z]+)"/;
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 
   it.each(["en", "he"] as const)("mounts eight area tiles inside the overview, before the record lenses, with no verdict (%s)", lang => {

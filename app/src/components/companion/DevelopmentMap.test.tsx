@@ -38,6 +38,9 @@ import { groupMilestonesByShelf } from "../../lib/milestones/shelfMap";
 
 const catalogue = (): Milestone[] => ALL_MILESTONES.map(m => ({ ...m }));
 const seen = (m: Milestone): Milestone => ({ ...m, checked: true, observationStatus: "yes" });
+/** The catalogue carries no Sleep skill: the Sleep shelf fills from rows the
+ *  parent adds (tag `sleep`, lib/shelves/registry milestoneShelf). Invented. */
+const PARENT_SLEEP: Milestone = { id: "ms-sleep-own", custom: true, tags: ["sleep"], domain: "health_sleep_feeding", ageGroup: "Custom", title: "Falls asleep after one story", description: "x", checked: false };
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 const words = (html: string) => html.replace(/<span class="msr[^"]*"[^>]*>[^<]*<\/span>/g, " ").replace(/<[^>]+>/g, " ");
 const moment = (id: string, domains: DomainId[], at: string, source: Observation["source"] = "parent_typed"): Observation => ({
@@ -78,9 +81,8 @@ describe("v3 FEAT-03 — DevelopmentMap", () => {
 
   it("the one number is Seen it: Sleep and Food fold into body, Not yet adds nothing anywhere", () => {
     const by = groupMilestonesByShelf(catalogue());
-    const marked = new Set([by.sleep[0].id, by.food[0].id]);
     const notYet = new Set(by.words.slice(0, 3).map(m => m.id));
-    const ms = catalogue().map(m => (marked.has(m.id) ? seen(m) : notYet.has(m.id) ? { ...m, observationStatus: "not_yet" as const } : m));
+    const ms = [...catalogue().map(m => (m.id === by.food[0].id ? seen(m) : notYet.has(m.id) ? { ...m, observationStatus: "not_yet" as const } : m)), seen(PARENT_SLEEP)];
     const html = render({ milestones: ms });
     const body = tileOf(html, "body");
     expect(body).toContain('data-testid="count-pips" data-domain="body"');

@@ -32,9 +32,9 @@ vi.mock("../../context/LanguageContext", async () => {
 });
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => state.arbor }));
 type SurfaceProps = { open: boolean; title?: string; children?: React.ReactNode };
-vi.mock("../ui/Modal", () => ({ Modal: ({ open, title, children }: SurfaceProps) => (open ? <div role="dialog" data-surface="modal" aria-label={title}>{children}</div> : null) }));
+vi.mock("../ui/Modal", () => ({ Modal: ({ open, title, children }: SurfaceProps) => (open ? <div data-surface="modal" aria-label={title}>{children}</div> : null) }));
 vi.mock("../ui/Sheet", () => ({
-  Sheet: ({ open, title, children }: SurfaceProps) => (open ? <div role="dialog" data-surface="sheet" aria-label={title}>{children}</div> : null),
+  Sheet: ({ open, title, children }: SurfaceProps) => (open ? <div data-surface="sheet" aria-label={title}>{children}</div> : null),
   useCompactSurface: () => state.compact,
 }));
 const capture = vi.hoisted(() => (type: unknown, props: unknown) => {
@@ -58,6 +58,9 @@ import { groupMilestonesByShelf, shelfBands } from "../../lib/milestones/shelfMa
 import { shelfLabel } from "../../lib/shelves/registry";
 
 const catalogue = (): Milestone[] => ALL_MILESTONES.map(m => ({ ...m }));
+/** The catalogue carries no Sleep skill: the Sleep shelf fills from rows the
+ *  parent adds (tag `sleep`, lib/shelves/registry milestoneShelf). Invented. */
+const PARENT_SLEEP: Milestone = { id: "ms-sleep-own", custom: true, tags: ["sleep"], domain: "health_sleep_feeding", ageGroup: "Custom", title: "Falls asleep after one story", description: "x", checked: false };
 const WORDS = groupMilestonesByShelf(catalogue()).words;
 const bandOf = (m: Milestone) => (typeof m.ageMonths === "number" ? bandForAgeMonths(m.ageMonths).months : -1);
 const wordBands = [...new Set(WORDS.map(bandOf).filter(b => b >= 0))].sort((a, b) => a - b);
@@ -111,13 +114,22 @@ describe("v3 FEAT-03 — DomainSheetBody", () => {
     for (const key of ["companion.devMap.check", "companion.devMap.explore", "companion.devMap.moments"]) expect(html).toContain(esc(translate(lang, key)));
   });
 
-  it("body walks both of its shelves under their own headings", () => {
-    const html = body({ domain: "body", currentBandMonths: 2 });
+  it("body walks both of its shelves under their own headings once Sleep has a row", () => {
+    const html = body({ domain: "body", currentBandMonths: 2, milestones: [...catalogue(), PARENT_SLEEP] });
     const t = (key: string) => translate("en", key);
     expect(html.match(/<h3>/g)).toHaveLength(2);
     expect(html).toContain(`<h3>${esc(shelfLabel("sleep", t))}</h3>`);
     expect(html).toContain(`<h3>${esc(shelfLabel("food", t))}</h3>`);
+    // The parent's own Sleep row is answerable (no age band to wait for).
+    expect(ids(html)).toContain(PARENT_SLEEP.id);
     expect(html).toContain(esc(translate("en", "companion.devMap.why.body")));
+  });
+
+  it("body with no Sleep row reads as one list: no lone shelf heading", () => {
+    const html = body({ domain: "body", currentBandMonths: 2 });
+    expect(html).not.toContain("<h3>");
+    expect(html).toContain('data-shelf="food"');
+    expect(html).not.toContain('data-shelf="sleep"');
   });
 
   it("the pressed answer is a neutral state mark: Seen it and Not yet press the same way", () => {

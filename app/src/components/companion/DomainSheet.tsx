@@ -94,13 +94,17 @@ export function DomainSheetBody({ domain, milestones, currentBandMonths, gender 
     </li>
   );
   const answerable = sections.some((s) => s.now.length > 0 || s.own.length > 0);
+  // Body spans two shelves (Sleep, Food & growth); a heading names each only
+  // when both carry rows. The catalogue has no Sleep skill, so Sleep fills
+  // from the parent's own rows and Body usually reads as one list.
+  const shown = sections.filter((s) => s.now.length + s.own.length + s.next.length > 0);
   return (
     <div className="domain-sheet" data-testid="domain-sheet" data-domain={domain} dir={uiLang === "he" ? "rtl" : "ltr"}>
       <p className="domain-sheet-why">{t(WHY_KEYS[domain])}</p>
       {!answerable && <p className="domain-sheet-empty" data-testid="domain-sheet-empty">{t("companion.devMap.empty")}</p>}
-      {sections.map(({ shelf, now, own, next }) => (now.length + own.length + next.length > 0) && (
+      {shown.map(({ shelf, now, own, next }) => (
         <section key={shelf} className="domain-sheet-shelf" data-shelf={shelf}>
-          {shelves.length > 1 && <h3>{shelfLabel(shelf, t)}</h3>}
+          {shown.length > 1 && <h3>{shelfLabel(shelf, t)}</h3>}
           {now.length > 0 && (
             <>
               <p className="domain-sheet-band">{t("ms.currentBand")}</p>
