@@ -22,6 +22,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { translate } from "../../lib/i18n";
 import { SECTIONS } from "../../lib/navigation";
+import { backTargetFor } from "../../lib/companionPlaces";
 
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf8");
 const panel = read("SmartRemindersPanel.tsx");
@@ -31,7 +32,10 @@ const shell = read("../layout/Shell.tsx");
 describe("1 · the back control goes where its label says", () => {
   it("Smart Reminders returns to Today, not to Ask Arbor", () => {
     expect(panel).not.toContain('setActiveTab("overview")');
-    expect(shell).toContain("setActiveTab(placeForTab(activeTab).tab)");
+    // v3 IA-01 re-pin: Shell's Back goes to the route's home (backTargetFor),
+    // and for Smart Reminders that home is still Today.
+    expect(shell).toContain("setActiveTab(back.tab)");
+    expect(backTargetFor("smart-reminders")?.tab).toBe("overview");
     expect(panel).not.toContain('setActiveTab("coach")');
   });
 

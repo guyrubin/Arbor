@@ -50,12 +50,22 @@ const DOOR_RETURN: Record<CompanionDoor["id"], CompanionPlace> = {
 };
 
 /** The place a route sits in: its home when that is a place, otherwise the
- *  place its door returns to. Back, the search subtitle and the active place
- *  in the Sidebar and dock all read it. */
+ *  place its door returns to. The search subtitle and the active place in the
+ *  dock read it; the Sidebar and Back read the home itself (homeForTab). */
 export function placeForTab(tab: ActiveTab): CompanionPlace {
   const home = homeForTab(tab);
   return home.kind === "place" ? home.place : DOOR_RETURN[home.door.id];
 }
 export function isCompanionHome(tab: ActiveTab): boolean {
   return COMPANION_PLACES.some(place => place.tab === tab);
+}
+
+/** v3 IA-01 — where Back goes: the route's home, a place or a door (#/learn
+ *  returns to For you, the parent; #/milestones to My child). A home's own
+ *  route (the three places, and coach, masterclasses and consult) has no Back:
+ *  null. Shell's Back reads only this. */
+export function backTargetFor(tab: ActiveTab): CompanionPlace | CompanionDoor | null {
+  const home = homeForTab(tab);
+  const target = home.kind === "place" ? home.place : home.door;
+  return target.tab === tab ? null : target;
 }

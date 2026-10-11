@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import { placeForTab } from "../../lib/companionPlaces";
+import { backTargetFor, placeForTab } from "../../lib/companionPlaces";
 import { SECTIONS, primaryTabOf } from "../../lib/navigation";
 import { translate } from "../../lib/i18n";
 import { PARENT_RECORD_COPY } from "../companion/parentRecordCopy";
@@ -126,7 +126,10 @@ describe("record hierarchy keeps useful controls without repeating navigation or
   it("secondary screens keep one Back control and all sibling destinations without the old overlap", () => {
     const shell = readFileSync(new URL("./Shell.tsx", import.meta.url), "utf8");
     expect(shell.match(/data-testid="secondary-place-back"/g)).toHaveLength(1);
-    expect(shell).toContain("setActiveTab(placeForTab(activeTab).tab)");
+    // v3 IA-01 re-pin (was `setActiveTab(placeForTab(activeTab).tab)`): Back returns
+    // to the route's HOME, its place or its door, and a home's own route has none.
+    expect(shell).toContain("const back = isCompanionHome(activeTab) ? null : backTargetFor(activeTab);");
+    expect(shell).toContain("{back && <button data-testid=\"secondary-place-back\" onClick={() => setActiveTab(back.tab)}");
     expect(shell).toContain("pillRowFor(section, activeTab).map");
     expect(shell).not.toContain('t("nav.sub." + hubSubKey');
     const nav = shell.slice(shell.indexOf('data-testid="secondary-sibling-nav"'), shell.indexOf("{/* Secondary pages"));
@@ -135,6 +138,9 @@ describe("record hierarchy keeps useful controls without repeating navigation or
     for (const [file, key] of [["../tabs/WeeklyTab.tsx", "elev.wk.back"], ["../sections/DayWindowsPanel.tsx", "dw.back"], ["../sections/SmartRemindersPanel.tsx", "elev.sr.back"]]) {
       expect(readFileSync(new URL(file, import.meta.url), "utf8")).not.toContain(`t("${key}")`);
     }
-    for (const tab of ["weekly", "day-windows", "smart-reminders"] as const) expect(placeForTab(tab).tab).toBe("overview");
+    for (const tab of ["weekly", "day-windows", "smart-reminders"] as const) {
+      expect(placeForTab(tab).tab).toBe("overview");
+      expect(backTargetFor(tab)?.tab).toBe("overview");
+    }
   });
 });

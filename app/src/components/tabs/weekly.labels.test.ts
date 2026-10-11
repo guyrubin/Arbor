@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest";
 import { resolveWeekLabel, formatWeekLabel } from "../../hooks/useWeeklyRecap";
 import { SURFACE_CONTRACTS } from "../../lib/surfaceContract";
 import { SECTIONS } from "../../lib/navigation";
+import { backTargetFor } from "../../lib/companionPlaces";
 import { translate } from "../../lib/i18n";
 
 const tab = fs.readFileSync(path.resolve(__dirname, "WeeklyTab.tsx"), "utf8");
@@ -28,7 +29,10 @@ describe("1 · TJB-10 · back goes to the hub that owns Weekly, at 44 px", () =>
     expect(tab).not.toContain('t("elev.wk.back")');
     expect(tab).not.toContain('setActiveTab("timeline")');
     const shell = fs.readFileSync(path.resolve(__dirname, "../layout/Shell.tsx"), "utf8");
-    expect(shell).toContain("setActiveTab(placeForTab(activeTab).tab)");
+    // v3 IA-01 re-pin: Shell's Back goes to the route's home (backTargetFor),
+    // and for Weekly that home is still Today.
+    expect(shell).toContain("setActiveTab(back.tab)");
+    expect(backTargetFor("weekly")?.tab).toBe("overview");
     expect(shell).toMatch(/data-testid="secondary-place-back"[\s\S]{0,220}min-h-11/);
   });
 

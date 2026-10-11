@@ -4,7 +4,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { isCompanionHome, placeForTab } from "../../lib/companionPlaces";
+import { backTargetFor, isCompanionHome, placeForTab } from "../../lib/companionPlaces";
 import { useHashQuery } from "../../hooks/useHashQuery";
 import { sectionForTab, pillRowFor, isCompactHiddenTool } from "../../lib/navigation";
 import { contractFor } from "../../lib/surfaceContract";
@@ -221,6 +221,9 @@ export default function Shell() {
   const createTopic = (draft: string, observationIds: string[] = []) => setTopicSheet({ childId: childProfile.id, draft, observationIds, startNew: true });
   const ActiveTabComponent = tabRegistry[activeTab];
   const section = sectionForTab(activeTab);
+  // v3 IA-01: Back returns to the route's home, its place or its door
+  // (#/learn → For you, the parent). A home's own route has no Back.
+  const back = isCompanionHome(activeTab) ? null : backTargetFor(activeTab);
   const focusLabel = childProfile.languages.length > 1
     // OBJ-SHELL-01: this was the English literal "Language transition" — the
     // one string in the strip that stayed English in Hebrew, and a phrase that
@@ -440,8 +443,8 @@ export default function Shell() {
             </div>
           }/>
 
-          {!isCompanionHome(activeTab) && <button data-testid="secondary-place-back" onClick={() => setActiveTab(placeForTab(activeTab).tab)} className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: "var(--arbor-muted)" }}>
-            <Icon name="arrow_back" size={18} className="rtl:-scale-x-100"/>{uiLang === "he" ? placeForTab(activeTab).he : placeForTab(activeTab).en}
+          {back && <button data-testid="secondary-place-back" onClick={() => setActiveTab(back.tab)} className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: "var(--arbor-muted)" }}>
+            <Icon name="arrow_back" size={18} className="rtl:-scale-x-100"/>{uiLang === "he" ? back.he : back.en}
           </button>}
           {/* UC-6 hub contextual pill row — the hub's FULL capability set: its
               primary/hub view + sub-tabs + its own folded tools (no global TOOLS

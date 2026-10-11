@@ -595,7 +595,9 @@ export const companionHe = {
   "companion.place.together": "ביחד",
   "companion.place.together.detail": "רגעים קטנים, גילויים משותפים",
   // v3 IA-04: the three doors' names (COMPANION_DOORS in lib/companionPlaces).
+  // v3 IA-01: Learn and Care take the v3 names, in the plural address the
+  // companion copy uses.
   "companion.door.talk": "לדבר עם ארבור",
-  "companion.door.learn": "בשבילך, ההורה",
-  "companion.door.care": "יחד עם אנשי המקצוע",
+  "companion.door.learn": "בשבילכם, ההורים",
+  "companion.door.care": "טיפול, ביחד",
 };
