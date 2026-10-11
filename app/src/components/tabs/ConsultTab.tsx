@@ -3,6 +3,7 @@ import { doc, writeBatch } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../context/AuthContext";
 import AskSpecialist from "../sections/AskSpecialist";
+import PracticeSummary from "../consult/PracticeSummary";
 import { isIntakeProfession, type ExportAudience } from "../../consult/packet";
 import { visitForConsult } from "../../lib/today/dayCard";
 import { useHashQuery } from "../../hooks/useHashQuery";
@@ -75,7 +76,7 @@ export default function ConsultTab() {
 
 function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isOwnerCurrent: () => boolean }) {
   const { user } = useAuth();
-  const { childProfile, activeTab, setActiveTab } = useArbor();
+  const { childProfile, activeTab, setActiveTab, consultAudienceReceipt } = useArbor();
   const currentChild = useRef(childProfile.id);
   currentChild.current = childProfile.id;
   const { t, uiLang } = useLanguage();
@@ -174,6 +175,11 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
      "Save as PDF" (B-CAREPRO-36). */
   const primaryMoveStamp = { "data-primary-move": activeTab === "handoff" ? "copy-handoff-brief" : activeTab === "school-brief" ? "build-school-brief" : "build-share-packet" };
 
+  const audienceRead = consultAudienceReceipt?.read();
+  const summaryGuard = useMemo(() => ({
+    isCurrent: () => audienceRead?.isCurrent() === true && chosen !== undefined && chosen !== "teacher" && isOwnerCurrent() && (!egressGuard || egressGuard.isCurrent()),
+  }), [audienceRead, chosen, isOwnerCurrent, egressGuard]);
+
   // Initially unconfirmed targets mount no editor. Once opened, retain its
   // unsaved state hidden/inert while blocked. Egress is independently guarded
   // because a body portal is outside this wrapper.
@@ -267,6 +273,7 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
           </section>
         )}
         <AskSpecialist key={appointmentId ?? `${presetAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`} primaryMoveStamp={primaryMoveStamp} anchorAudience={presetAudience} intake={intake} onAudienceChange={setChosen} egressGuard={egressGuard} />
+        {chosen !== undefined && chosen !== "teacher" && <PracticeSummary egressGuard={summaryGuard} />}
       </div>
     </div>}
   </>;

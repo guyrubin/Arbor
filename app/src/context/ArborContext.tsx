@@ -22,7 +22,7 @@ import { useToastOptional } from "./ToastContext";
 import { validateLogDraft, buildMomentLog, isIncidentType, MOMENT_BEHAVIOR_TYPE } from "../content/behaviorTaxonomy";
 import type { ScoredActivity } from "../playbank/select";
 import type { PlayActivity } from "../playbank/content";
-import { ROUTE_IDS, resolveHash, FALLBACK_ROUTE, type ActiveTab } from "../lib/routes";
+import { ROUTE_IDS, resolveHash, copilotRedirectHash, FALLBACK_ROUTE, type ActiveTab } from "../lib/routes";
 import {
   initialMilestones,
   demoSeedFor,
@@ -51,6 +51,7 @@ import { ageWindowMilestones, comparisonAgeMonths } from "../lib/milestoneData";
 import { observeMilestoneDoc, type ObserveOptions, type ObserveStatus } from "../lib/milestones/observe";
 import type { ShelfId } from "../lib/shelves/registry";
 import { hydrateMilestones } from "./milestoneHydration";
+import { createConsultAudienceReceipt } from "../consult/audienceReceipt";
 import { completeObservation, isObservationAction, activeActionFor, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
 import { answeredToday, fromRecordRowId, fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
@@ -314,7 +315,11 @@ function useArborState() {
   // (note), Screening elevated (reason), Safety ticked signs (reason). Every
   // field lands EDITABLE; the reviewed-checkbox gate still guards every export.
   const [pendingConsultPrefill, setPendingConsultPrefill] = useState<ConsultPrefill | null>(null);
-  const requestConsultPrefill = (prefill: ConsultPrefill) => setPendingConsultPrefill(prefill);
+  const consultAudienceReceipt = useMemo(createConsultAudienceReceipt, []);
+  const requestConsultPrefill = (prefill: ConsultPrefill) => {
+    consultAudienceReceipt.invalidate();
+    setPendingConsultPrefill(prefill);
+  };
   const consumeConsultPrefill = () => setPendingConsultPrefill(null);
 
   /**
@@ -372,11 +377,13 @@ function useArborState() {
   // App Core States — persisted per child (Firestore when authed, localStorage in sandbox)
   const logsCol = useChildCollection<BehaviorLog>(childProfile.id, "behaviorLogs", {
     sandboxSeed: demoSeed.logs,
+    trackConfirmation: true,
     orderByField: "timestamp",
     orderDir: "desc",
     max: 300,
   });
   const milestonesCol = useChildCollection<Milestone>(childProfile.id, "milestones", {
+    trackConfirmation: true,
     seed: initialMilestones,
     sandboxSeed: initialMilestones,
   });
@@ -937,17 +944,23 @@ function useArborState() {
       try { window.history.replaceState(null, "", `#/${FALLBACK_ROUTE}`); } catch { /* noop */ }
       toast(t("elev.nav.linkMoved"), "info");
     };
+    const replaceCopilotHash = () => {
+      const redirect = copilotRedirectHash(window.location.hash);
+      if (redirect) { try { window.history.replaceState(window.history.state, "", redirect); } catch { /* noop */ } }
+    };
     const onHash = () => {
       if (isKidModeActive()) return;
       const res = resolveHash(window.location.hash, null);
       if (res.unknown) { landOnFallback(); return; }
       if (window.location.hash) setActiveTabState(res.tab);
+      replaceCopilotHash();
     };
     if (typeof window !== "undefined") {
       if (!window.location.hash) { try { window.history.replaceState(null, "", `#/${activeTab}`); } catch { /* noop */ } }
       // IA-13: the first load carried an unknown hash. The URL is corrected in
       // place (replaceState, so Back still leaves the app) and said once.
       else if (unknownHashRef.current) { unknownHashRef.current = false; landOnFallback(); }
+      else replaceCopilotHash();
       window.addEventListener("hashchange", onHash);
     }
     return () => { if (typeof window !== "undefined") window.removeEventListener("hashchange", onHash); };
@@ -1884,6 +1897,10 @@ function useArborState() {
     updateChild,
     behaviorLogs,
     logsLoaded: logsCol.loaded,
+    consultRecordSources: {
+      milestones: { loaded: milestonesCol.loaded, error: milestonesCol.error, confirmed: milestonesCol.confirmed, isCurrent: milestonesCol.isCurrent },
+      behaviorLogs: { loaded: logsCol.loaded, error: logsCol.error, confirmed: logsCol.confirmed, isCurrent: logsCol.isCurrent },
+    },
     milestones,
     // History freshness belongs to the raw collection, while its rendered
     // rows retain the catalogue fallback and retired-row read filtering.
@@ -1945,6 +1962,7 @@ function useArborState() {
     requestJournalFocus,
     consumeJournalFocus,
     pendingConsultPrefill,
+    consultAudienceReceipt,
     requestConsultPrefill,
     consumeConsultPrefill,
     chatMessages,

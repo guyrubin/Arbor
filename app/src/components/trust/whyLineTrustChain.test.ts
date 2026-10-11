@@ -227,8 +227,6 @@ describe("GP-22 — the Growth lane why-lines reach the Trust Center", () => {
     ["components/companion/PortraitWatchRow.tsx", /t\("elev\.waveR\.why\.focus"\)/, "growth-focus"],
     // (P5-LOOP c2 r1: "Gentle watch points" left #/milestones — its why-line went with it.)
     // The Full Picture's weekly recommendation + each conversation row.
-    ["components/practice/DevelopmentCopilot.tsx", /\{recommendation\.why\}/, "copilot-focus"],
-    ["components/practice/DevelopmentCopilot.tsx", /elev\.fullpicture\.watch\.title/, "copilot-watch"],
     // The memory queue: every pending row is a claim about the child.
     // W2-CAREPRO r2: the approval promise is said once, in the subtitle.
     ["components/sections/ChildMemory.tsx", /t\("sec\.mem\.sub"/, "child-memory"],

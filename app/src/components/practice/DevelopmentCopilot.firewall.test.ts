@@ -20,10 +20,9 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { en as fpEn, he as fpHe } from "../../lib/i18nElevation/fullpicture";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const copilotSrc = readFileSync(path.join(here, "DevelopmentCopilot.tsx"), "utf8");
+const copilotSrc = readFileSync(path.join(here, "..", "..", "consult", "clinicianSummary.ts"), "utf8");
 // Parity 9 Oct: #/development is the child portrait (with its watch row and
 // keepsake disclosure); the Growth hub file is gone.
 const devTabSrc = ["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx"]
@@ -89,94 +88,17 @@ describe("1.7 firewall guard — regexes still recognize the OLD banned mechanis
   });
 });
 
-describe("1.7 firewall guard — DevelopmentCopilot.tsx source is clean", () => {
-  it("has no Discuss/Monitor verdict tags", () => {
-    expect(copilotSrc).not.toMatch(B1_LEVEL_TAGS);
-  });
-  it("has no watch-level conditional driving a graded tone", () => {
-    expect(copilotSrc).not.toMatch(B2_LEVEL_TONE);
-  });
-  it("has no dashboardRisk grade and no graded risk union type", () => {
-    expect(copilotSrc).not.toMatch(B3_DASHBOARD_RISK);
-    expect(copilotSrc).not.toMatch(B5_RISK_UNION);
-  });
-  it("never feeds TrustSafetyBar a risk prop (constant posture tone)", () => {
-    expect(copilotSrc).not.toMatch(B4_TRUSTBAR_RISK);
-    // …but the bar itself must still be mounted (posture text stays).
-    expect(copilotSrc).toContain("<TrustSafetyBar");
-  });
-  it("renders no band value, watch level, score value, or trend helper (GD-10)", () => {
-    expect(copilotSrc).not.toMatch(B6_SCORE_RENDER);
-    expect(copilotSrc).not.toMatch(B7_BAND_OR_LEVEL_RENDER);
-  });
-  it("resolves its copy from i18nElevation/fullpicture (positive control)", () => {
-    expect(copilotSrc).toContain("i18nElevation/fullpicture");
-    expect(copilotSrc).toContain("elev.fullpicture.");
-  });
-});
-
-describe("1.7 zero-regression — every capability stays reachable, reframed", () => {
-  it("B-CAREPRO-34: the escalation signal reads the parent's watch answers only, never the retired profile verdict", () => {
-    expect(copilotSrc).toContain('const escalationSignal = watch.some((w) => w.level === "discuss");');
-    expect(copilotSrc).not.toMatch(/childProfile\.riskLevel/);
-    // NEGATIVE CONTROL: the pre-change read is what the rule catches.
-    expect(/childProfile\.riskLevel/.test('childProfile.riskLevel !== "Low" || watch.some((w) => w.level === "discuss")')).toBe(true);
-  });
-  it("keeps the escalate path (B-CAREPRO-19: to Consult, not the retired directory), gated on the internal signal only", () => {
-    expect(copilotSrc).toContain('setActiveTab("consult")');
-    expect(copilotSrc).not.toContain('setActiveTab("find-pro")');
-    expect(copilotSrc).toContain("escalationSignal");
-  });
-  it("keeps all sections: domain picture, weekly focus, conversation rows, history, pulse, clinician summary", () => {
-    // R22 (Builder L): the four section headings moved from English literals
-    // to keys (growthTruth, EN + HE) — the capability claim is the same, and
-    // it is now made against the mechanism that renders in both languages.
-    expect(copilotSrc).toContain("elev.growthTruth.copilot.domains.title");
-    expect(copilotSrc).toContain("elev.growthTruth.copilot.focus.title");
-    expect(copilotSrc).toContain("elev.fullpicture.watch.title");
-    expect(copilotSrc).toContain("elev.growthTruth.copilot.history.title");
-    expect(copilotSrc).toContain("elev.growthTruth.copilot.share.title");
-    expect(copilotSrc).toContain('setActiveTab("reports")');
-    expect(copilotSrc).toContain("copilot_summary_copied");
-  });
-  it("keeps the observational row register: neutral lav chips + observation counts", () => {
-    expect(copilotSrc).toContain('Chip tone="lav"');
-    expect(copilotSrc).toContain("elev.fullpicture.watch.row.");
-  });
-});
-
-describe("1.7 mount — the Growth leaf (child portrait) hosts the Full Picture door", () => {
-  /* B-GROWTH-03 — three foreign cards went to the homes that own their job:
-     the Growth SpineRibbon (-> Academy) is removed (the Journal ribbon keeps
-     the promise), the reminders card lives on #/smart-reminders and the ritual
-     card on #/family. Growth imports none of the three. */
-  it("B-GROWTH-03: the Growth leaf imports none of SpineRibbon, PushPrimingCard, RitualTurnCard", () => {
-    for (const name of ["SpineRibbon", "PushPrimingCard", "RitualTurnCard"]) {
-      expect(devTabSrc, name).not.toMatch(new RegExp(`import[^;]*\\b${name}\\b`));
-      expect(devTabSrc, name).not.toContain(`<${name}`);
+describe("B-GROWTH-22 — the migrated summary preserves the firewall", () => {
+  it("no graded tag, tone, risk, score or band reaches the summary", () => {
+    for (const pattern of [B1_LEVEL_TAGS, B2_LEVEL_TONE, B3_DASHBOARD_RISK, B4_TRUSTBAR_RISK, B5_RISK_UNION, B6_SCORE_RENDER, B7_BAND_OR_LEVEL_RENDER]) {
+      expect(copilotSrc).not.toMatch(pattern);
     }
-    expect(devTabSrc).not.toContain("growth-spine-ribbon");
+    expect(copilotSrc).toContain("assertClinicianExportCeiling(text)");
   });
-  it("hosts the Full Picture door (the portrait's record tools)", () => {
-    // The hub's teaser card left with the hub; the portrait keeps ONE door.
-    expect(devTabSrc).toContain('setActiveTab("copilot")');
-    expect(devTabSrc).toContain("copy.copilot");
-  });
-  it("links to copilot exactly once (upgraded tile, no duplicate)", () => {
-    expect((devTabSrc.match(/setActiveTab\("copilot"\)/g) ?? []).length).toBe(1);
-  });
-});
-
-describe("1.7 i18n — fullpicture module en/he parity", () => {
-  it("has identical key sets in both languages, all elev.fullpicture.*-namespaced", () => {
-    const enKeys = Object.keys(fpEn).sort();
-    const heKeys = Object.keys(fpHe).sort();
-    expect(enKeys).toEqual(heKeys);
-    for (const k of enKeys) expect(k.startsWith("elev.fullpicture.")).toBe(true);
-  });
-  it("keeps the surface title in parent language in both registers", () => {
-    expect(fpEn["elev.fullpicture.title"]).toBe("The Full Picture");
-    expect(fpHe["elev.fullpicture.title"]).toBe("התמונה המלאה");
+  it("the current portrait keeps the existing count record without a duplicate copilot door", () => {
+    expect(devTabSrc).not.toContain('setActiveTab("copilot")');
+    for (const name of ["SpineRibbon", "PushPrimingCard", "RitualTurnCard"]) expect(devTabSrc).not.toContain(`<${name}`);
+    expect(devTabSrc).toContain('view === "domain"');
   });
 });
 
@@ -222,7 +144,7 @@ describe("GP-05 repo-wide — no <TrustSafetyBar> call site passes a risk expres
   it("scans a non-trivial number of call sites (the walker is not vacuous)", () => {
     // Parity 9 Oct: 6 -> 5 — sections/ScreeningSheet.tsx (dead since the
     // companion rewrite, deleted with it) carried the sixth call site.
-    expect(sites.length).toBeGreaterThanOrEqual(5);
+    expect(sites.length).toBeGreaterThanOrEqual(4);
     expect(sites.some((s) => s.file.endsWith("CoachTab.tsx"))).toBe(true);
   });
 

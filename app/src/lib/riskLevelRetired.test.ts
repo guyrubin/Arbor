@@ -55,7 +55,7 @@ const violates = (rel: string, src: string): boolean =>
 describe("B-CAREPRO-34 — no child-profile riskLevel anywhere in the app", () => {
   it("the scan read the real tree", () => {
     expect(FILES.length).toBeGreaterThan(300);
-    expect(FILES.some((f) => f.rel === "components/practice/DevelopmentCopilot.tsx")).toBe(true);
+    expect(FILES.some((f) => f.rel === "consult/clinicianSummary.ts")).toBe(true);
   });
 
   it("no source reads or writes riskLevel on a child profile", () => {

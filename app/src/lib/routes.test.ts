@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { ROUTE_IDS, HASH_ALIASES, RETIRED_ROUTES, resolveRouteId } from "./routes";
+import { ROUTE_IDS, HASH_ALIASES, RETIRED_ROUTES, resolveRouteId, resolveHash } from "./routes";
 import { SECTIONS, TAB_SECTION_FALLBACK, primaryTabOf } from "./navigation";
+import { contractFor } from "./surfaceContract";
 import { ALL_TABS } from "../context/ArborContext";
 
 /**
@@ -118,6 +119,31 @@ describe("hash aliases", () => {
     expect(RETIRED_ROUTES.strengths).toBe("profile");
     // NEGATIVE CONTROL: the pre-fix registry line fails the pin
     expect(/^\s*strengths: ChildProfile,$/m.test("  strengths: Strengths,")).toBe(false);
+  });
+
+
+  it("B-GROWTH-22: old hashes, stored state and label aliases retire into the current development leaf", () => {
+    for (const hash of ["#/copilot", "#/COPILOT", "#/copilot/", "#/copilot?view=domain", "#/full-picture", "#/The-Full-Picture", "#/development-dashboard"]) {
+      expect(resolveRouteId(hash)).toBe("development");
+      expect(resolveHash(hash, "reports")).toEqual({ tab: "development", unknown: false });
+    }
+    expect(resolveHash("", "copilot")).toEqual({ tab: "development", unknown: false });
+    expect(resolveHash("#/", "COPILOT")).toEqual({ tab: "development", unknown: false });
+    expect(ROUTE_IDS).toContain("copilot");
+    expect(ROUTE_IDS).toHaveLength(43);
+    const { route: _route, depth: _depth, ...contract } = contractFor("copilot")!;
+    const { route: _target, depth: _targetDepth, ...targetContract } = contractFor("development")!;
+    expect(contract).toEqual(targetContract);
+    const src = path.resolve(__dirname, "..");
+    const shell = readFileSync(path.join(src, "components/layout/Shell.tsx"), "utf8");
+    expect(shell).toMatch(/^\s*copilot: DevelopmentTab,$/m);
+    expect(shell).toContain('const DevelopmentTab = lazy(() => import("../companion/ChildPortrait"))');
+    expect(shell).not.toContain("DevelopmentCopilot");
+    expect(existsSync(path.join(src, "components/practice/DevelopmentCopilot.tsx"))).toBe(false);
+    const portrait = readFileSync(path.join(src, "components/companion/ChildPortrait.tsx"), "utf8");
+    expect(portrait).not.toContain('setActiveTab("copilot")');
+    expect(portrait).toContain('view === "domain"');
+    expect(portrait).toContain('["screening", t("nav.tab.screening")]');
   });
 
   it("B-CAREPRO-19: #/find-pro lands on Consult; the id keeps its seat (ROUTE_IDS still 43)", () => {

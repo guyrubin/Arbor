@@ -8,7 +8,7 @@
  *      dev={false};
  *   3. the book path makes no model call: the kid door files and the private
  *      file loader never reach a generate / TTS endpoint or speech synthesis,
- *      and the loader's only request is the owner-checked book-asset proxy;
+ *      and private bytes use only the owner-checked book-asset proxy;
  *   4. a child without complete private files sees no change (the hook is
  *      cloud-only and returns nothing until the collection has loaded);
  *   5. (K2) the only narration in the bundle is a book's SHARED set: exactly
@@ -92,10 +92,12 @@ describe("R3: no model call on the book path", () => {
     }
   });
 
-  it("the loader's ONE request is the owner-checked book-asset proxy, with the bearer token from authHeaders only", () => {
+  it("the loader has ONE dispatch: the owner-checked private proxy", () => {
     const store = read("lib/bookAssetStore.ts");
     expect(store.match(/fetch\(/g)).toHaveLength(1);
-    expect(store).toMatch(/await fetch\(bookAssetUrl\(childId, doc\.bookId, rel\)/);
+    expect(store).toContain('const headers = await authHeaders();');
+    expect(store).toContain('res = await fetch(bookAssetUrl(scope.childId, doc.bookId, rel), { headers, credentials: "same-origin", cache: "no-store", redirect: "error", signal: scope.signal });');
+    expect(store).not.toContain("fetchPublicBookAsset");
     expect(store).toMatch(/import \{ authHeaders \} from "\.\/api";/);
     expect(store).not.toMatch(/import \{[^}]*\b(api|generate)[A-Za-z]*\b[^}]*\} from "\.\/api"/);
     for (const f of DOOR.filter((x) => x !== "lib/bookAssetStore.ts")) expect(read(f).includes("fetch("), f).toBe(false);

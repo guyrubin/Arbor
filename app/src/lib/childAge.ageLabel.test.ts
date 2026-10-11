@@ -180,7 +180,7 @@ describe("GP-01 — source scan: no parent-facing .tsx renders the whole-years `
       "components/layout/TopbarKidSwitcher.tsx",
       "components/profile/ProfileSwitcher.tsx",
       "components/profile/FamilyGlanceCard.tsx",
-      "components/practice/DevelopmentCopilot.tsx",
+      "consult/clinicianSummary.ts",
       "components/sections/ChildProfile.tsx",
       "components/sections/Screening.tsx",
       "components/tabs/LanguageLabTab.tsx",

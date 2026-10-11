@@ -35,7 +35,6 @@ import { CHILD_DATA_ROWS } from "../../lib/childDataGroups";
 const SRC = path.resolve(__dirname, "..", "..");
 const read = (f: string) => readFileSync(path.join(SRC, f), "utf8");
 const journey = read("components/practice/JourneyTab.tsx");
-const copilot = read("components/practice/DevelopmentCopilot.tsx");
 const science = read("components/tabs/SciencePage.tsx");
 const langTab = read("components/tabs/LanguageLabTab.tsx");
 const vocab = read("components/tabs/LanguageLabVocabView.tsx");
@@ -57,8 +56,8 @@ describe("GP-08 · the denominator is the child's age window, everywhere", () =>
     expect(journey).not.toContain("domainMilestoneCounts(milestones), [milestones])");
   });
 
-  it("both snapshot blocks drop a domain with nothing in the window", () => {
-    for (const [name, src] of [["JourneyTab", journey], ["DevelopmentCopilot", copilot]] as const) {
+  it("the retained Journey snapshot block drops a domain with nothing in the window", () => {
+    for (const [name, src] of [["JourneyTab", journey]] as const) {
       expect(src, `${name} still renders 0 of 0`).toContain("if (total === 0) return null;");
       // The total comes from the window, never from the persisted all-ages value.
       expect(src, `${name} still trusts the persisted total`).not.toContain("b.total ?? fallback?.total ?? 0");
@@ -70,7 +69,6 @@ describe("GP-08 · the denominator is the child's age window, everywhere", () =>
     const preFix = "const total = b.total ?? fallback?.total ?? 0;";
     expect(preFix.includes("b.total")).toBe(true);
     expect(journey.includes(preFix)).toBe(false);
-    expect(copilot.includes(preFix)).toBe(false);
   });
 });
 

@@ -65,7 +65,7 @@ export const CHOOSERS = [
   "components/practice/MindVaultWorld.tsx",
   "components/practice/SpellForgeWorld.tsx",
   "components/practice/JourneyTab.tsx",
-  "components/practice/DevelopmentCopilot.tsx",
+  "components/consult/PracticeSummary.tsx",
   "lib/pulse.ts",
 ];
 

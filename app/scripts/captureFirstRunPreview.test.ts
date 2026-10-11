@@ -129,7 +129,7 @@ describe('bounded existing first-run DEV preview evidence', () => {
     };
     const context = { route: async (pattern: any, handler: any) => { handlers.push({ pattern, handler }); } };
     await context.route('**/*', extract('**/*', ");\n    await context.routeWebSocket", { apiState, BASE: base, privateExport: null }));
-    await context.route('**/api/**', extract('**/api/**', ");\n    await context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : isCaptureDemoFamilyUrl", { apiState, BASE: base, privateExport: null, firstRunPreview: true, firstRunPreviewApiDisposition, singleGoal: null, kidEntry: null, deniedCaptureApiCategory, _apiCache: new Map(), fixture: { childId: 'synthetic' } }));
+    await context.route('**/api/**', extract('**/api/**', ");\n    await context.route(privateExport ? url => isExactPrivateExportFixtureUrl(url, BASE) : isCaptureDemoFamilyUrl", { apiState, BASE: base, privateExport: null, copilot: null, firstRunPreview: true, firstRunPreviewApiDisposition, singleGoal: null, kidEntry: null, deniedCaptureApiCategory, _apiCache: new Map(), fixture: { childId: 'synthetic' } }));
     await context.route(isCaptureDemoFamilyUrl, extract('**/sandbox/demo-family.json', ");\n    await installOfflineFonts", { apiState, privateExport: null, fixture: { parsed: {} } }));
     const fontUrl = 'https://fonts.gstatic.com/exact-cached.woff2';
     await context.route((url: URL) => url.href === fontUrl, (route: any) => route.fulfill({ status: 200 }));

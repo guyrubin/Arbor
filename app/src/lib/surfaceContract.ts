@@ -242,11 +242,12 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   },
   {
     route: "copilot", hub: "growth", depth: 1,
-    job: "The full picture of where she is, in plain counts.",
-    primaryMove: "open-full-picture", moduleBudget: 2, demotionTarget: "development",
-    // Promotes only as the full-picture card on Development through the M1.7
-    // gate (chips → counts). Read surface — no write.
-    threadWrite: "none",
+    // B-GROWTH-22: retired to development. Its floor seat renders the same
+    // existing three-module portrait, so its contract mirrors that leaf.
+    // This does not expand the live portrait's budget or restore a copilot UI.
+    job: "Watch her record grow.",
+    primaryMove: "explore-child-record", moduleBudget: 3, demotionTarget: "disclosure",
+    threadWrite: "milestones",
   },
   {
     route: "strengths", hub: "growth", depth: 1,

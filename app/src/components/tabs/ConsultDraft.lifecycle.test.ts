@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ts from "typescript";
 import { visitForConsult } from "../../lib/today/dayCard";
+import { createConsultAudienceReceipt } from "../../consult/audienceReceipt";
 import { consultAudienceForProfession } from "../../lib/careTrack";
 const source = ts.createSourceFile("ConsultTab.tsx", readFileSync("src/components/tabs/ConsultTab.tsx", "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const declaration = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "ConsultContent")!.getText(source);
@@ -10,14 +11,16 @@ const code = ts.transpileModule(`${declaration}; return ConsultContent;`, { comp
 let cursor = 0, slots: any[] = [];
 let child = "a", query = new URLSearchParams("appointment=visit"), rows: any[] = [], status = { loaded: true, error: false, confirmed: true };
 const AskSpecialist = () => null;
+const PracticeSummary = () => null;
+let audienceReceipt = createConsultAudienceReceipt();
 const env = {
-  React, AskSpecialist, visitForConsult, consultAudienceForProfession,
+  React, AskSpecialist, PracticeSummary, visitForConsult, consultAudienceForProfession,
   useRef: (initial: unknown) => slots[cursor++] ??= { current: initial },
   useState: (initial: unknown) => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], (value: unknown) => { slots[i] = value; }]; },
   useMemo: (calculate: () => unknown) => calculate(),
-  useAuth: () => ({ user: null }), useArbor: () => ({ childProfile: { id: child, name: "Synthetic" }, activeTab: "consult", setActiveTab: vi.fn() }),
+  useAuth: () => ({ user: null }), useArbor: () => ({ childProfile: { id: child, name: "Synthetic" }, activeTab: "consult", setActiveTab: vi.fn(), consultAudienceReceipt: audienceReceipt }),
   useLanguage: () => ({ uiLang: "en", t: (key: string) => key }), useToast: () => ({ toast: vi.fn() }),
-  useChildCollection: (_child: string, name: string) => ({ items: name === "appointments" ? rows : [], ...status }),
+  useChildCollection: (_child: string, name: string) => ({ items: name === "appointments" ? rows : [], ...status, isCurrent: () => status.loaded && status.confirmed && !status.error }),
   visitAwaitingOutcome: () => null, isIntakeProfession: () => false, consultHeading: () => "visit", activeHomeEnrolments: () => [], guidedTierOn: () => false,
   appointmentRoleLabel: () => "Stored profession", fmtDay: () => "date", lowerFor: (_lang: string, value: string) => value,
 };
@@ -29,10 +32,11 @@ function find(node: React.ReactNode, type: unknown, path = "", ancestors: React.
   return null;
 }
 const visit = { id: "visit", whenIso: new Date(Date.now() + 86400000).toISOString(), status: "confirmed", profession: "slp" };
-beforeEach(() => { cursor = 0; slots = []; child = "a"; query = new URLSearchParams("appointment=visit"); rows = [visit]; status = { loaded: true, error: false, confirmed: true }; });
+beforeEach(() => { audienceReceipt = createConsultAudienceReceipt(); audienceReceipt.publish("slp"); cursor = 0; slots = []; child = "a"; query = new URLSearchParams("appointment=visit"); rows = [visit]; status = { loaded: true, error: false, confirmed: true }; });
 describe("targeted Consult retains the mounted editor while blocking stale egress", () => {
   it("does not mount an editor before the first confirmed target read", () => {
     status.confirmed = false; expect(find(render(), AskSpecialist)).toBeNull();
+    expect(find(render(), PracticeSummary)).toBeNull();
     status.confirmed = true; expect(find(render(), AskSpecialist)).not.toBeNull();
   });
   it("preserves the editor's reconciliation identity through cache, pending, error, deletion and recovery", () => {
@@ -48,6 +52,18 @@ describe("targeted Consult retains the mounted editor while blocking stale egres
     rows = [{ ...visit, profession: "ot" }]; const recovered = find(render(), AskSpecialist)!;
     expect(recovered.path).toBe(initial.path); expect(recovered.element.key).toBe(initial.element.key);
     expect(recovered.ancestors.some(el => el.props.hidden || el.props.inert)).toBe(false);
+  });
+
+  it("the migrated practice summary receives the same host target protection", () => {
+    const initial = find(render(), PracticeSummary)!;
+    expect(initial.element.props.egressGuard.isCurrent()).toBe(true);
+    status.confirmed = false;
+    expect(initial.element.props.egressGuard.isCurrent()).toBe(false);
+    const blocked = find(render(), PracticeSummary)!;
+    expect(blocked.ancestors.some(el => el.props.hidden && el.props.inert)).toBe(true);
+    expect(blocked.element.props.egressGuard.isCurrent()).toBe(false);
+    status.confirmed = true;
+    expect(find(render(), PracticeSummary)!.element.props.egressGuard.isCurrent()).toBe(true);
   });
   it("does not retain a previous child's or target's editor after its keyed owner changes", () => {
     expect(find(render(), AskSpecialist)).not.toBeNull();

@@ -16,7 +16,7 @@
  *   the shared set reads the shared sidecar (static JSON, loadStaticJson).
  * - Never a model call.
  */
-import { fetchBookAsset, fetchBookAssetResult } from "./bookAssetStore";
+import { createBookAssetScope, fetchBookAsset, fetchBookAssetResult, type BookAssetScope } from "./bookAssetStore";
 import type { BookAssetsDoc } from "./library/bookAssetPaths";
 import { readCues, type CueTimes } from "./library/bookArtStates";
 import { getLibraryBook } from "./library/books";
@@ -77,91 +77,118 @@ export async function resolveBookAssets(
   childId: string,
   doc: BookAssetsDoc,
   folder: "en" | "he-m" | "he-f",
-  opts: { onLate?: (next: ResolvedBookAssets) => void; lateRetryMs?: readonly number[]; sleep?: (ms: number) => Promise<void> } = {},
+  opts: { scope?: BookAssetScope; onLate?: (next: ResolvedBookAssets) => void; lateRetryMs?: readonly number[]; sleep?: (ms: number) => Promise<void> } = {},
 ): Promise<ResolvedBookAssets> {
   const urls: string[] = [];
   let stopped = false;
+  const scope = opts.scope ?? createBookAssetScope(childId);
+  const current = () => !stopped && scope.current();
+  const revoke = () => {
+    if (stopped) return;
+    stopped = true;
+    scope.signal.removeEventListener("abort", revoke);
+    scope.close();
+    urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
+  };
+  scope.signal.addEventListener("abort", revoke, { once: true });
+  const assertCurrent = () => {
+    if (!current()) throw new DOMException("The book reading session is no longer active", "AbortError");
+  };
   const late: { rel: string; apply: (blob: Blob) => Promise<void> }[] = [];
   const blobUrl = (blob: Blob) => {
+    assertCurrent();
     const u = URL.createObjectURL(blob);
+    if (!current()) { URL.revokeObjectURL(u); assertCurrent(); }
     urls.push(u);
     return u;
   };
   /** Fetch one file and apply it; a passing failure goes to the late list. */
   const take = async (rel: string, apply: (blob: Blob) => Promise<void>) => {
-    const r = await fetchBookAssetResult(childId, doc, rel);
+    assertCurrent();
+    const r = await fetchBookAssetResult(childId, doc, rel, 4, scope);
+    assertCurrent();
     if ("blob" in r) await apply(r.blob);
     else if ("transient" in r) late.push({ rel, apply });
   };
   const base = `hero-sheets/${doc.sheetId}/`;
   const m = doc.sheetManifest;
   const sheet: HeroSheet = { id: doc.sheetId, poses: {}, anchors: {}, prints: {}, choices: {} };
-  await inBatches(Object.entries(m.poses), 6, ([pose, v]) =>
-    take(base + v.file, async (blob) => {
-      sheet.poses[pose] = blobUrl(blob);
-      if (typeof v.aspect === "number" && typeof v.footX === "number" && typeof v.footW === "number") sheet.anchors![pose] = { aspect: v.aspect, footX: v.footX, footW: v.footW };
-    }),
-  );
-  await inBatches(Object.entries(m.prints ?? {}), 3, ([pageId, v]) =>
-    take(base + v.file, async (blob) => {
-      sheet.prints![pageId] = { url: blobUrl(blob), width: v.w ?? 1920, height: v.h ?? 1280 };
-    }),
-  );
-  await inBatches(Object.entries(m.choices ?? {}), 3, ([cid, file]) =>
-    take(base + file, async (blob) => {
-      sheet.choices![cid] = blobUrl(blob);
-    }),
-  );
-  const files: Record<string, string> = {};
-  const cues: Record<string, CueTimes> = {};
-  const dir = `narration/${doc.setId}/${folder}/`;
-  await inBatches(doc.files.filter((f) => f.startsWith(dir)), 6, (rel) => {
-    const name = rel.slice(dir.length);
-    if (name.endsWith(".cues.json")) {
-      return take(rel, async (blob) => {
-        try {
-          cues[`${folder}/${name.slice(0, -".cues.json".length)}`] = readCues(JSON.parse(await blob.text()));
-        } catch {
-          /* a bad sidecar = the fractions */
-        }
-      });
-    }
-    return take(rel, async (blob) => {
-      files[`${folder}/${name}`] = blobUrl(blob);
-    });
-  });
-  await fillSharedNarration(doc.bookId, folder, files, cues);
-  const revoke = () => {
-    stopped = true;
-    urls.forEach((u) => URL.revokeObjectURL(u));
-  };
-  const snapshot = (): ResolvedBookAssets => ({
-    sheet: { ...sheet, poses: { ...sheet.poses }, anchors: { ...sheet.anchors }, prints: { ...sheet.prints }, choices: { ...sheet.choices } },
-    narration: { files: { ...files }, cues: { ...cues } },
-    revoke,
-  });
-  if (late.length && opts.onLate) {
-    const onLate = opts.onLate;
-    const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
-    void (async () => {
-      for (const wait of opts.lateRetryMs ?? LATE_RETRY_MS) {
-        if (stopped || !late.length) return;
-        await sleep(wait);
-        if (stopped) return;
-        const round = late.splice(0);
-        let arrived = false;
-        for (const job of round) {
-          const r = await fetchBookAssetResult(childId, doc, job.rel, 1);
-          if ("blob" in r) {
-            await job.apply(r.blob);
-            arrived = true;
-          } else if ("transient" in r) late.push(job);
-        }
-        if (arrived && !stopped) onLate(snapshot());
+  try {
+    assertCurrent();
+    await inBatches(Object.entries(m.poses), 6, ([pose, v]) =>
+      take(base + v.file, async (blob) => {
+        sheet.poses[pose] = blobUrl(blob);
+        if (typeof v.aspect === "number" && typeof v.footX === "number" && typeof v.footW === "number") sheet.anchors![pose] = { aspect: v.aspect, footX: v.footX, footW: v.footW };
+      }),
+    );
+    await inBatches(Object.entries(m.prints ?? {}), 3, ([pageId, v]) =>
+      take(base + v.file, async (blob) => {
+        sheet.prints![pageId] = { url: blobUrl(blob), width: v.w ?? 1920, height: v.h ?? 1280 };
+      }),
+    );
+    await inBatches(Object.entries(m.choices ?? {}), 3, ([cid, file]) =>
+      take(base + file, async (blob) => {
+        sheet.choices![cid] = blobUrl(blob);
+      }),
+    );
+    const files: Record<string, string> = {};
+    const cues: Record<string, CueTimes> = {};
+    const dir = `narration/${doc.setId}/${folder}/`;
+    await inBatches(doc.files.filter((f) => f.startsWith(dir)), 6, (rel) => {
+      const name = rel.slice(dir.length);
+      if (name.endsWith(".cues.json")) {
+        return take(rel, async (blob) => {
+          try {
+            const raw = await blob.text();
+            assertCurrent();
+            cues[`${folder}/${name.slice(0, -".cues.json".length)}`] = readCues(JSON.parse(raw));
+          } catch {
+            /* a bad sidecar = the fractions */
+          }
+        });
       }
-    })();
+      return take(rel, async (blob) => {
+        files[`${folder}/${name}`] = blobUrl(blob);
+      });
+    });
+    assertCurrent();
+    await fillSharedNarration(doc.bookId, folder, files, cues);
+    assertCurrent();
+    const snapshot = (): ResolvedBookAssets => ({
+      sheet: { ...sheet, poses: { ...sheet.poses }, anchors: { ...sheet.anchors }, prints: { ...sheet.prints }, choices: { ...sheet.choices } },
+      narration: { files: { ...files }, cues: { ...cues } },
+      revoke,
+    });
+    if (late.length && opts.onLate) {
+      const onLate = opts.onLate;
+      const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+      void (async () => {
+        for (const wait of opts.lateRetryMs ?? LATE_RETRY_MS) {
+          if (!current() || !late.length) return;
+          await sleep(wait);
+          if (!current()) return;
+          const round = late.splice(0);
+          let arrived = false;
+          for (const job of round) {
+            if (!current()) return;
+            const r = await fetchBookAssetResult(childId, doc, job.rel, 1, scope);
+            if (!current()) return;
+            if ("blob" in r) {
+              await job.apply(r.blob);
+              if (!current()) return;
+              arrived = true;
+            } else if ("transient" in r) late.push(job);
+          }
+          if (arrived && current()) onLate(snapshot());
+        }
+      })();
+    }
+    assertCurrent();
+    return snapshot();
+  } catch (error) {
+    revoke();
+    throw error;
   }
-  return snapshot();
 }
 
 /** K2: the book's shared name-free files fill the gaps in the child's own
@@ -197,9 +224,12 @@ export async function fillSharedNarration(
 
 /** The cover picture for a book card: the child's printed cover (blob URL),
  *  else null (the caller shows the plate). */
-export async function libraryBookCoverUrl(childId: string, doc: BookAssetsDoc): Promise<string | null> {
+export async function libraryBookCoverUrl(childId: string, doc: BookAssetsDoc, scope?: BookAssetScope): Promise<string | null> {
   const print = doc.sheetManifest.prints?.cover;
   if (!print) return null;
-  const blob = await fetchBookAsset(childId, doc, `hero-sheets/${doc.sheetId}/${print.file}`);
-  return blob ? URL.createObjectURL(blob) : null;
+  const ownScope = scope ?? createBookAssetScope(childId);
+  try {
+    const blob = await fetchBookAsset(childId, doc, `hero-sheets/${doc.sheetId}/${print.file}`, ownScope);
+    return ownScope.current() && blob ? URL.createObjectURL(blob) : null;
+  } finally { if (!scope) ownScope.close(); }
 }

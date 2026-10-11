@@ -141,7 +141,7 @@ describe("GP-08 — every denominator surface counts the window, not the catalog
   it("Milestones map, Copilot picture and useDevScore go through ageWindowMilestones", () => {
     for (const rel of [
       "components/tabs/MilestonesTab.tsx",
-      "components/practice/DevelopmentCopilot.tsx",
+      "consult/clinicianSummary.ts",
       "hooks/useDevScore.ts",
     ]) {
       const code = stripComments(read(rel));

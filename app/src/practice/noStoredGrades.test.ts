@@ -10,9 +10,9 @@
  * file under app/src writes either one.
  *
  * What is still allowed: the registry entries (lib/childData.ts +
- * lib/childDataGroups.ts — export + erase until W4-P1 / Guy G12) and ONE
- * read-only binding of `bandSnapshots` in practice/usePracticeData.ts (the two
- * history cards list the documents already stored, as counts). Erasure
+ * lib/childDataGroups.ts — export + erase until W4-P1 / Guy G12) and the
+ * read-only bindings in practice/usePracticeData.ts and the supported Record
+ * disclosure SavedMilestoneHistory.tsx (saved counts only). Erasure
  * (`remove`, `deleteDoc` in the GDPR sweep) is not a write of a grade.
  */
 import { describe, expect, it } from "vitest";
@@ -56,14 +56,14 @@ const DIRECT_WRITE = /\b(setDoc|addDoc|updateDoc|\w+\.set|\w+\.update)\s*\([\s\S
 const DIRECT_WRITE_REF = /(?:collection|doc)\s*\([\s\S]{0,160}?["'`/](bandSnapshots|devScoreSnapshots)["'`/][\s\S]{0,400}?\b(setDoc|addDoc|updateDoc)\s*\(/;
 
 describe("B-GROWTH-22a — 0 non-test writers of a stored grade", () => {
-  it("only the registry + one read-only binding name either collection", () => {
+  it("only the registry + explicit read-only bindings name either collection", () => {
     const naming = NON_TEST.filter((f) => NAMES.test(f.code)).map((f) => f.rel).sort();
-    expect(naming).toEqual(["lib/childData.ts", "lib/childDataGroups.ts", "practice/usePracticeData.ts"]);
+    expect(naming).toEqual(["components/companion/SavedMilestoneHistory.tsx", "lib/childData.ts", "lib/childDataGroups.ts", "practice/usePracticeData.ts"]);
   });
 
   it("no useChildCollection binding of either collection is ever written", () => {
     const bindings = NON_TEST.flatMap((f) => boundCollections(f.code).map((b) => ({ ...b, rel: f.rel, code: f.code })));
-    expect(bindings.map((b) => `${b.rel}:${b.collection}`)).toEqual(["practice/usePracticeData.ts:bandSnapshots"]);
+    expect(bindings.map((b) => `${b.rel}:${b.collection}`)).toEqual(["components/companion/SavedMilestoneHistory.tsx:bandSnapshots", "practice/usePracticeData.ts:bandSnapshots"]);
     expect(bindings.filter((b) => writesThrough(b.code, b.name)).map((b) => `${b.rel}:${b.name}`)).toEqual([]);
   });
 

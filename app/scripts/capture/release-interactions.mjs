@@ -28,6 +28,8 @@ import { PRIVATE_EXPORT_STATES, PRIVATE_EXPORT_LIMITATIONS, privateExportFixture
 import { createPrivacyResponseGate } from './private-export-download.mjs';
 import { installPrivateExportAdmissionBoundary } from './private-export-admission.mjs';
 import { collectPrivateExportStates } from './private-export-states.mjs';
+import { COPILOT_RETIREMENT_STATES, COPILOT_RETIREMENT_LIMITATIONS, copilotRetirementFixture, installCopilotClipboardSink, copilotApiDisposition, validCopilotNetwork, validCopilotRetirementCell } from './copilot-retirement-contract.mjs';
+import { collectCopilotRetirementStates } from './copilot-retirement-states.mjs';
 
 import { collectKidEntryStates } from './kid-entry-states.mjs';
 import { SINGLE_GOAL_STATES, SINGLE_GOAL_LIMITATIONS, singleGoalFixture, initializeSingleGoalWatch, validSingleGoalCell } from './single-goal-contract.mjs';
@@ -42,6 +44,7 @@ export const RELEASE_INTERACTION_STATES = Object.freeze({
   record: RECORD_STATES,
   'kept-search': KEPT_SEARCH_STATES,
   'private-export': PRIVATE_EXPORT_STATES,
+  'copilot-retirement': COPILOT_RETIREMENT_STATES,
   'kid-entry': KID_ENTRY_STATES,
   'single-goal': SINGLE_GOAL_STATES,
   'first-run-preview': FIRST_RUN_PREVIEW_STATES,
@@ -77,7 +80,7 @@ export function expectedReleaseInteractionStates(group, viewport) {
 export function missingReleaseInteractionEvidence(cells, { group, viewport, sourceSha, sourceTreeSha }) {
   return expectedReleaseInteractionStates(group, viewport).flatMap(({ route, state, group: part }) => {
     const cell = cells.find(item => item.route === route && item.state === state && item.group === part && item.lang === viewport.lang && item.viewport === `${viewport.w}x${viewport.h}` && item.sourceSha === sourceSha && (!sourceTreeSha || item.sourceTreeSha === sourceTreeSha));
-    const valid = (part !== 'first-run-preview' || validFirstRunPreviewCell(cell)) && (part !== 'single-goal' || validSingleGoalCell(cell)) && (part !== 'private-export' || validPrivateExportCell(cell)) && (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
+    const valid = (part !== 'copilot-retirement' || validCopilotRetirementCell(cell)) && (part !== 'first-run-preview' || validFirstRunPreviewCell(cell)) && (part !== 'single-goal' || validSingleGoalCell(cell)) && (part !== 'private-export' || validPrivateExportCell(cell)) && (part !== 'kid-entry' || validKidEntryCell(cell)) && cell?.reached === true && typeof cell.shot === 'string' && cell.shot.startsWith('shots/') && cell.assertions?.length > 0 && cell.assertions.every(assertion => assertion.passed === true) && Array.isArray(cell.failures) && cell.failures.length === 0;
     return valid ? [] : [{ route, state, group: part, lang: viewport.lang, viewport: `${viewport.w}x${viewport.h}`, failure: cell?.failures?.[0] ?? (cell ? 'INCOMPLETE_ASSERTIONS_OR_SCREENSHOT' : 'NOT_ATTEMPTED') }];
   });
 }
@@ -183,8 +186,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   const kidEntry = group === 'kid-entry' ? kidEntryFixture(bundle, viewport.lang) : null;
   const singleGoal = group === 'single-goal' ? singleGoalFixture(bundle, viewport.lang) : null;
   const privateExport = group === 'private-export' ? privateExportFixture(bundle, viewport.lang) : null;
+  const copilot = group === 'copilot-retirement' ? copilotRetirementFixture(bundle, viewport.lang) : null;
   const practiceCapture = group === 'navigation';
-  const fixture = releaseFixture(singleGoal?.parsed ?? keptSearch?.parsed ?? privateExport?.parsed ?? kidEntry?.parsed ?? confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
+  const fixture = releaseFixture(singleGoal?.parsed ?? keptSearch?.parsed ?? copilot?.parsed ?? privateExport?.parsed ?? kidEntry?.parsed ?? confirmed?.parsed ?? record?.parsed ?? bundle, viewport.lang);
   const { lang } = viewport;
   const he = lang === 'he';
   const viewportId = `${viewport.w}x${viewport.h}`;
@@ -208,6 +212,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
   if (kidEntry) { doc.kidEntryBoundaries = KID_ENTRY_LIMITATIONS; doc.fixtures = ['synthetic-family', 'local-mock-server', 'synthetic-three-child-entry-profiles', 'synthetic-book-narration-refusal']; }
   if (singleGoal) { doc.singleGoalBoundaries = SINGLE_GOAL_LIMITATIONS; doc.singleGoalFixtureMethod = singleGoal.fixtureMethod; doc.fixtures = ['synthetic-family', 'local-mock-server', 'synthetic-three-child-goal-profiles', 'one-time-synthetic-local-watch', 'exact-source-automatic-narration-local-409-refusal']; }
   if (privateExport) { doc.privateExportBoundaries = PRIVATE_EXPORT_LIMITATIONS; doc.fixtures = ['synthetic-family', 'local-mock-server', 'synthetic-private-export-metadata-only', 'held-unchanged-local-privacy-response']; }
+  if (copilot) { doc.copilotRetirementBoundaries = COPILOT_RETIREMENT_LIMITATIONS; doc.fixtures = ['synthetic-family', 'local-mock-server', 'existing-local-collection-receipts', 'synthetic-browser-clipboard-sink', 'synthetic-Date-only-native-animation-time']; }
   if (practiceCapture) doc.fixtures.push(PRACTICE_FIXTURE, 'practice-only-Date-native-animation-time');
   save();
   const { chromium } = await import('playwright');
@@ -221,6 +226,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     if (firstRunPreview) Object.assign(apiState, { firstRunDeniedWrites: 0, firstRunNarrationRefusals: 0, firstRunRequestDiagnostics: { counts: {}, recent: [] } });
     const privacyGate = privateExport ? createPrivacyResponseGate(apiState) : null;
     if (privateExport) Object.assign(apiState, { privateExportReads: 0, privateExportResponses: 0, privateExportLastStatus: null, privateExportDownloads: 0, privateExportUnexpectedDownloads: 0, privateExportDenied: 0, privateExportPrivateReads: 0, privateExportAuthHeaders: 0, privateExportHeaderChecks: 0, privateExportHeaderReadsPending: 0, privateExportHeaderReadFailures: 0, privateExportExpectedDownload: false, privateExportNarrationRefusals: 0, privateExportDownloadObservations: [] });
+    if (copilot) Object.assign(apiState, { copilotDenied: 0, privateExportDenied: 0, privateExportAuthHeaders: 0, privateExportHeaderChecks: 0, privateExportHeaderReadsPending: 0, privateExportHeaderReadFailures: 0 });
     if (kidEntry) Object.assign(apiState, { kidEntryNarrationRefusals: 0, kidEntryDeniedMutations: 0 });
     await context.route('**/*', route => {
       if (Object.hasOwn(apiState, 'firstRunDeniedWrites') && !['GET', 'HEAD'].includes(route.request().method())) { apiState.firstRunDeniedWrites++; apiState.deniedActions++; return route.abort(); }
@@ -236,6 +242,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       const request = route.request();
       const url = new URL(request.url());
       if (url.origin !== BASE) { apiState.deniedExternal++; return route.abort(); }
+      if (copilot && copilotApiDisposition(request.method(), url.pathname) === 'deny') { apiState.copilotDenied++; apiState.deniedActions++; return route.abort(); }
       if (firstRunPreview && firstRunPreviewApiDisposition(request.method(), url.pathname) === 'deny') { apiState.firstRunDeniedWrites++; apiState.deniedActions++; return route.abort(); }
       const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
       if (privateExport) {
@@ -308,12 +315,13 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
     // reads fall back to the existing handlers. No route registers after them.
     if (singleGoal) await installSingleGoalNetworkGuard(context, { fixture: singleGoal, apiState, lang, assetPaths: singleGoalAssetPaths('dist'), fontUrls: [...validateFontCache().resources.keys()] });
     if (firstRunPreview) await installFirstRunPreviewBoundary(context, apiState, firstRunScope);
-    if (privateExport) await installPrivateExportAdmissionBoundary(context, apiState);
+    if (privateExport || copilot) await installPrivateExportAdmissionBoundary(context, apiState);
     if (kidEntry) await context.addInitScript(initializeSyntheticOnline, { lang, preserveKidMode: true });
     else await context.addInitScript(initializeSyntheticOnline, { lang });
     if (singleGoal) await context.addInitScript(initializeSingleGoalWatch, { childId: singleGoal.childId, watch: singleGoal.watch });
     if (practiceCapture) await context.addInitScript({ content: practiceClockScript(fixture.parsed) });
     if (record || confirmed || keptSearch) await context.addInitScript(installRecordShareSink);
+    if (copilot) await context.addInitScript(installCopilotClipboardSink);
     if (group === 'ask-diagnostic') await context.addInitScript(installStylesheetObservation);
     const page = await context.newPage();
     page.setDefaultTimeout(8000);
@@ -472,6 +480,11 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories }, ...firstRunNetworkSnapshot(apiState) };
         check(cell, 'FIRST_RUN_FINAL_NETWORK_GUARD', validFirstRunNetworkEvidence(cell.networkEvidence));
       }
+      if (copilot) {
+        cell.networkEvidence = { ...apiState, deniedActionCategories: { ...apiState.deniedActionCategories } };
+        check(cell, 'FINAL_COPILOT_NETWORK_GUARD', validCopilotNetwork(cell.networkEvidence));
+        check(cell, 'NO_RUNTIME_ERRORS', Object.keys(cell.runtimeDiagnostics.counts).every(key => key === 'SERVICE_WORKER_BLOCKED'), cell.runtimeDiagnostics);
+      }
       if (privateExport) {
         // Re-sample after screenshot and diagnostic awaits. An earlier pass
         // cannot hide an unexpected download/auth/mutation arriving later.
@@ -504,7 +517,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       return cell.reached;
     };
 
-    if (firstRunPreview) {
+    if (copilot) {
+      await collectCopilotRetirementStates({ page, fixture: copilot, viewport, load, screen, check, byId, captureDiagnostics: () => ({ runtime: diagnostics.snapshot(), assets: assets.snapshot() }) });
+    } else if (firstRunPreview) {
       entryMode = 'existing-dev-onboarding-preview';
       await collectFirstRunPreviewStates({ page, viewport, screen, check, apiState, recordCreatedChild: firstRunScope.recordCreatedChild });
     } else if (group === 'single-goal') {

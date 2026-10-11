@@ -6,11 +6,12 @@
  * kid shell: the reader's own close toy is the ONE way back (to the kid
  * home); no DEV query parameters, no DEV files (dev={false}).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BookReader } from "../library/BookReader";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { storyLanguage } from "../../lib/heroJourneys";
+import { createBookAssetScope } from "../../lib/bookAssetStore";
 import { resolveBookAssets, type ResolvedBookAssets } from "../../lib/bookAssets";
 import { heGender } from "../../lib/library/bookText";
 import { KidStageFallback } from "./KidStageFallback";
@@ -23,24 +24,33 @@ export default function KidBookReaderView({ bookId, onClose }: { bookId: string;
   const entries = useChildLibraryBooks(childProfile.id);
   const entry = entries.find((e) => e.book.id === bookId) ?? null;
   const folder = lang === "he" ? (heGender(childProfile.gender) === "f" ? "he-f" : "he-m") : "en";
-  const [resolved, setResolved] = useState<ResolvedBookAssets | null>(null);
-  const [unavailable, setUnavailable] = useState(false);
   const doc = entry?.doc ?? null;
+  const readKey = useMemo(() => ({ childId: childProfile.id, doc, folder }), [childProfile.id, doc, folder]);
+  const currentRead = useRef(readKey);
+  currentRead.current = readKey;
+  const [storedResolved, setResolved] = useState<{ readKey: typeof readKey; value: ResolvedBookAssets } | null>(null);
+  const resolved = storedResolved?.readKey === readKey ? storedResolved.value : null;
+  const [unavailable, setUnavailable] = useState(false);
   useEffect(() => {
     if (!doc) return;
     let live = true;
     let got: ResolvedBookAssets | null = null;
+    const scope = createBookAssetScope(childProfile.id, () => live && currentRead.current === readKey);
+    const retired = () => { if (live) setResolved(null); };
+    scope.signal.addEventListener("abort", retired, { once: true });
     setResolved(null);
     // K2: a file that arrives late (a passing failure, retried) re-renders the page with it
-    resolveBookAssets(childProfile.id, doc, folder, { onLate: (next) => { if (live) setResolved(next); } })
+    resolveBookAssets(childProfile.id, doc, folder, { scope, onLate: (next) => { if (live && scope.current()) setResolved({ readKey, value: next }); } })
       .then((r) => {
         got = r;
-        if (live) setResolved(r);
+        if (live && scope.current()) setResolved({ readKey, value: r });
         else r.revoke();
       })
-      .catch(() => live && setUnavailable(true));
+      .catch(() => { if (live && currentRead.current === readKey) setUnavailable(true); });
     return () => {
       live = false;
+      scope.signal.removeEventListener("abort", retired);
+      scope.close();
       got?.revoke();
     };
   }, [childProfile.id, doc, folder]);
