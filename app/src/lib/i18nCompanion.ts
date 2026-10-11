@@ -294,6 +294,10 @@ export const companionEn = {
   "companion.place.child.detail": "The whole picture, over time",
   "companion.place.together": "Together",
   "companion.place.together.detail": "Small moments. Shared discoveries.",
+  // v3 IA-04: the three doors' names (COMPANION_DOORS in lib/companionPlaces).
+  "companion.door.talk": "Talk with Arbor",
+  "companion.door.learn": "For you, the parent",
+  "companion.door.care": "Care, together",
 };
 
 export const companionHe = {
@@ -590,4 +594,8 @@ export const companionHe = {
   "companion.place.child.detail": "התמונה השלמה, לאורך זמן",
   "companion.place.together": "ביחד",
   "companion.place.together.detail": "רגעים קטנים, גילויים משותפים",
+  // v3 IA-04: the three doors' names (COMPANION_DOORS in lib/companionPlaces).
+  "companion.door.talk": "לדבר עם ארבור",
+  "companion.door.learn": "בשבילך, ההורה",
+  "companion.door.care": "יחד עם אנשי המקצוע",
 };
