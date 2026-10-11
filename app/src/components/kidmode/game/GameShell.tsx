@@ -28,7 +28,9 @@ import { useArborOptional } from "../../../context/ArborContext";
 import { isKidModeActive, subscribeKidMode } from "../../../lib/kidModeGate";
 import type { KidWorldTileId } from "../../../lib/kidThemeManifest";
 import type { SneakFreezeWorldId } from "../kidWorlds";
-import { setKidStage, useKidHome } from "../kidChrome";
+import { setKidHearIt, setKidStage, useKidHome } from "../kidChrome";
+import { autoReadPage, KidHearItButton } from "../kidReadAloud";
+import { stopVoice } from "../../../lib/voice";
 import { kidSfx } from "../audio/kidAudio";
 import { KidFinishMoment } from "../rewards/KidSouvenir";
 
@@ -94,13 +96,20 @@ export function GameProgressDots({ index, total }: { index: number; total: numbe
   );
 }
 
-export function GameShell({ worldId, title, instruction, progress, mood, eyebrow, action, variant = "compact", heroDecorative, fullBleed = false, children }: GameShellProps) {
+export function GameShell({ worldId, title, instruction, hearIt, progress, mood, eyebrow, action, variant = "compact", heroDecorative, fullBleed = false, children }: GameShellProps) {
   const kid = useKidModeOn();
+  const { uiLang } = useLanguage();
   const arbor = useArborOptional();
+  const childId = arbor?.childProfile?.id ?? "";
+  const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
 
-  // Guy, 10 Oct 2026 (B-KID-142): a child hears only the narrator he chose
-  // (Sulafat), from files. The instruction and `hearIt` are shown, never
-  // spoken by the runtime voice: no arrival read and no hear-it button.
+  // Kid Mode: the bar's hear-it replays the instruction (or `hearIt`) …
+  const hearText = hearIt ?? instruction;
+  useEffect(() => {
+    if (!kid || !hearText) return;
+    setKidHearIt({ text: hearText, lang });
+    return () => setKidHearIt(null);
+  }, [kid, hearText, lang]);
   // B-KID-133 (D-01): the world IS the stage — the overlay paints this
   // world's card behind the whole view (crisp top band on a phone), so the
   // shell no longer crops it into a banner strip.
@@ -109,6 +118,12 @@ export function GameShell({ worldId, title, instruction, progress, mood, eyebrow
     setKidStage({ kind: "world", worldId });
     return () => setKidStage(null);
   }, [kid, worldId]);
+  // … and the instruction is spoken ONCE, on arrival.
+  useEffect(() => {
+    if (!kid || !instruction) return;
+    const timer = setTimeout(() => { autoReadPage(childId, instruction, lang); }, 400);
+    return () => { clearTimeout(timer); stopVoice(); };
+  }, [kid, instruction, lang, childId]);
 
   // The flagged proof game has no parent door, art key or souvenir.
   const tileWorld: KidWorldTileId | null = worldId === "sneak" ? null : worldId;
@@ -144,6 +159,8 @@ export function GameShell({ worldId, title, instruction, progress, mood, eyebrow
             style={{ margin: 0, fontFamily: "var(--font-sans)", fontWeight: 800, fontSize: "var(--kid-t-say)", lineHeight: 1.3, color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", borderRadius: 18, paddingInline: 16, paddingBlock: 10, display: "flex", alignItems: "center", gap: 10 }}
           >
             <span style={{ flex: "1 1 0%", minInlineSize: 0 }}>{instruction}</span>
+            {/* B-KID-73: hear-it beside the words it repeats (its own glyph). */}
+            <KidHearItButton />
           </p>
         )}
         {children}
