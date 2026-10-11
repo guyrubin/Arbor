@@ -35,6 +35,18 @@ export function breathSchedule(cycles: number = BREATH_CYCLES): { phase: Exclude
   ]).flat();
 }
 
+/** Pure: what is left of the whole pacer at schedule `step`, `inPhaseMs` into
+ *  that phase. The clock is derived from the same step the words come from,
+ *  so a late timer (a busy device, a background tab) holds the clock with the
+ *  label instead of letting it run ahead: while any phase still shows, at
+ *  least 1 ms remains (0:01), and 0:00 belongs to "done" alone. */
+export function breathRemainingMs(step: number, inPhaseMs: number, schedule = breathSchedule()): number {
+  if (step >= schedule.length) return 0;
+  const later = schedule.slice(step + 1).reduce((n, x) => n + x.ms, 0);
+  const elapsed = Number.isFinite(inPhaseMs) ? Math.max(0, inPhaseMs) : 0;
+  return later + Math.max(1, schedule[step].ms - elapsed);
+}
+
 /** Pure: remaining milliseconds as the m:ss a parent reads (whole seconds,
  *  rounded up, so the clock shows 0:30 for the first second and 0:00 only at
  *  the end). Never negative. */
@@ -71,8 +83,9 @@ export function ParentBreathPacer({ t, showClock = false, label, sub }: {
   const [step, setStep] = useState(0);
   // The circle mounts small and grows on the first inhale (one frame later).
   const [armed, setArmed] = useState(false);
-  // FEAT-06: wall-clock start and the latest tick, for the visible countdown.
-  const [startedAt, setStartedAt] = useState<number | null>(null);
+  // FEAT-06: when the current phase began and the latest tick, for the
+  // visible countdown (derived from the step, see breathRemainingMs).
+  const [phaseAt, setPhaseAt] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
   const timer = useRef<number | null>(null);
   const schedule = breathSchedule();
@@ -86,24 +99,24 @@ export function ParentBreathPacer({ t, showClock = false, label, sub }: {
 
   useEffect(() => {
     if (!open || phase === "done") return;
-    timer.current = window.setTimeout(() => setStep((s) => s + 1), schedule[step].ms);
+    timer.current = window.setTimeout(() => { const at = Date.now(); setStep((s) => s + 1); setPhaseAt(at); setTick(at); }, schedule[step].ms);
     return () => { if (timer.current) window.clearTimeout(timer.current); };
   }, [open, step, phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!showClock || !open || phase === "done" || startedAt === null) return;
+    if (!showClock || !open || phase === "done" || phaseAt === null) return;
     const every = window.setInterval(() => setTick(Date.now()), 250);
     return () => window.clearInterval(every);
-  }, [showClock, open, phase, startedAt]);
+  }, [showClock, open, phase, phaseAt]);
 
-  const close = () => { if (timer.current) window.clearTimeout(timer.current); setOpen(false); setStep(0); setStartedAt(null); };
+  const close = () => { if (timer.current) window.clearTimeout(timer.current); setOpen(false); setStep(0); setPhaseAt(null); };
 
   if (!open) {
     return (
       <button
         type="button"
         data-testid="breath-pacer-open"
-        onClick={() => { const at = Date.now(); setStep(0); setStartedAt(at); setTick(at); setOpen(true); }}
+        onClick={() => { const at = Date.now(); setStep(0); setPhaseAt(at); setTick(at); setOpen(true); }}
         className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3.5 py-2.5 text-start transition focus:outline-none focus-visible:ring-2"
         style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
       >
@@ -119,7 +132,7 @@ export function ParentBreathPacer({ t, showClock = false, label, sub }: {
 
   const scale = !armed ? 0.62 : phase === "in" ? 1 : 0.62;
   const ms = phase === "in" ? BREATH_IN_MS : BREATH_OUT_MS;
-  const remainingMs = phase === "done" || startedAt === null ? 0 : BREATH_TOTAL_MS - (tick - startedAt);
+  const remainingMs = phase === "done" || phaseAt === null ? 0 : breathRemainingMs(step, tick - phaseAt, schedule);
   return (
     <div data-testid="breath-pacer" className="flex flex-col items-center gap-3 rounded-xl px-4 py-5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
       <div aria-hidden="true" className="relative grid place-items-center" style={{ width: 132, height: 132 }}>

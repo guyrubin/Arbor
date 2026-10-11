@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { BREATH_CYCLES, BREATH_IN_MS, BREATH_OUT_MS, BREATH_TOTAL_MS, BreathClock, ParentBreathPacer, breathClock, breathSchedule } from "./ParentBreathPacer";
+import { BREATH_CYCLES, BREATH_IN_MS, BREATH_OUT_MS, BREATH_TOTAL_MS, BreathClock, ParentBreathPacer, breathClock, breathRemainingMs, breathSchedule } from "./ParentBreathPacer";
 import { en, he } from "../../lib/i18n";
 
 const t = (k: string) => en[k] ?? k;
@@ -69,6 +69,32 @@ describe("FEAT-06 — the visible 30 s clock (showClock)", () => {
     expect(breathClock(90_000)).toBe("1:30");
   });
 
+  it("the clock is derived from the phase the words show: it never runs ahead of a late timer", () => {
+    // First inhale, just started → the whole half minute.
+    expect(breathRemainingMs(0, 0)).toBe(BREATH_TOTAL_MS);
+    expect(breathClock(breathRemainingMs(0, 0))).toBe("0:30");
+    // 2.5 s into the second exhale (step 3): 3.5 s of it + one more cycle.
+    expect(breathRemainingMs(3, 2_500)).toBe(3_500 + BREATH_IN_MS + BREATH_OUT_MS);
+    // The last exhale starts: the clock reads 0:06 while "Breathe out" shows.
+    expect(breathClock(breathRemainingMs(5, 0))).toBe("0:06");
+    // A late timer (the phase overran by seconds) holds the clock at the next
+    // phase boundary, never below: 0:00 belongs to "done" alone.
+    expect(breathRemainingMs(5, 9_000)).toBe(1);
+    expect(breathClock(breathRemainingMs(5, 9_000))).toBe("0:01");
+    expect(breathClock(breathRemainingMs(0, 12_000))).toBe("0:27");
+    // Done (past the schedule) is the only 0:00; a tick from the previous phase
+    // (negative elapsed) or a broken clock reads the full phase.
+    expect(breathRemainingMs(6, 0)).toBe(0);
+    expect(breathRemainingMs(1, -200)).toBe(BREATH_TOTAL_MS - BREATH_IN_MS);
+    expect(breathRemainingMs(1, Number.NaN)).toBe(BREATH_TOTAL_MS - BREATH_IN_MS);
+    // Every in-schedule moment shows at least 0:01.
+    for (let step = 0; step < breathSchedule().length; step += 1) {
+      for (const inPhase of [0, 1_000, 3_999, 5_999, 60_000]) {
+        expect(breathRemainingMs(step, inPhase), `${step}/${inPhase}`).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
   it("at rest the step row shows its own words and 0:30, and nothing is running", () => {
     const html = renderToStaticMarkup(<ParentBreathPacer t={t} showClock label="Step title" sub="Step body" />);
     expect(html).toContain('data-testid="breath-pacer-open"');
@@ -97,10 +123,13 @@ describe("FEAT-06 — the visible 30 s clock (showClock)", () => {
 
   it("the clock is text (kept under reduced motion), user-started (no autoplay), and stops on skip", () => {
     // The countdown starts only from the open button's click.
-    expect(src).toMatch(/data-testid="breath-pacer-open"\s*onClick=\{\(\) => \{ const at = Date\.now\(\); setStep\(0\); setStartedAt\(at\);/);
+    expect(src).toMatch(/data-testid="breath-pacer-open"\s*onClick=\{\(\) => \{ const at = Date\.now\(\); setStep\(0\); setPhaseAt\(at\);/);
+    // Each phase change stamps its own start, so the clock follows the words.
+    expect(src).toContain("const at = Date.now(); setStep((s) => s + 1); setPhaseAt(at); setTick(at);");
+    expect(src).toContain('breathRemainingMs(step, tick - phaseAt, schedule)');
     // The interval runs only while the clock shows and the breath is running.
-    expect(src).toContain('if (!showClock || !open || phase === "done" || startedAt === null) return;');
-    expect(src).toContain("setOpen(false); setStep(0); setStartedAt(null);");
+    expect(src).toContain('if (!showClock || !open || phase === "done" || phaseAt === null) return;');
+    expect(src).toContain("setOpen(false); setStep(0); setPhaseAt(null);");
     // Reduced motion drops the circle's movement only; the clock is not in the CSS rule.
     expect(css).not.toContain("breath-pacer-clock");
   });

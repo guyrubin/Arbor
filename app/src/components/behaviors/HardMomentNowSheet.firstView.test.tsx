@@ -3,7 +3,10 @@
  * view ABOVE the existing picker: a kicker, "You first. Then {name}.", one
  * sentence to say (SayThis), one step with a visible 0:30 clock (the
  * B-ASKJB-40 pacer with showClock), Talk it through / Keep this moment, and
- * the help-and-safety lines (UrgentSupport) with a door to the Safety tab.
+ * ONE "Help and safety" link to the Safety tab (no helpline list on every
+ * open: most hard moments are an ordinary meltdown; the numbers live on the
+ * Safety tab and appear in place where crisis wording is typed, see
+ * coachComposerCrisis.test.tsx). UrgentSupport keeps its onSafety door.
  *
  * Pins kept (not re-pinned here): hardMomentShelf.test.ts (neutral ink, no
  * seed, setAskHardMomentRef / acceptHardMomentStep), ParentBreathPacer.test.tsx
@@ -120,8 +123,11 @@ describe("FEAT-06 — the 'you first' view (rendered, EN + HE)", () => {
       expect(html).toContain('data-testid="hard-moment-first"');
       expect(html).toContain(escapeHtml(t("hm.first.kicker")));
       expect(html).toContain(escapeHtml(t("hm.first.title", { name: "Mia" })));
-      // One sentence to say, through the one "Say this" grammar.
+      // One sentence to say, through the one "Say this" grammar, set as a
+      // quote behind an inline-start rule (logical: on the right in HE).
       expect(html.match(/data-testid="say-this"/g)).toHaveLength(1);
+      expect(html).toContain('data-presentation="quote"');
+      expect(html).toMatch(/<blockquote[^>]*style="[^"]*border-inline-start:2px solid var\(--arbor-ink\)[^"]*padding-inline-start:14px/);
       expect(html).toContain(escapeHtml(t("hm.first.say")));
       // One step: the pacer's resting row with the step's own words and the clock at 0:30.
       expect(html.match(/data-testid="breath-pacer-open"/g)).toHaveLength(1);
@@ -130,12 +136,16 @@ describe("FEAT-06 — the 'you first' view (rendered, EN + HE)", () => {
       expect(html).toMatch(/data-testid="breath-pacer-clock"[^>]*>0:30</);
       expect(html).toContain(escapeHtml(t("hm.first.talk")));
       expect(html).toContain(escapeHtml(t("hm.first.keep")));
-      // Help and safety: the helplines plus the one door to the Safety tab.
-      expect(html).toContain(escapeHtml(t("hm.first.safety")));
-      expect(html).toContain('data-testid="hard-moment-first-support"');
-      expect([...html.matchAll(/href="(tel:[^"]+)"/g)].map((m) => m[1])).toEqual(["tel:1201", "tel:101", "tel:100", "tel:118"]);
-      expect(html).toContain('data-testid="hard-moment-first-support-safety"');
-      expect(html).toContain(escapeHtml(t("elev.safety.open")));
+      // Help and safety: ONE tappable link, its own words, the shield glyph,
+      // after Talk and Keep. No helpline list on every open (no tel: links).
+      expect(html.match(/data-testid="hard-moment-first-safety"/g)).toHaveLength(1);
+      expect(html).toMatch(/<button type="button" data-testid="hard-moment-first-safety" class="[^"]*min-h-11[^"]*underline/);
+      const safety = html.slice(html.indexOf('data-testid="hard-moment-first-safety"'));
+      expect(safety.slice(0, safety.indexOf("</button>"))).toContain(escapeHtml(t("hm.first.safety")));
+      expect(safety.slice(0, safety.indexOf("</button>"))).toContain("gpp_maybe");
+      expect(html.indexOf('data-testid="hard-moment-first-safety"')).toBeGreaterThan(html.indexOf('data-testid="hard-moment-first-keep"'));
+      expect(html).not.toContain("tel:");
+      expect(html).not.toContain(escapeHtml(t("elev.safety.open")));
       // Calm: no alert role on every open, no alarm colour, no SOS.
       expect(html).not.toContain('role="alert"');
       expect(html).not.toMatch(/--arbor-(red|coral|peach|pink)|#[0-9a-fA-F]{3,8}\b|\bSOS\b/);
@@ -146,6 +156,7 @@ describe("FEAT-06 — the 'you first' view (rendered, EN + HE)", () => {
     const html = view("en");
     const buttons = html.match(/<button\b[^>]*>/g) ?? [];
     expect(buttons.length).toBeGreaterThanOrEqual(4);
+    expect(html).toContain('data-testid="hard-moment-first-safety"');
     for (const b of buttons) expect(b, b).toMatch(/min-h-11/);
     for (const a of html.match(/<a\b[^>]*>/g) ?? []) expect(a, a).toMatch(/min-h-11/);
   });
@@ -158,6 +169,8 @@ describe("FEAT-06 — the 'you first' view (rendered, EN + HE)", () => {
 
   it("RTL-safe: logical properties only (the rule sits on the inline end, no left/right)", () => {
     expect(FIRST).toContain("borderBlockEnd");
+    expect(FIRST).toContain('<SayThis presentation="quote"');
+    expect(FIRST).toContain('className="ms-auto inline-flex min-h-11');
     expect(FIRST).not.toMatch(/\b(borderLeft|borderRight|paddingLeft|paddingRight|marginLeft|marginRight)\b|\b(ml|mr|pl|pr)-\d|text-(left|right)\b/);
   });
 });
@@ -190,20 +203,23 @@ describe("FEAT-06 — copy (EN + HE)", () => {
 });
 
 describe("FEAT-06 — the ways on (handlers)", () => {
-  it("each button calls its own handler; the safety door is UrgentSupport's onSafety", () => {
+  it("each control calls its own handler; 'Help and safety' itself is the door", () => {
     const onTalk = vi.fn(); const onKeep = vi.fn(); const onSafety = vi.fn();
     const tree = HardMomentFirstView({ childName: "Mia", lang: "en", t: tFor("en"), onTalk, onKeep, onSafety });
     findElement(tree, (p) => p["data-testid"] === "hard-moment-first-talk")!.props.onClick();
     expect(onTalk).toHaveBeenCalledTimes(1);
     findElement(tree, (p) => p["data-testid"] === "hard-moment-first-keep")!.props.onClick();
     expect(onKeep).toHaveBeenCalledTimes(1);
-    const support = findElement(tree, (_p, type) => type === UrgentSupport)!;
-    expect(support.props.onSafety).toBe(onSafety);
-    expect(support.props.showInstructions).toBe(false);
     expect(onSafety).not.toHaveBeenCalled();
+    findElement(tree, (p) => p["data-testid"] === "hard-moment-first-safety")!.props.onClick();
+    expect(onSafety).toHaveBeenCalledTimes(1);
+    expect(onTalk).toHaveBeenCalledTimes(1);
+    expect(onKeep).toHaveBeenCalledTimes(1);
+    // No helpline block in the calm view (the numbers live on the Safety tab).
+    expect(findElement(tree, (_p, type) => type === UrgentSupport)).toBeNull();
   });
 
-  it("the sheet wires Talk → coach (no seed), Keep → the capture sheet, Safety → the Safety tab, each closing the sheet first", () => {
+  it("the sheet wires Talk → an empty coach (no seed, no stale guide card), Keep → the capture sheet, Safety → the Safety tab, each closing the sheet first", () => {
     renderToStaticMarkup(<HardMomentNowSheet />);
     const first = harness.captured.find((c) => c.type === HardMomentFirstView);
     expect(first, "the sheet renders HardMomentFirstView on a fresh open").toBeTruthy();
@@ -213,7 +229,11 @@ describe("FEAT-06 — the ways on (handlers)", () => {
     first!.props.onTalk();
     expect(harness.closeHardMomentNow).toHaveBeenCalledTimes(1);
     expect(harness.setActiveTab).toHaveBeenCalledWith("coach");
-    expect(harness.setAskHardMomentRef).not.toHaveBeenCalled();
+    // A guide card an earlier card-level Talk left above the composer is
+    // cleared: the first view's Talk lands on the coach with no card.
+    expect(harness.setAskHardMomentRef).toHaveBeenCalledTimes(1);
+    expect(harness.setAskHardMomentRef).toHaveBeenCalledWith(null);
+    expect(harness.setAskHardMomentRef.mock.invocationCallOrder[0]).toBeLessThan(harness.setActiveTab.mock.invocationCallOrder[0]);
     expect(harness.openCaptureSheet).not.toHaveBeenCalled();
 
     vi.clearAllMocks();
@@ -229,7 +249,7 @@ describe("FEAT-06 — the ways on (handlers)", () => {
   });
 
   it("source: no seed, no request on any of the three paths", () => {
-    expect(SHEET).toContain('onTalk={() => { closeHardMomentNow(); setActiveTab("coach"); }}');
+    expect(SHEET).toContain('onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); setActiveTab("coach"); }}');
     expect(SHEET).toContain('onKeep={() => { closeHardMomentNow(); openCaptureSheet({ mode: "text" }); }}');
     expect(SHEET).toContain('onSafety={() => { closeHardMomentNow(); setActiveTab("safety"); }}');
     expect(SHEET).not.toMatch(/seedCoach|buildHardMomentSeedPrompt|fetch\(|api\.|sendToCoach|handleChatSend/);
@@ -252,6 +272,9 @@ describe("FEAT-06 — the sheet: the first view sits ABOVE the picker, never rep
       expect(html.match(/data-testid="breath-pacer-open"/g)).toHaveLength(1);
       expect(html).not.toContain(escapeHtml(t("hm.now.breathe.open")));
       expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
+      // The calm sheet lists no helplines; its one safety door is the link.
+      expect(html).not.toContain("tel:");
+      expect(html.match(/data-testid="hard-moment-first-safety"/g)).toHaveLength(1);
     });
   }
 

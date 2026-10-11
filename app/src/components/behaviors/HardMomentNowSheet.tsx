@@ -20,7 +20,6 @@ import { LastTimeLead, SendWordsButton } from "./HardMomentWords";
 import { PublicGuideShare } from "./PublicGuideShare";
 import { ParentBreathPacer } from "./ParentBreathPacer";
 import { SayThis } from "../ui/AiBlock";
-import { UrgentSupport } from "../safety/UrgentSupport";
 
 /**
  * B-ASKJB-31 — "Hard moment now": ONE sheet over the governed pilot guides,
@@ -71,9 +70,13 @@ export function hardMomentSheetLead<T extends { id: string }>(matched: readonly 
 /**
  * FEAT-06 (v3) — the "you first" view: what a parent meets before any
  * situation picker. One sentence to say (through SayThis, the one "Say this"
- * grammar, B-ASKJB-24), one step (a user-started 30 s breath with a visible
- * clock), two quiet ways on (talk it through, keep this moment), and the
- * help-and-safety lines (UrgentSupport, with a door to Safety & escalation).
+ * grammar, B-ASKJB-24, set as a quote behind an inline-start rule), one step
+ * (a user-started 30 s breath with a visible clock), two quiet ways on (talk
+ * it through, keep this moment) and ONE "Help and safety" link to the Safety
+ * & escalation tab, where the helplines and the crisis script live. The
+ * helplines are not listed here: most hard moments are an ordinary meltdown,
+ * and emergency and child-protection numbers on every open would read as an
+ * accusation (crisis wording gets them in place, see CoachTab).
  * Neutral ink only (the sheet's colour pins cover this file); nothing here is
  * recorded, requested or seeded into Ask. The sheet mounts once (Shell), so
  * the heading id is fixed.
@@ -100,7 +103,7 @@ export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafe
         </h4>
       </div>
       <div data-testid="hard-moment-first-say" className="min-w-0">
-        <SayThis text={t("hm.first.say")} title={t("hm.section.sayThis")} lang={lang} copyLabel={t("coach.action.copy")} copiedLabel={t("coach.cards.copied")} />
+        <SayThis presentation="quote" text={t("hm.first.say")} title={t("hm.section.sayThis")} lang={lang} copyLabel={t("coach.action.copy")} copiedLabel={t("coach.cards.copied")} />
       </div>
       <div data-testid="hard-moment-first-step">
         <ParentBreathPacer t={t} showClock label={t("hm.first.stepTitle")} sub={t("hm.first.stepBody")} />
@@ -124,18 +127,17 @@ export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafe
         >
           <Icon name="edit_note" size={18} />{t("hm.first.keep")}
         </button>
-      </div>
-      {/* The human-escalation lines, in plain ink (never an alarm colour), with
-          the one door to Safety & escalation. No role="alert" on every open:
-          the heading names the lines, the parent opened this sheet. */}
-      <div data-testid="hard-moment-first-safety" className="min-w-0 space-y-1">
-        <p className="text-sm font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>{t("hm.first.safety")}</p>
-        <UrgentSupport
-          testId="hard-moment-first-support"
-          showInstructions={false}
-          className="flex min-w-0 flex-wrap items-center gap-x-1 text-sm text-[var(--arbor-ink)]"
-          onSafety={onSafety}
-        />
+        {/* The one door to Safety & escalation: a quiet link in plain ink at
+            the row's end (never an alarm colour, never a list of numbers). */}
+        <button
+          type="button"
+          data-testid="hard-moment-first-safety"
+          onClick={onSafety}
+          className="ms-auto inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          style={{ color: "var(--arbor-ink)" }}
+        >
+          <Icon name="gpp_maybe" size={18} />{t("hm.first.safety")}
+        </button>
       </div>
     </section>
   );
@@ -219,7 +221,7 @@ export default function HardMomentNowSheet() {
                 childName={childFirst}
                 lang={locale}
                 t={t}
-                onTalk={() => { closeHardMomentNow(); setActiveTab("coach"); }}
+                onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); setActiveTab("coach"); }}
                 onKeep={() => { closeHardMomentNow(); openCaptureSheet({ mode: "text" }); }}
                 onSafety={() => { closeHardMomentNow(); setActiveTab("safety"); }}
               />

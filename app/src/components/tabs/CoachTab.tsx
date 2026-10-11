@@ -33,6 +33,8 @@ import ValuePreview from "../billing/ValuePreview";
 import { ShareButton } from "../ui/ShareButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import CompanionComposer from "../companion/CompanionComposer";
+import { UrgentSupport } from "../safety/UrgentSupport";
+import { screenForImmediateEscalation } from "../../safety/escalation";
 import type { ComposerAttachment } from "../../lib/companionAttachments";
 import { requestCompanionConsentReview } from "../../lib/companionConsent";
 import { COMPANION_CONVERSATION_EVENT, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
@@ -952,6 +954,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // notice said contradictory things on adjacent lines. ONE data-use line now:
   // when the weekly notice shows, the memory clause rides inside it.
   const weeklyNoticeShown = weeklyNotice && weeklyOn;
+  // FEAT-06: crisis wording in the composer (the same screen the server runs
+  // on send) shows the helplines in place, with the door to Safety & escalation.
+  const composerCrisis = screenForImmediateEscalation({ message: chatInput }) !== null;
   const composerSection = (
         <section
           data-primary-move="ask"
@@ -1002,6 +1007,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             onSend={handleChatSend} onVoice={() => void toggleVoice()} voiceActive={voicePhase !== "off"} voiceLabel={voiceLabel}
             onKeep={(text, photo) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo })}
             onAttachmentsChange={setComposerFiles} />
+          {composerCrisis && (
+            <UrgentSupport
+              testId="coach-composer-urgent-support"
+              className="mt-2 min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 text-sm leading-relaxed text-[var(--arbor-ink)]"
+              onSafety={() => setActiveTab("safety")}
+            />
+          )}
           {!online && <p data-testid="coach-offline-note" role="status" className="text-xs py-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.aierrors.offline.composer")}</p>}
           {/* Critic r2 (coach design P1): the one-time data-use notice reads
               AFTER the field and the capture chips, as a quiet --t-xs line with
