@@ -93,6 +93,9 @@ const expectNoNumbers = (text: string) => {
   expect(text, "an empty state shows no percentage").not.toMatch(/%/);
 };
 const occurrences = (html: string, needle: string) => html.split(needle).length - 1;
+/** Rendered pictures of the Together art: <img> tags only (React 19 also emits a
+ *  <link rel="preload"> carrying the same srcset for an eager image). */
+const togetherPictures = (html: string) => (html.match(/<img[^>]*>/g) ?? []).filter((tag) => tag.includes(TOGETHER_ART.src)).length;
 const buttonsIn = (html: string) => (html.match(/<button\b/g) ?? []).length;
 const labelOf = (button: Record<string, any>) => React.Children.toArray(button.children).filter((child) => typeof child === "string").join("");
 
@@ -133,7 +136,7 @@ describe("VIS-07 · Together: a good moment needs no other reason", () => {
     // The hero never repeats it: its old subline is not on the page.
     expect(html).not.toContain(t("companion.together-view.a-story-to-get-lost-in-a-game-to-wonder-at"));
     expect(empty).toContain('data-testid="empty-state-art"');
-    expect(occurrences(html, TOGETHER_ART.srcSet), "the Together picture shows once").toBe(1);
+    expect(togetherPictures(html), "the Together picture shows once").toBe(1);
     expect(buttonsIn(empty), "exactly ONE action").toBe(1);
     expectNoNumbers(textOf(empty));
     const cta = state.buttons.find((button) => button["data-testid"] === "together-empty-cta");
@@ -170,7 +173,7 @@ describe("VIS-07 · Together: a good moment needs no other reason", () => {
     const kept = renderTogether();
     expect(kept).not.toContain('data-testid="together-empty"');
     // Without the empty state the hero carries the picture again, once.
-    expect(occurrences(kept, TOGETHER_ART.srcSet)).toBe(1);
+    expect(togetherPictures(kept)).toBe(1);
     // Play on record, even long ago, means this is not a first visit.
     state.behaviorLogs = []; state.playItems = [{ id: "event-1", timestamp: "2020-01-06T10:00:00.000Z", kind: "rhythm" }];
     expect(renderTogether()).not.toContain('data-testid="together-empty"');
