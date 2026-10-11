@@ -68,8 +68,10 @@ const Slot = slotModule.exports.default!;
 const CRISIS: Record<"en" | "he", string> = { en: "I can't do this anymore", he: "אני לא יכולה יותר" };
 const ORDINARY: Record<"en" | "he", string> = { en: "Bedtime took an hour tonight", he: "השינה לקחה שעה הערב" };
 const escapeHtml = (text: string) => renderToStaticMarkup(<span>{text}</span>).slice(6, -7);
-const props = (chatInput: string): SlotProps & { setActiveTab: ReturnType<typeof vi.fn> } =>
-  ({ chatInput, setActiveTab: vi.fn(), UrgentSupport, screenForImmediateEscalation });
+const props = (chatInput: string) => {
+  const setActiveTab = vi.fn<(tab: string) => void>();
+  return { chatInput, setActiveTab, UrgentSupport, screenForImmediateEscalation };
+};
 
 function findElement(node: unknown, match: (props: Record<string, any>, type: unknown) => boolean): React.ReactElement<any> | null {
   if (Array.isArray(node)) {

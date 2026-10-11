@@ -6,11 +6,10 @@ import { Icon } from "../ui/Icon";
 /** Existing urgent-support wording and dial targets, available before setup completes. */
 export function UrgentSupport({ testId = "onboarding-urgent-support", className = "first-run-hint", showInstructions = true, onSafety }: {
   testId?: string; className?: string;
-  /** Omit only inside a containing alert that displays both instructions in full,
-   *  or (FEAT-06) where the caller names the lines itself and the parent opened
-   *  the surface: the hard-moment "you first" view. */
+  /** Omit only inside a containing alert that displays both instructions in full. */
   showInstructions?: boolean;
-  /** FEAT-06: when given, a door to the Safety & escalation tab after the lines. */
+  /** FEAT-06: when given, a door to the Safety & escalation tab after the lines
+   *  (the coach composer's crisis-wording slot). */
   onSafety?: () => void;
 }) {
   const { t } = useLanguage();
