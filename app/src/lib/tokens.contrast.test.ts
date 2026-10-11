@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { T } from "./tokens";
 import { ACCENT_THEMES } from "./theme";
+import { DOMAIN_IDS } from "./domains/registry";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(path.join(here, "..", "index.css"), "utf8");
@@ -178,6 +179,11 @@ function samplesOf(value: string): Color[] {
 }
 
 const PAPER = ["--arbor-paper", "--arbor-paper-elevated", "--arbor-paper-deep", "--arbor-paper-sunk"];
+/* v3 VIS-02: one ink/soft pair per registry domain, derived from the registry
+   (never a literal count). Each soft is a surface every text token must clear;
+   each ink must clear the papers, the tinted well and its own soft. */
+const DOMAIN_INKS = DOMAIN_IDS.map((id) => "--arbor-domain-" + id + "-ink");
+const DOMAIN_SOFTS = DOMAIN_IDS.map((id) => "--arbor-domain-" + id + "-soft");
 const TINTS = ["--arbor-paper-tinted", "--arbor-clay-dim", "--arbor-clay-soft",
   "--arbor-green-soft", "--arbor-peach-soft", "--arbor-lav-soft",
   "--arbor-yellow-soft", "--arbor-pink-soft", "--arbor-sky-soft",
@@ -185,7 +191,9 @@ const TINTS = ["--arbor-paper-tinted", "--arbor-clay-dim", "--arbor-clay-soft",
   "--arbor-peach-wash", "--arbor-lav-wash", "--arbor-pink-wash",
   // B-DESIGN-02 (P7-DESIGN framer decision): the fixed-strength shelf washes (Journal
   // tiles, shelf-page header) carry muted / ink-soft / every jewel -ink at AA.
-  "--arbor-sky-wash", "--arbor-green-wash", "--arbor-yellow-wash"];
+  "--arbor-sky-wash", "--arbor-green-wash", "--arbor-yellow-wash",
+  // v3 VIS-02: the domain softs (CountPips rows, domain tiles).
+  ...DOMAIN_SOFTS];
 const TEXT = ["--arbor-ink", "--arbor-ink-soft", "--arbor-muted", "--arbor-faint",
   "--arbor-muted-alt", "--arbor-clay", "--arbor-clay-deep", "--arbor-clay-ink"];
 const FUNCTIONAL = ["green", "peach", "lav", "yellow", "pink", "sky"];
@@ -221,6 +229,14 @@ function declaredPairs(scope: Scope): Pair[] {
     for (const surface of surfaces.filter((s) => PAPER.includes(s.name) ||
       s.name.startsWith("--arbor-paper-tinted[") || s.name.startsWith("--arbor-" + tone + "-soft[") || s.name.startsWith("--arbor-" + tone + "-wash["))) {
       add("--arbor-" + tone + "-ink", surface);
+    }
+  }
+  // v3 VIS-02: a domain ink is text (the CountPips number, a tile label), so AA
+  // on the papers, the tinted well and its own soft.
+  for (const id of DOMAIN_IDS) {
+    for (const surface of surfaces.filter((s) => PAPER.includes(s.name) ||
+      s.name.startsWith("--arbor-paper-tinted[") || s.name.startsWith("--arbor-domain-" + id + "-soft["))) {
+      add("--arbor-domain-" + id + "-ink", surface);
     }
   }
   const paper = colorOf(required(values, "--arbor-paper"));
@@ -351,7 +367,7 @@ describe("CR-01 — declared runtime contrast", () => {
     expect(scopes.length).toBeGreaterThanOrEqual(12);
     const checked = new Set([...PAPER, ...TINTS, ...TEXT, ...CTA, ...FLAT_TINTS, "--accent",
       "--arbor-on-accent", "--arbor-green-cta-start", "--arbor-subtab-active", "--arbor-subtab-on-ink",
-      ...FUNCTIONAL.map((tone) => "--arbor-" + tone + "-ink")]);
+      ...FUNCTIONAL.map((tone) => "--arbor-" + tone + "-ink"), ...DOMAIN_INKS, ...DOMAIN_SOFTS]);
     const supported = new Set([":root", ".arbor-app", ".arbor-parent",
       ...ACCENT_THEMES.map((theme) => `[data-theme="${theme}"]`)]);
     const unsupported = rules.filter((r) => Object.keys(r.declarations).some((name) => checked.has(name)) &&
@@ -390,6 +406,46 @@ describe("CR-01 — declared runtime contrast", () => {
     expect(button).toContain("min-w-[var(--touch-min)]");
     for (const scope of scopes) expect(scope.values["--touch-min"]).toBe("44px");
     expect(primary).not.toMatch(/(?:^|\s)(?:hover:)?opacity-/);
+  });
+});
+
+describe("v3 VIS-02 — every registry domain's ink/soft pair meets AA in every scope", () => {
+  it("the pairs are derived from the registry, not a hand-kept list", () => {
+    expect(DOMAIN_INKS).toHaveLength(DOMAIN_IDS.length);
+    expect(DOMAIN_SOFTS).toHaveLength(DOMAIN_IDS.length);
+    expect(TINTS).toEqual(expect.arrayContaining(DOMAIN_SOFTS));
+  });
+
+  for (const scope of scopes) {
+    it(scope.name + ": each domain ink on the papers, the tinted well and its own soft; muted and ink on every soft", () => {
+      const pairs = declaredPairs(scope);
+      for (const id of DOMAIN_IDS) {
+        const ink = "--arbor-domain-" + id + "-ink";
+        const soft = "--arbor-domain-" + id + "-soft";
+        const own = pairs.filter((pair) => pair.name.startsWith(scope.name + ": " + ink + " on "));
+        expect(own.filter((pair) => pair.name.includes(" on " + soft + "[")).length, id + " ink on its soft").toBeGreaterThan(0);
+        expect(own.filter((pair) => PAPER.some((paper) => pair.name.endsWith(" on " + paper))).length, id + " ink on papers").toBe(PAPER.length);
+        expect(failures(own), id).toEqual([]);
+        for (const text of ["--arbor-muted", "--arbor-ink"]) {
+          const onSoft = pairs.filter((pair) => pair.name.startsWith(scope.name + ": " + text + " on " + soft + "["));
+          expect(onSoft.length, text + " on " + soft).toBeGreaterThan(0);
+          expect(failures(onSoft)).toEqual([]);
+        }
+      }
+    });
+  }
+
+  it("NEGATIVE CONTROL: a jewel used as a domain ink, or a jewel used as its soft, fails the same checker", () => {
+    // The brand green jewel as the moving ink on its wash; the lav ink on the lav jewel.
+    for (const [name, ink, background] of [
+      ["jewel as ink", "#34b277", "#e9f9f4"],
+      ["jewel as soft", "#6d28d9", "#a78bfa"],
+    ]) {
+      const fixture = ":root { --ink: " + ink + "; --background: " + background + "; }";
+      const values = cascade(rulesOf(fixture), {}, [":root"]);
+      expect(failures([{ name, foreground: colorOf(values["--ink"]),
+        background: colorOf(values["--background"]), floor: AA }])).toHaveLength(1);
+    }
   });
 });
 

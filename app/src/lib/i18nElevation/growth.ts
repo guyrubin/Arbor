@@ -118,6 +118,11 @@ export const en: Record<string, string> = {
   "elev.growth.deeper.title": "Go deeper",
   "elev.growth.more.title": "More from Growth",
   "elev.growth.more.sub": "The month in review and the Full Picture.",
+
+  // v3 VIS-02 — CountPips (components/ui/CountPips.tsx): the one sentence a
+  // screen reader hears for a domain's dots. A count of what the parent marked
+  // ‘Seen it’; never a total, a share or a not-yet count.
+  "elev.pips.aria": "Seen so far: {n}",
 };
 
 export const he: Record<string, string> = {
@@ -217,4 +222,7 @@ export const he: Record<string, string> = {
   "elev.growth.deeper.title": "להעמיק",
   "elev.growth.more.title": "עוד בהתפתחות",
   "elev.growth.more.sub": "סיכום החודש והתמונה המלאה.",
+
+  // v3 VIS-02 — CountPips: המשפט שקורא המסך מקריא לנקודות של תחום (ספירה בלבד)
+  "elev.pips.aria": "ראיתם עד עכשיו: {n}",
 };
