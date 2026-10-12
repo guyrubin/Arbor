@@ -31,7 +31,9 @@ vi.mock("../../hooks/useHashQuery", () => ({
   useHashQuery: () => new URLSearchParams(h.query),
   goToRoute: (route: string, params: Record<string, string>) => { h.routes.push([route, params]); h.query = new URLSearchParams(params).toString(); },
 }));
-import { categoryFromQuery, readTogetherReturn, TOGETHER_CATEGORIES, useTogetherNavigation, writeTogetherReturn } from "./togetherNavigation";
+import { categoryFromQuery, readTogetherReturn, TOGETHER_ARRIVAL_QUERY, TOGETHER_CATEGORIES, useTogetherNavigation, writeTogetherReturn } from "./togetherNavigation";
+import { STUDIO_WORLDS } from "../practice/studioWorlds";
+import * as routes from "../../lib/routes";
 
 let frames: Map<number, FrameRequestCallback>;
 let scheduled: FrameRequestCallback[];
@@ -248,5 +250,31 @@ describe("Together return presentation state", () => {
     expect(shell).toContain('key={`${activeTab}@${childProfile.id}`}');
     expect(shell).toMatch(/practice: PracticeStudioTab/);
     expect(shell).toMatch(/const PracticeStudioTab = lazy\(\(\) => import\("\.\.\/companion\/TogetherView"\)\)/);
+  });
+});
+
+describe("v3 F-TOG-2 · TOGETHER_ARRIVAL_QUERY, the contract with the Shell's route map (F-SHELL-1)", () => {
+  it("every retired address lands on a real pill; a world is a studio world; a sheet is one this page opens", () => {
+    for (const [route, arrival] of Object.entries(TOGETHER_ARRIVAL_QUERY)) {
+      expect(TOGETHER_CATEGORIES, route).toContain(arrival.f);
+      if (arrival.world) expect(STUDIO_WORLDS.map((world) => world.id), route).toContain(arrival.world);
+      if (arrival.sheet) expect(["create-story", "routine"], route).toContain(arrival.sheet);
+    }
+  });
+
+  it("#/plans and #/routines open the newest routine plan (sheet=routine); the story maker and Daily play keep their pills", () => {
+    expect(TOGETHER_ARRIVAL_QUERY.plans).toEqual({ f: "routines", sheet: "routine" });
+    expect(TOGETHER_ARRIVAL_QUERY.routines).toEqual({ f: "routines", sheet: "routine" });
+    expect(TOGETHER_ARRIVAL_QUERY["bedtime-stories"]).toEqual({ f: "stories", sheet: "create-story" });
+    expect(TOGETHER_ARRIVAL_QUERY["daily-play"]).toEqual({ f: "offscreen" });
+    expect(TOGETHER_ARRIVAL_QUERY.comics).toEqual({ f: "stories" });
+    expect(TOGETHER_ARRIVAL_QUERY.speech).toEqual({ f: "games", world: "speech" });
+  });
+
+  it("once the Shell's map exists (RETIRED_ROUTE_QUERY), it sends each Together address with this same query", () => {
+    const shell = (routes as unknown as Record<string, unknown>)["RETIRED_ROUTE_QUERY"] as Record<string, Record<string, string>> | undefined;
+    for (const [route, arrival] of Object.entries(TOGETHER_ARRIVAL_QUERY)) {
+      if (shell?.[route]) expect(shell[route], route).toEqual(expect.objectContaining(arrival));
+    }
   });
 });

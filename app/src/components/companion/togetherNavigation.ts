@@ -6,9 +6,11 @@ import type { TogetherCategory } from "./companionChoices";
 
 /* v3 F-TOG-2 — Together's category is the hash: #/practice?f=<category>.
    The Shell draws the five pills from PLACE_PILLS.together (F-SHELL-1) and a
-   pill is a link to #/practice?f=…, so the page only READS f (default all).
-   A choice made on the page (the hero move, a studio door) writes the same
-   hash, a new history entry, so Back returns to the pill it left.
+   pill is a link to #/practice?f=…, so the page READS f (default all). Until
+   that row exists TogetherView draws the same five itself (exactly one row
+   shows). A choice made on the page (a pill, the hero move, a studio door)
+   writes the same hash, a new history entry, so Back returns to the pill it
+   left.
 
    The one thing kept in session storage is the way back from a parent tool:
    a world with no Kid Mode seat (word-world opens its own parent page) names
@@ -16,6 +18,27 @@ import type { TogetherCategory } from "./companionChoices";
 
 /** The pills, in the Shell row's order. */
 export const TOGETHER_CATEGORIES: readonly TogetherCategory[] = ["all", "games", "stories", "routines", "offscreen"];
+
+/** v3 F-TOG-2 — the arrival contract with the Shell's route map (F-SHELL-1
+ *  RETIRED_ROUTE_QUERY): each old Together address lands on #/practice with
+ *  this query. TogetherView reads f (the pill), world (that world's preview)
+ *  and sheet=create-story (the story maker); TogetherRoutines reads
+ *  sheet=routine (the newest routine plan's sheet), and also the old key
+ *  itself while the address still carries it. togetherNavigation.test pins
+ *  the Shell's map to this one once the map exists. */
+export const TOGETHER_ARRIVAL_QUERY: Readonly<Record<string, Readonly<{ f: TogetherCategory; world?: string; sheet?: "create-story" | "routine" }>>> = {
+  plans: { f: "routines", sheet: "routine" },
+  routines: { f: "routines", sheet: "routine" },
+  stories: { f: "stories" },
+  comics: { f: "stories" },
+  "bedtime-stories": { f: "stories", sheet: "create-story" },
+  "daily-play": { f: "offscreen" },
+  journey: { f: "games" },
+  speech: { f: "games", world: "speech" },
+  mimic: { f: "games", world: "mimic" },
+  feelings: { f: "games", world: "feelings" },
+  adventures: { f: "games", world: "adventures" },
+};
 const returnDoors: readonly string[] = STUDIO_WORLDS.map((world) => `world-${world.id}`);
 export type ReturnDoor = `world-${string}`;
 export type TogetherReturn = { category: TogetherCategory; returnDoor: ReturnDoor };

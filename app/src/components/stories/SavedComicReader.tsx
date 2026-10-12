@@ -8,19 +8,24 @@ import { isStrictComicImageDataUrl } from "../../lib/heroComics";
 export type SavedComicPage = { dataUrl: string; title: string };
 
 /** Presentation-only child reader. It accepts complete validated bytes and has
- * no generation, save, share, download, purchase, profile or API seam. */
+ * no generation, save, share, download, purchase, profile or API seam.
+ * v3 F-TOG-2: `embedded` (inside a sheet that already names the book and
+ * closes it) drops the Back button and keeps the page title for screen
+ * readers only, so no control or title shows twice. */
 export default function SavedComicReader({
   title,
   lang,
   pages,
   onBack,
   onUnavailable,
+  embedded = false,
 }: {
   title: string;
   lang: ComicLang;
   pages: readonly SavedComicPage[];
   onBack: () => void;
   onUnavailable: () => void;
+  embedded?: boolean;
 }) {
   const rtl = lang === "he";
   const [pageIndex, setPageIndex] = useState(0);
@@ -70,14 +75,16 @@ export default function SavedComicReader({
   }
   return (
     <section role="region" aria-roledescription="comic book" aria-label={title} dir={rtl ? "rtl" : "ltr"} className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <PlayButton variant="ghost" tone="clay" size="md" onClick={onBack}>
-          {rtl ? <Icon name="chevron_right" size={16} /> : <Icon name="chevron_left" size={16} />} {kidsStoriesText("reader.back", lang)}
-        </PlayButton>
+      <div className={`flex items-center gap-3 ${embedded ? "justify-end" : "justify-between"}`}>
+        {!embedded && (
+          <PlayButton variant="ghost" tone="clay" size="md" onClick={onBack}>
+            {rtl ? <Icon name="chevron_right" size={16} /> : <Icon name="chevron_left" size={16} />} {kidsStoriesText("reader.back", lang)}
+          </PlayButton>
+        )}
         <ProgressPips total={total} current={pageIndex} />
       </div>
       <p className="sr-only" aria-live="polite">{kidsStoriesText("reader.page", lang, { current: pageIndex + 1, total })}</p>
-      <h3 ref={headingRef} tabIndex={-1} className="text-center text-base font-extrabold outline-none" style={{ color: "var(--arbor-ink)" }}>{current.title}</h3>
+      <h3 ref={headingRef} tabIndex={-1} className={embedded ? "sr-only outline-none" : "text-center text-base font-extrabold outline-none"} style={{ color: "var(--arbor-ink)" }}>{current.title}</h3>
       <div
         className="relative select-none"
         onPointerDown={(event) => { dragStart.current = { x: event.clientX, y: event.clientY }; }}

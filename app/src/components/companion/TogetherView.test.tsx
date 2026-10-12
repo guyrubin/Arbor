@@ -10,7 +10,16 @@ const state = vi.hoisted(() => ({
   topic: null as null | { id: string; title: string }, openSheet: vi.fn(), openSettings: vi.fn(),
   // v3 F-TOG-2: the pill is the hash query (#/practice?f=…); goToRoute is how the page moves it.
   query: "", goToRoute: vi.fn(), sheets: [] as Record<string, any>[], events: [] as Record<string, unknown>[],
+  // v3 F-TOG-2: true stands in the Shell's own Together row (PLACE_PILLS.together, F-SHELL-1).
+  shellRow: false,
+  // The child's story runs (heroRuns); invented, empty unless a test says otherwise.
+  runs: [] as Record<string, unknown>[],
 }));
+// The Shell draws a row when pillRowFor gives it more than one pill; shellRow lends Together one.
+vi.mock("../../lib/navigation", async (original) => {
+  const real = await original<typeof import("../../lib/navigation")>();
+  return { ...real, pillRowFor: (...args: Parameters<typeof real.pillRowFor>) => (state.shellRow && args[1] === "practice" ? real.PLACE_PILLS.now : real.pillRowFor(...args)) };
+});
 vi.mock("react", async (original) => {
   const real = await original<typeof import("react")>();
   return { ...real, useState: (initial: any) => {
@@ -25,7 +34,7 @@ vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };
 });
-vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ items: [], loaded: state.loaded, error: state.failed }) }));
+vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: (_childId: string, name: string) => ({ items: name === "heroRuns" ? state.runs : [], loaded: state.loaded, error: state.failed }) }));
 vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchParams(state.query), goToRoute: (...args: unknown[]) => state.goToRoute(...args) }));
 vi.mock("../../practice/usePracticeData", () => ({ usePracticeData: () => {
   const collection = { items: [], loaded: state.loaded, error: state.failed };
@@ -58,13 +67,18 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
   return { ...real, jsxDEV: (...args: Parameters<typeof real.jsxDEV>) => { capture(args[0], args[1]); return real.jsxDEV(...args); } };
 });
 import TogetherView from "./TogetherView";
-import { readTogetherReturn } from "./togetherNavigation";
+import { readTogetherReturn, TOGETHER_ARRIVAL_QUERY } from "./togetherNavigation";
 import { translate } from "../../lib/i18n";
 import { opensInKidMode, STUDIO_WORLDS, studioCountKey, studioWorldsForChild, worksInLanguage } from "../practice/studioWorlds";
+import { companionEn, companionHe } from "../../lib/i18nCompanion";
+import { pillRowFor, sectionForTab } from "../../lib/navigation";
+import { ageYearsOf } from "../../lib/age/forChild";
+import { localizeActivity } from "../../playbank/content";
+import { daySeedFor, selectDailyPlay } from "../../playbank/select";
 beforeEach(() => {
   vi.clearAllMocks(); state.childProfile = { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] };
   state.previewWorld = null; state.kept = []; state.lang = "en"; state.loaded = true; state.failed = false; state.pin = null; state.buttons = []; state.topic = null;
-  state.query = ""; state.sheets = []; state.events = [];
+  state.query = ""; state.sheets = []; state.events = []; state.shellRow = false; state.runs = [];
   const data = new Map<string, string>();
   vi.stubGlobal("sessionStorage", { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) });
 });
@@ -77,6 +91,9 @@ function hero(html: string) { const at = html.indexOf('data-module="together-inv
 function gate(html: string) { return html.slice(html.indexOf('data-testid="together-gate"')); }
 const button = (testId: string) => state.buttons.find((b) => b["data-testid"] === testId);
 const awayCard = (html: string, id: string) => html.match(new RegExp(`<li class="together-away-card" data-testid="together-away-${id}">[\\s\\S]*?</li>`))?.[0] ?? "";
+/** A Daily play pick's card: its steps are a list inside it, so it ends at its keep button. */
+const playCard = (html: string, id: string) => html.match(new RegExp(`<li class="together-away-card" data-testid="together-away-play-${id}">[\\s\\S]*?</button></li>`))?.[0] ?? "";
+const PLAY_CARDS = /<li class="together-away-card" data-testid="together-away-play-[\s\S]*?<\/button><\/li>/g;
 /** Text a parent reads: markup stripped, so a picture's path is not read as a number. */
 const text = (html: string) => html.replace(/<[^>]+>/g, " ");
 const VERDICT = /\d\s*%|\b\d+\s*\/\s*\d+\b|\b\d+\s+(?:of|out of)\s+\d+\b|מתוך|role="progressbar"|<progress/;
@@ -95,9 +112,10 @@ describe("Together's compact discovery", () => {
     const order = ['data-module="together-invitation"', 'data-module="together-games"', 'data-module="together-stories"', 'data-module="together-routines"', 'data-module="together-offscreen"', 'data-testid="together-gate"'].map((mark) => html.indexOf(mark));
     expect(order.every((at) => at >= 0)).toBe(true); expect([...order].sort((a, b) => a - b)).toEqual(order);
     for (const gone of ["together-suggestion", "together-handover", "together-play-history", "together-since", "<details", "companion-together-footer"]) expect(html).not.toContain(gone);
-    expect(html).not.toContain(translate(lang, "companion.together-view.together-room-for-curiosity-and-connection"));
-    // v3 F-TOG-2: the Shell draws the five pills; the page has no filter row of its own and no sheet open.
+    expect("companion.together-view.together-room-for-curiosity-and-connection" in (lang === "he" ? companionHe : companionEn)).toBe(false);
+    // v3 F-TOG-2: the five pills are one row (the page's own until the Shell draws one); no filter row, no sheet open.
     expect(html).not.toContain("companion-filter"); expect(state.sheets).toHaveLength(0);
+    expect(html.includes('data-testid="together-pill-row"')).toBe(pillRowFor(sectionForTab("practice"), "practice").length <= 1);
   });
   it.each(["en", "he"] as const)("closes with one gate card: the PIN line, Parent settings and Start playing (%s)", (lang) => {
     state.lang = lang; const card = gate(render());
@@ -220,7 +238,10 @@ describe("v3 F-TOG-2 — the five pills' cards", () => {
     const games = sectionBody(render(), "together-games");
     expect(games.match(/<button type="button" data-together-return="world-[^"]+" class="together-game-card">/g)).toHaveLength(worlds.length);
     expect(games.match(/class="together-game-art"/g)).toHaveLength(worlds.length);
-    expect(games.split(esc(translate(lang, "companion.together-view.preview-first")))).toHaveLength(worlds.length + 1);
+    // A game that does not speak this language yet says so instead of Preview first.
+    const speaks = worlds.filter((w) => worksInLanguage(w, lang)).length;
+    expect(games.split(esc(translate(lang, "companion.together-view.preview-first")))).toHaveLength(speaks + 1);
+    expect(games.split(esc(translate(lang, "companion.together-view.english-only")))).toHaveLength(worlds.length - speaks + 1);
     for (const world of worlds) {
       expect(games).toContain(esc(translate(lang, world.kidNameKey)));
       expect(games).toContain(`>${esc(translate(lang, `elev.domains.${world.domains[0]}`))}</span>`);
@@ -234,7 +255,7 @@ describe("v3 F-TOG-2 — the five pills' cards", () => {
     state.query = "f=games";
     const pill = sectionBody(render(), "together-games");
     expect(pill.match(/data-testid="together-world-count"/g)).toHaveLength(1);
-    expect(pill).not.toContain(esc(translate(lang, "companion.together-view.all-games")));
+    expect(pill).not.toContain("data-together-return=\"all-games\"");
     expect(text(games)).not.toMatch(VERDICT);
   });
 
@@ -259,18 +280,54 @@ describe("v3 F-TOG-2 — the five pills' cards", () => {
       expect(card).toContain(">bookmark_add</span>"); expect(card).toContain(esc(translate(lang, "companion.together-view.we-already-tried-it-keep-the-moment")));
       expect(card).not.toContain(esc(translate(lang, "companion.together-view.a-moment-from-your-time-together-is-saved")));
     }
-    // The preview step, "How to begin" and "More ideas" are gone; nothing opens a sheet.
+    // The preview step, "How to begin" and "More ideas" are gone (their copy left the dictionary); nothing opens a sheet.
     const away = sectionBody(html, "together-offscreen");
-    for (const gone of ["companion.together-view.how-to-begin", "companion.together-view.more-ideas", "companion.together-view.let-s-give-it-a-try"]) expect(away).not.toContain(esc(translate(lang, gone)));
     expect(html).not.toContain('data-together-return="more-ideas"'); expect(state.sheets).toHaveLength(0);
-    expect(text(away)).not.toMatch(VERDICT);
+    // Daily play's picks are activity copy, read on their own below; the rest of the section as before.
+    expect(text(away.replace(PLAY_CARDS, ""))).not.toMatch(VERDICT);
+  });
+
+  it.each(["en", "he"] as const)("Daily play's three picks follow the ideas, whole: what it builds, the steps, Keep the moment; no reason, no done, no plan (%s)", async (lang) => {
+    state.lang = lang; state.query = "f=offscreen";
+    vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-10-12T09:00:00.000Z"));
+    try {
+      const html = render();
+      const picks = selectDailyPlay({ ageYears: ageYearsOf(state.childProfile as never), concernDomains: [], goalDomains: [], recentlyDoneIds: [], daySeed: daySeedFor(Date.now()), interests: [], sessionLength: "standard" }, 3)
+        .map((pick) => localizeActivity(pick.activity, lang));
+      expect(picks).toHaveLength(3);
+      const away = sectionBody(html, "together-offscreen");
+      expect(away.match(/data-testid="together-away-play-/g)).toHaveLength(3);
+      // After the three ideas, in the selection's order.
+      const at = picks.map((pick) => away.indexOf(`data-testid="together-away-play-${pick.id}"`));
+      expect(at.every((n) => n > away.indexOf('data-testid="together-away-story"'))).toBe(true);
+      expect([...at].sort((a, b) => a - b)).toEqual(at);
+      for (const pick of picks) {
+        const card = playCard(html, pick.id);
+        expect(card, pick.id).not.toBe("");
+        expect(card).toContain(">eco</span>");
+        expect(card).toContain(`<h3>${esc(pick.title)}</h3>`);
+        expect(card).toContain(`<p class="together-away-detail">${esc(pick.whatItBuilds)}</p>`);
+        expect(card).toContain(`<ol class="together-away-steps">${pick.steps.map((step) => `<li>${esc(step)}</li>`).join("")}</ol>`);
+        expect(card).toMatch(/<button type="button" class="together-keep" data-testid="together-keep">/);
+        // Counts only: no reason line, no done or plan state, no number about the child.
+        const tags = card.replace(/>[^<]*</g, "><");
+        for (const gone of ["dp-reason", "dp-done", "plan-", "progress", "aria-valuenow"]) expect(tags).not.toContain(gone);
+        expect(text(card)).not.toMatch(/\d\s*%|\b\d+\s*\/\s*\d+\b|\b\d+\s+(?:of|out of)\s+\d+\b|\d+\s*מתוך\s*\d+/);
+      }
+      expect(state.buttons.filter((b) => b["data-testid"] === "together-keep")).toHaveLength(6);
+      // Keeping a pick saves the same moment an idea saves, through the caller-owned save.
+      state.buttons.filter((b) => b["data-testid"] === "together-keep")[3].onClick(); await Promise.resolve();
+      expect(state.saveMoment).toHaveBeenCalledOnce();
+      expect(state.saveMoment).toHaveBeenCalledWith(translate(lang, "companion.together-view.we-tried-together", { value0: picks[0].title }), { callerShowsFailure: true });
+    } finally { vi.useRealTimers(); }
   });
 
   it.each(["en", "he"] as const)("Keep the moment writes once through the caller-owned save, and only a kept idea says saved (%s)", async (lang) => {
     state.lang = lang; state.query = "f=offscreen";
     render();
     const keeps = state.buttons.filter((b) => b["data-testid"] === "together-keep");
-    expect(keeps).toHaveLength(3);
+    // v3 F-TOG-2 re-pin: three ideas and Daily play's three picks, each with its own keep.
+    expect(keeps).toHaveLength(6);
     keeps[0].onClick(); await Promise.resolve();
     expect(state.saveMoment).toHaveBeenCalledOnce();
     expect(state.saveMoment).toHaveBeenCalledWith(translate(lang, "companion.together-view.we-tried-together", { value0: translate(lang, "companion.offscreen.build.title") }), { callerShowsFailure: true });
@@ -300,9 +357,129 @@ describe("v3 F-TOG-2 — the five pills' cards", () => {
     expect(stories.match(/class="together-story-card" data-story="/g)?.length ?? 0).toBeGreaterThan(0);
     expect(stories).toContain('data-testid="together-create-story"');
     expect(stories).not.toContain("companion-story-card"); expect(stories).not.toContain("data-together-return");
-    for (const gone of ["companion.together-view.choose-and-preview", "companion.together-view.all-stories"]) expect(stories).not.toContain(esc(translate(lang, gone)));
     expect(text(stories)).not.toMatch(VERDICT);
   });
+
+  it.each(["en", "he"] as const)("a story started and not finished leads, chipped Continues tonight; tonight's pick follows it (%s)", (lang) => {
+    state.lang = lang; state.query = "f=stories";
+    const before = [...sectionBody(render(), "together-stories").matchAll(/data-story="([^"]+)"/g)].map((m) => m[1]);
+    expect(before.length).toBeGreaterThan(1);
+    const pick = before[before.length - 1];
+    // Invented runs: the last story on the shelf started and not finished; the first one read to its end.
+    state.runs = [
+      { id: "run-b", storyId: pick, startedAt: "2026-10-10T18:00:00.000Z" },
+      { id: "run-a", storyId: before[0], startedAt: "2026-10-01T18:00:00.000Z", completedAt: "2026-10-01T18:20:00.000Z" },
+    ];
+    const stories = sectionBody(render(), "together-stories");
+    const order = [...stories.matchAll(/data-story="([^"]+)"/g)].map((m) => m[1]);
+    expect(order[0]).toBe(pick);
+    const lead = stories.slice(stories.indexOf(`data-story="${pick}"`), stories.indexOf("</button>", stories.indexOf(`data-story="${pick}"`)));
+    expect(lead).toContain(`data-testid="together-story-continue">${esc(translate(lang, "companion.together-view.story-continue"))}</span>`);
+    expect(stories.match(/data-testid="together-story-continue"/g)).toHaveLength(1);
+    const tonight = stories.indexOf('data-testid="together-story-tonight"');
+    if (tonight >= 0) expect(stories.lastIndexOf("data-story=", tonight)).toBe(stories.indexOf(`data-story="${order[1]}"`));
+    expect(text(stories)).not.toMatch(VERDICT);
+  });
+
+  it("the Stories module renders only where its pill shows it", () => {
+    state.query = "f=games"; state.childProfile.age = 6;
+    const html = render();
+    expect(html).toContain('data-module="together-stories"');
+    expect(html).not.toContain('data-testid="together-stories"'); expect(html).not.toContain("together-story-card");
+    expect(html.match(/data-module=/g)).toHaveLength(5);
+  });
+
+  it("the copy of the retired doors, links and steps left both dictionaries", () => {
+    const GONE = [
+      ...["library", "bedtime", "comics", "family"].flatMap((k) => [`companion.story.${k}.title`, `companion.story.${k}.detail`]),
+      ...["at-this-age-shared-time-is-led-by-you-the", "explore", "illustration-of-an-open-book-building-bloc", "preview-before-playing",
+        "routines-all", "routines-areas", "routines-start", "routines-close", "story-read", "back-to-stories",
+        "you-can-put-the-screen-down-and-try-it-the", "what-feels-right-now", "all-games", "all-stories", "choose-and-preview",
+        "how-to-begin", "let-s-give-it-a-try", "more-ideas", "together-room-for-curiosity-and-connection"].map((k) => `companion.together-view.${k}`),
+    ];
+    for (const key of GONE) { expect(key in companionEn, key).toBe(false); expect(key in companionHe, key).toBe(false); }
+    // The voice-game note and the Feeds chip stay, in both languages; Hebrew "feeds" agrees with "routine" (feminine).
+    expect(companionHe["companion.together-view.routines-feeds"]).toBe("מזינה: {areas}");
+    expect(companionEn["companion.together-view.english-only"]).toBe("English only for now");
+    expect(companionHe["companion.together-view.english-only"]).toBe("כרגע רק באנגלית");
+  });
+
+  it("in Hebrew a voice game that speaks only English says so on its card, never Preview first", () => {
+    state.lang = "he"; state.childProfile.age = 6;
+    const worlds = studioWorldsForChild("he", state.childProfile as never).worlds;
+    const games = sectionBody(render(), "together-games");
+    for (const world of worlds) {
+      const card = games.match(new RegExp(`<button type="button" data-together-return="world-${world.id}" class="together-game-card">[\\s\\S]*?</button>`))?.[0] ?? "";
+      expect(card, world.id).not.toBe("");
+      expect(card).toContain(esc(translate("he", worksInLanguage(world, "he") ? "companion.together-view.preview-first" : "companion.together-view.english-only")));
+    }
+  });
+});
+
+describe("v3 F-TOG-2 — the five pills while the Shell draws no Together row", () => {
+  const pillRow = (html: string) => html.match(/<div role="group" class="together-pill-row" data-testid="together-pill-row"[^>]*>[\s\S]*?<\/div>/)?.[0] ?? "";
+  const PILLS = [["all", "all-together"], ["games", "games"], ["stories", "stories"], ["routines", "routines"], ["offscreen", "away-from-the-screen"]] as const;
+
+  it.each(["en", "he"] as const)("exactly one row of pills shows: the page's own until the Shell draws one (%s)", (lang) => {
+    state.lang = lang;
+    const shell = pillRowFor(sectionForTab("practice"), "practice").length > 1;
+    const html = render();
+    // The guard: neither row would leave a phone with no way between the pills.
+    expect(shell || html.includes('data-testid="together-pill-row"')).toBe(true);
+    expect(html.includes('data-testid="together-pill-row"')).toBe(!shell);
+    state.shellRow = true; state.buttons = [];
+    const withShell = render();
+    expect(pillRowFor(sectionForTab("practice"), "practice").length).toBeGreaterThan(1);
+    expect(withShell).not.toContain('data-testid="together-pill-row"'); expect(withShell).not.toContain("together-pill");
+    expect(withShell.match(/data-module=/g)).toHaveLength(5); expect(withShell.match(/data-primary-move=/g)).toHaveLength(1);
+  });
+
+  it.each(["en", "he"] as const)("the five pills, in order, the address's pill pressed, each a 44px button outside the budget (%s)", (lang) => {
+    state.lang = lang; state.query = "f=stories";
+    const html = render();
+    const row = pillRow(html);
+    expect(row).toContain(`aria-label="${esc(translate(lang, "nav.pills.aria", { place: translate(lang, "companion.place.together") }))}"`);
+    const pills = [...row.matchAll(/<button type="button" class="together-pill" data-pill="([a-z]+)" aria-pressed="(true|false)">([^<]*)<\/button>/g)];
+    expect(pills.map((m) => m[1])).toEqual(PILLS.map(([id]) => id));
+    expect(pills.map((m) => m[3])).toEqual(PILLS.map(([, key]) => esc(translate(lang, `companion.together-view.${key}`))));
+    expect(pills.filter((m) => m[2] === "true").map((m) => m[1])).toEqual(["stories"]);
+    expect(row).not.toContain("data-primary-move"); expect(row).not.toContain("data-module"); expect(row).not.toContain("msr");
+    expect(html.match(/data-module=/g)).toHaveLength(5); expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    // The row comes first, before the hero.
+    expect(html.indexOf('data-testid="together-pill-row"')).toBeLessThan(html.indexOf('data-module="together-invitation"'));
+    const css = readFileSync(new URL("./togetherDiscovery.css", import.meta.url), "utf8");
+    expect(css).toMatch(/\.companion-together \.together-pill \{[^}]*min-block-size: var\(--touch-min\)/);
+  });
+
+  it("a pill moves the address; the pressed pill does nothing; under three there is no Games pill", () => {
+    state.query = "f=games"; render();
+    const pill = (id: string) => state.buttons.find((b) => b["data-pill"] === id);
+    pill("games")!.onClick(); expect(state.goToRoute).not.toHaveBeenCalled();
+    pill("routines")!.onClick(); expect(state.goToRoute).toHaveBeenCalledWith("practice", { f: "routines" });
+    pill("offscreen")!.onClick(); expect(state.goToRoute).toHaveBeenLastCalledWith("practice", { f: "offscreen" });
+    state.childProfile.age = 2; state.query = ""; state.buttons = [];
+    const html = render();
+    expect([...pillRow(html).matchAll(/data-pill="([a-z]+)"/g)].map((m) => m[1])).toEqual(["all", "stories", "routines", "offscreen"]);
+  });
+});
+
+describe("v3 F-TOG-2 — every retired address that lands on Together carries its pill (TOGETHER_ARRIVAL_QUERY)", () => {
+  it.each(["en", "he"] as const)("a world link opens that world's preview over its pill; the story maker link opens the maker (%s)", (lang) => {
+    state.lang = lang; state.childProfile.age = 6;
+    const offered = studioWorldsForChild(lang, state.childProfile as never).worlds;
+    for (const [route, arrival] of Object.entries(TOGETHER_ARRIVAL_QUERY)) {
+      state.sheets = []; state.buttons = [];
+      state.query = new URLSearchParams(Object.entries(arrival).filter(([, v]) => v !== undefined) as [string, string][]).toString();
+      const html = render();
+      const pillModule = { all: null, games: "together-games", stories: "together-stories", routines: "together-routines", offscreen: "together-offscreen" }[arrival.f];
+      if (pillModule) expect(section(html, pillModule), route).not.toContain("hidden");
+      const world = arrival.world ? offered.find((w) => w.id === arrival.world) : undefined;
+      if (world) expect(html, route).toContain(`data-testid="together-world-preview" data-world="${world.id}"`);
+      else if (arrival.sheet === "create-story") expect(html, route).toContain('data-testid="together-create-sheet"');
+      else expect(state.sheets, route).toHaveLength(0);
+    }
+  });
+});
 
   it("the stylesheet: horizontal game cards from a 700px content width (110 x 104), 88 x 78 thumbs on a phone, four story columns wide, the say rule on the start side", () => {
     const css = readFileSync(new URL("./togetherDiscovery.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");

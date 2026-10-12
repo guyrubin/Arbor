@@ -1610,7 +1610,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0, readerOnl
       <div className="flex items-center justify-between">
         {/* §3f row 4 — these two measured 20 px and 16 px tall: the way out of a
             story and the way into full screen, both under the touch floor. Both
-            now clear 44 px, and both are keyed (they were English literals). */}
+            now clear 44 px, and both are keyed (they were English literals).
+            v3 F-TOG-2: in a Together sheet (readerOnly) the sheet names the
+            story and closes it, so neither the way out nor the title shows twice. */}
+        {!readerOnly && <>
         {!kidMode && (<button
           onClick={exitJourney}
           className="inline-flex items-center gap-1.5 text-sm font-bold px-2 min-h-[44px]"
@@ -1620,10 +1623,11 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0, readerOnl
               the parent's word for a catalogue. Kid Mode gets the kid-register
               line it already has; the parent door keeps its own. */}
           <Icon name="arrow_back" size={16} style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined} />{" "}
-          {kidMode ? kidsStoriesText("journey.backStories", aiLang) : readerOnly ? t("companion.together-view.back-to-stories") : t("elev.stories.reader.back")}
+          {kidMode ? kidsStoriesText("journey.backStories", aiLang) : t("elev.stories.reader.back")}
         </button>)}
         {!kidMode && <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{render.title}</span>}
-        <div className="flex items-center gap-1">
+        </>}
+        <div className="flex items-center gap-1 ms-auto">
           {!kidMode && (
             <button
               type="button"
