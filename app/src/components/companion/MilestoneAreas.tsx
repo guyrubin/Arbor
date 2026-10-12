@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
+import { useKeepsakeMigration } from "../../hooks/useKeepsakeMigration";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { ageMonthsOf } from "../../lib/age/forChild";
-import { celebrate } from "../../lib/celebrate";
 import { domainName, type DomainId } from "../../lib/domains/registry";
 import { readRitualRecord } from "../../lib/familyRitualsCadence";
 import { keepsakeDoc, keepsakeMapFromDocs, upsertKeepsake, type KeepsakeDoc, type KeepsakeDraft } from "../../lib/firstsKeepsake";
@@ -16,7 +16,7 @@ import { latestRecheckDueAt } from "../../lib/screeningRecheck";
 import { clearWatchFocus, readWatchFocus, resolveWatchFocus, writeWatchFocus, type WatchFocus } from "../../lib/screeningWatch";
 import { closeDay, deriveReturnSignals } from "../../lib/tomorrowReason";
 import FirstKeepsakeSheet from "../milestones/FirstKeepsakeSheet";
-import { hasCelebrated, markCelebrated } from "../ui/CelebrationMoment";
+import { celebrateFirstOnce } from "../milestones/celebrateFirst";
 import { Sheet, useCompactSurface } from "../ui/Sheet";
 import AreaRowDetail from "./AreaRowDetail";
 import DevelopmentMap from "./DevelopmentMap";
@@ -34,8 +34,10 @@ import { CUSTOM_MILESTONE_DOMAIN, areaFromQuery, watchDomain } from "./milestone
  * Absorbed from the old surfaces, so nothing they did is lost:
  *  · MilestonesTab: the answers write through setMilestoneObservation (the one
  *    seam), a fresh Seen it fires the capped celebration once per skill ever
- *    and then offers the note-and-date keepsake (FirstKeepsakeSheet); "Add
- *    your own" writes a custom row on the area.
+ *    (celebrateFirstOnce) and then offers the note-and-date keepsake
+ *    (FirstKeepsakeSheet), whose "Kept" waits for the write; "Add your own"
+ *    writes a custom row on the area; the one-time move of a device's legacy
+ *    keepsake map into the subcollection runs here too (useKeepsakeMigration).
  *  · PortraitWatchRow: the skill the parent chose to watch for leads its area,
  *    with the saved re-check date and Stop watching (with Undo); on a wide
  *    screen a newly chosen watch opens its row once. Tonight's return reason
@@ -127,6 +129,7 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
   const keepsakeCol = useChildCollection<KeepsakeDoc>(childProfile.id, "keepsakes");
   const keepsakes = useMemo(() => keepsakeMapFromDocs(keepsakeCol.items), [keepsakeCol.items]);
   const [keepFor, setKeepFor] = useState<string | null>(null);
+  useKeepsakeMigration(childProfile.id, keepsakeCol, keepsakes);
   const keeping = keepFor ? milestones.find((m) => m.id === keepFor) ?? null : null;
 
   const answer = (id: string, status: ObserveStatus) => {
@@ -136,9 +139,7 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
     if (!write) return write;
     write.then(() => {
       // One capped burst per skill ever, after the answer is stored (MilestonesTab's rule).
-      if (!fresh || hasCelebrated(childProfile.id, id)) return;
-      celebrate({ kind: "milestone" });
-      markCelebrated(childProfile.id, id);
+      if (fresh) celebrateFirstOnce(childProfile.id, id);
     }, () => undefined);
     return write;
   };
@@ -191,11 +192,12 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
           keepsake={keepsakes[keeping.id] ?? null}
           canShare={false}
           beforeShare={() => false}
+          // Both return the write: the sheet says "Kept" (or closes) only after it resolved.
           onSave={(draft: KeepsakeDraft) => {
             const next = upsertKeepsake(keepsakes, draft, new Date().toISOString());
-            void keepsakeCol.upsert(keepsakeDoc(next[draft.milestoneId]));
+            return keepsakeCol.upsert(keepsakeDoc(next[draft.milestoneId]));
           }}
-          onRemove={() => { void keepsakeCol.remove(keeping.id); }}
+          onRemove={() => keepsakeCol.remove(keeping.id)}
           onClose={() => setKeepFor(null)}
         />
       )}

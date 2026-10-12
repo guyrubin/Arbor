@@ -209,6 +209,17 @@ describe("IA-09 — every non-pill route has a real entry point", () => {
     expect(searchableByName("attribution")).toBe(false);
   });
 
+  it("v3 F-CHILD-1: a pending entry expires the moment its route has a home of its own", () => {
+    // EXTRA-TALK is the item that homes #/copilot (it sends the route to the
+    // Talk panel). When it, or any door, alias or redirect, lands, this entry
+    // must go, so the map can never rot into a standing excuse.
+    for (const route of Object.keys(PENDING_HOME)) {
+      const homed = callSites.has(route) || extra.has(route) || aliased.has(route) || aliasTargets.has(route)
+        || retired.has(route) || route in HASH_ALIASES;
+      expect(homed, `"${route}" has a home of its own now (EXTRA-TALK landed?): delete its PENDING_HOME entry`).toBe(false);
+    }
+  });
+
   it("NEGATIVE CONTROL: a retired route with no live redirect target FAILS", () => {
     // Same predicate, four maps that do not satisfy the contract.
     expect(retiredRouteIsReachable("ghost", {}, live)).toBe(false);                    // retired, no target

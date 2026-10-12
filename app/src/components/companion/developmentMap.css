@@ -95,6 +95,7 @@
 .area-detail-add-input { flex: 1 1 220px; min-width: 0; min-block-size: var(--touch-min); padding-inline: 14px; border: 1px solid var(--arbor-rule-strong); border-radius: var(--r); background: var(--arbor-paper-elevated); color: var(--arbor-ink); font: inherit; font-size: 14px; }
 .area-detail-add-save { display: inline-flex; align-items: center; gap: 6px; min-block-size: var(--touch-min); padding-inline: 12px 16px; border: 1px solid var(--arbor-rule-strong); border-radius: 100px; background: transparent; color: var(--arbor-ink); font-size: 13px; font-weight: 600; cursor: pointer; }
 .area-detail-add-save:disabled { cursor: default; color: var(--arbor-muted); }
+.area-detail-add-failed { flex-basis: 100%; margin-block-start: 0; }
 .area-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-block-start: 14px; border-block-start: 1px solid var(--arbor-rule); }
 .area-detail-check { display: inline-flex; align-items: center; gap: 8px; min-block-size: var(--touch-min); padding-inline: 14px 16px; border: 1px solid var(--arbor-rule-strong); border-radius: 100px; background: transparent; color: var(--arbor-ink); font-size: 14px; font-weight: 600; text-align: start; cursor: pointer; }
 .area-detail-explore { display: inline-flex; align-items: center; gap: 8px; min-block-size: var(--touch-min); padding-inline: 14px 16px; border: 1px solid var(--arbor-rule-strong); border-radius: 100px; background: transparent; color: var(--arbor-ink); font-size: 14px; font-weight: 600; text-align: start; cursor: pointer; }

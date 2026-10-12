@@ -301,8 +301,6 @@ export const companionEn = {
   "companion.door.care": "Care, together",
   // v3 FEAT-03 — the development map on My child and its domain sheet. Counts
   // only (Seen it); no total, no fraction, no not-yet number anywhere.
-  "companion.devMap.title": "Where {name} is now, across the areas",
-  "companion.devMap.check": "Do a 5-minute development check",
   "companion.devMap.none": "No record yet",
   "companion.devMap.note": "Filled = you have seen it. A blank means no record, not a missing ability.",
   "companion.devMap.explore": "Explore this with Arbor",
@@ -366,6 +364,7 @@ export const companionEn = {
   "companion.milestones.srcParent": "Parent · {date}",
   "companion.milestones.notTold": "Not told yet",
   "companion.milestones.tell": "Tell Arbor",
+  "companion.milestones.srcGoal": "What you chose to explore",
 };
 
 export const companionHe = {
@@ -670,8 +669,6 @@ export const companionHe = {
   "companion.door.learn": "בשבילכם, ההורים",
   "companion.door.care": "טיפול, ביחד",
   // v3 FEAT-03 — the development map on My child and its domain sheet.
-  "companion.devMap.title": "איפה {name} עכשיו, בכל התחומים",
-  "companion.devMap.check": "בדיקת התפתחות של 5 דקות",
   "companion.devMap.none": "עוד אין תיעוד",
   "companion.devMap.note": "מלא = ראיתם. ריק = אין תיעוד, לא יכולת חסרה.",
   "companion.devMap.explore": "לחשוב על זה עם ארבור",
@@ -732,4 +729,5 @@ export const companionHe = {
   "companion.milestones.srcParent": "הורה · {date}",
   "companion.milestones.notTold": "עוד לא סיפרתם",
   "companion.milestones.tell": "לספר לארבור",
+  "companion.milestones.srcGoal": "מה שבחרתם לחקור",
 };

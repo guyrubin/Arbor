@@ -61,8 +61,8 @@ export interface AreaRowDetailProps {
   onAnswer: (milestoneId: string, status: ObserveStatus) => Promise<unknown> | undefined;
   /** Opens the note-and-date keepsake for a first the parent just saw. */
   onKeep?: (milestoneId: string) => void;
-  /** Writes a skill the parent names on this area. */
-  onAddOwn?: (title: string) => void;
+  /** Writes a skill the parent names on this area; resolves once it is stored. */
+  onAddOwn?: (title: string) => Promise<unknown>;
   /** The chosen watch, when its skill files on this area. */
   watch?: AreaWatch | null;
   /** Restores a watch the parent just stopped, when it filed on this area. */
@@ -82,6 +82,9 @@ export default function AreaRowDetail({
   const copy = PARENT_RECORD_COPY[uiLang === "he" ? "he" : "en"];
   const [written, setWritten] = useState<{ id: string; saved: boolean; fresh: boolean } | null>(null);
   const [draft, setDraft] = useState("");
+  // "Add your own": the line clears only after the row was stored; a failed
+  // write keeps the parent's words and says so.
+  const [adding, setAdding] = useState<"idle" | "pending" | "failed">("idle");
   const byShelf = useMemo(() => groupMilestonesByShelf(milestones), [milestones]);
   const shelves = shelvesOfDomain(domain);
   const watched = watch ? shelves.flatMap((shelf) => byShelf[shelf]).find((m) => m.id === watch.milestoneId) ?? null : null;
@@ -135,9 +138,16 @@ export default function AreaRowDetail({
   const addOwn = (event: React.FormEvent) => {
     event.preventDefault();
     const words = draft.trim();
-    if (!words || !onAddOwn) return;
-    onAddOwn(words);
-    setDraft("");
+    if (!words || !onAddOwn || adding === "pending") return;
+    setAdding("pending");
+    onAddOwn(words).then(
+      () => {
+        setAdding("idle");
+        // Words typed while the write was in flight are the parent's next line: keep them.
+        setDraft((current) => (current.trim() === words ? "" : current));
+      },
+      () => setAdding("failed"),
+    );
   };
   return (
     <div className="area-detail" id={id} data-testid="area-detail" data-domain={domain} dir={uiLang === "he" ? "rtl" : "ltr"}>
@@ -205,14 +215,23 @@ export default function AreaRowDetail({
             dir="auto"
             maxLength={120}
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => { setDraft(event.target.value); if (adding === "failed") setAdding("idle"); }}
             placeholder={t("companion.milestones.addOwnHint")}
             aria-label={t("companion.milestones.addOwn")}
           />
-          <button type="submit" className="area-detail-add-save" data-testid="area-detail-add-save" disabled={!draft.trim()}>
+          <button
+            type="submit"
+            className="area-detail-add-save"
+            data-testid="area-detail-add-save"
+            disabled={!draft.trim() || adding === "pending"}
+            aria-busy={adding === "pending" || undefined}
+          >
             <Icon name="add" size={18} />
             <span>{t("companion.milestones.addOwn")}</span>
           </button>
+          {adding === "failed" && (
+            <p className="area-detail-failed area-detail-add-failed" role="alert" data-testid="area-detail-add-failed">{t("companion.devMap.saveFailed")}</p>
+          )}
         </form>
       )}
       <div className="area-detail-actions">

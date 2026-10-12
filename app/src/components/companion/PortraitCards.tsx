@@ -8,7 +8,6 @@ import { milestoneText } from "../../lib/milestoneData";
 import type { ObservationSources } from "../../lib/observations";
 import { focusGoal, goalLabel } from "../../practice/goalBuilder";
 import TellArborMore from "../describe/TellArborMore";
-import { goalGlyph } from "../practice/GoalFocusLine";
 import { Icon } from "../ui/Icon";
 import { latestKeptMoment, latestStrength } from "./milestonesModel";
 import "./developmentMap.css";
@@ -21,8 +20,12 @@ import "./developmentMap.css";
  *     undated, never given an invented date.
  *  2. A moment you kept: the newest word, first or moment the parent kept,
  *     with its day.
- *  3. What we're working on: the goal GoalFocusLine read (focusGoal); a tap
- *     opens the goal picker the page owns (GoalBuilderModal).
+ *  3. The mock's "Current focus" card, holding what GoalFocusLine read
+ *     (focusGoal, the brief's seam for the saved question); a tap opens the
+ *     goal picker the page owns (GoalBuilderModal). It keeps the label
+ *     "What we're working on": the one-focus copy pin bans a second "focus"
+ *     word on this page, so the mock's label is a recorded departure. The
+ *     icon (bookmark) and the source line follow the mock.
  *
  * A card with nothing to show says "Not told yet" and offers "Tell Arbor"
  * (the describe conversation for a strength, the capture sheet for a
@@ -88,11 +91,15 @@ export default function PortraitCards({ sources, onEditGoal }: PortraitCardsProp
       </article>
       <button type="button" className="portrait-card portrait-card-goal" data-testid="portrait-goals-edit" onClick={onEditGoal}>
         <span className="portrait-card-label">
-          <Icon name={goal ? goalGlyph(goal) : "add"} size={18} />
+          <Icon name="bookmark" size={18} />
           <span>{t("elev.goal.profile.title")}</span>
         </span>
         <span className="portrait-card-words">{goal ? <bdi>{goalLabel(goal, t)}</bdi> : t("elev.goal.profile.empty")}</span>
-        {goal && <span className="portrait-card-src portrait-card-change">{t("elev.goal.profile.edit")}</span>}
+        {goal && (
+          <span className="portrait-card-src" data-testid="portrait-goal-src">
+            {t("companion.milestones.srcGoal")} · <span className="portrait-card-change">{t("elev.goal.profile.edit")}</span>
+          </span>
+        )}
       </button>
       {telling && <TellArborMore onClose={() => setTelling(false)} />}
     </div>

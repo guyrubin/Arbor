@@ -289,31 +289,90 @@ describe("v3 F-CHILD-1 — the watched skill leads its area", () => {
 });
 
 describe("v3 F-CHILD-1 — Add your own", () => {
-  it.each(["en", "he"] as const)("writes the parent's words on this area and clears the line (%s)", lang => {
+  const typeLine = (value: string) => state.inputs.find(i => i["data-testid"] === "area-detail-add-input")!.onChange!({ target: { value } });
+  const deferred = () => {
+    let resolve!: () => void;
+    let reject!: (e: Error) => void;
+    const promise = new Promise<void>((res, rej) => { resolve = res; reject = rej; });
+    return { promise, resolve, reject };
+  };
+
+  // RE-PIN (v3 F-CHILD-1 review): the line cleared synchronously on submit;
+  // it now clears only after the write resolved.
+  it.each(["en", "he"] as const)("writes the parent's words on this area and clears the line once stored (%s)", async lang => {
     state.lang = lang;
     state.keepState = true;
-    const onAddOwn = vi.fn();
+    const onAddOwn = vi.fn((_title: string) => Promise.resolve());
     let html = render({ onAddOwn });
     expect(html).toContain('data-testid="area-detail-add"');
     expect(html).toContain(`placeholder="${esc(translate(lang, "companion.milestones.addOwnHint"))}"`);
     expect(html).toContain(`aria-label="${esc(translate(lang, "companion.milestones.addOwn"))}"`);
     expect(html).toMatch(/data-testid="area-detail-add-save" disabled=""/);
-    state.inputs.find(i => i["data-testid"] === "area-detail-add-input")!.onChange!({ target: { value: "  Says hello to the cat  " } });
+    typeLine("  Says hello to the cat  ");
     html = render({ onAddOwn });
     expect(html).not.toMatch(/data-testid="area-detail-add-save" disabled=""/);
     const preventDefault = vi.fn();
     state.forms[0].onSubmit!({ preventDefault });
     expect(preventDefault).toHaveBeenCalledOnce();
     expect(onAddOwn).toHaveBeenCalledWith("Says hello to the cat");
+    await tick();
     html = render({ onAddOwn });
+    expect(html).toContain('value=""');
     expect(html).toMatch(/data-testid="area-detail-add-save" disabled=""/);
+    expect(html).not.toContain('data-testid="area-detail-add-failed"');
+  });
+
+  it("the words stay while the write is in flight, and a second submit waits for it", async () => {
+    state.keepState = true;
+    const write = deferred();
+    const onAddOwn = vi.fn((_title: string) => write.promise);
+    render({ onAddOwn });
+    typeLine("Waves bye");
+    render({ onAddOwn });
+    state.forms[0].onSubmit!({ preventDefault: vi.fn() });
+    let html = render({ onAddOwn });
+    expect(html).toContain('value="Waves bye"');
+    expect(html).toMatch(/data-testid="area-detail-add-save" disabled="" aria-busy="true"/);
+    state.forms[0].onSubmit!({ preventDefault: vi.fn() });
+    expect(onAddOwn).toHaveBeenCalledOnce();
+    write.resolve();
+    await tick();
+    html = render({ onAddOwn });
+    expect(html).toContain('value=""');
+    expect(html).not.toContain('aria-busy="true"');
+  });
+
+  it.each(["en", "he"] as const)("a failed write keeps the words and says it was not saved (%s)", async lang => {
+    state.lang = lang;
+    state.keepState = true;
+    const onAddOwn = vi.fn((_title: string): Promise<void> => Promise.reject(new Error("offline")));
+    render({ onAddOwn });
+    typeLine("Waves bye");
+    render({ onAddOwn });
+    state.forms[0].onSubmit!({ preventDefault: vi.fn() });
+    await tick();
+    let html = render({ onAddOwn });
+    expect(html).toContain('value="Waves bye"');
+    expect(html).toContain('data-testid="area-detail-add-failed"');
+    expect(html).toContain(esc(translate(lang, "companion.devMap.saveFailed")));
+    expect(html).not.toMatch(/data-testid="area-detail-add-save" disabled=""/);
+    // Editing the line clears the failure; a retry that lands clears the line.
+    typeLine("Waves bye-bye");
+    html = render({ onAddOwn });
+    expect(html).not.toContain('data-testid="area-detail-add-failed"');
+    onAddOwn.mockImplementation(() => Promise.resolve());
+    state.forms[0].onSubmit!({ preventDefault: vi.fn() });
+    expect(onAddOwn).toHaveBeenLastCalledWith("Waves bye-bye");
+    await tick();
+    html = render({ onAddOwn });
+    expect(html).toContain('value=""');
   });
 
   it("an empty line writes nothing", () => {
     state.keepState = true;
-    const onAddOwn = vi.fn();
+    const onAddOwn = vi.fn((_title: string) => Promise.resolve());
     render({ onAddOwn });
-    state.inputs.find(i => i["data-testid"] === "area-detail-add-input")!.onChange!({ target: { value: "   " } });
+    typeLine("   ");
     render({ onAddOwn });
     state.forms[0].onSubmit!({ preventDefault: vi.fn() });
     expect(onAddOwn).not.toHaveBeenCalled();

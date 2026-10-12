@@ -24,7 +24,11 @@ const state = vi.hoisted(() => ({
   screenings: [] as { id: string; answeredAt: string; recheckDueAt?: string }[],
   watch: null as WatchFocus | null,
   celebrated: false,
-  setActiveTab: vi.fn(), seedCoach: vi.fn(), openCaptureSheet: vi.fn(), addCustomMilestone: vi.fn(),
+  setActiveTab: vi.fn(), seedCoach: vi.fn(), openCaptureSheet: vi.fn(),
+  addCustomMilestone: vi.fn((_title: string, _domain: string): Promise<void> => Promise.resolve()),
+  keepUpsert: vi.fn((_doc: unknown): Promise<void> => Promise.resolve()),
+  keepRemove: vi.fn((_id: string): Promise<void> => Promise.resolve()),
+  sheet: null as null | { milestoneId: string; onSave: (draft: { milestoneId: string; note: string; noticedOn: string }) => Promise<unknown>; onRemove: () => Promise<unknown> },
   setMilestoneObservation: vi.fn((_id: string, _status: Answer): Promise<void> | undefined => Promise.resolve()),
   goToRoute: vi.fn(), celebrate: vi.fn(), markCelebrated: vi.fn(), clearWatchFocus: vi.fn(), writeWatchFocus: vi.fn(),
   keepState: false, cursor: 0, hooks: [] as unknown[],
@@ -54,7 +58,9 @@ vi.mock("../../context/LanguageContext", async () => {
 vi.mock("../../hooks/useObservationRecord", () => ({ useObservationRecord: () => ({ observations: state.observations, sources: state.sources, reload: vi.fn() }) }));
 vi.mock("../../hooks/useChildCollection", async original => ({
   ...(await original<typeof import("../../hooks/useChildCollection")>()),
-  useChildCollection: (_childId: string, name: string) => ({ items: name === "screenings" ? state.screenings : [], upsert: vi.fn(), remove: vi.fn() }),
+  useChildCollection: (_childId: string, name: string) => (name === "keepsakes"
+    ? { items: [], upsert: state.keepUpsert, remove: state.keepRemove }
+    : { items: name === "screenings" ? state.screenings : [], upsert: vi.fn(), remove: vi.fn() }),
 }));
 vi.mock("../../hooks/useHashQuery", async original => ({
   ...(await original<typeof import("../../hooks/useHashQuery")>()),
@@ -84,7 +90,10 @@ vi.mock("../ui/Sheet", async original => ({
 // The goal picker, the describe conversation and the keepsake sheet have their own tests.
 vi.mock("../practice/GoalBuilderModal", () => ({ default: ({ childId }: { childId: string }) => <div data-testid="goal-builder" data-child={childId} /> }));
 vi.mock("../describe/TellArborMore", () => ({ default: () => <div data-testid="tell-arbor" /> }));
-vi.mock("../milestones/FirstKeepsakeSheet", () => ({ default: ({ milestoneId }: { milestoneId: string }) => <div data-testid="keepsake-sheet" data-milestone={milestoneId} /> }));
+vi.mock("../milestones/FirstKeepsakeSheet", () => ({ default: (props: NonNullable<typeof state.sheet>) => {
+  state.sheet = props;
+  return <div data-testid="keepsake-sheet" data-milestone={props.milestoneId} />;
+} }));
 const capture = vi.hoisted(() => (type: unknown, props: unknown) => {
   if (!props || typeof props !== "object") return;
   if ("onAnswer" in props && "ariaLabel" in props) state.segments.push(props as typeof state.segments[number]);
@@ -140,7 +149,7 @@ const t = (lang: "en" | "he") => (key: string) => translate(lang, key);
 beforeEach(() => {
   vi.clearAllMocks();
   state.lang = "en"; state.compact = false; state.query = ""; state.profile = profile(); state.milestones = catalogue();
-  state.observations = []; state.sources = { behaviorLogs: [] }; state.screenings = []; state.watch = null; state.celebrated = false;
+  state.observations = []; state.sources = { behaviorLogs: [] }; state.screenings = []; state.watch = null; state.celebrated = false; state.sheet = null;
   state.setMilestoneObservation.mockImplementation(() => Promise.resolve());
   state.keepState = false; state.cursor = 0; state.hooks = []; state.buttons = []; state.segments = []; state.inputs = []; state.forms = [];
 });
@@ -224,6 +233,9 @@ describe("v3 F-CHILD-1 — the portrait cards", () => {
     const goal = html.slice(html.indexOf('data-testid="portrait-goals-edit"'), html.indexOf('data-testid="dev-map"'));
     expect(goal).toContain(esc(translate(lang, "elev.goal.profile.title")));
     expect(goal).toContain(esc(translate(lang, "elev.goal.profile.empty")));
+    // The mock's card icon; the source line shows only once a goal is chosen.
+    expect(goal).toMatch(/<span class="msr[^"]*"[^>]*>bookmark<\/span>/);
+    expect(goal).not.toContain('data-testid="portrait-goal-src"');
     // The first two cards are wide-screen only (CSS); the goal card stays on a phone.
     expect(html.match(/class="portrait-card portrait-card-wide"/g)).toHaveLength(2);
     expect(html).toContain('class="portrait-card portrait-card-goal"');
@@ -363,6 +375,26 @@ describe("v3 F-CHILD-1 — answers, firsts and the chosen watch", () => {
     button("area-detail-keep")!.onClick!();
     html = render();
     expect(html).toContain(`data-testid="keepsake-sheet" data-milestone="${id}"`);
+  });
+
+  it("the keepsake sheet's save and remove hand back the write itself, so its receipt waits for it", async () => {
+    state.keepState = true;
+    state.query = "area=talking";
+    const id = render().match(/data-testid="area-detail-skill" data-milestone="([^"]+)"/)![1];
+    state.segments[0].onAnswer("yes");
+    await tick();
+    render();
+    button("area-detail-keep")!.onClick!();
+    render();
+    expect(state.sheet?.milestoneId).toBe(id);
+    const stored = Promise.resolve();
+    state.keepUpsert.mockReturnValueOnce(stored);
+    expect(state.sheet!.onSave({ milestoneId: id, note: "  Said it twice  ", noticedOn: "2026-06-10" })).toBe(stored);
+    expect(state.keepUpsert).toHaveBeenCalledWith(expect.objectContaining({ id, milestoneId: id, note: "Said it twice", noticedOn: "2026-06-10" }));
+    const gone = Promise.resolve();
+    state.keepRemove.mockReturnValueOnce(gone);
+    expect(state.sheet!.onRemove()).toBe(gone);
+    expect(state.keepRemove).toHaveBeenCalledWith(id);
   });
 
   it("a skill already celebrated is not celebrated again; a failed write celebrates nothing", async () => {

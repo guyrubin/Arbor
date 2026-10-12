@@ -1834,9 +1834,10 @@ function useArborState() {
     track("voice_proposal_undone", { target: record.target });
   };
 
-  // Add a custom milestone to a chosen domain
+  // Add a custom milestone to a chosen domain. v3 F-CHILD-1: returns the
+  // write, so "Add your own" clears its line only after the row was stored.
   const addCustomMilestone = (title: string, domain: DevelopmentalDomainId) => {
-    void milestonesCol.upsert({
+    return milestonesCol.upsert({
       id: `ms-${Date.now()}`,
       domain,
       ageGroup: "Custom",
