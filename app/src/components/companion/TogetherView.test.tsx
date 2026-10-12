@@ -7,12 +7,14 @@ const state = vi.hoisted(() => ({
   childProfile: { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] },
   previewWorld: null as StudioWorld | null, lang: "en" as "en" | "he", loaded: true, failed: false, hasPlay: true,
   saveMoment: vi.fn(async () => true), setActiveTab: vi.fn(), requestKidMode: vi.fn(), buttons: [] as Record<string, any>[],
+  topic: null as null | { id: string; title: string }, openSheet: vi.fn(),
 }));
 vi.mock("react", async (original) => {
   const real = await original<typeof import("react")>();
   return { ...real, useState: (initial: any) => real.useState(state.previewWorld && initial && typeof initial === "object" && "value" in initial ? { ...initial, value: { kind: "world", world: state.previewWorld } } : initial) };
 });
-vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ ...state, activeFamilyTopic: null }) }));
+vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ ...state, activeFamilyTopic: state.topic }) }));
+vi.mock("./familyTopicEvents", () => ({ openFamilyTopicSheet: (...args: unknown[]) => state.openSheet(...args) }));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };
@@ -46,7 +48,7 @@ import { translate } from "../../lib/i18n";
 import { STUDIO_WORLDS } from "../practice/studioWorlds";
 beforeEach(() => {
   vi.clearAllMocks(); state.childProfile = { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] };
-  state.previewWorld = null; state.lang = "en"; state.loaded = true; state.failed = false; state.hasPlay = true; state.buttons = [];
+  state.previewWorld = null; state.lang = "en"; state.loaded = true; state.failed = false; state.hasPlay = true; state.buttons = []; state.topic = null;
   const data = new Map<string, string>();
   vi.stubGlobal("sessionStorage", { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) });
 });
@@ -109,5 +111,48 @@ describe("Together's compact discovery", () => {
     expect(css).not.toMatch(/line-clamp|text-overflow|overflow:\s*hidden/);
     expect(css.match(/font-family:/g)).toHaveLength(1);
     expect(css).toMatch(/\.companion-together \.companion-say,\s*\.companion-preview \.companion-say \{ font-family: var\(--font-sans\); font-size: var\(--t-base\); font-style: normal; line-height: 1\.6 !important;/);
+  });
+});
+
+describe("FEAT-05 — the question line on Together opens the question sheet", () => {
+  const QUESTION = { id: "topic-a", title: "What helps bedtime feel calmer?" };
+  const chipMarkup = (html: string) => html.match(/<button[^>]*data-testid="together-topic-chip"[\s\S]*?<\/button>/)?.[0] ?? "";
+
+  it.each(["en", "he"] as const)("is one button carrying the lead-in and the question, outside the module budget (%s)", (lang) => {
+    state.lang = lang; state.topic = QUESTION;
+    const html = render();
+    const chip = state.buttons.find((b) => b["data-testid"] === "together-topic-chip");
+    expect(chip).toBeDefined();
+    expect(chip!.type).toBe("button");
+    expect(chip!["aria-haspopup"]).toBe("dialog");
+    // Text only: the bookmark glyph, the lead-in and the question — never a count, dot or state.
+    expect(chipMarkup(html).replace(/<[^>]+>/g, "")).toBe(`bookmark${translate(lang, "companion.together-view.your-question-stays-with-you")}${QUESTION.title}`);
+    // The "enough to enjoy" caption stays a sentence beside the button, not inside it.
+    const caption = translate(lang, "companion.together-view.here-it-is-also-enough-just-to-enjoy");
+    expect(chipMarkup(html)).not.toContain(caption);
+    expect(html).toContain(caption);
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1); expect(html.match(/data-module=/g)).toHaveLength(4);
+    chip!.onClick();
+    expect(state.openSheet).toHaveBeenCalledOnce();
+    expect(state.openSheet).toHaveBeenCalledWith();
+    expect(state.saveMoment).not.toHaveBeenCalled(); expect(state.setActiveTab).not.toHaveBeenCalled();
+  });
+
+  it("renders no chip and no empty pill without an active question", () => {
+    const html = render();
+    expect(html).not.toContain("companion-topic-context");
+    expect(html).not.toContain("companion-topic-chip");
+    expect(state.buttons.some((b) => b["data-testid"] === "together-topic-chip")).toBe(false);
+  });
+
+  it("draws the line with logical properties on the shared 44px chip", () => {
+    expect(readFileSync(new URL("./TogetherView.tsx", import.meta.url), "utf8")).toContain('import "./companionWorkspace.css";');
+    const workspace = readFileSync(new URL("./companionWorkspace.css", import.meta.url), "utf8");
+    expect(/\.companion-topic-chip \{([^}]*)\}/.exec(workspace)?.[1] ?? "").toMatch(/min-block-size: 44px/);
+    const experience = readFileSync(new URL("./companionExperience.css", import.meta.url), "utf8");
+    const rules = experience.split("\n").filter((line) => line.includes(".companion-topic-context")).join("\n");
+    expect(rules).not.toBe("");
+    expect(rules).not.toMatch(/\b(?:left|right|margin-left|margin-right|padding-left|padding-right)\s*:/);
+    expect(rules).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
 });

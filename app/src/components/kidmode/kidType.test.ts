@@ -45,6 +45,7 @@ describe("kid type tokens", () => {
 describe("kid files ask for no faux bold and no parent-scale type", () => {
   const files: [string, string][] = [
     ["KidModeOverlay.tsx", read("KidModeOverlay.tsx")],
+    ["KidDashboard.tsx", read("KidDashboard.tsx")],
     ["game/GameShell.tsx", read("game", "GameShell.tsx")],
     ["KidBookCover.tsx", read("KidBookCover.tsx")],
     ["KidLibrary.tsx", read("KidLibrary.tsx")],

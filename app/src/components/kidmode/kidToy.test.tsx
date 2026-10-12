@@ -56,8 +56,7 @@ describe("the toy recipe (index.css, .arbor-play only)", () => {
     expect(reduced).toContain(".arbor-play .kid-toy:active { transform: translateY(calc(var(--toy-depth) - 1px)); }");
     expect(reduced).not.toContain("scale(");
     expect(css).toContain("--kid-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);");
-    for (const k of ["kid-pop-in", "kid-bob", "kid-drop", "kid-wobble", "kid-fade-in"]) expect(css).toContain(`@keyframes ${k}`);
-    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.arbor-play \.kid-pop-in \{ animation: kid-fade-in/);
+    for (const k of ["kid-pop-in", "kid-bob", "kid-drop", "kid-wobble"]) expect(css).toContain(`@keyframes ${k}`);
   });
   it("every selector in the kid language is scoped under .arbor-play (the parent register never moves)", () => {
     const block = css.slice(css.indexOf("KID UI LANGUAGE v1"), css.indexOf("NATIVE SAFE AREAS"));
@@ -67,6 +66,34 @@ describe("the toy recipe (index.css, .arbor-play only)", () => {
     const topLevel = (sel: string) => { const out: string[] = []; let depth = 0, cur = ""; for (const ch of sel) { if (ch === "(") depth++; if (ch === ")") depth--; if (ch === "," && depth === 0) { out.push(cur); cur = ""; } else cur += ch; } out.push(cur); return out; };
     for (const sel of selectors) for (const part of topLevel(sel)) expect(part.trim(), part).toMatch(/\.arbor-play/);
     expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
+});
+
+describe("child entrance visibility", () => {
+  const motion = css.slice(css.indexOf("── D-02 · Shape + motion"), css.indexOf("── D-03 · Kid type"));
+  const firstFrame = (name: string) => new RegExp(`@keyframes ${name}\\s*\\{\\s*(?:0%|from)\\s*\\{([^}]+)\\}`).exec(css)?.[1] ?? "";
+
+  it("keeps child content visible at frame zero, including delayed or paused entrances", () => {
+    for (const name of ["kid-pop-in", "kid-drop"]) {
+      expect(firstFrame(name), name).toMatch(/opacity:\s*1\s*;/);
+      expect(firstFrame(name), name).not.toMatch(/(?:visibility:\s*hidden|display:\s*none|scale\(0\))/);
+    }
+    // Shared scenes retain the parent fade by default, with an inherited
+    // child-only override. This also covers world tiles using play-pop-in.
+    expect(firstFrame("play-pop-in")).toMatch(/opacity:\s*var\(--kid-entry-opacity,\s*0\)\s*;/);
+    const scopes = [...css.matchAll(/([^{}]+)\{[^{}]*--kid-entry-opacity:\s*1\s*;[^{}]*\}/g)];
+    expect(scopes).toHaveLength(1);
+    expect(scopes[0][1].trim()).toMatch(/\.arbor-play$/);
+  });
+
+  it("removes child entrances for reduced motion without overriding disabled states or pointer access", () => {
+    const reduced = motion.slice(motion.indexOf("@media (prefers-reduced-motion: reduce)"));
+    const stopped = /([^{}]+)\{\s*animation:\s*none\s*;\s*\}/.exec(reduced)?.[1] ?? "";
+    for (const name of ["play-pop-in", "kid-pop-in", "kid-drop", "kid-bob", "kid-wobble"]) {
+      expect(stopped).toContain(`.arbor-play .${name}`);
+    }
+    expect(reduced).not.toMatch(/opacity:|pointer-events:|visibility:|display:|animation-delay:/);
+    expect(reduced).not.toContain("kid-fade-in");
   });
 });
 

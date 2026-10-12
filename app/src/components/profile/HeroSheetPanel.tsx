@@ -21,6 +21,7 @@ import { heroSheetStoreFor } from "../../lib/heroSheetStore";
 import { useHeroSheetDocs } from "../kidmode/hero/useHeroSheet";
 import BookSheetStrip from "./BookSheetStrip";
 import type { ChildProfile } from "../../types";
+import { resolveHeroUrl } from "../../lib/heroIdentity";
 
 /** The parent-register key for this child's grammatical form (HE). */
 export const formKeyFor = (base: string, gender?: ChildProfile["gender"]) =>
@@ -28,11 +29,12 @@ export const formKeyFor = (base: string, gender?: ChildProfile["gender"]) =>
 
 const muted: React.CSSProperties = { color: "var(--arbor-muted)" };
 
-export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "id" | "name" | "gender" | "photoUrl" | "avatar"> }) {
+export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "id" | "name" | "gender" | "photoUrl" | "avatar"> & { comicAvatarUrl?: string } }) {
   const { t } = useLanguage();
   const docs = useHeroSheetDocs(child.id);
   const status = docs?.meta?.status;
   const metaHash = docs?.meta?.avatarHash;
+  const heroUrl = resolveHeroUrl(child);
   const [busy, setBusy] = useState<Partial<Record<HeroSheetPoseId, "redraw">>>({});
   const [failed, setFailed] = useState<Partial<Record<HeroSheetPoseId, boolean>>>({});
   useEffect(() => {
@@ -40,9 +42,9 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
     void resumeHeroSheet(child, docs);
     // Resume once per (child, hero, status) — not on every pose written.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [child.id, child.photoUrl, status, metaHash, docs === undefined]);
+  }, [child.id, heroUrl, status, metaHash, docs === undefined]);
 
-  const hash = typeof child.photoUrl === "string" && child.photoUrl.startsWith("data:image/") ? heroAvatarHash(child.photoUrl) : null;
+  const hash = heroUrl ? heroAvatarHash(heroUrl) : null;
   const meta = docs?.meta && hash && docs.meta.avatarHash === hash ? docs.meta : null;
   if (!meta || !docs || !hash) return null;
   const name = { name: child.name };

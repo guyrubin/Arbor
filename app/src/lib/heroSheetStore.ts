@@ -28,6 +28,16 @@ export const HERO_SHEET_COLLECTION = "heroSheet";
 /** Fired on window when the sandbox copy changes (same-tab listeners). */
 export const HERO_SHEET_EVENT = "arbor:heroSheet";
 
+/** Read-only identity seam for kid render caches. SDK/auth access stays at
+ * this storage boundary; consumers receive only a scope key and unsubscribe. */
+export function heroSheetOwnerKey(): string {
+  return firebaseEnabled ? auth?.currentUser?.uid ?? "signed-out" : "local-sandbox";
+}
+
+export function subscribeHeroSheetOwner(changed: () => void): () => void {
+  return firebaseEnabled && auth ? onAuthStateChanged(auth, changed) : () => {};
+}
+
 export interface HeroSheetDocs {
   meta: HeroSheetMetaDoc | null;
   poses: Partial<Record<HeroSheetPoseId, HeroSheetPoseDoc>>;

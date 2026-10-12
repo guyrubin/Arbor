@@ -4,16 +4,24 @@
  *  then through the conversation's ONE Talk path (CoachTab toggleVoice), never
  *  a second voice path. */
 export const COMPANION_CONVERSATION_EVENT = "arbor:open-conversation";
-export type CompanionConversationRequest = { prompt?: string; source?: string; voice?: boolean };
+/** FEAT-01: the conversation header's menu reaches controls the conversation
+ *  itself owns, through this same door — "history" brings the history row into
+ *  view, "tone" opens the ONE ToneSheet. Neither sends a message. Like a voice
+ *  request it is held until claimed, so a choice made while the conversation is
+ *  still loading is answered when it mounts, not dropped. */
+export type CompanionPanelRequest = "history" | "tone";
+export type CompanionConversationRequest = { prompt?: string; source?: string; voice?: boolean; panel?: CompanionPanelRequest };
 
 /** How long a spoken-conversation request stays claimable. The panel may still
  *  be loading when the tap lands; past this window the request is dropped, so
  *  a microphone can never open long after the tap that asked for it. */
 export const CONVERSATION_VOICE_REQUEST_TTL_MS = 15_000;
 let voiceRequestedAt: number | null = null;
+let panelRequest: { panel: CompanionPanelRequest; at: number } | null = null;
 
 export function requestCompanionConversation(detail: CompanionConversationRequest = {}, now: number = Date.now()) {
   if (detail.voice) voiceRequestedAt = now;
+  if (detail.panel) panelRequest = { panel: detail.panel, at: now };
   if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(COMPANION_CONVERSATION_EVENT, { detail }));
 }
 
@@ -28,4 +36,12 @@ export function consumeConversationVoiceRequest(now: number = Date.now()): boole
 /** A request is waiting (does not consume it). */
 export function conversationVoiceRequestPending(): boolean {
   return voiceRequestedAt !== null;
+}
+
+/** The latest menu request ("history" / "tone"), once, and only while fresh
+ *  (the same window as a voice request). Always clears it, fresh or not. */
+export function consumeConversationPanelRequest(now: number = Date.now()): CompanionPanelRequest | null {
+  const request = panelRequest;
+  panelRequest = null;
+  return request && now - request.at >= 0 && now - request.at <= CONVERSATION_VOICE_REQUEST_TTL_MS ? request.panel : null;
 }

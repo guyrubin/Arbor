@@ -10,7 +10,24 @@
 .companion-conversation-heading { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-block-end: 1px solid var(--arbor-rule); flex-shrink: 0; }
 .companion-conversation-identity { flex: 1; min-inline-size: 0; }
 .companion-conversation-identity h2 { font-family: var(--font-display); font-size: 23px; font-weight: 500; margin: 0; }
-.companion-conversation-identity span { display: block; font-size: 13px; color: var(--arbor-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.companion-conversation-context { display: flex; align-items: center; gap: 8px; min-inline-size: 0; }
+/* The name keeps its letters beside a question; only a very long name yields
+   (ellipsis at half the row), and alone it takes the whole line. */
+.companion-conversation-name { flex: 0 0 auto; min-inline-size: 0; max-inline-size: 50%; font-size: 13px; color: var(--arbor-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.companion-conversation-name:only-child { flex-shrink: 1; max-inline-size: 100%; }
+/* FEAT-05 — the question chip (conversation header and Together): a 44px hit
+   area around a quiet tinted pill. Text only — never a count, dot or state.
+   Shared with TogetherView, which imports this file for it. */
+.companion-topic-chip { display: inline-flex; align-items: center; flex: 0 1 auto; min-inline-size: 44px; max-inline-size: 100%; min-block-size: 44px; padding: 0; border: 0; border-radius: var(--r-lg); background: transparent; color: var(--arbor-clay-deep); font-size: 13px; font-weight: 600; line-height: 1.35; text-align: start; cursor: pointer; }
+.companion-topic-chip-pill { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; max-inline-size: 100%; min-block-size: 30px; padding-block: 4px; padding-inline: 9px 12px; border-radius: 15px; background: var(--arbor-clay-dim); transition: background-color 160ms; }
+.companion-topic-chip:hover .companion-topic-chip-pill { background: color-mix(in srgb, var(--arbor-clay) 20%, transparent); }
+.companion-topic-chip-icon { color: var(--arbor-clay-deep); }
+.companion-topic-chip-text { min-inline-size: 0; overflow-wrap: anywhere; }
+/* In the header the chip shares one line with the child's name: it keeps the
+   header compact (the hit area overhangs the row, not other controls) and a
+   long question ends in an ellipsis; its full words are the button's name. */
+.companion-conversation-context .companion-topic-chip { margin-block: -7px; }
+.companion-conversation-context .companion-topic-chip-text { max-inline-size: 28ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .companion-chrome-button { display: inline-flex; align-items: center; justify-content: center; min-inline-size: 44px; min-block-size: 44px; border-radius: var(--r-sm); color: var(--arbor-muted); background: transparent; }
 .companion-chrome-button:hover { background: var(--arbor-paper-deep); }
 .companion-workspace-backdrop { position: fixed; inset: 0; z-index: 45; background: color-mix(in srgb,var(--arbor-ink) 22%,transparent); }
@@ -44,3 +61,19 @@
   .companion-launcher { flex-wrap: wrap; }
   .companion-launch-main { flex-basis: 100%; }
 }
+
+/* FEAT-01 — the Ask Arbor bar carries the family question as one quiet line,
+   "On: <question>", and the conversation header gathers its options in one
+   menu. Text only: never a count, dot or badge. The line never wraps: a long
+   question ends in an ellipsis at the inline end.
+   Logical properties only, so Hebrew mirrors; every item keeps the 44 px floor. */
+.companion-launch-topic { display: block; min-inline-size: 0; max-inline-size: 100%; margin-block-start: 1px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--arbor-muted); font-size: 12px; font-weight: 500; line-height: 1.35; }
+.companion-launch-topic-text { color: var(--arbor-ink-soft); font-weight: 600; }
+.companion-panel-menu-wrap { position: relative; display: flex; flex: none; }
+.companion-panel-menu-wrap > [aria-expanded="true"] { background: var(--arbor-paper-deep); color: var(--arbor-ink); }
+.companion-panel-menu { position: absolute; inset-block-start: calc(100% + 6px); inset-inline-end: 0; z-index: 40; display: flex; flex-direction: column; gap: 2px; inline-size: min(280px, calc(100vw - 32px)); padding: 6px; border: 1px solid var(--arbor-rule-strong); border-radius: var(--r-lg); background: var(--arbor-paper-elevated); box-shadow: var(--arbor-shadow-primary); }
+.companion-panel-menu-item { display: flex; align-items: center; gap: 12px; inline-size: 100%; min-block-size: 44px; padding-block: 8px; padding-inline: 12px; border-radius: var(--r-sm); color: var(--arbor-ink); font-size: var(--t-sm); font-weight: 600; line-height: 1.35; text-align: start; }
+.companion-panel-menu-item:hover, .companion-panel-menu-item:focus-visible { background: var(--arbor-paper-deep); }
+.companion-panel-menu .companion-panel-menu-item:focus-visible { outline-offset: -2px; }
+.companion-panel-menu-icon { flex: none; color: var(--arbor-muted); }
+.companion-panel-menu-label { min-inline-size: 0; overflow-wrap: anywhere; }

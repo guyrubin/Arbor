@@ -94,7 +94,9 @@ export async function collectDiagnostics(output, bundle) {
                 });
               }
               if (vp.width >= 1280) await record('panel-expanded', async () => {
-                await page.locator('.companion-conversation-heading .companion-chrome-button').first().click();
+                // FEAT-01: Expand lives in the header's options menu.
+                await page.locator('[data-testid=companion-panel-menu]').click();
+                await page.locator('[data-testid=companion-panel-menu-widen]').click();
                 await page.locator('.companion-workspace.is-expanded').waitFor({ state: 'visible' });
                 await page.locator('[data-testid=coach-answer-cards]').last().evaluate((el) => el.scrollIntoView({ block: 'start' }));
               });

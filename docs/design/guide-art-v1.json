@@ -1,0 +1,141 @@
+{
+  "created": "2026-10-12",
+  "status": "planned: no picture made yet. Making the twelve needs image-model spend or a commission, which is Guy's call; until a topic ships, the Now guide card keeps its own shapes and medallion.",
+  "model": "gemini-3-pro-image (planned, as for parent-art-v1; a commission replaces it if chosen)",
+  "method": "Text-only prompts, no reference image of any family, child or avatar. One or more candidates per topic, the best chosen by eye and checked for no person, face, hand or text; exported to 960x540 and 480x270 WebP, each at most 120 KB. Style brief: app/public/visuals/guides/README.md.",
+  "rules": "Objects only: never a person, a face, a hand, an animal or toy with a face, a letter, a number or a logo; no text in any picture, so one file serves EN and HE; the left (inline-start) 45% stays calm for the title, and the app mirrors the picture in RTL.",
+  "assets": [
+    {
+      "file": "mornings",
+      "status": "planned",
+      "aspect": "16:9",
+      "outputs": [],
+      "model": null,
+      "date": null,
+      "reviewer": null,
+      "references": [],
+      "prompt": "A wide 16:9 editorial still life for Arbor, a calm parenting app for adults. Scene: a breakfast table in early morning light with two bowls, a small jug of milk and a plate of sliced fruit; a small backpack rests against the chair. Hand-painted gouache and watercolour with soft pencil contours, refined magazine art, adult aesthetic; warm ivory, navy, sapphire, muted sage and restrained yellow; warm daylight, painterly shadows, light paper grain. Composition: every object sits in the right 55% of the frame; the left 45% is calm, low-detail wall, tabletop or floor with room for a title, and the picture must still read well when mirrored, so nothing is directional or handed. No people, no faces, no hands, no text: no body parts, no animals or toys with faces, no letters, numbers, logos or signs, no screen showing anything, no UI and no frame. All objects fully visible, generous breathing room. An illustration, never a photograph of a real family."
+    },
+    {
+      "file": "drop-off",
+      "status": "planned",
+      "aspect": "16:9",
+      "outputs": [],
+      "model": null,
+      "date": null,
+      "reviewer": null,
+      "references": [],
+      "prompt": "A wide 16:9 editorial still life for Arbor, a calm parenting app for adults. Scene: a hallway by the front door, the door half open to soft daylight; two coats, one big and one small, hang on low wooden hooks beside it. Hand-painted gouache and watercolour with soft pencil contours, refined magazine art, adult aesthetic; warm ivory, navy, sapphire, muted sage and restrained yellow; warm daylight, painterly shadows, light paper grain. Composition: every object sits in the right 55% of the frame; the left 45% is calm, low-detail wall, tabletop or floor with room for a title, and the picture must still read well when mirrored, so nothing is directional or handed. No people, no faces, no hands, no text: no body parts, no animals or toys with faces, no letters, numbers, logos or signs, no screen showing anything, no UI and no frame. All objects fully visible, generous breathing room. An illustration, never a photograph of a real family."
+    },
+    {
+      "file": "big-feelings",
+      "status": "planned",
+      "aspect": "16:9",
+      "outputs": [],
+      "model": null,
+      "date": null,
+      "reviewer": null,
+      "references": [],
+      "prompt": "A wide 16:9 editorial still life for Arbor, a calm parenting app for adults. Scene: a soft round cushion and a folded knitted blanket on a woven rug, with a few picture cards beside them showing only a sun, a cloud and a raindrop. Hand-painted gouache and watercolour with soft pencil contours, refined magazine art, adult aesthetic; warm ivory, navy, sapphire, muted sage and restrained yellow; warm daylight, painterly shadows, light paper grain. Composition: every object sits in the right 55% of the frame; the left 45% is calm, low-detail wall, tabletop or floor with room for a title, and the picture must still read well when mirrored, so nothing is directional or handed. No people, no faces, no hands, no text: no body parts, no animals or toys with faces, no letters, numbers, logos or signs, no screen showing anything, no UI and no frame. All objects fully visible, generous breathing room. An illustration, never a photograph of a real family."
+    },
+    {
+      "file": "sharing",
+      "status": "planned",
+      "aspect": "16:9",
+      "outputs": [],
+      "model": null,
+      "date": null,
+      "reviewer": null,
+      "references": [],
+      "prompt": "A wide 16:9 editorial still life for Arbor, a calm parenting app for adults. Scene: a low wooden table with two small cups and one shared bowl of fruit between them. Hand-painted gouache and watercolour with soft pencil contours, refined magazine art, adult aesthetic; warm ivory, navy, sapphire, muted sage and restrained yellow; warm daylight, painterly shadows, light paper grain. Composition: every object sits in the right 55% of the frame; the left 45% is calm, low-detail wall, tabletop or floor with room for a title, and the picture must still read well when mirrored, so nothing is directional or handed. No people, no faces, no hands, no text: no body parts, no animals or toys with faces, no letters, numbers, logos or signs, no screen showing anything, no UI and no frame. All objects fully visible, generous breathing room. An illustration, never a photograph of a real family."
+    },
+    {
+      "file": "bedtime",
+      "status": "planned",
+      "aspect": "16:9",
+      "outputs": [],
+      "model": null,
+      "date": null,
+      "reviewer": null,
+      "references": [],
+      "prompt": "A wide 16:9 editorial still life for Arbor, a calm parenting app for adults. Scene: a quiet bedside corner at dusk: a glowing round night light, a closed picture book and a neatly folded blanket on a small stool. Hand-painted gouache and watercolour with soft pencil contours, refined magazine art, adult aesthetic; warm ivory, navy, sapphire, muted sage and restrained yellow; warm daylight, painterly shadows, light paper grain. Composition: every object sits in the right 55% of the frame; the left 45% is calm, low-detail wall, tabletop or floor with room for a title, and the picture must still read well when mirrored, so nothing is directional or handed. No people, no faces, no hands, no text: no body parts, no animals or toys with faces, no letters, numbers, logos or signs, no screen showing anything, no UI and no frame. All objects fully visible, generous breathing room. An illustration, never a photograph of a real family."
+    },
+    {
+      "file": "screens",
+      "status": "planned",
+      "aspect": "16:9",
+      "outputs": [],
+      "model": null,
+      "date": null,
+      "reviewer": null,
+      "references": [],
+      "prompt": "A wide 16:9 editorial still life for Arbor, a calm parenting app for adults. Scene: a tablet lying screen down on a play mat beside a small tower of wooden building blocks. Hand-painted gouache and watercolour with soft pencil contours, refined magazine art, adult aesthetic; warm ivory, navy, sapphire, muted sage and restrained yellow; warm daylight, painterly shadows, light paper grain. Composition: every object sits in the right 55% of the frame; the left 45% is calm, low-detail wall, tabletop or floor with room for a title, and the picture must still read well when mirrored, so nothing is directional or handed. No people, no faces, no hands, no text: no body parts, no animals or toys with faces, no letters, numbers, logos or signs, no screen showing anything, no UI and no frame. All objects fully visible, generous breathing room. An illustration, never a photograph of a real family."
+    },
+    {
+      "file": "meals",
+      "status": "planned",
+      "aspect": "16:9",
+      "outputs": [],
+      "model": null,
+      "date": null,
+      "reviewer": null,
+      "references": [],
+      "prompt": "A wide 16:9 editorial still life for Arbor, a calm parenting app for adults. Scene: a family table set for a meal with small plates, short cups, a water jug and a bowl of vegetables, the chairs tucked in. Hand-painted gouache and watercolour with soft pencil contours, refined magazine art, adult aesthetic; warm ivory, navy, sapphire, muted sage and restrained yellow; warm daylight, painterly shadows, light paper grain. Composition: every object sits in the right 55% of the frame; the left 45% is calm, low-detail wall, tabletop or floor with room for a title, and the picture must still read well when mirrored, so nothing is directional or handed. No people, no faces, no hands, no text: no body parts, no animals or toys with faces, no letters, numbers, logos or signs, no screen showing anything, no UI and no frame. All objects fully visible, generous breathing room. An illustration, never a photograph of a real family."
+    },
+    {
+      "file": "tidy-up",
+      "status": "planned",
+      "aspect": "16:9",
+      "outputs": [],
+      "model": null,
+      "date": null,
+      "reviewer": null,
+      "references": [],
+      "prompt": "A wide 16:9 editorial still life for Arbor, a calm parenting app for adults. Scene: a woven toy basket half full of wooden blocks, balls and fabric shapes, with a few blocks still scattered on the floor beside it. Hand-painted gouache and watercolour with soft pencil contours, refined magazine art, adult aesthetic; warm ivory, navy, sapphire, muted sage and restrained yellow; warm daylight, painterly shadows, light paper grain. Composition: every object sits in the right 55% of the frame; the left 45% is calm, low-detail wall, tabletop or floor with room for a title, and the picture must still read well when mirrored, so nothing is directional or handed. No people, no faces, no hands, no text: no body parts, no animals or toys with faces, no letters, numbers, logos or signs, no screen showing anything, no UI and no frame. All objects fully visible, generous breathing room. An illustration, never a photograph of a real family."
+    },
+    {
+      "file": "siblings",
+      "status": "planned",
+      "aspect": "16:9",
+      "outputs": [],
+      "model": null,
+      "date": null,
+      "reviewer": null,
+      "references": [],
+      "prompt": "A wide 16:9 editorial still life for Arbor, a calm parenting app for adults. Scene: by the front door, two pairs of shoes side by side on a simple mat, one pair big and one pair small. Hand-painted gouache and watercolour with soft pencil contours, refined magazine art, adult aesthetic; warm ivory, navy, sapphire, muted sage and restrained yellow; warm daylight, painterly shadows, light paper grain. Composition: every object sits in the right 55% of the frame; the left 45% is calm, low-detail wall, tabletop or floor with room for a title, and the picture must still read well when mirrored, so nothing is directional or handed. No people, no faces, no hands, no text: no body parts, no animals or toys with faces, no letters, numbers, logos or signs, no screen showing anything, no UI and no frame. All objects fully visible, generous breathing room. An illustration, never a photograph of a real family."
+    },
+    {
+      "file": "new-words",
+      "status": "planned",
+      "aspect": "16:9",
+      "outputs": [],
+      "model": null,
+      "date": null,
+      "reviewer": null,
+      "references": [],
+      "prompt": "A wide 16:9 editorial still life for Arbor, a calm parenting app for adults. Scene: picture cards spread on a table, each showing one simple object (an apple, a cup, a boat), beside a small blank chalkboard and a stub of chalk; the chalkboard has no writing. Hand-painted gouache and watercolour with soft pencil contours, refined magazine art, adult aesthetic; warm ivory, navy, sapphire, muted sage and restrained yellow; warm daylight, painterly shadows, light paper grain. Composition: every object sits in the right 55% of the frame; the left 45% is calm, low-detail wall, tabletop or floor with room for a title, and the picture must still read well when mirrored, so nothing is directional or handed. No people, no faces, no hands, no text: no body parts, no animals or toys with faces, no letters, numbers, logos or signs, no screen showing anything, no UI and no frame. All objects fully visible, generous breathing room. An illustration, never a photograph of a real family."
+    },
+    {
+      "file": "outdoor-play",
+      "status": "planned",
+      "aspect": "16:9",
+      "outputs": [],
+      "model": null,
+      "date": null,
+      "reviewer": null,
+      "references": [],
+      "prompt": "A wide 16:9 editorial still life for Arbor, a calm parenting app for adults. Scene: a bright ball, a small bucket and a pair of rain boots on a patch of grass, a low hedge behind. Hand-painted gouache and watercolour with soft pencil contours, refined magazine art, adult aesthetic; warm ivory, navy, sapphire, muted sage and restrained yellow; warm daylight, painterly shadows, light paper grain. Composition: every object sits in the right 55% of the frame; the left 45% is calm, low-detail wall, tabletop or floor with room for a title, and the picture must still read well when mirrored, so nothing is directional or handed. No people, no faces, no hands, no text: no body parts, no animals or toys with faces, no letters, numbers, logos or signs, no screen showing anything, no UI and no frame. All objects fully visible, generous breathing room. An illustration, never a photograph of a real family."
+    },
+    {
+      "file": "calm-corner",
+      "status": "planned",
+      "aspect": "16:9",
+      "outputs": [],
+      "model": null,
+      "date": null,
+      "reviewer": null,
+      "references": [],
+      "prompt": "A wide 16:9 editorial still life for Arbor, a calm parenting app for adults. Scene: a small cloth tent draped over floor cushions in a quiet corner, a long soft ribbon for breathing games curled on the cushions, a warm lamp nearby. Hand-painted gouache and watercolour with soft pencil contours, refined magazine art, adult aesthetic; warm ivory, navy, sapphire, muted sage and restrained yellow; warm daylight, painterly shadows, light paper grain. Composition: every object sits in the right 55% of the frame; the left 45% is calm, low-detail wall, tabletop or floor with room for a title, and the picture must still read well when mirrored, so nothing is directional or handed. No people, no faces, no hands, no text: no body parts, no animals or toys with faces, no letters, numbers, logos or signs, no screen showing anything, no UI and no frame. All objects fully visible, generous breathing room. An illustration, never a photograph of a real family."
+    }
+  ]
+}

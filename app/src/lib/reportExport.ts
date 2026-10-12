@@ -13,7 +13,9 @@ import { languageName } from "./languageName";
 import { topMomentDisplay } from "../hooks/useWeeklyRecap";
 import { behaviorTypeLabel } from "../content/behaviorTaxonomy";
 
-export type ReportSection = { heading: string; body: string | string[] };
+/** `lead` (v3 FEAT-09): one plain line under the title block, with no heading
+ *  and no bullet (Consult's "Our question: …" line). */
+export type ReportSection = { heading: string; body: string | string[]; lead?: boolean };
 export type ReportDoc = {
   /** Plain parent-kept month: name, month, dated words only. */
   presentation?: "kept-month";
@@ -290,6 +292,7 @@ export function renderPrintableHtml(doc: ReportDoc, childName: string, lang: UiL
   if (doc.presentation === "kept-month") return renderKeptMonthHtml(doc, lang);
   const sectionsHtml = doc.sections.map((s) => {
     const items = Array.isArray(s.body) ? s.body.filter(Boolean) : [s.body];
+    if (s.lead) return items.length ? `<p class="lead" dir="auto">${esc(items.map(String).join(" "))}</p>` : "";
     const body = items.length
       ? (Array.isArray(s.body)
           ? `<ul>${items.map((i) => `<li dir="auto">${esc(String(i))}</li>`).join("")}</ul>`
@@ -311,6 +314,7 @@ export function renderPrintableHtml(doc: ReportDoc, childName: string, lang: UiL
     h1 { font-size: 26px; margin: 12px 0 2px; }
     .sub { color:#69747f; font-size: 13px; margin: 0 0 6px; }
     .meta { color:#9aa0a8; font-size: 11px; margin-bottom: 20px; }
+    .lead { margin-block: 0 18px; }
     section { margin-bottom: 18px; }
     h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color:#1f8a5a; margin: 0 0 6px; }
     p, li { font-size: 14px; line-height: 1.55; }

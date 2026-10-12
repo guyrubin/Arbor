@@ -107,6 +107,11 @@ export const HASH_ALIASES: Readonly<Record<string, ActiveTab>> = {
   "trusted-sharing": "sharing",
   "my-care-team": "care-team",
   reminders: "smart-reminders",
+  // v3 IA-04: the names of the v3 places and the Talk door. `#/my-child` stays
+  // on profile above (GP-19: the Profile tab is still called My child).
+  now: "overview",
+  together: "practice",
+  talk: "coach",
 };
 
 /**

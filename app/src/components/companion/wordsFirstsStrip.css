@@ -1,0 +1,26 @@
+/* v3 FEAT-08 — the words-and-firsts strip on My child. One horizontal track of
+   months, newest first; each month is a heading above its cards. The track
+   scrolls on its own (never the page) and snaps card by card; in Hebrew it
+   starts from the right. Logical properties only, 44 px floors. A card's look
+   names its KIND (a quote or a first), never a judgement: no verdict colour,
+   no number, no bar. */
+.words-strip { contain: inline-size; min-inline-size: 0; margin-block: 18px 6px; color: var(--arbor-ink); }
+.words-strip-title { display: flex; align-items: center; gap: 10px; margin-block: 0 12px; min-inline-size: 0; font-family: var(--font-display); font-size: var(--t-title); font-weight: var(--arbor-w-title); line-height: 1.3; overflow-wrap: anywhere; }
+.words-strip-title .msr { flex: none; color: var(--arbor-clay); }
+.words-strip-track { display: flex; align-items: flex-start; gap: 20px; margin: 0; padding-block: 4px 12px; padding-inline: 2px; list-style: none; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: inline mandatory; scroll-padding-inline: 2px; scrollbar-width: thin; }
+.words-strip-track:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; border-radius: var(--r); }
+.words-strip-month { display: flex; flex: none; flex-direction: column; gap: 8px; }
+.words-strip-month h3 { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--arbor-muted); }
+.words-strip-cards { display: flex; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.words-strip-card { display: flex; flex: none; align-items: flex-start; gap: 10px; scroll-snap-align: start; min-inline-size: 14rem; max-inline-size: 18rem; min-block-size: var(--touch-min); padding-block: 14px; padding-inline: 14px 16px; text-align: start; background: var(--arbor-paper-elevated); border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); }
+.words-strip-glyph { flex: none; margin-block-start: 2px; color: var(--arbor-clay); }
+.words-strip-words { display: -webkit-box; margin: 0; min-inline-size: 0; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 5; font-family: var(--font-editorial); font-size: 18px; line-height: 1.45; overflow-wrap: anywhere; }
+.words-strip-first { font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--arbor-ink-soft); }
+.words-strip-all { display: inline-flex; align-items: center; gap: 8px; min-block-size: var(--touch-min); margin-block-start: 4px; padding-block: 8px; padding-inline: 0; border: 0; background: transparent; font-size: 13px; font-weight: 600; text-align: start; color: var(--arbor-clay); cursor: pointer; }
+.words-strip-all:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 4px; }
+@media (max-width: 640px) {
+  .words-strip-track { gap: 16px; }
+  .words-strip-card { min-inline-size: 13rem; max-inline-size: 16rem; padding-block: 12px; padding-inline: 12px 14px; }
+  .words-strip-words { font-size: 17px; }
+}
+@media (prefers-reduced-motion: no-preference) { .words-strip-track { scroll-behavior: smooth; } }

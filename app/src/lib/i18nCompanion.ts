@@ -294,6 +294,60 @@ export const companionEn = {
   "companion.place.child.detail": "The whole picture, over time",
   "companion.place.together": "Together",
   "companion.place.together.detail": "Small moments. Shared discoveries.",
+  // FEAT-05: the question chip in the conversation header opens the question sheet.
+  "companion.topic-chip.open": "Open our questions: {value0}",
+  // VIS-07: Together's first-time empty state (one sentence; the action reuses companion.portrait.capture).
+  "companion.together-view.empty": "A good moment needs no other reason.",
+  // v3 IA-04: the three doors' names (COMPANION_DOORS in lib/companionPlaces).
+  "companion.door.talk": "Talk with Arbor",
+  "companion.door.learn": "For you, the parent",
+  "companion.door.care": "Care, together",
+  // v3 FEAT-03 — the development map on My child and its domain sheet. Counts
+  // only (Seen it); no total, no fraction, no not-yet number anywhere.
+  "companion.devMap.title": "Where {name} is now, across the areas",
+  "companion.devMap.check": "Do a 5-minute development check",
+  "companion.devMap.none": "No record yet",
+  "companion.devMap.note": "Filled = you have seen it. A blank means no record, not a missing ability.",
+  "companion.devMap.explore": "Explore this with Arbor",
+  "companion.devMap.moments": "Open the moments",
+  "companion.devMap.saved": "Saved.",
+  "companion.devMap.saveFailed": "Not saved. Try again.",
+  "companion.devMap.empty": "Nothing to mark here around now.",
+  "companion.devMap.why.talking": "Words, sounds and gestures: how your child shares what is on their mind.",
+  "companion.devMap.why.moving": "Crawling, walking, climbing and balance: how your child gets around.",
+  "companion.devMap.why.hands": "Grasping, stacking, drawing and the small careful movements of the hands.",
+  "companion.devMap.why.thinking": "Curiosity, puzzles and figuring out how things work.",
+  "companion.devMap.why.playing": "Playing with others: taking turns, sharing a game, joining in.",
+  "companion.devMap.why.feelings": "Big and small feelings, and the ways your child finds calm again.",
+  "companion.devMap.why.body": "Sleep, food and the everyday rhythms of the body.",
+  "companion.devMap.why.family": "The people at home and the bonds that hold the day together.",
+  // v3 FEAT-08 — the words-and-firsts strip on My child. Names and words
+  // only: no count, no per-month number, no comparison between months.
+  "companion.portrait.words.title": "Things {name} said · firsts",
+  "companion.portrait.words.first": "First:",
+  // FEAT-01: the conversation header's options menu.
+  "companion.panel.menu": "Conversation options",
+  "companion.panel.new": "New conversation",
+  "companion.panel.tone": "How Arbor talks with you",
+  "companion.panel.remembers": "What Arbor remembers",
+  // FEAT-01: the Ask bar's second line names the active family question.
+  "companion.launcher.topic": "On: {title}",
+  // v3 FEAT-07: Together → Routines (the pill, the tiles inside the everyday-life
+  // module, and the routine sheet). Counts and plain labels only.
+  "companion.together-view.routines": "Routines",
+  "companion.together-view.routines-kicker": "Every day, a little easier",
+  "companion.together-view.routines-title": "Ready-made routines",
+  "companion.together-view.routines-sub": "Start one as a plan, then tick its steps each day.",
+  "companion.together-view.routines-all": "All routines",
+  "companion.together-view.routines-steps": "{n} steps · {time}",
+  "companion.together-view.routines-in-plan": "In your plan",
+  "companion.together-view.routines-start": "Start as a plan",
+  "companion.together-view.routines-starting": "Adding it to your plans…",
+  "companion.together-view.routines-start-failed": "The routine wasn’t added. Please try again.",
+  "companion.together-view.routines-retry": "Try again",
+  "companion.together-view.routines-preview": "The steps",
+  "companion.together-view.routines-areas": "Areas: {areas}",
+  "companion.together-view.routines-close": "Close",
 };
 
 export const companionHe = {
@@ -590,4 +644,58 @@ export const companionHe = {
   "companion.place.child.detail": "התמונה השלמה, לאורך זמן",
   "companion.place.together": "ביחד",
   "companion.place.together.detail": "רגעים קטנים, גילויים משותפים",
+  // FEAT-05: the question chip in the conversation header opens the question sheet.
+  "companion.topic-chip.open": "לפתוח את השאלות שלנו: {value0}",
+  // VIS-07: Together's first-time empty state (one sentence; the action reuses companion.portrait.capture).
+  "companion.together-view.empty": "רגע טוב לא צריך שום סיבה אחרת.",
+  // v3 IA-04: the three doors' names (COMPANION_DOORS in lib/companionPlaces).
+  // v3 IA-01: Learn and Care take the v3 names, in the plural address the
+  // companion copy uses.
+  "companion.door.talk": "לדבר עם ארבור",
+  "companion.door.learn": "בשבילכם, ההורים",
+  "companion.door.care": "טיפול, ביחד",
+  // v3 FEAT-03 — the development map on My child and its domain sheet.
+  "companion.devMap.title": "איפה {name} עכשיו, בכל התחומים",
+  "companion.devMap.check": "בדיקת התפתחות של 5 דקות",
+  "companion.devMap.none": "עוד אין תיעוד",
+  "companion.devMap.note": "מלא = ראיתם. ריק = אין תיעוד, לא יכולת חסרה.",
+  "companion.devMap.explore": "לחשוב על זה עם ארבור",
+  "companion.devMap.moments": "לפתיחת הרגעים",
+  "companion.devMap.saved": "נשמר.",
+  "companion.devMap.saveFailed": "לא נשמר. נסו שוב.",
+  "companion.devMap.empty": "אין כאן כרגע מה לסמן.",
+  "companion.devMap.why.talking": "מילים, צלילים ומחוות: איך הילד משתף את מה שעובר עליו.",
+  "companion.devMap.why.moving": "זחילה, הליכה, טיפוס ושיווי משקל: איך הילד מתנייד.",
+  "companion.devMap.why.hands": "אחיזה, בנייה, ציור והתנועות הקטנות והמדויקות של הידיים.",
+  "companion.devMap.why.thinking": "סקרנות, פאזלים וגילוי איך דברים עובדים.",
+  "companion.devMap.why.playing": "משחק עם אחרים: לחכות לתור, לשתף במשחק, להצטרף.",
+  "companion.devMap.why.feelings": "רגשות גדולים וקטנים, והדרכים של הילד להירגע שוב.",
+  "companion.devMap.why.body": "שינה, אוכל והקצב היומיומי של הגוף.",
+  "companion.devMap.why.family": "האנשים בבית והקשרים שמחזיקים את היום.",
+  // v3 FEAT-08 — the words-and-firsts strip on My child (gender-neutral, no slash form).
+  "companion.portrait.words.title": "המילים של {name} · ראשונים",
+  "companion.portrait.words.first": "לראשונה:",
+  // FEAT-01: the conversation header's options menu.
+  "companion.panel.menu": "אפשרויות שיחה",
+  "companion.panel.new": "שיחה חדשה",
+  "companion.panel.tone": "איך ארבור מדברת איתכם",
+  "companion.panel.remembers": "מה ארבור זוכר",
+  // FEAT-01: the Ask bar's second line names the active family question.
+  "companion.launcher.topic": "בנושא: {title}",
+  // v3 FEAT-07: Together → Routines (the pill, the tiles inside the everyday-life
+  // module, and the routine sheet). Counts and plain labels only.
+  "companion.together-view.routines": "שגרות",
+  "companion.together-view.routines-kicker": "כל יום, קצת יותר קל",
+  "companion.together-view.routines-title": "שגרות מוכנות",
+  "companion.together-view.routines-sub": "מתחילים שגרה כתוכנית, ובכל יום מסמנים את הצעדים שלה.",
+  "companion.together-view.routines-all": "כל השגרות",
+  "companion.together-view.routines-steps": "{n} צעדים · {time}",
+  "companion.together-view.routines-in-plan": "בתוכנית שלכם",
+  "companion.together-view.routines-start": "להתחיל כתוכנית",
+  "companion.together-view.routines-starting": "מוסיפים לתוכניות שלכם…",
+  "companion.together-view.routines-start-failed": "השגרה לא נוספה. אפשר לנסות שוב.",
+  "companion.together-view.routines-retry": "לנסות שוב",
+  "companion.together-view.routines-preview": "הצעדים",
+  "companion.together-view.routines-areas": "תחומים: {areas}",
+  "companion.together-view.routines-close": "סגירה",
 };

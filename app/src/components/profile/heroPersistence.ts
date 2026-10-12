@@ -15,12 +15,15 @@
 import type { AvatarResult } from "./avatarGate";
 import type { ChildProfile } from "../../types";
 
-export type HeroPatch = Pick<ChildProfile, "photoUrl" | "avatar">;
+export type HeroPatch = Pick<ChildProfile, "photoUrl" | "avatar" | "comicAvatarUrl">;
 
 /** The exact patch shape ProfileEditDrawer and WowOnboarding already write. */
 export function heroPatch(result: AvatarResult, now: () => Date = () => new Date()): HeroPatch {
   return {
     photoUrl: result.dataUrl,
+    // The legacy comic field wins at read time. Clear it atomically so a
+    // parent's newly saved hero cannot be shadowed by an earlier identity.
+    comicAvatarUrl: undefined,
     avatar: { style: result.style, source: result.source, createdAt: now().toISOString() },
   };
 }
