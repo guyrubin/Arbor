@@ -146,6 +146,24 @@ describe("5 · B-TODAY-22 · one story, one secondary door", () => {
     expect(stamps.filter((s) => s.demoted).map((s) => s.id).sort()).toEqual(["weekly-detail", "weekly-email", "weekly-share"]);
   });
 
+  /* v3 EXTRA-WEEKLY (12 Oct): a fourth non-demoted module, `weekly-glance`
+     (the week as counts), is stamped by its own component,
+     components/weekly/WeekGlance.tsx, not by this file, so the list above and
+     R25's source ceiling (surfaceContract.render.test.ts) still read the three
+     letter states. "Mutually exclusive" holds for those three only: the glance
+     CO-RENDERS with weekly-recap or weekly-insight, and takes weekly-empty's
+     place. The rendered budget (at most two top-level modules beside the
+     glance's, one data-primary-move) is pinned at runtime in
+     WeeklyTab.glance.test.tsx; this test pins where the stamp lives. */
+  it("v3 EXTRA-WEEKLY: the glance stamps itself once, carries no move, and never renders beside the empty card", () => {
+    const glance = fs.readFileSync(path.resolve(__dirname, "../weekly/WeekGlance.tsx"), "utf8")
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect([...glance.matchAll(/data-module="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["weekly-glance"]);
+    expect(glance).not.toMatch(/data-module-demoted|data-primary-move|data-secondary-move/);
+    expect(code).toMatch(/\{!glanceShown && \(\s*<div data-module="weekly-empty"/);
+    expect(code).not.toContain('data-module="weekly-glance"');
+  });
+
   it("one <details>, holding the milestone wins only — one nested level at most", () => {
     expect((code.match(/<details\b/g) ?? []).length).toBe(1);
     const details = code.slice(code.indexOf("<details"), code.indexOf("</details>"));

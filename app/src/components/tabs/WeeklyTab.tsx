@@ -283,12 +283,16 @@ export default function WeeklyTab() {
                IS the only move on the screen. */
             action={hasStoredCurrentWeek ? undefined : retellButton}
           />
-          {/* v3 EXTRA-WEEKLY: what the page holds, in one line. From md up
+          {/* v3 EXTRA-WEEKLY: what the page holds, in one line, whenever the
+              glance (the counts it speaks of) is on the page. From md up
               only: at 375 the letter's accept sits 13 px above the capture
-              dock (WeeklyTab.fold line model), and this line would push it under. */}
-          <p data-testid="weekly-glance-sub" className="hidden md:block mt-1 text-sm" style={{ color: "var(--arbor-muted)" }}>
-            {t("elev.wk.glance.sub")}
-          </p>
+              dock (WeeklyTab.fold line model), and this line would push it
+              under; on phones the glance opens with the same line instead. */}
+          {glanceShown && (
+            <p data-testid="weekly-glance-sub" className="hidden md:block mt-1 text-sm" style={{ color: "var(--arbor-muted)" }}>
+              {t("elev.wk.glance.sub")}
+            </p>
+          )}
         </div>
       </div>
 

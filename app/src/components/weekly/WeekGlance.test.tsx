@@ -9,9 +9,11 @@ import { weekGlance } from "../../lib/weekGlance";
 
 /**
  * v3 EXTRA-WEEKLY — the Weekly glance renders the report week as counts:
- * up to four tiles (a zero is left out), seven day columns with a neutral
- * glyph for the step outcome the parent recorded, a legend, a screen-reader
- * table, and only the areas that hold a record. Never a share, a ratio, a
+ * up to four tiles (a zero is left out), each with the number of days it
+ * happened on; seven day columns named by date (the report week opens on a
+ * Saturday, so weekday names would put Saturday first) with a neutral glyph
+ * for the step outcome the parent recorded, a legend, a screen-reader table,
+ * and only the areas the parent's moments name. Never a share, a ratio, a
  * trend sign or a colour that grades; no control, no move. Invented examples.
  */
 const state = vi.hoisted(() => ({ lang: "en" as "en" | "he" }));
@@ -80,16 +82,32 @@ describe("WeekGlance (v3 EXTRA-WEEKLY)", () => {
     const html = render("en");
     expect([...html.matchAll(/data-tile="([a-z]+)"/g)].map((m) => m[1])).toEqual(["moments", "helped", "milestones", "kid"]);
     expect([...html.matchAll(/<li class="wk-glance-tile"[^>]*><b>(\d+)<\/b>/g)].map((m) => Number(m[1]))).toEqual([3, 2, 1, 2]);
-    expect(html).toContain("tried on 3 days");
     const quiet = weekGlance({ observations: OBSERVATIONS.slice(3, 4), actionLoop: [], now: NOW, weekStartMs: START });
     expect([...render("en", quiet).matchAll(/data-tile="([a-z]+)"/g)].map((m) => m[1])).toEqual(["milestones"]);
+  });
+
+  it("every tile carries one sub-line: the number of days it happened on, never 'n of 7'", () => {
+    const subs = (html: string) => [...html.matchAll(/<li class="wk-glance-tile" data-tile="([a-z]+)"><b>\d+<\/b><span>[^<]*<\/span><small>([^<]*)<\/small><\/li>/g)].map((m) => [m[1], m[2]]);
+    // Moments on days 0 and 1; a step tried on days 0, 1 and 2; one milestone; Kid Mode on days 0 and 4.
+    expect(subs(render("en"))).toEqual([["moments", "kept on 2 days"], ["helped", "tried on 3 days"], ["milestones", "marked on one day"], ["kid", "played on 2 days"]]);
+    expect(subs(render("he"))).toEqual([
+      ["moments", translate("he", "elev.wk.glance.kept.days", { n: 2 })],
+      ["helped", translate("he", "elev.wk.glance.tried", { n: 3 })],
+      ["milestones", translate("he", "elev.wk.glance.marked.days.one")],
+      ["kid", translate("he", "elev.wk.glance.played.days", { n: 2 })],
+    ]);
     const once = weekGlance({ observations: [], actionLoop: STEPS.slice(0, 1), now: NOW, weekStartMs: START });
-    expect(render("en", once)).toContain("tried on one day");
+    expect(subs(render("en", once))).toEqual([["helped", "tried on one day"]]);
+    // A week of one tried step that did not help: no tile to hang the line on, the strip still shows it.
+    const notYet = weekGlance({ observations: [], actionLoop: STEPS.slice(1, 2), now: NOW, weekStartMs: START });
+    expect(render("en", notYet)).not.toContain("wk-glance-tile");
+    expect(render("en", notYet)).toContain('data-outcome="not-this-time"');
   });
 
   it("day by day: seven columns, the last outcome of a day as a neutral glyph (thumbs up = helped, replay = not this time)", () => {
     const html = render("en");
     expect(html.match(/class="wk-glance-day"/g)).toHaveLength(7);
+    expect(html).not.toContain("data-primary-move");
     expect([...html.matchAll(/<li class="wk-glance-day"( data-outcome="([a-z-]+)")?/g)].map((m) => m[2] ?? null))
       .toEqual(["helped", "helped", "not-this-time", null, null, null, null]);
     // Strip glyphs (3 days) then the legend (2): neutral glyphs only.
@@ -104,12 +122,57 @@ describe("WeekGlance (v3 EXTRA-WEEKLY)", () => {
     expect(html.match(/<th scope="row">/g)).toHaveLength(7);
   });
 
-  it("by area: only the areas that hold a record, in registry order, each with a plain count; then the blank line", () => {
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: each column is named by its date, in the report week's order (no weekday names that would put Saturday first); the span says which week`, () => {
+      const html = render(lang);
+      const locale = lang === "he" ? "he-IL" : "en-US";
+      const dates = [...html.matchAll(/<span class="wk-glance-date">([^<]*)<\/span>/g)].map((m) => m[1]);
+      expect(dates).toEqual(GLANCE.perDay.map((day) => new Date(day.startMs).toLocaleDateString(locale, { day: "numeric" })));
+      expect(dates).toEqual(["10", "11", "12", "13", "14", "15", "16"]);
+      const strip = html.slice(html.indexOf("wk-glance-strip"), html.indexOf("wk-glance-legend"));
+      for (const weekday of GLANCE.perDay.map((day) => new Date(day.startMs).toLocaleDateString(locale, { weekday: "short" }))) {
+        expect(strip).not.toContain(`>${weekday}<`);
+      }
+      const span = /<span class="wk-glance-span"[^>]*>([^<]*)<\/span>/.exec(html)?.[1] ?? "";
+      expect(span).toMatch(/10/);
+      expect(span).toMatch(/16/);
+      expect(span).toMatch(lang === "he" ? /אוקטובר/ : /October/);
+      // The screen-reader table names each day in full: weekday and date.
+      const rows = [...html.matchAll(/<th scope="row">([^<]*)<\/th>/g)].map((m) => m[1]);
+      expect(rows).toEqual(GLANCE.perDay.map((day) => new Date(day.startMs).toLocaleDateString(locale, { weekday: "long", month: "long", day: "numeric" })));
+    });
+  }
+
+  it("today's column is marked once; the days after it keep a dashed baseline, the days before carry no mark", () => {
+    const html = render("en");
+    const days = [...html.matchAll(/<li class="wk-glance-day"([^>]*)>/g)].map((m) => m[1]);
+    expect(GLANCE.today).toBe(4);
+    expect(days.map((attrs) => attrs.includes("data-today"))).toEqual([false, false, false, false, true, false, false]);
+    expect(days.map((attrs) => attrs.includes("data-ahead"))).toEqual([false, false, false, false, false, true, true]);
+    const lastDay = weekGlance({ observations: OBSERVATIONS, actionLoop: STEPS, now: new Date(FIRST.getFullYear(), FIRST.getMonth(), FIRST.getDate() + 6, 21), weekStartMs: START });
+    const full = [...render("en", lastDay).matchAll(/<li class="wk-glance-day"([^>]*)>/g)].map((m) => m[1]);
+    expect(full.filter((attrs) => attrs.includes("data-ahead"))).toHaveLength(0);
+    expect(full[6]).toContain("data-today");
+  });
+
+  it("phones: the glance opens with the page's 'Counts, not scores.' line (the header folds it away below 768 px)", () => {
+    for (const lang of ["en", "he"] as const) {
+      const line = /<p class="wk-glance-sub"[^>]*>([^<]*)<\/p>/.exec(render(lang));
+      expect(line?.[1]).toBe(translate(lang, "elev.wk.glance.sub"));
+    }
+  });
+
+  it("by area: only the areas the parent's moments name, in registry order, each with a plain count; then the blank line", () => {
     const html = render("en");
     const areas = [...html.matchAll(/data-area="([a-z]+)"/g)].map((m) => m[1]);
-    expect(areas).toEqual(DOMAIN_IDS.filter((d) => ["feelings", "family", "moving", "talking", "thinking"].includes(d)));
-    expect(html).toMatch(/data-area="feelings">[\s\S]*?<b>3<\/b>/);
+    // The milestone (moving), the word (talking) and the Kid Mode sessions (thinking, feelings) feed their own tiles, not By area.
+    expect(areas).toEqual(DOMAIN_IDS.filter((d) => ["feelings", "family"].includes(d)));
+    expect(html).toMatch(/data-area="feelings">[\s\S]*?<b>2<\/b>/);
+    expect(html).toMatch(/data-area="family">[\s\S]*?<b>1<\/b>/);
     expect(html).toContain("Blank = nothing recorded this week.");
+    // Moments with no area: the section steps aside.
+    const plain = weekGlance({ observations: [OBSERVATIONS[2]], actionLoop: [], now: NOW, weekStartMs: START });
+    expect(render("en", plain)).not.toContain("wk-glance-areas");
   });
 
   for (const lang of ["en", "he"] as const) {
@@ -158,5 +221,20 @@ describe("WeekGlance source — parent register, tokens, logical CSS", () => {
   it("tiles: two by two on phones, four in a row from 768 px", () => {
     expect(css).toMatch(/\.wk-glance-tiles \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
     expect(css).toMatch(/@media \(min-width: 768px\) \{\s*\.wk-glance-tiles \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/);
+  });
+
+  it("by area: one column on phones, two from 768 px", () => {
+    expect(css).toMatch(/\.wk-glance-areas ul \{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
+    expect(css).toMatch(/@media \(min-width: 768px\) \{\s*\.wk-glance-areas ul \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/);
+    expect(css).not.toMatch(/auto-fill|auto-fit/);
+  });
+
+  it("the phone sub-line steps aside from 768 px, where the page header carries it", () => {
+    expect(css).toMatch(/@media \(min-width: 768px\) \{\s*\.wk-glance-sub \{ display: none; \}/);
+  });
+
+  it("today and the days ahead are marked in ink and line style, never a colour that grades", () => {
+    expect(css).toMatch(/\.wk-glance-day\[data-today\] \.wk-glance-date \{[^}]*color: var\(--arbor-ink\)/);
+    expect(css).toMatch(/\.wk-glance-day\[data-ahead\] \.wk-glance-col \{ border-block-end-style: dashed; \}/);
   });
 });

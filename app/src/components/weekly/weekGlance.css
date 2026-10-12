@@ -22,6 +22,19 @@
   color: var(--arbor-ink);
 }
 
+/* The page header's "Counts, not scores." line, on phones only: WeeklyTab
+   folds the header copy away below 768 px so the letter's move keeps its
+   place at 375; from 768 px the header carries it and this one steps aside. */
+.wk-glance-sub {
+  margin: 0;
+  font-size: var(--t-sm);
+  line-height: 1.45;
+  color: var(--arbor-muted);
+}
+@media (min-width: 768px) {
+  .wk-glance-sub { display: none; }
+}
+
 /* Tiles: two by two on phones, one row of four from 768 px. */
 .wk-glance-tiles {
   display: grid;
@@ -65,6 +78,13 @@
    scrolls sideways. A block's height is its count on the week's own scale
    (--wk-max = the fullest day), never a share of a target. */
 .wk-glance-days { margin: 0; min-inline-size: 0; }
+/* The week's date span beside the heading: the report week opens on a
+   Saturday, so the columns are named by date and the span says which. */
+.wk-glance-span {
+  margin-inline-start: 8px;
+  font-weight: 600;
+  color: var(--arbor-muted);
+}
 .wk-glance-strip {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -97,15 +117,26 @@
 }
 .wk-glance-moments { background: color-mix(in srgb, var(--arbor-sky-ink) 65%, var(--arbor-paper-elevated)); }
 .wk-glance-kid { background: color-mix(in srgb, var(--arbor-lav-ink) 50%, var(--arbor-paper-elevated)); }
-.wk-glance-weekday {
+.wk-glance-date {
   max-inline-size: 100%;
   overflow: hidden;
   font-size: var(--t-xs);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--arbor-muted);
   text-overflow: clip;
   white-space: nowrap;
+  /* Every date reserves the rule's room, so today's mark moves no glyph. */
+  padding-block-end: 2px;
+  border-block-end: 2px solid transparent;
 }
+/* Today's date in body ink with a short rule under it; the days still ahead
+   keep a dashed baseline (empty because they have not happened yet). */
+.wk-glance-day[data-today] .wk-glance-date {
+  border-block-end-color: var(--arbor-ink);
+  color: var(--arbor-ink);
+}
+.wk-glance-day[data-ahead] .wk-glance-col { border-block-end-style: dashed; }
 .wk-glance-outcome {
   display: grid;
   place-items: center;
@@ -131,14 +162,18 @@
   border-radius: 3px;
 }
 
-/* By area: only the areas that hold a record; the count is body ink. */
+/* By area: only the areas the parent's moments name; the count is body ink.
+   One column on phones, two from 768 px. */
 .wk-glance-areas ul {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+@media (min-width: 768px) {
+  .wk-glance-areas ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .wk-glance-areas li {
   display: flex;

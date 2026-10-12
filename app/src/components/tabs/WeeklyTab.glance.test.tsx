@@ -141,11 +141,16 @@ describe("#/weekly — the week's glance (v3 EXTRA-WEEKLY)", () => {
       expect(topModules(html).length).toBeLessThanOrEqual(3);
     });
 
-    it(`${lang}: the header line says what the page holds, from md up (at 375 the letter keeps its place)`, () => {
+    it(`${lang}: the header line says what the page holds, from md up (at 375 the letter keeps its place and the glance opens with it), and only beside the glance`, () => {
       const html = render(lang, []);
       const line = /<p data-testid="weekly-glance-sub"[^>]*>([^<]*)<\/p>/.exec(html);
       expect(line?.[0]).toContain('class="hidden md:block');
       expect(line?.[1]).toBe(translate(lang, "elev.wk.glance.sub"));
+      // Phones: the same line opens the glance (weekGlance.css hides it from 768 px).
+      expect(html).toContain(`<p class="wk-glance-sub" data-testid="weekly-glance-sub-phone">${translate(lang, "elev.wk.glance.sub")}</p>`);
+      // Nothing counted: no counts on the page, so no "Counts, not scores." either.
+      const empty = render(lang, [], [], []);
+      expect(empty).not.toContain("weekly-glance-sub");
     });
 
     it(`${lang}: no share, no ratio, no trend sign on the page`, () => {
