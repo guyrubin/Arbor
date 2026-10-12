@@ -73,7 +73,7 @@ describe("LC-06 — AskSpecialist empty state", () => {
 describe("v3 F-CARE-1 — the landing stepper is numerator-only", () => {
   const visibleText = (html: string) => html.replace(/<[^>]+>/g, " ");
   const DENOMINATOR = /\bof\s+\d|\d\s*\/\s*\d|\/\s*\d|מתוך/;
-  const tabsOf = (html: string) => html.match(/<button[^>]*data-testid="consult-step"[^>]*>/g) ?? [];
+  const tabsOf = (html: string): string[] => html.match(/<button[^>]*data-testid="consult-step"[^>]*>/g) ?? [];
 
   it("an empty record: three tabs, step 1 open, Share disabled, no Next, no 'of N' or '/N'", async () => {
     const { default: AskSpecialist } = await import("./AskSpecialist");
