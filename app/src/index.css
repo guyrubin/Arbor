@@ -765,7 +765,7 @@ html[lang="he"] .arbor-app .arbor-type-kicker { letter-spacing: 0; text-transfor
 
 /* Pop-in for revealed feedback / new scenes. */
 @keyframes play-pop-in {
-  0%   { opacity: 0; transform: scale(0.82) translateY(8px); }
+  0%   { opacity: var(--kid-entry-opacity, 0); transform: scale(0.82) translateY(8px); }
   60%  { opacity: 1; transform: scale(1.04); }
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
@@ -865,6 +865,9 @@ html[lang="he"] .arbor-app .arbor-type-kicker { letter-spacing: 0; text-transfor
 
 /* ── D-02 · Shape + motion tokens (§2.3, §2.7) ─────────────────────────── */
 .arbor-play {
+  /* Child entrances stay readable during a stagger or a paused animation.
+     The shared play-pop-in keeps its existing fade outside this scope. */
+  --kid-entry-opacity: 1;
   --kid-r-s: 14px;
   --kid-r-m: 22px;
   --kid-r-l: 32px;
@@ -885,11 +888,10 @@ html[lang="he"] .arbor-play,
 
 /* M1 — card pop-in stagger (set --i inline; capped at 8 steps = 350 ms). */
 @keyframes kid-pop-in {
-  0%   { opacity: 0; transform: translateY(16px) scale(0.92); }
+  0%   { opacity: 1; transform: translateY(16px) scale(0.92); }
   70%  { opacity: 1; transform: translateY(-2px) scale(1.03); }
   100% { opacity: 1; transform: none; }
 }
-@keyframes kid-fade-in { from { opacity: 0; } to { opacity: 1; } }
 /* M6 — hero bob: ONE element per screen. */
 @keyframes kid-bob {
   0%, 100% { transform: translateY(0) rotate(var(--tilt, 0deg)); }
@@ -897,7 +899,7 @@ html[lang="he"] .arbor-play,
 }
 /* M5 — a sticker / coin drops in on a spring. */
 @keyframes kid-drop {
-  0%   { transform: translateY(-40px) scale(0.4) rotate(-12deg); opacity: 0; }
+  0%   { transform: translateY(-8px) scale(0.94) rotate(-6deg); opacity: 1; }
   60%  { transform: translateY(4px) scale(1.12) rotate(4deg); opacity: 1; }
   100% { transform: rotate(6deg) scale(1); opacity: 1; }
 }
@@ -915,10 +917,13 @@ html[lang="he"] .arbor-play,
 .arbor-play .kid-drop { animation: kid-drop 600ms var(--kid-ease-spring) both; }
 .arbor-play .kid-wobble { animation: kid-wobble 300ms var(--kid-ease-out) 1; }
 @media (prefers-reduced-motion: reduce) {
-  .arbor-play .kid-pop-in { animation: kid-fade-in 160ms var(--kid-ease-out) both; animation-delay: 0ms; }
+  /* Remove entrance animations entirely: a frozen fade must never hide a
+     world, instruction or reward. Existing disabled/dim states still apply. */
+  .arbor-play .play-pop-in,
+  .arbor-play .kid-pop-in,
+  .arbor-play .kid-drop,
   .arbor-play .kid-bob,
   .arbor-play .kid-wobble { animation: none; }
-  .arbor-play .kid-drop { animation: kid-fade-in 160ms var(--kid-ease-out) both; }
 }
 
 /* ── D-03 · Kid type (§2.2) ────────────────────────────────────────────

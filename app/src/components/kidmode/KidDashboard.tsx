@@ -310,10 +310,10 @@ function SceneTile({
             acceptance is about, so a rendered check measures the title itself
             and never the section heading or the inherited button size beside
             it. It is a measurement hook, not a style hook. */}
-        <span data-kid-tile-title="" style={{ display: portrait ? "-webkit-box" : "block", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: KID_HOME_GAME_TITLE_SIZE, color: "var(--arbor-ink)", lineHeight: 1.12, ...(portrait ? { WebkitBoxOrient: "vertical" as const, WebkitLineClamp: 2, overflow: "hidden" } : {}) }}>
+        <span data-kid-tile-title="" style={{ display: portrait ? "-webkit-box" : "block", fontFamily: "var(--font-sans)", fontWeight: 800, fontSize: KID_HOME_GAME_TITLE_SIZE, color: "var(--arbor-ink)", lineHeight: 1.12, ...(portrait ? { WebkitBoxOrient: "vertical" as const, WebkitLineClamp: 2, overflow: "hidden" } : {}) }}>
           {title}
         </span>
-        <span style={{ display: "block", fontSize: "var(--t-sm)", color: "var(--arbor-ink)", opacity: 0.88, marginBlockStart: "1px", ...(portrait ? { whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" } : {}) }}>{sub}</span>
+        <span style={{ display: "block", fontSize: "var(--kid-t-tag)", lineHeight: 1.2, color: "var(--arbor-ink)", opacity: 0.88, marginBlockStart: "1px", ...(portrait ? { whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" } : {}) }}>{sub}</span>
       </span>
     </button>
   );
@@ -430,15 +430,18 @@ export default function KidDashboard({
   return (
     <div style={{ maxInlineSize: "1100px", marginInline: "auto", display: "flex", flexDirection: "column", gap: `${KID_HOME_SECTION_GAP}px` }}>
       {/* ── Greeting header ─────────────────────────────────────────────── */}
-      <header style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+      {/* B-KID-141: the existing greeting sits on an opaque paper plate so
+          theme artwork cannot compete with the child’s name or invitation.
+          Internal spacing preserves the existing home section order. */}
+      <header data-kid-home-greeting="" style={{ display: "flex", alignItems: "center", gap: "14px", borderRadius: "var(--r-lg)", background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" }}>
         <HeroAvatar size={KID_HOME_HEADER_BLOCK} mood="wave" ring decorative />
-        <div style={{ minInlineSize: 0 }}>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "var(--t-2xl)", color: "var(--arbor-sky-ink)", lineHeight: 1.05 }}>
+        <div style={{ minInlineSize: 0, paddingBlock: 4, overflowWrap: "anywhere" }}>
+          <div style={{ fontFamily: "var(--font-sans)", fontWeight: 800, fontSize: "var(--kid-t-title)", color: "var(--arbor-sky-ink)", lineHeight: 1.05 }}>
             {hero.name === HERO_NAME_FALLBACK ? kt("elev.kid.greeting.noName") : kt("kid.greeting", { name: hero.name })}
           </div>
-          <div style={{ fontSize: "var(--t-sm)", color: "var(--arbor-muted)" }}>{greetingSub}</div>
+          <div style={{ fontSize: "var(--kid-t-tag)", color: "var(--arbor-ink)" }}>{greetingSub}</div>
         </div>
-        <div style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
           {/* B-BOOK-26 (T7): no count is shown to the child — the star meter is gone. */}
           <HoldExitButton onExit={onExit} idleLabel={t("kid.exit.backToParent")} ariaIdle={t("kid.exit.backToParentAria")} />
         </div>
@@ -486,9 +489,9 @@ export default function KidDashboard({
           )}
         </div>
         <span style={{ flex: 1, minInlineSize: 0, padding: 14, alignSelf: "center" }}>
-          <span style={{ display: "block", fontSize: 12, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.eyebrow")}</span>
-          <span style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "clamp(20px, 5vw, 26px)", color: "var(--arbor-ink)", lineHeight: 1.12 }}>{tonightLib ? kidIsolate(tonightLib.book.title[bookLang]) : tonightsTitle}</span>
-          <span style={{ display: "block", fontSize: 13, color: "var(--arbor-ink)", marginBlockStart: 4 }}>{kt("kid.quest.sub")}</span>
+          <span style={{ display: "block", fontSize: "var(--kid-t-tag)", fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.eyebrow")}</span>
+          <span style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(20px, 5vw, 26px)", color: "var(--arbor-ink)", lineHeight: 1.12 }}>{tonightLib ? kidIsolate(tonightLib.book.title[bookLang]) : tonightsTitle}</span>
+          <span style={{ display: "block", fontSize: "var(--kid-t-tag)", color: "var(--arbor-ink)", marginBlockStart: 4 }}>{kt("kid.quest.sub")}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minBlockSize: 44, fontWeight: 800, color: "var(--arbor-sky-ink)" }}>{kt("kid.quest.cta")} <ChevronRight className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" /></span>
         </span>
       </button>
@@ -500,13 +503,13 @@ export default function KidDashboard({
           Hebrew shelf starts at the right). */}
       <section aria-label={t("kidBooks.title")} data-kid-home-books="">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBlockEnd: `${KID_HOME_HEAD_GAP}px` }}>
-          <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: KID_HOME_GAME_TITLE_SIZE, fontWeight: 900, color: "var(--arbor-ink)" }}>
+          <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: KID_HOME_GAME_TITLE_SIZE, fontWeight: 800, color: "var(--arbor-ink)" }}>
             <BookOpen className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-peach-ink)" }} />
             {kt("kidBooks.title")}
           </h2>
           <button
             onClick={() => onOpenSurface("journeys")}
-            style={{ appearance: "none", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", minHeight: `${KID_HOME_SECTION_HEAD_BLOCK}px`, minWidth: 44, fontSize: "var(--t-sm)", fontWeight: 800, color: "var(--arbor-sky-ink)" }}
+            style={{ appearance: "none", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", minHeight: `${KID_HOME_SECTION_HEAD_BLOCK}px`, minWidth: 44, fontSize: "var(--kid-t-tag)", fontWeight: 800, color: "var(--arbor-sky-ink)" }}
           >
             {kt("kidBooks.seeAll")} <ChevronRight className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" />
           </button>
@@ -553,7 +556,7 @@ export default function KidDashboard({
           the arcade picker (the "Playbank" menu) is gone. */}
       <section aria-label={t("kid.games.title")}>
         <div style={{ display: "flex", alignItems: "center", marginBlockEnd: `${KID_HOME_HEAD_GAP}px`, minHeight: `${KID_HOME_SECTION_HEAD_BLOCK}px` }}>
-          <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: KID_HOME_GAME_TITLE_SIZE, fontWeight: 900, color: "var(--arbor-ink)" }}>
+          <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: KID_HOME_GAME_TITLE_SIZE, fontWeight: 800, color: "var(--arbor-ink)" }}>
             <Gamepad2 className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-lav-ink)" }} />
             {kt("kid.games.title")}
           </h2>
@@ -584,7 +587,7 @@ export default function KidDashboard({
         onOpen={(s) => onOpenSurface(s.kind === "world" ? "arcade" : "journeys", s.refId)}
         heading={
           <div style={{ display: "flex", alignItems: "center", marginBlockEnd: `${KID_HOME_HEAD_GAP}px`, minHeight: `${KID_HOME_SECTION_HEAD_BLOCK}px` }}>
-            <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: KID_HOME_GAME_TITLE_SIZE, fontWeight: 900, color: "var(--arbor-ink)" }}>
+            <h2 style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: KID_HOME_GAME_TITLE_SIZE, fontWeight: 800, color: "var(--arbor-ink)" }}>
               <Star className="w-4 h-4" aria-hidden="true" style={{ color: "var(--arbor-peach-ink)" }} />
               {kidIsolate(kidsStoriesText("kidReward.myStickers", uiLang === "he" ? "he" : "en"))}
             </h2>

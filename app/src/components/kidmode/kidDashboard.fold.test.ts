@@ -317,10 +317,12 @@ describe("U1 — one FEATURED hero above the fold, plus the greeting mark", () =
    ═══════════════════════════════════════════════════════════════════════════ */
 describe("P2-3 — the tile art box is constant, and the fold does not move", () => {
   /** Title block: 11 px padding top and bottom (SceneTile), the title at its
-   *  390 px clamp floor with lineHeight 1.12, and the --t-sm sub line. */
+   *  390 px clamp floor with lineHeight 1.12, and the --kid-t-tag sub line at its explicit 1.2 line height. */
   const TILE_PAD = 11;
   const TITLE_LINE = KID_HOME_GAME_TITLE_MIN_PX * 1.12;
-  const SUB_BLOCK = 13 * 1.4 + 1; // --t-sm at the default root size + its 1 px offset
+  const tagClamp = /--kid-t-tag:\s*clamp\(([\d.]+)px, ([\d.]+)px \+ ([\d.]+)vw, ([\d.]+)px\)/.exec(css)!;
+  const TAG_AT_390 = Math.min(Number(tagClamp[4]), Math.max(Number(tagClamp[1]), Number(tagClamp[2]) + Number(tagClamp[3]) * 3.9));
+  const SUB_BLOCK = TAG_AT_390 * 1.2 + 1; // real responsive token + its 1 px offset
 
   it("the art row is a fixed length, not a 1fr remainder", () => {
     expect(dash).toContain("`${KID_HOME_GAME_TILE_IMAGE_BLOCK}px auto`");
@@ -329,6 +331,7 @@ describe("P2-3 — the tile art box is constant, and the fold does not move", ()
   });
 
   it("a two-line title still fits inside the tile block at 390 px", () => {
+    expect(dash).toContain('fontSize: "var(--kid-t-tag)", lineHeight: 1.2');
     const titleBlock = TILE_PAD * 2 + TITLE_LINE * 2 + SUB_BLOCK;
     const needed = KID_HOME_GAME_TILE_IMAGE_BLOCK + titleBlock;
     expect(needed, `two-line tile needs ${needed.toFixed(1)} px`).toBeLessThanOrEqual(KID_HOME_GAME_TILE_BLOCK);
