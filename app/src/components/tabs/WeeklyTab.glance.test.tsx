@@ -170,12 +170,25 @@ describe("#/weekly — the report is the dashboard (v3 F-NOW-3)", () => {
       expect(html).not.toContain('data-testid="weekly-next"');
       // Nothing older stored → no Previous.
       expect(render(lang, [stored(lang, "ai")])).not.toContain('data-testid="weekly-prev"');
+      // v3 F-NOW-3 review round 2: the header's action row shows on phones only
+      // when it holds a week step; otherwise it is md-up only (it then holds
+      // nothing but the md-up summary door), so no empty row sits on a phone.
+      expect(tagOf(html, "weekly-header-actions")[0]).toMatch(/class="flex flex-wrap /);
+      expect(tagOf(render(lang, [stored(lang, "ai")]), "weekly-header-actions")[0]).toMatch(/class="hidden md:flex flex-wrap /);
+      // The headline is set at weight 500, as the mock draws it.
+      expect(/<h1 data-testid="weekly-title" class="([^"]*)"/.exec(html)?.[1]).toMatch(/font-medium/);
     });
 
+    /* v3 F-NOW-3 review round 2: each seat has its own test id (the header's
+       weekly-snapshot-door, the phone's weekly-snapshot-door-phone), so a
+       rendered check finds exactly one element per id; one handler, one door. */
     it(`${lang}: the summary door — header seat from md, end seat on phones; it names the next visit's professional when one is booked`, () => {
       const html = render(lang, []);
-      const doors = tagOf(html, "weekly-snapshot-door");
-      expect(doors).toHaveLength(2);
+      const header = tagOf(html, "weekly-snapshot-door");
+      const phone = tagOf(html, "weekly-snapshot-door-phone");
+      expect(header).toHaveLength(1);
+      expect(phone).toHaveLength(1);
+      const doors = [header[0], phone[0]];
       expect(doors[0]).toContain('data-placement="header"');
       expect(doors[0]).toMatch(/class="hidden md:inline-flex /);
       expect(doors[1]).toContain('data-placement="end"');

@@ -19,7 +19,11 @@
  * line and no caution token exist at all; the Retell CTA left with the letter,
  * so §4 pins ONE gradient, on the band's accept, and a plain text link to
  * write the report; §5's module lists read the report's states, its one
- * <details> holds the invite (B-SHELL-29), and the email row left #/weekly.
+ * <details> holds the invite (B-SHELL-29), and the email row left #/weekly
+ * for #/smart-reminders' Delivery section (WeeklyEmailRow). The summary door
+ * opens the Care summary (#/handoff, FEAT-09) instead of #/consult, and the
+ * stale "Back to Today" key (elev.wk.back) is deleted: the band's
+ * elev.wk.carry.back is the page's one back key.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -52,7 +56,10 @@ describe("1 · TJB-10 · back goes to the hub that owns Weekly, at 44 px", () =>
   it("negative control: the shipped label pointed at the child's story, not Today", () => {
     expect(translate("en", "wk.backStory", { first: "Noa" })).toContain("Story");
     expect(tab).not.toContain('t("wk.backStory"');
-    expect(translate("en", "elev.wk.back")).toBe("Back to Today");
+    // v3 F-NOW-3: the stale back key is deleted (translate returns the key);
+    // the band's elev.wk.carry.back is the one back key left on the page.
+    expect(translate("en", "elev.wk.back")).toBe("elev.wk.back");
+    expect(translate("he", "elev.wk.back")).toBe("elev.wk.back");
   });
 
   /* v3 F-NOW-3: the report's carry band ends with its own way back to Today
@@ -132,7 +139,7 @@ describe("4 · principle 3 · one gradient, and it is the primary move", () => {
     expect(door).toContain("onClick={openSummary}");
     expect(door).not.toContain("gradient");
     expect(door).toContain("border: \"1px solid var(--arbor-green-ink)\"");
-    expect(tab).toContain('const openSummary = () => setActiveTab("consult");');
+    expect(tab).toContain('const openSummary = () => setActiveTab("handoff");');
     const write = tab.slice(tab.indexOf('data-testid="weekly-generate"'), tab.indexOf("</button>", tab.indexOf('data-testid="weekly-generate"')));
     expect(write).toContain("underline");
     expect(write).not.toMatch(/gradient|ACCEPT_STAMP|data-primary-move/);
@@ -163,9 +170,10 @@ describe("4 · principle 3 · one gradient, and it is the primary move", () => {
  * B-TODAY-22 — Weekly page: one story, one secondary door. The generated
  * week renders ≤3 non-demoted modules with one nested level at most; the
  * Scholar spotlight and the weekly read (picked by devScore.focusDomain, a
- * hidden weakest-domain pointer) are gone; ONE outline door to Consult; the
- * email row hides until the channel exists or the parent opted in; the empty
- * state is stamped with its explicit secondary move; no bg-white.
+ * hidden weakest-domain pointer) are gone; ONE outline door to the visit
+ * summary; the email row hides until the channel exists or the parent opted
+ * in; the empty state is stamped with its explicit secondary move; no
+ * bg-white.
  */
 describe("5 · B-TODAY-22 · one report, one secondary door", () => {
   const code = tab.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -209,20 +217,35 @@ describe("5 · B-TODAY-22 · one report, one secondary door", () => {
     expect(hook).not.toMatch(/scholarsInfo|spotlight: \{ name/);
   });
 
-  it("ONE outline door, 'Prepare a snapshot for a visit' → #/consult (EN + HE)", () => {
-    expect((code.match(/setActiveTab\("consult"\)/g) ?? []).length).toBe(1);
+  /* v3 F-NOW-3 re-pin (orchestrator decision, adversarial review finding 2):
+     the one door opens the Care summary (#/handoff, FEAT-09), the summary the
+     v3 mock's "Add to the summary" names. Still exactly ONE door handler, and
+     #/consult is no longer opened from the report at all. */
+  it("ONE outline door, 'Prepare a snapshot for a visit' → #/handoff (EN + HE)", () => {
+    expect((code.match(/setActiveTab\("handoff"\)/g) ?? []).length).toBe(1);
+    expect((code.match(/setActiveTab\("consult"\)/g) ?? []).length).toBe(0);
     expect(translate("en", "wk.brief", { first: "Noa" })).toBe("Prepare a snapshot for a visit");
     expect(translate("he", "wk.brief", { first: "Noa" })).toBe("להכין תמונת מצב לביקור");
     // With a visit booked inside its Prepare window, the door names it.
     expect(code).toContain('t("elev.wk.summary.role", { role: appointmentRoleLabel(visit, t) })');
   });
 
-  /* v3 F-NOW-3 re-pin: the email row left #/weekly; the opt-in is offered
-     from the Now page (F-NOW-2). The opt-in store itself is kept. */
-  it("the email row left the report; the opt-in store is kept", () => {
-    expect(code).not.toMatch(/weekly-email|emailOptIn|emailStatus/);
+  /* v3 F-NOW-3 re-pin: the email row left #/weekly for #/smart-reminders'
+     Delivery section (WeeklyEmailRow, beside the phone-reminder card): the
+     one place the parent decides what Arbor may send. The opt-in store is
+     kept and the row is guarded in components/weekly/WeeklyEmailRow.test.tsx. */
+  it("the email row left the report for the reminders' Delivery section; the opt-in store is kept", () => {
+    expect(code).not.toMatch(/weekly-email|emailOptIn|emailStatus|WeeklyEmailRow/);
     const store = fs.readFileSync(path.resolve(__dirname, "../weekly/recapEmail.ts"), "utf8");
     expect(store).toContain("writeEmailOptIn");
+    const panel = fs.readFileSync(path.resolve(__dirname, "../sections/SmartRemindersPanel.tsx"), "utf8")
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(panel).toContain('import WeeklyEmailRow from "../weekly/WeeklyEmailRow";');
+    expect(panel.match(/<WeeklyEmailRow/g)).toHaveLength(1);
+    const delivery = panel.indexOf('data-module="reminders-delivery"');
+    expect(delivery).toBeGreaterThan(0);
+    expect(panel.indexOf("<WeeklyEmailRow")).toBeGreaterThan(delivery);
+    expect(panel.indexOf("<WeeklyEmailRow")).toBeLessThan(panel.indexOf("<details", delivery));
   });
 
   it("the empty state is stamped and its ONE move is the explicit secondary capture-moment", () => {

@@ -255,9 +255,9 @@
   overflow-wrap: anywhere;
 }
 
-/* By area: every registry area, one line each. An empty area reads "—" with
-   no count; a count is a neutral chip in body ink. One column on phones, two
-   from 768 px. */
+/* By area: every registry area, one line each, under a hairline rule (the v3
+   mock's rows, not boxed cards). An empty area reads "—" with no count; a
+   count is a neutral chip in body ink. One column on phones, two from 768 px. */
 .wk-glance-areas-head {
   display: flex;
   flex-wrap: wrap;
@@ -270,7 +270,7 @@
 .wk-glance-areas ul {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+  gap: 0 24px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -283,11 +283,8 @@
   align-items: center;
   gap: 10px;
   min-inline-size: 0;
-  padding-block: 10px;
-  padding-inline: 12px;
-  border: 1px solid var(--arbor-rule);
-  border-radius: var(--r);
-  background: var(--arbor-paper);
+  padding-block: 8px;
+  border-block-start: 1px solid var(--arbor-rule);
   font-size: var(--t-sm);
 }
 .wk-glance-areas li > .msr { color: var(--arbor-muted); }

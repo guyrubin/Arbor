@@ -37,7 +37,8 @@ import { todayLiveSource } from "../../testTodaySource";
  *      gesture lib), reduced-motion aware, share on the final card only,
  *      instrumented; the strip carries the recap entry + counter lines;
  *      WeeklyTab renders the Weekly report (v3 F-NOW-3: the dashboard and
- *      the carry band; the email opt-in left the route, its store is kept),
+ *      the carry band; the email opt-in moved to #/smart-reminders'
+ *      Delivery section as WeeklyEmailRow, on the same store),
  *   4. the lib/streak resettable-value BAN: no recap/strip file may touch
  *      the `.current` member at all — totalDays is the only renderable
  *      continuity number (masterplan 2.3).
@@ -380,8 +381,9 @@ describe("What-changed integration — recap entry line + continuity counter", (
 /* v3 F-NOW-3 re-pin: the letter (RecapStoryCards) and the email row left
    #/weekly. The tab renders the Weekly report as the v3 mock draws it (the
    WeekGlance dashboard, then the carry band with the digest's one
-   suggestion); the email opt-in is offered from the Now page (F-NOW-2), and
-   its store and fail-closed status probe are kept in recapEmail.ts. */
+   suggestion). The email opt-in is offered from #/smart-reminders' Delivery
+   section (WeeklyEmailRow, beside the phone-reminder card), on the same
+   store and fail-closed status probe in recapEmail.ts. */
 describe("WeeklyTab integration — the Weekly report for the selected week; the email opt-in left the route", () => {
   const code = stripComments(read("components/tabs/WeeklyTab.tsx"));
 
@@ -398,7 +400,7 @@ describe("WeeklyTab integration — the Weekly report for the selected week; the
     expect(code).not.toContain("api.digest(");
   });
 
-  it("the email opt-in left the report; its store and fail-closed channel probe are kept", () => {
+  it("the email opt-in left the report for WeeklyEmailRow on #/smart-reminders; same store, same fail-closed probe", () => {
     expect(code).not.toMatch(/readEmailOptIn|writeEmailOptIn|fetchDigestEmailStatus|recap_email_optin|elev\.recap\.email/);
     const store = stripComments(read("components/weekly/recapEmail.ts"));
     expect(store).toContain("export function readEmailOptIn(");
@@ -406,6 +408,12 @@ describe("WeeklyTab integration — the Weekly report for the selected week; the
     expect(store).toContain("export async function fetchDigestEmailStatus(");
     expect(rcEn["elev.recap.email.soon"]).toBeTruthy();
     expect(rcHe["elev.recap.email.soon"]).toBeTruthy();
+    const row = stripComments(read("components/weekly/WeeklyEmailRow.tsx"));
+    expect(row).toContain('from "./recapEmail";');
+    for (const call of ["readEmailOptIn(accountId)", "writeEmailOptIn(accountId, next)", "fetchDigestEmailStatus()", 'track("recap_email_optin"', 't("elev.recap.email.soon")']) {
+      expect(row, call).toContain(call);
+    }
+    expect(stripComments(read("components/sections/SmartRemindersPanel.tsx"))).toContain("<WeeklyEmailRow childFirst={firstName} />");
   });
 
   it("F-06: the tab lands on the CURRENT week, never a stale reports[0]", () => {
@@ -467,6 +475,7 @@ describe("streak ban — no strip/recap file touches the resettable member", () 
     "components/weekly/RecapStoryCards.tsx",
     "components/weekly/recapStrings.ts",
     "components/weekly/recapEmail.ts",
+    "components/weekly/WeeklyEmailRow.tsx",
     "components/weekly/weeklySelection.ts",
     "components/tabs/WeeklyTab.tsx",
     "hooks/useWeeklyRecap.ts",

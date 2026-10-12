@@ -42,6 +42,12 @@ const ACCEPT_STAMP = { "data-primary-move": "accept-recap-recommendation" } as c
  *
  * Clinical firewall: counts only, everywhere on the page; no share, no
  * denominator, no trend, no colour that grades the child.
+ *
+ * Departures from the v3 mock, on purpose: (1) the words card is fed by the
+ * child's word observations kept this week (lib/weekReport), not by the
+ * digest's weekQuotes, so it shows what the parent kept, never what a model
+ * picked; (2) Previous / Next also render on phones (the mock's phone frame
+ * has none), so every stored week stays reachable at 390 px.
  */
 export default function WeeklyTab() {
   const { childProfile, setActiveTab, acceptTodayAction, activeTodayAction, actionLoop } = useArbor();
@@ -138,7 +144,9 @@ export default function WeeklyTab() {
   const appointments = useChildCollection<Appointment>(childProfile.id, "appointments");
   const visit = nextPrepareVisit(appointments.items, Date.now());
   const summaryLabel = visit ? t("elev.wk.summary.role", { role: appointmentRoleLabel(visit, t) }) : t("wk.brief", { first });
-  const openSummary = () => setActiveTab("consult");
+  // v3 F-NOW-3: the door opens the Care summary (#/handoff, FEAT-09), the
+  // professional summary the mock's "Add to the summary" names.
+  const openSummary = () => setActiveTab("handoff");
 
   // The digest the band shows; recap_opened once per shown week.
   const shownDigestWeek = selected?.digest && !awaitingLanguage ? selected.id : null;
@@ -174,15 +182,15 @@ export default function WeeklyTab() {
     </button>
   );
 
-  /* B-TODAY-22: ONE outline door to the visit summary (#/consult). A secondary
+  /* B-TODAY-22: ONE outline door to the visit summary (#/handoff). A secondary
      move, never a second gradient beside the band's accept. It sits in the
      header from md up and closes the page on phones: one handler, two seats,
-     one visible at a time. */
+     one visible at a time, each with its own test id. */
   const summaryDoor = (placement: "header" | "end") => (
     <button
       type="button"
       onClick={openSummary}
-      data-testid="weekly-snapshot-door"
+      data-testid={placement === "header" ? "weekly-snapshot-door" : "weekly-snapshot-door-phone"}
       data-placement={placement}
       className={`${placement === "header" ? "hidden md:inline-flex" : "inline-flex md:hidden w-full"} items-center justify-center gap-2 rounded-2xl px-5 text-sm font-bold transition active:scale-[0.98]`}
       style={{ background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44 }}
@@ -200,14 +208,16 @@ export default function WeeklyTab() {
           <p data-testid="weekly-eyebrow" className="text-[12px] font-bold mb-1" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.wk.kicker", { range })}
           </p>
-          <h1 data-testid="weekly-title" className="text-[28px] md:text-[40px] leading-[1.1] font-semibold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>
+          <h1 data-testid="weekly-title" className="text-[28px] md:text-[40px] leading-[1.1] font-medium" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>
             {t("elev.wk.headline", { first })}
           </h1>
           <p data-testid="weekly-glance-sub" className="mt-2 text-sm" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.wk.glance.sub")}
           </p>
         </div>
-        <div data-testid="weekly-header-actions" className="flex flex-wrap items-center gap-2">
+        {/* On phones the summary door closes the page, so the header row shows
+            only when a week step exists; from md up it always holds the door. */}
+        <div data-testid="weekly-header-actions" className={`${prevId || nextId ? "flex" : "hidden md:flex"} flex-wrap items-center gap-2`}>
           {prevId && stepButton(prevId, "prev")}
           {nextId && stepButton(nextId, "next")}
           {summaryDoor("header")}

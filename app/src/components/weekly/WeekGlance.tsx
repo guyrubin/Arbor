@@ -18,7 +18,7 @@ type TileKey = Exclude<WeekCountKey, "words">;
  */
 const TILES: readonly { key: TileKey; icon: string; label: string }[] = [
   { key: "moments", icon: "edit_note", label: "elev.wk.glance.moments" },
-  { key: "helped", icon: "flag", label: "elev.wk.glance.helped" },
+  { key: "helped", icon: "flag", label: "elev.wk.tile.steps" },
   { key: "milestones", icon: "check_circle", label: "elev.wk.tile.milestones" },
   { key: "kid", icon: "sports_esports", label: "elev.wk.tile.kid" },
 ];

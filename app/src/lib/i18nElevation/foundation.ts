@@ -57,10 +57,10 @@ export const en: Record<string, string> = {
   "elev.pulse.care.briefReady": "A brief is ready to share",
   "elev.pulse.care.empty": "Bring in the people who help",
 
-  // ── TJB-10/19 + ENG-07 · Weekly: back label, week chips, honest empty
-  //    state. "this week's report will build itself" described a thing the
+  // ── TJB-10/19 + ENG-07 · Weekly: week chips, honest empty state (v3
+  //    F-NOW-3 deleted the stale back key; elev.wk.carry.back is the one).
+  //    "this week's report will build itself" described a thing the
   //    code does not do — the report is generated when the parent asks.
-  "elev.wk.back": "Back to Today",
   "elev.wk.thisWeek": "This week",
   "elev.wk.emptyThisWeek": "Nothing kept yet this week. Log a moment and it shows here, by day and by area.",
   "elev.wk.logMoment": "Log a moment",
@@ -203,6 +203,10 @@ export const en: Record<string, string> = {
   "elev.wk.carry.history": "No idea was written for this week.",
   "elev.wk.carry.write": "Write it now",
   "elev.wk.carry.back": "Back to Now",
+  // v3 F-NOW-3 (review round 2) · the Steps tile label as the mock names it,
+  //   and the weekly-report email row's title on #/smart-reminders.
+  "elev.wk.tile.steps": "Steps",
+  "elev.wk.email.title": "Weekly report by email",
 };
 
 export const he: Record<string, string> = {
@@ -242,7 +246,6 @@ export const he: Record<string, string> = {
   "elev.pulse.care.briefReady": "סיכום מוכן לשיתוף",
   "elev.pulse.care.empty": "צרפו את האנשים שעוזרים בדרך",
 
-  "elev.wk.back": "חזרה למסך היום",
   "elev.wk.thisWeek": "השבוע",
   "elev.wk.emptyThisWeek": "עוד לא נשמר כלום השבוע. תעדו רגע והוא יופיע כאן, לפי יום ולפי תחום.",
   "elev.wk.logMoment": "לתעד רגע",
@@ -308,7 +311,7 @@ export const he: Record<string, string> = {
   "elev.wk.glance.played.days": "התקיימו ב-{n} ימים",
   "elev.wk.glance.played.days.one": "התקיימו ביום אחד",
   "elev.wk.glance.milestones": "אבני דרך חדשות",
-  "elev.wk.glance.kid": "מפגשים בעולם הילדים",
+  "elev.wk.glance.kid": "מפגשים בעולם הילד",
   "elev.wk.glance.words": "מילים ששמרתם",
   "elev.wk.glance.days": "יום אחר יום",
   "elev.wk.glance.days.aria": "מה נשמר בכל יום השבוע",
@@ -328,7 +331,7 @@ export const he: Record<string, string> = {
   "elev.wk.next.aria": "שבוע הבא, {week}",
   "elev.wk.summary.role": "להוסיף לתקציר עבור {role}",
   "elev.wk.tile.milestones": "אבני דרך",
-  "elev.wk.tile.kid": "עולם הילדים",
+  "elev.wk.tile.kid": "עולם הילד",
   "elev.wk.tile.helped": "עזר {n} פעמים",
   "elev.wk.tile.helped.one": "עזר פעם אחת",
   "elev.wk.tile.area": "{area} {n}",
@@ -354,4 +357,7 @@ export const he: Record<string, string> = {
   "elev.wk.carry.history": "לשבוע הזה לא נכתב רעיון.",
   "elev.wk.carry.write": "לכתוב עכשיו",
   "elev.wk.carry.back": "חזרה לעכשיו",
+  // v3 F-NOW-3 (review round 2) · the Steps tile and the email row's title.
+  "elev.wk.tile.steps": "צעדים",
+  "elev.wk.email.title": "הדוח השבועי במייל",
 };
