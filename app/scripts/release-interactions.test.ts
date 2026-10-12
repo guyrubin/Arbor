@@ -77,6 +77,8 @@ describe('release interaction contracts, without browser or sockets', () => {
     // Search and the three places, and #/memory has no sheet row any more.
     expect(focused.some((item: any) => item.state === 'more-place-index')).toBe(true);
     expect(focused.some((item: any) => item.state === 'more-memory-current')).toBe(false);
+    // The dropped slot holds the dock Talk focus-return cell (Parent858 kept).
+    expect(focused.some((item: any) => item.group === 'navigation' && item.state === 'dock-talk-return')).toBe(true);
     expect(expectedReleaseInteractionStates('focused', desktop).some((item: any) => item.state.startsWith('more-'))).toBe(false);
     expect(expectedReleaseInteractionStates('focused', desktop).some((item: any) => item.state === 'record-profile')).toBe(true);
     expect(source).toContain('_priorCells: navigation.cells');
@@ -95,6 +97,7 @@ describe('release interaction contracts, without browser or sockets', () => {
     expect(source).toContain("byId('settings-open-memory').click()");
     for (const id of ['more-doors-group', 'more-search', 'more-place-now-group', 'more-place-child-group', 'more-place-together-group']) expect(source).toContain(`'${id}'`);
     expect(source).not.toContain("byId('more-records-group')");
+    for (const assertion of ['DOCK_TALK_OPENS_CONVERSATION', 'DOCK_TALK_KEEPS_ROUTE', 'DOCK_TALK_FOCUS_RETURNED']) expect(source).toContain(assertion);
     expect(source).toContain("dialog.getByRole('heading').first()");
     for (const route of ['milestones', 'daily-play']) for (const state of ['scroll-initial', 'scroll-middle', 'scroll-last-action']) expect(expectedReleaseInteractionStates('navigation', mobile).some(item => item.route === route && item.state === `${route}-${state}`)).toBe(true);
     expect(source).toContain("document.querySelector('#main')");

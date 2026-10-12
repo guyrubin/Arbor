@@ -53,7 +53,7 @@ export const RELEASE_INTERACTION_STATES = Object.freeze({
     ...['milestones', 'daily-play'].flatMap(route => rows(route, ['initial', 'middle', 'last-action'].map(position => `${route}-scroll-${position}`))),
     ...rows('development', ['scroll-route-reset']),
     ...rows('timeline', ['recordnav-initial', 'recordnav-scrolled']),
-    ...rows('shell', ['more-place-index', 'more-profile-current']).map(item => ({ ...item, mobileOnly: true })),
+    ...rows('shell', ['more-place-index', 'more-profile-current', 'dock-talk-return']).map(item => ({ ...item, mobileOnly: true })),
     ...rows('profile', ['record-profile']), ...rows('memory', ['record-memory']),
     ...rows('development', ['watch-chosen', 'watch-cleared', 'watch-undo']),
   ],
@@ -662,6 +662,18 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         const profileReached = await screen('profile', 'record-profile', async cell => { dependent(moreReady); await aboutLink().click(); await page.waitForFunction(() => location.hash.startsWith('#/profile')); await visible(cell, 'PROFILE_PAGE_VISIBLE', page.locator('main h1').first()); check(cell, 'PROFILE_DESTINATION', new URL(page.url()).hash.startsWith('#/profile')); });
         const profileCurrent = await screen('shell', 'more-profile-current', async cell => { dependent(profileReached); await more().click(); await visible(cell, 'ABOUT_LINK_VISIBLE', aboutLink()); check(cell, 'PROFILE_CURRENT_ONLY', await aboutLink().getAttribute('aria-current') === 'page' && await page.locator('[data-more-destination][aria-current="page"]').count() === 1); });
         await screen('memory', 'record-memory', async cell => { dependent(profileCurrent); await page.getByRole('button', { name: he ? 'הגדרות' : 'Settings', exact: true }).click(); await byId('settings-open-memory').click(); await page.waitForFunction(() => location.hash.startsWith('#/memory')); await visible(cell, 'MEMORY_PAGE_VISIBLE', page.locator('main h1').first()); check(cell, 'MEMORY_DESTINATION', new URL(page.url()).hash.startsWith('#/memory')); cell.interactionScope = 'More sheet Settings door, then What Arbor remembers'; });
+        // v3 F-SHELL-3 (WCAG 2.4.3): the dock's Talk opens the conversation over the
+        // page (no route change), and an explicit close gives focus back to Talk.
+        // Keeps the Parent858 shape: it takes the dropped more-memory-current slot.
+        await screen('shell', 'dock-talk-return', async cell => {
+          await load('overview'); await byId('dock-talk').focus(); await page.keyboard.press('Enter');
+          await visible(cell, 'DOCK_TALK_OPENS_CONVERSATION', conversation());
+          check(cell, 'DOCK_TALK_KEEPS_ROUTE', new URL(page.url()).hash.startsWith('#/overview'));
+          await conversation().locator('.companion-conversation-heading > button').last().click();
+          await page.waitForFunction(() => document.activeElement?.getAttribute('data-testid') === 'dock-talk', null, { timeout: 5000 }).catch(() => {});
+          check(cell, 'DOCK_TALK_FOCUS_RETURNED', await byId('dock-talk').evaluate(el => document.activeElement === el));
+          cell.interactionScope = 'dock Talk by keyboard, then the conversation close button';
+        });
       } else {
         for (const route of ['profile', 'memory']) await screen(route, `record-${route}`, async cell => { await load(route); await visible(cell, 'DIRECT_RECORD_PAGE_VISIBLE', page.locator('main h1').first()); check(cell, 'DIRECT_RECORD_ROUTE', new URL(page.url()).hash.startsWith(`#/${route}`)); cell.interactionScope = 'direct route; mobile More does not exist at this viewport'; });
       }
