@@ -86,7 +86,10 @@ describe("B-ASKJB-10 · CoachTab wiring", () => {
     expect(coach).toContain("const ECHO_PROMPTS: Readonly<Record<string, string>> = {");
     expect(coach.indexOf("const ECHO_PROMPTS")).toBeGreaterThan(coach.indexOf("const SCENARIOS"));
     expect(coach.indexOf('data-testid="coach-scenario-echo"')).toBeLessThan(coach.indexOf("SCENARIOS.slice(0, staticShown)"));
-    expect(coach).toContain("const staticShown = echoScenario ? 2 : 3;");
+    // EXTRA-TALK re-pin (brief build order): the echo chip still takes one seat
+    // of the row (3 on the page, 4 in the Talk panel), so the page keeps
+    // echo + 2 static; the family-question chip, when set, takes another.
+    expect(coach).toContain("const staticShown = Math.max(0, scenarioSeats - (topicChip ? 1 : 0) - (echoScenario ? 1 : 0));");
     expect(coach).toContain("recurringScenario(behaviorLogs, localDayKey(), {");
   });
 });

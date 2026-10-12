@@ -11,6 +11,9 @@
  * area's "Tell more" / ?aspect=<id> with that area's fill pressed and the
  * opening asked about it. A bottom sheet below lg (the mock's sheet), the
  * centred dialog above it — the swap SettingsModal and PaywallModal make.
+ *
+ * F-TALK-2 (mock L680-700): a bottom sheet with its grab handle below lg, the
+ * centred Modal above it (the MOB-28 surface seam, as Settings and Paywall).
  */
 import React, { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Modal } from "../ui/Modal";
@@ -40,9 +43,9 @@ export default function TellArborMore({ onClose, aspect: openOn = null, mode = "
   const { childProfile, milestones, setMilestoneObservation, restoreMilestone, retryMemoryReview } = useArbor();
   const { updateChild } = useProfile();
   const { t, aiLang, uiLang } = useLanguage();
+  const Surface = useCompactSurface() ? Sheet : Modal;
   const lang: "en" | "he" = aiLang === "he" ? "he" : "en";
   const name = (childProfile.name || "").trim().split(/\s+/)[0] || childProfile.name;
-  const Surface = useCompactSurface() ? Sheet : Modal;
   const [aspect, setAspect] = useState<AspectId | null>(openOn);
   const areaName = aspect ? t(`companion.about.aspect.${aspect}`) : "";
   const opening = aspect

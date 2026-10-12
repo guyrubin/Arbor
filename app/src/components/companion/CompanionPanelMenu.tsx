@@ -12,15 +12,17 @@ import Icon from "../ui/Icon";
  */
 export type CompanionPanelAction = "new" | "history" | "tone" | "remembers" | "widen";
 
-type Item = { id: CompanionPanelAction; icon: string; labelKey: string };
+type Item = { id: CompanionPanelAction; icon: string; labelKey: string; subKey?: string };
 
-/** The items, in order. Expand appears only where the panel can dock (≥ 1280 px). */
+/** The items, in order. Expand appears only where the panel can dock (≥ 1280 px).
+ *  F-TALK-1: three items carry a quiet second line saying what they keep or
+ *  show (words only, never a count). */
 export function companionPanelItems({ wide, expanded }: { wide: boolean; expanded: boolean }): Item[] {
   const items: Item[] = [
-    { id: "new", icon: "add", labelKey: "companion.panel.new" },
-    { id: "history", icon: "history", labelKey: "elev.wave2Daily.ask.history" },
+    { id: "new", icon: "add_comment", labelKey: "companion.panel.new", subKey: "companion.panel.new.sub" },
+    { id: "history", icon: "history", labelKey: "companion.panel.history", subKey: "companion.panel.history.sub" },
     { id: "tone", icon: "record_voice_over", labelKey: "companion.panel.tone" },
-    { id: "remembers", icon: "psychology", labelKey: "companion.panel.remembers" },
+    { id: "remembers", icon: "shield", labelKey: "companion.panel.remembers", subKey: "companion.panel.remembers.sub" },
   ];
   if (wide) items.push(expanded
     ? { id: "widen", icon: "expand_less", labelKey: "companion.input.show-beside-the-page" }
@@ -106,7 +108,10 @@ export default function CompanionPanelMenu({ uiLang, panelVisible, wide, expande
       {items.map(item => <button key={item.id} type="button" role="menuitem" tabIndex={-1} className="companion-panel-menu-item"
         data-testid={`companion-panel-menu-${item.id}`} onClick={() => choose(item.id)}>
         <Icon name={item.icon} size={20} className="companion-panel-menu-icon" />
-        <span className="companion-panel-menu-label">{inputText(uiLang, item.labelKey)}</span>
+        <span className="companion-panel-menu-text">
+          <span className="companion-panel-menu-label">{inputText(uiLang, item.labelKey)}</span>
+          {item.subKey && <span className="companion-panel-menu-sub">{inputText(uiLang, item.subKey)}</span>}
+        </span>
       </button>)}
     </div>}
   </div>;

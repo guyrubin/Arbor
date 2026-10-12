@@ -6,6 +6,7 @@ import { Sheet } from "../ui/Sheet";
 import { Icon } from "../ui/Icon";
 import { useSheetHistory } from "../../hooks/useSheetHistory";
 import { SheetBreadcrumb } from "../layout/Breadcrumb";
+import { requestCompanionConversation } from "../../lib/companionConversation";
 import type { FamilyTopic } from "../../lib/familyTopics";
 import type { Observation } from "../../lib/observations";
 import { clearFamilyTopicEdit, pendingFamilyTopicEdit } from "./familyTopicEvents";
@@ -174,7 +175,7 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
               : <p className="topic-linked-empty">{t("companion.family-topic-sheet.a-step-you-choose-will-appear-here")}</p>}
           </div>
           <div><h4><Icon name="forum" size={18} />{t("companion.family-topic-sheet.our-conversations")}</h4>
-            {threads.map(thread => <button key={thread.id} type="button" className="topic-linked-row topic-linked-thread" dir="auto" onClick={() => { openConversation(thread.id); close(() => setActiveTab("coach")); }}>{thread.title}</button>)}
+            {threads.map(thread => <button key={thread.id} type="button" className="topic-linked-row topic-linked-thread" dir="auto" onClick={() => { openConversation(thread.id); close(() => requestCompanionConversation({ source: "family-topic" })); }}>{thread.title}</button>)}
             <button type="button" className="companion-text-button" onClick={() => { newConversation(); seedCoach({ prompt: topic.title, source: "family-topic" }); close(); }}>{t("companion.family-topic-sheet.talk-this-through-with-arbor")}</button>
           </div>
         </div>

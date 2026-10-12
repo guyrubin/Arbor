@@ -103,6 +103,9 @@ export interface CoachDisclosureInput {
   /** Server-reported count of approved facts the last answer actually used. */
   factsUsedInLastAnswer?: number;
   childFirstName: string;
+  /** F-TALK-1 / OWN-1: the approved ledger could not be read. The facts line
+   *  then says so, and never claims there are none. */
+  factsUnreadable?: boolean;
   /** How many facts to name inline before folding into "+N more". */
   nameLimit?: number;
   now?: Date;
@@ -129,7 +132,7 @@ const DEFAULT_NAME_LIMIT = 4;
  * they sit closest to the "you control this" group below them in the panel.
  */
 export function coachDisclosure(input: CoachDisclosureInput, t: Translate): CoachDisclosure {
-  const { profile, approvedFacts, factsUsedInLastAnswer, childFirstName, nameLimit = DEFAULT_NAME_LIMIT, now } = input;
+  const { profile, approvedFacts, factsUsedInLastAnswer, childFirstName, factsUnreadable = false, nameLimit = DEFAULT_NAME_LIMIT, now } = input;
 
   const fields = disclosedProfileFields(profile, now);
   const uses: string[] = [];
@@ -142,6 +145,13 @@ export function coachDisclosure(input: CoachDisclosureInput, t: Translate): Coac
           fields: fields.map((f) => t(`elev.memdisc.field.${f}`)).join(", "),
         }),
   );
+
+  if (factsUnreadable) {
+    // An unreadable ledger is not an empty one: say the list is out of reach
+    // instead of "none", and name no fact the panel cannot show.
+    uses.push(t("elev.memdisc.facts.unreadable"));
+    return { uses, fields, namedFactCount: 0 };
+  }
 
   if (approvedFacts.length === 0) {
     // AI-23's rule, held here too: never imply memory use before a fact exists.

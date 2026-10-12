@@ -89,7 +89,9 @@ describe("FEAT-01 — the Ask bar carries the active question as one quiet line"
     expect(line!.props.id).toBe("companion-launch-topic");
     expect(line!.props.onClick).toBeUndefined();
     expect(ask()["aria-describedby"]).toBe("companion-launch-topic");
-    expect(ask()["aria-label"]).toBe(translate(lang, "companion.input.talk-with-arbor-text-photo-or-voice"));
+    // F-TALK-1 re-pin: the bar's name is its visible label, "Ask Arbor - text, photo or voice".
+    expect(ask()["aria-label"]).toBe(translate(lang, "companion.launcher.label"));
+    expect(node(n => n.props.className === "companion-launch-copy")!.props.children[0]).toBe(translate(lang, "companion.launcher.label"));
     const words = node(n => n.props.className === "companion-launch-topic-text")!;
     expect(words.type).toBe("bdi");
     expect(words.props.dir).toBe("auto");
@@ -154,7 +156,9 @@ describe("FEAT-01 — the conversation header's options menu", () => {
     expect(button["aria-label"]).toBe(translate(lang, "companion.panel.menu"));
     expect(button.className).toBe("companion-chrome-button");
     expect(html).not.toContain('role="menu"');
-    expect(node(n => n.type === CompanionPanelMenu)!.props).toMatchObject({ wide: true, expanded: true, panelVisible: true });
+    // F-TALK-1 re-pin: a conversation route opens the panel docked beside the
+    // place (never expanded over it), so the menu offers Expand.
+    expect(node(n => n.type === CompanionPanelMenu)!.props).toMatchObject({ wide: true, expanded: false, panelVisible: true });
     for (const key of ["companion.input.expand-conversation", "companion.input.show-beside-the-page"]) {
       expect(state.nodes.some(n => n.type === "button" && n.props["aria-label"] === translate(lang, key)), key).toBe(false);
     }
@@ -210,7 +214,10 @@ describe("FEAT-01 — the conversation header's options menu", () => {
 
   it.each(["en", "he"] as const)("labels the menu, every item and the caption in %s (Hebrew without Latin)", lang => {
     const items = [...companionPanelItems({ wide: true, expanded: false }), ...companionPanelItems({ wide: true, expanded: true })];
-    const keys = [...new Set(["companion.panel.menu", "companion.launcher.topic", ...items.map(item => item.labelKey)])];
+    // F-TALK-1: the items' second lines are held to the same rules.
+    const subs = items.flatMap(item => item.subKey ? [item.subKey] : []);
+    expect(subs).toEqual(expect.arrayContaining(["companion.panel.new.sub", "companion.panel.history.sub", "companion.panel.remembers.sub"]));
+    const keys = [...new Set(["companion.panel.menu", "companion.launcher.topic", ...items.map(item => item.labelKey), ...subs])];
     for (const key of keys) {
       // A placeholder ({title}) is the only Latin a Hebrew value may carry.
       const label = translate(lang, key).replace(/\{\w+\}/g, "");
@@ -376,7 +383,10 @@ describe("FEAT-01 — the conversation header's options menu", () => {
 
 describe("FEAT-01 — the conversation answers the menu through its one door", () => {
   const coach = readFileSync(new URL("../tabs/CoachTab.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
-  it("tone opens the ONE ToneSheet and history brings the history row into view; neither sends", () => {
+  // F-TALK-1 re-pin: history is hidden until asked; the claim opens the list,
+  // and a separate effect (the list mounts on the next render) brings it into
+  // view and focuses its current row.
+  it("tone opens the ONE ToneSheet and history opens the in-panel list and focuses it; neither sends", () => {
     const start = coach.indexOf("const onAsk = (event: Event) => {");
     expect(start).toBeGreaterThan(-1);
     const listener = coach.slice(start, coach.indexOf("window.addEventListener(COMPANION_CONVERSATION_EVENT, onAsk);"));
@@ -389,11 +399,16 @@ describe("FEAT-01 — the conversation answers the menu through its one door", (
     // Claimed only while the conversation shows, so a hidden panel never opens a sheet.
     expect(coach.slice(at - 80, at)).toContain("if (!visible) return;");
     expect(claim).toContain('if (panel === "tone") setToneOpen(true);');
-    expect(claim).toMatch(/if \(panel === "history" && historyRef\.current\)/);
-    expect(claim).toContain("focus({ preventScroll: true })");
-    for (const part of [listener, claim]) expect(part).not.toMatch(/sendMessage|handleSend|setChatInput/);
+    expect(claim).toContain('if (panel === "history") { setHistoryOpen(true); setHistoryAsk((n) => n + 1); }');
+    const reveal = coach.slice(coach.indexOf("if (!historyAsk || !historyRef.current) return;"), coach.indexOf("}, [historyAsk]);"));
+    expect(reveal.length).toBeGreaterThan(0);
+    expect(reveal).toContain("scrollIntoView(");
+    expect(reveal).toContain('[data-history-chip][aria-current]');
+    expect(reveal).toContain("focus({ preventScroll: true })");
+    for (const part of [listener, claim, reveal]) expect(part).not.toMatch(/sendMessage|handleSend|setChatInput/);
     expect(coach.match(/<ToneSheet /g)).toHaveLength(1);
-    expect(coach).toContain('<section data-module="coach-history" ref={historyRef}');
+    expect(coach).toContain('{historyOpen && (\n        <section data-module="coach-history"\n          ref={historyRef}');
+    expect(coach).toContain("const [historyOpen, setHistoryOpen] = useState(false);");
   });
 
   it("holds a menu request until the conversation claims it: once, the latest, and only while fresh", () => {

@@ -515,9 +515,6 @@ export const en: Dict = {
   "coach.scenario.sibling": "Sibling clash",
   "coach.scenario.bedtime": "Bedtime battle",
   "coach.scenario.dropoff": "School dropoff",
-  "coach.followup.avoid": "What should I avoid saying in that moment?",
-  "coach.followup.repair": "How do I repair the connection afterwards?",
-  "coach.followup.calm": "Give me a 1-minute calming routine to try.",
   // COACH-1 — CoachAnswerCards panel chrome (the flagship structured answer).
   "coach.cards.council": "The council weighed in · {n} voices",
   // ASK-3 — hypotheses collapse into a calm disclosure below the script + plan.
@@ -634,10 +631,7 @@ export const en: Dict = {
   "beh.capture.optional": "Optional — helps Arbor notice context over time",
   // AI-CAP-6 — live dictation caption (shown until the first words arrive).
   "beh.capture.listening": "Listening — take your time, pauses are okay.",
-  // AI-CAP-7 — post-confirm coach handoff strip (one optional CTA per confirm).
-  "beh.postCapture.body": "Want a next step for this moment?",
-  "beh.postCapture.cta": "Ask Arbor",
-  "beh.postCapture.dismiss": "Not now",
+  // AI-CAP-7 → F-TALK-2 — the coach seed the capture sheet's saved-state Talk prefills.
   "beh.postCapture.prompt": "I just logged this moment for {name}: {type}. What happened: {trigger}. What I tried: {response}. What would be a good next step?",
   "beh.speak": "Speak",
   "beh.stop": "Stop",
@@ -809,7 +803,7 @@ export const en: Dict = {
   "hm.ref.dismiss": "Remove the guide card",
   "hm.today.eyebrow": "From your recent moments",
   // FEAT-06 (v3 hard moment): the "you first" view above the picker.
-  "hm.first.kicker": "Words and one step for right now",
+  "hm.first.kicker": "A hard moment · words and one step",
   "hm.first.title": "You first. Then {name}.",
   "hm.first.titleBare": "You first. Then your child.",
   "hm.first.say": "I can see this is hard right now. I’m here. Let’s breathe together.",
@@ -3091,9 +3085,6 @@ export const he: Dict = {
   "coach.scenario.sibling": "מריבת אחים",
   "coach.scenario.bedtime": "מאבק לפני השינה",
   "coach.scenario.dropoff": "פרידה בגן/בית הספר",
-  "coach.followup.avoid": "מה כדאי שאמנע מלומר באותו רגע?",
-  "coach.followup.repair": "איך אני מתקן את הקשר אחר כך?",
-  "coach.followup.calm": "תנו לי שגרת הרגעה של דקה לנסות.",
   // COACH-1 — CoachAnswerCards panel chrome (he). FLAG: native-Hebrew review before
   // wide release, per the transcreation gate.
   "coach.cards.council": "המועצה התייעצה · {n} קולות",
@@ -3211,10 +3202,7 @@ export const he: Dict = {
   "beh.capture.optional": "אופציונלי — עוזר לארבור לזהות הקשר לאורך זמן",
   // AI-CAP-6 — live dictation caption (he).
   "beh.capture.listening": "מקשיבים — קחו את הזמן, הפסקות זה בסדר.",
-  // AI-CAP-7 — post-confirm coach handoff strip (he).
-  "beh.postCapture.body": "רוצים צעד הבא לרגע הזה?",
-  "beh.postCapture.cta": "שאלו את ארבור",
-  "beh.postCapture.dismiss": "לא עכשיו",
+  // AI-CAP-7 → F-TALK-2 — the coach seed the saved-state Talk prefills (he).
   "beh.postCapture.prompt": "הרגע תיעדתי את הרגע הזה עבור {name}: {type}. מה קרה: {trigger}. מה ניסיתי: {response}. מה יכול להיות צעד הבא טוב?",
   "beh.speak": "דברו",
   "beh.stop": "עצור",
@@ -3376,7 +3364,7 @@ export const he: Dict = {
   "hm.ref.dismiss": "להסיר את כרטיס המדריך",
   "hm.today.eyebrow": "מהרגעים האחרונים שתיעדתם",
   // FEAT-06 (v3 hard moment): the "you first" view above the picker.
-  "hm.first.kicker": "מילים וצעד אחד לרגע הזה",
+  "hm.first.kicker": "רגע קשה · מילים וצעד אחד",
   "hm.first.title": "קודם אתם. אחר כך {name}.",
   "hm.first.titleBare": "קודם אתם. אחר כך הילד שלכם.",
   "hm.first.say": "אני רואה שקשה לך עכשיו. אני כאן. ננשום יחד.",

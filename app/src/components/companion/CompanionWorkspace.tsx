@@ -3,6 +3,7 @@ import React, { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, use
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDialog } from "../../hooks/useDialog";
+import { useVisualViewportInset } from "../../hooks/useVisualViewportInset";
 import { COMPANION_CONVERSATION_EVENT, requestCompanionConversation, type CompanionConversationRequest } from "../../lib/companionConversation";
 import { trackCompanionPanelOpen } from "../../lib/kpiEvents";
 import { isKidModeActive } from "../../lib/kidModeGate";
@@ -18,6 +19,11 @@ import "./companionWorkspace.css";
 
 const CoachTab = lazy(() => import("../tabs/CoachTab"));
 
+/** The route segment of a place address: "#/language/said?x=1" -> "language".
+ *  A sub-route (lib/routes SUB_ROUTES) is that route's own address, so it is
+ *  kept and given back whole, not cut to the bare route. */
+const placeKey = (hash: string) => hash.replace(/^#\/?/, "").split("?")[0].split("/")[0];
+
 /** Mounted above routes: changing a view must not restart a draft, turn or microphone session. */
 export default function CompanionWorkspace({ children, kidLocked }: { children: React.ReactNode; kidLocked: boolean }) {
   const { activeTab, setActiveTab, childProfile, activeFamilyTopic, setChatInput, chatInput, openCaptureSheet, openHardMomentNow, newConversation } = useArbor();
@@ -28,13 +34,28 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     const at = new Date();
     return availableHardMomentCards({ now: at, ageMonths: ageMonthsFromProfile(childProfile, at), locale: uiLang === "he" ? "he" : "en" }).length > 0;
   }, [childProfile, uiLang]);
+  // F-TALK-1: Talk is a panel, never a page. A conversation route (#/coach,
+  // #/scholar and their aliases) opens the panel over the last place and the
+  // address goes back to that place; at >= 1280 px the panel docks beside it.
   const routeIsConversation = activeTab === "coach" || activeTab === "scholar";
-  const [open, setOpen] = useState(routeIsConversation);
-  const [mounted, setMounted] = useState(routeIsConversation);
-  const [expanded, setExpanded] = useState(routeIsConversation);
+  // Under Kid Mode a conversation route is held, never opened (see below).
+  const [open, setOpen] = useState(routeIsConversation && !kidLocked);
+  const [mounted, setMounted] = useState(routeIsConversation && !kidLocked);
+  const [expanded, setExpanded] = useState(false);
   const [wide, setWide] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches);
   const previousChild = useRef(childProfile.id);
   const returnTab = useRef<"overview" | typeof activeTab>("overview");
+  // The place under the panel: its page stays rendered while a conversation
+  // route is replaced by it (no blank frame, no remount), and its own address,
+  // query included, comes back.
+  const placeChildren = useRef<React.ReactNode>(undefined);
+  const placeHash = useRef<string | null>(null);
+  const redirectTo = useRef<typeof activeTab | null>(null);
+  // A conversation route that arrived while Kid Mode froze navigation.
+  const heldByKid = useRef(false);
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+  if (!routeIsConversation) placeChildren.current = children;
   const launchRef = useRef<HTMLButtonElement>(null);
   const closeFocus = useRef<{ childId: string; tab: typeof activeTab } | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -51,9 +72,27 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   const visible = open && !kidLocked;
   const modal = visible && (!wide || expanded);
   const close = () => {
-    closeFocus.current = { childId: childProfile.id, tab: routeIsConversation ? returnTab.current : activeTab };
+    closeFocus.current = { childId: childProfile.id, tab: activeTab };
     setOpen(false);
-    if (routeIsConversation) setActiveTab(returnTab.current);
+  };
+  // Replaces the conversation address with the place's own (replaceState, so
+  // Back never lands on a conversation route again). A place address that is
+  // more than the bare route (a query, #/development?view=program, or a
+  // sub-route, #/language/said) is re-read by the app's own hash listener; a
+  // plain one moves through setActiveTab.
+  const returnToPlace = () => {
+    const place = returnTab.current;
+    redirectTo.current = place;
+    const hash = placeHash.current;
+    if (hash && hash !== `#/${place}`) {
+      try {
+        window.history.replaceState(window.history.state, "", hash);
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+        return;
+      } catch { /* no history API: the plain path below still moves the route */ }
+    }
+    try { window.history.replaceState(window.history.state, "", `#/${place}`); } catch { /* no history API */ }
+    setActiveTab(place);
   };
   // FEAT-01: the header menu reaches existing controls only. New conversation
   // is the history row's own handler (the question stays); history and tone
@@ -77,6 +116,9 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   // in an ellipsis and a Latin title keeps its order inside Hebrew.
   const launcherTopic = !chatInput.trim() ? activeFamilyTopic?.title.trim() ?? "" : "";
   const [topicBefore, topicAfter = ""] = inputText(uiLang, "companion.launcher.topic").split("{title}");
+  // F-TALK-1: the bar names its three ways in, "Ask Arbor - text, photo or
+  // voice"; its accessible name is the visible words (a draft names the draft).
+  const launchLabel = chatInput.trim() ? inputText(uiLang, "companion.input.continue-your-draft") : inputText(uiLang, "companion.launcher.label");
   // Direct Coach/Scholar entry has no mounted launcher until close commits.
   // Restore only an explicit close, after route/dialog cleanup; newer context
   // owns focus and cancels this return rather than moving or scrolling it.
@@ -101,6 +143,8 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     return () => cancelAnimationFrame(frame);
   }, [open, kidLocked, childProfile.id, activeTab]);
   const { ref: panelRef } = useDialog<HTMLElement>({ open: modal, onClose: close, returnFocusRef: launchRef, persistentLayer: true });
+  // F-TALK-2 / MOB-03: full-screen on a phone, the composer stays above the keyboard.
+  useVisualViewportInset(modal);
   useEffect(() => {
     if (visible && !modal) panelRef.current?.focus();
   }, [visible, modal, panelRef]);
@@ -123,19 +167,45 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, []);
-  useEffect(() => {
+  // Layout timing: the conversation route is replaced before paint, so the
+  // address and the page underneath never show a conversation "page".
+  // F-TALK-1 (review r1): Kid Mode freezes parent navigation (setActiveTab and
+  // the hash listener are both gated), so a conversation route that arrives
+  // under it (a reload on #/coach with Kid Mode still open) is held, not half
+  // converted; the unlock effect below returns it to the place. The gate is
+  // read too, because it can lead the kidLocked prop by a commit.
+  useLayoutEffect(() => {
     if (captureRef.current) captureRef.current.open = false;
-    if (routeIsConversation) { show("route"); setExpanded(true); }
+    if (routeIsConversation) { if (kidLocked || isKidModeActive()) heldByKid.current = true; else { show("route"); setExpanded(false); returnToPlace(); } }
     else {
       returnTab.current = activeTab; setExpanded(false);
+      try {
+        const hash = window.location.hash;
+        placeHash.current = placeKey(hash) === activeTab ? hash : null;
+      } catch { placeHash.current = null; }
+      // Arriving back at the place from a conversation route keeps the panel open.
+      const arrived = redirectTo.current === activeTab;
+      redirectTo.current = null;
       // An answer's own action (Plan, Teacher note, Specialist, Manage memory)
       // moved the page. Below 1280px the panel is full-screen and would hide
       // the page the parent just asked for, so it steps aside; the draft and
       // thread stay mounted and the launcher brings them back. Wide screens
       // keep it docked beside the page.
-      if (!wide) setOpen(false);
+      if (!arrived && !wide) setOpen(false);
     }
   }, [activeTab]);
+  // A query change inside the same place (#/development to ?view=program) is
+  // the place's address too.
+  useEffect(() => {
+    const remember = () => {
+      try {
+        const hash = window.location.hash;
+        if (placeKey(hash) === activeTabRef.current) placeHash.current = hash;
+      } catch { /* no location */ }
+    };
+    window.addEventListener("hashchange", remember);
+    return () => window.removeEventListener("hashchange", remember);
+  }, []);
   useEffect(() => {
     const receive = (event: Event) => {
       if (kidLocked) return;
@@ -155,9 +225,15 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     previousChild.current = childProfile.id;
     if (captureRef.current) captureRef.current.open = false;
     setOpen(false); setMounted(false); setExpanded(false);
-    if (routeIsConversation) setActiveTab("overview");
   }, [childProfile.id]);
   useEffect(() => { if (kidLocked) setOpen(false); }, [kidLocked]);
+  // The parent is back: a held conversation route goes quietly to the place
+  // (the launcher is there; nothing opens on the child's last screen).
+  useLayoutEffect(() => {
+    if (kidLocked || !heldByKid.current) return;
+    heldByKid.current = false;
+    if (activeTabRef.current === "coach" || activeTabRef.current === "scholar") returnToPlace();
+  }, [kidLocked]);
 
   // The launcher owns an intrinsic-height row outside the main scrollport.
   // Measure translated/wrapped chrome for keyboard clearance and the actual
@@ -183,8 +259,10 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     return () => { observer?.disconnect(); window.removeEventListener("resize", measure); document.removeEventListener("pointerdown", closeOutside); };
   }, [visible, kidLocked, uiLang, activeTab, chatInput]);
 
+  const openQuestion = () => openFamilyTopicSheet();
+  const topicTitle = activeFamilyTopic?.title ?? "";
   return <div ref={workspaceRef} className={`companion-workspace${visible ? " is-open" : ""}${expanded ? " is-expanded" : ""}`}>
-    {children}
+    {routeIsConversation && placeChildren.current !== undefined ? placeChildren.current : children}
     <div className="companion-panel-layer" data-arbor-dialog-layer>
     {modal && <button type="button" tabIndex={-1} className="companion-workspace-backdrop" aria-label={inputText(uiLang, "companion.input.close-conversation")} onClick={close} />}
     {mounted && !kidLocked && <aside ref={panelRef} tabIndex={-1} hidden={!visible} className="arbor-parent companion-conversation" role={modal ? "dialog" : "complementary"} aria-modal={modal || undefined} aria-labelledby="companion-conversation-title">
@@ -192,12 +270,18 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
         <ArborMark size={30} />
         <div className="companion-conversation-identity">
           <h2 id="companion-conversation-title">Arbor</h2>
-          {/* FEAT-05: the active question is a chip that opens the question sheet; text only, never a count or dot. */}
+          {/* FEAT-05 / F-TALK-1: the active question opens the question sheet; text
+              only, never a count or dot. Beside a wide page it is the chip alone;
+              below 1280 px it is one muted line, "<child> · <question>". Without
+              a question the header names the child. */}
           <div className="companion-conversation-context">
-            <span className="companion-conversation-name"><bdi dir="auto">{childProfile.name}</bdi></span>
-            {activeFamilyTopic && <button type="button" className="companion-topic-chip" data-testid="conversation-topic-chip" aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.topic-chip.open", { value0: activeFamilyTopic.title })} onClick={() => openFamilyTopicSheet()}>
-              <span className="companion-topic-chip-pill"><Icon name="bookmark" size={16} className="companion-topic-chip-icon" /><span className="companion-topic-chip-text" dir="auto">{activeFamilyTopic.title}</span></span>
-            </button>}
+            {!activeFamilyTopic ? <span className="companion-conversation-name"><bdi dir="auto">{childProfile.name}</bdi></span>
+              : wide ? <button type="button" className="companion-topic-chip" data-testid="conversation-topic-chip" aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.topic-chip.open", { value0: topicTitle })} onClick={openQuestion}>
+                <span className="companion-topic-chip-pill"><Icon name="bookmark" size={16} className="companion-topic-chip-icon" /><span className="companion-topic-chip-text" dir="auto">{topicTitle}</span></span>
+              </button>
+              : <button type="button" className="companion-topic-line" data-testid="conversation-topic-chip" aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.topic-chip.open", { value0: topicTitle })} onClick={openQuestion}>
+                <span className="companion-topic-line-text"><bdi dir="auto">{childProfile.name}</bdi> · <bdi dir="auto">{topicTitle}</bdi></span>
+              </button>}
           </div>
         </div>
         <CompanionPanelMenu uiLang={uiLang === "he" ? "he" : "en"} panelVisible={visible} wide={wide} expanded={expanded} onSelect={panelAction} />
@@ -209,8 +293,8 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     </aside>}
     </div>
     {!visible && !kidLocked && <div className="arbor-parent companion-launcher-rail" data-testid="companion-launcher-rail"><div ref={launcherRef} className="arbor-parent companion-launcher" data-testid="companion-launcher">
-      <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.input.talk-with-arbor-text-photo-or-voice")} aria-describedby={launcherTopic ? "companion-launch-topic" : undefined}>
-        <ArborMark size={24} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : copy.talk}{launcherTopic && <span id="companion-launch-topic" className="companion-launch-topic">{topicBefore}<bdi dir="auto" className="companion-launch-topic-text">{launcherTopic}</bdi>{topicAfter || null}</span>}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+      <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={launchLabel} aria-describedby={launcherTopic ? "companion-launch-topic" : undefined}>
+        <ArborMark size={24} /><span className="companion-launch-copy">{launchLabel}{launcherTopic && <span id="companion-launch-topic" className="companion-launch-topic">{topicBefore}<bdi dir="auto" className="companion-launch-topic-text">{launcherTopic}</bdi>{topicAfter || null}</span>}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
       </button>
       {hardMomentDoor && activeTab !== "overview" && <button type="button" className="companion-launch-save companion-launch-hard" data-testid="launcher-hard-moment" onClick={() => openHardMomentNow()} aria-label={inputText(uiLang, "companion.input.hard-moment-aria")}><Icon name="volunteer_activism" size={21} /><span className="companion-launch-save-label">{inputText(uiLang, "companion.input.hard-moment")}</span></button>}
       <details ref={captureRef} className="companion-capture-menu" onKeyDown={event => {
@@ -219,7 +303,8 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
         if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
       }}>
         <summary ref={captureLabelRef} className="companion-launch-save" aria-label={inputText(uiLang, "companion.input.just-keep-a-moment")}><Icon name="edit_note" size={21} /><span className="companion-launch-save-label">{copy.captureShort}</span></summary>
-        <div className="companion-capture-options" role="group" aria-label={copy.quickSave}>
+        <div className="companion-capture-options" role="group" aria-labelledby="companion-capture-heading">
+          <p id="companion-capture-heading" className="companion-capture-heading">{copy.quickSave}</p>
           <button type="button" onClick={() => capture("text")}><Icon name="edit_note" size={21} />{copy.write}</button>
           <button type="button" onClick={() => capture("voice")}><Icon name="mic" size={21} />{copy.dictate}</button>
           <button type="button" onClick={() => capture("photo")}><Icon name="photo_camera" size={21} />{copy.photo}</button>

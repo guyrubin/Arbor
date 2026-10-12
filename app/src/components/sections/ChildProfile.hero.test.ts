@@ -112,6 +112,11 @@ describe("W2 — a useful identity header", () => {
     expect(hero).not.toContain("!hasHero");
     expect(details.indexOf("!hasHero")).toBeGreaterThan(-1);
     const create = details.slice(details.indexOf("!hasHero"), details.indexOf("!hasHero") + 400);
+    // F-TALK-1 (v3 integration): the Ask door that opened the conversation panel
+    // lived in the footer jump strip, which F-CHILD-3 removed from About. Its
+    // guarantee holds for the whole page: nothing here routes to the coach page.
+    expect(src).not.toContain('setActiveTab("coach")');
+    expect(src).not.toMatch(/tab:\s*"coach"/);
     expect(create).toContain("setEditingProfile(true)");
     expect(create).not.toContain('setActiveTab("profile")');
     expect(src).toContain("<ProfileEditDrawer");

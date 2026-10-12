@@ -39,6 +39,7 @@ import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { quotesFromDocs } from "../../lib/loop/tonight";
 import ThingsSaid from "../loop/ThingsSaid";
 import KeptDescription from "../describe/KeptDescription";
+import CoachDataContract from "../coach/CoachDataContract";
 
 const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : txt.en);
 
@@ -154,8 +155,9 @@ export default function ChildMemory() {
         </div>
       )}
 
-      {!memoryReviewError && (
       <div data-module="memory-approved" style={{ display: "contents" }}>
+      {!memoryReviewError && (
+      <>
       <SectionCard title={t("elev.childmem.approved.title")} icon={<Icon name="bookmark" size={20} />} tone="lav">
         {approvedMemoryItems.length > 0 ? (
           <div className="space-y-3">
@@ -184,8 +186,17 @@ export default function ChildMemory() {
       {/* B-SHELL-39: what the parent told Arbor in their own words, editable
           here, with the "Tell Arbor more" door. Inside the approved module. */}
       <KeptDescription testId="memory-describe" />
-      </div>
+      </>
       )}
+      {/* F-TALK-1: "What the coach sees" and the weekly-context consent
+          switch, moved here from the conversation's identity strip. Inside
+          the approved module (it names the approved facts that travel with a
+          question) but OUTSIDE the ledger gate: the switch is a consent
+          control, so a failed or rate-limited ledger read never takes it
+          away. While the ledger is unreadable its facts line says so, never
+          "none" (OWN-1). */}
+      <CoachDataContract ledgerUnreadable={memoryReviewError} />
+      </div>
 
       {/* Learning trail — the parent's saved Learn Library reads, part of the
           child's longitudinal picture. Renders only when something is saved;

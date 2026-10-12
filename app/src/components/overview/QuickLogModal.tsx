@@ -332,10 +332,10 @@ export default function QuickLogModal({
      open until "Done": line 1 is the count-only pattern echo (patternEchoFor,
      ≥3 of the same type in 21 days) or "Kept in {name}'s journal"; line 2 is
      ONE next move — the matched pilot guide's Say-this for a hard moment, or
-     "Ask Arbor about this" (seedCoach, source post-capture, prefill only) for
+     "Talk it through" (seedCoach, source post-capture, prefill only) for
      a plain one; Undo removes the row (lib/savedCaptureUndo).
-     Zero model calls. The global post-capture strip is no longer raised from
-     here (it stays for Behaviors until that lane retires it). */
+     Zero model calls. F-TALK-2: this is the post-capture offer's only home;
+     the floating strip Shell used to mount is deleted. */
   const [reply, setReply] = useState<null | { log: BehaviorLog; hard: boolean; seed: string }>(null);
   const [sayCopied, setSayCopied] = useState(false);
   const logIdsRef = useRef<string[]>([]);
@@ -799,7 +799,7 @@ export default function QuickLogModal({
               className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl px-4 text-[13px] font-extrabold"
               style={{ border: "1px solid var(--arbor-green-ink)", color: "var(--arbor-green-ink)", background: "transparent" }}
             >
-              {t("elev.capture.reply.ask")}
+              {t("companion.capture.talk")}
               <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
             </button>
           )}

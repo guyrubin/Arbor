@@ -17,6 +17,8 @@
 import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import VoiceOverlay, { orbMode, type VoiceOverlayPhase } from "./VoiceOverlay";
 import type { UiLang } from "../../lib/i18n";
 
@@ -178,5 +180,23 @@ describe("reduced motion — static phase states", () => {
 
   it("reduced-motion snapshot (listening)", () => {
     expect(render({ phase: "listening", reducedMotion: true, interimText: "what about mornings" })).toMatchSnapshot();
+  });
+});
+
+// F-TALK-1: beside a wide page (>= 1280 px) the conversation is a docked
+// panel, so the voice sheet rises inside that panel instead of over the page
+// beside it. Static markup (no layout effect) keeps the fixed sheet.
+describe("F-TALK-1 - the voice sheet docks inside the wide conversation panel", () => {
+  const source = readFileSync(fileURLToPath(new URL("./VoiceOverlay.tsx", import.meta.url)), "utf8");
+  it("finds the open conversation panel at >= 1280 px and portals into it, absolutely placed", () => {
+    expect(source).toContain('window.matchMedia("(min-width: 1280px)")');
+    expect(source).toContain('document.querySelector<HTMLElement>(".companion-workspace.is-open .companion-conversation")');
+    expect(source).toContain("dockHost ?? document.body");
+    expect(source).toMatch(/className=\{dockHost\s*\?\s*"absolute inset-x-0 bottom-0 z-\[60\]/);
+  });
+  it("static markup keeps the fixed full-width sheet and no dock flag", () => {
+    const html = render();
+    expect(html).toContain("fixed inset-x-0 bottom-0 z-[60]");
+    expect(html).not.toContain("data-docked");
   });
 });

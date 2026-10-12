@@ -58,7 +58,6 @@ export const en: Record<string, string> = {
   // B-TODAY-20: the capture sheet's reply after Save (no counts about the
   // child, no comparison — the echo line is elev.closeloop.echo.title).
   "elev.capture.reply.kept": "Kept in {name}'s journal",
-  "elev.capture.reply.ask": "Ask Arbor about this",
   "elev.capture.reply.seed": "I just noted this about {name}: \"{text}\". What might it tell me, and is there one small thing I could try?",
   "elev.capture.reply.undo": "Undo",
   "elev.capture.reply.done": "Done",
@@ -137,7 +136,6 @@ export const he: Record<string, string> = {
   "elev.capture.hard.lead": "מותאם לרגעים שתיעדתם. קחו את מה שעוזר.",
   "elev.capture.hard.logLead": "כשזה עובר, אפשר לשמור על זה הערה.",
   "elev.capture.reply.kept": "נשמר ביומן של {name}",
-  "elev.capture.reply.ask": "לשאול את ארבור על זה",
   "elev.capture.reply.seed": "רשמתי עכשיו משהו על {name}: \"{text}\". מה זה יכול לספר לי, והאם יש דבר קטן אחד שכדאי לנסות?",
   // P5 r1 A10 (r3 G1-8): "ביטול" read as Cancel; the reply removes the saved moment.
   "elev.capture.reply.undo": "בטל שמירה",

@@ -239,6 +239,19 @@ describe("MOB-28 — the bottom sheet is the phone presentation, Modal keeps lg+
     }
   });
 
+  // F-TALK-2: the hard-moment sheet and the "tell Arbor more" sheet are phone
+  // sheets too (mock phone frames L897-909); same seam, same pins.
+  it("F-TALK-2: the hard-moment sheet and the describe sheet pick the surface", () => {
+    for (const file of ["behaviors/HardMomentNowSheet.tsx", "describe/TellArborMore.tsx"]) {
+      const source = read(file);
+      expect(source, file).toContain('import { Sheet, useCompactSurface } from "../ui/Sheet";');
+      expect(source, file).toContain("const Surface = useCompactSurface() ? Sheet : Modal;");
+      expect(source, file).toMatch(/<Surface open[ =]/);
+      expect(source, file).toContain("</Surface>");
+      expect((source.match(/<Modal /g) ?? []), file).toEqual([]);
+    }
+  });
+
   it("negative control: the shipped callers mounted Modal at every width", () => {
     const preFix = '  return (\n    <Modal open={paywall.open} onClose={closePaywall} title={t("pw.title")}>';
     expect(preFix).toContain("<Modal open=");

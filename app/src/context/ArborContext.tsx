@@ -203,6 +203,12 @@ export type ChatMessage = {
   /** ASK-1: the bubble still shows the LOCAL acknowledgment copy — replaced
    *  (never appended to) by the first real streamed delta. */
   chatAck?: boolean;
+  /** EXTRA-TALK: on a USER turn, the family question id the request carried.
+   *  The answer's provenance line names "the question you chose" only then. */
+  topicId?: string;
+  /** F-TALK-2: on a USER turn, when the parent spoke (ISO). The thread draws
+   *  one date line per day from it; turns saved before it existed carry none. */
+  at?: string;
 };
 export type ChatResponsePayload = { attachmentContext?: AttachmentContext; text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract; council?: CouncilTake[] };
 export type Conversation = { topicId?: string; id: string; title: string; messages: ChatMessage[]; updatedAt: string };
@@ -259,6 +265,16 @@ function useArborState() {
     // and the parent exits (or the child reloads) into the wrong tab.
     if (isKidModeActive()) {
       try { track("kidlock_blocked_nav", { tab: t }); } catch { /* noop */ }
+      return;
+    }
+    // F-TALK-1 (review r1): Talk is a panel, never a page. A caller that still
+    // names the conversation as a tab (the Sidebar's Talk door, a search
+    // thread row) opens the panel over the current place through its one door
+    // (requestCompanionConversation), so no #/coach entry is pushed only to be
+    // replaced, and Back is never dead. A typed or linked #/coach address
+    // still arrives through the hash listener and CompanionWorkspace.
+    if (t === "coach" || t === "scholar") {
+      requestCompanionConversation({ source: "nav" });
       return;
     }
     setActiveTabState(t);
@@ -352,24 +368,6 @@ function useArborState() {
     try { track("coach_seed", { source: opts.source ?? "unknown" }); } catch { /* noop */ }
   };
 
-  /**
-   * AI-CAP-7 — post-confirm coach handoff. A gated capture confirm (BehaviorsTab
-   * confirmReview / QuickLogModal confirm) may offer ONE dismissible, non-blocking
-   * "want a next step?" CTA built from the just-confirmed log. Contract: never
-   * auto-send (accept only PREFILLS the composer via the seedCoach seam, source
-   * 'post-capture'), shown once per confirm (each confirm replaces the offer),
-   * dismiss leaves no residue, and NOTHING here touches the behavior-log write
-   * path. The offer carries only the prompt string — no scores, no verdicts.
-   */
-  const [postCaptureCoachPrompt, setPostCaptureCoachPrompt] = useState<string | null>(null);
-  const offerPostCaptureCoach = (prompt: string) => setPostCaptureCoachPrompt(prompt);
-  const dismissPostCaptureCoach = () => setPostCaptureCoachPrompt(null);
-  const acceptPostCaptureCoach = () => {
-    if (!postCaptureCoachPrompt) return;
-    // Prefill only — the parent still presses send themselves.
-    seedCoach({ prompt: postCaptureCoachPrompt, source: "post-capture" });
-    setPostCaptureCoachPrompt(null);
-  };
   // App Core States — persisted per child (Firestore when authed, localStorage in sandbox)
   const logsCol = useChildCollection<BehaviorLog>(childProfile.id, "behaviorLogs", {
     sandboxSeed: demoSeed.logs,
@@ -863,7 +861,7 @@ function useArborState() {
   const appendVoiceUserTurn = (text: string) => {
     if (!text.trim()) return;
     prepareTopicConversation();
-    setChatMessages((prev) => appendVoiceUser(prev, text, selectedLens));
+    setChatMessages((prev) => appendVoiceUser(prev, text, selectedLens, new Date().toISOString()));
   };
   const appendVoiceAiDelta = (delta: string) => {
     setChatMessages((prev) => applyVoiceDelta(prev, delta, selectedLens));
@@ -1186,7 +1184,7 @@ function useArborState() {
     // thread already ends with this exact question, so Retry never re-appends.
     setChatMessages((prev) =>
       appendChatAck((() => {
-        const next = appendChatUser(prev, promptValue, selectedLens, opts?.displayText);
+        const next = appendChatUser(prev, promptValue, selectedLens, opts?.displayText, activeFamilyTopic?.id);
         if (!attachments.length) return next;
         return [...next.slice(0, -1), { ...next[next.length - 1], attachments: attachmentMetadata(attachments) }];
       })(), t("coach.ack"), selectedLens),
@@ -1348,7 +1346,7 @@ function useArborState() {
     // existing Stop button already aborts — cancelling a council turn needed no
     // new affordance, only this wiring.
     setChatMessages((prev) =>
-      appendChatAck(appendChatUser(prev, promptValue, selectedLens), t("coach.ack"), selectedLens),
+      appendChatAck(appendChatUser(prev, promptValue, selectedLens, undefined, activeFamilyTopic?.id), t("coach.ack"), selectedLens),
     );
     setIsChatLoading(true);
 
@@ -1938,10 +1936,6 @@ function useArborState() {
     pendingLearnRequest,
     requestLearnRead,
     consumeLearnRequest,
-    postCaptureCoachPrompt,
-    offerPostCaptureCoach,
-    dismissPostCaptureCoach,
-    acceptPostCaptureCoach,
     pendingCaptureMode,
     requestCapture,
     consumeCaptureRequest,
