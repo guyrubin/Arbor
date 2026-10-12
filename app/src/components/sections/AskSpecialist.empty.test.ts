@@ -7,9 +7,7 @@
  * `consult.empty.*` state and NO packet rows / export verbs; one logged moment
  * (negative control) must mount the packet rows + the export verbs.
  * B-CAREPRO-28: step 1 (who it is for) renders in both — choosing the
- * audience comes before the record, and a teacher brief needs no moments.
- * v3 F-CARE-1: the landing's stepper keeps Share shut on an empty record and
- * never prints a denominator (block at the end). */
+ * audience comes before the record, and a teacher brief needs no moments. */
 
 import { describe, expect, it, vi } from "vitest";
 import React from "react";
@@ -61,44 +59,6 @@ describe("LC-06 — AskSpecialist empty state", () => {
     expect(html).toContain('role="radiogroup"');
     expect(html).toContain('data-testid="consult-copy"');
     expect(html).toContain("elev.carehonesty.consult.preview.toggle");
-    record.behaviorLogs = [];
-  });
-});
-
-/* v3 F-CARE-1 — on the Care landing the three steps are a stepper. With
- * nothing to share, "Share" stays shut and there is no way on; a step is a
- * place to go, never "n of m" or a bar. Counts only: no denominator anywhere
- * in the rendered text (the keys carry no digits, so any "of 3" or "/3" would
- * come from code). */
-describe("v3 F-CARE-1 — the landing stepper is numerator-only", () => {
-  const visibleText = (html: string) => html.replace(/<[^>]+>/g, " ");
-  const DENOMINATOR = /\bof\s+\d|\d\s*\/\s*\d|\/\s*\d|מתוך/;
-  const tabsOf = (html: string) => html.match(/<button[^>]*data-testid="consult-step"[^>]*>/g) ?? [];
-
-  it("an empty record: three tabs, step 1 open, Share disabled, no Next, no 'of N' or '/N'", async () => {
-    const { default: AskSpecialist } = await import("./AskSpecialist");
-    const html = renderToStaticMarkup(React.createElement(AskSpecialist, { landing: true }));
-    const tabs = tabsOf(html);
-    expect(tabs).toHaveLength(3);
-    expect(tabs[0]).toContain('aria-current="step"');
-    expect(tabs[2]).toMatch(/\sdisabled=""/);
-    expect(html).toContain("consult.empty.title");
-    expect(html).not.toContain('data-testid="consult-next"');
-    expect(html).not.toContain('data-testid="consult-copy"');
-    expect(visibleText(html)).not.toMatch(DENOMINATOR);
-    expect(html).not.toMatch(/role="progressbar"|<progress\b/);
-  });
-
-  it("NEGATIVE CONTROL: one logged moment opens Share and Next, still with no denominator", async () => {
-    record.behaviorLogs = [{ behaviorType: "Transition Refusal", intensity: 3, timestamp: new Date().toISOString() }];
-    const { default: AskSpecialist } = await import("./AskSpecialist");
-    const html = renderToStaticMarkup(React.createElement(AskSpecialist, { landing: true }));
-    const tabs = tabsOf(html);
-    expect(tabs).toHaveLength(3);
-    expect(tabs[2]).not.toMatch(/\sdisabled=""/);
-    expect(html).toContain('data-testid="consult-next"');
-    expect(html).toContain('data-testid="consult-copy"');
-    expect(visibleText(html)).not.toMatch(DENOMINATOR);
     record.behaviorLogs = [];
   });
 });

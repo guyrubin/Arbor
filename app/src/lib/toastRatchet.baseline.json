@@ -57,6 +57,9 @@
       "info": 5,
       "success": 2
     },
+    "components/tabs/ConsultTab.tsx": {
+      "success": 2
+    },
     "components/tabs/DailyPlayTab.tsx": {
       "success": 4
     },

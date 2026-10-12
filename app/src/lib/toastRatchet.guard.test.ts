@@ -161,13 +161,8 @@ describe("B-STATUS-01 · toasts are for errors and undo — the rest is a shrink
     expect(SITES.length).toBeGreaterThan(80);
     const kinds = new Set(SITES.map((s) => s.kind));
     for (const k of ["error", "action", "success", "info", "dynamic"] as const) expect(kinds.has(k), k).toBe(true);
-    // a known file, counted by hand: Trusted sharing's three success toasts
-    // (shared, home program shared, revoked). v3 F-CARE-1: Consult's two (the
-    // follow-up and the home program saved) became the Receipt line on
-    // Appointments (care/VisitOutcome), so Consult holds none.
-    expect(CURRENT["components/sections/TrustedSharing.tsx"]?.success).toBe(3);
-    expect(CURRENT["components/tabs/ConsultTab.tsx"]).toBeUndefined();
-    expect(CURRENT["components/care/VisitOutcome.tsx"]).toBeUndefined();
+    // a known file, counted by hand: Consult's two success toasts (follow-up saved, home program saved)
+    expect(CURRENT["components/tabs/ConsultTab.tsx"]?.success).toBe(2);
     // the capture tray's keep toast carries its Undo: an action, never a success
     expect(SITES.filter((s) => s.file === "components/capture/CaptureProposalsTray.tsx" && s.kind === "action")).toHaveLength(1);
   });

@@ -20,9 +20,6 @@ vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({ childProfile: { id: "c1", name: "Dylan" }, setActiveTab: vi.fn(), requestConsultPrefill: vi.fn(), behaviorLogs: harness.logs }),
 }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast: vi.fn() }) }));
-// v3 F-CARE-1: the visit outcome (care/VisitOutcome) reads the account for its
-// signed-in home-program batch; signed out here (the device path).
-vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: null }) }));
 vi.mock("../../context/LanguageContext", () => ({
   useLanguage: () => ({
     uiLang: harness.locale,
@@ -49,37 +46,14 @@ beforeEach(() => { harness.locale = "en"; harness.appts = []; harness.logs = [];
 
 describe("W2-CAREPRO r2 · the visit lifecycle renders from a seeded record", () => {
   for (const locale of ["en", "he"] as const) {
-    it(`${locale}: upcoming row with its profession + a Prepare door; the last visit's outcome is asked ONCE, at the top`, () => {
+    it(`${locale}: upcoming row with its profession + a Prepare door; the past visit offers the follow-up capture`, () => {
       harness.locale = locale;
       harness.appts = seeded();
       const html = renderToStaticMarkup(<Appointments />);
       expect(html).toContain(translate(locale, "elev.careNet.appt.profession.slp"));
       expect((html.match(/data-testid="appt-prepare"/g) ?? []).length).toBe(1);
-      // v3 F-CARE-1 re-pin: "What did they suggest?" and the home program
-      // moved here from the Care landing (care/VisitOutcome). The visit 3 days
-      // past is asked once, above the rows; its row does not ask again.
-      expect((html.match(/data-testid="consult-visit-outcome"/g) ?? []).length).toBe(1);
-      const at = html.indexOf('data-testid="consult-visit-outcome"');
-      const ask = html.slice(at, html.indexOf("</section>", at)).replace(/&#x27;/g, "'");
-      expect(ask).toContain(translate(locale, "elev.careNet.appt.profession.pediatrician"));
-      expect(ask).toContain('data-testid="consult-home-program-choice"');
-      expect(ask).toMatch(/<button[^>]*data-testid="consult-visit-outcome-save"[^>]*min-h-\[44px\]/);
-      expect(html).not.toContain('data-testid="appt-followup-input"');
-      expect(html).not.toContain('data-testid="visit-outcome-saved"');
-      expect(html.indexOf('data-testid="visit-outcome"')).toBeLessThan(html.indexOf('data-testid="appt-row-title"'));
-      expect(html).not.toContain('data-testid="appt-empty-lifecycle"');
-      expect((html.match(/data-primary-move="/g) ?? []).length).toBe(1);
-    });
-
-    it(`${locale}: v3 F-CARE-1 — an older past visit keeps its own follow-up capture; with nothing waiting, the home-program entry stands alone`, () => {
-      harness.locale = locale;
-      harness.appts = [{ ...seeded()[1], id: "a-old", whenIso: new Date(Date.now() - 20 * DAY).toISOString() }];
-      const html = renderToStaticMarkup(<Appointments />);
       expect(html).toContain('data-testid="appt-followup-input"');
-      expect(html).not.toContain('data-testid="consult-visit-outcome"');
-      const entry = /<button[^>]*data-testid="visit-home-entry-open"[^>]*>([\s\S]*?)<\/button>/.exec(html)!;
-      expect(entry[0]).toContain("min-h-[44px]");
-      expect(entry[1].replace(/&#x27;/g, "'")).toContain(translate(locale, "elev.pilot.i.have.recommendations.for.home"));
+      expect(html).not.toContain('data-testid="appt-empty-lifecycle"');
       expect((html.match(/data-primary-move="/g) ?? []).length).toBe(1);
     });
   }

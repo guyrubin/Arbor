@@ -187,10 +187,8 @@ describe("B-PROG-09 · the visit seams", () => {
     expect(nextVisitDayFor([past, other], past, NOW.getTime())).toBeNull();
   });
 
-  // v3 F-CARE-1: the after-visit flow moved from the Care landing to
-  // #/appointments (care/VisitOutcome); the pin follows the code there.
-  it("VisitOutcome (Appointments) writes the home program ONLY in the confirm handler (and the day mark), never on its own", () => {
-    const src = readFileSync(path.resolve(__dirname, "../care/VisitOutcome.tsx"), "utf8");
+  it("ConsultTab writes the home program ONLY in the confirm handler (and the day mark), never on its own", () => {
+    const src = readFileSync(path.resolve(__dirname, "../tabs/ConsultTab.tsx"), "utf8");
     expect(src).toContain('data-testid="consult-home-program-choice"');
     expect(src).toContain("onConfirm={saveHomeProgram}");
     const body = src.slice(src.indexOf("const saveHomeProgram"), src.indexOf("const activeHome"));
