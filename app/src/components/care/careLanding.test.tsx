@@ -524,9 +524,7 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
         expect((page.match(/gradient-cta|arbor-gradient-primary/g) ?? []).length, c.name).toBe(1);
         expect(holder, c.name).toMatch(/gradient-cta|arbor-gradient-primary/);
         // the stepper names the same step, once
-        // typed: a `RegExpMatchArray | never[]` union types filter's argument as never
-        const tabs: string[] = page.match(/<button[^>]*data-testid="consult-step"[^>]*>/g) ?? [];
-        const current = tabs.filter((b) => b.includes('aria-current="step"'));
+        const current = (page.match(/<button[^>]*data-testid="consult-step"[^>]*>/g) ?? []).filter((b) => b.includes('aria-current="step"'));
         expect(current, c.name).toHaveLength(1);
         expect(current[0], c.name).toContain(`data-step="${c.step}"`);
         if (c.step === "2") {
