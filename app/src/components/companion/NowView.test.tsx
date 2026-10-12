@@ -68,6 +68,7 @@ import NowView from "./NowView";
 import NowRecommendation from "./NowRecommendation";
 import { clearAcceptFailed } from "./nowGuideAccept";
 import { todayFile } from "../../testTodaySource";
+import { TOGETHER_ART } from "../../lib/parentArt";
 
 function button(label: string) {
   const found = state.buttons.find((item) => React.Children.toArray(item.children).includes(label));
@@ -526,5 +527,72 @@ describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
     expect(phone).toMatch(/^[^@]*\.now-plan-medallion \{[^}]*inset-block-start: 18px;[^}]*inset-inline-end: 18px;/);
     expect(phone).toMatch(/^[^@]*\.now-plan-face \{ max-inline-size: calc\(100% - 96px\); \}/);
     expect(css).not.toMatch(/(?:^|[\s;{-])(?:left|right)\s*:/m);
+  });
+});
+
+// v3 F-NOW-4 (MOB-01, 12 Oct): Now at 390 px as the mock. The places are the
+// dock's and the doors are the More sheet's, so Now carries neither; the
+// heading is the place kicker over the title; the plan starts above the fold.
+describe("v3 F-NOW-4 · Now on a phone: one calm column, no doors, the plan above the fold", () => {
+  it.each(["en", "he"] as const)("%s: Now ends with its own blocks - no place doors, no For you / Care footer, no Together picture, at any width", lang => {
+    state.lang = lang;
+    const html = renderToStaticMarkup(<NowView onTopicOpen={vi.fn()} />);
+    expect(html).not.toMatch(/now-open-doors|now-footer|now-picture-door|now-together-door|now-door-icon/);
+    expect(html).not.toMatch(/<nav\b|<footer\b/);
+    expect(html).not.toContain(TOGETHER_ART.src);
+    expect(html).not.toContain(lang === "he" ? "אנשי המקצוע שלצדכם" : "Care &amp; collaboration");
+    expect(html).not.toContain(lang === "he" ? "התמונה השלמה של" : "’s whole picture");
+    for (const key of ["pictureTitle", "pictureBody", "togetherBody", "learning", "care"]) expect(NOW_COPY[lang], key).not.toHaveProperty(key);
+    expect(state.buttons.some(item => /now-(?:picture|together)-door/.test(item.className ?? ""))).toBe(false);
+    // The heading is the place kicker over the title: no picture, no date, no age.
+    const heading = html.slice(html.indexOf('<header class="now-heading"'), html.indexOf("</header>"));
+    expect(heading).toContain(`data-testid="now-kicker">${NOW_COPY[lang].kicker}</p>`);
+    expect(heading).not.toMatch(/<img|today-identity|\d/);
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+  });
+
+  it("the source keeps no door to For you, Care or Together on Now", () => {
+    const src = todayFile("NowView.tsx");
+    expect(src).not.toMatch(/setActiveTab\("(?:learn|consult|practice)"\)/);
+    expect(src).not.toContain("TOGETHER_ART");
+    expect(src).not.toContain("understand-more-with-support");
+  });
+
+  it("CSS: the door rules and their desktop-only hide are gone; the kicker is the mock's; the phone column puts the plan top at 440 px or less", () => {
+    const css = todayFile("nowView.css");
+    expect(css).not.toMatch(/\.now-(?:open-doors|footer|door-icon|picture-door|together-door)\b/);
+    expect(css).not.toContain("@media (min-width: 1024px)");
+    // The kicker: small capitals in English, plain in Hebrew, never under 12 px.
+    expect(css).toMatch(/\.now-page \.now-heading \.companion-eyebrow \{ font-size: 12px;[^}]*text-transform: uppercase;/);
+    expect(css).toContain('.now-page[dir="rtl"] .now-heading .companion-eyebrow { letter-spacing: 0; text-transform: none; }');
+    const at = css.indexOf("@media (max-width: 767.98px) {\n");
+    expect(at, "the phone block").toBeGreaterThan(-1);
+    const phone = css.slice(at, css.indexOf("\n}", at));
+    const num = (source: string, re: RegExp) => { const found = source.match(re); expect(found, String(re)).not.toBeNull(); return Number(found![1]); };
+    // The mock's phone column: 14 px between blocks and a 32 px title.
+    const gap = num(phone, /\.companion-page\.now-page \{ gap: (\d+)px; padding-block-start: 0; \}/);
+    expect(gap).toBe(14);
+    const titleSize = num(phone, /\.now-page \.now-heading h1 \{[^}]*font-size: (\d+)px;/);
+    expect(titleSize).toBe(32);
+    // The fold, block by block: kicker, a two-line title, the question block
+    // (its row, the active question, the chips) and the gaps between them.
+    const kicker = num(css, /\.now-page \.now-heading \.companion-eyebrow \{ font-size: (\d+)px;/) * num(css, /\.now-page \.now-heading \.companion-eyebrow \{[^}]*line-height: ([\d.]+);/);
+    const title = num(phone, /\.now-page \.now-heading h1 \{ margin-block-start: (\d+)px;/) + 2 * titleSize * num(css, /\.now-page \.now-heading h1 \{[^}]*line-height: ([\d.]+);/);
+    const head = num(phone, /\.now-question-head \{ min-block-size: (\d+)px; \}/);
+    const active = num(phone, /\.now-question-active \{ min-block-size: (\d+)px;/);
+    const chip = num(phone, /\.now-question-chip \{[^}]*block-size: (\d+)px;/);
+    const chips = chip + 2 * num(css, /\.now-question-chips \{[^}]*padding: (\d+)px;/);
+    const question = head + num(css, /\.now-question-row \{[^}]*margin-block-start: (\d+)px;/) + active + num(phone, /\.now-question-row \{ gap: (\d+)px; \}/) + chips;
+    // The shell chrome above Now at 390 today: main's 20 px padding, the 44 px
+    // strip and its 16 px margin, the 44 px pill row with its 8 + 16 px.
+    const SHELL_CHROME_390 = 20 + 44 + 16 + 44 + 8 + 16;
+    expect(SHELL_CHROME_390 + kicker + title + gap + question + gap).toBeLessThanOrEqual(440);
+    // 44 px floor: the New question link keeps its box and overhangs its 32 px row
+    // by exactly the difference; the active question holds its 44 px edit button; chips stay at least 44.
+    expect(css).toMatch(/\.now-question-new \{[^}]*min-block-size: 44px;/);
+    expect(head + 2 * num(phone, /\.now-question-new \{ margin-block: -(\d+)px; \}/)).toBe(44);
+    expect(active).toBeGreaterThanOrEqual(44 + 2 * num(phone, /\.now-question-active \{[^}]*padding-block: (\d+)px;/));
+    expect(chip).toBeGreaterThanOrEqual(44);
+    expect(phone).not.toMatch(/(?:^|[\s;{-])(?:left|right)\s*:/m);
   });
 });
