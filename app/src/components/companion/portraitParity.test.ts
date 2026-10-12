@@ -11,12 +11,19 @@ const portrait = read("components/companion/ChildPortrait.tsx");
 const keepsakes = read("components/companion/PortraitKeepsakes.tsx");
 
 describe("the portrait mounts the restored pieces inside its existing modules", () => {
-  it("the watch row and the keepsake disclosure sit in the overview module (budget unchanged)", () => {
-    const overview = portrait.slice(portrait.indexOf('data-module="child-portrait-overview"'), portrait.indexOf('data-module="child-portrait-evidence"'));
-    expect(overview).toContain("<PortraitWatchRow key={childProfile.id} />");
-    expect(overview.indexOf('className="portrait-toolbar"')).toBeLessThan(overview.indexOf("<PortraitWatchRow"));
-    expect(overview).toContain("<PortraitKeepsakes />");
-    expect((portrait.match(/\bdata-module=/g) ?? []).length).toBe(3);
+  // v3 F-CHILD-1 RE-PIN: My child is the Milestones pill, one scroll of two
+  // modules (the portrait cards, then the areas table). The watch row folds
+  // into its area row and the keepsake disclosure leaves the page (the brief's
+  // child-watch-row and child-words-keepsakes gaps); both files stay unmounted
+  // on disk. Was: watch row + keepsakes in the overview module, 3 modules.
+  it("v3 F-CHILD-1: the portrait cards and the areas table are the page's two modules", () => {
+    const cards = portrait.slice(portrait.indexOf('data-module="child-milestones-portrait"'), portrait.indexOf('data-module="child-milestones-areas"'));
+    const areas = portrait.slice(portrait.indexOf('data-module="child-milestones-areas"'));
+    expect(cards).toContain("<PortraitCards ");
+    expect(areas).toContain("<MilestoneAreas key={childProfile.id}");
+    expect((portrait.match(/\bdata-module=/g) ?? []).length).toBe(2);
+    expect(portrait).not.toContain("<PortraitWatchRow");
+    expect(portrait).not.toContain("<PortraitKeepsakes");
     expect(keepsakes).not.toMatch(/\bdata-module=/);
   });
   it("the keepsake views retain firsts/tree and use the unified month reader", () => {
@@ -25,10 +32,10 @@ describe("the portrait mounts the restored pieces inside its existing modules", 
 });
 
 describe("CLINICAL FIREWALL on the thread map", () => {
-  it("per-period counts are no longer drawn side by side (a trend reading); the mark and first line stay", () => {
+  // v3 F-CHILD-1 RE-PIN: the thread map moves to the Moments pill (F-CHILD-2),
+  // so its mark and first-line positives leave this page; the negatives stay.
+  it("per-period counts are no longer drawn side by side (a trend reading)", () => {
     expect(portrait).not.toContain("portrait-cell-count");
-    expect(portrait).toContain('className="portrait-mark"');
-    expect(portrait).toContain('className="portrait-cell-label"');
   });
   it("areas carry no 01–08 index (an order is a ranking)", () => {
     expect(portrait).not.toContain("portrait-domain-index");

@@ -45,9 +45,14 @@ const SCANNED = [
   "components/companion/ChildPortrait.tsx",
   "components/companion/PortraitWatchRow.tsx",
   "components/companion/PortraitKeepsakes.tsx",
-  // v3 FEAT-03: the development map and its domain sheet on My child.
+  // v3 FEAT-03: the development map on My child.
   "components/companion/DevelopmentMap.tsx",
-  "components/companion/DomainSheet.tsx",
+  // v3 F-CHILD-1: the area row's inline detail (it replaced the domain sheet),
+  // the areas table around it, the portrait cards and their pure reads.
+  "components/companion/AreaRowDetail.tsx",
+  "components/companion/MilestoneAreas.tsx",
+  "components/companion/PortraitCards.tsx",
+  "components/companion/milestonesModel.ts",
   // v3 FEAT-08: the words-and-firsts strip on My child (names and words, no fill).
   "components/companion/WordsFirstsStrip.tsx",
   ...GROWTH_FILES,
@@ -79,9 +84,16 @@ describe("B-GROWTH-07 — no proportional fill of a child record", () => {
   });
 
   /* v3 FEAT-03 — the development map and its domain sheet carry the area
-     lens's bans: Seen-it counts only, no total, share, chart or ranking. */
-  it("covers the development map and its domain sheet like the area lens", () => {
-    for (const rel of ["components/companion/DevelopmentMap.tsx", "components/companion/DomainSheet.tsx"]) {
+     lens's bans: Seen-it counts only, no total, share, chart or ranking.
+     v3 F-CHILD-1 RE-PIN (files only): the domain sheet is replaced by the
+     area row's inline detail (AreaRowDetail, a sheet on a phone); the bans
+     now cover it, the areas table, the portrait cards and their reads. */
+  it("covers the development map and the area row's detail like the area lens", () => {
+    for (const rel of [
+      "components/companion/DevelopmentMap.tsx", "components/companion/AreaRowDetail.tsx",
+      "components/companion/MilestoneAreas.tsx", "components/companion/PortraitCards.tsx",
+      "components/companion/milestonesModel.ts",
+    ]) {
       expect(SCANNED).toContain(rel);
       const src = stripComments(read(rel));
       expect(src, rel).not.toMatch(/\btotal\b|%|Chart|<svg/);

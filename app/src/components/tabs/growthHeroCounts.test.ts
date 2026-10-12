@@ -35,6 +35,11 @@ const HUB_FILES = [
   // "{checked} of {total} noticed in the {band} window" — the denominator
   // B-GROWTH-34 removed from the hub survived one route over.
   "components/sections/ChildProfile.tsx",
+  // v3 F-CHILD-1: the Milestones page's portrait cards and areas table.
+  "components/companion/PortraitCards.tsx",
+  "components/companion/MilestoneAreas.tsx",
+  "components/companion/AreaRowDetail.tsx",
+  "components/companion/DevelopmentMap.tsx",
 ];
 
 /** Every literal key a file renders: t("k"), tr("k"), and pickCountKey("k") (both forms). */

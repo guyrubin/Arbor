@@ -22,6 +22,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { pushPrimingCopy, pushPrimingState, type PushPrimingInputs } from "./pushPriming";
 import { en, he } from "./i18nElevation/returnhooks";
+// v3 F-CHILD-1: the Milestones page mounts these parts; the Growth-leaf scans cover them too.
+const MILESTONES_PARTS = ["PortraitCards.tsx", "MilestoneAreas.tsx", "AreaRowDetail.tsx", "DevelopmentMap.tsx"];
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.join(here, rel), "utf8").replace(/\r\n/g, "\n");
@@ -133,7 +135,7 @@ describe("ENG-23 → B-GROWTH-03 — #/smart-reminders mounts the primed card, n
 
   it("B-GROWTH-03: the state comes from usePushPriming and Growth no longer mounts the card", () => {
     expect(src).toContain("const push = usePushPriming();");
-    const growth = ["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx"].map((f) => read(`../components/companion/${f}`)).join("\n");
+    const growth = ["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx", ...MILESTONES_PARTS].map((f) => read(`../components/companion/${f}`)).join("\n");
     expect(growth).not.toMatch(/<PushPrimingCard|import[^;]*(PushPrimingCard|usePushPriming|readPushPermission)/);
     const hook = read("../hooks/usePushPriming.ts");
     expect(hook).toContain('import("../lib/push.js")');

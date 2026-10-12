@@ -29,6 +29,8 @@ import {
 import { en, he } from "./i18nElevation/returnhooks";
 import { charterValueFor, RITUAL_VALUE_KEY } from "../components/nextopen/RitualTurnCard";
 import { translate } from "./i18n";
+// v3 F-CHILD-1: the Milestones page mounts these parts; the Growth-leaf scans cover them too.
+const MILESTONES_PARTS = ["PortraitCards.tsx", "MilestoneAreas.tsx", "AreaRowDetail.tsx", "DevelopmentMap.tsx"];
 const translateHe = (k: string) => translate("he", k);
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -183,7 +185,7 @@ describe("ENG-25 → B-GROWTH-03 — the cadence is surfaced on #/family", () =>
     const mod = growth.indexOf('data-module="family-rituals"');
     expect(mod).toBeGreaterThan(-1);
     expect(growth.indexOf("<RitualTurnCard")).toBeGreaterThan(mod);
-    for (const f of ["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx"]) expect(read(`../components/companion/${f}`)).not.toMatch(/RitualTurnCard/);
+    for (const f of ["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx", ...MILESTONES_PARTS]) expect(read(`../components/companion/${f}`)).not.toMatch(/RitualTurnCard/);
     expect(card).toContain("ritualOfTheMoment");
     expect(card).toContain("markRitualPractised");
     expect(card).toContain('data-testid="ritual-turn-card"');

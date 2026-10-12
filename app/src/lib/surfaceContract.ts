@@ -189,9 +189,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "development", hub: "growth", depth: 0,
     job: "Watch her record grow.",
-    // The child portrait opens original records from time, environment and
-    // domain views; supporting tools stay below the whole-child overview.
-    primaryMove: "explore-child-record", moduleBudget: 3, demotionTarget: "disclosure",
+    // v3 F-CHILD-1: the Milestones pill. Header and portrait cards, then the
+    // eight area rows (one opens inline to answer its skills); the 5-minute
+    // check in the areas card is the one move. The moments views moved to the
+    // Moments pill.
+    primaryMove: "start-development-check", moduleBudget: 3, demotionTarget: "disclosure",
     // Timeline marks indicate saved evidence, never developmental attainment.
     // B-PROG-05: `?view=program` is the program page (components/program/
     // ProgramPage, its own ONE stamp do-this-week, three modules) — a mode of

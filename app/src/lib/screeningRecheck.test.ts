@@ -162,14 +162,23 @@ describe("re-check reminder source contract", () => {
     expect(src).toContain('t("screen.recheck.dueOn"');
   });
 
-  it("B-GROWTH-04: the portrait's watch row states the re-check DATE as text, no chip", () => {
-    const src = readSrc("components/companion/PortraitWatchRow.tsx");
-    expect(src).toContain('data-testid="portrait-recheck-date"');
-    expect(src).toContain('t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })');
-    expect(src).toContain("latestRecheckDueAt");
+  // v3 F-CHILD-1 RE-PIN (home only): the watch row folded into the areas
+  // table. The date is still plain text, now under the areas heading (no
+  // watch) or inside the watched skill's area row; MilestoneAreas reads it.
+  it("B-GROWTH-04: My child states the re-check DATE as text, no chip", () => {
+    const map = readSrc("components/companion/DevelopmentMap.tsx");
+    const row = readSrc("components/companion/AreaRowDetail.tsx");
+    const areas = readSrc("components/companion/MilestoneAreas.tsx");
+    expect(map).toContain('data-testid="dev-map-recheck"');
+    expect(map).toContain('t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })');
+    expect(row).toContain('data-testid="area-detail-recheck"');
+    expect(row).toContain('t("elev.growth.recheck.date", { date: fmtDay(watch.recheckDueAt, uiLang) })');
+    expect(areas).toContain("latestRecheckDueAt");
     // the yellow proactive chip is gone
-    expect(src).not.toContain('data-testid="dev-recheck-due"');
-    expect(src).not.toContain("--arbor-yellow-soft");
+    for (const src of [map, row, areas]) {
+      expect(src).not.toContain('data-testid="dev-recheck-due"');
+      expect(src).not.toContain("--arbor-yellow-soft");
+    }
   });
 
   it("no raw hex literals in the new surfaces (tokens only)", () => {

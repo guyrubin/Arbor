@@ -108,6 +108,11 @@ const DRILL_FILES = [
   "../components/tabs/LanguageLabTab.tsx",
   // B-GROWTH-30 — the record by area: the child portrait's area lens replaced RecordByDomain
   "companion/ChildPortrait.tsx",
+  // v3 F-CHILD-1 — the Milestones page's parts (cards, areas table, row detail)
+  "companion/PortraitCards.tsx",
+  "companion/MilestoneAreas.tsx",
+  "companion/AreaRowDetail.tsx",
+  "companion/DevelopmentMap.tsx",
 ] as const;
 
 /** `{…accuracy…}%` / `{…pct…}%` / `{…percent…}%` — a rendered performance share. */

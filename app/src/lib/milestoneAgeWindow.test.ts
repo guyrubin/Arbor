@@ -22,6 +22,8 @@ import {
 } from "./milestoneData";
 import { milestoneInAgeWindow } from "../consult/packet";
 import { translate } from "./i18n";
+// v3 F-CHILD-1: the Milestones page mounts these parts; the Growth-leaf scans cover them too.
+const MILESTONES_PARTS = ["PortraitCards.tsx", "MilestoneAreas.tsx", "AreaRowDetail.tsx", "DevelopmentMap.tsx"];
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..");
@@ -150,7 +152,7 @@ describe("GP-08 — every denominator surface counts the window, not the catalog
   });
 
   it("the pre-fix all-ages denominators are gone", () => {
-    const dev = stripComments(["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx"].map((f) => read(`components/companion/${f}`)).join("\n"));
+    const dev = stripComments(["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx", ...MILESTONES_PARTS].map((f) => read(`components/companion/${f}`)).join("\n"));
     expect(dev).not.toMatch(/total:\s*milestones\.length/);
     expect(dev).not.toMatch(/total:\s*heroStats\.|inWindow\.length/);
     const ms = stripComments(read("components/tabs/MilestonesTab.tsx"));

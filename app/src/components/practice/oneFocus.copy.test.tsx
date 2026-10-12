@@ -83,6 +83,7 @@ describe("current architecture boundaries", () => {
     }
     expect(read("./GoalBuilderModal.tsx")).toContain("getGoalSelection(childId)");
     expect(read("../../context/ProfileContext.tsx")).toContain("selectFocusGoal(state.goals, goal");
-    expect(read("../companion/ChildPortrait.tsx")).toContain("<PortraitWatchRow key={childProfile.id}");
+    // v3 F-CHILD-1: the areas card (which took over the watch row) is the keyed sibling after the picker.
+    expect(read("../companion/ChildPortrait.tsx")).toContain("<MilestoneAreas key={childProfile.id}");
   });
 });

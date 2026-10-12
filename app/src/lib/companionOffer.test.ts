@@ -300,7 +300,9 @@ describe("B-TODAY-18 — tomorrow's reason is a coordinator candidate", () => {
     const slot = read("../components/overview/CompanionOfferSlot.tsx");
     expect(slot).toContain('case "tomorrow-reason":');
     expect(slot).toContain("<TomorrowReasonCard onResolved={controls.refresh} />");
-    const growth = read("../components/companion/PortraitWatchRow.tsx");
+    // v3 F-CHILD-1 RE-PIN (path only): the watch row folded into the areas
+    // table, and the close-of-day write moved with it into MilestoneAreas.
+    const growth = read("../components/companion/MilestoneAreas.tsx");
     expect(growth).not.toContain("<TomorrowReasonCard");
     expect(growth).toContain("closeDay(childProfile.id, Date.now(), returnSignals);");
     const hook = read("../components/overview/useCompanionOffer.ts");

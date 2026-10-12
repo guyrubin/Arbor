@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { translate } from "../../lib/i18n";
+// v3 F-CHILD-1: the Milestones page mounts these parts; the Growth-leaf scans cover them too.
+const MILESTONES_PARTS = ["PortraitCards.tsx", "MilestoneAreas.tsx", "AreaRowDetail.tsx", "DevelopmentMap.tsx"];
 
 /* B-GROWTH-05 — physical measurements leave the Growth hub for Profile's
    Measurements disclosure (spine domain 7). The card itself is unchanged
@@ -14,7 +16,7 @@ const stripComments = (src: string) =>
   src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
 
 describe("B-GROWTH-05 — Measurements live on Profile, not on Growth", () => {
-  const dev = stripComments(["components/companion/ChildPortrait.tsx", "components/companion/PortraitWatchRow.tsx", "components/companion/PortraitKeepsakes.tsx"].map(read).join("\n"));
+  const dev = stripComments(["components/companion/ChildPortrait.tsx", "components/companion/PortraitWatchRow.tsx", "components/companion/PortraitKeepsakes.tsx", ...MILESTONES_PARTS.map((f) => `components/companion/${f}`)].map(read).join("\n"));
   const profile = stripComments(read("components/sections/ChildProfile.tsx"));
 
   it("the Growth leaf does not import or mount PhysicalGrowthCard; ChildProfile does", () => {

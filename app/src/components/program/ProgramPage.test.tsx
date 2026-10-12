@@ -252,12 +252,16 @@ describe("B-PROG-05 — the container and the door", () => {
     expect(s).not.toMatch(/\bapi\.|fetch\(|generate|gemini/i);
   });
 
-  it("the Growth leaf mounts the page at ?view=program and carries its door", () => {
-    // Parity 9 Oct: Shell mounts it on #/development?view=program; the portrait
-    // carries the door and still exactly one primary move.
+  it("the Growth leaf mounts the page at ?view=program; My child keeps exactly one primary move", () => {
+    // Parity 9 Oct: Shell mounts it on #/development?view=program.
     expect(src("../layout/Shell.tsx")).toContain('query.get("view") === "program" ? <ProgramPage/>');
+    // v3 F-CHILD-1 RE-PIN: the program door sat in the portrait's record tools,
+    // which the v3 brief removes from My child (programs move to Care in
+    // F-CARE-1; the route above stays live). The page's one primary move is
+    // now handed to the 5-minute check as a spread prop, so it is counted by
+    // name rather than by the attribute literal. Was: the door + one literal.
     const s = src("../companion/ChildPortrait.tsx");
-    expect(s).toContain('window.location.hash = "#/development?view=program"');
-    expect((s.match(/data-primary-move="/g) || []).length).toBe(1);
+    expect(s).not.toContain('window.location.hash = "#/development?view=program"');
+    expect((s.match(/\bdata-primary-move\b(?!-)/g) || []).length).toBe(1);
   });
 });
