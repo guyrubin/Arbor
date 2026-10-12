@@ -74,11 +74,11 @@ describe.each(["en", "he"] as const)("the About door's conversation (%s)", (lang
   beforeEach(() => { h.lang = lang; });
 
   it("the quick fills are About's eight areas, in order, named as on About", () => {
-    const html = renderToStaticMarkup(<DescribeChild name="Noa" lang={lang} value="" onChange={() => {}} aspect="play" onAspect={() => {}} />);
+    const html = renderToStaticMarkup(<DescribeChild name="Noa" lang={lang} value="" onChange={() => {}} aspect="sleep" onAspect={() => {}} />);
     const chips = fills(html);
     expect(chips.map((c) => c.id)).toEqual([...ASPECT_IDS]);
     for (const id of ASPECT_IDS) expect(unescape(html)).toContain(translate(lang, `companion.about.aspect.${id}`));
-    for (const chip of chips) expect(chip.tag, chip.id).toContain(`aria-pressed="${chip.id === "play"}"`);
+    for (const chip of chips) expect(chip.tag, chip.id).toContain(`aria-pressed="${chip.id === "sleep"}"`);
     // without an area picker there are no fills at all (no dead insert path)
     expect(fills(renderToStaticMarkup(<DescribeChild name="Noa" lang={lang} value="" onChange={() => {}} />))).toHaveLength(0);
   });
