@@ -13,7 +13,7 @@
  * actually offered (plus the old server default "timeline") migrate; anything
  * else grants nothing.
  *
- * Pure module — imported by BOTH the client (TrustedSharing.tsx, ChildProfile.tsx)
+ * Pure module — imported by BOTH the client (TrustedSharing.tsx)
  * and the server (sharing/shares.ts), so it must stay dependency-free.
  */
 import type { ProfessionalReportType } from "./reportExport";

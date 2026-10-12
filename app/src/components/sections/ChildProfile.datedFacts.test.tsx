@@ -60,31 +60,39 @@ beforeEach(() => {
   h.factsAsOf = undefined;
 });
 
+// v3 F-CHILD-3 re-pin: on About every kept fact carries the day it was told
+// in its area's source line ("Noted · {day}"), so a relative time ("in 3
+// months") is never read as today — the "written {day}:" prefix gave way to
+// the card's one date. The words are never rewritten.
+const area = (html: string, id: string) => html.slice(html.indexOf(`data-testid="about-aspect-${id}"`), html.indexOf("</article>", html.indexOf(`data-testid="about-aspect-${id}"`)));
+
 describe("B-GROWTH-35 — a fact with a relative time carries the day it was written", () => {
-  it("EN: 'written 10 Jun 2026:' before the fact; the fact is unchanged", () => {
+  it("EN: the fact sits in its area with 'Noted · Jun 10, 2026'; the fact is unchanged", () => {
     const html = renderToStaticMarkup(<ChildProfile />);
-    const s = text(html).replace(/\s+/g, " ");
-    expect(html).toContain('data-testid="profile-fact-written"');
-    expect(s).toContain("written Jun 10, 2026:");
+    const s = text(area(html, "school")).replace(/\s+/g, " ");
     expect(s).toContain("Entering Bilingual Kindergarten in 3 months");
-    // the "kept since" suffix gives way to the written date (one date, not two)
+    expect(s).toContain("Noted · Jun 10, 2026");
+    // one date, not two
     expect(s).not.toContain("kept since");
+    expect(html).not.toContain('data-testid="profile-fact-written"');
   });
 
-  it("HE: 'נכתב ב־…' before a Hebrew fact with בעוד", () => {
+  it("HE: 'נרשם · …ביוני 2026' beside a Hebrew fact with בעוד", () => {
     h.locale = "he";
     h.approved = [{ memoryId: "a2", fact: "דילן מתחיל גן חדש בעוד חודשיים", status: "approved", createdAt: "2026-06-10T10:00:00.000Z", source: "chat", retention: "90d" }];
     const html = renderToStaticMarkup(<ChildProfile />);
-    const s = text(html).replace(/\s+/g, " ");
-    expect(html).toContain('data-testid="profile-fact-written"');
-    expect(s).toContain("נכתב ב־");
+    const s = text(area(html, "school")).replace(/\s+/g, " ");
+    expect(s).toContain("נרשם ·");
     expect(s).toContain("ביוני 2026");
     expect(s).toContain("דילן מתחיל גן חדש בעוד חודשיים");
   });
 
-  it("a fact without a relative time renders as before (no written date)", () => {
+  it("a fact without a relative time is dated the same way (every told line carries its day)", () => {
     h.approved = [{ memoryId: "a3", fact: "Dylan answers in Hebrew when tired", status: "approved", createdAt: "2026-06-10T10:00:00.000Z", source: "chat", retention: "90d" }];
     const html = renderToStaticMarkup(<ChildProfile />);
+    const s = text(area(html, "lang")).replace(/\s+/g, " ");
+    expect(s).toContain("Dylan answers in Hebrew when tired");
+    expect(s).toContain("Noted · Jun 10, 2026");
     expect(html).not.toContain('data-testid="profile-fact-written"');
   });
 });

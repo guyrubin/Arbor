@@ -190,8 +190,12 @@ describe("TrustedSharing.tsx localization source contract (CARE-3)", () => {
     expect(src.match(/#[0-9a-fA-F]{3,6}\b/g) ?? []).toEqual([]);
   });
 
-  it("ChildProfile's family roster resolves scope labels through the same seam", () => {
+  it("the family roster resolves scope labels through the same seam (Care › Trusted sharing only)", () => {
+    // v3 F-CHILD-3 re-pin: the Family Circle left About (#/profile); the one
+    // roster is Trusted sharing, and About renders no scope label at all.
     const cp = readSrc("components/sections/ChildProfile.tsx");
-    expect(cp).toContain("scopeDisplayLabels(s.scopes, t)");
+    expect(cp).not.toContain("scopeDisplayLabels(");
+    expect(cp).not.toContain("listShares");
+    expect(readSrc("components/sections/TrustedSharing.tsx")).toContain("scopeDisplayLabels(");
   });
 });

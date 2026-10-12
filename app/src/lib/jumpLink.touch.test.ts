@@ -73,6 +73,8 @@ const hasFloor = (text: string) => FLOOR_MARKERS.some((m) => text.includes(m));
  */
 const RATCHET: Record<string, number> = {
   "components/sections/ChildProfile.tsx": 0,
+  // v3 F-CHILD-3: About's area cards (Confirm / No, Tell more, Open the moments).
+  "components/about/AspectCard.tsx": 0,
   "components/sections/ChildMemory.tsx": 4, // the four ROW_ACTION_CLS buttons
   "components/tabs/LanguageLabTab.tsx": 0,
   "components/tabs/LanguageLabVocabView.tsx": 0,
@@ -119,18 +121,20 @@ describe("item 9 · the primary-move controls state a 44 px hit box", () => {
     expect(src.match(/className=\{ROW_ACTION_CLS\}/g) ?? []).toHaveLength(4);
   });
 
-  it("the Profile JumpLink primitive — one component, every jump site", () => {
+  it("the Profile JumpLink primitive retired with the jump strip; About's doors state the floor", () => {
     const src = readFileSync(path.join(SRC, "components/sections/ChildProfile.tsx"), "utf8");
-    const decl = src.slice(src.indexOf("function JumpLink"));
-    expect(decl).toContain("touch-target");
-    // The sites all go through the primitive rather than hand-rolled links.
     // (Eight since GP-26 retired the strengths door — see profileMemoryOrder;
     // six since B-CAREPRO-29 removed the plan "next step" chapter's two;
     // four since W2-GROWTH r1 CUT the "Now" chapter and its two; three since
-    // B-SHELL-26 folded chapter 6 into the remembered band, whose one door is
-    // a 44 px min-h-11 button.)
-    expect((src.match(/<JumpLink /g) ?? []).length).toBeGreaterThanOrEqual(3);
+    // B-SHELL-26 folded chapter 6 into the remembered band.)
+    // v3 F-CHILD-3 re-pin: About has no jump strip, so the primitive went
+    // with it; every door on the page is a 44 px button (the ratchet above
+    // scans ChildProfile and AspectCard).
+    expect(src).not.toContain("function JumpLink");
+    expect(src).not.toContain("<JumpLink ");
     expect(src).toMatch(/data-testid="profile-remember-check"[^\n]{0,200}min-h-11/);
+    expect(src).toMatch(/className="[^"]*touch-target[^"]*" data-testid="about-voice"/);
+    expect(src).toMatch(/className="[^"]*touch-target[^"]*" data-testid="about-write"/);
   });
 
   it("the Milestones preterm input and the vocabulary add button state a floor", () => {

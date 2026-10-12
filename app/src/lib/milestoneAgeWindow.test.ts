@@ -126,10 +126,14 @@ describe("RUN-02 — the 60-month fixture: no 0–12-month title in any 'next' p
     }
   });
 
-  it("ChildProfile derives its 'worth watching next' from selectNextMilestones, never filter(!checked).slice", () => {
-    const code = stripComments(read("components/sections/ChildProfile.tsx"));
-    expect(code).toMatch(/selectNextMilestones\(milestones, comparisonMonths, 3\)/);
-    expect(code).not.toMatch(/milestones\.filter\(\(m\) => !m\.checked\)\.slice\(0, 3\)/);
+  it("the 'worth watching next' readers use selectNextMilestones, never filter(!checked).slice", () => {
+    // v3 F-CHILD-3 re-pin: the milestones chapter left About (#/profile);
+    // Milestones and the Now loop own "what's next", through the banded selector.
+    const profile = stripComments(read("components/sections/ChildProfile.tsx"));
+    expect(profile).not.toMatch(/milestones\.filter\(\(m\) => !m\.checked\)\.slice\(0, 3\)/);
+    expect(profile).not.toContain("selectNextMilestones(");
+    expect(stripComments(read("components/tabs/MilestonesTab.tsx"))).toMatch(/selectNextMilestones\(milestones, comparisonMonths, /);
+    expect(stripComments(read("components/companion/useNowLoop.ts"))).toMatch(/selectNextMilestones\(milestones, comparisonMonths, 6\)/);
   });
 });
 

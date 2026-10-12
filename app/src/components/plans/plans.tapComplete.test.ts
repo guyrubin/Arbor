@@ -378,8 +378,13 @@ describe("plan progress typography roles", async () => {
     }
   });
 
-  it("keeps Profile's parent quote in the editorial role rather than applying a blanket sans rule", () => {
-    const profile = readFileSync(path.join(here, "..", "sections", "ChildProfile.tsx"), "utf8");
-    expect(profile).toMatch(/<p style=\{\{ fontFamily: "var\(--font-editorial\)", fontWeight: 400, fontSize: "var\(--t-md\)", color: "var\(--arbor-ink\)" \}\}>\s*\{writtenPrefix\(toParentWords\(m\.fact\), m\.createdAt\)\}<FreeText text=\{toParentWords\(m\.fact\)\} \/>/);
+  it("keeps About's parent quote in the editorial role rather than applying a blanket sans rule", () => {
+    // v3 F-CHILD-3 re-pin: the remembered list left #/profile; the parent's
+    // words are quoted inside their area (AspectCard), and about.css sets the
+    // editorial face at weight 400 on that quote.
+    const card = readFileSync(path.join(here, "..", "about", "AspectCard.tsx"), "utf8");
+    const css = readFileSync(path.join(here, "..", "about", "about.css"), "utf8");
+    expect(card).toMatch(/<p className="about-aspect-quote"[^>]*><FreeText text=\{known\.words\} \/><\/p>/);
+    expect(css).toMatch(/\.about-aspect-quote \{[^}]*font-family: var\(--font-editorial\);[^}]*font-weight: 400;/);
   });
 });

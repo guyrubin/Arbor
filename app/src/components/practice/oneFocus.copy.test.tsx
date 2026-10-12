@@ -43,7 +43,8 @@ afterEach(() => vi.unstubAllGlobals());
 
 for (const lang of ["en", "he"] as const) describe(`Current Parent routes · ${lang}`, () => {
   beforeEach(() => { h.lang = lang; });
-  it.each([["profile", ChildProfile, "profile-goals-edit"], ["daily-play", DailyPlayTab, "daily-play-goals-edit"], ["development", ChildPortrait, "portrait-goals-edit"]] as const)("%s renders one newest-goal line from a stored three-goal profile", (_, Component, id) => {
+  // v3 F-CHILD-3 re-pin: goals left About (#/profile); Milestones and Daily play carry the line.
+  it.each([["daily-play", DailyPlayTab, "daily-play-goals-edit"], ["development", ChildPortrait, "portrait-goals-edit"]] as const)("%s renders one newest-goal line from a stored three-goal profile", (_, Component, id) => {
     const html = renderToStaticMarkup(<Component />);
     const line = html.match(new RegExp(`<button[^>]*data-testid="${id}"[\\s\\S]*?</button>`))?.[0];
     expect(line).toBeTruthy();
@@ -53,16 +54,23 @@ for (const lang of ["en", "he"] as const) describe(`Current Parent routes · ${l
     expect(visibleText(html)).not.toMatch(/\bfocus(?:es)?\b|מיקוד/i);
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
   });
-  it.each([["profile", ChildProfile], ["daily-play", DailyPlayTab], ["development", ChildPortrait]] as const)("%s keeps the empty-goal invitation optional and uses the same plain words", (_, Component) => {
+  it.each([["daily-play", DailyPlayTab], ["development", ChildPortrait]] as const)("%s keeps the empty-goal invitation optional and uses the same plain words", (_, Component) => {
     h.goals = [];
     const html = renderToStaticMarkup(<Component />);
     expect(visibleText(html)).toContain(translate(lang, "elev.goal.profile.empty"));
     expect(visibleText(html)).not.toMatch(/\bfocus(?:es)?\b|מיקוד/i);
   });
-  it("Profile's only goal door opens the current child page", () => {
-    renderToStaticMarkup(<ChildProfile />);
-    const door = h.buttons.find(button => button["data-testid"] === "profile-goals-edit");
-    expect(door).toBeDefined(); door.onClick(); expect(h.setActiveTab).toHaveBeenCalledWith("development");
+  it("About carries no goal line and no goal door (v3 F-CHILD-3: goals live on Milestones)", () => {
+    for (const goals of [fixture(), []]) {
+      h.goals = goals;
+      h.buttons = [];
+      const html = renderToStaticMarkup(<ChildProfile />);
+      expect(h.buttons.find(button => button["data-testid"] === "profile-goals-edit")).toBeUndefined();
+      expect(visibleText(html)).not.toContain(translate(lang, "elev.goal.tile.early-talking"));
+      expect(visibleText(html)).not.toContain(translate(lang, "elev.goal.profile.empty"));
+      expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+      expect(h.goals).toEqual(goals);
+    }
   });
   it.each([["profile", ChildProfile], ["daily-play", DailyPlayTab], ["development", ChildPortrait], ["plans", PlansTab]] as const)("%s has no second focus vocabulary in the current rendered main", (_, Component) => {
     const html = renderToStaticMarkup(<Component />);

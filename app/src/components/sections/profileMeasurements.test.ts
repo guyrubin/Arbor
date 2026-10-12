@@ -25,7 +25,7 @@ describe("B-GROWTH-05 — Measurements live on Profile, not on Growth", () => {
     expect(profile).toContain("<PhysicalGrowthCard embedded />");
   });
 
-  it("the card sits inside the Measurements disclosure, part of the Who chapter (profile budget unchanged)", () => {
+  it("the card sits inside the Measurements disclosure, behind About's Details row (profile budget unchanged)", () => {
     const open = profile.indexOf('<details data-testid="profile-measurements"');
     const card = profile.indexOf("<PhysicalGrowthCard embedded />");
     const close = profile.indexOf("</details>", open);
@@ -35,9 +35,11 @@ describe("B-GROWTH-05 — Measurements live on Profile, not on Growth", () => {
     // no stamp of its own: the route keeps exactly ONE demotion disclosure
     expect(profile).not.toContain('data-module="profile-measurements"');
     expect((profile.match(/data-module-disclosure=/g) ?? []).length).toBe(1);
-    // inside the Who chapter, before the Family Circle
-    expect(open).toBeGreaterThan(profile.indexOf('data-module="profile-who"'));
-    expect(open).toBeLessThan(profile.indexOf('aria-labelledby="profile-family-title"'));
+    // v3 F-CHILD-3 re-pin: the Who chapter and the Family Circle left the
+    // page; Measurements sits in the demoted Details module, after the areas.
+    expect(open).toBeGreaterThan(profile.indexOf('data-module="about-details"'));
+    expect(profile.indexOf('data-module="about-details"')).toBeGreaterThan(profile.indexOf('data-module="about-aspects"'));
+    expect(profile).not.toContain('aria-labelledby="profile-family-title"');
   });
 
   it("the disclosure and the card's empty state read in EN and HE", () => {

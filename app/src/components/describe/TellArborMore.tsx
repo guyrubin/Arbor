@@ -5,9 +5,16 @@
  * parent's words match go through the ArborContext milestone write (with
  * "Not this"); context lines become approved memory. Nothing is written
  * before "Keep these".
+ *
+ * v3 F-CHILD-3 — the About pill opens this same flow (never a fork): "Write"
+ * as it was, "Tell Arbor by voice" with the mic first (`mode="voice"`), and an
+ * area's "Tell more" / ?aspect=<id> with that area's fill pressed and the
+ * opening asked about it. A bottom sheet below lg (the mock's sheet), the
+ * centred dialog above it — the swap SettingsModal and PaywallModal make.
  */
 import React, { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Modal } from "../ui/Modal";
+import { Sheet, useCompactSurface } from "../ui/Sheet";
 import { useArbor } from "../../context/ArborContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -16,18 +23,31 @@ import { describeServices, primeQuestionVoice, type QuestionVoice } from "../../
 import { milestoneCandidateIds } from "../../lib/milestones/captureMatch";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { milestoneText } from "../../lib/milestoneData";
+import type { AspectId } from "../../lib/aboutAspects";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import DescribeChild from "./DescribeChild";
 import DescribeReadback from "./DescribeReadback";
 import DescribeThread from "./DescribeThread";
 import "./describe.css";
 
-export default function TellArborMore({ onClose }: { onClose: () => void }) {
+export default function TellArborMore({ onClose, aspect: openOn = null, mode = "write" }: {
+  onClose: () => void;
+  /** The area the conversation opens on (its fill pressed; the opening names it). */
+  aspect?: AspectId | null;
+  /** "voice": the mic comes first and takes the focus; dictation starts on the tap. */
+  mode?: "write" | "voice";
+}) {
   const { childProfile, milestones, setMilestoneObservation, restoreMilestone, retryMemoryReview } = useArbor();
   const { updateChild } = useProfile();
   const { t, aiLang, uiLang } = useLanguage();
   const lang: "en" | "he" = aiLang === "he" ? "he" : "en";
   const name = (childProfile.name || "").trim().split(/\s+/)[0] || childProfile.name;
+  const Surface = useCompactSurface() ? Sheet : Modal;
+  const [aspect, setAspect] = useState<AspectId | null>(openOn);
+  const areaName = aspect ? t(`companion.about.aspect.${aspect}`) : "";
+  const opening = aspect
+    ? t("elev.describe.openingAspect", { name, area: uiLang === "he" ? areaName : areaName.toLocaleLowerCase("en") })
+    : t("elev.describe.opening", { name });
   // The session reads the child and the milestones at call time, never a stale render.
   const live = useRef({ childProfile, milestones, lang });
   live.current = { childProfile, milestones, lang };
@@ -58,7 +78,7 @@ export default function TellArborMore({ onClose }: { onClose: () => void }) {
     // Inside the tap: a mic answer primes the voice for the first question.
     primed.current?.cancel();
     primed.current = viaMic ? primeQuestionVoice() : null;
-    const outcome = await session.start(text, t("elev.describe.opening", { name }));
+    const outcome = await session.start(text, opening);
     if (outcome === "empty") setEmpty(true);
     if (outcome !== "asking") { primed.current?.cancel(); primed.current = null; }
   };
@@ -66,11 +86,12 @@ export default function TellArborMore({ onClose }: { onClose: () => void }) {
     const milestone = live.current.milestones.find((m) => m.id === id);
     return milestone ? milestoneText(milestone, "title", t, { gender: childProfile.gender ?? null }) : undefined;
   };
-  return <Modal open onClose={onClose} title={t("elev.describe.title", { name })} maxWidth="max-w-2xl">
-    <div className="describe-modal" dir={uiLang === "he" ? "rtl" : "ltr"} data-testid="tell-arbor-more">
+  return <Surface open onClose={onClose} title={t("elev.describe.title", { name })} maxWidth="max-w-2xl">
+    <div className="describe-modal" dir={uiLang === "he" ? "rtl" : "ltr"} data-testid="tell-arbor-more" data-aspect={aspect ?? undefined} data-mode={mode}>
       {showInput && <>
         <p className="describe-sub">{t("elev.describe.sub")}</p>
-        <DescribeChild name={name} lang={lang} value={text} onChange={(next) => { setText(next); setEmpty(false); }} quickFills disabled={drafting} autoFocus onVoiceText={() => setViaMic(true)} />
+        <DescribeChild name={name} lang={lang} value={text} onChange={(next) => { setText(next); setEmpty(false); }} quickFills disabled={drafting} autoFocus onVoiceText={() => setViaMic(true)}
+          aspect={aspect} onAspect={(id) => setAspect((current) => (current === id ? null : id))} opening={opening} voice={mode === "voice"} />
         {state.error === "crisis" && <UrgentSupport testId="describe-urgent-support" />}
         {state.error === "model" && <p className="describe-note" role="alert">{t("elev.describe.failed")}</p>}
         {empty && <p className="describe-note" role="status">{t("elev.describe.empty")}</p>}
@@ -81,11 +102,11 @@ export default function TellArborMore({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </>}
-      {conversing && <DescribeThread name={name} lang={lang} session={session} primedVoice={primed} />}
+      {conversing && <DescribeThread name={name} lang={lang} session={session} primedVoice={primed} opening={opening} />}
       {showReadback && <DescribeReadback name={name} session={session} profile={childProfile} milestoneTitle={milestoneTitle} />}
       {state.status === "kept" && <div className="describe-footer">
         <button type="button" className="describe-link" onClick={onClose}>{t("elev.describe.close")}</button>
       </div>}
     </div>
-  </Modal>;
+  </Surface>;
 }

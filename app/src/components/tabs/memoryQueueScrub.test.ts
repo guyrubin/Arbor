@@ -149,11 +149,14 @@ describe("B-CAREPRO-06 · ChildMemory, ChildProfile and SafetyTab render scrubbe
 
   it("ChildProfile and SafetyTab list the scrubbed approved facts", () => {
     expect(PROFILE).toContain("scrubMemoryProposals(approvedMemoryItems)");
-    // B-SHELL-26: the remembered band lists the scrubbed facts, newest first.
-    expect(PROFILE).toContain("[...shownApproved].sort(");
-    expect(PROFILE).toContain("rememberedRest.slice(0, 5).map(");
+    // v3 F-CHILD-3 re-pin: the remembered band left About; the eight areas
+    // are built from the scrubbed approved AND pending lists (each area quotes
+    // its newest kept line and its newest proposal, never a count).
+    expect(PROFILE).toMatch(/buildAspects\(\{[\s\S]{0,80}approved: scrubMemoryProposals\(approvedMemoryItems\),\s*pending: scrubMemoryProposals\(pendingMemoryItems\),\s*words: toParentWords,/);
     expect(PROFILE).not.toContain("approvedMemoryItems.slice(");
-    expect(PROFILE).toContain("[...pendingQueue].sort("); // P1-NEXTLEVEL r2: the newest inference is named, never counted
+    const card = stripComments(read("components/about/AspectCard.tsx"));
+    expect(RAW_RENDER.test(card)).toBe(false);
+    expect(card).toContain("<FreeText text={toParentWords(pending.fact)} />");
     // B-CAREPRO-14: Safety renders no memory text at all.
     expect(SAFETY).not.toContain("approvedMemoryItems");
     expect(SAFETY).not.toContain("item.fact");

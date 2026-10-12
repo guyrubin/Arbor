@@ -57,6 +57,9 @@ const SCANNED = [
   "components/companion/WordsFirstsStrip.tsx",
   ...GROWTH_FILES,
   "components/sections/ChildProfile.tsx",
+  // v3 F-CHILD-3: About's eight areas and the read that fills them.
+  "components/about/AspectCard.tsx",
+  "lib/aboutAspects.ts",
   "components/practice/DevelopmentCopilot.tsx",
   "components/sections/AcademyForYou.tsx",
 ];
@@ -99,6 +102,22 @@ describe("B-GROWTH-07 — no proportional fill of a child record", () => {
       expect(src, rel).not.toMatch(/\btotal\b|%|Chart|<svg/);
       expect(src, rel).not.toMatch(/sort\(/);
     }
+  });
+
+  /* v3 F-CHILD-3 — About's eight areas say what the parent TOLD Arbor, never
+     how much is known: no total, share, chart or ranking in the cards, the
+     read behind them or the page; the count line is "N areas", never "of 8". */
+  it("covers About's eight areas like the area lens (no total, share, chart or ranking)", () => {
+    for (const rel of ["components/sections/ChildProfile.tsx", "components/about/AspectCard.tsx", "lib/aboutAspects.ts"]) {
+      expect(SCANNED).toContain(rel);
+      const src = stripComments(read(rel));
+      expect(src, rel).not.toMatch(/\btotal\b|%|Chart|<svg|role="progressbar"/);
+      expect(src, rel).not.toMatch(/sort\(/);
+    }
+    const dict = read("lib/i18nCompanion.ts");
+    const lines = dict.split("\n").filter((l) => l.includes('"companion.about.'));
+    expect(lines.length).toBeGreaterThanOrEqual(2 * 40);
+    for (const l of lines) expect(l).not.toMatch(/\{total\}|%|\bof \{|\bof 8\b|מתוך|behind|ahead|score/i);
   });
 
   it("the Record-by-area strings name no total, share or trend (EN + HE)", () => {

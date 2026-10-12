@@ -76,7 +76,7 @@ describe("CN-004 · no proportional fill of a child record", () => {
     expect(unclassified, "classify each site: a child-record fill is a firewall breach (law 1)").toEqual([]);
   });
 
-  it("the Profile milestone chapter carries the count sentence and no fill", () => {
+  it("About (#/profile) carries no fill: the milestone chapter left it, the count line counts told areas", () => {
     const profile = SOURCES.find((f) => f.rel === "components/sections/ChildProfile.tsx");
     expect(profile, "ChildProfile.tsx found by the walk").toBeTruthy();
     expect(fillSites(profile!.src)).toEqual([]);
@@ -84,7 +84,14 @@ describe("CN-004 · no proportional fill of a child record", () => {
     // W2-GROWTH r1 (law 1): the count sentence carries no denominator either —
     // "{checked} of {total} noticed in the window" became "{n} milestones noticed".
     expect(profile!.src).not.toContain('t("elev.growthTruth.window.noticed"');
-    expect(profile!.src).toContain('t("elev.profile.ms.noticed", { n: noticedCount })');
+    // v3 F-CHILD-3 re-pin: the milestones chapter left About (Milestones owns
+    // the count); the one number on the page is "You've told Arbor about N
+    // areas" — no bar, no dots, no "of 8".
+    expect(profile!.src).not.toContain('t("elev.profile.ms.noticed"');
+    expect(profile!.src).toContain('t(dated ? "companion.about.toldMany" : "companion.about.toldManyUndated", { n: told })');
+    const card = SOURCES.find((f) => f.rel === "components/about/AspectCard.tsx");
+    expect(card, "AspectCard.tsx found by the walk").toBeTruthy();
+    expect(fillSites(card!.src)).toEqual([]);
   });
 
   it("B-CAREPRO-44 · RewardsCard says a count sentence: no fill, no next-reward target, no pending entry", () => {
