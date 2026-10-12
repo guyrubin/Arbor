@@ -268,17 +268,19 @@ describe("critic r1 — the journal's primary move is the capture tiles", async 
   const dict = await import("../../lib/i18nElevation/journal");
 
   it("the stamp is spread on the tile grid, not the stream wrapper", () => {
-    // Critic r2: the feed density's stream carries no stamp at all (the
-    // Journal's own three modules are the top level); Story keeps its wrapper.
-    expect(TIMELINE).toContain("<JournalTab primaryMoveProps={primaryMove} densityToggle={densityToggle} />");
-    expect(TIMELINE).toMatch(/story \? \(\s*<div data-module="timeline-stream">\s*<StoryTimelineTab \/>/);
+    // Critic r2: the journal's stream carries no stamp at all (the Journal's
+    // own three modules are the top level). F-CHILD-2 re-pin: #/timeline is
+    // Moments (no Story wrapper, no density toggle handed down).
+    expect(TIMELINE).toContain("<JournalTab primaryMoveProps={primaryMove} />");
+    expect(TIMELINE).toMatch(/moments \? \(\s*<MomentsBody primaryMoveProps=\{primaryMove\}/);
+    expect(TIMELINE).not.toContain("timeline-stream");
     // P5-LOOP c2 r1: on ?view=all the stamp rides "All shelves", the page's FIRST item;
     // the tiles carry none (they follow the thread below lg)
     expect(JOURNAL).toContain('data-capture-bar>');
     expect(JOURNAL).not.toContain("data-capture-bar {...primaryMoveProps}");
     expect(JOURNAL).toMatch(/data-testid="journal-all-back"\s*onClick=\{\(\) => goToRoute\("journal"\)\}\s*\{\.\.\.primaryMoveProps\}/);
     const header = JOURNAL.slice(JOURNAL.indexOf('data-module="journal-header"'), JOURNAL.indexOf("</header>"));
-    expect(header.indexOf('data-testid="journal-all-back"')).toBeLessThan(header.indexOf("{densityToggle}"));
+    expect(header.indexOf('data-testid="journal-all-back"')).toBeLessThan(header.indexOf('data-testid="journal-moments-door"'));
     expect(JOURNAL).toMatch(/data-module="journal-compose" className="[^"]*max-lg:order-last/);
   });
 
@@ -329,13 +331,16 @@ describe("Journal: real modules, expandable entry context at every width, one se
   const dict = await import("../../lib/i18nElevation/journal");
   const { translate } = await import("../../lib/i18n");
 
-  it("on #/journal the density toggle rides in journal-header; the stream wrapper is unstamped", () => {
-    expect(TIMELINE).toContain('data-module={story ? "timeline-density" : undefined}');
-    expect(TIMELINE).toContain("{story && densityToggle}");
-    expect(TIMELINE.match(/data-module="timeline-stream"/g)?.length).toBe(1);
+  it("on #/journal the Moments door rides in journal-header; the stream wrapper is unstamped", () => {
+    // F-CHILD-2 re-pin: the density toggle and its two stamps are retired;
+    // #/timeline's two blocks are the Moments toolbar and view.
+    expect(TIMELINE).not.toContain("timeline-density");
+    expect(TIMELINE).not.toContain("timeline-stream");
+    expect(TIMELINE).toContain('{ "data-module": "moments-toolbar" }');
+    expect(TIMELINE).toContain('{ "data-module": "moments-view" }');
     const header = JOURNAL.slice(JOURNAL.indexOf('data-module="journal-header"'), JOURNAL.indexOf("</header>"));
-    expect(header).toContain("{densityToggle}");
-    expect(header.indexOf("{densityToggle}")).toBeLessThan(header.indexOf('t("journal.title")'));
+    expect(header).toContain('data-testid="journal-moments-door"');
+    expect(header.indexOf('data-testid="journal-moments-door"')).toBeLessThan(header.indexOf('t("journal.title")'));
   });
 
   it("the empty-record guidance appears only in teach-empty, with no duplicate aside or zero count", () => {

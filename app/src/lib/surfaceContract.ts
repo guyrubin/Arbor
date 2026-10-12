@@ -158,11 +158,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   },
   {
     route: "timeline", hub: "journal", depth: 1,
-    job: "Read the same moments as one flowing story of the week.",
-    primaryMove: "switch-density", moduleBudget: 2, demotionTarget: "journal",
-    // journal/timeline are two DENSITIES of one surface (both render
-    // TimelineTab); this route IS the density. Read surface — no write.
-    threadWrite: "none",
+    job: "See {name}'s moments over time, in different places and across areas.",
+    primaryMove: "capture-moment", moduleBudget: 2, demotionTarget: "journal",
+    // F-CHILD-2: Moments (toolbar · view). "Keep a moment" opens the one
+    // capture sheet, which writes a parent moment to behaviorLogs.
+    threadWrite: "behaviorLogs",
   },
 
   // ── BEHAVIORS ──────────────────────────────────────────────────────────────

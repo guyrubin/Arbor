@@ -35,18 +35,19 @@ describe("masterplan 1.5 — SpineRibbon mounts", () => {
     }
   });
 
-  it("B-ASKJB-16: JournalTab no longer mounts or imports SpineRibbon (the density toggle is the door to Story)", () => {
+  it("B-ASKJB-16: JournalTab no longer mounts or imports SpineRibbon (the journal keeps one door to Moments)", () => {
     expect(journal).not.toMatch(/import \{ SpineRibbon \}/);
     expect(journal).not.toMatch(/<SpineRibbon\b/);
     expect(journal).not.toContain("journal-spine-ribbon");
-    // The door it duplicated is still there: TimelineTab's density toggle.
+    // F-CHILD-2 re-pin: the Feed · Story density toggle is retired; the door
+    // it gave the journal is now one Moments door in journal-header, and
+    // #/timeline renders Moments itself.
     const timeline = read("tabs/TimelineTab.tsx");
-    // Critic r2: stamped as a module on #/timeline; on #/journal it rides in
-    // journal-header (still rendered — the door to Story never goes away).
-    expect(timeline).toContain('data-module={story ? "timeline-density" : undefined}');
-    expect(timeline).toContain("densityToggle={densityToggle}");
-    expect(journal).toContain("{densityToggle}");
-    expect(timeline).toContain("onClick={() => setActiveTab(d.tab)}");
+    expect(timeline).toContain("<MomentsBody");
+    expect(timeline).not.toContain("densityToggle");
+    expect(journal).not.toContain("densityToggle");
+    expect(journal).toContain('data-testid="journal-moments-door"');
+    expect(journal).toContain('onClick={() => goToRoute("timeline", { view: "time" })}');
   });
 
   it("B-PLAY-18: Masterclasses no longer imports or mounts SpineRibbon (no academy-spine module)", () => {

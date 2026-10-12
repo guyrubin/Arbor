@@ -464,7 +464,7 @@ describe("B-ASKJB-19 — Story density to its budget", () => {
     expect(body).not.toContain("story.cardTitle");
   });
 
-  it("the timeline leaf still renders within its contract (toggle + stream)", () => {
+  it("the timeline leaf still renders within its contract (F-CHILD-2: Moments toolbar + view)", () => {
     const timeline = read("src/components/tabs/TimelineTab.tsx");
     expect(countModules(timeline).topLevel).toBeLessThanOrEqual(contractFor("timeline" as ActiveTab)!.moduleBudget);
   });

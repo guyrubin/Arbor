@@ -68,7 +68,7 @@ const log = (id: string, timestamp: string, trigger: string, behaviorType = "Mom
 });
 const render = () => {
   harness.cursor = 0; harness.controls.clear();
-  return renderToStaticMarkup(<JournalTab primaryMoveProps={{ "data-primary-move": "open-shelf" }} densityToggle={<div data-density-toggle=""><button className="min-h-11">Feed</button><button className="min-h-11">Story</button></div>} />);
+  return renderToStaticMarkup(<JournalTab primaryMoveProps={{ "data-primary-move": "open-shelf" }} />);
 };
 const header = (html: string) => html.slice(html.indexOf('<header '), html.indexOf('</header>'));
 const decode = (html: string) => html.replace(/&#x27;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"');
@@ -81,15 +81,18 @@ beforeEach(() => {
 for (const lang of ["en", "he"] as const) describe(`${lang}: Journal record hierarchy`, () => {
   beforeEach(() => { harness.lang = lang; });
 
-  it("keeps three real modules, one primary control, and shelves/density in one compact navigation row", () => {
+  it("keeps three real modules, one primary control, and shelves/Moments in one compact navigation row", () => {
     harness.logs = [log("latest", latestAt, latestWords)];
     const html = render();
     expect([...html.matchAll(/data-module="([^"]+)"/g)].map(match => match[1])).toEqual(["journal-header", "journal-compose", "journal-thread"]);
     expect(html.match(/data-primary-move="/g)).toHaveLength(1);
-    const nav = header(html).match(/<div data-testid="journal-header-nav"[\s\S]*?<\/div><\/div>/)?.[0] ?? "";
+    // F-CHILD-2 re-pin: the density toggle (a nested div) is retired; the
+    // row's second control is the one Moments door, a 44 px button.
+    const nav = header(html).match(/<div data-testid="journal-header-nav"[\s\S]*?<\/div>/)?.[0] ?? "";
     expect(nav).toContain('data-testid="journal-all-back"');
-    expect(nav).toContain('data-density-toggle=""');
-    expect(nav).toContain("min-h-11");
+    expect(nav).toContain('data-testid="journal-moments-door"');
+    expect(nav).not.toContain("data-density-toggle");
+    expect(nav.match(/min-h-11/g)?.length).toBe(2);
     expect(header(html)).toMatch(/<h1 class="mt-2 t-lg leading-snug"/);
     expect(header(html)).not.toMatch(/t-2xl|md:grid-cols/);
   });

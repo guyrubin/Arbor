@@ -628,8 +628,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       await screen('practice', 'together-bottom-reachable', cell => mainScrollFrame(cell, 'practice'));
 
       const recordNav = async cell => {
-        const back = byId('secondary-place-back'); const nav = page.locator('[data-density-toggle]');
-        await visible(cell, 'RECORD_BACK_MOUNTED', back); await visible(cell, 'RECORD_DENSITY_NAV_MOUNTED', nav); check(cell, 'TWO_DENSITY_TABS', await nav.locator('[role=tab]').count() === 2); check(cell, 'NO_DUPLICATE_SHELL_NAV', await byId('secondary-sibling-nav').count() === 0);
+        // F-CHILD-2: #/timeline is Moments; its own nav is the three-view tablist.
+        const back = byId('secondary-place-back'); const nav = page.locator('[data-moments-views]');
+        await visible(cell, 'RECORD_BACK_MOUNTED', back); await visible(cell, 'RECORD_MOMENTS_VIEWS_MOUNTED', nav); check(cell, 'THREE_MOMENT_VIEWS', await nav.locator('[role=tab]').count() === 3); check(cell, 'NO_DUPLICATE_SHELL_NAV', await byId('secondary-sibling-nav').count() === 0);
         const geometry = { back: await rect(back), nav: await rect(nav), clip: await rect(page.locator('main')) };
         cell.geometry = geometry;
         check(cell, 'RECORD_BACK_UNIQUE', await back.count() === 1);
