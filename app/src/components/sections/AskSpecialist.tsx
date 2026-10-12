@@ -119,6 +119,18 @@ export function resolveConsultPrefill(p: ConsultPrefill): {
   return out;
 }
 
+/** v3 F-CARE-1 r2: the control that carries the route's ONE stamp (and the
+ *  page's one gradient). The stacked builder keeps it on Build; in the
+ *  landing's stepper it rides the shown step's way on: Build (step 1),
+ *  Continue (step 2), or "Log a moment" when there is nothing to share yet,
+ *  and Copy (step 3). */
+export type ConsultStampSite = "build" | "next" | "empty" | "copy";
+export function consultStampSite(stepped: boolean, shownStep: 1 | 2 | 3, isEmpty: boolean): ConsultStampSite {
+  if (!stepped || shownStep === 1) return "build";
+  if (shownStep === 2) return isEmpty ? "empty" : "next";
+  return "copy";
+}
+
 type ExportBuild = { text: string; error: null } | { text: null; error: string };
 
 /** v3 EXTRA-CARE — the Care landing's "what to bring" chips: each groups
@@ -234,7 +246,10 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
 
   // LC-20 — REASON FOR VISIT. Always shown; rides into every clinician packet
   // in the parent's own words. Device-local until an export the parent takes.
-  const [reason, setReason] = useState("");
+  // v3 F-CARE-1 r2: a caller's reason (Appointments' "Prepare") is read on the
+  // first render too, so step 1 can say it on arrival; the prefill effect
+  // below still consumes the seam and writes the same words.
+  const [reason, setReason] = useState(() => (pendingConsultPrefill == null ? "" : resolveConsultPrefill(pendingConsultPrefill).reason ?? ""));
 
   // v3 FEAT-09 — "Our question": the family question the parent has selected
   // (ArborContext activeFamilyTopic) joins the summary as ONE line, only when
@@ -490,6 +505,15 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   const isEmpty = isConsultPacketEmpty(packet);
   // Step 3 holds the verbs; with nothing to share it stays closed.
   const shownStep: 1 | 2 | 3 = step === 3 && isEmpty ? 2 : step;
+  /* v3 F-CARE-1 r2: in the stepper the route's ONE stamp rides the shown
+     step's way on, so exactly one visible control carries it whichever step
+     is open (#/consult?intake= opens on step 3): Build in step 1, Continue in
+     step 2 (with nothing to share yet, the empty state's "Log a moment"),
+     Copy in step 3. The stacked builder keeps it on Build. The page's one
+     gradient goes with the stamp. */
+  const stampSite = consultStampSite(stepped, shownStep, isEmpty);
+  const stampAt = (site: ConsultStampSite) => (site === stampSite ? primaryMoveStamp : undefined);
+  const ctaFill = (site: ConsultStampSite) => (site === stampSite ? "var(--gradient-cta)" : "var(--arbor-clay)");
   const includedCount = countIncluded(packet, excluded);
   const toggle = (id: string) =>
     setExcluded((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -732,6 +756,22 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     </nav>
   ) : null;
 
+  /* v3 F-CARE-1: the whole record is its own document (#/reports), one quiet
+     link under step 3's verbs; nothing leaves from here. r2: with nothing to
+     share yet it closes the empty state instead, so a new family has a way
+     to the record from Care too. */
+  const fullRecordLink = (
+    <button
+      type="button"
+      data-testid="consult-full-record"
+      onClick={() => setActiveTab("reports")}
+      className="self-start inline-flex items-center gap-1.5 min-h-[44px] t-sm font-bold"
+      style={{ color: "var(--arbor-clay)" }}
+    >
+      <Icon name="history" size={16} /> {t("elev.consult.fullRecord")}
+    </button>
+  );
+
   /* W2-CAREPRO r1: "what changed" is answered first — B-CAREPRO-17's
      "Since you last shared with {audience}" counts (counts only; the same
      section rides the packet below). r2: on a first visit it is a
@@ -868,6 +908,18 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
             </div>
           </div>
         )}
+        {/* v3 F-CARE-1 r2: the reason a caller wrote (Appointments' "Prepare",
+            Screening, Safety) is said here on arrival; step 2 holds the field
+            that edits it. The parent's own words, quiet, never a heading. */}
+        {stepped && reason.trim() !== "" && (
+          <p data-testid="consult-reason-carried" className="flex items-start gap-1.5 t-sm leading-relaxed mt-1" style={{ color: MUTED }}>
+            <Icon name="edit_note" size={16} className="flex-shrink-0 mt-0.5" />
+            <span className="min-w-0">
+              <span className="font-bold" style={{ color: INK }}>{t("elev.consult.reason.carried")}</span>{" "}
+              <bdi dir="auto" className="break-words" style={{ color: INK }}>{reason.trim()}</bdi>
+            </span>
+          </p>
+        )}
         {/* W2-CAREPRO r2: the route's ONE stamp sits on a real act — build the
             summary for the chosen audience and land on step 3 (the verbatim
             preview, the reviewed gate, Copy · PDF · Send). It was on the
@@ -877,11 +929,11 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
             type="button"
             data-testid="consult-build"
             onClick={buildSummary}
-            {...primaryMoveStamp}
+            {...stampAt("build")}
             // W2-CAREPRO c2 r1: the stamp holder carries the page's ONE
             // gradient (Copy is a solid secondary); full width below 640 px.
             className="w-full sm:w-auto sm:self-start inline-flex items-center justify-center gap-2 t-sm font-extrabold rounded-xl px-5 min-h-[44px] mt-1 transition hover:brightness-105"
-            style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
+            style={{ background: ctaFill("build"), color: "var(--arbor-on-accent)" }}
           >
             {stepped ? t("elev.consult.preview.cta") : t("elev.carehonesty.consult.build")}
           </button>
@@ -1057,14 +1109,20 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           <h2 className="t-lg font-extrabold mt-3" style={{ fontFamily: "var(--font-display)", color: INK }}>{t("consult.empty.title")}</h2>
           <p className="text-sm mt-1.5 leading-relaxed max-w-[420px] mx-auto" style={{ color: MUTED }}>{t("consult.empty.body")}</p>
           <button
+            data-testid="consult-empty-cta"
             onClick={() => setActiveTab("behaviors")}
+            {...stampAt("empty")}
             className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-5 py-3 mt-4 min-h-[44px]"
-            style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-paper-elevated)", boxShadow: "var(--arbor-clay-glow)" }}
+            // v3 F-CARE-1 r2: in the stepper the gradient goes with the stamp,
+            // so the hidden step 2 never holds a second one.
+            style={{ background: !stepped || stampSite === "empty" ? "var(--arbor-gradient-primary)" : "var(--arbor-clay)", color: "var(--arbor-paper-elevated)", boxShadow: "var(--arbor-clay-glow)" }}
           >
             {t("consult.empty.cta")}
           </button>
         </div>
         {packetContract}
+        {/* v3 F-CARE-1 r2: a new family's way to the whole record too. */}
+        {fullRecordLink}
         </>
       ) : (
         <>
@@ -1126,14 +1184,16 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           </>
       )}
       {/* v3 F-CARE-1: the stepper's way on — open step 3 (the verbatim
-          preview, the reviewed gate, the verbs). Not a move: no stamp. */}
+          preview, the reviewed gate, the verbs). r2: while step 2 is the shown
+          body it is the way on, so it carries the stamp (stampSite). */}
       {stepped && !isEmpty && (
         <button
           type="button"
           data-testid="consult-next"
           onClick={() => goToStep(3, true)}
+          {...stampAt("next")}
           className="w-full sm:w-auto sm:self-start inline-flex items-center justify-center gap-2 t-sm font-extrabold rounded-xl px-5 min-h-[44px] transition hover:brightness-105"
-          style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
+          style={{ background: ctaFill("next"), color: "var(--arbor-on-accent)" }}
         >
           {t("elev.consult.next")}
           <Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" />
@@ -1241,9 +1301,12 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
             <div className="flex flex-wrap items-center gap-3">
               <button onClick={copy} disabled={noneSelected}
                 data-testid="consult-copy"
+                {...stampAt("copy")}
                 className="inline-flex items-center gap-2 font-bold text-sm rounded-xl px-4 py-3 transition disabled:opacity-50 min-h-[44px]"
-                // W2-CAREPRO c2 r1: a solid clay secondary — the one gradient is Build.
-                style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
+                // W2-CAREPRO c2 r1: a solid clay secondary — the one gradient is
+                // Build. v3 F-CARE-1 r2: in the stepper's step 3 Copy is the
+                // shown way on, so the stamp and the gradient are Copy's.
+                style={{ background: ctaFill("copy"), color: "var(--arbor-on-accent)" }}>
                 <Icon name="content_copy" size={17} /> {t("consult.copy")}
               </button>
               <button onClick={savePdf} disabled={noneSelected}
@@ -1264,17 +1327,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
                 {t("elev.learnCare.trusted.send")}
               </button>
             </div>
-            {/* v3 F-CARE-1: the whole record is its own document (#/reports),
-                one quiet link under the verbs; nothing leaves from here. */}
-            <button
-              type="button"
-              data-testid="consult-full-record"
-              onClick={() => setActiveTab("reports")}
-              className="self-start inline-flex items-center gap-1.5 min-h-[44px] t-sm font-bold"
-              style={{ color: "var(--arbor-clay)" }}
-            >
-              <Icon name="history" size={16} /> {t("elev.consult.fullRecord")}
-            </button>
+            {fullRecordLink}
           </div>
           )}
         </div>

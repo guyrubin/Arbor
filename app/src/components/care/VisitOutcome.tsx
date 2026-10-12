@@ -16,7 +16,7 @@ import type { FamilyGoal } from "../../lib/goals";
 import {
   appointmentStatus,
   makeFollowUp,
-  visitAwaitingOutcome,
+  visitAskedForOutcome,
   type Appointment,
   type AppointmentFollowUp,
 } from "../../lib/careTrack";
@@ -40,11 +40,22 @@ import {
  * B-STATUS-01: success answers where it happened, as one Receipt line, and only
  * after the write resolved (v3 EXTRA-CARE: "Saved" follows persistence). Toasts
  * here are errors only. Clinical firewall: nothing here scores the child; the
- * words are the parent's. */
+ * words are the parent's.
+ *
+ * v3 F-CARE-1 r2: Appointments holds the answer being saved (`held`/`onHeld`)
+ * and asks the same rule (careTrack visitAskedForOutcome), so the row capture
+ * it suppresses is exactly the visit asked here, a queued answer included.
+ * Without those props the component keeps the state itself. */
 
-type HeldOutcome = { record: AppointmentFollowUp; state: "saving" | "queued" | "failed" };
+/** The answer the parent is saving, or whose save is not confirmed yet, for one child. */
+export type HeldOutcome = { childId: string; record: AppointmentFollowUp; state: "saving" | "queued" | "failed" };
 
-export default function VisitOutcome({ apptsCol, followUpsCol }: { apptsCol: ChildCollection<Appointment>; followUpsCol: ChildCollection<AppointmentFollowUp> }) {
+export default function VisitOutcome({ apptsCol, followUpsCol, held, onHeld }: {
+  apptsCol: ChildCollection<Appointment>;
+  followUpsCol: ChildCollection<AppointmentFollowUp>;
+  held?: HeldOutcome | null;
+  onHeld?: (next: HeldOutcome | null) => void;
+}) {
   const { user } = useAuth();
   const { childProfile } = useArbor();
   const currentChild = useRef(childProfile.id);
@@ -62,10 +73,13 @@ export default function VisitOutcome({ apptsCol, followUpsCol }: { apptsCol: Chi
   // server confirms it, and visitAwaitingOutcome would close the loop and
   // unmount the answer. Held, that record does not count until the write is
   // acknowledged: the field, the answer and the same-id retry stay.
-  const [heldOutcome, setHeldOutcome] = useState<HeldOutcome | null>(null);
+  const [ownHeld, setOwnHeld] = useState<HeldOutcome | null>(null);
+  const anyHeld = onHeld ? held ?? null : ownHeld;
+  const heldOutcome = anyHeld && anyHeld.childId === childProfile.id ? anyHeld : null;
+  const setHeldOutcome = (next: HeldOutcome | null) => (onHeld ? onHeld(next) : setOwnHeld(next));
   const heldId = heldOutcome?.record.id;
   const awaiting = useMemo(
-    () => visitAwaitingOutcome(apptsCol.items, heldId ? followUpsCol.items.filter((f) => f.id !== heldId) : followUpsCol.items, nowMs),
+    () => visitAskedForOutcome(apptsCol.items, followUpsCol.items, heldId, nowMs),
     [apptsCol.items, followUpsCol.items, nowMs, heldId],
   );
   const [outcome, setOutcome] = useState("");
@@ -85,19 +99,19 @@ export default function VisitOutcome({ apptsCol, followUpsCol }: { apptsCol: Chi
   const saveOutcome = async () => {
     if (!awaiting || savingOutcome) return;
     const note = outcome.trim();
-    const held = heldOutcome?.record;
-    const record = held && held.apptId === awaiting.id && note ? { ...held, note } : makeFollowUp(awaiting.id, note, Date.now());
+    const heldRecord = heldOutcome?.record;
+    const record = heldRecord && heldRecord.apptId === awaiting.id && note ? { ...heldRecord, note } : makeFollowUp(awaiting.id, note, Date.now());
     if (!record) return;
     setSaved(null);
-    setHeldOutcome({ record, state: "saving" });
     const childId = childProfile.id;
+    setHeldOutcome({ childId, record, state: "saving" });
     try {
       await followUpsCol.upsert(record, { requireAcknowledgement: true });
     } catch (err) {
       if (currentChild.current !== childId) return;
       const refused = typeof err === "object" && err !== null && "code" in err;
       const queued = followUpsCol.remote && !refused;
-      setHeldOutcome({ record, state: queued ? "queued" : "failed" });
+      setHeldOutcome({ childId, record, state: queued ? "queued" : "failed" });
       toast(t(queued ? "elev.consult.visitOutcome.queued" : "elev.consult.visitOutcome.saveError"), "error");
       return;
     }

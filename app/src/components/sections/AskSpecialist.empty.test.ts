@@ -9,16 +9,23 @@
  * B-CAREPRO-28: step 1 (who it is for) renders in both — choosing the
  * audience comes before the record, and a teacher brief needs no moments.
  * v3 F-CARE-1: the landing's stepper keeps Share shut on an empty record and
- * never prints a denominator (block at the end). */
+ * never prints a denominator (block at the end). r2 (review r1): the
+ * milestone lines are read through the REAL EN and HE dictionaries with seen,
+ * not-yet and not-sure milestones seeded; an empty record keeps the way to
+ * the whole record. */
 
 import { describe, expect, it, vi } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { translate } from "../../lib/i18n";
+
+// r2: null = the key-echo t the LC-06 cases read; "en"/"he" = the real dictionary
+const lang = vi.hoisted(() => ({ real: null as null | "en" | "he" }));
 
 const record = {
   childProfile: { id: "c1", name: "Noa Levi", age: 4, languages: ["Hebrew"], schoolContext: "", strengths: [], challenges: [] },
   behaviorLogs: [] as Array<{ behaviorType: string; intensity: number; timestamp: string; resolved?: boolean }>,
-  milestones: [] as Array<{ domain: string; title: string; checked: boolean }>,
+  milestones: [] as Array<{ id?: string; domain: string; title: string; checked: boolean; observationStatus?: "yes" | "not_sure" | "not_yet" }>,
   actionPlans: [] as Array<{ title: string; issue?: string }>,
   approvedMemoryItems: [] as Array<{ fact: string; status: string }>,
   setActiveTab: vi.fn(),
@@ -28,7 +35,12 @@ const record = {
 
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => record, useArborOptional: () => null }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast: vi.fn() }) }));
-vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (k: string) => k, uiLang: "en" }) }));
+vi.mock("../../context/LanguageContext", () => ({
+  useLanguage: () => ({
+    t: (k: string, v?: Record<string, string | number>) => (lang.real ? translate(lang.real, k, v) : k),
+    uiLang: lang.real ?? "en",
+  }),
+}));
 vi.mock("./Reports", () => ({ REPORTS: [], useReportExport: () => vi.fn(), useConsultPdf: () => vi.fn() }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null, default: () => null }));
 vi.mock("../../lib/api", () => ({ authHeaders: async () => ({}) }));
@@ -85,6 +97,9 @@ describe("v3 F-CARE-1 — the landing stepper is numerator-only", () => {
     expect(html).toContain("consult.empty.title");
     expect(html).not.toContain('data-testid="consult-next"');
     expect(html).not.toContain('data-testid="consult-copy"');
+    // r2: a new family keeps the way to the whole record (#/reports), after "Log a moment"
+    expect(html.indexOf('data-testid="consult-full-record"')).toBeGreaterThan(html.indexOf('data-testid="consult-empty-cta"'));
+    expect(html.indexOf('data-testid="consult-empty-cta"')).toBeGreaterThan(0);
     expect(visibleText(html)).not.toMatch(DENOMINATOR);
     expect(html).not.toMatch(/role="progressbar"|<progress\b/);
   });
@@ -101,4 +116,45 @@ describe("v3 F-CARE-1 — the landing stepper is numerator-only", () => {
     expect(visibleText(html)).not.toMatch(DENOMINATOR);
     record.behaviorLogs = [];
   });
+
+  const decode = (s: string) => s.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale} (real dictionary): the milestone lines are counts (seen, not sure), never a denominator; "not yet" is never listed`, async () => {
+      lang.real = locale;
+      // invented milestones: two seen, one not yet, one not sure
+      record.milestones = [
+        { id: "ms1", domain: "language_communication", title: "Names favourite toys", checked: true, observationStatus: "yes" },
+        { id: "ms2", domain: "sensory_motor_patterns", title: "Hops on one foot", checked: true, observationStatus: "yes" },
+        { id: "ms3", domain: "social_development", title: "Takes turns in a game", checked: false, observationStatus: "not_yet" },
+        { id: "ms4", domain: "cognition_executive_function", title: "Sorts blocks by colour", checked: false, observationStatus: "not_sure" },
+      ];
+      try {
+        const { default: AskSpecialist } = await import("./AskSpecialist");
+        const html = renderToStaticMarkup(React.createElement(AskSpecialist, { landing: true }));
+        const at = html.indexOf('data-testid="consult-export-preview"');
+        expect(at).toBeGreaterThan(0);
+        const lines = [...html.slice(at).matchAll(/<p[^>]*data-line-role="[^"]*"[^>]*>([\s\S]*?)<\/p>/g)]
+          .map((m) => decode(m[1].replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim());
+        const noticed = translate(locale, "elev.packet.item.devNoticed", { n: 2 });
+        const observed = `${translate(locale, "elev.packet.item.observed")} (2):`;
+        const notSure = `${translate(locale, "elev.packet.item.notSure")} (1):`;
+        const milestoneLines = lines.filter((l) => l.includes(noticed) || l.includes(observed) || l.includes(notSure));
+        expect(milestoneLines).toHaveLength(3);
+        expect(milestoneLines.some((l) => l.includes(noticed))).toBe(true);
+        expect(milestoneLines.some((l) => l.includes(observed) && l.includes("Names favourite toys") && l.includes("Hops on one foot"))).toBe(true);
+        expect(milestoneLines.some((l) => l.includes(notSure) && l.includes("Sorts blocks by colour"))).toBe(true);
+        for (const l of milestoneLines) {
+          // the reviewer's pattern, then this block's wider one
+          expect(l).not.toMatch(/\bof\s+\d|\/\d|מתוך/);
+          expect(l).not.toMatch(DENOMINATOR);
+          expect(l).not.toContain("%");
+        }
+        // the parent's "not yet" is never listed, anywhere on the page
+        expect(html).not.toContain("Takes turns in a game");
+      } finally {
+        lang.real = null;
+        record.milestones = [];
+      }
+    });
+  }
 });

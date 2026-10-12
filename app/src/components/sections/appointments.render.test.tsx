@@ -7,6 +7,9 @@
  * r2 design fixes: PageHeader is flush in the gap-6 column, the Add CTA never
  * wraps, the demoted disclosure reads quieter than "Upcoming", and the empty
  * state starts the lifecycle with one-tap profession chips (B-CAREPRO-NEW-2g).
+ * v3 F-CARE-1 r2: an answer waiting in the device queue keeps its visit the
+ * one asked at the top (one rule, careTrack visitAskedForOutcome), and the
+ * rows read the same held answer.
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -14,7 +17,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../lib/i18n";
 
 const DAY = 86_400_000;
-const harness = vi.hoisted(() => ({ locale: "en" as "en" | "he", appts: [] as unknown[], logs: [] as unknown[] }));
+const harness = vi.hoisted(() => ({ locale: "en" as "en" | "he", appts: [] as unknown[], logs: [] as unknown[], followUps: [] as unknown[] }));
 
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({ childProfile: { id: "c1", name: "Dylan" }, setActiveTab: vi.fn(), requestConsultPrefill: vi.fn(), behaviorLogs: harness.logs }),
@@ -31,21 +34,21 @@ vi.mock("../../context/LanguageContext", () => ({
 }));
 vi.mock("../../hooks/useChildCollection", () => ({
   useChildCollection: (_id: string, name: string) => ({
-    items: name === "appointments" ? harness.appts : [],
+    items: name === "appointments" ? harness.appts : name === "apptFollowUps" ? harness.followUps : [],
     loaded: true,
     upsert: vi.fn(),
     remove: vi.fn(),
   }),
 }));
 
-import Appointments from "./Appointments";
+import Appointments, { AppointmentsPage } from "./Appointments";
 
 const seeded = () => [
   { id: "a1", who: "", role: "Speech therapist", profession: "slp", whenIso: new Date(Date.now() + 5 * DAY).toISOString(), when: "", mode: "In person", status: "confirmed" },
   { id: "a0", who: "", role: "Pediatrician", profession: "pediatrician", whenIso: new Date(Date.now() - 3 * DAY).toISOString(), when: "", mode: "In person", status: "confirmed" },
 ];
 
-beforeEach(() => { harness.locale = "en"; harness.appts = []; harness.logs = []; });
+beforeEach(() => { harness.locale = "en"; harness.appts = []; harness.logs = []; harness.followUps = []; });
 
 describe("W2-CAREPRO r2 · the visit lifecycle renders from a seeded record", () => {
   for (const locale of ["en", "he"] as const) {
@@ -81,6 +84,42 @@ describe("W2-CAREPRO r2 · the visit lifecycle renders from a seeded record", ()
       expect(entry[0]).toContain("min-h-[44px]");
       expect(entry[1].replace(/&#x27;/g, "'")).toContain(translate(locale, "elev.pilot.i.have.recommendations.for.home"));
       expect((html.match(/data-primary-move="/g) ?? []).length).toBe(1);
+    });
+
+    it(`${locale}: v3 F-CARE-1 r2 — an answer queued on the device keeps its visit asked at the top; that row neither asks nor lists it; the visit before keeps its capture`, () => {
+      harness.locale = locale;
+      const asked = seeded()[1]; // the pediatrician, 3 days ago
+      const before = { id: "a-b", who: "", role: "Speech therapist", profession: "slp", whenIso: new Date(Date.now() - 10 * DAY).toISOString(), when: "", mode: "In person", status: "confirmed" };
+      harness.appts = [asked, before];
+      // invented words, in this device's cache and not yet acknowledged
+      const note = locale === "he" ? "לתרגל מילים חדשות בארוחת הערב" : "Practise new words at dinner";
+      const record = { id: "f-held", apptId: asked.id, note, createdAt: new Date(Date.now() - DAY).toISOString() };
+      harness.followUps = [record];
+      const rowsOf = (html: string) => {
+        const chunks = html.split('data-testid="appt-row-title"').slice(1);
+        const find = (key: string) => chunks.find((c) => c.slice(0, 300).includes(translate(locale, key))) ?? "";
+        return { asked: find("elev.careNet.appt.profession.pediatrician"), before: find("elev.careNet.appt.profession.slp") };
+      };
+      const html = renderToStaticMarkup(<AppointmentsPage held={{ childId: "c1", record, state: "queued" }} onHeld={vi.fn()} />);
+      // ONE question, about the held visit, saying the answer waits to be confirmed
+      expect((html.match(/data-testid="consult-visit-outcome"/g) ?? []).length).toBe(1);
+      const at = html.indexOf('data-testid="consult-visit-outcome"');
+      const ask = html.slice(at, html.indexOf("</section>", at)).replace(/&#x27;/g, "'");
+      expect(ask).toContain(translate(locale, "elev.careNet.appt.profession.pediatrician"));
+      expect(ask).toContain('data-testid="consult-visit-outcome-held"');
+      expect(html).not.toContain('data-testid="visit-outcome-saved"');
+      // the rows read the same rule: exactly one capture, on the visit before
+      expect((html.match(/data-testid="appt-followup-input"/g) ?? []).length).toBe(1);
+      const rows = rowsOf(html);
+      expect(rows.asked.length).toBeGreaterThan(0);
+      expect(rows.before).toContain('data-testid="appt-followup-input"');
+      expect(rows.asked).not.toContain('data-testid="appt-followup-input"');
+      expect(rows.asked).not.toContain(note);
+      expect((html.match(/data-primary-move="/g) ?? []).length).toBe(1);
+      // NEGATIVE CONTROL: nothing held (the write was acknowledged), the note is
+      // the visit's own and the question moves on
+      const kept = rowsOf(renderToStaticMarkup(<AppointmentsPage held={null} onHeld={vi.fn()} />));
+      expect(kept.asked).toContain(note);
     });
   }
 });

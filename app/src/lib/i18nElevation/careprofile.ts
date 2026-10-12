@@ -128,6 +128,9 @@ export const en: Record<string, string> = {
   "elev.consult.door.appointments.next": "Next: {day}",
   "elev.consult.door.appointments.past.one": "1 past visit with notes",
   "elev.consult.door.appointments.past.other": "{n} past visits with notes",
+  // v3 F-CARE-1 (review r2) — step 1 says the reason a caller wrote (Prepare
+  // on a visit, Screening, Safety) on arrival; step 2 holds the field.
+  "elev.consult.reason.carried": "Your reason for the visit:",
 };
 
 export const he: Record<string, string> = {
@@ -232,4 +235,6 @@ export const he: Record<string, string> = {
   "elev.consult.door.appointments.next": "הקרובה: {day}",
   "elev.consult.door.appointments.past.one": "פגישה קודמת אחת עם סיכום",
   "elev.consult.door.appointments.past.other": "{n} פגישות קודמות עם סיכום",
+  // v3 F-CARE-1 (סבב בדיקה 2) — שלב 1 מציג עם ההגעה את הסיבה שנכתבה מראש; השדה עצמו בשלב 2.
+  "elev.consult.reason.carried": "הסיבה שלכם לפגישה:",
 };

@@ -444,3 +444,26 @@ export function visitAwaitingOutcome(
     })
     .sort((a, b) => (appointmentStartMs(b) ?? 0) - (appointmentStartMs(a) ?? 0))[0] ?? null;
 }
+
+/** v3 F-CARE-1 — the visit #/appointments asks "What did they suggest?"
+ *  about: the open loop above, where the answer still being saved (`heldId`,
+ *  written to the device cache but not acknowledged) does not close it yet.
+ *  ONE rule for the page: VisitOutcome asks this visit, and Appointments
+ *  suppresses exactly this visit's row capture, so no visit is asked twice
+ *  and none is left without a way to answer. */
+export function visitAskedForOutcome(
+  appts: readonly Appointment[],
+  followUps: readonly AppointmentFollowUp[],
+  heldId: string | undefined,
+  nowMs: number,
+): Appointment | null {
+  return visitAwaitingOutcome(appts, countedFollowUps(followUps, heldId), nowMs);
+}
+
+/** v3 F-CARE-1 r2 — the follow-ups that count on #/appointments: an answer
+ *  still held (saving, queued or failed; in the device cache, not yet
+ *  acknowledged) is not one yet, so no row lists it as kept while the
+ *  question above still holds it in its field. */
+export function countedFollowUps(followUps: readonly AppointmentFollowUp[], heldId: string | undefined): AppointmentFollowUp[] {
+  return followUps.filter((f) => f.id !== heldId);
+}

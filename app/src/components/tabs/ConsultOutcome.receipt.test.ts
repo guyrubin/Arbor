@@ -23,7 +23,7 @@ import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ts from "typescript";
 import { visitForConsult } from "../../lib/today/dayCard";
-import { appointmentStatus, consultAudienceForProfession, makeFollowUp, visitAwaitingOutcome } from "../../lib/careTrack";
+import { appointmentStatus, consultAudienceForProfession, makeFollowUp, visitAskedForOutcome, visitAwaitingOutcome } from "../../lib/careTrack";
 
 /** The named function declaration in a source file, as plain JS returning it. */
 function transpiled(file: string, name: string): { code: string; text: string } {
@@ -92,8 +92,9 @@ const hooks = {
 };
 const outcomeEnv = {
   React, Icon, Receipt, HomeProgramEntry, HomeProgramDays, ...hooks,
-  // the real open-loop rule: a follow-up for the visit closes it
-  visitAwaitingOutcome, appointmentStatus, makeFollowUp,
+  // the real open-loop rule: a follow-up for the visit closes it (v3 F-CARE-1
+  // r2: through careTrack's visitAskedForOutcome, the rule Appointments shares)
+  visitAskedForOutcome, appointmentStatus, makeFollowUp,
   homeProfessionForAppointment: () => "slp", nextVisitDayFor: () => null,
   activeHomeEnrolments: () => [], toggleExerciseDay: (e: unknown) => e,
   db: null, doc: vi.fn(), writeBatch: vi.fn(),
