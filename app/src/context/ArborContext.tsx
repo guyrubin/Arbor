@@ -620,11 +620,8 @@ function useArborState() {
       ...(courseId ? { courseId } : {}),
       timestamp: new Date().toISOString(),
     };
-    // Optimistic + local-first; existing callers may ignore the promise. Now's
-    // guide reader (FEAT-02) awaits it so its receipt follows the write.
-    const write = playLogCol.upsert(rec);
+    void playLogCol.upsert(rec); // fire-and-forget, optimistic + local-first
     if (!alreadyDone) trackPlayCompleted(activity.domain, reason, source);
-    return write;
   };
 
   // Active Interactive / Selection States

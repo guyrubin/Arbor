@@ -31,19 +31,25 @@
 .now-lead-band .companion-eyebrow { letter-spacing: .04em; }
 .now-glyph { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; inline-size: 44px; block-size: 44px; background: var(--arbor-paper-deep); color: var(--arbor-clay-deep); border-radius: var(--r); }
 .now-provenance { font-size: var(--t-xs); color: var(--arbor-muted); margin-block-start: 2px !important; }
+.now-duration { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t-xs); color: var(--arbor-muted); white-space: nowrap; }
 .now-lead .now-lead-title { font-size: var(--t-title); font-family: var(--font-display); font-weight: var(--arbor-w-title); line-height: 1.35; margin-block: 14px 10px; text-wrap: pretty; }
 .now-lead-body { font-size: var(--t-base); color: var(--arbor-ink-soft); max-inline-size: 60ch; }
 .now-chosen-words { padding-inline-start: 17px; border-inline-start: 2px solid var(--arbor-ink); font-size: var(--t-say); font-family: var(--font-display); margin-block: 18px !important; }
 .now-lead-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-block: 16px 12px; }
 .now-lead-actions .companion-primary, .now-lead-actions .companion-secondary { min-inline-size: 0; }
+.now-why { display: flex; align-items: flex-start; gap: 8px; padding-block-start: 17px; margin-block-start: 17px; border-block-start: 1px solid var(--arbor-rule); color: var(--arbor-muted); }
+.now-why > .msr { flex-shrink: 0; margin-block-start: 3px; }
+.now-why p { font-size: var(--t-xs); }
+.now-why b { display: block; color: var(--arbor-ink-soft); font-weight: 600; margin-block-end: 3px; }
 .now-alternatives { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2px 18px; }
 .now-alternatives .companion-text-button { font-size: var(--t-xs); }
 .now-inline-status { padding-block: 12px; font-size: var(--t-xs); color: var(--arbor-muted); line-height: 1.6; }
+.now-activity-steps { margin-block: 22px 0; padding-block-start: 17px; border-block-start: 1px solid var(--arbor-rule); }
 .now-materials { font-size: var(--t-sm); color: var(--arbor-muted); }
 .now-materials b { display: block; color: var(--arbor-ink); font-weight: 600; }
-.now-guide-steps { list-style: none; padding: 0; margin-block: 10px; }
-.now-guide-steps li { display: flex; gap: 11px; align-items: flex-start; margin-block: 13px; font-size: var(--t-sm); }
-.now-guide-steps li > span { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 25px; block-size: 25px; background: var(--arbor-paper-deep); color: var(--arbor-ink); border-radius: 50%; font-size: var(--t-xs); }
+.now-activity-steps ol { list-style: none; padding: 0; margin-block: 19px; }
+.now-activity-steps li { display: flex; gap: 11px; align-items: flex-start; margin-block: 13px; font-size: var(--t-sm); }
+.now-activity-steps li > span { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 25px; block-size: 25px; background: var(--arbor-paper-deep); color: var(--arbor-ink); border-radius: 50%; font-size: var(--t-xs); }
 .now-hard-moment { display: flex; align-items: center; gap: 12px; inline-size: 100%; padding: 18px 7px 12px; text-align: start; background: transparent; border: 0; color: var(--arbor-ink); }
 .now-hard-moment > .msr { color: var(--arbor-muted); flex-shrink: 0; }
 .now-hard-moment > span:nth-child(2) { flex: 1; min-inline-size: 0; }
@@ -100,6 +106,8 @@
 .now-page .practice-details > summary:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 3px; border-radius: var(--r-sm); }
 .now-page .practice-details[open] > summary > .msr { transform: rotate(180deg); }
 .now-page .practice-details [data-testid="practice-quote"] { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.now-lead .now-why { padding-block-start: 0; margin-block: 0 14px; border-block-start: 0; }
+.now-lead .now-why p { font-size: var(--t-sm); }
 
 /* The record question is the largest UI line; the parent quotation keeps its editorial face. */
 .arbor-app .now-page [data-testid="today-record-question"] { font-family: var(--font-sans) !important; }
@@ -165,6 +173,13 @@
 .now-followup-q { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; font-size: var(--t-sm); font-weight: 600; color: var(--arbor-ink); }
 .now-followup-q > .msr { color: var(--arbor-peach-ink); flex-shrink: 0; }
 .now-followup .companion-secondary[aria-pressed="true"] { background: var(--arbor-paper-deep); border-color: var(--arbor-clay); color: var(--arbor-clay); }
+.now-why-details { margin-block: 2px 12px; }
+.now-why-details > summary { display: flex; align-items: center; gap: 8px; min-block-size: 44px; cursor: pointer; list-style: none; color: var(--arbor-clay); font-size: 13px; font-weight: 700; }
+.now-why-details > summary::-webkit-details-marker { display: none; }
+.now-why-details > summary > .msr:last-child { margin-inline-start: auto; color: var(--arbor-muted); transition: transform .2s; }
+.now-why-details[open] > summary > .msr:last-child { transform: rotate(180deg); }
+.now-why-details > summary:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 3px; border-radius: var(--r-sm); }
+.now-page .now-why-details .now-why { margin: 0; padding: 10px 12px; border: 1px solid var(--arbor-rule); border-radius: 12px; background: var(--arbor-paper); }
 
 .now-world { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border: 1px solid var(--arbor-rule); border-radius: 18px; background: var(--arbor-paper); }
 .now-world-head { flex: none; display: flex; align-items: center; gap: 10px; }
@@ -223,7 +238,6 @@
 @container now (max-width: 860px) {
   .now-plan { grid-template-columns: minmax(0, 1fr); }
   .now-plan-art { min-block-size: 150px; }
-  .now-plan-art[data-art="guide-art"] { min-block-size: 0; aspect-ratio: 16 / 9; }
   .now-plan-medallion { inset-block-start: auto; inset-block-end: 18px; inline-size: 72px; block-size: 72px; }
   .now-plan-body { border-inline-start: 0; border-block-start: 1px solid var(--arbor-rule); }
   .now-day-grid { grid-template-columns: minmax(0, 1fr); }
@@ -243,25 +257,3 @@
   .now-question-edit { margin-inline-start: auto; }
   .now-plan-say { max-inline-size: 70%; }
 }
-
-/* FEAT-02: the guide card. "Picked because" is always visible; the meta row and
-   the reader carry the guide's own words and counts only, never a verdict. */
-.now-picked { display: flex; align-items: flex-start; gap: 8px; margin-block: 0 10px; font-size: var(--t-sm); line-height: 1.5; color: var(--arbor-ink-soft); }
-.now-picked > .msr { flex-shrink: 0; margin-block-start: 2px; color: var(--arbor-lav-ink); }
-.now-picked b { font-weight: 700; color: var(--arbor-ink); }
-.now-guide-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin-block: 14px 0; padding: 0; list-style: none; font-size: var(--t-xs); color: var(--arbor-muted); }
-.now-guide-meta li { display: inline-flex; align-items: center; gap: 6px; }
-.now-guide-meta .msr { flex-shrink: 0; color: var(--arbor-ink-soft); }
-.now-guide-reader { display: flex; flex-direction: column; gap: 18px; padding-block-end: 8px; color: var(--arbor-ink); text-align: start; }
-.now-guide-section h3 { margin-block-end: 6px; font: 700 var(--t-sm)/1.3 var(--font-sans); color: var(--arbor-ink); }
-.now-guide-words { margin: 0; padding-inline-start: 14px; border-inline-start: 2px solid var(--arbor-ink); font: 600 var(--t-base)/1.4 var(--font-display); text-wrap: pretty; overflow-wrap: anywhere; }
-.now-guide-done { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding-block-start: 14px; border-block-start: 1px solid var(--arbor-rule); }
-.now-guide-reader button { min-block-size: 44px; }
-.now-guide-done .companion-primary { inline-size: 100%; }
-.now-guide-done .companion-primary:disabled { cursor: progress; }
-/* The guide art (lib/guideArt) fills the art panel at 16:9; the scrim fades
-   from the inline-start edge in paper tokens, and both mirror once in Hebrew. */
-.now-plan-img { position: absolute; inset-block: 0; inset-inline: 0; inline-size: 100%; block-size: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
-[dir="rtl"] .now-plan-img { transform: scaleX(-1); }
-.now-plan-scrim { position: absolute; inset-block: 0; inset-inline: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--arbor-paper) 92%, transparent), color-mix(in srgb, var(--arbor-paper) 55%, transparent) 45%, transparent 80%); }
-[dir="rtl"] .now-plan-scrim { transform: scaleX(-1); }

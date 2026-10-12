@@ -5,7 +5,6 @@ import type { BehaviorLog, Milestone, PlayLog } from "../../types";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { bandForAge } from "../../playbank/content";
 import { selectDailyPlay, type PlaySelectContext, type ScoredActivity } from "../../playbank/select";
-import { toDomains, type DomainId } from "../../lib/domains/registry";
 
 const DAY = 86_400_000;
 
@@ -46,23 +45,12 @@ export function focusSignalsForNow(input: {
   };
 }
 
-/** FEAT-02: a pick whose registry domains meet the family question's. */
-export type NowPlayPick = ScoredActivity & { topicMatch?: true };
-
 /** Reuse the live library's ranking, but do not let weighting offer an
- * out-of-band activity on the home screen. Never expose its internal score.
- * FEAT-02: with the active question's domains, the in-band picks that build
- * one of them come first (stable order) and carry `topicMatch`, the ONLY
- * condition under which Now may quote the question as the reason. */
-export function dailyPlayForNow(context: PlaySelectContext & { topicDomains?: readonly DomainId[] }, count = 3): NowPlayPick[] {
+ * out-of-band activity on the home screen. Never expose its internal score. */
+export function dailyPlayForNow(context: PlaySelectContext, count = 3): ScoredActivity[] {
   if (!isSupportedPlayAge(context.ageYears)) return [];
-  const { topicDomains, ...select } = context;
   const band = bandForAge(context.ageYears);
-  const inBand = selectDailyPlay(select, 100).filter((pick) => pick.activity.bands.includes(band));
-  if (!topicDomains?.length) return inBand.slice(0, count);
-  const wanted = new Set<DomainId>(topicDomains);
-  // The ONE taxonomy: a play domain reaches the registry through toDomains.
-  const fits = (pick: ScoredActivity) => toDomains("play", pick.activity.domain, { activityId: pick.activity.id }).some((domain) => wanted.has(domain));
-  const topical: NowPlayPick[] = inBand.filter(fits).map((pick) => ({ ...pick, topicMatch: true as const }));
-  return [...topical, ...inBand.filter((pick) => !fits(pick))].slice(0, count);
+  return selectDailyPlay(context, 100)
+    .filter((pick) => pick.activity.bands.includes(band))
+    .slice(0, count);
 }
