@@ -209,8 +209,24 @@ describe("B-SHELL-25 · the min-width reset is layered, so min-w-* utilities win
 });
 
 describe("B-SHELL-21 · the post-capture strip still clears MobileNav", () => {
-  it("the strip keeps its bottom-20 offset above the bar", () => {
-    expect(read(FILES.strip)).toMatch(/bottom-20/);
+  // v3 F-SHELL-2 re-pin (shell-global-status-strips): the fixed `bottom-20`
+  // offset cleared the bar but parked the strip on the launcher rail above it.
+  // The strip now sits in the workspace's page cell (grid-area 1 / 1), and the
+  // workspace reserves the MEASURED MobileNav height below its grid, so the
+  // strip clears the bar and the launcher at every width, with no magic offset.
+  it("the strip lives in the workspace's page cell, which ends above the bar", () => {
+    const strip = read(FILES.strip);
+    expect(strip).toContain('gridArea: "1 / 1"');
+    expect(strip).toMatch(/className="absolute [^"]*\bbottom-3\b[^"]*\bz-30\b/);
+    expect(strip).not.toMatch(/className="fixed /);
+    const shell = read("components/layout/Shell.tsx");
+    const at = shell.indexOf("<PostCaptureCoachStrip />");
+    expect(at).toBeGreaterThan(shell.indexOf("<CompanionWorkspace"));
+    expect(at).toBeLessThan(shell.indexOf("</CompanionWorkspace>"));
+    const css = read("components/companion/companionWorkspace.css");
+    expect(css).toContain("padding-block-end: var(--companion-navigation-height, calc(65px + env(safe-area-inset-bottom)))");
+    // …and under the bar's own layer (MobileNav z-40), never over it.
+    expect(read("components/layout/MobileNav.tsx")).toMatch(/lg:hidden fixed bottom-0 inset-x-0 z-40\b/);
   });
 });
 
