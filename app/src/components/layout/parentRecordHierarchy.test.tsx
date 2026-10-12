@@ -130,8 +130,7 @@ describe("record hierarchy keeps useful controls without repeating navigation or
     // to the route's HOME, its place or its door, and a home's own route has none.
     // v3 F-SHELL-1 re-pin (critic ruling [5]): nor does a route whose pill is
     // lit in the drawn row; the pill row is the way between siblings.
-    // F-SHELL-1 review fix (finding 6): the program page (#/development?view=program) is an L2 leaf of My child: Back to My child.
-    expect(shell).toContain("const back = programView ? placeForTab(activeTab) : isCompanionHome(activeTab) || activePill >= 0 ? null : backTargetFor(activeTab);");
+    expect(shell).toContain("const back = isCompanionHome(activeTab) || activePill >= 0 ? null : backTargetFor(activeTab);");
     expect(shell).toContain("{back && <button data-testid=\"secondary-place-back\" onClick={() => setActiveTab(back.tab)}");
     expect(shell).toContain("pillRow.map((it, index) =>");
     expect(shell).not.toContain('t("nav.sub." + hubSubKey');

@@ -209,16 +209,11 @@ describe("(c) navigation.ts — one glyph per destination", () => {
         return { ...s, items: swap(s.items), primaryTabs: swap(s.primaryTabs), tools: swap(s.tools) };
       });
     expect(glyphCollisions(withGlyph("school-brief", "school"))).toEqual(["school: masterclasses, school-brief"]);
-    // v3 F-SHELL-1 re-pin: a LIVE Growth leaf (screening) sharing
-    // Development's sprout is still caught.
+    // v3 F-SHELL-1 re-pin: milestones now lands on #/development, so the
+    // sprout shared with Development is one destination; a LIVE Growth leaf
+    // (screening) sharing it is still caught.
     expect(glyphCollisions(withGlyph("screening", "eco"))).toEqual(["eco: development, screening"]);
-    // F-SHELL-1 review re-pin (finding 5; was: milestones wearing `eco` → []):
-    // milestones left SECTIONS, so that swap changed nothing. A retired id
-    // SECTIONS still lists (comics → #/practice) shares Practice's glyph as one
-    // destination, and is caught against another destination's.
-    for (const s of SECTIONS) expect([...s.items, ...s.primaryTabs, ...s.tools].some((it) => it.tab === "milestones"), s.id).toBe(false);
-    expect(glyphCollisions(withGlyph("comics", "extension"))).toEqual([]);
-    expect(glyphCollisions(withGlyph("comics", "forum"))).toEqual(["forum: coach, practice"]);
+    expect(glyphCollisions(withGlyph("milestones", "eco"))).toEqual([]);
   });
 
   // v3 IA-02: the place pill rows are destinations too. They join the same

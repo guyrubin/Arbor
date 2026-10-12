@@ -32,9 +32,7 @@ type Translate = (key: string, vars?: Record<string, string | number>) => string
  * route's own name as its pill row prints it (IA-02), dropped when it is the
  * home again (Now's first pill IS Now). Level 3 is the sheet. v3 F-SHELL-1:
  * `childName` fills About {name} as the pill prints it; a filter pill
- * (Together's ?f=) is a state of its route, not the route's own name. A route
- * no pill row names (a Care leaf, a My child leaf) prints its own pill name
- * (`nav.pill.<tab>`) when it has one, else its tab name (`nav.tab.<tab>`).
+ * (Together's ?f=) is a state of its route, not the route's own name.
  */
 export function crumbLevelsFor(tab: ActiveTab, sheetLabel: string, lang: string, t: Translate, childName = ""): CrumbLevel[] {
   const home = homeForTab(tab);
@@ -42,10 +40,7 @@ export function crumbLevelsFor(tab: ActiveTab, sheetLabel: string, lang: string,
   const homeLabel = lang === "he" ? named.he : named.en;
   const levels: CrumbLevel[] = [{ label: homeLabel, tab: named.tab }];
   const pill = pillRowFor(sectionForTab(tab), tab).find(item => item.tab === tab && !item.query);
-  // F-SHELL-1 review fix (finding 7): the short pill name before the long tab name.
-  const ownPillKey = "nav.pill." + tab;
-  const ownKey = pill?.labelKey ?? (t(ownPillKey) !== ownPillKey ? ownPillKey : "nav.tab." + tab);
-  const key = pill?.labelKey === "nav.pill.about" && !childName ? "nav.pill.aboutChild" : ownKey;
+  const key = pill?.labelKey === "nav.pill.about" && !childName ? "nav.pill.aboutChild" : pill?.labelKey ?? "nav.tab." + tab;
   const routeLabel = pill?.labelKey || tab !== named.tab ? t(key, { name: childName }) : homeLabel;
   if (routeLabel && routeLabel !== key && routeLabel !== homeLabel) levels.push({ label: routeLabel, tab });
   levels.push({ label: sheetLabel });
