@@ -2628,19 +2628,6 @@ export const en: Dict = {
   "nav.pill.sharing": "Trusted sharing",
   // v3 IA-06 — the open L2 sheet's breadcrumb (layout/Breadcrumb): the landmark's name.
   "nav.crumb.aria": "Location",
-  // v3 F-SHELL-1 — the v3 place pill rows (lib/navigation PLACE_PILLS): My
-  // child's three pills ({name} is the child's first name, drawn in <bdi>)
-  // and Together's five filters (#/practice?f=<filter>).
-  "nav.pill.milestones": "Milestones",
-  "nav.pill.moments": "Moments",
-  "nav.pill.about": "About {name}",
-  // The About pill before the child has a name on file.
-  "nav.pill.aboutChild": "About your child",
-  "nav.pill.together.all": "All together",
-  "nav.pill.together.games": "Games",
-  "nav.pill.together.stories": "Stories",
-  "nav.pill.together.routines": "Routines",
-  "nav.pill.together.offscreen": "Away from the screen",
 };
 
 export const he: Dict = {
@@ -5110,16 +5097,6 @@ export const he: Dict = {
   "nav.pill.sharing": "שיתוף מהימן",
   // v3 IA-06 — פירורי הלחם של גיליון פתוח (layout/Breadcrumb): שם אזור הניווט.
   "nav.crumb.aria": "נתיב ניווט",
-  // v3 F-SHELL-1 — שורות הכפתורים של המקומות: שלושת הכפתורים של הילד שלי, וחמשת המסננים של ביחד.
-  "nav.pill.milestones": "אבני דרך",
-  "nav.pill.moments": "רגעים",
-  "nav.pill.about": "על {name}",
-  "nav.pill.aboutChild": "על הילד שלכם",
-  "nav.pill.together.all": "הכול",
-  "nav.pill.together.games": "משחקים",
-  "nav.pill.together.stories": "סיפורים",
-  "nav.pill.together.routines": "שגרות",
-  "nav.pill.together.offscreen": "בלי מסך",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and

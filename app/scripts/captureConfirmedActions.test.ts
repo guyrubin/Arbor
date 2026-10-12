@@ -175,11 +175,7 @@ describe('additive confirmed Parent action capture, no browser or sockets', () =
   });
 
   it('targets the actual Plans routine collection and keeps the retired alias unchanged', () => {
-    // v3 F-SHELL-1 re-pin: #/plans and #/routines retired to Together's
-    // Routines pill (#/practice?f=routines); the capture states keep naming
-    // the plans id, which the hash router lands on that pill.
-    expect(resolveRouteId('routines')).toBe('practice');
-    expect(resolveRouteId('plans')).toBe('practice');
+    expect(resolveRouteId('routines')).toBe('plans');
     expect(CONFIRMED_ACTION_STATES.filter(item => item.state.startsWith('routine-'))).toHaveLength(9);
     expect(CONFIRMED_ACTION_STATES.filter(item => item.state.startsWith('routine-')).every(item => item.route === 'plans')).toBe(true);
     for (const lang of ['en', 'he']) {

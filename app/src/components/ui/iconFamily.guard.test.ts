@@ -24,7 +24,6 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { PLACE_PILLS, SECTIONS, primaryTabOf, type NavSection } from "../../lib/navigation";
 import { COMPANION_PLACES } from "../../lib/companionPlaces";
-import { RETIRED_ROUTES } from "../../lib/routes";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..", "..");
@@ -169,20 +168,16 @@ describe("(b) the three places take their glyphs from companionPlaces.ts", () =>
 // ── (c) one glyph per destination in navigation.ts ──────────────────────────
 
 /** Glyphs that two DIFFERENT destinations share. A hub's destination is its
- *  landing tab (primaryTabOf), so a hub and its own landing pill may agree.
- *  v3 F-SHELL-1: a retired tab's destination is the route its hash lands on
- *  (RETIRED_ROUTES), so the Milestones leaf and the Milestones pill on
- *  #/development are one destination, as are Stories and Together's Stories. */
+ *  landing tab (primaryTabOf), so a hub and its own landing pill may agree. */
 function glyphCollisions(sections: readonly NavSection[]): string[] {
   const byGlyph = new Map<string, Set<string>>();
-  const dest = (tab: string) => RETIRED_ROUTES[tab] ?? tab;
-  const add = (glyph: string, to: string) => {
+  const add = (glyph: string, dest: string) => {
     if (!byGlyph.has(glyph)) byGlyph.set(glyph, new Set());
-    byGlyph.get(glyph)!.add(to);
+    byGlyph.get(glyph)!.add(dest);
   };
   for (const s of sections) {
-    add(s.msIcon, dest(primaryTabOf(s)));
-    for (const it of [...s.items, ...s.primaryTabs, ...s.tools]) add(it.msIcon, dest(it.tab));
+    add(s.msIcon, primaryTabOf(s));
+    for (const it of [...s.items, ...s.primaryTabs, ...s.tools]) add(it.msIcon, it.tab);
   }
   return [...byGlyph]
     .filter(([, dests]) => dests.size > 1)
@@ -209,17 +204,13 @@ describe("(c) navigation.ts — one glyph per destination", () => {
         return { ...s, items: swap(s.items), primaryTabs: swap(s.primaryTabs), tools: swap(s.tools) };
       });
     expect(glyphCollisions(withGlyph("school-brief", "school"))).toEqual(["school: masterclasses, school-brief"]);
-    // v3 F-SHELL-1 re-pin: milestones now lands on #/development, so the
-    // sprout shared with Development is one destination; a LIVE Growth leaf
-    // (screening) sharing it is still caught.
-    expect(glyphCollisions(withGlyph("screening", "eco"))).toEqual(["eco: development, screening"]);
-    expect(glyphCollisions(withGlyph("milestones", "eco"))).toEqual([]);
+    expect(glyphCollisions(withGlyph("milestones", "eco"))).toEqual(["eco: development, milestones"]);
   });
 
   // v3 IA-02: the place pill rows are destinations too. They join the same
   // check as one section (its glyph is Now's home pill, so it adds nothing).
   const placeRows = (swap?: { tab: string; msIcon: string }): NavSection => {
-    const items = [...PLACE_PILLS.now, ...PLACE_PILLS.child, ...PLACE_PILLS.together].map((it) => (swap && it.tab === swap.tab ? { ...it, msIcon: swap.msIcon } : it));
+    const items = [...PLACE_PILLS.now, ...PLACE_PILLS.child].map((it) => (swap && it.tab === swap.tab ? { ...it, msIcon: swap.msIcon } : it));
     return { id: "today", label: "Place pill rows", msIcon: items[0].msIcon, items, primaryTabs: [items[0]], tools: [] };
   };
 
@@ -229,11 +220,7 @@ describe("(c) navigation.ts — one glyph per destination", () => {
   });
 
   it("NEGATIVE CONTROL: a place pill sharing a glyph with another pill, or with a hub's destination, is caught", () => {
-    // v3 F-SHELL-1 re-pin: no pill names milestones any more (its pill is
-    // #/development), so the pill-vs-pill case is Moments wearing Milestones'.
-    expect(glyphCollisions([...SECTIONS, placeRows({ tab: "timeline", msIcon: "check_circle" })])).toEqual(["check_circle: development, timeline"]);
+    expect(glyphCollisions([...SECTIONS, placeRows({ tab: "milestones", msIcon: "map" })])).toEqual(["map: development, milestones"]);
     expect(glyphCollisions([...SECTIONS, placeRows({ tab: "timeline", msIcon: "school" })])).toEqual(["school: masterclasses, timeline"]);
-    expect(glyphCollisions([...SECTIONS, placeRows({ tab: "weekly", msIcon: "forum" })])).toEqual(["forum: coach, weekly"]);
-    expect(glyphCollisions([...SECTIONS, placeRows({ tab: "practice", msIcon: "person" })])).toEqual(["person: practice, profile"]);
   });
 });

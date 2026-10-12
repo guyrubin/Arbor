@@ -12,10 +12,6 @@ export type NavItem = {
   /** v3 IA-02: the pill's own short label key, when the nav.tab.<tab> name is
    *  too long for a pill or repeats the place it sits in. Absent → nav.tab.<tab>. */
   labelKey?: string;
-  /** v3 F-SHELL-1: the hash query this pill opens its route with (Together's
-   *  `f` filter): the pill is `#/<tab>?<query>`, and it is the active pill
-   *  when the hash carries every one of these values. */
-  query?: Readonly<Record<string, string>>;
 };
 /** Generalized sidebar badge: the two legacy app-state badges
  *  ("milestone" | "plans") OR a free-form { kind: "count" } slot that any
@@ -320,9 +316,8 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
   copilot: "growth",
   screening: "growth",
   strengths: "growth",
-  // B-GROWTH-25: #/routines is a retired id (RETIRED_ROUTES) — it resolves
-  // to the hub that owns plans; v3 F-SHELL-1 sends both to Together's
-  // Routines pill, and TAB_HOME homes both in Together.
+  // B-GROWTH-25: #/routines retired to Plans (RETIRED_ROUTES) — it resolves
+  // to the hub that owns plans.
   routines: "behaviors",
 
   // Practice (Heartwood D3) — the standalone drill routes are the Practice
@@ -374,96 +369,56 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
 };
 
 /**
- * B-CAREPRO-30 — routes that render with NO pill row. The admin attribution
- * dashboard keeps its Care highlight (TAB_SECTION_FALLBACK) but is not a
- * capability a parent moves between. Shell renders `pillRowFor`, never
- * `hubTabsForSection` directly.
- * v3 F-SHELL-1 (route map): the L2 leaves of a place are reached from its
- * pages and from Settings, not from its row, so they render with no row and
- * Back to their home: Now's Day windows and Reminders (their pills left the
- * row), My child's journal ("Your journal", from Moments), What Arbor
- * remembers, the Development check, the Copilot (until Talk takes it) and The
- * Science. #/timeline left this set: it is the Moments pill.
+ * B-CAREPRO-30 — routes that render with NO hub pill row. The admin
+ * attribution dashboard keeps its Care highlight (TAB_SECTION_FALLBACK) but is
+ * not a Care capability a parent moves between, so it does not wear the Care
+ * pills. Shell renders `pillRowFor`, never `hubTabsForSection` directly.
+ * v3 IA-02: the record's two densities (#/journal Feed, #/timeline Story)
+ * carry their own Feed · Story tablist (TimelineTab). A My child row above it
+ * would be a second nav over the same two routes under other names (the
+ * release capture's NO_DUPLICATE_SHELL_NAV), so they keep Back to My child
+ * and stay in the My child row as doors from its other pages.
  */
-export const NO_PILL_ROW_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>([
-  "attribution",
-  "journal",
-  "day-windows",
-  "smart-reminders",
-  "memory",
-  "science",
-  "screening",
-  "copilot",
-]);
-
-/** v3 F-SHELL-1 — Together's five filters, in row order: the values of the
- *  `f` query TogetherView reads on #/practice (absent or unknown = all). */
-export const TOGETHER_FILTERS = ["all", "games", "stories", "routines", "offscreen"] as const;
-export type TogetherFilter = (typeof TOGETHER_FILTERS)[number];
+export const NO_PILL_ROW_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>(["attribution", "journal", "timeline"]);
 
 /**
- * v3 IA-02 / F-SHELL-1 (the v3 mock) — the pill row of each place a parent
- * stands in, and the ONLY rendered pill order for a route whose home is that
- * place. Now: Now · Weekly report. My child: Milestones (#/development) ·
- * Moments (#/timeline) · About <child> (#/profile). Together: All together ·
- * Games · Stories · Routines · Away from the screen, all on #/practice with
- * its `f` filter. The doors (Talk, For you, Care) are one pill each, so they
- * draw no row. SECTIONS stays the hub index for More and search. One glyph per
- * destination (a retired id's destination is the route it lands on), checked
- * with SECTIONS by components/ui/iconFamily.guard.test.ts.
+ * v3 IA-02 (table A) — the pill row of each place a parent stands in, and the
+ * ONLY rendered pill order for a route whose home is that place. SECTIONS stays
+ * the hub index for More and search; its hub rows still serve the doors (Care,
+ * For you, the parent) until their own v3 rows. The place's home pill leads,
+ * then at most six. Together has no Shell row: its first level is the in-page
+ * filter row on #/practice (TogetherView), so a second row would repeat it.
+ * One glyph per destination, checked with SECTIONS by
+ * components/ui/iconFamily.guard.test.ts; `history` stays Talk's.
  */
-export type PillPlace = "now" | "child" | "together";
-const together = (f: TogetherFilter, label: string, msIcon: string): NavItem => ({
-  tab: "practice",
-  label,
-  msIcon,
-  labelKey: `nav.pill.together.${f}`,
-  query: { f },
-});
+export type PillPlace = "now" | "child";
 export const PLACE_PILLS: Readonly<Record<PillPlace, readonly NavItem[]>> = {
   now: [
     // The home pill is drawn from lib/companionPlaces (the place's own glyph
     // and name); this glyph only keeps the row's one-glyph check whole.
     { tab: "overview", label: "Now", msIcon: "home" },
     { tab: "weekly", label: "Weekly report", msIcon: "bar_chart", labelKey: "nav.pill.weekly" },
+    { tab: "day-windows", label: "Day windows", msIcon: "schedule", labelKey: "nav.pill.day-windows" },
+    { tab: "smart-reminders", label: "Reminders", msIcon: "notifications", labelKey: "nav.pill.reminders" },
   ],
   child: [
-    { tab: "development", label: "Milestones", msIcon: "check_circle", labelKey: "nav.pill.milestones" },
-    { tab: "timeline", label: "Moments", msIcon: "photo_album", labelKey: "nav.pill.moments" },
-    // {name} is the child's first name; Shell draws it inside <bdi>.
-    { tab: "profile", label: "About {name}", msIcon: "person", labelKey: "nav.pill.about" },
-  ],
-  together: [
-    together("all", "All together", "extension"),
-    together("games", "Games", "sports_esports"),
-    together("stories", "Stories", "auto_stories"),
-    together("routines", "Routines", "checklist"),
-    together("offscreen", "Away from the screen", "park"),
+    { tab: "development", label: "Development map", msIcon: "map", labelKey: "nav.pill.development" },
+    { tab: "milestones", label: "Milestones", msIcon: "check_circle" },
+    { tab: "language", label: "Language", msIcon: "translate", labelKey: "nav.pill.language" },
+    { tab: "timeline", label: "Portrait", msIcon: "photo_library", labelKey: "nav.pill.portrait" },
+    { tab: "journal", label: "Journal", msIcon: "edit_note" },
+    { tab: "behaviors", label: "Moments", msIcon: "monitoring" },
+    { tab: "profile", label: "Profile", msIcon: "person", labelKey: "nav.pill.profile" },
   ],
 };
 
-/** The pill row Shell renders for `tab` (empty = none): its place's row, or
- *  none for a door and for a route in NO_PILL_ROW_TABS (critic ruling [1]).
- *  Together's Games pill shows only while a game world is open to the child
- *  (`gamesOpen`: the Kid Mode age gate and at least one world), the same gate
- *  TogetherView applies. `section` is kept for the callers' signature. */
-export function pillRowFor(_section: NavSection, tab: ActiveTab, opts: { gamesOpen?: boolean } = {}): readonly NavItem[] {
+/** The pill row Shell renders for `tab` inside `section` (empty = none): its
+ *  place's row (v3 IA-02), none in Together, else the door's hub row. */
+export function pillRowFor(section: NavSection, tab: ActiveTab): readonly NavItem[] {
   if (NO_PILL_ROW_TABS.has(tab)) return [];
   const home = homeIdForTab(tab);
   if (home === "now" || home === "child") return PLACE_PILLS[home];
-  if (home === "together") return opts.gamesOpen ? PLACE_PILLS.together : PLACE_PILLS.together.filter((it) => it.query?.f !== "games");
-  return [];
-}
-
-/**
- * v3 F-SHELL-1 — which pill of `row` is lit for `tab` under the hash `query`:
- * the pill whose route is `tab` and whose every query value the hash carries,
- * else the first pill on `tab` (Together's All together when `f` is absent or
- * names a filter the row does not show), else -1 (the route is not in the row).
- */
-export function activePillIndex(row: readonly NavItem[], tab: ActiveTab, query: URLSearchParams): number {
-  const exact = row.findIndex((it) => it.tab === tab && Object.entries(it.query ?? {}).every(([k, v]) => query.get(k) === v));
-  return exact >= 0 ? exact : row.findIndex((it) => it.tab === tab);
+  return home === "together" ? [] : hubTabsForSection(section);
 }
 
 export function sectionForTab(tab: ActiveTab): NavSection {
@@ -488,9 +443,9 @@ export function sectionForTab(tab: ActiveTab): NavSection {
 export type HomeId = "now" | "child" | "together" | "talk" | "learn" | "care";
 const SECTION_HOME: Record<HubId, HomeId> = { today: "now", growth: "child", journal: "child", profile: "child", behaviors: "child", practice: "together", stories: "together", ask: "talk", learn: "learn", care: "care" };
 /** Daily Play is a Growth tool, but in v3 it is play the family shares, so it
- *  lives in Together. FEAT-07: plans and the retired routines id live in
- *  Together too; v3 F-SHELL-1 retires both to its Routines pill
- *  (#/practice?f=routines), and daily-play to Away from the screen. */
+ *  lives in Together. FEAT-07: plans (and the retired routines id, which still
+ *  redirects to plans) live in Together too, beside the Together Routines
+ *  category that starts and runs a routine plan. */
 const TAB_HOME: Partial<Record<ActiveTab, HomeId>> = { "daily-play": "together", plans: "together", routines: "together" };
 
 export function homeIdForTab(tab: ActiveTab): HomeId {
@@ -550,10 +505,6 @@ export function hubTabsForSection(section: NavSection): NavItem[] {
  *
  * The hiding is a CLASS, not a filtered list: the pills stay in the DOM and
  * return at `md` with no JS, no media-query hook and no second render path.
- * v3 F-SHELL-1: the Now row (PLACE_PILLS.now) no longer carries either pill —
- * both routes are L2 leaves with Back to Now (NO_PILL_ROW_TABS) — so this set
- * hides nothing in a rendered row; it stays the Today hub's index of its two
- * settings-grade panels (critic ruling [3]).
  */
 export const COMPACT_HIDDEN_TOOLS: Readonly<Partial<Record<HubId, readonly ActiveTab[]>>> = {
   today: ["day-windows", "smart-reminders"],

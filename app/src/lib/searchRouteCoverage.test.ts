@@ -45,9 +45,7 @@ describe("IA-20 · search can reach every route the app has", () => {
     // Named anchors: if the index shape changes, fail loudly rather than
     // silently comparing two empty sets.
     expect(indexedRoutes.has("coach" as ActiveTab)).toBe(true);
-    // v3 F-SHELL-1 re-pin: #/milestones retired (no row of its own); its
-    // destination, #/development, is the anchor.
-    expect(indexedRoutes.has("development" as ActiveTab)).toBe(true);
+    expect(indexedRoutes.has("milestones" as ActiveTab)).toBe(true);
   });
 
   it("every route is indexed, or is listed as deliberately unsearchable", () => {

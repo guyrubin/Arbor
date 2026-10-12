@@ -244,8 +244,7 @@ function buildIndex(): readonly SearchEntry[] {
       pair(routine.domains.en, routine.domains.he),
       { en: [routine.why.en], he: [routine.why.he] },
       // B-GROWTH-25: #/routines retired — a routine is a template on Plans.
-      // v3 F-SHELL-1: #/plans retired too; both live in Together (Routines).
-      "practice",
+      "plans",
     ));
   }
 
@@ -281,8 +280,7 @@ function buildIndex(): readonly SearchEntry[] {
       pair(activity.title),
       pair(activity.domain),
       { en: [activity.domain], he: [] },
-      // v3 F-SHELL-1: #/daily-play retired to Together (Away from the screen).
-      "practice",
+      "daily-play",
     ));
   }
 
@@ -306,8 +304,7 @@ function buildIndex(): readonly SearchEntry[] {
       pair(story.title),
       pair(story.pack),
       { en: [story.pack], he: [] },
-      // v3 F-SHELL-1: #/stories retired to Together (Stories).
-      "practice",
+      "stories",
     ));
   }
 
@@ -338,8 +335,7 @@ export function getSearchIndex(context?: HardMomentContext): readonly SearchEntr
     `hard-moment:${card.id}`, "hard-moment",
     pair(card.title.en, card.title.he),
     pair(translate("en", "hm.cat." + card.category), translate("he", "hm.cat." + card.category)),
-    // v3 F-SHELL-1: #/behaviors retired to My child's Moments (#/timeline).
-    { en: [card.category], he: [] }, "timeline",
+    { en: [card.category], he: [] }, "behaviors",
   ))];
 }
 

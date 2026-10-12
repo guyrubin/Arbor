@@ -53,8 +53,7 @@ describe("navigation IA", () => {
     // W2-SHELLPLAY r2: the Bedtime pill duplicated the cover's "From today" mode
     expect(stories?.tools.map((i) => i.tab)).toEqual(["comics"]);
     expect(stories && pillRowFor(stories, "stories").map((i) => i.tab)).not.toContain("bedtime-stories");
-    // …the route still resolves to the Stories hub for highlighting (v3 F-SHELL-1
-    // retires its hash to Together's Stories pill with the Create a story sheet)
+    // …the route is not retired: it still resolves to the Stories hub for its own doors
     expect(sectionForTab("bedtime-stories").id).toBe("stories");
     expect(sectionForTab("comics").id).toBe("stories");
     // NEGATIVE CONTROL: the r2 tool list would put the second evening door back in the row
@@ -110,13 +109,10 @@ describe("navigation IA", () => {
       for (const it of row) expect(/[A-Za-z]/.test(labelOf("he", it)), it.tab).toBe(false);
     });
 
-    it("every Care pill belongs to the Care, together door, which draws no pill row", () => {
+    it("every Care pill wears this row and belongs to the Care, together door", () => {
       for (const tab of ORDER) {
         const t = tab as (typeof row)[number]["tab"];
-        // v3 F-SHELL-1 re-pin (critic ruling [1]; was: every Care route wore
-        // this six-pill row): a door is one pill, so it draws no row. ORDER
-        // stays the hub index More, search and the Care door cards read.
-        expect(pillRowFor(sectionForTab(t), t), tab).toEqual([]);
+        expect(pillRowFor(sectionForTab(t), t).map((i) => i.tab), tab).toEqual(ORDER);
         const home = homeForTab(t);
         expect(home.kind === "door" && home.door.id, tab).toBe("care");
       }
@@ -274,30 +270,23 @@ describe("navigation IA", () => {
     expect(sectionForTab("care-team").id).toBe("care");
   });
 
-  it("B-GROWTH-25: #/routines stays retired; the id keeps its ROUTE_IDS seat and no pill names it", async () => {
-    const { ROUTE_IDS, hashQuery } = await import("./routes");
-    // v3 F-SHELL-1 re-pin (critic ruling [4]; was: lands on Plans): #/plans
-    // itself retired to Together's Routines pill, so #/routines lands there
-    // directly, as a retired id never points at another retired id.
-    expect(RETIRED_ROUTES.routines).toBe("practice");
-    expect(RETIRED_ROUTES.plans).toBe("practice");
+  it("B-GROWTH-25: #/routines lands on Plans; the id keeps its ROUTE_IDS seat and no pill names it", async () => {
+    const { ROUTE_IDS } = await import("./routes");
+    expect(RETIRED_ROUTES.routines).toBe("plans");
     expect(ROUTE_IDS as readonly string[]).toContain("routines");
-    expect(resolveHash("#/routines", "today")).toEqual({ tab: "practice", unknown: false });
-    expect(hashQuery("#/routines").get("f")).toBe("routines");
+    expect(resolveHash("#/routines", "today")).toEqual({ tab: "plans", unknown: false });
     // highlights the hub that owns plans, never Growth
     expect(sectionForTab("routines").id).toBe(sectionForTab("plans").id);
     expect(sectionForTab("routines").id).not.toBe("growth");
     // no section lists a Routines pill any more
     for (const s of SECTIONS) expect(s.items.some((i) => i.tab === "routines"), s.id).toBe(false);
-    // the routine search entries open Together, where routines live now
-    // (F-SHELL-1 re-pin: Plans is retired too)
+    // the routine search entries open Plans
     const search = fs.readFileSync(path.resolve(__dirname, "searchIndex.ts"), "utf8");
     const block = search.slice(search.indexOf("for (const routine of ROUTINES)"), search.indexOf("// 5. Scholar"));
-    expect(block).toContain('"practice",');
+    expect(block).toContain('"plans",');
     expect(block).not.toContain('"routines",');
-    expect(block).not.toContain('"plans",');
     // NEGATIVE CONTROL: the pre-fix search target fails the pin
-    expect('      "routines",'.includes('"practice",')).toBe(false);
+    expect('      "routines",'.includes('"plans",')).toBe(false);
   });
 
   // UC-1 capability-floor enforcer: EVERY ActiveTab value (the full route

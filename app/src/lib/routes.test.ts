@@ -65,11 +65,8 @@ describe("hash aliases", () => {
         // id IS a route (journal, behaviors, profile, practice, stories, learn)
         // resolves to that route — which must be one of the section's OWN
         // surfaces (Heartwood D2: #/learn is the Learn hub's Library leaf even
-        // though the hub button opens Masterclasses). v3 F-SHELL-1 re-pin: a
-        // section id that is a RETIRED route (behaviors → Moments, stories →
-        // Together) lands where its retirement says, like every retired hash.
-        expect(resolved).toBe(RETIRED_ROUTES[s.id] ?? s.id);
-        if (s.id in RETIRED_ROUTES) continue;
+        // though the hub button opens Masterclasses).
+        expect(resolved).toBe(s.id);
         const owned = new Set([...s.items, ...s.tools].map((i) => i.tab));
         expect(owned.has(resolved!), `route "${resolved}" is not owned by section "${s.id}"`).toBe(true);
       } else {

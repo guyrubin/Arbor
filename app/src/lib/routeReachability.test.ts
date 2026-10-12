@@ -209,11 +209,7 @@ describe("IA-09 — every non-pill route has a real entry point", () => {
       expect(reachable, `sub-route "${sub}" lands on "${route}", which nothing else reaches`).toBe(true);
       for (const [k, v] of Object.entries(query)) expect(hashQuery(`#/${sub}`).get(k)).toBe(v);
     }
-    // v3 F-SHELL-1 re-pin (critic ruling [28]; was: #/language?view=said):
-    // #/language retired to About; the words are moments tagged talking, so
-    // the sub-route lands on Moments across areas, on talking.
-    expect(resolveRouteId("#/language/said")).toBe("timeline");
-    expect(hashQuery("#/language/said").get("view")).toBe("areas");
-    expect(hashQuery("#/language/said").get("area")).toBe("talking");
+    expect(resolveRouteId("#/language/said")).toBe("language");
+    expect(hashQuery("#/language/said").get("view")).toBe("said");
   });
 });
