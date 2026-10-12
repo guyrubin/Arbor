@@ -184,14 +184,14 @@ describe("v3 IA-03 — the More sheet: doors, Search, then the three places", ()
     const html = render("overview", lang);
     const group = /<section[^>]*data-testid="more-doors-group"[^>]*>[\s\S]*?<\/section>/.exec(html)![0];
     expect(group).toContain(`>${translate(lang, "companion.more.doors")}</h3>`);
-    const rows = group.split("<button").slice(1);
+    const rows = rowsOf(group);
     expect(rows).toHaveLength(COMPANION_DOORS.length);
     rows.forEach((row, i) => {
       const door = COMPANION_DOORS[i];
       expect(row).toContain(`data-more-door="${door.id}"`);
       expect(row).toContain(name(door, lang));
       expect(row).toContain(`>${door.icon}</span>`);
-      expect(words(row.slice(0, row.indexOf("</button>")))).not.toMatch(/\d/);
+      expect(words(row)).not.toMatch(/\d/);
     });
     if (lang === "he") for (const door of COMPANION_DOORS) expect(door.he).not.toMatch(/[A-Za-z]/);
   });
