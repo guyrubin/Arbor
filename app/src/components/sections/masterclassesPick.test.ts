@@ -44,7 +44,9 @@ const PRE_CHANGE = `
 
 const RANKED_PICK = /todaysLearnPick\(\s*LEARN_CARDS/;
 const SEEDED_DAY = /dayKey:\s*pickDayKey\(/;
-const CTA_OPENS_PICK = /onClick=\{\(\) => todaysRead \? requestLearnRead\(\{ cardId: todaysRead\.card\.id/;
+// v3 F-FORYOU-1 (re-pin): the CTA still opens today's read — in a sheet over
+// this page now (openRead), not by routing to #/learn.
+const CTA_OPENS_PICK = /onClick=\{\(\) => todaysRead \? openRead\(todaysRead\.card\.id/;
 // B-PLAY-18: the stat trio is gone; the pick's reading minutes ride its own line.
 const PICK_MINUTES = /const pickMinutes = todaysRead \? todaysRead\.card\.minutes/;
 const WHY_LINE = /data-testid="academy-pick-why"/;
@@ -100,17 +102,28 @@ describe("W2-SHELLPLAY r1 · the pick reads first; the rail never stacks two emp
     expect(cta).not.toContain('background: "var(--arbor-green-ink)"');
   });
 
-  it("the pick title outranks the quiet 'All courses' heading", () => {
+  // v3 F-FORYOU-1 (re-pin): "All courses" is retired; the library is titled
+  // "Courses by area" under a "Library" kicker. The pick title stays an h2.
+  it("the pick title is an h2; the library is 'Courses by area' ('All courses' retired)", () => {
     expect(src).toMatch(/<h2 className="text-xl font-bold leading-snug" dir="auto" style=\{\{ color: "var\(--arbor-ink\)", fontFamily: "var\(--font-display\)" \}\}>\{todaysRead/);
-    expect(src).toMatch(/<h2 className="text-lg font-bold" style=\{\{ color: "var\(--arbor-muted\)" \}\}>\s*\{t\("academy\.courses\.title"\)\}/);
+    expect(src).toMatch(/<h2 id="academy-library-title"[^>]*>\{t\("elev\.learnCare\.library\.title"\)\}<\/h2>/);
+    expect(src).toContain('{t("elev.learnCare.library.kicker")}');
+    expect(src).not.toContain('t("academy.courses.title")');
   });
 
-  it("with no map signal, ONE muted line with a 44 px door stands in for For You + Scholar Hub", () => {
-    expect(src).toMatch(/\{devMapHasSignal\(devScore\) \? \(\s*<>[\s\S]*<AcademyForYou \/>[\s\S]*<ScholarHubCard \/>[\s\S]*<\/>\s*\) : \(/);
-    const line = src.slice(src.indexOf('data-testid="academy-rail-nosignal"'), src.indexOf("</button>", src.indexOf('data-testid="academy-rail-nosignal"')));
-    expect(line).toContain("min-h-11");
-    expect(line).toContain('setActiveTab("milestones")');
-    expect(line).toContain('t("elev.growthTruth.learn.rail.noSignal", { name: childName })');
+  // v3 F-FORYOU-1 (re-pin): the rail is removed — For You, Scholar Hub, the
+  // charter strip, the phone <details> and the no-signal line all go; their
+  // signals rank the pick and the catalogue instead.
+  it("no rail: no For You / Scholar Hub cards, no no-signal line, no phone disclosure", () => {
+    const code = src.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    for (const gone of ["<AcademyForYou", "<ScholarHubCard", 'data-testid="academy-rail"', 'data-testid="academy-rail-nosignal"', "elev.growthTruth.learn.rail.noSignal", "<details", "<summary"]) {
+      expect(code, gone).not.toContain(gone);
+    }
+    // NEGATIVE CONTROL: the r1 shape this replaced is caught by the same scan.
+    expect('{devMapHasSignal(devScore) ? (<><AcademyForYou /><ScholarHubCard /></>) : (').toContain("<AcademyForYou");
+    // The focus domain still ranks (it is a learnSignals input), so the rail's
+    // one signal is not lost.
+    expect(/const learnSignals: LearnRankSignals = \{[\s\S]*?focusDomain: devScore\.focusDomain,[\s\S]*?\};/.test(src)).toBe(true);
   });
 });
 
@@ -190,7 +203,8 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
   });
 
   it("the open family question joins the ranking as the parent's own words", () => {
-    expect(src).toContain("const { childProfile, behaviorLogs, savedLearnIds, requestLearnRead, setActiveTab, activeFamilyTopic } = useArbor();");
+    // v3 F-FORYOU-1 (re-pin): requestLearnRead left the hub (reads open in a sheet here).
+    expect(src).toContain("const { childProfile, behaviorLogs, savedLearnIds, setActiveTab, activeFamilyTopic } = useArbor();");
     const block = /const learnSignals: LearnRankSignals = \{([\s\S]*?)\};/.exec(src);
     expect(block).toBeTruthy();
     expect(block![1]).toContain("topicText: activeFamilyTopic?.title ?? null,");
@@ -239,8 +253,13 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
 
   it("short reads: one tap into a Learn read, a registry area and minutes only, never a score", () => {
     const row = between('data-testid="academy-short-reads"', "</section>");
-    expect(row).toContain('requestLearnRead({ cardId: c.id, source: "learn-hub-short-read" })');
+    // v3 F-FORYOU-1 (re-pin): a read opens in a sheet over this page.
+    expect(row).toContain('onClick={() => openRead(c.id, "learn-hub-short-read")}');
     expect(row).toContain('data-testid="academy-short-read"');
+    // v3 F-FORYOU-1: "Three minutes, one idea"; the hook in the say voice with the accent rule.
+    expect(row).toContain('{t("elev.learnCare.reads.title")}</h2>');
+    expect(row).toContain('className="arbor-type-say arbor-accent-rule line-clamp-3 block"');
+    expect(row).not.toMatch(/\bby\b|author|expert/i);
     expect(row).toContain("min-h-11");
     // The area chip is the ONE domain registry: DOMAIN_ICONS glyph + registry name.
     expect(row).toContain("const area = readArea(c.category);");
@@ -266,7 +285,8 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
   });
 
   it("courses by area: labelled chips with aria-pressed filter the grid; the counts are plain integers", () => {
-    const chips = between("{areaCounts.length > 1 && (", '<div className="grid sm:grid-cols-2 gap-4">');
+    // v3 F-FORYOU-1 (re-pin): the grid is two columns from sm, three at xl.
+    const chips = between("{areaCounts.length > 1 && (", '<div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">');
     expect(chips).toContain('role="group" aria-labelledby="academy-by-area-label" data-testid="academy-by-area"');
     expect(chips).toContain('id="academy-by-area-label"');
     expect(chips).toContain("aria-pressed={selectedArea === null}");
@@ -280,7 +300,8 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
     expect(chips).toContain('<span className="tabular-nums" style={{ opacity: 0.75 }}>{count}</span>');
     for (const banned of ["%", "total", "ProgressBar", "done["]) expect(chips, banned).not.toContain(banned);
     expect(src).toMatch(/const AREA_CHIP = "[^"]*\bmin-h-11\b[^"]*";/);
-    expect(src).toContain("const areaCounts = courseAreaCounts(catalog);");
+    // v3 F-FORYOU-1 (re-pin): the readiness courses count in their areas too.
+    expect(src).toContain("const areaCounts = courseAreaCounts([...catalog, ...readiness]);");
     expect(src).toContain("if (selectedArea && courseArea(c.id) !== selectedArea) return null;");
     // The filter sits inside the grid's own map, ahead of every card.
     expect(src.indexOf("catalog.map((c) => {")).toBeLessThan(src.indexOf("if (selectedArea && courseArea(c.id)"));
@@ -290,18 +311,22 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
     const door = between('data-testid="academy-family-door"', "</button>");
     expect(door).toContain('onClick={() => setActiveTab("family")}');
     expect(door).toContain("min-h-11");
-    expect(door).toContain("src={TOGETHER_ART.src}");
+    // v3 F-FORYOU-1 (re-pin): the family area's own picture (DOMAIN_ART.family),
+    // and a mirrored chevron_right after the CTA text.
+    expect(door).toContain("src={DOMAIN_ART.family.src}");
+    expect(door).not.toContain("TOGETHER_ART");
     expect(door).toContain('alt=""');
     expect(door).toContain('t("elev.learnCare.family.cta")');
+    expect(door).toContain('t("elev.learnCare.family.headline")');
     // Reviewer r1: the eyebrow is the brief's own key, not the Family page's title.
     expect(door).toContain('{t("elev.learnCare.family.title")}');
     expect(door).not.toContain('t("sec.family.title")');
-    expect(door).toContain('<Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />');
+    expect(door).toContain('<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />');
     for (const banned of ["--gradient-cta", "data-module", "data-primary-move"]) expect(door, banned).not.toContain(banned);
     const at = src.indexOf('data-testid="academy-family-door"');
     expect(at).toBeGreaterThan(src.indexOf('data-testid="academy-courses"'));
     expect(at).toBeGreaterThan(src.indexOf("catalog.map((c) => {"));
-    expect(at).toBeLessThan(src.indexOf('data-testid="academy-rail"'));
+    expect(at).toBeLessThan(src.indexOf("{readId && ("));
   });
 
   it("no course progress anywhere on the hub (no bar, no %, no 'n of m')", () => {
@@ -367,6 +392,124 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
       expect(heV.replace("{title}", ""), key).not.toMatch(/[A-Za-z]/);
       expect(heV, key).toMatch(/[א-ת]/);
       expect(enV, key).not.toMatch(/\d\s*%|score|percentile|on track|behind|at risk|delayed|weakest/i);
+    }
+  });
+});
+
+/* ── v3 F-FORYOU-1 · For you, the parent: the landing as the mock, plus 390 px ──
+ * The pick is one card (tag, title, why, length, the read, "Try it today",
+ * how Arbor decides; the lessons or the read's key points beside it). Reads
+ * open in a sheet over this page. The library is "Courses by area" with the
+ * readiness courses in it and the family door after it. Phone: kicker and
+ * title only, one scrolling chip row without counts, compact course rows. */
+
+describe("v3 F-FORYOU-1 — the pick card, the sheet, the library, 390 px", () => {
+  const code = src
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+  const hub = src.slice(0, src.indexOf("export function MasterclassReader("));
+  const slice = (from: string, to: string): string => {
+    const a = src.indexOf(from);
+    expect(a, `marker not found: ${from}`).toBeGreaterThan(-1);
+    const b = src.indexOf(to, a + from.length);
+    expect(b, `end marker not found after ${from}: ${to}`).toBeGreaterThan(a);
+    return src.slice(a, b);
+  };
+
+  it("the pick is one card: CTA, 'Try it today' (write-resolved) and how Arbor decides; no expert line", () => {
+    const card = slice('data-testid="academy-pick"', "</section>}");
+    expect(card).toContain('data-testid="academy-hero-cta"');
+    expect(card).toContain('{pickTry && <TryTodayButton recommendation={pickTry} testId="academy-pick-try-today" />}');
+    expect(card).toContain('<TrustLink surface="foryou-pick" />');
+    expect(card).toContain('<Icon name="menu_book" size={14} />');
+    expect(card).not.toMatch(/expert|author|\bby\b/i);
+    // The evidence chip moved into the reader (LearnReadHost), off the hub.
+    expect(code).not.toContain("EvidenceChip");
+    // The same text and source the reader's own Add-to-today writes.
+    expect(src).toContain("? (he ? todaysRead.card.tryToday.he : todaysRead.card.tryToday.en).trim()");
+    expect(src).toContain("? (he ? nextCourse.tryTonightHe : nextCourse.tryTonight).trim()");
+  });
+
+  it("the second column lists plain lines: the course's lessons or the read's key points, no state", () => {
+    const col = slice("{pickLessons.length > 0 && (", "</ol>");
+    expect(col).toContain('t(todaysRead ? "elev.learnCare.pick.inThisRead" : "elev.learnCare.pick.lessons")');
+    expect(col).toContain('<ol data-testid="academy-pick-lessons"');
+    expect(col).toContain("{pickLessons.map((line, i) => <li key={i}>{line}</li>)}");
+    for (const banned of ["done", "check_circle", "of {", "%", "progress"]) expect(col, banned).not.toContain(banned);
+    expect(src).toContain("? nextCourse.sections.map((s) => (he ? s.headingHe : s.heading))");
+  });
+
+  it("'Try it today' says Added only after the write resolved, and never adds twice", () => {
+    const tt = readFileSync(path.join(__dirname, "useTryToday.tsx"), "utf8").replace(/\r\n/g, "\n");
+    expect(tt).toContain('if (!text || taken || state === "saving") return;');
+    expect(tt).toContain('acceptTodayAction(text, "tiny", source).then(');
+    expect(tt).toContain('() => { if (mounted.current) setState("saved"); },');
+    expect(tt).toContain('() => { if (mounted.current) setState("failed"); },');
+    expect(tt).toContain('const added = state === "saved" || (state === "idle" && taken && actionLoopConfirmed === true);');
+    expect(tt).toContain('role="alert" data-testid={`${testId}-failed`}');
+    expect(tt).toMatch(/className="inline-flex min-h-11 /);
+    // NEGATIVE CONTROL: an optimistic label would flip on the tap alone.
+    expect(tt).not.toContain('setState("saved");\n    acceptTodayAction');
+  });
+
+  it("a read opens in a sheet over #/masterclasses (lazy, mounted only while open)", () => {
+    expect(src).toContain('const ForYouReadSheet = lazy(() => import("./ForYouReadSheet"));');
+    expect(src).toContain("<ForYouReadSheet cardId={readId} onClose={() => setReadId(null)} />");
+    expect(code).not.toContain("requestLearnRead");
+    expect(code).not.toContain('setActiveTab("learn")');
+    const sheet = readFileSync(path.join(__dirname, "ForYouReadSheet.tsx"), "utf8").replace(/\r\n/g, "\n");
+    expect(sheet).toContain("const close = useSheetHistory(true, onClose);");
+    expect(sheet).toContain("<LearnReadHost cardId={cardId} />");
+    expect(sheet).not.toMatch(/data-module|data-primary-move/);
+  });
+
+  it("the readiness courses are read here, with no progress of any shape", () => {
+    expect(src).toContain('data-testid="academy-readiness-course" onClick={() => setReadinessId(r.id)}');
+    expect(src).toContain('if (openReadiness) return <ReadinessReader course={openReadiness} onBack={() => setReadinessId(null)} />;');
+    const reader = readFileSync(path.join(__dirname, "ReadinessReader.tsx"), "utf8").replace(/\r\n/g, "\n");
+    const readerCode = reader.replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const banned of ["ProgressBar", "progressbar", "of {", "%", "done", "streak", "day {"]) expect(readerCode, banned).not.toContain(banned);
+    expect(reader).toContain('<TryTodayButton recommendation={a.title} testId="readiness-try-today" />');
+    expect(reader).toContain('<Icon name="arrow_back" size={16} className="rtl:-scale-x-100" /> {t("companion.door.learn")}');
+  });
+
+  it("390 px: kicker and title only, one scrolling chip row with no counts, compact course rows", () => {
+    expect(hub).toMatch(/data-testid="academy-hero-sub" className="[^"]*\bhidden\b[^"]*\bsm:block\b/);
+    expect(hub).toContain('data-testid="academy-by-area" className="flex min-w-0 flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap"');
+    expect(hub).toContain('<span className="hidden sm:inline"><span className="tabular-nums" style={{ opacity: 0.75 }}>{count}</span></span>');
+    expect(hub).toMatch(/const COURSE_CARD = `\$\{cardCls\} flex min-h-11 min-w-0 items-center gap-3 p-3 [^`]*sm:flex-col/);
+    // The family row: a 56 px picture on a phone, the CTA text and a mirrored chevron.
+    const door = slice('data-testid="academy-family-door"', "</button>");
+    expect(door).toMatch(/className="h-14 w-14 /);
+    expect(door).toContain('<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />');
+  });
+
+  it("the age switch is a quiet 44 px text switch under the chips", () => {
+    const sw = slice("{ageSwitchShown && (", "</button>");
+    expect(sw).toContain('role="switch"');
+    expect(sw).toContain("aria-checked={showAllAges}");
+    expect(sw).toContain('data-testid="agefilter-toggle-masterclasses"');
+    expect(sw).toContain("min-h-11");
+    expect(sw).not.toContain("--gradient-cta");
+    expect(src.indexOf("{areaCounts.length > 1 && (")).toBeLessThan(src.indexOf("{ageSwitchShown && ("));
+  });
+
+  it("every F-FORYOU-1 string exists in EN and HE; HE is Hebrew; EN carries no verdict word", () => {
+    const keys = [
+      "elev.learnCare.pick.tryToday", "elev.learnCare.pick.lessons", "elev.learnCare.pick.inThisRead",
+      "elev.learnCare.reads.title", "elev.learnCare.library.kicker", "elev.learnCare.library.title",
+      "elev.learnCare.readiness.activities", "elev.learnCare.readiness.inThis",
+    ];
+    for (const key of keys) {
+      const enV = tr("en", key, { n: 3 });
+      const heV = tr("he", key, { n: 3 });
+      expect(enV, key).not.toBe(key);
+      expect(heV, key).not.toBe(key);
+      expect(heV, key).not.toBe(enV);
+      expect(heV, key).not.toMatch(/[A-Za-z]/);
+      expect(heV, key).toMatch(/[א-ת]/);
+      expect(enV, key).not.toMatch(/\d\s*%|score|percentile|on track|behind|at risk|delayed|weakest|\bof\b/i);
     }
   });
 });

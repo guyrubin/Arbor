@@ -177,16 +177,22 @@ describe("W2 2.5 saved-topic continuation boost", () => {
     expect(JSON.stringify(rankLearnCards(LEARN_CARDS, { ...signals, savedIds: undefined }))).toBe(bare);
   });
 
+  // v3 F-FORYOU-1 (re-pin): the ranked shelf left #/learn (a reader only).
+  // The render site is For you's pick: savedIds feed its signals, and the
+  // "saved" why-line renders only on `todaysRead.fromSaved`, the pick's own
+  // re-derivation of continuesSaved (learn/todaysPick.ts).
   it("render site mounts the why-line variant behind the actual boost (source pin)", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
-    const src = readFileSync(path.join(here, "../components/sections/LearnLibrary.tsx"), "utf8")
-      .replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    const strip = (s: string) => s.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    const src = strip(readFileSync(path.join(here, "../components/sections/Masterclasses.tsx"), "utf8"));
+    const pick = readFileSync(path.join(here, "todaysPick.ts"), "utf8");
     // savedIds flows into the ranking signals…
     expect(src).toContain("savedIds: savedLearnIds");
     // …and the "continues what you saved" variant renders only when the boost
-    // actually contributed to a featured card.
-    expect(src).toContain("continuesSaved");
-    expect(src).toContain('continueText("elev.continue.learn.why"');
-    expect(src.indexOf("savedBoosted")).toBeGreaterThan(-1);
+    // actually contributed to the pick.
+    expect(pick).toContain("fromSaved: continuesSaved(card, topics),");
+    expect(src).toMatch(/todaysRead\.fromSaved\s*\?\s*t\("elev\.learnCare\.pick\.why\.saved"\)/);
+    const learn = strip(readFileSync(path.join(here, "../components/sections/LearnLibrary.tsx"), "utf8"));
+    expect(learn).not.toContain("rankLearnCards(");
   });
 });

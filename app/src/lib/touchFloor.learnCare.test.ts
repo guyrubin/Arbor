@@ -12,6 +12,11 @@
  * There is no jsdom in this repo, so this is a SOURCE ratchet, not a rendered
  * measurement — the same shape as touchFloor.journalPlans.test.ts. The
  * rendered sweep stays the orchestrator's.
+ *
+ * v3 F-FORYOU-1 re-pins the Learn filter pills: #/learn is a reader only and
+ * its filter row is gone. The pills a parent taps to narrow reading are For
+ * you's area chips (plus its age switch and short-read cards); the floor is
+ * pinned there. The reader's pulse controls stay pinned on Learn.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -24,6 +29,7 @@ const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
 
 const FILES = {
   learn: "components/sections/LearnLibrary.tsx",
+  forYou: "components/sections/Masterclasses.tsx", // v3 F-FORYOU-1
   charter: "components/sections/FamilyFormation.tsx",
   sharing: "components/sections/TrustedSharing.tsx",
   yourData: "components/layout/YourDataSheet.tsx", // B-CAREPRO-35: the one delete path
@@ -38,7 +44,10 @@ const FLOOR = /min-h-11\b|min-h-\[4[4-9]px\]|min-h-\[5\d px\]|touch-target|var\(
 
 /** Each control the item names, matched by a snippet unique in its file. */
 const CONTROLS: { id: string; file: keyof typeof FILES; near: string }[] = [
-  { id: "OBJ-LEARN-03 filter pills", file: "learn", near: "{msIcon && <Icon name={msIcon} size={15} />}" },
+  // v3 F-FORYOU-1 (re-pin): the filter pills live on For you (see the AREA_CHIP
+  // test below); its age switch and short-read cards are pinned here.
+  { id: "OBJ-LEARN-03 age switch (For you)", file: "forYou", near: 'data-testid="agefilter-toggle-masterclasses"' },
+  { id: "OBJ-LEARN-03 short read (For you)", file: "forYou", near: 'data-testid="academy-short-read"' },
   { id: "OBJ-LEARN-03 helpful pulse (yes)", file: "learn", near: "onPulse(1)" },
   { id: "OBJ-LEARN-03 helpful pulse (no)", file: "learn", near: "onPulse(-1)" },
   { id: "LC-22 charter remove", file: "charter", near: "remove(v)" },
@@ -75,11 +84,22 @@ describe("touch floor · the Learn·Care controls item 9 names", () => {
       expect(shellAround(read(FILES[c.file]), c.near)).toMatch(FLOOR);
     });
   }
+
+  // v3 F-FORYOU-1 (re-pin): the filter pills are For you's area chips. They
+  // share one class recipe, so the floor is pinned on the recipe and on every
+  // chip that uses it ("All" plus one per area).
+  it("OBJ-LEARN-03 filter pills (For you's area chips) declare a 44 px floor", () => {
+    const src = read(FILES.forYou);
+    const recipe = src.match(/const AREA_CHIP = "([^"]+)";/)?.[1] ?? "";
+    expect(recipe).toMatch(FLOOR);
+    expect((src.match(/className=\{AREA_CHIP\}/g) ?? []).length).toBe(2);
+  });
 });
 
 describe("touch floor · the sub-44 shapes stay out of these files", () => {
   const RETIRED: [keyof typeof FILES, string][] = [
     ["learn", "min-h-[38px]"],
+    ["forYou", "min-h-[38px]"],
     ["sharing", 'className="rounded-full px-3 py-1 text-xs font-bold"'],
     ["sharing", 'className="rounded-xl px-4 py-2.5 text-sm font-bold"'],
     ["safety", 'className="font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition"'],
@@ -101,8 +121,9 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     expect(preFixPill).not.toMatch(FLOOR);
     const preFixRemove = '<button onClick={() => remove(v)} aria-label={t("elev.charter.remove", { value: v })}><Icon name="close" size={14} /></button>';
     expect(preFixRemove).not.toMatch(FLOOR);
-    // …and the post-fix markup passes it.
-    expect(shellAround(read(FILES.learn), "{msIcon && <Icon name={msIcon} size={15} />}")).toMatch(FLOOR);
+    // …and the post-fix markup passes it (v3 F-FORYOU-1: the pills are For
+    // you's area chips; their recipe carries the floor).
+    expect(read(FILES.forYou).match(/const AREA_CHIP = "([^"]+)";/)?.[1] ?? "").toMatch(FLOOR);
     expect(shellAround(read(FILES.charter), "remove(v)")).toMatch(FLOOR);
   });
 
@@ -110,7 +131,8 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     // LC-23's checkbox is the one exception: a 13 px native checkbox IS the
     // control, so it grows to 20 px inside a 44 px row.
     expect(read(FILES.charter)).toContain('<Icon name="close" size={14} />');
-    expect(read(FILES.learn)).toContain('<Icon name={msIcon} size={15} />');
+    // v3 F-FORYOU-1 (re-pin): the pill glyph rides For you's area chips.
+    expect(read(FILES.forYou)).toContain('<Icon name={DOMAIN_ICONS[area]} size={15} />');
     expect(read(FILES.safety)).toContain('className="mt-0.5 w-5 h-5 flex-shrink-0"');
   });
 });

@@ -71,6 +71,9 @@ const SURFACES: [string, RegExp, string][] = [
   // Learn reader — provenance hedge + chip on the same wrapping row
   // (scholar-hub-reader pattern).
   ["components/sections/LearnLibrary.tsx", /t\("learn\.provenance"\)/, "learn-reader"],
+  // v3 F-FORYOU-1: For you's pick — the why-line a parent reads on the
+  // landing, with its chip after it (replaces the Learn rail's chain).
+  ["components/sections/Masterclasses.tsx", /data-testid="academy-pick-why"/, "foryou-pick"],
   // Coach answer cards — the highest-trust-stakes surface; the chip rides the
   // attribution row, beside the "why this might be happening" disclosure.
   ["components/coach/CoachAnswerCards.tsx", /t\("coach\.cards\.why"\)/, "coach-answer"],
@@ -98,8 +101,16 @@ describe("3.1 — every recommendation why-line reaches the Trust Center", () =>
     expect(src).toMatch(WHY_SLOT_WITH_TRUST);
   });
 
-  it("LearnLibrary's picked-for-you rail keeps its chain (no regression)", () => {
-    expect(read("components/sections/LearnLibrary.tsx")).toMatch(WHY_SLOT_WITH_TRUST);
+  // v3 F-FORYOU-1 (re-pin): the Learn rail is gone (#/learn is a reader
+  // only). Its "picked for you" chain lives on For you's pick, whose chip
+  // follows the why-line on the same card.
+  it("For you's pick keeps the picked-for-you chain (no regression)", () => {
+    const src = read("components/sections/Masterclasses.tsx");
+    const why = src.indexOf('data-testid="academy-pick-why"');
+    const chip = src.search(mount("foryou-pick"));
+    expect(why).toBeGreaterThan(-1);
+    expect(chip).toBeGreaterThan(why);
+    expect(read("components/sections/LearnLibrary.tsx")).not.toContain('surface="learn-rail"');
   });
 
   it("ScholarHub's reader overlay carries the chain too", () => {

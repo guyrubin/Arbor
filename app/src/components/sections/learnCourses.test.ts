@@ -34,31 +34,23 @@ describe("B-PLAY-17 · Learn has a Courses filter that lists the Masterclasses",
     expect(MASTERCLASSES).toHaveLength(10);
   });
 
-  it("Filter includes 'courses' and the pill sits in the filter row", () => {
-    expect(learn).toContain('type Filter = "all" | "saved" | "courses" | LearnCategoryId;');
-    const row = between(learn, 'data-module="learn-filters"', "LEARN_CATEGORIES.map");
-    expect(row).toContain('active={filter === "courses"}');
-    // W2-SHELLPLAY r1: the pill carries the Masterclasses tab's own name — one
-    // name for the two doors to the same ten courses.
-    expect(row).toContain('label={t("nav.tab.masterclasses")}');
+  // v3 F-FORYOU-1 (re-pin): #/learn is a reader only. Its filter row (and the
+  // Courses pill in it) is gone; the courses live in For you's library,
+  // "Courses by area", and open the course reader there.
+  it("Learn carries no filter row and no course shelf; the courses live on For you", () => {
+    expect(learn).not.toContain("type Filter =");
+    expect(learn).not.toContain('data-module="learn-filters"');
+    expect(learn).not.toContain('data-testid="learn-courses"');
+    expect(learn).not.toContain("MasterclassReader");
+    expect(learn).not.toContain('from "./Masterclasses"');
+    expect(master).toContain("<button key={c.id} type=\"button\" onClick={() => setOpenId(c.id)} className={COURSE_CARD}>");
   });
 
-  it("the courses shelf rides the same age switch and opens the course reader inline", () => {
-    expect(learn).toMatch(/filterByAge\(MASTERCLASSES, \(m\) => windowFromYears\(m\.ageMinYears, m\.ageMaxYears\), childMonths\)/);
-    expect(learn).toContain("const courses = showAllAges ? MASTERCLASSES : coursesAgeVisible;");
-    const shelf = between(learn, '{filter === "courses" ? (', ") : gridCards.length > 0 ? (");
-    expect(shelf).toContain("courses.map((m, i) =>");
-    expect(shelf).toContain("onClick={() => setOpenCourseId(m.id)}");
-    expect(shelf).toContain("onClick={toggleShowAllAges}");
-    // It replaces the reads shelf while selected — no second module stamp (learn budget 3 holds).
-    expect(shelf).toContain('data-testid="learn-courses"');
-    expect(shelf).not.toContain("data-module=");
-    expect(learn).toContain("return <MasterclassReader m={openCourse} onBack={() => setOpenCourseId(null)} />;");
-    expect(learn).toContain('import { MasterclassReader, loadDone as loadCourseDone } from "./Masterclasses";');
-  });
-
-  it("the reads list is empty under Courses (no mixed shelf)", () => {
-    expect(learn).toContain('else if (filter === "courses") list = [];');
+  it("the library's courses ride the age switch and open the course reader in place", () => {
+    expect(master).toMatch(/filterByAge\(\s*MASTERCLASSES,\s*\(m\) => windowFromYears\(m\.ageMinYears, m\.ageMaxYears\),\s*childMonths,?\s*\)/);
+    expect(master).toContain("const ageCatalog = showAllAges ? MASTERCLASSES : ageVisible;");
+    expect(master).toMatch(/if \(open\) return <MasterclassReader m=\{open\}/);
+    expect(master).toContain("onClick={toggleShowAllAges}");
   });
 
   it("EN + HE copy for every new key", () => {
@@ -74,7 +66,8 @@ describe("B-PLAY-17 · Learn has a Courses filter that lists the Masterclasses",
 describe("B-PLAY-17 · the course reader carries the Learn reader's actions", () => {
   const reader = between(master, "export function MasterclassReader(", "\n}\n");
 
-  it("is exported and used by both the Masterclasses page and Learn", () => {
+  // v3 F-FORYOU-1: Learn no longer mounts it (the courses left #/learn).
+  it("is exported and used by the Masterclasses page", () => {
     expect(master).toContain("export function MasterclassReader(");
     expect(master).toMatch(/if \(open\) return <MasterclassReader m=\{open\}/);
     expect(master).not.toMatch(/\bfunction Reader\(/);
@@ -111,33 +104,29 @@ describe("B-PLAY-17 · the course reader carries the Learn reader's actions", ()
   });
 });
 
-describe("W2-SHELLPLAY r1 · Learn: the move is a card, above the phone fold", () => {
-  it("the stamp is on a card's open control — never the 6,000 px shelf section", () => {
+describe("W2-SHELLPLAY r1 · Learn: the move is a real control, never a section", () => {
+  // v3 F-FORYOU-1 (re-pin): #/learn is a reader only, so its one stamp rides
+  // the reader heading of the read the route opens (the shelf card that held
+  // it is gone). A read in For you's sheet gets no stamp: that page has its own.
+  it("the stamp is spread once, on the reader heading, never on a section", () => {
     expect(learn).not.toMatch(/<section[^>]*data-primary-move=/);
     expect(learn).toContain('const LEARN_MOVE_STAMP = { "data-primary-move": "open-learn-card" } as const;');
-    expect(learn).toContain("{...(primary ? LEARN_MOVE_STAMP : {})}");
+    expect(learn).toContain("moveProps={LEARN_MOVE_STAMP}");
+    const heading = between(learn, "<h2\n          ref={headingRef}", "</h2>");
+    expect(heading).toContain('data-testid="learn-reader-heading"');
+    expect(heading).toContain("{...moveProps}");
     const code = learn.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
     expect((code.match(/\bdata-primary-move\b(?!-)/g) || []).length).toBe(1);
-    // the first Picked card when the rail renders, else the first shelf card
-    expect(learn).toMatch(/featured\s+primary=\{i === 0\}/);
-    expect(learn).toContain("primary={!(browsing && featured.length > 0) && i === 0}");
+    expect((code.match(/\{\.\.\.moveProps\}/g) || []).length).toBe(1);
   });
 
-  it("the Courses state stamps its first course row", () => {
-    const shelf = between(learn, '{filter === "courses" ? (', ") : gridCards.length > 0 ? (");
-    expect(shelf).toContain("{...(i === 0 ? LEARN_MOVE_STAMP : {})}");
-  });
-
-  it("Picked is the first module under the header; the filters follow as ONE scrolling row below sm", () => {
-    const picked = learn.indexOf('data-module="learn-picked"');
-    const filters = learn.indexOf('data-module="learn-filters"');
-    expect(picked).toBeGreaterThan(-1);
-    expect(picked).toBeLessThan(filters);
-    const row = learn.slice(filters, learn.indexOf(">", filters));
-    expect(row).toContain("flex-nowrap overflow-x-auto");
-    expect(row).toContain("sm:flex-wrap");
-    // NEGATIVE CONTROL: the pre-fix row wrapped at every width
-    expect('<div data-module="learn-filters" className="flex flex-wrap gap-2"').not.toContain("flex-nowrap");
+  it("one module, the reader; no picked rail and no filter row", () => {
+    const code = learn.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(code.match(/\bdata-module="[^"]+"/g)).toEqual(['data-module="learn-reader"']);
+    expect(learn).not.toContain('data-module="learn-picked"');
+    expect(learn).not.toContain('data-module="learn-filters"');
+    // NEGATIVE CONTROL: the r1 page had both
+    expect('<div data-module="learn-picked"></div><div data-module="learn-filters"></div>'.match(/\bdata-module="[^"]+"/g)).toHaveLength(2);
   });
 });
 

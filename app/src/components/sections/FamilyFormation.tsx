@@ -8,9 +8,6 @@ import { PendingLine, Receipt } from "../ui/Receipt";
 import { FAMILY_RITUALS, type FamilyRitual } from "../../lib/familyRituals";
 import RitualTurnCard from "../nextopen/RitualTurnCard";
 import { hasSavedFamilyCharter, initialCharterValues, saveFamilyCharter } from "../../lib/familyCharter";
-// B-PLAY-21: the ONE tone sheet (B-ASKJB-12's) — same component, same store
-// (selectedLens → the prompt's lens). No lens bodies are imported here.
-import ToneSheet, { toneLabel } from "../coach/ToneSheet";
 import type { FrameId } from "../../lib/masterclasses";
 
 // Each ritual → its Material Symbols Rounded glyph (UC-2 visual-match).
@@ -51,8 +48,7 @@ export default function FamilyFormation() {
   // no way to actually start one. "Start" accepts the ritual's FIRST step
   // into today through the existing action loop (the same seam the Learn
   // reader's "Add to today" uses), so the practice reaches the day.
-  const { acceptTodayAction, actionLoop, actionLoopConfirmed, selectedLens, setSelectedLens, childProfile, activeFamilyTopic } = useArbor();
-  const [toneOpen, setToneOpen] = useState(false);
+  const { acceptTodayAction, actionLoop, actionLoopConfirmed, childProfile, activeFamilyTopic } = useArbor();
   const he = aiLang === "he";
   const [values, setValues] = useState<string[]>(() => initialCharterValues(undefined, uiLang));
   // SHIP-FIX (W2-SHELLPLAY r3 product P1-1, truth): until the family saves a
@@ -117,7 +113,7 @@ export default function FamilyFormation() {
       <div key={`${scopeKey}:${r.id}`} className="mt-2">
         <PendingLine active={status === "saving"} testId={`ritual-pending-${r.id}`}>{t("elev.learnCare.ritual.pending")}</PendingLine>
         {status === "saved" && (
-          <Receipt testId={`ritual-receipt-${r.id}`} link={{ href: "#/overview", where: t("nav.today") }}>
+          <Receipt testId={`ritual-receipt-${r.id}`} link={{ href: "#/overview", where: t("companion.place.now") }}>
             {t("elev.learnCare.ritual.added")}
           </Receipt>
         )}
@@ -138,102 +134,14 @@ export default function FamilyFormation() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
       <PageHeader title={t("sec.family.title")} subtitle={t("sec.family.sub")} />
 
-      {/* Family Charter — the real, editable tool (names the family's aim) */}
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+      {/* Family rituals — real, repeatable practices. v3 F-FORYOU-1: the page
+          leads with them and the charter follows. W2-SHELLPLAY critic r1: the
+          declared move is stamped on ONE real control — the turn card's "Start
+          it this week" — not on this wrapper.
+          Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
-      {/* W2-SHELLPLAY critic r1: a real block (display:contents rendered no
-          box, so space-y-6 collapsed to ~6 px above the rituals). */}
-      <div data-module="family-charter">
-      {/* W2-SHELLPLAY critic r2 (B-PLAY-21 target order): ONE compact "Our
-          family's way" line between the header and the ritual turn — the
-          charter values as text, the current tone, and a 44 px Edit that opens
-          the charter editor + the tone row in place. Device-local until Guy's
-          gate §8 rules on the synced charter; the line claims nothing more. */}
-      <section data-testid="family-way" className={`${cardCls} p-4`} aria-labelledby="family-way-title">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-baseline gap-x-1.5">
-              <h2 id="family-way-title" className="t-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.family.way.title")}</h2>
-              {!saved && values.length > 0 && (
-                <span data-testid="family-way-starter" className="t-xs" style={{ color: "var(--arbor-muted)" }}>· {t("elev.family.way.starter")}</span>
-              )}
-            </div>
-            {/* r3 P2-2: each separator rides on the value before it, so a wrap
-                never opens a line with "·". */}
-            <p className="t-sm font-bold mt-1" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-              {values.length > 0 ? (
-                <bdi>
-                  {values.map((v, i) => (
-                    <React.Fragment key={v}>
-                      <span className="whitespace-nowrap">{v}{i < values.length - 1 ? " ·" : ""}</span>
-                      {i < values.length - 1 ? " " : null}
-                    </React.Fragment>
-                  ))}
-                </bdi>
-              ) : t("elev.family.way.empty")}
-            </p>
-            <p className="t-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("elev.family.way.tone", { tone: toneLabel(selectedLens, t) })}</p>
-          </div>
-          <button
-            type="button"
-            data-testid="family-way-edit"
-            aria-expanded={wayOpen}
-            onClick={() => setWayOpen((v) => !v)}
-            className="inline-flex min-h-11 items-center gap-1 rounded-xl px-3 t-sm font-bold flex-shrink-0"
-            style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
-          >
-            <Icon name={wayOpen ? "expand_less" : "edit"} size={16} /> {t(wayOpen ? "elev.family.way.done" : "elev.family.way.edit")}
-          </button>
-        </div>
-      </section>
-      {wayOpen && (
-      <div className="mt-3">
-      <SectionCard title={he ? "מגילת המשפחה" : "Family Charter"} icon={<Icon name="history_edu" size={20} />} tone="mint">
-        <p className="text-sm mb-4" dir="auto" style={{ color: "var(--arbor-muted)" }}>
-          {he
-            ? "תנו שם לערכים שאתם מגדלים סביבם את המשפחה. ארבור משתמש בהם כדי לשמור שההכוונה והסיפורים נשארים מחוברים למה שחשוב לכם."
-            : "Name the values you're forming your family around. Arbor uses these to keep guidance and stories aligned with what matters to you."}
-        </p>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {values.map((v) => (
-            <span key={v} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold" dir="auto" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-              {v}
-              <button onClick={() => remove(v)} aria-label={t("elev.charter.remove", { value: v })} className="inline-flex items-center justify-center min-h-11 min-w-11 -my-2.5 -me-2"><Icon name="close" size={14} /></button>
-            </span>
-          ))}
-          {values.length === 0 && <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>{he ? "הוסיפו ערך כדי להתחיל." : "Add a value to begin your charter."}</span>}
-        </div>
-        <div className="flex gap-2 max-w-md">
-          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={he ? "הוסיפו ערך (למשל סבלנות)…" : "Add a value (e.g. Patience)…"} dir="auto" className="flex-1 min-h-11 rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
-          {/* W2-SHELLPLAY critic r1: 44 px, and a ghost — the page's one
-              filled CTA is the ritual start above. */}
-          <button onClick={add} className="inline-flex min-h-11 items-center gap-1 font-bold text-sm rounded-xl px-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}><Icon name="add" size={16} /> {he ? "הוסיפו" : "Add"}</button>
-        </div>
-        {/* B-PLAY-21: "Our family's way" — how Arbor talks with you sits beside
-            the charter. The SAME sheet Ask opens, writing the same selectedLens
-            the companion prompt already reads. */}
-        <div className="mt-5 pt-4 flex flex-wrap items-center justify-between gap-3" style={{ borderTop: "1px solid var(--arbor-rule)" }} data-testid="family-tone-row">
-          <div className="min-w-0">
-            <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("coach.tone.title")}</p>
-            <p className="text-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{toneLabel(selectedLens, t)}</p>
-          </div>
-          <button type="button" onClick={() => setToneOpen(true)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
-            <Icon name="tune" size={16} /> {t("coach.tone.change")}
-          </button>
-        </div>
-      </SectionCard>
-      </div>
-      )}
-      <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
-
-      </div>
-
-      {/* Family rituals — real, repeatable practices. W2-SHELLPLAY critic r1:
-          the module leads the page (the charter follows), and the declared
-          move is stamped on ONE real control — the turn card's "Start it this
-          week" — not on this wrapper. */}
       <div data-module="family-rituals">
         <h2 className="t-lg font-extrabold mb-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "טקסי משפחה" : "Family rituals"}</h2>
         {/* B-GROWTH-03 / ENG-25 — the ritual whose turn has come round, beside
@@ -296,6 +204,80 @@ export default function FamilyFormation() {
             );
           })}
         </div>
+      </div>
+
+      {/* Family Charter — the real, editable tool (names the family's aim),
+          below the rituals (v3 F-FORYOU-1). W2-SHELLPLAY critic r1: a real
+          block (display:contents rendered no box). */}
+      <div data-module="family-charter">
+      {/* W2-SHELLPLAY critic r2: ONE compact "Our family's way" line — the
+          charter values as text and a 44 px Edit that opens the charter editor
+          in place. v3 F-FORYOU-1: the tone line and the tone row left this
+          page; Settings owns how Arbor talks with you (one home per
+          preference). Device-local until Guy's gate §8 rules on the synced
+          charter; the line claims nothing more. */}
+      <section data-testid="family-way" className={`${cardCls} p-4`} aria-labelledby="family-way-title">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-1.5">
+              <h2 id="family-way-title" className="t-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.family.way.title")}</h2>
+              {!saved && values.length > 0 && (
+                <span data-testid="family-way-starter" className="t-xs" style={{ color: "var(--arbor-muted)" }}>· {t("elev.family.way.starter")}</span>
+              )}
+            </div>
+            {/* r3 P2-2: each separator rides on the value before it, so a wrap
+                never opens a line with "·". */}
+            <p className="t-sm font-bold mt-1" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+              {values.length > 0 ? (
+                <bdi>
+                  {values.map((v, i) => (
+                    <React.Fragment key={v}>
+                      <span className="whitespace-nowrap">{v}{i < values.length - 1 ? " ·" : ""}</span>
+                      {i < values.length - 1 ? " " : null}
+                    </React.Fragment>
+                  ))}
+                </bdi>
+              ) : t("elev.family.way.empty")}
+            </p>
+          </div>
+          <button
+            type="button"
+            data-testid="family-way-edit"
+            aria-expanded={wayOpen}
+            onClick={() => setWayOpen((v) => !v)}
+            className="inline-flex min-h-11 items-center gap-1 rounded-xl px-3 t-sm font-bold flex-shrink-0"
+            style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
+          >
+            <Icon name={wayOpen ? "expand_less" : "edit"} size={16} /> {t(wayOpen ? "elev.family.way.done" : "elev.family.way.edit")}
+          </button>
+        </div>
+      </section>
+      {wayOpen && (
+      <div className="mt-3">
+      <SectionCard title={he ? "מגילת המשפחה" : "Family Charter"} icon={<Icon name="history_edu" size={20} />} tone="mint">
+        <p className="text-sm mb-4" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+          {he
+            ? "תנו שם לערכים שאתם מגדלים סביבם את המשפחה. ארבור משתמש בהם כדי לשמור שההכוונה והסיפורים נשארים מחוברים למה שחשוב לכם."
+            : "Name the values you're forming your family around. Arbor uses these to keep guidance and stories aligned with what matters to you."}
+        </p>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {values.map((v) => (
+            <span key={v} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold" dir="auto" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+              {v}
+              <button onClick={() => remove(v)} aria-label={t("elev.charter.remove", { value: v })} className="inline-flex items-center justify-center min-h-11 min-w-11 -my-2.5 -me-2"><Icon name="close" size={14} /></button>
+            </span>
+          ))}
+          {values.length === 0 && <span className="text-sm" style={{ color: "var(--arbor-muted)" }}>{he ? "הוסיפו ערך כדי להתחיל." : "Add a value to begin your charter."}</span>}
+        </div>
+        <div className="flex gap-2 max-w-md">
+          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder={he ? "הוסיפו ערך (למשל סבלנות)…" : "Add a value (e.g. Patience)…"} dir="auto" className="flex-1 min-h-11 rounded-xl px-3 py-2.5 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
+          {/* W2-SHELLPLAY critic r1: 44 px, and a ghost — the page's one
+              filled CTA is the ritual start above. */}
+          <button onClick={add} className="inline-flex min-h-11 items-center gap-1 font-bold text-sm rounded-xl px-4" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}><Icon name="add" size={16} /> {he ? "הוסיפו" : "Add"}</button>
+        </div>
+      </SectionCard>
+      </div>
+      )}
       </div>
 
     </motion.div>

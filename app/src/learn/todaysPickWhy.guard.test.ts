@@ -222,8 +222,16 @@ describe("ENG-07 · the Library why-line falls to the age variant at zero data",
     const dayZero = { focusDomain: "language_communication", domains: [{ reached: 0 }] };
     expect(Boolean(dayZero.focusDomain)).toBe(true);
     expect(focusDomainContributed(dayZero, featured)).toBe(false);
-    const lib = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../components/sections/LearnLibrary.tsx"), "utf8");
-    expect(lib).toContain("focusDomainContributed(score, featured)");
-    expect(lib).not.toMatch(/:\s*score\.focusDomain \? t\("learn\.whyFull"/);
+    // v3 F-FORYOU-1 (re-pin): the Library rail and its why-line left #/learn
+    // (a reader only). The one focus claim a parent reads is For you's pick,
+    // and it is gated the same way: the pick's own re-derivation AND a real
+    // map signal, never the raw focusDomain.
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const lib = readFileSync(path.join(here, "../components/sections/LearnLibrary.tsx"), "utf8");
+    expect(lib).not.toContain("learn.whyFull");
+    expect(lib).not.toMatch(/score\.focusDomain/);
+    const forYou = readFileSync(path.join(here, "../components/sections/Masterclasses.tsx"), "utf8");
+    expect(forYou).toContain("todaysRead.fromFocus && devMapHasSignal(devScore)");
+    expect(forYou).not.toMatch(/:\s*devScore\.focusDomain \? t\(/);
   });
 });

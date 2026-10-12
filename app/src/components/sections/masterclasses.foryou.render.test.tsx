@@ -13,6 +13,9 @@
  *    pressed and plain integer counts that add up to the courses on the page;
  *  · the family-ritual door, under the brief's "Family formation" eyebrow;
  *  · no percentage anywhere in the visible text.
+ * v3 F-FORYOU-1 adds: the pick's lines and "Try it today", the short reads'
+ * say voice, "Courses by area" with the readiness courses, no rail, and the
+ * 390 px classes (hidden sub, hidden chip counts, the 56 px family picture).
  * Child and question are invented examples.
  */
 import React from "react";
@@ -42,8 +45,15 @@ vi.mock("../../context/ArborContext", () => ({
     requestLearnRead: () => {},
     setActiveTab: () => {},
     activeFamilyTopic: harness.topic,
+    // v3 F-FORYOU-1: "Try it today" reads the action loop (no write at render).
+    actionLoop: [],
+    actionLoopConfirmed: true,
+    acceptTodayAction: () => Promise.resolve(),
   }),
 }));
+// v3 F-FORYOU-1: the pick carries "How Arbor decides" (TrustLink reads the
+// optional Arbor context, which this factory mock does not export).
+vi.mock("../trust/TrustLink", () => ({ TrustLink: () => null, default: () => null }));
 vi.mock("../../context/LanguageContext", () => ({
   useLanguage: () => ({
     uiLang: harness.locale,
@@ -207,6 +217,35 @@ describe("v3 EXTRA-FORYOU · with a family question open", () => {
       expect(door).toContain('alt=""');
       expect(door).toContain("rtl:-scale-x-100");
       expect(door).not.toContain("--gradient-cta");
+    });
+
+    it(`${locale}: v3 F-FORYOU-1 — the pick card lists its lines, offers "Try it today", and no rail renders`, () => {
+      harness.locale = locale;
+      harness.topic = ask(QUESTION[locale]);
+      const html = render();
+      const lessons = region(html, 'data-testid="academy-pick-lessons"', "</ol>");
+      expect(count(lessons, /<li>/g)).toBeGreaterThan(0);
+      const tryToday = region(html, 'data-testid="academy-pick-try-today"', "</button>");
+      expect(tryToday).toMatch(/^<button[^>]*min-h-11/);
+      expect(tryToday).toContain(esc(translate(locale, "elev.learnCare.pick.tryToday")));
+      expect(tryToday).toContain("flag");
+      // Short reads carry the say voice and the accent rule; the title is the mock's.
+      const row = region(html, 'data-testid="academy-short-reads"', "</section>");
+      expect(row).toContain(esc(translate(locale, "elev.learnCare.reads.title")));
+      expect(count(row, /arbor-type-say arbor-accent-rule/g)).toBe(3);
+      // The library: "Courses by area" under "Library"; the readiness courses read here.
+      expect(html).toContain(esc(translate(locale, "elev.learnCare.library.title")));
+      expect(html).toContain(esc(translate(locale, "elev.learnCare.library.kicker")));
+      expect(count(html, /data-testid="academy-readiness-course"/g)).toBeGreaterThan(0);
+      // The rail is gone (desktop and phone alike).
+      for (const gone of ['data-testid="academy-rail"', "<details", "<summary", 'data-testid="academy-rail-nosignal"']) expect(html, gone).not.toContain(gone);
+      // 390 px: the sub and the chip counts are hidden below sm; the family row's picture is 56 px.
+      expect(region(html, 'data-testid="academy-hero-sub"', "</p>")).toMatch(/class="[^"]*\bhidden\b[^"]*\bsm:block\b/);
+      expect(html).toContain('<span class="hidden sm:inline"><span class="tabular-nums"');
+      const door = region(html, 'data-testid="academy-family-door"', "</button>");
+      expect(door).toContain("area-family-480");
+      expect(door).toMatch(/class="h-14 w-14 /);
+      expect(door).toContain("chevron_right");
     });
 
     it(`${locale}: no percentage anywhere in the visible text`, () => {
