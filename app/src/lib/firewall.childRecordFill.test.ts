@@ -48,6 +48,8 @@ const SCANNED = [
   // v3 FEAT-03: the development map and its domain sheet on My child.
   "components/companion/DevelopmentMap.tsx",
   "components/companion/DomainSheet.tsx",
+  // v3 FEAT-08: the words-and-firsts strip on My child (names and words, no fill).
+  "components/companion/WordsFirstsStrip.tsx",
   ...GROWTH_FILES,
   "components/sections/ChildProfile.tsx",
   "components/practice/DevelopmentCopilot.tsx",

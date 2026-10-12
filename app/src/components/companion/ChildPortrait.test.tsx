@@ -10,6 +10,8 @@ const state = vi.hoisted(() => ({
   lang: "en" as "en" | "he", loading: false, error: false, more: false, confirmed: true,
   observations: [] as Observation[], setActiveTab: vi.fn(), loadMore: vi.fn(), seedCoach: vi.fn(),
   milestones: [] as Milestone[],
+  // v3 FEAT-08: the loaded record's raw sources, which the words-and-firsts strip reads.
+  sources: { behaviorLogs: [] } as Record<string, unknown[]>,
   buttons: [] as { children?: React.ReactNode; onClick?: () => void; "data-testid"?: string; "data-domain"?: string }[],
   // v3 FEAT-03: a tiny stateful SSR harness (as PortraitWatchRow.test) so a tile click survives into the next render.
   keepState: false, cursor: 0, hooks: [] as unknown[],
@@ -29,11 +31,11 @@ vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };
 });
-vi.mock("../../hooks/useObservationRecord", () => ({ useObservationRecord: () => ({ ...state, sources: { behaviorLogs: [] }, reload: vi.fn() }) }));
+vi.mock("../../hooks/useObservationRecord", () => ({ useObservationRecord: () => ({ ...state, sources: state.sources, reload: vi.fn() }) }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 // Parity 9 Oct: the watch row and the keepsake disclosure have their own tests.
 vi.mock("./PortraitWatchRow", () => ({ default: () => <div data-testid="watch-row" /> }));
-vi.mock("./PortraitKeepsakes", () => ({ default: () => null }));
+vi.mock("./PortraitKeepsakes", () => ({ default: () => <div data-testid="keepsakes-disclosure" /> }));
 // B-SHELL-39: the kept-description card has its own tests (components/describe).
 vi.mock("../describe/KeptDescription", () => ({ default: () => null }));
 // v3 FEAT-03: the domain sheet has its own tests (DomainSheet.test.tsx); here only its wiring.
@@ -60,7 +62,7 @@ import { portraitDiscussionPrompt } from "./portraitModel";
 
 beforeEach(() => {
   vi.clearAllMocks(); state.lang = "en"; state.observations = []; state.loading = false; state.more = false; state.error = false; state.confirmed = true; state.buttons = [];
-  state.milestones = []; state.keepState = false; state.cursor = 0; state.hooks = []; state.sheet = null;
+  state.milestones = []; state.keepState = false; state.cursor = 0; state.hooks = []; state.sheet = null; state.sources = { behaviorLogs: [] };
 });
 
 describe("Growth record coverage and restored doors", () => {
@@ -225,5 +227,49 @@ describe("v3 FEAT-03 — the development map on My child", () => {
     expect(selection?.domain).toBe("playing");
     expect(selection?.title).toBe(domainName("playing", k => translate("en", k)));
     expect([...(selection?.ids ?? [])].sort()).toEqual(["behaviorLogs:play-new", "behaviorLogs:play-old"]);
+  });
+});
+
+/* v3 FEAT-08 — the words-and-firsts strip on My child reads the record the
+   portrait already loaded. Invented words and an invented custom first only. */
+describe("v3 FEAT-08 — the words-and-firsts strip on My child", () => {
+  const KEPT = {
+    behaviorLogs: [],
+    langObs: [
+      { id: "w-he", timestamp: "2026-10-05T12:00:00Z", phrase: "ירח", language: "Hebrew" },
+      { id: "w-en", timestamp: "2026-09-20T12:00:00Z", phrase: "The moon is following us", language: "English" },
+    ],
+    milestones: [{ id: "ms-own", custom: true, checked: true, observationStatus: "yes", observedAt: "2026-10-02", title: "Three steps to the sofa", domain: "sensory_motor_patterns", ageGroup: "Custom", description: "x" }],
+  };
+
+  it.each(["en", "he"] as const)("shows kept words and the confirmed first inside the overview, between the watch row and the disclosure (%s)", lang => {
+    state.lang = lang;
+    state.sources = KEPT;
+    const html = renderToStaticMarkup(<ChildPortrait />);
+    const strip = html.indexOf('data-testid="words-strip"');
+    expect(strip).toBeGreaterThan(html.indexOf('data-module="child-portrait-overview"'));
+    expect(strip).toBeGreaterThan(html.indexOf('data-testid="watch-row"'));
+    expect(strip).toBeLessThan(html.indexOf('data-testid="keepsakes-disclosure"'));
+    expect(strip).toBeLessThan(html.indexOf('data-module="child-portrait-evidence"'));
+    expect(html).toContain('<bdi dir="auto" lang="he">ירח</bdi>');
+    expect(html).toContain('<bdi dir="auto" lang="en">The moon is following us</bdi>');
+    expect(html).toContain(`<span class="words-strip-first">${translate(lang, "companion.portrait.words.first")}</span> <bdi dir="auto" lang="und">Three steps to the sofa</bdi>`);
+    expect(html.match(/data-testid="words-strip-month"/g)).toHaveLength(2);
+    // The overview stays one module with one primary move; the strip adds neither.
+    expect(html.match(/data-module="/g)).toHaveLength(3);
+    expect(html.match(/data-primary-move="/g)).toHaveLength(1);
+  });
+
+  it("Add or see all words opens the words place", () => {
+    state.sources = KEPT;
+    renderToStaticMarkup(<ChildPortrait />);
+    state.buttons.find(b => b["data-testid"] === "words-strip-all")!.onClick!();
+    expect(state.setActiveTab).toHaveBeenLastCalledWith("language");
+  });
+
+  it("with nothing kept the strip is absent and the disclosure is still there", () => {
+    const html = renderToStaticMarkup(<ChildPortrait />);
+    expect(html).not.toContain("words-strip");
+    expect(html).toContain('data-testid="keepsakes-disclosure"');
   });
 });

@@ -17,6 +17,9 @@ import { portraitEvidenceLines, reviewedPortraitDraft } from "./portraitEvidence
 import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import PortraitWatchRow from "./PortraitWatchRow";
 import PortraitKeepsakes from "./PortraitKeepsakes";
+import WordsFirstsStrip, { wordsStripMonths } from "./WordsFirstsStrip";
+import { keptThings } from "../../lib/kept/keptThings";
+import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import KeptDescription from "../describe/KeptDescription";
 import DevelopmentMap from "./DevelopmentMap";
 import DomainSheet from "./DomainSheet";
@@ -131,6 +134,14 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
   const selected = selection?.childId === childProfile.id ? selection : null;
   const selectedObservations = selected ? observations.filter(o => selected.ids.includes(o.id)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)) : [];
   const name = childProfile.name.split(/\s+/)[0] || childProfile.name;
+  // v3 FEAT-08: the words and firsts the parent kept, read from the record loaded above (no new listener),
+  // with the same parent-kept selector and catalogue wording the keepsake disclosure uses.
+  const keptWords = useMemo(() => wordsStripMonths(keptThings({
+    behaviorLogs: record.sources.behaviorLogs,
+    milestones: record.sources.milestones?.map(item => ({ ...item, title: milestoneText(item, "title", t, { gender: childProfile.gender ?? null }) })),
+    langObs: record.sources.langObs,
+    keepsakes: record.sources.keepsakes?.filter((item): item is KeepsakeDoc => typeof (item as Partial<KeepsakeDoc>).id === "string"),
+  }, childProfile)), [record.sources.behaviorLogs, record.sources.milestones, record.sources.langObs, record.sources.keepsakes, childProfile, t]);
   const date = (at: string | Date, year = false) => new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short", ...(year ? { year: "numeric" as const } : {}) }).format(at instanceof Date ? at : new Date(at));
   const chapterLabel = (chapter: typeof chapters[number]) => {
     const formatter = new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { month: "short", year: "numeric" });
@@ -221,6 +232,8 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
       onClose={() => setGoalOwner(null)} />}
     {/* The record lenses come first; an automatic focus stays compact until requested. */}
     <PortraitWatchRow key={childProfile.id} />
+    {/* v3 FEAT-08: words and firsts as a visible strip; absent when nothing is kept. */}
+    <WordsFirstsStrip name={name} months={keptWords} onAllWords={() => setActiveTab("language")} />
     {/* Parity 9 Oct: words, firsts, the tree and the month — one collapsed disclosure. */}
     <PortraitKeepsakes />
     {!record.loading && !record.error && record.confirmed && inView.length === 0 && <div className="portrait-empty"><figure className="portrait-empty-art" aria-hidden="true" data-testid="portrait-empty-art"><img src={EMPTY_ART.portrait.src} srcSet={EMPTY_ART.portrait.srcSet} width={EMPTY_ART.portrait.width} height={EMPTY_ART.portrait.height} alt="" loading="lazy" decoding="async" /></figure><div><h2>{observations.length ? c.periodEmpty : c.emptyAll}</h2><p>{observations.length ? c.periodEmptySub : c.emptyAllSub}</p><button type="button" className="portrait-primary" onClick={() => openCaptureSheet()}><Icon name="add" size={20} />{c.capture}</button></div></div>}

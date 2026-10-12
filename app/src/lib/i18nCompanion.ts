@@ -313,6 +313,10 @@ export const companionEn = {
   "companion.devMap.why.feelings": "Big and small feelings, and the ways your child finds calm again.",
   "companion.devMap.why.body": "Sleep, food and the everyday rhythms of the body.",
   "companion.devMap.why.family": "The people at home and the bonds that hold the day together.",
+  // v3 FEAT-08 — the words-and-firsts strip on My child. Names and words
+  // only: no count, no per-month number, no comparison between months.
+  "companion.portrait.words.title": "Things {name} said · firsts",
+  "companion.portrait.words.first": "First:",
 };
 
 export const companionHe = {
@@ -627,4 +631,7 @@ export const companionHe = {
   "companion.devMap.why.feelings": "רגשות גדולים וקטנים, והדרכים של הילד להירגע שוב.",
   "companion.devMap.why.body": "שינה, אוכל והקצב היומיומי של הגוף.",
   "companion.devMap.why.family": "האנשים בבית והקשרים שמחזיקים את היום.",
+  // v3 FEAT-08 — the words-and-firsts strip on My child (gender-neutral, no slash form).
+  "companion.portrait.words.title": "המילים של {name} · ראשונים",
+  "companion.portrait.words.first": "לראשונה:",
 };
