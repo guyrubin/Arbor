@@ -22,7 +22,7 @@ import { TrustSafetyBar, cardCls } from "../ui/kit";
 import { coachContractText } from "../../lib/i18nElevation/coachcontract";
 import { fmtDay } from "../../lib/formatDate";
 import { goToRoute } from "../../hooks/useHashQuery";
-import { buildVoiceContext, dismissWeeklyContextNotice, readWeeklyContextConsent, shouldShowWeeklyContextNotice } from "../../ai/chatContext";
+import { WEEKLY_CONTEXT_CONSENT_EVENT, buildVoiceContext, dismissWeeklyContextNotice, readWeeklyContextConsent, shouldShowWeeklyContextNotice } from "../../ai/chatContext";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
 import ToneSheet, { toneLabel } from "../coach/ToneSheet";
@@ -156,7 +156,6 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     conversations,
     activeConversationId,
     conversationRevision,
-
     openConversation,
     deleteConversation,
     apiError,
@@ -234,12 +233,33 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // the "What the coach sees" panel live on #/memory (CoachDataContract); here
   // the flag only decides whether the one-time notice shows.
   const [weeklyOn, setWeeklyOn] = useState(() => readWeeklyContextConsent(childProfile.id));
-  useEffect(() => { setWeeklyOn(readWeeklyContextConsent(childProfile.id)); }, [childProfile.id]);
   // B-ASKJB-07 (Guy G1 = ON): the weekly counts + last outcome are on by
   // default; a one-line notice under the composer says so ONCE per child,
   // with "Change" landing on the switch that holds the per-child off.
   const [weeklyNotice, setWeeklyNotice] = useState(() => shouldShowWeeklyContextNotice(childProfile.id));
-  useEffect(() => { setWeeklyNotice(shouldShowWeeklyContextNotice(childProfile.id)); }, [childProfile.id]);
+  // F-TALK-1 (review r1): the switch now lives on #/memory while this panel
+  // stays mounted, so both flags are re-read whenever the panel shows again,
+  // when the switch writes (WEEKLY_CONTEXT_CONSENT_EVENT, same tab) and when
+  // another tab writes (storage). Keyed on the child, so a switch flipped for
+  // one child never moves another child's notice.
+  useEffect(() => {
+    const reread = () => {
+      setWeeklyOn(readWeeklyContextConsent(childProfile.id));
+      setWeeklyNotice(shouldShowWeeklyContextNotice(childProfile.id));
+    };
+    reread();
+    if (typeof window === "undefined") return;
+    const onConsent = (e: Event) => {
+      const id = (e as CustomEvent<{ childId?: string }>).detail?.childId;
+      if (!id || id === childProfile.id) reread();
+    };
+    window.addEventListener(WEEKLY_CONTEXT_CONSENT_EVENT, onConsent);
+    window.addEventListener("storage", reread);
+    return () => {
+      window.removeEventListener(WEEKLY_CONTEXT_CONSENT_EVENT, onConsent);
+      window.removeEventListener("storage", reread);
+    };
+  }, [childProfile.id, visible]);
   const closeWeeklyNotice = () => { dismissWeeklyContextNotice(childProfile.id); setWeeklyNotice(false); };
   // B-ASKJB-31: the pilot guides this child can open right now (the door's
   // gate) and the reference card the sheet handed to Ask, if still available.
@@ -989,9 +1009,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // passed only while a pilot guide is available for this child
   // (availableHardMomentCards: age, expiry); otherwise the tray has no door.
   const composerHardMoment = hardMomentGuides.length > 0 ? () => openHardMomentNow() : undefined;
-  // F-TALK-1 (reverses B-ASKJB-12's strip placement; Guy's call): the tone
-  // control is one quiet chip in the composer foot, labelled with the current
-  // tone, opening the ONE ToneSheet.
+  // F-TALK-1: the tone control is one quiet chip in the composer foot,
+  // labelled with the current tone, opening the ONE ToneSheet. This reverses
+  // B-ASKJB-12's placement (a "Tone: <choice>" button in the identity strip,
+  // which is gone). Basis: the build brief's ORCHESTRATOR DECISION, "the mock
+  // wins over table A and over older v3 briefs", and the v3 mock's composer
+  // foot ends with this chip (Now mock L433). B-ASKJB-12's one sheet, its
+  // store and its menu entry are unchanged; Guy can still send it back.
   const composerFoot = (
     <button
       type="button"

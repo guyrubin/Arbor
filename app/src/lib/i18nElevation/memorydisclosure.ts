@@ -44,6 +44,10 @@ export const en: Record<string, string> = {
   "elev.memdisc.field.gender": "gender",
   "elev.memdisc.field.focusAreas": "what you want to work on now",
   "elev.memdisc.field.parentPreferences": "how you asked Arbor to help",
+
+  // F-TALK-1: "What the coach sees" stays reachable on #/memory while the
+  // approved list cannot be read. It never says "none" then (OWN-1).
+  "elev.memdisc.facts.unreadable": "Memory you approved: the list can’t be read right now, so it isn’t named here. Facts you approved may still go with a question.",
 };
 
 export const he: Record<string, string> = {
@@ -70,4 +74,7 @@ export const he: Record<string, string> = {
   "elev.memdisc.field.gender": "מגדר",
   "elev.memdisc.field.focusAreas": "על מה תרצו לעבוד עכשיו",
   "elev.memdisc.field.parentPreferences": "איך ביקשתם שארבור יעזור",
+
+  // F-TALK-1: the approved list is unreadable (see the English block).
+  "elev.memdisc.facts.unreadable": "הזיכרון שאישרתם: כרגע אי אפשר לקרוא את הרשימה, ולכן היא לא מוצגת כאן. ייתכן שעובדות שאישרתם עדיין יישלחו עם שאלה.",
 };

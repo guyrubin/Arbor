@@ -264,6 +264,16 @@ function useArborState() {
       try { track("kidlock_blocked_nav", { tab: t }); } catch { /* noop */ }
       return;
     }
+    // F-TALK-1 (review r1): Talk is a panel, never a page. A caller that still
+    // names the conversation as a tab (the Sidebar's Talk door, a search
+    // thread row) opens the panel over the current place through its one door
+    // (requestCompanionConversation), so no #/coach entry is pushed only to be
+    // replaced, and Back is never dead. A typed or linked #/coach address
+    // still arrives through the hash listener and CompanionWorkspace.
+    if (t === "coach" || t === "scholar") {
+      requestCompanionConversation({ source: "nav" });
+      return;
+    }
     setActiveTabState(t);
     try { if (window.location.hash.replace(/^#\/?/, "") !== t) window.location.hash = `/${t}`; } catch { /* noop */ }
     try { track("view_tab", { tab: t }); } catch { /* noop */ }

@@ -158,3 +158,24 @@ describe("GP-14 — the approved facts are actually named", () => {
     expect(joined).not.toContain("Gan, mornings");
   });
 });
+
+describe("F-TALK-1 / OWN-1 — an unreadable ledger is never shown as an empty one", () => {
+  it("says the list is out of reach, never 'none', and names no fact", () => {
+    const { uses, namedFactCount } = coachDisclosure(
+      { profile: { name: "Alex Example" }, approvedFacts: [], childFirstName: "Alex", factsUnreadable: true },
+      t,
+    );
+    const joined = uses.join("\n");
+    expect(joined).toContain("elev.memdisc.facts.unreadable");
+    expect(joined).not.toContain("elev.memdisc.facts.none");
+    expect(joined).not.toContain("elev.memdisc.facts.lead");
+    expect(namedFactCount).toBe(0);
+    // The profile line still leads: the allow-listed fields travel either way.
+    expect(uses[0]).toContain("elev.memdisc.profile.lead");
+  });
+
+  it("NEGATIVE CONTROL — without the flag, the same empty input reads 'none'", () => {
+    const { uses } = coachDisclosure({ profile: {}, approvedFacts: [], childFirstName: "Alex" }, t);
+    expect(uses.join("\n")).toContain("elev.memdisc.facts.none");
+  });
+});

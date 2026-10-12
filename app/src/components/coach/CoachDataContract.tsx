@@ -33,8 +33,13 @@ import { readWeeklyContextConsent, writeWeeklyContextConsent } from "../../ai/ch
  * processed). Counts and the parent's own words only (clinical firewall).
  * The switch is the per-child consent flag the send path reads fresh
  * (arbor.coach.weeklyContext.{childId}), so it is the single source of truth.
+ *
+ * The section never waits on the approved ledger: the switch is a consent
+ * control, so it stays reachable while the ledger read fails (a 429 included).
+ * Then `ledgerUnreadable` turns the facts line into "can't be read right now",
+ * never "none" (OWN-1).
  */
-export default function CoachDataContract() {
+export default function CoachDataContract({ ledgerUnreadable = false }: { ledgerUnreadable?: boolean }) {
   const { childProfile, approvedMemoryItems, chatMessages } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
@@ -109,6 +114,7 @@ export default function CoachDataContract() {
               approvedFacts: approved.map((m) => ({ memoryId: m.memoryId, fact: m.fact })),
               factsUsedInLastAnswer: lastFactsUsed,
               childFirstName: childFirst || childProfile.name,
+              factsUnreadable: ledgerUnreadable,
             },
             t,
           ).uses,

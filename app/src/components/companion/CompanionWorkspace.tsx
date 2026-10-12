@@ -18,6 +18,11 @@ import "./companionWorkspace.css";
 
 const CoachTab = lazy(() => import("../tabs/CoachTab"));
 
+/** The route segment of a place address: "#/language/said?x=1" -> "language".
+ *  A sub-route (lib/routes SUB_ROUTES) is that route's own address, so it is
+ *  kept and given back whole, not cut to the bare route. */
+const placeKey = (hash: string) => hash.replace(/^#\/?/, "").split("?")[0].split("/")[0];
+
 /** Mounted above routes: changing a view must not restart a draft, turn or microphone session. */
 export default function CompanionWorkspace({ children, kidLocked }: { children: React.ReactNode; kidLocked: boolean }) {
   const { activeTab, setActiveTab, childProfile, activeFamilyTopic, setChatInput, chatInput, openCaptureSheet, openHardMomentNow, newConversation } = useArbor();
@@ -32,8 +37,9 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   // #/scholar and their aliases) opens the panel over the last place and the
   // address goes back to that place; at >= 1280 px the panel docks beside it.
   const routeIsConversation = activeTab === "coach" || activeTab === "scholar";
-  const [open, setOpen] = useState(routeIsConversation);
-  const [mounted, setMounted] = useState(routeIsConversation);
+  // Under Kid Mode a conversation route is held, never opened (see below).
+  const [open, setOpen] = useState(routeIsConversation && !kidLocked);
+  const [mounted, setMounted] = useState(routeIsConversation && !kidLocked);
   const [expanded, setExpanded] = useState(false);
   const [wide, setWide] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches);
   const previousChild = useRef(childProfile.id);
@@ -44,6 +50,8 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   const placeChildren = useRef<React.ReactNode>(undefined);
   const placeHash = useRef<string | null>(null);
   const redirectTo = useRef<typeof activeTab | null>(null);
+  // A conversation route that arrived while Kid Mode froze navigation.
+  const heldByKid = useRef(false);
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
   if (!routeIsConversation) placeChildren.current = children;
@@ -67,14 +75,15 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     setOpen(false);
   };
   // Replaces the conversation address with the place's own (replaceState, so
-  // Back never lands on a conversation route again). A place address with a
-  // query (#/development?view=program) is re-read by the app's own hash
-  // listener; a plain one moves through setActiveTab.
+  // Back never lands on a conversation route again). A place address that is
+  // more than the bare route (a query, #/development?view=program, or a
+  // sub-route, #/language/said) is re-read by the app's own hash listener; a
+  // plain one moves through setActiveTab.
   const returnToPlace = () => {
     const place = returnTab.current;
     redirectTo.current = place;
     const hash = placeHash.current;
-    if (hash && hash.includes("?")) {
+    if (hash && hash !== `#/${place}`) {
       try {
         window.history.replaceState(window.history.state, "", hash);
         window.dispatchEvent(new HashChangeEvent("hashchange"));
@@ -147,14 +156,19 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   }, []);
   // Layout timing: the conversation route is replaced before paint, so the
   // address and the page underneath never show a conversation "page".
+  // F-TALK-1 (review r1): Kid Mode freezes parent navigation (setActiveTab and
+  // the hash listener are both gated), so a conversation route that arrives
+  // under it (a reload on #/coach with Kid Mode still open) is held, not half
+  // converted; the unlock effect below returns it to the place. The gate is
+  // read too, because it can lead the kidLocked prop by a commit.
   useLayoutEffect(() => {
     if (captureRef.current) captureRef.current.open = false;
-    if (routeIsConversation) { show("route"); setExpanded(false); returnToPlace(); }
+    if (routeIsConversation) { if (kidLocked || isKidModeActive()) heldByKid.current = true; else { show("route"); setExpanded(false); returnToPlace(); } }
     else {
       returnTab.current = activeTab; setExpanded(false);
       try {
         const hash = window.location.hash;
-        placeHash.current = hash.replace(/^#\/?/, "").split("?")[0] === activeTab ? hash : null;
+        placeHash.current = placeKey(hash) === activeTab ? hash : null;
       } catch { placeHash.current = null; }
       // Arriving back at the place from a conversation route keeps the panel open.
       const arrived = redirectTo.current === activeTab;
@@ -173,7 +187,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     const remember = () => {
       try {
         const hash = window.location.hash;
-        if (hash.replace(/^#\/?/, "").split("?")[0] === activeTabRef.current) placeHash.current = hash;
+        if (placeKey(hash) === activeTabRef.current) placeHash.current = hash;
       } catch { /* no location */ }
     };
     window.addEventListener("hashchange", remember);
@@ -196,6 +210,13 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     setOpen(false); setMounted(false); setExpanded(false);
   }, [childProfile.id]);
   useEffect(() => { if (kidLocked) setOpen(false); }, [kidLocked]);
+  // The parent is back: a held conversation route goes quietly to the place
+  // (the launcher is there; nothing opens on the child's last screen).
+  useLayoutEffect(() => {
+    if (kidLocked || !heldByKid.current) return;
+    heldByKid.current = false;
+    if (activeTabRef.current === "coach" || activeTabRef.current === "scholar") returnToPlace();
+  }, [kidLocked]);
 
   // The launcher owns an intrinsic-height row outside the main scrollport.
   // Measure translated/wrapped chrome for keyboard clearance and the actual
