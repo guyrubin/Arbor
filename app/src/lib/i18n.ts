@@ -2636,6 +2636,12 @@ export const en: Dict = {
   "nav.pill.sharing": "Trusted sharing",
   // v3 IA-06 — the open L2 sheet's breadcrumb (layout/Breadcrumb): the landmark's name.
   "nav.crumb.aria": "Location",
+  // v3 IA-06r — a deep leaf's crumb (layout/Breadcrumb DEEP_LEAF_NAME_KEY): the v3
+  // name of an L2 page with no short pill name of its own.
+  "nav.crumb.leaf.memory": "What Arbor remembers",
+  "nav.crumb.leaf.screening": "Development check",
+  "nav.crumb.leaf.journal": "Your journal",
+  "nav.crumb.leaf.family": "Family formation",
 };
 
 export const he: Dict = {
@@ -5110,6 +5116,11 @@ export const he: Dict = {
   "nav.pill.sharing": "שיתוף מהימן",
   // v3 IA-06 — פירורי הלחם של גיליון פתוח (layout/Breadcrumb): שם אזור הניווט.
   "nav.crumb.aria": "נתיב ניווט",
+  // v3 IA-06r — שם הדף בפירורי הלחם של דף עומק (layout/Breadcrumb).
+  "nav.crumb.leaf.memory": "מה ארבור זוכר",
+  "nav.crumb.leaf.screening": "בדיקת התפתחות",
+  "nav.crumb.leaf.journal": "היומן שלכם",
+  "nav.crumb.leaf.family": "בניית משפחה",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and

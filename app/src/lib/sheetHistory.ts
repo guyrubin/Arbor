@@ -26,6 +26,17 @@
  * asks for a Back only when its own entry is on top, so there is always an
  * entry under it to land on; when the Back cannot even be asked, it lands at
  * once.
+ *
+ * The first `popstate` after our Back is taken as its land. Measured in
+ * Chromium (12 Oct 2026, 30 Backs over a same-url entry): the land arrives
+ * 1.9 to 21.4 ms after `history.back()` (median 3.4 ms, p90 8.7 ms), so not
+ * reliably inside one 16.7 ms frame. A fragment navigation in that window
+ * fires `popstate` at once (read as the land) and the Back then pops the new
+ * entry: the route bounces back. So no route change may start while a Back is
+ * in flight: ArborContext's setActiveTab and useHashQuery's goToRoute wait
+ * through afterSheetBack while sheetBackInFlight(). What is left is a raw
+ * `<a href="#/…">` clicked inside those few milliseconds; the app's route
+ * changes go through those two seams.
  */
 
 const KEY = "arborSheet";
@@ -55,6 +66,11 @@ function tokenOnTop(): string | null {
 export function newSheetToken(): string {
   seq += 1;
   return `${Date.now().toString(36)}-${seq}`;
+}
+
+/** True while one of our Backs is in flight (asked for, not yet landed). */
+export function sheetBackInFlight(): boolean {
+  return landing !== null;
 }
 
 /** Run the callback once no sheet's Back is in flight: now, or right after that Back lands. */

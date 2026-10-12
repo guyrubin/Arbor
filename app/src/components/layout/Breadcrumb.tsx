@@ -3,30 +3,38 @@ import { Icon } from "../ui/Icon";
 import { useCompactSurface } from "../ui/Sheet";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { homeForTab } from "../../lib/companionPlaces";
+import { backTargetFor, chromeLitHome, homeForTab } from "../../lib/companionPlaces";
 import { pillRowFor, sectionForTab } from "../../lib/navigation";
 import type { ActiveTab } from "../../lib/routes";
 import type { SheetClose } from "../../hooks/useSheetHistory";
-import { announceSheetCrumb } from "../../hooks/useSheetCrumbShown";
+import { announceSheetCrumb, useSheetCrumbShown } from "../../hooks/useSheetCrumbShown";
 
 /**
- * v3 IA-06r — where an open L2 sheet sits: home › route › sheet.
+ * v3 IA-06r — where the parent is, below a home: home › route › sheet.
  *
- * While the sheet is open the crumb IS the chrome's answer to "where am I":
- * at lg and up it is drawn over the top bar's title zone (the title becomes
- * the crumb), below lg it is a strip right under the phone header. It renders
- * as the sheet's dialog companion (ui/DialogCompanion), inside the dialog
- * layer: so it sits ABOVE the backdrop (Modal's 60 % black and blur would
- * bury anything in the app root), the inert shield over the app root never
- * reaches it, and its ancestors are real buttons. A crumb in the top bar
- * itself could be neither read, reached nor clicked (IA-06 rounds 1 and 2).
+ * Two things carry a crumb, and while one is on screen it IS the chrome's
+ * answer to "where am I": at lg and up the top bar's title becomes the crumb,
+ * below lg it is a strip right under the phone header.
  *
- * At most three levels. The ancestors close the sheet through its one close
- * path (retiring its history entry) and then go to their route. The sheet
- * itself is the current page. The first level and the last stay whole: the
- * middle gives up its width first (its label ellipsizes, down to a floor that
- * keeps its chevron and a 44 px target), and a long sheet label wraps onto a
- * second line rather than losing its end.
+ * - An open L2 sheet (SheetBreadcrumb): home › route › the sheet. It renders
+ *   as the sheet's dialog companion (ui/DialogCompanion), inside the dialog
+ *   layer: so it sits ABOVE the backdrop (Modal's 60 % black and blur would
+ *   bury anything in the app root), the inert shield over the app root never
+ *   reaches it, and its ancestors are real buttons. A crumb in the top bar
+ *   itself could be neither read, reached nor clicked (IA-06 rounds 1 and 2).
+ *   It is drawn over the title zone (lg+) or under the phone header.
+ * - A deep leaf (an L2 route of the v3 route map, DEEP_LEAF_NAME_KEY): home ›
+ *   the page. Nothing covers the chrome then, so it is drawn IN the top bar's
+ *   title zone (Topbar) and in the phone header's strip (LeafCrumbStrip). When
+ *   a sheet opens over a leaf, the sheet's crumb carries all three levels and
+ *   the leaf's crumb steps aside, keeping its box.
+ *
+ * At most three levels. An ancestor goes to its route (a sheet's ancestors
+ * first close the sheet through its one close path, retiring its history
+ * entry). The last level is the current page. The first level and the last
+ * stay whole: the middle gives up its width first (its label ellipsizes, down
+ * to a floor that keeps its chevron and a 44 px target), and a long last
+ * label wraps onto a second line rather than losing its end.
  */
 export interface CrumbLevel { label: string; tab?: ActiveTab }
 
@@ -35,25 +43,91 @@ export const CRUMB_MAX_LEVELS = 3;
 type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
 /**
- * Level 1 is the route's home (its place or door, IA-04). Level 2 is the
- * route's own name as its pill row prints it (IA-02), dropped when it is the
- * home again (Now's first pill IS Now). Level 3 is the sheet.
+ * The deep leaves: the v3 route map's L2 pages, each a page under its home
+ * with no pill of its own (F-SHELL-1 takes the last pills off them), and the
+ * v3 name its crumb gives it. A short pill name where the page has one, else
+ * a crumb name of its own (nav.crumb.leaf.*): never the long nav.tab.* names
+ * the old hubs printed ("Child Memory", "Safety & Escalation"). Left out on
+ * purpose: #/attribution (admin only, no parent name) and the Learn reader
+ * (#/learn with a card, its own history entry in LearnLibrary).
  */
-export function crumbLevelsFor(tab: ActiveTab, sheetLabel: string, lang: string, t: Translate): CrumbLevel[] {
-  const home = homeForTab(tab);
-  const named = home.kind === "place" ? home.place : home.door;
-  const homeLabel = lang === "he" ? named.he : named.en;
-  const levels: CrumbLevel[] = [{ label: homeLabel, tab: named.tab }];
+export const DEEP_LEAF_NAME_KEY: Readonly<Partial<Record<ActiveTab, string>>> = {
+  "day-windows": "nav.pill.day-windows",
+  "smart-reminders": "nav.pill.reminders",
+  memory: "nav.crumb.leaf.memory",
+  screening: "nav.crumb.leaf.screening",
+  journal: "nav.crumb.leaf.journal",
+  science: "nav.tab.science",
+  safety: "nav.pill.safety",
+  handoff: "nav.tab.handoff",
+  "school-brief": "nav.pill.school-brief",
+  sharing: "nav.pill.sharing",
+  "care-team": "nav.pill.sharing",
+  appointments: "nav.tab.appointments",
+  reports: "nav.tab.reports",
+  family: "nav.crumb.leaf.family",
+};
+
+/** A translation, or null when the key has none (translate falls back to the key). */
+function named(key: string, t: Translate): string | null {
+  const label = t(key);
+  return label && label !== key ? label : null;
+}
+
+/**
+ * The route's own name under its home: its leaf name, or the name its pill
+ * row prints (IA-02). None for the home's own pill unless that pill carries a
+ * name of its own (My child's "Development map"; Now's first pill IS Now), and
+ * none for a route with neither: an old nav.tab.* name is never a level.
+ */
+function routeNameFor(tab: ActiveTab, t: Translate): string | null {
+  const leafKey = DEEP_LEAF_NAME_KEY[tab];
+  if (leafKey) return named(leafKey, t);
   const pill = pillRowFor(sectionForTab(tab), tab).find(item => item.tab === tab);
-  const key = pill?.labelKey ?? "nav.tab." + tab;
-  const routeLabel = pill?.labelKey || tab !== named.tab ? t(key) : homeLabel;
-  if (routeLabel && routeLabel !== key && routeLabel !== homeLabel) levels.push({ label: routeLabel, tab });
-  levels.push({ label: sheetLabel });
+  if (!pill) return null;
+  const home = homeForTab(tab);
+  if (!pill.labelKey && tab === (home.kind === "place" ? home.place : home.door).tab) return null;
+  return named(pill.labelKey ?? "nav.tab." + tab, t);
+}
+
+/**
+ * Level 1 is the home the chrome lights and names (chromeLitHome, as the top
+ * bar and the Sidebar do): Talk is a panel over Now, so #/coach reads Now and
+ * the panel is no level of its own. Level 2 is the route's own name, when it
+ * is a page under that home (routeNameFor).
+ */
+function routeLevelsFor(tab: ActiveTab, lang: string, t: Translate): CrumbLevel[] {
+  const home = homeForTab(tab);
+  const lit = chromeLitHome(home);
+  const place = lit.kind === "place" ? lit.place : lit.door;
+  const homeLabel = lang === "he" ? place.he : place.en;
+  const levels: CrumbLevel[] = [{ label: homeLabel, tab: place.tab }];
+  const name = lit === home ? routeNameFor(tab, t) : null;
+  if (name && name !== homeLabel) levels.push({ label: name, tab });
   return levels;
+}
+
+/** An open sheet's levels: the route's (routeLevelsFor), then the sheet. */
+export function crumbLevelsFor(tab: ActiveTab, sheetLabel: string, lang: string, t: Translate): CrumbLevel[] {
+  return [...routeLevelsFor(tab, lang, t), { label: sheetLabel }];
+}
+
+/**
+ * A deep leaf's levels: its home, then the page itself (the current level, no
+ * route to go to). null for every other route, which the plain home title
+ * names (Topbar).
+ */
+export function leafCrumbLevelsFor(tab: ActiveTab, lang: string, t: Translate): CrumbLevel[] | null {
+  if (!DEEP_LEAF_NAME_KEY[tab] || !backTargetFor(tab)) return null;
+  const levels = routeLevelsFor(tab, lang, t);
+  if (levels.length < 2) return null;
+  return [...levels.slice(0, -1), { label: levels[levels.length - 1].label }];
 }
 
 /** Where the crumb is drawn: over the top bar title (lg+) or under the phone header. */
 export type CrumbPlace = "bar" | "strip";
+/** What carries it: an open sheet (drawn over the chrome) or a deep leaf (drawn in it). */
+export type CrumbKind = "sheet" | "route";
 
 /** The custom property a crumb sets on its dialog layer: how far down the dialog box must start. */
 export const CRUMB_INSET_VAR = "--arbor-crumb-inset";
@@ -74,13 +148,33 @@ function levelClass(index: number, last: number): string {
   return "flex min-w-16 shrink-[999] items-center gap-1";
 }
 
-export function Breadcrumb({ levels, place, onSelect, navRef, style }: {
+/**
+ * A sheet's crumb is a chip that floats over the dimmed chrome (absolute, on
+ * opaque paper, placed by placeCrumb); a leaf's crumb sits in the chrome's
+ * own flow, as the title it replaces does (its first label lines up with
+ * where that title starts).
+ */
+const NAV_CLASS: Record<CrumbKind, string> = {
+  sheet: "pointer-events-auto absolute flex min-h-11 min-w-0 items-center rounded-xl px-1.5",
+  route: "flex min-h-11 min-w-0 items-center -ms-1",
+};
+const SHEET_CHIP: React.CSSProperties = {
+  background: "var(--arbor-paper-elevated)",
+  border: "1px solid var(--arbor-rule)",
+  // A token, not a color-mix: no percentage ever reaches the markup
+  // (the clinical firewall's render checks read every "%" as a score).
+  boxShadow: "var(--shadow-md)",
+};
+
+export function Breadcrumb({ levels, place, kind = "sheet", onSelect, navRef, style, className }: {
   levels: CrumbLevel[];
   place: CrumbPlace;
-  /** Where an ancestor goes: it closes the sheet, then goes there. */
+  kind?: CrumbKind;
+  /** Where an ancestor goes (a sheet's ancestor closes the sheet, then goes there). */
   onSelect: (tab: ActiveTab) => void;
   navRef?: React.Ref<HTMLElement>;
   style?: React.CSSProperties;
+  className?: string;
 }) {
   const { t } = useLanguage();
   const shown = levels.slice(-CRUMB_MAX_LEVELS);
@@ -93,16 +187,9 @@ export function Breadcrumb({ levels, place, onSelect, navRef, style }: {
       aria-label={t("nav.crumb.aria")}
       data-testid={place === "bar" ? "topbar-crumb" : "mobile-crumb"}
       data-crumb-place={place}
-      className="pointer-events-auto absolute flex min-h-11 min-w-0 items-center rounded-xl px-1.5"
-      style={{
-        background: "var(--arbor-paper-elevated)",
-        border: "1px solid var(--arbor-rule)",
-        // A token, not a color-mix: no percentage ever reaches the markup
-        // (the clinical firewall's render checks read every "%" as a score).
-        boxShadow: "var(--shadow-md)",
-        color: "var(--arbor-ink)",
-        ...style,
-      }}
+      data-crumb-kind={kind}
+      className={className ? `${NAV_CLASS[kind]} ${className}` : NAV_CLASS[kind]}
+      style={{ ...(kind === "sheet" ? SHEET_CHIP : {}), color: "var(--arbor-ink)", ...style }}
     >
       <ol className="flex min-w-0 items-center gap-1">
         {shown.map((level, index) => (
@@ -218,4 +305,39 @@ export function SheetBreadcrumb({ label, close }: { label: string; close: SheetC
         : { top: "var(--crumb-top, calc(env(safe-area-inset-top) + 4rem))", insetInline: "16px" }}
     />
   );
+}
+
+/**
+ * A deep leaf's crumb for one place, or null: the route is no deep leaf, or
+ * this is not the place's width (the bar is lg+, the strip below lg, so the
+ * page holds one leaf crumb at a time). `held`: an open sheet's crumb stands
+ * in for it (it carries the leaf's two levels and the sheet), so the leaf's
+ * crumb steps aside and keeps its box.
+ */
+export function useLeafCrumb(place: CrumbPlace): { levels: CrumbLevel[]; held: boolean } | null {
+  const { activeTab } = useArbor();
+  const { t, uiLang } = useLanguage();
+  const compact = useCompactSurface();
+  const held = useSheetCrumbShown();
+  const levels = leafCrumbLevelsFor(activeTab, uiLang, t);
+  if (!levels || compact !== (place === "strip")) return null;
+  return { levels, held };
+}
+
+/** The strip sits 8 px under the phone header's row (its mb-4, less 8 px), as a sheet's strip does. */
+const STRIP_CLASS = "lg:hidden -mt-2 mb-2";
+
+/**
+ * Below lg, a deep leaf's crumb: the strip right under the phone header
+ * (ChildContextHeader renders it after its row). Its first level goes to the
+ * home; the page itself is the current level. While a sheet's crumb stands in
+ * for it, its one-row box stays, empty, so the page under the sheet does not
+ * move.
+ */
+export function LeafCrumbStrip() {
+  const { setActiveTab } = useArbor();
+  const leaf = useLeafCrumb("strip");
+  if (!leaf) return null;
+  if (leaf.held) return <div aria-hidden="true" data-crumb-held="strip" className={`${STRIP_CLASS} min-h-11`} />;
+  return <Breadcrumb kind="route" place="strip" levels={leaf.levels} onSelect={setActiveTab} className={STRIP_CLASS} />;
 }
