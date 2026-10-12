@@ -137,7 +137,11 @@ describe("ASK-9 -> B-ASKJB-12: the lens is chosen in ONE sheet, from the compose
     expect(coach).toContain('data-testid="coach-tone"');
     expect(coach).toContain("onClick={() => setToneOpen(true)}");
     expect(coach).toContain("footAction={composerFoot}");
-    expect(coach).toMatch(/const composerFoot = \(\s*<button\s+type="button"\s+data-testid="coach-tone"/);
+    // F-TALK-2 re-pin: the foot also carries the data-use clause (one foot
+    // line), so composerFoot is a fragment whose LAST control is the tone chip.
+    const foot = coach.slice(coach.indexOf("const composerFoot = ("), coach.indexOf("const composerSection"));
+    expect(foot).toMatch(/<button\s+type="button"\s+data-testid="coach-tone"[\s\S]*<\/button>\s*<\/>\s*\);\s*$/);
+    expect((foot.match(/data-testid="coach-tone"/g) || []).length).toBe(1);
     expect(composer).toContain("{footAction}");
     expect((coach.match(/<ToneSheet\b/g) || []).length).toBe(1);
     expect(coach).toContain("<ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />");

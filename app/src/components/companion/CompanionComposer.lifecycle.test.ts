@@ -406,10 +406,16 @@ describe("Companion secondary tools disclosure", () => {
     view.click(translate(language, "companion.input.add-or-save"));
     expect(shownNodes(view.render()).some(node => node.props["data-testid"] === "coach-hard-moment-now")).toBe(false);
     const openHard = vi.fn(); view.state.composerHardMoment = openHard;
-    const hard = button(view.render(), translate(language, "companion.input.hard-moment-aria"));
+    // F-TALK-2 re-pin: the tile reads "Hard moment" / "קשה עכשיו?" (mock L1044)
+    // and that text is its whole name (label-in-name, WCAG 2.5.3): no aria-label.
+    // The longer aria line moved to a description the tile points at.
+    const hard = button(view.render(), translate(language, "companion.tray.hard"));
     expect(hard.props["data-testid"]).toBe("coach-hard-moment-now");
-    // F-TALK-2 re-pin: the tile reads "Hard moment" / "קשה עכשיו?" (mock L1044); its name stays the aria line.
     expect(text(hard)).toBe(translate(language, "companion.tray.hard"));
+    expect(hard.props["aria-label"]).toBeUndefined();
+    const hint = one(view.render(), node => node.props.id === hard.props["aria-describedby"]);
+    expect(hint.props.hidden).toBe(true);
+    expect(text(hint)).toBe(translate(language, "companion.tray.hard-hint"));
     hard.props.onClick(); view.render();
     expect(openHard).toHaveBeenCalledOnce();
     expect(button(view.render(), translate(language, "companion.input.add-or-save")).props["aria-expanded"]).toBe(false);

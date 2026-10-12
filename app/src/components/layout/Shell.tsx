@@ -42,6 +42,10 @@ import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 // completes (journey.wow === "pending" in lib/onboardingJourney); self-gating,
 // legacy devices migrate to done and never see it.
 import WowOnboarding from "../onboarding/WowOnboarding";
+// AI-CAP-7: post-confirm coach handoff — ONE global dismissible strip shared by
+// every gated capture confirm (BehaviorsTab review + QuickLogModal); prefills
+// Ask Arbor via seedCoach(source 'post-capture'), never auto-sends.
+import PostCaptureCoachStrip from "../overview/PostCaptureCoachStrip";
 // W0.5+W0.6: ONE global data-freshness banner (offline / couldn't-refresh).
 import SyncStatusBanner from "../ui/SyncStatusBanner";
 // IA-04 / IA-17 / B-SHELL-38: ONE child switcher per viewport — the sidebar
@@ -626,6 +630,9 @@ export default function Shell() {
 
       <MobileNav />
       {!kidLocked && topicSheet?.childId === childProfile.id && <Suspense fallback={null}><FamilyTopicSheet key={childProfile.id} {...topicSheet} onClose={() => setTopicSheet(null)}/></Suspense>}
+      {/* AI-CAP-7: fixed above MobileNav (z-30 < nav z-40) — non-blocking,
+          dismissible, appears only right after a confirmed capture. */}
+      <PostCaptureCoachStrip />
       {/* KID-LOCK (W0.9, LEAK 5): these three portal to document.body — outside
           the inert shield — so they are not MOUNTED while Kid Mode is open.
           PaywallModal's open state lives in ArborContext (openPaywall on 402s

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { en, he } from "../../lib/i18n";
+import { elevationEn, elevationHe } from "../../lib/i18nElevation";
 
 /**
  * AI-CAP-6 + AI-CAP-7 — capture feel (2026-07-25 AI-excellence Wave 2).
@@ -18,10 +19,12 @@ import { en, he } from "../../lib/i18n";
  * only PREFILLS the composer), once per confirm, dismiss leaves no residue,
  * zero change to the behavior-log write path.
  *
- * F-TALK-2 (v3 mock L570-578: no floating card): the strip is DELETED. The
- * offer's only home is the capture sheet's saved state, whose next move reads
- * "Talk it through" and still prefills through the seedCoach seam. The
- * ArborContext seam pins below are kept unchanged (never auto-send).
+ * F-TALK-2 (v3 mock L570-578: no floating card): the strip renders nothing
+ * (a null stub, because Shell belongs to the shell lane and still mounts it).
+ * The offer's only home is the capture sheet's saved state, whose next move
+ * reads "Talk it through" and prefills through the seedCoach seam. The
+ * ArborContext offer/accept/dismiss seam had no caller left, so it is removed;
+ * its never-auto-send pins now bind seedCoach and the saved-state Talk.
  *
  * Node-only vitest env → source-based structural guards in the house pattern
  * (confirmCaptureReview.test.ts beside this file).
@@ -41,9 +44,8 @@ const behaviors = stripComments(read("components/tabs/BehaviorsTab.tsx"));
 const modal = stripComments(read("components/overview/QuickLogModal.tsx"));
 const coach = stripComments(read("components/tabs/CoachTab.tsx"));
 const context = stripComments(read("context/ArborContext.tsx"));
-// F-TALK-2: the strip file is deleted; the path is kept to prove it stays gone.
+// F-TALK-2: the strip file is a null stub until the shell lane drops its mount.
 const STRIP_FILE = path.join(SRC_ROOT, "components/overview/PostCaptureCoachStrip.tsx");
-const shell = stripComments(read("components/layout/Shell.tsx"));
 
 describe("AI-CAP-6 — live interim transcript in the capture area", () => {
   it("QuickLogModal wires live dictation into the same calm indicator", () => {
@@ -77,22 +79,22 @@ describe("AI-CAP-6 — live interim transcript in the capture area", () => {
   });
 });
 
-describe("AI-CAP-7 — the post-confirm coach handoff seam (ArborContext)", () => {
-  it("accept routes through the ONE seedCoach seam with source 'post-capture' and clears the offer", () => {
-    const accept = /const acceptPostCaptureCoach = [\s\S]*?\n  };/.exec(context)?.[0] ?? "";
-    expect(accept).toBeTruthy();
-    expect(accept).toMatch(/seedCoach\(\{ prompt: postCaptureCoachPrompt, source: "post-capture" \}\)/);
-    expect(accept).toMatch(/setPostCaptureCoachPrompt\(null\)/);
+/* F-TALK-2 re-pin of "AI-CAP-7 — the post-confirm coach handoff seam
+   (ArborContext)": the offer/accept/dismiss seam lost its last caller with the
+   strip, so it is removed. Its guarantees now bind the one remaining offer: it
+   routes through seedCoach with source 'post-capture', seedCoach prefills and
+   never sends, and no pending offer is left to linger as residue. */
+describe("AI-CAP-7 → F-TALK-2 — no global offer seam is left behind", () => {
+  it("ArborContext carries no post-capture offer state, so nothing can linger or fire later", () => {
+    expect(context).not.toMatch(/postCaptureCoachPrompt|offerPostCaptureCoach|acceptPostCaptureCoach|dismissPostCaptureCoach/);
   });
 
-  it("accept PREFILLS only — no send call anywhere near the seam (never auto-send)", () => {
-    const seam = /const \[postCaptureCoachPrompt[\s\S]*?const acceptPostCaptureCoach = [\s\S]*?\n  };/.exec(context)?.[0] ?? "";
-    expect(seam).toBeTruthy();
-    expect(seam).not.toMatch(/handleSend|sendMessage|handleChatSend|submit/i);
-  });
-
-  it("dismiss clears the offer and nothing else (no residue)", () => {
-    expect(context).toMatch(/const dismissPostCaptureCoach = \(\) => setPostCaptureCoachPrompt\(null\);/);
+  it("the post-capture source reaches the coach only through seedCoach, which PREFILLS and never sends", () => {
+    const seed = /const seedCoach = [\s\S]*?\n  };/.exec(context)?.[0] ?? "";
+    expect(seed).toBeTruthy();
+    expect(seed).toContain("setChatInput(");
+    expect(seed).not.toMatch(/handleSend|sendMessage|handleChatSend|submit/i);
+    expect(count(modal, /source: "post-capture"/g)).toBe(1);
   });
 });
 
@@ -156,10 +158,11 @@ describe("AI-CAP-7 — both gated confirms offer, once each, with the write path
    sheet's saved-state next move. Its calm-register pins carry over to that
    control: outline, never the primary gradient, tokens only, 44 px. */
 describe("F-TALK-2 — the floating strip is gone; the offer lives in the capture sheet", () => {
-  it("the strip component is deleted and Shell mounts nothing in its place", () => {
-    expect(fs.existsSync(STRIP_FILE)).toBe(false);
-    expect(shell).not.toMatch(/PostCaptureCoachStrip|post-capture-coach-strip|postCaptureCoachPrompt/);
-    expect(count(shell, /acceptPostCaptureCoach|dismissPostCaptureCoach/g)).toBe(0);
+  it("the strip component renders nothing, so Shell's mount shows no floating card", () => {
+    expect(fs.existsSync(STRIP_FILE)).toBe(true);
+    const stub = stripComments(fs.readFileSync(STRIP_FILE, "utf8"));
+    expect(stub).toMatch(/^\s*export default function PostCaptureCoachStrip\(\) \{\s*return null;\s*\}\s*$/);
+    expect(stub).not.toMatch(/post-capture-coach-strip|useArbor|seedCoach/);
   });
 
   it("the saved state's 'Talk it through' prefills via the seam, as a token outline, never the primary gradient", () => {
@@ -182,12 +185,19 @@ describe("F-TALK-2 — the floating strip is gone; the offer lives in the captur
   });
 
   it("copy: EN+HE parity, no pressure mechanics or confidence wording", () => {
-    // The strip's own words (body/cta/dismiss) stay in the shared dictionary
-    // as dead copy until the cleanup follow-up; nothing renders them.
-    for (const key of ["beh.postCapture.body", "beh.postCapture.cta", "beh.postCapture.dismiss", "beh.postCapture.prompt", "beh.capture.listening", "companion.capture.talk"]) {
+    // F-TALK-2: the strip's own words (body/cta/dismiss) are removed with it;
+    // the live keys are the seed prompt and the saved-state Talk.
+    for (const key of ["beh.postCapture.prompt", "beh.capture.listening", "companion.capture.talk"]) {
       expect(en[key], `en missing ${key}`).toBeTruthy();
       expect(he[key], `he missing ${key}`).toBeTruthy();
     }
+    for (const key of ["beh.postCapture.body", "beh.postCapture.cta", "beh.postCapture.dismiss"]) {
+      expect(en[key], `en still carries dead ${key}`).toBeUndefined();
+      expect(he[key], `he still carries dead ${key}`).toBeUndefined();
+    }
+    // The saved state's old "Ask Arbor" label went with the first build.
+    expect(elevationEn["elev.capture.reply.ask"]).toBeUndefined();
+    expect(elevationHe["elev.capture.reply.ask"]).toBeUndefined();
     expect(en["companion.capture.talk"]).toBe("Talk it through");
     expect(he["companion.capture.talk"]).not.toMatch(/[A-Za-z]/);
     for (const dict of [en, he]) {

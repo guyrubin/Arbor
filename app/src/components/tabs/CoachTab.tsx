@@ -1016,18 +1016,63 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // wins over table A and over older v3 briefs", and the v3 mock's composer
   // foot ends with this chip (Now mock L433). B-ASKJB-12's one sheet, its
   // store and its menu entry are unchanged; Guy can still send it back.
+  // F-TALK-2: the composer has ONE foot line. The data-use clause (what Arbor
+  // uses, and the one-time weekly notice) rides in it beside the honesty line,
+  // with its one Change, and the tone chip closes it (mock L433). Critic r2
+  // still holds: it reads AFTER the field, as a quiet --t-xs line with no fill.
+  // Fresh thread: the memory clause and Change; while the weekly notice is due,
+  // its sentence leads and Dismiss joins. Docked under a thread with no notice
+  // due, the honesty line and the chip remain.
   const composerFoot = (
-    <button
-      type="button"
-      data-testid="coach-tone"
-      onClick={() => setToneOpen(true)}
-      aria-haspopup="dialog"
-      aria-label={`${t("coach.tone.label")}: ${toneLabel(selectedLens, t)}`}
-      className="companion-tone-chip min-h-11 min-w-11 focus:outline-none focus-visible:ring-2"
-    >
-      <Icon name="record_voice_over" size={14} />
-      <span className="truncate max-w-[160px]">{toneLabel(selectedLens, t)}</span>
-    </button>
+    <>
+      {(!composerDocked || weeklyNoticeShown) && (
+        <div
+          data-testid="coach-weekly-notice"
+          role="note"
+          className="companion-foot-use"
+        >
+          <p data-testid="coach-data-use" className="min-w-0 t-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>
+            {weeklyNoticeShown ? <>{tcc("elev.coachcontract.notice.body")}{!composerDocked && <> {memoryLine}</>}</> : memoryLine}
+          </p>
+          <button
+            type="button"
+            data-testid="coach-weekly-notice-change"
+            onClick={() => {
+              if (weeklyNoticeShown) closeWeeklyNotice();
+              // F-TALK-1: the switch lives in "What Arbor remembers"; the
+              // section param brings it into view there.
+              goToRoute("memory", { section: "coach" });
+            }}
+            className="inline-flex min-h-11 items-center px-2 t-xs font-bold underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+            style={{ color: "var(--arbor-green-ink)" }}
+          >
+            {tcc("elev.coachcontract.notice.change")}
+          </button>
+          {weeklyNoticeShown && (
+            <button
+              type="button"
+              data-testid="coach-weekly-notice-dismiss"
+              onClick={closeWeeklyNotice}
+              className="inline-flex min-h-11 items-center px-2 t-xs font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+              style={{ color: "var(--arbor-muted)" }}
+            >
+              {tcc("elev.coachcontract.notice.dismiss")}
+            </button>
+          )}
+        </div>
+      )}
+      <button
+        type="button"
+        data-testid="coach-tone"
+        onClick={() => setToneOpen(true)}
+        aria-haspopup="dialog"
+        aria-label={`${t("coach.tone.label")}: ${toneLabel(selectedLens, t)}`}
+        className="companion-tone-chip min-h-11 min-w-11 focus:outline-none focus-visible:ring-2"
+      >
+        <Icon name="record_voice_over" size={14} />
+        <span className="truncate max-w-[160px]">{toneLabel(selectedLens, t)}</span>
+      </button>
+    </>
   );
   const composerSection = (
         <section
@@ -1083,51 +1128,6 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             />
           )}
           {!online && <p data-testid="coach-offline-note" role="status" className="text-xs py-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.aierrors.offline.composer")}</p>}
-          {/* Critic r2 (coach design P1): the data-use line reads AFTER the
-              field and the capture chips, as a quiet --t-xs line with no fill —
-              the composer is the only raised object here. F-TALK-2 (mock: only
-              the attachment strip and the recording line sit above the input):
-              the memory caption and the one-time weekly notice are ONE muted
-              foot line with one Change. Fresh thread: the memory clause (what
-              Arbor uses) and Change; while the weekly notice is due, its
-              sentence leads and Dismiss joins. Docked under a thread with no
-              notice due, the composer foot alone remains. */}
-          {(!composerDocked || weeklyNoticeShown) && (
-            <div
-              data-testid="coach-weekly-notice"
-              role="note"
-              className="mt-1 flex flex-wrap items-center gap-x-1"
-            >
-              <p data-testid="coach-data-use" className="flex-1 min-w-0 py-2 t-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>
-                {weeklyNoticeShown ? <>{tcc("elev.coachcontract.notice.body")}{!composerDocked && <> {memoryLine}</>}</> : memoryLine}
-              </p>
-              <button
-                type="button"
-                data-testid="coach-weekly-notice-change"
-                onClick={() => {
-                  if (weeklyNoticeShown) closeWeeklyNotice();
-                  // F-TALK-1: the switch lives in "What Arbor remembers"; the
-                  // section param brings it into view there.
-                  goToRoute("memory", { section: "coach" });
-                }}
-                className="inline-flex min-h-11 items-center px-2 t-xs font-bold underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
-                style={{ color: "var(--arbor-green-ink)" }}
-              >
-                {tcc("elev.coachcontract.notice.change")}
-              </button>
-              {weeklyNoticeShown && (
-                <button
-                  type="button"
-                  data-testid="coach-weekly-notice-dismiss"
-                  onClick={closeWeeklyNotice}
-                  className="inline-flex min-h-11 items-center px-2 t-xs font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
-                  style={{ color: "var(--arbor-muted)" }}
-                >
-                  {tcc("elev.coachcontract.notice.dismiss")}
-                </button>
-              )}
-            </div>
-          )}
           {voiceInvite && voicePhase === "off" && !voiceNotice && <p role="status" data-testid="voice-door-invite" className="companion-voice-invite" dir="auto">{inputText(uiLang, "companion.input.tap-talk-to-start")}</p>}
           {voiceNotice && voicePhase === "off" && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={() => void toggleVoice()} onDismiss={() => setVoiceNotice(null)} />}
         </section>

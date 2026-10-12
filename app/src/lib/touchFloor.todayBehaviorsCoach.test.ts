@@ -37,7 +37,7 @@ const FILES = {
   contract: "components/coach/CoachDataContract.tsx",
   language: "components/tabs/LanguageLabVocabView.tsx",
   // B-SHELL-21 → F-TALK-2: the shell-mounted post-capture strip (CTA was 36 px,
-  // dismiss 32) is deleted; its offer is the capture sheet's saved-state Talk.
+  // dismiss 32) renders nothing now; its offer is the capture sheet's saved-state Talk.
   capture: "components/overview/QuickLogModal.tsx",
 } as const;
 const STRIP_FILE = "components/overview/PostCaptureCoachStrip.tsx";
@@ -94,9 +94,13 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     ["language", 'className="inline-flex items-center gap-1 text-xs min-h-[44px]"'],
   ];
 
-  // F-TALK-2 re-pin: the strip's two sub-44 shapes are gone with its file.
-  it(`${STRIP_FILE} is deleted, so its sub-44 shapes cannot return`, () => {
-    expect(existsSync(path.join(SRC, STRIP_FILE))).toBe(false);
+  // F-TALK-2 re-pin: the strip is a null stub (Shell, owned by the shell
+  // lane, still mounts it), so its two sub-44 shapes cannot return.
+  it(`${STRIP_FILE} renders nothing, so its sub-44 shapes cannot return`, () => {
+    expect(existsSync(path.join(SRC, STRIP_FILE))).toBe(true);
+    const stub = read(STRIP_FILE);
+    expect(stub).toMatch(/export default function PostCaptureCoachStrip\(\) \{\s*return null;\s*\}/);
+    expect(stub).not.toMatch(/<[a-zA-Z]|min-h-|className|data-testid/);
   });
 
   for (const [file, shape] of RETIRED) {
@@ -228,8 +232,8 @@ describe("B-SHELL-25 · the min-width reset is layered, so min-w-* utilities win
    MobileNav"): nothing floats above the bar any more. The offer sits inside the
    capture sheet, so there is no fixed offset to keep clear of MobileNav. */
 describe("B-SHELL-21 → F-TALK-2 · no post-capture strip floats over MobileNav", () => {
-  it("Shell mounts no strip; the offer is inside the capture sheet", () => {
-    expect(read("components/layout/Shell.tsx")).not.toContain("PostCaptureCoachStrip");
+  it("Shell's strip mount renders nothing; the offer is inside the capture sheet", () => {
+    expect(read(STRIP_FILE)).not.toMatch(/fixed|bottom-20|useArbor/);
     expect(read(FILES.capture)).toContain('data-testid="quicklog-reply-ask"');
   });
 });

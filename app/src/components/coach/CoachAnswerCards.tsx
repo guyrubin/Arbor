@@ -521,6 +521,20 @@ export default function CoachAnswerCards({
       ))}
     </ul>, <Icon name="menu_book" size={17} />
   );
+  // F-TALK-2 (mock L411): what the answer was grounded in ("Grounded in N
+  // facts you approved · Manage") is detail, so it sits behind the actions
+  // door when the answer has one; it never creates a door by itself. The
+  // review link is a consent path, so it stays on the provenance band as text.
+  const memoryLabel = memoryFooterLabel(contract.approvedMemoryFactsUsed, lang);
+  const memoryRow = memoryLabel !== "" && (
+    <div className="coach-report__memory">
+      <div>
+        <Icon name="psychology" size={17} aria-hidden />
+        <span>{memoryLabel}</span>
+        {onManageMemory && <button type="button" onClick={onManageMemory}>{t("coach.memory.manage")}</button>}
+      </div>
+    </div>
+  );
   const feedback = (
     <AnswerFeedback
       key={answerSignature(contract)}
@@ -588,7 +602,10 @@ export default function CoachAnswerCards({
 
       {contract.parentScript && (
         <section className="coach-report__section coach-report__script" id={`${reportId}-script`}>
+          {/* F-TALK-2 (mock L405): the say-quote, display face behind a navy
+              inline-start rule, never the sans card. */}
           <SayThis
+            presentation="quote"
             text={contract.parentScript}
             title={t("coach.cards.sayThis")}
             lang={lang}
@@ -735,6 +752,7 @@ export default function CoachAnswerCards({
             ))}
           </div>
         )}
+        {memoryRow}
         {sourcesPanel}
         {chips.length > 0 && <div className="coach-report__chips">{chips}</div>}
         {feedback}
@@ -767,22 +785,10 @@ export default function CoachAnswerCards({
           <TrustLink surface="coach-answer" />
           {!door && chips}
         </div>
-        {(memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" || (!reviewUnavailable && (contract.memoryProposals?.length ?? 0) > 0)) && (
-          <div className="coach-report__memory">
-            {memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" && (
-              <div>
-                <Icon name="psychology" size={17} aria-hidden />
-                <span>{memoryFooterLabel(contract.approvedMemoryFactsUsed, lang)}</span>
-                {onManageMemory && <button type="button" onClick={onManageMemory}>{t("coach.memory.manage")}</button>}
-              </div>
-            )}
-            {!reviewUnavailable && onManageMemory && (contract.memoryProposals?.length ?? 0) > 0 && (
-              <button type="button" onClick={onManageMemory}>
-                <Icon name="lightbulb" size={17} aria-hidden />{t("coach.memory.reviewChip")}
-              </button>
-            )}
-          </div>
+        {!reviewUnavailable && onManageMemory && (contract.memoryProposals?.length ?? 0) > 0 && (
+          <button type="button" className="coach-report__review" onClick={onManageMemory}>{t("coach.memory.reviewChip")}</button>
         )}
+        {!door && memoryRow}
         {!door && feedback}
       </footer>
       {copyFallback !== null && (

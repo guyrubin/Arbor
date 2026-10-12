@@ -22,13 +22,27 @@ describe("words parents use are readable instructions, not decorative quotations
     });
   }
 
-  it("the report cannot override the shared script with a display face in either direction", () => {
+  // F-TALK-2 re-pin (mock L405): a Talk answer sets its parent script as the
+  // say-quote (SayThis presentation="quote": display face behind a 2 px navy
+  // inline-start rule), so the report no longer forces the card's sans face.
+  // The guard now runs the other way: the quote cannot fall back to sans, and
+  // the report's CSS only sizes it, in either direction.
+  it("the report sets its script as the say-quote, and its CSS cannot pull it back to sans", () => {
     const css = read("../coach/coachReport.css");
-    const rule = /\.coach-report \[data-testid="say-this"\] > p \{([^}]+)\}/.exec(css)?.[1] ?? "";
-    expect(rule).toMatch(/font-family: var\(--font-sans\)/);
-    expect(rule).toMatch(/font-size: var\(--t-base\)/);
-    expect(rule).not.toMatch(/font-editorial|font-display|t-say|italic/);
-    expect(css).not.toMatch(/\.coach-report\[dir="rtl"\] \[data-testid="say-this"\] > p/);
+    const cards = read("../coach/CoachAnswerCards.tsx").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+    const script = /<SayThis\b[^>]*?text=\{contract\.parentScript\}[\s\S]*?\/>/.exec(cards)?.[0] ?? "";
+    expect(script).toContain('presentation="quote"');
+    expect(script).not.toMatch(/font-sans/);
+    const rule = /\.coach-report \[data-testid="say-this"\]\[data-presentation="quote"\] > blockquote \{([^}]+)\}/.exec(css)?.[1] ?? "";
+    expect(rule).toMatch(/font-size: var\(--t-lg\)/);
+    expect(rule).not.toMatch(/font-family|font-sans|italic/);
+    expect(css).not.toMatch(/\[data-testid="say-this"\] > p/);
+    expect(css).not.toMatch(/\[data-testid="say-this"\][^{]*\{[^}]*font-family: var\(--font-sans\)/);
+    const html = renderToStaticMarkup(React.createElement(SayThis, { text: "איזה ספר נקרא יחד?", lang: "he", title: "אפשר להגיד", copyLabel: "העתקה", copiedLabel: "הועתק", presentation: "quote" }));
+    const quote = /<blockquote[^>]*>/.exec(html)?.[0] ?? "";
+    expect(quote).toContain("font-family:var(--font-display)");
+    expect(quote).toContain("border-inline-start:2px solid var(--arbor-ink)");
+    expect(quote.replace("var(--font-display)", "var(--font-sans)")).not.toContain("font-family:var(--font-display)");
   });
 
   it("Together's portaled preview gets the same instructional treatment", () => {

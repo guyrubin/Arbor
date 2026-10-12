@@ -515,9 +515,6 @@ export const en: Dict = {
   "coach.scenario.sibling": "Sibling clash",
   "coach.scenario.bedtime": "Bedtime battle",
   "coach.scenario.dropoff": "School dropoff",
-  "coach.followup.avoid": "What should I avoid saying in that moment?",
-  "coach.followup.repair": "How do I repair the connection afterwards?",
-  "coach.followup.calm": "Give me a 1-minute calming routine to try.",
   // COACH-1 — CoachAnswerCards panel chrome (the flagship structured answer).
   "coach.cards.council": "The council weighed in · {n} voices",
   // ASK-3 — hypotheses collapse into a calm disclosure below the script + plan.
@@ -634,10 +631,7 @@ export const en: Dict = {
   "beh.capture.optional": "Optional — helps Arbor notice context over time",
   // AI-CAP-6 — live dictation caption (shown until the first words arrive).
   "beh.capture.listening": "Listening — take your time, pauses are okay.",
-  // AI-CAP-7 — post-confirm coach handoff strip (one optional CTA per confirm).
-  "beh.postCapture.body": "Want a next step for this moment?",
-  "beh.postCapture.cta": "Ask Arbor",
-  "beh.postCapture.dismiss": "Not now",
+  // AI-CAP-7 → F-TALK-2 — the coach seed the capture sheet's saved-state Talk prefills.
   "beh.postCapture.prompt": "I just logged this moment for {name}: {type}. What happened: {trigger}. What I tried: {response}. What would be a good next step?",
   "beh.speak": "Speak",
   "beh.stop": "Stop",
@@ -3094,9 +3088,6 @@ export const he: Dict = {
   "coach.scenario.sibling": "מריבת אחים",
   "coach.scenario.bedtime": "מאבק לפני השינה",
   "coach.scenario.dropoff": "פרידה בגן/בית הספר",
-  "coach.followup.avoid": "מה כדאי שאמנע מלומר באותו רגע?",
-  "coach.followup.repair": "איך אני מתקן את הקשר אחר כך?",
-  "coach.followup.calm": "תנו לי שגרת הרגעה של דקה לנסות.",
   // COACH-1 — CoachAnswerCards panel chrome (he). FLAG: native-Hebrew review before
   // wide release, per the transcreation gate.
   "coach.cards.council": "המועצה התייעצה · {n} קולות",
@@ -3214,10 +3205,7 @@ export const he: Dict = {
   "beh.capture.optional": "אופציונלי — עוזר לארבור לזהות הקשר לאורך זמן",
   // AI-CAP-6 — live dictation caption (he).
   "beh.capture.listening": "מקשיבים — קחו את הזמן, הפסקות זה בסדר.",
-  // AI-CAP-7 — post-confirm coach handoff strip (he).
-  "beh.postCapture.body": "רוצים צעד הבא לרגע הזה?",
-  "beh.postCapture.cta": "שאלו את ארבור",
-  "beh.postCapture.dismiss": "לא עכשיו",
+  // AI-CAP-7 → F-TALK-2 — the coach seed the saved-state Talk prefills (he).
   "beh.postCapture.prompt": "הרגע תיעדתי את הרגע הזה עבור {name}: {type}. מה קרה: {trigger}. מה ניסיתי: {response}. מה יכול להיות צעד הבא טוב?",
   "beh.speak": "דברו",
   "beh.stop": "עצור",

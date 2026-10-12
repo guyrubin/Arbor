@@ -36,6 +36,9 @@ export default function CompanionComposer({ childId, conversationRevision, langu
   const [sending, setSending] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const toolsId = useId();
+  // F-TALK-2: the Hard tile's name is its visible text (label-in-name); the
+  // longer line ("words and one step for right now") is its description.
+  const hardHintId = useId();
   const toolsToggleRef = useRef<HTMLButtonElement>(null);
   // F-TALK-2: the tray reads above the row, so opening it moves focus to its
   // first tile (Escape returns focus to +).
@@ -77,6 +80,17 @@ export default function CompanionComposer({ childId, conversationRevision, langu
   }, [conversationRevision]);
   useEffect(() => () => { scope.current++; speechScope.current++; stopRef.current?.(); stopRef.current = null; }, []);
   useEffect(() => { if (toolsOpen) firstToolRef.current?.focus(); }, [toolsOpen]);
+  // F-TALK-2: the field grows with its text. CSS field-sizing:content does it
+  // where supported; elsewhere (Safari) size it from scrollHeight up to the
+  // stylesheet's max-block-size, after which it scrolls.
+  useEffect(() => {
+    const field = textareaRef.current;
+    if (!field || (typeof CSS !== "undefined" && CSS.supports("field-sizing", "content"))) return;
+    const cap = parseFloat(getComputedStyle(field).maxHeight) || 180;
+    field.style.height = "auto";
+    field.style.height = `${Math.min(field.scrollHeight, cap)}px`;
+    field.style.overflowY = field.scrollHeight > cap ? "auto" : "hidden";
+  }, [value]);
   const addFiles = async (files: FileList | null, kind: ComposerAttachment["kind"]) => {
     if (!files?.length || preparing) return;
     const turn = scope.current;
@@ -162,7 +176,8 @@ export default function CompanionComposer({ childId, conversationRevision, langu
           <button type="button" disabled={busy || sending || preparing || voiceActive} onClick={() => { closeTools(); documentRef.current?.click(); }}><span className="companion-tray-icon"><Icon name="attachment" size={19} /></span>{inputText(language, "companion.input.file")}</button>
           <button type="button" disabled={busy || sending || voiceActive} onClick={() => { closeTools(); dictate(); }} aria-pressed={listening}><span className="companion-tray-icon"><Icon name={listening ? "stop_circle" : "mic"} size={19} /></span>{listening ? (inputText(language, "companion.input.done")) : (inputText(language, "companion.input.dictate"))}</button>
           <button type="button" className="companion-tray-keep" disabled={busy || sending || preparing || listening || voiceActive} onClick={() => { closeTools(); void keep(); }}><span className="companion-tray-icon"><Icon name="edit_note" size={19} /></span>{inputText(language, "companion.tray.keep")}</button>
-          {onHardMoment && <button type="button" className="companion-tray-hard" data-testid="coach-hard-moment-now" onClick={() => { closeTools(); onHardMoment(); }} aria-label={inputText(language, "companion.input.hard-moment-aria")}><span className="companion-tray-icon"><Icon name="volunteer_activism" size={19} /></span>{inputText(language, "companion.tray.hard")}</button>}
+          {onHardMoment && <button type="button" className="companion-tray-hard" data-testid="coach-hard-moment-now" onClick={() => { closeTools(); onHardMoment(); }} aria-describedby={hardHintId}><span className="companion-tray-icon"><Icon name="volunteer_activism" size={19} /></span>{inputText(language, "companion.tray.hard")}</button>}
+          {onHardMoment && <span id={hardHintId} hidden>{inputText(language, "companion.tray.hard-hint")}</span>}
         </div>
         <div className="companion-tray-quiet">
           <button type="button" disabled={busy || sending || !!consent.busy || voiceActive} onClick={() => { closeTools(); consent.review(); }}><Icon name="shield" size={15} />{COMPANION_CONSENT_COPY[language].control}</button>

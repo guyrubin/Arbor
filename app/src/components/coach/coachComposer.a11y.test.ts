@@ -131,12 +131,22 @@ describe("AI-04 · what is actually wired for a typed turn", () => {
 });
 
 describe("B-ASKJB-07 · the one-time weekly-context notice in the composer", () => {
-  it("renders inside the composer, AFTER the field and the capture chips (critic r2), with 44 px Change + dismiss", () => {
-    const start = coach.indexOf("const composerSection");
-    const composer = coach.slice(start, coach.indexOf("{voiceNotice && voicePhase", start));
-    const notice = composer.slice(composer.indexOf('data-testid="coach-weekly-notice"'));
-    expect(composer.indexOf("<CompanionComposer")).toBeGreaterThan(-1);
-    expect(composer.indexOf('data-testid="coach-weekly-notice"')).toBeGreaterThan(composer.indexOf("<CompanionComposer"));
+  // F-TALK-2 re-pin: was "renders inside composerSection after <CompanionComposer>".
+  // The notice is now part of the composer's ONE foot line: CoachTab builds it
+  // in composerFoot, passes it as footAction, and CompanionComposer renders
+  // footAction in its foot row, after the field (critic r2 still holds).
+  it("renders inside the composer's foot line, AFTER the field and the capture chips (critic r2), with 44 px Change + dismiss", () => {
+    const start = coach.indexOf("const composerFoot");
+    const foot = coach.slice(start, coach.indexOf("const composerSection", start));
+    const notice = foot.slice(foot.indexOf('data-testid="coach-weekly-notice"'));
+    expect(foot.indexOf('data-testid="coach-weekly-notice"')).toBeGreaterThan(-1);
+    expect(coach.slice(coach.indexOf("const composerSection"))).toContain("footAction={composerFoot}");
+    const composerSrc = readFileSync(path.join(SRC, "components/companion/CompanionComposer.tsx"), "utf8");
+    expect(composerSrc.indexOf("{footAction}")).toBeGreaterThan(composerSrc.indexOf("<textarea"));
+    expect(composerSrc).toMatch(/<div className="companion-composer-foot-row"><p className="companion-composer-foot">\{inputText\(language, "companion\.input\.foot"\)\}<\/p>\{footAction\}<\/div>/);
+    // Only one foot: nothing about data use renders after the composer any more.
+    const section = coach.slice(coach.indexOf("const composerSection"), coach.indexOf("{voiceNotice && voicePhase"));
+    expect(section).not.toMatch(/coach-weekly-notice|coach-data-use/);
     expect(notice.length).toBeGreaterThan(0);
     for (const id of ["coach-weekly-notice-change", "coach-weekly-notice-dismiss"]) {
       const at = notice.indexOf(`data-testid="${id}"`);
