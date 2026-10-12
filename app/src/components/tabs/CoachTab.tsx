@@ -1185,58 +1185,58 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           choosing a row opens that conversation and closes the list. New
           conversation lives in the menu, so the list has no "+ New". */}
       {historyOpen && (
-      <section data-module="coach-history"
-        ref={historyRef}
-        className="companion-history rounded-2xl border p-2"
-        style={{ borderColor: "var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
-        aria-labelledby="coach-history-title"
-        onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); closeHistory(event.currentTarget); } }}
-      >
-        <div className="flex items-center gap-2 ps-2">
-          <h3 id="coach-history-title" className="me-auto text-[13px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.wave2Daily.ask.history")}</h3>
-          <button
-            type="button"
-            onClick={(event) => closeHistory(event.currentTarget)}
-            aria-label={inputText(uiLang, "companion.history.close")}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl focus:outline-none focus-visible:ring-2"
-            style={{ color: "var(--arbor-muted)" }}
-          >
-            <Icon name="close" size={18} />
-          </button>
-        </div>
-        {conversations.length > 0 ? (
-          <ul className="space-y-0.5">
-            {conversations.map((c) => {
-              const on = c.id === activeConversationId;
-              return (
-                <li key={c.id} className="flex items-center gap-1 rounded-xl" style={on ? { background: "var(--arbor-green-soft)" } : undefined}>
-                  <button
-                    type="button"
-                    onClick={(event) => { openConversation(c.id); closeHistory(event.currentTarget); }}
-                    data-history-chip=""
-                    aria-current={on ? "true" : undefined}
-                    className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-xl px-2 py-1.5 text-start focus:outline-none focus-visible:ring-2"
-                  >
-                    <span className="w-full truncate text-[13px] font-bold" dir="auto" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{c.title}</span>
-                    <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{fmtDay(c.updatedAt, uiLang === "he" ? "he" : "en")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteConversation(c.id)}
-                    aria-label={inputText(uiLang, "companion.history.delete", { title: c.title })}
-                    className="touch-target inline-flex items-center justify-center rounded-xl transition focus:outline-none focus-visible:ring-2"
-                    style={{ color: "var(--arbor-muted)" }}
-                  >
-                    <Icon name="delete" size={16} />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="px-2 pb-2 text-[12px]" style={{ color: "var(--arbor-muted)" }}>{inputText(uiLang, "companion.history.empty")}</p>
-        )}
-      </section>
+        <section data-module="coach-history"
+          ref={historyRef}
+          className="companion-history rounded-2xl border p-2"
+          style={{ borderColor: "var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
+          aria-labelledby="coach-history-title"
+          onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); closeHistory(event.currentTarget); } }}
+        >
+          <div className="flex items-center gap-2 ps-2">
+            <h3 id="coach-history-title" className="me-auto text-[13px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.wave2Daily.ask.history")}</h3>
+            <button
+              type="button"
+              onClick={(event) => closeHistory(event.currentTarget)}
+              aria-label={inputText(uiLang, "companion.history.close")}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl focus:outline-none focus-visible:ring-2"
+              style={{ color: "var(--arbor-muted)" }}
+            >
+              <Icon name="close" size={18} />
+            </button>
+          </div>
+          {conversations.length > 0 ? (
+            <ul className="space-y-0.5">
+              {conversations.map((c) => {
+                const on = c.id === activeConversationId;
+                return (
+                  <li key={c.id} className="flex items-center gap-1 rounded-xl" style={on ? { background: "var(--arbor-green-soft)" } : undefined}>
+                    <button
+                      type="button"
+                      onClick={(event) => { openConversation(c.id); closeHistory(event.currentTarget); }}
+                      data-history-chip=""
+                      aria-current={on ? "true" : undefined}
+                      className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-xl px-2 py-1.5 text-start focus:outline-none focus-visible:ring-2"
+                    >
+                      <span className="w-full truncate text-[13px] font-bold" dir="auto" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{c.title}</span>
+                      <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{fmtDay(c.updatedAt, uiLang === "he" ? "he" : "en")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteConversation(c.id)}
+                      aria-label={inputText(uiLang, "companion.history.delete", { title: c.title })}
+                      className="touch-target inline-flex items-center justify-center rounded-xl transition focus:outline-none focus-visible:ring-2"
+                      style={{ color: "var(--arbor-muted)" }}
+                    >
+                      <Icon name="delete" size={16} />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="px-2 pb-2 text-[12px]" style={{ color: "var(--arbor-muted)" }}>{inputText(uiLang, "companion.history.empty")}</p>
+          )}
+        </section>
       )}
 
       {/* Chat thread — COACH-4: no fixed-height inner scroll; the thread flows

@@ -407,7 +407,7 @@ describe("FEAT-01 — the conversation answers the menu through its one door", (
     expect(reveal).toContain("focus({ preventScroll: true })");
     for (const part of [listener, claim, reveal]) expect(part).not.toMatch(/sendMessage|handleSend|setChatInput/);
     expect(coach.match(/<ToneSheet /g)).toHaveLength(1);
-    expect(coach).toContain('{historyOpen && (\n      <section data-module="coach-history"\n        ref={historyRef}');
+    expect(coach).toContain('{historyOpen && (\n        <section data-module="coach-history"\n          ref={historyRef}');
     expect(coach).toContain("const [historyOpen, setHistoryOpen] = useState(false);");
   });
 

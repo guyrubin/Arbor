@@ -548,7 +548,7 @@ describe("B-ASKJB-06 — Ask's fresh stack meets moduleBudget 3", () => {
     expect(budget).toBe(3);
     expect(fresh.stamped).toEqual(["coach-orientation", "coach-thread"]);
     const src = COACH.replace(/\r\n/g, "\n");
-    expect(src).toMatch(/\n {6}\{historyOpen && \(\n {6}<section data-module="coach-history"/);
+    expect(src).toMatch(/\n {6}\{historyOpen && \(\n {8}<section data-module="coach-history"/);
     expect((src.match(/data-module="coach-history"/g) || []).length).toBe(1);
     expect(src).toMatch(/const \[historyOpen, setHistoryOpen\] = useState\(false\)/);
     expect(fresh.stamped.length + 1).toBeLessThanOrEqual(budget);
