@@ -13,10 +13,8 @@
  *   - Now:      Now · Weekly report · Day windows · Reminders
  *   - My child: Development map · Milestones · Language · Portrait · Journal ·
  *               Moments · Profile
- *   - Together: no Shell row yet. Its first level is the page's own row of
- *               five pills on #/practice (TogetherView, together-pill-row),
- *               drawn only while pillRowFor gives the Shell none (v3 F-TOG-2),
- *               so a second row never repeats it.
+ *   - Together: no Shell row. Its first level is the in-page filter row on
+ *               #/practice (TogetherView), and a second row would repeat it.
  * The record's two densities (#/journal, #/timeline) keep their own Feed ·
  * Story tablist and show no Shell row above it.
  *
@@ -59,15 +57,12 @@ describe("1 · each place's row, in table A's order", () => {
     expect(tabsOf(PLACE_PILLS.child)).toEqual(["development", "milestones", "language", "timeline", "journal", "behaviors", "profile"]);
   });
 
-  // v3 F-TOG-2 re-pin: the five pills are one row. Until the Shell draws Together's (PLACE_PILLS.together,
-  // F-SHELL-1) the page draws them itself, gated on pillRowFor so both never show; never the old filter row.
-  it("only Now and My child have a Shell row here; Together draws its own five pills until the Shell does, never the old filter row", () => {
+  // v3 F-TOG-2 re-pin: Together's five pills are the Shell's (F-SHELL-1 owns the row and PLACES); the page keeps no filter row.
+  it("only Now and My child have a Shell row here; Together keeps no in-page filter row", () => {
     expect(PLACES).toEqual(["now", "child"]);
     const together = readFileSync(path.resolve(here, "../components/companion/TogetherView.tsx"), "utf8");
     expect(together).not.toContain("companion-filter-row");
     expect(together).not.toContain('className="companion-filter"');
-    expect(together).toContain('const shellDrawsPills = pillRowFor(sectionForTab("practice"), "practice").length > 1;');
-    expect(together).toContain('{!shellDrawsPills && <div role="group" className="together-pill-row"');
     expect(homeIdForTab("practice")).toBe("together");
   });
 

@@ -143,17 +143,3 @@
   [role="dialog"]:has(> .together-reader-sheet), [role="dialog"]:has(> .together-create-sheet) { inline-size: min(960px, 100% - 56px); }
 }
 [data-arbor-dialog-layer]:has(.together-sheet) { backdrop-filter: blur(12px); }
-/* v3 F-TOG-2: the page's own pill row while the Shell draws none (one line
-   that scrolls sideways on a phone; the chosen pill in the sub-tab navy), the
-   steps of a Daily play pick on its away card, and on a phone the routines as
-   one snapping row of 124px tiles that runs out to the page gutter. */
-.companion-together .together-pill-row { display: flex; gap: 8px; margin-block-end: 18px; padding-block-end: 4px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
-.companion-together .together-pill-row::-webkit-scrollbar { display: none; }
-.companion-together .together-pill { display: inline-flex; flex: none; align-items: center; justify-content: center; min-block-size: var(--touch-min); padding-inline: 16px; border: 1px solid var(--arbor-rule-strong); border-radius: 999px; background: var(--arbor-paper); color: var(--arbor-ink); font-size: var(--t-sm); font-weight: 600; white-space: nowrap; scroll-snap-align: start; }
-.companion-together .together-pill[aria-pressed="true"] { border-color: var(--arbor-subtab-active); background: var(--arbor-subtab-active); color: var(--arbor-subtab-on-ink); }
-.companion-together .together-away-steps { display: grid; gap: 6px; margin: 0; padding-inline-start: 20px; color: var(--arbor-ink); font-size: var(--t-sm); line-height: 1.5; }
-@container together (max-width: 540px) {
-  .companion-together .together-pill-row { margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px; }
-  .companion-together .together-routine-grid { display: flex; gap: 8px; margin-inline: -16px; padding-block: 10px 4px; padding-inline: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; scrollbar-width: none; }
-  .companion-together .together-routine-grid > li { flex: none; inline-size: 124px; scroll-snap-align: start; }
-}

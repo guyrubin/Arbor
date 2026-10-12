@@ -13,8 +13,7 @@ import { PendingLine, Receipt } from "../ui/Receipt";
 
    v3 F-TOG-2: a sheet at every width (the shared bottom sheet on a phone; the
    stylesheet lifts it to a centred card from 768 px). Its footer names what the
-   routine feeds (a plain chip, never a verdict) and holds the one action; the
-   sheet's own close button is the only way out (no second Close).
+   routine feeds (a plain chip, never a verdict) and holds the one action.
 
    Not started yet: the why-line, the steps as a read-only preview and ONE
    button, "Make it a plan". The start state lives in TogetherRoutines (the
@@ -92,6 +91,10 @@ export default function RoutineRunSheet({ routine, plan, start, childName, onSta
                 {t("companion.together-view.routines-in-plan")}
               </span>
             )}
+            <button type="button" className="companion-text-button" data-testid="together-routine-close" onClick={onClose}>
+              <Icon name="close" size={18} />
+              {t("companion.together-view.routines-close")}
+            </button>
           </div>
         </footer>
       </div>

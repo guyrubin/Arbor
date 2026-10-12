@@ -68,8 +68,7 @@ describe("the companion copy lives in the dictionaries (native review covers it)
   });
   it("the moved keys exist in both dictionaries", () => {
     const moved = Object.keys(companionEn).filter((k) => /^companion\.(story|offscreen|place)\./.test(k));
-    // v3 F-TOG-2 re-pin: the four story doors (8 keys) left with the real story cards; 9 away + 6 place keys remain.
-    expect(moved).toHaveLength(15);
+    expect(moved).toHaveLength(23);
     for (const key of moved) expect((companionHe as Record<string, string>)[key], key).toBeTruthy();
   });
 });

@@ -8,13 +8,11 @@ import type { ActionPlan } from "../../types";
    Part 1 renders the real TogetherView (static markup, the TogetherView.test
    mocks): the routines in their own module between the stories and the away
    ideas (v3 F-TOG-1: five modules, still one contract move), the pill's
-   show/hide (v3 F-TOG-2: the pill is #/practice?f=…; one row of pills, the
-   page's own until the Shell draws PLACE_PILLS.together),
+   show/hide (v3 F-TOG-2: the pill is #/practice?f=…; the Shell draws the row),
    the age window and the "In your plan" state.
    Part 2 runs TogetherRoutines under deterministic hook slots (the
    RoutinesCard.receipt harness) to prove the start flow: one plan, and the
-   "In your plan" receipt only after the write resolved, and the sheet=routine
-   arrival (#/plans, #/routines) opening the newest routine plan once. */
+   "In your plan" receipt only after the write resolved. */
 
 const state = vi.hoisted(() => ({
   harness: false, cursor: 0, slots: [] as any[], effects: [] as (() => void)[], dirty: false,
@@ -78,7 +76,6 @@ import { PendingLine, Receipt } from "../ui/Receipt";
 import { translate } from "../../lib/i18n";
 import { routineById } from "../../lib/routines";
 import { routineDayKey, routineToPlan, toggleRoutineStep } from "../../lib/routineTemplates";
-import { pillRowFor, sectionForTab } from "../../lib/navigation";
 
 type El = React.ReactElement<Record<string, any>>;
 const BANNED = /\bstars?\b|כוכב|Feeds|Kid Mode|%/;
@@ -116,18 +113,13 @@ const tiles = (html: string) => [...html.matchAll(/data-routine-tile="([a-z-]+)"
 for (const lang of ["en", "he"] as const) describe(`FEAT-07 · Together with routines · ${lang}`, () => {
   beforeEach(() => { state.lang = lang; });
 
-  // v3 F-TOG-2 re-pin: one row of pills, never the old filter row. The page draws its own
-  // (together-pill-row) only while the Shell draws none for Together (PLACE_PILLS.together, F-SHELL-1).
-  it("one pill row: the page's own while the Shell draws none, never the old filter row; the address names the pill", () => {
+  // v3 F-TOG-2 re-pin: the five pills are the Shell's (PLACE_PILLS.together); the page keeps no filter row.
+  it("the page draws no pill row of its own; the address names the pill", () => {
     const html = page();
     expect(html).not.toContain("companion-filter-row");
     expect(html).not.toContain('class="companion-filter"');
-    const shell = pillRowFor(sectionForTab("practice"), "practice").length > 1;
-    expect(html.includes('data-testid="together-pill-row"')).toBe(!shell);
     state.query = "f=routines";
-    const routines = page();
-    expect(section(routines, "together-routines")).not.toContain("hidden");
-    if (!shell) expect(routines).toContain('data-pill="routines" aria-pressed="true"');
+    expect(section(page(), "together-routines")).not.toContain("hidden");
   });
 
   it("All together: every routine for the age (10 at five) in their own module, after the stories and before the away ideas; 5 modules and 1 move", () => {
@@ -220,10 +212,6 @@ describe("FEAT-07 · the age window and the stylesheet", () => {
     const feat = css.slice(css.indexOf("v3 FEAT-07"));
     expect(feat.length).toBeGreaterThan(100);
     expect(feat).not.toMatch(/\b(?:left|right)\b|line-clamp|text-overflow|overflow:\s*hidden/);
-    // v3 F-TOG-2: at a phone's content width the routines are one snapping row of 124px tiles to the page gutter.
-    const phone = css.slice(css.lastIndexOf("@container together (max-width: 540px)"));
-    expect(phone).toMatch(/\.companion-together \.together-routine-grid \{ display: flex;[^}]*margin-inline: -16px;[^}]*padding-inline: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px;[^}]*\}/);
-    expect(phone).toMatch(/\.companion-together \.together-routine-grid > li \{ flex: none; inline-size: 124px; scroll-snap-align: start; \}/);
   });
 });
 
@@ -335,44 +323,5 @@ for (const lang of ["en", "he"] as const) describe(`FEAT-07 · starting a routin
     expect(sheet().props.start.status).toBe("failed");
     expect(find(inside(sheet().props), "together-routine-started")).toBeUndefined();
     expect(find(inside(sheet().props), "together-routine-failed")).toBeDefined();
-  });
-});
-
-describe("v3 F-TOG-2 · an arrival with sheet=routine opens the newest routine plan's sheet once", () => {
-  const replaceState = vi.fn();
-  const arrive = (hash: string) => { vi.stubGlobal("window", { location: { hash }, history: { state: null, replaceState } }); };
-  const open = () => elements(render()).find((el) => el.type === RoutineRunSheet);
-  beforeEach(() => {
-    state.harness = true;
-    // Two routine plans, invented: calm started first, bedtime later.
-    state.actionPlans = [routineToPlan(routineById("calm"), "en", "Noa", 1_760_000_000_000), routineToPlan(routineById("bedtime"), "en", "Noa", 1_760_100_000_000)];
-  });
-
-  it.each(["#/practice?f=routines&sheet=routine", "#/plans", "#/routines"])("%s opens bedtime (the newest), then names the pill alone; closing it does not reopen it", (hash) => {
-    arrive(hash);
-    expect(open()?.props.routine.id).toBe("bedtime");
-    expect(replaceState).toHaveBeenCalledOnce();
-    expect(replaceState).toHaveBeenCalledWith(null, "", "#/practice?f=routines");
-    open()!.props.onClose();
-    expect(open()).toBeUndefined();
-    expect(replaceState).toHaveBeenCalledOnce();
-  });
-
-  it("the pill alone opens nothing; neither does sheet=routine with no routine plan", () => {
-    arrive("#/practice?f=routines");
-    expect(open()).toBeUndefined();
-    state.slots = []; state.actionPlans = [];
-    arrive("#/practice?f=routines&sheet=routine");
-    expect(open()).toBeUndefined();
-    expect(replaceState).not.toHaveBeenCalled();
-  });
-
-  it("a tile opened before the plans arrive ends the arrival", () => {
-    const plans = state.actionPlans; state.actionPlans = [];
-    arrive("#/plans");
-    tile("goodbye").props.onClick();
-    state.actionPlans = plans;
-    expect(open()?.props.routine.id).toBe("goodbye");
-    expect(replaceState).not.toHaveBeenCalled();
   });
 });

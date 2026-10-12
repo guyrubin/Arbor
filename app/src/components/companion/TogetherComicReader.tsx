@@ -10,8 +10,7 @@ import { useHeroAvatar } from "../ui/HeroAvatar";
    Read-only: the pages are the ones the book was saved with, read back from
    this device's store (all or nothing, the same key token the comic maker
    wrote them under). With every page present the parent's comic reader shows
-   them — the reader ComicsTab already uses, embedded: the sheet names the
-   book and closes it, so the reader shows no Back and no title row. A book
+   them — the reader ComicsTab already uses, without its page chrome. A book
    whose pages live on another device says so; nothing here builds, generates
    or saves a page. */
 
@@ -42,5 +41,5 @@ export default function TogetherComicReader({ book, title, onClose }: { book: Sh
   }
   if (!current) return <p role="status" className="companion-caption" data-testid="together-book-opening">{t("companion.together-view.book-opening")}</p>;
   const pages = current.pages.map((dataUrl, index) => ({ dataUrl, title: index === 0 ? title : `${adventureTitle(book, meta.lang)} · ${index}` }));
-  return <SavedComicReader key={key} embedded title={title} lang={meta.lang} pages={pages} onBack={onClose} onUnavailable={() => setUnavailable(true)} />;
+  return <SavedComicReader key={key} title={title} lang={meta.lang} pages={pages} onBack={onClose} onUnavailable={() => setUnavailable(true)} />;
 }

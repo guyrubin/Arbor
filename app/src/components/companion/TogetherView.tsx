@@ -9,12 +9,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { SINCE_LAST_PLAY_FALLBACK_MS } from "../../lib/kidExitRecap";
 import { lastKidSessionStartedAt } from "../../lib/kidModeGate";
 import { genderedKey } from "../../lib/today/fromRecord";
-import { pillRowFor, sectionForTab } from "../../lib/navigation";
 import { routeHash } from "../../lib/routes";
-import { ageYearsOf } from "../../lib/age/forChild";
-import { localizeActivity } from "../../playbank/content";
-import { concernDomainsFromLogs, daySeedFor, selectDailyPlay, type SessionLength } from "../../playbank/select";
-import { activeGoalDomains, focusGoal } from "../../practice/goalBuilder";
 import { DOMAIN_VARS } from "../../lib/tokens";
 import type { HeroJourneyRun } from "../../types";
 import { requestOpenSettings } from "../layout/settingsBus";
@@ -42,15 +37,13 @@ type Preview = { kind: "world"; world: StudioWorld };
 /** Parent previews lead to the existing child-mode entry seam. Nothing on this
  * page starts a camera/microphone or writes an activity just because it is seen.
  *
- * v3 F-TOG-2: the five pills (All together, Games, Stories, Routines, Away
- * from the screen) are #/practice?f=…; this page reads f and shows that pill's
- * content. The Shell draws the row once PLACE_PILLS.together exists
- * (F-SHELL-1); until then the page draws the same five links itself, so
- * exactly one row shows. An old link arrives as a query on the same address
- * (TOGETHER_ARRIVAL_QUERY): ?world=<id> opens that world's preview (#/speech,
- * #/mimic …) and ?sheet=create-story the story maker (#/bedtime-stories). */
+ * v3 F-TOG-2: the Shell draws the five pills (All together, Games, Stories,
+ * Routines, Away from the screen) from #/practice?f=…; this page reads f and
+ * shows that pill's content. An old link arrives as a query on the same
+ * address: ?world=<id> opens that world's preview (#/speech, #/mimic …) and
+ * ?sheet=create-story the story maker (#/bedtime-stories). */
 export default function TogetherView() {
-  const { childProfile, setActiveTab, saveMoment, activeFamilyTopic, openCaptureSheet, behaviorLogs = [], logsLoaded = false, actionLoop = [] } = useArbor();
+  const { childProfile, setActiveTab, saveMoment, activeFamilyTopic, openCaptureSheet, behaviorLogs = [], logsLoaded = false } = useArbor();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
@@ -65,15 +58,6 @@ export default function TogetherView() {
   const gamesOpen = kidAvailable && worlds.length > 0;
   const { category, setCategory, pageRef, rememberDoor, query } = useTogetherNavigation(childProfile.id, gamesOpen);
   const ids = useId();
-  // v3 F-TOG-2: the page's own pill row stands in until the Shell draws one.
-  const shellDrawsPills = pillRowFor(sectionForTab("practice"), "practice").length > 1;
-  const pills: readonly { id: TogetherCategory; key: string }[] = [
-    { id: "all", key: "companion.together-view.all-together" },
-    ...(gamesOpen ? [{ id: "games" as const, key: "companion.together-view.games" }] : []),
-    { id: "stories", key: "companion.together-view.stories" },
-    { id: "routines", key: "companion.together-view.routines" },
-    { id: "offscreen", key: "companion.together-view.away-from-the-screen" },
-  ];
   useEffect(() => { setPreviewState({ childId: childProfile.id, value: null }); setKeptState({ childId: childProfile.id, ids: [] }); }, [childProfile.id]);
   useEffect(() => { trackCompanionPlaceOpen("together"); }, [childProfile.id]);
 
@@ -170,46 +154,19 @@ export default function TogetherView() {
     if (direct && world.tab) { rememberDoor(`world-${world.id}`); setActiveTab(world.tab); }
     else requestKidMode({ view: "arcade", worldId: world.id });
   };
-  // v3 F-TOG-2: Daily play's picks (#/daily-play lands on this pill) join the
-  // ideas: the same selection, whole on the card. No reason line, no done or
-  // plan state; keeping one saves a moment, like any idea here.
-  const goalDomains = useMemo(() => {
-    const goal = focusGoal(childProfile.activeGoals ?? []);
-    return activeGoalDomains(goal ? [goal] : []);
-  }, [childProfile.activeGoals]);
-  const playPicks = useMemo(() => {
-    const stored = (name: string) => { try { return localStorage.getItem(`${name}.${childProfile.id}`); } catch { return null; } };
-    let doneIds: string[] = [];
-    try { const parsed: unknown = JSON.parse(stored("arbor.play.done") || "[]"); if (Array.isArray(parsed)) doneIds = parsed.filter((value): value is string => typeof value === "string"); } catch { /* none recorded */ }
-    const length = stored("arbor.play.sessionLength");
-    const sessionLength: SessionLength = length === "short" || length === "extended" ? length : "standard";
-    const concernDomains = concernDomainsFromLogs(behaviorLogs.map((log) => ({ behaviorType: log.behaviorType, timestamp: log.timestamp })), Date.now());
-    const last = actionLoop.find((entry) => entry.status === "completed" && entry.outcome);
-    return selectDailyPlay({
-      ageYears: ageYearsOf(childProfile),
-      concernDomains,
-      goalDomains,
-      recentlyDoneIds: doneIds,
-      daySeed: daySeedFor(Date.now()),
-      interests: childProfile.interests ?? [],
-      sessionLength,
-      lastAction: last?.outcome ? { recommendation: last.recommendation, outcome: last.outcome } : undefined,
-    }, 3).map((pick) => localizeActivity(pick.activity, lang));
-  }, [childProfile, behaviorLogs, actionLoop, goalDomains, lang]);
-  type AwayCard = { id: string; title: string; detail: string; say?: string; steps?: readonly string[]; icon: string; moment: string };
-  const awayCards: AwayCard[] = [
-    ...(kidAvailable
-      ? OFFSCREEN_IDEAS.map((idea) => ({ id: idea.id, title: idea.title[lang], detail: idea.detail[lang], say: idea.say[lang], icon: idea.icon, moment: t("companion.together-view.we-tried-together", { value0: idea.title[lang] }) }))
-      : TOGETHER_CARDS.map((id) => ({ id, title: t(`elev.ages.together.${id}.title`), detail: t(`elev.ages.together.${id}.do`), say: t(`elev.ages.together.${id}.say`), icon: "favorite", moment: t(`elev.ages.together.${id}.moment`) }))),
-    ...playPicks.map((activity) => ({ id: `play-${activity.id}`, title: activity.title, detail: activity.whatItBuilds, steps: activity.steps, icon: "eco", moment: t("companion.together-view.we-tried-together", { value0: activity.title }) })),
-  ];
+  const offlineIds: readonly string[] = kidAvailable ? OFFSCREEN_IDEAS.map((idea) => idea.id) : TOGETHER_CARDS;
+  const offline = (id: string) => {
+    const idea = OFFSCREEN_IDEAS.find((item) => item.id === id);
+    return idea ? { title: idea.title[lang], detail: idea.detail[lang], say: idea.say[lang], icon: idea.icon }
+      : { title: t(`elev.ages.together.${id}.title`), detail: t(`elev.ages.together.${id}.do`), say: t(`elev.ages.together.${id}.say`), icon: "favorite" };
+  };
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
-  const keepOffline = async (card: AwayCard) => {
-    const id = card.id;
+  const keepOffline = async (id: string) => {
     if (kept.includes(id) || saving) return;
     setSaving(true); setSaveError(false);
-    const moment = card.moment;
+    const idea = offline(id);
+    const moment = kidAvailable ? (t("companion.together-view.we-tried-together", { value0: idea.title })) : t(`elev.ages.together.${id}.moment`);
     // The inline alert is this failure's one message; the seam stays quiet.
     // The card turns to "saved" only once the write resolved.
     try {
@@ -226,10 +183,6 @@ export default function TogetherView() {
 
   return (
     <div ref={pageRef} className="companion-page companion-together" dir={he ? "rtl" : "ltr"}>
-      {/* v3 F-TOG-2: the five pills, drawn here only while the Shell draws no row (exactly one row shows). */}
-      {!shellDrawsPills && <div role="group" className="together-pill-row" data-testid="together-pill-row" aria-label={t("nav.pills.aria", { place: t("companion.place.together") })}>
-        {pills.map((pill) => <button key={pill.id} type="button" className="together-pill" data-pill={pill.id} aria-pressed={category === pill.id} onClick={() => { if (category !== pill.id) setCategory(pill.id); }}>{t(pill.key)}</button>)}
-      </div>}
       {/* v3 F-TOG-1: the hero — kicker, title, sub, the one move and the studio doors beside the Together picture. */}
       <section className={`companion-together-hero${firstTime ? " together-hero-solo" : ""}`} data-module="together-invitation" aria-labelledby={`${ids}-title`}>
         <div className="together-hero-copy">
@@ -274,14 +227,14 @@ export default function TogetherView() {
             <span className="together-game-copy">
               <span className="together-game-title">{t(world.kidNameKey)}</span>
               {domain && <span className="together-domain-chip" style={{ background: DOMAIN_VARS[domain].soft, color: DOMAIN_VARS[domain].ink }}>{t(`elev.domains.${domain}`)}</span>}
-              <span className="together-game-meta" aria-busy={!playLoaded}>{playLoaded && (counts.byWorld[world.id] ?? 0) > 0 && <span className="companion-world-count" data-testid="together-world-count">{t(studioCountKey(world.unit, counts.byWorld[world.id]), { n: counts.byWorld[world.id] })}</span>}<span className="together-game-preview">{worksInLanguage(world, lang) ? t("companion.together-view.preview-first") : t("companion.together-view.english-only")}</span></span>
+              <span className="together-game-meta" aria-busy={!playLoaded}>{playLoaded && (counts.byWorld[world.id] ?? 0) > 0 && <span className="companion-world-count" data-testid="together-world-count">{t(studioCountKey(world.unit, counts.byWorld[world.id]), { n: counts.byWorld[world.id] })}</span>}<span className="together-game-preview">{t("companion.together-view.preview-first")}</span></span>
             </span>
           </button></li>;
         })}</ul> : <p className="companion-caption">{t("companion.together-view.there-are-no-listed-screen-games-for-this")}</p>}
       </section>}
 
       <section hidden={!show("stories")} className="companion-collection" data-module="together-stories" aria-labelledby={`${ids}-stories`}>
-        {show("stories") && <TogetherStories headingId={`${ids}-stories`} onCreate={openCreate} />}
+        <TogetherStories headingId={`${ids}-stories`} onCreate={openCreate} />
       </section>
 
       {/* FEAT-07 → v3 F-TOG-1: the ready-made routines are a module of their own. */}
@@ -293,16 +246,15 @@ export default function TogetherView() {
           and "keep the moment" in place. "Saved" shows once the write resolved. */}
       <section hidden={!show("offscreen")} className="companion-collection" data-module="together-offscreen" aria-labelledby={`${ids}-offscreen`}>
         <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.in-everyday-life")}</span><h2 id={`${ids}-offscreen`} tabIndex={-1}>{t("companion.together-view.something-small-to-do-together")}</h2></div></div>
-        <ul className="companion-offscreen-grid together-away-grid">{awayCards.map((idea) => {
-          const id = idea.id;
+        <ul className="companion-offscreen-grid together-away-grid">{offlineIds.map((id) => {
+          const idea = offline(id);
           const done = kept.includes(id);
           return <li key={id} className="together-away-card" data-testid={`together-away-${id}`}>
             <Icon name={idea.icon} size={26} className="together-away-icon" />
             <h3>{idea.title}</h3>
             <p className="together-away-detail">{idea.detail}</p>
-            {idea.say && <p className="companion-say" dir="auto">{t("elev.loop.ms.quoted", { text: idea.say })}</p>}
-            {idea.steps && idea.steps.length > 0 && <ol className="together-away-steps">{idea.steps.map((step, n) => <li key={n}>{step}</li>)}</ol>}
-            <button type="button" className="together-keep" data-testid="together-keep" data-kept={done ? "true" : undefined} disabled={saving || kept.includes(id)} onClick={() => void keepOffline(idea)}><Icon name={done ? "check_circle" : "bookmark_add"} size={18} />{done ? (t("companion.together-view.a-moment-from-your-time-together-is-saved")) : (t("companion.together-view.we-already-tried-it-keep-the-moment"))}</button>
+            <p className="companion-say" dir="auto">{t("elev.loop.ms.quoted", { text: idea.say })}</p>
+            <button type="button" className="together-keep" data-testid="together-keep" data-kept={done ? "true" : undefined} disabled={saving || kept.includes(id)} onClick={() => void keepOffline(id)}><Icon name={done ? "check_circle" : "bookmark_add"} size={18} />{done ? (t("companion.together-view.a-moment-from-your-time-together-is-saved")) : (t("companion.together-view.we-already-tried-it-keep-the-moment"))}</button>
           </li>;
         })}</ul>
         {saveError && <p role="alert" className="companion-caption" data-testid="together-keep-failed">{t("companion.together-view.the-moment-wasn-t-saved-please-try-again")}</p>}

@@ -17,7 +17,6 @@ import {
 import type { ActionPlan } from "../../types";
 import Icon from "../ui/Icon";
 import RoutineRunSheet, { type RoutineStart } from "./RoutineRunSheet";
-import { TOGETHER_ARRIVAL_QUERY } from "./togetherNavigation";
 
 /* ════════════════════════════════════════════════════════════════════════════
    TogetherRoutines — v3 FEAT-07: the ready-made routines on Together.
@@ -59,23 +58,19 @@ export default function TogetherRoutines({ mode, headingId }: { mode: "all" | "r
     return () => { mounted.current = false; };
   }, []);
 
-  // v3 F-TOG-2: an arrival with sheet=routine (the Shell's route map sends
-  // #/plans and #/routines there, TOGETHER_ARRIVAL_QUERY), or on the old key
-  // itself while the address still names it, opens the newest routine plan's
-  // sheet once, then names this pill alone in the address. The plans may still
-  // be loading: a later snapshot opens it. Any tile the parent opens first
-  // ends the arrival.
+  // v3 F-TOG-2: an arrival on #/plans (or #/routines, an alias of either, or
+  // the pill address carrying sheet=routine) opens the newest routine plan's
+  // sheet once, then names this pill in the address. The plans may still be
+  // loading: a later snapshot opens it. Any tile the parent opens first ends
+  // the arrival.
   const arrived = useRef(false);
   useEffect(() => {
     if (arrived.current || typeof window === "undefined") return;
-    let sheet: string | null | undefined = null;
-    try {
-      const hash = splitHash(window.location.hash);
-      const key = hash.key.toLowerCase();
-      const route = HASH_ALIASES[key] ?? key;
-      sheet = hash.query.get("sheet") ?? TOGETHER_ARRIVAL_QUERY[route]?.sheet;
-    } catch { return; }
-    if (sheet !== "routine") { arrived.current = true; return; }
+    let key = "";
+    let sheet: string | null = null;
+    try { const hash = splitHash(window.location.hash); key = hash.key.toLowerCase(); sheet = hash.query.get("sheet"); } catch { return; }
+    const route = HASH_ALIASES[key] ?? key;
+    if (route !== "plans" && route !== "routines" && sheet !== "routine") { arrived.current = true; return; }
     const newest = actionPlans
       .map((plan) => ({ routineId: routineIdOfPlan(plan), at: Number(/-(\d{10,})$/.exec(plan.id)?.[1] ?? 0) }))
       .filter((entry) => entry.routineId !== null && templates.some((routine) => routine.id === entry.routineId))
