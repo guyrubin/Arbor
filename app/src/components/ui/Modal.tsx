@@ -58,11 +58,9 @@ export function Modal({
             aria-owns={companion ? companionId : undefined}
             tabIndex={-1}
             className={`w-full ${maxWidth} bg-white rounded-3xl p-6 overflow-y-auto`}
-            // 90vh as before; the second term is the layer's height less its
-            // padding (the layer is the viewport), so the box never slides
-            // under a companion crumb (IA-06r). Written without "%": render
-            // checks read any percentage as a score.
-            style={{ border: "1px solid var(--arbor-rule)", boxShadow: "0 24px 60px rgba(41,51,63,0.18)", maxHeight: "min(90vh, calc(100dvh - max(1rem, var(--arbor-crumb-inset, 0px)) - 1rem))" }}
+            // 90vh as before; 100% keeps it inside the layer's padding, so it
+            // never slides under a companion crumb (IA-06r).
+            style={{ border: "1px solid var(--arbor-rule)", boxShadow: "0 24px 60px rgba(41,51,63,0.18)", maxHeight: "min(90vh, 100%)" }}
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 12 }}

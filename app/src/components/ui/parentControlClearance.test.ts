@@ -36,9 +36,6 @@ function renderComponent(path: string, rows: Record<string, any>[] = []) {
     "./Icon": { Icon: "Icon" },
     "../ui/Icon": { Icon: "Icon" },
     "../ui/Modal": { Modal: "Modal" },
-    // v3 IA-06r re-pin: Modal now imports its companion slot (the L2 crumb's
-    // place in the dialog layer); inert here like the other boundaries.
-    "./DialogCompanion": { DialogCompanion: "DialogCompanion" },
     "./useSearchResults": { useSearchResults: () => ({ indexReady: true, ordered: rows, kindLabel: (kind: string) => kind }) },
     "./searchSections": searchSections,
   };
