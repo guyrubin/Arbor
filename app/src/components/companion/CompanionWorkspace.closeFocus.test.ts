@@ -44,6 +44,7 @@ async function mountedCloseProof() {
     if (name === "../../context/ArborContext") return { useArbor: () => React.useContext(Context) };
     if (name === "../../context/LanguageContext") return { useLanguage: () => ({ uiLang: "en" }) };
     if (name === "../../hooks/useDialog") return { useDialog: () => ({ ref: React.useRef(null) }) };
+    if (name === "../../hooks/useVisualViewportInset") return { useVisualViewportInset() {} };
     if (name === "../../lib/i18n") return { translate: (_lang, key) => key };
     if (name === "../../lib/kidModeGate") return { isKidModeActive: () => gate };
     if (name === "../../lib/companionConversation") return { COMPANION_CONVERSATION_EVENT: "test-conversation" };

@@ -329,3 +329,77 @@ describe("FEAT-06 — UrgentSupport's door to Safety & escalation", () => {
     expect(onSafety).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * F-TALK-2 (mock L469-487, phone L897-909) — the hard sheet is a bottom sheet
+ * below lg and the centred Modal above it, on the peach wash with no visible
+ * title (the kicker leads; "Hard moment now" stays the accessible name), and
+ * the picker waits behind one "Choose what's happening" disclosure after the
+ * first view. The step copy (three breaths) is unchanged: Guy's content call.
+ */
+describe("F-TALK-2 — the hard sheet's surface, title and picker fold", () => {
+  const CSS = readFileSync(path.resolve(__dirname, "hardMomentSheet.css"), "utf8").replace(/\r\n/g, "\n");
+
+  it("picks Sheet below lg and Modal above it (the MOB-28 seam), one surface element", () => {
+    expect(SHEET).toContain('import { Sheet, useCompactSurface } from "../ui/Sheet";');
+    expect(SHEET).toContain("const Surface = useCompactSurface() ? Sheet : Modal;");
+    expect(SHEET).toContain('<Surface open={open} onClose={closeHardMomentNow} title={t("hm.now.title")}>');
+    expect(SHEET.match(/<Modal /g) ?? []).toEqual([]);
+    expect(SHEET).toContain('import "./hardMomentSheet.css";');
+    expect(SHEET).toContain('className="hard-moment-sheet min-w-0 space-y-4 text-start"');
+  });
+
+  it("the surface is the peach wash and the title is hidden visually, never from assistive tech", () => {
+    const body = (selector: string) => {
+      const at = CSS.indexOf(selector + " {");
+      expect(at, selector).toBeGreaterThan(-1);
+      return CSS.slice(at, CSS.indexOf("}", at));
+    };
+    const surface = body('[role="dialog"]:has(> .hard-moment-sheet)');
+    expect(surface).toContain("background: var(--arbor-peach-wash);");
+    // A wash, never an alarm or verdict colour; no raw colour values.
+    expect(CSS).not.toMatch(/--arbor-(red|coral|pink|clay|peach-ink)|#[0-9a-fA-F]{3,8}\b|rgba?\(/);
+    const title = body('[role="dialog"]:has(> .hard-moment-sheet) > div:not(.hard-moment-sheet) > h3');
+    expect(title).toContain("clip-path: inset(50%);");
+    expect(title).not.toMatch(/display:\s*none|visibility:\s*hidden/);
+    // Logical properties only.
+    expect(CSS).not.toMatch(/\b(left|right|width|height|margin-(left|right)|padding-(left|right))\s*:/);
+  });
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: a fresh open leads with the kicker, then folds the picker behind one disclosure`, () => {
+      harness.lang = lang;
+      const html = renderToStaticMarkup(<HardMomentNowSheet />);
+      const t = tFor(lang);
+      expect(html).toContain('class="hard-moment-sheet min-w-0 space-y-4 text-start"');
+      const kicker = html.indexOf(escapeHtml(t("hm.first.kicker")));
+      const choose = html.indexOf('data-testid="hard-moment-now-choose"');
+      const label = html.indexOf(escapeHtml(t("companion.hard.choose")));
+      const pick = html.indexOf(escapeHtml(t("hm.now.pick")));
+      expect(kicker).toBeGreaterThan(-1);
+      expect(choose).toBeGreaterThan(kicker);
+      expect(label).toBeGreaterThan(choose);
+      expect(pick).toBeGreaterThan(label);
+      expect(html.match(/data-testid="hard-moment-now-choose"/g)).toHaveLength(1);
+      // Closed by default: the <details> carries no open attribute.
+      expect(html).toMatch(/<details data-testid="hard-moment-now-choose" class="group\/choose">/);
+      expect(html.indexOf('data-testid="hard-moment-now-chip"')).toBeGreaterThan(pick);
+    });
+  }
+
+  it("the fold applies only after the first view; back from a card the picker shows directly", () => {
+    expect(SHEET).toContain('<PickerFold folded={!pastFirst} label={t("companion.hard.choose")}>');
+    const fold = SHEET.slice(SHEET.indexOf("function PickerFold("), SHEET.indexOf("export function hardMomentSheetOrder"));
+    expect(fold).toContain("if (!folded) return <>{children}</>;");
+    expect(fold).toContain('className="inline-flex min-h-11');
+    // A named group, so the nested "Something else" chevron turns only with its own disclosure.
+    expect(fold).toContain("group-open/choose:rotate-180");
+  });
+
+  it("the kicker copy is the mock's, EN + HE", () => {
+    expect(en["hm.first.kicker"]).toBe("A hard moment · words and one step");
+    expect(he["hm.first.kicker"]).toBe("רגע קשה · מילים וצעד אחד");
+    expect(en["companion.hard.choose"] ?? translate("en", "companion.hard.choose")).toBe("Choose what's happening");
+    expect(translate("he", "companion.hard.choose")).not.toMatch(/[A-Za-z]/);
+  });
+});

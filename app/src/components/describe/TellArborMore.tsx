@@ -5,9 +5,13 @@
  * parent's words match go through the ArborContext milestone write (with
  * "Not this"); context lines become approved memory. Nothing is written
  * before "Keep these".
+ *
+ * F-TALK-2 (mock L680-700): a bottom sheet with its grab handle below lg, the
+ * centred Modal above it (the MOB-28 surface seam, as Settings and Paywall).
  */
 import React, { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Modal } from "../ui/Modal";
+import { Sheet, useCompactSurface } from "../ui/Sheet";
 import { useArbor } from "../../context/ArborContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -26,6 +30,7 @@ export default function TellArborMore({ onClose }: { onClose: () => void }) {
   const { childProfile, milestones, setMilestoneObservation, restoreMilestone, retryMemoryReview } = useArbor();
   const { updateChild } = useProfile();
   const { t, aiLang, uiLang } = useLanguage();
+  const Surface = useCompactSurface() ? Sheet : Modal;
   const lang: "en" | "he" = aiLang === "he" ? "he" : "en";
   const name = (childProfile.name || "").trim().split(/\s+/)[0] || childProfile.name;
   // The session reads the child and the milestones at call time, never a stale render.
@@ -66,7 +71,7 @@ export default function TellArborMore({ onClose }: { onClose: () => void }) {
     const milestone = live.current.milestones.find((m) => m.id === id);
     return milestone ? milestoneText(milestone, "title", t, { gender: childProfile.gender ?? null }) : undefined;
   };
-  return <Modal open onClose={onClose} title={t("elev.describe.title", { name })} maxWidth="max-w-2xl">
+  return <Surface open onClose={onClose} title={t("elev.describe.title", { name })} maxWidth="max-w-2xl">
     <div className="describe-modal" dir={uiLang === "he" ? "rtl" : "ltr"} data-testid="tell-arbor-more">
       {showInput && <>
         <p className="describe-sub">{t("elev.describe.sub")}</p>
@@ -87,5 +92,5 @@ export default function TellArborMore({ onClose }: { onClose: () => void }) {
         <button type="button" className="describe-link" onClick={onClose}>{t("elev.describe.close")}</button>
       </div>}
     </div>
-  </Modal>;
+  </Surface>;
 }

@@ -361,7 +361,7 @@ describe("Companion draft, attachment and speech lifetime", () => {
 
   it("keeping a moment passes the existing text and bounded photo through the real Coach integration", async () => {
     const view = harness({ text: "She built a tall tower" }); const file = await attach(view);
-    view.option("Just keep a moment"); await tick();
+    view.option("Keep a moment"); await tick();
     expect(view.onSend).not.toHaveBeenCalled(); expect(view.requirePermission).not.toHaveBeenCalled();
     expect(view.thumbnail).toHaveBeenCalledTimes(1);
     expect(view.thumbnail.mock.calls[0][0]).toMatchObject({ name: file.name, type: file.mimeType, size: 8 });
@@ -371,7 +371,7 @@ describe("Companion draft, attachment and speech lifetime", () => {
 
   it("a document cannot silently disappear when keeping a moment", async () => {
     const view = harness(); const document: ComposerAttachment = { ...photo("report"), kind: "document", name: "report.pdf", mimeType: "application/pdf", dataUrl: "data:application/pdf;base64,JVBERi0xLjc=" };
-    await attach(view, document); view.option("Just keep a moment"); await tick();
+    await attach(view, document); view.option("Keep a moment"); await tick();
     expect(view.openCaptureSheet).not.toHaveBeenCalled(); expect(view.thumbnail).not.toHaveBeenCalled();
     expect(view.previews()).toEqual([document.name]); expect(text(one(view.render(), node => node.props.role === "alert"))).toContain("one photo");
   });
@@ -394,8 +394,9 @@ describe("Companion secondary tools disclosure", () => {
     expect(group.props.hidden).toBe(true); expect(group.props.role).toBe("group");
     view.click(translate(language, "companion.input.add-or-save"));
     expect(button(view.render(), translate(language, "companion.input.add-or-save")).props["aria-expanded"]).toBe(true);
-    for (const key of ["photo", "file", "dictate", "just-keep-a-moment"]) {
-      expect(button(view.render(), translate(language, `companion.input.${key}`)).props.disabled).toBe(false);
+    // F-TALK-2 re-pin: the tray is five tiles; the keep tile reads "Keep a moment" (mock L1044).
+    for (const key of ["companion.input.photo", "companion.input.file", "companion.input.dictate", "companion.tray.keep"]) {
+      expect(button(view.render(), translate(language, key)).props.disabled).toBe(false);
     }
     expect(button(view.render(), COMPANION_CONSENT_COPY[language].control).props.disabled).toBe(false);
   });
@@ -407,7 +408,8 @@ describe("Companion secondary tools disclosure", () => {
     const openHard = vi.fn(); view.state.composerHardMoment = openHard;
     const hard = button(view.render(), translate(language, "companion.input.hard-moment-aria"));
     expect(hard.props["data-testid"]).toBe("coach-hard-moment-now");
-    expect(text(hard)).toBe(translate(language, "companion.input.hard-moment"));
+    // F-TALK-2 re-pin: the tile reads "Hard moment" / "קשה עכשיו?" (mock L1044); its name stays the aria line.
+    expect(text(hard)).toBe(translate(language, "companion.tray.hard"));
     hard.props.onClick(); view.render();
     expect(openHard).toHaveBeenCalledOnce();
     expect(button(view.render(), translate(language, "companion.input.add-or-save")).props["aria-expanded"]).toBe(false);

@@ -40,6 +40,9 @@
 .companion-launch-main:hover, .companion-launch-save:hover { background: var(--arbor-paper-deep); }
 .companion-workspace button:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 3px; }
 @media (max-width: 520px) { .companion-launch-save-label { display: none; } }
+/* F-TALK-2 / MOB-03: the full-screen panel ends where the phone's keyboard
+   begins (useVisualViewportInset publishes the covered height). */
+@media (max-width: 1279.98px) { .companion-conversation { inset-block-end: var(--companion-keyboard-inset, 0px); } }
 @media (min-width: 1024px) { .companion-workspace { padding-block-end: 0; } .companion-launcher-rail { padding-block-end: max(16px, env(safe-area-inset-bottom)); } }
 @media (min-width: 1280px) {
   .companion-workspace.is-open:not(.is-expanded) { grid-template-columns: minmax(0,1fr) minmax(440px,46%); }

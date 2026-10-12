@@ -3,6 +3,7 @@ import React, { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, use
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDialog } from "../../hooks/useDialog";
+import { useVisualViewportInset } from "../../hooks/useVisualViewportInset";
 import { COMPANION_CONVERSATION_EVENT, requestCompanionConversation, type CompanionConversationRequest } from "../../lib/companionConversation";
 import { trackCompanionPanelOpen } from "../../lib/kpiEvents";
 import { isKidModeActive } from "../../lib/kidModeGate";
@@ -136,6 +137,8 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     return () => cancelAnimationFrame(frame);
   }, [open, kidLocked, childProfile.id, activeTab]);
   const { ref: panelRef } = useDialog<HTMLElement>({ open: modal, onClose: close, returnFocusRef: launchRef, persistentLayer: true });
+  // F-TALK-2 / MOB-03: full-screen on a phone, the composer stays above the keyboard.
+  useVisualViewportInset(modal);
   useEffect(() => {
     if (visible && !modal) panelRef.current?.focus();
   }, [visible, modal, panelRef]);

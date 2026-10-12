@@ -39,7 +39,7 @@ export const companionEn = {
   "companion.input.what-would-you-like-to-share": "What would you like to share?",
   "companion.input.write-show-talk": "Write, show, talk",
   "companion.input.keep-a-moment": "Keep a moment",
-  "companion.input.tap-talk-to-start": "Tap “Talk it through” below to start. The microphone opens only when you tap.",
+  "companion.input.tap-talk-to-start": "Tap the voice button below to talk it through. The microphone opens only when you tap.",
   "companion.input.hard-moment": "A hard moment?",
   "companion.input.hard-moment-aria": "A hard moment? Words and one step for right now",
   "companion.input.let-s-make-sense-of-it-together": "What would help today?",
@@ -369,6 +369,20 @@ export const companionEn = {
   "companion.history.close": "Close history",
   "companion.history.delete": "Delete: {title}",
   "companion.history.empty": "No earlier conversations yet.",
+  // F-TALK-2: the composer tray tiles (mock L1044), the thread date line
+  // ("Today · 07:58", mock L399), the fallback follow-up trio (mock L415) and
+  // the hard-moment sheet's folded picker, and the capture sheet's saved-state
+  // "Talk it through" (the floating post-capture strip is gone). Words only:
+  // never a count or grade.
+  "companion.tray.keep": "Keep a moment",
+  "companion.tray.hard": "Hard moment",
+  "companion.thread.today": "Today",
+  "companion.thread.yesterday": "Yesterday",
+  "companion.followup.example": "Give me an example",
+  "companion.followup.refuses": "And if {name} refuses?",
+  "companion.followup.adapt": "Adapt to our day",
+  "companion.hard.choose": "Choose what's happening",
+  "companion.capture.talk": "Talk it through",
 };
 
 export const companionHe = {
@@ -411,7 +425,7 @@ export const companionHe = {
   "companion.input.what-would-you-like-to-share": "מה תרצו לשתף?",
   "companion.input.write-show-talk": "לכתוב, להראות, לדבר",
   "companion.input.keep-a-moment": "לשמור רגע",
-  "companion.input.tap-talk-to-start": "הקישו על „לדבר על זה” למטה כדי להתחיל. המיקרופון נפתח רק כשמקישים.",
+  "companion.input.tap-talk-to-start": "הקישו על כפתור הקול למטה כדי לדבר על זה. המיקרופון נפתח רק כשמקישים.",
   "companion.input.hard-moment": "רגע קשה?",
   "companion.input.hard-moment-aria": "רגע קשה? מילים וצעד אחד לעכשיו",
   "companion.input.let-s-make-sense-of-it-together": "מה יעזור היום?",
@@ -737,4 +751,14 @@ export const companionHe = {
   "companion.history.close": "סגירת ההיסטוריה",
   "companion.history.delete": "מחיקה: {title}",
   "companion.history.empty": "עדיין אין שיחות קודמות.",
+  // F-TALK-2: tray tiles, thread date line, fallback follow-ups, the folded picker, the saved-state Talk (see the English block).
+  "companion.tray.keep": "לשמור רגע",
+  "companion.tray.hard": "קשה עכשיו?",
+  "companion.thread.today": "היום",
+  "companion.thread.yesterday": "אתמול",
+  "companion.followup.example": "אפשר דוגמה?",
+  "companion.followup.refuses": "ומה אם {name} לא רוצה?",
+  "companion.followup.adapt": "להתאים ליום שלנו",
+  "companion.hard.choose": "לבחור מה קורה",
+  "companion.capture.talk": "לדבר על זה",
 };

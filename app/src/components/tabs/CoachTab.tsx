@@ -9,9 +9,7 @@ import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { useAuth } from "../../context/AuthContext";
-import { Avatar } from "../ui/Avatar";
-import { ArborMascot } from "../ui/ArborMascot";
+import { ArborMark } from "../ui/ArborMark";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { TrustSafetyBar, cardCls } from "../ui/kit";
 // F-TALK-1: the data-use panel ("What the coach sees", TrustPanel + the
@@ -21,6 +19,7 @@ import { TrustSafetyBar, cardCls } from "../ui/kit";
 // "Change" lands on that switch.
 import { coachContractText } from "../../lib/i18nElevation/coachcontract";
 import { fmtDay } from "../../lib/formatDate";
+import { threadDayLabel, threadDayMarks } from "../../lib/threadDates";
 import { goToRoute } from "../../hooks/useHashQuery";
 import { WEEKLY_CONTEXT_CONSENT_EVENT, buildVoiceContext, dismissWeeklyContextNotice, readWeeklyContextConsent, shouldShowWeeklyContextNotice } from "../../ai/chatContext";
 import { T } from "../../lib/tokens";
@@ -72,7 +71,8 @@ import { splitCompleteSentences } from "../../lib/sentenceStream";
 import { hasUserTurn, hasAiTurn, askedWithTopic } from "../../lib/chatStream";
 // LL-A1: "Go deeper" — after a settled answer, up to 2 Learn Library reads
 // matched on the contract's framework domains + concerns keyword-derived from
-// the answer text, deep-linked via the requestLearnRead seam.
+// the answer text, deep-linked via the requestLearnRead seam. F-TALK-2: they
+// sit inside the answer's actions, never in the Talk thread.
 import { matchLearnCards } from "../../learn/learnLibrary";
 import { LEARN_CARDS } from "../../learn/learnCards";
 import { availableHardMomentCards, concernsForBehaviors } from "../../content/selectCards";
@@ -98,11 +98,12 @@ import { usePrefersReducedMotion } from "../ui/playkit";
 // carries no model-anticipated followUps (ASK-4). The visible label is
 // translated (labelKey); the `prompt` sent to the model stays English on
 // purpose (the model replies in aiLang) — the bubble shows the tapped label
-// via displayText (ASK-5).
+// via displayText (ASK-5). F-TALK-2 (mock L415): the mock's three intents,
+// gender-neutral; the label names the child through {name}.
 const FOLLOW_UPS: { labelKey: string; prompt: string }[] = [
-  { labelKey: "coach.followup.avoid", prompt: "What should I avoid saying in that moment?" },
-  { labelKey: "coach.followup.repair", prompt: "How do I repair the connection afterwards?" },
-  { labelKey: "coach.followup.calm", prompt: "Give me a 1-minute calming routine to try." },
+  { labelKey: "companion.followup.example", prompt: "Give me a concrete example of that." },
+  { labelKey: "companion.followup.refuses", prompt: "And if my child refuses?" },
+  { labelKey: "companion.followup.adapt", prompt: "Adapt this to our day." },
 ];
 
 // IA-2: fast-start scenarios — the most common hard moments, one tap away.
@@ -185,7 +186,6 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // Talk panel: nothing sits between the panel header and the thread.
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
-  const { user } = useAuth();
   const childFirst = (childProfile.name || "").split(" ")[0];
   const reducedMotion = usePrefersReducedMotion();
 
@@ -209,13 +209,17 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     typeof lastMessage?.contract?.riskLevel === "string" && !/^low$/i.test(lastMessage.contract.riskLevel.trim());
   const showFollowUps =
     !isChatLoading && lastMessage?.sender === "ai" && !lastMessage.voiceLive && !lastMessage.chatLive && userTurnExists;
+  // F-TALK-2 (mock L399): one date line per day of turns, from their stamps.
+  const dayMarks = useMemo(() => threadDayMarks(chatMessages), [chatMessages]);
+  const threadNow = new Date();
 
   // LL-A1: up to 2 "Go deeper" Learn Library reads for the settled answer —
   // ranked on the contract's framework domains + concerns keyword-derived from
   // the answer text, age-tiebroken. Same gate as the follow-up lane, so the
-  // chips never render beside a still-streaming bubble.
+  // reads never sit beside a still-streaming bubble. F-TALK-2: they live in
+  // the settled answer's own actions, so only a structured answer offers them.
   const goDeeperReads = useMemo(() => {
-    if (!showFollowUps || !lastMessage?.text) return [];
+    if (!showFollowUps || !lastMessage?.text || !lastMessage.contract) return [];
     return matchLearnCards(
       LEARN_CARDS,
       {
@@ -1031,11 +1035,6 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           className={composerDocked ? "py-2.5" : "pt-3 pb-4 sm:pt-4 sm:pb-5"}
           aria-label={t("elev.hero.ask.cta")}
         >
-          {!composerDocked && !weeklyNoticeShown && (
-            <p data-testid="coach-data-use" className="mb-2 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-              {memoryLine}
-            </p>
-          )}
           {/* B-ASKJB-31: the guide the parent opened in the sheet, shown as a
               reference card above the composer. Display only — nothing from it
               is written into the prompt (clinical veto). */}
@@ -1084,23 +1083,29 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             />
           )}
           {!online && <p data-testid="coach-offline-note" role="status" className="text-xs py-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.aierrors.offline.composer")}</p>}
-          {/* Critic r2 (coach design P1): the one-time data-use notice reads
-              AFTER the field and the capture chips, as a quiet --t-xs line with
-              no fill — the composer is the only raised object here. */}
-          {weeklyNoticeShown && (
+          {/* Critic r2 (coach design P1): the data-use line reads AFTER the
+              field and the capture chips, as a quiet --t-xs line with no fill —
+              the composer is the only raised object here. F-TALK-2 (mock: only
+              the attachment strip and the recording line sit above the input):
+              the memory caption and the one-time weekly notice are ONE muted
+              foot line with one Change. Fresh thread: the memory clause (what
+              Arbor uses) and Change; while the weekly notice is due, its
+              sentence leads and Dismiss joins. Docked under a thread with no
+              notice due, the composer foot alone remains. */}
+          {(!composerDocked || weeklyNoticeShown) && (
             <div
               data-testid="coach-weekly-notice"
               role="note"
-              className="mt-2 flex flex-wrap items-center gap-x-2"
+              className="mt-1 flex flex-wrap items-center gap-x-1"
             >
               <p data-testid="coach-data-use" className="flex-1 min-w-0 py-2 t-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>
-                {tcc("elev.coachcontract.notice.body")}{!composerDocked && <> {memoryLine}</>}
+                {weeklyNoticeShown ? <>{tcc("elev.coachcontract.notice.body")}{!composerDocked && <> {memoryLine}</>}</> : memoryLine}
               </p>
               <button
                 type="button"
                 data-testid="coach-weekly-notice-change"
                 onClick={() => {
-                  closeWeeklyNotice();
+                  if (weeklyNoticeShown) closeWeeklyNotice();
                   // F-TALK-1: the switch lives in "What Arbor remembers"; the
                   // section param brings it into view there.
                   goToRoute("memory", { section: "coach" });
@@ -1110,15 +1115,17 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               >
                 {tcc("elev.coachcontract.notice.change")}
               </button>
-              <button
-                type="button"
-                data-testid="coach-weekly-notice-dismiss"
-                onClick={closeWeeklyNotice}
-                className="inline-flex min-h-11 items-center px-2 t-xs font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
-                style={{ color: "var(--arbor-muted)" }}
-              >
-                {tcc("elev.coachcontract.notice.dismiss")}
-              </button>
+              {weeklyNoticeShown && (
+                <button
+                  type="button"
+                  data-testid="coach-weekly-notice-dismiss"
+                  onClick={closeWeeklyNotice}
+                  className="inline-flex min-h-11 items-center px-2 t-xs font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+                  style={{ color: "var(--arbor-muted)" }}
+                >
+                  {tcc("elev.coachcontract.notice.dismiss")}
+                </button>
+              )}
             </div>
           )}
           {voiceInvite && voicePhase === "off" && !voiceNotice && <p role="status" data-testid="voice-door-invite" className="companion-voice-invite" dir="auto">{inputText(uiLang, "companion.input.tap-talk-to-start")}</p>}
@@ -1277,20 +1284,30 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               — it hides the moment any real turn exists, including a legacy
               conversation that still opens with the old welcome bubble. */}
           {chatMessages.map((msg, idx) => (
-            <div key={idx} data-companion-message={msg.sender} data-structured-report={msg.sender === "ai" && !!msg.contract || undefined} className={`flex gap-3 group ${msg.sender === "user" ? "ms-auto max-w-[85%] flex-row-reverse" : "me-auto w-full"}`}>
-              {msg.sender === "user" ? (
-                <Avatar name={user?.displayName} photoURL={user?.photoURL} size={32} />
-              ) : (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ background: "var(--arbor-green-soft)" }} title="Arbor">
-                  <ArborMascot size={30} />
+            <React.Fragment key={idx}>
+            {/* F-TALK-2 (mock L399): one muted date line per day, from the
+                turns' own timestamps ("Today · 07:58"). Turns saved before
+                timestamps existed carry none and draw no line. */}
+            {dayMarks.has(idx) && (
+              <p data-testid="coach-thread-date" className="text-center t-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
+                {threadDayLabel(msg.at!, threadNow, uiLang === "he" ? "he" : "en")}
+              </p>
+            )}
+            <div data-companion-message={msg.sender} data-structured-report={msg.sender === "ai" && !!msg.contract || undefined} className={`flex gap-3 group ${msg.sender === "user" ? "ms-auto max-w-[82%] flex-row-reverse" : "me-auto w-full"}`}>
+              {/* F-TALK-2 (mock L400-403): the parent's turn carries no avatar;
+                  Arbor's turn is led by the Arbor mark. */}
+              {msg.sender === "ai" && (
+                <div className="flex h-8 w-6 flex-shrink-0 items-start pt-1" title="Arbor">
+                  <ArborMark size={24} />
                 </div>
               )}
               {/* Asymmetric "tail" via logical radii so it flips correctly in RTL:
-                  the speaker-side bottom corner is tightened to 6px. Coach bubbles
-                  carry a soft shadow to lift the conversation off the canvas. */}
+                  the speaker-side bottom corner is tightened to 6px. The parent's
+                  bubble is navy with light text (mock L400); Arbor's carries a
+                  soft shadow to lift the conversation off the canvas. */}
               <div dir="auto" className={`min-w-0 p-4 rounded-[18px] text-sm font-medium leading-[1.55]${msg.sender === "ai" ? " flex-1" : ""}`}
                 style={msg.sender === "user"
-                  ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)", borderEndEndRadius: 6 }
+                  ? { background: "var(--arbor-ink)", color: "var(--arbor-on-accent)", borderEndEndRadius: 6 }
                   : { background: T.paperElevated, color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)", borderEndStartRadius: 6, boxShadow: "var(--shadow-sm)" }}>
                 {msg.sender === "ai" && !msg.contract && msg.lens && msg.lens !== "Integrated Balanced" && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
@@ -1344,6 +1361,14 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                         toast(t("coach.toast.handoffPrefilled"), "info");
                       }}
                       onProposeMemory={(fact) => proposeMemory(fact, { source: "document", prompt: "companion:document" })}
+                      // F-TALK-2: the visit handoff (ia-b6) left the row under the
+                      // thread for the answer's actions, next to Teacher note.
+                      onPrepareVisit={() => { setActiveTab("consult"); toast(t("coach.specialist.toast"), "info"); }}
+                      // LL-A1: the settled last answer carries its Go deeper reads.
+                      goDeeperReads={idx === chatMessages.length - 1 && goDeeperReads.length > 0
+                        ? goDeeperReads.map((card) => ({ id: card.id, title: aiLang === "he" ? card.title.he : card.title.en }))
+                        : undefined}
+                      onRead={(cardId) => requestLearnRead({ cardId, source: "coach-answer" })}
                       // EXTRA-TALK: one count-free provenance line per SETTLED
                       // answer; "the question you chose" only when that turn
                       // went out with a family question (its stamped topicId).
@@ -1359,71 +1384,78 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                 ) : (
                   // ASK-5: user bubbles show what the parent SAW (the tapped
                   // localized chip label) — msg.text stays the canonical
-                  // prompt that went to the model.
+                  // prompt that went to the model. F-TALK-2: plain text on the
+                  // navy bubble (MarkdownBlock paints its paragraphs in ink).
                   <>
                     {msg.attachments?.map(file => <div key={file.id} className="companion-file-receipt"><Icon name={file.kind === "photo" ? "photo" : "description"} size={20}/><span>{file.name}<small className="block">{inputText(uiLang, "companion.input.attached-to-this-turn-original-not-saved")}</small></span></div>)}
-                    <MarkdownBlock text={msg.displayText || msg.text} />
+                    <p className="whitespace-pre-wrap break-words">{msg.displayText || msg.text}</p>
                   </>
                 )}
 
                 {msg.sender === "ai" && !msg.contract && !msg.voiceLive && !msg.chatLive && (
-                  // Calm: answers read as text. Copy stays inline; everything else
-                  // folds into a single "…" overflow so it's not a toolbar.
+                  // F-TALK-2 (mock L400-404): a prose turn carries no toolbar.
+                  // One quiet "More" at its end holds Copy, Keep, Plan and Share.
                   // Touch: always visible. Desktop: calm hover reveal. Keyboard: focus reveals.
-                  <div className="relative flex items-center gap-3 mt-3 pt-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+                  <div className="relative flex justify-end mt-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition">
                     <button
-                      onClick={async () => { await navigator.clipboard?.writeText(msg.text); toast(t("coach.copied"), "success"); }}
-                      aria-label={t("coach.action.copy")}
-                      className="text-[10px] font-bold flex items-center gap-1 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded" style={{ color: "var(--arbor-muted)" }}
-                    >
-                      <Icon name="content_copy" size={12} /> {t("coach.action.copy")}
-                    </button>
-                    <button
+                      type="button"
                       onClick={() => setOpenMenuIdx(openMenuIdx === idx ? null : idx)}
                       aria-label={t("coach.more")}
                       aria-haspopup="menu"
                       aria-expanded={openMenuIdx === idx}
-                      className="text-[10px] font-bold flex items-center gap-1 min-h-[44px] px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded" style={{ color: "var(--arbor-muted)" }}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-muted)" }}
                     >
-                      <Icon name="more_horiz" size={16} />
+                      <Icon name="more_horiz" size={20} />
                     </button>
                     {openMenuIdx === idx && (
                       <>
                         {/* Backdrop closes the menu on any outside tap. */}
                         <button type="button" aria-hidden className="fixed inset-0 z-10 cursor-default" onClick={() => setOpenMenuIdx(null)} tabIndex={-1} />
-                        <div role="menu" className="absolute z-20 top-full mt-1 start-8 rounded-xl p-1 min-w-[180px]" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
+                        <div role="menu" className="absolute z-20 top-full mt-1 end-0 rounded-xl p-1 min-w-[200px]" style={{ background: T.paperElevated, border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
                           <button
+                            type="button"
+                            role="menuitem"
+                            onClick={async () => {
+                              setOpenMenuIdx(null);
+                              await navigator.clipboard?.writeText(msg.text);
+                              toast(t("coach.copied"), "success");
+                            }}
+                            className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-11 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
+                          >
+                            <Icon name="content_copy" size={16} style={{ color: "var(--arbor-muted)" }} /> {t("coach.action.copy")}
+                          </button>
+                          <button
+                            type="button"
                             role="menuitem"
                             onClick={() => {
                               setNewLogNotes(msg.text.replace(/[#*]/g, "").trim().slice(0, 400));
-                              // AI-05: the overflow "Log" wrote model-authored
-                              // prose into the draft and then did a BARE tab
-                              // switch — bypassing the ai-draft gate the
-                              // answer-card path goes through (AI-CAP-4). The
-                              // gate is fail-closed by design: it arms the
-                              // review flag, stamps 'ai-draft' provenance and
-                              // opens the form into view. An AI-authored draft
-                              // must never reach the log store un-reviewed, so
-                              // this entry point routes through the SAME seam.
+                              // AI-05: an AI-authored draft never reaches the log
+                              // store un-reviewed. The gate is fail-closed by
+                              // design: it arms the review flag, stamps 'ai-draft'
+                              // provenance and opens the one capture sheet in place.
                               openCaptureSheet({ review: "ai-draft" });
                               setOpenMenuIdx(null);
                               toast(t("coach.toast.logPrefilled"), "info");
                             }}
-                            className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-[40px] rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
+                            className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-11 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
                           >
-                            <Icon name="assignment" size={14} style={{ color: "var(--arbor-muted)" }} /> {t("coach.action.log")}
+                            <Icon name="edit_note" size={16} style={{ color: "var(--arbor-muted)" }} /> {inputText(uiLang, "companion.tray.keep")}
                           </button>
                           <button
+                            type="button"
                             role="menuitem"
                             onClick={() => {
                               setPlanChallengeTopic(msg.text.replace(/[#*]/g, "").slice(0, 140));
+                              // N1-01-R3: the same armed latch the answer card's
+                              // plan door uses; the actionPlans write consumes it.
+                              markPlanSeededFromAnswer("coach");
                               setActiveTab("plans");
                               setOpenMenuIdx(null);
                               toast(t("coach.toast.planSeeded"), "info");
                             }}
-                            className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-[40px] rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
+                            className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-11 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
                           >
-                            <Icon name="playlist_add" size={14} style={{ color: "var(--arbor-muted)" }} /> {t("coach.action.plan")}
+                            <Icon name="playlist_add" size={16} style={{ color: "var(--arbor-muted)" }} /> {t("coach.action.plan")}
                           </button>
                           {/* mk-p0-3: 1-tap branded share of a settled answer — this
                               menu only exists on settled bubbles (live ones hide the
@@ -1454,6 +1486,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                 )}
               </div>
             </div>
+            </React.Fragment>
           ))}
 
           {showFollowUps && (() => {
@@ -1465,45 +1498,24 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             const anticipated = lastMessage?.contract?.followUps?.filter((q) => q.trim()) ?? [];
             const chips = anticipated.length > 0
               ? anticipated.map((q) => ({ key: q, label: q, prompt: q }))
-              : FOLLOW_UPS.map((q) => ({ key: q.labelKey, label: t(q.labelKey), prompt: q.prompt }));
+              : FOLLOW_UPS.map((q) => ({ key: q.labelKey, label: t(q.labelKey, { name: childFirst || t("learn.yourChild") }), prompt: q.prompt }));
             return (
-            <div className="flex flex-wrap gap-[9px] me-auto max-w-[85%] ps-11">
+            // F-TALK-2 (mock L415): three white chips under the last answer,
+            // aligned with its text (the 24 px mark + gap); 44 px floor (MOB-03).
+            <div className="flex flex-wrap gap-2 me-auto max-w-[85%] ps-9">
               {chips.map((q) => (
                 <button
+                  type="button"
                   key={q.key}
                   dir="auto"
                   onClick={() => handleChatSend(q.prompt, { displayText: q.label })}
-                  className="text-[13px] px-4 py-1.5 min-h-[44px] rounded-full transition flex items-center gap-1.5 font-extrabold bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                  style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-green-ink)" }}
+                  className="text-[13px] px-4 py-1.5 min-h-[44px] rounded-full transition flex items-center gap-1.5 font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                  style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-clay)" }}
                 >
                   {q.label}
-                  {uiLang === "he"
-                    ? <Icon name="arrow_back" size={12} />
-                    : <Icon name="arrow_forward" size={12} />}
+                  <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
                 </button>
               ))}
-              {/* LL-A1: "Go deeper" reads — lavender (the Learn accent, per the
-                  milestone chip) so a read is visually distinct from a follow-up
-                  question; tap deep-links into the Learn Library reader. */}
-              {goDeeperReads.length > 0 && (
-                <>
-                  <span className="text-[11px] font-bold self-center" style={{ color: "var(--arbor-muted)" }}>{t("learn.goDeeper")}</span>
-                  {goDeeperReads.map((card) => {
-                    const title = aiLang === "he" ? card.title.he : card.title.en;
-                    return (
-                      <button
-                        key={card.id}
-                        aria-label={title}
-                        onClick={() => requestLearnRead({ cardId: card.id, source: "coach-answer" })}
-                        className="text-[12px] px-4 py-1.5 min-h-[38px] rounded-full transition active:scale-[0.98] flex items-center gap-1.5 font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                        style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}
-                      >
-                        <Icon name="local_library" size={14} /> <span dir="auto">{title}</span>
-                      </button>
-                    );
-                  })}
-                </>
-              )}
             </div>
             );
           })()}
@@ -1603,10 +1615,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
         </div>
 
         {/* COACH-4: the mirrored bottom composer (input+send+photo/mic row) was
-            deleted — the hero composer above is the one input. What remains under
-            the thread is a compact secondary row: Council (multi-lens send of the
-            current question) + the Ask-a-Specialist warm handoff (ia-b6,
-            navigation only — stays enabled while an answer is streaming). */}
+            deleted — the hero composer above is the one input. F-TALK-2 (mock
+            L417-433): the composer follows the thread directly; the visit
+            handoff (ia-b6) rides in each answer's actions, beside Teacher note. */}
         <div className="px-4 pb-2 empty:hidden">
           {/* ENG-21 — the value preview. B-ASKJB-06: it lives INSIDE the thread
               block (above its footer row), never as its own top-level module, so
@@ -1627,28 +1638,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             online={online}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2 px-4 py-2" style={{ borderTop: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-deep)" }}>
-          <button
-            type="button"
-            onClick={() => { setActiveTab("consult"); toast(t("coach.specialist.toast"), "info"); }}
-            aria-label={t("coach.specialist.aria")}
-            className="ms-auto inline-flex items-center gap-1.5 min-h-[44px] py-2 text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg"
-            style={{ color: "var(--arbor-muted)" }}
-          >
-            <Icon name="stethoscope" size={14} style={{ color: "var(--arbor-green-ink)" }} />
-            <span>{t("coach.specialist.lead")}</span>
-            <span style={{ color: "var(--arbor-green-ink)" }}>{t("coach.specialist.cta")}</span>
-            {uiLang === "he"
-              ? <Icon name="chevron_left" size={14} style={{ color: "var(--arbor-green-ink)" }} />
-              : <Icon name="chevron_right" size={14} style={{ color: "var(--arbor-green-ink)" }} />}
-          </button>
-        </div>
       </div>
 
       {/* Trust & Safety — constant posture (GP-05/AI-08): the bar never grades
-          or colours the child; the escalate action is gated on the contract's
-          internal signal only (TS-1/TS-3). */}
-      {lastMessage?.sender === "ai" && userTurnExists && (
+          or colours the child. F-TALK-2: it renders only when the last answer
+          carries the contract's internal escalation signal (TS-1/TS-3), so
+          the escalate path stays and a calm answer ends at its own text. */}
+      {lastMessage?.sender === "ai" && userTurnExists && escalationSignal && (
         <TrustSafetyBar
           note={t("coach.trust.note")}
           lang={uiLang}

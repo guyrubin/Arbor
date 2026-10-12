@@ -79,6 +79,13 @@
 .coach-report__tools:empty { display: none; }
 .coach-report__tools button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; min-block-size: var(--touch-min); max-inline-size: 100%; border: 1px solid var(--arbor-rule-strong); border-radius: var(--r-sm); color: var(--arbor-clay); background: var(--arbor-paper-elevated); text-align: start; font-size: var(--t-sm); font-weight: 600; }
 .coach-report__tools button:hover { background: var(--arbor-paper-deep); }
+/* F-TALK-2: behind the actions door, the latest answer's Learn reads and the
+   answer's metadata chips (lens, age band, domains). Muted, never a verdict. */
+.coach-report__reads { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.coach-report__reads > .coach-report__meta { flex-basis: 100%; }
+.coach-report__reads button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; min-block-size: var(--touch-min); max-inline-size: 100%; border: 1px solid var(--arbor-rule); border-radius: var(--r-sm); color: var(--arbor-clay); background: var(--arbor-paper-elevated); text-align: start; font-size: var(--t-sm); font-weight: 600; }
+.coach-report__reads button:hover { background: var(--arbor-paper-deep); }
+.coach-report__chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; color: var(--arbor-muted); font-size: var(--t-xs); }
 .coach-report__footer { border-block-start: 1px solid var(--arbor-rule); padding-block-start: 16px; }
 .coach-report__footer > * + * { margin-block-start: 12px; }
 .coach-report__attribution { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; color: var(--arbor-muted); font-size: var(--t-xs); }

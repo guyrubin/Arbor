@@ -297,9 +297,13 @@ describe("B-ASKJB-02 — the Live line names the global endpoint and the excepti
  */
 describe("critic r1 — one data-use line on Ask", () => {
   it("the standalone memory caption is gated off while the weekly notice shows", () => {
-    expect(coachSrc).toContain("{!composerDocked && !weeklyNoticeShown && (");
+    // F-TALK-2 re-pin: the caption and the weekly notice are ONE foot line
+    // (one coach-data-use node, one Change). The memory clause stands alone
+    // only when no notice is due; while it is due, the notice sentence leads.
+    expect(coachSrc).toContain("{(!composerDocked || weeklyNoticeShown) && (");
+    expect(coachSrc).toContain("{weeklyNoticeShown ? <>{tcc(\"elev.coachcontract.notice.body\")}{!composerDocked && <> {memoryLine}</>}</> : memoryLine}");
     expect(coachSrc).toMatch(/tcc\("elev\.coachcontract\.notice\.body"\)\}\{!composerDocked && <> \{memoryLine\}<\/>\}/);
-    expect((coachSrc.match(/data-testid="coach-data-use"/g) || []).length).toBe(2);
+    expect((coachSrc.match(/data-testid="coach-data-use"/g) || []).length).toBe(1);
   });
   it("the two clauses agree: counts are used; only NEW memory is asked for", () => {
     expect(honestyEn["elev.aihonesty.memory.none"]).toMatch(/anything new/);

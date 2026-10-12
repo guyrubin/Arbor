@@ -16,11 +16,12 @@ import type { ChatMessage } from "../context/ArborContext";
  * the voice pipeline was already allowed to speak, nothing else.
  */
 
-/** Append the dictated parent turn (no-op on blank dictation). */
-export const appendVoiceUser = (prev: ChatMessage[], text: string, lens?: string): ChatMessage[] => {
+/** Append the dictated parent turn (no-op on blank dictation). F-TALK-2:
+ *  `at`, when given, stamps when the parent spoke (the thread's date line). */
+export const appendVoiceUser = (prev: ChatMessage[], text: string, lens?: string, at?: string): ChatMessage[] => {
   const value = text.trim();
   if (!value) return prev;
-  return [...prev, { sender: "user", text: value, lens }];
+  return [...prev, at ? { sender: "user", text: value, lens, at } : { sender: "user", text: value, lens }];
 };
 
 /** Accumulate a streamed voice delta into the live AI caption bubble

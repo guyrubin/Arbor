@@ -80,9 +80,18 @@ describe("COACH-4 — CoachTab is one composer + one flowing thread", () => {
     expect(code).toContain("{chatMessages.map((msg, idx) => (");
   });
 
-  it("keeps Council and the specialist handoff as the compact row under the thread", () => {
+  // F-TALK-2 re-pin: the specialist handoff left the row under the thread
+  // (mock L417: the composer follows the thread directly) for the answer's
+  // actions, next to Teacher note. Same destination, same toast.
+  it("keeps Council, and the specialist handoff inside the answer's actions", () => {
     expect(code).toContain("handleCouncilSend");
-    expect(code).toContain("coach.specialist.cta");
+    // NEGATIVE: the old row's lead line and stethoscope are gone from the thread.
+    expect(code).not.toContain('t("coach.specialist.lead")');
+    expect(code).not.toContain('name="stethoscope"');
+    expect(code).toContain('onPrepareVisit={() => { setActiveTab("consult"); toast(t("coach.specialist.toast"), "info"); }}');
+    const cards = read("components/coach/CoachAnswerCards.tsx");
+    expect(cards).toContain('data-testid="coach-prepare-visit"');
+    expect(cards).toContain('{t("coach.specialist.cta")}');
   });
 });
 

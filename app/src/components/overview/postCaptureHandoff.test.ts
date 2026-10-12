@@ -18,6 +18,11 @@ import { en, he } from "../../lib/i18n";
  * only PREFILLS the composer), once per confirm, dismiss leaves no residue,
  * zero change to the behavior-log write path.
  *
+ * F-TALK-2 (v3 mock L570-578: no floating card): the strip is DELETED. The
+ * offer's only home is the capture sheet's saved state, whose next move reads
+ * "Talk it through" and still prefills through the seedCoach seam. The
+ * ArborContext seam pins below are kept unchanged (never auto-send).
+ *
  * Node-only vitest env → source-based structural guards in the house pattern
  * (confirmCaptureReview.test.ts beside this file).
  */
@@ -36,7 +41,8 @@ const behaviors = stripComments(read("components/tabs/BehaviorsTab.tsx"));
 const modal = stripComments(read("components/overview/QuickLogModal.tsx"));
 const coach = stripComments(read("components/tabs/CoachTab.tsx"));
 const context = stripComments(read("context/ArborContext.tsx"));
-const strip = stripComments(read("components/overview/PostCaptureCoachStrip.tsx"));
+// F-TALK-2: the strip file is deleted; the path is kept to prove it stays gone.
+const STRIP_FILE = path.join(SRC_ROOT, "components/overview/PostCaptureCoachStrip.tsx");
 const shell = stripComments(read("components/layout/Shell.tsx"));
 
 describe("AI-CAP-6 — live interim transcript in the capture area", () => {
@@ -134,41 +140,58 @@ describe("AI-CAP-7 — both gated confirms offer, once each, with the write path
     }
   });
 
-  it("the strip never touches the behavior-log write path", () => {
-    expect(strip).not.toMatch(/handleAddLog|upsert|logsCol/);
+  // F-TALK-2 re-pin: was "the strip never touches the behavior-log write
+  // path"; the strip is deleted, so the same guard now holds the offer's one
+  // remaining control, the saved state's Talk.
+  it("the saved-state Talk never touches the behavior-log write path", () => {
+    const at = modal.indexOf('data-testid="quicklog-reply-ask"');
+    expect(at).toBeGreaterThan(-1);
+    const talk = modal.slice(modal.lastIndexOf("<button", at), modal.indexOf("</button>", at));
+    expect(talk).not.toMatch(/handleAddLog|upsert|logsCol/);
   });
 });
 
-describe("AI-CAP-7 — the strip itself: one global render, dismissible, calm register", () => {
-  it("renders null without an offer and Shell mounts it exactly once (shared by both confirm surfaces)", () => {
-    expect(strip).toMatch(/if \(!postCaptureCoachPrompt\) return null;/);
-    expect(count(shell, /<PostCaptureCoachStrip \/>/g)).toBe(1);
+/* F-TALK-2 re-pin of "AI-CAP-7 — the strip itself": the floating strip is
+   deleted (v3 mock L570-578 has no floating card) and its offer is the capture
+   sheet's saved-state next move. Its calm-register pins carry over to that
+   control: outline, never the primary gradient, tokens only, 44 px. */
+describe("F-TALK-2 — the floating strip is gone; the offer lives in the capture sheet", () => {
+  it("the strip component is deleted and Shell mounts nothing in its place", () => {
+    expect(fs.existsSync(STRIP_FILE)).toBe(false);
+    expect(shell).not.toMatch(/PostCaptureCoachStrip|post-capture-coach-strip|postCaptureCoachPrompt/);
+    expect(count(shell, /acceptPostCaptureCoach|dismissPostCaptureCoach/g)).toBe(0);
   });
 
-  it("CTA accepts (prefill via seam), X dismisses — and the CTA is a token outline, never the primary gradient", () => {
-    expect(strip).toMatch(/onClick=\{acceptPostCaptureCoach\}/);
-    expect(strip).toMatch(/onClick=\{dismissPostCaptureCoach\}/);
-    // OBJ-TODAY-01: this strip is mounted GLOBALLY from Shell, so it can
-    // appear over any hub — including Today, whose anchor already owns the one
-    // gradient-primary CTA (Product principle 3). An offer to keep talking is
-    // secondary, so it is outline. The allow-list guard that enforces this
-    // repo-wide is components/primaryMove.gradient.test.ts.
-    expect(strip).not.toMatch(/--arbor-gradient-primary/);
-    expect(strip).toMatch(/border: "1px solid var\(--arbor-green-ink\)"/);
-    // tokens only — no hex literals in the strip
-    expect(strip).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
-    // non-blocking: fixed strip under MobileNav (z-30 < nav z-40), RTL-safe via dir=auto
-    expect(strip).toMatch(/z-30/);
-    expect(strip).toMatch(/dir="auto"/);
+  it("the saved state's 'Talk it through' prefills via the seam, as a token outline, never the primary gradient", () => {
+    const at = modal.indexOf('data-testid="quicklog-reply-ask"');
+    expect(at).toBeGreaterThan(-1);
+    const talk = modal.slice(modal.lastIndexOf("<button", at), modal.indexOf("</button>", at));
+    expect(talk).toContain('{t("companion.capture.talk")}');
+    expect(talk).not.toContain("elev.capture.reply.ask");
+    // Prefill only: the seam, then the sheet closes; the parent sends.
+    expect(talk).toContain('onClick={() => { seedCoach({ prompt: reply.seed, source: "post-capture" }); onClose(); }}');
+    expect(talk).not.toMatch(/handleSend|sendMessage|api\.chat/);
+    // OBJ-TODAY-01: a secondary offer is outline; the allow-list guard is
+    // components/primaryMove.gradient.test.ts.
+    expect(talk).not.toMatch(/--arbor-gradient-primary/);
+    expect(talk).toMatch(/border: "1px solid var\(--arbor-green-ink\)"/);
+    expect(talk).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(talk).toContain("min-h-11");
+    // The directional arrow mirrors once in RTL.
+    expect(talk).toContain('<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />');
   });
 
   it("copy: EN+HE parity, no pressure mechanics or confidence wording", () => {
-    for (const key of ["beh.postCapture.body", "beh.postCapture.cta", "beh.postCapture.dismiss", "beh.postCapture.prompt", "beh.capture.listening"]) {
+    // The strip's own words (body/cta/dismiss) stay in the shared dictionary
+    // as dead copy until the cleanup follow-up; nothing renders them.
+    for (const key of ["beh.postCapture.body", "beh.postCapture.cta", "beh.postCapture.dismiss", "beh.postCapture.prompt", "beh.capture.listening", "companion.capture.talk"]) {
       expect(en[key], `en missing ${key}`).toBeTruthy();
       expect(he[key], `he missing ${key}`).toBeTruthy();
     }
+    expect(en["companion.capture.talk"]).toBe("Talk it through");
+    expect(he["companion.capture.talk"]).not.toMatch(/[A-Za-z]/);
     for (const dict of [en, he]) {
-      for (const key of Object.keys(dict).filter((k) => k.startsWith("beh.postCapture."))) {
+      for (const key of [...Object.keys(dict).filter((k) => k.startsWith("beh.postCapture.")), "companion.capture.talk"]) {
         expect(dict[key]).not.toMatch(/confidence|certainty|hurry|now or never|last chance|ודאות|ביטחון/i);
       }
     }

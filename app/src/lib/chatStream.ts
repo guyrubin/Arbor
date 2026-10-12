@@ -39,7 +39,7 @@ export const hasAiTurn = (msgs: ChatMessage[]): boolean => msgs.some((m) => m.se
  * A deliberate repeat after a successful answer still appends (the last
  * message is then an AI turn).
  */
-export const appendChatUser = (prev: ChatMessage[], text: string, lens?: string, displayText?: string, topicId?: string): ChatMessage[] => {
+export const appendChatUser = (prev: ChatMessage[], text: string, lens?: string, displayText?: string, topicId?: string, at: string = new Date().toISOString()): ChatMessage[] => {
   const last = prev[prev.length - 1];
   // Retry resends the canonical text with no display label — the dedupe keeps
   // the original bubble, so a localized displayText survives a retry.
@@ -47,9 +47,10 @@ export const appendChatUser = (prev: ChatMessage[], text: string, lens?: string,
   // ASK-5: `displayText` is what the parent actually SAW and tapped (a
   // localized chip label); `text` stays the canonical prompt sent to the
   // model. Only stored when it differs, so plain typed turns stay lean.
+  // F-TALK-2: `at` stamps when the parent spoke, for the thread's date line.
   const turn: ChatMessage = displayText && displayText !== text
-    ? { sender: "user", text, lens, displayText }
-    : { sender: "user", text, lens };
+    ? { sender: "user", text, lens, displayText, at }
+    : { sender: "user", text, lens, at };
   // EXTRA-TALK: the family question this turn was SENT with (the request body
   // carries the same id), so the answer's provenance line can say "the
   // question you chose" only when one actually went to the model.

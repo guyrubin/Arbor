@@ -1,22 +1,38 @@
-.companion-composer{width:100%;color:var(--arbor-ink);font-family:var(--font-sans)}
+.companion-composer{width:100%;color:var(--arbor-ink);font-family:var(--font-sans);container-type:inline-size}
 .companion-input-well{display:flex;align-items:flex-end;gap:8px;padding:8px;border:1px solid var(--arbor-rule-strong);border-radius:var(--r-xl);background:var(--arbor-paper-elevated);box-shadow:var(--shadow-xs)}
 .companion-input-well textarea{width:100%;min-width:0;min-height:64px;padding:8px;border:0;background:transparent;resize:vertical;font:inherit;font-size:15px;line-height:1.55;color:var(--arbor-ink);outline:none;max-height:180px}
-.companion-input-well:focus-within{outline:2px solid var(--arbor-clay);outline-offset:2px}
+/* F-TALK-2: the field's ring draws only while the field has focus; each round button keeps its own focus ring. */
+.companion-input-well:has(textarea:focus){outline:2px solid var(--arbor-clay);outline-offset:2px}
 .companion-input-well>button{display:grid;place-items:center;flex:none;width:46px;height:46px;border-radius:50%;background:var(--arbor-clay);color:var(--arbor-on-accent)}
 .companion-input-well>button:disabled{background:var(--arbor-paper-deep);color:var(--arbor-muted)}
-.companion-composer-tools{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:8px}
+/* F-TALK-2 (mock L424-433, L1044): one row (+, the field, voice, send); + opens a tray of tiles above it. */
+.companion-composer-tools{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-top:4px}
 .companion-composer-tools button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:44px;padding:0 10px;border-radius:999px;font-size:13px;font-weight:600;color:var(--arbor-ink)}
 .companion-composer-tools button:hover,.companion-composer-tools button[aria-pressed=true]{background:var(--arbor-paper-deep)}
 .companion-composer-tools button:disabled{opacity:.5;cursor:not-allowed}
 .companion-composer-tools button:focus-visible{outline:2px solid var(--arbor-clay);outline-offset:2px}
-.companion-composer-tools .companion-live-button{margin-inline-start:auto;background:var(--arbor-green-soft);color:var(--arbor-green-ink)}
-.companion-composer-tools .companion-tools-toggle{padding-inline-start:0;color:var(--arbor-ink-soft)}
-.companion-secondary-tools{flex-basis:100%;padding:4px;margin-block:4px;border:1px solid var(--arbor-rule);border-radius:var(--r-lg);background:var(--arbor-paper);max-block-size:min(30dvh,240px);overflow-y:auto;overscroll-behavior:contain}
+.companion-composer-tools .companion-input-well{align-items:flex-end;gap:4px;padding:5px}
+.companion-composer-tools .companion-input-well textarea{min-height:46px;padding:12px 6px;resize:none;field-sizing:content;line-height:1.45}
+.companion-composer-tools .companion-input-well>button{display:grid;place-items:center;gap:0;padding:0;border-radius:50%;min-height:0;font-size:13px}
+.companion-composer-tools .companion-input-well>.companion-tools-toggle{background:transparent;color:var(--arbor-ink)}
+.companion-composer-tools .companion-input-well>.companion-tools-toggle:hover,.companion-composer-tools .companion-input-well>.companion-tools-toggle[aria-expanded=true]{background:var(--arbor-paper-deep)}
+.companion-composer-tools .companion-input-well>.companion-live-button{background:var(--arbor-green-soft);color:var(--arbor-green-ink)}
+.companion-composer-tools .companion-input-well>.companion-live-button[aria-pressed=true]{display:inline-flex;gap:5px;width:auto;padding-inline:14px;border-radius:999px}
+.companion-composer-tools .companion-input-well>.companion-send{background:var(--arbor-clay);color:var(--arbor-on-accent)}
+.companion-composer-tools .companion-input-well>.companion-send:hover{background:var(--arbor-clay-deep)}
+.companion-composer-tools .companion-input-well>.companion-send:disabled{background:var(--arbor-paper-deep);color:var(--arbor-muted);opacity:1}
+.companion-secondary-tools{padding:10px;border:1px solid var(--arbor-rule);border-radius:var(--r-lg);background:var(--arbor-paper-elevated);box-shadow:var(--shadow-xs);max-block-size:min(42dvh,340px);overflow-y:auto;overscroll-behavior:contain}
 .companion-secondary-tools[hidden]{display:none}
-.companion-input-options,.companion-save-options{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
-.companion-save-options{border-block-start:1px solid var(--arbor-rule);margin-block-start:4px;padding-block-start:4px;justify-content:space-between}
-.companion-save-options button{font-size:12px;color:var(--arbor-green-ink)}
-.companion-save-options .companion-tray-hard{color:var(--arbor-ink)}
+.companion-tray-tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.companion-composer-tools .companion-tray-tiles>button{flex-direction:column;gap:6px;min-block-size:76px;padding:8px 4px;border:1px solid var(--arbor-rule);border-radius:var(--r);background:var(--arbor-paper);font-size:12px;font-weight:700;line-height:1.25;text-align:center}
+.companion-composer-tools .companion-tray-tiles>button:hover{background:var(--arbor-paper-deep)}
+.companion-tray-icon{display:grid;place-items:center;flex:none;inline-size:34px;block-size:34px;border-radius:11px;background:var(--arbor-tint);color:var(--arbor-clay)}
+.companion-tray-keep .companion-tray-icon{background:var(--arbor-green-soft);color:var(--arbor-green-ink)}
+.companion-tray-hard .companion-tray-icon{background:var(--arbor-peach-soft);color:var(--arbor-peach-ink)}
+.companion-tray-quiet{display:flex;justify-content:flex-end;margin-block-start:8px;padding-block-start:6px;border-block-start:1px solid var(--arbor-rule)}
+.companion-composer-tools .companion-tray-quiet button{font-size:12px;color:var(--arbor-ink-soft)}
+/* A narrow panel or a phone holds the five tiles in rows of three. */
+@container (max-width:420px){.companion-tray-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .companion-composer-foot{margin-block:4px;font-size:11px;line-height:1.5;color:var(--arbor-muted)}
 /* F-TALK-1: the foot carries the honesty line and the tone chip on one row; the chip wraps under the line on a narrow panel. */
 .companion-composer-foot-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0 8px}

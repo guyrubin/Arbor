@@ -19,7 +19,7 @@
  * orchestrator's.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { todayLiveSource } from "../testTodaySource";
@@ -36,9 +36,11 @@ const FILES = {
   // F-TALK-1: "What the coach sees" and its weekly switch moved to #/memory.
   contract: "components/coach/CoachDataContract.tsx",
   language: "components/tabs/LanguageLabVocabView.tsx",
-  // B-SHELL-21: the shell-mounted post-capture strip (CTA was 36 px, dismiss 32).
-  strip: "components/overview/PostCaptureCoachStrip.tsx",
+  // B-SHELL-21 → F-TALK-2: the shell-mounted post-capture strip (CTA was 36 px,
+  // dismiss 32) is deleted; its offer is the capture sheet's saved-state Talk.
+  capture: "components/overview/QuickLogModal.tsx",
 } as const;
+const STRIP_FILE = "components/overview/PostCaptureCoachStrip.tsx";
 
 /** A 44 px HEIGHT floor, in any of the accepted forms (sibling ratchets' regex). */
 const FLOOR = /min-h-11\b|min-h-\[4[4-9]px\]|min-h-\[5\d px\]|touch-target|var\(--touch-min\)|min-h-\[48px\]/;
@@ -55,8 +57,9 @@ const CONTROLS: { id: string; file: keyof typeof FILES; near: string; width?: tr
   { id: "Coach tone chip (composer foot)", file: "coach", near: 'data-testid="coach-tone"', width: true },
   { id: "What the coach sees · weekly switch", file: "contract", near: 'data-testid="coach-weekly-context-toggle"' },
   { id: "Language vocab ideas chevron", file: "language", near: "setShowActivities((v) => !v)", width: true },
-  { id: "Post-capture strip CTA", file: "strip", near: "onClick={acceptPostCaptureCoach}" },
-  { id: "Post-capture strip dismiss", file: "strip", near: "onClick={dismissPostCaptureCoach}", width: true },
+  // F-TALK-2 re-pin: the strip's CTA and dismiss went with the strip; the
+  // offer's one control is now the saved-state "Talk it through" (full width).
+  { id: "Capture saved-state Talk it through", file: "capture", near: 'data-testid="quicklog-reply-ask"' },
 ];
 
 /** The className/style of the element containing `near` (sibling ratchets' helper). */
@@ -89,9 +92,12 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     ["journal", 'className="w-full flex items-center justify-between text-[11px] font-bold rounded-lg px-3 py-2"'],
     ["coach", "min-h-[36px]"],
     ["language", 'className="inline-flex items-center gap-1 text-xs min-h-[44px]"'],
-    ["strip", "min-h-9 flex-shrink-0"],
-    ["strip", "flex h-8 w-8 flex-shrink-0"],
   ];
+
+  // F-TALK-2 re-pin: the strip's two sub-44 shapes are gone with its file.
+  it(`${STRIP_FILE} is deleted, so its sub-44 shapes cannot return`, () => {
+    expect(existsSync(path.join(SRC, STRIP_FILE))).toBe(false);
+  });
 
   for (const [file, shape] of RETIRED) {
     it(`${FILES[file]} no longer contains \`${shape.replace(/\n/g, "\n").slice(0, 60)}\``, () => {
@@ -218,9 +224,13 @@ describe("B-SHELL-25 · the min-width reset is layered, so min-w-* utilities win
   });
 });
 
-describe("B-SHELL-21 · the post-capture strip still clears MobileNav", () => {
-  it("the strip keeps its bottom-20 offset above the bar", () => {
-    expect(read(FILES.strip)).toMatch(/bottom-20/);
+/* F-TALK-2 re-pin of B-SHELL-21 ("the post-capture strip still clears
+   MobileNav"): nothing floats above the bar any more. The offer sits inside the
+   capture sheet, so there is no fixed offset to keep clear of MobileNav. */
+describe("B-SHELL-21 → F-TALK-2 · no post-capture strip floats over MobileNav", () => {
+  it("Shell mounts no strip; the offer is inside the capture sheet", () => {
+    expect(read("components/layout/Shell.tsx")).not.toContain("PostCaptureCoachStrip");
+    expect(read(FILES.capture)).toContain('data-testid="quicklog-reply-ask"');
   });
 });
 

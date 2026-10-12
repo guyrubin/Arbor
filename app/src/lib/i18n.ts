@@ -809,7 +809,7 @@ export const en: Dict = {
   "hm.ref.dismiss": "Remove the guide card",
   "hm.today.eyebrow": "From your recent moments",
   // FEAT-06 (v3 hard moment): the "you first" view above the picker.
-  "hm.first.kicker": "Words and one step for right now",
+  "hm.first.kicker": "A hard moment · words and one step",
   "hm.first.title": "You first. Then {name}.",
   "hm.first.titleBare": "You first. Then your child.",
   "hm.first.say": "I can see this is hard right now. I’m here. Let’s breathe together.",
@@ -3379,7 +3379,7 @@ export const he: Dict = {
   "hm.ref.dismiss": "להסיר את כרטיס המדריך",
   "hm.today.eyebrow": "מהרגעים האחרונים שתיעדתם",
   // FEAT-06 (v3 hard moment): the "you first" view above the picker.
-  "hm.first.kicker": "מילים וצעד אחד לרגע הזה",
+  "hm.first.kicker": "רגע קשה · מילים וצעד אחד",
   "hm.first.title": "קודם אתם. אחר כך {name}.",
   "hm.first.titleBare": "קודם אתם. אחר כך הילד שלכם.",
   "hm.first.say": "אני רואה שקשה לך עכשיו. אני כאן. ננשום יחד.",

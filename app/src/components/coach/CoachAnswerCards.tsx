@@ -406,11 +406,19 @@ export default function CoachAnswerCards({
   contract, lens, council, lang = "en", onSaveToPlan, onGoDeeper,
   onAddToHandoff, onManageMemory, reviewUnavailable = false,
   todayStep, onTryIt, onUndoTryIt, renderKeepAction, onProposeMemory, provenance,
+  onPrepareVisit, goDeeperReads, onRead,
 }: {
   contract: CoachContract;
   /** EXTRA-TALK: opt-in provenance line for a settled Talk answer. Absent →
    *  no line (history renders and the markup snapshots stay byte-identical). */
   provenance?: CoachProvenance;
+  /** F-TALK-2: the visit handoff ("Build a summary") left the row under the
+   *  Talk thread for the answer's actions, next to Teacher note. */
+  onPrepareVisit?: () => void;
+  /** F-TALK-2 / LL-A1: the Learn reads for the latest answer. They left the
+   *  Talk thread for the actions door; titles arrive in the answer language. */
+  goDeeperReads?: { id: string; title: string }[];
+  onRead?: (cardId: string) => void;
   todayStep?: CoachTodayStep | null;
   onTryIt?: (step: string) => void;
   onUndoTryIt?: (id: string) => void;
@@ -470,7 +478,8 @@ export default function CoachAnswerCards({
   // declined file or short follow-up must never hide its entire answer.
   const longOpening = Boolean((contract.todayPlan?.length || contract.parentScript) && contract.text && contract.text.length > 360);
   const hasDetails = Boolean(contract.todayPlan?.length > 1 || contract.observe?.length || contract.avoid?.length);
-  const hasTools = Boolean(hasPlan || contract.handoffNotes?.teacher || contract.handoffNotes?.professional || docNote || (!council?.length && onGoDeeper));
+  const hasTools = Boolean(hasPlan || contract.handoffNotes?.teacher || contract.handoffNotes?.professional || docNote || onPrepareVisit || (!council?.length && onGoDeeper));
+  const reads = onRead && goDeeperReads?.length ? goDeeperReads : [];
   const keepable = [
     ...(contract.todayPlan ?? []).map((text, index) => ({ field: "todayPlan" as const, text, label: t("coach.report.step", { n: index + 1 }), sourceId: `${reportId}-step-${index}` })),
     ...(contract.parentScript ? [{ field: "parentScript" as const, text: contract.parentScript, label: t("coach.cards.sayThis"), sourceId: `${reportId}-script` }] : []),
@@ -489,6 +498,35 @@ export default function CoachAnswerCards({
     <ReportDisclosure id={`${reportId}-${panel}`} title={title} testId={testId} open={Boolean(openPanels[panel])} onToggle={() => toggle(panel)} icon={icon}>
       {children}
     </ReportDisclosure>
+  );
+  // F-TALK-2 (mock L411): only the provenance line follows an answer. When the
+  // answer has an actions door, its metadata chips (lens, age band, domains),
+  // its sources and the thumbs feedback live behind that door. An answer with
+  // no door keeps them where they were, so nothing becomes unreachable.
+  const door = hasTools || keepActions.length > 0 || reads.length > 0;
+  const chips = [
+    ...(showLens ? [<span key="lens">{t("coach.alignedWith", { lens: lens! })}</span>] : []),
+    ...(contract.ageBand ? [<span key="age-band">{ageBandChipLabel(contract.ageBand, lang)}</span>] : []),
+    ...Array.from(new Set(contract.domains ?? [])).slice(0, 3).map((d) => (
+      <span key={d}>{domainChipLabel(d, lang)}</span>
+    )),
+  ];
+  const sourcesPanel = sources.length > 0 && disclosure("sources", sourcesLabel(sources.length, lang), "coach-report-sources",
+    <ul className="coach-report__source-list">
+      {sources.map((src) => (
+        <li key={src.id}>
+          <span>{src.title || t("cite.based", { source: src.id.replace(/-/g, " ") })}</span>
+          {src.type && <span className="coach-report__meta">{src.type.replace(/_/g, " ")}</span>}
+        </li>
+      ))}
+    </ul>, <Icon name="menu_book" size={17} />
+  );
+  const feedback = (
+    <AnswerFeedback
+      key={answerSignature(contract)}
+      contract={contract} lens={lens} surface={council && council.length > 0 ? "council" : "coach"}
+      lang={lang} sources={sources.length}
+    />
   );
   const setCopied = (value: string | null) => {
     if (proposalScope.current !== scope) return;
@@ -641,7 +679,7 @@ export default function CoachAnswerCards({
         <ul className="coach-report__list">{escalation.map((e, i) => <li key={i}>{e}</li>)}</ul>, <Icon name="health_and_safety" size={17} />
       )}
 
-      {(hasTools || keepActions.length > 0) && disclosure("actions", t("coach.report.actions"), "coach-report-actions", <>
+      {door && disclosure("actions", t("coach.report.actions"), "coach-report-actions", <>
         {keepActions.length > 0 && (
           <section className="coach-report__section coach-report__save-advice">
             <h4>{t("coach.report.keepAdvice")}</h4>
@@ -676,12 +714,30 @@ export default function CoachAnswerCards({
               <Icon name="send" size={17} />{t("coach.doc.toConsult")}
             </button>
           )}
+          {onPrepareVisit && (
+            <button type="button" data-testid="coach-prepare-visit" onClick={onPrepareVisit} aria-label={t("coach.specialist.aria")}>
+              <Icon name="stethoscope" size={17} />{t("coach.specialist.cta")}
+            </button>
+          )}
           {!council?.length && onGoDeeper && (
             <button type="button" data-testid="coach-go-deeper" onClick={onGoDeeper}>
               <Icon name="group" size={18} />{t("coach.cards.goDeeper")}
             </button>
           )}
         </div>}
+        {reads.length > 0 && (
+          <div className="coach-report__reads" data-testid="coach-go-deeper-reads">
+            <span className="coach-report__meta">{t("learn.goDeeper")}</span>
+            {reads.map((card) => (
+              <button key={card.id} type="button" onClick={() => onRead?.(card.id)}>
+                <Icon name="local_library" size={17} /><span dir="auto">{card.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {sourcesPanel}
+        {chips.length > 0 && <div className="coach-report__chips">{chips}</div>}
+        {feedback}
       </>)}
 
       {council && council.length > 0 && disclosure("council", t("coach.cards.council", { n: council.length }), "coach-report-council",
@@ -696,16 +752,7 @@ export default function CoachAnswerCards({
         </ul>
       )}
 
-      {sources.length > 0 && disclosure("sources", sourcesLabel(sources.length, lang), "coach-report-sources",
-        <ul className="coach-report__source-list">
-          {sources.map((src) => (
-            <li key={src.id}>
-              <span>{src.title || t("cite.based", { source: src.id.replace(/-/g, " ") })}</span>
-              {src.type && <span className="coach-report__meta">{src.type.replace(/_/g, " ")}</span>}
-            </li>
-          ))}
-        </ul>, <Icon name="menu_book" size={17} />
-      )}
+      {!door && sourcesPanel}
 
       <footer className="coach-report__footer" data-testid="coach-answer-footer">
         {/* EXTRA-TALK: one muted line, never a verdict, never a number. An
@@ -718,11 +765,7 @@ export default function CoachAnswerCards({
         )}
         <div className="coach-report__attribution">
           <TrustLink surface="coach-answer" />
-          {showLens && <span>{t("coach.alignedWith", { lens: lens! })}</span>}
-          {contract.ageBand && <span>{ageBandChipLabel(contract.ageBand, lang)}</span>}
-          {Array.from(new Set(contract.domains ?? [])).slice(0, 3).map((d) => (
-            <span key={d}>{domainChipLabel(d, lang)}</span>
-          ))}
+          {!door && chips}
         </div>
         {(memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" || (!reviewUnavailable && (contract.memoryProposals?.length ?? 0) > 0)) && (
           <div className="coach-report__memory">
@@ -740,11 +783,7 @@ export default function CoachAnswerCards({
             )}
           </div>
         )}
-        <AnswerFeedback
-          key={answerSignature(contract)}
-          contract={contract} lens={lens} surface={council && council.length > 0 ? "council" : "coach"}
-          lang={lang} sources={sources.length}
-        />
+        {!door && feedback}
       </footer>
       {copyFallback !== null && (
         <label className="coach-report__copy-fallback">

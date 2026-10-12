@@ -206,6 +206,9 @@ export type ChatMessage = {
   /** EXTRA-TALK: on a USER turn, the family question id the request carried.
    *  The answer's provenance line names "the question you chose" only then. */
   topicId?: string;
+  /** F-TALK-2: on a USER turn, when the parent spoke (ISO). The thread draws
+   *  one date line per day from it; turns saved before it existed carry none. */
+  at?: string;
 };
 export type ChatResponsePayload = { attachmentContext?: AttachmentContext; text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract; council?: CouncilTake[] };
 export type Conversation = { topicId?: string; id: string; title: string; messages: ChatMessage[]; updatedAt: string };
@@ -876,7 +879,7 @@ function useArborState() {
   const appendVoiceUserTurn = (text: string) => {
     if (!text.trim()) return;
     prepareTopicConversation();
-    setChatMessages((prev) => appendVoiceUser(prev, text, selectedLens));
+    setChatMessages((prev) => appendVoiceUser(prev, text, selectedLens, new Date().toISOString()));
   };
   const appendVoiceAiDelta = (delta: string) => {
     setChatMessages((prev) => applyVoiceDelta(prev, delta, selectedLens));

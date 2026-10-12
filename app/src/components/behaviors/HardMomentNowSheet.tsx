@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
+import { Sheet, useCompactSurface } from "../ui/Sheet";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import type { HardMomentCard, HardMomentCategory } from "../../content/hardMomentCards";
@@ -21,6 +22,7 @@ import { PublicGuideShare } from "./PublicGuideShare";
 import { ParentBreathPacer } from "./ParentBreathPacer";
 import { SayThis } from "../ui/AiBlock";
 import { requestCompanionConversation } from "../../lib/companionConversation";
+import "./hardMomentSheet.css";
 
 /**
  * B-ASKJB-31 — "Hard moment now": ONE sheet over the governed pilot guides,
@@ -46,7 +48,32 @@ import { requestCompanionConversation } from "../../lib/companionConversation";
  * FEAT-06 (v3): a fresh open leads with the "you first" view (HardMomentFirstView)
  * above the picker; the picker stays below it, every card one tap away. Back
  * from a card, the picker shows the plain B-ASKJB-40 breath row instead.
+ *
+ * F-TALK-2 (mock L469-487, L897-909): a bottom sheet with its grab handle below
+ * lg, the centred Modal above it (the MOB-28 surface seam). The surface is the
+ * peach wash with no visible dialog title: the kicker leads, and "Hard moment
+ * now" stays the dialog's accessible name (hardMomentSheet.css hides it
+ * visually, never from assistive tech). After the first view the picker waits
+ * behind one "Choose what's happening" disclosure, still behind the same gate.
  */
+
+/** F-TALK-2: the picker behind one disclosure after the first view; shown
+ *  directly when the parent came back from a card. */
+function PickerFold({ folded, label, children }: { folded: boolean; label: string; children: React.ReactNode }) {
+  if (!folded) return <>{children}</>;
+  return (
+    <details data-testid="hard-moment-now-choose" className="group/choose">
+      <summary
+        className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 px-1 text-sm font-bold [&::-webkit-details-marker]:hidden"
+        style={{ color: "var(--arbor-ink)" }}
+      >
+        {label}
+        <Icon name="expand_more" size={16} className="transition group-open/choose:rotate-180" />
+      </summary>
+      <div className="mt-3 space-y-4">{children}</div>
+    </details>
+  );
+}
 
 /** Pure: the sheet's order — the matched cards first (in match order), then
  *  every other available card in catalogue order. Never drops a card. */
@@ -160,6 +187,7 @@ export default function HardMomentNowSheet() {
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const { user } = useAuth();
+  const Surface = useCompactSurface() ? Sheet : Modal;
   const locale = uiLang === "he" ? "he" : "en";
   const open = hardMomentNow.open;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -208,8 +236,8 @@ export default function HardMomentNowSheet() {
   const parentFirst = (user?.displayName || t("nav.parent")).split(" ")[0];
 
   return (
-    <Modal open={open} onClose={closeHardMomentNow} title={t("hm.now.title")}>
-      <div data-testid="hard-moment-now-sheet" lang={locale} dir={locale === "he" ? "rtl" : "ltr"} className="min-w-0 space-y-4 text-start">
+    <Surface open={open} onClose={closeHardMomentNow} title={t("hm.now.title")}>
+      <div data-testid="hard-moment-now-sheet" lang={locale} dir={locale === "he" ? "rtl" : "ltr"} className="hard-moment-sheet min-w-0 space-y-4 text-start">
         {ordered.length === 0 ? (
           // The door is hidden in this case; a stale open (expiry mid-session)
           // closes honestly instead of rendering an empty sheet.
@@ -229,6 +257,7 @@ export default function HardMomentNowSheet() {
             )}
             {/* B-ASKJB-40: an optional breath for the parent first — collapsed, skippable, never a gate. */}
             {pastFirst && <ParentBreathPacer t={t} />}
+            <PickerFold folded={!pastFirst} label={t("companion.hard.choose")}>
             <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("hm.now.pick")}</p>
             {lead.length > 0 && (
               <div className="space-y-2" data-testid="hard-moment-now-matched">
@@ -263,6 +292,7 @@ export default function HardMomentNowSheet() {
                 <div className="flex flex-wrap gap-2">{cards.map(chip)}</div>
               </div>
             ))}
+            </PickerFold>
           </>
         ) : (
           <>
@@ -338,6 +368,6 @@ export default function HardMomentNowSheet() {
           </>
         )}
       </div>
-    </Modal>
+    </Surface>
   );
 }
