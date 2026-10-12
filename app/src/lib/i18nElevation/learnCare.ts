@@ -340,5 +340,5 @@ export const he: Record<string, string> = {
   "elev.learnCare.library.kicker": "הספרייה",
   "elev.learnCare.library.title": "קורסים לפי תחום",
   "elev.learnCare.readiness.activities": "{n} פעילויות",
-  "elev.learnCare.readiness.inThis": "הפעילויות במסלול",
+  "elev.learnCare.readiness.inThis": "הפעילויות בקורס",
 };

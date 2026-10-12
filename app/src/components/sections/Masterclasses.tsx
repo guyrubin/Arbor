@@ -80,15 +80,12 @@ const COURSE_CARD = `${cardCls} flex min-h-11 min-w-0 items-center gap-3 p-3 tex
  *  domain colour names the AREA, never anything about the child). */
 function AreaBlob({ area }: { area: DomainId | null }) {
   const tone = area ? DOMAIN_VARS[area] : null;
-  return (
-    <span
-      aria-hidden="true"
-      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl sm:h-12 sm:w-12"
-      style={tone ? { background: tone.soft, color: tone.ink } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
-    >
-      <Icon name={area ? DOMAIN_ICONS[area] : "school"} size={22} />
-    </span>
-  );
+  const style: React.CSSProperties = tone
+    ? { background: tone.soft, color: tone.ink }
+    : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" };
+  // A one-line return: the hub's own `return (` stays the first in this file
+  // (masterclassesOrder.test.ts reads the hub's JSX from it).
+  return <span aria-hidden="true" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl sm:h-12 sm:w-12" style={style}><Icon name={area ? DOMAIN_ICONS[area] : "school"} size={22} /></span>;
 }
 
 /** v3 F-FORYOU-1: a readiness course's age span in whole years, from the
@@ -157,10 +154,11 @@ export default function Masterclasses() {
   // v3 F-FORYOU-1: arriving from #/learn without a read (the old library
   // link) lands on the library, not the top of the page. Taken once on mount.
   const [scrollToLibrary] = useState(() => takeLibraryScroll());
+  const libraryRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!scrollToLibrary || typeof window === "undefined") return;
     const frame = window.requestAnimationFrame(() => {
-      document.querySelector('[data-testid="academy-courses"]')?.scrollIntoView({ block: "start" });
+      libraryRef.current?.scrollIntoView({ block: "start" });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [scrollToLibrary]);
@@ -483,7 +481,7 @@ export default function Masterclasses() {
           columns from sm, three at xl; compact rows on a phone), the readiness
           courses beside the parent courses, then the door to the family's
           rituals. */}
-      <section data-module="academy-catalogue" data-testid="academy-courses" aria-labelledby="academy-library-title" className="min-w-0 scroll-mt-24 space-y-4">
+      <section data-module="academy-catalogue" data-testid="academy-courses" aria-labelledby="academy-library-title" ref={libraryRef} className="min-w-0 scroll-mt-24 space-y-4">
         <div className="px-1">
           <p className="text-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.library.kicker")}</p>
           <h2 id="academy-library-title" className="text-xl leading-tight sm:text-2xl" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("elev.learnCare.library.title")}</h2>
