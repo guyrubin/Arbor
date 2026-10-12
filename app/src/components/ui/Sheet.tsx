@@ -91,7 +91,9 @@ export function Sheet({
           exit={{ opacity: 0 }}
           onClick={onBackdropClick}
           data-arbor-dialog-layer
-          style={{ background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)", ...(scrimBlur ? { backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" } : {}) }}
+          style={scrimBlur
+            ? { background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }
+            : { background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)" }}
         >
           <motion.div
             ref={dialogRef}

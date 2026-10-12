@@ -94,7 +94,9 @@ describe("F-CHILD-2 Keep-a-moment sheet", () => {
 
   it("only the capture and evidence sheets frost the page: the Sheet's blur is opt-in", () => {
     expect(sheet).toContain("scrimBlur = false,");
-    expect(sheet).toContain('...(scrimBlur ? { backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" } : {})');
+    // two static branches, not a spread: whiteLabelContrast proves the scrim
+    // (an ancestor of the sheet's white-label children) only from literals
+    expect(sheet).toContain('style={scrimBlur\n            ? { background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }\n            : { background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)" }}');
     expect(sheet.match(/backdropFilter/g) ?? []).toHaveLength(1);
     expect(modal).toContain("<Surface open={open} onClose={closeSheet} scrimBlur title=");
   });

@@ -86,7 +86,7 @@ describe("F-CHILD-2 Moments body", () => {
 
   it("counts only the parent's kept record; the evidence sheet frosts the page behind it", () => {
     expect(body).toContain("o.childId === childProfile.id && isMomentRecord(o)");
-    expect(body).toMatch(/<Surface open=\{!!selected\}[^>]*\bscrimBlur\b/);
+    expect(body).toContain("<Surface open={!!selected} onClose={() => closeSelection()} scrimBlur title=");
   });
 
   it("the evidence sheet is a Sheet below lg and opens Talk only through seedCoach", () => {
