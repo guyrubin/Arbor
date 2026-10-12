@@ -170,9 +170,10 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       harness.locale = locale;
       harness.appts = [visitIn3()];
       const html = renderToStaticMarkup(<ConsultTab />);
-      const row = html.slice(html.indexOf('data-testid="consult-bring-row"'), html.indexOf('data-testid="consult-build"'));
+      // Include the opening tag: role/aria attributes may precede data-testid.
+      const row = /<div\b[^>]*data-testid="consult-bring-row"[^>]*>[\s\S]*?<\/div>/.exec(html)![0];
       expect(row).toContain('role="group"');
-      const chips = row.match(/<button[^>]*data-testid="consult-bring-chip"[^>]*>/g) ?? [];
+      const chips: string[] = row.match(/<button[^>]*data-testid="consult-bring-chip"[^>]*>/g) ?? [];
       expect(chips.length).toBeGreaterThan(0);
       for (const chip of chips) {
         expect(chip).toMatch(/aria-pressed="(?:true|false)"/);
