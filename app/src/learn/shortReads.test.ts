@@ -99,5 +99,55 @@ describe("pickShortReads — the row is full and honest", () => {
     const row = pickShortReads(shelf, QUESTION.en);
     expect(row.reads).toHaveLength(SHORT_READS_SIZE);
     expect(new Set(ids(row.reads)).size).toBe(row.reads.length);
+    expect(row.concept).toBeNull();
+  });
+});
+
+/** F-FORYOU-1 (reviewer r1 MAJOR 3): the Scholar hub's weekly concept is
+ *  eligible as one of the three short reads. Invented concept — no child data. */
+describe("pickShortReads — the weekly concept takes the last slot", () => {
+  const concept = { id: "concept-invented" } as const;
+
+  it("no question: two ranked reads, then the concept — the row is still three", () => {
+    const row = pickShortReads([plain("ua"), plain("ub"), plain("uc")], null, concept);
+    expect(ids(row.reads)).toEqual(["ua", "ub"]);
+    expect(row.concept).toBe(concept);
+    expect(row).toMatchObject({ forTopic: false, markMatched: false, show: true });
+  });
+
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: one or two reads meet the question → they lead, the concept is third and unmarked`, () => {
+      const one = pickShortReads([plain("ua"), sleepy("ma"), plain("ub")], QUESTION[locale], concept);
+      expect(ids(one.reads)).toEqual(["ma", "ua"]);
+      expect(one.concept).toBe(concept);
+      expect(one).toMatchObject({ forTopic: true, markMatched: true, show: true });
+      const two = pickShortReads([plain("ua"), sleepy("ma"), sleepy("mb")], QUESTION[locale], concept);
+      expect(ids(two.reads)).toEqual(["ma", "mb"]);
+      expect(two.concept).toBe(concept);
+      // the concept does not meet the question, so the matched reads are marked
+      expect(two).toMatchObject({ forTopic: true, markMatched: true, show: true });
+    });
+
+    it(`${locale}: three reads meet the question → the concept stays out`, () => {
+      const row = pickShortReads([sleepy("ma"), sleepy("mb"), sleepy("mc"), plain("ua")], QUESTION[locale], concept);
+      expect(ids(row.reads)).toEqual(["ma", "mb", "mc"]);
+      expect(row.concept).toBeNull();
+      expect(row.markMatched).toBe(false);
+    });
+  }
+
+  it("no concept (null or undefined) → exactly the three-read row", () => {
+    for (const none of [null, undefined]) {
+      const row = pickShortReads([plain("ua"), plain("ub"), plain("uc")], null, none);
+      expect(ids(row.reads)).toEqual(["ua", "ub", "uc"]);
+      expect(row.concept).toBeNull();
+    }
+  });
+
+  it("a short shelf: one read plus the concept is not a full row", () => {
+    const row = pickShortReads([plain("ua")], null, concept);
+    expect(ids(row.reads)).toEqual(["ua"]);
+    expect(row.concept).toBe(concept);
+    expect(row.show).toBe(false);
   });
 });

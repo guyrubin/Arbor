@@ -21,14 +21,17 @@ import { ageYearsFromProfile } from "../../lib/childAge";
 import { concernsForBehaviors } from "../../content/selectCards";
 import { recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { readLearnFeedback } from "../../learn/learnFeedback";
-import { LEARN_CARDS } from "../../learn/learnCards";
-import { rankLearnCards, type LearnRankSignals } from "../../learn/learnLibrary";
+import { LEARN_CARDS, learnCardById } from "../../learn/learnCards";
+import { rankLearnCards, type LearnCard, type LearnRankSignals } from "../../learn/learnLibrary";
 import { pickShortReads } from "../../learn/shortReads";
+import { lessonMinutes } from "../../learn/lessonMinutes";
+// v3 F-FORYOU-1 r2: this week's concept (the old Scholar hub card's piece).
+import { selectWeeklyArticle } from "../../growth/scholarHub";
 import { ageVisibleLearnCards, devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
 // v3 EXTRA-FORYOU: courses and reads by area (the ONE domain registry: names,
 // glyphs, order, and one ink/soft pair per area).
 import { courseArea, courseAreaCounts, readArea } from "../../learn/courseAreas";
-import { domainName, type DomainId } from "../../lib/domains/registry";
+import { domainName, primaryDomain, type DomainId } from "../../lib/domains/registry";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { DOMAIN_VARS } from "../../lib/tokens";
 import { DOMAIN_ART } from "../../lib/parentArt";
@@ -37,12 +40,13 @@ import { READINESS_COURSES, localizeCourse, type PlayCourse } from "../../playba
 import { PLAY_BANDS } from "../../playbank/content";
 import type { DevelopmentMetricId } from "../../types";
 import { TryTodayButton } from "./useTryToday";
-import { takeLibraryScroll } from "./forYouScroll";
+import { peekLibraryScroll, takeLibraryScroll } from "./forYouScroll";
 import ReadinessReader from "./ReadinessReader";
 
 // v3 F-FORYOU-1: a read opens in a sheet over this page. Loaded on first
 // open (createPortal has no server render, and most visits open no read).
 const ForYouReadSheet = lazy(() => import("./ForYouReadSheet"));
+const ForYouConceptSheet = lazy(() => import("./ForYouConceptSheet"));
 
 const FRAME_TONE: Record<FrameId, PastelKey> = {
   aim: "sky",
@@ -151,17 +155,22 @@ export default function Masterclasses() {
   // opens its own reader here.
   const [readId, setReadId] = useState<string | null>(null);
   const [readinessId, setReadinessId] = useState<string | null>(null);
+  // v3 F-FORYOU-1 r2: this week's concept opens in its own sheet.
+  const [conceptId, setConceptId] = useState<string | null>(null);
   // v3 F-FORYOU-1: arriving from #/learn without a read (the old library
-  // link) lands on the library, not the top of the page. Taken once on mount.
-  const [scrollToLibrary] = useState(() => takeLibraryScroll());
+  // link) lands on the library, not the top of the page; a request for the
+  // saved reads lands on it with the Saved chip chosen. The stop is PEEKED
+  // here and in the mount effect and TAKEN only in the scroll frame, so a
+  // StrictMode double render or double mount never loses it (reviewer r1).
+  const [savedShelf, setSavedShelf] = useState<boolean>(() => peekLibraryScroll() === "saved");
   const libraryRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (!scrollToLibrary || typeof window === "undefined") return;
+    if (typeof window === "undefined" || !peekLibraryScroll()) return;
     const frame = window.requestAnimationFrame(() => {
-      libraryRef.current?.scrollIntoView({ block: "start" });
+      if (takeLibraryScroll()) libraryRef.current?.scrollIntoView({ block: "start" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [scrollToLibrary]);
+  }, []);
 
   // W0.7 — default the catalog to the child's age band; "Show all ages"
   // (persisted per surface) keeps every course reachable (UC-1 rule).
@@ -183,7 +192,15 @@ export default function Masterclasses() {
   );
   const readiness = showAllAges ? READINESS_COURSES : readinessVisible;
   const hiddenByAge = ageHidden.length + readinessHidden.length;
-  const ageSwitchShown = (ageHidden.length > 0 || showAllAges) || readinessHidden.length > 0;
+  // v3 F-FORYOU-1 r2 (reviewer r1, law 6): every saved read stays reachable.
+  // The chip row ends with "Saved" and the plain number saved (a count of the
+  // parent's own bookmarks, never progress); chosen, the grid lists every
+  // saved read, uncapped, each opening in the read sheet. ChildMemory's "All
+  // saved reads" lands here with it chosen. Saving happens in the reader. The
+  // parent's own saves are never age-filtered, so the age switch steps aside.
+  const savedReads = savedLearnIds.map((id) => learnCardById(id)).filter((c): c is LearnCard => c !== undefined);
+  const showSaved = savedShelf && savedReads.length > 0;
+  const ageSwitchShown = !showSaved && ((ageHidden.length > 0 || showAllAges) || readinessHidden.length > 0);
 
   // D3 → v3 F-FORYOU-1: the Family Charter ranks the catalogue instead of a
   // strip of its own: the courses that build the family's chosen virtues come
@@ -308,6 +325,12 @@ export default function Masterclasses() {
     : nextCourse
       ? nextCourse.sections.map((s) => (he ? s.headingHe : s.heading))
       : [];
+  // v3 F-FORYOU-1 r2: a course's lessons carry their minutes: the course's own
+  // duration shared out over its lessons (learn/lessonMinutes). A read's key
+  // points carry none. Reading time only: no state, nothing done or left.
+  const pickLessonMinutes: number[] | null = !todaysRead && nextCourse
+    ? lessonMinutes(nextCourse.durationMin, nextCourse.sections.map((s) => s.body))
+    : null;
   // v3 F-FORYOU-1: "Try it today" puts the pick's one small thing on today's
   // list — the same text and source the reader's own "Add to today" writes,
   // so the two can never add it twice.
@@ -316,9 +339,13 @@ export default function Masterclasses() {
     : nextCourse
       ? (he ? nextCourse.tryTonightHe : nextCourse.tryTonight).trim()
       : "";
-  const openRead = (cardId: string, source: "learn-hub-todays-pick" | "learn-hub-short-read") => {
+  const openRead = (cardId: string, source: "learn-hub-todays-pick" | "learn-hub-short-read" | "learn-hub-saved") => {
     setReadId(cardId);
     try { track("learn_deep_link", { source }); } catch { /* noop */ }
+  };
+  const openConcept = (articleId: string) => {
+    setConceptId(articleId);
+    try { track("learn_deep_link", { source: "learn-hub-weekly-concept" }); } catch { /* noop */ }
   };
 
   // v3 EXTRA-FORYOU: "Picked for your question". The tag and the quoting
@@ -338,14 +365,26 @@ export default function Masterclasses() {
   // card, never a count of reads done.
   const readShelf = rankLearnCards(ageVisibleLearnCards(LEARN_CARDS, learnSignals.ageYears), learnSignals)
     .filter((c) => c.id !== todaysRead?.card.id);
-  const shortReadRow = pickShortReads(readShelf, activeFamilyTopic?.title);
+  // v3 F-FORYOU-1 r2 (reviewer r1): this week's concept, the piece the old
+  // Scholar hub card showed, is one of the three when the question does not
+  // fill the row (learn/shortReads places it last). Only once the parent has
+  // noticed something on Growth (devMapHasSignal): the concepts carry no age
+  // band, and the no-signal default would be the same piece for everyone.
+  const weekly = devMapHasSignal(devScore) ? selectWeeklyArticle(devScore.focusDomain) : null;
+  const weeklyConcept = weekly && !weekly.isDefault ? weekly.article : null;
+  const shortReadRow = pickShortReads(readShelf, activeFamilyTopic?.title, weeklyConcept);
+  const concept = shortReadRow.concept;
+  const conceptArea = concept ? primaryDomain("developmental", concept.domain) : null;
 
   // v3 EXTRA-FORYOU: courses by area. Catalogue counts of the courses the
   // parent can see, the readiness courses included (plain integers, never
   // progress). A filter left on an area the age switch has since emptied
   // falls back to every area.
   const areaCounts = courseAreaCounts([...catalog, ...readiness]);
-  const selectedArea = activeArea && areaCounts.some((a) => a.area === activeArea) ? activeArea : null;
+  const selectedArea: DomainId | "saved" | null = showSaved
+    ? "saved"
+    : activeArea && areaCounts.some((a) => a.area === activeArea) ? activeArea : null;
+  const chooseArea = (area: DomainId | null) => { setSavedShelf(false); setActiveArea(area); };
 
   // B-PLAY-18: the spine ribbon ("Courses follow what you notice on the
   // Development Map") is removed — the claim is unverified (FU#23): the
@@ -412,7 +451,7 @@ export default function Masterclasses() {
             <div className="min-w-0 border-t pt-4 lg:border-s lg:border-t-0 lg:ps-8 lg:pt-0" style={{ borderColor: "var(--arbor-rule)" }}>
               <p className="mb-2 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t(todaysRead ? "elev.learnCare.pick.inThisRead" : "elev.learnCare.pick.lessons")}</p>
               <ol data-testid="academy-pick-lessons" className="list-decimal space-y-1.5 ps-5 t-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
-                {pickLessons.map((line, i) => <li key={i}>{line}</li>)}
+                {pickLessons.map((line, i) => <li key={i}>{line}{pickLessonMinutes && <span data-testid="academy-pick-lesson-minutes" className="ms-2 whitespace-nowrap text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("learn.minutes", { n: pickLessonMinutes[i] })}</span>}</li>)}
               </ol>
             </div>
           )}
@@ -473,6 +512,33 @@ export default function Masterclasses() {
                 </button>
               );
             })}
+            {/* v3 F-FORYOU-1 r2: this week's concept in the last slot - the
+                same card shape, its registry area, its minutes and the week's
+                mark; it opens in its own sheet over this page. */}
+            {concept && (
+              <button
+                type="button"
+                data-testid="academy-short-read-concept"
+                onClick={() => openConcept(concept.id)}
+                className={`${cardCls} flex min-h-11 min-w-0 flex-col gap-2.5 p-4 text-start transition motion-safe:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 sm:p-5`}
+              >
+                <span className="flex flex-wrap items-center gap-2">
+                  {conceptArea && (
+                    <span data-testid="academy-short-read-area" data-area={conceptArea} className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: DOMAIN_VARS[conceptArea].soft, color: DOMAIN_VARS[conceptArea].ink }}>
+                      <Icon name={DOMAIN_ICONS[conceptArea]} size={14} /><span>{domainName(conceptArea, t)}</span>
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
+                    <Icon name="schedule" size={13} />{t("learn.minutes", { n: concept.readingMinutes })}
+                  </span>
+                  <span data-testid="academy-short-read-weekly" className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: PASTEL.lav.ink }}>
+                    <Icon name="lightbulb" size={13} />{t("elev.learnCare.weekly.mark")}
+                  </span>
+                </span>
+                <span className="text-base font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? concept.titleHe : concept.titleEn}</span>
+                <span className="arbor-type-say arbor-accent-rule line-clamp-3 block" dir="auto" style={{ fontSize: "var(--t-md)", color: "var(--arbor-ink-soft)" }}>{he ? concept.bodyHe : concept.bodyEn}</span>
+              </button>
+            )}
           </div>
         </section>
       )}
@@ -491,11 +557,11 @@ export default function Masterclasses() {
             name), with the plain number of courses in it from sm up (a
             catalogue count, never progress). The chips filter the grid below;
             "All" clears the filter. One scrolling row on a phone. */}
-        {areaCounts.length > 1 && (
+        {(areaCounts.length > 1 || savedReads.length > 0) && (
           <div className="min-w-0">
             <p id="academy-by-area-label" className="sr-only">{t("elev.learnCare.byArea")}</p>
             <div role="group" aria-labelledby="academy-by-area-label" data-testid="academy-by-area" className="flex min-w-0 flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap">
-              <button type="button" aria-pressed={selectedArea === null} onClick={() => setActiveArea(null)} className={AREA_CHIP} style={areaChipStyle(selectedArea === null)}>
+              <button type="button" aria-pressed={selectedArea === null} onClick={() => chooseArea(null)} className={AREA_CHIP} style={areaChipStyle(selectedArea === null)}>
                 {t("elev.learnCare.byArea.all")}
               </button>
               {areaCounts.map(({ area, count }) => (
@@ -504,7 +570,7 @@ export default function Masterclasses() {
                   type="button"
                   data-area={area}
                   aria-pressed={selectedArea === area}
-                  onClick={() => setActiveArea(selectedArea === area ? null : area)}
+                  onClick={() => chooseArea(selectedArea === area ? null : area)}
                   className={AREA_CHIP}
                   style={areaChipStyle(selectedArea === area)}
                 >
@@ -513,6 +579,24 @@ export default function Masterclasses() {
                   <span className="hidden sm:inline"><span className="tabular-nums" style={{ opacity: 0.75 }}>{count}</span></span>
                 </button>
               ))}
+              {/* v3 F-FORYOU-1 r2: the parent's saved reads, last in the row,
+                  with the plain number saved (shown on a phone too: it is the
+                  only way to the whole list). Chosen, the grid below lists
+                  them all. */}
+              {savedReads.length > 0 && (
+                <button
+                  type="button"
+                  data-testid="academy-saved-chip"
+                  aria-pressed={showSaved}
+                  onClick={() => (showSaved ? chooseArea(null) : setSavedShelf(true))}
+                  className={AREA_CHIP}
+                  style={areaChipStyle(showSaved)}
+                >
+                  <Icon name="bookmark" size={15} fill={showSaved ? 1 : 0} />
+                  <span>{t("learn.saved")}</span>
+                  <span data-testid="academy-saved-count" className="tabular-nums" style={{ opacity: 0.75 }}>{savedReads.length}</span>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -541,6 +625,20 @@ export default function Masterclasses() {
           </div>
         )}
         <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+          {/* v3 F-FORYOU-1 r2: the Saved chip lists every saved read, uncapped,
+              in the course card's shape: its area, its title, its minutes. */}
+          {showSaved && savedReads.map((c) => (
+            <button key={c.id} type="button" data-testid="academy-saved-read" onClick={() => openRead(c.id, "learn-hub-saved")} className={COURSE_CARD}>
+              <AreaBlob area={readArea(c.category)} />
+              <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <h3 className="text-[17px] font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? c.title.he : c.title.en}</h3>
+                <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
+                  <Icon name="schedule" size={13} /> {t("learn.minutes", { n: c.minutes })}
+                </span>
+                <span className="hidden text-sm leading-relaxed sm:block" dir="auto" style={{ color: "var(--arbor-muted)" }}>{he ? c.hook.he : c.hook.en}</span>
+              </span>
+            </button>
+          ))}
           {catalog.map((c) => {
             // v3 EXTRA-FORYOU: the area chips filter the grid (null = every area).
             if (selectedArea && courseArea(c.id) !== selectedArea) return null;
@@ -653,6 +751,11 @@ export default function Masterclasses() {
       {readId && (
         <Suspense fallback={null}>
           <ForYouReadSheet cardId={readId} onClose={() => setReadId(null)} />
+        </Suspense>
+      )}
+      {conceptId && (
+        <Suspense fallback={null}>
+          <ForYouConceptSheet articleId={conceptId} onClose={() => setConceptId(null)} />
         </Suspense>
       )}
     </motion.div>

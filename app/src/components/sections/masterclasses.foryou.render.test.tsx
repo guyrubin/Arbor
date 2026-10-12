@@ -35,13 +35,16 @@ const harness = vi.hoisted(() => ({
   locale: "en" as "en" | "he",
   topic: null as FamilyTopic | null,
   birthDate: "",
+  // v3 F-FORYOU-1 r2: the parent's saved reads and the Growth map's signal.
+  saved: [] as string[],
+  devScore: { focusDomain: null as string | null, domains: [] as { reached?: number }[] },
 }));
 
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({
     childProfile: { id: "child-foryou", name: "Mika", birthDate: harness.birthDate },
     behaviorLogs: [],
-    savedLearnIds: [],
+    savedLearnIds: harness.saved,
     requestLearnRead: () => {},
     setActiveTab: () => {},
     activeFamilyTopic: harness.topic,
@@ -61,7 +64,7 @@ vi.mock("../../context/LanguageContext", () => ({
     t: (key: string, vars?: Record<string, string | number>) => translate(harness.locale, key, vars),
   }),
 }));
-vi.mock("../../hooks/useDevScore", () => ({ useDevScore: () => ({ focusDomain: null, domains: [] }) }));
+vi.mock("../../hooks/useDevScore", () => ({ useDevScore: () => harness.devScore }));
 vi.mock("./AcademyForYou", () => ({ default: () => null }));
 vi.mock("./ScholarHubCard", () => ({ default: () => null }));
 vi.mock("../ui/EvidenceChip", () => ({ EvidenceChip: () => null, default: () => null }));
@@ -72,6 +75,8 @@ vi.mock("motion/react", () => ({ AnimatePresence: ({ children }: { children: Rea
   motion: new Proxy({}, { get: (_, tag: string) => ({ children, initial, animate, exit, transition, ...props }: any) => React.createElement(tag, props, children) }) }));
 
 import Masterclasses from "./Masterclasses";
+import { queueLibraryScroll, takeLibraryScroll } from "./forYouScroll";
+import { selectWeeklyArticle } from "../../growth/scholarHub";
 
 const QUESTION = {
   en: "How do we get through bedtime without a fight?",
@@ -111,10 +116,12 @@ const expectAreaChips = (cards: string[], locale: "en" | "he") => {
 beforeEach(() => {
   harness.locale = "en";
   harness.topic = null;
+  harness.saved = [];
+  harness.devScore = { focusDomain: null, domains: [] };
   harness.birthDate = new Date(Date.now() - Math.round(4.5 * 365.25) * DAY).toISOString().slice(0, 10);
   vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {}, removeItem: () => {} });
 });
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => { vi.unstubAllGlobals(); takeLibraryScroll(); });
 
 describe("v3 EXTRA-FORYOU · with a family question open", () => {
   for (const locale of ["en", "he"] as const) {
@@ -288,4 +295,112 @@ describe("v3 EXTRA-FORYOU · the tag needs a question that moved the pick", () =
       }
     });
   }
+});
+
+/* ── v3 F-FORYOU-1 r2 · reviewer r1 ─────────────────────────────────────────
+ * The week's concept takes the short reads' last slot once Growth has a real
+ * signal (and never displaces three reads that meet the question); the Saved
+ * chip lists every saved read, with a plain number; a course's lesson lines
+ * carry their minutes. Invented child; catalogue ids only. */
+
+describe("v3 F-FORYOU-1 r2 · the week's concept in the short reads", () => {
+  const FOCUS = "attachment_regulation";
+
+  it("the focus domain names a real, non-default concept (so the cases below are not vacuous)", () => {
+    const pick = selectWeeklyArticle(FOCUS);
+    expect(pick.isDefault).toBe(false);
+    expect(pick.article.titleEn.length).toBeGreaterThan(0);
+  });
+
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: with a map signal and no question, two reads and then the week's concept`, () => {
+      harness.locale = locale;
+      harness.devScore = { focusDomain: FOCUS, domains: [{ reached: 2 }] };
+      const html = render();
+      const row = region(html, 'data-testid="academy-short-reads"', "</section>");
+      expect(readCards(row)).toHaveLength(2);
+      const concept = region(row, 'data-testid="academy-short-read-concept"', "</button>");
+      expect(concept).toMatch(/^<button[^>]*min-h-11/);
+      expect(concept).toContain("lightbulb");
+      expect(concept).toContain(esc(translate(locale, "elev.learnCare.weekly.mark")));
+      const article = selectWeeklyArticle(FOCUS).article;
+      expect(concept).toContain(esc(locale === "he" ? article.titleHe : article.titleEn));
+      expect(concept).toContain(esc(translate(locale, "learn.minutes", { n: article.readingMinutes })));
+      expectAreaChips([concept], locale);
+      // Three cards in the say voice, the concept last.
+      expect(count(row, /arbor-type-say arbor-accent-rule/g)).toBe(3);
+      expect(row.indexOf('data-testid="academy-short-read-concept"')).toBeGreaterThan(row.lastIndexOf('data-testid="academy-short-read"'));
+      expect(visibleText(row)).not.toMatch(/\d\s*%/);
+      // Still one primary move and two modules: the concept is a card, not a module.
+      expect(count(html, /data-primary-move="/g)).toBe(1);
+      expect(count(html, /data-module="/g)).toBeLessThanOrEqual(3);
+      expect(concept).not.toContain("data-module");
+      expect(concept).not.toContain("data-primary-move");
+    });
+
+    it(`${locale}: three reads that meet the question keep the row; no map signal, no concept`, () => {
+      harness.locale = locale;
+      harness.devScore = { focusDomain: FOCUS, domains: [{ reached: 2 }] };
+      harness.topic = ask(QUESTION[locale]);
+      expect(render()).not.toContain('data-testid="academy-short-read-concept"');
+      harness.topic = null;
+      harness.devScore = { focusDomain: FOCUS, domains: [] };
+      const html = render();
+      expect(html).not.toContain('data-testid="academy-short-read-concept"');
+      expect(readCards(region(html, 'data-testid="academy-short-reads"', "</section>"))).toHaveLength(3);
+    });
+  }
+});
+
+describe("v3 F-FORYOU-1 r2 · the Saved chip lists every saved read (law 6)", () => {
+  const SAVED = LEARN_CARDS.slice(0, 2).map((c) => c.id);
+
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: saved reads add a Saved chip with the plain number, shown on a phone too`, () => {
+      harness.locale = locale;
+      harness.saved = SAVED;
+      const html = render();
+      const group = region(html, 'data-testid="academy-by-area"', "</div>");
+      const chip = region(group, 'data-testid="academy-saved-chip"', "</button>");
+      expect(chip).toMatch(/^<button[^>]*aria-pressed="false"/);
+      expect(chip).toMatch(/^<button[^>]*min-h-11/);
+      expect(chip).toContain("bookmark");
+      expect(chip).toContain(esc(translate(locale, "learn.saved")));
+      expect(chip).toMatch(/data-testid="academy-saved-count" class="tabular-nums"[^>]*>2<\/span>/);
+      // The count is not tucked behind a "hidden sm:inline" wrapper (the area chips' phone rule).
+      expect(chip).not.toMatch(/class="[^"]*\bhidden\b/);
+      // Not chosen: the courses show, no saved card does.
+      expect(html).not.toContain('data-testid="academy-saved-read"');
+      expect(count(html, /<h3 /g)).toBeGreaterThan(SAVED.length);
+    });
+
+    it(`${locale}: a request for the saved reads lands with Saved chosen and lists every one`, () => {
+      harness.locale = locale;
+      harness.saved = SAVED;
+      queueLibraryScroll("saved");
+      const html = render();
+      const group = region(html, 'data-testid="academy-by-area"', "</div>");
+      expect(region(group, 'data-testid="academy-saved-chip"', "</button>")).toMatch(/^<button[^>]*aria-pressed="true"/);
+      expect(count(group, /aria-pressed="true"/g)).toBe(1);
+      const cards = html.match(/<button[^>]*data-testid="academy-saved-read"[^>]*>/g) ?? [];
+      expect(cards).toHaveLength(SAVED.length);
+      for (const card of cards) expect(card).toContain("min-h-11");
+      for (const id of SAVED) {
+        const card = LEARN_CARDS.find((c) => c.id === id)!;
+        expect(html).toContain(esc(locale === "he" ? card.title.he : card.title.en));
+      }
+      // The courses and the age switch step aside; only the saved reads list.
+      expect(count(html, /<h3 /g)).toBe(SAVED.length);
+      expect(html).not.toContain('data-testid="agefilter-toggle-masterclasses"');
+      expect(visibleText(html)).not.toMatch(/\d\s*%/);
+    });
+  }
+
+  it("a plain library stop leaves Saved unchosen", () => {
+    harness.saved = SAVED;
+    queueLibraryScroll("library");
+    const html = render();
+    expect(region(html, 'data-testid="academy-saved-chip"', "</button>")).toMatch(/^<button[^>]*aria-pressed="false"/);
+    expect(html).not.toContain('data-testid="academy-saved-read"');
+  });
 });

@@ -10,7 +10,7 @@ const h = vi.hoisted(() => ({
   records: null as unknown as Records, childId: "child-a", lang: "en" as "en" | "he",
   index: null as SearchIndexModule | null, cursor: 0,
   memos: [] as { deps: unknown[]; value: unknown }[],
-  actions: { setActiveTab: vi.fn(), openConversation: vi.fn(), setSelectedLens: vi.fn(), requestJournalFocus: vi.fn(), seedCoach: vi.fn() },
+  actions: { setActiveTab: vi.fn(), openConversation: vi.fn(), setSelectedLens: vi.fn(), requestJournalFocus: vi.fn(), seedCoach: vi.fn(), requestLearnRead: vi.fn() },
 }));
 vi.mock("react", () => ({
   useState: () => { h.cursor++; return [h.index, vi.fn()]; },
@@ -26,7 +26,7 @@ vi.mock("react", () => ({
 }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ ...h.records, childProfile: { id: h.childId, age: 4 }, ...h.actions }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: translations[h.lang], uiLang: h.lang }) }));
-import { useSearchResults } from "./useSearchResults";
+import { catalogGo, useSearchResults } from "./useSearchResults";
 import { getSearchIndex, searchCatalog } from "../../lib/searchIndex";
 import { translate } from "../../lib/i18n";
 import { normalizeSearchText } from "../../lib/searchNormalize";
@@ -229,5 +229,44 @@ describe("private query activation, literal symbols and ownership boundaries", (
     expect(result.record.map(row => row.id)).toEqual(ids());
     result.ordered[0].go();
     expect(h.actions.setActiveTab).toHaveBeenLastCalledWith(tab);
+  });
+});
+
+describe("F-FORYOU-1 · a learn result opens THAT read, never the library", () => {
+  it.each(["en", "he"] as const)("selecting a Learn card result calls requestLearnRead with its cardId (%s)", (lang) => {
+    const card = LEARN_CARDS.find(c => c.id === "tantrums-development")!;
+    h.lang = lang;
+    const result = render(lang === "he" ? card.title.he : card.title.en);
+    const row = result.catalog.find(r => r.id === `learn:${card.id}`);
+    expect(row, "the learn row is listed").toBeDefined();
+    row!.go();
+    expect(h.actions.requestLearnRead).toHaveBeenCalledTimes(1);
+    expect(h.actions.requestLearnRead).toHaveBeenLastCalledWith({ cardId: card.id, source: "search" });
+    // #/learn alone is reader-only and redirects to the courses library.
+    expect(h.actions.setActiveTab).not.toHaveBeenCalled();
+  });
+
+  it("every learn entry in the index carries a cardId that names a real card", () => {
+    const known = new Set(LEARN_CARDS.map(c => c.id));
+    const learn = getSearchIndex().filter(e => e.kind === "learn");
+    expect(learn.length).toBe(LEARN_CARDS.length);
+    for (const e of learn) {
+      expect(e.cardId, e.id).toBeDefined();
+      expect(known.has(e.cardId!), e.id).toBe(true);
+      expect(e.id).toBe(`learn:${e.cardId}`);
+    }
+  });
+
+  it("other catalogue kinds keep their tab (and a scholar its lens)", () => {
+    const seams = { setActiveTab: vi.fn(), setSelectedLens: vi.fn(), requestLearnRead: vi.fn() };
+    catalogGo({ kind: "scholar", tab: "coach", lens: "John Bowlby" }, seams);
+    expect(seams.setSelectedLens).toHaveBeenLastCalledWith("John Bowlby");
+    expect(seams.setActiveTab).toHaveBeenLastCalledWith("coach");
+    catalogGo({ kind: "routine", tab: "plans" }, seams);
+    expect(seams.setActiveTab).toHaveBeenLastCalledWith("plans");
+    // A learn entry without a cardId (none exist today) still lands somewhere.
+    catalogGo({ kind: "learn", tab: "learn" }, seams);
+    expect(seams.setActiveTab).toHaveBeenLastCalledWith("learn");
+    expect(seams.requestLearnRead).not.toHaveBeenCalled();
   });
 });

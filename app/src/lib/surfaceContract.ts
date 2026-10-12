@@ -368,10 +368,12 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   },
   {
     route: "learn", hub: "learn", depth: 1,
-    job: "Browse the library of three-minute parent reads.",
+    job: "Read one parent piece and add its one small thing to today.",
     primaryMove: "open-learn-card", moduleBudget: 3, demotionTarget: "masterclasses",
-    // Age-band filter defaults ON; provenance chip on every card. No
-    // learn-done source in buildTimeline — "none".
+    // v3 F-FORYOU-1: a reader only (one read: its key points, the full
+    // read, one thing to try today, with provenance). The library and the
+    // age-band filter live on For you. No learn-done source in
+    // buildTimeline — "none".
     threadWrite: "none",
   },
   {

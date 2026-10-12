@@ -48,6 +48,8 @@ const CONTROLS: { id: string; file: keyof typeof FILES; near: string }[] = [
   // test below); its age switch and short-read cards are pinned here.
   { id: "OBJ-LEARN-03 age switch (For you)", file: "forYou", near: 'data-testid="agefilter-toggle-masterclasses"' },
   { id: "OBJ-LEARN-03 short read (For you)", file: "forYou", near: 'data-testid="academy-short-read"' },
+  // v3 F-FORYOU-1 r2: the week's concept card in the same row.
+  { id: "F-FORYOU-1 week's concept (For you)", file: "forYou", near: 'data-testid="academy-short-read-concept"' },
   { id: "OBJ-LEARN-03 helpful pulse (yes)", file: "learn", near: "onPulse(1)" },
   { id: "OBJ-LEARN-03 helpful pulse (no)", file: "learn", near: "onPulse(-1)" },
   { id: "LC-22 charter remove", file: "charter", near: "remove(v)" },
@@ -88,11 +90,13 @@ describe("touch floor · the Learn·Care controls item 9 names", () => {
   // v3 F-FORYOU-1 (re-pin): the filter pills are For you's area chips. They
   // share one class recipe, so the floor is pinned on the recipe and on every
   // chip that uses it ("All" plus one per area).
+  // v3 F-FORYOU-1 r2 (re-pin): 2 -> 3, the Saved chip uses the same recipe.
   it("OBJ-LEARN-03 filter pills (For you's area chips) declare a 44 px floor", () => {
     const src = read(FILES.forYou);
     const recipe = src.match(/const AREA_CHIP = "([^"]+)";/)?.[1] ?? "";
     expect(recipe).toMatch(FLOOR);
-    expect((src.match(/className=\{AREA_CHIP\}/g) ?? []).length).toBe(2);
+    expect((src.match(/className=\{AREA_CHIP\}/g) ?? []).length).toBe(3);
+    expect(src).toMatch(/data-testid="academy-saved-chip"[\s\S]{0,200}className=\{AREA_CHIP\}/);
   });
 });
 
