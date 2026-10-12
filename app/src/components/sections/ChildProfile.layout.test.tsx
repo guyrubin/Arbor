@@ -105,7 +105,8 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
    const door=html.slice(html.indexOf('data-testid="profile-remember-check"'),html.indexOf("</button>",html.indexOf('data-testid="profile-remember-check"')));
    expect(door).toContain('data-testid="about-memory-waiting"');
    expect(door).toContain(C["companion.about.memoryWaiting"]);
-   expect(door.replace(/<[^>]+>/g," ")).not.toMatch(/\d/);
+   // what the door SAYS (its text, after the opening tag's class list)
+   expect(door.slice(door.indexOf(">")+1).replace(/<[^>]+>/g," ")).not.toMatch(/\d/);
    expect(door).not.toMatch(/badge|data-count|aria-label="[^"]*\d/);
    expect(html).not.toContain('data-testid="about-aspect-pending"');
   }
