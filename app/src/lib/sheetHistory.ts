@@ -57,7 +57,7 @@ export function newSheetToken(): string {
   return `${Date.now().toString(36)}-${seq}`;
 }
 
-/** Run `task` once no sheet's Back is in flight: now, or right after that Back lands. */
+/** Run the given work once no sheet's Back is in flight: now, or right after that Back lands. */
 export function afterSheetBack(task: () => void): void {
   if (backPending) waiting.push(task);
   else task();
