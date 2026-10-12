@@ -220,7 +220,9 @@ describe("EXTRA-TALK · the welcome and the family-question chip", () => {
     const row = coach.slice(coach.indexOf('id="coach-scenarios"'));
     const first = row.indexOf('data-testid="coach-scenario-topic"');
     expect(first).toBeGreaterThan(-1);
-    for (const later of ['data-testid="coach-hard-moment-now"', 'data-testid="coach-scenario-echo"', "SCENARIOS.slice(0, staticShown)"]) {
+    // F-TALK-1 re-pin: the hard-moment door left this row for the composer tray.
+    expect(row).not.toContain('data-testid="coach-hard-moment-now"');
+    for (const later of ['data-testid="coach-scenario-echo"', "SCENARIOS.slice(0, staticShown)"]) {
       expect(first).toBeLessThan(row.indexOf(later));
     }
   });

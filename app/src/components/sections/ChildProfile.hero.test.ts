@@ -108,6 +108,8 @@ describe("W2 — a useful identity header", () => {
   it("keeps edit, Ask, and the existing drawer creation seam reachable", () => {
     // W2-GROWTH r2: Ask Arbor is a door in the jump strip, not a header action.
     expect(src).toContain('{ tab: "coach" as const');
+    // F-TALK-1: the Ask door opens the conversation panel over the profile, never the coach page.
+    expect(src).toContain('l.tab === "coach" ? requestCompanionConversation({ source: "profile" }) : setActiveTab(l.tab)');
     const header = src.slice(src.indexOf('data-module="profile-identity"'), src.indexOf("</header>"));
     expect(header).toBeTruthy();
     expect(header).not.toContain('"coach"');

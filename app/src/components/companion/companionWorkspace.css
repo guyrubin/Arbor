@@ -4,12 +4,13 @@
 .companion-workspace { --companion-launcher-height: 56px; display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(0,1fr) auto; flex: 1; min-block-size: 0; min-inline-size: 0; position: relative; padding-block-end: var(--companion-navigation-height, calc(65px + env(safe-area-inset-bottom))); }
 .companion-workspace > main { grid-row: 1; grid-column: 1; min-block-size: 0; overflow-y: auto; padding-block-end: 24px; scroll-padding-block-end: calc(var(--companion-launcher-height) + 24px); }
 .companion-workspace > main :where(button, a, input, textarea, summary) { scroll-margin-block: 12px; }
-.companion-launcher-rail { grid-row: 2; grid-column: 1; min-inline-size: 0; padding: 8px 16px; background: var(--arbor-paper); }
+/* F-TALK-1: the bar rises out of the page on a transparent-to-paper fade. */
+.companion-launcher-rail { grid-row: 2; grid-column: 1; min-inline-size: 0; padding: 8px 16px; background: linear-gradient(transparent, var(--arbor-paper) 55%); }
 .companion-conversation[hidden] { display: none; }
 .companion-conversation { display: flex; flex-direction: column; min-inline-size: 0; min-block-size: 0; background: var(--arbor-paper-elevated); color: var(--arbor-ink); border-inline-start: 1px solid var(--arbor-rule-strong); position: fixed; inset: 0; z-index: 46; overflow: hidden; }
 .companion-conversation-heading { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-block-end: 1px solid var(--arbor-rule); flex-shrink: 0; }
 .companion-conversation-identity { flex: 1; min-inline-size: 0; }
-.companion-conversation-identity h2 { font-family: var(--font-display); font-size: 23px; font-weight: 500; margin: 0; }
+.companion-conversation-identity h2 { font-family: var(--font-display); font-size: 22px; font-weight: 500; margin: 0; }
 .companion-conversation-context { display: flex; align-items: center; gap: 8px; min-inline-size: 0; }
 /* The name keeps its letters beside a question; only a very long name yields
    (ellipsis at half the row), and alone it takes the whole line. */
@@ -77,3 +78,13 @@
 .companion-panel-menu .companion-panel-menu-item:focus-visible { outline-offset: -2px; }
 .companion-panel-menu-icon { flex: none; color: var(--arbor-muted); }
 .companion-panel-menu-label { min-inline-size: 0; overflow-wrap: anywhere; }
+/* F-TALK-1 — below 1280 px the header's question is one muted tappable line,
+   "<child> · <question>", ending in an ellipsis; its full words are the
+   button's name. The capture popover names itself with a visible heading, and
+   each menu item carries a one-line subtitle under its label. */
+.companion-topic-line { display: inline-flex; align-items: center; flex: 0 1 auto; min-inline-size: 44px; max-inline-size: 100%; min-block-size: 44px; margin-block: -7px; padding: 0; border: 0; background: transparent; color: var(--arbor-muted); font-size: 13px; font-weight: 500; line-height: 1.35; text-align: start; cursor: pointer; }
+.companion-topic-line-text { min-inline-size: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.companion-topic-line:hover .companion-topic-line-text { color: var(--arbor-ink-soft); }
+.companion-capture-heading { margin: 0; padding-block: 6px 4px; padding-inline: 12px; color: var(--arbor-muted); font-size: 12px; font-weight: 600; line-height: 1.35; }
+.companion-panel-menu-text { display: flex; flex-direction: column; gap: 1px; min-inline-size: 0; }
+.companion-panel-menu-sub { color: var(--arbor-muted); font-size: 12px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }

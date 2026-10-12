@@ -20,6 +20,7 @@ import { LastTimeLead, SendWordsButton } from "./HardMomentWords";
 import { PublicGuideShare } from "./PublicGuideShare";
 import { ParentBreathPacer } from "./ParentBreathPacer";
 import { SayThis } from "../ui/AiBlock";
+import { requestCompanionConversation } from "../../lib/companionConversation";
 
 /**
  * B-ASKJB-31 — "Hard moment now": ONE sheet over the governed pilot guides,
@@ -221,7 +222,7 @@ export default function HardMomentNowSheet() {
                 childName={childFirst}
                 lang={locale}
                 t={t}
-                onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); setActiveTab("coach"); }}
+                onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); requestCompanionConversation({ source: "hard-moment" }); }}
                 onKeep={() => { closeHardMomentNow(); openCaptureSheet({ mode: "text" }); }}
                 onSafety={() => { closeHardMomentNow(); setActiveTab("safety"); }}
               />
@@ -310,7 +311,8 @@ export default function HardMomentNowSheet() {
                   // the composer — nothing is written into the prompt.
                   setAskHardMomentRef(card.id);
                   closeHardMomentNow();
-                  setActiveTab("coach");
+                  // F-TALK-1: Talk is a panel over this place, never a page.
+                  requestCompanionConversation({ source: "hard-moment" });
                 }}
                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition"
                 style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}

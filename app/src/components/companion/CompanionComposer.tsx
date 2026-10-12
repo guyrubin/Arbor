@@ -12,12 +12,17 @@ import CompanionConsentReview from "./CompanionConsentReview";
 import { COMPANION_CONSENT_COPY } from "./companionConsentCopy";
 import "./companionComposer.css";
 
-export default function CompanionComposer({ childId, conversationRevision, language, value, onChange, busy, visible, onSend, onVoice, voiceActive, voiceLabel, onKeep, onAttachmentsChange }: {
+export default function CompanionComposer({ childId, conversationRevision, language, value, onChange, busy, visible, onSend, onVoice, voiceActive, voiceLabel, onKeep, onAttachmentsChange, onHardMoment, footAction }: {
   childId: string; conversationRevision: number; language: "en" | "he"; value: string; onChange: (value: string) => void;
   busy: boolean; visible: boolean; onSend: (prompt?: string, options?: { attachments?: ComposerAttachment[] }) => Promise<boolean | undefined>;
   onVoice: () => void; voiceActive: boolean; voiceLabel: string; onKeep: (text: string, photo?: string) => void;
   /** How many files the input holds (a count, never the files). */
   onAttachmentsChange?: (count: number) => void;
+  /** F-TALK-1: the hard-moment door rides in the tray. The host passes it only
+   *  while a pilot guide is available (availableHardMomentCards); absent, no button. */
+  onHardMoment?: () => void;
+  /** F-TALK-1: one quiet control beside the honesty line (the tone chip). */
+  footAction?: React.ReactNode;
 }) {
   const he = language === "he";
   const consent = useCompanionConsent(childId);
@@ -164,12 +169,14 @@ export default function CompanionComposer({ childId, conversationRevision, langu
         </div>
         <div className="companion-save-options">
           <button type="button" disabled={busy || sending || preparing || listening || voiceActive} onClick={() => { closeTools(); void keep(); }}>{inputText(language, "companion.input.just-keep-a-moment")}<Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" /></button>
+          {onHardMoment && <button type="button" className="companion-tray-hard" data-testid="coach-hard-moment-now" onClick={() => { closeTools(); onHardMoment(); }} aria-label={inputText(language, "companion.input.hard-moment-aria")}><Icon name="volunteer_activism" size={15} />{inputText(language, "companion.input.hard-moment")}</button>}
           <button type="button" disabled={busy || sending || !!consent.busy || voiceActive} onClick={() => { closeTools(); consent.review(); }}><Icon name="shield" size={15} />{COMPANION_CONSENT_COPY[language].control}</button>
         </div>
       </div>
     </div>
     {draftPending && !voiceActive && <p className="companion-media-note">{inputText(language, "companion.input.send-your-draft-then-continue-the-conversation-by-voice")}</p>}
     </>}
-    <p className="companion-composer-foot">{inputText(language, "companion.input.arbor-is-your-ai-companion")}</p>
+    {/* F-TALK-1: the honesty line (what Arbor is; files only on send) and the tone chip share the foot. */}
+    <div className="companion-composer-foot-row"><p className="companion-composer-foot">{inputText(language, "companion.input.foot")}</p>{footAction}</div>
   </div>;
 }

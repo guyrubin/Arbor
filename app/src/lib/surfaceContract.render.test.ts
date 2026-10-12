@@ -522,7 +522,8 @@ export function freshTopLevelModules(source: string): { stamped: string[]; unsta
     // information module. Its stamped children are still scanned below.
     if (/^<div className=\{embedded \? "companion-transcript" : undefined\} data-companion-scroll=/.test(head)) continue;
     // Gated blocks that never render on a fresh thread.
-    if (/^\{(composerDocked|voicePhase !== "off"|[^}]*&& userTurnExists|userTurnExists) &&/.test(head) && !/!userTurnExists/.test(head)) continue;
+    // F-TALK-1: the history list renders only on the menu's request.
+    if (/^\{(composerDocked|historyOpen|voicePhase !== "off"|[^}]*&& userTurnExists|userTurnExists) &&/.test(head) && !/!userTurnExists/.test(head)) continue;
     if (/^\{lastMessage\?\.sender === "ai" && userTurnExists/.test(head)) continue;
     if (REST_NULL.test(head)) continue;
     // The element (this line, or the first element line of a gated block).
@@ -540,10 +541,17 @@ describe("B-ASKJB-06 — Ask's fresh stack meets moduleBudget 3", () => {
   const budget = contractFor("coach")!.moduleBudget;
   const fresh = freshTopLevelModules(COACH);
 
-  it("exactly coach-orientation · coach-history · coach-thread, ≤ moduleBudget", () => {
+  // F-TALK-1 re-pin: the surface is orientation · thread, plus an on-demand
+  // history list (hidden until the panel menu's "History"), so even with the
+  // list open the stack stays within the budget.
+  it("exactly coach-orientation · coach-thread, plus an on-demand coach-history, ≤ moduleBudget", () => {
     expect(budget).toBe(3);
-    expect(fresh.stamped).toEqual(["coach-orientation", "coach-history", "coach-thread"]);
-    expect(fresh.stamped.length).toBeLessThanOrEqual(budget);
+    expect(fresh.stamped).toEqual(["coach-orientation", "coach-thread"]);
+    const src = COACH.replace(/\r\n/g, "\n");
+    expect(src).toMatch(/\n {6}\{historyOpen && \(\n {6}<section data-module="coach-history"/);
+    expect((src.match(/data-module="coach-history"/g) || []).length).toBe(1);
+    expect(src).toMatch(/const \[historyOpen, setHistoryOpen\] = useState\(false\)/);
+    expect(fresh.stamped.length + 1).toBeLessThanOrEqual(budget);
   });
 
   it("no unstamped sibling renders on a fresh thread (B-ASKJB-12 retired the lens row)", () => {
@@ -552,25 +560,24 @@ describe("B-ASKJB-06 — Ask's fresh stack meets moduleBudget 3", () => {
     expect(fresh.unstamped).toEqual([]);
   });
 
-  it("the continuation, the chip row and ValuePreview are inside modules, not siblings", () => {
+  // F-TALK-1 re-pin: orientation is the welcome, the composer and ONE chip
+  // row. The continuation offer, the research chip, the page header and the
+  // hard-moment chip left it (the hard door rides in the composer tray; the
+  // continuation belongs to Now's one offer slot).
+  it("the chip row and ValuePreview are inside modules, not siblings; nothing sits between composer and chips", () => {
     const orientation = COACH.slice(COACH.indexOf('<div data-module="coach-orientation"'), COACH.indexOf('data-module="coach-history"'));
-    expect(orientation).toContain("<TodayContinuation choice={askContinuation} isReturning>{askOfferSlot}</TodayContinuation>");
     expect(orientation).toContain('id="coach-scenarios"');
-    expect(orientation).toContain('data-testid="coach-hard-moment-now"');
-    // Critic r1: header < composer < continuation (the continuation sits
-    // UNDER the composer; it never pushes the primary move down).
-    expect(orientation.indexOf("<h1")).toBeLessThan(orientation.indexOf("{!composerDocked && composerSection}"));
-    expect(orientation.indexOf("{!composerDocked && composerSection}")).toBeLessThan(orientation.indexOf("{askOfferSlot}"));
-    expect(orientation.indexOf("{askOfferSlot}")).toBeLessThan(orientation.indexOf('id="coach-scenarios"'));
-    // Only the continuation kinds render on Ask: the slot mounts ONLY inside
-    // TodayContinuation (no bare `: askOfferSlot` fallback for other kinds).
-    expect(orientation).not.toMatch(/:\s*askOfferSlot\)/);
-    expect(orientation).toContain('askContinuation !== "none" && (');
+    expect(orientation).toContain("SCENARIOS.slice(0, staticShown).map(");
+    for (const gone of ["<TodayContinuation", "askOfferSlot", "<EvidenceChip", 'data-testid="coach-hard-moment-now"', "<h1", "<header"]) {
+      expect(orientation, gone).not.toContain(gone);
+    }
+    expect(orientation.indexOf("{!composerDocked && composerSection}")).toBeGreaterThan(-1);
+    expect(orientation.indexOf("{!composerDocked && composerSection}")).toBeLessThan(orientation.indexOf('id="coach-scenarios"'));
     const thread = COACH.slice(COACH.indexOf('<div data-module="coach-thread"'));
     expect(thread).toContain("<ValuePreview");
-    // The coordinator is the ONE arbiter: Today's chooser, never a second.
-    expect(COACH).toContain('chooseContinuation({ offerKind: askOffer.offer?.kind })');
-    expect((COACH.match(/<CompanionOfferSlot\b/g) || []).length).toBe(1);
+    // Talk mounts no offer slot of its own.
+    expect((COACH.match(/<CompanionOfferSlot\b/g) || []).length).toBe(0);
+    expect(COACH).not.toContain("useCompanionOffer(");
   });
 
   it("negative control: the pre-fix stack (offer slot, chips and ValuePreview as siblings) fails the count", () => {

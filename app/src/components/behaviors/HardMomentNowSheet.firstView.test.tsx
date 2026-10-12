@@ -32,6 +32,7 @@ const harness = vi.hoisted(() => ({
   setAskHardMomentRef: vi.fn(),
   acceptTodayAction: vi.fn(),
   requestLearnRead: vi.fn(),
+  requestCompanionConversation: vi.fn(),
   captured: [] as { type: unknown; props: Record<string, any> }[],
 }));
 
@@ -58,6 +59,11 @@ vi.mock("../../context/ArborContext", async (importOriginal) => ({
     actionLoop: [],
     openCaptureSheet: harness.openCaptureSheet,
   }),
+}));
+// F-TALK-1: Talk opens the conversation panel over the place (never the coach page).
+vi.mock("../../lib/companionConversation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/companionConversation")>()),
+  requestCompanionConversation: harness.requestCompanionConversation,
 }));
 // The real Modal portals into document.body; the stub renders its children in place.
 vi.mock("../ui/Modal", () => {
@@ -219,7 +225,7 @@ describe("FEAT-06 — the ways on (handlers)", () => {
     expect(findElement(tree, (_p, type) => type === UrgentSupport)).toBeNull();
   });
 
-  it("the sheet wires Talk → an empty coach (no seed, no stale guide card), Keep → the capture sheet, Safety → the Safety tab, each closing the sheet first", () => {
+  it("the sheet wires Talk → an empty conversation panel (no seed, no stale guide card), Keep → the capture sheet, Safety → the Safety tab, each closing the sheet first", () => {
     renderToStaticMarkup(<HardMomentNowSheet />);
     const first = harness.captured.find((c) => c.type === HardMomentFirstView);
     expect(first, "the sheet renders HardMomentFirstView on a fresh open").toBeTruthy();
@@ -228,12 +234,15 @@ describe("FEAT-06 — the ways on (handlers)", () => {
 
     first!.props.onTalk();
     expect(harness.closeHardMomentNow).toHaveBeenCalledTimes(1);
-    expect(harness.setActiveTab).toHaveBeenCalledWith("coach");
+    // F-TALK-1 re-pin: Talk is a panel over this place, never the coach page.
+    expect(harness.requestCompanionConversation).toHaveBeenCalledTimes(1);
+    expect(harness.requestCompanionConversation).toHaveBeenCalledWith({ source: "hard-moment" });
+    expect(harness.setActiveTab).not.toHaveBeenCalled();
     // A guide card an earlier card-level Talk left above the composer is
-    // cleared: the first view's Talk lands on the coach with no card.
+    // cleared: the first view's Talk lands on the conversation with no card.
     expect(harness.setAskHardMomentRef).toHaveBeenCalledTimes(1);
     expect(harness.setAskHardMomentRef).toHaveBeenCalledWith(null);
-    expect(harness.setAskHardMomentRef.mock.invocationCallOrder[0]).toBeLessThan(harness.setActiveTab.mock.invocationCallOrder[0]);
+    expect(harness.setAskHardMomentRef.mock.invocationCallOrder[0]).toBeLessThan(harness.requestCompanionConversation.mock.invocationCallOrder[0]);
     expect(harness.openCaptureSheet).not.toHaveBeenCalled();
 
     vi.clearAllMocks();
@@ -249,7 +258,9 @@ describe("FEAT-06 — the ways on (handlers)", () => {
   });
 
   it("source: no seed, no request on any of the three paths", () => {
-    expect(SHEET).toContain('onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); setActiveTab("coach"); }}');
+    expect(SHEET).toContain('onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); requestCompanionConversation({ source: "hard-moment" }); }}');
+    // F-TALK-1: no path in the sheet opens the coach page.
+    expect(SHEET).not.toContain('setActiveTab("coach")');
     expect(SHEET).toContain('onKeep={() => { closeHardMomentNow(); openCaptureSheet({ mode: "text" }); }}');
     expect(SHEET).toContain('onSafety={() => { closeHardMomentNow(); setActiveTab("safety"); }}');
     expect(SHEET).not.toMatch(/seedCoach|buildHardMomentSeedPrompt|fetch\(|api\.|sendToCoach|handleChatSend/);

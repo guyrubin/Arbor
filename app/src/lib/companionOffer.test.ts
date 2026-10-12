@@ -274,8 +274,12 @@ describe("B-AI-06 — render: exactly one proactive module", () => {
       expect(src).not.toMatch(/<CarryOverActionAsk\b/);
       expect(src).not.toMatch(/<RhythmCue\b/);
       expect(src).not.toMatch(/<HardMomentTodayOffer\b/);
-      expect((src.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(1);
     }
+    // F-TALK-1 re-pin: the conversation panel carries no offer of its own;
+    // the coordinator's single proactive thing lives on Today only.
+    expect((overview.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(1);
+    expect((coach.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(0);
+    expect(coach).not.toContain("useCompanionOffer(");
     // P5 r1 pass A5: Today's only other proactive surface is the lifecycle
     // NOTE in the practice header, and it shows only when the coordinator
     // chose "what-changed" (still one proactive thing per open).

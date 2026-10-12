@@ -54,12 +54,20 @@ describe("COACH-4 — CoachTab is one composer + one flowing thread", () => {
     expect(code).not.toContain("<ArborVision");
   });
 
-  it("renders the EU AI-Act Art. 50 disclosure line (firewall condition: it survives)", () => {
-    expect(composer).toContain('inputText(language, "companion.input.arbor-is-your-ai-companion")');
+  // F-TALK-1 re-pin: the disclosure is the composer foot, which now also says
+  // "not a doctor" and when files are analysed (EN + HE, one line).
+  it("renders the EU AI-Act Art. 50 disclosure line (firewall condition: it survives)", async () => {
+    const { translate } = await import("./i18n");
+    expect(count(composer, 'inputText(language, "companion.input.foot")')).toBe(1);
+    expect(translate("en", "companion.input.foot")).toMatch(/AI companion/);
+    expect(translate("he", "companion.input.foot")).toContain("בינה מלאכותית");
   });
 
-  it("keeps one fresh Ask heading and its count-aware context without a duplicate composer title", () => {
-    expect(count(code, "<h1")).toBe(1);
+  // F-TALK-1 re-pin: Talk is a panel over the place, so it carries no page
+  // <h1> (the place keeps its own); a fresh panel opens on the welcome h3.
+  it("keeps one fresh welcome heading and its count-aware context without a duplicate composer title", () => {
+    expect(count(code, "<h1")).toBe(0);
+    expect(count(code, 'inputText(uiLang, "companion.talk.welcome")')).toBe(1);
     expect(code).not.toContain("coach.empty.title");
     expect(code).toContain("elev.aihonesty.memory.none");
     expect(code).toContain("elev.aihonesty.memory.some");
@@ -126,12 +134,16 @@ describe("COACH-8 — Behaviors capture is an honest launcher (critic r2)", () =
  * this — the subtitle promises only the job; memory is said once, in the
  * data-use line.
  */
-describe("critic r2 — Ask's subtitle promises the job, never memory", () => {
-  it("coach.subtitle in EN and HE carries no remember verb", async () => {
+// F-TALK-1 re-pin: the page subtitle left with the page header; the line
+// that sits under every input is the composer foot, so the no-memory-promise
+// rule now binds that line.
+describe("critic r2 — Ask's standing line promises the job, never memory", () => {
+  it("the composer foot in EN and HE carries no remember verb", async () => {
     const { translate } = await import("./i18n");
-    const en = translate("en", "coach.subtitle");
-    const he = translate("he", "coach.subtitle");
-    expect(en).toBe("Tell Arbor what's happening. You'll get one calm next step and the words to say.");
+    expect(read("components/tabs/CoachTab.tsx")).not.toContain("coach.subtitle");
+    const en = translate("en", "companion.input.foot");
+    const he = translate("he", "companion.input.foot");
+    expect(en).toBe("Arbor is an AI companion, not a doctor. Files are analysed only when sent.");
     expect(en).not.toMatch(/remember|memor|keep|save/i);
     expect(he).not.toMatch(/יזכור|זוכר|לזכור|זיכרון|ישמור|שומר/);
     expect(he).not.toMatch(/[A-Za-z]/);

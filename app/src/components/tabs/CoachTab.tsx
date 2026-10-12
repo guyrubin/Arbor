@@ -14,14 +14,15 @@ import { Avatar } from "../ui/Avatar";
 import { ArborMascot } from "../ui/ArborMascot";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
 import { TrustSafetyBar, cardCls } from "../ui/kit";
-// Masterplan 1.3 — the Ask data-contract panel: TrustPanel (the one reusable
-// trust pattern, previously mounted only on AvatarCreator) states EXACTLY what
-// each coach request sends, and hosts the weekly-context consent toggle.
-import { TrustPanel } from "../ui/TrustPanel";
+// F-TALK-1: the data-use panel ("What the coach sees", TrustPanel + the
+// weekly-context consent switch) lives in the "What Arbor remembers"
+// destination now (components/coach/CoachDataContract, mounted on #/memory).
+// The one-time weekly notice below still names what is sent, and its
+// "Change" lands on that switch.
 import { coachContractText } from "../../lib/i18nElevation/coachcontract";
-import { liveResidencyUntil } from "../../lib/liveResidency";
-import { fmtDayLong } from "../../lib/formatDate";
-import { buildVoiceContext, dismissWeeklyContextNotice, readWeeklyContextConsent, shouldShowWeeklyContextNotice, writeWeeklyContextConsent } from "../../ai/chatContext";
+import { fmtDay } from "../../lib/formatDate";
+import { goToRoute } from "../../hooks/useHashQuery";
+import { buildVoiceContext, dismissWeeklyContextNotice, readWeeklyContextConsent, shouldShowWeeklyContextNotice } from "../../ai/chatContext";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
 import ToneSheet, { toneLabel } from "../coach/ToneSheet";
@@ -31,7 +32,6 @@ import ToneSheet, { toneLabel } from "../coach/ToneSheet";
 // surface only reports whether it is calm enough to host it.
 import ValuePreview from "../billing/ValuePreview";
 import { ShareButton } from "../ui/ShareButton";
-import { EvidenceChip } from "../ui/EvidenceChip";
 import CompanionComposer from "../companion/CompanionComposer";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import { screenForImmediateEscalation } from "../../safety/escalation";
@@ -57,19 +57,10 @@ import MicrophoneNotice from "../ui/MicrophoneNotice";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import ConversationProposalTray from "../coach/ConversationProposalTray";
 import CaptureProposalsTray from "../capture/CaptureProposalsTray";
-// ENG-10 / ENG-11: the JITAI cue, rendered where the parent already is and
-// instrumented — and in the evening it is the Bedtime Stories door.
-import CompanionOfferSlot from "../overview/CompanionOfferSlot";
-import TodayContinuation from "../overview/TodayContinuation";
-import { chooseContinuation } from "../overview/continuation";
 import { liveUnavailableReason, trackLiveUnavailable } from "../../lib/kpiEvents";
-import { useCompanionOffer } from "../overview/useCompanionOffer";
 // AI-06 / AI-24: one classifier from a thrown transport error (or from being
 // offline) to the honest, ACTIONABLE thing to say — never a generic retry.
 import { browserOnline, classifyAiFailure, type AiFailureCopy } from "../../lib/aiErrorCopy";
-// GP-14: the disclosure names WHICH approved facts and WHICH profile fields
-// travel with a question, not just how many.
-import { coachDisclosure } from "../../lib/coachDisclosure";
 import { attachProposalConflicts, noteKeepCommitted, normalizeConversationProposals, type ConversationProposal } from "../../lib/conversationProposals";
 import { markPlanSeededFromAnswer } from "../../lib/captureProposals";
 // AI-V3: recognition restart with backoff + circuit breaker lives in the pure
@@ -165,7 +156,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     conversations,
     activeConversationId,
     conversationRevision,
-    newConversation,
+
     openConversation,
     deleteConversation,
     apiError,
@@ -190,18 +181,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     askHardMomentRef,
     setAskHardMomentRef,
   } = useArbor();
-  // B-AI-06: Ask renders the SAME single-offer decision as Today.
-  const askOffer = useCompanionOffer("coach");
-  // B-ASKJB-06: the coordinator's winner → Today's continuation placement.
-  const askContinuation = chooseContinuation({ offerKind: askOffer.offer?.kind });
-  const askOfferSlot = (
-    <CompanionOfferSlot
-      surface="coach"
-      offer={askOffer.offer}
-      controls={askOffer}
-      placement={askContinuation !== "none" ? "continuation" : "under-step"}
-    />
-  );
+  // F-TALK-1: the coordinator's continuation offer (carry-over ask, tomorrow's
+  // reason) and the JITAI cue belong to Now (NowView's one slot), never to the
+  // Talk panel: nothing sits between the panel header and the thread.
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
   const { user } = useAuth();
@@ -246,21 +228,20 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     );
   }, [showFollowUps, lastMessage, childProfile]);
 
-  // Masterplan 1.3 — "What the coach sees": collapsible data-contract panel in
-  // the thread header + the per-child weekly-context consent toggle (DEFAULT
-  // OFF; persisted at arbor.coach.weeklyContext.{childId} and read fresh by the
-  // send path, so the flag itself is the single source of truth).
-  const [contractOpen, setContractOpen] = useState(false);
+  // Masterplan 1.3 — the per-child weekly-context consent flag (persisted at
+  // arbor.coach.weeklyContext.{childId} and read fresh by the send path, so
+  // the flag itself is the single source of truth). F-TALK-1: its switch and
+  // the "What the coach sees" panel live on #/memory (CoachDataContract); here
+  // the flag only decides whether the one-time notice shows.
   const [weeklyOn, setWeeklyOn] = useState(() => readWeeklyContextConsent(childProfile.id));
   useEffect(() => { setWeeklyOn(readWeeklyContextConsent(childProfile.id)); }, [childProfile.id]);
   // B-ASKJB-07 (Guy G1 = ON): the weekly counts + last outcome are on by
-  // default; a one-line notice above the composer says so ONCE per child,
-  // with "Change" opening the panel that holds the per-child off.
+  // default; a one-line notice under the composer says so ONCE per child,
+  // with "Change" landing on the switch that holds the per-child off.
   const [weeklyNotice, setWeeklyNotice] = useState(() => shouldShowWeeklyContextNotice(childProfile.id));
   useEffect(() => { setWeeklyNotice(shouldShowWeeklyContextNotice(childProfile.id)); }, [childProfile.id]);
   const closeWeeklyNotice = () => { dismissWeeklyContextNotice(childProfile.id); setWeeklyNotice(false); };
-  const contractToggleRef = useRef<HTMLButtonElement | null>(null);
-  // B-ASKJB-31: the pilot guides this child can open right now (the chip's
+  // B-ASKJB-31: the pilot guides this child can open right now (the door's
   // gate) and the reference card the sheet handed to Ask, if still available.
   const hardMomentGuides = (() => {
     const now = new Date();
@@ -271,14 +252,6 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // a parallel stream) so it resolves through its own lookup, same semantics.
   const tcc = (key: string, params?: Record<string, string | number>) =>
     coachContractText(uiLang === "he" ? "he" : "en", key, params);
-  // ASK-6 count, per answer: the most recent settled answer's server-backfilled
-  // approved-memory fact count (an integer only — never fact content).
-  const lastFactsUsed = useMemo(
-    () =>
-      [...chatMessages].reverse().find((m) => m.sender === "ai" && typeof m.contract?.approvedMemoryFactsUsed === "number")
-        ?.contract?.approvedMemoryFactsUsed,
-    [chatMessages],
-  );
 
   // AI-24: being offline is a STATE of this surface, not a failure of Arbor.
   // The composer used to stay fully live with no connection, so the parent
@@ -384,11 +357,14 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // Plan / Share fold into this menu so a settled answer reads as calm text.
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
   // B-ASKJB-12: the lens is chosen in ONE sheet ("How should Arbor talk with
-  // you?"), opened from the "Tone: {choice}" control in the identity strip.
-  // Same store (selectedLens / arbor.lens → scholarLens); seedCoach lens
-  // steering is untouched.
+  // you?"). F-TALK-1: it opens from the tone chip in the composer foot (label
+  // = the current tone) and from the panel menu. Same store (selectedLens /
+  // arbor.lens → scholarLens); seedCoach lens steering is untouched.
   const [toneOpen, setToneOpen] = useState(false);
-  const [showAllScenarios, setShowAllScenarios] = useState(false);
+  // F-TALK-1: the history list is hidden until the panel menu's "History"
+  // asks for it; choosing a conversation (or closing) hides it again.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyAsk, setHistoryAsk] = useState(0);
   // B-ASKJB-10: deterministic, zero model calls — the recurrence rule is patternEcho's.
   const echoScenario = useMemo(
     () => recurringScenario(behaviorLogs, localDayKey(), {
@@ -403,7 +379,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // with: <question>". It FILLS the composer and never sends: the parent reads,
   // edits and sends it themselves. The row seats 4 chips in the Talk panel and
   // 3 on the page; the question chip and the echo chip each take a seat and
-  // the static scenarios fill the rest ("show all" still reveals every one).
+  // the static scenarios fill the rest (F-TALK-1: no "more examples" toggle).
   const topicChip = activeFamilyTopic?.title.trim() ? activeFamilyTopic : null;
   const [topicChipBefore, topicChipAfter = ""] = inputText(uiLang, "companion.talk.topic-chip").split("{title}");
   const scenarioSeats = embedded ? 4 : 3;
@@ -434,8 +410,6 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // prompt / socket connect window is never a silent 10s+ hole.
   const [voicePhase, setVoicePhase] = useState<"off" | "connecting" | "listening" | "thinking" | "speaking">("off");
   const [liveAvail, setLiveAvail] = useState(false);
-  // B-ASKJB-02: the Live residency exception's last day (null → undated line).
-  const [liveUntil, setLiveUntil] = useState<Date | null>(null);
   // B-VOICE-06: the Live probe has answered (either way), so a spoken
   // conversation asked for from elsewhere starts on the right path (HD or not).
   const [liveProbed, setLiveProbed] = useState(false);
@@ -505,7 +479,6 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     api.liveAvailability().then((r) => {
       if (cancelled || !r.available) return;
       setLiveAvail(true);
-      setLiveUntil(liveResidencyUntil(r));
     }).catch(() => {}).finally(() => { if (!cancelled) setLiveProbed(true); });
     return () => { cancelled = true; };
   }, []);
@@ -923,8 +896,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // FEAT-01: the conversation header's menu asks through the same door, and
   // its request is claimed like a voice request: here on a tap while mounted,
   // or on mount when the tap landed while this conversation was still loading.
-  // "tone" opens the ONE ToneSheet; "history" brings the history row into view
-  // and focuses its current conversation (else its first, else New).
+  // "tone" opens the ONE ToneSheet; "history" opens the in-panel history list
+  // (F-TALK-1: hidden by default), brings it into view and focuses its
+  // current conversation (else its first row, else its close button).
   const historyRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const onAsk = (event: Event) => {
@@ -939,14 +913,28 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     if (!visible) return;
     const panel = consumeConversationPanelRequest();
     if (panel === "tone") setToneOpen(true);
-    if (panel === "history" && historyRef.current) {
-      const region = historyRef.current;
-      region.scrollIntoView({ block: "nearest", behavior: reducedMotion ? "auto" : "smooth" });
-      const chip = region.querySelector<HTMLElement>("[data-history-chip][aria-current]") ?? region.querySelector<HTMLElement>("[data-history-chip]") ?? region.querySelector<HTMLElement>("button");
-      chip?.focus({ preventScroll: true });
-    }
+    if (panel === "history") { setHistoryOpen(true); setHistoryAsk((n) => n + 1); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, panelAsk]);
+  // The list mounts on the render after the claim, so its focus runs here.
+  useEffect(() => {
+    if (!historyAsk || !historyRef.current) return;
+    const region = historyRef.current;
+    region.scrollIntoView({ block: "nearest", behavior: reducedMotion ? "auto" : "smooth" });
+    const row = region.querySelector<HTMLElement>("[data-history-chip][aria-current]") ?? region.querySelector<HTMLElement>("[data-history-chip]") ?? region.querySelector<HTMLElement>("button");
+    row?.focus({ preventScroll: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyAsk]);
+  // Closing the list (a row chosen, Close, Escape) hands focus to the composer
+  // field so it never falls to the page body.
+  const closeHistory = (from: HTMLElement) => {
+    const scope: ParentNode = from.closest(".companion-coach") ?? document;
+    setHistoryOpen(false);
+    requestAnimationFrame(() => {
+      const field = scope.querySelector<HTMLTextAreaElement>('[data-testid="coach-composer-well"] textarea');
+      if (field && !field.disabled) field.focus({ preventScroll: true });
+    });
+  };
   useEffect(() => {
     if (!visible || !liveProbed || !conversationVoiceRequestPending()) return;
     if (consumeConversationVoiceRequest() && voicePhase === "off") {
@@ -997,6 +985,26 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // FEAT-06: crisis wording in the composer (the same screen the server runs
   // on send) shows the helplines in place, with the door to Safety & escalation.
   const composerCrisis = screenForImmediateEscalation({ message: chatInput }) !== null;
+  // F-TALK-1: the "hard moment" door rides in the composer's add tray. It is
+  // passed only while a pilot guide is available for this child
+  // (availableHardMomentCards: age, expiry); otherwise the tray has no door.
+  const composerHardMoment = hardMomentGuides.length > 0 ? () => openHardMomentNow() : undefined;
+  // F-TALK-1 (reverses B-ASKJB-12's strip placement; Guy's call): the tone
+  // control is one quiet chip in the composer foot, labelled with the current
+  // tone, opening the ONE ToneSheet.
+  const composerFoot = (
+    <button
+      type="button"
+      data-testid="coach-tone"
+      onClick={() => setToneOpen(true)}
+      aria-haspopup="dialog"
+      aria-label={`${t("coach.tone.label")}: ${toneLabel(selectedLens, t)}`}
+      className="companion-tone-chip min-h-11 min-w-11 focus:outline-none focus-visible:ring-2"
+    >
+      <Icon name="record_voice_over" size={14} />
+      <span className="truncate max-w-[160px]">{toneLabel(selectedLens, t)}</span>
+    </button>
+  );
   const composerSection = (
         <section
           data-primary-move="ask"
@@ -1046,7 +1054,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             value={chatInput} onChange={setChatInput} busy={isChatLoading} visible={visible}
             onSend={handleChatSend} onVoice={() => void toggleVoice()} voiceActive={voicePhase !== "off"} voiceLabel={voiceLabel}
             onKeep={(text, photo) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo })}
-            onAttachmentsChange={setComposerFiles} />
+            onAttachmentsChange={setComposerFiles}
+            onHardMoment={composerHardMoment} footAction={composerFoot} />
           {composerCrisis && (
             <UrgentSupport
               testId="coach-composer-urgent-support"
@@ -1072,8 +1081,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                 data-testid="coach-weekly-notice-change"
                 onClick={() => {
                   closeWeeklyNotice();
-                  setContractOpen(true);
-                  requestAnimationFrame(() => contractToggleRef.current?.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" }));
+                  // F-TALK-1: the switch lives in "What Arbor remembers"; the
+                  // section param brings it into view there.
+                  goToRoute("memory", { section: "coach" });
                 }}
                 className="inline-flex min-h-11 items-center px-2 t-xs font-bold underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
                 style={{ color: "var(--arbor-green-ink)" }}
@@ -1106,14 +1116,6 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       <div className={embedded ? "companion-transcript" : undefined} data-companion-scroll={embedded ? "true" : undefined}>
       <div data-module="coach-orientation" className="space-y-4">
         {embedded && !userTurnExists && <div className="companion-welcome"><h3>{inputText(uiLang, "companion.talk.welcome")}</h3><p>{inputText(uiLang, "companion.input.a-little-moment-a-big-question-a-photo-from-today-start-wherever-")}</p></div>}
-        <header className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
-          <div className="max-w-2xl">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.hero.ask.eyebrow")}</p>
-            <h1 className="mt-1.5 text-[28px] font-extrabold leading-[1.08] sm:text-[34px]" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("elev.hero.ask.title")}</h1>
-            <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("coach.subtitle")}</p>
-          </div>
-        </header>
-
         {/* Composer-first: the parent's question is the primary job on this page.
             COACH-4: this hero composer is the ONE input on the surface — the
             mirrored in-thread composer was removed; follow-up turns also send
@@ -1121,24 +1123,12 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             docks sticky at the bottom of the page instead (see below). */}
         {!composerDocked && composerSection}
 
-        {/* B-ASKJB-06 + critic r1 — the thread's first state is the
-            continuation, UNDER the composer (header < composer < continuation).
-            The coordinator (lib/companionOffer, surface "coach") only hands Ask
-            the continuation kinds (COACH_OFFER_KINDS: a carry-over ask or
-            tomorrow's reason); chooseContinuation maps them into Today's own
-            TodayContinuation slot — never a second pinned card. Reminders,
-            bedtime doors and capture nudges stay on Today. Nothing renders
-            when the coordinator stays quiet. */}
-        {!userTurnExists && askContinuation !== "none" && (
-          <TodayContinuation choice={askContinuation} isReturning>{askOfferSlot}</TodayContinuation>
-        )}
-
-        {/* Fast-start scenarios (IA-2) + the "Hard moment now" chip — ONE row under
-            the composer, inside orientation (B-ASKJB-06). */}
+        {/* Fast-start scenarios (IA-2) — F-TALK-1: ONE wrapping chip row, no
+            label and no "more examples" toggle; the hard-moment door rides in
+            the composer's add tray. Hidden after the first message. */}
         {!userTurnExists && (
-          <div className="space-y-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
-            <div id="coach-scenarios" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div>
+            <div id="coach-scenarios" className="flex flex-wrap gap-2">
               {/* EXTRA-TALK: the family question is the FIRST chip; it fills the
                   composer and never sends (no handleChatSend here). The question
                   sits in its own bdi so a Latin title keeps its order in Hebrew. */}
@@ -1149,26 +1139,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   data-testid="coach-scenario-topic"
                   onClick={(event) => continueWithTopic(event.currentTarget, topicChip.title.trim())}
                   disabled={isChatLoading}
-                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                  className="inline-flex max-w-full items-center gap-2 rounded-full px-3.5 py-2 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                   style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
                 >
                   <Icon name="bookmark" size={16} style={{ color: "var(--arbor-green-ink)" }} />
                   <span className="min-w-0 line-clamp-2">{topicChipBefore}<bdi dir="auto">{topicChip.title.trim()}</bdi>{topicChipAfter || null}</span>
-                </button>
-              )}
-              {/* B-ASKJB-31: ONE "Hard moment now" chip opens the shared sheet
-                  (replaces the dead publishedHardMomentCards group). Hidden when
-                  no pilot guide is available for this child (age, expiry). */}
-              {hardMomentGuides.length > 0 && (
-                <button
-                  key="hard-moment-now"
-                  type="button"
-                  data-testid="coach-hard-moment-now"
-                  onClick={() => openHardMomentNow()}
-                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                  style={{ color: T.ink, border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
-                >
-                  <Icon name="support" size={16} style={{ color: "var(--arbor-ink-soft)" }} /> {t("hm.now.title")}
                 </button>
               )}
               {/* B-ASKJB-10: the child's own recurring moment (after the family
@@ -1179,214 +1154,100 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   data-testid="coach-scenario-echo"
                   onClick={() => handleChatSend(echoScenario.prompt, { displayText: echoScenario.label })}
                   disabled={isChatLoading}
-                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                  className="inline-flex max-w-full items-center gap-2 rounded-full px-3.5 py-2 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                   style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
                 >
                   <Icon name="replay" size={16} style={{ color: "var(--arbor-green-ink)" }} /> <span dir="auto">{echoScenario.label}</span>
                 </button>
               )}
-              {(showAllScenarios ? SCENARIOS : SCENARIOS.slice(0, staticShown)).map((s) => (
+              {SCENARIOS.slice(0, staticShown).map((s) => (
                 <button
                   key={s.labelKey}
                   // ASK-5: the parent's bubble shows the localized label they
                   // actually tapped; the canonical EN prompt goes to the model.
                   onClick={() => handleChatSend(s.prompt, { displayText: t(s.labelKey) })}
                   disabled={isChatLoading}
-                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                  className="inline-flex max-w-full items-center gap-2 rounded-full px-3.5 py-2 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                   style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
                 >
                   <Icon name={s.icon} size={16} style={{ color: "var(--arbor-green-ink)" }} /> {t(s.labelKey)}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => setShowAllScenarios((shown) => !shown)}
-                aria-expanded={showAllScenarios}
-                aria-controls="coach-scenarios"
-                className="inline-flex min-h-11 items-center justify-center rounded-xl px-3 text-[12px] font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
-              >
-                {showAllScenarios
-                  ? t("elev.wave2Daily.ask.examples.less")
-                  : t("elev.wave2Daily.ask.examples.more", { count: SCENARIOS.length - staticShown })}
-              </button>
             </div>
           </div>
         )}
-        {/* E8: the research-anchored trust chip, inside orientation. B-ASKJB-12
-            moved the lens choice out of this row into the ToneSheet ("Tone:
-            {choice}" in the identity strip), so no unstamped sibling remains. */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <EvidenceChip />
-        </div>
+        {/* F-TALK-1: the research trust chip left the panel — every answer
+            carries the trust chain (TrustLink in the card footer). */}
       </div>
 
-      {/* Conversation history stays available without reserving an empty tray. */}
-      <section data-module="coach-history" ref={historyRef} className="flex flex-wrap items-center gap-2 border-y py-2.5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("elev.wave2Daily.ask.history")}>
-        <span className="me-auto text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Daily.ask.history")}</span>
-        <button
-          onClick={newConversation}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] font-extrabold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-          style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
-        >
-          <Icon name="add" size={14} /> {t("coach.new")}
-        </button>
+      {/* F-TALK-1: history is not a strip. The panel menu's "History" opens
+          this in-panel list (rows of 44 px or more: title, date, delete);
+          choosing a row opens that conversation and closes the list. New
+          conversation lives in the menu, so the list has no "+ New". */}
+      {historyOpen && (
+      <section data-module="coach-history"
+        ref={historyRef}
+        className="companion-history rounded-2xl border p-2"
+        style={{ borderColor: "var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
+        aria-labelledby="coach-history-title"
+        onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); closeHistory(event.currentTarget); } }}
+      >
+        <div className="flex items-center gap-2 ps-2">
+          <h3 id="coach-history-title" className="me-auto text-[13px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.wave2Daily.ask.history")}</h3>
+          <button
+            type="button"
+            onClick={(event) => closeHistory(event.currentTarget)}
+            aria-label={inputText(uiLang, "companion.history.close")}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl focus:outline-none focus-visible:ring-2"
+            style={{ color: "var(--arbor-muted)" }}
+          >
+            <Icon name="close" size={18} />
+          </button>
+        </div>
         {conversations.length > 0 ? (
-          <div className="flex w-full gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <ul className="space-y-0.5">
             {conversations.map((c) => {
               const on = c.id === activeConversationId;
               return (
-                <div key={c.id} className="flex flex-shrink-0 items-center gap-1.5 rounded-full ps-3 pe-1.5 py-1" style={on ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" } : { background: T.paperElevated, border: "1px solid var(--arbor-rule)" }}>
-                  <button onClick={() => openConversation(c.id)} data-history-chip="" aria-current={on ? "true" : undefined} className="flex min-h-11 max-w-[160px] items-center gap-1.5 truncate text-[12px] font-bold" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
-                    <Icon name="chat" size={12} className="flex-shrink-0" /> <span className="truncate">{c.title}</span>
+                <li key={c.id} className="flex items-center gap-1 rounded-xl" style={on ? { background: "var(--arbor-green-soft)" } : undefined}>
+                  <button
+                    type="button"
+                    onClick={(event) => { openConversation(c.id); closeHistory(event.currentTarget); }}
+                    data-history-chip=""
+                    aria-current={on ? "true" : undefined}
+                    className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-xl px-2 py-1.5 text-start focus:outline-none focus-visible:ring-2"
+                  >
+                    <span className="w-full truncate text-[13px] font-bold" dir="auto" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{c.title}</span>
+                    <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{fmtDay(c.updatedAt, uiLang === "he" ? "he" : "en")}</span>
                   </button>
-                  <button onClick={() => deleteConversation(c.id)} aria-label={t("aria.deleteConversation")} className="touch-target transition" style={{ color: "var(--arbor-muted)" }}><Icon name="delete" size={12} /></button>
-                </div>
+                  <button
+                    type="button"
+                    onClick={() => deleteConversation(c.id)}
+                    aria-label={inputText(uiLang, "companion.history.delete", { title: c.title })}
+                    className="touch-target inline-flex items-center justify-center rounded-xl transition focus:outline-none focus-visible:ring-2"
+                    style={{ color: "var(--arbor-muted)" }}
+                  >
+                    <Icon name="delete" size={16} />
+                  </button>
+                </li>
               );
             })}
-          </div>
-        ) : null}
+          </ul>
+        ) : (
+          <p className="px-2 pb-2 text-[12px]" style={{ color: "var(--arbor-muted)" }}>{inputText(uiLang, "companion.history.empty")}</p>
+        )}
       </section>
+      )}
 
       {/* Chat thread — COACH-4: no fixed-height inner scroll; the thread flows
           with the page (ArborContext auto-scrolls the viewport to the streaming
           answer via chatBottomRef). The min-height keeps the conversation canvas
           from shrinking below the previous min(70dvh,560px) viewport. */}
       <div data-module="coach-thread" className={`${cardCls} flex min-w-0 flex-col overflow-hidden`}>
-        {/* Persistent named-coach identity strip. The lens/context frame is kept but
-            visually subordinate so the conversation is the hero. Green primary —
-            never the design's sapphire — per the parent color lock. */}
-        <div className="px-4 py-2.5 flex items-center gap-3" style={{ background: "var(--arbor-paper-deep)", borderBottom: "1px solid var(--arbor-rule)" }}>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>{t("coach.coachName")}</p>
-            {/* AI-13 (honest AI, Law 4): no presence dot, no "always here" —
-                a software guide, not a person on shift. */}
-            <p className="text-[12px] font-bold leading-tight" style={{ color: "var(--arbor-muted)" }}>
-              {t("elev.aihonesty.coachStatus")}
-            </p>
-          </div>
-          {isChatLoading && <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: "var(--arbor-clay)" }} aria-hidden />}
-          {/* B-ASKJB-12: "Tone: {choice}" opens the ONE ToneSheet. */}
-          <button
-            type="button"
-            data-testid="coach-tone"
-            onClick={() => setToneOpen(true)}
-            aria-haspopup="dialog"
-            aria-label={t("coach.tone.change")}
-            className="flex-shrink-0 inline-flex min-h-11 items-center gap-1 rounded-lg px-1.5 text-[12px] font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-            style={{ color: "var(--arbor-muted)" }}
-          >
-            <Icon name="tune" size={13} />
-            <span className="truncate max-w-[160px]">{t("coach.tone.label")}: <span style={{ color: "var(--arbor-green-ink)" }}>{toneLabel(selectedLens, t)}</span></span>
-          </button>
-          <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
-          {/* Masterplan 1.3: "What the coach sees" disclosure — opens the data
-              contract panel below this strip. Parent register only. */}
-          <button
-            type="button"
-            ref={contractToggleRef}
-            onClick={() => setContractOpen((v) => !v)}
-            aria-expanded={contractOpen}
-            aria-label={tcc("elev.coachcontract.title")}
-            data-testid="coach-contract-toggle"
-            className="flex-shrink-0 inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-[11px] font-bold px-2 rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-            style={{ color: contractOpen ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
-          >
-            <Icon name="shield" size={13} />
-            <span className="hidden sm:inline">{tcc("elev.coachcontract.title")}</span>
-            <Icon name={contractOpen ? "expand_less" : "expand_more"} size={13} />
-          </button>
-        </div>
-
-        {/* Masterplan 1.3 — the collapsible data-contract panel. Copy states
-            exactly what each request sends: message · profile · approved
-            memory (count) · this thread's recent turns · and, only while the
-            toggle is on, this week's counts. The toggle LIVES here (TrustPanel
-            footer slot); its state is the per-child localStorage consent flag
-            the send path reads. */}
-        {contractOpen && (
-          <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--arbor-rule)" }} data-testid="coach-contract-panel">
-            <TrustPanel
-              uses={[
-                tcc("elev.coachcontract.uses.message"),
-                // GP-14: the profile line and the memory line now NAME what
-                // travels — which allow-listed fields, and the parent's own
-                // approved facts verbatim — instead of reporting a bare count
-                // the parent cannot check, correct or withdraw.
-                ...coachDisclosure(
-                  {
-                    profile: childProfile,
-                    approvedFacts: approvedMemoryItems.map((m) => ({ memoryId: m.memoryId, fact: m.fact })),
-                    factsUsedInLastAnswer: lastFactsUsed,
-                    childFirstName: childFirst || childProfile.name,
-                  },
-                  t,
-                ).uses,
-                tcc("elev.coachcontract.uses.turns"),
-                ...(weeklyOn ? [tcc("elev.coachcontract.uses.weekly")] : []),
-                // AI-02 / B-ASKJB-01: the panel sits directly above the
-                // microphone, so it describes a SPOKEN turn too. Both spoken
-                // paths are grounded from server/spokenContext.ts: profile,
-                // approved memory facts and this conversation's recent turns
-                // (never the weekly counts). Live HD pins the same context into
-                // its token with names stripped, so its line says "without
-                // names" and renders only when Live is the path a tap takes.
-                tcc("elev.coachcontract.uses.spoken"),
-                // B-ASKJB-02: whenever Live is the path, its line names the
-                // global endpoint and the exception's end date.
-                ...(liveAvail ? [tcc("elev.coachcontract.uses.spokenLive", {
-                  residency: liveUntil
-                    ? tcc("elev.coachcontract.uses.liveResidency", { date: fmtDayLong(liveUntil, uiLang === "he" ? "he" : "en") })
-                    : tcc("elev.coachcontract.uses.liveResidencyUndated"),
-                })] : []),
-              ]}
-              stores={[
-                // Reused dead key — still accurate: durable facts wait for
-                // explicit parent approval before becoming memory.
-                t("coach.contract.memoryBody"),
-                tcc("elev.coachcontract.stores.thread"),
-              ]}
-              controls={[
-                tcc("elev.coachcontract.controls.memory"),
-                tcc("elev.coachcontract.controls.weekly"),
-              ]}
-              footer={
-                <div className="pt-2 space-y-1.5" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={weeklyOn}
-                    data-testid="coach-weekly-context-toggle"
-                    onClick={() => {
-                      const next = !weeklyOn;
-                      setWeeklyOn(next);
-                      writeWeeklyContextConsent(childProfile.id, next);
-                    }}
-                    className="flex items-center gap-2.5 min-h-[44px] w-full text-start focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
-                  >
-                    <span
-                      aria-hidden
-                      className="relative inline-flex flex-shrink-0 rounded-full transition-colors"
-                      style={{ width: 34, height: 20, background: weeklyOn ? "var(--arbor-green-ink)" : "var(--arbor-rule-strong)" }}
-                    >
-                      <span
-                        className="absolute top-[2px] rounded-full transition-all"
-                        style={{ width: 16, height: 16, background: "var(--arbor-on-accent)", insetInlineStart: weeklyOn ? 16 : 2 }}
-                      />
-                    </span>
-                    <span className="text-[12px] font-bold" style={{ color: "var(--arbor-ink)" }}>
-                      {tcc("elev.coachcontract.toggle")}
-                    </span>
-                  </button>
-                  <p className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
-                    {tcc("elev.coachcontract.toggleHint")}
-                  </p>
-                </div>
-              }
-            />
-          </div>
-        )}
-
+        {/* F-TALK-1: no thread sub-header. The panel header already says
+            "Arbor"; the composer foot carries the AI disclosure and the tone
+            chip; "What the coach sees" and its weekly switch live on
+            #/memory; the loading state is the streaming row below. */}
         <div data-companion-messages className={hasThreadContent ? "flex-1 p-4 md:p-6" : "p-0"}>
          <div className="max-w-[760px] mx-auto space-y-3.5">
           {/* Empty state — orient a first-run parent on what Ask Arbor does.
@@ -1798,6 +1659,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           forget of approved facts) lives in its real home: Profile › Child Memory
           (route "memory" → src/components/sections/ChildMemory.tsx), which renders
           the same pending/approved lists via the same handleMemoryDecision. */}
+
+      <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
 
       <ConversationProposalTray
         proposals={conversationProposals}

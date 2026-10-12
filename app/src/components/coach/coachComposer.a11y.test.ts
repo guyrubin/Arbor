@@ -65,10 +65,13 @@ describe("OBJ-ASK-01 · the composer has an accessible name", () => {
     expect(composerCss).toMatch(/\.companion-input-well>button\{[^}]*width:46px;height:46px/);
     expect(composerCss).toMatch(/\.companion-attachments button\{[^}]*min-width:44px;min-height:44px/);
     expect(composerCss).toContain("outline:2px solid var(--arbor-clay)");
-    // New and delete retain real target floors inside the compact history region.
-    expect(coach).toContain('onClick={newConversation}');
-    expect(coach).toContain('className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] font-extrabold');
-    expect(coach).toContain('aria-label={t("aria.deleteConversation")} className="touch-target transition"');
+    // F-TALK-1 re-pin: the on-demand history list has no "+ New" (New lives
+    // in the panel menu); each row (open) and its delete keep real floors,
+    // and the list's close button is 44 x 44.
+    expect(coach).not.toContain("onClick={newConversation}");
+    expect(coach).toContain('className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-xl px-2 py-1.5 text-start');
+    expect(coach).toMatch(/aria-label=\{inputText\(uiLang, "companion\.history\.delete", \{ title: c\.title \}\)\}\s+className="touch-target /);
+    expect(coach).toMatch(/aria-label=\{inputText\(uiLang, "companion\.history\.close"\)\}\s+className="inline-flex min-h-11 min-w-11 /);
   });
 });
 
@@ -140,8 +143,10 @@ describe("B-ASKJB-07 · the one-time weekly-context notice in the composer", () 
       expect(at).toBeGreaterThan(-1);
       expect(notice.slice(at, at + 900)).toMatch(/min-h-11/);
     }
-    // Change opens the panel that holds the per-child off.
-    expect(notice).toMatch(/setContractOpen\(true\)/);
+    // F-TALK-1 re-pin: Change lands on the switch that holds the per-child
+    // off, in "What Arbor remembers" (#/memory?section=coach).
+    expect(notice).toMatch(/goToRoute\("memory", \{ section: "coach" \}\)/);
+    expect(notice).not.toMatch(/setContractOpen/);
     // A quiet line: no fill, no border, --t-xs; never physical padding.
     const open = notice.slice(0, notice.indexOf(">"));
     expect(open).not.toMatch(/background|border/);

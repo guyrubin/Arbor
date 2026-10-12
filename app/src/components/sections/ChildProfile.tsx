@@ -9,6 +9,7 @@ import { useHeroAvatar } from "../ui/HeroAvatar";
 import { Avatar } from "../ui/Avatar";
 import { asksForHero, childPicture } from "../../lib/childPicture";
 import { api } from "../../lib/api";
+import { requestCompanionConversation } from "../../lib/companionConversation";
 import { scopeDisplayLabels } from "../../lib/shareScopes";
 import type { ShareGrant } from "../../types";
 import ProfileEditDrawer from "../profile/ProfileEditDrawer";
@@ -512,7 +513,7 @@ export default function ChildProfile() {
           // chapter 6 IS "what Arbor remembers" and carries its own review
           // link, so this footer tile was a second door to the same room.
         ]).map((l) => (
-          <button key={l.tab} onClick={() => setActiveTab(l.tab)} className={`${cardCls} min-h-11 p-4 text-start flex items-center gap-3 transition motion-safe:hover:-translate-y-0.5`}>
+          <button key={l.tab} onClick={() => l.tab === "coach" ? requestCompanionConversation({ source: "profile" }) : setActiveTab(l.tab)} className={`${cardCls} min-h-11 p-4 text-start flex items-center gap-3 transition motion-safe:hover:-translate-y-0.5`}>
             <IconBadge tone={l.tone}>{l.icon}</IconBadge>
             <span className="text-sm font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
               {l.label} <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" style={{ color: PASTEL[l.tone].ink }} />

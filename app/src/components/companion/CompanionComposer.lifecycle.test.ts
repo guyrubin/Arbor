@@ -30,7 +30,7 @@ function oneSource(source: ts.SourceFile, predicate: (node: ts.Node) => boolean)
 // decisions. This catches conversation-key remounts as well as local hook races.
 const composerSlot = oneSource(coachSource, node => ts.isJsxSelfClosingElement(node) && node.tagName.getText(coachSource) === "CompanionComposer");
 const slotSource = `import React from "react"; import CompanionComposer from "./CompanionComposer";
-export default function Slot({ childProfile, activeConversationId, conversationRevision, uiLang, chatInput, setChatInput, isChatLoading, visible, handleChatSend, toggleVoice, voicePhase, voiceLabel, openCaptureSheet, setComposerFiles }) { return ${composerSlot}; }`;
+export default function Slot({ childProfile, activeConversationId, conversationRevision, uiLang, chatInput, setChatInput, isChatLoading, visible, handleChatSend, toggleVoice, voicePhase, voiceLabel, openCaptureSheet, setComposerFiles, composerHardMoment, composerFoot }) { return ${composerSlot}; }`;
 const controls = ["newConversation", "prepareTopicConversation", "openConversation"].map(name =>
   oneSource(contextSource, node => ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === name)),
 ).join("\n");
@@ -162,6 +162,8 @@ function harness(options: { send?: () => Promise<boolean | undefined>; text?: st
     topicState: { familyTopics: [], selectFamilyTopic: vi.fn() },
     uiLang: "en" as "en" | "he", chatInput: options.text ?? "A moment from today", isChatLoading: false,
     visible: true, voicePhase: "off", voiceLabel: "Talk with Arbor",
+    // F-TALK-1: CoachTab's tray door and foot chip (absent unless a test sets them).
+    composerHardMoment: undefined as undefined | (() => void), composerFoot: undefined as unknown,
     setChatInput: (value: string) => { state.chatInput = value; },
     setConversationRevision: (next: (value: number) => number) => { state.conversationRevision = next(state.conversationRevision); },
     setActiveConversationId: (value: string | null) => { state.activeConversationId = value; },
@@ -386,7 +388,8 @@ describe("Companion secondary tools disclosure", () => {
     expect(visible.filter(node => node.type === "button")).toHaveLength(3);
     expect(button(tree, translate(language, "companion.input.send")).props.disabled).toBe(true);
     expect(button(tree, "Talk with Arbor").props.disabled).toBe(false);
-    expect(visible.some(node => node.type === "p" && text(node) === translate(language, "companion.input.arbor-is-your-ai-companion"))).toBe(true);
+    // F-TALK-1 re-pin: the honesty line is the composer foot ("an AI companion, not a doctor; files only on send").
+    expect(visible.some(node => node.type === "p" && text(node) === translate(language, "companion.input.foot"))).toBe(true);
     const group = one(tree, node => node.props.id === toggle.props["aria-controls"]);
     expect(group.props.hidden).toBe(true); expect(group.props.role).toBe("group");
     view.click(translate(language, "companion.input.add-or-save"));
@@ -395,6 +398,24 @@ describe("Companion secondary tools disclosure", () => {
       expect(button(view.render(), translate(language, `companion.input.${key}`)).props.disabled).toBe(false);
     }
     expect(button(view.render(), COMPANION_CONSENT_COPY[language].control).props.disabled).toBe(false);
+  });
+
+  it.each(["en", "he"] as const)("F-TALK-1: the hard-moment door rides in the tray only when the host passes it, and the foot carries the host's chip (%s)", language => {
+    const view = harness({ text: "" }); view.state.uiLang = language;
+    view.click(translate(language, "companion.input.add-or-save"));
+    expect(shownNodes(view.render()).some(node => node.props["data-testid"] === "coach-hard-moment-now")).toBe(false);
+    const openHard = vi.fn(); view.state.composerHardMoment = openHard;
+    const hard = button(view.render(), translate(language, "companion.input.hard-moment-aria"));
+    expect(hard.props["data-testid"]).toBe("coach-hard-moment-now");
+    expect(text(hard)).toBe(translate(language, "companion.input.hard-moment"));
+    hard.props.onClick(); view.render();
+    expect(openHard).toHaveBeenCalledOnce();
+    expect(button(view.render(), translate(language, "companion.input.add-or-save")).props["aria-expanded"]).toBe(false);
+    expect(view.onSend).not.toHaveBeenCalled();
+    view.state.composerFoot = { type: "button", props: { "data-testid": "coach-tone", children: ["Tone"] } };
+    const foot = one(view.render(), node => node.props.className === "companion-composer-foot-row");
+    expect(nodes(foot).some(node => node.props["data-testid"] === "coach-tone")).toBe(true);
+    expect(nodes(foot).some(node => node.type === "p" && text(node) === translate(language, "companion.input.foot"))).toBe(true);
   });
 
   it("closes on Escape, returns focus to its trigger and does not close the host panel", () => {
@@ -452,7 +473,7 @@ describe("Companion secondary tools disclosure", () => {
     const view = harness(); const file = await attach(view); view.option("File permissions");
     expect(view.consent.review).toHaveBeenCalledOnce();
     expect(shownNodes(view.render()).some(node => node.type === "textarea")).toBe(false);
-    expect(shownNodes(view.render()).some(node => node.type === "p" && text(node) === "Arbor is your AI companion")).toBe(true);
+    expect(shownNodes(view.render()).some(node => node.type === "p" && text(node) === translate("en", "companion.input.foot"))).toBe(true);
     expect(view.onSend).not.toHaveBeenCalled(); view.consent.reviewing = false;
     expect(button(view.render(), "Add or save").props["aria-expanded"]).toBe(false);
     expect(view.previews()).toEqual([file.name]); expect(view.state.chatInput).toBe("A moment from today");

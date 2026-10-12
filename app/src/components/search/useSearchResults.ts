@@ -194,7 +194,8 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
         id: "ask", kind: "ask",
         label: t("sm.askAbout", { q: term }), sub: t("sm.askAbout.sub"),
         icon: "forum", color: "var(--arbor-clay-deep)",
-        go: () => { seedCoach({ prompt: term, source: "search" }); setActiveTab("coach"); },
+        // F-TALK-1: seedCoach opens the conversation panel over this place.
+        go: () => { seedCoach({ prompt: term, source: "search" }); },
       }
     : null;
 

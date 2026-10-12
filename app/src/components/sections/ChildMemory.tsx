@@ -39,6 +39,7 @@ import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { quotesFromDocs } from "../../lib/loop/tonight";
 import ThingsSaid from "../loop/ThingsSaid";
 import KeptDescription from "../describe/KeptDescription";
+import CoachDataContract from "../coach/CoachDataContract";
 
 const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : txt.en);
 
@@ -184,6 +185,11 @@ export default function ChildMemory() {
       {/* B-SHELL-39: what the parent told Arbor in their own words, editable
           here, with the "Tell Arbor more" door. Inside the approved module. */}
       <KeptDescription testId="memory-describe" />
+      {/* F-TALK-1: "What the coach sees" and the weekly-context consent
+          switch, moved here from the conversation's identity strip. Inside
+          the approved module: it names the approved facts that travel with a
+          question, so an unreadable ledger never shows it as "none" (OWN-1). */}
+      <CoachDataContract />
       </div>
       )}
 

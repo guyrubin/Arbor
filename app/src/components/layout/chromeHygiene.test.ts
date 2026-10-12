@@ -127,17 +127,22 @@ describe("persistent companion · mobile chrome", () => {
   });
 
   it("a page change from inside the conversation closes the full-screen panel (phones) but keeps the docked one", () => {
-    const routeEffect = /useEffect\(\(\) => \{\s*if \(captureRef\.current\) captureRef\.current\.open = false;\s*if \(routeIsConversation\) \{ show\("route"\); setExpanded\(true\); \}\s*else \{([\s\S]*?)\}\s*\}, \[activeTab\]\);/;
+    // F-TALK-1 re-pin: a conversation route is never a page. The route effect
+    // (layout timing, before paint) opens the panel over the last place and
+    // returns the address to it; arriving back there keeps the panel open.
+    const routeEffect = /useLayoutEffect\(\(\) => \{\s*if \(captureRef\.current\) captureRef\.current\.open = false;\s*if \(routeIsConversation\) \{ show\("route"\); setExpanded\(false\); returnToPlace\(\); \}\s*else \{([\s\S]*?)\}\s*\}, \[activeTab\]\);/;
     const effect = routeEffect.exec(workspace);
     expect(effect, "the activeTab effect in CompanionWorkspace").toBeTruthy();
     expect(effect![1]).toContain("returnTab.current = activeTab; setExpanded(false);");
-    expect(effect![1]).toContain("if (!wide) setOpen(false);");
+    expect(effect![1]).toContain("if (!arrived && !wide) setOpen(false);");
+    // The old page-expanding route (setExpanded(true)) is gone.
+    expect(routeEffect.test(workspace.replace('show("route"); setExpanded(false); returnToPlace();', 'show("route"); setExpanded(true);'))).toBe(false);
     // Closing never unmounts: the draft, thread and microphone survive.
     expect(effect![1]).not.toContain("setMounted(false)");
     // A missing capture dismissal or narrow-screen close must not satisfy the guard.
     expect(routeEffect.test(workspace.replace("if (captureRef.current) captureRef.current.open = false;\n    if (routeIsConversation)", "if (routeIsConversation)"))).toBe(false);
-    const withoutClose = routeEffect.exec(workspace.replace("if (!wide) setOpen(false);", ""));
-    expect(withoutClose?.[1]).not.toContain("if (!wide) setOpen(false);");
+    const withoutClose = routeEffect.exec(workspace.replace("if (!arrived && !wide) setOpen(false);", ""));
+    expect(withoutClose?.[1]).not.toContain("if (!arrived && !wide) setOpen(false);");
   });
 
   it("styles launcher labels separately so mobile keeps both the arrow and accessible save icon", () => {

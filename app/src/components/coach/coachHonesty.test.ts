@@ -24,10 +24,14 @@ import { fmtDayLong } from "../../lib/formatDate";
 import type { MemoryLedgerEvent, MemoryStore } from "../../memory/types";
 import { en as honestyEn, he as honestyHe } from "../../lib/i18nElevation/aiHonesty";
 import { elevationEn, elevationHe } from "../../lib/i18nElevation";
+import { translate } from "../../lib/i18n";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const srcRoot = path.join(here, "..", "..");
 const coachSrc = readFileSync(path.join(srcRoot, "components", "tabs", "CoachTab.tsx"), "utf8");
+// F-TALK-1: "What the coach sees" (and its Live line) moved to #/memory.
+const contractSrc = readFileSync(path.join(srcRoot, "components", "coach", "CoachDataContract.tsx"), "utf8");
+const composerSrc = readFileSync(path.join(srcRoot, "components", "companion", "CompanionComposer.tsx"), "utf8");
 
 /* ── AI-13: presence dot + "always here" ─────────────────────────────────── */
 // A filled dot (rounded-full / animate-pulse span) rendered between the coach
@@ -46,9 +50,18 @@ describe("AI-13 — coach identity strip carries no presence idiom", () => {
   it("CoachTab renders no presence dot beside the coach name", () => {
     expect(coachSrc).not.toMatch(PRESENCE_DOT_BESIDE_NAME);
   });
-  it("CoachTab reads the honest status key (AI guide) and no longer the 'always here' key", () => {
-    expect(coachSrc).toContain('t("elev.aihonesty.coachStatus")');
+  // F-TALK-1 re-pin: the Talk panel has no identity strip at all (the panel
+  // header already says "Arbor"), so there is no name/status pair to dot.
+  // The honest-AI statement is the composer foot, under every input.
+  it("CoachTab has no identity strip, no 'always here' key; the composer foot says it is AI (en + he)", () => {
+    expect(coachSrc).not.toContain('t("coach.coachName")');
     expect(coachSrc).not.toContain('t("coach.coachStatus")');
+    expect(coachSrc).not.toContain('t("elev.aihonesty.coachStatus")');
+    expect(coachSrc).not.toMatch(/rounded-full animate-pulse/);
+    expect(composerSrc).toContain('inputText(language, "companion.input.foot")');
+    expect(translate("en", "companion.input.foot")).toMatch(/AI companion, not a doctor/);
+    expect(translate("he", "companion.input.foot")).toContain("בינה מלאכותית");
+    expect(translate("he", "companion.input.foot")).not.toMatch(/[A-Za-z]/);
   });
   it("the status copy names the software, never a shift (en + he)", () => {
     for (const dict of [honestyEn, honestyHe]) {
@@ -263,12 +276,15 @@ describe("B-ASKJB-02 — the Live line names the global endpoint and the excepti
     expect(live("he", null)).toMatch(/לא באזור האיחוד האירופי\.$/);
   });
 
-  it("CoachTab fills {residency} whenever it renders the Live line, and only when liveAvail", () => {
-    const flat = coachSrc.replace(/\s+/g, " ");
+  // F-TALK-1 re-pin: the panel that renders the Live line is CoachDataContract
+  // (#/memory); CoachTab keeps only the availability probe for its voice label.
+  it("CoachDataContract fills {residency} whenever it renders the Live line, and only when liveAvail", () => {
+    const flat = contractSrc.replace(/\s+/g, " ");
     expect(flat).toMatch(/\.\.\.\(liveAvail \? \[tcc\("elev\.coachcontract\.uses\.spokenLive", \{ residency:/);
-    expect(coachSrc).toMatch(/setLiveUntil\(liveResidencyUntil\(r\)\)/);
-    // The Live line is never rendered without the residency vars.
-    expect(coachSrc).not.toMatch(/tcc\("elev\.coachcontract\.uses\.spokenLive"\)/);
+    expect(contractSrc).toMatch(/setLiveUntil\(liveResidencyUntil\(r\)\)/);
+    // The Live line is never rendered without the residency vars, anywhere.
+    expect(contractSrc).not.toMatch(/tcc\("elev\.coachcontract\.uses\.spokenLive"\)/);
+    expect(coachSrc).not.toContain("elev.coachcontract.uses.spokenLive");
   });
 });
 

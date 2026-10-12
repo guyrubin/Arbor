@@ -610,14 +610,13 @@ export default function Shell() {
                       is counting inside instead of re-deriving it. Presentation
                       is untouched: display:contents, no box, no style. */}
                   <SurfaceFrame route={activeTab}>
-                    {["overview", "coach", "scholar"].includes(activeTab) ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
+                    {/* F-TALK-1: a conversation route is never a page. CompanionWorkspace
+                        keeps the last place rendered and returns the address to it,
+                        so the coach arm renders nothing of its own. */}
+                    {activeTab === "coach" || activeTab === "scholar" ? null
+                      : activeTab === "overview" ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
                       : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }} onSaveQuestion={createTopic}/>)
-                      : <>
-                        {activeTab === "coach" && activeFamilyTopic && <button className="min-h-11 w-full mb-4 px-4 py-3 rounded-xl text-start text-sm" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }} onClick={openTopic}>
-                          {t("companion.shell.our-question")}{activeFamilyTopic.title}
-                        </button>}
-                        <ActiveTabComponent/>
-                      </>}
+                      : <ActiveTabComponent/>}
                   </SurfaceFrame>
                 </ErrorBoundary>
               </motion.div>

@@ -125,7 +125,9 @@ describe("ASK-8 — calm single error affordance", () => {
   });
 });
 
-describe("ASK-9 -> B-ASKJB-12: the lens is chosen in ONE sheet, from the identity strip", () => {
+// F-TALK-1 re-pin: the identity strip is gone; the Tone control is one chip in
+// the composer foot (CompanionComposer's footAction), labelled with the tone.
+describe("ASK-9 -> B-ASKJB-12: the lens is chosen in ONE sheet, from the composer foot", () => {
   const sheet = fs.readFileSync(path.resolve(__dirname, "../coach/ToneSheet.tsx"), "utf8");
 
   it("the Perspective row and its inline radiogroup are gone; 'Tone: {choice}' opens the ToneSheet", () => {
@@ -134,6 +136,10 @@ describe("ASK-9 -> B-ASKJB-12: the lens is chosen in ONE sheet, from the identit
     expect(coachRaw).not.toContain('role="radiogroup"');
     expect(coach).toContain('data-testid="coach-tone"');
     expect(coach).toContain("onClick={() => setToneOpen(true)}");
+    expect(coach).toContain("footAction={composerFoot}");
+    expect(coach).toMatch(/const composerFoot = \(\s*<button\s+type="button"\s+data-testid="coach-tone"/);
+    expect(composer).toContain("{footAction}");
+    expect((coach.match(/<ToneSheet\b/g) || []).length).toBe(1);
     expect(coach).toContain("<ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />");
   });
 
@@ -166,22 +172,33 @@ describe("ASK-3 — frames stay out of the parent render (source guard)", () => 
 
 
 describe("W2 fresh Ask density � examples and history stay available without an empty transcript", () => {
-  it("seats deterministic scenarios first (3 on the page, 4 in the Talk panel) and reveals the remaining existing prompts", () => {
+  // F-TALK-1 re-pin: ONE wrapping chip row; the "more examples" toggle and
+  // its aria-controls are gone (the seats are the whole row).
+  it("seats deterministic scenarios first (3 on the page, 4 in the Talk panel) in one row with no more/less toggle", () => {
     expect(coach).toContain("SCENARIOS.slice(0, staticShown)"); // B-ASKJB-10: echo chip + 2 static, or 3 static
     // EXTRA-TALK re-pin (brief build order): the Talk panel seats 4 chips, the
     // page keeps 3; the family-question chip and the echo chip each take a seat.
     expect(coach).toContain("const scenarioSeats = embedded ? 4 : 3;");
     expect(coach).toContain("const staticShown = Math.max(0, scenarioSeats - (topicChip ? 1 : 0) - (echoScenario ? 1 : 0));");
-    expect(coach).toContain("setShowAllScenarios((shown) => !shown)");
-    expect(coach).toContain("elev.wave2Daily.ask.examples.more");
-    expect(coach).toContain("elev.wave2Daily.ask.examples.less");
-    expect(coach).toContain('aria-controls="coach-scenarios"');
+    expect(coach).not.toContain("setShowAllScenarios");
+    expect(coach).not.toContain("elev.wave2Daily.ask.examples.more");
+    expect(coach).not.toContain("elev.wave2Daily.ask.examples.less");
+    expect(coach).not.toContain('aria-controls="coach-scenarios"');
+    expect(coach).toContain('<div id="coach-scenarios" className="flex flex-wrap gap-2">');
+    expect(coach).not.toContain("coach.fastStart");
     expect(coach).toContain("handleChatSend(s.prompt, { displayText: t(s.labelKey) })");
   });
 
-  it("keeps New and all persisted conversations in a labeled quiet history region", () => {
-    expect(coach).toContain('aria-label={t("elev.wave2Daily.ask.history")}');
-    expect(coach).toContain("onClick={newConversation}");
+  // F-TALK-1 re-pin: history is an on-demand list opened from the panel menu
+  // (hidden by default); "+ New" left it (New lives in the menu).
+  it("keeps all persisted conversations in a labeled on-demand history list, without its own New", () => {
+    expect(coach).toContain('aria-labelledby="coach-history-title"');
+    expect(coach).toContain('<h3 id="coach-history-title"');
+    expect(coach).toContain('{t("elev.wave2Daily.ask.history")}');
+    expect(coach).toContain("{historyOpen && (");
+    expect(coach).toContain('if (panel === "history") { setHistoryOpen(true); setHistoryAsk((n) => n + 1); }');
+    expect(coach).not.toContain("newConversation");
+    expect(coach).toContain("openConversation(c.id); closeHistory(event.currentTarget);");
     expect(coach).toContain("openConversation(c.id)");
     expect(coach).toContain("deleteConversation(c.id)");
     expect(coach).not.toContain("elev.wave2Daily.ask.history.empty");

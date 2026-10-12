@@ -268,7 +268,6 @@ export const companionEn = {
   "companion.portrait.countLabel": "Recorded in this period",
   "companion.portrait.noPlace": "The setting wasn't saved for these moments.",
   "companion.mobile-nav.talk": "Talk",
-  "companion.shell.our-question": "Our question: ",
   "companion.arbor-context.your-response-wasn-t-saved-please-try-agai": "Your response wasn’t saved. Please try again.",
   // Parity 9 Oct: place, story-door and away-from-screen copy, moved from inline pairs.
   "companion.story.library.title": "A story to settle into",
@@ -357,6 +356,19 @@ export const companionEn = {
   "companion.together-view.routines-preview": "The steps",
   "companion.together-view.routines-areas": "Areas: {areas}",
   "companion.together-view.routines-close": "Close",
+  // F-TALK-1: Talk is a panel over the place. The composer foot carries the
+  // AI disclosure; the Ask bar names its three ways in; the options menu gives
+  // three items a quiet second line; the history list opens from the menu.
+  // Words only: never a count, dot or badge.
+  "companion.input.foot": "Arbor is an AI companion, not a doctor. Files are analysed only when sent.",
+  "companion.launcher.label": "Ask Arbor — text, photo or voice",
+  "companion.panel.history": "History",
+  "companion.panel.new.sub": "Keeps the question; starts a fresh thread",
+  "companion.panel.history.sub": "Earlier conversations",
+  "companion.panel.remembers.sub": "Facts you approved",
+  "companion.history.close": "Close history",
+  "companion.history.delete": "Delete: {title}",
+  "companion.history.empty": "No earlier conversations yet.",
 };
 
 export const companionHe = {
@@ -628,7 +640,6 @@ export const companionHe = {
   "companion.portrait.countLabel": "תיעודים בתקופה הזאת",
   "companion.portrait.noPlace": "הסביבה לא נשמרה עם הרגעים האלה.",
   "companion.mobile-nav.talk": "לדבר",
-  "companion.shell.our-question": "השאלה שלנו: ",
   "companion.arbor-context.your-response-wasn-t-saved-please-try-agai": "התשובה לא נשמרה. אפשר לנסות שוב.",
   "companion.story.library.title": "סיפור שאפשר להיכנס אליו",
   "companion.story.library.detail": "מגלים את הספרייה ובוחרים סיפור לפני שמתחילים.",
@@ -716,4 +727,14 @@ export const companionHe = {
   "companion.together-view.routines-preview": "הצעדים",
   "companion.together-view.routines-areas": "תחומים: {areas}",
   "companion.together-view.routines-close": "סגירה",
+  // F-TALK-1: Talk is a panel over the place (see the English block).
+  "companion.input.foot": "ארבור הוא מלווה בינה מלאכותית, לא רופא. קבצים מנותחים רק בשליחה.",
+  "companion.launcher.label": "שואלים את ארבור — טקסט, תמונה או קול",
+  "companion.panel.history": "היסטוריה",
+  "companion.panel.new.sub": "השאלה נשארת; שיחה חדשה מתחילה",
+  "companion.panel.history.sub": "שיחות קודמות",
+  "companion.panel.remembers.sub": "עובדות שאישרתם",
+  "companion.history.close": "סגירת ההיסטוריה",
+  "companion.history.delete": "מחיקה: {title}",
+  "companion.history.empty": "עדיין אין שיחות קודמות.",
 };

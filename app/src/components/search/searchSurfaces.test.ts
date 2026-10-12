@@ -225,8 +225,10 @@ describe("B-SHELL-14 · both surfaces render ONE hook", () => {
     expect(log).not.toMatch(/setActiveTab\("behaviors"\)|openCaptureSheet/);
   });
 
-  it("the ask row seeds the composer (prefill only) and opens Ask; first on '?'", () => {
-    expect(hook).toContain('seedCoach({ prompt: term, source: "search" }); setActiveTab("coach");');
+  it("the ask row seeds the composer (prefill only) and opens the conversation panel; first on '?'", () => {
+    // F-TALK-1 re-pin: seedCoach alone opens the panel over the place; no coach page.
+    expect(hook).toContain('seedCoach({ prompt: term, source: "search" }); },');
+    expect(hook).not.toContain('seedCoach({ prompt: term, source: "search" }); setActiveTab("coach");');
     expect(hook).toMatch(/ask && askFirst\(term\) \? \[ask, \.\.\.catalog, \.\.\.record\] : \[\.\.\.catalog, \.\.\.record, \.\.\.\(ask \? \[ask\] : \[\]\)\]/);
   });
 

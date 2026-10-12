@@ -28,13 +28,17 @@ const cue = stripComments(read("components/coach/RhythmCue.tsx"));
 // moved into the single-offer coordinator hook; RhythmCue renders its nudge.
 const coordinator = stripComments(read("components/overview/useCompanionOffer.ts"));
 const slot = stripComments(read("components/overview/CompanionOfferSlot.tsx"));
+// F-TALK-1: Now holds the one offer slot; "What the coach sees" moved to #/memory.
+const nowMore = stripComments(read("components/companion/NowMoreForToday.tsx"));
+const contract = stripComments(read("components/coach/CoachDataContract.tsx"));
 
 describe("ENG-10 / ENG-11 — the cue is mounted on a surface a parent opens, and measured", () => {
-  it("CoachTab mounts the coordinator's slot, which renders RhythmCue (B-AI-06)", () => {
-    expect(coach).toMatch(/import CompanionOfferSlot from "\.\.\/overview\/CompanionOfferSlot"/);
-    expect(coach).toMatch(/useCompanionOffer\("coach"\)/);
-    // B-ASKJB-06: the same slot, now placed by Today's continuation chooser.
-    expect(coach).toMatch(/<CompanionOfferSlot\s+surface="coach"\s+offer=\{askOffer\.offer\}\s+controls=\{askOffer\}/);
+  // F-TALK-1 re-pin: the Talk panel mounts no offer slot (nothing sits between
+  // its header and the thread); the surface a parent opens for the cue is
+  // Now, whose ONE coordinator slot renders RhythmCue.
+  it("Now mounts the coordinator's slot, which renders RhythmCue; the Talk panel mounts none (B-AI-06)", () => {
+    expect(coach).not.toMatch(/CompanionOfferSlot|useCompanionOffer\(|TodayContinuation/);
+    expect(nowMore).toMatch(/<CompanionOfferSlot surface="today" offer=\{todayOffer\.offer\} controls=\{todayOffer\}/);
     expect(slot).toMatch(/import RhythmCue from "\.\.\/coach\/RhythmCue"/);
     expect(slot).toMatch(/<RhythmCue surface=\{surface\} nudge=\{offer\.nudge \?\? null\}/);
   });
@@ -85,11 +89,14 @@ describe("ENG-10 / ENG-11 — the cue is mounted on a surface a parent opens, an
 });
 
 describe("GP-14 — the disclosure names WHICH facts and fields, not just how many", () => {
+  // F-TALK-1 re-pin: the panel lives in CoachDataContract (#/memory).
   it("the panel's uses[] is built by coachDisclosure from the approved ledger", () => {
-    expect(coach).toMatch(/import \{ coachDisclosure \} from "\.\.\/\.\.\/lib\/coachDisclosure"/);
-    expect(coach).toMatch(/coachDisclosure\(/);
-    expect(coach).toMatch(/approvedFacts: approvedMemoryItems\.map\(/);
-    expect(coach).toMatch(/factsUsedInLastAnswer: lastFactsUsed/);
+    expect(contract).toMatch(/import \{ coachDisclosure \} from "\.\.\/\.\.\/lib\/coachDisclosure"/);
+    expect(contract).toMatch(/coachDisclosure\(/);
+    expect(contract).toMatch(/approvedFacts: approved\.map\(/);
+    expect(contract).toMatch(/const approved = approvedMemoryItems \?\? \[\];/);
+    expect(contract).toMatch(/factsUsedInLastAnswer: lastFactsUsed/);
+    expect(coach).not.toMatch(/coachDisclosure\(/);
   });
 
   it("NEGATIVE CONTROL — the pre-change uses[] was a bare count with no fact text", () => {
@@ -104,6 +111,7 @@ describe("GP-14 — the disclosure names WHICH facts and fields, not just how ma
     expect(/approvedFacts:/.test(preFix)).toBe(false);
     // and the count-only bullet is gone from the live source
     expect(coach).not.toMatch(/tcc\("elev\.coachcontract\.uses\.memory"/);
+    expect(contract).not.toMatch(/tcc\("elev\.coachcontract\.uses\.memory"/);
   });
 });
 
