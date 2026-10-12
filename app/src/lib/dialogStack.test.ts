@@ -275,6 +275,27 @@ describe("dialog stack: production event and lifetime ownership", () => {
     b.dispose(); f.flush(); expect(f.doc.activeElement).toBe(f.opener);
   });
 
+  // v3 FEAT-03: My child's domain sheet → "Open the moments" closes the sheet
+  // and opens the moments dialog in ONE commit. The sheet's layer stays mounted
+  // through its exit animation, and the dialog's opener snapshot is the door
+  // inside that retiring layer; Escape must still land on the map tile.
+  it.each([false, true])("a sheet door opening a dialog in the same commit hands focus over and returns it to the tile (sheet exit finished: %s)", exited => {
+    const f = fixture(), sheet = f.layer();
+    const a = f.stack.register({ root: html(sheet.root), onClose: vi.fn(), returnFocus: () => html(f.opener) }); f.flush();
+    sheet.last.focus();
+    a.dispose();
+    const moments = f.layer();
+    const closeMoments = vi.fn(() => b.dispose());
+    const b = f.stack.register({ root: html(moments.root), onClose: closeMoments, returnFocus: () => html(sheet.last) }); f.flush();
+    expect(f.doc.activeElement).toBe(moments.first);
+    expect(sheet.root.hasAttribute("inert")).toBe(true);
+    if (exited) sheet.root.remove();
+    f.key("Escape"); f.flush();
+    expect(closeMoments).toHaveBeenCalledOnce();
+    expect(f.stack.depth).toBe(0);
+    expect(f.doc.activeElement).toBe(f.opener);
+  });
+
   it("simultaneous parent/child unmount restores only a connected outer opener", () => {
     const f = fixture(), outer = f.layer();
     const a = f.stack.register({ root: html(outer.root), onClose: vi.fn() }); f.flush();

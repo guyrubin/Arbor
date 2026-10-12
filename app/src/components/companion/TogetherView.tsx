@@ -15,12 +15,14 @@ import type { HeroJourneyRun } from "../../types";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { opensInKidMode, studioCountKey, studioCountsSince, studioWorldsForChild, worksInLanguage, type StudioWorld } from "../practice/studioWorlds";
 import Icon from "../ui/Icon";
+import { EmptyState } from "../ui/EmptyState";
 import { Modal } from "../ui/Modal";
 import { OFFSCREEN_IDEAS, STORY_DOORS, WORLD_ART, type TogetherCategory } from "./companionChoices";
 import { trackCompanionPlaceOpen, trackPracticeStudioOpen, trackPracticeTogetherDid } from "../../lib/kpiEvents";
 import { TOGETHER_ART } from "../../lib/parentArt";
 import { useTogetherNavigation } from "./togetherNavigation";
 import { openFamilyTopicSheet } from "./familyTopicEvents";
+import TogetherRoutines from "./TogetherRoutines";
 import "./companionExperience.css";
 import "./togetherDiscovery.css";
 // FEAT-05: the shared question-chip rules (44px hit area, pill) live here.
@@ -31,7 +33,7 @@ type Preview = { kind: "world"; world: StudioWorld } | { kind: "offscreen"; id: 
 /** Parent previews lead to the existing child-mode entry seam. Nothing on this
  * page starts a camera/microphone or writes an activity just because it is seen. */
 export default function TogetherView() {
-  const { childProfile, setActiveTab, saveMoment, activeFamilyTopic } = useArbor();
+  const { childProfile, setActiveTab, saveMoment, activeFamilyTopic, openCaptureSheet, behaviorLogs = [], logsLoaded = false } = useArbor();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
@@ -73,6 +75,11 @@ export default function TogetherView() {
   const playCollections = [practiceData.speech, practiceData.mimic, practiceData.missions, practiceData.adventures, practiceData.events, heroRuns];
   const playLoaded = playCollections.every((collection) => collection.loaded);
   const playError = playCollections.some((collection) => collection.error);
+  // VIS-07: the first-time empty state, decided only once every read resolved
+  // and none failed (a failed read is never "empty"): no play on record and
+  // no moment kept yet, the same "no records" that empties My child.
+  const firstTime = playLoaded && !playError && logsLoaded && behaviorLogs.length === 0
+    && playCollections.every((collection) => collection.items.length === 0);
   const sinceText = since ? `${since.before}${since.title ?? ""}${since.after}` : "";
   // B-SHELL-NEW-1b: the sentence can be kept as ONE parent moment; the inline
   // line below is this write's one failure message (the seam stays quiet).
@@ -90,13 +97,17 @@ export default function TogetherView() {
   const [nudgePin] = useState(() => shouldNudgeForPin());
   useEffect(() => { if (nudgePin) markPinNudgeShown(); }, [nudgePin]);
   const pinSet = Boolean(readParentPin());
+  // FEAT-07: the pill order is All together, Games (when open), Stories,
+  // Routines, Away from the screen. Routines live inside the everyday-life module.
   const filters: { id: TogetherCategory; label: string; icon: string }[] = [
     { id: "all", label: t("companion.together-view.all-together"), icon: "interests" },
+    ...(kidAvailable && worlds.length ? [{ id: "games" as const, label: t("companion.together-view.games"), icon: "extension" }] : []),
     { id: "stories", label: t("companion.together-view.stories"), icon: "auto_stories" },
-    ...(kidAvailable && worlds.length ? [{ id: "games" as const, label: t("companion.together-view.games"), icon: "sports_esports" }] : []),
+    { id: "routines", label: t("companion.together-view.routines"), icon: "checklist" },
     { id: "offscreen", label: t("companion.together-view.away-from-the-screen"), icon: "wb_sunny" },
   ];
   const show = (id: TogetherCategory) => category === "all" || category === id;
+  const routinesOnly = category === "routines";
   const openWorld = (world: StudioWorld) => {
     setPreview(null);
     const direct = (!opensInKidMode(world) || !worksInLanguage(world, lang)) && !!world.tab;
@@ -133,7 +144,8 @@ export default function TogetherView() {
       <section className="companion-together-hero" data-module="together-invitation" aria-labelledby={`${filterId}-title`}>
         <header className="together-heading">
           <h1 id={`${filterId}-title`}>{t("companion.together-view.a-little-world-to-discover-with", { value0: name })}</h1>
-          <figure className="companion-together-art" aria-hidden="true"><img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt="" /></figure>
+          {/* VIS-07: while the empty state below carries the Together picture, the hero does not repeat it. */}
+          {!firstTime && <figure className="companion-together-art" aria-hidden="true"><img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt="" /></figure>}
         </header>
         <div className="together-suggestion">
           <div>
@@ -166,6 +178,11 @@ export default function TogetherView() {
         </div>}
       </section>
 
+      {/* VIS-07: one calm first-time empty state: the Together picture, one sentence, one action (Keep a moment). */}
+      {firstTime && <section className="together-empty-card" data-testid="together-empty">
+        <EmptyState illustration={TOGETHER_ART} headline={t("companion.together-view.empty")} cta={t("companion.portrait.capture")} onCta={() => openCaptureSheet()} ctaTestId="together-empty-cta" className="together-empty" />
+      </section>}
+
       {/* FEAT-05: the question line is the chip that opens the question sheet (no count, no dot). */}
       {activeFamilyTopic && <div className="companion-topic-context">
         <button type="button" className="companion-topic-chip" data-testid="together-topic-chip" aria-haspopup="dialog" onClick={() => openFamilyTopicSheet()}>
@@ -188,9 +205,12 @@ export default function TogetherView() {
         {worlds.length ? <div className="companion-world-grid">{worlds.slice(0, category === "all" ? 3 : undefined).map((world) => <button key={world.id} type="button" data-together-return={`world-${world.id}`} className="companion-world-card" onClick={() => setPreview({ kind: "world", world })}><img src={`/visuals/cards/web/game-${WORLD_ART[world.id]}-480.webp`} srcSet={`/visuals/cards/web/game-${WORLD_ART[world.id]}-480.webp 1x, /visuals/cards/web/game-${WORLD_ART[world.id]}-1024.webp 2x`} alt="" width="480" height="320" loading="lazy" decoding="async" /><div><h3>{t(world.kidNameKey)}</h3>{category === "games" && <div className="together-world-count-slot" aria-busy={!playLoaded}>{category === "games" && (counts.byWorld[world.id] ?? 0) > 0 && <span className="companion-world-count" data-testid="together-world-count">{t(studioCountKey(world.unit, counts.byWorld[world.id]), { n: counts.byWorld[world.id] })}</span>}</div>}<p>{t(`practice.world.${world.key}.skill`)}</p><span className="companion-door-link">{t("companion.together-view.preview-before-playing")}<Icon name="arrow_forward" size={17} className="companion-arrow rtl:-scale-x-100" /></span></div></button>)}</div> : <p className="companion-caption">{t("companion.together-view.there-are-no-listed-screen-games-for-this")}</p>}
       </section>}
 
-      <section hidden={!show("offscreen")} className="companion-collection" data-module="together-offscreen" aria-labelledby={`${filterId}-offscreen`}>
-        <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.in-everyday-life")}</span><h2 id={`${filterId}-offscreen`}>{t("companion.together-view.something-small-to-do-together")}</h2></div><button type="button" className="companion-text-button" data-together-return="more-ideas" onClick={() => { rememberDoor("more-ideas"); setActiveTab("daily-play"); }}>{t("companion.together-view.more-ideas")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button></div>
-        <div className="companion-offscreen-grid">{offlineIds.filter((id) => category !== "all" || id !== offlineIds[0]).map((id) => { const idea = offline(id); return <button key={id} type="button" className="companion-offscreen-card" onClick={() => setPreview({ kind: "offscreen", id })}><Icon name={idea.icon} size={26} /><h3>{idea.title}</h3><p className="companion-say" dir="auto">“{idea.say}”</p><span className="companion-door-link">{t("companion.together-view.how-to-begin")}<Icon name="arrow_forward" size={17} className="companion-arrow rtl:-scale-x-100" /></span></button>; })}</div>
+      <section hidden={!show("offscreen") && !routinesOnly} className="companion-collection" data-module="together-offscreen" aria-labelledby={`${filterId}-offscreen`}>
+        {routinesOnly ? <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.routines-kicker")}</span><h2 id={`${filterId}-offscreen`}>{t("companion.together-view.routines-title")}</h2></div></div>
+        : <><div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.in-everyday-life")}</span><h2 id={`${filterId}-offscreen`}>{t("companion.together-view.something-small-to-do-together")}</h2></div><button type="button" className="companion-text-button" data-together-return="more-ideas" onClick={() => { rememberDoor("more-ideas"); setActiveTab("daily-play"); }}>{t("companion.together-view.more-ideas")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button></div>
+        <div className="companion-offscreen-grid">{offlineIds.filter((id) => category !== "all" || id !== offlineIds[0]).map((id) => { const idea = offline(id); return <button key={id} type="button" className="companion-offscreen-card" onClick={() => setPreview({ kind: "offscreen", id })}><Icon name={idea.icon} size={26} /><h3>{idea.title}</h3><p className="companion-say" dir="auto">“{idea.say}”</p><span className="companion-door-link">{t("companion.together-view.how-to-begin")}<Icon name="arrow_forward" size={17} className="companion-arrow rtl:-scale-x-100" /></span></button>; })}</div></>}
+        {/* FEAT-07: the ready-made routines, in All together and under Routines (no module of their own). */}
+        {(category === "all" || routinesOnly) && <TogetherRoutines mode={routinesOnly ? "routines" : "all"} onAll={() => setCategory("routines")} />}
       </section>
 
       {/* KID-21 / B-PLAY-06: the one-time PIN nudge, only after the grown-up question let a parent in. */}

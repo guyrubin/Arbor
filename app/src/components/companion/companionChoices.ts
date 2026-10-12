@@ -14,7 +14,8 @@ export function nextChosenAction(rows: readonly ActionLoopEntry[], topicId?: str
   return [...(linked.length ? linked : open)].sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt))[0] ?? null;
 }
 
-export type TogetherCategory = "all" | "stories" | "games" | "offscreen";
+/** FEAT-07: "routines" is an in-page category hosted inside the everyday-life module. */
+export type TogetherCategory = "all" | "stories" | "games" | "routines" | "offscreen";
 
 export const WORLD_ART: Readonly<Record<string, string>> = {
   speech: "speech", "word-world": "reading", feelings: "feelings", mimic: "mimic",

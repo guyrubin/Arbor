@@ -98,6 +98,11 @@ export function AiBlock({
  * B-ASKJB-24 — ONE "Say this" grammar: every surface that hands the parent
  * words to say renders them through here, so copy + read-aloud are identical
  * to Ask. `data-testid="say-this"` marks each instance.
+ *
+ * FEAT-06: `presentation="quote"` sets the same words, with the same read-aloud
+ * and copy controls, as one large quote behind an inline-start rule (on the
+ * right in Hebrew), for the hard-moment "you first" view, which shows a single
+ * sentence and no card. The default "card" render is unchanged.
  */
 export function SayThis({
   text,
@@ -107,6 +112,7 @@ export function SayThis({
   copiedLabel,
   copied,
   onCopy,
+  presentation = "card",
 }: {
   text: string;
   title: string;
@@ -115,6 +121,8 @@ export function SayThis({
   copiedLabel: string;
   copied?: boolean;
   onCopy?: () => void;
+  /** FEAT-06: "quote" = one quote behind an inline-start rule, no card frame. */
+  presentation?: "card" | "quote";
 }) {
   const [ownCopied, setOwnCopied] = useState(false);
   const [copyFallback, setCopyFallback] = useState(false);
@@ -127,23 +135,34 @@ export function SayThis({
       setOwnCopied(true);
     } catch { setCopyFallback(true); }
   });
+  const controls = (
+    <div className="flex items-center gap-2">
+      {/* B-TODAY-12: both controls reach the 44 px floor (the script now
+          rides on Today's step card, not only inside a coach answer). */}
+      <SpeakButton text={text} lang={lang} className="text-[10px] min-h-11 px-1" />
+      <button onClick={handleCopy} className="text-[10px] font-bold inline-flex min-h-11 items-center gap-1 px-1" style={{ color: "var(--arbor-muted)" }}>
+        {isCopied ? <><Icon name="check" size={12} /> {copiedLabel}</> : <><Icon name="content_copy" size={12} /> {copyLabel}</>}
+      </button>
+    </div>
+  );
+  const fallback = copyFallback && <textarea aria-label={copyLabel} readOnly value={text} dir="auto" autoFocus onFocus={(event) => event.currentTarget.select()} className="mt-3 min-h-11 w-full rounded-lg border p-3 text-sm" style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", borderColor: "var(--arbor-rule-strong)" }} />;
+  if (presentation === "quote") {
+    return (
+      <div data-testid="say-this" data-presentation="quote" role="group" aria-label={title} className="min-w-0">
+        <blockquote className="m-0 break-words text-xl leading-snug sm:text-2xl" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", borderInlineStart: "2px solid var(--arbor-ink)", paddingInlineStart: 14 }}>&ldquo;{text}&rdquo;</blockquote>
+        <div className="mt-1" style={{ paddingInlineStart: 8 }}>{controls}</div>
+        {fallback}
+      </div>
+    );
+  }
   return (
     <AiBlock
       testId="say-this"
       icon={<Icon name="format_quote" size={12} />} title={title} tint="var(--arbor-sky-ink)"
-      action={
-        <div className="flex items-center gap-2">
-          {/* B-TODAY-12: both controls reach the 44 px floor (the script now
-              rides on Today's step card, not only inside a coach answer). */}
-          <SpeakButton text={text} lang={lang} className="text-[10px] min-h-11 px-1" />
-          <button onClick={handleCopy} className="text-[10px] font-bold inline-flex min-h-11 items-center gap-1 px-1" style={{ color: "var(--arbor-muted)" }}>
-            {isCopied ? <><Icon name="check" size={12} /> {copiedLabel}</> : <><Icon name="content_copy" size={12} /> {copyLabel}</>}
-          </button>
-        </div>
-      }
+      action={controls}
     >
       <p className="t-base leading-relaxed" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)", fontStyle: "normal" }}>&ldquo;{text}&rdquo;</p>
-      {copyFallback && <textarea aria-label={copyLabel} readOnly value={text} dir="auto" autoFocus onFocus={(event) => event.currentTarget.select()} className="mt-3 min-h-11 w-full rounded-lg border p-3 text-sm" style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", borderColor: "var(--arbor-rule-strong)" }} />}
+      {fallback}
     </AiBlock>
   );
 }

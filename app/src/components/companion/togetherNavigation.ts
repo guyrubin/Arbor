@@ -3,7 +3,7 @@ import { useIsPresent } from "motion/react";
 import { STUDIO_WORLDS } from "../practice/studioWorlds";
 import type { TogetherCategory } from "./companionChoices";
 
-const categories: readonly TogetherCategory[] = ["all", "stories", "games", "offscreen"];
+const categories: readonly TogetherCategory[] = ["all", "stories", "games", "routines", "offscreen"];
 const returnDoors = ["story-library", "story-bedtime", "story-comics", "story-family", "more-ideas", ...STUDIO_WORLDS.map((world) => `world-${world.id}`)] as const;
 type ReturnDoor = typeof returnDoors[number];
 type ViewState = { category: TogetherCategory; returnDoor?: ReturnDoor };

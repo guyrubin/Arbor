@@ -21,6 +21,7 @@ import AvatarCreator from "./AvatarCreator";
 import HeroSheetPanel from "./HeroSheetPanel";
 import RewardsCard from "./RewardsCard";
 import { stampChangedFacts } from "../../lib/factsAsOf";
+import { childPicture } from "../../lib/childPicture";
 // B-CAREPRO-35: the drawer no longer exports or deletes (GP-18's typed-name
 // delete moved, with its receipt, to Settings › Your data — YourDataSheet).
 
@@ -62,7 +63,9 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const [strengths, setStrengths] = useState(activeChild.strengths.join("\n"));
   const [challenges, setChallenges] = useState(activeChild.challenges.join("\n"));
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(activeChild.photoUrl);
+  const [comicAvatarUrl, setComicAvatarUrl] = useState(activeChild.comicAvatarUrl);
   const [avatarMeta, setAvatarMeta] = useState<ChildProfile["avatar"]>(activeChild.avatar);
+  const pictureUrl = childPicture({ name, photoUrl, comicAvatarUrl, avatar: avatarMeta }).url ?? undefined;
   const [photoBusy, setPhotoBusy] = useState(false);
   const [showCreator, setShowCreator] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -85,6 +88,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
         try { url = await uploadChildPhoto(user.uid, activeChild.id, thumb); } catch { /* keep inline data URL */ }
       }
       setPhotoUrl(url);
+      setComicAvatarUrl(undefined);
       setAvatarMeta(undefined); // a raw uploaded photo isn't a generated avatar
     } catch {
       toast("Couldn't process that image", "error");
@@ -112,6 +116,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     setStrengths(activeChild.strengths.join("\n"));
     setChallenges(activeChild.challenges.join("\n"));
     setPhotoUrl(activeChild.photoUrl);
+    setComicAvatarUrl(activeChild.comicAvatarUrl);
     setAvatarMeta(activeChild.avatar);
     // CI-29: restore saved interests on re-open.
     setActiveInterests(activeChild.interests ?? []);
@@ -172,6 +177,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
         ...facts,
         factsAsOf: stampChangedFacts(activeChild, facts, new Date().toISOString()),
         photoUrl: photoUrl || "",
+        comicAvatarUrl: comicAvatarUrl || undefined,
         // B-KID-36 (KA-01): the avatar key is ALWAYS written. "Upload a photo
         // instead" / Remove clear avatarMeta, and an own `undefined` on the
         // clearable `avatar` key becomes deleteField() — omitting the key left
@@ -226,7 +232,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
 
             <div className="space-y-4 text-sm">
               <div className="flex items-center gap-4">
-                <Avatar name={name} photoURL={photoUrl} size={56} ring />
+                <Avatar name={name} photoURL={pictureUrl} size={56} ring />
                 <div className="flex flex-col items-start gap-1.5">
                   <button
                     type="button"
@@ -234,15 +240,15 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                     className="inline-flex min-h-11 items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition"
                     style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-border)" }}
                   >
-                    <Icon name="auto_awesome" size={14} /> {photoUrl ? "New avatar" : "Create avatar"}
+                    <Icon name="auto_awesome" size={14} /> {pictureUrl ? "New avatar" : "Create avatar"}
                   </button>
                   <div className="flex items-center gap-3">
                     <label className="inline-flex min-h-11 items-center gap-1.5 text-[11px] font-bold cursor-pointer" style={{ color: "var(--arbor-muted)" }}>
                       <Icon name="photo_camera" size={12} /> {photoBusy ? "Uploading…" : "Upload a photo instead"}
                       <input type="file" accept="image/*" className="hidden" disabled={photoBusy} onChange={(e) => onPickPhoto(e.target.files?.[0])} />
                     </label>
-                    {photoUrl && (
-                      <button type="button" onClick={() => { setPhotoUrl(undefined); setAvatarMeta(undefined); }} className="touch-target px-2 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>Remove</button>
+                    {pictureUrl && (
+                      <button type="button" onClick={() => { setPhotoUrl(undefined); setComicAvatarUrl(undefined); setAvatarMeta(undefined); }} className="touch-target px-2 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>Remove</button>
                     )}
                   </div>
                 </div>
@@ -428,6 +434,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
             onClose={() => setShowCreator(false)}
             onCreated={({ dataUrl, style, source }) => {
               setPhotoUrl(dataUrl);
+              setComicAvatarUrl(undefined);
               setAvatarMeta({ style, source, createdAt: new Date().toISOString() });
             }}
           />

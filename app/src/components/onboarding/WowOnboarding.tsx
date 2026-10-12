@@ -499,6 +499,7 @@ function LegacyWowOnboarding() {
             setFreshAvatar(dataUrl);
             void updateChild(activeChild.id, {
               photoUrl: dataUrl,
+              comicAvatarUrl: undefined,
               avatar: { style, source, createdAt: new Date().toISOString() },
             });
             setStep("comic");

@@ -4,6 +4,8 @@ import { translate } from "../../lib/i18n";
 import { HERO_NAME_FALLBACK } from "../../lib/heroNameFallback";
 import { ArborMascot, type MascotMood } from "./ArborMascot";
 import { normalizeAvatarStyle } from "../../lib/avatarStyle";
+import { resolveHeroUrl } from "../../lib/heroIdentity";
+export { resolveHeroUrl } from "../../lib/heroIdentity";
 
 /**
  * HeroAvatar — the child rendered as the hero of the platform, the SAME identity
@@ -28,28 +30,10 @@ import { normalizeAvatarStyle } from "../../lib/avatarStyle";
  * 'descriptor' | 'photo'. A Storage URL (a real uploaded photo) or a malformed
  * `avatar` left behind by an older drawer save is never a hero.
  */
-const isGeneratedHeroMeta = (avatar: unknown): boolean => {
-  if (!avatar || typeof avatar !== "object") return false;
-  const source = (avatar as { source?: unknown }).source;
-  return source === "descriptor" || source === "photo";
-};
-
-export const resolveHeroUrl = (child: {
-  avatar?: unknown;
-  photoUrl?: string;
-  comicAvatarUrl?: string;
-}): string | null => {
-  if (child.comicAvatarUrl) return child.comicAvatarUrl;
-  const url = child.photoUrl;
-  if (!url || !isGeneratedHeroMeta(child.avatar)) return null;
-  return url.startsWith("data:image/") ? url : null;
-};
-
 export function useHeroAvatar() {
   const { childProfile } = useArbor();
-  // Resolution order: prefer the generated stylized comic hero, then any uploaded
-  // photo. `avatar` is metadata; `comicAvatarUrl` (when present) is the AI-generated
-  // privacy-safe hero. Return shape is unchanged so existing consumers keep working.
+  // Use the same canonical generated reference as pose generation. A raw
+  // uploaded profile photo is never the fallback identity here.
   const url = resolveHeroUrl(childProfile);
   // `isGenerated` = a stylized, privacy-safe hero (descriptor) — safe to embed in
   // shareable/clinical documents; a real `photo` avatar is never auto-embedded.

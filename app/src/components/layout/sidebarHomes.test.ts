@@ -121,8 +121,8 @@ describe("v3 IA-01 · exactly one current entry on every route, from table A", (
       masterclasses: "learn", learn: "learn", family: "learn",
       coach: "talk", scholar: "talk",
       behaviors: "child", milestones: "child", development: "child",
-      // plans stays with Behaviors in My child until FEAT-07 adds Together's Routines entry (IA-04).
-      plans: "child",
+      // FEAT-07 is included: Together's Routines entry now owns Plans.
+      plans: "together",
       stories: "together", practice: "together",
       weekly: "now", overview: "now",
     };

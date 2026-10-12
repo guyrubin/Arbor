@@ -4,7 +4,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { backTargetFor, isCompanionHome, placeForTab } from "../../lib/companionPlaces";
+import { backTargetFor, homeForTab, isCompanionHome, placeForTab } from "../../lib/companionPlaces";
 import { useHashQuery } from "../../hooks/useHashQuery";
 import { sectionForTab, pillRowFor, isCompactHiddenTool } from "../../lib/navigation";
 import { contractFor } from "../../lib/surfaceContract";
@@ -189,6 +189,14 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
  */
 const PILL_EDGE_FADE =
   "linear-gradient(to right, transparent 0, black 14px, black calc(100% - 14px), transparent 100%)";
+
+/** v3 IA-02 — the name the pill row's tablist announces: its home, the place
+ *  or the door the route belongs to, in the reader's language. */
+function pillRowHomeName(tab: ActiveTab, lang: string): string {
+  const home = homeForTab(tab);
+  const named = home.kind === "place" ? home.place : home.door;
+  return lang === "he" ? named.he : named.en;
+}
 
 /**
  * Item 11 — the one place a route's declared contract meets its rendered tree.
@@ -466,14 +474,15 @@ export default function Shell() {
               drawer any more). Navy active fill / white inactive with a hairline
               border, sticky to the top of the scroll region. The first pill of
               each section is its Overview/hub. Renders only when there is more
-              than one capability. v3 (11 Oct 2026): Now carries the row too
-              (Now · … · Weekly Report); My child and Together stay bare until
-              their own v3 slices. Its first pill is the place, named as such. */}
-          {(!isCompanionHome(activeTab) || activeTab === "overview") && pillRowFor(section, activeTab).length > 1 && (
+              than one capability. v3 IA-02: a route whose home is Now or My
+              child wears its place's row (PLACE_PILLS), on the place itself
+              and on every leaf; Together's first level is its in-page filter
+              row, so it has none. Now's first pill is the place, named as such. */}
+          {pillRowFor(section, activeTab).length > 1 && (
             <div
               role="tablist"
               data-testid="secondary-sibling-nav"
-              aria-label={`${section.label} sections`}
+              aria-label={t("nav.pills.aria", { place: pillRowHomeName(activeTab, uiLang) })}
               className="sticky z-20 flex gap-2 overflow-x-auto mb-4 -mx-[14px] px-[14px] pb-2 no-scrollbar"
               style={{
                 background: "var(--arbor-paper)",
@@ -519,7 +528,7 @@ export default function Shell() {
                   >
                     {it.tab === "overview"
                       ? <><Icon name={placeForTab(it.tab).icon} size={14} /> {uiLang === "he" ? placeForTab(it.tab).he : placeForTab(it.tab).en}</>
-                      : <><Icon name={it.msIcon} size={14} /> {t("nav.tab." + it.tab)}</>}
+                      : <><Icon name={it.msIcon} size={14} /> {t(it.labelKey ?? "nav.tab." + it.tab)}</>}
                   </button>
                 );
               })}
