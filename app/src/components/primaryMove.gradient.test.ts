@@ -33,12 +33,10 @@ const GRADIENT = /--arbor-gradient-primary|--gradient-cta|\bgradient-cta\b/;
 const SCOPE_DIRS = ["overview", "onboarding", "trust", "ui", "weekly"];
 /** Individually scoped leaves outside those directories. */
 const SCOPE_FILES = [
-  // Parity 9 Oct: Today is NowView and the loop it runs. v3 F-NOW-2 re-pin:
-  // "More for today" retired; the week card and the glance's reminders replace it.
+  // Parity 9 Oct: Today is NowView and the loop it runs.
   "companion/NowView.tsx",
   "companion/NowLoopBlocks.tsx",
-  "companion/NowDayPanels.tsx",
-  "companion/NowReminderChips.tsx",
+  "companion/NowMoreForToday.tsx",
   "companion/NowRecommendation.tsx",
   "tabs/JournalTab.tsx",
   "tabs/WeeklyTab.tsx",

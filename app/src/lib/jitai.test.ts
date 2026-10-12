@@ -119,7 +119,7 @@ describe("TJB-03 — nextNudge honours the parent's preferences", () => {
   it("a disabled kind is skipped and the NEXT kind is considered (guidance off → prep skipped → log)", () => {
     const inp = { nowMs: at(16), rhythm: baseRhythm({ frictionPeak: { hour: 17 } }), loggedToday: 0, recent7d: 5, childName: "Dylan" };
     expect(nextNudge(inp, prefs())?.kind).toBe("prep");
-    expect(nextNudge(inp, prefs({ types: { guidance: false, moments: true, story: true, recap: true } }))?.kind).toBe("log");
+    expect(nextNudge(inp, prefs({ types: { guidance: false, moments: true } }))?.kind).toBe("log");
     expect(NUDGE_KIND_PREF.prep).toBe("guidance");
     expect(NUDGE_KIND_PREF.calm).toBe("guidance");
   });
@@ -270,16 +270,12 @@ describe("B-SHELL-02 — ceiling binds without the bell (ledger level)", () => {
  * B-TODAY-02 — every switch does what it says. NUDGE_KIND_PREF is total over
  * the NudgeKind union (log, practice and bedtime used to have no switch at
  * all), and each value is a switch the panel actually renders.
- * v3 F-NOW-2 re-pin: bedtime moved from `guidance` to its own `story` switch
- * (Now's "Tonight's story" chip); `recap` gates no engine kind.
  */
 describe("B-TODAY-02 — every NudgeKind maps to exactly one switch", () => {
   const ALL_KINDS = ["prep", "calm", "log", "practice", "bedtime"] as const;
   it("the map covers the union exactly, one switch per kind", () => {
     expect(Object.keys(NUDGE_KIND_PREF).sort()).toEqual([...ALL_KINDS].sort());
-    for (const k of ALL_KINDS) expect(["guidance", "moments", "story"]).toContain(NUDGE_KIND_PREF[k]);
-    expect(NUDGE_KIND_PREF.bedtime).toBe("story");
-    expect(Object.values(NUDGE_KIND_PREF)).not.toContain("recap");
+    for (const k of ALL_KINDS) expect(["guidance", "moments"]).toContain(NUDGE_KIND_PREF[k]);
   });
   it("every switch the map names is rendered by the Smart Reminders panel", () => {
     const panel = readFileSync(path.join(__dirname, "..", "components/sections/SmartRemindersPanel.tsx"), "utf8");
@@ -288,13 +284,12 @@ describe("B-TODAY-02 — every NudgeKind maps to exactly one switch", () => {
   it("switching 'moments' off: no LOG nudge at 16:00 (NEGATIVE CONTROL: on → log)", () => {
     const inp = { nowMs: at(16), rhythm: baseRhythm({ confidence: "low" }), loggedToday: 0, recent7d: 4, childName: "Dylan" };
     expect(nextNudge(inp, prefs())?.kind).toBe("log");
-    expect(nextNudge(inp, prefs({ types: { guidance: true, moments: false, story: true, recap: true } }))?.kind).not.toBe("log");
+    expect(nextNudge(inp, prefs({ types: { guidance: true, moments: false } }))?.kind).not.toBe("log");
   });
-  it("switching 'story' off silences the bedtime door; 'guidance' no longer does (v3 F-NOW-2)", () => {
+  it("switching 'guidance' off silences the bedtime door too", () => {
     const inp = { nowMs: at(19), rhythm: baseRhythm({ confidence: "low" }), loggedToday: 2, recent7d: 9, childName: "Dylan" };
     expect(nextNudge(inp, prefs())?.kind).toBe("bedtime");
-    expect(nextNudge(inp, prefs({ types: { guidance: true, moments: true, story: false, recap: true } }))?.kind).not.toBe("bedtime");
-    expect(nextNudge(inp, prefs({ types: { guidance: false, moments: true, story: true, recap: true } }))?.kind).toBe("bedtime");
+    expect(nextNudge(inp, prefs({ types: { guidance: false, moments: true } }))?.kind).not.toBe("bedtime");
   });
 });
 

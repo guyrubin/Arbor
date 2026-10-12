@@ -90,23 +90,19 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
     expect(selectNowLead({ ...base, record: true, recordPending: true, visit, tonight: true, manualTonight: true })).toBe("record");
   });
 
-  // v3 F-NOW-2 re-pin: "More for today" is retired and each piece moved to its
-  // mock home: the week card takes the changed lines (What changed, the watch
-  // signal, the first notice) and the say-back; the glance takes Tonight's ONE
-  // row, the ONE proactive slot, the sibling lines and the hard-moment line.
-  // Daily Play left Now (ruling [29]).
-  it("Tonight is a pointer line in the morning, the flow in the evening; no door: the week card and the glance carry the lines", () => {
+  it("Tonight is a pointer line in the morning, the flow in the evening; the door is ONE collapsed disclosure", () => {
     expect(OV).toContain('data-testid="today-tonight-pointer"');
     expect(OV).toContain("<TonightFlow");
-    expect(OV).not.toContain('data-testid="today-door"');
-    expect(OV).not.toContain("<details");
-    const week = OV.slice(OV.indexOf("<NowWeekSoFar "), OV.indexOf("</NowWeekSoFar>"));
-    for (const tok of ["changedLines={changes.lines}", "<TodaySayBackLine"]) expect(week, tok).toContain(tok);
-    const glance = OV.slice(OV.indexOf('<section className="now-glance"'), OV.indexOf("<NowReminderChips"));
-    for (const tok of ['data-testid="today-tonight-story"', "<CompanionOfferSlot", "<FamilyOfferLines", 'className="now-hard-moment"']) expect(glance, tok).toContain(tok);
-    for (const tok of ["<LifecycleMomentCard", "<FirstStepsRail", "<TodayActionLoop", "<TodayStepLine", "<WhatChanged", "<ArborNoticedCard", "today-door-play"]) expect(OV, tok).not.toContain(tok);
-    expect(OV).toContain("todayNoticedSignal(monitoring)");
-    expect(OV).toContain("export const NOW_CHANGED_MAX = 3;");
+    // Parity 9 Oct: the door is Now's "More for today" (NowMoreForToday).
+    expect(OV).toMatch(/<details className="now-more" data-module-disclosure="today-more" data-testid="today-door"(?![^>]*\bopen\b)/);
+    const door = OV.slice(OV.indexOf('data-testid="today-door"'), OV.indexOf("</details>"));
+    // lines only, plus the ONE proactive slot, the say-back, the clinical watch
+    // signal and the sibling lines; the hard-moment and week doors sit beside the lead
+    for (const tok of ["<WhatChanged", "today-door-story", "today-door-play", "<TodaySayBackLine", "<ArborNoticedCard", "<CompanionOfferSlot", "<FamilyOfferLines"]) {
+      expect(door, tok).toContain(tok);
+    }
+    for (const tok of ["<LifecycleMomentCard", "<FirstStepsRail", "<TodayActionLoop", "<TodayStepLine"]) expect(OV, tok).not.toContain(tok);
+    expect(door).toContain("changed.lines.slice(0, 3)");
   });
 
   it("the practice is the B-LOOP-09 chooser with the AI pick only inside its candidates; Notice never shows the practice's shelf", () => {
@@ -261,22 +257,18 @@ describe("every Today / practice / tonight string — no streak, no count of day
    control; the door keeps its content and loses the dashed border. */
 describe("B-DESIGN-04 · Today takes the blend frame", () => {
   const TF = strip(readFileSync(path.join(here, "..", "loop", "TonightFlow.tsx"), "utf8").replace(/\r\n/g, "\n"));
-  // v3 F-NOW-2 re-pin: the "Notice today" block left Now (the mock's Now has
-  // none). Its first notice is a week-card line, named by the same title and
-  // opening Milestones; a notice lead is still ONE NoticeCard.
-  it("Notice today is no block on Now: its first notice is a week-card line; a notice lead stays one card", () => {
+  it("Notice today = SectionHead (visibility glyph, the h2 id the section is labelled by, the sub-line) over one card", () => {
+    // Parity 9 Oct: the block is NowNoticeBlock (components/companion/NowLoopBlocks.tsx).
     const blocks = strip(todayFile("NowLoopBlocks.tsx"));
-    expect(blocks).not.toContain('data-testid="today-notice"');
-    expect(blocks).not.toContain("export function NowNoticeBlock");
-    expect(blocks).toContain("export function NowNoticeLead");
-    expect(OV).toContain("notice: showNotice ? loop.blockNotices[0] : null");
-    expect(strip(todayFile("useNowChanges.ts"))).toContain('`${t("elev.loop.today.notice.title")} · ${milestoneText(notice.milestone, "title", t, { gender: childProfile.gender })}`');
-    expect(readFileSync(path.join(here, "..", "companion", "nowView.css"), "utf8")).not.toContain(".now-notice-card");
+    const block = blocks.slice(blocks.indexOf('data-testid="today-notice"'), blocks.indexOf("export function NowTonightLead"));
+    expect(block).toContain('<SectionHead id={`${id}-notice`} icon="visibility" title={t("elev.loop.today.notice.title")} sub={t("elev.loop.today.notice.sub")} />');
+    expect(block).toContain("aria-labelledby={`${id}-notice`}");
+    expect(block).toContain('<div className="now-notice-card">');
+    expect(block).not.toMatch(/rounded-\[|text-\[\d/);
   });
-  it("every NoticeCard on Today (the notice lead, Tonight's step 3) answers segmented", () => {
-    // v3 F-NOW-2 re-pin: the Notice block's rows left Now, so one NoticeCard remains.
-    expect(OV.match(/<NoticeCard\b/g)).toHaveLength(1);
-    expect(OV.match(/<NoticeCard\b[^>]*answers="segmented"/g)).toHaveLength(1);
+  it("every NoticeCard on Today (the slot card, the Notice rows, Tonight's step 3) answers segmented", () => {
+    expect(OV.match(/<NoticeCard\b/g)).toHaveLength(2);
+    expect(OV.match(/<NoticeCard\b[^>]*answers="segmented"/g)).toHaveLength(2);
     expect(TF.match(/<NoticeCard\b/g)).toHaveLength(1);
     expect(TF).toMatch(/<NoticeCard[\s\S]{0,400}answers="segmented"/);
   });
@@ -313,10 +305,8 @@ describe("B-DESIGN-04 · Today takes the blend frame", () => {
       expect(order.includes("practice") && order.includes("tonight"), String(practiceShown)).toBe(false);
     }
     const css = readFileSync(path.join(here, "..", "companion", "nowView.css"), "utf8");
-    // v3 F-NOW-2 re-pin: the door is gone; the week card's changed lines sit below a solid hairline.
-    expect(css).not.toMatch(/\.now-more\b/);
-    expect(css).toMatch(/\.now-week-changed \{[^}]*border-block-start: 1px solid var\(--arbor-rule\)/);
-    expect(css.match(/\.now-week-[^{]*\{[^}]*\}/g)?.join("\n")).not.toMatch(/dashed/);
+    expect(css).toMatch(/\.now-more \{[^}]*border: 1px solid var\(--arbor-rule\)/);
+    expect(css.match(/\.now-more[^{]*\{[^}]*\}/g)?.join("\n")).not.toMatch(/dashed/);
   });
   it("the flat loop glyph is gone from Today: PracticeCard, NoticeCard and TonightFlow mount the duotone one", () => {
     for (const rel of ["PracticeCard.tsx", "NoticeCard.tsx", "TonightFlow.tsx"]) {

@@ -9,10 +9,9 @@ import type { AdventureResult, MimicSession, MissionRecord, PracticeEvent } from
 /**
  * v3 FEAT-04 — "From {name}'s world today" on Now. Today's Kid Mode records
  * only, each with its time and, where one exists, a line of NAMES beneath the
- * title (the feeling the child chose, the pack, the skill, the mission). Never
- * a score, a round count, a level or a percentage; nothing at all when Kid
- * Mode was not used today. v3 F-NOW-2: no note line under the strip (the mock
- * has none), and the week card carries "Since you were last here".
+ * title (the feeling the child chose, the pack, the skill, the mission); a
+ * note says where the items are kept. Never a score, a round count, a level
+ * or a percentage; nothing at all when Kid Mode was not used today.
  * Invented examples only.
  */
 const state = vi.hoisted(() => ({ lang: "en" as "en" | "he", childName: "Noa", events: [] as unknown[] }));
@@ -22,7 +21,7 @@ vi.mock("../../context/LanguageContext", async () => {
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };
 });
 vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: (_id: string, name: string) => ({ items: name === "practiceEvents" ? state.events : [], loaded: true }) }));
-import { NowKidWorld, NowWeekSoFar } from "./NowDayPanels";
+import { NowKidWorld } from "./NowDayPanels";
 import { NOW_COPY } from "./nowViewCopy";
 import { KID_FEELING_WORDS, portraitEvidenceLines } from "./portraitEvidence";
 
@@ -59,12 +58,10 @@ describe("NowKidWorld (v3 FEAT-04)", () => {
     expect(html).toContain(NOW_COPY.en.worldLatest(timeOf(MOOD.timestamp)));
   });
 
-  // v3 F-NOW-2 re-pin (now-world-note): the strip ends at "All moments"; where items are kept is said on Moments.
-  it("has no note line; the same item still carries its 'Activity record' label in the portrait", () => {
+  it("the note names the child and the portrait's 'Activity record' label, which the same item carries in the portrait", () => {
     const html = render({ practiceEvents: [MOOD] });
-    expect(html).not.toContain("now-kid-world-note");
-    expect(html).not.toContain("now-world-note");
-    expect(html).not.toContain("Activity record");
+    expect(html).toContain('data-testid="now-kid-world-note"');
+    expect(html).toContain(NOW_COPY.en.worldNote("Noa", "Activity record"));
     const [item] = toObservations({ practiceEvents: [MOOD] }, child);
     expect(item.source).toBe("kid_practice");
     expect(portraitEvidenceLines(item, { practiceEvents: [MOOD] }, false)).toContainEqual({ label: "Observation", text: "Happy" });
@@ -107,10 +104,10 @@ describe("NowKidWorld (v3 FEAT-04)", () => {
     expect(html).not.toContain("data-primary-move");
   });
 
-  it("a parent-ticked mission keeps its name, and nothing calls it an Activity record", () => {
+  it("a parent-ticked mission keeps its name but the note does not call it an Activity record", () => {
     const html = render({ practiceEvents: [MOOD], missionRecords: [MISSION] });
     expect(subs(html)).toEqual(["“Happy”", "Emotion detective"]);
-    expect(html).not.toContain("now-kid-world-note");
+    expect(html).toContain(NOW_COPY.en.worldNoteKept("Noa"));
     expect(html).not.toContain("Activity record");
   });
 
@@ -118,11 +115,12 @@ describe("NowKidWorld (v3 FEAT-04)", () => {
     state.lang = "he"; state.childName = "נועה";
     const html = render({ practiceEvents: [MOOD], mimicSessions: [MIMIC], adventureResults: [ADVENTURE], missionRecords: [MISSION] }, "נועה");
     expect(html).toContain(NOW_COPY.he.worldTitle("נועה"));
+    expect(html).toContain(NOW_COPY.he.worldNoteKept("נועה"));
     expect(subs(html)).toEqual(["„שמחה”", "בלשי רגשות", "קולות של חיות", "היגיון"]);
     expect(html).toContain(timeOf(ADVENTURE.timestamp, true));
     expect(visible(html)).not.toMatch(/[A-Za-z]/);
     const moodOnly = render({ practiceEvents: [MOOD] }, "נועה");
-    expect(moodOnly).not.toContain("now-kid-world-note");
+    expect(moodOnly).toContain(NOW_COPY.he.worldNote("נועה", "תיעוד פעילות"));
     expect(visible(moodOnly)).not.toMatch(/[A-Za-z]/);
   });
 
@@ -139,48 +137,9 @@ describe("NowKidWorld (v3 FEAT-04)", () => {
     const rule = (selector: string) => css.match(new RegExp(`${selector.replace(/[.>]/g, m => `\\${m}`)}\\s*\\{([^}]+)\\}`))?.[1] ?? "";
     expect(rule(".now-world-glyph")).toMatch(/inline-size: 40px; block-size: 40px/);
     expect(rule(".now-world-all")).toContain("min-block-size: 44px");
-    expect(css).not.toContain(".now-world-note");
-    for (const selector of [".now-world-sub", ".now-week-changed", ".now-week-line", ".now-reminder-chip", ".now-reminders-all"]) {
+    for (const selector of [".now-world-sub", ".now-world-note", ".now-world-note > .msr"]) {
       expect(rule(selector), selector).not.toBe("");
       expect(rule(selector), selector).not.toMatch(/(?:^|[\s;-])(?:left|right)\s*:|margin-(?:left|right)|padding-(?:left|right)|text-align:\s*(?:left|right)/);
     }
-    // v3 F-NOW-2: every changed line, chip and link keeps the 44 px floor.
-    for (const selector of [".now-week-line", ".now-reminder-chip", ".now-reminders-all"]) expect(rule(selector), selector).toContain("min-block-size: 44px");
-    expect(rule(".now-week-changed")).toContain("border-block-start: 1px solid var(--arbor-rule)");
-    expect(css).toContain(".now-week-changed:empty { display: none; }");
-  });
-});
-
-describe("NowWeekSoFar · Since you were last here (v3 F-NOW-2)", () => {
-  const week = (props: Partial<React.ComponentProps<typeof NowWeekSoFar>> = {}) =>
-    renderToStaticMarkup(<NowWeekSoFar observations={[]} now={NOW} onReport={() => {}} {...props} />);
-  const LINES = [
-    { id: "lifecycle", icon: "auto_awesome", text: "A first week together" },
-    { id: "moments.0", icon: "edit_note", text: "2 new moments kept", onOpen: () => {} },
-    { id: "milestone.1", icon: "workspace_premium", text: "Milestone: waves bye-bye", onOpen: () => {} },
-    { id: "notice", icon: "visibility", text: "Worth noticing · stacks two blocks", onOpen: () => {} },
-  ];
-
-  it.each(["en", "he"] as const)("%s: below a rule, the title and at most three lines; a line with no destination is not a button", lang => {
-    state.lang = lang;
-    const html = week({ changedLines: LINES });
-    const changed = html.slice(html.indexOf('data-testid="now-week-changed"'));
-    expect(changed).toContain(`<h3 id="`);
-    expect(changed).toContain(NOW_COPY[lang].changedTitle);
-    expect(changed.match(/data-testid="now-week-line"/g)).toHaveLength(3);
-    expect(changed).toMatch(/<p class="now-week-line" data-testid="now-week-line" data-line="lifecycle">/);
-    expect(changed.match(/<button type="button" class="now-week-line"/g)).toHaveLength(2);
-    expect(changed).not.toContain("stacks two blocks");
-    // Events and counts only: no ratio, no percentage, no bar.
-    expect(changed).not.toMatch(/\d\s*\/\s*\d|\d\s*%|role="progressbar"|<progress/);
-  });
-
-  it("the cold-start line and the caller's line follow the changed lines; nothing renders inside when empty", () => {
-    const html = week({ changedLines: LINES.slice(1, 2), coldStart: "Two more days and the rhythm shows", children: <p data-testid="say-back">say-back</p> });
-    const changed = html.slice(html.indexOf('data-testid="now-week-changed"'));
-    expect(changed.indexOf("now-week-line")).toBeLessThan(changed.indexOf('data-testid="today-coldstart-line"'));
-    expect(changed.indexOf('data-testid="today-coldstart-line"')).toBeLessThan(changed.indexOf('data-testid="say-back"'));
-    expect(week()).toContain('<div class="now-week-changed" data-testid="now-week-changed"></div>');
-    expect(week()).not.toContain("<h3");
   });
 });

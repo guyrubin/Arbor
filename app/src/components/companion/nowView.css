@@ -1,9 +1,25 @@
 .now-page { max-inline-size: 1100px; padding-block-start: 8px; container-type: inline-size; container-name: now; }
 .now-page button { overflow-wrap: anywhere; }
 .now-heading { margin-block-end: 18px; }
+.now-lifecycle-note { margin-block-start: 8px; font-size: var(--t-sm); color: var(--arbor-clay-deep); }
 .now-loop-lead { min-inline-size: 0; }
 .now-loop-adapt { margin-block-start: 10px; }
+.now-notice { margin-block-start: 26px; min-inline-size: 0; }
+.now-notice-card { margin-block-start: 12px; padding-inline: 18px; border-radius: var(--r-lg); background: var(--arbor-paper-elevated); }
+.now-notice-row.is-next { border-block-start: 1px solid var(--arbor-rule); }
 .now-tonight-pointer { border-block-start: 0; margin-block-start: 6px; }
+.now-program-line { margin-block-start: 18px; }
+.now-more { margin-block-start: 12px; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); }
+.now-more > summary { display: flex; align-items: center; gap: 12px; min-block-size: 44px; padding: 12px 16px; cursor: pointer; list-style: none; }
+.now-more > summary::-webkit-details-marker { display: none; }
+.now-more > summary > span { flex: 1; min-inline-size: 0; }
+.now-more > summary b, .now-more > summary small { display: block; }
+.now-more > summary b { font-size: var(--t-sm); font-weight: 600; color: var(--arbor-ink-soft); }
+.now-more > summary small { font-size: var(--t-xs); color: var(--arbor-muted); margin-block-start: 2px; }
+.now-more-body { display: grid; gap: 4px; padding: 0 8px 12px; }
+.now-more-line { display: flex; align-items: center; gap: 12px; inline-size: 100%; min-block-size: 44px; padding: 0 12px; border: 0; border-radius: var(--r); background: transparent; color: var(--arbor-ink); font-size: var(--t-sm); font-weight: 600; text-align: start; }
+.now-more-line > span { flex: 1; min-inline-size: 0; }
+.now-more-line > .msr { color: var(--arbor-muted); flex-shrink: 0; }
 .now-heading .companion-eyebrow { letter-spacing: .025em; }
 .now-heading h1 { margin-block: 7px 0; font-size: var(--t-title); line-height: 1.3; }
 .now-main-column { min-inline-size: 0; }
@@ -194,6 +210,8 @@
 .now-world-all { flex: none; display: inline-flex; align-items: center; gap: 4px; min-block-size: 44px; padding: 0 6px; border: 0; background: transparent; color: var(--arbor-clay); font-size: 12px; font-weight: 700; white-space: nowrap; }
 /* v3 FEAT-04: one line of names under a tile, and the note on its own line under the strip. */
 .now-world-sub { display: block; overflow: hidden; margin-block-start: 1px; font-size: var(--t-sm); font-weight: 500; line-height: 1.3; color: var(--arbor-muted); white-space: nowrap; text-overflow: ellipsis; text-align: start; }
+.now-world-note { flex-basis: 100%; order: 4; display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: var(--t-sm); line-height: 1.45; color: var(--arbor-muted); text-align: start; }
+.now-world-note > .msr { flex: none; margin-block-start: 1px; color: var(--arbor-lav-ink); }
 
 .now-day-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
 .now-week, .now-glance { min-inline-size: 0; border: 1px solid var(--arbor-rule); border-radius: 18px; background: var(--arbor-paper-elevated); }
@@ -220,33 +238,14 @@
 .now-week-day > i.now-week-words { background: var(--arbor-lav); }
 .now-week-day > i.now-week-kid { background: color-mix(in srgb, var(--arbor-pink-ink) 55%, var(--arbor-paper-elevated)); }
 .now-week-empty { font-size: var(--t-sm); color: var(--arbor-muted); line-height: 1.5; }
-/* v3 F-NOW-2: "Since you were last here", below a rule: event lines only, one neutral ink (never a verdict colour). */
-.now-week-changed { display: grid; gap: 4px; padding-block-start: 10px; border-block-start: 1px solid var(--arbor-rule); }
-.now-week-changed:empty { display: none; }
-.now-week-changed-title { margin: 0; font: 700 12px/1.3 var(--font-sans); color: var(--arbor-muted); }
-.now-week-lines { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
-.now-week-line { display: flex; align-items: center; gap: 10px; inline-size: 100%; min-block-size: 44px; margin: 0; padding: 4px 2px; border: 0; background: transparent; color: var(--arbor-ink); font-size: var(--t-sm); line-height: 1.4; text-align: start; }
-.now-week-line > span { flex: 1; min-inline-size: 0; }
-.now-week-line > .msr { flex-shrink: 0; color: var(--arbor-muted); }
-.now-week-coldstart { margin: 0; font-size: var(--t-xs); line-height: 1.45; color: var(--arbor-muted); }
 .now-glance { display: flex; flex-direction: column; padding: 6px 16px; }
 .now-glance > .now-kicker { padding: 10px 4px 2px; }
 .now-page .now-glance .now-weekly-door, .now-page .now-glance .now-hard-moment { min-block-size: 60px; margin: 0; padding: 12px 4px; border: 0; border-block-end: 1px solid var(--arbor-rule); border-radius: 0; background: transparent; box-shadow: none; }
+.now-page .now-glance > button:last-child { border-block-end: 0; }
 .now-page .now-glance-visit > .msr:first-child { color: var(--arbor-sky-ink); }
 .now-page .now-glance .now-tonight-pointer > .msr:first-child { color: var(--arbor-lav-ink); }
 .now-page .now-glance .now-hard-moment > .msr:first-child { color: var(--arbor-peach-ink); }
-.now-page .now-glance-tonight > .msr:first-child { color: var(--arbor-lav-ink); }
-.now-glance-cta { display: block; margin-block-start: 4px; font-size: var(--t-xs); font-style: normal; font-weight: 700; color: var(--arbor-clay); }
-/* v3 F-NOW-2: the glance's reminders, as switches on the shared Smart Reminders store (44 px floor, no counts). */
-.now-reminders { display: grid; gap: 8px; padding: 12px 4px 10px; }
-.now-reminders-hint { margin: 0; font-size: var(--t-xs); font-weight: 600; color: var(--arbor-muted); }
-.now-reminder-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.now-reminder-chip { display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; max-inline-size: 100%; padding-block: 6px; padding-inline: 12px 14px; border: 1px solid var(--arbor-rule); border-radius: 999px; background: var(--arbor-paper); color: var(--arbor-muted); font-size: var(--t-sm); font-weight: 600; line-height: 1.25; text-align: start; }
-.now-reminder-chip > .msr { flex-shrink: 0; }
-.now-reminder-chip[aria-checked="true"] { border-color: var(--arbor-clay); background: color-mix(in srgb, var(--arbor-clay) 10%, var(--arbor-paper-elevated)); color: var(--arbor-ink); }
-.now-reminder-chip[aria-checked="true"] > .msr { color: var(--arbor-clay); }
-.now-reminders-all { justify-self: start; display: inline-flex; align-items: center; gap: 4px; min-block-size: 44px; }
-.now-reminder-chip:focus-visible, .now-reminders-all:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
+.now-page .now-glance-reminders > .msr:first-child { color: var(--arbor-clay); }
 
 /* Desktop: the sidebar carries the places, so the in-page doors stay for phones only. */
 @media (min-width: 1024px) { .now-page .now-open-doors, .now-page .now-footer { display: none; } }

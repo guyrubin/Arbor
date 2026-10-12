@@ -6,11 +6,6 @@
  * its description promised celebrations. The taxonomy is guidance | moments.
  * A parent's stored legacy prefs must load without error, keep their
  * `guidance` choice, and carry no dead switch forward.
- *
- * v3 F-NOW-2 re-pin: Now's reminder chips add `story` (the bedtime line, split
- * out of guidance, which governed it before) and `recap` (the in-app "weekly
- * report is ready" line). A stored guidance choice carries over to `story`;
- * the legacy `weekly` switch (no reader) is still dropped, never read as recap.
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_PREFS, loadPrefs, savePrefs } from "./jitaiPrefs";
@@ -27,16 +22,15 @@ const LS_KEY = "arbor.jitai.prefs";
 describe("B-TODAY-02 — jitaiPrefs taxonomy + read-migration", () => {
   beforeEach(() => mem.clear());
 
-  it("defaults: guidance, moments, story and recap, all on, nothing else", () => {
-    expect(Object.keys(DEFAULT_PREFS.types).sort()).toEqual(["guidance", "moments", "recap", "story"]);
-    expect(loadPrefs().types).toEqual({ guidance: true, moments: true, story: true, recap: true });
+  it("defaults: guidance + moments, both on, nothing else", () => {
+    expect(Object.keys(DEFAULT_PREFS.types).sort()).toEqual(["guidance", "moments"]);
+    expect(loadPrefs().types).toEqual({ guidance: true, moments: true });
   });
 
   it("a stored legacy {milestone:false, weekly:false} loads with no dead switch and defaults intact", () => {
     mem.set(LS_KEY, JSON.stringify({ types: { guidance: false, milestone: false, weekly: false }, quietStart: 22, quietEnd: 7 }));
     const p = loadPrefs();
-    // guidance:false carries to the story it governed; weekly is never read as recap.
-    expect(p.types).toEqual({ guidance: false, moments: true, story: false, recap: true });
+    expect(p.types).toEqual({ guidance: false, moments: true });
     expect(p.types).not.toHaveProperty("milestone");
     expect(p.types).not.toHaveProperty("weekly");
     expect(p.types).not.toHaveProperty("notes");
@@ -44,17 +38,12 @@ describe("B-TODAY-02 — jitaiPrefs taxonomy + read-migration", () => {
   });
 
   it("round-trips the moments switch", () => {
-    savePrefs({ ...DEFAULT_PREFS, types: { guidance: true, moments: false, story: true, recap: true } });
+    savePrefs({ ...DEFAULT_PREFS, types: { guidance: true, moments: false } });
     expect(loadPrefs().types.moments).toBe(false);
-  });
-
-  it("story and recap round-trip on their own; a stored story choice wins over guidance", () => {
-    savePrefs({ ...DEFAULT_PREFS, types: { guidance: false, moments: true, story: true, recap: false } });
-    expect(loadPrefs().types).toEqual({ guidance: false, moments: true, story: true, recap: false });
   });
 
   it("corrupt storage falls back to defaults", () => {
     mem.set(LS_KEY, "{not json");
-    expect(loadPrefs().types).toEqual({ guidance: true, moments: true, story: true, recap: true });
+    expect(loadPrefs().types).toEqual({ guidance: true, moments: true });
   });
 });

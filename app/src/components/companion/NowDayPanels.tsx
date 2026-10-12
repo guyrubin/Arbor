@@ -11,7 +11,6 @@ import type { PracticeEvent } from "../../types";
 import { Avatar } from "../ui/Avatar";
 import Icon from "../ui/Icon";
 import { NOW_COPY } from "./nowViewCopy";
-import type { NowChangedLine } from "./useNowChanges";
 import { PRACTICE_ACTIVITY_LABELS, kidFeelingWord } from "./portraitEvidence";
 
 const KID_ICON: Partial<Record<ObservationOrigin, string>> = { practiceEvents: "extension", mimicSessions: "mood", adventureResults: "explore", missionRecords: "flag" };
@@ -30,9 +29,8 @@ const timeOf = (iso: string, he: boolean) => new Date(iso).toLocaleTimeString(he
  * today, as names and times only (no rounds scored, no levels). Hidden when
  * the child has not played today; nothing is invented to fill it.
  * FEAT-04: each tile may carry one line of names beneath its title (the
- * feeling the child chose, the pack, the skill, the mission). Never a score,
- * a round count or a level. v3 F-NOW-2: the strip ends at "All moments"; the
- * note on where items are kept left with the mock (that belongs on Moments).
+ * feeling the child chose, the pack, the skill, the mission), and a note
+ * says where the items are kept. Never a score, a round count or a level.
  */
 export function NowKidWorld({ observations, now, name, onAll }: {
   observations: readonly Observation[]; now: Date; name: string; onAll: () => void;
@@ -69,6 +67,7 @@ export function NowKidWorld({ observations, now, name, onAll }: {
     const text = key ? t(key) : undefined;
     return text && text !== key ? text : undefined;
   };
+  const note = shown.every(item => item.source === "kid_practice") ? copy.worldNote(name, t("companion.portrait.childPractice")) : copy.worldNoteKept(name);
   return <section className="now-world" aria-labelledby={`${id}-world`} data-testid="now-kid-world">
     <div className="now-world-head">
       <Avatar name={childProfile.name} photoURL={childPicture(childProfile).url} size={40} />
@@ -84,6 +83,7 @@ export function NowKidWorld({ observations, now, name, onAll }: {
       })}
     </ol>
     <button type="button" className="now-world-all" onClick={onAll}>{copy.worldAll}<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" /></button>
+    <p className="now-world-note" data-testid="now-kid-world-note"><Icon name="auto_awesome" size={15} /><span>{note}</span></p>
   </section>;
 }
 
@@ -93,15 +93,9 @@ export function NowKidWorld({ observations, now, name, onAll }: {
  * colour that judges; a zero category is simply not shown.
  * v3 EXTRA-WEEKLY: the counting lives in lib/weekGlance (the Weekly tab's
  * glance reads the same object); this card renders it unchanged.
- * v3 F-NOW-2: below a rule, "Since you were last here": at most three event
- * lines (useNowChanges: events and counts only), the cold-start line, then
- * whatever the caller adds (the say-back line). Nothing renders when empty.
  */
-export function NowWeekSoFar({ observations, now, onReport, changedLines = [], coldStart = null, children }: {
+export function NowWeekSoFar({ observations, now, onReport }: {
   observations: readonly Observation[]; now: Date; onReport: () => void;
-  changedLines?: readonly NowChangedLine[];
-  coldStart?: string | null;
-  children?: React.ReactNode;
 }) {
   const { actionLoop = [] } = useArbor();
   const { uiLang } = useLanguage();
@@ -110,7 +104,6 @@ export function NowWeekSoFar({ observations, now, onReport, changedLines = [], c
   const week = useMemo(() => weekGlance({ observations, actionLoop, now, weekStartMs: recapWeekStartMs(now) }), [observations, actionLoop, now]);
   const tiles = WEEK_ORDER.filter(key => week.counts[key] > 0).slice(0, 4);
   const label: Record<WeekCountKey, string> = { moments: copy.weekMoments, helped: copy.weekHelped, milestones: copy.weekMilestones, words: copy.weekWords, kid: copy.weekKid };
-  const lines = changedLines.slice(0, 3);
   return <section className="now-week" aria-labelledby={`${id}-week`} data-testid="now-week">
     <div className="now-week-head">
       <Icon name="bar_chart" size={19} />
@@ -127,19 +120,5 @@ export function NowWeekSoFar({ observations, now, onReport, changedLines = [], c
         </span>)}
       </div>
     </> : <p className="now-week-empty">{copy.weekEmpty}</p>}
-    <div className="now-week-changed" data-testid="now-week-changed">
-      {lines.length > 0 && <>
-        <h3 id={`${id}-changed`} className="now-week-changed-title">{copy.changedTitle}</h3>
-        <ul className="now-week-lines" aria-labelledby={`${id}-changed`}>
-          {lines.map(line => <li key={line.id}>{line.onOpen
-            ? <button type="button" className="now-week-line" data-testid="now-week-line" data-line={line.id} onClick={line.onOpen}>
-              <Icon name={line.icon} size={18} /><span dir="auto">{line.text}</span><Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
-            </button>
-            : <p className="now-week-line" data-testid="now-week-line" data-line={line.id}><Icon name={line.icon} size={18} /><span dir="auto">{line.text}</span></p>}</li>)}
-        </ul>
-      </>}
-      {coldStart && <p className="now-week-coldstart" data-testid="today-coldstart-line">{coldStart}</p>}
-      {children}
-    </div>
   </section>;
 }

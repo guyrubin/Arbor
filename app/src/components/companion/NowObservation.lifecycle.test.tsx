@@ -32,11 +32,7 @@ function setup(lang: "en" | "he" = "en") {
     useNowClock: () => new Date("2026-10-10T12:00:00Z"), useNowRecord: () => ({}), useChildCollection: () => ({ items: [] }), activeProgramWeek: () => null,
     useNowLoop: () => ({ plan: { order: [] }, blockNotices: [], evening: false, rhythm: {} }), useLastVisit: () => ({}), useLifecycleMoment: () => ({}), useCompanionOffer: () => ({}),
     availableHardMomentCards: () => [], ageMonthsFromProfile: () => 48, formatChildAge: () => "", childPicture: () => ({}), trackCompanionPlaceOpen: vi.fn(), markPracticeShown: vi.fn(), trackActionOffered: vi.fn(),
-    Avatar: "avatar", Icon: "icon", PrimaryMove: "primary-move", Receipt: "receipt", UrgentSupport: "urgent-support", NowRecommendation: "recommendation", NowTonightPointer: "tonight-pointer", TOGETHER_ART: {},
-    // v3 F-NOW-2 re-pin: the retired door and notice block left NowContent; the glance and week card read these instead.
-    NowReminderChips: "reminder-chips", CompanionOfferSlot: "offer-slot", FamilyOfferLines: "family-lines", TodaySayBackLine: "say-back",
-    useNowChanges: () => ({ lines: [], coldStart: null }), loadPrefs: () => ({ types: { guidance: true, story: true, moments: true, recap: true } }),
-    daysUntil: () => null, momentsSinceLastVisit: () => null, storyInProgress: () => null, planDay: () => null, runTitle: () => "",
+    Avatar: "avatar", Icon: "icon", PrimaryMove: "primary-move", Receipt: "receipt", UrgentSupport: "urgent-support", NowRecommendation: "recommendation", NowMoreForToday: "more", NowNoticeBlock: "notice", NowTonightPointer: "tonight-pointer", TOGETHER_ART: {},
     useObservations: () => [], NowQuestionRow: "question-row", NowPlanFrame: "plan-frame", NowKidWorld: "kid-world", NowWeekSoFar: "week-so-far",
     NowPlanBody: "plan-body", NowGuideReader: "guide-reader", stepLines: (text: string) => [text], WHY_KEY: {}, shelfLabel: () => "",
   };

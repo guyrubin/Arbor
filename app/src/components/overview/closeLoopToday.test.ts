@@ -121,11 +121,10 @@ describe("ENG-12 — the step that outlived its day", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const overview = todayLiveSource();
     // B-AI-06: mounted through the single-offer slot (kind "follow-up");
-    // B-LOOP-07: one slot instance. v3 F-NOW-2 re-pin: "More for today" is
-    // retired, so that instance sits in Now's glance.
+    // B-LOOP-07: that one slot instance sits behind Today's "More for today" door.
     expect(overview).toMatch(/<CompanionOfferSlot\s+surface="today"/);
-    const glance = overview.slice(overview.indexOf('<section className="now-glance"'), overview.indexOf("<NowReminderChips"));
-    expect(glance).toContain("<CompanionOfferSlot");
+    const door = overview.slice(overview.indexOf('data-testid="today-door"'), overview.indexOf("</details>"));
+    expect(door).toContain("<CompanionOfferSlot");
     expect(readFileSync(path.join(here, "./CompanionOfferSlot.tsx"), "utf8")).toContain("<CarryOverActionAsk onSkip={controls.refresh} />");
     // Negative control: the shipped file had no such mount.
     expect("      {activeTodayAction ? (\n        <TodayActionLoop />").not.toContain("CarryOverActionAsk");
@@ -152,23 +151,21 @@ describe("ENG-18 — the cold-start progress line", () => {
   });
 
   // B-TODAY-21: the line moved with ProgressNarrative into the ONE
-  // "What changed since you left" card. v3 F-NOW-2 re-pin: that card's lines
-  // are now the week card's (useNowChanges), and the line rides with them.
-  it("Today passes predictRhythm's own daysNeeded into the week card's changed lines", () => {
+  // "What changed since you left" card.
+  it("Today passes predictRhythm's own daysNeeded into the What-changed card", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const overview = todayLiveSource();
-    expect(overview).toContain("rhythmDaysNeeded: loop.rhythm.daysNeeded");
-    expect(overview).toContain("coldStartLineKey(rhythmDaysNeeded)");
-    const panels = readFileSync(path.join(here, "../companion/NowDayPanels.tsx"), "utf8");
-    expect(panels).toContain('data-testid="today-coldstart-line">{coldStart}</p>');
+    // Parity 9 Oct: Now hands the loop's rhythm to its door, the door to the card.
+    expect(overview).toContain("rhythmDaysNeeded={loop.rhythm.daysNeeded}");
+    expect(overview).toContain("rhythmDaysNeeded={rhythmDaysNeeded}");
+    const narrative = readFileSync(path.join(here, "./WhatChanged.tsx"), "utf8");
+    expect(narrative).toContain('data-testid="today-coldstart-line"');
     // FIREWALL: the line may only interpolate the days Arbor needs and the
     // child's NAME — never a count of the child's own behaviour.
-    const line = /const coldStart = [^\n]*/.exec(overview)?.[0] ?? "";
+    const line = /data-testid="today-coldstart-line"[\s\S]*?<\/p>/.exec(narrative)?.[0] ?? "";
     expect(line).toBeTruthy();
     expect(line).toContain("rhythmDaysNeeded ?? 0");
-    expect(line).not.toMatch(/recentBehaviors|recentPlay|noticedMilestones|momentsLastWeek|behaviorLogs|playLogs/);
-    // WhatChanged.tsx stays for its importers, with the same line.
-    expect(readFileSync(path.join(here, "./WhatChanged.tsx"), "utf8")).toContain('data-testid="today-coldstart-line"');
+    expect(line).not.toMatch(/recentBehaviors|recentPlay|noticedMilestones|momentsLastWeek/);
   });
 });
 

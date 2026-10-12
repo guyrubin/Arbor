@@ -940,8 +940,7 @@ const STATES = {
       name: "loop-first-open",
       writes: FIRST_OPEN_WRITES,
       run: async (h) => {
-        // v3 F-NOW-2: the Notice block left Now (its first notice is a week-card line).
-        return firstOpen(h, "main [data-module=today-practice]", "Today's first-open blocks");
+        return firstOpen(h, "main [data-module=today-practice], main [data-module=today-notice]", "Today's first-open blocks");
       },
     },
     {
@@ -979,18 +978,10 @@ const STATES = {
       },
     },
     {
-      // v3 F-NOW-2: "More for today" is retired. The week card carries "Since
-      // you were last here" (≤ 3 lines) and the glance its four reminder switches.
-      name: "week-and-glance",
+      name: "door-open",
       run: async (h) => {
-        await h.need("main [data-testid=now-week-changed]", "the week card's changed lines");
-        const lines = await h.page.locator("main [data-testid=now-week-changed] [data-testid=now-week-line]").count();
-        if (lines > 3) throw new Error(`week-and-glance: ${lines} changed lines, more than 3`);
-        const chips = await h.page.locator("main [data-testid=now-reminders] [role=switch]").count();
-        if (chips !== 4) throw new Error(`week-and-glance: ${chips} reminder switches, not 4`);
-        if (await h.page.locator("main [data-testid=today-door]").count()) throw new Error("week-and-glance: the retired door still renders");
-        await h.top(await h.need("main [data-testid=now-reminders]", "the glance's reminders"));
-        return { via: `changed lines ${lines} · reminder switches ${chips}` };
+        await h.click("main [data-testid=today-door] summary", [h.tr("elev.loop.today.door")], "the More for today door");
+        await h.top(await h.need("main [data-testid=today-door][open]", "the open door (lines only)"));
       },
     },
   ],

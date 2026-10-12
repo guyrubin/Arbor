@@ -232,22 +232,16 @@ describe("B-DESIGN-04 · Today keeps its 44 px floors after the blend", () => {
     expect(receipt).toMatch(/data-testid=\{undo\.testId\}[\s\S]{0,200}?\$\{TRAILING\}/);
     expect(receipt).toMatch(/data-testid=\{link\.testId \?\? "receipt-open"\}[\s\S]{0,200}?\$\{TRAILING\}/);
   });
-  // v3 F-NOW-2 re-pin: the door (and its 44 px summary) is retired; the week
-  // card's lines, the reminder switches and "All reminders" take the floor.
-  it("the Tonight pointer, the week card's lines and the reminders keep a 44 px floor", () => {
+  it("the Tonight pointer and the door summary keep a 44 px floor", () => {
     // Parity 9 Oct: Now draws them with nowView.css (the pointer is a
-    // .now-weekly-door line at 72 px).
+    // .now-weekly-door line at 72 px; the door's summary at 44 px).
     const css = read("components/companion/nowView.css");
     expect(ov).toContain('className="now-weekly-door now-tonight-pointer" data-testid="today-tonight-pointer"');
     expect(css).toMatch(/\.now-weekly-door \{[^}]*min-block-size: 72px/);
-    expect(css).not.toMatch(/\.now-more\b/);
-    for (const sel of ["now-week-line", "now-reminder-chip", "now-reminders-all"]) {
-      expect(css, sel).toMatch(new RegExp(`\\.${sel} \\{[^}]*min-block-size: 44px`));
-    }
+    expect(css).toMatch(/\.now-more > summary \{[^}]*min-block-size: 44px/);
   });
   it("every Notice answer on Today is the segmented control; its cells are 44 px", () => {
-    // v3 F-NOW-2 re-pin: the Notice block's rows left Now; the notice lead's card remains.
-    expect(ov.match(/<NoticeCard\b[^>]*answers="segmented"/g)).toHaveLength(1);
+    expect(ov.match(/<NoticeCard\b[^>]*answers="segmented"/g)).toHaveLength(2);
     expect(seg).toMatch(/const cellBase = "[^"]*\bmin-h-\[44px\][^"]*\bmin-w-\[44px\]/);
   });
 });

@@ -19,8 +19,7 @@ vi.mock("../trust/TrustLink", () => ({ TrustLink: () => null }));
 import PromptCaptureCard from "../overview/PromptCaptureCard";
 
 const read = (p: string) => fs.readFileSync(path.resolve(__dirname, p), "utf8");
-// v3 F-NOW-2 re-pin: "More for today" retired; Now's week card and reminders replace it.
-const TODAY = ["../companion/NowView.tsx", "../companion/NowDayPanels.tsx", "../companion/NowReminderChips.tsx", "../overview/QuickCaptureBar.tsx", "../overview/PromptCaptureCard.tsx", "../overview/FromRecordCard.tsx"].map(read).join("\n");
+const TODAY = ["../companion/NowView.tsx", "../companion/NowMoreForToday.tsx", "../overview/QuickCaptureBar.tsx", "../overview/PromptCaptureCard.tsx", "../overview/FromRecordCard.tsx"].map(read).join("\n");
 
 describe("B-SHELL-28 — one capture label on Today", () => {
   it("the label key renders exactly once across Today's files (the capture bar)", () => {

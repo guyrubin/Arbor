@@ -64,15 +64,13 @@ export interface JitaiInputs {
  * TJB-03 / B-TODAY-02: which Smart Reminders switch governs each engine kind.
  * Total by construction (a Record over the NudgeKind union): every kind the
  * engine can produce has exactly one switch that turns it off.
- *   guidance — the rhythm cues (prep, calm)
- *   story    — the evening bedtime door (v3 F-NOW-2: Now's "Tonight's story" chip)
+ *   guidance — the rhythm cues (prep, calm) and the evening bedtime door
  *   moments  — the engagement reminders (log, practice)
- * (`recap` is a parent switch with no engine kind: Now's weekly-ready line.)
  */
 export const NUDGE_KIND_PREF: Record<NudgeKind, NudgeTypeKey> = {
   prep: "guidance",
   calm: "guidance",
-  bedtime: "story",
+  bedtime: "guidance",
   log: "moments",
   practice: "moments",
 };

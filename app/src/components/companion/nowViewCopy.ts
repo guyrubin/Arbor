@@ -73,6 +73,8 @@ export const NOW_COPY = {
     weekEmpty: "Nothing kept yet this week. What you keep shows up here as counts, never scores.",
     glanceTitle: "Today at a glance",
     visitPrep: "Prepare the summary",
+    remindersTitle: "Gentle reminders",
+    remindersBody: "Only what you choose. No streaks, no guilt.",
     capture: "Keep a moment",
     captureShort: "Keep",
     captureBody: "A few words are enough. Add more when you want to.",
@@ -93,8 +95,10 @@ export const NOW_COPY = {
     outcomes: "How did the step go for you?",
     noOffer: "A little time together is a place to start",
     noOfferBody: "Explore stories and everyday ideas, then choose what fits your family.",
-    // v3 FEAT-04: the kid-world strip's line of names (names only, never a score)
+    // v3 FEAT-04: the kid-world strip's line of names and its note (names only, never a score)
     worldFeeling: (word: string) => `“${word}”`,
+    worldNote: (name: string, label: string) => `Each item is saved in ${name}’s picture as an “${label}”, with its source. No logging needed.`,
+    worldNoteKept: (name: string) => `Each item is kept in ${name}’s picture, with its source.`,
     // v3 F-NOW-1: the Now kicker, the plan card's face and body, and the guide reader.
     kicker: "Now · Parenting Companion",
     stepKicker: "Your next small step",
@@ -105,6 +109,7 @@ export const NOW_COPY = {
     oneAction: "One small action",
     noStepYet: "Not chosen yet",
     nextStep: (step: string) => `Next: ${step}`,
+    programWeek: (week: number) => `Your program · week ${week}`,
     close: "Close",
     planSay: { practice: "A few minutes is enough.", step: "One small step at a time.", recommendation: "Start small. Stay close.", program: "Your program, at your pace.", record: "It starts from what you noticed.", visit: "Bring what you’ve noticed.", tonight: "A quiet moment before sleep.", notice: "Just notice. Nothing to fix." },
     // v3 F-NOW-1 r2: every lead's one body - the Picked line, the face's meta, and the time and size in words.
@@ -115,18 +120,6 @@ export const NOW_COPY = {
     planMeta: { practice: "A few minutes, together", step: "A little help for today", recommendation: "From the activity library", program: "Your program", record: "Nothing new to write", visit: "From your own record", tonight: "Before sleep", notice: "If it happens" },
     planTime: { practice: "A few minutes", step: "Any time today", recommendation: "A few minutes", program: "This week", record: "Under a minute", visit: "Before the visit", tonight: "A couple of minutes", notice: "Through the day" },
     planSize: { practice: "One small thing to try", step: "One small action", recommendation: "One small action", program: "This week’s practice", record: "One tap to answer", visit: "One page to look over", tonight: "A few short questions", notice: "Only to notice" },
-    // v3 F-NOW-2: the glance's reminder chips, visit and tonight rows, the plan's day, and the week card's changed lines.
-    remHint: "Reminders · tap to turn on/off",
-    reminderChips: { morning: "Morning routine", story: "Tonight’s story", moment: "Keep a moment from today", weekly: "Weekly report is ready" },
-    remindersAll: "All reminders",
-    changedTitle: "Since you were last here",
-    visitLine: (days: number | null, moments: number | null) => [
-      days === null ? "" : days === 0 ? "Today" : days === 1 ? "Tomorrow" : `In ${days} days`,
-      moments ? `${moments} ${moments === 1 ? "moment" : "moments"} since the last visit` : "",
-    ].filter(Boolean).join(" · "),
-    tonightKicker: "Tonight",
-    storyContinues: "Pick up the story where you left off",
-    planDay: (day: number) => `Plan · day ${day}`,
   },
   he: {
     title: (name: string) => `מה יעזור לכם עם ${name}?`,
@@ -201,6 +194,8 @@ export const NOW_COPY = {
     weekEmpty: "עוד לא נשמר דבר השבוע. מה שתשמרו יופיע כאן כספירה, אף פעם לא כציון.",
     glanceTitle: "היום במבט אחד",
     visitPrep: "להכין את התקציר",
+    remindersTitle: "תזכורות עדינות",
+    remindersBody: "רק מה שבחרתם. בלי רצפים, בלי אשמה.",
     capture: "שומרים רגע",
     captureShort: "שמירה",
     captureBody: "מספיקות כמה מילים. תמיד אפשר להוסיף בהמשך.",
@@ -221,8 +216,10 @@ export const NOW_COPY = {
     outcomes: "איך הצעד הזה עבד בשבילכם?",
     noOffer: "אפשר להתחיל מרגע קטן ביחד",
     noOfferBody: "מגלים סיפורים ורעיונות ליומיום, ובוחרים מה מתאים למשפחה שלכם.",
-    // v3 FEAT-04: the kid-world strip's line of names (names only, never a score)
+    // v3 FEAT-04: the kid-world strip's line of names and its note (names only, never a score)
     worldFeeling: (word: string) => `„${word}”`,
+    worldNote: (name: string, label: string) => `כל פריט נשמר בתמונה של ${name} כ„${label}”, יחד עם המקור שלו. אין צורך לתעד בעצמכם.`,
+    worldNoteKept: (name: string) => `כל פריט נשמר בתמונה של ${name}, יחד עם המקור שלו.`,
     // v3 F-NOW-1: the Now kicker, the plan card's face and body, and the guide reader.
     kicker: "עכשיו · מלווה ההורות",
     stepKicker: "הצעד שלכם",
@@ -233,6 +230,7 @@ export const NOW_COPY = {
     oneAction: "פעולה קטנה אחת",
     noStepYet: "עוד לא נבחר",
     nextStep: (step: string) => `הבא: ${step}`,
+    programWeek: (week: number) => `התוכנית שלכם · שבוע ${week}`,
     close: "סגירה",
     planSay: { practice: "כמה דקות זה מספיק.", step: "צעד קטן אחד בכל פעם.", recommendation: "מתחילים בקטן. נשארים קרובים.", program: "התוכנית שלכם, בקצב שלכם.", record: "מתחילים ממה שראיתם.", visit: "הביאו איתכם את מה שראיתם.", tonight: "רגע שקט לפני השינה.", notice: "רק לשים לב. אין מה לתקן." },
     // v3 F-NOW-1 r2: every lead's one body - the Picked line, the face's meta, and the time and size in words.
@@ -243,17 +241,5 @@ export const NOW_COPY = {
     planMeta: { practice: "כמה דקות, ביחד", step: "קצת עזרה להיום", recommendation: "מתוך ספריית הפעילויות", program: "התוכנית שלכם", record: "בלי לכתוב משהו חדש", visit: "מתוך התיעוד שלכם", tonight: "לפני השינה", notice: "אם זה קורה" },
     planTime: { practice: "כמה דקות", step: "מתי שנוח היום", recommendation: "כמה דקות", program: "השבוע", record: "פחות מדקה", visit: "לפני הפגישה", tonight: "כמה דקות", notice: "לאורך היום" },
     planSize: { practice: "דבר קטן אחד לנסות", step: "פעולה קטנה אחת", recommendation: "פעולה קטנה אחת", program: "התרגול של השבוע", record: "נגיעה אחת כדי לענות", visit: "עמוד אחד לעבור עליו", tonight: "כמה שאלות קצרות", notice: "רק לשים לב" },
-    // v3 F-NOW-2: the glance's reminder chips, visit and tonight rows, the plan's day, and the week card's changed lines.
-    remHint: "תזכורות · הקישו להפעיל",
-    reminderChips: { morning: "שגרת בוקר", story: "סיפור הערב", moment: "לשמור רגע מהיום", weekly: "הדוח השבועי מוכן" },
-    remindersAll: "כל התזכורות",
-    changedTitle: "מאז הביקור הקודם שלכם",
-    visitLine: (days: number | null, moments: number | null) => [
-      days === null ? "" : days === 0 ? "היום" : days === 1 ? "מחר" : days === 2 ? "בעוד יומיים" : `בעוד ${days} ימים`,
-      moments ? (moments === 1 ? "רגע אחד מאז הביקור הקודם" : `${moments} רגעים מאז הביקור הקודם`) : "",
-    ].filter(Boolean).join(" · "),
-    tonightKicker: "הערב",
-    storyContinues: "ממשיכים את הסיפור מאיפה שעצרתם",
-    planDay: (day: number) => `התוכנית · יום ${day}`,
   },
 } as const;

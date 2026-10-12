@@ -73,16 +73,14 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
     expect(overview).toMatch(/lifecycle/);
   });
 
-  // P5 r1 pass A5 re-pin: the moment is ONE short note, never a card.
-  // v3 F-NOW-2 re-pin: the note is the week card's first "Since you were
-  // last here" line (plain, not a button), no longer the practice header's.
-  it("mounts the hook; the moment is the week card's first line, never a card", () => {
+  // P5 r1 pass A5 re-pin: the moment is ONE short note in the practice
+  // header (the pack), never a card in the door.
+  it("mounts the hook; the moment is the practice header's note, never a card", () => {
     expect(overview).not.toMatch(/import LifecycleMomentCard/);
     expect(overview).toContain("const now = useNowClock();");
     expect(overview).toContain("useLifecycleMoment({ previousVisitAt, now: now.getTime() })");
     expect((overview.match(/<LifecycleMomentCard/g) ?? []).length).toBe(0);
-    expect(overview).not.toContain("headerNote=");
-    expect(overview).toContain('if (lifecycleNote) head.push({ id: "lifecycle", icon: "auto_awesome", text: lifecycleNote });');
+    expect(overview).toContain("headerNote={lifecycleNote}");
   });
 
   // B-LOOP-07 re-pin: the lifecycle moment is never a Today module any more —
@@ -101,17 +99,15 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
   // B-TODAY-21: the since-strip is gone; the ONE What-changed card sits in the
   // anchor ROW (the seat the dev-map card held), so the lifecycle moment now
   // renders after that row — still after the day's action (P1-A).
-  // v3 F-NOW-2 re-pin: the door is retired. The note and What changed share
-  // the week card below the lead: the note first, then the event lines.
-  it("never leads the page: the note is the week card's first line, after the lead; What changed follows it", () => {
+  it("never leads the page: the note sits inside the practice card's header, else right after the lead; What changed stays behind the door", () => {
+    // Parity 9 Oct: Now places the note; the door is NowMoreForToday.
     const view = stripComments(todayFile("NowView.tsx"));
-    const changes = stripComments(todayFile("useNowChanges.ts"));
-    expect(view).not.toContain('className="now-lifecycle-note"');
-    expect(view).toContain("useNowChanges({ previousVisitAt, isReturning, lifecycleNote,");
-    expect(view.indexOf("changedLines={changes.lines}")).toBeGreaterThan(view.indexOf("<NowRecommendation"));
-    expect(changes.indexOf('id: "lifecycle"')).toBeGreaterThan(-1);
-    expect(changes.indexOf('id: "lifecycle"')).toBeLessThan(changes.indexOf("changed.lines.forEach"));
-    expect(fs.existsSync(path.join(SRC_ROOT, "components/companion/NowMoreForToday.tsx"))).toBe(false);
+    expect(view).toContain("headerNote={lifecycleNote}");
+    const note = view.indexOf('className="now-lifecycle-note"');
+    expect(note).toBeGreaterThan(view.indexOf("<NowRecommendation"));
+    expect(note).toBeLessThan(view.indexOf("{showNotice &&"));
+    const door = stripComments(todayFile("NowMoreForToday.tsx"));
+    expect(door.indexOf("<WhatChanged")).toBeGreaterThan(door.indexOf('data-testid="today-door"'));
   });
 
   it("the budget has no lifecycle module id (todayModules v3: practice · notice · tonight · door)", () => {
