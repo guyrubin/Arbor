@@ -4,7 +4,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useObservations } from "../../hooks/useObservations";
 import { Sheet } from "../ui/Sheet";
 import { Icon } from "../ui/Icon";
-import { useL2Sheet } from "../layout/crumbBus";
+import { useSheetHistory } from "../../hooks/useSheetHistory";
+import { SheetBreadcrumb } from "../layout/Breadcrumb";
 import type { FamilyTopic } from "../../lib/familyTopics";
 import type { Observation } from "../../lib/observations";
 import "./companionExperience.css";
@@ -57,10 +58,10 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
   const actions = topic ? actionLoop.filter(item => item.topicId === topic.id) : [];
   const threads = topic ? conversations.filter(item => item.topicId === topic.id) : [];
   const rows = showFinished ? [...familyTopics, ...archivedFamilyTopics] : familyTopics;
-  // v3 IA-06: the sheet owns one history entry (Back closes it) and names the
-  // question in the top-bar crumb. Every way out goes through close; a row
-  // that leaves for a route navigates once that entry is gone.
-  const close = useL2Sheet(true, topic?.title ?? t("companion.family-topic-sheet.what-we-re-exploring"), onClose);
+  // v3 IA-06: the sheet owns one history entry (Back closes it) and names
+  // where it sits in a crumb under its title. Every way out goes through
+  // close; a row that leaves for a route navigates once that entry is gone.
+  const close = useSheetHistory(true, onClose);
 
   // Every write waits for the store: a row changes only once its record is saved.
   async function run(key: string, task: () => Promise<unknown>) {
@@ -83,6 +84,7 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
   }
 
   return <Sheet open onClose={() => close()} title={t("companion.family-topic-sheet.what-we-re-exploring")}>
+    <SheetBreadcrumb label={topic?.title ?? t("companion.family-topic-sheet.what-we-re-exploring")} close={close} />
     <div className="topic-sheet" dir={he ? "rtl" : "ltr"}>
       <p className="topic-sheet-sub">{t("companion.family-topic-sheet.a-question-you-chose-for-it-connects-the-r", { value0: childProfile.name })}</p>
 

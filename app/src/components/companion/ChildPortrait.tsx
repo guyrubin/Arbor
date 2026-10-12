@@ -11,7 +11,8 @@ import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/Avatar";
 import { Modal } from "../ui/Modal";
-import { useL2Sheet } from "../layout/crumbBus";
+import { useSheetHistory } from "../../hooks/useSheetHistory";
+import { SheetBreadcrumb } from "../layout/Breadcrumb";
 import { buildPortraitChapters, buildPortraitEnvironments, buildPortraitThreads, portraitDiscussionPrompt } from "./portraitModel";
 import { PORTRAIT_COPY } from "./portraitCopy";
 import { portraitEvidenceLines, reviewedPortraitDraft } from "./portraitEvidence";
@@ -127,9 +128,10 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
   const unfiled = inView.filter(observation => observation.domains.length === 0);
   const selected = selection?.childId === childProfile.id ? selection : null;
   const selectedObservations = selected ? observations.filter(o => selected.ids.includes(o.id)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)) : [];
-  // v3 IA-06: an open selection owns one history entry (Back closes it) and is
-  // named in the top-bar crumb; leaving for another route waits for that entry.
-  const closeSelection = useL2Sheet(!!selected, selected?.title ?? c.sourceTitle, () => setSelection(null));
+  // v3 IA-06: an open selection owns one history entry (Back closes it) and
+  // names where it sits in a crumb under its title; leaving for another route
+  // waits for that entry.
+  const closeSelection = useSheetHistory(!!selected, () => setSelection(null));
   const name = childProfile.name.split(/\s+/)[0] || childProfile.name;
   const date = (at: string | Date, year = false) => new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short", ...(year ? { year: "numeric" as const } : {}) }).format(at instanceof Date ? at : new Date(at));
   const chapterLabel = (chapter: typeof chapters[number]) => {
@@ -254,7 +256,9 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
       </section>
     </div>
 
-    <Modal open={!!selected} onClose={() => closeSelection()} title={selected?.title ?? c.sourceTitle} maxWidth="max-w-2xl"><div className="portrait-evidence" dir={uiLang === "he" ? "rtl" : "ltr"}>
+    <Modal open={!!selected} onClose={() => closeSelection()} title={selected?.title ?? c.sourceTitle} maxWidth="max-w-2xl">
+      <SheetBreadcrumb label={selected?.title ?? c.sourceTitle} close={closeSelection} />
+      <div className="portrait-evidence" dir={uiLang === "he" ? "rtl" : "ltr"}>
       {selectedObservations.length === 0 && <p>{c.noDomain}</p>}
       {!!selectedObservations.length && <p className="portrait-map-note">{copy.selectionHint}</p>}
       {selectedObservations.slice(0, visible).map(o => {
