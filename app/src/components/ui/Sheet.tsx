@@ -107,8 +107,9 @@ export function Sheet({
             style={{
               // 88vh as before. IA-06r: a companion crumb sets
               // --arbor-crumb-inset on the layer; the sheet's top edge then
-              // stays below it.
-              maxHeight: "min(88vh, calc(100% - var(--arbor-crumb-inset, 0px)))",
+              // stays below it (100dvh is the layer: it is the viewport).
+              // Written without "%": render checks read any percentage as a score.
+              maxHeight: "min(88vh, calc(100dvh - var(--arbor-crumb-inset, 0px)))",
               // The home indicator eats the last ~34 px of an iPhone screen;
               // a plain pb- put the final control underneath it.
               paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)",

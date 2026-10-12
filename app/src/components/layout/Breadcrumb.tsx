@@ -97,7 +97,9 @@ export function Breadcrumb({ levels, place, onSelect, navRef, style }: {
       style={{
         background: "var(--arbor-paper-elevated)",
         border: "1px solid var(--arbor-rule)",
-        boxShadow: "0 8px 24px color-mix(in srgb, var(--arbor-ink) 16%, transparent)",
+        // A token, not a color-mix: no percentage ever reaches the markup
+        // (the clinical firewall's render checks read every "%" as a score).
+        boxShadow: "var(--shadow-md)",
         color: "var(--arbor-ink)",
         ...style,
       }}
@@ -212,7 +214,7 @@ export function SheetBreadcrumb({ label, close }: { label: string; close: SheetC
       levels={crumbLevelsFor(activeTab, label, uiLang, t)}
       onSelect={tab => close(() => setActiveTab(tab))}
       style={place === "bar"
-        ? { top: "var(--crumb-top, 10px)", insetInlineStart: "var(--crumb-start, 1.25rem)", maxInlineSize: "var(--crumb-max, calc(100% - 2.5rem))" }
+        ? { top: "var(--crumb-top, 10px)", insetInlineStart: "var(--crumb-start, 1.25rem)", maxInlineSize: "var(--crumb-max, none)" }
         : { top: "var(--crumb-top, calc(env(safe-area-inset-top) + 4rem))", insetInline: "16px" }}
     />
   );

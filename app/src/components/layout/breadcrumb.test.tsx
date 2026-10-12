@@ -691,7 +691,7 @@ describe("IA-06r · the sheet's crumb", () => {
     expect(nav).toContain('data-crumb-place="bar"');
     expect(nav).toContain("top:var(--crumb-top, 10px)");
     expect(nav).toContain("inset-inline-start:var(--crumb-start, 1.25rem)");
-    expect(nav).toContain("max-inline-size:var(--crumb-max, calc(100% - 2.5rem))");
+    expect(nav).toContain("max-inline-size:var(--crumb-max, none)");
     expect(html).not.toContain("mobile-crumb");
   });
 
@@ -776,6 +776,10 @@ describe("IA-06r · the crumb is the dialog's companion: in its layer, above the
     expect(box).toContain(`aria-owns="${id}"`);
     expect(box).toContain('aria-modal="true"');
     expect(box).toContain("bg-white");
+    // The clinical firewall's render checks read any percentage as a score:
+    // the crumb and the box styles it added carry none.
+    expect(html.slice(html.indexOf("<nav "), html.indexOf("</nav>"))).not.toMatch(/\d+\s?%/);
+    expect(box).not.toMatch(/\d+\s?%/);
     return box;
   }
 
@@ -787,7 +791,7 @@ describe("IA-06r · the crumb is the dialog's companion: in its layer, above the
       </Modal>,
     );
     const box = expectCompanion(html, lang, "topbar-crumb", 'class="portrait-evidence"');
-    expect(box).toContain("max-height:min(90vh, 100%)");
+    expect(box).toContain("max-height:min(90vh, calc(100dvh - max(1rem, var(--arbor-crumb-inset, 0px)) - 1rem))");
     const layer = html.match(/<div [^>]*data-arbor-dialog-layer[^>]*>/)?.[0] ?? "";
     expect(layer).toContain("bg-black/60");
     expect(layer).toContain("padding-top:max(1rem, var(--arbor-crumb-inset, 0px))");
@@ -802,7 +806,7 @@ describe("IA-06r · the crumb is the dialog's companion: in its layer, above the
       </Sheet>,
     );
     const box = expectCompanion(html, lang, "mobile-crumb", 'class="topic-sheet"');
-    expect(box).toContain("max-height:min(88vh, calc(100% - var(--arbor-crumb-inset, 0px)))");
+    expect(box).toContain("max-height:min(88vh, calc(100dvh - var(--arbor-crumb-inset, 0px)))");
     expect(levelsOf(html).map(l => l.label)).toEqual([lang === "he" ? "עכשיו" : "Now", QUESTION]);
   });
 
