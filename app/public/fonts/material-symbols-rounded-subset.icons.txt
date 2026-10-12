@@ -50,7 +50,6 @@ campaign
 capture
 category
 celebration
-center_focus_strong
 chair
 chat
 chat_bubble
@@ -98,7 +97,6 @@ diversity_1
 diversity_3
 domain
 done
-door_open
 download
 draft
 eco
@@ -307,6 +305,7 @@ tab
 table
 tag
 target
+task
 task_alt
 thumb_down
 thumb_up
@@ -323,7 +322,6 @@ try
 tune
 unfold_more
 upload
-uppercase
 verified
 verified_user
 view_agenda
