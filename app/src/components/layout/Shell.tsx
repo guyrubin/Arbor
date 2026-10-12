@@ -5,8 +5,11 @@ import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { backTargetFor, homeForTab, isCompanionHome, placeForTab } from "../../lib/companionPlaces";
-import { useHashQuery } from "../../hooks/useHashQuery";
-import { sectionForTab, pillRowFor, isCompactHiddenTool } from "../../lib/navigation";
+import { useHashQuery, goToRoute } from "../../hooks/useHashQuery";
+import { sectionForTab, pillRowFor, isCompactHiddenTool, activePillIndex } from "../../lib/navigation";
+// v3 F-SHELL-1: Together's Games pill shows behind the same gate as its worlds.
+import { kidModeOpenFor } from "../../lib/age/playGate";
+import { studioWorldsForChild } from "../practice/studioWorlds";
 import { contractFor } from "../../lib/surfaceContract";
 import Sidebar from "./Sidebar";
 import CompanionWorkspace from "../companion/CompanionWorkspace";
@@ -198,6 +201,15 @@ function pillRowHomeName(tab: ActiveTab, lang: string): string {
   return lang === "he" ? named.he : named.en;
 }
 
+/** v3 F-SHELL-1 — the About pill: its template's words around the child's
+ *  first name, the name in <bdi> so a Latin name inside Hebrew (and the
+ *  reverse) keeps its own direction. */
+function AboutChildLabel({ template, name }: { template: string; name: string }) {
+  const at = template.indexOf("{name}");
+  if (at < 0) return <>{template}</>;
+  return <>{template.slice(0, at)}<bdi>{name}</bdi>{template.slice(at + "{name}".length)}</>;
+}
+
 /**
  * Item 11 — the one place a route's declared contract meets its rendered tree.
  *
@@ -244,9 +256,18 @@ export default function Shell() {
   }, [openTopic, createTopic]);
   const ActiveTabComponent = tabRegistry[activeTab];
   const section = sectionForTab(activeTab);
-  // v3 IA-01: Back returns to the route's home, its place or its door
-  // (#/learn → For you, the parent). A home's own route has no Back.
-  const back = isCompanionHome(activeTab) ? null : backTargetFor(activeTab);
+  // v3 F-SHELL-1: the place's pill row (none for a door or an L2 leaf), with
+  // Together's Games pill only while a game world is open to this child.
+  const gamesOpen = kidModeOpenFor(childProfile) && studioWorldsForChild(uiLang === "he" ? "he" : "en", childProfile).worlds.length > 0;
+  const pillRow = pillRowFor(section, activeTab, { gamesOpen });
+  // The lit pill: the route's own, under the hash's filter (-1 = not in a drawn row).
+  const activePill = pillRow.length > 1 ? activePillIndex(pillRow, activeTab, query) : -1;
+  // v3 IA-01 / F-SHELL-1 (critic ruling [5]): Back returns to the route's home,
+  // its place or its door (#/learn → For you, the parent), and only from an L2
+  // leaf: a home, or a route whose pill is lit in the drawn row, has none.
+  const back = isCompanionHome(activeTab) || activePill >= 0 ? null : backTargetFor(activeTab);
+  // About <child>: the pill names the child by first name, isolated in <bdi>.
+  const childFirstName = (childProfile.name || "").trim().split(/\s+/)[0] || "";
   const focusLabel = childProfile.languages.length > 1
     // OBJ-SHELL-01: this was the English literal "Language transition" — the
     // one string in the strip that stayed English in Hebrew, and a phrase that
@@ -474,11 +495,12 @@ export default function Shell() {
               drawer any more). Navy active fill / white inactive with a hairline
               border, sticky to the top of the scroll region. The first pill of
               each section is its Overview/hub. Renders only when there is more
-              than one capability. v3 IA-02: a route whose home is Now or My
-              child wears its place's row (PLACE_PILLS), on the place itself
-              and on every leaf; Together's first level is its in-page filter
-              row, so it has none. Now's first pill is the place, named as such. */}
-          {pillRowFor(section, activeTab).length > 1 && (
+              than one capability. v3 IA-02 / F-SHELL-1: a route whose home is
+              Now, My child or Together wears its place's row (PLACE_PILLS);
+              a door and an L2 leaf wear none. Together's pills are its five
+              filters on #/practice (?f=), opened with goToRoute so Back steps
+              between them. Now's first pill is the place, named as such. */}
+          {pillRow.length > 1 && (
             <div
               role="tablist"
               data-testid="secondary-sibling-nav"
@@ -509,15 +531,15 @@ export default function Shell() {
                 top: 0,
               }}
             >
-              {pillRowFor(section, activeTab).map((it) => {
-                const on = it.tab === activeTab;
+              {pillRow.map((it, index) => {
+                const on = index === activePill;
                 return (
                   <button
-                    key={it.tab}
+                    key={`${it.tab}?${new URLSearchParams(it.query ?? {}).toString()}`}
                     role="tab"
                     aria-selected={on}
                     ref={on ? activePillRef : undefined}
-                    onClick={() => { void selectionHaptic(); setActiveTab(it.tab); }}
+                    onClick={() => { void selectionHaptic(); if (it.query) goToRoute(it.tab, it.query); else setActiveTab(it.tab); }}
                     className={`${!on && isCompactHiddenTool(section, it.tab) ? "hidden md:inline-flex" : "inline-flex"} items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[44px] text-[var(--t-sm)] font-bold whitespace-nowrap transition flex-shrink-0`}
                     style={{
                       scrollSnapAlign: "start",
@@ -528,7 +550,9 @@ export default function Shell() {
                   >
                     {it.tab === "overview"
                       ? <><Icon name={placeForTab(it.tab).icon} size={14} /> {uiLang === "he" ? placeForTab(it.tab).he : placeForTab(it.tab).en}</>
-                      : <><Icon name={it.msIcon} size={14} /> {t(it.labelKey ?? "nav.tab." + it.tab)}</>}
+                      : it.labelKey === "nav.pill.about"
+                        ? <><Icon name={it.msIcon} size={14} /> {childFirstName ? <AboutChildLabel template={t("nav.pill.about")} name={childFirstName} /> : t("nav.pill.aboutChild")}</>
+                        : <><Icon name={it.msIcon} size={14} /> {t(it.labelKey ?? "nav.tab." + it.tab)}</>}
                   </button>
                 );
               })}

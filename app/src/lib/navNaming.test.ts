@@ -110,7 +110,8 @@ describe("GP-19 · the seven Development names", () => {
     // B-PLAY-10: the journey route retired to Practice; its label slug follows.
     expect(resolveRouteId("#/growth-journey")).toBe("practice");
     expect(resolveRouteId("#/growth")).toBe("development");
-    expect(resolveRouteId("#/milestones")).toBe("milestones");
+    // v3 F-SHELL-1 re-pin: #/milestones retired to the Milestones pill (#/development).
+    expect(resolveRouteId("#/milestones")).toBe("development");
     expect(resolveRouteId("#/development-profile")).toBe("profile");
     expect(resolveRouteId("#/development-check")).toBe("screening");
   });

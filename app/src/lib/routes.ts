@@ -112,6 +112,11 @@ export const HASH_ALIASES: Readonly<Record<string, ActiveTab>> = {
   now: "overview",
   together: "practice",
   talk: "coach",
+  // v3 F-SHELL-1: the For you door and the two My child pill names a parent
+  // reads on screen (Moments, About <child>) are names they can type.
+  "for-you": "masterclasses",
+  moments: "timeline",
+  about: "profile",
 };
 
 /**
@@ -160,11 +165,83 @@ export const RETIRED_ROUTES: Readonly<Record<string, ActiveTab>> = {
   // accepted under Guy #5's default, recorded so it is not called an orphan.
   journey: "practice",
   // B-GROWTH-25 (CN-301): the twelve ready-made routine boards are Plans
-  // templates now (lib/routineTemplates, started in one tap on #/plans). The
-  // id keeps its ROUTE_IDS seat and RoutinesTab stays registered (journey
-  // pattern); the device-local board ticks are not migrated (no ledger).
-  routines: "plans",
+  // templates now (lib/routineTemplates). The id keeps its ROUTE_IDS seat and
+  // RoutinesTab stays registered (journey pattern); the device-local board
+  // ticks are not migrated (no ledger). v3 F-SHELL-1: plans itself retired to
+  // Together's Routines pill below, so routines points straight there too
+  // (a retired id never points at another retired id).
+  routines: "practice",
+  // v3 F-SHELL-1 — the route map of the v3 places. Every old leaf below keeps
+  // its ROUTE_IDS seat (and its registry seat), and its hash lands on the pill
+  // that now holds its content; RETIRED_ROUTE_QUERY names the pill state.
+  // My child: Moments, Milestones, About <child>.
+  behaviors: "timeline",
+  milestones: "development",
+  language: "profile",
+  // Together: Routines, Stories, Away from the screen and Games.
+  plans: "practice",
+  stories: "practice",
+  comics: "practice",
+  "bedtime-stories": "practice",
+  "daily-play": "practice",
+  speech: "practice",
+  mimic: "practice",
+  feelings: "practice",
+  adventures: "practice",
 };
+
+/**
+ * v3 F-SHELL-1 — the state a retired hash opens its place in: the Together
+ * filter (`f`, read by TogetherView), the About aspect (`aspect`, read by
+ * About) or the Games world whose preview opens (`world`) and the Stories
+ * sheet that opens (`sheet`). `splitHash` adds these to the query of a retired
+ * key, and of an alias whose target is retired (`#/action-plans` lands where
+ * `#/plans` lands), without overriding a parameter the link already carries.
+ * Every key is a RETIRED_ROUTES key (routes.test.ts).
+ */
+export const RETIRED_ROUTE_QUERY: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  strengths: { aspect: "strengths" },
+  language: { aspect: "lang" },
+  journey: { f: "games" },
+  routines: { f: "routines" },
+  plans: { f: "routines" },
+  stories: { f: "stories" },
+  comics: { f: "stories" },
+  "bedtime-stories": { f: "stories", sheet: "create-story" },
+  "daily-play": { f: "offscreen" },
+  speech: { f: "games", world: "speech" },
+  mimic: { f: "games", world: "mimic" },
+  feelings: { f: "games", world: "feelings" },
+  adventures: { f: "games", world: "adventures" },
+};
+
+/**
+ * v3 F-SHELL-1 — `#/milestones?shelf=<shelf>` opens Milestones on that
+ * shelf's developmental area (`?area=`, read by the Milestones landing); the
+ * `shelf` parameter is carried as it came. Shelf → registry domain, as
+ * lib/shelves/registry.ts SHELVES declares it (a drift test reads both).
+ */
+export const SHELF_AREA: Readonly<Record<string, string>> = {
+  sleep: "body",
+  food: "body",
+  words: "talking",
+  feelings: "feelings",
+  play: "playing",
+  moving: "moving",
+  hands: "hands",
+  school: "thinking",
+  family: "family",
+};
+
+const own = (map: object, key: string): boolean => Object.prototype.hasOwnProperty.call(map, key);
+
+/** The retired key a hash key stands for: itself, or the retired id its alias names. */
+function retiredKeyOf(key: string): string | null {
+  const lower = key.toLowerCase();
+  if (own(RETIRED_ROUTES, lower)) return lower;
+  const aliased = own(HASH_ALIASES, lower) ? HASH_ALIASES[lower] : undefined;
+  return aliased && own(RETIRED_ROUTES, aliased) ? aliased : null;
+}
 
 /**
  * B-LOOP-11 — a hash may carry a QUERY after the route id: the journal's
@@ -189,13 +266,23 @@ export function splitHash(raw: string): { key: string; query: URLSearchParams } 
     for (const [k, v] of Object.entries(sub.query)) query.set(k, v);
     return { key: sub.route, query };
   }
+  // v3 F-SHELL-1: a retired key opens its place in the state the route map
+  // names (RETIRED_ROUTE_QUERY); a parameter the link carries wins.
+  const retired = retiredKeyOf(key);
+  if (retired) {
+    const state = own(RETIRED_ROUTE_QUERY, retired) ? RETIRED_ROUTE_QUERY[retired] : {};
+    for (const [k, v] of Object.entries(state)) if (!query.has(k)) query.set(k, v);
+    const shelf = query.get("shelf");
+    if (retired === "milestones" && shelf && own(SHELF_AREA, shelf) && !query.has("area")) query.set("area", SHELF_AREA[shelf]);
+  }
   return { key, query };
 }
 
 /**
  * B-GROWTH-37 — SUB-ROUTES: a path that names a MODE of a route.
- * `#/language/said` is `#/language?view=said` (the month page of "Things
- * {name} said", read by LanguageLabTab through `useHashQuery`). Like the
+ * `#/language/said` was `#/language?view=said` (the month page of "Things
+ * {name} said"); v3 F-SHELL-1 re-homes it with the words themselves: Moments
+ * across areas, on talking (`#/timeline?view=areas&area=talking`). Like the
  * `?view=` / `?shelf=` modes (B-LOOP-11) it is the same route — no
  * ROUTE_IDS seat, no contract of its own — so `splitHash` cuts the path into
  * the route key and the query the mode reads (the path's mode wins over a
@@ -205,7 +292,7 @@ export function splitHash(raw: string): { key: string; query: URLSearchParams } 
  * ROUTE_ID (routes.query.test.ts).
  */
 export const SUB_ROUTES: Readonly<Record<string, { route: ActiveTab; query: Readonly<Record<string, string>> }>> = {
-  "language/said": { route: "language", query: { view: "said" } },
+  "language/said": { route: "timeline", query: { view: "areas", area: "talking" } },
 };
 
 /** The query of a hash (`#/journal?shelf=sleep` → shelf=sleep); empty when none. */

@@ -98,7 +98,7 @@ export const askFirst = (q: string): boolean => q.trim().endsWith("?");
 export function useSearchResults(q: string, opts: { enabled: boolean; catalogLimit?: number; recordLimit?: number; onNavigate?: () => void }) {
   const {
     behaviorLogs, milestones, actionPlans, conversations, childProfile,
-    setActiveTab, openConversation, setSelectedLens, requestJournalFocus, seedCoach,
+    setActiveTab, openConversation, setSelectedLens, requestJournalFocus, seedCoach, openHardMomentNow,
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const heLang = uiLang === "he";
@@ -130,7 +130,14 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
     icon: KIND_ICON[e.kind] ?? "search",
     color: KIND_TOKEN[e.kind] ?? "var(--arbor-green-ink)",
     // B-ASKJB-12: a scholar entry preselects its lens, then opens Ask.
-    go: () => { if (e.lens) setSelectedLens(e.lens); setActiveTab(e.tab); },
+    // v3 F-SHELL-1: #/behaviors is retired, so a hard-moment entry (indexed
+    // only behind availableHardMomentCards) opens its card in the hard-moment
+    // sheet over the current place instead of switching route.
+    go: () => {
+      if (e.kind === "hard-moment") { openHardMomentNow(e.id.slice("hard-moment:".length)); return; }
+      if (e.lens) setSelectedLens(e.lens);
+      setActiveTab(e.tab);
+    },
   });
 
   const term = q.trim();

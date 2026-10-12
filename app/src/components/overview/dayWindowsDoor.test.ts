@@ -18,7 +18,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { en, he, translate } from "../../lib/i18n";
-import { COMPACT_HIDDEN_TOOLS, SECTIONS } from "../../lib/navigation";
+import { COMPACT_HIDDEN_TOOLS, NO_PILL_ROW_TABS, PLACE_PILLS, SECTIONS } from "../../lib/navigation";
 import { todayLiveSource } from "../../testTodaySource";
 
 const SRC_ROOT = path.resolve(__dirname, "..", "..");
@@ -77,11 +77,17 @@ describe("law 6 — #/day-windows keeps a door at 390 and at 1280", () => {
     }
   });
 
-  it("1280: the Today pill stays (hidden only below md)", () => {
+  it("1280: the Settings row is its door; the Today hub still indexes it, the Now row does not", () => {
+    // v3 F-SHELL-1 re-pin (critic ruling [3]; was: the Today pill stays):
+    // the Now row is Now · Weekly report, so #/day-windows is an L2 leaf with
+    // no row and Back to Now. The Today hub (More, search) still lists it.
     const today = SECTIONS.find((s) => s.id === "today");
     const tabs = JSON.stringify(today);
     expect(tabs).toContain('"day-windows"');
     expect(COMPACT_HIDDEN_TOOLS.today).toContain("day-windows");
+    expect(PLACE_PILLS.now.map((it) => it.tab)).not.toContain("day-windows");
+    expect(NO_PILL_ROW_TABS.has("day-windows")).toBe(true);
+    expect(SETTINGS).toContain('data-testid="settings-open-day-windows"');
   });
 });
 

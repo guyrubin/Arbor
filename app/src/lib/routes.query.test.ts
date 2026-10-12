@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ROUTE_IDS, SUB_ROUTES, hashQuery, resolveHash, resolveRouteId, routeHash, splitHash } from "./routes";
+import { RETIRED_ROUTES, ROUTE_IDS, SUB_ROUTES, hashQuery, resolveHash, resolveRouteId, routeHash, splitHash } from "./routes";
 
 /* B-LOOP-11 — the journal's shelf page and professional view are the SAME
    route with a query (`#/journal?shelf=sleep`, `#/journal?view=pro`). Before
@@ -46,35 +46,46 @@ describe("resolveRouteId / resolveHash — a query never makes a route unknown",
   });
 });
 
-/* B-GROWTH-37 — `#/language/said` is a MODE of #/language (`?view=said`, the
+/* B-GROWTH-37 — `#/language/said` was a MODE of #/language (`?view=said`, the
    month page LanguageLabTab reads through useHashQuery). The sub-route
-   resolves in splitHash, the one place a hash is cut; no ROUTE_IDS seat. */
+   resolves in splitHash, the one place a hash is cut; no ROUTE_IDS seat.
+   v3 F-SHELL-1 re-pin (critic ruling [28]): #/language retired to About, and
+   the words themselves live in Moments as moments tagged talking, so the
+   sub-route lands on Moments across areas, on talking
+   (#/timeline?view=areas&area=talking). */
 describe("SUB_ROUTES — #/language/said", () => {
-  it("cuts to the language route with view=said; other parameters ride along; the path's mode wins", () => {
+  it("cuts to Moments with view=areas&area=talking; other parameters ride along; the path's mode wins", () => {
     const { key, query } = splitHash("#/language/said");
-    expect(key).toBe("language");
-    expect(query.get("view")).toBe("said");
+    expect(key).toBe("timeline");
+    expect(query.get("view")).toBe("areas");
+    expect(query.get("area")).toBe("talking");
     expect(hashQuery("#/language/said?month=2026-09").get("month")).toBe("2026-09");
-    expect(hashQuery("#/language/said?month=2026-09").get("view")).toBe("said");
-    expect(hashQuery("#/language/said?view=pro").get("view")).toBe("said");
-    expect(splitHash("#/language/said/").key).toBe("language");
-    expect(splitHash("#/Language/Said").key).toBe("language");
+    expect(hashQuery("#/language/said?month=2026-09").get("view")).toBe("areas");
+    expect(hashQuery("#/language/said?view=pro").get("view")).toBe("areas");
+    expect(hashQuery("#/language/said?area=moving").get("area")).toBe("talking");
+    expect(splitHash("#/language/said/").key).toBe("timeline");
+    expect(splitHash("#/Language/Said").key).toBe("timeline");
   });
 
-  it("resolves as the language route (never unknown, never Today)", () => {
-    expect(resolveRouteId("#/language/said")).toBe("language");
-    expect(resolveHash("#/language/said")).toEqual({ tab: "language", unknown: false });
-    expect(resolveHash("#/language/said?month=2026-09")).toEqual({ tab: "language", unknown: false });
-    // the existing query form is unchanged
-    expect(hashQuery("#/language?view=said").get("view")).toBe("said");
+  it("resolves as the Moments route (never unknown, never Today, never the retired language id)", () => {
+    expect(resolveRouteId("#/language/said")).toBe("timeline");
+    expect(resolveHash("#/language/said")).toEqual({ tab: "timeline", unknown: false });
+    expect(resolveHash("#/language/said?month=2026-09")).toEqual({ tab: "timeline", unknown: false });
+    // the bare language hash is retired to About, on its language aspect
+    expect(resolveRouteId("#/language")).toBe("profile");
+    expect(hashQuery("#/language").get("aspect")).toBe("lang");
   });
 
-  it("the map: lowercase route/mode keys, every target a ROUTE_ID, no key a ROUTE_ID", () => {
+  it("the map: lowercase route/mode keys, every target a live ROUTE_ID, no key a ROUTE_ID", () => {
     for (const [k, v] of Object.entries(SUB_ROUTES)) {
       expect(k).toMatch(/^[a-z][a-z0-9-]*\/[a-z][a-z0-9-]*$/);
       expect(ROUTE_IDS as readonly string[]).toContain(v.route);
+      expect(v.route in RETIRED_ROUTES, k).toBe(false);
       expect(ROUTE_IDS as readonly string[]).not.toContain(k);
-      expect(k.startsWith(`${v.route}/`)).toBe(true);
+      // A mode of its own route, or (F-SHELL-1) a mode of a RETIRED route
+      // re-homed by the route map with the content it showed.
+      const head = k.split("/")[0];
+      expect(head === v.route || head in RETIRED_ROUTES, k).toBe(true);
     }
     expect(ROUTE_IDS as readonly string[]).not.toContain("language/said");
   });
@@ -83,5 +94,8 @@ describe("SUB_ROUTES — #/language/said", () => {
     expect(resolveRouteId("#/language/heard")).toBeNull();
     expect(resolveHash("#/overview/extra")).toEqual({ tab: "overview", unknown: true });
     expect(splitHash("#/language/heard").key).toBe("language/heard");
+    // …and a mode under a LIVE route must name that route
+    const head = "overview/extra".split("/")[0];
+    expect(head === "timeline" || head in RETIRED_ROUTES).toBe(false);
   });
 });

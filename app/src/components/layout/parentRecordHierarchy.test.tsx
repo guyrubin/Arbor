@@ -128,9 +128,11 @@ describe("record hierarchy keeps useful controls without repeating navigation or
     expect(shell.match(/data-testid="secondary-place-back"/g)).toHaveLength(1);
     // v3 IA-01 re-pin (was `setActiveTab(placeForTab(activeTab).tab)`): Back returns
     // to the route's HOME, its place or its door, and a home's own route has none.
-    expect(shell).toContain("const back = isCompanionHome(activeTab) ? null : backTargetFor(activeTab);");
+    // v3 F-SHELL-1 re-pin (critic ruling [5]): nor does a route whose pill is
+    // lit in the drawn row; the pill row is the way between siblings.
+    expect(shell).toContain("const back = isCompanionHome(activeTab) || activePill >= 0 ? null : backTargetFor(activeTab);");
     expect(shell).toContain("{back && <button data-testid=\"secondary-place-back\" onClick={() => setActiveTab(back.tab)}");
-    expect(shell).toContain("pillRowFor(section, activeTab).map");
+    expect(shell).toContain("pillRow.map((it, index) =>");
     expect(shell).not.toContain('t("nav.sub." + hubSubKey');
     const nav = shell.slice(shell.indexOf('data-testid="secondary-sibling-nav"'), shell.indexOf("{/* Secondary pages"));
     expect(nav).not.toContain("marginBlockStart:");

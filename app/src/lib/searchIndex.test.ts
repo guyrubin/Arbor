@@ -34,7 +34,7 @@ import { ROUTINES } from "./routines";
 import { scholarsInfo } from "../initialData";
 import { hardMomentCards, publishedHardMomentCards } from "../content/hardMomentCards";
 import { SECTIONS, sectionForTab } from "./navigation";
-import { ROUTE_IDS } from "./routes";
+import { RETIRED_ROUTES, ROUTE_IDS } from "./routes";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const readSrc = (...rel: string[]) =>
@@ -109,6 +109,13 @@ describe("index coverage — every library, every item", () => {
   it("every surfaced nav leaf has a route entry (+ the 3 consolidated views)", () => {
     for (const sec of SECTIONS) {
       for (const it of sec.items) {
+        // v3 F-SHELL-1 re-pin: a retired leaf (behaviors, milestones, plans…)
+        // has no route row (B-SHELL-20 f); the route its hash lands on has one.
+        if (it.tab in RETIRED_ROUTES) {
+          expect(byId.has(`route:${it.tab}`), `route:${it.tab}`).toBe(false);
+          expect(byId.has(`route:${RETIRED_ROUTES[it.tab]}`), `route:${RETIRED_ROUTES[it.tab]}`).toBe(true);
+          continue;
+        }
         expect(byId.has(`route:${it.tab}`), `route:${it.tab}`).toBe(true);
       }
     }

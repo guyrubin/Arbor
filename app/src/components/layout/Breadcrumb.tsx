@@ -30,16 +30,18 @@ type Translate = (key: string, vars?: Record<string, string | number>) => string
 /**
  * Level 1 is the route's home (its place or door, IA-04). Level 2 is the
  * route's own name as its pill row prints it (IA-02), dropped when it is the
- * home again (Now's first pill IS Now). Level 3 is the sheet.
+ * home again (Now's first pill IS Now). Level 3 is the sheet. v3 F-SHELL-1:
+ * `childName` fills About {name} as the pill prints it; a filter pill
+ * (Together's ?f=) is a state of its route, not the route's own name.
  */
-export function crumbLevelsFor(tab: ActiveTab, sheetLabel: string, lang: string, t: Translate): CrumbLevel[] {
+export function crumbLevelsFor(tab: ActiveTab, sheetLabel: string, lang: string, t: Translate, childName = ""): CrumbLevel[] {
   const home = homeForTab(tab);
   const named = home.kind === "place" ? home.place : home.door;
   const homeLabel = lang === "he" ? named.he : named.en;
   const levels: CrumbLevel[] = [{ label: homeLabel, tab: named.tab }];
-  const pill = pillRowFor(sectionForTab(tab), tab).find(item => item.tab === tab);
-  const key = pill?.labelKey ?? "nav.tab." + tab;
-  const routeLabel = pill?.labelKey || tab !== named.tab ? t(key) : homeLabel;
+  const pill = pillRowFor(sectionForTab(tab), tab).find(item => item.tab === tab && !item.query);
+  const key = pill?.labelKey === "nav.pill.about" && !childName ? "nav.pill.aboutChild" : pill?.labelKey ?? "nav.tab." + tab;
+  const routeLabel = pill?.labelKey || tab !== named.tab ? t(key, { name: childName }) : homeLabel;
   if (routeLabel && routeLabel !== key && routeLabel !== homeLabel) levels.push({ label: routeLabel, tab });
   levels.push({ label: sheetLabel });
   return levels;
@@ -114,12 +116,12 @@ export function SheetBreadcrumb({ label, close, className = "-mt-3 mb-1 -ms-1" }
   close: SheetClose;
   className?: string;
 }) {
-  const { activeTab, setActiveTab } = useArbor();
+  const { activeTab, setActiveTab, childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   return (
     <Breadcrumb
       compact
-      levels={crumbLevelsFor(activeTab, label, uiLang, t)}
+      levels={crumbLevelsFor(activeTab, label, uiLang, t, (childProfile?.name || "").trim().split(/\s+/)[0] || "")}
       className={className}
       onSelect={tab => close(() => setActiveTab(tab))}
     />

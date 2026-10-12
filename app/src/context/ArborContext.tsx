@@ -22,7 +22,7 @@ import { useToastOptional } from "./ToastContext";
 import { validateLogDraft, buildMomentLog, isIncidentType, MOMENT_BEHAVIOR_TYPE } from "../content/behaviorTaxonomy";
 import type { ScoredActivity } from "../playbank/select";
 import type { PlayActivity } from "../playbank/content";
-import { ROUTE_IDS, resolveHash, FALLBACK_ROUTE, type ActiveTab } from "../lib/routes";
+import { ROUTE_IDS, RETIRED_ROUTES, resolveHash, FALLBACK_ROUTE, type ActiveTab } from "../lib/routes";
 import {
   initialMilestones,
   demoSeedFor,
@@ -249,7 +249,12 @@ function useArborState() {
   // hash lands on Today, and the flag below turns into one replaceState + one
   // quiet sentence in the effect that runs after mount.
   const initialHash = resolveHash(typeof window === "undefined" ? "" : window.location.hash, readLS("arbor.activeTab"));
-  const [activeTab, setActiveTabState] = useState<ActiveTab>(initialHash.tab);
+  const [activeTab, setActiveTabRaw] = useState<ActiveTab>(initialHash.tab);
+  // v3 F-SHELL-1: a retired id never mounts. A door that still names one
+  // (setActiveTab("stories")) renders the route it now lands on at once; the
+  // hash keeps the id it was given, so its place state (?f=, ?aspect=) is read
+  // from it (lib/routes RETIRED_ROUTE_QUERY).
+  const setActiveTabState = (t: ActiveTab) => setActiveTabRaw(RETIRED_ROUTES[t] ?? t);
   const unknownHashRef = useRef<boolean>(initialHash.unknown);
   const setActiveTab = (t: ActiveTab) => {
     // KID-LOCK (W0.9, LEAK 3): while Kid Mode is open, parent navigation is

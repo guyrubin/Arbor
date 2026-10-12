@@ -261,24 +261,39 @@ describe("IA-06 · Breadcrumb markup", () => {
 });
 
 describe("IA-06 · crumb levels follow the route's home and its pill row", () => {
-  const t = (lang: "en" | "he") => (key: string) => translate(lang, key);
+  const t = (lang: "en" | "he") => (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
+  // v3 F-SHELL-1 re-pin (critic ruling [2]; was: My child › Development map,
+  // and a milestones level): the My child row is Milestones (#/development) ·
+  // Moments (#/timeline) · About {name} (#/profile); #/milestones is retired.
   it.each([
     ["overview", ["Now", QUESTION]],
-    ["development", ["My child", "Development map", QUESTION]],
-    ["milestones", ["My child", "Milestones", QUESTION]],
+    ["development", ["My child", "Milestones", QUESTION]],
+    ["timeline", ["My child", "Moments", QUESTION]],
     ["coach", ["Talk with Arbor", QUESTION]],
+    // Together's filters are states of #/practice, not a level of their own.
+    ["practice", ["Together", QUESTION]],
   ] as const)("EN %s", (tab, expected) => {
     expect(crumbLevelsFor(tab, QUESTION, "en", t("en")).map(l => l.label)).toEqual(expected);
   });
 
   it("HE: the same levels in Hebrew", () => {
-    expect(crumbLevelsFor("development", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["הילד שלי", "מפת התפתחות", QUESTION]);
+    expect(crumbLevelsFor("development", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["הילד שלי", "אבני דרך", QUESTION]);
+    expect(crumbLevelsFor("timeline", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["הילד שלי", "רגעים", QUESTION]);
     expect(crumbLevelsFor("overview", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["עכשיו", QUESTION]);
   });
 
+  it("About prints the child's first name as its pill does, and a plain fallback without one", () => {
+    expect(crumbLevelsFor("profile", QUESTION, "en", t("en"), "Mia").map(l => l.label)).toEqual(["My child", "About Mia", QUESTION]);
+    expect(crumbLevelsFor("profile", QUESTION, "he", t("he"), "מיה").map(l => l.label)).toEqual(["הילד שלי", "על מיה", QUESTION]);
+    expect(crumbLevelsFor("profile", QUESTION, "en", t("en")).map(l => l.label)).toEqual(["My child", "About your child", QUESTION]);
+    expect(crumbLevelsFor("profile", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["הילד שלי", "על הילד שלכם", QUESTION]);
+    // NEGATIVE CONTROL: the raw template never reaches the crumb
+    expect(crumbLevelsFor("profile", QUESTION, "en", t("en")).map(l => l.label).join(" ")).not.toContain("{name}");
+  });
+
   it("ancestors carry their routes; the sheet level carries none", () => {
-    expect(crumbLevelsFor("milestones", QUESTION, "en", t("en"))).toEqual([
-      { label: "My child", tab: "development" }, { label: "Milestones", tab: "milestones" }, { label: QUESTION },
+    expect(crumbLevelsFor("timeline", QUESTION, "en", t("en"))).toEqual([
+      { label: "My child", tab: "development" }, { label: "Moments", tab: "timeline" }, { label: QUESTION },
     ]);
   });
 });
@@ -473,10 +488,11 @@ describe("IA-06 · useSheetHistory owns one history entry", () => {
 });
 
 describe("IA-06 · the sheet's crumb", () => {
-  it("#/development with a selection open: My child › Development map › its title", () => {
+  // v3 F-SHELL-1 re-pin (critic ruling [2]): #/development's pill is Milestones.
+  it("#/development with a selection open: My child › Milestones › its title", () => {
     state.activeTab = "development";
     const html = renderToStaticMarkup(<SheetBreadcrumb label="Mornings at home" close={vi.fn()} />);
-    expect(levelsOf(html).map(l => l.label)).toEqual(["My child", "Development map", "Mornings at home"]);
+    expect(levelsOf(html).map(l => l.label)).toEqual(["My child", "Milestones", "Mornings at home"]);
   });
 
   it("#/overview with the question sheet open: Now › the question (the Now pill is not repeated)", () => {
@@ -487,7 +503,7 @@ describe("IA-06 · the sheet's crumb", () => {
     state.lang = "he"; state.activeTab = "development";
     const html = renderToStaticMarkup(<SheetBreadcrumb label="בוקר בבית" close={vi.fn()} />);
     expect(html).toContain('aria-label="נתיב ניווט"');
-    expect(levelsOf(html).map(l => l.label)).toEqual(["הילד שלי", "מפת התפתחות", "בוקר בבית"]);
+    expect(levelsOf(html).map(l => l.label)).toEqual(["הילד שלי", "אבני דרך", "בוקר בבית"]);
   });
 
   it("is always the compact crumb, pulled up under the dialog title", () => {
@@ -562,7 +578,7 @@ describe("IA-06 · the crumb renders inside the open dialog, under its title", (
       </Modal>,
     );
     expectInDialog(html, lang, 'class="portrait-evidence"');
-    expect(levelsOf(html).map(l => l.label)).toEqual(lang === "he" ? ["הילד שלי", "מפת התפתחות", "Mornings at home"] : ["My child", "Development map", "Mornings at home"]);
+    expect(levelsOf(html).map(l => l.label)).toEqual(lang === "he" ? ["הילד שלי", "אבני דרך", "Mornings at home"] : ["My child", "Milestones", "Mornings at home"]);
   });
 
   it("with no sheet open, no crumb renders", () => {
