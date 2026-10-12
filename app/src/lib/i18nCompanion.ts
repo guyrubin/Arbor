@@ -312,6 +312,10 @@ export const companionEn = {
   "companion.talk.provenance.topic": "Based on what you kept and the question you chose. Arbor suggests; you decide.",
   "companion.talk.provenance.topic-only": "Based on the question you chose. Arbor suggests; you decide.",
   "companion.talk.provenance.general": "Arbor suggests; you decide.",
+  // v3 IA-04: the three doors' names (COMPANION_DOORS in lib/companionPlaces).
+  "companion.door.talk": "Talk with Arbor",
+  "companion.door.learn": "For you, the parent",
+  "companion.door.care": "Care, together",
 };
 
 export const companionHe = {
@@ -626,4 +630,10 @@ export const companionHe = {
   "companion.talk.provenance.topic": "מבוסס על מה ששמרתם ועל השאלה שבחרתם. ארבור מציע, ההחלטה שלכם.",
   "companion.talk.provenance.topic-only": "מבוסס על השאלה שבחרתם. ארבור מציע, ההחלטה שלכם.",
   "companion.talk.provenance.general": "ארבור מציע, ההחלטה שלכם.",
+  // v3 IA-04: the three doors' names (COMPANION_DOORS in lib/companionPlaces).
+  // v3 IA-01: Learn and Care take the v3 names, in the plural address the
+  // companion copy uses.
+  "companion.door.talk": "לדבר עם ארבור",
+  "companion.door.learn": "בשבילכם, ההורים",
+  "companion.door.care": "טיפול, ביחד",
 };
