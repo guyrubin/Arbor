@@ -6,7 +6,11 @@
  * IA-05r: the sections and the mirror rule live once, in ./searchSections, and
  * are loaded here as the real module. The mirror test is behavioural (every
  * shipped glyph through both surfaces), and its negative control mutates the
- * production source back to the old kind rule. */
+ * production source back to the old kind rule.
+ *
+ * IA-05r round 2: a home's own row (Talk with Arbor under Talk with Arbor)
+ * has no crumb and no sub, so neither surface draws a second line under it;
+ * the negative control puts the always-drawn line back. */
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import ts from "typescript";
@@ -252,5 +256,43 @@ describe("v3 IA-05r · the shared sections", () => {
 
   it("returns nothing for nothing", () => {
     expect(searchSections.searchSections([])).toEqual([]);
+  });
+});
+
+describe("v3 IA-05r · a home's own row says its name once", () => {
+  const TALK = { id: "talk", label: "Talk with Arbor", icon: "forum" };
+  const homeRows = () => [
+    { id: "route:coach", kind: "route", icon: "forum", label: "Talk with Arbor", sub: "", group: TALK, go: vi.fn() },
+    { id: "route:milestones", kind: "route", icon: "eco", label: "Milestones", sub: "My child", group: CHILD, crumb: ["My child", "Milestones"], go: vi.fn() },
+  ];
+  /** The muted line under a row's label (the modal's truncated text-xs line,
+   *  the topbar's 12 px nowrap line); the kind badge is neither. */
+  const secondLines = (surface: typeof SURFACES[number], row: View) => elements(row).filter(node => surface === "SearchModal"
+    ? classes(node).includes("text-xs") && classes(node).includes("truncate")
+    : node.props.style?.fontSize === "12px" && node.props.style?.whiteSpace === "nowrap");
+  const times = (haystack: string, needle: string) => haystack.split(needle).length - 1;
+
+  it.each(SURFACES)("%s: no second line under the home's own row; a destination keeps its crumb", (surface) => {
+    const { tree } = typed(surface, homeRows());
+    const [home, milestones] = rowsOf(tree());
+    expect(secondLines(surface, home)).toHaveLength(0);
+    expect(text(home)).toBe("Talk with Arbor" + "route");
+    const talk = elements(tree()).find(node => node.props.role === "group" && node.props["aria-label"] === "Talk with Arbor")!;
+    // Once in the header, once as the row: not a third time under it.
+    expect(times(text(talk), "Talk with Arbor")).toBe(2);
+    expect(secondLines(surface, milestones)).toHaveLength(1);
+    expect(text(milestones)).toContain("My child" + CRUMB_SPOKEN_SEPARATOR + "Milestones");
+  });
+
+  it.each([
+    ["SearchModal", (src: string) => src.replace("{(r.crumb || r.sub) && <span", "<span").replace(/(:\s*r\.sub\})(\s*)<\/span>\}/, "$1$2</span>")],
+    ["TopbarSearch", (src: string) => src.replace("{(entry.crumb || entry.sub) && <span", "<span").replace(/:\s*entry\.sub\}(\s*)<\/span>\}/, ": (entry.sub || kindLabel(entry.kind))}$1</span>")],
+  ] as const)("NEGATIVE CONTROL (%s): the old always-drawn line comes back under the home's own row", (surface, old) => {
+    const real = source(`./${surface}.tsx`);
+    expect(old(real)).not.toBe(real);
+    const home = rowsOf(typed(surface, homeRows(), vi.fn(), old).tree())[0];
+    expect(secondLines(surface, home)).toHaveLength(1);
+    // The topbar's old fallback printed the kind word twice.
+    if (surface === "TopbarSearch") expect(text(home)).toBe("Talk with Arbor" + "route" + "route");
   });
 });

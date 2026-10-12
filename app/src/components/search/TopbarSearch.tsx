@@ -302,7 +302,10 @@ export default function TopbarSearch() {
                         >
                           {entry.label}
                         </span>
-                        <span
+                        {/* v3 IA-05: a crumb reads "home › destination"; the chevron turns once in Hebrew
+                            and stays silent, a hidden separator is spoken in its place. A home's own row
+                            has neither crumb nor sub, so it has no second line (IA-05r). */}
+                        {(entry.crumb || entry.sub) && <span
                           style={{
                             display: "block",
                             fontSize: "12px",
@@ -312,10 +315,8 @@ export default function TopbarSearch() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {/* v3 IA-05: a crumb reads "home › destination"; the chevron turns once in Hebrew
-                              and stays silent, a hidden separator is spoken in its place. */}
-                          {entry.crumb ? entry.crumb.map((part, n) => <span key={n}>{n > 0 && <span className="sr-only">{CRUMB_SPOKEN_SEPARATOR}</span>}{n > 0 && <Icon name="chevron_right" size={14} className="mx-0.5 rtl:-scale-x-100" />}{part}</span>) : (entry.sub || kindLabel(entry.kind))}
-                        </span>
+                          {entry.crumb ? entry.crumb.map((part, n) => <span key={n}>{n > 0 && <span className="sr-only">{CRUMB_SPOKEN_SEPARATOR}</span>}{n > 0 && <Icon name="chevron_right" size={14} className="mx-0.5 rtl:-scale-x-100" />}{part}</span>) : entry.sub}
+                        </span>}
                       </span>
 
                       {/* Kind badge */}

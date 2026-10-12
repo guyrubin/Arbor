@@ -6,7 +6,13 @@
  *
  * IA-05r: "routines" reads Together › Routines (nav.tab.plans renamed), and
  * every row of the Talk door opens the Talk panel through
- * requestCompanionConversation, never by moving to #/coach. */
+ * requestCompanionConversation, never by moving to #/coach. A home's own row
+ * has no crumb and no second line (its header names it), and a saved question
+ * is chosen through the sheet's own path, so a set-aside one comes back first.
+ *
+ * Re-pins (IA-05r round 2, reviewer findings): the consult, coach and thread
+ * rows no longer carry the one-part crumb that repeated their header; the
+ * saved-question row opens its sheet once the choice has settled (await). */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActionPlan, BehaviorLog, Milestone } from "../../types";
 import type { Conversation } from "../../context/ArborContext";
@@ -18,7 +24,7 @@ const h = vi.hoisted(() => ({
   records: null as unknown as Records, topics: [] as unknown, childId: "child-a", lang: "en" as "en" | "he",
   index: null as SearchIndexModule | null, cursor: 0,
   memos: [] as { deps: unknown[]; value: unknown }[],
-  actions: { setActiveTab: vi.fn(), openConversation: vi.fn(), setSelectedLens: vi.fn(), requestJournalFocus: vi.fn(), seedCoach: vi.fn(), selectFamilyTopic: vi.fn() },
+  actions: { setActiveTab: vi.fn(), openConversation: vi.fn(), setSelectedLens: vi.fn(), requestJournalFocus: vi.fn(), seedCoach: vi.fn(), selectFamilyTopic: vi.fn(), updateFamilyTopic: vi.fn(async (_id: string, _patch: { aside?: boolean }) => {}) },
   openSheet: vi.fn(), talk: vi.fn(),
 }));
 vi.mock("react", () => ({
@@ -41,7 +47,7 @@ vi.mock("../companion/familyTopicEvents", () => ({ openFamilyTopicSheet: h.openS
 // The Talk panel's one door (CompanionWorkspace holds the listener).
 vi.mock("../../lib/companionConversation", () => ({ requestCompanionConversation: h.talk }));
 import { useSearchResults } from "./useSearchResults";
-import { getSearchIndex, searchCatalog } from "../../lib/searchIndex";
+import { getSearchIndex, searchCatalog, ROUTINES_INTENT_TAB } from "../../lib/searchIndex";
 import { translate } from "../../lib/i18n";
 import { COMPANION_DOORS, COMPANION_PLACES, homeForTab } from "../../lib/companionPlaces";
 
@@ -60,10 +66,14 @@ const homeOf = (tab: Parameters<typeof homeForTab>[0], lang: "en" | "he") => {
   return { id: named.id, label: named[lang], icon: named.icon };
 };
 const row = (rows: SearchRow[], id: string) => rows.find(r => r.id === id)!;
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 const HOME_IDS = [...COMPANION_PLACES, ...COMPANION_DOORS].map(home => home.id as string);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // A test's topic store must not outlive it (clearAllMocks keeps implementations).
+  h.actions.selectFamilyTopic.mockReset();
+  h.actions.updateFamilyTopic.mockReset();
   h.records = empty(); h.topics = []; h.childId = "child-a"; h.lang = "en"; h.cursor = 0; h.memos = [];
   h.index = { getSearchIndex, searchCatalog };
 });
@@ -83,15 +93,49 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
     expect(milestones.crumb).toEqual([home, page]);
   });
 
-  it.each(["en", "he"] as const)("consult (%s) sits under Care, together and reads as the door alone", (lang) => {
+  it.each(["en", "he"] as const)("consult (%s) sits under Care, together and does not say the door again", (lang) => {
     h.lang = lang;
     const care = { id: "care", label: translate(lang, "companion.door.care"), icon: "diversity_1" };
     expect(translate("en", "companion.door.care")).toBe("Care, together");
     const consult = row(render("consult").catalog, "route:consult");
     expect(consult.group).toEqual(care);
     expect(consult.icon).toBe("diversity_1");
-    // The door's own route: no "Care, together › Consult" echo.
-    expect(consult.crumb).toEqual([care.label]);
+    // IA-05r re-pin: the door's own route sits under the door's header, so it
+    // has no crumb and no second line (it used to read [care.label] again).
+    expect(consult.crumb).toBeUndefined();
+    expect(consult.sub).toBe("");
+  });
+
+  it.each(["en", "he"] as const)("IA-05r: a home's own route never repeats the home's name under its header (%s)", (lang) => {
+    h.lang = lang;
+    const homes = [...COMPANION_PLACES, ...COMPANION_DOORS];
+    const rows = render("").ordered;
+    let seen = 0;
+    for (const home of homes) {
+      const own = rows.find(r => r.id === "route:" + home.tab);
+      if (!own) continue;
+      seen++;
+      expect(own.group?.label, own.id).toBe(home[lang]);
+      expect(own.crumb, own.id).toBeUndefined();
+      expect(own.sub, own.id).toBe("");
+    }
+    // Talk with Arbor and Care, together are both listed, so both are checked.
+    expect(seen).toBeGreaterThanOrEqual(2);
+    expect(rows.some(r => r.id === "route:coach") && rows.some(r => r.id === "route:consult")).toBe(true);
+    // A route named exactly like its home (Hebrew "My child" for the profile)
+    // would say the name twice too, so it reads the same way.
+    const namedLikeHome = rows.filter(r => r.label === r.group!.label);
+    for (const twin of namedLikeHome) {
+      expect(twin.crumb, twin.id).toBeUndefined();
+      expect(twin.sub, twin.id).toBe("");
+    }
+    // NEGATIVE CONTROL: every other route row still reads home › destination.
+    const others = rows.filter(r => !homes.some(home => "route:" + home.tab === r.id) && r.label !== r.group!.label);
+    expect(others.length).toBeGreaterThan(5);
+    for (const other of others) {
+      expect(other.crumb, other.id).toEqual([other.group!.label, other.label]);
+      expect(other.sub, other.id).not.toBe("");
+    }
   });
 
   it.each(["routines", "Routine", "שגרות", "שגרה"])("%j opens Plans first, under Plans' own home", (query) => {
@@ -99,15 +143,31 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
       h.lang = lang; h.memos = [];
       const result = render(query);
       const first = result.ordered[0];
-      expect(first.id).toBe("route:plans");
-      const home = homeOf("plans", lang);
+      expect(first.id).toBe("route:" + ROUTINES_INTENT_TAB);
+      const home = homeOf(ROUTINES_INTENT_TAB, lang);
       expect(first.group).toEqual(home);
       expect(first.icon).toBe(home.icon);
-      expect(first.crumb).toEqual([home.label, translate(lang, "nav.tab.plans")]);
+      // Should F-SHELL-1 retire plans into Together's own route, that row is
+      // its home's own and has no crumb (IA-05r); until then it reads home › Routines.
+      const ownRoute = [...COMPANION_PLACES, ...COMPANION_DOORS].some(named => named.tab === ROUTINES_INTENT_TAB);
+      expect(first.crumb).toEqual(ownRoute ? undefined : [home.label, translate(lang, "nav.tab." + ROUTINES_INTENT_TAB)]);
       first.go();
-      expect(h.actions.setActiveTab).toHaveBeenLastCalledWith("plans");
+      expect(h.actions.setActiveTab).toHaveBeenLastCalledWith(ROUTINES_INTENT_TAB);
     }
   });
+
+  it.each(["plans", "Growth Plans", "תוכניות", "תוכניות התפתחות", translate("en", "plan.title"), translate("he", "plan.title")])(
+    "IA-05r: the old name %j still opens the renamed Plans route first", (query) => {
+      // Transitional, until F-SHELL-1 replaces the PlansTab heading.
+      expect(ROUTINES_INTENT_TAB).toBe("plans");
+      for (const lang of ["en", "he"] as const) {
+        h.lang = lang; h.memos = [];
+        const first = render(query).ordered[0];
+        expect(first.id, lang).toBe("route:plans");
+        expect(first.crumb, lang).toEqual([homeOf("plans", lang).label, translate(lang, "nav.tab.plans")]);
+      }
+    },
+  );
 
   it.each([
     ["en", ["Together", "Routines"]],
@@ -135,7 +195,10 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
           expect(HOME_IDS, r.id).toContain(r.group?.id);
           if (r.kind === "route") {
             expect(r.icon, r.id).toBe(r.group!.icon);
-            expect(r.crumb?.[0], r.id).toBe(r.group!.label);
+            // IA-05r re-pin: home › destination, or (a home's own route) no
+            // crumb and no second line at all.
+            if (r.crumb) expect(r.crumb[0], r.id).toBe(r.group!.label);
+            else expect(r.sub, r.id).toBe("");
           } else {
             expect(r.crumb, r.id).toBeUndefined();
           }
@@ -181,7 +244,9 @@ describe("v3 IA-05 · records name where they open", () => {
     expect(row(record, "log-worded").crumb).toBeUndefined();
     expect(row(record, "log-bare").crumb).toEqual([journal.label, translate("en", "nav.tab.journal")].filter((v, i, a) => a.indexOf(v) === i));
     expect(row(record, "thread-c").group).toEqual(talk);
-    expect(row(record, "thread-c").crumb).toEqual([translate("en", "companion.door.talk")]);
+    // IA-05r re-pin: a thread keeps its own line under the Talk header.
+    expect(row(record, "thread-c").crumb).toBeUndefined();
+    expect(row(record, "thread-c").sub).toBe(translate("en", "sm.threadSub"));
     expect(row(record, "thread-c").icon).toBe("forum");
     expect(row(record, "ms-m").group).toEqual(child);
     expect(row(record, "ms-m").crumb).toEqual([child.label, translate("en", "nav.tab.milestones")]);
@@ -193,7 +258,7 @@ describe("v3 IA-05 · records name where they open", () => {
 describe("v3 IA-05 · saved questions, this child's only", () => {
   const now = (lang: "en" | "he") => ({ id: "now", label: translate(lang, "companion.place.now"), icon: "home" });
 
-  it.each(["en", "he"] as const)("a saved question matches on-device, leads the records and opens its sheet (%s)", (lang) => {
+  it.each(["en", "he"] as const)("a saved question matches on-device, leads the records and opens its sheet (%s)", async (lang) => {
     h.lang = lang;
     h.records = { ...empty(), actionPlans: [{ id: "p", title: "Invented puddle plan", issue: "", phases: [], scripts: [], successIndicators: [] }] };
     h.topics = [topic("t1", "Why does the invented puddle game calm her?", "child-a", "support"), topic("t2", "Something else entirely")];
@@ -204,13 +269,69 @@ describe("v3 IA-05 · saved questions, this child's only", () => {
     expect(saved).toMatchObject({ kind: "family-topic", label: "Why does the invented puddle game calm her?", icon: "volunteer_activism", group: now(lang), crumb: [now(lang).label, sheetTitle] });
     expect(result.kindLabel("family-topic")).toBe(lang === "en" ? "Saved question" : "שאלה שמורה");
     saved.go();
+    await flush();
     expect(h.actions.selectFamilyTopic).toHaveBeenCalledWith("t1");
+    // Not set aside: nothing to bring back, so no write.
+    expect(h.actions.updateFamilyTopic).not.toHaveBeenCalled();
     expect(h.actions.setActiveTab).toHaveBeenLastCalledWith("overview");
     expect(h.openSheet).toHaveBeenCalledOnce();
     expect(h.openSheet).toHaveBeenCalledWith();
+    // The sheet opens on the chosen question.
+    expect(h.actions.selectFamilyTopic.mock.invocationCallOrder[0]).toBeLessThan(h.openSheet.mock.invocationCallOrder[0]);
     // The kind travels in analytics; the question never enters the index.
     expect(JSON.stringify(getSearchIndex())).not.toContain("invented puddle game");
     expect(searchCatalog("puddle game calm")).toEqual([]);
+  });
+
+  /** A small stand-in for the topic store: the active question and each
+   *  question's aside flag, written the way useFamilyTopics writes them. */
+  function topicStore(topics: FamilyTopic[]) {
+    const store = { topics: topics.map(item => ({ ...item })), activeId: null as string | null, failWrite: false };
+    h.topics = store.topics;
+    h.actions.updateFamilyTopic.mockImplementation(async (id: string, patch: { aside?: boolean }) => {
+      await Promise.resolve();
+      if (store.failWrite) throw new Error("invented write failure");
+      const item = store.topics.find(entry => entry.id === id)!;
+      if (patch.aside) item.asideAt = "2026-10-11T00:00:00Z"; else delete item.asideAt;
+      if (patch.aside && store.activeId === id) store.activeId = null;
+    });
+    // Like ArborContext.selectFamilyTopic: any open question can be chosen; it
+    // never clears the aside flag itself.
+    h.actions.selectFamilyTopic.mockImplementation((id: string) => { store.activeId = id; });
+    return store;
+  }
+
+  it("IA-05r: a set-aside question found in search comes back first, then becomes the active one", async () => {
+    const store = topicStore([topic("t1", "Invented meadow question"), { ...topic("t2", "Invented meadow nap question", "child-a", "support"), asideAt: "2026-10-05T00:00:00Z" }]);
+    const found = row(render("meadow nap").record, "topic-t2");
+    found.go();
+    await flush();
+    expect(h.actions.updateFamilyTopic).toHaveBeenCalledWith("t2", { aside: false });
+    expect(h.actions.updateFamilyTopic.mock.invocationCallOrder[0]).toBeLessThan(h.actions.selectFamilyTopic.mock.invocationCallOrder[0]);
+    expect(store.topics.find(item => item.id === "t2")!.asideAt).toBeUndefined();
+    expect(store.activeId).toBe("t2");
+    expect(h.openSheet).toHaveBeenCalledOnce();
+    expect(h.actions.selectFamilyTopic.mock.invocationCallOrder[0]).toBeLessThan(h.openSheet.mock.invocationCallOrder[0]);
+  });
+
+  it("IA-05r: if bringing it back fails, nothing is chosen and the sheet opens on the list", async () => {
+    const store = topicStore([{ ...topic("t2", "Invented meadow nap question"), asideAt: "2026-10-05T00:00:00Z" }]);
+    store.failWrite = true;
+    row(render("meadow").record, "topic-t2").go();
+    await flush();
+    expect(h.actions.selectFamilyTopic).not.toHaveBeenCalled();
+    expect(store.activeId).toBeNull();
+    expect(store.topics[0].asideAt).toBe("2026-10-05T00:00:00Z");
+    expect(h.openSheet).toHaveBeenCalledOnce();
+  });
+
+  it("NEGATIVE CONTROL: choosing directly (the old search row) leaves the question set aside while making it active", () => {
+    const store = topicStore([{ ...topic("t2", "Invented meadow nap question"), asideAt: "2026-10-05T00:00:00Z" }]);
+    // The round-1 row called selectFamilyTopic(topic.id) and nothing else.
+    h.actions.selectFamilyTopic("t2");
+    expect(store.activeId).toBe("t2");
+    expect(store.topics[0].asideAt).toBe("2026-10-05T00:00:00Z");
+    expect(h.actions.updateFamilyTopic).not.toHaveBeenCalled();
   });
 
   it("after switching child the question is gone; a question filed under another child never shows", () => {
@@ -252,7 +373,9 @@ describe("v3 IA-05r · the Talk door's rows open the Talk panel over the page", 
     expect(translate(lang, "companion.door.talk")).toBe(door);
     h.records = { ...empty(), conversations: [conversation] };
     const thread = row(render("harbour").record, "thread-c7");
-    expect(thread).toMatchObject({ kind: "thread", icon: "forum", group: { id: "talk", label: door, icon: "forum" }, crumb: [door] });
+    expect(thread).toMatchObject({ kind: "thread", icon: "forum", group: { id: "talk", label: door, icon: "forum" }, sub: translate(lang, "sm.threadSub") });
+    // IA-05r re-pin: the header already says Talk with Arbor; no crumb repeats it.
+    expect(thread.crumb).toBeUndefined();
     thread.go();
     expect(h.actions.openConversation).toHaveBeenCalledWith("c7");
     expect(h.talk).toHaveBeenCalledOnce();
@@ -265,7 +388,11 @@ describe("v3 IA-05r · the Talk door's rows open the Talk panel over the page", 
 
   it("the coach route row and a scholar lens open the panel; the lens is chosen first", () => {
     const coach = row(render(translate("en", "nav.tab.coach")).catalog, "route:coach");
-    expect(coach.crumb).toEqual(["Talk with Arbor"]);
+    // IA-05r re-pin: header, label and second line no longer all read "Talk with Arbor".
+    expect(coach.label).toBe("Talk with Arbor");
+    expect(coach.group?.label).toBe("Talk with Arbor");
+    expect(coach.crumb).toBeUndefined();
+    expect(coach.sub).toBe("");
     expect(coach.icon).toBe("forum");
     coach.go();
     expect(h.talk).toHaveBeenLastCalledWith({ source: "search" });
@@ -286,6 +413,19 @@ describe("v3 IA-05r · the Talk door's rows open the Talk panel over the page", 
     expect(h.actions.setActiveTab).not.toHaveBeenCalled();
     // One door per tap: seedCoach already requests the panel.
     expect(h.talk).not.toHaveBeenCalled();
+  });
+
+  it.each(["en", "he"] as const)("IA-05r: no line of a Talk row names the old Ask route (%s)", (lang) => {
+    h.lang = lang;
+    h.records = { ...empty(), conversations: [conversation] };
+    const result = render("harbour");
+    const lines = [result.ask!.sub, row(result.record, "thread-c7").sub];
+    for (const line of lines) {
+      expect(line).not.toMatch(/\bAsk\b/);
+      expect(line).not.toContain("שאל את ארבור");
+    }
+    if (lang === "en") expect(result.ask!.sub).toContain("Talk with Arbor");
+    else expect(/[A-Za-z]/.test(lines.join(" "))).toBe(false);
   });
 
   it("NEGATIVE CONTROL: a row of a place still moves the page", () => {

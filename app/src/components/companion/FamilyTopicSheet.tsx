@@ -6,7 +6,7 @@ import { Sheet } from "../ui/Sheet";
 import { Icon } from "../ui/Icon";
 import { useSheetHistory } from "../../hooks/useSheetHistory";
 import { SheetBreadcrumb } from "../layout/Breadcrumb";
-import { INTENT_ICON, type FamilyTopic } from "../../lib/familyTopics";
+import { INTENT_ICON, chooseFamilyTopic, type FamilyTopic } from "../../lib/familyTopics";
 import type { Observation } from "../../lib/observations";
 import "./companionExperience.css";
 import "./familyTopicSheet.css";
@@ -77,9 +77,11 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
     if (done) { setEditing(null); setTitle(""); }
   }
   async function pick(item: FamilyTopic) {
-    // Choosing a set-aside question brings it back to the quick row first.
-    if (item.asideAt && !await run(item.id, () => updateFamilyTopic(item.id, { aside: false }))) return;
-    selectFamilyTopic(item.id);
+    // v3 IA-05r: the one choose path, shared with search. A set-aside question
+    // is brought back first; its write shows busy and any error here.
+    const choose = () => chooseFamilyTopic(item, { updateFamilyTopic, selectFamilyTopic });
+    if (item.asideAt) await run(item.id, choose);
+    else await choose();
   }
 
   return <Sheet open onClose={() => close()} title={t("companion.family-topic-sheet.what-we-re-exploring")}>

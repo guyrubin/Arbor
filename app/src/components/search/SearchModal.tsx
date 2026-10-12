@@ -91,10 +91,11 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
                   <span className="min-w-0 flex-1">
                     <span className="text-sm font-bold truncate block" style={{ color: "var(--arbor-ink)" }}>{r.label}</span>
                     {/* v3 IA-05: a crumb reads "home › destination"; the chevron turns once in Hebrew
-                        and stays silent, a hidden separator is spoken in its place. */}
-                    <span className="text-xs truncate block" style={{ color: "var(--arbor-muted)" }}>
+                        and stays silent, a hidden separator is spoken in its place. A home's own row
+                        has neither crumb nor sub, so it has no second line (IA-05r). */}
+                    {(r.crumb || r.sub) && <span className="text-xs truncate block" style={{ color: "var(--arbor-muted)" }}>
                       {r.crumb ? r.crumb.map((part, n) => <span key={n}>{n > 0 && <span className="sr-only">{CRUMB_SPOKEN_SEPARATOR}</span>}{n > 0 && <Icon name="chevron_right" size={14} className="mx-0.5 rtl:-scale-x-100" />}{part}</span>) : r.sub}
-                    </span>
+                    </span>}
                   </span>
                   {r === shown[0] && <Icon name="keyboard_return" size={16} className="opacity-0 group-hover:opacity-100" style={{ color: "var(--arbor-muted)" }} />}
                   <span className="text-xs font-medium flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>{kindLabel(r.kind)}</span>

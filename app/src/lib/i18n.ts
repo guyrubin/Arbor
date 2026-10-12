@@ -1563,7 +1563,8 @@ export const en: Dict = {
   "sm.placeholder": "Jump to a section, or search logs, milestones, plans…",
   "sm.goTo": "Go to",
   "sm.noMatches": "No matches.",
-  "sm.threadSub": "Ask Arbor thread",
+  // v3 IA-05r: a thread row sits under Talk with Arbor; its line no longer names the old Ask route.
+  "sm.threadSub": "Saved conversation",
   "sm.kind.log": "Log",
   "sm.kind.thread": "Thread",
   "sm.kind.milestone": "Milestone",
@@ -1571,7 +1572,8 @@ export const en: Dict = {
   // B-SHELL-14: the "Ask Arbor about …" row (prefill only — the parent sends).
   "sm.kind.ask": "Ask",
   "sm.askAbout": "Ask Arbor about “{q}”",
-  "sm.askAbout.sub": "Opens Ask with your words — you send it",
+  // v3 IA-05r: the coach route is Talk with Arbor (nav.tab.coach).
+  "sm.askAbout.sub": "Opens Talk with Arbor with your words — you send it",
   "sm.extra.weekly": "Weekly Insight",
   "sm.extra.weeklySub": "My Child · Story",
   "sm.extra.scholar": "Scholar Frameworks",
@@ -4100,7 +4102,8 @@ export const he: Dict = {
   "sm.placeholder": "קפצו למקטע, או חפשו תיעודים, אבני דרך, תוכניות…",
   "sm.goTo": "מעבר אל",
   "sm.noMatches": "אין התאמות.",
-  "sm.threadSub": "שיחת שאל את ארבור",
+  // v3 IA-05r: שורת שיחה יושבת תחת "לדבר עם ארבור"; היא כבר לא נקראת על שם המסך הישן.
+  "sm.threadSub": "שיחה שמורה",
   "sm.kind.log": "תיעוד",
   "sm.kind.thread": "שיחה",
   "sm.kind.milestone": "אבן דרך",

@@ -33,7 +33,10 @@
  * v3 IA-05r: Talk is a panel over the page the parent is on, never a page of
  * its own. Every row whose home is the Talk door (a thread, the ask row, the
  * coach route, a scholar lens) opens it through requestCompanionConversation
- * and leaves the active tab alone.
+ * and leaves the active tab alone. A home's own row (Talk with Arbor, Care,
+ * together, …) carries no crumb and no second line: its group header already
+ * names it. A saved question is chosen through the sheet's own path
+ * (chooseFamilyTopic): a set-aside one comes back before it is made active.
  *
  * Analytics: callers fire `search_result_tap { kind }` only — never the query.
  */
@@ -48,7 +51,7 @@ import { normalizeSearchText } from "../../lib/searchNormalize";
 import { COMPANION_DOORS, COMPANION_PLACES, homeForTab } from "../../lib/companionPlaces";
 import { requestCompanionConversation } from "../../lib/companionConversation";
 import { openFamilyTopicSheet } from "../companion/familyTopicEvents";
-import { INTENT_ICON, type FamilyTopic } from "../../lib/familyTopics";
+import { INTENT_ICON, chooseFamilyTopic, type FamilyTopic } from "../../lib/familyTopics";
 import type { ActiveTab } from "../../lib/routes";
 import type { HardMomentContext } from "../../content/pilotRelease";
 import type { SearchEntry, SearchKind } from "../../lib/searchIndex";
@@ -80,8 +83,9 @@ export interface SearchRow {
   /** v3 IA-05: the home the row is listed under. The ask row has none. */
   group?: SearchRowGroup;
   /** v3 IA-05: when set, the row's second line is this breadcrumb (its home,
-   *  then where it opens) instead of `sub`. Route rows always carry one; a
-   *  record row only when it has no words of its own to show. */
+   *  then where it opens) instead of `sub`. A route row carries one unless it
+   *  is its home's own route (then `sub` is empty and there is no second line);
+   *  a record row only when it has no words of its own to show. */
   crumb?: readonly string[];
 }
 
@@ -140,7 +144,7 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
   const {
     behaviorLogs, milestones, actionPlans, conversations, childProfile,
     setActiveTab, openConversation, setSelectedLens, requestJournalFocus, seedCoach,
-    familyTopics = NO_TOPICS, selectFamilyTopic,
+    familyTopics = NO_TOPICS, selectFamilyTopic, updateFamilyTopic,
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const heLang = uiLang === "he";
@@ -167,31 +171,36 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
 
   /** v3 IA-05 — where a destination lives: its home (place or door) as the
    *  row's group, and the breadcrumb "home › destination". A home's own route
-   *  (Now's overview, the Talk door's coach, …) reads as the home alone. */
-  const placeOf = (tab: ActiveTab, destination: string): { group: SearchRowGroup; crumb: readonly string[] } => {
+   *  (Now's overview, the Talk door's coach, …) has no crumb: the group header
+   *  above it already names the home, so a crumb of the home alone would only
+   *  say it again (v3 IA-05r). */
+  const placeOf = (tab: ActiveTab, destination: string): { group: SearchRowGroup; crumb?: readonly string[] } => {
     const home = homeForTab(tab);
     const named = home.kind === "place" ? home.place : home.door;
     const group: SearchRowGroup = { id: named.id, label: pick(named), icon: named.icon };
-    return { group, crumb: named.tab === tab || destination === group.label ? [group.label] : [group.label, destination] };
+    return named.tab === tab || destination === group.label ? { group } : { group, crumb: [group.label, destination] };
   };
   /** A record row keeps its own words as its second line; only a row without
    *  any reads as the breadcrumb. */
-  const crumbUnless = (words: string | undefined, crumb: readonly string[]) => (words?.trim() ? {} : { crumb });
+  const crumbUnless = (words: string | undefined, crumb: readonly string[] | undefined) => (words?.trim() || !crumb ? {} : { crumb });
 
   const toRow = (e: SearchEntry): SearchRow => {
     const label = pick(e.title);
     const { group, crumb } = placeOf(e.tab, label);
+    const route = e.kind === "route";
     return {
       id: e.id,
       kind: e.kind,
       label,
-      sub: pick(e.sub) || kindLabel(e.kind),
+      // v3 IA-05r: a home's own route row has no second line; its header,
+      // its label and its glyph already say where it goes.
+      sub: route && !crumb ? "" : pick(e.sub) || kindLabel(e.kind),
       // v3 IA-05: a route row wears its home's glyph and reads as a crumb;
       // a content row keeps its kind glyph and its shelf/domain line.
-      icon: e.kind === "route" ? group.icon : KIND_ICON[e.kind] ?? "search",
+      icon: route ? group.icon : KIND_ICON[e.kind] ?? "search",
       color: KIND_TOKEN[e.kind] ?? "var(--arbor-green-ink)",
       group,
-      ...(e.kind === "route" ? { crumb } : {}),
+      ...(route && crumb ? { crumb } : {}),
       // B-ASKJB-12: a scholar entry preselects its lens, then opens Talk.
       // v3 IA-05r: the Talk door's rows open the panel over the current page.
       go: () => {
@@ -234,9 +243,13 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
     // v3 IA-05: the parent's own saved questions lead the records. They are
     // this child's (ArborContext keeps them per child, and a question filed
     // under another child is skipped here too), matched on-device and never
-    // indexed. A row makes that question the active one, moves to Now, where
-    // questions live, and opens its sheet through FEAT-05's one door (Shell
-    // holds the only listener and drops it while Kid Mode is open).
+    // indexed. A row moves to Now, where questions live, chooses the question
+    // through the sheet's own path, then opens its sheet through FEAT-05's one
+    // door (Shell holds the only listener and drops it while Kid Mode is open).
+    // v3 IA-05r: chooseFamilyTopic brings a set-aside question back before it
+    // becomes the active one, as a tap in the sheet does. The sheet opens once
+    // that choice has settled; if the write failed, it opens on the list with
+    // the question still set aside and nothing chosen.
     const sheetTitle = t("companion.family-topic-sheet.what-we-re-exploring");
     const nowHome = placeOf("overview", sheetTitle).group;
     for (const topic of familyTopics) {
@@ -245,7 +258,12 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
         id: "topic-" + topic.id, kind: "family-topic", label: topic.title, sub: sheetTitle,
         icon: INTENT_ICON[topic.intent] ?? "help", color: "var(--arbor-clay-deep)",
         group: nowHome, crumb: [nowHome.label, sheetTitle],
-        go: () => { selectFamilyTopic(topic.id); setActiveTab("overview"); openFamilyTopicSheet(); },
+        go: () => {
+          setActiveTab("overview");
+          void chooseFamilyTopic(topic, { updateFamilyTopic, selectFamilyTopic })
+            .catch(() => undefined)
+            .then(() => openFamilyTopicSheet());
+        },
       });
     }
     const journal = placeOf("journal", t("nav.tab.journal"));
@@ -261,11 +279,13 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
       });
     }
     // v3 IA-05r: a thread wears the Talk door's glyph and opens in the Talk
-    // panel, over the page the parent is on.
+    // panel, over the page the parent is on. It sits under the Talk with
+    // Arbor header, so its second line is its own (sm.threadSub), not a crumb
+    // that names the door again.
     const talk = placeOf("coach", t("nav.tab.coach"));
     for (const c of conversations) {
       if (normalizeSearchText(c.title).includes(needle) || c.messages.some((m) => normalizeSearchText(m.text).includes(needle)))
-        out.push({ id: "thread-" + c.id, kind: "thread", label: c.title, sub: t("sm.threadSub"), icon: talk.group.icon, color: "var(--arbor-peach-ink)", group: talk.group, crumb: talk.crumb, go: () => { openConversation(c.id); requestCompanionConversation({ source: "search" }); } });
+        out.push({ id: "thread-" + c.id, kind: "thread", label: c.title, sub: t("sm.threadSub"), icon: talk.group.icon, color: "var(--arbor-peach-ink)", group: talk.group, go: () => { openConversation(c.id); requestCompanionConversation({ source: "search" }); } });
     }
     const milestonesAt = placeOf("milestones", t("nav.tab.milestones"));
     for (const m of milestones) {
