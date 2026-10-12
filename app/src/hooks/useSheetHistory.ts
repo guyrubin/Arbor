@@ -6,8 +6,8 @@ import { afterSheetBack, newSheetToken, openSheetEntry, releaseSheetEntry, retir
  * it is open (the ledger is lib/sheetHistory):
  *
  *   const close = useSheetHistory(open, onClose);
- *   <Sheet open onClose={() => close()} title={title}
- *     companion={<SheetBreadcrumb label={title} close={close} />}>   // layout/Breadcrumb
+ *   <Sheet open onClose={() => close()} title={title}>
+ *     <SheetBreadcrumb label={title} close={close} />   // layout/Breadcrumb
  *
  * Back closes the sheet (onClose runs). `close(after?)` is the sheet's ONE
  * close path: its own button, the dialog's Escape and backdrop, its crumb,

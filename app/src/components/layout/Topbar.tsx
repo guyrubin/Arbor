@@ -6,7 +6,6 @@ import OfflineChip from "../ui/OfflineChip"; // W0.6: renders only while offline
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { homeForTab, chromeLitHome } from "../../lib/companionPlaces";
-import { useSheetCrumbShown } from "../../hooks/useSheetCrumbShown"; // v3 IA-06r: an open L2 sheet's crumb
 
 /**
  * Desktop topbar — the wireframe's lean control band (md+). Hidden on mobile,
@@ -31,11 +30,6 @@ export default function Topbar() {
   const home = homeForTab(activeTab);
   const lit = chromeLitHome(home);
   const named = lit.kind === "place" ? lit.place : lit.door;
-  // v3 IA-06r: while an L2 sheet is open its crumb (layout/Breadcrumb) is
-  // drawn over this title zone, above the sheet's backdrop: the title becomes
-  // the crumb. The title steps aside (keeping its box) so nothing ghosts
-  // through the dimmed band around it.
-  const crumbShown = useSheetCrumbShown();
   return (
     <header
       /* B-DESIGN-03 (chrome): the sticky band takes the chrome glass — paper
@@ -59,7 +53,6 @@ export default function Topbar() {
           minimum is what the truncation is allowed to eat into; the control
           band below now shrinks (search first) instead of the title. */}
       <div
-        data-crumb-anchor="bar"
         className="flex flex-col justify-center flex-1"
         /* A length (not `auto`) keeps `truncate` working. 11rem is what the
            narrowest band can afford: at 1024 the header is the viewport less
@@ -75,7 +68,7 @@ export default function Topbar() {
             under it owns its own introduction. */}
         <span
           data-testid="topbar-home-title"
-          className={`text-[20px] font-semibold leading-tight truncate${crumbShown ? " invisible" : ""}`}
+          className="text-[20px] font-semibold leading-tight truncate"
           style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
         >
           {uiLang === "he" ? named.he : named.en}

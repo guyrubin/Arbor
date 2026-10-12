@@ -14,7 +14,6 @@ const state = vi.hoisted(() => ({
   updateFamilyTopic: vi.fn(async () => {}), createFamilyTopic: vi.fn(async () => ({})), selectFamilyTopic: vi.fn(),
   setActiveTab: vi.fn(),
   activeTab: "overview" as string,
-  compact: false,
   buttons: [] as Record<string, any>[],
 }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
@@ -26,15 +25,7 @@ vi.mock("../../context/LanguageContext", async () => {
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };
 });
 vi.mock("../../hooks/useObservations", () => ({ useObservations: () => [] }));
-// v3 IA-06r: the sheet draws its `companion` (the crumb) in its layer, ahead
-// of the dialog box; the stub keeps that order. The crumb picks its place
-// from useCompactSurface (the top bar at lg+, the strip under the phone header).
-vi.mock("../ui/Sheet", () => ({
-  Sheet: ({ title, children, companion }: { title: string; children: React.ReactNode; companion?: React.ReactNode }) => (
-    <div data-sheet-layer="">{companion && <div data-sheet-companion="">{companion}</div>}<div data-sheet-title={title}>{children}</div></div>
-  ),
-  useCompactSurface: () => state.compact,
-}));
+vi.mock("../ui/Sheet", () => ({ Sheet: ({ title, children }: { title: string; children: React.ReactNode }) => <div data-sheet-title={title}>{children}</div> }));
 const capture = vi.hoisted(() => (type: unknown, props: unknown) => {
   if (type === "button" && props && typeof props === "object") state.buttons.push(props as Record<string, any>);
 });
@@ -62,8 +53,7 @@ const SLEEP = topic("t-2", "Falling asleep alone", { asideAt: "2026-10-05T08:00:
 const BATH = topic("t-3", "Bath time", { status: "archived", intent: "enjoy" });
 
 beforeEach(() => {
-  state.lang = "en"; state.buttons = []; state.compact = false;
-  state.activeTab = "overview"; state.setActiveTab = vi.fn();
+  state.lang = "en"; state.buttons = [];
   state.familyTopics = [MORNINGS, SLEEP]; state.archivedFamilyTopics = [BATH]; state.activeFamilyTopic = MORNINGS;
   state.updateFamilyTopic.mockClear(); state.createFamilyTopic.mockClear(); state.selectFamilyTopic.mockClear();
 });
@@ -120,31 +110,20 @@ describe("v3 All questions sheet", () => {
     expect(state.setActiveTab).toHaveBeenCalledTimes(1);
   });
 
-  // IA-06r re-pin: the crumb left the sheet's body. It is the sheet's dialog
-  // companion, drawn in the layer ahead of the box (over the top bar title at
-  // lg+, under the phone header below), so the old "first line of the body,
-  // testid sheet-crumb" pin no longer describes it.
-  it("IA-06r: the crumb is the sheet's companion, outside its body, and says where the sheet sits, in both languages", () => {
-    // The companion renders first, so the first <nav> is the crumb.
-    const crumbOf = (html: string, testid: string) => {
-      const nav = html.match(/<nav [^>]*>[\s\S]*?<\/nav>/)?.[0] ?? "";
-      expect(nav).toContain(`data-testid="${testid}"`);
+  it("IA-06: the crumb is the first line of the sheet's body and says where the sheet sits, in both languages", () => {
+    const crumbOf = (html: string) => {
+      const nav = html.match(/<nav [^>]*data-testid="sheet-crumb"[^>]*>[\s\S]*?<\/nav>/)?.[0] ?? "";
       return { nav, labels: [...nav.matchAll(/dir="auto"[^>]*>([^<]*)</g)].map(m => m[1]) };
     };
     let html = renderToStaticMarkup(<FamilyTopicSheet onClose={() => {}} />);
-    const companion = html.indexOf("data-sheet-companion"), crumb = html.indexOf('data-testid="topbar-crumb"'), box = html.indexOf("data-sheet-title");
-    expect(companion).toBeGreaterThan(-1);
-    expect(crumb).toBeGreaterThan(companion);
-    expect(box).toBeGreaterThan(crumb);
-    expect(html.slice(box)).not.toContain("<nav");
-    expect(html).not.toContain("sheet-crumb");
-    expect(crumbOf(html, "topbar-crumb").labels).toEqual(["Now", MORNINGS.title]);
-    expect(crumbOf(html, "topbar-crumb").nav).toContain('aria-label="Location"');
-    state.lang = "he"; state.compact = true;
+    expect(html.indexOf('data-testid="sheet-crumb"')).toBeGreaterThan(-1);
+    expect(html.indexOf('data-testid="sheet-crumb"')).toBeLessThan(html.indexOf('class="topic-sheet"'));
+    expect(crumbOf(html).labels).toEqual(["Now", MORNINGS.title]);
+    expect(crumbOf(html).nav).toContain('aria-label="Location"');
+    state.lang = "he";
     html = renderToStaticMarkup(<FamilyTopicSheet onClose={() => {}} />);
-    expect(html).not.toContain("topbar-crumb");
-    expect(crumbOf(html, "mobile-crumb").labels).toEqual(["עכשיו", MORNINGS.title]);
-    expect(crumbOf(html, "mobile-crumb").nav).toContain('aria-label="נתיב ניווט"');
+    expect(crumbOf(html).labels).toEqual(["עכשיו", MORNINGS.title]);
+    expect(crumbOf(html).nav).toContain('aria-label="נתיב ניווט"');
   });
 
   it("IA-06: the crumb's Now goes out through the same one close, then to its route", () => {

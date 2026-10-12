@@ -21,29 +21,29 @@
  * A Back is asynchronous and cannot be cancelled. Everything that would add
  * an entry while one is in flight (a push, a route change in `after`, a
  * second close from a double tap) waits for it to land: afterSheetBack().
- * The land is the browser's own `popstate` and nothing else. IA-06r: no timer
- * stands in for it and no capture-phase listener second-guesses it. A retire
- * asks for a Back only when its own entry is on top, so there is always an
- * entry under it to land on; when the Back cannot even be asked, it lands at
- * once.
  */
 
 const KEY = "arborSheet";
+/** A Back that never lands must not wedge the queue: past this, a timer lands it. */
+const BACK_TIMEOUT_MS = 1000;
+/** After a timer-driven land, how long a late popstate is still taken for that Back. */
+const LATE_BACK_WINDOW_MS = 10_000;
 
 /** Sheets that are open right now. */
 const live = new Set<string>();
 /** Sheets whose entry this page session pushed and has not yet retired. */
 const entries = new Set<string>();
-/** While one of our Backs is in flight: what waits for it to land. null = none in flight. */
-let landing: Array<() => void> | null = null;
+let backPending = false;
+let waiting: Array<() => void> = [];
 let seq = 0;
+let disarmLateBack: (() => void) | null = null;
 
 function hasHistory(): boolean {
   return typeof window !== "undefined" && !!window.history && !!window.location;
 }
 
 /** The sheet marker on the current history entry, or null. */
-function tokenOnTop(): string | null {
+export function sheetTokenOnTop(): string | null {
   if (!hasHistory()) return null;
   const state = window.history.state as unknown;
   if (!state || typeof state !== "object") return null;
@@ -59,24 +59,13 @@ export function newSheetToken(): string {
 
 /** Run the callback once no sheet's Back is in flight: now, or right after that Back lands. */
 export function afterSheetBack(task: () => void): void {
-  if (landing) landing.push(task);
+  if (backPending) waiting.push(task);
   else task();
-}
-
-/**
- * The Back landed: run what waited, in order. Each task goes through
- * afterSheetBack again, so a task that starts a Back of its own hands
- * everything after it to that one: nothing ever runs while a Back is in flight.
- */
-function land(): void {
-  const waiting = landing ?? [];
-  landing = null;
-  waiting.forEach(task => afterSheetBack(task));
 }
 
 function push(token: string): void {
   if (!live.has(token) || entries.has(token) || !hasHistory()) return;
-  if (landing) { landing.push(() => push(token)); return; }
+  if (backPending) { waiting.push(() => push(token)); return; }
   try {
     const state = window.history.state as unknown;
     const base = state && typeof state === "object" ? state as Record<string, unknown> : {};
@@ -92,6 +81,34 @@ export function openSheetEntry(token: string): void {
 }
 
 /**
+ * The timer landed a Back the browser had not performed yet. When the browser
+ * does perform it, it pops whatever was pushed since (the route `after` went
+ * to, or a sheet opened in the meantime) and lands on the retired sheet's own
+ * entry. Step forward again, so the parent stays where they asked to go, and
+ * keep that stray pop from closing anything (capture phase: it runs before
+ * every other popstate listener on window). Every other pop passes untouched
+ * and leaves the guard armed: the route change in `after` fires its own
+ * popstate (a fragment navigation does, synchronously), and a late Back that
+ * lands anywhere else is simply finishing its job (nothing was pushed since).
+ */
+function guardLateBack(token: string): void {
+  const onLatePop = (event: Event) => {
+    if (sheetTokenOnTop() !== token) return;
+    disarm();
+    event.stopImmediatePropagation();
+    try { window.history.forward(); } catch { /* nothing to step back to */ }
+  };
+  const timer = setTimeout(() => disarm(), LATE_BACK_WINDOW_MS);
+  function disarm(): void {
+    window.removeEventListener("popstate", onLatePop, true);
+    clearTimeout(timer);
+    if (disarmLateBack === disarm) disarmLateBack = null;
+  }
+  window.addEventListener("popstate", onLatePop, true);
+  disarmLateBack = disarm;
+}
+
+/**
  * The sheet closed from inside: retire its entry with one `history.back()`
  * when the entry is still on top, then run `after` once the browser has
  * landed. Navigation belongs in `after` — a hash change made before the Back
@@ -99,19 +116,36 @@ export function openSheetEntry(token: string): void {
  */
 export function retireSheetEntry(token: string, after?: () => void): void {
   live.delete(token);
-  if (landing) { landing.push(() => retireSheetEntry(token, after)); return; }
-  const mine = entries.delete(token);
-  if (!mine || !hasHistory() || tokenOnTop() !== token) { after?.(); return; }
-  landing = after ? [after] : [];
-  const onLand = () => { window.removeEventListener("popstate", onLand); land(); };
-  window.addEventListener("popstate", onLand);
-  try { window.history.back(); } catch { onLand(); }
+  if (backPending) { waiting.push(() => retireSheetEntry(token, after)); return; }
+  if (!entries.has(token)) { after?.(); return; }
+  entries.delete(token);
+  if (!hasHistory() || sheetTokenOnTop() !== token) { after?.(); return; }
+  // A new Back of our own: an older late-Back guard would take its pop.
+  disarmLateBack?.();
+  backPending = true;
+  let landed = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const land = (byTimer: boolean) => {
+    if (landed) return;
+    landed = true;
+    window.removeEventListener("popstate", onPop);
+    if (timer !== undefined) clearTimeout(timer);
+    backPending = false;
+    if (byTimer) guardLateBack(token);
+    after?.();
+    const queued = waiting;
+    waiting = [];
+    queued.forEach(run => run());
+  };
+  const onPop = () => land(false);
+  window.addEventListener("popstate", onPop);
+  timer = setTimeout(() => land(true), BACK_TIMEOUT_MS);
+  try { window.history.back(); } catch { land(false); }
 }
 
 /**
  * The sheet's effect let go of it (an unmount, or StrictMode's replay). Retire
- * the entry only if no open claimed the same token again in this task (a
- * microtask, not a timer: it runs before any browser event can).
+ * the entry only if no open claimed the same token again in this task.
  */
 export function releaseSheetEntry(token: string): void {
   live.delete(token);
@@ -123,7 +157,7 @@ export function releaseSheetEntry(token: string): void {
  * entry (the parent pressed Back). The entry is gone, so nothing retires it.
  */
 export function sheetEntryLeft(token: string): boolean {
-  if (!entries.has(token) || tokenOnTop() === token) return false;
+  if (!entries.has(token) || sheetTokenOnTop() === token) return false;
   entries.delete(token);
   live.delete(token);
   return true;

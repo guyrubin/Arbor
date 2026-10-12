@@ -33,9 +33,7 @@ export default function ChildContextHeader({
        row (the accessory buttons' own height, so the row costs nothing extra)
        is most of the way to the ≤ 200 px budget, and it is what lets the
        brand mark fold in here instead of owning a row of its own. */
-    /* v3 IA-06r: data-crumb-anchor — an open L2 sheet's crumb strip sits
-       right under this row (layout/Breadcrumb measures it). */
-    <header data-crumb-anchor="strip" className={`flex flex-row items-center justify-between gap-2 mb-4 min-w-0 ${className}`.trim()}>
+    <header className={`flex flex-row items-center justify-between gap-2 mb-4 min-w-0 ${className}`.trim()}>
       <div className="flex flex-1 items-center gap-2 min-w-0">{identity}</div>
       {actions && <div className="flex-shrink-0 flex items-center justify-end">{actions}</div>}
     </header>

@@ -1,14 +1,6 @@
 import { isKidModeActive, subscribeKidMode } from "./kidModeGate";
 
 export const DIALOG_LAYER = "data-arbor-dialog-layer";
-/**
- * v3 IA-06r: a dialog's companion — chrome its layer draws OUTSIDE the
- * dialog box, above its own backdrop (the L2 crumb over the top bar title or
- * under the phone header). The shield never reaches it (it is inside the
- * layer), focus may rest in it and Tab cycles through it, ahead of the
- * dialog, as it comes first in the layer. Initial focus stays in the dialog.
- */
-export const DIALOG_COMPANION = "data-dialog-companion";
 const FOCUSABLE = 'a[href],button,input,select,textarea,summary,[tabindex],[contenteditable="true"]';
 export type DialogRegistration = {
   root: HTMLElement;
@@ -88,12 +80,6 @@ export function createDialogStack(env: Environment) {
   let observer: MutationObserver | null = null;
   let unsubscribe: (() => void) | undefined;
   const top = () => entries[entries.length - 1];
-  /** The entry's own companions: in its layer, outside its dialog, not a nested layer's. */
-  const companions = (entry: Entry): HTMLElement[] => entry.layer === entry.root ? [] :
-    Array.from(entry.layer.querySelectorAll<HTMLElement>("[" + DIALOG_COMPANION + "]"))
-      .filter(el => el.closest("[" + DIALOG_LAYER + "]") === entry.layer && !entry.root.contains(el) && !el.contains(entry.root));
-  const inside = (entry: Entry, el: HTMLElement) => entry.root.contains(el) || companions(entry).some(companion => companion.contains(el));
-  const tabbables = (entry: Entry) => [...companions(entry).flatMap(dialogTabbables), ...dialogTabbables(entry.root)];
   const releaseShield = () => { for (const undo of undoShield.reverse()) undo(); undoShield = []; };
   const releaseScroll = () => { for (const undo of undoScroll.reverse()) undo(); undoScroll = []; };
   const lockScroll = () => {
@@ -112,7 +98,7 @@ export function createDialogStack(env: Environment) {
   const focusInside = (entry: Entry) => {
     if (focusing || blocked()) return;
     const active = element(doc.activeElement);
-    if (active && inside(entry, active) && visible(active) && enabled(active)) return;
+    if (active && entry.root.contains(active) && visible(active) && enabled(active)) return;
     const candidates = [
       ...pendingReturns.filter(el => entry.root.contains(el)),
       entry.initialFocus?.(), entry.root.querySelector<HTMLElement>("[autofocus]"),
@@ -130,7 +116,7 @@ export function createDialogStack(env: Environment) {
       event.stopPropagation();
       if (!event.repeat) close(entry);
     } else if (event.key === "Tab") {
-      const tabs = tabbables(entry);
+      const tabs = dialogTabbables(entry.root);
       const active = element(doc.activeElement);
       if (!tabs.length || !active || !tabs.includes(active) || (event.shiftKey ? active === tabs[0] : active === tabs[tabs.length - 1])) {
         event.preventDefault();
