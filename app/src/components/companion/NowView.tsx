@@ -12,7 +12,7 @@ import { NOW_COPY } from "./nowViewCopy";
 import NowRecommendation from "./NowRecommendation";
 import NowMoreForToday from "./NowMoreForToday";
 import { NowNoticeBlock, NowNoticeLead, NowPracticeLead, NowTonightLead, NowTonightPointer } from "./NowLoopBlocks";
-import { focusSignalsForNow } from "./nowRecommendationModel";
+import { focusSignalsForNow, stepLines } from "./nowRecommendationModel";
 import { useNowClock } from "./useNowClock";
 import { useNowRecord } from "./useNowRecord";
 import { selectNowLead } from "../../lib/today/dayCard";
@@ -24,7 +24,8 @@ import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
 import { useNowLoop } from "./useNowLoop";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
-import { practiceText } from "../loop/PracticeCard";
+import { practiceText, WHY_KEY } from "../loop/PracticeCard";
+import { shelfLabel } from "../../lib/shelves/registry";
 import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import { trackActionOffered } from "../../lib/loopEvents";
 import { availableHardMomentCards } from "../../content/selectCards";
@@ -39,6 +40,8 @@ import { TOGETHER_ART } from "../../lib/parentArt";
 import { useObservations } from "../../hooks/useObservations";
 import NowQuestionRow from "./NowQuestionRow";
 import NowPlanFrame, { type NowPlanKind } from "./NowPlanFrame";
+import NowPlanBody from "./NowPlanBody";
+import NowGuideReader from "./NowGuideReader";
 import { NowKidWorld, NowWeekSoFar } from "./NowDayPanels";
 
 export interface NowViewProps {
@@ -132,6 +135,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const chosen = receipt ?? pendingAction ?? (retryAction?.scope === scopeLease ? retryAction.action : null) ?? action;
   // v3: "Haven't tried yet" writes nothing; the step simply stays. This only acknowledges it.
   const [notYetFor, setNotYetFor] = useState<string | null>(null);
+  // v3 F-NOW-1 r2: the chosen step's How to begin, read-only (it is already chosen).
+  const [stepReaderOpen, setStepReaderOpen] = useState(false);
   const observations = useObservations();
   const [observationDraft, setObservationDraft] = useState<{ scope: object; id: string; words: string } | null>(null);
   const observationWords = observationDraft?.scope === scopeLease && observationDraft.id === chosen?.id ? observationDraft.words : "";
@@ -223,7 +228,21 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // a line of plan meta about the parent's own step, in words, never a count.
   const practiceSay = shownLead === "practice" && loop.pick ? practiceText(loop.pick.practice, "say", lang, childProfile.gender) : "";
   const planSay = practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
-  const planMeta = shownLead === "step" ? (receipt ? copy.saved : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : undefined;
+  const planMeta = shownLead === "step" ? (receipt ? copy.saved : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
+  // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
+  // from its section (which keeps it as its label). The loop leads' cards carry
+  // their own heading, so their face has the say line and meta only.
+  const planTitle = shownLead === "step" && chosen ? <h2 id={`${id}-step`} className="now-plan-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
+    : shownLead === "visit" && visit ? <h2 id={`${id}-visit`} className="now-plan-title" dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</h2>
+      : shownLead === "program" && program ? <h2 id={`${id}-program`} className="now-plan-title" dir="auto">{program.content.skill[lang]}</h2> : undefined;
+  // The one plan body under every lead: why it was picked, always visible. The
+  // practice says its own reason (the AI's sentence beside its own pick); the
+  // question is quoted only for a step chosen under it.
+  const practiceWhy = shownLead === "practice" && loop.pick
+    ? (loop.pick.via === "ai" && focus?.why?.trim()) || t(loop.whyReason && (loop.whyReason !== "since" || loop.whyDate) ? WHY_KEY[loop.whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfLabel(loop.pick.shelf, t), name, date: loop.whyDate ?? "" })
+    : "";
+  const planWhy = shownLead === "practice" ? practiceWhy || copy.pickedWhy.practice : shownLead === "tonight" && tonightOpen ? copy.pickedTonightOpen : copy.pickedWhy[shownLead];
+  const planQuestion = shownLead === "step" && chosen && topic && chosen.topicId === topic.id ? topic.title : null;
 
   return <div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
     <header className="now-heading">
@@ -237,14 +256,13 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     <div className="now-main-column">
         {lead === "practice" && <PracticeFocus now={now} journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
         {/* The recommendation frames itself (its screened words face the art panel), so its frame here is bare. */}
-        <NowPlanFrame kind={shownLead} lang={lang} tag={copy.planTag[shownLead]} say={planSay} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation"}>
+        <NowPlanFrame kind={shownLead} lang={lang} tag={copy.planTag[shownLead]} say={planSay} quoted={!!practiceSay} title={planTitle} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation"}>
         {lead === "record" ? <section className="now-loop-lead" data-module="now-record" aria-label={t("today.record.aria")}>
           {record.receipt ? <FromRecordReceipt /> : record.opener && <FromRecordCard opener={record.opener} childName={name} stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)} />}
           {record.saving && <p role="status" className="now-inline-status">{record.confirming ? t("elev.today.record.confirming") : copy.saving}</p>}
           {record.error && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
         </section> : lead === "visit" && visit ? <section className="now-lead arbor-depth-primary" data-module="now-visit" aria-labelledby={`${id}-visit`}>
           <p className="now-plan-kicker">{copy.visit}</p>
-          <h2 id={`${id}-visit`} className="now-lead-title" dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</h2>
           <p className="now-lead-body">{copy.visitBody}</p>
           <div className="now-lead-actions">
             <PrimaryMove type="button" className="companion-primary" onClick={openVisit}>{copy.visitOpen}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove>
@@ -254,9 +272,13 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           <NowTonightLead loop={loop} />
         </section> : lead === "step" && chosen ? <section className="now-lead arbor-depth-primary" data-module="now-step" aria-labelledby={`${id}-step`}>
           <p className="now-plan-kicker">{observation ? t("ob.first.observation.chosen") : copy.chosen}</p>
-          <h2 id={`${id}-step`} className="now-lead-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
           {receipt && <p className="now-lead-body" dir="auto" style={{ whiteSpace: "pre-wrap" }}>{observation ? chosen.whatHappened : chosen.recommendation}</p>}
           {!observation && <p className="now-lead-body" role={receipt ? "status" : undefined}>{receipt ? copy.finished : chosen.acceptanceKey?.startsWith("onboarding-v1.") && dayKey(new Date(chosen.acceptedAt)) === dayKey(now) ? t("ob.first.tomorrow") : copy.chosenWhy}</p>}
+          {!observation && !receipt && <>
+            <button type="button" className="companion-text-button now-plan-how" aria-haspopup="dialog" onClick={() => setStepReaderOpen(true)}>{copy.steps}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></button>
+            <NowGuideReader open={stepReaderOpen} onClose={() => setStepReaderOpen(false)} lang={lang} title={chosen.recommendation} crumb={copy.planTag.step}
+              how={stepLines(chosen.recommendation)} onAdapt={() => talk(copy.adaptPrompt(chosen.recommendation))} />
+          </>}
           {observation && (receipt ? <>
             <Receipt testId="now-observation-receipt">{t("ob.first.observation.saved")}</Receipt>
             <PrimaryMove type="button" className="companion-text-button" onClick={() => { requestJournalFocus(`action-${chosen.id}`); goToRoute("journal", { view: "all" }); }}>{t("ob.first.observation.open")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></PrimaryMove>
@@ -287,11 +309,11 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           <NowNoticeLead loop={loop} name={name} />
         </section> : lead === "program" && program ? <section className="now-lead arbor-depth-primary" data-module="now-program" aria-labelledby={`${id}-program`}>
           <p className="now-plan-kicker">{copy.programLabel}</p>
-          <h2 id={`${id}-program`} className="now-lead-title">{program.content.skill[lang]}</h2>
           <p className="now-lead-body">{copy.programWhy(program.week)}</p>
           <div className="now-lead-actions"><PrimaryMove type="button" className="companion-primary" onClick={openProgram}>{copy.continueProgram}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove></div>
           <button type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(program.content.skill[lang]))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></button>
         </section> : <NowRecommendation name={name} onTalkOpen={talk} journal={loop.journal} />}
+        {shownLead !== "recommendation" && <div className="now-plan-foot"><NowPlanBody why={planWhy} time={copy.planTime[shownLead]} size={copy.planSize[shownLead]} question={planQuestion} /></div>}
         </NowPlanFrame>
         {lifecycleNote && lead !== "practice" && <p className="now-lifecycle-note" role="note">{lifecycleNote}</p>}
 

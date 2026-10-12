@@ -93,6 +93,23 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
     selectFamilyTopic(item.id);
   }
 
+  // What the parent wants from a question: a new question's choice rides into
+  // its save (so it sits above the form); otherwise it belongs to the ACTIVE
+  // question only, after New question, and hides while another one is edited.
+  const intentRow = (editing === "new" || (topic && (!editing || editing === topic.id))) && <fieldset className="topic-intent-row" data-testid="topic-intent-row">
+    <legend>{t("companion.family-topic-sheet.what-would-you-like")}</legend>
+    <div className="topic-intents">{INTENTS.map(option => {
+      // A new question carries its choice into the save; the active one saves the tap itself.
+      const pressed = editing === "new" ? intent === option : topic?.intent === option;
+      return <button key={option} type="button" aria-pressed={pressed} disabled={editing !== "new" && !!busy}
+        onClick={() => {
+          if (editing === "new") { setIntent(option); return; }
+          if (topic && !pressed) void run(`intent-${option}`, () => updateFamilyTopic(topic.id, { intent: option }));
+        }}>
+        <Icon name={INTENT_ICON[option]} size={17} />{t(INTENT_KEY[option])}</button>;
+    })}</div>
+  </fieldset>;
+
   return <Sheet open onClose={() => close()} title={t("companion.family-topic-sheet.what-we-re-exploring")}>
     <SheetBreadcrumb label={topic?.title ?? t("companion.family-topic-sheet.what-we-re-exploring")} close={close} />
     <div className="topic-sheet" dir={he ? "rtl" : "ltr"}>
@@ -123,19 +140,7 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
         })}
       </ul>}
 
-      {(editing === "new" || topic) && <fieldset className="topic-intent-row" data-testid="topic-intent-row">
-        <legend>{t("companion.family-topic-sheet.what-would-you-like")}</legend>
-        <div className="topic-intents">{INTENTS.map(option => {
-          // A new question carries its choice into the save; the active one saves the tap itself.
-          const pressed = editing === "new" ? intent === option : topic?.intent === option;
-          return <button key={option} type="button" aria-pressed={pressed} disabled={editing !== "new" && !!busy}
-            onClick={() => {
-              if (editing === "new") { setIntent(option); return; }
-              if (topic && !pressed) void run(`intent-${option}`, () => updateFamilyTopic(topic.id, { intent: option }));
-            }}>
-            <Icon name={INTENT_ICON[option]} size={17} />{t(INTENT_KEY[option])}</button>;
-        })}</div>
-      </fieldset>}
+      {editing === "new" && intentRow}
 
       {editing && <form className="topic-edit" onSubmit={event => { event.preventDefault(); void save(); }}>
         <label htmlFor="family-question-title" className="topic-edit-label">{t(editing === "new" ? "companion.family-topic-sheet.new-title" : "companion.family-topic-sheet.edit-title")}</label>
@@ -154,6 +159,7 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
           {showFinished ? t("companion.family-topic-sheet.hide-finished") : t("companion.family-topic-sheet.show-finished", { value0: archivedFamilyTopics.length })}</button>}
         {!editing && <button type="button" className="topic-new" onClick={() => startEdit(null)}><Icon name="add" size={20} />{t("companion.family-topic-sheet.new-question")}</button>}
       </div>
+      {editing !== "new" && intentRow}
 
       {topic && <section className="topic-linked" aria-labelledby="family-question-linked">
         <h3 id="family-question-linked" className="topic-linked-title" dir="auto">{t("companion.family-topic-sheet.linked-to", { value0: topic.title })}</h3>

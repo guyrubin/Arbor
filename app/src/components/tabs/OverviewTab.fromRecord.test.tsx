@@ -160,12 +160,18 @@ describe("B-TODAY-28 — OverviewTab wiring (source pin)", () => {
     // Re-pin (F-NOW-1 now-plan-body): name · age moved to the plan card's
     // always-visible Picked line, said once; the parent's own string is the
     // only isolated run (FEAT-02: never dir=auto on the joined line).
-    const rec = todayFile("NowRecommendation.tsx");
-    const at = rec.indexOf('data-testid="now-picked-because"');
-    const line = rec.slice(rec.indexOf("<p>", at), rec.indexOf("</p>", at));
+    // Re-pin (F-NOW-1 r2): that line is now the one plan body every lead
+    // shares (NowPlanBody), and the family's question - quoted only when the
+    // pick was made for it - is the second isolated run.
+    const body = todayFile("NowPlanBody.tsx");
+    const at = body.indexOf('data-testid="now-picked-because"');
+    const line = body.slice(body.indexOf("<p>", at), body.indexOf("</p>", at));
     expect(line).not.toMatch(/dir=/);
-    expect(line.match(/<bdi>/g)).toHaveLength(1);
+    expect(line.match(/<bdi>/g)).toHaveLength(2);
     expect(line).toContain("<bdi>{name}</bdi>, {ageText} · ");
+    expect(line).toContain('<bdi>{t("elev.loop.ms.quoted", { text: question })}</bdi>');
+    expect(todayFile("NowRecommendation.tsx")).toContain("<NowPlanBody ");
+    expect(todayFile("NowRecommendation.tsx")).not.toContain('data-testid="now-picked-because"');
   });
 
   it("Now requests action-first details without removing the family's words or default layout", () => {

@@ -146,13 +146,17 @@
 .now-plan-art-text { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; }
 .now-plan-tag { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; background: var(--arbor-paper-elevated); color: var(--arbor-ink); font-size: 11.5px; font-weight: 700; white-space: nowrap; box-shadow: 0 1px 2px color-mix(in srgb, var(--arbor-ink) 8%, transparent); }
 .now-plan-tag .msr { color: var(--arbor-lav-ink); }
-.now-plan-say { max-inline-size: 52%; margin: 0; font: 600 clamp(23px, 2.2vw, 32px)/1.18 var(--font-display); color: var(--arbor-ink); text-wrap: balance; overflow-wrap: anywhere; }
-/* v3 F-NOW-1: the guide's face - its picture once shipped (a block-direction scrim keeps the words legible in both directions), its say line and plan meta. */
+.now-plan-say { margin: 0; font: 600 clamp(23px, 2.2vw, 32px)/1.18 var(--font-display); color: var(--arbor-ink); text-wrap: balance; overflow-wrap: anywhere; }
+/* v3 F-NOW-1: the guide's face - its picture once shipped (16:9, its calm
+   inline-start side under the words, mirrored once in RTL), a scrim on that
+   same side, then the say line, the guide's title and the plan meta. */
 .now-plan-art-picture { background: var(--arbor-paper-deep); }
-.now-plan-img { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
-.now-plan-scrim { position: absolute; inset: 0; background: linear-gradient(to top, color-mix(in srgb, var(--arbor-paper-elevated) 92%, transparent), color-mix(in srgb, var(--arbor-paper-elevated) 40%, transparent) 55%, transparent 80%); }
-.now-plan-art-picture .now-plan-say { max-inline-size: 78%; }
-.now-plan-face { display: flex; flex-direction: column; gap: 8px; }
+.now-plan-img { position: absolute; inset-block-start: 0; inset-inline-start: 0; inline-size: 100%; block-size: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+.now-plan-img:dir(rtl) { transform: scaleX(-1); }
+.now-plan-scrim { position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--arbor-paper-elevated) 92%, transparent), color-mix(in srgb, var(--arbor-paper-elevated) 55%, transparent) 45%, transparent 70%); }
+.now-plan-scrim:dir(rtl) { background: linear-gradient(270deg, color-mix(in srgb, var(--arbor-paper-elevated) 92%, transparent), color-mix(in srgb, var(--arbor-paper-elevated) 55%, transparent) 45%, transparent 70%); }
+.now-plan-face { display: flex; flex-direction: column; gap: 8px; max-inline-size: 52%; }
+.now-plan-title { margin: 0; font: 600 14px/1.35 var(--font-sans); color: var(--arbor-ink); overflow-wrap: anywhere; text-wrap: pretty; }
 .now-plan-meta { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--arbor-muted); }
 .now-plan-kicker { margin: 0 0 4px; font-size: var(--t-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--arbor-clay-deep); }
 .now-page[dir="rtl"] .now-plan-kicker { letter-spacing: 0; text-transform: none; }
@@ -163,6 +167,9 @@
 .now-picked b { font-weight: 700; color: var(--arbor-ink); }
 .now-guide-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 12.5px; font-weight: 600; color: var(--arbor-muted); }
 .now-guide-meta li { display: inline-flex; align-items: center; gap: 6px; }
+/* r2: the one plan body under a lead that is not the recommendation, and the chosen step's How to begin. */
+.now-plan-foot { padding: 0 28px 20px; }
+.now-plan-how { min-block-size: 44px; }
 .now-plan-body { min-inline-size: 0; border-inline-start: 1px solid var(--arbor-rule); }
 /* The guide reader (a sheet, outside the page): How to begin, the words, and the one choice. */
 .now-reader { display: flex; flex-direction: column; gap: 18px; }
@@ -245,8 +252,11 @@
 @container now (max-width: 860px) {
   .now-plan { grid-template-columns: minmax(0, 1fr); }
   .now-plan-art { min-block-size: 190px; }
-  .now-plan-medallion { inset-block-start: auto; inset-block-end: 18px; inline-size: 72px; block-size: 72px; }
-  .now-plan-say { max-inline-size: 62%; font-size: 23px; }
+  .now-plan-medallion { inset-block-start: 18px; inset-block-end: auto; inset-inline-end: 18px; inline-size: 72px; block-size: 72px; --now-medallion-glyph: 34px; }
+  .now-plan-say { font-size: 23px; }
+  .now-plan-face { max-inline-size: calc(100% - 96px); }
+  .now-plan-art-picture .now-plan-face { max-inline-size: 70%; }
+  .now-plan-img { block-size: 100%; aspect-ratio: auto; }
   .now-plan-body { border-inline-start: 0; border-block-start: 1px solid var(--arbor-rule); }
   .now-day-grid { grid-template-columns: minmax(0, 1fr); }
   .now-world { flex-wrap: wrap; }
@@ -258,5 +268,5 @@
 }
 @container now (max-width: 540px) {
   .now-question-scroll { display: none; }
-  .now-plan-say { max-inline-size: 70%; }
+  .now-plan-foot { padding: 0 18px 14px; }
 }

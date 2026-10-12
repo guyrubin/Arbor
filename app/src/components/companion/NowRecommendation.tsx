@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useMemo, useState } from "react";
+import { GUIDE_ART, guideTopicFor } from "../../lib/guideArt";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
@@ -10,30 +11,27 @@ import { localizeActivity } from "../../playbank/content";
 import { concernDomainsFromLogs, daySeedFor } from "../../playbank/select";
 import { activeGoalDomains } from "../../practice/goalBuilder";
 import Icon from "../ui/Icon";
-import { TrustLink } from "../trust/TrustLink";
-import { dailyPlayForNow, focusSignalsForNow } from "./nowRecommendationModel";
+import { dailyPlayForNow, focusSignalsForNow, stepLines } from "./nowRecommendationModel";
 import { NOW_COPY } from "./nowViewCopy";
 import { trackActionOffered } from "../../lib/loopEvents";
 import { PendingLine } from "../ui/Receipt";
 import NowPlanFrame from "./NowPlanFrame";
+import NowPlanBody from "./NowPlanBody";
 import NowGuideReader from "./NowGuideReader";
 import { clearAcceptFailed, markAcceptFailed, useAcceptFailed } from "./nowGuideAccept";
-
-/** The reader's "How to begin" for a screened AI step: its own sentences, at most three. */
-function stepLines(text: string): string[] {
-  const parts = (text.match(/[^.!?]+[.!?]*/g) ?? []).map(part => part.trim()).filter(Boolean);
-  if (parts.length <= 3) return parts.length ? parts : [text];
-  return [parts[0], parts[1], parts.slice(2).join(" ")];
-}
+import { useNowClock } from "./useNowClock";
 
 /** Mounted only when a chosen step/program does not already lead Now. The
  * parent keys this by child/language, so cached or in-flight AI from another
  * context cannot become the next child's recommendation.
  *
- * v3 F-NOW-1: the plan card's body — kicker, the step, why it was picked
- * (always visible, with How Arbor decides), its time and size in words, and
- * Begin, which opens the guide reader. The screened AI step is chosen there;
- * a library guide is read there and never writes a record. */
+ * v3 F-NOW-1: the plan card — its face carries the say line and the guide's
+ * title; its body the kicker, the next step, Begin (which opens the guide
+ * reader), then the one plan body every lead shares: time and size in words
+ * and why it was picked (always visible, with How Arbor decides). The
+ * screened AI step is chosen in the reader; a library guide is read there
+ * and never writes a record. With an active question, library ideas in its
+ * areas come first, and only such a pick quotes the question. */
 export default function NowRecommendation({ name, onTalkOpen, journal }: {
   name: string;
   onTalkOpen: (prompt?: string) => void;
@@ -46,15 +44,21 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
   const lang = uiLang === "he" ? "he" : "en";
   const copy = NOW_COPY[lang];
   const id = useId();
-  const now = useMemo(() => new Date(), [childProfile, behaviorLogs, playLogs, milestones, actionLoop]);
+  const now = useNowClock();
+  // The clock is a fresh Date each render; the memos below move per minute, not per render.
+  const minute = Math.floor(now.getTime() / 60_000);
   const ageText = formatChildAge(childProfile, t, now);
-  const signals = useMemo(() => focusSignalsForNow({ behaviorLogs, playLogs, milestones, actionLoop }, now), [behaviorLogs, playLogs, milestones, actionLoop, now]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const signals = useMemo(() => focusSignalsForNow({ behaviorLogs, playLogs, milestones, actionLoop }, now), [behaviorLogs, playLogs, milestones, actionLoop, minute]);
+  // FEAT-02: the active question's guide topic ranks library ideas in its areas first.
+  const topic = activeFamilyTopic?.title ? guideTopicFor({ title: activeFamilyTopic.title }) : undefined;
   const { focus, loading, error, regenerate } = useTodaysFocus(childProfile, signals, journal);
   const [libraryIndex, setLibraryIndex] = useState(0);
   const [preferLibrary, setPreferLibrary] = useState(false);
   const [readerOpen, setReaderOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const picks = useMemo(() => dailyPlayForNow({
     ageYears: knownAgeMonthsOf(childProfile, now) === null ? Number.NaN : ageYearsOf(childProfile, now),
     concernDomains: concernDomainsFromLogs(behaviorLogs, now.getTime()),
@@ -64,7 +68,8 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
     recentlyDoneIds: playLogs.filter((row) => Date.parse(row.timestamp) >= now.getTime() - 7 * 86_400_000 && Date.parse(row.timestamp) <= now.getTime()).map((row) => row.activityId),
     daySeed: daySeedFor(now.getTime()),
     ...(signals.lastActionRecommendation && signals.lastActionOutcome ? { lastAction: { recommendation: signals.lastActionRecommendation, outcome: signals.lastActionOutcome } } : {}),
-  }), [childProfile, behaviorLogs, playLogs, signals.lastActionRecommendation, signals.lastActionOutcome, now]);
+    ...(topic ? { topicDomains: GUIDE_ART[topic].domains } : {}),
+  }), [childProfile, behaviorLogs, playLogs, signals.lastActionRecommendation, signals.lastActionOutcome, topic, minute]);
   const pick = picks[libraryIndex % Math.max(1, picks.length)];
   const activity = pick ? localizeActivity(pick.activity, lang) : null;
   const aiHeadline = focusHeadlineFor(focus);
@@ -92,6 +97,7 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
     }
     if (!activity) return copy.noOfferWhy;
     return pick?.continuation ? copy.continuationWhy
+      : pick?.reason === "topic-match" ? copy.topicWhy
       : pick?.reason === "goal-match" ? copy.goalsWhy
         : pick?.reason === "concern-match" ? copy.momentsWhy
           : pick?.reason === "interest-match" && pick.matchedInterest ? copy.interestWhy(pick.matchedInterest)
@@ -121,21 +127,17 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
   const say = useAi && focus?.sayThis ? t("elev.loop.ms.quoted", { text: focus.sayThis }) : null;
   const readMinutes = Math.max(1, Math.round(`${body ?? ""} ${aiStep ?? ""} ${focus?.sayThis ?? ""}`.trim().split(/\s+/).length / 200));
   const failed = saveError || acceptFailed;
-  return <NowPlanFrame kind="recommendation" lang={lang} tag={copy.planTag.recommendation} say={say ?? copy.planSay.recommendation} meta={useAi ? copy.noStepYet : undefined} question={activeFamilyTopic?.title}>
+  // FEAT-02 r2: the question is quoted only on a library idea picked for its
+  // area, never on an AI pick the model made without it.
+  const asked = !useAi && activity && pick?.reason === "topic-match" ? activeFamilyTopic?.title ?? null : null;
+  const offered = useAi || !!activity;
+  // The guide's title is the face's h2; the body below never repeats it.
+  return <NowPlanFrame kind="recommendation" lang={lang} tag={copy.planTag.recommendation} say={say ?? copy.planSay.recommendation} quoted={!!say} title={headline} titleId={`${id}-title`}
+    meta={useAi ? copy.noStepYet : activity ? copy.planMeta.recommendation : undefined} question={activeFamilyTopic?.title}>
   <section className="now-lead arbor-depth-primary" data-module="now-recommendation" data-recommendation-source={useAi ? "ai" : "library"} aria-labelledby={`${id}-title`}>
     <p className="now-plan-kicker">{copy.stepKicker}</p>
-    <h2 id={`${id}-title`} className="now-lead-title" dir="auto">{headline}</h2>
     {!useAi && activity && activity.steps.length > 0 && <p className="now-next">{copy.nextStep(activity.steps[0])}</p>}
     {body && <p className="now-lead-body" dir="auto">{body}</p>}
-    <div className="now-picked" data-testid="now-picked-because">
-      <Icon name="auto_awesome" size={17} />
-      <p><b>{copy.pickedBecause}</b> {(useAi || activity) && ageText ? <><bdi>{name}</bdi>, {ageText} · </> : null}{reason}</p>
-      <TrustLink surface="today-focus" />
-    </div>
-    {(useAi || activity) && <ul className="now-guide-meta">
-      <li><Icon name="schedule" size={16} />{useAi ? copy.readMinutes(readMinutes) : copy.minutes(activity!.durationMin)}</li>
-      <li><Icon name="task_alt" size={16} />{copy.oneAction}</li>
-    </ul>}
 
     <div className="now-lead-actions">
       {useAi || activity
@@ -144,6 +146,8 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
       {adapt && <button type="button" className="companion-text-button" onClick={adapt}>{copy.adapt}<Icon name="chat_bubble" size={17} /></button>}
     </div>
     {failed && !readerOpen && <p className="now-inline-status" role="alert">{copy.saveError}</p>}
+    <NowPlanBody why={reason} time={offered ? (useAi ? copy.readMinutes(readMinutes) : copy.minutes(activity!.durationMin)) : null} size={offered ? copy.oneAction : null}
+      name={offered && ageText ? name : undefined} ageText={ageText} question={asked} />
 
     {(useAi ? picks.length > 0 : picks.length > 1) && <div className="now-alternatives">
       <button type="button" className="companion-text-button" onClick={another}>{copy.otherIdea}<Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" /></button>

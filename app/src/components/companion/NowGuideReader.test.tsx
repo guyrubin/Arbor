@@ -127,11 +127,27 @@ describe("v3 F-NOW-1 · the plan card's face", () => {
     expect(html.match(/now-plan-blob /g)).toHaveLength(2);
     expect(html).not.toContain("<img");
     expect(html).toContain("Today&#x27;s guide");
-    expect(html).toContain('<blockquote class="now-plan-say" dir="auto">Start small. Stay close.</blockquote>');
+    // Re-pin (F-NOW-1 r2): a one-liner is a plain line; only words to say are a blockquote.
+    expect(html).toContain('<p class="now-plan-say" dir="auto">Start small. Stay close.</p>');
+    expect(html).not.toContain("<blockquote");
+    // The phone shrinks the glyph through a variable; desktop keeps 46px.
+    expect(html).toContain("font-size:var(--now-medallion-glyph, 46px)");
     expect(html).toContain('<p class="now-plan-meta">Not chosen yet</p>');
     expect(html).not.toContain(MORNINGS);
     expect(html.indexOf("now-plan-art")).toBeLessThan(html.indexOf("now-plan-body"));
     expect(html).toContain('<div class="now-plan-body"><p>body</p></div>');
+  });
+
+  it("words to say are a blockquote; the guide's title is the card's h2 between the say line and the meta, or a lead's own h2 as it is", () => {
+    let html = renderToStaticMarkup(<NowPlanFrame kind="recommendation" lang="en" tag="t" say="“Red shoes or blue shoes?”" quoted title="Sock puppets" titleId="guide-title" meta="Not chosen yet"><p>body</p></NowPlanFrame>);
+    expect(html).toContain('<blockquote class="now-plan-say" dir="auto">“Red shoes or blue shoes?”</blockquote>');
+    expect(html).toContain('<h2 class="now-plan-title" id="guide-title" dir="auto">Sock puppets</h2>');
+    expect(html.indexOf("now-plan-say")).toBeLessThan(html.indexOf("now-plan-title"));
+    expect(html.indexOf("now-plan-title")).toBeLessThan(html.indexOf("now-plan-meta"));
+    expect(html.match(/<h2/g)).toHaveLength(1);
+    html = renderToStaticMarkup(<NowPlanFrame kind="step" lang="en" tag="t" title={<h2 id="own" className="now-plan-title" dir="auto">Read one page.</h2>}><p>body</p></NowPlanFrame>);
+    expect(html).toContain('<div class="now-plan-face"><h2 id="own" class="now-plan-title" dir="auto">Read one page.</h2></div>');
+    expect(html).not.toContain("now-plan-say");
   });
 
   it("no matching question keeps the lead's own glyph; no say or meta, no face block", () => {
@@ -152,6 +168,22 @@ describe("v3 F-NOW-1 · the plan card's face", () => {
       expect(html).not.toContain("now-plan-medallion");
       expect(html).not.toContain("now-plan-blob");
     }
+  });
+
+  it("Hebrew with the picture shipped: one CSS mirror under RTL (never a second in the markup) and the scrim on the words' side", () => {
+    state.shipped = true;
+    const html = renderToStaticMarkup(<div dir="rtl"><NowPlanFrame kind="recommendation" lang="he" tag="המדריך של היום" say="מתחילים בקטן." title="בובות גרב" titleId="he-title" question={MORNINGS}><p>body</p></NowPlanFrame></div>);
+    const img = html.match(/<img [^>]*>/)?.[0] ?? "";
+    expect(img).toContain('class="now-plan-img"');
+    expect(img).toContain(`alt="${GUIDE_ART.mornings.alt.he}"`);
+    expect(img).not.toMatch(/scale|rtl:|style=/);
+    expect(html).toContain('<span class="now-plan-scrim" aria-hidden="true"></span>');
+    expect(html.indexOf("now-plan-scrim")).toBeLessThan(html.indexOf("now-plan-face"));
+    expect(html).toContain('<h2 class="now-plan-title" id="he-title" dir="auto">');
+    const css = readFileSync(path.resolve(__dirname, "nowView.css"), "utf8").replace(/\r\n/g, "\n");
+    expect(css.match(/\.now-plan-img:dir\(rtl\) \{ transform: scaleX\(-1\); \}/g)).toHaveLength(1);
+    expect(css).not.toMatch(/\[dir="?rtl"?\][^{]*\.now-plan-img/);
+    expect(css).toMatch(/\.now-plan-scrim:dir\(rtl\) \{[^}]*270deg/);
   });
 
   it("a bare lead brings its own frame", () => {

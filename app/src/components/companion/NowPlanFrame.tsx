@@ -14,16 +14,22 @@ const PLAN_ICON: Record<NowPlanKind, string> = {
  * The start panel is the guide's face and the wider one — the active
  * question's guide picture once it has shipped (lib/guideArt), otherwise
  * shapes and a medallion carrying the question's glyph — with the lead's tag,
- * its say line and a line of plan meta in words. The end panel holds the lead
- * itself. Never a picture of the child, never a verdict, never a count of
+ * its say line (a quote only when it is words to say), the guide's title and
+ * a line of plan meta in words. The end panel holds the lead itself. Never a picture of the child, never a verdict, never a count of
  * the child's progress.
  */
-export default function NowPlanFrame({ kind, lang, tag, say, meta, question, bare, children }: {
+export default function NowPlanFrame({ kind, lang, tag, say, quoted = false, title, titleId, meta, question, bare, children }: {
   kind: NowPlanKind;
   lang: "en" | "he";
   tag: string;
   /** The say line: the lead's own words when it has them, else its one-liner. */
   say?: string | null;
+  /** The say line is a phrase to say aloud (already in the locale's quotes): a blockquote. Otherwise a plain line. */
+  quoted?: boolean;
+  /** The guide's title under the say line: a string becomes the card's h2; an element (a lead's own h2) is placed as it is. */
+  title?: React.ReactNode;
+  /** The id a string title's h2 carries, for its section's aria-labelledby. */
+  titleId?: string;
   /** Plan meta in words about the parent's own step (never a ratio or a bar). */
   meta?: string | null;
   /** The active question, for the guide's glyph and picture only; never quoted here. */
@@ -43,12 +49,13 @@ export default function NowPlanFrame({ kind, lang, tag, say, meta, question, bar
       </> : <>
         <span className="now-plan-blob now-plan-blob-a" aria-hidden="true" />
         <span className="now-plan-blob now-plan-blob-b" aria-hidden="true" />
-        <span className="now-plan-medallion" aria-hidden="true"><Icon name={face.glyph ?? PLAN_ICON[kind]} size={46} /></span>
+        <span className="now-plan-medallion" aria-hidden="true"><Icon name={face.glyph ?? PLAN_ICON[kind]} size={46} style={{ fontSize: "var(--now-medallion-glyph, 46px)" }} /></span>
       </>}
       <div className="now-plan-art-text">
         <p className="now-plan-tag"><Icon name="lightbulb" size={16} />{tag}</p>
-        {(say || meta) && <div className="now-plan-face">
-          {say && <blockquote className="now-plan-say" dir="auto">{say}</blockquote>}
+        {(say || title || meta) && <div className="now-plan-face">
+          {say && (quoted ? <blockquote className="now-plan-say" dir="auto">{say}</blockquote> : <p className="now-plan-say" dir="auto">{say}</p>)}
+          {typeof title === "string" ? (title ? <h2 className="now-plan-title" id={titleId} dir="auto">{title}</h2> : null) : title}
           {meta && <p className="now-plan-meta">{meta}</p>}
         </div>}
       </div>

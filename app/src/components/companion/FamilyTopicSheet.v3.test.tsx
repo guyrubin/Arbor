@@ -189,6 +189,24 @@ describe("v3 All questions sheet", () => {
     expect(state.updateFamilyTopic).toHaveBeenCalledWith(SLEEP.id, { title: SLEEP.title });
   });
 
+  it("F-NOW-1 r2: the intent row belongs to the active question, after New question; it hides while another question is edited and sits above a new question's form", () => {
+    const ROW = 'data-testid="topic-intent-row"';
+    let html = renderToStaticMarkup(<FamilyTopicSheet onClose={() => {}} />);
+    expect(html.match(new RegExp(ROW, "g"))).toHaveLength(1);
+    expect(html.indexOf('class="topic-new"')).toBeGreaterThan(-1);
+    expect(html.indexOf(ROW)).toBeGreaterThan(html.indexOf('class="topic-new"'));
+    requestFamilyTopicEdit(SLEEP.id);
+    html = renderToStaticMarkup(<FamilyTopicSheet onClose={() => {}} />);
+    expect(html).toContain('id="family-question-title"');
+    expect(html).not.toContain(ROW);
+    requestFamilyTopicEdit(MORNINGS.id);
+    html = renderToStaticMarkup(<FamilyTopicSheet onClose={() => {}} />);
+    expect(html.match(new RegExp(ROW, "g"))).toHaveLength(1);
+    html = renderToStaticMarkup(<FamilyTopicSheet onClose={() => {}} startNew />);
+    expect(html.match(new RegExp(ROW, "g"))).toHaveLength(1);
+    expect(html.indexOf(ROW)).toBeLessThan(html.indexOf('<form class="topic-edit"'));
+  });
+
   it("F-NOW-1: an edit request for a question that is gone, or one gone stale, opens the plain list", () => {
     requestFamilyTopicEdit("t-gone");
     expect(renderToStaticMarkup(<FamilyTopicSheet onClose={() => {}} />)).not.toContain('id="family-question-title"');

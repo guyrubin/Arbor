@@ -405,6 +405,103 @@ describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
     expect(plan).not.toContain("<img");
   });
 
+  // Re-pin (F-NOW-1 r2, FEAT-02): the question is quoted where the pick was made
+  // for it - a library idea ranked for its area - and nowhere else.
+  it.each(["en", "he"] as const)("%s: a library idea picked for the active question quotes it, isolated; an AI pick or an unmatched question never does", lang => {
+    state.lang = lang; state.noPractice = true;
+    const copy = NOW_COPY[lang];
+    const question = lang === "he" ? "מילים חדשות בבית" : "New words at home";
+    state.activeFamilyTopic = { id: "topic-w", title: question };
+    const page = renderToStaticMarkup(<NowView topic={state.activeFamilyTopic} />);
+    const plan = card(page);
+    expect(plan).toContain('data-guide="new-words"');
+    expect(plan).toContain('data-recommendation-source="library"');
+    const line = picked(plan);
+    const runs = line.match(/<bdi>[^<]*<\/bdi>/g) ?? [];
+    expect(runs.some(run => run.includes(question)), "the question in its own bdi").toBe(true);
+    expect(runs).toContain("<bdi>Noa</bdi>");
+    expect(words(line)).toContain(`${copy.pickedQuestion} `);
+    expect(words(line)).toContain(copy.topicWhy);
+    expect(words(line)).not.toContain(copy.curatedWhy);
+    expect(line).not.toContain(" dir=");
+    if (lang === "he") expect(words(line).replace("Noa", "")).not.toMatch(/[A-Za-z]/);
+    expect(page.match(/data-primary-move=/g)).toHaveLength(1);
+    // An AI pick the model made without the question never quotes it.
+    state.focus = aiFocus();
+    const ai = picked(card(renderToStaticMarkup(<NowView topic={state.activeFamilyTopic} />)));
+    expect(words(ai)).not.toContain(question);
+    expect(words(ai)).not.toContain(copy.pickedQuestion);
+    // A question with no guide area leaves the library's own order and reason.
+    state.focus = null;
+    state.activeFamilyTopic = { id: "topic-h", title: "Why does he hum?" };
+    const plain = picked(card(renderToStaticMarkup(<NowView topic={state.activeFamilyTopic} />)));
+    expect(words(plain)).not.toContain("Why does he hum?");
+    expect(words(plain)).not.toContain(copy.pickedQuestion);
+    expect(words(plain)).not.toContain(copy.topicWhy);
+  });
+
+  it.each(["en", "he"] as const)("%s: the face carries the guide's title as the card's h2 and the say line as a plain line unless it is words to say", lang => {
+    state.lang = lang; state.noPractice = true;
+    const library = card(renderToStaticMarkup(<NowView />));
+    const title = library.match(/<h2 class="now-plan-title" id="([^"]+)" dir="auto">[^<]+<\/h2>/);
+    expect(title, "the guide's title on the face").not.toBeNull();
+    expect(library).toContain(`aria-labelledby="${title![1]}"`);
+    expect(library.match(/<h2/g)).toHaveLength(1);
+    expect(library).toMatch(/<p class="now-plan-say" dir="auto">/);
+    expect(library).not.toContain("<blockquote");
+    state.focus = aiFocus({ sayThis: "Red shoes or blue shoes today?" });
+    const ai = card(renderToStaticMarkup(<NowView />));
+    expect(ai).toMatch(/<blockquote class="now-plan-say" dir="auto">[^<]*Red shoes or blue shoes today\?/);
+    expect(ai).toContain(`<h2 class="now-plan-title" id="`);
+  });
+
+  it.each(["en", "he"] as const)("%s: every lead speaks through the one plan body - an always-visible Picked line, its time and size in words, one primary move", lang => {
+    state.lang = lang;
+    const copy = NOW_COPY[lang];
+    const note = { id: "parent-note", timestamp: "2026-07-09T08:10:00", behaviorType: "Moment", trigger: "Calmed and put shoes on within eight minutes.", notes: "", response: "" };
+    const appointment = { id: "visit-specific", who: "", role: "Speech therapist", profession: "slp", when: "", whenIso: "2026-10-14T10:00:00", mode: "In person", status: "confirmed" };
+    const lead = (page: string, kind: "step" | "visit" | "record" | "practice") => {
+      const at = page.indexOf(`data-plan="${kind}"`);
+      expect(at, `the ${kind} plan card`).toBeGreaterThan(-1);
+      // The card runs from its frame to the end of its one plan body, which closes it.
+      const end = page.indexOf("</div>", page.indexOf('data-testid="now-picked-because"', at)) + "</div>".length;
+      const plan = page.slice(at, end);
+      const foot = plan.slice(plan.indexOf('class="now-plan-foot"'));
+      expect(foot).toContain('<ul class="now-guide-meta">');
+      const line = picked(plan);
+      expect(line).toContain(`<b>${copy.pickedBecause}</b>`);
+      if (kind !== "practice") expect(words(line)).toContain(copy.pickedWhy[kind]);
+      expect(line).not.toContain(" dir=");
+      expect(page.match(/data-testid="now-picked-because"/g)).toHaveLength(1);
+      expect(page.match(/data-primary-move=/g)).toHaveLength(1);
+      expect(words(foot)).toContain(copy.planTime[kind]);
+      expect(words(foot)).toContain(copy.planSize[kind]);
+      expect(foot).not.toMatch(/\d\s*\/\s*\d|\d\s*%|role="progressbar"|<progress/);
+      // The practice's own reason may name the child; nothing else is Latin in Hebrew.
+      if (lang === "he") expect(words(line).replace(/Noa/g, "")).not.toMatch(/[A-Za-z]/);
+      return plan;
+    };
+    lead(renderToStaticMarkup(<NowView />), "practice");
+    state.actionLoop = [{ id: "step-a", recommendation: "Sit together for one page.", source: "coach", status: "accepted", acceptedAt: "2026-10-01", capacity: "tiny" }];
+    const step = lead(renderToStaticMarkup(<NowView />), "step");
+    expect(step).toMatch(/<h2 id="[^"]+-step" class="now-plan-title" dir="auto">Sit together for one page\.<\/h2>/);
+    expect(step.match(/<h2/g)).toHaveLength(1);
+    expect(step).toContain('class="companion-text-button now-plan-how"');
+    expect(state.readerProps).toMatchObject({ open: false, title: "Sit together for one page.", crumb: copy.planTag.step });
+    expect(state.readerProps.onChoose).toBeUndefined();
+    expect(words(picked(step))).not.toContain(copy.pickedQuestion);
+    // A step chosen under the active question quotes it.
+    state.actionLoop = [{ id: "step-w", recommendation: "Name one thing you see on the walk.", source: "coach", status: "accepted", acceptedAt: "2026-10-02", capacity: "tiny", topicId: "topic-w" }];
+    const topic = { id: "topic-w", title: lang === "he" ? "מילים חדשות בבית" : "New words at home" };
+    const under = picked(lead(renderToStaticMarkup(<NowView topic={topic} />), "step"));
+    expect((under.match(/<bdi>[^<]*<\/bdi>/g) ?? []).some(run => run.includes(topic.title))).toBe(true);
+    state.actionLoop = []; state.appointments = [appointment]; state.behaviorLogs = [note];
+    const visit = lead(renderToStaticMarkup(<NowView />), "visit");
+    expect(visit).toMatch(/<h2 id="[^"]+-visit" class="now-plan-title" dir="auto">/);
+    state.appointments = [];
+    lead(renderToStaticMarkup(<NowView />), "record");
+  });
+
   it("phones: the question note hides, the art band is 190px with a 72px medallion and a 23px say line; desktop leads with the wider art", () => {
     const css = todayFile("nowView.css");
     expect(css).toContain("@media (max-width: 767.98px) { .now-question-note { display: none; } }");
@@ -414,5 +511,19 @@ describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
     expect(phone).toMatch(/^[^@]*\.now-plan-medallion \{[^}]*inline-size: 72px; block-size: 72px;/);
     expect(phone).toMatch(/^[^@]*\.now-plan-say \{[^}]*font-size: 23px;/);
     expect(css).not.toContain(".now-question-talk");
+  });
+
+  it("the guide picture is 16:9 from the inline-start edge, mirrored once in RTL with its scrim on the words' side; the phone medallion sits top-end, clear of the words", () => {
+    const css = todayFile("nowView.css");
+    expect(css).toMatch(/\.now-plan-img \{[^}]*inset-inline-start: 0;[^}]*aspect-ratio: 16 \/ 9;/);
+    expect(css.match(/\.now-plan-img:dir\(rtl\) \{ transform: scaleX\(-1\); \}/g)).toHaveLength(1);
+    expect(css.match(/scaleX\(-1\)/g)).toHaveLength(1);
+    expect(css).toMatch(/\.now-plan-scrim \{[^}]*linear-gradient\(90deg, /);
+    expect(css).toMatch(/\.now-plan-scrim:dir\(rtl\) \{[^}]*linear-gradient\(270deg, /);
+    expect(css).toMatch(/\.now-plan-face \{[^}]*max-inline-size: 52%;/);
+    const phone = css.slice(css.indexOf("@container now (max-width: 860px)") + 1);
+    expect(phone).toMatch(/^[^@]*\.now-plan-medallion \{[^}]*inset-block-start: 18px;[^}]*inset-inline-end: 18px;/);
+    expect(phone).toMatch(/^[^@]*\.now-plan-face \{ max-inline-size: calc\(100% - 96px\); \}/);
+    expect(css).not.toMatch(/(?:^|[\s;{-])(?:left|right)\s*:/m);
   });
 });
