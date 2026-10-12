@@ -25,7 +25,7 @@ const KEYS = [
   "companion.capture.keepTitle", "companion.capture.keepSub", "companion.capture.modes",
   "companion.capture.mode.write", "companion.capture.mode.dictate", "companion.capture.mode.photo",
   "companion.capture.where", "companion.capture.area", "companion.capture.privacy", "companion.capture.keep",
-  "companion.capture.saved", "companion.capture.another", "companion.capture.photoNote",
+  "companion.capture.another", "companion.capture.photoNote",
   "companion.capture.intensity.1", "companion.capture.intensity.2", "companion.capture.intensity.3",
   "companion.capture.intensity.4", "companion.capture.intensity.5",
 ] as const;
@@ -65,8 +65,21 @@ describe("F-CHILD-2 copy", () => {
     }
   });
 
-  it("the Across-areas note says what a number and a blank mean, verbatim", () => {
-    expect(en["companion.moments.areasNote"]).toBe("A number = how many moments were saved. Blank = no record in this period, not a missing ability. Lines connect dates, not a measure of progress.");
+  it("the Across-areas note says what a number and a blank mean, verbatim (no lines are drawn, so none are described)", () => {
+    expect(en["companion.moments.areasNote"]).toBe("A number = how many moments were saved. Blank = no record in this period, not a missing ability.");
+    expect(he["companion.moments.areasNote"]).toBe("מספר = כמה רגעים נשמרו. ריק = אין תיעוד בתקופה, לא יכולת חסרה.");
+    for (const value of [en["companion.moments.areasNote"], he["companion.moments.areasNote"]]) expect(value).not.toMatch(/\bLines?\b|קווים/);
+  });
+
+  it("the Across-areas title is the portrait's own wording in both languages", () => {
+    expect(en["companion.moments.threadTitle"]).toBe(en["companion.portrait.threadTitle"]);
+    expect(he["companion.moments.threadTitle"]).toBe("חלקים שונים של אותו ילד");
+    expect(he["companion.moments.threadTitle"]).toBe(he["companion.portrait.threadTitle"]);
+  });
+
+  it("the duplicate saved line is gone: the capture Receipt is the one confirmation", () => {
+    expect(en["companion.capture.saved"]).toBeUndefined();
+    expect(he["companion.capture.saved"]).toBeUndefined();
   });
 
   it("the block is appended under its own F-CHILD-2 marker in both dictionaries", () => {

@@ -17,6 +17,17 @@ export function parseView(raw: string | null | undefined): MomentsView {
   return raw === "places" || raw === "areas" ? raw : "time";
 }
 
+/**
+ * What Moments shows and counts: the things the parent kept — moments,
+ * milestones, keepsakes, words, notes, play, activity and professional
+ * entries. A child's own practice in Kid Mode, a screening's answers and a
+ * growth measurement are not moments; they keep their own pages and never
+ * enter a Moments card or an Across-areas count.
+ */
+export function isMomentRecord(o: Observation): boolean {
+  return o.source !== "kid_practice" && o.value.type !== "check" && o.value.type !== "measurement";
+}
+
 /** Months in view: the last 3, the last 12, or the whole loaded record (0). */
 export type MomentsRange = 3 | 12 | 0;
 export const MOMENTS_RANGES: readonly MomentsRange[] = [3, 12, 0];

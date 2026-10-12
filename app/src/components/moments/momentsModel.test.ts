@@ -7,6 +7,7 @@ import {
   MOMENTS_VIEWS,
   areaMonthCounts,
   filterByAreaMonth,
+  isMomentRecord,
   monthBuckets,
   monthIdOf,
   parseMonth,
@@ -163,5 +164,18 @@ describe("filterByAreaMonth", () => {
     expect(filterByAreaMonth(record, null, "2026-09")).toHaveLength(2);
     expect(filterByAreaMonth(record, "talking", "2026-09")).toHaveLength(1);
     expect(filterByAreaMonth(record)).toHaveLength(3);
+  });
+});
+
+describe("isMomentRecord", () => {
+  it("keeps what the parent kept; a child's own practice, a screening and a measurement never count", () => {
+    const base = moment(at(2026, 9, 9), ["talking"]);
+    expect(isMomentRecord(base)).toBe(true);
+    expect(isMomentRecord({ ...base, kind: "milestone", value: { type: "milestone", milestoneId: "m-x", title: "Invented" } })).toBe(true);
+    expect(isMomentRecord({ ...base, kind: "practice", value: { type: "practice", activity: "mission:x" }, origin: "missionRecords" })).toBe(true);
+    expect(isMomentRecord({ ...base, source: "professional_entered" })).toBe(true);
+    expect(isMomentRecord({ ...base, kind: "practice", value: { type: "practice", activity: "memory" }, source: "kid_practice", origin: "practiceEvents" })).toBe(false);
+    expect(isMomentRecord({ ...base, kind: "concern", value: { type: "check", bandId: "band-x" }, origin: "screenings" })).toBe(false);
+    expect(isMomentRecord({ ...base, kind: "measurement", value: { type: "measurement", heightCm: 100 }, origin: "growthEntries" })).toBe(false);
   });
 });

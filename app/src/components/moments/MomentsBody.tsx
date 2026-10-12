@@ -19,7 +19,7 @@ import { portraitEvidenceLines, reviewedPortraitDraft } from "../companion/portr
 import { openFamilyTopicSheet } from "../companion/familyTopicEvents";
 import { PLACE_ICONS, PLACE_LABEL_KEYS } from "../overview/CaptureWhereArea";
 import {
-  areaMonthCounts, filterByAreaMonth, monthBuckets, MOMENTS_RANGES, MOMENTS_VIEWS, parseMonth, parseView, placeCards,
+  areaMonthCounts, filterByAreaMonth, isMomentRecord, monthBuckets, MOMENTS_RANGES, MOMENTS_VIEWS, parseMonth, parseView, placeCards,
   type MomentsRange, type MomentsView, type MonthBucket,
 } from "./momentsModel";
 import "./moments.css";
@@ -74,9 +74,13 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   const menuId = useId();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const rangeRef = useRef<HTMLDivElement | null>(null);
+  const rangeChipRef = useRef<HTMLButtonElement | null>(null);
+  const rangeItemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const record = useObservationRecord();
-  const observations = useMemo(() => record.observations.filter(o => o.childId === childProfile.id), [record.observations, childProfile.id]);
+  // Moments shows the parent's kept record only: a child's own practice, a
+  // screening's answers and a measurement never enter a card or a count.
+  const observations = useMemo(() => record.observations.filter(o => o.childId === childProfile.id && isMomentRecord(o)), [record.observations, childProfile.id]);
   const logMap = useMemo(() => new Map((record.sources.behaviorLogs ?? []).map(log => [`behaviorLogs:${log.id}`, log])), [record.sources.behaviorLogs]);
   const scoped = useMemo(() => filterByAreaMonth(observations, area, null), [observations, area]);
   const rangeBuckets = useMemo(() => monthBuckets(scoped, childProfile.id, new Date(), range), [scoped, childProfile.id, range]);
@@ -98,14 +102,40 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   const selectedObservations = selected ? observations.filter(o => selected.ids.includes(o.id)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)) : [];
   const closeSelection = useSheetHistory(!!selected, () => setSelection(null));
 
+  // The range menu: focus moves into it on open (onto the checked item),
+  // Arrow Up/Down, Home and End rove its items, Escape closes it and returns
+  // focus to the chip, Tab closes it, and a pointer outside closes it.
   useEffect(() => {
     if (!menuOpen) return;
+    rangeItemRefs.current[Math.max(0, MOMENTS_RANGES.indexOf(range))]?.focus();
     const away = (event: PointerEvent) => { if (rangeRef.current && !rangeRef.current.contains(event.target as Node)) setMenuOpen(false); };
-    const escape = (event: globalThis.KeyboardEvent) => { if (event.key === "Escape") setMenuOpen(false); };
     document.addEventListener("pointerdown", away);
-    document.addEventListener("keydown", escape);
-    return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", escape); };
+    return () => document.removeEventListener("pointerdown", away);
+    // focus lands once per opening, not on every range change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menuOpen]);
+  const closeMenu = (refocus: boolean) => {
+    setMenuOpen(false);
+    if (refocus) rangeChipRef.current?.focus();
+  };
+  const onChipKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    event.preventDefault();
+    setMenuOpen(true);
+  };
+  const onMenuKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    const items = rangeItemRefs.current.filter((item): item is HTMLButtonElement => !!item);
+    const at = items.findIndex(item => item === document.activeElement);
+    const last = items.length - 1;
+    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeMenu(true); return; }
+    if (event.key === "Tab") { setMenuOpen(false); return; }
+    const next = event.key === "ArrowDown" ? (at < 0 || at === last ? 0 : at + 1)
+      : event.key === "ArrowUp" ? (at <= 0 ? last : at - 1)
+      : event.key === "Home" ? 0 : event.key === "End" ? last : -1;
+    if (next < 0) return;
+    event.preventDefault();
+    items[next]?.focus();
+  };
 
   const date = (at: string, year = false) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", ...(year ? { year: "numeric" as const } : {}) }).format(new Date(at));
   const monthLabel = (bucket: Pick<MonthBucket, "from">) => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(bucket.from);
@@ -227,15 +257,16 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
           ))}
         </div>
         <div className="moments-range" ref={rangeRef}>
-          <button type="button" className="moments-chip" aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuId}
-            aria-label={t("companion.moments.rangeAria", { range: t(RANGE_KEYS[range]) })} onClick={() => setMenuOpen(open => !open)}>
+          <button type="button" ref={rangeChipRef} className="moments-chip" aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuId}
+            aria-label={t("companion.moments.rangeAria", { range: t(RANGE_KEYS[range]) })} onClick={() => setMenuOpen(open => !open)} onKeyDown={onChipKey}>
             <Icon name="calendar_month" size={18} />{t(RANGE_KEYS[range])}<Icon name="expand_more" size={18} />
           </button>
           {menuOpen && (
-            <div role="menu" id={menuId} className="moments-menu" aria-label={t("companion.portrait.range")}>
-              {MOMENTS_RANGES.map(option => (
+            <div role="menu" id={menuId} className="moments-menu" aria-label={t("companion.portrait.range")} onKeyDown={onMenuKey}>
+              {MOMENTS_RANGES.map((option, index) => (
                 <button key={option} type="button" role="menuitemradio" aria-checked={range === option} className="moments-menu-item"
-                  onClick={() => { setRange(option); setMenuOpen(false); }}>
+                  tabIndex={range === option ? 0 : -1} ref={el => { rangeItemRefs.current[index] = el; }}
+                  onClick={() => { setRange(option); closeMenu(true); }}>
                   {range === option ? <Icon name="check" size={18} /> : <span className="moments-menu-spacer" aria-hidden="true" />}{t(RANGE_KEYS[option])}
                 </button>
               ))}
@@ -377,7 +408,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
         </>}
       </div>
 
-      <Surface open={!!selected} onClose={() => closeSelection()} title={selected?.title ?? t("companion.portrait.sourceTitle")} maxWidth="max-w-2xl">
+      <Surface open={!!selected} onClose={() => closeSelection()} scrimBlur title={selected?.title ?? t("companion.portrait.sourceTitle")} maxWidth="max-w-2xl">
         <SheetBreadcrumb label={selected?.title ?? t("companion.portrait.sourceTitle")} close={closeSelection} />
         <div className="moments-evidence" dir={he ? "rtl" : "ltr"}>
           {selectedObservations.length === 0 && <p>{t("companion.portrait.noDomain")}</p>}

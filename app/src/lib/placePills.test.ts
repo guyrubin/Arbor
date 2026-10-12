@@ -104,15 +104,15 @@ describe("2 · pillRowFor: the place's row on the place and on every leaf", () =
     expect(tabsOf(rowFor("weekly"))).toEqual(tabsOf(PLACE_PILLS.now));
   });
 
-  it("Moments and the journal keep their own in-page nav and render no Shell row; they stay doors in My child", () => {
+  it("the record's two densities keep their own Feed · Story nav and render no Shell row; they stay doors in My child", () => {
     for (const tab of ["journal", "timeline"] as const) {
       expect(NO_PILL_ROW_TABS.has(tab), tab).toBe(true);
       expect(rowFor(tab), tab).toEqual([]);
       expect(tabsOf(PLACE_PILLS.child), tab).toContain(tab);
     }
-    // F-CHILD-2 re-pin: the Feed · Story toggle is retired. #/timeline is
-    // Moments, whose own nav is the three-view tablist.
     const timeline = readFileSync(path.resolve(here, "../components/tabs/TimelineTab.tsx"), "utf8");
+    // F-CHILD-2 re-pin (this line only): the Feed · Story toggle is retired;
+    // #/timeline is Moments, whose own in-page nav is the three-view tablist.
     expect(timeline).not.toContain("data-density-toggle");
     expect(timeline).toContain("<MomentsBody");
     const moments = readFileSync(path.resolve(here, "../components/moments/MomentsBody.tsx"), "utf8");

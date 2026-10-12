@@ -70,6 +70,25 @@ describe("F-CHILD-2 Moments body", () => {
     expect(css).not.toMatch(/min-height:\s*(?:[0-3]?\d|4[0-3])px/);
   });
 
+  it("the range menu is keyboard-complete: focus enters, arrows rove, Escape returns to the chip", () => {
+    expect(body).toContain('role="menu" id={menuId}');
+    expect(body).toContain("onKeyDown={onMenuKey}");
+    expect(body).toContain("onKeyDown={onChipKey}");
+    expect(body).toContain("rangeItemRefs.current[Math.max(0, MOMENTS_RANGES.indexOf(range))]?.focus();");
+    expect(code).toMatch(/event\.key === "ArrowDown"/);
+    expect(code).toMatch(/event\.key === "ArrowUp"/);
+    expect(code).toMatch(/event\.key === "Home" \? 0 : event\.key === "End" \? last/);
+    expect(body).toContain('if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeMenu(true); return; }');
+    expect(body).toContain("if (refocus) rangeChipRef.current?.focus();");
+    expect(body).toContain("tabIndex={range === option ? 0 : -1}");
+    expect(body).toContain("onClick={() => { setRange(option); closeMenu(true); }}");
+  });
+
+  it("counts only the parent's kept record; the evidence sheet frosts the page behind it", () => {
+    expect(body).toContain("o.childId === childProfile.id && isMomentRecord(o)");
+    expect(body).toMatch(/<Surface open=\{!!selected\}[^>]*\bscrimBlur\b/);
+  });
+
   it("the evidence sheet is a Sheet below lg and opens Talk only through seedCoach", () => {
     expect(body).toContain("const Surface = compact ? Sheet : Modal;");
     expect(body).toContain('seedCoach({ prompt, source: "child-portrait" })');

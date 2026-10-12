@@ -50,16 +50,10 @@ import CaptureWhereArea, { areaFromHash, shelfForArea } from "./CaptureWhereArea
 import { PendingLine, Receipt } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
 import { freshCaptureKeep, typedCaptureKeep, selectedCaptureKeep } from "../../lib/kept/captureKeep";
-
-/** F-CHILD-2: the hard-moment slider names its ends in words (aria-valuetext
- *  and the two anchors under it) instead of a bare number out of five. */
-const INTENSITY_WORDS = [
-  "companion.capture.intensity.1",
-  "companion.capture.intensity.2",
-  "companion.capture.intensity.3",
-  "companion.capture.intensity.4",
-  "companion.capture.intensity.5",
-] as const;
+// F-CHILD-2: the hard-moment slider names its ends in words (aria-valuetext
+// and the two anchors under it) instead of a bare number out of five; the
+// review stepper and the evidence sheet read the same five words.
+import { INTENSITY_WORDS, intensityWordKey } from "../../lib/intensityWords";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
  *
@@ -425,7 +419,8 @@ export default function QuickLogModal({
     setMsProposal(null);
     setMsDone(false);
     setSaveError(null);
-    setArea(null);
+    // the next moment starts where this one did: a filtered Moments view's area stays prefilled
+    setArea(areaFromHash());
     setCaptureMode("text");
     setKeepDraft(freshCaptureKeep());
     setSource("text");
@@ -740,14 +735,16 @@ export default function QuickLogModal({
 
   const Surface = useCompactSurface() ? Sheet : Modal;
   return (
-    <Surface open={open} onClose={closeSheet} title={editLogId ? t("beh.editMoment") : hardMomentNow ? t("elev.capture.hard.title") : t("companion.capture.keepTitle")}>
+    <Surface open={open} onClose={closeSheet} scrimBlur title={editLogId ? t("beh.editMoment") : hardMomentNow ? t("elev.capture.hard.title") : t("companion.capture.keepTitle")}>
       {!editLogId && !hardMomentNow && !reply && <p data-testid="quicklog-keep-sub" className="-mt-2 mb-4 text-[13px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("companion.capture.keepSub")}</p>}
       {saveError && <p role="alert" className="mb-4 rounded-xl p-3 text-sm" style={{ color: "var(--arbor-peach-ink)", background: "var(--arbor-peach-soft)" }}>{saveError}</p>}
       <fieldset disabled={saving} className="min-w-0 border-0 p-0">
       {reply ? (
         <section data-testid="quicklog-reply" aria-live="polite" className="space-y-4 text-sm">
-          <p data-testid="quicklog-reply-saved" className="text-lg font-bold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("companion.capture.saved")}</p>
-          {!!reply.log.trigger?.trim() && <p dir="auto" data-testid="quicklog-reply-words" className="text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", borderInlineStart: "3px solid var(--arbor-rule-strong)", paddingInlineStart: 12 }}>{reply.log.trigger}</p>}
+          {/* F-CHILD-2: a plain moment reads back the parent's own words above
+              the one confirmation line (the Receipt below); a hard moment keeps
+              its own reply as it was. */}
+          {!reply.hard && !!reply.log.trigger?.trim() && <p dir="auto" data-testid="quicklog-reply-words" className="text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", borderInlineStart: "3px solid var(--arbor-rule-strong)", paddingInlineStart: 12 }}>{reply.log.trigger}</p>}
           {/* B-STATUS-01: the capture confirm is the ONE Receipt line (its
               direction and lang from the page language, the words unchanged),
               with a link to where the moment went; the sheet's own Undo ·
@@ -806,26 +803,31 @@ export default function QuickLogModal({
               <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
             </button>
           )}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              data-testid="quicklog-reply-another"
-              onClick={anotherMoment}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-xs font-extrabold"
-              style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
-            >
-              <Icon name="add" size={16} />{t("companion.capture.another")}
-            </button>
-            <a
-              href={`#${routeHash("timeline", { view: "time" })}`}
-              onClick={closeSheet}
-              data-testid="quicklog-reply-moments"
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-xs font-extrabold"
-              style={{ color: "var(--arbor-clay)", border: "1px solid var(--arbor-rule-strong)" }}
-            >
-              <Icon name="photo_album" size={16} />{t("companion.moments.open")}
-            </a>
-          </div>
+          {/* F-CHILD-2: the two onward doors of a plain moment, both outlined
+              (the mock's saved state); a hard moment's reply keeps only its
+              own Undo · Done row. */}
+          {!reply.hard && (
+            <div data-testid="quicklog-reply-onward" className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                data-testid="quicklog-reply-another"
+                onClick={anotherMoment}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-xs font-extrabold"
+                style={{ background: "transparent", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+              >
+                <Icon name="add" size={16} />{t("companion.capture.another")}
+              </button>
+              <a
+                href={`#${routeHash("timeline", { view: "time" })}`}
+                onClick={closeSheet}
+                data-testid="quicklog-reply-moments"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-xs font-extrabold"
+                style={{ background: "transparent", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+              >
+                <Icon name="photo_album" size={16} />{t("companion.moments.open")}
+              </a>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
@@ -1025,7 +1027,7 @@ export default function QuickLogModal({
 
         <div className="space-y-1">
           <label htmlFor="quick-log-intensity" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.intensity")}</label>
-          <input id="quick-log-intensity" type="range" min={1} max={5} value={newLogIntensity} aria-valuetext={t(INTENSITY_WORDS[newLogIntensity - 1] ?? INTENSITY_WORDS[2])} onChange={(e) => setNewLogIntensity(parseInt(e.target.value))} className="min-h-11 w-full" style={{ accentColor: "var(--arbor-clay)" }} />
+          <input id="quick-log-intensity" type="range" min={1} max={5} value={newLogIntensity} aria-valuetext={t(intensityWordKey(newLogIntensity))} onChange={(e) => setNewLogIntensity(parseInt(e.target.value))} className="min-h-11 w-full" style={{ accentColor: "var(--arbor-clay)" }} />
           <div className="flex justify-between text-[11px]" style={{ color: "var(--arbor-muted)" }} aria-hidden="true"><span>{t(INTENSITY_WORDS[0])}</span><span>{t(INTENSITY_WORDS[4])}</span></div>
         </div>
 
