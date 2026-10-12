@@ -346,6 +346,11 @@ export function getSearchIndex(context?: HardMomentContext): readonly SearchEntr
 const EXACT_ROUTE_QUERIES: Partial<Record<ActiveTab, readonly string[]>> = {
   appointments: ["visit", "visits", "ביקור", "ביקורים"].map(normalizeSearchText),
   consult: [translate("en", "elev.consult.h1"), translate("he", "elev.consult.h1")].map(normalizeSearchText),
+  // v3 IA-05: the ready-made routines live on Plans since B-GROWTH-25 retired
+  // #/routines, so the word a parent types for them lands there. The retired
+  // id stays retired (no row of its own); "rout" and every other partial
+  // query rank exactly as before.
+  plans: ["routines", "routine", "שגרות", "שגרה", translate("en", "nav.tab.routines"), translate("he", "nav.tab.routines")].map(normalizeSearchText),
 };
 
 /**

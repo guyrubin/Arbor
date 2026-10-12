@@ -19,6 +19,25 @@ export function requestOpenSearch(surface: SearchOpenSurface): void {
   window.dispatchEvent(new CustomEvent(SEARCH_OPEN_EVENT, { detail: { surface } }));
 }
 
+/** v3 IA-05 — only a glyph that points a way turns round in Hebrew. A place or
+ *  door glyph (eco, interests, forum, school, diversity_1) never flips.
+ *  TopbarSearch declares the identical list. */
+const glyphMirror = (glyph: string) => (["arrow_forward", "arrow_back", "chevron_right", "chevron_left", "forward", "send", "start"].includes(glyph) ? "rtl:-scale-x-100" : undefined);
+
+/** v3 IA-05 — rows by home (place or door), each home where its first row
+ *  falls, so the top hit stays first and Enter still runs it. A row with no
+ *  home (the ask row) stands alone where the hook put it. */
+function bySection(rows: readonly SearchRow[]) {
+  const sections: { key: string; group?: SearchRow["group"]; rows: SearchRow[] }[] = [];
+  for (const row of rows) {
+    const key = row.group ? "home:" + row.group.id : "row:" + row.kind + ":" + row.id;
+    const at = sections.find((s) => s.key === key);
+    if (at) at.rows.push(row);
+    else sections.push({ key, group: row.group, rows: [row] });
+  }
+  return sections;
+}
+
 /** Command palette + full-catalog search: jump to any section/capability,
  *  search every content library (Learn, Masterclasses, Routines, Scholars,
  *  published hard moments, activities, milestones, journeys, worlds) AND the
@@ -31,7 +50,10 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
   const { indexReady, ordered, kindLabel } = useSearchResults(q, { enabled: open, catalogLimit: 12, recordLimit: 12 });
 
   const term = q.trim();
-  const shown: SearchRow[] = ordered;
+  // Grouped by home, read in render order: the first section is the top hit's
+  // home and opens with it, so shown[0] is still the hook's first row.
+  const sections = bySection(ordered);
+  const shown: SearchRow[] = sections.flatMap((s) => s.rows);
 
   const run = (r: SearchRow) => {
     track("search_result_tap", { kind: r.kind });
@@ -63,24 +85,38 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
             <p className="text-xs py-6 text-center" style={{ color: "var(--arbor-muted)" }}>{searchnavText("elev.searchnav.loading", heLang)}</p>
           )}
           {term && shown.length === 0 && <p className="text-xs py-6 text-center" style={{ color: "var(--arbor-muted)" }}>{t("sm.noMatches")}</p>}
-          {shown.map((r, i) => (
-            <button
-              key={r.kind + ":" + r.id}
-              data-testid={r.kind === "ask" ? "search-ask-row" : undefined}
-              onClick={() => run(r)}
-              className="group w-full flex items-center gap-3 px-3 py-2 min-h-[44px] rounded-xl text-start transition"
-              style={{ background: "transparent" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              <span className="flex-shrink-0"><Icon name={r.icon} size={16} className={r.kind === "route" ? "rtl:-scale-x-100" : undefined} style={{ color: r.color }} /></span>
-              <span className="min-w-0 flex-1">
-                <span className="text-sm font-bold truncate block" style={{ color: "var(--arbor-ink)" }}>{r.label}</span>
-                <span className="text-xs truncate block" style={{ color: "var(--arbor-muted)" }}>{r.sub}</span>
-              </span>
-              {i === 0 && <Icon name="keyboard_return" size={16} className="opacity-0 group-hover:opacity-100" style={{ color: "var(--arbor-muted)" }} />}
-              <span className="text-xs font-medium flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>{kindLabel(r.kind)}</span>
-            </button>
+          {sections.map((s) => (
+            <div key={s.key} role={s.group ? "group" : undefined} aria-label={s.group?.label} className="space-y-1">
+              {/* v3 IA-05: the home's header; the group's aria-label already names it. */}
+              {s.group && (
+                <p aria-hidden="true" className="flex items-center gap-2 px-3 pt-2 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
+                  <Icon name={s.group.icon} size={18} />
+                  <span className="min-w-0 truncate">{s.group.label}</span>
+                </p>
+              )}
+              {s.rows.map((r) => (
+                <button
+                  key={r.kind + ":" + r.id}
+                  data-testid={r.kind === "ask" ? "search-ask-row" : undefined}
+                  onClick={() => run(r)}
+                  className="group w-full flex items-center gap-3 px-3 py-2 min-h-[44px] rounded-xl text-start transition"
+                  style={{ background: "transparent" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <span className="flex-shrink-0"><Icon name={r.icon} size={16} className={glyphMirror(r.icon)} style={{ color: r.color }} /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="text-sm font-bold truncate block" style={{ color: "var(--arbor-ink)" }}>{r.label}</span>
+                    {/* v3 IA-05: a crumb reads "home › destination"; the chevron turns once in Hebrew. */}
+                    <span className="text-xs truncate block" style={{ color: "var(--arbor-muted)" }}>
+                      {r.crumb ? r.crumb.map((part, n) => <span key={n}>{n > 0 && <Icon name="chevron_right" size={14} className="mx-0.5 rtl:-scale-x-100" />}{part}</span>) : r.sub}
+                    </span>
+                  </span>
+                  {r === shown[0] && <Icon name="keyboard_return" size={16} className="opacity-0 group-hover:opacity-100" style={{ color: "var(--arbor-muted)" }} />}
+                  <span className="text-xs font-medium flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>{kindLabel(r.kind)}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       </div>

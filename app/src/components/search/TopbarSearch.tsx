@@ -30,6 +30,25 @@ import { track } from "../../lib/analytics";
 import { Icon } from "../ui/Icon";
 import { useSearchResults, type SearchRow } from "./useSearchResults";
 
+/** v3 IA-05 — only a glyph that points a way turns round in Hebrew. A place or
+ *  door glyph (eco, interests, forum, school, diversity_1) never flips.
+ *  SearchModal declares the identical list. */
+const glyphMirror = (glyph: string) => (["arrow_forward", "arrow_back", "chevron_right", "chevron_left", "forward", "send", "start"].includes(glyph) ? "rtl:-scale-x-100" : undefined);
+
+/** v3 IA-05 — rows by home (place or door), each home where its first row
+ *  falls, so the top hit stays first. A row with no home (the ask row) stands
+ *  alone where the hook put it. Same sections as SearchModal. */
+function bySection(rows: readonly SearchRow[]) {
+  const sections: { key: string; group?: SearchRow["group"]; rows: SearchRow[] }[] = [];
+  for (const row of rows) {
+    const key = row.group ? "home:" + row.group.id : "row:" + row.kind + ":" + row.id;
+    const at = sections.find((s) => s.key === key);
+    if (at) at.rows.push(row);
+    else sections.push({ key, group: row.group, rows: [row] });
+  }
+  return sections;
+}
+
 /** AP-045 global search input + results overlay (topbar slot 1). */
 export default function TopbarSearch() {
   const { t } = useLanguage();
@@ -50,7 +69,11 @@ export default function TopbarSearch() {
 
   // B-SHELL-14: the one result model (catalogue · records · ask), same limits
   // as the modal so the same query returns the same rows on both surfaces.
-  const { ordered: results, kindLabel } = useSearchResults(query, { enabled: open, catalogLimit: 12, recordLimit: 12 });
+  const { ordered, kindLabel } = useSearchResults(query, { enabled: open, catalogLimit: 12, recordLimit: 12 });
+  // v3 IA-05: grouped by home; the arrow keys, Enter and the option ids follow
+  // the order the rows are drawn in.
+  const sections = bySection(ordered);
+  const results: SearchRow[] = sections.flatMap((s) => s.rows);
 
   // Reset active index whenever results change.
   useEffect(() => { setActiveIdx(0); }, [results.length]);
@@ -237,74 +260,94 @@ export default function TopbarSearch() {
               {t("sm.noMatches")}
             </div>
           ) : (
-            results.map((entry, i) => (
-              <div
-                id={`search-result-${i}`}
-                key={entry.kind + ":" + entry.id}
-                data-testid={entry.kind === "ask" ? "search-ask-row" : undefined}
-                role="option"
-                aria-selected={i === activeIdx}
-                onClick={() => navigate(entry)}
-                onMouseEnter={() => setActiveIdx(i)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  padding: "8px 10px",
-                  minHeight: "44px",
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  background:
-                    i === activeIdx
-                      ? "var(--arbor-paper-deep)"
-                      : "transparent",
-                  transition: "background 0.1s",
-                  userSelect: "none",
-                }}
-              >
-                {/* Kind icon — the same glyph + token the modal shows */}
-                <Icon name={entry.icon} size={16} className={entry.kind === "route" ? "rtl:-scale-x-100" : undefined} style={{ color: entry.color, flexShrink: 0 }} />
-
-                {/* Text block */}
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span
-                    style={{
-                      display: "block",
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      color: "var(--arbor-ink)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
+            sections.map((section) => (
+              <div key={section.key} role={section.group ? "group" : undefined} aria-label={section.group?.label}>
+                {/* v3 IA-05: the home's header; the group's aria-label already names it. */}
+                {section.group && (
+                  <div
+                    role="presentation"
+                    aria-hidden="true"
+                    className="flex items-center gap-2 text-xs font-bold"
+                    style={{ padding: "8px 10px 4px", color: "var(--arbor-muted)" }}
                   >
-                    {entry.label}
-                  </span>
-                  <span
-                    style={{
-                      display: "block",
-                      fontSize: "12px",
-                      color: "var(--arbor-muted)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {entry.sub || kindLabel(entry.kind)}
-                  </span>
-                </span>
+                    <Icon name={section.group.icon} size={18} />
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{section.group.label}</span>
+                  </div>
+                )}
+                {section.rows.map((entry) => {
+                  const i = results.indexOf(entry);
+                  return (
+                    <div
+                      id={`search-result-${i}`}
+                      key={entry.kind + ":" + entry.id}
+                      data-testid={entry.kind === "ask" ? "search-ask-row" : undefined}
+                      role="option"
+                      aria-selected={i === activeIdx}
+                      onClick={() => navigate(entry)}
+                      onMouseEnter={() => setActiveIdx(i)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "8px 10px",
+                        minHeight: "44px",
+                        borderRadius: "10px",
+                        cursor: "pointer",
+                        background:
+                          i === activeIdx
+                            ? "var(--arbor-paper-deep)"
+                            : "transparent",
+                        transition: "background 0.1s",
+                        userSelect: "none",
+                      }}
+                    >
+                      {/* Kind icon — the same glyph + token the modal shows */}
+                      <Icon name={entry.icon} size={16} className={glyphMirror(entry.icon)} style={{ color: entry.color, flexShrink: 0 }} />
 
-                {/* Kind badge */}
-                <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    flexShrink: 0,
-                    color: entry.color,
-                  }}
-                >
-                  {kindLabel(entry.kind)}
-                </span>
+                      {/* Text block */}
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span
+                          style={{
+                            display: "block",
+                            fontSize: "13px",
+                            fontWeight: 700,
+                            color: "var(--arbor-ink)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {entry.label}
+                        </span>
+                        <span
+                          style={{
+                            display: "block",
+                            fontSize: "12px",
+                            color: "var(--arbor-muted)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {/* v3 IA-05: a crumb reads "home › destination"; the chevron turns once in Hebrew. */}
+                          {entry.crumb ? entry.crumb.map((part, n) => <span key={n}>{n > 0 && <Icon name="chevron_right" size={14} className="mx-0.5 rtl:-scale-x-100" />}{part}</span>) : (entry.sub || kindLabel(entry.kind))}
+                        </span>
+                      </span>
+
+                      {/* Kind badge */}
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          flexShrink: 0,
+                          color: entry.color,
+                        }}
+                      >
+                        {kindLabel(entry.kind)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             ))
           )}
