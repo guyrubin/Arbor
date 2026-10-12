@@ -410,23 +410,24 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     }
   });
 
-  it("the sentence lives INSIDE the hero (no new module), title bidi-isolated", () => {
-    // Parity 9 Oct: #/practice is Together; the since-line sits in its hero (together-invitation).
+  it("v3 F-TOG-1: Together's hero carries no since sentence; the play window still falls back to a week", () => {
+    // v3 F-TOG-1 re-pin: the since-line left Together's hero (the v3 mock's hero is
+    // kicker, title, sub, one move and the studio doors). Kid-world moments surface
+    // in Now and Moments; the sentence builder above stays covered for its next home.
     const at = studio.indexOf('data-module="together-invitation"');
     const hero = studio.slice(at, studio.indexOf("</section>", at));
-    expect(hero).toContain('data-testid="together-since"');
-    expect(hero).toMatch(/<bdi>\{since\.title\}<\/bdi>/);
+    expect(hero).not.toContain('data-testid="together-since"');
+    expect(studio).not.toContain("doorSinceSentence(");
     expect(studio).toContain("known ?? Date.now() - SINCE_LAST_PLAY_FALLBACK_MS");
-    // the story title is resolved in the UI language, never the stored run title
-    expect(studio).toContain("runTitle(r, lang)");
   });
 
-  it("the hand-over is secondary and the move is stamped ONCE (Together's choose-together), never on the grid", () => {
+  it("the way into play is the gate card's Start playing; the move is stamped ONCE (Together's choose-together), never on the grid", () => {
     const src = stripComments(studio);
     expect(src).not.toMatch(/--gradient-cta|--arbor-gradient-primary/);
     expect(src.match(/\bdata-primary-move\b/g)).toHaveLength(1);
     expect(src).toContain('data-primary-move="choose-together"');
-    expect(src).toContain('className="companion-secondary companion-handover" data-testid="together-handover"');
+    // v3 F-TOG-1 re-pin: the hand-over left the hero for the gate card.
+    expect(src).toContain('className="together-start" data-testid="together-start-playing"');
     expect(src).not.toMatch(/className="companion-world-grid"[^>]*data-primary-move/);
   });
 
@@ -518,7 +519,8 @@ describe("W2-SHELLPLAY r2 · practice — the door tells the truth about the gat
     // Parity 9 Oct: Together's play note says what the PIN does only once one is set.
     expect(studio).toContain('pinSet ? (t("companion.together-view.you-choose-when-to-enter-play-your-pin-pro")) : (t("companion.together-view.play-opens-in-the-child-area-set-a-pin-to"))');
     for (const lang of ["en", "he"] as const) expect(translate(lang, "companion.together-view.play-opens-in-the-child-area-set-a-pin-to")).not.toMatch(CANT_EXIT);
-    expect(studio).toContain('pinSet ? "elev.practice.door.locked" : "elev.practice.door.gated"');
+    // v3 F-TOG-1 re-pin: the Kid Mode chips moved to Settings › PIN.
+    expect(stripComments(read("components/layout/ParentalGatePanel.tsx"))).toContain('pinSet ? "elev.practice.door.locked" : "elev.practice.door.gated"');
     expect(studio).toContain("const pinSet = Boolean(readParentPin());");
     expect(button).toContain('t(readParentPin() ? "elev.kidmode.locked" : "elev.kidmode.gated")');
     // NEGATIVE CONTROL: the locked variants DO carry the claim — rendering them
@@ -554,9 +556,10 @@ describe("W2-SHELLPLAY r2 · practice — the door tells the truth about the gat
     expect(c.byWorld.speech).toBe(1);
     expect(c.total).toBe(Object.values(c.byWorld).reduce((a, b) => a + b, 0));
     expect(c.total).toBe(3); // vocab-naming + mood-checkin are no world's — in neither
-    // the page reads the chips AND the door from this one counter
+    // the page reads the Games chips from this one counter (v3 F-TOG-1 re-pin:
+    // the door sentence that also read its total left Together's hero)
     expect(studio).toContain('{category === "games" && (counts.byWorld[world.id] ?? 0) > 0 &&');
-    expect(studio).toContain("total: counts.total,");
+    expect(studio).toContain("studioCountsSince({ speech: practiceData.speech, mimic: practiceData.mimic, adventures: practiceData.adventures, events: practiceData.events }, playWindow.sinceMs)");
     expect(studio).not.toContain("world.count(data)");
   });
 
@@ -656,14 +659,14 @@ describe("W2-SHELLPLAY r1 · #/speech — the round is scored on the fold, in on
 
 describe("B-SHELL-NEW-1b · the door sentence can be kept as ONE journal moment", () => {
   const studio = stripComments(read("components/companion/TogetherView.tsx"));
-  it("Keep writes ONE journal moment per sentence through the caller-owned save, 44 px", () => {
-    // Parity 9 Oct: Together saves through saveMoment and owns the failure inline (B-PARITY-06).
-    expect(studio).toContain("try { if (await saveMoment(sinceText, { callerShowsFailure: true })) setSinceKept({ childId: childProfile.id, text: sinceText }); else setSinceError(true); }");
-    expect(studio).toContain("if (!sinceText || sinceIsKept) return;");
-    const btn = studio.slice(studio.indexOf('data-testid="together-since-keep"'), studio.indexOf("</button>", studio.indexOf('data-testid="together-since-keep"')));
-    expect(studio).toContain('<button type="button" className="companion-text-button" data-testid="together-since-keep"');
-    expect(btn).not.toMatch(/--gradient-cta/);
-    expect(read("components/companion/companionExperience.css")).toContain(".companion-since .companion-text-button { min-block-size: 44px; }");
+  it("v3 F-TOG-1: no since sentence, so no Keep on it; an away idea is still kept as ONE moment through the caller-owned save, 44 px", () => {
+    // v3 F-TOG-1 re-pin: the since sentence and its Keep left Together's hero.
+    // Together still saves through saveMoment and owns the failure inline (B-PARITY-06).
+    expect(studio).not.toContain('data-testid="together-since-keep"');
+    expect(studio).not.toContain("sinceText");
+    expect(studio).toContain("if (await saveMoment(moment, { callerShowsFailure: true })) {");
+    expect(studio).toContain("if (kept.includes(id) || saving) return;");
+    expect(read("components/companion/companionExperience.css")).toContain(".companion-page button, .companion-preview button { min-block-size: var(--touch-min);");
     for (const lang of ["en", "he"] as const) {
       expect(translate(lang, "elev.practice.door.keep")).not.toBe("elev.practice.door.keep");
       expect(translate(lang, "elev.practice.door.kept")).not.toBe("elev.practice.door.kept");

@@ -348,6 +348,11 @@ export const companionEn = {
   "companion.together-view.routines-preview": "The steps",
   "companion.together-view.routines-areas": "Areas: {areas}",
   "companion.together-view.routines-close": "Close",
+  // v3 F-TOG-1 — Together hero kicker and studio doors.
+  "companion.together-view.kicker": "TOGETHER · KIDS STUDIO",
+  "companion.together-view.door-create-story": "Create a story",
+  "companion.together-view.door-continue-favorite": "Continue a favorite",
+  "companion.together-view.door-find-play": "Find something to play",
 };
 
 export const companionHe = {
@@ -698,4 +703,9 @@ export const companionHe = {
   "companion.together-view.routines-preview": "הצעדים",
   "companion.together-view.routines-areas": "תחומים: {areas}",
   "companion.together-view.routines-close": "סגירה",
+  // v3 F-TOG-1 — Together hero kicker and studio doors.
+  "companion.together-view.kicker": "ביחד · סטודיו לילדים",
+  "companion.together-view.door-create-story": "ליצור סיפור",
+  "companion.together-view.door-continue-favorite": "להמשיך מועדף",
+  "companion.together-view.door-find-play": "למצוא משהו לשחק",
 };

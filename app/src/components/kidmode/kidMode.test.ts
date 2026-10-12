@@ -705,8 +705,9 @@ describe("RUN-21: the sub-greeting derives from real state", () => {
     expect(src).not.toContain("kid.safety.");
     expect(src).toContain("lastPlayedWorldYesterday(");
     // …and the chips now live on the parent-side door.
-    // Parity 9 Oct: #/practice is Together; the chips are in its parent footer.
-    const door = stripComments(readFileSync(path.join(__dirname, "..", "companion", "TogetherView.tsx"), "utf8"));
+    // v3 F-TOG-1 re-pin: Together's footer became the gate card, and the chips
+    // moved to the PIN section of parent Settings (ParentalGatePanel).
+    const door = stripComments(readFileSync(path.join(__dirname, "..", "layout", "ParentalGatePanel.tsx"), "utf8"));
     for (const k of ["elev.practice.door.locked", "elev.practice.door.private", "elev.practice.door.stars"]) expect(door).toContain(k);
   });
 });

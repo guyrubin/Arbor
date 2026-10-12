@@ -46,20 +46,20 @@ const plain = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g,
 
 describe("B-PLAY-24 · Together by band", () => {
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: Leni (22 m) gets the three together ideas, no games, no Kid Mode hand-over`, () => {
+    it(`${lang}: Leni (22 m) gets the three together ideas, no games, no Start playing`, () => {
       const html = render(LENI, lang);
       expect(TOGETHER_CARDS).toHaveLength(3);
       for (const id of TOGETHER_CARDS) expect(plain(html)).toContain(translate(lang, `elev.ages.together.${id}.title`));
       expect(html).not.toContain('data-module="together-games"');
-      expect(html).not.toContain('data-testid="together-handover"');
+      expect(html).not.toContain('data-testid="together-start-playing"');
       expect(plain(html)).toMatch(lang === "en" ? /From 3, Leni can play on her own/ : /מגיל 3, Leni תוכל לשחק כאן לבד/);
       expect(html.match(/data-primary-move="choose-together"/g)?.length).toBe(1);
     });
 
-    it(`${lang}: Dylan (5 y) gets the fitting games and the labelled hand-over`, () => {
+    it(`${lang}: Dylan (5 y) gets the fitting games and the gate card's Start playing`, () => {
       const html = render(DYLAN, lang);
       expect(html).toContain('data-module="together-games"');
-      expect(html).toContain('data-testid="together-handover"');
+      expect(html).toContain('data-testid="together-start-playing"');
       expect(html.match(/data-primary-move="choose-together"/g)?.length).toBe(1);
       const { worlds } = studioWorldsForChild(lang, DYLAN);
       expect(worlds.length).toBeGreaterThan(2);
