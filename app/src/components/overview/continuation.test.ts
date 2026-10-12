@@ -69,7 +69,7 @@ describe("B-TODAY-18 · placement on Today", () => {
   // B-LOOP-07 re-pin: the continuation slot (carry-over ask, tomorrow's
   // reason) is the coordinator's ONE slot, below the blocks. v3 F-NOW-2
   // re-pin: Today's door is retired, so the slot sits in the glance, after
-  // the lead and the week card; r2: there it draws only the rhythm line.
+  // the lead and the week card (mock: the glance holds the day's offers).
   it("the slot renders in the glance, after the lead and the week card", () => {
     const view = strip(todayFile("NowView.tsx"));
     expect(view).not.toContain("<NowMoreForToday");
@@ -81,23 +81,12 @@ describe("B-TODAY-18 · placement on Today", () => {
     expect(slotAt).toBeGreaterThan(view.indexOf('<section className="now-glance"'));
   });
 
-  // v3 F-NOW-2 r2 re-pin: Now's ONE slot is the glance's rhythm line (a
-  // PREP/CALM cue with "See the hours"); it draws no other kind. The
-  // continuation kinds keep their homes: Now's step lead asks a chosen step's
-  // outcome (nextChosenAction), and Talk's coach slot renders the carry-over
-  // ask and tomorrow's reason through TodayContinuation.
-  it("ONE CompanionOfferSlot on Now, fed the coordinator's winner, drawn only for a rhythm cue; the continuation kinds render on Talk", () => {
+  it("ONE CompanionOfferSlot instance, fed the coordinator's winner (never a second arbiter)", () => {
     expect((overview.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(1);
-    expect(overview).toContain('{todayOffer.offer?.kind === "rhythm" && <CompanionOfferSlot surface="today" offer={todayOffer.offer} controls={todayOffer} placement="glance" />}');
-    expect(slot).toContain('if (placement === "glance" && offer.kind !== "rhythm") return null;');
+    expect(overview).toContain('<CompanionOfferSlot surface="today" offer={todayOffer.offer} controls={todayOffer} placement="under-step" />');
     expect(overview).not.toMatch(/<CarryOverActionAsk\b|<TomorrowReasonCard\b/);
     expect(slot).toContain("<CarryOverActionAsk onSkip={controls.refresh} />");
     expect(slot).toContain("<TomorrowReasonCard onResolved={controls.refresh} />");
-    const coach = strip(read("../tabs/CoachTab.tsx"));
-    expect(coach).toContain('const askOffer = useCompanionOffer("coach");');
-    expect(coach).toMatch(/placement=\{askContinuation !== "none" \? "continuation" : "under-step"\}/);
-    expect(coach).toContain("<TodayContinuation choice={askContinuation} isReturning>{askOfferSlot}</TodayContinuation>");
-    expect(overview).toContain("nextChosenAction(actionLoop, topic?.id)");
   });
 
   it("the resume eyebrow is the slot's eyebrow (EN + HE); the old floating eyebrow is gone", () => {
@@ -137,10 +126,8 @@ describe("B-TODAY-18 · the family line renders through the coordinator", () => 
   const overview = strip(todayLiveSource());
   const family = strip(read("./FamilyOfferLines.tsx"));
 
-  // v3 F-NOW-2 r2 re-pin: Now no longer mounts the family lines; their home
-  // is the Talk welcome (EXTRA-TALK). The component's own contract stays.
   it("one line per sibling, built by familyOfferLines from that child's own state", () => {
-    expect(overview).not.toContain("<FamilyOfferLines");
+    expect(overview).toContain("<FamilyOfferLines activeChildId={childProfile.id} />");
     expect(family).toContain("familyOfferLines([{ childId, state }])");
     expect(family).toContain('useChildCollection<ActionLoopEntry>(childId, "actionLoops")');
     expect(family).toContain("reasonForThisOpen(childId, now)");

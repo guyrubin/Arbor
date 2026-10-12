@@ -271,23 +271,36 @@ export async function collectConfirmedActionStates(helpers) {
       await childSwitch(cell, fixture.childId, fixture.childName); await byId('consult-reason-input').waitFor({ state: 'visible' });
       check(cell, 'CHILD_RETURN_RETIRES_OLD_DRAFT', await byId('consult-reason-input').inputValue() === '');
     });
-    // v3 F-NOW-2 r2: the say-back line left Now; its ruled home is the guide card's
-    // "Why this suggestion?" (F-NOW-1 follow-up). The four cells keep the state contract
-    // and pin the absence: no say-back surface, no door, ONE primary move, no write unasked.
     for (const answer of ['yes', 'not_today']) {
       await run('overview', `sayback-${answer}-failure`, async cell => {
+        // v3 F-NOW-2: "More for today" is retired; the say-back line closes Now's week card.
         await reset('sayback');
-        const lead = page.locator('#main [data-primary-move]').first(); await lead.waitFor({ state: 'visible' });
-        check(cell, 'SAYBACK_NOT_ON_NOW', await byId('today-door-saidback').count() === 0 && await byId('today-door').count() === 0, { answer });
-        check(cell, 'ONE_CURRENT_PRIMARY_MOVE', await page.locator('#main [data-primary-move]').count() === 1);
-        await expose(lead);
+        const line = byId('today-door-saidback'); await line.waitFor({ state: 'visible' });
+        check(cell, 'SAYBACK_SITS_IN_THE_WEEK_CARD', await line.evaluate(el => !!el.closest('[data-testid="now-week-changed"]')) && await byId('today-record-card').count() === 0);
+        await fault(cell, 'actionLoops', async () => {
+          await line.locator(`[data-answer="${answer}"]`).click(); await line.getByRole('alert').waitFor({ state: 'visible' });
+          check(cell, 'FAILED_SAYBACK_HAS_NO_FALSE_SAVED_OR_RECORD_RECEIPT', await byId('today-door-saidback-receipt').count() === 0 && await byId('today-record-receipt').count() === 0 && await line.locator('[data-answer]').count() === 2);
+        });
+        await frame(cell, 'SAYBACK_RETRY_REACHABLE', line.locator(`[data-answer="${answer}"]`));
+        const readable = await line.evaluate(el => {
+          const question = el.querySelector('[data-testid="today-door-saidback-question"]');
+          const error = el.querySelector('[role="alert"]');
+          const controls = el.querySelector('[role="group"]');
+          const q = question.getBoundingClientRect(), e = error.getBoundingClientRect(), c = controls.getBoundingClientRect();
+          return { questionNotClipped: question.scrollHeight <= question.clientHeight + 1 && question.scrollWidth <= question.clientWidth + 1,
+            noLineClamp: getComputedStyle(question).webkitLineClamp === 'none',
+            errorBelowQuestionAndControls: e.top >= Math.max(q.bottom, c.bottom) - 1 };
+        });
+        check(cell, 'SAYBACK_FULL_QUESTION_AND_SEPARATE_RETRY_ERROR', Object.values(readable).every(Boolean), readable);
       });
       await run('overview', `sayback-${answer}-saved`, async cell => {
-        await load('overview');
-        const lead = page.locator('#main [data-primary-move]').first(); await lead.waitFor({ state: 'visible' });
-        const rows = (await storage('actionLoops')).filter(row => row.source === 'from-record' && row.sayBack !== undefined);
-        check(cell, 'NO_SAYBACK_WRITE_WITHOUT_A_SURFACE', rows.length === 0 && await byId('today-door-saidback-receipt').count() === 0, rows);
-        await expose(lead);
+        await byId('today-door-saidback').locator(`[data-answer="${answer}"]`).click();
+        await byId('today-door-saidback-receipt').waitFor({ state: 'visible' });
+        const rows = (await storage('actionLoops')).filter(row => row.source === 'from-record');
+        check(cell, 'EXACT_ONE_PARENT_ACT_WITHOUT_REFLECTION_OR_CHILD_OUTCOME', rows.length === 1 && rows[0].sayBack === answer && rows[0].recordKey === 'said:capture-confirmed-sayback' && rows[0].reflection === undefined && rows[0].outcome === undefined, rows);
+        await load('overview'); await visible(cell, 'SAYBACK_LOCAL_RECEIPT_SURVIVES_RELOAD', byId('today-door-saidback-receipt'));
+        check(cell, 'SAYBACK_DOES_NOT_BECOME_RECORD_LEAD', await byId('today-door-saidback').getAttribute('data-answered') === answer && await byId('today-record-receipt').count() === 0);
+        await expose(byId('today-door-saidback'));
       });
     }
     for (const outcome of ['helped', 'not_today']) {

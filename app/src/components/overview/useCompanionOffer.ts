@@ -136,6 +136,5 @@ export function useCompanionOffer(surface: OfferSurface, opts: { whatChanged?: {
   /** A renderer resolved its own question (e.g. the carry-over "skip"). */
   const refresh = useCallback(() => setTick((n) => n + 1), []);
 
-  // v3 F-NOW-2: Now's visit row counts the moments since the last visit from these same confirmed rows (no second subscription).
-  return { offer: offer as CompanionOffer | null, appointment, appointments: confirmedAppointments, decision, snooze, dismiss, undo, refresh, tick };
+  return { offer: offer as CompanionOffer | null, appointment, decision, snooze, dismiss, undo, refresh, tick };
 }

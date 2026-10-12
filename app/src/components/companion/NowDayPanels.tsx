@@ -94,13 +94,14 @@ export function NowKidWorld({ observations, now, name, onAll }: {
  * v3 EXTRA-WEEKLY: the counting lives in lib/weekGlance (the Weekly tab's
  * glance reads the same object); this card renders it unchanged.
  * v3 F-NOW-2: below a rule, "Since you were last here": at most three event
- * lines (useNowChanges: events and counts only), then the cold-start line.
- * Nothing renders when empty.
+ * lines (useNowChanges: events and counts only), the cold-start line, then
+ * whatever the caller adds (the say-back line). Nothing renders when empty.
  */
-export function NowWeekSoFar({ observations, now, onReport, changedLines = [], coldStart = null }: {
+export function NowWeekSoFar({ observations, now, onReport, changedLines = [], coldStart = null, children }: {
   observations: readonly Observation[]; now: Date; onReport: () => void;
   changedLines?: readonly NowChangedLine[];
   coldStart?: string | null;
+  children?: React.ReactNode;
 }) {
   const { actionLoop = [] } = useArbor();
   const { uiLang } = useLanguage();
@@ -138,6 +139,7 @@ export function NowWeekSoFar({ observations, now, onReport, changedLines = [], c
         </ul>
       </>}
       {coldStart && <p className="now-week-coldstart" data-testid="today-coldstart-line">{coldStart}</p>}
+      {children}
     </div>
   </section>;
 }

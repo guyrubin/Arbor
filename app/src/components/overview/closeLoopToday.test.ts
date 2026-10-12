@@ -117,21 +117,15 @@ describe("ENG-12 — the step that outlived its day", () => {
     });
   });
 
-  // v3 F-NOW-2 r2 re-pin: Now's ONE slot draws only the rhythm line, so the
-  // carry-over is not asked there through the slot. Its homes: Now's step lead
-  // (an unanswered prior step leads, nextChosenAction) and Talk's coach slot
-  // (COACH_OFFER_KINDS, through TodayContinuation), which renders this ask.
-  it("has its homes: Now's step lead and Talk's coach slot, and NOT a second primary CTA", () => {
+  it("is mounted on Today, and NOT as a second primary CTA", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const overview = todayLiveSource();
-    // B-AI-06: rendered through the single-offer slot (kind "follow-up").
+    // B-AI-06: mounted through the single-offer slot (kind "follow-up");
+    // B-LOOP-07: one slot instance. v3 F-NOW-2 re-pin: "More for today" is
+    // retired, so that instance sits in Now's glance.
     expect(overview).toMatch(/<CompanionOfferSlot\s+surface="today"/);
     const glance = overview.slice(overview.indexOf('<section className="now-glance"'), overview.indexOf("<NowReminderChips"));
-    expect(glance).toContain('{todayOffer.offer?.kind === "rhythm" && <CompanionOfferSlot');
-    expect(readFileSync(path.join(here, "./CompanionOfferSlot.tsx"), "utf8")).toContain('if (placement === "glance" && offer.kind !== "rhythm") return null;');
-    expect(overview).toContain("nextChosenAction(actionLoop, topic?.id)");
-    const coach = readFileSync(path.join(here, "../tabs/CoachTab.tsx"), "utf8");
-    expect(coach).toContain("<TodayContinuation choice={askContinuation} isReturning>{askOfferSlot}</TodayContinuation>");
+    expect(glance).toContain("<CompanionOfferSlot");
     expect(readFileSync(path.join(here, "./CompanionOfferSlot.tsx"), "utf8")).toContain("<CarryOverActionAsk onSkip={controls.refresh} />");
     // Negative control: the shipped file had no such mount.
     expect("      {activeTodayAction ? (\n        <TodayActionLoop />").not.toContain("CarryOverActionAsk");

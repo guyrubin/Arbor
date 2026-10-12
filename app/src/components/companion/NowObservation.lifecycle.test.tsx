@@ -34,7 +34,7 @@ function setup(lang: "en" | "he" = "en") {
     availableHardMomentCards: () => [], ageMonthsFromProfile: () => 48, formatChildAge: () => "", childPicture: () => ({}), trackCompanionPlaceOpen: vi.fn(), markPracticeShown: vi.fn(), trackActionOffered: vi.fn(),
     Avatar: "avatar", Icon: "icon", PrimaryMove: "primary-move", Receipt: "receipt", UrgentSupport: "urgent-support", NowRecommendation: "recommendation", NowTonightPointer: "tonight-pointer", TOGETHER_ART: {},
     // v3 F-NOW-2 re-pin: the retired door and notice block left NowContent; the glance and week card read these instead.
-    NowReminderChips: "reminder-chips", CompanionOfferSlot: "offer-slot",
+    NowReminderChips: "reminder-chips", CompanionOfferSlot: "offer-slot", FamilyOfferLines: "family-lines", TodaySayBackLine: "say-back",
     useNowChanges: () => ({ lines: [], coldStart: null }), loadPrefs: () => ({ types: { guidance: true, story: true, moments: true, recap: true } }),
     daysUntil: () => null, momentsSinceLastVisit: () => null, storyInProgress: () => null, planDay: () => null, runTitle: () => "",
     useObservations: () => [], NowQuestionRow: "question-row", NowPlanFrame: "plan-frame", NowKidWorld: "kid-world", NowWeekSoFar: "week-so-far",

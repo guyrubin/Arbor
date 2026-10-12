@@ -91,23 +91,21 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
   });
 
   // v3 F-NOW-2 re-pin: "More for today" is retired and each piece moved to its
-  // mock home: the week card takes the changed lines (What changed, the first
-  // notice); the glance takes Tonight's ONE row, the ONE proactive slot (the
-  // rhythm line only, r2) and the hard-moment line. Daily Play left Now (ruling
-  // [29]). r2: the say-back, the sibling lines and the watch signal are not on
-  // Now (homes: the guide card's "Why this suggestion?", the Talk welcome).
+  // mock home: the week card takes the changed lines (What changed, the watch
+  // signal, the first notice) and the say-back; the glance takes Tonight's ONE
+  // row, the ONE proactive slot, the sibling lines and the hard-moment line.
+  // Daily Play left Now (ruling [29]).
   it("Tonight is a pointer line in the morning, the flow in the evening; no door: the week card and the glance carry the lines", () => {
     expect(OV).toContain('data-testid="today-tonight-pointer"');
     expect(OV).toContain("<TonightFlow");
     expect(OV).not.toContain('data-testid="today-door"');
     expect(OV).not.toContain("<details");
-    const weekAt = OV.indexOf("<NowWeekSoFar ");
-    const week = OV.slice(weekAt, OV.indexOf("/>", weekAt));
-    for (const tok of ["changedLines={changes.lines}", "coldStart={changes.coldStart}"]) expect(week, tok).toContain(tok);
+    const week = OV.slice(OV.indexOf("<NowWeekSoFar "), OV.indexOf("</NowWeekSoFar>"));
+    for (const tok of ["changedLines={changes.lines}", "<TodaySayBackLine"]) expect(week, tok).toContain(tok);
     const glance = OV.slice(OV.indexOf('<section className="now-glance"'), OV.indexOf("<NowReminderChips"));
-    for (const tok of ['data-testid="today-tonight-story"', "<CompanionOfferSlot", 'placement="glance"', 'className="now-hard-moment"']) expect(glance, tok).toContain(tok);
-    for (const tok of ["<LifecycleMomentCard", "<FirstStepsRail", "<TodayActionLoop", "<TodayStepLine", "<WhatChanged", "<ArborNoticedCard", "today-door-play", "<TodaySayBackLine", "<FamilyOfferLines"]) expect(OV, tok).not.toContain(tok);
-    expect(OV).not.toContain("todayNoticedSignal");
+    for (const tok of ['data-testid="today-tonight-story"', "<CompanionOfferSlot", "<FamilyOfferLines", 'className="now-hard-moment"']) expect(glance, tok).toContain(tok);
+    for (const tok of ["<LifecycleMomentCard", "<FirstStepsRail", "<TodayActionLoop", "<TodayStepLine", "<WhatChanged", "<ArborNoticedCard", "today-door-play"]) expect(OV, tok).not.toContain(tok);
+    expect(OV).toContain("todayNoticedSignal(monitoring)");
     expect(OV).toContain("export const NOW_CHANGED_MAX = 3;");
   });
 

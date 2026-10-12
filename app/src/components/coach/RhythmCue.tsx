@@ -53,14 +53,10 @@ export default function RhythmCue({
   surface = "coach",
   nudge,
   onDismiss,
-  variant = "card",
 }: {
   surface?: NudgeSurface;
   nudge: Nudge | null;
   onDismiss?: () => void;
-  /** v3 F-NOW-2: "line" is Now's glance line: no card fill or border, a rule
-   *  under it, the cue's glyph bare; the same controls and the same doors. */
-  variant?: "card" | "line";
 }) {
   const { setActiveTab, requestCapture } = useArbor();
   const { t } = useLanguage();
@@ -81,22 +77,20 @@ export default function RhythmCue({
   if (!visible) return null;
 
   const tone = PASTEL[visible.tone];
-  const line = variant === "line";
 
   return (
     <div
       data-testid="rhythm-cue"
       data-nudge-kind={visible.kind}
-      data-variant={variant}
-      className={line ? "flex items-start gap-3 pb-1" : "flex items-start gap-3 rounded-xl px-3 py-3"}
-      style={line ? { borderBlockEnd: "1px solid var(--arbor-rule)" } : { background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+      className="flex items-start gap-3 rounded-xl px-3 py-3"
+      style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
     >
       <span
         aria-hidden
-        className={line ? "w-6 h-6 mt-0.5 flex items-center justify-center flex-shrink-0" : "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"}
-        style={line ? { color: tone.ink } : { background: "var(--arbor-paper)", color: tone.ink }}
+        className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+        style={{ background: "var(--arbor-paper)", color: tone.ink }}
       >
-        <Icon name={visible.kind === "bedtime" ? "bedtime" : "auto_awesome"} size={line ? 24 : 20} />
+        <Icon name={visible.kind === "bedtime" ? "bedtime" : "auto_awesome"} size={20} />
       </span>
       <div className="min-w-0 flex-1">
         <p dir="auto" className="text-[14px] font-extrabold leading-snug" style={{ color: "var(--arbor-ink)" }}>
@@ -105,7 +99,7 @@ export default function RhythmCue({
         <p dir="auto" className="mt-0.5 text-[12.5px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
           {t(visible.bodyKey, visible.vars)}
         </p>
-        <div className={line ? "mt-1 flex flex-wrap items-center gap-x-2" : "mt-2 flex flex-wrap items-center gap-2"}>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => {
@@ -116,9 +110,8 @@ export default function RhythmCue({
               if (visible.tonightMode) requestTonightMode(visible.tonightMode);
               setActiveTab(visible.action);
             }}
-            className={line ? "inline-flex items-center gap-1.5 min-h-[44px] px-1 text-[12.5px] font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-              : "inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl text-[12.5px] font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"}
-            style={line ? { color: tone.ink } : { background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)", color: tone.ink }}
+            className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl text-[12.5px] font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+            style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)", color: tone.ink }}
           >
             {t(visible.ctaKey, visible.vars)}
           </button>
