@@ -176,7 +176,7 @@ describe("#/weekly — the report is the dashboard (v3 F-NOW-3)", () => {
       expect(tagOf(html, "weekly-header-actions")[0]).toMatch(/class="flex flex-wrap /);
       expect(tagOf(render(lang, [stored(lang, "ai")]), "weekly-header-actions")[0]).toMatch(/class="hidden md:flex flex-wrap /);
       // The headline is set at weight 500, as the mock draws it.
-      expect(/<h1 data-testid="weekly-title" class="([^"]*)"/.exec(html)?.[1]).toMatch(/font-medium/);
+      expect(/<h1 data-testid="weekly-title" class="([^"]*)"/.exec(html)?.[1]).toMatch(/\bfont-medium\b/);
     });
 
     /* v3 F-NOW-3 review round 2: each seat has its own test id (the header's

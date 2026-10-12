@@ -241,7 +241,7 @@ describe("5 · B-TODAY-22 · one report, one secondary door", () => {
     const panel = fs.readFileSync(path.resolve(__dirname, "../sections/SmartRemindersPanel.tsx"), "utf8")
       .replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     expect(panel).toContain('import WeeklyEmailRow from "../weekly/WeeklyEmailRow";');
-    expect(panel.match(/<WeeklyEmailRow/g)).toHaveLength(1);
+    expect(panel.match(/<WeeklyEmailRow\b/g)).toHaveLength(1);
     const delivery = panel.indexOf('data-module="reminders-delivery"');
     expect(delivery).toBeGreaterThan(0);
     expect(panel.indexOf("<WeeklyEmailRow")).toBeGreaterThan(delivery);
