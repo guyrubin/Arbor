@@ -96,16 +96,20 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
   });
 
   // v3 F-NOW-2 re-pin: the door is retired. The lead, then the week card (the
-  // changed lines, then the say-back), then the glance (Tonight, the offer, the
-  // family lines, the reminders); the changed lines run lifecycle → events → watch signal → notice.
-  it("section order: the lead → the week card (What changed → say-back) → the glance (Tonight → the offer → family → reminders)", () => {
+  // changed lines), then the glance (Tonight, the rhythm line, the reminders);
+  // the changed lines run lifecycle → events → notice. r2: the say-back, the
+  // family lines and the watch signal are not on Now (their homes: the guide
+  // card's "Why this suggestion?" and the Talk welcome, follow-up items).
+  it("section order: the lead → the week card (What changed) → the glance (Tonight → the rhythm line → reminders)", () => {
     const view = stripComments(todayFile("NowView.tsx"));
     const changes = stripComments(todayFile("useNowChanges.ts"));
-    const viewOrder = [view.indexOf("<NowRecommendation"), view.indexOf("changedLines={changes.lines}"), view.indexOf("<TodaySayBackLine"), view.indexOf("<NowTonightPointer"), view.indexOf("<CompanionOfferSlot"), view.indexOf("<FamilyOfferLines"), view.indexOf("<NowReminderChips")];
-    const lineOrder = [changes.indexOf('id: "lifecycle"'), changes.indexOf("changed.lines.forEach"), changes.indexOf('id: "noticed"'), changes.indexOf('id: "notice"')];
+    const viewOrder = [view.indexOf("<NowRecommendation"), view.indexOf("changedLines={changes.lines}"), view.indexOf("<NowTonightPointer"), view.indexOf("<CompanionOfferSlot"), view.indexOf("<NowReminderChips")];
+    const lineOrder = [changes.indexOf('id: "lifecycle"'), changes.indexOf("changed.lines.forEach"), changes.indexOf('id: "notice"')];
     for (const idx of [...viewOrder, ...lineOrder]) expect(idx).toBeGreaterThan(-1);
     expect([...viewOrder].sort((a, b) => a - b)).toEqual(viewOrder);
     expect([...lineOrder].sort((a, b) => a - b)).toEqual(lineOrder);
+    for (const gone of ["<TodaySayBackLine", "<FamilyOfferLines", "<ArborNoticedCard"]) expect(view, gone).not.toContain(gone);
+    expect(changes).not.toContain('id: "noticed"');
     expect(existsSync(path.join(SRC_ROOT, "components/companion/NowMoreForToday.tsx"))).toBe(false);
     expect(count(overview, /<DailyPlayCard/g)).toBe(0);
   });

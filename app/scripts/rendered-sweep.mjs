@@ -989,6 +989,12 @@ const STATES = {
         const chips = await h.page.locator("main [data-testid=now-reminders] [role=switch]").count();
         if (chips !== 4) throw new Error(`week-and-glance: ${chips} reminder switches, not 4`);
         if (await h.page.locator("main [data-testid=today-door]").count()) throw new Error("week-and-glance: the retired door still renders");
+        // v3 F-NOW-2 r2: no say-back line on Now; the glance draws at most ONE offer, and only a rhythm cue (a line).
+        if (await h.page.locator("main [data-testid=today-door-saidback]").count()) throw new Error("week-and-glance: a say-back line renders on Now");
+        const offers = h.page.locator("main .now-glance [data-testid=companion-offer]");
+        const offerCount = await offers.count();
+        if (offerCount > 1) throw new Error(`week-and-glance: ${offerCount} offers in the glance, not at most 1`);
+        if (offerCount === 1 && (await offers.first().getAttribute("data-offer-kind")) !== "rhythm") throw new Error("week-and-glance: the glance offer is not a rhythm cue");
         await h.top(await h.need("main [data-testid=now-reminders]", "the glance's reminders"));
         return { via: `changed lines ${lines} · reminder switches ${chips}` };
       },

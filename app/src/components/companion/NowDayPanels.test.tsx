@@ -175,11 +175,12 @@ describe("NowWeekSoFar · Since you were last here (v3 F-NOW-2)", () => {
     expect(changed).not.toMatch(/\d\s*\/\s*\d|\d\s*%|role="progressbar"|<progress/);
   });
 
-  it("the cold-start line and the caller's line follow the changed lines; nothing renders inside when empty", () => {
-    const html = week({ changedLines: LINES.slice(1, 2), coldStart: "Two more days and the rhythm shows", children: <p data-testid="say-back">say-back</p> });
+  // v3 F-NOW-2 r2: the week card takes no caller line (the say-back left Now).
+  it("the cold-start line follows the changed lines; nothing renders inside when empty", () => {
+    const html = week({ changedLines: LINES.slice(1, 2), coldStart: "Two more days and the rhythm shows" });
     const changed = html.slice(html.indexOf('data-testid="now-week-changed"'));
     expect(changed.indexOf("now-week-line")).toBeLessThan(changed.indexOf('data-testid="today-coldstart-line"'));
-    expect(changed.indexOf('data-testid="today-coldstart-line"')).toBeLessThan(changed.indexOf('data-testid="say-back"'));
+    expect(changed).not.toContain("today-door-saidback");
     expect(week()).toContain('<div class="now-week-changed" data-testid="now-week-changed"></div>');
     expect(week()).not.toContain("<h3");
   });

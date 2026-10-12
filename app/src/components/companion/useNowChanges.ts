@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useWeeklyRecap } from "../../hooks/useWeeklyRecap";
-import { useMonitoring } from "../../hooks/useMonitoring";
+import { goToRoute } from "../../hooks/useHashQuery";
 import { track } from "../../lib/analytics";
 import { firstsStorageKey, type FirstsState } from "../../lib/firsts";
 import { milestoneText } from "../../lib/milestoneData";
+import { primaryDomain } from "../../lib/domains/registry";
 import type { Milestone } from "../../types";
 import { coldStartLineKey, composeWhatChanged, type WhatChangedLine } from "../overview/whatChangedEvents";
 import { LINE_ICON, countFor, whatChangedLineText } from "../overview/WhatChanged";
-import { readDismissed, todayNoticedSignal } from "../sections/ArborNoticedCard";
 
 /** One "Since you were last here" line in Now's week card (v3 F-NOW-2). */
 export interface NowChangedLine {
@@ -20,7 +20,7 @@ export interface NowChangedLine {
   onOpen?: () => void;
 }
 
-/** The week card shows at most three lines; the watch signal and the notice keep their place. */
+/** The week card shows at most three lines; the notice keeps its place. */
 export const NOW_CHANGED_MAX = 3;
 
 /**
@@ -32,10 +32,13 @@ export const NOW_CHANGED_MAX = 3;
  *  · the weekly report's ready line, while the parent keeps its reminder on;
  *  · B-TODAY-21's event lines (whatChangedEvents: events and counts, never a
  *    score, a ratio or "n of m" about the child), for returning parents;
- *  · C1's watch signal (the parent's own hard moments, never a norm), with
- *    ArborNoticedCard's own dismissals honoured, opening the Development check;
- *  · the loop's first notice ("Worth noticing"), opening Milestones.
- * Day zero shows none of it. Counts in Hebrew are bidi-isolated (countFor).
+ *  · the loop's first notice ("Worth noticing"), opening Milestones on the
+ *    milestone's own area (#/development?area=…), as the retired notice block
+ *    showed it: whenever the loop has one, day zero included.
+ * C1's watch signal (ArborNoticedCard) is NOT here: its ruled home is the
+ * guide card's "Why this suggestion?" (F-NOW-1 follow-up); until then it stays
+ * where the Development check derives it. Day zero shows no event line.
+ * Counts in Hebrew are bidi-isolated (countFor).
  */
 export function useNowChanges({ previousVisitAt, isReturning, lifecycleNote, notice, rhythmDaysNeeded, name, recapOn }: {
   previousVisitAt: string | null;
@@ -50,7 +53,6 @@ export function useNowChanges({ previousVisitAt, isReturning, lifecycleNote, not
   const { childProfile, behaviorLogs, playLogs, milestones, actionLoop, approvedMemoryItems, checkedMilestones, setActiveTab, requestJournalFocus } = useArbor();
   const { t, uiLang } = useLanguage();
   const weeklyRecap = useWeeklyRecap();
-  const monitoring = useMonitoring();
   const dayZero = !isReturning && behaviorLogs.length === 0 && playLogs.length === 0 && checkedMilestones === 0;
   const firstsState = useMemo<FirstsState>(() => {
     try {
@@ -70,18 +72,15 @@ export function useNowChanges({ previousVisitAt, isReturning, lifecycleNote, not
     previousVisitAt: isReturning && !dayZero ? previousVisitAt : null,
     behaviorLogs, playLogs, milestones, actionLoop, approvedFactsSince, firstsState,
     firstsCounts: { milestoneCount: checkedMilestones },
-    // the watch signal is its own line below (never twice)
+    // C1's watch signal is not a Now line (v3 F-NOW-2; see above)
     includeNoticed: false,
   }), [isReturning, dayZero, previousVisitAt, behaviorLogs, playLogs, milestones, actionLoop, approvedFactsSince, firstsState, checkedMilestones]);
   const changedWould = !dayZero && isReturning && changed.lines.length > 0;
   const recapLine = !dayZero && recapOn && !!weeklyRecap.currentReport && weeklyRecap.recapUnopened;
-  const signal = useMemo(() => todayNoticedSignal(monitoring), [monitoring]);
-  const noticed = !dayZero && !!signal && signal.level === "monitor" && !readDismissed(childProfile.id).includes(`${signal.domain}:${signal.level}`);
 
   const onChangedLineTap = (line: WhatChangedLine) => {
     track("sincevisit_row_tap", { kind: line.kind });
-    if (line.kind === "milestone" || line.kind === "first") { setActiveTab("development"); return; }
-    if (line.kind === "noticed") { setActiveTab("screening"); return; }
+    if (line.kind === "milestone" || line.kind === "noticed" || line.kind === "first") { setActiveTab("development"); return; }
     if (line.kind === "facts" || line.kind === "ideas") { setActiveTab("memory"); return; }
     requestJournalFocus(line.focusId);
     setActiveTab("journal");
@@ -95,8 +94,8 @@ export function useNowChanges({ previousVisitAt, isReturning, lifecycleNote, not
     head.push({ id: `${line.kind}.${i}`, icon: LINE_ICON[line.kind], text: words.title, onOpen: () => onChangedLineTap(line) });
   });
   const tail: NowChangedLine[] = [];
-  if (noticed) tail.push({ id: "noticed", icon: LINE_ICON.noticed, text: t("elev.sincevisit.row.noticed"), onOpen: () => { track("sincevisit_row_tap", { kind: "noticed" }); setActiveTab("screening"); } });
-  if (notice && !dayZero) tail.push({ id: "notice", icon: "visibility", text: `${t("elev.loop.today.notice.title")} · ${milestoneText(notice.milestone, "title", t, { gender: childProfile.gender })}`, onOpen: () => setActiveTab("development") });
+  if (notice) tail.push({ id: "notice", icon: "visibility", text: `${t("elev.loop.today.notice.title")} · ${milestoneText(notice.milestone, "title", t, { gender: childProfile.gender })}`,
+    onOpen: () => goToRoute("development", { area: primaryDomain("developmental", notice.milestone.domain) }) });
   const lines = [...head.slice(0, NOW_CHANGED_MAX - tail.length), ...tail];
 
   // ENG-18: the cold-start line rides with the event lines, as it did in the card.

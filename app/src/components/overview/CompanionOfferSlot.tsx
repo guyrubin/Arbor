@@ -137,13 +137,16 @@ export default function CompanionOfferSlot({
   offer: CompanionOffer | null;
   controls: OfferControls;
   /** B-TODAY-18: on Today the carry-over / tomorrow's-reason kinds render in
-   *  the continuation slot above the step (TodayContinuation wraps this). */
-  placement?: "continuation" | "under-step";
+   *  the continuation slot above the step (TodayContinuation wraps this).
+   *  v3 F-NOW-2: "glance" is Now's one glance line: it draws only a rhythm cue
+   *  (PREP/CALM, with "See the hours"), as a line, never a card. */
+  placement?: "continuation" | "under-step" | "glance";
 }) {
   if (!offer || offer.kind === "what-changed") return null;
   // B-TODAY-12: on Today the grounded hard-moment step lives ON the step card
   // (its Say-this, or its doNow as the step) — one card, one accept.
   if (offer.kind === "grounded-step" && surface === "today") return null;
+  if (placement === "glance" && offer.kind !== "rhythm") return null;
   let body: React.ReactNode = null;
   switch (offer.kind) {
     case "follow-up":
@@ -161,7 +164,7 @@ export default function CompanionOfferSlot({
     case "rhythm":
     case "tonight":
     case "engagement":
-      body = <RhythmCue surface={surface} nudge={offer.nudge ?? null} onDismiss={() => controls.dismiss(offer.kind)} />;
+      body = <RhythmCue surface={surface} nudge={offer.nudge ?? null} onDismiss={() => controls.dismiss(offer.kind)} variant={placement === "glance" ? "line" : "card"} />;
       break;
     case "grounded-step":
       // Ask: a plain door back to Today, where the step card carries it.
@@ -169,7 +172,7 @@ export default function CompanionOfferSlot({
       break;
   }
   return (
-    <OfferFrame offer={offer} surface={surface} controls={controls} className={placement === "continuation" ? "min-w-0" : undefined}>
+    <OfferFrame offer={offer} surface={surface} controls={controls} className={placement === "continuation" ? "min-w-0" : placement === "glance" ? "now-glance-offer min-w-0" : undefined}>
       {body}
     </OfferFrame>
   );

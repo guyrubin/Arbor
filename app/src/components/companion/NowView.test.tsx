@@ -13,7 +13,8 @@ const state = vi.hoisted(() => ({
   actionLoop: [] as ActionLoopEntry[], actionLoopReady: true,
   actionPlans: [] as unknown[], approvedMemoryItems: [] as unknown[], behaviorLogs: [] as unknown[],
   appointments: [] as unknown[], recordFromRecordAnswer: vi.fn(async () => {}),
-  evening: false, sayBackProps: null as any, changesInput: null as any, readerProps: null as any,
+  evening: false, changesInput: null as any, readerProps: null as any,
+  offer: null as null | { kind: string }, slotProps: [] as { placement?: string; offer?: unknown }[],
   activeFamilyTopic: null as null | { id: string; title: string },
   focus: null as Focus | null,
   program: null as null | { week: number; program: { shelf: string }; enrolment: Record<string, string>; content: { skill: { en: string; he: string }; watchFor: string[] } },
@@ -34,13 +35,12 @@ vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: (_id: str
 vi.mock("../../hooks/useObservations", () => ({ useObservations: () => [] }));
 vi.mock("../../hooks/useLastVisit", () => ({ useLastVisit: () => ({ previousVisitAt: null, isReturning: false }) }));
 vi.mock("../overview/useLifecycleMoment", () => ({ useLifecycleMoment: () => ({ moment: null }) }));
-vi.mock("../overview/useCompanionOffer", () => ({ useCompanionOffer: () => ({ offer: null, appointment: state.appointments[0] ?? null, ledger: {}, snooze: vi.fn() }) }));
+vi.mock("../overview/useCompanionOffer", () => ({ useCompanionOffer: () => ({ offer: state.offer, appointment: state.appointments[0] ?? null, appointments: state.appointments, ledger: {}, snooze: vi.fn() }) }));
 // v3 F-NOW-2 re-pin: "More for today" retired. Its pieces are mounted on Now itself
-// (the week card's changed lines, the say-back line, the glance's offer and family lines).
+// (the week card's changed lines, the glance's ONE rhythm line); r2: the say-back
+// and the family lines left Now (their homes are follow-up items).
 vi.mock("./useNowChanges", () => ({ useNowChanges: (input: unknown) => { state.changesInput = input; return { lines: [], coldStart: null }; } }));
-vi.mock("../overview/TodaySayBackLine", () => ({ default: (props: unknown) => { state.sayBackProps = props; return null; } }));
-vi.mock("../overview/CompanionOfferSlot", () => ({ default: () => null }));
-vi.mock("../overview/FamilyOfferLines", () => ({ default: () => null }));
+vi.mock("../overview/CompanionOfferSlot", () => ({ default: (props: { placement?: string; offer?: unknown }) => { state.slotProps.push(props); return null; } }));
 // F-NOW-1: the guide reader is a sheet; its props are what the card hands it.
 vi.mock("./NowGuideReader", () => ({ default: (props: unknown) => { state.readerProps = props; return null; } }));
 vi.mock("../../lib/programs/enrolment", () => ({ activeProgramWeek: () => state.program, dayKey: (d: Date) => d.toISOString().slice(0, 10) }));
@@ -83,7 +83,7 @@ const PROGRAM = { week: 2, program: { shelf: "words" }, enrolment: { programId: 
 
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 9, 12, 8));
-  state.actionPlans = []; state.approvedMemoryItems = []; state.behaviorLogs = []; state.appointments = []; state.evening = false; state.sayBackProps = null; state.changesInput = null; state.readerProps = null; state.activeFamilyTopic = null;
+  state.actionPlans = []; state.approvedMemoryItems = []; state.behaviorLogs = []; state.appointments = []; state.evening = false; state.offer = null; state.slotProps = []; state.changesInput = null; state.readerProps = null; state.activeFamilyTopic = null;
   clearAcceptFailed("child-a");
   vi.clearAllMocks(); state.actionLoopReady = true; state.setActiveTab.mockReset(); state.buttons = []; state.lang = "en"; state.focus = null; state.program = null; state.actionLoop = []; state.childProfile = { ...KNOWN_AGE }; state.noPractice = false;
 });
@@ -116,6 +116,15 @@ describe("Now leads with the milestone loop (parity 9 Oct)", () => {
     expect(html).toContain('data-module="today-practice"');
     expect(html).not.toContain('data-testid="now-program-line"');
     expect(html).toContain(`<p class="now-plan-meta">${NOW_COPY[lang].planDay(8)}</p>`);
+  });
+  // v3 F-NOW-2 r2: the plan's day shows wherever the lead is the parent's plan, an open step included.
+  it.each(["en", "he"] as const)("%s: an open step under an active program carries the plan's day in its meta", lang => {
+    state.lang = lang; state.program = PROGRAM;
+    state.actionLoop = [{ id: "step-a", recommendation: "Sit together for one page.", source: "coach", status: "accepted", acceptedAt: "2026-10-01", capacity: "tiny" }];
+    const html = renderToStaticMarkup(<NowView />);
+    expect(html).toContain('data-module="now-step"');
+    expect(html).toContain(`<p class="now-plan-meta">${NOW_COPY[lang].planDay(8)}</p>`);
+    expect(html).not.toContain(`<p class="now-plan-meta">${NOW_COPY[lang].today}</p>`);
   });
   it("Tonight's pointer is a line under the morning practice", () => {
     renderToStaticMarkup(<NowView />);
@@ -264,7 +273,7 @@ describe("Now record and visit leads", () => {
     expect(state.saveTodayOutcome).toHaveBeenCalledTimes(1);
     resolve(); await Promise.resolve();
   });
-  it("leads with the Now kicker (no date, no picture, no age) and still hands the loop clock on", () => {
+  it("leads with the Now kicker (no date, no picture, no age)", () => {
     vi.setSystemTime(new Date(2026, 9, 14, 20, 30));
     const html = renderToStaticMarkup(<NowView />);
     const heading = html.slice(html.indexOf('<header class="now-heading"'), html.indexOf("</header>"));
@@ -272,8 +281,8 @@ describe("Now record and visit leads", () => {
     expect(heading).not.toContain(new Date(2026, 9, 14, 20, 30).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }));
     expect(heading).not.toContain("4 years");
     expect(heading).not.toMatch(/<img|today-identity/);
-    // v3 F-NOW-2 re-pin: the say-back line (now in the week card) gets the loop clock.
-    expect(state.sayBackProps.now.getTime()).toBe(Date.now());
+    // v3 F-NOW-2 r2: the say-back line left Now, and with it the loop-clock hand-off it pinned.
+    expect(html).not.toContain("today-door-saidback");
   });
 });
 
@@ -311,6 +320,22 @@ describe("v3 F-NOW-2 · the glance and the week card", () => {
     expect(html).toContain(`data-testid="now-glance-visit-line">${copy.visitLine(2, null)}</small>`);
     expect(copy.visitLine(2, 14)).toBe(lang === "he" ? "בעוד יומיים · 14 רגעים מאז הביקור הקודם" : "In 2 days · 14 moments since the last visit");
     expect(html).toContain(copy.visitPrep);
+  });
+
+  // v3 F-NOW-2 r2: the glance draws the coordinator's ONE slot only for a rhythm cue, as the
+  // glance line. The carry-over, tomorrow's reason, a re-check and the bedtime or capture
+  // nudges never take a glance slot (their homes: the step lead, Talk, the Tonight row).
+  it("the glance mounts the offer slot only for a rhythm cue, as the glance line", () => {
+    for (const kind of ["follow-up", "tomorrow-reason", "screening-recheck", "tonight", "engagement", "appointment"]) {
+      state.offer = { kind }; state.slotProps = [];
+      renderToStaticMarkup(<NowView />);
+      expect(state.slotProps, kind).toHaveLength(0);
+    }
+    state.offer = { kind: "rhythm" }; state.slotProps = [];
+    const html = renderToStaticMarkup(<NowView />);
+    expect(state.slotProps).toHaveLength(1);
+    expect(state.slotProps[0]).toMatchObject({ placement: "glance", offer: { kind: "rhythm" } });
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
   });
 
   it("the kid world opens All moments, the week card takes the changed lines, and there is no door, notice block or lifecycle note", () => {

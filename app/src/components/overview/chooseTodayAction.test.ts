@@ -232,12 +232,14 @@ describe("B-TODAY-26 — Today wiring: one voice, no generation, no timer", () =
   });
 
   // v3 F-NOW-2 re-pin: the door is retired; the coordinator's ONE slot sits in Now's glance.
+  // r2 re-pin: the slot there draws only the rhythm line (PREP/CALM), never the bedtime
+  // nudge, so the evening's story row is bedtime's one voice and waits on no offer kind.
   it("one voice in the evening: the coordinator's slot sits in the glance, Tonight leads the page", () => {
     const glance = overview.slice(overview.indexOf('<section className="now-glance"'), overview.indexOf("<NowReminderChips"));
-    expect(glance).toContain('<CompanionOfferSlot surface="today" offer={todayOffer.offer}');
+    expect(glance).toContain('{todayOffer.offer?.kind === "rhythm" && <CompanionOfferSlot surface="today" offer={todayOffer.offer}');
+    expect(glance).toContain('placement="glance"');
     expect((overview.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(1);
-    // The evening's story row stays quiet while the coordinator's offer is Tonight itself.
-    expect(overview).toContain('todayOffer.offer?.kind !== "tonight"');
+    expect(overview).not.toContain('todayOffer.offer?.kind !== "tonight"');
   });
 
   it("Tonight's story row navigates and generates nothing; the card it replaced stays inert", () => {

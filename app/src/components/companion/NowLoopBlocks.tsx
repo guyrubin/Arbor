@@ -71,7 +71,7 @@ export function NowNoticeLead({ loop, name }: { loop: Loop; name: string }) {
 }
 
 /** Tonight's three questions (B-LOOP-10) and, at the week's end, the goal marks
- *  (B-PROG-07). The story is the door's line at night (critic c2 r1), never here. */
+ *  (B-PROG-07). The story is the glance's Tonight row at night (v3 F-NOW-2), never here. */
 export function NowTonightLead({ loop }: { loop: Loop }) {
   return <TonightFlow {...loop.tonight} stampMove={MOVE} />;
 }

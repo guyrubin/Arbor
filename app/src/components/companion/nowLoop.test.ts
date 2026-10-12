@@ -8,7 +8,9 @@ import path from "node:path";
  * had NO live caller in production (recordPracticeDose, scoreGoal,
  * recordFromRecordAnswer, the visit stamp, the today offer, the watch signal).
  * These pins tie each seam to the live Now tree, so a redesign cannot drop one
- * silently again: change the pin with the seam, never without it.
+ * silently again: change the pin with the seam, never without it. v3 F-NOW-2
+ * r2: the watch signal's Now line is retired with a named home (the guide
+ * card's "Why this suggestion?"); its seam stays live on the Development check.
  */
 const read = (rel: string) => readFileSync(path.resolve(__dirname, "..", "..", rel), "utf8")
   .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -60,14 +62,15 @@ describe("every loop seam has a live caller", () => {
     expect(now).toContain("useLastVisit(childProfile)");
     expect(now).toContain("useLifecycleMoment({ previousVisitAt, now: now.getTime() })");
     expect(now).toContain('useCompanionOffer("today",');
-    // v3 F-NOW-2: the offer, the family lines and the say-back stay on Now (glance, week card).
-    expect(now).toContain('<CompanionOfferSlot surface="today"');
-    expect(now).toContain("<TodaySayBackLine");
-    expect(now).toContain("<FamilyOfferLines");
-    // What changed and the watch signal are the week card's lines.
+    // v3 F-NOW-2 r2 re-pin: the offer stays on Now as the glance's ONE rhythm
+    // line; the say-back, the family lines and the watch signal left Now
+    // (homes: the guide card's "Why this suggestion?" and the Talk welcome).
+    expect(now).toContain('{todayOffer.offer?.kind === "rhythm" && <CompanionOfferSlot surface="today"');
+    expect(now).not.toContain("<TodaySayBackLine");
+    expect(now).not.toContain("<FamilyOfferLines");
+    // What changed is the week card's lines; the watch signal is not among them.
     expect(changes).toContain("composeWhatChanged({");
-    expect(changes).toContain("todayNoticedSignal(monitoring)");
-    expect(changes).toContain("readDismissed(childProfile.id)");
+    expect(changes).not.toContain("todayNoticedSignal");
     expect(now).toContain("changedLines={changes.lines}");
   });
   it("no door and no module: the changed lines sit in the week card, the glance holds the rest", () => {

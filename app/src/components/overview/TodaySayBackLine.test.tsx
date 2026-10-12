@@ -154,20 +154,16 @@ describe("TodaySayBackLine — rendered (EN + HE)", () => {
   }
 });
 
-// v3 F-NOW-2 re-pin: "More for today" is retired. The line closes the week
-// card, after its "Since you were last here" lines; the offer slot moved to
-// the glance, so the line no longer follows it.
-describe("the week card mounts the line after its changed lines (Law 6 order)", () => {
+// v3 F-NOW-2 re-pin: "More for today" is retired. r2: Now mounts no say-back
+// line; its ruled home is the guide card's "Why this suggestion?" (F-NOW-1
+// follow-up). The Law 6 order pin (the line after the offer slot) retires with
+// the mount; the component's own contract above and below stays pinned.
+describe("Now mounts no say-back line (v3 F-NOW-2; home: the guide card)", () => {
   const OV = todayLiveSource();
-  it("inside the week card, once, after the changed lines", () => {
-    const card = OV.slice(OV.indexOf("<NowWeekSoFar "), OV.indexOf("</NowWeekSoFar>"));
-    expect(OV.match(/<TodaySayBackLine /g)).toHaveLength(1);
-    expect(card.indexOf("changedLines={changes.lines}")).toBeGreaterThan(-1);
-    expect(card.indexOf("changedLines={changes.lines}")).toBeLessThan(card.indexOf("<TodaySayBackLine "));
-    expect(card).toContain("<TodaySayBackLine keepsakeDocs={loop.keepsakeDocs} now={loop.now} />");
-    // A record lead already says the moment back: the line never doubles it.
-    expect(card).toContain('{lead !== "record" && <TodaySayBackLine');
+  it("no say-back line and no door on Now; a saved moment is said back by the record lead", () => {
+    expect(OV).not.toContain("<TodaySayBackLine");
     expect(OV).not.toContain('data-testid="today-door"');
+    expect(OV).toContain('lead === "record" ? <section className="now-loop-lead" data-module="now-record"');
   });
 });
 

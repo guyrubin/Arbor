@@ -56,8 +56,7 @@ export function todayNoticedSignal(result: MonitoringResult): DomainSignal | nul
 // try/catch idiom as FirstStepsRail / the Daily Play sessionLength pref).
 const dismissKey = (childId: string) => `arbor.noticed.dismissed.${childId}`;
 
-/** v3 F-NOW-2: Now's week-card noticed line honours the same dismissals. */
-export function readDismissed(childId: string): string[] {
+function readDismissed(childId: string): string[] {
   try {
     const raw = window.localStorage.getItem(dismissKey(childId));
     const parsed = raw ? (JSON.parse(raw) as unknown) : null;

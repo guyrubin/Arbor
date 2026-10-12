@@ -237,6 +237,8 @@
 .now-page .now-glance .now-hard-moment > .msr:first-child { color: var(--arbor-peach-ink); }
 .now-page .now-glance-tonight > .msr:first-child { color: var(--arbor-lav-ink); }
 .now-glance-cta { display: block; margin-block-start: 4px; font-size: var(--t-xs); font-style: normal; font-weight: 700; color: var(--arbor-clay); }
+/* v3 F-NOW-2 r2: the glance's ONE offer line (a PREP/CALM rhythm cue) sits on the row grid; the cue draws its own rule. */
+.now-page .now-glance .now-glance-offer { margin: 0; padding: 12px 4px 0; }
 /* v3 F-NOW-2: the glance's reminders, as switches on the shared Smart Reminders store (44 px floor, no counts). */
 .now-reminders { display: grid; gap: 8px; padding: 12px 4px 10px; }
 .now-reminders-hint { margin: 0; font-size: var(--t-xs); font-weight: 600; color: var(--arbor-muted); }

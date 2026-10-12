@@ -319,12 +319,13 @@ describe("OverviewTab wiring — ONE What-changed card", () => {
     expect(overview).toMatch(/requestJournalFocus\(line\.focusId\)/);
   });
 
-  // v3 F-NOW-2 re-pin: the watch signal is its own week-card line (to the
-  // Development check), honouring ArborNoticedCard's dismissals; no card.
-  it("the watch signal is said once: its own line in the week card, never also folded into the lines", () => {
+  // v3 F-NOW-2 re-pin (r2): the watch signal is not on Now. Its ruled home is
+  // the guide card's "Why this suggestion?" (F-NOW-1 follow-up); the
+  // Development check still derives it. Never folded into the lines either.
+  it("the watch signal is not on Now: no card, no week-card line, not folded into the lines", () => {
     expect(overview).toMatch(/includeNoticed: false/);
-    expect(overview).toContain('if (noticed) tail.push({ id: "noticed"');
-    expect(overview).toMatch(/const noticed = !dayZero && !!signal && signal\.level === "monitor" && !readDismissed\(childProfile\.id\)/);
+    expect(overview).not.toContain('id: "noticed"');
+    expect(overview).not.toContain("todayNoticedSignal");
     expect(overview).not.toContain("<ArborNoticedCard");
   });
 

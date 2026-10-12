@@ -27,11 +27,8 @@ import { useNowLoop } from "./useNowLoop";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
 import CompanionOfferSlot from "../overview/CompanionOfferSlot";
-import FamilyOfferLines from "../overview/FamilyOfferLines";
-import TodaySayBackLine from "../overview/TodaySayBackLine";
 import { loadPrefs, type JitaiPrefs } from "../../growth/jitaiPrefs";
 import { runTitle } from "../../lib/heroJourneys";
-import type { Appointment } from "../../lib/careTrack";
 import type { HeroJourneyRun } from "../../types";
 import { practiceText, WHY_KEY } from "../loop/PracticeCard";
 import { shelfLabel } from "../../lib/shelves/registry";
@@ -116,8 +113,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const name = childProfile.name?.split(" ")[0] || t("companion.now-view.your-child");
   const programs = useChildCollection<{ id: string }>(childProfile.id, "programs");
   const program = useMemo(() => activeProgramWeek(programs.items, now), [programs.items, now]);
-  // v3 F-NOW-2: the glance's reads: the visit's counts, the story part-way through, the plan's day.
-  const appointments = useChildCollection<Appointment>(childProfile.id, "appointments");
+  // v3 F-NOW-2: the glance's reads: the story part-way through, the plan's day (the visit's counts read the coordinator's appointments).
   const heroRuns = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
   const storyRun = useMemo(() => storyInProgress(heroRuns.items, now), [heroRuns.items, now]);
   const programDay = program ? planDay(program.enrolment, now) : null;
@@ -221,7 +217,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   });
   const showNotice = lead !== "notice" && loop.plan.order.includes("notice") && loop.blockNotices.length > 0;
   const visitDays = visit ? daysUntil(visit.whenIso, now) : null;
-  const visitMoments = visit ? momentsSinceLastVisit({ appointments: appointments.items, visitId: visit.id, observations, now }) : null;
+  const visitMoments = visit ? momentsSinceLastVisit({ appointments: todayOffer.appointments, visitId: visit.id, observations, now }) : null;
   const showPointer = lead !== "tonight" && loop.tonightHasQuestions && (loop.plan.tonightPointer || (lead === "step" && loop.evening));
   const pickId = loop.pick?.practice.id;
   useEffect(() => { if (lead === "practice" && pickId) trackActionOffered("now-practice"); }, [lead, pickId]);
@@ -245,8 +241,11 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // a line of plan meta about the parent's own step, in words, never a count.
   const practiceSay = shownLead === "practice" && loop.pick ? practiceText(loop.pick.practice, "say", lang, childProfile.gender) : "";
   const planSay = practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
-  // v3 F-NOW-2: an active program shows its day in the meta ("Plan · day N"); the glance's program row is gone.
-  const planMeta = shownLead === "step" ? (receipt ? copy.saved : copy.today) : (shownLead === "program" || shownLead === "practice") && programDay ? copy.planDay(programDay) : copy.planMeta[shownLead];
+  // v3 F-NOW-2: an active program shows its day in the meta ("Plan · day N") under every lead that is the
+  // parent's plan (an open step, the practice, the program); the glance's program row is gone. "Saved" shows
+  // only once the step's write resolved; record, visit, Tonight and notice keep their own meta line.
+  const planLead = shownLead === "step" || shownLead === "program" || shownLead === "practice";
+  const planMeta = shownLead === "step" && receipt ? copy.saved : planLead && programDay ? copy.planDay(programDay) : shownLead === "step" ? copy.today : copy.planMeta[shownLead];
   // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
   // from its section (which keeps it as its label). The loop leads' cards carry
   // their own heading, so their face has the say line and meta only.
@@ -264,7 +263,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // v3 F-NOW-2: what "More for today" carried now sits in the week card's changed lines.
   const changes = useNowChanges({ previousVisitAt, isReturning, lifecycleNote, notice: showNotice ? loop.blockNotices[0] : null,
     rhythmDaysNeeded: loop.rhythm.daysNeeded, name, recapOn: reminderPrefs.types.recap });
-  const eveningStory = !storyRun && !showPointer && loop.evening && loop.storyFits && reminderPrefs.types.story && todayOffer.offer?.kind !== "tonight";
+  const eveningStory = !storyRun && !showPointer && loop.evening && loop.storyFits && reminderPrefs.types.story;
 
   return <div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
     <header className="now-heading">
@@ -342,9 +341,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     <NowKidWorld observations={observations} now={now} name={name} onAll={() => setActiveTab("timeline")} />
 
     <div className="now-day-grid">
-      <NowWeekSoFar observations={observations} now={now} onReport={() => setActiveTab("weekly")} changedLines={changes.lines} coldStart={changes.coldStart}>
-        {lead !== "record" && <TodaySayBackLine keepsakeDocs={loop.keepsakeDocs} now={loop.now} />}
-      </NowWeekSoFar>
+      <NowWeekSoFar observations={observations} now={now} onReport={() => setActiveTab("weekly")} changedLines={changes.lines} coldStart={changes.coldStart} />
       <section className="now-glance" aria-labelledby={`${id}-glance`}>
         <h2 id={`${id}-glance`} className="now-kicker">{copy.glanceTitle}</h2>
         {visit && lead !== "visit" && <button type="button" className="now-weekly-door now-glance-visit" onClick={openVisit}>
@@ -358,9 +355,9 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           : eveningStory && <button type="button" className="now-weekly-door now-glance-tonight" data-testid="today-tonight-story" onClick={() => setActiveTab("bedtime-stories")}>
             <Icon name="bedtime" size={24} /><span><b>{copy.tonightKicker}</b><small>{t("elev.loop.tonight.story")}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
           </button>}
-        {/* B-AI-06: the ONE proactive offer (a rhythm cue with "See the hours", carry-over, a re-check); the visit row already carries appointment prep. */}
-        {!(visit && todayOffer.offer?.kind === "appointment") && <CompanionOfferSlot surface="today" offer={todayOffer.offer} controls={todayOffer} placement="under-step" />}
-        <FamilyOfferLines activeChildId={childProfile.id} />
+        {/* v3 F-NOW-2: the glance draws ONE offer line, a PREP/CALM rhythm cue with "See the hours" (#/day-windows).
+            Appointment prep is the visit row; the carry-over is the step lead's question and Talk's coach slot. */}
+        {todayOffer.offer?.kind === "rhythm" && <CompanionOfferSlot surface="today" offer={todayOffer.offer} controls={todayOffer} placement="glance" />}
         {hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}><Icon name="volunteer_activism" size={24} /><span><b>{copy.hardTitle}</b><small>{copy.hardBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>}
         <NowReminderChips lang={lang} prefs={reminderPrefs} onChange={setReminderPrefs} onAll={() => setActiveTab("smart-reminders")} />
       </section>
