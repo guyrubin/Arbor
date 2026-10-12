@@ -11,7 +11,13 @@
  *     and the PDF carry, through the one guarded seam (serializeForExport /
  *     exportPrintSections), so a "%" in it fails closed like the parent note;
  *   - nothing is copied until "I reviewed" is ticked, and turning the chip on
- *     or off withdraws a tick already given.
+ *     or off withdraws a tick already given;
+ *   - in the PDF the line is a plain line under the title block (a lead
+ *     section), not a section heading.
+ * And the Care summary page (#/handoff, excludeTeacher): its lede says what
+ * the builder does (every line starts ticked; the parent unticks), and it
+ * never opens in the teacher branch, even with a teacher stored on this
+ * device.
  *
  * Node-only: AskSpecialist runs as a function under slot hooks (the
  * ConsultTarget.egress harness), and its own buttons are pressed through
@@ -82,6 +88,7 @@ vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 vi.mock("motion/react", async (original) => ({ ...await original<typeof import("motion/react")>(), useReducedMotion: () => false }));
 
 import { translate } from "../../lib/i18n";
+import { renderPrintableHtml } from "../../lib/reportExport";
 import AskSpecialist from "./AskSpecialist";
 import {
   buildConsultPacket,
@@ -103,11 +110,11 @@ function elements(node: React.ReactNode): El[] {
 }
 const byId = (node: React.ReactNode, id: string) => elements(node).find((el) => el.props["data-testid"] === id);
 
-function render(): React.ReactNode {
+function render(props: object = {}): React.ReactNode {
   for (let n = 0; n < 12; n++) {
     h.dirty = false;
     h.cursor = 0;
-    const tree = (AskSpecialist as unknown as (p: object) => React.ReactNode)({});
+    const tree = (AskSpecialist as unknown as (p: object) => React.ReactNode)(props);
     h.effects.splice(0).forEach((effect) => effect());
     if (!h.dirty) return tree;
   }
@@ -134,11 +141,12 @@ const topic = (lang: "en" | "he", over: Record<string, unknown> = {}) => ({
 });
 const lineFor = (lang: "en" | "he", title = QUESTION[lang]) => translate(lang, "elev.consult.topic.line", { title });
 
+let storage = new Map<string, string>();
 beforeEach(() => {
   h.cursor = 0; h.slots = []; h.effects = []; h.dirty = false; h.lang = "en"; h.topic = null;
   h.t = (key, vars) => translate(h.lang, key, vars);
   for (const mock of [h.copy, h.pdf, h.record, h.toast]) mock.mockReset();
-  const storage = new Map<string, string>();
+  storage = new Map<string, string>();
   vi.stubGlobal("localStorage", { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => storage.set(k, v) });
   vi.stubGlobal("navigator", { clipboard: { writeText: h.copy } });
 });
@@ -222,8 +230,9 @@ describe("v3 FEAT-09 · Our question — the chip", () => {
     // the PDF carries the same line, through the same seam
     byId(render(), "consult-pdf")!.props.onClick();
     expect(h.pdf).toHaveBeenCalledTimes(1);
-    const sections = h.pdf.mock.calls[0][1] as { heading: string; body: string[] }[];
-    expect(sections.filter((s) => s.heading === lineFor("en"))).toHaveLength(1);
+    const sections = h.pdf.mock.calls[0][1] as { heading: string; body: string[]; lead?: boolean }[];
+    expect(sections.filter((s) => s.lead && s.body.join("") === lineFor("en"))).toHaveLength(1);
+    expect(sections.some((s) => s.heading === lineFor("en"))).toBe(false);
   });
 
   it("turning the chip on or off withdraws a tick already given", () => {
@@ -291,13 +300,30 @@ describe("v3 FEAT-09 · Our question — the export seam", () => {
     expect(insertFamilyQuestion("# T\n_p_\n", "Our question: x")).toBe("# T\n_p_\nOur question: x\n");
   });
 
-  it("the PDF carries the same line first; self and clinician audiences alike", () => {
+  it("the PDF carries the same line first, as a plain line, not a heading; self and clinician audiences alike", () => {
     for (const audience of ["pediatrician", "self"] as const) {
       const sections = exportPrintSections(audience, packet, new Set(), "", "Parent note", "en", LINE);
-      expect(sections[0]).toEqual({ heading: LINE, body: [] });
-      expect(sections.filter((s) => s.heading === LINE)).toHaveLength(1);
-      expect(exportPrintSections(audience, packet, new Set(), "", "Parent note", "en").some((s) => s.heading === LINE)).toBe(false);
+      expect(sections[0]).toEqual({ heading: "", body: [LINE], lead: true });
+      expect(sections.filter((s) => s.body.includes(LINE))).toHaveLength(1);
+      expect(sections.some((s) => s.heading === LINE)).toBe(false);
+      const without = exportPrintSections(audience, packet, new Set(), "", "Parent note", "en");
+      expect(without.some((s) => s.lead || s.body.includes(LINE))).toBe(false);
     }
+  });
+
+  it("the print shell renders the lead line as a body paragraph under the title block, never an h2", () => {
+    const sections = exportPrintSections("pediatrician", packet, new Set(), "", "Parent note", "en", LINE);
+    const html = renderPrintableHtml({ title: "Summary", subtitle: "Noa, 5", sections }, "Noa", "en");
+    expect(html).toContain(`<p class="lead" dir="auto">${LINE}</p>`);
+    expect(html).not.toContain(`<h2>${LINE}</h2>`);
+    expect(html).not.toMatch(/<h2><\/h2>/);
+    // under the title block (h1, subtitle, meta), before the first section
+    const at = html.indexOf('<p class="lead"');
+    expect(at).toBeGreaterThan(html.indexOf('<p class="meta">'));
+    expect(at).toBeLessThan(html.indexOf("<section>"));
+    // NEGATIVE CONTROL: the earlier shape, a heading-only section, printed an h2 over an empty dash
+    const old = renderPrintableHtml({ title: "Summary", sections: [{ heading: LINE, body: [] }] }, "Noa", "en");
+    expect(old).toContain(`<h2>${LINE}</h2><p class="muted">—</p>`);
   });
 
   it("the same guards cover it: % fails closed for every audience, a teacher never gets the packet", () => {
@@ -308,5 +334,62 @@ describe("v3 FEAT-09 · Our question — the export seam", () => {
     }
     expect(() => serializeForExport("teacher", packet, new Set(), "", "Parent note", "en", LINE)).toThrow(TeacherEgressError);
     expect(() => exportPrintSections("teacher", packet, new Set(), "", "Parent note", "en", LINE)).toThrow(TeacherEgressError);
+  });
+});
+
+describe("v3 FEAT-09 · the Care summary page (#/handoff)", () => {
+  const audienceChips = (tree: React.ReactNode) => elements(byId(tree, "consult-audience-row")).filter((el) => el.props.role === "radio");
+  const chipText = (el: El) => textOf(el);
+
+  it("the lede says what the builder does: every line starts ticked, so the parent unticks, never picks", () => {
+    // Default inclusion state, as the parent first meets it.
+    const tree = render({ excludeTeacher: true });
+    const rows = elements(tree).filter((el) => el.props.testId === "consult-packet-item");
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.props.excluded).toBe(false);
+      expect(row.props.check.props["aria-pressed"]).toBe(true);
+    }
+    // The prepared questions ride in without a pick, and the page says so.
+    expect(textOf(byId(tree, "consult-reason-section"))).toContain(translate("en", "elev.learnCare.appt.questions.toPacket"));
+    // So the lede asks for an untick and makes no opt-in claim, in EN and HE.
+    const en = translate("en", "elev.consult.summary.lede");
+    const he = translate("he", "elev.consult.summary.lede");
+    expect(en).toMatch(/^Untick\b/);
+    expect(en).not.toMatch(/\bonly\b|\bpick|\bselect|\bchoose/i);
+    expect(he.startsWith("הסירו את הסימון")).toBe(true);
+    expect(he).not.toMatch(/(^|\s)רק(\s|$)|שתבחרו/);
+    expect(he).not.toMatch(/[A-Za-z]/);
+    // NEGATIVE CONTROL: the earlier lede claimed an opt-in the builder never had.
+    expect("Only the moments and questions you pick go in. Nothing leaves until you share it.").toMatch(/\bonly\b|\bpick/i);
+  });
+
+  it("a teacher stored on this device does not open the teacher branch; the builder shows, without a teacher chip", () => {
+    storage.set("arbor.consultExportAudience", "teacher");
+    const tree = render({ excludeTeacher: true });
+    expect(byId(tree, "consult-reason-section")).toBeDefined();
+    expect(byId(tree, "consult-teacher-branch")).toBeUndefined();
+    expect(byId(tree, "consult-build")).toBeDefined();
+    const chips = audienceChips(tree);
+    expect(chips.length).toBeGreaterThan(0);
+    expect(chips.map(chipText)).not.toContain(translate("en", "elev.carehonesty.consult.audience.teacher"));
+    // It starts at the default professional, and the stored choice is not overwritten.
+    const on = chips.filter((el) => el.props["aria-checked"] === true);
+    expect(on.map(chipText)).toEqual([translate("en", "elev.carehonesty.consult.audience.pediatrician")]);
+    expect(storage.get("arbor.consultExportAudience")).toBe("teacher");
+  });
+
+  it("a teacher anchor (a teacher visit) does not open the teacher branch either", () => {
+    const tree = render({ excludeTeacher: true, anchorAudience: "teacher" });
+    expect(byId(tree, "consult-reason-section")).toBeDefined();
+    expect(byId(tree, "consult-teacher-branch")).toBeUndefined();
+  });
+
+  it("NEGATIVE CONTROL: on #/consult a stored teacher still opens the teacher branch, with the teacher chip", () => {
+    storage.set("arbor.consultExportAudience", "teacher");
+    const tree = render();
+    expect(byId(tree, "consult-teacher-branch")).toBeDefined();
+    expect(byId(tree, "consult-reason-section")).toBeUndefined();
+    expect(audienceChips(tree).map(chipText)).toContain(translate("en", "elev.carehonesty.consult.audience.teacher"));
   });
 });

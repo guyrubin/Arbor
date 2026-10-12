@@ -1288,7 +1288,13 @@ export function buildSharedScopePacket(
 /** Print-shell section shape — matches `ReportDoc.sections` in
  *  `lib/reportExport` without importing it (the print shell depends on no
  *  consult types, and this module stays pure). */
-export interface PresetPrintSection { heading: string; body: string[] }
+export interface PresetPrintSection {
+  heading: string;
+  body: string[];
+  /** v3 FEAT-09: a plain line under the title block (no heading, no
+   *  bullet), as the copied text carries it. */
+  lead?: boolean;
+}
 
 /** Render a preset packet as print-shell sections for `openPrintableReport`
  *  (IA W4.2 — the AskSpecialist / Reports PDF path). Same egress contract as
@@ -1427,9 +1433,10 @@ export function exportPrintSections(
 ): PresetPrintSection[] {
   const trimmed = note.trim();
   const noteSection: PresetPrintSection[] = trimmed ? [{ heading: noteHeading, body: [trimmed] }] : [];
-  // v3 FEAT-09: the same one line the copied text carries, first in the PDF.
+  // v3 FEAT-09: the same one line the copied text carries, a plain body line
+  // under the PDF's title block (a lead section renders with no heading).
   const question = familyQuestion.replace(/\s+/g, " ").trim();
-  const questionSection: PresetPrintSection[] = question ? [{ heading: question, body: [] }] : [];
+  const questionSection: PresetPrintSection[] = question ? [{ heading: "", body: [question], lead: true }] : [];
   if (audience === "self") {
     const sections: PresetPrintSection[] = [];
     for (const section of packet.sections) {

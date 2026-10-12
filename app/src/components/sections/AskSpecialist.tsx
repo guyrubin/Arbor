@@ -123,8 +123,13 @@ type ExportBuild = { text: string; error: null } | { text: null; error: string }
 
 /** W2-CAREPRO r1: ConsultTab hands its route stamp here; it lands on the
  *  selected audience chip (one 44 px button in step 1), never on a wrapper. */
-export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard }: {
+export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard, excludeTeacher = false }: {
   primaryMoveStamp?: Record<string, string>;
+  /** v3 FEAT-09: the Care summary pill (#/handoff) builds the professional
+   *  summary only. The teacher chip is left out (School brief is its own
+   *  pill), and a stored, anchored or prefilled teacher audience starts at
+   *  the default professional instead, never persisted. */
+  excludeTeacher?: boolean;
   egressGuard?: ConsultEgressGuard;
   /** B-LOOP-12: the professional view's profession preset — the packet is
    *  the intake packet (buildIntakePacket) and leaves through THIS step-3
@@ -149,9 +154,14 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   const [previewAll, setPreviewAll] = useState(false);
 
   // Step 1: the audience (= the preset); remembered per device.
-  const [audience, setAudienceState] = useState<ExportAudience>(() => (intakeProp ? INTAKE_AUDIENCE[intakeProp] : anchorAudience ?? readStoredAudience()));
+  const allowed = (a: ExportAudience) => !(excludeTeacher && a === "teacher");
+  const [audience, setAudienceState] = useState<ExportAudience>(() => {
+    const initial = intakeProp ? INTAKE_AUDIENCE[intakeProp] : anchorAudience ?? readStoredAudience();
+    return allowed(initial) ? initial : DEFAULT_EXPORT_AUDIENCE;
+  });
   const [intake, setIntake] = useState<IntakeProfession | undefined>(intakeProp);
   const setAudience = (a: ExportAudience) => {
+    if (!allowed(a)) return;
     if (intake && a !== audience) setIntake(undefined);
     // Consent applies to the exact outgoing audience. Clear it in this click
     // transaction, rather than waiting for the effect below, so an immediate
@@ -232,7 +242,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     const patch = resolveConsultPrefill(pendingConsultPrefill);
     if (patch.reason !== undefined) setReason(patch.reason);
     if (patch.note !== undefined) setVisionNote(patch.note);
-    if (patch.audience !== undefined) setAudienceState(patch.audience);
+    if (patch.audience !== undefined && allowed(patch.audience)) setAudienceState(patch.audience);
     setReviewed(false);
     consumeConsultPrefill();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -549,7 +559,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           className="flex flex-wrap items-center gap-1.5 focus:outline-none"
           style={{ scrollMarginBlockStart: "0.75rem" }}
         >
-          {EXPORT_AUDIENCES.map((a) => {
+          {EXPORT_AUDIENCES.filter(allowed).map((a) => {
             const on = a === audience && !split;
             return (
               <button

@@ -77,6 +77,8 @@ describe("v3 FEAT-09 · #/handoff is the care summary builder", () => {
       const builders = all.filter((el) => el.type === AskSpecialist);
       expect(builders).toHaveLength(1);
       expect(builders[0].props.primaryMoveStamp).toEqual({ "data-primary-move": "copy-handoff-brief" });
+      // never the teacher branch here: School brief is its own pill
+      expect(builders[0].props.excludeTeacher).toBe(true);
       // the page itself stamps nothing; the builder holds the one stamp
       expect(all.filter((el) => el.props["data-primary-move"])).toHaveLength(0);
       expect(all.filter((el) => el.props["data-module"]).map((el) => el.props["data-module"])).toEqual(["consult-packet"]);
@@ -101,5 +103,6 @@ describe("v3 FEAT-09 · #/handoff is the care summary builder", () => {
     expect(byId(all, "consult-summary-lede")).toBeUndefined();
     expect(textOf(all.find((el) => el.type === "h1"))).not.toBe(translate("en", "elev.consult.h1.summary"));
     expect(all.find((el) => el.type === AskSpecialist)!.props.primaryMoveStamp).toEqual({ "data-primary-move": "build-share-packet" });
+    expect(all.find((el) => el.type === AskSpecialist)!.props.excludeTeacher).toBe(false);
   });
 });

@@ -69,7 +69,7 @@ export const en: Record<string, string> = {
   // "Our question" puts the family question the parent picked into the summary
   // as one line; it is off until the parent turns it on.
   "elev.consult.h1.summary": "Build a care summary",
-  "elev.consult.summary.lede": "Only the moments and questions you pick go in. Nothing leaves until you share it.",
+  "elev.consult.summary.lede": "Untick anything you'd rather keep to yourself. Nothing leaves until you share it.",
   "elev.consult.topic.include": "Our question",
   "elev.consult.topic.line": "Our question: {title}",
 };
@@ -122,7 +122,7 @@ export const he: Record<string, string> = {
   "elev.profile.who.title": "על {name}",
   // v3 FEAT-09 — סיכום לצוות המטפל, ו"השאלה שלנו" כשורה אחת שההורה בוחר להוסיף.
   "elev.consult.h1.summary": "להכין סיכום לצוות המטפל",
-  "elev.consult.summary.lede": "רק הרגעים והשאלות שתבחרו נכנסים. שום דבר לא יוצא עד שתשתפו.",
+  "elev.consult.summary.lede": "הסירו את הסימון מכל מה שתעדיפו לשמור לעצמכם. שום דבר לא יוצא עד שתשתפו.",
   "elev.consult.topic.include": "השאלה שלנו",
   "elev.consult.topic.line": "השאלה שלנו: {title}",
 };

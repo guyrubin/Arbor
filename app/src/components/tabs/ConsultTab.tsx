@@ -276,7 +276,11 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
             )}
           </section>
         )}
-        <AskSpecialist key={appointmentId ?? `${presetAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`} primaryMoveStamp={primaryMoveStamp} anchorAudience={presetAudience} intake={intake} onAudienceChange={setChosen} egressGuard={egressGuard} />
+        {/* v3 FEAT-09: on #/handoff the builder never opens in the teacher
+            branch (a teacher stored on this device or a teacher visit would
+            put the School Brief editor under the summary H1); School brief is
+            its own pill. */}
+        <AskSpecialist key={`${summary ? "summary:" : ""}${appointmentId ?? `${presetAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`}`} primaryMoveStamp={primaryMoveStamp} anchorAudience={presetAudience} intake={intake} onAudienceChange={setChosen} egressGuard={egressGuard} excludeTeacher={summary} />
       </div>
     </div>}
   </>;

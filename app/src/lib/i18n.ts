@@ -1560,8 +1560,6 @@ export const en: Dict = {
   "sm.askAbout.sub": "Opens Ask with your words — you send it",
   "sm.extra.weekly": "Weekly Insight",
   "sm.extra.weeklySub": "My Child · Story",
-  "sm.extra.handoff": "School & Care Handoff",
-  "sm.extra.handoffSub": "Care Network · Reports & Handoffs",
   "sm.extra.scholar": "Scholar Frameworks",
   "sm.extra.scholarSub": "Ask Arbor",
   // LANG-15: Word World Tab
@@ -4082,8 +4080,6 @@ export const he: Dict = {
   "sm.askAbout.sub": "פותח את השאלה עם המילים שלכם — אתם שולחים",
   "sm.extra.weekly": "תובנה שבועית",
   "sm.extra.weeklySub": "הילד שלי · סיפור",
-  "sm.extra.handoff": "העברה לבית ספר וטיפול",
-  "sm.extra.handoffSub": "רשת תמיכה · דוחות והעברות",
   "sm.extra.scholar": "מסגרות מומחה",
   "sm.extra.scholarSub": "שאל את ארבור",
   // LANG-15: Word World Tab (Hebrew)
