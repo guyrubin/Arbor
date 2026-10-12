@@ -51,12 +51,6 @@ vi.mock("../../context/LanguageContext", async () => {
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };
 });
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ activeTab: state.activeTab, setActiveTab: state.setActiveTab }) }));
-// A server render reads the store's server snapshot (always false); these
-// renders stand for the client, which reads the count itself.
-vi.mock("../../hooks/useSheetCrumbShown", async (original) => {
-  const actual = await original<typeof import("../../hooks/useSheetCrumbShown")>();
-  return { ...actual, useSheetCrumbShown: () => actual.sheetCrumbShownNow() };
-});
 // The crumb picks its place from the same seam the dialogs use (lg = 1024).
 vi.mock("../ui/Sheet", async (original) => ({ ...(await original<typeof import("../ui/Sheet")>()), useCompactSurface: () => state.compact }));
 const capture = vi.hoisted(() => (type: unknown, props: unknown) => {
@@ -75,15 +69,10 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
   return { ...runtime, jsxDEV: (...args: Parameters<typeof runtime.jsxDEV>) => { capture(args[0], args[1]); return runtime.jsxDEV(...args); } };
 });
 import {
-  Breadcrumb, CRUMB_INSET_VAR, CRUMB_MAX_LEVELS, DEEP_LEAF_NAME_KEY, LeafCrumbStrip, SheetBreadcrumb, crumbLevelsFor, leafCrumbLevelsFor, placeCrumb,
-  type CrumbLevel, type CrumbPlace,
+  Breadcrumb, CRUMB_INSET_VAR, CRUMB_MAX_LEVELS, SheetBreadcrumb, crumbLevelsFor, placeCrumb, type CrumbLevel, type CrumbPlace,
 } from "./Breadcrumb";
 import { useSheetHistory } from "../../hooks/useSheetHistory";
-import { announceSheetCrumb, sheetCrumbShownNow } from "../../hooks/useSheetCrumbShown";
-import { goToRoute } from "../../hooks/useHashQuery";
-import { sheetBackInFlight } from "../../lib/sheetHistory";
-import { backTargetFor } from "../../lib/companionPlaces";
-import { ROUTE_IDS, type ActiveTab } from "../../lib/routes";
+import { sheetCrumbShownNow } from "../../hooks/useSheetCrumbShown";
 import { DIALOG_COMPANION } from "../../lib/dialogStack";
 import { Sheet } from "../ui/Sheet";
 import { Modal } from "../ui/Modal";
@@ -150,22 +139,17 @@ function fakeBrowser(hash = "#/overview", { manual = false } = {}) {
     back: vi.fn(() => traverse(-1)),
     forward: vi.fn(() => traverse(1)),
   };
-  /** A fragment navigation: a new entry only when the hash differs, and popstate at once. */
-  const fragment = (url: string) => {
-    if (entries[index].url === url) return;
-    add({ state: null, url });
-    target.dispatchEvent(new Event("popstate"));
-  };
-  const location = {
-    get href() { return entries[index].url; },
-    get hash() { return entries[index].url.slice(ORIGIN.length); },
-    set hash(value: string) { fragment(`${ORIGIN}#${value.replace(/^#/, "")}`); },
-  };
+  const location = { get href() { return entries[index].url; } };
   vi.stubGlobal("window", Object.assign(target, { history, location }));
   return {
     history,
-    /** ArborContext.setActiveTab writing its hash. */
-    navigate(tab: string) { fragment(`${ORIGIN}#/${tab}`); },
+    /** ArborContext.setActiveTab: a new entry only when the hash differs, and a fragment navigation fires popstate at once. */
+    navigate(tab: string) {
+      const url = `${ORIGIN}#/${tab}`;
+      if (entries[index].url === url) return;
+      add({ state: null, url });
+      target.dispatchEvent(new Event("popstate"));
+    },
     /** Manual mode: perform the traversals asked for so far. */
     deliver() { queued.splice(0).forEach(run => run()); },
     depth: () => index + 1,
@@ -339,19 +323,11 @@ describe("IA-06r · Breadcrumb markup, in both places", () => {
 
 describe("IA-06 · crumb levels follow the route's home and its pill row", () => {
   const t = (lang: "en" | "he") => (key: string) => translate(lang, key);
-  // IA-06r re-pin: #/coach read "Talk with Arbor › …" while the top bar and
-  // the Sidebar light Now there (chromeLitHome). Talk is a panel over Now, so
-  // its sheet reads Now › the question. A route with no pill and no leaf name
-  // (#/stories) gets no old nav.tab.* level ("Story Journeys").
   it.each([
     ["overview", ["Now", QUESTION]],
     ["development", ["My child", "Development map", QUESTION]],
     ["milestones", ["My child", "Milestones", QUESTION]],
-    ["coach", ["Now", QUESTION]],
-    ["scholar", ["Now", QUESTION]],
-    ["memory", ["My child", "What Arbor remembers", QUESTION]],
-    ["safety", ["Care, together", "Safety", QUESTION]],
-    ["stories", ["Together", QUESTION]],
+    ["coach", ["Talk with Arbor", QUESTION]],
   ] as const)("EN %s", (tab, expected) => {
     expect(crumbLevelsFor(tab, QUESTION, "en", t("en")).map(l => l.label)).toEqual(expected);
   });
@@ -359,138 +335,12 @@ describe("IA-06 · crumb levels follow the route's home and its pill row", () =>
   it("HE: the same levels in Hebrew", () => {
     expect(crumbLevelsFor("development", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["הילד שלי", "מפת התפתחות", QUESTION]);
     expect(crumbLevelsFor("overview", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["עכשיו", QUESTION]);
-    expect(crumbLevelsFor("coach", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["עכשיו", QUESTION]);
-    expect(crumbLevelsFor("memory", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["הילד שלי", "מה ארבור זוכר", QUESTION]);
-  });
-
-  it("#/coach: the first level goes to Now, where the panel stands, and no level names the Talk door", () => {
-    for (const lang of ["en", "he"] as const) {
-      const levels = crumbLevelsFor("coach", QUESTION, lang, t(lang));
-      expect(levels[0].tab).toBe("overview");
-      expect(levels.map(l => l.label)).not.toContain(translate(lang, "nav.tab.coach"));
-    }
-  });
-
-  it("NEGATIVE CONTROL: the round-3 coach levels and the old nav.tab names are what these checks reject", () => {
-    // The first build lit the Talk door and fell back to nav.tab.<tab>.
-    expect(translate("en", "nav.tab.coach")).toBe("Talk with Arbor");
-    expect(["Talk with Arbor", QUESTION]).not.toEqual(["Now", QUESTION]);
-    expect(translate("en", "nav.tab.stories")).not.toBe("Together");
-    expect(crumbLevelsFor("stories", QUESTION, "en", t("en")).map(l => l.label)).not.toContain(translate("en", "nav.tab.stories"));
-    expect(translate("en", "nav.tab.memory")).not.toBe("What Arbor remembers");
   });
 
   it("ancestors carry their routes; the sheet level carries none", () => {
     expect(crumbLevelsFor("milestones", QUESTION, "en", t("en"))).toEqual([
       { label: "My child", tab: "development" }, { label: "Milestones", tab: "milestones" }, { label: QUESTION },
     ]);
-  });
-});
-
-describe("IA-06r · a deep leaf's crumb: home › page, in the chrome", () => {
-  const t = (lang: "en" | "he") => (key: string) => translate(lang, key);
-  /** The v3 route map's L2 pages (brief IA-06r), their home's route and their v3 name. */
-  const ROUTE_MAP_L2: Record<string, { back: ActiveTab; en: string; he: string }> = {
-    "day-windows": { back: "overview", en: "Day windows", he: "חלונות היום" },
-    "smart-reminders": { back: "overview", en: "Reminders", he: "תזכורות" },
-    memory: { back: "development", en: "What Arbor remembers", he: "מה ארבור זוכר" },
-    screening: { back: "development", en: "Development check", he: "בדיקת התפתחות" },
-    journal: { back: "development", en: "Your journal", he: "היומן שלכם" },
-    science: { back: "development", en: "The Science", he: "המדע" },
-    safety: { back: "consult", en: "Safety", he: "בטיחות" },
-    handoff: { back: "consult", en: "Care summary", he: "סיכום לצוות המטפל" },
-    "school-brief": { back: "consult", en: "School brief", he: "תקציר לגן/בית הספר" },
-    sharing: { back: "consult", en: "Trusted sharing", he: "שיתוף מהימן" },
-    "care-team": { back: "consult", en: "Trusted sharing", he: "שיתוף מהימן" },
-    appointments: { back: "consult", en: "Appointments", he: "פגישות" },
-    reports: { back: "consult", en: "Your full record", he: "התיעוד המלא שלכם" },
-    family: { back: "masterclasses", en: "Family formation", he: "בניית משפחה" },
-  };
-  const HOME_EN: Partial<Record<ActiveTab, string>> = { overview: "Now", development: "My child", consult: "Care, together", masterclasses: "For you, the parent" };
-  const HOME_HE: Partial<Record<ActiveTab, string>> = { overview: "עכשיו", development: "הילד שלי", consult: "טיפול, ביחד", masterclasses: "בשבילכם, ההורים" };
-
-  it("the leaves are exactly the route map's L2 pages (#/attribution, admin only, and the Learn reader left out), each under the home its Back goes to", () => {
-    expect(Object.keys(DEEP_LEAF_NAME_KEY).sort()).toEqual(Object.keys(ROUTE_MAP_L2).sort());
-    for (const [tab, row] of Object.entries(ROUTE_MAP_L2)) expect(backTargetFor(tab as ActiveTab)?.tab, tab).toBe(row.back);
-    expect(DEEP_LEAF_NAME_KEY.attribution).toBeUndefined();
-  });
-
-  it.each(["en", "he"] as const)("%s: every leaf reads home › its v3 name; the page is the current level and the home its one way out", (lang) => {
-    for (const [tab, row] of Object.entries(ROUTE_MAP_L2)) {
-      const levels = leafCrumbLevelsFor(tab as ActiveTab, lang, t(lang));
-      expect(levels, tab).toEqual([{ label: (lang === "he" ? HOME_HE : HOME_EN)[row.back], tab: row.back }, { label: row[lang] }]);
-      if (lang === "he") expect(levels!.map(l => l.label).join(" "), tab).not.toMatch(/[A-Za-z]/);
-    }
-  });
-
-  it("every other route has no leaf crumb: its home title names it", () => {
-    const others = ROUTE_IDS.filter(tab => !(tab in ROUTE_MAP_L2));
-    expect(others.length + Object.keys(ROUTE_MAP_L2).length).toBe(ROUTE_IDS.length);
-    for (const tab of others) for (const lang of ["en", "he"] as const) expect(leafCrumbLevelsFor(tab, lang, t(lang)), tab).toBeNull();
-  });
-
-  it("NEGATIVE CONTROL: the old long names are not the leaf names, so the checks above can fail", () => {
-    for (const [tab, old] of [["memory", "Child Memory"], ["safety", "Safety & Escalation"], ["smart-reminders", "Gentle Reminders"], ["screening", "Development Check"]] as const) {
-      expect(translate("en", `nav.tab.${tab}`)).toBe(old);
-      expect(leafCrumbLevelsFor(tab, "en", t("en"))!.map(l => l.label)).not.toContain(old);
-    }
-  });
-
-  it("the phone strip (below lg): the leaf's crumb in flow under the header, 8 px below its row; the home is a 44 px button", () => {
-    state.compact = true; state.activeTab = "memory";
-    state.buttons = [];
-    const html = renderToStaticMarkup(<LeafCrumbStrip />);
-    const nav = html.match(/<nav [^>]*>/)?.[0] ?? "";
-    expect(nav).toContain('data-testid="mobile-crumb"');
-    expect(nav).toContain('data-crumb-place="strip"');
-    expect(nav).toContain('data-crumb-kind="route"');
-    const cls = /class="([^"]*)"/.exec(nav)?.[1].split(" ") ?? [];
-    for (const c of ["lg:hidden", "-mt-2", "mb-2", "min-h-11", "min-w-0", "-ms-1"]) expect(cls).toContain(c);
-    // In the chrome's flow, not a chip over it.
-    for (const c of ["absolute", "pointer-events-auto", "rounded-xl"]) expect(cls).not.toContain(c);
-    expect(nav).not.toContain("background:");
-    expect(levelsOf(html).map(l => l.label)).toEqual(["My child", "What Arbor remembers"]);
-    expect(html).toContain("text-[13px]");
-    expect(state.buttons).toHaveLength(1);
-    state.buttons[0].onClick();
-    expect(state.setActiveTab).toHaveBeenCalledWith("development");
-    expect(lastLevelWhole(html)).toBe(true);
-  });
-
-  it("Hebrew: the strip in Hebrew under the Hebrew landmark name, the chevron mirrored once", () => {
-    state.compact = true; state.activeTab = "safety"; state.lang = "he";
-    const html = renderToStaticMarkup(<LeafCrumbStrip />);
-    expect(html).toContain('aria-label="נתיב ניווט"');
-    expect(levelsOf(html).map(l => l.label)).toEqual(["טיפול, ביחד", "בטיחות"]);
-    expect(html.match(/-scale-x-100/g)).toHaveLength(1);
-  });
-
-  it("lg and up the strip renders nothing (the top bar's title zone carries the crumb), and nothing on a route that is no leaf", () => {
-    state.compact = false; state.activeTab = "memory";
-    expect(renderToStaticMarkup(<LeafCrumbStrip />)).toBe("");
-    state.compact = true; state.activeTab = "development";
-    expect(renderToStaticMarkup(<LeafCrumbStrip />)).toBe("");
-  });
-
-  it("while a sheet's crumb stands in, the strip keeps its one-row box, empty and hidden from assistive tech", () => {
-    state.compact = true; state.activeTab = "memory";
-    announceSheetCrumb(1);
-    try {
-      const html = renderToStaticMarkup(<LeafCrumbStrip />);
-      expect(html).not.toContain("<nav");
-      expect(html).toMatch(/^<div aria-hidden="true" data-crumb-held="strip" class="[^"]*\bmin-h-11\b[^"]*"><\/div>$/);
-      expect(html).toContain("lg:hidden -mt-2 mb-2");
-    } finally {
-      announceSheetCrumb(-1);
-    }
-    expect(sheetCrumbShownNow()).toBe(false);
-  });
-
-  it("a sheet over a leaf: its crumb carries the leaf's two levels, then the sheet", () => {
-    state.activeTab = "memory";
-    const html = renderToStaticMarkup(<SheetBreadcrumb label="Mornings at home" close={vi.fn()} />);
-    expect(levelsOf(html).map(l => l.label)).toEqual(["My child", "What Arbor remembers", "Mornings at home"]);
-    expect(html).toContain('data-crumb-kind="sheet"');
   });
 });
 
@@ -781,47 +631,6 @@ describe("IA-06 · useSheetHistory owns one history entry", () => {
   });
 });
 
-describe("IA-06r · no route change starts while a sheet's Back is in flight", () => {
-  // Measured in Chromium (lib/sheetHistory): a Back lands 1.9 to 21.4 ms after
-  // history.back(), so a route change can be asked for inside that window.
-  it("goToRoute waits for the land, then writes its hash: the route sticks, one Back", async () => {
-    const browser = fakeBrowser("#/overview", { manual: true });
-    const sheet = mount(() => useSheetHistory(true, vi.fn()));
-    sheet.value(); // the sheet's own close: its Back is asked for, not landed
-    expect(sheetBackInFlight()).toBe(true);
-    goToRoute("development");
-    expect(browser.urls()).toEqual([OV, OV]);
-    browser.deliver();
-    expect(sheetBackInFlight()).toBe(false);
-    expect(browser.urls()).toEqual([OV, DEV]);
-    expect(browser.url()).toBe(DEV);
-    sheet.unmount();
-    await settle();
-    expect(browser.history.back).toHaveBeenCalledOnce();
-    expect(browser.url()).toBe(DEV);
-  });
-
-  it("with no Back in flight, goToRoute writes its hash at once", () => {
-    const browser = fakeBrowser("#/overview", { manual: true });
-    expect(sheetBackInFlight()).toBe(false);
-    goToRoute("development");
-    expect(browser.urls()).toEqual([OV, DEV]);
-  });
-
-  it("NEGATIVE CONTROL: a hash written straight into that window is read as the land, and the Back then pops it: the route bounces", () => {
-    const browser = fakeBrowser("#/overview", { manual: true });
-    const sheet = mount(() => useSheetHistory(true, vi.fn()));
-    sheet.value();
-    expect(sheetBackInFlight()).toBe(true);
-    window.location.hash = "/development"; // not through a seam
-    expect(browser.url()).toBe(DEV);
-    expect(sheetBackInFlight()).toBe(false); // its popstate was taken as the Back's land
-    browser.deliver(); // the real Back arrives
-    expect(browser.url()).toBe(OV);
-    sheet.unmount();
-  });
-});
-
 describe("IA-06r · no timer, no capture-phase hack: the land is the browser's own popstate", () => {
   const read = (rel: string) => readFileSync(path.join(__dirname, "..", "..", rel), "utf8");
   /** Code only: block and line comments go (they may name what the code must not do). */
@@ -1037,44 +846,20 @@ describe("IA-06r · wiring (source pins)", () => {
     expect(at).toEqual([...at].sort((a, b) => a - b));
   };
 
-  // IA-06r re-pin (review round 3, major): the top bar drew no crumb of its
-  // own, so a deep leaf (#/memory) named only its home. Its title zone now
-  // draws the leaf's crumb (imported from ./Breadcrumb); it still draws no
-  // sheet's crumb and owns no history.
-  it("the top bar holds the anchor and steps its title aside for a sheet's crumb; on a deep leaf its title zone is the leaf's crumb; it owns no history", () => {
+  it("the top bar holds the anchor and steps its title aside; it renders no crumb and owns no history", () => {
     const topbar = read("components/layout/Topbar.tsx");
+    expect(topbar).toContain('data-crumb-anchor="bar"');
     expect(topbar).toContain('import { useSheetCrumbShown } from "../../hooks/useSheetCrumbShown"');
-    expect(topbar).toContain('import { Breadcrumb, useLeafCrumb } from "./Breadcrumb";');
     expect(topbar).toContain('crumbShown ? " invisible" : ""');
-    ordered(topbar,
-      'const leafCrumb = useLeafCrumb("bar");',
-      'data-crumb-anchor="bar"',
-      "{leafCrumb && !leafCrumb.held ? (",
-      '<Breadcrumb kind="route" place="bar" levels={leafCrumb.levels} onSelect={setActiveTab} />',
-      'data-testid="topbar-home-title"',
-    );
-    expect(topbar.match(/<Breadcrumb\b/g)).toHaveLength(1);
-    expect(topbar).not.toMatch(/SheetBreadcrumb|topbar-crumb|useSheetHistory|kind="sheet"/);
+    expect(topbar).toContain('data-testid="topbar-home-title"');
+    expect(topbar).not.toMatch(/SheetBreadcrumb|topbar-crumb|useSheetHistory|from "\.\/Breadcrumb"/);
     expect(topbar).toMatch(/className="[^"]*\bhidden lg:flex\b/);
   });
 
-  it("the phone header holds the strip's anchor and, right after its row, the leaf's strip; both anchors switch at the dialogs' own lg breakpoint", () => {
-    const header = read("components/layout/ChildContextHeader.tsx");
-    expect(header).toContain('<header data-crumb-anchor="strip"');
-    expect(header).toContain('import { LeafCrumbStrip } from "./Breadcrumb";');
-    ordered(header, '<header data-crumb-anchor="strip"', "</header>", "<LeafCrumbStrip />");
-    expect(header.match(/<LeafCrumbStrip \/>/g)).toHaveLength(1);
+  it("the phone header holds the strip's anchor, and both anchors switch at the dialogs' own lg breakpoint", () => {
+    expect(read("components/layout/ChildContextHeader.tsx")).toContain('<header data-crumb-anchor="strip"');
     expect(read("components/layout/Shell.tsx")).toMatch(/<ChildContextHeader\s+className="lg:hidden"/);
     expect(read("components/ui/Sheet.tsx")).toContain('const COMPACT_QUERY = "(max-width: 1023.98px)";');
-  });
-
-  it("the app's two route-change seams wait while a sheet's Back is in flight (a hash written then is the entry that Back pops)", () => {
-    const arbor = read("context/ArborContext.tsx");
-    expect(arbor).toContain('import { afterSheetBack, sheetBackInFlight } from "../lib/sheetHistory";');
-    // After the kid-mode guard (it still refuses first), before the state and hash write.
-    ordered(arbor, "if (isKidModeActive())", "if (sheetBackInFlight()) { afterSheetBack(() => setActiveTab(t)); return; }", "setActiveTabState(t);");
-    const hash = read("hooks/useHashQuery.ts");
-    ordered(hash, "export function goToRoute(", "afterSheetBack(() => {", "window.location.hash = routeHash(route, params);");
   });
 
   it("the shell gains no crumb, no history and no second listener for FEAT-05's event", () => {

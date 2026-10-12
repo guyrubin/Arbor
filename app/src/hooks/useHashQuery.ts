@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { hashQuery, routeHash, type ActiveTab } from "../lib/routes";
-import { afterSheetBack } from "../lib/sheetHistory";
 
 const readHash = (): string => {
   try {
@@ -27,17 +26,11 @@ export function useHashQuery(): URLSearchParams {
   return hashQuery(raw);
 }
 
-/**
- * Navigate to a route with parameters (a new history entry, so Back returns).
- * v3 IA-06r: never while a sheet's Back is in flight (lib/sheetHistory), or
- * that Back would pop this entry; it waits for the land.
- */
+/** Navigate to a route with parameters (a new history entry, so Back returns). */
 export function goToRoute(route: ActiveTab, params: Record<string, string | null | undefined> = {}): void {
-  afterSheetBack(() => {
-    try {
-      window.location.hash = routeHash(route, params);
-    } catch {
-      /* SSR / tests */
-    }
-  });
+  try {
+    window.location.hash = routeHash(route, params);
+  } catch {
+    /* SSR / tests */
+  }
 }

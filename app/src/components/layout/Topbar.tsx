@@ -7,7 +7,6 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { homeForTab, chromeLitHome } from "../../lib/companionPlaces";
 import { useSheetCrumbShown } from "../../hooks/useSheetCrumbShown"; // v3 IA-06r: an open L2 sheet's crumb
-import { Breadcrumb, useLeafCrumb } from "./Breadcrumb"; // v3 IA-06r: a deep leaf's crumb
 
 /**
  * Desktop topbar — the wireframe's lean control band (md+). Hidden on mobile,
@@ -20,16 +19,13 @@ import { Breadcrumb, useLeafCrumb } from "./Breadcrumb"; // v3 IA-06r: a deep le
  * stay in the dictionaries. Talk is a panel over a page, never a place, so
  * #/coach and #/scholar read Now, the page under the panel, exactly as the
  * Sidebar lights it (chromeLitHome): the chrome gives one answer.
- * v3 IA-06r: a deep leaf (an L2 page of the v3 route map) has no pill to say
- * where it is, so there the title is the crumb home › page instead
- * (layout/Breadcrumb): #/memory reads "My child › What Arbor remembers".
  *
  * The control band: Safety life-ring → search → Kid Mode. Talk with Arbor is a
  * sidebar door and the launcher, never a header button; the language switch
  * lives in Settings only. All tokens are sourced from index.css; no raw hex.
  */
 export default function Topbar() {
-  const { activeTab, setActiveTab } = useArbor();
+  const { activeTab } = useArbor();
   const { t, uiLang } = useLanguage();
   // v3 F-SHELL-2 (critic ruling 6): ONE title on every route, the home's name.
   const home = homeForTab(activeTab);
@@ -40,11 +36,6 @@ export default function Topbar() {
   // the crumb. The title steps aside (keeping its box) so nothing ghosts
   // through the dimmed band around it.
   const crumbShown = useSheetCrumbShown();
-  // v3 IA-06r: on a deep leaf (an L2 page: #/memory, #/safety, #/day-windows
-  // …) the title IS the crumb, home › page ("My child › What Arbor
-  // remembers"); the home names every other route. A sheet opened over the
-  // leaf carries both levels in its own crumb, so the leaf's steps aside then.
-  const leafCrumb = useLeafCrumb("bar");
   return (
     <header
       /* B-DESIGN-03 (chrome): the sticky band takes the chrome glass — paper
@@ -82,17 +73,13 @@ export default function Topbar() {
       >
         {/* v3 F-SHELL-2: display face 20/600, and no second line: the page
             under it owns its own introduction. */}
-        {leafCrumb && !leafCrumb.held ? (
-          <Breadcrumb kind="route" place="bar" levels={leafCrumb.levels} onSelect={setActiveTab} />
-        ) : (
-          <span
-            data-testid="topbar-home-title"
-            className={`text-[20px] font-semibold leading-tight truncate${crumbShown ? " invisible" : ""}`}
-            style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
-          >
-            {uiLang === "he" ? named.he : named.en}
-          </span>
-        )}
+        <span
+          data-testid="topbar-home-title"
+          className={`text-[20px] font-semibold leading-tight truncate${crumbShown ? " invisible" : ""}`}
+          style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
+        >
+          {uiLang === "he" ? named.he : named.en}
+        </span>
       </div>
 
       {/* Right zone: lean desktop control band (Safety → search → Kid Mode).

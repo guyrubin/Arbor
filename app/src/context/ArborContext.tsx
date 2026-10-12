@@ -33,7 +33,6 @@ import { useChildCollection } from "../hooks/useChildCollection";
 import { useFamilyTopics } from "../hooks/useFamilyTopics";
 import type { ExplainAnswer } from "../lib/explainAnswer";
 import { track } from "../lib/analytics";
-import { afterSheetBack, sheetBackInFlight } from "../lib/sheetHistory"; // v3 IA-06r
 import { isKidModeActive } from "../lib/kidModeGate";
 import { runInstrumented } from "../hooks/useAsyncAction";
 import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib/loopEvents";
@@ -262,10 +261,6 @@ function useArborState() {
       try { track("kidlock_blocked_nav", { tab: t }); } catch { /* noop */ }
       return;
     }
-    // v3 IA-06r: a sheet's Back is still in flight (lib/sheetHistory). A hash
-    // written now is the entry that Back would pop, and the route would bounce
-    // back, so the move waits for the land (a few ms).
-    if (sheetBackInFlight()) { afterSheetBack(() => setActiveTab(t)); return; }
     setActiveTabState(t);
     try { if (window.location.hash.replace(/^#\/?/, "") !== t) window.location.hash = `/${t}`; } catch { /* noop */ }
     try { track("view_tab", { tab: t }); } catch { /* noop */ }
