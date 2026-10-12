@@ -101,7 +101,12 @@ describe("W2.7 nav de-overload — emphasis only", () => {
   // tabs + More — no section is removed from the bar.
   it("three companion places remain navigation; conversation is the shared global dock", () => {
     expect(mobileNav).toContain('const PRIMARY_SECTION_IDS = ["today", "growth", "practice"] as const;');
-    expect(mobileNav).toContain('section.id !== "ask"');
+    // v3 F-SHELL-3 (IA-03) re-pin — was toContain('section.id !== "ask"'), the
+    // overflow filter that kept Ask out of More: the dock's Talk opens the
+    // conversation through its one door and never routes to #/coach.
+    expect(mobileNav).toContain('data-testid="dock-talk"');
+    expect(mobileNav).toContain("requestCompanionConversation({ source })");
+    expect(mobileNav).not.toContain('setActiveTab("coach")');
     expect(shell).toContain("<CompanionWorkspace");
     const workspace = readSrc("components", "companion", "CompanionWorkspace.tsx");
     expect(workspace).toContain('data-testid="companion-launcher"');
@@ -123,14 +128,17 @@ describe("W2.7 nav de-overload — emphasis only", () => {
     expect(barChunk).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 
-  it("the More entry and overflow sheet still expose every remaining category", () => {
-    // The same overflow list is partitioned, not reduced, by these two groups.
-    // parentRecordHierarchy.test.tsx also renders EN/HE, asserts every original
-    // SECTIONS destination exactly once, and invokes each navigation callback.
-    expect(mobileNav).toContain('(["records", "support"] as const).map');
-    expect(mobileNav).toContain('overflow.filter(sec => RECORD_SECTION_IDS.has(sec.id) === (group === "records")).map');
-    expect(mobileNav).toContain("data-more-destination={primaryTabOf(sec)}");
-    expect(mobileNav).toContain('data-more-destination="memory"');
+  // v3 F-SHELL-3 (IA-03, critic ruling 14) re-pin — was the records / support
+  // partition of the old overflow hubs: the sheet now lists the three doors,
+  // Search, then the index of the three places under their v3 pill names.
+  // parentRecordHierarchy.test.tsx and MobileNav.talk.test.tsx render EN/HE,
+  // assert the exact destination set and invoke each navigation callback.
+  it("the More entry and the sheet expose the doors and every place's index", () => {
+    expect(mobileNav).toContain("COMPANION_DOORS.map((door) =>");
+    expect(mobileNav).toContain("data-more-door={door.id}");
+    expect(mobileNav).toContain("COMPANION_PLACES.map((place) =>");
+    expect(mobileNav).toContain("data-more-destination={row.filter ? `${row.route}?f=${row.filter}` : row.route}");
+    expect(mobileNav).not.toContain('(["records", "support"] as const).map');
     expect(mobileNav).toContain("setMoreOpen(true)");
   });
 });

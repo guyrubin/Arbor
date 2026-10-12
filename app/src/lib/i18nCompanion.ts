@@ -348,6 +348,13 @@ export const companionEn = {
   "companion.together-view.routines-preview": "The steps",
   "companion.together-view.routines-areas": "Areas: {areas}",
   "companion.together-view.routines-close": "Close",
+  // v3 F-SHELL-3 (IA-03): the phone More sheet — the doors heading and the My
+  // child rows of the place index (Now and Together rows reuse their pill keys).
+  "companion.more.doors": "Talk, learn, get support",
+  "companion.more.milestones": "Milestones",
+  "companion.more.moments": "Moments",
+  "companion.more.about": "About {name}",
+  "companion.more.about-child": "About your child",
 };
 
 export const companionHe = {
@@ -698,4 +705,11 @@ export const companionHe = {
   "companion.together-view.routines-preview": "הצעדים",
   "companion.together-view.routines-areas": "תחומים: {areas}",
   "companion.together-view.routines-close": "סגירה",
+  // v3 F-SHELL-3 (IA-03): the phone More sheet — the doors heading and the My
+  // child rows of the place index (Now and Together rows reuse their pill keys).
+  "companion.more.doors": "לדבר, ללמוד, לקבל תמיכה",
+  "companion.more.milestones": "אבני דרך",
+  "companion.more.moments": "רגעים",
+  "companion.more.about": "על {name}",
+  "companion.more.about-child": "על הילד שלכם",
 };

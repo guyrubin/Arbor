@@ -24,7 +24,6 @@ import { TabSkeleton } from "../ui/Skeleton";
 import SearchModal, { SEARCH_OPEN_EVENT, requestOpenSearch, type SearchOpenSurface } from "../search/SearchModal";
 import { track } from "../../lib/analytics";
 import SettingsModal from "./SettingsModal";
-import ProfileEditDrawer from "../profile/ProfileEditDrawer";
 import PaywallModal from "../billing/PaywallModal";
 import HardMomentNowSheet from "../behaviors/HardMomentNowSheet";
 import QuickLogModal from "../overview/QuickLogModal";
@@ -247,18 +246,9 @@ export default function Shell() {
   // v3 IA-01: Back returns to the route's home, its place or its door
   // (#/learn → For you, the parent). A home's own route has no Back.
   const back = isCompanionHome(activeTab) ? null : backTargetFor(activeTab);
-  const focusLabel = childProfile.languages.length > 1
-    // OBJ-SHELL-01: this was the English literal "Language transition" — the
-    // one string in the strip that stayed English in Hebrew, and a phrase that
-    // framed a multilingual home as a problem being managed. Keyed, EN + HE.
-    ? t("elev.shell.focus.multilingual")
-    : (childProfile.challenges?.[0]?.replace(/\s*\(.*\)/, "").trim() || "");
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // B-SHELL-19: the strip's "Working on:" label opens the profile editor
-  // (it is challenges[0] — parent-chosen and editable).
-  const [profileEditOpen, setProfileEditOpen] = useState(false);
   // F-02: <main> is the scrollport at every width, so a tab
   // switch kept the previous tab's scroll offset and showed the new tab
   // mid-page (plus a ghost frame of clipped old content during the exit).
@@ -395,13 +385,14 @@ export default function Shell() {
         {/* The viewport-bounded column gives main and the launcher separate space at every width. */}
         <div className="flex flex-col min-h-0 min-w-0 h-full overflow-hidden">
           <Topbar />
-        {/* arbor-parent: scopes the flat-white clinical token overrides to the parent
-            dashboard content area ONLY. KidModeOverlay renders at position:fixed z-70
-            as a sibling of the grid — it carries its own .arbor-play scope and does
-            NOT inherit from this <main>. See index.css .arbor-parent block. */}
-        <CompanionWorkspace kidLocked={kidLocked}>
-        <main id="main" tabIndex={-1} ref={mainRef} className="arbor-parent focus:outline-none w-full min-w-0 px-4 py-5 sm:px-5 md:px-6 md:py-8 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
-          {/* IA-03 / IA-16 / MOB-26 — ONE mobile chrome strip, not three rows.
+          {/* v3 F-SHELL-3 (IA-03): the phone header no longer scrolls away. It
+              sits in the column between the (desktop-only) Topbar and the
+              workspace, outside <main>, so the child chip, Safety, Search and
+              Kid Mode stay on screen at every scroll position, as in the mock.
+              Its Working on button is gone: the family question already rides
+              the launcher topic line and the Now question row.
+
+              IA-03 / IA-16 / MOB-26 — ONE mobile chrome strip, not three rows.
               The separate 34 px brand row is GONE: the 28 px mark folds into
               the strip below, which is where the eye already goes. The strip
               itself is one 44 px row (the accessory buttons' own height), so
@@ -434,11 +425,6 @@ export default function Shell() {
                   and on the Profile hub, so nothing is lost on a phone. */}
               {/* B-SHELL-38: the age is IN the identity line (the switcher prints
                   name over "22 months"), so the strip no longer repeats it. */}
-              {focusLabel && (
-                <span className="hidden sm:inline truncate text-xs font-medium min-w-0" style={{ color: "var(--arbor-muted)" }}>
-                  <button type="button" data-testid="strip-working-on" onClick={() => setProfileEditOpen(true)} className="inline-flex min-h-11 items-center gap-1 align-middle hover:underline underline-offset-2">{t("top.focus")}: <strong style={{ color: "var(--arbor-clay-deep)" }}>{focusLabel}</strong></button>
-                </span>
-              )}
             </>}
             actions={<div className="flex items-center gap-2">
               {/* IA-01: Safety life-ring — first accessory, one tap from every hub. */}
@@ -465,7 +451,12 @@ export default function Shell() {
               <KidModeButton compact />
             </div>
           }/>
-
+        {/* arbor-parent: scopes the flat-white clinical token overrides to the parent
+            dashboard content area ONLY. KidModeOverlay renders at position:fixed z-70
+            as a sibling of the grid — it carries its own .arbor-play scope and does
+            NOT inherit from this <main>. See index.css .arbor-parent block. */}
+        <CompanionWorkspace kidLocked={kidLocked}>
+        <main id="main" tabIndex={-1} ref={mainRef} className="arbor-parent focus:outline-none w-full min-w-0 px-4 py-5 sm:px-5 md:px-6 md:py-8 xl:px-8 2xl:px-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
           {back && <button data-testid="secondary-place-back" onClick={() => setActiveTab(back.tab)} className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: "var(--arbor-muted)" }}>
             <Icon name="arrow_back" size={18} className="rtl:-scale-x-100"/>{uiLang === "he" ? back.he : back.en}
           </button>}
@@ -654,7 +645,6 @@ export default function Shell() {
           off. */}
       {!kidLocked && <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />}
       {!kidLocked && <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />}
-      {!kidLocked && <ProfileEditDrawer open={profileEditOpen} onClose={() => setProfileEditOpen(false)} />}
       {!kidLocked && <PaywallModal />}
       {/* B-ASKJB-31: the ONE "Hard moment now" sheet; open state lives in
           ArborContext (openHardMomentNow) so Ask, Behaviors and Today share it. */}

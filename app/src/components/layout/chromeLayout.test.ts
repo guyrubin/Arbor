@@ -352,10 +352,24 @@ describe("hub context belongs to the desktop topbar, not a duplicate page preamb
 /* ── OBJ-SHELL-01 · the last English literal in the strip ────────────────── */
 
 describe("OBJ-SHELL-01 — the focus label is a key, not an English literal", () => {
-  it("Shell reads elev.shell.focus.multilingual", () => {
+  // v3 F-SHELL-3 (IA-03) re-pin — was "Shell reads elev.shell.focus.multilingual"
+  // (toContain): the strip's Working on button is gone, so Shell prints no focus
+  // label at all, neither as a key nor as an English literal.
+  it("Shell prints no focus label, as a key or as a literal", () => {
     const src = stripComments(shell);
     expect(src).not.toContain('"Language transition"');
-    expect(src).toContain('t("elev.shell.focus.multilingual")');
+    expect(src).not.toContain('t("elev.shell.focus.multilingual")');
+    expect(src).not.toContain('data-testid="strip-working-on"');
+    expect(src).not.toContain('t("top.focus")');
+  });
+
+  it("v3 F-SHELL-3: the phone header sits above the workspace, outside <main>, so it never scrolls away", () => {
+    const src = stripComments(shell);
+    const header = src.indexOf("<ChildContextHeader");
+    expect(header).toBeGreaterThan(src.indexOf("<Topbar />"));
+    expect(header).toBeLessThan(src.indexOf("<CompanionWorkspace"));
+    expect(header).toBeLessThan(src.indexOf('<main id="main"'));
+    expect(src.match(/<ChildContextHeader/g) ?? []).toHaveLength(1);
   });
 
   it("the key lands in BOTH locales", () => {

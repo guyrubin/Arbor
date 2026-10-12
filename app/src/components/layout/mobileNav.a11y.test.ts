@@ -50,10 +50,12 @@ describe("IA-16 — nav labels are legible at 390", () => {
     // The tab/More BUTTON classNames only — the count badge riding the glyph
     // is a chip, not a label, and is measured by its own rule below.
     const labelClasses = [...bar.matchAll(/className=[{"`][^\n]*py-2\.5[^\n]*/g)].map((m) => m[0]);
-    expect(labelClasses.length, "tab label classNames not found — update this guard").toBe(2);
+    // v3 F-SHELL-3 (IA-03) re-pin, 2 -> 3: the dock gained Talk, its own button
+    // between the places and More, at the same 12 px.
+    expect(labelClasses.length, "tab label classNames not found — update this guard").toBe(3);
     const sizes = labelClasses.flatMap((c) => [...c.matchAll(/text-\[(\d+)px\]/g)].map((m) => Number(m[1])));
-    // two: the tabs (one size for every tab since B-INF-09) and More.
-    expect(sizes.length).toBeGreaterThanOrEqual(2);
+    // three: the places (one size for every place since B-INF-09), Talk and More.
+    expect(sizes.length).toBeGreaterThanOrEqual(3);
     expect(Math.min(...sizes)).toBeGreaterThanOrEqual(12);
     expect(Math.max(...sizes)).toBeLessThanOrEqual(12);
   });
@@ -150,11 +152,14 @@ describe("IA-24 / IA-03 — the More sheet header holds the doors the strip cann
 
 describe("IA-24 — More keeps every overflow destination readable", () => {
   const header = nav.slice(nav.indexOf("<Sheet"), nav.indexOf("</Sheet>"));
-  it("uses six quiet rows with active-page semantics and wrapping labels", () => {
+  it("uses quiet one-line rows with active-page semantics and wrapping labels", () => {
     expect(header).toContain('className="space-y-1"');
     expect(header).toContain('aria-current={on ? "page" : undefined}');
     expect(header).toContain('block break-words leading-snug');
-    expect(header).toContain('block break-words text-[12px] leading-snug');
+    // v3 F-SHELL-3 (IA-03, critic ruling 14) re-pin — was toContain: the 12 px
+    // sub-line under each row (the pulse and the Profile / Memory details) is
+    // gone; a row is its glyph, its v3 pill name and a chevron.
+    expect(header).not.toContain('block break-words text-[12px] leading-snug');
     expect(header).not.toContain("grid grid-cols-2");
     expect(header).not.toContain("truncate");
   });

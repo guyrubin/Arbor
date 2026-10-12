@@ -61,8 +61,11 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
         onClick={handleOpen}
         aria-label={`${t("aria.kidMode")} — ${lockedLine}`}
         title={`${t("aria.kidMode")} — ${lockedLine}`}
-        className="lg:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
-        style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
+        className="lg:hidden flex items-center justify-center w-11 h-11 rounded-xl transition"
+        // v3 F-SHELL-3 (VIS-06): the phone header's Kid Mode square wears the
+        // desktop pill's sapphire tint, so the one door reads the same at
+        // every width (the mock's blue square, through the tokens).
+        style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-clay-border)" }}
       >
         <Icon name="sports_esports" size={18} chrome />
       </button>

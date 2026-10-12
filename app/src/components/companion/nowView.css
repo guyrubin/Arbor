@@ -63,16 +63,6 @@
 .now-weekly-door b { font-size: var(--t-sm); font-weight: 600; }
 .now-weekly-door small { margin-block-start: 4px; font-size: var(--t-xs); color: var(--arbor-muted); }
 .now-weekly-door:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 3px; border-radius: var(--r); }
-.now-open-doors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-block-start: 30px; padding-block: 23px; border-block-start: 1px solid var(--arbor-rule-strong); }
-.now-open-doors > button { display: flex; align-items: center; gap: 15px; min-inline-size: 0; padding: 0; border: 0; color: var(--arbor-ink); text-align: start; background: transparent; }
-.now-open-doors > button > span:not(.now-door-icon) { flex: 1; min-inline-size: 0; }
-.now-open-doors h2 { font-size: var(--t-lg); font-family: var(--font-display); line-height: 1.4; margin-block-end: 5px; }
-.now-open-doors p { font-size: var(--t-xs); color: var(--arbor-muted); }
-.now-door-icon { display: flex; align-items: center; justify-content: center; flex: 0 0 68px; block-size: 68px; border-radius: var(--r-lg); color: var(--arbor-ink-soft); background: var(--arbor-paper-deep); }
-.now-together-door img { inline-size: 82px; block-size: 72px; object-fit: cover; border-radius: var(--r); flex-shrink: 0; }
-.now-open-doors > button > .msr { color: var(--arbor-clay-deep); flex-shrink: 0; }
-.now-footer { display: flex; gap: 8px 25px; flex-wrap: wrap; padding-block: 4px 0; border-block-start: 1px solid var(--arbor-rule); }
-.now-footer .companion-text-button { color: var(--arbor-muted); font-size: var(--t-xs); }
 /* The shared conversation can make Now narrow on a wide desktop. Respond to
    the actual content space, not only the viewport. */
 @container now (max-width: 540px) {
@@ -81,7 +71,6 @@
   .now-lead-actions { align-items: stretch; flex-direction: column; }
   .now-lead-actions > .companion-primary, .now-lead-actions > .companion-secondary { inline-size: 100%; }
   .now-lead-actions > .companion-text-button { justify-content: center; }
-  .now-open-doors { grid-template-columns: minmax(0, 1fr); gap: 22px; }
 }
 @media (max-width: 520px) {
   .now-heading { margin-block-end: 18px; }
@@ -92,10 +81,6 @@
   .now-lead-actions { align-items: stretch; flex-direction: column; }
   .now-lead-actions > .companion-primary, .now-lead-actions > .companion-secondary { inline-size: 100%; }
   .now-lead-actions > .companion-text-button { justify-content: center; }
-  .now-open-doors { grid-template-columns: minmax(0, 1fr); gap: 22px; margin-block-start: 25px; }
-  .now-open-doors > button { gap: 12px; }
-  .now-door-icon { flex-basis: 64px; block-size: 64px; }
-  .now-together-door img { inline-size: 64px; block-size: 64px; }
 }
 
 /* The Now opt-in leaves the shared practice's other surfaces unchanged. */
@@ -237,8 +222,6 @@
 .now-page .now-glance .now-hard-moment > .msr:first-child { color: var(--arbor-peach-ink); }
 .now-page .now-glance-reminders > .msr:first-child { color: var(--arbor-clay); }
 
-/* Desktop: the sidebar carries the places, so the in-page doors stay for phones only. */
-@media (min-width: 1024px) { .now-page .now-open-doors, .now-page .now-footer { display: none; } }
 @container now (max-width: 860px) {
   .now-plan { grid-template-columns: minmax(0, 1fr); }
   .now-plan-art { min-block-size: 150px; }
