@@ -98,7 +98,7 @@ export const companionEn = {
   "companion.now-view.words-and-one-step-for-right-now": "Words and one step for right now",
   "companion.now-view.a-moment-worth-keeping": "A moment worth keeping",
   "companion.now-view.in-words-by-voice-or-with-a-photo": "In words, by voice or with a photo",
-  "companion.now-view.understand-more-with-support": "Understand more, with support",
+  // v3 F-NOW-4: "companion.now-view.understand-more-with-support" (the label of Now's phone doors) left with the doors.
   "companion.now-view.for-you": "FOR YOU",
   "companion.now-view.understand-more-at-your-pace": "Understand more. At your pace.",
   "companion.now-view.a-library-of-ideas-and-courses-that-connec": "A library of ideas and courses that connect to life at home.",
@@ -449,7 +449,7 @@ export const companionHe = {
   "companion.now-view.words-and-one-step-for-right-now": "מילים וצעד לרגע הזה",
   "companion.now-view.a-moment-worth-keeping": "רגע שכדאי לשמור",
   "companion.now-view.in-words-by-voice-or-with-a-photo": "במילים, בקול או בתמונה",
-  "companion.now-view.understand-more-with-support": "להבין יותר, עם תמיכה",
+  // v3 F-NOW-4: "companion.now-view.understand-more-with-support" (the label of Now's phone doors) left with the doors.
   "companion.now-view.for-you": "בשבילכם",
   "companion.now-view.understand-more-at-your-pace": "להבין יותר. בקצב שלכם.",
   "companion.now-view.a-library-of-ideas-and-courses-that-connec": "ספריית ידע וקורסים שמתחברים לחיים בבית.",

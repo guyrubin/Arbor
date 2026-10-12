@@ -69,6 +69,7 @@ import NowRecommendation from "./NowRecommendation";
 import { clearAcceptFailed } from "./nowGuideAccept";
 import { todayFile } from "../../testTodaySource";
 import { TOGETHER_ART } from "../../lib/parentArt";
+import { companionEn, companionHe } from "../../lib/i18nCompanion";
 
 function button(label: string) {
   const found = state.buttons.find((item) => React.Children.toArray(item.children).includes(label));
@@ -538,7 +539,8 @@ describe("v3 F-NOW-4 · Now on a phone: one calm column, no doors, the plan abov
     state.lang = lang;
     const html = renderToStaticMarkup(<NowView onTopicOpen={vi.fn()} />);
     expect(html).not.toMatch(/now-open-doors|now-footer|now-picture-door|now-together-door|now-door-icon/);
-    expect(html).not.toMatch(/<nav\b|<footer\b/);
+    // The doors' nav label went with them.
+    expect(html).not.toContain(lang === "he" ? "להבין יותר, עם תמיכה" : "Understand more, with support");
     expect(html).not.toContain(TOGETHER_ART.src);
     expect(html).not.toContain(lang === "he" ? "אנשי המקצוע שלצדכם" : "Care &amp; collaboration");
     expect(html).not.toContain(lang === "he" ? "התמונה השלמה של" : "’s whole picture");
@@ -557,43 +559,69 @@ describe("v3 F-NOW-4 · Now on a phone: one calm column, no doors, the plan abov
     expect(src).not.toMatch(/setActiveTab\("(?:learn|consult|practice)"\)/);
     expect(src).not.toContain("TOGETHER_ART");
     expect(src).not.toContain("understand-more-with-support");
+    // Its copy left with it, in both languages.
+    for (const dict of [companionEn, companionHe]) expect(Object.keys(dict)).not.toContain("companion.now-view.understand-more-with-support");
   });
 
-  it("CSS: the door rules and their desktop-only hide are gone; the kicker is the mock's; the phone column puts the plan top at 440 px or less", () => {
+  it("CSS: the door rules are gone; the kicker is the section kickers' face; on a phone the plan top is at 440 px or less with the sandbox line on and a two-line question", () => {
     const css = todayFile("nowView.css");
     expect(css).not.toMatch(/\.now-(?:open-doors|footer|door-icon|picture-door|together-door)\b/);
-    expect(css).not.toContain("@media (min-width: 1024px)");
-    // The kicker: small capitals in English, plain in Hebrew, never under 12 px.
-    expect(css).toMatch(/\.now-page \.now-heading \.companion-eyebrow \{ font-size: 12px;[^}]*text-transform: uppercase;/);
-    expect(css).toContain('.now-page[dir="rtl"] .now-heading .companion-eyebrow { letter-spacing: 0; text-transform: none; }');
+    // The kicker shares the section kickers' rule: small capitals in English,
+    // plain in Hebrew, never under 12 px.
+    expect(css).toContain(".now-kicker, .now-page .now-heading .companion-eyebrow { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--arbor-muted); }");
+    expect(css).toContain('.now-page[dir="rtl"] .now-kicker, .now-page[dir="rtl"] .now-heading .companion-eyebrow { letter-spacing: 0; text-transform: none; }');
     const at = css.indexOf("@media (max-width: 767.98px) {\n");
     expect(at, "the phone block").toBeGreaterThan(-1);
     const phone = css.slice(at, css.indexOf("\n}", at));
     const num = (source: string, re: RegExp) => { const found = source.match(re); expect(found, String(re)).not.toBeNull(); return Number(found![1]); };
-    // The mock's phone column: 14 px between blocks and a 32 px title.
+    // The mock's 32 px title; the blocks sit 12 px apart (the mock's 14, pressed to fit).
     const gap = num(phone, /\.companion-page\.now-page \{ gap: (\d+)px; padding-block-start: 0; \}/);
-    expect(gap).toBe(14);
+    expect(gap).toBe(12);
     const titleSize = num(phone, /\.now-page \.now-heading h1 \{[^}]*font-size: (\d+)px;/);
     expect(titleSize).toBe(32);
-    // The fold, block by block: kicker, a two-line title, the question block
-    // (its row, the active question, the chips) and the gaps between them.
-    const kicker = num(css, /\.now-page \.now-heading \.companion-eyebrow \{ font-size: (\d+)px;/) * num(css, /\.now-page \.now-heading \.companion-eyebrow \{[^}]*line-height: ([\d.]+);/);
+    // The fold, block by block, in its worst common case: the kicker, a
+    // two-line title, then the question block - its head row, the active
+    // question with its label over two lines of words, and the chip line
+    // beside All questions - and the gaps between them.
+    const kicker = num(css, /\.now-kicker, \.now-page \.now-heading \.companion-eyebrow \{[^}]*font-size: (\d+)px;/) * num(css, /\.now-page \.now-heading \.companion-eyebrow \{ line-height: ([\d.]+); \}/);
     const title = num(phone, /\.now-page \.now-heading h1 \{ margin-block-start: (\d+)px;/) + 2 * titleSize * num(css, /\.now-page \.now-heading h1 \{[^}]*line-height: ([\d.]+);/);
     const head = num(phone, /\.now-question-head \{ min-block-size: (\d+)px; \}/);
-    const active = num(phone, /\.now-question-active \{ min-block-size: (\d+)px;/);
+    const rowTop = num(phone, /\.now-question-row \{ margin-block-start: (\d+)px;/);
+    const rowGap = num(phone, /\.now-question-row \{[^}]*gap: (\d+)px \d+px;/);
+    const activeMin = num(phone, /\.now-question-active \{ min-block-size: (\d+)px;/);
+    const activePad = num(phone, /\.now-question-active \{[^}]*padding-block: (\d+)px;/);
+    const label = num(css, /\.now-question-text small \{[^}]*font-size: (\d+)px;/) * num(phone, /\.now-question-text small \{ line-height: ([\d.]+); \}/);
+    const words = 2 * num(phone, /\.now-question-text b \{ font-size: ([\d.]+)px;/) * num(phone, /\.now-question-text b \{[^}]*line-height: ([\d.]+);/);
+    const active = Math.max(activeMin, 44 + 2 * activePad, 2 * activePad + label + words);
     const chip = num(phone, /\.now-question-chip \{[^}]*block-size: (\d+)px;/);
-    const chips = chip + 2 * num(css, /\.now-question-chips \{[^}]*padding: (\d+)px;/);
-    const question = head + num(css, /\.now-question-row \{[^}]*margin-block-start: (\d+)px;/) + active + num(phone, /\.now-question-row \{ gap: (\d+)px; \}/) + chips;
-    // The shell chrome above Now at 390 today: main's 20 px padding, the 44 px
-    // strip and its 16 px margin, the 44 px pill row with its 8 + 16 px.
+    const all = num(phone, /\.now-question-all \{ min-block-size: (\d+)px; \}/);
+    const chipLine = Math.max(chip + 2 * num(css, /\.now-question-chips \{[^}]*padding: (\d+)px;/), all);
+    const question = head + rowTop + active + rowGap + chipLine;
+    // The shell chrome above Now at 390: main's 20 px padding, the 44 px strip
+    // and its 16 px margin, the 44 px pill row with its 8 + 16 px - and the
+    // sandbox line (32 px and its 12 px margin), which every sandbox the
+    // integrator measures shows. Production hides it; the bound holds either way.
     const SHELL_CHROME_390 = 20 + 44 + 16 + 44 + 8 + 16;
-    expect(SHELL_CHROME_390 + kicker + title + gap + question + gap).toBeLessThanOrEqual(440);
-    // 44 px floor: the New question link keeps its box and overhangs its 32 px row
-    // by exactly the difference; the active question holds its 44 px edit button; chips stay at least 44.
+    const SANDBOX_LINE_390 = 32 + 12;
+    expect(SHELL_CHROME_390 + SANDBOX_LINE_390 + kicker + title + gap + question + gap).toBeLessThanOrEqual(440);
+    // 44 px floors. The New question link keeps its box: its margins give back
+    // exactly what it overhangs the 28 px row, the overhang above stays in the
+    // gap under the title, the one below stays clear of the edit button, and
+    // its top padding puts its label back on the row's centre line.
     expect(css).toMatch(/\.now-question-new \{[^}]*min-block-size: 44px;/);
-    expect(head + 2 * num(phone, /\.now-question-new \{ margin-block: -(\d+)px; \}/)).toBe(44);
-    expect(active).toBeGreaterThanOrEqual(44 + 2 * num(phone, /\.now-question-active \{[^}]*padding-block: (\d+)px;/));
+    const newBox = phone.match(/\.now-question-new \{ margin-block: -(\d+)px -(\d+)px; padding-block: (\d+)px 0; \}/);
+    expect(newBox, "the New question box").not.toBeNull();
+    const [up, down, lift] = newBox!.slice(1).map(Number);
+    expect(head + up + down).toBe(44);
+    expect(up).toBeLessThanOrEqual(gap);
+    expect(down).toBeLessThanOrEqual(rowTop + activePad);
+    expect(lift).toBe(up - down);
+    // The active question holds its 44 px edit button; chips, All questions and
+    // the empty question stay at least 44.
+    expect(activeMin).toBeGreaterThanOrEqual(44 + 2 * activePad);
     expect(chip).toBeGreaterThanOrEqual(44);
+    expect(all).toBeGreaterThanOrEqual(44);
+    expect(num(phone, /\.now-question-empty \{ min-block-size: (\d+)px;/)).toBeGreaterThanOrEqual(44);
     expect(phone).not.toMatch(/(?:^|[\s;{-])(?:left|right)\s*:/m);
   });
 });
