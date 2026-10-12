@@ -170,7 +170,7 @@ describe("#/profile — the cut chapters, the count line and the dated areas", (
     expect(html).toMatch(/data-testid="about-voice" data-primary-move="capture-moment"/);
     expect(html).toContain(translate("en", "companion.about.voice"));
     // languages + the school setting are told; neither carries a day here
-    expect(text(html)).toContain(translate("en", "companion.about.toldManyUndated", { n: 2 }));
+    expect(text(html.replace(/&#x27;/g, "'")).replace(/\s+/g, " ")).toContain(translate("en", "companion.about.toldManyUndated", { n: 2 }));
   });
   it("many proposals: still one stamp, one memory door; a proposal that names no area stays on #/memory", () => {
     h.locale = "he";
@@ -238,7 +238,7 @@ describe("P1-NEXTLEVEL critic r2 — an identity fact is never undated", () => {
           expect(src, id).toMatch(/2026/);
         }
         // every told area is dated, so the count line says so
-        expect(text(html).replace(/\s+/g, " ")).toContain(translate(loc, "companion.about.toldMany", { n: 2 }));
+        expect(text(html.replace(/&#x27;/g, "'")).replace(/\s+/g, " ")).toContain(translate(loc, "companion.about.toldMany", { n: 2 }));
       }
     } finally {
       h.onboardingCompletedAt = undefined;

@@ -70,7 +70,8 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
  });
  it("eight area cards in the brief's order, a 4/2/1 grid, and the memory door",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
-  expect([...html.matchAll(/data-testid="about-aspect-([a-z]+)"/g)].map(m=>m[1])).toEqual(["temper","lang","social","routine","sleep","senses","school","strengths"]);
+  // the card's own testid is followed by its data-aspect (about-aspect-ask/-src/-quote are its parts)
+  expect([...html.matchAll(/data-testid="about-aspect-([a-z]+)" data-aspect="\1"/g)].map(m=>m[1])).toEqual(["temper","lang","social","routine","sleep","senses","school","strengths"]);
   expect(html).toMatch(/data-testid="profile-remember-check"[^>]*min-h-11|min-h-11[^>]*data-testid="profile-remember-check"/);
   expect(html).toContain(cpEn["elev.profile.remembers.title"]);
  });
@@ -87,7 +88,7 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   for(const locale of ["en","he"]){
    harness.locale=locale;
    const html=renderToStaticMarkup(<ChildProfile/>);
-   const line=html.slice(html.indexOf('data-testid="about-told-line"'),html.indexOf("</p>",html.indexOf('data-testid="about-told-line"')));
+   const line=html.slice(html.indexOf('data-testid="about-told-line"'),html.indexOf("</p>",html.indexOf('data-testid="about-told-line"'))).replace(/&#x27;/g,"'");
    // lang (English), school (School) and strengths (Dinosaurs) are told; no as-of stamps, so the line is undated
    expect(line).toContain((locale==="he"?companionHe:companionEn)["companion.about.toldManyUndated"].replace("{n}","3"));
    expect(line).not.toMatch(/%|\bof 8\b|מתוך|\/\s*8/);
@@ -111,7 +112,7 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
  });
  it("an untold area asks its question and says Not told yet",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
-  const temper=html.slice(html.indexOf('data-testid="about-aspect-temper"'),html.indexOf("</article>",html.indexOf('data-testid="about-aspect-temper"')));
+  const temper=html.slice(html.indexOf('data-testid="about-aspect-temper"'),html.indexOf("</article>",html.indexOf('data-testid="about-aspect-temper"'))).replace(/&#x27;/g,"'");
   expect(temper).toContain(companionEn["companion.about.ask.temper"].replace("{name}","Dylan"));
   expect(temper).toContain(companionEn["companion.milestones.notTold"]);
   expect(temper).toContain(companionEn["companion.milestones.tell"]);
