@@ -2610,8 +2610,6 @@ export const en: Dict = {
   "nav.pill.portrait": "Portrait",
   "nav.pill.profile": "Profile",
   "nav.pills.aria": "{place}: sections",
-  // v3 IA-06 — the open L2 sheet's breadcrumb (layout/Breadcrumb): the landmark's name.
-  "nav.crumb.aria": "Location",
 };
 
 export const he: Dict = {
@@ -5066,8 +5064,6 @@ export const he: Dict = {
   "nav.pill.portrait": "דיוקן",
   "nav.pill.profile": "פרופיל",
   "nav.pills.aria": "{place}: אזורים",
-  // v3 IA-06 — פירורי הלחם של גיליון פתוח (layout/Breadcrumb): שם אזור הניווט.
-  "nav.crumb.aria": "נתיב ניווט",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and

@@ -4,7 +4,6 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useObservations } from "../../hooks/useObservations";
 import { Sheet } from "../ui/Sheet";
 import { Icon } from "../ui/Icon";
-import { useL2Sheet } from "../layout/crumbBus";
 import type { FamilyTopic } from "../../lib/familyTopics";
 import type { Observation } from "../../lib/observations";
 import "./companionExperience.css";
@@ -57,10 +56,6 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
   const actions = topic ? actionLoop.filter(item => item.topicId === topic.id) : [];
   const threads = topic ? conversations.filter(item => item.topicId === topic.id) : [];
   const rows = showFinished ? [...familyTopics, ...archivedFamilyTopics] : familyTopics;
-  // v3 IA-06: the sheet owns one history entry (Back closes it) and names the
-  // question in the top-bar crumb. Every way out goes through close; a row
-  // that leaves for a route navigates once that entry is gone.
-  const close = useL2Sheet(true, topic?.title ?? t("companion.family-topic-sheet.what-we-re-exploring"), onClose);
 
   // Every write waits for the store: a row changes only once its record is saved.
   async function run(key: string, task: () => Promise<unknown>) {
@@ -82,7 +77,7 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
     selectFamilyTopic(item.id);
   }
 
-  return <Sheet open onClose={() => close()} title={t("companion.family-topic-sheet.what-we-re-exploring")}>
+  return <Sheet open onClose={onClose} title={t("companion.family-topic-sheet.what-we-re-exploring")}>
     <div className="topic-sheet" dir={he ? "rtl" : "ltr"}>
       <p className="topic-sheet-sub">{t("companion.family-topic-sheet.a-question-you-chose-for-it-connects-the-r", { value0: childProfile.name })}</p>
 
@@ -139,21 +134,21 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
           <div><h4><Icon name="edit_note" size={18} />{t("companion.family-topic-sheet.what-we-recorded")}</h4>
             {evidence.length ? evidence.map(item => <p key={item.id} className="topic-linked-row" dir="auto"><time dateTime={item.at}>{new Date(item.at).toLocaleDateString(he ? "he-IL" : "en-GB")}</time>{sourceLabel(item, t)}</p>)
               : <p className="topic-linked-empty">{t("companion.family-topic-sheet.no-linked-records-yet-a-question-is-enough")}</p>}
-            <button type="button" className="companion-text-button" onClick={() => close(() => setActiveTab("development"))}>{t("companion.family-topic-sheet.see-the-whole-picture")}</button>
+            <button type="button" className="companion-text-button" onClick={() => { onClose(); setActiveTab("development"); }}>{t("companion.family-topic-sheet.see-the-whole-picture")}</button>
           </div>
           <div><h4><Icon name="flag" size={18} />{t("companion.family-topic-sheet.what-we-chose-to-try")}</h4>
             {actions.length ? actions.slice(0, 8).map(item => <div key={item.id} className="topic-linked-row"><p dir="auto">{item.recommendation}</p><small>{item.outcome ? ({ helped: t("companion.family-topic-sheet.outcome.helped"), somewhat: t("companion.family-topic-sheet.outcome.somewhat"), not_today: t("companion.family-topic-sheet.outcome.not_today") })[item.outcome] : t("companion.family-topic-sheet.you-haven-t-shared-how-it-went-yet")}</small></div>)
               : <p className="topic-linked-empty">{t("companion.family-topic-sheet.a-step-you-choose-will-appear-here")}</p>}
           </div>
           <div><h4><Icon name="forum" size={18} />{t("companion.family-topic-sheet.our-conversations")}</h4>
-            {threads.map(thread => <button key={thread.id} type="button" className="topic-linked-row topic-linked-thread" dir="auto" onClick={() => { openConversation(thread.id); close(() => setActiveTab("coach")); }}>{thread.title}</button>)}
-            <button type="button" className="companion-text-button" onClick={() => { newConversation(); seedCoach({ prompt: topic.title, source: "family-topic" }); close(); }}>{t("companion.family-topic-sheet.talk-this-through-with-arbor")}</button>
+            {threads.map(thread => <button key={thread.id} type="button" className="topic-linked-row topic-linked-thread" dir="auto" onClick={() => { openConversation(thread.id); onClose(); setActiveTab("coach"); }}>{thread.title}</button>)}
+            <button type="button" className="companion-text-button" onClick={() => { newConversation(); seedCoach({ prompt: topic.title, source: "family-topic" }); onClose(); }}>{t("companion.family-topic-sheet.talk-this-through-with-arbor")}</button>
           </div>
         </div>
       </section>}
 
       <div className="topic-sheet-foot">
-        <button type="button" className={editing ? "companion-secondary" : "companion-primary"} onClick={() => close()}>{t("companion.family-topic-sheet.close")}</button>
+        <button type="button" className={editing ? "companion-secondary" : "companion-primary"} onClick={onClose}>{t("companion.family-topic-sheet.close")}</button>
         <p>{t("companion.family-topic-sheet.manage-hint")}</p>
       </div>
     </div>

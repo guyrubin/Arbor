@@ -7,8 +7,6 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { placeForTab, isCompanionHome } from "../../lib/companionPlaces";
 import { sectionForTab } from "../../lib/navigation";
-import { SheetBreadcrumb } from "./Breadcrumb"; // v3 IA-06
-import { useSheetCrumb } from "./crumbBus";
 
 /**
  * Desktop topbar — the wireframe's lean control band (md+). Hidden on mobile,
@@ -28,8 +26,6 @@ export default function Topbar() {
   const { t, uiLang } = useLanguage();
   const place = placeForTab(activeTab);
   const section = sectionForTab(activeTab);
-  // v3 IA-06: while an L2 sheet is open, the line under the title is its crumb.
-  const sheet = useSheetCrumb();
 
   // One key per hub; a hero-less child gets the Stories line that does not promise "starring {name}".
   const hubSubKey = section.id === "stories" && !childProfile.avatar ? "stories.noHero" : section.id;
@@ -73,8 +69,7 @@ export default function Topbar() {
         </span>
         {/* P5 r1 pass A6: Today owns its one caption (the eyebrow line); the
             hub sentence here repeated it, in HE with a second wording. */}
-        {sheet && <SheetBreadcrumb className="-ms-1" />}
-        {!sheet && !isCompanionHome(activeTab) && (
+        {!isCompanionHome(activeTab) && (
           <span className="text-[12px] truncate" style={{ color: "var(--arbor-muted)" }}>
             {/* W2-SHELLPLAY critic r2: "starring" only once a hero exists. */}
             {t("nav.sub." + hubSubKey, { name: childProfile.name })}

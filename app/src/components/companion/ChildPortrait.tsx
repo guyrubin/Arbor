@@ -11,7 +11,6 @@ import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/Avatar";
 import { Modal } from "../ui/Modal";
-import { useL2Sheet } from "../layout/crumbBus";
 import { buildPortraitChapters, buildPortraitEnvironments, buildPortraitThreads, portraitDiscussionPrompt } from "./portraitModel";
 import { PORTRAIT_COPY } from "./portraitCopy";
 import { portraitEvidenceLines, reviewedPortraitDraft } from "./portraitEvidence";
@@ -127,9 +126,6 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
   const unfiled = inView.filter(observation => observation.domains.length === 0);
   const selected = selection?.childId === childProfile.id ? selection : null;
   const selectedObservations = selected ? observations.filter(o => selected.ids.includes(o.id)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)) : [];
-  // v3 IA-06: an open selection owns one history entry (Back closes it) and is
-  // named in the top-bar crumb; leaving for another route waits for that entry.
-  const closeSelection = useL2Sheet(!!selected, selected?.title ?? c.sourceTitle, () => setSelection(null));
   const name = childProfile.name.split(/\s+/)[0] || childProfile.name;
   const date = (at: string | Date, year = false) => new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short", ...(year ? { year: "numeric" as const } : {}) }).format(at instanceof Date ? at : new Date(at));
   const chapterLabel = (chapter: typeof chapters[number]) => {
@@ -162,16 +158,17 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     const question = portraitDiscussionPrompt(domains, domain => domainName(domain, t), uiLang === "he");
     const sources = selectedObservations.filter(o => reviewedIds.includes(o.id)).map(o => ({ childId: o.childId, id: o.id, at: o.at, source: sourceLabel(o), text: [title(o), ...portraitEvidenceLines(o, record.sources, uiLang === "he").map(line => `${line.label}: ${line.text}`)].join("\n") }));
     const prompt = reviewedPortraitDraft(question, childProfile.id, sources, uiLang === "he");
-    closeSelection();
+    setSelection(null);
     if (onDiscuss) onDiscuss(prompt, childProfile.id);
     else seedCoach({ prompt, source: "child-portrait" });
   };
-  const openOriginal = (o: Observation) => closeSelection(() => {
+  const openOriginal = (o: Observation) => {
+    setSelection(null);
     if (o.origin === "behaviorLogs") { openCaptureSheet({ editLogId: o.id.slice("behaviorLogs:".length), editLog: logMap.get(o.id) }); return; }
     if (o.origin === "milestones" && milestones.some(m => `milestones:${m.id}` === o.id)) { requestJournalFocus(`milestone-${o.id.slice("milestones:".length)}`); setActiveTab("journal"); return; }
     const routes: Partial<Record<ObservationOrigin, Parameters<typeof setActiveTab>[0]>> = { milestones: "milestones", keepsakes: "milestones", growthEntries: "profile", langObs: "language", screenings: "screening", memory: "memory", goalObservations: "practice", actionLoops: "journal", playLogs: "journal", practiceEvents: "journal", speechAttempts: "speech", mimicSessions: "mimic", adventureResults: "adventures", missionRecords: "journal" };
     setActiveTab(routes[o.origin] ?? "journal");
-  });
+  };
 
   return <section className="child-portrait" dir={uiLang === "he" ? "rtl" : "ltr"} data-testid="child-portrait">
     <div data-module="child-portrait-overview">
@@ -254,7 +251,7 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
       </section>
     </div>
 
-    <Modal open={!!selected} onClose={() => closeSelection()} title={selected?.title ?? c.sourceTitle} maxWidth="max-w-2xl"><div className="portrait-evidence" dir={uiLang === "he" ? "rtl" : "ltr"}>
+    <Modal open={!!selected} onClose={() => setSelection(null)} title={selected?.title ?? c.sourceTitle} maxWidth="max-w-2xl"><div className="portrait-evidence" dir={uiLang === "he" ? "rtl" : "ltr"}>
       {selectedObservations.length === 0 && <p>{c.noDomain}</p>}
       {!!selectedObservations.length && <p className="portrait-map-note">{copy.selectionHint}</p>}
       {selectedObservations.slice(0, visible).map(o => {
@@ -281,7 +278,7 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
       {onSaveQuestion && <button type="button" className="portrait-text-button" onClick={() => {
         if (!selected) return;
         const prompt = portraitDiscussionPrompt(selected.domain ? [selected.domain] : [...new Set(selectedObservations.flatMap(o => o.domains))], domain => domainName(domain, t), uiLang === "he");
-        closeSelection(); onSaveQuestion(prompt, selected.ids);
+        setSelection(null); onSaveQuestion(prompt, selected.ids);
       }}>{copy.saveQuestion}<Icon name="arrow_forward" size={18} className="portrait-arrow rtl:-scale-x-100" /></button>}
     </div></Modal>
   </section>;
