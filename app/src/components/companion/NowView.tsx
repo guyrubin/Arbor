@@ -61,12 +61,7 @@ export default function NowView(props: NowViewProps) {
   const { uiLang, t } = useLanguage();
   // Do not start a focus request while the accepted onboarding step is loading.
   if (actionLoopReady === false) return <p role="status" className="companion-caption">{t("aria.loading")}</p>;
-  // FEAT-02: the guide reader lives above Now's lead switch, one per child and
-  // language, so a guide that becomes the chosen step keeps its sheet, receipt
-  // and error.
-  return <NowGuideHost key={`${childProfile.id}:${uiLang}`} lang={uiLang === "he" ? "he" : "en"}>
-    <NowContent key={`${childProfile.id}:${uiLang}`} {...props} />
-  </NowGuideHost>;
+  return <NowContent key={`${childProfile.id}:${uiLang}`} {...props} />;
 }
 
 function PrimaryMove({ primary = true, ...props }: React.ComponentProps<"button"> & { primary?: boolean }) {
@@ -230,7 +225,9 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const ageText = formatChildAge(childProfile, t, now);
   const dateLine = now.toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
 
-  return <div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
+  // FEAT-02: the guide reader lives above the lead switch, so a guide that
+  // becomes the chosen step keeps its sheet, receipt and error.
+  return <NowGuideHost lang={lang}><div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
     <header className="now-heading">
       <div>
         <div className="now-identity">
@@ -333,5 +330,5 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       <button type="button" className="now-together-door" onClick={() => setActiveTab("practice")}><img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt="" loading="lazy" /><span><h2>{copy.togetherTitle}</h2><p>{copy.togetherBody}</p></span><Icon name="arrow_forward" size={20} className="rtl:-scale-x-100" /></button>
     </nav>
     <footer className="now-footer"><button type="button" className="companion-text-button" onClick={() => setActiveTab("learn")}><Icon name="menu_book" size={18} />{copy.learning}</button><button type="button" className="companion-text-button" onClick={() => setActiveTab("consult")}><Icon name="group" size={19} />{copy.care}</button></footer>
-  </div>;
+  </div></NowGuideHost>;
 }

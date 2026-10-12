@@ -450,8 +450,8 @@ describe("FEAT-02 — source pins", () => {
   const ctx = read("../../context/ArborContext.tsx");
 
   it("Now's host owns the reader above the lead switch; the card falls back to its own store only outside it", () => {
-    // One host per child and language, wrapping the keyed page (the lead switch lives inside NowContent).
-    expect(view).toContain("return <NowGuideHost key={`${childProfile.id}:${uiLang}`} lang={uiLang === \"he\" ? \"he\" : \"en\"}>\n    <NowContent key={`${childProfile.id}:${uiLang}`} {...props} />\n  </NowGuideHost>;");
+    expect(view).toContain("return <NowGuideHost lang={lang}><div className=\"companion-page now-page\"");
+    expect(view).toContain("</div></NowGuideHost>;");
     expect(rec).toContain("const guides = hostedGuides ?? ownGuides;");
     expect(rec).toContain("{!hostedGuides && <NowGuideSheet store={ownGuides} lang={lang} />}");
     expect(rec).not.toContain("<NowGuideReader ");
