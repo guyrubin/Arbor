@@ -33,7 +33,7 @@ vi.mock("../kidmode/useKidModeEntry", () => ({ useKidModeEntry: () => ({ request
 vi.mock("../kidmode/parentGate", () => ({ readParentPin: () => null }));
 vi.mock("../../lib/kpiEvents", () => ({ trackCompanionPlaceOpen: vi.fn(), trackPracticeStudioOpen: vi.fn(), trackPracticeTogetherDid: vi.fn() }));
 vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchParams(state.query), goToRoute: (...args: unknown[]) => state.goToRoute(...args) }));
-vi.mock("../ui/Sheet", () => ({ Sheet: (props?: { children?: unknown }) => props?.children ?? null }));
+vi.mock("../ui/Sheet", () => ({ Sheet: (props: { children?: unknown }) => props.children ?? null }));
 vi.mock("../tabs/BedtimeStoriesTab", () => ({ BedtimeStoryBody: () => null }));
 const capture = vi.hoisted(() => (type: unknown, props: unknown) => { if (type === "button") state.buttons.push(props as Record<string, any>); });
 vi.mock("react/jsx-runtime", async (original) => {

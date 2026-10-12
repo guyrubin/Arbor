@@ -73,9 +73,9 @@ export default function RoutineRunSheet({ routine, plan, start, childName, onSta
           </>
         )}
         <footer className="together-routine-sheet-foot">
-          <span className="together-feeds-chip" data-testid="together-routine-feeds">
+          <span className="together-feeds-chip" data-testid="together-routine-feeds" dir="auto">
             <Icon name="eco" size={16} />
-            <span dir="auto">{t("companion.together-view.routines-feeds", { areas: localized(routine.domains, lang) })}</span>
+            {t("companion.together-view.routines-feeds", { areas: localized(routine.domains, lang) })}
           </span>
           <div className="together-routine-sheet-actions">
             {!plan ? (

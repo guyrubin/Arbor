@@ -38,8 +38,7 @@ vi.mock("../kidmode/parentGate", () => ({ readParentPin: () => state.pin }));
 vi.mock("../layout/settingsBus", async (original) => ({ ...(await original<typeof import("../layout/settingsBus")>()), requestOpenSettings: (...args: unknown[]) => state.openSettings(...args) }));
 vi.mock("../../lib/kpiEvents", () => ({ trackCompanionPlaceOpen: vi.fn(), trackPracticeStudioOpen: vi.fn(), trackPracticeTogetherDid: vi.fn() }));
 // The sheet portals in the browser; here it renders its content in place and records its props.
-// (React's dev build also calls a component with no props to read its stack frame when a child suspends.)
-vi.mock("../ui/Sheet", () => ({ Sheet: (props?: Record<string, any>) => { if (!props) return null; state.sheets.push(props); return props.children; } }));
+vi.mock("../ui/Sheet", () => ({ Sheet: (props: Record<string, any>) => { state.sheets.push(props); return props.children; } }));
 // The story maker loads lazily; once loaded it shows as a marker carrying its embedded flag.
 vi.mock("../tabs/BedtimeStoriesTab", async () => {
   const { createElement } = await import("react");
