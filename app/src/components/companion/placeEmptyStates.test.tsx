@@ -153,7 +153,9 @@ describe("VIS-07 · Together: a good moment needs no other reason", () => {
     const html = renderTogether();
     const at = html.indexOf('data-testid="together-empty"');
     expect(at).toBeGreaterThan(html.indexOf('data-testid="together-cta"'));
-    expect(at).toBeLessThan(html.indexOf('class="companion-filter-row"'));
+    // v3 F-TOG-2: the pill row is the Shell's; the catalogue opens with the games.
+    expect(at).toBeLessThan(html.indexOf('data-module="together-games"'));
+    expect(html).not.toContain("companion-filter-row");
     expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
     expect(branch(html, TOGETHER_EMPTY)).toMatch(/class="[^"]*items-center[^"]*text-center[^"]*together-empty"/);
     expect(branch(html, TOGETHER_EMPTY)).not.toContain("data-module=");

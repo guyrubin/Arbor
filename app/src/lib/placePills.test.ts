@@ -57,10 +57,12 @@ describe("1 · each place's row, in table A's order", () => {
     expect(tabsOf(PLACE_PILLS.child)).toEqual(["development", "milestones", "language", "timeline", "journal", "behaviors", "profile"]);
   });
 
-  it("only Now and My child have a Shell row; Together's first level is its in-page filter row", () => {
+  // v3 F-TOG-2 re-pin: Together's five pills are the Shell's (F-SHELL-1 owns the row and PLACES); the page keeps no filter row.
+  it("only Now and My child have a Shell row here; Together keeps no in-page filter row", () => {
     expect(PLACES).toEqual(["now", "child"]);
     const together = readFileSync(path.resolve(here, "../components/companion/TogetherView.tsx"), "utf8");
-    expect(together).toContain('className="companion-filter"');
+    expect(together).not.toContain("companion-filter-row");
+    expect(together).not.toContain('className="companion-filter"');
     expect(homeIdForTab("practice")).toBe("together");
   });
 

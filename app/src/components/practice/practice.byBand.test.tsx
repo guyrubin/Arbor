@@ -63,8 +63,9 @@ describe("B-PLAY-24 · Together by band", () => {
       expect(html.match(/data-primary-move="choose-together"/g)?.length).toBe(1);
       const { worlds } = studioWorldsForChild(lang, DYLAN);
       expect(worlds.length).toBeGreaterThan(2);
-      // "All" shows the first three; their kid names are what the child will see.
-      for (const w of worlds.slice(0, 3)) expect(plain(html)).toContain(translate(lang, w.kidNameKey));
+      // v3 F-TOG-2: "All together" shows every fitting world; their kid names are what the child will see.
+      for (const w of worlds) expect(plain(html)).toContain(translate(lang, w.kidNameKey));
+      expect(html.match(/class="together-game-card"/g)).toHaveLength(worlds.length);
     });
   }
 

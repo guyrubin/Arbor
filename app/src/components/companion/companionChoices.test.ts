@@ -3,7 +3,8 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import { STUDIO_WORLDS } from "../practice/studioWorlds";
-import { nextChosenAction, STORY_DOORS, WORLD_ART } from "./companionChoices";
+import * as choices from "./companionChoices";
+import { nextChosenAction, OFFSCREEN_IDEAS, WORLD_ART } from "./companionChoices";
 
 const row = (id: string, date: string, extra: Partial<ActionLoopEntry> & { topicId?: string } = {}): ActionLoopEntry => ({
   id, acceptedAt: date, recommendation: `Try ${id}`, source: "coach", capacity: "tiny", status: "accepted", ...extra,
@@ -37,8 +38,11 @@ describe("Together preview assets", () => {
   it("has a real preview asset for every existing age-filtered world", () => {
     for (const world of STUDIO_WORLDS) expect(existsSync(resolve("public/visuals/cards", `game-${WORLD_ART[world.id]}.png`)), world.id).toBe(true);
   });
-  it("keeps all story formats reachable and every card image present", () => {
-    expect(STORY_DOORS.map((door) => door.tab)).toEqual(["stories", "bedtime-stories", "comics", "family"]);
-    for (const door of STORY_DOORS) expect(existsSync(resolve("public", door.art.slice(1))), door.id).toBe(true);
+  // v3 F-TOG-2 re-pin: the four story doors left Together. The Stories pill
+  // is the shelf (real story cards and the comic books), Create a story is a
+  // sheet, and the family ritual stays a For you leaf (#/family).
+  it("Together carries no story doors; the build idea wears the toys glyph", () => {
+    expect("STORY_DOORS" in choices).toBe(false);
+    expect(OFFSCREEN_IDEAS.map((idea) => [idea.id, idea.icon])).toEqual([["build", "toys"], ["listen", "hearing"], ["story", "auto_stories"]]);
   });
 });

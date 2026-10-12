@@ -486,7 +486,8 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
       expect(seam.worlds.map((w) => w.id), lang).toEqual(orderedStudioWorlds(lang).map((w) => w.id));
       expect(seam.stampId, lang).toBe(stampWorldId(lang));
     }
-    expect(stripComments(studio)).toContain('{worlds.slice(0, category === "all" ? 3 : undefined).map((world) =>');
+    // v3 F-TOG-2 re-pin: every pill that shows the games lists every offered world (no "All games" link).
+    expect(stripComments(studio)).toContain("{worlds.map((world) =>");
     expect(stripComments(studio)).not.toContain("STUDIO_WORLDS.map(");
     // NEGATIVE CONTROL: the r3 rule (first world that works in HE) stamped the parent-tab tile 2
     expect(STUDIO_WORLDS.find((w) => worksInLanguage(w, "he"))!.id).toBe("word-world");
@@ -495,8 +496,11 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
 
   it("SHIP-FIX r3: in Hebrew the Sound Lab tile never sends the child into the English drill, and its preview says so", () => {
     const src = stripComments(studio);
-    // Parity 9 Oct: Together opens a world that does not work in the UI language on its parent tab.
-    expect(src).toContain("const direct = (!opensInKidMode(world) || !worksInLanguage(world, lang)) && !!world.tab;");
+    // v3 F-TOG-2 re-pin: a world that does not work in the UI language stays a
+    // preview (the note, no open button); no English drill page opens in its place.
+    expect(src).toContain("if (!worksInLanguage(world, lang)) return;");
+    expect(src).toContain("const direct = !opensInKidMode(world) && !!world.tab;");
+    expect(src).toContain('{worksInLanguage(preview.world, lang) && <button type="button" className="companion-primary" data-testid="together-world-open"');
     expect(src).toContain('!worksInLanguage(preview.world, lang) ? (t("companion.together-view.this-voice-game-is-currently-in-english-op"))');
     expect(STUDIO_WORLDS.find((w) => w.id === "speech")!.fallbackTabNameKey).toBe("nav.tab.speech");
     expect(translate("he", "companion.together-view.this-voice-game-is-currently-in-english-op")).not.toMatch(/[A-Za-z]/);
@@ -557,8 +561,9 @@ describe("W2-SHELLPLAY r2 · practice — the door tells the truth about the gat
     expect(c.total).toBe(Object.values(c.byWorld).reduce((a, b) => a + b, 0));
     expect(c.total).toBe(3); // vocab-naming + mood-checkin are no world's — in neither
     // the page reads the Games chips from this one counter (v3 F-TOG-1 re-pin:
-    // the door sentence that also read its total left Together's hero)
-    expect(studio).toContain('{category === "games" && (counts.byWorld[world.id] ?? 0) > 0 &&');
+    // the door sentence that also read its total left Together's hero; v3
+    // F-TOG-2 re-pin: the chip shows on every pill that shows the games)
+    expect(studio).toContain("{playLoaded && (counts.byWorld[world.id] ?? 0) > 0 &&");
     expect(studio).toContain("studioCountsSince({ speech: practiceData.speech, mimic: practiceData.mimic, adventures: practiceData.adventures, events: practiceData.events }, playWindow.sinceMs)");
     expect(studio).not.toContain("world.count(data)");
   });

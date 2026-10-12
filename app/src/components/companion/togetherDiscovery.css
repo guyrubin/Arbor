@@ -33,40 +33,25 @@
 /* An instruction is something to read and use, not decorative display copy. */
 .companion-together .companion-say,
 .companion-preview .companion-say { font-family: var(--font-sans); font-size: var(--t-base); font-style: normal; line-height: 1.6 !important; }
-.companion-together .companion-filter-row { margin-block-end: 20px; padding-block: 10px 16px; }
 .companion-together .companion-collection[hidden] { display: none; }
 .companion-together .companion-collection { margin-block: 24px; }
 /* A section the CTA or a door scrolls to takes focus quietly (its heading is tabIndex -1). */
 .companion-together .companion-section-heading h2:focus:not(:focus-visible) { outline: none; }
 .companion-together .companion-section-heading h2:focus-visible { outline: 3px solid var(--arbor-clay); outline-offset: 3px; border-radius: var(--r-sm); }
-.together-world-count-slot { min-block-size: 2.8em; font-size: var(--t-xs); }
 /* VIS-07: the first-time empty state is one framed, centred invitation; logical sides only, so RTL centres the same. */
 .companion-together .together-empty-card { margin-block: 0 24px; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); background: var(--arbor-paper-elevated); }
 .companion-together .together-empty { padding-block: 28px; padding-inline: 24px; }
 /* `.companion-page button { font: inherit }` outranks the layered utilities, so the one action restates its weight here. */
 .companion-together .together-empty button { font-weight: 600; padding-inline: 22px; }
 @container together (max-width: 760px) {
-  .companion-world-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .companion-offscreen-grid { grid-template-columns: minmax(0, 1fr); }
-  .companion-offscreen-card { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 13px; padding: 18px; }
-  .companion-offscreen-card > .msr { grid-column: 1; grid-row: 1 / span 3; }
-  .companion-offscreen-card h3 { grid-column: 2; margin-block: 0 8px; }
-  .companion-offscreen-card p, .companion-offscreen-card .companion-door-link { grid-column: 2; }
-  .companion-offscreen-card .companion-door-link { padding-block-start: 12px; }
 }
 @container together (max-width: 540px) {
   .companion-together .together-empty { padding-block: 20px; padding-inline: 16px; }
   .companion-story-grid { grid-template-columns: minmax(0, 1fr); }
-  .companion-card-art > img { aspect-ratio: 2.4; }
-  .companion-card-copy { padding: 16px; }
-  .companion-filter-row { gap: 7px; }
-  .companion-filter { padding-inline: 11px; gap: 5px; }
-  .companion-filter .msr { display: none; }
   .companion-section-heading { align-items: start; gap: 9px; }
   .companion-section-heading h2 { font-size: var(--t-title); }
   .companion-section-heading > .companion-text-button { font-size: var(--t-sm); }
-  .companion-world-card > div { padding: 13px; }
-  .companion-world-card h3 { font-size: var(--t-lg); }
 }
 /* v3 F-TOG-1: the gate card closes the page at every width: the lock, the PIN
    line and Start playing (navy, the way into play). Under three it holds only
@@ -107,3 +92,54 @@
   .together-routine-grid { gap: 10px; }
   .together-routine-tile { padding: 12px; }
 }
+/* v3 F-TOG-2: the five pills' cards. Games: the world's picture beside its
+   name, its area chip, the count since the last play and "Preview first".
+   Stories: a grid of covers (one column on a phone, four on a wide page).
+   Away: each idea whole on its card, what to say set off by a rule on its
+   start side, and "keep the moment" in place. The sheets (a world's preview,
+   the story maker, a reader, a routine) are bottom sheets on a phone and
+   centred cards from 768px. Tokens and logical sides only; nothing clipped. */
+.together-game-grid, .together-away-grid { margin-block: 0; margin-inline: 0; padding: 0; list-style: none; }
+.together-story-grid { margin-block: 0; margin-inline: 0; padding: 0; list-style: none; }
+.together-game-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.together-game-grid > li, .together-story-grid > li { display: flex; min-inline-size: 0; }
+.companion-together .together-game-card { display: grid; flex: 1; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 12px; min-inline-size: 0; min-block-size: var(--touch-min); padding: 10px; text-align: start; color: var(--arbor-ink); background: var(--arbor-paper-elevated); border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); transition: border-color 180ms; }
+.companion-together .together-game-card:hover, .companion-together .together-story-card:hover { border-color: var(--arbor-clay); }
+.together-game-art { inline-size: 88px; block-size: 78px; object-fit: cover; border-radius: var(--r); }
+.together-game-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-inline-size: 0; }
+.together-game-title { font-size: var(--t-sm); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.together-domain-chip { display: inline-block; max-inline-size: 100%; padding-block: 3px; padding-inline: 9px; border-radius: 999px; font-size: var(--t-xs); font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+.together-game-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--arbor-muted); font-size: var(--t-xs); line-height: 1.4; }
+.together-game-meta .companion-world-count { margin-block: 0; }
+.companion-together .together-story-card { display: flex; flex: 1; flex-direction: column; align-items: stretch; min-inline-size: 0; min-block-size: var(--touch-min); padding: 0; text-align: start; color: var(--arbor-ink); background: var(--arbor-paper-elevated); border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); transition: border-color 180ms; }
+.together-story-art { position: relative; display: flex; align-items: center; justify-content: center; block-size: 140px; border-start-start-radius: var(--r-lg); border-start-end-radius: var(--r-lg); }
+.together-story-art img { inline-size: 100%; block-size: 100%; object-fit: cover; border-start-start-radius: inherit; border-start-end-radius: inherit; }
+.together-story-chip { position: absolute; inset-block-start: 10px; inset-inline-start: 10px; max-inline-size: calc(100% - 20px); padding-block: 3px; padding-inline: 9px; border-radius: 999px; background: var(--arbor-paper-elevated); color: var(--arbor-ink); font-size: var(--t-xs); font-weight: 700; line-height: 1.35; }
+.together-story-copy { display: flex; flex-direction: column; gap: 4px; min-inline-size: 0; padding-block: 12px 14px; padding-inline: 14px; }
+.together-story-title { font-size: var(--t-sm); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.together-story-line { color: var(--arbor-muted); font-size: var(--t-xs); line-height: 1.45; overflow-wrap: anywhere; }
+.together-away-card { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-inline-size: 0; padding: 18px; color: var(--arbor-ink); background: var(--arbor-paper); border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); }
+.together-away-icon { color: var(--arbor-clay); }
+.together-away-card h3 { margin: 0; font-size: var(--t-base); font-weight: 700; line-height: 1.3; }
+.companion-together .together-away-detail { flex: 1; margin: 0; color: var(--arbor-muted); font-size: var(--t-sm); line-height: 1.5; }
+.companion-together .together-away-card .companion-say { margin: 0; padding-inline-start: 12px; border-inline-start: 2px solid var(--arbor-ink); font-size: var(--t-sm); }
+.companion-together .together-keep { display: inline-flex; align-items: center; justify-content: center; gap: 7px; inline-size: 100%; min-block-size: var(--touch-min); margin-block-start: 6px; padding-inline: 14px; border: 1px solid var(--arbor-rule); border-radius: var(--r); background: var(--arbor-paper-elevated); color: var(--arbor-ink); font-size: var(--t-sm); font-weight: 600; text-align: center; }
+.companion-together .together-keep:hover:not(:disabled) { border-color: var(--arbor-clay); }
+.companion-together .together-keep[data-kept="true"] { background: var(--arbor-paper-deep); color: var(--arbor-ink-soft); }
+.together-keep .msr { color: var(--arbor-clay); }
+.together-feeds-chip { display: inline-flex; align-items: center; gap: 6px; padding-block: 4px; padding-inline: 10px; border-radius: 999px; background: var(--arbor-paper-deep); color: var(--arbor-ink-soft); font-size: var(--t-xs); font-weight: 600; line-height: 1.4; }
+.together-routine-sheet-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+@container together (min-width: 700px) {
+  .together-game-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .companion-together .together-game-card { grid-template-columns: 110px minmax(0, 1fr); padding-block: 12px; padding-inline: 14px; }
+  .together-game-art { inline-size: 110px; block-size: 104px; }
+}
+@container together (min-width: 1000px) {
+  .together-game-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .together-story-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 768px) {
+  [role="dialog"]:has(> .together-sheet) { inline-size: min(620px, 100% - 56px); margin-inline: auto; margin-block-end: 24px; border-radius: var(--r-xl); }
+  [role="dialog"]:has(> .together-reader-sheet), [role="dialog"]:has(> .together-create-sheet) { inline-size: min(960px, 100% - 56px); }
+}
+[data-arbor-dialog-layer]:has(.together-sheet) { backdrop-filter: blur(12px); }
