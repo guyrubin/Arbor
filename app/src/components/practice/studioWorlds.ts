@@ -190,3 +190,26 @@ export function studioCountsSince(d: StudioCountSource, sinceMs: number): { byWo
   }
   return { byWorld, total };
 }
+
+/**
+ * v3 F-TOG-1 — the "Continue a favorite" door: of the worlds this child is
+ * offered, the one whose own record is the newest (each world claims a record
+ * through its own count, so a row no world claims never chooses a world).
+ * Undefined when nothing offered was ever played. No count, no verdict.
+ */
+export function latestPlayedWorldId(d: StudioCountSource, worlds: readonly StudioWorld[]): string | undefined {
+  const none: StudioCountSource = { speech: { items: [] }, mimic: { items: [] }, adventures: { items: [] }, events: { items: [] } };
+  const rows: { ms: number | null; source: StudioCountSource }[] = [
+    ...d.speech.items.map((r) => ({ ms: stampMs(r.timestamp), source: { ...none, speech: { items: [r] } } })),
+    ...d.mimic.items.map((r) => ({ ms: stampMs(r.timestamp), source: { ...none, mimic: { items: [r] } } })),
+    ...d.adventures.items.map((r) => ({ ms: stampMs(r.timestamp), source: { ...none, adventures: { items: [r] } } })),
+    ...d.events.items.map((r) => ({ ms: stampMs(r.timestamp), source: { ...none, events: { items: [r] } } })),
+  ];
+  let best: { id: string; ms: number } | undefined;
+  for (const row of rows) {
+    if (row.ms == null || (best && row.ms <= best.ms)) continue;
+    const world = worlds.find((w) => w.count(row.source) > 0);
+    if (world) best = { id: world.id, ms: row.ms };
+  }
+  return best?.id;
+}

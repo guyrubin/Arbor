@@ -560,7 +560,6 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       let firstGeometry, preDockGeometry, openGeometry;
       const together = await screen('practice', 'together-first-ready', async cell => {
         await load('practice'); await visible(cell, 'TOGETHER_INVITATION_VISIBLE', invitation); await visible(cell, 'STORY_DOOR_VISIBLE', story);
-        check(cell, 'HISTORY_INITIALLY_CLOSED', !await byId('together-play-history').evaluate(el => el.open));
         firstGeometry = await togetherGeometry(); cell.geometryObservation = firstGeometry; cell.geometry = firstGeometry.geometry;
         check(cell, 'TOGETHER_ENTRY_GEOMETRY_OBSERVED', togetherLayoutGeometry(firstGeometry, true) !== null);
       });

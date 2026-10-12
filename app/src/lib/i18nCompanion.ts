@@ -474,6 +474,13 @@ export const companionEn = {
   "companion.capture.intensity.3": "Hard",
   "companion.capture.intensity.4": "Really hard",
   "companion.capture.intensity.5": "Very hard",
+  // v3 F-TOG-1 — Together hero kicker and studio doors.
+  "companion.together-view.kicker": "TOGETHER · KIDS STUDIO",
+  "companion.together-view.door-create-story": "Create a story",
+  "companion.together-view.door-continue-favorite": "Continue a favorite",
+  "companion.together-view.door-find-play": "Find something to play",
+  // v3 F-TOG-3 — Together at 390: the gate card's PIN ask.
+  "companion.together-view.set-a-pin": "Set a PIN",
 };
 
 export const companionHe = {
@@ -947,4 +954,11 @@ export const companionHe = {
   "companion.capture.intensity.3": "קשה",
   "companion.capture.intensity.4": "ממש קשה",
   "companion.capture.intensity.5": "קשה מאוד",
+  // v3 F-TOG-1 — Together hero kicker and studio doors.
+  "companion.together-view.kicker": "ביחד · סטודיו לילדים",
+  "companion.together-view.door-create-story": "ליצור סיפור",
+  "companion.together-view.door-continue-favorite": "להמשיך מועדף",
+  "companion.together-view.door-find-play": "למצוא משהו לשחק",
+  // v3 F-TOG-3 — Together at 390: the gate card's PIN ask.
+  "companion.together-view.set-a-pin": "להגדיר קוד",
 };

@@ -1,11 +1,11 @@
 /**
- * B-PLAY-06 — the PIN nudge on #/practice becomes a button. (Parity 9 Oct:
- * #/practice is Together; the nudge lives there, once, above the footer.)
+ * B-PLAY-06 — the PIN ask on #/practice is a button. (Parity 9 Oct: #/practice
+ * is Together. v3 F-TOG-1 re-pin: the one-time nudge folded into Together's gate
+ * card, which says "set a PIN" and offers Parent settings while none is set.)
  *
  * It was a static <p> ending "… · Settings": a parent had to find Settings and
- * then the PIN row on their own. It is now a 44 px button that asks the shell
- * to open Settings with the PIN row scrolled into view (settingsBus focus).
- * markPinNudgeShown behaviour is unchanged.
+ * then the PIN row on their own. It is a 44 px button that asks the shell to
+ * open Settings with the PIN row scrolled into view (settingsBus focus).
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -19,22 +19,23 @@ const studio = read("../companion/TogetherView.tsx");
 const css = read("../companion/companionExperience.css");
 const settings = read("../layout/SettingsModal.tsx");
 
-describe("B-PLAY-06 · the nudge is a button that lands on the PIN row", () => {
-  const at = studio.indexOf('data-testid="together-pin-nudge"');
+describe("B-PLAY-06 · the PIN ask is a button that lands on the PIN row", () => {
+  const at = studio.indexOf('data-testid="together-gate-pin"');
   const tagStart = studio.lastIndexOf("<", at);
-  const tag = studio.slice(tagStart, studio.indexOf(">\n", at));
+  const tag = studio.slice(tagStart, studio.indexOf("</button>", at));
 
-  it("gate-pin-nudge sits on a <button> (not a <p>), at the 44 px floor", () => {
+  it("the gate card's PIN ask sits on a <button> (not a <p>), at the 44 px floor", () => {
     expect(at).toBeGreaterThan(-1);
     expect(tag).toMatch(/^<button\b/);
-    expect(tag).toContain('className="companion-pin-nudge"');
-    expect(css).toMatch(/\.companion-pin-nudge \{[^}]*min-block-size: 44px/);
     expect(tag).toContain('type="button"');
+    expect(tag).toContain('className="companion-text-button"');
+    expect(css).toContain(".companion-page button, .companion-preview button { min-block-size: var(--touch-min);");
   });
 
-  it("it opens Settings with the pin focus; the once-only marker is unchanged", () => {
+  it("it opens Settings with the pin focus, only while no PIN is set", () => {
     expect(tag).toContain('onClick={() => requestOpenSettings({ focus: "pin" })}');
-    expect(studio).toContain("if (nudgePin) markPinNudgeShown();");
+    expect(studio).toContain('{!pinSet && <button type="button" className="companion-text-button" data-testid="together-gate-pin"');
+    expect(studio).not.toContain("markPinNudgeShown");
   });
 
   it("negative control: the pre-fix static line ended in '· Settings'", () => {

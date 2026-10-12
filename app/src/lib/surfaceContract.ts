@@ -284,8 +284,10 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "practice", hub: "practice", depth: 0,
     job: "Choose a story, a game or a moment to enjoy together.",
-    primaryMove: "choose-together", moduleBudget: 4, demotionTarget: "disclosure",
-    // Editorial invitation, stories, age-appropriate games and offscreen ideas.
+    primaryMove: "choose-together", moduleBudget: 5, demotionTarget: "disclosure",
+    // Editorial invitation, age-appropriate games, stories, ready-made routines
+    // and offscreen ideas (v3 F-TOG-1: routines became a module of their own, as
+    // the v3 mock lays Together out; the gate card is not a module).
     // Existing game routes retain their parent gates and practice event writes.
     threadWrite: "practiceEvents",
   },

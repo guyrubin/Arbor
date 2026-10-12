@@ -176,13 +176,13 @@ describe("VIS-07 · Together: a good moment needs no other reason", () => {
     state.lang = lang;
     const html = renderTogether();
     const at = html.indexOf('data-testid="together-empty"');
-    expect(at).toBeGreaterThan(html.indexOf('class="together-suggestion"'));
+    expect(at).toBeGreaterThan(html.indexOf('data-testid="together-cta"'));
     expect(at).toBeLessThan(html.indexOf('class="companion-filter-row"'));
     expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
     expect(branch(html, TOGETHER_EMPTY)).toMatch(/class="[^"]*items-center[^"]*text-center[^"]*together-empty"/);
     expect(branch(html, TOGETHER_EMPTY)).not.toContain("data-module=");
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
-    expect(html.match(/data-module=/g)).toHaveLength(4);
+    expect(html.match(/data-module=/g)).toHaveLength(5);
   });
 
   it("waits for every read, never calls a failed read empty, and leaves once anything is on record", () => {

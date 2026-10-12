@@ -188,7 +188,9 @@ describe("B-SHELL-04 · the recap names hero stories and stays until kept or dis
     expect(recap).toMatch(/useChildCollection<HeroJourneyRun>\(childProfile\.id, "heroRuns"\)/);
     expect(recap).toContain("ledgersRef.current = kidActivityLedgers(practice, heroRuns.items);");
     expect(recap).not.toMatch(/completedAt \|\| x\.startedAt/);
-    expect(read("components/companion/TogetherView.tsx")).toContain("ledgers: kidActivityLedgers(practiceData),");
+    // v3 F-TOG-1 re-pin: Together no longer writes a since sentence, so the
+    // recap is the builder's one caller and no second ledger can drift.
+    expect(read("components/companion/TogetherView.tsx")).not.toMatch(/kidActivityLedgers|doorSinceSentence/);
   });
 
   it("B-KID-31: 2 check-ins + 1 started-not-finished story → nothing to say", async () => {

@@ -8,6 +8,7 @@ import {
   saveParentPin,
   verifyParentPin,
 } from "../kidmode/parentGate";
+import Icon from "../ui/Icon";
 
 /**
  * STORE-3 — the ONLY place the parent PIN is created or changed (the kid-mode
@@ -19,6 +20,10 @@ import {
  *                                    fresh session unlocks setup
  *   - unrestricted                 → set / change (changing requires current)
  * Device-local only — never stored with child data.
+ *
+ * v3 F-TOG-1: what Kid Mode promises (parent locked or grown-up gate, private
+ * by default, stars never streaks) and the "practice is play" note moved here
+ * from Together's footer — they are facts about the PIN and the child area.
  */
 export default function ParentalGatePanel() {
   const { t } = useLanguage();
@@ -42,6 +47,19 @@ export default function ParentalGatePanel() {
   };
 
   const digitsOnly = (v: string) => v.replace(/\D/g, "").slice(0, 4);
+
+  const promises = (
+    <div className="space-y-1.5" data-testid="settings-kid-promises">
+      <ul className="flex flex-wrap gap-1.5" aria-label={t("elev.practice.door.aria")}>
+        {([pinSet ? "elev.practice.door.locked" : "elev.practice.door.gated", "elev.practice.door.private", "elev.practice.door.stars"] as const).map((key) => (
+          <li key={key} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold" style={{ border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)" }}>
+            <Icon name="verified_user" size={13} />{t(key)}
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("practice.studio.note")}</p>
+    </div>
+  );
 
   const unlock = () => {
     if (verifyParentPin(current)) {
@@ -75,9 +93,12 @@ export default function ParentalGatePanel() {
 
   if (restricted && !pinSet) {
     return (
-      <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-        {t("elev.gate.set.blockedSetup")}
-      </p>
+      <div className="space-y-2">
+        <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+          {t("elev.gate.set.blockedSetup")}
+        </p>
+        {promises}
+      </div>
     );
   }
 
@@ -102,6 +123,7 @@ export default function ParentalGatePanel() {
           </button>
         </div>
         {wrong && <p className="text-xs font-semibold" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.gate.pinWrong")}</p>}
+        {promises}
       </div>
     );
   }
@@ -138,6 +160,7 @@ export default function ParentalGatePanel() {
         </button>
       </div>
       {wrong && <p className="text-xs font-semibold" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.gate.pinWrong")}</p>}
+      {promises}
     </div>
   );
 }
