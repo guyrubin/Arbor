@@ -518,7 +518,11 @@ export default function Shell() {
                     aria-selected={on}
                     ref={on ? activePillRef : undefined}
                     onClick={() => { void selectionHaptic(); setActiveTab(it.tab); }}
-                    className={`${!on && isCompactHiddenTool(section, it.tab) ? "hidden md:inline-flex" : "inline-flex"} items-center gap-1.5 rounded-full px-3.5 py-2 min-h-[44px] text-[var(--t-sm)] font-bold whitespace-nowrap transition flex-shrink-0`}
+                    /* v3 F-SHELL-2 (critic ruling 13): label-only pills, 12.5/700,
+                       16 px inline padding. msIcon stays in the data (search and
+                       the More sheet read it); the 44 px floor beats the mock's
+                       shorter pill. */
+                    className={`${!on && isCompactHiddenTool(section, it.tab) ? "hidden md:inline-flex" : "inline-flex"} items-center rounded-full px-4 py-2 min-h-[44px] text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0`}
                     style={{
                       scrollSnapAlign: "start",
                       ...(on
@@ -527,8 +531,8 @@ export default function Shell() {
                     }}
                   >
                     {it.tab === "overview"
-                      ? <><Icon name={placeForTab(it.tab).icon} size={14} /> {uiLang === "he" ? placeForTab(it.tab).he : placeForTab(it.tab).en}</>
-                      : <><Icon name={it.msIcon} size={14} /> {t(it.labelKey ?? "nav.tab." + it.tab)}</>}
+                      ? (uiLang === "he" ? placeForTab(it.tab).he : placeForTab(it.tab).en)
+                      : t(it.labelKey ?? "nav.tab." + it.tab)}
                   </button>
                 );
               })}
@@ -543,21 +547,25 @@ export default function Shell() {
               Additive: cached/local data keeps rendering below, never a wall. */}
           <SyncStatusBanner />
 
-          {/* Sandbox banner if API key is missing */}
+          {/* Sandbox banner if API key is missing (production sets
+              VITE_HAS_GEMINI_API, so it never shows there).
+              v3 F-SHELL-2 (critic ruling 16, MOB-01): one compact 32 px line on
+              every width. The title always shows; the explanation shows from md
+              and truncates; Learn keeps its 44 px hit area (touch-target) and
+              pulls it back with -my so the line stays 32 px tall. */}
           {showSandboxBanner && (
-            <div className="mb-6 p-4 rounded-2xl text-xs flex items-center justify-between gap-4" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
-              <span className="flex items-center gap-3">
-                <Icon name="warning" size={20} className="flex-shrink-0" />
-                <span>
-                  <strong>{t("shell.sandbox.title")}</strong> {t("shell.sandbox.body")}
+            <div data-testid="sandbox-banner" className="mb-3 min-h-8 px-3 rounded-xl text-[12px] flex items-center justify-between gap-2" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
+              <span className="flex min-w-0 items-center gap-2">
+                <Icon name="warning" size={16} className="flex-shrink-0" />
+                <span className="block min-w-0 truncate">
+                  <strong>{t("shell.sandbox.title")}</strong> <span className="hidden md:inline">{t("shell.sandbox.body")}</span>
                 </span>
               </span>
               <button
                 onClick={() => toast(t("shell.sandbox.toast"), "info")}
-                className="touch-target font-bold px-3 py-1.5 rounded-xl flex-shrink-0"
-                style={{ background: "var(--arbor-peach-ink)", color: "var(--arbor-on-accent)" }}
+                className="touch-target -my-1.5 font-bold flex-shrink-0 justify-center"
               >
-                {t("shell.sandbox.learn")}
+                <span className="px-2 py-0.5 rounded-xl" style={{ background: "var(--arbor-peach-ink)", color: "var(--arbor-on-accent)" }}>{t("shell.sandbox.learn")}</span>
               </button>
             </div>
           )}
@@ -612,12 +620,10 @@ export default function Shell() {
                   <SurfaceFrame route={activeTab}>
                     {["overview", "coach", "scholar"].includes(activeTab) ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
                       : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }} onSaveQuestion={createTopic}/>)
-                      : <>
-                        {activeTab === "coach" && activeFamilyTopic && <button className="min-h-11 w-full mb-4 px-4 py-3 rounded-xl text-start text-sm" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }} onClick={openTopic}>
-                          {t("companion.shell.our-question")}{activeFamilyTopic.title}
-                        </button>}
-                        <ActiveTabComponent/>
-                      </>}
+                      : <ActiveTabComponent/>}
+                  {/* v3 F-SHELL-2: the "Our question" button that sat here only
+                      rendered on #/coach, which renders Now above, so it never
+                      drew. Deleted; the topic opens from Now and the launcher. */}
                   </SurfaceFrame>
                 </ErrorBoundary>
               </motion.div>

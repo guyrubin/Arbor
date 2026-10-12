@@ -326,8 +326,16 @@ describe("hub context belongs to the desktop topbar, not a duplicate page preamb
     expect(stripComments(shell)).not.toContain('t("nav.sub." + hubSubKey');
   });
 
-  it("it is the SAME key the topbar uses — one sentence per hub, not two", () => {
-    expect(stripComments(topbar)).toContain('t("nav.sub." + hubSubKey, { name: childProfile.name })');
+  // v3 F-SHELL-2 re-pin (critic ruling 6): the header title is the route's
+  // home name (place or door) on every route, and the nav.sub.<hub> subtitle
+  // is deleted everywhere, so the topbar no longer prints a hub sentence at all.
+  it("the topbar prints the home's name and no hub sentence (v3 F-SHELL-2)", () => {
+    const bare = stripComments(topbar);
+    expect(bare).toContain("const home = homeForTab(activeTab);");
+    expect(bare).toContain("{uiLang === \"he\" ? named.he : named.en}");
+    expect(bare).not.toContain("nav.sub.");
+    expect(bare).not.toContain("nav.title.");
+    expect(bare).not.toContain("hubSubKey");
   });
 
   it("EN and HE exist for all ten hubs, so nothing falls back to a raw key", () => {

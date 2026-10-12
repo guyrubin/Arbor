@@ -95,12 +95,14 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
       <Icon name="sports_esports" size={16} chrome />
       <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
         <span>{t("aria.kidMode")}</span>
-        {/* Safety line — visible on wide topbars; always in the aria-label. */}
+        {/* Safety line. v3 F-SHELL-2: always visible (this pill renders only
+            in the lg+ Topbar), in its short form; the long line stays in the
+            aria-label and the title. */}
         <span
-          className="hidden xl:block"
+          className="block"
           style={{ fontSize: "var(--t-xs)", fontWeight: 600, opacity: 0.8 }}
         >
-          {lockedLine}
+          {t(readParentPin() ? "elev.kidmode.locked.short" : "elev.kidmode.gated.short")}
         </span>
       </span>
     </button>

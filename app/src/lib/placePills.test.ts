@@ -231,11 +231,19 @@ describe("6 · Shell renders the row from pillRowFor alone", () => {
     expect(shell).not.toContain("${section.label} sections");
   });
 
-  it("each pill reads its own label key, keeps its glyph, never wraps and clears 44 px", () => {
+  // v3 F-SHELL-2 re-pin (critic ruling 13): pills are label-only. The glyph
+  // left the pill (msIcon stays in the data: search and the More sheet read it,
+  // and the iconFamily one-glyph check still runs on it); the 44 px floor and
+  // the no-wrap rule stay.
+  it("each pill reads its own label key, draws no glyph, never wraps and clears 44 px", () => {
     expect(shell).toContain('t(it.labelKey ?? "nav.tab." + it.tab)');
-    expect(shell).toContain("<Icon name={it.msIcon} size={14} />");
+    expect(shell).not.toContain("<Icon name={it.msIcon} size={14} />");
+    expect(shell).not.toContain("<Icon name={placeForTab(it.tab).icon} size={14} />");
     const pill = shell.slice(shell.indexOf('role="tab"'), shell.indexOf("</button>", shell.indexOf('role="tab"')));
+    expect(pill).not.toContain("<Icon");
     expect(pill).toContain("min-h-[44px]");
     expect(pill).toContain("whitespace-nowrap");
+    expect(pill).toContain("text-[12.5px] font-bold");
+    expect(pill).toContain("px-4 py-2");
   });
 });

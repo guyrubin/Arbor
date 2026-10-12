@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -8,7 +8,29 @@ import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
 import { requestOpenSettings } from "./settingsBus";
 import { type NavBadge } from "../../lib/navigation";
-import { COMPANION_PLACES, COMPANION_DOORS, homeForTab } from "../../lib/companionPlaces";
+import { COMPANION_PLACES, COMPANION_DOORS, homeForTab, type CompanionHome } from "../../lib/companionPlaces";
+import { requestCompanionConversation } from "../../lib/companionConversation";
+import { useEntitlement } from "../../hooks/useEntitlement";
+import type { EntitlementInfo } from "../../lib/api";
+
+/** v3 F-SHELL-2: the account row's plan line. null while the plan is unknown
+ *  (loading, or the client fallback): never print "Free" as a guess (MOB-08).
+ *  Same branch order as SettingsModal's plan label. */
+export function sidebarPlanKey(entitlement: EntitlementInfo, loading: boolean, isFallback: boolean): string | null {
+  if (loading || isFallback) return null;
+  const isPaid = entitlement.plan !== "free";
+  if (isPaid && !entitlement.enforced) return "elev.sidebar.plan.beta";
+  if (entitlement.plan === "family") return "elev.sidebar.plan.family";
+  if (entitlement.plan === "plus") return "elev.sidebar.plan.plus";
+  return "elev.sidebar.plan.free";
+}
+
+/** v3 F-SHELL-2 (critic ruling 10): Talk is a panel over a page, never a
+ *  place. On #/coach and #/scholar the page under the panel is Now, so the
+ *  sidebar lights Now; the Talk door is never the current row. */
+export function sidebarLitHome(home: CompanionHome): CompanionHome {
+  return home.kind === "door" && home.door.id === "talk" ? { kind: "place", place: COMPANION_PLACES[0] } : home;
+}
 
 /** Resolve the generalized sidebar badge to its display string from app state.
  *  Returns "" when the badge should not render.
@@ -30,26 +52,15 @@ export function badgeText(
 
 export default function Sidebar() {
   const { activeTab, setActiveTab } = useArbor();
-  const { user, signOut, firebaseEnabled } = useAuth();
+  const { user } = useAuth();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   // v3 IA-01: ONE active entry across the three places and the three doors:
   // the route's home (table A). #/consult lights Care, together and nothing else.
-  const home = homeForTab(activeTab);
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  const accountRef = useRef<HTMLDivElement>(null);
-
-  // Close the account popover on outside click / Escape.
-  useEffect(() => {
-    if (!popoverOpen) return;
-    const onClick = (e: MouseEvent) => {
-      if (accountRef.current && !accountRef.current.contains(e.target as Node)) setPopoverOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPopoverOpen(false); };
-    document.addEventListener("mousedown", onClick);
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onKey); };
-  }, [popoverOpen]);
+  // v3 F-SHELL-2: except Talk, which is a panel over Now (sidebarLitHome).
+  const lit = sidebarLitHome(homeForTab(activeTab));
+  const { entitlement, loading: planLoading, isFallback: planUnverified } = useEntitlement();
+  const planKey = sidebarPlanKey(entitlement, planLoading, planUnverified);
 
   return (
     /* OBJ-SHELL-03 / R16 — the seam between the sidebar and the content column
@@ -72,7 +83,8 @@ export default function Sidebar() {
         <ArborMark size={38} />
         {/* CR-21: this was a second <h1> on every desktop route — the page's one
             heading belongs to the hub, not to the chrome's wordmark. */}
-        <p className="text-[21px] font-bold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</p>
+        {/* v3 F-SHELL-2: the wordmark is display 24/600. */}
+        <p className="text-[24px] font-semibold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</p>
       </div>
 
       {/* Child profile card */}
@@ -80,7 +92,7 @@ export default function Sidebar() {
 
       <nav aria-label={t("elev.sidebar.nav.aria")} className="flex flex-col gap-1 flex-1">
         {COMPANION_PLACES.map(place => {
-          const active = home.kind === "place" && home.place.id === place.id;
+          const active = lit.kind === "place" && lit.place.id === place.id;
           return <button key={place.id} data-home={place.id} onClick={() => setActiveTab(place.tab)} aria-current={active ? "page" : undefined}
             className="flex items-start gap-3 rounded-2xl px-3 py-3 text-start min-h-11 transition-colors"
             style={{ background: active ? "var(--arbor-clay-dim)" : "transparent", color: active ? "var(--arbor-clay-deep)" : "var(--arbor-ink)" }}>
@@ -91,11 +103,18 @@ export default function Sidebar() {
         })}
         {/* v3 IA-01: the three doors sit under a hairline, below the places.
             Their names come from i18nCompanion through COMPANION_DOORS, and
-            Talk carries no count (B-SHELL-26). */}
+            Talk carries no count (B-SHELL-26).
+            v3 F-SHELL-2 (critic ruling 10): Talk opens the conversation panel
+            over the current page through the shared seam; the route does not
+            change and the Talk row is never current. */}
         <div className="mt-3 pt-4 space-y-0.5" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
           {COMPANION_DOORS.map(door => {
-            const active = home.kind === "door" && home.door.id === door.id;
-            return <button key={door.id} data-home={door.id} onClick={() => setActiveTab(door.tab)} aria-current={active ? "page" : undefined}
+            const isTalk = door.id === "talk";
+            const active = !isTalk && lit.kind === "door" && lit.door.id === door.id;
+            return <button key={door.id} data-home={door.id}
+              onClick={() => (isTalk ? requestCompanionConversation({ source: "sidebar" }) : setActiveTab(door.tab))}
+              aria-haspopup={isTalk ? "dialog" : undefined}
+              aria-current={active ? "page" : undefined}
               className="w-full min-h-11 flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-sm font-semibold transition-colors"
               style={{ color: active ? "var(--arbor-clay-deep)" : "var(--arbor-muted)", background: active ? "var(--arbor-clay-dim)" : "transparent" }}>
               <Icon name={door.icon} size={21} chrome active={active} />{he ? door.he : door.en}
@@ -104,64 +123,31 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      {/* Account row + upward popover (Language toggle + Settings) — UC-1 */}
-      <div ref={accountRef} className="mt-auto pt-4 relative" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-        {popoverOpen && (
-          <div
-            role="menu"
-            aria-label={t("nav.popover.more")}
-            className="absolute bottom-full mb-2 inset-inline-start-0 w-full rounded-2xl p-2 z-30"
-            style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "0 12px 32px color-mix(in srgb, var(--arbor-ink) 12%, transparent)" }}
-          >
-            {/* OBJ-SHELL-02: the language toggles that lived here are GONE.
-                Two canons ran side by side — these 35×25 buttons flipped the
-                whole app on touch, while Settings asks for a draft and a Save.
-                Settings is the canon (UC-1: one system-control panel with an
-                explicit save/cancel), so the popover keeps only the door to it.
-                Pinned by languageSettingsCanonical.test.ts, which now fails on
-                any setUiLang call outside SettingsModal. */}
-            {/* Settings entry */}
-            <button
-              role="menuitem"
-              // B-SHELL-23: ONE SettingsModal — Shell's, through the settings bus
-              // (same seam and Kid Mode gate as the More sheet's Settings row).
-              onClick={() => { setPopoverOpen(false); requestOpenSettings(); }}
-              className="w-full flex items-center gap-3 px-2.5 py-2 min-h-11 rounded-xl text-[13px] font-semibold transition text-start"
-              style={{ color: "var(--arbor-muted)" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              <Icon name="settings" size={18} /> {t("nav.popover.settings")}
-            </button>
-            {firebaseEnabled && user && (
-              <button
-                role="menuitem"
-                onClick={() => void signOut()}
-                className="w-full flex items-center gap-3 px-2.5 py-2 min-h-11 rounded-xl text-[13px] font-semibold transition text-start"
-                style={{ color: "var(--arbor-muted)" }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-              >
-                <Icon name="logout" size={18} /> {t("nav.signout")}
-              </button>
-            )}
-          </div>
-        )}
+      {/* v3 F-SHELL-2 (critic ruling 12): the account row is ONE button that
+          opens Settings through the settings bus (B-SHELL-23: Shell's one
+          SettingsModal, same Kid Mode gate as the More sheet's Settings row).
+          It shows the parent's avatar, name and plan, and a settings glyph; no
+          email in chrome and no popover. Sign out and the language switch live
+          in Settings (OBJ-SHELL-02: languageSettingsCanonical.test.ts fails on
+          any setUiLang call outside SettingsModal). The plan line prints
+          nothing until the server has answered (MOB-08). */}
+      <div className="mt-auto pt-2">
         <button
-          onClick={() => setPopoverOpen((o) => !o)}
-          aria-haspopup="menu"
-          aria-expanded={popoverOpen}
-          aria-label={t("nav.popover.more")}
-          className="w-full flex items-center gap-2.5 px-2 py-2 rounded-2xl transition"
+          type="button"
+          data-testid="sidebar-account"
+          onClick={() => requestOpenSettings()}
+          className="w-full min-h-11 flex items-center gap-2.5 px-2 py-2 rounded-2xl text-start transition"
           onMouseEnter={(e) => (e.currentTarget.style.background = "var(--arbor-paper-deep)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
         >
-          <Avatar name={user?.displayName} photoURL={user?.photoURL} size={34} ring />
-          <div className="min-w-0 flex-1 text-start">
-            <p className="text-[12px] font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{user?.displayName || t("nav.parent")}</p>
-            {user?.email && <p className="text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{user.email}</p>}
-          </div>
-          <Icon name="expand_less" size={18} style={{ color: "var(--arbor-muted)", transform: popoverOpen ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 150ms ease" }} />
+          {/* The name is printed beside it, so the avatar adds nothing to the button's name. */}
+          <span aria-hidden="true" className="flex-shrink-0"><Avatar name={user?.displayName} photoURL={user?.photoURL} size={36} /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{user?.displayName || t("nav.parent")}</span>
+            {planKey && <span data-testid="sidebar-plan" className="block text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{t(planKey)}</span>}
+          </span>
+          <Icon name="settings" size={18} style={{ color: "var(--arbor-muted)" }} />
+          <span className="sr-only">{t("nav.popover.settings")}</span>
         </button>
       </div>
 
