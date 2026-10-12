@@ -275,7 +275,7 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       expect(navAt).toBeGreaterThan(cardAt);
       const nav = page.slice(navAt, navEnd);
       expect(nav).toContain(`aria-label="${translate(locale, "elev.consult.stepper.label")}"`);
-      const tabs: string[] = nav.match(/<button[^>]*data-testid="consult-step"[^>]*>/g) ?? [];
+      const tabs = nav.match(/<button[^>]*data-testid="consult-step"[^>]*>/g) ?? [];
       expect(tabs.map((b) => /data-step="(\d)"/.exec(b)![1])).toEqual(["1", "2", "3"]);
       expect(tabs.filter((b) => b.includes('aria-current="step"'))).toHaveLength(1);
       expect(tabs[0]).toContain('aria-current="step"');
