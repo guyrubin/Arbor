@@ -372,8 +372,13 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
     expect(OVERVIEW).not.toContain("<WeekOpenAnchorCard");
     expect(OVERVIEW).not.toContain("<WeekAnchorCard");
     // Parity 9 Oct: Now's week door is an invitation, always present; it claims
-    // no written letter, so it needs no recap signal (ENG-24).
-    expect(OVERVIEW.match(/setActiveTab\("weekly"\)/g)).toHaveLength(1);
+    // no written letter, so it needs no recap signal (ENG-24). v3 F-NOW-2
+    // re-pin: the "report is ready" line moved from the What-changed card into
+    // the week card's lines (useNowChanges), so Today names Weekly twice: the
+    // invitation, and that line, which shows only on the recap hook's report.
+    expect(OVERVIEW.match(/setActiveTab\("weekly"\)/g)).toHaveLength(2);
+    expect(OVERVIEW).toContain("onReport={() => setActiveTab(\"weekly\")}");
+    expect(OVERVIEW).toContain("const recapLine = !dayZero && recapOn && !!weeklyRecap.currentReport && weeklyRecap.recapUnopened;");
     for (const lang of ["en", "he"] as const) {
       expect(`${NOW_COPY[lang].weeklyTitle} ${NOW_COPY[lang].weeklyBody}`).not.toMatch(/written|waiting|ready|letter|כתוב|מחכה|מכתב/i);
     }
@@ -387,7 +392,10 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
     const mounts = (OVERVIEW.match(/useWeeklyRecap\(/g) ?? []).length + (since.match(/useWeeklyRecap\(/g) ?? []).length;
     expect(mounts).toBe(1);
     expect(OVERVIEW).toMatch(/const weeklyRecap = useWeeklyRecap\(\);/);
-    expect(OVERVIEW).toContain("recap={weeklyRecap}");
+    // v3 F-NOW-2 re-pin: the week card's lines (useNowChanges) read the one
+    // subscription directly; no card takes it as a prop any more.
+    expect(OVERVIEW).not.toContain("recap={weeklyRecap}");
+    expect(OVERVIEW).toContain("weeklyRecap.currentReport && weeklyRecap.recapUnopened");
     expect(OVERVIEW).not.toMatch(/useChildCollection\(/);
     // NEGATIVE CONTROL: the shape this rule counts.
     expect(/useWeeklyRecap\(/.test("const recap = useWeeklyRecap();")).toBe(true);

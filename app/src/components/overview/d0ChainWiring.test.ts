@@ -135,7 +135,10 @@ describe("ENG-L2 — a captured interest actually reaches play selection", () =>
     const list = (deps?.[1] ?? deps?.[2] ?? "");
     expect(list.length).toBeGreaterThan(20);
     expect(list).toContain("childProfile.interests");
-    expect(OVERVIEW).toContain('line("today-door-play", "sports_esports", t("elev.loop.door.play"), () => setActiveTab("daily-play"))');
+    // v3 F-NOW-2 re-pin (ruling [29]): Daily Play left Now with the retired door;
+    // the play surface is reached from Together and the Practice place.
+    expect(OVERVIEW).not.toContain("today-door-play");
+    expect(OVERVIEW).not.toContain('setActiveTab("daily-play")');
   });
 
   it("NEGATIVE CONTROL — the shipped dep list would have failed before the fix", () => {

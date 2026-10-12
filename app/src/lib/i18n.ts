@@ -1947,7 +1947,7 @@ export const en: Dict = {
   // Per-type toggles
   "sr.types.heading": "Nudge types",
   "sr.types.guidance.label": "Today's guidance",
-  "sr.types.guidance.desc": "Prep before a stretch that's often hard, a calm-down prompt, and the bedtime story in the evening.",
+  "sr.types.guidance.desc": "Prep before a stretch that's often hard, and a calm-down prompt.",
   "sr.types.moments.label": "Moment and play reminders",
   "sr.types.moments.desc": "A reminder to note a moment when nothing is saved yet today, and a play idea when the week has been quiet.",
   // Quiet hours
@@ -2628,6 +2628,13 @@ export const en: Dict = {
   "nav.pill.sharing": "Trusted sharing",
   // v3 IA-06 — the open L2 sheet's breadcrumb (layout/Breadcrumb): the landmark's name.
   "nav.crumb.aria": "Location",
+  // v3 F-NOW-2 — Now's reminder chips toggle the same switches as
+  // #/smart-reminders: the bedtime line split out of guidance (story), and the
+  // in-app weekly-ready line (recap). Inside the app only.
+  "sr.types.story.label": "Tonight's story",
+  "sr.types.story.desc": "An evening line to the bedtime story, when the day leaves room for it.",
+  "sr.types.recap.label": "Weekly report is ready",
+  "sr.types.recap.desc": "A line on Now when this week's report is written. Inside the app only.",
 };
 
 export const he: Dict = {
@@ -4413,7 +4420,7 @@ export const he: Dict = {
   "sr.nextNudge.kind.bedtime": "סיפור לפני השינה",
   "sr.types.heading": "סוגי תזכורות",
   "sr.types.guidance.label": "הנחיית היום",
-  "sr.types.guidance.desc": "הכנה לפני שעה שלרוב קשה, הנחיית הרגעה, וסיפור לפני השינה בערב.",
+  "sr.types.guidance.desc": "הכנה לפני שעה שלרוב קשה, והנחיית הרגעה.",
   "sr.types.moments.label": "תזכורות לתיעוד ולמשחק",
   "sr.types.moments.desc": "תזכורת לתעד רגע כשעוד לא נשמר דבר היום, ורעיון למשחק כשהשבוע היה שקט.",
   "sr.quiet.heading": "שעות שקט",
@@ -5097,6 +5104,13 @@ export const he: Dict = {
   "nav.pill.sharing": "שיתוף מהימן",
   // v3 IA-06 — פירורי הלחם של גיליון פתוח (layout/Breadcrumb): שם אזור הניווט.
   "nav.crumb.aria": "נתיב ניווט",
+  // v3 F-NOW-2 — Now's reminder chips toggle the same switches as
+  // #/smart-reminders: the bedtime line split out of guidance (story), and the
+  // in-app weekly-ready line (recap). Inside the app only.
+  "sr.types.story.label": "סיפור הערב",
+  "sr.types.story.desc": "שורה בערב שמובילה לסיפור לפני השינה, כשהיום משאיר לזה מקום.",
+  "sr.types.recap.label": "הדוח השבועי מוכן",
+  "sr.types.recap.desc": "שורה במסך עכשיו כשהדוח של השבוע כתוב. רק בתוך האפליקציה.",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and

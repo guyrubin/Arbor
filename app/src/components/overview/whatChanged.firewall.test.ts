@@ -48,6 +48,7 @@ vi.mock("../../lib/analytics", () => ({ track: () => undefined }));
 import { en as baseEn, he as baseHe } from "../../lib/i18n";
 import { elevationEn, elevationHe } from "../../lib/i18nElevation";
 import WhatChanged from "./WhatChanged";
+import { NOW_COPY } from "../companion/nowViewCopy";
 import { composeWhatChanged, type WhatChangedLine } from "./whatChangedEvents";
 
 /** The dictionaries t() resolves against (base keys win over elevation). */
@@ -213,9 +214,20 @@ describe("hidden on day-0 and with no events", () => {
     }
   });
 
-  it("Today gates the mount on returning + not day-0 (Now's More-for-today door)", () => {
-    const overview = code("../companion/NowMoreForToday.tsx");
+  // v3 F-NOW-2 re-pin: "More for today" is retired; Now's week card draws
+  // these lines, composed in useNowChanges under the same gate.
+  it("Today gates the lines on returning + not day-0 (Now's week card)", () => {
+    const overview = code("../companion/useNowChanges.ts");
     expect(overview).toMatch(/changedWould\s*=\s*!dayZero\s*&&\s*isReturning\s*&&/);
     expect(overview).toMatch(/previousVisitAt:\s*isReturning\s*&&\s*!dayZero/);
+    // Nothing on the lines is built as a share or a ratio.
+    expect(overview).not.toMatch(/%|\bof \$\{|\}\s*\/\s*\$\{/);
+  });
+
+  it("the week card's own words are event-only in BOTH locales (v3 F-NOW-2)", () => {
+    for (const lang of ["en", "he"] as const) {
+      expect(firstHit(NOW_COPY[lang].changedTitle), `${lang} changedTitle`).toBeNull();
+      expect(firstHit(NOW_COPY[lang].visitLine(2, 14)), `${lang} visitLine`).toBeNull();
+    }
   });
 });

@@ -67,14 +67,18 @@ describe("B-TODAY-18 · placement on Today", () => {
   const cont = strip(read("./TodayContinuation.tsx"));
 
   // B-LOOP-07 re-pin: the continuation slot (carry-over ask, tomorrow's
-  // reason) is the coordinator's ONE slot behind Today's door, below the blocks.
-  it("the slot renders behind the door, after the lead", () => {
-    // Parity 9 Oct: the door is Now's NowMoreForToday, mounted after the lead.
+  // reason) is the coordinator's ONE slot, below the blocks. v3 F-NOW-2
+  // re-pin: Today's door is retired, so the slot sits in the glance, after
+  // the lead and the week card (mock: the glance holds the day's offers).
+  it("the slot renders in the glance, after the lead and the week card", () => {
     const view = strip(todayFile("NowView.tsx"));
-    expect(view.indexOf("<NowMoreForToday")).toBeGreaterThan(view.indexOf("<NowRecommendation"));
-    const slotAt = overview.indexOf("<CompanionOfferSlot");
+    expect(view).not.toContain("<NowMoreForToday");
+    expect(overview).not.toContain('data-testid="today-door"');
+    const slotAt = view.indexOf("<CompanionOfferSlot");
     expect(slotAt).toBeGreaterThan(-1);
-    expect(slotAt).toBeGreaterThan(overview.indexOf('data-testid="today-door"'));
+    expect(slotAt).toBeGreaterThan(view.indexOf("<NowRecommendation"));
+    expect(slotAt).toBeGreaterThan(view.indexOf("<NowWeekSoFar"));
+    expect(slotAt).toBeGreaterThan(view.indexOf('<section className="now-glance"'));
   });
 
   it("ONE CompanionOfferSlot instance, fed the coordinator's winner (never a second arbiter)", () => {

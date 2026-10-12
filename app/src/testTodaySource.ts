@@ -6,13 +6,15 @@ import { fileURLToPath } from "node:url";
  * Test-only. #/overview is NowView since the companion rewrite (7e25419e), and
  * the Today loop it runs was re-homed from the retired tabs/OverviewTab.tsx
  * into these files (parity, 9 Oct 2026). Source pins that guarded "Today"
- * read this live set, never a dead file.
+ * read this live set, never a dead file. v3 F-NOW-2: "More for today" retired;
+ * its lines live in useNowChanges (the week card) and the glance.
  */
 export const TODAY_LIVE_FILES = [
   "components/companion/NowView.tsx",
   "components/companion/useNowLoop.ts",
   "components/companion/NowLoopBlocks.tsx",
-  "components/companion/NowMoreForToday.tsx",
+  "components/companion/useNowChanges.ts",
+  "components/companion/NowReminderChips.tsx",
   "components/companion/NowRecommendation.tsx",
 ] as const;
 

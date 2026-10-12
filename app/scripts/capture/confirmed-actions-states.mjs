@@ -273,9 +273,10 @@ export async function collectConfirmedActionStates(helpers) {
     });
     for (const answer of ['yes', 'not_today']) {
       await run('overview', `sayback-${answer}-failure`, async cell => {
-        await reset('sayback'); await byId('today-door').locator('summary').click();
+        // v3 F-NOW-2: "More for today" is retired; the say-back line closes Now's week card.
+        await reset('sayback');
         const line = byId('today-door-saidback'); await line.waitFor({ state: 'visible' });
-        check(cell, 'SAYBACK_STAYS_IN_MORE_FOR_TODAY', await line.evaluate(el => !!el.closest('[data-testid="today-door"]')) && await byId('today-record-card').count() === 0);
+        check(cell, 'SAYBACK_SITS_IN_THE_WEEK_CARD', await line.evaluate(el => !!el.closest('[data-testid="now-week-changed"]')) && await byId('today-record-card').count() === 0);
         await fault(cell, 'actionLoops', async () => {
           await line.locator(`[data-answer="${answer}"]`).click(); await line.getByRole('alert').waitFor({ state: 'visible' });
           check(cell, 'FAILED_SAYBACK_HAS_NO_FALSE_SAVED_OR_RECORD_RECEIPT', await byId('today-door-saidback-receipt').count() === 0 && await byId('today-record-receipt').count() === 0 && await line.locator('[data-answer]').count() === 2);
@@ -297,7 +298,7 @@ export async function collectConfirmedActionStates(helpers) {
         await byId('today-door-saidback-receipt').waitFor({ state: 'visible' });
         const rows = (await storage('actionLoops')).filter(row => row.source === 'from-record');
         check(cell, 'EXACT_ONE_PARENT_ACT_WITHOUT_REFLECTION_OR_CHILD_OUTCOME', rows.length === 1 && rows[0].sayBack === answer && rows[0].recordKey === 'said:capture-confirmed-sayback' && rows[0].reflection === undefined && rows[0].outcome === undefined, rows);
-        await load('overview'); await byId('today-door').locator('summary').click(); await visible(cell, 'SAYBACK_LOCAL_RECEIPT_SURVIVES_RELOAD', byId('today-door-saidback-receipt'));
+        await load('overview'); await visible(cell, 'SAYBACK_LOCAL_RECEIPT_SURVIVES_RELOAD', byId('today-door-saidback-receipt'));
         check(cell, 'SAYBACK_DOES_NOT_BECOME_RECORD_LEAD', await byId('today-door-saidback').getAttribute('data-answered') === answer && await byId('today-record-receipt').count() === 0);
         await expose(byId('today-door-saidback'));
       });

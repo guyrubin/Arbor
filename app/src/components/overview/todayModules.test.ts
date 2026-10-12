@@ -50,8 +50,10 @@ describe("todayModules v3 — planToday", () => {
     expect(planToday(STATES.eveningUnanswered).order).toEqual(["tonight", "notice"]);
     const tab = stripComments(todayLiveSource());
     expect(tab).not.toMatch(/PracticeOutcomeStrip|practiceMode === "outcome"/);
-    // the story is ONE door line at night, never a line under the Tonight card
-    expect(tab).toContain('{evening && storyFits && line("today-door-story"');
+    // the story is ONE glance row at night, never a line under the Tonight card
+    // (v3 F-NOW-2 re-pin: the door is retired; the glance's Tonight row carries it)
+    expect(tab).toContain("loop.evening && loop.storyFits && reminderPrefs.types.story");
+    expect(tab).not.toContain("today-door-story");
     expect(tab.slice(tab.indexOf("<TonightFlow"), tab.indexOf("/>", tab.indexOf("<TonightFlow")))).not.toMatch(/onStory=/);
   });
 

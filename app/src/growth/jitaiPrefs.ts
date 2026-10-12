@@ -23,14 +23,19 @@
 /**
  * B-TODAY-02: the parent's switches, each covering real engine kinds
  * (lib/jitai NUDGE_KIND_PREF maps every NudgeKind to exactly one):
- *   guidance — prep, calm, bedtime
+ *   guidance — prep, calm
+ *   story    — bedtime (v3 F-NOW-2: split out of guidance so Now's
+ *              "Tonight's story" chip governs exactly the bedtime line)
  *   moments  — log, practice
+ *   recap    — no engine kind: the in-app "weekly report is ready" line on
+ *              Now (v3 F-NOW-2). Nothing leaves the app; the email opt-in on
+ *              Weekly is a separate consent and is never written from here.
  * The old `weekly` switch had no reader, and `milestone` gated the bell's
  * monitoring rows while saying "worth celebrating"; the bell is retired
  * (B-SHELL-02), so a `notes` switch would gate nothing — not offered.
  * Stored `milestone` / `weekly` values are dropped on read.
  */
-export type NudgeTypeKey = "guidance" | "moments";
+export type NudgeTypeKey = "guidance" | "moments" | "story" | "recap";
 
 export interface JitaiPrefs {
   /** Per-type on/off toggles. */
@@ -48,6 +53,8 @@ export const DEFAULT_PREFS: JitaiPrefs = {
   types: {
     guidance: true,
     moments: true,
+    story: true,
+    recap: true,
   },
   quietStart: 21,
   quietEnd: 8,
@@ -64,6 +71,10 @@ export function loadPrefs(): JitaiPrefs {
         guidance: parsed.types?.guidance ?? DEFAULT_PREFS.types.guidance,
         // B-TODAY-02 read-migration: legacy `milestone` / `weekly` are not read.
         moments: parsed.types?.moments ?? DEFAULT_PREFS.types.moments,
+        // v3 F-NOW-2 read-migration: before the split, `guidance` also
+        // governed the bedtime line, so a stored choice carries over to it.
+        story: parsed.types?.story ?? parsed.types?.guidance ?? DEFAULT_PREFS.types.story,
+        recap: parsed.types?.recap ?? DEFAULT_PREFS.types.recap,
       },
       quietStart: parsed.quietStart ?? DEFAULT_PREFS.quietStart,
       quietEnd: parsed.quietEnd ?? DEFAULT_PREFS.quietEnd,

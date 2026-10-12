@@ -231,15 +231,21 @@ describe("B-TODAY-26 — Today wiring: one voice, no generation, no timer", () =
     expect(overview).not.toContain("<TonightCard");
   });
 
-  it("one voice in the evening: the coordinator's slot sits behind the door, Tonight leads the page", () => {
-    const door = overview.slice(overview.indexOf('data-testid="today-door"'), overview.indexOf("</details>"));
-    expect(door).toContain('<CompanionOfferSlot surface="today" offer={todayOffer.offer}');
+  // v3 F-NOW-2 re-pin: the door is retired; the coordinator's ONE slot sits in Now's glance.
+  it("one voice in the evening: the coordinator's slot sits in the glance, Tonight leads the page", () => {
+    const glance = overview.slice(overview.indexOf('<section className="now-glance"'), overview.indexOf("<NowReminderChips"));
+    expect(glance).toContain('<CompanionOfferSlot surface="today" offer={todayOffer.offer}');
     expect((overview.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(1);
+    // The evening's story row stays quiet while the coordinator's offer is Tonight itself.
+    expect(overview).toContain('todayOffer.offer?.kind !== "tonight"');
   });
 
-  it("Tonight's story door navigates and generates nothing; the card it replaced stays inert", () => {
-    // critic c2 r1: the story moved from under the Tonight card into the door
-    expect(overview).toContain('line("today-door-story", "auto_stories", t("elev.loop.tonight.story"), () => setActiveTab("bedtime-stories"))');
+  it("Tonight's story row navigates and generates nothing; the card it replaced stays inert", () => {
+    // critic c2 r1: the story moved from under the Tonight card into the door;
+    // v3 F-NOW-2 re-pin: the door is retired, so it is the glance's ONE Tonight row.
+    expect(overview).toContain('data-testid="today-tonight-story" onClick={() => setActiveTab("bedtime-stories")}');
+    expect(overview).toContain('<small>{t("elev.loop.tonight.story")}</small>');
+    expect(overview).not.toContain("today-door-story");
     expect(card).not.toMatch(/fetch\(|api\.|generate|setTimeout|setInterval|streak|tomorrow/i);
   });
 

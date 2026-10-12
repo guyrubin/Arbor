@@ -16,14 +16,19 @@ const shell = read("components/layout/Shell.tsx");
 const now = read("components/companion/NowView.tsx");
 const loop = read("components/companion/useNowLoop.ts");
 const blocks = read("components/companion/NowLoopBlocks.tsx");
-const more = read("components/companion/NowMoreForToday.tsx");
+// v3 F-NOW-2: "More for today" retired; its lines are the week card's (useNowChanges) and the glance's.
+const changes = read("components/companion/useNowChanges.ts");
+const panels = read("components/companion/NowDayPanels.tsx");
 
 describe("the loop is mounted where parents land", () => {
-  it("#/overview renders NowView, and NowView runs the loop and its door", () => {
+  it("#/overview renders NowView, and NowView runs the loop (no door: v3 F-NOW-2)", () => {
     expect(shell).toContain('const OverviewTab = lazy(() => import("../companion/NowView"));');
     expect(now).toContain("useNowLoop({");
-    expect(now).toContain("<NowMoreForToday");
-    for (const block of ["<NowPracticeLead", "<NowTonightLead", "<NowNoticeBlock", "<NowNoticeLead", "<NowTonightPointer"]) expect(now).toContain(block);
+    expect(now).not.toContain("<NowMoreForToday");
+    expect(now).not.toContain("<NowNoticeBlock");
+    for (const block of ["<NowPracticeLead", "<NowTonightLead", "<NowNoticeLead", "<NowTonightPointer"]) expect(now).toContain(block);
+    // The notice block's first notice is a week-card line (now-notice-block).
+    expect(now).toContain("notice: showNotice ? loop.blockNotices[0] : null");
   });
 
   it("the runtime module budget is real again: the loop decides its blocks with planToday", () => {
@@ -55,17 +60,21 @@ describe("every loop seam has a live caller", () => {
     expect(now).toContain("useLastVisit(childProfile)");
     expect(now).toContain("useLifecycleMoment({ previousVisitAt, now: now.getTime() })");
     expect(now).toContain('useCompanionOffer("today",');
-    expect(more).toContain('<CompanionOfferSlot surface="today"');
-    expect(more).toContain("<WhatChanged");
-    expect(more).toContain("<TodaySayBackLine");
-    expect(more).toContain("<ArborNoticedCard />");
-    expect(more).toContain("<FamilyOfferLines");
+    // v3 F-NOW-2: the offer, the family lines and the say-back stay on Now (glance, week card).
+    expect(now).toContain('<CompanionOfferSlot surface="today"');
+    expect(now).toContain("<TodaySayBackLine");
+    expect(now).toContain("<FamilyOfferLines");
+    // What changed and the watch signal are the week card's lines.
+    expect(changes).toContain("composeWhatChanged({");
+    expect(changes).toContain("todayNoticedSignal(monitoring)");
+    expect(changes).toContain("readDismissed(childProfile.id)");
+    expect(now).toContain("changedLines={changes.lines}");
   });
-  it("the door is ONE collapsed disclosure, never a module", () => {
-    expect(more).toContain('data-module-disclosure="today-more"');
-    expect(more).toContain('data-testid="today-door"');
-    expect(more).not.toMatch(/\bdata-module=/);
-    expect(more).not.toMatch(/<details[^>]*\bopen=/);
+  it("no door and no module: the changed lines sit in the week card, the glance holds the rest", () => {
+    expect(now).not.toContain('data-testid="today-door"');
+    expect(now).not.toContain("<details");
+    expect(panels).toContain('className="now-week-changed"');
+    expect(changes).not.toMatch(/\bdata-module=/);
   });
   it("the loop blocks carry #/overview's contract move, never a move of their own", () => {
     expect(blocks).toContain('const MOVE = "choose-next-step";');
@@ -75,8 +84,11 @@ describe("every loop seam has a live caller", () => {
     expect(now).toContain("availableHardMomentCards({ now: at, ageMonths: ageMonthsFromProfile(childProfile, at), locale: lang }).length > 0");
     expect(now).toContain('{hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}>');
   });
-  it("keeps the night's story to ONE door line (critic c2 r1)", () => {
+  it("keeps the night's story to ONE glance row (critic c2 r1; v3 F-NOW-2 tonight row)", () => {
     expect(blocks).not.toMatch(/onStory=/);
-    expect(more).toContain('{evening && storyFits && line("today-door-story"');
+    expect(now).toContain("const eveningStory = !storyRun && !showPointer && loop.evening && loop.storyFits && reminderPrefs.types.story");
+    expect((now.match(/data-testid="today-tonight-story"/g) ?? []).length).toBe(1);
+    expect((now.match(/data-testid="now-glance-story"/g) ?? []).length).toBe(1);
+    expect(blocks).toContain('<Icon name="bedtime" size={24} />');
   });
 });

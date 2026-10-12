@@ -95,15 +95,18 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     expect(overview).not.toMatch(/today-recent-context/);
   });
 
-  it("section order: the lead → Notice → the Tonight pointer → the door (What changed → the offer → say-back → noticed)", () => {
-    // Parity 9 Oct: Now's order (NowView), then its door (NowMoreForToday).
+  // v3 F-NOW-2 re-pin: the door is retired. The lead, then the week card (the
+  // changed lines, then the say-back), then the glance (Tonight, the offer, the
+  // family lines, the reminders); the changed lines run lifecycle → events → watch signal → notice.
+  it("section order: the lead → the week card (What changed → say-back) → the glance (Tonight → the offer → family → reminders)", () => {
     const view = stripComments(todayFile("NowView.tsx"));
-    const door = stripComments(todayFile("NowMoreForToday.tsx"));
-    const viewOrder = [view.indexOf("<NowRecommendation"), view.indexOf("{showNotice &&"), view.indexOf("{showPointer &&"), view.indexOf("<NowMoreForToday")];
-    const doorOrder = [door.indexOf("<WhatChanged"), door.indexOf("<CompanionOfferSlot"), door.indexOf("<TodaySayBackLine"), door.indexOf("<ArborNoticedCard")];
-    for (const idx of [...viewOrder, ...doorOrder]) expect(idx).toBeGreaterThan(-1);
+    const changes = stripComments(todayFile("useNowChanges.ts"));
+    const viewOrder = [view.indexOf("<NowRecommendation"), view.indexOf("changedLines={changes.lines}"), view.indexOf("<TodaySayBackLine"), view.indexOf("<NowTonightPointer"), view.indexOf("<CompanionOfferSlot"), view.indexOf("<FamilyOfferLines"), view.indexOf("<NowReminderChips")];
+    const lineOrder = [changes.indexOf('id: "lifecycle"'), changes.indexOf("changed.lines.forEach"), changes.indexOf('id: "noticed"'), changes.indexOf('id: "notice"')];
+    for (const idx of [...viewOrder, ...lineOrder]) expect(idx).toBeGreaterThan(-1);
     expect([...viewOrder].sort((a, b) => a - b)).toEqual(viewOrder);
-    expect([...doorOrder].sort((a, b) => a - b)).toEqual(doorOrder);
+    expect([...lineOrder].sort((a, b) => a - b)).toEqual(lineOrder);
+    expect(existsSync(path.join(SRC_ROOT, "components/companion/NowMoreForToday.tsx"))).toBe(false);
     expect(count(overview, /<DailyPlayCard/g)).toBe(0);
   });
 
@@ -273,12 +276,13 @@ describe("B-TODAY-17 — the drawer is gone: no feed, no check-in, no displaced 
   });
 
   it("Today stamps at most three top-level modules in every state (budget 3 = contract)", () => {
-    // Parity 9 Oct: Now renders ONE lead module (one branch per lead), the
-    // Notice block and the conversation card; the pointer, doors and lines are chrome.
+    // Parity 9 Oct: Now renders ONE lead module (one branch per lead) and the
+    // conversation card; the pointer, doors and lines are chrome. v3 F-NOW-2
+    // re-pin: the Notice block is gone (its notice is a week-card line).
     const view = stripComments(todayFile("NowView.tsx"));
     const modules = new Set(view.match(/data-module="[a-z-]+"/g) ?? []);
-    expect(modules).toEqual(new Set(['data-module="now-record"', 'data-module="now-visit"', 'data-module="today-tonight"', 'data-module="now-step"', 'data-module="today-practice"', 'data-module="now-program"', 'data-module="today-notice"', 'data-module="now-focus"']));
-    expect(stripComments(todayFile("NowMoreForToday.tsx"))).not.toMatch(/\bdata-module=/);
+    expect(modules).toEqual(new Set(['data-module="now-record"', 'data-module="now-visit"', 'data-module="today-tonight"', 'data-module="now-step"', 'data-module="today-practice"', 'data-module="now-program"', 'data-module="now-focus"']));
+    for (const file of ["useNowChanges.ts", "NowReminderChips.tsx", "NowDayPanels.tsx"]) expect(stripComments(todayFile(file)), file).not.toMatch(/\bdata-module=/);
     const budget = read("components/overview/todayModules.ts").match(/TODAY_MODULE_BUDGET = (\d+)/)?.[1];
     expect(Number(budget)).toBe(3);
     expect(read("lib/surfaceContract.ts")).toMatch(/route: "overview"[\s\S]{0,400}moduleBudget: 3/);

@@ -13,7 +13,7 @@ const state = vi.hoisted(() => ({
   actionLoop: [] as ActionLoopEntry[], actionLoopReady: true,
   actionPlans: [] as unknown[], approvedMemoryItems: [] as unknown[], behaviorLogs: [] as unknown[],
   appointments: [] as unknown[], recordFromRecordAnswer: vi.fn(async () => {}),
-  evening: false, moreProps: null as any, readerProps: null as any,
+  evening: false, sayBackProps: null as any, changesInput: null as any, readerProps: null as any,
   activeFamilyTopic: null as null | { id: string; title: string },
   focus: null as Focus | null,
   program: null as null | { week: number; program: { shelf: string }; enrolment: Record<string, string>; content: { skill: { en: string; he: string }; watchFor: string[] } },
@@ -35,7 +35,12 @@ vi.mock("../../hooks/useObservations", () => ({ useObservations: () => [] }));
 vi.mock("../../hooks/useLastVisit", () => ({ useLastVisit: () => ({ previousVisitAt: null, isReturning: false }) }));
 vi.mock("../overview/useLifecycleMoment", () => ({ useLifecycleMoment: () => ({ moment: null }) }));
 vi.mock("../overview/useCompanionOffer", () => ({ useCompanionOffer: () => ({ offer: null, appointment: state.appointments[0] ?? null, ledger: {}, snooze: vi.fn() }) }));
-vi.mock("./NowMoreForToday", () => ({ default: (props: unknown) => { state.moreProps = props; return null; } }));
+// v3 F-NOW-2 re-pin: "More for today" retired. Its pieces are mounted on Now itself
+// (the week card's changed lines, the say-back line, the glance's offer and family lines).
+vi.mock("./useNowChanges", () => ({ useNowChanges: (input: unknown) => { state.changesInput = input; return { lines: [], coldStart: null }; } }));
+vi.mock("../overview/TodaySayBackLine", () => ({ default: (props: unknown) => { state.sayBackProps = props; return null; } }));
+vi.mock("../overview/CompanionOfferSlot", () => ({ default: () => null }));
+vi.mock("../overview/FamilyOfferLines", () => ({ default: () => null }));
 // F-NOW-1: the guide reader is a sheet; its props are what the card hands it.
 vi.mock("./NowGuideReader", () => ({ default: (props: unknown) => { state.readerProps = props; return null; } }));
 vi.mock("../../lib/programs/enrolment", () => ({ activeProgramWeek: () => state.program, dayKey: (d: Date) => d.toISOString().slice(0, 10) }));
@@ -78,7 +83,7 @@ const PROGRAM = { week: 2, program: { shelf: "words" }, enrolment: { programId: 
 
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 9, 12, 8));
-  state.actionPlans = []; state.approvedMemoryItems = []; state.behaviorLogs = []; state.appointments = []; state.evening = false; state.moreProps = null; state.readerProps = null; state.activeFamilyTopic = null;
+  state.actionPlans = []; state.approvedMemoryItems = []; state.behaviorLogs = []; state.appointments = []; state.evening = false; state.sayBackProps = null; state.changesInput = null; state.readerProps = null; state.activeFamilyTopic = null;
   clearAcceptFailed("child-a");
   vi.clearAllMocks(); state.actionLoopReady = true; state.setActiveTab.mockReset(); state.buttons = []; state.lang = "en"; state.focus = null; state.program = null; state.actionLoop = []; state.childProfile = { ...KNOWN_AGE }; state.noPractice = false;
 });
@@ -104,12 +109,13 @@ describe("Now leads with the milestone loop (parity 9 Oct)", () => {
     expect(journal?.candidatePracticeIds?.length).toBeGreaterThan(0);
     expect(journal?.dateKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
-  it("an active program is a line beside the practice, never a competing lead", () => {
-    state.program = PROGRAM;
+  // v3 F-NOW-2 re-pin (now-glance-program-line): the program is the plan's day in the card's meta, never a glance row.
+  it.each(["en", "he"] as const)("%s: an active program is the plan's day beside the practice, never a competing lead or a glance row", lang => {
+    state.lang = lang; state.program = PROGRAM;
     const html = renderToStaticMarkup(<NowView />);
     expect(html).toContain('data-module="today-practice"');
-    expect(html).toContain('data-testid="now-program-line"');
-    expect(html).toContain("Follow their story");
+    expect(html).not.toContain('data-testid="now-program-line"');
+    expect(html).toContain(`<p class="now-plan-meta">${NOW_COPY[lang].planDay(8)}</p>`);
   });
   it("Tonight's pointer is a line under the morning practice", () => {
     renderToStaticMarkup(<NowView />);
@@ -221,7 +227,8 @@ describe("Now record and visit leads", () => {
     expect(location.hash).toBe("#/consult?appointment=visit-specific");
     expect(history).toEqual(["#/overview", "#/consult?appointment=visit-specific"]);
     expect(state.setActiveTab).not.toHaveBeenCalled();
-    expect(state.moreProps.suppressVisit).toBe(true);
+    // v3 F-NOW-2 re-pin: the visit leads, so the glance repeats no visit row.
+    expect(html).not.toContain("now-glance-visit");
     expect(state.focusCalls).not.toHaveBeenCalled();
   });
   it("the existing evening Tonight flow precedes a record opener", () => {
@@ -265,7 +272,56 @@ describe("Now record and visit leads", () => {
     expect(heading).not.toContain(new Date(2026, 9, 14, 20, 30).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }));
     expect(heading).not.toContain("4 years");
     expect(heading).not.toMatch(/<img|today-identity/);
-    expect(state.moreProps.now.getTime()).toBe(Date.now());
+    // v3 F-NOW-2 re-pin: the say-back line (now in the week card) gets the loop clock.
+    expect(state.sayBackProps.now.getTime()).toBe(Date.now());
+  });
+});
+
+describe("v3 F-NOW-2 · the glance and the week card", () => {
+  const appointment = { id: "visit-specific", who: "", role: "Speech therapist", profession: "slp", when: "", whenIso: "2026-10-14T10:00:00", mode: "In person", status: "confirmed" };
+  const pending = { id: "pending", recommendation: "A step I chose yesterday.", status: "accepted" as const, acceptedAt: "2026-10-11T21:00:00", source: "coach" as const, capacity: "tiny" as const };
+  const glance = (html: string) => html.slice(html.indexOf('<section class="now-glance"'), html.indexOf("</section>", html.indexOf('data-testid="now-reminders"')));
+
+  it.each(["en", "he"] as const)("%s: reminders are four switches on the shared store, then All reminders; none is the page's move", lang => {
+    state.lang = lang;
+    const copy = NOW_COPY[lang];
+    const html = renderToStaticMarkup(<NowView />);
+    const card = glance(html);
+    expect(card).toContain(`<p class="now-reminders-hint">${copy.remHint}</p>`);
+    expect(card.match(/role="switch"/g)).toHaveLength(4);
+    expect(card.match(/aria-checked="true"/g)).toHaveLength(4);
+    for (const id of ["morning", "story", "moment", "weekly"] as const) expect(card).toContain(copy.reminderChips[id]);
+    expect(card).not.toContain("data-primary-move");
+    expect(card).not.toContain("now-glance-reminders");
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    const chips = state.buttons.filter(item => (item as { role?: string }).role === "switch");
+    expect(chips).toHaveLength(4);
+    for (const chip of chips) expect(chip["data-primary-move"]).toBeUndefined();
+    button(copy.remindersAll).onClick?.();
+    expect(state.setActiveTab).toHaveBeenCalledWith("smart-reminders");
+    if (lang === "he") expect(card.replace(/<[^>]+>/g, "").replace(/(?:wb_sunny|bedtime|edit_note|bar_chart|arrow_forward|event|volunteer_activism)/g, "")).not.toMatch(/[A-Za-z]/);
+  });
+
+  it.each(["en", "he"] as const)("%s: a visit that does not lead is a glance row with its days, and keeps Prepare the summary", lang => {
+    state.lang = lang; state.appointments = [appointment]; state.actionLoop = [pending];
+    const copy = NOW_COPY[lang];
+    const html = renderToStaticMarkup(<NowView />);
+    expect(html).toContain('data-module="now-step"');
+    expect(html).toContain('class="now-weekly-door now-glance-visit"');
+    expect(html).toContain(`data-testid="now-glance-visit-line">${copy.visitLine(2, null)}</small>`);
+    expect(copy.visitLine(2, 14)).toBe(lang === "he" ? "בעוד יומיים · 14 רגעים מאז הביקור הקודם" : "In 2 days · 14 moments since the last visit");
+    expect(html).toContain(copy.visitPrep);
+  });
+
+  it("the kid world opens All moments, the week card takes the changed lines, and there is no door, notice block or lifecycle note", () => {
+    const html = renderToStaticMarkup(<NowView />);
+    expect(todayFile("NowView.tsx")).toContain('<NowKidWorld observations={observations} now={now} name={name} onAll={() => setActiveTab("timeline")} />');
+    expect(html).not.toContain('data-testid="today-door"');
+    expect(html).not.toContain('data-module="today-notice"');
+    expect(html).not.toContain("now-lifecycle-note");
+    expect(html).not.toContain('data-module-disclosure="today-more"');
+    expect(state.changesInput).toMatchObject({ previousVisitAt: null, isReturning: false, lifecycleNote: null, recapOn: true });
+    expect(html).toContain('data-testid="now-week-changed"');
   });
 });
 

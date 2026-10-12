@@ -90,8 +90,12 @@ const NUDGE_TYPES: Array<{
 }> = [
   // B-TODAY-02: one switch per NudgeTypeKey; lib/jitai NUDGE_KIND_PREF maps
   // every engine kind onto exactly one of these.
+  // v3 F-NOW-2: story (the bedtime line) split out of guidance, and recap
+  // (Now's in-app weekly-ready line) — the same four Now's chips toggle.
   { key: "guidance", labelKey: "sr.types.guidance.label", descKey: "sr.types.guidance.desc", tone: CLAY,  toneSoft: GREEN_SOFT },
+  { key: "story",    labelKey: "sr.types.story.label",    descKey: "sr.types.story.desc",    tone: CLAY,  toneSoft: GREEN_SOFT },
   { key: "moments",  labelKey: "sr.types.moments.label",  descKey: "sr.types.moments.desc",  tone: GREEN, toneSoft: GREEN_SOFT },
+  { key: "recap",    labelKey: "sr.types.recap.label",    descKey: "sr.types.recap.desc",    tone: GREEN, toneSoft: GREEN_SOFT },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────

@@ -154,15 +154,20 @@ describe("TodaySayBackLine — rendered (EN + HE)", () => {
   }
 });
 
-describe("the door mounts the line after the step line (Law 6 order)", () => {
+// v3 F-NOW-2 re-pin: "More for today" is retired. The line closes the week
+// card, after its "Since you were last here" lines; the offer slot moved to
+// the glance, so the line no longer follows it.
+describe("the week card mounts the line after its changed lines (Law 6 order)", () => {
   const OV = todayLiveSource();
-  it("inside the door, once, after the offer slot", () => {
-    // Parity 9 Oct: the door is Now's NowMoreForToday; the step line left with
-    // the Today hub (an accepted step leads Now).
-    const door = OV.slice(OV.indexOf('data-testid="today-door"'), OV.indexOf("</details>"));
-    expect(door.match(/<TodaySayBackLine /g)).toHaveLength(1);
-    expect(door.indexOf("<CompanionOfferSlot ")).toBeLessThan(door.indexOf("<TodaySayBackLine "));
-    expect(door).toContain("<TodaySayBackLine keepsakeDocs={keepsakeDocs} now={now} />");
+  it("inside the week card, once, after the changed lines", () => {
+    const card = OV.slice(OV.indexOf("<NowWeekSoFar "), OV.indexOf("</NowWeekSoFar>"));
+    expect(OV.match(/<TodaySayBackLine /g)).toHaveLength(1);
+    expect(card.indexOf("changedLines={changes.lines}")).toBeGreaterThan(-1);
+    expect(card.indexOf("changedLines={changes.lines}")).toBeLessThan(card.indexOf("<TodaySayBackLine "));
+    expect(card).toContain("<TodaySayBackLine keepsakeDocs={loop.keepsakeDocs} now={loop.now} />");
+    // A record lead already says the moment back: the line never doubles it.
+    expect(card).toContain('{lead !== "record" && <TodaySayBackLine');
+    expect(OV).not.toContain('data-testid="today-door"');
   });
 });
 

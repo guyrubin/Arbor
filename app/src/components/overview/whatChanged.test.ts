@@ -287,14 +287,17 @@ describe("OverviewTab wiring — ONE What-changed card", () => {
   const overview = stripComments(todayLiveSource());
   const card = stripComments(read("components/overview/WhatChanged.tsx"));
 
-  // B-LOOP-07 re-pin: the ONE What-changed card is the first object behind
-  // Today's "More for today" door (≤ 3 lines), after the three blocks.
-  it("one mount, behind the door, after the lead", () => {
-    expect(overview.match(/<WhatChanged\b/g)).toHaveLength(1);
-    expect(overview).toMatch(/\{changedWould && <WhatChanged\s+lines=\{changed\.lines\.slice\(0, 3\)\}/);
-    // Parity 9 Oct: the door (NowMoreForToday) mounts after Now's lead and loop blocks.
-    expect(overview.indexOf("<NowMoreForToday")).toBeGreaterThan(overview.indexOf("{showPointer &&"));
-    expect(overview.indexOf("<WhatChanged")).toBeGreaterThan(overview.indexOf('data-testid="today-door"'));
+  // B-LOOP-07 re-pin: the ONE What-changed card was the first object behind
+  // Today's "More for today" door (≤ 3 lines). v3 F-NOW-2 re-pin: the door is
+  // retired; the same lines are the week card's "Since you were last here"
+  // (≤ 3), composed once in useNowChanges and drawn after the lead.
+  it("one composition, in the week card, after the lead (≤ 3 lines)", () => {
+    expect(overview.match(/composeWhatChanged\(\{/g)).toHaveLength(1);
+    expect(overview).not.toMatch(/<WhatChanged\b/);
+    expect(overview).toContain("export const NOW_CHANGED_MAX = 3;");
+    expect(overview).toContain("const lines = [...head.slice(0, NOW_CHANGED_MAX - tail.length), ...tail];");
+    expect(overview.indexOf("changedLines={changes.lines}")).toBeGreaterThan(overview.indexOf("<NowRecommendation"));
+    expect(read("components/companion/NowDayPanels.tsx")).toContain("const lines = changedLines.slice(0, 3);");
   });
 
   it("the four restatements are gone: SinceLastVisit, ProgressNarrative, the dev-map count card", () => {
@@ -316,9 +319,13 @@ describe("OverviewTab wiring — ONE What-changed card", () => {
     expect(overview).toMatch(/requestJournalFocus\(line\.focusId\)/);
   });
 
-  it("the watch signal is said once: its own card behind the door, never also folded into the lines", () => {
+  // v3 F-NOW-2 re-pin: the watch signal is its own week-card line (to the
+  // Development check), honouring ArborNoticedCard's dismissals; no card.
+  it("the watch signal is said once: its own line in the week card, never also folded into the lines", () => {
     expect(overview).toMatch(/includeNoticed: false/);
-    expect(overview).toContain("{!dayZero && <ArborNoticedCard />}");
+    expect(overview).toContain('if (noticed) tail.push({ id: "noticed"');
+    expect(overview).toMatch(/const noticed = !dayZero && !!signal && signal\.level === "monitor" && !readDismissed\(childProfile\.id\)/);
+    expect(overview).not.toContain("<ArborNoticedCard");
   });
 
   it("days together = totalDays only (no streak walk), KPI names kept", () => {
@@ -326,5 +333,8 @@ describe("OverviewTab wiring — ONE What-changed card", () => {
     expect(card).not.toMatch(/\.(current|longest|currentStreak|walk)\b/);
     expect(card).toContain('track("sincevisit_shown"');
     expect(card).toContain('track("sincevisit_row_tap"');
+    // v3 F-NOW-2: the week card's lines keep the same KPI names.
+    expect(overview).toContain('track("sincevisit_shown"');
+    expect(overview).toContain('track("sincevisit_row_tap"');
   });
 });

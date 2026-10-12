@@ -20,8 +20,9 @@ const FILES = [
   ...["loop", "journal", "overview"].flatMap((dir) =>
     readdirSync(path.join(components, dir)).filter((f) => f.endsWith(".tsx") && !/\.test\./.test(f)).map((f) => path.join(dir, f)),
   ),
-  // Parity 9 Oct: Today is NowView and the loop it runs.
-  ...["NowView.tsx", "useNowLoop.ts", "NowLoopBlocks.tsx", "NowMoreForToday.tsx", "NowRecommendation.tsx"].map((f) => path.join("companion", f)),
+  // Parity 9 Oct: Today is NowView and the loop it runs. v3 F-NOW-2 re-pin:
+  // "More for today" retired; its lines live in the week card and the glance.
+  ...["NowView.tsx", "useNowLoop.ts", "NowLoopBlocks.tsx", "useNowChanges.ts", "NowDayPanels.tsx", "NowReminderChips.tsx", "NowRecommendation.tsx"].map((f) => path.join("companion", f)),
   path.join("tabs", "MilestonesTab.tsx"),
 ];
 const LATIN_QUOTES = /[\u201C\u201D\u201E]/;

@@ -129,7 +129,7 @@ export function planNudge(input: PlanNudgeInput): NudgePlan {
   }
 
   // 3) The parent switched this kind off. B-TODAY-02: NUDGE_KIND_PREF is
-  //    total — every kind has exactly one switch (guidance | moments).
+  //    total — every kind has exactly one switch (guidance | story | moments).
   const pref = NUDGE_KIND_PREF[candidate.kind];
   if (pref && prefs.types[pref] === false) {
     return { deliver: false, reason: "type_off", kind: candidate.kind, channel };
