@@ -7,6 +7,9 @@
  * The visit's open loop (the outcome question), the home program and the
  * guided-coach line stay on #/consult. EN + HE. The same transpile harness as
  * ConsultDraft.lifecycle.test.ts (ConsultContent as a plain function).
+ * v3 F-CARE-1 (re-pinned): on #/consult the open loop is ONE line in the visit
+ * card's head that opens Appointments, where the answer and the home program
+ * are written (care/VisitOutcome); the landing's H1 is the door's sentence.
  */
 import React from "react";
 import { readFileSync } from "node:fs";
@@ -99,16 +102,26 @@ describe("v3 FEAT-09 · #/handoff is the care summary builder", () => {
     // v3 EXTRA-CARE: the landing's visit card, head, aside and doors stay on #/consult
     expect(all.some((el) => el.type === CareVisitHead || el.type === CareAside || el.type === CareDoors)).toBe(false);
     expect(all.find((el) => el.type === AskSpecialist)!.props.head).toBeUndefined();
+    expect(all.find((el) => el.type === AskSpecialist)!.props.headAfter).toBeUndefined();
   });
 
-  it("NEGATIVE CONTROL: #/consult keeps the visit outcome, the home program and the guided line under its own H1", () => {
+  it("NEGATIVE CONTROL: #/consult keeps the visit's open loop (one line to Appointments) and the guided line under its own H1", () => {
     tab = "consult";
     const all = render();
-    expect(byId(all, "consult-visit-outcome")).toBeDefined();
     expect(byId(all, "consult-guided-tier")).toBeDefined();
-    expect(all.some((el) => el.type === HomeProgramDays)).toBe(true);
     expect(byId(all, "consult-summary-lede")).toBeUndefined();
     expect(textOf(all.find((el) => el.type === "h1"))).not.toBe(translate("en", "elev.consult.h1.summary"));
+    // v3 F-CARE-1: the landing's H1 is the door's sentence; the visit is named in the card
+    expect(textOf(all.find((el) => el.type === "h1"))).toBe(translate("en", "elev.consult.title"));
+    // v3 F-CARE-1: the answer and the home program moved to #/appointments
+    // (care/VisitOutcome); the card's head carries ONE line that opens it
+    expect(byId(all, "consult-visit-outcome")).toBeUndefined();
+    expect(byId(all, "consult-home-program-choice")).toBeUndefined();
+    expect(all.some((el) => el.type === HomeProgramDays || el.type === HomeProgramEntry)).toBe(false);
+    const line = all.find((el) => el.type === AskSpecialist)!.props.headAfter;
+    expect(line?.props["data-testid"]).toBe("consult-visit-outcome-link");
+    expect(line?.props["data-primary-move"]).toBeUndefined();
+    expect(line?.props.className).toContain("min-h-[44px]");
     expect(all.find((el) => el.type === AskSpecialist)!.props.primaryMoveStamp).toEqual({ "data-primary-move": "build-share-packet" });
     expect(all.find((el) => el.type === AskSpecialist)!.props.excludeTeacher).toBe(false);
     // v3 EXTRA-CARE: the Care landing adds its visit card (the builder, headed

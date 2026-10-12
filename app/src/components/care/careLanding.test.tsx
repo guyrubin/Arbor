@@ -7,6 +7,11 @@
  * safety, Who sees what) and the doors with the trust line. #/handoff keeps
  * the builder alone. Who sees what lists live grants only; the doors are the
  * Care pages, never a directory. Counts only, no verdicts.
+ *
+ * v3 F-CARE-1 (the landing as the mock, plus 390 px): the H1 is the door's
+ * sentence and the visit is named in the card head; the three steps are a
+ * stepper over one body; a visit folds the audience row; the aside carries
+ * Safety's crisis words; the doors are rows with a chevron below sm.
  */
 import React from "react";
 import { readFileSync } from "node:fs";
@@ -22,6 +27,7 @@ const harness = vi.hoisted(() => ({
   signedIn: true,
   appts: [] as unknown[],
   contacts: [] as unknown[],
+  topic: null as unknown,
 }));
 
 vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchParams("") }));
@@ -38,6 +44,7 @@ vi.mock("../../context/ArborContext", () => ({
     milestones: [],
     actionPlans: [],
     approvedMemoryItems: [],
+    activeFamilyTopic: harness.topic,
     setActiveTab: vi.fn(),
     requestConsultPrefill: vi.fn(),
     pendingConsultPrefill: null,
@@ -113,6 +120,12 @@ const LANDING_KEYS = [
   "elev.consult.doors.label", "elev.consult.door.schoolBrief", "elev.consult.door.appointments",
   "elev.consult.door.summary", "elev.consult.trust", "elev.consult.visitOutcome.saveError",
   "elev.consult.visitOutcome.saving", "elev.consult.visitOutcome.queued", "elev.consult.visitOutcome.held",
+  // v3 F-CARE-1
+  "elev.consult.title", "elev.consult.visit.none", "elev.consult.stepper.label",
+  "elev.consult.step.bring.d", "elev.consult.step.preview.d", "elev.consult.step.share.d",
+  "elev.consult.preview.cta", "elev.consult.next", "elev.consult.audience.change", "elev.consult.fullRecord",
+  "elev.consult.door.appointments.next", "elev.consult.door.appointments.past.one", "elev.consult.door.appointments.past.other",
+  "elev.consult.visitOutcome.q",
 ];
 
 /** The index of the tag that closes the element opening at `start`. */
@@ -138,19 +151,31 @@ beforeEach(() => {
   harness.signedIn = true;
   harness.appts = [];
   harness.contacts = [];
+  harness.topic = null;
   installLocalStorage();
 });
 
 describe("v3 EXTRA-CARE · the Care landing", () => {
   for (const locale of ["en", "he"] as const) {
-    it(`${locale}: kicker, a visit-named H1, the visit card "In 3 days" and the three prep steps`, () => {
+    it(`${locale}: kicker, the door's H1, the visit named in the card "In 3 days" and the three prep steps`, () => {
       harness.locale = locale;
       harness.appts = [visitIn3()];
       const html = renderToStaticMarkup(<ConsultTab />);
       expect(textOf(html, "consult-kicker")).toBe(translate(locale, "elev.consult.kicker"));
       expect(textOf(html, "consult-sub")).toBe(translate(locale, "elev.consult.sub"));
+      // v3 F-CARE-1 re-pin: the landing H1 is the door's own sentence, never
+      // "for {name}" and never the visit; the visit is named in the card head.
       const h1 = decode(/<h1 data-testid="consult-h1"[^>]*>([^<]*)<\/h1>/.exec(html)![1]);
-      expect(h1).toContain(translate(locale, "elev.careNet.appt.profession.slp"));
+      expect(h1).toBe(translate(locale, "elev.consult.title"));
+      expect(h1).not.toContain(translate(locale, "elev.careNet.appt.profession.slp"));
+      {
+        const named = decode(html);
+        const header = named.slice(0, named.indexOf('data-testid="consult-landing"'));
+        expect(header).not.toContain(translate(locale, "elev.consult.forName", { name: "Mika" }));
+        const [vAt, vEnd] = spanOf(named, "consult-visit-head", "div");
+        expect(named.slice(vAt, vEnd)).toContain(translate(locale, "elev.careNet.appt.profession.slp"));
+        expect(named.slice(vAt, vEnd)).toContain('data-visit="booked"');
+      }
       expect(html.indexOf('data-testid="consult-kicker"')).toBeLessThan(html.indexOf('data-testid="consult-h1"'));
       // the visit card heads the packet module, with the day count in neutral ink
       const packet = sliceModule(html, "consult-packet", "consult-aside");
@@ -173,8 +198,13 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       expect(at("consult-since-head")).toBeGreaterThan(at("consult-visit-head"));
       expect(at("consult-since-head")).toBeLessThan(headEnd);
       expect(at("consult-audience-step")).toBeGreaterThan(headEnd);
-      expect(page.indexOf(translate(locale, "elev.pilot.i.have.recommendations.for.home"))).toBeGreaterThan(cardEnd);
-      // the numbered step headings, in order: 1 bring, 2 preview, 3 share
+      // v3 F-CARE-1 re-pin: the outcome form and the home-program entry moved
+      // to #/appointments (care/VisitOutcome); the landing holds neither.
+      expect(page).not.toContain(translate(locale, "elev.pilot.i.have.recommendations.for.home"));
+      expect(page).not.toContain('data-testid="consult-visit-outcome"');
+      expect(page).not.toContain('data-testid="consult-home-program-choice"');
+      // the numbered step headings stay in reading order (read, not drawn,
+      // under the stepper): 1 bring, 2 preview, 3 share
       const numbered = [...html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)]
         .map((m) => decode(m[1].replace(/<[^>]+>/g, "")).trim())
         .filter((text) => /^[123]/.test(text));
@@ -198,6 +228,15 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       expect(sliceModule(html, "consult-doors")).not.toContain("data-primary-move");
       // one gradient on the page: Build's
       expect((html.match(/gradient-cta|arbor-gradient-primary/g) ?? []).length).toBe(1);
+      // v3 F-CARE-1: from xl a 1.6fr | 1fr grid — the visit card and the
+      // sticky aside side by side, the doors full width under both
+      expect(/<div[^>]*data-testid="consult-landing"[^>]*>/.exec(html)![0]).toContain("xl:grid xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]");
+      const aside = /<aside[^>]*data-module="consult-aside"[^>]*>/.exec(html)![0];
+      expect(aside).toContain("xl:grid-cols-1");
+      expect(aside).toContain("xl:sticky");
+      expect(/<nav[^>]*data-module="consult-doors"[^>]*>/.exec(html)![0]).toContain("xl:col-span-2");
+      const card = /<section[^>]*data-testid="consult-visit-card"[^>]*>/.exec(html)![0];
+      expect(card).toContain("arbor-depth-primary");
     });
 
     it(`${locale}: "what to bring" chips are 44 px toggles (aria-pressed); the moments chip is a count`, () => {
@@ -218,6 +257,118 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       expect(decode(row)).toContain(translate(locale, "elev.consult.bring.moments.other", { n: 2 }));
       // counts only: no share, ratio or "n of m" about the child
       expect(decode(row)).not.toMatch(/%|\d\s*\/\s*\d|\bof\b|מתוך/);
+    });
+
+    // ── v3 F-CARE-1: the visit card as the mock ─────────────────────────────
+    const openTag = (html: string, id: string) => new RegExp(`<[a-z0-9]+ [^>]*\\bid="${id}"[^>]*>`).exec(html)![0];
+
+    it(`${locale}: the three steps are a stepper — three 44 px tabs under the head, step 1 open, ONE body shown`, () => {
+      harness.locale = locale;
+      harness.appts = [visitIn3()];
+      const page = decode(renderToStaticMarkup(<ConsultTab />));
+      const [cardAt, cardEnd] = spanOf(page, "consult-visit-card", "section");
+      const [, headEnd] = spanOf(page, "consult-visit-card-head", "div");
+      const [navAt, navEnd] = spanOf(page, "consult-stepper", "nav");
+      expect(navAt).toBeGreaterThan(headEnd);
+      expect(navEnd).toBeLessThan(page.indexOf('data-testid="consult-audience-step"'));
+      expect(navEnd).toBeLessThan(cardEnd);
+      expect(navAt).toBeGreaterThan(cardAt);
+      const nav = page.slice(navAt, navEnd);
+      expect(nav).toContain(`aria-label="${translate(locale, "elev.consult.stepper.label")}"`);
+      const tabs = nav.match(/<button[^>]*data-testid="consult-step"[^>]*>/g) ?? [];
+      expect(tabs.map((b) => /data-step="(\d)"/.exec(b)![1])).toEqual(["1", "2", "3"]);
+      expect(tabs.filter((b) => b.includes('aria-current="step"'))).toHaveLength(1);
+      expect(tabs[0]).toContain('aria-current="step"');
+      for (const b of tabs) {
+        expect(b).toContain("min-h-[56px]");
+        expect(b).not.toMatch(/\sdisabled=""/);
+      }
+      for (const key of ["elev.consult.step.bring", "elev.consult.step.preview", "elev.consult.step.share"]) {
+        expect(nav).toContain(translate(locale, key));
+      }
+      // centred on a phone; the step's line joins from sm
+      expect(tabs[0]).toMatch(/\bitems-center\b[^"]*\bsm:items-start\b/);
+      expect(nav).toContain(translate(locale, "elev.consult.step.bring.d"));
+      // a choice of step, never a progress bar or a count of steps
+      expect(nav).not.toMatch(/role="progressbar"|\d\s*\/\s*\d|\bof\s+\d|מתוך/);
+      // ONE body: step 1 shown; step 2 and step 3 mounted but hidden
+      expect(openTag(page, "consult-step-1")).not.toMatch(/\shidden=""/);
+      expect(openTag(page, "consult-step-2")).toMatch(/\shidden=""/);
+      expect(openTag(page, "consult-review-export")).toMatch(/\shidden=""/);
+      // the builder's lg two-pane fold does not apply inside the stepper
+      expect(/<div[^>]*data-testid="consult-panes"[^>]*>/.exec(page)![0]).not.toContain("lg:grid");
+      expect(openTag(page, "consult-review-export")).not.toContain("lg:sticky");
+      // Build opens step 2 ("Preview the summary"); Next opens step 3; neither is a second move
+      const build = /<button[^>]*data-testid="consult-build"[^>]*>([\s\S]*?)<\/button>/.exec(page)!;
+      expect(build[1].replace(/<[^>]+>/g, "").trim()).toBe(translate(locale, "elev.consult.preview.cta"));
+      const next = /<button[^>]*data-testid="consult-next"[^>]*>([\s\S]*?)<\/button>/.exec(page)!;
+      expect(next[0]).not.toContain("data-primary-move");
+      expect(next[0]).toContain("min-h-[44px]");
+      expect(next[1].replace(/<[^>]+>/g, "")).toContain(translate(locale, "elev.consult.next"));
+      expect(next[1]).toMatch(/class="msr rtl:-scale-x-100"[^>]*>arrow_forward</);
+      // Next closes step 2's body (after the packet), before step 3 opens
+      const [s2At] = spanOf(page, "consult-reason-section", "section");
+      expect(page.indexOf('data-testid="consult-next"')).toBeGreaterThan(s2At);
+      expect(page.indexOf('data-testid="consult-next"')).toBeLessThan(page.indexOf('id="consult-review-export"'));
+    });
+
+    it(`${locale}: step 3 keeps the reviewed gate and the verbs, then "Your full record (PDF)" to Reports`, () => {
+      harness.locale = locale;
+      harness.appts = [visitIn3()];
+      const page = decode(renderToStaticMarkup(<ConsultTab />));
+      const [rAt, rEnd] = spanOf(page, "consult-review-export", "div");
+      const step3 = page.slice(rAt, rEnd);
+      for (const id of ["consult-preview", "consult-reviewed", "consult-copy", "consult-pdf", "consult-send-trusted", "consult-full-record"]) {
+        expect(step3, id).toContain(`data-testid="${id}"`);
+      }
+      expect(step3.indexOf('data-testid="consult-full-record"')).toBeGreaterThan(step3.indexOf('data-testid="consult-send-trusted"'));
+      const full = /<button[^>]*data-testid="consult-full-record"[^>]*>([\s\S]*?)<\/button>/.exec(step3)!;
+      expect(full[0]).toContain("min-h-[44px]");
+      expect(full[0]).not.toContain("data-primary-move");
+      expect(full[1].replace(/<[^>]+>/g, "")).toContain(translate(locale, "elev.consult.fullRecord"));
+      expect(full[1]).toContain(">history<");
+    });
+
+    it(`${locale}: a visit names the audience — the radio row folds behind one line`, () => {
+      harness.locale = locale;
+      harness.appts = [visitIn3()];
+      const page = decode(renderToStaticMarkup(<ConsultTab />));
+      const [s1At, s1End] = spanOf(page, "consult-audience-step", "section");
+      const step1 = page.slice(s1At, s1End);
+      expect(step1).toContain('data-audience="slp"');
+      expect(step1).not.toContain('role="radio"');
+      expect(step1).not.toContain('data-testid="consult-audience-row"');
+      const change = /<button[^>]*data-testid="consult-audience-change"[^>]*>([\s\S]*?)<\/button>/.exec(step1)!;
+      expect(change[0]).toContain("min-h-[44px]");
+      expect(change[1].replace(/<[^>]+>/g, "")).toContain(translate(locale, "elev.consult.audience.change"));
+      // no visit: the parent chooses, so the row shows
+      harness.appts = [];
+      const open = decode(renderToStaticMarkup(<ConsultTab />));
+      expect(open).toContain('data-testid="consult-audience-row"');
+      expect(open).toContain('role="radio"');
+      expect(open).not.toContain('data-testid="consult-audience-change"');
+      expect(open).toContain('data-visit="none"');
+      expect(open).toContain(translate(locale, "elev.consult.visit.none"));
+    });
+
+    it(`${locale}: "Our question" is the second chip; a chip that is in reads as chosen with a filled check`, () => {
+      harness.locale = locale;
+      harness.appts = [visitIn3()];
+      harness.topic = { id: "topic-1", childId: "c-care", title: locale === "he" ? "איך עושים את הבקרים רגועים יותר?" : "How do we make mornings calmer?", status: "active" };
+      const page = decode(renderToStaticMarkup(<ConsultTab />));
+      const row = /<div\b[^>]*data-testid="consult-bring-row"[^>]*>[\s\S]*?<\/div>/.exec(page)![0];
+      const order = [...row.matchAll(/data-testid="(consult-bring-chip|consult-include-topic)"(?: data-bring="([^"]+)")?/g)].map((m) => m[2] ?? m[1]);
+      expect(order[0]).toBe("moments");
+      expect(order[1]).toBe("consult-include-topic");
+      const moments = /<button[^>]*data-bring="moments"[^>]*>([\s\S]*?)<\/button>/.exec(row)!;
+      expect(moments[0]).toContain("var(--arbor-sky-wash)");
+      expect(moments[1]).toMatch(/'FILL' 1[^>]*>check_circle</);
+      // off by default: the quiet outline and its own glyph
+      const topic = /<button[^>]*data-testid="consult-include-topic"[^>]*>([\s\S]*?)<\/button>/.exec(row)!;
+      expect(topic[0]).toContain('aria-pressed="false"');
+      expect(topic[0]).not.toContain("var(--arbor-sky-wash)");
+      expect(topic[1]).toContain(translate(locale, "elev.consult.topic.include"));
+      expect(topic[1]).not.toContain(">check_circle<");
     });
 
     it(`${locale}: Help and safety — tel: links from Safety's directory, the first contact, last reviewed`, () => {
@@ -248,6 +399,14 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       expect(aside).toContain('data-testid="care-aside-reviewed"');
       expect(aside).toContain('data-testid="care-aside-open-safety"');
       for (const a of aside.match(/<(?:a|button) [^>]*>/g) ?? []) expect(a).toMatch(/min-h-\[44px\]/);
+      // v3 F-CARE-1: Safety's own crisis words under the accent rule, from sm,
+      // before the one way into Safety; no "Message" action, no move
+      const crisis = /<p[^>]*data-testid="care-aside-crisis"[^>]*>([\s\S]*?)<\/p>/.exec(aside)!;
+      expect(crisis[0]).toMatch(/class="hidden sm:block arbor-accent-rule\b/);
+      expect(decode(crisis[1])).toBe(translate(locale, "elev.safety.crisis.script"));
+      expect(aside.indexOf('data-testid="care-aside-crisis"')).toBeLessThan(aside.indexOf('data-testid="care-aside-open-safety"'));
+      expect(aside).not.toMatch(/sms:|data-testid="care-aside-message"/);
+      expect(aside).not.toContain("data-primary-move");
     });
 
     it(`${locale}: Who sees what — signed in it reads the roster; signed out no one can hold a grant`, () => {
@@ -269,6 +428,16 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       expect([...doors.matchAll(/data-testid="care-door" data-door="([^"]+)"/g)].map((m) => m[1])).toEqual(["school-brief", "appointments", "handoff"]);
       for (const b of doors.match(/<button [^>]*>/g) ?? []) expect(b).toContain("min-h-[44px]");
       expect(decode(doors)).toContain(translate(locale, "elev.consult.door.schoolBrief"));
+      // v3 F-CARE-1: below sm each door is a row ending in a chevron that
+      // mirrors once in RTL; from sm a card with the glyph blob
+      const buttons = [...doors.matchAll(/<button [^>]*data-testid="care-door"[^>]*>([\s\S]*?)<\/button>/g)].map((m) => m[1]);
+      expect(buttons).toHaveLength(3);
+      for (const inner of buttons) {
+        expect(inner).toMatch(/class="msr sm:hidden flex-shrink-0 rtl:-scale-x-100"[^>]*>chevron_right</);
+        expect(inner).toContain('data-testid="care-door-sub"');
+      }
+      // the Appointments door with no booking keeps its own line, no count
+      expect(textOf(doors.slice(doors.indexOf('data-door="appointments"')), "care-door-sub")).toBe(translate(locale, "elev.consult.door.appointments"));
       const trust = doors.slice(doors.indexOf('data-testid="consult-trust-line"'));
       expect(trust.length).toBeGreaterThan(0);
       expect(decode(trust)).toContain(translate(locale, "elev.consult.trust"));
@@ -289,6 +458,17 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
     }
     expect((html.match(/data-primary-move="/g) ?? []).length).toBe(1);
     expect(html).toContain('data-primary-move="copy-handoff-brief"');
+    // v3 F-CARE-1: the stepper is the landing's; the summary page keeps the
+    // stacked builder with its lg two-pane fold, every step shown
+    for (const id of ["consult-stepper", "consult-step", "consult-next", "consult-audience-change", "consult-visit-outcome-link"]) {
+      expect(html, id).not.toContain(`data-testid="${id}"`);
+    }
+    for (const id of ["consult-step-1", "consult-step-2", "consult-review-export"]) {
+      expect(new RegExp(`<[a-z0-9]+ [^>]*\\bid="${id}"[^>]*>`).exec(html)![0], id).not.toMatch(/\shidden=""/);
+    }
+    expect(/<div[^>]*data-testid="consult-panes"[^>]*>/.exec(html)![0]).toContain("lg:grid");
+    expect(/<div[^>]*data-testid="consult-review-export"[^>]*>/.exec(html)![0]).toContain("lg:sticky");
+    expect(html).toContain('role="radio"');
   });
 
   it("every landing string exists in EN and HE, and the HE copy carries no Latin", () => {

@@ -11,7 +11,7 @@
  */
 
 export const en: Record<string, string> = {
-  "elev.careNet.eyebrow": "Care Network",
+  "elev.careNet.eyebrow": "Care, together", // v3 F-CARE-1: the door's one name (companion.door.care)
   "elev.careNet.appt.add": "Add appointment",
   "elev.careNet.mode.inPerson": "In person",
   "elev.careNet.mode.online": "Online",
@@ -34,7 +34,7 @@ export const en: Record<string, string> = {
 };
 
 export const he: Record<string, string> = {
-  "elev.careNet.eyebrow": "רשת הטיפול",
+  "elev.careNet.eyebrow": "טיפול, ביחד", // v3 F-CARE-1
   "elev.careNet.appt.add": "הוספת תור",
   "elev.careNet.mode.inPerson": "פנים אל פנים",
   "elev.careNet.mode.online": "אונליין",

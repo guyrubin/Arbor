@@ -132,18 +132,23 @@ const BRING_GROUPS: readonly { id: string; icon: string; labelKey: string; secti
 
 /** W2-CAREPRO r1: ConsultTab hands its route stamp here; it lands on the
  *  selected audience chip (one 44 px button in step 1), never on a wrapper. */
-export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard, excludeTeacher = false, landing = false, head }: {
+export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard, excludeTeacher = false, landing = false, head, headAfter }: {
   primaryMoveStamp?: Record<string, string>;
   /** v3 EXTRA-CARE: #/consult, the Care landing. The three steps read
    *  "Choose what to bring" (who it is for, then what to bring as chips,
    *  "Our question" among them), "Preview the summary" and "Share"; the
-   *  preview says how it is worded. The same packet, gate and egress. */
+   *  preview says how it is worded. The same packet, gate and egress.
+   *  v3 F-CARE-1: for a professional the steps are a three-tab stepper and
+   *  ONE step body shows at a time (the teacher branch keeps its stack). */
   landing?: boolean;
   /** v3 EXTRA-CARE: the next visit (who, when, in how many days) heading the
    *  Care landing's visit card. With it, the "since" counts sentence moves
    *  up from step 2 into that head, so the card reads visit, since, then
    *  steps 1-3 with nothing in between. */
   head?: React.ReactNode;
+  /** v3 F-CARE-1: one line closing the visit card's head, under the since
+   *  counts (ConsultTab: "What did they suggest?", which opens Appointments). */
+  headAfter?: React.ReactNode;
   /** v3 FEAT-09: the Care summary pill (#/handoff) builds the professional
    *  summary only. The teacher chip is left out (School brief is its own
    *  pill), and a stored, anchored or prefilled teacher audience starts at
@@ -191,6 +196,18 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     try { localStorage.setItem(AUDIENCE_STORAGE_KEY, a); } catch { /* metadata only */ }
   };
   const isTeacher = audience === "teacher";
+  /* v3 F-CARE-1 (mock :337-352): on the Care landing a professional's three
+     steps are a stepper — three 44 px tabs over ONE step body. The hidden
+     bodies stay mounted (the reason, the ticks and the reviewed gate keep
+     their state), and the egress, the gate and the one move are unchanged.
+     The teacher branch and #/handoff · #/school-brief keep the stack. */
+  const stepped = landing && !isTeacher;
+  const [step, setStep] = useState<1 | 2 | 3>(intakeProp ? 3 : 1);
+  // A visit names the audience; the radio row then folds behind one line.
+  const [showAudience, setShowAudience] = useState(false);
+  // Focus follows a step the parent moved to with Build or Continue.
+  const [focusReq, setFocusReq] = useState<{ id: string; scroll: boolean; n: number } | null>(null);
+  const requestFocus = (id: string, scroll: boolean) => setFocusReq((prev) => ({ id, scroll, n: (prev?.n ?? 0) + 1 }));
   // B-CAREPRO-42: "therapist" splits into OT, PT and psychology. A split
   // preset rides the profession's intake packet (B-LOOP-12 path: the
   // registry domains that profession owns, the parent's questions), under
@@ -432,8 +449,17 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
     return withWords[0] ? { quote: parentWords(withWords[0]), at: withWords[0].timestamp } : null;
   }, [behaviorLogs, countFromIso]);
+  // v3 F-CARE-1: the body each step tab shows (step 3 is the review column).
+  const STEP_BODY = { 1: "consult-step-1", 2: "consult-step-2", 3: "consult-review-export" } as const;
+  const goToStep = (n: 1 | 2 | 3, move: boolean) => {
+    setStep(n);
+    if (move) requestFocus(STEP_BODY[n], true);
+  };
   // W2-CAREPRO r2: the stamp's act — build the summary and land on step 3.
+  // v3 F-CARE-1: on the stepped landing Build opens step 2, the summary the
+  // parent curates ("Preview the summary"); "Continue to share" opens step 3.
   const buildSummary = () => {
+    if (stepped) { goToStep(2, true); return; }
     const target = document.getElementById(isEmpty ? "consult-empty" : "consult-review-export");
     target?.scrollIntoView?.({ block: "start", behavior: reduceMotion ? "auto" : "smooth" });
     (target?.querySelector("h2") as HTMLElement | null)?.focus?.();
@@ -441,12 +467,29 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // B-LOOP-12: arriving from the professional view's PDF · Copy · Send, the
   // parent lands on step 3 — the verbatim preview and the reviewed gate.
   useEffect(() => {
-    if (intakeProp) buildSummary();
+    if (intakeProp) {
+      if (stepped) goToStep(isEmpty ? 2 : 3, true);
+      else buildSummary();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // v3 F-CARE-1: a step body is revealed on the next render, so focus (and,
+  // after Build or Continue, the scroll) lands in an effect. The step's own
+  // heading takes it; the audience row is its own target.
+  useEffect(() => {
+    if (!focusReq || typeof document === "undefined") return;
+    const target = document.getElementById?.(focusReq.id);
+    if (!target) return;
+    if (focusReq.scroll) target.scrollIntoView?.({ block: "start", behavior: reduceMotion ? "auto" : "smooth" });
+    const heading = target.querySelector?.("h2") as HTMLElement | null;
+    (heading ?? target).focus?.(focusReq.scroll ? { preventScroll: true } : undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusReq]);
   // LC-06: "about" is always emitted, so the honest emptiness test is
   // "nothing beyond about" — the authored empty state can finally mount.
   const isEmpty = isConsultPacketEmpty(packet);
+  // Step 3 holds the verbs; with nothing to share it stays closed.
+  const shownStep: 1 | 2 | 3 = step === 3 && isEmpty ? 2 : step;
   const includedCount = countIncluded(packet, excluded);
   const toggle = (id: string) =>
     setExcluded((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -574,17 +617,26 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       </section>
   );
 
-  /** Numbered step heading (the steps are the page's reading order). */
+  /** Numbered step heading (the steps are the page's reading order). In the
+   *  stepper (v3 F-CARE-1) the tab names the step, so the body's heading is
+   *  read, not drawn; it still takes focus when the step opens. */
   const stepHeading = (n: number, label: string, id?: string) => (
-    <h2 id={id} className="flex items-center gap-2 t-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
+    <h2 id={id} tabIndex={stepped ? -1 : undefined} className={stepped ? "sr-only" : "flex items-center gap-2 t-lg font-extrabold"} style={{ fontFamily: "var(--font-display)", color: INK }}>
       <span aria-hidden="true" className="inline-flex items-center justify-center w-7 h-7 rounded-full t-sm font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: INK }}>{n}</span>
       {label}
     </h2>
   );
 
+  /* v3 F-CARE-1 (mock :340-343): a chip that is in reads as chosen, in the
+     sky family with a filled check; out, it is a quiet outline with its own
+     glyph. The look of a choice, never a verdict about the child. */
+  const bringOnStyle: React.CSSProperties = { background: "var(--arbor-sky-wash)", color: "var(--arbor-sky-ink)", border: "1px solid var(--arbor-sky)" };
+  const bringOffStyle: React.CSSProperties = { background: "var(--arbor-paper-elevated)", color: INK, border: `1px solid ${RULE}` };
+
   /* v3 FEAT-09 — "Our question": the selected family question, off until
      the parent turns it on; on, it is one line of the preview. Step 2 holds
-     it; the Care landing (v3 EXTRA-CARE) holds it among step 1's chips. */
+     it; the Care landing (v3 EXTRA-CARE) holds it among step 1's chips,
+     second, in the chips' look (v3 F-CARE-1). */
   const topicChip = familyTopic ? (
     <button
       type="button"
@@ -592,14 +644,92 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       aria-pressed={topicIncluded}
       onClick={toggleTopic}
       className="inline-flex max-w-full items-center gap-1.5 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px] text-start transition"
-      style={topicIncluded
+      style={landing
+        ? (topicIncluded ? bringOnStyle : bringOffStyle)
+        : topicIncluded
         ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
         : { background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
     >
-      <Icon name="bookmark" size={14} fill={topicIncluded ? 1 : 0} />
+      <Icon name={landing && topicIncluded ? "check_circle" : "bookmark"} size={landing ? 16 : 14} fill={topicIncluded ? 1 : 0} />
       <span className="flex-shrink-0">{t("elev.consult.topic.include")}</span>
       <span className="min-w-0 truncate font-medium"><FreeText text={familyTopic.title} /></span>
     </button>
+  ) : null;
+
+  const bringChip = (chip: (typeof bringChips)[number]) => (
+    <button
+      key={chip.id}
+      type="button"
+      data-testid="consult-bring-chip"
+      data-bring={chip.id}
+      aria-pressed={chip.on}
+      onClick={() => toggleBring(chip.ids, chip.on)}
+      className="inline-flex items-center gap-1.5 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
+      style={chip.on ? bringOnStyle : bringOffStyle}
+    >
+      <Icon name={chip.on ? "check_circle" : chip.icon} size={16} fill={chip.on ? 1 : 0} />
+      {chip.label}
+    </button>
+  );
+  // Moments first, then "Our question", then the rest (mock :341).
+  const leadChips = bringChips.filter((chip) => chip.id === "moments");
+  const restChips = bringChips.filter((chip) => chip.id !== "moments");
+
+  /* v3 F-CARE-1: a visit names the audience (ConsultTab's anchor). While the
+     parent keeps it, the radio row folds behind one line; a split preset, an
+     intake packet or another choice shows the row. */
+  const audienceFolded = stepped && !!anchorAudience && audience === anchorAudience && !split && !intake && !showAudience;
+  const openAudience = () => {
+    setShowAudience(true);
+    requestFocus("consult-audience-row", false);
+  };
+
+  const STEPS = [
+    { n: 1, label: t("elev.consult.step.bring"), desc: t("elev.consult.step.bring.d") },
+    { n: 2, label: t("elev.consult.step.preview"), desc: t("elev.consult.step.preview.d") },
+    { n: 3, label: t("elev.consult.step.share"), desc: t("elev.consult.step.share.d") },
+  ] as const;
+  /* v3 F-CARE-1 (mock :337-339, phone :731-733): three equal tabs under the
+     card's head, edge to edge; the open one is marked (aria-current, a clay
+     underline), a step behind it shows a check. Below sm the tabs are centred
+     and carry the step's name only. Share stays shut while there is nothing
+     to share. Not a progress bar: the parent can open any step. */
+  const stepper = stepped ? (
+    <nav data-testid="consult-stepper" aria-label={t("elev.consult.stepper.label")} className="grid grid-cols-3 border-y" style={{ borderColor: RULE, background: "var(--arbor-paper-sunk)" }}>
+      {STEPS.map(({ n, label, desc }) => {
+        const on = shownStep === n;
+        const done = n < shownStep;
+        return (
+          <button
+            key={n}
+            type="button"
+            data-testid="consult-step"
+            data-step={n}
+            aria-current={on ? "step" : undefined}
+            disabled={n === 3 && isEmpty}
+            onClick={() => goToStep(n, false)}
+            className="min-w-0 flex flex-col items-center sm:items-start justify-center gap-1 px-2 py-2.5 sm:px-4 sm:py-3 min-h-[56px] border-e last:border-e-0 text-center sm:text-start transition disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ borderColor: RULE, background: on ? "var(--arbor-paper-elevated)" : "transparent", boxShadow: on ? "inset 0 -3px 0 var(--arbor-clay)" : undefined, color: on ? INK : "var(--arbor-ink-soft)" }}
+          >
+            <span className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 min-w-0">
+              <span
+                aria-hidden="true"
+                className="inline-flex items-center justify-center w-6 h-6 rounded-full t-xs font-extrabold flex-shrink-0"
+                style={done
+                  ? { background: GREEN_SOFT, color: GREEN }
+                  : on
+                  ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }
+                  : { background: "var(--arbor-paper-deep)", color: MUTED }}
+              >
+                {done ? <Icon name="check" size={14} weight={600} /> : n}
+              </span>
+              <span className="t-sm font-extrabold leading-tight min-w-0">{label}</span>
+            </span>
+            <span className="hidden sm:block t-xs leading-snug" style={{ color: MUTED }}>{desc}</span>
+          </button>
+        );
+      })}
+    </nav>
   ) : null;
 
   /* W2-CAREPRO r1: "what changed" is answered first — B-CAREPRO-17's
@@ -613,7 +743,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     <div
       data-testid="consult-since-head"
       data-anchor={anchor.kind}
-      className={sinceInHead ? "min-w-0 sm:ps-14" : "mt-3 rounded-[13px] p-3.5"}
+      className={sinceInHead ? "min-w-0 sm:ps-[4.125rem]" : "mt-3 rounded-[13px] p-3.5"}
       style={sinceInHead ? undefined : { background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
     >
       <p data-testid="consult-since-counts" className={sinceInHead ? "t-sm" : "t-sm font-bold"} style={{ color: sinceInHead ? "var(--arbor-ink-soft)" : INK }}>{sinceSentence}</p>
@@ -630,24 +760,41 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
 
   return (
     /* W2: one DOM/visual sequence: who, purpose, editable packet, contract, review/export. */
-    <motion.div {...motionProps} className="flex flex-col gap-5 max-w-[1180px]">
+    <motion.div {...motionProps} className={landing ? "flex flex-col max-w-[1180px]" : "flex flex-col gap-5 max-w-[1180px]"}>
       {/* v3 EXTRA-CARE: the visit card's head — the visit, then the since
-          counts — directly above step 1, closed by one hairline. */}
+          counts — directly above step 1, closed by one hairline.
+          v3 F-CARE-1: the card draws no padding of its own, so the stepper
+          runs edge to edge; the head and the step body pad themselves. The
+          head closes with ConsultTab's one line (headAfter), if any. */}
       {head && (
-        <div data-testid="consult-visit-card-head" className="flex flex-col gap-2 border-b pb-5" style={{ borderColor: RULE }}>
+        <div data-testid="consult-visit-card-head" className={`flex flex-col gap-2 px-4 pt-4 sm:px-[26px] sm:pt-[22px] ${stepped ? "pb-3.5 sm:pb-4" : "pb-4 sm:pb-5 border-b"}`} style={{ borderColor: RULE }}>
           {head}
           {sinceInHead && sinceHead}
+          {headAfter && <div className="min-w-0 sm:ps-[4.125rem]">{headAfter}</div>}
         </div>
       )}
+      {stepper}
+      <div data-testid="consult-steps" className={landing ? "flex flex-col gap-5 px-4 pt-4 pb-5 sm:px-[26px] sm:pt-5 sm:pb-6" : "flex flex-col gap-5"}>
       {/* Step 1 · Who is it for? — the audience IS the preset (B-CAREPRO-28).
           LC-28 / OBJ-CARE-02: the hub CTA scrolls to and focuses this row. */}
-      <section data-testid="consult-audience-step" className="flex flex-col gap-2">
+      <section id="consult-step-1" data-testid="consult-audience-step" data-audience={audience} className="flex flex-col gap-2" hidden={stepped && shownStep !== 1}>
         {landing && !isTeacher ? (
           <>
             {stepHeading(1, t("elev.consult.step.bring"), "consult-bring-heading")}
-            <p id="consult-audience-label" className="t-sm font-bold" style={{ color: INK }}>{t("elev.carehonesty.consult.audience.label")}</p>
+            {!audienceFolded && <p id="consult-audience-label" className="t-sm font-bold" style={{ color: INK }}>{t("elev.carehonesty.consult.audience.label")}</p>}
           </>
         ) : stepHeading(1, t("elev.carehonesty.consult.audience.label"), "consult-audience-label")}
+        {audienceFolded ? (
+          <button
+            type="button"
+            data-testid="consult-audience-change"
+            onClick={openAudience}
+            className="self-start inline-flex items-center gap-1.5 min-h-[44px] t-sm font-bold"
+            style={{ color: "var(--arbor-clay)" }}
+          >
+            <Icon name="person" size={16} /> {t("elev.consult.audience.change")}
+          </button>
+        ) : (
         <div
           id="consult-audience-row"
           data-testid="consult-audience-row"
@@ -699,6 +846,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
             );
           })}
         </div>
+        )}
         {split && (
           <div data-testid="consult-split-intake" className="flex flex-col gap-1">
             <p className="text-[13px]" style={{ color: MUTED }}>{t("elev.words.consult.mayAsk")}</p>
@@ -714,24 +862,9 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           <div className="flex flex-col gap-1.5 mt-1">
             <p id="consult-bring-label" className="t-sm font-bold" style={{ color: INK }}>{t("elev.consult.bring.label")}</p>
             <div role="group" aria-labelledby="consult-bring-label" data-testid="consult-bring-row" className="flex flex-wrap items-center gap-1.5">
-              {bringChips.map((chip) => (
-                <button
-                  key={chip.id}
-                  type="button"
-                  data-testid="consult-bring-chip"
-                  data-bring={chip.id}
-                  aria-pressed={chip.on}
-                  onClick={() => toggleBring(chip.ids, chip.on)}
-                  className="inline-flex items-center gap-1.5 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
-                  style={chip.on
-                    ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
-                    : { background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
-                >
-                  <Icon name={chip.icon} size={14} fill={chip.on ? 1 : 0} />
-                  {chip.label}
-                </button>
-              ))}
+              {leadChips.map(bringChip)}
               {topicChip}
+              {restChips.map(bringChip)}
             </div>
           </div>
         )}
@@ -750,7 +883,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
             className="w-full sm:w-auto sm:self-start inline-flex items-center justify-center gap-2 t-sm font-extrabold rounded-xl px-5 min-h-[44px] mt-1 transition hover:brightness-105"
             style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
           >
-            {t("elev.carehonesty.consult.build")}
+            {stepped ? t("elev.consult.preview.cta") : t("elev.carehonesty.consult.build")}
           </button>
         )}
       </section>
@@ -784,10 +917,12 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
         /* W2-CAREPRO r2: at lg a two-pane fold — the builder column (steps 2,
            the packet, the contract) and a sticky step-3 column carrying the
            verbs, so the one gradient (Copy) is on screen at 1280x800. */
-        <div data-testid="consult-panes" className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 lg:items-start">
-        <div className="flex flex-col gap-5 min-w-0">
+        /* v3 F-CARE-1: in the landing's stepper the panes are two step
+           bodies, one shown at a time, so the fold does not apply there. */
+        <div data-testid="consult-panes" className={stepped ? "flex flex-col gap-5" : "flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 lg:items-start"}>
+        <div id="consult-step-2" className="flex flex-col gap-5 min-w-0" hidden={stepped && shownStep !== 2}>
       {/* Step 2 · What changed — purpose first; the same builder carries it into every clinician packet. */}
-      <section data-testid="consult-reason-section" className="border-t pt-5" style={{ borderColor: RULE }}>
+      <section data-testid="consult-reason-section" className={stepped ? undefined : "border-t pt-5"} style={{ borderColor: RULE }}>
         {stepHeading(2, landing ? t("elev.consult.step.preview") : t("elev.carehonesty.consult.step.changed"))}
         {/* The since counts head step 2 unless the visit card's head holds them. */}
         {!sinceInHead && sinceHead}
@@ -990,6 +1125,20 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           {packetContract}
           </>
       )}
+      {/* v3 F-CARE-1: the stepper's way on — open step 3 (the verbatim
+          preview, the reviewed gate, the verbs). Not a move: no stamp. */}
+      {stepped && !isEmpty && (
+        <button
+          type="button"
+          data-testid="consult-next"
+          onClick={() => goToStep(3, true)}
+          className="w-full sm:w-auto sm:self-start inline-flex items-center justify-center gap-2 t-sm font-extrabold rounded-xl px-5 min-h-[44px] transition hover:brightness-105"
+          style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
+        >
+          {t("elev.consult.next")}
+          <Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" />
+        </button>
+      )}
         </div>
           {!isEmpty && (
           /* Step 3 · What leaves — the review gate, then one set of verbs for
@@ -1002,8 +1151,10 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
              column-level scroll: only the preview scrolls inside itself, so
              the H2, the count, the 44 px reviewed toggle and Copy · PDF · Send
              always stay in view. */
-          <div id="consult-review-export" data-testid="consult-review-export" className="border-t pt-5 flex flex-col gap-4 lg:sticky lg:top-[var(--sticky-offset)] lg:max-h-[calc(100dvh-var(--shell-topbar-h)-var(--sticky-offset)-1rem)] lg:border-t-0 lg:pt-0 lg:rounded-[22px] lg:p-5" style={{ borderColor: RULE }}>
-            <h2 tabIndex={-1} className="flex items-center gap-2 t-lg font-extrabold focus:outline-none" style={{ fontFamily: "var(--font-display)", color: INK }}>
+          /* v3 F-CARE-1: in the landing's stepper, step 3 is the third body —
+             in flow, shown alone. */
+          <div id="consult-review-export" data-testid="consult-review-export" className={stepped ? "flex flex-col gap-4" : "border-t pt-5 flex flex-col gap-4 lg:sticky lg:top-[var(--sticky-offset)] lg:max-h-[calc(100dvh-var(--shell-topbar-h)-var(--sticky-offset)-1rem)] lg:border-t-0 lg:pt-0 lg:rounded-[22px] lg:p-5"} style={{ borderColor: RULE }} hidden={stepped && shownStep !== 3}>
+            <h2 tabIndex={-1} className={stepped ? "sr-only" : "flex items-center gap-2 t-lg font-extrabold focus:outline-none"} style={{ fontFamily: "var(--font-display)", color: INK }}>
               <span aria-hidden="true" className="inline-flex items-center justify-center w-7 h-7 rounded-full t-sm font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: INK }}>3</span>
               {landing ? t("elev.consult.step.share") : t("elev.carehonesty.consult.step.leaves")}
             </h2>
@@ -1113,10 +1264,22 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
                 {t("elev.learnCare.trusted.send")}
               </button>
             </div>
+            {/* v3 F-CARE-1: the whole record is its own document (#/reports),
+                one quiet link under the verbs; nothing leaves from here. */}
+            <button
+              type="button"
+              data-testid="consult-full-record"
+              onClick={() => setActiveTab("reports")}
+              className="self-start inline-flex items-center gap-1.5 min-h-[44px] t-sm font-bold"
+              style={{ color: "var(--arbor-clay)" }}
+            >
+              <Icon name="history" size={16} /> {t("elev.consult.fullRecord")}
+            </button>
           </div>
           )}
         </div>
       )}
+      </div>
     </motion.div>
   );
 }

@@ -424,7 +424,7 @@ export default function TrustedSharing() {
       {/* W2-CAREPRO r2: flush — the column's gap-6 is the only rhythm. */}
       <PageHeader
         flush
-        eyebrow={t("nav.care")}
+        eyebrow={t("companion.door.care")}
         title={t("sec.sharing.title")}
         subtitle={t("sec.sharing.sub", { name: first })}
       />

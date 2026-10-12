@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
+import { CareGlyph } from "./CareVisitHead";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -21,7 +22,14 @@ import type { ShareGrant } from "../../types";
    (b) Who sees what: the LIVE share grants only (lib/shareGrants isLiveGrant,
        the roster's own rule), up to three rows, then Manage. A revoked or
        expired grant never appears, and an unreadable roster says so instead
-       of claiming no one has access. */
+       of claiming no one has access.
+   v3 F-CARE-1 (mock :346-353, phone :736-737): the safety card opens on a
+   glyph, its title and when it was last reviewed, then the calls, then
+   Safety's own crisis words under the accent rule (from sm; Safety holds
+   them at every width), then "Open Safety". There is no "Message" action:
+   nothing behind it could carry a message, and the saved contact is a call.
+   Who sees what puts Manage in its head row and the grants as ruled rows.
+   From xl (1280) the aside is the landing's sticky end column. */
 
 const INK = "var(--arbor-ink)";
 const MUTED = "var(--arbor-muted)";
@@ -30,8 +38,8 @@ const SHOWN_GRANTS = 3;
 type Contact = { id: string; name: string; phone: string };
 type Roster = { state: "loading" } | { state: "failed" } | { state: "ready"; grants: ShareGrant[] };
 
-const cardCls = "min-w-0 rounded-[var(--r-lg)] border p-4 flex flex-col gap-3";
-const cardStyle: React.CSSProperties = { borderColor: "var(--arbor-rule)", background: "var(--arbor-paper-elevated)" };
+const cardCls = "min-w-0 rounded-[18px] p-4 sm:p-5 flex flex-col gap-3";
+const cardStyle: React.CSSProperties = { background: "var(--arbor-paper-elevated)", boxShadow: "0 0 0 1px var(--arbor-rule), var(--shadow-sm)" };
 const secondaryCls = "self-start inline-flex items-center justify-center gap-1.5 rounded-xl px-4 min-h-[44px] t-sm font-bold";
 const secondaryStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)", color: INK, border: "1px solid var(--arbor-rule)" };
 
@@ -42,10 +50,10 @@ function CallLine({ entry }: { entry: HelplineEntry }) {
       data-testid="care-aside-call"
       data-line={entry.id}
       href={`tel:${entry.tel}`}
-      className="flex items-start gap-3 rounded-xl px-3 py-2 min-h-[44px] text-start"
-      style={{ background: "var(--arbor-paper-deep)", color: INK }}
+      className="flex items-center gap-3 rounded-xl px-3 py-2 min-h-[44px] text-start"
+      style={{ background: "var(--arbor-paper-sunk)", color: INK, border: "1px solid var(--arbor-rule)" }}
     >
-      <Icon name="call" size={18} className="mt-0.5 flex-shrink-0" />
+      <Icon name="call" size={19} className="flex-shrink-0" style={{ color: "var(--arbor-clay)" }} />
       <span className="min-w-0 flex flex-col">
         <span className="t-sm font-extrabold whitespace-nowrap">{t("elev.carehonesty.safety.callPrimary", { number: entry.number })}</span>
         <span className="t-xs" style={{ color: MUTED }}>{t(`elev.safety.helpline.${entry.id}`)}</span>
@@ -62,9 +70,14 @@ export function WhoSeesWhat({ state, rows }: { state: "loading" | "failed" | "re
   const extra = rows.length - SHOWN_GRANTS;
   return (
     <section data-testid="care-aside-sharing" aria-labelledby="care-aside-sharing-title" aria-busy={state === "loading"} className={cardCls} style={cardStyle}>
-      <h2 id="care-aside-sharing-title" className="flex items-center gap-2 t-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
-        <Icon name="share" size={18} /> {t("elev.consult.aside.sharing")}
-      </h2>
+      <div className="flex items-center gap-2">
+        <h2 id="care-aside-sharing-title" className="flex-1 min-w-0 flex items-center gap-2 t-base font-extrabold" style={{ color: INK }}>
+          <Icon name="share" size={18} style={{ color: "var(--arbor-green-ink)" }} /> {t("elev.consult.aside.sharing")}
+        </h2>
+        <button type="button" data-testid="care-aside-manage" onClick={() => setActiveTab("sharing")} className="flex-shrink-0 inline-flex items-center min-h-[44px] px-2 -me-2 t-sm font-bold" style={{ color: "var(--arbor-clay)" }}>
+          {t("elev.consult.aside.manage")}
+        </button>
+      </div>
       {state === "loading" ? (
         <p className="t-sm" style={{ color: MUTED }}>{t("elev.consult.sharing.loading")}</p>
       ) : state === "failed" ? (
@@ -72,9 +85,9 @@ export function WhoSeesWhat({ state, rows }: { state: "loading" | "failed" | "re
       ) : rows.length === 0 ? (
         <p data-testid="care-aside-sharing-none" className="t-sm" style={{ color: INK }}>{t("elev.consult.sharing.none")}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col">
           {rows.slice(0, SHOWN_GRANTS).map((row) => (
-            <li key={row.id} data-testid="care-aside-grant" className="min-w-0 t-sm" style={{ color: INK }}>
+            <li key={row.id} data-testid="care-aside-grant" className="min-w-0 t-sm border-t py-2" style={{ color: INK, borderColor: "var(--arbor-rule)" }}>
               <p className="min-w-0 flex flex-wrap items-baseline gap-x-1.5">
                 <bdi dir="ltr" className="min-w-0 font-bold break-all">{row.who}</bdi>
                 <span style={{ color: MUTED }}>· {t(row.roleKey)}</span>
@@ -85,12 +98,9 @@ export function WhoSeesWhat({ state, rows }: { state: "loading" | "failed" | "re
               </p>
             </li>
           ))}
-          {extra > 0 && <li className="t-xs" style={{ color: MUTED }}>{t("elev.consult.sharing.more", { n: extra })}</li>}
+          {extra > 0 && <li className="t-xs border-t pt-2" style={{ color: MUTED, borderColor: "var(--arbor-rule)" }}>{t("elev.consult.sharing.more", { n: extra })}</li>}
         </ul>
       )}
-      <button type="button" data-testid="care-aside-manage" onClick={() => setActiveTab("sharing")} className={secondaryCls} style={secondaryStyle}>
-        {t("elev.consult.aside.manage")}
-      </button>
     </section>
   );
 }
@@ -127,12 +137,18 @@ export default function CareAside() {
     <aside
       data-module="consult-aside"
       aria-label={t("elev.consult.aside.label")}
-      className="min-w-0 grid gap-4 md:grid-cols-2 min-[1600px]:grid-cols-1 min-[1600px]:sticky min-[1600px]:top-[var(--sticky-offset)]"
+      className="min-w-0 grid gap-3.5 md:grid-cols-2 xl:grid-cols-1 xl:sticky xl:top-[var(--sticky-offset)]"
     >
       <section data-testid="care-aside-safety" aria-labelledby="care-aside-safety-title" className={cardCls} style={cardStyle}>
-        <h2 id="care-aside-safety-title" className="flex items-center gap-2 t-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
-          <Icon name="gpp_maybe" size={18} /> {t("elev.consult.aside.safety")}
-        </h2>
+        <div className="flex items-center gap-2.5">
+          <CareGlyph icon="gpp_maybe" tone="peach" />
+          <div className="min-w-0 flex-1">
+            <h2 id="care-aside-safety-title" className="t-base font-extrabold" style={{ color: INK }}>{t("elev.consult.aside.safety")}</h2>
+            <p data-testid="care-aside-reviewed" className="t-xs" style={{ color: MUTED }}>
+              {t("elev.safety.review.last")} <strong style={{ color: INK }}>{reviewed ? fmtDay(reviewed, uiLang) : t("elev.safety.review.notYet")}</strong>
+            </p>
+          </div>
+        </div>
         <div className="flex flex-col gap-2">
           {lines.emergency && <CallLine entry={lines.emergency} />}
           {lines.talk && <CallLine entry={lines.talk} />}
@@ -149,8 +165,15 @@ export default function CareAside() {
             </a>
           )}
         </div>
-        <p data-testid="care-aside-reviewed" className="t-xs" style={{ color: MUTED }}>
-          {t("elev.safety.review.last")} <strong style={{ color: INK }}>{reviewed ? fmtDay(reviewed, uiLang) : t("elev.safety.review.notYet")}</strong>
+        {/* v3 F-CARE-1: Safety's own words for the hardest moment, in the
+            readable upright body face words-to-use keep everywhere (never an
+            editorial quotation), under the accent rule. */}
+        <p
+          data-testid="care-aside-crisis"
+          className="hidden sm:block arbor-accent-rule t-base leading-relaxed"
+          style={{ color: INK, fontFamily: "var(--font-sans)", fontStyle: "normal" }}
+        >
+          {t("elev.safety.crisis.script")}
         </p>
         {/* ONE way into Safety. When the family's region has no talk line in
             the directory, it says what Safety's by-country list is for. */}

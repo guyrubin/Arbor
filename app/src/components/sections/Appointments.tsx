@@ -8,6 +8,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
+import VisitOutcome from "../care/VisitOutcome";
 import { fmtDay } from "../../lib/formatDate";
 import {
   APPOINTMENT_PROFESSIONS,
@@ -18,6 +19,7 @@ import {
   consultAudienceForProfession,
   isAppointmentProfession,
   isPrepareDue,
+  visitAwaitingOutcome,
   defaultIcsEgressDeps,
   dueReminders,
   followUpsFor,
@@ -106,6 +108,10 @@ export default function Appointments() {
     [apptsCol.items, nowMs]
   );
   const reminders = useMemo(() => dueReminders(apptsCol.items, nowMs), [apptsCol.items, nowMs]);
+  // v3 F-CARE-1: the visit whose outcome is asked at the top of this page
+  // (VisitOutcome, moved here from the Care landing). Its row does not ask a
+  // second time; older past visits keep their own follow-up capture.
+  const awaitingId = useMemo(() => visitAwaitingOutcome(apptsCol.items, followUpsCol.items, nowMs)?.id, [apptsCol.items, followUpsCol.items, nowMs]);
   const questions = useMemo(
     () => [...questionsCol.items].sort((a, b) => (a.id < b.id ? -1 : 1)),
     [questionsCol.items]
@@ -226,7 +232,7 @@ export default function Appointments() {
       appt={a}
       whenLabel={whenLabel(a)}
       followUps={followUpsFor(followUpsCol.items, a.id)}
-      followUpDue={isFollowUpDue(a, nowMs)}
+      followUpDue={isFollowUpDue(a, nowMs) && a.id !== awaitingId}
       onRemove={() => void apptsCol.remove(a.id)}
       onCalendar={() => void saveIcs(a)}
       onFollowUp={(note) => saveFollowUp(a, note)}
@@ -318,6 +324,10 @@ export default function Appointments() {
       )}
 
       <div data-module="appt-upcoming" style={{ display: "contents" }}>
+      {/* v3 F-CARE-1: what the last visit left behind — "What did they
+          suggest?" and the home program — on the visit's own page, behind the
+          Care landing's Appointments door. Receipts only after the write. */}
+      <VisitOutcome apptsCol={apptsCol} followUpsCol={followUpsCol} />
       {/* LC-12 — the in-app "Coming up" strip. It renders when the parent opens
           Arbor; it is not a scheduled alert, and the honesty line says so. */}
       {reminders.length > 0 && (

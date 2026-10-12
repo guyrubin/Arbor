@@ -227,7 +227,7 @@ export const en: Record<string, string> = {
   "elev.packet.section.sinceShared.self": "Since you last saved this for your records ({date})",
   "elev.packet.note.sinceLast": "What was added since this summary was last prepared for this audience — counts only.",
   // ── Builder G · item 8 — Reports (ten cards, the page chrome, the PDF shell)
-  "elev.reports.eyebrow": "Care Network",
+  "elev.reports.eyebrow": "Care, together", // v3 F-CARE-1: the door's one name (companion.door.care)
   "elev.reports.section": "Exportable reports",
   "elev.reports.lead.cta": "Save {name}'s record (PDF)",
   "elev.reports.record.title": "{name}'s record",
@@ -471,7 +471,7 @@ export const he: Record<string, string> = {
   "elev.packet.section.sinceShared.self": "מאז ששמרתם את זה בפעם האחרונה לרשומות שלכם ({date})",
   "elev.packet.note.sinceLast": "מה נוסף מאז שהסיכום הזה הוכן בפעם הקודמת לאותו נמען — ספירה בלבד.",
   // ── Builder G · item 8 — Reports (ten cards, the page chrome, the PDF shell)
-  "elev.reports.eyebrow": "רשת התמיכה",
+  "elev.reports.eyebrow": "טיפול, ביחד", // v3 F-CARE-1
   "elev.reports.section": "מסמכים לייצוא",
   "elev.reports.lead.cta": "שמירת התיעוד של {name} (PDF)",
   "elev.reports.record.title": "התיעוד של {name}",

@@ -10,6 +10,14 @@
  * a visit 3 days past opens the one "What did they suggest?" loop.
  * B-CAREPRO-NEW-2b: the parent's latest words since the anchor head step 2
  * (parent-only; "Start my note from this" seeds the reason).
+ *
+ * v3 F-CARE-1 re-pins: #/consult is the Care landing - its H1 is the door's
+ * sentence and the visit is named in the card head (CareVisitHead); a visit
+ * folds the audience row behind "Preparing for someone else?"; the past
+ * visit's open loop is ONE line that opens Appointments (the answer is
+ * written there); the three steps are a stepper over one body, so the lg
+ * two-pane fold (sticky step-3 column) is asserted on #/handoff, the stacked
+ * builder that keeps it.
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -25,6 +33,7 @@ const harness = vi.hoisted(() => ({
   appts: [] as unknown[],
   followUps: [] as unknown[],
   logs: null as unknown[] | null,
+  tab: "consult",
 }));
 
 vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchParams(harness.query) }));
@@ -33,7 +42,7 @@ vi.mock("../../context/ArborContext", () => ({
   useArborOptional: () => null,
   useArbor: () => ({
     childProfile: { id: "c1", name: "Dylan", age: 5, languages: ["English"], schoolContext: "Gan", challenges: [], strengths: ["curious"], interests: [] },
-    activeTab: "consult",
+    activeTab: harness.tab,
     behaviorLogs: harness.logs ?? [
       { id: "l1", behaviorType: "Moment", intensity: 1, timestamp: new Date(Date.now() - 2 * DAY).toISOString(), notes: "He said 'big truck go' all the way to gan." },
       { id: "l2", behaviorType: "Transition Refusal", intensity: 3, timestamp: new Date(Date.now() - 4 * DAY).toISOString() },
@@ -91,6 +100,7 @@ beforeEach(() => {
   harness.appts = [];
   harness.followUps = [];
   harness.logs = null;
+  harness.tab = "consult";
   installLocalStorage();
 });
 
@@ -111,6 +121,8 @@ describe("W2-CAREPRO r2 · the stamp is a real act", () => {
   });
 
   it("the step-3 target is addressable and focusable; at lg it is the sticky end column", () => {
+    // v3 F-CARE-1 re-pin: the stacked builder (#/handoff) keeps the lg fold
+    harness.tab = "handoff";
     const html = renderToStaticMarkup(<ConsultTab />);
     const panes = html.slice(html.indexOf('data-testid="consult-panes"'), html.indexOf('data-testid="consult-panes"') + 200);
     expect(panes).toContain("lg:grid-cols-[minmax(0,1fr)_22rem]");
@@ -119,6 +131,20 @@ describe("W2-CAREPRO r2 · the stamp is a real act", () => {
     expect(html).toMatch(/id="consult-review-export"[^>]*>\s*<h2 tabindex="-1"/);
     // the gradient Copy lives in that column
     expect(html.indexOf('data-testid="consult-copy"')).toBeGreaterThan(html.indexOf('id="consult-review-export"'));
+  });
+
+  it("v3 F-CARE-1: on the Care landing step 3 is the stepper's third body - addressable, focusable, shown only when opened", () => {
+    const html = renderToStaticMarkup(<ConsultTab />);
+    const panes = /<div[^>]*data-testid="consult-panes"[^>]*>/.exec(html)![0];
+    expect(panes).not.toContain("lg:grid");
+    const tag = /<div id="consult-review-export" data-testid="consult-review-export" class="([^"]*)"[^>]*>/.exec(html)!;
+    expect(tag[1]).not.toContain("lg:sticky");
+    expect(tag[0]).toMatch(/\shidden=""/);
+    expect(html).toMatch(/id="consult-review-export"[^>]*>\s*<h2 tabindex="-1" class="sr-only"/);
+    // Continue to share opens it; the verbs stay inside it, behind the reviewed gate
+    expect(html.indexOf('data-testid="consult-next"')).toBeGreaterThan(0);
+    expect(html.indexOf('data-testid="consult-next"')).toBeLessThan(html.indexOf('id="consult-review-export"'));
+    expect(html.indexOf('data-testid="consult-copy"')).toBeGreaterThan(html.indexOf('data-testid="consult-reviewed"'));
   });
 });
 
@@ -169,36 +195,52 @@ describe("B-CAREPRO-NEW-2a · Consult anchors on the next visit", () => {
   });
 
   for (const locale of ["en", "he"] as const) {
-    it(`${locale}: a visit 5 days ahead names the H1 and preselects the speech-therapist audience`, () => {
+    it(`${locale}: a visit 5 days ahead is named in the card head and preselects the speech-therapist audience`, () => {
       harness.locale = locale;
       harness.appts = [upcomingSlp];
       const html = renderToStaticMarkup(<ConsultTab />);
-      const h1 = decode(h1Of(html));
-      expect(h1).toContain(translate(locale, "elev.careNet.appt.profession.slp"));
-      expect(h1).not.toBe(translate(locale, "elev.consult.h1"));
-      expect(html).toMatch(/role="radio" aria-checked="true"[^>]*>(?:<[^>]+>)*[^<]*?(?:<\/[^>]+>)*/);
-      const checked = /aria-checked="true"[\s\S]*?<\/button>/.exec(html)![0];
-      expect(decode(checked)).toContain(translate(locale, "elev.carehonesty.consult.audience.slp"));
+      // v3 F-CARE-1 re-pin: the landing H1 is the door's sentence; the visit
+      // is named in the card head, and its audience folds the radio row
+      expect(decode(h1Of(html))).toBe(translate(locale, "elev.consult.title"));
+      const head = decode(html.slice(html.indexOf('data-testid="consult-visit-head"'), html.indexOf('data-testid="consult-stepper"')));
+      expect(head).toContain(translate(locale, "elev.careNet.appt.profession.slp"));
+      expect(html).toMatch(/data-testid="consult-audience-step" data-audience="slp"/);
+      expect(html).not.toContain('role="radio"');
+      const change = /<button[^>]*data-testid="consult-audience-change"[^>]*>([\s\S]*?)<\/button>/.exec(html)!;
+      expect(decode(change[1])).toContain(translate(locale, "elev.consult.audience.change"));
+      // the hint under step 1 still names the chosen professional
+      expect(decode(html)).toContain(translate(locale, "elev.carehonesty.consult.audience.hint.slp"));
       expect(html).not.toContain('data-testid="consult-visit-outcome"');
+      expect(html).not.toContain('data-testid="consult-visit-outcome-link"');
     });
 
     it(`${locale}: a visit 3 days past opens ONE 'What did they suggest?' line (no stamp of its own)`, () => {
       harness.locale = locale;
       harness.appts = [pastPed];
       const html = renderToStaticMarkup(<ConsultTab />);
-      expect((html.match(/data-testid="consult-visit-outcome"/g) ?? []).length).toBe(1);
-      const sec = html.slice(html.indexOf('data-testid="consult-visit-outcome"'), html.indexOf("</section>", html.indexOf('data-testid="consult-visit-outcome"')));
-      expect(decode(sec)).toContain(translate(locale, "elev.careNet.appt.profession.pediatrician"));
-      expect(sec).not.toContain("data-primary-move");
-      expect(sec).toContain("min-h-11");
-      expect(h1Of(html)).toBe(translate(locale, "elev.consult.h1"));
+      // v3 F-CARE-1 re-pin: the loop is ONE line in the card head that opens
+      // Appointments (where the answer is written), not a form on this page
+      expect(html).not.toContain('data-testid="consult-visit-outcome"');
+      expect((html.match(/data-testid="consult-visit-outcome-link"/g) ?? []).length).toBe(1);
+      const link = /<button[^>]*data-testid="consult-visit-outcome-link"[^>]*>([\s\S]*?)<\/button>/.exec(html)!;
+      expect(decode(link[1])).toContain(translate(locale, "elev.careNet.appt.profession.pediatrician"));
+      expect(link[0]).not.toContain("data-primary-move");
+      expect(link[0]).toContain("min-h-[44px]");
+      expect(link[1]).toMatch(/rtl:-scale-x-100"[^>]*>chevron_right</);
+      const [headAt, stepsAt] = [html.indexOf('data-testid="consult-visit-card-head"'), html.indexOf('data-testid="consult-stepper"')];
+      expect(html.indexOf('data-testid="consult-visit-outcome-link"')).toBeGreaterThan(headAt);
+      expect(html.indexOf('data-testid="consult-visit-outcome-link"')).toBeLessThan(stepsAt);
+      expect(h1Of(html)).toBe(translate(locale, "elev.consult.title"));
     });
   }
 
-  it("no appointment: the H1 stays 'Prepare for a visit' and no loop renders", () => {
+  it("no appointment: the H1 is the landing's own sentence and no loop renders", () => {
+    // v3 F-CARE-1 re-pin: the landing H1 no longer varies with the visit
     const html = renderToStaticMarkup(<ConsultTab />);
-    expect(h1Of(html)).toBe(translate("en", "elev.consult.h1"));
+    expect(h1Of(html)).toBe(translate("en", "elev.consult.title"));
+    expect(html).toContain('data-visit="none"');
     expect(html).not.toContain('data-testid="consult-visit-outcome"');
+    expect(html).not.toContain('data-testid="consult-visit-outcome-link"');
   });
 });
 
@@ -260,7 +302,11 @@ describe("W2-CAREPRO c2 r1 · a named anchor, the parent's words, step 3 reads f
       const toggle = html.slice(reviewed, html.indexOf("</button>", reviewed));
       expect(toggle).toContain('aria-pressed="false"');
       expect(toggle).toContain("w-11 h-11");
-      expect(html).toContain("lg:top-[var(--sticky-offset)]");
+      // v3 F-CARE-1 re-pin: the lg sticky step-3 column belongs to the stacked
+      // builder (#/handoff); the landing's stepper shows step 3 in flow
+      expect(html).not.toContain("lg:top-[var(--sticky-offset)]");
+      harness.tab = "handoff";
+      expect(renderToStaticMarkup(<ConsultTab />)).toContain("lg:top-[var(--sticky-offset)]");
     });
 
     it(`${locale}: the preview is clean plain text, one block per line in the reader's direction`, () => {
@@ -368,6 +414,8 @@ describe("W2-CAREPRO c2 r2 · one egress set per audience", () => {
   });
 
   it("design P1: the lg step-3 column is a fixed frame — no column-level scroll; only the preview scrolls", () => {
+    // v3 F-CARE-1 re-pin: asserted on the stacked builder (#/handoff), which keeps the lg column
+    harness.tab = "handoff";
     localStorage.setItem("arbor.consultExportAudience", "pediatrician");
     const html = renderToStaticMarkup(<ConsultTab />);
     const step3 = /<div id="consult-review-export" data-testid="consult-review-export" class="([^"]*)"/.exec(html)![1];
@@ -410,7 +458,10 @@ describe("Now's explicit visit handoff", () => {
     harness.appts = [{ ...upcomingSlp, id: "first", profession: "pediatrician", whenIso: new Date(Date.now() + DAY).toISOString() }, { ...upcomingSlp, id: "selected" }];
     harness.query = "appointment=selected";
     const html = renderToStaticMarkup(<ConsultTab />);
-    expect(h1Of(html).toLowerCase()).toContain("speech therapist");
+    // v3 F-CARE-1 re-pin: the landing names the visit in the card head, not the H1
+    const head = html.slice(html.indexOf('data-testid="consult-visit-head"'), html.indexOf('data-testid="consult-stepper"'));
+    expect(head.toLowerCase()).toContain("speech therapist");
+    expect(head).toContain('data-visit="booked"');
   });
   it("a removed or other-child target never falls back to a different family's nearest visit", () => {
     harness.appts = [upcomingSlp]; harness.query = "appointment=foreign";

@@ -1,18 +1,22 @@
 /**
  * v3 EXTRA-CARE — the visit-outcome receipt follows persistence.
  *
- * "What did they suggest?" on the Care landing writes the parent's answer as
- * the visit's follow-up. "Saved" shows only after that write is acknowledged;
- * an offline or unconfirmed write (useChildCollection rejects under
+ * "What did they suggest?" writes the parent's answer as the visit's
+ * follow-up. "Saved" shows only after that write is acknowledged; an offline
+ * or unconfirmed write (useChildCollection rejects under
  * requireAcknowledgement) shows an error, keeps the answer in the field, and a
  * retry writes the SAME record (same document id, the current words).
  * Signed in, Firestore applies a write to the device cache at once, so the
  * follow-up reaches the collection's items before the server confirms it; the
  * held record must not close the loop (the field, the answer and the retry
  * stay) and the error must say the answer is kept, not lost.
- * The same transpile harness as ConsultDraft.lifecycle.test.ts (ConsultContent
- * as a plain function). Also: #/school-brief and #/handoff render none of the
- * landing's modules.
+ *
+ * v3 F-CARE-1 (re-pinned): the answer and the home program moved from the Care
+ * landing to #/appointments (care/VisitOutcome), and "Saved" is the Receipt
+ * line there (B-STATUS-01), never a success toast. The same transpile harness
+ * as ConsultDraft.lifecycle.test.ts, on VisitOutcome as a plain function. The
+ * landing keeps ONE line that opens Appointments; #/school-brief and #/handoff
+ * render none of the landing's modules (ConsultContent, below).
  */
 import React from "react";
 import { readFileSync } from "node:fs";
@@ -21,9 +25,17 @@ import ts from "typescript";
 import { visitForConsult } from "../../lib/today/dayCard";
 import { appointmentStatus, consultAudienceForProfession, makeFollowUp, visitAwaitingOutcome } from "../../lib/careTrack";
 
-const source = ts.createSourceFile("ConsultTab.tsx", readFileSync("src/components/tabs/ConsultTab.tsx", "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-const declaration = source.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === "ConsultContent")!.getText(source);
-const code = ts.transpileModule(`${declaration}; return ConsultContent;`, { compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React } }).outputText;
+/** The named function declaration in a source file, as plain JS returning it. */
+function transpiled(file: string, name: string): { code: string; text: string } {
+  const sf = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const full = sf.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === name)!.getText(sf);
+  // `export default` is dropped: the declaration runs inside a Function body.
+  const declaration = full.slice(full.indexOf(`function ${name}`));
+  const code = ts.transpileModule(`${declaration}; return ${name};`, { compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React } }).outputText;
+  return { code, text: sf.getFullText().replace(/\r\n/g, "\n") };
+}
+const OUTCOME = transpiled("src/components/care/VisitOutcome.tsx", "VisitOutcome");
+const CONSULT = transpiled("src/components/tabs/ConsultTab.tsx", "ConsultContent");
 
 type Deferred = { promise: Promise<void>; resolve: () => void; reject: (e: unknown) => void };
 const deferred = (): Deferred => {
@@ -52,20 +64,23 @@ const followUpUpsert = vi.fn((...args: unknown[]) => {
   return d.promise;
 });
 const apptUpsert = vi.fn(async (..._args: unknown[]) => undefined);
+const programUpsert = vi.fn(async (..._args: unknown[]) => undefined);
 const toast = vi.fn();
 const AskSpecialist = () => null;
 const CareVisitHead = () => null;
 const CareAside = () => null;
 const CareDoors = () => null;
 const Icon = () => null;
+const Receipt = () => null;
+const HomeProgramEntry = () => null;
+const HomeProgramDays = () => null;
 const collection = (name: string) => ({
   items: name === "appointments" ? [past] : name === "apptFollowUps" ? followUps : [],
   loaded: true, error: false, confirmed: true, isCurrent: () => true, remote,
-  upsert: name === "apptFollowUps" ? followUpUpsert : name === "appointments" ? apptUpsert : vi.fn(async () => undefined),
+  upsert: name === "apptFollowUps" ? followUpUpsert : name === "appointments" ? apptUpsert : name === "programs" ? programUpsert : vi.fn(async () => undefined),
+  remove: vi.fn(async () => undefined),
 });
-const env = {
-  React, AskSpecialist, CareVisitHead, CareAside, CareDoors, Icon, HomeProgramDays: () => null, HomeProgramEntry: () => null,
-  visitForConsult, consultAudienceForProfession, appointmentStatus, makeFollowUp,
+const hooks = {
   useRef: (initial: unknown) => slots[cursor++] ??= { current: initial },
   useState: (initial: unknown) => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], (value: unknown) => { slots[i] = value; }]; },
   useMemo: (calculate: () => unknown) => calculate(),
@@ -74,11 +89,24 @@ const env = {
   useLanguage: () => ({ uiLang: "en", t: (key: string) => key }),
   useToast: () => ({ toast }),
   useChildCollection: (_child: string, name: string) => collection(name),
+};
+const outcomeEnv = {
+  React, Icon, Receipt, HomeProgramEntry, HomeProgramDays, ...hooks,
   // the real open-loop rule: a follow-up for the visit closes it
-  visitAwaitingOutcome, isIntakeProfession: () => false, consultHeading: () => "generic", activeHomeEnrolments: () => [], guidedTierOn: () => false,
+  visitAwaitingOutcome, appointmentStatus, makeFollowUp,
+  homeProfessionForAppointment: () => "slp", nextVisitDayFor: () => null,
+  activeHomeEnrolments: () => [], toggleExerciseDay: (e: unknown) => e,
+  db: null, doc: vi.fn(), writeBatch: vi.fn(),
+  appointmentRoleLabel: () => "Speech therapist", fmtDay: () => "date",
+};
+const VisitOutcome = new Function(...Object.keys(outcomeEnv), OUTCOME.code)(...Object.values(outcomeEnv));
+const consultEnv = {
+  React, AskSpecialist, CareVisitHead, CareAside, CareDoors, Icon, ...hooks,
+  visitForConsult, consultAudienceForProfession, visitAwaitingOutcome,
+  isIntakeProfession: () => false, consultHeading: () => "generic", guidedTierOn: () => false,
   appointmentRoleLabel: () => "Speech therapist", fmtDay: () => "date", lowerFor: (_lang: string, value: string) => value,
 };
-const component = new Function(...Object.keys(env), code)(...Object.values(env));
+const ConsultContent = new Function(...Object.keys(consultEnv), CONSULT.code)(...Object.values(consultEnv));
 
 type El = React.ReactElement<Record<string, any>>;
 function elements(node: React.ReactNode): El[] {
@@ -87,12 +115,23 @@ function elements(node: React.ReactNode): El[] {
   const element = node as El;
   return [element, ...React.Children.toArray(element.props.children).flatMap(elements)];
 }
-function render(): El[] { cursor = 0; return elements(component({ query: new URLSearchParams(""), isOwnerCurrent: () => true })); }
+function render(): El[] {
+  cursor = 0;
+  return elements(VisitOutcome({ apptsCol: collection("appointments"), followUpsCol: collection("apptFollowUps") }));
+}
+function renderConsult(): El[] { cursor = 0; return elements(ConsultContent({ query: new URLSearchParams(""), isOwnerCurrent: () => true })); }
 const byId = (all: El[], id: string) => all.find((el) => el.props["data-testid"] === id || el.props.id === id);
 const save = (all: El[]) => byId(all, "consult-visit-outcome-save")!;
 const input = (all: El[]) => byId(all, "consult-visit-outcome-input");
 const type = (value: string) => input(render())!.props.onChange({ target: { value } });
-const successToasts = () => toast.mock.calls.filter((c) => c[1] === "success");
+/** The Receipt line's words (its children), or null when none is drawn. */
+const receipt = (all: El[]) => {
+  const el = all.find((x) => x.type === Receipt);
+  if (!el) return null;
+  expect(el.props.testId).toBe("visit-outcome-saved");
+  return React.Children.toArray(el.props.children).join("");
+};
+const successToasts = () => toast.mock.calls.filter((c) => c[1] === "success" || c[1] === "info" || c[1] === undefined);
 const later = (fn: () => void) => {
   const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 5_000);
   try { fn(); } finally { clock.mockRestore(); }
@@ -101,7 +140,7 @@ const later = (fn: () => void) => {
 beforeEach(() => {
   cursor = 0; slots = []; tab = "consult"; writes.length = 0;
   remote = false; cacheApplies = false; followUps = [];
-  followUpUpsert.mockClear(); apptUpsert.mockClear(); toast.mockClear();
+  followUpUpsert.mockClear(); apptUpsert.mockClear(); programUpsert.mockClear(); toast.mockClear();
 });
 
 describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistence", () => {
@@ -115,18 +154,22 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
     expect(record.note).toBe("Read together every evening");
     expect(options).toEqual({ requireAcknowledgement: true });
     // pending: nothing claims success, the button cannot fire twice
-    const pending = save(render());
-    expect(pending.props.disabled).toBe(true);
-    expect(pending.props["aria-busy"]).toBe(true);
-    expect(input(render())!.props.readOnly).toBe(true);
-    pending.props.onClick();
+    const pending = render();
+    expect(save(pending).props.disabled).toBe(true);
+    expect(save(pending).props["aria-busy"]).toBe(true);
+    expect(input(pending)!.props.readOnly).toBe(true);
+    expect(receipt(pending)).toBeNull();
+    save(pending).props.onClick();
     await flush();
     expect(followUpUpsert).toHaveBeenCalledTimes(1);
     expect(toast).not.toHaveBeenCalled();
+    expect(receipt(render())).toBeNull();
     writes[0].resolve();
     await flush();
     expect(apptUpsert).toHaveBeenCalledWith(expect.objectContaining({ id: "past-visit", status: "done" }));
-    expect(successToasts()).toEqual([["elev.learnCare.appt.followUp.saved", "success"]]);
+    // B-STATUS-01: the answer is the Receipt line, never a toast
+    expect(receipt(render())).toBe("elev.learnCare.appt.followUp.saved");
+    expect(toast).not.toHaveBeenCalled();
     expect(input(render())!.props.value).toBe("");
   });
 
@@ -138,6 +181,7 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
     expect(successToasts()).toEqual([]);
     expect(toast).toHaveBeenCalledWith("elev.consult.visitOutcome.saveError", "error");
     const after = render();
+    expect(receipt(after)).toBeNull();
     expect(input(after)!.props.value).toBe("Practise naming colours at dinner");
     expect(save(after).props.disabled).toBe(false);
     expect(byId(after, "consult-visit-outcome-held")).toBeUndefined();
@@ -149,9 +193,11 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
     const first = followUpUpsert.mock.calls[0][0] as { id: string };
     const second = followUpUpsert.mock.calls[1][0] as { id: string };
     expect(second.id).toBe(first.id);
+    expect(receipt(render())).toBeNull();
     writes[1].resolve();
     await flush();
-    expect(successToasts()).toEqual([["elev.learnCare.appt.followUp.saved", "success"]]);
+    expect(receipt(render())).toBe("elev.learnCare.appt.followUp.saved");
+    expect(successToasts()).toEqual([]);
   });
 
   it("an edited answer after a failure replaces the held record: the same id, the new words (one follow-up, never two)", async () => {
@@ -190,18 +236,22 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
     expect(input(after)!.props.readOnly).toBe(false);
     expect(save(after).props.disabled).toBe(false);
     expect(byId(after, "consult-visit-outcome-held")).toBeDefined();
+    expect(receipt(after)).toBeNull();
     expect(apptUpsert).not.toHaveBeenCalled();
     // back online: the retry is the same document, and only its ack says Saved
     later(() => save(render()).props.onClick());
     expect(followUpUpsert).toHaveBeenCalledTimes(2);
     expect((followUpUpsert.mock.calls[1][0] as FollowUp).id).toBe((followUpUpsert.mock.calls[0][0] as FollowUp).id);
     expect(followUps).toHaveLength(1);
-    expect(successToasts()).toEqual([]);
+    expect(receipt(render())).toBeNull();
     writes[1].resolve();
     await flush();
-    expect(successToasts()).toEqual([["elev.learnCare.appt.followUp.saved", "success"]]);
-    // acknowledged: the record now closes the loop
-    expect(byId(render(), "consult-visit-outcome")).toBeUndefined();
+    // acknowledged: the record now closes the loop, and the Receipt says so
+    const done = render();
+    expect(receipt(done)).toBe("elev.learnCare.appt.followUp.saved");
+    expect(byId(done, "consult-visit-outcome")).toBeUndefined();
+    expect(byId(done, "visit-home-entry")).toBeDefined();
+    expect(successToasts()).toEqual([]);
   });
 
   it("signed in, the server refused the write: 'wasn't saved', never 'kept on this device'", async () => {
@@ -214,13 +264,34 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
     expect(toast).not.toHaveBeenCalledWith("elev.consult.visitOutcome.queued", "error");
     expect(byId(render(), "consult-visit-outcome-held")).toBeUndefined();
     expect(input(render())!.props.value).toBe("Swing at the park twice a week");
+    expect(receipt(render())).toBeNull();
   });
 
-  it("source pin: the receipt is awaited, acknowledged and the only success toast of the save", () => {
-    const text = source.getFullText().replace(/\r\n/g, "\n");
+  it("the home program: its Receipt follows the writes (the follow-up last), never before", async () => {
+    byId(render(), "consult-home-program-choice")!.props.onClick();
+    const entry = render().find((el) => el.type === HomeProgramEntry)!;
+    expect(entry).toBeDefined();
+    const confirm = entry.props.onConfirm({ ok: true, enrolment: { id: "home-1", home: { exercises: [{ text: "Blow bubbles" }] } }, superseded: [], goals: [] });
+    await flush();
+    expect(programUpsert).toHaveBeenCalledTimes(1);
+    expect(followUpUpsert).toHaveBeenCalledTimes(1);
+    expect((followUpUpsert.mock.calls[0][0] as FollowUp).note).toBe("Blow bubbles");
+    expect(receipt(render())).toBeNull();
+    writes[0].resolve();
+    await confirm;
+    expect(receipt(render())).toBe("elev.homeProgram.saved");
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("source pin: the receipt is awaited and acknowledged; the save holds no success toast", () => {
+    const text = OUTCOME.text;
     expect(text).toContain("await followUpsCol.upsert(record, { requireAcknowledgement: true });");
     const body = text.slice(text.indexOf("const saveOutcome = async () => {"), text.indexOf("const saveHomeProgram"));
-    expect(body.indexOf('toast(t("elev.learnCare.appt.followUp.saved"), "success")')).toBeGreaterThan(body.indexOf("await followUpsCol.upsert"));
+    expect(body.indexOf('setSaved("outcome");')).toBeGreaterThan(body.indexOf("await followUpsCol.upsert"));
+    expect(text).not.toMatch(/toast\([^)]*\)\s*,\s*"(?:success|info)"/);
+    expect(text).not.toContain('"success")');
+    // NEGATIVE CONTROL: the toast this re-pin retired is caught by the same check
+    expect('toast(t("elev.learnCare.appt.followUp.saved"), "success");').toContain('"success")');
   });
 });
 
@@ -228,17 +299,18 @@ describe("v3 EXTRA-CARE · only #/consult is the landing", () => {
   for (const route of ["school-brief", "handoff"]) {
     it(`#/${route} renders no visit card, head, aside or doors, and the builder is not in landing mode`, () => {
       tab = route;
-      const all = render();
+      const all = renderConsult();
       expect(all.some((el) => el.type === CareVisitHead || el.type === CareAside || el.type === CareDoors)).toBe(false);
       expect(all.some((el) => el.props["data-testid"] === "consult-kicker" || el.props["data-testid"] === "consult-sub" || el.props["data-testid"] === "consult-visit-card")).toBe(false);
       const builder = all.find((el) => el.type === AskSpecialist)!;
       expect(builder.props.landing).toBe(false);
       expect(builder.props.head).toBeUndefined();
+      expect(builder.props.headAfter).toBeUndefined();
     });
   }
 
   it("#/consult renders each of them once, the builder in landing mode inside the visit card", () => {
-    const all = render();
+    const all = renderConsult();
     expect(all.filter((el) => el.type === CareAside)).toHaveLength(1);
     expect(all.filter((el) => el.type === CareDoors)).toHaveLength(1);
     const card = byId(all, "consult-visit-card")!;
@@ -247,5 +319,18 @@ describe("v3 EXTRA-CARE · only #/consult is the landing", () => {
     expect(inCard.filter((el) => el.type === AskSpecialist)).toHaveLength(1);
     expect(inCard.find((el) => el.type === AskSpecialist)!.props.landing).toBe(true);
     expect(all.filter((el) => el.props["data-module"]).map((el) => el.props["data-module"])).toEqual(["consult-packet"]);
+  });
+
+  it("v3 F-CARE-1: #/consult asks the open loop in ONE line that opens Appointments; the answer is not written here", () => {
+    const all = renderConsult();
+    expect(byId(all, "consult-visit-outcome")).toBeUndefined();
+    expect(byId(all, "consult-visit-outcome-input")).toBeUndefined();
+    const link = all.find((el) => el.type === AskSpecialist)!.props.headAfter as El;
+    expect(link.props["data-testid"]).toBe("consult-visit-outcome-link");
+    expect(link.props["data-primary-move"]).toBeUndefined();
+    expect(link.props.className).toContain("min-h-[44px]");
+    // answered: no line at all
+    followUps = [{ id: "f1", apptId: "past-visit", note: "Read together", createdAt: new Date().toISOString() }];
+    expect(renderConsult().find((el) => el.type === AskSpecialist)!.props.headAfter).toBeUndefined();
   });
 });
