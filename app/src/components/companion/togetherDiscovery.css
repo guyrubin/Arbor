@@ -107,3 +107,36 @@
   .together-routine-grid { gap: 10px; }
   .together-routine-tile { padding: 12px; }
 }
+/* v3 F-TOG-3: Together at 390 (MOB-03, Routines kept). Below a 540px content
+   width the page reads as the phone mock: the pills are one row that scrolls
+   sideways under the thumb, bleeding to the screen edges inside the 16px
+   gutter (Hebrew starts at the reading edge, since the row follows dir); the
+   section heads drop their eyebrow and sit at the large step; games are rows
+   with an 88px picture flush at the start edge (78px at least, the picture
+   fills the row) beside the name and the skill; on All together the routines
+   are one sideways row of 124px tiles (the Routines pill keeps the full grid);
+   and the gate card keeps the lock, the PIN line and Start playing on one row
+   when the PIN is set. Counts and words only, tokens and logical sides only,
+   and nothing is clipped: every name wraps. */
+@container together (max-width: 540px) {
+  .companion-together .companion-filter-row { flex-wrap: nowrap; gap: 6px; margin-inline: -16px; padding-inline: 16px; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x proximity; scroll-padding-inline: 16px; scrollbar-width: none; }
+  .companion-together .companion-filter-row::-webkit-scrollbar { display: none; }
+  .companion-together .companion-filter { flex: none; white-space: nowrap; scroll-snap-align: start; }
+  .companion-together .companion-section-heading { align-items: center; gap: 12px; margin-block-end: 12px; }
+  .companion-together .companion-section-heading .companion-eyebrow { display: none; }
+  .companion-together .companion-section-heading h2 { margin-block-start: 0; font-size: var(--t-lg); line-height: 1.3; }
+  .companion-together .companion-world-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .companion-together .companion-world-card { position: relative; display: block; inline-size: 100%; min-block-size: 78px; padding-inline-start: 88px; }
+  .companion-together .companion-world-card > img { position: absolute; inset-block: 0; inset-inline-start: 0; inline-size: 88px; block-size: 100%; aspect-ratio: auto; object-fit: cover; }
+  .companion-together .companion-world-card > div { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-block-size: 78px; padding-block: 10px; padding-inline: 12px; }
+  .companion-together .companion-world-card h3 { font-size: var(--t-base); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+  .companion-together .companion-world-card p { margin-block-start: 0; font-size: var(--t-xs); line-height: 1.45; }
+  .companion-together .companion-world-card .companion-door-link { display: none; }
+  .companion-together .together-world-count-slot { min-block-size: 0; }
+  .companion-together .together-routines[data-mode="all"] .together-routine-grid { display: flex; gap: 8px; margin-inline: -16px; padding-block: 6px; padding-inline: 16px; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x proximity; scroll-padding-inline: 16px; scrollbar-width: none; }
+  .companion-together .together-routines[data-mode="all"] .together-routine-grid::-webkit-scrollbar { display: none; }
+  .companion-together .together-routines[data-mode="all"] .together-routine-grid > li { flex: none; inline-size: 124px; scroll-snap-align: start; }
+  .companion-together .together-gate { gap: 10px 12px; }
+  .companion-together .together-gate-note { flex: 1 1 150px; min-inline-size: 0; }
+  .companion-together .together-gate-actions { margin-inline-start: auto; gap: 4px 12px; }
+}

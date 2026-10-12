@@ -353,6 +353,8 @@ export const companionEn = {
   "companion.together-view.door-create-story": "Create a story",
   "companion.together-view.door-continue-favorite": "Continue a favorite",
   "companion.together-view.door-find-play": "Find something to play",
+  // v3 F-TOG-3 — Together at 390: the gate card's PIN ask.
+  "companion.together-view.set-a-pin": "Set a PIN",
 };
 
 export const companionHe = {
@@ -708,4 +710,6 @@ export const companionHe = {
   "companion.together-view.door-create-story": "ליצור סיפור",
   "companion.together-view.door-continue-favorite": "להמשיך מועדף",
   "companion.together-view.door-find-play": "למצוא משהו לשחק",
+  // v3 F-TOG-3 — Together at 390: the gate card's PIN ask.
+  "companion.together-view.set-a-pin": "להגדיר קוד",
 };

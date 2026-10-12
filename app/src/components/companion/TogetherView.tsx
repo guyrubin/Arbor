@@ -15,6 +15,7 @@ import { latestPlayedWorldId, opensInKidMode, studioCountKey, studioCountsSince,
 import Icon from "../ui/Icon";
 import { EmptyState } from "../ui/EmptyState";
 import { Modal } from "../ui/Modal";
+import { Sheet, useCompactSurface } from "../ui/Sheet";
 import { OFFSCREEN_IDEAS, STORY_DOORS, WORLD_ART, type TogetherCategory } from "./companionChoices";
 import { trackCompanionPlaceOpen, trackPracticeStudioOpen, trackPracticeTogetherDid } from "../../lib/kpiEvents";
 import { TOGETHER_ART } from "../../lib/parentArt";
@@ -47,6 +48,8 @@ export default function TogetherView() {
   const gamesOpen = kidAvailable && worlds.length > 0;
   const { category, setCategory, pageRef, rememberDoor } = useTogetherNavigation(childProfile.id, gamesOpen);
   const filterId = useId();
+  // v3 F-TOG-3: below lg a preview is a bottom sheet (grab handle, thumb-reach close); Modal stays the wide answer.
+  const PreviewSurface = useCompactSurface() ? Sheet : Modal;
   useEffect(() => { setPreview(null); setKeptState({ childId: childProfile.id, ids: [] }); }, [childProfile.id]);
   useEffect(() => { trackCompanionPlaceOpen("together"); }, [childProfile.id]);
 
@@ -201,13 +204,13 @@ export default function TogetherView() {
           <span className="together-gate-mark" aria-hidden="true"><Icon name="lock" size={21} fill={1} /></span>
           <p className="together-gate-note">{pinSet ? (t("companion.together-view.you-choose-when-to-enter-play-your-pin-pro")) : (t("companion.together-view.play-opens-in-the-child-area-set-a-pin-to"))}</p>
           <div className="together-gate-actions">
-            {!pinSet && <button type="button" className="companion-text-button" data-testid="together-gate-pin" onClick={() => requestOpenSettings({ focus: "pin" })}>{t("companion.together-view.parent-settings")}</button>}
+            {!pinSet && <button type="button" className="companion-text-button" data-testid="together-gate-pin" onClick={() => requestOpenSettings({ focus: "pin" })}>{t("companion.together-view.set-a-pin")}</button>}
             <button type="button" className="together-start" data-testid="together-start-playing" onClick={() => { trackPracticeStudioOpen("kidmode", "hero"); requestKidMode(); }}><Icon name="play_arrow" size={18} />{t("companion.together-view.start-playing")}</button>
           </div>
         </> : <p dir="auto" className="together-gate-note">{t(genderedKey("elev.ages.practice.fromThree", childProfile.gender), { name })}</p>}
       </div>
       {heroStep}
-      <Modal open={preview !== null} onClose={() => setPreview(null)} title={previewTitle}>
+      <PreviewSurface open={preview !== null} onClose={() => setPreview(null)} title={previewTitle}>
         {preview?.kind === "world" && <div className="companion-preview" dir={he ? "rtl" : "ltr"}>
           <img src={`/visuals/cards/web/game-${WORLD_ART[preview.world.id]}-480.webp`} srcSet={`/visuals/cards/web/game-${WORLD_ART[preview.world.id]}-480.webp 1x, /visuals/cards/web/game-${WORLD_ART[preview.world.id]}-1024.webp 2x`} width="480" height="320" alt="" decoding="async" />
           <p>{t(`practice.world.${preview.world.key}.skill`)}</p>
@@ -222,7 +225,7 @@ export default function TogetherView() {
           <button type="button" className="companion-text-button" disabled={saving || kept.includes(preview.id)} onClick={() => void keepOffline(preview.id)}><Icon name={kept.includes(preview.id) ? "check" : "bookmark_add"} size={18} />{kept.includes(preview.id) ? (t("companion.together-view.a-moment-from-your-time-together-is-saved")) : (t("companion.together-view.we-already-tried-it-keep-the-moment"))}</button>
         </div>}
         {saveError && <p role="alert" className="companion-caption">{t("companion.together-view.the-moment-wasn-t-saved-please-try-again")}</p>}
-      </Modal>
+      </PreviewSurface>
     </div>
   );
 }

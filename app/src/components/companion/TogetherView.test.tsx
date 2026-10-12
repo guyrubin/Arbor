@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   previewWorld: null as StudioWorld | null, lang: "en" as "en" | "he", loaded: true, failed: false, pin: null as string | null,
   saveMoment: vi.fn(async () => true), setActiveTab: vi.fn(), requestKidMode: vi.fn(), buttons: [] as Record<string, any>[],
   topic: null as null | { id: string; title: string }, openSheet: vi.fn(), openSettings: vi.fn(),
+  compact: false, surfaces: [] as { kind: "modal" | "sheet"; props: Record<string, any> }[],
 }));
 vi.mock("react", async (original) => {
   const real = await original<typeof import("react")>();
@@ -30,7 +31,9 @@ vi.mock("../kidmode/useKidModeEntry", () => ({ useKidModeEntry: () => ({ request
 vi.mock("../kidmode/parentGate", () => ({ readParentPin: () => state.pin }));
 vi.mock("../layout/settingsBus", async (original) => ({ ...(await original<typeof import("../layout/settingsBus")>()), requestOpenSettings: (...args: unknown[]) => state.openSettings(...args) }));
 vi.mock("../../lib/kpiEvents", () => ({ trackCompanionPlaceOpen: vi.fn(), trackPracticeStudioOpen: vi.fn(), trackPracticeTogetherDid: vi.fn() }));
-vi.mock("../ui/Modal", () => ({ Modal: () => null }));
+// v3 F-TOG-3: the preview picks `useCompactSurface() ? Sheet : Modal`; both record what they were handed.
+vi.mock("../ui/Modal", () => ({ Modal: (props: Record<string, any>) => { state.surfaces.push({ kind: "modal", props }); return null; } }));
+vi.mock("../ui/Sheet", () => ({ useCompactSurface: () => state.compact, Sheet: (props: Record<string, any>) => { state.surfaces.push({ kind: "sheet", props }); return null; } }));
 const capture = vi.hoisted(() => (type: unknown, props: unknown) => { if (type === "button") state.buttons.push(props as Record<string, any>); });
 vi.mock("react/jsx-runtime", async (original) => {
   const real = await original<typeof import("react/jsx-runtime")>();
@@ -44,12 +47,13 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
   return { ...real, jsxDEV: (...args: Parameters<typeof real.jsxDEV>) => { capture(args[0], args[1]); return real.jsxDEV(...args); } };
 });
 import TogetherView from "./TogetherView";
+import { companionEn, companionHe } from "../../lib/i18nCompanion";
 import { readTogetherView, writeTogetherView } from "./togetherNavigation";
 import { translate } from "../../lib/i18n";
 import { STUDIO_WORLDS } from "../practice/studioWorlds";
 beforeEach(() => {
   vi.clearAllMocks(); state.childProfile = { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] };
-  state.previewWorld = null; state.lang = "en"; state.loaded = true; state.failed = false; state.pin = null; state.buttons = []; state.topic = null;
+  state.previewWorld = null; state.lang = "en"; state.loaded = true; state.failed = false; state.pin = null; state.buttons = []; state.topic = null; state.compact = false; state.surfaces = [];
   const data = new Map<string, string>();
   vi.stubGlobal("sessionStorage", { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) });
 });
@@ -77,11 +81,12 @@ describe("Together's compact discovery", () => {
     for (const gone of ["together-suggestion", "together-handover", "together-play-history", "together-since", "<details", "companion-together-footer"]) expect(html).not.toContain(gone);
     expect(html).not.toContain(translate(lang, "companion.together-view.together-room-for-curiosity-and-connection"));
   });
-  it.each(["en", "he"] as const)("closes with one gate card: the PIN line, Parent settings and Start playing (%s)", (lang) => {
+  // v3 F-TOG-3 re-pin: the gate card's PIN ask reads "Set a PIN" (the mock's words), not "Parent settings"; it still opens Settings at the PIN.
+  it.each(["en", "he"] as const)("closes with one gate card: the PIN line, Set a PIN and Start playing (%s)", (lang) => {
     state.lang = lang; const card = gate(render());
     expect(card).toContain(">lock</span>"); expect(card).toContain(">play_arrow</span>");
     expect(card).toContain(esc(translate(lang, "companion.together-view.play-opens-in-the-child-area-set-a-pin-to")));
-    expect(card).toContain(`<button type="button" class="companion-text-button" data-testid="together-gate-pin">${esc(translate(lang, "companion.together-view.parent-settings"))}</button>`);
+    expect(card).toContain(`<button type="button" class="companion-text-button" data-testid="together-gate-pin">${esc(translate(lang, "companion.together-view.set-a-pin"))}</button>`);
     expect(card).toContain(`data-testid="together-start-playing"`); expect(card).toContain(esc(translate(lang, "companion.together-view.start-playing")));
     // The Kid Mode promises, the practice note and the PIN nudge now live in Settings › PIN.
     for (const key of ["elev.practice.door.gated", "elev.practice.door.private", "elev.practice.door.stars", "practice.studio.note", "elev.gate.set.title"]) expect(card).not.toContain(esc(translate(lang, key)));
@@ -176,5 +181,75 @@ describe("FEAT-05 — the question line on Together opens the question sheet", (
     expect(rules).not.toBe("");
     expect(rules).not.toMatch(/\b(?:left|right|margin-left|margin-right|padding-left|padding-right)\s*:/);
     expect(rules).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  });
+});
+
+describe("v3 F-TOG-3 — Together at 390", () => {
+  const css = readFileSync(new URL("./togetherDiscovery.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const item = css.slice(css.indexOf("v3 F-TOG-3: Together at 390"));
+  const phone = item.slice(item.indexOf("@container together (max-width: 540px) {"), item.indexOf("\n}"));
+  const world = () => STUDIO_WORLDS.find((w) => w.id === "word-world")!;
+
+  it.each(["en", "he"] as const)("below lg a game preview is a bottom sheet with the same title; the wide answer stays the Modal (%s)", (lang) => {
+    state.lang = lang; state.childProfile.age = 6; state.previewWorld = world();
+    writeTogetherView("child-a", { category: "games" });
+    state.compact = true; render();
+    expect(state.surfaces.map((s) => s.kind)).toEqual(["sheet"]);
+    expect(state.surfaces[0].props.open).toBe(true);
+    expect(state.surfaces[0].props.title).toBe(translate(lang, world().kidNameKey));
+    state.surfaces = []; state.compact = false; render();
+    expect(state.surfaces.map((s) => s.kind)).toEqual(["modal"]);
+    expect(state.surfaces[0].props.open).toBe(true);
+    expect(state.surfaces[0].props.title).toBe(translate(lang, world().kidNameKey));
+  });
+
+  it("a closed preview is a closed sheet, and the page still has one move and five modules", () => {
+    state.compact = true; const html = render();
+    expect(state.surfaces.map((s) => [s.kind, s.props.open])).toEqual([["sheet", false]]);
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1); expect(html.match(/data-module=/g)).toHaveLength(5);
+  });
+
+  it("the pills are one sideways row inside the 16px gutter; each keeps the shared 44px floor", () => {
+    expect(phone.length).toBeGreaterThan(400);
+    expect(phone).toMatch(/\.companion-together \.companion-filter-row \{ flex-wrap: nowrap;[^}]*margin-inline: -16px; padding-inline: 16px; overflow-x: auto;[^}]*scroll-snap-type: x proximity;/);
+    expect(phone).toMatch(/\.companion-together \.companion-filter \{ flex: none; white-space: nowrap; scroll-snap-align: start; \}/);
+    const experience = readFileSync(new URL("./companionExperience.css", import.meta.url), "utf8");
+    expect(experience).toMatch(/\.companion-filter \{[^}]*min-block-size: 44px/);
+  });
+
+  it("games are rows with an 88px picture at the start edge, at least 78px tall; stories stay one column", () => {
+    expect(phone).toMatch(/\.companion-together \.companion-world-grid \{ grid-template-columns: minmax\(0, 1fr\); gap: 8px; \}/);
+    expect(phone).toMatch(/\.companion-together \.companion-world-card \{[^}]*min-block-size: 78px; padding-inline-start: 88px; \}/);
+    expect(phone).toMatch(/\.companion-together \.companion-world-card > img \{ position: absolute; inset-block: 0; inset-inline-start: 0; inline-size: 88px; block-size: 100%;/);
+    expect(css).toMatch(/@container together[\s\S]*\.companion-story-grid \{ grid-template-columns: minmax\(0, 1fr\)/);
+    expect(phone).not.toContain("companion-story-grid");
+  });
+
+  it("on All together the routines are one sideways row of 124px tiles; the Routines pill keeps the grid", () => {
+    expect(phone).toMatch(/\.companion-together \.together-routines\[data-mode="all"\] \.together-routine-grid \{ display: flex;[^}]*overflow-x: auto;/);
+    expect(phone).toMatch(/\.companion-together \.together-routines\[data-mode="all"\] \.together-routine-grid > li \{ flex: none; inline-size: 124px; scroll-snap-align: start; \}/);
+    expect(css).toMatch(/\.together-routine-grid \{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(124px, 1fr\)\)/);
+    // Counts and words only: no bar, no share of anything about the child.
+    expect(item).not.toMatch(/progress|meter/);
+  });
+
+  it("the gate card holds the lock, the PIN line and Start playing on one row when the PIN is set", () => {
+    expect(phone).toMatch(/\.companion-together \.together-gate-note \{ flex: 1 1 150px; min-inline-size: 0; \}/);
+    expect(phone).toMatch(/\.companion-together \.together-gate-actions \{ margin-inline-start: auto;/);
+  });
+
+  it("logical sides and tokens only; nothing lowers the 44px floor or clips a name", () => {
+    expect(item).not.toMatch(/\b(?:margin|padding|border|inset)-(?:left|right)\b|(?:^|[\s;{])(?:left|right)\s*:|text-align:\s*(?:left|right)/);
+    expect(item).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    expect(item).not.toMatch(/line-clamp|text-overflow|overflow:\s*hidden|font-family/);
+    expect(item).not.toMatch(/min-block-size: (?:[0-3]?\d|4[0-3])px/);
+  });
+
+  it.each(["en", "he"] as const)("the PIN ask reads in both languages, Hebrew without Latin (%s)", (lang) => {
+    const en = (companionEn as Record<string, string>)["companion.together-view.set-a-pin"], he = (companionHe as Record<string, string>)["companion.together-view.set-a-pin"];
+    expect(en).toBe("Set a PIN"); expect(he).toBeTruthy(); expect(he).not.toMatch(/[A-Za-z]/); expect(he).toMatch(/[֐-׿]/);
+    state.lang = lang; render();
+    const pin = button("together-gate-pin")!;
+    expect(React.Children.toArray(pin.children)).toEqual([translate(lang, "companion.together-view.set-a-pin")]);
   });
 });

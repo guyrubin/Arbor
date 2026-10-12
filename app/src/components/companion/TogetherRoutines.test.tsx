@@ -20,6 +20,7 @@ const state = vi.hoisted(() => ({
   actionPlans: [] as ActionPlan[],
   startRoutinePlan: vi.fn(),
   saveMoment: vi.fn(async () => true), setActiveTab: vi.fn(), requestKidMode: vi.fn(), track: vi.fn(),
+  compact: false,
 }));
 vi.mock("react", async (original) => {
   const actual = await original<typeof import("react")>();
@@ -64,6 +65,9 @@ vi.mock("../kidmode/parentGate", () => ({ readParentPin: () => null }));
 vi.mock("../../lib/kpiEvents", () => ({ trackCompanionPlaceOpen: vi.fn(), trackPracticeStudioOpen: vi.fn(), trackPracticeTogetherDid: vi.fn() }));
 vi.mock("../../lib/analytics", async (original) => ({ ...(await original<typeof import("../../lib/analytics")>()), track: state.track }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null }));
+// v3 F-TOG-3: RoutineRunSheet (and the preview) pick `useCompactSurface() ? Sheet : Modal`. The
+// hook-slot harness calls RoutineRunSheet as a plain function, so the seam is a plain value here.
+vi.mock("../ui/Sheet", () => ({ Sheet: () => null, useCompactSurface: () => state.compact }));
 
 import TogetherView from "./TogetherView";
 import TogetherRoutines from "./TogetherRoutines";
@@ -71,8 +75,10 @@ import RoutineRunSheet from "./RoutineRunSheet";
 import RoutineRunBoard from "../plans/RoutineRunBoard";
 import { writeTogetherView } from "./togetherNavigation";
 import { PendingLine, Receipt } from "../ui/Receipt";
+import { Modal } from "../ui/Modal";
+import { Sheet } from "../ui/Sheet";
 import { translate } from "../../lib/i18n";
-import { routineById } from "../../lib/routines";
+import { localized, routineById } from "../../lib/routines";
 import { routineDayKey, routineToPlan, toggleRoutineStep } from "../../lib/routineTemplates";
 
 type El = React.ReactElement<Record<string, any>>;
@@ -87,6 +93,7 @@ beforeEach(() => {
   state.childProfile = { id: "child-a", name: "Noa", age: 5, interests: [], activeGoals: [] };
   state.lang = "en"; state.loaded = true; state.failed = false; state.actionPlans = [];
   state.startRoutinePlan = vi.fn();
+  state.compact = false;
   const data = new Map<string, string>();
   vi.stubGlobal("sessionStorage", { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) });
 });
@@ -314,6 +321,22 @@ for (const lang of ["en", "he"] as const) describe(`FEAT-07 · starting a routin
     expect(sheet().props.plan?.id).toBe(plan.id);
     tree = inside(sheet().props);
     expect(find(tree, "together-routine-started")!.type).toBe(Receipt);
+  });
+
+  it("v3 F-TOG-3: below lg the routine opens as a bottom sheet with its name; the wide answer stays the Modal", () => {
+    tile("bedtime").props.onClick();
+    const props = sheet().props as Parameters<typeof RoutineRunSheet>[0];
+    state.compact = true;
+    const compact = RoutineRunSheet(props);
+    expect(compact.type).toBe(Sheet);
+    expect(compact.props.open).toBe(true);
+    expect(compact.props.title).toBe(localized(routineById("bedtime").title, lang));
+    expect(compact.props.onClose).toBe(props.onClose);
+    expect(find(inside(props), "together-routine-start")).toBeDefined();
+    state.compact = false;
+    const wide = RoutineRunSheet(props);
+    expect(wide.type).toBe(Modal);
+    expect(wide.props.title).toBe(localized(routineById("bedtime").title, lang));
   });
 
   it("a write that throws before it starts is a failure, not a receipt", async () => {
