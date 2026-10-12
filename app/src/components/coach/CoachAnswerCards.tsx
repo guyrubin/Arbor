@@ -785,7 +785,7 @@ export default function CoachAnswerCards({
           <TrustLink surface="coach-answer" />
           {!door && chips}
         </div>
-        {!reviewUnavailable && onManageMemory && (contract.memoryProposals?.length ?? 0) > 0 && (
+        {onManageMemory && !reviewUnavailable && (contract.memoryProposals?.length ?? 0) > 0 && (
           <button type="button" className="coach-report__review" onClick={onManageMemory}>{t("coach.memory.reviewChip")}</button>
         )}
         {!door && memoryRow}
