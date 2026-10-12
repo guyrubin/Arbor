@@ -3,11 +3,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-/* v3 EXTRA-WEEKLY — #/weekly with a week that holds records. The glance (the
-   week as counts) renders for the current week only, under the letter and its
-   Retell row, or in the empty card's place when nothing is stored yet; with
-   nothing to count the empty card stays. The route keeps ONE data-primary-move
-   and at most three top-level modules in every state. Invented examples. */
+/* v3 F-NOW-3 — re-pin of v3 EXTRA-WEEKLY's #/weekly glance: the Weekly report
+   IS the dashboard now, as the v3 mock draws it. The current week leads with
+   it whenever the week holds a record or a report (the letter left the route),
+   always four tiles and every area; with nothing to count and nothing stored,
+   the honest empty card. The carry band follows in every state. Top-level
+   modules: weekly-glance (or weekly-empty), then weekly-carry; the invite is
+   demoted into the page's one disclosure. The header steps through the stored
+   weeks (Previous / Next, no chip strip) and holds the summary door from md
+   up; on phones the door closes the page. Invented examples only. */
 
 const state = vi.hoisted(() => ({ lang: "en" as "en" | "he" }));
 vi.mock("../../context/LanguageContext", async () => {
@@ -20,11 +24,11 @@ vi.mock("../../context/LanguageContext", async () => {
   };
 });
 vi.mock("../../lib/analytics", () => ({ track: () => undefined }));
-vi.mock("../ui/ShareButton", () => ({ default: () => null, ShareButton: () => null }));
 const tab = vi.hoisted(() => ({
   reports: [] as unknown[],
   observations: [] as unknown[],
   actionLoop: [] as unknown[],
+  appointments: [] as unknown[],
 }));
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({
@@ -37,6 +41,7 @@ vi.mock("../../context/ArborContext", () => ({
   }),
 }));
 vi.mock("../../hooks/useObservations", () => ({ useObservations: () => tab.observations }));
+vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ items: tab.appointments }) }));
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: null }) }));
 vi.mock("../../hooks/useWeeklyRecap", async () => {
   const actual = await vi.importActual<typeof import("../../hooks/useWeeklyRecap")>("../../hooks/useWeeklyRecap");
@@ -44,21 +49,16 @@ vi.mock("../../hooks/useWeeklyRecap", async () => {
     ...actual,
     useWeeklyRecap: () => ({
       reports: tab.reports, generating: false, generate: async () => undefined,
-      currentId: actual.recapWeekId(new Date()), currentLabel: "This week", labelFor: () => "Week of October 10",
+      currentId: actual.recapWeekId(new Date()), currentLabel: "This week", labelFor: () => "Week of 3 October",
       languageRefreshPending: false, recapUnopened: false, markRecapOpened: () => undefined,
     }),
   };
 });
-vi.mock("../weekly/recapEmail", () => ({
-  fetchDigestEmailStatus: () => new Promise(() => undefined),
-  readEmailOptIn: () => false,
-  writeEmailOptIn: () => undefined,
-}));
 vi.mock("../referral/InviteCard", () => ({ default: () => null }));
-vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => null }));
 vi.mock("../overview/QuickLogModal", () => ({ default: () => null }));
 
 import { recapWeekId, recapWeekStartMs } from "../../hooks/useWeeklyRecap";
+import { DOMAIN_IDS } from "../../lib/domains/registry";
 import { translate } from "../../lib/i18n";
 import type { Observation } from "../../lib/observations";
 import WeeklyTab from "./WeeklyTab";
@@ -68,15 +68,15 @@ const FIRST = new Date(recapWeekStartMs(NOW));
 const on = (day: number, hour: number) => new Date(FIRST.getFullYear(), FIRST.getMonth(), FIRST.getDate() + day, hour).toISOString();
 const moment = (at: string, n: number) => ({
   id: `behaviorLogs:invented-${n}`, childId: "child-invented", at, domains: ["feelings"], kind: "moment",
-  value: { type: "moment", behaviorType: "Moment" }, source: "parent_typed", origin: "behaviorLogs",
+  value: { type: "moment", behaviorType: "Moment", context: "Home" }, source: "parent_typed", origin: "behaviorLogs",
   ageAtObservationMonths: 52, pretermCorrected: false,
 }) as unknown as Observation;
 const RECORDS = [moment(on(0, 9), 1), moment(on(1, 18), 2), moment(on(3, 8), 3)];
-const STEPS = [{ id: "step-invented", outcome: "helped", outcomeAt: on(1, 20) }];
+const STEPS = [{ id: "step-invented", status: "completed", recommendation: "Name the feeling first", outcome: "helped", outcomeAt: on(1, 20) }];
 
 const TRY = { en: "Name the next transition out loud, once, before it starts.", he: "אמרו בקול את המעבר הבא, פעם אחת, לפני שהוא מתחיל." } as const;
-const stored = (lang: "en" | "he", digest: "ai" | "failed") => ({
-  id: recapWeekId(NOW), lang, weekStart: "2026-10-14", generatedAt: on(4, 6),
+const stored = (lang: "en" | "he", digest: "ai" | "failed", id = recapWeekId(NOW)) => ({
+  id, lang, weekStart: id === recapWeekId(NOW) ? "2026-10-10" : "2026-10-03", generatedAt: on(4, 6),
   summary: { count: 3, resolved: 1, topTrigger: "Transitions" }, milestoneWins: [], planProgress: { done: 0, total: 0 },
   insight: "insight",
   ...(digest === "ai" ? {
@@ -87,87 +87,132 @@ const stored = (lang: "en" | "he", digest: "ai" | "failed") => ({
     },
   } : {}),
 });
+const OLDER_ID = recapWeekId(new Date(2026, 9, 5, 12));
 
-const render = (lang: "en" | "he", reports: unknown[], records: unknown[] = RECORDS, steps: unknown[] = STEPS) => {
+const render = (lang: "en" | "he", reports: unknown[], records: unknown[] = RECORDS, steps: unknown[] = STEPS, appointments: unknown[] = []) => {
   state.lang = lang;
   tab.reports = reports;
   tab.observations = records;
   tab.actionLoop = steps;
+  tab.appointments = appointments;
   return renderToStaticMarkup(<WeeklyTab />);
 };
 const stamps = (html: string) => html.match(/data-primary-move="accept-recap-recommendation"/g) ?? [];
 /** Top-level modules = stamped modules that are not demoted (surfaceContract moduleBudget). */
 const topModules = (html: string) =>
   [...html.matchAll(/<[a-z]+ [^>]*data-module="([a-z-]+)"[^>]*>/g)].filter((m) => !m[0].includes("data-module-demoted")).map((m) => m[1]);
+const tagOf = (html: string, testId: string) => [...html.matchAll(new RegExp(`<[a-z]+ [^>]*data-testid="${testId}"[^>]*>`, "g"))].map((m) => m[0]);
+const read = (html: string) => html
+  .replace(/<span class="msr[^"]*"[^>]*>[a-z0-9_]+<\/span>/g, " ")
+  .replace(/<[^>]+>/g, " ").replace(/&[#\w]+;/g, " ").replace(/\s+/g, " ");
 
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW); });
 afterEach(() => { vi.useRealTimers(); });
 
-describe("#/weekly — the week's glance (v3 EXTRA-WEEKLY)", () => {
+describe("#/weekly — the report is the dashboard (v3 F-NOW-3)", () => {
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: records, nothing stored → the glance in the empty card's place, "Create this week's story" stays the one move above it`, () => {
+    it(`${lang}: records, nothing stored → four tiles and every area, then the band; one stamp`, () => {
       const html = render(lang, []);
-      expect(html).toContain('data-module="weekly-glance"');
-      expect(html).not.toContain('data-module="weekly-empty"');
+      expect(topModules(html)).toEqual(["weekly-glance", "weekly-carry"]);
+      expect([...html.matchAll(/data-tile="([a-z]+)"/g)].map((m) => m[1])).toEqual(["moments", "helped", "milestones", "kid"]);
+      expect(html.match(/data-area="/g)).toHaveLength(DOMAIN_IDS.length);
+      expect(html).toMatch(/data-tile="moments"><span class="wk-glance-tile-head">[\s\S]*?<\/span><b>3<\/b>/);
       expect(stamps(html)).toHaveLength(1);
-      expect(/<button[^>]*data-primary-move="accept-recap-recommendation"[^>]*>/.exec(html)?.[0]).toContain('data-testid="weekly-generate"');
-      expect(html.indexOf('data-testid="weekly-generate"')).toBeLessThan(html.indexOf('data-module="weekly-glance"'));
-      expect(topModules(html)).toEqual(["weekly-glance"]);
-      expect(html).toContain(`<b>3</b><span>${translate(lang, "elev.wk.glance.moments")}</span>`);
+      // The Milestones tile is the door to the milestones page.
+      expect(html).toContain('data-testid="weekly-tile-milestones"');
     });
 
-    it(`${lang}: nothing to count, nothing stored → the empty card, no glance`, () => {
+    it(`${lang}: nothing to count, nothing stored → the empty card, then the band`, () => {
       const html = render(lang, [], [], []);
-      expect(html).toContain('data-module="weekly-empty"');
+      expect(topModules(html)).toEqual(["weekly-empty", "weekly-carry"]);
       expect(html).not.toContain('data-module="weekly-glance"');
       expect(stamps(html)).toHaveLength(1);
     });
 
-    it(`${lang}: the AI letter → the glance under the letter and its Retell row; one stamp; three modules at most`, () => {
+    it(`${lang}: a stored AI digest → the same dashboard, the suggestion in the band; the letter is gone`, () => {
       const html = render(lang, [stored(lang, "ai")]);
-      expect(html).toContain('data-module="weekly-recap"');
-      expect(html.indexOf('data-module="weekly-recap"')).toBeLessThan(html.indexOf('data-testid="weekly-after-story"'));
-      expect(html.indexOf('data-testid="weekly-after-story"')).toBeLessThan(html.indexOf('data-module="weekly-glance"'));
+      expect(topModules(html)).toEqual(["weekly-glance", "weekly-carry"]);
+      expect(html).not.toMatch(/weekly-recap|recap-next|recap-accept|weekly-insight|weekly-after-story/);
+      expect(html).toContain(TRY[lang]);
       expect(stamps(html)).toHaveLength(1);
-      expect(topModules(html)).toEqual(["weekly-recap", "weekly-glance"]);
     });
 
-    it(`${lang}: the digest call failed → Retell carries the stamp and sits above the glance`, () => {
+    it(`${lang}: the digest call failed → the same dashboard; no insight card`, () => {
       const html = render(lang, [stored(lang, "failed")]);
-      expect(html).toContain('data-module="weekly-insight"');
+      expect(topModules(html)).toEqual(["weekly-glance", "weekly-carry"]);
+      expect(html).not.toContain("weekly-insight");
       expect(stamps(html)).toHaveLength(1);
-      expect(html.indexOf('data-testid="weekly-generate"')).toBeLessThan(html.indexOf('data-module="weekly-glance"'));
-      expect(topModules(html)).toEqual(["weekly-insight", "weekly-glance"]);
-      expect(topModules(html).length).toBeLessThanOrEqual(3);
     });
 
-    it(`${lang}: the header line says what the page holds, from md up (at 375 the letter keeps its place and the glance opens with it), and only beside the glance`, () => {
+    it(`${lang}: a stored week with nothing in it still renders the dashboard, every tile "—"`, () => {
+      const html = render(lang, [stored(lang, "ai")], [], []);
+      expect(topModules(html)).toEqual(["weekly-glance", "weekly-carry"]);
+      expect([...html.matchAll(/data-tile="[a-z]+"[^>]*>[\s\S]*?<b>([^<]*)<\/b>/g)].map((m) => m[1])).toEqual(["—", "—", "—", "—"]);
+    });
+
+    it(`${lang}: the counts line shows at every width; no avatar, no chip strip`, () => {
       const html = render(lang, []);
-      const line = /<p data-testid="weekly-glance-sub"[^>]*>([^<]*)<\/p>/.exec(html);
-      expect(line?.[0]).toContain('class="hidden md:block');
-      expect(line?.[1]).toBe(translate(lang, "elev.wk.glance.sub"));
-      // Phones: the same line opens the glance (weekGlance.css hides it from 768 px).
-      expect(html).toContain(`<p class="wk-glance-sub" data-testid="weekly-glance-sub-phone">${translate(lang, "elev.wk.glance.sub")}</p>`);
-      // Nothing counted: no counts on the page, so no "Counts, not scores." either.
+      const line = /<p data-testid="weekly-glance-sub"([^>]*)>([^<]*)<\/p>/.exec(html);
+      expect(line?.[1]).not.toMatch(/\bhidden\b/);
+      expect(line?.[2]).toBe(translate(lang, "elev.wk.glance.sub"));
       const empty = render(lang, [], [], []);
-      expect(empty).not.toContain("weekly-glance-sub");
+      expect(empty).toContain('data-testid="weekly-glance-sub"');
+      expect(html).not.toMatch(/rounded-full whitespace-nowrap|hero-avatar/);
     });
 
-    it(`${lang}: no share, no ratio, no trend sign on the page`, () => {
-      const html = render(lang, [stored(lang, "ai")]);
-      const glance = html.slice(html.indexOf('data-module="weekly-glance"'));
-      const read = glance.replace(/<span class="msr"[^>]*>[a-z0-9_]+<\/span>/g, " ").replace(/<[^>]+>/g, " ").replace(/&[#\w]+;/g, " ");
-      expect(read).not.toMatch(/%|\d\s*\/\s*\d|\+\s*\d/);
+    it(`${lang}: Previous week steps to the stored week before; the current week has no Next`, () => {
+      const html = render(lang, [stored(lang, "ai"), stored(lang, "ai", OLDER_ID)]);
+      const prev = tagOf(html, "weekly-prev");
+      expect(prev).toHaveLength(1);
+      expect(prev[0]).toContain(`aria-label="${translate(lang, "elev.wk.prev.aria", { week: "Week of 3 October" })}"`);
+      expect(prev[0]).toContain("min-height:44px");
+      expect(html).toContain(translate(lang, "elev.wk.prev"));
+      expect(html).not.toContain('data-testid="weekly-next"');
+      // Nothing older stored → no Previous.
+      expect(render(lang, [stored(lang, "ai")])).not.toContain('data-testid="weekly-prev"');
+    });
+
+    it(`${lang}: the summary door — header seat from md, end seat on phones; it names the next visit's professional when one is booked`, () => {
+      const html = render(lang, []);
+      const doors = tagOf(html, "weekly-snapshot-door");
+      expect(doors).toHaveLength(2);
+      expect(doors[0]).toContain('data-placement="header"');
+      expect(doors[0]).toMatch(/class="hidden md:inline-flex /);
+      expect(doors[1]).toContain('data-placement="end"');
+      expect(doors[1]).toMatch(/class="inline-flex md:hidden /);
+      for (const door of doors) {
+        expect(door).toContain("min-height:44px");
+        expect(door).not.toContain("gradient");
+        expect(door).not.toContain("data-primary-move");
+      }
+      expect(html.split(translate(lang, "wk.brief")).length - 1).toBe(2);
+      const visit = { id: "appt-invented", who: "Invented clinic", role: "", profession: "slp", when: "", mode: "in-person", whenIso: new Date(2026, 9, 17, 10).toISOString(), status: "confirmed" };
+      const booked = render(lang, [], RECORDS, STEPS, [visit]);
+      const label = translate(lang, "elev.wk.summary.role", { role: translate(lang, "elev.careNet.appt.profession.slp") });
+      expect(booked.split(label).length - 1).toBe(2);
+      expect(booked).not.toContain(translate(lang, "wk.brief"));
+      // The door sits in the header above the dashboard, and after the band on phones.
+      expect(html.indexOf('data-placement="header"')).toBeLessThan(html.indexOf('data-module="weekly-glance"'));
+      expect(html.indexOf('data-placement="end"')).toBeGreaterThan(html.indexOf('data-module="weekly-carry"'));
+    });
+
+    it(`${lang}: no share, no ratio, no gain sign anywhere on the page`, () => {
+      for (const html of [render(lang, [stored(lang, "ai")]), render(lang, []), render(lang, [], [], [])]) {
+        expect(read(html)).not.toMatch(/%|\d\s*\/\s*\d|\+\s*\d/);
+        expect(html).not.toMatch(/role="progressbar"|aria-valuenow/);
+      }
     });
   }
 
-  it("source: the glance is placed by WeeklyTab, stamped by WeekGlance — the tab's own stamps are unchanged", () => {
+  it("source: the dashboard is placed by WeeklyTab, stamped by WeekGlance — the tab stamps only the empty card, the band and the demoted invite", () => {
     const src = readFileSync(new URL("./WeeklyTab.tsx", import.meta.url), "utf8");
-    expect(src.match(/<WeekGlance glance=\{glance\} \/>/g)).toHaveLength(2);
+    expect(src.match(/<WeekGlance\b/g)).toHaveLength(1);
     expect(src).not.toContain('data-module="weekly-glance"');
-    expect(src).toContain("const glanceShown = (selectedId ?? currentId) === currentId && glanceHasCounts(glance);");
-    const letterAfter = src.indexOf("{afterStory}", src.indexOf("<RecapStoryCards"));
-    expect(letterAfter).toBeGreaterThan(0);
-    expect(src.lastIndexOf("<WeekGlance glance={glance} />")).toBeGreaterThan(letterAfter);
+    expect([...src.matchAll(/data-module="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["weekly-empty", "weekly-carry", "weekly-invite"]);
+    expect(src).toContain("const dashboardShown = !!week && (glanceHasCounts(week.glance) || !!selected);");
+    // A past week renders over its own bounds (reportWeekBounds), its strip with no today.
+    expect(src).toContain("reportWeekBounds(viewId, weekAnchorDate(selected), { weekId: recapWeekId, weekStartMs: recapWeekStartMs })");
+    expect(src).toContain("glance: isCurrent ? counts : { ...counts, today: 7 },");
+    expect(src).toMatch(/onClick=\{\(\) => setSelectedId\(id\)\}/);
   });
 });

@@ -49,14 +49,13 @@ export function whatWorkedText(lines: readonly WorkedLine[], opts: { locale: "en
 }
 
 /**
- * "What worked with {name} this week" — the parent's own held sentences, each
- * with its day, and the same text-only "Send these words to…". Parent
- * register: the words in the editorial serif (the largest text), 12 px day
- * line, no count, no colour per line. Renders nothing when the week holds none.
+ * The held sentences, each with its day, and the text-only "Send these
+ * words". v3 F-NOW-3: the Weekly report's What helped card carries this as
+ * its one action; WhatWorkedCard below wraps it with its own title. Renders
+ * nothing when the week holds none.
  */
-export default function WhatWorkedCard({ lines, childName, parentName, locale, t }: {
+export function WhatWorkedSend({ lines, parentName, locale, t }: {
   lines: readonly WorkedLine[];
-  childName: string;
   parentName: string;
   locale: "en" | "he";
   t: T;
@@ -65,16 +64,7 @@ export default function WhatWorkedCard({ lines, childName, parentName, locale, t
   if (lines.length === 0) return null;
   const day = (iso: string) => new Date(iso).toLocaleDateString(locale === "he" ? "he-IL" : "en-GB", { weekday: "long" });
   return (
-    <section
-      data-testid="weekly-what-worked"
-      lang={locale}
-      dir={locale === "he" ? "rtl" : "ltr"}
-      className="rounded-[20px] p-5 text-start sm:p-6"
-      style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
-    >
-      <h2 dir="auto" className="text-[17px] font-semibold" style={{ color: "var(--arbor-ink)" }}>
-        <bdi>{t("wk.worked.title", { name: childName })}</bdi>
-      </h2>
+    <div data-testid="weekly-what-worked-words" lang={locale} dir={locale === "he" ? "rtl" : "ltr"} className="text-start">
       <ul className="mt-3 space-y-3">
         {lines.map((l) => (
           <li key={l.card.id} data-testid="weekly-what-worked-line">
@@ -95,6 +85,36 @@ export default function WhatWorkedCard({ lines, childName, parentName, locale, t
         <Icon name="ios_share" size={16} /> {t("hm.send.cta")}
       </button>
       {copied && <p role="status" className="mt-1 text-[13px]" style={{ color: "var(--arbor-muted)" }}>{t("hm.send.copied")}</p>}
+    </div>
+  );
+}
+
+/**
+ * "What worked with {name} this week" — the parent's own held sentences, each
+ * with its day, and the same text-only "Send these words to…". Parent
+ * register: the words in the editorial serif (the largest text), 12 px day
+ * line, no count, no colour per line. Renders nothing when the week holds none.
+ */
+export default function WhatWorkedCard({ lines, childName, parentName, locale, t }: {
+  lines: readonly WorkedLine[];
+  childName: string;
+  parentName: string;
+  locale: "en" | "he";
+  t: T;
+}) {
+  if (lines.length === 0) return null;
+  return (
+    <section
+      data-testid="weekly-what-worked"
+      lang={locale}
+      dir={locale === "he" ? "rtl" : "ltr"}
+      className="rounded-[20px] p-5 text-start sm:p-6"
+      style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
+    >
+      <h2 dir="auto" className="text-[17px] font-semibold" style={{ color: "var(--arbor-ink)" }}>
+        <bdi>{t("wk.worked.title", { name: childName })}</bdi>
+      </h2>
+      <WhatWorkedSend lines={lines} parentName={parentName} locale={locale} t={t} />
     </section>
   );
 }

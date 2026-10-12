@@ -36,8 +36,8 @@ import { todayLiveSource } from "../../testTodaySource";
  *   3. source structure: story cards are button+keyboard navigated (no
  *      gesture lib), reduced-motion aware, share on the final card only,
  *      instrumented; the strip carries the recap entry + counter lines;
- *      WeeklyTab renders the cards as the current week's primary view and
- *      ships the fail-closed email opt-in,
+ *      WeeklyTab renders the Weekly report (v3 F-NOW-3: the dashboard and
+ *      the carry band; the email opt-in left the route, its store is kept),
  *   4. the lib/streak resettable-value BAN: no recap/strip file may touch
  *      the `.current` member at all — totalDays is the only renderable
  *      continuity number (masterplan 2.3).
@@ -377,12 +377,19 @@ describe("What-changed integration — recap entry line + continuity counter", (
   });
 });
 
-describe("WeeklyTab integration — recap as the current week's primary view + email opt-in", () => {
+/* v3 F-NOW-3 re-pin: the letter (RecapStoryCards) and the email row left
+   #/weekly. The tab renders the Weekly report as the v3 mock draws it (the
+   WeekGlance dashboard, then the carry band with the digest's one
+   suggestion); the email opt-in is offered from the Now page (F-NOW-2), and
+   its store and fail-closed status probe are kept in recapEmail.ts. */
+describe("WeeklyTab integration — the Weekly report for the selected week; the email opt-in left the route", () => {
   const code = stripComments(read("components/tabs/WeeklyTab.tsx"));
 
-  it("renders RecapStoryCards for the current week's digest", () => {
-    expect(code).toContain("<RecapStoryCards");
-    expect(code).toMatch(/selected\.id === currentId/);
+  it("renders the report (WeekGlance) and the carry band for the selected week", () => {
+    expect(code.match(/<WeekGlance\b/g) ?? []).toHaveLength(1);
+    expect(code).toContain('data-module="weekly-carry"');
+    expect(code).toContain("const isCurrent = viewId === currentId;");
+    expect(code).not.toContain("<RecapStoryCards");
   });
 
   it("generation state lives in the hoisted hook, not the tab", () => {
@@ -391,12 +398,14 @@ describe("WeeklyTab integration — recap as the current week's primary view + e
     expect(code).not.toContain("api.digest(");
   });
 
-  it("email opt-in is real, the channel is fail-closed (honest coming-soon copy)", () => {
-    expect(code).toContain("readEmailOptIn");
-    expect(code).toContain("writeEmailOptIn");
-    expect(code).toContain("fetchDigestEmailStatus");
-    expect(code).toContain('rc("elev.recap.email.soon")');
-    expect(code).toContain('track("recap_email_optin"');
+  it("the email opt-in left the report; its store and fail-closed channel probe are kept", () => {
+    expect(code).not.toMatch(/readEmailOptIn|writeEmailOptIn|fetchDigestEmailStatus|recap_email_optin|elev\.recap\.email/);
+    const store = stripComments(read("components/weekly/recapEmail.ts"));
+    expect(store).toContain("export function readEmailOptIn(");
+    expect(store).toContain("export function writeEmailOptIn(");
+    expect(store).toContain("export async function fetchDigestEmailStatus(");
+    expect(rcEn["elev.recap.email.soon"]).toBeTruthy();
+    expect(rcHe["elev.recap.email.soon"]).toBeTruthy();
   });
 
   it("F-06: the tab lands on the CURRENT week, never a stale reports[0]", () => {
@@ -406,7 +415,7 @@ describe("WeeklyTab integration — recap as the current week's primary view + e
     expect(code).not.toMatch(/\|\|\s*reports\[0\]/);
   });
 
-  it("F-06: chips come from weeklyChipIds (current week leads) + honest empty state", () => {
+  it("F-06: Previous / Next step through weeklyChipIds (current week leads) + honest empty state", () => {
     expect(code).toContain("weeklyChipIds(");
     expect(code).toContain("isEmptyCurrentWeek(");
     // ENG-07 retired `wk.emptyThisWeek` (it promised a report that "will build
@@ -414,9 +423,10 @@ describe("WeeklyTab integration — recap as the current week's primary view + e
     expect(code).toContain('t("elev.wk.emptyThisWeek")');
   });
 
-  it("F-06: the raw week id (a storage key) never renders in the header subtitle", () => {
+  it("F-06: the raw week id (a storage key) never renders in the header", () => {
     expect(code).not.toContain("${labelFor(selected)} · ${selected.id}");
     expect(code).not.toContain("${currentLabel} · ${currentId}");
+    expect(code).not.toMatch(/\{(?:selected\.id|currentId|viewId)\}/);
   });
 });
 
