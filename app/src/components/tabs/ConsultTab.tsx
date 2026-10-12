@@ -107,7 +107,18 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
     isCurrent: () => isOwnerCurrent() && !targetBlocked && apptsCol.isCurrent()
       && !!currentVisit && !!visitForConsult([currentVisit], Date.now(), appointmentId),
   } : undefined, [appointmentId, targetBlocked, currentVisit, apptsCol.isCurrent, isOwnerCurrent]);
-  const awaiting = useMemo(() => visitAwaitingOutcome(apptsCol.items, followUpsCol.items, nowMs), [apptsCol.items, followUpsCol.items, nowMs]);
+  // v3 EXTRA-CARE: the visit-outcome answer the parent is saving, or whose
+  // save is not confirmed yet. Signed in, Firestore applies the write to this
+  // device's cache at once, so the follow-up reaches followUpsCol.items before
+  // the server confirms it, and visitAwaitingOutcome would close the loop and
+  // unmount the answer. Held, that record does not count until the write is
+  // acknowledged: the field, the answer and the same-id retry stay.
+  const [heldOutcome, setHeldOutcome] = useState<{ record: AppointmentFollowUp; state: "saving" | "queued" | "failed" } | null>(null);
+  const heldId = heldOutcome?.record.id;
+  const awaiting = useMemo(
+    () => visitAwaitingOutcome(apptsCol.items, heldId ? followUpsCol.items.filter((f) => f.id !== heldId) : followUpsCol.items, nowMs),
+    [apptsCol.items, followUpsCol.items, nowMs, heldId],
+  );
   const anchorAudience = visit?.profession ? consultAudienceForProfession(visit.profession) : undefined;
   // B-CAREPRO-36 (closure): #/school-brief renders THIS page with the teacher
   // preselected (the School Brief editor inline under step 1). Applied once
@@ -123,43 +134,46 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
   const intake = isIntakeProfession(intakeRaw) ? intakeRaw : undefined;
   const [outcome, setOutcome] = useState("");
   // v3 EXTRA-CARE: the visit-outcome receipt follows persistence. While the
-  // write is pending the save is disabled; a retry after a failed or
-  // unconfirmed write reuses the same record (same document id).
-  const [savingOutcome, setSavingOutcome] = useState(false);
-  const pendingOutcome = useRef<AppointmentFollowUp | null>(null);
+  // write is pending the save is disabled.
+  const savingOutcome = heldOutcome?.state === "saving";
   // NEXTLEVEL critic r1 (P1): the H1 names the audience the parent CHOSE.
   // "Prepare for the speech therapist on 14 Oct" stayed on screen after
   // Pediatrician was picked, so the two loudest lines named two people.
   const [chosen, setChosen] = useState<ExportAudience | undefined>(presetAudience);
   const heading = consultHeading({ visitAudience: anchorAudience, hasVisit: !!visit, chosen });
 
-  // v3 EXTRA-CARE: "Saved" only after the follow-up write is acknowledged
-  // (offline or unconfirmed rejects: the answer stays in the field and an
-  // error says so). The follow-up alone closes the visit's loop
-  // (visitAwaitingOutcome); marking the booking done is bookkeeping after it.
+  // v3 EXTRA-CARE: "Saved" only after the follow-up write is acknowledged.
+  // Offline or unanswered, the answer stays in the field and the toast says
+  // what is true: signed in, the write already waits in this device's queue
+  // and finishes on reconnect ("not confirmed yet"); a write the server
+  // refused, or a device write that failed, was not kept ("wasn't saved").
+  // A retry for the same visit reuses the held record's id with the current
+  // words, so a queued first write and the retry are ONE follow-up. The
+  // follow-up alone closes the visit's loop (visitAwaitingOutcome); marking
+  // the booking done is bookkeeping after it.
   const saveOutcome = async () => {
     if (!awaiting || savingOutcome) return;
     const note = outcome.trim();
-    const pending = pendingOutcome.current;
-    const record = pending && pending.apptId === awaiting.id && pending.note === note ? pending : makeFollowUp(awaiting.id, outcome, Date.now());
+    const held = heldOutcome?.record;
+    const record = held && held.apptId === awaiting.id && note ? { ...held, note } : makeFollowUp(awaiting.id, note, Date.now());
     if (!record) return;
-    pendingOutcome.current = record;
+    setHeldOutcome({ record, state: "saving" });
     const childId = childProfile.id;
-    setSavingOutcome(true);
     try {
       await followUpsCol.upsert(record, { requireAcknowledgement: true });
-    } catch {
+    } catch (err) {
       if (currentChild.current !== childId) return;
-      setSavingOutcome(false);
-      toast(t("elev.consult.visitOutcome.saveError"), "error");
+      const refused = typeof err === "object" && err !== null && "code" in err;
+      const queued = followUpsCol.remote && !refused;
+      setHeldOutcome({ record, state: queued ? "queued" : "failed" });
+      toast(t(queued ? "elev.consult.visitOutcome.queued" : "elev.consult.visitOutcome.saveError"), "error");
       return;
     }
     if (appointmentStatus(awaiting) !== "done") {
       try { await apptsCol.upsert({ ...awaiting, status: "done" }); } catch { /* the follow-up already closed the loop */ }
     }
-    pendingOutcome.current = null;
     if (currentChild.current !== childId) return;
-    setSavingOutcome(false);
+    setHeldOutcome(null);
     setOutcome("");
     toast(t("elev.learnCare.appt.followUp.saved"), "success");
   };
@@ -208,12 +222,42 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
      stay on #/consult, so this page holds one job and the route's one stamp. */
   const summary = activeTab === "handoff";
   /* v3 EXTRA-CARE: #/consult is the Care landing. Three modules: the next
-     visit with its three prep steps (the builder, holding the route's one
-     move), the aside (Help and safety, Who sees what) and the doors with the
-     trust line. #/handoff and #/school-brief keep the builder alone. At
-     1600 px and up the aside is an end column; below, one column in DOM
-     order (visit, aside, doors). */
+     visit card with its three prep steps (the builder, holding the route's
+     one move), the aside (Help and safety, Who sees what) and the doors with
+     the trust line. #/handoff and #/school-brief keep the builder alone.
+     At 1600 px and up the aside is an end column (1fr | 20rem); below, one
+     column in DOM order (visit, aside as a two-card row from md, doors).
+     Not the brief's 7fr | 5fr from 1024: the builder already folds into its
+     own two panes at lg (1fr | 22rem, the sticky step-3 column, pinned by
+     consultVisitAnchor.test), and a third column under 1600 px would leave
+     step 2 a sliver. Safety stays one tap away in every width (the Care
+     pills and the More sheet). */
   const landing = activeTab === "consult";
+  const homeEntry = !summary && !awaiting && (
+    <section className="mb-5 rounded-[var(--r-lg)] border p-4" style={{ borderColor: "var(--arbor-rule)" }}>
+      {!homeOpen ? <button type="button" className="min-h-11 rounded-full px-4 text-sm font-semibold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }} onClick={() => setHomeOpen(true)}>{t("elev.pilot.i.have.recommendations.for.home")}</button>
+        : <HomeProgramEntry key={childProfile.id} childId={childProfile.id} profession={null} nextVisit={null} rows={programsCol.items} existingGoals={familyGoalsCol.items} onConfirm={saveHomeProgram} onCancel={() => setHomeOpen(false)} />}
+    </section>
+  );
+  const homeDays = !summary && activeHome.map((e) => (
+    <HomeProgramDays key={e.id} enrolment={e} onSave={(exerciseId) => void programsCol.upsert(toggleExerciseDay(e, exerciseId))} />
+  ));
+  /* v3 FEAT-09: on #/handoff the builder never opens in the teacher branch
+     (a teacher stored on this device or a teacher visit would put the School
+     Brief editor under the summary H1); School brief is its own pill. */
+  const builder = (
+    <AskSpecialist
+      key={`${summary ? "summary:" : ""}${appointmentId ?? `${presetAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`}`}
+      primaryMoveStamp={primaryMoveStamp}
+      anchorAudience={presetAudience}
+      intake={intake}
+      onAudienceChange={setChosen}
+      egressGuard={egressGuard}
+      excludeTeacher={summary}
+      landing={landing}
+      head={landing && visit ? <CareVisitHead visit={visit} /> : undefined}
+    />
+  );
 
   // Initially unconfirmed targets mount no editor. Once opened, retain its
   // unsaved state hidden/inert while blocked. Egress is independently guarded
@@ -261,14 +305,8 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
       </header>
       <div data-testid="consult-landing" className={landing ? "flex flex-col gap-6 min-[1600px]:grid min-[1600px]:grid-cols-[minmax(0,1fr)_20rem] min-[1600px]:gap-8 min-[1600px]:items-start" : undefined}>
       <div data-module="consult-packet" className="min-w-0">
-        {landing && visit && <CareVisitHead visit={visit} />}
-        {!summary && !awaiting && <section className="mb-5 rounded-[var(--r-lg)] border p-4" style={{ borderColor: "var(--arbor-rule)" }}>
-          {!homeOpen ? <button type="button" className="min-h-11 rounded-full px-4 text-sm font-semibold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }} onClick={() => setHomeOpen(true)}>{t("elev.pilot.i.have.recommendations.for.home")}</button>
-            : <HomeProgramEntry key={childProfile.id} childId={childProfile.id} profession={null} nextVisit={null} rows={programsCol.items} existingGoals={familyGoalsCol.items} onConfirm={saveHomeProgram} onCancel={() => setHomeOpen(false)} />}
-        </section>}
-        {!summary && activeHome.map((e) => (
-          <HomeProgramDays key={e.id} enrolment={e} onSave={(exerciseId) => void programsCol.upsert(toggleExerciseDay(e, exerciseId))} />
-        ))}
+        {!landing && homeEntry}
+        {!landing && homeDays}
         {!summary && awaiting && (
           <section data-testid="consult-visit-outcome" className="mb-5 border-y py-4 flex flex-col gap-2" style={{ borderColor: "var(--arbor-rule)" }}>
             <label htmlFor="consult-visit-outcome-input" className="t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>
@@ -297,6 +335,11 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
                 <Icon name="check" size={16} /> {savingOutcome ? t("elev.consult.visitOutcome.saving") : t("elev.learnCare.appt.followUp.save")}
               </button>
             </div>
+            {/* v3 EXTRA-CARE: after the toast fades, the field still says why
+                the answer is here: kept on this device, not confirmed yet. */}
+            {heldOutcome?.state === "queued" && (
+              <p data-testid="consult-visit-outcome-held" className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.consult.visitOutcome.held")}</p>
+            )}
             {/* B-PROG-09: the second answer — the professional gave a home program */}
             {!homeOpen ? (
               <button
@@ -322,11 +365,21 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
             )}
           </section>
         )}
-        {/* v3 FEAT-09: on #/handoff the builder never opens in the teacher
-            branch (a teacher stored on this device or a teacher visit would
-            put the School Brief editor under the summary H1); School brief is
-            its own pill. */}
-        <AskSpecialist key={`${summary ? "summary:" : ""}${appointmentId ?? `${presetAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`}`} primaryMoveStamp={primaryMoveStamp} anchorAudience={presetAudience} intake={intake} onAudienceChange={setChosen} egressGuard={egressGuard} excludeTeacher={summary} landing={landing} />
+        {/* v3 EXTRA-CARE: on the Care landing the builder IS the visit card —
+            one surface holding the visit's head (who, when, in how many days,
+            the since counts) directly followed by steps 1-3. The open loop
+            above is the last visit's; the home program follows the card. */}
+        {landing ? (
+          <section
+            data-testid="consult-visit-card"
+            className="mb-5 rounded-[22px] border p-4 sm:p-6"
+            style={{ borderColor: "var(--arbor-rule)", background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}
+          >
+            {builder}
+          </section>
+        ) : builder}
+        {landing && homeEntry}
+        {landing && homeDays}
       </div>
       {landing && <CareAside />}
       {landing && <CareDoors />}

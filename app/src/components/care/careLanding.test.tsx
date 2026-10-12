@@ -112,8 +112,25 @@ const LANDING_KEYS = [
   "elev.consult.sharing.none", "elev.consult.sharing.unavailable", "elev.consult.sharing.loading",
   "elev.consult.doors.label", "elev.consult.door.schoolBrief", "elev.consult.door.appointments",
   "elev.consult.door.summary", "elev.consult.trust", "elev.consult.visitOutcome.saveError",
-  "elev.consult.visitOutcome.saving",
+  "elev.consult.visitOutcome.saving", "elev.consult.visitOutcome.queued", "elev.consult.visitOutcome.held",
 ];
+
+/** The index of the tag that closes the element opening at `start`. */
+function closeOf(html: string, start: number, tag: string): number {
+  const re = new RegExp(`<${tag}\\b|</${tag}>`, "g");
+  re.lastIndex = start;
+  let depth = 0;
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    depth += m[0].startsWith("</") ? -1 : 1;
+    if (depth === 0) return m.index;
+  }
+  return -1;
+}
+/** [open, close) of the element carrying data-testid={id}. */
+function spanOf(html: string, id: string, tag: string): [number, number] {
+  const at = html.lastIndexOf(`<${tag}`, html.indexOf(`data-testid="${id}"`));
+  return [at, closeOf(html, at, tag)];
+}
 
 beforeEach(() => {
   harness.locale = "en";
@@ -140,6 +157,23 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       expect(packet.indexOf('data-testid="consult-visit-head"')).toBeGreaterThan(0);
       expect(packet.indexOf('data-testid="consult-visit-head"')).toBeLessThan(packet.indexOf('data-testid="consult-audience-step"'));
       expect(textOf(html, "consult-visit-in")).toBe(translate(locale, "elev.consult.inDays", { n: 3 }));
+      // ONE primary card in the packet: its head (the visit, then the since
+      // counts) directly followed by steps 1-3; the home program follows it
+      const page = decode(html);
+      const [cardAt, cardEnd] = spanOf(page, "consult-visit-card", "section");
+      expect(cardAt).toBeGreaterThan(page.indexOf('data-module="consult-packet"'));
+      expect(cardEnd).toBeLessThan(page.indexOf('data-module="consult-aside"'));
+      const at = (id: string) => page.indexOf(`data-testid="${id}"`);
+      for (const id of ["consult-visit-card-head", "consult-visit-head", "consult-since-head", "consult-audience-step", "consult-review-export"]) {
+        expect(at(id), id).toBeGreaterThan(cardAt);
+        expect(at(id), id).toBeLessThan(cardEnd);
+      }
+      const [headAt, headEnd] = spanOf(page, "consult-visit-card-head", "div");
+      expect(at("consult-visit-head")).toBeGreaterThan(headAt);
+      expect(at("consult-since-head")).toBeGreaterThan(at("consult-visit-head"));
+      expect(at("consult-since-head")).toBeLessThan(headEnd);
+      expect(at("consult-audience-step")).toBeGreaterThan(headEnd);
+      expect(page.indexOf(translate(locale, "elev.pilot.i.have.recommendations.for.home"))).toBeGreaterThan(cardEnd);
       // the numbered step headings, in order: 1 bring, 2 preview, 3 share
       const numbered = [...html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)]
         .map((m) => decode(m[1].replace(/<[^>]+>/g, "")).trim())
@@ -170,8 +204,8 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       harness.locale = locale;
       harness.appts = [visitIn3()];
       const html = renderToStaticMarkup(<ConsultTab />);
-      const rowStart = html.lastIndexOf("<div", html.indexOf('data-testid="consult-bring-row"'));
-      const row = html.slice(rowStart, html.indexOf('data-testid="consult-build"'));
+      // Include the opening tag: role/aria attributes may precede data-testid.
+      const row = /<div\b[^>]*data-testid="consult-bring-row"[^>]*>[\s\S]*?<\/div>/.exec(html)![0];
       expect(row).toContain('role="group"');
       const chips: string[] = row.match(/<button[^>]*data-testid="consult-bring-chip"[^>]*>/g) ?? [];
       expect(chips.length).toBeGreaterThan(0);
@@ -193,14 +227,21 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       const html = renderToStaticMarkup(<ConsultTab />);
       const aside = sliceModule(html, "consult-aside", "consult-doors");
       const calls = [...aside.matchAll(/data-testid="care-aside-call" data-line="([^"]+)" href="tel:([^"]+)"/g)].map((m) => [m[1], m[2]]);
+      // ONE way into Safety; with no talk line for the region it says what
+      // Safety's by-country list is for
+      const safety = /<button[^>]*data-testid="care-aside-open-safety"[^>]*>([\s\S]*?)<\/button>/.exec(aside)!;
+      expect((aside.match(/data-testid="care-aside-open-safety"/g) ?? []).length).toBe(1);
+      expect(aside).not.toContain('data-testid="care-aside-find-line"');
       if (locale === "en") {
         // EN: the EU emergency number; no foreign talk line, Safety's by-country list instead
         expect(calls).toEqual([["eu_112", "112"]]);
-        expect(aside).toContain('data-testid="care-aside-find-line"');
+        expect(safety[0]).toContain('data-find-line="true"');
+        expect(decode(safety[1].replace(/<[^>]+>/g, "")).trim()).toBe(translate(locale, "elev.safety.crisis.findLine"));
       } else {
         // HE: MDA 101 and ERAN 1201
         expect(calls).toEqual([["il_mda", "101"], ["il_eran", "1201"]]);
-        expect(aside).not.toContain('data-testid="care-aside-find-line"');
+        expect(safety[0]).not.toContain("data-find-line");
+        expect(decode(safety[1].replace(/<[^>]+>/g, "")).trim()).toBe(translate(locale, "elev.consult.aside.openSafety"));
       }
       expect(aside).toMatch(/data-testid="care-aside-first-contact" href="tel:\+31600000000"/);
       expect(decode(aside)).not.toContain(translate(locale, "elev.safety.review.notYet"));
@@ -243,7 +284,7 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
     harness.appts = [visitIn3()];
     const html = renderToStaticMarkup(<ConsultTab />);
     expect(modulesOf(html)).toEqual(["consult-packet"]);
-    for (const id of ["consult-kicker", "consult-sub", "consult-visit-head", "consult-bring-row", "consult-preview-note", "consult-trust-line"]) {
+    for (const id of ["consult-kicker", "consult-sub", "consult-visit-card", "consult-visit-card-head", "consult-visit-head", "consult-bring-row", "consult-preview-note", "consult-trust-line"]) {
       expect(html, id).not.toContain(`data-testid="${id}"`);
     }
     expect((html.match(/data-primary-move="/g) ?? []).length).toBe(1);
