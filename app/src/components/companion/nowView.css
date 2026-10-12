@@ -86,12 +86,11 @@
 .now-page .now-heading { margin-block-end: 0; }
 .now-page .now-heading h1 { margin-block: 10px 0; font-family: var(--font-display); font-size: clamp(30px, 3.1vw, 44px); font-weight: 500; letter-spacing: -0.02em; line-height: 1.08; text-wrap: balance; overflow-wrap: break-word; }
 .now-page[dir="rtl"] .now-heading h1 { letter-spacing: 0; }
-/* v3 F-NOW-4: the place kicker over the title wears the section kickers' face
-   (the mock's small capitals in English, plain in Hebrew); its 1.2 line box is
-   counted in the phone fold. */
-.now-kicker, .now-page .now-heading .companion-eyebrow { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--arbor-muted); }
-.now-page[dir="rtl"] .now-kicker, .now-page[dir="rtl"] .now-heading .companion-eyebrow { letter-spacing: 0; text-transform: none; }
-.now-page .now-heading .companion-eyebrow { line-height: 1.2; }
+/* v3 F-NOW-4: the place kicker reads as the mock's - small capitals in English, plain in Hebrew. */
+.now-page .now-heading .companion-eyebrow { font-size: 12px; font-weight: 700; line-height: 1.3; letter-spacing: .1em; text-transform: uppercase; color: var(--arbor-muted); }
+.now-page[dir="rtl"] .now-heading .companion-eyebrow { letter-spacing: 0; text-transform: none; }
+.now-kicker { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--arbor-muted); }
+.now-page[dir="rtl"] .now-kicker { letter-spacing: 0; text-transform: none; }
 
 .now-question-head { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
 .now-question-note { font-size: 12.5px; color: var(--arbor-muted); }
@@ -256,26 +255,18 @@
   .now-question-scroll { display: none; }
   .now-plan-foot { padding: 0 18px 14px; }
 }
-/* v3 F-NOW-4 (MOB-01): Now on a phone as the mock - one calm column, the
-   32 px title under its kicker, then the question block - with the plan
-   card's top at 440 px or less at 390x844 even with the sandbox line on and a
-   two-line question (NowView.test.tsx counts it). The mock's spacing is
-   pressed a few pixels to fit: 12 px between blocks, a 28 px question head,
-   4 px inside the block, a 48 px question and a 48 px chip line. The New
-   question link keeps its 44 px box: it overhangs its row 10 px into the gap
-   above and 6 px below, clear of the edit button, its label padded back onto
-   the row's centre line. */
+/* v3 F-NOW-4 (MOB-01): Now on a phone as the mock - one calm column with
+   14 px between blocks, the 32 px title under its kicker, and a question
+   block of 32 + 52 + 48 px so the plan card starts above the fold. The New
+   question link keeps its 44 px box and overhangs its 32 px row by 6 px
+   each way into empty space instead of growing it. */
 @media (max-width: 767.98px) {
-  .companion-page.now-page { gap: 12px; padding-block-start: 0; }
-  .now-page .now-heading h1 { margin-block-start: 4px; font-size: 32px; letter-spacing: -0.025em; }
-  .now-question-head { min-block-size: 28px; }
-  .now-question-new { margin-block: -10px -6px; padding-block: 4px 0; }
-  .now-question-row { margin-block-start: 4px; gap: 4px 6px; }
-  .now-question-active { min-block-size: 48px; padding-block: 2px; padding-inline: 14px 4px; border-radius: 14px; }
-  .now-question-text small { line-height: 1.2; }
-  .now-question-text b { font-size: 13.5px; line-height: 1.2; }
-  .now-question-empty { min-block-size: 48px; padding-block: 4px; }
-  .now-question-empty b, .now-question-empty small { line-height: 1.2; }
-  .now-question-chip { inline-size: 170px; block-size: 44px; border-radius: 12px; }
-  .now-question-all { min-block-size: 44px; }
+  .companion-page.now-page { gap: 14px; padding-block-start: 0; }
+  .now-page .now-heading h1 { margin-block-start: 6px; font-size: 32px; letter-spacing: -0.025em; }
+  .now-question-head { min-block-size: 32px; }
+  .now-question-new { margin-block: -6px; }
+  .now-question-row { gap: 6px; }
+  .now-question-active { min-block-size: 52px; padding-block: 4px; padding-inline: 14px 4px; border-radius: 14px; }
+  .now-question-text b { font-size: 13.5px; }
+  .now-question-chip { inline-size: 170px; block-size: 48px; border-radius: 12px; }
 }

@@ -77,7 +77,7 @@ export type EmptyArtId = keyof typeof EMPTY_ART;
 /** A written moment with no area yet (unfiled): the journal emblem. */
 export const MOMENT_ART: ParentArt = EMPTY_ART.journal;
 
-/** Parent and child under one sun: the Now door, the Together hero and the family-ritual door. */
+/** Parent and child under one sun: the Together hero, its empty state and the family-ritual door (Now carries no door since v3 F-NOW-4). */
 export const TOGETHER_ART: ParentArt = wide("together");
 
 /** Every art file the app may request, for the on-disk guard. */
