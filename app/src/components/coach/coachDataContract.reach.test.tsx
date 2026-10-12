@@ -151,13 +151,13 @@ describe("F-TALK-1 · ?section=coach focuses the switch, and Change goes there",
     expect(coach).toContain('goToRoute("memory", { section: "coach" });');
   });
 
-  it("the Talk panel re-reads the flag when it shows again and whenever the switch writes (this tab or another)", () => {
+  it("the Talk panel re-reads the flag when it shows again and whenever the switch writes", () => {
     const effect = /useEffect\(\(\) => \{\s*const reread = \(\) => \{\s*setWeeklyOn\(readWeeklyContextConsent\(childProfile\.id\)\);\s*setWeeklyNotice\(shouldShowWeeklyContextNotice\(childProfile\.id\)\);\s*\};([\s\S]*?)\}, \[childProfile\.id, visible\]\);/.exec(coach);
     expect(effect, "the weekly re-read effect in CoachTab").toBeTruthy();
     expect(effect![1]).toContain("window.addEventListener(WEEKLY_CONTEXT_CONSENT_EVENT, onConsent);");
-    expect(effect![1]).toContain('window.addEventListener("storage", reread);');
-    expect(effect![1]).toContain("window.removeEventListener(WEEKLY_CONTEXT_CONSENT_EVENT, onConsent);");
-    expect(effect![1]).toContain('window.removeEventListener("storage", reread);');
+    expect(effect![1]).toContain("return () => window.removeEventListener(WEEKLY_CONTEXT_CONSENT_EVENT, onConsent);");
+    // Only this child's write re-reads (an event without a child re-reads too).
+    expect(effect![1]).toContain("if (!id || id === childProfile.id) reread();");
     // The switch announces its own writes; the panel listens for that name.
     expect(read("ai/chatContext.ts")).toMatch(/window\.dispatchEvent\(new CustomEvent\(WEEKLY_CONTEXT_CONSENT_EVENT, \{ detail: \{ childId \} \}\)\)/);
     // The child-only re-read (stale while the panel stayed mounted) is gone.

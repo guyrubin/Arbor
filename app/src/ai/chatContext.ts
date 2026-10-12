@@ -150,9 +150,8 @@ export const readWeeklyContextConsent = (childId: string): boolean => {
 };
 
 /** F-TALK-1: the switch lives on #/memory while the conversation panel can
- *  stay docked beside it, so every write tells open readers in this window
- *  (another tab hears the storage event). Readers re-read the flag itself;
- *  the event carries no decision of its own. */
+ *  stay docked beside it, so every write tells open readers in this window.
+ *  Readers re-read the flag itself; the event carries no decision of its own. */
 export const WEEKLY_CONTEXT_CONSENT_EVENT = "arbor:weekly-context-consent";
 
 export const writeWeeklyContextConsent = (childId: string, on: boolean): void => {

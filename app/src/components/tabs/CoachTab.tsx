@@ -238,10 +238,10 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // with "Change" landing on the switch that holds the per-child off.
   const [weeklyNotice, setWeeklyNotice] = useState(() => shouldShowWeeklyContextNotice(childProfile.id));
   // F-TALK-1 (review r1): the switch now lives on #/memory while this panel
-  // stays mounted, so both flags are re-read whenever the panel shows again,
-  // when the switch writes (WEEKLY_CONTEXT_CONSENT_EVENT, same tab) and when
-  // another tab writes (storage). Keyed on the child, so a switch flipped for
-  // one child never moves another child's notice.
+  // stays mounted, so both flags are re-read whenever the panel shows again
+  // and whenever the switch writes (WEEKLY_CONTEXT_CONSENT_EVENT). Keyed on
+  // the child, so a switch flipped for one child never moves another child's
+  // notice. The send path reads the flag fresh either way.
   useEffect(() => {
     const reread = () => {
       setWeeklyOn(readWeeklyContextConsent(childProfile.id));
@@ -254,11 +254,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       if (!id || id === childProfile.id) reread();
     };
     window.addEventListener(WEEKLY_CONTEXT_CONSENT_EVENT, onConsent);
-    window.addEventListener("storage", reread);
-    return () => {
-      window.removeEventListener(WEEKLY_CONTEXT_CONSENT_EVENT, onConsent);
-      window.removeEventListener("storage", reread);
-    };
+    return () => window.removeEventListener(WEEKLY_CONTEXT_CONSENT_EVENT, onConsent);
   }, [childProfile.id, visible]);
   const closeWeeklyNotice = () => { dismissWeeklyContextNotice(childProfile.id); setWeeklyNotice(false); };
   // B-ASKJB-31: the pilot guides this child can open right now (the door's
