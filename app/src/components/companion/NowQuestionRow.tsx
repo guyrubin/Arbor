@@ -1,10 +1,9 @@
 import React, { useId, useRef } from "react";
 import { useArbor } from "../../context/ArborContext";
 import Icon from "../ui/Icon";
-import type { FamilyTopic } from "../../lib/familyTopics";
+import { INTENT_ICON, type FamilyTopic } from "../../lib/familyTopics";
 import { NOW_COPY } from "./nowViewCopy";
 
-const INTENT_ICON: Record<FamilyTopic["intent"], string> = { understand: "lightbulb", support: "volunteer_activism", enjoy: "favorite" };
 const intentIcon = (intent?: string) => INTENT_ICON[intent as FamilyTopic["intent"]] ?? "help";
 
 /**

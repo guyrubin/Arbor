@@ -15,7 +15,7 @@
  *    reads in place on #/journal (requestJournalFocus("moment-" + id)) — no
  *    switch to Behaviors;
  *  · `ask`     — "Ask Arbor about '{q}'": seeds the Ask composer (prefill
- *    only, the parent sends) and opens Ask. It is listed LAST, or FIRST when
+ *    only, the parent sends) and opens Talk. It is listed LAST, or FIRST when
  *    the query ends with "?" (`askFirst`).
  *
  * v3 IA-05 — search as the universal fallback. Every row except the ask row
@@ -30,6 +30,11 @@
  * Symbols name outside the font subset, and the icon guard reads every quoted
  * lowercase literal.
  *
+ * v3 IA-05r: Talk is a panel over the page the parent is on, never a page of
+ * its own. Every row whose home is the Talk door (a thread, the ask row, the
+ * coach route, a scholar lens) opens it through requestCompanionConversation
+ * and leaves the active tab alone.
+ *
  * Analytics: callers fire `search_result_tap { kind }` only — never the query.
  */
 import { useEffect, useMemo, useState } from "react";
@@ -41,8 +46,9 @@ import { searchnavText } from "../../lib/i18nElevation/searchnav";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { normalizeSearchText } from "../../lib/searchNormalize";
 import { COMPANION_DOORS, COMPANION_PLACES, homeForTab } from "../../lib/companionPlaces";
+import { requestCompanionConversation } from "../../lib/companionConversation";
 import { openFamilyTopicSheet } from "../companion/familyTopicEvents";
-import type { FamilyTopic } from "../../lib/familyTopics";
+import { INTENT_ICON, type FamilyTopic } from "../../lib/familyTopics";
 import type { ActiveTab } from "../../lib/routes";
 import type { HardMomentContext } from "../../content/pilotRelease";
 import type { SearchEntry, SearchKind } from "../../lib/searchIndex";
@@ -82,9 +88,6 @@ export interface SearchRow {
 /** v3 IA-05: the order homes are listed in before anything is typed — the
  *  three places, then the three doors, as the Sidebar lists them. */
 const HOME_ORDER: readonly string[] = [...COMPANION_PLACES, ...COMPANION_DOORS].map((home) => home.id);
-
-/** A saved question wears the glyph it wears on Now and in its sheet. */
-const TOPIC_ICON: Record<FamilyTopic["intent"], string> = { understand: "lightbulb", support: "volunteer_activism", enjoy: "favorite" };
 
 const NO_TOPICS: readonly FamilyTopic[] = [];
 
@@ -189,8 +192,13 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
       color: KIND_TOKEN[e.kind] ?? "var(--arbor-green-ink)",
       group,
       ...(e.kind === "route" ? { crumb } : {}),
-      // B-ASKJB-12: a scholar entry preselects its lens, then opens Ask.
-      go: () => { if (e.lens) setSelectedLens(e.lens); setActiveTab(e.tab); },
+      // B-ASKJB-12: a scholar entry preselects its lens, then opens Talk.
+      // v3 IA-05r: the Talk door's rows open the panel over the current page.
+      go: () => {
+        if (e.lens) setSelectedLens(e.lens);
+        if (e.tab === "coach") requestCompanionConversation({ source: "search" });
+        else setActiveTab(e.tab);
+      },
     };
   };
 
@@ -235,7 +243,7 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
       if (topic.childId !== activeChildId || !normalizeSearchText(topic.title).includes(needle)) continue;
       out.push({
         id: "topic-" + topic.id, kind: "family-topic", label: topic.title, sub: sheetTitle,
-        icon: TOPIC_ICON[topic.intent] ?? "help", color: "var(--arbor-clay-deep)",
+        icon: INTENT_ICON[topic.intent] ?? "help", color: "var(--arbor-clay-deep)",
         group: nowHome, crumb: [nowHome.label, sheetTitle],
         go: () => { selectFamilyTopic(topic.id); setActiveTab("overview"); openFamilyTopicSheet(); },
       });
@@ -252,10 +260,12 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
         go: () => { requestJournalFocus("moment-" + l.id); setActiveTab("journal"); },
       });
     }
+    // v3 IA-05r: a thread wears the Talk door's glyph and opens in the Talk
+    // panel, over the page the parent is on.
     const talk = placeOf("coach", t("nav.tab.coach"));
     for (const c of conversations) {
       if (normalizeSearchText(c.title).includes(needle) || c.messages.some((m) => normalizeSearchText(m.text).includes(needle)))
-        out.push({ id: "thread-" + c.id, kind: "thread", label: c.title, sub: t("sm.threadSub"), icon: "psychology", color: "var(--arbor-peach-ink)", group: talk.group, crumb: talk.crumb, go: () => { openConversation(c.id); setActiveTab("coach"); } });
+        out.push({ id: "thread-" + c.id, kind: "thread", label: c.title, sub: t("sm.threadSub"), icon: talk.group.icon, color: "var(--arbor-peach-ink)", group: talk.group, crumb: talk.crumb, go: () => { openConversation(c.id); requestCompanionConversation({ source: "search" }); } });
     }
     const milestonesAt = placeOf("milestones", t("nav.tab.milestones"));
     for (const m of milestones) {
@@ -271,7 +281,8 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [term, behaviorLogs, conversations, milestones, actionPlans, familyTopics, activeChildId, t, heLang, opts.recordLimit]);
 
-  // "Ask Arbor about …" — prefill only; the parent sends. Standalone
+  // "Ask Arbor about …" — prefill only; the parent sends. seedCoach opens the
+  // Talk panel itself (v3 IA-05r: no move to #/coach). Standalone
   // diacritics have no question text and must not become an Ask affordance.
   // Normalization is eligibility-only: meaningful questions keep their exact
   // original words, punctuation and marks in the label and composer.
@@ -280,7 +291,7 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
         id: "ask", kind: "ask",
         label: t("sm.askAbout", { q: term }), sub: t("sm.askAbout.sub"),
         icon: "forum", color: "var(--arbor-clay-deep)",
-        go: () => { seedCoach({ prompt: term, source: "search" }); setActiveTab("coach"); },
+        go: () => { seedCoach({ prompt: term, source: "search" }); },
       }
     : null;
 

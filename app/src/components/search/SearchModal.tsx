@@ -7,6 +7,8 @@ import { searchnavText } from "../../lib/i18nElevation/searchnav";
 // B-SHELL-14: ONE result model for both search surfaces (the lazy searchIndex
 // import lives in the hook, still a dynamic import() on first open).
 import { useSearchResults, type SearchRow } from "./useSearchResults";
+// v3 IA-05: the sections and the mirror rule are shared with TopbarSearch.
+import { CRUMB_SPOKEN_SEPARATOR, glyphMirror, searchSections } from "./searchSections";
 
 /* ── Cross-surface open requests (W1.9 mobile entry points) ────────────────
  * MobileNav's More sheet and Shell's accessories strip both open THIS modal.
@@ -17,25 +19,6 @@ export type SearchOpenSurface = "mobile" | "desktop" | "more";
 export const SEARCH_OPEN_EVENT = "arbor:search:open";
 export function requestOpenSearch(surface: SearchOpenSurface): void {
   window.dispatchEvent(new CustomEvent(SEARCH_OPEN_EVENT, { detail: { surface } }));
-}
-
-/** v3 IA-05 — only a glyph that points a way turns round in Hebrew. A place or
- *  door glyph (eco, interests, forum, school, diversity_1) never flips.
- *  TopbarSearch declares the identical list. */
-const glyphMirror = (glyph: string) => (["arrow_forward", "arrow_back", "chevron_right", "chevron_left", "forward", "send", "start"].includes(glyph) ? "rtl:-scale-x-100" : undefined);
-
-/** v3 IA-05 — rows by home (place or door), each home where its first row
- *  falls, so the top hit stays first and Enter still runs it. A row with no
- *  home (the ask row) stands alone where the hook put it. */
-function bySection(rows: readonly SearchRow[]) {
-  const sections: { key: string; group?: SearchRow["group"]; rows: SearchRow[] }[] = [];
-  for (const row of rows) {
-    const key = row.group ? "home:" + row.group.id : "row:" + row.kind + ":" + row.id;
-    const at = sections.find((s) => s.key === key);
-    if (at) at.rows.push(row);
-    else sections.push({ key, group: row.group, rows: [row] });
-  }
-  return sections;
 }
 
 /** Command palette + full-catalog search: jump to any section/capability,
@@ -52,7 +35,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
   const term = q.trim();
   // Grouped by home, read in render order: the first section is the top hit's
   // home and opens with it, so shown[0] is still the hook's first row.
-  const sections = bySection(ordered);
+  const sections = searchSections(ordered);
   const shown: SearchRow[] = sections.flatMap((s) => s.rows);
 
   const run = (r: SearchRow) => {
@@ -107,9 +90,10 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
                   <span className="flex-shrink-0"><Icon name={r.icon} size={16} className={glyphMirror(r.icon)} style={{ color: r.color }} /></span>
                   <span className="min-w-0 flex-1">
                     <span className="text-sm font-bold truncate block" style={{ color: "var(--arbor-ink)" }}>{r.label}</span>
-                    {/* v3 IA-05: a crumb reads "home › destination"; the chevron turns once in Hebrew. */}
+                    {/* v3 IA-05: a crumb reads "home › destination"; the chevron turns once in Hebrew
+                        and stays silent, a hidden separator is spoken in its place. */}
                     <span className="text-xs truncate block" style={{ color: "var(--arbor-muted)" }}>
-                      {r.crumb ? r.crumb.map((part, n) => <span key={n}>{n > 0 && <Icon name="chevron_right" size={14} className="mx-0.5 rtl:-scale-x-100" />}{part}</span>) : r.sub}
+                      {r.crumb ? r.crumb.map((part, n) => <span key={n}>{n > 0 && <span className="sr-only">{CRUMB_SPOKEN_SEPARATOR}</span>}{n > 0 && <Icon name="chevron_right" size={14} className="mx-0.5 rtl:-scale-x-100" />}{part}</span>) : r.sub}
                     </span>
                   </span>
                   {r === shown[0] && <Icon name="keyboard_return" size={16} className="opacity-0 group-hover:opacity-100" style={{ color: "var(--arbor-muted)" }} />}

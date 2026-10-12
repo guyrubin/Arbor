@@ -65,7 +65,9 @@ export const en: Dict = {
   // and baked into shared deep links; only the words a parent reads changed, and
   // routes.ts carries an alias for each new label's slug.
   "nav.tab.overview": "Overview",
-  "nav.tab.coach": "Ask Arbor",
+  // v3 IA-05r: the Talk door's name (companion.door.talk) wherever the coach
+  // route is named, so a search row, a pill and a page title agree.
+  "nav.tab.coach": "Talk with Arbor",
   "nav.tab.timeline": "Story",
   "nav.tab.journal": "Journal",
   "nav.tab.day-windows": "Day Windows",
@@ -91,7 +93,9 @@ export const en: Dict = {
   "nav.tab.mimic": "Mimic Studio",
   "nav.tab.feelings": "Feelings Lab",
   "nav.tab.adventures": "Adventures",
-  "nav.tab.plans": "Growth Plans",
+  // v3 IA-05r: plans live in Together as its Routines (FEAT-07), so the
+  // route reads Together › Routines in search and in the crumb.
+  "nav.tab.plans": "Routines",
   "nav.tab.weekly": "Weekly Report",
   "nav.tab.find-pro": "Find a Professional",
   "nav.tab.reports": "Your full record",
@@ -2699,7 +2703,8 @@ export const he: Dict = {
   "nav.signout": "התנתקות",
   "nav.parent": "הורה",
   "nav.tab.overview": "סקירה",
-  "nav.tab.coach": "שאל את ארבור",
+  // v3 IA-05r: the Talk door's name (companion.door.talk).
+  "nav.tab.coach": "לדבר עם ארבור",
   "nav.tab.timeline": "סיפור",
   "nav.tab.journal": "יומן",
   "nav.tab.day-windows": "חלונות היום",
@@ -2723,7 +2728,8 @@ export const he: Dict = {
   "nav.tab.mimic": "סטודיו חיקוי",
   "nav.tab.feelings": "מעבדת רגשות",
   "nav.tab.adventures": "הרפתקאות",
-  "nav.tab.plans": "תוכניות התפתחות",
+  // v3 IA-05r: Together › Routines (FEAT-07).
+  "nav.tab.plans": "שגרות",
   "nav.tab.weekly": "דוח שבועי",
   "nav.tab.find-pro": "מצאו איש מקצוע",
   "nav.tab.reports": "התיעוד המלא שלכם",

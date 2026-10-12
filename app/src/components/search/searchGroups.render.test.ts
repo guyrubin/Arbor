@@ -1,15 +1,22 @@
 /** v3 IA-05 — both search surfaces list rows under their home and mirror only
  * glyphs that point a way. Runs the production render functions with inert
  * I/O boundaries (the parentControlClearance harness): a layout and wiring
- * contract, not browser geometry. Invented rows only. */
+ * contract, not browser geometry. Invented rows only.
+ *
+ * IA-05r: the sections and the mirror rule live once, in ./searchSections, and
+ * are loaded here as the real module. The mirror test is behavioural (every
+ * shipped glyph through both surfaces), and its negative control mutates the
+ * production source back to the old kind rule. */
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import ts from "typescript";
+import * as searchSections from "./searchSections";
+import { CRUMB_SPOKEN_SEPARATOR, DIRECTIONAL_GLYPHS } from "./searchSections";
 
 const source = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 type View = { type: string; props: Record<string, any> };
 
-function renderComponent(path: string, rows: Record<string, any>[]) {
+function renderComponent(path: string, rows: Record<string, any>[], mutate: (src: string) => string = (src) => src) {
   let cursor = 0;
   const slots: any[] = [];
   const react = {
@@ -32,8 +39,10 @@ function renderComponent(path: string, rows: Record<string, any>[]) {
     "../ui/Icon": { Icon: "Icon" },
     "../ui/Modal": { Modal: "Modal" },
     "./useSearchResults": { useSearchResults: () => ({ indexReady: true, ordered: rows, kindLabel: (kind: string) => kind }) },
+    // The real shared module: both surfaces lay rows out through it.
+    "./searchSections": searchSections,
   };
-  const code = ts.transpileModule(source(path), { compilerOptions: {
+  const code = ts.transpileModule(mutate(source(path)), { compilerOptions: {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true,
   } }).outputText;
   const module = { exports: {} as { default: (props: any) => View } };
@@ -60,8 +69,8 @@ const icons = (tree: View, name?: string) => elements(tree).filter(node => node.
 
 const SURFACES = ["SearchModal", "TopbarSearch"] as const;
 /** Opens the surface and types a query, so the rows are on screen. */
-function typed(surface: typeof SURFACES[number], rows: Record<string, any>[], close = vi.fn()) {
-  const render = renderComponent(`./${surface}.tsx`, rows);
+function typed(surface: typeof SURFACES[number], rows: Record<string, any>[], close = vi.fn(), mutate?: (src: string) => string) {
+  const render = renderComponent(`./${surface}.tsx`, rows, mutate);
   let tree = render({ open: true, onClose: close });
   elements(tree).find(node => node.type === "input")!.props.onChange({ target: { value: "invented" } });
   tree = render({ open: true, onClose: close });
@@ -70,6 +79,9 @@ function typed(surface: typeof SURFACES[number], rows: Record<string, any>[], cl
 /** The row elements in render order: unlabelled buttons in the modal, options
  *  in the topbar (the topbar's labelled Clear button is not a row). */
 const rowsOf = (tree: View) => elements(tree).filter(node => node.props.role === "option" || (node.type === "button" && !node.props["aria-label"]));
+/** A row's own glyph: the first icon drawn inside it. */
+const leadingGlyph = (row: View) => icons(row)[0];
+const mirrored = (glyph: View) => classes(glyph).includes("rtl:-scale-x-100");
 
 const CHILD = { id: "child", label: "My child", icon: "eco" };
 const LEARN = { id: "learn", label: "For you, the parent", icon: "school" };
@@ -80,43 +92,54 @@ const grouped = () => [
   { id: "ask", kind: "ask", icon: "forum", label: "Ask Arbor about invented", sub: "Ask", go: vi.fn() },
 ];
 
-describe("v3 IA-05 · only directional glyphs mirror", () => {
-  const NEVER = ["eco", "interests", "forum", "school", "diversity_1", "home", "lightbulb", "volunteer_activism"];
-  const ALWAYS = ["arrow_forward", "arrow_back", "chevron_right", "chevron_left"];
+/** Every glyph the shipped font carries (comments and blank lines dropped). */
+const SHIPPED = source("../../../public/fonts/material-symbols-rounded-subset.icons.txt")
+  .split(/\r?\n/).map(line => line.trim()).filter(line => line && !line.startsWith("#"));
+/** Place, door and saved-question glyphs: never directional. */
+const NEVER = ["eco", "interests", "forum", "school", "diversity_1", "home", "lightbulb", "volunteer_activism", "favorite"];
 
-  it.each(SURFACES)("%s: a place or door glyph never flips in Hebrew, even on a route row; an arrow always does", (surface) => {
-    const rows = [...NEVER, ...ALWAYS].map((icon, i) => ({ id: "r" + i, kind: i % 2 ? "route" : "learn", icon, label: "Invented " + i, sub: "Invented", go: vi.fn() }));
-    const { tree } = typed(surface, rows);
-    for (const icon of NEVER) {
-      const found = icons(tree(), icon);
-      expect(found, icon).toHaveLength(1);
-      expect(classes(found[0]), icon).not.toContain("rtl:-scale-x-100");
-    }
-    for (const icon of ALWAYS) {
-      const found = icons(tree(), icon);
-      expect(found, icon).toHaveLength(1);
-      expect(classes(found[0]), icon).toContain("rtl:-scale-x-100");
-    }
+describe("v3 IA-05 · only directional glyphs mirror", () => {
+  it("the directional list names arrows only, every one shipped in the font subset", () => {
+    expect(DIRECTIONAL_GLYPHS).toEqual(expect.arrayContaining(["arrow_forward", "arrow_back", "chevron_right", "chevron_left"]));
+    for (const glyph of NEVER) expect(DIRECTIONAL_GLYPHS).not.toContain(glyph);
+    for (const glyph of DIRECTIONAL_GLYPHS) expect(SHIPPED, glyph).toContain(glyph);
   });
 
-  it("both surfaces declare the identical directional list, and the kind rule is gone", () => {
-    const listOf = (src: string) => src.match(/const glyphMirror = \(glyph: string\) => \(\[([^\]]+)\]\.includes\(glyph\) \? "rtl:-scale-x-100" : undefined\);/)?.[1];
-    const modal = listOf(source("./SearchModal.tsx")), topbar = listOf(source("./TopbarSearch.tsx"));
-    expect(modal).toBeDefined();
-    expect(topbar).toBe(modal);
-    const list = JSON.parse(`[${modal}]`) as string[];
-    expect(list).toEqual(expect.arrayContaining(["arrow_forward", "arrow_back", "chevron_right", "chevron_left"]));
-    for (const glyph of NEVER) expect(list).not.toContain(glyph);
-    // Every listed glyph is in the shipped font subset (no new glyphs).
-    const subset = new Set(source("../../../public/fonts/material-symbols-rounded-subset.icons.txt").split(/\r?\n/).map(line => line.trim()));
-    for (const glyph of list) expect(subset.has(glyph), glyph).toBe(true);
-    // NEGATIVE CONTROL: the previous rule mirrored by row kind, which flipped
-    // a route row's home glyph (eco) in Hebrew.
-    for (const src of [source("./SearchModal.tsx"), source("./TopbarSearch.tsx")]) {
-      expect(src).not.toMatch(/kind === "route" \? "rtl:-scale-x-100"/);
+  it.each(SURFACES)("%s: across every shipped glyph, on route and content rows alike, exactly the directional ones flip", (surface) => {
+    const rows = SHIPPED.flatMap((icon, i) => ["route", "learn"].map(kind => ({ id: `${kind}-${i}`, kind, icon, label: "Invented " + i, sub: "Invented", go: vi.fn() })));
+    const { tree } = typed(surface, rows);
+    const drawn = rowsOf(tree());
+    expect(drawn).toHaveLength(rows.length);
+    const flipped = new Set<string>();
+    drawn.forEach((row, i) => {
+      const glyph = leadingGlyph(row);
+      expect(glyph.props.name).toBe(rows[i].icon);
+      if (mirrored(glyph)) flipped.add(`${rows[i].kind}:${rows[i].icon}`);
+    });
+    const expected = SHIPPED.filter(icon => DIRECTIONAL_GLYPHS.includes(icon));
+    expect([...flipped].sort()).toEqual(expected.flatMap(icon => [`learn:${icon}`, `route:${icon}`]).sort());
+    for (const icon of NEVER) expect(flipped.has(`route:${icon}`), icon).toBe(false);
+  });
+
+  it.each([
+    ["SearchModal", "className={glyphMirror(r.icon)}", 'className={r.kind === "route" ? "rtl:-scale-x-100" : undefined}'],
+    ["TopbarSearch", "className={glyphMirror(entry.icon)}", 'className={entry.kind === "route" ? "rtl:-scale-x-100" : undefined}'],
+  ] as const)("NEGATIVE CONTROL (%s): put the old kind rule back and a route row's place glyph flips in Hebrew", (surface, now, old) => {
+    const rows = [{ id: "route:milestones", kind: "route", icon: "eco", label: "Milestones", sub: "My child", group: CHILD, go: vi.fn() }];
+    expect(source(`./${surface}.tsx`)).toContain(now);
+    const real = leadingGlyph(rowsOf(typed(surface, rows).tree())[0]);
+    expect(mirrored(real)).toBe(false);
+    const mutant = leadingGlyph(rowsOf(typed(surface, rows, vi.fn(), src => src.replace(now, old)).tree())[0]);
+    expect(mutant.props.name).toBe("eco");
+    expect(mirrored(mutant)).toBe(true);
+  });
+
+  it("neither surface keeps its own copy of the rule or the sections", () => {
+    for (const surface of SURFACES) {
+      const src = source(`./${surface}.tsx`);
+      expect(src).toContain('import { CRUMB_SPOKEN_SEPARATOR, glyphMirror, searchSections } from "./searchSections";');
+      expect(src).not.toMatch(/const glyphMirror|function bySection|function searchSections/);
     }
-    const oldRule = (row: { kind: string }) => (row.kind === "route" ? "rtl:-scale-x-100" : undefined);
-    expect(oldRule({ kind: "route" })).toBe("rtl:-scale-x-100");
   });
 });
 
@@ -144,25 +167,36 @@ describe("v3 IA-05 · rows are listed under their home", () => {
     expect(rowsOf(tree()).at(-1)).toBe(ask);
   });
 
-  it.each(SURFACES)("%s: rows stay 44 px and the crumb reads home › destination with one mirrored chevron per step", (surface) => {
+  it.each(SURFACES)("%s: rows stay 44 px; the crumb reads home › destination with one mirrored, silent chevron and one spoken separator per step", (surface) => {
     const { tree } = typed(surface, grouped());
     for (const node of rowsOf(tree())) {
       if (surface === "SearchModal") expect(classes(node)).toContain("min-h-[44px]");
       else expect(node.props.style).toMatchObject({ minHeight: "44px" });
     }
     const [milestones, journal, article] = rowsOf(tree());
-    expect(text(milestones)).toContain("My childMilestones");
+    // Screen readers hear "My child, Milestones", not "My childMilestones".
+    expect(CRUMB_SPOKEN_SEPARATOR.trim()).not.toBe("");
+    expect(text(milestones)).toContain("My child" + CRUMB_SPOKEN_SEPARATOR + "Milestones");
+    expect(text(milestones)).not.toContain("My childMilestones");
+    const spoken = elements(milestones).filter(node => classes(node).includes("sr-only"));
+    expect(spoken).toHaveLength(1);
+    expect(text(spoken[0])).toBe(CRUMB_SPOKEN_SEPARATOR);
     const chevrons = icons(milestones, "chevron_right");
     expect(chevrons).toHaveLength(1);
     expect(chevrons[0].props.size).toBe(14);
     expect(classes(chevrons[0])).toContain("rtl:-scale-x-100");
+    // Decorative: the Icon is aria-hidden unless given a label.
+    expect(chevrons[0].props["aria-label"]).toBeUndefined();
     expect(icons(journal, "chevron_right")).toHaveLength(1);
-    // A row without a crumb keeps its own second line.
+    // A row without a crumb keeps its own second line, with nothing hidden in it.
     expect(icons(article, "chevron_right")).toHaveLength(0);
+    expect(elements(article).filter(node => classes(node).includes("sr-only"))).toHaveLength(0);
     expect(text(article)).toContain("Invented shelf");
-    // A three-part crumb has two chevrons.
+    // A three-part crumb has two chevrons and two spoken separators.
     const deep = typed(surface, [{ ...grouped()[0], crumb: ["My child", "Invented", "Milestones"] }]);
-    expect(icons(rowsOf(deep.tree())[0], "chevron_right")).toHaveLength(2);
+    const deepRow = rowsOf(deep.tree())[0];
+    expect(icons(deepRow, "chevron_right")).toHaveLength(2);
+    expect(text(deepRow)).toContain(["My child", "Invented", "Milestones"].join(CRUMB_SPOKEN_SEPARATOR));
   });
 
   it("SearchModal: Enter runs the first row drawn, which is still the hook's first row", () => {
@@ -199,5 +233,24 @@ describe("v3 IA-05 · rows are listed under their home", () => {
     input().props.onKeyDown({ key: "Enter", preventDefault: vi.fn() });
     expect(rows[2].go).toHaveBeenCalledOnce();
     expect(rows[1].go).not.toHaveBeenCalled();
+  });
+});
+
+describe("v3 IA-05r · the shared sections", () => {
+  const row = (id: string, group?: { id: string; label: string; icon: string }) => ({ id, kind: group ? "route" : "ask", label: id, sub: "", icon: "eco", color: "", go: () => {}, group }) as any;
+
+  it("groups by home where the home first appears, keeps each home's order, and leaves a homeless row alone", () => {
+    const rows = [row("a", CHILD), row("b", LEARN), row("c", CHILD), row("ask"), row("d", LEARN)];
+    const sections = searchSections.searchSections(rows);
+    expect(sections.map(s => s.key)).toEqual(["home:child", "home:learn", "row:ask:ask"]);
+    expect(sections.map(s => s.rows.map(r => r.id))).toEqual([["a", "c"], ["b", "d"], ["ask"]]);
+    expect(sections[0].group).toBe(CHILD);
+    expect(sections[2].group).toBeUndefined();
+    // The first row drawn is the hook's first row.
+    expect(sections.flatMap(s => s.rows)[0]).toBe(rows[0]);
+  });
+
+  it("returns nothing for nothing", () => {
+    expect(searchSections.searchSections([])).toEqual([]);
   });
 });

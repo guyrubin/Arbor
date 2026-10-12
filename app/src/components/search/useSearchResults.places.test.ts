@@ -2,7 +2,11 @@
  * row but Ask names its home (place or door) with that home's glyph, a route
  * row reads as a breadcrumb, "routines" lands on Plans, and the parent's saved
  * questions are searchable for the active child only. Offline hook evidence
- * (controlled context/memo seams), not browser-mounted QA. Invented examples. */
+ * (controlled context/memo seams), not browser-mounted QA. Invented examples.
+ *
+ * IA-05r: "routines" reads Together › Routines (nav.tab.plans renamed), and
+ * every row of the Talk door opens the Talk panel through
+ * requestCompanionConversation, never by moving to #/coach. */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActionPlan, BehaviorLog, Milestone } from "../../types";
 import type { Conversation } from "../../context/ArborContext";
@@ -15,7 +19,7 @@ const h = vi.hoisted(() => ({
   index: null as SearchIndexModule | null, cursor: 0,
   memos: [] as { deps: unknown[]; value: unknown }[],
   actions: { setActiveTab: vi.fn(), openConversation: vi.fn(), setSelectedLens: vi.fn(), requestJournalFocus: vi.fn(), seedCoach: vi.fn(), selectFamilyTopic: vi.fn() },
-  openSheet: vi.fn(),
+  openSheet: vi.fn(), talk: vi.fn(),
 }));
 vi.mock("react", () => ({
   useState: () => { h.cursor++; return [h.index, vi.fn()]; },
@@ -34,6 +38,8 @@ vi.mock("../../context/ArborContext", () => ({
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: translations[h.lang], uiLang: h.lang }) }));
 // FEAT-05's one door into the question sheet; Shell owns the only listener.
 vi.mock("../companion/familyTopicEvents", () => ({ openFamilyTopicSheet: h.openSheet }));
+// The Talk panel's one door (CompanionWorkspace holds the listener).
+vi.mock("../../lib/companionConversation", () => ({ requestCompanionConversation: h.talk }));
 import { useSearchResults } from "./useSearchResults";
 import { getSearchIndex, searchCatalog } from "../../lib/searchIndex";
 import { translate } from "../../lib/i18n";
@@ -103,6 +109,22 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
     }
   });
 
+  it.each([
+    ["en", ["Together", "Routines"]],
+    ["he", ["ביחד", "שגרות"]],
+  ] as const)("IA-05r: a routines query reads Together › Routines with the interests glyph (%s)", (lang, crumb) => {
+    h.lang = lang;
+    const first = render("routines").ordered[0];
+    expect(first.id).toBe("route:plans");
+    expect(first.label).toBe(crumb[1]);
+    expect(first.crumb).toEqual(crumb);
+    expect(first.group).toEqual({ id: "together", label: crumb[0], icon: "interests" });
+    expect(first.icon).toBe("interests");
+    // A Routines plan row reads the same crumb when it has no words of its own.
+    h.records = { ...empty(), actionPlans: [{ id: "p", title: "Invented kite routine", issue: "", phases: [], scripts: [], successIndicators: [] }] };
+    expect(row(render("kite").record, "plan-p").crumb).toEqual(crumb);
+  });
+
   it("no row wears the old generic route arrow; every catalogue row has a home", () => {
     for (const query of ["", "milestones", "consult", "routines", "tantrums", "sleep"]) {
       for (const lang of ["en", "he"] as const) {
@@ -160,6 +182,7 @@ describe("v3 IA-05 · records name where they open", () => {
     expect(row(record, "log-bare").crumb).toEqual([journal.label, translate("en", "nav.tab.journal")].filter((v, i, a) => a.indexOf(v) === i));
     expect(row(record, "thread-c").group).toEqual(talk);
     expect(row(record, "thread-c").crumb).toEqual([translate("en", "companion.door.talk")]);
+    expect(row(record, "thread-c").icon).toBe("forum");
     expect(row(record, "ms-m").group).toEqual(child);
     expect(row(record, "ms-m").crumb).toEqual([child.label, translate("en", "nav.tab.milestones")]);
     expect(row(record, "plan-p").group).toEqual(plans);
@@ -214,5 +237,61 @@ describe("v3 IA-05 · saved questions, this child's only", () => {
     expect(result.ask!.crumb).toBeUndefined();
     expect(result.ordered[result.ordered.length - 1]).toBe(result.ask);
     expect(render("kite?").ordered[0].kind).toBe("ask");
+  });
+});
+
+describe("v3 IA-05r · the Talk door's rows open the Talk panel over the page", () => {
+  const conversation = { id: "c7", title: "Invented harbour talk", messages: [], updatedAt: "2026-10-10T00:00:00Z" };
+
+  it.each([
+    ["en", "Talk with Arbor"],
+    ["he", "לדבר עם ארבור"],
+  ] as const)("a thread wears forum under Talk with Arbor and opens the conversation in the panel (%s)", (lang, door) => {
+    h.lang = lang;
+    expect(translate(lang, "nav.tab.coach")).toBe(door);
+    expect(translate(lang, "companion.door.talk")).toBe(door);
+    h.records = { ...empty(), conversations: [conversation] };
+    const thread = row(render("harbour").record, "thread-c7");
+    expect(thread).toMatchObject({ kind: "thread", icon: "forum", group: { id: "talk", label: door, icon: "forum" }, crumb: [door] });
+    thread.go();
+    expect(h.actions.openConversation).toHaveBeenCalledWith("c7");
+    expect(h.talk).toHaveBeenCalledOnce();
+    expect(h.talk).toHaveBeenCalledWith({ source: "search" });
+    // The conversation is chosen before the panel opens on it.
+    expect(h.actions.openConversation.mock.invocationCallOrder[0]).toBeLessThan(h.talk.mock.invocationCallOrder[0]);
+    // The panel lays over the page the parent is on: no move to #/coach.
+    expect(h.actions.setActiveTab).not.toHaveBeenCalled();
+  });
+
+  it("the coach route row and a scholar lens open the panel; the lens is chosen first", () => {
+    const coach = row(render(translate("en", "nav.tab.coach")).catalog, "route:coach");
+    expect(coach.crumb).toEqual(["Talk with Arbor"]);
+    expect(coach.icon).toBe("forum");
+    coach.go();
+    expect(h.talk).toHaveBeenLastCalledWith({ source: "search" });
+    const scholar = getSearchIndex().find(e => e.kind === "scholar")!;
+    const lens = row(render(scholar.title.en).catalog, scholar.id);
+    expect(lens.group?.id).toBe("talk");
+    lens.go();
+    expect(h.actions.setSelectedLens).toHaveBeenCalledWith(scholar.lens);
+    expect(h.talk).toHaveBeenCalledTimes(2);
+    expect(h.actions.setSelectedLens.mock.invocationCallOrder[0]).toBeLessThan(h.talk.mock.invocationCallOrder[1]);
+    expect(h.actions.setActiveTab).not.toHaveBeenCalled();
+  });
+
+  it("the ask row prefills through seedCoach, which opens the panel itself; it never moves to #/coach", () => {
+    const ask = render("invented harbour question").ask!;
+    ask.go();
+    expect(h.actions.seedCoach).toHaveBeenCalledWith({ prompt: "invented harbour question", source: "search" });
+    expect(h.actions.setActiveTab).not.toHaveBeenCalled();
+    // One door per tap: seedCoach already requests the panel.
+    expect(h.talk).not.toHaveBeenCalled();
+  });
+
+  it("NEGATIVE CONTROL: a row of a place still moves the page", () => {
+    const milestones = row(render("milestones").catalog, "route:milestones");
+    milestones.go();
+    expect(h.actions.setActiveTab).toHaveBeenCalledWith("milestones");
+    expect(h.talk).not.toHaveBeenCalled();
   });
 });

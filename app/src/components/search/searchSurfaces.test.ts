@@ -219,14 +219,26 @@ describe("B-SHELL-14 · both surfaces render ONE hook", () => {
     expect(readSrc("lib", "searchIndex.ts")).not.toContain("behaviorLogs");
   });
 
+  it("v3 IA-05r: a thread row opens its conversation in the Talk panel", () => {
+    const thread = hook.slice(hook.indexOf("for (const c of conversations)"), hook.indexOf("for (const m of milestones)"));
+    expect(thread).toContain('openConversation(c.id); requestCompanionConversation({ source: "search" });');
+    expect(thread).not.toContain("setActiveTab(");
+    expect(hook).toContain('import { requestCompanionConversation } from "../../lib/companionConversation";');
+  });
+
   it("a log row reads in place on #/journal, focused — no Behaviors switch, no capture sheet", () => {
     const log = hook.slice(hook.indexOf("for (const l of behaviorLogs)"), hook.indexOf("for (const c of conversations)"));
     expect(log).toContain('requestJournalFocus("moment-" + l.id); setActiveTab("journal");');
     expect(log).not.toMatch(/setActiveTab\("behaviors"\)|openCaptureSheet/);
   });
 
-  it("the ask row seeds the composer (prefill only) and opens Ask; first on '?'", () => {
-    expect(hook).toContain('seedCoach({ prompt: term, source: "search" }); setActiveTab("coach");');
+  it("the ask row seeds the composer (prefill only) and opens Talk; first on '?'", () => {
+    // v3 IA-05r re-pin (critic ruling [10]): Talk is a panel over the current
+    // page. seedCoach requests it, so the ask row no longer moves to #/coach,
+    // and no search row does.
+    expect(hook).toContain('go: () => { seedCoach({ prompt: term, source: "search" }); },');
+    expect(hook).not.toContain('setActiveTab("coach")');
+    expect(readSrc("context", "ArborContext.tsx")).toMatch(/const seedCoach = [\s\S]*?requestCompanionConversation\(\{ source: opts\.source \}\);/);
     expect(hook).toMatch(/ask && askFirst\(term\) \? \[ask, \.\.\.catalog, \.\.\.record\] : \[\.\.\.catalog, \.\.\.record, \.\.\.\(ask \? \[ask\] : \[\]\)\]/);
   });
 

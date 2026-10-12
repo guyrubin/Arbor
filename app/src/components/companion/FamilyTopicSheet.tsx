@@ -6,7 +6,7 @@ import { Sheet } from "../ui/Sheet";
 import { Icon } from "../ui/Icon";
 import { useSheetHistory } from "../../hooks/useSheetHistory";
 import { SheetBreadcrumb } from "../layout/Breadcrumb";
-import type { FamilyTopic } from "../../lib/familyTopics";
+import { INTENT_ICON, type FamilyTopic } from "../../lib/familyTopics";
 import type { Observation } from "../../lib/observations";
 import "./companionExperience.css";
 import "./familyTopicSheet.css";
@@ -27,7 +27,6 @@ function sourceLabel(observation: Observation, t: (key: string) => string): stri
 }
 
 const INTENTS: readonly FamilyTopic["intent"][] = ["understand", "support", "enjoy"];
-const INTENT_ICON: Record<FamilyTopic["intent"], string> = { understand: "lightbulb", support: "volunteer_activism", enjoy: "favorite" };
 const INTENT_KEY: Record<FamilyTopic["intent"], string> = {
   understand: "companion.family-topic-sheet.intent.understand", support: "companion.family-topic-sheet.intent.support", enjoy: "companion.family-topic-sheet.intent.enjoy",
 };

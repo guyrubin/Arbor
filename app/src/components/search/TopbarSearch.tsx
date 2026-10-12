@@ -29,25 +29,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { track } from "../../lib/analytics";
 import { Icon } from "../ui/Icon";
 import { useSearchResults, type SearchRow } from "./useSearchResults";
-
-/** v3 IA-05 — only a glyph that points a way turns round in Hebrew. A place or
- *  door glyph (eco, interests, forum, school, diversity_1) never flips.
- *  SearchModal declares the identical list. */
-const glyphMirror = (glyph: string) => (["arrow_forward", "arrow_back", "chevron_right", "chevron_left", "forward", "send", "start"].includes(glyph) ? "rtl:-scale-x-100" : undefined);
-
-/** v3 IA-05 — rows by home (place or door), each home where its first row
- *  falls, so the top hit stays first. A row with no home (the ask row) stands
- *  alone where the hook put it. Same sections as SearchModal. */
-function bySection(rows: readonly SearchRow[]) {
-  const sections: { key: string; group?: SearchRow["group"]; rows: SearchRow[] }[] = [];
-  for (const row of rows) {
-    const key = row.group ? "home:" + row.group.id : "row:" + row.kind + ":" + row.id;
-    const at = sections.find((s) => s.key === key);
-    if (at) at.rows.push(row);
-    else sections.push({ key, group: row.group, rows: [row] });
-  }
-  return sections;
-}
+// v3 IA-05: the sections and the mirror rule are shared with SearchModal.
+import { CRUMB_SPOKEN_SEPARATOR, glyphMirror, searchSections } from "./searchSections";
 
 /** AP-045 global search input + results overlay (topbar slot 1). */
 export default function TopbarSearch() {
@@ -72,7 +55,7 @@ export default function TopbarSearch() {
   const { ordered, kindLabel } = useSearchResults(query, { enabled: open, catalogLimit: 12, recordLimit: 12 });
   // v3 IA-05: grouped by home; the arrow keys, Enter and the option ids follow
   // the order the rows are drawn in.
-  const sections = bySection(ordered);
+  const sections = searchSections(ordered);
   const results: SearchRow[] = sections.flatMap((s) => s.rows);
 
   // Reset active index whenever results change.
@@ -329,8 +312,9 @@ export default function TopbarSearch() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {/* v3 IA-05: a crumb reads "home › destination"; the chevron turns once in Hebrew. */}
-                          {entry.crumb ? entry.crumb.map((part, n) => <span key={n}>{n > 0 && <Icon name="chevron_right" size={14} className="mx-0.5 rtl:-scale-x-100" />}{part}</span>) : (entry.sub || kindLabel(entry.kind))}
+                          {/* v3 IA-05: a crumb reads "home › destination"; the chevron turns once in Hebrew
+                              and stays silent, a hidden separator is spoken in its place. */}
+                          {entry.crumb ? entry.crumb.map((part, n) => <span key={n}>{n > 0 && <span className="sr-only">{CRUMB_SPOKEN_SEPARATOR}</span>}{n > 0 && <Icon name="chevron_right" size={14} className="mx-0.5 rtl:-scale-x-100" />}{part}</span>) : (entry.sub || kindLabel(entry.kind))}
                         </span>
                       </span>
 

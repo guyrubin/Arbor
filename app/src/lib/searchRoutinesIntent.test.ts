@@ -1,19 +1,24 @@
 /** v3 IA-05: the word a parent types for routines lands on Plans, where the
  * ready-made routines live since B-GROWTH-25 retired #/routines. One exact
  * intent only: no routines row comes back and every partial query ranks as
- * before. */
+ * before.
+ *
+ * IA-05r: the Plans route is now named Routines (nav.tab.plans, EN and HE),
+ * the name of Together's Routines (FEAT-07), so it reads Together › Routines.
+ * The negative control runs the pre-IA-05 index (the old "Growth Plans" name,
+ * no intent) as a mutation of the real one. */
 import { describe, expect, it } from "vitest";
-import { getSearchIndex, normalizeSearchText, searchCatalog } from "./searchIndex";
+import { getSearchIndex, normalizeSearchText, searchCatalog, type SearchEntry } from "./searchIndex";
 import { placeForTab } from "./companionPlaces";
 import { translate } from "./i18n";
 import { RETIRED_ROUTES, resolveRouteId } from "./routes";
 
 /** Pre-alias ranking (the searchVisitIntent fixture): exact intent aliases may
  * promote one route; every other row keeps its old order. */
-function priorIds(query: string, limit = 1000): string[] {
+function priorIds(query: string, limit = 1000, entries: readonly SearchEntry[] = getSearchIndex()): string[] {
   const q = normalizeSearchText(query);
   if (!q) return [];
-  return getSearchIndex().map((entry, index) => {
+  return entries.map((entry, index) => {
     let score = 0;
     for (const title of entry.normTitles) {
       if (title.startsWith(q)) score = Math.max(score, 100);
@@ -65,8 +70,24 @@ describe("v3 IA-05 · routines lands on Plans", () => {
     },
   );
 
-  it("NEGATIVE CONTROL: before the intent, routines did not open on Plans", () => {
-    expect(priorIds("routines")[0]).not.toBe("route:plans");
-    expect(priorIds("שגרות")[0]).not.toBe("route:plans");
+  it("IA-05r: the Plans route is named Routines in both languages", () => {
+    expect(translate("en", "nav.tab.plans")).toBe("Routines");
+    expect(translate("he", "nav.tab.plans")).toBe("שגרות");
+    expect(translate("en", "nav.tab.plans")).toBe(translate("en", "nav.tab.routines"));
+    expect(translate("he", "nav.tab.plans")).toBe(translate("he", "nav.tab.routines"));
+    const plans = getSearchIndex().find(row => row.id === "route:plans")!;
+    expect(plans.title).toEqual({ en: "Routines", he: "שגרות" });
+  });
+
+  it("NEGATIVE CONTROL: before IA-05 (old name, no intent), routines did not open on Plans", () => {
+    // Mutation: the real index with the Plans route given back its old name.
+    const before = getSearchIndex().map(entry => entry.id !== "route:plans" ? entry : {
+      ...entry, normTitles: ["Growth Plans", "תוכניות התפתחות"].map(normalizeSearchText),
+    });
+    expect(before.some(entry => entry.id === "route:plans")).toBe(true);
+    for (const query of ["routines", "שגרות"]) {
+      expect(priorIds(query, 1000, before)[0], query).not.toBe("route:plans");
+      expect(searchCatalog(query, 1)[0].id, query).toBe("route:plans");
+    }
   });
 });

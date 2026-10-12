@@ -12,6 +12,10 @@ export interface FamilyTopic {
   asideAt?: string;
 }
 
+/** v3 IA-05r: the glyph a saved question wears, by its intent. One map for the
+ *  question row on Now, the question sheet and search. */
+export const INTENT_ICON: Readonly<Record<FamilyTopic["intent"], string>> = { understand: "lightbulb", support: "volunteer_activism", enjoy: "favorite" };
+
 export function makeFamilyTopic(input: {
   id: string; childId: string; title: string; intent?: FamilyTopic["intent"];
   observationIds?: string[]; now?: string;
