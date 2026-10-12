@@ -310,7 +310,7 @@ describe("v3 F-TOG-2 — the five pills' cards", () => {
         expect(card).toContain(`<ol class="together-away-steps">${pick.steps.map((step) => `<li>${esc(step)}</li>`).join("")}</ol>`);
         expect(card).toMatch(/<button type="button" class="together-keep" data-testid="together-keep">/);
         // Counts only: no reason line, no done or plan state, no number about the child.
-        const tags = card.replace(/>[^<]*</g, "><").replace(`data-testid="together-away-play-${pick.id}"`, "");
+        const tags = card.replace(/>[^<]*</g, "><");
         for (const gone of ["dp-reason", "dp-done", "plan-", "progress", "aria-valuenow"]) expect(tags).not.toContain(gone);
         expect(text(card)).not.toMatch(/\d\s*%|\b\d+\s*\/\s*\d+\b|\b\d+\s+(?:of|out of)\s+\d+\b|\d+\s*מתוך\s*\d+/);
       }
@@ -414,21 +414,6 @@ describe("v3 F-TOG-2 — the five pills' cards", () => {
       expect(card).toContain(esc(translate("he", worksInLanguage(world, "he") ? "companion.together-view.preview-first" : "companion.together-view.english-only")));
     }
   });
-
-  it("the stylesheet: horizontal game cards from a 700px content width (110 x 104), 88 x 78 thumbs on a phone, four story columns wide, the say rule on the start side", () => {
-    const css = readFileSync(new URL("./togetherDiscovery.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
-    const block = css.slice(css.indexOf("v3 F-TOG-2: the five pills' cards"));
-    expect(block.length).toBeGreaterThan(400);
-    expect(block).toMatch(/\.together-game-art \{ inline-size: 88px; block-size: 78px;/);
-    expect(block).toMatch(/@container together \(min-width: 700px\) \{[^}]*\}\n {2}\.companion-together \.together-game-card \{ grid-template-columns: 110px minmax\(0, 1fr\);[^}]*\}\n {2}\.together-game-art \{ inline-size: 110px; block-size: 104px; \}/);
-    expect(block).toMatch(/@container together \(min-width: 1000px\) \{[^]*?\.together-story-grid \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/);
-    expect(block).toMatch(/\.together-story-art \{[^}]*block-size: 140px;/);
-    expect(block).toMatch(/\.together-away-card \.companion-say \{[^}]*padding-inline-start: 12px; border-inline-start: 2px solid var\(--arbor-ink\);/);
-    expect(block).toMatch(/\.together-keep \{[^}]*min-block-size: var\(--touch-min\)/);
-    expect(block).not.toMatch(/\b(?:margin|padding|border|inset)-(?:left|right)\b|(?:^|[\s;{])(?:left|right)\s*:|text-align:\s*(?:left|right)/);
-    expect(block).not.toMatch(/#[0-9a-f]{3,8}\b/i);
-    expect(css.match(/@container together \(min-width: 640px\)/g)).toHaveLength(1);
-  });
 });
 
 describe("v3 F-TOG-2 — the five pills while the Shell draws no Together row", () => {
@@ -493,6 +478,22 @@ describe("v3 F-TOG-2 — every retired address that lands on Together carries it
       else if (arrival.sheet === "create-story") expect(html, route).toContain('data-testid="together-create-sheet"');
       else expect(state.sheets, route).toHaveLength(0);
     }
+  });
+});
+
+  it("the stylesheet: horizontal game cards from a 700px content width (110 x 104), 88 x 78 thumbs on a phone, four story columns wide, the say rule on the start side", () => {
+    const css = readFileSync(new URL("./togetherDiscovery.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+    const block = css.slice(css.indexOf("v3 F-TOG-2: the five pills' cards"));
+    expect(block.length).toBeGreaterThan(400);
+    expect(block).toMatch(/\.together-game-art \{ inline-size: 88px; block-size: 78px;/);
+    expect(block).toMatch(/@container together \(min-width: 700px\) \{[^}]*\}\n {2}\.companion-together \.together-game-card \{ grid-template-columns: 110px minmax\(0, 1fr\);[^}]*\}\n {2}\.together-game-art \{ inline-size: 110px; block-size: 104px; \}/);
+    expect(block).toMatch(/@container together \(min-width: 1000px\) \{[^]*?\.together-story-grid \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/);
+    expect(block).toMatch(/\.together-story-art \{[^}]*block-size: 140px;/);
+    expect(block).toMatch(/\.together-away-card \.companion-say \{[^}]*padding-inline-start: 12px; border-inline-start: 2px solid var\(--arbor-ink\);/);
+    expect(block).toMatch(/\.together-keep \{[^}]*min-block-size: var\(--touch-min\)/);
+    expect(block).not.toMatch(/\b(?:margin|padding|border|inset)-(?:left|right)\b|(?:^|[\s;{])(?:left|right)\s*:|text-align:\s*(?:left|right)/);
+    expect(block).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    expect(css.match(/@container together \(min-width: 640px\)/g)).toHaveLength(1);
   });
 });
 
