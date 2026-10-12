@@ -20,6 +20,8 @@ import { routineDayKey, routineDaysComplete, routineIdOfPlan, routineRunToday } 
  * are ticked on RoutineRunBoard (per day), never cycled here: this list keeps
  * only the plan's title, delete and a folded "Edit the steps", and its header
  * counts today's run (ticked, still to go) instead of steps done for good.
+ * Beside the board (`beside="board"`, the active plan on #/plans) the header
+ * drops those counts: the board already says them, from the live run.
  */
 
 type Item = { id: string; phaseIdx: number; stepIdx: number; text: string; status: StepStatus; phaseName: string };
@@ -99,11 +101,13 @@ function StepRow({ item, planId, isToday, onEdit, routine = false }: { item: Ite
   );
 }
 
-export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
+export default function PlanSteps({ plan, todayStep, now = Date.now(), beside }: {
   plan: ActionPlan;
   /** The step the plan card names as today's (B-ASKJB-26), outlined in the list. */
   todayStep?: { phaseIdx: number; stepIdx: number } | null;
   now?: number;
+  /** FEAT-07: "board" when a RoutineRunBoard shows this routine plan's counts. */
+  beside?: "board";
 }) {
   const { deletePlan, updatePlanStepText } = useArbor();
   const { t } = useLanguage();
@@ -124,10 +128,13 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
   const total = items.length;
   const done = items.filter((i) => i.status === "done").length;
   const days = planStartedDays(plan, now);
-  // FEAT-07: a routine plan counts today's run, and the days every step ran.
+  // FEAT-07: a routine plan counts today's run, and the days every step ran in
+  // the last two weeks — unless the board beside it already says both.
   const routine = routineIdOfPlan(plan) !== null;
-  const ticked = routine ? routineRunToday(plan, routineDayKey(now)).length : 0;
-  const runDays = routine ? routineDaysComplete(plan) : 0;
+  const runCounts = routine && beside !== "board";
+  const dayKey = routineDayKey(now);
+  const ticked = runCounts ? routineRunToday(plan, dayKey).length : 0;
+  const runDays = runCounts ? routineDaysComplete(plan, dayKey) : 0;
 
   const openEdit = (item: Item) => { setEditing(item); setDraft(item.text); };
   const saveEdit = () => {
@@ -160,9 +167,11 @@ export default function PlanSteps({ plan, todayStep, now = Date.now() }: {
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* TJB-16: a count of steps done, never a completion share. */}
           {routine ? (
+            runCounts && (
             <span data-testid="plan-routine-today" className="t-xs font-bold" style={{ color: "var(--arbor-ink-soft)" }}>
               {t("elev.plans.routineRun.today", { done: ticked, left: Math.max(0, total - ticked) })}
             </span>
+            )
           ) : (
           <span className="t-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>
             {t("plan.stepsCount", { done, total })}

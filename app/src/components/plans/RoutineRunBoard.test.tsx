@@ -40,7 +40,7 @@ vi.mock("../../lib/celebrate", () => ({ celebrate: h.celebrate }));
 import RoutineRunBoard from "./RoutineRunBoard";
 import { PendingLine, Receipt } from "../ui/Receipt";
 import { translate } from "../../lib/i18n";
-import { routineById } from "../../lib/routines";
+import { localized, routineById } from "../../lib/routines";
 import { routineRunToday, routineToPlan, toggleRoutineStep } from "../../lib/routineTemplates";
 
 type El = React.ReactElement<Record<string, any>>;
@@ -54,6 +54,9 @@ function routinePlan(ticked: number[] = []): ActionPlan {
   return ticked.reduce((p, i) => toggleRoutineStep(p, TODAY, i), plan);
 }
 let props: { plan: ActionPlan; primaryProps?: typeof STAMP; now: number };
+/** The component under test (a remount test swaps in a freshly imported module). */
+let Board: typeof RoutineRunBoard = RoutineRunBoard;
+const bedtimeTitle = (lang: "en" | "he") => localized(routineById("bedtime").title, lang);
 
 function elements(node: React.ReactNode): El[] {
   if (!React.isValidElement<Record<string, any>>(node)) return [];
@@ -63,7 +66,7 @@ function elements(node: React.ReactNode): El[] {
 function render() {
   for (let n = 0; n < 12; n++) {
     h.cursor = 0; h.dirty = false;
-    const tree = RoutineRunBoard(props as Parameters<typeof RoutineRunBoard>[0]);
+    const tree = Board(props as Parameters<typeof RoutineRunBoard>[0]);
     h.effects.splice(0).forEach((effect) => effect());
     if (!h.dirty) return tree;
   }
@@ -78,6 +81,7 @@ const steps = () => elements(render()).filter((el) => typeof el.props["data-test
 
 beforeEach(() => {
   h.cursor = 0; h.slots = []; h.effects = []; h.dirty = false; h.lang = "en"; h.writes = []; h.celebrate.mockClear();
+  Board = RoutineRunBoard;
   props = { plan: routinePlan(), now: NOW };
 });
 afterEach(() => { dispose(); });
@@ -131,7 +135,8 @@ for (const lang of ["en", "he"] as const) describe(`FEAT-07 · the routine run b
     h.writes[0].resolve(); await flush();
     expect(h.celebrate).toHaveBeenCalledTimes(1);
     expect(h.celebrate).toHaveBeenCalledWith({ kind: "routine" });
-    expect(byId("routine-run-saved").props.children).toBe(translate(lang, "elev.plans.routineRun.doneToday", { routine: props.plan.title }));
+    expect(h.writes[0].plan.routineCelebratedOn).toBe(TODAY);
+    expect(byId("routine-run-saved").props.children).toBe(translate(lang, "elev.plans.routineRun.doneToday", { routine: bedtimeTitle(lang) }));
     // Unticking and ticking the last step again the same day: no second burst.
     tap(3); h.writes[1].resolve(); await flush();
     tap(3); h.writes[2].resolve(); await flush();
@@ -157,6 +162,69 @@ describe("FEAT-07 · persistence boundaries", () => {
     expect(findId("routine-run-saved")).toBeUndefined();
     h.writes[1].resolve(); await flush();
     expect(findId("routine-run-saved")).toBeDefined();
+  });
+
+  it("a reload (fresh module state, the plan as stored) never celebrates the same day again", async () => {
+    props = { plan: routinePlan([0, 1, 2]), now: NOW };
+    render(); tap(3);
+    // The finishing write carries the celebrated day with the run.
+    expect(h.writes[0].plan.routineCelebratedOn).toBe(TODAY);
+    h.writes[0].resolve(); await flush();
+    expect(h.celebrate).toHaveBeenCalledTimes(1);
+    // Reload: the page and this module start over; the plan comes back as stored.
+    dispose();
+    vi.resetModules();
+    Board = (await import("./RoutineRunBoard")).default;
+    expect(Board).not.toBe(RoutineRunBoard);
+    props = { plan: h.writes[0].plan, now: NOW + 3_600_000 };
+    expect(byId("routine-run-step-3").props["aria-checked"]).toBe(true);
+    tap(3); h.writes[1].resolve(); await flush();
+    tap(3); h.writes[2].resolve(); await flush();
+    expect(routineRunToday(h.writes[2].plan, TODAY)).toEqual([0, 1, 2, 3]);
+    expect(h.celebrate).toHaveBeenCalledTimes(1);
+  });
+
+  it("a day already celebrated on another device never celebrates here", async () => {
+    props = { plan: { ...routinePlan([0, 1, 2]), routineCelebratedOn: TODAY }, now: NOW };
+    render(); tap(3);
+    expect(h.writes[0].plan.routineCelebratedOn).toBe(TODAY);
+    h.writes[0].resolve(); await flush();
+    expect(h.celebrate).not.toHaveBeenCalled();
+    expect(byId("routine-run-saved").props.children).toBe(translate("en", "elev.plans.routineRun.doneToday", { routine: bedtimeTitle("en") }));
+  });
+
+  it("the days line reads the stored record: it moves only after the write resolved", async () => {
+    props = { plan: routinePlan([0, 1, 2]), now: NOW };
+    expect(findId("routine-run-days")).toBeUndefined();
+    tap(3);
+    expect(findId("routine-run-days")).toBeUndefined(); // on its way
+    h.writes[0].reject(new Error("offline")); await flush();
+    expect(findId("routine-run-days")).toBeUndefined(); // not saved
+    byId("routine-run-retry").props.onClick();
+    expect(h.writes[1].plan.routineCelebratedOn).toBe(TODAY);
+    expect(findId("routine-run-days")).toBeUndefined();
+    h.writes[1].resolve(); await flush();
+    expect(byId("routine-run-days").props.children).toBe(translate("en", "elev.plans.routineRun.days.one"));
+    expect(h.celebrate).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs older than the last two weeks never count, even before a write prunes them", () => {
+    const full = [0, 1, 2, 3];
+    props = { plan: { ...routinePlan(), routineRuns: { "2026-09-12": full, "2026-09-17": full, "2026-09-22": full } }, now: NOW };
+    expect(findId("routine-run-days")).toBeUndefined();
+    props = { plan: { ...routinePlan(), routineRuns: { "2026-09-22": full, "2026-09-29": full } }, now: NOW };
+    expect(byId("routine-run-days").props.children).toBe(translate("en", "elev.plans.routineRun.days.one"));
+  });
+
+  it("the done-for-today line names the routine in the reader's language, not the one it was started in", async () => {
+    h.lang = "en";
+    const started = routinePlan([0, 1, 2]);
+    expect(started.title).toBe(bedtimeTitle("en"));
+    h.lang = "he";
+    props = { plan: started, now: NOW };
+    render(); tap(3); h.writes[0].resolve(); await flush();
+    expect(byId("routine-run-saved").props.children).toBe(translate("he", "elev.plans.routineRun.doneToday", { routine: bedtimeTitle("he") }));
+    expect(String(byId("routine-run-saved").props.children)).not.toContain(started.title);
   });
 
   it("a write that resolves after the board is gone changes nothing", async () => {
@@ -206,6 +274,8 @@ describe("FEAT-07 · the rows and the contract stamp", () => {
   it("the file never names a contract move itself, and holds no share or bar", () => {
     const src = readFileSync(new URL("./RoutineRunBoard.tsx", import.meta.url), "utf8");
     expect(src).not.toContain("data-primary-move");
+    // No module-level memory: once-a-day lives on the plan, not in this session.
+    expect(src).not.toMatch(/^(?:const|let|var)\s+\w+\s*=\s*new\s+(?:Set|Map)\b/m);
     expect(src).not.toMatch(/ProgressBar|progressbar|Math\.round\([^)]*100|%`|toFixed/);
     expect(src).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
     expect(src).not.toMatch(/\b(?:margin|padding)(?:Left|Right)\b|\b(?:left|right):/);

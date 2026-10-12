@@ -39,7 +39,10 @@ export type CelebrationKind =
   | "play"
   /** FEAT-07: every step of a routine run for the day, after the run was saved. */
   | "routine"
-  /** FEAT-07: a parent plan's run marked done (reserved for the plan run view). */
+  /** A parent plan finished (its last step done, after the write resolved).
+   *  The kind is declared here because FEAT-07 owns the celebration kinds;
+   *  its one caller is VIS-06's plan-completion moment on #/plans, built in a
+   *  parallel lane. Remove it if that moment is dropped. */
   | "plan";
 
 const SHAPE: Record<CelebrationKind, { originY: number; spread: number }> = {

@@ -523,6 +523,12 @@ export interface ActionPlan {
    * written, so a routine runs again every day. Pruned to the last 14 days.
    */
   routineRuns?: Record<string, number[]>;
+  /**
+   * FEAT-07: the local day (YYYY-MM-DD) whose finished run already had its
+   * celebration. Written with the run that finished the day, so a reload or a
+   * second device never celebrates the same day twice.
+   */
+  routineCelebratedOn?: string;
 }
 
 /** B-ASKJB-26: one weekly check-in on a plan — the parent's own answer, never a score. */

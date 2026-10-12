@@ -4,9 +4,12 @@ import { PendingLine, Receipt } from "../ui/Receipt";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { celebrate } from "../../lib/celebrate";
+import { localized, ROUTINES } from "../../lib/routines";
 import {
   isRoutineRunComplete,
+  markRoutineCelebrated,
   resetRoutineToday,
+  routineCelebrated,
   routineDayKey,
   routineDaysComplete,
   routineIdOfPlan,
@@ -24,10 +27,14 @@ import type { ActionPlan } from "../../types";
    ArborContext.setRoutineRun, which waits for the server: the "Saved" receipt,
    the done-for-today line and the celebration all follow a write that
    resolved, never the tap. `step.completed` is never written, so the plan
-   starts fresh tomorrow.
+   starts fresh tomorrow. The celebration is once per day on any device: the
+   write that finishes the day also stores `routineCelebratedOn`, and a day
+   already marked never celebrates again (after a reload or on a second phone).
 
    Counts only: ticked today and still to go, and the days every step was run
-   in the last two weeks. No share, no bar, no streak, no colour verdict.
+   in the last two weeks. That record line reads the plan AS STORED, so it
+   moves only after a write resolved. No share, no bar, no streak, no colour
+   verdict.
    Parent register: tokens only, logical properties, 44 px switches.
    The host passes its contract stamp (primaryProps) for the first step still
    to do; this file never names the move itself.
@@ -40,15 +47,27 @@ type Attempt = {
   id: number;
   planId: string;
   day: string;
-  /** The plan as this attempt writes it (only its routineRuns are read back). */
+  /** The plan as this attempt writes it (only its run fields are read back). */
   next: ActionPlan;
-  /** True when this write moves today's run from unfinished to finished. */
-  completes: boolean;
+  /** True when this write finishes today's run AND marks the day celebrated. */
+  celebrates: boolean;
   status: "pending" | "saved" | "failed";
 };
 
-/** One celebration per plan per day, for the whole session. */
-const celebrated = new Set<string>();
+/** The stored plan with an attempt's run (and celebrated day) laid over it. */
+function withRun(plan: ActionPlan, from: ActionPlan): ActionPlan {
+  const out: ActionPlan = { ...plan, routineRuns: from.routineRuns ?? {} };
+  if (from.routineCelebratedOn) out.routineCelebratedOn = from.routineCelebratedOn;
+  return out;
+}
+
+/** The routine's title in the reader's language (the plan's title is frozen
+ *  in the language it was started in); the plan's own title otherwise. */
+function routineTitle(plan: ActionPlan, lang: "en" | "he"): string {
+  const id = routineIdOfPlan(plan);
+  const routine = id === null ? undefined : ROUTINES.find((r) => r.id === id);
+  return routine ? localized(routine.title, lang) : plan.title;
+}
 
 export default function RoutineRunBoard({ plan, primaryProps, now }: {
   plan: ActionPlan;
@@ -57,7 +76,7 @@ export default function RoutineRunBoard({ plan, primaryProps, now }: {
   now?: number;
 }) {
   const { setRoutineRun } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const latest = useRef(0);
   const mounted = useRef(true);
@@ -72,32 +91,33 @@ export default function RoutineRunBoard({ plan, primaryProps, now }: {
   // Today's run as this board last wrote it (on its way, or accepted by the
   // server) so a second tap never builds on a snapshot that has not caught up;
   // after a failed write, the plan as stored.
-  const view: ActionPlan = live && live.status !== "failed" ? { ...plan, routineRuns: live.next.routineRuns } : plan;
+  const view: ActionPlan = live && live.status !== "failed" ? withRun(plan, live.next) : plan;
+  // The record as persisted: the stored plan, or this board's write once the
+  // server accepted it, never a write still on its way.
+  const stored: ActionPlan = live?.status === "saved" ? view : plan;
   const steps = (plan.phases ?? []).flatMap((ph) => (ph.steps ?? []).map((s) => s.text));
   const ticked = routineRunToday(view, day);
   const total = routineStepCount(plan);
   const done = ticked.length;
   const left = Math.max(0, total - done);
   const complete = isRoutineRunComplete(view, day);
-  const days = routineDaysComplete(view);
+  const days = routineDaysComplete(stored, day);
+  const title = routineTitle(plan, uiLang === "he" ? "he" : "en");
   const firstOpen = steps.findIndex((_, i) => !ticked.includes(i));
   const { style: stampStyle, ...stampAttrs } = primaryProps ?? {};
 
-  const write = (next: ActionPlan, completes: boolean) => {
+  const write = (next: ActionPlan, celebrates: boolean) => {
     const id = ++latest.current;
     const planId = plan.id;
-    setAttempt({ id, planId, day, next, completes, status: "pending" });
+    setAttempt({ id, planId, day, next, celebrates, status: "pending" });
     let request: Promise<void>;
     try { request = Promise.resolve(setRoutineRun(next)); } catch (error) { request = Promise.reject(error); }
     request.then(
       () => {
         if (!mounted.current || latest.current !== id) return;
         setAttempt((a) => (a && a.id === id ? { ...a, status: "saved" } : a));
-        const key = `${planId}@${day}`;
-        if (completes && !celebrated.has(key)) {
-          celebrated.add(key);
-          celebrate({ kind: "routine" });
-        }
+        // Persisted with the day marked: the one moment for this day.
+        if (celebrates) celebrate({ kind: "routine" });
       },
       () => {
         if (!mounted.current || latest.current !== id) return;
@@ -109,7 +129,10 @@ export default function RoutineRunBoard({ plan, primaryProps, now }: {
     if (routineIdOfPlan(plan) === null) return;
     const next = toggleRoutineStep(view, day, idx);
     if (next === view) return;
-    write(next, !isRoutineRunComplete(view, day) && isRoutineRunComplete(next, day));
+    // Celebrate only the write that finishes a day not yet celebrated anywhere.
+    const finishes = !isRoutineRunComplete(view, day) && isRoutineRunComplete(next, day);
+    const celebrates = finishes && !routineCelebrated(view, day);
+    write(celebrates ? markRoutineCelebrated(next, day) : next, celebrates);
   };
   const reset = () => {
     if (routineIdOfPlan(plan) === null) return;
@@ -117,7 +140,7 @@ export default function RoutineRunBoard({ plan, primaryProps, now }: {
   };
   const retry = () => {
     if (!live || live.status !== "failed") return;
-    write({ ...plan, routineRuns: live.next.routineRuns }, live.completes && !isRoutineRunComplete(plan, day));
+    write(withRun(plan, live.next), live.celebrates && !routineCelebrated(plan, day));
   };
 
   return (
@@ -171,12 +194,12 @@ export default function RoutineRunBoard({ plan, primaryProps, now }: {
       <PendingLine active={pending} testId="routine-run-pending">{t("elev.plans.routineRun.saving")}</PendingLine>
       {live?.status === "saved" && (
         <Receipt testId="routine-run-saved" size="sm">
-          {complete ? t("elev.plans.routineRun.doneToday", { routine: plan.title }) : t("elev.plans.routineRun.saved")}
+          {complete ? t("elev.plans.routineRun.doneToday", { routine: title }) : t("elev.plans.routineRun.saved")}
         </Receipt>
       )}
       {complete && (!live || live.status === "failed") && (
         <p data-testid="routine-run-done-today" className="t-sm" style={{ color: "var(--arbor-ink-soft)" }}>
-          {t("elev.plans.routineRun.doneToday", { routine: plan.title })}
+          {t("elev.plans.routineRun.doneToday", { routine: title })}
         </p>
       )}
       {live?.status === "failed" && (

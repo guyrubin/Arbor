@@ -60,9 +60,15 @@ export function routineTemplatesForAge(months: number | null | undefined): Routi
    A routine plan never writes `step.completed` (that would finish it after one
    run). Each day's ticks live in `plan.routineRuns[YYYY-MM-DD]` as the indices
    of the steps done that day. All helpers are pure: they return a new plan and
-   never mutate the one passed in. Counts only — never a ratio or a score. */
+   never mutate the one passed in. Counts only — never a ratio or a score.
 
-/** How many days of runs a routine plan keeps. */
+   The window: a plan keeps (and counts) the runs of the last
+   ROUTINE_RUN_KEEP_DAYS local days, today included — `0 <= age < keepDays`.
+   One tolerance: a key ONE day ahead of this device is kept (never counted),
+   because another device in a later time zone may already be on tomorrow, and
+   pruning it here would erase that family member's ticks. */
+
+/** How many days of runs a routine plan keeps (today and the 13 days before). */
 export const ROUTINE_RUN_KEEP_DAYS = 14;
 
 const DAY_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -104,12 +110,17 @@ export function routineRunToday(plan: ActionPlan, dayKey: string): number[] {
   return cleanRun(plan.routineRuns?.[dayKey], routineStepCount(plan));
 }
 
-/** Keep only well-formed, non-empty days within `keepDays` before `dayKey`. */
+/** Whether `key` is one of the `keepDays` local days ending on `dayKey`. */
+function inWindow(key: string, dayKey: string, keepDays: number): boolean {
+  const age = dayDiff(key, dayKey);
+  return age !== null && age >= 0 && age < keepDays;
+}
+
+/** Keep only well-formed, non-empty days in the window (plus one day ahead, see above). */
 function prunedRuns(runs: Record<string, number[]>, dayKey: string, total: number, keepDays: number): Record<string, number[]> {
   const out: Record<string, number[]> = {};
   for (const [key, run] of Object.entries(runs)) {
-    const diff = dayDiff(key, dayKey);
-    if (diff === null || diff < -1 || diff > keepDays) continue;
+    if (!inWindow(key, dayKey, keepDays) && dayDiff(key, dayKey) !== -1) continue;
     const clean = cleanRun(run, total);
     if (clean.length) out[key] = clean;
   }
@@ -138,13 +149,17 @@ export function resetRoutineToday(plan: ActionPlan, dayKey: string, keepDays = R
   return { ...plan, routineRuns: runs };
 }
 
-/** Days on which EVERY step was run (a partial day never counts). */
-export function routineDaysComplete(plan: ActionPlan): number {
+/**
+ * Days in the last `keepDays` local days (today included) on which EVERY step
+ * was run. A partial day never counts, and neither does a day outside the
+ * window, even while it is still stored (runs are pruned only on a write).
+ */
+export function routineDaysComplete(plan: ActionPlan, dayKey: string, keepDays = ROUTINE_RUN_KEEP_DAYS): number {
   if (routineIdOfPlan(plan) === null) return 0;
   const total = routineStepCount(plan);
   if (total === 0) return 0;
   return Object.entries(plan.routineRuns ?? {}).filter(
-    ([key, run]) => DAY_KEY.test(key) && cleanRun(run, total).length === total,
+    ([key, run]) => inWindow(key, dayKey, keepDays) && cleanRun(run, total).length === total,
   ).length;
 }
 
@@ -152,4 +167,15 @@ export function routineDaysComplete(plan: ActionPlan): number {
 export function isRoutineRunComplete(plan: ActionPlan, dayKey: string): boolean {
   const total = routineStepCount(plan);
   return total > 0 && routineRunToday(plan, dayKey).length === total;
+}
+
+/** Whether `dayKey`'s finished run already had its celebration (on any device). */
+export function routineCelebrated(plan: ActionPlan, dayKey: string): boolean {
+  return routineIdOfPlan(plan) !== null && plan.routineCelebratedOn === dayKey;
+}
+
+/** The plan with `dayKey` marked as celebrated (same plan back for a non-routine plan). */
+export function markRoutineCelebrated(plan: ActionPlan, dayKey: string): ActionPlan {
+  if (routineIdOfPlan(plan) === null) return plan;
+  return { ...plan, routineCelebratedOn: dayKey };
 }
