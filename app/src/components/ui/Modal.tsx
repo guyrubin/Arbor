@@ -2,6 +2,7 @@ import React, { useId } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Icon } from "./Icon";
+import { DialogCompanion } from "./DialogCompanion";
 import { useLanguage } from "../../context/LanguageContext";
 
 import { useDialog } from "../../hooks/useDialog";
@@ -13,15 +14,20 @@ export function Modal({
   title,
   children,
   maxWidth = "max-w-lg",
+  companion,
 }: {
   open: boolean;
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
   maxWidth?: string;
+  /** v3 IA-06r: chrome drawn above this dialog's backdrop, outside its box
+   *  (the L2 crumb, layout/Breadcrumb). See DialogCompanion. */
+  companion?: React.ReactNode;
 }) {
   const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose });
   const titleId = useId();
+  const companionId = useId();
   const { t } = useLanguage();
 
   // Render to document.body so the fixed overlay is positioned against the
@@ -39,15 +45,22 @@ export function Modal({
           exit={{ opacity: 0 }}
           onClick={onBackdropClick}
           data-arbor-dialog-layer
+          /* IA-06r: a companion crumb sets --arbor-crumb-inset on this layer;
+             the dialog then starts below it. Unset, this is p-4's 1rem. */
+          style={{ paddingTop: "max(1rem, var(--arbor-crumb-inset, 0px))" }}
         >
+          {companion && <DialogCompanion id={companionId}>{companion}</DialogCompanion>}
           <motion.div
             ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby={title ? titleId : undefined}
+            aria-owns={companion ? companionId : undefined}
             tabIndex={-1}
-            className={`w-full ${maxWidth} bg-white rounded-3xl p-6 max-h-[90vh] overflow-y-auto`}
-            style={{ border: "1px solid var(--arbor-rule)", boxShadow: "0 24px 60px rgba(41,51,63,0.18)" }}
+            className={`w-full ${maxWidth} bg-white rounded-3xl p-6 overflow-y-auto`}
+            // 90vh as before; 100% keeps it inside the layer's padding, so it
+            // never slides under a companion crumb (IA-06r).
+            style={{ border: "1px solid var(--arbor-rule)", boxShadow: "0 24px 60px rgba(41,51,63,0.18)", maxHeight: "min(90vh, 100%)" }}
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 12 }}

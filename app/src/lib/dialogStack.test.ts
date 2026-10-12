@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createDialogStack, dialogTabbables } from "./dialogStack";
+import { DIALOG_COMPANION, createDialogStack, dialogTabbables } from "./dialogStack";
 
 // Structural DOM doubles: production event/ownership/shield code runs unchanged.
 // Geometry is explicit test input; real CSS/focus behavior remains a browser gate.
@@ -530,5 +530,81 @@ describe("B-SHELL-22 · closeTop (the Android back seam)", () => {
     f.block(true);
     expect(f.stack.closeTop()).toBe(false);
     expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+/* v3 IA-06r — a dialog's companion: the L2 crumb its layer draws outside the
+   dialog box, above the backdrop (ui/DialogCompanion, layout/Breadcrumb). The
+   layer here is built as ui/Modal and ui/Sheet build theirs: the layer holds
+   the companion first, then the dialog box. */
+describe("v3 IA-06r · a dialog's companion", () => {
+  function companionLayer(f: ReturnType<typeof fixture>) {
+    const layer = f.doc.body.append(new Node(f.doc));
+    layer.setAttribute("data-arbor-dialog-layer", "");
+    const companion = layer.append(new Node(f.doc));
+    companion.setAttribute(DIALOG_COMPANION, "");
+    const home = companion.append(new Node(f.doc, "button"));
+    const route = companion.append(new Node(f.doc, "button"));
+    const root = layer.append(new Node(f.doc));
+    root.setAttribute("role", "dialog");
+    root.setAttribute("tabindex", "-1");
+    const close = root.append(new Node(f.doc, "button"));
+    const body = root.append(new Node(f.doc, "button"));
+    return { layer, companion, home, route, root, close, body };
+  }
+
+  it("opens on the dialog, never on the crumb, and the shield leaves the crumb alone", () => {
+    const f = fixture(), d = companionLayer(f);
+    const a = f.stack.register({ root: html(d.root), onClose: vi.fn() }); f.flush();
+    expect(f.doc.activeElement).toBe(d.close);
+    expect(f.shell.hasAttribute("inert")).toBe(true);
+    for (const node of [d.layer, d.companion, d.home, d.route]) {
+      expect(node.hasAttribute("inert")).toBe(false);
+      expect(node.hasAttribute("aria-hidden")).toBe(false);
+    }
+    a.dispose(); f.flush(); expect(f.doc.activeElement).toBe(f.opener);
+  });
+
+  it("focus may rest on a crumb button; Tab cycles crumb, then dialog, then back to the crumb", () => {
+    const f = fixture(), d = companionLayer(f);
+    const a = f.stack.register({ root: html(d.root), onClose: vi.fn() }); f.flush();
+    d.home.focus(); f.flush();
+    expect(f.doc.activeElement).toBe(d.home);
+    d.body.focus();
+    expect(f.key("Tab").defaultPrevented).toBe(true);
+    expect(f.doc.activeElement).toBe(d.home);
+    expect(f.key("Tab", true).defaultPrevented).toBe(true);
+    expect(f.doc.activeElement).toBe(d.body);
+    // Inside the cycle the browser's own order runs (crumb before the box).
+    d.route.focus();
+    expect(f.key("Tab").defaultPrevented).toBe(false);
+    a.dispose(); f.flush(); expect(f.doc.activeElement).toBe(f.opener);
+  });
+
+  it("NEGATIVE CONTROL: a sibling in the layer that is not a companion pulls focus back into the dialog", () => {
+    const f = fixture(), d = companionLayer(f);
+    const stray = d.layer.append(new Node(f.doc, "button"));
+    const a = f.stack.register({ root: html(d.root), onClose: vi.fn() }); f.flush();
+    stray.focus();
+    expect(f.doc.activeElement).toBe(d.close);
+    d.companion.removeAttribute(DIALOG_COMPANION);
+    d.home.focus();
+    expect(f.doc.activeElement).toBe(d.close);
+    a.dispose(); f.flush();
+  });
+
+  it("a dialog opened over it owns focus: the lower dialog's crumb is shielded with it", () => {
+    const f = fixture(), d = companionLayer(f), inner = f.layer();
+    const a = f.stack.register({ root: html(d.root), onClose: vi.fn() }); f.flush();
+    const b = f.stack.register({ root: html(inner.root), onClose: vi.fn() }); f.flush();
+    expect(d.layer.hasAttribute("inert")).toBe(true);
+    d.home.focus();
+    expect(f.doc.activeElement).toBe(inner.first);
+    inner.last.focus();
+    f.key("Tab");
+    expect(f.doc.activeElement).toBe(inner.first);
+    b.dispose(); inner.root.remove(); f.flush();
+    expect(d.layer.hasAttribute("inert")).toBe(false);
+    a.dispose(); f.flush();
   });
 });

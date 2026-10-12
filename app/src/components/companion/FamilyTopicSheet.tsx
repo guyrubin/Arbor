@@ -57,9 +57,10 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
   const actions = topic ? actionLoop.filter(item => item.topicId === topic.id) : [];
   const threads = topic ? conversations.filter(item => item.topicId === topic.id) : [];
   const rows = showFinished ? [...familyTopics, ...archivedFamilyTopics] : familyTopics;
-  // v3 IA-06: the sheet owns one history entry (Back closes it) and names
-  // where it sits in a crumb under its title. Every way out goes through
-  // close; a row that leaves for a route navigates once that entry is gone.
+  // v3 IA-06: the sheet owns one history entry (Back closes it). IA-06r: it
+  // names where it sits in a crumb its dialog draws over the top bar title
+  // (under the phone header below lg). Every way out goes through close; a row
+  // that leaves for a route navigates once that entry is gone.
   const close = useSheetHistory(true, onClose);
 
   // Every write waits for the store: a row changes only once its record is saved.
@@ -84,8 +85,8 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
     else await choose();
   }
 
-  return <Sheet open onClose={() => close()} title={t("companion.family-topic-sheet.what-we-re-exploring")}>
-    <SheetBreadcrumb label={topic?.title ?? t("companion.family-topic-sheet.what-we-re-exploring")} close={close} />
+  return <Sheet open onClose={() => close()} title={t("companion.family-topic-sheet.what-we-re-exploring")}
+    companion={<SheetBreadcrumb label={topic?.title ?? t("companion.family-topic-sheet.what-we-re-exploring")} close={close} />}>
     <div className="topic-sheet" dir={he ? "rtl" : "ltr"}>
       <p className="topic-sheet-sub">{t("companion.family-topic-sheet.a-question-you-chose-for-it-connects-the-r", { value0: childProfile.name })}</p>
 

@@ -135,8 +135,9 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
   const unfiled = inView.filter(observation => observation.domains.length === 0);
   const selected = selection?.childId === childProfile.id ? selection : null;
   const selectedObservations = selected ? observations.filter(o => selected.ids.includes(o.id)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)) : [];
-  // v3 IA-06: an open selection owns one history entry (Back closes it) and
-  // names where it sits in a crumb under its title; leaving for another route
+  // v3 IA-06: an open selection owns one history entry (Back closes it).
+  // IA-06r: it names where it sits in a crumb its dialog draws over the top
+  // bar title (under the phone header below lg); leaving for another route
   // waits for that entry.
   const closeSelection = useSheetHistory(!!selected, () => setSelection(null));
   const name = childProfile.name.split(/\s+/)[0] || childProfile.name;
@@ -294,8 +295,8 @@ export default function ChildPortrait({ onDiscuss, onSaveQuestion }: ChildPortra
     </div>
 
     <DomainSheet domain={sheetDomain} onClose={() => setSheetDomain(null)} onCheck={() => { setSheetDomain(null); setActiveTab("screening"); }} onExplore={exploreDomain} onOpenMoments={openDomainMoments} />
-    <Modal open={!!selected} onClose={() => closeSelection()} title={selected?.title ?? c.sourceTitle} maxWidth="max-w-2xl">
-      <SheetBreadcrumb label={selected?.title ?? c.sourceTitle} close={closeSelection} />
+    <Modal open={!!selected} onClose={() => closeSelection()} title={selected?.title ?? c.sourceTitle} maxWidth="max-w-2xl"
+      companion={<SheetBreadcrumb label={selected?.title ?? c.sourceTitle} close={closeSelection} />}>
       <div className="portrait-evidence" dir={uiLang === "he" ? "rtl" : "ltr"}>
       {selectedObservations.length === 0 && <p>{c.noDomain}</p>}
       {!!selectedObservations.length && <p className="portrait-map-note">{copy.selectionHint}</p>}

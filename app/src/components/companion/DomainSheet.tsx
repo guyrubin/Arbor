@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
+import { useSheetHistory } from "../../hooks/useSheetHistory";
 import { useLanguage } from "../../context/LanguageContext";
 import { ageMonthsOf } from "../../lib/age/forChild";
 import { domainName, type DomainId } from "../../lib/domains/registry";
@@ -8,6 +9,7 @@ import type { ObserveStatus } from "../../lib/milestones/observe";
 import { groupMilestonesByShelf, shelfBands } from "../../lib/milestones/shelfMap";
 import { shelfLabel, shelvesOfDomain } from "../../lib/shelves/registry";
 import type { Milestone } from "../../types";
+import { SheetBreadcrumb } from "../layout/Breadcrumb";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { Receipt } from "../ui/Receipt";
@@ -30,6 +32,12 @@ import "./developmentMap.css";
  *
  * A bottom Sheet below lg, the centred Modal above (useCompactSurface). The
  * sheet stamps no module and carries no primary move.
+ *
+ * v3 IA-06r: an L2 sheet like the topic sheet and the portrait's moments. It
+ * owns one history entry (Back closes it), its crumb is drawn over the top bar
+ * title (under the phone header below lg), and every way out goes through its
+ * one close: a door that leaves (the check, Explore, the moments) runs once
+ * that entry is gone, so the moments' own dialog never stacks on an orphan.
  */
 const WHY_KEYS: Readonly<Record<DomainId, string>> = {
   talking: "companion.devMap.why.talking",
@@ -162,8 +170,15 @@ export default function DomainSheet({ domain, onClose, onCheck, onExplore, onOpe
   const { t } = useLanguage();
   const Surface = useCompactSurface() ? Sheet : Modal;
   const currentBandMonths = bandForAgeMonths(comparisonAgeMonths(ageMonthsOf(childProfile), childProfile.preterm?.gestationalWeeks)).months;
+  const close = useSheetHistory(domain !== null, onClose);
   return (
-    <Surface open={domain !== null} onClose={onClose} title={domain ? domainName(domain, t) : undefined} maxWidth="max-w-xl">
+    <Surface
+      open={domain !== null}
+      onClose={() => close()}
+      title={domain ? domainName(domain, t) : undefined}
+      maxWidth="max-w-xl"
+      companion={domain ? <SheetBreadcrumb label={domainName(domain, t)} close={close} /> : undefined}
+    >
       {domain && (
         <DomainSheetBody
           key={domain}
@@ -172,9 +187,9 @@ export default function DomainSheet({ domain, onClose, onCheck, onExplore, onOpe
           currentBandMonths={currentBandMonths}
           gender={childProfile.gender ?? null}
           onAnswer={(id, status) => setMilestoneObservation(id, status)}
-          onCheck={onCheck}
-          onExplore={() => onExplore(domain)}
-          onOpenMoments={() => onOpenMoments(domain)}
+          onCheck={() => close(onCheck)}
+          onExplore={() => close(() => onExplore(domain))}
+          onOpenMoments={() => close(() => onOpenMoments(domain))}
         />
       )}
     </Surface>

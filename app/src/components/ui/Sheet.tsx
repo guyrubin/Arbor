@@ -2,6 +2,7 @@ import React, { useId, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Icon } from "./Icon";
+import { DialogCompanion } from "./DialogCompanion";
 import { useLanguage } from "../../context/LanguageContext";
 
 import { useDialog } from "../../hooks/useDialog";
@@ -56,6 +57,7 @@ export function Sheet({
   children,
   headerActions,
   returnFocusRef,
+  companion,
 }: {
   open: boolean;
   onClose: () => void;
@@ -68,9 +70,13 @@ export function Sheet({
   /** Accepted so a caller can swap Sheet for Modal without editing props; a
    *  sheet is always full-bleed, so it is deliberately unused. */
   maxWidth?: string;
+  /** v3 IA-06r: chrome drawn above this sheet's backdrop, outside its box
+   *  (the L2 crumb under the phone header), as on ui/Modal. */
+  companion?: React.ReactNode;
 }) {
   const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose, returnFocusRef });
   const titleId = useId();
+  const companionId = useId();
   const { t } = useLanguage();
 
   // Portals to document.body for the same reason Modal does: the page's
@@ -89,14 +95,20 @@ export function Sheet({
           data-arbor-dialog-layer
           style={{ background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)" }}
         >
+          {companion && <DialogCompanion id={companionId}>{companion}</DialogCompanion>}
           <motion.div
             ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby={title ? titleId : undefined}
+            aria-owns={companion ? companionId : undefined}
             tabIndex={-1}
-            className="w-full rounded-t-3xl px-4 pt-4 max-h-[88vh] overflow-y-auto bg-white"
+            className="w-full rounded-t-3xl px-4 pt-4 overflow-y-auto bg-white"
             style={{
+              // 88vh as before. IA-06r: a companion crumb sets
+              // --arbor-crumb-inset on the layer; the sheet's top edge then
+              // stays below it.
+              maxHeight: "min(88vh, calc(100% - var(--arbor-crumb-inset, 0px)))",
               // The home indicator eats the last ~34 px of an iPhone screen;
               // a plain pb- put the final control underneath it.
               paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)",

@@ -235,13 +235,16 @@ function properties(input: ts.Node): { name: string; value: ts.Node }[] | undefi
 
 const WRAPPERS = [
   { name: "SectionCard", file: "components/ui/kit.tsx", slots: ["children", "action"], params: ["title", "icon", "tone", "children", "action"] },
-  { name: "Modal", file: "components/ui/Modal.tsx", slots: ["children"], params: ["open", "onClose", "title", "children", "maxWidth"] },
+  // v3 IA-06r re-pin: Modal and Sheet take `companion` (the L2 crumb drawn
+  // above the backdrop, ui/DialogCompanion). It is a prop, not a white-label
+  // slot: the crumb carries ink and muted text on its own paper fill.
+  { name: "Modal", file: "components/ui/Modal.tsx", slots: ["children"], params: ["open", "onClose", "title", "children", "maxWidth", "companion"] },
   // MOB-28/CR-22 (0cdf210f): the phone half of the dialog seam. Settings and
   // the paywall now pick `useCompactSurface() ? Sheet : Modal`, so Sheet holds
   // the same white-label children Modal does and is audited on the same terms.
   // It declares `maxWidth?` in its type but deliberately does not destructure
   // it (a sheet is always full-bleed), so it has no class input of its own.
-  { name: "Sheet", file: "components/ui/Sheet.tsx", slots: ["children", "headerActions"], params: ["open", "onClose", "title", "children", "headerActions", "returnFocusRef"] },
+  { name: "Sheet", file: "components/ui/Sheet.tsx", slots: ["children", "headerActions"], params: ["open", "onClose", "title", "children", "headerActions", "returnFocusRef", "companion"] },
   { name: "PlayShell", file: "components/ui/playkit.tsx", slots: ["children"], params: ["children", "className"] },
   { name: "KidModeProvider", file: "components/kidmode/KidModeContext.tsx", slots: ["children"], params: ["children"] },
   // IA-08/RUN-12 (71ad7e5f): the register gate the six shared drill routes now
