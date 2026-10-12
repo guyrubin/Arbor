@@ -115,20 +115,23 @@ describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
     expect(src).not.toMatch(/t\("ov\.recoEmpty"/);
   });
 
-  it("names the day through the locale's calendar (no hardcoded Good morning)", () => {
-    // Parity 9 Oct: Now's eyebrow is the local date (he-IL / en-GB) · the child's
-    // identity line (B-TODAY-28); CODEX-2's local-time rule stands.
+  it("leads with the Now kicker on the shared clock (no date line, no hardcoded Good morning)", () => {
+    // Re-pin (F-NOW-1 now-heading-identity, 12 Oct): Now's heading is the kicker
+    // 'Now · Parenting Companion' over the title; the date and the child's
+    // identity line (B-TODAY-28) left it, and the age is said once, on the plan
+    // card's Picked line. CODEX-2's local-time rule stands for the loop.
     expect(src).toContain("const now = useNowClock();");
-    expect(src).toContain('now.toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "long" })');
+    expect(todayFile("NowView.tsx")).toContain('<p className="companion-eyebrow" data-testid="now-kicker">{copy.kicker}</p>');
+    expect(src).not.toContain('toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "long" })');
     expect(src).toContain("formatChildAge(childProfile, t, now)");
-    // The identity, loop and lifecycle share the clock that refreshes on re-entry.
+    // The loop and lifecycle share the clock that refreshes on re-entry.
     expect(src).toMatch(/useNowLoop\(\{\s*now,/);
     const clock = todayFile("useNowClock.ts");
     expect(clock).toContain("return new Date();");
     expect(clock).toContain("window.setInterval(refresh, 60_000)");
     expect(clock).toContain('window.addEventListener("focus", refresh)');
     expect(clock).toContain('document.addEventListener("visibilitychange", refresh)');
-    expect(src).toContain('"elev.loop.today.identity"');
+    expect(src).not.toContain('"elev.loop.today.identity"');
     expect(src).not.toContain("Good morning");
     expect(src).not.toContain("בוקר טוב");
   });

@@ -5,8 +5,6 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { useTodaysFocus, type Focus } from "../../hooks/useTodaysFocus";
 import { useLastVisit } from "../../hooks/useLastVisit";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
-import { formatChildAge } from "../../lib/age/format";
-import { childPicture } from "../../lib/childPicture";
 import { dayKey } from "../../practice/signals";
 import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
 import { nextChosenAction } from "./companionChoices";
@@ -35,7 +33,6 @@ import Icon from "../ui/Icon";
 import { Receipt } from "../ui/Receipt";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import { screenForImmediateEscalation } from "../../safety/escalation";
-import { Avatar } from "../ui/Avatar";
 import "./companionExperience.css";
 import "./nowView.css";
 import { TOGETHER_ART } from "../../lib/parentArt";
@@ -221,31 +218,32 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       : lead === "program" && program ? "program" : "recommendation";
   const lifecycleKey = lifecycle.moment && todayOffer.offer?.kind === "what-changed" ? LIFECYCLE_NOTE[lifecycle.moment.kind] : undefined;
   const lifecycleNote = lifecycleKey ? t(lifecycleKey, { name }) : null;
-  const ageText = formatChildAge(childProfile, t, now);
-  const dateLine = now.toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
+  // v3 F-NOW-1: the plan card's face — the lead's own words when it has them
+  // (the practice's say line, in the locale's quotes), else its one-liner; and
+  // a line of plan meta about the parent's own step, in words, never a count.
+  const practiceSay = shownLead === "practice" && loop.pick ? practiceText(loop.pick.practice, "say", lang, childProfile.gender) : "";
+  const planSay = practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
+  const planMeta = shownLead === "step" ? (receipt ? copy.saved : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : undefined;
 
   return <div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
     <header className="now-heading">
       <div>
-        <div className="now-identity">
-          <Avatar name={childProfile.name} photoURL={childPicture(childProfile).url} size={28} />
-          <p className="companion-eyebrow" data-testid="today-identity">{dateLine}{ageText ? <> · {t("elev.loop.today.identity", { name, age: ageText })}</> : null}</p>
-        </div>
+        <p className="companion-eyebrow" data-testid="now-kicker">{copy.kicker}</p>
         <h1 className="arbor-type-title">{copy.title(name)}</h1>
       </div>
     </header>
-    {(topic || onTopicOpen) && <NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} onTalk={talk} />}
+    {(topic || onTopicOpen) && <NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} />}
 
     <div className="now-main-column">
         {lead === "practice" && <PracticeFocus now={now} journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
         {/* The recommendation frames itself (its screened words face the art panel), so its frame here is bare. */}
-        <NowPlanFrame kind={shownLead} tag={copy.planTag[shownLead]} bare={shownLead === "recommendation"}>
+        <NowPlanFrame kind={shownLead} lang={lang} tag={copy.planTag[shownLead]} say={planSay} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation"}>
         {lead === "record" ? <section className="now-loop-lead" data-module="now-record" aria-label={t("today.record.aria")}>
           {record.receipt ? <FromRecordReceipt /> : record.opener && <FromRecordCard opener={record.opener} childName={name} stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)} />}
           {record.saving && <p role="status" className="now-inline-status">{record.confirming ? t("elev.today.record.confirming") : copy.saving}</p>}
           {record.error && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
         </section> : lead === "visit" && visit ? <section className="now-lead arbor-depth-primary" data-module="now-visit" aria-labelledby={`${id}-visit`}>
-          <p className="companion-eyebrow">{copy.visit}</p>
+          <p className="now-plan-kicker">{copy.visit}</p>
           <h2 id={`${id}-visit`} className="now-lead-title" dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</h2>
           <p className="now-lead-body">{copy.visitBody}</p>
           <div className="now-lead-actions">
@@ -255,7 +253,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
         </section> : lead === "tonight" ? <section className="now-loop-lead" data-module="today-tonight" aria-label={t("elev.loop.today.tonight")}>
           <NowTonightLead loop={loop} />
         </section> : lead === "step" && chosen ? <section className="now-lead arbor-depth-primary" data-module="now-step" aria-labelledby={`${id}-step`}>
-          <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name={receipt ? "check" : "bookmark"} size={24} /></span><div><p className="companion-eyebrow">{observation ? t("ob.first.observation.chosen") : copy.chosen}</p><p className="now-provenance">{receipt ? copy.saved : copy.today}</p></div></div>
+          <p className="now-plan-kicker">{observation ? t("ob.first.observation.chosen") : copy.chosen}</p>
           <h2 id={`${id}-step`} className="now-lead-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
           {receipt && <p className="now-lead-body" dir="auto" style={{ whiteSpace: "pre-wrap" }}>{observation ? chosen.whatHappened : chosen.recommendation}</p>}
           {!observation && <p className="now-lead-body" role={receipt ? "status" : undefined}>{receipt ? copy.finished : chosen.acceptanceKey?.startsWith("onboarding-v1.") && dayKey(new Date(chosen.acceptedAt)) === dayKey(now) ? t("ob.first.tomorrow") : copy.chosenWhy}</p>}
@@ -288,7 +286,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
         </section> : lead === "notice" ? <section className="now-loop-lead" data-module="today-practice" aria-label={t("elev.loop.today.notice.title")}>
           <NowNoticeLead loop={loop} name={name} />
         </section> : lead === "program" && program ? <section className="now-lead arbor-depth-primary" data-module="now-program" aria-labelledby={`${id}-program`}>
-          <div className="now-lead-band"><span className="now-glyph" aria-hidden="true"><Icon name="menu_book" size={24} /></span><p className="companion-eyebrow">{copy.programLabel}</p></div>
+          <p className="now-plan-kicker">{copy.programLabel}</p>
           <h2 id={`${id}-program`} className="now-lead-title">{program.content.skill[lang]}</h2>
           <p className="now-lead-body">{copy.programWhy(program.week)}</p>
           <div className="now-lead-actions"><PrimaryMove type="button" className="companion-primary" onClick={openProgram}>{copy.continueProgram}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove></div>
