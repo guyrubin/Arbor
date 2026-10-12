@@ -172,26 +172,13 @@ export const en: Record<string, string> = {
   "elev.learnCare.byArea": "Courses by area",
   "elev.learnCare.byArea.all": "All",
   "elev.learnCare.family.headline": "A moment you return to as a family",
-  "elev.learnCare.family.sub": "Friday dinner, the bedtime story, the Saturday walk: small rituals that build belonging. Pick one and make it yours.",
+  "elev.learnCare.family.sub": "Small rituals you repeat, like a weekly reset or a family story, build belonging. Pick one and make it yours.",
   "elev.learnCare.family.cta": "Choose a ritual",
   "elev.learnCare.addToday.saving": "Adding…",
   "elev.learnCare.addToday.failed": "That did not reach today. Try again.",
   "elev.learnCare.shortReads.matched": "Your question",
   "elev.learnCare.family.title": "Family formation",
   "elev.learnCare.addToday.listed": "On today's list",
-
-  // v3 F-FORYOU-1 — For you, the parent, as the mock: the pick card's
-  // Try-it-today action and its lessons column (a read's key points), the
-  // short-reads title, the library header over courses by area, and the
-  // readiness courses (from Daily Play) listed as plain activities, no progress.
-  "elev.learnCare.pick.tryToday": "Try it today",
-  "elev.learnCare.pick.lessons": "Lessons",
-  "elev.learnCare.pick.inThisRead": "In this read",
-  "elev.learnCare.reads.title": "Three minutes, one idea",
-  "elev.learnCare.library.kicker": "Library",
-  "elev.learnCare.library.title": "Courses by area",
-  "elev.learnCare.readiness.activities": "{n} activities",
-  "elev.learnCare.readiness.inThis": "Activities in this course",
 };
 
 export const he: Record<string, string> = {
@@ -316,7 +303,7 @@ export const he: Record<string, string> = {
   "elev.learnCare.appt.more.door": "פתחו את מסלול ההתייעצות",
 
   // v3 EXTRA-FORYOU — For you, the parent (see the EN block).
-  "elev.learnCare.pick.topicTag": "נבחר לשאלה שלכם",
+  "elev.learnCare.pick.topicTag": "נבחר בשביל השאלה שלכם",
   "elev.learnCare.pick.why.topic": "כי אתם שואלים: „{title}”",
   "elev.learnCare.shortReads.title": "קריאה קצרה לשאלה שלכם",
   "elev.learnCare.shortReads.titleAll": "עוד קריאה קצרה",
@@ -324,21 +311,11 @@ export const he: Record<string, string> = {
   "elev.learnCare.byArea": "קורסים לפי תחום",
   "elev.learnCare.byArea.all": "הכול",
   "elev.learnCare.family.headline": "רגע שחוזרים אליו כמשפחה",
-  "elev.learnCare.family.sub": "ארוחת שישי, סיפור הערב, טיול שבת — טקסים קטנים שבונים שייכות. בחרו אחד והתאימו אותו.",
-  "elev.learnCare.family.cta": "לבחור טקס",
+  "elev.learnCare.family.sub": "טקסים קטנים שחוזרים עליהם, כמו איפוס שבועי או סיפור משפחתי, בונים שייכות. בחרו אחד והפכו אותו לשלכם.",
+  "elev.learnCare.family.cta": "לבחור טקס משפחתי",
   "elev.learnCare.addToday.saving": "מוסיפים…",
   "elev.learnCare.addToday.failed": "זה לא נוסף להיום. נסו שוב.",
   "elev.learnCare.shortReads.matched": "השאלה שלכם",
-  "elev.learnCare.family.title": "טקסים משפחתיים",
+  "elev.learnCare.family.title": "גיבוש משפחתי",
   "elev.learnCare.addToday.listed": "ברשימה של היום",
-
-  // v3 F-FORYOU-1 — For you, the parent (see the EN block).
-  "elev.learnCare.pick.tryToday": "לנסות היום",
-  "elev.learnCare.pick.lessons": "השיעורים",
-  "elev.learnCare.pick.inThisRead": "בקריאה הזו",
-  "elev.learnCare.reads.title": "שלוש דקות, רעיון אחד",
-  "elev.learnCare.library.kicker": "הספרייה",
-  "elev.learnCare.library.title": "קורסים לפי תחום",
-  "elev.learnCare.readiness.activities": "{n} פעילויות",
-  "elev.learnCare.readiness.inThis": "הפעילויות במסלול",
 };

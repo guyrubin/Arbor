@@ -7,12 +7,6 @@
  * whole mechanism (filterByAge + windowFromYears + a persisted "Show all ages"
  * preference + an "N hidden by age" toggle). This ports that, and covers the
  * four smaller Learn·Care rows that ride with it.
- *
- * v3 F-FORYOU-1 re-pins the surface pins here: #/learn is a reader only (no
- * shelf, search, tabs or Saved filter). Reads reach the parent on For you,
- * the parent (#/masterclasses): today's pick and three short reads, both drawn
- * from the age-fit catalogue, and the courses by area behind the SAME shared
- * age switch. The function-level tests below are unchanged.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -63,52 +57,42 @@ describe("OBJ-LEARN-01 · the age window is on by default", () => {
     }
   });
 
-  // v3 F-FORYOU-1 (re-pin): the age mechanism lives on For you now — the
-  // courses and the readiness courses behind the shared switch, and the reads
-  // drawn from the age-fit catalogue. #/learn shows one read and filters none.
   it("the surface uses the SHARED mechanism, not a private copy", () => {
-    expect(MASTER).toContain('from "../../lib/ageFilter"');
-    expect(MASTER).toContain("(m) => windowFromYears(m.ageMinYears, m.ageMaxYears),");
-    expect(MASTER).toContain('loadShowAllAges("masterclasses")');
-    expect(MASTER).toContain('saveShowAllAges("masterclasses", next)');
-    expect(MASTER).toContain("rankLearnCards(ageVisibleLearnCards(LEARN_CARDS, learnSignals.ageYears), learnSignals)");
-    expect(LEARN).not.toContain("filterByAge(");
+    expect(LEARN).toContain('from "../../lib/ageFilter"');
+    expect(LEARN).toContain("windowFromYears(c.ageMin, c.ageMax)");
+    expect(LEARN).toContain('loadShowAllAges("learn")');
+    expect(LEARN).toContain('saveShowAllAges("learn", next)');
   });
 
-  it("every course stays reachable behind the hidden-count toggle (law 6)", () => {
-    expect(MASTER).toContain('data-testid="agefilter-toggle-masterclasses"');
-    expect(MASTER).toContain('role="switch"');
-    expect(MASTER).toContain("aria-checked={showAllAges}");
-    expect(MASTER).toContain('agefilterText("elev.agefilter.hiddenCount", he, { n: hiddenByAge })');
-    expect(MASTER).toContain("const hiddenByAge = ageHidden.length + readinessHidden.length;");
-    // The toggle renders only when it has something to say.
+  it("every card stays reachable behind the hidden-count toggle (law 6)", () => {
+    expect(LEARN).toContain('data-testid="agefilter-toggle-learn"');
+    expect(LEARN).toContain('role="switch"');
+    expect(LEARN).toContain("aria-checked={showAllAges}");
+    expect(LEARN).toContain('agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })');
+    // The toggle renders only when it has something to say — the same
+    // condition Masterclasses uses.
+    expect(LEARN).toContain("(ageHidden.length > 0 || showAllAges)");
     expect(MASTER).toContain("(ageHidden.length > 0 || showAllAges)");
   });
 
-  it("the counts a parent sees are counts of what they can see", () => {
-    // The chips count the visible courses (the readiness courses included);
-    // #/learn shows no count at all.
-    expect(MASTER).toContain("const areaCounts = courseAreaCounts([...catalog, ...readiness]);");
-    expect(MASTER).toContain("const readiness = showAllAges ? READINESS_COURSES : readinessVisible;");
-    expect(LEARN).not.toContain('t("learn.count"');
+  it("the visible count reported to the parent is the count they can see", () => {
+    expect(LEARN).toContain('t("learn.count", { n: inScope.length })');
+    expect(LEARN).not.toContain('t("learn.count", { n: LEARN_CARDS.length })');
   });
 });
 
 describe("OBJ-LEARN-02 · opening a read is a navigation", () => {
-  // v3 F-FORYOU-1 (re-pin): a read opened on For you opens in a sheet that
-  // owns one history entry (Back closes it). The #/learn route names its read
-  // with replaceState, never by driving the hash ArborContext owns.
-  it("a read opened on For you owns one history entry; #/learn names its read in place", () => {
-    const sheet = read("components/sections/ForYouReadSheet.tsx");
-    expect(sheet).toContain("const close = useSheetHistory(true, onClose);");
-    expect(MASTER).toContain("<ForYouReadSheet cardId={readId} onClose={() => setReadId(null)} />");
-    expect(LEARN).toContain('window.history.replaceState(window.history.state, "", want)');
+  it("the reader pushes one history entry carrying the card id", () => {
+    expect(LEARN).toContain("arborLearnCard: id");
+    expect(LEARN).toContain('window.addEventListener("popstate", onPop)');
+    // It must NOT drive the hash: ArborContext owns `#/<tab>` and rewrites it.
     expect(LEARN).not.toMatch(/location\.hash\s*=/);
   });
 
-  it("the route's Back goes to For you, the parent", () => {
-    expect(LEARN).toContain('onBack={() => setActiveTab("masterclasses")}');
-    expect(LEARN).toContain('{t("companion.door.learn")}');
+  it("closing from inside the reader retires that entry", () => {
+    expect(LEARN).toContain("const closeCard = () => {");
+    expect(LEARN).toContain("window.history.back()");
+    expect(LEARN).toContain("onBack={closeCard}");
     expect(LEARN).not.toContain("onBack={() => setOpenId(null)}");
   });
 
@@ -135,8 +119,7 @@ describe("LC-05 / RUN-11 · the parent-learning hub carries no kid-register door
   it("the hero, the pick card and the courses gallery all remain (law 6)", () => {
     expect(MASTER).toContain('data-testid="academy-hub-hero"');
     expect(MASTER).toContain('data-testid="academy-pick-why"');
-    // v3 F-FORYOU-1 (re-pin): "All courses" is retired; the library is "Courses by area".
-    expect(MASTER).toContain('t("elev.learnCare.library.title")');
+    expect(MASTER).toContain('t("academy.courses.title")');
   });
 });
 
@@ -149,14 +132,10 @@ describe("LC-26 · the reader body sits on the type token", () => {
 });
 
 describe("LC-33 · the saved shelf's empty state offers a way forward", () => {
-  // v3 F-FORYOU-1 (re-pin): #/learn has no Saved shelf (where saved reads
-  // live is Guy's call). Saving still works in the reader, and a saved read
-  // still ranks first on For you and says why.
-  it("no Saved shelf on #/learn; a saved read ranks first on For you and says so", () => {
-    expect(LEARN).not.toContain('setFilter("all")');
-    expect(LEARN).toContain("onClick: onToggleSave,");
-    expect(MASTER).toContain("savedIds: savedLearnIds,");
-    expect(MASTER).toContain('? t("elev.learnCare.pick.why.saved")');
+  it("it hands the parent a CTA back into the library", () => {
+    expect(LEARN).toContain('t("elev.learnCare.saved.browse", { name: firstName })');
+    expect(LEARN).toContain('onClick: () => { setFilter("all"); setQuery(""); }');
+    expect(LEARN).not.toContain('filter === "saved" ? undefined :');
   });
 
   it("the CTA copy ships in both locales (law 7)", () => {
@@ -204,14 +183,19 @@ describe("R12 · the default shelf is short, and every control says what it does
     expect(firstPage.every((c) => ageVisible.includes(c))).toBe(true);
   });
 
-  // v3 F-FORYOU-1 (re-pin): there is no browse shelf to cap any more. The
-  // reads a parent lands on are today's pick and three short reads, both from
-  // the same ranking over the age-fit catalogue.
-  it("no browse shelf: the reads on For you are the pick and three short reads", () => {
-    expect(LEARN).not.toContain("SHELF_PAGE");
-    expect(LEARN).not.toContain('data-testid="learn-shelf-more"');
-    expect(MASTER).toContain("const shortReadRow = pickShortReads(readShelf, activeFamilyTopic?.title);");
-    expect(MASTER).toContain(".filter((c) => c.id !== todaysRead?.card.id);");
+  it("the surface caps the browse shelf, and only the browse shelf (law 6)", () => {
+    expect(LEARN).toContain("const SHELF_PAGE = 30;");
+    expect(LEARN).toContain("browsing && !showAllShelf && gridAll.length > SHELF_PAGE - featured.length");
+    expect(LEARN).toContain("gridCards = shelfCapped ? gridAll.slice(0, SHELF_PAGE - featured.length) : gridAll");
+    // Filtered/searched views are never capped.
+    expect(LEARN).toContain("const gridAll = browsing ? visible.filter");
+  });
+
+  it("every capped card stays one tap away behind a control of its own", () => {
+    expect(LEARN).toContain('data-testid="learn-shelf-more"');
+    expect(LEARN).toContain("aria-expanded={showAllShelf}");
+    expect(LEARN).toContain('t("elev.learnCare.shelf.more", { n: shelfRest })');
+    expect(LEARN).toContain('t("elev.learnCare.shelf.fewer")');
   });
 
   it("the length control never borrows the age control's sentence", () => {
@@ -224,11 +208,11 @@ describe("R12 · the default shelf is short, and every control says what it does
     expect(he["elev.learnCare.shelf.fewer"]).toMatch(/[֐-׿]/);
   });
 
-  // v3 F-FORYOU-1 (re-pin): the switch is a quiet text button on its own
-  // row under the chips, and that row wraps.
-  it("the age switch can actually be reached at 390 (its own row, which wraps)", () => {
-    expect(MASTER).not.toContain('<div className="flex items-baseline justify-between mb-2.5">');
-    expect(MASTER).toContain('<div className="flex min-w-0 flex-wrap items-center gap-x-3 px-1">');
+  it("the age switch can actually be reached at 390 (the row wraps)", () => {
+    // It was `flex items-baseline justify-between` with a non-wrapping span,
+    // so the switch rendered off the right edge of a 390 px viewport.
+    expect(LEARN).not.toContain('<div className="flex items-baseline justify-between mb-2.5">');
+    expect(LEARN).toContain('<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 mb-2.5">');
   });
 });
 
@@ -239,21 +223,25 @@ describe("R20 · the age switch is on its own row below sm, not a wrap that migh
      "All reads", the "N reads · M read" count and the "N more for other ages"
      line — all translated strings. The source now states the outcome instead
      of leaving it to measurement: below sm the meta group is a full-width row. */
-  // v3 F-FORYOU-1 (re-pin): the switch moved to For you's library, under the
-  // chips, in a row of its own; the hidden-count line rides in that row.
-  const ROW = MASTER.slice(MASTER.indexOf("{ageSwitchShown && ("), MASTER.indexOf('data-testid="agefilter-toggle-masterclasses"'));
+  const HEADER = LEARN.slice(LEARN.indexOf('t("learn.allReads")}'), LEARN.indexOf('data-testid="agefilter-toggle-learn"'));
 
-  it("the switch takes a row of its own under the chips", () => {
-    expect(ROW).toContain('<div className="flex min-w-0 flex-wrap items-center gap-x-3 px-1">');
-    expect(ROW).toContain('agefilterText("elev.agefilter.hiddenCount", he, { n: hiddenByAge })');
-    expect(MASTER.indexOf('data-testid="academy-by-area"')).toBeLessThan(MASTER.indexOf("{ageSwitchShown && ("));
+  it("the meta group takes a full row below sm and rejoins the line at sm", () => {
+    expect(LEARN).toContain('<span className="inline-flex w-full flex-wrap items-center gap-2 sm:w-auto">');
+    // The count, the hidden-count line and the switch all live in THAT group,
+    // so the switch cannot be pushed off-screen by the two strings before it.
+    expect(HEADER).toContain('t("learn.count", { n: inScope.length })');
+    expect(HEADER).toContain('agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })');
+  });
+
+  it("the row itself still wraps, so the heading never collides with the group", () => {
+    expect(LEARN).toContain('className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 mb-2.5"');
   });
 
   it("the switch clears the 44 px floor and keeps its label", () => {
-    const at = MASTER.indexOf('data-testid="agefilter-toggle-masterclasses"');
-    const shell = MASTER.slice(at, at + 400);
+    const at = LEARN.indexOf('data-testid="agefilter-toggle-learn"');
+    const shell = LEARN.slice(at, at + 400);
     expect(shell).toMatch(/min-h-11|touch-target|min-h-\[4[4-9]px\]/);
-    expect(MASTER).toContain('agefilterText("elev.agefilter.showAll", he)');
+    expect(LEARN).toContain('agefilterText("elev.agefilter.showAll", he)');
   });
 
   it("NEGATIVE CONTROL: both pre-fix shapes fail the rule this pins", () => {
@@ -265,7 +253,5 @@ describe("R20 · the age switch is on its own row below sm, not a wrap that migh
     expect(r2b).not.toContain("flex-wrap");
     expect(LEARN).not.toContain(r12);
     expect(LEARN).not.toContain(r2b);
-    expect(MASTER).not.toContain(r12);
-    expect(MASTER).not.toContain(r2b);
   });
 });

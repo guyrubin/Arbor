@@ -76,28 +76,19 @@ describe("verified Parent control-clearance regressions", () => {
     expect(find(render({ open: true, onClose: close }), node => node.props["aria-label"] === "aria.close")).toBeDefined();
   });
 
-  // v3 F-FORYOU-1 (re-pin): the Learn grid card, and the 44px bookmark that
-  // floated over its title, left with the shelf. The clearance it protected
-  // now holds by construction: no control floats over a read's title. The
-  // reader's save rides the action bar below the heading, and For you's short
-  // reads are one whole-card button with no overlay inside.
-  it("no control floats over a read's title in either text direction", () => {
+  it("reserves the bookmark's full height above Learn titles in either text direction", () => {
     const learn = source("../sections/LearnLibrary.tsx");
-    expect(learn).not.toContain("function LearnGridCard(");
-    expect(learn).not.toContain('className="absolute top-2.5 end-2.5"');
-    const heading = learn.indexOf('data-testid="learn-reader-heading"');
-    expect(heading).toBeGreaterThan(-1);
-    expect(learn.slice(heading, heading + 300)).toContain('dir="auto"');
-    expect(learn.indexOf('surface="learn-reader"')).toBeGreaterThan(heading);
-    const forYou = source("../sections/Masterclasses.tsx");
-    const at = forYou.indexOf('data-testid="academy-short-read"');
-    const read = forYou.slice(at, forYou.indexOf("</button>", at));
-    expect(read).toContain("min-h-11");
-    expect(read).toContain('dir="auto"');
-    expect(read).not.toMatch(/\babsolute\b/);
-    expect(read).not.toContain("<ContentActionBar");
-    // Non-vacuous: the retired card's overlay is caught by the same rule.
-    expect('<div className="absolute top-2.5 end-2.5"><ContentActionBar variant="inline" /></div>').toMatch(/\babsolute\b/);
+    const card = learn.slice(learn.indexOf("function LearnGridCard("), learn.indexOf("function LearnReader("));
+    const metadata = (text: string) => text.match(/className="([^"]*flex-wrap pe-12)"/)?.[1].split(/\s+/) ?? [];
+    expect(metadata(card)).toContain("min-h-11");
+    // Non-vacuous: the reviewed one-line metadata previously left the title
+    // inside the 44px bookmark's footprint.
+    expect(metadata(card.replace("flex min-h-11 items-center", "flex items-center"))).not.toContain("min-h-11");
+    expect(card).toContain('className="absolute top-2.5 end-2.5"');
+    expect(card).toContain('variant="inline"');
+    expect(card).toContain('surface="learn-card"');
+    expect(card).toMatch(/<h3[^>]+dir="auto"/);
+    expect(card.indexOf("</button>")).toBeLessThan(card.indexOf("<ContentActionBar"));
   });
 
   it("keeps one explicit 44px Clear while suppressing only the native duplicate", () => {

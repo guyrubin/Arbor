@@ -176,15 +176,10 @@ describe("2 · the Development-Map claim is re-derived, never asserted", () => {
     const dayZero = { focusDomain: "language_communication", domains: [{ reached: 0 }] };
     expect(Boolean(dayZero.focusDomain)).toBe(true);           // the shipped test
     expect(focusDomainContributed(dayZero, featuredWithFocus)).toBe(false); // the fixed one
-    // …and the surface reads the fixed one. v3 F-FORYOU-1 (re-pin): the
-    // Library's rail why-line left #/learn (a reader only); the focus claim
-    // a parent reads is For you's pick, gated on the pick's re-derivation
-    // plus a real map signal.
+    // …and the library reads the fixed one.
     const lib = read("components/sections/LearnLibrary.tsx");
+    expect(lib).toContain("focusDomainContributed(score, featured)");
     expect(lib).not.toMatch(/score\.focusDomain && logsContributed \?/);
-    expect(lib).not.toContain("learn.whyFull");
-    const forYou = read("components/sections/Masterclasses.tsx");
-    expect(forYou).toContain("todaysRead.fromFocus && devMapHasSignal(devScore)");
   });
 });
 

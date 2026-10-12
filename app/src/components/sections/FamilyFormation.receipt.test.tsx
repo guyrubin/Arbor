@@ -60,8 +60,7 @@ function expectReceipt(r = ritual) {
   const line = receipt(r); expect(line).toBeDefined();
   expect(line!.props.children).toBe(translate(h.lang, "elev.learnCare.ritual.added"));
   expect(line!.props.announce).not.toBe(false);
-  // v3 F-FORYOU-1 (re-pin): the receipt names the place by its v3 name, "Now".
-  expect(line!.props.link).toMatchObject({ href: "#/overview", where: translate(h.lang, "companion.place.now") });
+  expect(line!.props.link).toMatchObject({ href: "#/overview", where: translate(h.lang, "nav.today") });
   const markup = isolated(() => renderToStaticMarkup(line!));
   expect(markup).toContain('data-receipt="muted"');
   expect(markup).toContain(`dir="${h.lang === "he" ? "rtl" : "ltr"}"`);

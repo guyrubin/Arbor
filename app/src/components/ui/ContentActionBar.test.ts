@@ -13,10 +13,6 @@
  *  4) LearnLibrary migration: BOTH pre-existing save shapes route through the
  *     bar, and EVERY pre-migration affordance/handler is still reachable
  *     (UC-1 zero regression), incl. the W2 continuation why-line variant.
- *     v3 F-FORYOU-1 re-pins this block: #/learn is a reader only, so the
- *     shelf card's compact bar and the rail's why-line left with the shelf;
- *     the reader keeps the segmented bar, and the why-line (with TrustLink)
- *     rides For you's pick.
  *  5) CourseCard migration: paired lozenges → bar (done + ask extra), same
  *     handlers.
  */
@@ -187,14 +183,11 @@ describe("LearnLibrary — both save shapes route through the shared bar", () =>
     expect(learn).toContain('from "../ui/ContentActionBar"');
   });
 
-  // v3 F-FORYOU-1 (re-pin): the shelf card (the compact variant) left with
-  // the shelf; save stays one tap away on the reader's segmented bar.
-  it("the reader's save rides the segmented bar; no shelf card remains", () => {
-    expect(learn).not.toContain('variant="inline"');
-    expect(learn).not.toContain('surface="learn-card"');
+  it("card-level save = the bar's compact variant; reader = the segmented bar", () => {
+    expect(learn).toContain('variant="inline"');
+    expect(learn).toContain('surface="learn-card"');
     expect(learn).toContain('variant="bar"');
     expect(learn).toContain('surface="learn-reader"');
-    expect(learn).toContain("onClick: onToggleSave,");
   });
 
   it("the two old incompatible save shapes are gone (no hand-rolled ReaderAction, no bespoke bookmark button)", () => {
@@ -229,22 +222,19 @@ describe("LearnLibrary — both save shapes route through the shared bar", () =>
     expect(learn).toContain("disabled={todayTaken}");
   });
 
-  // v3 F-FORYOU-1 (re-pin): the Learn rail and its why-lines are gone. The
-  // why-line a parent reads now sits on For you's pick, with TrustLink ON
-  // after it, and its variants (saved · logs · focus · age) each name a signal
-  // that moved the pick (also pinned by learnLibrary.test.ts).
-  it("why-lines keep TrustLink ON (masterplan 3.1): the pick's why-line on For you", () => {
-    const forYou = read("..", "sections", "Masterclasses.tsx");
-    expect(learn).not.toContain("<ContentWhyLine");
-    expect(learn).not.toContain('surface="learn-rail"');
-    const why = forYou.indexOf('data-testid="academy-pick-why"');
-    const trust = forYou.indexOf('<TrustLink surface="foryou-pick" />');
-    expect(why).toBeGreaterThan(-1);
-    expect(trust).toBeGreaterThan(why);
-    for (const key of ["pick.why.saved", "pick.why.logs", "pick.why.focus", "pick.why.age"]) {
-      expect(forYou).toContain(`t("elev.learnCare.${key}"`);
+  it("why-lines moved into the shared slot with TrustLink ON (masterplan 3.1)", () => {
+    expect(learn).toContain("<ContentWhyLine");
+    expect(learn).toContain('surface="learn-rail"');
+    expect(learn).toContain("trustLink");
+    // The honest why-line variants all survive…
+    for (const key of ["learn.whyFullLogs", "learn.whyFull", "learn.whyAgeLogs", "learn.whyAge"]) {
+      expect(learn).toContain(key);
     }
-    expect(forYou).toContain("todaysRead.fromSaved");
+    // …and the W2 continuation variant keeps working (also pinned by
+    // learnLibrary.test.ts).
+    expect(learn).toContain('continueText("elev.continue.learn.why"');
+    expect(learn).toContain("savedBoosted");
+    expect(learn).toContain("continuesSaved");
   });
 });
 

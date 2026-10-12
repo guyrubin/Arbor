@@ -31,16 +31,6 @@ export const MASTERCLASS_DOMAINS: Readonly<Record<string, DomainId>> = {
   "the-goodbye-that-builds-trust": "feelings",
 };
 
-/** v3 F-FORYOU-1 — the Daily Play readiness courses, listed on For you, the
- *  parent beside the parent courses. Each follows the registry's sub-areas:
- *  starting school is the family's school_context, a new sibling a family
- *  life_event, bedtimes are body/sleep. */
-export const READINESS_DOMAINS: Readonly<Record<string, DomainId>> = {
-  "ready-for-school": "family",
-  "new-sibling": "family",
-  "calmer-bedtimes": "body",
-};
-
 /** Each Learn Library shelf, placed in the registry area it belongs to. */
 export const LEARN_SHELF_DOMAINS: Readonly<Record<LearnCategoryId, DomainId>> = {
   minds: "thinking",
@@ -57,7 +47,7 @@ export const LEARN_SHELF_DOMAINS: Readonly<Record<LearnCategoryId, DomainId>> = 
 
 /** The area a course serves, or null for a course nobody has placed yet. */
 export function courseArea(courseId: string): DomainId | null {
-  return MASTERCLASS_DOMAINS[courseId] ?? READINESS_DOMAINS[courseId] ?? null;
+  return MASTERCLASS_DOMAINS[courseId] ?? null;
 }
 
 /** The area a Learn read sits in, from its shelf. */

@@ -215,12 +215,9 @@ describe("W2-SHELLPLAY r1 — #/family: the ritual start reads first, on a real 
     expect(start).toContain("minHeight: 44");
   });
 
-  // v3 F-FORYOU-1 (re-pin): the gap makes #/family lead with its rituals and
-  // puts the charter ("Our family's way") below them, on a real block.
-  it("v3: the rituals lead (header -> ritual turn -> charter), on a real block", () => {
-    expect(family.indexOf('data-module="family-rituals"')).toBeGreaterThan(-1);
-    expect(family.indexOf('data-module="family-rituals"')).toBeLessThan(family.indexOf('data-module="family-charter"'));
-    expect(family.indexOf("<RitualTurnCard")).toBeLessThan(family.indexOf('data-testid="family-way"'));
+  it("critic r2: 'Our family's way' leads (header -> charter line -> ritual turn), on a real block", () => {
+    expect(family.indexOf('data-module="family-charter"')).toBeLessThan(family.indexOf('data-module="family-rituals"'));
+    expect(family.indexOf('data-testid="family-way"')).toBeLessThan(family.indexOf("<RitualTurnCard"));
     expect(family).not.toContain('display: "contents"');
   });
 

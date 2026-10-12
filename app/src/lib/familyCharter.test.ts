@@ -316,18 +316,13 @@ describe("B-PLAY-21 · the tone preference beside the charter", () => {
   const family = readSource("components/sections/FamilyFormation.tsx");
   const settings = readSource("components/layout/SettingsModal.tsx");
 
-  // v3 F-FORYOU-1 (re-pin): the gap drops the tone row from Family — Settings
-  // owns tone. Settings keeps the ONE ToneSheet writing selectedLens; Family
-  // carries no second door to it.
-  it("Settings renders the ONE ToneSheet writing selectedLens; Family no longer does", () => {
-    expect(settings).toContain('import ToneSheet, { toneLabel } from "../coach/ToneSheet";');
-    expect(settings).toContain("<ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />");
-    expect(settings).toContain('t("coach.tone.title")');
-    expect(settings).toContain("toneLabel(selectedLens, t)");
-    expect(family).not.toContain("ToneSheet");
-    expect(family).not.toContain('t("coach.tone.title")');
-    expect(family).not.toContain("toneLabel(");
-    expect(family).not.toContain("setSelectedLens");
+  it("Family and Settings render the ONE ToneSheet writing selectedLens", () => {
+    for (const [name, src] of [["FamilyFormation", family], ["SettingsModal", settings]] as const) {
+      expect(src, name).toContain('import ToneSheet, { toneLabel } from "../coach/ToneSheet";');
+      expect(src, name).toContain("<ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />");
+      expect(src, name).toContain('t("coach.tone.title")');
+      expect(src, name).toContain("toneLabel(selectedLens, t)");
+    }
   });
 
   it("Settings shows it inside section 1 (companion), before Kid Mode & PIN", () => {
@@ -339,11 +334,10 @@ describe("B-PLAY-21 · the tone preference beside the charter", () => {
     expect(tone).toBeLessThan(kid);
   });
 
-  // v3 F-FORYOU-1 (re-pin): no tone row on Family; the rituals lead and the
-  // charter is the last module (family budget 2 unchanged).
-  it("Family carries no tone row; the charter is still the last of two modules", () => {
-    expect(family).not.toContain('data-testid="family-tone-row"');
-    expect(family.indexOf('data-module="family-rituals"')).toBeLessThan(family.indexOf('data-module="family-charter"'));
+  it("Family sits it inside the charter module (family budget 2 unchanged)", () => {
+    // W2-SHELLPLAY r1: the rituals module leads now; the charter is the last module.
+    const charter = family.slice(family.indexOf('data-module="family-charter"'));
+    expect(charter).toContain('data-testid="family-tone-row"');
     expect((family.match(/data-module="/g) ?? []).length).toBe(2);
   });
 

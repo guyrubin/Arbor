@@ -602,17 +602,9 @@ describe("IA-06 · wiring (source pins)", () => {
     expect(portrait.match(/setSelection\(null\)/g)).toHaveLength(1);
   });
 
-  // v3 F-FORYOU-1 (re-pin): the Learn shelf, and the history marker its
-  // reader pushed over it, are gone. A read opened on For you is a sheet like
-  // the two above (crumb first, every way out through its one close); the
-  // #/learn route names its read in place and pushes nothing.
-  it("a read on For you: the crumb is the first line of its body, every way out through its one close; #/learn pushes nothing", () => {
-    const sheet = read("components/sections/ForYouReadSheet.tsx");
-    ordered(sheet, "const close = useSheetHistory(true, onClose);", "<Surface open onClose={() => close()}", "<SheetBreadcrumb label={title} close={close} />", "<LearnReadHost cardId={cardId} />");
+  it("the Learn reader keeps its own history marker, untouched", () => {
     const learn = read("components/sections/LearnLibrary.tsx");
-    expect(learn).toContain('window.history.replaceState(window.history.state, "", want)');
-    expect(learn).not.toContain("window.history.pushState(");
-    expect(learn).not.toContain("arborLearnCard");
+    expect(learn).toContain('window.history.pushState({ ...(window.history.state ?? {}), arborLearnCard: id }, "", window.location.href);');
     expect(learn).not.toContain("useSheetHistory");
   });
 });

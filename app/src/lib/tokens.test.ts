@@ -778,7 +778,7 @@ const RGBA_BASELINE: Record<string, number> = {
   "components/search/TopbarSearch.tsx": 1,
   "components/sections/AskSpecialist.tsx": 2,
   "components/sections/DevScoreCard.tsx": 1,
-  "components/sections/Masterclasses.tsx": 1, // v3 F-FORYOU-1: 3 -> 1 (the rail left)
+  "components/sections/Masterclasses.tsx": 3,
   "components/sections/Screening.tsx": 3,
   "components/sections/SmartRemindersPanel.tsx": 1,
   "components/stories/ComicReader.tsx": 1,

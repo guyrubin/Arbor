@@ -14,8 +14,7 @@ import { DOMAIN_ICONS } from "../lib/domains/icons";
 import { translate } from "../lib/i18n";
 import { LEARN_CARDS } from "./learnCards";
 import { LEARN_CATEGORIES } from "./learnLibrary";
-import { READINESS_COURSES } from "../playbank/courses";
-import { courseArea, courseAreaCounts, LEARN_SHELF_DOMAINS, MASTERCLASS_DOMAINS, READINESS_DOMAINS, readArea } from "./courseAreas";
+import { courseArea, courseAreaCounts, LEARN_SHELF_DOMAINS, MASTERCLASS_DOMAINS, readArea } from "./courseAreas";
 
 describe("every course and every Learn shelf sits in one registry domain", () => {
   it("each Masterclass id is mapped to a real registry domain", () => {
@@ -55,23 +54,6 @@ describe("every course and every Learn shelf sits in one registry domain", () =>
         if (lang === "he") expect(name, id).not.toMatch(/[A-Za-z]/);
       }
     }
-  });
-
-  // v3 F-FORYOU-1 — the Daily Play readiness courses are listed on For you,
-  // the parent, inside "Courses by area", so each needs an area too.
-  it("each readiness course is mapped to a real registry domain, and the map has no stale rows", () => {
-    expect(READINESS_COURSES.length).toBeGreaterThan(0);
-    for (const c of READINESS_COURSES) {
-      const area = courseArea(c.id);
-      expect(area, c.id).not.toBeNull();
-      expect(DOMAIN_IDS, c.id).toContain(area);
-    }
-    const ids = new Set(READINESS_COURSES.map((c) => c.id));
-    expect(Object.keys(READINESS_DOMAINS).filter((id) => !ids.has(id))).toEqual([]);
-    expect(courseArea("calmer-bedtimes")).toBe("body");
-    // Counted beside the parent courses, never as a share of anything.
-    const both = courseAreaCounts([...MASTERCLASSES, ...READINESS_COURSES]);
-    expect(both.reduce((sum, c) => sum + c.count, 0)).toBe(MASTERCLASSES.length + READINESS_COURSES.length);
   });
 
   it("NEGATIVE CONTROL: an unplaced course has no area and is left out of the counts", () => {
