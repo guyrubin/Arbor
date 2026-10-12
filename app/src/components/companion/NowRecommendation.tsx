@@ -1,11 +1,10 @@
-import React, { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useTodaysFocus } from "../../hooks/useTodaysFocus";
 import type { JournalRequest } from "../../ai/journalContext";
 import { ageYearsOf, knownAgeMonthsOf } from "../../lib/age/forChild";
 import { formatChildAge } from "../../lib/age/format";
-import { isolate } from "../../lib/bidi";
 import { focusBodyFor, focusHeadlineFor, whyLineParts } from "../../lib/todayFocus";
 import { GUIDE_ART, guideArtFor, guideTopicFor } from "../../lib/guideArt";
 import { localizeActivity } from "../../playbank/content";
@@ -13,12 +12,17 @@ import { concernDomainsFromLogs, daySeedFor } from "../../playbank/select";
 import { activeGoalDomains } from "../../practice/goalBuilder";
 import Icon from "../ui/Icon";
 import { TrustLink } from "../trust/TrustLink";
-import { dailyPlayForNow, focusSignalsForNow } from "./nowRecommendationModel";
+import { dailyPlayForNow, focusSignalsForNow, type NowPlayPick } from "./nowRecommendationModel";
 import { NOW_COPY } from "./nowViewCopy";
 import { trackActionOffered } from "../../lib/loopEvents";
 import { PendingLine } from "../ui/Receipt";
 import NowPlanFrame from "./NowPlanFrame";
-import { createGuideStore, guideReadMinutes, guideSteps, NowGuideSheet, useNowGuideHost } from "./NowGuideReader";
+import NowGuideReader, { guideReadMinutes, guideSteps, type GuideReaderContent } from "./NowGuideReader";
+
+/** FEAT-02: the guide a parent opened, frozen with what it would write. */
+type OpenGuide =
+  | { kind: "ai"; step: string; content: GuideReaderContent }
+  | { kind: "library"; pick: NowPlayPick; content: GuideReaderContent };
 
 /** Mounted only when a chosen step/program does not already lead Now. The
  * parent keys this by child/language, so cached or in-flight AI from another
@@ -30,7 +34,7 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
    *  grounded in (ids and counts only; the same request the practice lead makes). */
   journal?: JournalRequest;
 }) {
-  const { childProfile, behaviorLogs, playLogs, milestones, actionLoop, activeFamilyTopic, acceptTodayAction, logPlayCompletionAcknowledged, setActiveTab } = useArbor();
+  const { childProfile, behaviorLogs, playLogs, milestones, actionLoop, activeFamilyTopic, acceptTodayAction, logPlayCompletion, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
   const copy = NOW_COPY[lang];
@@ -41,14 +45,7 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
   const { focus, loading, error, regenerate } = useTodaysFocus(childProfile, signals, journal);
   const [libraryIndex, setLibraryIndex] = useState(0);
   const [preferLibrary, setPreferLibrary] = useState(false);
-  // FEAT-02: the reader belongs to NowView's guide host, above the lead switch,
-  // so an accepted guide keeps its sheet, receipt and error after the step lead
-  // replaces this card. Mounted alone, the card keeps a store of its own.
-  const hostedGuides = useNowGuideHost();
-  const [ownGuides] = useState(createGuideStore);
-  const guides = hostedGuides ?? ownGuides;
-  // While the reader is open it carries the write's error itself (one alert).
-  const readerOpen = useSyncExternalStore(guides.subscribe, () => guides.getSnapshot().request !== null, () => guides.getSnapshot().request !== null);
+  const [guide, setGuide] = useState<OpenGuide | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   // FEAT-02: the family's active question names a guide topic; its registry
@@ -81,10 +78,8 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
         : pick?.reason === "interest-match" && pick.matchedInterest ? copy.interestWhy(pick.matchedInterest)
           : copy.curatedWhy;
   // FEAT-02 "Picked because": the real inputs only (ENG-07), never a verdict.
-  // The line takes the page's direction; the name (and, through t(), the
-  // quoted question) is isolated when its script is the foreign one.
   const ageText = formatChildAge(childProfile, t, now);
-  const agePart = ageText ? copy.pickedAge(isolate(name, lang), ageText) : "";
+  const agePart = ageText ? copy.pickedAge(name, ageText) : "";
   const aiReasons = (): string[] => {
     const { key, vars } = whyLineParts({
       name, recentCount: signals.count, confidence: "none",
@@ -119,24 +114,23 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
   const say = useAi && focus?.sayThis ? t("elev.loop.ms.quoted", { text: focus.sayThis }) : null;
   // FEAT-02: a shipped illustration only for a guide that matches the question.
   const art = !useAi && pick?.topicMatch ? guideArtFor(guideTopic, lang) : undefined;
-  // The reader's ONE write, frozen with the guide the parent opened. An AI
-  // guide goes through the single screened accept above (TODAY-1; Begin is
-  // disabled while it saves, so this render's accept always writes); a library
-  // guide logs the play through the shared play-log write (B-GROWTH-19), never
-  // an action-loop step, and waits for the server's acknowledgement: offline or
-  // unconfirmed it rejects, so the reader shows the error and never a receipt.
-  // A retry rewrites the same per-day play id.
   const openGuide = () => {
     setSaveError(false);
-    const opener = () => beginRef.current;
     if (useAi && aiStep) {
-      guides.open({ opener, content: { title: copy.planTag.recommendation, how: guideSteps(aiStep), words: say, receipt: copy.readerSaved }, write: accept });
+      setGuide({ kind: "ai", step: aiStep, content: { title: copy.planTag.recommendation, how: guideSteps(aiStep), words: say, receipt: copy.readerSaved } });
     } else if (pick && activity) {
       setPreferLibrary(true);
-      const played = pick;
-      guides.open({ opener, content: { title: activity.title, how: activity.steps, materials: activity.householdItems, note: copy.putDown, receipt: t("elev.growth.play.toast.added", { name }) },
-        write: () => logPlayCompletionAcknowledged(played, "today") });
+      setGuide({ kind: "library", pick, content: { title: activity.title, how: activity.steps, materials: activity.householdItems, note: copy.putDown, receipt: t("elev.growth.play.toast.added", { name }) } });
     }
+  };
+  // The reader's ONE write. An AI guide goes through the single screened
+  // accept above (TODAY-1); a library guide logs the play through the shared
+  // seam (B-GROWTH-19), never an action-loop step.
+  const writeGuide = async () => {
+    if (!guide) throw new Error("No guide is open");
+    if (guide.kind === "library") return logPlayCompletion(guide.pick, "today");
+    if (saving || !useAi || aiStep !== guide.step) throw new Error("The guide no longer matches the step on Now");
+    await accept();
   };
 
   return <NowPlanFrame kind="recommendation" tag={copy.planTag.recommendation} say={say} art={art}>
@@ -146,11 +140,11 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
       <div><p className="companion-eyebrow">{copy.recommendation}</p><p className="now-provenance">{useAi ? "Arbor" : copy.curated}</p></div>
     </div>
     <h2 id={`${id}-title`} className="now-lead-title" dir="auto">{headline}</h2>
-    <p className="now-picked" data-testid="now-picked-because"><Icon name="auto_awesome" size={17} /><span><b>{copy.pickedBecause}</b> <span>{picked}</span></span></p>
+    <p className="now-picked" data-testid="now-picked-because"><Icon name="auto_awesome" size={17} /><span><b>{copy.pickedBecause}</b> <span dir="auto">{picked}</span></span></p>
     {(useAi || activity) && <TrustLink surface="today-focus" />}
     {body && <p className="now-lead-body" dir="auto">{body}</p>}
     {(useAi || activity) && <ul className="now-guide-meta" data-testid="now-guide-meta">
-      <li><Icon name="schedule" size={16} />{useAi ? copy.readMinutes(guideReadMinutes([aiStep, focus?.sayThis])) : copy.togetherMinutes(activity!.durationMin)}</li>
+      <li><Icon name="schedule" size={16} />{useAi ? copy.readMinutes(guideReadMinutes([aiStep, focus?.sayThis])) : copy.minutes(activity!.durationMin)}</li>
       <li><Icon name="task_alt" size={16} />{copy.oneAction}</li>
     </ul>}
 
@@ -161,7 +155,7 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
       {useAi && <button type="button" className="companion-secondary" disabled={saving} onClick={() => void accept().catch(() => {})}><Icon name="bookmark_add" size={19} />{saving ? copy.saving : copy.choose}</button>}
       {(useAi || activity) && <button type="button" className="companion-text-button" onClick={() => onTalkOpen(copy.adaptPrompt(useAi ? aiStep! : `${activity!.title}. ${activity!.steps.join(" ")}`))}>{copy.adapt}<Icon name="chat_bubble" size={17} /></button>}
     </div>
-    {saveError && !readerOpen && <p className="now-inline-status" role="alert">{copy.saveError}</p>}
+    {saveError && !guide && <p className="now-inline-status" role="alert">{copy.saveError}</p>}
 
     <div className="now-alternatives">
       {(useAi ? picks.length > 0 : picks.length > 1) && <button type="button" className="companion-text-button" onClick={another}>{copy.otherIdea}<Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" /></button>}
@@ -171,7 +165,7 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
         quiet and only after 400 ms (a cached focus never flashes it). */}
     <PendingLine active={loading && !useAi && !preferLibrary} testId="now-recommendation-pending" className="now-inline-status">{copy.loading}</PendingLine>
     {error && !useAi && <div className="now-inline-status" role="status"><p>{copy.focusError}</p><button type="button" className="companion-text-button" disabled={loading} onClick={() => void regenerate()}>{copy.retry}</button></div>}
-    {!hostedGuides && <NowGuideSheet store={ownGuides} lang={lang} />}
+    {guide && <NowGuideReader content={guide.content} lang={lang} onClose={() => setGuide(null)} onDone={writeGuide} returnFocusRef={beginRef} />}
   </section>
   </NowPlanFrame>;
 }

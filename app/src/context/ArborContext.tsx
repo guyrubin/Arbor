@@ -604,17 +604,6 @@ function useArborState() {
   // a ranked pick (ScoredActivity, carries its reason) OR a bare course step
   // (PlayActivity + the course id it was ticked in; reason "stage-match").
   const logPlayCompletion = (a: ScoredActivity | PlayActivity, source: PlayLog["source"], courseId?: string) => {
-    return writePlayCompletion(a, source, courseId);
-  };
-  // FEAT-02: the same write for a caller whose receipt claims the save (Now's
-  // guide reader, B-STATUS-01). It waits for the server's acknowledgement and
-  // rejects offline or unconfirmed; a retry rewrites the same per-day id.
-  const logPlayCompletionAcknowledged = (a: ScoredActivity | PlayActivity, source: PlayLog["source"]) => {
-    return writePlayCompletion(a, source, undefined, { requireAcknowledgement: true });
-  };
-  // The one body behind both. Without options the write keeps its queued,
-  // local-first semantics (every existing caller).
-  function writePlayCompletion(a: ScoredActivity | PlayActivity, source: PlayLog["source"], courseId?: string, options?: { requireAcknowledgement: true }) {
     const activity = "activity" in a ? a.activity : a;
     const reason: PlayLog["reason"] = "activity" in a ? a.reason : "stage-match";
     const day = dayKey(new Date());
@@ -632,11 +621,11 @@ function useArborState() {
       timestamp: new Date().toISOString(),
     };
     // Optimistic + local-first; existing callers may ignore the promise. Now's
-    // guide reader (FEAT-02) awaits it, acknowledged, so its receipt follows the write.
-    const write = playLogCol.upsert(rec, options);
+    // guide reader (FEAT-02) awaits it so its receipt follows the write.
+    const write = playLogCol.upsert(rec);
     if (!alreadyDone) trackPlayCompleted(activity.domain, reason, source);
     return write;
-  }
+  };
 
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>(() => readLS("arbor.lens") || "Integrated Balanced");
@@ -1910,7 +1899,6 @@ function useArborState() {
     playLogs,
     donePlayIds,
     logPlayCompletion,
-    logPlayCompletionAcknowledged,
     actionLoop,
     actionLoopConfirmed: actionLoopCol.confirmed,
     conversationChanges: conversationChangesCol.items,
