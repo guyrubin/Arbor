@@ -47,11 +47,15 @@ const coversLauncher = (classes: string[]) =>
   classes.includes("fixed") || classes.some(c => /^(?:lg:|md:)?bottom-(?:6|20)$/.test(c)) || !classes.includes("absolute");
 
 describe("v3 F-SHELL-2 · the post-capture strip sits in the page's cell, above the launcher", () => {
-  it("the strip is absolute in grid area 1 / 1, 12 px off the cell's end, z-30", () => {
-    const classes = stripClasses(strip);
-    expect(classes).toEqual(expect.arrayContaining(["absolute", "inset-x-3", "bottom-3", "z-30", "mx-auto", "max-w-md"]));
-    expect(coversLauncher(classes)).toBe(false);
-    expect(strip).toContain('gridArea: "1 / 1"');
+  // v3 integration (F-SHELL-2 x F-TALK-2): F-TALK-2 retired the floating strip
+  // (a null stub; the offer lives in the capture sheet's saved state, pinned in
+  // postCaptureHandoff.test.ts). The strip element whose class list and grid
+  // area this case read is gone, so the guarantee is held the stronger way:
+  // the mount draws no element, so nothing can sit on the launcher rail.
+  it("the strip mount draws no element, so nothing covers the launcher", () => {
+    expect(strip).toMatch(/export default function PostCaptureCoachStrip\(\) \{\s*return null;\s*\}/);
+    expect(strip).not.toContain('data-testid="post-capture-coach-strip"');
+    expect(strip).not.toMatch(/className=|<[a-zA-Z]/);
   });
 
   it("Shell mounts it once, inside the workspace, after the page", () => {
