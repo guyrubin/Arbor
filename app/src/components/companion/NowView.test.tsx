@@ -417,7 +417,7 @@ describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
     expect(plan).toContain('data-guide="new-words"');
     expect(plan).toContain('data-recommendation-source="library"');
     const line = picked(plan);
-    const runs = line.match(/<bdi>[^<]*<\/bdi>/g) ?? [];
+    const runs: string[] = line.match(/<bdi>[^<]*<\/bdi>/g) ?? [];
     expect(runs.some(run => run.includes(question)), "the question in its own bdi").toBe(true);
     expect(runs).toContain("<bdi>Noa</bdi>");
     expect(words(line)).toContain(`${copy.pickedQuestion} `);
@@ -494,7 +494,8 @@ describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
     state.actionLoop = [{ id: "step-w", recommendation: "Name one thing you see on the walk.", source: "coach", status: "accepted", acceptedAt: "2026-10-02", capacity: "tiny", topicId: "topic-w" }];
     const topic = { id: "topic-w", title: lang === "he" ? "מילים חדשות בבית" : "New words at home" };
     const under = picked(lead(renderToStaticMarkup(<NowView topic={topic} />), "step"));
-    expect((under.match(/<bdi>[^<]*<\/bdi>/g) ?? []).some(run => run.includes(topic.title))).toBe(true);
+    const underRuns: string[] = under.match(/<bdi>[^<]*<\/bdi>/g) ?? [];
+    expect(underRuns.some(run => run.includes(topic.title))).toBe(true);
     state.actionLoop = []; state.appointments = [appointment]; state.behaviorLogs = [note];
     const visit = lead(renderToStaticMarkup(<NowView />), "visit");
     expect(visit).toMatch(/<h2 id="[^"]+-visit" class="now-plan-title" dir="auto">/);
