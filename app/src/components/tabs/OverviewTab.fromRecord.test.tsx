@@ -20,7 +20,7 @@ vi.mock("../../context/LanguageContext", () => ({
 vi.mock("motion/react", () => ({ motion: { p: (p: Record<string, unknown>) => { const { initial: _i, animate: _a, transition: _t, ...rest } = p; return React.createElement("p", rest); } } }));
 
 import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
-import { todayLiveSource } from "../../testTodaySource";
+import { todayFile, todayLiveSource } from "../../testTodaySource";
 
 const NOTE = "Calmed and put shoes on within 8 mins instead of usual 25.";
 const planOpener: FromRecordOpener = { key: "plan:p1", kind: "plan", topic: "Morning Departure Support Plan", quote: NOTE, quoteSource: "parent", quoteAt: "2026-07-09T08:10:00.000Z" };
@@ -146,20 +146,32 @@ describe("NEXTLEVEL critic r1 — a named topic, a joy opener, the chips are the
 });
 
 describe("B-TODAY-28 — OverviewTab wiring (source pin)", () => {
-  it("the greeting to the parent is gone; the child's identity line leads", () => {
+  it("the greeting to the parent is gone; the Now kicker leads", () => {
     expect(SRC).not.toContain("today.greeting.");
     expect(SRC).not.toContain('t("today.header.prompt")');
-    expect(SRC).toContain('data-testid="today-identity"');
-    // Parity 9 Oct: name · age on ONE line after the date in Now's eyebrow.
-    expect(SRC).toMatch(/"elev\.loop\.today\.identity"/);
+    // Re-pin (F-NOW-1 now-heading-identity, 12 Oct): the kicker leads Now; the
+    // date and the child's name · age line left the heading (no picture either).
+    expect(SRC).toContain('<p className="companion-eyebrow" data-testid="now-kicker">{copy.kicker}</p>');
+    expect(SRC).not.toContain('data-testid="today-identity"');
+    expect(SRC).not.toMatch(/"elev\.loop\.today\.identity"/);
   });
 
-  it("critic r1 (Law 8): the identity line inherits the page direction — no dir=auto, no outer bdi", () => {
-    const at = SRC.indexOf('data-testid="today-identity"');
-    const line = SRC.slice(SRC.lastIndexOf("<p", at), SRC.indexOf("</p>", at));
+  it("critic r1 (Law 8): the line that names the child inherits the page direction — no dir on it, only the name isolated in <bdi>", () => {
+    // Re-pin (F-NOW-1 now-plan-body): name · age moved to the plan card's
+    // always-visible Picked line, said once; the parent's own string is the
+    // only isolated run (FEAT-02: never dir=auto on the joined line).
+    // Re-pin (F-NOW-1 r2): that line is now the one plan body every lead
+    // shares (NowPlanBody), and the family's question - quoted only when the
+    // pick was made for it - is the second isolated run.
+    const body = todayFile("NowPlanBody.tsx");
+    const at = body.indexOf('data-testid="now-picked-because"');
+    const line = body.slice(body.indexOf("<p>", at), body.indexOf("</p>", at));
     expect(line).not.toMatch(/dir=/);
-    expect(line).not.toMatch(/<bdi/);
-    expect(line).toContain('t("elev.loop.today.identity", { name, age: ageText })');
+    expect(line.match(/<bdi>/g)).toHaveLength(2);
+    expect(line).toContain("<bdi>{name}</bdi>, {ageText} · ");
+    expect(line).toContain('<bdi>{t("elev.loop.ms.quoted", { text: question })}</bdi>');
+    expect(todayFile("NowRecommendation.tsx")).toContain("<NowPlanBody ");
+    expect(todayFile("NowRecommendation.tsx")).not.toContain('data-testid="now-picked-because"');
   });
 
   it("Now requests action-first details without removing the family's words or default layout", () => {

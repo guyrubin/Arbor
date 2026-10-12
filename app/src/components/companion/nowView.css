@@ -1,8 +1,6 @@
 .now-page { max-inline-size: 1100px; padding-block-start: 8px; container-type: inline-size; container-name: now; }
 .now-page button { overflow-wrap: anywhere; }
 .now-heading { margin-block-end: 18px; }
-.now-identity { display: flex; align-items: center; gap: 10px; min-inline-size: 0; }
-.now-identity .companion-eyebrow { min-inline-size: 0; }
 .now-lifecycle-note { margin-block-start: 8px; font-size: var(--t-sm); color: var(--arbor-clay-deep); }
 .now-loop-lead { min-inline-size: 0; }
 .now-loop-adapt { margin-block-start: 10px; }
@@ -26,30 +24,14 @@
 .now-heading h1 { margin-block: 7px 0; font-size: var(--t-title); line-height: 1.3; }
 .now-main-column { min-inline-size: 0; }
 .now-lead { padding: 25px 28px 20px; border-radius: var(--r-xl); background: var(--arbor-paper-elevated); min-inline-size: 0; overflow-wrap: anywhere; }
-.now-lead-band { display: flex; align-items: center; gap: 12px; padding-block-end: 12px; border-block-end: 1px solid var(--arbor-rule); }
-.now-lead-band > div { flex: 1; min-inline-size: 0; }
-.now-lead-band .companion-eyebrow { letter-spacing: .04em; }
-.now-glyph { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; inline-size: 44px; block-size: 44px; background: var(--arbor-paper-deep); color: var(--arbor-clay-deep); border-radius: var(--r); }
-.now-provenance { font-size: var(--t-xs); color: var(--arbor-muted); margin-block-start: 2px !important; }
-.now-duration { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t-xs); color: var(--arbor-muted); white-space: nowrap; }
 .now-lead .now-lead-title { font-size: var(--t-title); font-family: var(--font-display); font-weight: var(--arbor-w-title); line-height: 1.35; margin-block: 14px 10px; text-wrap: pretty; }
 .now-lead-body { font-size: var(--t-base); color: var(--arbor-ink-soft); max-inline-size: 60ch; }
 .now-chosen-words { padding-inline-start: 17px; border-inline-start: 2px solid var(--arbor-ink); font-size: var(--t-say); font-family: var(--font-display); margin-block: 18px !important; }
 .now-lead-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-block: 16px 12px; }
 .now-lead-actions .companion-primary, .now-lead-actions .companion-secondary { min-inline-size: 0; }
-.now-why { display: flex; align-items: flex-start; gap: 8px; padding-block-start: 17px; margin-block-start: 17px; border-block-start: 1px solid var(--arbor-rule); color: var(--arbor-muted); }
-.now-why > .msr { flex-shrink: 0; margin-block-start: 3px; }
-.now-why p { font-size: var(--t-xs); }
-.now-why b { display: block; color: var(--arbor-ink-soft); font-weight: 600; margin-block-end: 3px; }
 .now-alternatives { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2px 18px; }
 .now-alternatives .companion-text-button { font-size: var(--t-xs); }
 .now-inline-status { padding-block: 12px; font-size: var(--t-xs); color: var(--arbor-muted); line-height: 1.6; }
-.now-activity-steps { margin-block: 22px 0; padding-block-start: 17px; border-block-start: 1px solid var(--arbor-rule); }
-.now-materials { font-size: var(--t-sm); color: var(--arbor-muted); }
-.now-materials b { display: block; color: var(--arbor-ink); font-weight: 600; }
-.now-activity-steps ol { list-style: none; padding: 0; margin-block: 19px; }
-.now-activity-steps li { display: flex; gap: 11px; align-items: flex-start; margin-block: 13px; font-size: var(--t-sm); }
-.now-activity-steps li > span { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 25px; block-size: 25px; background: var(--arbor-paper-deep); color: var(--arbor-ink); border-radius: 50%; font-size: var(--t-xs); }
 .now-hard-moment { display: flex; align-items: center; gap: 12px; inline-size: 100%; padding: 18px 7px 12px; text-align: start; background: transparent; border: 0; color: var(--arbor-ink); }
 .now-hard-moment > .msr { color: var(--arbor-muted); flex-shrink: 0; }
 .now-hard-moment > span:nth-child(2) { flex: 1; min-inline-size: 0; }
@@ -76,7 +58,6 @@
   .now-heading { margin-block-end: 18px; }
   .now-heading h1 { font-size: var(--t-title); }
   .now-lead { padding: 20px 18px 14px; }
-  .now-lead-band { gap: 10px; }
   .now-lead .now-lead-title { margin-block-start: 18px; }
   .now-lead-actions { align-items: stretch; flex-direction: column; }
   .now-lead-actions > .companion-primary, .now-lead-actions > .companion-secondary { inline-size: 100%; }
@@ -91,8 +72,6 @@
 .now-page .practice-details > summary:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 3px; border-radius: var(--r-sm); }
 .now-page .practice-details[open] > summary > .msr { transform: rotate(180deg); }
 .now-page .practice-details [data-testid="practice-quote"] { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
-.now-lead .now-why { padding-block-start: 0; margin-block: 0 14px; border-block-start: 0; }
-.now-lead .now-why p { font-size: var(--t-sm); }
 
 /* The record question is the largest UI line; the parent quotation keeps its editorial face. */
 .arbor-app .now-page [data-testid="today-record-question"] { font-family: var(--font-sans) !important; }
@@ -113,6 +92,8 @@
 
 .now-question-head { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
 .now-question-note { font-size: 12.5px; color: var(--arbor-muted); }
+/* F-NOW-1: phones keep the row to the question itself. */
+@media (max-width: 767.98px) { .now-question-note { display: none; } }
 .now-question-new { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; padding: 0 10px; border: 0; border-radius: 12px; background: transparent; color: var(--arbor-clay); font-size: 13px; font-weight: 700; white-space: nowrap; }
 .now-question-row { display: flex; align-items: stretch; gap: 8px; margin-block-start: 6px; min-inline-size: 0; }
 .now-question-active, .now-question-empty { flex: 0 1 46%; display: flex; align-items: center; gap: 12px; min-inline-size: 0; min-block-size: 56px; border-radius: 16px; }
@@ -121,9 +102,8 @@
 .now-question-text { flex: 1; min-inline-size: 0; }
 .now-question-text small { display: block; font-size: 11px; font-weight: 700; opacity: .75; }
 .now-question-text b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14.5px; font-weight: 600; line-height: 1.25; }
-.now-question-talk { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--arbor-on-accent) 32%, transparent); background: transparent; color: inherit; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
 .now-question-edit { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; inline-size: 44px; block-size: 44px; border: 0; border-radius: 12px; background: transparent; color: inherit; opacity: .85; }
-.now-question-talk:hover, .now-question-edit:hover { background: color-mix(in srgb, var(--arbor-on-accent) 12%, transparent); }
+.now-question-edit:hover { background: color-mix(in srgb, var(--arbor-on-accent) 12%, transparent); }
 .now-question-empty { padding: 8px 16px; border: 1px dashed var(--arbor-rule-strong); background: var(--arbor-paper-elevated); color: var(--arbor-ink); text-align: start; }
 .now-question-empty > .msr { flex-shrink: 0; color: var(--arbor-clay); }
 .now-question-empty b, .now-question-empty small { display: block; }
@@ -138,7 +118,7 @@
 .now-question-all { flex: none; margin-inline-start: auto; display: flex; align-items: center; gap: 6px; min-block-size: 56px; padding: 0 14px; border: 1px solid var(--arbor-rule-strong); border-radius: 14px; background: var(--arbor-paper-elevated); color: var(--arbor-clay); font-size: 13px; font-weight: 700; white-space: nowrap; }
 .now-question button:focus-visible, .now-world button:focus-visible, .now-week button:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
 
-.now-plan { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.35fr); border: 1px solid var(--arbor-rule); border-radius: 22px; background: var(--arbor-paper-elevated); overflow: hidden; }
+.now-plan { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); border: 1px solid var(--arbor-rule); border-radius: 22px; background: var(--arbor-paper-elevated); overflow: hidden; }
 .now-plan-art { position: relative; display: flex; flex-direction: column; min-block-size: 300px; padding: 20px 22px; overflow: hidden; background: linear-gradient(160deg, var(--arbor-paper-deep), var(--arbor-sky-wash)); }
 .now-plan-blob { position: absolute; }
 .now-plan-blob-a { inset-block-start: -40px; inset-inline-end: -30px; inline-size: 230px; block-size: 230px; border-radius: 58% 42% 55% 45% / 50% 45% 55% 50%; background: linear-gradient(135deg, color-mix(in srgb, var(--arbor-lav) 45%, var(--arbor-paper-elevated)), var(--arbor-lav)); opacity: .9; }
@@ -151,20 +131,50 @@
 .now-plan-art-text { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; }
 .now-plan-tag { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; background: var(--arbor-paper-elevated); color: var(--arbor-ink); font-size: 11.5px; font-weight: 700; white-space: nowrap; box-shadow: 0 1px 2px color-mix(in srgb, var(--arbor-ink) 8%, transparent); }
 .now-plan-tag .msr { color: var(--arbor-lav-ink); }
-.now-plan-say { max-inline-size: 60%; margin: 0; font: 600 clamp(20px, 1.9vw, 28px)/1.18 var(--font-display); color: var(--arbor-ink); text-wrap: balance; overflow-wrap: anywhere; }
+.now-plan-say { margin: 0; font: 600 clamp(23px, 2.2vw, 32px)/1.18 var(--font-display); color: var(--arbor-ink); text-wrap: balance; overflow-wrap: anywhere; }
+/* v3 F-NOW-1: the guide's face - its picture once shipped (16:9, its calm
+   inline-start side under the words, mirrored once in RTL), a scrim on that
+   same side, then the say line, the guide's title and the plan meta. */
+.now-plan-art-picture { background: var(--arbor-paper-deep); }
+.now-plan-img { position: absolute; inset-block-start: 0; inset-inline-start: 0; inline-size: 100%; block-size: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+.now-plan-img:dir(rtl) { transform: scaleX(-1); }
+.now-plan-scrim { position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--arbor-paper-elevated) 92%, transparent), color-mix(in srgb, var(--arbor-paper-elevated) 55%, transparent) 45%, transparent 70%); }
+.now-plan-scrim:dir(rtl) { background: linear-gradient(270deg, color-mix(in srgb, var(--arbor-paper-elevated) 92%, transparent), color-mix(in srgb, var(--arbor-paper-elevated) 55%, transparent) 45%, transparent 70%); }
+.now-plan-face { display: flex; flex-direction: column; gap: 8px; max-inline-size: 52%; }
+.now-plan-title { margin: 0; font: 600 14px/1.35 var(--font-sans); color: var(--arbor-ink); overflow-wrap: anywhere; text-wrap: pretty; }
+.now-plan-meta { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--arbor-muted); }
+.now-plan-kicker { margin: 0 0 4px; font-size: var(--t-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--arbor-clay-deep); }
+.now-page[dir="rtl"] .now-plan-kicker { letter-spacing: 0; text-transform: none; }
+.now-next { margin: 0 0 8px; font-size: var(--t-sm); font-weight: 600; color: var(--arbor-ink-soft); overflow-wrap: anywhere; }
+.now-picked { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 8px; margin-block: 14px 0; font-size: var(--t-sm); color: var(--arbor-ink-soft); }
+.now-picked > .msr { flex-shrink: 0; margin-block-start: 2px; color: var(--arbor-lav-ink); }
+.now-picked > p { flex: 1 1 0; min-inline-size: 0; margin: 0; line-height: 1.5; }
+.now-picked b { font-weight: 700; color: var(--arbor-ink); }
+.now-guide-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 12.5px; font-weight: 600; color: var(--arbor-muted); }
+.now-guide-meta li { display: inline-flex; align-items: center; gap: 6px; }
+/* r2: the one plan body under a lead that is not the recommendation, and the chosen step's How to begin. */
+.now-plan-foot { padding: 0 28px 20px; }
+.now-plan-how { min-block-size: 44px; }
 .now-plan-body { min-inline-size: 0; border-inline-start: 1px solid var(--arbor-rule); }
+/* The guide reader (a sheet, outside the page): How to begin, the words, and the one choice. */
+.now-reader { display: flex; flex-direction: column; gap: 18px; }
+.now-reader-intro { margin: 0; font-size: var(--t-base); color: var(--arbor-ink-soft); }
+.now-reader-section h3 { margin: 0 0 10px; font-size: var(--t-sm); font-weight: 700; color: var(--arbor-ink); }
+.now-reader-steps { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.now-reader-steps li { display: flex; align-items: flex-start; gap: 11px; font-size: var(--t-sm); }
+.now-reader-steps li > span { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 25px; block-size: 25px; border-radius: 50%; background: var(--arbor-paper-deep); color: var(--arbor-ink); font-size: var(--t-xs); }
+.now-reader-steps p { margin: 0; min-inline-size: 0; }
+.now-reader-materials { margin: 12px 0 0; font-size: var(--t-sm); color: var(--arbor-muted); }
+.now-reader-materials b { font-weight: 600; color: var(--arbor-ink); }
+.now-reader-words { margin: 0; padding-inline-start: 14px; border-inline-start: 2px solid var(--arbor-clay); font-family: var(--font-display); font-size: var(--t-say); line-height: 1.35; color: var(--arbor-ink); }
+.now-reader-note { margin: 0; font-size: var(--t-sm); color: var(--arbor-muted); }
+.now-reader-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.now-reader-actions > button { min-block-size: 44px; }
 .now-page .now-plan-body .arbor-depth-primary { box-shadow: none; border-radius: 0; background: transparent; }
 .now-followup { padding-block-start: 12px; border-block-start: 1px solid var(--arbor-rule); }
 .now-followup-q { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; font-size: var(--t-sm); font-weight: 600; color: var(--arbor-ink); }
 .now-followup-q > .msr { color: var(--arbor-peach-ink); flex-shrink: 0; }
 .now-followup .companion-secondary[aria-pressed="true"] { background: var(--arbor-paper-deep); border-color: var(--arbor-clay); color: var(--arbor-clay); }
-.now-why-details { margin-block: 2px 12px; }
-.now-why-details > summary { display: flex; align-items: center; gap: 8px; min-block-size: 44px; cursor: pointer; list-style: none; color: var(--arbor-clay); font-size: 13px; font-weight: 700; }
-.now-why-details > summary::-webkit-details-marker { display: none; }
-.now-why-details > summary > .msr:last-child { margin-inline-start: auto; color: var(--arbor-muted); transition: transform .2s; }
-.now-why-details[open] > summary > .msr:last-child { transform: rotate(180deg); }
-.now-why-details > summary:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 3px; border-radius: var(--r-sm); }
-.now-page .now-why-details .now-why { margin: 0; padding: 10px 12px; border: 1px solid var(--arbor-rule); border-radius: 12px; background: var(--arbor-paper); }
 
 .now-world { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 14px 18px; border: 1px solid var(--arbor-rule); border-radius: 18px; background: var(--arbor-paper); }
 .now-world-head { flex: none; display: flex; align-items: center; gap: 10px; }
@@ -224,8 +234,12 @@
 
 @container now (max-width: 860px) {
   .now-plan { grid-template-columns: minmax(0, 1fr); }
-  .now-plan-art { min-block-size: 150px; }
-  .now-plan-medallion { inset-block-start: auto; inset-block-end: 18px; inline-size: 72px; block-size: 72px; }
+  .now-plan-art { min-block-size: 190px; }
+  .now-plan-medallion { inset-block-start: 18px; inset-block-end: auto; inset-inline-end: 18px; inline-size: 72px; block-size: 72px; --now-medallion-glyph: 34px; }
+  .now-plan-say { font-size: 23px; }
+  .now-plan-face { max-inline-size: calc(100% - 96px); }
+  .now-plan-art-picture .now-plan-face { max-inline-size: 70%; }
+  .now-plan-img { block-size: 100%; aspect-ratio: auto; }
   .now-plan-body { border-inline-start: 0; border-block-start: 1px solid var(--arbor-rule); }
   .now-day-grid { grid-template-columns: minmax(0, 1fr); }
   .now-world { flex-wrap: wrap; }
@@ -237,10 +251,5 @@
 }
 @container now (max-width: 540px) {
   .now-question-scroll { display: none; }
-  /* Phones: the question keeps its own line; Talk and Edit wrap beneath it, Talk under the text. */
-  .now-question-active { flex-wrap: wrap; row-gap: 2px; padding-block: 10px 6px; }
-  .now-question-text { flex-basis: calc(100% - 36px); }
-  .now-question-talk { margin-inline-start: 36px; }
-  .now-question-edit { margin-inline-start: auto; }
-  .now-plan-say { max-inline-size: 70%; }
+  .now-plan-foot { padding: 0 18px 14px; }
 }

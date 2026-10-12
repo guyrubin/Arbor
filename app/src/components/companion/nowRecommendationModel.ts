@@ -5,6 +5,7 @@ import type { BehaviorLog, Milestone, PlayLog } from "../../types";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { bandForAge } from "../../playbank/content";
 import { selectDailyPlay, type PlaySelectContext, type ScoredActivity } from "../../playbank/select";
+import { toDomains, type DomainId } from "../../lib/domains/registry";
 
 const DAY = 86_400_000;
 
@@ -45,12 +46,33 @@ export function focusSignalsForNow(input: {
   };
 }
 
+/** The guide reader's "How to begin" for a step in the parent's or the
+ * model's own words: its sentences, at most three (the third keeps the rest). */
+export function stepLines(text: string): string[] {
+  const parts = (text.match(/[^.!?]+[.!?]*/g) ?? []).map(part => part.trim()).filter(Boolean);
+  if (parts.length <= 3) return parts.length ? parts : [text];
+  return [parts[0], parts[1], parts.slice(2).join(" ")];
+}
+
+/** A library pick for Now. `topic-match` (v3 F-NOW-1, FEAT-02): the activity
+ * speaks to an area of the family's active question, so the card may quote
+ * that question; every other reason is the library's own. */
+export type NowPlayPick = Omit<ScoredActivity, "reason"> & { reason: ScoredActivity["reason"] | "topic-match" };
+
 /** Reuse the live library's ranking, but do not let weighting offer an
- * out-of-band activity on the home screen. Never expose its internal score. */
-export function dailyPlayForNow(context: PlaySelectContext, count = 3): ScoredActivity[] {
+ * out-of-band activity on the home screen. Never expose its internal score.
+ * With `topicDomains` (the areas of the active question's guide topic), the
+ * in-band activities in those areas come first, in the library's own order. */
+export function dailyPlayForNow(context: PlaySelectContext & { topicDomains?: readonly DomainId[] }, count = 3): NowPlayPick[] {
   if (!isSupportedPlayAge(context.ageYears)) return [];
   const band = bandForAge(context.ageYears);
-  return selectDailyPlay(context, 100)
-    .filter((pick) => pick.activity.bands.includes(band))
-    .slice(0, count);
+  const { topicDomains, ...select } = context;
+  const inBand: NowPlayPick[] = selectDailyPlay(select, 100).filter((pick) => pick.activity.bands.includes(band));
+  const wanted = new Set<DomainId>(topicDomains ?? []);
+  if (!wanted.size) return inBand.slice(0, count);
+  const fits = (pick: NowPlayPick) => toDomains("play", pick.activity.domain, { activityId: pick.activity.id }).some((domain) => wanted.has(domain));
+  const matched = inBand.filter(fits).map((pick): NowPlayPick => ({
+    activity: pick.activity, score: pick.score, reason: "topic-match", ...(pick.continuation ? { continuation: true } : {}),
+  }));
+  return [...matched, ...inBand.filter((pick) => !fits(pick))].slice(0, count);
 }

@@ -112,10 +112,11 @@ describe("NEXTLEVEL critic r1 · Today at 1280 is two tracks, not a stretched ph
   it("Now keeps its recommendation first and groups optional context separately", () => {
     // Parity 9 Oct: the stacked QuickCaptureBar track left with the Today hub.
     // v3 (11 Oct 2026): the lead is a two-panel plan card; the day's context is its own two-track grid below it.
+    // F-NOW-1 (12 Oct): the guide's art panel leads and is the wider one.
     expect(TODAY.indexOf('<div className="now-main-column">')).toBeLessThan(TODAY.indexOf('<div className="now-day-grid">'));
     expect(TODAY).not.toContain('<section className="now-capture"');
     expect(read("components/companion/CompanionWorkspace.tsx")).toContain('className="companion-capture-options"');
-    expect(read("components/companion/nowView.css")).toMatch(/\.now-plan \{[^}]*grid-template-columns: minmax\(0, \.9fr\) minmax\(0, 1\.35fr\)/);
+    expect(read("components/companion/nowView.css")).toMatch(/\.now-plan \{[^}]*grid-template-columns: minmax\(0, 1\.25fr\) minmax\(0, 1fr\)/);
     expect(read("components/companion/nowView.css")).toMatch(/\.now-day-grid \{[^}]*grid-template-columns: minmax\(0, 1\.3fr\) minmax\(0, 1fr\)/);
     expect(TODAY).not.toContain("<QuickCaptureBar");
   });
