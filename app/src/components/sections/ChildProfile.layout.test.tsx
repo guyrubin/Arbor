@@ -285,7 +285,7 @@ describe("B-CAREPRO-33 · the areas date their facts", () => {
     harness.callback = true;
     harness.factsAsOf = { schoolContext: DAYS(120), languages: DAYS(10) };
     const onEditDetails = vi.fn();
-    const props = { ...card("school").props, onEditDetails } as React.ComponentProps<typeof AspectCard>;
+    const props: React.ComponentProps<typeof AspectCard> = { ...(card("school").props as React.ComponentProps<typeof AspectCard>), onEditDetails };
     const find = (id: string) => elements(AspectCard(props)).find((el) => el.props["data-testid"] === id)!;
     const before = Date.now();
     find("profile-fact-keep-schoolContext").props.onClick();
