@@ -1572,6 +1572,8 @@ export const en: Dict = {
   "sm.extra.weeklySub": "My Child · Story",
   "sm.extra.scholar": "Scholar Frameworks",
   "sm.extra.scholarSub": "Ask Arbor",
+  // v3 IA-05: a saved family question as a search row's badge.
+  "sm.kind.topic": "Saved question",
   // LANG-15: Word World Tab
   "wordworld.sourceFraming": "developmentally informed, grounded in CDC/AAP/ASHA/WHO",
   "wordworld.refresh": "Refresh",
@@ -4104,6 +4106,8 @@ export const he: Dict = {
   "sm.extra.weeklySub": "הילד שלי · סיפור",
   "sm.extra.scholar": "מסגרות מומחה",
   "sm.extra.scholarSub": "שאל את ארבור",
+  // v3 IA-05: a saved family question as a search row's badge.
+  "sm.kind.topic": "שאלה שמורה",
   // LANG-15: Word World Tab (Hebrew)
   "wordworld.sourceFraming": "מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO",
   "wordworld.refresh": "רענון",
