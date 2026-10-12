@@ -90,7 +90,7 @@ export default function TellArborMore({ onClose, aspect: openOn = null, mode = "
     <div className="describe-modal" dir={uiLang === "he" ? "rtl" : "ltr"} data-testid="tell-arbor-more" data-aspect={aspect ?? undefined} data-mode={mode}>
       {showInput && <>
         <p className="describe-sub">{t("elev.describe.sub")}</p>
-        <DescribeChild name={name} lang={lang} value={text} onChange={(next) => { setText(next); setEmpty(false); }} quickFills disabled={drafting} autoFocus onVoiceText={() => setViaMic(true)}
+        <DescribeChild name={name} lang={lang} value={text} onChange={(next) => { setText(next); setEmpty(false); }} disabled={drafting} autoFocus onVoiceText={() => setViaMic(true)}
           aspect={aspect} onAspect={(id) => setAspect((current) => (current === id ? null : id))} opening={opening} voice={mode === "voice"} />
         {state.error === "crisis" && <UrgentSupport testId="describe-urgent-support" />}
         {state.error === "model" && <p className="describe-note" role="alert">{t("elev.describe.failed")}</p>}

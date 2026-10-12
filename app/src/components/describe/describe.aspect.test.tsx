@@ -6,12 +6,14 @@
  *    where the browser cannot dictate it says so and the field works;
  *  - an area's "Tell more" / ?aspect=<id> opens it on that area: the area's
  *    fill is pressed and the opening question names it (EN + HE);
- *  - the quick fills are About's eight areas; on this door a fill picks the
- *    area (aria-pressed), elsewhere it still starts a line in the field;
+ *  - the quick fills are About's eight areas; a fill picks the area
+ *    (aria-pressed, the filled navy chip) and never writes into the field;
+ *    without an area picker there are no fills (onboarding keeps its tiles);
  *  - a bottom sheet below lg, the centred dialog above it.
  * Synthetic child only.
  */
 import React from "react";
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -72,12 +74,13 @@ describe.each(["en", "he"] as const)("the About door's conversation (%s)", (lang
   beforeEach(() => { h.lang = lang; });
 
   it("the quick fills are About's eight areas, in order, named as on About", () => {
-    const html = renderToStaticMarkup(<DescribeChild name="Noa" lang={lang} value="" onChange={() => {}} quickFills />);
+    const html = renderToStaticMarkup(<DescribeChild name="Noa" lang={lang} value="" onChange={() => {}} aspect="play" onAspect={() => {}} />);
     const chips = fills(html);
     expect(chips.map((c) => c.id)).toEqual([...ASPECT_IDS]);
     for (const id of ASPECT_IDS) expect(unescape(html)).toContain(translate(lang, `companion.about.aspect.${id}`));
-    // without an area picker the fills are plain inserts: no toggle state
-    expect(html).not.toContain("aria-pressed");
+    for (const chip of chips) expect(chip.tag, chip.id).toContain(`aria-pressed="${chip.id === "play"}"`);
+    // without an area picker there are no fills at all (no dead insert path)
+    expect(fills(renderToStaticMarkup(<DescribeChild name="Noa" lang={lang} value="" onChange={() => {}} />))).toHaveLength(0);
   });
 
   it("an area's Tell more opens on that area: its fill is pressed and the opening names it", () => {
@@ -131,17 +134,20 @@ describe("the fill tap and the surface", () => {
   it("on the About door a fill picks the area (onAspect), it does not write into the field", () => {
     const onAspect = vi.fn();
     const onChange = vi.fn();
-    renderToStaticMarkup(<DescribeChild name="Noa" lang="en" value="" onChange={onChange} quickFills aspect="lang" onAspect={onAspect} />);
+    renderToStaticMarkup(<DescribeChild name="Noa" lang="en" value="" onChange={onChange} aspect="lang" onAspect={onAspect} />);
     h.buttons.find((b) => b["data-fill"] === "school")!.onClick();
     expect(onAspect).toHaveBeenCalledWith("school");
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("elsewhere a fill still starts a line with the area's name", () => {
-    const onChange = vi.fn();
-    renderToStaticMarkup(<DescribeChild name="Noa" lang="en" value="Loves trains" onChange={onChange} quickFills />);
-    h.buttons.find((b) => b["data-fill"] === "sleep")!.onClick();
-    expect(onChange).toHaveBeenCalledWith(`Loves trains\n${translate("en", "companion.about.aspect.sleep")}: `);
+  it("the pressed fill is styled: the filled navy chip, the same pressed fill as Together's filter row", () => {
+    const css = readFileSync(new URL("./describe.css", import.meta.url), "utf8");
+    const rule = css.match(/\.describe-chip\[aria-pressed="true"\]\s*\{([^}]*)\}/);
+    expect(rule, "describe.css styles .describe-chip[aria-pressed=\"true\"]").not.toBeNull();
+    const body = rule![1];
+    expect(body).toMatch(/(^|;|\s)background:\s*var\(--arbor-subtab-active\)/);
+    expect(body).toMatch(/(^|;|\s)color:\s*var\(--arbor-subtab-on-ink\)/);
+    expect(body).toMatch(/border-color:\s*var\(--arbor-subtab-active\)/);
   });
 
   it("an opening passed by the container replaces the default question", () => {

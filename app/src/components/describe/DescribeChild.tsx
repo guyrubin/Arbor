@@ -10,8 +10,9 @@
  * The eight areas are quick fills on the "Tell Arbor more" door (onboarding
  * keeps its own one-worry tiles). v3 F-CHILD-3: a fill picks the AREA the
  * conversation opens on (the About pill's eight areas; the opening question
- * names it), and the About pill's "Tell Arbor by voice" opens the same
- * surface with the mic first. Where dictation is not supported (a
+ * names it; the picked fill is pressed), so the fills render only where the
+ * container takes the pick (onAspect). The About pill's "Tell Arbor by
+ * voice" opens the same surface with the mic first. Where dictation is not supported (a
  * native-shell WebView, Firefox) the mic hides and typing works. The
  * container owns Skip and the primary action.
  */
@@ -86,14 +87,13 @@ export interface DescribeChildProps {
   value: string;
   onChange: (text: string) => void;
   disabled?: boolean;
-  /** The eight areas as quick fills (the "Tell Arbor more" door). */
-  quickFills?: boolean;
   autoFocus?: boolean;
   /** The answer came (at least partly) by voice: the next question is read aloud. */
   onVoiceText?: () => void;
   /** v3 F-CHILD-3 — the area the conversation opens on (its fill is pressed). */
   aspect?: AspectId | null;
-  /** A fill was tapped: the container re-asks the opening on that area. */
+  /** The eight areas as quick fills (the "Tell Arbor more" door): a tapped
+   *  fill picks the area and the container re-asks the opening on it. */
   onAspect?: (aspect: AspectId) => void;
   /** The opening question as the container asks it (default "Tell me about {name}"). */
   opening?: string;
@@ -101,22 +101,15 @@ export interface DescribeChildProps {
   voice?: boolean;
 }
 
-export default function DescribeChild({ name, lang, value, onChange, disabled, quickFills, autoFocus, onVoiceText, aspect = null, onAspect, opening, voice = false }: DescribeChildProps) {
+export default function DescribeChild({ name, lang, value, onChange, disabled, autoFocus, onVoiceText, aspect = null, onAspect, opening, voice = false }: DescribeChildProps) {
   const { t } = useLanguage();
   const fieldId = useId();
   const hintsId = useId();
   const askId = useId();
-  const fieldRef = useRef<HTMLTextAreaElement>(null);
   // Voice mode without dictation (a native-shell WebView, Firefox) says so
   // once and falls back to the field, which then takes the focus.
   const [canSpeak] = useState(() => speechSupported());
   const micFirst = voice && canSpeak;
-  const fill = (id: AspectId) => {
-    if (onAspect) { onAspect(id); return; }
-    const lead = `${t(`companion.about.aspect.${id}`)}: `;
-    onChange([value.trim(), lead].filter(Boolean).join(value.trim() ? "\n" : "").slice(0, DESCRIBE_TEXT_MAX));
-    fieldRef.current?.focus();
-  };
   const mic = <div className="describe-row">
     <DictateButton lang={lang} value={value} onChange={onChange} disabled={disabled} label={t("elev.describe.speak")} aria={t("elev.describe.speakAria", { name })} onVoiceText={onVoiceText} autoFocus={micFirst} />
     <span className="describe-count" aria-live="off">{t("elev.describe.count", { n: value.length.toLocaleString(lang === "he" ? "he-IL" : "en-GB") })}</span>
@@ -136,15 +129,15 @@ export default function DescribeChild({ name, lang, value, onChange, disabled, q
     {micFirst && mic}
     <label className="describe-field" htmlFor={fieldId}>
       <span className="sr-only">{t("elev.describe.field", { name })}</span>
-      <textarea id={fieldId} ref={fieldRef} rows={5} maxLength={DESCRIBE_TEXT_MAX} value={value} disabled={disabled} autoFocus={autoFocus && !micFirst} dir="auto"
+      <textarea id={fieldId} rows={5} maxLength={DESCRIBE_TEXT_MAX} value={value} disabled={disabled} autoFocus={autoFocus && !micFirst} dir="auto"
         aria-labelledby={askId} aria-describedby={hintsId} placeholder={t("elev.describe.placeholder")} data-testid="describe-text"
         onChange={(event) => onChange(event.target.value)} />
     </label>
     {!micFirst && mic}
-    {quickFills && <div className="describe-fills" role="group" aria-label={t("elev.describe.quickFills")}>
+    {onAspect && <div className="describe-fills" role="group" aria-label={t("elev.describe.quickFills")}>
       <p className="describe-hints-label">{t("elev.describe.quickFills")}</p>
-      <div>{ASPECT_IDS.map((id) => <button type="button" key={id} className="describe-chip" disabled={disabled} onClick={() => fill(id)} data-fill={id}
-        aria-pressed={onAspect ? aspect === id : undefined}>
+      <div>{ASPECT_IDS.map((id) => <button type="button" key={id} className="describe-chip" disabled={disabled} onClick={() => onAspect?.(id)} data-fill={id}
+        aria-pressed={aspect === id}>
         <Icon name={ASPECT_ICONS[id]} size={18} /><span>{t(`companion.about.aspect.${id}`)}</span>
       </button>)}</div>
     </div>}

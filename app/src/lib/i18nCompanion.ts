@@ -412,6 +412,9 @@ export const companionEn = {
   "companion.about.detailsEdit": "Edit details",
   "companion.about.birthDate": "Birth date {date}",
   "companion.about.bornEarly": "Born at {weeks} weeks",
+  // v3 F-CHILD-3 (review r1) — under the memory door when a proposal names no
+  // area: no number, no badge.
+  "companion.about.memoryWaiting": "Something Arbor noted is waiting for you to check.",
 };
 
 export const companionHe = {
@@ -823,4 +826,7 @@ export const companionHe = {
   "companion.about.detailsEdit": "עריכת הפרטים",
   "companion.about.birthDate": "תאריך לידה {date}",
   "companion.about.bornEarly": "לידה בשבוע {weeks}",
+  // v3 F-CHILD-3 (review r1) — under the memory door when a proposal names no
+  // area: no number, no badge.
+  "companion.about.memoryWaiting": "משהו שארבור רשמה מחכה לבדיקה שלכם.",
 };

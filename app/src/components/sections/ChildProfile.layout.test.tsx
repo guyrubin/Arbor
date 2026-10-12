@@ -22,7 +22,7 @@ vi.mock("react", async (original) => {
  };
 });
 vi.mock("../../context/ArborContext",()=>({useArbor:()=>({
- childProfile:{id:"c1",name:"Dylan",age:5,languages:["English"],schoolContext:"School",challenges:harness.challenges,strengths:[],interests:["Dinosaurs"],activeGoals:harness.goals,factsAsOf:harness.factsAsOf},
+ childProfile:{id:"c1",name:"Noa",age:5,languages:["English"],schoolContext:"School",challenges:harness.challenges,strengths:[],interests:["Dinosaurs"],activeGoals:harness.goals,factsAsOf:harness.factsAsOf},
  milestones:[],behaviorLogs:[],playLogs:[],actionPlans:[],approvedMemoryItems:harness.approved,pendingMemoryItems:harness.pending,setActiveTab:harness.setActiveTab,updateChild:harness.updateChild,handleMemoryDecision:harness.decide,isMemoryUpdating:null,
 })}));
 vi.mock("../../context/ProfileContext",()=>({useProfile:()=>({profiles:[{id:"c1"}]})}));
@@ -33,7 +33,7 @@ vi.mock("../../context/LanguageContext",()=>({useLanguage:()=>({uiLang:harness.l
  for(const [k,v] of Object.entries(vars||{}))value=value.replaceAll("{"+k+"}",String(v));
  return value;
 }})}));
-vi.mock("../ui/HeroAvatar",()=>({HeroAvatar:()=>null,useHeroAvatar:()=>({hasHero:harness.hasHero,name:"Dylan"})}));
+vi.mock("../ui/HeroAvatar",()=>({HeroAvatar:()=>null,useHeroAvatar:()=>({hasHero:harness.hasHero,name:"Noa"})}));
 vi.mock("../../lib/api",()=>({api:{listShares:vi.fn()}}));
 vi.mock("../profile/ProfileEditDrawer",()=>({default:()=>null}));
 // The ONE guided conversation is its own suite (describe.render.test.tsx); here
@@ -58,15 +58,57 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
   expect(html).not.toContain("1 child");expect(html).not.toContain("family member");
   expect(html).not.toContain("cp.family.title");expect(html).not.toContain("profile-family-title");
-  expect(html).toContain(companionEn["companion.about.title"].replace("{name}","Dylan"));
+  expect(html).toContain(companionEn["companion.about.title"].replace("{name}","Noa"));
   expect(html).toContain('data-testid="about-told-line"');
  });
- it("two top-level modules and the Details row as the ONE demotion disclosure",()=>{
+ /* v3 F-CHILD-3 review r1 re-pin: Details is ONE tap (a row that opens the
+    drawer), so it is a visible top-level module; what folds away is the
+    measurements log, demoted inside the route's ONE disclosure. Still three
+    top-level modules (budget 3), one demotion, one disclosure. */
+ it("three top-level modules; the measurements log is the ONE demotion, in the ONE disclosure",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
-  expect(html.match(/data-module="[^"]+"/g)).toEqual(['data-module="about-describe"','data-module="about-aspects"','data-module="about-details"']);
+  expect(html.match(/data-module="[^"]+"/g)).toEqual(['data-module="about-describe"','data-module="about-aspects"','data-module="about-details"','data-module="about-measurements"']);
   expect(html.match(/data-module-demoted/g)).toHaveLength(1);
   expect(html.match(/data-module-disclosure=/g)).toHaveLength(1);
+  // the demoted module sits inside the closed disclosure, never on the page face
+  const fold=html.slice(html.indexOf('data-module-disclosure="about-details"'));
+  expect(html).toMatch(/<details data-testid="profile-measurements" data-module-disclosure="about-details"(?![^>]*\bopen\b)/);
+  expect(fold.indexOf('data-module="about-measurements" data-module-demoted')).toBeGreaterThan(-1);
+  expect(html).not.toMatch(/data-module="about-details"[^>]*data-module-demoted/);
   expect(html).not.toMatch(/data-module="profile-(identity|who|now|remember|milestones|strengths|language|jump-strip)"/);
+ });
+ it("Details is ONE tap: the row is a button that opens the drawer (no two-tap fold), with the identity line inside",()=>{
+  const html=renderToStaticMarkup(<ChildProfile/>);
+  const row=html.slice(html.indexOf('data-testid="about-details-edit"'),html.indexOf("</button>",html.indexOf('data-testid="about-details-edit"')));
+  expect(html).toMatch(/<button type="button" data-testid="about-details-edit"[^>]*class="about-details-row min-h-11"/);
+  expect(row).toContain('data-testid="profile-identity-line"');
+  expect(row).toContain(companionEn["companion.about.details"]);
+  expect(row).toContain(companionEn["companion.about.detailsEdit"]);
+  expect(html).not.toMatch(/<details[^>]*data-testid="about-details"/);
+  harness.callback=true;
+  elements(ChildProfile()).find(el=>el.props["data-testid"]==="about-details-edit")!.props.onClick();
+  expect(harness.setState).toHaveBeenLastCalledWith(true);
+  expect(harness.setActiveTab).not.toHaveBeenCalled();
+ });
+ it("a proposal no area shows: one plain sentence under the memory door, no number, no badge (EN + HE)",()=>{
+  for(const locale of ["en","he"]){
+   harness.locale=locale;
+   const C=locale==="he"?companionHe:companionEn;
+   harness.pending=[];
+   expect(renderToStaticMarkup(<ChildProfile/>)).not.toContain('data-testid="about-memory-waiting"');
+   // placed in its area → shown there, so the door says nothing more
+   harness.pending=[{memoryId:"p1",fact:"Wakes up twice since the move",createdAt:"2026-10-06T10:00:00.000Z"}];
+   expect(renderToStaticMarkup(<ChildProfile/>)).not.toContain('data-testid="about-memory-waiting"');
+   // names no area → it waits on #/memory, and the door says so
+   harness.pending=[{memoryId:"p2",fact:"fact 1",createdAt:"2026-10-06T10:00:00.000Z"}];
+   const html=renderToStaticMarkup(<ChildProfile/>);
+   const door=html.slice(html.indexOf('data-testid="profile-remember-check"'),html.indexOf("</button>",html.indexOf('data-testid="profile-remember-check"')));
+   expect(door).toContain('data-testid="about-memory-waiting"');
+   expect(door).toContain(C["companion.about.memoryWaiting"]);
+   expect(door.replace(/<[^>]+>/g," ")).not.toMatch(/\d/);
+   expect(door).not.toMatch(/badge|data-count|aria-label="[^"]*\d/);
+   expect(html).not.toContain('data-testid="about-aspect-pending"');
+  }
  });
  it("eight area cards in the brief's order, a 4/2/1 grid, and the memory door",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
@@ -80,7 +122,7 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   expect(html).toContain(companionHe["companion.about.details"]);
   expect(html).toContain(companionHe["companion.about.aspectsKicker"]);
   const line=html.slice(html.indexOf('data-testid="profile-identity-line"'),html.indexOf("</span>",html.indexOf('data-testid="profile-identity-line"')));
-  expect(line).toContain("<bdi dir=\"auto\">Dylan</bdi>");
+  expect(line).toContain("<bdi dir=\"auto\">Noa</bdi>");
   const roles=html.slice(html.indexOf('data-testid="about-lang-roles"'),html.indexOf("</dl>",html.indexOf('data-testid="about-lang-roles"')));
   expect(roles).not.toContain("English");expect(roles).toContain("ob.lang.english");
  });
@@ -113,7 +155,7 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
  it("an untold area asks its question and says Not told yet",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
   const temper=html.slice(html.indexOf('data-testid="about-aspect-temper"'),html.indexOf("</article>",html.indexOf('data-testid="about-aspect-temper"'))).replace(/&#x27;/g,"'");
-  expect(temper).toContain(companionEn["companion.about.ask.temper"].replace("{name}","Dylan"));
+  expect(temper).toContain(companionEn["companion.about.ask.temper"].replace("{name}","Noa"));
   expect(temper).toContain(companionEn["companion.milestones.notTold"]);
   expect(temper).toContain(companionEn["companion.milestones.tell"]);
  });
@@ -157,14 +199,16 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   harness.decide.mockImplementationOnce(()=>new Promise<boolean>(r=>{resolve=r;}));
   out().find(el=>el.props["data-testid"]==="about-pending-confirm")!.props.onClick();
   expect(harness.decide).toHaveBeenCalledWith("p1","approved");
-  expect(harness.setState).not.toHaveBeenCalledWith("kept");
+  expect(harness.setState).not.toHaveBeenCalledWith(expect.objectContaining({kind:"kept"}));
   resolve(true);await new Promise(r=>setTimeout(r,0));
-  expect(harness.setState).toHaveBeenLastCalledWith("kept");
+  // review r1 re-pin: the receipt names the proposal it answered (it clears
+  // when a different one arrives, or after RECEIPT_MS — aboutAspects.test.ts)
+  expect(harness.setState).toHaveBeenLastCalledWith({kind:"kept",memoryId:"p1"});
   harness.decide.mockResolvedValueOnce(false);
   out().find(el=>el.props["data-testid"]==="about-pending-dismiss")!.props.onClick();
   expect(harness.decide).toHaveBeenLastCalledWith("p1","rejected");
   await new Promise(r=>setTimeout(r,0));
-  expect(harness.setState).toHaveBeenLastCalledWith("failed");
+  expect(harness.setState).toHaveBeenLastCalledWith({kind:"failed",memoryId:"p1"});
  });
  it("Create Hero opens the existing edit/creation seam rather than navigating to itself",()=>{
   harness.callback=true;harness.hasHero=false;

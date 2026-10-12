@@ -304,3 +304,24 @@ export function toldSummary(states: readonly AspectState[]): { told: number; dat
   const told = states.filter(isTold);
   return { told: told.length, dated: told.every(isDated) };
 }
+
+/** A proposal is waiting that no area shows (it names no area, or its area
+ *  shows a newer one): it waits on #/memory, and the memory door says so in a
+ *  sentence — never a number or a badge. `pending` is the scrubbed list, the
+ *  same one #/memory shows. */
+export function waitingOffPage(states: readonly AspectState[], pending: readonly Pick<MemoryReviewItem, "memoryId">[] = []): boolean {
+  const shown = new Set(states.map((s) => s.pending?.memoryId).filter(Boolean));
+  return pending.some((m) => !shown.has(m.memoryId));
+}
+
+/** The receipt of a Confirm / No, bound to the proposal it answered. */
+export interface AspectReceipt { kind: "kept" | "leftOut" | "failed"; memoryId: string }
+
+/** How long a receipt stays before it clears itself. */
+export const RECEIPT_MS = 6000;
+
+/** A receipt shows beside the proposal it answered, or alone once that
+ *  proposal left the area; a different proposal in the area hides it. */
+export function receiptShows(receipt: AspectReceipt | null, pending: Pick<MemoryReviewItem, "memoryId"> | null): receipt is AspectReceipt {
+  return receipt !== null && (pending === null || pending.memoryId === receipt.memoryId);
+}

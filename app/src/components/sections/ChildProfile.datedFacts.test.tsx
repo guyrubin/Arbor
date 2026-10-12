@@ -12,7 +12,7 @@ const h = vi.hoisted(() => ({
   locale: "he" as "en" | "he",
   pending: [] as unknown[],
   approved: [] as unknown[],
-  name: "Dylan",
+  name: "Noa",
   factsAsOf: undefined as undefined | Record<string, string>,
 }));
 
@@ -39,7 +39,7 @@ vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { displayN
 vi.mock("../../context/LanguageContext", () => ({
   useLanguage: () => ({ uiLang: h.locale, t: (k: string, v?: Record<string, string | number>) => translate(h.locale, k, v) }),
 }));
-vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => null, useHeroAvatar: () => ({ hasHero: true, name: "Dylan" }) }));
+vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => null, useHeroAvatar: () => ({ hasHero: true, name: "Noa" }) }));
 vi.mock("../../lib/api", () => ({ api: { listShares: () => Promise.resolve({ shares: [] }) } }));
 vi.mock("../profile/ProfileEditDrawer", () => ({ default: () => null }));
 vi.mock("../../hooks/useChildCollection", () => ({
@@ -56,7 +56,7 @@ beforeEach(() => {
   h.locale = "en";
   h.pending = [];
   h.approved = [{ memoryId: "a1", fact: "Entering Bilingual Kindergarten in 3 months", status: "approved", createdAt: "2026-06-10T10:00:00.000Z", source: "chat", retention: "90d" }];
-  h.name = "Dylan";
+  h.name = "Noa";
   h.factsAsOf = undefined;
 });
 
@@ -79,19 +79,19 @@ describe("B-GROWTH-35 — a fact with a relative time carries the day it was wri
 
   it("HE: 'נרשם · …ביוני 2026' beside a Hebrew fact with בעוד", () => {
     h.locale = "he";
-    h.approved = [{ memoryId: "a2", fact: "דילן מתחיל גן חדש בעוד חודשיים", status: "approved", createdAt: "2026-06-10T10:00:00.000Z", source: "chat", retention: "90d" }];
+    h.approved = [{ memoryId: "a2", fact: "נועה מתחילה גן חדש בעוד חודשיים", status: "approved", createdAt: "2026-06-10T10:00:00.000Z", source: "chat", retention: "90d" }];
     const html = renderToStaticMarkup(<ChildProfile />);
     const s = text(area(html, "school")).replace(/\s+/g, " ");
     expect(s).toContain("נרשם ·");
     expect(s).toContain("ביוני 2026");
-    expect(s).toContain("דילן מתחיל גן חדש בעוד חודשיים");
+    expect(s).toContain("נועה מתחילה גן חדש בעוד חודשיים");
   });
 
   it("a fact without a relative time is dated the same way (every told line carries its day)", () => {
-    h.approved = [{ memoryId: "a3", fact: "Dylan answers in Hebrew when tired", status: "approved", createdAt: "2026-06-10T10:00:00.000Z", source: "chat", retention: "90d" }];
+    h.approved = [{ memoryId: "a3", fact: "Noa answers in Hebrew when tired", status: "approved", createdAt: "2026-06-10T10:00:00.000Z", source: "chat", retention: "90d" }];
     const html = renderToStaticMarkup(<ChildProfile />);
     const s = text(area(html, "lang")).replace(/\s+/g, " ");
-    expect(s).toContain("Dylan answers in Hebrew when tired");
+    expect(s).toContain("Noa answers in Hebrew when tired");
     expect(s).toContain("Noted · Jun 10, 2026");
     expect(html).not.toContain('data-testid="profile-fact-written"');
   });
@@ -102,7 +102,7 @@ describe("B-GROWTH-35 — the relative-time pattern list (EN + HE)", () => {
     for (const yes of ["Entering kindergarten in 3 months", "starts daycare next week", "moving next month", "in a few weeks she starts", "two weeks from now", "בעוד שלושה חודשים", "מתחיל גן בשבוע הבא", "עוברים דירה בחודש הבא", "בשנה הבאה לכיתה א"]) {
       expect(hasRelativeTime(yes), yes).toBe(true);
     }
-    for (const no of ["Dylan answers in Hebrew when tired", "loves trains", "in the morning he is slow", "אוהב רכבות", "Born in 2023"]) {
+    for (const no of ["Noa answers in Hebrew when tired", "loves trains", "in the morning he is slow", "אוהב רכבות", "Born in 2023"]) {
       expect(hasRelativeTime(no), no).toBe(false);
     }
   });

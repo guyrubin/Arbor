@@ -36,7 +36,8 @@ describe("B-GROWTH-05 — Measurements live on Profile, not on Growth", () => {
     expect(profile).not.toContain('data-module="profile-measurements"');
     expect((profile.match(/data-module-disclosure=/g) ?? []).length).toBe(1);
     // v3 F-CHILD-3 re-pin: the Who chapter and the Family Circle left the
-    // page; Measurements sits in the demoted Details module, after the areas.
+    // page; Measurements is the one closed disclosure inside Details (its log
+    // the demoted module), after the areas.
     expect(open).toBeGreaterThan(profile.indexOf('data-module="about-details"'));
     expect(profile.indexOf('data-module="about-details"')).toBeGreaterThan(profile.indexOf('data-module="about-aspects"'));
     expect(profile).not.toContain('aria-labelledby="profile-family-title"');

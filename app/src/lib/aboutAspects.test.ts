@@ -26,8 +26,12 @@ import {
   buildAspects,
   isDated,
   isTold,
+  receiptShows,
+  RECEIPT_MS,
   toldSummary,
+  waitingOffPage,
   type AspectId,
+  type AspectReceipt,
   type AspectState,
 } from "./aboutAspects";
 
@@ -211,5 +215,55 @@ describe("buildAspects — the newest told line per area, with its day", () => {
     expect(toldSummary(states)).toEqual({ told: 3, dated: true });
     const one = buildAspects({ profile: { strengths: ["Kind"] } });
     expect(toldSummary(one)).toEqual({ told: 1, dated: false });
+  });
+});
+
+/* v3 F-CHILD-3 review r1 — what About says about proposals it does not show,
+   and how long a Confirm / No receipt stays. */
+describe("waitingOffPage — a proposal no area shows waits on #/memory", () => {
+  const pending = [
+    mem("p1", "Wakes up at five most days", "2026-10-02T10:00:00.000Z", { status: "pending" }),
+    mem("p2", "Naps are shorter this week", "2026-10-06T10:00:00.000Z", { status: "pending" }),
+    mem("p3", "Something about Tuesday", "2026-10-07T10:00:00.000Z", { status: "pending" }),
+  ];
+  it("nothing pending, or every proposal shown in its area: nothing is waiting off the page", () => {
+    expect(waitingOffPage(buildAspects({ profile: {} }), [])).toBe(false);
+    const one = [pending[1]];
+    expect(waitingOffPage(buildAspects({ profile: {}, pending: one }), one)).toBe(false);
+  });
+  it("a proposal that names no area, or an older one its area does not show, is waiting off the page", () => {
+    const unplaced = [pending[2]];
+    expect(waitingOffPage(buildAspects({ profile: {}, pending: unplaced }), unplaced)).toBe(true);
+    const twoInSleep = [pending[0], pending[1]];
+    expect(waitingOffPage(buildAspects({ profile: {}, pending: twoInSleep }), twoInSleep)).toBe(true);
+  });
+  it("it answers yes or no — never a count", () => {
+    const states = buildAspects({ profile: {}, pending });
+    expect(typeof waitingOffPage(states, pending)).toBe("boolean");
+  });
+});
+
+describe("receiptShows — a Confirm / No receipt answers one proposal", () => {
+  const kept: AspectReceipt = { kind: "kept", memoryId: "p1" };
+  it("no receipt shows nothing", () => {
+    expect(receiptShows(null, null)).toBe(false);
+    expect(receiptShows(null, { memoryId: "p1" })).toBe(false);
+  });
+  it("it shows beside the proposal it answered (a failed write) and alone once that proposal left the area", () => {
+    expect(receiptShows({ kind: "failed", memoryId: "p1" }, { memoryId: "p1" })).toBe(true);
+    expect(receiptShows(kept, null)).toBe(true);
+  });
+  it("a different proposal in the area hides it at once", () => {
+    expect(receiptShows(kept, { memoryId: "p2" })).toBe(false);
+  });
+  it("it clears itself after a few seconds; the card clears it when a different proposal arrives", () => {
+    expect(RECEIPT_MS).toBeGreaterThanOrEqual(3000);
+    expect(RECEIPT_MS).toBeLessThanOrEqual(10000);
+    const card = readFileSync(path.join(__dirname, "..", "components", "about", "AspectCard.tsx"), "utf8");
+    expect(card).toMatch(/setTimeout\(\(\) => setReceipt\(null\), RECEIPT_MS\)/);
+    expect(card).toContain("return () => clearTimeout(timer);");
+    expect(card).toMatch(/pendingId !== null && pendingId !== receipt\.memoryId\) setReceipt\(null\)/);
+    expect(card).toContain("receiptShows(receipt, pending)");
+    expect(card).toContain("setReceipt({ kind: ok ? (status === \"approved\" ? \"kept\" : \"leftOut\") : \"failed\", memoryId });");
   });
 });

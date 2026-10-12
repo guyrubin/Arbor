@@ -22,7 +22,7 @@ const h = vi.hoisted(() => ({
   locale: "he" as "en" | "he",
   pending: [] as unknown[],
   approved: [] as unknown[],
-  name: "Dylan",
+  name: "Noa",
   factsAsOf: undefined as undefined | Record<string, string>,
   onboardingCompletedAt: undefined as undefined | string,
 }));
@@ -50,7 +50,7 @@ vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { displayN
 vi.mock("../../context/LanguageContext", () => ({
   useLanguage: () => ({ uiLang: h.locale, t: (k: string, v?: Record<string, string | number>) => translate(h.locale, k, v) }),
 }));
-vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => null, useHeroAvatar: () => ({ hasHero: true, name: "Dylan" }) }));
+vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => null, useHeroAvatar: () => ({ hasHero: true, name: "Noa" }) }));
 vi.mock("../../lib/api", () => ({ api: { listShares: () => Promise.resolve({ shares: [] }) } }));
 vi.mock("../profile/ProfileEditDrawer", () => ({ default: () => null }));
 vi.mock("../../hooks/useChildCollection", () => ({
@@ -66,8 +66,8 @@ const text = (html: string) =>
 beforeEach(() => {
   h.locale = "he";
   h.pending = [];
-  h.approved = [{ memoryId: "a1", fact: "Dylan answers in Hebrew when tired", status: "approved", createdAt: "2026-09-02T10:00:00.000Z", source: "chat", retention: "90d" }];
-  h.name = "Dylan";
+  h.approved = [{ memoryId: "a1", fact: "Noa answers in Hebrew when tired", status: "approved", createdAt: "2026-09-02T10:00:00.000Z", source: "chat", retention: "90d" }];
+  h.name = "Noa";
   h.factsAsOf = undefined;
 });
 
@@ -90,7 +90,7 @@ describe("#/profile Hebrew page — no Latin chrome (Law 8)", () => {
   it("each Details segment is its own bidi island (name · age · birth date)", () => {
     const html = renderToStaticMarkup(<ChildProfile />);
     const line = detailsLine(html);
-    expect(line).toContain('<bdi dir="auto">Dylan</bdi>');
+    expect(line).toContain('<bdi dir="auto">Noa</bdi>');
     expect(line.match(/<bdi dir="auto">/g)!.length).toBe(3);
     expect(text(line)).toContain("2023");
   });
@@ -100,7 +100,7 @@ describe("#/profile Hebrew page — no Latin chrome (Law 8)", () => {
       const html = renderToStaticMarkup(<ChildProfile />);
       const h1 = html.slice(html.indexOf("<h1"), html.indexOf("</h1>"));
       expect(h1).not.toMatch(/\sdir=/);
-      expect(h1).toContain(loc === "he" ? "⁨Dylan⁩" : "Dylan");
+      expect(h1).toContain(loc === "he" ? "⁨Noa⁩" : "Noa");
     }
   });
   it("critic r1 (B-GROWTH-35 seam): the school setting carries its day in both locales", () => {
@@ -132,6 +132,8 @@ describe("critic r1 (P0) → v3 F-CHILD-3 — a pending inference is Arbor's pro
       const doorAt = html.indexOf('data-testid="profile-remember-check"');
       const door = text(html.slice(html.indexOf(">", doorAt) + 1, html.indexOf("</button>", doorAt)));
       expect(door).not.toMatch(/\d/);
+      // shown in its area, so the door adds nothing (review r1)
+      expect(html).not.toContain('data-testid="about-memory-waiting"');
     });
   }
 });
@@ -158,9 +160,9 @@ describe("#/profile — the cut chapters, the count line and the dated areas", (
     h.locale = "en";
     const html = renderToStaticMarkup(<ChildProfile />);
     const lang = text(area(html, "lang")).replace(/\s+/g, " ");
-    expect(lang).toContain("Dylan answers in Hebrew when tired");
+    expect(lang).toContain("Noa answers in Hebrew when tired");
     expect(lang).toContain("Noted · Sep 2, 2026");
-    expect(html.split("Dylan answers in Hebrew when tired").length - 1).toBe(1);
+    expect(html.split("Noa answers in Hebrew when tired").length - 1).toBe(1);
     expect(html).not.toMatch(/\d+ (child|children|family members?|captured moments)/);
   });
   it("nothing approved, nothing pending: the voice door is the stamped zero state; the count line counts told areas only", () => {
@@ -180,7 +182,26 @@ describe("#/profile — the cut chapters, the count line and the dated areas", (
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     expect(html).toMatch(/data-testid="about-voice" data-primary-move="capture-moment"/);
     expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
-    expect(html.split("Dylan answers in Hebrew when tired").length - 1).toBe(1);
+    expect(html.split("Noa answers in Hebrew when tired").length - 1).toBe(1);
+  });
+  it("review r1: proposals no area shows are not invisible — one sentence under the memory door, no number, no badge (EN + HE)", () => {
+    for (const locale of ["en", "he"] as const) {
+      h.locale = locale;
+      h.pending = [1, 2, 3, 4].map((n) => ({ memoryId: `p${n}`, fact: `fact ${n}`, status: "pending", createdAt: "2026-10-02T10:00:00.000Z", source: "chat", retention: "90d" }));
+      const html = renderToStaticMarkup(<ChildProfile />);
+      const doorAt = html.indexOf('data-testid="profile-remember-check"');
+      const door = html.slice(doorAt, html.indexOf("</button>", doorAt));
+      expect(html.match(/data-testid="about-memory-waiting"/g)).toHaveLength(1);
+      expect(door).toContain('data-testid="about-memory-waiting"');
+      const said = text(door.slice(door.indexOf(">") + 1)).replace(/\s+/g, " ");
+      expect(said).toContain(translate(locale, "companion.about.memoryWaiting"));
+      expect(said).not.toMatch(/\d/);
+      if (locale === "he") expect(translate("he", "companion.about.memoryWaiting")).not.toMatch(/[A-Za-z]/);
+      // it is a line, not a count badge, and the door stays the ONE door
+      expect(door).not.toMatch(/badge|data-count/);
+      expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
+      expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    }
   });
   it("the first fold is the describe card → the eight areas → Details (EN + HE)", () => {
     for (const locale of ["en", "he"] as const) {
@@ -190,7 +211,7 @@ describe("#/profile — the cut chapters, the count line and the dated areas", (
       const order = ['data-module="about-describe"', 'data-testid="about-told-line"', 'data-testid="about-voice"', 'data-testid="about-write"', 'data-module="about-aspects"', 'data-testid="profile-remember-check"', 'data-module-disclosure="about-details"'].map((m) => html.indexOf(m));
       expect(order.every((at) => at > -1)).toBe(true);
       expect([...order].sort((a, b) => a - b)).toEqual(order);
-      expect(html).not.toContain(translate(locale, "cp.askAbout", { name: "Dylan" }));
+      expect(html).not.toContain(translate(locale, "cp.askAbout", { name: "Noa" }));
       expect(html).not.toContain('data-testid="profile-goals"');
     }
   });

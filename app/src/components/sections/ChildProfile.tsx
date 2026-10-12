@@ -17,7 +17,7 @@ import { formatChildAge } from "../../lib/age/format";
 import { fmtDay } from "../../lib/formatDate";
 import { useHashQuery } from "../../hooks/useHashQuery";
 // v3 F-CHILD-3 — the eight areas and the ONE guided conversation.
-import { asAspectId, buildAspects, toldSummary, type AspectId } from "../../lib/aboutAspects";
+import { asAspectId, buildAspects, toldSummary, waitingOffPage, type AspectId } from "../../lib/aboutAspects";
 import AspectCard from "../about/AspectCard";
 import TellArborMore from "../describe/TellArborMore";
 import "../about/about.css";
@@ -80,6 +80,9 @@ export default function ChildProfile() {
     pending: scrubMemoryProposals(pendingMemoryItems),
     words: toParentWords,
   }), [childProfile, approvedMemoryItems, pendingMemoryItems]);
+  // A proposal no area shows waits on #/memory (the same scrubbed queue it
+  // lists): the door says so in a sentence, no number.
+  const waiting = useMemo(() => waitingOffPage(aspects, scrubMemoryProposals(pendingMemoryItems)), [aspects, pendingMemoryItems]);
   const { told, dated } = toldSummary(aspects);
   const toldLine = told === 0
     ? t("companion.about.toldNone")
@@ -144,15 +147,20 @@ export default function ChildProfile() {
           ))}
         </ul>
         <button type="button" data-testid="profile-remember-check" onClick={() => setActiveTab("memory")} className="about-memory-door min-h-11">
-          <span className="min-w-0">{t("elev.profile.remembers.title")}</span>
+          <span className="about-memory-door-text">
+            <span>{t("elev.profile.remembers.title")}</span>
+            {waiting && <span className="about-memory-waiting" data-testid="about-memory-waiting">{t("companion.about.memoryWaiting")}</span>}
+          </span>
           <Icon name="chevron_right" size={20} className="rtl:rotate-180" />
         </button>
       </section>
 
-      {/* 3 — Details: one row; the edit door, Create hero and measurements
-          sit behind it. The demoted module keeps its stamp (R25). */}
-      <details data-module-disclosure="about-details" className="about-details" data-testid="about-details">
-        <summary>
+      {/* 3 — Details: ONE tap — the row opens the profile drawer (name, age,
+          birth date, born early). Create hero follows when there is none.
+          Measurements are their own closed disclosure: the growth log is not
+          in the drawer. The folded log is the route's demoted module (R25). */}
+      <section data-module="about-details" className="about-details" data-testid="about-details" aria-label={t("companion.about.details")}>
+        <button type="button" data-testid="about-details-edit" onClick={() => setEditingProfile(true)} className="about-details-row min-h-11">
           <Avatar name={childProfile.name} photoURL={picture.url} size={40} />
           <span className="about-details-text">
             <span className="about-details-title">{t("companion.about.details")}</span>
@@ -165,31 +173,27 @@ export default function ChildProfile() {
               ))}
             </span>
           </span>
-          <Icon name="expand_more" size={20} />
-        </summary>
-        <div data-module="about-details" data-module-demoted className="about-details-body">
-          <button type="button" data-testid="about-details-edit" onClick={() => setEditingProfile(true)} className="about-link touch-target">
-            <Icon name="edit" size={16} />{t("companion.about.detailsEdit")}
-          </button>
-          {!hasHero && <button onClick={() => setEditingProfile(true)} className="block min-h-11 text-start text-sm font-bold" style={{ color: "var(--arbor-clay)" }}><Icon name="auto_awesome" size={16} className="inline-block me-1" />{t("cp.hero.create", { name: heroName })}<span className="block text-xs font-normal" style={{ color: "var(--arbor-muted)" }}>{t("cp.hero.subline")}</span></button>}
-          {/* B-GROWTH-05 — Measurements: the parent-logged growthEntries log,
-              the UNCHANGED card, closed by default; the pediatrician packet
-              still reads the same collection. */}
-          <details data-testid="profile-measurements" className="border-t pt-3" style={{ borderColor: "var(--arbor-rule)" }}>
-            <summary className="cursor-pointer list-none min-h-[44px] flex items-center gap-2.5">
-              <Icon name="straighten" size={20} style={{ color: "var(--arbor-muted)" }} />
-              <span className="min-w-0">
-                <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.growthTruth.profile.measurements.title")}</span>
-                <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.growthTruth.profile.measurements.sub")}</span>
-              </span>
-              <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
-            </summary>
-            <div className="mt-3">
-              <PhysicalGrowthCard embedded />
-            </div>
-          </details>
-        </div>
-      </details>
+          <span className="about-details-edit">{t("companion.about.detailsEdit")}</span>
+          <Icon name="chevron_right" size={20} className="rtl:rotate-180" />
+        </button>
+        {!hasHero && <button type="button" onClick={() => setEditingProfile(true)} className="block min-h-11 text-start text-sm font-bold" style={{ color: "var(--arbor-clay)" }}><Icon name="auto_awesome" size={16} className="inline-block me-1" />{t("cp.hero.create", { name: heroName })}<span className="block text-xs font-normal" style={{ color: "var(--arbor-muted)" }}>{t("cp.hero.subline")}</span></button>}
+        {/* B-GROWTH-05 — Measurements: the parent-logged growthEntries log,
+            the UNCHANGED card, closed by default; the pediatrician packet
+            still reads the same collection. */}
+        <details data-testid="profile-measurements" data-module-disclosure="about-details" className="about-measurements">
+          <summary>
+            <Icon name="straighten" size={20} style={{ color: "var(--arbor-muted)" }} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.growthTruth.profile.measurements.title")}</span>
+              <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.growthTruth.profile.measurements.sub")}</span>
+            </span>
+            <Icon name="expand_more" size={20} style={{ color: "var(--arbor-muted)" }} />
+          </summary>
+          <div data-module="about-measurements" data-module-demoted className="about-measurements-body">
+            <PhysicalGrowthCard embedded />
+          </div>
+        </details>
+      </section>
 
       {sheet && <TellArborMore key={`${sheet.aspect ?? "all"}-${sheet.mode}`} aspect={sheet.aspect} mode={sheet.mode} onClose={closeSheet} />}
       <ProfileEditDrawer open={editingProfile} onClose={() => setEditingProfile(false)} />

@@ -7,23 +7,22 @@
  * for how the child is doing (the tone is the AREA's). A proposal still
  * waiting for the parent sits inside its area in amber, "Proposed, confirm?",
  * and Confirm / No are the same handleMemoryDecision #/memory uses; the
- * receipt shows only after that write resolved. "Tell more" opens the ONE
- * guided conversation on this area.
+ * receipt shows only after that write resolved, names the proposal it
+ * answered, and clears itself (a timeout, or a different proposal arriving).
+ * "Tell more" opens the ONE guided conversation on this area.
  */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Icon from "../ui/Icon";
 import { FreeText } from "../ui/FreeText";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { ASPECT_ICONS, ASPECT_TONE, isTold, type AspectFact, type AspectId, type AspectState } from "../../lib/aboutAspects";
+import { ASPECT_ICONS, ASPECT_TONE, isTold, receiptShows, RECEIPT_MS, type AspectFact, type AspectId, type AspectReceipt, type AspectState } from "../../lib/aboutAspects";
 import { confirmFact, isFactStale, type FactField } from "../../lib/factsAsOf";
 import { fmtDay } from "../../lib/formatDate";
 import { languageName } from "../../lib/languageName";
 import { DOMAIN_VARS } from "../../lib/tokens";
 import { goToRoute } from "../../hooks/useHashQuery";
 import { toParentWords } from "../../server/parentWordsScrub";
-
-type Receipt = "kept" | "leftOut" | "failed" | null;
 
 export interface AspectCardProps {
   state: AspectState;
@@ -38,8 +37,21 @@ export interface AspectCardProps {
 export default function AspectCard({ state, name, onTell, onEditDetails }: AspectCardProps) {
   const { childProfile, updateChild, handleMemoryDecision, isMemoryUpdating } = useArbor();
   const { t, uiLang } = useLanguage();
-  const [receipt, setReceipt] = useState<Receipt>(null);
+  const [receipt, setReceipt] = useState<AspectReceipt | null>(null);
   const { id, known, languages, pending } = state;
+  // A receipt answers ONE proposal: it clears itself after RECEIPT_MS, and a
+  // different proposal arriving in the area clears it at once (receiptShows
+  // hides it on that same render, so it never sits beside the wrong one).
+  const pendingId = pending?.memoryId ?? null;
+  useEffect(() => {
+    if (!receipt) return;
+    const timer = setTimeout(() => setReceipt(null), RECEIPT_MS);
+    return () => clearTimeout(timer);
+  }, [receipt]);
+  useEffect(() => {
+    if (receipt && pendingId !== null && pendingId !== receipt.memoryId) setReceipt(null);
+  }, [pendingId, receipt]);
+  const shown = receiptShows(receipt, pending) ? receipt : null;
   const told = isTold(state);
   const tone = DOMAIN_VARS[ASPECT_TONE[id]];
   const titleId = `about-aspect-${id}-title`;
@@ -75,11 +87,13 @@ export default function AspectCard({ state, name, onTell, onEditDetails }: Aspec
   const busy = pending ? isMemoryUpdating === pending.memoryId : false;
   const decide = async (status: "approved" | "rejected") => {
     if (!pending) return;
+    const memoryId = pending.memoryId;
     setReceipt(null);
     let ok = false;
     try { ok = await handleMemoryDecision(pending.memoryId, status); } catch { ok = false; }
-    // The receipt follows the resolved write only — never optimistic.
-    setReceipt(ok ? (status === "approved" ? "kept" : "leftOut") : "failed");
+    // The receipt follows the resolved write only — never optimistic — and
+    // names the proposal it answered.
+    setReceipt({ kind: ok ? (status === "approved" ? "kept" : "leftOut") : "failed", memoryId });
   };
 
   const languageRow = (role: string, value: string) => (
@@ -146,9 +160,9 @@ export default function AspectCard({ state, name, onTell, onEditDetails }: Aspec
           </div>
         </div>
       )}
-      {receipt && (
+      {shown && (
         <p className="about-aspect-receipt" role="status" data-testid="about-aspect-receipt">
-          {t(`companion.about.${receipt}`)}
+          {t(`companion.about.${shown.kind}`)}
         </p>
       )}
 
