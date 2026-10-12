@@ -1,4 +1,5 @@
 import type { ActionLoopEntry } from "../../actionLoop/model";
+import type { ActiveTab } from "../../lib/routes";
 import { companionEn, companionHe } from "../../lib/i18nCompanion";
 
 /** Copy lives in the dictionaries (native-review packet covers it); a pair is read here. */
@@ -13,7 +14,7 @@ export function nextChosenAction(rows: readonly ActionLoopEntry[], topicId?: str
   return [...(linked.length ? linked : open)].sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt))[0] ?? null;
 }
 
-/** v3 F-TOG-2: the five pills of Together's Shell row, read from #/practice?f=. */
+/** FEAT-07: "routines" is an in-page category hosted inside the everyday-life module. */
 export type TogetherCategory = "all" | "stories" | "games" | "routines" | "offscreen";
 
 export const WORLD_ART: Readonly<Record<string, string>> = {
@@ -21,8 +22,16 @@ export const WORLD_ART: Readonly<Record<string, string>> = {
   adventures: "adventures", memory: "memory", reading: "reading", beat: "beat", pose: "pose", pattern: "pattern",
 };
 
+/** These are parent preview destinations, never direct child-mode entrances. */
+export const STORY_DOORS: readonly { id: string; tab: ActiveTab; icon: string; art: string; title: { en: string; he: string }; detail: { en: string; he: string } }[] = [
+  { id: "library", tab: "stories", icon: "auto_stories", art: "/visuals/worlds/v2/tonight-story-v2-480.webp", title: pair("companion.story.library.title"), detail: pair("companion.story.library.detail") },
+  { id: "bedtime", tab: "bedtime-stories", icon: "bedtime", art: "/visuals/worlds/v2/story-quest-v2-480.webp", title: pair("companion.story.bedtime.title"), detail: pair("companion.story.bedtime.detail") },
+  { id: "comics", tab: "comics", icon: "menu_book", art: "/visuals/cards/web/story-david-and-goliath-480.webp", title: pair("companion.story.comics.title"), detail: pair("companion.story.comics.detail") },
+  { id: "family", tab: "family", icon: "favorite", art: "/visuals/parent/v1/together-480.webp", title: pair("companion.story.family.title"), detail: pair("companion.story.family.detail") },
+];
+
 export const OFFSCREEN_IDEAS = [
-  { id: "build", icon: "toys", title: pair("companion.offscreen.build.title"), detail: pair("companion.offscreen.build.detail"), say: pair("companion.offscreen.build.say") },
+  { id: "build", icon: "category", title: pair("companion.offscreen.build.title"), detail: pair("companion.offscreen.build.detail"), say: pair("companion.offscreen.build.say") },
   { id: "listen", icon: "hearing", title: pair("companion.offscreen.listen.title"), detail: pair("companion.offscreen.listen.detail"), say: pair("companion.offscreen.listen.say") },
   { id: "story", icon: "auto_stories", title: pair("companion.offscreen.story.title"), detail: pair("companion.offscreen.story.detail"), say: pair("companion.offscreen.story.say") },
 ] as const;

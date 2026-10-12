@@ -13,8 +13,6 @@ const state = vi.hoisted(() => ({
   lang: "en" as "en" | "he", loaded: true, failed: false, events: [] as Record<string, unknown>[],
   saveMoment: vi.fn(async () => true), setActiveTab: vi.fn(), requestKidMode: vi.fn(), buttons: [] as Record<string, any>[],
   topic: null as null | { id: string; title: string },
-  // v3 F-TOG-2: the pill is the hash query; goToRoute is how the page moves it.
-  query: "", goToRoute: vi.fn(),
 }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ ...state, activeFamilyTopic: state.topic }) }));
 vi.mock("./familyTopicEvents", () => ({ openFamilyTopicSheet: vi.fn() }));
@@ -32,9 +30,7 @@ vi.mock("../../lib/kidModeGate", () => ({ lastKidSessionStartedAt: () => null })
 vi.mock("../kidmode/useKidModeEntry", () => ({ useKidModeEntry: () => ({ request: state.requestKidMode, step: null }) }));
 vi.mock("../kidmode/parentGate", () => ({ readParentPin: () => null }));
 vi.mock("../../lib/kpiEvents", () => ({ trackCompanionPlaceOpen: vi.fn(), trackPracticeStudioOpen: vi.fn(), trackPracticeTogetherDid: vi.fn() }));
-vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchParams(state.query), goToRoute: (...args: unknown[]) => state.goToRoute(...args) }));
-vi.mock("../ui/Sheet", () => ({ Sheet: (props: { children?: unknown }) => props.children ?? null }));
-vi.mock("../tabs/BedtimeStoriesTab", () => ({ BedtimeStoryBody: () => null }));
+vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 const capture = vi.hoisted(() => (type: unknown, props: unknown) => { if (type === "button") state.buttons.push(props as Record<string, any>); });
 vi.mock("react/jsx-runtime", async (original) => {
   const real = await original<typeof import("react/jsx-runtime")>();
@@ -49,7 +45,7 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
 });
 
 import TogetherView from "./TogetherView";
-import { readTogetherReturn } from "./togetherNavigation";
+import { readTogetherView } from "./togetherNavigation";
 import { translate } from "../../lib/i18n";
 import { companionEn, companionHe } from "../../lib/i18nCompanion";
 import { latestPlayedWorldId, STUDIO_WORLDS, studioWorldsForChild, type StudioCountSource } from "../practice/studioWorlds";
@@ -57,7 +53,7 @@ import { latestPlayedWorldId, STUDIO_WORLDS, studioWorldsForChild, type StudioCo
 beforeEach(() => {
   vi.clearAllMocks();
   state.childProfile = { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] };
-  state.lang = "en"; state.loaded = true; state.failed = false; state.events = []; state.buttons = []; state.topic = null; state.query = "";
+  state.lang = "en"; state.loaded = true; state.failed = false; state.events = []; state.buttons = []; state.topic = null;
   const data = new Map<string, string>();
   vi.stubGlobal("sessionStorage", { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) });
 });
@@ -119,47 +115,44 @@ for (const lang of ["en", "he"] as const) describe(`v3 F-TOG-1 · Together's her
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
   });
 
-  it("the question row sits under the hero and before the games (the Shell draws the pills), with the enjoy note beside the chip", () => {
+  it("the question row sits under the hero and before the filter row, with the enjoy note beside the chip", () => {
     state.topic = { id: "topic-a", title: "What helps mornings feel calmer?" };
     const html = render();
     const row = html.indexOf('data-testid="together-question-row"');
-    const games = html.indexOf('data-module="together-games"');
     expect(row).toBeGreaterThan(html.indexOf('data-testid="together-cta"'));
     expect(row).toBeGreaterThan(html.indexOf("</section>", html.indexOf('data-module="together-invitation"')));
-    expect(row).toBeLessThan(games);
-    expect(html.slice(row, games)).toContain(tr(lang, "companion.together-view.here-it-is-also-enough-just-to-enjoy"));
-    expect(html).not.toContain("companion-filter-row");
+    expect(row).toBeLessThan(html.indexOf('class="companion-filter-row"'));
+    expect(html.slice(row, html.indexOf('class="companion-filter-row"'))).toContain(tr(lang, "companion.together-view.here-it-is-also-enough-just-to-enjoy"));
     expect(html.match(/data-module=/g)).toHaveLength(5);
   });
 });
 
 describe("v3 F-TOG-1 · what the doors and the move do", () => {
-  // v3 F-TOG-2: the pill is the address, so a door that chooses a pill moves the hash.
   it("the move chooses the away ideas; nothing is written and play does not start", () => {
     render();
     button("together-cta")!.onClick();
-    expect(state.goToRoute).toHaveBeenCalledWith("practice", { f: "offscreen" });
+    expect(readTogetherView("child-a", true)).toEqual({ category: "offscreen" });
     expect(state.saveMoment).not.toHaveBeenCalled(); expect(state.requestKidMode).not.toHaveBeenCalled(); expect(state.setActiveTab).not.toHaveBeenCalled();
   });
 
-  it("Create a story opens the story maker in a sheet on this page: no page change, no new address", () => {
+  it("Create a story opens the story maker and remembers its door for the way back", () => {
     render();
     button("together-door-story")!.onClick();
-    expect(state.setActiveTab).not.toHaveBeenCalled(); expect(state.goToRoute).not.toHaveBeenCalled();
-    expect(readTogetherReturn("child-a")).toBeNull();
+    expect(state.setActiveTab).toHaveBeenCalledWith("bedtime-stories");
+    expect(readTogetherView("child-a", true)).toEqual({ category: "all", returnDoor: "story-bedtime" });
   });
 
   it("Find something to play chooses the games", () => {
     render();
     button("together-door-find")!.onClick();
-    expect(state.goToRoute).toHaveBeenCalledWith("practice", { f: "games" });
+    expect(readTogetherView("child-a", true)).toEqual({ category: "games" });
     expect(state.requestKidMode).not.toHaveBeenCalled();
   });
 
   it("Continue a favorite falls back to the games when nothing was played", () => {
     render();
     button("together-door-continue")!.onClick();
-    expect(state.goToRoute).toHaveBeenCalledWith("practice", { f: "games" });
+    expect(readTogetherView("child-a", true)).toEqual({ category: "games" });
   });
 
   it("Continue a favorite previews the latest world instead of moving the page", () => {
@@ -171,8 +164,8 @@ describe("v3 F-TOG-1 · what the doors and the move do", () => {
     expect(latestPlayedWorldId({ speech: { items: [] }, mimic: { items: [] }, adventures: { items: [] }, events: { items: state.events as never[] } }, studioWorldsForChild("en", state.childProfile as never).worlds)).toBe(offered!.id);
     render();
     button("together-door-continue")!.onClick();
-    // The preview opens in place: the pill stays where it was and nothing starts.
-    expect(state.goToRoute).not.toHaveBeenCalled();
+    // The preview opens in place: the category stays where it was and nothing starts.
+    expect(readTogetherView("child-a", true)).toEqual({ category: "all" });
     expect(state.requestKidMode).not.toHaveBeenCalled(); expect(state.setActiveTab).not.toHaveBeenCalled();
   });
 });

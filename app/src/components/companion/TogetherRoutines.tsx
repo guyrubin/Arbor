@@ -4,8 +4,6 @@ import { useLanguage } from "../../context/LanguageContext";
 import { track } from "../../lib/analytics";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { localized, type Routine } from "../../lib/routines";
-import { HASH_ALIASES, routeHash, splitHash } from "../../lib/routes";
-import { PASTEL } from "../../lib/tokens";
 import {
   routineDayKey,
   routineIdOfPlan,
@@ -24,21 +22,21 @@ import RoutineRunSheet, { type RoutineStart } from "./RoutineRunSheet";
    v3 F-TOG-1: Together renders it inside its own module (together-routines),
    between the stories and the away-from-the-screen ideas; it holds no
    data-module and no contract move of its own. It owns the section heading
-   (the kicker and an h2 the section is labelled by) in both modes.
-   v3 F-TOG-2: both modes show every routine offered at the child's age
-   (routineTemplatesForAge: no nap board past 4, potty only 18–48 m), each on
-   its own tone; the Routines pill is the Shell's, so there is no "all" link.
-   #/plans lands on this pill (F-SHELL-1) and opens the newest routine plan's
-   sheet, once, when one exists.
+   (the kicker and an h2 the section is labelled by) in both modes. "all"
+   shows four tiles and a link to the Routines filter; "routines" shows every
+   routine offered at the child's age (routineTemplatesForAge: no nap board
+   past 4, potty only 18–48 m).
 
-   Adopt first, then run: a tile opens its sheet; "Make it a plan" writes ONE
+   Adopt first, then run: a tile opens its sheet; "Start as a plan" writes ONE
    plan-routine-<id>-<ms> plan and waits for the server. A tile says "In your
    plan" only for a stored plan; while the start is on its way (or failed) its
    optimistic row is not counted, and a retry rewrites the same plan id.
    The tile's today line is counts only (ticked, still to go) — never a share.
    ════════════════════════════════════════════════════════════════════════════ */
 
-export default function TogetherRoutines({ mode, headingId }: { mode: "all" | "routines"; headingId?: string }) {
+const ALL_MODE_TILES = 4;
+
+export default function TogetherRoutines({ mode, onAll, headingId }: { mode: "all" | "routines"; onAll?: () => void; headingId?: string }) {
   const { childProfile, actionPlans = [], startRoutinePlan } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
@@ -58,29 +56,6 @@ export default function TogetherRoutines({ mode, headingId }: { mode: "all" | "r
     return () => { mounted.current = false; };
   }, []);
 
-  // v3 F-TOG-2: an arrival on #/plans (or #/routines, an alias of either, or
-  // the pill address carrying sheet=routine) opens the newest routine plan's
-  // sheet once, then names this pill in the address. The plans may still be
-  // loading: a later snapshot opens it. Any tile the parent opens first ends
-  // the arrival.
-  const arrived = useRef(false);
-  useEffect(() => {
-    if (arrived.current || typeof window === "undefined") return;
-    let key = "";
-    let sheet: string | null = null;
-    try { const hash = splitHash(window.location.hash); key = hash.key.toLowerCase(); sheet = hash.query.get("sheet"); } catch { return; }
-    const route = HASH_ALIASES[key] ?? key;
-    if (route !== "plans" && route !== "routines" && sheet !== "routine") { arrived.current = true; return; }
-    const newest = actionPlans
-      .map((plan) => ({ routineId: routineIdOfPlan(plan), at: Number(/-(\d{10,})$/.exec(plan.id)?.[1] ?? 0) }))
-      .filter((entry) => entry.routineId !== null && templates.some((routine) => routine.id === entry.routineId))
-      .sort((a, b) => b.at - a.at)[0];
-    if (!newest) return;
-    arrived.current = true;
-    setOpenedState({ childId: childProfile.id, routineId: newest.routineId });
-    try { window.history.replaceState(window.history.state, "", `#${routeHash("practice", { f: "routines" })}`); } catch { /* the sheet is open either way */ }
-  }, [actionPlans, templates, childProfile.id]);
-
   const day = routineDayKey(Date.now());
   /** The stored plan started from this routine (newest first), else null. */
   const planFor = (routineId: string): ActionPlan | null => {
@@ -92,7 +67,7 @@ export default function TogetherRoutines({ mode, headingId }: { mode: "all" | "r
   };
   const adopted = templates.filter((r) => planFor(r.id) !== null);
   const ordered = [...adopted, ...templates.filter((r) => planFor(r.id) === null)];
-  const tiles = ordered;
+  const tiles = mode === "all" ? ordered.slice(0, ALL_MODE_TILES) : ordered;
   const opened = openedId ? templates.find((r) => r.id === openedId) ?? null : null;
 
   const startRoutine = (routine: Routine) => {
@@ -131,6 +106,11 @@ export default function TogetherRoutines({ mode, headingId }: { mode: "all" | "r
           <span className="companion-eyebrow">{t("companion.together-view.routines-kicker")}</span>
           <h2 id={headingId}>{t("companion.together-view.routines-title")}</h2>
         </div>
+        {mode === "all" && onAll && templates.length > ALL_MODE_TILES && (
+          <button type="button" className="companion-text-button together-routines-all" data-testid="together-routines-all" onClick={onAll}>
+            {t("companion.together-view.routines-all")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" />
+          </button>
+        )}
       </div>
       <p className="companion-caption">{t("companion.together-view.routines-sub")}</p>
       <ul className="together-routine-grid">
@@ -146,9 +126,9 @@ export default function TogetherRoutines({ mode, headingId }: { mode: "all" | "r
                 data-routine-tile={routine.id}
                 data-in-plan={plan ? "true" : "false"}
                 aria-haspopup="dialog"
-                onClick={() => { arrived.current = true; setOpenedState({ childId: childProfile.id, routineId: routine.id }); }}
+                onClick={() => setOpenedState({ childId: childProfile.id, routineId: routine.id })}
               >
-                <span className="together-routine-icon" style={{ background: PASTEL[routine.tone].soft, color: PASTEL[routine.tone].ink }}><Icon name={routine.ms} size={24} /></span>
+                <span className="together-routine-icon"><Icon name={routine.ms} size={26} /></span>
                 <span className="together-routine-name" dir="auto">{localized(routine.title, lang)}</span>
                 <span className="together-routine-meta">{t("companion.together-view.routines-steps", { n: routine.steps.length, time: localized(routine.time, lang) })}</span>
                 {plan && (

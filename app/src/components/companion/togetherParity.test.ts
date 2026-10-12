@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { companionEn, companionHe } from "../../lib/i18nCompanion";
-import { OFFSCREEN_IDEAS } from "./companionChoices";
+import { OFFSCREEN_IDEAS, STORY_DOORS } from "./companionChoices";
 import { COMPANION_PLACES } from "../../lib/companionPlaces";
 
 /** Parity 9 Oct — Together carries what Practice Studio's door said. */
@@ -27,10 +27,8 @@ describe("Together restores, inside its five modules", () => {
     expect(together).toContain("saveMoment(moment, { callerShowsFailure: true })");
     expect(together).toContain("{saveError && <p role=\"alert\"");
   });
-  // v3 F-TOG-2 re-pin: the count shows on every pill that shows the games (All
-  // together and Games), still a plain count in the world's own unit.
-  it("per-world counts show with every game card, each in its own unit (B-PLAY-02)", () => {
-    expect(together).toMatch(/playLoaded && \(counts\.byWorld\[world\.id\] \?\? 0\) > 0 && <span className="companion-world-count"/);
+  it("per-world counts show in the Games filter only, each in its own unit (B-PLAY-02)", () => {
+    expect(together).toMatch(/category === "games" && \(counts\.byWorld\[world\.id\] \?\? 0\) > 0 && <span className="companion-world-count"/);
     expect(together).toContain("studioCountKey(world.unit, counts.byWorld[world.id])");
   });
   it("trust chips and the play note are parent copy in Settings › PIN; the gate card asks for the PIN", () => {
@@ -53,13 +51,13 @@ describe("the companion copy lives in the dictionaries (native review covers it)
       expect(read(rel), rel).not.toMatch(/[֐-׿]/);
     }
   });
-  // v3 F-TOG-2: the story doors left with the real story cards (TogetherStories).
-  it("every idea and place reads a non-empty EN and HE string", () => {
+  it("every door, idea and place reads a non-empty EN and HE string", () => {
     const pairs = [
+      ...STORY_DOORS.flatMap((d) => [d.title, d.detail]),
       ...OFFSCREEN_IDEAS.flatMap((d) => [d.title, d.detail, d.say]),
       ...COMPANION_PLACES.flatMap((p) => [{ en: p.en, he: p.he }, { en: p.detailEn, he: p.detailHe }]),
     ];
-    expect(pairs).toHaveLength(3 * 3 + 3 * 2);
+    expect(pairs).toHaveLength(4 * 2 + 3 * 3 + 3 * 2);
     for (const pair of pairs) {
       expect(pair.en).toBeTruthy();
       expect(pair.he).toBeTruthy();

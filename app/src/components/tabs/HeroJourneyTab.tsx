@@ -159,15 +159,11 @@ export function kidBookOpening(
 const METRIC_COLORS: Record<DevelopmentMetricId, string> = METRIC_VARS;
 
 
-export default function HeroJourneyTab({ initialStoryId, pinNonce = 0, readerOnly = false, onExit }: {
+export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   initialStoryId?: string;
   /** B-KID-124: a fresh value on every tap of a cover, so the SAME book tapped
    *  again (after Home) opens again even when this tab stayed mounted. */
   pinNonce?: number;
-  /** v3 F-TOG-2: Together's story sheet — the pinned book's reader only: no
-   *  catalogue, no tonight switch, no page header. Leaving the book is onExit. */
-  readerOnly?: boolean;
-  onExit?: () => void;
 } = {}) {
   const { childProfile, behaviorLogs } = useArbor();
   // B-PLAY-15: the hero-first gate opens the shared create dialog in place.
@@ -720,7 +716,6 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0, readerOnl
     setImmersive(false);
     setFinishing(false);
     finishingRef.current = false;
-    if (readerOnly) onExit?.();
   };
 
   // ── Shared player pieces ───────────────────────────────────────────────────
@@ -785,8 +780,6 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0, readerOnl
 
   // ── Catalog view (comic "story worlds" — the child is the hero of each) ──────
   if (!activeStory || !render) {
-    // v3 F-TOG-2: the sheet waits for its one book; it never shows the catalogue.
-    if (readerOnly) return <p role="status" className="companion-caption" data-testid="together-story-opening">{t("companion.together-view.story-opening")}</p>;
     const he = aiLang === "he";
     // E8/F-10: the display copy below bidi-isolates each interpolation of the
     // name so a Hebrew name can't reorder the English headline copy (e.g.
@@ -1620,7 +1613,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0, readerOnl
               the parent's word for a catalogue. Kid Mode gets the kid-register
               line it already has; the parent door keeps its own. */}
           <Icon name="arrow_back" size={16} style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined} />{" "}
-          {kidMode ? kidsStoriesText("journey.backStories", aiLang) : readerOnly ? t("companion.together-view.back-to-stories") : t("elev.stories.reader.back")}
+          {kidMode ? kidsStoriesText("journey.backStories", aiLang) : t("elev.stories.reader.back")}
         </button>)}
         {!kidMode && <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{render.title}</span>}
         <div className="flex items-center gap-1">
