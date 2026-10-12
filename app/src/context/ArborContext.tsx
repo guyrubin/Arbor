@@ -202,6 +202,9 @@ export type ChatMessage = {
   /** ASK-1: the bubble still shows the LOCAL acknowledgment copy — replaced
    *  (never appended to) by the first real streamed delta. */
   chatAck?: boolean;
+  /** EXTRA-TALK: on a USER turn, the family question id the request carried.
+   *  The answer's provenance line names "the question you chose" only then. */
+  topicId?: string;
 };
 export type ChatResponsePayload = { attachmentContext?: AttachmentContext; text: string; memoryReviewItems?: MemoryReviewItem[]; contract?: CoachContract; council?: CouncilTake[] };
 export type Conversation = { topicId?: string; id: string; title: string; messages: ChatMessage[]; updatedAt: string };
@@ -1185,7 +1188,7 @@ function useArborState() {
     // thread already ends with this exact question, so Retry never re-appends.
     setChatMessages((prev) =>
       appendChatAck((() => {
-        const next = appendChatUser(prev, promptValue, selectedLens, opts?.displayText);
+        const next = appendChatUser(prev, promptValue, selectedLens, opts?.displayText, activeFamilyTopic?.id);
         if (!attachments.length) return next;
         return [...next.slice(0, -1), { ...next[next.length - 1], attachments: attachmentMetadata(attachments) }];
       })(), t("coach.ack"), selectedLens),
@@ -1347,7 +1350,7 @@ function useArborState() {
     // existing Stop button already aborts — cancelling a council turn needed no
     // new affordance, only this wiring.
     setChatMessages((prev) =>
-      appendChatAck(appendChatUser(prev, promptValue, selectedLens), t("coach.ack"), selectedLens),
+      appendChatAck(appendChatUser(prev, promptValue, selectedLens, undefined, activeFamilyTopic?.id), t("coach.ack"), selectedLens),
     );
     setIsChatLoading(true);
 

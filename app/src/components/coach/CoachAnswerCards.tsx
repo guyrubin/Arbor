@@ -129,6 +129,26 @@ export function memoryFooterLabel(n: number | undefined, lang: UiLang = "en"): s
 }
 
 /**
+ * EXTRA-TALK: the one muted provenance line under a settled answer. COUNT-FREE
+ * by construction: the contract carries no grounded observation ids, so there
+ * is nothing honest to count, and no digit ever reaches this line (the memory
+ * row below keeps its own approved-fact count). Each clause is claimed only
+ * when it is true for THIS answer:
+ *   "what you kept"        the server says approved facts grounded it
+ *                          (approvedMemoryFactsUsed > 0 or a plan step built
+ *                          from one, todayPlanProvenance);
+ *   "the question you chose"  the parent's turn went out with a family
+ *                          question (the topic flag, stamped on the user turn).
+ * Neither → the plain "Arbor suggests; you decide." line.
+ */
+export type CoachProvenance = { topic: boolean };
+export function provenanceKey(contract: Pick<CoachContract, "approvedMemoryFactsUsed" | "todayPlanProvenance">, topic: boolean): string {
+  const kept = (contract.approvedMemoryFactsUsed ?? 0) > 0 || (contract.todayPlanProvenance?.length ?? 0) > 0;
+  if (kept) return topic ? "companion.talk.provenance.topic" : "companion.talk.provenance";
+  return topic ? "companion.talk.provenance.topic-only" : "companion.talk.provenance.general";
+}
+
+/**
  * Pure helper: presentation tier for the "Reach out for help if" footer.
  * Low (or absent) risk → "quiet": a calm, collapsed disclosure so routine
  * questions don't read as alarms. Anything else — including unrecognized
@@ -385,9 +405,12 @@ function ReportDisclosure({ id, title, open, onToggle, children, testId, icon }:
 export default function CoachAnswerCards({
   contract, lens, council, lang = "en", onSaveToPlan, onGoDeeper,
   onAddToHandoff, onManageMemory, reviewUnavailable = false,
-  todayStep, onTryIt, onUndoTryIt, renderKeepAction, onProposeMemory,
+  todayStep, onTryIt, onUndoTryIt, renderKeepAction, onProposeMemory, provenance,
 }: {
   contract: CoachContract;
+  /** EXTRA-TALK: opt-in provenance line for a settled Talk answer. Absent →
+   *  no line (history renders and the markup snapshots stay byte-identical). */
+  provenance?: CoachProvenance;
   todayStep?: CoachTodayStep | null;
   onTryIt?: (step: string) => void;
   onUndoTryIt?: (id: string) => void;
@@ -685,6 +708,14 @@ export default function CoachAnswerCards({
       )}
 
       <footer className="coach-report__footer" data-testid="coach-answer-footer">
+        {/* EXTRA-TALK: one muted line, never a verdict, never a number. An
+            answer led by the urgent-help panel carries no "you decide" line. */}
+        {provenance && !prominentHelp && (
+          <p className="coach-provenance" data-testid="coach-provenance">
+            <Icon name="verified" size={14} />
+            <span>{t(provenanceKey(contract, provenance.topic))}</span>
+          </p>
+        )}
         <div className="coach-report__attribution">
           <TrustLink surface="coach-answer" />
           {showLens && <span>{t("coach.alignedWith", { lens: lens! })}</span>}

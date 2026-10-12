@@ -166,9 +166,12 @@ describe("ASK-3 — frames stay out of the parent render (source guard)", () => 
 
 
 describe("W2 fresh Ask density � examples and history stay available without an empty transcript", () => {
-  it("shows three deterministic scenarios first and reveals the remaining existing prompts", () => {
+  it("seats deterministic scenarios first (3 on the page, 4 in the Talk panel) and reveals the remaining existing prompts", () => {
     expect(coach).toContain("SCENARIOS.slice(0, staticShown)"); // B-ASKJB-10: echo chip + 2 static, or 3 static
-    expect(coach).toContain("const staticShown = echoScenario ? 2 : 3;");
+    // EXTRA-TALK re-pin (brief build order): the Talk panel seats 4 chips, the
+    // page keeps 3; the family-question chip and the echo chip each take a seat.
+    expect(coach).toContain("const scenarioSeats = embedded ? 4 : 3;");
+    expect(coach).toContain("const staticShown = Math.max(0, scenarioSeats - (topicChip ? 1 : 0) - (echoScenario ? 1 : 0));");
     expect(coach).toContain("setShowAllScenarios((shown) => !shown)");
     expect(coach).toContain("elev.wave2Daily.ask.examples.more");
     expect(coach).toContain("elev.wave2Daily.ask.examples.less");

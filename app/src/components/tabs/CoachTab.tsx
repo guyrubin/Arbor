@@ -76,7 +76,7 @@ import { createDictationLoop, type DictationLoop } from "../../lib/dictationLoop
 import { splitCompleteSentences } from "../../lib/sentenceStream";
 // ASK-7: thread-shape predicates — orientation/follow-up/trust guards key off
 // real user/AI turns, never message-count checks (the welcome bubble is gone).
-import { hasUserTurn, hasAiTurn } from "../../lib/chatStream";
+import { hasUserTurn, hasAiTurn, askedWithTopic } from "../../lib/chatStream";
 // LL-A1: "Go deeper" — after a settled answer, up to 2 Learn Library reads
 // matched on the contract's framework domains + concerns keyword-derived from
 // the answer text, deep-linked via the requestLearnRead seam.
@@ -397,7 +397,25 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     }),
     [behaviorLogs, t],
   );
-  const staticShown = echoScenario ? 2 : 3;
+  // EXTRA-TALK: the active family question leads the chip row as "Continue
+  // with: <question>". It FILLS the composer and never sends: the parent reads,
+  // edits and sends it themselves. The row seats 4 chips in the Talk panel and
+  // 3 on the page; the question chip and the echo chip each take a seat and
+  // the static scenarios fill the rest ("show all" still reveals every one).
+  const topicChip = activeFamilyTopic?.title.trim() ? activeFamilyTopic : null;
+  const [topicChipBefore, topicChipAfter = ""] = inputText(uiLang, "companion.talk.topic-chip").split("{title}");
+  const scenarioSeats = embedded ? 4 : 3;
+  const staticShown = Math.max(0, scenarioSeats - (topicChip ? 1 : 0) - (echoScenario ? 1 : 0));
+  const continueWithTopic = (from: HTMLElement, title: string) => {
+    setChatInput((current) => current.trim() && current.trim() !== title ? `${current}\n\n${title}` : title);
+    const scope: ParentNode = from.closest(".companion-coach") ?? document;
+    requestAnimationFrame(() => {
+      const field = scope.querySelector<HTMLTextAreaElement>('[data-testid="coach-composer-well"] textarea');
+      if (!field || field.disabled) return;
+      field.focus({ preventScroll: true });
+      field.setSelectionRange(field.value.length, field.value.length);
+    });
+  };
   /* R22 (Builder L) — the lens VALUE is a stored English identifier
      ("Integrated Balanced"), not display copy. One place resolved it
      (`coach.lens.integrated`) and the identity strip and the attribution chip
@@ -1075,7 +1093,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       {/* One coaching workspace: orientation, conversation, composer. */}
       <div className={embedded ? "companion-transcript" : undefined} data-companion-scroll={embedded ? "true" : undefined}>
       <div data-module="coach-orientation" className="space-y-4">
-        {embedded && !userTurnExists && <div className="companion-welcome"><h3>{inputText(uiLang, "companion.input.let-s-make-sense-of-it-together")}</h3><p>{inputText(uiLang, "companion.input.a-little-moment-a-big-question-a-photo-from-today-start-wherever-")}</p></div>}
+        {embedded && !userTurnExists && <div className="companion-welcome"><h3>{inputText(uiLang, "companion.talk.welcome")}</h3><p>{inputText(uiLang, "companion.input.a-little-moment-a-big-question-a-photo-from-today-start-wherever-")}</p></div>}
         <header className="border-b pb-5" style={{ borderColor: "var(--arbor-rule)" }}>
           <div className="max-w-2xl">
             <p className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.hero.ask.eyebrow")}</p>
@@ -1109,6 +1127,23 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           <div className="space-y-2">
             <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.fastStart")}</span>
             <div id="coach-scenarios" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {/* EXTRA-TALK: the family question is the FIRST chip; it fills the
+                  composer and never sends (no handleChatSend here). The question
+                  sits in its own bdi so a Latin title keeps its order in Hebrew. */}
+              {topicChip && (
+                <button
+                  key="family-topic"
+                  type="button"
+                  data-testid="coach-scenario-topic"
+                  onClick={(event) => continueWithTopic(event.currentTarget, topicChip.title.trim())}
+                  disabled={isChatLoading}
+                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 min-h-11 text-start text-[13px] font-bold transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                  style={{ color: T.ink, border: "1px solid var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
+                >
+                  <Icon name="bookmark" size={16} style={{ color: "var(--arbor-green-ink)" }} />
+                  <span className="min-w-0 line-clamp-2">{topicChipBefore}<bdi dir="auto">{topicChip.title.trim()}</bdi>{topicChipAfter || null}</span>
+                </button>
+              )}
               {/* B-ASKJB-31: ONE "Hard moment now" chip opens the shared sheet
                   (replaces the dead publishedHardMomentCards group). Hidden when
                   no pilot guide is available for this child (age, expiry). */}
@@ -1124,7 +1159,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   <Icon name="support" size={16} style={{ color: "var(--arbor-ink-soft)" }} /> {t("hm.now.title")}
                 </button>
               )}
-              {/* B-ASKJB-10: the child's own recurring moment leads, then 2 static chips. */}
+              {/* B-ASKJB-10: the child's own recurring moment (after the family
+                  question, when one is set), then the static chips. */}
               {echoScenario && (
                 <button
                   key="echo"
@@ -1415,6 +1451,10 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                         toast(t("coach.toast.handoffPrefilled"), "info");
                       }}
                       onProposeMemory={(fact) => proposeMemory(fact, { source: "document", prompt: "companion:document" })}
+                      // EXTRA-TALK: one count-free provenance line per SETTLED
+                      // answer; "the question you chose" only when that turn
+                      // went out with a family question (its stamped topicId).
+                      provenance={!msg.chatLive && !msg.voiceLive ? { topic: askedWithTopic(chatMessages, idx) } : undefined}
                     />
                     </>
                   ) : (

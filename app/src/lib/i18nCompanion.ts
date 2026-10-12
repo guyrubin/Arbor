@@ -303,6 +303,15 @@ export const companionEn = {
   "companion.panel.remembers": "What Arbor remembers",
   // FEAT-01: the Ask bar's second line names the active family question.
   "companion.launcher.topic": "On: {title}",
+  // EXTRA-TALK: the Talk panel's welcome, the family-question chip, and the
+  // provenance line under a settled answer (count-free; the server's grounding
+  // signals pick the variant, so the line never claims memory it did not use).
+  "companion.talk.welcome": "What's on your mind?",
+  "companion.talk.topic-chip": "Continue with: {title}",
+  "companion.talk.provenance": "Based on what you kept. Arbor suggests; you decide.",
+  "companion.talk.provenance.topic": "Based on what you kept and the question you chose. Arbor suggests; you decide.",
+  "companion.talk.provenance.topic-only": "Based on the question you chose. Arbor suggests; you decide.",
+  "companion.talk.provenance.general": "Arbor suggests; you decide.",
 };
 
 export const companionHe = {
@@ -608,4 +617,13 @@ export const companionHe = {
   "companion.panel.remembers": "מה ארבור זוכר",
   // FEAT-01: the Ask bar's second line names the active family question.
   "companion.launcher.topic": "בנושא: {title}",
+  // EXTRA-TALK: the Talk panel's welcome, the family-question chip, and the
+  // provenance line under a settled answer (count-free; the server's grounding
+  // signals pick the variant, so the line never claims memory it did not use).
+  "companion.talk.welcome": "מה מעסיק אתכם?",
+  "companion.talk.topic-chip": "להמשיך עם: {title}",
+  "companion.talk.provenance": "מבוסס על מה ששמרתם. ארבור מציע, ההחלטה שלכם.",
+  "companion.talk.provenance.topic": "מבוסס על מה ששמרתם ועל השאלה שבחרתם. ארבור מציע, ההחלטה שלכם.",
+  "companion.talk.provenance.topic-only": "מבוסס על השאלה שבחרתם. ארבור מציע, ההחלטה שלכם.",
+  "companion.talk.provenance.general": "ארבור מציע, ההחלטה שלכם.",
 };

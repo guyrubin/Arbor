@@ -82,6 +82,10 @@
 .coach-report__footer { border-block-start: 1px solid var(--arbor-rule); padding-block-start: 16px; }
 .coach-report__footer > * + * { margin-block-start: 12px; }
 .coach-report__attribution { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; color: var(--arbor-muted); font-size: var(--t-xs); }
+/* EXTRA-TALK: the provenance line. Muted like the attribution row, never a
+   verdict colour; the glyph leads in both directions (logical flow only). */
+.coach-provenance { display: flex; align-items: flex-start; gap: 6px; margin: 0; color: var(--arbor-muted); font-size: var(--t-xs); line-height: 1.45; text-align: start; }
+.coach-provenance > .msr { margin-block-start: 1px; }
 .coach-report__memory { display: grid; gap: 8px; color: var(--arbor-muted); font-size: var(--t-xs); }
 .coach-report__memory > div,
 .coach-report__memory button { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
