@@ -9,6 +9,7 @@ import { useHashQuery } from "../../hooks/useHashQuery";
 import { sectionForTab, pillRowFor, isCompactHiddenTool } from "../../lib/navigation";
 import { contractFor } from "../../lib/surfaceContract";
 import Sidebar from "./Sidebar";
+import { SheetBreadcrumb } from "./Breadcrumb"; // v3 IA-06: the open sheet's crumb on the phone strip
 import CompanionWorkspace from "../companion/CompanionWorkspace";
 import { requestCompanionConversation } from "../../lib/companionConversation";
 import Topbar from "./Topbar";
@@ -465,6 +466,8 @@ export default function Shell() {
               <KidModeButton compact />
             </div>
           }/>
+          {/* v3 IA-06: the open L2 sheet's crumb, one line under the strip. */}
+          <SheetBreadcrumb compact className="lg:hidden -mt-2 mb-2" />
 
           {back && <button data-testid="secondary-place-back" onClick={() => setActiveTab(back.tab)} className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: "var(--arbor-muted)" }}>
             <Icon name="arrow_back" size={18} className="rtl:-scale-x-100"/>{uiLang === "he" ? back.he : back.en}

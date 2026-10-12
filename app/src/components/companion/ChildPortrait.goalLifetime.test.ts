@@ -77,8 +77,7 @@ function mountedPortraitProof(duplicateKey: boolean) {
     "../../lib/milestoneData": {}, "../../content/behaviorTaxonomy": {},
     "../ui/Icon": { Icon: empty }, "../ui/Avatar": { Avatar: empty }, "../ui/Modal": { Modal: empty },
     // v3 IA-06: the selection's history entry and crumb are proven in layout/breadcrumb.test.tsx.
-    "../../hooks/useSheetHistory": { useSheetHistory: (_open, onClose) => after => { onClose(); if (after) after(); } },
-    "../layout/Breadcrumb": { SheetBreadcrumb: empty },
+    "../layout/crumbBus": { useL2Sheet: (_open, _label, onClose) => after => { onClose(); if (after) after(); } },
     "./portraitModel": { buildPortraitChapters: () => [], buildPortraitEnvironments: () => [], buildPortraitThreads: () => [] },
     "./portraitCopy": { PORTRAIT_COPY: { en: copy, he: copy } }, "./portraitEvidence": {},
     "../../lib/kpiEvents": { trackCompanionPlaceOpen() {} }, "./PortraitWatchRow": { default: Watch },
