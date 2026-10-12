@@ -32,8 +32,7 @@ function setup(lang: "en" | "he" = "en") {
     useNowClock: () => new Date("2026-10-10T12:00:00Z"), useNowRecord: () => ({}), useChildCollection: () => ({ items: [] }), activeProgramWeek: () => null,
     useNowLoop: () => ({ plan: { order: [] }, blockNotices: [], evening: false, rhythm: {} }), useLastVisit: () => ({}), useLifecycleMoment: () => ({}), useCompanionOffer: () => ({}),
     availableHardMomentCards: () => [], ageMonthsFromProfile: () => 48, formatChildAge: () => "", childPicture: () => ({}), trackCompanionPlaceOpen: vi.fn(), markPracticeShown: vi.fn(), trackActionOffered: vi.fn(),
-    // Re-pin (v3 F-NOW-4): the Together door left Now with its picture, so NowContent no longer reads TOGETHER_ART.
-    Avatar: "avatar", Icon: "icon", PrimaryMove: "primary-move", Receipt: "receipt", UrgentSupport: "urgent-support", NowRecommendation: "recommendation", NowMoreForToday: "more", NowNoticeBlock: "notice", NowTonightPointer: "tonight-pointer",
+    Avatar: "avatar", Icon: "icon", PrimaryMove: "primary-move", Receipt: "receipt", UrgentSupport: "urgent-support", NowRecommendation: "recommendation", NowMoreForToday: "more", NowNoticeBlock: "notice", NowTonightPointer: "tonight-pointer", TOGETHER_ART: {},
     useObservations: () => [], NowQuestionRow: "question-row", NowPlanFrame: "plan-frame", NowKidWorld: "kid-world", NowWeekSoFar: "week-so-far",
     NowPlanBody: "plan-body", NowGuideReader: "guide-reader", stepLines: (text: string) => [text], WHY_KEY: {}, shelfLabel: () => "",
   };
