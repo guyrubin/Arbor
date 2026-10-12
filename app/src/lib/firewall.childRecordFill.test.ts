@@ -55,6 +55,8 @@ const SCANNED = [
   "components/companion/milestonesModel.ts",
   // v3 FEAT-08: the words-and-firsts strip on My child (names and words, no fill).
   "components/companion/WordsFirstsStrip.tsx",
+  // v3 F-CHILD-4 (MOB-02): My child's doors on a phone (place names, no count).
+  "components/companion/ChildDoors.tsx",
   ...GROWTH_FILES,
   "components/sections/ChildProfile.tsx",
   // v3 F-CHILD-3: About's eight areas and the read that fills them.
@@ -102,6 +104,15 @@ describe("B-GROWTH-07 — no proportional fill of a child record", () => {
       expect(src, rel).not.toMatch(/\btotal\b|%|Chart|<svg/);
       expect(src, rel).not.toMatch(/sort\(/);
     }
+  });
+
+  /* v3 F-CHILD-4 (MOB-02) — the doors under a pill on a phone are navigation:
+     a place's name and one plain line, never a count, share or chart. */
+  it("covers My child's doors (no total, share, chart or count)", () => {
+    const rel = "components/companion/ChildDoors.tsx";
+    expect(SCANNED).toContain(rel);
+    const src = stripComments(read(rel));
+    expect(src).not.toMatch(/\btotal\b|%|Chart|<svg|role="progressbar"|\.length\b/);
   });
 
   /* v3 F-CHILD-3 — About's eight areas say what the parent TOLD Arbor, never

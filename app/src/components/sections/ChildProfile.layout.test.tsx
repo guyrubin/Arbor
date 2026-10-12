@@ -11,7 +11,7 @@ import type { AspectState } from "../../lib/aboutAspects";
 const harness=vi.hoisted(() => ({
  callback:false, locale:"en", pending:[] as unknown[], approved:[] as unknown[], hasHero:true,
  goals:[] as unknown[], challenges:[] as string[], factsAsOf:undefined as unknown, updateChild:vi.fn(),
- setActiveTab:vi.fn(), setState:vi.fn(), decide:vi.fn(async()=>true), tell:[] as Record<string,unknown>[],
+ setActiveTab:vi.fn(), setState:vi.fn(), decide:vi.fn(async()=>true), tell:[] as Record<string,unknown>[], phone:false,
 }));
 vi.mock("react", async (original) => {
  const real=await original<typeof import("react")>();
@@ -39,6 +39,9 @@ vi.mock("../profile/ProfileEditDrawer",()=>({default:()=>null}));
 // The ONE guided conversation is its own suite (describe.render.test.tsx); here
 // only what About opens it with is read.
 vi.mock("../describe/TellArborMore",()=>({default:(props:Record<string,unknown>)=>{harness.tell.push(props);return null;}}));
+// v3 F-CHILD-4 (MOB-02): the page reads the phone width through the doors'
+// hook; the doors themselves render for real (their own suite: ChildDoors.test).
+vi.mock("../companion/ChildDoors",async(importOriginal)=>({...(await importOriginal<typeof import("../companion/ChildDoors")>()),useChildPhoneLayout:()=>harness.phone}));
 function elements(node:React.ReactNode):React.ReactElement<Record<string,any>>[]{
  if(!React.isValidElement<Record<string,any>>(node))return[];
  const element=node as React.ReactElement<Record<string,any>>;
@@ -46,7 +49,7 @@ function elements(node:React.ReactNode):React.ReactElement<Record<string,any>>[]
 }
 const cards=()=>elements(ChildProfile()).filter(el=>el.type===AspectCard);
 const card=(id:string)=>cards().find(el=>(el.props.state as AspectState).id===id)!;
-beforeEach(()=>{vi.clearAllMocks();harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;harness.goals=[];harness.challenges=[];harness.factsAsOf=undefined;harness.tell=[];});
+beforeEach(()=>{vi.clearAllMocks();harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;harness.goals=[];harness.challenges=[];harness.factsAsOf=undefined;harness.tell=[];harness.phone=false;});
 afterEach(()=>{vi.unstubAllGlobals();});
 
 /* v3 F-CHILD-3 re-pin: the W2 identity band, the Who chapter (with the Family
@@ -346,4 +349,46 @@ describe("B-CAREPRO-33 · the areas date their facts", () => {
     card("school").props.onEditDetails();
     expect(harness.setState).toHaveBeenCalledWith(true);
   });
+});
+
+/* v3 F-CHILD-4 (MOB-02) — About on a phone closes the pill with My child's
+   doors (journal, memory, check, Care). The memory door replaces the quiet
+   memory line (one door per room) and carries the waiting sentence in words.
+   The doors are navigation: no module, no second primary move. */
+describe("v3 F-CHILD-4 (MOB-02) · About on a phone: the doors close the pill",()=>{
+ const MODULES=['data-module="about-describe"','data-module="about-aspects"','data-module="about-details"','data-module="about-measurements"'];
+ const doorOf=(html:string,tab:string)=>{const at=html.indexOf(`data-testid="child-door-${tab}"`);return html.slice(at,html.indexOf("</button>",at));};
+ it.each(["en","he"] as const)("four doors after Details; the memory line gives way to the memory door (%s)",locale=>{
+  harness.locale=locale;harness.phone=true;
+  const C=locale==="he"?companionHe:companionEn;
+  const html=renderToStaticMarkup(<ChildProfile/>);
+  expect(html).not.toContain('data-testid="profile-remember-check"');
+  expect(html.match(/data-testid="child-doors"/g)).toHaveLength(1);
+  expect([...html.matchAll(/data-testid="child-door-([a-z]+)"/g)].map(m=>m[1])).toEqual(["journal","memory","screening","consult"]);
+  expect(html.indexOf('data-testid="child-doors"')).toBeGreaterThan(html.indexOf('data-testid="about-details"'));
+  expect(doorOf(html,"memory")).toContain(C["companion.portrait.memory"]);
+  expect(doorOf(html,"memory")).toContain(C["companion.doors.memorySub"]);
+  expect(doorOf(html,"consult")).toContain(C["companion.door.care"]);
+  // the doors add no module and no move: the page's budget and its one primary move hold
+  expect(html.match(/data-module="[^"]+"/g)).toEqual(MODULES);
+  expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+ });
+ it.each(["en","he"] as const)("a proposal that names no area waits on #/memory: the memory door says so in words, never a number (%s)",locale=>{
+  harness.locale=locale;harness.phone=true;
+  const C=locale==="he"?companionHe:companionEn;
+  harness.pending=[{memoryId:"p2",fact:"fact 1",createdAt:"2026-10-06T10:00:00.000Z"}];
+  const html=renderToStaticMarkup(<ChildProfile/>);
+  const door=doorOf(html,"memory");
+  expect(door).toContain('data-testid="child-door-waiting"');
+  expect(door).toContain(C["companion.about.memoryWaiting"]);
+  expect(door).not.toContain(C["companion.doors.memorySub"]);
+  expect(door.slice(door.indexOf(">")+1).replace(/<[^>]+>/g," ")).not.toMatch(/\d/);
+  expect(html).not.toContain('data-testid="about-memory-waiting"');
+ });
+ it("wide: no doors; the memory line stays where it was",()=>{
+  const html=renderToStaticMarkup(<ChildProfile/>);
+  expect(html).not.toContain('data-testid="child-doors"');
+  expect(html).toContain('data-testid="profile-remember-check"');
+  expect(html.match(/data-module="[^"]+"/g)).toEqual(MODULES);
+ });
 });

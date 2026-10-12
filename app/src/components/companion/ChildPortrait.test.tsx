@@ -10,12 +10,16 @@ import type { Milestone } from "../../types";
    the three portrait cards and "Milestones across areas", one scroll. Invented
    names, words and catalogue rows only; no child data. A tiny stateful SSR
    harness carries state from one render into the next (as the area-row test),
-   so a tap, a write and a stopped watch are followed through the page. */
+   so a tap, a write and a stopped watch are followed through the page.
+   v3 F-CHILD-4 (MOB-02): `state.phone` drives the phone stack (the page's
+   useChildPhoneLayout seam) and `state.compact` the sheet (below lg). */
 
 type Answer = "yes" | "not_yet" | "not_sure";
 const state = vi.hoisted(() => ({
   lang: "en" as "en" | "he",
   compact: false,
+  phone: false,
+  sheetClose: null as null | (() => void),
   query: "",
   profile: {} as Record<string, unknown>,
   milestones: [] as Milestone[],
@@ -80,12 +84,21 @@ vi.mock("../ui/CelebrationMoment", async original => ({
   hasCelebrated: () => state.celebrated,
   markCelebrated: state.markCelebrated,
 }));
-type SurfaceProps = { open: boolean; title?: string; children?: React.ReactNode };
+type SurfaceProps = { open: boolean; title?: string; children?: React.ReactNode; onClose?: () => void };
 // The stand-in carries no role: only ui/Modal and ui/Sheet own a dialog (ui/overlays.test.ts).
+// It keeps the page's onClose: the real Sheet calls it on Escape, the backdrop and its close.
 vi.mock("../ui/Sheet", async original => ({
   ...(await original<typeof import("../ui/Sheet")>()),
-  Sheet: ({ open, title, children }: SurfaceProps) => (open ? <div data-surface="sheet" data-title={title}>{children}</div> : null),
+  Sheet: ({ open, title, children, onClose }: SurfaceProps) => {
+    state.sheetClose = onClose ?? null;
+    return open ? <div data-surface="sheet" data-title={title}>{children}</div> : null;
+  },
   useCompactSurface: () => state.compact,
+}));
+// v3 F-CHILD-4: the phone stack's width seam (a matchMedia read in the app).
+vi.mock("./ChildDoors", async original => ({
+  ...(await original<typeof import("./ChildDoors")>()),
+  useChildPhoneLayout: () => state.phone,
 }));
 // The goal picker, the describe conversation and the keepsake sheet have their own tests.
 vi.mock("../practice/GoalBuilderModal", () => ({ default: ({ childId }: { childId: string }) => <div data-testid="goal-builder" data-child={childId} /> }));
@@ -144,11 +157,13 @@ const render = (props: React.ComponentProps<typeof ChildPortrait> = {}) => {
 const button = (id: string) => state.buttons.find(b => b["data-testid"] === id);
 const row = (domain: DomainId) => state.buttons.find(b => b["data-testid"] === "dev-map-row" && b["data-domain"] === domain);
 const expanded = (html: string) => [...html.matchAll(/data-testid="dev-map-row" data-domain="([a-z]+)" aria-expanded="true"/g)].map(m => m[1]);
+const tile = (domain: DomainId) => state.buttons.find(b => b["data-testid"] === "dev-map-tile" && b["data-domain"] === domain);
+const openTiles = (html: string) => [...html.matchAll(/data-testid="dev-map-tile" data-domain="([a-z]+)" aria-expanded="true" aria-haspopup="dialog"/g)].map(m => m[1]);
 const t = (lang: "en" | "he") => (key: string) => translate(lang, key);
 
 beforeEach(() => {
   vi.clearAllMocks();
-  state.lang = "en"; state.compact = false; state.query = ""; state.profile = profile(); state.milestones = catalogue();
+  state.lang = "en"; state.compact = false; state.phone = false; state.sheetClose = null; state.query = ""; state.profile = profile(); state.milestones = catalogue();
   state.observations = []; state.sources = { behaviorLogs: [] }; state.screenings = []; state.watch = null; state.celebrated = false; state.sheet = null;
   state.setMilestoneObservation.mockImplementation(() => Promise.resolve());
   state.keepState = false; state.cursor = 0; state.hooks = []; state.buttons = []; state.segments = []; state.inputs = []; state.forms = [];
@@ -286,15 +301,70 @@ describe("v3 F-CHILD-1 — one open row", () => {
     expect(expanded(render())).toEqual(["body"]);
   });
 
-  it("on a phone the open row rides a bottom sheet titled with the area", () => {
+  // v3 F-CHILD-4 (MOB-02) RE-PIN: below lg the areas are tiles, not rows — a
+  // tile is what opens the bottom sheet (critic ruling 25: the same
+  // AreaRowDetail body, inline on a wide screen, in a sheet on a phone).
+  it("below lg the open area is a tile that rides a bottom sheet titled with the area", () => {
     state.compact = true;
     state.query = "area=moving";
     const html = render();
-    expect(expanded(html)).toEqual(["moving"]);
-    expect(html).not.toMatch(/data-testid="dev-map-row"[^>]*aria-controls/);
+    expect(html).not.toContain('data-testid="dev-map-row"');
+    expect(openTiles(html)).toEqual(["moving"]);
+    expect(html).not.toContain("aria-controls");
     expect(html).not.toContain('class="dev-map-detail"');
     expect(html).toContain(`data-surface="sheet" data-title="${esc(domainName("moving", t("en")))}"`);
     expect(html).toContain('data-testid="area-detail" data-domain="moving"');
+    expect(html.match(/data-testid="area-detail"/g)).toHaveLength(1);
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+  });
+
+  it("the sheet opens on the area's newest moment in the parent's words; the tile only names its day", () => {
+    state.compact = true;
+    state.query = "area=moving";
+    state.sources = { behaviorLogs: [{ id: "l2", timestamp: "2026-06-12T10:00:00.000Z", behaviorType: "Moment", durationMinutes: 0, trigger: "Climbed the big slide alone" }] };
+    state.observations = [{ id: "behaviorLogs:l2", childId: "child-a", at: "2026-06-12T10:00:00.000Z", domains: ["moving"], kind: "moment", origin: "behaviorLogs", source: "parent_typed", value: { type: "moment", behaviorType: "Moment" }, ageAtObservationMonths: null, pretermCorrected: false }];
+    // The areas module (the kept-moment card above it may quote the same words).
+    const html = render();
+    const areas = html.slice(html.indexOf('data-module="child-milestones-areas"'));
+    const sheetAt = areas.indexOf('data-surface="sheet"');
+    expect(sheetAt).toBeGreaterThan(-1);
+    expect(areas.match(/Climbed the big slide alone/g)).toHaveLength(1);
+    expect(areas.indexOf("Climbed the big slide alone")).toBeGreaterThan(sheetAt);
+    expect(areas.indexOf('data-testid="area-detail-last"')).toBeGreaterThan(sheetAt);
+    const movingTile = areas.slice(areas.indexOf('data-testid="dev-map-tile" data-domain="moving"'), areas.indexOf('data-testid="dev-map-tile" data-domain="hands"'));
+    expect(movingTile).toContain('data-testid="dev-map-tile-last"');
+    expect(movingTile).toMatch(/<time datetime="2026-06-12T10:00:00\.000Z">/i);
+  });
+
+  it("a wide screen keeps the rows and their inline body, with no sheet line", () => {
+    state.query = "area=moving";
+    const html = render();
+    expect(html).not.toContain("dev-map-tiles");
+    expect(html).not.toContain('data-testid="area-detail-last"');
+    expect(expanded(html)).toEqual(["moving"]);
+  });
+
+  it("a tile tap opens its sheet, a second tap closes it, the sheet's close closes it, and another tile takes over", () => {
+    state.keepState = true;
+    state.compact = true;
+    let html = render();
+    expect(html).not.toContain('data-surface="sheet"');
+    tile("hands")!.onClick!();
+    html = render();
+    expect(openTiles(html)).toEqual(["hands"]);
+    expect(html).toContain(`data-surface="sheet" data-title="${esc(domainName("hands", t("en")))}"`);
+    tile("hands")!.onClick!();
+    html = render();
+    expect(openTiles(html)).toEqual([]);
+    expect(html).not.toContain('data-surface="sheet"');
+    tile("feelings")!.onClick!();
+    html = render();
+    expect(openTiles(html)).toEqual(["feelings"]);
+    // Escape, the backdrop and the 44 px close all call the page's onClose (ui/Sheet).
+    state.sheetClose!();
+    html = render();
+    expect(openTiles(html)).toEqual([]);
+    expect(html).not.toContain('data-testid="area-detail"');
   });
 
   it("a tap opens a row, a second tap closes it, and another row takes over; never two open", () => {
@@ -448,5 +518,86 @@ describe("v3 F-CHILD-1 — answers, firsts and the chosen watch", () => {
     state.watch = { milestoneId: moving.id, screenItemId: "", chosenAt: "2026-06-01T10:00:00.000Z" };
     state.query = "area=talking";
     expect(render()).not.toContain('data-testid="area-detail-watch"');
+  });
+});
+
+describe("v3 F-CHILD-4 (MOB-02) — the Milestones pill on a phone, one stack", () => {
+  const phone = () => { state.phone = true; state.compact = true; };
+
+  it.each(["en", "he"] as const)("the areas first, then the goal card, then the doors; the h1 is for screen readers; two modules, one primary move (%s)", lang => {
+    state.lang = lang;
+    phone();
+    const html = render();
+    expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
+    expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(["child-milestones-areas", "child-milestones-portrait"]);
+    const [before, after] = translate(lang, "companion.milestones.title").split("{name}");
+    expect(html).toContain(`<h1 class="portrait-sr-title">${esc(before)}<bdi dir="auto">Noa</bdi>${esc(after)}</h1>`);
+    expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
+    expect(html).not.toContain('class="portrait-intro"');
+    const h1 = html.indexOf("<h1"), map = html.indexOf('data-testid="dev-map"'), goal = html.indexOf('data-testid="portrait-goals-edit"'), doors = html.indexOf('data-testid="child-doors"');
+    expect(h1).toBeGreaterThan(-1);
+    expect(map).toBeGreaterThan(h1);
+    expect(goal).toBeGreaterThan(map);
+    expect(doors).toBeGreaterThan(goal);
+    expect(html.match(/data-testid="dev-map-tile"/g)).toHaveLength(8);
+    expect(html).not.toContain('data-testid="dev-map-row"');
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    expect(html).toMatch(/data-testid="dev-map-check" data-primary-move="start-development-check"/);
+    // The doors are navigation: no module, no stamp.
+    const nav = html.slice(doors, html.indexOf("</nav>", doors));
+    expect(nav).not.toContain("data-module");
+    expect(nav).not.toContain("data-primary-move");
+    expect(words(html)).not.toMatch(/companion\.|elev\./);
+  });
+
+  it.each(["en", "he"] as const)("the doors: journal, memory and Care, each the place's own name; the check's door is the page's primary move, not a second door (%s)", lang => {
+    state.lang = lang;
+    phone();
+    const html = render();
+    expect([...html.matchAll(/data-testid="child-door-([a-z]+)"/g)].map(m => m[1])).toEqual(["journal", "memory", "consult"]);
+    expect(html).not.toContain('data-testid="child-door-screening"');
+    for (const key of ["companion.portrait.journal", "companion.portrait.memory", "companion.door.care", "companion.doors.journalSub", "companion.doors.memorySub", "companion.doors.careSub"]) {
+      expect(html, key).toContain(esc(translate(lang, key)));
+    }
+    for (const tab of ["journal", "memory", "consult"]) {
+      button(`child-door-${tab}`)!.onClick!();
+      expect(state.setActiveTab).toHaveBeenLastCalledWith(tab);
+    }
+  });
+
+  it.each(["en", "he"] as const)("CLINICAL FIREWALL at phone width: a tile is glyph, name and pips — no share, no denominator, no level word (%s)", lang => {
+    state.lang = lang;
+    phone();
+    const by = groupMilestonesByShelf(catalogue());
+    const marked = new Set([...by.words.slice(0, 5), ...by.moving.slice(0, 2), ...by.food.slice(0, 1)].map(m => m.id));
+    state.milestones = catalogue().map(m => (marked.has(m.id) ? { ...m, checked: true, observationStatus: "yes" as const, observationUpdatedAt: new Date(Date.now() - 86_400_000).toISOString() } : { ...m, observationStatus: "not_yet" as const }));
+    state.query = "area=talking";
+    const html = render();
+    const text = words(html);
+    expect(text).not.toMatch(/%/);
+    expect(text).not.toMatch(/\d+\s*\/\s*\d+/);
+    expect(text).not.toMatch(/\bof\s+\d+|\d+\s+of\s+\d+|מתוך\s+\d+/);
+    const start = html.indexOf('data-testid="dev-map-tiles"');
+    const tiles = words(html.slice(start, html.indexOf("</ul>", start)));
+    expect(tiles).not.toMatch(/\b(low|medium|high|behind|ahead|on track|not yet)\b/i);
+    expect(html.match(/data-testid="count-pips"/g)).toHaveLength(3);
+  });
+
+  it("a tablet (below lg, above a phone) keeps the header and the cards, with tiles and no doors", () => {
+    state.compact = true;
+    const html = render();
+    expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(["child-milestones-portrait", "child-milestones-areas"]);
+    expect(html).toContain('class="portrait-intro"');
+    expect(html).not.toContain("portrait-sr-title");
+    expect(html.match(/data-testid="dev-map-tile"/g)).toHaveLength(8);
+    expect(html).not.toContain('data-testid="child-doors"');
+  });
+
+  it("a wide screen has no tiles, no doors and a visible h1", () => {
+    const html = render();
+    expect(html).not.toContain("dev-map-tiles");
+    expect(html).not.toContain('data-testid="child-doors"');
+    expect(html).not.toContain("portrait-sr-title");
+    expect(html).toContain("<h1>");
   });
 });

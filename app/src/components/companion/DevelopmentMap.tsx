@@ -32,7 +32,16 @@ import "./developmentMap.css";
  * number, no ordering by count, no verdict colour: a row's colour names its
  * AREA (DOMAIN_VARS), never the child's state. Logical layout only; the
  * chevron turns, it is not a direction, so it never mirrors.
+ *
+ * v3 F-CHILD-4 (MOB-02) — `layout="tiles"`: where the open area rides a
+ * bottom sheet (below lg), the eight areas are tiles instead of rows: two
+ * columns on a phone (a last odd tile spans both), four on a tablet. A tile
+ * carries the glyph, the name and the same Seen-it pips (or the day of the
+ * newest moment, or "No record yet"); it opens the sheet, so it says so
+ * (aria-haspopup="dialog") and has no chevron. Same counts-only rules.
  */
+export type DevelopmentMapLayout = "rows" | "tiles";
+
 export interface DevelopmentMapProps {
   milestones: readonly Milestone[];
   /** The child's loaded record (useObservationRecord), already this child's. */
@@ -51,10 +60,12 @@ export interface DevelopmentMapProps {
   recheckDueAt?: string | null;
   /** The clock the growing line reads (tests pin it). */
   nowMs?: number;
+  /** Rows (an open row's body inline) or tiles (the body in a sheet). Default rows. */
+  layout?: DevelopmentMapLayout;
 }
 
 export default function DevelopmentMap({
-  milestones, observations, momentText, openDomain, onToggle, renderDetail, onCheck, primaryMoveProps, recheckDueAt = null, nowMs,
+  milestones, observations, momentText, openDomain, onToggle, renderDetail, onCheck, primaryMoveProps, recheckDueAt = null, nowMs, layout = "rows",
 }: DevelopmentMapProps) {
   const { t, uiLang } = useLanguage();
   const headingId = useId();
@@ -65,13 +76,14 @@ export default function DevelopmentMap({
   const last = useMemo(() => lastMomentByDomain(observations, milestones), [observations, milestones]);
   const growing = useMemo(() => growingDomains(milestones, nowMs ?? Date.now()), [milestones, nowMs]);
   const day = (at: string) => new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" }).format(new Date(at));
+  const tiles = layout === "tiles";
   return (
     <section className="dev-map" data-testid="dev-map" aria-labelledby={headingId}>
       <div className="dev-map-head">
         <div className="dev-map-heading">
           <p className="dev-map-kicker">{t("companion.milestones.mapKicker")}</p>
           <h2 id={headingId}>{t("companion.milestones.areasTitle")}</h2>
-          <p className="dev-map-sub">{t("companion.milestones.areasSub")}</p>
+          <p className="dev-map-sub">{t(tiles ? "companion.milestones.areasSubTiles" : "companion.milestones.areasSub")}</p>
           {recheckDueAt && <p className="dev-map-recheck" data-testid="dev-map-recheck">{t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })}</p>}
         </div>
         <div className="dev-map-tools">
@@ -88,58 +100,98 @@ export default function DevelopmentMap({
           )}
         </div>
       </div>
-      <div className="dev-map-columns" aria-hidden="true">
-        <span />
-        <span>{t("companion.milestones.seenHeader")}</span>
-        <span>{t("companion.milestones.lastMoment")}</span>
-        <span />
-      </div>
-      <ul className="dev-map-rows" role="list">
-        {DOMAIN_IDS.map((domain) => {
-          const tone = DOMAIN_VARS[domain];
-          const moment = last[domain];
-          const open = openDomain === domain;
-          const detailId = `${headingId}-${domain}`;
-          return (
-            <li key={domain} className="dev-map-item" data-open={open ? "true" : undefined}>
-              <button
-                type="button"
-                className="dev-map-row"
-                data-testid="dev-map-row"
-                data-domain={domain}
-                aria-expanded={open}
-                aria-controls={open && renderDetail ? detailId : undefined}
-                onClick={() => onToggle(domain)}
-              >
-                <span className="dev-map-area">
+      {tiles ? (
+        <ul className="dev-map-tiles" role="list" data-testid="dev-map-tiles">
+          {DOMAIN_IDS.map((domain) => {
+            const tone = DOMAIN_VARS[domain];
+            const moment = last[domain];
+            return (
+              <li key={domain} className="dev-map-tile-item">
+                <button
+                  type="button"
+                  className="dev-map-tile"
+                  data-testid="dev-map-tile"
+                  data-domain={domain}
+                  aria-expanded={openDomain === domain}
+                  aria-haspopup="dialog"
+                  onClick={() => onToggle(domain)}
+                >
                   <span className="dev-map-glyph" aria-hidden="true" style={{ color: tone.ink, background: tone.soft }}>
                     <Icon name={DOMAIN_ICONS[domain]} size={22} />
                   </span>
                   <span className="dev-map-name">{domainName(domain, t)}</span>
-                </span>
-                <span className="dev-map-count">
                   {seen[domain] > 0 ? (
                     <CountPips seen={seen[domain]} domain={domain} size={7} />
-                  ) : !moment && (
+                  ) : moment ? (
+                    <span className="dev-map-tile-last" data-testid="dev-map-tile-last">
+                      {t("companion.milestones.lastMoment")}
+                      {" · "}
+                      <time dateTime={moment.at}>{day(moment.at)}</time>
+                    </span>
+                  ) : (
                     <span className="dev-map-none" data-testid="dev-map-none">{t("companion.devMap.none")}</span>
                   )}
-                </span>
-                <span className="dev-map-quote">
-                  {moment && (
-                    <span className="dev-map-last" data-testid="dev-map-last">
-                      <time dateTime={moment.at}>{day(moment.at)}</time>
-                      {" · "}
-                      <span dir="auto">{momentText(moment)}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <>
+          <div className="dev-map-columns" aria-hidden="true">
+            <span />
+            <span>{t("companion.milestones.seenHeader")}</span>
+            <span>{t("companion.milestones.lastMoment")}</span>
+            <span />
+          </div>
+          <ul className="dev-map-rows" role="list">
+            {DOMAIN_IDS.map((domain) => {
+              const tone = DOMAIN_VARS[domain];
+              const moment = last[domain];
+              const open = openDomain === domain;
+              const detailId = `${headingId}-${domain}`;
+              return (
+                <li key={domain} className="dev-map-item" data-open={open ? "true" : undefined}>
+                  <button
+                    type="button"
+                    className="dev-map-row"
+                    data-testid="dev-map-row"
+                    data-domain={domain}
+                    aria-expanded={open}
+                    aria-controls={open && renderDetail ? detailId : undefined}
+                    onClick={() => onToggle(domain)}
+                  >
+                    <span className="dev-map-area">
+                      <span className="dev-map-glyph" aria-hidden="true" style={{ color: tone.ink, background: tone.soft }}>
+                        <Icon name={DOMAIN_ICONS[domain]} size={22} />
+                      </span>
+                      <span className="dev-map-name">{domainName(domain, t)}</span>
                     </span>
-                  )}
-                </span>
-                <Icon name="expand_more" size={22} className="dev-map-chevron" />
-              </button>
-              {open && renderDetail && <div className="dev-map-detail">{renderDetail(domain, detailId)}</div>}
-            </li>
-          );
-        })}
-      </ul>
+                    <span className="dev-map-count">
+                      {seen[domain] > 0 ? (
+                        <CountPips seen={seen[domain]} domain={domain} size={7} />
+                      ) : !moment && (
+                        <span className="dev-map-none" data-testid="dev-map-none">{t("companion.devMap.none")}</span>
+                      )}
+                    </span>
+                    <span className="dev-map-quote">
+                      {moment && (
+                        <span className="dev-map-last" data-testid="dev-map-last">
+                          <time dateTime={moment.at}>{day(moment.at)}</time>
+                          {" · "}
+                          <span dir="auto">{momentText(moment)}</span>
+                        </span>
+                      )}
+                    </span>
+                    <Icon name="expand_more" size={22} className="dev-map-chevron" />
+                  </button>
+                  {open && renderDetail && <div className="dev-map-detail">{renderDetail(domain, detailId)}</div>}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
       <div className="dev-map-foot">
         {growing.length > 0 && (
           <p className="dev-map-growing" data-testid="dev-map-growing">

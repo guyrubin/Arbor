@@ -20,6 +20,8 @@ import { useHashQuery } from "../../hooks/useHashQuery";
 import { asAspectId, buildAspects, toldSummary, waitingOffPage, type AspectId } from "../../lib/aboutAspects";
 import AspectCard from "../about/AspectCard";
 import TellArborMore from "../describe/TellArborMore";
+// v3 F-CHILD-4 (MOB-02) — on a phone the pill closes with My child's doors.
+import ChildDoors, { useChildPhoneLayout } from "../companion/ChildDoors";
 import "../about/about.css";
 
 /**
@@ -38,6 +40,12 @@ import "../about/about.css";
  * `?aspect=<id>` opens the conversation on that area (#/language and
  * #/strengths land here). Nothing on the page grades the child: no share, no
  * fill, no "of 8".
+ *
+ * v3 F-CHILD-4 (MOB-02) — on a phone (below 768 px) the page is the mock's
+ * one stack, and it closes with My child's doors (journal, memory, check,
+ * Care). The doors' memory door IS the page's one door to #/memory there, so
+ * the quiet check line under the areas is wide-screen only: one door per
+ * room at every width, and the waiting sentence moves to that door.
  */
 /** The route's ONE primary move (B-SHELL-26): capture-moment, now on "Tell
  *  Arbor by voice" — telling Arbor one thing, rendered once in every state. */
@@ -53,6 +61,7 @@ const dayOf = (value: string): string => (/^\d{4}-\d{2}-\d{2}$/.test(value) ? `$
 export default function ChildProfile() {
   const { childProfile, approvedMemoryItems, pendingMemoryItems, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
+  const phone = useChildPhoneLayout();
   // B-SHELL-27: ONE resolver (hero render → photo → initial) — the same face
   // the sidebar and the switcher show; "Create hero" only when there is none.
   const { name: heroName } = useHeroAvatar();
@@ -146,6 +155,7 @@ export default function ChildProfile() {
             </li>
           ))}
         </ul>
+        {!phone && (
         <button type="button" data-testid="profile-remember-check" onClick={() => setActiveTab("memory")} className="about-memory-door min-h-11">
           <span className="about-memory-door-text">
             <span>{t("elev.profile.remembers.title")}</span>
@@ -153,6 +163,7 @@ export default function ChildProfile() {
           </span>
           <Icon name="chevron_right" size={20} className="rtl:rotate-180" />
         </button>
+        )}
       </section>
 
       {/* 3 — Details: ONE tap — the row opens the profile drawer (name, age,
@@ -194,6 +205,9 @@ export default function ChildProfile() {
           </div>
         </details>
       </section>
+
+      {/* A phone closes the pill with the doors (no data-module: navigation). */}
+      {phone && <ChildDoors memoryWaiting={waiting} />}
 
       {sheet && <TellArborMore key={`${sheet.aspect ?? "all"}-${sheet.mode}`} aspect={sheet.aspect} mode={sheet.mode} onClose={closeSheet} />}
       <ProfileEditDrawer open={editingProfile} onClose={() => setEditingProfile(false)} />

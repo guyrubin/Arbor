@@ -81,6 +81,9 @@ function mountedPortraitProof(duplicateKey: boolean) {
     "./MilestoneAreas": { default: Watch },
     // v3 F-CHILD-1: the goal card (PortraitCards) is the door that opens the picker.
     "./PortraitCards": { default: ({ onEditGoal }) => React.createElement("button", { onClick: onEditGoal, "data-testid": "portrait-goals-edit" }) },
+    // v3 F-CHILD-4 RE-PIN (test seam only): the phone stack's doors and width
+    // read; this proof runs the wide order, which keeps the modules it pins.
+    "./ChildDoors": { default: empty, useChildPhoneLayout: () => false },
   }, source => duplicateKey ? source.replace('key={`goal-picker:${childProfile.id}`}', 'key={childProfile.id}') : source).default;
   function Shell() {
     const [route, changeRoute] = React.useState("development"), [, changeVersion] = React.useState(0);

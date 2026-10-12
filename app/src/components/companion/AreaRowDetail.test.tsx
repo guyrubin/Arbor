@@ -378,3 +378,26 @@ describe("v3 F-CHILD-1 — Add your own", () => {
     expect(onAddOwn).not.toHaveBeenCalled();
   });
 });
+
+/* v3 F-CHILD-4 (MOB-02) — in the phone sheet the tile it opened from has no
+   room to quote, so the sheet opens on the area's newest moment: the day and
+   the parent's own words (invented here), ruled in the area's ink. */
+describe("v3 F-CHILD-4 (MOB-02) — the sheet opens on the newest moment", () => {
+  it.each(["en", "he"] as const)("quotes the parent's words with their day, before the why line (%s)", lang => {
+    state.lang = lang;
+    const html = render({ domain: "talking", lastMoment: { at: "2026-05-02T10:00:00.000Z", text: "Asked for more juice at breakfast" } });
+    const line = html.match(/<p class="area-detail-last" data-testid="area-detail-last"[^>]*>[\s\S]*?<\/p>/)?.[0] ?? "";
+    expect(line).toContain(esc(translate(lang, "companion.milestones.lastMoment")));
+    expect(line).toMatch(/<time datetime="2026-05-02T10:00:00\.000Z">/i);
+    expect(line).toContain('<span dir="auto">Asked for more juice at breakfast</span>');
+    expect(html.indexOf('data-testid="area-detail-last"')).toBeLessThan(html.indexOf('class="area-detail-why"'));
+    // The rule takes the AREA's ink (DOMAIN_VARS), never a state colour.
+    expect(line).toMatch(/style="border-inline-start-color:[^"]+"/);
+    expect(line).not.toMatch(/--arbor-(?:green|red|amber|yellow)/);
+  });
+
+  it("inline under a row there is no line: the row already quotes the moment", () => {
+    expect(render()).not.toContain("area-detail-last");
+    expect(render({ lastMoment: null })).not.toContain("area-detail-last");
+  });
+});

@@ -71,6 +71,34 @@
   .dev-map-detail { padding-inline: 4px; }
 }
 
+/* ── v3 F-CHILD-4 (MOB-02): the areas as tiles, where the body rides a sheet ─
+   Below lg an area opens in the bottom Sheet, so the eight areas are tiles:
+   four columns on a tablet, two on a phone, and a last odd tile spans the
+   row (seven or eight areas both lay out). A tile is one neutral paper card;
+   its colour is the area's glyph, never the child's state. */
+.dev-map-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.dev-map-tile-item { display: flex; min-inline-size: 0; }
+.dev-map-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; inline-size: 100%; min-inline-size: 0; min-block-size: 88px; padding-block: 12px; padding-inline: 14px; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); background: var(--arbor-paper-elevated); color: var(--arbor-ink); font: inherit; text-align: start; cursor: pointer; transition: background .2s ease; }
+.dev-map-tile:hover, .dev-map-tile[aria-expanded="true"] { background: var(--arbor-paper-deep); }
+.dev-map-tile .dev-map-glyph { inline-size: 40px; block-size: 40px; }
+.dev-map-tile .dev-map-name { font-size: 14px; }
+.dev-map-tile-last { font-size: 12px; line-height: 1.4; color: var(--arbor-muted); }
+@media (max-width: 767.98px) {
+  /* The phone card (the mock's Phone frame): heading, a full-width check, the
+     one Seen-it chip, two columns of tiles, the foot. */
+  .dev-map-sub { display: none; }
+  .dev-map-tools { flex: 1 1 100%; flex-direction: column; align-items: stretch; }
+  .dev-map-check { justify-content: center; min-block-size: 46px; border-radius: 12px; }
+  .dev-map-chip { align-self: flex-start; }
+  .dev-map-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dev-map-tile-item:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+/* The area's newest moment, at the head of its sheet (the tile has no room
+   to quote it): the parent's words, ruled in the AREA's ink. */
+.area-detail-last { margin: 0; padding-inline-start: 10px; border-inline-start: 2px solid var(--arbor-rule-strong); font-family: var(--font-editorial); font-size: 15px; line-height: 1.4; color: var(--arbor-ink); overflow-wrap: anywhere; }
+.area-detail-last-when { display: block; margin-block-end: 2px; font-family: var(--font-sans); font-size: 12px; color: var(--arbor-muted); }
+
 /* ── An open row (inline, or inside the phone Sheet) ────────────────────── */
 .area-detail { display: grid; gap: 16px; color: var(--arbor-ink); }
 .area-detail-why { margin: 0; font-size: 14px; line-height: 1.6; color: var(--arbor-ink-soft); }
@@ -107,4 +135,4 @@
 }
 
 .portrait-cards button:focus-visible, .dev-map button:focus-visible, .area-detail button:focus-visible, .area-detail summary:focus-visible, .area-detail input:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .dev-map-row, .dev-map-chevron, .portrait-card-goal { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .dev-map-row, .dev-map-chevron, .portrait-card-goal, .dev-map-tile { transition: none; } }

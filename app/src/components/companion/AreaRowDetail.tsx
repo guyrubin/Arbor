@@ -7,6 +7,7 @@ import { milestoneText } from "../../lib/milestoneData";
 import type { ObserveStatus } from "../../lib/milestones/observe";
 import { groupMilestonesByShelf, shelfBands } from "../../lib/milestones/shelfMap";
 import { shelfLabel, shelvesOfDomain } from "../../lib/shelves/registry";
+import { DOMAIN_VARS } from "../../lib/tokens";
 import type { Milestone } from "../../types";
 import { Icon } from "../ui/Icon";
 import { Receipt } from "../ui/Receipt";
@@ -32,6 +33,11 @@ import "./developmentMap.css";
  * The skill the parent chose to watch for (Development Check) leads its area,
  * with the re-check date and a way to stop watching. The detail stamps no
  * module and carries no primary move.
+ *
+ * v3 F-CHILD-4 (MOB-02): in the phone sheet the tile it opened from has no
+ * room to quote the area's newest moment, so the sheet opens on it (the
+ * mock's open area): the day and the parent's own words, ruled in the
+ * area's ink. Inline under a row the row already quotes it, so it is absent.
  */
 const WHY_KEYS: Readonly<Record<DomainId, string>> = {
   talking: "companion.devMap.why.talking",
@@ -72,11 +78,13 @@ export interface AreaRowDetailProps {
   onOpenMoments: () => void;
   /** The id the open row's button points at (aria-controls). */
   id?: string;
+  /** The area's newest moment (the sheet's opening line); absent inline. */
+  lastMoment?: { at: string; text: string } | null;
 }
 
 export default function AreaRowDetail({
   domain, milestones, currentBandMonths, gender = null, onAnswer, onKeep, onAddOwn, watch = null, onUndoWatch = null,
-  onCheck, onExplore, onOpenMoments, id,
+  onCheck, onExplore, onOpenMoments, id, lastMoment = null,
 }: AreaRowDetailProps) {
   const { t, uiLang } = useLanguage();
   const copy = PARENT_RECORD_COPY[uiLang === "he" ? "he" : "en"];
@@ -151,6 +159,16 @@ export default function AreaRowDetail({
   };
   return (
     <div className="area-detail" id={id} data-testid="area-detail" data-domain={domain} dir={uiLang === "he" ? "rtl" : "ltr"}>
+      {lastMoment && (
+        <p className="area-detail-last" data-testid="area-detail-last" style={{ borderInlineStartColor: DOMAIN_VARS[domain].ink }}>
+          <span className="area-detail-last-when">
+            {t("companion.milestones.lastMoment")}
+            {" · "}
+            <time dateTime={lastMoment.at}>{fmtDay(lastMoment.at, uiLang)}</time>
+          </span>
+          <span dir="auto">{lastMoment.text}</span>
+        </p>
+      )}
       <p className="area-detail-why">{t(WHY_KEYS[domain])}</p>
       {watched && (
         <ul className="area-detail-skills area-detail-watch" data-testid="area-detail-watch">

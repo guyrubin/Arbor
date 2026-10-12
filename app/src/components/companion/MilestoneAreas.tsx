@@ -10,6 +10,7 @@ import { readRitualRecord } from "../../lib/familyRitualsCadence";
 import { keepsakeDoc, keepsakeMapFromDocs, upsertKeepsake, type KeepsakeDoc, type KeepsakeDraft } from "../../lib/firstsKeepsake";
 import { ADVENTURES, type SavedComicMeta } from "../../lib/heroComics";
 import { bandForAgeMonths, comparisonAgeMonths, milestoneText } from "../../lib/milestoneData";
+import { lastMomentByDomain } from "../../lib/milestones/domainMap";
 import type { ObserveStatus } from "../../lib/milestones/observe";
 import type { Observation } from "../../lib/observations";
 import { latestRecheckDueAt } from "../../lib/screeningRecheck";
@@ -30,6 +31,12 @@ import { CUSTOM_MILESTONE_DOMAIN, areaFromQuery, watchDomain } from "./milestone
  * tap toggles a row; at most one is open. A wide screen opens the row's body
  * inline under it (no dialog); below lg the same AreaRowDetail rides a bottom
  * Sheet (critic ruling 25).
+ *
+ * v3 F-CHILD-4 (MOB-02): below lg the areas are tiles (DevelopmentMap
+ * layout="tiles"), since a tile, not a row, is what opens a sheet; the sheet
+ * opens on the area's newest moment, which the tile has no room to quote. The
+ * Sheet brings the drag bar, the 44 px close, Escape, the backdrop and focus
+ * back to the tile.
  *
  * Absorbed from the old surfaces, so nothing they did is lost:
  *  · MilestonesTab: the answers write through setMilestoneObservation (the one
@@ -144,10 +151,18 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
     return write;
   };
 
-  const detail = (domain: DomainId, detailId?: string) => (
+  // The sheet's opening line: the same newest moment the wide row quotes.
+  const lastMoments = useMemo(() => (compact ? lastMomentByDomain(observations, milestones) : null), [compact, observations, milestones]);
+  const sheetMoment = (domain: DomainId) => {
+    const moment = lastMoments?.[domain];
+    return moment ? { at: moment.at, text: momentText(moment) } : null;
+  };
+
+  const detail = (domain: DomainId, detailId?: string, lastMoment: { at: string; text: string } | null = null) => (
     <AreaRowDetail
       key={domain}
       id={detailId}
+      lastMoment={lastMoment}
       domain={domain}
       milestones={milestones}
       currentBandMonths={currentBandMonths}
@@ -175,10 +190,11 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
         onCheck={() => setActiveTab("screening")}
         primaryMoveProps={primaryMoveProps}
         recheckDueAt={chosenWatch ? null : recheckDueAt}
+        layout={compact ? "tiles" : "rows"}
       />
       {compact && openDomain && (
         <Sheet open onClose={close} title={domainName(openDomain, t)}>
-          {detail(openDomain)}
+          {detail(openDomain, undefined, sheetMoment(openDomain))}
         </Sheet>
       )}
       {keeping && (

@@ -278,3 +278,113 @@ describe("v3 F-CHILD-1 — developmentMap.css", () => {
     expect(rule(".dev-map-chip-dot")).toContain("background: var(--arbor-ink-soft)");
   });
 });
+
+/* v3 F-CHILD-4 (MOB-02) — below lg an area opens in the bottom Sheet, so the
+   eight areas are tiles: glyph, name and the Seen-it pips (or the day of the
+   newest moment, or "No record yet"). No percentage, no level word, no state
+   colour; two columns on a phone with an odd last tile spanning the row. */
+describe("v3 F-CHILD-4 (MOB-02) — DevelopmentMap tiles", () => {
+  const tileOf = (html: string, domain: DomainId) => {
+    const start = html.indexOf(`data-testid="dev-map-tile" data-domain="${domain}"`);
+    const next = html.indexOf('data-testid="dev-map-tile"', start + 1);
+    return html.slice(start, next === -1 ? html.indexOf("</ul>", start) : next);
+  };
+
+  it.each(["en", "he"] as const)("eight closed tiles in registry order, a list; each a glyph and a name, opening a dialog; no rows, no chevron, no quote (%s)", lang => {
+    state.lang = lang;
+    const html = render({ layout: "tiles" });
+    expect(html).toMatch(/<ul class="dev-map-tiles" role="list" data-testid="dev-map-tiles">/);
+    expect([...html.matchAll(/<button type="button" class="dev-map-tile" data-testid="dev-map-tile" data-domain="([a-z]+)" aria-expanded="false" aria-haspopup="dialog">/g)].map(m => m[1])).toEqual([...DOMAIN_IDS]);
+    expect(html).not.toContain('data-testid="dev-map-row"');
+    expect(html).not.toContain("dev-map-columns");
+    expect(html).not.toContain("dev-map-chevron");
+    expect(html).not.toContain("aria-controls");
+    expect(html).not.toContain('data-testid="dev-map-last"');
+    for (const d of DOMAIN_IDS) {
+      const tile = tileOf(html, d);
+      expect(tile).toContain(`>${DOMAIN_ICONS[d]}</span>`);
+      expect(tile).toContain(esc(domainName(d, (key: string) => translate(lang, key))));
+      expect(tile).toContain(esc(translate(lang, "companion.devMap.none")));
+    }
+    // The tiles' own line: "tap an area", not "tap a row".
+    expect(html).toContain(esc(translate(lang, "companion.milestones.areasSubTiles")));
+    expect(html).not.toContain(esc(translate(lang, "companion.milestones.areasSub")));
+    expect(html).not.toContain("data-module");
+    expect(html).not.toContain("data-primary-move");
+  });
+
+  it("a tile carries the Seen-it pips, else the day of the newest moment, else No record yet; never the moment's words", () => {
+    const by = groupMilestonesByShelf(catalogue());
+    const marked = new Set(by.words.slice(0, 2).map(m => m.id));
+    const ms = catalogue().map(m => (marked.has(m.id) ? seen(m) : m));
+    const observations = [moment("kept-move", ["moving"], "2026-05-02T10:00:00.000Z")];
+    const html = render({ layout: "tiles", milestones: ms, observations, momentText: o => `words of ${o.id}` });
+    expect(tileOf(html, "talking")).toContain('data-testid="count-pips" data-domain="talking"');
+    expect(tileOf(html, "talking")).toMatch(/class="arbor-pips-n"[^>]*>2</);
+    expect(tileOf(html, "talking")).not.toContain('data-testid="dev-map-none"');
+    expect(tileOf(html, "moving")).toContain('data-testid="dev-map-tile-last"');
+    expect(tileOf(html, "moving")).toContain(esc(translate("en", "companion.milestones.lastMoment")));
+    expect(tileOf(html, "moving")).toMatch(/<time datetime="2026-05-02T10:00:00\.000Z">/i);
+    expect(tileOf(html, "moving")).not.toContain('data-testid="dev-map-none"');
+    // The sheet quotes the words (AreaRowDetail lastMoment); a tile has no room to.
+    expect(html).not.toContain("words of");
+    expect(html.match(/data-testid="count-pips"/g)).toHaveLength(1);
+    expect(html.match(/data-testid="dev-map-none"/g)).toHaveLength(6);
+  });
+
+  it.each(["en", "he"] as const)("CLINICAL FIREWALL: no share, no denominator, no 'n of m', no level word on any tile (%s)", lang => {
+    state.lang = lang;
+    const by = groupMilestonesByShelf(catalogue());
+    const marked = new Set([...by.words.slice(0, 4), ...by.moving.slice(0, 3), ...by.hands.slice(0, 2)].map(m => m.id));
+    const ms = catalogue().map(m => (marked.has(m.id) ? seen(m, "2026-06-10T10:00:00.000Z") : { ...m, observationStatus: "not_yet" as const }));
+    const html = render({ layout: "tiles", milestones: ms, observations: [moment("a", ["talking"], "2026-06-01T10:00:00.000Z")] });
+    const text = words(html);
+    expect(text).not.toMatch(/%/);
+    expect(text).not.toMatch(/\d+\s*\/\s*\d+/);
+    expect(text).not.toMatch(/\bof\s+\d+|\d+\s+of\s+\d+|\d+\s+מתוך\s+\d+|מתוך\s+\d+/);
+    const tiles = words(html.slice(html.indexOf('data-testid="dev-map-tiles"'), html.indexOf("</ul>", html.indexOf('data-testid="dev-map-tiles"'))));
+    expect(tiles).not.toMatch(/\b(low|medium|high|behind|ahead|on track|not yet|not sure)\b/i);
+    // A tile's colour is its area's glyph (DOMAIN_VARS), set inline on the glyph only.
+    expect(html).not.toMatch(/class="dev-map-tile"[^>]*style=/);
+  });
+
+  it("a tile toggles its own area and says it is open; the body is never drawn inline, even when handed one", () => {
+    const onToggle = vi.fn();
+    const html = render({ layout: "tiles", openDomain: "hands", onToggle, renderDetail: (domain, id) => <div data-testid="detail-probe" data-for={domain} id={id} /> });
+    expect(html).toContain('data-testid="dev-map-tile" data-domain="hands" aria-expanded="true" aria-haspopup="dialog"');
+    expect(html.match(/aria-expanded="true"/g)).toHaveLength(1);
+    expect(html).not.toContain('data-testid="detail-probe"');
+    for (const d of DOMAIN_IDS) state.buttons.find(b => b["data-testid"] === "dev-map-tile" && b["data-domain"] === d)!.onClick!();
+    expect(onToggle.mock.calls.map(c => c[0])).toEqual([...DOMAIN_IDS]);
+  });
+
+  it("the page's primary-move stamp still lands on the check, once", () => {
+    const html = render({ layout: "tiles", primaryMoveProps: { "data-primary-move": "start-development-check" } });
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    expect(html).toMatch(/<button type="button" class="dev-map-check" data-testid="dev-map-check" data-primary-move="start-development-check">/);
+  });
+
+  describe("developmentMap.css — the tiles", () => {
+    const css = readFileSync(new URL("./developmentMap.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const rule = (sel: string) => css.match(new RegExp(`(?:^|\\n)${sel.replace(/[.[\]"=]/g, "\\$&")} \\{([^}]*)\\}`))?.[1] ?? "";
+    const phone = css.match(/@media \(max-width: 767\.98px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+    it("four columns where the sheet takes over; two on a phone, with a last odd tile spanning the row", () => {
+      expect(rule(".dev-map-tiles")).toContain("grid-template-columns: repeat(4, minmax(0, 1fr))");
+      expect(phone).toContain(".dev-map-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }");
+      expect(phone).toContain(".dev-map-tile-item:last-child:nth-child(odd) { grid-column: 1 / -1; }");
+    });
+    it("a tile is a tall target of neutral paper, text at the inline start", () => {
+      expect(rule(".dev-map-tile")).toContain("min-block-size: 88px");
+      expect(rule(".dev-map-tile")).toContain("background: var(--arbor-paper-elevated)");
+      expect(rule(".dev-map-tile")).toContain("text-align: start");
+    });
+    it("on a phone the check fills the card at 46 px and the tiles' line gives way to the tiles", () => {
+      expect(phone).toMatch(/\.dev-map-check \{[^}]*min-block-size: 46px/);
+      expect(phone).toContain(".dev-map-sub { display: none; }");
+    });
+    it("the sheet's newest-moment line is ruled on the inline start", () => {
+      expect(rule(".area-detail-last")).toContain("border-inline-start:");
+      expect(rule(".area-detail-last")).toContain("padding-inline-start:");
+    });
+  });
+});
