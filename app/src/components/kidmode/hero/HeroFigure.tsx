@@ -18,7 +18,8 @@
  * Decorative (aria-hidden): the game says what the hero does.
  * Motion is transform/opacity only (Web Animations, no new runtime).
  */
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useLayoutEffect, useMemo, useRef } from "react";
+import { heroAvatarHash } from "../../../lib/heroSheetContract";
 import { HERO_POSES, carryPoint, poseFactor, referenceSprite, resolvePose, type HeroPoseId, type HeroSheet } from "./heroSheet";
 
 export interface HeroFigureProps {
@@ -64,7 +65,17 @@ export function spriteBox(sheet: HeroSheet, pose: HeroPoseId, height: number): {
   return { pose: r.pose, url: r.sprite.url, left: -r.sprite.foot.x * k, top: -r.sprite.foot.y * k, width: r.sprite.w * k, height: r.sprite.h * k };
 }
 
+/** A redraw must replace the decoded image node, including under the same
+ * avatar identity. Computed once per sheet snapshot, never on animation ticks. */
+export function heroSpriteKeys(sheet: HeroSheet): Partial<Record<HeroPoseId, string>> {
+  return Object.fromEntries(HERO_POSES.flatMap(pose => {
+    const sprite = sheet.poses[pose];
+    return sprite ? [[pose, `${sheet.heroId}:${pose}:${heroAvatarHash(sprite.url)}`]] : [];
+  }));
+}
+
 export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobble = false, zIndex, travel, carry }: HeroFigureProps) {
+  const imageKeys = useMemo(() => heroSpriteKeys(sheet), [sheet]);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const breatheRef = useRef<HTMLDivElement | null>(null);
   const shown = resolvePose(sheet, pose)?.pose ?? "idle";
@@ -145,7 +156,7 @@ export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobb
             const k = poseFactor(sheet, sprite, height);
             return (
               <img
-                key={p}
+                key={imageKeys[p]}
                 src={sprite.url}
                 alt=""
                 draggable={false}
@@ -158,6 +169,10 @@ export function HeroFigure({ pose, height, sheet, x, y, kick = 0, lift = 0, wobb
                   width: sprite.w * k,
                   height: sprite.h * k,
                   maxWidth: "none",
+                  // An approved portrait can stand in while its pose sheet is
+                  // unavailable. Keep its natural ratio and bottom anchor.
+                  objectFit: "contain",
+                  objectPosition: "center bottom",
                   opacity: p === shown ? 1 : 0,
                   pointerEvents: "none",
                 }}

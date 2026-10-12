@@ -80,15 +80,21 @@ describe("1 · each place's row, in table A's order", () => {
 
 describe("2 · pillRowFor: the place's row on the place and on every leaf", () => {
   it("every route whose home is Now or My child wears that place's row", () => {
-    let checked = 0;
+    const checked: string[] = [];
     for (const tab of ALL_TABS) {
       const home = homeIdForTab(tab);
       if (NO_PILL_ROW_TABS.has(tab) || (home !== "now" && home !== "child")) continue;
       expect(rowFor(tab), tab).toBe(PLACE_PILLS[home]);
-      checked += 1;
+      checked.push(tab);
     }
-    // the four Now routes plus the My child homes and leaves (profile, memory, plans, screening …)
-    expect(checked).toBeGreaterThanOrEqual(15);
+    // FEAT-07 moves Plans into Together. Keep exact coverage of every remaining
+    // Now/My child route, rather than retaining the pre-routines count.
+    expect(checked).toEqual([
+      "overview", "behaviors", "milestones", "weekly", "language", "profile",
+      "memory", "strengths", "screening", "copilot", "development",
+      "day-windows", "smart-reminders", "science",
+    ]);
+    expect(homeIdForTab("plans")).toBe("together");
   });
 
   it("the acceptance routes: #/development, #/overview, and #/milestones in the My child row", () => {

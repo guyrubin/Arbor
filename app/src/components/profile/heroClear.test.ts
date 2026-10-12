@@ -45,8 +45,18 @@ describe("B-KID-36 — the profile drawer cannot turn a real photo into the hero
   it("the drawer save always writes its own avatar key (never the omit-when-empty spread)", () => {
     expect(drawer).not.toMatch(/\.\.\.\(avatarMeta \? \{ avatar: avatarMeta \} : \{\}\)/);
     expect(drawer).toContain("avatar: avatarMeta ?? undefined,");
+    expect(drawer).toContain("comicAvatarUrl: comicAvatarUrl || undefined,");
     // Upload and Remove are the two paths that clear the metadata.
     expect(drawer).toContain("setAvatarMeta(undefined); // a raw uploaded photo isn't a generated avatar");
+  });
+
+  it("replacing or removing a profile picture also retires a legacy comic override", () => {
+    const previous = { ...STORED, comicAvatarUrl: "data:image/png;base64,OLDERHERO" };
+    for (const photoUrl of [UPLOADED_INLINE, UPLOADED_STORAGE, ""]) {
+      const { next, clears } = applyPatch(previous, { photoUrl, avatar: undefined, comicAvatarUrl: undefined });
+      expect(clears).toContain("comicAvatarUrl");
+      expect(resolveHeroUrl(next)).toBeNull();
+    }
   });
 
   it("'Upload a photo instead' + Save → the patch deletes avatar and the child has no hero", () => {

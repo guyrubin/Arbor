@@ -39,7 +39,7 @@ export interface HeroSprite {
   scale?: number;
 }
 
-export type HeroSheetSource = "generated" | "stock" | "proof" | "dev-placeholder";
+export type HeroSheetSource = "generated" | "stock" | "proof" | "dev-placeholder" | "avatar";
 
 export interface HeroSheet {
   v: 1;

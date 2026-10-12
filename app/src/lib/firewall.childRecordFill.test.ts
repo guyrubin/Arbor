@@ -45,6 +45,11 @@ const SCANNED = [
   "components/companion/ChildPortrait.tsx",
   "components/companion/PortraitWatchRow.tsx",
   "components/companion/PortraitKeepsakes.tsx",
+  // v3 FEAT-03: the development map and its domain sheet on My child.
+  "components/companion/DevelopmentMap.tsx",
+  "components/companion/DomainSheet.tsx",
+  // v3 FEAT-08: the words-and-firsts strip on My child (names and words, no fill).
+  "components/companion/WordsFirstsStrip.tsx",
   ...GROWTH_FILES,
   "components/sections/ChildProfile.tsx",
   "components/practice/DevelopmentCopilot.tsx",
@@ -71,6 +76,17 @@ describe("B-GROWTH-07 — no proportional fill of a child record", () => {
     const src = stripComments(read("components/companion/ChildPortrait.tsx"));
     expect(src).not.toMatch(/\btotal\b|%|Chart|<svg/);
     expect(src).not.toMatch(/sort\([^)]*count/);
+  });
+
+  /* v3 FEAT-03 — the development map and its domain sheet carry the area
+     lens's bans: Seen-it counts only, no total, share, chart or ranking. */
+  it("covers the development map and its domain sheet like the area lens", () => {
+    for (const rel of ["components/companion/DevelopmentMap.tsx", "components/companion/DomainSheet.tsx"]) {
+      expect(SCANNED).toContain(rel);
+      const src = stripComments(read(rel));
+      expect(src, rel).not.toMatch(/\btotal\b|%|Chart|<svg/);
+      expect(src, rel).not.toMatch(/sort\(/);
+    }
   });
 
   it("the Record-by-area strings name no total, share or trend (EN + HE)", () => {

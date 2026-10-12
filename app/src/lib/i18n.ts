@@ -808,6 +808,16 @@ export const en: Dict = {
   "hm.ref.open": "Open the guide",
   "hm.ref.dismiss": "Remove the guide card",
   "hm.today.eyebrow": "From your recent moments",
+  // FEAT-06 (v3 hard moment): the "you first" view above the picker.
+  "hm.first.kicker": "Words and one step for right now",
+  "hm.first.title": "You first. Then {name}.",
+  "hm.first.titleBare": "You first. Then your child.",
+  "hm.first.say": "I can see this is hard right now. I’m here. Let’s breathe together.",
+  "hm.first.stepTitle": "Three slow breaths, together",
+  "hm.first.stepBody": "Hands on your belly. Breathe out slowly. No explaining yet.",
+  "hm.first.talk": "Talk it through",
+  "hm.first.keep": "Keep this moment",
+  "hm.first.safety": "Help and safety",
   // Language Lab (lang.*)
   "lang.title": "Language & Communication",
   "lang.subtitle": "Growing the languages {first} speaks at home, with calm daily practice. For practicing how specific sounds are formed, that's Speech Coach.",
@@ -2616,6 +2626,8 @@ export const en: Dict = {
   "nav.pill.safety": "Safety",
   "nav.pill.school-brief": "School brief",
   "nav.pill.sharing": "Trusted sharing",
+  // v3 IA-06 — the open L2 sheet's breadcrumb (layout/Breadcrumb): the landmark's name.
+  "nav.crumb.aria": "Location",
 };
 
 export const he: Dict = {
@@ -3366,6 +3378,16 @@ export const he: Dict = {
   "hm.ref.open": "לפתוח את המדריך",
   "hm.ref.dismiss": "להסיר את כרטיס המדריך",
   "hm.today.eyebrow": "מהרגעים האחרונים שתיעדתם",
+  // FEAT-06 (v3 hard moment): the "you first" view above the picker.
+  "hm.first.kicker": "מילים וצעד אחד לרגע הזה",
+  "hm.first.title": "קודם אתם. אחר כך {name}.",
+  "hm.first.titleBare": "קודם אתם. אחר כך הילד שלכם.",
+  "hm.first.say": "אני רואה שקשה לך עכשיו. אני כאן. ננשום יחד.",
+  "hm.first.stepTitle": "שלוש נשימות איטיות, יחד",
+  "hm.first.stepBody": "ידיים על הבטן. נשיפה ארוכה ואיטית. בלי הסברים עדיין.",
+  "hm.first.talk": "לדבר על זה",
+  "hm.first.keep": "לשמור את הרגע",
+  "hm.first.safety": "עזרה ובטיחות",
   // Language Lab (lang.*)
   "lang.title": "שפה ותקשורת",
   "lang.subtitle": "מגדלים את השפות שבהן {first} מדבר/ת בבית, עם תרגול יומי רגוע. לתרגול אופן יצירת צלילים ספציפיים — זה מאמן הדיבור.",
@@ -5073,6 +5095,8 @@ export const he: Dict = {
   "nav.pill.safety": "בטיחות",
   "nav.pill.school-brief": "תקציר לגן/בית הספר",
   "nav.pill.sharing": "שיתוף מהימן",
+  // v3 IA-06 — פירורי הלחם של גיליון פתוח (layout/Breadcrumb): שם אזור הניווט.
+  "nav.crumb.aria": "נתיב ניווט",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and

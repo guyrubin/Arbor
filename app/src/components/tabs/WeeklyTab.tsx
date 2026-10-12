@@ -23,6 +23,9 @@ import type { WeeklyDigest } from "../../lib/api";
 import WhatWorkedCard, { whatWorkedThisWeek } from "../weekly/WhatWorkedCard";
 import InviteCard from "../referral/InviteCard";
 import { EMPTY_ART } from "../../lib/parentArt";
+import { useObservations } from "../../hooks/useObservations";
+import { weekGlance, glanceHasCounts } from "../../lib/weekGlance";
+import WeekGlance from "../weekly/WeekGlance";
 
 /* B-OCCL-02 (6 Oct): the route's ONE data-primary-move literal. It is spread
    on the control that performs the move — the letter's "Make it today's step"
@@ -151,6 +154,18 @@ export default function WeeklyTab() {
     () => whatWorkedThisWeek(actionLoop, recapRecord.weekStartMs, { locale: uiLang === "he" ? "he" : "en", childName: first }),
     [actionLoop, recapRecord.weekStartMs, uiLang, first]
   );
+  /* v3 EXTRA-WEEKLY: the week as counts (lib/weekGlance, the numbers Now's
+     "This week so far" shows) over the same week the letter reads. The
+     current week only: a history week is a frozen letter, and the glance
+     speaks of "this week". With counts and no stored report, the glance
+     takes the empty card's place; with nothing to count, the empty card
+     stays. It stamps its own module and carries no move. */
+  const observations = useObservations();
+  const glance = useMemo(
+    () => weekGlance({ observations, actionLoop, now: new Date(), weekStartMs: recapRecord.weekStartMs }),
+    [observations, actionLoop, recapRecord.weekStartMs]
+  );
+  const glanceShown = (selectedId ?? currentId) === currentId && glanceHasCounts(glance);
   const parentFirst = (user?.displayName || t("nav.parent")).split(" ")[0];
   useEffect(() => {
     if (showRecap && recap.recapUnopened) recap.markRecapOpened();
@@ -268,6 +283,12 @@ export default function WeeklyTab() {
                IS the only move on the screen. */
             action={hasStoredCurrentWeek ? undefined : retellButton}
           />
+          {/* v3 EXTRA-WEEKLY: what the page holds, in one line. From md up
+              only: at 375 the letter's accept sits 13 px above the capture
+              dock (WeeklyTab.fold line model), and this line would push it under. */}
+          <p data-testid="weekly-glance-sub" className="hidden md:block mt-1 text-sm" style={{ color: "var(--arbor-muted)" }}>
+            {t("elev.wk.glance.sub")}
+          </p>
         </div>
       </div>
 
@@ -286,6 +307,8 @@ export default function WeeklyTab() {
            (surfaceContract weekly) — the primary move has nothing to accept
            until a week exists. */
         <>
+        {glanceShown && <WeekGlance glance={glance} />}
+        {!glanceShown && (
         <div data-module="weekly-empty" className={`${cardCls} p-8 text-center text-sm`} style={{ color: "var(--arbor-muted)" }}>
           {/* ENG-07: the copy promised "log a moment and this week's report will
               build itself". Nothing builds itself — the report is generated when
@@ -308,6 +331,7 @@ export default function WeeklyTab() {
             <Icon name="add" size={16} /> {t("elev.wk.logMoment")}
           </button>
         </div>
+        )}
         {afterStory}
         </>
       ) : (
@@ -425,6 +449,10 @@ export default function WeeklyTab() {
           )}
 
           {afterStory}
+
+          {/* v3 EXTRA-WEEKLY: under the letter and the Retell row, so the
+              route's move keeps its place at 375. */}
+          {glanceShown && <WeekGlance glance={glance} />}
 
           {/* R25 (item 11) → B-TODAY-22: ONE collapsed disclosure, holding the
               week's milestone wins only (one nested level at most). Demoted

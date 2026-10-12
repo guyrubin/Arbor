@@ -2990,12 +2990,26 @@ Framing: head-and-shoulders portrait, centered, simple soft background, warm and
     }
 
     let referenceImage: { data: string; mimeType: string } | null = null;
-    if (avatar) {
+    // An explicitly supplied hero must never silently become a generic child.
+    // Null/omitted references retain the existing intentional generic-art flow.
+    if (avatar !== undefined && avatar !== null) {
       const parsed = parseDataUrl(avatar?.dataUrl ?? avatar);
-      if (parsed && parsed.mimeType.startsWith("image/")) {
-        const approxBytes = Math.floor((parsed.data.length * 3) / 4);
-        if (approxBytes <= 6 * 1024 * 1024) referenceImage = parsed;
+      if (!parsed || !parsed.mimeType.startsWith("image/")) {
+        res.status(400).json({ error: "A valid avatar image reference is required", code: "invalid_avatar_reference" });
+        return;
       }
+      const approxBytes = Math.floor((parsed.data.length * 3) / 4);
+      if (approxBytes > 6 * 1024 * 1024) {
+        res.status(413).json({ error: "Avatar reference too large — please use a smaller image", code: "invalid_avatar_reference" });
+        return;
+      }
+      const unpadded = parsed.data.replace(/=+$/, "");
+      if (!/^[A-Za-z0-9+/]+={0,2}$/.test(parsed.data) || unpadded.length % 4 === 1 ||
+          (parsed.data.includes("=") && parsed.data.length % 4 !== 0)) {
+        res.status(400).json({ error: "A valid avatar image reference is required", code: "invalid_avatar_reference" });
+        return;
+      }
+      referenceImage = parsed;
     }
 
     const stylePrompt = SCENE_STYLE_DIRECTIONS[normalizeAvatarStyle(style)];
@@ -3060,12 +3074,26 @@ Friendly lighting and a readable composition. Gentle, non-scary, non-violent and
     }
 
     let referenceImage: { data: string; mimeType: string } | null = null;
-    if (avatar) {
+    // An explicitly supplied hero must never silently become a generic child.
+    // Null/omitted references retain the existing intentional generic-art flow.
+    if (avatar !== undefined && avatar !== null) {
       const parsed = parseDataUrl(avatar?.dataUrl ?? avatar);
-      if (parsed && parsed.mimeType.startsWith("image/")) {
-        const approxBytes = Math.floor((parsed.data.length * 3) / 4);
-        if (approxBytes <= 6 * 1024 * 1024) referenceImage = parsed;
+      if (!parsed || !parsed.mimeType.startsWith("image/")) {
+        res.status(400).json({ error: "A valid avatar image reference is required", code: "invalid_avatar_reference" });
+        return;
       }
+      const approxBytes = Math.floor((parsed.data.length * 3) / 4);
+      if (approxBytes > 6 * 1024 * 1024) {
+        res.status(413).json({ error: "Avatar reference too large — please use a smaller image", code: "invalid_avatar_reference" });
+        return;
+      }
+      const unpadded = parsed.data.replace(/=+$/, "");
+      if (!/^[A-Za-z0-9+/]+={0,2}$/.test(parsed.data) || unpadded.length % 4 === 1 ||
+          (parsed.data.includes("=") && parsed.data.length % 4 !== 0)) {
+        res.status(400).json({ error: "A valid avatar image reference is required", code: "invalid_avatar_reference" });
+        return;
+      }
+      referenceImage = parsed;
     }
 
     const effectiveStyle = normalizeAvatarStyle(style);

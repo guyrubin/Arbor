@@ -102,6 +102,10 @@ export const NOW_COPY = {
     outcomes: "How did the step go for you?",
     noOffer: "A little time together is a place to start",
     noOfferBody: "Explore stories and everyday ideas, then choose what fits your family.",
+    // v3 FEAT-04: the kid-world strip's line of names and its note (names only, never a score)
+    worldFeeling: (word: string) => `“${word}”`,
+    worldNote: (name: string, label: string) => `Each item is saved in ${name}’s picture as an “${label}”, with its source. No logging needed.`,
+    worldNoteKept: (name: string) => `Each item is kept in ${name}’s picture, with its source.`,
   },
   he: {
     title: (name: string) => `מה יעזור לכם עם ${name}?`,
@@ -205,5 +209,9 @@ export const NOW_COPY = {
     outcomes: "איך הצעד הזה עבד בשבילכם?",
     noOffer: "אפשר להתחיל מרגע קטן ביחד",
     noOfferBody: "מגלים סיפורים ורעיונות ליומיום, ובוחרים מה מתאים למשפחה שלכם.",
+    // v3 FEAT-04: the kid-world strip's line of names and its note (names only, never a score)
+    worldFeeling: (word: string) => `„${word}”`,
+    worldNote: (name: string, label: string) => `כל פריט נשמר בתמונה של ${name} כ„${label}”, יחד עם המקור שלו. אין צורך לתעד בעצמכם.`,
+    worldNoteKept: (name: string) => `כל פריט נשמר בתמונה של ${name}, יחד עם המקור שלו.`,
   },
 } as const;

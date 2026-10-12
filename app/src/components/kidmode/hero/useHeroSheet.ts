@@ -1,26 +1,24 @@
 /**
- * useHeroSheet — B-GAME-13c: who plays. The resolution chain, first found wins:
- *   1 the child's own generated sheet (heroSheet docs; a partial sheet plays
- *     once idle + cheer exist, the rest through the fallback map; a sheet drawn
- *     from another hero than the child's current one is stale and skipped);
- *   2 the proof sheet (/_proof/hero/sheet.json) — ONLY for the children in
- *     PROOF_HERO_CHILD_IDS (the owner's son; one constant), or on a build
- *     without Firebase (the local sandbox, where there are no other families);
- *   3 a sheet injected on the device (`arbor.heroSheet.<cid>` as one HeroSheet
- *     object: the sandbox proof path);
- *   4 the stock hero the family chose (`stockHeroId` on the child; its sheet
- *     at stockHeroSheetUrl(id) in lib/heroSheetContract; absent = skip);
- *   5 the dev placeholder.
+ * useHeroSheet — one profile-approved identity, from the shared hero resolver.
+ * Current matching docs play synchronously (idle + cheer are enough). Proof
+ * and sandbox-injected sheets may replace an approved portrait only when
+ * their heroId matches its hash. Otherwise the same portrait plays through
+ * idle pose fallback; full pose animation awaits a matching approved sheet.
+ * With no approved avatar, only explicit stock or neutral placeholder art can
+ * play in production; unbound proof/device sheets are sandbox-only because
+ * their legacy storage key has no owner scope. All live docs and async results
+ * are scoped to owner, child, canonical avatar and current document snapshot.
  * Read-only: nothing here draws, keys or generates (the builder is parent-side
  * only and is never imported under kidmode/ outside its own files).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { firebaseEnabled } from "../../../lib/firebase";
+import { resolveHeroUrl } from "../../../lib/heroIdentity";
 import { heroAvatarHash, stockHeroSheetUrl } from "../../../lib/heroSheetContract";
 import { fetchProofJson } from "../proofAssets";
 import { devPlaceholderSheet } from "./devPlaceholderSheet";
 import { loadProofHeroSheet, parseHeroSheet, readStoredHeroSheet, type HeroSheet } from "./heroSheet";
-import { sheetFromDocs, subscribeHeroSheetDocs, type HeroSheetDocs } from "../../../lib/heroSheetStore";
+import { heroSheetOwnerKey, sheetFromDocs, subscribeHeroSheetDocs, subscribeHeroSheetOwner, type HeroSheetDocs } from "../../../lib/heroSheetStore";
 
 /**
  * The children who may play as the proof hero (the owner's son). Child ids,
@@ -30,15 +28,49 @@ import { sheetFromDocs, subscribeHeroSheetDocs, type HeroSheetDocs } from "../..
  */
 export const PROOF_HERO_CHILD_IDS: readonly string[] = ["child-1780330920145"];
 
-export type HeroSheetFrom = "child" | "proof" | "device" | "stock" | "placeholder";
+export type HeroSheetFrom = "child" | "proof" | "device" | "stock" | "avatar" | "placeholder";
 
 export interface HeroChainChild {
   id: string;
   photoUrl?: string | null;
+  avatar?: unknown;
+  comicAvatarUrl?: string;
   stockHeroId?: unknown;
 }
 
 export const stockSheetUrl = stockHeroSheetUrl;
+
+/** Same visual authority as the profile's generated-hero preview. */
+export function heroSheetAvatarUrl(child: HeroChainChild | null | undefined): string | null {
+  return child ? resolveHeroUrl({ ...child, photoUrl: child.photoUrl ?? undefined }) : null;
+}
+
+/** No drawing or new identity: the exact approved portrait, reused for every
+ * missing pose until a sheet for this avatar exists. HeroFigure contains the
+ * original image within this square instead of stretching or cropping it. */
+export function avatarFallbackSheet(url: string): HeroSheet {
+  return { v: 1, heroId: heroAvatarHash(url), source: "avatar", theme: "film3d", poses: {
+    idle: { url, w: 1, h: 1, foot: { x: 0.5, y: 1 } },
+  } };
+}
+
+const boundToAvatar = (sheet: HeroSheet | null, hash: string | null, allowUnbound: boolean): sheet is HeroSheet => !!sheet && (hash ? sheet.heroId === hash : allowUnbound);
+
+/** Review/status writes do not alter the drawing. Keep the exact sheet object
+ * so a live game does not reload its assets when only bookkeeping changes. */
+function sameDrawing(a: HeroSheet, b: HeroSheet): boolean {
+  if (a.heroId !== b.heroId || a.source !== b.source || a.theme !== b.theme) return false;
+  const keys = Object.keys(a.poses) as (keyof HeroSheet["poses"])[];
+  if (keys.length !== Object.keys(b.poses).length) return false;
+  return keys.every(key => {
+    const left = a.poses[key], right = b.poses[key];
+    return !!left && !!right && left.url === right.url && left.w === right.w && left.h === right.h && left.scale === right.scale
+      && left.foot.x === right.foot.x && left.foot.y === right.foot.y
+      && left.head?.x === right.head?.x && left.head?.y === right.head?.y && left.head?.r === right.head?.r
+      && left.hand?.l?.[0] === right.hand?.l?.[0] && left.hand?.l?.[1] === right.hand?.l?.[1]
+      && left.hand?.r?.[0] === right.hand?.r?.[0] && left.hand?.r?.[1] === right.hand?.r?.[1];
+  });
+}
 
 /** May this child play as the proof hero? */
 export function proofAllowedFor(childId: string, opts: { firebase?: boolean; allowList?: readonly string[] } = {}): boolean {
@@ -50,6 +82,8 @@ export function proofAllowedFor(childId: string, opts: { firebase?: boolean; all
 export interface ChainSources {
   docs: HeroSheetDocs | null;
   proofAllowed: boolean;
+  /** Explicit local sandbox seam; production never treats a missing avatar as a wildcard. */
+  allowUnboundProof?: boolean;
   loadProof: () => Promise<HeroSheet | null>;
   readDevice: () => HeroSheet | null;
   loadStock: (id: string) => Promise<HeroSheet | null>;
@@ -57,15 +91,19 @@ export interface ChainSources {
 
 /** The chain, over injectable sources (fixtures in the test). */
 export async function resolveHeroSheetChain(child: HeroChainChild, src: ChainSources): Promise<{ sheet: HeroSheet; from: HeroSheetFrom }> {
-  const hash = typeof child.photoUrl === "string" && child.photoUrl.startsWith("data:image/") ? heroAvatarHash(child.photoUrl) : null;
-  const own = sheetFromDocs(src.docs, hash);
+  const avatarUrl = heroSheetAvatarUrl(child);
+  const hash = avatarUrl ? heroAvatarHash(avatarUrl) : null;
+  // A missing approved avatar must not disable the stale-sheet check.
+  const own = hash ? sheetFromDocs(src.docs, hash) : null;
   if (own) return { sheet: own, from: "child" };
   if (src.proofAllowed) {
     const proof = await src.loadProof().catch(() => null);
-    if (proof) return { sheet: proof, from: "proof" };
+    if (boundToAvatar(proof, hash, src.allowUnboundProof === true)) return { sheet: proof, from: "proof" };
   }
   const device = src.readDevice();
-  if (device) return { sheet: device, from: "device" };
+  if (boundToAvatar(device, hash, src.allowUnboundProof === true)) return { sheet: device, from: "device" };
+  // A selected profile avatar outranks unrelated proof, device or stock art.
+  if (avatarUrl) return { sheet: avatarFallbackSheet(avatarUrl), from: "avatar" };
   const stockId = typeof child.stockHeroId === "string" && /^[a-z0-9-]{1,40}$/i.test(child.stockHeroId) ? child.stockHeroId : null;
   if (stockId) {
     const stock = await src.loadStock(stockId).catch(() => null);
@@ -81,48 +119,70 @@ export async function loadStockHeroSheet(id: string): Promise<HeroSheet | null> 
 }
 
 /** Live docs of the child's own sheet (undefined until the first read). */
-export function useHeroSheetDocs(childId: string): HeroSheetDocs | null | undefined {
-  const [state, setState] = useState<{ childId: string; docs: HeroSheetDocs | null } | undefined>(undefined);
+function useOwnedHeroSheetDocs(childId: string): { ownerKey: string; docs: HeroSheetDocs | null | undefined } {
+  const ownerKey = useSyncExternalStore(subscribeHeroSheetOwner, heroSheetOwnerKey, heroSheetOwnerKey);
+  const [state, setState] = useState<{ ownerKey: string; childId: string; docs: HeroSheetDocs | null } | undefined>(undefined);
   useEffect(() => {
     if (!childId) return;
-    return subscribeHeroSheetDocs(childId, (docs) => setState({ childId, docs }));
-  }, [childId]);
-  return state && state.childId === childId ? state.docs : undefined;
+    let alive = true;
+    const unsubscribe = subscribeHeroSheetDocs(childId, (docs) => {
+      if (alive && heroSheetOwnerKey() === ownerKey) setState({ ownerKey, childId, docs });
+    });
+    return () => { alive = false; unsubscribe(); };
+  }, [childId, ownerKey]);
+  return { ownerKey, docs: state && state.childId === childId && state.ownerKey === ownerKey ? state.docs : undefined };
+}
+
+export function useHeroSheetDocs(childId: string): HeroSheetDocs | null | undefined {
+  return useOwnedHeroSheetDocs(childId).docs;
 }
 
 /**
  * The resolved sheet for this child. `ready` is false until the child's own
  * docs have been read once and the chain has settled; until then `sheet` is
- * the device sheet or the placeholder (never empty, never blocking).
+ * the approved portrait, else the sandbox device sheet or the placeholder.
  */
-export function useHeroSheetState(child: HeroChainChild | null | undefined): { ready: boolean; sheet: HeroSheet; from: HeroSheetFrom } {
+export function useHeroSheetState(child: HeroChainChild | null | undefined): { identityKey: string; ready: boolean; sheet: HeroSheet; from: HeroSheetFrom } {
   const childId = child?.id ?? "";
-  const docs = useHeroSheetDocs(childId);
-  const photoUrl = child?.photoUrl ?? null;
+  const { ownerKey, docs } = useOwnedHeroSheetDocs(childId);
+  const avatarUrl = heroSheetAvatarUrl(child);
+  const hash = avatarUrl ? heroAvatarHash(avatarUrl) : null;
   const stockHeroId = typeof child?.stockHeroId === "string" ? child.stockHeroId : null;
+  const identityKey = JSON.stringify([ownerKey, childId, hash, stockHeroId]);
+  const ownCache = useRef<{ identityKey: string; sheet: HeroSheet } | null>(null);
+  const own = useMemo(() => {
+    const sheet = hash ? sheetFromDocs(docs, hash) : null;
+    if (!sheet) { ownCache.current = null; return null; }
+    if (ownCache.current?.identityKey === identityKey && sameDrawing(ownCache.current.sheet, sheet)) return ownCache.current.sheet;
+    ownCache.current = { identityKey, sheet };
+    return sheet;
+  }, [identityKey, docs, hash]);
   const fallback = useMemo(() => {
-    const device = readStoredHeroSheet(childId);
+    if (avatarUrl) return { sheet: avatarFallbackSheet(avatarUrl), from: "avatar" as const };
+    const device = firebaseEnabled ? null : readStoredHeroSheet(childId);
     return device ? { sheet: device, from: "device" as const } : { sheet: devPlaceholderSheet(), from: "placeholder" as const };
-  }, [childId]);
-  const [resolved, setResolved] = useState<{ key: string; sheet: HeroSheet; from: HeroSheetFrom } | null>(null);
-  const key = `${childId}|${docs === undefined ? "-" : docs?.meta ? `${docs.meta.avatarHash}:${docs.meta.status}:${Object.keys(docs.poses).sort().join(",")}` : "0"}|${photoUrl ? heroAvatarHash(photoUrl) : ""}|${stockHeroId ?? ""}`;
+  }, [identityKey, avatarUrl, childId]);
+  const [resolved, setResolved] = useState<{ identityKey: string; docs: HeroSheetDocs | null; sheet: HeroSheet; from: HeroSheetFrom } | null>(null);
   useEffect(() => {
-    if (!childId || docs === undefined) return;
+    if (!childId || docs === undefined || own) return;
     let alive = true;
-    void resolveHeroSheetChain({ id: childId, photoUrl, stockHeroId }, {
+    void resolveHeroSheetChain(child!, {
       docs,
       proofAllowed: proofAllowedFor(childId),
+      allowUnboundProof: !firebaseEnabled,
       loadProof: () => loadProofHeroSheet(),
-      readDevice: () => readStoredHeroSheet(childId),
+      readDevice: () => firebaseEnabled ? null : readStoredHeroSheet(childId),
       loadStock: loadStockHeroSheet,
-    }).then((r) => { if (alive) setResolved({ key, ...r }); });
+    }).then((r) => { if (alive && heroSheetOwnerKey() === ownerKey) setResolved({ identityKey, docs, ...r }); });
     return () => { alive = false; };
-    // `key` carries docs, hero and stock choice.
+    // Every docs snapshot counts: re-drawing an existing pose changes pixels
+    // and anchors without changing the pose-name list or meta status.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  if (resolved && resolved.key === key) return { ready: true, sheet: resolved.sheet, from: resolved.from };
+  }, [identityKey, docs, own]);
+  if (own) return { identityKey, ready: true, sheet: own, from: "child" };
+  if (resolved && resolved.identityKey === identityKey && resolved.docs === docs) return { identityKey, ready: true, sheet: resolved.sheet, from: resolved.from };
   // No child: nothing to wait for.
-  return { ready: !childId, ...fallback };
+  return { identityKey, ready: !childId, ...fallback };
 }
 
 /** The sheet to draw now (see useHeroSheetState). */

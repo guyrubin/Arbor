@@ -17,6 +17,7 @@
  * (avatarHash) replaces the old sheet in the same pass.
  */
 import { authHeaders } from "../../../lib/api";
+import { resolveHeroUrl } from "../../../lib/heroIdentity";
 import {
   HERO_POSE_REFUSALS,
   HERO_SHEET_ANCHOR,
@@ -323,10 +324,11 @@ export function startHeroSheet(input: { childId: string; photoUrl: string; sourc
 }
 
 /** A reload continues a build the parent started: same hero, still building. */
-export function resumeHeroSheet(child: { id: string; photoUrl?: string | null; avatar?: { source?: string } | null }, docs: HeroSheetDocs | null | undefined): Promise<BuildResult> | null {
-  if (!docs?.meta || docs.meta.status !== "building" || !child.photoUrl) return null;
-  if (docs.meta.avatarHash !== heroAvatarHash(child.photoUrl)) return null;
-  return startHeroSheet({ childId: child.id, photoUrl: child.photoUrl, source: child.avatar?.source ?? "" });
+export function resumeHeroSheet(child: { id: string; photoUrl?: string | null; comicAvatarUrl?: string; avatar?: { source?: string } | null }, docs: HeroSheetDocs | null | undefined): Promise<BuildResult> | null {
+  const heroUrl = resolveHeroUrl({ ...child, photoUrl: child.photoUrl ?? undefined });
+  if (!docs?.meta || docs.meta.status !== "building" || !heroUrl || !/^data:image\//.test(heroUrl)) return null;
+  if (docs.meta.avatarHash !== heroAvatarHash(heroUrl)) return null;
+  return startHeroSheet({ childId: child.id, photoUrl: heroUrl, source: child.avatar?.source ?? "" });
 }
 
 /**
@@ -338,9 +340,11 @@ export function resumeHeroSheet(child: { id: string; photoUrl?: string | null; a
  * resumes. Once per child and hero per page load.
  */
 const ensured = new Set<string>();
-export async function ensureHeroSheet(child: { id: string; photoUrl?: string | null; avatar?: { source?: string } | null } | null | undefined, deps?: BuilderDeps): Promise<BuildResult | null> {
-  if (!child?.id || !child.photoUrl || !/^data:image\//.test(child.photoUrl) || child.avatar?.source !== "descriptor") return null;
-  const avatarHash = heroAvatarHash(child.photoUrl);
+export async function ensureHeroSheet(child: { id: string; photoUrl?: string | null; comicAvatarUrl?: string; avatar?: { source?: string } | null } | null | undefined, deps?: BuilderDeps): Promise<BuildResult | null> {
+  if (!child?.id || child.avatar?.source !== "descriptor") return null;
+  const heroUrl = resolveHeroUrl({ ...child, photoUrl: child.photoUrl ?? undefined });
+  if (!heroUrl || !/^data:image\//.test(heroUrl)) return null;
+  const avatarHash = heroAvatarHash(heroUrl);
   const key = `${child.id}:${avatarHash}`;
   if (ensured.has(key)) return null;
   ensured.add(key);
@@ -351,7 +355,7 @@ export async function ensureHeroSheet(child: { id: string; photoUrl?: string | n
     if (!deps && docs.poses[HERO_SHEET_ANCHOR]?.avatarHash === avatarHash) chainBookSheet(child.id, avatarHash);
     return null;
   }
-  return startHeroSheet({ childId: child.id, photoUrl: child.photoUrl, source: "descriptor" }, d);
+  return startHeroSheet({ childId: child.id, photoUrl: heroUrl, source: "descriptor" }, d);
 }
 /** Test seam. */
 export function resetEnsuredHeroSheetsForTest(): void { ensured.clear(); }

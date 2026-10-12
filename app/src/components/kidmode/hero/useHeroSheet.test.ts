@@ -2,10 +2,11 @@
  * B-GAME-13c — who plays: the resolution chain order on fixtures, the proof
  * allow-list, and the child's own docs (partial plays, stale is skipped).
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { heroAvatarHash, type HeroSheetPoseDoc, type HeroSheetPoseId } from "../../../lib/heroSheetContract";
 import { parseHeroSheetDocs, sheetFromDocs, type HeroSheetDocs } from "../../../lib/heroSheetStore";
-import { proofAllowedFor, resolveHeroSheetChain, stockSheetUrl, type ChainSources } from "./useHeroSheet";
+import { avatarFallbackSheet, proofAllowedFor, resolveHeroSheetChain, stockSheetUrl, type ChainSources } from "./useHeroSheet";
+import { resolvePose } from "./heroSheet";
 import type { HeroSheet } from "./heroSheet";
 
 const HERO = "data:image/png;base64,SEVSTw==";
@@ -28,7 +29,7 @@ const sources = (over: Partial<ChainSources> = {}): ChainSources => ({
 });
 
 describe("B-GAME-13c resolution chain", () => {
-  const child = { id: "c1", photoUrl: HERO };
+  const child = { id: "c1", photoUrl: HERO, avatar: { source: "descriptor" } };
 
   it("1: the child's own sheet wins once idle + cheer exist (partial plays, the rest falls back)", async () => {
     const r = await resolveHeroSheetChain(child, sources({ docs: docsOf(["idle", "cheer"]), proofAllowed: true }));
@@ -40,19 +41,21 @@ describe("B-GAME-13c resolution chain", () => {
 
   it("idle alone is not yet playable: the chain falls through", async () => {
     const r = await resolveHeroSheetChain(child, sources({ docs: docsOf(["idle"]) }));
-    expect(r.from).toBe("placeholder");
+    expect(r.from).toBe("avatar");
+    expect(r.sheet.poses.idle?.url).toBe(HERO);
   });
 
   it("a sheet of an older hero is stale and skipped", async () => {
     const r = await resolveHeroSheetChain(child, sources({ docs: docsOf(["idle", "cheer"], "0000000000000000") }));
-    expect(r.from).toBe("placeholder");
+    expect(r.from).toBe("avatar");
     expect(sheetFromDocs(docsOf(["idle", "cheer"], "0000000000000000"), HASH)).toBeNull();
   });
 
   it("2: the proof only when allowed; 3: the device sheet; 4: the chosen stock hero; 5: the placeholder", async () => {
-    expect((await resolveHeroSheetChain(child, sources({ proofAllowed: true }))).from).toBe("proof");
+    const child = { id: "c1" }; // Legacy unbound likeness art requires an explicit sandbox source.
+    expect((await resolveHeroSheetChain(child, sources({ proofAllowed: true, allowUnboundProof: true }))).from).toBe("proof");
     expect((await resolveHeroSheetChain(child, sources({ proofAllowed: false }))).from).toBe("placeholder");
-    expect((await resolveHeroSheetChain(child, sources({ readDevice: () => sheet("proof", "device") }))).from).toBe("device");
+    expect((await resolveHeroSheetChain(child, sources({ allowUnboundProof: true, readDevice: () => sheet("proof", "device") }))).from).toBe("device");
     const stock = await resolveHeroSheetChain({ ...child, stockHeroId: "s3" }, sources());
     expect(stock.from).toBe("stock");
     expect(stock.sheet.heroId).toBe("s3");
@@ -63,8 +66,8 @@ describe("B-GAME-13c resolution chain", () => {
     expect(asked).toBe("");
     expect(stockSheetUrl("s3")).toBe("/visuals/heroes/s3/sheet.json");
     // Order: the device sheet beats the stock hero; the proof beats the device.
-    expect((await resolveHeroSheetChain({ ...child, stockHeroId: "s3" }, sources({ readDevice: () => sheet("proof", "device") }))).from).toBe("device");
-    expect((await resolveHeroSheetChain(child, sources({ proofAllowed: true, readDevice: () => sheet("proof", "device") }))).from).toBe("proof");
+    expect((await resolveHeroSheetChain({ ...child, stockHeroId: "s3" }, sources({ allowUnboundProof: true, readDevice: () => sheet("proof", "device") }))).from).toBe("device");
+    expect((await resolveHeroSheetChain(child, sources({ allowUnboundProof: true, proofAllowed: true, readDevice: () => sheet("proof", "device") }))).from).toBe("proof");
     // A failing proof fetch falls through.
     expect((await resolveHeroSheetChain(child, sources({ proofAllowed: true, loadProof: async () => { throw new Error("offline"); } }))).from).toBe("placeholder");
   });
@@ -74,6 +77,54 @@ describe("B-GAME-13c resolution chain", () => {
     expect(proofAllowedFor("other", { firebase: true, allowList: ["son"] })).toBe(false);
     expect(proofAllowedFor("other", { firebase: false, allowList: [] })).toBe(true);
     expect(proofAllowedFor("", { firebase: false })).toBe(false);
+  });
+});
+
+describe("approved profile avatar is the identity authority", () => {
+  const current = { id: "c1", photoUrl: HERO, avatar: { source: "descriptor" } };
+  it("does not show unrelated proof, device or stock art for an approved profile avatar", async () => {
+    const loadStock = vi.fn(async (id: string) => sheet("stock", id));
+    const result = await resolveHeroSheetChain({ ...current, stockHeroId: "other" }, sources({
+      proofAllowed: true, readDevice: () => sheet("proof", "old-hero"), loadStock,
+    }));
+    expect(result.from).toBe("avatar"); expect(result.sheet.source).toBe("avatar");
+    expect(result.sheet.poses.idle?.url).toBe(HERO); expect(loadStock).not.toHaveBeenCalled();
+    // Every requested pose reuses the same approved pixels until poses exist.
+    expect(resolvePose(result.sheet, "cheer")?.sprite.url).toBe(HERO);
+    expect(resolvePose(result.sheet, "dash")?.sprite.url).toBe(HERO);
+  });
+  it("removing the approved avatar cannot resurrect historical proof/device likeness in production", async () => {
+    const old = sheet("proof", HASH);
+    const result = await resolveHeroSheetChain({ id: "child-1780330920145" }, sources({
+      proofAllowed: true, loadProof: async () => old, readDevice: () => old,
+    }));
+    expect(result.from).toBe("placeholder"); expect(result.sheet.heroId).not.toBe(HASH);
+    const selected = await resolveHeroSheetChain({ id: "c1", stockHeroId: "chosen" }, sources({ readDevice: () => old }));
+    expect(selected.from).toBe("stock"); expect(selected.sheet.heroId).toBe("chosen");
+  });
+  it("accepts a proof or device sheet only when its identity matches the current avatar", async () => {
+    const proof = await resolveHeroSheetChain(current, sources({ proofAllowed: true, loadProof: async () => sheet("proof", HASH) }));
+    expect(proof.from).toBe("proof");
+    const device = await resolveHeroSheetChain(current, sources({ readDevice: () => sheet("generated", HASH) }));
+    expect(device.from).toBe("device");
+  });
+  it("follows the same comic-before-photo rule as the profile preview, including stale docs", async () => {
+    const comicAvatarUrl = "data:image/png;base64,Q09NSUM=", comicHash = heroAvatarHash(comicAvatarUrl);
+    const child = { ...current, comicAvatarUrl };
+    const old = await resolveHeroSheetChain(child, sources({ docs: docsOf(["idle", "cheer"]) }));
+    expect(old.from).toBe("avatar"); expect(old.sheet.poses.idle?.url).toBe(comicAvatarUrl);
+    const matching = await resolveHeroSheetChain(child, sources({ docs: docsOf(["idle", "cheer"], comicHash) }));
+    expect(matching.from).toBe("child"); expect(matching.sheet.heroId).toBe(comicHash);
+  });
+  it.each(["data:image/jpeg;base64,UkFX", "https://photos.invalid/raw.jpg"])("never promotes an uploaded photo without generated metadata (%s)", async photoUrl => {
+    const result = await resolveHeroSheetChain({ id: "c1", photoUrl }, sources({ docs: docsOf(["idle", "cheer"]) }));
+    expect(result.from).toBe("placeholder");
+    expect(Object.values(result.sheet.poses).every(pose => pose?.url !== photoUrl)).toBe(true);
+  });
+  it("keeps an approved portrait's original URL and neutral box without inventing body proportions", () => {
+    const fallback = avatarFallbackSheet(HERO);
+    expect(fallback.heroId).toBe(HASH); expect(Object.keys(fallback.poses)).toEqual(["idle"]);
+    expect(fallback.poses.idle).toEqual({ url: HERO, w: 1, h: 1, foot: { x: 0.5, y: 1 } });
   });
 });
 

@@ -18,9 +18,9 @@ describe("three places, complete route coverage", () => {
 
 /** v3 table A ("Where every one of the 43 routes goes"), transcribed route by
  *  route. A Record over ActiveTab, so a route added to ROUTE_IDS without a
- *  home here fails the type check. One planned difference: table A sends
- *  plans (and the retired routines) to Together → Routines; until FEAT-07
- *  ships that Together entry they stay with Behaviors in My child. */
+ *  home here fails the type check. FEAT-07 re-pin: table A sends plans (and
+ *  the retired routines) to Together → Routines, and that Together entry now
+ *  ships, so both live in Together. */
 const TABLE_A: Record<ActiveTab, HomeId> = {
   // Today → Now
   overview: "now", "day-windows": "now", "smart-reminders": "now", weekly: "now",
@@ -28,8 +28,8 @@ const TABLE_A: Record<ActiveTab, HomeId> = {
   development: "child", milestones: "child", language: "child", screening: "child", copilot: "child",
   // Journal / Profile → My child (strengths is retired to profile)
   journal: "child", timeline: "child", profile: "child", memory: "child", strengths: "child", science: "child",
-  // Behaviors → My child; plans and routines until FEAT-07 (see above)
-  behaviors: "child", plans: "child", routines: "child",
+  // Behaviors → My child; plans and the retired routines → Together (FEAT-07, see above)
+  behaviors: "child", plans: "together", routines: "together",
   // Practice → Together (journey is retired to practice; Daily Play is play the family shares)
   practice: "together", speech: "together", mimic: "together", feelings: "together", adventures: "together", journey: "together", "daily-play": "together",
   // Stories → Together
@@ -110,11 +110,13 @@ describe("v3 IA-04 · Back returns to a place", () => {
     }
   });
 
-  it("Behaviors returns to My child, not Now; Plans and Routines go with it until FEAT-07", () => {
+  it("Behaviors returns to My child, not Now; Plans and Routines return to Together (FEAT-07)", () => {
     // Before IA-04 the Behaviors hub fell through to Now.
     expect(placeForTab("behaviors").tab).toBe("development");
-    expect(placeForTab("plans").id).toBe("child");
-    expect(placeForTab("routines").id).toBe("child");
+    expect(placeForTab("behaviors").id).toBe("child");
+    // FEAT-07 re-pin: a plan is started and run from Together → Routines.
+    expect(placeForTab("plans").id).toBe("together");
+    expect(placeForTab("routines").id).toBe("together");
   });
 
   it("old deep links keep the place of the route they now land on", () => {

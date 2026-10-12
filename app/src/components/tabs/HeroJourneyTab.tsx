@@ -252,8 +252,12 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // story language is Hebrew) - the same language that lists it - so a Hebrew
   // UI never opens an English run.
   const kidTellLang: "en" | "he" = storyLang;
+  // Use the same saved identity as the profile. Only an inline generated hero
+  // may be sent for new art; a raw photo or remote URL is not a generation input.
+  const canonicalHeroUrl = resolveHeroUrl(childProfile);
+  const heroAvatarUrl = canonicalHeroUrl?.startsWith("data:image/") ? canonicalHeroUrl : undefined;
   const kidArtTheme = (story: HeroStorySpec) =>
-    childProfile.avatar && (childProfile as unknown as { photoUrl?: string }).photoUrl?.startsWith("data:") ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined;
+    heroAvatarUrl ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined;
   const kidPinInit = useRef<{ story: HeroStorySpec; refused: boolean; render?: HeroJourneyRender; personalised?: boolean; lang: "en" | "he" } | null | undefined>(undefined);
   if (kidPinInit.current === undefined) {
     const story = isKidModeActive() && initialStoryId ? getStorySpec(initialStoryId) : undefined;
@@ -266,7 +270,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   }
   const kidPinOpen = kidPinInit.current && !kidPinInit.current.refused ? kidPinInit.current : null;
   const [coverArt, setCoverArt] = useState<{ url?: string; loading: boolean; error: boolean }>({ loading: false, error: false });
-  const [onCover, setOnCover] = useState(() => Boolean(kidPinOpen && childProfile.avatar && (childProfile as unknown as { photoUrl?: string }).photoUrl?.startsWith("data:")));
+  const [onCover, setOnCover] = useState(() => Boolean(kidPinOpen && heroAvatarUrl));
   const coverRun = useRef(0);
   // R2: the shelf entry belongs to reading the book to its end, not to the
   // Finish button (a re-read has none). These three keep that idempotent.
@@ -274,10 +278,6 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const reachedEnding = useRef(false);
   const shelvingRef = useRef(false);
   const coverRetried = useRef(false);
-  const photoUrl = (childProfile as unknown as { photoUrl?: string }).photoUrl;
-  // AVA-3: use a generated stylized character (a data-URL avatar) as the story hero —
-  // never a raw face photo or a remote URL — so scenes stay consistent and privacy-safe.
-  const heroAvatarUrl = childProfile.avatar && photoUrl?.startsWith("data:") ? photoUrl : undefined;
   const heroAvatarStyle = normalizeAvatarStyle(childProfile.avatar?.style);
   const kidTheme = useKidTheme();
   // B-KID-70 (R-4): a story's cover in the child's ONE theme (manifest), or null

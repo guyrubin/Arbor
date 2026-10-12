@@ -19,6 +19,7 @@ import { lastHeldFor } from "./hardMomentLastTime";
 import { LastTimeLead, SendWordsButton } from "./HardMomentWords";
 import { PublicGuideShare } from "./PublicGuideShare";
 import { ParentBreathPacer } from "./ParentBreathPacer";
+import { SayThis } from "../ui/AiBlock";
 
 /**
  * B-ASKJB-31 — "Hard moment now": ONE sheet over the governed pilot guides,
@@ -40,6 +41,10 @@ import { ParentBreathPacer } from "./ParentBreathPacer";
  *  - opening or reading a card makes no request of any kind; every door hides
  *    when availableHardMomentCards is empty (age misfit, after expiry). The
  *    SafetyRing stays the human-escalation path.
+ *
+ * FEAT-06 (v3): a fresh open leads with the "you first" view (HardMomentFirstView)
+ * above the picker; the picker stays below it, every card one tap away. Back
+ * from a card, the picker shows the plain B-ASKJB-40 breath row instead.
  */
 
 /** Pure: the sheet's order — the matched cards first (in match order), then
@@ -62,6 +67,82 @@ export function hardMomentSheetLead<T extends { id: string }>(matched: readonly 
   return { lead: matched.slice(0, max), rest: matched.slice(max) };
 }
 
+/**
+ * FEAT-06 (v3) — the "you first" view: what a parent meets before any
+ * situation picker. One sentence to say (through SayThis, the one "Say this"
+ * grammar, B-ASKJB-24, set as a quote behind an inline-start rule), one step
+ * (a user-started 30 s breath with a visible clock), two quiet ways on (talk
+ * it through, keep this moment) and ONE "Help and safety" link to the Safety
+ * & escalation tab, where the helplines and the crisis script live. The
+ * helplines are not listed here: most hard moments are an ordinary meltdown,
+ * and emergency and child-protection numbers on every open would read as an
+ * accusation (crisis wording gets them in place, see CoachTab).
+ * Neutral ink only (the sheet's colour pins cover this file); nothing here is
+ * recorded, requested or seeded into Ask. The sheet mounts once (Shell), so
+ * the heading id is fixed.
+ */
+export const HARD_MOMENT_FIRST_TITLE_ID = "hard-moment-first-title";
+
+export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafety }: {
+  childName: string;
+  lang: "en" | "he";
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  onTalk: () => void;
+  onKeep: () => void;
+  onSafety: () => void;
+}) {
+  const action = "inline-flex min-h-11 min-w-11 flex-1 basis-40 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
+  return (
+    <section data-testid="hard-moment-first" aria-labelledby={HARD_MOMENT_FIRST_TITLE_ID} className="min-w-0 space-y-4 pb-5" style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}>
+      <div className="space-y-1.5">
+        <p data-testid="hard-moment-first-kicker" className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>
+          <Icon name="support" size={18} />{t("hm.first.kicker")}
+        </p>
+        <h4 id={HARD_MOMENT_FIRST_TITLE_ID} className="break-words text-[1.375rem] font-semibold leading-tight sm:text-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+          {childName ? t("hm.first.title", { name: childName }) : t("hm.first.titleBare")}
+        </h4>
+      </div>
+      <div data-testid="hard-moment-first-say" className="min-w-0">
+        <SayThis presentation="quote" text={t("hm.first.say")} title={t("hm.section.sayThis")} lang={lang} copyLabel={t("coach.action.copy")} copiedLabel={t("coach.cards.copied")} />
+      </div>
+      <div data-testid="hard-moment-first-step">
+        <ParentBreathPacer t={t} showClock label={t("hm.first.stepTitle")} sub={t("hm.first.stepBody")} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          data-testid="hard-moment-first-talk"
+          onClick={onTalk}
+          className={action}
+          style={{ background: "var(--arbor-ink)", color: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-ink)" }}
+        >
+          <Icon name="forum" size={18} />{t("hm.first.talk")}
+        </button>
+        <button
+          type="button"
+          data-testid="hard-moment-first-keep"
+          onClick={onKeep}
+          className={action}
+          style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" }}
+        >
+          <Icon name="edit_note" size={18} />{t("hm.first.keep")}
+        </button>
+        {/* The one door to Safety & escalation: a quiet link in plain ink at
+            the row's end (never an alarm colour, never a list of numbers). */}
+        <button
+          type="button"
+          data-testid="hard-moment-first-safety"
+          onClick={onSafety}
+          className="ms-auto inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          style={{ color: "var(--arbor-ink)" }}
+        >
+          <Icon name="gpp_maybe" size={18} />{t("hm.first.safety")}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 /** Pure: the cards the sheet offers for a child right now (the doors' gate). */
 export function hardMomentSheetCards(ctx: HardMomentContext, logs: Pick<BehaviorLog, "behaviorType" | "timestamp">[]): { ordered: HardMomentCard[]; matchedIds: string[] } {
   const available = availableHardMomentCards(ctx);
@@ -74,7 +155,7 @@ export default function HardMomentNowSheet() {
   const {
     hardMomentNow, closeHardMomentNow, childProfile, behaviorLogs,
     acceptTodayAction, activeTodayAction, setActiveTab, setAskHardMomentRef, requestLearnRead,
-    actionLoop,
+    actionLoop, openCaptureSheet,
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const { user } = useAuth();
@@ -82,10 +163,15 @@ export default function HardMomentNowSheet() {
   const open = hardMomentNow.open;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [booked, setBooked] = useState<string | null>(null);
+  // FEAT-06: the "you first" view leads a fresh open; once the parent has
+  // opened a card (or arrived on one) the picker shows the plain breath row.
+  const [pastFirst, setPastFirst] = useState(false);
 
   useEffect(() => {
-    if (open) { setSelectedId(hardMomentNow.cardId ?? null); setBooked(null); }
+    if (open) { setSelectedId(hardMomentNow.cardId ?? null); setBooked(null); setPastFirst(Boolean(hardMomentNow.cardId)); }
+    else setPastFirst(false);
   }, [open, hardMomentNow.cardId]);
+  useEffect(() => { if (selectedId) setPastFirst(true); }, [selectedId]);
 
   if (!open) return null;
   const now = new Date();
@@ -129,8 +215,19 @@ export default function HardMomentNowSheet() {
           <p role="status" className="text-sm" style={{ color: "var(--arbor-ink-soft)" }}>{t("hm.now.none")}</p>
         ) : !card ? (
           <>
+            {/* FEAT-06: "you first" — words, one timed step, and the ways on, above the picker. */}
+            {!pastFirst && (
+              <HardMomentFirstView
+                childName={childFirst}
+                lang={locale}
+                t={t}
+                onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); setActiveTab("coach"); }}
+                onKeep={() => { closeHardMomentNow(); openCaptureSheet({ mode: "text" }); }}
+                onSafety={() => { closeHardMomentNow(); setActiveTab("safety"); }}
+              />
+            )}
             {/* B-ASKJB-40: an optional breath for the parent first — collapsed, skippable, never a gate. */}
-            <ParentBreathPacer t={t} />
+            {pastFirst && <ParentBreathPacer t={t} />}
             <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("hm.now.pick")}</p>
             {lead.length > 0 && (
               <div className="space-y-2" data-testid="hard-moment-now-matched">

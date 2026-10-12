@@ -443,9 +443,10 @@ export function sectionForTab(tab: ActiveTab): NavSection {
 export type HomeId = "now" | "child" | "together" | "talk" | "learn" | "care";
 const SECTION_HOME: Record<HubId, HomeId> = { today: "now", growth: "child", journal: "child", profile: "child", behaviors: "child", practice: "together", stories: "together", ask: "talk", learn: "learn", care: "care" };
 /** Daily Play is a Growth tool, but in v3 it is play the family shares, so it
- *  lives in Together. plans and routines stay with Behaviors (My child) until
- *  FEAT-07 moves them to Together, with the Together Routines entry. */
-const TAB_HOME: Partial<Record<ActiveTab, HomeId>> = { "daily-play": "together" };
+ *  lives in Together. FEAT-07: plans (and the retired routines id, which still
+ *  redirects to plans) live in Together too, beside the Together Routines
+ *  category that starts and runs a routine plan. */
+const TAB_HOME: Partial<Record<ActiveTab, HomeId>> = { "daily-play": "together", plans: "together", routines: "together" };
 
 export function homeIdForTab(tab: ActiveTab): HomeId {
   return TAB_HOME[tab] ?? SECTION_HOME[sectionForTab(tab).id];

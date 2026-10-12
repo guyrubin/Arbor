@@ -20,6 +20,8 @@ export interface ChildProfile {
   /** Optional profile image — a generated stylized avatar, or a raw photo
    *  (Firebase Storage URL, or an inlined data URL fallback). Rendered by `Avatar`. */
   photoUrl?: string;
+  /** Legacy generated hero override; superseded when a new avatar is saved. */
+  comicAvatarUrl?: string;
   /** Metadata for an AVA-1 generated avatar. The raw reference photo is never stored. */
   avatar?: {
     style: string;
@@ -516,6 +518,19 @@ export interface ActionPlan {
   successIndicators: string[];
   /** B-ASKJB-26: the weekly "Signs it's working?" answers, oldest first. */
   weeklyChecks?: PlanWeeklyCheck[];
+  /**
+   * FEAT-07: a routine plan's per-day runs. Key = the local day (YYYY-MM-DD),
+   * value = the indices of the steps the family ran that day. Only a plan
+   * started from a routine template carries it; its `step.completed` is never
+   * written, so a routine runs again every day. Pruned to the last 14 days.
+   */
+  routineRuns?: Record<string, number[]>;
+  /**
+   * FEAT-07: the local day (YYYY-MM-DD) whose finished run already had its
+   * celebration. Written with the run that finished the day, so a reload or a
+   * second device never celebrates the same day twice.
+   */
+  routineCelebratedOn?: string;
 }
 
 /** B-ASKJB-26: one weekly check-in on a plan — the parent's own answer, never a score. */
