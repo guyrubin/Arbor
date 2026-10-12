@@ -121,10 +121,29 @@ export function resolveConsultPrefill(p: ConsultPrefill): {
 
 type ExportBuild = { text: string; error: null } | { text: null; error: string };
 
+/** v3 EXTRA-CARE — the Care landing's "what to bring" chips: each groups
+ *  packet sections (standard and intake) under one parent-facing name. */
+const BRING_GROUPS: readonly { id: string; icon: string; labelKey: string; sections: readonly string[] }[] = [
+  { id: "moments", icon: "edit_note", labelKey: "elev.consult.bring.moments", sections: ["moments", "patterns", "triggers", "intake-moments"] },
+  { id: "map", icon: "eco", labelKey: "elev.consult.bring.development", sections: ["development", "dev-noticed", "growth-measurements", "intake-seen", "intake-not-yet"] },
+  { id: "words", icon: "translate", labelKey: "elev.consult.bring.words", sections: ["language-observations"] },
+  { id: "steps", icon: "flag", labelKey: "elev.consult.bring.steps", sections: ["tried", "adults", "intake-practice", "intake-program", "intake-home-program", "intake-goals"] },
+];
+
 /** W2-CAREPRO r1: ConsultTab hands its route stamp here; it lands on the
  *  selected audience chip (one 44 px button in step 1), never on a wrapper. */
-export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard }: {
+export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard, excludeTeacher = false, landing = false }: {
   primaryMoveStamp?: Record<string, string>;
+  /** v3 EXTRA-CARE: #/consult, the Care landing. The three steps read
+   *  "Choose what to bring" (who it is for, then what to bring as chips,
+   *  "Our question" among them), "Preview the summary" and "Share"; the
+   *  preview says how it is worded. The same packet, gate and egress. */
+  landing?: boolean;
+  /** v3 FEAT-09: the Care summary pill (#/handoff) builds the professional
+   *  summary only. The teacher chip is left out (School brief is its own
+   *  pill), and a stored, anchored or prefilled teacher audience starts at
+   *  the default professional instead, never persisted. */
+  excludeTeacher?: boolean;
   egressGuard?: ConsultEgressGuard;
   /** B-LOOP-12: the professional view's profession preset — the packet is
    *  the intake packet (buildIntakePacket) and leaves through THIS step-3
@@ -136,7 +155,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   /** NEXTLEVEL critic r1: the page H1 follows the chosen audience. */
   onAudienceChange?: (a: ExportAudience) => void;
 } = {}) {
-  const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, actionLoop, setActiveTab, pendingConsultPrefill, consumeConsultPrefill } = useArbor();
+  const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, actionLoop, setActiveTab, pendingConsultPrefill, consumeConsultPrefill, activeFamilyTopic } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const reduceMotion = useReducedMotion();
@@ -149,9 +168,14 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   const [previewAll, setPreviewAll] = useState(false);
 
   // Step 1: the audience (= the preset); remembered per device.
-  const [audience, setAudienceState] = useState<ExportAudience>(() => (intakeProp ? INTAKE_AUDIENCE[intakeProp] : anchorAudience ?? readStoredAudience()));
+  const allowed = (a: ExportAudience) => !(excludeTeacher && a === "teacher");
+  const [audience, setAudienceState] = useState<ExportAudience>(() => {
+    const initial = intakeProp ? INTAKE_AUDIENCE[intakeProp] : anchorAudience ?? readStoredAudience();
+    return allowed(initial) ? initial : DEFAULT_EXPORT_AUDIENCE;
+  });
   const [intake, setIntake] = useState<IntakeProfession | undefined>(intakeProp);
   const setAudience = (a: ExportAudience) => {
+    if (!allowed(a)) return;
     if (intake && a !== audience) setIntake(undefined);
     // Consent applies to the exact outgoing audience. Clear it in this click
     // transaction, rather than waiting for the effect below, so an immediate
@@ -190,6 +214,23 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // in the parent's own words. Device-local until an export the parent takes.
   const [reason, setReason] = useState("");
 
+  // v3 FEAT-09 — "Our question": the family question the parent has selected
+  // (ArborContext activeFamilyTopic) joins the summary as ONE line, only when
+  // the parent turns it on. Off by default and never auto-included: inclusion
+  // is held by the topic's id, so a different question selected meanwhile is
+  // off again. It leaves only through the same reviewed gate and egress.
+  const familyTopic = activeFamilyTopic && activeFamilyTopic.status === "active" && activeFamilyTopic.childId === childProfile.id ? activeFamilyTopic : null;
+  const [topicOnId, setTopicOnId] = useState<string | null>(null);
+  const topicIncluded = !!familyTopic && topicOnId === familyTopic.id;
+  const familyQuestionLine = familyTopic && topicIncluded ? t("elev.consult.topic.line", { title: familyTopic.title }) : "";
+  const toggleTopic = () => {
+    if (!familyTopic) return;
+    // Consent covers the exact outgoing text: withdraw it in this click.
+    setReviewed(false);
+    approval.current = null;
+    setTopicOnId(topicIncluded ? null : familyTopic.id);
+  };
+
   // The parent's prepared questions and the discipline-specific evidence — the
   // same registered per-child sinks Appointments, Language Lab and the growth
   // card write. Read-only here.
@@ -215,7 +256,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     const patch = resolveConsultPrefill(pendingConsultPrefill);
     if (patch.reason !== undefined) setReason(patch.reason);
     if (patch.note !== undefined) setVisionNote(patch.note);
-    if (patch.audience !== undefined) setAudienceState(patch.audience);
+    if (patch.audience !== undefined && allowed(patch.audience)) setAudienceState(patch.audience);
     setReviewed(false);
     consumeConsultPrefill();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -404,6 +445,26 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   const includedCount = countIncluded(packet, excluded);
   const toggle = (id: string) =>
     setExcluded((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  // v3 EXTRA-CARE: step 1's "what to bring" chips on the Care landing. Each
+  // chip is a group of the packet's own sections, shown only when the packet
+  // holds it, and turns all of that group's lines in or out of the same
+  // excluded set the packet card edits line by line. Consent covers the exact
+  // outgoing text: a chip click withdraws a tick already given.
+  const bringChips = landing && !isTeacher
+    ? BRING_GROUPS.flatMap((group) => {
+        const ids = packet.sections.filter((s) => group.sections.includes(s.id)).flatMap((s) => s.items.map((it) => it.id));
+        if (ids.length === 0) return [];
+        const counted = group.id === "moments" ? packet.sections.find((s) => s.id === "moments")?.items.find((it) => it.id === "moments-count")?.vars?.n : undefined;
+        const n = typeof counted === "number" ? counted : null;
+        const label = n === null ? t(group.labelKey) : t(n === 1 ? "elev.consult.bring.moments.one" : "elev.consult.bring.moments.other", { n });
+        return [{ id: group.id, icon: group.icon, label, ids, on: ids.some((id) => !excluded.has(id)) }];
+      })
+    : [];
+  const toggleBring = (ids: string[], on: boolean) => {
+    setReviewed(false);
+    approval.current = null;
+    setExcluded((prev) => { const n = new Set(prev); for (const id of ids) on ? n.add(id) : n.delete(id); return n; });
+  };
 
   // LC-08 / B-CAREPRO-28: the ONE export text for Copy and Send, for the
   // chosen preset — audience-capped and note-scanned. A blocked build yields
@@ -414,12 +475,12 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     if (isTeacher) return { text: null, error: "" };
     try {
       // LC-13 / item 8: `uiLang` renders the packet SCAFFOLD in the parent's language.
-      return { text: serializeForExport(egressAudience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang), error: null };
+      return { text: serializeForExport(egressAudience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang, familyQuestionLine), error: null };
     } catch (err) {
       // Fail closed: a forbidden token or a % in the note blocks every verb.
       return { text: null, error: err instanceof ClinicalLanguageError ? t("elev.carehonesty.consult.blocked.generic") : t("consult.exportError") };
     }
-  }, [isTeacher, egressAudience, packet, excluded, visionNote, t, uiLang]);
+  }, [isTeacher, egressAudience, packet, excluded, visionNote, t, uiLang, familyQuestionLine]);
   // W2-CAREPRO c2 r1: what leaves is clean plain text (title line, plain
   // heads, bullets — no #, ** or _ in a WhatsApp/SMS paste), and the preview
   // renders EXACTLY that string, one line per block.
@@ -460,7 +521,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     if (exportText == null || isTeacher) return;
     if (!canExportCurrent()) return;
     try {
-      const sections = exportPrintSections(egressAudience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang);
+      const sections = exportPrintSections(egressAudience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang, familyQuestionLine);
       printPdf(audience, sections);
       recordExport(childProfile.id, audience);
     } catch (err) {
@@ -516,13 +577,38 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     </h2>
   );
 
+  /* v3 FEAT-09 — "Our question": the selected family question, off until
+     the parent turns it on; on, it is one line of the preview. Step 2 holds
+     it; the Care landing (v3 EXTRA-CARE) holds it among step 1's chips. */
+  const topicChip = familyTopic ? (
+    <button
+      type="button"
+      data-testid="consult-include-topic"
+      aria-pressed={topicIncluded}
+      onClick={toggleTopic}
+      className="inline-flex max-w-full items-center gap-1.5 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px] text-start transition"
+      style={topicIncluded
+        ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
+        : { background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
+    >
+      <Icon name="bookmark" size={14} fill={topicIncluded ? 1 : 0} />
+      <span className="flex-shrink-0">{t("elev.consult.topic.include")}</span>
+      <span className="min-w-0 truncate font-medium"><FreeText text={familyTopic.title} /></span>
+    </button>
+  ) : null;
+
   return (
     /* W2: one DOM/visual sequence: who, purpose, editable packet, contract, review/export. */
     <motion.div {...motionProps} className="flex flex-col gap-5 max-w-[1180px]">
       {/* Step 1 · Who is it for? — the audience IS the preset (B-CAREPRO-28).
           LC-28 / OBJ-CARE-02: the hub CTA scrolls to and focuses this row. */}
       <section data-testid="consult-audience-step" className="flex flex-col gap-2">
-        {stepHeading(1, t("elev.carehonesty.consult.audience.label"), "consult-audience-label")}
+        {landing && !isTeacher ? (
+          <>
+            {stepHeading(1, t("elev.consult.step.bring"), "consult-bring-heading")}
+            <p id="consult-audience-label" className="t-sm font-bold" style={{ color: INK }}>{t("elev.carehonesty.consult.audience.label")}</p>
+          </>
+        ) : stepHeading(1, t("elev.carehonesty.consult.audience.label"), "consult-audience-label")}
         <div
           id="consult-audience-row"
           data-testid="consult-audience-row"
@@ -532,7 +618,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           className="flex flex-wrap items-center gap-1.5 focus:outline-none"
           style={{ scrollMarginBlockStart: "0.75rem" }}
         >
-          {EXPORT_AUDIENCES.map((a) => {
+          {EXPORT_AUDIENCES.filter(allowed).map((a) => {
             const on = a === audience && !split;
             return (
               <button
@@ -585,6 +671,31 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
         <p className="text-xs leading-relaxed" style={{ color: MUTED }}>
           {t(`elev.carehonesty.consult.audience.hint.${audience}`)}
         </p>
+        {landing && !isTeacher && (bringChips.length > 0 || topicChip) && (
+          <div className="flex flex-col gap-1.5 mt-1">
+            <p id="consult-bring-label" className="t-sm font-bold" style={{ color: INK }}>{t("elev.consult.bring.label")}</p>
+            <div role="group" aria-labelledby="consult-bring-label" data-testid="consult-bring-row" className="flex flex-wrap items-center gap-1.5">
+              {bringChips.map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  data-testid="consult-bring-chip"
+                  data-bring={chip.id}
+                  aria-pressed={chip.on}
+                  onClick={() => toggleBring(chip.ids, chip.on)}
+                  className="inline-flex items-center gap-1.5 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
+                  style={chip.on
+                    ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
+                    : { background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
+                >
+                  <Icon name={chip.icon} size={14} fill={chip.on ? 1 : 0} />
+                  {chip.label}
+                </button>
+              ))}
+              {topicChip}
+            </div>
+          </div>
+        )}
         {/* W2-CAREPRO r2: the route's ONE stamp sits on a real act — build the
             summary for the chosen audience and land on step 3 (the verbatim
             preview, the reviewed gate, Copy · PDF · Send). It was on the
@@ -638,7 +749,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
         <div className="flex flex-col gap-5 min-w-0">
       {/* Step 2 · What changed — purpose first; the same builder carries it into every clinician packet. */}
       <section data-testid="consult-reason-section" className="border-t pt-5" style={{ borderColor: RULE }}>
-        {stepHeading(2, t("elev.carehonesty.consult.step.changed"))}
+        {stepHeading(2, landing ? t("elev.consult.step.preview") : t("elev.carehonesty.consult.step.changed"))}
         {/* W2-CAREPRO r1: "what changed" is answered first — B-CAREPRO-17's
             "Since you last shared with {audience}" counts head step 2 (counts
             only; the same section rides the packet below). r2: on a first
@@ -699,6 +810,13 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           <p className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
             <Icon name="check_circle" size={14} fill={1} /> {t("elev.learnCare.appt.questions.toPacket")}
           </p>
+        )}
+        {/* v3 FEAT-09 — "Our question": the selected family question, off
+            until the parent turns it on; on, it is one line of the preview. */}
+        {/* v3 EXTRA-CARE: on the Care landing the chip is a "what to bring"
+            item in step 1 instead. */}
+        {!landing && topicChip && (
+          <div className="mt-3">{topicChip}</div>
         )}
         {/* B-CAREPRO-20 · spine §5 — "At home while you wait": the two or three
             Practice worlds whose declared domains match this professional.
@@ -863,7 +981,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           <div id="consult-review-export" data-testid="consult-review-export" className="border-t pt-5 flex flex-col gap-4 lg:sticky lg:top-[var(--sticky-offset)] lg:max-h-[calc(100dvh-var(--shell-topbar-h)-var(--sticky-offset)-1rem)] lg:border-t-0 lg:pt-0 lg:rounded-[22px] lg:p-5" style={{ borderColor: RULE }}>
             <h2 tabIndex={-1} className="flex items-center gap-2 t-lg font-extrabold focus:outline-none" style={{ fontFamily: "var(--font-display)", color: INK }}>
               <span aria-hidden="true" className="inline-flex items-center justify-center w-7 h-7 rounded-full t-sm font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: INK }}>3</span>
-              {t("elev.carehonesty.consult.step.leaves")}
+              {landing ? t("elev.consult.step.share") : t("elev.carehonesty.consult.step.leaves")}
             </h2>
             {exportText == null && (
               <span role="alert" className="text-xs font-bold leading-relaxed" style={{ color: "var(--arbor-pink-ink)" }}>
@@ -880,6 +998,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
                 <Icon name="visibility" size={16} /> {t("elev.carehonesty.consult.preview.toggle")}
               </p>
               <p className="t-xs leading-relaxed mt-0.5" style={{ color: MUTED }}>{t("elev.carehonesty.consult.preview.hint")}</p>
+              {landing && <p data-testid="consult-preview-note" className="t-xs leading-relaxed mt-0.5" style={{ color: MUTED }}>{t("elev.consult.preview.note")}</p>}
               {exportLines != null ? (
                 <>
                   <div data-testid="consult-export-preview" className="mt-2 flex flex-col gap-0.5">

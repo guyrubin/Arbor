@@ -13,6 +13,8 @@
    accessor instead of re-inventing `style={{ color: "var(--arbor-ink)" }}`.
    ════════════════════════════════════════════════════════════════════════════ */
 
+import { DOMAIN_IDS, type DomainId } from "./domains/registry";
+
 /* CSS_VARS — typed inventory of every :root custom property → its var() string.
    One entry per property in index.css :root (lines 16–62). Grouped to mirror
    the CSS sections. */
@@ -204,6 +206,22 @@ export const TONE_SOFT: Record<string, string> = {
   peach: TONES.peach.soft,
 };
 export type PlayTone = keyof typeof TONE_INK;
+
+/* v3 VIS-02 — one ink/soft pair per registry domain. Built by iterating
+   DOMAIN_IDS (lib/domains/registry.ts), so the record is exhaustive over the
+   pinned domains and never states their number. Each string points at an
+   index.css token (:root + the flat parent block) that aliases a shipped AA
+   ink or wash. A domain colour names the AREA, never the child's state:
+   consumers use one ink per domain for every pip, chip and label. */
+export type DomainTone = { readonly ink: string; readonly soft: string };
+export const DOMAIN_VARS: Readonly<Record<DomainId, DomainTone>> = Object.freeze(
+  Object.fromEntries(
+    DOMAIN_IDS.map((id) => [
+      id,
+      Object.freeze({ ink: `var(--arbor-domain-${id}-ink)`, soft: `var(--arbor-domain-${id}-soft)` }),
+    ]),
+  ) as Record<DomainId, DomainTone>,
+);
 
 /** Raw brand hex values — for the few literal-only contexts (confetti canvas,
     PDF/image export, SVG fill) where a `var()` string cannot be used. */

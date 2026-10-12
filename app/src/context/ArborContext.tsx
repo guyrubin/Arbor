@@ -53,6 +53,7 @@ import type { ShelfId } from "../lib/shelves/registry";
 import { hydrateMilestones } from "./milestoneHydration";
 import { completeObservation, isObservationAction, isUrgentOnboardingAction, activeActionFor, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
+import { routineIdOfPlan } from "../lib/routineTemplates";
 import { answeredToday, fromRecordRowId, fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
 import { recentTypeCounts } from "../lib/planRecord";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
@@ -1732,6 +1733,10 @@ function useArborState() {
   // B-GROWTH-25: a ready-made routine starts as a plan in one tap — no goal,
   // no AI call; the template (lib/routineTemplates.routineToPlan) is the plan.
   const startPlanFromTemplate = (plan: ActionPlan) => plansCol.upsert(plan);
+  // FEAT-07: the Together sheet starts a routine plan and runs it day by day.
+  // Both wait for the server, so a receipt only ever follows a persisted write.
+  const startRoutinePlan = (plan: ActionPlan) => plansCol.upsert(plan, { awaitServer: true });
+  const setRoutineRun = (plan: ActionPlan) => plansCol.upsert(plan, { awaitServer: true });
   const deleteMilestone = (id: string) => void milestonesCol.remove(id);
 
   // Toggle milestone checking
@@ -1845,7 +1850,8 @@ function useArborState() {
   // Set a step's kanban status (todo / doing / done); keeps `completed` in sync.
   const setPlanStepStatus = (planId: string, phaseIdx: number, stepIdx: number, status: "todo" | "doing" | "done") => {
     const plan = actionPlans.find((p) => p.id === planId);
-    if (!plan) return;
+    // FEAT-07: a routine plan runs per day (routineRuns); `completed` is never written.
+    if (!plan || routineIdOfPlan(plan) !== null) return;
     const phases = plan.phases.map((ph, phI) => {
       if (phI !== phaseIdx) return ph;
       const steps = ph.steps.map((st, stI) => (stI === stepIdx ? { ...st, status, completed: status === "done" } : st));
@@ -1865,7 +1871,7 @@ function useArborState() {
   // Toggle checklist inside Action Phase
   const handleTogglePlanStep = (planId: string, phaseIdx: number, stepIdx: number) => {
     const plan = actionPlans.find((p) => p.id === planId);
-    if (!plan) return;
+    if (!plan || routineIdOfPlan(plan) !== null) return; // FEAT-07: see setPlanStepStatus
     const updatedPhases = plan.phases.map((ph, phI) => {
       if (phI !== phaseIdx) return ph;
       const updatedSteps = ph.steps.map((st, stI) => (stI === stepIdx ? { ...st, completed: !st.completed } : st));
@@ -1988,6 +1994,8 @@ function useArborState() {
     deleteLog,
     deletePlan,
     startPlanFromTemplate,
+    startRoutinePlan,
+    setRoutineRun,
     deleteMilestone,
     planChallengeTopic,
     setPlanChallengeTopic,

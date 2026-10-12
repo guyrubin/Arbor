@@ -75,6 +75,19 @@ export const en: Record<string, string> = {
   "elev.plans.outcome.helped": "helped",
   "elev.plans.outcome.somewhat": "helped a little",
   "elev.plans.outcome.not_today": "not today",
+  // ── v3 FEAT-07: a routine plan runs again every day (counts only, no share)
+  "elev.plans.routineRun.title": "Today’s steps",
+  "elev.plans.routineRun.today": "Ticked today: {done} · Still to go: {left}",
+  "elev.plans.routineRun.days.one": "Every step on 1 day in the last two weeks",
+  "elev.plans.routineRun.days": "Every step on {n} days in the last two weeks",
+  "elev.plans.routineRun.doneToday": "Every step of {routine} is done for today. Tomorrow it starts fresh.",
+  "elev.plans.routineRun.saving": "Saving…",
+  "elev.plans.routineRun.saved": "Saved",
+  "elev.plans.routineRun.failed": "That tick wasn’t saved. Please try again.",
+  "elev.plans.routineRun.retry": "Try again",
+  "elev.plans.routineRun.reset": "Start today over",
+  "elev.plans.routineRun.hint": "A routine starts fresh every day. Tick its steps on its board, here or in Together under Routines.",
+  "elev.plans.routineRun.editSteps": "Edit the steps",
 };
 
 export const he: Record<string, string> = {
@@ -128,4 +141,17 @@ export const he: Record<string, string> = {
   "elev.plans.outcome.helped": "עזר",
   "elev.plans.outcome.somewhat": "עזר קצת",
   "elev.plans.outcome.not_today": "לא היום",
+  // ── v3 FEAT-07: שגרה שרצה מחדש בכל יום (ספירות בלבד, בלי יחס)
+  "elev.plans.routineRun.title": "הצעדים של היום",
+  "elev.plans.routineRun.today": "סומנו היום: {done} · נשארו: {left}",
+  "elev.plans.routineRun.days.one": "כל הצעדים ביום אחד בשבועיים האחרונים",
+  "elev.plans.routineRun.days": "כל הצעדים ב־{n} ימים בשבועיים האחרונים",
+  "elev.plans.routineRun.doneToday": "כל הצעדים של {routine} נעשו היום. מחר מתחילים מחדש.",
+  "elev.plans.routineRun.saving": "שומרים…",
+  "elev.plans.routineRun.saved": "נשמר",
+  "elev.plans.routineRun.failed": "הסימון לא נשמר. אפשר לנסות שוב.",
+  "elev.plans.routineRun.retry": "לנסות שוב",
+  "elev.plans.routineRun.reset": "להתחיל את היום מחדש",
+  "elev.plans.routineRun.hint": "שגרה מתחילה מחדש בכל יום. מסמנים את הצעדים בלוח שלה, כאן או במסך ביחד תחת שגרות.",
+  "elev.plans.routineRun.editSteps": "עריכת הצעדים",
 };

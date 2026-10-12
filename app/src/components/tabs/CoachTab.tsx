@@ -33,9 +33,11 @@ import ValuePreview from "../billing/ValuePreview";
 import { ShareButton } from "../ui/ShareButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
 import CompanionComposer from "../companion/CompanionComposer";
+import { UrgentSupport } from "../safety/UrgentSupport";
+import { screenForImmediateEscalation } from "../../safety/escalation";
 import type { ComposerAttachment } from "../../lib/companionAttachments";
 import { requestCompanionConsentReview } from "../../lib/companionConsent";
-import { COMPANION_CONVERSATION_EVENT, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
+import { COMPANION_CONVERSATION_EVENT, consumeConversationPanelRequest, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
 import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError } from "../../lib/api";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
@@ -421,6 +423,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [liveProbed, setLiveProbed] = useState(false);
   // B-VOICE-06: bumps when "Talk it through" is tapped while this panel is mounted.
   const [voiceAsk, setVoiceAsk] = useState(0);
+  // FEAT-01: bumps when the conversation header's menu asks for history or tone.
+  const [panelAsk, setPanelAsk] = useState(0);
   // B-VOICE-06: the one-line "tap Talk it through to start" after the door, until voice starts.
   const [voiceInvite, setVoiceInvite] = useState(false);
   useEffect(() => { if (voicePhase !== "off") setVoiceInvite(false); }, [voicePhase]);
@@ -898,13 +902,33 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // contract keeps "available" distinct from "listening". So the claimed
   // request focuses that button and shows one line saying so. The request is
   // claimed once and only while fresh (lib/companionConversation).
+  // FEAT-01: the conversation header's menu asks through the same door, and
+  // its request is claimed like a voice request: here on a tap while mounted,
+  // or on mount when the tap landed while this conversation was still loading.
+  // "tone" opens the ONE ToneSheet; "history" brings the history row into view
+  // and focuses its current conversation (else its first, else New).
+  const historyRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const onAsk = (event: Event) => {
-      if ((event as CustomEvent<CompanionConversationRequest>).detail?.voice) setVoiceAsk((n) => n + 1);
+      const detail = (event as CustomEvent<CompanionConversationRequest>).detail;
+      if (detail?.voice) setVoiceAsk((n) => n + 1);
+      if (detail?.panel) setPanelAsk((n) => n + 1);
     };
     window.addEventListener(COMPANION_CONVERSATION_EVENT, onAsk);
     return () => window.removeEventListener(COMPANION_CONVERSATION_EVENT, onAsk);
   }, []);
+  useEffect(() => {
+    if (!visible) return;
+    const panel = consumeConversationPanelRequest();
+    if (panel === "tone") setToneOpen(true);
+    if (panel === "history" && historyRef.current) {
+      const region = historyRef.current;
+      region.scrollIntoView({ block: "nearest", behavior: reducedMotion ? "auto" : "smooth" });
+      const chip = region.querySelector<HTMLElement>("[data-history-chip][aria-current]") ?? region.querySelector<HTMLElement>("[data-history-chip]") ?? region.querySelector<HTMLElement>("button");
+      chip?.focus({ preventScroll: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, panelAsk]);
   useEffect(() => {
     if (!visible || !liveProbed || !conversationVoiceRequestPending()) return;
     if (consumeConversationVoiceRequest() && voicePhase === "off") {
@@ -952,6 +976,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // notice said contradictory things on adjacent lines. ONE data-use line now:
   // when the weekly notice shows, the memory clause rides inside it.
   const weeklyNoticeShown = weeklyNotice && weeklyOn;
+  // FEAT-06: crisis wording in the composer (the same screen the server runs
+  // on send) shows the helplines in place, with the door to Safety & escalation.
+  const composerCrisis = screenForImmediateEscalation({ message: chatInput }) !== null;
   const composerSection = (
         <section
           data-primary-move="ask"
@@ -1002,6 +1029,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             onSend={handleChatSend} onVoice={() => void toggleVoice()} voiceActive={voicePhase !== "off"} voiceLabel={voiceLabel}
             onKeep={(text, photo) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo })}
             onAttachmentsChange={setComposerFiles} />
+          {composerCrisis && (
+            <UrgentSupport
+              testId="coach-composer-urgent-support"
+              className="mt-2 min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 text-sm leading-relaxed text-[var(--arbor-ink)]"
+              onSafety={() => setActiveTab("safety")}
+            />
+          )}
           {!online && <p data-testid="coach-offline-note" role="status" className="text-xs py-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.aierrors.offline.composer")}</p>}
           {/* Critic r2 (coach design P1): the one-time data-use notice reads
               AFTER the field and the capture chips, as a quiet --t-xs line with
@@ -1152,7 +1186,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       </div>
 
       {/* Conversation history stays available without reserving an empty tray. */}
-      <section data-module="coach-history" className="flex flex-wrap items-center gap-2 border-y py-2.5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("elev.wave2Daily.ask.history")}>
+      <section data-module="coach-history" ref={historyRef} className="flex flex-wrap items-center gap-2 border-y py-2.5" style={{ borderColor: "var(--arbor-rule)" }} aria-label={t("elev.wave2Daily.ask.history")}>
         <span className="me-auto text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.wave2Daily.ask.history")}</span>
         <button
           onClick={newConversation}
@@ -1167,7 +1201,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               const on = c.id === activeConversationId;
               return (
                 <div key={c.id} className="flex flex-shrink-0 items-center gap-1.5 rounded-full ps-3 pe-1.5 py-1" style={on ? { background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.30)" } : { background: T.paperElevated, border: "1px solid var(--arbor-rule)" }}>
-                  <button onClick={() => openConversation(c.id)} className="flex min-h-11 max-w-[160px] items-center gap-1.5 truncate text-[12px] font-bold" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
+                  <button onClick={() => openConversation(c.id)} data-history-chip="" aria-current={on ? "true" : undefined} className="flex min-h-11 max-w-[160px] items-center gap-1.5 truncate text-[12px] font-bold" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>
                     <Icon name="chat" size={12} className="flex-shrink-0" /> <span className="truncate">{c.title}</span>
                   </button>
                   <button onClick={() => deleteConversation(c.id)} aria-label={t("aria.deleteConversation")} className="touch-target transition" style={{ color: "var(--arbor-muted)" }}><Icon name="delete" size={12} /></button>

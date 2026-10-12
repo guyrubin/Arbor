@@ -31,7 +31,7 @@ async function mountedCloseProof() {
   doc.defaultView = view; doc.activeElement = doc.body;
   const React = require("react"), { createRoot } = require("react-dom/client"), { flushSync } = require("react-dom");
   const Context = React.createContext(null);
-  const callbacks = { close: null, launch: null };
+  const callbacks = { close: null, launch: null, menu: null };
   const react = { ...React, lazy: () => () => null, createElement: (type, props, ...children) => {
     if (type === "button" && props?.className === "companion-launch-main") callbacks.launch = props.onClick;
     if (type === "button" && props?.className === "companion-chrome-button" && props["aria-label"]?.includes("close-conversation")) callbacks.close = props.onClick;
@@ -51,6 +51,8 @@ async function mountedCloseProof() {
     if (name === "../../content/selectCards") return { availableHardMomentCards: () => [] };
     if (name === "../../lib/childAge") return { ageMonthsFromProfile: () => 48 };
     if (name === "./nowViewCopy") return { NOW_COPY: { en: { talk: "Ask", captureShort: "Keep" } } };
+    if (name === "./familyTopicEvents") return { openFamilyTopicSheet() {} };
+    if (name === "./CompanionPanelMenu") return { __esModule: true, default: props => { callbacks.menu = props.onSelect; return null; } };
     if (name === "../ui/Icon") return { __esModule: true, default: () => null };
     if (name === "../ui/ArborMark") return { ArborMark: () => null };
     if (name === "../ErrorBoundary") return { ErrorBoundary: props => props.children };
@@ -110,7 +112,17 @@ async function mountedCloseProof() {
   }
   const h = mount("milestones"); h.clearFocus(); h.update({ childProfile: { id: "child-b", name: "Other", age: 5 } }); paint();
   const noUnrequestedFocus = focusCalls.length === 0; h.unmount();
-  process.stdout.write(JSON.stringify({ returned, cancelled, noUnrequestedFocus }));
+  // FEAT-01: the header menu's "What Arbor remembers" is a page. The panel
+  // closes at every width and focus returns to the committed launcher.
+  const memory = [];
+  for (const entry of ["coach", "launcher"]) for (const isWide of [false, true]) {
+    const m = mount(entry === "coach" ? "coach" : "milestones", isWide);
+    if (entry === "launcher") m.launch();
+    m.clearFocus(); flushSync(() => callbacks.menu("remembers"));
+    const beforePaint = m.focused(); paint();
+    memory.push({ entry, wide: isWide, target: m.tab(), launcher: !!m.launcher(), beforePaint, focused: m.focused(), preventScroll: m.focusedWithoutScroll() }); m.unmount();
+  }
+  process.stdout.write(JSON.stringify({ returned, cancelled, noUnrequestedFocus, memory }));
 }
 
 function proof() {
@@ -129,5 +141,9 @@ describe("CompanionWorkspace explicit close focus after real React commits", () 
   it("cancels pending returns for newer navigation, reopening, child changes, Kid Mode or unmount", () => {
     expect(result.cancelled).toEqual({ child: true, kid: true, gate: true, reopen: true, navigate: true, unmount: true });
     expect(result.noUnrequestedFocus).toBe(true);
+  });
+  it("FEAT-01: 'What Arbor remembers' closes the panel at every width, opens the memory page and returns focus to the launcher", () => {
+    expect(result.memory).toHaveLength(4);
+    for (const row of result.memory) expect(row, JSON.stringify(row)).toMatchObject({ target: "memory", launcher: true, beforePaint: false, focused: true, preventScroll: true });
   });
 });

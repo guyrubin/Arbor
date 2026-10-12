@@ -122,8 +122,10 @@ function entry(
   return { id, kind, title, sub: place ? pair(place.en, place.he) : sub, keywords, tab, normTitles, normKeywords };
 }
 
-/** Consolidated views reachable only via search (labels: sm.extra.*). */
-const EXTRA_ROUTE_TABS: readonly ActiveTab[] = ["weekly", "handoff"];
+/** Consolidated views reachable only via search (labels: sm.extra.*).
+ *  v3 FEAT-09: handoff left this list. It is the Care summary pill now (a
+ *  care section item), so the section loop above names it "Care summary". */
+const EXTRA_ROUTE_TABS: readonly ActiveTab[] = ["weekly"];
 
 /** IA-20: routes deliberately NOT offered in search, each with the reason it
  *  would be wrong to surface. Absence is a product decision recorded here, not

@@ -1,6 +1,8 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NOW_COPY } from "./nowViewCopy";
 
@@ -8,14 +10,17 @@ type Captured = { type: unknown; props: Record<string, any> };
 const state = vi.hoisted(() => ({
   lang: "en" as "en" | "he", chatInput: "", activeTab: "overview",
   nodes: [] as Captured[], effects: [] as Array<() => void | (() => void)>, openCaptureSheet: vi.fn(), openHardMomentNow: vi.fn(),
+  topic: null as null | { id: string; title: string },
 }));
 vi.mock("react", async (original) => {
   const react = await original<typeof import("react")>();
-  return { ...react, useEffect: (effect: () => void | (() => void)) => { state.effects.push(effect); } };
+  // The embedded conversation (lazy CoachTab) is out of scope here: an inert
+  // stand-in keeps the open panel's own chrome renderable on the server.
+  return { ...react, lazy: () => () => null, useEffect: (effect: () => void | (() => void)) => { state.effects.push(effect); } };
 });
 vi.mock("../../lib/kpiEvents", () => ({ trackCompanionPanelOpen: vi.fn() }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
-  ...state, childProfile: { id: "child-a", name: "Noa", age: 4 }, activeFamilyTopic: null,
+  ...state, childProfile: { id: "child-a", name: "Noa", age: 4 }, activeFamilyTopic: state.topic,
   setActiveTab: vi.fn(), setChatInput: vi.fn(),
 }) }));
 vi.mock("../../context/LanguageContext", async () => {
@@ -42,11 +47,13 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
 });
 import CompanionWorkspace from "./CompanionWorkspace";
 import { trackCompanionPanelOpen } from "../../lib/kpiEvents";
+import { translate } from "../../lib/i18n";
+import { FAMILY_TOPIC_SHEET_EVENT } from "./familyTopicEvents";
 
 const render = (kidLocked = false) => renderToStaticMarkup(<CompanionWorkspace kidLocked={kidLocked}><main>Page content</main></CompanionWorkspace>);
 const button = (label: string) => state.nodes.find(n => n.type === "button" && React.Children.toArray(n.props.children).includes(label))!.props;
 
-beforeEach(() => { vi.clearAllMocks(); state.nodes = []; state.effects = []; state.lang = "en"; state.chatInput = ""; state.activeTab = "overview"; });
+beforeEach(() => { vi.clearAllMocks(); state.nodes = []; state.effects = []; state.lang = "en"; state.chatInput = ""; state.activeTab = "overview"; state.topic = null; });
 
 afterEach(() => { vi.unstubAllGlobals(); });
 
@@ -175,6 +182,84 @@ describe("the compact, single global Ask and capture entry", () => {
     if (typeof cleanup === "function") cleanup();
     expect(disconnect).toHaveBeenCalledOnce();
     expect(removeEventListener.mock.calls.map(([event]) => event)).toEqual(["resize", "pointerdown"]);
+  });
+});
+
+describe("FEAT-05 — the question chip in the conversation header", () => {
+  const MORNINGS = { id: "topic-a", title: "How could mornings feel easier?" };
+  const chip = () => state.nodes.find(n => n.type === "button" && n.props["data-testid"] === "conversation-topic-chip");
+  const chipMarkup = (html: string) => html.match(/<button[^>]*data-testid="conversation-topic-chip"[\s\S]*?<\/button>/)?.[0] ?? "";
+
+  it.each(["en", "he"] as const)("shows the active question as a chip beside the child's name, and tapping it asks for the question sheet (%s)", lang => {
+    state.lang = lang; state.activeTab = "coach"; state.topic = MORNINGS;
+    const html = render();
+    expect(html).toContain('class="companion-conversation-name"');
+    expect(html).toContain("Noa");
+    // The old plain-text " · question" suffix is gone; the question is the chip.
+    expect(html).not.toContain(` · ${MORNINGS.title}`);
+    const props = chip()!.props;
+    expect(props.type).toBe("button");
+    expect(props["aria-haspopup"]).toBe("dialog");
+    expect(props["aria-label"]).toBe(translate(lang, "companion.topic-chip.open", { value0: MORNINGS.title }));
+    expect(props["aria-label"]).toContain(MORNINGS.title);
+    expect(props["aria-label"]).not.toMatch(/^companion\./);
+    // Text only: the bookmark glyph and the question — never a count, dot or state.
+    expect(chipMarkup(html).replace(/<[^>]+>/g, "")).toBe(`bookmark${MORNINGS.title}`);
+    const sheet = new EventTarget();
+    const heard = vi.fn();
+    sheet.addEventListener(FAMILY_TOPIC_SHEET_EVENT, heard);
+    vi.stubGlobal("window", sheet);
+    props.onClick();
+    expect(heard).toHaveBeenCalledOnce();
+    // A plain open: no new-question request rides along.
+    expect((heard.mock.calls[0][0] as CustomEvent).detail).toBeNull();
+    expect(state.openCaptureSheet).not.toHaveBeenCalled();
+  });
+
+  it("renders no chip and no empty pill without an active question", () => {
+    state.activeTab = "coach";
+    const html = render();
+    expect(html).toContain("Noa");
+    expect(html).not.toContain("companion-topic-chip");
+    expect(chip()).toBeUndefined();
+  });
+
+  it("never renders the chip in Kid Mode", () => {
+    state.activeTab = "coach"; state.topic = MORNINGS;
+    expect(render(true)).not.toContain('data-testid="conversation-topic-chip"');
+  });
+
+  it("keeps a 44 px hit area around a compact pill, with logical properties only", () => {
+    const css = readFileSync(new URL("./companionWorkspace.css", import.meta.url), "utf8");
+    const chipRule = /\.companion-topic-chip \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(chipRule).toMatch(/min-block-size: 44px/);
+    expect(chipRule).not.toMatch(/(?:^|;)\s*(?:height|max-height):/);
+    expect(css).toMatch(/\.companion-conversation-context \.companion-topic-chip-text \{[^}]*text-overflow: ellipsis/);
+    const feat = css.slice(css.indexOf(".companion-conversation-context {"), css.indexOf(".companion-chrome-button {"));
+    expect(feat.length).toBeGreaterThan(0);
+    expect(feat).not.toMatch(/\b(?:left|right|margin-left|margin-right|padding-left|padding-right)\s*:/);
+    expect(feat).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  });
+
+  it("Shell holds the event's one listener, behind the Kid Mode gate; every door only dispatches", () => {
+    const shellSource = readFileSync(new URL("../layout/Shell.tsx", import.meta.url), "utf8");
+    expect(shellSource).toContain("window.addEventListener(FAMILY_TOPIC_SHEET_EVENT, open);");
+    expect(shellSource).toContain("window.removeEventListener(FAMILY_TOPIC_SHEET_EVENT, open);");
+    const listener = shellSource.slice(shellSource.indexOf("const open = (event: Event) => {"), shellSource.indexOf("window.addEventListener(FAMILY_TOPIC_SHEET_EVENT, open);"));
+    expect(listener).toMatch(/^const open = \(event: Event\) => \{\s*if \(isKidModeActive\(\)\) return;/);
+    const src = fileURLToPath(new URL("../../", import.meta.url));
+    const listeners: string[] = [];
+    (function walk(dir: string) {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const file = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(file);
+        else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+          const code = readFileSync(file, "utf8");
+          if (/addEventListener\(\s*(?:FAMILY_TOPIC_SHEET_EVENT|["']arbor:open-family-topic-sheet["'])/.test(code)) listeners.push(path.relative(src, file).split(path.sep).join("/"));
+        }
+      }
+    })(src);
+    expect(listeners).toEqual(["components/layout/Shell.tsx"]);
   });
 });
 

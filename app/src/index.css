@@ -201,6 +201,27 @@
   --arbor-green-wash:  #e9f9f4;
   --arbor-yellow-wash: #fff8e7;
   --arbor-glyph-chip:  44px;     /* shelf glyph chip (duotone) */
+  /* v3 VIS-02: one ink/soft pair per registry domain (lib/domains/registry.ts).
+     Aliases of shipped AA tokens, so no new colour enters. A domain colour
+     names the AREA, never the child's state. Body shares thinking's pair and
+     family shares hands' ink; the glyph and the name disambiguate. Re-declared
+     byte-identical in the flat parent block (W4.1 freeze); contrast-pinned. */
+  --arbor-domain-talking-ink:  var(--arbor-clay);
+  --arbor-domain-moving-ink:   var(--arbor-green-ink);
+  --arbor-domain-hands-ink:    var(--arbor-yellow-ink);
+  --arbor-domain-thinking-ink: var(--arbor-sky-ink);
+  --arbor-domain-playing-ink:  var(--arbor-pink-ink);
+  --arbor-domain-feelings-ink: var(--arbor-lav-ink);
+  --arbor-domain-body-ink:     var(--arbor-sky-ink);
+  --arbor-domain-family-ink:   var(--arbor-peach-ink);
+  --arbor-domain-talking-soft:  var(--arbor-paper-tinted);
+  --arbor-domain-moving-soft:   var(--arbor-green-wash);
+  --arbor-domain-hands-soft:    var(--arbor-yellow-wash);
+  --arbor-domain-thinking-soft: var(--arbor-sky-wash);
+  --arbor-domain-playing-soft:  var(--arbor-pink-wash);
+  --arbor-domain-feelings-soft: var(--arbor-lav-wash);
+  --arbor-domain-body-soft:     var(--arbor-sky-wash);
+  --arbor-domain-family-soft:   var(--arbor-peach-wash);
 
   /* ── UC-1 layout foundation — page width + composition ───────────────────
      Centers the app on wide canvases (fixes the "full-width card desert" on
@@ -549,6 +570,39 @@ html[lang="he"] .arbor-app .arbor-type-kicker { letter-spacing: 0; text-transfor
 /* Depth (class names avoid the `[class*="shadow-"]` remap above). */
 .arbor-app .arbor-depth-card    { box-shadow: var(--arbor-shadow-card); }
 .arbor-app .arbor-depth-primary { box-shadow: var(--arbor-shadow-primary); }
+/* v3 VIS-02 — CountPips (components/ui/CountPips.tsx): a domain's SEEN count as
+   the number plus filled dots, all painted in the ONE domain ink the component
+   sets as `color` (currentColor here). No ring, no half, no total, and nothing
+   in this CSS reads a count. Dots wrap after six (PIP_CAP 12 = two rows at
+   most), so a long record never becomes a bar. Logical properties only. */
+.arbor-pips {
+  --pip-size: 8px;
+  --pip-gap: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+  line-height: 1;
+}
+.arbor-pips[data-size="7"]  { --pip-size: 7px; }
+.arbor-pips[data-size="10"] { --pip-size: 10px; --pip-gap: 3px; }
+.arbor-pips-n { font-weight: 600; }
+.arbor-pips-dots {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--pip-gap);
+  max-inline-size: calc(6 * var(--pip-size) + 5 * var(--pip-gap) + 1px);
+}
+.arbor-pip {
+  flex: none;
+  inline-size: var(--pip-size);
+  block-size: var(--pip-size);
+  border-radius: 999px;
+  background: currentColor;
+}
+@media (forced-colors: active) {
+  .arbor-pip { background: CanvasText; }
+}
 /* Sticky chrome only (top bar + dock): paper 80 % + blur 14 px. Never on content. */
 .arbor-app .arbor-chrome-glass {
   background-color: var(--arbor-chrome-glass);
@@ -1559,6 +1613,27 @@ html[lang="he"] .arbor-play,
   --arbor-green-wash:  #e9f9f4;
   --arbor-yellow-wash: #fff8e7;
   --arbor-glyph-chip:  44px;     /* shelf glyph chip (duotone) */
+  /* v3 VIS-02: one ink/soft pair per registry domain (lib/domains/registry.ts).
+     Aliases of shipped AA tokens, so no new colour enters. A domain colour
+     names the AREA, never the child's state. Body shares thinking's pair and
+     family shares hands' ink; the glyph and the name disambiguate. Re-declared
+     byte-identical in the flat parent block (W4.1 freeze); contrast-pinned. */
+  --arbor-domain-talking-ink:  var(--arbor-clay);
+  --arbor-domain-moving-ink:   var(--arbor-green-ink);
+  --arbor-domain-hands-ink:    var(--arbor-yellow-ink);
+  --arbor-domain-thinking-ink: var(--arbor-sky-ink);
+  --arbor-domain-playing-ink:  var(--arbor-pink-ink);
+  --arbor-domain-feelings-ink: var(--arbor-lav-ink);
+  --arbor-domain-body-ink:     var(--arbor-sky-ink);
+  --arbor-domain-family-ink:   var(--arbor-peach-ink);
+  --arbor-domain-talking-soft:  var(--arbor-paper-tinted);
+  --arbor-domain-moving-soft:   var(--arbor-green-wash);
+  --arbor-domain-hands-soft:    var(--arbor-yellow-wash);
+  --arbor-domain-thinking-soft: var(--arbor-sky-wash);
+  --arbor-domain-playing-soft:  var(--arbor-pink-wash);
+  --arbor-domain-feelings-soft: var(--arbor-lav-wash);
+  --arbor-domain-body-soft:     var(--arbor-sky-wash);
+  --arbor-domain-family-soft:   var(--arbor-peach-wash);
   /* B-DESIGN-02: translucent STICKY CHROME only (top bar + dock); content stays
      opaque. = color-mix(in srgb, var(--arbor-paper) 80%, transparent), resolved
      so the contrast suite composites it. Flat scope only (the parent register). */

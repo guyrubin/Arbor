@@ -60,7 +60,7 @@ beforeEach(() => {
 afterEach(() => { unmount(); vi.unstubAllGlobals(); });
 
 describe("Together return presentation state", () => {
-  it.each(["all", "stories", "games", "offscreen"] as const)("never moves focus or scroll on an ordinary %s visit or rerender without a pending return", (category) => {
+  it.each(["all", "stories", "games", "routines", "offscreen"] as const)("never moves focus or scroll on an ordinary %s visit or rerender without a pending return", (category) => {
     writeTogetherView("a", { category });
     const target = page();
     // Data arriving or a dock opening/closing rerenders the mounted page. None
@@ -182,6 +182,20 @@ describe("Together return presentation state", () => {
     const view = render(); view.setCategory("stories"); expect(render().category).toBe("stories");
     h.present = false; render(); h.present = true;
     expect(render().category).toBe("stories"); expect(render().category).toBe("stories");
+  });
+
+  it("FEAT-07: the routines category round-trips per child and survives games being unavailable", () => {
+    writeTogetherView("a", { category: "routines" });
+    expect(readTogetherView("a", true)).toEqual({ category: "routines" });
+    expect(readTogetherView("a", false)).toEqual({ category: "routines" });
+    expect(readTogetherView("b", true)).toEqual({ category: "all" });
+    const view = render("a", false); expect(view.category).toBe("routines");
+    view.setCategory("offscreen"); expect(render("a", false).category).toBe("offscreen");
+    render("a", false).setCategory("routines"); expect(render("a", false).category).toBe("routines");
+    expect(readTogetherView("a", false)).toEqual({ category: "routines" });
+    // An unknown or retired value still falls back to the whole catalogue.
+    sessionStorage.setItem("arbor.together.view.a", JSON.stringify({ category: "routine" }));
+    expect(readTogetherView("a", true)).toEqual({ category: "all" });
   });
 
   it("pins the actual retained-route boundary that supplies Motion presence", () => {

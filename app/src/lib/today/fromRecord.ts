@@ -26,6 +26,7 @@
 import type { ActionPlan, BehaviorLog } from "../../types";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import { planStepStatus } from "../plans";
+import { isRoutineRunComplete, routineDayKey, routineIdOfPlan } from "../routineTemplates";
 import { parentWords as sharedParentWords } from "../recordCounts";
 import { isIncidentType } from "../../content/behaviorTaxonomy";
 import { sayBackFor } from "../language/sayBack";
@@ -205,9 +206,14 @@ function quietKeys(loop: readonly ActionLoopEntry[], now: Date): Set<string> {
   return out;
 }
 
-/** The plan opener: an active plan (a step not done) — newest plan first. */
+/** The plan opener: an active plan (a step not done) — newest plan first.
+ *  FEAT-07: a routine plan never marks a step done (it runs per day), so it is
+ *  active only while today's run is unfinished; a finished day frees the opener. */
 function planOpener(input: FromRecordInput, notes: readonly Note[]): FromRecordOpener | null {
-  const plan = input.plans.find((p) => (p.phases ?? []).some((ph) => (ph.steps ?? []).some((s) => planStepStatus(s) !== "done")));
+  const today = routineDayKey(input.now);
+  const plan = input.plans.find((p) => routineIdOfPlan(p) !== null
+    ? !isRoutineRunComplete(p, today)
+    : (p.phases ?? []).some((ph) => (ph.steps ?? []).some((s) => planStepStatus(s) !== "done")));
   if (!plan) return null;
   const topicKey = recordTopic([plan.title, plan.issue].filter(Boolean).join(" "))
     ?? recordTopic((plan.phases ?? []).flatMap((ph) => (ph.steps ?? []).map((s) => s.text)).join(" "));
