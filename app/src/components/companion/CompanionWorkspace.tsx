@@ -66,6 +66,7 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
       // (thread and draft stay mounted; the launcher brings them back) and
       // focus lands on the launcher once the memory page has committed.
       closeFocus.current = { childId: childProfile.id, tab: "memory" };
+      opener.current = null;
       setOpen(false);
       setActiveTab("memory");
     }
@@ -90,7 +91,12 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     const frame = requestAnimationFrame(() => {
       if (closeFocus.current !== request) return;
       closeFocus.current = null;
-      if (!isKidModeActive()) launchRef.current?.focus({ preventScroll: true });
+      // v3 F-SHELL-3 (WCAG 2.4.3): a conversation a chrome door opened (the
+      // phone dock's Talk, the sidebar's Talk) gives focus back to that door
+      // while it is still on screen; otherwise to the launcher, as before.
+      const door = opener.current;
+      opener.current = null;
+      if (!isKidModeActive()) (door?.isConnected && door.getClientRects().length ? door : launchRef.current)?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [open, kidLocked, childProfile.id, activeTab]);
@@ -101,8 +107,12 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   // A ref, not `open`: the seed listener's closure can be a render behind.
   const openRef = useRef(open);
   openRef.current = open;
+  // v3 F-SHELL-3: the chrome door (outside the workspace: the phone dock, the
+  // sidebar) that opened the conversation, so an explicit close returns to it.
+  const opener = useRef<HTMLElement | null>(null);
   const show = (via: "launcher" | "seed" | "route") => {
     if (captureRef.current) captureRef.current.open = false;
+    if (!openRef.current && via !== "seed") opener.current = null;
     if (!openRef.current) trackCompanionPanelOpen(via);
     openRef.current = true;
     setMounted(true); setOpen(true);
@@ -131,6 +141,10 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
       if (kidLocked) return;
       const detail = (event as CustomEvent<CompanionConversationRequest>).detail;
       if (typeof detail?.prompt === "string") setChatInput(current => current.trim() && current.trim() !== detail.prompt?.trim() ? `${current}\n\n${detail.prompt}` : detail.prompt ?? current);
+      if (!openRef.current) {
+        const from = document.activeElement as HTMLElement | null;
+        opener.current = from && from !== document.body && !workspaceRef.current?.contains(from) ? from : null;
+      }
       show("seed");
     };
     window.addEventListener(COMPANION_CONVERSATION_EVENT, receive);

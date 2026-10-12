@@ -14,7 +14,7 @@ import SafetyRing from "./SafetyRing"; // IA-01: Safety life-ring in the More-sh
 import KidModeButton from "./KidModeButton"; // IA-24: the Kid Mode door, in the sheet that never scrolls away
 import { requestOpenSettings } from "./settingsBus"; // IA-03: Settings moved out of the mobile strip
 import { PARENT_RECORD_COPY } from "../companion/parentRecordCopy";
-import { kidModeOpenFor } from "../../lib/age/playGate";
+import { gamesOpenFor } from "../practice/studioWorlds";
 import { badgeText } from "./Sidebar"; // IA-16: ONE badge derivation, shared with the sidebar
 
 /** v3 IA-03: the dock is the three places, Talk and More. The places come from
@@ -56,7 +56,9 @@ function placeIndex(
     ],
     together: [
       // Games is a Together pill only while the Kid Mode door is open for this
-      // child (from three, lib/age/playGate); the index follows the same gate.
+      // child (from three) and a world fits her: gamesOpenFor, the one
+      // predicate Together's Games pill reads, so the row never lands on an
+      // empty Games view.
       ...(gamesOpen ? [{ id: "games", label: t("companion.together-view.games"), route: "practice" as const, filter: "games", glyph: "extension" }] : []),
       { id: "stories", label: t("companion.together-view.stories"), route: "practice", filter: "stories", glyph: "auto_stories" },
       { id: "routines", label: t("companion.together-view.routines"), route: "practice", filter: "routines", glyph: "checklist" },
@@ -89,7 +91,7 @@ export default function MobileNav() {
   const index = placeIndex(
     t,
     firstName ? t("companion.more.about", { name: firstName }) : t("companion.more.about-child"),
-    kidModeOpenFor(childProfile),
+    gamesOpenFor(he ? "he" : "en", childProfile),
   );
 
   // The sheet is hidden at lg; it must not retain focus/scroll ownership there.
@@ -275,6 +277,7 @@ export default function MobileNav() {
           </div>
         </section>
         <button
+          data-testid="more-search"
           onClick={() => { void selectionHaptic(); setMoreOpen(false); requestOpenSearch("more"); }}
           className="w-full flex items-center gap-2.5 px-3 py-3 mb-2 min-h-[44px] rounded-2xl text-start text-sm font-bold transition"
           style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}

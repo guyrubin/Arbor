@@ -25,6 +25,8 @@
  * the 390 px rendered sweep measures widths, the safe area, the Hebrew mirror
  * and the scroll position around an open conversation.
  */
+import fs from "node:fs";
+import path from "node:path";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -39,6 +41,7 @@ const state = vi.hoisted(() => ({
   lang: "en" as "en" | "he", activeTab: "overview" as string, setActiveTab: vi.fn(),
   child: { id: "child-a", name: "Noa Lee", age: 5 } as Record<string, unknown>,
   buttons: [] as Record<string, any>[],
+  noWorlds: false,
 }));
 const conversation = vi.hoisted(() => ({ request: vi.fn() }));
 // Seven notes wait for review: the dock must still show no number anywhere.
@@ -51,6 +54,12 @@ vi.mock("../../context/LanguageContext", async () => {
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };
 });
 vi.mock("../../lib/companionConversation", () => ({ requestCompanionConversation: conversation.request }));
+// No world fits the child (state.noWorlds): Kid Mode stays open from three,
+// but the band filter hands back an empty list (no world tagged for her band).
+vi.mock("../../lib/age/playGate", async (original) => {
+  const actual = await original<typeof import("../../lib/age/playGate")>();
+  return { ...actual, offersForChild: (...args: Parameters<typeof actual.offersForChild>) => (state.noWorlds ? [] : actual.offersForChild(...args)) };
+});
 vi.mock("../../lib/native", () => ({ selectionHaptic: vi.fn() }));
 vi.mock("./Sidebar", () => ({ badgeText: () => "" }));
 vi.mock("./SafetyRing", () => ({ default: () => <span data-sheet-header="safety" /> }));
@@ -74,10 +83,11 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
   return { ...runtime, jsxDEV: (...a: Parameters<typeof runtime.jsxDEV>) => { capture(a[0], a[1]); return runtime.jsxDEV(...a); } };
 });
 import MobileNav from "./MobileNav";
+import { gamesOpenFor } from "../practice/studioWorlds";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  state.lang = "en"; state.activeTab = "overview"; state.buttons = [];
+  state.lang = "en"; state.activeTab = "overview"; state.buttons = []; state.noWorlds = false;
   state.child = { id: "child-a", name: "Noa Lee", age: 5 };
 });
 afterEach(() => { vi.unstubAllGlobals(); });
@@ -172,7 +182,7 @@ describe("v3 IA-03 — the More sheet: doors, Search, then the three places", ()
     };
     const order = [
       at('data-sheet-header="safety"'), at('data-sheet-header="kid-mode"'), at(`aria-label="${translate(lang, "aria.settings")}"`),
-      at('data-testid="more-doors-group"'), at(`<span>${translate(lang, "top.search")}</span>`),
+      at('data-testid="more-doors-group"'), at('data-testid="more-search"'), at(`<span>${translate(lang, "top.search")}</span>`),
       at('data-testid="more-records-group"'),
       ...COMPANION_PLACES.map((place) => at(`data-testid="more-place-${place.id}-group"`)),
     ];
@@ -301,6 +311,28 @@ describe("v3 IA-03 — the More sheet: doors, Search, then the three places", ()
     expect(rowsOf(groupOf(html, "child")).map(words)).toContain(translate("en", "companion.more.about-child"));
   });
 
+  it.each(["en", "he"] as const)("no Games row when Kid Mode is open but no world fits her: the row reads Together's gate (%s)", (lang) => {
+    state.noWorlds = true;
+    const html = render("overview", lang);
+    const together = rowsOf(groupOf(html, "together")).map(words);
+    expect(together).not.toContain(translate(lang, "companion.together-view.games"));
+    expect(together).toHaveLength(3);
+    expect(state.buttons.map((button) => button["data-more-destination"])).not.toContain("practice?f=games");
+  });
+
+  it("gamesOpenFor is one predicate: the Kid Mode door is open AND a world fits, as Together's Games pill reads it", () => {
+    expect(gamesOpenFor("en", { age: 5 })).toBe(true);
+    expect(gamesOpenFor("he", { age: 5 })).toBe(true);
+    expect(gamesOpenFor("en", { age: 2 })).toBe(false);
+    state.noWorlds = true;
+    expect(gamesOpenFor("en", { age: 5 })).toBe(false);
+    // Together's Games pill gates on the same two conditions (or reads this
+    // predicate once the Together lane adopts it), so the row never lands on
+    // a Games view that is not there.
+    const together = fs.readFileSync(path.resolve(__dirname, "../companion/TogetherView.tsx"), "utf8");
+    expect(together).toMatch(/kidAvailable && worlds\.length|gamesOpenFor\(/);
+  });
+
   it.each(["en", "he"] as const)("a row is current only on its own route, and a Together row only with its filter (%s)", (lang) => {
     render("profile", lang);
     expect(state.buttons.filter((b) => b["aria-current"] === "page" && b["data-more-destination"]).map((b) => b["data-more-destination"])).toEqual(["profile"]);
@@ -336,5 +368,23 @@ describe("v3 IA-03 — the More sheet: doors, Search, then the three places", ()
       expect(companionHe[key].replace("{name}", "")).not.toMatch(/[A-Za-z]/);
     }
     expect(companionEn["companion.more.doors"]).toBe("Talk, learn, get support");
+  });
+});
+
+describe("v3 IA-03 — a conversation the dock opened gives focus back to the dock (WCAG 2.4.3)", () => {
+  it("the workspace keeps the chrome opener of a request and focuses it on an explicit close, else the launcher", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "../companion/CompanionWorkspace.tsx"), "utf8");
+    // Recorded when the one conversation door is used from outside the
+    // workspace (the dock's Talk, the sidebar's Talk), never from inside it.
+    const receive = src.slice(src.indexOf("const receive"), src.indexOf('show("seed")'));
+    expect(receive).toContain("document.activeElement");
+    expect(receive).toContain("!workspaceRef.current?.contains(from)");
+    // Given back after the close commits, while it is still on screen.
+    expect(src).toContain("(door?.isConnected && door.getClientRects().length ? door : launchRef.current)?.focus({ preventScroll: true })");
+    // The launcher and a conversation route forget it; "What Arbor remembers"
+    // keeps landing on the launcher.
+    expect(src).toContain('if (!openRef.current && via !== "seed") opener.current = null;');
+    const remembers = src.slice(src.indexOf('action === "remembers"'), src.indexOf('setActiveTab("memory")'));
+    expect(remembers).toContain("opener.current = null;");
   });
 });
