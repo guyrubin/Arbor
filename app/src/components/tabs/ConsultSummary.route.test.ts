@@ -96,8 +96,9 @@ describe("v3 FEAT-09 · #/handoff is the care summary builder", () => {
     expect(byId(all, "consult-guided-tier")).toBeUndefined();
     expect(all.some((el) => el.type === HomeProgramDays || el.type === HomeProgramEntry)).toBe(false);
     expect(all.some((el) => el.type === "section")).toBe(false);
-    // v3 EXTRA-CARE: the landing's visit head, aside and doors stay on #/consult
+    // v3 EXTRA-CARE: the landing's visit card, head, aside and doors stay on #/consult
     expect(all.some((el) => el.type === CareVisitHead || el.type === CareAside || el.type === CareDoors)).toBe(false);
+    expect(all.find((el) => el.type === AskSpecialist)!.props.head).toBeUndefined();
   });
 
   it("NEGATIVE CONTROL: #/consult keeps the visit outcome, the home program and the guided line under its own H1", () => {
@@ -110,10 +111,14 @@ describe("v3 FEAT-09 · #/handoff is the care summary builder", () => {
     expect(textOf(all.find((el) => el.type === "h1"))).not.toBe(translate("en", "elev.consult.h1.summary"));
     expect(all.find((el) => el.type === AskSpecialist)!.props.primaryMoveStamp).toEqual({ "data-primary-move": "build-share-packet" });
     expect(all.find((el) => el.type === AskSpecialist)!.props.excludeTeacher).toBe(false);
-    // v3 EXTRA-CARE: the Care landing adds its visit head, aside and doors
-    expect(all.filter((el) => el.type === CareVisitHead)).toHaveLength(1);
+    // v3 EXTRA-CARE: the Care landing adds its visit card (the builder, headed
+    // by the visit), aside and doors
+    const builder = all.find((el) => el.type === AskSpecialist)!;
+    expect(builder.props.landing).toBe(true);
+    expect(builder.props.head?.type).toBe(CareVisitHead);
+    expect(builder.props.head?.props.visit.id).toBe("visit");
+    expect(all.filter((el) => el.props["data-testid"] === "consult-visit-card")).toHaveLength(1);
     expect(all.filter((el) => el.type === CareAside)).toHaveLength(1);
     expect(all.filter((el) => el.type === CareDoors)).toHaveLength(1);
-    expect(all.find((el) => el.type === AskSpecialist)!.props.landing).toBe(true);
   });
 });

@@ -136,17 +136,6 @@ export default function CareAside() {
         <div className="flex flex-col gap-2">
           {lines.emergency && <CallLine entry={lines.emergency} />}
           {lines.talk && <CallLine entry={lines.talk} />}
-          {lines.findLine && (
-            <button
-              type="button"
-              data-testid="care-aside-find-line"
-              onClick={() => setActiveTab("safety")}
-              className="flex items-center rounded-xl px-3 min-h-[44px] t-sm font-bold text-start"
-              style={{ color: INK, border: "1px solid var(--arbor-rule)" }}
-            >
-              {t("elev.safety.crisis.findLine")}
-            </button>
-          )}
           {contact && (
             <a
               data-testid="care-aside-first-contact"
@@ -163,8 +152,17 @@ export default function CareAside() {
         <p data-testid="care-aside-reviewed" className="t-xs" style={{ color: MUTED }}>
           {t("elev.safety.review.last")} <strong style={{ color: INK }}>{reviewed ? fmtDay(reviewed, uiLang) : t("elev.safety.review.notYet")}</strong>
         </p>
-        <button type="button" data-testid="care-aside-open-safety" onClick={() => setActiveTab("safety")} className={secondaryCls} style={secondaryStyle}>
-          {t("elev.consult.aside.openSafety")}
+        {/* ONE way into Safety. When the family's region has no talk line in
+            the directory, it says what Safety's by-country list is for. */}
+        <button
+          type="button"
+          data-testid="care-aside-open-safety"
+          data-find-line={lines.findLine || undefined}
+          onClick={() => setActiveTab("safety")}
+          className={`${secondaryCls} py-2 text-start`}
+          style={secondaryStyle}
+        >
+          {t(lines.findLine ? "elev.safety.crisis.findLine" : "elev.consult.aside.openSafety")}
         </button>
       </section>
 
