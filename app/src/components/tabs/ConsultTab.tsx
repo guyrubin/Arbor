@@ -15,6 +15,9 @@ import { fmtDay } from "../../lib/formatDate";
 import { Icon } from "../ui/Icon";
 import { guidedTierOn } from "../../lib/entitlementsGuided";
 import HomeProgramEntry, { HomeProgramDays, homeProfessionForAppointment, nextVisitDayFor, type EntryWrites } from "../program/HomeProgramEntry";
+import CareAside from "../care/CareAside";
+import CareDoors from "../care/CareDoors";
+import CareVisitHead from "../care/CareVisitHead";
 import { activeHomeEnrolments, toggleExerciseDay, type HomeProgramEnrolment } from "../../content/programs/homeProgram";
 import type { FamilyGoal } from "../../lib/goals";
 import {
@@ -119,18 +122,44 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
   const intakeRaw = query.get("intake");
   const intake = isIntakeProfession(intakeRaw) ? intakeRaw : undefined;
   const [outcome, setOutcome] = useState("");
+  // v3 EXTRA-CARE: the visit-outcome receipt follows persistence. While the
+  // write is pending the save is disabled; a retry after a failed or
+  // unconfirmed write reuses the same record (same document id).
+  const [savingOutcome, setSavingOutcome] = useState(false);
+  const pendingOutcome = useRef<AppointmentFollowUp | null>(null);
   // NEXTLEVEL critic r1 (P1): the H1 names the audience the parent CHOSE.
   // "Prepare for the speech therapist on 14 Oct" stayed on screen after
   // Pediatrician was picked, so the two loudest lines named two people.
   const [chosen, setChosen] = useState<ExportAudience | undefined>(presetAudience);
   const heading = consultHeading({ visitAudience: anchorAudience, hasVisit: !!visit, chosen });
 
-  const saveOutcome = () => {
-    if (!awaiting) return;
-    const record = makeFollowUp(awaiting.id, outcome, Date.now());
+  // v3 EXTRA-CARE: "Saved" only after the follow-up write is acknowledged
+  // (offline or unconfirmed rejects: the answer stays in the field and an
+  // error says so). The follow-up alone closes the visit's loop
+  // (visitAwaitingOutcome); marking the booking done is bookkeeping after it.
+  const saveOutcome = async () => {
+    if (!awaiting || savingOutcome) return;
+    const note = outcome.trim();
+    const pending = pendingOutcome.current;
+    const record = pending && pending.apptId === awaiting.id && pending.note === note ? pending : makeFollowUp(awaiting.id, outcome, Date.now());
     if (!record) return;
-    void followUpsCol.upsert(record);
-    if (appointmentStatus(awaiting) !== "done") void apptsCol.upsert({ ...awaiting, status: "done" });
+    pendingOutcome.current = record;
+    const childId = childProfile.id;
+    setSavingOutcome(true);
+    try {
+      await followUpsCol.upsert(record, { requireAcknowledgement: true });
+    } catch {
+      if (currentChild.current !== childId) return;
+      setSavingOutcome(false);
+      toast(t("elev.consult.visitOutcome.saveError"), "error");
+      return;
+    }
+    if (appointmentStatus(awaiting) !== "done") {
+      try { await apptsCol.upsert({ ...awaiting, status: "done" }); } catch { /* the follow-up already closed the loop */ }
+    }
+    pendingOutcome.current = null;
+    if (currentChild.current !== childId) return;
+    setSavingOutcome(false);
     setOutcome("");
     toast(t("elev.learnCare.appt.followUp.saved"), "success");
   };
@@ -178,6 +207,13 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
      own H1. The visit's open loop, the home program and the guided-coach line
      stay on #/consult, so this page holds one job and the route's one stamp. */
   const summary = activeTab === "handoff";
+  /* v3 EXTRA-CARE: #/consult is the Care landing. Three modules: the next
+     visit with its three prep steps (the builder, holding the route's one
+     move), the aside (Help and safety, Who sees what) and the doors with the
+     trust line. #/handoff and #/school-brief keep the builder alone. At
+     1600 px and up the aside is an end column; below, one column in DOM
+     order (visit, aside, doors). */
+  const landing = activeTab === "consult";
 
   // Initially unconfirmed targets mount no editor. Once opened, retain its
   // unsaved state hidden/inert while blocked. Egress is independently guarded
@@ -189,6 +225,9 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
     </div>}
     {targetOpened && <div hidden={targetBlocked} inert={targetBlocked}>
       <header className="mb-5">
+        {landing && (
+          <p data-testid="consult-kicker" className="t-sm font-bold mb-1" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.consult.kicker")}</p>
+        )}
         <h1 data-testid="consult-h1" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" } as React.CSSProperties}>
           {summary
             ? t("elev.consult.h1.summary")
@@ -201,7 +240,10 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
         {summary && (
           <p data-testid="consult-summary-lede" className="t-sm mt-1" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.consult.summary.lede")}</p>
         )}
-        {visit && (summary || heading !== "visit") && (
+        {landing && (
+          <p data-testid="consult-sub" className="t-sm mt-1 max-w-[65ch]" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.consult.sub")}</p>
+        )}
+        {visit && (summary || (!landing && heading !== "visit")) && (
           <p data-testid="consult-visit-line" className="t-sm mt-1" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.consult.visitLine", { profession: appointmentRoleLabel(visit, t), date: fmtDay(visit.whenIso!, uiLang) })}
           </p>
@@ -217,7 +259,9 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
           </p>
         )}
       </header>
-      <div data-module="consult-packet">
+      <div data-testid="consult-landing" className={landing ? "flex flex-col gap-6 min-[1600px]:grid min-[1600px]:grid-cols-[minmax(0,1fr)_20rem] min-[1600px]:gap-8 min-[1600px]:items-start" : undefined}>
+      <div data-module="consult-packet" className="min-w-0">
+        {landing && visit && <CareVisitHead visit={visit} />}
         {!summary && !awaiting && <section className="mb-5 rounded-[var(--r-lg)] border p-4" style={{ borderColor: "var(--arbor-rule)" }}>
           {!homeOpen ? <button type="button" className="min-h-11 rounded-full px-4 text-sm font-semibold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }} onClick={() => setHomeOpen(true)}>{t("elev.pilot.i.have.recommendations.for.home")}</button>
             : <HomeProgramEntry key={childProfile.id} childId={childProfile.id} profession={null} nextVisit={null} rows={programsCol.items} existingGoals={familyGoalsCol.items} onConfirm={saveHomeProgram} onCancel={() => setHomeOpen(false)} />}
@@ -235,6 +279,7 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
                 id="consult-visit-outcome-input"
                 value={outcome}
                 onChange={(e) => setOutcome(e.target.value)}
+                readOnly={savingOutcome}
                 dir="auto"
                 placeholder={t("elev.learnCare.appt.followUp.placeholder")}
                 className="flex-1 min-w-0 rounded-xl px-3 min-h-11 t-sm"
@@ -243,12 +288,13 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
               <button
                 type="button"
                 data-testid="consult-visit-outcome-save"
-                onClick={saveOutcome}
-                disabled={!outcome.trim()}
+                onClick={() => { void saveOutcome(); }}
+                disabled={!outcome.trim() || savingOutcome}
+                aria-busy={savingOutcome}
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 min-h-11 t-sm font-bold disabled:cursor-not-allowed"
                 style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" }}
               >
-                <Icon name="check" size={16} /> {t("elev.learnCare.appt.followUp.save")}
+                <Icon name="check" size={16} /> {savingOutcome ? t("elev.consult.visitOutcome.saving") : t("elev.learnCare.appt.followUp.save")}
               </button>
             </div>
             {/* B-PROG-09: the second answer — the professional gave a home program */}
@@ -280,7 +326,10 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
             branch (a teacher stored on this device or a teacher visit would
             put the School Brief editor under the summary H1); School brief is
             its own pill. */}
-        <AskSpecialist key={`${summary ? "summary:" : ""}${appointmentId ?? `${presetAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`}`} primaryMoveStamp={primaryMoveStamp} anchorAudience={presetAudience} intake={intake} onAudienceChange={setChosen} egressGuard={egressGuard} excludeTeacher={summary} />
+        <AskSpecialist key={`${summary ? "summary:" : ""}${appointmentId ?? `${presetAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`}`} primaryMoveStamp={primaryMoveStamp} anchorAudience={presetAudience} intake={intake} onAudienceChange={setChosen} egressGuard={egressGuard} excludeTeacher={summary} landing={landing} />
+      </div>
+      {landing && <CareAside />}
+      {landing && <CareDoors />}
       </div>
     </div>}
   </>;

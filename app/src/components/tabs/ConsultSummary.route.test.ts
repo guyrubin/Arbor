@@ -26,9 +26,13 @@ const AskSpecialist = () => null;
 const HomeProgramDays = () => null;
 const HomeProgramEntry = () => null;
 const Icon = () => null;
+// v3 EXTRA-CARE: the Care landing's visit head, aside and doors render on #/consult only
+const CareVisitHead = () => null;
+const CareAside = () => null;
+const CareDoors = () => null;
 const visit = { id: "visit", whenIso: new Date(Date.now() + 86400000).toISOString(), status: "confirmed", profession: "slp" };
 const env = {
-  React, AskSpecialist, HomeProgramDays, HomeProgramEntry, Icon, visitForConsult, consultAudienceForProfession,
+  React, AskSpecialist, HomeProgramDays, HomeProgramEntry, Icon, CareVisitHead, CareAside, CareDoors, visitForConsult, consultAudienceForProfession,
   useRef: (initial: unknown) => slots[cursor++] ??= { current: initial },
   useState: (initial: unknown) => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], (value: unknown) => { slots[i] = value; }]; },
   useMemo: (calculate: () => unknown) => calculate(),
@@ -92,6 +96,8 @@ describe("v3 FEAT-09 · #/handoff is the care summary builder", () => {
     expect(byId(all, "consult-guided-tier")).toBeUndefined();
     expect(all.some((el) => el.type === HomeProgramDays || el.type === HomeProgramEntry)).toBe(false);
     expect(all.some((el) => el.type === "section")).toBe(false);
+    // v3 EXTRA-CARE: the landing's visit head, aside and doors stay on #/consult
+    expect(all.some((el) => el.type === CareVisitHead || el.type === CareAside || el.type === CareDoors)).toBe(false);
   });
 
   it("NEGATIVE CONTROL: #/consult keeps the visit outcome, the home program and the guided line under its own H1", () => {
@@ -104,5 +110,10 @@ describe("v3 FEAT-09 · #/handoff is the care summary builder", () => {
     expect(textOf(all.find((el) => el.type === "h1"))).not.toBe(translate("en", "elev.consult.h1.summary"));
     expect(all.find((el) => el.type === AskSpecialist)!.props.primaryMoveStamp).toEqual({ "data-primary-move": "build-share-packet" });
     expect(all.find((el) => el.type === AskSpecialist)!.props.excludeTeacher).toBe(false);
+    // v3 EXTRA-CARE: the Care landing adds its visit head, aside and doors
+    expect(all.filter((el) => el.type === CareVisitHead)).toHaveLength(1);
+    expect(all.filter((el) => el.type === CareAside)).toHaveLength(1);
+    expect(all.filter((el) => el.type === CareDoors)).toHaveLength(1);
+    expect(all.find((el) => el.type === AskSpecialist)!.props.landing).toBe(true);
   });
 });
