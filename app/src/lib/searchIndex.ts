@@ -94,9 +94,6 @@ export interface SearchEntry {
   /** B-ASKJB-12: a scholar entry opens Ask with this lens id preselected
    *  (written to `selectedLens`, the ToneSheet's store) before navigating. */
   lens?: string;
-  /** F-FORYOU-1: a learn entry opens THIS read in the reader
-   *  (requestLearnRead), never the library behind it. */
-  cardId?: string;
   /** Precomputed normalized haystacks (both languages, always searched). */
   normTitles: string[];
   normKeywords: string[];
@@ -215,17 +212,14 @@ function buildIndex(): readonly SearchEntry[] {
   const shelfLabel = new Map(LEARN_CATEGORIES.map((c) => [c.id, c.label]));
   for (const card of LEARN_CARDS) {
     const shelf = shelfLabel.get(card.category);
-    entries.push({
-      ...entry(
-        `learn:${card.id}`,
-        "learn",
-        pair(card.title.en, card.title.he),
-        pair(shelf?.en ?? card.category, shelf?.he ?? card.category),
-        { en: [card.hook.en], he: [card.hook.he] },
-        "learn",
-      ),
-      cardId: card.id,
-    });
+    entries.push(entry(
+      `learn:${card.id}`,
+      "learn",
+      pair(card.title.en, card.title.he),
+      pair(shelf?.en ?? card.category, shelf?.he ?? card.category),
+      { en: [card.hook.en], he: [card.hook.he] },
+      "learn",
+    ));
   }
 
   // 3. Masterclasses (title/titleHe; hook + frame label as keywords).

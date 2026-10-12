@@ -22,7 +22,6 @@ import { filterByAge, windowFromYears } from "./ageFilter";
 import { LEARN_CARDS } from "../learn/learnCards";
 import { en, he } from "./i18nElevation/careHonesty";
 import { rankLearnCards } from "../learn/learnLibrary";
-import { translate as tr } from "./i18n";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.join(here, "..", rel), "utf8");
@@ -150,9 +149,9 @@ describe("LC-26 · the reader body sits on the type token", () => {
 });
 
 describe("LC-33 · the saved shelf's empty state offers a way forward", () => {
-  // v3 F-FORYOU-1 (re-pin): #/learn has no Saved shelf. Saving still works in
-  // the reader, a saved read still ranks first on For you and says why, and
-  // (r2) every saved read is listed behind For you's Saved chip (law 6 below).
+  // v3 F-FORYOU-1 (re-pin): #/learn has no Saved shelf (where saved reads
+  // live is Guy's call). Saving still works in the reader, and a saved read
+  // still ranks first on For you and says why.
   it("no Saved shelf on #/learn; a saved read ranks first on For you and says so", () => {
     expect(LEARN).not.toContain('setFilter("all")');
     expect(LEARN).toContain("onClick: onToggleSave,");
@@ -164,50 +163,6 @@ describe("LC-33 · the saved shelf's empty state offers a way forward", () => {
     expect(en["elev.learnCare.saved.browse"]).toContain("{name}");
     expect(he["elev.learnCare.saved.browse"]).toContain("{name}");
     expect(he["elev.learnCare.saved.browse"]).toMatch(/[֐-׿]/);
-  });
-});
-
-/* v3 F-FORYOU-1 r2 (reviewer r1) — law 6 restored for saved reads. The
-   pre-v3 pin ("every saved card reachable") held the Saved filter on #/learn;
-   #/learn is a reader now, so the pin follows the reads to For you: every way
-   in to "my saved reads" lands on ONE uncapped list, and search opens the read
-   it names. */
-describe("law 6 · every saved read stays reachable", () => {
-  const MEMORY = read("components/sections/ChildMemory.tsx").replace(/\r\n/g, "\n");
-  const SEARCH = read("components/search/useSearchResults.ts").replace(/\r\n/g, "\n");
-  const M = MASTER.replace(/\r\n/g, "\n");
-  const L = LEARN.replace(/\r\n/g, "\n");
-
-  it("ChildMemory's 'All saved reads' asks for the saved reads, and #/learn hands them to For you's Saved chip", () => {
-    expect(MEMORY).toContain('onClick={() => requestLearnRead({ category: "saved", source: "child-memory" })}');
-    expect(L).toContain('const savedAsked = useRef(pendingLearnRequest?.category === "saved");');
-    expect(L).toContain('queueLibraryScroll(savedAsked.current ? "saved" : "library");');
-    expect(M).toContain('const [savedShelf, setSavedShelf] = useState<boolean>(() => peekLibraryScroll() === "saved");');
-  });
-
-  it("the Saved chip lists every saved read, uncapped, each one tap from its read", () => {
-    expect(M).toContain('data-testid="academy-saved-chip"');
-    expect(M).toContain("const savedReads = savedLearnIds.map((id) => learnCardById(id)).filter((c): c is LearnCard => c !== undefined);");
-    expect(M).toContain("{showSaved && savedReads.map((c) => (");
-    expect(M).toContain('onClick={() => openRead(c.id, "learn-hub-saved")}');
-    expect(M).not.toMatch(/savedReads\.slice\(|savedLearnIds\.slice\(/);
-    // The chip shows whenever anything is saved, even with one area only.
-    expect(M).toContain("{(areaCounts.length > 1 || savedReads.length > 0) && (");
-    expect(M).toContain("{savedReads.length > 0 && (");
-  });
-
-  it("a search result for a read opens THAT read (never just the library)", () => {
-    expect(SEARCH).toMatch(/if \(e\.kind === "learn" && e\.cardId\) \{\s*seams\.requestLearnRead\(\{ cardId: e\.cardId, source: "search" \}\);\s*return;/);
-    expect(SEARCH).toContain("go: () => catalogGo(e, { setActiveTab, setSelectedLens, requestLearnRead }),");
-  });
-
-  it("the copy says where it goes, in both locales (law 7)", () => {
-    expect(tr("en", "learn.trailAll")).toBe("All saved reads");
-    expect(tr("he", "learn.trailAll")).toMatch(/[\u05d0-\u05ea]/);
-    expect(tr("he", "learn.trailAll")).not.toMatch(/[A-Za-z]/);
-    // NEGATIVE CONTROL: the r1 copy promised the library, not the saved reads.
-    expect(tr("en", "learn.trailAll")).not.toBe("Open the library");
-    expect(tr("en", "learn.trailSub")).not.toContain("Learn Library");
   });
 });
 
@@ -255,8 +210,7 @@ describe("R12 · the default shelf is short, and every control says what it does
   it("no browse shelf: the reads on For you are the pick and three short reads", () => {
     expect(LEARN).not.toContain("SHELF_PAGE");
     expect(LEARN).not.toContain('data-testid="learn-shelf-more"');
-    // v3 F-FORYOU-1 r2 (re-pin): the week's concept may take the last slot.
-    expect(MASTER).toContain("const shortReadRow = pickShortReads(readShelf, activeFamilyTopic?.title, weeklyConcept);");
+    expect(MASTER).toContain("const shortReadRow = pickShortReads(readShelf, activeFamilyTopic?.title);");
     expect(MASTER).toContain(".filter((c) => c.id !== todaysRead?.card.id);");
   });
 

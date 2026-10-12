@@ -92,28 +92,6 @@ export function logSearchText(l: { behaviorType: string; trigger?: string; respo
   ].join(" "));
 }
 
-/** What selecting a catalogue entry does. Pure (the seams are passed in) so
- *  the matching suite can call it directly.
- *  · F-FORYOU-1: a learn entry carries its cardId and opens THAT read in the
- *    reader (requestLearnRead), the same seam every other surface uses. Its
- *    tab alone ("learn") is reader-only now and would land on the library.
- *  · B-ASKJB-12: a scholar entry preselects its lens, then opens Ask. */
-export function catalogGo(
-  e: Pick<SearchEntry, "kind" | "tab" | "lens" | "cardId">,
-  seams: {
-    setActiveTab: (tab: SearchEntry["tab"]) => void;
-    setSelectedLens: (lens: string) => void;
-    requestLearnRead: (req: { cardId?: string; category?: string; source?: string }) => void;
-  },
-): void {
-  if (e.kind === "learn" && e.cardId) {
-    seams.requestLearnRead({ cardId: e.cardId, source: "search" });
-    return;
-  }
-  if (e.lens) seams.setSelectedLens(e.lens);
-  seams.setActiveTab(e.tab);
-}
-
 /** "?" at the end of the query asks first. */
 export const askFirst = (q: string): boolean => q.trim().endsWith("?");
 
@@ -121,7 +99,6 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
   const {
     behaviorLogs, milestones, actionPlans, conversations, childProfile,
     setActiveTab, openConversation, setSelectedLens, requestJournalFocus, seedCoach,
-    requestLearnRead,
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const heLang = uiLang === "he";
@@ -152,8 +129,8 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
     sub: pick(e.sub) || kindLabel(e.kind),
     icon: KIND_ICON[e.kind] ?? "search",
     color: KIND_TOKEN[e.kind] ?? "var(--arbor-green-ink)",
-    // B-ASKJB-12 lens preselect; F-FORYOU-1 a learn entry opens its read.
-    go: () => catalogGo(e, { setActiveTab, setSelectedLens, requestLearnRead }),
+    // B-ASKJB-12: a scholar entry preselects its lens, then opens Ask.
+    go: () => { if (e.lens) setSelectedLens(e.lens); setActiveTab(e.tab); },
   });
 
   const term = q.trim();

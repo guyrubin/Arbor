@@ -192,10 +192,6 @@ export const en: Record<string, string> = {
   "elev.learnCare.library.title": "Courses by area",
   "elev.learnCare.readiness.activities": "{n} activities",
   "elev.learnCare.readiness.inThis": "Activities in this course",
-
-  // v3 F-FORYOU-1 r2 — this week's concept (the old Scholar hub card's
-  // editorial piece) in the short reads' last slot, and in its own sheet.
-  "elev.learnCare.weekly.mark": "This week's read",
 };
 
 export const he: Record<string, string> = {
@@ -345,7 +341,4 @@ export const he: Record<string, string> = {
   "elev.learnCare.library.title": "קורסים לפי תחום",
   "elev.learnCare.readiness.activities": "{n} פעילויות",
   "elev.learnCare.readiness.inThis": "הפעילויות בקורס",
-
-  // v3 F-FORYOU-1 r2 — this week's concept (see the EN block).
-  "elev.learnCare.weekly.mark": "הקריאה של השבוע",
 };

@@ -236,11 +236,9 @@ export default function ChildMemory() {
               );
             })}
           </div>
-          {/* F-FORYOU-1: every saved read stays reachable — this opens For
-              you's library with its Saved chip chosen (the whole list). */}
           {savedLearnCards.length > 6 && (
             <button
-              onClick={() => requestLearnRead({ category: "saved", source: "child-memory" })}
+              onClick={() => requestLearnRead({ source: "child-memory" })}
               className="w-full mt-1 min-h-11 rounded-xl text-xs font-bold transition hover:bg-[var(--arbor-paper-deep)]"
               style={{ color: "var(--arbor-lav-ink)" }}
             >

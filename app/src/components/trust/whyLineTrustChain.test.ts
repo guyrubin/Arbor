@@ -74,9 +74,6 @@ const SURFACES: [string, RegExp, string][] = [
   // v3 F-FORYOU-1: For you's pick — the why-line a parent reads on the
   // landing, with its chip after it (replaces the Learn rail's chain).
   ["components/sections/Masterclasses.tsx", /data-testid="academy-pick-why"/, "foryou-pick"],
-  // v3 F-FORYOU-1 r2: the week's concept, opened from For you's short reads —
-  // the Scholar hub's provenance hedge with its chip on the same row.
-  ["components/sections/ForYouConceptSheet.tsx", /t\("hub\.scholar\.provenance"\)/, "foryou-weekly"],
   // Coach answer cards — the highest-trust-stakes surface; the chip rides the
   // attribution row, beside the "why this might be happening" disclosure.
   ["components/coach/CoachAnswerCards.tsx", /t\("coach\.cards\.why"\)/, "coach-answer"],

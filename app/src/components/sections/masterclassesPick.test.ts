@@ -275,8 +275,7 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
     expect(src).toContain(".filter((c) => c.id !== todaysRead?.card.id);");
     // Reviewer r1: the row is filled to three (learn/shortReads); the title and
     // the per-read mark come from the same pick, so neither can overclaim.
-    // v3 F-FORYOU-1 r2 (re-pin): the week's concept is passed in for the last slot.
-    expect(src).toContain("const shortReadRow = pickShortReads(readShelf, activeFamilyTopic?.title, weeklyConcept);");
+    expect(src).toContain("const shortReadRow = pickShortReads(readShelf, activeFamilyTopic?.title);");
     expect(row).toContain("{shortReadRow.reads.map((c) => {");
     expect(row).toContain('{t(shortReadRow.forTopic ? "elev.learnCare.shortReads.title" : "elev.learnCare.shortReads.titleAll")}');
     expect(row).toContain("{shortReadRow.markMatched && shortReadRow.matched.has(c.id) && (");
@@ -287,15 +286,12 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
 
   it("courses by area: labelled chips with aria-pressed filter the grid; the counts are plain integers", () => {
     // v3 F-FORYOU-1 (re-pin): the grid is two columns from sm, three at xl.
-    // v3 F-FORYOU-1 r2 (re-pin): the row also shows when only saved reads exist.
-    const chips = between("{(areaCounts.length > 1 || savedReads.length > 0) && (", '<div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">');
+    const chips = between("{areaCounts.length > 1 && (", '<div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">');
     expect(chips).toContain('role="group" aria-labelledby="academy-by-area-label" data-testid="academy-by-area"');
     expect(chips).toContain('id="academy-by-area-label"');
     expect(chips).toContain("aria-pressed={selectedArea === null}");
     expect(chips).toContain("aria-pressed={selectedArea === area}");
-    // v3 F-FORYOU-1 r2 (re-pin): choosing an area also leaves the Saved view.
-    expect(chips).toContain("onClick={() => chooseArea(selectedArea === area ? null : area)}");
-    expect(src).toContain("const chooseArea = (area: DomainId | null) => { setSavedShelf(false); setActiveArea(area); };");
+    expect(chips).toContain("onClick={() => setActiveArea(selectedArea === area ? null : area)}");
     // Reviewer r1: the areas are the registry domains (glyph + name), not the Learn shelves.
     expect(chips).toContain("<Icon name={DOMAIN_ICONS[area]} size={15} />");
     expect(chips).toContain("<span>{domainName(area, t)}</span>");
@@ -439,12 +435,7 @@ describe("v3 F-FORYOU-1 — the pick card, the sheet, the library, 390 px", () =
     const col = slice("{pickLessons.length > 0 && (", "</ol>");
     expect(col).toContain('t(todaysRead ? "elev.learnCare.pick.inThisRead" : "elev.learnCare.pick.lessons")');
     expect(col).toContain('<ol data-testid="academy-pick-lessons"');
-    // v3 F-FORYOU-1 r2 (re-pin): a course's lesson line carries its minutes
-    // (the course's own duration shared out, learn/lessonMinutes); a read's
-    // key points carry none. Reading time only: still no state.
-    expect(col).toContain('{pickLessons.map((line, i) => <li key={i}>{line}{pickLessonMinutes && <span data-testid="academy-pick-lesson-minutes" className="ms-2 whitespace-nowrap text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("learn.minutes", { n: pickLessonMinutes[i] })}</span>}</li>)}');
-    expect(src).toContain("const pickLessonMinutes: number[] | null = !todaysRead && nextCourse");
-    expect(src).toContain("? lessonMinutes(nextCourse.durationMin, nextCourse.sections.map((s) => s.body))");
+    expect(col).toContain("{pickLessons.map((line, i) => <li key={i}>{line}</li>)}");
     for (const banned of ["done", "check_circle", "of {", "%", "progress"]) expect(col, banned).not.toContain(banned);
     expect(src).toContain("? nextCourse.sections.map((s) => (he ? s.headingHe : s.heading))");
   });
@@ -501,9 +492,7 @@ describe("v3 F-FORYOU-1 — the pick card, the sheet, the library, 390 px", () =
     expect(sw).toContain('data-testid="agefilter-toggle-masterclasses"');
     expect(sw).toContain("min-h-11");
     expect(sw).not.toContain("--gradient-cta");
-    // v3 F-FORYOU-1 r2 (re-pin): the chip row's opening marker (saved reads join it).
-    expect(src.indexOf("{(areaCounts.length > 1 || savedReads.length > 0) && (")).toBeGreaterThan(-1);
-    expect(src.indexOf("{(areaCounts.length > 1 || savedReads.length > 0) && (")).toBeLessThan(src.indexOf("{ageSwitchShown && ("));
+    expect(src.indexOf("{areaCounts.length > 1 && (")).toBeLessThan(src.indexOf("{ageSwitchShown && ("));
   });
 
   it("every F-FORYOU-1 string exists in EN and HE; HE is Hebrew; EN carries no verdict word", () => {
@@ -521,124 +510,6 @@ describe("v3 F-FORYOU-1 — the pick card, the sheet, the library, 390 px", () =
       expect(heV, key).not.toMatch(/[A-Za-z]/);
       expect(heV, key).toMatch(/[א-ת]/);
       expect(enV, key).not.toMatch(/\d\s*%|score|percentile|on track|behind|at risk|delayed|weakest|\bof\b/i);
-    }
-  });
-});
-
-/* ── v3 F-FORYOU-1 r2 · reviewer r1 ─────────────────────────────────────────
- * The week's concept is one of the three short reads (the old Scholar hub
- * card's piece, opened in a sheet of its own); the parent's saved reads are
- * one chip away in the library, every one of them; a course's lesson lines
- * carry their minutes. */
-
-describe("v3 F-FORYOU-1 r2 — the week's concept, the Saved chip, lesson minutes", () => {
-  const code = src
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "");
-  const slice = (from: string, to: string, base = src): string => {
-    const a = base.indexOf(from);
-    expect(a, `marker not found: ${from}`).toBeGreaterThan(-1);
-    const b = base.indexOf(to, a + from.length);
-    expect(b, `end marker not found after ${from}: ${to}`).toBeGreaterThan(a);
-    return base.slice(a, b);
-  };
-
-  it("the week's concept: chosen only once the map has a real signal, never the no-signal default", () => {
-    expect(src).toContain("const weekly = devMapHasSignal(devScore) ? selectWeeklyArticle(devScore.focusDomain) : null;");
-    expect(src).toContain("const weeklyConcept = weekly && !weekly.isDefault ? weekly.article : null;");
-    expect(src).toContain("const concept = shortReadRow.concept;");
-    // NEGATIVE CONTROL: an ungated pick would show everyone the same default piece.
-    expect("const weekly = selectWeeklyArticle(devScore.focusDomain);").not.toContain("devMapHasSignal(devScore)");
-  });
-
-  it("the concept card sits in the short reads row, in the same card shape, and opens its own sheet", () => {
-    const row = slice('data-testid="academy-short-reads"', "</section>");
-    const card = slice('data-testid="academy-short-read-concept"', "</button>", row);
-    expect(row.indexOf("{shortReadRow.reads.map((c) => {")).toBeLessThan(row.indexOf("{concept && ("));
-    expect(card).toContain("onClick={() => openConcept(concept.id)}");
-    expect(card).toContain("min-h-11");
-    expect(card).toContain('data-testid="academy-short-read-area" data-area={conceptArea}');
-    expect(card).toContain("<Icon name={DOMAIN_ICONS[conceptArea]} size={14} /><span>{domainName(conceptArea, t)}</span>");
-    expect(card).toContain('<Icon name="schedule" size={13} />{t("learn.minutes", { n: concept.readingMinutes })}');
-    expect(card).toContain('<Icon name="lightbulb" size={13} />{t("elev.learnCare.weekly.mark")}');
-    expect(card).toContain('className="arbor-type-say arbor-accent-rule line-clamp-3 block"');
-    expect(src).toContain('const conceptArea = concept ? primaryDomain("developmental", concept.domain) : null;');
-    expect(src).toContain('const ForYouConceptSheet = lazy(() => import("./ForYouConceptSheet"));');
-    expect(src).toContain("<ForYouConceptSheet articleId={conceptId} onClose={() => setConceptId(null)} />");
-    for (const banned of ["ProgressBar", "progressbar", "of {", "/ total", "done[", "riskLevel", "percent"]) {
-      expect(card, banned).not.toContain(banned);
-    }
-    expect(card).not.toMatch(/\}\s*%|%\s*\{/);
-  });
-
-  it("the concept sheet: one history entry, the provenance hedge and the Trust Center chain, no module or move", () => {
-    const sheet = readFileSync(path.join(__dirname, "ForYouConceptSheet.tsx"), "utf8").replace(/\r\n/g, "\n");
-    expect(sheet).toContain("const close = useSheetHistory(true, onClose);");
-    expect(sheet).toContain("<SheetBreadcrumb label={title} close={close} />");
-    expect(sheet).toContain('{t("hub.scholar.provenance")}');
-    expect(sheet).toContain('<TrustLink surface="foryou-weekly" />');
-    expect(sheet).toContain('const area = primaryDomain("developmental", article.domain);');
-    expect(sheet).not.toMatch(/data-module|data-primary-move/);
-    const sheetCode = sheet.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
-    for (const banned of ["ProgressBar", "progressbar", "of {", "%", "score", "riskLevel"]) {
-      expect(sheetCode, banned).not.toContain(banned);
-    }
-  });
-
-  it("the Saved chip: the parent's saved reads, last in the row, with a plain number", () => {
-    const chips = slice("{(areaCounts.length > 1 || savedReads.length > 0) && (", "{ageSwitchShown && (");
-    const chip = slice('data-testid="academy-saved-chip"', "</button>", chips);
-    expect(chips.indexOf("{areaCounts.map(({ area, count }) => (")).toBeLessThan(chips.indexOf("{savedReads.length > 0 && ("));
-    expect(chip).toContain("aria-pressed={showSaved}");
-    expect(chip).toContain("onClick={() => (showSaved ? chooseArea(null) : setSavedShelf(true))}");
-    expect(chip).toContain("className={AREA_CHIP}");
-    expect(chip).toContain('<Icon name="bookmark" size={15} fill={showSaved ? 1 : 0} />');
-    expect(chip).toContain('<span>{t("learn.saved")}</span>');
-    // A count of the parent's own bookmarks, shown on a phone too (no "hidden").
-    expect(chip).toContain('<span data-testid="academy-saved-count" className="tabular-nums" style={{ opacity: 0.75 }}>{savedReads.length}</span>');
-    expect(chip).not.toContain("hidden");
-    for (const banned of ["%", "total", "ProgressBar", "done[", "of {"]) expect(chip, banned).not.toContain(banned);
-    expect(src).toContain("const savedReads = savedLearnIds.map((id) => learnCardById(id)).filter((c): c is LearnCard => c !== undefined);");
-    expect(src).toContain("const showSaved = savedShelf && savedReads.length > 0;");
-  });
-
-  it("law 6: chosen, the grid lists EVERY saved read (uncapped), each opening in the read sheet", () => {
-    const grid = slice('<div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">', "{catalog.map((c) => {");
-    expect(grid).toContain("{showSaved && savedReads.map((c) => (");
-    expect(grid).toContain('data-testid="academy-saved-read" onClick={() => openRead(c.id, "learn-hub-saved")} className={COURSE_CARD}');
-    expect(code).not.toMatch(/savedReads\.slice\(/);
-    expect(code).not.toMatch(/savedLearnIds\.slice\(/);
-    // The courses and the readiness courses step aside while Saved is chosen,
-    // and so does the age switch (a parent's own saves are never age-filtered).
-    expect(src).toContain('const selectedArea: DomainId | "saved" | null = showSaved');
-    expect(src).toContain("const ageSwitchShown = !showSaved && ((ageHidden.length > 0 || showAllAges) || readinessHidden.length > 0);");
-    // NEGATIVE CONTROL: a capped list would trip the same scan.
-    expect("savedReads.slice(0, 6).map((c) => (").toMatch(/savedReads\.slice\(/);
-  });
-
-  it("a request for the saved reads lands on the Saved chip (peeked on mount, taken once in the scroll frame)", () => {
-    expect(src).toContain('const [savedShelf, setSavedShelf] = useState<boolean>(() => peekLibraryScroll() === "saved");');
-    expect(src).toContain("if (typeof window === \"undefined\" || !peekLibraryScroll()) return;");
-    expect(src).toContain("if (takeLibraryScroll()) libraryRef.current?.scrollIntoView({ block: \"start\" });");
-    // The r1 shape TOOK the flag in a state initialiser, which StrictMode runs
-    // twice (the second run read null and the scroll was lost).
-    expect(code).not.toContain("useState(() => takeLibraryScroll())");
-    expect(code.match(/takeLibraryScroll\(\)/g) ?? []).toHaveLength(1);
-    // NEGATIVE CONTROL: the r1 line trips the same scan.
-    expect("const [scrollToLibrary] = useState(() => takeLibraryScroll());").toContain("useState(() => takeLibraryScroll())");
-  });
-
-  it("the new string exists in EN and HE; HE is Hebrew; EN carries no verdict word", () => {
-    for (const key of ["elev.learnCare.weekly.mark", "learn.saved", "learn.minutes"]) {
-      const enV = tr("en", key, { n: 3 });
-      const heV = tr("he", key, { n: 3 });
-      expect(enV, key).not.toBe(key);
-      expect(heV, key).not.toBe(key);
-      expect(heV, key).not.toBe(enV);
-      expect(heV, key).not.toMatch(/[A-Za-z]/);
-      expect(heV, key).toMatch(/[\u05d0-\u05ea]/);
-      expect(enV, key).not.toMatch(/\d\s*%|score|percentile|on track|behind|at risk|delayed|weakest/i);
     }
   });
 });

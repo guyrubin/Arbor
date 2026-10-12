@@ -7,8 +7,7 @@
  * reads and the library of courses by area. A read opened there opens in a
  * sheet over that page (ForYouReadSheet); a link to a read (`#/learn?card=<id>`,
  * or another surface's requestLearnRead) still lands here, and its Back goes to
- * For you. A link with no read is sent on to For you's library (a request for
- * the saved reads, to its Saved chip).
+ * For you. A link with no read is sent on to For you's library.
  *
  * Every read is a Learn Card (5 key points → full read → one thing to try
  * today), saveable in one tap, shareable, and wired into Ask Arbor via the
@@ -61,9 +60,6 @@ export default function LearnLibrary() {
   const [cardId, setCardId] = useState<string | null>(
     () => knownCard(pendingLearnRequest?.cardId) ?? cardFromHash(),
   );
-  // F-FORYOU-1: a request for the saved reads (ChildMemory's "All saved
-  // reads") lands on For you's library with its Saved chip chosen.
-  const savedAsked = useRef(pendingLearnRequest?.category === "saved");
 
   // LL — deep-link seam: another surface asked for one read. A request that
   // names a shelf only (or nothing) finds no shelf here any more: the effect
@@ -72,7 +68,6 @@ export default function LearnLibrary() {
     if (!pendingLearnRequest) return;
     const asked = knownCard(pendingLearnRequest.cardId);
     if (asked) setCardId(asked);
-    if (pendingLearnRequest.category === "saved") savedAsked.current = true;
     consumeLearnRequest();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingLearnRequest]);
@@ -98,7 +93,7 @@ export default function LearnLibrary() {
       }
       return;
     }
-    queueLibraryScroll(savedAsked.current ? "saved" : "library");
+    queueLibraryScroll();
     try { window.history.replaceState(window.history.state, "", "#/masterclasses"); } catch { /* history unavailable */ }
     setActiveTab("masterclasses");
     // eslint-disable-next-line react-hooks/exhaustive-deps
