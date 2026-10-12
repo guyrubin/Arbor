@@ -152,14 +152,16 @@ export async function collectSingleGoalStates({ page, fixture, viewport, load, s
     step('child-picker-enter'); await page.keyboard.press('Enter'); await page.getByRole('listbox').waitFor({ state: 'visible' });
     step('child-picker-option'); await page.getByRole('listbox').getByRole('option').filter({ hasText: next.name }).click(); child = next;
     step('child-identity'); await page.waitForFunction(id => localStorage.getItem('arbor.activeChildId') === id, child.id);
-    await waitFrame(cell, selector(), route === 'plans' ? null : current() ? label(current()) : t('elev.goal.profile.empty'));
+    await waitFrame(cell, selector(), !SINGLE_GOAL_DOORS[route] ? null : current() ? label(current()) : t('elev.goal.profile.empty'));
     (cell.childSwitches ??= []).push({ selectedId: child.id, method: 'actual-keyboard-picker-and-visible-option' });
   };
   try {
     for (const destination of SINGLE_GOAL_ROUTES) await run(destination, `history-${destination}`, async cell => { route = destination; await loadRoute(); await line(cell); });
+    // v3 F-CHILD-3: About has no goal door (line() asserts none); the
+    // development map is reached by its real route and the About frame retires.
     await run('development', 'profile-door-arrival', async cell => {
-      route = 'profile'; await loadRoute(); await line(cell); const outgoing = await byId('profile-goals-edit').elementHandle();
-      try { await byId('profile-goals-edit').click(); route = 'development'; const frame = await waitFrame(cell, selector(), label(current()), outgoing); check(cell, 'PROFILE_DOOR_ACTUAL_ARRIVAL', frame.hash === '#/development' && frame.outgoingRetired && frame.dialogCount === 0); }
+      route = 'profile'; await loadRoute(); await line(cell); const outgoing = await page.locator(selector()).elementHandle();
+      try { route = 'development'; await loadRoute(); const frame = await waitFrame(cell, selector(), label(current()), outgoing); check(cell, 'PROFILE_DOORLESS_ROUTE_ARRIVAL', frame.hash === '#/development' && frame.outgoingRetired && frame.dialogCount === 0); }
       finally { await outgoing?.dispose(); }
     });
     await run('development', 'picker-history', async cell => { await open(cell); check(cell, 'THREE_STORED_ONE_CURRENT', goals().length === 3 && await byId('goal-current').count() === 1 && (await byId('goal-current').locator('bdi').innerText()) === label(current())); await targets(cell, [dialog().getByRole('button', { name: t('aria.close'), exact: true }), byId('goal-choice-big-feelings'), byId('goal-earlier').locator('summary')]); });
@@ -179,7 +181,7 @@ export async function collectSingleGoalStates({ page, fixture, viewport, load, s
     await run('development', 'earlier-reopen', reopen);
     await run('profile', 'browser-back', async cell => {
       const outgoing = await dialog().elementHandle();
-      try { step('back'); await page.goBack({ waitUntil: 'domcontentloaded' }); route = 'profile'; const frame = await waitFrame(cell, selector(), label(current()), outgoing); check(cell, 'ACTUAL_BACK_RETIRES_PICKER', frame.hash === '#/profile' && frame.dialogCount === 0 && frame.outgoingRetired); }
+      try { step('back'); await page.goBack({ waitUntil: 'domcontentloaded' }); route = 'profile'; const frame = await waitFrame(cell, selector(), SINGLE_GOAL_DOORS[route] ? label(current()) : null, outgoing); check(cell, 'ACTUAL_BACK_RETIRES_PICKER', frame.hash === '#/profile' && frame.dialogCount === 0 && frame.outgoingRetired); }
       finally { await outgoing?.dispose(); }
     });
     await run('development', 'browser-forward', async cell => { step('forward'); await page.goForward({ waitUntil: 'domcontentloaded' }); route = 'development'; const frame = await waitFrame(cell, selector(), label(current())); check(cell, 'ACTUAL_FORWARD_NO_STALE_PICKER', frame.hash === '#/development' && frame.dialogCount === 0); });

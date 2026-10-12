@@ -51,10 +51,14 @@ describe("words parents use are readable instructions, not decorative quotations
     });
   }
 
-  it("kept Profile and story-memory quotations remain editorial", () => {
-    const profile = read("../sections/ChildProfile.tsx");
+  it("kept About and story-memory quotations remain editorial", () => {
+    // v3 F-CHILD-3 re-pin: About (#/profile) quotes the parent's words inside
+    // their area (AspectCard); the editorial face is set in about.css.
+    const card = read("../about/AspectCard.tsx");
+    const aboutCss = read("../about/about.css");
     const stories = read("../tabs/HeroJourneyTab.tsx");
-    expect(profile).toContain("var(--font-editorial)");
+    expect(card).toContain('className="about-aspect-quote"');
+    expect(aboutCss).toMatch(/\.about-aspect-quote \{[^}]*font-family: var\(--font-editorial\);/);
     expect(stories).toMatch(/fontFamily: "var\(--font-editorial\)"[^}]*\}\}[^>]*>[\s\S]{0,100}notedMoment/);
   });
 });

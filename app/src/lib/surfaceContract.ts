@@ -196,9 +196,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "development", hub: "growth", depth: 0,
     job: "Watch her record grow.",
-    // The child portrait opens original records from time, environment and
-    // domain views; supporting tools stay below the whole-child overview.
-    primaryMove: "explore-child-record", moduleBudget: 3, demotionTarget: "disclosure",
+    // v3 F-CHILD-1: the Milestones pill. Header and portrait cards, then the
+    // eight area rows (one opens inline to answer its skills); the 5-minute
+    // check in the areas card is the one move. The moments views moved to the
+    // Moments pill.
+    primaryMove: "start-development-check", moduleBudget: 3, demotionTarget: "disclosure",
     // Timeline marks indicate saved evidence, never developmental attainment.
     // B-PROG-05: `?view=program` is the program page (components/program/
     // ProgramPage, its own ONE stamp do-this-week, three modules) — a mode of
@@ -484,10 +486,12 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     primaryMove: "capture-moment", moduleBudget: 3, demotionTarget: "disclosure",
     // B-SHELL-26 (framer default, REJECTIONS P1-NEXTLEVEL): the review queue is
     // gone — the parent's own facts are kept on creation, inferences are asked
-    // inline (B-AI-07) and on #/memory. The hub's one move is now telling Arbor
-    // one thing: the stamp sits on the profile's "Add a fact" / "Tell Arbor one
-    // thing" door (edit drawer), rendered once in every state. The remembered
-    // list carries Forget only.
+    // inline (B-AI-07) and on #/memory. v3 F-CHILD-3 (About): the one move is
+    // telling Arbor one thing — the stamp sits on "Tell Arbor by voice" in the
+    // describe card, rendered once in every state. A proposal is confirmed in
+    // its own area (the same write #/memory uses); the Details row opens the
+    // profile drawer in one tap; the measurements log is the demoted module,
+    // folded in the one disclosure. Goals live on the development map, not here.
     threadWrite: "memory",
   },
   {

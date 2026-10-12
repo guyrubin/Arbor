@@ -438,7 +438,8 @@ describe("P1-NEXTLEVEL critic r2 (milestones · G0) — every Growth screen pass
   // paints 'נרגע/ת' on Hebrew screens. #/development was fixed in fcd4a2df;
   // #/milestones rendered the slash forms in the hero and all three rows.
   // Parity 9 Oct: the Growth leaf's milestone text lives in the portrait's watch row.
-  for (const file of ["tabs/MilestonesTab.tsx", "companion/PortraitWatchRow.tsx"]) {
+  // v3 F-CHILD-1: the Milestones page's parts print milestone text too.
+  for (const file of ["tabs/MilestonesTab.tsx", "companion/PortraitWatchRow.tsx", "companion/ChildPortrait.tsx", "companion/MilestoneAreas.tsx", "companion/AreaRowDetail.tsx", "companion/PortraitCards.tsx"]) {
     it(`${file}: no milestoneText( call lacks the gender opts`, async () => {
       const fs = await import("node:fs");
       const path = await import("node:path");

@@ -14,6 +14,10 @@
  *    drops its own copy of the picture while the empty state carries it.
  *  - Together's empty state is a FIRST-TIME state: it waits for every read,
  *    never treats a failed read as empty, and leaves once anything is on record.
+ *  - v3 F-CHILD-1: My child is the Milestones page, one scroll whose first-time
+ *    state is the page itself: the cards say "Not told yet" and offer Tell
+ *    Arbor (the kept-moment card opens the capture sheet), and every area row
+ *    says "No record yet". Still nothing in numbers on the cards or the rows.
  */
 import React from "react";
 import { readFileSync } from "node:fs";
@@ -50,6 +54,10 @@ vi.mock("../../hooks/useObservationRecord", () => ({ useObservationRecord: () =>
 vi.mock("./PortraitWatchRow", () => ({ default: () => null }));
 vi.mock("./PortraitKeepsakes", () => ({ default: () => null }));
 vi.mock("../describe/KeptDescription", () => ({ default: () => null }));
+// v3 F-CHILD-1: the describe conversation and the first's keepsake sheet open
+// only on a tap and have their own tests.
+vi.mock("../describe/TellArborMore", () => ({ default: () => null }));
+vi.mock("../milestones/FirstKeepsakeSheet", () => ({ default: () => null }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 // Together: play reads (hero runs stay empty; practice rows come from the state).
 vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ items: [], loaded: state.loaded, error: state.failed }) }));
@@ -108,18 +116,34 @@ beforeEach(() => {
   state.playItems = []; state.loaded = true; state.failed = false; state.buttons = [];
 });
 
-describe("VIS-07 · My child: the picture starts with your life together", () => {
-  it.each(LANGS)("%s: one picture, one sentence, one Keep a moment that opens the capture sheet, no numbers", (lang) => {
+/* v3 F-CHILD-1 RE-PIN: the brief makes My child one scroll (header, portrait
+   cards, the areas table); the separate empty branch with its picture and one
+   Keep a moment is gone, because the page's first-time state is the page
+   itself. Was: one picture, one sentence, one Keep a moment. Now: the cards
+   and the rows say what is not told yet, in words, and count nothing. */
+describe("VIS-07 · My child: the first-time Milestones page (v3 F-CHILD-1)", () => {
+  /** Text a parent reads, without the icon ligatures (a glyph name is not copy). */
+  const readText = (html: string) => textOf(html.replace(/<span class="msr[^"]*"[^>]*>[^<]*<\/span>/g, " "));
+  it.each(LANGS)("%s: the cards say Not told yet, every row says No record yet, nothing in numbers", (lang) => {
     state.lang = lang;
     const html = renderToStaticMarkup(<ChildPortrait />);
-    const empty = branch(html, /<div class="portrait-empty">[\s\S]*?<\/button><\/div><\/div>/);
-    expect(empty).toContain('data-testid="portrait-empty-art"');
-    expect(textOf(empty)).toContain(t("companion.portrait.emptyAll"));
-    expect(buttonsIn(empty), "exactly ONE action").toBe(1);
-    expectNoNumbers(textOf(empty));
-    const cta = state.buttons.filter((button) => button.className === "portrait-primary" && labelOf(button) === t("companion.portrait.capture"));
-    expect(cta).toHaveLength(1);
-    cta[0].onClick();
+    const cards = branch(html, /<div class="portrait-cards" data-testid="portrait-cards">[\s\S]*?<\/button><\/div>/);
+    const rows = branch(html, /<ul class="dev-map-rows" role="list">[\s\S]*?<\/ul>/);
+    expect(occurrences(readText(cards), t("companion.milestones.notTold"))).toBe(2);
+    expect(readText(cards)).toContain(t("elev.goal.profile.empty"));
+    expect(occurrences(rows, 'data-testid="dev-map-row"')).toBe(8);
+    expect(occurrences(readText(rows), t("companion.devMap.none"))).toBe(8);
+    expect(html).not.toContain('data-testid="dev-map-seen"');
+    expect(html).not.toContain('data-testid="dev-map-last"');
+    expectNoNumbers(readText(cards));
+    expectNoNumbers(readText(rows));
+  });
+  it.each(LANGS)("%s: the kept-moment card's Tell Arbor opens the capture sheet, once", (lang) => {
+    state.lang = lang;
+    renderToStaticMarkup(<ChildPortrait />);
+    const tell = state.buttons.filter((button) => button["data-testid"] === "portrait-card-kept-tell");
+    expect(tell).toHaveLength(1);
+    tell[0].onClick();
     expect(state.openCaptureSheet).toHaveBeenCalledOnce();
   });
 });

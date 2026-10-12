@@ -179,12 +179,13 @@ export default function MilestonesTab() {
       keepsakeMigratedFor.current = null; // the local key stays; the next load retries
     });
   }, [childProfile.id, keepsakeCol.loaded, keepsakeCol.items, keepsakeCol.upsert, keepsakes]);
+  // v3 F-CHILD-1: both return the write, so the sheet's receipt waits for it.
   const saveKeepsake = (draft: KeepsakeDraft) => {
     const next = upsertKeepsake(keepsakes, draft, new Date().toISOString());
-    void keepsakeCol.upsert(keepsakeDoc(next[draft.milestoneId]));
+    return keepsakeCol.upsert(keepsakeDoc(next[draft.milestoneId]));
   };
   const dropKeepsake = (milestoneId: string) => {
-    void keepsakeCol.remove(milestoneId);
+    return keepsakeCol.remove(milestoneId);
   };
   const openKeepsake = keepsakeFor ? milestones.find((m) => m.id === keepsakeFor) ?? null : null;
 
@@ -1374,7 +1375,7 @@ export default function MilestonesTab() {
         canShare={Boolean(openKeepsake && keptNotes.rows.has(openKeepsake.id)) && !keptNotes.disabled}
         beforeShare={keptNotes.beforeExport}
         onSave={saveKeepsake}
-        onRemove={() => { if (openKeepsake) dropKeepsake(openKeepsake.id); }}
+        onRemove={() => (openKeepsake ? dropKeepsake(openKeepsake.id) : Promise.resolve())}
         onClose={() => setKeepsakeFor(null)}
       />
 

@@ -30,6 +30,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ROUTE_IDS, HASH_ALIASES, RETIRED_ROUTES, SUB_ROUTES, hashQuery, resolveRouteId } from "./routes";
 import { SECTIONS, hubTabsForSection } from "./navigation";
+import { UNSEARCHABLE_ROUTES, getSearchIndex } from "./searchIndex";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..");
@@ -86,6 +87,25 @@ export function retiredRouteIsReachable(
   if (!target) return false;        // retired with nowhere to land
   if (target === key) return false; // a self-redirect is not a redirect
   return liveRoutes.has(target);
+}
+
+/**
+ * v3 F-CHILD-1 RE-PIN — routes between homes. Each lost its last in-app door
+ * to a named v3 removal, and its hash is promised a new home by a named item
+ * that has not landed yet. Until then it must stay findable BY NAME: a real
+ * search row (IA-20 derives route rows from ROUTE_IDS), proven below against
+ * the built index, not against a literal in a source file. Delete the entry
+ * when its item lands. Was: no such map (the door sat in My child's record
+ * tools, which the F-CHILD-1 brief removes).
+ */
+export const PENDING_HOME: Readonly<Record<string, string>> = {
+  copilot: "My child's record tools held its last door (removed by F-CHILD-1); EXTRA-TALK sends #/copilot to the Talk panel, and the brief keeps the route live until then.",
+};
+
+/** Is `route` a route row in the real search index (title in EN and HE)? */
+function searchableByName(route: string): boolean {
+  if (route in UNSEARCHABLE_ROUTES) return false;
+  return getSearchIndex().some((e) => e.kind === "route" && e.tab === route && !!e.title.en && !!e.title.he && e.title.en !== `nav.tab.${route}`);
 }
 
 /** Routes whose Shell registry component is ALSO registered under another id
@@ -151,7 +171,8 @@ describe("IA-09 — every non-pill route has a real entry point", () => {
         extra.has(route) ||
         aliased.has(route) ||
         aliasTargets.has(route) ||
-        retiredRouteIsReachable(route, RETIRED_ROUTES, live);
+        retiredRouteIsReachable(route, RETIRED_ROUTES, live) ||
+        (route in PENDING_HOME && searchableByName(route));
       expect(ok, `route "${route}" is declared but nothing navigates to it`).toBe(true);
     });
   }
@@ -175,6 +196,27 @@ describe("IA-09 — every non-pill route has a real entry point", () => {
       // A retired route must not also be an alias key — two maps answering for
       // one hash is how the drift this file exists to catch starts.
       expect(Object.keys(HASH_ALIASES)).not.toContain(key);
+    }
+  });
+
+  it("v3 F-CHILD-1: a route between homes is live, has a reason, and a parent can find it by name", () => {
+    for (const [route, why] of Object.entries(PENDING_HOME)) {
+      expect(live.has(route), `pending route "${route}" is not a route`).toBe(true);
+      expect(why.length, route).toBeGreaterThan(40);
+      expect(searchableByName(route), `pending route "${route}" has no search row`).toBe(true);
+    }
+    // negative control: an unsearchable route is not rescued by the map
+    expect(searchableByName("attribution")).toBe(false);
+  });
+
+  it("v3 F-CHILD-1: a pending entry expires the moment its route has a home of its own", () => {
+    // EXTRA-TALK is the item that homes #/copilot (it sends the route to the
+    // Talk panel). When it, or any door, alias or redirect, lands, this entry
+    // must go, so the map can never rot into a standing excuse.
+    for (const route of Object.keys(PENDING_HOME)) {
+      const homed = callSites.has(route) || extra.has(route) || aliased.has(route) || aliasTargets.has(route)
+        || retired.has(route) || route in HASH_ALIASES;
+      expect(homed, `"${route}" has a home of its own now (EXTRA-TALK landed?): delete its PENDING_HOME entry`).toBe(false);
     }
   });
 

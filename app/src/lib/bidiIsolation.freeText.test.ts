@@ -39,13 +39,18 @@ describe("B-SHELL-28 — FreeText renders inside a bdi with dir=auto, the name i
   });
 
   it("My Child renders every fact through FreeText; no fact paragraph carries its own dir=auto", () => {
+    // v3 F-CHILD-3 re-pin: About quotes facts inside the eight area cards —
+    // the kept line and the waiting proposal both go through FreeText.
     const src = fs.readFileSync(path.resolve(__dirname, "../components/sections/ChildProfile.tsx"), "utf8");
-    expect(src).toContain("<FreeText text={toParentWords(latestApproved.fact)} />");
-    expect(src).toContain("<FreeText text={toParentWords(m.fact)} />");
-    // (B-SHELL-26: chapter 6's `shown.fact` list folded into the remembered
-    //  band, which renders <FreeText text={toParentWords(m.fact)} /> above.)
-    expect(src).not.toMatch(/>\{shown\.fact\}</);
-    expect(src).not.toMatch(/dir="auto"[^>]*>\{toParentWords/);
+    const card = fs.readFileSync(path.resolve(__dirname, "../components/about/AspectCard.tsx"), "utf8");
+    expect(src).toContain("<AspectCard");
+    expect(card).toContain("<FreeText text={known.words} />");
+    expect(card).toContain("<FreeText text={toParentWords(pending.fact)} />");
+    for (const s of [src, card]) {
+      expect(s).not.toMatch(/>\{shown\.fact\}</);
+      expect(s).not.toMatch(/>\{known\.words\}</);
+      expect(s).not.toMatch(/dir="auto"[^>]*>\{toParentWords/);
+    }
   });
 
   it("Today's record card quotes through FreeText", () => {

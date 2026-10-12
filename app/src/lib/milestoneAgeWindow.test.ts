@@ -22,6 +22,8 @@ import {
 } from "./milestoneData";
 import { milestoneInAgeWindow } from "../consult/packet";
 import { translate } from "./i18n";
+// v3 F-CHILD-1: the Milestones page mounts these parts; the Growth-leaf scans cover them too.
+const MILESTONES_PARTS = ["PortraitCards.tsx", "MilestoneAreas.tsx", "AreaRowDetail.tsx", "DevelopmentMap.tsx"];
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..");
@@ -124,10 +126,14 @@ describe("RUN-02 — the 60-month fixture: no 0–12-month title in any 'next' p
     }
   });
 
-  it("ChildProfile derives its 'worth watching next' from selectNextMilestones, never filter(!checked).slice", () => {
-    const code = stripComments(read("components/sections/ChildProfile.tsx"));
-    expect(code).toMatch(/selectNextMilestones\(milestones, comparisonMonths, 3\)/);
-    expect(code).not.toMatch(/milestones\.filter\(\(m\) => !m\.checked\)\.slice\(0, 3\)/);
+  it("the 'worth watching next' readers use selectNextMilestones, never filter(!checked).slice", () => {
+    // v3 F-CHILD-3 re-pin: the milestones chapter left About (#/profile);
+    // Milestones and the Now loop own "what's next", through the banded selector.
+    const profile = stripComments(read("components/sections/ChildProfile.tsx"));
+    expect(profile).not.toMatch(/milestones\.filter\(\(m\) => !m\.checked\)\.slice\(0, 3\)/);
+    expect(profile).not.toContain("selectNextMilestones(");
+    expect(stripComments(read("components/tabs/MilestonesTab.tsx"))).toMatch(/selectNextMilestones\(milestones, comparisonMonths, /);
+    expect(stripComments(read("components/companion/useNowLoop.ts"))).toMatch(/selectNextMilestones\(milestones, comparisonMonths, 6\)/);
   });
 });
 
@@ -150,7 +156,7 @@ describe("GP-08 — every denominator surface counts the window, not the catalog
   });
 
   it("the pre-fix all-ages denominators are gone", () => {
-    const dev = stripComments(["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx"].map((f) => read(`components/companion/${f}`)).join("\n"));
+    const dev = stripComments(["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx", ...MILESTONES_PARTS].map((f) => read(`components/companion/${f}`)).join("\n"));
     expect(dev).not.toMatch(/total:\s*milestones\.length/);
     expect(dev).not.toMatch(/total:\s*heroStats\.|inWindow\.length/);
     const ms = stripComments(read("components/tabs/MilestonesTab.tsx"));

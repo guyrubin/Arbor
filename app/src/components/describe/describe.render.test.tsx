@@ -50,7 +50,7 @@ describe.each(["en", "he"] as const)("describe surface (%s)", (lang) => {
     h.lang = lang;
     vi.stubGlobal("window", { SpeechRecognition: class {} });
     vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
-    const html = renderToStaticMarkup(<DescribeChild name="Noa" lang={lang} value="" onChange={() => {}} quickFills />);
+    const html = renderToStaticMarkup(<DescribeChild name="Noa" lang={lang} value="" onChange={() => {}} onAspect={() => {}} />);
     expect(html).toContain('data-testid="describe-mic"');
     expect(html).toContain('data-testid="describe-mic-data-use"');
     expect((html.match(/data-fill=/g) ?? [])).toHaveLength(8);

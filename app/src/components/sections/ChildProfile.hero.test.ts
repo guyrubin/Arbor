@@ -2,99 +2,100 @@
  * GP-15 / RUN-20 — the Profile hub hero's ONE CTA is the surface contract's
  * primary move (`capture-moment` since B-SHELL-26), and the child count is the family's real
  * count. Source pins with the verbatim pre-fix lines as negative controls.
+ *
+ * v3 F-CHILD-3 re-pin: #/profile is About {child}. The hero is the describe
+ * card; the stamp moved from the "Add a fact" drawer door to "Tell Arbor by
+ * voice", which opens the ONE guided conversation. The remembered list, the
+ * Who chapter and the jump strip left the page (the memory door stays).
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SURFACE_CONTRACTS } from "../../lib/surfaceContract";
+import { ASPECT_IDS } from "../../lib/aboutAspects";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const raw = readFileSync(path.join(here, "ChildProfile.tsx"), "utf8");
-const src = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+const strip = (raw: string) => raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+const src = strip(readFileSync(path.join(here, "ChildProfile.tsx"), "utf8"));
+const card = strip(readFileSync(path.join(here, "..", "about", "AspectCard.tsx"), "utf8"));
+const aboutCss = readFileSync(path.join(here, "..", "about", "about.css"), "utf8");
 
-/** The hero's <HubHero … /> block, so pins are scoped to the CTA/stats. */
+/** The describe card, so pins are scoped to the hero. */
 const hero = (() => {
-  const start = src.indexOf("<header data-module=\"profile-identity\"");
-  const end = src.indexOf("</header>", start);
+  const start = src.indexOf('<section data-module="about-describe"');
+  const end = src.indexOf("</section>", start);
   return src.slice(start, end);
 })();
 
 describe("GP-15 — the hero CTA is the contract's primary move", () => {
-  // B-SHELL-26 (framer default): the review queue is gone; the hub's one move
-  // is telling Arbor one thing — capture-moment on the "Add a fact" door.
   it("the profile contract's primaryMove is capture-moment", () => {
     const c = SURFACE_CONTRACTS.find((x) => x.route === "profile")!;
     expect(c.primaryMove).toBe("capture-moment");
   });
 
-  it("the stamped control is the one 'Add a fact' door, in every state; nothing routes away", () => {
-    expect(hero).toContain('data-testid="profile-hero-cta"');
-    expect(hero).toMatch(/\{\.\.\.CAPTURE_MOVE\}\s+onClick=\{\(\) => setEditingProfile\(true\)\}/);
+  it("the stamped control is the one 'Tell Arbor by voice' door, in every state; nothing routes away", () => {
+    expect(hero).toContain('data-testid="about-voice"');
+    expect(hero).toMatch(/\{\.\.\.CAPTURE_MOVE\}\s+onClick=\{\(\) => openSheet\(null, "voice"\)\}/);
     // one declaration, one spread (framework-check: exactly 1 stamp)
     expect(src).toContain('const CAPTURE_MOVE = { "data-primary-move": "capture-moment" } as const;');
     expect(src.match(/data-primary-move/g)?.length).toBe(1);
     expect(src.match(/\{\.\.\.CAPTURE_MOVE\}/g)?.length).toBe(1);
     expect(src).not.toMatch(/<div[^>]*\{\.\.\.CAPTURE_MOVE\}/);
-    expect(hero).toContain('t("elev.growthTruth.profile.cta.addFact", { name: first })');
-    expect(hero).toContain('t("elev.profile.knows.empty", { name: first })');
-    // the door is not gated on an empty queue any more
+    expect(hero).toContain('t("companion.about.voice")');
+    expect(hero).toContain('t("companion.about.write")');
+    // the door is not gated on anything
     expect(hero).not.toContain("!hasPending &&");
     expect(src).not.toMatch(/data-primary-move="[^"]*"[^>]*setActiveTab\("memory"\)/);
     expect(src).not.toContain("APPROVE_MOVE");
+    expect(card).not.toContain("data-primary-move");
   });
 
-  it("B-SHELL-26: Profile lists what Arbor remembers with Forget only — no Keep, no 'Not quite', no queue", () => {
-    const band = src.slice(src.indexOf('data-module="profile-remember"'), src.indexOf("</section>", src.indexOf('data-module="profile-remember"')));
-    expect(band).toContain('t("elev.profile.remembers.title")');
-    expect(band).toContain('data-testid="profile-remembered-forget"');
-    expect(band).toContain('handleMemoryDecision(m.memoryId, "deleted")');
+  it("a proposal is decided inside its area with the #/memory decision — no queue, no list, one door to #/memory", () => {
+    expect(card).toContain('handleMemoryDecision(pending.memoryId, status)');
+    expect(card).toContain('data-testid="about-pending-confirm"');
+    expect(card).toContain('data-testid="about-pending-dismiss"');
     expect(src).not.toContain('data-testid="profile-remember-keep"');
     expect(src).not.toContain('data-testid="profile-remember-notquite"');
     expect(src).not.toContain('"elev.profile.remember.keep"');
     expect(src).not.toContain('"elev.profile.remember.notQuite"');
-    expect(src).not.toContain('"elev.profile.remember.title"');
-    // an inference waiting is ONE quiet line to #/memory, never a list here
-    expect(band).toContain('data-testid="profile-remember-check"');
-    expect(band).not.toMatch(/pendingQueue\.(slice|map)\(/);
+    expect(src).not.toMatch(/pendingQueue\.(slice|map)\(/);
+    expect(src).toContain('data-testid="profile-remember-check"');
+    expect(src).toContain('setActiveTab("memory")');
+    expect(src).toContain('t("elev.profile.remembers.title")');
   });
 
   it("NEGATIVE CONTROL: the pre-fix 'Add a family member' CTA is gone from the hero", () => {
     const old = 'label: t("elev.hero.profile.cta"),';
     expect(old).toMatch(/elev\.hero\.profile\.cta/); // the fixture is the banned shape
     expect(hero).not.toContain(old);
-    expect(hero).not.toMatch(/onClick: \(\) => setActiveTab\("sharing"\)/);
+    expect(src).not.toMatch(/setActiveTab\("sharing"\)/);
   });
 });
 
 describe("GP-15 — the child count is the family's real count", () => {
-  // W2-GROWTH r1: the telemetry row (children · members · moments) is CUT from
-  // the identity band — no count can be a literal because no count is printed.
-  it("the identity band prints no family/moment counts at all", () => {
-    expect(hero).not.toContain("elev.wave2Knowledge.profile.child");
-    expect(hero).not.toContain("elev.wave2Knowledge.profile.member");
-    expect(hero).not.toContain("elev.wave2Knowledge.profile.moment");
+  // W2-GROWTH r1: the telemetry row (children · members · moments) is CUT —
+  // no count can be a literal because no count is printed.
+  it("the page prints no family/moment counts at all", () => {
+    expect(src).not.toContain("elev.wave2Knowledge.profile.child");
+    expect(src).not.toContain("elev.wave2Knowledge.profile.member");
+    expect(src).not.toContain("elev.wave2Knowledge.profile.moment");
   });
 
   it("NEGATIVE CONTROL: the literal `1` stat is gone", () => {
     const old = '{ value: 1, label: t("elev.stat.children") }';
     expect(/value:\s*1,\s*label:\s*t\("elev\.stat\.children"\)/.test(old)).toBe(true);
-    expect(hero).not.toMatch(/value:\s*1,\s*label:\s*t\("elev\.stat\.children"\)/);
+    expect(src).not.toMatch(/value:\s*1,\s*label:\s*t\("elev\.stat\.children"\)/);
   });
 });
 
-describe("GP-26 / IA-09 — the strengths leaf is retired into Profile chapter 4", () => {
-  // This block previously asserted the interim fix: give the orphaned
-  // `#/strengths` leaf its one missing door. The item's actual decision is the
-  // opposite and supersedes it — the leaf WAS chapter 4, and its only entry
-  // point was a link inside that same chapter, so the door led out of a room
-  // and back into it. The hash now resolves to this hub
-  // (lib/routes.ts RETIRED_ROUTES, covered by routes.test.ts), and the content
-  // assertions live in components/sections/profileMemoryOrder.test.ts.
-  it("chapter 4 owns the content, and no longer links away to a copy of itself", () => {
+describe("GP-26 / IA-09 — the strengths leaf lives in About's strengths area", () => {
+  // #/strengths resolves to this hub; its content is the strengths area, and
+  // nothing links away to a copy of it.
+  it("the strengths area owns the content, and nothing links to #/strengths", () => {
     expect(src).not.toMatch(/setActiveTab\("strengths"\)/);
-    expect(src).toContain('t("cp.ch.strengths")');
-    expect(src).toContain('t("cp.ch.support")');
+    expect(ASPECT_IDS).toContain("strengths");
+    expect(src).toContain("<AspectCard");
   });
 });
 
@@ -103,20 +104,14 @@ describe("W2 — a useful identity header", () => {
     expect(src.match(/<h1[\s>]/g)).toHaveLength(1);
     expect(src).not.toContain("<PageHeader");
     expect(src).not.toContain('h-[90px]');
-    expect(src.indexOf('data-module="profile-who"')).toBeLessThan(src.indexOf('t("cp.family.title")'));
+    expect(hero).toContain('<h1 id="about-title">');
   });
-  it("keeps edit, Ask, and the existing drawer creation seam reachable", () => {
-    // W2-GROWTH r2: Ask Arbor is a door in the jump strip, not a header action.
-    expect(src).toContain('{ tab: "coach" as const');
-    const header = src.slice(src.indexOf('data-module="profile-identity"'), src.indexOf("</header>"));
-    expect(header).toBeTruthy();
-    expect(header).not.toContain('"coach"');
-    expect(header).not.toContain("!hasHero");
-    expect(src).toContain('t("elev.wave2Knowledge.profile.edit")');
-    // Create hero lives in the Who chapter now (W2-GROWTH r2).
-    const who = src.slice(src.indexOf('data-module="profile-who"'));
-    expect(who.indexOf("!hasHero")).toBeGreaterThan(-1);
-    const create = who.slice(who.indexOf("!hasHero"), who.indexOf("!hasHero") + 400);
+  it("keeps edit and the existing drawer creation seam reachable from Details", () => {
+    const details = src.slice(src.indexOf('data-module="about-details"'));
+    expect(details).toContain('t("companion.about.detailsEdit")');
+    expect(hero).not.toContain("!hasHero");
+    expect(details.indexOf("!hasHero")).toBeGreaterThan(-1);
+    const create = details.slice(details.indexOf("!hasHero"), details.indexOf("!hasHero") + 400);
     expect(create).toContain("setEditingProfile(true)");
     expect(create).not.toContain('setActiveTab("profile")');
     expect(src).toContain("<ProfileEditDrawer");
@@ -124,20 +119,23 @@ describe("W2 — a useful identity header", () => {
 });
 
 describe("B-SHELL-27 — one face on My Child", () => {
-  it("the identity picture and the Create-hero gate read lib/childPicture (never the plant beside a hero)", () => {
+  it("the Details picture and the Create-hero gate read lib/childPicture (never the plant beside a hero)", () => {
     expect(src).toContain('import { asksForHero, childPicture } from "../../lib/childPicture";');
     expect(src).toContain("const hasHero = !asksForHero(childProfile);");
     expect(src).toMatch(/\{!hasHero && <button[^>]*>[\s\S]{0,200}cp\.hero\.create/);
     expect(src).not.toMatch(/const \{ hasHero[^}]*\} = useHeroAvatar\(\)/);
   });
+  it("the art panel shows only a hero render or the initial — never an uploaded photo", () => {
+    expect(hero).toContain('picture.kind === "hero" && picture.url');
+    expect(hero).toContain("picture.initial");
+  });
 });
 
 describe("NEXTLEVEL critic r1 (profile · design · P1) — one weight for the fact quote in both locales", () => {
   const css = readFileSync(path.join(here, "..", "..", "index.css"), "utf8");
-  it("the remembered fact is the editorial face at weight 400", () => {
-    // B-SHELL-26: the remembered list row — same face and weight; the B-GROWTH-35
-    // written-date prefix precedes the parent's words.
-    expect(src).toMatch(/style=\{\{ fontFamily: "var\(--font-editorial\)", fontWeight: 400, fontSize: "var\(--t-md\)", color: "var\(--arbor-ink\)" \}\}>\s*\{writtenPrefix\(toParentWords\(m\.fact\), m\.createdAt\)\}<FreeText text=\{toParentWords\(m\.fact\)\} \/>/);
+  it("the quoted fact is the editorial face at weight 400", () => {
+    expect(card).toMatch(/<p className="about-aspect-quote"[^>]*><FreeText text=\{known\.words\} \/><\/p>/);
+    expect(aboutCss).toMatch(/\.about-aspect-quote \{[^}]*font-family: var\(--font-editorial\);[^}]*font-weight: 400;/);
   });
   it("on a Hebrew page Latin runs take Instrument Serif first; Hebrew falls through to Frank Ruhl Libre (both HE scopes)", () => {
     const he = css.match(/--font-editorial: [^;]*Frank Ruhl Libre[^;]*;/g) ?? [];
