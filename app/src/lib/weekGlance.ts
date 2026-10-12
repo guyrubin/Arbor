@@ -13,7 +13,9 @@ import type { Observation, ObservationOrigin, ObservationSource } from "./observ
  *
  * The week is the report's own week: `weekStartMs` comes from
  * recapWeekStartMs (the instant recapWeekId turns over), and a record counts
- * when it falls between that instant and `now`.
+ * when it falls between that instant and `now`. That week opens on a Saturday
+ * (and, at the year cut, on Jan 1): recapWeekId is the stored report id and
+ * stays as it is, so the glance names its days by date, not by weekday.
  */
 
 /** Kid Mode's own records — what the child did, never the parent's notes. */
@@ -43,8 +45,17 @@ export type WeekGlance = {
   counts: Record<WeekCountKey, number> & { tried: number };
   /** Seven days from the week's first local midnight. */
   perDay: WeekGlanceDay[];
-  /** Each counted record once per area it carries; an area with nothing is absent. */
+  /**
+   * The parent's own moments of the week, once per area each carries; an area
+   * with none is absent. Milestones, words and Kid Mode sessions are counted
+   * in their own tiles and never here: By area reads what the parent kept.
+   */
   byDomain: Partial<Record<DomainId, number>>;
+  /**
+   * The day of the strip that holds `now` (0 to 6): the days after it have not
+   * happened yet. -1 before the strip opens, 7 once it lies wholly behind.
+   */
+  today: number;
   /** The fullest day over all five counts (at least 1): the scale of Now's day bars. */
   max: number;
   /** The fullest day over moments and Kid Mode sessions (at least 1): the scale of the glance's day strip. */
@@ -99,7 +110,7 @@ export function weekGlance({ observations, actionLoop, now, weekStartMs }: {
     const ms = inWeek(item.at);
     if (ms === null) continue;
     add(key, ms);
-    for (const domain of item.domains) byDomain[domain] = (byDomain[domain] ?? 0) + 1;
+    if (key === "moments") for (const domain of item.domains) byDomain[domain] = (byDomain[domain] ?? 0) + 1;
   }
 
   const latest = days.map(() => Number.NEGATIVE_INFINITY);
@@ -120,7 +131,9 @@ export function weekGlance({ observations, actionLoop, now, weekStartMs }: {
 
   const max = Math.max(1, ...perDay.map((day) => WEEK_ORDER.reduce((sum, key) => sum + day[key], 0)));
   const stackMax = Math.max(1, ...perDay.map((day) => day.moments + day.kid));
-  return { counts, perDay, byDomain, max, stackMax };
+  const afterLast = new Date(first.getFullYear(), first.getMonth(), first.getDate() + 7).getTime();
+  const today = end < days[0] ? -1 : end >= afterLast ? 7 : dayIndex(end);
+  return { counts, perDay, byDomain, today, max, stackMax };
 }
 
 /** True when the week holds anything to count (a step tried counts too). */

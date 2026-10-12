@@ -65,13 +65,20 @@ describe("B-SHELL-29 · no parent-side component sends a child image", () => {
 });
 
 describe("B-SHELL-29 · the invite card", () => {
-  it("renders once, at the bottom of the weekly letter (inside its module), and not in Settings", () => {
+  /* v3 F-NOW-3 re-pin: the weekly letter left #/weekly, so the invite no
+     longer closes it. It stays on Weekly (its home is Guy's call), folded into
+     the report's one collapsed disclosure: a demoted module whose summary
+     carries the invite's title. */
+  it("renders once, on the Weekly report, inside the page's one disclosure, and not in Settings", () => {
     const weekly = read("components/tabs/WeeklyTab.tsx");
     expect(weekly.match(/<InviteCard \/>/g)).toHaveLength(1);
-    const recap = weekly.indexOf('data-module="weekly-recap"');
-    const invite = weekly.indexOf('data-testid="weekly-invite"');
-    expect(invite).toBeGreaterThan(weekly.indexOf("<WhatWorkedCard", recap));
-    expect(weekly.slice(invite, weekly.indexOf("</section>", invite))).toContain('t("elev.words.invite.title")');
+    expect(weekly.match(/<details\b/g)).toHaveLength(1);
+    const details = weekly.slice(weekly.indexOf("<details"), weekly.indexOf("</details>"));
+    expect(details).toMatch(/data-module="weekly-invite" data-module-demoted/);
+    expect(details).toContain("<InviteCard />");
+    const invite = details.indexOf('data-testid="weekly-invite"');
+    expect(invite).toBeGreaterThan(details.indexOf("</summary>"));
+    expect(details.slice(details.indexOf("<summary"), details.indexOf("</summary>"))).toContain('t("elev.words.invite.title")');
     const mounts = PARENT.filter((p) => /<InviteCard\b/.test(strip(fs.readFileSync(p, "utf8")))).map(rel);
     expect(mounts).toEqual(["components/tabs/WeeklyTab.tsx"]);
   });

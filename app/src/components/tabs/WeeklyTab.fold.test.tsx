@@ -3,27 +3,28 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-/* B-OCCL-02 (6 Oct) — #/weekly at 375 × 812: the route's data-primary-move
-   (accept-recap-recommendation) sat on the letter's display:contents wrapper,
-   measured y 510, h 650 EN + HE (sweeps/ship-275042b9) — it ran under the
-   fixed capture dock. Fix: the ONE stamp literal (WeeklyTab ACCEPT_STAMP) is
-   spread on the control that performs the move — the letter's accept button
-   (RecapStoryCards acceptStamp — one data attribute, never a spread, so
-   whiteLabelContrast can prove the fill — last card) or, on a history week, the insight
-   card's accept — and the header gives back the height above the letter:
-   the week label rides in the eyebrow (no subtitle line), PageHeader flush
-   (no mb-7), the outline Retell and the history chips sit UNDER the story.
+/* v3 F-NOW-3 — re-pin of B-OCCL-02 (6 Oct) and B-OCCL-03 (7 Oct) for the
+   Weekly report as the v3 mock draws it.
 
-   jsdom has no layout, so this guard asserts (1) the stamp seam in source and
-   in the rendered letter, (2) the order of the page source, (3) a line model
-   of the accept button's bottom edge on the letter's last card at 375, from
-   the measured letter top (510) minus what this fix removed. OWED to a
-   rendered check: the sweep's base #/weekly cell opens on card 1, where the
-   accept button is not mounted, so the sweep reports no stamp there; a sweep
-   state that steps to the last card (rendered-sweep.mjs, not this builder's
-   file) must read primaryMoveOccluded false and the stamp bottom <= 640 EN + HE. */
+   What stays: the route's ONE data-primary-move literal (WeeklyTab
+   ACCEPT_STAMP) is spread on the control that performs the move, never on a
+   wrapper, and EVERY state renders exactly one stamp, EN + HE.
+
+   What moved (the re-pin): the letter (RecapStoryCards) left #/weekly, so its
+   accept and its stamped Next went with it, and so did the header's
+   "Create this week's story" / Retell that carried the stamp when nothing was
+   to accept (generateIsMove; generation is automatic now). The move lives in
+   the mock's "For next week:" band at the END of the report: "Make it today's
+   step" carries it while an AI digest's suggestion is not yet today's step,
+   and "Back to Now" carries it in every other state. The B-OCCL-02 line model
+   (accept bottom <= 640 px at 375) pinned the letter's place above the
+   capture dock; the mock puts the band after the dashboard, so at 375 the
+   move is reached by scrolling. That trade is the mock's and is OWED to Guy
+   and to a rendered sweep (primaryMoveOccluded false once scrolled into
+   view); this guard pins the order and the 44 px controls instead. Invented
+   examples only. */
 
 const state = vi.hoisted(() => ({ lang: "en" as "en" | "he" }));
 vi.mock("../../context/LanguageContext", async () => {
@@ -36,15 +37,15 @@ vi.mock("../../context/LanguageContext", async () => {
   };
 });
 vi.mock("../../lib/analytics", () => ({ track: () => undefined }));
-vi.mock("../ui/ShareButton", () => ({ default: () => null, ShareButton: () => null }));
-/* B-OCCL-03: the whole tab, rendered server-side over a stubbed context. */
 const tab = vi.hoisted(() => ({
   reports: [] as unknown[],
   active: null as null | { recommendation: string },
+  observations: [] as unknown[],
+  generating: false,
 }));
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({
-    childProfile: { id: "dylan-demo", name: "Dylan", birthDate: "2023-08-01" },
+    childProfile: { id: "child-invented", name: "Noa", birthDate: "2022-05-01" },
     setActiveTab: () => undefined,
     acceptTodayAction: () => undefined,
     activeTodayAction: tab.active,
@@ -52,306 +53,201 @@ vi.mock("../../context/ArborContext", () => ({
     actionLoop: [], approvedMemoryItems: [], keptInsights: [],
   }),
 }));
+vi.mock("../../hooks/useObservations", () => ({ useObservations: () => tab.observations }));
+vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ items: [] }) }));
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: null }) }));
 vi.mock("../../hooks/useWeeklyRecap", async () => {
   const actual = await vi.importActual<typeof import("../../hooks/useWeeklyRecap")>("../../hooks/useWeeklyRecap");
   return {
     ...actual,
     useWeeklyRecap: () => ({
-      reports: tab.reports, generating: false, generate: async () => undefined,
-      currentId: "2026-W40", currentLabel: "This week", labelFor: () => "Week of 27 September",
+      reports: tab.reports, generating: tab.generating, generate: async () => undefined,
+      currentId: actual.recapWeekId(new Date()), currentLabel: "This week", labelFor: () => "Week of 3 October",
       languageRefreshPending: false, recapUnopened: false, markRecapOpened: () => undefined,
     }),
   };
 });
-vi.mock("../weekly/recapEmail", () => ({
-  fetchDigestEmailStatus: () => new Promise(() => undefined),
-  readEmailOptIn: () => false,
-  writeEmailOptIn: () => undefined,
-}));
 vi.mock("../referral/InviteCard", () => ({ default: () => null }));
-vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => null }));
 vi.mock("../overview/QuickLogModal", () => ({ default: () => null }));
 
-import RecapStoryCards, { type RecapRecord } from "../weekly/RecapStoryCards";
-import { recapWeekStartMs, type WeeklyReport } from "../../hooks/useWeeklyRecap";
-import type { WeeklyDigest } from "../../lib/api";
+import { recapWeekId, recapWeekStartMs } from "../../hooks/useWeeklyRecap";
 import { translate } from "../../lib/i18n";
+import type { Observation } from "../../lib/observations";
 import WeeklyTab from "./WeeklyTab";
-import { rcString } from "../weekly/recapStrings";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const strip = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 const TAB = strip(readFileSync(path.join(here, "WeeklyTab.tsx"), "utf8"));
 
-/* The fallback digest's suggestions (server/digest.ts), plus a 200-character
-   AI-length sentence as the bound. */
-const TRY = {
-  en: [
-    "Log one moment a day — 20 seconds each — and next week's digest gets much smarter.",
-    "Pick the most frequent trigger above and pre-empt it once this week with a named transition warning.",
-    "x".repeat(200),
-  ],
-  he: [
-    "תעדו רגע אחד ביום — 20 שניות בכל פעם — והסיכום של השבוע הבא יהיה חכם יותר.",
-    "בחרו את הרגע שחוזר הכי הרבה ונסו להקדים אותו פעם אחת השבוע עם התראה רכה לפני המעבר.",
-    "א".repeat(200),
-  ],
-} as const;
+const NOW = new Date(2026, 9, 14, 15, 0);
+const FIRST = new Date(recapWeekStartMs(NOW));
+const on = (day: number, hour: number) => new Date(FIRST.getFullYear(), FIRST.getMonth(), FIRST.getDate() + day, hour).toISOString();
+const moment = (at: string, n: number) => ({
+  id: `behaviorLogs:invented-${n}`, childId: "child-invented", at, domains: ["feelings"], kind: "moment",
+  value: { type: "moment", behaviorType: "Moment" }, source: "parent_typed", origin: "behaviorLogs",
+  ageAtObservationMonths: 52, pretermCorrected: false,
+}) as unknown as Observation;
+const RECORDS = [moment(on(0, 9), 1), moment(on(1, 18), 2)];
 
-const NOW = new Date("2026-10-01T12:00:00.000Z");
-const record = {
-  weekStartMs: recapWeekStartMs(NOW),
-  behaviorLogs: [],
-  playLogs: [],
-  milestones: [],
-  actionLoop: [],
-  approvedFacts: [],
-  keptIdeas: [],
-  firstsState: { seen: [] },
-  milestoneCount: 0,
-  promptKey: null,
-} as unknown as RecapRecord;
-const report = (tryThisWeek: string) =>
-  ({
-    id: "2026-W40",
-    weekLabel: "Week of September 27",
-    generatedAt: "2026-10-01T06:00:00.000Z",
-    summary: { count: 3, resolved: 2, topTrigger: "Transitions" },
-    milestoneWins: [],
-    planProgress: { done: 0, total: 0 },
-    insight: "insight",
-    digest: {
-      title: "Week", subject: "Week", preheader: "", summary: "", highlights: [], watchFor: [],
-      tryThisWeek, generated: "ai",
-      stats: { weekOf: "2026-09-27", daysCovered: 4, momentsLogged: 3, previousWeekMoments: 0, resolvedCount: 0, topContext: "Home", topBehavior: "", milestonesDone: 0, milestonesTotal: 0 },
-    },
-  }) as unknown as WeeklyReport & { digest: WeeklyDigest };
+const TRY = { en: "Name the next transition out loud, once, before it starts.", he: "אמרו בקול את המעבר הבא, פעם אחת, לפני שהוא מתחיל." } as const;
+const digest = (lang: "en" | "he", generated: "ai" | "fallback") => ({
+  title: "Week", subject: "Week", preheader: "", summary: "", highlights: [], watchFor: [],
+  tryThisWeek: TRY[lang], generated,
+  stats: { weekOf: "2026-10-10", daysCovered: 2, momentsLogged: 2, previousWeekMoments: 0, resolvedCount: 0, topContext: "Home", topBehavior: "", milestonesDone: 0, milestonesTotal: 0 },
+});
+const stored = (lang: "en" | "he", kind: "ai" | "fallback" | "failed") => ({
+  id: recapWeekId(NOW), lang, weekStart: "2026-10-10", generatedAt: on(4, 6),
+  summary: { count: 2, resolved: 1, topTrigger: "Transitions" }, milestoneWins: [], planProgress: { done: 0, total: 0 },
+  insight: "insight",
+  ...(kind === "failed" ? {} : { digest: digest(lang, kind) }),
+});
 
-const renderCard = (lang: "en" | "he", text: string, index = 3) => {
+const render = (lang: "en" | "he", reports: unknown[], records: unknown[] = RECORDS, opts: { active?: { recommendation: string }; generating?: boolean } = {}) => {
   state.lang = lang;
-  return renderToStaticMarkup(
-    <RecapStoryCards report={report(text)} record={record} childName="Dylan" canAccept accepted={false} onAccept={() => undefined} onCapture={() => undefined} initialIndex={index} acceptStamp={{ "data-primary-move": "accept-recap-recommendation" }} />,
-  );
+  tab.reports = reports;
+  tab.observations = records;
+  tab.active = opts.active ?? null;
+  tab.generating = !!opts.generating;
+  return renderToStaticMarkup(<WeeklyTab />);
 };
+const stamps = (html: string) => html.match(/data-primary-move=/g) ?? [];
+const stampedTag = (html: string) => /<button[^>]*data-primary-move="accept-recap-recommendation"[^>]*>/.exec(html)?.[0] ?? "";
+const tagOf = (html: string, testId: string) => new RegExp(`<[a-z]+ [^>]*data-testid="${testId}"[^>]*>`).exec(html)?.[0] ?? "";
 
-/* The 375 model. Measured: the letter's top at y 510 (EN = HE). Removed
-   above it: the subtitle line (mt-2 8 + text-sm 20), PageHeader mb-7 (28),
-   the header action row at 375 (gap-3 12 + 44), the history strip (44 +
-   pb-1 4 + space-y-6 24); added: the eyebrow at 12 px instead of 11 px (+1.5).
-   The letter: section p-1, card p-6, the eyebrow row (≈ 17), then the content
-   centred in min-h 380: title 22 px leading-tight, mt-3, the suggestion
-   15 px leading-relaxed (24.375 / line) over 375 − 2·16 − 2·4 − 2·24 = 287 px
-   at 0.5 em per character (EN width for HE too, a conservative bound),
-   mt-5, the accept row (min-h 44; a wrapped share button adds 12 + 44 under
-   it, which only moves the centring — counted, the worst case). */
-const LETTER_TOP_375 = 510 - (8 + 20) - 28 - (12 + 44) - (44 + 4 + 24) + 1.5;
-const FOLD_LIMIT = 640;
-const WIDTH = 287;
-const lines = (text: string, px: number, em = 0.5) => Math.max(1, Math.ceil((text.length * px * em) / WIDTH));
-function acceptBottom(lang: "en" | "he", text: string, top = LETTER_TOP_375) {
-  const title = translate(lang, "elev.recap.try.title");
-  const titleH = lines(title, 22, 0.52) * 22 * 1.25;
-  const bodyH = lines(text, 15) * 15 * 1.625;
-  const contentAbove = titleH + 12 + bodyH + 20;
-  const content = contentAbove + 44 + (12 + 44);
-  const box = 380 - 2 * 24 - 17;
-  const offset = Math.max(0, (box - content) / 2);
-  return Math.round(top + 4 + 24 + 17 + offset + contentAbove + 44);
-}
-/** Weekly 1b: the stamped Next on cards 1…n-1 sits in the card's top-end
- *  corner (absolute top-3, no layout height): section p-1 4 + 12 + 44. The
- *  last card has no Next, so the accept model above is unchanged. */
-const nextBottom = (top = LETTER_TOP_375) => Math.round(top + 4 + 12 + 44);
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW); });
+afterEach(() => { vi.useRealTimers(); });
 
-describe("#/weekly — the move is the accept button, above the capture dock at 375", () => {
-  it("ONE data-primary-move literal in WeeklyTab, a shared const spread on the accept controls; the letter wrapper carries none", () => {
+describe("#/weekly — the ONE stamp lives in the carry band (v3 F-NOW-3 re-pin of B-OCCL-02)", () => {
+  it("one data-primary-move literal, a shared const spread on the two band controls; never on a wrapper", () => {
     expect(TAB.match(/\bdata-primary-move\b(?!-)/g)).toHaveLength(1);
     expect(TAB).toContain('const ACCEPT_STAMP = { "data-primary-move": "accept-recap-recommendation" } as const;');
-    expect(TAB).toMatch(/<RecapStoryCards\s+acceptStamp=\{acceptRendered \? ACCEPT_STAMP : undefined\}/);
-    // whiteLabelContrast: the letter sets ONE data attribute, never a prop spread on the button.
-    const LETTER = readFileSync(path.join(here, "../weekly/RecapStoryCards.tsx"), "utf8");
-    expect(LETTER).toContain('data-primary-move={acceptStamp?.["data-primary-move"]}');
-    expect(LETTER).not.toMatch(/\{\.\.\.accept\w*\}/);
-    expect(TAB).toMatch(/onClick=\{\(\) => acceptTodayAction\(selected\.digest!\.tryThisWeek, "standard", "digest"\)\}\s+\{\.\.\.ACCEPT_STAMP\}/);
-    expect(TAB).toMatch(/<div data-module="weekly-recap" style=\{\{ display: "contents" \}\}>/);
+    expect(TAB.match(/ACCEPT_STAMP/g)).toHaveLength(3);
+    expect(TAB).toMatch(/acceptTodayAction\(selected\.digest!\.tryThisWeek, "standard", "digest"\); \}\}\s+\{\.\.\.ACCEPT_STAMP\}\s+data-testid="weekly-accept"/);
+    expect(TAB).toMatch(/data-testid="weekly-carry-back"\s+onClick=\{\(\) => setActiveTab\("overview"\)\}\s+\{\.\.\.\(acceptRendered \? undefined : ACCEPT_STAMP\)\}/);
+    // The letter, its stamped Next and the generate-as-move rule left the route.
+    expect(TAB).not.toMatch(/RecapStoryCards|generateIsMove|weekly-recap|weekly-insight|PageHeader|HeroAvatar/);
   });
 
-  it("order: eyebrow (with the week label) → one-line H1 (no subtitle, flush) → the story → Retell + history chips", () => {
+  it("order: kicker → title → the counts line → the dashboard (or the empty card) → the carry band → the phone's summary door → the invite disclosure", () => {
     const ret = TAB.indexOf("  return (\n");
-    const eyebrow = TAB.indexOf('data-testid="weekly-eyebrow"');
-    const h1 = TAB.indexOf('title={t("wk.title", { first })}');
-    const recap = TAB.indexOf("<RecapStoryCards");
-    const after = TAB.indexOf("{afterStory}", recap);
-    expect([ret, eyebrow, h1, recap, after].every((i) => i > 0)).toBe(true);
-    expect(ret).toBeLessThan(eyebrow);
-    expect(eyebrow).toBeLessThan(h1);
-    expect(h1).toBeLessThan(recap);
-    expect(recap).toBeLessThan(after);
-    expect(TAB.slice(eyebrow, h1)).toContain("labelFor(selected)");
-    expect(TAB).not.toMatch(/subtitle=\{selected \? labelFor/);
-    expect(TAB).toMatch(/<PageHeader\s+flush/);
-    expect(TAB).toContain("action={hasStoredCurrentWeek ? undefined : retellButton}");
-    // The chips are built once, before the render, and placed through afterStory only.
-    expect(TAB.indexOf("chipIds.map")).toBeLessThan(ret);
-    expect(TAB.slice(ret).match(/chipIds\.map/g)).toBeNull();
+    const marks = [
+      'data-testid="weekly-eyebrow"',
+      'data-testid="weekly-title"',
+      'data-testid="weekly-glance-sub"',
+      "<WeekGlance",
+      'data-module="weekly-empty"',
+      'data-module="weekly-carry"',
+      '{summaryDoor("end")}',
+      "<details",
+    ].map((mark) => TAB.indexOf(mark, ret));
+    expect(ret).toBeGreaterThan(0);
+    expect(marks.every((i) => i > ret)).toBe(true);
+    expect([...marks].sort((a, b) => a - b)).toEqual(marks);
   });
 
-  it("the eyebrow and the chips: 12 px, no uppercase", () => {
+  it("the kicker is 12 px in sentence case; the counts line shows at every width", () => {
     const eyebrowTag = /<p data-testid="weekly-eyebrow"[^>]*>/.exec(TAB)?.[0] ?? "";
     expect(eyebrowTag).toContain("text-[12px]");
     expect(eyebrowTag).not.toMatch(/uppercase|text-\[11px\]/);
-    expect(TAB).toContain('className="text-[12px] font-bold px-3 py-1.5 rounded-full');
+    const subTag = /<p data-testid="weekly-glance-sub"[^>]*>/.exec(TAB)?.[0] ?? "";
+    expect(subTag).not.toBe("");
+    expect(subTag).not.toMatch(/\bhidden\b/);
   });
 
-  for (const lang of ["en", "he"] as const) {
-    it(`${lang}: weekly 1b — every card index renders exactly one stamp, on the visible card's forward control (next, next, next, accept)`, () => {
-      const html = renderCard(lang, TRY[lang][0]);
-      expect(html.match(/data-primary-move=/g)).toHaveLength(1);
-      expect(html).toMatch(/<button[^>]*data-primary-move="accept-recap-recommendation"[^>]*data-testid="recap-accept"/);
-      expect(html).not.toMatch(/<section[^>]*data-primary-move/);
-      // The last card has no Next: its accept is the forward control.
-      expect(html).not.toContain('data-testid="recap-next"');
-      const n = (html.match(/class="rounded-full transition-all"/g) ?? []).length;
-      expect(n).toBeGreaterThanOrEqual(3);
-      for (let i = 0; i < n - 1; i++) {
-        const card = renderCard(lang, TRY[lang][0], i);
-        expect(card.match(/data-primary-move=/g), `card ${i + 1}`).toHaveLength(1);
-        const next = /<button[^>]*data-testid="recap-next"[^>]*>/.exec(card)?.[0] ?? "";
-        expect(next).toContain('data-primary-move="accept-recap-recommendation"');
-        expect(next).toContain("--arbor-gradient-primary");
-        expect(card).not.toContain('data-testid="recap-accept"');
-      }
-      // No acceptStamp (fallback / accepted letter) → no stamp on any card; WeeklyTab's Retell carries it.
-      state.lang = lang;
-      for (let i = 0; i < n; i++) {
-        const bare = renderToStaticMarkup(
-          <RecapStoryCards report={report(TRY[lang][0])} record={record} childName="Dylan" canAccept accepted={false} onAccept={() => undefined} onCapture={() => undefined} initialIndex={i} />,
-        );
-        expect(bare).not.toContain("data-primary-move");
-        if (i < n - 1) expect(/<button[^>]*data-testid="recap-next"[^>]*>/.exec(bare)?.[0] ?? "").not.toContain("gradient");
-      }
-    });
-
-    it(`${lang}: card 1's stamped Next sits in the card's top-end corner (before its content), bottom ${nextBottom()} ≤ ${FOLD_LIMIT} at 375`, () => {
-      const html = renderCard(lang, TRY[lang][0], 0);
-      const next = /<button[^>]*data-testid="recap-next"[^>]*>/.exec(html)?.[0] ?? "";
-      expect(next).toMatch(/class="absolute top-3 end-3 /);
-      expect(html.indexOf('data-testid="recap-next"')).toBeLessThan(html.indexOf('data-testid="recap-card-new"'));
-      expect(html.indexOf('data-testid="recap-next"')).toBeLessThan(html.indexOf('data-testid="recap-nav"'));
-      expect(nextBottom()).toBeLessThanOrEqual(FOLD_LIMIT);
-    });
-
-    for (const text of TRY[lang]) {
-      it(`${lang}: accept bottom ≤ ${FOLD_LIMIT} px at 375 × 812 (line model, ${text.length} chars)`, () => {
-        expect(acceptBottom(lang, text)).toBeLessThanOrEqual(FOLD_LIMIT);
-      });
+  it("every band control keeps the 44 px floor", () => {
+    for (const id of ["weekly-accept", "weekly-generate", "weekly-carry-back"]) {
+      const at = TAB.indexOf(`data-testid="${id}"`);
+      expect(at, id).toBeGreaterThan(0);
+      expect(TAB.slice(at, TAB.indexOf(">", TAB.indexOf("className=", at))), id).toContain("min-h-[44px]");
     }
-  }
-
-  it("negative control: from the pre-fix letter top (510) the same button sat under the dock", () => {
-    expect(acceptBottom("en", TRY.en[1], 510)).toBeGreaterThan(FOLD_LIMIT);
-  });
-});
-
-/* B-OCCL-03 (7 Oct) — the ship sweep on b2c0d0f6 (sweeps/ship-b2c0d0f6):
-   #/weekly 375 EN + HE and 1280 had NO data-primary-move. The base cell held
-   a stored current week whose digest call failed (modules weekly-insight,
-   weekly-detail, weekly-share): no accept anywhere, and with nothing stored
-   the header "Create this week's story" carried no stamp either. Fix: with
-   no accept rendered the ONE generate control carries ACCEPT_STAMP
-   (generateIsMove) — in the header when nothing is stored, as Retell under
-   the story when it is. The contract's primaryMove id is unchanged. */
-describe("#/weekly — every state renders exactly one stamp (B-OCCL-03)", () => {
-  const stamps = (html: string) => html.match(/data-primary-move="accept-recap-recommendation"/g) ?? [];
-  const stampedTag = (html: string) => /<button[^>]*data-primary-move="accept-recap-recommendation"[^>]*>/.exec(html)?.[0] ?? "";
-  const render = (lang: "en" | "he", reports: unknown[], active: null | { recommendation: string } = null) => {
-    state.lang = lang;
-    tab.reports = reports;
-    tab.active = active;
-    return renderToStaticMarkup(<WeeklyTab />);
-  };
-  const stored = (lang: "en" | "he", digest: unknown) => ({
-    id: "2026-W40", lang, weekStart: "2026-09-27T00:00:00.000Z", generatedAt: "2026-10-01T06:00:00.000Z",
-    summary: { count: 3, resolved: 2, topTrigger: "Transitions" }, milestoneWins: [], planProgress: { done: 0, total: 0 },
-    insight: rcString((k) => translate(lang, k), lang, "elev.recap.insight.unavailable"),
-    ...(digest ? { digest } : {}),
-  });
-
-  it("source: one literal, spread conditionally on the generate control; the gradient follows the stamp", () => {
-    expect(TAB.match(/\bdata-primary-move\b(?!-)/g)).toHaveLength(1);
-    expect(TAB).toMatch(/data-testid="weekly-generate"\s+\{\.\.\.\(generateIsMove \? ACCEPT_STAMP : undefined\)\}/);
-    expect(TAB).toContain("const generateIsMove = !acceptRendered;");
-    expect(TAB).toMatch(/style=\{generateIsMove\s+\? \{ background: "var\(--arbor-gradient-primary\)"/);
   });
 
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: nothing stored → exactly one stamp, on "Create this week's story" in the header`, () => {
+    it(`${lang}: the header reads "Weekly report · {dates}" and "{first}'s week, at a glance."`, () => {
       const html = render(lang, []);
+      const kicker = /<p data-testid="weekly-eyebrow"[^>]*>([^<]*)<\/p>/.exec(html)?.[1] ?? "";
+      const range = new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", { month: "short", day: "numeric" })
+        .formatRange(new Date(2026, 9, 10), new Date(2026, 9, 16));
+      expect(kicker).toBe(translate(lang, "elev.wk.kicker", { range }));
+      if (lang === "en") expect(kicker).toMatch(/^Weekly report · 10\D+16 Oct$/);
+      expect(/<h1 data-testid="weekly-title"[^>]*>([^<]*)<\/h1>/.exec(html)?.[1]).toBe(translate(lang, "elev.wk.headline", { first: "Noa" }));
+      expect(/<p data-testid="weekly-glance-sub"[^>]*>([^<]*)<\/p>/.exec(html)?.[1]).toBe(translate(lang, "elev.wk.glance.sub"));
+    });
+
+    it(`${lang}: nothing stored, nothing kept → the empty card, then the band; "Back to Now" carries the one stamp`, () => {
+      const html = render(lang, [], []);
+      expect(html).toContain('data-module="weekly-empty"');
+      expect(html).not.toContain('data-module="weekly-glance"');
       expect(stamps(html)).toHaveLength(1);
       const tag = stampedTag(html);
-      expect(tag).toContain('data-testid="weekly-generate"');
-      expect(tag).toContain("--arbor-gradient-primary");
-      expect(html).toContain(translate(lang, "wk.generate").replace(/'/g, "&#x27;"));
-      expect(html).toContain('data-module="weekly-empty"');
-      // The create control sits in the header, above the empty card.
-      expect(html.indexOf('data-testid="weekly-generate"')).toBeLessThan(html.indexOf('data-module="weekly-empty"'));
+      expect(tag).toContain('data-testid="weekly-carry-back"');
+      expect(tag).toContain("background:var(--arbor-ink)");
+      expect(html).not.toContain('data-testid="weekly-accept"');
+      expect(html).not.toContain('data-testid="weekly-generate"');
+      expect(html).toContain(translate(lang, "elev.wk.carry.none"));
+      expect(html).toContain(translate(lang, "elev.wk.carry.back"));
+      expect(html.indexOf('data-module="weekly-empty"')).toBeLessThan(html.indexOf('data-module="weekly-carry"'));
     });
 
-    it(`${lang}: stored week, the digest call failed (the sweep's base cell) → one stamp, on Retell`, () => {
-      const html = render(lang, [stored(lang, null)]);
-      expect(html).toContain('data-module="weekly-insight"');
+    it(`${lang}: records, nothing stored → the dashboard, then the band; "Write it now" is a quiet unstamped link inside it`, () => {
+      const html = render(lang, []);
+      expect(html).toContain('data-module="weekly-glance"');
       expect(stamps(html)).toHaveLength(1);
-      expect(stampedTag(html)).toContain('data-testid="weekly-generate"');
-      expect(html).toContain(translate(lang, "wk.regenerate"));
-    });
-
-    it(`${lang}: stored AI letter at card 1 (the ship sweep's base cell on 13137d1a) → one stamp, on the letter's Next; the generate control is outline and unstamped`, () => {
-      const html = render(lang, [stored(lang, report(TRY[lang][0]).digest)]);
-      expect(html).toContain('data-module="weekly-recap"');
-      const gen = /<button[^>]*data-testid="weekly-generate"[^>]*>/.exec(html)?.[0] ?? "";
+      expect(stampedTag(html)).toContain('data-testid="weekly-carry-back"');
+      const gen = tagOf(html, "weekly-generate");
       expect(gen).not.toBe("");
       expect(gen).not.toContain("data-primary-move");
       expect(gen).not.toContain("gradient");
-      expect(stamps(html)).toHaveLength(1);
-      expect(stampedTag(html)).toContain('data-testid="recap-next"');
-      expect(nextBottom()).toBeLessThanOrEqual(FOLD_LIMIT);
-      expect(stamps(renderCard(lang, TRY[lang][0]))).toHaveLength(1);
+      expect(gen).toContain("underline");
+      const band = html.indexOf('data-module="weekly-carry"');
+      expect(html.indexOf('data-module="weekly-glance"')).toBeLessThan(band);
+      expect(html.indexOf('data-testid="weekly-generate"')).toBeGreaterThan(band);
+      expect(html.indexOf('data-testid="weekly-generate"')).toBeLessThan(html.indexOf('data-testid="weekly-carry-back"'));
+      // While the digest is being written, the band says so and offers no link.
+      const writing = render(lang, [], RECORDS, { generating: true });
+      expect(writing).not.toContain('data-testid="weekly-generate"');
+      expect(writing).toContain(translate(lang, "elev.wk.carry.writing"));
+      expect(stamps(writing)).toHaveLength(1);
     });
 
-    it(`${lang}: stored fallback letter (no accept) → Retell carries the stamp`, () => {
-      const html = render(lang, [stored(lang, { ...report(TRY[lang][0]).digest, generated: "fallback" })]);
+    it(`${lang}: stored week, the digest call failed → "Back to Now" carries the stamp; the link can ask again`, () => {
+      const html = render(lang, [stored(lang, "failed")]);
       expect(stamps(html)).toHaveLength(1);
-      expect(stampedTag(html)).toContain('data-testid="weekly-generate"');
+      expect(stampedTag(html)).toContain('data-testid="weekly-carry-back"');
+      expect(html).toContain('data-testid="weekly-generate"');
+      expect(html).not.toContain('data-testid="weekly-accept"');
     });
 
-    it(`${lang}: step already taken from the letter → Retell carries the stamp`, () => {
-      const html = render(lang, [stored(lang, report(TRY[lang][0]).digest)], { recommendation: TRY[lang][0] });
+    it(`${lang}: stored AI digest → "Make it today's step" carries the stamp and the page's one gradient; "Back to Now" is plain`, () => {
+      const html = render(lang, [stored(lang, "ai")]);
       expect(stamps(html)).toHaveLength(1);
-      expect(stampedTag(html)).toContain('data-testid="weekly-generate"');
+      const tag = stampedTag(html);
+      expect(tag).toContain('data-testid="weekly-accept"');
+      expect(tag).toContain("--arbor-gradient-primary");
+      expect(html.match(/--arbor-gradient-primary/g)).toHaveLength(1);
+      const back = tagOf(html, "weekly-carry-back");
+      expect(back).not.toContain("data-primary-move");
+      expect(back).toContain("background:transparent");
+      expect(html).toContain(`<bdi dir="auto">${TRY[lang]}</bdi>`);
+      expect(html).toContain(translate(lang, "today.action.make").replace(/'/g, "&#x27;"));
+      expect(html).not.toContain('data-testid="weekly-generate"');
     });
-  }
 
-  /* The 375 line model for the generate control, from the same measured
-     letter top (LETTER_TOP_375 = the stored-week header bottom + space-y-6).
-     Nothing stored: the header gains the action row (gap-3 12 + 44).
-     Stored, digest failed: the insight card (p-6 24 · label row 16 ·
-     space-y-3 12 · the unavailable sentence, text-sm 20 / line over
-     375 − 32 = 343 − 2·24 = 295 px at 0.5 em · p-6 24) · space-y-6 24 ·
-     Retell 44. The H1 ("{first}'s week", 24 px × 1.1) is one line in the
-     measured base; any extra wrapped line is added. */
-  const HEADER_BOTTOM_STORED = LETTER_TOP_375 - 24;
-  const titleExtra = (lang: "en" | "he") => (lines(translate(lang, "wk.title", { first: "Dylan" }), 24, 0.55) - 1) * 24 * 1.1;
-  const createBottom = (lang: "en" | "he") => Math.round(HEADER_BOTTOM_STORED + titleExtra(lang) + 12 + 44);
-  const retellBottom = (lang: "en" | "he") => {
-    const sentence = rcString((k) => translate(lang, k), lang, "elev.recap.insight.unavailable");
-    const textH = Math.ceil((sentence.length * 14 * 0.5) / 295) * 20;
-    return Math.round(HEADER_BOTTOM_STORED + titleExtra(lang) + 24 + (24 + 16 + 12 + textH + 24) + 24 + 44);
-  };
-  for (const lang of ["en", "he"] as const) {
-    it(`${lang}: the stamped generate control's bottom ≤ ${FOLD_LIMIT} px at 375 × 812 (nothing stored · digest failed)`, () => {
-      expect(createBottom(lang)).toBeLessThanOrEqual(FOLD_LIMIT);
-      expect(retellBottom(lang)).toBeLessThanOrEqual(FOLD_LIMIT);
+    it(`${lang}: stored fallback digest → its suggestion in the band, no accept; "Back to Now" carries the stamp`, () => {
+      const html = render(lang, [stored(lang, "fallback")]);
+      expect(stamps(html)).toHaveLength(1);
+      expect(stampedTag(html)).toContain('data-testid="weekly-carry-back"');
+      expect(html).not.toContain('data-testid="weekly-accept"');
+      expect(html).toContain(`<bdi dir="auto">${TRY[lang]}</bdi>`);
+    });
+
+    it(`${lang}: the suggestion is already today's step → the honest done-state; "Back to Now" carries the stamp`, () => {
+      const html = render(lang, [stored(lang, "ai")], RECORDS, { active: { recommendation: TRY[lang] } });
+      expect(stamps(html)).toHaveLength(1);
+      expect(stampedTag(html)).toContain('data-testid="weekly-carry-back"');
+      expect(html).not.toContain('data-testid="weekly-accept"');
+      expect(html).toContain(translate(lang, "wk.todayStepSet").replace(/'/g, "&#x27;"));
+      expect(html).toMatch(/role="status"/);
     });
   }
 });

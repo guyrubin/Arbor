@@ -111,6 +111,13 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     // so the stamped `weekly-empty` module offers ONE explicit secondary move,
     // `data-secondary-move="capture-moment"` (open the capture sheet in place).
     // The primary move stays the declaration; it renders once a week exists.
+    // v3 F-NOW-3 — the Weekly report as the v3 mock: the move lives in the
+    // `weekly-carry` band at the end of the page. "Make it today's step"
+    // carries the stamp while an AI digest's suggestion is not yet today's
+    // step; in every other state "Back to Now" carries it, so each state
+    // renders exactly one. Top level: the dashboard (`weekly-glance`, stamped
+    // by components/weekly/WeekGlance.tsx) or `weekly-empty`, then the band;
+    // the invite is demoted into the page's one collapsed disclosure.
     threadWrite: "none",
   },
 
