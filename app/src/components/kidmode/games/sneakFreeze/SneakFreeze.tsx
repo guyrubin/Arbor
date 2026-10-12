@@ -229,7 +229,11 @@ export function useSneakAssets(child: HeroChainChild | null): { ready: boolean; 
   const flag = sneakFreezeFlagOn() && typeof window !== "undefined";
   const [art, setArt] = useState<SneakArt | null>(null);
   const [gaveUp, setGaveUp] = useState(false);
-  const [settled, setSettled] = useState<{ art: SneakArt; sheet: HeroSheet } | null>(null);
+  const [settled, setSettled] = useState<{ identityKey: string; art: SneakArt; sheet: HeroSheet } | null>(null);
+  // A sitting can retain its assets only while both the owner/child/avatar
+  // identity and the current pose snapshot still match. A poster can outlive
+  // profile edits or child switches without showing the previous hero.
+  const currentSettled = settled?.identityKey === hero.identityKey && settled.sheet === hero.sheet ? settled : null;
   useEffect(() => {
     if (!flag) return;
     let alive = true;
@@ -242,15 +246,15 @@ export function useSneakAssets(child: HeroChainChild | null): { ready: boolean; 
     return () => { alive = false; clearTimeout(giveUp); };
   }, [flag, baseArt]);
   useEffect(() => {
-    if (!flag || settled || !((art && hero.ready) || gaveUp)) return;
+    if (!flag || currentSettled || !((art && hero.ready) || gaveUp)) return;
     let alive = true;
     const sheet = hero.sheet;
     const heroUrls = Object.values(sheet.poses).map((p) => p?.url ?? "").filter((u) => u && !u.startsWith("data:"));
-    void preloadImages(heroUrls).then(() => { if (alive) setSettled((s) => s ?? { art: art ?? baseArt, sheet }); });
+    void preloadImages(heroUrls).then(() => { if (alive) setSettled({ identityKey: hero.identityKey, art: art ?? baseArt, sheet }); });
     return () => { alive = false; };
-  }, [flag, settled, art, hero.ready, hero.sheet, gaveUp, baseArt]);
+  }, [flag, currentSettled, hero.identityKey, art, hero.ready, hero.sheet, gaveUp, baseArt]);
   if (!flag) return { ready: true, art: baseArt, sheet: hero.sheet };
-  return settled ? { ready: true, art: settled.art, sheet: settled.sheet } : { ready: false, art: baseArt, sheet: hero.sheet };
+  return currentSettled ? { ready: true, art: currentSettled.art, sheet: currentSettled.sheet } : { ready: false, art: baseArt, sheet: hero.sheet };
 }
 
 /**

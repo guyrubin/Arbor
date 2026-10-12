@@ -36,6 +36,7 @@ import type { EntitlementStore } from "./entitlements.js";
 import { HERO_BOOK_POSES_BY_PLAN, HERO_SHEET_POSES_BY_PLAN, chargeHeroSheetCall, imagePlanFor } from "./imageQuota.js";
 import { heroPosePrompt } from "./heroPosePrompts.js";
 import { mockHeroPoseImage } from "./heroPoseMock.js";
+import { resolveHeroUrl } from "../lib/heroIdentity.js";
 import {
   HERO_POSE_REFUSALS,
   HERO_SHEET_MODEL,
@@ -52,11 +53,11 @@ export const HERO_SHEET_KEY_COLOUR = "#00B140";
 
 /** What the server knows about the child's hero, read from the child record. */
 export interface StoredHero {
-  /** The child's `photoUrl` (a generated hero is an inline data:image URL). */
+  /** Canonical saved hero URL; generation accepts an inline data:image only. */
   photoUrl: string | null;
   /** `avatar.source` — "descriptor" (text cues) or "photo" (photo-styled). */
   source: string | null;
-  /** The approved idle on its key colour (heroSheet/idle `anchor`), if stored. */
+  /** The approved idle on its key colour, only when bound to this stored hero. */
   anchor: string | null;
 }
 
@@ -84,10 +85,22 @@ export class FirestoreHeroPoseSource implements HeroPoseSource {
     const data = child.data() ?? {};
     const avatar = (data.avatar ?? {}) as { source?: unknown };
     const idleData = idle.exists ? (idle.data() ?? {}) : {};
+    const photoUrl = resolveHeroUrl({
+      avatar: data.avatar,
+      photoUrl: typeof data.photoUrl === "string" ? data.photoUrl : undefined,
+      comicAvatarUrl: typeof data.comicAvatarUrl === "string" ? data.comicAvatarUrl : undefined,
+    });
+    // A remote legacy canonical hero stays canonical: the handler refuses it
+    // until an inline reference is available, rather than drawing a different
+    // child from the secondary photoUrl slot.
+    // Profile and sheet writes are separate. During a hero change the previous
+    // idle can still exist; never make it the primary reference for the new
+    // hero's poses. Legacy anchors without identity must also be rebuilt.
+    const currentAnchor = photoUrl && idleData.avatarHash === heroAvatarHash(photoUrl);
     return {
-      photoUrl: typeof data.photoUrl === "string" ? data.photoUrl : null,
+      photoUrl,
       source: typeof avatar.source === "string" ? avatar.source : null,
-      anchor: typeof idleData.anchor === "string" ? idleData.anchor : null,
+      anchor: currentAnchor && typeof idleData.anchor === "string" ? idleData.anchor : null,
     };
   }
 }
