@@ -176,6 +176,9 @@ export const en: Record<string, string> = {
   "elev.learnCare.family.cta": "Choose a ritual",
   "elev.learnCare.addToday.saving": "Adding…",
   "elev.learnCare.addToday.failed": "That did not reach today. Try again.",
+  "elev.learnCare.shortReads.matched": "Your question",
+  "elev.learnCare.family.title": "Family formation",
+  "elev.learnCare.addToday.listed": "On today's list",
 };
 
 export const he: Record<string, string> = {
@@ -312,4 +315,7 @@ export const he: Record<string, string> = {
   "elev.learnCare.family.cta": "לבחור טקס משפחתי",
   "elev.learnCare.addToday.saving": "מוסיפים…",
   "elev.learnCare.addToday.failed": "זה לא נוסף להיום. נסו שוב.",
+  "elev.learnCare.shortReads.matched": "השאלה שלכם",
+  "elev.learnCare.family.title": "גיבוש משפחתי",
+  "elev.learnCare.addToday.listed": "ברשימה של היום",
 };

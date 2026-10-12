@@ -22,10 +22,14 @@ import { concernsForBehaviors } from "../../content/selectCards";
 import { recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { readLearnFeedback } from "../../learn/learnFeedback";
 import { LEARN_CARDS } from "../../learn/learnCards";
-import { learnCategoryById, rankLearnCards, topicBoost, type LearnCategoryId, type LearnRankSignals } from "../../learn/learnLibrary";
+import { rankLearnCards, type LearnRankSignals } from "../../learn/learnLibrary";
+import { pickShortReads } from "../../learn/shortReads";
 import { ageVisibleLearnCards, devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
-// v3 EXTRA-FORYOU: courses by area (the Learn shelves) and the family-ritual door's picture.
-import { courseArea, courseAreaCounts } from "../../learn/courseAreas";
+// v3 EXTRA-FORYOU: courses and reads by area (the ONE domain registry: names,
+// glyphs, order) and the family-ritual door's picture.
+import { courseArea, courseAreaCounts, readArea } from "../../learn/courseAreas";
+import { domainName, type DomainId } from "../../lib/domains/registry";
+import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { TOGETHER_ART } from "../../lib/parentArt";
 import type { DevelopmentMetricId } from "../../types";
 // AP-055: Scholar Hub weekly concept feed
@@ -112,7 +116,7 @@ export default function Masterclasses() {
   // (persisted per surface) keeps every course reachable (UC-1 rule).
   const [showAllAges, setShowAllAges] = useState<boolean>(() => loadShowAllAges("masterclasses"));
   // v3 EXTRA-FORYOU: the "Courses by area" filter (null = every area). Page state only.
-  const [activeArea, setActiveArea] = useState<LearnCategoryId | null>(null);
+  const [activeArea, setActiveArea] = useState<DomainId | null>(null);
   const childMonths = ageMonthsFromProfile(childProfile);
   const { visible: ageVisible, hidden: ageHidden, fits: ageFits } = filterByAge(
     MASTERCLASSES,
@@ -244,24 +248,22 @@ export default function Masterclasses() {
   const pickTopic = todaysRead?.fromTopic && activeFamilyTopic ? activeFamilyTopic.title : null;
   const [topicLead, topicTail = ""] = t("elev.learnCare.pick.why.topic", { title: TOPIC_SLOT }).split(TOPIC_SLOT);
 
-  // v3 EXTRA-FORYOU: short reads. The same ranking (the same signals, the
-  // question included) over the age-fit Learn catalogue, today's read left
-  // out. With a question open, only the reads that share a word with it,
-  // under a title that says so; when none does, the next three ranked reads
-  // under a plain title. Minutes on each card, never a count of reads done.
+  // v3 EXTRA-FORYOU: short reads - three whenever the age-fit catalogue holds
+  // three besides today's read. The same ranking (the same signals, the
+  // question included), today's read left out: the reads that meet the open
+  // question first, then the next reads in that same order (learn/shortReads).
+  // The title says "for your question" only when the first read meets it; in a
+  // mixed row each read that meets it carries its own mark. Minutes on each
+  // card, never a count of reads done.
   const readShelf = rankLearnCards(ageVisibleLearnCards(LEARN_CARDS, learnSignals.ageYears), learnSignals)
     .filter((c) => c.id !== todaysRead?.card.id);
-  const topicTitle = activeFamilyTopic?.title ?? "";
-  const topicReads = topicTitle ? readShelf.filter((c) => topicBoost(c, topicTitle) > 0) : [];
-  const readsForTopic = topicReads.length > 0;
-  const shortReads = (readsForTopic ? topicReads : readShelf).slice(0, 3);
-  const showShortReads = readsForTopic || shortReads.length >= 3;
+  const shortReadRow = pickShortReads(readShelf, activeFamilyTopic?.title);
 
   // v3 EXTRA-FORYOU: courses by area. Catalogue counts of the courses the
   // parent can see (plain integers, never progress). A filter left on an area
   // the age switch has since emptied falls back to every area.
   const areaCounts = courseAreaCounts(catalog);
-  const selectedArea = activeArea && areaCounts.some((a) => a.area.id === activeArea) ? activeArea : null;
+  const selectedArea = activeArea && areaCounts.some((a) => a.area === activeArea) ? activeArea : null;
 
   // ── The Learning Map rail ───────────────────────────────────────
   // Declared ONCE and placed in exactly one of two mutually exclusive slots:
@@ -409,19 +411,19 @@ export default function Masterclasses() {
           Learn reads, one tap each into the Learn reader. A sibling module (the
           route's budget is 3; this and the catalogue are two). Below sm the row
           scrolls sideways (one card and a peek), so the courses stay near the
-          top on a phone; from sm up, three columns. Area and minutes only. */}
-      {showShortReads && (
+          top on a phone; from sm up, three columns. Area and minutes only (plus
+          a "Your question" mark on a matched read in a mixed row). */}
+      {shortReadRow.show && (
         <section data-module="academy-short-reads" data-testid="academy-short-reads" aria-labelledby="academy-short-reads-title" className="min-w-0 space-y-3">
           <div className="px-1">
             <h2 id="academy-short-reads-title" className="text-lg font-bold" style={{ color: "var(--arbor-ink)" }}>
-              {t(readsForTopic ? "elev.learnCare.shortReads.title" : "elev.learnCare.shortReads.titleAll")}
+              {t(shortReadRow.forTopic ? "elev.learnCare.shortReads.title" : "elev.learnCare.shortReads.titleAll")}
             </h2>
             <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.shortReads.sub")}</p>
           </div>
           <div className="flex min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:overflow-visible">
-            {shortReads.map((c) => {
-              const shelf = learnCategoryById(c.category);
-              const tone = PASTEL[shelf.tone];
+            {shortReadRow.reads.map((c) => {
+              const area = readArea(c.category);
               return (
                 <button
                   key={c.id}
@@ -431,12 +433,17 @@ export default function Masterclasses() {
                   className={`${cardCls} flex min-h-11 w-[78%] shrink-0 snap-start flex-col gap-2 p-4 text-start transition motion-safe:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 sm:w-auto`}
                 >
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: tone.soft, color: tone.ink }}>
-                      <Icon name={shelf.msIcon} size={14} /><span dir="auto">{he ? shelf.label.he : shelf.label.en}</span>
+                    <span data-testid="academy-short-read-area" data-area={area} className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}>
+                      <Icon name={DOMAIN_ICONS[area]} size={14} /><span>{domainName(area, t)}</span>
                     </span>
                     <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
                       <Icon name="schedule" size={13} />{t("learn.minutes", { n: c.minutes })}
                     </span>
+                    {shortReadRow.markMatched && shortReadRow.matched.has(c.id) && (
+                      <span data-testid="academy-short-read-matched" className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: PASTEL.lav.ink }}>
+                        <Icon name="auto_awesome" size={13} />{t("elev.learnCare.shortReads.matched")}
+                      </span>
+                    )}
                   </span>
                   <span className="text-base font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? c.title.he : c.title.en}</span>
                   <span className="line-clamp-3 text-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)", fontFamily: "var(--font-editorial)", borderInlineStart: "2px solid var(--arbor-rule)", paddingInlineStart: 10 }}>{he ? c.hook.he : c.hook.en}</span>
@@ -488,10 +495,11 @@ export default function Masterclasses() {
               </span>
             )}
           </div>
-          {/* v3 EXTRA-FORYOU: courses by area. One chip per Learn shelf that
-              holds a visible course, with the plain number of courses in it (a
-              catalogue count, never progress). The chips filter the grid below;
-              "All" clears the filter. One scrolling row below sm. */}
+          {/* v3 EXTRA-FORYOU: courses by area. One chip per registry domain
+              that holds a visible course (its DOMAIN_ICONS glyph and registry
+              name), with the plain number of courses in it (a catalogue count,
+              never progress). The chips filter the grid below; "All" clears the
+              filter. One scrolling row below sm. */}
           {areaCounts.length > 1 && (
             <div className="min-w-0 space-y-1.5">
               <p id="academy-by-area-label" className="px-1 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.byArea")}</p>
@@ -501,16 +509,16 @@ export default function Masterclasses() {
                 </button>
                 {areaCounts.map(({ area, count }) => (
                   <button
-                    key={area.id}
+                    key={area}
                     type="button"
-                    data-area={area.id}
-                    aria-pressed={selectedArea === area.id}
-                    onClick={() => setActiveArea(selectedArea === area.id ? null : area.id)}
+                    data-area={area}
+                    aria-pressed={selectedArea === area}
+                    onClick={() => setActiveArea(selectedArea === area ? null : area)}
                     className={AREA_CHIP}
-                    style={areaChipStyle(selectedArea === area.id)}
+                    style={areaChipStyle(selectedArea === area)}
                   >
-                    <Icon name={area.msIcon} size={15} />
-                    <span dir="auto">{he ? area.label.he : area.label.en}</span>
+                    <Icon name={DOMAIN_ICONS[area]} size={15} />
+                    <span>{domainName(area, t)}</span>
                     <span className="tabular-nums" style={{ opacity: 0.75 }}>{count}</span>
                   </button>
                 ))}
@@ -601,7 +609,7 @@ export default function Masterclasses() {
           >
             <img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt="" loading="lazy" className="h-auto w-24 shrink-0 rounded-xl object-cover sm:w-[140px]" />
             <span className="flex min-w-0 flex-1 flex-col gap-1">
-              <span className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("sec.family.title")}</span>
+              <span className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.family.title")}</span>
               <span className="text-[17px] font-bold leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("elev.learnCare.family.headline")}</span>
               <span className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.family.sub")}</span>
               <span className="mt-1 inline-flex items-center gap-1 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
@@ -679,13 +687,20 @@ export function MasterclassReader({ m, isDone: isDoneProp, onDone: onDoneProp, o
   // v3 EXTRA-FORYOU: "Added to today" shows only after the write resolved.
   // The action-loop row appears locally before the server has it (latency
   // compensation), so the row alone is no receipt: the button says "Adding…"
-  // while this tap's write is in flight and "Added" once it resolved (server
-  // ack, or queued safely offline); a failed write says so under the actions.
-  // A row already in a CONFIRMED loop (an earlier visit) reads as added.
+  // while this tap's write is in flight and "Added" once it resolved; a failed
+  // write says so under the actions. The call keeps the shared seam's default
+  // settlement (the exact call is pinned in learnCourses.test.ts), and under
+  // that seam a write the server has not answered in QUEUED_ACK_MS, or one made
+  // offline, counts as KEPT: it is in the persistent local cache and syncs on
+  // reconnect (lib/firestoreWrite.ts). A rejection that arrives in time still
+  // fails. On a later visit, a row in a server-CONFIRMED ledger reads "Added";
+  // a row the ledger has not confirmed yet (cache or pending snapshot) reads
+  // the neutral "On today's list", never "Added" and never a live "Add".
   const [addState, setAddState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const readerMounted = useRef(true);
   useEffect(() => { readerMounted.current = true; return () => { readerMounted.current = false; }; }, []);
   const addedShown = addState === "saved" || (addState === "idle" && todayTaken && actionLoopConfirmed === true);
+  const addListed = !addedShown && addState === "idle" && todayTaken;
   const addToday = () => {
     if (todayTaken) return;
     if (addState === "saving") return;
@@ -743,12 +758,20 @@ export function MasterclassReader({ m, isDone: isDoneProp, onDone: onDoneProp, o
           className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 text-[13px] font-bold transition disabled:opacity-70"
           style={addedShown
             ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
-            : { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
+            : addListed
+              ? { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }
+              : { background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
         >
           {/* W2-SHELLPLAY r2 (learn design): the course reader's one --gradient-cta is the
               target's own move, "Add to today"; "Mark complete" below is a ghost. */}
-          <Icon name={addedShown ? "check_circle" : "add_task"} size={16} fill={addedShown ? 1 : 0} />
-          {addState === "saving" ? t("elev.learnCare.addToday.saving") : addedShown ? t("learn.addedToday") : t("learn.addToday")}
+          <Icon name={addedShown ? "check_circle" : addListed ? "event_available" : "add_task"} size={16} fill={addedShown ? 1 : 0} />
+          {addState === "saving"
+            ? t("elev.learnCare.addToday.saving")
+            : addedShown
+              ? t("learn.addedToday")
+              : addListed
+                ? t("elev.learnCare.addToday.listed")
+                : t("learn.addToday")}
         </button>
         <button
           type="button"

@@ -237,12 +237,15 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
     expect(modules).toEqual(['data-module="academy-short-reads"', 'data-module="academy-catalogue"']);
   });
 
-  it("short reads: one tap into a Learn read, area and minutes only, never a score", () => {
+  it("short reads: one tap into a Learn read, a registry area and minutes only, never a score", () => {
     const row = between('data-testid="academy-short-reads"', "</section>");
     expect(row).toContain('requestLearnRead({ cardId: c.id, source: "learn-hub-short-read" })');
     expect(row).toContain('data-testid="academy-short-read"');
     expect(row).toContain("min-h-11");
-    expect(row).toContain("learnCategoryById(c.category)");
+    // The area chip is the ONE domain registry: DOMAIN_ICONS glyph + registry name.
+    expect(row).toContain("const area = readArea(c.category);");
+    expect(row).toContain("<Icon name={DOMAIN_ICONS[area]} size={14} /><span>{domainName(area, t)}</span>");
+    expect(row).not.toContain("learnCategoryById"); // NEGATIVE CONTROL: no shelf vocabulary on the chip
     expect(row).toContain('<Icon name="schedule" size={13} />{t("learn.minutes", { n: c.minutes })}');
     for (const banned of ["ProgressBar", "progressbar", "of {", "/ total", "done["]) {
       expect(row, banned).not.toContain(banned);
@@ -250,9 +253,16 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
     // No percentage beside an expression (the card's CSS width `w-[78%]` is layout, not a figure).
     expect(row).not.toMatch(/\}\s*%|%\s*\{/);
     expect("{pct}%").toMatch(/\}\s*%|%\s*\{/); // negative control
-    expect(src).toContain("const topicReads = topicTitle ? readShelf.filter((c) => topicBoost(c, topicTitle) > 0) : [];");
-    expect(src).toContain("const shortReads = (readsForTopic ? topicReads : readShelf).slice(0, 3);");
     expect(src).toContain(".filter((c) => c.id !== todaysRead?.card.id);");
+    // Reviewer r1: the row is filled to three (learn/shortReads); the title and
+    // the per-read mark come from the same pick, so neither can overclaim.
+    expect(src).toContain("const shortReadRow = pickShortReads(readShelf, activeFamilyTopic?.title);");
+    expect(row).toContain("{shortReadRow.reads.map((c) => {");
+    expect(row).toContain('{t(shortReadRow.forTopic ? "elev.learnCare.shortReads.title" : "elev.learnCare.shortReads.titleAll")}');
+    expect(row).toContain("{shortReadRow.markMatched && shortReadRow.matched.has(c.id) && (");
+    expect(src).toContain("{shortReadRow.show && (");
+    // NEGATIVE CONTROL: the r1 shape that showed only the question's reads (one card) is gone.
+    expect(code).not.toContain("(readsForTopic ? topicReads : readShelf).slice(0, 3)");
   });
 
   it("courses by area: labelled chips with aria-pressed filter the grid; the counts are plain integers", () => {
@@ -260,8 +270,13 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
     expect(chips).toContain('role="group" aria-labelledby="academy-by-area-label" data-testid="academy-by-area"');
     expect(chips).toContain('id="academy-by-area-label"');
     expect(chips).toContain("aria-pressed={selectedArea === null}");
-    expect(chips).toContain("aria-pressed={selectedArea === area.id}");
-    expect(chips).toContain("onClick={() => setActiveArea(selectedArea === area.id ? null : area.id)}");
+    expect(chips).toContain("aria-pressed={selectedArea === area}");
+    expect(chips).toContain("onClick={() => setActiveArea(selectedArea === area ? null : area)}");
+    // Reviewer r1: the areas are the registry domains (glyph + name), not the Learn shelves.
+    expect(chips).toContain("<Icon name={DOMAIN_ICONS[area]} size={15} />");
+    expect(chips).toContain("<span>{domainName(area, t)}</span>");
+    expect(chips).not.toContain("msIcon"); // NEGATIVE CONTROL: no shelf glyph
+    expect(src).toContain("const [activeArea, setActiveArea] = useState<DomainId | null>(null);");
     expect(chips).toContain('<span className="tabular-nums" style={{ opacity: 0.75 }}>{count}</span>');
     for (const banned of ["%", "total", "ProgressBar", "done["]) expect(chips, banned).not.toContain(banned);
     expect(src).toMatch(/const AREA_CHIP = "[^"]*\bmin-h-11\b[^"]*";/);
@@ -278,6 +293,9 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
     expect(door).toContain("src={TOGETHER_ART.src}");
     expect(door).toContain('alt=""');
     expect(door).toContain('t("elev.learnCare.family.cta")');
+    // Reviewer r1: the eyebrow is the brief's own key, not the Family page's title.
+    expect(door).toContain('{t("elev.learnCare.family.title")}');
+    expect(door).not.toContain('t("sec.family.title")');
     expect(door).toContain('<Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />');
     for (const banned of ["--gradient-cta", "data-module", "data-primary-move"]) expect(door, banned).not.toContain(banned);
     const at = src.indexOf('data-testid="academy-family-door"');
@@ -311,13 +329,20 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
   it("the reader says 'Added' only after the write resolved; a failed write says so", () => {
     expect(reader).toContain('const [addState, setAddState] = useState<"idle" | "saving" | "saved" | "failed">("idle");');
     expect(reader).toContain('const addedShown = addState === "saved" || (addState === "idle" && todayTaken && actionLoopConfirmed === true);');
+    // Reviewer r1: a row the ledger has not confirmed reads the neutral "On today's list",
+    // never "Added" and never a live-looking "Add" on a disabled button.
+    expect(reader).toContain('const addListed = !addedShown && addState === "idle" && todayTaken;');
     const add = between("const addToday = () => {", "};", reader);
     expect(add.indexOf("if (todayTaken) return;")).toBeGreaterThan(-1);
     expect(add.indexOf('setAddState("saving");')).toBeLessThan(add.indexOf('acceptTodayAction(tryTonight, "tiny", "learn-read")'));
     expect(add).toContain("write.then(");
     expect(add).toContain('setAddState("saved")');
     expect(add).toContain('setAddState("failed")');
-    expect(reader).toContain('{addState === "saving" ? t("elev.learnCare.addToday.saving") : addedShown ? t("learn.addedToday") : t("learn.addToday")}');
+    const label = between('{addState === "saving"', "</button>", reader).replace(/\s+/g, " ");
+    expect(label).toContain('{addState === "saving" ? t("elev.learnCare.addToday.saving") : addedShown ? t("learn.addedToday") : addListed ? t("elev.learnCare.addToday.listed") : t("learn.addToday")}');
+    const style = between('data-testid="course-add-today"', "</button>", reader);
+    expect(style).toContain('<Icon name={addedShown ? "check_circle" : addListed ? "event_available" : "add_task"}');
+    expect(style).toContain('{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }');
     expect(reader).toContain('<p role="alert" data-testid="course-add-today-failed"');
     // NEGATIVE CONTROL: the pre-change label flipped on the optimistic row alone.
     expect(reader).not.toContain('{todayTaken ? t("learn.addedToday") : t("learn.addToday")}');
@@ -331,6 +356,7 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
       "elev.learnCare.byArea", "elev.learnCare.byArea.all",
       "elev.learnCare.family.headline", "elev.learnCare.family.sub", "elev.learnCare.family.cta",
       "elev.learnCare.addToday.saving", "elev.learnCare.addToday.failed",
+      "elev.learnCare.shortReads.matched", "elev.learnCare.family.title", "elev.learnCare.addToday.listed",
     ];
     for (const key of keys) {
       const enV = tr("en", key);

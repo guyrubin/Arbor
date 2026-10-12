@@ -21,8 +21,16 @@
  *    A pair of prefix-stripped Hebrew forms needs 4+ letters, so two different
  *    words cannot meet on a three-letter remainder.
  *
+ * Concepts (the reviewer's EN/HE parity fix): a parent who asks about
+ * "bedtime" is asking about sleep, and so is one who asks about "השינה". Words
+ * that name one of the content concern tags without using its word (CONCEPTS
+ * below) carry that tag, so a read tagged with it counts the word as shared in
+ * either language. Only words a parent uses for that one concern are listed;
+ * ambiguous ones ("fight", "ריב", "morning") stay out.
+ *
  * Import-free apart from the normaliser: the caller decides what text a read
- * offers (learnLibrary.cardTopicText) and what a match is worth.
+ * offers (learnLibrary.cardTopicText), which concern tags it carries, and what
+ * a match is worth.
  */
 import { normalizeSearchText } from "../lib/searchNormalize";
 
@@ -36,6 +44,8 @@ interface Form {
 export interface TopicWord {
   word: string;
   forms: Form[];
+  /** The concern tags this word names (CONCEPTS), usually none. */
+  concepts: string[];
 }
 
 const HEBREW = /[א-ת]/;
@@ -71,6 +81,57 @@ const STOP_HE = [
 ];
 
 const STOP = new Set([...STOP_EN, ...STOP_HE].map(normalizeSearchText));
+
+/**
+ * Question words that name a content concern tag (content/governance
+ * CONTENT_CONCERNS) without using its word, EN then HE, space-separated.
+ * The English tag words themselves need no entry: a read's tags are part of
+ * the text the question is compared with. Hebrew has no tag words, so its
+ * plain words for each concern are listed here.
+ */
+const CONCEPTS: Readonly<Record<string, string>> = {
+  sleep:
+    "bedtime bed asleep nap night nighttime overnight wake waking woke nightmare crib " +
+    "שינה לישון להירדם הירדמות נרדם נרדמת לילה לילות מיטה תנומה תנומות להשכיב מתעורר מתעוררת השכמה סיוט סיוטים",
+  aggression:
+    "hit bite biting kick punch aggressive violent " +
+    "מכה מכות מרביץ מרביצה להרביץ נושך נושכת נשיכה נשיכות לנשוך בועט בועטת אלים אלימות תוקפנות",
+  regulation:
+    "tantrum meltdown scream yell angry anger upset frustrated frustration crying whining outburst calm " +
+    "התקף התקפי זעם צורח צורחת צרחות צועק צועקת צעקות כועס כועסת כעס בוכה בכי תסכול מתוסכל מתוסכלת להירגע התפרצות התפרצויות",
+  separation:
+    "goodbye clingy clinging daycare preschool nursery kindergarten babysitter leaving " +
+    "פרידה פרידות להיפרד נפרד נפרדת גנון מעון נצמד נצמדת מתגעגע מתגעגעת",
+  food:
+    "eat food meal dinner lunch breakfast picky vegetables veggies snack " +
+    "האוכל באוכל לאכול אכילה ארוחה ארוחות ארוחת בררן בררנית ירקות חטיף חטיפים",
+  screens:
+    "tablet ipad phone youtube cartoons videos gaming device " +
+    "מסך מסכים טאבלט טלפון סרטונים יוטיוב",
+  fears:
+    "afraid scared fear worried worry anxious anxiety monsters dark " +
+    "פחד פחדים מפחד מפחדת חושש חוששת דאגה חרדה מפלצות חושך",
+  "peer-conflict":
+    "sibling sister brother sharing friends friend playground " +
+    "אחות אחים לשתף שיתוף חברים",
+  transitions: "switching hurry " + "מעבר מעברים",
+  attention: "focus concentrate distracted " + "ריכוז להתרכז מוסח",
+  routines: "routine schedule " + "שגרה שגרות",
+};
+
+/** Each concept word's matchable forms: an English word and its stem; a Hebrew
+ *  word exactly as listed (its plural is listed beside it), so a prefix or a
+ *  plural ending can never cut a listed word down to someone else's root. */
+const CONCEPT_FORMS: ReadonlyArray<{ concern: string; forms: Form[] }> = Object.entries(CONCEPTS).flatMap(
+  ([concern, list]) =>
+    list
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => {
+        const word = normalizeSearchText(w);
+        return { concern, forms: HEBREW.test(word) ? [{ form: word, prefixStripped: false }] : formsOf(word) };
+      }),
+);
 
 /** English suffix stripping: two passes at most, so "feelings" → "feel". */
 export function stemEnglish(word: string): string {
@@ -131,6 +192,16 @@ function formsMatch(a: Form, b: Form): boolean {
   return short.length >= Math.max(4, min) && long.length - short.length <= 2 && long.startsWith(short);
 }
 
+/** The concern tags a question word names, in CONCEPTS order (usually none). */
+function conceptsOf(forms: Form[]): string[] {
+  const out: string[] = [];
+  for (const { concern, forms: names } of CONCEPT_FORMS) {
+    if (out.includes(concern)) continue;
+    if (forms.some((f) => names.some((n) => formsMatch(f, n)))) out.push(concern);
+  }
+  return out;
+}
+
 let lastTopic: { text: string; words: TopicWord[] } | null = null;
 
 /** The question's content words (stop words and generic parenting words dropped). */
@@ -145,7 +216,7 @@ export function topicWords(text: string | null | undefined): TopicWord[] {
     seen.add(word);
     const forms = formsOf(word);
     if (forms.some((f) => STOP.has(f.form))) continue;
-    words.push({ word, forms });
+    words.push({ word, forms, concepts: conceptsOf(forms) });
   }
   lastTopic = { text: raw, words };
   return words;
@@ -166,4 +237,26 @@ export function sharedTopicWords(topic: TopicWord[], text: string): number {
   if (topic.length === 0 || !text) return 0;
   const target = formsOfText(text);
   return topic.filter((q) => q.forms.some((f) => target.some((t) => formsMatch(f, t)))).length;
+}
+
+/**
+ * How a read meets the question, one count per question word: `direct` when
+ * the read's text shares the word, else `concept` when the word names a concern
+ * the read is tagged with ("bedtime" and a read tagged sleep). A word never
+ * counts twice.
+ */
+export function topicOverlap(
+  topic: TopicWord[],
+  text: string,
+  tags: readonly string[],
+): { direct: number; concept: number } {
+  let direct = 0;
+  let concept = 0;
+  if (topic.length === 0) return { direct, concept };
+  const target = text ? formsOfText(text) : [];
+  for (const q of topic) {
+    if (q.forms.some((f) => target.some((t) => formsMatch(f, t)))) direct += 1;
+    else if (q.concepts.some((c) => tags.includes(c))) concept += 1;
+  }
+  return { direct, concept };
 }
