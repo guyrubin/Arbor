@@ -547,8 +547,7 @@ describe("v3 F-NOW-4 · Now on a phone: one calm column, no doors, the plan abov
     // The heading is the place kicker over the title: no picture, no date, no age.
     const heading = html.slice(html.indexOf('<header class="now-heading"'), html.indexOf("</header>"));
     expect(heading).toContain(`data-testid="now-kicker">${NOW_COPY[lang].kicker}</p>`);
-    expect(heading).not.toMatch(/<img|today-identity/);
-    expect(heading.replace(/<[^>]+>/g, ""), "no date or age in the heading's words").not.toMatch(/\d/);
+    expect(heading).not.toMatch(/<img|today-identity|\d/);
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
   });
 
