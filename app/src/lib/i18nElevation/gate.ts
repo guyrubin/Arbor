@@ -53,6 +53,12 @@ export const en: Record<string, string> = {
   "elev.rail.step.coach": "Meet the coach",
   "elev.rail.step.capture": "Capture a moment",
   "elev.rail.step.comic": "Create the first comic",
+
+  // ── v3 F-SHELL-2 · the Topbar Kid Mode pill's short visible second line.
+  // The long E10 lines above stay the button's accessible name. Neither
+  // short line claims the child cannot leave (practiceDoors G0).
+  "elev.kidmode.gated.short": "Grown-up gate on the way out",
+  "elev.kidmode.locked.short": "Parent PIN on the way out",
 };
 
 export const he: Record<string, string> = {
@@ -94,4 +100,8 @@ export const he: Record<string, string> = {
   "elev.rail.step.coach": "הכירו את המאמן",
   "elev.rail.step.capture": "תעדו רגע אחד",
   "elev.rail.step.comic": "צרו את הקומיקס הראשון",
+
+  // ── v3 F-SHELL-2 · the Topbar Kid Mode pill's short visible second line
+  "elev.kidmode.gated.short": "יציאה דורשת שאלה של מבוגר",
+  "elev.kidmode.locked.short": "יציאה עם קוד הורים",
 };

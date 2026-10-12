@@ -91,8 +91,9 @@ export async function collectPrivateExportStates({ page, fixture, viewport, apiS
         await page.locator('nav button[aria-expanded]').last().click();
         await page.getByRole('button', { name: he ? 'הגדרות' : 'Settings', exact: true }).click();
       } else {
-        await page.locator('aside button[aria-haspopup="menu"]').click();
-        await page.getByRole('menuitem', { name: he ? 'הגדרות' : 'Settings', exact: true }).click();
+        // v3 F-SHELL-2: the Sidebar's account row opens Settings directly
+        // (the account popover and its menu items are gone).
+        await page.locator('[data-testid=sidebar-account]').click();
       }
       await opener().scrollIntoViewIfNeeded();
       baselineRecords = await records();

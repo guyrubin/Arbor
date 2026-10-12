@@ -708,15 +708,17 @@ async function consultPediatrician(h) {
   await h.click("[data-module=consult-packet] [role=radio] >> nth=0", [], "the Pediatrician audience");
 }
 
-/** Settings modal, from the shell's own door (375: More sheet; 1280: account popover). */
+/** Settings modal, from the shell's own door (375: More sheet; 1280: account row).
+ *  v3 F-SHELL-2: the desktop account popover is gone; the Sidebar's account row
+ *  opens Settings in one click. The split is lg (1024), where the Sidebar
+ *  replaces the bottom nav. */
 async function openSettings(h) {
   const anchor = "[role=dialog] [data-testid=settings-data-row]";
-  if (h.vp.w < 768) {
+  if (h.vp.w < 1024) {
     await h.click("nav button[aria-expanded]", [h.tr("nav.short.more")], "the More tab");
     await h.click("[role=dialog] button:has(.msr:text-is('settings')), [role=dialog] button[aria-label='Settings']", [], "the Settings door in the More sheet");
   } else {
-    await h.click(`aside button[aria-label="${h.tr("nav.popover.more") ?? "More"}"], nav ~ div button[aria-haspopup], button[aria-label="${h.tr("nav.popover.more") ?? "More"}"]`, [], "the account popover");
-    await h.click("[role=menuitem]:has(.msr:text-is('settings'))", [], "the Settings menu item");
+    await h.click("[data-testid=sidebar-account]", [], "the account row");
   }
   return h.need(anchor, "the Settings modal");
 }

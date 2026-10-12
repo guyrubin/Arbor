@@ -289,11 +289,11 @@ export const companionEn = {
   "companion.offscreen.story.detail": "One person begins a story with one sentence. The other adds what happens next. Let it be silly, surprising or very short.",
   "companion.offscreen.story.say": "And then, something unexpected happened…",
   "companion.place.now": "Now",
-  "companion.place.now.detail": "A little clarity for today",
+  "companion.place.now.detail": "Parenting Companion · clarity for today",
   "companion.place.child": "My child",
-  "companion.place.child.detail": "The whole picture, over time",
+  "companion.place.child.detail": "Growth · the whole picture, over time",
   "companion.place.together": "Together",
-  "companion.place.together.detail": "Small moments. Shared discoveries.",
+  "companion.place.together.detail": "Kids Studio · stories, play and imagination",
   // FEAT-05: the question chip in the conversation header opens the question sheet.
   "companion.topic-chip.open": "Open our questions: {value0}",
   // VIS-07: Together's first-time empty state (one sentence; the action reuses companion.portrait.capture).
@@ -639,11 +639,11 @@ export const companionHe = {
   "companion.offscreen.story.detail": "אחד מתחיל סיפור במשפט. השני מוסיף מה קורה אחר כך. הסיפור יכול להיות מצחיק, מפתיע או ממש קצר.",
   "companion.offscreen.story.say": "ואז קרה משהו שאף אחד לא ציפה לו…",
   "companion.place.now": "עכשיו",
-  "companion.place.now.detail": "בהירות לרגע הזה",
+  "companion.place.now.detail": "מלווה ההורות · בהירות להיום",
   "companion.place.child": "הילד שלי",
-  "companion.place.child.detail": "התמונה השלמה, לאורך זמן",
+  "companion.place.child.detail": "צמיחה · התמונה השלמה, לאורך זמן",
   "companion.place.together": "ביחד",
-  "companion.place.together.detail": "רגעים קטנים, גילויים משותפים",
+  "companion.place.together.detail": "סטודיו לילדים · סיפורים, משחק ודמיון",
   // FEAT-05: the question chip in the conversation header opens the question sheet.
   "companion.topic-chip.open": "לפתוח את השאלות שלנו: {value0}",
   // VIS-07: Together's first-time empty state (one sentence; the action reuses companion.portrait.capture).

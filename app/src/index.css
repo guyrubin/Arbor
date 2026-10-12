@@ -30,7 +30,7 @@
   /* W2-CAREPRO c2 r2 — the lg shell topbar sits OUTSIDE <main> (the
      scrollport), so a sticky frame's height is 100dvh minus this band
      (mirrors components/layout/Topbar.tsx height). */
-  --shell-topbar-h:       74px;
+  --shell-topbar-h:       64px;
 
   /* Primary — sapphire blue (repurposes the clay token name; backward-compatible) */
   --arbor-clay:           #1558c0;   /* AA normal text on paper and tinted wells; solid CTA fill */
@@ -1524,7 +1524,7 @@ html[lang="he"] .arbor-play,
   /* W2-CAREPRO c2 r2 — the lg shell topbar sits OUTSIDE <main> (the
      scrollport), so a sticky frame's height is 100dvh minus this band
      (mirrors components/layout/Topbar.tsx height). */
-  --shell-topbar-h:       74px;
+  --shell-topbar-h:       64px;
   --arbor-clay-soft:      #ebf2f8; /* P1-NEXTLEVEL r2: flat — the old gradient midpoint (10%) over --arbor-paper */
   --arbor-clay-glow:      0 0 20px rgba(88, 166, 255, 0.3);
   --arbor-sage:           #10b981;

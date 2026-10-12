@@ -31,20 +31,33 @@ describe("B-SHELL-23 · one SettingsModal", () => {
     expect(mounts).toEqual(["components/layout/Shell.tsx"]);
   });
 
-  it("the Sidebar popover opens Settings through the settings bus, not its own modal", () => {
+  // v3 F-SHELL-2 re-pin (critic ruling 12): the popover is gone; the account
+  // row itself is the one button, and it calls the settings bus directly.
+  it("the Sidebar account row opens Settings through the settings bus, not its own modal", () => {
     expect(sidebar).not.toContain("import SettingsModal");
     expect(sidebar).not.toMatch(/showSettings|setShowSettings/);
     expect(sidebar).toContain('import { requestOpenSettings } from "./settingsBus";');
-    expect(sidebar).toMatch(/onClick=\{\(\) => \{ setPopoverOpen\(false\); requestOpenSettings\(\); \}\}/);
+    expect(sidebar).toMatch(/onClick=\{\(\) => requestOpenSettings\(\)\}/);
   });
 });
 
 describe("B-SHELL-23 · targets, tokens and comments", () => {
-  it("every popover menuitem meets the 44 px floor", () => {
-    const menu = sidebar.slice(sidebar.indexOf('role="menu"'), sidebar.indexOf("aria-haspopup=\"menu\""));
-    const items = menu.split('role="menuitem"').slice(1);
-    expect(items.length).toBe(2);
-    for (const item of items) expect(item.slice(0, 600)).toMatch(/className="[^"]*\bmin-h-11\b/);
+  // v3 F-SHELL-2 re-pin (critic ruling 12): the two popover menuitems this
+  // pinned left with the popover. What replaces them: ONE account button that
+  // clears the 44 px floor, with no menu, no email and no Sign out in chrome
+  // (Sign out lives in SettingsModal).
+  it("the account row is one 44 px button: no menu, no email, no Sign out in chrome", () => {
+    const at = sidebar.indexOf('data-testid="sidebar-account"');
+    expect(at).toBeGreaterThan(-1);
+    const button = sidebar.slice(sidebar.lastIndexOf("<button", at), sidebar.indexOf("</button>", at));
+    expect(button).toMatch(/className="[^"]*\bmin-h-11\b/);
+    expect(button).toContain('<Icon name="settings" size={18}');
+    expect(button).toContain('t("nav.popover.settings")');
+    expect(sidebar).not.toContain('role="menu"');
+    expect(sidebar).not.toContain('role="menuitem"');
+    expect(sidebar).not.toMatch(/user\??\.email/);
+    expect(sidebar).not.toContain("signOut");
+    expect(read("components/layout/SettingsModal.tsx")).toContain("signOut");
   });
 
   it("active navigation and sandbox contrast use tokens — no raw hex in either file", () => {
@@ -64,6 +77,23 @@ describe("B-SHELL-23 · the sandbox banner is keyed and keeps its env gate", () 
     const banner = shell.slice(shell.indexOf("{showSandboxBanner && ("), shell.indexOf("{showSandboxBanner && (") + 1400);
     for (const key of ["shell.sandbox.title", "shell.sandbox.body", "shell.sandbox.learn", "shell.sandbox.toast"]) expect(banner).toContain(`t("${key}")`);
     expect(banner).not.toMatch(/Sandbox mode:|Learn how|GEMINI_API_KEY/);
+  });
+
+  // v3 F-SHELL-2 (critic ruling 16, MOB-01): the ~90 px peach card became one
+  // 32 px line at every width; the explanation shows from md and truncates,
+  // and Learn keeps its 44 px hit area without growing the line.
+  it("v3 F-SHELL-2: the banner is one compact line, not a card", () => {
+    const at = shell.indexOf("{showSandboxBanner && (");
+    const banner = shell.slice(at, shell.indexOf(")}", shell.indexOf("</div>", shell.indexOf('data-testid="sandbox-banner"', at))));
+    const box = /<div data-testid="sandbox-banner" className="([^"]+)"/.exec(banner)?.[1] ?? "";
+    expect(box.split(/\s+/)).toEqual(expect.arrayContaining(["min-h-8", "mb-3", "px-3", "text-[12px]", "flex", "items-center"]));
+    expect(box).not.toMatch(/\bp-4\b|\bmb-6\b|\btext-xs\b/);
+    expect(banner).toContain('<span className="hidden md:inline">{t("shell.sandbox.body")}</span>');
+    expect(banner).toContain("truncate");
+    expect(banner).toMatch(/<button\s+onClick=\{\(\) => toast\(t\("shell\.sandbox\.toast"\), "info"\)\}\s+className="touch-target -my-1\.5 /);
+    expect(banner).toContain('<Icon name="warning" size={16}');
+    // Production never shows it: the flag is the missing model key.
+    expect(read("context/ArborContext.tsx")).toMatch(/showSandboxBanner\s*[:=][^\n]*VITE_HAS_GEMINI_API/);
   });
 });
 
