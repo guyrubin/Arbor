@@ -172,7 +172,7 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       const html = renderToStaticMarkup(<ConsultTab />);
       const row = html.slice(html.indexOf('data-testid="consult-bring-row"'), html.indexOf('data-testid="consult-build"'));
       expect(row).toContain('role="group"');
-      const chips = row.match(/<button[^>]*data-testid="consult-bring-chip"[^>]*>/g) ?? [];
+      const chips: string[] = row.match(/<button[^>]*data-testid="consult-bring-chip"[^>]*>/g) ?? [];
       expect(chips.length).toBeGreaterThan(0);
       for (const chip of chips) {
         expect(chip).toMatch(/aria-pressed="(?:true|false)"/);
