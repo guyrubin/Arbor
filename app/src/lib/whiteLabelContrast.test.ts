@@ -241,7 +241,10 @@ const WRAPPERS = [
   // the same white-label children Modal does and is audited on the same terms.
   // It declares `maxWidth?` in its type but deliberately does not destructure
   // it (a sheet is always full-bleed), so it has no class input of its own.
-  { name: "Sheet", file: "components/ui/Sheet.tsx", slots: ["children", "headerActions"], params: ["open", "onClose", "title", "children", "headerActions", "returnFocusRef"] },
+  // F-CHILD-2: `scrimBlur` is a boolean that picks one of two literal scrim
+  // styles (background, or background plus a backdrop-only blur); it is not a
+  // class input and reaches no child, and the scrim is still audited above.
+  { name: "Sheet", file: "components/ui/Sheet.tsx", slots: ["children", "headerActions"], params: ["open", "onClose", "title", "children", "headerActions", "returnFocusRef", "scrimBlur"] },
   { name: "PlayShell", file: "components/ui/playkit.tsx", slots: ["children"], params: ["children", "className"] },
   { name: "KidModeProvider", file: "components/kidmode/KidModeContext.tsx", slots: ["children"], params: ["children"] },
   // IA-08/RUN-12 (71ad7e5f): the register gate the six shared drill routes now

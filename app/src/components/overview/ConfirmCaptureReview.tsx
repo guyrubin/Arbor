@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import { contextLabel } from "../behaviors/contextLabel";
 import { Icon } from "../ui/Icon";
+import { intensityWordKey } from "../../lib/intensityWords";
 
 /** TODAY-3 — the ONE shared confirmed-capture review contract.
  *
@@ -168,15 +169,21 @@ export default function ConfirmCaptureReview({
               disabled={intensity <= 1}
               aria-label={t("ql.review.intensityDown")}
               className="flex h-11 w-11 items-center justify-center rounded-lg disabled:opacity-40"
-              style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)" }}
+              style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
             >
               <Icon name="remove" size={16} />
             </button>
-            <span className="inline-flex items-center gap-1.5" role="status" aria-live="polite" aria-label={t("beh.level", { n: intensity })}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <span key={n} className="rounded-full" style={{ width: 9, height: 9, background: n <= intensity ? "var(--arbor-green-ink)" : "var(--arbor-rule)" }} />
-              ))}
-              <span className="ms-1 text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{intensity} / 5</span>
+            {/* F-CHILD-2: the intensity is named in words — one neutral chip,
+                the same five words as the capture slider — never a filled meter
+                or a bare number out of five. */}
+            <span
+              data-testid="review-intensity-word"
+              className="inline-flex min-w-0 items-center rounded-full px-3 py-1 text-xs font-bold"
+              role="status"
+              aria-live="polite"
+              style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+            >
+              {t(intensityWordKey(intensity))}
             </span>
             <button
               type="button"
@@ -184,7 +191,7 @@ export default function ConfirmCaptureReview({
               disabled={intensity >= 5}
               aria-label={t("ql.review.intensityUp")}
               className="flex h-11 w-11 items-center justify-center rounded-lg disabled:opacity-40"
-              style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)" }}
+              style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
             >
               <Icon name="add" size={16} />
             </button>

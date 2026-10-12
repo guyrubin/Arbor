@@ -226,8 +226,9 @@ describe("MOB-28 — the bottom sheet is the phone presentation, Modal keeps lg+
     expect(sheet).toContain('typeof window !== "undefined" && !!window.matchMedia');
   });
 
-  it("Settings and the Paywall pick the surface; Modal is still the lg+ answer", () => {
-    for (const file of ["layout/SettingsModal.tsx", "billing/PaywallModal.tsx"]) {
+  it("Settings, the Paywall and the Keep-a-moment sheet pick the surface; Modal is still the lg+ answer", () => {
+    // F-CHILD-2: the capture sheet (QuickLogModal) joins them below lg.
+    for (const file of ["layout/SettingsModal.tsx", "billing/PaywallModal.tsx", "overview/QuickLogModal.tsx"]) {
       const source = read(file);
       expect(source, file).toContain('import { Sheet, useCompactSurface } from "../ui/Sheet";');
       expect(source, file).toContain("const Surface = useCompactSurface() ? Sheet : Modal;");

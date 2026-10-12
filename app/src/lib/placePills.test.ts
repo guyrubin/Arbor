@@ -111,7 +111,12 @@ describe("2 · pillRowFor: the place's row on the place and on every leaf", () =
       expect(tabsOf(PLACE_PILLS.child), tab).toContain(tab);
     }
     const timeline = readFileSync(path.resolve(here, "../components/tabs/TimelineTab.tsx"), "utf8");
-    expect(timeline).toContain('data-density-toggle=""');
+    // F-CHILD-2 re-pin (this line only): the Feed · Story toggle is retired;
+    // #/timeline is Moments, whose own in-page nav is the three-view tablist.
+    expect(timeline).not.toContain("data-density-toggle");
+    expect(timeline).toContain("<MomentsBody");
+    const moments = readFileSync(path.resolve(here, "../components/moments/MomentsBody.tsx"), "utf8");
+    expect(moments).toContain("data-moments-views");
   });
 
   it("Together renders no Shell row, on its home or on any of its leaves", () => {

@@ -1,0 +1,107 @@
+/* F-CHILD-2 — Moments (#/timeline). Logical properties only; every control
+   holds the 44 px floor; area colours are identity washes, never a scale. */
+.moments, .moments-evidence { color: var(--arbor-ink); }
+.moments *, .moments-evidence * { box-sizing: border-box; }
+.moments button, .moments-evidence button { min-height: var(--touch-min); cursor: pointer; }
+.moments button:focus-visible, .moments-evidence button:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 3px; }
+.moments button:disabled, .moments-evidence button:disabled { cursor: default; opacity: .6; }
+
+/* Toolbar: the three views, the range chip, Keep a moment. */
+.moments-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding-block: 4px 18px; }
+.moments-views { display: inline-flex; flex-wrap: nowrap; gap: 4px; max-inline-size: 100%; padding: 4px; border: 1px solid var(--arbor-rule); border-radius: 999px; background: var(--arbor-paper-elevated); }
+.moments-view-tab { display: inline-flex; flex: none; align-items: center; gap: 6px; padding-inline: 14px; white-space: nowrap; border-radius: 999px; font-size: 13.5px; font-weight: 600; color: var(--arbor-ink-soft); background: transparent; }
+.moments-view-tab[aria-selected="true"] { background: var(--arbor-ink); color: var(--arbor-paper); }
+.moments-range { position: relative; }
+.moments-chip { display: inline-flex; align-items: center; gap: 6px; padding-inline: 14px 10px; border: 1px solid var(--arbor-rule); border-radius: 999px; background: var(--arbor-paper-elevated); font-size: 13.5px; font-weight: 600; color: var(--arbor-ink); }
+.moments-menu { position: absolute; inset-block-start: calc(100% + 6px); inset-inline-start: 0; z-index: 20; min-inline-size: 200px; padding: 6px; border: 1px solid var(--arbor-rule); border-radius: var(--r); background: var(--arbor-paper-elevated); box-shadow: var(--shadow-sm); }
+.moments-menu-item { display: flex; align-items: center; gap: 8px; inline-size: 100%; padding-inline: 10px; border-radius: var(--r-sm); text-align: start; font-size: 14px; color: var(--arbor-ink); background: transparent; }
+.moments-menu-item:hover, .moments-menu-item[aria-checked="true"] { background: var(--arbor-paper-deep); }
+.moments-menu-spacer { display: inline-block; inline-size: 18px; }
+.moments-keep { display: inline-flex; align-items: center; gap: 8px; margin-inline-start: auto; padding-inline: 18px; border-radius: 999px; background: var(--arbor-clay); color: var(--arbor-on-accent); font-size: 14px; font-weight: 700; }
+.moments-keep:hover { background: var(--arbor-clay-deep); }
+
+.moments-panel { display: block; }
+.moments-text-button { display: inline-flex; align-items: center; gap: 6px; padding-block: 8px; text-align: start; font-size: 13px; font-weight: 600; color: var(--arbor-clay); background: transparent; }
+.moments-note { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin-block: 16px 0; font-size: 12.5px; line-height: 1.7; color: var(--arbor-muted); }
+.moments-meta { margin-block: 4px 0; font-size: 12px; line-height: 1.6; color: var(--arbor-muted); }
+.moments-quote { margin: 0; font-family: var(--font-display); font-size: 18px; line-height: 1.45; font-weight: 500; white-space: pre-wrap; overflow-wrap: anywhere; }
+.moments-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-block-end: 14px; padding-inline: 14px 8px; border-radius: var(--r); background: var(--arbor-paper-deep); font-size: 13px; font-weight: 600; }
+.moments-empty { padding: 28px; border: 1px dashed var(--arbor-rule-strong); border-radius: var(--r-lg); background: var(--arbor-paper-elevated); }
+.moments-empty h2 { margin: 0 0 8px; font-family: var(--font-display); font-size: 24px; font-weight: 500; }
+.moments-empty p { margin: 0; color: var(--arbor-muted); line-height: 1.7; }
+
+/* Over time: month columns, newest first. */
+.moments-months { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+.moments-month { display: flex; flex-direction: column; gap: 12px; min-inline-size: 0; }
+.moments-month-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-block-end: 8px; border-block-end: 1px solid var(--arbor-rule); }
+.moments-month-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.moments-month-head span { font-size: 12px; color: var(--arbor-muted); }
+.moments-month-empty { margin: 0; font-size: 13px; color: var(--arbor-muted); }
+.moments-card { overflow: hidden; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); background: var(--arbor-paper-elevated); }
+.moments-band { display: flex; align-items: center; justify-content: center; block-size: 70px; }
+.moments-band-photo { background: var(--arbor-paper-deep); }
+.moments-band-photo img { inline-size: 100%; block-size: 100%; object-fit: cover; }
+.moments-card-body { padding: 10px 14px 16px; }
+.moments-src { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--arbor-muted); }
+.moments-overflow { display: inline-flex; align-items: center; justify-content: center; min-inline-size: var(--touch-min); margin-inline-end: -10px; border-radius: 999px; color: var(--arbor-ink-soft); background: transparent; }
+.moments-overflow:hover { background: var(--arbor-paper-deep); }
+.moments-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin-block-start: 20px; padding-block-start: 12px; border-block-start: 1px solid var(--arbor-rule); }
+
+/* In different places: only places the parent recorded. */
+.moments-places { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.moments-place { display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 18px; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); background: var(--arbor-paper-elevated); text-align: start; color: var(--arbor-ink); }
+.moments-place:hover { border-color: var(--arbor-rule-strong); }
+.moments-place-head { display: flex; align-items: center; gap: 10px; color: var(--arbor-ink-soft); }
+.moments-place-label { font-size: 17px; font-weight: 700; color: var(--arbor-ink); }
+.moments-place-count { font-size: 12.5px; color: var(--arbor-muted); }
+.moments-place-quote { padding-inline-start: 12px; border-inline-start: 2px solid var(--arbor-rule-strong); font-family: var(--font-display); font-size: 17px; line-height: 1.45; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.moments-place-date { font-size: 12px; color: var(--arbor-muted); }
+
+/* Across areas: a bare count per area and month, or a blank. */
+.moments-section-head { margin-block-end: 14px; }
+.moments-section-head h2 { margin: 0; font-family: var(--font-display); font-size: 24px; font-weight: 500; }
+.moments-section-head p { margin: 6px 0 0; color: var(--arbor-muted); font-size: 14px; line-height: 1.6; }
+.moments-table-scroll { overflow-x: auto; margin-inline: -4px; padding-inline: 4px; }
+.moments-table { min-inline-size: 100%; inline-size: max-content; }
+.moments-row { display: grid; align-items: center; column-gap: 6px; min-block-size: 56px; border-block-start: 1px solid var(--arbor-rule); }
+.moments-row-head { min-block-size: 36px; border-block-start: 0; font-size: 12px; color: var(--arbor-muted); }
+.moments-area-head { font-weight: 600; }
+.moments-col-head { text-align: center; white-space: nowrap; }
+.moments-area-button { display: inline-flex; align-items: center; gap: 8px; text-align: start; font-size: 13.5px; font-weight: 600; color: var(--arbor-ink); background: transparent; }
+.moments-cell { display: flex; align-items: center; justify-content: center; }
+.moments-bubble { display: inline-flex; align-items: center; justify-content: center; min-inline-size: var(--touch-min); padding-inline: 10px; border-radius: 999px; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.moments-blank { color: var(--arbor-muted); }
+
+/* The evidence sheet (portalled, so its rules are not scoped under .moments). */
+.moments-evidence-item { padding-block: 18px; border-block-end: 1px solid var(--arbor-rule); }
+.moments-evidence-item h3 { margin-block: 0 6px; font-size: 13px; font-weight: 600; }
+.moments-evidence-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-block-end: 12px; font-size: 12px; color: var(--arbor-muted); }
+.moments-evidence-photo { inline-size: 100%; max-block-size: 300px; object-fit: contain; margin-block-end: 14px; border-radius: var(--r); background: var(--arbor-paper-deep); }
+.moments-evidence-details { display: grid; gap: 10px; margin-block: 12px; }
+.moments-evidence-details > div { display: grid; gap: 3px; }
+.moments-evidence-details dt { font-size: 12px; color: var(--arbor-muted); }
+.moments-evidence-details dd { margin: 0; font-size: 14px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.moments-select { display: flex; align-items: center; gap: 12px; min-block-size: var(--touch-min); font-size: 13px; cursor: pointer; }
+.moments-select input { flex: 0 0 20px; inline-size: 20px; block-size: 20px; accent-color: var(--arbor-clay); }
+.moments-interpretation { margin-block: 18px 0; padding: 14px 16px; border-radius: var(--r); background: var(--arbor-paper-deep); }
+.moments-interpretation h3 { margin: 0 0 6px; font-size: 13px; font-weight: 700; }
+.moments-interpretation p { margin: 0; font-size: 13px; line-height: 1.7; }
+.moments-evidence-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-block-start: 18px; }
+.moments-evidence-actions .moments-keep { margin-inline-start: 0; }
+
+@media (min-width: 768px) {
+  .moments-months { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .moments-places { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .moments-places { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+/* Phone: the three views are one row of chips that scrolls sideways, never a
+   label wrapped inside its pill. */
+@media (max-width: 767.98px) {
+  .moments-keep { margin-inline-start: 0; }
+  .moments-views { inline-size: 100%; gap: 8px; padding: 6px; border: 0; border-radius: 0; background: transparent; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: none; }
+  .moments-views::-webkit-scrollbar { display: none; }
+  .moments-view-tab { padding-inline: 14px; border: 1px solid var(--arbor-rule); background: var(--arbor-paper-elevated); font-size: 13px; }
+  .moments-view-tab[aria-selected="true"] { border-color: var(--arbor-ink); }
+}

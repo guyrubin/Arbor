@@ -19,6 +19,9 @@ export function Modal({
   title?: string;
   children: React.ReactNode;
   maxWidth?: string;
+  /** Accepted so a caller can swap Modal for Sheet without editing props;
+   *  the centred modal already frosts its backdrop (backdrop-blur-sm). */
+  scrimBlur?: boolean;
 }) {
   const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose });
   const titleId = useId();

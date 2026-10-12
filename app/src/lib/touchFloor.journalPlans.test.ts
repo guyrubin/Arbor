@@ -24,6 +24,7 @@ const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
 
 const FILES = {
   timeline: "components/tabs/TimelineTab.tsx",
+  moments: "components/moments/MomentsBody.tsx",
   journal: "components/tabs/JournalTab.tsx",
   entrySheet: "components/journal/JournalEntrySheet.tsx",
   behaviors: "components/tabs/BehaviorsTab.tsx",
@@ -37,7 +38,10 @@ const FLOOR = /min-h-11\b|min-h-\[4[4-9]px\]|min-h-\[5\d px\]|touch-target|var\(
 
 /** Each control the item names, matched by a snippet unique in its file. */
 const CONTROLS: { id: string; file: keyof typeof FILES; near: string }[] = [
-  { id: "OBJ-JOURNAL-02 density pills", file: "timeline", near: 'role="tab"' },
+  // F-CHILD-2 re-pin: the density pills are retired with the Feed · Story
+  // toggle; #/timeline's tabs are now the three Moments views.
+  { id: "F-CHILD-2 Moments view tabs", file: "moments", near: 'role="tab"' },
+  { id: "F-CHILD-2 journal Moments door", file: "journal", near: 'data-testid="journal-moments-door"' },
   { id: "OBJ-JOURNAL-02 prompt chips", file: "journal", near: "onPromptTap(key)" },
   { id: "OBJ-JOURNAL-02 compose tiles", file: "journal", near: "startCapture(key)" },
   { id: "OBJ-JOURNAL-02 entry-sheet edit", file: "entrySheet", near: 'data-testid="journal-entry-edit"' },
@@ -74,6 +78,7 @@ describe("touch floor · the controls item 9 names", () => {
 describe("touch floor · the sub-44 shapes stay out of these files", () => {
   const RETIRED: [keyof typeof FILES, string][] = [
     ["timeline", "min-h-[36px]"],
+    ["moments", "min-h-[36px]"],
     ["journal", "min-h-[36px]"],
     ["behaviors", "min-h-10 items-center gap-2 rounded-xl"],
     ["behaviors", "flex h-10 w-10 items-center justify-center rounded-full text-white"],

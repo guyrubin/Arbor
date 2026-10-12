@@ -56,6 +56,7 @@ export function Sheet({
   children,
   headerActions,
   returnFocusRef,
+  scrimBlur = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -68,6 +69,9 @@ export function Sheet({
   /** Accepted so a caller can swap Sheet for Modal without editing props; a
    *  sheet is always full-bleed, so it is deliberately unused. */
   maxWidth?: string;
+  /** F-CHILD-2: frost the page behind the sheet (the capture and evidence
+   *  sheets ask for it); every other sheet keeps the plain scrim. */
+  scrimBlur?: boolean;
 }) {
   const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose, returnFocusRef });
   const titleId = useId();
@@ -87,7 +91,9 @@ export function Sheet({
           exit={{ opacity: 0 }}
           onClick={onBackdropClick}
           data-arbor-dialog-layer
-          style={{ background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)" }}
+          style={scrimBlur
+            ? { background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }
+            : { background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)" }}
         >
           <motion.div
             ref={dialogRef}

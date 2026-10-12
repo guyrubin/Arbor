@@ -2453,9 +2453,6 @@ export const en: Dict = {
   "journal.timeline.matches.one": "1 match",
   "journal.timeline.moments": "{n} moments",
   "journal.timeline.moments.one": "1 moment",
-  "timeline.density.feed": "Feed",
-  "timeline.density.story": "Story",
-  "timeline.density.aria": "Timeline density",
   // JRNL-3 — timeline signal labels/templates (signalTimeline stays pure; both
   // densities label structured signals through these keys at render).
   "timeline.ongoing": "Ongoing",
@@ -4928,9 +4925,6 @@ export const he: Dict = {
   "journal.timeline.matches.one": "תוצאה אחת",
   "journal.timeline.moments": "{n} רגעים",
   "journal.timeline.moments.one": "רגע אחד",
-  "timeline.density.feed": "פיד",
-  "timeline.density.story": "סיפור",
-  "timeline.density.aria": "תצוגת ציר הזמן",
   // JRNL-3 — תוויות ציר הזמן (he).
   "timeline.ongoing": "מתמשך",
   "timeline.kind.moment": "רגע",

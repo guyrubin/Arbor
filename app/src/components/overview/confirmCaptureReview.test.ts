@@ -167,6 +167,23 @@ describe("AI-CAP-5 — review honesty: the AI-guessed fields are visible and inl
     expect(review).toMatch(/ql\.review\.tapToEdit/);
   });
 
+  // F-CHILD-2 re-pin (ORCHESTRATOR DECISION, reviewer blocker): the stepper's
+  // readout was "{intensity} / 5" beside five filled green pips — a graded
+  // meter of a moment about the child. It is now the same word anchor as the
+  // capture slider (lib/intensityWords) in one neutral chip.
+  it("the stepper names the intensity in words: no '/ 5', no pip meter, no verdict colour", () => {
+    expect(review).toMatch(/import \{ intensityWordKey \} from "\.\.\/\.\.\/lib\/intensityWords";/);
+    expect(review).toContain("{t(intensityWordKey(intensity))}");
+    expect(review).toContain('data-testid="review-intensity-word"');
+    expect(review).not.toMatch(/\/\s*5\b/);
+    expect(review).not.toMatch(/\[1, 2, 3, 4, 5\]\.map/);
+    expect(review).not.toMatch(/n <= intensity/);
+    expect(review).not.toContain('"beh.level"');
+    const stepper = review.slice(review.indexOf("onIntensityChange(Math.max(1"), review.indexOf("onIntensityChange(Math.min(5"));
+    expect(stepper).toBeTruthy();
+    expect(stepper).not.toContain("var(--arbor-green-ink)");
+  });
+
   it("the one consumer passes the complete editable draft into the shared review", () => {
     for (const surface of [modal]) {
       expect(surface).toMatch(/intensity=\{(?:isIncidentType\(newLogType\) \? )?newLogIntensity(?: : undefined)?\}/);

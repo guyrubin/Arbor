@@ -1,6 +1,7 @@
 import { translate as inputText } from "../../lib/i18n";
 import React, { useEffect, useRef, useState } from "react";
 import { Modal } from "../ui/Modal";
+import { Sheet, useCompactSurface } from "../ui/Sheet";
 import ConfirmCaptureReview from "./ConfirmCaptureReview";
 import type { CaptureSource } from "./ConfirmCaptureReview";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
@@ -43,10 +44,16 @@ import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { createCaptureSession } from "../../lib/captureSession";
 import { contextLabel } from "../behaviors/contextLabel";
 import type { ShelfId } from "../../lib/shelves/registry";
+import type { DomainId } from "../../lib/domains/registry";
+import CaptureWhereArea, { areaFromHash, shelfForArea } from "./CaptureWhereArea";
 // B-STATUS-01: the one receipt line and the one pending line of parent mode.
 import { PendingLine, Receipt } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
 import { freshCaptureKeep, typedCaptureKeep, selectedCaptureKeep } from "../../lib/kept/captureKeep";
+// F-CHILD-2: the hard-moment slider names its ends in words (aria-valuetext
+// and the two anchors under it) instead of a bare number out of five; the
+// review stepper and the evidence sheet read the same five words.
+import { INTENSITY_WORDS, intensityWordKey } from "../../lib/intensityWords";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
  *
@@ -66,7 +73,7 @@ export default function QuickLogModal({
   hardMomentNow = false,
   review,
   editLogId,
-  shelf,
+  shelf: openedShelf,
   initialText,
   initialPhoto,
 }: {
@@ -144,6 +151,14 @@ export default function QuickLogModal({
   // what you tried) is opt-in behind "This was a hard moment", so a joyful
   // moment never has to invent a challenge type or a parent response.
   const [hardMoment, setHardMoment] = useState(false);
+  // F-CHILD-2: the optional Area chip files a plain moment on that area's
+  // shelf (else the shelf the sheet was opened from); opened from a filtered
+  // Moments view, the chip starts on that view's area. Never inferred.
+  const [area, setArea] = useState<DomainId | null>(null);
+  const shelf = (area ? shelfForArea(area) : undefined) ?? openedShelf;
+  // F-CHILD-2: Write · Dictate · Photo. Dictate is "on" while listening;
+  // Photo shows the picker tile and its note.
+  const [captureMode, setCaptureMode] = useState<"text" | "photo">(mode === "photo" ? "photo" : "text");
   const [keepDraft, setKeepDraft] = useState(() => freshCaptureKeep(initialText ?? newLogTrigger));
   const keepAllowed = !editLogId && !review && source !== "ai-draft" && keepDraft.parentWritten && keepDraft.text === newLogTrigger && !!newLogTrigger.trim();
   const kept = keepAllowed ? selectedCaptureKeep(keepDraft, newLogTrigger, hardMoment) : undefined;
@@ -255,6 +270,8 @@ export default function QuickLogModal({
       setKeepDraft(freshCaptureKeep());
       setEscalationMarkdown(null);
       setHardMoment(false);
+      setArea(null);
+      setCaptureMode("text");
       setVoiceNotice(null);
       stopRef.current?.();
       setPhoto((had) => {
@@ -283,6 +300,12 @@ export default function QuickLogModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, review, editLogId]);
+  useEffect(() => {
+    if (!open) return;
+    setCaptureMode(mode === "photo" ? "photo" : "text");
+    if (!editLogId) setArea(areaFromHash());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   const closeSheet = () => {
     sessionRef.current.invalidate();
     setKeepDraft(freshCaptureKeep());
@@ -387,6 +410,34 @@ export default function QuickLogModal({
       if (isCurrent()) { busyRef.current = false; setSaving(false); }
     }
   };
+
+  // F-CHILD-2: "Another moment" returns the saved sheet to an empty form.
+  // The saved row stays saved; a new capture starts its own funnel.
+  const anotherMoment = () => {
+    setReply(null);
+    setSayCopied(false);
+    setMsProposal(null);
+    setMsDone(false);
+    setSaveError(null);
+    // the next moment starts where this one did: a filtered Moments view's area stays prefilled
+    setArea(areaFromHash());
+    setCaptureMode("text");
+    setKeepDraft(freshCaptureKeep());
+    setSource("text");
+    setReviewing(false);
+    toggleHardMoment(hardMomentNow);
+    if (!captureRequestPending()) {
+      trackCaptureStarted("text");
+      startedHere.current = true;
+    }
+  };
+  const focusMomentField = () => {
+    if (typeof document === "undefined") return;
+    document.getElementById(hardMoment ? "quick-log-trigger" : "quick-log-moment")?.focus();
+  };
+  const segment = (on: boolean) => on
+    ? { background: "var(--arbor-ink)", color: "var(--arbor-paper)" }
+    : { background: "transparent", color: "var(--arbor-ink)" };
 
   // Photo mode opens the picker on arrival — the tap on the tile is the
   // gesture (same 120 ms hand-off the Behaviors form uses); the visible
@@ -663,13 +714,13 @@ export default function QuickLogModal({
           </div>
         </div>}
 
-        <div className="space-y-1">
+        {hardMoment && <div className="space-y-1">
           <label htmlFor="quick-log-context" className="block text-xs font-bold">{t("ql.review.context")}</label>
           <select id="quick-log-context" value={newLogContext} onChange={(e) => setNewLogContext(e.target.value as BehaviorContext | "")} className="min-h-11 w-full rounded-xl p-2 text-sm" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
             <option value="">{t("companion.capture.noPlace")}</option>
             {EXTRACT_CONTEXTS.map((context) => <option key={context} value={context}>{contextLabel(context, t)}</option>)}
           </select>
-        </div>
+        </div>}
         {hardMoment && <div className="space-y-1">
           <label htmlFor="quick-log-duration" className="block text-xs font-bold">{t("ql.review.duration")}</label>
           <input id="quick-log-duration" type="number" min={0} value={newLogDuration} onChange={(e) => setNewLogDuration(Math.max(0, Number(e.target.value) || 0))} className="min-h-11 w-full rounded-xl p-2 text-sm" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}/>
@@ -682,12 +733,18 @@ export default function QuickLogModal({
     </details>
   );
 
+  const Surface = useCompactSurface() ? Sheet : Modal;
   return (
-    <Modal open={open} onClose={closeSheet} title={editLogId ? t("beh.editMoment") : hardMomentNow ? t("elev.capture.hard.title") : t("today.capture.cta")}>
+    <Surface open={open} onClose={closeSheet} scrimBlur title={editLogId ? t("beh.editMoment") : hardMomentNow ? t("elev.capture.hard.title") : t("companion.capture.keepTitle")}>
+      {!editLogId && !hardMomentNow && !reply && <p data-testid="quicklog-keep-sub" className="-mt-2 mb-4 text-[13px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("companion.capture.keepSub")}</p>}
       {saveError && <p role="alert" className="mb-4 rounded-xl p-3 text-sm" style={{ color: "var(--arbor-peach-ink)", background: "var(--arbor-peach-soft)" }}>{saveError}</p>}
       <fieldset disabled={saving} className="min-w-0 border-0 p-0">
       {reply ? (
         <section data-testid="quicklog-reply" aria-live="polite" className="space-y-4 text-sm">
+          {/* F-CHILD-2: a plain moment reads back the parent's own words above
+              the one confirmation line (the Receipt below); a hard moment keeps
+              its own reply as it was. */}
+          {!reply.hard && !!reply.log.trigger?.trim() && <p dir="auto" data-testid="quicklog-reply-words" className="text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", borderInlineStart: "3px solid var(--arbor-rule-strong)", paddingInlineStart: 12 }}>{reply.log.trigger}</p>}
           {/* B-STATUS-01: the capture confirm is the ONE Receipt line (its
               direction and lang from the page language, the words unchanged),
               with a link to where the moment went; the sheet's own Undo ·
@@ -746,6 +803,31 @@ export default function QuickLogModal({
               <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
             </button>
           )}
+          {/* F-CHILD-2: the two onward doors of a plain moment, both outlined
+              (the mock's saved state); a hard moment's reply keeps only its
+              own Undo · Done row. */}
+          {!reply.hard && (
+            <div data-testid="quicklog-reply-onward" className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                data-testid="quicklog-reply-another"
+                onClick={anotherMoment}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-xs font-extrabold"
+                style={{ background: "transparent", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+              >
+                <Icon name="add" size={16} />{t("companion.capture.another")}
+              </button>
+              <a
+                href={`#${routeHash("timeline", { view: "time" })}`}
+                onClick={closeSheet}
+                data-testid="quicklog-reply-moments"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-xs font-extrabold"
+                style={{ background: "transparent", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+              >
+                <Icon name="photo_album" size={16} />{t("companion.moments.open")}
+              </a>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
@@ -799,7 +881,11 @@ export default function QuickLogModal({
           <p className="pt-1 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.capture.hard.logLead")}</p>
         </section>
       )}
-      {!reply && !reviewing && !escalationMarkdown && <button type="button" onClick={startVoice} disabled={saving || drafting} aria-pressed={listening} className="inline-flex min-h-11 items-center gap-2 mb-3 px-3 rounded-xl text-sm" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-deep)" }}><Icon name={listening ? "stop" : "mic"} size={20}/>{listening ? (inputText(uiLang, "companion.input.finish-dictating")) : (inputText(uiLang, "companion.input.dictate-your-moment"))}</button>}
+      {!reply && !reviewing && !escalationMarkdown && <div role="group" aria-label={t("companion.capture.modes")} data-testid="quicklog-modes" className="mb-3 flex gap-0.5 rounded-xl p-[3px]" style={{ background: "var(--arbor-paper-deep)" }}>
+        <button type="button" data-capture-mode="write" aria-pressed={!listening && captureMode === "text"} onClick={() => { stopCaptureWork(); setCaptureMode("text"); focusMomentField(); }} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 text-[13px] font-bold" style={segment(!listening && captureMode === "text")}><Icon name="edit_note" size={18} />{t("companion.capture.mode.write")}</button>
+        <button type="button" data-capture-mode="dictate" onClick={startVoice} disabled={saving || drafting} aria-pressed={listening} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 text-[13px] font-bold" style={segment(listening)}><Icon name={listening ? "stop" : "mic"} size={18} />{listening ? inputText(uiLang, "companion.input.finish-dictating") : t("companion.capture.mode.dictate")}</button>
+        <button type="button" data-capture-mode="photo" aria-pressed={!listening && captureMode === "photo"} disabled={photoPreparing} onClick={() => { stopCaptureWork(); setCaptureMode("photo"); if (!photo) photoInputRef.current?.click(); }} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 text-[13px] font-bold" style={segment(!listening && captureMode === "photo")}><Icon name="photo_camera" size={18} />{t("companion.capture.mode.photo")}</button>
+      </div>}
       {voiceNotice && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={startVoice} onDismiss={() => setVoiceNotice(null)} />}
       {!reviewing && !escalationMarkdown && (
           <div className="mb-4 space-y-1.5" data-testid="quicklog-photo">
@@ -819,9 +905,9 @@ export default function QuickLogModal({
               </div>
             ) : (
               <div>
-                <button type="button" onClick={() => photoInputRef.current?.click()} disabled={photoPreparing} className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-xl px-3 text-xs font-bold" style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px dashed var(--arbor-rule-strong)" }}>
-                  <Icon name="add_a_photo" size={18} style={{ color: "var(--arbor-green-ink)" }} /> {t("beh.addPhoto")}
-                </button>
+                {captureMode === "photo" && <button type="button" onClick={() => photoInputRef.current?.click()} disabled={photoPreparing} className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-xl px-3 text-xs font-bold" style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px dashed var(--arbor-rule-strong)" }}>
+                  <Icon name="add_a_photo" size={18} style={{ color: "var(--arbor-clay)" }} /> {t("beh.addPhoto")}
+                </button>}
                 <input
                   ref={photoInputRef}
                   type="file"
@@ -833,6 +919,7 @@ export default function QuickLogModal({
                 />
               </div>
             )}
+            {(captureMode === "photo" || !!photo) && <p data-testid="quicklog-photo-note" className="text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("companion.capture.photoNote")}</p>}
           </div>
         )}
       {escalationMarkdown ? (
@@ -903,6 +990,7 @@ export default function QuickLogModal({
           </div>
           {!!newLogTrigger.trim() && !keepAllowed && <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t(source === "ai-draft" ? "kept.capture.freshMoment" : "kept.capture.ownNote")}</p>}
         </fieldset>}
+        <CaptureWhereArea place={newLogContext} onPlace={(c) => setNewLogContext(c)} area={area} onArea={setArea} showArea={!editLogId} />
         <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
           <input type="checkbox" checked={hardMoment} onChange={(e) => toggleHardMoment(e.target.checked)} className="h-5 w-5" style={{ accentColor: "var(--arbor-clay)" }} />
           <span className="min-w-0">
@@ -914,8 +1002,10 @@ export default function QuickLogModal({
         {/* B-STATUS-01: while Arbor drafts from the parent's words, ONE quiet
             line after 400 ms (never a spinner, never a flash). */}
         <PendingLine active={drafting} testId="quicklog-drafting">{t("beh.parsing")}</PendingLine>
-        <button type="submit" disabled={saving || drafting || photoPreparing} className="min-h-11 w-full py-3 text-white font-extrabold text-xs rounded-xl transition active:scale-[0.98]" style={{ background: "var(--arbor-gradient-primary)" }}>
-          {saving ? t("companion.family-topic-sheet.saving") : editLogId ? t("companion.capture.saveChanges") : t("ql.moment.save")}
+        <p data-testid="quicklog-privacy" className="text-[11.5px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("companion.capture.privacy")}</p>
+        <button type="submit" disabled={saving || drafting || photoPreparing} className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 py-3 font-extrabold text-xs rounded-xl transition active:scale-[0.98]" style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" }}>
+          {!saving && !editLogId && <Icon name="bookmark_add" size={18} />}
+          {saving ? t("companion.family-topic-sheet.saving") : editLogId ? t("companion.capture.saveChanges") : t("companion.capture.keep")}
         </button>
       </form> : <form onSubmit={submit} className="space-y-4 text-sm">
         <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
@@ -936,8 +1026,9 @@ export default function QuickLogModal({
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="quick-log-intensity" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.intensity")} <span style={{ color: "var(--arbor-green-ink)" }}>{newLogIntensity} / 5</span></label>
-          <input id="quick-log-intensity" type="range" min={1} max={5} value={newLogIntensity} onChange={(e) => setNewLogIntensity(parseInt(e.target.value))} className="min-h-11 w-full" style={{ accentColor: "var(--arbor-clay)" }} />
+          <label htmlFor="quick-log-intensity" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.intensity")}</label>
+          <input id="quick-log-intensity" type="range" min={1} max={5} value={newLogIntensity} aria-valuetext={t(intensityWordKey(newLogIntensity))} onChange={(e) => setNewLogIntensity(parseInt(e.target.value))} className="min-h-11 w-full" style={{ accentColor: "var(--arbor-clay)" }} />
+          <div className="flex justify-between text-[11px]" style={{ color: "var(--arbor-muted)" }} aria-hidden="true"><span>{t(INTENSITY_WORDS[0])}</span><span>{t(INTENSITY_WORDS[4])}</span></div>
         </div>
 
         <div className="space-y-1.5">
@@ -972,12 +1063,12 @@ export default function QuickLogModal({
         {/* B-STATUS-01: the drafting spinner in the button became the ONE
             pending line — quiet, after 400 ms; the button keeps its label. */}
         <PendingLine active={drafting} testId="quicklog-drafting">{t("beh.parsing")}</PendingLine>
-        <button type="submit" disabled={drafting || saving || photoPreparing} className="min-h-11 w-full py-3 text-white font-extrabold text-xs rounded-xl transition active:scale-[0.98] disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)" }}>
+        <button type="submit" disabled={drafting || saving || photoPreparing} className="min-h-11 w-full py-3 font-extrabold text-xs rounded-xl transition active:scale-[0.98] disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" }}>
           {t("ql.save")}
         </button>
       </form>}
       </>)}
       </fieldset>
-    </Modal>
+    </Surface>
   );
 }
