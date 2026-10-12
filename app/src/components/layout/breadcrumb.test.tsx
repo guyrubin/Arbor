@@ -777,12 +777,9 @@ describe("IA-06r · the crumb is the dialog's companion: in its layer, above the
     expect(box).toContain('aria-modal="true"');
     expect(box).toContain("bg-white");
     // The clinical firewall's render checks read any percentage as a score:
-    // the crumb and the box height it added carry none. (Sheet's own shadow
-    // ink mix predates IA-06r and is not this change's to rewrite.)
+    // the crumb and the box styles it added carry none.
     expect(html.slice(html.indexOf("<nav "), html.indexOf("</nav>"))).not.toMatch(/\d+\s?%/);
-    const maxHeight = /max-height:([^;"]*)/.exec(box)?.[1] ?? "";
-    expect(maxHeight).toContain("100dvh");
-    expect(maxHeight).not.toMatch(/\d+\s?%/);
+    expect(box).not.toMatch(/\d+\s?%/);
     return box;
   }
 
