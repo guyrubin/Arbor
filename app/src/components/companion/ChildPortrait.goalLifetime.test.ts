@@ -83,6 +83,8 @@ function mountedPortraitProof(duplicateKey: boolean) {
     "../../lib/childPicture": { childPicture: () => ({}) },
     // v3 FEAT-03: the development map and its domain sheet are seams here; their own suites prove them.
     "./DevelopmentMap": { default: empty }, "./DomainSheet": { default: empty },
+    // v3 FEAT-08: the words-and-firsts strip and its selector are seams too (WordsFirstsStrip.test proves them).
+    "./WordsFirstsStrip": { default: empty, wordsStripMonths: () => [] }, "../../lib/kept/keptThings": { keptThings: () => [] },
   }, source => duplicateKey ? source.replace('key={`goal-picker:${childProfile.id}`}', 'key={childProfile.id}') : source).default;
   function Shell() {
     const [route, changeRoute] = React.useState("development"), [, changeVersion] = React.useState(0);
