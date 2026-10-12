@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   lang: "en" as "en" | "he",
   familyTopics: [] as FamilyTopic[], archivedFamilyTopics: [] as FamilyTopic[], activeFamilyTopic: null as FamilyTopic | null,
   updateFamilyTopic: vi.fn(async () => {}), createFamilyTopic: vi.fn(async () => ({})), selectFamilyTopic: vi.fn(),
+  setActiveTab: vi.fn(),
   buttons: [] as Record<string, any>[],
 }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
@@ -42,6 +43,7 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
 import FamilyTopicSheet from "./FamilyTopicSheet";
 import NowQuestionRow from "./NowQuestionRow";
 import { NOW_COPY } from "./nowViewCopy";
+import { translate } from "../../lib/i18n";
 
 const byLabel = (label: string) => state.buttons.find(item => item["aria-label"] === label);
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -92,6 +94,19 @@ describe("v3 All questions sheet", () => {
     expect(html).toContain("Why the shoes?");
     expect(html).toContain("A new question, in your words");
     expect(html).not.toMatch(/\d+\s?%/);
+  });
+
+  it("IA-06: every way out goes through the sheet's one close; a row that leaves navigates after it", () => {
+    const order: string[] = [];
+    const onClose = vi.fn(() => { order.push("close"); });
+    state.setActiveTab = vi.fn((tab: string) => { order.push(`go:${tab}`); });
+    const byText = (key: string) => state.buttons.find(item => item.children === translate("en", key));
+    renderToStaticMarkup(<FamilyTopicSheet onClose={onClose} />);
+    byText("companion.family-topic-sheet.see-the-whole-picture")!.onClick();
+    expect(order).toEqual(["close", "go:development"]);
+    byText("companion.family-topic-sheet.close")!.onClick();
+    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(state.setActiveTab).toHaveBeenCalledTimes(1);
   });
 
   it("renders Hebrew states in the RTL register", () => {
