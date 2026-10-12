@@ -8,7 +8,7 @@ import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
 import { requestOpenSettings } from "./settingsBus";
 import { type NavBadge } from "../../lib/navigation";
-import { COMPANION_PLACES, placeForTab } from "../../lib/companionPlaces";
+import { COMPANION_PLACES, COMPANION_DOORS, homeForTab } from "../../lib/companionPlaces";
 
 /** Resolve the generalized sidebar badge to its display string from app state.
  *  Returns "" when the badge should not render.
@@ -33,7 +33,9 @@ export default function Sidebar() {
   const { user, signOut, firebaseEnabled } = useAuth();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
-  const activePlace = placeForTab(activeTab).id;
+  // v3 IA-01: ONE active entry across the three places and the three doors:
+  // the route's home (table A). #/consult lights Care, together and nothing else.
+  const home = homeForTab(activeTab);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
 
@@ -76,31 +78,29 @@ export default function Sidebar() {
       {/* Child profile card */}
       <ProfileSwitcher />
 
-      <nav aria-label={t("elev.sidebar.nav.aria")} className="flex flex-col gap-2 flex-1">
+      <nav aria-label={t("elev.sidebar.nav.aria")} className="flex flex-col gap-1 flex-1">
         {COMPANION_PLACES.map(place => {
-          const active = activePlace === place.id && activeTab !== "coach";
-          return <button key={place.id} onClick={() => setActiveTab(place.tab)} aria-current={active ? "page" : undefined}
-            className="flex items-start gap-3 rounded-2xl px-3 py-4 text-start min-h-11 transition-colors"
+          const active = home.kind === "place" && home.place.id === place.id;
+          return <button key={place.id} data-home={place.id} onClick={() => setActiveTab(place.tab)} aria-current={active ? "page" : undefined}
+            className="flex items-start gap-3 rounded-2xl px-3 py-3 text-start min-h-11 transition-colors"
             style={{ background: active ? "var(--arbor-clay-dim)" : "transparent", color: active ? "var(--arbor-clay-deep)" : "var(--arbor-ink)" }}>
-            <Icon name={place.icon} size={24} fill={active ? 1 : 0} />
-            <span><span className="block text-[16px] font-bold">{he ? place.he : place.en}</span>
-              <span className="block mt-1 text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{he ? place.detailHe : place.detailEn}</span></span>
+            <Icon name={place.icon} size={24} chrome active={active} />
+            <span><span className="block text-[15.5px] font-bold">{he ? place.he : place.en}</span>
+              <span className="block mt-1 text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{he ? place.detailHe : place.detailEn}</span></span>
           </button>;
         })}
-        <div className="mt-5 pt-5 space-y-1" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-          {/* v3 (11 Oct 2026): Talk is a door again, beside the launcher that also opens it — no count badge (B-SHELL-26). */}
-          {([
-            { tab: "coach", icon: "forum", en: "Talk with Arbor", he: "לדבר עם ארבור" },
-            { tab: "masterclasses", icon: "school", en: "For you, the parent", he: "בשבילך, ההורה" },
-            { tab: "consult", icon: "diversity_1", en: "Care, together", he: "יחד עם אנשי המקצוע" },
-          ] as const).map(link => {
-            const label = he ? link.he : link.en;
-            return <button key={link.tab} onClick={() => setActiveTab(link.tab)} aria-current={activeTab === link.tab ? "page" : undefined}
-            className="w-full min-h-11 flex items-center gap-3 px-3 py-3 rounded-xl text-start text-sm font-semibold"
-            style={{ color: activeTab === link.tab ? "var(--arbor-clay-deep)" : "var(--arbor-muted)", background: activeTab === link.tab ? "var(--arbor-clay-dim)" : "transparent" }}>
-            <Icon name={link.icon} size={21}/>{label}
-
-          </button>; })}
+        {/* v3 IA-01: the three doors sit under a hairline, below the places.
+            Their names come from i18nCompanion through COMPANION_DOORS, and
+            Talk carries no count (B-SHELL-26). */}
+        <div className="mt-3 pt-4 space-y-0.5" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+          {COMPANION_DOORS.map(door => {
+            const active = home.kind === "door" && home.door.id === door.id;
+            return <button key={door.id} data-home={door.id} onClick={() => setActiveTab(door.tab)} aria-current={active ? "page" : undefined}
+              className="w-full min-h-11 flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-sm font-semibold transition-colors"
+              style={{ color: active ? "var(--arbor-clay-deep)" : "var(--arbor-muted)", background: active ? "var(--arbor-clay-dim)" : "transparent" }}>
+              <Icon name={door.icon} size={21} chrome active={active} />{he ? door.he : door.en}
+            </button>;
+          })}
         </div>
       </nav>
 

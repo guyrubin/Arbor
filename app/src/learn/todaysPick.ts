@@ -102,6 +102,14 @@ export interface TodaysPickResult {
    * note with words did (never a paraphrase, never a domain or a count).
    */
   fromMoment: { text: string; at: Date } | null;
+  /**
+   * v3 EXTRA-FORYOU: true when the parent's open family question
+   * (`signals.topicText`, its title in their own words) contributed to the
+   * winning score: rescoring the winner without the question scores lower. The
+   * hub's "Picked for your question" tag and its quoting why-line render only
+   * when this holds.
+   */
+  fromTopic: boolean;
 }
 
 /**
@@ -141,6 +149,9 @@ export function todaysLearnPick(
       !!signals.focusDomain &&
       learnCardScore(card, signals) > learnCardScore(card, { ...signals, focusDomain: null }),
     fromSaved: continuesSaved(card, topics),
+    fromTopic:
+      !!signals.topicText &&
+      learnCardScore(card, signals) > learnCardScore(card, { ...signals, topicText: null }),
     fromMoment: concerns.length > 0 ? pickMoment(card, signals, opts.logs ?? [], opts.now ?? new Date()) : null,
   };
 }

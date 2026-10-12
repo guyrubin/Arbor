@@ -1009,6 +1009,19 @@ export function appendParentNote(packetMarkdown: string, note: string, heading: 
   return `${packetMarkdown.trimEnd()}\n\n## ${heading}\n\n${trimmed}\n`;
 }
 
+/** v3 FEAT-09: the family question the parent chose to include ("Our
+ *  question: …"), as ONE line directly under the packet's title block. Pure +
+ *  total: an empty line returns the packet unchanged, so callers pass "" while
+ *  the parent has it off (it is never auto-included). The caller's line opens
+ *  with its own label, so it stays one plain body line in the copied text. */
+export function insertFamilyQuestion(packetMarkdown: string, line: string): string {
+  const one = line.replace(/\s+/g, " ").trim();
+  if (!one) return packetMarkdown;
+  const at = packetMarkdown.indexOf("\n\n");
+  if (at === -1) return `${packetMarkdown.trimEnd()}\n${one}\n`;
+  return `${packetMarkdown.slice(0, at)}\n${one}${packetMarkdown.slice(at)}`;
+}
+
 /** Count of includable items (for the UI's "N details selected"). */
 export function countIncluded(packet: ConsultPacket, excludedIds: Set<string>): number {
   return packet.sections.reduce(
@@ -1275,7 +1288,13 @@ export function buildSharedScopePacket(
 /** Print-shell section shape — matches `ReportDoc.sections` in
  *  `lib/reportExport` without importing it (the print shell depends on no
  *  consult types, and this module stays pure). */
-export interface PresetPrintSection { heading: string; body: string[] }
+export interface PresetPrintSection {
+  heading: string;
+  body: string[];
+  /** v3 FEAT-09: a plain line under the title block (no heading, no
+   *  bullet), as the copied text carries it. */
+  lead?: boolean;
+}
 
 /** Render a preset packet as print-shell sections for `openPrintableReport`
  *  (IA W4.2 — the AskSpecialist / Reports PDF path). Same egress contract as
@@ -1371,24 +1390,29 @@ function assertNoteAllowed(preset: ConsultPreset, note: string): void {
 
 /** Serialize a packet for a chosen audience with the parent's note appended
  *  under `noteHeading`. Throws `ClinicalLanguageError` (fail closed — nothing
- *  is returned) when the audience's ceiling or scan is violated. */
+ *  is returned) when the audience's ceiling or scan is violated. v3 FEAT-09:
+ *  `familyQuestion` is the one "Our question: …" line the parent turned on
+ *  (insertFamilyQuestion); it joins BEFORE the final guards run, so the same
+ *  ceiling, term scan and percentage block cover it. */
 export function serializeForExport(
   audience: ExportAudience,
   packet: ConsultPacket,
   excludedIds: Set<string> = new Set(),
   note: string = "",
   noteHeading: string = "Parent note",
-  lang: UiLang = "en"
+  lang: UiLang = "en",
+  familyQuestion: string = ""
 ): string {
   if (audience === "self") {
-    const md = appendParentNote(serializePacket(packet, excludedIds, lang), note, noteHeading);
+    const md = appendParentNote(insertFamilyQuestion(serializePacket(packet, excludedIds, lang), familyQuestion), note, noteHeading);
     assertClinicianExportCeiling(md);
     return md;
   }
   if (audience === "teacher") throw new TeacherEgressError();
   const preset = CONSULT_PRESETS[audience];
   assertNoteAllowed(preset, note);
-  const md = appendParentNote(serializePresetPacket(preset.audience, packet, excludedIds, lang), note, noteHeading);
+  assertNoteAllowed(preset, familyQuestion);
+  const md = appendParentNote(insertFamilyQuestion(serializePresetPacket(preset.audience, packet, excludedIds, lang), familyQuestion), note, noteHeading);
   assertWithinCeiling(preset, md);
   assertClinicianExportCeiling(md);
   return md;
@@ -1404,10 +1428,15 @@ export function exportPrintSections(
   excludedIds: Set<string> = new Set(),
   note: string = "",
   noteHeading: string = "Parent note",
-  lang: UiLang = "en"
+  lang: UiLang = "en",
+  familyQuestion: string = ""
 ): PresetPrintSection[] {
   const trimmed = note.trim();
   const noteSection: PresetPrintSection[] = trimmed ? [{ heading: noteHeading, body: [trimmed] }] : [];
+  // v3 FEAT-09: the same one line the copied text carries, a plain body line
+  // under the PDF's title block (a lead section renders with no heading).
+  const question = familyQuestion.replace(/\s+/g, " ").trim();
+  const questionSection: PresetPrintSection[] = question ? [{ heading: "", body: [question], lead: true }] : [];
   if (audience === "self") {
     const sections: PresetPrintSection[] = [];
     for (const section of packet.sections) {
@@ -1416,14 +1445,18 @@ export function exportPrintSections(
       const sNote = sectionNote(section, lang);
       sections.push({ heading: sectionTitle(section, lang), body: [...(sNote ? [sNote] : []), ...items.map((it) => itemText(it, lang))] });
     }
-    const out = [...sections, ...noteSection];
+    const out = [...questionSection, ...sections, ...noteSection];
     assertClinicianExportCeiling(out.flatMap((s) => [s.heading, ...s.body]).join("\n"));
     return out;
   }
   if (audience === "teacher") throw new TeacherEgressError();
   const preset = CONSULT_PRESETS[audience];
   assertNoteAllowed(preset, note);
-  const out = [...presetPacketToPrintSections(audience, packet, excludedIds, lang), ...noteSection];
+  assertNoteAllowed(preset, question);
+  const base = presetPacketToPrintSections(audience, packet, excludedIds, lang);
+  // After the demo header (B-DIST-01), when the record is the demo family's.
+  const lead = packet.demo ? 1 : 0;
+  const out = [...base.slice(0, lead), ...questionSection, ...base.slice(lead), ...noteSection];
   const text = out.flatMap((s) => [s.heading, ...s.body]).join("\n");
   assertWithinCeiling(preset, text);
   assertClinicianExportCeiling(text);

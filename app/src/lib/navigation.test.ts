@@ -4,6 +4,8 @@ import path from "node:path";
 import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection, hubTabsForSection, pillRowFor, COMPACT_HIDDEN_TOOLS, isCompactHiddenTool } from "./navigation";
 import { resolveHash, FALLBACK_ROUTE, RETIRED_ROUTES } from "./routes";
 import { ALL_TABS } from "../context/ArborContext";
+import { homeForTab } from "./companionPlaces";
+import { translate } from "./i18n";
 
 /** Structural guard for the Heartwood D2+D3 TEN-hub information architecture —
  *  Today / Journal / Ask Arbor / Behaviors / Growth / Practice / Stories /
@@ -85,6 +87,49 @@ describe("navigation IA", () => {
     const care = SECTIONS.find((s) => s.id === "care");
     expect(care?.items[0].tab).toBe("consult");
     expect(care?.items.some((i) => i.tab === "safety")).toBe(true);
+  });
+
+  // v3 FEAT-09 — the full Care row. Safety stays second (the escalation
+  // surface one tap from Consult); Care summary (#/handoff, the summary
+  // builder) is third. No new route: #/handoff was already live.
+  describe("v3 FEAT-09 — the full Care pill row", () => {
+    const care = SECTIONS.find((s) => s.id === "care")!;
+    const row = hubTabsForSection(care);
+    const ORDER = ["consult", "safety", "handoff", "school-brief", "sharing", "appointments"];
+    const labelOf = (lang: "en" | "he", it: (typeof row)[number]) => translate(lang, it.labelKey ?? "nav.tab." + it.tab);
+
+    it("is Consult · Safety · Care summary · School brief · Trusted sharing · Appointments", () => {
+      expect(row.map((i) => i.tab)).toEqual(ORDER);
+      expect(row[1].tab).toBe("safety");
+      expect(row.map((i) => labelOf("en", i))).toEqual(["Consult", "Safety", "Care summary", "School brief", "Trusted sharing", "Appointments"]);
+    });
+
+    it("reads the same order in Hebrew, every label Hebrew with no Latin word", () => {
+      expect(row.map((i) => labelOf("he", i))).toEqual(["התייעצות", "בטיחות", "סיכום לצוות המטפל", "תקציר לגן/בית הספר", "שיתוף מהימן", "פגישות"]);
+      for (const it of row) expect(/[A-Za-z]/.test(labelOf("he", it)), it.tab).toBe(false);
+    });
+
+    it("every Care pill wears this row and belongs to the Care, together door", () => {
+      for (const tab of ORDER) {
+        const t = tab as (typeof row)[number]["tab"];
+        expect(pillRowFor(sectionForTab(t), t).map((i) => i.tab), tab).toEqual(ORDER);
+        const home = homeForTab(t);
+        expect(home.kind === "door" && home.door.id, tab).toBe("care");
+      }
+    });
+
+    it("the Care summary pill is #/handoff with its own shipped glyph", () => {
+      const summary = row.find((i) => i.tab === "handoff")!;
+      expect(summary.msIcon).toBe("description");
+      expect(ALL_TABS).toContain("handoff");
+      expect(sectionForTab("handoff").id).toBe("care");
+    });
+
+    it("NEGATIVE CONTROL: the pre-FEAT-09 row had five pills and no Care summary", () => {
+      const before = hubTabsForSection({ ...care, tools: care.tools.filter((i) => i.tab !== "handoff") });
+      expect(before.map((i) => i.tab)).not.toEqual(ORDER);
+      expect(before.some((i) => i.tab === "handoff")).toBe(false);
+    });
   });
 
   it("every section has at least one capability", () => {

@@ -188,7 +188,7 @@ describe("celebrate() — runtime caps + reduced-motion gate", () => {
 
   it("does NOT call confetti when prefers-reduced-motion matches (all kinds)", () => {
     stubWindow(true);
-    for (const kind of ["milestone", "choice", "complete", "lesson", "play"] as const) celebrate({ kind });
+    for (const kind of ["milestone", "choice", "complete", "lesson", "play", "routine", "plan"] as const) celebrate({ kind });
     expect(fire).not.toHaveBeenCalled();
     expect(fire.reset).not.toHaveBeenCalled();
   });
@@ -226,5 +226,20 @@ describe("celebrate() — runtime caps + reduced-motion gate", () => {
     expect(fire).toHaveBeenCalledTimes(2);
     expect(fire.reset).toHaveBeenCalledTimes(1); // one stop, ≤800 ms after the last burst
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("FEAT-07: the routine and plan kinds keep the same caps (≤12 particles, ≤800 ms)", () => {
+    stubWindow(false);
+    for (const kind of ["routine", "plan"] as const) {
+      fire.mockClear();
+      fire.reset.mockClear();
+      celebrate({ kind });
+      expect(fire).toHaveBeenCalledTimes(1);
+      const opts = fire.mock.calls[0][0] as Record<string, unknown>;
+      expect(opts.particleCount as number).toBeLessThanOrEqual(12);
+      expect(opts.ticks as number).toBeLessThanOrEqual(48);
+      vi.advanceTimersByTime(CELEBRATION_MAX_DURATION_MS);
+      expect(fire.reset).toHaveBeenCalledTimes(1);
+    }
   });
 });

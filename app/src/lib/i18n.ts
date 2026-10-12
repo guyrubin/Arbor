@@ -808,6 +808,16 @@ export const en: Dict = {
   "hm.ref.open": "Open the guide",
   "hm.ref.dismiss": "Remove the guide card",
   "hm.today.eyebrow": "From your recent moments",
+  // FEAT-06 (v3 hard moment): the "you first" view above the picker.
+  "hm.first.kicker": "Words and one step for right now",
+  "hm.first.title": "You first. Then {name}.",
+  "hm.first.titleBare": "You first. Then your child.",
+  "hm.first.say": "I can see this is hard right now. I’m here. Let’s breathe together.",
+  "hm.first.stepTitle": "Three slow breaths, together",
+  "hm.first.stepBody": "Hands on your belly. Breathe out slowly. No explaining yet.",
+  "hm.first.talk": "Talk it through",
+  "hm.first.keep": "Keep this moment",
+  "hm.first.safety": "Help and safety",
   // Language Lab (lang.*)
   "lang.title": "Language & Communication",
   "lang.subtitle": "Growing the languages {first} speaks at home, with calm daily practice. For practicing how specific sounds are formed, that's Speech Coach.",
@@ -1560,8 +1570,6 @@ export const en: Dict = {
   "sm.askAbout.sub": "Opens Ask with your words — you send it",
   "sm.extra.weekly": "Weekly Insight",
   "sm.extra.weeklySub": "My Child · Story",
-  "sm.extra.handoff": "School & Care Handoff",
-  "sm.extra.handoffSub": "Care Network · Reports & Handoffs",
   "sm.extra.scholar": "Scholar Frameworks",
   "sm.extra.scholarSub": "Ask Arbor",
   // LANG-15: Word World Tab
@@ -2599,6 +2607,27 @@ export const en: Dict = {
   "privacy.analytics.label": "Share how you use Arbor",
   "privacy.analytics.body": "When on, Arbor records which parts of the app you use, on which days, and how you first found Arbor. Never what you write, and never your child's name or notes.",
   "privacy.analytics.saveFailed": "Saved on this device. We could not reach your account, so it applies here for now.",
+  // v3 IA-02 — the place pill rows (lib/navigation PLACE_PILLS labelKey): short
+  // pill names where nav.tab.<tab> is long or repeats the place, and the
+  // row's tablist name ({place} is the place or door it belongs to).
+  "nav.pill.weekly": "Weekly report",
+  "nav.pill.day-windows": "Day windows",
+  "nav.pill.reminders": "Reminders",
+  "nav.pill.development": "Development map",
+  "nav.pill.language": "Language",
+  "nav.pill.portrait": "Portrait",
+  "nav.pill.profile": "Profile",
+  "nav.pills.aria": "{place}: sections",
+  // v3 FEAT-09 — the full Care row (Consult · Safety · Care summary · School
+  // brief · Trusted sharing · Appointments). nav.tab.handoff names #/handoff,
+  // the care summary builder, in the row and in search; the short pill names
+  // leave nav.tab.safety / school-brief / sharing as the long names.
+  "nav.tab.handoff": "Care summary",
+  "nav.pill.safety": "Safety",
+  "nav.pill.school-brief": "School brief",
+  "nav.pill.sharing": "Trusted sharing",
+  // v3 IA-06 — the open L2 sheet's breadcrumb (layout/Breadcrumb): the landmark's name.
+  "nav.crumb.aria": "Location",
 };
 
 export const he: Dict = {
@@ -3349,6 +3378,16 @@ export const he: Dict = {
   "hm.ref.open": "לפתוח את המדריך",
   "hm.ref.dismiss": "להסיר את כרטיס המדריך",
   "hm.today.eyebrow": "מהרגעים האחרונים שתיעדתם",
+  // FEAT-06 (v3 hard moment): the "you first" view above the picker.
+  "hm.first.kicker": "מילים וצעד אחד לרגע הזה",
+  "hm.first.title": "קודם אתם. אחר כך {name}.",
+  "hm.first.titleBare": "קודם אתם. אחר כך הילד שלכם.",
+  "hm.first.say": "אני רואה שקשה לך עכשיו. אני כאן. ננשום יחד.",
+  "hm.first.stepTitle": "שלוש נשימות איטיות, יחד",
+  "hm.first.stepBody": "ידיים על הבטן. נשיפה ארוכה ואיטית. בלי הסברים עדיין.",
+  "hm.first.talk": "לדבר על זה",
+  "hm.first.keep": "לשמור את הרגע",
+  "hm.first.safety": "עזרה ובטיחות",
   // Language Lab (lang.*)
   "lang.title": "שפה ותקשורת",
   "lang.subtitle": "מגדלים את השפות שבהן {first} מדבר/ת בבית, עם תרגול יומי רגוע. לתרגול אופן יצירת צלילים ספציפיים — זה מאמן הדיבור.",
@@ -4063,8 +4102,6 @@ export const he: Dict = {
   "sm.askAbout.sub": "פותח את השאלה עם המילים שלכם — אתם שולחים",
   "sm.extra.weekly": "תובנה שבועית",
   "sm.extra.weeklySub": "הילד שלי · סיפור",
-  "sm.extra.handoff": "העברה לבית ספר וטיפול",
-  "sm.extra.handoffSub": "רשת תמיכה · דוחות והעברות",
   "sm.extra.scholar": "מסגרות מומחה",
   "sm.extra.scholarSub": "שאל את ארבור",
   // LANG-15: Word World Tab (Hebrew)
@@ -5044,6 +5081,22 @@ export const he: Dict = {
   "privacy.analytics.label": "שיתוף אופן השימוש בארבור",
   "privacy.analytics.body": "כשהאפשרות פעילה, ארבור רושם באילו חלקים של האפליקציה השתמשתם, באילו ימים, ואיך הגעתם לארבור לראשונה. אף פעם לא את מה שכתבתם, ואף פעם לא את השם או ההערות על ילדכם.",
   "privacy.analytics.saveFailed": "נשמר במכשיר הזה. לא הצלחנו להגיע לחשבון שלכם, ולכן ההגדרה חלה כאן בינתיים.",
+  // v3 IA-02 — שורות הכפתורים של כל מקום (PLACE_PILLS): שמות קצרים לכפתורים, ושם רשימת הכרטיסיות.
+  "nav.pill.weekly": "דוח שבועי",
+  "nav.pill.day-windows": "חלונות היום",
+  "nav.pill.reminders": "תזכורות",
+  "nav.pill.development": "מפת התפתחות",
+  "nav.pill.language": "שפה",
+  "nav.pill.portrait": "דיוקן",
+  "nav.pill.profile": "פרופיל",
+  "nav.pills.aria": "{place}: אזורים",
+  // v3 FEAT-09 — שורת הטיפול המלאה: התייעצות · בטיחות · סיכום לצוות המטפל · תקציר לגן/בית הספר · שיתוף מהימן · פגישות.
+  "nav.tab.handoff": "סיכום לצוות המטפל",
+  "nav.pill.safety": "בטיחות",
+  "nav.pill.school-brief": "תקציר לגן/בית הספר",
+  "nav.pill.sharing": "שיתוף מהימן",
+  // v3 IA-06 — פירורי הלחם של גיליון פתוח (layout/Breadcrumb): שם אזור הניווט.
+  "nav.crumb.aria": "נתיב ניווט",
 };
 
 // Elevation Wave seam: per-feature "elev.*" modules live in ./i18nElevation and

@@ -136,6 +136,27 @@ export const en: Record<string, string> = {
   // B-TODAY-16: the phone-reminder card's section on #/smart-reminders.
   "elev.sr.delivery.heading": "Delivery",
   "elev.sr.more.sub": "Quiet hours, and holding nudges for a calm moment.",
+
+  // v3 EXTRA-WEEKLY · the Weekly tab's glance: the week as counts only (no
+  // share, no denominator, no score). Tiles, the day-by-day strip and its
+  // legend, the screen-reader table, and the areas with records.
+  "elev.wk.glance.title": "Week at a glance",
+  "elev.wk.glance.sub": "What you kept, what helped, and what to carry into next week. Counts, not scores.",
+  "elev.wk.glance.moments": "Moments",
+  "elev.wk.glance.helped": "Steps that helped",
+  "elev.wk.glance.tried": "tried on {n} days",
+  "elev.wk.glance.tried.one": "tried on one day",
+  "elev.wk.glance.milestones": "New milestones",
+  "elev.wk.glance.kid": "Kid world sessions",
+  "elev.wk.glance.words": "Words kept",
+  "elev.wk.glance.days": "Day by day",
+  "elev.wk.glance.days.aria": "What was kept each day this week",
+  "elev.wk.glance.legend.helped": "Step helped",
+  "elev.wk.glance.legend.again": "Not this time",
+  "elev.wk.glance.table.day": "Day",
+  "elev.wk.glance.table.step": "Step",
+  "elev.wk.glance.areas": "By area",
+  "elev.wk.glance.areas.blank": "Blank = nothing recorded this week.",
 };
 
 export const he: Record<string, string> = {
@@ -226,4 +247,23 @@ export const he: Record<string, string> = {
   "elev.sr.more.title": "מתי מותר לארבור לפנות אליכם",
   "elev.sr.delivery.heading": "איך התזכורות מגיעות",
   "elev.sr.more.sub": "שעות שקט, ושמירת התזכורות לרגע רגוע.",
+
+  // v3 EXTRA-WEEKLY · the Weekly tab's glance (counts only).
+  "elev.wk.glance.title": "מבט על השבוע",
+  "elev.wk.glance.sub": "מה שמרתם, מה עזר ומה לקחת לשבוע הבא. ספירות, לא ציונים.",
+  "elev.wk.glance.moments": "רגעים",
+  "elev.wk.glance.helped": "צעדים שעזרו",
+  "elev.wk.glance.tried": "נוסו ב-{n} ימים",
+  "elev.wk.glance.tried.one": "נוסו ביום אחד",
+  "elev.wk.glance.milestones": "אבני דרך חדשות",
+  "elev.wk.glance.kid": "מפגשים בעולם הילדים",
+  "elev.wk.glance.words": "מילים ששמרתם",
+  "elev.wk.glance.days": "יום אחר יום",
+  "elev.wk.glance.days.aria": "מה נשמר בכל יום השבוע",
+  "elev.wk.glance.legend.helped": "הצעד עזר",
+  "elev.wk.glance.legend.again": "לא הפעם",
+  "elev.wk.glance.table.day": "יום",
+  "elev.wk.glance.table.step": "צעד",
+  "elev.wk.glance.areas": "לפי תחום",
+  "elev.wk.glance.areas.blank": "ריק = לא תועד דבר השבוע.",
 };

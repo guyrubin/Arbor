@@ -145,6 +145,14 @@ describe("hash aliases", () => {
     expect(ROUTE_IDS.length).toBe(43);
   });
 
+  it("v3 IA-04: #/now, #/together and #/talk land on Now, Together and the Talk door; #/my-child stays on profile (GP-19)", () => {
+    expect(resolveRouteId("#/now")).toBe("overview");
+    expect(resolveRouteId("#/together")).toBe("practice");
+    expect(resolveRouteId("#/talk")).toBe("coach");
+    expect(resolveRouteId("#/Together")).toBe("practice"); // aliases are case-insensitive
+    expect(resolveRouteId("#/my-child")).toBe("profile");
+  });
+
   it("unknown hashes still fall back exactly as before (null)", () => {
     for (const raw of ["", "#/", "#/nope", "nonsense", "#/OVERVIEW", "#/overview/extra", "#/care-team-x"]) {
       expect(resolveRouteId(raw), `"${raw}" should not resolve`).toBeNull();

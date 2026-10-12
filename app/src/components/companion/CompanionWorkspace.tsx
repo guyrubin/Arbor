@@ -3,7 +3,7 @@ import React, { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, use
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDialog } from "../../hooks/useDialog";
-import { COMPANION_CONVERSATION_EVENT, type CompanionConversationRequest } from "../../lib/companionConversation";
+import { COMPANION_CONVERSATION_EVENT, requestCompanionConversation, type CompanionConversationRequest } from "../../lib/companionConversation";
 import { trackCompanionPanelOpen } from "../../lib/kpiEvents";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import Icon from "../ui/Icon";
@@ -12,13 +12,15 @@ import { ErrorBoundary } from "../ErrorBoundary";
 import { availableHardMomentCards } from "../../content/selectCards";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { NOW_COPY } from "./nowViewCopy";
+import { openFamilyTopicSheet } from "./familyTopicEvents";
+import CompanionPanelMenu, { type CompanionPanelAction } from "./CompanionPanelMenu";
 import "./companionWorkspace.css";
 
 const CoachTab = lazy(() => import("../tabs/CoachTab"));
 
 /** Mounted above routes: changing a view must not restart a draft, turn or microphone session. */
 export default function CompanionWorkspace({ children, kidLocked }: { children: React.ReactNode; kidLocked: boolean }) {
-  const { activeTab, setActiveTab, childProfile, activeFamilyTopic, setChatInput, chatInput, openCaptureSheet, openHardMomentNow } = useArbor();
+  const { activeTab, setActiveTab, childProfile, activeFamilyTopic, setChatInput, chatInput, openCaptureSheet, openHardMomentNow, newConversation } = useArbor();
   const { uiLang } = useLanguage();
   // B-ASKJB-39: the hard-moment sheet is one tap from every parent screen. Same gate
   // as Now's door (a pilot guide fits this child and language); Now keeps its own door.
@@ -53,6 +55,27 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     setOpen(false);
     if (routeIsConversation) setActiveTab(returnTab.current);
   };
+  // FEAT-01: the header menu reaches existing controls only. New conversation
+  // is the history row's own handler (the question stays); history and tone
+  // belong to the conversation, so they go through its one door.
+  const panelAction = (action: CompanionPanelAction) => {
+    if (action === "new") newConversation();
+    else if (action === "history" || action === "tone") requestCompanionConversation({ panel: action, source: "panel-menu" });
+    else if (action === "remembers") {
+      // "What Arbor remembers" is a page, so the panel closes at every width
+      // (thread and draft stay mounted; the launcher brings them back) and
+      // focus lands on the launcher once the memory page has committed.
+      closeFocus.current = { childId: childProfile.id, tab: "memory" };
+      setOpen(false);
+      setActiveTab("memory");
+    }
+    else setExpanded(value => !value);
+  };
+  // The active question rides on the launcher as one quiet line, "On: <question>"
+  // (never with a draft). The words sit in their own bdi so a long question ends
+  // in an ellipsis and a Latin title keeps its order inside Hebrew.
+  const launcherTopic = !chatInput.trim() ? activeFamilyTopic?.title.trim() ?? "" : "";
+  const [topicBefore, topicAfter = ""] = inputText(uiLang, "companion.launcher.topic").split("{title}");
   // Direct Coach/Scholar entry has no mounted launcher until close commits.
   // Restore only an explicit close, after route/dialog cleanup; newer context
   // owns focus and cancels this return rather than moving or scrolling it.
@@ -155,9 +178,15 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
         <ArborMark size={30} />
         <div className="companion-conversation-identity">
           <h2 id="companion-conversation-title">Arbor</h2>
-          <span><bdi dir="auto">{childProfile.name}{activeFamilyTopic ? ` · ${activeFamilyTopic.title}` : ""}</bdi></span>
+          {/* FEAT-05: the active question is a chip that opens the question sheet; text only, never a count or dot. */}
+          <div className="companion-conversation-context">
+            <span className="companion-conversation-name"><bdi dir="auto">{childProfile.name}</bdi></span>
+            {activeFamilyTopic && <button type="button" className="companion-topic-chip" data-testid="conversation-topic-chip" aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.topic-chip.open", { value0: activeFamilyTopic.title })} onClick={() => openFamilyTopicSheet()}>
+              <span className="companion-topic-chip-pill"><Icon name="bookmark" size={16} className="companion-topic-chip-icon" /><span className="companion-topic-chip-text" dir="auto">{activeFamilyTopic.title}</span></span>
+            </button>}
+          </div>
         </div>
-        {wide && <button type="button" className="companion-chrome-button" onClick={() => setExpanded(value => !value)} aria-label={expanded ? (inputText(uiLang, "companion.input.show-beside-the-page")) : (inputText(uiLang, "companion.input.expand-conversation"))}><Icon name={expanded ? "expand_less" : "fullscreen"} size={20} /></button>}
+        <CompanionPanelMenu uiLang={uiLang === "he" ? "he" : "en"} panelVisible={visible} wide={wide} expanded={expanded} onSelect={panelAction} />
         <button type="button" className="companion-chrome-button" onClick={close} aria-label={inputText(uiLang, "companion.input.close-conversation-and-return-to-the-page")}><Icon name="close" size={22} /></button>
       </header>
       <ErrorBoundary><Suspense fallback={<p className="companion-loading" role="status">{inputText(uiLang, "companion.input.opening-your-conversation")}</p>}>
@@ -166,8 +195,8 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     </aside>}
     </div>
     {!visible && !kidLocked && <div className="arbor-parent companion-launcher-rail" data-testid="companion-launcher-rail"><div ref={launcherRef} className="arbor-parent companion-launcher" data-testid="companion-launcher">
-      <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.input.talk-with-arbor-text-photo-or-voice")}>
-        <ArborMark size={24} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : copy.talk}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+      <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.input.talk-with-arbor-text-photo-or-voice")} aria-describedby={launcherTopic ? "companion-launch-topic" : undefined}>
+        <ArborMark size={24} /><span className="companion-launch-copy">{chatInput.trim() ? (inputText(uiLang, "companion.input.continue-your-draft")) : copy.talk}{launcherTopic && <span id="companion-launch-topic" className="companion-launch-topic">{topicBefore}<bdi dir="auto" className="companion-launch-topic-text">{launcherTopic}</bdi>{topicAfter || null}</span>}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
       </button>
       {hardMomentDoor && activeTab !== "overview" && <button type="button" className="companion-launch-save companion-launch-hard" data-testid="launcher-hard-moment" onClick={() => openHardMomentNow()} aria-label={inputText(uiLang, "companion.input.hard-moment-aria")}><Icon name="volunteer_activism" size={21} /><span className="companion-launch-save-label">{inputText(uiLang, "companion.input.hard-moment")}</span></button>}
       <details ref={captureRef} className="companion-capture-menu" onKeyDown={event => {

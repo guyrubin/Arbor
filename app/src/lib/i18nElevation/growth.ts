@@ -24,8 +24,10 @@ export const en: Record<string, string> = {
 
   // ── E2 · Academy hub hero
   "elev.hero.academy.eyebrow": "Academy",
-  "elev.hero.academy.title": "Short courses, matched to where {name} is now",
-  "elev.hero.academy.sub": "A few practical minutes at a time — ready when you are.",
+  // v3 EXTRA-FORYOU: the For you, the parent header (a quiet kicker, the title, one line).
+  "elev.hero.academy.kicker": "For you",
+  "elev.hero.academy.title": "Understand more. At your pace.",
+  "elev.hero.academy.sub": "Ideas and short courses that connect to life at home.",
   "elev.hero.academy.cta": "Continue the next course",
   "elev.hero.academy.stat.courses": "courses",
   "elev.hero.academy.stat.completed": "completed",
@@ -118,6 +120,11 @@ export const en: Record<string, string> = {
   "elev.growth.deeper.title": "Go deeper",
   "elev.growth.more.title": "More from Growth",
   "elev.growth.more.sub": "The month in review and the Full Picture.",
+
+  // v3 VIS-02 — CountPips (components/ui/CountPips.tsx): the one sentence a
+  // screen reader hears for a domain's dots. A count of what the parent marked
+  // ‘Seen it’; never a total, a share or a not-yet count.
+  "elev.pips.aria": "Seen so far: {n}",
 };
 
 export const he: Record<string, string> = {
@@ -133,8 +140,10 @@ export const he: Record<string, string> = {
   "elev.hero.growth.stat.momentsOne": "רגע השבוע",
 
   "elev.hero.academy.eyebrow": "אקדמיה",
-  "elev.hero.academy.title": "קורסים קצרים, מותאמים לשלב של {name}",
-  "elev.hero.academy.sub": "כמה דקות מעשיות בכל פעם — בדיוק כשנוח לכם.",
+  // v3 EXTRA-FORYOU (see the EN block).
+  "elev.hero.academy.kicker": "בשבילכם",
+  "elev.hero.academy.title": "להבין יותר. בקצב שלכם.",
+  "elev.hero.academy.sub": "רעיונות וקורסים קצרים שמתחברים לחיים בבית.",
   "elev.hero.academy.cta": "להמשיך לקורס הבא",
   "elev.hero.academy.stat.courses": "קורסים",
   "elev.hero.academy.stat.completed": "הושלמו",
@@ -217,4 +226,7 @@ export const he: Record<string, string> = {
   "elev.growth.deeper.title": "להעמיק",
   "elev.growth.more.title": "עוד בהתפתחות",
   "elev.growth.more.sub": "סיכום החודש והתמונה המלאה.",
+
+  // v3 VIS-02 — CountPips: המשפט שקורא המסך מקריא לנקודות של תחום (ספירה בלבד)
+  "elev.pips.aria": "ראיתם עד עכשיו: {n}",
 };

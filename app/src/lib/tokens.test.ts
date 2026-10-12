@@ -7,12 +7,14 @@ import {
   BRAND_HEX,
   cardCls,
   CSS_VARS,
+  DOMAIN_VARS,
   PASTEL,
   T,
   TONE_INK,
   TONE_SOFT,
   TONES,
 } from "./tokens";
+import { DOMAIN_IDS } from "./domains/registry";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const indexCss = readFileSync(path.join(here, "..", "index.css"), "utf8");
@@ -136,6 +138,18 @@ describe("tokens — no CSS drift vs index.css :root", () => {
 
   it("T is the CSS_VARS alias", () => {
     expect(T).toBe(CSS_VARS);
+  });
+
+  it("v3 VIS-02: DOMAIN_VARS is one ink/soft pair per registry domain, each a declared token", () => {
+    expect(Object.keys(DOMAIN_VARS)).toEqual([...DOMAIN_IDS]);
+    expect(Object.isFrozen(DOMAIN_VARS)).toBe(true);
+    for (const id of DOMAIN_IDS) {
+      expect(DOMAIN_VARS[id]).toEqual({ ink: `var(--arbor-domain-${id}-ink)`, soft: `var(--arbor-domain-${id}-soft)` });
+      for (const field of ["ink", "soft"] as const) {
+        const ref = referencedVar(DOMAIN_VARS[id][field]);
+        expect(declared.has(ref!), `${ref} (from DOMAIN_VARS.${id}.${field}) must be declared in index.css`).toBe(true);
+      }
+    }
   });
 });
 
@@ -500,6 +514,32 @@ const B_DESIGN_02_FLAT_CHROME: Readonly<Record<string, string>> = {
   "--arbor-chrome-blur": "saturate(1.4) blur(14px)",
 };
 
+/** v3 VIS-02 — one ink/soft pair per registry domain (lib/domains/registry.ts),
+ *  both scopes byte-identical (the W4.1 freeze holds). Every value ALIASES a
+ *  shipped AA token, so no new colour enters the palette: the mock's soft hexes
+ *  had no token, so the nearest shipped washes stand in (talking takes the
+ *  tinted well; there is no clay wash). Body shares thinking's pair and family
+ *  shares hands' ink (#92400e); the domain glyph and name disambiguate.
+ *  Contrast-pinned per domain in tokens.contrast.test.ts. */
+const V3_DOMAIN_TOKENS: Readonly<Record<string, string>> = {
+  "--arbor-domain-talking-ink": "var(--arbor-clay)",
+  "--arbor-domain-moving-ink": "var(--arbor-green-ink)",
+  "--arbor-domain-hands-ink": "var(--arbor-yellow-ink)",
+  "--arbor-domain-thinking-ink": "var(--arbor-sky-ink)",
+  "--arbor-domain-playing-ink": "var(--arbor-pink-ink)",
+  "--arbor-domain-feelings-ink": "var(--arbor-lav-ink)",
+  "--arbor-domain-body-ink": "var(--arbor-sky-ink)",
+  "--arbor-domain-family-ink": "var(--arbor-peach-ink)",
+  "--arbor-domain-talking-soft": "var(--arbor-paper-tinted)",
+  "--arbor-domain-moving-soft": "var(--arbor-green-wash)",
+  "--arbor-domain-hands-soft": "var(--arbor-yellow-wash)",
+  "--arbor-domain-thinking-soft": "var(--arbor-sky-wash)",
+  "--arbor-domain-playing-soft": "var(--arbor-pink-wash)",
+  "--arbor-domain-feelings-soft": "var(--arbor-lav-wash)",
+  "--arbor-domain-body-soft": "var(--arbor-sky-wash)",
+  "--arbor-domain-family-soft": "var(--arbor-peach-wash)",
+};
+
 /** Exact replacements, not permission to change these tokens arbitrarily.
  * Root progress changes representation only: its pre-change resolved colours
  * stay pinned by the existing decorative-progress assertion. */
@@ -519,6 +559,7 @@ const CR01_APPROVED_ROOT: Readonly<Record<string, string>> = {
   "--arbor-muted-alt": "var(--arbor-muted)",
   ...W2_CAREPRO_FLAT_WASHES,
   ...B_DESIGN_02_TOKENS,
+  ...V3_DOMAIN_TOKENS,
 };
 
 const CR01_APPROVED_FLAT: Readonly<Record<string, string>> = {
@@ -541,6 +582,7 @@ const CR01_APPROVED_FLAT: Readonly<Record<string, string>> = {
   ...P1_NEXTLEVEL_FLAT_SOFTS,
   ...B_DESIGN_02_TOKENS,
   ...B_DESIGN_02_FLAT_CHROME,
+  ...V3_DOMAIN_TOKENS,
 };
 
 function tokenBaselineDrift(
@@ -645,6 +687,22 @@ describe("W4.1 token-leak freeze — flat block mirrors :root byte-for-byte", ()
       expect(tokenBaselineDrift(changed, PRE_CR01_ROOT_BASELINE, CR01_APPROVED_ROOT)).toHaveLength(1);
     }
   });
+  it("v3 VIS-02: every registry domain has its ink/soft pair in :root and the flat block, as an alias (no new hex)", () => {
+    const expected = DOMAIN_IDS.flatMap((id) => [`--arbor-domain-${id}-ink`, `--arbor-domain-${id}-soft`]);
+    expect(Object.keys(V3_DOMAIN_TOKENS).sort()).toEqual([...expected].sort());
+    for (const name of expected) {
+      expect(V3_DOMAIN_TOKENS[name], name).toMatch(/^var\(--arbor-[a-z-]+\)$/);
+      expect(rootDecls.get(name), `${name} in :root`).toBe(V3_DOMAIN_TOKENS[name]);
+      expect(flatDecls.get(name), `${name} in the flat block`).toBe(V3_DOMAIN_TOKENS[name]);
+      const target = V3_DOMAIN_TOKENS[name].slice(4, -1);
+      expect(rootDecls.has(target) && flatDecls.has(target), `${name} aliases ${target}, declared in both scopes`).toBe(true);
+    }
+    // No stray domain token outside the registry (a ninth pair, or a renamed id).
+    for (const decls of [rootDecls, flatDecls]) {
+      expect([...decls.keys()].filter((k) => k.startsWith("--arbor-domain-")).sort()).toEqual([...expected].sort());
+    }
+  });
+
   it("the decorative progress gradient retains its pre-CR-01 value", () => {
     const frozen = "linear-gradient(90deg, #58a6ff, #1f6feb)";
     expect(rootDecls.get("--arbor-gradient-progress")).toBe(frozen);

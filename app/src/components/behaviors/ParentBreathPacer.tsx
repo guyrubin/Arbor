@@ -12,10 +12,18 @@ import "./parentBreathPacer.css";
  * no request, no sound; reduced motion shows the words only (no scaling); the
  * copy states no physiological effect. Rhythm and copy go to the clinical
  * reviewer with the hard-moment cards (GA B-GA-02).
+ *
+ * FEAT-06 (v3 "you first" view): `showClock` shows the half-minute as a
+ * visible m:ss clock — 0:30 at rest, counting down to 0:00 while the breath
+ * runs (still user-started, still skippable; the clock is text, so it stays
+ * under reduced motion). `label` / `sub` let the step card name the step in
+ * its own words; without them the row keeps the B-ASKJB-40 copy.
  */
 export const BREATH_IN_MS = 4000;
 export const BREATH_OUT_MS = 6000;
 export const BREATH_CYCLES = 3;
+/** The whole pacer, start to finish (30 s). */
+export const BREATH_TOTAL_MS = BREATH_CYCLES * (BREATH_IN_MS + BREATH_OUT_MS);
 
 type Phase = "in" | "out" | "done";
 
@@ -27,11 +35,58 @@ export function breathSchedule(cycles: number = BREATH_CYCLES): { phase: Exclude
   ]).flat();
 }
 
-export function ParentBreathPacer({ t }: { t: (key: string) => string }) {
+/** Pure: what is left of the whole pacer at schedule `step`, `inPhaseMs` into
+ *  that phase. The clock is derived from the same step the words come from,
+ *  so a late timer (a busy device, a background tab) holds the clock with the
+ *  label instead of letting it run ahead: while any phase still shows, at
+ *  least 1 ms remains (0:01), and 0:00 belongs to "done" alone. */
+export function breathRemainingMs(step: number, inPhaseMs: number, schedule = breathSchedule()): number {
+  if (step >= schedule.length) return 0;
+  const later = schedule.slice(step + 1).reduce((n, x) => n + x.ms, 0);
+  const elapsed = Number.isFinite(inPhaseMs) ? Math.max(0, inPhaseMs) : 0;
+  return later + Math.max(1, schedule[step].ms - elapsed);
+}
+
+/** Pure: remaining milliseconds as the m:ss a parent reads (whole seconds,
+ *  rounded up, so the clock shows 0:30 for the first second and 0:00 only at
+ *  the end). Never negative. */
+export function breathClock(remainingMs: number): string {
+  const seconds = Math.max(0, Math.ceil((Number.isFinite(remainingMs) ? remainingMs : 0) / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/** The visible clock. At rest it is a plain duration; while the breath runs it
+ *  is a timer that screen readers do not announce every second. */
+export function BreathClock({ remainingMs, running }: { remainingMs: number; running: boolean }) {
+  return (
+    <span
+      data-testid="breath-pacer-clock"
+      role={running ? "timer" : undefined}
+      aria-live={running ? "off" : undefined}
+      className="shrink-0 text-lg font-semibold tabular-nums"
+      style={{ color: "var(--arbor-ink)" }}
+    >
+      {breathClock(remainingMs)}
+    </span>
+  );
+}
+
+export function ParentBreathPacer({ t, showClock = false, label, sub }: {
+  t: (key: string) => string;
+  /** FEAT-06: show the 30 s as a clock (0:30 at rest, counting down while running). */
+  showClock?: boolean;
+  /** FEAT-06: the resting row's own words (default: hm.now.breathe.open / .sub). */
+  label?: string;
+  sub?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   // The circle mounts small and grows on the first inhale (one frame later).
   const [armed, setArmed] = useState(false);
+  // FEAT-06: when the current phase began and the latest tick, for the
+  // visible countdown (derived from the step, see breathRemainingMs).
+  const [phaseAt, setPhaseAt] = useState<number | null>(null);
+  const [tick, setTick] = useState(0);
   const timer = useRef<number | null>(null);
   const schedule = breathSchedule();
   const phase: Phase = step >= schedule.length ? "done" : schedule[step].phase;
@@ -44,32 +99,40 @@ export function ParentBreathPacer({ t }: { t: (key: string) => string }) {
 
   useEffect(() => {
     if (!open || phase === "done") return;
-    timer.current = window.setTimeout(() => setStep((s) => s + 1), schedule[step].ms);
+    timer.current = window.setTimeout(() => { const at = Date.now(); setStep((s) => s + 1); setPhaseAt(at); setTick(at); }, schedule[step].ms);
     return () => { if (timer.current) window.clearTimeout(timer.current); };
   }, [open, step, phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const close = () => { if (timer.current) window.clearTimeout(timer.current); setOpen(false); setStep(0); };
+  useEffect(() => {
+    if (!showClock || !open || phase === "done" || phaseAt === null) return;
+    const every = window.setInterval(() => setTick(Date.now()), 250);
+    return () => window.clearInterval(every);
+  }, [showClock, open, phase, phaseAt]);
+
+  const close = () => { if (timer.current) window.clearTimeout(timer.current); setOpen(false); setStep(0); setPhaseAt(null); };
 
   if (!open) {
     return (
       <button
         type="button"
         data-testid="breath-pacer-open"
-        onClick={() => { setStep(0); setOpen(true); }}
+        onClick={() => { const at = Date.now(); setStep(0); setPhaseAt(at); setTick(at); setOpen(true); }}
         className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3.5 py-2.5 text-start transition focus:outline-none focus-visible:ring-2"
         style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
       >
-        <Icon name="air" size={20} style={{ color: "var(--arbor-clay)" }} />
+        <Icon name="air" size={showClock ? 24 : 20} style={{ color: "var(--arbor-clay)" }} />
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-bold">{t("hm.now.breathe.open")}</span>
-          <span className="block text-xs" style={{ color: "var(--arbor-muted)" }}>{t("hm.now.breathe.sub")}</span>
+          <span className="block text-sm font-bold">{label ?? t("hm.now.breathe.open")}</span>
+          <span className="block text-xs" style={{ color: "var(--arbor-muted)" }}>{sub ?? t("hm.now.breathe.sub")}</span>
         </span>
+        {showClock && <BreathClock remainingMs={BREATH_TOTAL_MS} running={false} />}
       </button>
     );
   }
 
   const scale = !armed ? 0.62 : phase === "in" ? 1 : 0.62;
   const ms = phase === "in" ? BREATH_IN_MS : BREATH_OUT_MS;
+  const remainingMs = phase === "done" || phaseAt === null ? 0 : breathRemainingMs(step, tick - phaseAt, schedule);
   return (
     <div data-testid="breath-pacer" className="flex flex-col items-center gap-3 rounded-xl px-4 py-5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
       <div aria-hidden="true" className="relative grid place-items-center" style={{ width: 132, height: 132 }}>
@@ -86,6 +149,7 @@ export function ParentBreathPacer({ t }: { t: (key: string) => string }) {
       <p aria-live="polite" className="text-base font-semibold" style={{ color: "var(--arbor-ink)" }}>
         {phase === "in" ? t("hm.now.breathe.in") : phase === "out" ? t("hm.now.breathe.out") : t("hm.now.breathe.done")}
       </p>
+      {showClock && <BreathClock remainingMs={remainingMs} running={phase !== "done"} />}
       <button
         type="button"
         data-testid="breath-pacer-skip"

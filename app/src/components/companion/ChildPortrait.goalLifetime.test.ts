@@ -76,11 +76,18 @@ function mountedPortraitProof(duplicateKey: boolean) {
     "../../lib/domains/icons": load("src/lib/domains/icons.ts", {}),
     "../../lib/milestoneData": {}, "../../content/behaviorTaxonomy": {},
     "../ui/Icon": { Icon: empty }, "../ui/Avatar": { Avatar: empty }, "../ui/Modal": { Modal: empty },
+    // v3 IA-06: the selection's history entry and crumb are proven in layout/breadcrumb.test.tsx.
+    "../../hooks/useSheetHistory": { useSheetHistory: (_open, onClose) => after => { onClose(); if (after) after(); } },
+    "../layout/Breadcrumb": { SheetBreadcrumb: empty },
     "./portraitModel": { buildPortraitChapters: () => [], buildPortraitEnvironments: () => [], buildPortraitThreads: () => [] },
     "./portraitCopy": { PORTRAIT_COPY: { en: copy, he: copy } }, "./portraitEvidence": {},
     "../../lib/kpiEvents": { trackCompanionPlaceOpen() {} }, "./PortraitWatchRow": { default: Watch },
     "./PortraitKeepsakes": { default: empty }, "../describe/KeptDescription": { default: empty }, "../../lib/parentArt": {}, "./childPortrait.css": {},
     "../../lib/childPicture": { childPicture: () => ({}) },
+    // v3 FEAT-03: the development map and its domain sheet are seams here; their own suites prove them.
+    "./DevelopmentMap": { default: empty }, "./DomainSheet": { default: empty },
+    // v3 FEAT-08: the words-and-firsts strip and its selector are seams too (WordsFirstsStrip.test proves them).
+    "./WordsFirstsStrip": { default: empty, wordsStripMonths: () => [] }, "../../lib/kept/keptThings": { keptThings: () => [] },
   }, source => duplicateKey ? source.replace('key={`goal-picker:${childProfile.id}`}', 'key={childProfile.id}') : source).default;
   function Shell() {
     const [route, changeRoute] = React.useState("development"), [, changeVersion] = React.useState(0);
