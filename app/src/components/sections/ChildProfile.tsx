@@ -45,7 +45,9 @@ import "../about/about.css";
  * one stack, and it closes with My child's doors (journal, memory, check,
  * Care). The doors' memory door IS the page's one door to #/memory there, so
  * the quiet check line under the areas is wide-screen only: one door per
- * room at every width, and the waiting sentence moves to that door.
+ * room at every width. The door reads the same waiting queue and is handed
+ * the areas, so it speaks only of a proposal no area here shows: the same
+ * answer as the wide line.
  */
 /** The route's ONE primary move (B-SHELL-26): capture-moment, now on "Tell
  *  Arbor by voice" — telling Arbor one thing, rendered once in every state. */
@@ -206,8 +208,9 @@ export default function ChildProfile() {
         </details>
       </section>
 
-      {/* A phone closes the pill with the doors (no data-module: navigation). */}
-      {phone && <ChildDoors memoryWaiting={waiting} />}
+      {/* A phone closes the pill with the doors (no data-module: navigation).
+          The areas tell the memory door which proposals this page shows. */}
+      {phone && <ChildDoors shownAreas={aspects} />}
 
       {sheet && <TellArborMore key={`${sheet.aspect ?? "all"}-${sheet.mode}`} aspect={sheet.aspect} mode={sheet.mode} onClose={closeSheet} />}
       <ProfileEditDrawer open={editingProfile} onClose={() => setEditingProfile(false)} />

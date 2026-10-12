@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DomainId } from "../../lib/domains/registry";
 import type { Observation } from "../../lib/observations";
 import type { WatchFocus } from "../../lib/screeningWatch";
-import type { Milestone } from "../../types";
+import type { MemoryReviewItem, Milestone } from "../../types";
 
 /* v3 F-CHILD-1 — My child, the Milestones pill (#/development): the header,
    the three portrait cards and "Milestones across areas", one scroll. Invented
@@ -26,6 +26,7 @@ const state = vi.hoisted(() => ({
   observations: [] as Observation[],
   sources: { behaviorLogs: [] } as Record<string, unknown[]>,
   screenings: [] as { id: string; answeredAt: string; recheckDueAt?: string }[],
+  pending: [] as MemoryReviewItem[],
   watch: null as WatchFocus | null,
   celebrated: false,
   setActiveTab: vi.fn(), seedCoach: vi.fn(), openCaptureSheet: vi.fn(),
@@ -54,6 +55,7 @@ vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
   childProfile: state.profile, milestones: state.milestones, behaviorLogs: [], playLogs: [],
   setActiveTab: state.setActiveTab, seedCoach: state.seedCoach, openCaptureSheet: state.openCaptureSheet,
   setMilestoneObservation: state.setMilestoneObservation, addCustomMilestone: state.addCustomMilestone,
+  pendingMemoryItems: state.pending,
 }) }));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
@@ -164,7 +166,7 @@ const t = (lang: "en" | "he") => (key: string) => translate(lang, key);
 beforeEach(() => {
   vi.clearAllMocks();
   state.lang = "en"; state.compact = false; state.phone = false; state.sheetClose = null; state.query = ""; state.profile = profile(); state.milestones = catalogue();
-  state.observations = []; state.sources = { behaviorLogs: [] }; state.screenings = []; state.watch = null; state.celebrated = false; state.sheet = null;
+  state.observations = []; state.sources = { behaviorLogs: [] }; state.screenings = []; state.pending = []; state.watch = null; state.celebrated = false; state.sheet = null;
   state.setMilestoneObservation.mockImplementation(() => Promise.resolve());
   state.keepState = false; state.cursor = 0; state.hooks = []; state.buttons = []; state.segments = []; state.inputs = []; state.forms = [];
 });
@@ -531,7 +533,7 @@ describe("v3 F-CHILD-4 (MOB-02) — the Milestones pill on a phone, one stack", 
     expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
     expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(["child-milestones-areas", "child-milestones-portrait"]);
     const [before, after] = translate(lang, "companion.milestones.title").split("{name}");
-    expect(html).toContain(`<h1 class="portrait-sr-title">${esc(before)}<bdi dir="auto">Noa</bdi>${esc(after)}</h1>`);
+    expect(html).toContain(`<h1 class="sr-only">${esc(before)}<bdi dir="auto">Noa</bdi>${esc(after)}</h1>`);
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
     expect(html).not.toContain('class="portrait-intro"');
     const h1 = html.indexOf("<h1"), map = html.indexOf('data-testid="dev-map"'), goal = html.indexOf('data-testid="portrait-goals-edit"'), doors = html.indexOf('data-testid="child-doors"');
@@ -556,8 +558,11 @@ describe("v3 F-CHILD-4 (MOB-02) — the Milestones pill on a phone, one stack", 
     const html = render();
     expect([...html.matchAll(/data-testid="child-door-([a-z]+)"/g)].map(m => m[1])).toEqual(["journal", "memory", "consult"]);
     expect(html).not.toContain('data-testid="child-door-screening"');
-    for (const key of ["companion.portrait.journal", "companion.portrait.memory", "companion.door.care", "companion.doors.journalSub", "companion.doors.memorySub", "companion.doors.careSub"]) {
-      expect(html, key).toContain(esc(translate(lang, key)));
+    // Icon and name only, as the mock's phone grid; Care keeps the place's one name.
+    for (const [tab, key] of [["journal", "companion.portrait.journal"], ["memory", "companion.portrait.memory"], ["consult", "companion.door.care"]] as const) {
+      const at = html.indexOf(`data-testid="child-door-${tab}"`);
+      const door = html.slice(html.indexOf(">", at) + 1, html.indexOf("</button>", at));
+      expect(words(door).replace(/\s+/g, " ").trim(), key).toBe(translate(lang, key));
     }
     for (const tab of ["journal", "memory", "consult"]) {
       button(`child-door-${tab}`)!.onClick!();
@@ -583,12 +588,34 @@ describe("v3 F-CHILD-4 (MOB-02) — the Milestones pill on a phone, one stack", 
     expect(html.match(/data-testid="count-pips"/g)).toHaveLength(3);
   });
 
+  it.each(["en", "he"] as const)("the memory door says in words when a proposal waits: this pill shows none, so any waiting one is behind the door, as About's door speaks of one its areas do not show (%s)", lang => {
+    state.lang = lang;
+    phone();
+    const doorOf = (html: string) => {
+      const at = html.indexOf('data-testid="child-door-memory"');
+      return html.slice(html.indexOf(">", at) + 1, html.indexOf("</button>", at));
+    };
+    expect(doorOf(render())).not.toContain("child-door-waiting");
+    // Invented proposals: one About would place in its sleep area, one that names no area.
+    for (const fact of ["Wakes up twice since the move", "fact 1"]) {
+      state.pending = [{ memoryId: "p1", childId: "child-a", status: "pending", fact, source: "chat", retention: "standard", createdAt: "2026-10-06T10:00:00.000Z", latestEventId: "event-p1" }];
+      const html = render();
+      expect(html.match(/data-testid="child-door-waiting"/g)).toHaveLength(1);
+      const door = words(doorOf(html)).replace(/\s+/g, " ").trim();
+      expect(door).toBe(`${translate(lang, "companion.portrait.memory")} ${translate(lang, "companion.about.memoryWaiting")}`);
+      expect(door).not.toMatch(/\d/);
+      // Still one primary move and the same two modules: the sentence is no module.
+      expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+      expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(["child-milestones-areas", "child-milestones-portrait"]);
+    }
+  });
+
   it("a tablet (below lg, above a phone) keeps the header and the cards, with tiles and no doors", () => {
     state.compact = true;
     const html = render();
     expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(["child-milestones-portrait", "child-milestones-areas"]);
     expect(html).toContain('class="portrait-intro"');
-    expect(html).not.toContain("portrait-sr-title");
+    expect(html).not.toContain('<h1 class="sr-only"');
     expect(html.match(/data-testid="dev-map-tile"/g)).toHaveLength(8);
     expect(html).not.toContain('data-testid="child-doors"');
   });
@@ -597,7 +624,7 @@ describe("v3 F-CHILD-4 (MOB-02) — the Milestones pill on a phone, one stack", 
     const html = render();
     expect(html).not.toContain("dev-map-tiles");
     expect(html).not.toContain('data-testid="child-doors"');
-    expect(html).not.toContain("portrait-sr-title");
+    expect(html).not.toContain('<h1 class="sr-only"');
     expect(html).toContain("<h1>");
   });
 });

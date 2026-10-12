@@ -37,9 +37,11 @@ import "./childPortrait.css";
  * row names the place), then the goal card (the goal picker's only door; the
  * strength and kept cards are wide-screen only), then the doors to the
  * journal, the memory and Care (the check's door is the page's own primary
- * move, so it is not repeated). The modules are built once and only their
- * order changes, so a pill keeps its two modules and its one primary move at
- * every width.
+ * move, so it is not repeated). The memory door reads the waiting queue
+ * itself: this pill shows no proposal, so any that waits is named there, in
+ * words, as About names one its areas do not show. The modules are built
+ * once and only their order changes, so a pill keeps its two modules and its
+ * one primary move at every width.
  * CLINICAL FIREWALL: Seen-it counts and the parent's own words only.
  */
 export interface ChildPortraitProps {
@@ -109,7 +111,7 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
 
   return <section className="child-portrait milestones-body" dir={uiLang === "he" ? "rtl" : "ltr"} data-testid="child-portrait">
     {phone
-      ? [<h1 key="title" className="portrait-sr-title">{heading}</h1>, areasModule, portraitModule, <ChildDoors key="doors" omit="screening" />]
+      ? [<h1 key="title" className="sr-only">{heading}</h1>, areasModule, portraitModule, <ChildDoors key="doors" omit="screening" />]
       : [portraitModule, areasModule]}
   </section>;
 }

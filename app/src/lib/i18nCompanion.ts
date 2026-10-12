@@ -416,15 +416,11 @@ export const companionEn = {
   // area: no number, no badge.
   "companion.about.memoryWaiting": "Something Arbor noted is waiting for you to check.",
   // v3 F-CHILD-4 (MOB-02) — My child on a phone: the area tiles' line and the
-  // doors under a pill (each door's title is the place's own name; one plain
-  // line each, never a count).
+  // doors under a pill (each door's title is the place's own name, as the
+  // mock's phone grid: icon and title, never a count).
   "companion.milestones.areasSubTiles": "Eight areas of development. Tap an area to open it and mark what you have seen.",
   "companion.doors.aria": "More places",
   "companion.doors.check": "Development check",
-  "companion.doors.journalSub": "Every moment, in your words",
-  "companion.doors.memorySub": "What you told, in one place",
-  "companion.doors.checkSub": "A few minutes, by age",
-  "companion.doors.careSub": "Bring questions and moments",
 };
 
 export const companionHe = {
@@ -840,13 +836,9 @@ export const companionHe = {
   // area: no number, no badge.
   "companion.about.memoryWaiting": "משהו שארבור רשמה מחכה לבדיקה שלכם.",
   // v3 F-CHILD-4 (MOB-02) — My child on a phone: the area tiles' line and the
-  // doors under a pill (each door's title is the place's own name; one plain
-  // line each, never a count).
+  // doors under a pill (each door's title is the place's own name, as the
+  // mock's phone grid: icon and title, never a count).
   "companion.milestones.areasSubTiles": "שמונה תחומי התפתחות. לחיצה על תחום פותחת אותו, ושם מסמנים מה ראיתם.",
   "companion.doors.aria": "עוד מקומות",
   "companion.doors.check": "בדיקת התפתחות",
-  "companion.doors.journalSub": "כל רגע, במילים שלכם",
-  "companion.doors.memorySub": "מה שסיפרתם, במקום אחד",
-  "companion.doors.checkSub": "כמה דקות, לפי גיל",
-  "companion.doors.careSub": "להביא שאלות ורגעים",
 };

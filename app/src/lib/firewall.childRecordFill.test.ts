@@ -107,7 +107,8 @@ describe("B-GROWTH-07 — no proportional fill of a child record", () => {
   });
 
   /* v3 F-CHILD-4 (MOB-02) — the doors under a pill on a phone are navigation:
-     a place's name and one plain line, never a count, share or chart. */
+     a place's name (the memory door adds a waiting sentence), never a count,
+     share or chart; the queue is read for a yes or no, never its length. */
   it("covers My child's doors (no total, share, chart or count)", () => {
     const rel = "components/companion/ChildDoors.tsx";
     expect(SCANNED).toContain(rel);

@@ -4,17 +4,20 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /* v3 F-CHILD-4 (MOB-02) — My child's doors, under a pill on a phone: Your
-   journal, What Arbor remembers, the Development check and Care, each the
-   place's own name and one plain line. Navigation, not content: no module, no
-   primary move, no count, no badge. The memory door says in words when a
-   proposal waits there. */
+   journal, What Arbor remembers, the Development check and Care, each an icon
+   and the place's own name, as the mock's phone grid draws them. Navigation,
+   not content: no module, no primary move, no count, no badge. The memory
+   door reads the waiting queue itself (one door, one answer under every
+   pill) and says in words when a proposal waits that the page does not show.
+   Invented proposals only. */
 
 const state = vi.hoisted(() => ({
   lang: "en" as "en" | "he",
   setActiveTab: vi.fn(),
+  pending: [] as MemoryReviewItem[],
   buttons: [] as { onClick?: () => void; "data-testid"?: string }[],
 }));
-vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ setActiveTab: state.setActiveTab }) }));
+vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ setActiveTab: state.setActiveTab, pendingMemoryItems: state.pending }) }));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };
@@ -32,6 +35,9 @@ vi.mock("react/jsx-dev-runtime", async original => {
 });
 import ChildDoors, { CHILD_DOORS, useChildPhoneLayout, type ChildDoorsProps } from "./ChildDoors";
 import { translate } from "../../lib/i18n";
+import { buildAspects } from "../../lib/aboutAspects";
+import { scrubMemoryProposals } from "../../server/parentWordsScrub";
+import type { ChildProfile, MemoryReviewItem } from "../../types";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 // Visible words: icon ligatures are glyphs, not text.
@@ -44,30 +50,41 @@ const doorOf = (html: string, tab: string) => {
   const start = html.indexOf(`data-testid="child-door-${tab}"`);
   return html.slice(start, html.indexOf("</button>", start));
 };
+/** What a door SAYS: its words after the opening tag, glyphs left out. */
+const said = (door: string) => words(door.slice(door.indexOf(">") + 1)).replace(/\s+/g, " ").trim();
 const DOORS = [
-  ["journal", "companion.portrait.journal", "companion.doors.journalSub"],
-  ["memory", "companion.portrait.memory", "companion.doors.memorySub"],
-  ["screening", "companion.doors.check", "companion.doors.checkSub"],
-  ["consult", "companion.door.care", "companion.doors.careSub"],
+  ["journal", "companion.portrait.journal"],
+  ["memory", "companion.portrait.memory"],
+  ["screening", "companion.doors.check"],
+  ["consult", "companion.door.care"],
 ] as const;
+// Invented proposals: one About places in its sleep area, one that names no area.
+const proposal = (memoryId: string, fact: string): MemoryReviewItem => ({
+  memoryId, childId: "child-a", status: "pending", fact, source: "chat", retention: "standard",
+  createdAt: "2026-10-06T10:00:00.000Z", latestEventId: `event-${memoryId}`,
+});
+const PLACED = proposal("p-sleep", "Wakes up twice since the move");
+const UNPLACED = proposal("p-none", "fact 1");
+const aboutAreas = () => buildAspects({
+  profile: { id: "child-a", name: "Noa Example", languages: [], strengths: [], interests: [], challenges: [], activeGoals: [] } as unknown as ChildProfile,
+  pending: scrubMemoryProposals(state.pending),
+});
 const SUBSET = readFileSync(new URL("../../../public/fonts/material-symbols-rounded-subset.icons.txt", import.meta.url), "utf8")
   .split("\n").map(line => line.trim()).filter(line => line && !line.startsWith("#"));
 
-beforeEach(() => { vi.clearAllMocks(); state.lang = "en"; state.buttons = []; });
+beforeEach(() => { vi.clearAllMocks(); state.lang = "en"; state.pending = []; state.buttons = []; });
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("v3 F-CHILD-4 (MOB-02) — ChildDoors", () => {
-  it.each(["en", "he"] as const)("four doors in the mock's order, each the place's own name and one plain line, in a labelled list (%s)", lang => {
+  it.each(["en", "he"] as const)("four doors in the mock's order, each an icon and the place's own name and nothing more, in a labelled list (%s)", lang => {
     state.lang = lang;
     const html = render();
     expect(html).toContain(`<nav class="child-doors" data-testid="child-doors" aria-label="${esc(translate(lang, "companion.doors.aria"))}">`);
     expect(html).toContain('<ul class="child-doors-grid" role="list">');
     expect([...html.matchAll(/data-testid="child-door-([a-z]+)"/g)].map(m => m[1])).toEqual(DOORS.map(([tab]) => tab));
-    for (const [tab, title, sub] of DOORS) {
-      const door = doorOf(html, tab);
-      expect(door, title).toContain(esc(translate(lang, title)));
-      expect(door, sub).toContain(esc(translate(lang, sub)));
-    }
+    for (const [tab, title] of DOORS) expect(said(doorOf(html, tab)), title).toBe(translate(lang, title));
+    // Care keeps the place's one name ("Care, together"), as the rail and Back say it.
+    expect(said(doorOf(html, "consult"))).toBe(translate(lang, "companion.door.care"));
     const text = words(html);
     expect(text).not.toMatch(/companion\.|elev\./);
     // No count anywhere: the mock's "12 facts · 2 proposals" is a sentence here.
@@ -76,7 +93,7 @@ describe("v3 F-CHILD-4 (MOB-02) — ChildDoors", () => {
   });
 
   it("every new Hebrew line is Hebrew only, and each differs from its English", () => {
-    for (const key of ["companion.doors.aria", "companion.doors.check", "companion.doors.journalSub", "companion.doors.memorySub", "companion.doors.checkSub", "companion.doors.careSub", "companion.milestones.areasSubTiles"]) {
+    for (const key of ["companion.doors.aria", "companion.doors.check", "companion.milestones.areasSubTiles"]) {
       const he = translate("he", key);
       expect(he, key).not.toBe(key);
       expect(he, key).not.toMatch(/[A-Za-z]/);
@@ -94,16 +111,32 @@ describe("v3 F-CHILD-4 (MOB-02) — ChildDoors", () => {
     expect(state.setActiveTab).toHaveBeenCalledTimes(DOORS.length);
   });
 
-  it.each(["en", "he"] as const)("a proposal waiting on #/memory: the memory door says so in words, never a number (%s)", lang => {
+  it.each(["en", "he"] as const)("the memory door reads the waiting queue itself and says so in words, never a number (%s)", lang => {
     state.lang = lang;
     expect(render()).not.toContain('data-testid="child-door-waiting"');
-    const html = render({ memoryWaiting: true });
-    expect(html.match(/data-testid="child-door-waiting"/g)).toHaveLength(1);
-    const door = doorOf(html, "memory");
-    expect(door).toContain('data-testid="child-door-waiting"');
-    expect(door).toContain(esc(translate(lang, "companion.about.memoryWaiting")));
-    expect(door).not.toContain(esc(translate(lang, "companion.doors.memorySub")));
-    expect(words(door)).not.toMatch(/\d/);
+    // A page that shows no proposal (Milestones, Moments): any waiting one is behind the door.
+    for (const pending of [[PLACED], [UNPLACED]]) {
+      state.pending = pending;
+      const html = render();
+      expect(html.match(/data-testid="child-door-waiting"/g)).toHaveLength(1);
+      const door = doorOf(html, "memory");
+      expect(door).toContain('data-testid="child-door-waiting"');
+      expect(said(door)).toBe(`${translate(lang, "companion.portrait.memory")} ${translate(lang, "companion.about.memoryWaiting")}`);
+      expect(said(door)).not.toMatch(/\d/);
+      for (const [tab] of DOORS.filter(([tab]) => tab !== "memory")) expect(doorOf(html, tab)).not.toContain("child-door-waiting");
+    }
+  });
+
+  it("on About the door speaks only of a proposal no area there shows: the same answer as About's own line", () => {
+    // Placed in the sleep area, About shows it: nothing more on the door.
+    state.pending = [PLACED];
+    expect(render({ shownAreas: aboutAreas() })).not.toContain('data-testid="child-door-waiting"');
+    // Names no area: it waits on #/memory only, and the door says so.
+    state.pending = [PLACED, UNPLACED];
+    expect(render({ shownAreas: aboutAreas() }).match(/data-testid="child-door-waiting"/g)).toHaveLength(1);
+    // An empty queue: nothing waits anywhere.
+    state.pending = [];
+    expect(render({ shownAreas: aboutAreas() })).not.toContain('data-testid="child-door-waiting"');
   });
 
   it("a pill whose primary move already opens a place leaves that door out", () => {
@@ -112,7 +145,9 @@ describe("v3 F-CHILD-4 (MOB-02) — ChildDoors", () => {
   });
 
   it("navigation, not content: no module, no primary move; every door a button at the 44 px floor", () => {
-    const html = render({ memoryWaiting: true });
+    state.pending = [UNPLACED];
+    const html = render();
+    expect(html).toContain('data-testid="child-door-waiting"');
     expect(html).not.toContain("data-module");
     expect(html).not.toContain("data-primary-move");
     expect(html.match(/<button type="button" class="child-door min-h-11" data-testid="child-door-[a-z]+">/g)).toHaveLength(4);
@@ -153,6 +188,11 @@ describe("v3 F-CHILD-4 (MOB-02) — childDoors.css", () => {
     expect(css).toContain(".child-doors-grid > li:last-child:nth-child(odd) { grid-column: 1 / -1; }");
     expect(rule(".child-door")).toContain("min-block-size: var(--touch-min)");
     expect(rule(".child-door")).toContain("text-align: start");
+    // The mock's door: the glyph centred against the name.
+    expect(rule(".child-door")).toContain("align-items: center");
+    // No sub-line rule is left behind; the waiting sentence is the door's only second line.
+    expect(css).not.toContain(".child-door-sub");
+    expect(rule(".child-door-waiting")).toContain("color: var(--arbor-muted)");
   });
   it("logical properties only, and no state colour", () => {
     expect(css).not.toMatch(/(?:^|[\s;{])(?:margin|padding|border)-(?:left|right)\s*:|(?:^|[\s;{])(?:left|right)\s*:|text-align:\s*(?:left|right)|float:\s*(?:left|right)/);

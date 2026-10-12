@@ -352,9 +352,12 @@ describe("B-CAREPRO-33 · the areas date their facts", () => {
 });
 
 /* v3 F-CHILD-4 (MOB-02) — About on a phone closes the pill with My child's
-   doors (journal, memory, check, Care). The memory door replaces the quiet
-   memory line (one door per room) and carries the waiting sentence in words.
-   The doors are navigation: no module, no second primary move. */
+   doors (journal, memory, check, Care), each an icon and the place's name as
+   the mock's phone grid. The memory door replaces the quiet memory line (one
+   door per room) and carries the waiting sentence in words, with the same
+   answer as the wide line: About hands it the areas, so a proposal an area
+   shows is not "waiting". The doors are navigation: no module, no second
+   primary move. */
 describe("v3 F-CHILD-4 (MOB-02) · About on a phone: the doors close the pill",()=>{
  const MODULES=['data-module="about-describe"','data-module="about-aspects"','data-module="about-details"','data-module="about-measurements"'];
  const doorOf=(html:string,tab:string)=>{const at=html.indexOf(`data-testid="child-door-${tab}"`);return html.slice(at,html.indexOf("</button>",at));};
@@ -366,9 +369,10 @@ describe("v3 F-CHILD-4 (MOB-02) · About on a phone: the doors close the pill",(
   expect(html.match(/data-testid="child-doors"/g)).toHaveLength(1);
   expect([...html.matchAll(/data-testid="child-door-([a-z]+)"/g)].map(m=>m[1])).toEqual(["journal","memory","screening","consult"]);
   expect(html.indexOf('data-testid="child-doors"')).toBeGreaterThan(html.indexOf('data-testid="about-details"'));
-  expect(doorOf(html,"memory")).toContain(C["companion.portrait.memory"]);
-  expect(doorOf(html,"memory")).toContain(C["companion.doors.memorySub"]);
-  expect(doorOf(html,"consult")).toContain(C["companion.door.care"]);
+  // what each door SAYS (after the opening tag, the glyph left out): its name only
+  const said=(door:string)=>door.slice(door.indexOf(">")+1).replace(/<span class="msr[^"]*"[^>]*>[^<]*<\/span>/g," ").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim();
+  expect(said(doorOf(html,"memory"))).toBe(C["companion.portrait.memory"]);
+  expect(said(doorOf(html,"consult"))).toBe(C["companion.door.care"]);
   // the doors add no module and no move: the page's budget and its one primary move hold
   expect(html.match(/data-module="[^"]+"/g)).toEqual(MODULES);
   expect(html.match(/data-primary-move=/g)).toHaveLength(1);
@@ -381,9 +385,17 @@ describe("v3 F-CHILD-4 (MOB-02) · About on a phone: the doors close the pill",(
   const door=doorOf(html,"memory");
   expect(door).toContain('data-testid="child-door-waiting"');
   expect(door).toContain(C["companion.about.memoryWaiting"]);
-  expect(door).not.toContain(C["companion.doors.memorySub"]);
   expect(door.slice(door.indexOf(">")+1).replace(/<[^>]+>/g," ")).not.toMatch(/\d/);
   expect(html).not.toContain('data-testid="about-memory-waiting"');
+ });
+ it.each(["en","he"] as const)("a proposal an area shows waits in that area, so the door says nothing more: the wide line's answer (%s)",locale=>{
+  harness.locale=locale;harness.phone=true;
+  harness.pending=[{memoryId:"p1",fact:"Wakes up twice since the move",createdAt:"2026-10-06T10:00:00.000Z"}];
+  const html=renderToStaticMarkup(<ChildProfile/>);
+  expect(html).toContain('data-testid="about-aspect-pending"');
+  expect(html).not.toContain('data-testid="child-door-waiting"');
+  harness.phone=false;
+  expect(renderToStaticMarkup(<ChildProfile/>)).not.toContain('data-testid="about-memory-waiting"');
  });
  it("wide: no doors; the memory line stays where it was",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
