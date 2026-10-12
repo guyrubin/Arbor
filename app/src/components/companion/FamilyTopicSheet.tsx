@@ -7,7 +7,7 @@ import { Icon } from "../ui/Icon";
 import { useSheetHistory } from "../../hooks/useSheetHistory";
 import { SheetBreadcrumb } from "../layout/Breadcrumb";
 import { requestCompanionConversation } from "../../lib/companionConversation";
-import type { FamilyTopic } from "../../lib/familyTopics";
+import { INTENT_ICON, chooseFamilyTopic, type FamilyTopic } from "../../lib/familyTopics";
 import type { Observation } from "../../lib/observations";
 import { clearFamilyTopicEdit, pendingFamilyTopicEdit } from "./familyTopicEvents";
 import "./companionExperience.css";
@@ -29,7 +29,6 @@ function sourceLabel(observation: Observation, t: (key: string) => string): stri
 }
 
 const INTENTS: readonly FamilyTopic["intent"][] = ["understand", "support", "enjoy"];
-const INTENT_ICON: Record<FamilyTopic["intent"], string> = { understand: "lightbulb", support: "volunteer_activism", enjoy: "favorite" };
 const INTENT_KEY: Record<FamilyTopic["intent"], string> = {
   understand: "companion.family-topic-sheet.intent.understand", support: "companion.family-topic-sheet.intent.support", enjoy: "companion.family-topic-sheet.intent.enjoy",
 };
@@ -89,9 +88,11 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
     if (done) { setEditing(null); setTitle(""); }
   }
   async function pick(item: FamilyTopic) {
-    // Choosing a set-aside question brings it back to the quick row first.
-    if (item.asideAt && !await run(item.id, () => updateFamilyTopic(item.id, { aside: false }))) return;
-    selectFamilyTopic(item.id);
+    // v3 IA-05r: the one choose path, shared with search. A set-aside question
+    // is brought back first; its write shows busy and any error here.
+    const choose = () => chooseFamilyTopic(item, { updateFamilyTopic, selectFamilyTopic });
+    if (item.asideAt) await run(item.id, choose);
+    else await choose();
   }
 
   // What the parent wants from a question: a new question's choice rides into

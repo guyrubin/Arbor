@@ -65,7 +65,9 @@ export const en: Dict = {
   // and baked into shared deep links; only the words a parent reads changed, and
   // routes.ts carries an alias for each new label's slug.
   "nav.tab.overview": "Overview",
-  "nav.tab.coach": "Ask Arbor",
+  // v3 IA-05r: the Talk door's name (companion.door.talk) wherever the coach
+  // route is named, so a search row, a pill and a page title agree.
+  "nav.tab.coach": "Talk with Arbor",
   "nav.tab.timeline": "Story",
   "nav.tab.journal": "Journal",
   "nav.tab.day-windows": "Day Windows",
@@ -91,7 +93,9 @@ export const en: Dict = {
   "nav.tab.mimic": "Mimic Studio",
   "nav.tab.feelings": "Feelings Lab",
   "nav.tab.adventures": "Adventures",
-  "nav.tab.plans": "Growth Plans",
+  // v3 IA-05r: plans live in Together as its Routines (FEAT-07), so the
+  // route reads Together › Routines in search and in the crumb.
+  "nav.tab.plans": "Routines",
   "nav.tab.weekly": "Weekly Report",
   "nav.tab.find-pro": "Find a Professional",
   "nav.tab.reports": "Your full record",
@@ -1553,7 +1557,8 @@ export const en: Dict = {
   "sm.placeholder": "Jump to a section, or search logs, milestones, plans…",
   "sm.goTo": "Go to",
   "sm.noMatches": "No matches.",
-  "sm.threadSub": "Ask Arbor thread",
+  // v3 IA-05r: a thread row sits under Talk with Arbor; its line no longer names the old Ask route.
+  "sm.threadSub": "Saved conversation",
   "sm.kind.log": "Log",
   "sm.kind.thread": "Thread",
   "sm.kind.milestone": "Milestone",
@@ -1561,11 +1566,14 @@ export const en: Dict = {
   // B-SHELL-14: the "Ask Arbor about …" row (prefill only — the parent sends).
   "sm.kind.ask": "Ask",
   "sm.askAbout": "Ask Arbor about “{q}”",
-  "sm.askAbout.sub": "Opens Ask with your words — you send it",
+  // v3 IA-05r: the coach route is Talk with Arbor (nav.tab.coach).
+  "sm.askAbout.sub": "Opens Talk with Arbor with your words — you send it",
   "sm.extra.weekly": "Weekly Insight",
   "sm.extra.weeklySub": "My Child · Story",
   "sm.extra.scholar": "Scholar Frameworks",
   "sm.extra.scholarSub": "Ask Arbor",
+  // v3 IA-05: a saved family question as a search row's badge.
+  "sm.kind.topic": "Saved question",
   // LANG-15: Word World Tab
   "wordworld.sourceFraming": "developmentally informed, grounded in CDC/AAP/ASHA/WHO",
   "wordworld.refresh": "Refresh",
@@ -2688,7 +2696,8 @@ export const he: Dict = {
   "nav.signout": "התנתקות",
   "nav.parent": "הורה",
   "nav.tab.overview": "סקירה",
-  "nav.tab.coach": "שאל את ארבור",
+  // v3 IA-05r: the Talk door's name (companion.door.talk).
+  "nav.tab.coach": "לדבר עם ארבור",
   "nav.tab.timeline": "סיפור",
   "nav.tab.journal": "יומן",
   "nav.tab.day-windows": "חלונות היום",
@@ -2712,7 +2721,8 @@ export const he: Dict = {
   "nav.tab.mimic": "סטודיו חיקוי",
   "nav.tab.feelings": "מעבדת רגשות",
   "nav.tab.adventures": "הרפתקאות",
-  "nav.tab.plans": "תוכניות התפתחות",
+  // v3 IA-05r: Together › Routines (FEAT-07).
+  "nav.tab.plans": "שגרות",
   "nav.tab.weekly": "דוח שבועי",
   "nav.tab.find-pro": "מצאו איש מקצוע",
   "nav.tab.reports": "התיעוד המלא שלכם",
@@ -4077,7 +4087,8 @@ export const he: Dict = {
   "sm.placeholder": "קפצו למקטע, או חפשו תיעודים, אבני דרך, תוכניות…",
   "sm.goTo": "מעבר אל",
   "sm.noMatches": "אין התאמות.",
-  "sm.threadSub": "שיחת שאל את ארבור",
+  // v3 IA-05r: שורת שיחה יושבת תחת "לדבר עם ארבור"; היא כבר לא נקראת על שם המסך הישן.
+  "sm.threadSub": "שיחה שמורה",
   "sm.kind.log": "תיעוד",
   "sm.kind.thread": "שיחה",
   "sm.kind.milestone": "אבן דרך",
@@ -4089,6 +4100,8 @@ export const he: Dict = {
   "sm.extra.weeklySub": "הילד שלי · סיפור",
   "sm.extra.scholar": "מסגרות מומחה",
   "sm.extra.scholarSub": "שאל את ארבור",
+  // v3 IA-05: a saved family question as a search row's badge.
+  "sm.kind.topic": "שאלה שמורה",
   // LANG-15: Word World Tab (Hebrew)
   "wordworld.sourceFraming": "מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO",
   "wordworld.refresh": "רענון",

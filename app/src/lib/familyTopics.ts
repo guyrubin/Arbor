@@ -12,6 +12,27 @@ export interface FamilyTopic {
   asideAt?: string;
 }
 
+/** v3 IA-05r: the glyph a saved question wears, by its intent. One map for the
+ *  question row on Now, the question sheet and search. */
+export const INTENT_ICON: Readonly<Record<FamilyTopic["intent"], string>> = { understand: "lightbulb", support: "volunteer_activism", enjoy: "favorite" };
+
+/** v3 IA-05r: the one way a parent chooses a saved question, from the question
+ *  sheet or from search. A set-aside question comes back to the quick row
+ *  first, and becomes the active one only once that write has resolved; a
+ *  failed write rejects and nothing is selected. Any other question is chosen
+ *  at once (before the first await). Choosing a question ends the current Talk
+ *  thread, as ArborContext.selectFamilyTopic does for every explicit choice. */
+export async function chooseFamilyTopic(
+  topic: Pick<FamilyTopic, "id" | "asideAt">,
+  store: {
+    updateFamilyTopic: (id: string, patch: { aside: boolean }) => Promise<unknown>;
+    selectFamilyTopic: (id: string) => void;
+  },
+): Promise<void> {
+  if (topic.asideAt) await store.updateFamilyTopic(topic.id, { aside: false });
+  store.selectFamilyTopic(topic.id);
+}
+
 export function makeFamilyTopic(input: {
   id: string; childId: string; title: string; intent?: FamilyTopic["intent"];
   observationIds?: string[]; now?: string;

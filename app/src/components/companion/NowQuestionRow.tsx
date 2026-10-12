@@ -1,12 +1,11 @@
 import React, { useId, useRef } from "react";
 import { useArbor } from "../../context/ArborContext";
 import Icon from "../ui/Icon";
-import type { FamilyTopic } from "../../lib/familyTopics";
+import { INTENT_ICON, type FamilyTopic } from "../../lib/familyTopics";
 import { NOW_COPY } from "./nowViewCopy";
 import { guideFaceFor } from "./nowGuideFace";
 import { requestFamilyTopicEdit } from "./familyTopicEvents";
 
-const INTENT_ICON: Record<FamilyTopic["intent"], string> = { understand: "lightbulb", support: "volunteer_activism", enjoy: "favorite" };
 const intentIcon = (intent?: string) => INTENT_ICON[intent as FamilyTopic["intent"]] ?? "help";
 /** F-NOW-1: a question wears its guide topic's glyph; one no guide matches keeps its intent's. */
 const questionIcon = (title: string, intent: string | undefined, lang: "en" | "he") => guideFaceFor(title, lang).glyph ?? intentIcon(intent);

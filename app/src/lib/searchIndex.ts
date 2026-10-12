@@ -341,6 +341,23 @@ export function getSearchIndex(context?: HardMomentContext): readonly SearchEntr
 
 /* ── Forgiving matching + simple ranking ─────────────────────────────────── */
 
+/** v3 IA-05r: the route the routines words land on. The ready-made routines
+ *  live on Plans since B-GROWTH-25 retired #/routines, and the v3 route map
+ *  puts #/plans in Together as its Routines pill (#/practice?f=routines,
+ *  F-SHELL-1). Should F-SHELL-1 retire plans itself (RETIRED_ROUTES), its row
+ *  leaves the index and the words follow the retirement to Together, so
+ *  "routines" never lands nowhere. */
+export const ROUTINES_INTENT_TAB: ActiveTab = "plans" in RETIRED_ROUTES ? RETIRED_ROUTES.plans : "plans";
+
+/** v3 IA-05r: the names #/plans was found by before IA-05r renamed it
+ *  Routines: its old nav name and the heading PlansTab still shows until
+ *  F-SHELL-1 replaces it. Exact only, and only while plans is a live route. */
+const PLANS_OLD_NAMES: readonly string[] = [
+  "plans", "plan", "תוכניות", "תוכנית",
+  "Growth Plans", "תוכניות התפתחות",
+  translate("en", "plan.title"), translate("he", "plan.title"),
+];
+
 /** B-SHELL-37: the historical Visits intent uses today's existing routes.
  * Appointments owns the visit lifecycle (B-CAREPRO-31/37); Consult owns the
  * preparation flow and supplies its own bilingual heading. Exact aliases
@@ -348,6 +365,12 @@ export function getSearchIndex(context?: HardMomentContext): readonly SearchEntr
 const EXACT_ROUTE_QUERIES: Partial<Record<ActiveTab, readonly string[]>> = {
   appointments: ["visit", "visits", "ביקור", "ביקורים"].map(normalizeSearchText),
   consult: [translate("en", "elev.consult.h1"), translate("he", "elev.consult.h1")].map(normalizeSearchText),
+  // v3 IA-05: the word a parent types for the ready-made routines lands where
+  // they live (ROUTINES_INTENT_TAB). The retired #/routines id stays retired
+  // (no row of its own); "rout" and every other partial query rank exactly
+  // as before.
+  [ROUTINES_INTENT_TAB]: ["routines", "routine", "שגרות", "שגרה", translate("en", "nav.tab.routines"), translate("he", "nav.tab.routines"),
+    ...(ROUTINES_INTENT_TAB === "plans" ? PLANS_OLD_NAMES : [])].map(normalizeSearchText),
 };
 
 /**
