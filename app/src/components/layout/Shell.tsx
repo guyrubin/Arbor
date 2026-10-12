@@ -518,11 +518,12 @@ export default function Shell() {
                     aria-selected={on}
                     ref={on ? activePillRef : undefined}
                     onClick={() => { void selectionHaptic(); setActiveTab(it.tab); }}
-                    /* v3 F-SHELL-2 (critic ruling 13): label-only pills, 12.5/700,
-                       16 px inline padding. msIcon stays in the data (search and
+                    /* v3 F-SHELL-2 (critic ruling 13): label-only pills, 700
+                       weight: 12 px with 13 px inline padding on the phone, 12.5 px
+                       with 16 px from lg. msIcon stays in the data (search and
                        the More sheet read it); the 44 px floor beats the mock's
-                       shorter pill. */
-                    className={`${!on && isCompactHiddenTool(section, it.tab) ? "hidden md:inline-flex" : "inline-flex"} items-center rounded-full px-4 py-2 min-h-[44px] text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0`}
+                       shorter pill at every width. */
+                    className={`${!on && isCompactHiddenTool(section, it.tab) ? "hidden md:inline-flex" : "inline-flex"} items-center rounded-full px-[13px] lg:px-4 py-2 min-h-[44px] text-[12px] lg:text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0`}
                     style={{
                       scrollSnapAlign: "start",
                       ...(on
@@ -620,16 +621,24 @@ export default function Shell() {
                   <SurfaceFrame route={activeTab}>
                     {["overview", "coach", "scholar"].includes(activeTab) ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
                       : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }} onSaveQuestion={createTopic}/>)
-                      : <ActiveTabComponent/>}
-                  {/* v3 F-SHELL-2: the "Our question" button that sat here only
-                      rendered on #/coach, which renders Now above, so it never
-                      drew. Deleted; the topic opens from Now and the launcher. */}
+                      : <>
+                        {activeTab === "coach" && activeFamilyTopic && <button className="min-h-11 w-full mb-4 px-4 py-3 rounded-xl text-start text-sm" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }} onClick={openTopic}>
+                          {t("companion.shell.our-question")}{activeFamilyTopic.title}
+                        </button>}
+                        <ActiveTabComponent/>
+                      </>}
                   </SurfaceFrame>
                 </ErrorBoundary>
               </motion.div>
             </AnimatePresence>
           </Suspense>
         </main>
+        {/* AI-CAP-7: non-blocking, dismissible, appears only right after a
+            confirmed capture. v3 F-SHELL-2 (shell-global-status-strips): it
+            sits inside the workspace, in the page's own grid cell, so it rests
+            just above the launcher rail and is centred on the content column
+            (not the viewport) at every width; it never covers the launcher. */}
+        <PostCaptureCoachStrip />
         </CompanionWorkspace>
         </div>{/* end right column (AP-044: topbar + main) */}
 
@@ -637,9 +646,6 @@ export default function Shell() {
 
       <MobileNav />
       {!kidLocked && topicSheet?.childId === childProfile.id && <Suspense fallback={null}><FamilyTopicSheet key={childProfile.id} {...topicSheet} onClose={() => setTopicSheet(null)}/></Suspense>}
-      {/* AI-CAP-7: fixed above MobileNav (z-30 < nav z-40) — non-blocking,
-          dismissible, appears only right after a confirmed capture. */}
-      <PostCaptureCoachStrip />
       {/* KID-LOCK (W0.9, LEAK 5): these three portal to document.body — outside
           the inert shield — so they are not MOUNTED while Kid Mode is open.
           PaywallModal's open state lives in ArborContext (openPaywall on 402s

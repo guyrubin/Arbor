@@ -5,6 +5,11 @@
  * #/weekly read "Today · One small thing for {name} today", #/consult read
  * "Care Network" plus a sentence, #/masterclasses read "Learn".
  *
+ * Talk is a panel over a page, never a place (critic ruling 10): #/coach and
+ * #/scholar read Now, the home the Sidebar lights there (chromeLitHome), so the
+ * chrome gives one answer to "where am I". Re-pinned in the F-SHELL-2 review
+ * fix: EXPECTED.coach read the Talk door's name while the Sidebar lit Now.
+ *
  * Rendered with renderToStaticMarkup (node-only vitest); the band's controls
  * are stubbed so only the title zone is under test.
  */
@@ -13,7 +18,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ROUTE_IDS, type ActiveTab } from "../../lib/routes";
 import { translate } from "../../lib/i18n";
-import { homeForTab } from "../../lib/companionPlaces";
+import { homeForTab, chromeLitHome, COMPANION_DOORS } from "../../lib/companionPlaces";
 
 const state = vi.hoisted(() => ({ lang: "en" as "en" | "he", activeTab: "overview" as string }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ activeTab: state.activeTab, childProfile: { id: "c1", name: "Sam" } }) }));
@@ -41,7 +46,7 @@ const EXPECTED: Record<Lang, Partial<Record<ActiveTab, string>>> = {
     overview: "Now", weekly: "Now",
     development: "My child", milestones: "My child",
     practice: "Together", stories: "Together",
-    coach: "Talk with Arbor",
+    coach: "Now", scholar: "Now",
     masterclasses: "For you, the parent", learn: "For you, the parent",
     consult: "Care, together", safety: "Care, together",
   },
@@ -49,7 +54,7 @@ const EXPECTED: Record<Lang, Partial<Record<ActiveTab, string>>> = {
     overview: "עכשיו", weekly: "עכשיו",
     development: "הילד שלי", milestones: "הילד שלי",
     practice: "ביחד", stories: "ביחד",
-    coach: "לדבר עם ארבור",
+    coach: "עכשיו", scholar: "עכשיו",
     masterclasses: "בשבילכם, ההורים", learn: "בשבילכם, ההורים",
     consult: "טיפול, ביחד", safety: "טיפול, ביחד",
   },
@@ -62,10 +67,10 @@ describe("v3 F-SHELL-2 · the header names the route's home, nothing else", () =
     }
   });
 
-  it.each(["en", "he"] as const)("all 43 routes in %s: the title is homeForTab's name, in the UI language", (lang) => {
+  it.each(["en", "he"] as const)("all 43 routes in %s: the title is the lit home's name (chromeLitHome), in the UI language", (lang) => {
     expect(ROUTE_IDS).toHaveLength(43);
     for (const tab of ROUTE_IDS) {
-      const home = homeForTab(tab);
+      const home = chromeLitHome(homeForTab(tab));
       const named = home.kind === "place" ? home.place : home.door;
       const { title } = titleOf(tab, lang);
       expect(title, tab).toBe(lang === "he" ? named.he : named.en);
@@ -90,6 +95,18 @@ describe("v3 F-SHELL-2 · the header names the route's home, nothing else", () =
     expect(translate("en", "nav.title.care")).not.toBe(EXPECTED.en.consult);
     expect(translate("en", "nav.title.learn")).not.toBe(EXPECTED.en.masterclasses);
     expect(translate("en", "nav.title.today")).not.toBe(EXPECTED.en.weekly);
+  });
+
+  it("NEGATIVE CONTROL: Talk's routes are homed on the Talk door, yet the header never names it", () => {
+    const talk = COMPANION_DOORS.find(door => door.id === "talk")!;
+    for (const tab of ["coach", "scholar"] as const) {
+      const home = homeForTab(tab);
+      expect(home.kind === "door" && home.door.id, tab).toBe("talk");
+      expect(titleOf(tab, "en").title, tab).not.toBe(talk.en);
+      expect(titleOf(tab, "he").title, tab).not.toBe(talk.he);
+    }
+    // chromeLitHome changes Talk only: every other door keeps its own name.
+    expect(titleOf("consult", "en").title).toBe(COMPANION_DOORS.find(door => door.id === "care")!.en);
   });
 
   it("the band is 64 px and the title is display 20/600", () => {

@@ -251,9 +251,10 @@ describe("v3 IA-01 · the Sidebar source", () => {
   const doors = code.slice(doorsAt, code.indexOf("})}", doorsAt));
 
   it("reads the one home resolver and renders the doors from COMPANION_DOORS, after the places", () => {
-    // v3 F-SHELL-2 re-pin: the resolver's answer passes through sidebarLitHome
-    // (Talk lights Now); there is still exactly one resolver.
-    expect(code).toContain("const lit = sidebarLitHome(homeForTab(activeTab));");
+    // v3 F-SHELL-2 re-pin: the resolver's answer passes through chromeLitHome
+    // (Talk lights Now; the Topbar names the same home); there is still
+    // exactly one resolver.
+    expect(code).toContain("const lit = chromeLitHome(homeForTab(activeTab));");
     expect(code).toContain('onClick={() => (isTalk ? requestCompanionConversation({ source: "sidebar" }) : setActiveTab(door.tab))}');
     expect(code).not.toContain('setActiveTab("coach")');
     expect(doorsAt).toBeGreaterThan(code.indexOf("})}", code.indexOf("COMPANION_PLACES.map(")));

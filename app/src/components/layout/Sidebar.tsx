@@ -8,7 +8,7 @@ import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
 import { requestOpenSettings } from "./settingsBus";
 import { type NavBadge } from "../../lib/navigation";
-import { COMPANION_PLACES, COMPANION_DOORS, homeForTab, type CompanionHome } from "../../lib/companionPlaces";
+import { COMPANION_PLACES, COMPANION_DOORS, homeForTab, chromeLitHome } from "../../lib/companionPlaces";
 import { requestCompanionConversation } from "../../lib/companionConversation";
 import { useEntitlement } from "../../hooks/useEntitlement";
 import type { EntitlementInfo } from "../../lib/api";
@@ -23,13 +23,6 @@ export function sidebarPlanKey(entitlement: EntitlementInfo, loading: boolean, i
   if (entitlement.plan === "family") return "elev.sidebar.plan.family";
   if (entitlement.plan === "plus") return "elev.sidebar.plan.plus";
   return "elev.sidebar.plan.free";
-}
-
-/** v3 F-SHELL-2 (critic ruling 10): Talk is a panel over a page, never a
- *  place. On #/coach and #/scholar the page under the panel is Now, so the
- *  sidebar lights Now; the Talk door is never the current row. */
-export function sidebarLitHome(home: CompanionHome): CompanionHome {
-  return home.kind === "door" && home.door.id === "talk" ? { kind: "place", place: COMPANION_PLACES[0] } : home;
 }
 
 /** Resolve the generalized sidebar badge to its display string from app state.
@@ -57,8 +50,9 @@ export default function Sidebar() {
   const he = uiLang === "he";
   // v3 IA-01: ONE active entry across the three places and the three doors:
   // the route's home (table A). #/consult lights Care, together and nothing else.
-  // v3 F-SHELL-2: except Talk, which is a panel over Now (sidebarLitHome).
-  const lit = sidebarLitHome(homeForTab(activeTab));
+  // v3 F-SHELL-2: except Talk, which is a panel over Now (chromeLitHome;
+  // the Topbar names the same home).
+  const lit = chromeLitHome(homeForTab(activeTab));
   const { entitlement, loading: planLoading, isFallback: planUnverified } = useEntitlement();
   const planKey = sidebarPlanKey(entitlement, planLoading, planUnverified);
 

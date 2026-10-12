@@ -5,7 +5,7 @@ import SafetyRing from "./SafetyRing"; // IA-01: canon Safety life-ring — firs
 import OfflineChip from "../ui/OfflineChip"; // W0.6: renders only while offline
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { homeForTab } from "../../lib/companionPlaces";
+import { homeForTab, chromeLitHome } from "../../lib/companionPlaces";
 
 /**
  * Desktop topbar — the wireframe's lean control band (md+). Hidden on mobile,
@@ -15,7 +15,9 @@ import { homeForTab } from "../../lib/companionPlaces";
  * nothing else: #/weekly reads Now, #/milestones My child, #/consult Care,
  * together, #/learn For you, the parent. The old hub title and its one-line
  * hub sentence (nav.title.* / nav.sub.*) are gone from the header; the keys
- * stay in the dictionaries.
+ * stay in the dictionaries. Talk is a panel over a page, never a place, so
+ * #/coach and #/scholar read Now, the page under the panel, exactly as the
+ * Sidebar lights it (chromeLitHome): the chrome gives one answer.
  *
  * The control band: Safety life-ring → search → Kid Mode. Talk with Arbor is a
  * sidebar door and the launcher, never a header button; the language switch
@@ -26,7 +28,8 @@ export default function Topbar() {
   const { t, uiLang } = useLanguage();
   // v3 F-SHELL-2 (critic ruling 6): ONE title on every route, the home's name.
   const home = homeForTab(activeTab);
-  const named = home.kind === "place" ? home.place : home.door;
+  const lit = chromeLitHome(home);
+  const named = lit.kind === "place" ? lit.place : lit.door;
   return (
     <header
       /* B-DESIGN-03 (chrome): the sticky band takes the chrome glass — paper
@@ -52,12 +55,13 @@ export default function Topbar() {
       <div
         className="flex flex-col justify-center flex-1"
         /* A length (not `auto`) keeps `truncate` working. 11rem is what the
-           worst case can actually afford — at 2xl with the rail open the
-           header is 880px and the non-shrinking controls (Kid Mode with its
-           xl safety line ≈305px, rail toggle, bell, child switcher) already
-           claim ~543px — and it is enough for the longest home name ("For
-           you, the parent"). min() keeps it proportionate if the header is
-           ever narrower still. */
+           narrowest band can afford: at 1024 the header is the viewport less
+           the sidebar, and the band holds only Safety (44px), search (which
+           shrinks first, down to a 44px floor) and Kid Mode with its short
+           two-line safety label; the offline chip appears only offline and
+           clips. It is enough for the longest home name ("For you, the
+           parent"). min() keeps it proportionate if the header is ever
+           narrower still. */
         style={{ minInlineSize: "min(11rem, 22%)" }}
       >
         {/* v3 F-SHELL-2: display face 20/600, and no second line: the page

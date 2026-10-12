@@ -234,7 +234,8 @@ describe("6 · Shell renders the row from pillRowFor alone", () => {
   // v3 F-SHELL-2 re-pin (critic ruling 13): pills are label-only. The glyph
   // left the pill (msIcon stays in the data: search and the More sheet read it,
   // and the iconFamily one-glyph check still runs on it); the 44 px floor and
-  // the no-wrap rule stay.
+  // the no-wrap rule stay. Review-fix re-pin: the metrics are per width, 12 px
+  // with 13 px inline padding on the phone and 12.5 px with 16 px from lg.
   it("each pill reads its own label key, draws no glyph, never wraps and clears 44 px", () => {
     expect(shell).toContain('t(it.labelKey ?? "nav.tab." + it.tab)');
     expect(shell).not.toContain("<Icon name={it.msIcon} size={14} />");
@@ -243,7 +244,11 @@ describe("6 · Shell renders the row from pillRowFor alone", () => {
     expect(pill).not.toContain("<Icon");
     expect(pill).toContain("min-h-[44px]");
     expect(pill).toContain("whitespace-nowrap");
-    expect(pill).toContain("text-[12.5px] font-bold");
-    expect(pill).toContain("px-4 py-2");
+    const cls = pill.slice(pill.indexOf("className="), pill.indexOf("style="));
+    const tokens = cls.split(/[\s`"{}]+/);
+    expect(tokens).toEqual(expect.arrayContaining(["text-[12px]", "lg:text-[12.5px]", "px-[13px]", "lg:px-4", "py-2", "min-h-[44px]", "font-bold"]));
+    // One size per breakpoint: no unprefixed 12.5 px or 16 px left behind.
+    expect(tokens).not.toContain("text-[12.5px]");
+    expect(tokens).not.toContain("px-4");
   });
 });
