@@ -49,13 +49,11 @@ export default function TimelineTab() {
         </p>
       )}
       {moments ? (
-        <>
-          <MomentsBody primaryMoveProps={primaryMove} toolbarModule={toolbarModule} viewModule={viewModule} />
-          {phone && <ChildDoors omit="journal" />}
-        </>
+        <MomentsBody primaryMoveProps={primaryMove} toolbarModule={toolbarModule} viewModule={viewModule} />
       ) : (
         <JournalTab primaryMoveProps={primaryMove} />
       )}
+      {moments && phone && <ChildDoors omit="journal" />}
     </motion.div>
   );
 }
