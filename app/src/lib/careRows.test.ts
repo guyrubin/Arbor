@@ -111,16 +111,8 @@ describe("LC-28 / OBJ-CARE-02 · the packet, not the hero", () => {
     expect(CONSULT_TAB).not.toMatch(/data-module="consult-packet"[^>]*data-primary-move/);
     // r1's chip stamp is gone (its click was a no-op on the selected chip)
     expect(CONSULT).not.toContain("{...(on ? primaryMoveStamp : undefined)}");
-    // the build button carries it and acts (scrolls + focuses step 3).
-    // v3 F-CARE-1 r2 re-pin (review r1, finding 5): on the Care landing's
-    // stepper the stamp rides the SHOWN step's way on (consultStampSite), so
-    // Build spreads it through stampAt("build") — the stacked builder and
-    // step 1 — and the route stamp is spread nowhere else: one site each for
-    // Build, Continue, the empty state's "Log a moment" and Copy.
-    expect(CONSULT).toMatch(/data-testid="consult-build"\s+onClick=\{buildSummary\}\s+\{\.\.\.stampAt\("build"\)\}/);
-    expect(CONSULT).toContain("const stampAt = (site: ConsultStampSite) => (site === stampSite ? primaryMoveStamp : undefined);");
-    expect(CONSULT).not.toContain("{...primaryMoveStamp}");
-    for (const site of ["build", "next", "empty", "copy"]) expect(CONSULT.split(`{...stampAt("${site}")}`).length - 1, site).toBe(1);
+    // the build button carries it and acts (scrolls + focuses step 3)
+    expect(CONSULT).toMatch(/data-testid="consult-build"\s+onClick=\{buildSummary\}\s+\{\.\.\.primaryMoveStamp\}/);
     expect(CONSULT).toMatch(/const buildSummary = \(\) => \{[\s\S]*?scrollIntoView[\s\S]*?focus/);
     // B-CAREPRO-36: the teacher branch's act is the inline brief's "Save as
     // PDF" — the route's stamp VALUE is handed to the editor, which spreads it

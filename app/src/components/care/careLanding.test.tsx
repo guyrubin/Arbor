@@ -12,12 +12,6 @@
  * sentence and the visit is named in the card head; the three steps are a
  * stepper over one body; a visit folds the audience row; the aside carries
  * Safety's crisis words; the doors are rows with a chevron below sm.
- *
- * r2 (review r1): the route's ONE stamp, and the one gradient, ride the SHOWN
- * step's way on (Build, Continue or the empty state's "Log a moment", Copy),
- * pinned per step; a caller's reason is said in step 1 on arrival; the card
- * does not clip the stepper's focus ring; the Appointments door reads
- * ConsultTab's own collections; the crisis line keeps body type.
  */
 import React from "react";
 import { readFileSync } from "node:fs";
@@ -34,22 +28,16 @@ const harness = vi.hoisted(() => ({
   appts: [] as unknown[],
   contacts: [] as unknown[],
   topic: null as unknown,
-  // r2: the route's query (#/consult?intake=), a caller's prefill, the
-  // record's moments (null = the two below) and the visits' follow-ups
-  query: "",
-  prefill: null as unknown,
-  logs: null as unknown[] | null,
-  followUps: [] as unknown[],
 }));
 
-vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchParams(harness.query) }));
+vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchParams("") }));
 vi.mock("../../context/ArborContext", () => ({
   useArborOptional: () => null,
   useArbor: () => ({
     // invented example family
     childProfile: { id: "c-care", name: "Mika", age: 4, languages: ["English"], schoolContext: "Gan", challenges: [], strengths: ["curious"], interests: [] },
     activeTab: harness.tab,
-    behaviorLogs: harness.logs ?? [
+    behaviorLogs: [
       { id: "m1", behaviorType: "Moment", intensity: 1, timestamp: new Date(Date.now() - 2 * DAY).toISOString(), trigger: "Built a tall tower" },
       { id: "m2", behaviorType: "Moment", intensity: 1, timestamp: new Date(Date.now() - 4 * DAY).toISOString(), trigger: "Sang in the bath" },
     ],
@@ -59,7 +47,7 @@ vi.mock("../../context/ArborContext", () => ({
     activeFamilyTopic: harness.topic,
     setActiveTab: vi.fn(),
     requestConsultPrefill: vi.fn(),
-    pendingConsultPrefill: harness.prefill,
+    pendingConsultPrefill: null,
     consumeConsultPrefill: vi.fn(),
   }),
 }));
@@ -73,7 +61,7 @@ vi.mock("../../context/LanguageContext", () => ({
 }));
 vi.mock("../../hooks/useChildCollection", () => ({
   useChildCollection: (_id: string, name: string) => ({
-    items: name === "appointments" ? harness.appts : name === "contacts" ? harness.contacts : name === "apptFollowUps" ? harness.followUps : [],
+    items: name === "appointments" ? harness.appts : name === "contacts" ? harness.contacts : [],
     loaded: true,
     error: false,
     confirmed: true,
@@ -86,8 +74,6 @@ vi.mock("../../lib/loopEvents", () => ({ trackShareInitiated: vi.fn(), trackShar
 vi.mock("../sections/Reports", () => ({ REPORTS: [], useReportExport: () => vi.fn(), useConsultPdf: () => vi.fn() }));
 
 import ConsultTab from "../tabs/ConsultTab";
-import { consultStampSite } from "../sections/AskSpecialist";
-import { fmtDayShort } from "../../lib/formatDate";
 import { WhoSeesWhat } from "./CareAside";
 import { careDoors } from "./CareDoors";
 import { daysUntil, inDaysLabel } from "./CareVisitHead";
@@ -140,8 +126,6 @@ const LANDING_KEYS = [
   "elev.consult.preview.cta", "elev.consult.next", "elev.consult.audience.change", "elev.consult.fullRecord",
   "elev.consult.door.appointments.next", "elev.consult.door.appointments.past.one", "elev.consult.door.appointments.past.other",
   "elev.consult.visitOutcome.q",
-  // v3 F-CARE-1 r2
-  "elev.consult.reason.carried",
 ];
 
 /** The index of the tag that closes the element opening at `start`. */
@@ -168,10 +152,6 @@ beforeEach(() => {
   harness.appts = [];
   harness.contacts = [];
   harness.topic = null;
-  harness.query = "";
-  harness.prefill = null;
-  harness.logs = null;
-  harness.followUps = [];
   installLocalStorage();
 });
 
@@ -257,9 +237,6 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       expect(/<nav[^>]*data-module="consult-doors"[^>]*>/.exec(html)![0]).toContain("xl:col-span-2");
       const card = /<section[^>]*data-testid="consult-visit-card"[^>]*>/.exec(html)![0];
       expect(card).toContain("arbor-depth-primary");
-      // r2: no overflow clip on the card, so the stepper's focus ring
-      // (2 px outline, 2 px offset, index.css) stays whole at its edge
-      expect(card).not.toContain("overflow-hidden");
     });
 
     it(`${locale}: "what to bring" chips are 44 px toggles (aria-pressed); the moments chip is a count`, () => {
@@ -426,11 +403,6 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       // before the one way into Safety; no "Message" action, no move
       const crisis = /<p[^>]*data-testid="care-aside-crisis"[^>]*>([\s\S]*?)<\/p>/.exec(aside)!;
       expect(crisis[0]).toMatch(/class="hidden sm:block arbor-accent-rule\b/);
-      // r2: body type, never the "say" register: Safety's own crisis words
-      // keep SafetyTab's upright sans (parentScriptTypography)
-      expect(crisis[0]).not.toContain("arbor-type-say");
-      expect(crisis[0]).toContain("font-family:var(--font-sans)");
-      expect(crisis[0]).toContain("font-style:normal");
       expect(decode(crisis[1])).toBe(translate(locale, "elev.safety.crisis.script"));
       expect(aside.indexOf('data-testid="care-aside-crisis"')).toBeLessThan(aside.indexOf('data-testid="care-aside-open-safety"'));
       expect(aside).not.toMatch(/sms:|data-testid="care-aside-message"/);
@@ -473,108 +445,6 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       // never a directory or a way to find someone new
       const landing = decode(sliceModule(html, "consult-aside"));
       expect(landing).not.toMatch(/find-pro|directory|Find a professional|Verified professionals|אנשי מקצוע מאומתים/i);
-    });
-
-    // ── v3 F-CARE-1 r2 (review r1) ──────────────────────────────────────────
-    const BODIES = [["consult-step-1", "section"], ["consult-step-2", "div"], ["consult-review-export", "div"]] as const;
-    /** The step body that holds offset `at`, and whether it renders hidden. */
-    const bodyAt = (page: string, at: number): { id: string; hidden: boolean } | null => {
-      for (const [id, tag] of BODIES) {
-        const idAt = page.indexOf(`id="${id}"`);
-        if (idAt < 0) continue;
-        const open = page.lastIndexOf(`<${tag}`, idAt);
-        if (at > open && at < closeOf(page, open, tag)) return { id, hidden: /\shidden=""/.test(openTag(page, id)) };
-      }
-      return null;
-    };
-
-    it(`${locale}: ONE stamp on the SHOWN step's way on — Build (1), "Log a moment" (2, nothing yet), Copy (3) — and the one gradient with it`, () => {
-      harness.locale = locale;
-      const cases = [
-        { name: "step 1 (a visit booked)", setup: () => {}, step: "1", body: "consult-step-1", holder: "consult-build" },
-        // #/consult?intake=slp opens on step 3; with nothing to share it stays on step 2
-        { name: "step 2 (intake, nothing to share yet)", setup: () => { harness.query = "intake=slp"; harness.logs = []; }, step: "2", body: "consult-step-2", holder: "consult-empty-cta" },
-        {
-          name: "step 3 (#/consult?intake=slp)",
-          setup: () => {
-            harness.query = "intake=slp";
-            // invented: the parent's own question for the speech therapist
-            localStorage.setItem("arbor.intakeQuestions.c-care.slp", locale === "he" ? "מתי כדאי לחזור לבדיקה?" : "When should we come back?");
-          },
-          step: "3", body: "consult-review-export", holder: "consult-copy",
-        },
-      ];
-      for (const c of cases) {
-        harness.appts = [visitIn3()];
-        harness.query = "";
-        harness.logs = null;
-        installLocalStorage();
-        c.setup();
-        const page = decode(renderToStaticMarkup(<ConsultTab />));
-        const stamps = [...page.matchAll(/data-primary-move="([^"]+)"/g)];
-        expect(stamps.map((m) => m[1]), c.name).toEqual(["build-share-packet"]);
-        const holder = /<button[^>]*data-primary-move="[^"]+"[^>]*>/.exec(page)![0];
-        expect(holder, c.name).toContain(`data-testid="${c.holder}"`);
-        // the stamped control is in the step body that shows, never a hidden one
-        expect(bodyAt(page, stamps[0].index!), c.name).toEqual({ id: c.body, hidden: false });
-        for (const [id] of BODIES) {
-          if (id !== c.body && page.includes(`id="${id}"`)) expect(openTag(page, id), `${c.name}: ${id}`).toMatch(/\shidden=""/);
-        }
-        // the page's ONE gradient is the stamp holder's
-        expect((page.match(/gradient-cta|arbor-gradient-primary/g) ?? []).length, c.name).toBe(1);
-        expect(holder, c.name).toMatch(/gradient-cta|arbor-gradient-primary/);
-        // the stepper names the same step, once
-        const current = (page.match(/<button[^>]*data-testid="consult-step"[^>]*>/g) ?? []).filter((b) => b.includes('aria-current="step"'));
-        expect(current, c.name).toHaveLength(1);
-        expect(current[0], c.name).toContain(`data-step="${c.step}"`);
-        if (c.step === "2") {
-          // a new family keeps the way to the whole record, after "Log a moment"
-          const full = page.indexOf('data-testid="consult-full-record"');
-          expect(full).toBeGreaterThan(page.indexOf('data-testid="consult-empty-cta"'));
-          expect(bodyAt(page, full)).toEqual({ id: "consult-step-2", hidden: false });
-          expect(page).not.toContain('data-testid="consult-next"');
-          expect(page).not.toContain('data-testid="consult-copy"');
-        }
-      }
-    });
-
-    it(`${locale}: a caller's reason (Appointments' "Prepare") is said in step 1 on arrival; step 2's field holds the same words`, () => {
-      harness.locale = locale;
-      harness.appts = [visitIn3()];
-      // invented words
-      const words = locale === "he" ? "לשאול על שגרת השינה החדשה" : "Ask about the new sleep routine";
-      harness.prefill = { reason: words };
-      const page = decode(renderToStaticMarkup(<ConsultTab />));
-      const at = page.indexOf('data-testid="consult-reason-carried"');
-      expect(at).toBeGreaterThan(0);
-      expect(bodyAt(page, at)).toEqual({ id: "consult-step-1", hidden: false });
-      expect(at).toBeLessThan(page.indexOf('data-testid="consult-build"'));
-      const line = /<p[^>]*data-testid="consult-reason-carried"[^>]*>([\s\S]*?)<\/p>/.exec(page)!;
-      expect(line[0]).not.toContain("data-primary-move");
-      expect(line[1]).toContain(">edit_note<");
-      const text = line[1].replace(/<span class="msr[^"]*"[^>]*>[^<]*<\/span>/g, "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-      expect(text).toBe(`${translate(locale, "elev.consult.reason.carried")} ${words}`);
-      expect(line[1]).toContain('<bdi dir="auto"');
-      expect(/<textarea[^>]*data-testid="consult-reason-input"[^>]*>([^<]*)<\/textarea>/.exec(page)![1]).toBe(words);
-      // nothing carried: no line
-      harness.prefill = null;
-      expect(renderToStaticMarkup(<ConsultTab />)).not.toContain('data-testid="consult-reason-carried"');
-    });
-
-    it(`${locale}: the Appointments door reads ConsultTab's own visits — the next day, then the past visits with notes (a count)`, () => {
-      harness.locale = locale;
-      const next = visitIn3();
-      // invented: a pediatrician visit ten days ago, with the family's note
-      const past = { id: "p1", who: "", role: "Pediatrician", profession: "pediatrician", whenIso: new Date(Date.now() - 10 * DAY).toISOString(), when: "", mode: "In person", status: "done" };
-      harness.appts = [next, past];
-      harness.followUps = [{ id: "f1", apptId: "p1", note: locale === "he" ? "לחזור בעוד חודש" : "Come back in a month", createdAt: new Date(Date.now() - 9 * DAY).toISOString() }];
-      const doors = sliceModule(renderToStaticMarkup(<ConsultTab />), "consult-doors");
-      const sub = textOf(doors.slice(doors.indexOf('data-door="appointments"')), "care-door-sub");
-      expect(sub).toBe([
-        translate(locale, "elev.consult.door.appointments.next", { day: fmtDayShort(next.whenIso, locale) }),
-        translate(locale, "elev.consult.door.appointments.past.one", { n: 1 }),
-      ].join(" · "));
-      expect(sub).not.toMatch(/%|\bof\s+\d|מתוך/);
     });
   }
 
@@ -690,18 +560,6 @@ describe("v3 EXTRA-CARE · units and source pins", () => {
     expect(translate("en", "elev.consult.inDays", { n: 9 })).toBe("In 9 days");
   });
 
-  it("unit: consultStampSite — the stacked builder keeps Build; the stepper follows the shown step", () => {
-    expect(consultStampSite(false, 1, false)).toBe("build");
-    expect(consultStampSite(false, 2, true)).toBe("build");
-    expect(consultStampSite(false, 3, false)).toBe("build");
-    expect(consultStampSite(true, 1, false)).toBe("build");
-    expect(consultStampSite(true, 1, true)).toBe("build");
-    // step 2 with a packet: Continue (a click away in the browser; the sweep's stepper-tabs state walks it)
-    expect(consultStampSite(true, 2, false)).toBe("next");
-    expect(consultStampSite(true, 2, true)).toBe("empty");
-    expect(consultStampSite(true, 3, false)).toBe("copy");
-  });
-
   it("the doors are the Care pages, each with its pill's own glyph", () => {
     expect(careDoors().map((d) => [d.tab, d.icon])).toEqual([["school-brief", "backpack"], ["appointments", "calendar_month"], ["handoff", "description"]]);
   });
@@ -714,9 +572,6 @@ describe("v3 EXTRA-CARE · units and source pins", () => {
     const doors = strip(readFileSync("src/components/care/CareDoors.tsx", "utf8"));
     expect(aside).toContain('data-module="consult-aside"');
     expect(doors).toContain('data-module="consult-doors"');
-    // r2: the doors open no listener of their own; ConsultTab hands them its collections
-    expect(doors).not.toContain("useChildCollection");
-    expect(consult).toMatch(/<CareDoors appts=\{apptsCol\.items\} followUps=\{followUpsCol\.items\} ready=\{apptsCol\.loaded && !apptsCol\.error\} \/>/);
     for (const src of [aside, doors, strip(readFileSync("src/components/care/CareVisitHead.tsx", "utf8"))]) {
       expect(src).not.toContain("data-primary-move");
       expect(src).not.toMatch(/gradient-cta|arbor-gradient-primary/);

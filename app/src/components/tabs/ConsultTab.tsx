@@ -236,12 +236,9 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
             one primary surface holding the visit's head (who, when, in how
             many days, the since counts) directly followed by the steps. */}
         {landing ? (
-          /* v3 F-CARE-1 r2: no overflow clip on the card. The stepper sits
-             between the head and the body, never on a rounded corner, and a
-             clip would cut the stepper tabs' focus ring (outline-offset 2 px). */
           <section
             data-testid="consult-visit-card"
-            className="arbor-depth-primary rounded-[22px]"
+            className="arbor-depth-primary rounded-[22px] overflow-hidden"
             style={{ background: "var(--arbor-paper-elevated)" }}
           >
             {builder}
@@ -249,9 +246,7 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
         ) : builder}
       </div>
       {landing && <CareAside />}
-      {/* v3 F-CARE-1 r2: the Appointments door reads this page's own two
-          collections; it opens no listener of its own. */}
-      {landing && <CareDoors appts={apptsCol.items} followUps={followUpsCol.items} ready={apptsCol.loaded && !apptsCol.error} />}
+      {landing && <CareDoors />}
       </div>
     </div>}
   </>;

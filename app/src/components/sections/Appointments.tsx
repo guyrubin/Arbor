@@ -8,7 +8,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
-import VisitOutcome, { type HeldOutcome } from "../care/VisitOutcome";
+import VisitOutcome from "../care/VisitOutcome";
 import { fmtDay } from "../../lib/formatDate";
 import {
   APPOINTMENT_PROFESSIONS,
@@ -19,8 +19,7 @@ import {
   consultAudienceForProfession,
   isAppointmentProfession,
   isPrepareDue,
-  visitAskedForOutcome,
-  countedFollowUps,
+  visitAwaitingOutcome,
   defaultIcsEgressDeps,
   dueReminders,
   followUpsFor,
@@ -93,18 +92,8 @@ type PrepQuestion = { id: string; text: string };
  *
  *  CLINICAL FIREWALL: chips describe the BOOKING (requested / confirmed /
  *  done), never the child. Nothing here scores, rates or colour-codes a child.
- *
- *  v3 F-CARE-1 r2: the page holds the visit-outcome answer that is being
- *  saved (VisitOutcome's `held`), so the page and the top form read ONE rule
- *  (careTrack visitAskedForOutcome) for which visit is asked.
  */
 export default function Appointments() {
-  const [held, setHeld] = useState<HeldOutcome | null>(null);
-  return <AppointmentsPage held={held} onHeld={setHeld} />;
-}
-
-/** The Appointments page with the held visit-outcome answer passed in. */
-export function AppointmentsPage({ held, onHeld }: { held: HeldOutcome | null; onHeld: (next: HeldOutcome | null) => void }) {
   const { setActiveTab, childProfile, requestConsultPrefill, behaviorLogs } = useArbor();
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
@@ -122,13 +111,7 @@ export function AppointmentsPage({ held, onHeld }: { held: HeldOutcome | null; o
   // v3 F-CARE-1: the visit whose outcome is asked at the top of this page
   // (VisitOutcome, moved here from the Care landing). Its row does not ask a
   // second time; older past visits keep their own follow-up capture.
-  // r2: the same rule and the same held answer VisitOutcome reads, so while
-  // an answer waits to be confirmed its visit is still the one asked above
-  // and the next visit back keeps its row capture.
-  const heldId = held && held.childId === childProfile.id ? held.record.id : undefined;
-  const askedId = useMemo(() => visitAskedForOutcome(apptsCol.items, followUpsCol.items, heldId, nowMs)?.id, [apptsCol.items, followUpsCol.items, heldId, nowMs]);
-  // ...and no row lists that held answer as kept while the question holds it
-  const counted = useMemo(() => countedFollowUps(followUpsCol.items, heldId), [followUpsCol.items, heldId]);
+  const awaitingId = useMemo(() => visitAwaitingOutcome(apptsCol.items, followUpsCol.items, nowMs)?.id, [apptsCol.items, followUpsCol.items, nowMs]);
   const questions = useMemo(
     () => [...questionsCol.items].sort((a, b) => (a.id < b.id ? -1 : 1)),
     [questionsCol.items]
@@ -248,8 +231,8 @@ export function AppointmentsPage({ held, onHeld }: { held: HeldOutcome | null; o
       key={a.id}
       appt={a}
       whenLabel={whenLabel(a)}
-      followUps={followUpsFor(counted, a.id)}
-      followUpDue={isFollowUpDue(a, nowMs) && a.id !== askedId}
+      followUps={followUpsFor(followUpsCol.items, a.id)}
+      followUpDue={isFollowUpDue(a, nowMs) && a.id !== awaitingId}
       onRemove={() => void apptsCol.remove(a.id)}
       onCalendar={() => void saveIcs(a)}
       onFollowUp={(note) => saveFollowUp(a, note)}
@@ -344,7 +327,7 @@ export function AppointmentsPage({ held, onHeld }: { held: HeldOutcome | null; o
       {/* v3 F-CARE-1: what the last visit left behind — "What did they
           suggest?" and the home program — on the visit's own page, behind the
           Care landing's Appointments door. Receipts only after the write. */}
-      <VisitOutcome apptsCol={apptsCol} followUpsCol={followUpsCol} held={held} onHeld={onHeld} />
+      <VisitOutcome apptsCol={apptsCol} followUpsCol={followUpsCol} />
       {/* LC-12 — the in-app "Coming up" strip. It renders when the parent opens
           Arbor; it is not a scheduled alert, and the honesty line says so. */}
       {reminders.length > 0 && (

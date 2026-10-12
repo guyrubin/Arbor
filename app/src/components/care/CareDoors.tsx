@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { CareGlyph } from "./CareVisitHead";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { useChildCollection } from "../../hooks/useChildCollection";
 import { homeForTab } from "../../lib/companionPlaces";
 import { sectionForTab } from "../../lib/navigation";
 import { fmtDayShort } from "../../lib/formatDate";
@@ -19,9 +20,7 @@ import type { ActiveTab } from "../../lib/routes";
    from sm, full width under the visit card and the aside from xl; below sm,
    rows with a plain glyph and an end chevron. The Appointments door reads
    the family's own calendar: the next booking's day and how many past
-   visits have an outcome written down (a count of visits, never a score).
-   r2: ConsultTab hands the door its own two collections (appointments and
-   their follow-ups); the doors open no listener of their own. */
+   visits have an outcome written down (a count of visits, never a score). */
 
 type Door = { tab: ActiveTab; titleKey: string; subKey: string };
 
@@ -56,18 +55,15 @@ export function appointmentsDoorFacts(
   return { nextIso: next?.whenIso ?? null, pastWithOutcome };
 }
 
-export default function CareDoors({ appts, followUps, ready }: {
-  appts: Appointment[];
-  followUps: readonly AppointmentFollowUp[];
-  /** The appointments read has loaded without an error; until then the door keeps its static line. */
-  ready: boolean;
-}) {
-  const { setActiveTab } = useArbor();
+export default function CareDoors() {
+  const { childProfile, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
   const doors = careDoors();
+  const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments");
+  const followUpsCol = useChildCollection<AppointmentFollowUp>(childProfile.id, "apptFollowUps");
   const facts = useMemo(
-    () => (ready ? appointmentsDoorFacts(appts, followUps, Date.now()) : null),
-    [ready, appts, followUps],
+    () => (apptsCol.loaded && !apptsCol.error ? appointmentsDoorFacts(apptsCol.items, followUpsCol.items, Date.now()) : null),
+    [apptsCol.loaded, apptsCol.error, apptsCol.items, followUpsCol.items],
   );
   const subOf = (door: Door): string => {
     if (door.tab !== "appointments" || !facts) return t(door.subKey);

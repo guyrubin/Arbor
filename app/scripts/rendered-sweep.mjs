@@ -703,47 +703,9 @@ async function askAnswered(h) {
   return cards;
 }
 
-/** Consult step 1 → choose the pediatrician (the first audience). v3 F-CARE-1:
- *  on the Care landing a booked visit names the audience and folds the radio
- *  row behind one line ("Preparing for someone else?"); open it first. */
+/** Consult step 1 → choose the pediatrician (the first audience). */
 async function consultPediatrician(h) {
-  const change = "[data-module=consult-packet] [data-testid=consult-audience-change]";
-  if (await h.has(change)) await h.click(change, [h.tr("elev.consult.audience.change")], "Preparing for someone else?");
   await h.click("[data-module=consult-packet] [role=radio] >> nth=0", [], "the Pediatrician audience");
-}
-
-/** v3 F-CARE-1: the Care landing's stepper, Build (step 1) → step 2's body;
- *  with `toShare`, Continue → step 3 (#consult-review-export). */
-async function consultStepper(h, toShare) {
-  await consultPediatrician(h);
-  await h.click("[data-testid=consult-build]", [h.tr("elev.consult.preview.cta")], "Preview the summary (Build)");
-  await h.need("#consult-step-2", "step 2's body (the packet), after Build");
-  if (!toShare) return;
-  await h.click("[data-testid=consult-next]", [h.tr("elev.consult.next")], "Continue (to step 3)");
-  await h.need("#consult-review-export", "step 3's body (What leaves), after Continue");
-}
-
-/** v3 F-CARE-1 r2: the stepper's own contract, read in the browser: three
- *  tabs of at least 44 px, exactly ONE aria-current="step" (on `want`), and
- *  the route's ONE stamp on a VISIBLE control of the shown step. */
-async function consultStepperCheck(h, want) {
-  const tabs = h.page.locator("[data-testid=consult-stepper] [data-testid=consult-step]");
-  const n = await tabs.count();
-  if (n !== 3) throw new Error(`the stepper has ${n} tabs (expected 3)`);
-  for (let i = 0; i < n; i++) {
-    const box = await tabs.nth(i).boundingBox();
-    if (!box || box.height < 44) throw new Error(`stepper tab ${i + 1} is ${box ? Math.round(box.height) : "not laid out at"} px tall (< 44)`);
-  }
-  const current = h.page.locator('[data-testid=consult-stepper] [data-testid=consult-step][aria-current="step"]');
-  const c = await current.count();
-  if (c !== 1) throw new Error(`${c} stepper tabs carry aria-current="step" (expected exactly 1)`);
-  const step = await current.first().getAttribute("data-step");
-  if (step !== want) throw new Error(`aria-current="step" is on step ${step} (expected ${want})`);
-  const stamps = h.page.locator("[data-primary-move]");
-  const s = await stamps.count();
-  if (s !== 1) throw new Error(`step ${want}: ${s} data-primary-move stamps on the page (expected exactly 1)`);
-  if (!(await stamps.first().isVisible())) throw new Error(`step ${want}: the route's stamp sits on a hidden control`);
-  return `${step}:${await stamps.first().getAttribute("data-testid")}`;
 }
 
 /** Settings modal, from the shell's own door (375: More sheet; 1280: account popover). */
@@ -1249,58 +1211,38 @@ const STATES = {
   ],
   consult: [
     {
-      // v3 F-CARE-1 r2: the landing is a stepper — Build opens step 2's body.
       name: "step2",
       run: async (h) => {
-        await consultStepper(h, false);
-        const at = await consultStepperCheck(h, "2");
-        await h.top(await h.need("[data-testid=consult-stepper]", "the stepper"));
-        return { via: `Build → #consult-step-2 · stamp ${at}` };
+        await consultPediatrician(h);
+        const step2 = await h.need("[data-module=consult-packet] h2:has-text('2')", "step 2 (What changed)");
+        await h.top(step2);
       },
     },
     {
       name: "step3",
       run: async (h) => {
-        await consultStepper(h, true);
-        const at = await consultStepperCheck(h, "3");
-        await h.top(await h.need("[data-testid=consult-stepper]", "the stepper"));
-        return { via: `Build → Continue → #consult-review-export · stamp ${at}` };
+        await consultPediatrician(h);
+        await h.click("[data-testid=consult-build]", [], "Build the one-page summary");
+        await h.need("[data-module=consult-packet] h2:has-text('3')", "step 3 (What leaves)");
+        await h.top(await h.need("[data-module=consult-packet] h2:has-text('3')", "step 3"));
       },
     },
     {
-      // the verbatim preview sits IN step 3 (W2-CAREPRO c2 r1); below lg its
-      // first lines show with "Show all", which this state opens
       name: "preview-open",
       run: async (h) => {
-        await consultStepper(h, true);
-        const preview = await h.need("#consult-review-export [data-testid=consult-preview]", "the verbatim preview in step 3");
-        const all = "#consult-review-export [data-testid=consult-preview-all]";
-        const opened = await h.has(all);
-        if (opened) await h.click(all, [h.tr("elev.carehonesty.consult.preview.showAll")], "Show all (the preview)");
+        await consultPediatrician(h);
+        await h.click("[data-testid=consult-build]", [], "Build the one-page summary");
+        const label = h.tr("elev.carehonesty.consult.preview.toggle");
+        const summary = await h.need(
+          [
+            "[data-module=consult-packet] details:has(.msr:text-is('visibility')) > summary",
+            ...(label ? [h.page.locator("[data-module=consult-packet] summary", { hasText: label })] : []),
+          ],
+          "the Preview exactly what leaves disclosure",
+        );
+        await summary.click({ timeout: 5_000 });
         await h.page.waitForTimeout(300);
-        await h.top(preview);
-        return { via: `Build → Continue → the preview${opened ? " · Show all" : " (open at lg)"}` };
-      },
-    },
-    {
-      // v3 F-CARE-1 r2: at phone width the three tabs are each >= 44 px,
-      // exactly one is aria-current="step", and a tab moves it (a disabled
-      // Share, nothing to share yet, is skipped); the stamp follows the step.
-      name: "stepper-tabs",
-      only: (vp) => vp.w < 768,
-      run: async (h) => {
-        const nav = await h.need("[data-testid=consult-stepper]", "the stepper");
-        await h.top(nav);
-        const walked = [await consultStepperCheck(h, "1")];
-        for (const s of ["2", "3", "1"]) {
-          const tab = h.page.locator(`[data-testid=consult-stepper] [data-testid=consult-step][data-step="${s}"]`);
-          if (await tab.isDisabled()) continue;
-          await tab.click({ timeout: 5_000 });
-          await h.page.waitForTimeout(250);
-          walked.push(await consultStepperCheck(h, s));
-        }
-        await h.top(nav);
-        return { via: `stepper ${walked.join(" → ")}` };
+        await h.top(summary);
       },
     },
     {
