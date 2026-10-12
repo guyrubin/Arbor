@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection, hubTabsForSection, pillRowFor, COMPACT_HIDDEN_TOOLS, isCompactHiddenTool } from "./navigation";
+import { SECTIONS, sectionForTab, primaryTabOf, subTabsForSection, hubTabsForSection, pillRowFor, COMPACT_HIDDEN_TOOLS, isCompactHiddenTool, homeIdForTab } from "./navigation";
 import { resolveHash, FALLBACK_ROUTE, RETIRED_ROUTES } from "./routes";
 import { ALL_TABS } from "../context/ArborContext";
 import { homeForTab } from "./companionPlaces";
@@ -22,10 +22,28 @@ describe("navigation IA", () => {
     ]);
   });
 
+  // F-SHELL-1 review re-pin (finding 5; was: development, milestones,
+  // language, daily-play): the three retired ids left the hub index. Each
+  // keeps its seat (TAB_SECTION_FALLBACK) in the hub of the route its hash
+  // lands on, so a stored id still highlights where it now lives.
   it("Growth holds the Development hub + growth tools", () => {
     const growth = SECTIONS.find((s) => s.id === "growth");
     const tabs = growth?.items.map((i) => i.tab) ?? [];
-    expect(tabs).toEqual(["development", "milestones", "language", "daily-play"]);
+    expect(tabs).toEqual(["development"]);
+    expect(growth?.primaryTabs.map((i) => i.tab)).toEqual(["development"]);
+    expect(growth?.tools.map((i) => i.tab)).toEqual(["screening"]);
+    for (const it of [...(growth?.items ?? []), ...(growth?.primaryTabs ?? []), ...(growth?.tools ?? [])]) {
+      expect(it.tab in RETIRED_ROUTES, `growth lists the retired ${it.tab}`).toBe(false);
+    }
+    for (const id of ["milestones", "language", "daily-play"] as const) {
+      expect(RETIRED_ROUTES[id], id).toBeTruthy();
+      expect(sectionForTab(id).id, id).toBe(sectionForTab(RETIRED_ROUTES[id]).id);
+    }
+    expect(sectionForTab("milestones").id).toBe("growth");
+    expect(sectionForTab("language").id).toBe("profile");
+    expect(sectionForTab("daily-play").id).toBe("practice");
+    // the homes are unchanged: Milestones and About are My child, Daily Play is Together
+    expect([homeIdForTab("milestones"), homeIdForTab("language"), homeIdForTab("daily-play")]).toEqual(["child", "child", "together"]);
   });
 
   // Heartwood D3: Practice is its own depth-0 hub — the launcher leads. IA-08 /

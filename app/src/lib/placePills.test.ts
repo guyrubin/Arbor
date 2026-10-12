@@ -230,13 +230,18 @@ describe("5 · glyphs: shipped, one per destination, and `history` stays Talk's"
 
   it("no two pills share a glyph, Moments is photo_album, and no pill takes history", () => {
     expect(sharedGlyphs(PLACES.map((p) => PLACE_PILLS[p]))).toEqual([]);
+    // F-SHELL-1 review fix (finding 4): Together wears the v3 mock's glyphs,
+    // the set TogetherView's own filter row draws (TogetherRoutines.test.tsx).
+    expect(PLACE_PILLS.together.map((it) => it.msIcon)).toEqual(["interests", "extension", "auto_stories", "checklist", "wb_sunny"]);
     expect(PLACE_PILLS.child.find((it) => it.tab === "timeline")?.msIcon).toBe("photo_album");
     for (const place of PLACES) for (const it of PLACE_PILLS[place]) expect(it.msIcon, idOf(it)).not.toBe("history");
   });
 
   it("NEGATIVE CONTROL: a duplicated glyph is caught", () => {
-    const dup = PLACE_PILLS.together.map((it) => (it.query?.f === "games" ? { ...it, msIcon: "park" } : it));
-    expect(sharedGlyphs([PLACE_PILLS.now, dup])).toEqual(["park: practice?f=games, practice?f=offscreen"]);
+    // F-SHELL-1 review re-pin (finding 4; was: games wearing `park`): Away
+    // from the screen wears the mock's `wb_sunny` now.
+    const dup = PLACE_PILLS.together.map((it) => (it.query?.f === "games" ? { ...it, msIcon: "wb_sunny" } : it));
+    expect(sharedGlyphs([PLACE_PILLS.now, dup])).toEqual(["wb_sunny: practice?f=games, practice?f=offscreen"]);
     expect(subset.has("not_a_shipped_glyph")).toBe(false);
   });
 });
@@ -290,7 +295,8 @@ describe("7 · Shell renders the row from pillRowFor alone", () => {
   const shell = readFileSync(path.resolve(here, "../components/layout/Shell.tsx"), "utf8");
 
   it("the row is computed once, with Together's Games gate, and shows wherever it has more than one pill", () => {
-    expect(shell).toContain("const pillRow = pillRowFor(section, activeTab, { gamesOpen });");
+    // F-SHELL-1 review fix (finding 6): the program page (#/development?view=program) draws no row.
+    expect(shell).toContain("const pillRow = programView ? [] : pillRowFor(section, activeTab, { gamesOpen });");
     expect(shell).toContain("const gamesOpen = kidModeOpenFor(childProfile) && studioWorldsForChild(");
     expect(shell).toContain("{pillRow.length > 1 && (");
     expect(shell).not.toContain("{pillRowFor(section, activeTab).length > 1 && (");

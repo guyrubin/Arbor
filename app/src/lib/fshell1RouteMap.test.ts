@@ -13,18 +13,20 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
   HASH_ALIASES,
+  LEARN_LIBRARY_HASH,
   RETIRED_ROUTES,
   RETIRED_ROUTE_QUERY,
   ROUTE_IDS,
   SHELF_AREA,
   SUB_ROUTES,
   hashQuery,
+  learnRedirectFor,
   resolveHash,
   resolveRouteId,
   type ActiveTab,
 } from "./routes";
 import { NO_PILL_ROW_TABS, TOGETHER_FILTERS, activePillIndex, homeIdForTab, pillRowFor, sectionForTab } from "./navigation";
-import { backTargetFor, isCompanionHome } from "./companionPlaces";
+import { backTargetFor, isCompanionHome, placeForTab } from "./companionPlaces";
 import { SHELVES } from "./shelves/registry";
 import { STUDIO_WORLDS } from "../components/practice/studioWorlds";
 
@@ -47,6 +49,8 @@ const ROUTE_MAP: Array<[string, ActiveTab, Record<string, string>]> = [
   ["#/scholar", "coach", {}],
   ["#/language", "profile", { aspect: "lang" }],
   ["#/language/said", "timeline", { view: "areas", area: "talking" }],
+  // F-SHELL-1 review fix (finding 2): the QUERY form resolves like the path form.
+  ["#/language?view=said", "timeline", { view: "areas", area: "talking" }],
   ["#/handoff", "handoff", {}],
   ["#/safety", "safety", {}],
   ["#/profile", "profile", {}], ["#/my-child", "profile", {}], ["#/development-profile", "profile", {}], ["#/about", "profile", {}],
@@ -63,6 +67,8 @@ const ROUTE_MAP: Array<[string, ActiveTab, Record<string, string>]> = [
   ["#/masterclasses", "masterclasses", {}], ["#/academy", "masterclasses", {}], ["#/parent-masterclasses", "masterclasses", {}], ["#/for-you", "masterclasses", {}],
   ["#/family", "family", {}], ["#/family-formation", "family", {}],
   ["#/comics", "practice", { f: "stories" }], ["#/hero-comics", "practice", { f: "stories" }],
+  // F-SHELL-1 review re-pin (finding 1): #/learn stays the reader's route, but a
+  // visit without a read lands on For you's library section (LANDING below).
   ["#/learn", "learn", {}], ["#/learn-library", "learn", {}],
   ["#/speech", "practice", { f: "games", world: "speech" }],
   ["#/mimic", "practice", { f: "games", world: "mimic" }],
@@ -83,11 +89,18 @@ const ROUTE_MAP: Array<[string, ActiveTab, Record<string, string>]> = [
   ["#/routines", "practice", { f: "routines" }],
 ];
 
+/** The lines whose visit, arriving without a read, lands elsewhere (Shell, learnLanding.ts). */
+const LANDING: Record<string, string> = {
+  "#/learn": "#/masterclasses?section=library",
+  "#/learn-library": "#/masterclasses?section=library",
+};
+
 describe("v3 F-SHELL-1 · every line of the route map", () => {
   it.each(ROUTE_MAP)("%s → #/%s with its place state", (hash, route, query) => {
     expect(resolveRouteId(hash)).toBe(route);
     expect(resolveHash(hash)).toEqual({ tab: route, unknown: false });
     expect(q(hash)).toEqual(query);
+    expect(learnRedirectFor(route, undefined, hash)).toBe(LANDING[hash] ?? null);
   });
 
   it("the table covers every route id and every alias (a new route or alias needs a map line)", () => {
@@ -102,6 +115,9 @@ describe("v3 F-SHELL-1 · every line of the route map", () => {
     expect(q("#/speech?world=mimic")).toEqual({ world: "mimic", f: "games" });
     expect(q("#/language?aspect=strengths")).toEqual({ aspect: "strengths" });
     expect(q("#/stories?month=2026-09")).toEqual({ month: "2026-09", f: "stories" });
+    // the sub-route's query form: its mode names the state, other parameters ride along
+    expect(q("#/language?view=said&month=2026-09")).toEqual({ view: "areas", area: "talking", month: "2026-09" });
+    expect(q("#/language?month=2026-09&view=said&area=moving")).toEqual({ view: "areas", area: "talking", month: "2026-09" });
     // case-insensitive like every retired hash
     expect(resolveRouteId("#/STORIES")).toBe("practice");
     expect(q("#/STORIES")).toEqual({ f: "stories" });
@@ -175,12 +191,17 @@ describe("v3 F-SHELL-1 · the route-map tables stay consistent", () => {
   });
 });
 
-/** Shell's Back, composed exactly as Shell composes it (source-pinned below). */
+/** Shell's pill row and Back, composed exactly as Shell composes them (source-pinned below). */
+function chromeFor(tab: ActiveTab, search = ""): { row: number; back: string | null } {
+  const query = new URLSearchParams(search);
+  const programView = tab === "development" && query.get("view") === "program";
+  const row = programView ? [] : pillRowFor(sectionForTab(tab), tab, { gamesOpen: true });
+  const lit = row.length > 1 ? activePillIndex(row, tab, query) : -1;
+  const back = programView ? placeForTab(tab) : isCompanionHome(tab) || lit >= 0 ? null : backTargetFor(tab);
+  return { row: row.length, back: back ? back.en : null };
+}
 function backFor(tab: ActiveTab): string | null {
-  const row = pillRowFor(sectionForTab(tab), tab, { gamesOpen: true });
-  const lit = row.length > 1 ? activePillIndex(row, tab, new URLSearchParams()) : -1;
-  const back = isCompanionHome(tab) || lit >= 0 ? null : backTargetFor(tab);
-  return back ? back.en : null;
+  return chromeFor(tab).back;
 }
 
 /** Every LIVE route's Back, from the route map. */
@@ -221,10 +242,24 @@ describe("v3 F-SHELL-1 · one Back rule (critic ruling [5])", () => {
     expect(homeIdForTab("timeline")).toBe("child");
   });
 
+  // F-SHELL-1 review fix (finding 6): the program page is an L2 leaf of My child.
+  it("#/development?view=program draws no pill row and wears Back to My child; Milestones itself keeps its lit pill", () => {
+    expect(chromeFor("development", "view=program")).toEqual({ row: 0, back: "My child" });
+    expect(placeForTab("development").tab).toBe("development");
+    // NEGATIVE CONTROL: Milestones (no view, or another view) is the lit pill of a drawn row, with no Back
+    expect(chromeFor("development")).toEqual({ row: 3, back: null });
+    expect(chromeFor("development", "view=areas")).toEqual({ row: 3, back: null });
+    // and view=program means nothing on another route
+    expect(chromeFor("timeline", "view=program")).toEqual({ row: 3, back: null });
+  });
+
   it("Shell composes Back from the lit pill (source pin)", () => {
     const shell = readFileSync(path.resolve(__dirname, "../components/layout/Shell.tsx"), "utf8").replace(/\r\n/g, "\n");
+    // F-SHELL-1 review re-pin (finding 6): the program view is pill-less with Back to My child.
+    expect(shell).toContain('const programView = activeTab === "development" && query.get("view") === "program";');
+    expect(shell).toContain("const pillRow = programView ? [] : pillRowFor(section, activeTab, { gamesOpen });");
     expect(shell).toContain("const activePill = pillRow.length > 1 ? activePillIndex(pillRow, activeTab, query) : -1;");
-    expect(shell).toContain("const back = isCompanionHome(activeTab) || activePill >= 0 ? null : backTargetFor(activeTab);");
+    expect(shell).toContain("const back = programView ? placeForTab(activeTab) : isCompanionHome(activeTab) || activePill >= 0 ? null : backTargetFor(activeTab);");
     // NEGATIVE CONTROL: the IA-01 rule (Back on every non-home route) is not it
     expect("const back = isCompanionHome(activeTab) ? null : backTargetFor(activeTab);".includes("activePill >= 0")).toBe(false);
     // …and under that rule a lit pill would have worn a Back
@@ -245,6 +280,7 @@ describe("v3 F-SHELL-1 · every old route lights the pill that holds its content
   it.each([
     ["#/behaviors", "nav.pill.moments"],
     ["#/language/said", "nav.pill.moments"],
+    ["#/language?view=said", "nav.pill.moments"],
     ["#/milestones", "nav.pill.milestones"],
     ["#/milestones?shelf=words", "nav.pill.milestones"],
     ["#/language", "nav.pill.about"],
@@ -304,5 +340,37 @@ describe("v3 F-SHELL-1 · a retired id never mounts", () => {
     expect(index).toContain('{ en: [card.category], he: [] }, "timeline",');
     // NEGATIVE CONTROL: the pre-F-SHELL-1 row (a switch to Behaviors) fails the pin
     expect('go: () => { if (e.lens) setSelectedLens(e.lens); setActiveTab(e.tab); },'.includes("openHardMomentNow")).toBe(false);
+  });
+});
+
+describe("v3 F-SHELL-1 review fix (finding 1) · #/learn without a read lands on For you's library", () => {
+  it("a read-less visit lands on #/masterclasses at the library section; a visit with a read keeps the reader", () => {
+    expect(LEARN_LIBRARY_HASH).toBe("#/masterclasses?section=library");
+    expect(resolveHash(LEARN_LIBRARY_HASH)).toEqual({ tab: "masterclasses", unknown: false });
+    expect(q(LEARN_LIBRARY_HASH)).toEqual({ section: "library" });
+    expect(learnRedirectFor("learn", undefined, "#/learn")).toBe(LEARN_LIBRARY_HASH);
+    expect(learnRedirectFor("learn", null, "#/learn-library")).toBe(LEARN_LIBRARY_HASH);
+    // a pending card request (requestLearnRead) or a ?card= link is a read: no landing
+    expect(learnRedirectFor("learn", "card-1", "#/learn")).toBeNull();
+    expect(learnRedirectFor("learn", undefined, "#/learn?card=card-1")).toBeNull();
+    // the reader wears Back to For you, the parent
+    expect(backFor("learn")).toBe("For you, the parent");
+    // NEGATIVE CONTROL: no other route lands anywhere
+    expect(learnRedirectFor("masterclasses", undefined, "#/masterclasses")).toBeNull();
+    expect(learnRedirectFor("family", undefined, "#/family")).toBeNull();
+  });
+
+  it("Shell renders nothing for the read-less visit and the landing replaces the hash (source pins)", () => {
+    const read = (rel: string) => readFileSync(path.resolve(__dirname, rel), "utf8").replace(/\r\n/g, "\n");
+    const shell = read("../components/layout/Shell.tsx");
+    expect(shell).toContain('const learnRedirect = useLearnLanding(activeTab, pendingLearnRequest?.cardId, consumeLearnRequest, activeTab === "masterclasses" && query.get("section") === "library");');
+    expect(shell).toContain("{learnRedirect ? null");
+    const landing = read("../components/layout/learnLanding.ts");
+    // decided once, at arrival: the Library consumes the request as it opens the read
+    expect(landing).toContain("else if (arrival.current === undefined) arrival.current = learnRedirectFor(activeTab, pendingCardId, liveHash());");
+    // replace, never push: Back does not return to an empty #/learn
+    expect(landing).toContain("window.location.replace(redirect);");
+    expect(landing).not.toContain("window.location.hash =");
+    expect(landing).toContain(`['[data-testid="academy-by-area"]', '[data-testid="academy-courses"]']`);
   });
 });

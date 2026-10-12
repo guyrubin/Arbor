@@ -76,6 +76,26 @@ describe("SUB_ROUTES — #/language/said", () => {
     expect(hashQuery("#/language").get("aspect")).toBe("lang");
   });
 
+  // v3 F-SHELL-1 review fix (finding 2): the existing QUERY form resolves
+  // exactly like the path form — the Tonight receipt still emits it.
+  it("the query form #/language?view=said resolves like #/language/said; other parameters ride along", () => {
+    const { key, query } = splitHash("#/language?view=said");
+    expect(key).toBe("timeline");
+    expect(query.get("view")).toBe("areas");
+    expect(query.get("area")).toBe("talking");
+    expect(query.get("aspect")).toBeNull();
+    expect(resolveRouteId("#/language?view=said")).toBe("timeline");
+    expect(resolveHash("#/language?view=said")).toEqual({ tab: "timeline", unknown: false });
+    const withMonth = hashQuery("#/language?view=said&month=2026-09");
+    expect(withMonth.get("month")).toBe("2026-09");
+    expect(withMonth.get("view")).toBe("areas");
+    expect(withMonth.get("area")).toBe("talking");
+    expect(resolveRouteId(`#${routeHash("language", { view: "said" })}`)).toBe("timeline");
+    // negative control: another view on the retired key keeps the About state
+    expect(resolveRouteId("#/language?view=pro")).toBe("profile");
+    expect(hashQuery("#/language?view=pro").get("aspect")).toBe("lang");
+  });
+
   it("the map: lowercase route/mode keys, every target a live ROUTE_ID, no key a ROUTE_ID", () => {
     for (const [k, v] of Object.entries(SUB_ROUTES)) {
       expect(k).toMatch(/^[a-z][a-z0-9-]*\/[a-z][a-z0-9-]*$/);

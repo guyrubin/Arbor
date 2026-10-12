@@ -304,11 +304,20 @@ describe("B-TODAY-17 — the drawer is gone: no feed, no check-in, no displaced 
     expect(groups).not.toMatch(/\b(setDoc|addDoc|updateDoc|writeBatch|collection\()/);
   }, 60_000); // a whole-tree read; the default 5 s is too tight on a loaded machine
 
-  it("#/daily-play stays reachable from Growth", () => {
+  // F-SHELL-1 review re-pin (finding 5; was: "#/daily-play stays reachable
+  // from Growth"): the retired id left the Growth index. Its hash lands on
+  // Together's Away from the screen, and its fallback seat is Practice.
+  it("#/daily-play stays reachable: its hash lands on Together's Away from the screen, not a Growth pill", async () => {
     const nav = read("lib/navigation.ts");
     const growth = nav.slice(nav.indexOf('id: "growth"'));
     const next = growth.indexOf('id: "', 12);
     const growthBlock = next > 0 ? growth.slice(0, next) : growth;
-    expect(growthBlock).toMatch(/tab: "daily-play"/);
+    expect(growthBlock).toContain('tab: "development"');
+    expect(growthBlock).not.toMatch(/tab: "daily-play"/);
+    const { resolveRouteId, hashQuery } = await import("../../lib/routes");
+    const { sectionForTab } = await import("../../lib/navigation");
+    expect(resolveRouteId("#/daily-play")).toBe("practice");
+    expect(hashQuery("#/daily-play").get("f")).toBe("offscreen");
+    expect(sectionForTab("daily-play").id).toBe("practice");
   });
 });

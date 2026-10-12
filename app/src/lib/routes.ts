@@ -269,6 +269,14 @@ export function splitHash(raw: string): { key: string; query: URLSearchParams } 
   // v3 F-SHELL-1: a retired key opens its place in the state the route map
   // names (RETIRED_ROUTE_QUERY); a parameter the link carries wins.
   const retired = retiredKeyOf(key);
+  // The query form of a sub-route (`#/language?view=said`, which the Tonight
+  // receipt still emits) resolves exactly like its path form: the mode names
+  // the route and its state, every other parameter (`&month=`) rides along.
+  const queryMode = retired ? SUB_ROUTES[`${retired}/${(query.get("view") || "").toLowerCase()}`] : undefined;
+  if (queryMode) {
+    for (const [k, v] of Object.entries(queryMode.query)) query.set(k, v);
+    return { key: queryMode.route, query };
+  }
   if (retired) {
     const state = own(RETIRED_ROUTE_QUERY, retired) ? RETIRED_ROUTE_QUERY[retired] : {};
     for (const [k, v] of Object.entries(state)) if (!query.has(k)) query.set(k, v);
@@ -307,6 +315,24 @@ export function routeHash(route: ActiveTab, params: Record<string, string | null
   for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
   const qs = q.toString();
   return `/${route}${qs ? `?${qs}` : ""}`;
+}
+
+/**
+ * v3 F-SHELL-1 (review finding 1) — #/learn is only the short-read reader.
+ * A visit that arrives WITH a read (a pending card request, or a `?card=`
+ * link) keeps the reader under Back "For you, the parent"; a visit without one
+ * lands on For you at its library section ("Courses by area"), the hash
+ * replaced so Back never returns to an empty #/learn. The section is a For you
+ * scroll target (data-testid academy-by-area, else academy-courses), not a
+ * route: `section=library` is read by Shell only.
+ */
+export const LEARN_LIBRARY_HASH = "#/masterclasses?section=library";
+
+/** Where a route asks to go at arrival: #/learn with no read → the library section; anything else → null. */
+export function learnRedirectFor(tab: ActiveTab, pendingCardId: string | null | undefined, hash: string): string | null {
+  if (tab !== "learn") return null;
+  if (pendingCardId || splitHash(hash).query.get("card")) return null;
+  return LEARN_LIBRARY_HASH;
 }
 
 export function resolveRouteId(raw: string): ActiveTab | null {

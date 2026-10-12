@@ -291,6 +291,23 @@ describe("IA-06 · crumb levels follow the route's home and its pill row", () =>
     expect(crumbLevelsFor("profile", QUESTION, "en", t("en")).map(l => l.label).join(" ")).not.toContain("{name}");
   });
 
+  // F-SHELL-1 review fix (finding 7): a route no pill row names prints its own
+  // pill name when one exists (a Care leaf), else its tab name (a My child leaf).
+  it("a Care leaf prints its pill name, a My child leaf its tab name, in EN and HE", () => {
+    expect(crumbLevelsFor("safety", QUESTION, "en", t("en")).map(l => l.label)).toEqual(["Care, together", "Safety", QUESTION]);
+    expect(crumbLevelsFor("safety", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["טיפול, ביחד", "בטיחות", QUESTION]);
+    expect(crumbLevelsFor("sharing", QUESTION, "en", t("en")).map(l => l.label)).toEqual(["Care, together", "Trusted sharing", QUESTION]);
+    expect(crumbLevelsFor("memory", QUESTION, "en", t("en")).map(l => l.label)).toEqual(["My child", "Child Memory", QUESTION]);
+    expect(crumbLevelsFor("memory", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["הילד שלי", "זיכרון הילד", QUESTION]);
+    expect(crumbLevelsFor("safety", QUESTION, "en", t("en"))[1]).toEqual({ label: "Safety", tab: "safety" });
+    // NEGATIVE CONTROL: the tab name the crumb printed before is the longer one,
+    // and a route with no pill key of its own has no pill name to print
+    expect(translate("en", "nav.tab.safety")).toBe("Safety & Escalation");
+    expect(translate("he", "nav.tab.safety")).toBe("בטיחות והסלמה");
+    expect(translate("en", "nav.pill.memory")).toBe("nav.pill.memory");
+    expect(translate("he", "nav.pill.memory")).toBe("nav.pill.memory");
+  });
+
   it("ancestors carry their routes; the sheet level carries none", () => {
     expect(crumbLevelsFor("timeline", QUESTION, "en", t("en"))).toEqual([
       { label: "My child", tab: "development" }, { label: "Moments", tab: "timeline" }, { label: QUESTION },
@@ -497,6 +514,18 @@ describe("IA-06 · the sheet's crumb", () => {
 
   it("#/overview with the question sheet open: Now › the question (the Now pill is not repeated)", () => {
     expect(levelsOf(renderToStaticMarkup(<SheetBreadcrumb label={QUESTION} close={vi.fn()} />)).map(l => l.label)).toEqual(["Now", QUESTION]);
+  });
+
+  // F-SHELL-1 review fix (finding 7): the rendered crumb on a Care leaf and a My child leaf.
+  it("#/safety and #/memory with a sheet open: the leaf's own short name, in EN and HE", () => {
+    state.activeTab = "safety";
+    expect(levelsOf(renderToStaticMarkup(<SheetBreadcrumb label={QUESTION} close={vi.fn()} />)).map(l => l.label)).toEqual(["Care, together", "Safety", QUESTION]);
+    state.activeTab = "memory";
+    expect(levelsOf(renderToStaticMarkup(<SheetBreadcrumb label={QUESTION} close={vi.fn()} />)).map(l => l.label)).toEqual(["My child", "Child Memory", QUESTION]);
+    state.lang = "he"; state.activeTab = "safety";
+    expect(levelsOf(renderToStaticMarkup(<SheetBreadcrumb label="בוקר בבית" close={vi.fn()} />)).map(l => l.label)).toEqual(["טיפול, ביחד", "בטיחות", "בוקר בבית"]);
+    state.activeTab = "memory";
+    expect(levelsOf(renderToStaticMarkup(<SheetBreadcrumb label="בוקר בבית" close={vi.fn()} />)).map(l => l.label)).toEqual(["הילד שלי", "זיכרון הילד", "בוקר בבית"]);
   });
 
   it("Hebrew: the levels in Hebrew under the Hebrew landmark name", () => {

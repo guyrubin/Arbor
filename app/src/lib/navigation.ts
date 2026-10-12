@@ -155,25 +155,21 @@ export const SECTIONS: NavSection[] = [
     items: [
       // B-GROWTH-06: a sprout, not a gauge — no meter metaphor on a child.
       { tab: "development", label: "Development", msIcon: "eco" },
-      { tab: "milestones", label: "Milestones", msIcon: "check_circle" },
-      { tab: "language", label: "Language & Communication", msIcon: "translate" },
-      { tab: "daily-play", label: "Daily Play", msIcon: "playing_cards" },
     ],
-    // Growth is now purely developmental: Development hub + the two clinical
-    // spines (milestones, language), with Daily Play and the Development Check as
-    // tools. Action Plans moved to Behaviors. Heartwood D3: the Practice Studio
-    // pill promoted OUT of Growth into its own depth-0 Practice hub; Copilot
-    // stays homed here per canon (fallback → growth).
+    // Growth is now purely developmental: the Development hub, with the
+    // Development Check as its tool. Action Plans moved to Behaviors. Heartwood
+    // D3: the Practice Studio pill promoted OUT of Growth into its own depth-0
+    // Practice hub; Copilot stays homed here per canon (fallback → growth).
+    // F-SHELL-1 review fix (finding 5): the retired milestones, language and
+    // daily-play left the hub index (their hashes land on Milestones, About and
+    // Together's Away from the screen); TAB_SECTION_FALLBACK keeps their seats.
     primaryTabs: [
       // B-GROWTH-06: a sprout, not a gauge — no meter metaphor on a child.
       { tab: "development", label: "Development", msIcon: "eco" },
-      { tab: "milestones", label: "Milestones", msIcon: "check_circle" },
-      { tab: "language", label: "Language & Communication", msIcon: "translate" },
     ],
     tools: [
       // B-GROWTH-25: the Routines pill is gone — #/routines retired to Plans,
       // where the twelve boards are one-tap plan templates.
-      { tab: "daily-play", label: "Daily Play", msIcon: "playing_cards" },
       // M4 surfacing (IA masterplan): the quick-check screener was fallback-only
       // (reachable via one ChildProfile JumpLink) — now a visible Growth pill.
       { tab: "screening", label: "Development Check", msIcon: "fact_check" },
@@ -320,6 +316,12 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
   copilot: "growth",
   screening: "growth",
   strengths: "growth",
+  // F-SHELL-1 review fix (finding 5): three retired ids left the Growth index;
+  // each keeps its seat in its destination's hub (Milestones → Growth, About →
+  // Profile, Together's Away from the screen → Practice).
+  milestones: "growth",
+  language: "profile",
+  "daily-play": "practice",
   // B-GROWTH-25: #/routines is a retired id (RETIRED_ROUTES) — it resolves
   // to the hub that owns plans; v3 F-SHELL-1 sends both to Together's
   // Routines pill, and TAB_HOME homes both in Together.
@@ -433,12 +435,14 @@ export const PLACE_PILLS: Readonly<Record<PillPlace, readonly NavItem[]>> = {
     // {name} is the child's first name; Shell draws it inside <bdi>.
     { tab: "profile", label: "About {name}", msIcon: "person", labelKey: "nav.pill.about" },
   ],
+  // F-SHELL-1 review fix (finding 4): the glyphs are the v3 mock's, the same
+  // set TogetherView's own filter row draws (All together wears the place's glyph).
   together: [
-    together("all", "All together", "extension"),
-    together("games", "Games", "sports_esports"),
+    together("all", "All together", "interests"),
+    together("games", "Games", "extension"),
     together("stories", "Stories", "auto_stories"),
     together("routines", "Routines", "checklist"),
-    together("offscreen", "Away from the screen", "park"),
+    together("offscreen", "Away from the screen", "wb_sunny"),
   ],
 };
 
@@ -487,8 +491,8 @@ export function sectionForTab(tab: ActiveTab): NavSection {
  */
 export type HomeId = "now" | "child" | "together" | "talk" | "learn" | "care";
 const SECTION_HOME: Record<HubId, HomeId> = { today: "now", growth: "child", journal: "child", profile: "child", behaviors: "child", practice: "together", stories: "together", ask: "talk", learn: "learn", care: "care" };
-/** Daily Play is a Growth tool, but in v3 it is play the family shares, so it
- *  lives in Together. FEAT-07: plans and the retired routines id live in
+/** Daily Play was a Growth tool, but in v3 it is play the family shares, so it
+ *  lives in Together (F-SHELL-1 review fix: its fallback seat is Practice now). FEAT-07: plans and the retired routines id live in
  *  Together too; v3 F-SHELL-1 retires both to its Routines pill
  *  (#/practice?f=routines), and daily-play to Away from the screen. */
 const TAB_HOME: Partial<Record<ActiveTab, HomeId>> = { "daily-play": "together", plans: "together", routines: "together" };

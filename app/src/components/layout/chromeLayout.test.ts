@@ -447,7 +447,8 @@ describe("TJB-25 — Today collapses to the Weekly Report below md", () => {
     // The place's pill set is still mapped unfiltered by breakpoint: the pill
     // returns at md. v3 F-SHELL-1 re-pin: the row is computed once (pillRow,
     // with Together's Games gate) and mapped with its index for the lit pill.
-    expect(bare).toContain("const pillRow = pillRowFor(section, activeTab, { gamesOpen });");
+    // F-SHELL-1 review fix (finding 6): the program page (#/development?view=program) draws no row.
+    expect(bare).toContain("const pillRow = programView ? [] : pillRowFor(section, activeTab, { gamesOpen });");
     expect(bare).toContain("pillRow.map((it, index) =>");
   });
 

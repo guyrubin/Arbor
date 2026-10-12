@@ -6,6 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { backTargetFor, homeForTab, isCompanionHome, placeForTab } from "../../lib/companionPlaces";
 import { useHashQuery, goToRoute } from "../../hooks/useHashQuery";
+import { useLearnLanding } from "./learnLanding";
 import { sectionForTab, pillRowFor, isCompactHiddenTool, activePillIndex } from "../../lib/navigation";
 // v3 F-SHELL-1: Together's Games pill shows behind the same gate as its worlds.
 import { kidModeOpenFor } from "../../lib/age/playGate";
@@ -234,7 +235,7 @@ function SurfaceFrame({ route, children }: { route: ActiveTab; children: React.R
 }
 
 export default function Shell() {
-  const { activeTab, setActiveTab, showSandboxBanner, childProfile, captureSheet, closeCaptureSheet, activeFamilyTopic } = useArbor();
+  const { activeTab, setActiveTab, showSandboxBanner, childProfile, captureSheet, closeCaptureSheet, activeFamilyTopic, pendingLearnRequest, consumeLearnRequest } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const query = useHashQuery();
@@ -259,13 +260,19 @@ export default function Shell() {
   // v3 F-SHELL-1: the place's pill row (none for a door or an L2 leaf), with
   // Together's Games pill only while a game world is open to this child.
   const gamesOpen = kidModeOpenFor(childProfile) && studioWorldsForChild(uiLang === "he" ? "he" : "en", childProfile).worlds.length > 0;
-  const pillRow = pillRowFor(section, activeTab, { gamesOpen });
+  // F-SHELL-1 review fix (finding 6): the program page (#/development?view=program)
+  // is an L2 leaf of My child, not its Milestones pill: no row, Back to My child.
+  const programView = activeTab === "development" && query.get("view") === "program";
+  const pillRow = programView ? [] : pillRowFor(section, activeTab, { gamesOpen });
   // The lit pill: the route's own, under the hash's filter (-1 = not in a drawn row).
   const activePill = pillRow.length > 1 ? activePillIndex(pillRow, activeTab, query) : -1;
   // v3 IA-01 / F-SHELL-1 (critic ruling [5]): Back returns to the route's home,
   // its place or its door (#/learn → For you, the parent), and only from an L2
   // leaf: a home, or a route whose pill is lit in the drawn row, has none.
-  const back = isCompanionHome(activeTab) || activePill >= 0 ? null : backTargetFor(activeTab);
+  const back = programView ? placeForTab(activeTab) : isCompanionHome(activeTab) || activePill >= 0 ? null : backTargetFor(activeTab);
+  // F-SHELL-1 review fix (finding 1): #/learn without a read lands on For you at
+  // its library section; the reader keeps #/learn (learnLanding.ts).
+  const learnRedirect = useLearnLanding(activeTab, pendingLearnRequest?.cardId, consumeLearnRequest, activeTab === "masterclasses" && query.get("section") === "library");
   // About <child>: the pill names the child by first name, isolated in <bdi>.
   const childFirstName = (childProfile.name || "").trim().split(/\s+/)[0] || "";
   const focusLabel = childProfile.languages.length > 1
@@ -634,7 +641,8 @@ export default function Shell() {
                       is counting inside instead of re-deriving it. Presentation
                       is untouched: display:contents, no box, no style. */}
                   <SurfaceFrame route={activeTab}>
-                    {["overview", "coach", "scholar"].includes(activeTab) ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
+                    {learnRedirect ? null
+                      : ["overview", "coach", "scholar"].includes(activeTab) ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
                       : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }} onSaveQuestion={createTopic}/>)
                       : <>
                         {activeTab === "coach" && activeFamilyTopic && <button className="min-h-11 w-full mb-4 px-4 py-3 rounded-xl text-start text-sm" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }} onClick={openTopic}>

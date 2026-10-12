@@ -204,7 +204,8 @@ describe("v3 IA-01 · Back returns to the home", () => {
     const shell = readFileSync(new URL("./Shell.tsx", import.meta.url), "utf8");
     // v3 F-SHELL-1 re-pin (critic ruling [5]): no Back on a route whose pill
     // is lit in the drawn row; L2 leaves keep it.
-    expect(shell).toContain("const back = isCompanionHome(activeTab) || activePill >= 0 ? null : backTargetFor(activeTab);");
+    // F-SHELL-1 review fix (finding 6): the program page (#/development?view=program) is an L2 leaf of My child: Back to My child.
+    expect(shell).toContain("const back = programView ? placeForTab(activeTab) : isCompanionHome(activeTab) || activePill >= 0 ? null : backTargetFor(activeTab);");
     expect(shell).toMatch(/\{back && <button data-testid="secondary-place-back" onClick=\{\(\) => setActiveTab\(back\.tab\)\}/);
     expect(shell).toContain('{uiLang === "he" ? back.he : back.en}');
     expect(shell).not.toContain("setActiveTab(placeForTab(activeTab).tab)");
