@@ -242,7 +242,8 @@ describe("WeekGlance (v3 F-NOW-3)", () => {
         expect(html).not.toMatch(/role="progressbar"|aria-valuenow/);
         expect(read).toContain(translate(lang, "elev.wk.glance.days"));
         expect(read).toContain(translate(lang, "elev.wk.areas.note"));
-        if (lang === "he") expect(copyOnly(html)).not.toMatch(/[A-Za-z]/);
+        // Hebrew copy carries no Latin; the child's name (a placeholder value) is the one exception.
+        if (lang === "he") expect(copyOnly(html).replace(/\bNoa\b/g, " ")).not.toMatch(/[A-Za-z]/);
       }
     });
   }
