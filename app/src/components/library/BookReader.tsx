@@ -27,8 +27,8 @@
  *   per-child Sound toggle silences them. No file = silence, never TTS.
  * - Keyboard: ← / → turn pages (mirrored in Hebrew), Space turns forward,
  *   Esc closes.
- * - A story choice lives only in this component's memory: nothing is written,
- *   nothing describes the child, no number is shown.
+ * - Optional private resume callbacks carry only a page and committed branch;
+ *   repair taps stay in memory, nothing describes the child, no number is shown.
  */
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { KidToy } from "../kidmode/KidToy";
@@ -64,6 +64,8 @@ import { choicePictureSources, heroPrint, heroSpriteUrl, resolveHeroSheet, resol
 import { declaredAudio, DEV_NARRATION_ROOT, NARRATION_ROOT, narrationKey, narrationSetsPath, pageNarrationSrc, pickNarrationSet } from "../../lib/library/narration";
 import type { Book, BookLang, BookReaderChild, Page } from "../../lib/library/types";
 import "./bookReader.css";
+import { useBookProgress } from "./useBookProgress";
+import type { BookProgressPosition } from "../../lib/library/bookBookmarks";
 
 export interface BookReaderProps {
   book: Book;
@@ -80,6 +82,12 @@ export interface BookReaderProps {
   narration?: "probe" | "declared" | "off";
   /** Test / resume seam. */
   initialState?: BookFlowState;
+  /** Meaningful navigation only; never card selection or repair taps. */
+  onProgress?: (position: BookProgressPosition) => void;
+  /** Only an actual last-page → END transition, never a resumed END. */
+  onComplete?: () => void;
+  /** Optional private-save retry, fitted between the existing close/sound toys. */
+  progressNotice?: ReactNode;
   /** Test seam: the stage size before it is measured. */
   initialBox?: Box;
   /** The child's hero sheet with its manifest read (loadHeroSheet); default =
@@ -157,6 +165,9 @@ export function BookReader({
   dev = import.meta.env.DEV,
   narration = "probe",
   initialState,
+  onProgress,
+  onComplete,
+  progressNotice,
   initialBox,
   sheet: sheetProp,
   prints = true,
@@ -168,6 +179,7 @@ export function BookReader({
 }: BookReaderProps) {
   const plateTable = plates ?? BOOK_PLATES[book.id] ?? {};
   const [state, dispatch] = useReducer((s: BookFlowState, a: Parameters<typeof bookFlowReducer>[2]) => bookFlowReducer(book, s, a), initialState ?? initialBookFlow());
+  useBookProgress(book, state, onProgress, onComplete);
   const gender = heGender(child.gender);
   const name = heroDisplayName(child) || bookString(gender === "f" ? "name.fallback.f" : "name.fallback.m", lang);
   const resolved = useMemo(() => resolveHeroSheet(child, { dev }), [child, dev]);
@@ -567,7 +579,7 @@ export function BookReader({
     <div className="bk-reader" data-book-reader="" data-mode={layout.mode} data-page-type={atEnd ? "end" : layout.pageType} dir={dir} lang={lang} role="region" aria-label={bookString("reader.aria", lang, { title: book.title[lang] })}>
       <header className="bk-bar" style={{ blockSize: px(wide ? BAR_WIDE : BAR_NARROW) }}>
         <KidToy tone="paper" shape="round" size="s" glyph="close" data-book-close="" aria-label={bookString("close", lang)} onClick={onClose} />
-        <span className="bk-bar-fill" />
+        <span className="bk-bar-fill" style={progressNotice ? { minWidth: 0, textAlign: "center" } : undefined}>{progressNotice}</span>
         <BookSoundToggle childId={child.id} lang={lang} />
       </header>
       <div className="bk-stage" ref={stageRef}>

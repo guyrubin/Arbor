@@ -9,8 +9,9 @@
  * EVERY item (each tap answers; nothing can fail — BR3), in order when the
  * repair says so. There is no "Another way?" jump (BR3): Next on the last page
  * opens the END screen ("The End", the frame line, Read again / close, and the
- * grown-up's panel); Read again starts at the cover. A choice lives only in this in-memory state — it is never stored and
- * never describes the child (lane A rule 8).
+ * grown-up's panel); Read again starts at the cover. A private bookmark may
+ * retain the committed branch solely to resume this path. It never describes
+ * the child; selection and repair taps remain in memory.
  */
 import type { Book, Choice, Page } from "./types";
 
@@ -32,7 +33,7 @@ export function findChoice(book: Book, choiceId: string | null): Choice | undefi
 export interface BookFlowState {
   /** "cover" or the id of the page on screen. */
   at: string;
-  /** The committed choice of this read (in memory only). */
+  /** The committed branch of this read (also needed for a valid bookmark). */
   choiceId: string | null;
   /** The card currently selected on the decision page (before commit). */
   selected: string | null;

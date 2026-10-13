@@ -5,27 +5,29 @@
  * - `KidSouvenirSticker`: the world's card / the book's cover from the theme
  *   manifest, cut round (CSS mask) on a token die-cut border.
  * - `KidFinishHero`: the ONE hero resolver — the child's generated hero
- *   (resolveHeroUrl via HeroAvatar), else the theme's stock hero portrait
- *   from the manifest (`hero.portrait`, when the theme has one), else Sprout.
+ *   (resolveHeroUrl via HeroAvatar), else the clearly separate mascot
+ *   Sprout; no independent stock child is substituted.
  *   Never a real photo (HeroAvatar's G1 rule).
  * - `KidFinishMoment`: hero + the souvenir; awards it once (lifetime set,
  *   never a count, no streak) and says "A new sticker!" the first time.
  *
  * Kid register only (`.arbor-play`); tokens only; logical properties.
  */
-import React, { useEffect, useRef } from "react";
-import { HeroAvatar, useHeroAvatar } from "../../ui/HeroAvatar";
+import React, { useEffect, useRef, useState } from "react";
+import { HeroAvatar } from "../../ui/HeroAvatar";
 import { useKidTheme } from "../../../hooks/useKidTheme";
-import { kidArt, kidArtSrcSet } from "../../../lib/kidThemeManifest";
+import { Sticker } from "lucide-react";
+import { kidArtSrcSet } from "../../../lib/kidThemeManifest";
 import { kidsStoriesText } from "../../../lib/i18nElevation/kidsStories";
-import { souvenirArt, souvenirStrip, souvenirToAward, type KidSouvenir, type SouvenirKind } from "./kidSouvenirs";
+import { souvenirArt, souvenirStrip, type KidSouvenir, type SouvenirKind } from "./kidSouvenirs";
 import { useKidSouvenirs } from "./useKidSouvenirs";
 
 export const STICKER_MASK = "radial-gradient(closest-side, var(--arbor-ink) 97%, transparent 100%)";
 
 export function KidSouvenirSticker({ kind, refId, size = 96 }: { kind: SouvenirKind; refId: string; size?: number }) {
   const theme = useKidTheme();
-  const art = souvenirArt({ kind, refId }, theme);
+  const candidate = souvenirArt({ kind, refId }, theme);
+  const art = kind === "world" && candidate?.hasHero ? null : candidate;
   return (
     <span
       aria-hidden="true"
@@ -54,7 +56,7 @@ export function KidSouvenirSticker({ kind, refId, size = 96 }: { kind: SouvenirK
           style={{ inlineSize: "100%", blockSize: "100%", objectFit: "cover", objectPosition: art.objectPosition, borderRadius: 999, maskImage: STICKER_MASK, WebkitMaskImage: STICKER_MASK }}
         />
       ) : (
-        <span style={{ inlineSize: "100%", blockSize: "100%", borderRadius: 999, background: "var(--arbor-peach-soft)" }} />
+        <Sticker data-kid-sticker-icon="" size={Math.round(size * 0.58)} aria-hidden="true" />
       )}
     </span>
   );
@@ -62,29 +64,27 @@ export function KidSouvenirSticker({ kind, refId, size = 96 }: { kind: SouvenirK
 
 /** The one hero resolver for a finish moment (see file header). */
 export function KidFinishHero({ size = 132 }: { size?: number }) {
-  const { url } = useHeroAvatar();
-  const theme = useKidTheme();
-  const stock = url ? null : kidArt(theme, "hero.portrait");
-  if (!stock) return <HeroAvatar size={size} mood="cheer" animate decorative />;
-  return (
-    <span aria-hidden="true" data-kid-stock-hero="" style={{ display: "inline-block", inlineSize: size, blockSize: size, borderRadius: 999, overflow: "hidden", border: "3px solid var(--comic-ink)" }}>
-      <img src={stock.src480} srcSet={kidArtSrcSet(stock)} sizes={`${size}px`} alt="" style={{ inlineSize: "100%", blockSize: "100%", objectFit: "cover", objectPosition: stock.objectPosition }} />
-    </span>
-  );
+  return <HeroAvatar size={size} mood="cheer" animate decorative />;
 }
 
 /** Award once on mount (Kid Mode, a known child); returns true when this
  *  ending earned a NEW souvenir. Earned once each, never removed. */
 export function useAwardSouvenir(childId: string, kind: SouvenirKind, refId: string | undefined, enabled: boolean): boolean {
-  const { items, loaded, upsert } = useKidSouvenirs(childId);
-  const awarded = useRef<string | null>(null);
-  const pending = enabled && loaded && !!refId ? souvenirToAward(items, kind, refId, new Date()) : null;
+  const { loaded, scopeKey, awardOnce } = useKidSouvenirs(childId);
+  const identity = `${scopeKey}:${kind}:${refId ?? ""}`;
+  const current = useRef({ identity, revision: 0 });
+  if (current.current.identity !== identity) current.current = { identity, revision: current.current.revision + 1 };
+  const mounted = useRef(false);
+  const [awarded, setAwarded] = useState<{ identity: string; revision: number } | null>(null);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; current.current.revision++; }; }, []);
   useEffect(() => {
-    if (!pending || awarded.current === pending.id) return;
-    awarded.current = pending.id;
-    void upsert(pending).catch(() => { /* a failed write never blocks the ending */ });
-  }, [pending?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  return awarded.current !== null || !!pending;
+    if (!enabled || !loaded || !refId) return;
+    const revision = current.current.revision;
+    void awardOnce(kind, refId).then(isNew => {
+      if (mounted.current && current.current.revision === revision && isNew) setAwarded({ identity, revision });
+    }).catch(() => { /* Failed persistence never claims a new keepsake. */ });
+  }, [identity, enabled, loaded, awardOnce, kind, refId]);
+  return enabled && awarded?.identity === identity && awarded.revision === current.current.revision;
 }
 
 /** The ONE finish moment: the hero cheers; the souvenir sticker under it. */

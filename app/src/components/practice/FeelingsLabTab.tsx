@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "../ui/Icon";
+import { useGameSession } from "../kidmode/game/GameSessionContext";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SectionCard, TrustSafetyBar, cardCls } from "../ui/kit";
@@ -50,6 +51,7 @@ const EMOTION_WASH: Record<string, KidCoinWash> = {
 };
 
 export default function FeelingsLabTab() {
+  const gameSession = useGameSession();
   const { childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const data = usePracticeData(childProfile.id);
@@ -89,6 +91,7 @@ export default function FeelingsLabTab() {
   // rounds — left the line; one feelings-only count remains.)
 
   const record = (kind: PracticeEvent["kind"], correct?: boolean, meta?: string) => {
+    if (gameSession?.playOnly) return;
     const event: PracticeEvent = {
       id: eventId(kind),
       kind,
@@ -115,6 +118,7 @@ export default function FeelingsLabTab() {
   const feel = (id: string) => {
     if (id === feltEmotion) return;
     setFeltEmotion(id);
+    if (gameSession?.playOnly) return;
     if (checkinRecorded.current) return;
     checkinRecorded.current = true;
     const event: PracticeEvent = {

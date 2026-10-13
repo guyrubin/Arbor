@@ -30,14 +30,14 @@ describe("B-KID-74: one mounted kid view", () => {
     expect(content).not.toContain("<AnimatePresence");
     expect(content).not.toMatch(/\bexit=\{/);
     expect(content.match(/<motion\.div/g)?.length).toBe(1);
-    expect(content).toContain("key={kidViewKey(view, arcadeWorldId)}");
+    expect(content).toContain("key={`${scopeKey}:${kidViewKey(view, arcadeWorldId)}`}");
     // the only presence in the file is the overlay's own open/close
     expect(overlay.match(/<AnimatePresence/g)?.length).toBe(1);
     expect(overlay).toContain("<AnimatePresence initial={false}>");
   });
 
   it("the error boundary resets on the same key", () => {
-    expect(overlay).toContain("resetKey={kidViewKey(view, arcadeWorldId)}");
+    expect(overlay).toContain("resetKey={`${scopeKey}:${kidViewKey(view, arcadeWorldId)}`}");
   });
 
   it("the home's scroll is restored on return; every other view arrives at the top", () => {

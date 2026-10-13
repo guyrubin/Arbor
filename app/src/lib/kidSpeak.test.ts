@@ -291,7 +291,8 @@ describe("KID-27 — the rhythm game is audible and tappable", () => {
 
   it("an AudioContext click fires on every beat, and the context is released", () => {
     expect(beat).toContain('from "../../practice/beatAudio"');
-    expect((beat.match(/beatClick\(\)/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect(beat).toContain("if (!gameSession?.playOnly || kidAudioAllowed()) beatClick()");
+    expect((beat.match(/playBeat\(\)/g) || []).length).toBeGreaterThanOrEqual(2);
     expect(beat).toContain("closeBeatAudio()");
   });
 

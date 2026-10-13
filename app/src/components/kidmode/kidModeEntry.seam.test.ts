@@ -62,7 +62,7 @@ describe("B-KID-11 · one entry seam", () => {
     const overlay = strip(read("components/kidmode/KidModeOverlay.tsx"));
     const effect = overlay.slice(overlay.indexOf("if (isKidModeOpen && !wasOpenRef.current) {"), overlay.indexOf("wasOpenRef.current = isKidModeOpen;"));
     expect(effect).toContain("const p = readKidModeState();");
-    expect(effect).toContain("p.view in SURFACE_META");
+    expect(effect).toContain("restoredKidView(p.view, p.worldId)");
     expect(effect).not.toMatch(/setView\("home"\);\s*setArcadeWorldId\(null\);/);
   });
 });

@@ -22,10 +22,11 @@ const read = (...p: string[]) => readFileSync(path.join(__dirname, ...p), "utf8"
 const EMOJI = /\p{Extended_Pictographic}/u;
 
 describe("the one kid loading state", () => {
-  it("a world shows its own card (film3d: the hero is in the picture, no sticker)", () => {
+  it("a stock child world card is rejected and the canonical hero is retained", () => {
     const html = renderToStaticMarkup(<KidStageFallback worldId="memory" />);
-    expect(html).toContain("game-memory");
-    expect(html).not.toContain("data-hero");
+    expect(html).not.toContain("game-memory");
+    expect(html).toContain("kid-discovery-garden-v2");
+    expect(html).toContain("data-hero");
   });
   it("any other kid surface shows the theme's home stage with the hero idling in front", () => {
     const html = renderToStaticMarkup(<KidStageFallback />);
@@ -37,7 +38,7 @@ describe("the one kid loading state", () => {
   it("no parent skeleton inside Kid Mode: every kid Suspense and the shelf's loading use it", () => {
     const overlay = read("KidModeOverlay.tsx");
     expect(overlay).not.toMatch(/TabSkeleton|SectionSkeleton/);
-    expect(overlay.match(/<Suspense fallback=\{<KidStageFallback/g)?.length).toBe(4);
+    expect(overlay.match(/<Suspense fallback=\{<KidStageFallback/g)?.length).toBe((overlay.match(/<Suspense fallback=/g)?.length ?? 0) - 1);
     const shelf = read("KidComicsShelf.tsx");
     expect(shelf).toContain("<KidStageFallback />");
     expect(shelf).not.toContain('kidsStoriesText("shelf.loading", aiLang)');

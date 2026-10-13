@@ -6,6 +6,13 @@
  * (KidModeOverlay, HeroArcade), so the bundler reuses one chunk each.
  */
 export const KID_SURFACE_CHUNKS: readonly (() => Promise<unknown>)[] = [
+  () => import("./studioV2/StudioWorld"),
+  () => import("./studioV2/StudioGame"),
+  () => import("./studioV2/StudioCollection"),
+  () => import("./studioV2/StudioQuest"),
+  () => import("./studioV2/games/CalmBuilder"),
+  () => import("./studioV2/games/PuzzlePlanet"),
+  () => import("./studioV2/games/SoundExplorer"),
   () => import("../practice/PracticeHubTab"),
   () => import("../tabs/HeroJourneyTab"),
   () => import("../practice/MindVaultWorld"),

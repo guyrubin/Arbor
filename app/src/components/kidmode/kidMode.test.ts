@@ -9,6 +9,7 @@
  * Node harness (vitest environment: "node") — no DOM, no React rendering.
  */
 import { describe, it, expect } from "vitest";
+import { KID_WORLDS as LEGACY_KID_WORLDS } from "./kidWorlds";
 import { holdProgress, holdComplete, resolveHoldOutcome, HOLD_MS, TAP_HINT_MS } from "./parentGate";
 
 // ── holdProgress ──────────────────────────────────────────────────────────────
@@ -332,8 +333,7 @@ describe("KID-1: kid.* i18n keys exist in BOTH language maps", () => {
     // kid.game.<id>.*. Extract the ids straight from the source so a new tile
     // without keys fails here instead of rendering a raw key string.
     // B-KID-68: the tile defs are the ONE kid world registry (kidWorlds.ts).
-    const src = stripComments(readSelf("kidWorlds.ts"));
-    const ids = [...src.matchAll(/\{ id: "([a-z-]+)"/g)].map((m) => m[1]);
+    const ids = LEGACY_KID_WORLDS.map(world => world.id);
     // OBJ-KID-05 dropped the duplicate "Feelings" adventure tile; B-KID-88
     // dropped the two adventure tiles (Playbank, Hero Stories) and gave Spell
     // Forge its own tile: the home declares 9 game defs. Exact, not a floor: a
@@ -719,14 +719,11 @@ describe("RUN-21: the sub-greeting derives from real state", () => {
 // keeps an EN name table — its kid worlds ARE the registry's entries and each
 // name is the registry's door key (same value as the tile, both locales).
 describe("KID-4: kid-dashboard game tiles match their HeroArcade destination", () => {
-  const dashSrc = stripComments(readSelf("kidWorlds.ts"));
   const arcadeSrc = stripComments(
     readFileSync(path.join(__dirname, "..", "practice", "HeroArcade.tsx"), "utf8"),
   );
 
-  const gameTiles = [...dashSrc.matchAll(/\{ id: "([a-z-]+)", worldId: "([a-z-]+)"/g)]
-    .map((m) => ({ id: m[1], worldId: m[2] }))
-    .filter((tile) => !tile.worldId.startsWith("kid-"));
+  const gameTiles = LEGACY_KID_WORLDS;
 
   it("finds the 9 game tiles; the arcade keeps no name table of its own", async () => {
     const { KID_WORLDS: ARCADE } = await import("../practice/HeroArcade");
@@ -771,7 +768,7 @@ describe("KID-7: kid-dashboard art is unique per visible tile", () => {
   it("every visible role resolves distinct reviewed art, referenced only through the theme manifest", async () => {
     const { worldArtwork } = await import("../practice/worldArtwork");
     const src = stripComments(readSelf("KidDashboard.tsx"));
-    const ids = [...stripComments(readSelf("kidWorlds.ts")).matchAll(/\{ id: "[a-z-]+", worldId: "([a-z-]+)"/g)].map(m=>m[1]);
+    const ids: string[] = LEGACY_KID_WORLDS.map(world => world.worldId);
     ids.push("kid-quest");
     // B-KID-88: 9 game tiles + the Tonight fallback (the adventure tiles are gone).
     expect(ids).toHaveLength(10);

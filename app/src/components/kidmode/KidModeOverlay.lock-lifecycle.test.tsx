@@ -34,6 +34,7 @@ vi.mock("react", async (importOriginal) => {
 vi.mock("motion/react", () => ({ motion: { div: "div" }, AnimatePresence: "fragment" }));
 vi.mock("lucide-react", () => ({ ChevronLeft: () => null }));
 vi.mock("./KidModeContext", () => ({ useKidMode: () => ({ isKidModeOpen: h.open, closeKidMode: h.close }) }));
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { uid: "synthetic-owner" } }) }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: { id: "synthetic-child" } }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (key: string) => key, uiLang: "en" }) }));
 vi.mock("../../lib/kidModeGate", () => ({ readKidModeState: () => ({ open: h.open, view: "home" }), writeKidModeState: h.writeState }));
@@ -49,7 +50,7 @@ vi.mock("../../lib/heroRenderStore", () => ({ hydrateHeroRenders: h.hydrate }));
 vi.mock("./kidChrome", () => ({ setKidHome: vi.fn(), useKidStage: () => null }));
 vi.mock("./KidStage", () => ({ KidStage: () => null }));
 vi.mock("./kidStageArt", () => ({ kidStageFor: () => "synthetic-stage" }));
-vi.mock("./kidWorlds", () => ({ SNEAK_FREEZE_WORLD: { worldId: "sneak-freeze" }, flaggedWorldNameKey: () => null, sneakFreezeFlagOn: () => false }));
+vi.mock("./kidWorlds", async (importOriginal) => ({ ...await importOriginal<typeof import("./kidWorlds")>(), SNEAK_FREEZE_WORLD: { worldId: "sneak-freeze" }, flaggedWorldNameKey: () => null, sneakFreezeFlagOn: () => false }));
 
 import KidModeOverlay from "./KidModeOverlay";
 

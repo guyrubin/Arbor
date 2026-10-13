@@ -27,7 +27,7 @@ export interface KidSouvenir {
   kind: SouvenirKind;
   /** The world's routing id or the story id. */
   refId: string;
-  /** When it was first earned (ISO). Never rewritten. */
+  /** First observed completion (ISO). Concurrent offline devices may replace this timestamp. */
   earnedAt: string;
 }
 
@@ -39,7 +39,7 @@ export function souvenirToAward(owned: readonly Pick<KidSouvenir, "id">[], kind:
   if (!refId) return null;
   if (kind === "world" && !kidWorldByWorldId(refId)) return null;
   const id = souvenirId(kind, refId);
-  if (owned.some((s) => s.id === id)) return null;
+  if (owned.some((s) => s?.id === id)) return null;
   return { id, kind, refId, earnedAt: now.toISOString() };
 }
 
@@ -59,7 +59,7 @@ export function souvenirArt(s: Pick<KidSouvenir, "kind" | "refId">, theme: KidTh
 export function souvenirStrip<T extends KidSouvenir>(items: readonly T[]): T[] {
   const seen = new Set<string>();
   const out: T[] = [];
-  for (const s of [...items].sort((a, b) => (a.earnedAt < b.earnedAt ? 1 : a.earnedAt > b.earnedAt ? -1 : 0))) {
+  for (const s of items.filter(s => !!s && (s.kind === "world" || s.kind === "book") && typeof s.refId === "string" && !!s.refId && s.id === souvenirId(s.kind, s.refId) && typeof s.earnedAt === "string" && Number.isFinite(Date.parse(s.earnedAt))).sort((a, b) => (a.earnedAt < b.earnedAt ? 1 : a.earnedAt > b.earnedAt ? -1 : 0))) {
     if (seen.has(s.id)) continue;
     if (s.kind === "world" && !kidWorldByWorldId(s.refId)) continue;
     seen.add(s.id);

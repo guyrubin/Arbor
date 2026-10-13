@@ -86,7 +86,7 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     expect(privateExportApiDisposition('POST', '/api/todays-focus', id)).toBe('read');
   });
   it.each(['en', 'he'])('validates exact partial bytes, identity, filename, registered collections and absence of sibling data (%s)', lang => {
-    expect(collectionNames).toHaveLength(43);
+    expect(collectionNames).toHaveLength(45);
     const fixture = privateExportFixture(seed, lang); const data = dataFor(fixture);
     expect(validatePartialExport(JSON.stringify(data), fixture.filename, fixture)).toBe(true);
     const mutate = (change: (data: any) => void) => { const copy = structuredClone(data); change(copy); expect(validatePartialExport(JSON.stringify(copy), fixture.filename, fixture)).toBe(false); };
@@ -97,6 +97,10 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     mutate(d => { d.exportReceipt.serverData = 'unavailable'; });
     mutate(d => { d.exportReceipt.collections.bookAssets = 'unavailable'; });
     mutate(d => { delete d.collections.heroSheet; });
+    mutate(d => { delete d.collections.studioQuestProgress; });
+    mutate(d => { delete d.collections.bookBookmarks; });
+    mutate(d => { d.collections.studioQuestProgress[0].choice = 'left'; });
+    mutate(d => { d.collections.bookBookmarks[0].edition = 'wrong-edition'; });
     mutate(d => { d.collections.heroSheet.push({ id: fixture.siblingMarker }); });
     mutate(d => { d.privateBookAssets.includedFiles = 1; });
     mutate(d => { d.privateBookAssets.files = [{ data: 'ZmFrZQ==' }]; });
