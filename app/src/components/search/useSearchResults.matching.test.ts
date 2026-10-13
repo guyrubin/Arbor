@@ -11,6 +11,7 @@ const h = vi.hoisted(() => ({
   index: null as SearchIndexModule | null, cursor: 0,
   memos: [] as { deps: unknown[]; value: unknown }[],
   actions: { setActiveTab: vi.fn(), openConversation: vi.fn(), setSelectedLens: vi.fn(), requestJournalFocus: vi.fn(), seedCoach: vi.fn() },
+  talk: vi.fn(),
 }));
 vi.mock("react", () => ({
   useState: () => { h.cursor++; return [h.index, vi.fn()]; },
@@ -26,6 +27,8 @@ vi.mock("react", () => ({
 }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ ...h.records, childProfile: { id: h.childId, age: 4 }, ...h.actions }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: translations[h.lang], uiLang: h.lang }) }));
+// v3 IA-05r: a thread opens in the Talk panel through its one door.
+vi.mock("../../lib/companionConversation", () => ({ requestCompanionConversation: h.talk }));
 import { useSearchResults } from "./useSearchResults";
 import { getSearchIndex, searchCatalog } from "../../lib/searchIndex";
 import { translate } from "../../lib/i18n";
@@ -194,7 +197,11 @@ describe("private query activation, literal symbols and ownership boundaries", (
     expect(catalogSearch).toHaveBeenLastCalledWith(raw.trim(), 12, expect.objectContaining({ locale: "en", ageMonths: 48 }));
     expect(normalizeSearchText(raw)).not.toBe(raw.trim());
     result.record[0].go(); expect(h.actions.requestJournalFocus).toHaveBeenLastCalledWith("moment-a"); expect(h.actions.setActiveTab).toHaveBeenLastCalledWith("journal");
-    result.record[2].go(); expect(h.actions.openConversation).toHaveBeenLastCalledWith("a"); expect(h.actions.setActiveTab).toHaveBeenLastCalledWith("coach");
+    // v3 IA-05r re-pin: a thread opens in the Talk panel over the current page
+    // (requestCompanionConversation), no longer by moving to #/coach.
+    const tabMoves = h.actions.setActiveTab.mock.calls.length;
+    result.record[2].go(); expect(h.actions.openConversation).toHaveBeenLastCalledWith("a"); expect(h.talk).toHaveBeenLastCalledWith({ source: "search" });
+    expect(h.actions.setActiveTab).toHaveBeenCalledTimes(tabMoves);
     result.record[3].go(); expect(h.actions.setActiveTab).toHaveBeenLastCalledWith("milestones");
     result.record[4].go(); expect(h.actions.setActiveTab).toHaveBeenLastCalledWith("plans");
     expect(render(raw, { recordLimit: 2 }).record.map(row => row.id)).toEqual(expected.slice(0, 2));

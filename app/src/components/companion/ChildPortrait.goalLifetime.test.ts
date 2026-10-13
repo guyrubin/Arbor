@@ -68,26 +68,22 @@ function mountedPortraitProof(duplicateKey: boolean) {
   const copy = new Proxy({}, { get: (_, key) => String(key) });
   const Portrait = load("src/components/companion/ChildPortrait.tsx", {
     "../practice/GoalBuilderModal": { default: Picker },
-    "../practice/GoalFocusLine": { GoalFocusLine: ({ onClick, testId }) => React.createElement("button", { onClick, "data-testid": testId }) },
     "../../context/ArborContext": { useArbor: () => ({ childProfile: child, milestones: [], setActiveTab() {}, seedCoach() {}, openCaptureSheet() {}, requestJournalFocus() {} }) },
     "../../context/LanguageContext": language,
     "../../hooks/useObservationRecord": { useObservationRecord: () => ({ observations: [], sources: { behaviorLogs: [] }, loading: true }) },
     "../../lib/domains/registry": { DOMAIN_IDS: [], domainName: id => id },
-    "../../lib/domains/icons": load("src/lib/domains/icons.ts", {}),
     "../../lib/milestoneData": {}, "../../content/behaviorTaxonomy": {},
-    "../ui/Icon": { Icon: empty }, "../ui/Avatar": { Avatar: empty }, "../ui/Modal": { Modal: empty },
-    // v3 IA-06: the selection's history entry and crumb are proven in layout/breadcrumb.test.tsx.
-    "../../hooks/useSheetHistory": { useSheetHistory: (_open, onClose) => after => { onClose(); if (after) after(); } },
-    "../layout/Breadcrumb": { SheetBreadcrumb: empty },
-    "./portraitModel": { buildPortraitChapters: () => [], buildPortraitEnvironments: () => [], buildPortraitThreads: () => [] },
-    "./portraitCopy": { PORTRAIT_COPY: { en: copy, he: copy } }, "./portraitEvidence": {},
-    "../../lib/kpiEvents": { trackCompanionPlaceOpen() {} }, "./PortraitWatchRow": { default: Watch },
-    "./PortraitKeepsakes": { default: empty }, "../describe/KeptDescription": { default: empty }, "../../lib/parentArt": {}, "./childPortrait.css": {},
-    "../../lib/childPicture": { childPicture: () => ({}) },
-    // v3 FEAT-03: the development map and its domain sheet are seams here; their own suites prove them.
-    "./DevelopmentMap": { default: empty }, "./DomainSheet": { default: empty },
-    // v3 FEAT-08: the words-and-firsts strip and its selector are seams too (WordsFirstsStrip.test proves them).
-    "./WordsFirstsStrip": { default: empty, wordsStripMonths: () => [] }, "../../lib/kept/keptThings": { keptThings: () => [] },
+    "./portraitModel": { portraitDiscussionPrompt: () => "" },
+    "./portraitCopy": { PORTRAIT_COPY: { en: copy, he: copy } },
+    "../../lib/kpiEvents": { trackCompanionPlaceOpen() {} }, "./childPortrait.css": {},
+    // v3 F-CHILD-1: the areas card is the keyed sibling the goal picker must not orphan
+    // (MilestoneAreas key={childProfile.id}); its own suites prove what it draws.
+    "./MilestoneAreas": { default: Watch },
+    // v3 F-CHILD-1: the goal card (PortraitCards) is the door that opens the picker.
+    "./PortraitCards": { default: ({ onEditGoal }) => React.createElement("button", { onClick: onEditGoal, "data-testid": "portrait-goals-edit" }) },
+    // v3 F-CHILD-4 RE-PIN (test seam only): the phone stack's doors and width
+    // read; this proof runs the wide order, which keeps the modules it pins.
+    "./ChildDoors": { default: empty, useChildPhoneLayout: () => false },
   }, source => duplicateKey ? source.replace('key={`goal-picker:${childProfile.id}`}', 'key={childProfile.id}') : source).default;
   function Shell() {
     const [route, changeRoute] = React.useState("development"), [, changeVersion] = React.useState(0);

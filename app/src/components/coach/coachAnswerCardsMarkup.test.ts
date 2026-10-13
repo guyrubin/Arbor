@@ -94,8 +94,10 @@ describe("AI-17 — the unified report's English, Hebrew and escalation markup",
    property has regressed. The mutants are built from the real rendered HTML,
    so a matcher that passes on anything cannot pass here. */
 
-const CARD_FRAME = 'class="rounded-xl p-3.5 bg-white"';
-const SECTION_TITLE = "text-[10px] font-extrabold uppercase tracking-wider";
+// F-TALK-2 re-pin (mock L405): the parent script left the white card for the
+// say-quote, so the two frame markers became the quote's two markers.
+const QUOTE_FACE = "font-family:var(--font-display)";
+const QUOTE_RULE = "border-inline-start:2px solid var(--arbor-ink)";
 
 /** Read visibility from the actual static HTML, including hidden ancestors.
  * This checks collapsed markup, not computed CSS or browser layout. */
@@ -183,17 +185,23 @@ describe("AI-17 negative controls — the structural matchers reject a regressed
     expect(html).toContain("<div");
   });
 
-  it("a frame that lost its white fill or padding is rejected", () => {
-    expect(html).toContain(CARD_FRAME);
-    // Mutant: the tone the OTHER surfaces use (paper-deep inset, p-3).
-    const mutant = html.split(CARD_FRAME).join('class="rounded-xl p-3"');
-    expect(mutant).not.toContain(CARD_FRAME);
+  const quote = elementWithAttribute(html, "data-testid", "say-this");
+
+  it("a say-quote that fell back to the sans card face is rejected", () => {
+    expect(quote).toContain('data-presentation="quote"');
+    expect(quote).toMatch(/<blockquote [^>]*font-family:var\(--font-display\)/);
+    // Mutant: the card's body face, which the report used before F-TALK-2.
+    const mutant = quote.split(QUOTE_FACE).join("font-family:var(--font-sans)");
+    expect(mutant).not.toContain(QUOTE_FACE);
+    expect(quote).not.toContain("var(--font-sans)");
   });
 
-  it("a section title that lost its tracked uppercase treatment is rejected", () => {
-    expect(html).toContain(SECTION_TITLE);
-    const mutant = html.split(SECTION_TITLE).join("text-[10px] font-bold");
-    expect(mutant).not.toContain(SECTION_TITLE);
+  it("a say-quote that lost its navy inline-start rule, or gained a card frame, is rejected", () => {
+    expect(quote).toContain(QUOTE_RULE);
+    const mutant = quote.split(QUOTE_RULE).join("border:1px solid var(--arbor-rule)");
+    expect(mutant).not.toContain(QUOTE_RULE);
+    expect(quote).not.toContain('class="rounded-xl p-3.5 bg-white"');
+    expect(quote).not.toContain("text-[10px] font-extrabold uppercase tracking-wider");
   });
 
   it("report action doors retain an outline and accessible touch floor through their shared CSS", () => {
@@ -296,10 +304,11 @@ describe("AI-17 — structured hierarchy preserves the complete answer", () => {
     expect(visibleText(html.replaceAll('hidden=""', ""), contract.nonDiagnosticHypotheses[0].rationale)).toBe(true);
   });
 
-  it("renders the parent script as a quoted, copyable block", () => {
-    expect(html).toContain("Say this");
+  // F-TALK-2 re-pin: was the sans card ("font-family:var(--font-sans);font-style:normal").
+  it("renders the parent script as the say-quote: display face, navy inline-start rule, copyable", () => {
+    expect(html).toContain('aria-label="Say this"');
     expect(html).toContain("“I am right here. I will check on you in two minutes.”");
-    expect(html).toContain("font-family:var(--font-sans);font-style:normal");
+    expect(html).toContain("font-family:var(--font-display);border-inline-start:2px solid var(--arbor-ink)");
     expect(html).toContain("Copy");
   });
 

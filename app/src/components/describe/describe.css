@@ -14,6 +14,9 @@
 .describe-link { min-height: 44px; min-width: 44px; padding: 8px 10px; border-radius: 10px; color: var(--arbor-green-ink); font-size: 14px; font-weight: 700; background: none; }
 .describe-fills > div { display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: 6px; }
 .describe-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 12px; border: 1px solid var(--arbor-rule); border-radius: 999px; background: var(--arbor-paper-deep); color: var(--arbor-ink); font-size: 13px; }
+/* v3 F-CHILD-3 — the area the conversation opens on: the filled navy chip
+   (the same pressed fill as Together's filter row). */
+.describe-chip[aria-pressed="true"] { background: var(--arbor-subtab-active); color: var(--arbor-subtab-on-ink); border-color: var(--arbor-subtab-active); font-weight: 700; }
 .describe-group { display: flex; flex-direction: column; gap: 6px; }
 .describe-group h3 { font-size: 13px; font-weight: 800; color: var(--arbor-lav-ink); margin: 0; }
 .describe-group ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

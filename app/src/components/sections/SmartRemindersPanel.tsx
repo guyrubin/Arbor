@@ -20,6 +20,11 @@
  *     from), no new signal path.
  *   - B-TODAY-02: nothing leaves the app. The contract line says "shows …
  *     inside the app" and that nothing is sent to a phone or email yet.
+ *   - v3 F-NOW-3: the Delivery section also holds the weekly-report email
+ *     opt-in (WeeklyEmailRow), moved here from #/weekly. It keeps its own
+ *     store (recapEmail.ts: a local key plus a best-effort server row) and its
+ *     fail-closed channel; it renders only once the channel exists or the
+ *     parent already opted in.
  *
  * ENTRY POINTS: Settings modal → "Smart Reminders" row (always visible).
  * Also reachable from Ask Arbor section via setActiveTab("smart-reminders").
@@ -45,6 +50,7 @@ import {
    Today pulse (he → 24h "21:00") — one formatter, both locales. */
 import { formatHour } from "../../lib/pulse";
 import PushPrimingCard from "../nextopen/PushPrimingCard";
+import WeeklyEmailRow from "../weekly/WeeklyEmailRow";
 import { usePushPriming } from "../../hooks/usePushPriming";
 import { ageYearsOf } from "../../lib/age/forChild";
 
@@ -344,6 +350,9 @@ export default function SmartRemindersPanel() {
           pending={push.pending}
           onToggle={push.onToggle}
         />
+        {/* v3 F-NOW-3: the weekly-report email opt-in left #/weekly for this
+            section (its own store, recapEmail.ts; fail-closed channel). */}
+        <WeeklyEmailRow childFirst={firstName} />
       </Section>
       </div>
 

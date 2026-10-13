@@ -7,6 +7,7 @@ acute
 add
 add_a_photo
 add_circle
+add_comment
 add_task
 air
 anchor
@@ -37,6 +38,7 @@ book
 bookmark
 bookmark_add
 bookmark_added
+bookmark_remove
 boy
 brush
 bubble
@@ -92,6 +94,7 @@ details
 devices
 diagnosis
 diamond
+directions_car
 directions_run
 directions_walk
 diversity_1
@@ -138,6 +141,7 @@ gpp_maybe
 graphic_eq
 grid_view
 group
+groups
 healing
 health_and_safety
 hearing
@@ -172,6 +176,7 @@ light_mode
 lightbulb
 link
 list
+local_hospital
 local_library
 lock
 logout
@@ -224,6 +229,7 @@ person_add
 person_remove
 phone
 photo
+photo_album
 photo_camera
 photo_library
 pin
@@ -284,6 +290,7 @@ soap
 source
 spa
 sports_esports
+stairs
 star
 start
 step
@@ -321,6 +328,7 @@ translate
 trophy
 try
 tune
+undo
 unfold_more
 upload
 uppercase

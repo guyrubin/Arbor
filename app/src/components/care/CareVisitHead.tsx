@@ -8,7 +8,9 @@ import type { Appointment } from "../../lib/careTrack";
 /* v3 EXTRA-CARE — the head of the Care landing's primary card: the next
    visit (who, when) and how many days are left, in neutral ink. A calendar
    fact about the family's own booking, never a judgement about the child.
-   ConsultTab renders it on #/consult only, above the three prep steps. */
+   ConsultTab hands it to AskSpecialist on #/consult only; the builder sets
+   it at the top of the visit card, with the since counts under it, directly
+   above the three prep steps. The card draws the surface; this is a row. */
 
 const DAY_MS = 86_400_000;
 
@@ -39,11 +41,7 @@ export default function CareVisitHead({ visit, nowMs = Date.now() }: { visit: Ap
   const badge = days === null ? null : inDaysLabel(days);
   const when = visit.whenIso ? fmtDayTime(visit.whenIso, uiLang) : visit.when;
   return (
-    <div
-      data-testid="consult-visit-head"
-      className="mb-5 flex items-start gap-3 rounded-[var(--r-lg)] border p-4"
-      style={{ borderColor: "var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
-    >
+    <div data-testid="consult-visit-head" className="flex flex-wrap items-start gap-x-3 gap-y-2">
       <span
         aria-hidden="true"
         className="flex-shrink-0 inline-flex items-center justify-center w-11 h-11 rounded-xl"
@@ -51,18 +49,18 @@ export default function CareVisitHead({ visit, nowMs = Date.now() }: { visit: Ap
       >
         <Icon name="event" size={22} />
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-40">
         <p className="t-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.consult.visit.kicker")}</p>
-        <p className="t-base font-extrabold leading-snug" style={{ color: "var(--arbor-ink)" }}>{appointmentRoleLabel(visit, t)}</p>
+        <p className="t-lg font-extrabold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{appointmentRoleLabel(visit, t)}</p>
         {when && <p className="t-sm" style={{ color: "var(--arbor-ink-soft)" }}>{when}</p>}
       </div>
       {badge && (
         <span
-          data-testid="consult-visit-in"
-          className="flex-shrink-0 rounded-full px-3 py-1 t-xs font-bold whitespace-nowrap"
+          className="flex-shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1 t-xs font-bold whitespace-nowrap"
           style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
         >
-          {t(badge.key, badge.vars)}
+          <Icon name="schedule" size={14} />
+          <span data-testid="consult-visit-in">{t(badge.key, badge.vars)}</span>
         </span>
       )}
     </div>

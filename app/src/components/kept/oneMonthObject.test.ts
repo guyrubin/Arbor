@@ -16,9 +16,11 @@ describe("one active month object", () => {
   it("catches the exact pre-retirement imports (non-vacuous guard)", () => {
     for (const source of ['import MonthInReview from "../growth/MonthInReview";', 'import MonthKeepsake from "../weekly/MonthKeepsake";', 'import { buildFirstMonthKeepsake } from "../../lib/firstMonthKeepsake";']) expect(source.match(retiredImport)).toHaveLength(1);
   });
-  it("preserves Timeline's MonthsSpine and the current My child disclosure", () => {
+  it("preserves Timeline's MonthsSpine and the kept reader in the (unmounted) keepsake disclosure", () => {
     expect(read("components/tabs/StoryTimelineTab.tsx")).toContain("<MonthsSpine");
-    expect(read("components/companion/ChildPortrait.tsx")).toContain("<PortraitKeepsakes />");
+    // v3 F-CHILD-1 RE-PIN: the brief removes the keepsake disclosure from My
+    // child (gap child-words-keepsakes); the file stays on disk, unmounted.
+    expect(read("components/companion/ChildPortrait.tsx")).not.toContain("<PortraitKeepsakes");
     expect(read("components/companion/PortraitKeepsakes.tsx")).toContain("<KeptThingsPage key={childProfile.id} />");
   });
   it("uses read-only history, explicit pagination, and no write/migration/provider calls", () => {

@@ -476,7 +476,8 @@ const W2_CAREPRO_FLAT_WASHES: Readonly<Record<string, string>> = {
   // The one shell token for sticky offsets inside <main> (sub-nav rail + 16px).
   "--sticky-offset": "calc(1rem + 44px + 16px)",
   // W2-CAREPRO c2 r2: the lg topbar band outside <main> (Topbar.tsx height).
-  "--shell-topbar-h": "74px",
+  // v3 F-SHELL-2 re-pin: the header band is 64 px (was 74 px).
+  "--shell-topbar-h": "64px",
 };
 
 /** B-DESIGN-02 — the P7-DESIGN token move, AUTHORIZED by the framer decision

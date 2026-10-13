@@ -87,6 +87,19 @@ export default function VoiceOverlay({
   const mode = orbMode(phase, reducedMotion);
   const { ref: dialogRef, requestClose } = useDialog<HTMLElement>({ open: true, onClose });
   const phaseLabel = t(`coach.voice.${phase}`);
+  // F-TALK-1: beside a wide page (>= 1280 px) the conversation is a docked
+  // panel, so the sheet rises inside that panel, never over the page beside
+  // it. Below 1280 px the panel is full-screen and the sheet stays fixed.
+  // Layout timing (never on the server) keeps static markup unchanged.
+  const [dockHost, setDockHost] = React.useState<HTMLElement | null>(null);
+  React.useLayoutEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia("(min-width: 1280px)");
+    const find = () => setDockHost(query.matches ? document.querySelector<HTMLElement>(".companion-workspace.is-open .companion-conversation") : null);
+    find();
+    query.addEventListener?.("change", find);
+    return () => query.removeEventListener?.("change", find);
+  }, []);
 
   const overlay = (
     <section
@@ -99,7 +112,10 @@ export default function VoiceOverlay({
       dir={lang === "he" ? "rtl" : "ltr"}
       data-phase={phase}
       data-orb-mode={mode}
-      className="fixed inset-x-0 bottom-0 z-[60] mx-auto w-full max-w-[640px] rounded-t-[28px] border border-b-0 px-5 pb-6 pt-4"
+      data-docked={dockHost ? "true" : undefined}
+      className={dockHost
+        ? "absolute inset-x-0 bottom-0 z-[60] w-full rounded-t-[28px] border border-b-0 px-5 pb-6 pt-4"
+        : "fixed inset-x-0 bottom-0 z-[60] mx-auto w-full max-w-[640px] rounded-t-[28px] border border-b-0 px-5 pb-6 pt-4"}
       style={{ background: "var(--arbor-paper-elevated)", borderColor: "var(--arbor-rule)", boxShadow: "var(--shadow-lg)" }}
     >
       {!reducedMotion && (
@@ -211,6 +227,6 @@ export default function VoiceOverlay({
   );
   // Keep static markup tests/server rendering free of DOM and media effects.
   return typeof document === "undefined" ? overlay : createPortal(
-    <div className="arbor-app arbor-parent" style={{ display: "contents" }}>{overlay}</div>, document.body,
+    <div className="arbor-app arbor-parent" style={{ display: "contents" }}>{overlay}</div>, dockHost ?? document.body,
   );
 }

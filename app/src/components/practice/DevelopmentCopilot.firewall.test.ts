@@ -26,8 +26,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const copilotSrc = readFileSync(path.join(here, "DevelopmentCopilot.tsx"), "utf8");
 // Parity 9 Oct: #/development is the child portrait (with its watch row and
 // keepsake disclosure); the Growth hub file is gone.
-const devTabSrc = ["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx"]
-  .map((f) => readFileSync(path.join(here, "..", "companion", f), "utf8")).join("\n");
+// v3 F-CHILD-1: the page is now the Milestones pill (portrait cards + the areas
+// table); the watch row and keepsake files stay on disk, unmounted, and stay
+// scanned so nothing banned comes back through them.
+const devTabSrc = [
+  "ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx",
+  "PortraitCards.tsx", "MilestoneAreas.tsx", "AreaRowDetail.tsx", "DevelopmentMap.tsx",
+].map((f) => readFileSync(path.join(here, "..", "companion", f), "utf8")).join("\n");
 
 /* ── Banned patterns ─────────────────────────────────────────────────────────
    B1 — the "Discuss"/"Monitor" verdict chip labels (graded level tags).
@@ -145,7 +150,7 @@ describe("1.7 zero-regression — every capability stays reachable, reframed", (
   });
 });
 
-describe("1.7 mount — the Growth leaf (child portrait) hosts the Full Picture door", () => {
+describe("1.7 mount — the Growth leaf (My child, the Milestones pill)", () => {
   /* B-GROWTH-03 — three foreign cards went to the homes that own their job:
      the Growth SpineRibbon (-> Academy) is removed (the Journal ribbon keeps
      the promise), the reminders card lives on #/smart-reminders and the ritual
@@ -157,13 +162,14 @@ describe("1.7 mount — the Growth leaf (child portrait) hosts the Full Picture 
     }
     expect(devTabSrc).not.toContain("growth-spine-ribbon");
   });
-  it("hosts the Full Picture door (the portrait's record tools)", () => {
-    // The hub's teaser card left with the hub; the portrait keeps ONE door.
-    expect(devTabSrc).toContain('setActiveTab("copilot")');
-    expect(devTabSrc).toContain("copy.copilot");
-  });
-  it("links to copilot exactly once (upgraded tile, no duplicate)", () => {
-    expect((devTabSrc.match(/setActiveTab\("copilot"\)/g) ?? []).length).toBe(1);
+  // v3 F-CHILD-1 RE-PIN: the Full Picture door lived in the portrait's record
+  // tools, and the v3 brief removes that list from My child (the full-record
+  // link moves to Care in F-CARE-1; #/copilot becomes the Talk panel in
+  // EXTRA-TALK). Was: "hosts the door" + "exactly one door". Now: no door on
+  // the Milestones page at all, so a second copy cannot creep back either.
+  it("v3 F-CHILD-1: the Milestones page carries no Full Picture door", () => {
+    expect(devTabSrc).not.toContain('setActiveTab("copilot")');
+    expect(devTabSrc).not.toMatch(/goToRoute\(\s*"copilot"/);
   });
 });
 

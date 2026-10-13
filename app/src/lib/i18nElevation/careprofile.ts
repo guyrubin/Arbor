@@ -92,7 +92,7 @@ export const en: Record<string, string> = {
   "elev.consult.bring.development": "Development map",
   "elev.consult.bring.words": "Words and firsts",
   "elev.consult.bring.steps": "Steps and outcomes",
-  "elev.consult.preview.note": "Worded as what you saw and how often, never as a diagnosis. A line you untick stays out.",
+  "elev.consult.preview.note": "Arbor's own lines say what you saw and how often, never a diagnosis. Your words go as you wrote them; a line you untick stays out.",
   "elev.consult.aside.label": "Help and who sees what",
   "elev.consult.aside.safety": "Help and safety",
   "elev.consult.aside.sharing": "Who sees what",
@@ -106,9 +106,11 @@ export const en: Record<string, string> = {
   "elev.consult.door.schoolBrief": "One page for the teacher, in classroom words.",
   "elev.consult.door.appointments": "Visits you booked and what they suggested.",
   "elev.consult.door.summary": "A summary for anyone on your care team.",
-  "elev.consult.trust": "Nothing reaches your care team until you choose. Every summary is worded as what you saw, never as a diagnosis.",
+  "elev.consult.trust": "Nothing reaches your care team until you choose. Arbor's own wording says what you saw and how often, never a diagnosis.",
   "elev.consult.visitOutcome.saveError": "That wasn't saved. Your answer is still here; try again.",
   "elev.consult.visitOutcome.saving": "Saving…",
+  "elev.consult.visitOutcome.queued": "Not confirmed yet. Your answer is kept on this device and finishes saving when the connection is back. You can try again.",
+  "elev.consult.visitOutcome.held": "Not confirmed yet: kept on this device. Save again once you're online.",
 };
 
 export const he: Record<string, string> = {
@@ -180,7 +182,7 @@ export const he: Record<string, string> = {
   "elev.consult.bring.development": "מפת ההתפתחות",
   "elev.consult.bring.words": "מילים ופעמים ראשונות",
   "elev.consult.bring.steps": "צעדים ותוצאות",
-  "elev.consult.preview.note": "מנוסח כמו שראיתם וכמה פעמים, אף פעם לא כאבחנה. שורה שהסרתם ממנה את הסימון לא נשלחת.",
+  "elev.consult.preview.note": "השורות של ארבור אומרות מה ראיתם וכמה פעמים, אף פעם לא אבחנה. המילים שלכם יוצאות כמו שכתבתם; שורה שהסרתם ממנה את הסימון לא נשלחת.",
   "elev.consult.aside.label": "עזרה ומי רואה מה",
   "elev.consult.aside.safety": "עזרה ובטיחות",
   "elev.consult.aside.sharing": "מי רואה מה",
@@ -194,7 +196,9 @@ export const he: Record<string, string> = {
   "elev.consult.door.schoolBrief": "דף אחד לצוות החינוכי, במילים של הכיתה.",
   "elev.consult.door.appointments": "הפגישות שקבעתם ומה המליצו בהן.",
   "elev.consult.door.summary": "סיכום לכל מי שבצוות המטפל.",
-  "elev.consult.trust": "שום דבר לא מגיע לצוות המטפל עד שתבחרו. כל סיכום מנוסח כמו שראיתם, אף פעם לא כאבחנה.",
+  "elev.consult.trust": "שום דבר לא מגיע לצוות המטפל עד שתבחרו. הניסוח של ארבור אומר מה ראיתם וכמה פעמים, אף פעם לא אבחנה.",
   "elev.consult.visitOutcome.saveError": "השמירה לא הצליחה. התשובה עדיין כאן; אפשר לנסות שוב.",
   "elev.consult.visitOutcome.saving": "שומרים…",
+  "elev.consult.visitOutcome.queued": "עדיין לא אושר. התשובה שמורה במכשיר הזה ותסיים להישמר כשהחיבור חוזר. אפשר לנסות שוב.",
+  "elev.consult.visitOutcome.held": "עדיין לא אושר: שמור במכשיר הזה. שמרו שוב כשהחיבור חוזר.",
 };

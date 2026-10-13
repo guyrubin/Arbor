@@ -1,0 +1,106 @@
+/* v3 F-CHILD-3 — My child, the About pill: the describe card, the eight
+   areas, the Details row. Tokens only; logical properties only (RTL mirrors
+   with no extra rule); every control reaches the 44 px floor. Colour belongs
+   to the AREA (its domain tokens), never to the child's state. */
+
+.about-page { display: flex; flex-direction: column; gap: 22px; min-inline-size: 0; max-inline-size: 1000px; margin-inline: auto; inline-size: 100%; color: var(--arbor-ink); }
+.about-kicker { margin: 0; color: var(--arbor-muted); font-size: var(--t-kicker); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+[dir=rtl] .about-kicker { letter-spacing: 0; text-transform: none; }
+
+/* ── The describe card ───────────────────────────────────────────────────── */
+.about-describe { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); overflow: hidden; background: var(--arbor-paper-elevated); border: 1px solid var(--arbor-rule); border-radius: var(--r-xl); box-shadow: var(--shadow-sm); }
+.about-describe-body { display: flex; flex-direction: column; gap: 10px; min-inline-size: 0; padding-block: 24px; padding-inline: 26px; }
+.about-describe h1 { margin: 0; font-family: var(--font-editorial); font-size: var(--t-hero); font-weight: var(--arbor-w-hero); line-height: 1.1; letter-spacing: -.02em; text-align: start; text-wrap: balance; color: var(--arbor-ink); }
+.about-describe-sub { margin: 0; max-inline-size: 60ch; color: var(--arbor-muted); font-size: 14px; line-height: 1.55; }
+.about-told { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--arbor-ink-soft); font-size: 13px; font-weight: 600; line-height: 1.45; }
+.about-ctas { display: flex; flex-wrap: wrap; gap: 8px; margin-block-start: 6px; }
+.about-cta { display: inline-flex; align-items: center; gap: 8px; min-block-size: 46px; min-inline-size: var(--touch-min); padding-inline: 18px; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.about-cta-primary { border: 0; background: var(--arbor-clay); color: var(--arbor-on-accent); }
+.about-cta-primary:hover { background: var(--arbor-clay-deep); }
+.about-cta-secondary { border: 1px solid var(--arbor-rule-strong); background: transparent; color: var(--arbor-ink); }
+.about-cta-secondary:hover { background: var(--arbor-paper-deep); }
+
+/* The art panel: soft area blobs and the child's hero render or initial —
+   never an uploaded photo. Decorative. */
+.about-art { position: relative; display: grid; place-items: center; min-block-size: 220px; overflow: hidden; background: linear-gradient(160deg, var(--arbor-paper-deep), var(--arbor-domain-talking-soft)); }
+.about-art-blob { position: absolute; display: block; border-radius: 62% 38% 60% 40% / 40% 60% 40% 60%; opacity: .85; }
+.about-art-blob-a { inset-block-start: -40px; inset-inline-start: -30px; inline-size: 160px; block-size: 160px; background: linear-gradient(135deg, var(--arbor-domain-feelings-soft), var(--arbor-domain-feelings-ink)); opacity: .55; }
+.about-art-blob-b { inset-block-end: -40px; inset-inline-start: 45%; inline-size: 120px; block-size: 120px; border-radius: 45% 55% 40% 60% / 55% 45% 55% 45%; background: linear-gradient(135deg, var(--arbor-domain-thinking-soft), var(--arbor-domain-thinking-ink)); opacity: .45; }
+.about-art-blob-c { inset-block-start: 24px; inset-inline-end: -26px; inline-size: 96px; block-size: 96px; border-radius: 58% 42% 55% 45% / 50% 45% 55% 50%; background: linear-gradient(135deg, var(--arbor-domain-family-soft), var(--arbor-domain-family-ink)); opacity: .5; }
+.about-art-face { position: relative; display: grid; place-items: center; inline-size: 128px; block-size: 128px; overflow: hidden; border: 4px solid var(--arbor-paper-elevated); border-radius: 50%; background: var(--arbor-domain-playing-soft); box-shadow: var(--shadow-md); }
+.about-art-face img { inline-size: 100%; block-size: 100%; object-fit: cover; }
+.about-art-initial { font-family: var(--font-display); font-size: 52px; font-weight: 700; color: var(--arbor-domain-playing-ink); }
+
+/* ── The eight areas ─────────────────────────────────────────────────────── */
+.about-aspects-head { display: flex; flex-direction: column; gap: 4px; }
+.about-aspects-head h2 { margin: 0; font-family: var(--font-display); font-size: var(--t-title); font-weight: var(--arbor-w-title); line-height: 1.2; }
+.about-aspects-head p:last-child { margin: 0; color: var(--arbor-muted); font-size: 13px; line-height: 1.5; }
+.about-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.about-grid > li { display: flex; min-inline-size: 0; }
+.about-aspect { display: flex; flex-direction: column; gap: 9px; inline-size: 100%; min-inline-size: 0; padding: 16px; background: var(--arbor-paper-elevated); border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); }
+.about-aspect-head { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 15px; font-weight: 700; line-height: 1.3; }
+.about-aspect-glyph { position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; inline-size: 48px; block-size: 48px; color: var(--arbor-on-accent); }
+.about-aspect-glyph::before { content: ""; position: absolute; inset: 0; border-radius: 58% 42% 55% 45% / 50% 45% 55% 50%; background: var(--aspect-ink); }
+.about-aspect-glyph > * { position: relative; }
+.about-aspect-quote { flex: 1 1 auto; margin: 0; padding-inline-start: 10px; border-inline-start: 2px solid var(--aspect-ink); font-family: var(--font-editorial); font-size: 15px; font-weight: 400; line-height: 1.4; overflow-wrap: anywhere; }
+.about-aspect-ask { flex: 1 1 auto; margin: 0; color: var(--arbor-muted); font-size: 13px; line-height: 1.45; }
+.about-aspect-src { margin: 0; color: var(--arbor-muted); font-size: 12px; line-height: 1.5; }
+.about-aspect-langs { display: flex; flex-direction: column; gap: 4px; margin: 0; padding-inline-start: 10px; border-inline-start: 2px solid var(--aspect-ink); }
+.about-aspect-langs > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.about-aspect-langs dt { color: var(--arbor-muted); font-size: 12px; }
+.about-aspect-langs dd { margin: 0; font-family: var(--font-editorial); font-size: 15px; line-height: 1.35; }
+.about-aspect-still { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; color: var(--arbor-muted); font-size: 12px; }
+.about-aspect-still button { min-block-size: var(--touch-min); min-inline-size: var(--touch-min); padding-inline: 4px; border: 0; background: none; color: var(--arbor-clay); font: inherit; font-weight: 700; cursor: pointer; }
+
+/* A proposal waiting for the parent: amber is the PROPOSAL's state. */
+.about-aspect-pending { display: flex; flex-direction: column; gap: 6px; padding-block: 8px; padding-inline: 10px; border: 1px solid var(--arbor-yellow-soft); border-radius: var(--r-sm); background: var(--arbor-yellow-wash); color: var(--arbor-ink); font-size: 13px; line-height: 1.45; }
+.about-aspect-pending > p { display: flex; align-items: flex-start; gap: 6px; margin: 0; overflow-wrap: anywhere; }
+.about-aspect-pending > p > .msr { flex: none; margin-block-start: 1px; color: var(--arbor-yellow-ink); }
+.about-aspect-pending strong { color: var(--arbor-yellow-ink); }
+.about-aspect-pending-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.about-aspect-pending-actions button { display: inline-flex; align-items: center; gap: 4px; min-block-size: var(--touch-min); min-inline-size: var(--touch-min); padding-inline: 12px; border: 1px solid var(--arbor-rule-strong); border-radius: 10px; background: var(--arbor-paper-elevated); color: var(--arbor-ink); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.about-aspect-pending-actions button:disabled { opacity: .55; cursor: default; }
+.about-aspect-receipt { margin: 0; color: var(--arbor-ink-soft); font-size: 12px; font-weight: 600; }
+
+.about-aspect-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; margin-block-start: auto; }
+.about-link { display: inline-flex; align-items: center; gap: 5px; min-block-size: var(--touch-min); min-inline-size: var(--touch-min); padding: 0; border: 0; background: none; color: var(--arbor-clay); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+
+/* ── What Arbor remembers + Details ──────────────────────────────────────── */
+.about-memory-door { display: flex; align-items: center; justify-content: space-between; gap: 12px; inline-size: 100%; min-block-size: var(--touch-min); padding-block: 12px; padding-inline: 16px; border: 1px solid var(--arbor-rule); border-radius: var(--r); background: var(--arbor-paper-elevated); color: var(--arbor-ink); font: inherit; font-size: 15px; font-weight: 700; text-align: start; cursor: pointer; }
+.about-memory-door-text { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+.about-memory-waiting { color: var(--arbor-muted); font-size: 13px; font-weight: 500; line-height: 1.45; }
+.about-details { display: flex; flex-direction: column; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); background: var(--arbor-paper-elevated); }
+/* ONE tap: the whole row opens the profile drawer. */
+.about-details-row { display: flex; align-items: center; gap: 12px; inline-size: 100%; min-block-size: var(--touch-min); padding-block: 12px; padding-inline: 16px; border: 0; border-radius: var(--r-lg); background: none; color: var(--arbor-ink); font: inherit; text-align: start; cursor: pointer; }
+.about-details-row:hover { background: var(--arbor-paper-deep); }
+.about-details-text { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; flex: 1 1 auto; }
+.about-details-title { font-size: 15px; font-weight: 700; }
+.about-details-line { color: var(--arbor-muted); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.about-details-edit { flex: none; color: var(--arbor-clay); font-size: 13px; font-weight: 700; }
+.about-details-row > .msr { flex: none; color: var(--arbor-muted); }
+.about-details > button:not(.about-details-row) { align-self: flex-start; margin-inline: 16px; }
+/* Measurements: their own closed disclosure (the growth log is not in the drawer). */
+.about-measurements { margin-inline: 16px; border-block-start: 1px solid var(--arbor-rule); }
+.about-measurements > summary { display: flex; align-items: center; gap: 10px; min-block-size: var(--touch-min); padding-block: 10px; list-style: none; cursor: pointer; }
+.about-measurements > summary::-webkit-details-marker { display: none; }
+.about-measurements > summary > .msr:last-child { flex: none; transition: transform .15s ease; }
+.about-measurements[open] > summary > .msr:last-child { transform: rotate(180deg); }
+.about-measurements-body { padding-block: 4px 16px; }
+
+.about-page button:focus-visible, .about-measurements > summary:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
+
+@media (min-width: 768px) { .about-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .about-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 767.98px) {
+  .about-describe { grid-template-columns: minmax(0, 1fr); }
+  .about-describe-body { padding-block: 20px; padding-inline: 18px; }
+  /* Phone: the art comes first, a 110 px band with the face at its end. */
+  .about-art { order: -1; min-block-size: 110px; }
+  .about-art-face { position: absolute; inset-block-start: 50%; inset-inline-end: 16px; inline-size: 72px; block-size: 72px; border-width: 3px; transform: translateY(-50%); }
+  .about-art-initial { font-size: 30px; }
+  .about-art-blob-a { inline-size: 88px; block-size: 88px; inset-block-start: -24px; inset-inline-start: -18px; }
+  .about-art-blob-b { inline-size: 66px; block-size: 66px; inset-block-end: -22px; inset-inline-start: 38%; }
+  .about-art-blob-c { inline-size: 44px; block-size: 44px; inset-block-start: 14px; inset-inline-end: 104px; }
+  .about-cta { flex: 1 1 auto; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) { .about-measurements > summary > .msr:last-child { transition: none; } }

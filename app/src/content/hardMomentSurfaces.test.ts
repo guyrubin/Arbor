@@ -77,7 +77,8 @@ describe("CONT-2 — before the pilot release, the all-draft pack is unavailable
 
   it("CoachTab's one door (B-ASKJB-31) is gated on the available pilot guides, never the published list", () => {
     const code = stripComments(read("components/tabs/CoachTab.tsx"));
-    expect(code).toMatch(/hardMomentGuides\.length\s*>\s*0\s*&&/);
+    // F-TALK-1 re-pin: the door is the composer tray's, passed only while a guide is available.
+    expect(code).toMatch(/hardMomentGuides\.length\s*>\s*0\s*\?\s*\(\) => openHardMomentNow\(\)\s*:\s*undefined/);
     expect(code).not.toContain("publishedHardMomentCards");
   });
 

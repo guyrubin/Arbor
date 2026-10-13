@@ -69,3 +69,11 @@ export function backTargetFor(tab: ActiveTab): CompanionPlace | CompanionDoor | 
   const target = home.kind === "place" ? home.place : home.door;
   return target.tab === tab ? null : target;
 }
+
+/** v3 F-SHELL-2 (critic ruling 10): the home the desktop chrome lights and
+ *  names. Talk is a panel over a page, never a place: on #/coach and #/scholar
+ *  the page under the panel is Now, so the Sidebar lights Now and the header
+ *  reads Now (one answer to "where am I"). Every other home passes through. */
+export function chromeLitHome(home: CompanionHome): CompanionHome {
+  return home.kind === "door" && home.door.id === "talk" ? HOMES.now : home;
+}

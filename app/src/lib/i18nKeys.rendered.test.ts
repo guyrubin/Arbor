@@ -96,9 +96,13 @@ describe("1 · every literal i18n key in src/** resolves in EN and HE", () => {
       let m: RegExpExecArray | null;
       while ((m = dynSite.exec(src))) found.add(m[1]);
     }
+    // v3 F-SHELL-2 re-pin: the Topbar was the only "nav.sub." + and
+    // "nav.title." + site; the header now prints the route's home name
+    // (critic ruling 6), so both left the inventory. The keys themselves stay
+    // in the dictionaries (the brief keeps them; navNaming pins their text).
     expect([...found].sort()).toEqual([
       "hm.cat.", "nav.cat.",
-      "nav.sub.", "nav.tab.", "nav.title.", "noticed.domain.", "ob.lang.", "sm.extra.",
+      "nav.tab.", "noticed.domain.", "ob.lang.", "sm.extra.",
     ]);
     expect(found.has("nav.")).toBe(false);
   });

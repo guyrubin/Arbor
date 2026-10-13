@@ -63,6 +63,16 @@ describe("the compact, single global Ask and capture entry", () => {
     const copy = NOW_COPY[lang];
     const html = render();
     expect(html).toContain(copy.talk);
+    // F-TALK-1: the bar shows its full label, and that label is its name.
+    const label = translate(lang, "companion.launcher.label");
+    expect(label.startsWith(copy.talk)).toBe(true);
+    const ask = state.nodes.find(n => n.props.className === "companion-launch-main")!.props;
+    expect(ask["aria-label"]).toBe(label);
+    expect(state.nodes.find(n => n.props.className === "companion-launch-copy")!.props.children[0]).toBe(label);
+    if (lang === "he") expect(label).not.toMatch(/[A-Za-z]/);
+    // The Keep choices name themselves with a visible heading.
+    expect(state.nodes.find(n => n.props.className === "companion-capture-options")!.props["aria-labelledby"]).toBe("companion-capture-heading");
+    expect(state.nodes.find(n => n.props.id === "companion-capture-heading")!.props.children).toBe(copy.quickSave);
     expect(html).not.toContain("What would you like to share?");
     expect(html).not.toContain("<small>");
     expect(html).toContain('class="companion-capture-menu"');
@@ -190,21 +200,33 @@ describe("FEAT-05 — the question chip in the conversation header", () => {
   const chip = () => state.nodes.find(n => n.type === "button" && n.props["data-testid"] === "conversation-topic-chip");
   const chipMarkup = (html: string) => html.match(/<button[^>]*data-testid="conversation-topic-chip"[\s\S]*?<\/button>/)?.[0] ?? "";
 
-  it.each(["en", "he"] as const)("shows the active question as a chip beside the child's name, and tapping it asks for the question sheet (%s)", lang => {
+  // F-TALK-1 re-pin: beside a wide page (>= 1280 px) the header carries the
+  // chip alone; below it, one muted tappable line "<child> · <question>".
+  it.each(["en", "he"] as const)("beside a wide page the active question is the chip alone (%s)", lang => {
+    state.lang = lang; state.activeTab = "coach"; state.topic = MORNINGS;
+    vi.stubGlobal("window", { matchMedia: () => ({ matches: true }) });
+    const html = render();
+    expect(html).not.toContain('class="companion-conversation-name"');
+    expect(html).not.toContain("companion-topic-line");
+    expect(chip()!.props.className).toBe("companion-topic-chip");
+    expect(chipMarkup(html).replace(/<[^>]+>/g, "")).toBe(`bookmark${MORNINGS.title}`);
+    expect(chip()!.props["aria-label"]).toBe(translate(lang, "companion.topic-chip.open", { value0: MORNINGS.title }));
+  });
+
+  it.each(["en", "he"] as const)("below 1280 px the question is one muted line '<child> · <question>', and tapping it asks for the question sheet (%s)", lang => {
     state.lang = lang; state.activeTab = "coach"; state.topic = MORNINGS;
     const html = render();
-    expect(html).toContain('class="companion-conversation-name"');
-    expect(html).toContain("Noa");
-    // The old plain-text " · question" suffix is gone; the question is the chip.
-    expect(html).not.toContain(` · ${MORNINGS.title}`);
+    expect(html).not.toContain('class="companion-conversation-name"');
+    expect(html).not.toContain("companion-topic-chip");
     const props = chip()!.props;
+    expect(props.className).toBe("companion-topic-line");
     expect(props.type).toBe("button");
     expect(props["aria-haspopup"]).toBe("dialog");
     expect(props["aria-label"]).toBe(translate(lang, "companion.topic-chip.open", { value0: MORNINGS.title }));
     expect(props["aria-label"]).toContain(MORNINGS.title);
     expect(props["aria-label"]).not.toMatch(/^companion\./);
-    // Text only: the bookmark glyph and the question — never a count, dot or state.
-    expect(chipMarkup(html).replace(/<[^>]+>/g, "")).toBe(`bookmark${MORNINGS.title}`);
+    // Text only: the child, a middle dot, the question; no glyph, count or state.
+    expect(chipMarkup(html).replace(/<[^>]+>/g, "")).toBe(`Noa · ${MORNINGS.title}`);
     const sheet = new EventTarget();
     const heard = vi.fn();
     sheet.addEventListener(FAMILY_TOPIC_SHEET_EVENT, heard);
@@ -216,11 +238,13 @@ describe("FEAT-05 — the question chip in the conversation header", () => {
     expect(state.openCaptureSheet).not.toHaveBeenCalled();
   });
 
-  it("renders no chip and no empty pill without an active question", () => {
+  it("renders no chip and no empty pill without an active question: the header names the child", () => {
     state.activeTab = "coach";
     const html = render();
+    expect(html).toContain('class="companion-conversation-name"');
     expect(html).toContain("Noa");
     expect(html).not.toContain("companion-topic-chip");
+    expect(html).not.toContain("companion-topic-line");
     expect(chip()).toBeUndefined();
   });
 
@@ -234,6 +258,9 @@ describe("FEAT-05 — the question chip in the conversation header", () => {
     const chipRule = /\.companion-topic-chip \{([^}]*)\}/.exec(css)?.[1] ?? "";
     expect(chipRule).toMatch(/min-block-size: 44px/);
     expect(chipRule).not.toMatch(/(?:^|;)\s*(?:height|max-height):/);
+    // F-TALK-1: the phone line keeps the same 44 px floor and ends in an ellipsis.
+    expect(/\.companion-topic-line \{([^}]*)\}/.exec(css)?.[1] ?? "").toMatch(/min-block-size: 44px/);
+    expect(css).toMatch(/\.companion-topic-line-text \{[^}]*text-overflow: ellipsis/);
     expect(css).toMatch(/\.companion-conversation-context \.companion-topic-chip-text \{[^}]*text-overflow: ellipsis/);
     const feat = css.slice(css.indexOf(".companion-conversation-context {"), css.indexOf(".companion-chrome-button {"));
     expect(feat.length).toBeGreaterThan(0);

@@ -10,27 +10,35 @@ const read = (rel: string) => readFileSync(path.resolve(__dirname, "..", "..", r
   .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 const together = read("components/companion/TogetherView.tsx");
 
-describe("Together restores, inside its four modules", () => {
-  it("the since-line (B-PLAY-05/B-KID-31) and its Keep (B-SHELL-NEW-1b) sit in the invitation", () => {
+describe("Together restores, inside its five modules", () => {
+  // v3 F-TOG-1 re-pin: the invitation is the v3 hero (one move and the studio
+  // doors). The since-line, its Keep and the hand-over left it; Start playing
+  // lives on the gate card, and kid-world moments surface in Now and Moments.
+  it("the invitation holds the one move and the studio doors, and no since-line, Keep or hand-over", () => {
     const hero = together.slice(together.indexOf('data-module="together-invitation"'), together.indexOf("</section>"));
-    expect(hero).toContain('data-testid="together-since"');
-    expect(hero).toContain('data-testid="together-since-keep"');
-    expect(hero).toContain('data-testid="together-handover"');
-    expect(together).toContain("doorSinceSentence({");
-    expect((together.match(/\bdata-module=/g) ?? []).length).toBe(4);
+    expect(hero).toContain('data-primary-move="choose-together" data-testid="together-cta"');
+    expect(hero).toContain('data-testid="together-doors"');
+    for (const gone of ['data-testid="together-since"', 'data-testid="together-since-keep"', 'data-testid="together-handover"']) expect(together).not.toContain(gone);
+    expect(together).not.toContain("doorSinceSentence(");
+    expect(together).toContain('data-testid="together-start-playing"');
+    expect((together.match(/\bdata-module=/g) ?? []).length).toBe(5);
   });
-  it("the Keep owns its failure message (the seam stays quiet)", () => {
-    expect(together).toContain("saveMoment(sinceText, { callerShowsFailure: true })");
-    expect(together).toContain("{sinceError && <p role=\"alert\"");
+  it("keeping an away idea owns its failure message (the seam stays quiet)", () => {
+    expect(together).toContain("saveMoment(moment, { callerShowsFailure: true })");
+    expect(together).toContain("{saveError && <p role=\"alert\"");
   });
   it("per-world counts show in the Games filter only, each in its own unit (B-PLAY-02)", () => {
     expect(together).toMatch(/category === "games" && \(counts\.byWorld\[world\.id\] \?\? 0\) > 0 && <span className="companion-world-count"/);
     expect(together).toContain("studioCountKey(world.unit, counts.byWorld[world.id])");
   });
-  it("trust chips, the play note and the one-time PIN nudge are parent copy on the parent page", () => {
-    for (const key of ["elev.practice.door.private", "elev.practice.door.stars", "practice.studio.note", "elev.gate.set.title"]) expect(together).toContain(key);
-    expect(together).toContain("const [nudgePin] = useState(() => shouldNudgeForPin());");
-    expect(together).toContain("if (nudgePin) markPinNudgeShown();");
+  it("trust chips and the play note are parent copy in Settings › PIN; the gate card asks for the PIN", () => {
+    // v3 F-TOG-1 re-pin: they moved from Together's footer to the PIN section,
+    // and the one-time nudge folded into the gate card's "set a PIN" line.
+    const settings = read("components/layout/ParentalGatePanel.tsx");
+    for (const key of ["elev.practice.door.locked", "elev.practice.door.gated", "elev.practice.door.private", "elev.practice.door.stars", "practice.studio.note"]) expect(settings).toContain(key);
+    for (const key of ["elev.practice.door.private", "practice.studio.note", "elev.gate.set.title", "shouldNudgeForPin", "markPinNudgeShown"]) expect(together).not.toContain(key);
+    expect(together).toContain('t("companion.together-view.you-choose-when-to-enter-play-your-pin-pro")');
+    expect(together).toContain('t("companion.together-view.play-opens-in-the-child-area-set-a-pin-to")');
   });
   it("under three, the from-three line names the child in the right grammatical gender", () => {
     expect(together).toContain('t(genderedKey("elev.ages.practice.fromThree", childProfile.gender), { name })');

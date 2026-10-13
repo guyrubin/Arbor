@@ -141,10 +141,15 @@ describe("B-SHELL-19 · pulses carry no denominator; the hub line and the strip 
     }
   });
 
-  it("the strip label is 'Working on' (EN + HE) and opens the profile editor", () => {
+  // v3 F-SHELL-3 (IA-03) re-pin — was "...and opens the profile editor"
+  // (Shell toContain setProfileEditOpen / <ProfileEditDrawer): the phone strip's
+  // Working on button is gone with the strip's move out of <main>, and so is the
+  // drawer it opened. The profile is edited from About <child>. The keys stay.
+  it("the strip label keys stay (EN + HE); the strip no longer opens the profile editor", () => {
     expect(en["top.focus"]).toBe("Working on");
     expect(he["top.focus"]).toBe("עובדים על");
-    expect(shell).toContain('onClick={() => setProfileEditOpen(true)}');
-    expect(shell).toContain("<ProfileEditDrawer open={profileEditOpen}");
+    expect(shell).not.toContain("setProfileEditOpen(true)");
+    expect(shell).not.toContain("<ProfileEditDrawer");
+    expect(shell).not.toContain('data-testid="strip-working-on"');
   });
 });

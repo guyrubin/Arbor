@@ -44,6 +44,7 @@ async function mountedCloseProof() {
     if (name === "../../context/ArborContext") return { useArbor: () => React.useContext(Context) };
     if (name === "../../context/LanguageContext") return { useLanguage: () => ({ uiLang: "en" }) };
     if (name === "../../hooks/useDialog") return { useDialog: () => ({ ref: React.useRef(null) }) };
+    if (name === "../../hooks/useVisualViewportInset") return { useVisualViewportInset() {} };
     if (name === "../../lib/i18n") return { translate: (_lang, key) => key };
     if (name === "../../lib/kidModeGate") return { isKidModeActive: () => gate };
     if (name === "../../lib/companionConversation") return { COMPANION_CONVERSATION_EVENT: "test-conversation" };
@@ -60,15 +61,17 @@ async function mountedCloseProof() {
     throw new Error(`UNMOCKED_IMPORT:${name}`);
   }, component, component.exports);
   const paint = () => { const pending = [...frames.values()]; frames.clear(); pending.forEach(callback => callback()); };
-  function mount(tab, isWide = false) {
-    wide = isWide; gate = false; frames.clear(); focusCalls.length = 0;
+  // `kid` mounts with Kid Mode already open (the gate and the prop), as after
+  // a reload; setActiveTab is frozen under the gate, as ArborContext's is.
+  function mount(tab, isWide = false, kid = false) {
+    wide = isWide; gate = kid; frames.clear(); focusCalls.length = 0;
     const container = doc.createElement("div"); doc.body.appendChild(container);
     const root = createRoot(container);
     let update, current;
     function Driver() {
-      const [state, setState] = React.useState({ activeTab: tab, childProfile: { id: "child-a", name: "Noa", age: 4 }, kidLocked: false });
+      const [state, setState] = React.useState({ activeTab: tab, childProfile: { id: "child-a", name: "Noa", age: 4 }, kidLocked: kid });
       update = patch => setState(value => ({ ...value, ...patch })); current = state;
-      const value = { ...state, activeFamilyTopic: null, chatInput: "", setActiveTab: activeTab => update({ activeTab }), setChatInput() {}, openCaptureSheet() {}, openHardMomentNow() {} };
+      const value = { ...state, activeFamilyTopic: null, chatInput: "", setActiveTab: activeTab => { if (!gate) update({ activeTab }); }, setChatInput() {}, openCaptureSheet() {}, openHardMomentNow() {} };
       return React.createElement(Context.Provider, { value }, React.createElement(component.exports.default, { kidLocked: state.kidLocked }, React.createElement("main", null, "Page")));
     }
     flushSync(() => root.render(React.createElement(Driver)));
@@ -77,6 +80,7 @@ async function mountedCloseProof() {
       update: patch => flushSync(() => update(patch)),
       close: () => flushSync(() => callbacks.close()), launch: () => flushSync(() => callbacks.launch()),
       tab: () => current.activeTab, launcher,
+      panel: () => container.getElementsByTagName("aside").length > 0,
       clearFocus: () => { doc.activeElement = doc.body; focusCalls.length = 0; },
       focused: () => !!launcher() && doc.activeElement === launcher(),
       focusedWithoutScroll: () => !!launcher() && focusCalls.some(call => call.el === launcher() && call.options?.preventScroll === true),
@@ -122,7 +126,15 @@ async function mountedCloseProof() {
     const beforePaint = m.focused(); paint();
     memory.push({ entry, wide: isWide, target: m.tab(), launcher: !!m.launcher(), beforePaint, focused: m.focused(), preventScroll: m.focusedWithoutScroll() }); m.unmount();
   }
-  process.stdout.write(JSON.stringify({ returned, cancelled, noUnrequestedFocus, memory }));
+  // F-TALK-1 review r1: a reload on #/coach while Kid Mode is still open. The
+  // route is held (navigation is frozen), nothing opens under the overlay, and
+  // once the parent is back the address settles on the place, quietly.
+  const k = mount("coach", false, true);
+  const kidHeld: Record<string, unknown> = { held: k.tab(), panelWhileLocked: k.panel(), launcherWhileLocked: !!k.launcher() };
+  gate = false; k.update({ kidLocked: false });
+  Object.assign(kidHeld, { settled: k.tab(), launcher: !!k.launcher(), panel: k.panel() });
+  k.unmount();
+  process.stdout.write(JSON.stringify({ returned, cancelled, noUnrequestedFocus, memory, kidHeld }));
 }
 
 function proof() {
@@ -145,5 +157,10 @@ describe("CompanionWorkspace explicit close focus after real React commits", () 
   it("FEAT-01: 'What Arbor remembers' closes the panel at every width, opens the memory page and returns focus to the launcher", () => {
     expect(result.memory).toHaveLength(4);
     for (const row of result.memory) expect(row, JSON.stringify(row)).toMatchObject({ target: "memory", launcher: true, beforePaint: false, focused: true, preventScroll: true });
+  });
+  it("F-TALK-1 review r1: #/coach under Kid Mode is held, then settles on the place when the parent is back", () => {
+    // Before the fix the route effect called the frozen setActiveTab, so the
+    // tab stayed "coach" (no page under the overlay) after Kid Mode closed.
+    expect(result.kidHeld).toEqual({ held: "coach", panelWhileLocked: false, launcherWhileLocked: false, settled: "overview", launcher: true, panel: false });
   });
 });

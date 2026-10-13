@@ -132,13 +132,18 @@ const BRING_GROUPS: readonly { id: string; icon: string; labelKey: string; secti
 
 /** W2-CAREPRO r1: ConsultTab hands its route stamp here; it lands on the
  *  selected audience chip (one 44 px button in step 1), never on a wrapper. */
-export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard, excludeTeacher = false, landing = false }: {
+export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard, excludeTeacher = false, landing = false, head }: {
   primaryMoveStamp?: Record<string, string>;
   /** v3 EXTRA-CARE: #/consult, the Care landing. The three steps read
    *  "Choose what to bring" (who it is for, then what to bring as chips,
    *  "Our question" among them), "Preview the summary" and "Share"; the
    *  preview says how it is worded. The same packet, gate and egress. */
   landing?: boolean;
+  /** v3 EXTRA-CARE: the next visit (who, when, in how many days) heading the
+   *  Care landing's visit card. With it, the "since" counts sentence moves
+   *  up from step 2 into that head, so the card reads visit, since, then
+   *  steps 1-3 with nothing in between. */
+  head?: React.ReactNode;
   /** v3 FEAT-09: the Care summary pill (#/handoff) builds the professional
    *  summary only. The teacher chip is left out (School brief is its own
    *  pill), and a stored, anchored or prefilled teacher audience starts at
@@ -597,9 +602,43 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     </button>
   ) : null;
 
+  /* W2-CAREPRO r1: "what changed" is answered first — B-CAREPRO-17's
+     "Since you last shared with {audience}" counts (counts only; the same
+     section rides the packet below). r2: on a first visit it is a
+     numerator-only sentence from the record. It heads step 2, or, on the Care
+     landing with a visit (v3 EXTRA-CARE), sits in the visit card's head under
+     the visit, aligned with its title. */
+  const sinceInHead = !!head && !isTeacher;
+  const sinceHead = sinceSentence ? (
+    <div
+      data-testid="consult-since-head"
+      data-anchor={anchor.kind}
+      className={sinceInHead ? "min-w-0 sm:ps-14" : "mt-3 rounded-[13px] p-3.5"}
+      style={sinceInHead ? undefined : { background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}
+    >
+      <p data-testid="consult-since-counts" className={sinceInHead ? "t-sm" : "t-sm font-bold"} style={{ color: sinceInHead ? "var(--arbor-ink-soft)" : INK }}>{sinceSentence}</p>
+      {/* W2-CAREPRO c2 r1: what the professional said, in the parent's own
+          after-visit note (Appointments' follow-up), under the anchor. */}
+      {anchor.kind === "visit" && anchor.note && (
+        <figure data-testid="consult-visit-note" className="mt-2">
+          <figcaption className="t-xs" style={{ color: MUTED }}>{t("elev.carehonesty.consult.since.visitNote")}</figcaption>
+          <blockquote dir="auto" className="t-sm mt-0.5" style={{ color: INK }}>“{anchor.note}”</blockquote>
+        </figure>
+      )}
+    </div>
+  ) : null;
+
   return (
     /* W2: one DOM/visual sequence: who, purpose, editable packet, contract, review/export. */
     <motion.div {...motionProps} className="flex flex-col gap-5 max-w-[1180px]">
+      {/* v3 EXTRA-CARE: the visit card's head — the visit, then the since
+          counts — directly above step 1, closed by one hairline. */}
+      {head && (
+        <div data-testid="consult-visit-card-head" className="flex flex-col gap-2 border-b pb-5" style={{ borderColor: RULE }}>
+          {head}
+          {sinceInHead && sinceHead}
+        </div>
+      )}
       {/* Step 1 · Who is it for? — the audience IS the preset (B-CAREPRO-28).
           LC-28 / OBJ-CARE-02: the hub CTA scrolls to and focuses this row. */}
       <section data-testid="consult-audience-step" className="flex flex-col gap-2">
@@ -750,23 +789,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       {/* Step 2 · What changed — purpose first; the same builder carries it into every clinician packet. */}
       <section data-testid="consult-reason-section" className="border-t pt-5" style={{ borderColor: RULE }}>
         {stepHeading(2, landing ? t("elev.consult.step.preview") : t("elev.carehonesty.consult.step.changed"))}
-        {/* W2-CAREPRO r1: "what changed" is answered first — B-CAREPRO-17's
-            "Since you last shared with {audience}" counts head step 2 (counts
-            only; the same section rides the packet below). r2: on a first
-            visit the head is a numerator-only sentence from the record. */}
-        {sinceSentence && (
-        <div data-testid="consult-since-head" data-anchor={anchor.kind} className="mt-3 rounded-[13px] p-3.5" style={{ background: "var(--arbor-paper-sunk)", border: `1px solid ${RULE}` }}>
-          <p data-testid="consult-since-counts" className="t-sm font-bold" style={{ color: INK }}>{sinceSentence}</p>
-          {/* W2-CAREPRO c2 r1: what the professional said, in the parent's own
-              after-visit note (Appointments' follow-up), under the anchor. */}
-          {anchor.kind === "visit" && anchor.note && (
-            <figure data-testid="consult-visit-note" className="mt-2">
-              <figcaption className="t-xs" style={{ color: MUTED }}>{t("elev.carehonesty.consult.since.visitNote")}</figcaption>
-              <blockquote dir="auto" className="t-sm mt-0.5" style={{ color: INK }}>“{anchor.note}”</blockquote>
-            </figure>
-          )}
-        </div>
-        )}
+        {/* The since counts head step 2 unless the visit card's head holds them. */}
+        {!sinceInHead && sinceHead}
         {/* B-CAREPRO-NEW-2b: the moment that says the most — the parent's own
             latest words since the anchor (the one warm accent). Nothing renders
             when there is none. */}

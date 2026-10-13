@@ -53,7 +53,7 @@ export const RELEASE_INTERACTION_STATES = Object.freeze({
     ...['milestones', 'daily-play'].flatMap(route => rows(route, ['initial', 'middle', 'last-action'].map(position => `${route}-scroll-${position}`))),
     ...rows('development', ['scroll-route-reset']),
     ...rows('timeline', ['recordnav-initial', 'recordnav-scrolled']),
-    ...rows('shell', ['more-records', 'more-profile-current', 'more-memory-current']).map(item => ({ ...item, mobileOnly: true })),
+    ...rows('shell', ['more-place-index', 'more-profile-current', 'dock-talk-return']).map(item => ({ ...item, mobileOnly: true })),
     ...rows('profile', ['record-profile']), ...rows('memory', ['record-memory']),
     ...rows('development', ['watch-chosen', 'watch-cleared', 'watch-undo']),
   ],
@@ -560,7 +560,6 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       let firstGeometry, preDockGeometry, openGeometry;
       const together = await screen('practice', 'together-first-ready', async cell => {
         await load('practice'); await visible(cell, 'TOGETHER_INVITATION_VISIBLE', invitation); await visible(cell, 'STORY_DOOR_VISIBLE', story);
-        check(cell, 'HISTORY_INITIALLY_CLOSED', !await byId('together-play-history').evaluate(el => el.open));
         firstGeometry = await togetherGeometry(); cell.geometryObservation = firstGeometry; cell.geometry = firstGeometry.geometry;
         check(cell, 'TOGETHER_ENTRY_GEOMETRY_OBSERVED', togetherLayoutGeometry(firstGeometry, true) !== null);
       });
@@ -628,8 +627,9 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       await screen('practice', 'together-bottom-reachable', cell => mainScrollFrame(cell, 'practice'));
 
       const recordNav = async cell => {
-        const back = byId('secondary-place-back'); const nav = page.locator('[data-density-toggle]');
-        await visible(cell, 'RECORD_BACK_MOUNTED', back); await visible(cell, 'RECORD_DENSITY_NAV_MOUNTED', nav); check(cell, 'TWO_DENSITY_TABS', await nav.locator('[role=tab]').count() === 2); check(cell, 'NO_DUPLICATE_SHELL_NAV', await byId('secondary-sibling-nav').count() === 0);
+        // F-CHILD-2: #/timeline is Moments; its own nav is the three-view tablist.
+        const back = byId('secondary-place-back'); const nav = page.locator('[data-moments-views]');
+        await visible(cell, 'RECORD_BACK_MOUNTED', back); await visible(cell, 'RECORD_MOMENTS_VIEWS_MOUNTED', nav); check(cell, 'THREE_MOMENT_VIEWS', await nav.locator('[role=tab]').count() === 3); check(cell, 'NO_DUPLICATE_SHELL_NAV', await byId('secondary-sibling-nav').count() === 0);
         const geometry = { back: await rect(back), nav: await rect(nav), clip: await rect(page.locator('main')) };
         cell.geometry = geometry;
         check(cell, 'RECORD_BACK_UNIQUE', await back.count() === 1);
@@ -639,15 +639,41 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       await screen('timeline', 'recordnav-scrolled', async cell => { dependent(record); cell.scroll = await page.evaluate(() => { const main = document.querySelector('#main'); const max = main.scrollHeight - main.clientHeight; main.scrollTop = Math.min(Math.max(100, main.clientHeight / 2), max); return { main: main.scrollTop, window: window.scrollY }; }); check(cell, 'RECORD_ACTUALLY_SCROLLED', cell.scroll.main > 0 && cell.scroll.window === 0); await recordNav(cell); });
 
       const more = () => page.locator('nav button[aria-expanded]').last();
-      const records = byId('more-records-group');
-      const profileLink = () => records.getByRole('button', { name: he ? /פרטים, תחומי עניין והקשר משפחתי/ : /Details, interests and family context/ });
-      const memoryLink = () => records.getByRole('button', { name: he ? /לעבור על מה שארבור זוכר/ : /Review what Arbor remembers/ });
+      // v3 F-SHELL-3 (IA-03, critic ruling 14) re-pin: the More sheet is the
+      // three doors, Search, then the index of the three places. Profile is My
+      // child's "About <child>" row; #/memory has no sheet row any more, so it
+      // is reached through the sheet's Settings door ("What Arbor remembers").
+      const placeGroup = id => byId(`more-place-${id}-group`);
+      const aboutLink = () => placeGroup('child').locator('[data-more-destination="profile"]');
+      const aboutNamed = () => placeGroup('child').getByRole('button', { name: he ? /^על / : /^About / });
+      const sheetOrder = () => page.evaluate(() => {
+        const parts = ['more-doors-group', 'more-search', 'more-place-now-group', 'more-place-child-group', 'more-place-together-group'].map(id => document.querySelector(`[data-testid="${id}"]`));
+        return parts.every(Boolean) && parts.every((el, i) => i === 0 || (parts[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0);
+      });
       if (viewport.w < 1024) {
-        const moreReady = await screen('shell', 'more-records', async cell => { await load('overview'); await more().click(); await visible(cell, 'MORE_RECORDS_VISIBLE', records); await visible(cell, 'PROFILE_LINK_DISTINCT', profileLink()); await visible(cell, 'MEMORY_LINK_DISTINCT', memoryLink()); check(cell, 'PROFILE_MEMORY_DIFFERENT_LABELS', await profileLink().textContent() !== await memoryLink().textContent()); });
-        const profileReached = await screen('profile', 'record-profile', async cell => { dependent(moreReady); await profileLink().click(); await page.waitForFunction(() => location.hash.startsWith('#/profile')); await visible(cell, 'PROFILE_PAGE_VISIBLE', page.locator('main h1').first()); check(cell, 'PROFILE_DESTINATION', new URL(page.url()).hash.startsWith('#/profile')); });
-        const profileCurrent = await screen('shell', 'more-profile-current', async cell => { dependent(profileReached); await more().click(); await visible(cell, 'PROFILE_LINK_VISIBLE', profileLink()); check(cell, 'PROFILE_CURRENT_ONLY', await profileLink().getAttribute('aria-current') === 'page' && await memoryLink().getAttribute('aria-current') !== 'page'); });
-        const memoryReached = await screen('memory', 'record-memory', async cell => { dependent(profileCurrent); await memoryLink().click(); await page.waitForFunction(() => location.hash.startsWith('#/memory')); await visible(cell, 'MEMORY_PAGE_VISIBLE', page.locator('main h1').first()); check(cell, 'MEMORY_DESTINATION', new URL(page.url()).hash.startsWith('#/memory')); });
-        await screen('shell', 'more-memory-current', async cell => { dependent(memoryReached); await more().click(); await visible(cell, 'MEMORY_LINK_VISIBLE', memoryLink()); check(cell, 'MEMORY_CURRENT_ONLY', await memoryLink().getAttribute('aria-current') === 'page' && await profileLink().getAttribute('aria-current') !== 'page'); });
+        const moreReady = await screen('shell', 'more-place-index', async cell => {
+          await load('overview'); await more().click();
+          await visible(cell, 'MORE_DOORS_VISIBLE', byId('more-doors-group')); await visible(cell, 'MORE_SEARCH_VISIBLE', byId('more-search'));
+          for (const id of ['now', 'child', 'together']) await visible(cell, `MORE_PLACE_${id.toUpperCase()}_VISIBLE`, placeGroup(id));
+          check(cell, 'MORE_DOORS_SEARCH_PLACES_ORDER', await sheetOrder());
+          await visible(cell, 'ABOUT_LINK_VISIBLE', aboutLink()); check(cell, 'ABOUT_LINK_NAMED', await aboutNamed().count() === 1);
+          check(cell, 'NO_MEMORY_ROW_IN_SHEET', await page.locator('[data-more-destination="memory"]').count() === 0);
+        });
+        const profileReached = await screen('profile', 'record-profile', async cell => { dependent(moreReady); await aboutLink().click(); await page.waitForFunction(() => location.hash.startsWith('#/profile')); await visible(cell, 'PROFILE_PAGE_VISIBLE', page.locator('main h1').first()); check(cell, 'PROFILE_DESTINATION', new URL(page.url()).hash.startsWith('#/profile')); });
+        const profileCurrent = await screen('shell', 'more-profile-current', async cell => { dependent(profileReached); await more().click(); await visible(cell, 'ABOUT_LINK_VISIBLE', aboutLink()); check(cell, 'PROFILE_CURRENT_ONLY', await aboutLink().getAttribute('aria-current') === 'page' && await page.locator('[data-more-destination][aria-current="page"]').count() === 1); });
+        await screen('memory', 'record-memory', async cell => { dependent(profileCurrent); await page.getByRole('button', { name: he ? 'הגדרות' : 'Settings', exact: true }).click(); await byId('settings-open-memory').click(); await page.waitForFunction(() => location.hash.startsWith('#/memory')); await visible(cell, 'MEMORY_PAGE_VISIBLE', page.locator('main h1').first()); check(cell, 'MEMORY_DESTINATION', new URL(page.url()).hash.startsWith('#/memory')); cell.interactionScope = 'More sheet Settings door, then What Arbor remembers'; });
+        // v3 F-SHELL-3 (WCAG 2.4.3): the dock's Talk opens the conversation over the
+        // page (no route change), and an explicit close gives focus back to Talk.
+        // Keeps the Parent858 shape: it takes the dropped more-memory-current slot.
+        await screen('shell', 'dock-talk-return', async cell => {
+          await load('overview'); await byId('dock-talk').focus(); await page.keyboard.press('Enter');
+          await visible(cell, 'DOCK_TALK_OPENS_CONVERSATION', conversation());
+          check(cell, 'DOCK_TALK_KEEPS_ROUTE', new URL(page.url()).hash.startsWith('#/overview'));
+          await conversation().locator('.companion-conversation-heading > button').last().click();
+          await page.waitForFunction(() => document.activeElement?.getAttribute('data-testid') === 'dock-talk', null, { timeout: 5000 }).catch(() => {});
+          check(cell, 'DOCK_TALK_FOCUS_RETURNED', await byId('dock-talk').evaluate(el => document.activeElement === el));
+          cell.interactionScope = 'dock Talk by keyboard, then the conversation close button';
+        });
       } else {
         for (const route of ['profile', 'memory']) await screen(route, `record-${route}`, async cell => { await load(route); await visible(cell, 'DIRECT_RECORD_PAGE_VISIBLE', page.locator('main h1').first()); check(cell, 'DIRECT_RECORD_ROUTE', new URL(page.url()).hash.startsWith(`#/${route}`)); cell.interactionScope = 'direct route; mobile More does not exist at this viewport'; });
       }

@@ -2,8 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import { backTargetFor, placeForTab } from "../../lib/companionPlaces";
-import { SECTIONS, primaryTabOf } from "../../lib/navigation";
+import { COMPANION_PLACES, backTargetFor, placeForTab } from "../../lib/companionPlaces";
 import { translate } from "../../lib/i18n";
 import { PARENT_RECORD_COPY } from "../companion/parentRecordCopy";
 
@@ -50,40 +49,41 @@ beforeEach(() => { vi.clearAllMocks(); state.lang = "en"; state.activeTab = "tim
 const buttonWithText = (text: string) => state.buttons.find(button => renderToStaticMarkup(<>{button.children}</>).includes(text));
 
 describe("record hierarchy keeps useful controls without repeating navigation or notes", () => {
-  it.each(["en", "he"] as const)("More distinguishes the actual Profile and Memory destinations in %s", lang => {
+  // v3 F-SHELL-3 (IA-03, critic ruling 14) re-pin — was "More distinguishes the
+  // actual Profile and Memory destinations": the sheet's records and support
+  // groups, and the Profile / Memory sub-lines that told two records apart, are
+  // gone. The records section now holds the index of the three places under
+  // their v3 pill names, and the destination set is that index, not the old
+  // overflow hubs. #/memory is reached from My child and from About.
+  it.each(["en", "he"] as const)("More indexes the three places under their v3 pill names in %s", lang => {
     state.lang = lang;
     const copy = PARENT_RECORD_COPY[lang];
     const html = renderToStaticMarkup(<MobileNav />);
-    expect(html).toContain(copy.profileDetail);
-    expect(html).toContain(copy.memoryDetail);
+    expect(html).not.toContain(copy.profileDetail);
+    expect(html).not.toContain(copy.memoryDetail);
     expect(html).not.toContain("WRONG_MEMORY_COUNT");
+    expect(html).not.toContain('aria-labelledby="more-support-heading"');
+    expect(html).not.toContain(copy.toolsAndSupport);
     const records = html.match(/<section aria-labelledby="more-records-heading"[^>]*>[\s\S]*?<\/section>/)?.[0] ?? "";
-    const support = html.match(/<section aria-labelledby="more-support-heading"[^>]*>[\s\S]*?<\/section>/)?.[0] ?? "";
     expect(records).toContain(copy.records);
-    expect(records).toContain(copy.profileDetail);
-    expect(records).toContain(copy.memoryDetail);
-    expect(records).toContain(translate(lang, "nav.cat.journal"));
-    expect(support).toContain(copy.toolsAndSupport);
-    expect(support).not.toContain(copy.profileDetail);
-    expect(support).not.toContain(copy.memoryDetail);
-    buttonWithText(copy.profileDetail)!.onClick?.(); expect(state.setActiveTab).toHaveBeenLastCalledWith("profile");
-    buttonWithText(copy.memoryDetail)!.onClick?.(); expect(state.setActiveTab).toHaveBeenLastCalledWith("memory");
-    // Derive the entire original overflow set, so a missing or newly added
-    // category cannot slip through a hand-maintained list of examples.
-    const originalOverflow = SECTIONS.filter(section => !["today", "growth", "practice", "ask"].includes(section.id));
-    const expectedDestinations = [...originalOverflow.map(primaryTabOf), "memory"].sort();
+    for (const place of COMPANION_PLACES) expect(records).toContain(`>${lang === "he" ? place.he : place.en}</h4>`);
+    // No old hub name is an entry ("Stories" survives only as Together's pill).
+    for (const hub of ["journal", "behaviors", "learn", "care"]) expect(records).not.toContain(`>${translate(lang, "nav.cat." + hub)}<`);
+    expect(records).not.toContain(`>${copy.profile}<`);
+    // The exact index, in place order, so a missing or newly added row cannot
+    // slip through a hand-maintained list of examples.
+    const expectedDestinations = ["weekly", "development", "timeline", "profile", "practice?f=games", "practice?f=stories", "practice?f=routines", "practice?f=offscreen"];
     const destinationButtons = state.buttons.filter(button => button["data-more-destination"]);
-    expect(destinationButtons.map(button => button["data-more-destination"]).sort()).toEqual(expectedDestinations);
+    expect(destinationButtons.map(button => button["data-more-destination"])).toEqual(expectedDestinations);
     for (const destination of expectedDestinations) {
       const button = destinationButtons.find(button => button["data-more-destination"] === destination)!;
       expect(button.onClick).toBeTypeOf("function");
+      state.setActiveTab.mockClear();
       button.onClick?.();
-      expect(state.setActiveTab).toHaveBeenLastCalledWith(destination);
-    }
-    for (const section of originalOverflow) {
-      const label = section.id === "profile" ? copy.profile : translate(lang, "nav.cat." + section.id);
-      const button = destinationButtons.find(button => button["data-more-destination"] === primaryTabOf(section))!;
-      expect(renderToStaticMarkup(<>{button.children}</>)).toContain(label);
+      // A Together row opens #/practice with its filter through the hash query
+      // (goToRoute, a no-op without a window); every other row opens its route.
+      if (destination.includes("?")) expect(state.setActiveTab).not.toHaveBeenCalled();
+      else expect(state.setActiveTab).toHaveBeenLastCalledWith(destination);
     }
     // The three primary places are still rendered and navigate unchanged.
     for (const tab of ["overview", "development", "practice"] as const) {
@@ -111,15 +111,17 @@ describe("record hierarchy keeps useful controls without repeating navigation or
     expect(state.setActiveTab).toHaveBeenLastCalledWith("memory");
   });
 
+  // v3 F-SHELL-3 (IA-03) re-pin — was keyed on the profileDetail / memoryDetail
+  // sub-lines, which are gone: the index has one About row, current on #/profile
+  // only. #/memory is not an index row (the dock lights My child there).
   it.each(["en", "he"] as const)("More marks only the actual record destination as current in %s", lang => {
     state.lang = lang;
-    const copy = PARENT_RECORD_COPY[lang];
-    for (const tab of ["profile", "memory"] as const) {
+    for (const tab of ["profile", "memory", "timeline", "development", "weekly"] as const) {
       state.activeTab = tab;
       state.buttons = [];
       renderToStaticMarkup(<MobileNav />);
-      expect(buttonWithText(copy.profileDetail)?.["aria-current"]).toBe(tab === "profile" ? "page" : undefined);
-      expect(buttonWithText(copy.memoryDetail)?.["aria-current"]).toBe(tab === "memory" ? "page" : undefined);
+      const current = state.buttons.filter(button => button["data-more-destination"] && button["aria-current"] === "page").map(button => button["data-more-destination"]);
+      expect(current, tab).toEqual(tab === "memory" ? [] : [tab]);
     }
   });
 

@@ -595,11 +595,15 @@ describe("IA-06 · wiring (source pins)", () => {
     expect(sheet).toContain('close(() => setActiveTab("development"))');
   });
 
-  it("the portrait selection: the same, and only the seam clears the selection", () => {
+  // v3 F-CHILD-1 RE-PIN: the portrait's evidence views (thread map, places,
+  // across areas) and their selection dialog leave My child for the Moments
+  // pill (F-CHILD-2), so the page no longer opens that dialog or owns its
+  // history entry. Was: the selection dialog's crumb order and its one close.
+  it("v3 F-CHILD-1: My child opens no selection dialog, so it holds no sheet history entry of its own", () => {
     const portrait = read("components/companion/ChildPortrait.tsx");
-    ordered(portrait, "<Modal open={!!selected} onClose={() => closeSelection()}", "<SheetBreadcrumb label={selected", '<div className="portrait-evidence"');
-    expect(portrait).toContain("useSheetHistory(!!selected, () => setSelection(null))");
-    expect(portrait.match(/setSelection\(null\)/g)).toHaveLength(1);
+    expect(portrait).not.toContain("useSheetHistory(");
+    expect(portrait).not.toContain("<Modal");
+    expect(portrait).not.toContain("setSelection(");
   });
 
   it("the Learn reader keeps its own history marker, untouched", () => {

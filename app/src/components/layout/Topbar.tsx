@@ -5,30 +5,31 @@ import SafetyRing from "./SafetyRing"; // IA-01: canon Safety life-ring — firs
 import OfflineChip from "../ui/OfflineChip"; // W0.6: renders only while offline
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { placeForTab, isCompanionHome } from "../../lib/companionPlaces";
-import { sectionForTab } from "../../lib/navigation";
+import { homeForTab, chromeLitHome } from "../../lib/companionPlaces";
 
 /**
  * Desktop topbar — the wireframe's lean control band (md+). Hidden on mobile,
  * where the in-content accessories strip + bottom MobileNav cover the same jobs.
  *
- * Left zone = page TITLE + SUBTITLE keyed off the active section (nav.title.* /
- * nav.sub.*): the topbar tells you WHERE you are, on the sapphire-tinted band.
+ * v3 F-SHELL-2: the title is the route's HOME, its place or its door, and
+ * nothing else: #/weekly reads Now, #/milestones My child, #/consult Care,
+ * together, #/learn For you, the parent. The old hub title and its one-line
+ * hub sentence (nav.title.* / nav.sub.*) are gone from the header; the keys
+ * stay in the dictionaries. Talk is a panel over a page, never a place, so
+ * #/coach and #/scholar read Now, the page under the panel, exactly as the
+ * Sidebar lights it (chromeLitHome): the chrome gives one answer.
  *
- * Right zone mirrors the wireframe: search field → Kid Mode → "how Arbor helps"
- * rail toggle → notification bell → child switcher. Ask Arbor is a first-class
- * sidebar nav row, so it is NOT duplicated here (removed the redundant topbar
- * button). The AI rail is off by default; this toggle is its single, discoverable
- * desktop entry point. All tokens are sourced from index.css; no raw hex.
+ * The control band: Safety life-ring → search → Kid Mode. Talk with Arbor is a
+ * sidebar door and the launcher, never a header button; the language switch
+ * lives in Settings only. All tokens are sourced from index.css; no raw hex.
  */
 export default function Topbar() {
-  const { activeTab, childProfile } = useArbor();
+  const { activeTab } = useArbor();
   const { t, uiLang } = useLanguage();
-  const place = placeForTab(activeTab);
-  const section = sectionForTab(activeTab);
-
-  // One key per hub; a hero-less child gets the Stories line that does not promise "starring {name}".
-  const hubSubKey = section.id === "stories" && !childProfile.avatar ? "stories.noHero" : section.id;
+  // v3 F-SHELL-2 (critic ruling 6): ONE title on every route, the home's name.
+  const home = homeForTab(activeTab);
+  const lit = chromeLitHome(home);
+  const named = lit.kind === "place" ? lit.place : lit.door;
   return (
     <header
       /* B-DESIGN-03 (chrome): the sticky band takes the chrome glass — paper
@@ -38,12 +39,13 @@ export default function Topbar() {
          keep it below modal sheets (50) and the skip link (80). */
       className="arbor-chrome-glass relative z-30 hidden lg:flex items-center gap-4 px-5 xl:px-7 flex-none min-w-0"
       style={{
-        height: "74px",
+        // v3 F-SHELL-2: the 64 px band (index.css --shell-topbar-h mirrors it).
+        height: "64px",
         borderBottom: "1px solid var(--arbor-rule)",
       }}
       aria-label={t("aria.applicationTopbar")}
     >
-      {/* Left zone: page title + subtitle stack (orientation).
+      {/* Left zone: the home's name, one line (orientation).
           UC-8: the title zone owns a hard minimum. It used to be a pure
           `flex-1 min-w-0` against a `flex-shrink-0` control band, so on wide
           desktops with the AI rail open the band (≈740px) ate the header and
@@ -53,32 +55,28 @@ export default function Topbar() {
       <div
         className="flex flex-col justify-center flex-1"
         /* A length (not `auto`) keeps `truncate` working. 11rem is what the
-           worst case can actually afford — at 2xl with the rail open the
-           header is 880px and the non-shrinking controls (Kid Mode with its
-           xl safety line ≈305px, rail toggle, bell, child switcher) already
-           claim ~543px — and it is enough for the full section title plus a
-           readable slice of the subtitle. min() keeps it proportionate if the
-           header is ever narrower still. */
+           narrowest band can afford: at 1024 the header is the viewport less
+           the sidebar, and the band holds only Safety (44px), search (which
+           shrinks first, down to a 44px floor) and Kid Mode with its short
+           two-line safety label; the offline chip appears only offline and
+           clips. It is enough for the longest home name ("For you, the
+           parent"). min() keeps it proportionate if the header is ever
+           narrower still. */
         style={{ minInlineSize: "min(11rem, 22%)" }}
       >
+        {/* v3 F-SHELL-2: display face 20/600, and no second line: the page
+            under it owns its own introduction. */}
         <span
-          className="text-[18px] font-bold leading-tight truncate"
+          data-testid="topbar-home-title"
+          className="text-[20px] font-semibold leading-tight truncate"
           style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
         >
-          {isCompanionHome(activeTab) ? (uiLang === "he" ? place.he : place.en) : t("nav.title." + section.id)}
+          {uiLang === "he" ? named.he : named.en}
         </span>
-        {/* P5 r1 pass A6: Today owns its one caption (the eyebrow line); the
-            hub sentence here repeated it, in HE with a second wording. */}
-        {!isCompanionHome(activeTab) && (
-          <span className="text-[12px] truncate" style={{ color: "var(--arbor-muted)" }}>
-            {/* W2-SHELLPLAY critic r2: "starring" only once a hero exists. */}
-            {t("nav.sub." + hubSubKey, { name: childProfile.name })}
-          </span>
-        )}
       </div>
 
-      {/* Right zone: lean desktop control band (search → Kid Mode → rail toggle →
-          bell → child switcher). Ask Arbor lives in the sidebar, not here. */}
+      {/* Right zone: lean desktop control band (Safety → search → Kid Mode).
+          Talk with Arbor lives in the sidebar and the launcher, not here. */}
       <div className="flex min-w-0 shrink items-center gap-2.5">
         {/* IA-01: Safety life-ring — FIRST in the band, always reachable in one
             tap (surfaceContract `safety`: "one tap reaches a human"). Fixed
@@ -102,7 +100,7 @@ export default function Topbar() {
             clip the search results overlay that hangs below the input. */}
         <div
           className="hidden lg:block"
-          style={{ flex: "0 1 230px", minInlineSize: "2.75rem" }}
+          style={{ flex: "0 1 220px", minInlineSize: "2.75rem" }}
         >
           <TopbarSearch />
         </div>

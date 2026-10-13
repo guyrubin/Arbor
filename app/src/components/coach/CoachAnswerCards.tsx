@@ -129,6 +129,26 @@ export function memoryFooterLabel(n: number | undefined, lang: UiLang = "en"): s
 }
 
 /**
+ * EXTRA-TALK: the one muted provenance line under a settled answer. COUNT-FREE
+ * by construction: the contract carries no grounded observation ids, so there
+ * is nothing honest to count, and no digit ever reaches this line (the memory
+ * row below keeps its own approved-fact count). Each clause is claimed only
+ * when it is true for THIS answer:
+ *   "what you kept"        the server says approved facts grounded it
+ *                          (approvedMemoryFactsUsed > 0 or a plan step built
+ *                          from one, todayPlanProvenance);
+ *   "the question you chose"  the parent's turn went out with a family
+ *                          question (the topic flag, stamped on the user turn).
+ * Neither → the plain "Arbor suggests; you decide." line.
+ */
+export type CoachProvenance = { topic: boolean };
+export function provenanceKey(contract: Pick<CoachContract, "approvedMemoryFactsUsed" | "todayPlanProvenance">, topic: boolean): string {
+  const kept = (contract.approvedMemoryFactsUsed ?? 0) > 0 || (contract.todayPlanProvenance?.length ?? 0) > 0;
+  if (kept) return topic ? "companion.talk.provenance.topic" : "companion.talk.provenance";
+  return topic ? "companion.talk.provenance.topic-only" : "companion.talk.provenance.general";
+}
+
+/**
  * Pure helper: presentation tier for the "Reach out for help if" footer.
  * Low (or absent) risk → "quiet": a calm, collapsed disclosure so routine
  * questions don't read as alarms. Anything else — including unrecognized
@@ -385,9 +405,20 @@ function ReportDisclosure({ id, title, open, onToggle, children, testId, icon }:
 export default function CoachAnswerCards({
   contract, lens, council, lang = "en", onSaveToPlan, onGoDeeper,
   onAddToHandoff, onManageMemory, reviewUnavailable = false,
-  todayStep, onTryIt, onUndoTryIt, renderKeepAction, onProposeMemory,
+  todayStep, onTryIt, onUndoTryIt, renderKeepAction, onProposeMemory, provenance,
+  onPrepareVisit, goDeeperReads, onRead,
 }: {
   contract: CoachContract;
+  /** EXTRA-TALK: opt-in provenance line for a settled Talk answer. Absent →
+   *  no line (history renders and the markup snapshots stay byte-identical). */
+  provenance?: CoachProvenance;
+  /** F-TALK-2: the visit handoff ("Build a summary") left the row under the
+   *  Talk thread for the answer's actions, next to Teacher note. */
+  onPrepareVisit?: () => void;
+  /** F-TALK-2 / LL-A1: the Learn reads for the latest answer. They left the
+   *  Talk thread for the actions door; titles arrive in the answer language. */
+  goDeeperReads?: { id: string; title: string }[];
+  onRead?: (cardId: string) => void;
   todayStep?: CoachTodayStep | null;
   onTryIt?: (step: string) => void;
   onUndoTryIt?: (id: string) => void;
@@ -447,7 +478,8 @@ export default function CoachAnswerCards({
   // declined file or short follow-up must never hide its entire answer.
   const longOpening = Boolean((contract.todayPlan?.length || contract.parentScript) && contract.text && contract.text.length > 360);
   const hasDetails = Boolean(contract.todayPlan?.length > 1 || contract.observe?.length || contract.avoid?.length);
-  const hasTools = Boolean(hasPlan || contract.handoffNotes?.teacher || contract.handoffNotes?.professional || docNote || (!council?.length && onGoDeeper));
+  const hasTools = Boolean(hasPlan || contract.handoffNotes?.teacher || contract.handoffNotes?.professional || docNote || onPrepareVisit || (!council?.length && onGoDeeper));
+  const reads = onRead && goDeeperReads?.length ? goDeeperReads : [];
   const keepable = [
     ...(contract.todayPlan ?? []).map((text, index) => ({ field: "todayPlan" as const, text, label: t("coach.report.step", { n: index + 1 }), sourceId: `${reportId}-step-${index}` })),
     ...(contract.parentScript ? [{ field: "parentScript" as const, text: contract.parentScript, label: t("coach.cards.sayThis"), sourceId: `${reportId}-script` }] : []),
@@ -466,6 +498,49 @@ export default function CoachAnswerCards({
     <ReportDisclosure id={`${reportId}-${panel}`} title={title} testId={testId} open={Boolean(openPanels[panel])} onToggle={() => toggle(panel)} icon={icon}>
       {children}
     </ReportDisclosure>
+  );
+  // F-TALK-2 (mock L411): only the provenance line follows an answer. When the
+  // answer has an actions door, its metadata chips (lens, age band, domains),
+  // its sources and the thumbs feedback live behind that door. An answer with
+  // no door keeps them where they were, so nothing becomes unreachable.
+  const door = hasTools || keepActions.length > 0 || reads.length > 0;
+  const chips = [
+    ...(showLens ? [<span key="lens">{t("coach.alignedWith", { lens: lens! })}</span>] : []),
+    ...(contract.ageBand ? [<span key="age-band">{ageBandChipLabel(contract.ageBand, lang)}</span>] : []),
+    ...Array.from(new Set(contract.domains ?? [])).slice(0, 3).map((d) => (
+      <span key={d}>{domainChipLabel(d, lang)}</span>
+    )),
+  ];
+  const sourcesPanel = sources.length > 0 && disclosure("sources", sourcesLabel(sources.length, lang), "coach-report-sources",
+    <ul className="coach-report__source-list">
+      {sources.map((src) => (
+        <li key={src.id}>
+          <span>{src.title || t("cite.based", { source: src.id.replace(/-/g, " ") })}</span>
+          {src.type && <span className="coach-report__meta">{src.type.replace(/_/g, " ")}</span>}
+        </li>
+      ))}
+    </ul>, <Icon name="menu_book" size={17} />
+  );
+  // F-TALK-2 (mock L411): what the answer was grounded in ("Grounded in N
+  // facts you approved · Manage") is detail, so it sits behind the actions
+  // door when the answer has one; it never creates a door by itself. The
+  // review link is a consent path, so it stays on the provenance band as text.
+  const memoryLabel = memoryFooterLabel(contract.approvedMemoryFactsUsed, lang);
+  const memoryRow = memoryLabel !== "" && (
+    <div className="coach-report__memory">
+      <div>
+        <Icon name="psychology" size={17} aria-hidden />
+        <span>{memoryLabel}</span>
+        {onManageMemory && <button type="button" onClick={onManageMemory}>{t("coach.memory.manage")}</button>}
+      </div>
+    </div>
+  );
+  const feedback = (
+    <AnswerFeedback
+      key={answerSignature(contract)}
+      contract={contract} lens={lens} surface={council && council.length > 0 ? "council" : "coach"}
+      lang={lang} sources={sources.length}
+    />
   );
   const setCopied = (value: string | null) => {
     if (proposalScope.current !== scope) return;
@@ -527,7 +602,10 @@ export default function CoachAnswerCards({
 
       {contract.parentScript && (
         <section className="coach-report__section coach-report__script" id={`${reportId}-script`}>
+          {/* F-TALK-2 (mock L405): the say-quote, display face behind a navy
+              inline-start rule, never the sans card. */}
           <SayThis
+            presentation="quote"
             text={contract.parentScript}
             title={t("coach.cards.sayThis")}
             lang={lang}
@@ -618,7 +696,7 @@ export default function CoachAnswerCards({
         <ul className="coach-report__list">{escalation.map((e, i) => <li key={i}>{e}</li>)}</ul>, <Icon name="health_and_safety" size={17} />
       )}
 
-      {(hasTools || keepActions.length > 0) && disclosure("actions", t("coach.report.actions"), "coach-report-actions", <>
+      {door && disclosure("actions", t("coach.report.actions"), "coach-report-actions", <>
         {keepActions.length > 0 && (
           <section className="coach-report__section coach-report__save-advice">
             <h4>{t("coach.report.keepAdvice")}</h4>
@@ -653,12 +731,31 @@ export default function CoachAnswerCards({
               <Icon name="send" size={17} />{t("coach.doc.toConsult")}
             </button>
           )}
+          {onPrepareVisit && (
+            <button type="button" data-testid="coach-prepare-visit" onClick={onPrepareVisit} aria-label={t("coach.specialist.aria")}>
+              <Icon name="stethoscope" size={17} />{t("coach.specialist.cta")}
+            </button>
+          )}
           {!council?.length && onGoDeeper && (
             <button type="button" data-testid="coach-go-deeper" onClick={onGoDeeper}>
               <Icon name="group" size={18} />{t("coach.cards.goDeeper")}
             </button>
           )}
         </div>}
+        {reads.length > 0 && (
+          <div className="coach-report__reads" data-testid="coach-go-deeper-reads">
+            <span className="coach-report__meta">{t("learn.goDeeper")}</span>
+            {reads.map((card) => (
+              <button key={card.id} type="button" onClick={() => onRead?.(card.id)}>
+                <Icon name="local_library" size={17} /><span dir="auto">{card.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {memoryRow}
+        {sourcesPanel}
+        {chips.length > 0 && <div className="coach-report__chips">{chips}</div>}
+        {feedback}
       </>)}
 
       {council && council.length > 0 && disclosure("council", t("coach.cards.council", { n: council.length }), "coach-report-council",
@@ -673,47 +770,26 @@ export default function CoachAnswerCards({
         </ul>
       )}
 
-      {sources.length > 0 && disclosure("sources", sourcesLabel(sources.length, lang), "coach-report-sources",
-        <ul className="coach-report__source-list">
-          {sources.map((src) => (
-            <li key={src.id}>
-              <span>{src.title || t("cite.based", { source: src.id.replace(/-/g, " ") })}</span>
-              {src.type && <span className="coach-report__meta">{src.type.replace(/_/g, " ")}</span>}
-            </li>
-          ))}
-        </ul>, <Icon name="menu_book" size={17} />
-      )}
+      {!door && sourcesPanel}
 
       <footer className="coach-report__footer" data-testid="coach-answer-footer">
+        {/* EXTRA-TALK: one muted line, never a verdict, never a number. An
+            answer led by the urgent-help panel carries no "you decide" line. */}
+        {provenance && !prominentHelp && (
+          <p className="coach-provenance" data-testid="coach-provenance">
+            <Icon name="verified" size={14} />
+            <span>{t(provenanceKey(contract, provenance.topic))}</span>
+          </p>
+        )}
         <div className="coach-report__attribution">
           <TrustLink surface="coach-answer" />
-          {showLens && <span>{t("coach.alignedWith", { lens: lens! })}</span>}
-          {contract.ageBand && <span>{ageBandChipLabel(contract.ageBand, lang)}</span>}
-          {Array.from(new Set(contract.domains ?? [])).slice(0, 3).map((d) => (
-            <span key={d}>{domainChipLabel(d, lang)}</span>
-          ))}
+          {!door && chips}
         </div>
-        {(memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" || (!reviewUnavailable && (contract.memoryProposals?.length ?? 0) > 0)) && (
-          <div className="coach-report__memory">
-            {memoryFooterLabel(contract.approvedMemoryFactsUsed, lang) !== "" && (
-              <div>
-                <Icon name="psychology" size={17} aria-hidden />
-                <span>{memoryFooterLabel(contract.approvedMemoryFactsUsed, lang)}</span>
-                {onManageMemory && <button type="button" onClick={onManageMemory}>{t("coach.memory.manage")}</button>}
-              </div>
-            )}
-            {!reviewUnavailable && onManageMemory && (contract.memoryProposals?.length ?? 0) > 0 && (
-              <button type="button" onClick={onManageMemory}>
-                <Icon name="lightbulb" size={17} aria-hidden />{t("coach.memory.reviewChip")}
-              </button>
-            )}
-          </div>
+        {onManageMemory && !reviewUnavailable && (contract.memoryProposals?.length ?? 0) > 0 && (
+          <button type="button" className="coach-report__review" onClick={onManageMemory}>{t("coach.memory.reviewChip")}</button>
         )}
-        <AnswerFeedback
-          key={answerSignature(contract)}
-          contract={contract} lens={lens} surface={council && council.length > 0 ? "council" : "coach"}
-          lang={lang} sources={sources.length}
-        />
+        {!door && memoryRow}
+        {!door && feedback}
       </footer>
       {copyFallback !== null && (
         <label className="coach-report__copy-fallback">

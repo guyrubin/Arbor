@@ -11,9 +11,22 @@ export const en: Record<string, string> = {
   // B-SHELL-03: the Ask tab/row's accessible name names what its badge counts
   // (notes the coach surfaced that await the parent's review).
   "elev.sidebar.badge.review": "{label} — {count} to review",
+
+  // ── v3 F-SHELL-2 · the account row's plan line (Sidebar.tsx sidebarPlanKey).
+  // Printed only once the server has answered (MOB-08: never "Free" as a guess).
+  "elev.sidebar.plan.free": "Free plan",
+  "elev.sidebar.plan.plus": "Plus plan",
+  "elev.sidebar.plan.family": "Family plan",
+  "elev.sidebar.plan.beta": "Beta, full access",
 };
 
 export const he: Record<string, string> = {
   "elev.sidebar.nav.aria": "האזורים של ארבור",
   "elev.sidebar.badge.review": "{label} — {count} ממתינים לעיון שלכם",
+
+  // ── v3 F-SHELL-2 · the account row's plan line
+  "elev.sidebar.plan.free": "מנוי חינמי",
+  "elev.sidebar.plan.plus": "מנוי פלוס",
+  "elev.sidebar.plan.family": "מנוי משפחתי",
+  "elev.sidebar.plan.beta": "בטא, גישה מלאה",
 };

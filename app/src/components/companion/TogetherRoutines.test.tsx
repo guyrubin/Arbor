@@ -6,9 +6,9 @@ import type { ActionPlan } from "../../types";
 
 /* v3 FEAT-07 — Routines on Together (#/practice).
    Part 1 renders the real TogetherView (static markup, the TogetherView.test
-   mocks): the pill order, the routines block inside the everyday-life module
-   (no fifth module, still one contract move), the filter show/hide, the age
-   window and the "In your plan" state.
+   mocks): the pill order, the routines in their own module between the stories
+   and the away ideas (v3 F-TOG-1: five modules, still one contract move), the
+   filter show/hide, the age window and the "In your plan" state.
    Part 2 runs TogetherRoutines under deterministic hook slots (the
    RoutinesCard.receipt harness) to prove the start flow: one plan, and the
    "In your plan" receipt only after the write resolved. */
@@ -20,6 +20,7 @@ const state = vi.hoisted(() => ({
   actionPlans: [] as ActionPlan[],
   startRoutinePlan: vi.fn(),
   saveMoment: vi.fn(async () => true), setActiveTab: vi.fn(), requestKidMode: vi.fn(), track: vi.fn(),
+  compact: false,
 }));
 vi.mock("react", async (original) => {
   const actual = await original<typeof import("react")>();
@@ -57,13 +58,16 @@ vi.mock("../../practice/usePracticeData", () => ({ usePracticeData: () => {
   const collection = { items: [], loaded: state.loaded, error: state.failed };
   return { speech: collection, mimic: collection, adventures: collection, events: collection, missions: collection };
 } }));
-vi.mock("../../lib/kidExitRecap", () => ({ SINCE_LAST_PLAY_FALLBACK_MS: 7 * 86400000, kidActivityLedgers: () => [], doorSinceSentence: () => null }));
+vi.mock("../../lib/kidExitRecap", () => ({ SINCE_LAST_PLAY_FALLBACK_MS: 7 * 86400000 }));
 vi.mock("../../lib/kidModeGate", () => ({ lastKidSessionStartedAt: () => null }));
 vi.mock("../kidmode/useKidModeEntry", () => ({ useKidModeEntry: () => ({ request: state.requestKidMode, step: null }) }));
-vi.mock("../kidmode/parentGate", () => ({ readParentPin: () => null, shouldNudgeForPin: () => false, markPinNudgeShown: vi.fn() }));
+vi.mock("../kidmode/parentGate", () => ({ readParentPin: () => null }));
 vi.mock("../../lib/kpiEvents", () => ({ trackCompanionPlaceOpen: vi.fn(), trackPracticeStudioOpen: vi.fn(), trackPracticeTogetherDid: vi.fn() }));
 vi.mock("../../lib/analytics", async (original) => ({ ...(await original<typeof import("../../lib/analytics")>()), track: state.track }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null }));
+// v3 F-TOG-3: RoutineRunSheet (and the preview) pick `useCompactSurface() ? Sheet : Modal`. The
+// hook-slot harness calls RoutineRunSheet as a plain function, so the seam is a plain value here.
+vi.mock("../ui/Sheet", () => ({ Sheet: () => null, useCompactSurface: () => state.compact }));
 
 import TogetherView from "./TogetherView";
 import TogetherRoutines from "./TogetherRoutines";
@@ -71,8 +75,10 @@ import RoutineRunSheet from "./RoutineRunSheet";
 import RoutineRunBoard from "../plans/RoutineRunBoard";
 import { writeTogetherView } from "./togetherNavigation";
 import { PendingLine, Receipt } from "../ui/Receipt";
+import { Modal } from "../ui/Modal";
+import { Sheet } from "../ui/Sheet";
 import { translate } from "../../lib/i18n";
-import { routineById } from "../../lib/routines";
+import { localized, routineById } from "../../lib/routines";
 import { routineDayKey, routineToPlan, toggleRoutineStep } from "../../lib/routineTemplates";
 
 type El = React.ReactElement<Record<string, any>>;
@@ -87,6 +93,7 @@ beforeEach(() => {
   state.childProfile = { id: "child-a", name: "Noa", age: 5, interests: [], activeGoals: [] };
   state.lang = "en"; state.loaded = true; state.failed = false; state.actionPlans = [];
   state.startRoutinePlan = vi.fn();
+  state.compact = false;
   const data = new Map<string, string>();
   vi.stubGlobal("sessionStorage", { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) });
 });
@@ -100,7 +107,7 @@ afterEach(() => {
 
 const page = () => renderToStaticMarkup(<TogetherView />);
 const section = (html: string, name: string) => html.match(new RegExp(`<section[^>]*data-module="${name}"[^>]*>`))![0];
-/** The routines block: the last thing inside the everyday-life module. */
+/** The routines block: everything inside the together-routines module. */
 function routinesBlock(html: string): string {
   const at = html.indexOf('data-testid="together-routines"');
   expect(at, "the routines block renders").toBeGreaterThan(-1);
@@ -130,31 +137,36 @@ for (const lang of ["en", "he"] as const) describe(`FEAT-07 · Together with rou
     expect(filters(page()).map((f) => f.pressed)).toEqual([false, false, false, true, false]);
   });
 
-  it("All together: four routine tiles after the away ideas, inside the same module; still 4 modules and 1 move", () => {
+  it("All together: four routine tiles in their own module, after the stories and before the away ideas; 5 modules and 1 move", () => {
     const html = page();
-    expect(html.match(/data-module=/g)).toHaveLength(4);
+    expect(html.match(/data-module=/g)).toHaveLength(5);
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    expect(section(html, "together-routines")).not.toContain("hidden");
     expect(section(html, "together-offscreen")).not.toContain("hidden");
     expect(html).toContain(tr(lang, "companion.together-view.in-everyday-life"));
+    expect(html.indexOf('data-module="together-stories"')).toBeLessThan(html.indexOf('data-module="together-routines"'));
+    expect(html.indexOf('data-testid="together-routines"')).toBeLessThan(html.indexOf("companion-offscreen-grid"));
     const block = routinesBlock(html);
     expect(block).toContain('data-mode="all"');
     expect(tiles(block)).toHaveLength(4);
+    expect(block).toContain(tr(lang, "companion.together-view.routines-kicker"));
     expect(block).toContain(tr(lang, "companion.together-view.routines-title"));
     expect(block).toContain('data-testid="together-routines-all"');
-    expect(html.indexOf("companion-offscreen-grid")).toBeLessThan(html.indexOf('data-testid="together-routines"'));
+    // The module is named by its own heading.
+    const labelledBy = section(html, "together-routines").match(/aria-labelledby="([^"]+)"/)![1];
+    expect(block).toContain(`<h2 id="${labelledBy}">`);
     expect(block).not.toMatch(BANNED);
   });
 
   it("Routines: every routine for a 5-year-old (10, no nap, no potty) and no away cards", () => {
     writeTogetherView("child-a", { category: "routines" });
     const html = page();
-    expect(html.match(/data-module=/g)).toHaveLength(4);
+    expect(html.match(/data-module=/g)).toHaveLength(5);
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
-    expect(section(html, "together-offscreen")).not.toContain("hidden");
+    expect(section(html, "together-routines")).not.toContain("hidden");
+    expect(section(html, "together-offscreen")).toContain("hidden");
     expect(section(html, "together-stories")).toContain("hidden");
     expect(section(html, "together-games")).toContain("hidden");
-    expect(html).not.toContain("companion-offscreen-grid");
-    expect(html).not.toContain('data-together-return="more-ideas"');
     expect(html).toContain(tr(lang, "companion.together-view.routines-kicker"));
     const block = routinesBlock(html);
     expect(block).toContain('data-mode="routines"');
@@ -170,10 +182,12 @@ for (const lang of ["en", "he"] as const) describe(`FEAT-07 · Together with rou
     writeTogetherView("child-a", { category: "offscreen" });
     const away = page();
     expect(away).toContain("companion-offscreen-grid");
+    expect(section(away, "together-routines")).toContain("hidden");
     expect(away).not.toContain('data-testid="together-routines"');
     writeTogetherView("child-a", { category: "stories" });
     const stories = page();
     expect(section(stories, "together-offscreen")).toContain("hidden");
+    expect(section(stories, "together-routines")).toContain("hidden");
     expect(stories).not.toContain('data-testid="together-routines"');
   });
 
@@ -307,6 +321,22 @@ for (const lang of ["en", "he"] as const) describe(`FEAT-07 · starting a routin
     expect(sheet().props.plan?.id).toBe(plan.id);
     tree = inside(sheet().props);
     expect(find(tree, "together-routine-started")!.type).toBe(Receipt);
+  });
+
+  it("v3 F-TOG-3: below lg the routine opens as a bottom sheet with its name; the wide answer stays the Modal", () => {
+    tile("bedtime").props.onClick();
+    const props = sheet().props as Parameters<typeof RoutineRunSheet>[0];
+    state.compact = true;
+    const compact = RoutineRunSheet(props);
+    expect(compact.type).toBe(Sheet);
+    expect(compact.props.open).toBe(true);
+    expect(compact.props.title).toBe(localized(routineById("bedtime").title, lang));
+    expect(compact.props.onClose).toBe(props.onClose);
+    expect(find(inside(props), "together-routine-start")).toBeDefined();
+    state.compact = false;
+    const wide = RoutineRunSheet(props);
+    expect(wide.type).toBe(Modal);
+    expect(wide.props.title).toBe(localized(routineById("bedtime").title, lang));
   });
 
   it("a write that throws before it starts is a failure, not a receipt", async () => {

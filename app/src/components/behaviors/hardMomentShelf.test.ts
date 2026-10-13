@@ -173,10 +173,15 @@ describe("B-ASKJB-31 — the Hard moment now sheet and its doors", async () => {
     expect(hardMomentSheetCards({ now: afterPilot, ageMonths: 48, locale: "he" }, refusals).ordered).toEqual([]);
   });
 
-  it("every door is gated on availableHardMomentCards (Ask chip, Behaviors shelf, Today tile)", () => {
-    expect(COACH).toMatch(/\{hardMomentGuides\.length > 0 && \(/);
+  // F-TALK-1 re-pin: Ask's door left the chip row for the composer's add
+  // tray. CoachTab passes it only while a guide is available; the composer
+  // renders the button only when it is passed.
+  it("every door is gated on availableHardMomentCards (Ask tray door, Behaviors shelf, Today tile)", () => {
+    expect(COACH).toContain("const composerHardMoment = hardMomentGuides.length > 0 ? () => openHardMomentNow() : undefined;");
+    expect(COACH).toContain("onHardMoment={composerHardMoment}");
     expect(COACH).toContain("availableHardMomentCards({ now, ageMonths: ageMonthsFromProfile(childProfile, now)");
-    expect(COACH).toContain("onClick={() => openHardMomentNow()}");
+    const COMPOSER = strip(read("components/companion/CompanionComposer.tsx"));
+    expect(COMPOSER).toMatch(/\{onHardMoment && <button type="button" className="companion-tray-hard" data-testid="coach-hard-moment-now" onClick=\{\(\) => \{ closeTools\(\); onHardMoment\(\); \}\}/);
     expect(SHELF).toMatch(/if\s*\(cards\.length\s*===\s*0\)\s*return null/);
     expect(SHELF).toContain("onClick={() => openHardMomentNow(card.id)}");
     // Parity 9 Oct: Today's door is Now's hard-moment line, gated the same way.

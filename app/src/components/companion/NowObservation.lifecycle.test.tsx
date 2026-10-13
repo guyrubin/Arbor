@@ -12,10 +12,12 @@ const source = ts.createSourceFile("NowView.tsx", readFileSync("src/components/c
 const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "NowContent")!.getText(source);
 const code = ts.transpileModule(`${fn}; return NowContent;`, { compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React } }).outputText;
 const original: ActionLoopEntry = { id: "today.a.2026-10-10", source: "onboarding", observation: true, recommendation: "What happened with Noa today?\nFull say-back details.", capacity: "tiny", status: "accepted", acceptedAt: "2026-10-10T08:00:00Z" };
+// Re-pin (F-NOW-1 r2): a lead's own h2 now sits on the plan card's face, handed
+// to the frame as its `title`, so the walk visits an element title before children.
 function nodes(node: React.ReactNode): React.ReactElement<any>[] {
   if (!React.isValidElement(node)) return [];
   const el = node as React.ReactElement<any>;
-  return [el, ...React.Children.toArray(el.props.children).flatMap(nodes)];
+  return [el, ...(React.isValidElement(el.props.title) ? nodes(el.props.title) : []), ...React.Children.toArray(el.props.children).flatMap(nodes)];
 }
 function setup(lang: "en" | "he" = "en") {
   let at = 0; const slots: any[] = [], effects: (() => void)[] = [];
@@ -32,6 +34,7 @@ function setup(lang: "en" | "he" = "en") {
     availableHardMomentCards: () => [], ageMonthsFromProfile: () => 48, formatChildAge: () => "", childPicture: () => ({}), trackCompanionPlaceOpen: vi.fn(), markPracticeShown: vi.fn(), trackActionOffered: vi.fn(),
     Avatar: "avatar", Icon: "icon", PrimaryMove: "primary-move", Receipt: "receipt", UrgentSupport: "urgent-support", NowRecommendation: "recommendation", NowMoreForToday: "more", NowNoticeBlock: "notice", NowTonightPointer: "tonight-pointer", TOGETHER_ART: {},
     useObservations: () => [], NowQuestionRow: "question-row", NowPlanFrame: "plan-frame", NowKidWorld: "kid-world", NowWeekSoFar: "week-so-far",
+    NowPlanBody: "plan-body", NowGuideReader: "guide-reader", stepLines: (text: string) => [text], WHY_KEY: {}, shelfLabel: () => "",
   };
   const renderContent = new Function(...Object.keys(env), code)(...Object.values(env));
   let tree: React.ReactNode;

@@ -19,10 +19,13 @@ import RoutineRunSheet, { type RoutineStart } from "./RoutineRunSheet";
 /* ════════════════════════════════════════════════════════════════════════════
    TogetherRoutines — v3 FEAT-07: the ready-made routines on Together.
 
-   Lives INSIDE the everyday-life module (together-offscreen): no data-module,
-   no contract move of its own. "all" shows four tiles and a link to the
-   Routines filter; "routines" shows every routine offered at the child's age
-   (routineTemplatesForAge: no nap board past 4, potty only 18–48 m).
+   v3 F-TOG-1: Together renders it inside its own module (together-routines),
+   between the stories and the away-from-the-screen ideas; it holds no
+   data-module and no contract move of its own. It owns the section heading
+   (the kicker and an h2 the section is labelled by) in both modes. "all"
+   shows four tiles and a link to the Routines filter; "routines" shows every
+   routine offered at the child's age (routineTemplatesForAge: no nap board
+   past 4, potty only 18–48 m).
 
    Adopt first, then run: a tile opens its sheet; "Start as a plan" writes ONE
    plan-routine-<id>-<ms> plan and waits for the server. A tile says "In your
@@ -33,7 +36,7 @@ import RoutineRunSheet, { type RoutineStart } from "./RoutineRunSheet";
 
 const ALL_MODE_TILES = 4;
 
-export default function TogetherRoutines({ mode, onAll }: { mode: "all" | "routines"; onAll?: () => void }) {
+export default function TogetherRoutines({ mode, onAll, headingId }: { mode: "all" | "routines"; onAll?: () => void; headingId?: string }) {
   const { childProfile, actionPlans = [], startRoutinePlan } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
@@ -98,16 +101,17 @@ export default function TogetherRoutines({ mode, onAll }: { mode: "all" | "routi
   if (templates.length === 0) return null;
   return (
     <div className="together-routines" data-testid="together-routines" data-mode={mode}>
-      {mode === "all" && (
-        <div className="companion-section-heading together-routines-heading">
-          <h3>{t("companion.together-view.routines-title")}</h3>
-          {onAll && templates.length > ALL_MODE_TILES && (
-            <button type="button" className="companion-text-button together-routines-all" data-testid="together-routines-all" onClick={onAll}>
-              {t("companion.together-view.routines-all")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" />
-            </button>
-          )}
+      <div className="companion-section-heading together-routines-heading">
+        <div>
+          <span className="companion-eyebrow">{t("companion.together-view.routines-kicker")}</span>
+          <h2 id={headingId}>{t("companion.together-view.routines-title")}</h2>
         </div>
-      )}
+        {mode === "all" && onAll && templates.length > ALL_MODE_TILES && (
+          <button type="button" className="companion-text-button together-routines-all" data-testid="together-routines-all" onClick={onAll}>
+            {t("companion.together-view.routines-all")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" />
+          </button>
+        )}
+      </div>
       <p className="companion-caption">{t("companion.together-view.routines-sub")}</p>
       <ul className="together-routine-grid">
         {tiles.map((routine) => {

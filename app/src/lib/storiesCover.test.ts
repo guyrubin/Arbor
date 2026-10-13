@@ -307,11 +307,14 @@ describe("W2-SHELLPLAY r2 · #/stories — one filled button, honest 'starring',
   it("no hero: the cover's first act is the hero row (before Play), and the shell says 'starring' only once a hero exists", () => {
     expect(cover.indexOf('data-testid="hero-first-gate"')).toBeLessThan(cover.indexOf('data-primary-move="read-tonights-story"'));
     expect(read("components/layout/Shell.tsx")).not.toContain('t("nav.sub." + hubSubKey');
+    // v3 F-SHELL-2 re-pin (critic ruling 6): the header's hub sentence is
+    // deleted everywhere, so no chrome can say "starring" before a hero exists:
+    // the Topbar prints only the home's name (#/stories reads Together).
     for (const f of ["components/layout/Topbar.tsx"]) {
-      // 74d5790: the sub-line key is one visible dynamic prefix ("nav.sub." + hubSubKey); the no-hero rule lives in hubSubKey
       const src = read(f);
-      expect(src, f).toContain('const hubSubKey = section.id === "stories" && !childProfile.avatar ? "stories.noHero" : section.id;');
-      expect(src, f).toContain('t("nav.sub." + hubSubKey, { name: childProfile.name })');
+      expect(src, f).not.toContain("hubSubKey");
+      expect(src, f).not.toContain('t("nav.sub."');
+      expect(src, f).toContain("const home = homeForTab(activeTab);");
     }
     // NEGATIVE CONTROL: a shell that keys the sub-line on section.id alone (no hero check) is caught
     expect('t("nav.sub." + section.id, { name: childProfile.name })').not.toContain('t("nav.sub." + hubSubKey');

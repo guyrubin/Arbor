@@ -57,9 +57,11 @@ export interface DescribeThreadProps {
   onDone?: () => void | Promise<unknown>;
   /** The opening answer came by voice: read the first follow-up aloud. */
   primedVoice?: React.MutableRefObject<QuestionVoice | null>;
+  /** v3 F-CHILD-3: the opening as the container asked it (an area's opening). */
+  opening?: string;
 }
 
-export default function DescribeThread({ name, lang, session, onAnswer, onSkip, onDone, primedVoice }: DescribeThreadProps) {
+export default function DescribeThread({ name, lang, session, onAnswer, onSkip, onDone, primedVoice, opening }: DescribeThreadProps) {
   const { t } = useLanguage();
   const state = useSyncExternalStore(session.subscribe, session.snapshot, session.snapshot);
   const voice = useRef<QuestionVoice | null>(null);
@@ -93,7 +95,7 @@ export default function DescribeThread({ name, lang, session, onAnswer, onSkip, 
   return <section className="describe-thread" data-testid="describe-thread" aria-live="polite">
     <ol>
       {state.thread.map((turn, index) => <li key={turn.id} className="describe-turn" data-status={turn.status}>
-        <p className="describe-ask"><span className="sr-only">{t("elev.describe.arbor")}: </span>{index === 0 && !turn.question ? t("elev.describe.opening", { name }) : turn.question}</p>
+        <p className="describe-ask"><span className="sr-only">{t("elev.describe.arbor")}: </span>{index === 0 && !turn.question ? (opening ?? t("elev.describe.opening", { name })) : turn.question}</p>
         {turn.answer && turn.status !== "open" && <p className="describe-answer" dir="auto"><span className="sr-only">{t("elev.describe.you")}: </span>{turn.answer}</p>}
         {turn.status === "skipped" && <p className="describe-note">{t("elev.describe.skipped")}</p>}
       </li>)}

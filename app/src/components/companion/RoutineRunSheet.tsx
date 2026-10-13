@@ -6,6 +6,7 @@ import RoutineRunBoard from "../plans/RoutineRunBoard";
 import Icon from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { PendingLine, Receipt } from "../ui/Receipt";
+import { Sheet, useCompactSurface } from "../ui/Sheet";
 
 /* ════════════════════════════════════════════════════════════════════════════
    RoutineRunSheet — v3 FEAT-07: one ready-made routine, opened from its
@@ -47,8 +48,10 @@ export default function RoutineRunSheet({ routine, plan, start, childName, onSta
   const why = localized(routine.why, lang).replace(/\{name\}/g, childName);
   const pending = start?.status === "pending";
   const failed = start?.status === "failed";
+  // v3 F-TOG-3: below lg the routine opens as a bottom sheet (grab handle, thumb-reach close); Modal stays the wide answer.
+  const Surface = useCompactSurface() ? Sheet : Modal;
   return (
-    <Modal open onClose={onClose} title={title}>
+    <Surface open onClose={onClose} title={title}>
       <div className="companion-preview together-routine-sheet" data-testid="together-routine-sheet" data-routine={routine.id} dir={lang === "he" ? "rtl" : "ltr"}>
         <p dir="auto">{why}</p>
         {plan && start?.status === "saved" && (
@@ -83,6 +86,6 @@ export default function RoutineRunSheet({ routine, plan, start, childName, onSta
           </button>
         </footer>
       </div>
-    </Modal>
+    </Surface>
   );
 }

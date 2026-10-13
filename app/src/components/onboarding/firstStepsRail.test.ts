@@ -47,6 +47,13 @@ describe("B-TODAY-07 · rail order and capture target", () => {
     expect(steps).toContain('labelKey: "elev.rail.step.capture"');
   });
 
+  it("F-TALK-1: the coach step opens the conversation panel over the place, never the coach page", () => {
+    expect(rail).toContain('else if (id === "coach") requestCompanionConversation({ source: "first-steps" });');
+    const open = rail.slice(rail.indexOf("const openStep"), rail.indexOf("[setActiveTab, onCapture]"));
+    expect(open.indexOf('id === "coach") requestCompanionConversation')).toBeLessThan(open.indexOf("else setActiveTab(tab);"));
+    expect(rail).not.toContain('setActiveTab("coach")');
+  });
+
   it("Today keeps capture in place through the shared launcher", () => {
     // B-TODAY-19 (07fea27): every capture door on Today goes through the ONE
     // in-place opener, startCapture(mode, promptKey?, hard?) — the same seam

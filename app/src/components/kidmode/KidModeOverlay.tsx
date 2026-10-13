@@ -236,8 +236,8 @@ export default function KidModeOverlay() {
   // overlay. While Kid Mode is open, every sibling of the Kid Mode layers
   // inside the Shell mount node is made inert + aria-hidden
   // (shieldShellSiblings) — and a MutationObserver re-runs the shield whenever
-  // the mount node's children change, so LATE-mounting siblings (e.g.
-  // PostCaptureCoachStrip) get inerted too instead of staying tabbable behind
+  // the mount node's children change, so LATE-mounting siblings (e.g. a
+  // lazily loaded sheet) get inerted too instead of staying tabbable behind
   // a one-shot snapshot. The cleanup restores the shell exactly on close.
   useLayoutEffect(() => {
     if (!isKidModeOpen) return;

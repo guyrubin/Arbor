@@ -35,8 +35,9 @@ describe("NEXTLEVEL r1 — one noticed count across Milestones, Growth and Profi
     expect(MS).toContain("noticedByShelf(milestones)");
     expect(MS).not.toMatch(/windowChecked/);
     expect(MS).not.toMatch(/\{s\.checked\}/);
-    // Growth and Profile read the same helper.
-    expect(strip(read("components/sections/ChildProfile.tsx"))).toContain("noticedMilestoneCounts(milestones)");
+    // Growth reads the same helper. v3 F-CHILD-3 re-pin: About (#/profile)
+    // no longer prints a milestone count at all — Milestones owns it.
+    expect(strip(read("components/sections/ChildProfile.tsx"))).not.toContain("noticedMilestoneCounts(");
     expect(strip(read("components/sections/DevScoreCard.tsx"))).toContain("noticedMilestoneCounts(milestones)");
   });
 

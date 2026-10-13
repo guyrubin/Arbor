@@ -42,9 +42,13 @@ describe("B-SHELL-27 — every mount reads the one resolver (the same URL everyw
     expect(profile).toContain("<Avatar name={childProfile.name} photoURL={picture.url} size={40} />");
     expect(profile).not.toMatch(/<HeroAvatar size=\{56\}/);
     expect(read("../components/tabs/HeroJourneyTab.tsx")).toContain("{!kidMode && asksForHero(childProfile) && (");
-    expect(todayLiveSource()).toContain("photoURL={childPicture(childProfile).url} size={28}");
+    // Re-pin (F-NOW-1 now-heading-identity, 12 Oct): Now's heading carries no picture of the child,
+    // so Today mounts no face at all - and never reads a raw photo.
+    expect(todayLiveSource()).not.toMatch(/childPicture\(|<Avatar|photoUrl/);
     // Wave 2 (9 Oct): the My child identity line and the family glance rows were the last two raw reads.
-    expect(read("../components/companion/ChildPortrait.tsx")).toContain("photoURL={childPicture(childProfile).url ?? undefined} size={52}");
+    // v3 F-CHILD-1 RE-PIN: the brief drops the identity button from the
+    // Milestones header (the About pill carries the child's details), so My
+    // child draws no picture; the raw-read ban below still holds for it.
     expect(read("../hooks/useFamilyGlance.ts")).toContain("photoUrl: childPicture(p).url ?? undefined,");
     expect(read("../components/companion/ChildPortrait.tsx")).not.toMatch(/photoURL=\{childProfile\.photoUrl\}/);
   });

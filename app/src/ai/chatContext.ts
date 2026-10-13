@@ -149,12 +149,24 @@ export const readWeeklyContextConsent = (childId: string): boolean => {
   }
 };
 
+/** F-TALK-1: the switch lives on #/memory while the conversation panel can
+ *  stay docked beside it, so every write tells open readers in this window.
+ *  Readers re-read the flag itself; the event carries no decision of its own. */
+export const WEEKLY_CONTEXT_CONSENT_EVENT = "arbor:weekly-context-consent";
+
 export const writeWeeklyContextConsent = (childId: string, on: boolean): void => {
   try {
     if (on) globalThis.localStorage?.setItem(weeklyContextConsentKey(childId), "on");
     else globalThis.localStorage?.setItem(weeklyContextConsentKey(childId), WEEKLY_CONTEXT_OFF);
   } catch {
     /* storage unavailable: readWeeklyContextConsent already reads off */
+  }
+  try {
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new CustomEvent(WEEKLY_CONTEXT_CONSENT_EVENT, { detail: { childId } }));
+    }
+  } catch {
+    /* no window: nothing is open to tell */
   }
 };
 

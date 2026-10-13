@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { translate } from "../../lib/i18n";
 import { hardMomentCards } from "../../content/hardMomentCards";
 import type { ActionLoopEntry } from "../../actionLoop/model";
-import WhatWorkedCard, { whatWorkedThisWeek, whatWorkedText } from "../weekly/WhatWorkedCard";
+import WhatWorkedCard, { WhatWorkedSend, whatWorkedThisWeek, whatWorkedText } from "../weekly/WhatWorkedCard";
 import { hardMomentWordsText } from "../behaviors/HardMomentWords";
 
 const WEEK_START = Date.parse("2026-10-04T00:00:00.000Z"); // Sunday
@@ -62,10 +62,26 @@ describe("B-TODAY-29 — what worked this week", () => {
     expect(text).not.toMatch(/https?:|ref=|utm_/);
   });
 
-  it("the card sits inside the letter's module (route budget unchanged)", () => {
+  /* v3 F-NOW-3 re-pin: the letter left #/weekly. The held sentences and their
+     text-only send are now the one action of the report's What helped card,
+     inside the dashboard's own module (route budget unchanged). */
+  it("the held sentences and their send are What helped's one action, inside the dashboard's module (route budget unchanged)", () => {
     const src = fs.readFileSync(path.resolve(__dirname, "WeeklyTab.tsx"), "utf8");
-    const recap = src.slice(src.indexOf('data-module="weekly-recap"'), src.indexOf("{/* The week's narrative"));
-    expect(recap).toContain("<WhatWorkedCard");
+    const glance = src.slice(src.indexOf("<WeekGlance"), src.indexOf("onOpenMilestones=", src.indexOf("<WeekGlance")));
+    expect(glance).toMatch(/helpedAction=\{<WhatWorkedSend lines=\{worked\} parentName=\{parentFirst\} locale=\{locale\} t=\{t\} \/>\}/);
+    expect(src).not.toContain("<WhatWorkedCard");
     expect(src).not.toMatch(/data-module="weekly-worked"/);
   });
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: WhatWorkedSend carries the sentences, their days and the send, without a title of its own; none held, nothing`, () => {
+      const lines = whatWorkedThisWeek(LOOP, WEEK_START, { locale: lang, childName: "Noa", nowMs: NOW });
+      const html = renderToStaticMarkup(<WhatWorkedSend lines={lines} parentName="Sam" locale={lang} t={t(lang)} />);
+      expect(html.match(/data-testid="weekly-what-worked-line"/g)).toHaveLength(2);
+      expect(html).toContain('data-testid="weekly-what-worked-send"');
+      expect(html).not.toContain(translate(lang, "wk.worked.title", { name: "Noa" }));
+      expect(html).not.toMatch(/<h[1-6]|gradient|%/);
+      expect(renderToStaticMarkup(<WhatWorkedSend lines={[]} parentName="Sam" locale={lang} t={t(lang)} />)).toBe("");
+    });
+  }
 });

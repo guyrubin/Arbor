@@ -35,3 +35,48 @@ export function isEmptyCurrentWeek(
 ): boolean {
   return (selectedId ?? currentId) === currentId && !hasStoredCurrentWeek;
 }
+
+const DAY_MS = 86_400_000;
+
+/**
+ * v3 F-NOW-3 — the instants one report week spans, [startMs, endMs], so a
+ * history week renders the same dashboard as the current one. Pure: the
+ * report-id function (recapWeekId) and its week start (recapWeekStartMs) are
+ * passed in, so DST and the year cut follow the id exactly as the stored
+ * reports do.
+ *
+ * The week is found from the id itself ("2026-W41"): a day near Jan 1 + 7
+ * days per week is searched for one that carries the id. A malformed id falls
+ * back to the report's own date anchor (weekAnchorDate), when that anchor
+ * carries the same id. No match at all → null (WeeklyTab then renders the
+ * report without counts).
+ */
+export function reportWeekBounds(
+  id: string,
+  anchor: Date | null,
+  fns: { weekId: (d: Date) => string; weekStartMs: (d: Date) => number }
+): { startMs: number; endMs: number } | null {
+  let inWeek: Date | null = null;
+  const match = /^(\d{4})-W(\d{2})$/.exec(id);
+  if (match) {
+    const year = Number(match[1]);
+    const week = Number(match[2]);
+    for (let offset = -7; offset <= 7 && !inWeek; offset += 1) {
+      const day = new Date(year, 0, 1 + (week - 1) * 7 + offset, 12);
+      if (fns.weekId(day) === id) inWeek = day;
+    }
+  }
+  if (!inWeek && anchor && !Number.isNaN(anchor.getTime()) && fns.weekId(anchor) === id) inWeek = anchor;
+  if (!inWeek) return null;
+
+  const startMs = fns.weekStartMs(inWeek);
+  // The last instant that still carries the id: binary search over 8 days.
+  let lo = inWeek.getTime();
+  let hi = startMs + 8 * DAY_MS;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (fns.weekId(new Date(mid)) === id) lo = mid;
+    else hi = mid;
+  }
+  return { startMs, endMs: lo };
+}

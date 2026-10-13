@@ -90,7 +90,10 @@ describe("R8 — the Profile age window is an age, not NaN", () => {
     // count instead, so no band label can be NaN.
     expect(profileSrc).not.toContain("milestoneAgeWindow(comparisonMonths).months");
     expect(profileSrc).not.toContain("elev.growthTruth.window.noticed");
-    expect(profileSrc).toContain("noticedMilestoneCounts(milestones)");
+    // v3 F-CHILD-3 re-pin: the milestones chapter left About (Milestones owns
+    // it), so the page derives no age window and prints no band at all.
+    expect(profileSrc).not.toContain("milestoneAgeWindow(");
+    expect(profileSrc).not.toContain("noticedMilestoneCounts(");
   });
 
   it("every band threshold renders a finite age label in both locales", () => {

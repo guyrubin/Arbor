@@ -13,13 +13,14 @@ const state = vi.hoisted(() => ({
   actionLoop: [] as ActionLoopEntry[], actionLoopReady: true,
   actionPlans: [] as unknown[], approvedMemoryItems: [] as unknown[], behaviorLogs: [] as unknown[],
   appointments: [] as unknown[], recordFromRecordAnswer: vi.fn(async () => {}),
-  evening: false, moreProps: null as any,
+  evening: false, moreProps: null as any, readerProps: null as any,
+  activeFamilyTopic: null as null | { id: string; title: string },
   focus: null as Focus | null,
   program: null as null | { week: number; program: { shelf: string }; enrolment: Record<string, string>; content: { skill: { en: string; he: string }; watchFor: string[] } },
   openCaptureSheet: vi.fn(), seedCoach: vi.fn(), setActiveTab: vi.fn(),
   openHardMomentNow: vi.fn(), saveTodayOutcome: vi.fn(async () => {}),
   acceptTodayAction: vi.fn(async () => {}), focusCalls: vi.fn(), recordPracticeDose: vi.fn(), noPractice: false,
-  buttons: [] as { children?: React.ReactNode; onClick?: () => void; className?: string; "data-answer"?: string; "data-testid"?: string }[],
+  buttons: [] as { children?: React.ReactNode; onClick?: () => void; className?: string; "data-answer"?: string; "data-testid"?: string; "data-primary-move"?: string }[],
 }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
   ...state, playLogs: [], milestones: [], pendingCaptureMode: null, consumeCaptureRequest: vi.fn(),
@@ -35,6 +36,8 @@ vi.mock("../../hooks/useLastVisit", () => ({ useLastVisit: () => ({ previousVisi
 vi.mock("../overview/useLifecycleMoment", () => ({ useLifecycleMoment: () => ({ moment: null }) }));
 vi.mock("../overview/useCompanionOffer", () => ({ useCompanionOffer: () => ({ offer: null, appointment: state.appointments[0] ?? null, ledger: {}, snooze: vi.fn() }) }));
 vi.mock("./NowMoreForToday", () => ({ default: (props: unknown) => { state.moreProps = props; return null; } }));
+// F-NOW-1: the guide reader is a sheet; its props are what the card hands it.
+vi.mock("./NowGuideReader", () => ({ default: (props: unknown) => { state.readerProps = props; return null; } }));
 vi.mock("../../lib/programs/enrolment", () => ({ activeProgramWeek: () => state.program, dayKey: (d: Date) => d.toISOString().slice(0, 10) }));
 vi.mock("../../lib/timeOfDay", () => ({ bedtimeDoorOpen: () => state.evening }));
 vi.mock("../../lib/programs/measures", () => ({ programWeekDays: () => ({ from: "2026-10-05", to: "2026-10-11" }) }));
@@ -62,6 +65,9 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
   return { ...runtime, jsxDEV: (...args: Parameters<typeof runtime.jsxDEV>) => { capture(args[0], args[1]); return runtime.jsxDEV(...args); } };
 });
 import NowView from "./NowView";
+import NowRecommendation from "./NowRecommendation";
+import { clearAcceptFailed } from "./nowGuideAccept";
+import { todayFile } from "../../testTodaySource";
 
 function button(label: string) {
   const found = state.buttons.find((item) => React.Children.toArray(item.children).includes(label));
@@ -72,7 +78,8 @@ const PROGRAM = { week: 2, program: { shelf: "words" }, enrolment: { programId: 
 
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 9, 12, 8));
-  state.actionPlans = []; state.approvedMemoryItems = []; state.behaviorLogs = []; state.appointments = []; state.evening = false; state.moreProps = null;
+  state.actionPlans = []; state.approvedMemoryItems = []; state.behaviorLogs = []; state.appointments = []; state.evening = false; state.moreProps = null; state.readerProps = null; state.activeFamilyTopic = null;
+  clearAcceptFailed("child-a");
   vi.clearAllMocks(); state.actionLoopReady = true; state.setActiveTab.mockReset(); state.buttons = []; state.lang = "en"; state.focus = null; state.program = null; state.actionLoop = []; state.childProfile = { ...KNOWN_AGE }; state.noPractice = false;
 });
 
@@ -144,15 +151,11 @@ describe("Now's restored recommendations and one conversation entrance", () => {
     state.focus = { text: step, tryToday: step, focus: "You have been noticing mornings.", dateKey: "2026-10-09", generatedAt: "2026-10-09T09:00:00Z", lang: "en" };
     const html = renderToStaticMarkup(<NowView />);
     expect(html.split(step)).toHaveLength(2);
-    button(NOW_COPY.en.choose).onClick?.();
+    // F-NOW-1: Begin is the card's one move; the step is chosen in the reader it opens.
+    expect(button(NOW_COPY.en.begin)["data-primary-move"]).toBe("choose-next-step");
+    expect(state.readerProps.open).toBe(false);
+    state.readerProps.onChoose();
     expect(state.acceptTodayAction).toHaveBeenCalledWith(step, "standard");
-  });
-  it("opens the shared contextual conversation without navigating to a separate chat", () => {
-    const open = vi.fn();
-    renderToStaticMarkup(<NowView onTalkOpen={open} topic={{ id: "topic-a", title: "Our mornings" }} />);
-    button(NOW_COPY.en.continueTopic).onClick?.();
-    expect(open).toHaveBeenCalledWith("Our mornings");
-    expect(state.seedCoach).not.toHaveBeenCalled();
   });
   it("leaves general conversation and capture to the persistent launcher", () => {
     const html = renderToStaticMarkup(<NowView />);
@@ -176,7 +179,6 @@ describe("Now's restored recommendations and one conversation entrance", () => {
     const html = renderToStaticMarkup(<NowView />);
     expect(html).toContain('dir="rtl"');
     expect(html).toContain(NOW_COPY.he.curatedWhy);
-    expect(html).not.toContain(NOW_COPY.en.continueTopic);
     expect(html).not.toContain(NOW_COPY.en.curatedWhy);
     expect(html).not.toContain(NOW_COPY.en.talkTitle);
   });
@@ -255,10 +257,14 @@ describe("Now record and visit leads", () => {
     expect(state.saveTodayOutcome).toHaveBeenCalledTimes(1);
     resolve(); await Promise.resolve();
   });
-  it("uses the loop clock in the visible identity, including a date override", () => {
+  it("leads with the Now kicker (no date, no picture, no age) and still hands the loop clock on", () => {
     vi.setSystemTime(new Date(2026, 9, 14, 20, 30));
     const html = renderToStaticMarkup(<NowView />);
-    expect(html).toContain(new Date(2026, 9, 14, 20, 30).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }));
+    const heading = html.slice(html.indexOf('<header class="now-heading"'), html.indexOf("</header>"));
+    expect(heading).toContain(`data-testid="now-kicker">${NOW_COPY.en.kicker}</p>`);
+    expect(heading).not.toContain(new Date(2026, 9, 14, 20, 30).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }));
+    expect(heading).not.toContain("4 years");
+    expect(heading).not.toMatch(/<img|today-identity/);
     expect(state.moreProps.now.getTime()).toBe(Date.now());
   });
 });
@@ -291,5 +297,234 @@ describe("B-SHELL-36 first-run handoff", () => {
       vi.setSystemTime(new Date("2026-10-10T12:00:00Z"));
       expect(renderToStaticMarkup(<NowView />)).not.toContain(lang === "he" ? "מחר נשאל איך היה." : "Tomorrow we&#x27;ll ask how it went.");
     } finally { vi.useRealTimers(); }
+  });
+});
+
+describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
+  const STEP = "Before leaving home, offer a choice between two familiar shoes. Wait for the answer. Keep it small.";
+  const aiFocus = (extra: Partial<Focus> = {}): Focus => ({ text: STEP, tryToday: STEP, focus: "You have been noticing mornings.", dateKey: "2026-10-12", generatedAt: "2026-10-12T07:00:00Z", lang: "en", ...extra });
+  /** The recommendation's own plan card: its frame through the end of its section. */
+  const card = (html: string) => {
+    const at = html.indexOf('data-plan="recommendation"');
+    expect(at, "the recommendation's plan card").toBeGreaterThan(-1);
+    return html.slice(html.lastIndexOf("<div", at), html.indexOf("</section>", at) + "</section>".length);
+  };
+  const picked = (html: string) => {
+    const line = html.match(/<div class="now-picked" data-testid="now-picked-because">[\s\S]*?<\/div>/)?.[0];
+    expect(line, "the Picked because line").toBeDefined();
+    return line!;
+  };
+  /** Visible words only: icon ligatures, tags and SSR text separators removed, entities decoded. */
+  const words = (html: string) => html
+    .replace(/<span class="msr[^"]*"[^>]*>[^<]*<\/span>/g, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+
+  it.each(["en", "he"] as const)("%s: a library guide - kicker, an always-visible Picked line with the name isolated, its size in words, one Begin into a read-only reader", lang => {
+    state.lang = lang; state.noPractice = true;
+    const copy = NOW_COPY[lang];
+    const html = renderToStaticMarkup(<NowView />);
+    const plan = card(html);
+    expect(plan).toContain(`<p class="now-plan-kicker">${copy.stepKicker}</p>`);
+    expect(plan).toContain(copy.planTag.recommendation);
+    const line = picked(plan);
+    expect(line).toContain(`<b>${copy.pickedBecause}</b>`);
+    expect(line).toContain("<bdi>Noa</bdi>");
+    expect(line).toContain(copy.curatedWhy);
+    expect(line).not.toContain(" dir=");
+    expect(plan).toContain('<ul class="now-guide-meta">');
+    expect(plan).toContain(copy.oneAction);
+    // Kept: Another idea. Dropped: the library door.
+    expect(plan).not.toContain(lang === "he" ? "לספריית הפעילויות" : "Browse activities");
+    // Clinical firewall: no ratio, percentage or bar anywhere on the card.
+    expect(plan).not.toMatch(/\d\s*\/\s*\d|\d\s*%|role="progressbar"|<progress/);
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    expect(button(copy.begin)["data-primary-move"]).toBe("choose-next-step");
+    expect(state.readerProps).toMatchObject({ open: false, lang, crumb: copy.planTag.recommendation, note: copy.putDown });
+    expect(state.readerProps.onChoose).toBeUndefined();
+    expect(state.readerProps.how.length).toBeGreaterThan(0);
+    // Phone and desktop alike: the next step in words, never a count of steps.
+    expect(words(plan)).toContain(copy.nextStep(state.readerProps.how[0]));
+    if (lang === "he") expect(words(line).replace("Noa", "")).not.toMatch(/[A-Za-z]/);
+    expect(state.acceptTodayAction).not.toHaveBeenCalled();
+  });
+
+  it.each(["en", "he"] as const)("%s: an AI step on day 0 says it is a first idea, never a bare age, and stays unchosen until the reader", lang => {
+    state.lang = lang; state.noPractice = true;
+    state.focus = aiFocus({ sayThis: "Red shoes or blue shoes today?" });
+    const copy = NOW_COPY[lang];
+    const html = renderToStaticMarkup(<NowView />);
+    const plan = card(html);
+    expect(plan).toContain('data-recommendation-source="ai"');
+    const line = picked(plan);
+    expect(line).toContain(copy.pickedFirstLook);
+    expect(words(line)).not.toMatch(lang === "he" ? /גיל/ : /\bage\b/);
+    expect(plan).toContain(`<p class="now-plan-meta">${copy.noStepYet}</p>`);
+    expect(plan).toContain(copy.readMinutes(1));
+    expect(plan).toContain(copy.oneAction);
+    expect(plan).toContain("Red shoes or blue shoes today?");
+    expect(state.readerProps).toMatchObject({ open: false, title: STEP, error: false });
+    expect(state.readerProps.words).toContain("Red shoes or blue shoes today?");
+    expect(state.readerProps.how).toEqual(["Before leaving home, offer a choice between two familiar shoes.", "Wait for the answer.", "Keep it small."]);
+    expect(typeof state.readerProps.onChoose).toBe("function");
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    expect(state.acceptTodayAction).not.toHaveBeenCalled();
+  });
+
+  it("with recent moments the AI line names them and says the age once, up front, never again in the list", () => {
+    state.focus = aiFocus();
+    state.behaviorLogs = [{ id: "m1", timestamp: "2026-10-11T09:00:00", behaviorType: "Moment", trigger: "Put on shoes after one choice.", notes: "", response: "" }];
+    const line = words(picked(renderToStaticMarkup(<NowRecommendation name="Noa" onTalkOpen={vi.fn()} />)));
+    expect(line).toContain(`${NOW_COPY.en.pickedBecause} Noa, 4 years · recent moments`);
+    expect(line).not.toMatch(/\bage\b/);
+  });
+
+  it("a choice that fails to save says so after the remount its optimistic write causes, and never shows a receipt", async () => {
+    state.noPractice = true; state.focus = aiFocus();
+    state.acceptTodayAction.mockRejectedValueOnce(new Error("offline"));
+    renderToStaticMarkup(<NowView />);
+    state.readerProps.onChoose();
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+    expect(state.acceptTodayAction).toHaveBeenCalledTimes(1);
+    const plan = card(renderToStaticMarkup(<NowView />));
+    expect(plan).toContain(`role="alert">${NOW_COPY.en.saveError}</p>`);
+    expect(plan).not.toContain(`>${NOW_COPY.en.saved}<`);
+    expect(state.readerProps.error).toBe(true);
+    // Another step is not that failure.
+    state.focus = aiFocus({ text: "Read one page together before the bus.", tryToday: "Read one page together before the bus." });
+    expect(card(renderToStaticMarkup(<NowView />))).not.toContain('role="alert"');
+  });
+
+  it("the active question gives the card its guide glyph and is never quoted on it", () => {
+    state.noPractice = true; state.focus = aiFocus();
+    state.activeFamilyTopic = { id: "topic-a", title: "Our mornings" };
+    const plan = card(renderToStaticMarkup(<NowView topic={state.activeFamilyTopic} />));
+    expect(plan).toContain('data-guide="mornings"');
+    expect(plan).toMatch(/class="now-plan-medallion"[^>]*><span[^>]*>wb_sunny<\/span>/);
+    expect(plan).not.toContain("Our mornings");
+    expect(plan).not.toContain("<img");
+  });
+
+  // Re-pin (F-NOW-1 r2, FEAT-02): the question is quoted where the pick was made
+  // for it - a library idea ranked for its area - and nowhere else.
+  it.each(["en", "he"] as const)("%s: a library idea picked for the active question quotes it, isolated; an AI pick or an unmatched question never does", lang => {
+    state.lang = lang; state.noPractice = true;
+    const copy = NOW_COPY[lang];
+    const question = lang === "he" ? "מילים חדשות בבית" : "New words at home";
+    state.activeFamilyTopic = { id: "topic-w", title: question };
+    const page = renderToStaticMarkup(<NowView topic={state.activeFamilyTopic} />);
+    const plan = card(page);
+    expect(plan).toContain('data-guide="new-words"');
+    expect(plan).toContain('data-recommendation-source="library"');
+    const line = picked(plan);
+    const runs: string[] = line.match(/<bdi>[^<]*<\/bdi>/g) ?? [];
+    expect(runs.some(run => run.includes(question)), "the question in its own bdi").toBe(true);
+    expect(runs).toContain("<bdi>Noa</bdi>");
+    expect(words(line)).toContain(`${copy.pickedQuestion} `);
+    expect(words(line)).toContain(copy.topicWhy);
+    expect(words(line)).not.toContain(copy.curatedWhy);
+    expect(line).not.toContain(" dir=");
+    if (lang === "he") expect(words(line).replace("Noa", "")).not.toMatch(/[A-Za-z]/);
+    expect(page.match(/data-primary-move=/g)).toHaveLength(1);
+    // An AI pick the model made without the question never quotes it.
+    state.focus = aiFocus();
+    const ai = picked(card(renderToStaticMarkup(<NowView topic={state.activeFamilyTopic} />)));
+    expect(words(ai)).not.toContain(question);
+    expect(words(ai)).not.toContain(copy.pickedQuestion);
+    // A question with no guide area leaves the library's own order and reason.
+    state.focus = null;
+    state.activeFamilyTopic = { id: "topic-h", title: "Why does he hum?" };
+    const plain = picked(card(renderToStaticMarkup(<NowView topic={state.activeFamilyTopic} />)));
+    expect(words(plain)).not.toContain("Why does he hum?");
+    expect(words(plain)).not.toContain(copy.pickedQuestion);
+    expect(words(plain)).not.toContain(copy.topicWhy);
+  });
+
+  it.each(["en", "he"] as const)("%s: the face carries the guide's title as the card's h2 and the say line as a plain line unless it is words to say", lang => {
+    state.lang = lang; state.noPractice = true;
+    const library = card(renderToStaticMarkup(<NowView />));
+    const title = library.match(/<h2 class="now-plan-title" id="([^"]+)" dir="auto">[^<]+<\/h2>/);
+    expect(title, "the guide's title on the face").not.toBeNull();
+    expect(library).toContain(`aria-labelledby="${title![1]}"`);
+    expect(library.match(/<h2/g)).toHaveLength(1);
+    expect(library).toMatch(/<p class="now-plan-say" dir="auto">/);
+    expect(library).not.toContain("<blockquote");
+    state.focus = aiFocus({ sayThis: "Red shoes or blue shoes today?" });
+    const ai = card(renderToStaticMarkup(<NowView />));
+    expect(ai).toMatch(/<blockquote class="now-plan-say" dir="auto">[^<]*Red shoes or blue shoes today\?/);
+    expect(ai).toContain(`<h2 class="now-plan-title" id="`);
+  });
+
+  it.each(["en", "he"] as const)("%s: every lead speaks through the one plan body - an always-visible Picked line, its time and size in words, one primary move", lang => {
+    state.lang = lang;
+    const copy = NOW_COPY[lang];
+    const note = { id: "parent-note", timestamp: "2026-07-09T08:10:00", behaviorType: "Moment", trigger: "Calmed and put shoes on within eight minutes.", notes: "", response: "" };
+    const appointment = { id: "visit-specific", who: "", role: "Speech therapist", profession: "slp", when: "", whenIso: "2026-10-14T10:00:00", mode: "In person", status: "confirmed" };
+    const lead = (page: string, kind: "step" | "visit" | "record" | "practice") => {
+      const at = page.indexOf(`data-plan="${kind}"`);
+      expect(at, `the ${kind} plan card`).toBeGreaterThan(-1);
+      // The card runs from its frame to the end of its one plan body, which closes it.
+      const end = page.indexOf("</div>", page.indexOf('data-testid="now-picked-because"', at)) + "</div>".length;
+      const plan = page.slice(at, end);
+      const foot = plan.slice(plan.indexOf('class="now-plan-foot"'));
+      expect(foot).toContain('<ul class="now-guide-meta">');
+      const line = picked(plan);
+      expect(line).toContain(`<b>${copy.pickedBecause}</b>`);
+      if (kind !== "practice") expect(words(line)).toContain(copy.pickedWhy[kind]);
+      expect(line).not.toContain(" dir=");
+      expect(page.match(/data-testid="now-picked-because"/g)).toHaveLength(1);
+      expect(page.match(/data-primary-move=/g)).toHaveLength(1);
+      expect(words(foot)).toContain(copy.planTime[kind]);
+      expect(words(foot)).toContain(copy.planSize[kind]);
+      expect(foot).not.toMatch(/\d\s*\/\s*\d|\d\s*%|role="progressbar"|<progress/);
+      // The practice's own reason may name the child; nothing else is Latin in Hebrew.
+      if (lang === "he") expect(words(line).replace(/Noa/g, "")).not.toMatch(/[A-Za-z]/);
+      return plan;
+    };
+    lead(renderToStaticMarkup(<NowView />), "practice");
+    state.actionLoop = [{ id: "step-a", recommendation: "Sit together for one page.", source: "coach", status: "accepted", acceptedAt: "2026-10-01", capacity: "tiny" }];
+    const step = lead(renderToStaticMarkup(<NowView />), "step");
+    expect(step).toMatch(/<h2 id="[^"]+-step" class="now-plan-title" dir="auto">Sit together for one page\.<\/h2>/);
+    expect(step.match(/<h2/g)).toHaveLength(1);
+    expect(step).toContain('class="companion-text-button now-plan-how"');
+    expect(state.readerProps).toMatchObject({ open: false, title: "Sit together for one page.", crumb: copy.planTag.step });
+    expect(state.readerProps.onChoose).toBeUndefined();
+    expect(words(picked(step))).not.toContain(copy.pickedQuestion);
+    // A step chosen under the active question quotes it.
+    state.actionLoop = [{ id: "step-w", recommendation: "Name one thing you see on the walk.", source: "coach", status: "accepted", acceptedAt: "2026-10-02", capacity: "tiny", topicId: "topic-w" }];
+    const topic = { id: "topic-w", title: lang === "he" ? "מילים חדשות בבית" : "New words at home" };
+    const under = picked(lead(renderToStaticMarkup(<NowView topic={topic} />), "step"));
+    const underRuns: string[] = under.match(/<bdi>[^<]*<\/bdi>/g) ?? [];
+    expect(underRuns.some(run => run.includes(topic.title))).toBe(true);
+    state.actionLoop = []; state.appointments = [appointment]; state.behaviorLogs = [note];
+    const visit = lead(renderToStaticMarkup(<NowView />), "visit");
+    expect(visit).toMatch(/<h2 id="[^"]+-visit" class="now-plan-title" dir="auto">/);
+    state.appointments = [];
+    lead(renderToStaticMarkup(<NowView />), "record");
+  });
+
+  it("phones: the question note hides, the art band is 190px with a 72px medallion and a 23px say line; desktop leads with the wider art", () => {
+    const css = todayFile("nowView.css");
+    expect(css).toContain("@media (max-width: 767.98px) { .now-question-note { display: none; } }");
+    expect(css).toMatch(/\.now-plan \{[^}]*grid-template-columns: minmax\(0, 1\.25fr\) minmax\(0, 1fr\)/);
+    const phone = css.slice(css.indexOf("@container now (max-width: 860px)") + 1);
+    expect(phone).toMatch(/^[^@]*\.now-plan-art \{ min-block-size: 190px; \}/);
+    expect(phone).toMatch(/^[^@]*\.now-plan-medallion \{[^}]*inline-size: 72px; block-size: 72px;/);
+    expect(phone).toMatch(/^[^@]*\.now-plan-say \{[^}]*font-size: 23px;/);
+    expect(css).not.toContain(".now-question-talk");
+  });
+
+  it("the guide picture is 16:9 from the inline-start edge, mirrored once in RTL with its scrim on the words' side; the phone medallion sits top-end, clear of the words", () => {
+    const css = todayFile("nowView.css");
+    expect(css).toMatch(/\.now-plan-img \{[^}]*inset-inline-start: 0;[^}]*aspect-ratio: 16 \/ 9;/);
+    expect(css.match(/\.now-plan-img:dir\(rtl\) \{ transform: scaleX\(-1\); \}/g)).toHaveLength(1);
+    expect(css.match(/scaleX\(-1\)/g)).toHaveLength(1);
+    expect(css).toMatch(/\.now-plan-scrim \{[^}]*linear-gradient\(90deg, /);
+    expect(css).toMatch(/\.now-plan-scrim:dir\(rtl\) \{[^}]*linear-gradient\(270deg, /);
+    expect(css).toMatch(/\.now-plan-face \{[^}]*max-inline-size: 52%;/);
+    const phone = css.slice(css.indexOf("@container now (max-width: 860px)") + 1);
+    expect(phone).toMatch(/^[^@]*\.now-plan-medallion \{[^}]*inset-block-start: 18px;[^}]*inset-inline-end: 18px;/);
+    expect(phone).toMatch(/^[^@]*\.now-plan-face \{ max-inline-size: calc\(100% - 96px\); \}/);
+    expect(css).not.toMatch(/(?:^|[\s;{-])(?:left|right)\s*:/m);
   });
 });

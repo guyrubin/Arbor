@@ -19,7 +19,7 @@
  * orchestrator's.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { todayLiveSource } from "../testTodaySource";
@@ -33,10 +33,14 @@ const FILES = {
   behaviors: "components/tabs/BehaviorsTab.tsx",
   journal: "components/tabs/JournalTab.tsx",
   coach: "components/tabs/CoachTab.tsx",
+  // F-TALK-1: "What the coach sees" and its weekly switch moved to #/memory.
+  contract: "components/coach/CoachDataContract.tsx",
   language: "components/tabs/LanguageLabVocabView.tsx",
-  // B-SHELL-21: the shell-mounted post-capture strip (CTA was 36 px, dismiss 32).
-  strip: "components/overview/PostCaptureCoachStrip.tsx",
+  // B-SHELL-21 → F-TALK-2: the shell-mounted post-capture strip (CTA was 36 px,
+  // dismiss 32) renders nothing now; its offer is the capture sheet's saved-state Talk.
+  capture: "components/overview/QuickLogModal.tsx",
 } as const;
+const STRIP_FILE = "components/overview/PostCaptureCoachStrip.tsx";
 
 /** A 44 px HEIGHT floor, in any of the accepted forms (sibling ratchets' regex). */
 const FLOOR = /min-h-11\b|min-h-\[4[4-9]px\]|min-h-\[5\d px\]|touch-target|var\(--touch-min\)|min-h-\[48px\]/;
@@ -47,10 +51,15 @@ const CONTROLS: { id: string; file: keyof typeof FILES; near: string; width?: tr
   { id: "Today play-card citation link", file: "play", near: "{activity.source.org}", width: true },
   { id: "Journal record filter reset", file: "journal", near: "onClick={clearJournalFilters}" },
   { id: "Journal month navigation", file: "journal", near: 'data-testid="journal-month"' },
-  { id: "Coach contract disclosure", file: "coach", near: 'data-testid="coach-contract-toggle"', width: true },
+  // F-TALK-1 re-pin: the contract toggle left the Talk panel with its strip.
+  // The panel's icon-sized control is now the tone chip in the composer foot;
+  // the consent switch it guarded lives on #/memory (a full-width row).
+  { id: "Coach tone chip (composer foot)", file: "coach", near: 'data-testid="coach-tone"', width: true },
+  { id: "What the coach sees · weekly switch", file: "contract", near: 'data-testid="coach-weekly-context-toggle"' },
   { id: "Language vocab ideas chevron", file: "language", near: "setShowActivities((v) => !v)", width: true },
-  { id: "Post-capture strip CTA", file: "strip", near: "onClick={acceptPostCaptureCoach}" },
-  { id: "Post-capture strip dismiss", file: "strip", near: "onClick={dismissPostCaptureCoach}", width: true },
+  // F-TALK-2 re-pin: the strip's CTA and dismiss went with the strip; the
+  // offer's one control is now the saved-state "Talk it through" (full width).
+  { id: "Capture saved-state Talk it through", file: "capture", near: 'data-testid="quicklog-reply-ask"' },
 ];
 
 /** The className/style of the element containing `near` (sibling ratchets' helper). */
@@ -83,9 +92,16 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     ["journal", 'className="w-full flex items-center justify-between text-[11px] font-bold rounded-lg px-3 py-2"'],
     ["coach", "min-h-[36px]"],
     ["language", 'className="inline-flex items-center gap-1 text-xs min-h-[44px]"'],
-    ["strip", "min-h-9 flex-shrink-0"],
-    ["strip", "flex h-8 w-8 flex-shrink-0"],
   ];
+
+  // F-TALK-2 re-pin: the strip is a null stub (Shell, owned by the shell
+  // lane, still mounts it), so its two sub-44 shapes cannot return.
+  it(`${STRIP_FILE} renders nothing, so its sub-44 shapes cannot return`, () => {
+    expect(existsSync(path.join(SRC, STRIP_FILE))).toBe(true);
+    const stub = read(STRIP_FILE);
+    expect(stub).toMatch(/export default function PostCaptureCoachStrip\(\) \{\s*return null;\s*\}/);
+    expect(stub).not.toMatch(/<[a-zA-Z]|min-h-|className|data-testid/);
+  });
 
   for (const [file, shape] of RETIRED) {
     it(`${FILES[file]} no longer contains \`${shape.replace(/\n/g, "\n").slice(0, 60)}\``, () => {
@@ -104,7 +120,9 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     expect(preFixChevron).toMatch(FLOOR);
     expect(preFixChevron).not.toMatch(WIDTH_FLOOR);
     // …and each post-fix shell passes both.
-    expect(shellAround(read(FILES.coach), 'data-testid="coach-contract-toggle"')).toMatch(FLOOR);
+    expect(shellAround(read(FILES.coach), 'data-testid="coach-tone"')).toMatch(FLOOR);
+    expect(shellAround(read(FILES.coach), 'data-testid="coach-tone"')).toMatch(WIDTH_FLOOR);
+    expect(shellAround(read(FILES.contract), 'data-testid="coach-weekly-context-toggle"')).toMatch(FLOOR);
     expect(shellAround(read(FILES.journal), 'data-testid="journal-month"')).toMatch(FLOOR);
     expect(read(FILES.behaviors)).not.toContain("setCollapsedWeeks");
     expect(shellAround(read(FILES.language), "setShowActivities((v) => !v)")).toMatch(WIDTH_FLOOR);
@@ -113,7 +131,9 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
   it("the glyphs themselves did not grow — only the hit boxes", () => {
     expect(read(FILES.journal)).toContain('data-testid="journal-month"');
     expect(read(FILES.behaviors)).not.toContain("resetFilters");
-    expect(read(FILES.coach)).toContain('<Icon name="shield" size={13} />');
+    // F-TALK-1 re-pin: the coach glyph is the tone chip's (the shield toggle left).
+    expect(read(FILES.coach)).toContain('<Icon name="record_voice_over" size={14} />');
+    expect(read(FILES.coach)).not.toContain('data-testid="coach-contract-toggle"');
     expect(read(FILES.language)).toContain('<Icon name="expand_more" size={16} />');
   });
 
@@ -208,9 +228,31 @@ describe("B-SHELL-25 · the min-width reset is layered, so min-w-* utilities win
   });
 });
 
-describe("B-SHELL-21 · the post-capture strip still clears MobileNav", () => {
-  it("the strip keeps its bottom-20 offset above the bar", () => {
-    expect(read(FILES.strip)).toMatch(/bottom-20/);
+/* F-TALK-2 re-pin of B-SHELL-21 ("the post-capture strip still clears
+   MobileNav"): nothing floats above the bar any more. The offer sits inside the
+   capture sheet, so there is no fixed offset to keep clear of MobileNav. */
+describe("B-SHELL-21 → F-TALK-2 · no post-capture strip floats over MobileNav", () => {
+  it("Shell's strip mount renders nothing; the offer is inside the capture sheet", () => {
+    expect(read(STRIP_FILE)).not.toMatch(/fixed|bottom-20|useArbor/);
+    expect(read(FILES.capture)).toContain('data-testid="quicklog-reply-ask"');
+  });
+});
+
+/* v3 integration of the two B-SHELL-21 re-pins: F-SHELL-2 moved the strip into
+   the workspace's page cell; F-TALK-2 then retired the strip (a null stub). The
+   strip's own class and grid-area pins have no element left to read; the
+   F-SHELL-2 pins on the mount, the workspace and the bar still hold. */
+describe("B-SHELL-21 · F-SHELL-2 · the strip's mount stays in the workspace, above the bar", () => {
+  it("the mount lives in the workspace's page cell, which ends above the bar", () => {
+    expect(read(STRIP_FILE)).not.toMatch(/className="fixed /);
+    const shell = read("components/layout/Shell.tsx");
+    const at = shell.indexOf("<PostCaptureCoachStrip />");
+    expect(at).toBeGreaterThan(shell.indexOf("<CompanionWorkspace"));
+    expect(at).toBeLessThan(shell.indexOf("</CompanionWorkspace>"));
+    const css = read("components/companion/companionWorkspace.css");
+    expect(css).toContain("padding-block-end: var(--companion-navigation-height, calc(65px + env(safe-area-inset-bottom)))");
+    // …and under the bar's own layer (MobileNav z-40), never over it.
+    expect(read("components/layout/MobileNav.tsx")).toMatch(/lg:hidden fixed bottom-0 inset-x-0 z-40\b/);
   });
 });
 

@@ -144,9 +144,25 @@ describe("weekGlance — the report week as counts (v3 EXTRA-WEEKLY)", () => {
     expect(alone("not_today").counts.tried).toBe(1);
   });
 
-  it("by area: each counted record once per area it carries; uncounted, earlier and later records add nothing", () => {
-    expect(glance.byDomain).toEqual({ feelings: 3, family: 1, moving: 1, talking: 2, thinking: 1 });
+  it("by area: the parent's own moments only, once per area each carries; milestones, words, Kid Mode sessions and records outside the week add nothing", () => {
+    // feelings: day 0 + day 1 (confirmed); family: day 1. The unverified moment,
+    // the milestone (moving), the word and Kid Mode (talking, thinking, feelings),
+    // the measurement and the moments before or after the week stay out.
+    expect(glance.byDomain).toEqual({ feelings: 2, family: 1 });
+    expect(glance.byDomain.moving).toBeUndefined();
+    expect(glance.byDomain.thinking).toBeUndefined();
     expect(glance.byDomain.body).toBeUndefined();
+  });
+
+  it("today: the day of the strip that holds now; -1 before the strip opens, 7 once it lies behind", () => {
+    expect(glance.today).toBe(4);
+    const at = (now: Date) => weekGlance({ observations: [], actionLoop: [], now, weekStartMs: START }).today;
+    expect(at(new Date(START))).toBe(0);
+    expect(at(new Date(midnight(1) - 1))).toBe(0);
+    expect(at(new Date(midnight(1)))).toBe(1);
+    expect(at(new Date(midnight(6) + 3_600_000))).toBe(6);
+    expect(at(new Date(midnight(7)))).toBe(7);
+    expect(at(new Date(midnight(0) - 1))).toBe(-1);
   });
 
   it("scales: max over all five counts (Now's bars), stackMax over moments + Kid Mode sessions (the glance's strip)", () => {

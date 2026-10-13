@@ -55,6 +55,8 @@ export const CHOOSERS = [
   "components/tabs/JournalTab.tsx",
   "components/tabs/MilestonesTab.tsx",
   "components/companion/PortraitWatchRow.tsx",
+  // v3 F-CHILD-1: the areas table picks the current band for the row detail.
+  "components/companion/MilestoneAreas.tsx",
   "components/sections/Screening.tsx",
   "components/sections/DayWindowsPanel.tsx",
   "components/sections/SmartRemindersPanel.tsx",

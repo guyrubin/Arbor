@@ -17,11 +17,13 @@ export const SINGLE_GOAL_LIMITATIONS = Object.freeze([
   { state: 'remote-pending-failure-retry', status: 'offline-source-test-only', reason: 'The unchanged sandbox goal writer resolves locally without Firestore. Pending acknowledgement, transport failure/retry after close/reopen, and changed-source admission remain the corrected actual-source persistence/lifecycle tests. No artificial delay, fake successful remote acknowledgement or runtime patch is used.' },
   { state: 'owner-session-races', status: 'offline-source-test-only', reason: 'No account, auth provider, session injection, credential or auth bypass is used. Owner A-to-B-to-identical-A and overlapping obsolete/new writes remain corrected source-test evidence, not browser coverage or cross-device transactions.' },
   { state: 'local-persistence', status: 'synthetic-local-only', reason: 'Real controls mutate only invented profiles through the existing local sandbox writer. Storage reads, close/reopen and reload establish observed local state only; quota/access failure durability is not certified.' },
-  { state: 'browser-back', status: 'browser-history-only', reason: 'Actual browser Back/Forward follows the real Profile door and retires the picker. This does not exercise native Android Back.' },
+  { state: 'browser-back', status: 'browser-history-only', reason: 'Actual browser Back/Forward between About (reached by its real route; it has no goal door) and the development map retires the picker. This does not exercise native Android Back.' },
   { state: 'full-row', status: 'hold-unchanged', reason: 'Canonical B-GROWTH-40 full-row HOLD/re-sort under P5 B-LOOP-09 stays open. No ActionPlan coupling, extra Now offer, program/arbiter/prompt change, old hub reconstruction or full Parent acceptance is claimed.' },
 ]);
-export const SINGLE_GOAL_DOORS = Object.freeze({ profile: 'profile-goals-edit', development: 'portrait-goals-edit', 'daily-play': 'daily-play-goals-edit' });
-export const SINGLE_GOAL_SURFACES = Object.freeze({ profile: { primary: 'capture-moment', budget: 3 }, development: { primary: 'explore-child-record', budget: 3 }, 'daily-play': { primary: 'log-play', budget: 3 }, plans: { primary: 'advance-plan-step', budget: 3 } });
+// v3 F-CHILD-3: About (#/profile) carries no goal door; the collector asserts
+// none there and frames its h1 instead.
+export const SINGLE_GOAL_DOORS = Object.freeze({ development: 'portrait-goals-edit', 'daily-play': 'daily-play-goals-edit' });
+export const SINGLE_GOAL_SURFACES = Object.freeze({ profile: { primary: 'capture-moment', budget: 3 }, development: { primary: 'start-development-check', budget: 3 }, 'daily-play': { primary: 'log-play', budget: 3 }, plans: { primary: 'advance-plan-step', budget: 3 } });
 export function singleGoalFixture(bundle, lang) {
   const parsed = JSON.parse(typeof bundle === 'string' ? bundle : JSON.stringify(bundle));
   const body = parsed?.locales?.[lang] ?? parsed;
@@ -60,7 +62,7 @@ export function singleGoalRequiredAssertions(state) {
   if (!SINGLE_GOAL_STATES.some(row => row.state === state)) return [];
   const specific = state.startsWith('history-') && state !== 'history-child-return' || /^(empty|long)-(profile|development|daily-play|plans)$/.test(state) ? ['ACTUAL_SINGLE_CURRENT_LINE'] : [];
   const facts = {
-    'profile-door-arrival': ['PROFILE_DOOR_ACTUAL_ARRIVAL'], 'picker-history': ['THREE_STORED_ONE_CURRENT', 'GOAL_TARGETS_44PX'],
+    'profile-door-arrival': ['PROFILE_DOORLESS_ROUTE_ARRIVAL'], 'picker-history': ['THREE_STORED_ONE_CURRENT', 'GOAL_TARGETS_44PX'],
     'picker-keyboard': ['REAL_TAB_WRAPS_BOTH_DIRECTIONS'], 'replacement-question': ['EXPLICIT_REPLACEMENT_QUESTION', 'CONFIRMATION_FOCUS', 'GOAL_TARGETS_44PX'],
     'replacement-cancel': ['CANCEL_RESTORES_CHOICES_AND_DIALOG_FOCUS'], 'picker-close': ['CLOSE_RETURNS_OPENER_FOCUS'], 'picker-reopen': ['REOPEN_NO_STALE_CHOICE'],
     'replacement-save': ['LOCAL_SAVE_PRESERVES_EVERY_RECORD'], 'saved-reopen': ['REOPEN_SHOWS_SAVED_CURRENT'],

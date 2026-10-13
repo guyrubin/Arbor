@@ -43,6 +43,11 @@ import type { ShareCardOpts } from "../../lib/shareCard";
  * explicitly (FIRSTS_KEEPSAKE_CAPTION_KEY) because the growth_card fallback
  * reads "{name}'s progress this month" — a month-of-progress claim published
  * in the parent's name off a single first, on the day it happened.
+ *
+ * A RECEIPT FOLLOWS THE WRITE (v3 F-CHILD-1). `onSave` and `onRemove` return
+ * the write itself; "Kept" (or "removed") shows, and the sheet closes, only
+ * after it resolved. A write that rejects (offline, a rules denial, a child
+ * switch) keeps the sheet open with the parent's words in it and says so.
  */
 export default function FirstKeepsakeSheet({
   open,
@@ -67,8 +72,10 @@ export default function FirstKeepsakeSheet({
   /** Same selected-note eligibility and confirmed history as the saved row. */
   canShare: boolean;
   beforeShare: () => boolean;
-  onSave: (draft: KeepsakeDraft) => void;
-  onRemove: () => void;
+  /** The write; resolves once the keepsake is stored. */
+  onSave: (draft: KeepsakeDraft) => Promise<unknown>;
+  /** The removal; resolves once the keepsake is gone. */
+  onRemove: () => Promise<unknown>;
   onClose: () => void;
 }) {
   const { t } = useLanguage();
@@ -76,10 +83,14 @@ export default function FirstKeepsakeSheet({
   const toastCtx = useToastOptional();
   const toast = (message: string, type?: "success" | "error" | "info") => toastCtx?.toast(message, type);
 
-  const [note, setNote] = useState("");
-  const [noticedOn, setNoticedOn] = useState("");
-  const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
+  // Seeded from the saved keepsake on first paint; the effect below re-seeds
+  // when a different milestone's sheet opens.
+  const [note, setNote] = useState(() => keepsake?.note ?? "");
+  const [noticedOn, setNoticedOn] = useState(() => keepsake?.noticedOn ?? localDayKey());
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>(() => keepsake?.photoUrl);
   const [uploading, setUploading] = useState(false);
+  // A write in flight: a second tap waits for it instead of writing twice.
+  const [writing, setWriting] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   // Re-seed whenever a different milestone's sheet opens, so one first's note
@@ -96,13 +107,37 @@ export default function FirstKeepsakeSheet({
   const draft: KeepsakeDraft = { milestoneId, note, noticedOn, photoUrl };
   const problem = validateKeepsake(draft, today);
 
-  const save = () => {
+  const save = async () => {
     if (problem) {
       toast(t(KEEPSAKE_ERROR_KEYS[problem]), "error");
       return;
     }
-    onSave(draft);
+    if (writing) return;
+    setWriting(true);
+    try {
+      await onSave(draft);
+    } catch {
+      setWriting(false);
+      toast(t("elev.waveR.keepsake.saveFailed"), "error");
+      return;
+    }
+    setWriting(false);
     toast(t("elev.waveR.keepsake.saved"), "success");
+    onClose();
+  };
+
+  const remove = async () => {
+    if (writing) return;
+    setWriting(true);
+    try {
+      await onRemove();
+    } catch {
+      setWriting(false);
+      toast(t("elev.waveR.keepsake.removeFailed"), "error");
+      return;
+    }
+    setWriting(false);
+    toast(t("elev.waveR.keepsake.removed"), "info");
     onClose();
   };
 
@@ -218,8 +253,9 @@ export default function FirstKeepsakeSheet({
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={save}
+            onClick={() => void save()}
             disabled={Boolean(problem)}
+            aria-busy={writing || undefined}
             data-testid="first-keepsake-save"
             className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl px-4 text-[13px] font-extrabold text-white transition active:scale-[0.98] disabled:opacity-50"
             style={{ background: "var(--arbor-gradient-primary)" }}
@@ -229,7 +265,8 @@ export default function FirstKeepsakeSheet({
           {keepsake && (
             <button
               type="button"
-              onClick={() => { onRemove(); toast(t("elev.waveR.keepsake.removed"), "info"); onClose(); }}
+              onClick={() => void remove()}
+              aria-busy={writing || undefined}
               data-testid="first-keepsake-remove"
               className="min-h-[44px] rounded-xl px-3 text-[12px] font-bold"
               style={{ color: "var(--arbor-muted)" }}

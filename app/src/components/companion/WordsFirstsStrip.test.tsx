@@ -176,19 +176,19 @@ describe("v3 FEAT-08 — wordsFirstsStrip.css", () => {
 describe("v3 FEAT-08 — where the strip lives", () => {
   const strip = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   const portrait = strip("./ChildPortrait.tsx").replace(/\{\s*\}/g, "");
-  it("mounts inside the overview, after the watch row and before the keepsake disclosure; the budget stays three", () => {
-    const overview = portrait.slice(portrait.indexOf('data-module="child-portrait-overview"'), portrait.indexOf('data-module="child-portrait-evidence"'));
-    const at = overview.indexOf("<WordsFirstsStrip ");
-    expect(at).toBeGreaterThan(overview.indexOf("<PortraitWatchRow key={childProfile.id} />"));
-    expect(at).toBeLessThan(overview.indexOf("<PortraitKeepsakes />"));
-    expect(overview).toContain('onAllWords={() => setActiveTab("language")}');
-    expect((portrait.match(/\bdata-module=/g) ?? []).length).toBe(3);
+  // v3 F-CHILD-1 RE-PIN: the brief removes the words-and-keepsakes block from
+  // My child (gap child-words-keepsakes): the page is the portrait cards and
+  // the areas table, and the newest kept word shows on the "A moment you kept"
+  // card. The strip component stays on disk, unmounted, with its own tests
+  // above. Was: mounted in the overview between the watch row and keepsakes.
+  it("v3 F-CHILD-1: the strip is no longer mounted on My child; the page keeps two modules", () => {
+    expect(portrait).not.toContain("<WordsFirstsStrip");
+    expect(portrait).not.toMatch(/import[^;]*\bWordsFirstsStrip\b/);
+    expect((portrait.match(/\bdata-module=/g) ?? []).length).toBe(2);
   });
-  it("reads the record the portrait already loaded: no history listener, fetch or write of its own", () => {
+  it("reads only what it is handed: no history listener, fetch or write of its own", () => {
     const source = strip("./WordsFirstsStrip.tsx");
     expect(source).not.toMatch(/useChildHistory|useObservationRecord|useArbor|fetch\(|\.upsert\(|localStorage/);
     expect(source).not.toMatch(/\bdata-module\b|data-primary-move/);
-    expect(portrait).toContain("wordsStripMonths(keptThings(");
-    expect(portrait).toContain("record.sources.langObs");
   });
 });

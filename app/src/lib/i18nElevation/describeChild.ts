@@ -79,6 +79,10 @@ export const en: Record<string, string> = {
   "elev.describe.kind.worry": "What's hard right now",
   "elev.describe.kind.focus": "Focus for now",
   "elev.describe.kind.preference": "How you want Arbor to help",
+  // v3 F-CHILD-3 — the About pill opens this flow on one area, or by voice.
+  "elev.describe.openingAspect": "Tell me about {name}'s {area}.",
+  "elev.describe.voiceLead": "Tap Speak and talk. Your words appear here for you to check before anything is kept.",
+  "elev.describe.voiceUnavailable": "Speaking is not available in this browser. You can type instead.",
 };
 
 export const he: Record<string, string> = {
@@ -155,4 +159,8 @@ export const he: Record<string, string> = {
   "elev.describe.kind.worry": "מה קשה עכשיו",
   "elev.describe.kind.focus": "על מה עובדים עכשיו",
   "elev.describe.kind.preference": "איך תרצו שארבור יעזור",
+  // v3 F-CHILD-3 — the About pill opens this flow on one area, or by voice.
+  "elev.describe.openingAspect": "ספרו לי על {area} אצל {name}.",
+  "elev.describe.voiceLead": "לחצו על לדבר ודברו. המילים שלכם יופיעו כאן לבדיקה לפני שמשהו נשמר.",
+  "elev.describe.voiceUnavailable": "אי אפשר לדבר בדפדפן הזה. אפשר להקליד במקום.",
 };

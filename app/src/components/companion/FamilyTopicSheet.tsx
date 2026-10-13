@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useObservations } from "../../hooks/useObservations";
@@ -6,8 +6,10 @@ import { Sheet } from "../ui/Sheet";
 import { Icon } from "../ui/Icon";
 import { useSheetHistory } from "../../hooks/useSheetHistory";
 import { SheetBreadcrumb } from "../layout/Breadcrumb";
-import type { FamilyTopic } from "../../lib/familyTopics";
+import { requestCompanionConversation } from "../../lib/companionConversation";
+import { INTENT_ICON, chooseFamilyTopic, type FamilyTopic } from "../../lib/familyTopics";
 import type { Observation } from "../../lib/observations";
+import { clearFamilyTopicEdit, pendingFamilyTopicEdit } from "./familyTopicEvents";
 import "./companionExperience.css";
 import "./familyTopicSheet.css";
 
@@ -27,7 +29,6 @@ function sourceLabel(observation: Observation, t: (key: string) => string): stri
 }
 
 const INTENTS: readonly FamilyTopic["intent"][] = ["understand", "support", "enjoy"];
-const INTENT_ICON: Record<FamilyTopic["intent"], string> = { understand: "lightbulb", support: "volunteer_activism", enjoy: "favorite" };
 const INTENT_KEY: Record<FamilyTopic["intent"], string> = {
   understand: "companion.family-topic-sheet.intent.understand", support: "companion.family-topic-sheet.intent.support", enjoy: "companion.family-topic-sheet.intent.enjoy",
 };
@@ -37,6 +38,9 @@ const INTENT_KEY: Record<FamilyTopic["intent"], string> = {
  * tap to make it active; edit, set aside or finish it in place. Nothing is
  * deleted: a finished question keeps its records and can be brought back.
  * A question links existing records; it never creates inferred child facts.
+ * F-NOW-1: what the parent wants from the active question is one always-
+ * visible row (saved as it is tapped); the edit form holds only the words.
+ * Now's edit glyph opens the sheet straight onto that question's wording.
  */
 export default function FamilyTopicSheet({ onClose, draft, observationIds = [], startNew = false }: {
   onClose: () => void; draft?: string; observationIds?: string[]; startNew?: boolean;
@@ -46,8 +50,12 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
   const { childProfile, familyTopics, archivedFamilyTopics = [], activeFamilyTopic, createFamilyTopic, updateFamilyTopic,
     selectFamilyTopic, actionLoop, conversations, openConversation, newConversation, seedCoach, setActiveTab } = useArbor();
   // null = the list; "new" = a new question; otherwise the id being edited.
-  const [editing, setEditing] = useState<string | null>(startNew || !familyTopics.length ? "new" : null);
-  const [title, setTitle] = useState(draft ?? "");
+  const [editing, setEditing] = useState<string | null>(() => {
+    if (startNew || !familyTopics.length) return "new";
+    const pending = pendingFamilyTopicEdit();
+    return pending && familyTopics.some(item => item.id === pending) ? pending : null;
+  });
+  const [title, setTitle] = useState(() => draft ?? familyTopics.find(item => item.id === editing)?.title ?? "");
   const [intent, setIntent] = useState<FamilyTopic["intent"]>("understand");
   const [showFinished, setShowFinished] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -62,6 +70,8 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
   // where it sits in a crumb under its title. Every way out goes through
   // close; a row that leaves for a route navigates once that entry is gone.
   const close = useSheetHistory(true, onClose);
+  // The edit request is read once, as the sheet opens; it never reopens a later sheet.
+  useEffect(() => { clearFamilyTopicEdit(); }, []);
 
   // Every write waits for the store: a row changes only once its record is saved.
   async function run(key: string, task: () => Promise<unknown>) {
@@ -74,14 +84,33 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
   async function save() {
     const words = title.trim();
     if (!words || !editing) return;
-    const done = await run(editing, () => editing === "new" ? createFamilyTopic(words, observationIds, intent) : updateFamilyTopic(editing, { title: words, intent }));
+    const done = await run(editing, () => editing === "new" ? createFamilyTopic(words, observationIds, intent) : updateFamilyTopic(editing, { title: words }));
     if (done) { setEditing(null); setTitle(""); }
   }
   async function pick(item: FamilyTopic) {
-    // Choosing a set-aside question brings it back to the quick row first.
-    if (item.asideAt && !await run(item.id, () => updateFamilyTopic(item.id, { aside: false }))) return;
-    selectFamilyTopic(item.id);
+    // v3 IA-05r: the one choose path, shared with search. A set-aside question
+    // is brought back first; its write shows busy and any error here.
+    const choose = () => chooseFamilyTopic(item, { updateFamilyTopic, selectFamilyTopic });
+    if (item.asideAt) await run(item.id, choose);
+    else await choose();
   }
+
+  // What the parent wants from a question: a new question's choice rides into
+  // its save (so it sits above the form); otherwise it belongs to the ACTIVE
+  // question only, after New question, and hides while another one is edited.
+  const intentRow = (editing === "new" || (topic && (!editing || editing === topic.id))) && <fieldset className="topic-intent-row" data-testid="topic-intent-row">
+    <legend>{t("companion.family-topic-sheet.what-would-you-like")}</legend>
+    <div className="topic-intents">{INTENTS.map(option => {
+      // A new question carries its choice into the save; the active one saves the tap itself.
+      const pressed = editing === "new" ? intent === option : topic?.intent === option;
+      return <button key={option} type="button" aria-pressed={pressed} disabled={editing !== "new" && !!busy}
+        onClick={() => {
+          if (editing === "new") { setIntent(option); return; }
+          if (topic && !pressed) void run(`intent-${option}`, () => updateFamilyTopic(topic.id, { intent: option }));
+        }}>
+        <Icon name={INTENT_ICON[option]} size={17} />{t(INTENT_KEY[option])}</button>;
+    })}</div>
+  </fieldset>;
 
   return <Sheet open onClose={() => close()} title={t("companion.family-topic-sheet.what-we-re-exploring")}>
     <SheetBreadcrumb label={topic?.title ?? t("companion.family-topic-sheet.what-we-re-exploring")} close={close} />
@@ -113,14 +142,12 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
         })}
       </ul>}
 
+      {editing === "new" && intentRow}
+
       {editing && <form className="topic-edit" onSubmit={event => { event.preventDefault(); void save(); }}>
         <label htmlFor="family-question-title" className="topic-edit-label">{t(editing === "new" ? "companion.family-topic-sheet.new-title" : "companion.family-topic-sheet.edit-title")}</label>
         <textarea id="family-question-title" value={title} onChange={event => setTitle(event.target.value)} maxLength={160} required rows={2} dir="auto"
           placeholder={t("companion.family-topic-sheet.for-example-how-could-mornings-feel-easier")} />
-        <fieldset><legend>{t("companion.family-topic-sheet.what-would-you-like")}</legend>
-          <div className="topic-intents">{INTENTS.map(option => <button key={option} type="button" aria-pressed={intent === option} onClick={() => setIntent(option)}>
-            <Icon name={INTENT_ICON[option]} size={17} />{t(INTENT_KEY[option])}</button>)}</div>
-        </fieldset>
         <div className="topic-edit-actions">
           <button type="submit" className="companion-primary" disabled={!!busy || !title.trim()}><Icon name="check" size={18} />
             {busy === editing ? t("companion.family-topic-sheet.saving") : editing === "new" ? t("companion.family-topic-sheet.keep-this-question") : t("companion.family-topic-sheet.save-changes")}</button>
@@ -134,6 +161,7 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
           {showFinished ? t("companion.family-topic-sheet.hide-finished") : t("companion.family-topic-sheet.show-finished", { value0: archivedFamilyTopics.length })}</button>}
         {!editing && <button type="button" className="topic-new" onClick={() => startEdit(null)}><Icon name="add" size={20} />{t("companion.family-topic-sheet.new-question")}</button>}
       </div>
+      {editing !== "new" && intentRow}
 
       {topic && <section className="topic-linked" aria-labelledby="family-question-linked">
         <h3 id="family-question-linked" className="topic-linked-title" dir="auto">{t("companion.family-topic-sheet.linked-to", { value0: topic.title })}</h3>
@@ -148,7 +176,7 @@ export default function FamilyTopicSheet({ onClose, draft, observationIds = [], 
               : <p className="topic-linked-empty">{t("companion.family-topic-sheet.a-step-you-choose-will-appear-here")}</p>}
           </div>
           <div><h4><Icon name="forum" size={18} />{t("companion.family-topic-sheet.our-conversations")}</h4>
-            {threads.map(thread => <button key={thread.id} type="button" className="topic-linked-row topic-linked-thread" dir="auto" onClick={() => { openConversation(thread.id); close(() => setActiveTab("coach")); }}>{thread.title}</button>)}
+            {threads.map(thread => <button key={thread.id} type="button" className="topic-linked-row topic-linked-thread" dir="auto" onClick={() => { openConversation(thread.id); close(() => requestCompanionConversation({ source: "family-topic" })); }}>{thread.title}</button>)}
             <button type="button" className="companion-text-button" onClick={() => { newConversation(); seedCoach({ prompt: topic.title, source: "family-topic" }); close(); }}>{t("companion.family-topic-sheet.talk-this-through-with-arbor")}</button>
           </div>
         </div>

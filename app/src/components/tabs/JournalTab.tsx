@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { FreeText } from "../ui/FreeText";
@@ -310,7 +310,7 @@ function JournalRow({
  * that performs the live view's move (the grid of shelves; on the thread,
  * "All shelves", its first item — P5-LOOP c2 r1).
  */
-export default function JournalTab({ primaryMoveProps, densityToggle }: { primaryMoveProps?: Record<string, string>; densityToggle?: ReactNode } = {}) {
+export default function JournalTab({ primaryMoveProps }: { primaryMoveProps?: Record<string, string> } = {}) {
   const { pendingJournalFocusId, pendingJournalFilter, childProfile } = useArbor();
   const query = useHashQuery();
   const view = query.get("view");
@@ -323,13 +323,13 @@ export default function JournalTab({ primaryMoveProps, densityToggle }: { primar
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     } catch { /* SSR / tests */ }
   }, [pendingJournalFocusId, pendingJournalFilter]);
-  if (view === "all" || pendingJournalFilter || pendingJournalFocusId) return <JournalFeed key={childProfile.id} primaryMoveProps={primaryMoveProps} densityToggle={densityToggle} />;
+  if (view === "all" || pendingJournalFilter || pendingJournalFocusId) return <JournalFeed key={childProfile.id} primaryMoveProps={primaryMoveProps} />;
   return <JournalShelves shelf={shelf} pro={view === "pro"} intakeFor={query.get("for")} primaryMoveProps={primaryMoveProps} />;
 }
 
 /** `primaryMoveProps`: TimelineTab's contract stamp, spread on "All shelves"
  *  (the page's first item, P5-LOOP c2 r1) — the control, not the wrapper. */
-function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: Record<string, string>; densityToggle?: ReactNode } = {}) {
+function JournalFeed({ primaryMoveProps }: { primaryMoveProps?: Record<string, string> } = {}) {
   const { milestones, playLogs, behaviorLogs, logsLoaded, pendingJournalFocusId, consumeJournalFocus, pendingJournalFilter, consumeJournalFilter, childProfile, openCaptureSheet, toggleLogResolved, deleteLog } = useArbor();
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
@@ -575,7 +575,18 @@ function JournalFeed({ primaryMoveProps, densityToggle }: { primaryMoveProps?: R
             <Icon name="arrow_back" size={18} aria-hidden className="rtl:-scale-x-100" />
             {t("elev.shelfJournal.back")}
           </button>
-          {densityToggle}
+          {/* F-CHILD-2: the Feed · Story toggle is gone; the thread's one
+              door to Moments (#/timeline, Over time) sits where it was. */}
+          <button
+            type="button"
+            data-testid="journal-moments-door"
+            onClick={() => goToRoute("timeline", { view: "time" })}
+            className="inline-flex min-h-11 items-center gap-1 px-1 t-sm font-bold focus:outline-none focus-visible:ring-2"
+            style={{ color: "var(--arbor-clay)" }}
+          >
+            <Icon name="photo_album" size={18} aria-hidden />
+            {t("companion.moments.open")}
+          </button>
         </div>
         <h1 className="mt-2 t-lg leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
           {t("journal.title")}

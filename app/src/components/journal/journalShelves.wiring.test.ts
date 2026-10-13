@@ -17,7 +17,7 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\
 describe("JournalTab v2 — the grid is the journal's top", () => {
   const journal = strip(src("tabs/JournalTab.tsx"));
   it("no query → the shelves; ?view=all → the day-grouped thread (every feed capability intact)", () => {
-    const feedDoor = 'if (view === "all" || pendingJournalFilter || pendingJournalFocusId) return <JournalFeed key={childProfile.id} primaryMoveProps={primaryMoveProps} densityToggle={densityToggle} />;';
+    const feedDoor = 'if (view === "all" || pendingJournalFilter || pendingJournalFocusId) return <JournalFeed key={childProfile.id} primaryMoveProps={primaryMoveProps} />;';
     expect(journal).toContain(feedDoor);
     expect(journal.replace(' || pendingJournalFilter', '')).not.toContain(feedDoor);
     expect(journal.replace('key={childProfile.id}', '')).not.toContain(feedDoor);
@@ -31,7 +31,10 @@ describe("JournalTab v2 — the grid is the journal's top", () => {
 
 describe("the ONE stamp literal and the contract change together", () => {
   it("TimelineTab stamps open-shelf on #/journal; the contract says the same", () => {
-    expect(strip(src("tabs/TimelineTab.tsx"))).toContain('{ "data-primary-move": density === "story" ? "switch-density" : "open-shelf" }');
+    // F-CHILD-2 re-pin: #/timeline is Moments, so the other branch of the one
+    // literal is capture-moment (Keep a moment), not the retired switch-density.
+    expect(strip(src("tabs/TimelineTab.tsx"))).toContain('{ "data-primary-move": moments ? "capture-moment" : "open-shelf" }');
+    expect(contractFor("timeline" as ActiveTab)!.primaryMove).toBe("capture-moment");
     const c = contractFor("journal" as ActiveTab)!;
     expect(c.primaryMove).toBe("open-shelf");
     expect(c.moduleBudget).toBe(3);

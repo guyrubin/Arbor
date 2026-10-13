@@ -36,6 +36,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useArbor, type ActiveTab } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { requestCompanionConversation } from "../../lib/companionConversation";
 import { PASTEL, type PastelKey } from "../../lib/tokens";
 import { prefersReducedMotion } from "../../lib/devscore";
 import {
@@ -145,6 +146,8 @@ export function FirstStepsRail({ onCapture }: { onCapture: () => void }) {
       // B-TODAY-07: capture opens the moment sheet on Today (done-detection
       // is unchanged: the saved moment flips it).
       if (tab === null) onCapture();
+      // F-TALK-1: Talk is a panel over this place, never a page.
+      else if (id === "coach") requestCompanionConversation({ source: "first-steps" });
       else setActiveTab(tab);
     },
     [setActiveTab, onCapture]

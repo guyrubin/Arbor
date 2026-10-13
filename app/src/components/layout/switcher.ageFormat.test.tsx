@@ -56,12 +56,13 @@ describe("B-INF-10 · the switcher prints months under three, years from three",
     expect(formatAgeMonths(40)).toBe("3 years");
   });
 
-  it("the switcher, Today's header, Profile and the packet all read lib/age/format", () => {
+  it("the switcher, Today's Picked line, Profile and the packet all read lib/age/format", () => {
     const SRC = path.resolve(__dirname, "../..");
     for (const rel of [
       "components/layout/TopbarKidSwitcher.tsx",
       "components/profile/ProfileSwitcher.tsx",
-      "components/companion/NowView.tsx",
+      // Re-pin (F-NOW-1): the age left Now's header for the plan card's Picked line.
+      "components/companion/NowRecommendation.tsx",
       "components/sections/ChildProfile.tsx",
       "consult/packet.ts",
     ]) {
