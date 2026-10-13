@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { tmpdir } from "node:os";
 
 /**
  * AIX-S5 — comics shelf durability + honesty.
@@ -161,6 +162,61 @@ describe("AIX-S5 — shelf honesty probe (savedMetaPagesAvailable)", () => {
 const SRC_ROOT = path.resolve(__dirname, "..");
 const read = (rel: string): string => fs.readFileSync(path.join(SRC_ROOT, rel), "utf8");
 
+function unexpectedComicStoreConsumers(root: string): string[] {
+  const allowed = new Set([
+    "lib/comicPageStore.ts",
+    "lib/comicPageStore.test.ts",
+    "lib/comicShelfDurability.test.ts",
+    // M3 — seeds the store to prove a read-along comic reads back; a read
+    // path only, no network or upload consumer.
+    "lib/comicShelfJourneyBooks.test.ts",
+    "lib/heroComics.journey.test.ts",
+    "lib/heroJourneyAuthDispatch.test.ts", // offline store reset + fetch spy; proves cancellation, no upload consumer
+    "lib/heroComics.identity.test.ts",
+    "lib/heroComics.ts", // read/write-through for page art
+    "lib/childData.ts", // GDPR erase purge
+    "context/AuthContext.tsx", // sign-out purge
+    "components/layout/DeleteAccountModal.tsx", // STORE-4 account-deletion purge (erase path, not upload)
+    // Mocks the store to assert deletion actually calls purgeAllComicPages.
+    // Verifies the erase path; introduces no network or upload consumer.
+    "components/layout/accountDeletionFlow.test.ts",
+    // Exact reviewed purge-only mock fixtures. This is not a general test exemption.
+    "components/layout/DeleteAccountModal.bookCache.test.tsx",
+    "context/AuthContext.bookCache.test.tsx",
+    "lib/bookAssets.lifetime.test.ts",
+    "components/tabs/ComicsTab.tsx", // doc comment only (consumes via heroComics)
+    "components/stories/ComicReader.tsx", // captures a child-lifetime epoch for build/retry cancellation
+  ]);
+  const offenders: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      if (!/\.(ts|tsx)$/.test(entry.name)) continue;
+      const rel = path.relative(root, full).replace(/\\/g, "/");
+      if (allowed.has(rel)) continue;
+      if (fs.readFileSync(full, "utf8").includes("comicPageStore")) offenders.push(rel);
+    }
+  };
+  walk(root);
+  return offenders.sort();
+}
+
+/** Exercise the actual recursive scanner; fixture source is never executed. */
+function fixtureOffenders(files: Record<string, string>): string[] {
+  const root = fs.mkdtempSync(path.join(tmpdir(), "arbor-comic-firewall-"));
+  try {
+    for (const [rel, code] of Object.entries(files)) {
+      const full = path.join(root, rel);
+      fs.mkdirSync(path.dirname(full), { recursive: true });
+      fs.writeFileSync(full, code);
+    }
+    return unexpectedComicStoreConsumers(root);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
 describe("AIX-S5 — firewall condition: purge wiring", () => {
   it("child erase purges the comic-page store inside wipeClientChildData", () => {
     const code = read("lib/childData.ts");
@@ -191,39 +247,42 @@ describe("AIX-S5 — firewall condition: device-local ONLY (no network reads the
   });
 
   it("the store is imported ONLY by its allow-listed consumers (no upload path)", () => {
-    const allowed = new Set([
-      "lib/comicPageStore.ts",
-      "lib/comicPageStore.test.ts",
-      "lib/comicShelfDurability.test.ts",
-      // M3 — seeds the store to prove a read-along comic reads back; a read
-      // path only, no network or upload consumer.
-      "lib/comicShelfJourneyBooks.test.ts",
-      "lib/heroComics.journey.test.ts",
-      "lib/heroJourneyAuthDispatch.test.ts", // offline store reset + fetch spy; proves cancellation, no upload consumer
-      "lib/heroComics.identity.test.ts",
-      "lib/heroComics.ts", // read/write-through for page art
-      "lib/childData.ts", // GDPR erase purge
-      "context/AuthContext.tsx", // sign-out purge
-      "components/layout/DeleteAccountModal.tsx", // STORE-4 account-deletion purge (erase path, not upload)
-      // Mocks the store to assert deletion actually calls purgeAllComicPages.
-      // Verifies the erase path; introduces no network or upload consumer.
-      "components/layout/accountDeletionFlow.test.ts",
-      "components/tabs/ComicsTab.tsx", // doc comment only (consumes via heroComics)
-      "components/stories/ComicReader.tsx", // captures a child-lifetime epoch for build/retry cancellation
-    ]);
-    const offenders: string[] = [];
-    const walk = (dir: string) => {
-      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, entry.name);
-        if (entry.isDirectory()) { walk(full); continue; }
-        if (!/\.(ts|tsx)$/.test(entry.name)) continue;
-        const rel = path.relative(SRC_ROOT, full).replace(/\\/g, "/");
-        if (allowed.has(rel)) continue;
-        if (fs.readFileSync(full, "utf8").includes("comicPageStore")) offenders.push(rel);
-      }
-    };
-    walk(SRC_ROOT);
+    const offenders = unexpectedComicStoreConsumers(SRC_ROOT);
     expect(offenders, `unexpected comicPageStore consumers: ${offenders.join(", ")}`).toEqual([]);
+  });
+
+  it("still rejects unknown production consumers, including test-like names", () => {
+    const code = 'import { getComicPage } from "./comicPageStore";';
+    const paths = [
+      "lib/networkUploader.ts",
+      "server/nested/export.ts",
+      "context/AuthContext.bookCache.tsx",
+      "components/layout/DeleteAccountModal.bookCache.tsx",
+      "lib/bookAssets.lifetime.ts",
+    ];
+    expect(fixtureOffenders(Object.fromEntries(paths.map(rel => [rel, code])))).toEqual([...paths].sort());
+  });
+
+  it("still rejects unknown tests instead of skipping test files or folders", () => {
+    const code = 'vi.mock("./comicPageStore", () => ({}));';
+    const paths = ["lib/unreviewed.test.ts", "components/nested/upload.test.tsx", "__tests__/upload.ts"];
+    expect(fixtureOffenders(Object.fromEntries(paths.map(rel => [rel, code])))).toEqual([...paths].sort());
+  });
+
+  it("admits only the three exact reviewed purge mocks, not near-match paths", () => {
+    const paths = [
+      "components/layout/DeleteAccountModal.bookCache.test.tsx",
+      "context/AuthContext.bookCache.test.tsx",
+      "lib/bookAssets.lifetime.test.ts",
+    ];
+    const exact = Object.fromEntries(paths.map(rel => [rel, read(rel)]));
+    expect(fixtureOffenders(exact)).toEqual([]);
+    const near = {
+      "nested/context/AuthContext.bookCache.test.tsx": exact[paths[1]],
+      "context/AuthContext.bookCache.test.ts": exact[paths[1]],
+      "lib/bookAssets.lifetime.test.tsx": exact[paths[2]],
+    };
+    expect(fixtureOffenders({ ...exact, ...near })).toEqual(Object.keys(near).sort());
   });
 
   it("no importer passes store pages into a network call (page data stays local)", () => {

@@ -190,8 +190,7 @@ async function wipeClientChildData(uid: string | undefined, childId: string): Pr
   } catch {
     /* best effort */
   }
-  // B-BOOK release: the device copy of the child's private book files.
-  await purgeBookAssets(childId);
+  // The public erase entry point already retired and purged private book files.
   if (remoteActive(uid) && db) {
     for (const name of CHILD_SUBCOLLECTIONS) {
       try {
@@ -228,6 +227,7 @@ async function wipeClientChildData(uid: string | undefined, childId: string): Pr
 
 /** Permanently delete one child's data (all subcollections) and the child doc. */
 export async function deleteChildData(uid: string | undefined, childId: string) {
+  const bookPurge = purgeBookAssets(childId); // Retire before the server request can yield.
   // CMP-2 (GDPR Art. 17): real server-side erasure — memory-event ledger and
   // share grants are hard-deleted, not just the client's own collections.
   try {
@@ -235,6 +235,7 @@ export async function deleteChildData(uid: string | undefined, childId: string) 
   } catch {
     /* best effort: client-side deletion below still proceeds */
   }
+  await bookPurge;
   await wipeClientChildData(uid, childId);
 }
 
@@ -242,6 +243,7 @@ export async function deleteChildData(uid: string | undefined, childId: string) 
  *  captured into a receipt, plus the full client-side wipe. Returns the receipt
  *  the parent can keep as proof of deletion. */
 export async function eraseEverything(uid: string | undefined, childId: string): Promise<DeletionReceipt> {
+  const bookPurge = purgeBookAssets(childId); // Retire before the server request can yield.
   let counts: DeletionReceipt["counts"] = { memoryEvents: 0, shares: 0 };
   try {
     const res = await api.privacyErase(childId);
@@ -252,6 +254,7 @@ export async function eraseEverything(uid: string | undefined, childId: string):
   // LC-18: the receipt is the parent's PROOF of deletion, and it counted only
   // what the server erased — the device the parent is holding was absent from
   // it. `clientDocs` is what the local sweep actually removed.
+  await bookPurge;
   const clientDocs = await wipeClientChildData(uid, childId);
   return { childId, erasedAt: new Date().toISOString(), counts: { ...counts, clientDocs } };
 }
