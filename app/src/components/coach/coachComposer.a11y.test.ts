@@ -65,10 +65,13 @@ describe("OBJ-ASK-01 · the composer has an accessible name", () => {
     expect(composerCss).toMatch(/\.companion-input-well>button\{[^}]*width:46px;height:46px/);
     expect(composerCss).toMatch(/\.companion-attachments button\{[^}]*min-width:44px;min-height:44px/);
     expect(composerCss).toContain("outline:2px solid var(--arbor-clay)");
-    // New and delete retain real target floors inside the compact history region.
-    expect(coach).toContain('onClick={newConversation}');
-    expect(coach).toContain('className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] font-extrabold');
-    expect(coach).toContain('aria-label={t("aria.deleteConversation")} className="touch-target transition"');
+    // F-TALK-1 re-pin: the on-demand history list has no "+ New" (New lives
+    // in the panel menu); each row (open) and its delete keep real floors,
+    // and the list's close button is 44 x 44.
+    expect(coach).not.toContain("onClick={newConversation}");
+    expect(coach).toContain('className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-xl px-2 py-1.5 text-start');
+    expect(coach).toMatch(/aria-label=\{inputText\(uiLang, "companion\.history\.delete", \{ title: c\.title \}\)\}\s+className="touch-target /);
+    expect(coach).toMatch(/aria-label=\{inputText\(uiLang, "companion\.history\.close"\)\}\s+className="inline-flex min-h-11 min-w-11 /);
   });
 });
 
@@ -128,20 +131,32 @@ describe("AI-04 · what is actually wired for a typed turn", () => {
 });
 
 describe("B-ASKJB-07 · the one-time weekly-context notice in the composer", () => {
-  it("renders inside the composer, AFTER the field and the capture chips (critic r2), with 44 px Change + dismiss", () => {
-    const start = coach.indexOf("const composerSection");
-    const composer = coach.slice(start, coach.indexOf("{voiceNotice && voicePhase", start));
-    const notice = composer.slice(composer.indexOf('data-testid="coach-weekly-notice"'));
-    expect(composer.indexOf("<CompanionComposer")).toBeGreaterThan(-1);
-    expect(composer.indexOf('data-testid="coach-weekly-notice"')).toBeGreaterThan(composer.indexOf("<CompanionComposer"));
+  // F-TALK-2 re-pin: was "renders inside composerSection after <CompanionComposer>".
+  // The notice is now part of the composer's ONE foot line: CoachTab builds it
+  // in composerFoot, passes it as footAction, and CompanionComposer renders
+  // footAction in its foot row, after the field (critic r2 still holds).
+  it("renders inside the composer's foot line, AFTER the field and the capture chips (critic r2), with 44 px Change + dismiss", () => {
+    const start = coach.indexOf("const composerFoot");
+    const foot = coach.slice(start, coach.indexOf("const composerSection", start));
+    const notice = foot.slice(foot.indexOf('data-testid="coach-weekly-notice"'));
+    expect(foot.indexOf('data-testid="coach-weekly-notice"')).toBeGreaterThan(-1);
+    expect(coach.slice(coach.indexOf("const composerSection"))).toContain("footAction={composerFoot}");
+    const composerSrc = readFileSync(path.join(SRC, "components/companion/CompanionComposer.tsx"), "utf8");
+    expect(composerSrc.indexOf("{footAction}")).toBeGreaterThan(composerSrc.indexOf("<textarea"));
+    expect(composerSrc).toMatch(/<div className="companion-composer-foot-row"><p className="companion-composer-foot">\{inputText\(language, "companion\.input\.foot"\)\}<\/p>\{footAction\}<\/div>/);
+    // Only one foot: nothing about data use renders after the composer any more.
+    const section = coach.slice(coach.indexOf("const composerSection"), coach.indexOf("{voiceNotice && voicePhase"));
+    expect(section).not.toMatch(/coach-weekly-notice|coach-data-use/);
     expect(notice.length).toBeGreaterThan(0);
     for (const id of ["coach-weekly-notice-change", "coach-weekly-notice-dismiss"]) {
       const at = notice.indexOf(`data-testid="${id}"`);
       expect(at).toBeGreaterThan(-1);
       expect(notice.slice(at, at + 900)).toMatch(/min-h-11/);
     }
-    // Change opens the panel that holds the per-child off.
-    expect(notice).toMatch(/setContractOpen\(true\)/);
+    // F-TALK-1 re-pin: Change lands on the switch that holds the per-child
+    // off, in "What Arbor remembers" (#/memory?section=coach).
+    expect(notice).toMatch(/goToRoute\("memory", \{ section: "coach" \}\)/);
+    expect(notice).not.toMatch(/setContractOpen/);
     // A quiet line: no fill, no border, --t-xs; never physical padding.
     const open = notice.slice(0, notice.indexOf(">"));
     expect(open).not.toMatch(/background|border/);

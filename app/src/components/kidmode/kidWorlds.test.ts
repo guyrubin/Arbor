@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { KID_WORLDS, KID_WORLD_NAME_KEY, kidWorldByWorldId } from "./kidWorlds";
+import { STUDIO_V2_GAME_WORLDS } from "./studioGameWorlds";
 import { KID_GAME_TITLE_KEY, KID_HOME_GAMES } from "./KidDashboard";
 import { KID_WORLDS as ARCADE_KID_WORLDS } from "../practice/HeroArcade";
 import { PASTEL_OF_ACCENT, STUDIO_WORLDS } from "../practice/studioWorlds";
@@ -100,9 +101,27 @@ describe("B-KID-68: art ids come from the registry", () => {
     expect(manifest).toMatch(/import \{ KID_WORLDS,(?: SNEAK_FREEZE_WORLD,)? type KidWorldId \} from "\.\.\/components\/kidmode\/kidWorlds";/);
     expect(manifest).not.toMatch(/"speech", "feelings", "memory"/);
   });
-  it("worldArtwork resolves every registry world in every theme; the registry imports nothing at runtime", () => {
-    for (const theme of KID_THEME_IDS) for (const w of KID_WORLDS) expect(worldArtwork(w.worldId, theme)?.src, `${theme} ${w.worldId}`).toBeTruthy();
-    const reg = readFileSync(path.join(__dirname, "kidWorlds.ts"), "utf8");
-    expect(reg).not.toMatch(/^import\s/m);
+  it("worldArtwork resolves old and new worlds in every theme without widening the legacy picker", () => {
+    expect(STUDIO_V2_GAME_WORLDS.map(w => w.worldId).sort()).toEqual(["calm-builder", "puzzle", "sound-explorer"]);
+    for (const theme of KID_THEME_IDS) {
+      for (const w of [...KID_WORLDS, ...STUDIO_V2_GAME_WORLDS]) expect(worldArtwork(w.worldId, theme)?.src, `${theme} ${w.worldId}`).toBeTruthy();
+      for (const w of STUDIO_V2_GAME_WORLDS) {
+        expect(worldArtwork(w.worldId, theme)?.src).toBe(kidArt(theme, worldTileKey(w.worldId))?.src480);
+        expect(worldArtwork(w.worldId, theme)?.hasHero).toBe(false);
+        expect(KID_WORLD_TILE_IDS).not.toContain(w.worldId);
+        expect(ARCADE_KID_WORLDS.map(w => w.id)).not.toContain(w.worldId);
+      }
+    }
+    expect(worldArtwork("unknown-studio-game", "film3d")).toBeUndefined();
+  });
+  it("the only runtime dependency is the V2 registry, whose own imports are type-only", () => {
+    const source = (file: string) => readFileSync(path.join(__dirname, file), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    const imports = (text: string) => [...text.matchAll(/^\s*import\s+[\s\S]*?;/gm)].map(m => m[0].trim());
+    const reg = source("kidWorlds.ts");
+    expect(imports(reg)).toEqual(['import { STUDIO_V2_GAME_WORLDS } from "./studioGameWorlds";']);
+    const studio = source("studioGameWorlds.ts");
+    expect(imports(studio)).toEqual(['import type { KidWorld } from "./kidWorlds";']);
+    for (const text of [reg, studio]) expect(text).not.toMatch(/\b(?:import|require)\s*\(|\bexport\s+[^;]*\bfrom\s+["']/);
+    expect(studio).not.toMatch(/\b(?:fetch|localStorage|sessionStorage|window|document)\b|Math\.random|Date\.now/);
   });
 });

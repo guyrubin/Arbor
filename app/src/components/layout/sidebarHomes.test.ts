@@ -12,6 +12,11 @@
  * Back follows the same homes: a leaf returns to its place or its door, and a
  * home's own route (a place, or coach / masterclasses / consult) has no Back.
  *
+ * v3 F-SHELL-2 (critic ruling 10): Talk is a panel over a page, never a place.
+ * The Talk door opens the conversation through requestCompanionConversation
+ * and is never the current row; on #/coach and #/scholar the page under the
+ * panel is Now, so Now is lit (litHomeIdOf below).
+ *
  * Rendered with renderToStaticMarkup (the vitest environment is node-only);
  * the 1280 px rendered sweep repeats the one-current check in a browser.
  */
@@ -30,6 +35,10 @@ vi.mock("../../context/LanguageContext", async () => {
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };
 });
 vi.mock("../profile/ProfileSwitcher", () => ({ default: () => null }));
+const convo = vi.hoisted(() => ({ request: vi.fn() }));
+vi.mock("../../lib/companionConversation", () => ({ requestCompanionConversation: convo.request }));
+// The plan line is pinned in sidebarAccount.test.tsx; here the plan is still loading.
+vi.mock("../../hooks/useEntitlement", () => ({ useEntitlement: () => ({ entitlement: { plan: "free", enforced: true }, loading: true, isFallback: true }) }));
 // Capture each <button>'s props as React builds it, so a row's onClick can be
 // called (a static render drops handlers). Same seam as parentRecordHierarchy.
 const captured = vi.hoisted(() => ({ buttons: [] as Record<string, unknown>[] }));
@@ -52,6 +61,8 @@ type Lang = "en" | "he";
 type Row = { home: string; current: boolean; open: string; style: string; body: string; text: string };
 const HOMES = [...COMPANION_PLACES, ...COMPANION_DOORS];
 const homeIdOf = (tab: ActiveTab) => { const h = homeForTab(tab); return h.kind === "place" ? h.place.id : h.door.id; };
+/** v3 F-SHELL-2: the row the Sidebar lights. Talk's routes light Now. */
+const litHomeIdOf = (tab: ActiveTab) => (homeIdOf(tab) === "talk" ? "now" : homeIdOf(tab));
 
 function render(tab: ActiveTab, lang: Lang = "en"): string {
   state.activeTab = tab;
@@ -92,15 +103,37 @@ describe("v3 IA-01 · three places and three doors, nothing else", () => {
     for (const row of rows(render("overview"))) expect(row.open, row.home).toMatch(/class="[^"]*\bmin-h-11\b/);
   });
 
-  it("each row opens its own route: a place its landing tab, a door its route", () => {
+  // v3 F-SHELL-2 re-pin (critic ruling 10, shared contract 2): the Talk door
+  // no longer routes to #/coach; it opens the conversation panel over the
+  // current page through requestCompanionConversation. Every other row still
+  // opens its own route.
+  it("each row opens its own route: a place its landing tab, a door its route; Talk opens the panel", () => {
     render("weekly");
     const byHome = new Map(captured.buttons.filter((b) => b["data-home"]).map((b) => [b["data-home"] as string, b] as const));
     expect([...byHome.keys()]).toEqual(HOMES.map((h) => h.id));
     for (const home of HOMES) {
+      state.setActiveTab.mockClear();
+      convo.request.mockClear();
       (byHome.get(home.id)!.onClick as () => void)();
-      expect(state.setActiveTab).toHaveBeenLastCalledWith(home.tab);
+      if (home.id === "talk") {
+        expect(convo.request).toHaveBeenCalledExactlyOnceWith({ source: "sidebar" });
+        expect(state.setActiveTab).not.toHaveBeenCalled();
+      } else {
+        expect(state.setActiveTab).toHaveBeenLastCalledWith(home.tab);
+        expect(convo.request).not.toHaveBeenCalled();
+      }
     }
     expect(HOMES.map((h) => h.tab)).toEqual(["overview", "development", "practice", "coach", "masterclasses", "consult"]);
+  });
+
+  it("the Talk door announces a dialog and is never the current row (v3 F-SHELL-2)", () => {
+    for (const tab of ROUTE_IDS) {
+      const talk = rows(render(tab)).find((r) => r.home === "talk")!;
+      expect(talk.open, tab).toContain('aria-haspopup="dialog"');
+      expect(talk.current, tab).toBe(false);
+    }
+    // Only Talk opens a dialog; the other five rows are plain navigation.
+    for (const row of rows(render("overview"))) if (row.home !== "talk") expect(row.open, row.home).not.toContain("aria-haspopup");
   });
 });
 
@@ -111,7 +144,8 @@ describe("v3 IA-01 · exactly one current entry on every route, from table A", (
       const html = render(tab, lang);
       expect((html.match(/aria-current="page"/g) ?? []).length, tab).toBe(1);
       const current = rows(html).filter((r) => r.current);
-      expect(current.map((r) => r.home), tab).toEqual([homeIdOf(tab)]);
+      // v3 F-SHELL-2 re-pin: Talk's routes light Now (the page under the panel).
+      expect(current.map((r) => r.home), tab).toEqual([litHomeIdOf(tab)]);
     }
   });
 
@@ -119,7 +153,8 @@ describe("v3 IA-01 · exactly one current entry on every route, from table A", (
     const expected: Partial<Record<ActiveTab, string>> = {
       consult: "care", "school-brief": "care", appointments: "care", sharing: "care", safety: "care", reports: "care", handoff: "care", "care-team": "care",
       masterclasses: "learn", learn: "learn", family: "learn",
-      coach: "talk", scholar: "talk",
+      // v3 F-SHELL-2 re-pin: Talk is a panel over Now, so its routes light Now.
+      coach: "now", scholar: "now",
       behaviors: "child", milestones: "child", development: "child",
       // FEAT-07 is included: Together's Routines entry now owns Plans.
       plans: "together",
@@ -145,7 +180,7 @@ describe("v3 IA-01 · exactly one current entry on every route, from table A", (
     }
   });
 
-  it("the Talk door shows no count, even while it is current (B-SHELL-26)", () => {
+  it("the Talk door shows no count, on its own route or any other (B-SHELL-26)", () => {
     for (const tab of ["coach", "overview"] as const) {
       const talk = rows(render(tab)).find((r) => r.home === "talk")!;
       expect(talk.text).toBe("forum" + COMPANION_DOORS[0].en);
@@ -216,7 +251,12 @@ describe("v3 IA-01 · the Sidebar source", () => {
   const doors = code.slice(doorsAt, code.indexOf("})}", doorsAt));
 
   it("reads the one home resolver and renders the doors from COMPANION_DOORS, after the places", () => {
-    expect(code).toContain("const home = homeForTab(activeTab);");
+    // v3 F-SHELL-2 re-pin: the resolver's answer passes through chromeLitHome
+    // (Talk lights Now; the Topbar names the same home); there is still
+    // exactly one resolver.
+    expect(code).toContain("const lit = chromeLitHome(homeForTab(activeTab));");
+    expect(code).toContain('onClick={() => (isTalk ? requestCompanionConversation({ source: "sidebar" }) : setActiveTab(door.tab))}');
+    expect(code).not.toContain('setActiveTab("coach")');
     expect(doorsAt).toBeGreaterThan(code.indexOf("})}", code.indexOf("COMPANION_PLACES.map(")));
     expect(code).not.toContain("placeForTab");
     expect(code).not.toContain('activeTab !== "coach"');

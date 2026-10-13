@@ -19,13 +19,15 @@
 .topic-edit { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 14px; background: var(--arbor-paper-deep); }
 .topic-edit-label { font-size: 12.5px; font-weight: 700; color: var(--arbor-muted); }
 .topic-edit textarea { inline-size: 100%; padding: 12px 14px; border: 1px solid var(--arbor-rule-strong); border-radius: 12px; background: var(--arbor-paper-elevated); color: var(--arbor-ink); font: inherit; font-size: 16px; resize: vertical; }
-.topic-edit fieldset { margin: 0; padding: 0; border: 0; }
-.topic-edit legend { margin-block-end: 8px; font-size: var(--t-sm); color: var(--arbor-ink-soft); }
+/* F-NOW-1: the active question's intent, always in view (no longer inside the edit form). */
+.topic-intent-row { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+.topic-intent-row legend { margin-block-end: 8px; padding: 0; font-size: var(--t-sm); color: var(--arbor-ink-soft); }
 .topic-intents { display: flex; flex-wrap: wrap; gap: 8px; }
 .topic-intents > button { display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; padding: 0 14px; border: 1px solid var(--arbor-rule); border-radius: 12px; background: var(--arbor-paper-elevated); color: var(--arbor-ink); font-size: var(--t-sm); font-weight: 600; }
 .topic-intents > button > .msr { color: var(--arbor-muted); }
 .topic-intents > button[aria-pressed="true"] { border-color: var(--arbor-clay); background: var(--arbor-paper-elevated); color: var(--arbor-clay); box-shadow: inset 0 0 0 1px var(--arbor-clay); }
 .topic-intents > button[aria-pressed="true"] > .msr { color: inherit; }
+.topic-intents > button:disabled { opacity: .6; }
 .topic-edit-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .topic-sheet-error { margin: 0; font-size: var(--t-sm); color: var(--arbor-ink); }
 

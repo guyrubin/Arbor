@@ -10,7 +10,7 @@
 .companion-eyebrow { display: block; color: var(--arbor-muted); font-size: var(--t-kicker); font-weight: 600; letter-spacing: .09em; line-height: 1.5; }
 [dir="rtl"] .companion-eyebrow { letter-spacing: 0; }
 .companion-heading h1 { margin-block: 9px 10px; }
-.companion-heading > p, .companion-together-hero > div > p { color: var(--arbor-ink-soft); font-size: var(--t-base); max-inline-size: 54ch; }
+.companion-heading > p { color: var(--arbor-ink-soft); font-size: var(--t-base); max-inline-size: 54ch; }
 .companion-now-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, .8fr); gap: 28px; align-items: start; }
 .companion-focus { background: var(--arbor-paper-elevated); border: 1px solid var(--arbor-rule); border-radius: var(--r-xl); padding: clamp(22px, 3vw, 36px); }
 .companion-kicker { display: flex; align-items: center; gap: 9px; color: var(--arbor-clay-deep); font-size: var(--t-xs); font-weight: 600; letter-spacing: .05em; }
@@ -49,18 +49,22 @@
 .companion-editorial-door h2 { font-size: var(--t-title); line-height: 1.3; margin-block: 7px 9px; }
 .companion-editorial-door p { color: var(--arbor-muted); font-size: var(--t-sm); }
 .companion-door-link { display: flex; align-items: center; gap: 8px; color: var(--arbor-clay-deep); font-size: var(--t-sm); font-weight: 600; margin-block-start: 14px; }
-.companion-together-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 24px; margin-block-end: 30px; }
-.companion-together-hero h1 { line-height: 1.18; margin-block: 12px 18px; max-inline-size: 17ch; }
-.companion-together-hero .companion-primary { margin-block-start: 23px; }
+/* v3 F-TOG-1: the Together hero's layout lives in togetherDiscovery.css; the picture clips to its radius here. */
 .companion-together-art { overflow: hidden; border-radius: var(--r-xl); }
-.companion-together-art img { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 1.25; object-fit: cover; }
-.companion-topic-context { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 14px; padding-block: 6px; border-block-start: 1px solid var(--arbor-rule); font-size: var(--t-sm); }
+.companion-together-art img { display: block; inline-size: 100%; block-size: auto; object-fit: cover; }
+/* v3 F-TOG-1: the question row sits under the hero, a rule above it; the enjoy note keeps to the far side. */
+.companion-topic-context { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 14px; margin-block: 4px 8px; padding-block: 12px 4px; border-block-start: 1px solid var(--arbor-rule); font-size: var(--t-sm); }
 /* FEAT-05: on Together the question chip reads as a sentence: the lead-in in ink, the question in bold. */
 .companion-topic-context > .companion-topic-chip { color: var(--arbor-ink); font-size: var(--t-sm); font-weight: 400; }
 .companion-topic-context .companion-topic-chip-pill { padding-block: 6px; padding-inline: 10px 14px; border-radius: 16px; }
 .companion-topic-context .companion-topic-chip-text b { font-weight: 700; }
 .companion-topic-context > .companion-caption { margin-inline-start: auto; }
-@container together (max-width: 540px) { .companion-topic-context > .companion-caption { margin-inline-start: 0; } }
+/* On a phone the row is one line: the question ellipsises and the enjoy note steps aside. */
+@container together (max-width: 540px) {
+  .companion-topic-context { flex-wrap: nowrap; }
+  .companion-topic-context > .companion-caption { display: none; }
+  .companion-topic-context .companion-topic-chip-text { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
 .companion-filter-row { display: flex; gap: 8px; flex-wrap: wrap; padding-block: 15px 20px; border-block-end: 1px solid var(--arbor-rule-strong); margin-block-end: 28px; }
 .companion-filter { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-block-size: 44px; padding: 10px 15px; border: 1px solid var(--arbor-rule-strong); border-radius: 99px; background: var(--arbor-paper); color: var(--arbor-ink); font-size: var(--t-sm) !important; }
 .companion-filter[aria-pressed="true"] { background: var(--arbor-subtab-active); color: var(--arbor-subtab-on-ink); border-color: var(--arbor-subtab-active); }
@@ -87,8 +91,6 @@
 .companion-offscreen-card h3 { font-size: var(--t-title); line-height: 1.3; margin-block: 16px 12px; }
 .companion-say { font-family: var(--font-display); font-size: var(--t-say); line-height: 1.4 !important; color: var(--arbor-ink); }
 .companion-offscreen-card .companion-door-link { margin-block-start: auto; padding-block-start: 20px; }
-.companion-together-footer { display: flex; align-items: center; gap: 12px; border-block-start: 1px solid var(--arbor-rule-strong); padding-block-start: 20px; }
-.companion-together-footer p { flex: 1; color: var(--arbor-muted); font-size: var(--t-xs); }
 .companion-preview { color: var(--arbor-ink); }
 .companion-preview > img { inline-size: 100%; block-size: auto; max-block-size: 230px; object-fit: cover; border-radius: var(--r); }
 .companion-preview > p { margin-block: 18px; }
@@ -96,12 +98,9 @@
 .companion-preview > .companion-primary { display: flex; inline-size: 100%; }
 .companion-preview > .companion-text-button { margin-block-start: 12px; }
 @media (max-width: 760px) {
-  .companion-now-grid, .companion-together-hero { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .companion-now-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .companion-heading { margin-block-end: 24px; }
   .companion-heading h1 { font-size: 32px; }
-  .companion-together-hero h1 { max-inline-size: 23ch; font-size: 32px; }
-  .companion-together-art { order: -1; }
-  .companion-together-art img { aspect-ratio: 2.3; object-position: 50% 60%; }
   .companion-now-art { display: none; }
   .companion-next { padding: 20px 0 0; border-block-start: 1px solid var(--arbor-rule); }
   .companion-next h2 { max-inline-size: 28ch; }
@@ -135,20 +134,8 @@
   .companion-world-card h3 { font-size: 20px; }
   .companion-world-card .companion-door-link { font-size: var(--t-xs); line-height: 1.4; align-items: start; }
   .companion-world-card .companion-door-link .msr { display: none; }
-  .companion-together-footer { flex-wrap: wrap; align-items: start; }
-  .companion-together-footer p { min-inline-size: 220px; }
 }
 
-/* Parity 9 Oct — Together's since-line, hand-over, counts, PIN nudge and trust chips (tokens only). */
-.companion-since { margin-block-start: 14px; padding: 12px 14px; border-radius: var(--r-lg); background: var(--arbor-paper-deep); }
-.companion-since > p { font-size: var(--t-sm); color: var(--arbor-ink); }
-.companion-since i { font-family: var(--font-editorial); }
-.companion-since .companion-text-button { min-block-size: 44px; }
-.companion-handover { margin-block-start: 10px; }
+/* Parity 9 Oct — the Games filter's per-world counts (tokens only). v3 F-TOG-1 moved the
+   since-line, hand-over, PIN nudge and trust chips off Together (the gate card and Settings › PIN). */
 .companion-world-count { display: inline-block; margin-block: 2px 4px; padding: 1px 8px; border-radius: 999px; font-size: var(--t-xs); font-weight: 700; color: var(--arbor-ink-soft); background: var(--arbor-paper-deep); }
-.companion-pin-nudge { display: flex; align-items: center; gap: 12px; inline-size: 100%; min-block-size: 44px; margin-block: 18px 0; padding: 12px 16px; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); background: var(--arbor-paper-deep); color: var(--arbor-ink-soft); font-size: var(--t-sm); text-align: start; }
-.companion-pin-nudge > span:nth-child(2) { flex: 1; min-inline-size: 0; }
-.companion-pin-nudge b, .companion-pin-nudge-cta { color: var(--arbor-ink); font-weight: 700; }
-.companion-trust-chips { display: flex; flex-wrap: wrap; gap: 6px; inline-size: 100%; margin: 6px 0 0; padding: 0; list-style: none; }
-.companion-trust-chips li { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--arbor-rule); background: var(--arbor-paper-elevated); color: var(--arbor-ink-soft); font-size: var(--t-xs); font-weight: 700; }
-.companion-play-note { inline-size: 100%; }

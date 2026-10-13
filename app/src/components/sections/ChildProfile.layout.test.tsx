@@ -1,14 +1,17 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ChildProfile from "./ChildProfile";
+import AspectCard from "../about/AspectCard";
 import { en, he } from "../../lib/i18nElevation/wave2Knowledge";
 import { en as goalsEn, he as goalsHe } from "../../lib/i18nElevation/goals";
 import { en as cpEn, he as cpHe } from "../../lib/i18nElevation/careprofile";
+import { companionEn, companionHe } from "../../lib/i18nCompanion";
+import type { AspectState } from "../../lib/aboutAspects";
 const harness=vi.hoisted(() => ({
  callback:false, locale:"en", pending:[] as unknown[], approved:[] as unknown[], hasHero:true,
  goals:[] as unknown[], challenges:[] as string[], factsAsOf:undefined as unknown, updateChild:vi.fn(),
- setActiveTab:vi.fn(), setState:vi.fn(), decide:vi.fn(async()=>true),
+ setActiveTab:vi.fn(), setState:vi.fn(), decide:vi.fn(async()=>true), tell:[] as Record<string,unknown>[], phone:false,
 }));
 vi.mock("react", async (original) => {
  const real=await original<typeof import("react")>();
@@ -19,82 +22,197 @@ vi.mock("react", async (original) => {
  };
 });
 vi.mock("../../context/ArborContext",()=>({useArbor:()=>({
- childProfile:{id:"c1",name:"Dylan",age:5,languages:["English"],schoolContext:"School",challenges:harness.challenges,strengths:[],interests:["Dinosaurs"],activeGoals:harness.goals,factsAsOf:harness.factsAsOf},
+ childProfile:{id:"c1",name:"Noa",age:5,languages:["English"],schoolContext:"School",challenges:harness.challenges,strengths:[],interests:["Dinosaurs"],activeGoals:harness.goals,factsAsOf:harness.factsAsOf},
  milestones:[],behaviorLogs:[],playLogs:[],actionPlans:[],approvedMemoryItems:harness.approved,pendingMemoryItems:harness.pending,setActiveTab:harness.setActiveTab,updateChild:harness.updateChild,handleMemoryDecision:harness.decide,isMemoryUpdating:null,
 })}));
 vi.mock("../../context/ProfileContext",()=>({useProfile:()=>({profiles:[{id:"c1"}]})}));
 vi.mock("../../context/AuthContext",()=>({useAuth:()=>({user:{displayName:"Parent"}})}));
 vi.mock("../../context/LanguageContext",()=>({useLanguage:()=>({uiLang:harness.locale,t:(key:string,vars?:Record<string,unknown>)=>{
- let value=(harness.locale==="he"?he:en)[key]||(harness.locale==="he"?goalsHe:goalsEn)[key]||(harness.locale==="he"?cpHe:cpEn)[key]||key;
+ const he_=harness.locale==="he";
+ let value=(he_?he:en)[key]||(he_?goalsHe:goalsEn)[key]||(he_?cpHe:cpEn)[key]||(he_?companionHe as Record<string,string>:companionEn as Record<string,string>)[key]||key;
  for(const [k,v] of Object.entries(vars||{}))value=value.replaceAll("{"+k+"}",String(v));
  return value;
 }})}));
-vi.mock("../ui/HeroAvatar",()=>({HeroAvatar:()=>null,useHeroAvatar:()=>({hasHero:harness.hasHero,name:"Dylan"})}));
+vi.mock("../ui/HeroAvatar",()=>({HeroAvatar:()=>null,useHeroAvatar:()=>({hasHero:harness.hasHero,name:"Noa"})}));
 vi.mock("../../lib/api",()=>({api:{listShares:vi.fn()}}));
 vi.mock("../profile/ProfileEditDrawer",()=>({default:()=>null}));
+// The ONE guided conversation is its own suite (describe.render.test.tsx); here
+// only what About opens it with is read.
+vi.mock("../describe/TellArborMore",()=>({default:(props:Record<string,unknown>)=>{harness.tell.push(props);return null;}}));
+// v3 F-CHILD-4 (MOB-02): the page reads the phone width through the doors'
+// hook; the doors themselves render for real (their own suite: ChildDoors.test).
+vi.mock("../companion/ChildDoors",async(importOriginal)=>({...(await importOriginal<typeof import("../companion/ChildDoors")>()),useChildPhoneLayout:()=>harness.phone}));
 function elements(node:React.ReactNode):React.ReactElement<Record<string,any>>[]{
  if(!React.isValidElement<Record<string,any>>(node))return[];
  const element=node as React.ReactElement<Record<string,any>>;
  return[element,...React.Children.toArray(element.props.children).flatMap(elements)];
 }
-beforeEach(()=>{vi.clearAllMocks();harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;harness.goals=[];harness.challenges=[];harness.factsAsOf=undefined;});
-describe("W2 Profile identity and protected doors",()=>{
- // W2-GROWTH r1: the telemetry row ("1 child · 1 family member · N moments") is cut.
- it("renders one h1, no count row, with parent facts before family",()=>{
+const cards=()=>elements(ChildProfile()).filter(el=>el.type===AspectCard);
+const card=(id:string)=>cards().find(el=>(el.props.state as AspectState).id===id)!;
+beforeEach(()=>{vi.clearAllMocks();harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;harness.goals=[];harness.challenges=[];harness.factsAsOf=undefined;harness.tell=[];harness.phone=false;});
+afterEach(()=>{vi.unstubAllGlobals();});
+
+/* v3 F-CHILD-3 re-pin: the W2 identity band, the Who chapter (with the Family
+   Circle) and the remembered list left #/profile for About — the describe
+   card, the eight areas and one Details row. */
+describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()=>{
+ it("renders one h1 and no count row; the Family Circle has left About (Care › Trusted sharing owns it)",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
   expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
   expect(html).not.toContain("1 child");expect(html).not.toContain("family member");
-  expect(html.indexOf("English")).toBeLessThan(html.indexOf("cp.family.title"));
-  expect(html).toContain("Facts you added");
+  expect(html).not.toContain("cp.family.title");expect(html).not.toContain("profile-family-title");
+  expect(html).toContain(companionEn["companion.about.title"].replace("{name}","Noa"));
+  expect(html).toContain('data-testid="about-told-line"');
  });
- it("keeps Family Circle subordinate inside the real facts module",()=>{
+ /* v3 F-CHILD-3 review r1 re-pin: Details is ONE tap (a row that opens the
+    drawer), so it is a visible top-level module; what folds away is the
+    measurements log, demoted inside the route's ONE disclosure. Still three
+    top-level modules (budget 3), one demotion, one disclosure. */
+ it("three top-level modules; the measurements log is the ONE demotion, in the ONE disclosure",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
-  const stack:string[]=[];let familyInsideFacts=false;
-  for(const token of html.match(/<\/?section\b[^>]*>/g)||[]){
-   if(token.startsWith("</")){stack.pop();continue;}
-   if(token.includes('aria-labelledby="profile-family-title"'))familyInsideFacts=stack.some(parent=>parent.includes('data-module="profile-who"'));
-   stack.push(token);
-  }
-  expect(familyInsideFacts).toBe(true);
-  expect(html).toContain('<h3 id="profile-family-title"');
-  // W2-GROWTH r1: "Now" is CUT (Journal owns the week's moments); with nothing
-  // pending the remember band is absent, so two top-level modules remain.
-  expect(html.match(/data-module="profile-(identity|who|now|remember)"/g)).toHaveLength(2);
-  expect(html).not.toContain('data-module="profile-now"');
+  expect(html.match(/data-module="[^"]+"/g)).toEqual(['data-module="about-describe"','data-module="about-aspects"','data-module="about-details"','data-module="about-measurements"']);
+  expect(html.match(/data-module-demoted/g)).toHaveLength(1);
+  expect(html.match(/data-module-disclosure=/g)).toHaveLength(1);
+  // the demoted module sits inside the closed disclosure, never on the page face
+  const fold=html.slice(html.indexOf('data-module-disclosure="about-details"'));
+  expect(html).toMatch(/<details data-testid="profile-measurements" data-module-disclosure="about-details"(?![^>]*\bopen\b)/);
+  expect(fold.indexOf('data-module="about-measurements" data-module-demoted')).toBeGreaterThan(-1);
+  expect(html).not.toMatch(/data-module="about-details"[^>]*data-module-demoted/);
+  expect(html).not.toMatch(/data-module="profile-(identity|who|now|remember|milestones|strengths|language|jump-strip)"/);
  });
- it("renders the identity line and edit label in HE, with the language name in Hebrew (law 8)",()=>{
-  harness.locale="he";const html=renderToStaticMarkup(<ChildProfile/>);
-  expect(html).toContain(he["elev.wave2Knowledge.profile.edit"]);
-  const line=html.slice(html.indexOf('data-testid="profile-identity-line"'),html.indexOf("</p>",html.indexOf('data-testid="profile-identity-line"')));
-  expect(line).not.toContain("English");
-  expect(line).toContain("<bdi dir=\"auto\">School</bdi>");
- });
- // B-SHELL-26: Profile lists the kept facts (Forget only); an inference waiting
- // is one quiet line to #/memory — its words are never shown or decided here.
- it("lists what Arbor remembers with Forget only; a proposal's words never appear on Profile",()=>{
-  harness.approved=[{memoryId:"a0",fact:"Newest fact",createdAt:"2026-10-05T10:00:00.000Z"},{memoryId:"a1",fact:"Approved fact",createdAt:"2026-09-05T10:00:00.000Z"}];harness.pending=[{memoryId:"p1",fact:"Unapproved private proposal"}];
+ it("Details is ONE tap: the row is a button that opens the drawer (no two-tap fold), with the identity line inside",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
-  // P1-NEXTLEVEL critic r2: the newest fact is the knows-line quote; the list starts after it.
-  expect(html.split("Newest fact").length-1).toBe(1);
-  const band=html.slice(html.indexOf('data-module="profile-remember"'),html.indexOf("</section>",html.indexOf('data-module="profile-remember"')));
-  expect(band).toContain("Approved fact");expect(band).toContain('data-testid="profile-remembered-forget"');
-  expect(band).toContain('data-testid="profile-remember-check"');
-  expect(html).not.toContain("Unapproved private proposal");
-  expect(html).not.toContain('data-testid="profile-remember-keep"');
- });
- it("the primary is the one 'Add a fact' door (capture-moment) in every state; Forget deletes, nothing routes",()=>{
+  const row=html.slice(html.indexOf('data-testid="about-details-edit"'),html.indexOf("</button>",html.indexOf('data-testid="about-details-edit"')));
+  expect(html).toMatch(/<button type="button" data-testid="about-details-edit"[^>]*class="about-details-row min-h-11"/);
+  expect(row).toContain('data-testid="profile-identity-line"');
+  expect(row).toContain(companionEn["companion.about.details"]);
+  expect(row).toContain(companionEn["companion.about.detailsEdit"]);
+  expect(html).not.toMatch(/<details[^>]*data-testid="about-details"/);
   harness.callback=true;
-  const stamped=()=>elements(ChildProfile()).filter(el=>el.props["data-primary-move"]==="capture-moment");
-  expect(stamped()).toHaveLength(1);
-  expect(stamped()[0].props["data-testid"]).toBe("profile-hero-cta");
-  stamped()[0].props.onClick();expect(harness.setState).toHaveBeenCalledWith(true);expect(harness.setActiveTab).not.toHaveBeenCalled();
-  harness.pending=[{memoryId:"p1",fact:"f"},{memoryId:"p2",fact:"g"}];harness.approved=[{memoryId:"a0",fact:"Newest fact",createdAt:"2026-10-05T10:00:00.000Z"},{memoryId:"a1",fact:"Approved fact",createdAt:"2026-09-05T10:00:00.000Z"}];
-  expect(stamped()).toHaveLength(1);
-  expect(stamped()[0].props["data-testid"]).toBe("profile-hero-cta");
-  expect(elements(ChildProfile()).filter(el=>el.props["data-primary-move"]==="approve-memory")).toHaveLength(0);
-  const forget=elements(ChildProfile()).find(el=>el.props["data-testid"]==="profile-remembered-forget");
-  forget!.props.onClick();expect(harness.decide).toHaveBeenCalledWith("a1","deleted");
+  elements(ChildProfile()).find(el=>el.props["data-testid"]==="about-details-edit")!.props.onClick();
+  expect(harness.setState).toHaveBeenLastCalledWith(true);
   expect(harness.setActiveTab).not.toHaveBeenCalled();
+ });
+ it("a proposal no area shows: one plain sentence under the memory door, no number, no badge (EN + HE)",()=>{
+  for(const locale of ["en","he"]){
+   harness.locale=locale;
+   const C=locale==="he"?companionHe:companionEn;
+   harness.pending=[];
+   expect(renderToStaticMarkup(<ChildProfile/>)).not.toContain('data-testid="about-memory-waiting"');
+   // placed in its area → shown there, so the door says nothing more
+   harness.pending=[{memoryId:"p1",fact:"Wakes up twice since the move",createdAt:"2026-10-06T10:00:00.000Z"}];
+   expect(renderToStaticMarkup(<ChildProfile/>)).not.toContain('data-testid="about-memory-waiting"');
+   // names no area → it waits on #/memory, and the door says so
+   harness.pending=[{memoryId:"p2",fact:"fact 1",createdAt:"2026-10-06T10:00:00.000Z"}];
+   const html=renderToStaticMarkup(<ChildProfile/>);
+   const door=html.slice(html.indexOf('data-testid="profile-remember-check"'),html.indexOf("</button>",html.indexOf('data-testid="profile-remember-check"')));
+   expect(door).toContain('data-testid="about-memory-waiting"');
+   expect(door).toContain(C["companion.about.memoryWaiting"]);
+   // what the door SAYS (its text, after the opening tag's class list)
+   expect(door.slice(door.indexOf(">")+1).replace(/<[^>]+>/g," ")).not.toMatch(/\d/);
+   expect(door).not.toMatch(/badge|data-count|aria-label="[^"]*\d/);
+   expect(html).not.toContain('data-testid="about-aspect-pending"');
+  }
+ });
+ it("eight area cards in the brief's order, a 4/2/1 grid, and the memory door",()=>{
+  const html=renderToStaticMarkup(<ChildProfile/>);
+  // the card's own testid is followed by its data-aspect (about-aspect-ask/-src/-quote are its parts)
+  expect([...html.matchAll(/data-testid="about-aspect-([a-z]+)" data-aspect="\1"/g)].map(m=>m[1])).toEqual(["temper","lang","social","routine","sleep","senses","school","strengths"]);
+  expect(html).toMatch(/data-testid="profile-remember-check"[^>]*min-h-11|min-h-11[^>]*data-testid="profile-remember-check"/);
+  expect(html).toContain(cpEn["elev.profile.remembers.title"]);
+ });
+ it("renders the Details line and the area copy in HE, with the language name through its key (law 8)",()=>{
+  harness.locale="he";const html=renderToStaticMarkup(<ChildProfile/>);
+  expect(html).toContain(companionHe["companion.about.details"]);
+  expect(html).toContain(companionHe["companion.about.aspectsKicker"]);
+  const line=html.slice(html.indexOf('data-testid="profile-identity-line"'),html.indexOf("</span>",html.indexOf('data-testid="profile-identity-line"')));
+  expect(line).toContain("<bdi dir=\"auto\">Noa</bdi>");
+  const roles=html.slice(html.indexOf('data-testid="about-lang-roles"'),html.indexOf("</dl>",html.indexOf('data-testid="about-lang-roles"')));
+  expect(roles).not.toContain("English");expect(roles).toContain("ob.lang.english");
+ });
+ it("the count line says how many areas were told — never against eight, no share, no bar",()=>{
+  for(const locale of ["en","he"]){
+   harness.locale=locale;
+   const html=renderToStaticMarkup(<ChildProfile/>);
+   const line=html.slice(html.indexOf('data-testid="about-told-line"'),html.indexOf("</p>",html.indexOf('data-testid="about-told-line"'))).replace(/&#x27;/g,"'");
+   // lang (English), school (School) and strengths (Dinosaurs) are told; no as-of stamps, so the line is undated
+   expect(line).toContain((locale==="he"?companionHe:companionEn)["companion.about.toldManyUndated"].replace("{n}","3"));
+   expect(line).not.toMatch(/%|\bof 8\b|מתוך|\/\s*8/);
+   expect(html).not.toMatch(/role="progressbar"|<progress\b|<meter\b/);
+  }
+ });
+ it("a kept fact is quoted in its area with its day; a proposal waits in its area with Confirm / No",()=>{
+  harness.approved=[{memoryId:"a1",fact:"Falls asleep after two stories",createdAt:"2026-10-05T10:00:00.000Z"}];
+  harness.pending=[{memoryId:"p1",fact:"Wakes up twice since the move",createdAt:"2026-10-06T10:00:00.000Z"}];
+  const html=renderToStaticMarkup(<ChildProfile/>);
+  const sleep=html.slice(html.indexOf('data-testid="about-aspect-sleep"'),html.indexOf("</article>",html.indexOf('data-testid="about-aspect-sleep"')));
+  expect(sleep).toContain("Falls asleep after two stories");
+  expect(sleep).toContain("Noted · Oct 5, 2026");
+  expect(sleep).toContain('data-testid="about-aspect-pending"');
+  expect(sleep).toContain(companionEn["companion.about.pending"].trim());
+  expect(sleep).toContain("Wakes up twice since the move");
+  expect(sleep).toContain('data-testid="about-pending-confirm"');expect(sleep).toContain('data-testid="about-pending-dismiss"');
+  expect(html.split("Falls asleep after two stories").length-1).toBe(1);
+  // no receipt before anything was decided
+  expect(html).not.toContain('data-testid="about-aspect-receipt"');
+ });
+ it("an untold area asks its question and says Not told yet",()=>{
+  const html=renderToStaticMarkup(<ChildProfile/>);
+  const temper=html.slice(html.indexOf('data-testid="about-aspect-temper"'),html.indexOf("</article>",html.indexOf('data-testid="about-aspect-temper"'))).replace(/&#x27;/g,"'");
+  expect(temper).toContain(companionEn["companion.about.ask.temper"].replace("{name}","Noa"));
+  expect(temper).toContain(companionEn["companion.milestones.notTold"]);
+  expect(temper).toContain(companionEn["companion.milestones.tell"]);
+ });
+ it("the primary is the ONE 'Tell Arbor by voice' door (capture-moment) in every state; Write opens the same conversation",()=>{
+  harness.callback=true;
+  const stamped=()=>elements(ChildProfile()).filter(el=>el.props["data-primary-move"]);
+  expect(stamped()).toHaveLength(1);
+  expect(stamped()[0].props["data-primary-move"]).toBe("capture-moment");
+  expect(stamped()[0].props["data-testid"]).toBe("about-voice");
+  stamped()[0].props.onClick();expect(harness.setState).toHaveBeenLastCalledWith({from:null,open:{aspect:null,mode:"voice"}});
+  elements(ChildProfile()).find(el=>el.props["data-testid"]==="about-write")!.props.onClick();
+  expect(harness.setState).toHaveBeenLastCalledWith({from:null,open:{aspect:null,mode:"write"}});
+  expect(harness.setActiveTab).not.toHaveBeenCalled();
+  harness.pending=[{memoryId:"p1",fact:"Sleeps late"},{memoryId:"p2",fact:"Loves trains"}];
+  expect(stamped()).toHaveLength(1);
+  expect(elements(ChildProfile()).filter(el=>el.props["data-primary-move"]==="approve-memory")).toHaveLength(0);
+ });
+ it("Tell more opens the conversation on that area; the memory door goes to #/memory",()=>{
+  harness.callback=true;
+  card("sleep").props.onTell("sleep");
+  expect(harness.setState).toHaveBeenLastCalledWith({from:null,open:{aspect:"sleep",mode:"write"}});
+  elements(ChildProfile()).find(el=>el.props["data-testid"]==="profile-remember-check")!.props.onClick();
+  expect(harness.setActiveTab).toHaveBeenCalledWith("memory");
+ });
+ it("?aspect=<id> opens the conversation with that area chosen; an unknown id opens nothing",()=>{
+  harness.callback=true;
+  vi.stubGlobal("window",{location:{hash:"#/profile?aspect=lang"},addEventListener(){},removeEventListener(){}});
+  const open=()=>elements(ChildProfile()).filter(el=>typeof el.type==="function"&&"aspect" in el.props&&"mode" in el.props&&"onClose" in el.props);
+  expect(open()).toHaveLength(1);
+  expect(open()[0].props.aspect).toBe("lang");expect(open()[0].props.mode).toBe("write");
+  vi.stubGlobal("window",{location:{hash:"#/profile?aspect=weather"},addEventListener(){},removeEventListener(){}});
+  expect(open()).toHaveLength(0);
+  vi.stubGlobal("window",{location:{hash:"#/profile"},addEventListener(){},removeEventListener(){}});
+  expect(open()).toHaveLength(0);
+ });
+ it("Confirm / No are the #/memory decision; the receipt shows only after the write resolved",async()=>{
+  harness.callback=true;
+  harness.pending=[{memoryId:"p1",fact:"Wakes up twice since the move",createdAt:"2026-10-06T10:00:00.000Z"}];
+  const out=()=>elements(AspectCard({...card("sleep").props} as React.ComponentProps<typeof AspectCard>));
+  let resolve!:(ok:boolean)=>void;
+  harness.decide.mockImplementationOnce(()=>new Promise<boolean>(r=>{resolve=r;}));
+  out().find(el=>el.props["data-testid"]==="about-pending-confirm")!.props.onClick();
+  expect(harness.decide).toHaveBeenCalledWith("p1","approved");
+  expect(harness.setState).not.toHaveBeenCalledWith(expect.objectContaining({kind:"kept"}));
+  resolve(true);await new Promise(r=>setTimeout(r,0));
+  // review r1 re-pin: the receipt names the proposal it answered (it clears
+  // when a different one arrives, or after RECEIPT_MS — aboutAspects.test.ts)
+  expect(harness.setState).toHaveBeenLastCalledWith({kind:"kept",memoryId:"p1"});
+  harness.decide.mockResolvedValueOnce(false);
+  out().find(el=>el.props["data-testid"]==="about-pending-dismiss")!.props.onClick();
+  expect(harness.decide).toHaveBeenLastCalledWith("p1","rejected");
+  await new Promise(r=>setTimeout(r,0));
+  expect(harness.setState).toHaveBeenLastCalledWith({kind:"failed",memoryId:"p1"});
  });
  it("Create Hero opens the existing edit/creation seam rather than navigating to itself",()=>{
   harness.callback=true;harness.hasHero=false;
@@ -106,7 +224,7 @@ describe("W2 Profile identity and protected doors",()=>{
  });
 });
 
-/* ── B-CAREPRO-29 — "What we're working on" = the parent's chosen goals ───── */
+/* ── B-CAREPRO-29 — the parent's chosen goals ─────────────────────────────── */
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -120,35 +238,36 @@ const GOALS = [
   { goalId: "early-talking", label: "Building early talking / back-and-forth", domainId: "language", addedAt: "2026-09-02T00:00:00.000Z" },
 ];
 
-describe("B-CAREPRO-29 · Profile shows the parent's chosen goals", () => {
-  it("no regex focus derivation and no plan next-step chapter in the source", () => {
+// v3 F-CHILD-3 re-pin: goals live on Milestones (portrait-goals-edit); About
+// carries no goal line, and still derives no focus from the challenges.
+describe("B-CAREPRO-29 · goals live on Milestones; About derives no focus", () => {
+  it("no regex focus derivation, no plan next-step chapter and no goal line in the source", () => {
     expect(PROFILE_SRC).not.toMatch(/\/anx\|regulat|\/school\|kindergarten/);
     expect(PROFILE_SRC).not.toContain("cp.focus.");
     expect(PROFILE_SRC).not.toContain('data-module="profile-next"');
-    expect(PROFILE_SRC).toContain("<GoalFocusLine goals={childProfile.activeGoals ?? []}");
+    expect(PROFILE_SRC).not.toContain("<GoalFocusLine");
     // NEGATIVE CONTROL: the pre-change derivation is caught by the same rule
     expect("/anx|regulat|meltdown|emotion|sensory/i.test(challengeText)").toMatch(/\/anx\|regulat/);
   });
 
-  it("HE parent sees only their newest chosen goal in Hebrew; no derived chip", () => {
+  it("HE: chosen goals are not restated on About; no derived chip", () => {
     harness.locale = "he";
     harness.challenges = ["התקפי זעם במעברים", "חרדה"];
     harness.goals = GOALS;
     const html = renderToStaticMarkup(<ChildProfile />);
-    expect(html).toContain(goalsHe["elev.goal.profile.title"]);
-    expect(html).not.toContain(goalsHe["elev.goal.tile.transitions"]);
-    expect(html).toContain(goalsHe["elev.goal.tile.early-talking"]);
-    expect(html).toContain('data-testid="profile-goals-edit"');
+    expect(html).not.toContain(goalsHe["elev.goal.profile.title"]);
+    expect(html).not.toContain(goalsHe["elev.goal.tile.early-talking"]);
+    expect(html).not.toContain('data-testid="profile-goals-edit"');
     expect(html).not.toContain("Moving between activities");
     expect(html).not.toMatch(/ויסות רגשי|Emotional Regulation/);
   });
 
-  it("EN with no goals: the empty state invites the choice; English challenges derive nothing", () => {
+  it("EN with no goals: no goal invitation on About; English challenges derive nothing", () => {
     harness.challenges = ["meltdowns and anxiety"];
     const html = renderToStaticMarkup(<ChildProfile />);
-    expect(html).toContain("Choose what you&#x27;re working on");
+    expect(html).not.toContain("Choose what you&#x27;re working on");
     expect(html).not.toContain("Emotional Regulation");
-    expect(html).toMatch(/data-testid="profile-goals-edit"[^>]*min-h-11|min-h-11[^>]*data-testid="profile-goals-edit"/);
+    expect(html).not.toContain('data-testid="profile-goals-edit"');
   });
 
   it("i18n parity: all 8 tiles have EN + HE labels; EN matches the stored label", () => {
@@ -177,45 +296,46 @@ describe("B-CAREPRO-29 · Profile shows the parent's chosen goals", () => {
 });
 
 /* ── B-CAREPRO-33 — "Still true?" on the facts Care documents quote ───────── */
-describe("B-CAREPRO-33 · the Who band dates its facts", () => {
+// v3 F-CHILD-3 re-pin: the dated facts moved from the Who band into their
+// areas; the day reads in the card's source line ("In your words · {day}").
+describe("B-CAREPRO-33 · the areas date their facts", () => {
   const DAYS = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+  const schoolCard = (html: string) => html.slice(html.indexOf('data-testid="about-aspect-school"'), html.indexOf("</article>", html.indexOf('data-testid="about-aspect-school"')));
 
   for (const locale of ["en", "he"] as const) {
-    it(`${locale}: a setting dated 120 days ago shows 'as of {month}' and the Still-true prompt`, () => {
+    it(`${locale}: a setting dated 120 days ago shows its day and the Still-true prompt`, () => {
       harness.locale = locale;
       harness.factsAsOf = { schoolContext: DAYS(120) };
-      const html = renderToStaticMarkup(<ChildProfile />);
+      const html = schoolCard(renderToStaticMarkup(<ChildProfile />));
       const L = locale === "he" ? cpHe : cpEn;
-      expect(html).toContain('data-testid="profile-fact-asof-schoolContext"');
-      expect(html).toContain(L["elev.profile.fact.asOf"].replace("{month}", ""));
+      const C = locale === "he" ? companionHe : companionEn;
+      expect(html).toContain('data-testid="about-aspect-src"');
+      expect(html).toContain(C["companion.milestones.srcWords"].replace("{date}", "").trim());
       expect(html).toContain('data-testid="profile-fact-stale-schoolContext"');
       expect(html).toContain(L["elev.profile.fact.stillTrue"]);
       expect(html).toContain(L["elev.profile.fact.keep"]);
       expect(html).toContain(L["elev.profile.fact.edit"]);
-      expect(html).toMatch(/data-testid="profile-fact-keep-schoolContext"[^>]*class="touch-target/);
+      expect(html).toMatch(/class="touch-target"[^>]*data-testid="profile-fact-keep-schoolContext"|data-testid="profile-fact-keep-schoolContext"[^>]*class="touch-target/);
     });
   }
 
-  it("a 30-day-old setting shows its date and no prompt; an undated one shows neither", () => {
+  it("a 30-day-old setting shows its day and no prompt; an undated one reads 'In your words' with no day", () => {
     harness.factsAsOf = { schoolContext: DAYS(30) };
-    let html = renderToStaticMarkup(<ChildProfile />);
-    expect(html).toContain('data-testid="profile-fact-asof-schoolContext"');
+    let html = schoolCard(renderToStaticMarkup(<ChildProfile />));
+    expect(html).toContain(companionEn["companion.milestones.srcWords"].replace("{date}", "").trim());
     expect(html).not.toContain("profile-fact-stale-");
     harness.factsAsOf = undefined;
-    html = renderToStaticMarkup(<ChildProfile />);
-    expect(html).not.toContain("profile-fact-asof-");
+    html = schoolCard(renderToStaticMarkup(<ChildProfile />));
+    expect(html).toContain(`>${companionEn["companion.milestones.srcWordsUndated"]}<`);
+    expect(html).not.toContain("profile-fact-stale-");
   });
 
   it("Keep stamps today through updateChild; Edit opens the drawer", () => {
     harness.callback = true;
     harness.factsAsOf = { schoolContext: DAYS(120), languages: DAYS(10) };
-    // the as-of line rides on Field's `asOf` prop, so walk props.asOf as well as children
-    const deep = (node: React.ReactNode): React.ReactElement<Record<string, any>>[] => {
-      if (!React.isValidElement<Record<string, any>>(node)) return [];
-      const el = node as React.ReactElement<Record<string, any>>;
-      return [el, ...[...React.Children.toArray(el.props.children), el.props.asOf].flatMap(deep)];
-    };
-    const find = (id: string) => deep(ChildProfile()).find((el) => el.props["data-testid"] === id)!;
+    const onEditDetails = vi.fn();
+    const props: React.ComponentProps<typeof AspectCard> = { ...(card("school").props as React.ComponentProps<typeof AspectCard>), onEditDetails };
+    const find = (id: string) => elements(AspectCard(props)).find((el) => el.props["data-testid"] === id)!;
     const before = Date.now();
     find("profile-fact-keep-schoolContext").props.onClick();
     expect(harness.updateChild).toHaveBeenCalledTimes(1);
@@ -224,6 +344,63 @@ describe("B-CAREPRO-33 · the Who band dates its facts", () => {
     expect(Date.parse(patch.factsAsOf.schoolContext)).toBeGreaterThanOrEqual(before - 1000);
     expect(patch.factsAsOf.languages).toBe((harness.factsAsOf as Record<string, string>).languages);
     find("profile-fact-edit-schoolContext").props.onClick();
+    expect(onEditDetails).toHaveBeenCalledTimes(1);
+    // and ChildProfile wires Edit to the drawer
+    card("school").props.onEditDetails();
     expect(harness.setState).toHaveBeenCalledWith(true);
   });
+});
+
+/* v3 F-CHILD-4 (MOB-02) — About on a phone closes the pill with My child's
+   doors (journal, memory, check, Care), each an icon and the place's name as
+   the mock's phone grid. The memory door replaces the quiet memory line (one
+   door per room) and carries the waiting sentence in words, with the same
+   answer as the wide line: About hands it the areas, so a proposal an area
+   shows is not "waiting". The doors are navigation: no module, no second
+   primary move. */
+describe("v3 F-CHILD-4 (MOB-02) · About on a phone: the doors close the pill",()=>{
+ const MODULES=['data-module="about-describe"','data-module="about-aspects"','data-module="about-details"','data-module="about-measurements"'];
+ const doorOf=(html:string,tab:string)=>{const at=html.indexOf(`data-testid="child-door-${tab}"`);return html.slice(at,html.indexOf("</button>",at));};
+ it.each(["en","he"] as const)("four doors after Details; the memory line gives way to the memory door (%s)",locale=>{
+  harness.locale=locale;harness.phone=true;
+  const C=locale==="he"?companionHe:companionEn;
+  const html=renderToStaticMarkup(<ChildProfile/>);
+  expect(html).not.toContain('data-testid="profile-remember-check"');
+  expect(html.match(/data-testid="child-doors"/g)).toHaveLength(1);
+  expect([...html.matchAll(/data-testid="child-door-([a-z]+)"/g)].map(m=>m[1])).toEqual(["journal","memory","screening","consult"]);
+  expect(html.indexOf('data-testid="child-doors"')).toBeGreaterThan(html.indexOf('data-testid="about-details"'));
+  // what each door SAYS (after the opening tag, the glyph left out): its name only
+  const said=(door:string)=>door.slice(door.indexOf(">")+1).replace(/<span class="msr[^"]*"[^>]*>[^<]*<\/span>/g," ").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim();
+  expect(said(doorOf(html,"memory"))).toBe(C["companion.portrait.memory"]);
+  expect(said(doorOf(html,"consult"))).toBe(C["companion.door.care"]);
+  // the doors add no module and no move: the page's budget and its one primary move hold
+  expect(html.match(/data-module="[^"]+"/g)).toEqual(MODULES);
+  expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+ });
+ it.each(["en","he"] as const)("a proposal that names no area waits on #/memory: the memory door says so in words, never a number (%s)",locale=>{
+  harness.locale=locale;harness.phone=true;
+  const C=locale==="he"?companionHe:companionEn;
+  harness.pending=[{memoryId:"p2",fact:"fact 1",createdAt:"2026-10-06T10:00:00.000Z"}];
+  const html=renderToStaticMarkup(<ChildProfile/>);
+  const door=doorOf(html,"memory");
+  expect(door).toContain('data-testid="child-door-waiting"');
+  expect(door).toContain(C["companion.about.memoryWaiting"]);
+  expect(door.slice(door.indexOf(">")+1).replace(/<[^>]+>/g," ")).not.toMatch(/\d/);
+  expect(html).not.toContain('data-testid="about-memory-waiting"');
+ });
+ it.each(["en","he"] as const)("a proposal an area shows waits in that area, so the door says nothing more: the wide line's answer (%s)",locale=>{
+  harness.locale=locale;harness.phone=true;
+  harness.pending=[{memoryId:"p1",fact:"Wakes up twice since the move",createdAt:"2026-10-06T10:00:00.000Z"}];
+  const html=renderToStaticMarkup(<ChildProfile/>);
+  expect(html).toContain('data-testid="about-aspect-pending"');
+  expect(html).not.toContain('data-testid="child-door-waiting"');
+  harness.phone=false;
+  expect(renderToStaticMarkup(<ChildProfile/>)).not.toContain('data-testid="about-memory-waiting"');
+ });
+ it("wide: no doors; the memory line stays where it was",()=>{
+  const html=renderToStaticMarkup(<ChildProfile/>);
+  expect(html).not.toContain('data-testid="child-doors"');
+  expect(html).toContain('data-testid="profile-remember-check"');
+  expect(html.match(/data-module="[^"]+"/g)).toEqual(MODULES);
+ });
 });

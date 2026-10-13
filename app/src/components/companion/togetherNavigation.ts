@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useIsPresent } from "motion/react";
+import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
+import { routeHash } from "../../lib/routes";
 import { STUDIO_WORLDS } from "../practice/studioWorlds";
 import type { TogetherCategory } from "./companionChoices";
 
@@ -29,16 +31,27 @@ export function writeTogetherView(childId: string, value: ViewState) {
 
 export function useTogetherNavigation(childId: string, gamesAvailable: boolean) {
   const isPresent = useIsPresent();
+  const query = useHashQuery();
+  const requested = query.get("f");
+  const routeCategory = requested === null ? null
+    : categories.includes(requested as TogetherCategory) ? requested as TogetherCategory : "all";
   const pageRef = useRef<HTMLDivElement>(null);
   const cancelRestoreRef = useRef<(() => void) | null>(null);
   const [state, setState] = useState(() => ({ childId, ...readTogetherView(childId, gamesAvailable) }));
   const current = state.childId === childId ? state : readTogetherView(childId, gamesAvailable);
-  const category = current.category === "games" && !gamesAvailable ? "all" : current.category;
+  const selected = routeCategory ?? current.category;
+  const category = selected === "games" && !gamesAvailable ? "all" : selected;
   const setCategory = (next: TogetherCategory) => {
     cancelRestoreRef.current?.();
+    // Pin the starting choice before pushing the first filter URL, so Back
+    // returns to that choice rather than re-reading the newest stored value.
+    if (routeCategory === null && typeof window !== "undefined" && window.location.hash.split("?")[0] === "#/practice") {
+      window.history.replaceState(window.history.state, "", `#${routeHash("practice", { f: category })}`);
+    }
     const value = { category: next === "games" && !gamesAvailable ? "all" as const : next };
     writeTogetherView(childId, value);
     setState({ childId, ...value });
+    goToRoute("practice", { f: value.category });
   };
   const rememberDoor = (returnDoor: ReturnDoor) => {
     cancelRestoreRef.current?.();
@@ -46,8 +59,13 @@ export function useTogetherNavigation(childId: string, gamesAvailable: boolean) 
   };
 
   useEffect(() => {
-    setState({ childId, ...readTogetherView(childId, gamesAvailable) });
-  }, [childId, gamesAvailable]);
+    const saved = readTogetherView(childId, gamesAvailable);
+    // More can change only the query while Together stays mounted. An explicit
+    // destination wins over an earlier per-child choice or queued return door.
+    const value = routeCategory === null || category === saved.category ? saved : { category };
+    if (value !== saved) writeTogetherView(childId, value);
+    setState({ childId, ...value });
+  }, [childId, gamesAvailable, routeCategory]);
 
   useEffect(() => {
     // mode="wait" retains Together during exit. Early Back can make that same
@@ -55,7 +73,7 @@ export function useTogetherNavigation(childId: string, gamesAvailable: boolean) 
     // not just to mounting. Never restore while the route is leaving.
     if (!isPresent) return;
     const saved = readTogetherView(childId, gamesAvailable);
-    if (!saved.returnDoor) return;
+    if (!saved.returnDoor || saved.category !== category) return;
     // Shell resets its scroll owners before mounting the arriving route. Restore
     // the selected door afterward, once, rather than racing it with a timeout or
     // retaining a pixel offset that becomes wrong when the AI dock changes width.
@@ -79,7 +97,7 @@ export function useTogetherNavigation(childId: string, gamesAvailable: boolean) 
     };
     cancelRestoreRef.current = cancel;
     return cancel;
-  }, [childId, gamesAvailable, isPresent]);
+  }, [childId, gamesAvailable, isPresent, category]);
 
   return { category, setCategory, pageRef, rememberDoor };
 }

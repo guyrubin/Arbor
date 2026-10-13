@@ -5,16 +5,21 @@
  * the visit's follow-up. "Saved" shows only after that write is acknowledged;
  * an offline or unconfirmed write (useChildCollection rejects under
  * requireAcknowledgement) shows an error, keeps the answer in the field, and a
- * retry writes the SAME record (same document id). The same transpile harness
- * as ConsultDraft.lifecycle.test.ts (ConsultContent as a plain function).
- * Also: #/school-brief and #/handoff render none of the landing's modules.
+ * retry writes the SAME record (same document id, the current words).
+ * Signed in, Firestore applies a write to the device cache at once, so the
+ * follow-up reaches the collection's items before the server confirms it; the
+ * held record must not close the loop (the field, the answer and the retry
+ * stay) and the error must say the answer is kept, not lost.
+ * The same transpile harness as ConsultDraft.lifecycle.test.ts (ConsultContent
+ * as a plain function). Also: #/school-brief and #/handoff render none of the
+ * landing's modules.
  */
 import React from "react";
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ts from "typescript";
 import { visitForConsult } from "../../lib/today/dayCard";
-import { appointmentStatus, consultAudienceForProfession, makeFollowUp } from "../../lib/careTrack";
+import { appointmentStatus, consultAudienceForProfession, makeFollowUp, visitAwaitingOutcome } from "../../lib/careTrack";
 
 const source = ts.createSourceFile("ConsultTab.tsx", readFileSync("src/components/tabs/ConsultTab.tsx", "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const declaration = source.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === "ConsultContent")!.getText(source);
@@ -28,12 +33,24 @@ const deferred = (): Deferred => {
 };
 const flush = () => new Promise<void>((done) => setTimeout(done, 0));
 
+type FollowUp = { id: string; apptId: string; note: string; createdAt: string };
 let cursor = 0, slots: any[] = [];
 let tab = "consult";
+/** Signed in (Firestore) vs. this device's sandbox store. */
+let remote = false;
+/** Firestore's local cache: a write lands in the listener's items at once. */
+let cacheApplies = false;
+let followUps: FollowUp[] = [];
 const DAY = 86_400_000;
 const past = { id: "past-visit", whenIso: new Date(Date.now() - 2 * DAY).toISOString(), status: "confirmed", profession: "slp", role: "Speech therapist" };
 const writes: Deferred[] = [];
-const followUpUpsert = vi.fn((..._args: unknown[]) => { const d = deferred(); writes.push(d); return d.promise; });
+const followUpUpsert = vi.fn((...args: unknown[]) => {
+  const record = args[0] as FollowUp;
+  if (cacheApplies) followUps = [...followUps.filter((f) => f.id !== record.id), record];
+  const d = deferred();
+  writes.push(d);
+  return d.promise;
+});
 const apptUpsert = vi.fn(async (..._args: unknown[]) => undefined);
 const toast = vi.fn();
 const AskSpecialist = () => null;
@@ -42,8 +59,8 @@ const CareAside = () => null;
 const CareDoors = () => null;
 const Icon = () => null;
 const collection = (name: string) => ({
-  items: name === "appointments" ? [past] : [],
-  loaded: true, error: false, confirmed: true, isCurrent: () => true, remote: false,
+  items: name === "appointments" ? [past] : name === "apptFollowUps" ? followUps : [],
+  loaded: true, error: false, confirmed: true, isCurrent: () => true, remote,
   upsert: name === "apptFollowUps" ? followUpUpsert : name === "appointments" ? apptUpsert : vi.fn(async () => undefined),
 });
 const env = {
@@ -57,7 +74,8 @@ const env = {
   useLanguage: () => ({ uiLang: "en", t: (key: string) => key }),
   useToast: () => ({ toast }),
   useChildCollection: (_child: string, name: string) => collection(name),
-  visitAwaitingOutcome: () => past, isIntakeProfession: () => false, consultHeading: () => "generic", activeHomeEnrolments: () => [], guidedTierOn: () => false,
+  // the real open-loop rule: a follow-up for the visit closes it
+  visitAwaitingOutcome, isIntakeProfession: () => false, consultHeading: () => "generic", activeHomeEnrolments: () => [], guidedTierOn: () => false,
   appointmentRoleLabel: () => "Speech therapist", fmtDay: () => "date", lowerFor: (_lang: string, value: string) => value,
 };
 const component = new Function(...Object.keys(env), code)(...Object.values(env));
@@ -70,13 +88,19 @@ function elements(node: React.ReactNode): El[] {
   return [element, ...React.Children.toArray(element.props.children).flatMap(elements)];
 }
 function render(): El[] { cursor = 0; return elements(component({ query: new URLSearchParams(""), isOwnerCurrent: () => true })); }
-const byId = (all: El[], id: string) => all.find((el) => el.props["data-testid"] === id || el.props.id === id)!;
-const save = (all: El[]) => byId(all, "consult-visit-outcome-save");
-const type = (value: string) => byId(render(), "consult-visit-outcome-input").props.onChange({ target: { value } });
+const byId = (all: El[], id: string) => all.find((el) => el.props["data-testid"] === id || el.props.id === id);
+const save = (all: El[]) => byId(all, "consult-visit-outcome-save")!;
+const input = (all: El[]) => byId(all, "consult-visit-outcome-input");
+const type = (value: string) => input(render())!.props.onChange({ target: { value } });
 const successToasts = () => toast.mock.calls.filter((c) => c[1] === "success");
+const later = (fn: () => void) => {
+  const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 5_000);
+  try { fn(); } finally { clock.mockRestore(); }
+};
 
 beforeEach(() => {
   cursor = 0; slots = []; tab = "consult"; writes.length = 0;
+  remote = false; cacheApplies = false; followUps = [];
   followUpUpsert.mockClear(); apptUpsert.mockClear(); toast.mockClear();
 });
 
@@ -94,7 +118,7 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
     const pending = save(render());
     expect(pending.props.disabled).toBe(true);
     expect(pending.props["aria-busy"]).toBe(true);
-    expect(byId(render(), "consult-visit-outcome-input").props.readOnly).toBe(true);
+    expect(input(render())!.props.readOnly).toBe(true);
     pending.props.onClick();
     await flush();
     expect(followUpUpsert).toHaveBeenCalledTimes(1);
@@ -103,28 +127,24 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
     await flush();
     expect(apptUpsert).toHaveBeenCalledWith(expect.objectContaining({ id: "past-visit", status: "done" }));
     expect(successToasts()).toEqual([["elev.learnCare.appt.followUp.saved", "success"]]);
-    expect(byId(render(), "consult-visit-outcome-input").props.value).toBe("");
+    expect(input(render())!.props.value).toBe("");
   });
 
-  it("offline or unconfirmed: an error toast, never 'Saved'; the answer stays; a retry writes the same record", async () => {
+  it("a device write that failed: an error toast, never 'Saved'; the answer stays; a retry writes the same record", async () => {
     type("Practise naming colours at dinner");
     save(render()).props.onClick();
-    writes[0].reject(new Error("offline"));
+    writes[0].reject(new Error("quota"));
     await flush();
     expect(successToasts()).toEqual([]);
     expect(toast).toHaveBeenCalledWith("elev.consult.visitOutcome.saveError", "error");
     const after = render();
-    expect(byId(after, "consult-visit-outcome-input").props.value).toBe("Practise naming colours at dinner");
+    expect(input(after)!.props.value).toBe("Practise naming colours at dinner");
     expect(save(after).props.disabled).toBe(false);
+    expect(byId(after, "consult-visit-outcome-held")).toBeUndefined();
     expect(apptUpsert).not.toHaveBeenCalled();
     // retry, seconds later: the same document id, so a queued first write and
     // the retry are one record
-    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 5_000);
-    try {
-      save(render()).props.onClick();
-    } finally {
-      clock.mockRestore();
-    }
+    later(() => save(render()).props.onClick());
     expect(followUpUpsert).toHaveBeenCalledTimes(2);
     const first = followUpUpsert.mock.calls[0][0] as { id: string };
     const second = followUpUpsert.mock.calls[1][0] as { id: string };
@@ -134,23 +154,66 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
     expect(successToasts()).toEqual([["elev.learnCare.appt.followUp.saved", "success"]]);
   });
 
-  it("an edited answer after a failure is a new record, not the old text under the old id", async () => {
+  it("an edited answer after a failure replaces the held record: the same id, the new words (one follow-up, never two)", async () => {
     type("First answer");
     save(render()).props.onClick();
     writes[0].reject(new Error("offline"));
     await flush();
     type("A better answer");
-    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 5_000);
-    try {
-      save(render()).props.onClick();
-    } finally {
-      clock.mockRestore();
-    }
+    later(() => save(render()).props.onClick());
     const first = followUpUpsert.mock.calls[0][0] as { id: string; note: string };
     const second = followUpUpsert.mock.calls[1][0] as { id: string; note: string };
-    expect(second.note).toBe("A better answer");
     expect(first.note).toBe("First answer");
-    expect(second.id).not.toBe(first.id);
+    expect(second.note).toBe("A better answer");
+    expect(second.id).toBe(first.id);
+  });
+
+  it("signed in, offline: the local cache already holds the record, yet the loop stays open with the answer, and the toast says it is kept", async () => {
+    remote = true;
+    cacheApplies = true;
+    type("Name the colours at dinner");
+    save(render()).props.onClick();
+    // Firestore's cache applied the write: the follow-up is in the listener's items
+    expect(followUps.map((f) => f.note)).toEqual(["Name the colours at dinner"]);
+    // NEGATIVE CONTROL: by the open-loop rule alone, that record closes the visit
+    expect(visitAwaitingOutcome([past] as never, followUps as never, Date.now())).toBeNull();
+    // ...but while its write is unconfirmed the field stays, read-only
+    expect(input(render())!.props.readOnly).toBe(true);
+    writes[0].reject(new Error("The write needs an online confirmation"));
+    await flush();
+    expect(successToasts()).toEqual([]);
+    expect(toast).toHaveBeenCalledWith("elev.consult.visitOutcome.queued", "error");
+    expect(toast).not.toHaveBeenCalledWith("elev.consult.visitOutcome.saveError", "error");
+    const after = render();
+    expect(byId(after, "consult-visit-outcome")).toBeDefined();
+    expect(input(after)!.props.value).toBe("Name the colours at dinner");
+    expect(input(after)!.props.readOnly).toBe(false);
+    expect(save(after).props.disabled).toBe(false);
+    expect(byId(after, "consult-visit-outcome-held")).toBeDefined();
+    expect(apptUpsert).not.toHaveBeenCalled();
+    // back online: the retry is the same document, and only its ack says Saved
+    later(() => save(render()).props.onClick());
+    expect(followUpUpsert).toHaveBeenCalledTimes(2);
+    expect((followUpUpsert.mock.calls[1][0] as FollowUp).id).toBe((followUpUpsert.mock.calls[0][0] as FollowUp).id);
+    expect(followUps).toHaveLength(1);
+    expect(successToasts()).toEqual([]);
+    writes[1].resolve();
+    await flush();
+    expect(successToasts()).toEqual([["elev.learnCare.appt.followUp.saved", "success"]]);
+    // acknowledged: the record now closes the loop
+    expect(byId(render(), "consult-visit-outcome")).toBeUndefined();
+  });
+
+  it("signed in, the server refused the write: 'wasn't saved', never 'kept on this device'", async () => {
+    remote = true;
+    type("Swing at the park twice a week");
+    save(render()).props.onClick();
+    writes[0].reject(Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" }));
+    await flush();
+    expect(toast).toHaveBeenCalledWith("elev.consult.visitOutcome.saveError", "error");
+    expect(toast).not.toHaveBeenCalledWith("elev.consult.visitOutcome.queued", "error");
+    expect(byId(render(), "consult-visit-outcome-held")).toBeUndefined();
+    expect(input(render())!.props.value).toBe("Swing at the park twice a week");
   });
 
   it("source pin: the receipt is awaited, acknowledged and the only success toast of the save", () => {
@@ -163,20 +226,26 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
 
 describe("v3 EXTRA-CARE · only #/consult is the landing", () => {
   for (const route of ["school-brief", "handoff"]) {
-    it(`#/${route} renders no visit head, aside or doors, and the builder is not in landing mode`, () => {
+    it(`#/${route} renders no visit card, head, aside or doors, and the builder is not in landing mode`, () => {
       tab = route;
       const all = render();
       expect(all.some((el) => el.type === CareVisitHead || el.type === CareAside || el.type === CareDoors)).toBe(false);
-      expect(all.some((el) => el.props["data-testid"] === "consult-kicker" || el.props["data-testid"] === "consult-sub")).toBe(false);
-      expect(all.find((el) => el.type === AskSpecialist)!.props.landing).toBe(false);
+      expect(all.some((el) => el.props["data-testid"] === "consult-kicker" || el.props["data-testid"] === "consult-sub" || el.props["data-testid"] === "consult-visit-card")).toBe(false);
+      const builder = all.find((el) => el.type === AskSpecialist)!;
+      expect(builder.props.landing).toBe(false);
+      expect(builder.props.head).toBeUndefined();
     });
   }
 
-  it("#/consult renders each of them once, and the builder in landing mode", () => {
+  it("#/consult renders each of them once, the builder in landing mode inside the visit card", () => {
     const all = render();
     expect(all.filter((el) => el.type === CareAside)).toHaveLength(1);
     expect(all.filter((el) => el.type === CareDoors)).toHaveLength(1);
-    expect(all.find((el) => el.type === AskSpecialist)!.props.landing).toBe(true);
+    const card = byId(all, "consult-visit-card")!;
+    expect(card.type).toBe("section");
+    const inCard = elements(card.props.children);
+    expect(inCard.filter((el) => el.type === AskSpecialist)).toHaveLength(1);
+    expect(inCard.find((el) => el.type === AskSpecialist)!.props.landing).toBe(true);
     expect(all.filter((el) => el.props["data-module"]).map((el) => el.props["data-module"])).toEqual(["consult-packet"]);
   });
 });

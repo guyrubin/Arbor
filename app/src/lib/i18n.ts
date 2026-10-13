@@ -65,7 +65,9 @@ export const en: Dict = {
   // and baked into shared deep links; only the words a parent reads changed, and
   // routes.ts carries an alias for each new label's slug.
   "nav.tab.overview": "Overview",
-  "nav.tab.coach": "Ask Arbor",
+  // v3 IA-05r: the Talk door's name (companion.door.talk) wherever the coach
+  // route is named, so a search row, a pill and a page title agree.
+  "nav.tab.coach": "Talk with Arbor",
   "nav.tab.timeline": "Story",
   "nav.tab.journal": "Journal",
   "nav.tab.day-windows": "Day Windows",
@@ -91,7 +93,9 @@ export const en: Dict = {
   "nav.tab.mimic": "Mimic Studio",
   "nav.tab.feelings": "Feelings Lab",
   "nav.tab.adventures": "Adventures",
-  "nav.tab.plans": "Growth Plans",
+  // v3 IA-05r: plans live in Together as its Routines (FEAT-07), so the
+  // route reads Together › Routines in search and in the crumb.
+  "nav.tab.plans": "Routines",
   "nav.tab.weekly": "Weekly Report",
   "nav.tab.find-pro": "Find a Professional",
   "nav.tab.reports": "Your full record",
@@ -515,9 +519,6 @@ export const en: Dict = {
   "coach.scenario.sibling": "Sibling clash",
   "coach.scenario.bedtime": "Bedtime battle",
   "coach.scenario.dropoff": "School dropoff",
-  "coach.followup.avoid": "What should I avoid saying in that moment?",
-  "coach.followup.repair": "How do I repair the connection afterwards?",
-  "coach.followup.calm": "Give me a 1-minute calming routine to try.",
   // COACH-1 — CoachAnswerCards panel chrome (the flagship structured answer).
   "coach.cards.council": "The council weighed in · {n} voices",
   // ASK-3 — hypotheses collapse into a calm disclosure below the script + plan.
@@ -634,10 +635,7 @@ export const en: Dict = {
   "beh.capture.optional": "Optional — helps Arbor notice context over time",
   // AI-CAP-6 — live dictation caption (shown until the first words arrive).
   "beh.capture.listening": "Listening — take your time, pauses are okay.",
-  // AI-CAP-7 — post-confirm coach handoff strip (one optional CTA per confirm).
-  "beh.postCapture.body": "Want a next step for this moment?",
-  "beh.postCapture.cta": "Ask Arbor",
-  "beh.postCapture.dismiss": "Not now",
+  // AI-CAP-7 → F-TALK-2 — the coach seed the capture sheet's saved-state Talk prefills.
   "beh.postCapture.prompt": "I just logged this moment for {name}: {type}. What happened: {trigger}. What I tried: {response}. What would be a good next step?",
   "beh.speak": "Speak",
   "beh.stop": "Stop",
@@ -809,7 +807,7 @@ export const en: Dict = {
   "hm.ref.dismiss": "Remove the guide card",
   "hm.today.eyebrow": "From your recent moments",
   // FEAT-06 (v3 hard moment): the "you first" view above the picker.
-  "hm.first.kicker": "Words and one step for right now",
+  "hm.first.kicker": "A hard moment · words and one step",
   "hm.first.title": "You first. Then {name}.",
   "hm.first.titleBare": "You first. Then your child.",
   "hm.first.say": "I can see this is hard right now. I’m here. Let’s breathe together.",
@@ -1565,7 +1563,8 @@ export const en: Dict = {
   "sm.placeholder": "Jump to a section, or search logs, milestones, plans…",
   "sm.goTo": "Go to",
   "sm.noMatches": "No matches.",
-  "sm.threadSub": "Ask Arbor thread",
+  // v3 IA-05r: a thread row sits under Talk with Arbor; its line no longer names the old Ask route.
+  "sm.threadSub": "Saved conversation",
   "sm.kind.log": "Log",
   "sm.kind.thread": "Thread",
   "sm.kind.milestone": "Milestone",
@@ -1573,11 +1572,14 @@ export const en: Dict = {
   // B-SHELL-14: the "Ask Arbor about …" row (prefill only — the parent sends).
   "sm.kind.ask": "Ask",
   "sm.askAbout": "Ask Arbor about “{q}”",
-  "sm.askAbout.sub": "Opens Ask with your words — you send it",
+  // v3 IA-05r: the coach route is Talk with Arbor (nav.tab.coach).
+  "sm.askAbout.sub": "Opens Talk with Arbor with your words — you send it",
   "sm.extra.weekly": "Weekly Insight",
   "sm.extra.weeklySub": "My Child · Story",
   "sm.extra.scholar": "Scholar Frameworks",
   "sm.extra.scholarSub": "Ask Arbor",
+  // v3 IA-05: a saved family question as a search row's badge.
+  "sm.kind.topic": "Saved question",
   // LANG-15: Word World Tab
   "wordworld.sourceFraming": "developmentally informed, grounded in CDC/AAP/ASHA/WHO",
   "wordworld.refresh": "Refresh",
@@ -2459,9 +2461,6 @@ export const en: Dict = {
   "journal.timeline.matches.one": "1 match",
   "journal.timeline.moments": "{n} moments",
   "journal.timeline.moments.one": "1 moment",
-  "timeline.density.feed": "Feed",
-  "timeline.density.story": "Story",
-  "timeline.density.aria": "Timeline density",
   // JRNL-3 — timeline signal labels/templates (signalTimeline stays pure; both
   // densities label structured signals through these keys at render).
   "timeline.ongoing": "Ongoing",
@@ -2703,7 +2702,8 @@ export const he: Dict = {
   "nav.signout": "התנתקות",
   "nav.parent": "הורה",
   "nav.tab.overview": "סקירה",
-  "nav.tab.coach": "שאל את ארבור",
+  // v3 IA-05r: the Talk door's name (companion.door.talk).
+  "nav.tab.coach": "לדבר עם ארבור",
   "nav.tab.timeline": "סיפור",
   "nav.tab.journal": "יומן",
   "nav.tab.day-windows": "חלונות היום",
@@ -2727,7 +2727,8 @@ export const he: Dict = {
   "nav.tab.mimic": "סטודיו חיקוי",
   "nav.tab.feelings": "מעבדת רגשות",
   "nav.tab.adventures": "הרפתקאות",
-  "nav.tab.plans": "תוכניות התפתחות",
+  // v3 IA-05r: Together › Routines (FEAT-07).
+  "nav.tab.plans": "שגרות",
   "nav.tab.weekly": "דוח שבועי",
   "nav.tab.find-pro": "מצאו איש מקצוע",
   "nav.tab.reports": "התיעוד המלא שלכם",
@@ -3100,9 +3101,6 @@ export const he: Dict = {
   "coach.scenario.sibling": "מריבת אחים",
   "coach.scenario.bedtime": "מאבק לפני השינה",
   "coach.scenario.dropoff": "פרידה בגן/בית הספר",
-  "coach.followup.avoid": "מה כדאי שאמנע מלומר באותו רגע?",
-  "coach.followup.repair": "איך אני מתקן את הקשר אחר כך?",
-  "coach.followup.calm": "תנו לי שגרת הרגעה של דקה לנסות.",
   // COACH-1 — CoachAnswerCards panel chrome (he). FLAG: native-Hebrew review before
   // wide release, per the transcreation gate.
   "coach.cards.council": "המועצה התייעצה · {n} קולות",
@@ -3220,10 +3218,7 @@ export const he: Dict = {
   "beh.capture.optional": "אופציונלי — עוזר לארבור לזהות הקשר לאורך זמן",
   // AI-CAP-6 — live dictation caption (he).
   "beh.capture.listening": "מקשיבים — קחו את הזמן, הפסקות זה בסדר.",
-  // AI-CAP-7 — post-confirm coach handoff strip (he).
-  "beh.postCapture.body": "רוצים צעד הבא לרגע הזה?",
-  "beh.postCapture.cta": "שאלו את ארבור",
-  "beh.postCapture.dismiss": "לא עכשיו",
+  // AI-CAP-7 → F-TALK-2 — the coach seed the saved-state Talk prefills (he).
   "beh.postCapture.prompt": "הרגע תיעדתי את הרגע הזה עבור {name}: {type}. מה קרה: {trigger}. מה ניסיתי: {response}. מה יכול להיות צעד הבא טוב?",
   "beh.speak": "דברו",
   "beh.stop": "עצור",
@@ -3385,7 +3380,7 @@ export const he: Dict = {
   "hm.ref.dismiss": "להסיר את כרטיס המדריך",
   "hm.today.eyebrow": "מהרגעים האחרונים שתיעדתם",
   // FEAT-06 (v3 hard moment): the "you first" view above the picker.
-  "hm.first.kicker": "מילים וצעד אחד לרגע הזה",
+  "hm.first.kicker": "רגע קשה · מילים וצעד אחד",
   "hm.first.title": "קודם אתם. אחר כך {name}.",
   "hm.first.titleBare": "קודם אתם. אחר כך הילד שלכם.",
   "hm.first.say": "אני רואה שקשה לך עכשיו. אני כאן. ננשום יחד.",
@@ -4104,7 +4099,8 @@ export const he: Dict = {
   "sm.placeholder": "קפצו למקטע, או חפשו תיעודים, אבני דרך, תוכניות…",
   "sm.goTo": "מעבר אל",
   "sm.noMatches": "אין התאמות.",
-  "sm.threadSub": "שיחת שאל את ארבור",
+  // v3 IA-05r: שורת שיחה יושבת תחת "לדבר עם ארבור"; היא כבר לא נקראת על שם המסך הישן.
+  "sm.threadSub": "שיחה שמורה",
   "sm.kind.log": "תיעוד",
   "sm.kind.thread": "שיחה",
   "sm.kind.milestone": "אבן דרך",
@@ -4116,6 +4112,8 @@ export const he: Dict = {
   "sm.extra.weeklySub": "הילד שלי · סיפור",
   "sm.extra.scholar": "מסגרות מומחה",
   "sm.extra.scholarSub": "שאל את ארבור",
+  // v3 IA-05: a saved family question as a search row's badge.
+  "sm.kind.topic": "שאלה שמורה",
   // LANG-15: Word World Tab (Hebrew)
   "wordworld.sourceFraming": "מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO",
   "wordworld.refresh": "רענון",
@@ -4940,9 +4938,6 @@ export const he: Dict = {
   "journal.timeline.matches.one": "תוצאה אחת",
   "journal.timeline.moments": "{n} רגעים",
   "journal.timeline.moments.one": "רגע אחד",
-  "timeline.density.feed": "פיד",
-  "timeline.density.story": "סיפור",
-  "timeline.density.aria": "תצוגת ציר הזמן",
   // JRNL-3 — תוויות ציר הזמן (he).
   "timeline.ongoing": "מתמשך",
   "timeline.kind.moment": "רגע",

@@ -63,6 +63,8 @@ vi.mock("../../ui/playkit", () => ({
 
 import { StudioGame, StudioGameSession, CameraFreeMimic, STUDIO_GAME_COMPONENTS } from "./StudioGame";
 import { studioCopy } from "./studioCopy";
+import * as artManifest from "../../../lib/kidThemeManifest";
+import { HeroAvatar } from "../../ui/HeroAvatar";
 import { studioLegacyRoute, type StudioActivityId } from "./studioCatalog";
 import { KID_WORLDS } from "../kidWorlds";
 import { GameCompletionProvider } from "../game/GameSessionContext";
@@ -116,6 +118,26 @@ describe("V2 entry, identity and persistent result", () => {
       expect(tree[0].props["aria-label"]).toBe(studioCopy(lang).activities[id].title);
     }
   });
+  it("intro uses neutral world imagery with one profile hero and refuses a stock-child replacement", () => {
+    const draw = () => render("visual", () => StudioGameSession({ activityId: "memory", onBack: vi.fn() }));
+    let tree = draw();
+    expect(tree.filter(node => node.type === HeroAvatar)).toHaveLength(1);
+    expect(tree.filter(node => node.type === "img").map(node => node.props.src)).toEqual([
+      artManifest.kidArt("film3d", "studio.portal.playbank")!.src480,
+      artManifest.kidArt("film3d", "studio.portal.playbank")!.src480,
+    ]);
+    // The overlay already owns Back; the intro only adds its primary action.
+    expect(tree.filter(isButton)).toHaveLength(1);
+    const art = artManifest.kidArt("film3d", "studio.portal.playbank")!;
+    const spy = vi.spyOn(artManifest, "kidArt").mockReturnValue({ ...art, hasHero: true });
+    try {
+      tree = draw();
+      expect(tree.filter(node => node.type === "img")).toHaveLength(0);
+      expect(tree.filter(node => node.type === HeroAvatar)).toHaveLength(1);
+      click(tree.find(node => node.props["data-studio-start"] === ""));
+      expect(draw().some(node => node.type === STUDIO_GAME_COMPONENTS.memory)).toBe(true);
+    } finally { spy.mockRestore(); }
+  });
   it("new games are Studio routes, never false legacy arcade destinations", () => {
     for (const id of ["sound-explorer", "calm-builder", "puzzle"] as const) {
       expect(KID_WORLDS.some(world => (world.worldId as string) === id)).toBe(false);
@@ -130,7 +152,8 @@ describe("V2 entry, identity and persistent result", () => {
     h.session = { playOnly: true, onComplete: complete };
     expect(render("finish", () => GameFinish({ title: "Done", onPlayAgain: vi.fn(), playAgainLabel: "Again", homeLabel: "Home" }))).toEqual([]);
     let tree = draw(); expect(tree[0].props["data-studio-phase"]).toBe("result");
-    expect(tree.find(node => node.type === KidFinishMoment)?.props).toMatchObject({ childId: "child-a", kind: "world", refId: "memory" });
+    expect(tree.find(node => node.type === KidFinishMoment)?.props).toMatchObject({ childId: "child-a", kind: "world", refId: "memory", hero: false });
+    expect(tree.filter(node => node.type === HeroAvatar)).toHaveLength(1);
     expect(draw().find(node => node.type === KidFinishMoment)).toBeDefined();
     expect(h.sound).toHaveBeenCalledWith("finish");
     click(tree.find(node => node.props["data-studio-replay"] === "")); tree = draw();

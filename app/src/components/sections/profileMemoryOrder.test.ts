@@ -73,11 +73,12 @@ describe("Profile · one door per room", () => {
     expect(profile).toContain('data-testid="profile-remember-check"');
     expect(profile.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(1);
     expect(profile).not.toContain('t("cp.footer.memory")');
-    const footer = profile.slice(at(profile, "Footer jump strip"));
-    expect(footer).not.toContain('tab: "memory"');
-    // The two surviving footer doors are unrelated surfaces.
-    expect(footer).toContain('tab: "timeline"');
-    expect(footer).toContain('tab: "behaviors"');
+    // v3 F-CHILD-3 re-pin: the footer jump strip left #/profile with the old
+    // page (About is the describe card, the eight areas and Details), so no
+    // second door can come back through it.
+    expect(profile).not.toContain("Footer jump strip");
+    expect(profile).not.toContain('tab: "memory"');
+    expect(profile).not.toContain("<JumpLink");
   });
 
   /* R9 — the footer tile went in the first pass, but the SECOND door was never
@@ -110,9 +111,13 @@ describe("Profile · one door per room", () => {
 
   it("GP-26 — the strengths leaf's only door is gone with the leaf", () => {
     expect(profile).not.toContain('setActiveTab("strengths")');
-    // The chapter that absorbed it still renders both of its lists.
-    expect(profile).toContain('t("cp.ch.strengths")');
-    expect(profile).toContain('t("cp.ch.support")');
+    // v3 F-CHILD-3 re-pin: the chapter's two lists became About's strengths
+    // area — one AspectCard over lib/aboutAspects, which reads the profile's
+    // strengths and interests.
+    expect(profile).toContain("<AspectCard");
+    const aspects = readFileSync(path.join(SRC, "lib/aboutAspects.ts"), "utf8");
+    expect(aspects).toMatch(/ASPECT_IDS = \[[^\]]*"strengths"/);
+    expect(aspects).toContain('if (item.kind === "strength" || item.kind === "interest") {');
   });
 
   it("NEGATIVE CONTROL: both pre-fix markups are detectable", () => {

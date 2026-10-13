@@ -73,7 +73,12 @@ describe('release interaction contracts, without browser or sockets', () => {
     expect(focused).toEqual([...expectedReleaseInteractionStates('navigation', mobile), ...expectedReleaseInteractionStates('ask', mobile)]);
     expect(new Set(focused.map((item: any) => `${item.group}/${item.route}/${item.state}`)).size).toBe(focused.length);
     expect(new Set(focused.map((item: any) => `${item.group}/${item.state}`)).size).toBe(focused.length);
-    expect(focused.some((item: any) => item.state === 'more-records')).toBe(true);
+    // v3 F-SHELL-3 re-pin: was 'more-records'; the More sheet is the doors,
+    // Search and the three places, and #/memory has no sheet row any more.
+    expect(focused.some((item: any) => item.state === 'more-place-index')).toBe(true);
+    expect(focused.some((item: any) => item.state === 'more-memory-current')).toBe(false);
+    // The dropped slot holds the dock Talk focus-return cell (Parent858 kept).
+    expect(focused.some((item: any) => item.group === 'navigation' && item.state === 'dock-talk-return')).toBe(true);
     expect(expectedReleaseInteractionStates('focused', desktop).some((item: any) => item.state.startsWith('more-'))).toBe(false);
     expect(expectedReleaseInteractionStates('focused', desktop).some((item: any) => item.state === 'record-profile')).toBe(true);
     expect(source).toContain('_priorCells: navigation.cells');
@@ -83,10 +88,18 @@ describe('release interaction contracts, without browser or sockets', () => {
   it('preserves interrupted flows, bottom reachability and useful activity context', () => {
     const states = expectedReleaseInteractionStates('navigation', mobile).map(item => item.state);
     for (const state of ['now-bottom-reachable', 'together-bottom-reachable', 'together-early-back', 'together-how-to-begin', 'now-scroll-initial', 'now-scroll-middle', 'scroll-route-reset', 'keep-close-focus']) expect(states).toContain(state);
-    for (const assertion of ['STORY_CONTENT_MOUNTED', 'EXACT_RETURN_CARD_FOCUSED', 'EARLY_BACK_WINDOW_OBSERVED', 'EARLY_BACK_EXACT_CARD_FOCUS', 'FINAL_ACTION_VISIBLE_ABOVE_DOCK', 'FINAL_ACTION_NOT_OCCLUDED', 'CONCRETE_ACTIVITY_DETAIL', 'EXACT_SAY_THIS_PRESERVED', 'TWO_DENSITY_TABS', 'NO_DUPLICATE_SHELL_NAV', 'MAIN_ENDS_ABOVE_LAUNCHER_RAIL', 'RAIL_ENDS_ABOVE_MOBILE_NAV', 'MEASURED_NAV_HEIGHT_RESERVED', 'WINDOW_NOT_USED_AS_SCROLLPORT', 'MAIN_RESET_ON_ROUTE_CHANGE', 'KEEP_CLOSE_RETURNS_TO_VISIBLE_SUMMARY', 'DOCK_CLOSE_FOCUS_RETURNS_TO_LAUNCHER']) expect(source).toContain(assertion);
-    expect(source).toContain("page.locator('[data-density-toggle]')");
+    for (const assertion of ['STORY_CONTENT_MOUNTED', 'EXACT_RETURN_CARD_FOCUSED', 'EARLY_BACK_WINDOW_OBSERVED', 'EARLY_BACK_EXACT_CARD_FOCUS', 'FINAL_ACTION_VISIBLE_ABOVE_DOCK', 'FINAL_ACTION_NOT_OCCLUDED', 'CONCRETE_ACTIVITY_DETAIL', 'EXACT_SAY_THIS_PRESERVED', 'THREE_MOMENT_VIEWS', 'RECORD_MOMENTS_VIEWS_MOUNTED', 'NO_DUPLICATE_SHELL_NAV', 'MAIN_ENDS_ABOVE_LAUNCHER_RAIL', 'RAIL_ENDS_ABOVE_MOBILE_NAV', 'MEASURED_NAV_HEIGHT_RESERVED', 'WINDOW_NOT_USED_AS_SCROLLPORT', 'MAIN_RESET_ON_ROUTE_CHANGE', 'KEEP_CLOSE_RETURNS_TO_VISIBLE_SUMMARY', 'DOCK_CLOSE_FOCUS_RETURNS_TO_LAUNCHER']) expect(source).toContain(assertion);
+    // F-CHILD-2 re-pin: the Feed · Story toggle is retired; #/timeline's nav is the Moments tablist.
+    expect(source).toContain("page.locator('[data-moments-views]')");
+    expect(source).not.toContain('[data-density-toggle]');
     expect(source).toContain('dependent(profileReached)');
-    expect(source).toContain('dependent(memoryReached)');
+    expect(source).toContain('dependent(profileCurrent)');
+    // v3 F-SHELL-3 re-pin: was dependent(memoryReached) (the dropped
+    // more-memory-current cell); #/memory is reached through Settings.
+    expect(source).toContain("byId('settings-open-memory').click()");
+    for (const id of ['more-doors-group', 'more-search', 'more-place-now-group', 'more-place-child-group', 'more-place-together-group']) expect(source).toContain(`'${id}'`);
+    expect(source).not.toContain("byId('more-records-group')");
+    for (const assertion of ['DOCK_TALK_OPENS_CONVERSATION', 'DOCK_TALK_KEEPS_ROUTE', 'DOCK_TALK_FOCUS_RETURNED']) expect(source).toContain(assertion);
     expect(source).toContain("dialog.getByRole('heading').first()");
     for (const route of ['milestones', 'daily-play']) for (const state of ['scroll-initial', 'scroll-middle', 'scroll-last-action']) expect(expectedReleaseInteractionStates('navigation', mobile).some(item => item.route === route && item.state === `${route}-${state}`)).toBe(true);
     expect(source).toContain("document.querySelector('#main')");

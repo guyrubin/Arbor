@@ -45,13 +45,23 @@ const SCANNED = [
   "components/companion/ChildPortrait.tsx",
   "components/companion/PortraitWatchRow.tsx",
   "components/companion/PortraitKeepsakes.tsx",
-  // v3 FEAT-03: the development map and its domain sheet on My child.
+  // v3 FEAT-03: the development map on My child.
   "components/companion/DevelopmentMap.tsx",
-  "components/companion/DomainSheet.tsx",
+  // v3 F-CHILD-1: the area row's inline detail (it replaced the domain sheet),
+  // the areas table around it, the portrait cards and their pure reads.
+  "components/companion/AreaRowDetail.tsx",
+  "components/companion/MilestoneAreas.tsx",
+  "components/companion/PortraitCards.tsx",
+  "components/companion/milestonesModel.ts",
   // v3 FEAT-08: the words-and-firsts strip on My child (names and words, no fill).
   "components/companion/WordsFirstsStrip.tsx",
+  // v3 F-CHILD-4 (MOB-02): My child's doors on a phone (place names, no count).
+  "components/companion/ChildDoors.tsx",
   ...GROWTH_FILES,
   "components/sections/ChildProfile.tsx",
+  // v3 F-CHILD-3: About's eight areas and the read that fills them.
+  "components/about/AspectCard.tsx",
+  "lib/aboutAspects.ts",
   "components/practice/DevelopmentCopilot.tsx",
   "components/sections/AcademyForYou.tsx",
 ];
@@ -79,14 +89,47 @@ describe("B-GROWTH-07 — no proportional fill of a child record", () => {
   });
 
   /* v3 FEAT-03 — the development map and its domain sheet carry the area
-     lens's bans: Seen-it counts only, no total, share, chart or ranking. */
-  it("covers the development map and its domain sheet like the area lens", () => {
-    for (const rel of ["components/companion/DevelopmentMap.tsx", "components/companion/DomainSheet.tsx"]) {
+     lens's bans: Seen-it counts only, no total, share, chart or ranking.
+     v3 F-CHILD-1 RE-PIN (files only): the domain sheet is replaced by the
+     area row's inline detail (AreaRowDetail, a sheet on a phone); the bans
+     now cover it, the areas table, the portrait cards and their reads. */
+  it("covers the development map and the area row's detail like the area lens", () => {
+    for (const rel of [
+      "components/companion/DevelopmentMap.tsx", "components/companion/AreaRowDetail.tsx",
+      "components/companion/MilestoneAreas.tsx", "components/companion/PortraitCards.tsx",
+      "components/companion/milestonesModel.ts",
+    ]) {
       expect(SCANNED).toContain(rel);
       const src = stripComments(read(rel));
       expect(src, rel).not.toMatch(/\btotal\b|%|Chart|<svg/);
       expect(src, rel).not.toMatch(/sort\(/);
     }
+  });
+
+  /* v3 F-CHILD-4 (MOB-02) — the doors under a pill on a phone are navigation:
+     a place's name (the memory door adds a waiting sentence), never a count,
+     share or chart; the queue is read for a yes or no, never its length. */
+  it("covers My child's doors (no total, share, chart or count)", () => {
+    const rel = "components/companion/ChildDoors.tsx";
+    expect(SCANNED).toContain(rel);
+    const src = stripComments(read(rel));
+    expect(src).not.toMatch(/\btotal\b|%|Chart|<svg|role="progressbar"|\.length\b/);
+  });
+
+  /* v3 F-CHILD-3 — About's eight areas say what the parent TOLD Arbor, never
+     how much is known: no total, share, chart or ranking in the cards, the
+     read behind them or the page; the count line is "N areas", never "of 8". */
+  it("covers About's eight areas like the area lens (no total, share, chart or ranking)", () => {
+    for (const rel of ["components/sections/ChildProfile.tsx", "components/about/AspectCard.tsx", "lib/aboutAspects.ts"]) {
+      expect(SCANNED).toContain(rel);
+      const src = stripComments(read(rel));
+      expect(src, rel).not.toMatch(/\btotal\b|%|Chart|<svg|role="progressbar"/);
+      expect(src, rel).not.toMatch(/sort\(/);
+    }
+    const dict = read("lib/i18nCompanion.ts");
+    const lines = dict.split("\n").filter((l) => l.includes('"companion.about.'));
+    expect(lines.length).toBeGreaterThanOrEqual(2 * 40);
+    for (const l of lines) expect(l).not.toMatch(/\{total\}|%|\bof \{|\bof 8\b|מתוך|behind|ahead|score/i);
   });
 
   it("the Record-by-area strings name no total, share or trend (EN + HE)", () => {

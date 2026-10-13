@@ -18,3 +18,5 @@
 .arbor-play>.studio-v2-bar button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .arbor-play>.studio-v2-bar[data-kid-bar-float]{background:transparent!important;border-bottom:0!important}
 @media(max-width:640px){.arbor-play>.studio-v2-bar{min-block-size:66px;padding-inline:10px!important}.arbor-play>.studio-v2-bar>[data-kid-bar-title]{font-size:18px!important}}
+/* Child headings must win over the parent shell's important serif/weight rules. */
+.arbor-play .studio-v2 :is(h1,h2,h3){font-family:Nunito,Heebo,sans-serif!important;font-weight:800!important;color:#fff!important}

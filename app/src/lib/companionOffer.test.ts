@@ -274,8 +274,12 @@ describe("B-AI-06 — render: exactly one proactive module", () => {
       expect(src).not.toMatch(/<CarryOverActionAsk\b/);
       expect(src).not.toMatch(/<RhythmCue\b/);
       expect(src).not.toMatch(/<HardMomentTodayOffer\b/);
-      expect((src.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(1);
     }
+    // F-TALK-1 re-pin: the conversation panel carries no offer of its own;
+    // the coordinator's single proactive thing lives on Today only.
+    expect((overview.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(1);
+    expect((coach.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(0);
+    expect(coach).not.toContain("useCompanionOffer(");
     // P5 r1 pass A5: Today's only other proactive surface is the lifecycle
     // NOTE in the practice header, and it shows only when the coordinator
     // chose "what-changed" (still one proactive thing per open).
@@ -300,7 +304,9 @@ describe("B-TODAY-18 — tomorrow's reason is a coordinator candidate", () => {
     const slot = read("../components/overview/CompanionOfferSlot.tsx");
     expect(slot).toContain('case "tomorrow-reason":');
     expect(slot).toContain("<TomorrowReasonCard onResolved={controls.refresh} />");
-    const growth = read("../components/companion/PortraitWatchRow.tsx");
+    // v3 F-CHILD-1 RE-PIN (path only): the watch row folded into the areas
+    // table, and the close-of-day write moved with it into MilestoneAreas.
+    const growth = read("../components/companion/MilestoneAreas.tsx");
     expect(growth).not.toContain("<TomorrowReasonCard");
     expect(growth).toContain("closeDay(childProfile.id, Date.now(), returnSignals);");
     const hook = read("../components/overview/useCompanionOffer.ts");

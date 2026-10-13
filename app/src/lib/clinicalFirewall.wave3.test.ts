@@ -196,6 +196,8 @@ describe("JRNL-1 clinical firewall — weekly surfaces render no intensity score
     // v3 EXTRA-WEEKLY: the Weekly glance and the counts it (and Now) render.
     "components/weekly/WeekGlance.tsx",
     "lib/weekGlance.ts",
+    // v3 F-NOW-3: the Weekly report's lines (tile sub-lines, What helped, words, By area).
+    "lib/weekReport.ts",
     "lib/reportExport.ts",
     "server/digest.ts",
   ];

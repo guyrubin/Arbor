@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import ts from "typescript";
+// v3 IA-05r: both search surfaces lay rows out through this shared module;
+// the harness loads it as the real thing, beside the inert boundaries.
+import * as searchSections from "../search/searchSections";
 
 const source = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 type View = { type: string; props: Record<string, any> };
@@ -34,6 +37,7 @@ function renderComponent(path: string, rows: Record<string, any>[] = []) {
     "../ui/Icon": { Icon: "Icon" },
     "../ui/Modal": { Modal: "Modal" },
     "./useSearchResults": { useSearchResults: () => ({ indexReady: true, ordered: rows, kindLabel: (kind: string) => kind }) },
+    "./searchSections": searchSections,
   };
   const code = ts.transpileModule(source(path), { compilerOptions: {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true,

@@ -13,7 +13,7 @@ import type { ActiveTab } from "../../lib/routes";
 import type { PASTEL } from "../../lib/tokens";
 import type { DomainId } from "../../lib/domains/registry";
 import { kidWorldByWorldId, type KidWorldAccent } from "../kidmode/kidWorlds";
-import { offersForChild } from "../../lib/age/playGate";
+import { kidModeOpenFor, offersForChild } from "../../lib/age/playGate";
 import type { AgedChild } from "../../lib/age/forChild";
 
 /** The slice of PracticeData a tile count reads. */
@@ -135,6 +135,17 @@ export function studioWorldsForChild(lang: "en" | "he", child: AgedChild | null 
   return { worlds: [...fitting.filter((w) => w.id === stampId), ...fitting.filter((w) => w.id !== stampId)], stampId };
 }
 
+/**
+ * v3 F-SHELL-3 — does Together offer Games to this child? Only while the Kid
+ * Mode door is open for her (from three) AND at least one world fits her band.
+ * The phone More sheet's Games row reads this one predicate, the same gate as
+ * Together's Games pill (kidModeOpenFor && worlds.length > 0), so the row
+ * never lands on an empty Games view.
+ */
+export function gamesOpenFor(lang: "en" | "he", child: AgedChild | null | undefined, now?: Date): boolean {
+  return kidModeOpenFor(child, now) && studioWorldsForChild(lang, child, now).worlds.length > 0;
+}
+
 /** The chip's i18n key for `n` records of a world (`.one` for exactly 1). */
 export const studioCountKey = (unit: StudioCountUnit, n: number): string =>
   `practice.studio.count.${unit}${n === 1 ? ".one" : ""}`;
@@ -178,4 +189,27 @@ export function studioCountsSince(d: StudioCountSource, sinceMs: number): { byWo
     total += n;
   }
   return { byWorld, total };
+}
+
+/**
+ * v3 F-TOG-1 — the "Continue a favorite" door: of the worlds this child is
+ * offered, the one whose own record is the newest (each world claims a record
+ * through its own count, so a row no world claims never chooses a world).
+ * Undefined when nothing offered was ever played. No count, no verdict.
+ */
+export function latestPlayedWorldId(d: StudioCountSource, worlds: readonly StudioWorld[]): string | undefined {
+  const none: StudioCountSource = { speech: { items: [] }, mimic: { items: [] }, adventures: { items: [] }, events: { items: [] } };
+  const rows: { ms: number | null; source: StudioCountSource }[] = [
+    ...d.speech.items.map((r) => ({ ms: stampMs(r.timestamp), source: { ...none, speech: { items: [r] } } })),
+    ...d.mimic.items.map((r) => ({ ms: stampMs(r.timestamp), source: { ...none, mimic: { items: [r] } } })),
+    ...d.adventures.items.map((r) => ({ ms: stampMs(r.timestamp), source: { ...none, adventures: { items: [r] } } })),
+    ...d.events.items.map((r) => ({ ms: stampMs(r.timestamp), source: { ...none, events: { items: [r] } } })),
+  ];
+  let best: { id: string; ms: number } | undefined;
+  for (const row of rows) {
+    if (row.ms == null || (best && row.ms <= best.ms)) continue;
+    const world = worlds.find((w) => w.count(row.source) > 0);
+    if (world) best = { id: world.id, ms: row.ms };
+  }
+  return best?.id;
 }

@@ -29,6 +29,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { track } from "../../lib/analytics";
 import { Icon } from "../ui/Icon";
 import { useSearchResults, type SearchRow } from "./useSearchResults";
+// v3 IA-05: the sections and the mirror rule are shared with SearchModal.
+import { CRUMB_SPOKEN_SEPARATOR, glyphMirror, searchSections } from "./searchSections";
 
 /** AP-045 global search input + results overlay (topbar slot 1). */
 export default function TopbarSearch() {
@@ -50,7 +52,11 @@ export default function TopbarSearch() {
 
   // B-SHELL-14: the one result model (catalogue · records · ask), same limits
   // as the modal so the same query returns the same rows on both surfaces.
-  const { ordered: results, kindLabel } = useSearchResults(query, { enabled: open, catalogLimit: 12, recordLimit: 12 });
+  const { ordered, kindLabel } = useSearchResults(query, { enabled: open, catalogLimit: 12, recordLimit: 12 });
+  // v3 IA-05: grouped by home; the arrow keys, Enter and the option ids follow
+  // the order the rows are drawn in.
+  const sections = searchSections(ordered);
+  const results: SearchRow[] = sections.flatMap((s) => s.rows);
 
   // Reset active index whenever results change.
   useEffect(() => { setActiveIdx(0); }, [results.length]);
@@ -237,74 +243,96 @@ export default function TopbarSearch() {
               {t("sm.noMatches")}
             </div>
           ) : (
-            results.map((entry, i) => (
-              <div
-                id={`search-result-${i}`}
-                key={entry.kind + ":" + entry.id}
-                data-testid={entry.kind === "ask" ? "search-ask-row" : undefined}
-                role="option"
-                aria-selected={i === activeIdx}
-                onClick={() => navigate(entry)}
-                onMouseEnter={() => setActiveIdx(i)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  padding: "8px 10px",
-                  minHeight: "44px",
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  background:
-                    i === activeIdx
-                      ? "var(--arbor-paper-deep)"
-                      : "transparent",
-                  transition: "background 0.1s",
-                  userSelect: "none",
-                }}
-              >
-                {/* Kind icon — the same glyph + token the modal shows */}
-                <Icon name={entry.icon} size={16} className={entry.kind === "route" ? "rtl:-scale-x-100" : undefined} style={{ color: entry.color, flexShrink: 0 }} />
-
-                {/* Text block */}
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span
-                    style={{
-                      display: "block",
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      color: "var(--arbor-ink)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
+            sections.map((section) => (
+              <div key={section.key} role={section.group ? "group" : undefined} aria-label={section.group?.label}>
+                {/* v3 IA-05: the home's header; the group's aria-label already names it. */}
+                {section.group && (
+                  <div
+                    role="presentation"
+                    aria-hidden="true"
+                    className="flex items-center gap-2 text-xs font-bold"
+                    style={{ padding: "8px 10px 4px", color: "var(--arbor-muted)" }}
                   >
-                    {entry.label}
-                  </span>
-                  <span
-                    style={{
-                      display: "block",
-                      fontSize: "12px",
-                      color: "var(--arbor-muted)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {entry.sub || kindLabel(entry.kind)}
-                  </span>
-                </span>
+                    <Icon name={section.group.icon} size={18} />
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{section.group.label}</span>
+                  </div>
+                )}
+                {section.rows.map((entry) => {
+                  const i = results.indexOf(entry);
+                  return (
+                    <div
+                      id={`search-result-${i}`}
+                      key={entry.kind + ":" + entry.id}
+                      data-testid={entry.kind === "ask" ? "search-ask-row" : undefined}
+                      role="option"
+                      aria-selected={i === activeIdx}
+                      onClick={() => navigate(entry)}
+                      onMouseEnter={() => setActiveIdx(i)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "8px 10px",
+                        minHeight: "44px",
+                        borderRadius: "10px",
+                        cursor: "pointer",
+                        background:
+                          i === activeIdx
+                            ? "var(--arbor-paper-deep)"
+                            : "transparent",
+                        transition: "background 0.1s",
+                        userSelect: "none",
+                      }}
+                    >
+                      {/* Kind icon — the same glyph + token the modal shows */}
+                      <Icon name={entry.icon} size={16} className={glyphMirror(entry.icon)} style={{ color: entry.color, flexShrink: 0 }} />
 
-                {/* Kind badge */}
-                <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    flexShrink: 0,
-                    color: entry.color,
-                  }}
-                >
-                  {kindLabel(entry.kind)}
-                </span>
+                      {/* Text block */}
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span
+                          style={{
+                            display: "block",
+                            fontSize: "13px",
+                            fontWeight: 700,
+                            color: "var(--arbor-ink)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {entry.label}
+                        </span>
+                        {/* v3 IA-05: a crumb reads "home › destination"; the chevron turns once in Hebrew
+                            and stays silent, a hidden separator is spoken in its place. A home's own row
+                            has neither crumb nor sub, so it has no second line (IA-05r). */}
+                        {(entry.crumb || entry.sub) && <span
+                          style={{
+                            display: "block",
+                            fontSize: "12px",
+                            color: "var(--arbor-muted)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {entry.crumb ? entry.crumb.map((part, n) => <span key={n}>{n > 0 && <span className="sr-only">{CRUMB_SPOKEN_SEPARATOR}</span>}{n > 0 && <Icon name="chevron_right" size={14} className="mx-0.5 rtl:-scale-x-100" />}{part}</span>) : entry.sub}
+                        </span>}
+                      </span>
+
+                      {/* Kind badge */}
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          flexShrink: 0,
+                          color: entry.color,
+                        }}
+                      >
+                        {kindLabel(entry.kind)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             ))
           )}

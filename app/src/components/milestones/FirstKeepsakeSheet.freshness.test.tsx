@@ -20,7 +20,7 @@ vi.mock("react/jsx-dev-runtime", async original => {
 import FirstKeepsakeSheet from "./FirstKeepsakeSheet";
 const saved = { id: "first", milestoneId: "first", note: "Own saved words", noticedOn: "2026-10-04", createdAt: "2026-10-04", updatedAt: "2026-10-04" };
 const guard = vi.fn(() => true);
-const render = (canShare: boolean, note = saved.note) => renderToStaticMarkup(<FirstKeepsakeSheet open childId="child-a" childName="Noa" milestoneId="first" milestoneTitle="Three steps" keepsake={{ ...saved, note }} onSave={() => {}} onRemove={() => {}} onClose={() => {}} canShare={canShare} beforeShare={guard} />);
+const render = (canShare: boolean, note = saved.note) => renderToStaticMarkup(<FirstKeepsakeSheet open childId="child-a" childName="Noa" milestoneId="first" milestoneTitle="Three steps" keepsake={{ ...saved, note }} onSave={async () => {}} onRemove={async () => {}} onClose={() => {}} canShare={canShare} beforeShare={guard} />);
 beforeEach(() => { vi.clearAllMocks(); h.shares = []; h.keys = []; });
 
 describe("the retained first-note editor cannot bypass kept eligibility", () => {

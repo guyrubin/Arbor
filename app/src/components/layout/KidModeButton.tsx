@@ -31,6 +31,11 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
   // E10: the parent-lock safety line — the honest one: a grown-up gate
   // (hold → question), a lock only once a PIN is set (practice critic r2).
   const lockedLine = t(readParentPin() ? "elev.kidmode.locked" : "elev.kidmode.gated");
+  // v3 F-SHELL-2: the Topbar pill's visible second line, in its short form.
+  // The pill's accessible name carries these same visible words (WCAG 2.5.3,
+  // label in name); the long line above stays as its title, which a screen
+  // reader announces as the description.
+  const shortLine = t(readParentPin() ? "elev.kidmode.locked.short" : "elev.kidmode.gated.short");
 
   // B-PLAY-24: under three the door is hidden, not removed (Practice says
   // "From 3, {name} can play on her own"). No profile in scope = shown as before.
@@ -56,8 +61,11 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
         onClick={handleOpen}
         aria-label={`${t("aria.kidMode")} — ${lockedLine}`}
         title={`${t("aria.kidMode")} — ${lockedLine}`}
-        className="lg:hidden flex items-center justify-center w-11 h-11 rounded-xl transition bg-white"
-        style={{ color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-rule)" }}
+        className="lg:hidden flex items-center justify-center w-11 h-11 rounded-xl transition"
+        // v3 F-SHELL-3 (VIS-06): the phone header's Kid Mode square wears the
+        // desktop pill's sapphire tint, so the one door reads the same at
+        // every width (the mock's blue square, through the tokens).
+        style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-clay-border)" }}
       >
         <Icon name="sports_esports" size={18} chrome />
       </button>
@@ -70,7 +78,7 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
     {step}
     <button
       onClick={handleOpen}
-      aria-label={`${t("aria.launchKidMode")} — ${lockedLine}`}
+      aria-label={`${t("aria.launchKidMode")} — ${shortLine}`}
       title={`${t("aria.launchKidMode")} — ${lockedLine}`}
       style={{
         display: "inline-flex",
@@ -95,12 +103,14 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
       <Icon name="sports_esports" size={16} chrome />
       <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
         <span>{t("aria.kidMode")}</span>
-        {/* Safety line — visible on wide topbars; always in the aria-label. */}
+        {/* Safety line. v3 F-SHELL-2: always visible (this pill renders only
+            in the lg+ Topbar), in its short form, which is also the second
+            half of the accessible name; the long line is the title. */}
         <span
-          className="hidden xl:block"
+          className="block"
           style={{ fontSize: "var(--t-xs)", fontWeight: 600, opacity: 0.8 }}
         >
-          {lockedLine}
+          {shortLine}
         </span>
       </span>
     </button>

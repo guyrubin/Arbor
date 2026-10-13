@@ -28,7 +28,7 @@ export function practiceText(p: Practice, field: "do" | "say" | "materials", lan
  *  that tonight's answer starts an empty shelf's page. */
 export type PracticeWhyReason = "empty" | "fewest" | "since" | "startsPage";
 
-const WHY_KEY: Record<PracticeWhyReason, string> = {
+export const WHY_KEY: Record<PracticeWhyReason, string> = {
   empty: "elev.loop.practice.whyEmpty",
   fewest: "elev.loop.practice.whyFewest",
   since: "elev.loop.practice.whySince",

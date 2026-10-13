@@ -25,7 +25,11 @@ describe("B-ASKJB-36: Milestones uses the guarded shared saved-note row", () => 
   it("keeps the existing save, remove, photo editor and route without a new write sink", () => {
     expect(source).toContain('<FirstKeepsakeSheet');
     expect(source).toContain('onSave={saveKeepsake}');
-    expect(source).toContain('onRemove={() => { if (openKeepsake) dropKeepsake(openKeepsake.id); }}');
+    // v3 F-CHILD-1 RE-PIN: the sheet's receipt waits for the write, so the
+    // removal returns it (was: a fire-and-forget call inside a block body).
+    expect(source).toContain('onRemove={() => (openKeepsake ? dropKeepsake(openKeepsake.id) : Promise.resolve())}');
+    expect(source).toContain('return keepsakeCol.upsert(keepsakeDoc(next[draft.milestoneId]));');
+    expect(source).toContain('return keepsakeCol.remove(milestoneId);');
     expect(source).toContain('keepsakeCol.upsert(keepsakeDoc(next[draft.milestoneId]))');
     expect(source).toContain('keepsakeCol.remove(milestoneId)');
     expect(source).toContain('onKeepPhoto={() => setKeepsakeFor(m.id)}');

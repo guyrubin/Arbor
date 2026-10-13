@@ -283,8 +283,8 @@ export default function KidModeOverlay() {
   // overlay. While Kid Mode is open, every sibling of the Kid Mode layers
   // inside the Shell mount node is made inert + aria-hidden
   // (shieldShellSiblings) — and a MutationObserver re-runs the shield whenever
-  // the mount node's children change, so LATE-mounting siblings (e.g.
-  // PostCaptureCoachStrip) get inerted too instead of staying tabbable behind
+  // the mount node's children change, so LATE-mounting siblings (e.g. a
+  // lazily loaded sheet) get inerted too instead of staying tabbable behind
   // a one-shot snapshot. The cleanup restores the shell exactly on close.
   useLayoutEffect(() => {
     if (!isKidModeOpen) return;
@@ -521,7 +521,7 @@ export default function KidModeOverlay() {
                   ) : view === "studio-game" ? (
                     <Suspense fallback={<KidStageFallback />}><StudioGame activityId={arcadeWorldId as StudioActivityId} onBack={studioBack} /></Suspense>
                   ) : view === "studio-collection" ? (
-                    <Suspense fallback={<KidStageFallback />}><StudioCollection onActivity={openActivity} onBooks={() => openSurface("journeys")} onHome={() => setView("home")} /></Suspense>
+                    <Suspense fallback={<KidStageFallback />}><StudioCollection onQuest={() => openStudio("studio-quest")} onActivity={openActivity} onBooks={() => openSurface("journeys")} onHome={() => setView("home")} /></Suspense>
                   ) : view === "studio-quest" ? (
                     <Suspense fallback={<KidStageFallback />}><StudioQuest onHome={() => setView("home")} /></Suspense>
                   ) : view === "arcade" ? (

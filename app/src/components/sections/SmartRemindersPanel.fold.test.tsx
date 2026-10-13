@@ -42,6 +42,9 @@ vi.mock("../../hooks/usePushPriming", () => ({
   usePushPriming: () => ({ capable: false, permission: "default", registered: false, pending: false, onToggle: () => undefined }),
 }));
 vi.mock("../nextopen/PushPrimingCard", () => ({ default: () => null }));
+// v3 F-NOW-3: the weekly-email row (Delivery section) has its own guard,
+// components/weekly/WeeklyEmailRow.test.tsx; it carries no move.
+vi.mock("../weekly/WeeklyEmailRow", () => ({ default: () => null }));
 vi.mock("motion/react", () => ({
   AnimatePresence: ({ children }: { children?: React.ReactNode }) => React.createElement(React.Fragment, null, children),
   motion: new Proxy({}, {

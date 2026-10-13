@@ -127,7 +127,9 @@ describe("B-GROWTH-35 — source pins: every surface reads lib/record/counts", (
     expect(milestonesTab).not.toMatch(/\.filter\(\(m\) => m\.checked\)\.length/);
     // Journal: its moments line is signalTimeline.weekMomentCount, which delegates to momentRowsSince
     expect(strip(read("components/tabs/JournalTab.tsx"))).toMatch(/weekMomentCount\(signals/);
-    expect(strip(read("components/sections/ChildProfile.tsx"))).toContain('import { noticedMilestoneCounts } from "../../lib/record/counts"');
+    // v3 F-CHILD-3 re-pin: About (#/profile) prints no milestone count any
+    // more (Milestones owns it), so it imports no counter at all.
+    expect(strip(read("components/sections/ChildProfile.tsx"))).not.toContain("noticedMilestoneCounts");
     const timeline = strip(read("lib/signalTimeline.ts"));
     expect(timeline).toContain("momentRowsSince(signals");
     expect(timeline).toContain("wordDays(sources.langObs)");

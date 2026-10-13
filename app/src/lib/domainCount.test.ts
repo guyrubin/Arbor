@@ -4,6 +4,8 @@ import path from "node:path";
 import { DOMAIN_META } from "../practice/content";
 import { DOMAINS, DOMAIN_COUNT } from "./domains/registry";
 import { translate } from "./i18n";
+// v3 F-CHILD-1: the Milestones page mounts these parts; the Growth-leaf scans cover them too.
+const MILESTONES_PARTS = ["PortraitCards.tsx", "MilestoneAreas.tsx", "AreaRowDetail.tsx", "DevelopmentMap.tsx"];
 
 /* OBJ-GROWTH-01 — one screen, four different answers to "how many areas does
    Arbor track": the Development hero said "1 areas (of 7)" from a hard-coded
@@ -30,7 +32,7 @@ describe("OBJ-GROWTH-01 — one domain count, derived once", () => {
     const growth = read("lib", "i18nElevation", "growth.ts");
     expect(growth).not.toContain('"elev.hero.growth.stat.domains"');
     expect(growth).not.toContain('"elev.hero.growth.stat.noticed"');
-    const dev = stripComments(["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx"].map((f) => read("components", "companion", f)).join("\n"));
+    const dev = stripComments(["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx", ...MILESTONES_PARTS].map((f) => read("components", "companion", f)).join("\n"));
     expect(dev).not.toContain("domainCountsIn");
     expect(dev).not.toContain("DOMAIN_META");
     expect(dev).not.toContain("DOMAIN_COUNT");

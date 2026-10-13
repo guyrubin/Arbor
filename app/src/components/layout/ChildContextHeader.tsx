@@ -32,8 +32,17 @@ export default function ChildContextHeader({
        on top of a separate 34 px brand row. Collapsing it to a single 44 px
        row (the accessory buttons' own height, so the row costs nothing extra)
        is most of the way to the ≤ 200 px budget, and it is what lets the
-       brand mark fold in here instead of owning a row of its own. */
-    <header className={`flex flex-row items-center justify-between gap-2 mb-4 min-w-0 ${className}`.trim()}>
+       brand mark fold in here instead of owning a row of its own.
+       v3 F-SHELL-3 (IA-03): the row is the phone header now, a fixed band
+       above the scrollport instead of the first thing inside it. It pads
+       itself as <main> padded it (the same inline gutters) and clears the
+       status bar when the page runs edge to edge. No rule under it (the
+       v3 header sits on the page's own ground) and no glass: the band never
+       overlaps content. */
+    <header
+      className={`flex flex-row items-center justify-between gap-2 min-w-0 flex-none px-4 sm:px-5 md:px-6 pb-2 ${className}`.trim()}
+      style={{ paddingBlockStart: "max(8px, env(safe-area-inset-top, 0px))" }}
+    >
       <div className="flex flex-1 items-center gap-2 min-w-0">{identity}</div>
       {actions && <div className="flex-shrink-0 flex items-center justify-end">{actions}</div>}
     </header>

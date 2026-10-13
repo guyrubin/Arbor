@@ -35,6 +35,13 @@ const HUB_FILES = [
   // "{checked} of {total} noticed in the {band} window" — the denominator
   // B-GROWTH-34 removed from the hub survived one route over.
   "components/sections/ChildProfile.tsx",
+  // v3 F-CHILD-3: About's eight area cards render on #/profile too.
+  "components/about/AspectCard.tsx",
+  // v3 F-CHILD-1: the Milestones page's portrait cards and areas table.
+  "components/companion/PortraitCards.tsx",
+  "components/companion/MilestoneAreas.tsx",
+  "components/companion/AreaRowDetail.tsx",
+  "components/companion/DevelopmentMap.tsx",
 ];
 
 /** Every literal key a file renders: t("k"), tr("k"), and pickCountKey("k") (both forms). */
@@ -63,8 +70,10 @@ describe("B-GROWTH-34 — the Growth hub counts, never 'of N'", () => {
     expect(dev).not.toContain("noticedMilestoneCounts(");
     expect(dev).not.toContain("ageWindowMilestones(");
     expect(dev).not.toContain("inWindow.length");
+    // v3 F-CHILD-3 re-pin: the milestones chapter left About (Milestones owns
+    // the count), so #/profile prints no milestone number at all.
     const profile = stripComments(read("components/sections/ChildProfile.tsx"));
-    expect(profile).toMatch(/const \{ noticed: noticedCount \} = useMemo\(\(\) => noticedMilestoneCounts\(milestones\), \[milestones\]\);/);
+    expect(profile).not.toContain("noticedMilestoneCounts(");
     expect(profile).not.toContain("ageWindowMilestones(");
     const card = stripComments(read("components/sections/DevScoreCard.tsx"));
     expect(card).toMatch(/const \{ noticed, byDomain \} = noticedMilestoneCounts\(milestones\);/);

@@ -130,6 +130,9 @@ describe("TJB-23 → B-TODAY-17 — the daily check-in is gone, with its keys", 
 // spotlight (English-only catalogue copy on the Hebrew route, GD-6) and the
 // weekly read are DELETED from #/weekly, not demoted; one <details> holds the
 // milestone wins only.
+// v3 F-NOW-3 re-pin: the milestone wins left with the weekly letter; their way
+// in is the report's Milestones tile, a door to #/milestones at the 44 px
+// floor. The page still has one <details> (now holding the invite).
 describe("OBJ-TODAY-06 → B-TODAY-22 — one disclosure, no Scholar copy, no weekly read", () => {
   const src = strip(read("components/tabs/WeeklyTab.tsx"));
 
@@ -140,10 +143,13 @@ describe("OBJ-TODAY-06 → B-TODAY-22 — one disclosure, no Scholar copy, no we
     expect((src.match(/<details\b/g) ?? []).length).toBe(1);
   });
 
-  it("the milestone-wins link still clears the 44 px floor", () => {
-    const at = src.indexOf('t("wk.reviewMilestones")');
+  it("the milestones door (the report's Milestones tile) still clears the 44 px floor", () => {
+    expect(src).toContain('onOpenMilestones={() => setActiveTab("milestones")}');
+    const glance = strip(read("components/weekly/WeekGlance.tsx"));
+    const at = glance.indexOf('data-testid="weekly-tile-milestones"');
     expect(at).toBeGreaterThan(-1);
-    expect(src.slice(src.lastIndexOf("<button", at), at)).toContain("touch-target");
+    expect(glance.slice(glance.lastIndexOf("<button", at), at)).toContain("wk-glance-door");
+    expect(read("components/weekly/weekGlance.css")).toMatch(/\.wk-glance-door \{[^}]*min-block-size: 44px;/);
   });
 
   it("negative control: the shipped 17 px link markup has no floor", () => {

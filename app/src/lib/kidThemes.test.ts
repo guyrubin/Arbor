@@ -159,19 +159,25 @@ describe("kidThemes registry — token accents, valid templates, no collectibles
     }
   });
 
-  it("registry module imports only types (pure data — safe on any surface)", () => {
+  it("registry dependencies are only types and the explicitly allowed pure data modules", () => {
     const src = stripComments(readFileSync(path.join(__dirname, "kidThemes.ts"), "utf8"));
     const imports = [...src.matchAll(/^import\s+(.+?)\s+from\s+"[^"]+";?$/gm)].map((m) => m[1]);
     expect(imports.length).toBeGreaterThan(0);
     for (const clause of imports) {
-      // B-KID-68: the ONE value import is the kid world registry, itself pure
-      // data (checked below to import only types).
+      // The ONE value import is the kid world registry; its only runtime
+      // dependency is the separately checked V2 data literal below.
       if (clause === "{ KID_WORLDS, type KidWorldAccent }") continue;
       expect(clause.startsWith("type "), `non-type import: ${clause}`).toBe(true);
     }
     expect(src).toContain('import { KID_WORLDS, type KidWorldAccent } from "../components/kidmode/kidWorlds";');
     const registry = stripComments(readFileSync(path.join(__dirname, "..", "components", "kidmode", "kidWorlds.ts"), "utf8"));
-    for (const m of registry.matchAll(/^import\s+(.+?)\s+from\s+"[^"]+";?$/gm)) expect(m[1].startsWith("type "), `kidWorlds non-type import: ${m[1]}`).toBe(true);
+    const runtimeImports = (text: string) => [...text.matchAll(/^\s*import\s+[\s\S]*?;/gm)].map(m => m[0].trim()).filter(line => !/^import\s+type\b/.test(line));
+    expect(runtimeImports(registry)).toEqual(['import { STUDIO_V2_GAME_WORLDS } from "./studioGameWorlds";']);
+    const studio = stripComments(readFileSync(path.join(__dirname, "..", "components", "kidmode", "studioGameWorlds.ts"), "utf8"));
+    expect(runtimeImports(studio)).toEqual([]);
+    expect(studio).toContain('import type { KidWorld } from "./kidWorlds";');
+    for (const text of [src, registry, studio]) expect(text).not.toMatch(/\b(?:import|require)\s*\(|\bexport\s+[^;]*\bfrom\s+["']/);
+    expect(studio).not.toMatch(/\b(?:fetch|localStorage|sessionStorage|window|document)\b|Math\.random|Date\.now/);
     expect(src).not.toMatch(/from "firebase/);
   });
 });

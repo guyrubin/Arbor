@@ -8,7 +8,11 @@
  *    and the voice-door data line on first use;
  *  - a 2,000-character field.
  * The eight areas are quick fills on the "Tell Arbor more" door (onboarding
- * keeps its own one-worry tiles). Where dictation is not supported (a
+ * keeps its own one-worry tiles). v3 F-CHILD-3: a fill picks the AREA the
+ * conversation opens on (the About pill's eight areas; the opening question
+ * names it; the picked fill is pressed), so the fills render only where the
+ * container takes the pick (onAspect). The About pill's "Tell Arbor by
+ * voice" opens the same surface with the mic first. Where dictation is not supported (a
  * native-shell WebView, Firefox) the mic hides and typing works. The
  * container owns Skip and the primary action.
  */
@@ -19,15 +23,16 @@ import { useLanguage } from "../../context/LanguageContext";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import { markVoiceDoorNoticeSeen, voiceDoorNoticeSeen } from "../../lib/voiceDoor";
-import { DOMAIN_IDS, domainName, type DomainId } from "../../lib/domains/registry";
-import { DOMAIN_ICONS } from "../../lib/domains/icons";
+import { ASPECT_ICONS, ASPECT_IDS, type AspectId } from "../../lib/aboutAspects";
 import { DESCRIBE_TEXT_MAX } from "../../lib/describeChild";
 import "./describe.css";
 
 /** A mic for one text field: starts dictation in the AI language, shows the
  *  RecordingIndicator while it is live, and appends the parent's words. */
-export function DictateButton({ lang, value, onChange, disabled, label, aria, testId = "describe-mic", onListen, onVoiceText, dataUse = true }: {
+export function DictateButton({ lang, value, onChange, disabled, label, aria, testId = "describe-mic", onListen, onVoiceText, dataUse = true, autoFocus }: {
   lang: "en" | "he"; value: string; onChange: (text: string) => void; disabled?: boolean; label: string; aria: string; testId?: string;
+  /** Voice mode: the mic takes the focus (dictation still starts only on the tap). */
+  autoFocus?: boolean;
   /** The first-use data line; the thread's answer boxes leave it to the opening. */
   dataUse?: boolean;
   /** The parent tapped the mic (e.g. stop a question being read aloud). */
@@ -65,7 +70,7 @@ export function DictateButton({ lang, value, onChange, disabled, label, aria, te
     {/* The voice-door data line, once per device (lib/voiceDoor): this flow
         has no Live, so it says what dictation and the spoken question do. */}
     {firstUse && dataUse && <p className="describe-note" data-testid={`${testId}-data-use`}>{t("elev.describe.voiceDataUse")}</p>}
-    {!listening && <button type="button" className="describe-secondary" onClick={toggle} disabled={disabled} aria-label={aria} data-testid={testId}>
+    {!listening && <button type="button" className="describe-secondary" onClick={toggle} disabled={disabled} aria-label={aria} data-testid={testId} autoFocus={autoFocus}>
       <Icon name="mic" size={20} /><span>{label}</span>
     </button>}
     {listening && <RecordingIndicator interim={interim} hint={t("elev.describe.listening")} label={t("elev.rec.on")} stopLabel={t("elev.describe.done")}
@@ -82,26 +87,35 @@ export interface DescribeChildProps {
   value: string;
   onChange: (text: string) => void;
   disabled?: boolean;
-  /** The eight areas as quick fills (the "Tell Arbor more" door). */
-  quickFills?: boolean;
   autoFocus?: boolean;
   /** The answer came (at least partly) by voice: the next question is read aloud. */
   onVoiceText?: () => void;
+  /** v3 F-CHILD-3 — the area the conversation opens on (its fill is pressed). */
+  aspect?: AspectId | null;
+  /** The eight areas as quick fills (the "Tell Arbor more" door): a tapped
+   *  fill picks the area and the container re-asks the opening on it. */
+  onAspect?: (aspect: AspectId) => void;
+  /** The opening question as the container asks it (default "Tell me about {name}"). */
+  opening?: string;
+  /** "Tell Arbor by voice": the mic comes first and takes the focus. */
+  voice?: boolean;
 }
 
-export default function DescribeChild({ name, lang, value, onChange, disabled, quickFills, autoFocus, onVoiceText }: DescribeChildProps) {
+export default function DescribeChild({ name, lang, value, onChange, disabled, autoFocus, onVoiceText, aspect = null, onAspect, opening, voice = false }: DescribeChildProps) {
   const { t } = useLanguage();
   const fieldId = useId();
   const hintsId = useId();
   const askId = useId();
-  const fieldRef = useRef<HTMLTextAreaElement>(null);
-  const fill = (domain: DomainId) => {
-    const lead = `${domainName(domain, t)}: `;
-    onChange([value.trim(), lead].filter(Boolean).join(value.trim() ? "\n" : "").slice(0, DESCRIBE_TEXT_MAX));
-    fieldRef.current?.focus();
-  };
-  return <div className="describe-surface" data-testid="describe-child">
-    <p id={askId} className="describe-ask" data-testid="describe-opening">{t("elev.describe.opening", { name })}</p>
+  // Voice mode without dictation (a native-shell WebView, Firefox) says so
+  // once and falls back to the field, which then takes the focus.
+  const [canSpeak] = useState(() => speechSupported());
+  const micFirst = voice && canSpeak;
+  const mic = <div className="describe-row">
+    <DictateButton lang={lang} value={value} onChange={onChange} disabled={disabled} label={t("elev.describe.speak")} aria={t("elev.describe.speakAria", { name })} onVoiceText={onVoiceText} autoFocus={micFirst} />
+    <span className="describe-count" aria-live="off">{t("elev.describe.count", { n: value.length.toLocaleString(lang === "he" ? "he-IL" : "en-GB") })}</span>
+  </div>;
+  return <div className="describe-surface" data-testid="describe-child" data-voice={voice ? "" : undefined}>
+    <p id={askId} className="describe-ask" data-testid="describe-opening">{opening ?? t("elev.describe.opening", { name })}</p>
     <div id={hintsId} className="describe-hints">
       <p className="describe-hints-label">{t("elev.describe.hintsLabel")}</p>
       <ul>
@@ -110,20 +124,21 @@ export default function DescribeChild({ name, lang, value, onChange, disabled, q
         <li>{t("elev.describe.hint3")}</li>
       </ul>
     </div>
+    {micFirst && <p className="describe-note" data-testid="describe-voice-lead">{t("elev.describe.voiceLead")}</p>}
+    {voice && !canSpeak && <p className="describe-note" role="status" data-testid="describe-voice-unavailable">{t("elev.describe.voiceUnavailable")}</p>}
+    {micFirst && mic}
     <label className="describe-field" htmlFor={fieldId}>
       <span className="sr-only">{t("elev.describe.field", { name })}</span>
-      <textarea id={fieldId} ref={fieldRef} rows={5} maxLength={DESCRIBE_TEXT_MAX} value={value} disabled={disabled} autoFocus={autoFocus} dir="auto"
+      <textarea id={fieldId} rows={5} maxLength={DESCRIBE_TEXT_MAX} value={value} disabled={disabled} autoFocus={autoFocus && !micFirst} dir="auto"
         aria-labelledby={askId} aria-describedby={hintsId} placeholder={t("elev.describe.placeholder")} data-testid="describe-text"
         onChange={(event) => onChange(event.target.value)} />
     </label>
-    <div className="describe-row">
-      <DictateButton lang={lang} value={value} onChange={onChange} disabled={disabled} label={t("elev.describe.speak")} aria={t("elev.describe.speakAria", { name })} onVoiceText={onVoiceText} />
-      <span className="describe-count" aria-live="off">{t("elev.describe.count", { n: value.length.toLocaleString(lang === "he" ? "he-IL" : "en-GB") })}</span>
-    </div>
-    {quickFills && <div className="describe-fills" role="group" aria-label={t("elev.describe.quickFills")}>
+    {!micFirst && mic}
+    {onAspect && <div className="describe-fills" role="group" aria-label={t("elev.describe.quickFills")}>
       <p className="describe-hints-label">{t("elev.describe.quickFills")}</p>
-      <div>{DOMAIN_IDS.map((domain) => <button type="button" key={domain} className="describe-chip" disabled={disabled} onClick={() => fill(domain)} data-fill={domain}>
-        <Icon name={DOMAIN_ICONS[domain]} size={18} /><span>{domainName(domain, t)}</span>
+      <div>{ASPECT_IDS.map((id) => <button type="button" key={id} className="describe-chip" disabled={disabled} onClick={() => onAspect?.(id)} data-fill={id}
+        aria-pressed={aspect === id}>
+        <Icon name={ASPECT_ICONS[id]} size={18} /><span>{t(`companion.about.aspect.${id}`)}</span>
       </button>)}</div>
     </div>}
   </div>;

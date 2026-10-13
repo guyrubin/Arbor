@@ -183,6 +183,10 @@ export const en: Record<string, string> = {
     "The whole ritual is one small thing, noticed. A word, a mood, a moment from today — write it down and the week has started.",
   "elev.waveR.weekopen.cta": "Note one moment",
   "elev.waveR.weekopen.later": "Not now",
+
+  // ── v3 F-CHILD-1 · a keepsake receipt follows the write ──────────────────
+  "elev.waveR.keepsake.saveFailed": "Not kept yet. Your words are still here. Try again.",
+  "elev.waveR.keepsake.removeFailed": "The keepsake is still here. Try again.",
 };
 
 export const he: Record<string, string> = {
@@ -338,4 +342,8 @@ export const he: Record<string, string> = {
     "כל הטקס הוא דבר אחד קטן ששמתם לב אליו. מילה, מצב רוח, רגע מהיום — כותבים אותו, והשבוע יצא לדרך.",
   "elev.waveR.weekopen.cta": "לכתוב רגע אחד",
   "elev.waveR.weekopen.later": "לא עכשיו",
+
+  // ── v3 F-CHILD-1 · אישור רק אחרי שהשמירה הצליחה ──────────────────────────
+  "elev.waveR.keepsake.saveFailed": "עוד לא נשמר. המילים שלכם עדיין כאן. נסו שוב.",
+  "elev.waveR.keepsake.removeFailed": "המזכרת עדיין כאן. נסו שוב.",
 };

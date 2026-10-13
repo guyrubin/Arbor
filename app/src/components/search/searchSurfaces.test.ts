@@ -101,7 +101,12 @@ describe("W2.7 nav de-overload — emphasis only", () => {
   // tabs + More — no section is removed from the bar.
   it("three companion places remain navigation; conversation is the shared global dock", () => {
     expect(mobileNav).toContain('const PRIMARY_SECTION_IDS = ["today", "growth", "practice"] as const;');
-    expect(mobileNav).toContain('section.id !== "ask"');
+    // v3 F-SHELL-3 (IA-03) re-pin — was toContain('section.id !== "ask"'), the
+    // overflow filter that kept Ask out of More: the dock's Talk opens the
+    // conversation through its one door and never routes to #/coach.
+    expect(mobileNav).toContain('data-testid="dock-talk"');
+    expect(mobileNav).toContain("requestCompanionConversation({ source })");
+    expect(mobileNav).not.toContain('setActiveTab("coach")');
     expect(shell).toContain("<CompanionWorkspace");
     const workspace = readSrc("components", "companion", "CompanionWorkspace.tsx");
     expect(workspace).toContain('data-testid="companion-launcher"');
@@ -123,14 +128,17 @@ describe("W2.7 nav de-overload — emphasis only", () => {
     expect(barChunk).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 
-  it("the More entry and overflow sheet still expose every remaining category", () => {
-    // The same overflow list is partitioned, not reduced, by these two groups.
-    // parentRecordHierarchy.test.tsx also renders EN/HE, asserts every original
-    // SECTIONS destination exactly once, and invokes each navigation callback.
-    expect(mobileNav).toContain('(["records", "support"] as const).map');
-    expect(mobileNav).toContain('overflow.filter(sec => RECORD_SECTION_IDS.has(sec.id) === (group === "records")).map');
-    expect(mobileNav).toContain("data-more-destination={primaryTabOf(sec)}");
-    expect(mobileNav).toContain('data-more-destination="memory"');
+  // v3 F-SHELL-3 (IA-03, critic ruling 14) re-pin — was the records / support
+  // partition of the old overflow hubs: the sheet now lists the three doors,
+  // Search, then the index of the three places under their v3 pill names.
+  // parentRecordHierarchy.test.tsx and MobileNav.talk.test.tsx render EN/HE,
+  // assert the exact destination set and invoke each navigation callback.
+  it("the More entry and the sheet expose the doors and every place's index", () => {
+    expect(mobileNav).toContain("COMPANION_DOORS.map((door) =>");
+    expect(mobileNav).toContain("data-more-door={door.id}");
+    expect(mobileNav).toContain("COMPANION_PLACES.map((place) =>");
+    expect(mobileNav).toContain("data-more-destination={row.filter ? `${row.route}?f=${row.filter}` : row.route}");
+    expect(mobileNav).not.toContain('(["records", "support"] as const).map');
     expect(mobileNav).toContain("setMoreOpen(true)");
   });
 });
@@ -219,14 +227,29 @@ describe("B-SHELL-14 · both surfaces render ONE hook", () => {
     expect(readSrc("lib", "searchIndex.ts")).not.toContain("behaviorLogs");
   });
 
+  it("v3 IA-05r: a thread row opens its conversation in the Talk panel", () => {
+    const thread = hook.slice(hook.indexOf("for (const c of conversations)"), hook.indexOf("for (const m of milestones)"));
+    expect(thread).toContain('openConversation(c.id); requestCompanionConversation({ source: "search" });');
+    expect(thread).not.toContain("setActiveTab(");
+    expect(hook).toContain('import { requestCompanionConversation } from "../../lib/companionConversation";');
+  });
+
   it("a log row reads in place on #/journal, focused — no Behaviors switch, no capture sheet", () => {
     const log = hook.slice(hook.indexOf("for (const l of behaviorLogs)"), hook.indexOf("for (const c of conversations)"));
     expect(log).toContain('requestJournalFocus("moment-" + l.id); setActiveTab("journal");');
     expect(log).not.toMatch(/setActiveTab\("behaviors"\)|openCaptureSheet/);
   });
 
-  it("the ask row seeds the composer (prefill only) and opens Ask; first on '?'", () => {
-    expect(hook).toContain('seedCoach({ prompt: term, source: "search" }); setActiveTab("coach");');
+  it("the ask row seeds the composer (prefill only) and opens the Talk panel; first on '?'", () => {
+    // F-TALK-1 re-pin: seedCoach alone opens the panel over the place; no coach page.
+    expect(hook).toContain('seedCoach({ prompt: term, source: "search" }); },');
+    expect(hook).not.toContain('seedCoach({ prompt: term, source: "search" }); setActiveTab("coach");');
+    // v3 IA-05r re-pin (critic ruling [10]): Talk is a panel over the current
+    // page. seedCoach requests it, so the ask row no longer moves to #/coach,
+    // and no search row does.
+    expect(hook).toContain('go: () => { seedCoach({ prompt: term, source: "search" }); },');
+    expect(hook).not.toContain('setActiveTab("coach")');
+    expect(readSrc("context", "ArborContext.tsx")).toMatch(/const seedCoach = [\s\S]*?requestCompanionConversation\(\{ source: opts\.source \}\);/);
     expect(hook).toMatch(/ask && askFirst\(term\) \? \[ask, \.\.\.catalog, \.\.\.record\] : \[\.\.\.catalog, \.\.\.record, \.\.\.\(ask \? \[ask\] : \[\]\)\]/);
   });
 

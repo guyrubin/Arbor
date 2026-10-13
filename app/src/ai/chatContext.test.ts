@@ -11,6 +11,7 @@ import {
   RECENT_TURNS_MAX,
   RECENT_TURNS_TOTAL_CHAR_CAP,
   RECENT_TURN_CHAR_CAP,
+  WEEKLY_CONTEXT_CONSENT_EVENT,
   buildChatContext,
   computeWeeklyContext,
   dismissWeeklyContextNotice,
@@ -239,6 +240,24 @@ describe("weekly-context consent flag — per child, DEFAULT ON (B-ASKJB-07, Guy
     expect(shouldShowWeeklyContextNotice("b")).toBe(false);
     vi.unstubAllGlobals();
     expect(shouldShowWeeklyContextNotice("c")).toBe(false); // no storage ⇒ consent off ⇒ nothing to announce
+  });
+
+  it("F-TALK-1: every write tells open readers in this window; the event carries no decision", () => {
+    vi.stubGlobal("localStorage", fakeLocalStorage);
+    const target = new EventTarget();
+    vi.stubGlobal("window", target);
+    const heard: unknown[] = [];
+    target.addEventListener(WEEKLY_CONTEXT_CONSENT_EVENT, (event) => heard.push((event as CustomEvent).detail));
+    writeWeeklyContextConsent("d", false);
+    writeWeeklyContextConsent("d", true);
+    expect(heard).toEqual([{ childId: "d" }, { childId: "d" }]);
+    // The reader re-reads the flag itself; it is what the send path reads.
+    expect(readWeeklyContextConsent("d")).toBe(true);
+    vi.unstubAllGlobals();
+    // No window (the server, node): the write still lands and nothing throws.
+    vi.stubGlobal("localStorage", fakeLocalStorage);
+    expect(() => writeWeeklyContextConsent("e", false)).not.toThrow();
+    expect(readWeeklyContextConsent("e")).toBe(false);
   });
 });
 

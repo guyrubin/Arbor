@@ -111,6 +111,13 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     // so the stamped `weekly-empty` module offers ONE explicit secondary move,
     // `data-secondary-move="capture-moment"` (open the capture sheet in place).
     // The primary move stays the declaration; it renders once a week exists.
+    // v3 F-NOW-3 — the Weekly report as the v3 mock: the move lives in the
+    // `weekly-carry` band at the end of the page. "Make it today's step"
+    // carries the stamp while an AI digest's suggestion is not yet today's
+    // step; in every other state "Back to Now" carries it, so each state
+    // renders exactly one. Top level: the dashboard (`weekly-glance`, stamped
+    // by components/weekly/WeekGlance.tsx) or `weekly-empty`, then the band;
+    // the invite is demoted into the page's one collapsed disclosure.
     threadWrite: "none",
   },
 
@@ -158,11 +165,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   },
   {
     route: "timeline", hub: "journal", depth: 1,
-    job: "Read the same moments as one flowing story of the week.",
-    primaryMove: "switch-density", moduleBudget: 2, demotionTarget: "journal",
-    // journal/timeline are two DENSITIES of one surface (both render
-    // TimelineTab); this route IS the density. Read surface — no write.
-    threadWrite: "none",
+    job: "See {name}'s moments over time, in different places and across areas.",
+    primaryMove: "capture-moment", moduleBudget: 2, demotionTarget: "journal",
+    // F-CHILD-2: Moments (toolbar · view). "Keep a moment" opens the one
+    // capture sheet, which writes a parent moment to behaviorLogs.
+    threadWrite: "behaviorLogs",
   },
 
   // ── BEHAVIORS ──────────────────────────────────────────────────────────────
@@ -189,9 +196,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "development", hub: "growth", depth: 0,
     job: "Watch her record grow.",
-    // The child portrait opens original records from time, environment and
-    // domain views; supporting tools stay below the whole-child overview.
-    primaryMove: "explore-child-record", moduleBudget: 3, demotionTarget: "disclosure",
+    // v3 F-CHILD-1: the Milestones pill. Header and portrait cards, then the
+    // eight area rows (one opens inline to answer its skills); the 5-minute
+    // check in the areas card is the one move. The moments views moved to the
+    // Moments pill.
+    primaryMove: "start-development-check", moduleBudget: 3, demotionTarget: "disclosure",
     // Timeline marks indicate saved evidence, never developmental attainment.
     // B-PROG-05: `?view=program` is the program page (components/program/
     // ProgramPage, its own ONE stamp do-this-week, three modules) — a mode of
@@ -275,8 +284,10 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "practice", hub: "practice", depth: 0,
     job: "Choose a story, a game or a moment to enjoy together.",
-    primaryMove: "choose-together", moduleBudget: 4, demotionTarget: "disclosure",
-    // Editorial invitation, stories, age-appropriate games and offscreen ideas.
+    primaryMove: "choose-together", moduleBudget: 5, demotionTarget: "disclosure",
+    // Editorial invitation, age-appropriate games, stories, ready-made routines
+    // and offscreen ideas (v3 F-TOG-1: routines became a module of their own, as
+    // the v3 mock lays Together out; the gate card is not a module).
     // Existing game routes retain their parent gates and practice event writes.
     threadWrite: "practiceEvents",
   },
@@ -477,10 +488,12 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     primaryMove: "capture-moment", moduleBudget: 3, demotionTarget: "disclosure",
     // B-SHELL-26 (framer default, REJECTIONS P1-NEXTLEVEL): the review queue is
     // gone — the parent's own facts are kept on creation, inferences are asked
-    // inline (B-AI-07) and on #/memory. The hub's one move is now telling Arbor
-    // one thing: the stamp sits on the profile's "Add a fact" / "Tell Arbor one
-    // thing" door (edit drawer), rendered once in every state. The remembered
-    // list carries Forget only.
+    // inline (B-AI-07) and on #/memory. v3 F-CHILD-3 (About): the one move is
+    // telling Arbor one thing — the stamp sits on "Tell Arbor by voice" in the
+    // describe card, rendered once in every state. A proposal is confirmed in
+    // its own area (the same write #/memory uses); the Details row opens the
+    // profile drawer in one tap; the measurements log is the demoted module,
+    // folded in the one disclosure. Goals live on the development map, not here.
     threadWrite: "memory",
   },
   {

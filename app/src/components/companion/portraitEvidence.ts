@@ -2,6 +2,7 @@ import type { Observation, ObservationSources } from "../../lib/observations";
 import { AGE_BANDS } from "../../lib/screening";
 import { translate } from "../../lib/i18n";
 import { PORTRAIT_COPY } from "./portraitCopy";
+import { intensityWordKey } from "../../lib/intensityWords";
 
 export type EvidenceLine = { label: string; text: string };
 
@@ -40,7 +41,13 @@ export function portraitEvidenceLines(observation: Observation, sources: Observa
   if (observation.origin === "behaviorLogs") {
     const row = sources.behaviorLogs?.find(item => item.id === id);
     add(c.response, row?.response); add(c.notes, row?.notes); add(c.resolution, row?.resolutionNotes);
-    if (row?.behaviorType !== "Moment") { add(c.intensity, row?.intensity); add(c.duration, row?.durationMinutes); }
+    // F-CHILD-2: the intensity the parent recorded reads back as its word
+    // (the capture slider's five), never a bare number out of five.
+    if (row?.behaviorType !== "Moment") {
+      const recorded = row?.intensity;
+      add(c.intensity, typeof recorded === "number" ? translate(he ? "he" : "en", intensityWordKey(recorded)) : undefined);
+      add(c.duration, row?.durationMinutes);
+    }
   }
   const value = observation.value;
   if (value.type === "measurement") { add(c.height, value.heightCm); add(c.weight, value.weightKg); add(c.head, value.headCircumferenceCm); }
