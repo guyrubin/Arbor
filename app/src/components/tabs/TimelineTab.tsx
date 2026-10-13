@@ -30,7 +30,8 @@ export default function TimelineTab() {
   const moments = activeTab === "timeline";
   // v3 F-CHILD-4 hand-off (MOB-02): on a phone, Moments closes with My
   // child's doors, as Milestones and About do. Navigation only: no module
-  // stamp, no move; the journal door is left out because Moments has its own.
+  // stamp, no move; the journal door is left out because Moments has its own,
+  // in every view and record state (F-INT-1), so a phone shows it once.
   const phone = useChildPhoneLayout();
   const primaryMove = { "data-primary-move": moments ? "capture-moment" : "open-shelf" };
   const toolbarModule = { "data-module": "moments-toolbar" };

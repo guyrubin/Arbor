@@ -615,7 +615,7 @@ export default function Shell() {
                         so the coach arm renders nothing of its own. */}
                     {activeTab === "coach" || activeTab === "scholar" ? null
                       : activeTab === "overview" ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
-                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }} onSaveQuestion={createTopic}/>)
+                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }}/>)
                       : <ActiveTabComponent/>}
                   </SurfaceFrame>
                 </ErrorBoundary>

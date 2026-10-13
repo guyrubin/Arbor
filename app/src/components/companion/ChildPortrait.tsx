@@ -46,13 +46,6 @@ import "./childPortrait.css";
  */
 export interface ChildPortraitProps {
   onDiscuss?: (prompt: string, childId: string) => void;
-  /**
-   * Unread here on purpose. Shell (shell lane, F-SHELL-1) still passes
-   * createTopic, and this lane may not edit Shell.tsx; the Milestones pill has
-   * no "save as our question" door (the old portrait thread's). Remove the
-   * prop together with Shell's onSaveQuestion={createTopic} in one change.
-   */
-  onSaveQuestion?: (prompt: string, observationIds: string[]) => void;
 }
 
 export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {

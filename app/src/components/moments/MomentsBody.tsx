@@ -287,7 +287,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
         ) : <>
           {filterChip}
 
-          {view === "time" && <>
+          {view === "time" && (
             <div className="moments-months">
               {shownBuckets.map(bucket => {
                 const open = expanded.includes(bucket.id);
@@ -323,17 +323,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
                 );
               })}
             </div>
-            <div className="moments-foot">
-              <button type="button" className="moments-text-button" onClick={() => setActiveTab("journal")}>
-                <Icon name="auto_stories" size={18} />{t("companion.moments.journal")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
-              </button>
-              {record.more && !record.error && (
-                <button type="button" className="moments-text-button" disabled={record.loading} onClick={record.loadMore}>
-                  {record.loading ? copy.loading : t("companion.moments.loadMore")}<Icon name="expand_more" size={18} />
-                </button>
-              )}
-            </div>
-          </>}
+          )}
 
           {view === "places" && <>
             {places.length === 0 ? <p className="moments-note">{t("companion.moments.placesEmpty")}</p> : (
@@ -406,6 +396,22 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
             <p className="moments-note"><Icon name="info" size={18} />{t("companion.moments.areasNote")}</p>
           </>}
         </>}
+
+        {/* F-INT-1: Moments' one quiet door to the journal closes every view
+            and every record state (over time, in places, across areas, an
+            empty, loading or failed record), so on a phone, where My child's
+            doors follow with the journal door left out, it is there exactly
+            once. Load more belongs to the months over time. */}
+        <div className="moments-foot">
+          <button type="button" className="moments-text-button" data-testid="moments-journal-door" onClick={() => setActiveTab("journal")}>
+            <Icon name="auto_stories" size={18} />{t("companion.moments.journal")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+          </button>
+          {view === "time" && !emptyRecord && record.more && !record.error && (
+            <button type="button" className="moments-text-button" disabled={record.loading} onClick={record.loadMore}>
+              {record.loading ? copy.loading : t("companion.moments.loadMore")}<Icon name="expand_more" size={18} />
+            </button>
+          )}
+        </div>
       </div>
 
       <Surface open={!!selected} onClose={() => closeSelection()} scrimBlur title={selected?.title ?? t("companion.portrait.sourceTitle")} maxWidth="max-w-2xl">
