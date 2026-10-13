@@ -52,6 +52,7 @@ const NOT_CHILD_RECORD: Entry[] = [
   { file: "components/tabs/RoutinesTab.tsx", match: "<ProgressBar", why: "today's routine steps — a parent task list, reset daily" },
   { file: "components/practice/EarlyReadingTrack.tsx", match: "coverage * 100", why: "live trace coverage of the stroke being drawn (kid register), never stored" },
   { file: "components/practice/MimicMatch.tsx", match: "${pct}%", why: "live match meter inside the kid game, never stored" },
+  { file: "components/kidmode/studioV2/games/PuzzlePlanet.tsx", match: "width: `${size * 100}%`", why: "full-image crop geometry behind one puzzle fragment: size is the fixed 2/3 grid dimension, not child progress or a stored record" },
 ];
 
 const SOURCES = walk(COMPONENTS)
@@ -131,6 +132,20 @@ describe("CN-004 · no proportional fill of a child record", () => {
       expect(f, `${e.file} no longer exists — drop the entry`).toBeTruthy();
       expect(fillSites(f!.src).some((site) => site.includes(e.match)), `${e.file} no longer carries "${e.match}" — drop the entry`).toBe(true);
     }
+  });
+
+  it("Puzzle Planet exempts only the exact fragment crop, not a progress fill", () => {
+    const file = "components/kidmode/studioV2/games/PuzzlePlanet.tsx";
+    const puzzle = SOURCES.find(source => source.rel === file);
+    expect(puzzle).toBeTruthy();
+    const sites = fillSites(puzzle!.src);
+    expect(sites).toEqual(['width: `${size * 100}%`']);
+    expect(classified(file, sites[0])?.why).toContain("crop geometry");
+    // A new percentage in this same component still needs classification.
+    expect(classified(file, fillSites('width: `${placed.length / total * 100}%`')[0])).toBeUndefined();
+    expect(classified(file, "<ProgressBar")).toBeUndefined();
+    // Nor can another child-record component borrow the expression exemption.
+    expect(classified("components/sections/ChildProfile.tsx", sites[0])).toBeUndefined();
   });
 
   it("NEGATIVE CONTROL: the pre-change Profile bar is detected and is not classified", () => {

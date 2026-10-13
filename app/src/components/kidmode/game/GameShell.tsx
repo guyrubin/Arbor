@@ -33,6 +33,7 @@ import { autoReadPage, KidHearItButton } from "../kidReadAloud";
 import { stopVoice } from "../../../lib/voice";
 import { kidSfx } from "../audio/kidAudio";
 import { KidFinishMoment } from "../rewards/KidSouvenir";
+import { useGameSession } from "./GameSessionContext";
 
 /** B-KID-94: the world a finish screen belongs to (its souvenir), provided by
  *  the shell so every GameFinish inside it knows without a prop. */
@@ -176,13 +177,20 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
  *  good), the finish sound plays; Play again and Home (the overlay's, when
  *  Kid Mode is open). No stars, no counts, no streak. */
 export function GameFinish({ title, subtitle, onPlayAgain, playAgainLabel, homeLabel, worldId }: { title: string; subtitle?: string; onPlayAgain: () => void; playAgainLabel: string; homeLabel: string; worldId?: KidWorldTileId }) {
+  const session = useGameSession();
   const goHome = useKidHome();
   const shellWorld = useContext(GameWorldContext);
   const world = worldId ?? shellWorld ?? undefined;
   const childId = useArborOptional()?.childProfile?.id ?? "";
   const { uiLang } = useLanguage();
   // B-KID-73: the finish fanfare with the burst (silent when Sound is off).
-  useEffect(() => { celebrateBurst(); kidSfx("finish"); }, []);
+  useEffect(() => {
+    if (session) { session.onComplete(); return; }
+    celebrateBurst(); kidSfx("finish");
+  }, [session]);
+  // V2 owns the persistent result so its award can wait for ledger hydration.
+  // Never mount a second award writer inside the finishing game.
+  if (session) return null;
   return (
     <div className="text-center py-6 play-pop-in" data-game-finish="">
       <KidFinishMoment childId={childId} kind="world" refId={world} lang={uiLang === "he" ? "he" : "en"} />

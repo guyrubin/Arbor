@@ -18,10 +18,12 @@ import { kidArt, kidArtSrcSet, storyCoverKey } from "../../lib/kidThemeManifest"
 export function KidStageFallback({ worldId, storyId }: { worldId?: string; storyId?: string }) {
   const theme = useKidTheme();
   const reduced = usePrefersReducedMotion();
-  const world = worldId ? worldArtwork(worldId, theme) : undefined;
+  const candidate = worldId ? worldArtwork(worldId, theme) : undefined;
+  const world = candidate?.hasHero ? undefined : candidate;
   // B-KID-124: while the reader's chunk loads, a tapped book shows ITS cover.
   const cover = !world && storyId ? kidArt(theme, storyCoverKey(storyId)) : null;
-  const stage = !world && !cover ? kidArt(theme, "home.stage") : null;
+  const stageCandidate = !world && !cover ? kidArt(theme, "home.stage") : null;
+  const stage = stageCandidate?.hasHero ? null : stageCandidate;
   const still = cover ?? stage;
   const art = world
     ? { src: world.src, srcSet: world.srcSet, objectPosition: world.objectPosition, hasHero: world.hasHero }

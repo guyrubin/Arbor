@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
 const store = vi.hoisted(() => ({ items: [] as { id: string; kind: "world" | "book"; refId: string; earnedAt: string }[], upserts: [] as unknown[] }));
-vi.mock("./useKidSouvenirs", () => ({ useKidSouvenirs: () => ({ items: store.items, loaded: true, upsert: async (s: unknown) => { store.upserts.push(s); } }) }));
+vi.mock("./useKidSouvenirs", () => ({ useKidSouvenirs: () => ({ items: store.items, loaded: true, scopeKey: "owner:c1", awardOnce: async () => false, upsert: async (s: unknown) => { store.upserts.push(s); } }) }));
 vi.mock("../../ui/HeroAvatar", () => ({ HeroAvatar: () => <span data-hero="" />, useHeroAvatar: () => ({ url: null }) }));
 vi.mock("../../../context/ArborContext", () => ({ useArborOptional: () => ({ childProfile: { id: "c1", kidTheme: "film3d" } }), useArbor: () => ({ childProfile: { id: "c1", kidTheme: "film3d" } }) }));
 
@@ -46,6 +46,10 @@ describe("the ledger: once each, only ever grows", () => {
     ];
     expect(souvenirStrip(items).map((s) => s.id)).toEqual(["book:noahs-ark", "world:beat"]);
   });
+  it("ignores malformed or unknown-kind stored entries", () => {
+    const valid = souvenirToAward([], "world", "memory", NOW)!;
+    expect(souvenirStrip([null, {}, { ...valid, kind: "future" }, { ...valid, id: "foreign" }, { ...valid, earnedAt: "invalid" }, valid] as any)).toEqual([valid]);
+  });
   it("no score, no count, no streak, no expiry in the record or the module", () => {
     const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
     const src = code(read("kidSouvenirs.ts")) + code(read("KidSouvenir.tsx"));
@@ -68,9 +72,15 @@ describe("the sticker: existing art, die-cut", () => {
     expect(souvenirArt({ kind: "book", refId: "noahs-ark" }, "storybook")!.provenanceId).toBe("world-art-v2:tonight-story");
     expect(souvenirArt({ kind: "world", refId: "memory" }, "storybook")!.provenanceId).toBe("world-art-v2:mind-vault");
   });
+  it("never substitutes a stock child in current world rewards, preserving historic book covers", () => {
+    const world = renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="memory" />);
+    expect(world).toContain("data-kid-sticker-icon");
+    expect(world).not.toContain("<img");
+    expect(renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />)).toContain("story-noahs-ark");
+  });
   it("round: a CSS mask on the picture and a token border, decorative", () => {
-    const html = renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="beat" />);
-    expect(html).toContain('data-kid-sticker="world:beat"');
+    const html = renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />);
+    expect(html).toContain('data-kid-sticker="book:noahs-ark"');
     expect(html).toMatch(/mask-image:radial-gradient\(closest-side/);
     expect(html).toContain("border:2px solid var(--comic-ink)");
     expect(html).toContain('aria-hidden="true"');
@@ -84,7 +94,7 @@ describe("the ONE finish moment", () => {
     const html = renderToStaticMarkup(<KidFinishMoment childId="c1" kind="book" refId="noahs-ark" lang="he" />);
     expect(html).toContain("data-hero");
     expect(html).toContain('data-kid-sticker="book:noahs-ark"');
-    expect(html).toContain(he["kidReward.newSticker"]);
+    expect(html).not.toContain(he["kidReward.newSticker"]);
   });
   it("already earned: the sticker shows, no 'new', nothing is written again", () => {
     store.items = [{ id: "book:noahs-ark", kind: "book", refId: "noahs-ark", earnedAt: NOW.toISOString() }];

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
+import { useGameSession } from "../kidmode/game/GameSessionContext";
 import { PlayPanel, PlayButton, Celebrate } from "../ui/playkit";
 import { GameFinish } from "../kidmode/game/GameShell";
 import { isKidModeActive } from "../../lib/kidModeGate";
@@ -62,6 +63,7 @@ function buildDeck(size: 6 | 8 | 12, setIdx: number): Card[] {
  * `memory` practiceEvent scored on efficiency, feeding the cognition band.
  */
 export default function MemoryMatch({ data, childAge, embedded = false }: { data: PracticeData; childAge?: number; embedded?: boolean }) {
+  const gameSession = useGameSession();
   const { t, uiLang } = useLanguage();
   const memorySay = t("elev.kids.memory.say");
   // Past round scores drive the adaptive grid size, bounded by an age-appropriate ceiling.
@@ -151,8 +153,10 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
         meta: `grid${size}`,
         timestamp: new Date().toISOString(),
       };
-      void data.events.upsert(event);
-      track("memory_round", { size, moves, score });
+      if (!gameSession?.playOnly) {
+        void data.events.upsert(event);
+        track("memory_round", { size, moves, score });
+      }
       // N1-01-R5: one completed kid activity. A COUNT and nothing else —
     // a no-op outside Kid Mode, so a parent using this screen cannot inflate it.
       noteKidActivity();

@@ -22,7 +22,11 @@ const fromKidmode = (spec: string, fileDir: "kidmode" | "practice") =>
 describe("B-KID-47: no grey parent skeleton in Kid Mode", () => {
   it("the overlay's every Suspense shows the kid stage, never TabSkeleton", () => {
     expect(overlay).not.toContain("TabSkeleton");
-    expect(overlay.match(/<Suspense fallback=\{<KidStageFallback/g)?.length).toBe(4);
+    const all = overlay.match(/<Suspense fallback=/g)?.length ?? 0;
+    const stages = overlay.match(/<Suspense fallback=\{<KidStageFallback/g)?.length ?? 0;
+    expect(all).toBeGreaterThan(4);
+    expect(stages).toBe(all - 1); // The pinned reader owns its cover fallback.
+    expect(overlay.match(/<Suspense fallback=\{null\}/g)).toHaveLength(1);
     expect(overlay).toContain("<KidStageFallback worldId={arcadeWorldId ?? undefined} />");
   });
   it("the arcade's world Suspense is the kid stage while Kid Mode is on (parent keeps its skeleton)", () => {
@@ -38,7 +42,7 @@ describe("B-KID-47: no grey parent skeleton in Kid Mode", () => {
     // B-KID-74 re-pin: popLayout kept every left view mounted until its exit
     // finished; the content is now one keyed enter-only node (oneKidView.test).
     expect(overlay).not.toContain('mode="popLayout"');
-    expect(overlay).toContain("key={kidViewKey(view, arcadeWorldId)}");
+    expect(overlay).toContain("key={`${scopeKey}:${kidViewKey(view, arcadeWorldId)}`}");
   });
 });
 
@@ -57,6 +61,7 @@ describe("B-KID-47: the home warms every world chunk", () => {
   });
   it("the home calls it once on mount", () => {
     expect(dash).toContain("useEffect(() => { prefetchKidSurfaces(); }, []);");
+    expect(read("kidmode/studioV2/StudioHome.tsx")).toContain("prefetchKidSurfaces();");
   });
   it("runs once per session, on idle", async () => {
     const calls: number[] = [];
@@ -67,7 +72,7 @@ describe("B-KID-47: the home warms every world chunk", () => {
       mod.prefetchKidSurfaces();
       mod.prefetchKidSurfaces();
       expect(calls).toHaveLength(1);
-      expect(mod.KID_SURFACE_CHUNKS).toHaveLength(11);
+      expect(mod.KID_SURFACE_CHUNKS).toHaveLength(18);
     } finally {
       vi.unstubAllGlobals();
     }

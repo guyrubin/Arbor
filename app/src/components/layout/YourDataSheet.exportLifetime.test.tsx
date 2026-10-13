@@ -46,6 +46,8 @@ vi.mock("firebase/firestore", () => ({
   collection: (_: unknown, path: string) => path, doc: vi.fn(), deleteDoc: vi.fn(),
   getDocs: async (path: string) => {
     h.paths.push(path); await h.wait("collection");
+    if (path.endsWith("/studioQuestProgress")) return { docs: [{ id: "calm-corner-v1:spot", data: () => ({ questId: "calm-corner-v1", step: "spot", choice: "right" }) }] };
+    if (path.endsWith("/bookBookmarks")) return { docs: [{ id: "book", data: () => ({ v: 1, edition: "v1-synthetic", pageId: "page-1", branchId: null }) }] };
     return { docs: path.endsWith("/bookAssets") ? [{ id: "book", data: () => ({ bookId: "book", files: ["manifest.json"] }) }] : [] };
   },
 }));
@@ -210,7 +212,10 @@ describe("final browser boundary and fresh parent action", () => {
     expect(data.profile.name).toBe(name); expect(h.child.name).toBe(name);
     expect(data.exportReceipt.status).toBe(partial ? "incomplete" : "complete");
     expect(data.exportNote).toBe(translate(lang, "sec.sharing.data.exportNote"));
-    expect(Object.keys(data.collections)).toHaveLength(43);
+    expect(Object.keys(data.collections)).toHaveLength(45);
+    expect(data.collections.studioQuestProgress).toEqual([{ id: "calm-corner-v1:spot", questId: "calm-corner-v1", step: "spot", choice: "right" }]);
+    expect(data.collections.bookBookmarks).toEqual([{ id: "book", v: 1, edition: "v1-synthetic", pageId: "page-1", branchId: null }]);
+    expect(h.paths.filter(path => /studioQuestProgress|bookBookmarks/.test(path))).toEqual(["users/owner/children/child-a/studioQuestProgress", "users/owner/children/child-a/bookBookmarks"]);
     const after = elements(render());
     expect(after.find(e => e.props?.["data-testid"] === "your-data-export-receipt").props.children)
       .toBe(translate(lang, partial ? "elev.yourData.exportPartial" : "elev.yourData.exportComplete"));

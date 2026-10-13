@@ -14,6 +14,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { STUDIO_WORLDS, opensInKidMode } from "./studioWorlds";
+import { KID_WORLDS } from "../kidmode/kidWorlds";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const arcade = readFileSync(path.join(__dirname, "HeroArcade.tsx"), "utf8").replace(/\r\n/g, "\n");
@@ -22,8 +23,7 @@ const arcade = readFileSync(path.join(__dirname, "HeroArcade.tsx"), "utf8").repl
 // world id under PLAY); the parent-only rows stay literal in WORLDS.
 const playTable = arcade.slice(arcade.indexOf("const PLAY: Record<string, WorldPlay> = {"), arcade.indexOf("const WORLDS: World[] = ["));
 const table = arcade.slice(arcade.indexOf("const WORLDS: World[] = ["), arcade.indexOf("export const KID_WORLDS"));
-const registry = readFileSync(path.join(__dirname, "..", "kidmode", "kidWorlds.ts"), "utf8");
-const REGISTRY_IDS = [...registry.matchAll(/\{ id: "[a-z-]+", worldId: "([a-z-]+)"/g)].map((m) => m[1]);
+const REGISTRY_IDS = KID_WORLDS.map(world => world.worldId);
 const playIds = new Set([...playTable.matchAll(/\n\s*([a-z-]+): \{ tag: /g)].map((m) => m[1]));
 const rows = table.split("\n").filter((l) => /^\s*\{ id: "/.test(l));
 const ALL_ARCADE_IDS = [...REGISTRY_IDS.filter((id) => playIds.has(id)), ...rows.map((l) => /id: "([^"]+)"/.exec(l)![1])];

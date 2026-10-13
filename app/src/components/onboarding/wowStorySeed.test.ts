@@ -94,6 +94,8 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "heroRuns",
       "heroRenders", // B-KID-127: the kept personalised story text
       "kidSouvenirs", // B-KID-96: the souvenir ledger (registered, not invented by the seed)
+      "studioQuestProgress", // fixed finite quest choices, child export and erase
+      "bookBookmarks", // edition-bound private reading position
       "journeyObjectives",
       "adventureResults",
       "bandSnapshots",

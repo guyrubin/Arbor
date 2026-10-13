@@ -28,11 +28,14 @@ import { readKidModeState, writeKidModeState } from "../../lib/kidModeGate";
 import { KidStageFallback } from "./KidStageFallback";
 import { useKidSurfaceTitle } from "./kidSurfaceTitle";
 import { useLanguage } from "../../context/LanguageContext";
-import KidDashboard, { KID_GAME_TITLE_KEY, type KidSurface } from "./KidDashboard";
+import { KID_GAME_TITLE_KEY, type KidSurface } from "./KidDashboard";
 import { HoldExitButton } from "./HoldExitButton";
 import { KidErrorBoundary } from "./KidErrorBoundary";
 import { ArborMascot } from "../ui/ArborMascot";
 import { useArbor } from "../../context/ArborContext";
+import { useAuth } from "../../context/AuthContext";
+import { studioActivity, studioActivityFits, STUDIO_V2_WORLDS, type StudioActivityId, type StudioWorldId } from "./studioV2/studioCatalog";
+import { studioCopy } from "./studioV2/studioCopy";
 import { KidSoundToggle } from "./kidReadAloud";
 import { closeKidAudio, kidAudioVisibility, kidHush, setKidAudioChild } from "./audio/kidAudio";
 import { hydrateHeroRenders } from "../../lib/heroRenderStore";
@@ -42,6 +45,11 @@ import { kidStageFor } from "./kidStageArt";
 import { SNEAK_FREEZE_WORLD, flaggedWorldNameKey, sneakFreezeFlagOn } from "./kidWorlds";
 
 // ── EXISTING surfaces — imported unchanged, never forked ──────────────────────
+const StudioHome = lazy(() => import("./studioV2/StudioHome"));
+const StudioWorld = lazy(() => import("./studioV2/StudioWorld"));
+const StudioGame = lazy(() => import("./studioV2/StudioGame"));
+const StudioCollection = lazy(() => import("./studioV2/StudioCollection"));
+const StudioQuest = lazy(() => import("./studioV2/StudioQuest"));
 const HeroJourneyTab = lazy(() => import("../tabs/HeroJourneyTab"));
 const PracticeHubTab = lazy(() => import("../practice/PracticeHubTab"));
 const FeelingsLabTab = lazy(() => import("../practice/FeelingsLabTab"));
@@ -60,7 +68,20 @@ const SURFACE_META: Record<KidSurface, { labelKey: string; Comp?: React.Componen
   comics: { labelKey: "elev.kids.comics.title" },
 };
 
-type View = "home" | KidSurface;
+type LegacyView = "home" | KidSurface;
+export type StudioView = "studio-world" | "studio-game" | "studio-collection" | "studio-quest";
+type View = LegacyView | StudioView;
+const isStudioView = (view: string): view is StudioView => ["studio-world", "studio-game", "studio-collection", "studio-quest"].includes(view);
+export function studioActivityView(id: string): "arcade" | "studio-game" | null {
+  if (!studioActivity(id)) return null;
+  return ["reading", "adventures", "pose", "speech"].includes(id) ? "arcade" : "studio-game";
+}
+export function restoredKidView(view?: string, worldId?: string | null): View {
+  if (view === "studio-world") return STUDIO_V2_WORLDS.includes(worldId as StudioWorldId) ? view : "home";
+  if (view === "studio-game") return worldId ? studioActivityView(worldId) ?? "home" : "home";
+  if (view === "studio-collection" || view === "studio-quest") return view;
+  return view && Object.hasOwn(SURFACE_META, view) ? view as KidSurface : "home";
+}
 
 /** B-KID-74 (Fable render, 5 Oct): the ONE top bar names where the child is.
  *  Inside the arcade view with a world open, the title is that world's kid
@@ -69,7 +90,7 @@ type View = "home" | KidSurface;
  *  world's chunk having mounted. Otherwise the surface's own title (a story
  *  sets it) or the surface label. Pure, so a test reads the home-tile path. */
 export function kidBarTitle(
-  view: View,
+  view: LegacyView,
   arcadeWorldId: string | null,
   surfaceTitle: string | null,
   t: (key: string) => string,
@@ -86,7 +107,7 @@ export function kidBarTitle(
  *  keeps a left view (and its world's timers, audio and streams) alive under
  *  the new one. A changed key unmounts the old view in the same commit. */
 export function kidViewKey(view: View, arcadeWorldId: string | null): string {
-  return view === "arcade" ? `arcade:${arcadeWorldId ?? ""}` : view;
+  return view === "arcade" || view === "studio-world" || view === "studio-game" ? `${view}:${arcadeWorldId ?? ""}` : view;
 }
 
 /** Where the content scroll lands on arrival: the home RESTORES the position
@@ -113,6 +134,8 @@ const SNEAK_BAR_HOME: React.CSSProperties = { background: "var(--arbor-paper-ele
 export default function KidModeOverlay() {
   const { isKidModeOpen, closeKidMode } = useKidMode();
   const { childProfile } = useArbor();
+  const { user } = useAuth();
+  const scopeKey = JSON.stringify([user?.uid ?? "local-sandbox", childProfile.id]);
   const { t, uiLang } = useLanguage();
   const surfaceTitle = useKidSurfaceTitle();
   // KID-LOCK LEAK 1: rehydrate the surface in view from the persisted state so
@@ -120,7 +143,7 @@ export default function KidModeOverlay() {
   // SURFACE_META — a stale/garbage view degrades to the home dashboard).
   const [view, setView] = useState<View>(() => {
     const p = readKidModeState();
-    return p.open && p.view && (p.view === "home" || p.view in SURFACE_META) ? (p.view as View) : "home";
+    return p.open ? restoredKidView(p.view, p.worldId) : "home";
   });
   // KID-4: when a dashboard game tile opens the arcade, it names the HeroArcade
   // world to pre-select so the tile's title appears verbatim on arrival.
@@ -152,6 +175,30 @@ export default function KidModeOverlay() {
     setView(s);
   };
 
+  const openStudio = (next: StudioView, id?: string) => { setArcadeWorldId(id ?? null); setView(next); };
+  const openActivity = (id: StudioActivityId) => {
+    if (!studioActivityFits(id, childProfile, uiLang === "he" ? "he" : "en", undefined, { sneakEnabled: sneakFreezeFlagOn() })) return;
+    if (studioActivityView(id) === "arcade") openSurface("arcade", id);
+    else openStudio("studio-game", id);
+  };
+  const studioBack = () => {
+    const activity = arcadeWorldId ? studioActivity(arcadeWorldId) : undefined;
+    if (view === "studio-game" && activity) openStudio("studio-world", activity.worldId);
+    else { setArcadeWorldId(null); setView("home"); }
+  };
+  const priorScope = useRef(scopeKey);
+  useLayoutEffect(() => {
+    if (priorScope.current === scopeKey) return;
+    priorScope.current = scopeKey;
+    setOpenBookId(null); setArcadeWorldId(null); setView("home");
+    homeScrollRef.current = 0; kidHush();
+  }, [scopeKey]);
+  useEffect(() => {
+    if (view === "studio-game" && (!arcadeWorldId || !studioActivityFits(arcadeWorldId as StudioActivityId, childProfile, uiLang === "he" ? "he" : "en", undefined, { sneakEnabled: sneakFreezeFlagOn() }))) {
+      setArcadeWorldId(null); setView("home");
+    }
+  }, [view, arcadeWorldId, childProfile, uiLang]);
+
   // On a real closed→open transition, arrive where the door asked
   // (B-KID-11: openKidMode({view, worldId}) persisted it a tick ago), validated
   // against SURFACE_META — anything else is the home dashboard. A rehydrated
@@ -161,7 +208,7 @@ export default function KidModeOverlay() {
     if (isKidModeOpen && !wasOpenRef.current) {
       homeScrollRef.current = 0;
       const p = readKidModeState();
-      const asked = p.view && p.view in SURFACE_META ? (p.view as View) : "home";
+      const asked = restoredKidView(p.view, p.worldId);
       setView(asked);
       setArcadeWorldId(asked === "home" ? null : p.worldId ?? null);
     }
@@ -273,15 +320,22 @@ export default function KidModeOverlay() {
     return () => document.removeEventListener("keydown", onTab, true);
   }, [isKidModeOpen]);
 
-  const surface = view === "home" ? null : SURFACE_META[view];
-  const barTitle = kidBarTitle(view, arcadeWorldId, surfaceTitle, t);
+  const surface = view === "home" || isStudioView(view) ? null : SURFACE_META[view];
+  const studio = studioCopy(uiLang === "he" ? "he" : "en");
+  const activity = arcadeWorldId ? studioActivity(arcadeWorldId) : undefined;
+  const studioOpen = view === "home" || isStudioView(view);
+  const barTitle = view === "studio-world" ? studio.worlds[arcadeWorldId as StudioWorldId]?.title
+    : view === "studio-game" ? activity ? studio.activities[activity.id].title : studio.invitation
+    : view === "studio-collection" ? studio.collection
+    : view === "studio-quest" ? studio.questTitle
+    : kidBarTitle(view, arcadeWorldId, surfaceTitle, t);
   // B-KID-133 (D-01): the lit stage behind the view — the view's own picture
   // (a mounted game/book page may name a more exact one via setKidStage).
   const stageOverride = useKidStage();
   const stageScene = stageOverride ?? kidStageFor(view, arcadeWorldId);
   // B-GAME-07b (ruling G7): the flagged proof game fills the content area —
   // no padding, no scroll; its scene is the screen under the one top bar.
-  const sneakOpen = view === "arcade" && arcadeWorldId === SNEAK_FREEZE_WORLD.worldId && sneakFreezeFlagOn();
+  const sneakOpen = (view === "arcade" || view === "studio-game") && arcadeWorldId === SNEAK_FREEZE_WORLD.worldId && sneakFreezeFlagOn();
 
   return (
     // KID-LOCK LEAK 1: initial={false} — on a rehydrated mount (reload while
@@ -293,7 +347,7 @@ export default function KidModeOverlay() {
       {isKidModeOpen && (
         <motion.div
           key="kid-mode-backdrop"
-          initial={{ opacity: 0 }}
+          initial={{ opacity: 1 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.22 }}
@@ -313,7 +367,7 @@ export default function KidModeOverlay() {
           key="kid-mode-overlay"
           ref={overlayRef}
           data-kid-mode-layer="true"
-          initial={{ opacity: 0, scale: 0.97 }}
+          initial={{ opacity: 1, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.97 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
@@ -333,10 +387,11 @@ export default function KidModeOverlay() {
           }}
         >
           {/* B-KID-133 (D-01): the Stage — first child, under everything. */}
-          <KidStage scene={stageScene} />
+          {!studioOpen && <KidStage scene={stageScene} />}
           {/* ── Surface back-bar (only when a surface is open) ──────────────── */}
-          {surface && (
+          {view !== "home" && (
             <header
+              className={studioOpen ? "studio-v2-bar" : undefined}
               data-kid-bar-float={sneakOpen ? "" : undefined}
               style={{
                 position: "relative",
@@ -355,8 +410,8 @@ export default function KidModeOverlay() {
               }}
             >
               <button
-                onClick={() => setView("home")}
-                aria-label={t("kid.back.homeAria")}
+                onClick={isStudioView(view) ? studioBack : () => setView("home")}
+                aria-label={view === "studio-game" && activity ? studio.worlds[activity.worldId].title : t("kid.back.homeAria")}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -379,7 +434,7 @@ export default function KidModeOverlay() {
                 <ChevronLeft className="w-4 h-4 rtl:-scale-x-100" aria-hidden="true" />
                 {/* B-KID-74: icon-only below sm (the aria-label names it) so the
                     world's name keeps the bar's width. */}
-                <span className="hidden sm:inline">{t("kid.back.home")}</span>
+                <span className="hidden sm:inline">{view === "studio-game" && activity ? studio.worlds[activity.worldId].title : t("kid.back.home")}</span>
               </button>
               <span
                 data-kid-bar-title=""
@@ -430,6 +485,8 @@ export default function KidModeOverlay() {
               overflowX: "hidden",
               paddingInline: "20px",
               paddingBlock: "24px",
+              minHeight: 0,
+              ...(studioOpen ? { paddingInline: 0, paddingBlock: 0 } : null),
               ...(sneakOpen ? { overflowY: "hidden" as const, paddingInline: 0, paddingBlock: 0, display: "flex", flexDirection: "column" as const } : null),
             }}
           >
@@ -439,7 +496,7 @@ export default function KidModeOverlay() {
                 fallback's only action is Home (setView("home")). */}
             <KidErrorBoundary
               onHome={() => setView("home")}
-              resetKey={kidViewKey(view, arcadeWorldId)}
+              resetKey={`${scopeKey}:${kidViewKey(view, arcadeWorldId)}`}
               title={t("elev.kid.crash.title")}
               homeLabel={t("elev.kid.crash.home")}
               guide={<ArborMascot size={96} mood="think" />}
@@ -450,15 +507,23 @@ export default function KidModeOverlay() {
                   nothing (a world's banner, timers, audio, mic) stays alive
                   underneath. */}
                 <motion.div
-                  key={kidViewKey(view, arcadeWorldId)}
+                  key={`${scopeKey}:${kidViewKey(view, arcadeWorldId)}`}
                   data-kid-view={kidViewKey(view, arcadeWorldId)}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 1, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.14 }}
-                  style={sneakOpen ? { flex: 1, minBlockSize: 0, position: "relative" } : undefined}
+                  style={sneakOpen ? { flex: 1, minBlockSize: 0, position: "relative" } : studioOpen ? { minHeight: "100%" } : undefined}
                 >
                   {view === "home" ? (
-                    <KidDashboard onOpenSurface={openSurface} onExit={closeKidMode} onOpenBook={setOpenBookId} />
+                    <Suspense fallback={<KidStageFallback />}><StudioHome onWorld={(id) => openStudio("studio-world", id)} onCollection={() => openStudio("studio-collection")} onQuest={() => openStudio("studio-quest")} onExit={closeKidMode} /></Suspense>
+                  ) : view === "studio-world" ? (
+                    <Suspense fallback={<KidStageFallback />}><StudioWorld worldId={arcadeWorldId as StudioWorldId} onActivity={openActivity} onBooks={() => openSurface("journeys")} onOpenBook={setOpenBookId} /></Suspense>
+                  ) : view === "studio-game" ? (
+                    <Suspense fallback={<KidStageFallback />}><StudioGame activityId={arcadeWorldId as StudioActivityId} onBack={studioBack} /></Suspense>
+                  ) : view === "studio-collection" ? (
+                    <Suspense fallback={<KidStageFallback />}><StudioCollection onQuest={() => openStudio("studio-quest")} onActivity={openActivity} onBooks={() => openSurface("journeys")} onHome={() => setView("home")} /></Suspense>
+                  ) : view === "studio-quest" ? (
+                    <Suspense fallback={<KidStageFallback />}><StudioQuest onHome={() => setView("home")} /></Suspense>
                   ) : view === "arcade" ? (
                     <Suspense fallback={<KidStageFallback worldId={arcadeWorldId ?? undefined} />}>
                       {/* B-GAME-07b: the flagged proof game, in the arcade's own Suspense. */}
@@ -480,7 +545,7 @@ export default function KidModeOverlay() {
           </div>
           {openBookId && (
             <Suspense fallback={null}>
-              <KidBookReaderView bookId={openBookId} onClose={() => setOpenBookId(null)} />
+              <KidBookReaderView key={`${scopeKey}:${openBookId}`} bookId={openBookId} onClose={() => setOpenBookId(null)} />
             </Suspense>
           )}
         </motion.div>

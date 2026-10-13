@@ -50,13 +50,13 @@ export const CHILD_DATA_ROWS: readonly ChildDataRow[] = [
     icon: "sports_esports",
     collections: [
       "playLogs", "practiceEvents", "speechAttempts", "mimicSessions", "missionRecords",
-      "heroRuns", "heroRenders", "heroSheet", "journeyObjectives", "adventureResults", "savedStories", "savedComics", "kidSouvenirs",
+      "heroRuns", "heroRenders", "heroSheet", "journeyObjectives", "adventureResults", "savedStories", "savedComics", "kidSouvenirs", "studioQuestProgress",
     ],
   },
   // B-BOOK release: the child's own picture-book files (hero sheet, prints,
   // narration in the child's name) — the metadata here; the files in Storage,
   // erased with the child.
-  { id: "books", icon: "auto_stories", collections: ["bookAssets"] },
+  { id: "books", icon: "auto_stories", collections: ["bookAssets", "bookBookmarks"] },
   { id: "plans", icon: "checklist", collections: ["actionPlans", "actionLoops", "routines", "goals", "goalObservations", "savedLearn", "weeklyReports", "programs", "familyGoals", "coachSessions"] },
   { id: "screening", icon: "fact_check", collections: ["screenings", "devScoreSnapshots", "bandSnapshots"] },
   { id: "coach", icon: "forum", collections: ["conversations", "conversationChanges", "familyTopics"] },

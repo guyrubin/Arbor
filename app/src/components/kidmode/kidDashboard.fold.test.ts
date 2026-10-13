@@ -36,6 +36,7 @@ import {
   KID_HOME_GAMES,
 } from "./KidDashboard";
 import { KID_WORLDS } from "../practice/HeroArcade";
+import { KID_WORLDS as LEGACY_KID_WORLDS } from "./kidWorlds";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dash = readFileSync(path.join(__dirname, "KidDashboard.tsx"), "utf8");
@@ -196,10 +197,7 @@ describe("KID-06 — the arcade grid lists the same games the home does", () => 
 
   it("every game tile on the kid home has a world in that grid", () => {
     // B-KID-68: the tile defs live in the ONE kid world registry.
-    const registry = readFileSync(path.join(__dirname, "kidWorlds.ts"), "utf8");
-    const tileWorldIds = [...registry.matchAll(/\{ id: "[a-z-]+", worldId: "([a-z-]+)"/g)]
-      .map((m) => m[1])
-      .filter((id) => !id.startsWith("kid-"));
+    const tileWorldIds = LEGACY_KID_WORLDS.map(world => world.worldId);
     // B-KID-88: nine — Spell Forge got its own tile when the picker door went.
     expect(tileWorldIds.length).toBe(9);
     expect(KID_HOME_GAMES.map((g) => g.worldId).sort()).toEqual([...KID_WORLDS.map((w) => w.id)].sort());

@@ -16,7 +16,7 @@
  *   the shared set reads the shared sidecar (static JSON, loadStaticJson).
  * - Never a model call.
  */
-import { fetchBookAsset, fetchBookAssetResult } from "./bookAssetStore";
+import { fetchBookAssetResult, openBookAssetReadScope } from "./bookAssetStore";
 import type { BookAssetsDoc } from "./library/bookAssetPaths";
 import { readCues, type CueTimes } from "./library/bookArtStates";
 import { getLibraryBook } from "./library/books";
@@ -77,19 +77,29 @@ export async function resolveBookAssets(
   childId: string,
   doc: BookAssetsDoc,
   folder: "en" | "he-m" | "he-f",
-  opts: { onLate?: (next: ResolvedBookAssets) => void; lateRetryMs?: readonly number[]; sleep?: (ms: number) => Promise<void> } = {},
+  opts: { onLate?: (next: ResolvedBookAssets) => void; lateRetryMs?: readonly number[]; sleep?: (ms: number) => Promise<void>; isCurrent?: () => boolean } = {},
 ): Promise<ResolvedBookAssets> {
+  const scope = openBookAssetReadScope(childId, opts.isCurrent);
   const urls: string[] = [];
   let stopped = false;
+  const revoke = () => {
+    stopped = true;
+    scope.close();
+    urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
+  };
+  try {
   const late: { rel: string; apply: (blob: Blob) => Promise<void> }[] = [];
   const blobUrl = (blob: Blob) => {
+    scope.assert();
     const u = URL.createObjectURL(blob);
     urls.push(u);
     return u;
   };
   /** Fetch one file and apply it; a passing failure goes to the late list. */
   const take = async (rel: string, apply: (blob: Blob) => Promise<void>) => {
-    const r = await fetchBookAssetResult(childId, doc, rel);
+    scope.assert();
+    const r = await fetchBookAssetResult(childId, doc, rel, 4, scope);
+    scope.assert();
     if ("blob" in r) await apply(r.blob);
     else if ("transient" in r) late.push({ rel, apply });
   };
@@ -131,10 +141,7 @@ export async function resolveBookAssets(
     });
   });
   await fillSharedNarration(doc.bookId, folder, files, cues);
-  const revoke = () => {
-    stopped = true;
-    urls.forEach((u) => URL.revokeObjectURL(u));
-  };
+  scope.assert();
   const snapshot = (): ResolvedBookAssets => ({
     sheet: { ...sheet, poses: { ...sheet.poses }, anchors: { ...sheet.anchors }, prints: { ...sheet.prints }, choices: { ...sheet.choices } },
     narration: { files: { ...files }, cues: { ...cues } },
@@ -146,22 +153,26 @@ export async function resolveBookAssets(
     void (async () => {
       for (const wait of opts.lateRetryMs ?? LATE_RETRY_MS) {
         if (stopped || !late.length) return;
+        scope.assert();
         await sleep(wait);
         if (stopped) return;
+        scope.assert();
         const round = late.splice(0);
         let arrived = false;
         for (const job of round) {
-          const r = await fetchBookAssetResult(childId, doc, job.rel, 1);
+          const r = await fetchBookAssetResult(childId, doc, job.rel, 1, scope);
+          scope.assert();
           if ("blob" in r) {
             await job.apply(r.blob);
             arrived = true;
           } else if ("transient" in r) late.push(job);
         }
-        if (arrived && !stopped) onLate(snapshot());
+        if (arrived && !stopped) { scope.assert(); onLate(snapshot()); }
       }
-    })();
+    })().catch(revoke);
   }
   return snapshot();
+  } catch (error) { revoke(); throw error; }
 }
 
 /** K2: the book's shared name-free files fill the gaps in the child's own
@@ -200,6 +211,10 @@ export async function fillSharedNarration(
 export async function libraryBookCoverUrl(childId: string, doc: BookAssetsDoc): Promise<string | null> {
   const print = doc.sheetManifest.prints?.cover;
   if (!print) return null;
-  const blob = await fetchBookAsset(childId, doc, `hero-sheets/${doc.sheetId}/${print.file}`);
-  return blob ? URL.createObjectURL(blob) : null;
+  const scope = openBookAssetReadScope(childId);
+  try {
+    const result = await fetchBookAssetResult(childId, doc, `hero-sheets/${doc.sheetId}/${print.file}`, 4, scope);
+    scope.assert();
+    return "blob" in result ? URL.createObjectURL(result.blob) : null;
+  } finally { scope.close(); }
 }

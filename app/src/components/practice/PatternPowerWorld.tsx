@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
+import { useGameSession } from "../kidmode/game/GameSessionContext";
 import { MascotSay, ChoiceTile, ProgressPips, PlayButton, Celebrate } from "../ui/playkit";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
 import { patternRound, selectPatternSession, type PatternPuzzle } from "../../practice/newGames";
@@ -170,6 +171,7 @@ export function PatternRoundView({
 }
 
 export default function PatternPowerWorld() {
+  const gameSession = useGameSession();
   const { first, log } = useArcadeLogger();
   const { t, uiLang } = useLanguage();
   const [idx, setIdx] = useState(0);
@@ -216,7 +218,9 @@ export default function PatternPowerWorld() {
     const correct = opt === puzzle.answer;
     const firstTry = missed.length === 0;
     // B-KID-50: one row per round — the FIRST try is what is logged.
-    if (firstTry) log("pattern", "cognition", { correct, score: correct ? 100 : 0, meta: puzzle.id });
+    if (!gameSession?.playOnly) {
+      if (firstTry) log("pattern", "cognition", { correct, score: correct ? 100 : 0, meta: puzzle.id });
+    }
     if (!correct && firstTry) { setMissed([opt]); return; }
     const score = correct && firstTry ? 100 : 0;
     // A second miss reveals the answer (pulse on its tile, the slot fills).

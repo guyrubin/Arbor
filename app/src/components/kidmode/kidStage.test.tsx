@@ -30,7 +30,7 @@ describe("which picture is the stage", () => {
     expect(s.sharpTop).toBe(true);
   });
   it("a game = its world card; a book = its cover; the library = the garden", () => {
-    expect(kidStageArt("film3d", { kind: "world", worldId: "pattern" }).wide?.src).toContain("game-pattern");
+    expect(kidStageArt("film3d", { kind: "world", worldId: "pattern" }).wide?.src).toContain("kid-discovery-garden-v2");
     expect(kidStageArt("film3d", { kind: "story", storyId: "noahs-ark" }).wide?.src).toContain("story-noahs-ark");
     expect(kidStageArt("film3d", { kind: "library" }).wide?.src).toContain("kid-discovery-garden-v2");
     expect([KID_STAGE_BLUR.library, KID_STAGE_BLUR.world, KID_STAGE_BLUR.story]).toEqual([10, 22, 26]);
@@ -41,6 +41,13 @@ describe("which picture is the stage", () => {
     const html = renderToStaticMarkup(<KidStage scene={{ kind: "library" }} />);
     expect(html).not.toContain("data-empty");
     expect(kidStageArt("film3d", { kind: "world", worldId: "no-such-world" }).id).toBe("fallback:world");
+  });
+  it("current world and home art never depict a substitute child", () => {
+    for (const worldId of ["memory", "pattern", "beat", "feelings", "pose", "mimic"]) {
+      const stage = kidStageArt("film3d", { kind: "world", worldId });
+      expect(stage.wide?.hasHero).not.toBe(true);
+      expect(stage.tall?.hasHero).not.toBe(true);
+    }
   });
   it("the overlay's default scene per view", () => {
     expect(kidStageFor("home", null)).toEqual({ kind: "home" });
@@ -74,7 +81,7 @@ describe("the stage layer", () => {
   });
   it("the overlay: stage first, content above it, navy behind (a slow image never flashes white)", () => {
     expect(overlay).toContain('data-kid-staged=""');
-    expect(overlay.indexOf("<KidStage scene={stageScene} />")).toBeLessThan(overlay.indexOf("{surface && ("));
+    expect(overlay.indexOf("<KidStage scene={stageScene} />")).toBeLessThan(overlay.indexOf('{view !== "home" && ('));
     expect(overlay).toContain('zIndex: 69, background: "var(--arbor-ink)"');
     expect((overlay.match(/position: "relative",\s*zIndex: 1,/g) ?? []).length).toBe(2);
   });

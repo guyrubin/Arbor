@@ -17,6 +17,8 @@
 import { kidArt, storyCoverKey, worldTileKey, type KidArt, type KidThemeId, type KidWorldTileId } from "../../../lib/kidThemeManifest";
 import { kidWorldByWorldId } from "../kidWorlds";
 
+export const QUEST_SOUVENIR_REF = "kid-quest";
+
 export const SOUVENIR_COLLECTION = "kidSouvenirs";
 
 export type SouvenirKind = "world" | "book";
@@ -27,7 +29,7 @@ export interface KidSouvenir {
   kind: SouvenirKind;
   /** The world's routing id or the story id. */
   refId: string;
-  /** When it was first earned (ISO). Never rewritten. */
+  /** First observed completion (ISO). Concurrent offline devices may replace this timestamp. */
   earnedAt: string;
 }
 
@@ -37,9 +39,9 @@ export const souvenirId = (kind: SouvenirKind, refId: string): string => `${kind
  *  it (earned once; the ledger only ever grows). */
 export function souvenirToAward(owned: readonly Pick<KidSouvenir, "id">[], kind: SouvenirKind, refId: string, now: Date): KidSouvenir | null {
   if (!refId) return null;
-  if (kind === "world" && !kidWorldByWorldId(refId)) return null;
+  if (kind === "world" && refId !== QUEST_SOUVENIR_REF && !kidWorldByWorldId(refId)) return null;
   const id = souvenirId(kind, refId);
-  if (owned.some((s) => s.id === id)) return null;
+  if (owned.some((s) => s?.id === id)) return null;
   return { id, kind, refId, earnedAt: now.toISOString() };
 }
 
@@ -48,6 +50,7 @@ export function souvenirToAward(owned: readonly Pick<KidSouvenir, "id">[], kind:
  *  theme's art. */
 export function souvenirArt(s: Pick<KidSouvenir, "kind" | "refId">, theme: KidThemeId): KidArt | null {
   if (s.kind === "world") {
+    if (s.refId === QUEST_SOUVENIR_REF) return kidArt(theme, worldTileKey("kid-quest"));
     const w = kidWorldByWorldId(s.refId);
     return w ? kidArt(theme, worldTileKey(w.worldId as KidWorldTileId)) : null;
   }
@@ -59,9 +62,9 @@ export function souvenirArt(s: Pick<KidSouvenir, "kind" | "refId">, theme: KidTh
 export function souvenirStrip<T extends KidSouvenir>(items: readonly T[]): T[] {
   const seen = new Set<string>();
   const out: T[] = [];
-  for (const s of [...items].sort((a, b) => (a.earnedAt < b.earnedAt ? 1 : a.earnedAt > b.earnedAt ? -1 : 0))) {
+  for (const s of items.filter(s => !!s && (s.kind === "world" || s.kind === "book") && typeof s.refId === "string" && !!s.refId && s.id === souvenirId(s.kind, s.refId) && typeof s.earnedAt === "string" && Number.isFinite(Date.parse(s.earnedAt))).sort((a, b) => (a.earnedAt < b.earnedAt ? 1 : a.earnedAt > b.earnedAt ? -1 : 0))) {
     if (seen.has(s.id)) continue;
-    if (s.kind === "world" && !kidWorldByWorldId(s.refId)) continue;
+    if (s.kind === "world" && s.refId !== QUEST_SOUVENIR_REF && !kidWorldByWorldId(s.refId)) continue;
     seen.add(s.id);
     out.push(s);
   }

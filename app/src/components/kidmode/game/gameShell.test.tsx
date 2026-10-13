@@ -52,12 +52,15 @@ describe("GameShell in Kid Mode", () => {
     // … it names its world as the overlay's stage, and clears it on leaving.
     const src = read("GameShell.tsx");
     expect(src).toMatch(/setKidStage\(\{ kind: "world", worldId \}\);\s*return \(\) => setKidStage\(null\);/);
-    // The stage resolves that world's card: whole card, blurred, crisp top band on a phone.
+    // Fixed-child cards cannot replace the profile identity; the stage uses
+    // its existing neutral fallback until approved world art is available.
     const { kidStageArt } = await import("../kidStageArt");
     const stage = kidStageArt("film3d", { kind: "world", worldId: "memory" });
-    expect(stage.wide?.src480).toContain("game-memory-480.webp");
-    expect(stage.sharpTop).toBe(true);
-    expect(stage.blur).toBe(22);
+    expect(stage.wide?.src480).toContain("kid-discovery-garden-v2-480.webp");
+    expect(stage.wide?.hasHero).toBe(false);
+    expect(stage.sharpTop).toBe(false);
+    expect(stage.blur).toBe(10);
+    expect(stage.id).toBe("fallback:world");
     // the overlay renders the stage under the content, on navy (never white)
     const overlay = read("..", "KidModeOverlay.tsx");
     expect(overlay).toContain("<KidStage scene={stageScene} />");
@@ -98,8 +101,10 @@ describe("GameFinish — the explicit end", () => {
     const html = renderToStaticMarkup(<GameShell worldId="memory" title="Mind Vault"><GameFinish title="Done" onPlayAgain={() => {}} playAgainLabel="Play again" homeLabel="Home" /></GameShell>);
     expect(html).toContain('data-kid-finish-moment=""');
     expect(html).toContain('data-kid-sticker="world:memory"');
-    expect(html).toContain("game-memory");
-    expect(html).toContain("A new sticker!");
+    expect(html).toContain('data-kid-sticker-icon=""');
+    expect(html).not.toContain("game-memory");
+    // Server rendering cannot truthfully claim that a new award was persisted.
+    expect(html).not.toContain("A new sticker!");
     expect(html).not.toMatch(/⭐|★/);
   });
   it("outside Kid Mode there is no Home to offer", () => {
@@ -128,13 +133,18 @@ describe("Fable render: the bar names the world reached from the home tile", () 
   });
   it("the visible title node renders that title and takes the remaining width", () => {
     const overlay = read("..", "KidModeOverlay.tsx");
-    expect(overlay).toContain("const barTitle = kidBarTitle(view, arcadeWorldId, surfaceTitle, t);");
+    expect(overlay).toContain('view === "studio-game" ? activity ? studio.activities[activity.id].title');
+    expect(overlay).toContain(": kidBarTitle(view, arcadeWorldId, surfaceTitle, t);");
     const node = overlay.slice(overlay.indexOf("data-kid-bar-title"), overlay.indexOf("{barTitle}") + 10);
     expect(node).toContain('flex: "1 1 0%"');
     expect(node).toContain("minWidth: 0");
     expect(node).toContain("WebkitLineClamp: 2");
     // the Home label folds to icon-only below sm, so the name keeps the width
-    expect(overlay).toContain('<span className="hidden sm:inline">{t("kid.back.home")}</span>');
+    const backLabel = overlay.match(/<span className="hidden sm:inline">([^<]+)<\/span>/)?.[1];
+    expect(backLabel).toContain('view === "studio-game"');
+    expect(backLabel).toContain("studio.worlds[activity.worldId].title");
+    expect(backLabel).toContain('t("kid.back.home")');
+    expect(overlay).toContain('onClick={isStudioView(view) ? studioBack : () => setView("home")}');
   });
 });
 

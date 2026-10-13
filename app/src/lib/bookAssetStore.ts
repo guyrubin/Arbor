@@ -3,7 +3,7 @@
  * book files (IndexedDB, the heroRenderStore pattern: injectable backend,
  * silent no-op without IndexedDB) and the ONE request that fills it: GET
  * /api/children/:childId/book-assets/:bookId/file (owner-checked, same origin)
- * with the parent's bearer token. Kept per child + book + the metadata doc's
+ * with the parent's bearer token. Kept per owner + child + book + the metadata doc's
  * createdAt + path, so a re-upload fetches fresh copies. Purged with the child
  * (lib/childData erase) and on sign-out (AuthContext). Never a model call.
  * Small on purpose: childData and AuthContext import it without the books.
@@ -12,11 +12,14 @@
  * absent; only a 404 (or a path the doc does not list) is absent.
  */
 import { authHeaders } from "./api";
+import { heroSheetOwnerKey, subscribeHeroSheetOwner } from "./heroSheetStore";
 import { bookAssetUrl, isBookAssetRel, type BookAssetsDoc } from "./library/bookAssetPaths";
 
 export interface CachedFile {
   id: string;
   childId: string;
+  /** Legacy rows without an owner are deliberately never reused. */
+  ownerKey?: string;
   blob: Blob;
 }
 
@@ -82,6 +85,38 @@ export function setBookAssetBackend(next: BookAssetBackend | null): void {
   backend = next;
 }
 
+let purgeEpoch = 0;
+const childEpochs = new Map<string, number>();
+let mutations: Promise<unknown> = Promise.resolve();
+function serialize<T>(action: () => Promise<T>): Promise<T> {
+  const result = mutations.then(action, action);
+  mutations = result.catch(() => undefined);
+  return result;
+}
+
+export interface BookAssetReadScope {
+  owner: string;
+  childId: string;
+  current: () => boolean;
+  assert: () => void;
+  close: () => void;
+}
+
+/** One scope covers a whole reader load, including batches and late retries.
+ * A → B → A cannot revive an old request; erase retires it before I/O. */
+export function openBookAssetReadScope(childId: string, isCurrent: () => boolean = () => true): BookAssetReadScope {
+  const owner = heroSheetOwnerKey();
+  const epoch = purgeEpoch, childEpoch = childEpochs.get(childId) ?? 0;
+  let closed = false;
+  const unsubscribe = subscribeHeroSheetOwner(() => { if (heroSheetOwnerKey() !== owner) closed = true; });
+  const current = () => !closed && owner !== "signed-out" && heroSheetOwnerKey() === owner && purgeEpoch === epoch && (childEpochs.get(childId) ?? 0) === childEpoch && isCurrent();
+  return {
+    owner, childId, current,
+    assert: () => { if (!current()) throw new Error("Book asset read retired"); },
+    close: () => { closed = true; unsubscribe(); },
+  };
+}
+
 /** A file's fate: its bytes, absent for good, or a passing failure (retry later). */
 export type BookAssetFetch = { blob: Blob } | { missing: true } | { transient: true; retryAfterMs?: number };
 
@@ -92,47 +127,66 @@ export function setBookAssetSleep(next: ((ms: number) => Promise<void>) | null):
 }
 
 /** One attempt: the device copy, else the owner-checked proxy. */
-async function fetchOnce(childId: string, doc: BookAssetsDoc, rel: string): Promise<BookAssetFetch> {
-  const id = `${childId}|${doc.bookId}|${doc.createdAt}|${rel}`;
+async function fetchOnce(childId: string, doc: BookAssetsDoc, rel: string, scope: BookAssetReadScope): Promise<BookAssetFetch> {
+  scope.assert();
+  const id = JSON.stringify([scope.owner, childId, doc.bookId, doc.createdAt, rel]);
   const c = cache();
   try {
     const hit = await c?.get(id);
-    if (hit) return { blob: hit.blob };
+    scope.assert();
+    if (hit?.ownerKey === scope.owner) return { blob: hit.blob };
   } catch {
     /* cache unavailable: fetch */
   }
+  scope.assert();
   let res: Response;
   try {
     const headers = await authHeaders();
+    scope.assert();
     delete headers["Content-Type"];
     res = await fetch(bookAssetUrl(childId, doc.bookId, rel), { headers, credentials: "same-origin" });
   } catch {
+    scope.assert();
     return { transient: true };
   }
+  scope.assert();
   if (res.status === 429 || res.status >= 500) {
     const after = Number(res.headers.get("retry-after"));
     return { transient: true, ...(Number.isFinite(after) && after > 0 ? { retryAfterMs: Math.min(after * 1000, 8000) } : {}) };
   }
   if (!res.ok) return { missing: true };
   const blob = await res.blob();
+  scope.assert();
   try {
-    await c?.put({ id, childId, blob });
+    await serialize(async () => {
+      scope.assert();
+      await c?.put({ id, childId, ownerKey: scope.owner, blob });
+      // A purge may start while IndexedDB commits. It is queued after us;
+      // remove this row here too before returning stale bytes to a caller.
+      if (!scope.current()) await c?.deleteWhere(rec => rec.id === id);
+    });
   } catch {
     /* quota: play from memory this time */
   }
+  scope.assert();
   return { blob };
 }
 
 /** One file, retried on a passing failure (backoff 0.5 s, 1 s, 2 s...). */
-export async function fetchBookAssetResult(childId: string, doc: BookAssetsDoc, rel: string, tries = 4): Promise<BookAssetFetch> {
+export async function fetchBookAssetResult(childId: string, doc: BookAssetsDoc, rel: string, tries = 4, readScope?: BookAssetReadScope): Promise<BookAssetFetch> {
   if (!isBookAssetRel(rel) || !doc.files.includes(rel)) return { missing: true };
+  const scope = readScope ?? openBookAssetReadScope(childId);
+  if (scope.childId !== childId) throw new Error("Book asset child changed");
+  try {
   let last: BookAssetFetch = { transient: true };
   for (let i = 0; i < tries; i++) {
-    last = await fetchOnce(childId, doc, rel);
+    scope.assert();
+    last = await fetchOnce(childId, doc, rel, scope);
     if (!("transient" in last)) return last;
     if (i < tries - 1) await sleep(last.retryAfterMs ?? 500 * 2 ** i);
   }
   return last;
+  } finally { if (!readScope) scope.close(); }
 }
 
 /** One file as a Blob (retried on a passing failure), else null. */
@@ -143,8 +197,11 @@ export async function fetchBookAsset(childId: string, doc: BookAssetsDoc, rel: s
 
 /** Remove every cached file of one child (erase), or of everyone (sign-out). */
 export async function purgeBookAssets(childId?: string): Promise<void> {
+  if (childId === undefined) purgeEpoch++;
+  else childEpochs.set(childId, (childEpochs.get(childId) ?? 0) + 1);
   try {
-    await cache()?.deleteWhere((rec) => childId === undefined || rec.childId === childId);
+    const c = cache();
+    await serialize(async () => { await c?.deleteWhere((rec) => childId === undefined || rec.childId === childId); });
   } catch {
     /* best effort */
   }

@@ -1,3 +1,4 @@
+import { STUDIO_V2_GAME_WORLDS } from "./studioGameWorlds";
 /**
  * kidWorlds — B-KID-68 (lane-A KA-16): ONE registry of the kid worlds.
  *
@@ -55,11 +56,11 @@ export const KID_WORLDS = [
 ] as const satisfies readonly KidWorld[];
 
 /** A kid world's routing id (= its art key id), from the entries above. */
-export type KidWorldId = (typeof KID_WORLDS)[number]["worldId"];
+export type KidWorldId = (typeof KID_WORLDS)[number]["worldId"] | (typeof STUDIO_V2_GAME_WORLDS)[number]["worldId"];
 
 /** The registry entry for an arcade / routing id, or undefined. */
 export function kidWorldByWorldId(worldId: string): KidWorld | undefined {
-  return (KID_WORLDS as readonly KidWorld[]).find((w) => w.worldId === worldId);
+  return ([...KID_WORLDS, ...STUDIO_V2_GAME_WORLDS] as readonly KidWorld[]).find((w) => w.worldId === worldId);
 }
 
 /** worldId → the ONE kid name key (the in-world bar title). */

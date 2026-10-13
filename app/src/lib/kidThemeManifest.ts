@@ -16,6 +16,7 @@
  * need to be created: `KID_ART_GAPS` (kidArtGaps.ts), pinned by the test.
  */
 import { HERO_STORIES } from "./heroJourneys";
+import { STUDIO_V2_GAME_WORLDS } from "../components/kidmode/studioGameWorlds";
 import { KID_WORLDS, SNEAK_FREEZE_WORLD, type KidWorldId } from "../components/kidmode/kidWorlds";
 
 export const KID_THEME_IDS = ["film3d", "storybook"] as const;
@@ -42,13 +43,18 @@ export const KID_HOME_TILE_IDS = ["kid-playbank", "kid-hero", "kid-quest"] as co
 export type KidWorldTileId = KidWorldId | (typeof KID_HOME_TILE_IDS)[number] | typeof SNEAK_FREEZE_WORLD.worldId;
 export const KID_WORLD_TILE_IDS: readonly KidWorldTileId[] = [...KID_WORLDS.map((w) => w.worldId), ...KID_HOME_TILE_IDS];
 
-export type KidArtKey = `world.${KidWorldTileId}.tile` | `story.${string}.cover` | "home.stage" | "hero.portrait";
+export const STUDIO_PORTAL_IDS = ["playbank", "stories", "feelings", "studio"] as const;
+export type StudioArtKey = "studio.sky" | `studio.portal.${typeof STUDIO_PORTAL_IDS[number]}`;
+export type KidArtKey = StudioArtKey | `world.${KidWorldTileId}.tile` | `story.${string}.cover` | "home.stage" | "hero.portrait";
 export const worldTileKey = (id: KidWorldTileId): KidArtKey => `world.${id}.tile`;
 export const storyCoverKey = (storyId: string): KidArtKey => `story.${storyId}.cover`;
 
 /** Every kid art slot that exists in the app today. */
 export const KID_ART_KEYS: readonly KidArtKey[] = [
+  "studio.sky",
+  ...STUDIO_PORTAL_IDS.map(id => `studio.portal.${id}` as const),
   ...KID_WORLD_TILE_IDS.map(worldTileKey),
+  ...STUDIO_V2_GAME_WORLDS.map(w => worldTileKey(w.worldId)),
   worldTileKey(SNEAK_FREEZE_WORLD.worldId), // B-GAME-15a: the Sneak & Freeze tile (not a gating slot)
   ...HERO_STORIES.map((s) => storyCoverKey(s.id)),
   "home.stage",
@@ -125,8 +131,24 @@ const FILM3D_STORY_COVERS_2X3 = [
   "the-friendly-monster", "the-lantern-path", "the-cloud-orchestra", "the-little-bridge-builders",
 ] as const;
 
+const studioPortal = (id: typeof STUDIO_PORTAL_IDS[number]): KidArt => ({
+  src: `/visuals/studio-v2/portal-${id}.webp`, src480: `/visuals/studio-v2/portal-${id}-480.webp`, width: 1536,
+  objectPosition: "50% 50%", altKey: null, provenanceId: `studio-v2-neutral-portal:${id}:2026-10-13`, hasHero: false,
+});
+/** A shared neutral V2 environment set; the profile is the sole child identity. */
+const STUDIO_ART: Record<StudioArtKey, KidArt> = {
+  "studio.sky": { src: "/visuals/studio-v2/sky-background.webp", src480: "/visuals/studio-v2/sky-background-480.webp", width: 1536, objectPosition: "50% 50%", altKey: null, provenanceId: "studio-v2-sky:2026-10-13", hasHero: false },
+  "studio.portal.playbank": studioPortal("playbank"),
+  "studio.portal.stories": studioPortal("stories"),
+  "studio.portal.feelings": studioPortal("feelings"),
+  "studio.portal.studio": studioPortal("studio"),
+};
 export const KID_THEME_MANIFEST: Record<KidThemeId, Partial<Record<KidArtKey, KidArt>>> = {
   film3d: {
+    ...STUDIO_ART,
+    "world.sound-explorer.tile": STUDIO_ART["studio.portal.studio"],
+    "world.calm-builder.tile": STUDIO_ART["studio.portal.feelings"],
+    "world.puzzle.tile": STUDIO_ART["studio.portal.playbank"],
     "world.speech.tile": film("game-speech", "50% 22%", 1023),
     "world.feelings.tile": film("game-feelings"),
     "world.memory.tile": film("game-memory"),
@@ -150,6 +172,10 @@ export const KID_THEME_MANIFEST: Record<KidThemeId, Partial<Record<KidArtKey, Ki
     "home.stage": film("kid-discovery-garden-v2", "50% 50%", 1024, false),
   },
   storybook: {
+    ...STUDIO_ART,
+    "world.sound-explorer.tile": STUDIO_ART["studio.portal.studio"],
+    "world.calm-builder.tile": STUDIO_ART["studio.portal.feelings"],
+    "world.puzzle.tile": STUDIO_ART["studio.portal.playbank"],
     "world.speech.tile": world("sound-lab", "48% 40%"),
     "world.feelings.tile": world("mood-mountain", "50% 40%"),
     "world.memory.tile": world("mind-vault", "45% 42%"),

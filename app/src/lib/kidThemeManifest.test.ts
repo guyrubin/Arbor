@@ -136,3 +136,15 @@ describe("B-KID-70 (c): kid components reference art only through the manifest",
     expect('src="/visuals/cards/web/game-memory-480.webp"').toMatch(/\/visuals\//);
   });
 });
+
+
+describe("Studio V2 neutral identity boundary", () => {
+  it("every V2 scene is real neutral art in both themes", () => {
+    for (const theme of KID_THEME_IDS) {
+      for (const key of ["studio.sky", "studio.portal.playbank", "studio.portal.stories", "studio.portal.feelings", "studio.portal.studio", "world.sound-explorer.tile", "world.calm-builder.tile", "world.puzzle.tile"] as const) {
+        expect(kidArt(theme, key), `${theme}:${key}`).not.toBeNull();
+        expect(kidArt(theme, key)?.hasHero, `${theme}:${key}`).toBe(false);
+      }
+    }
+  });
+});

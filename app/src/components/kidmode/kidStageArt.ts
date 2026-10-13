@@ -47,9 +47,11 @@ export interface KidStageArt {
 const isWorldTileId = (id: string): id is KidWorldTileId => (KID_WORLD_TILE_IDS as readonly string[]).includes(id);
 
 function homeArt(theme: KidThemeId): { wide: KidArt | null; tall: KidArt | null } {
-  const garden = kidArt(theme, "home.stage");
+  const gardenCandidate = kidArt(theme, "home.stage");
+  const garden = gardenCandidate?.hasHero ? null : gardenCandidate;
   // The tall reading room only exists as a portrait card in a portrait theme.
-  const room = KID_THEME_TILE_SHAPE[theme] === "portrait" ? kidArt(theme, worldTileKey("kid-quest")) : null;
+  const roomCandidate = KID_THEME_TILE_SHAPE[theme] === "portrait" ? kidArt(theme, worldTileKey("kid-quest")) : null;
+  const room = roomCandidate?.hasHero ? null : roomCandidate;
   return { wide: garden ?? room, tall: room ?? garden };
 }
 
@@ -62,7 +64,7 @@ export function kidStageArt(theme: KidThemeId, scene: KidStageScene): KidStageAr
   }
   if (scene.kind === "world" && isWorldTileId(scene.worldId)) {
     const art = kidArt(theme, worldTileKey(scene.worldId));
-    if (art) return { wide: art, tall: art, blur, sharpTop: true, id: `world:${scene.worldId}` };
+    if (art && !art.hasHero) return { wide: art, tall: art, blur, sharpTop: true, id: `world:${scene.worldId}` };
   }
   if (scene.kind === "story") {
     const art = kidArt(theme, storyCoverKey(scene.storyId));

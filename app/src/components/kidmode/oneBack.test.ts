@@ -48,7 +48,7 @@ describe("B-KID-53: one back control in Kid Mode", () => {
     expect(tab).toContain('{!kidMode && <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{render.title}</span>}');
   });
   it("the overlay keeps Home + the hold-exit", () => {
-    expect(overlay).toContain('onClick={() => setView("home")}');
+    expect(overlay).toContain('onClick={isStudioView(view) ? studioBack : () => setView("home")}');
     expect(overlay).toContain("<HoldExitButton onExit={closeKidMode}");
   });
 });

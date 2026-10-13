@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
+import { useGameSession } from "../kidmode/game/GameSessionContext";
 import { MascotSay, ProgressPips, PlayButton, Celebrate, ChoiceTile, PlayPanel } from "../ui/playkit";
 import { GameFinish, GameShell } from "../kidmode/game/GameShell";
 import { useArcadeLogger } from "../../practice/useArcadeLogger";
@@ -9,6 +10,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { selectionHaptic } from "../../lib/native";
 import { isKidModeActive, noteKidActivity } from "../../lib/kidModeGate";
 import { beatClick, closeBeatAudio } from "../../practice/beatAudio";
+import { kidAudioAllowed, onKidHush } from "../kidmode/audio/kidAudio";
 
 /* Beat Keeper — tap on the beat. A rhythm/timing game (regulation): the drum
    flashes AND clicks on every beat at a steady tempo (B-KID-37: the first
@@ -23,6 +25,7 @@ function KidPanel({ kid, children }: { kid: boolean; children: React.ReactNode }
 }
 
 export default function BeatKeeperWorld() {
+  const gameSession = useGameSession();
   const { first, log } = useArcadeLogger();
   const { t, uiLang } = useLanguage();
   const [roundIdx, setRoundIdx] = useState(0);
@@ -48,6 +51,9 @@ export default function BeatKeeperWorld() {
     // which is what browsers require) and released with the world.
     closeBeatAudio();
   }, []);
+
+  useEffect(() => gameSession?.playOnly ? onKidHush(closeBeatAudio) : undefined, [gameSession?.playOnly]);
+  const playBeat = () => { if (!gameSession?.playOnly || kidAudioAllowed()) beatClick(); };
 
   const selectedSet = BEAT_SETS.find((set) => set.id === selectedSetId) ?? null;
   const rounds = selectedSet?.rounds ?? [];
@@ -127,7 +133,7 @@ export default function BeatKeeperWorld() {
     const s = scoreBeatTaps(expRef.current, tapsRef.current);
     setScores((p) => [...p, s]);
     setPhase("scored");
-    log("rhythm", "emotional", { correct: s >= 50, score: s, meta: `${selectedSet.id}:${round.beats}@${round.intervalMs}` });
+    if (!gameSession?.playOnly) log("rhythm", "emotional", { correct: s >= 50, score: s, meta: `${selectedSet.id}:${round.beats}@${round.intervalMs}` });
     // B-KID-51 (KC-08): ONE kid activity per finished sitting — the
     // last round of the set, never per round. A COUNT, a no-op outside Kid Mode.
     if (roundIdx + 1 >= rounds.length) noteKidActivity();
@@ -146,12 +152,12 @@ export default function BeatKeeperWorld() {
     // node, so a child looking away can still keep time.
     setPulse(0);
     flashBeat();
-    beatClick();
+    playBeat();
     timerRef.current = window.setInterval(() => {
       k++;
       setPulse(k);
       flashBeat();
-      beatClick();
+      playBeat();
       if (k >= round.beats - 1) {
         if (timerRef.current !== null) window.clearInterval(timerRef.current);
         finishTimerRef.current = window.setTimeout(finish, round.intervalMs);

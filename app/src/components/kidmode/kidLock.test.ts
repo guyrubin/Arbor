@@ -487,7 +487,8 @@ describe("KID-22: a throwing kid surface leaves Kid Mode locked", () => {
     expect(open).toBeGreaterThan(0);
     expect(close).toBeGreaterThan(open);
     const inside = src.slice(open, close);
-    expect(inside).toContain("<KidDashboard");
+    expect(inside).toContain("<StudioHome");
+    expect(inside).toContain("<StudioGame");
     expect(inside).toContain("<PracticeHubTab");
     expect(inside).not.toContain("<HoldExitButton");
     expect(src.slice(0, open)).toContain("<HoldExitButton");
