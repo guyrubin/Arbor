@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 // until the destination commits, and early Back makes that same route present.
 // This executes the production hook, not browser layout or React scheduling.
 const h = vi.hoisted(() => ({
-  slots: [] as any[], cursor: 0, effects: [] as (() => void)[], present: true,
+  slots: [] as any[], cursor: 0, effects: [] as (() => void)[], present: true, query: "",
 }));
 vi.mock("react", () => ({
   useEffect: (effect: () => void | (() => void), deps: unknown[]) => {
@@ -24,6 +24,10 @@ vi.mock("react", () => ({
   },
 }));
 vi.mock("motion/react", () => ({ useIsPresent: () => h.present }));
+vi.mock("../../hooks/useHashQuery", () => ({
+  useHashQuery: () => new URLSearchParams(h.query),
+  goToRoute: vi.fn((_route: string, params: Record<string, string>) => { h.query = new URLSearchParams(params).toString(); }),
+}));
 import { readTogetherView, useTogetherNavigation, writeTogetherView } from "./togetherNavigation";
 
 let frames: Map<number, FrameRequestCallback>;
@@ -49,7 +53,7 @@ function paint() {
   ready.forEach((callback) => callback(0));
 }
 beforeEach(() => {
-  h.slots = []; h.cursor = 0; h.effects = []; h.present = true;
+  h.slots = []; h.cursor = 0; h.effects = []; h.present = true; h.query = "";
   const data = new Map<string, string>(); frames = new Map(); scheduled = []; nextFrame = 0;
   vi.stubGlobal("sessionStorage", { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) });
   vi.stubGlobal("requestAnimationFrame", vi.fn((callback: FrameRequestCallback) => {
@@ -60,6 +64,39 @@ beforeEach(() => {
 afterEach(() => { unmount(); vi.unstubAllGlobals(); });
 
 describe("Together return presentation state", () => {
+  it.each(["stories", "games", "routines", "offscreen"] as const)("opens More's %s destination over a saved category on the first render", (category) => {
+    writeTogetherView("a", { category: "all" });
+    h.query = `f=${category}`;
+    expect(render().category).toBe(category);
+    expect(readTogetherView("a", true)).toEqual({ category });
+  });
+
+  it("follows query-only navigation and Back/Forward while mounted, cancelling an old return door", () => {
+    writeTogetherView("a", { category: "stories", returnDoor: "story-library" });
+    const target = page(); render("a", true, target);
+    const stale = scheduled.at(-1)!;
+    h.query = "f=routines";
+    expect(render("a", true, target).category).toBe("routines");
+    stale(0); paint(); expect(target.door.focus).not.toHaveBeenCalled();
+    h.query = "f=stories"; expect(render().category).toBe("stories");
+    h.query = "f=routines"; expect(render().category).toBe("routines");
+    render().setCategory("offscreen");
+    expect(h.query).toBe("f=offscreen"); expect(render().category).toBe("offscreen");
+  });
+
+  it("rejects unknown filters and keeps unavailable games behind the existing age gate", () => {
+    h.query = "f=unknown"; expect(render().category).toBe("all");
+    h.query = "f=games"; expect(render("a", false).category).toBe("all");
+    h.query = "f=routines"; expect(render("a", false).category).toBe("routines");
+  });
+
+  it("preserves the starting category in the previous history entry before the first filter change", () => {
+    const replaceState = vi.fn();
+    vi.stubGlobal("window", { location: { hash: "#/practice" }, history: { state: { existing: true }, replaceState } });
+    render().setCategory("stories");
+    expect(replaceState).toHaveBeenCalledWith({ existing: true }, "", "#/practice?f=all");
+    h.query = "f=all"; expect(render().category).toBe("all");
+  });
   it.each(["all", "stories", "games", "routines", "offscreen"] as const)("never moves focus or scroll on an ordinary %s visit or rerender without a pending return", (category) => {
     writeTogetherView("a", { category });
     const target = page();
