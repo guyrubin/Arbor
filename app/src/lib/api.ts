@@ -644,7 +644,20 @@ export type EntitlementInfo = {
   imageAllowance?: { perDay: number; perMonth: number; heroPer30Days: number };
 };
 
+/** Server-computed list-price estimates; nullable values mean not measured. */
+export type AdminCost30d = {
+  days: number;
+  estimatedCostUsd: number | null;
+  pricedCalls: number;
+  calls: number;
+  activeFamilies: number;
+  perActiveFamilyUsd: number | null;
+  priceTableAsOf: string;
+};
+
 export type AdminOverview = {
+  /** Optional during a rolling client/server release; never substitute zero. */
+  cost30d?: AdminCost30d;
   users: number;
   paying: { plus: number; family: number; trialing: number; total: number };
   usageToday: {

@@ -117,6 +117,23 @@ describe("audio ownership and cost boundaries", () => {
     expect(speakText("No engine", { onError })).toBe(0);
     expect(onError).toHaveBeenCalledTimes(1);
   });
+  it("keeps natural-only playback retryable after three failed starts", async () => {
+    vi.stubGlobal("window", {});
+    setNaturalSynth((_text, handlers) => {
+      queueMicrotask(() => handlers.onError?.());
+      return { stop: vi.fn() };
+    });
+    setVoiceEngine("natural");
+    for (let i = 0; i < 3; i++) {
+      const onError = vi.fn();
+      expect(speakText("Try speech", { onError })).toBeGreaterThan(0);
+      await vi.runAllTicks();
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(voiceState().speaking).toBe(false);
+    }
+    expect(voiceState().engine).toBe("natural");
+    expect(voiceSupported()).toBe(true);
+  });
   it("stopping while auth is pending prevents a paid POST", async () => {
     let release!: (token: string) => void;
     setAuthTokenProvider(() => new Promise((resolve) => { release = resolve; }));

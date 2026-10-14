@@ -262,7 +262,9 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "
       activeNaturalStop = null;
     }
     naturalMisses++;
-    if (naturalMisses >= NATURAL_DEGRADE_AFTER) setVoiceEngine("basic"); // degrade the session to the floor
+    // A natural-only webview has no floor to degrade to. Keep its retry control
+    // available rather than making speech disappear after three failures.
+    if (naturalMisses >= NATURAL_DEGRADE_AFTER && browserVoiceSupported()) setVoiceEngine("basic");
     startBrowser(id, text, handlers, lang); // re-dispatch THIS utterance
   };
 
