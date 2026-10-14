@@ -1,0 +1,105 @@
+name: Arbor feedback read-only production QA
+on:
+  push:
+    branches: ['codex/feedback-production-qa-2026-10-14']
+    paths: ['.github/workflows/arbor-feedback-live-qa.yml', 'app/scripts/capture/feedback-qa.mjs']
+permissions:
+  contents: read
+concurrency:
+  group: arbor-feedback-read-only-qa
+  cancel-in-progress: true
+jobs:
+  live-read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Save exact public source for independent review (no secrets or fonts)
+        run: |
+          mkdir -p qa-output/source
+          git archive HEAD app/src/components/profile app/src/components/overview/QuickLogModal.tsx app/src/components/overview/ConfirmCaptureReview.tsx app/src/content/behaviorTaxonomy.ts app/src/content/behaviorTaxonomy.test.ts app/src/lib/profileChoiceLines.ts app/src/lib/childAge.ts app/src/lib/childProfileInput.ts app/src/lib/i18n.ts app/src/context/ProfileContext.tsx app/src/context/ArborContext.tsx app/src/types.ts | tar -x -C qa-output/source
+          git rev-parse HEAD > qa-output/source-sha.txt
+          git rev-parse HEAD:app/src > qa-output/source-tree.txt
+      - run: npm ci
+        working-directory: app
+      - run: npx --no-install playwright install --with-deps chromium
+        working-directory: app
+      - name: Read-only production health, version and browser smoke
+        working-directory: app
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          import { mkdirSync, writeFileSync } from 'node:fs';
+          const out = '../qa-output';
+          mkdirSync(out + '/shots', { recursive: true });
+          const base = 'https://arborparentingapp.com';
+          const result = { checkedAt: new Date().toISOString(), authenticatedFamilyQa: false, readOnly: true, checks: [], browsers: [] };
+          const save = () => writeFileSync(out + '/production-qa.json', JSON.stringify(result, null, 2));
+          try {
+            for (const path of ['/', '/timestamp.txt', '/api/health']) {
+              const response = await fetch(base + path, { headers: { 'Cache-Control': 'no-cache' }, signal: AbortSignal.timeout(30000) });
+              const text = await response.text();
+              const item = { path, status: response.status, passed: response.status === 200 };
+              if (path === '/timestamp.txt') {
+                item.frontendSha = text.match(/^([a-f0-9]{40})-/)?.[1] ?? null;
+                item.passed &&= Boolean(item.frontendSha);
+                result.frontendSha = item.frontendSha;
+              }
+              if (path === '/api/health') {
+                const health = JSON.parse(text);
+                item.apiVersion = health.version;
+                item.healthStatus = health.status;
+                item.passed &&= health.status === 'ok';
+                result.apiVersion = health.version;
+              }
+              result.checks.push(item); save();
+            }
+            result.sameRevision = result.frontendSha === result.apiVersion;
+            const browser = await chromium.launch({ headless: true });
+            try {
+              for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+                for (const language of ['en', 'he']) {
+                  const context = await browser.newContext({ viewport, locale: language === 'he' ? 'he-IL' : 'en-US', serviceWorkers: 'block', permissions: [] });
+                  await context.route('**/*', route => ['GET', 'HEAD', 'OPTIONS'].includes(route.request().method()) ? route.continue() : route.abort());
+                  await context.addInitScript(lang => { localStorage.setItem('arbor.uiLang', lang); localStorage.setItem('arbor.aiLang', lang); }, language);
+                  const page = await context.newPage();
+                  const cell = { viewport, language, pageErrors: [], failedSameOriginAssets: [], authenticated: false };
+                  page.on('pageerror', error => cell.pageErrors.push(String(error.message).slice(0, 300)));
+                  page.on('response', response => {
+                    const url = new URL(response.url());
+                    if (url.origin === base && response.status() >= 400 && /\.(js|css|woff2|png|webp|svg)$/.test(url.pathname)) cell.failedSameOriginAssets.push({ path: url.pathname, status: response.status() });
+                  });
+                  await page.goto(base + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+                  await page.locator('#root').waitFor({ state: 'visible', timeout: 30000 });
+                  await page.waitForFunction(() => (document.getElementById('root')?.innerText.trim().length ?? 0) > 40, { timeout: 30000 });
+                  cell.visibleText = (await page.locator('#root').innerText()).slice(0, 1800);
+                  cell.horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2);
+                  cell.shot = `shots/live-${viewport.width}-${language}.png`;
+                  await page.screenshot({ path: out + '/' + cell.shot, animations: 'disabled' });
+                  cell.passed = !cell.pageErrors.length && !cell.failedSameOriginAssets.length && !cell.horizontalOverflow;
+                  result.browsers.push(cell); save();
+                  await context.close();
+                }
+              }
+            } finally { await browser.close(); }
+            result.passed = result.checks.every(c => c.passed) && result.sameRevision && result.browsers.length === 4 && result.browsers.every(c => c.passed);
+          } catch (error) { result.error = String(error.message).slice(0, 500); result.passed = false; }
+          save();
+          console.log(JSON.stringify(result, null, 2));
+          if (!result.passed) process.exitCode = 1;
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arbor-feedback-qa-${{ github.sha }}
+          path: qa-output/
+          retention-days: 7
+          include-hidden-files: false
+          if-no-files-found: error
