@@ -24,6 +24,7 @@
 .studio-v2__greeting h1 { letter-spacing: -.02em; text-shadow: 0 2px 24px #0006; }
 .studio-v2__greeting h1 > svg { color: var(--studio-gold); filter: drop-shadow(0 0 10px #f7b91dcc); }
 .studio-v2__greeting p { font-size: 17px; font-weight: 600; color: #ffffffc7; }
+.studio-v2__header-actions [data-kid-exit-caption], .studio-v2-bar [data-kid-exit-caption] { color: #e8eaf5 !important; }
 .studio-v2__door[data-world=playbank], .studio-v2[data-world=playbank] { --studio-world: #2f9e54; }
 .studio-v2__door[data-world=stories], .studio-v2[data-world=stories] { --studio-world: #6b4bc4; }
 .studio-v2__door[data-world=feelings], .studio-v2[data-world=feelings] { --studio-world: #e89b1f; }
