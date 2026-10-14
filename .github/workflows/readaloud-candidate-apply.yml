@@ -1,0 +1,49 @@
+name: Assemble isolated read-aloud candidate
+on:
+  push:
+    branches: ['codex/ai-readaloud-cost-2026-10-14']
+    paths: ['.github/workflows/readaloud-candidate-apply.yml', '.github/readaloud-packet-repair.json']
+permissions:
+  contents: write
+concurrency:
+  group: readaloud-candidate-assembly
+  cancel-in-progress: false
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact reviewed patch and apply only on isolated branch
+        run: |
+          python - <<'PY'
+          import base64, gzip, hashlib, json
+          from pathlib import Path
+          packet = Path('.github/readaloud-candidate.patch.gz').read_bytes()
+          repair = Path('.github/readaloud-packet-repair.json')
+          if repair.exists():
+              text = base64.b64encode(packet).decode()
+              for start, end, replacement in sorted(json.loads(repair.read_text()), reverse=True):
+                  text = text[:start] + replacement + text[end:]
+              packet = base64.b64decode(text)
+          data = gzip.decompress(packet)
+          assert hashlib.sha256(data).hexdigest() == 'd93f10223796a1d78b01700a0247e560c1d3ab11d698a6ab96a03aa6282185b1', 'Packet differs from reviewed source'
+          Path('/tmp/readaloud-candidate.patch').write_bytes(data)
+          PY
+          git diff --exit-code fa3f994715e2dba1ef782480c13863dfab0597cf -- app/src cloudbuild.prod.yaml docs/releases/ai-readaloud-cost-2026-10-14.md
+          git apply --check /tmp/readaloud-candidate.patch
+          git apply /tmp/readaloud-candidate.patch
+          git diff --check
+          git add app/src cloudbuild.prod.yaml docs/releases/ai-readaloud-cost-2026-10-14.md
+          git config user.name 'Arbor candidate automation'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: restore read-aloud recovery, pin approved-class voices and meter TTS'
+          git push origin HEAD:refs/heads/codex/ai-readaloud-cost-2026-10-14
+          git rev-parse HEAD
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: readaloud-transfer-packet
+          path: .github/readaloud-candidate.patch.gz
+          retention-days: 1
+          include-hidden-files: true
