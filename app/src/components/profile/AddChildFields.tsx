@@ -39,7 +39,7 @@ interface StepChildProps {
   onNext: () => void;
 }
 
-const LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
+export const CHILD_LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"] as const;
 
 /** Exported for the guard test, as StepReady is (MOB-12 precedent). */
 export function StepChild({
@@ -210,7 +210,7 @@ export function StepChild({
         <div className="space-y-2">
           <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("ob.langsAtHome")}</label>
           <div className="flex flex-wrap gap-2">
-            {LANGUAGES.map((l) => (
+            {CHILD_LANGUAGES.map((l) => (
               <button
                 key={l}
                 type="button"
