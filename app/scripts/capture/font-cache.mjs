@@ -1,7 +1,7 @@
 /** Exact public-resource contracts. No request is made when this module is imported. */
 import { createHash } from 'node:crypto';
 export const FONT_CACHE_DIR = '/capture/font-cache';
-export const SOURCE_CSS_URL = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,0..100&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Heebo:wght@400;500;600;700;800&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=Frank+Ruhl+Libre:wght@300..900&family=Instrument+Serif:ital@0;1&display=swap';
+export const SOURCE_CSS_URL = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,0..100&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Heebo:wght@400;500;600;700;800;900&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=Frank+Ruhl+Libre:wght@300..900&family=Instrument+Serif:ital@0;1&display=swap';
 export const FONT_FAMILIES = Object.freeze(['Fraunces', 'Nunito', 'Heebo', 'Instrument Sans', 'IBM Plex Sans Hebrew', 'Frank Ruhl Libre', 'Instrument Serif']);
 export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 export const fontMode = (mode = 'fallback') => {

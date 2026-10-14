@@ -44,6 +44,11 @@ lost its atmospheric background. Game thumbnails were identical within a world.
 - Cloud CI is the type/build gate; see the branch/PR checks for the exact final
   SHA. Local TypeScript compilation is intentionally not run under the machine
   resource rule.
+- The first cloud run passed types and 15,268 tests; its one failure identified
+  the capture tool's pinned font URL. Update that exact URL for the intentional
+  Nunito/Heebo 900 weights, preserving the host/resource restrictions. The focused
+  URL contract passes locally. The wider font suite has an existing Linux-style
+  `/tmp` expectation that fails on Windows; final Linux CI remains authoritative.
 
 Screenshots and the source archive stay outside Git. Local evidence is under
 the ROS `.workspace/arbor-kids-v2-parity-2026-10-14/` directory. The preview uses
