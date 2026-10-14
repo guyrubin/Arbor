@@ -22,6 +22,9 @@ import HeroSheetPanel from "./HeroSheetPanel";
 import RewardsCard from "./RewardsCard";
 import { stampChangedFacts } from "../../lib/factsAsOf";
 import { childPicture } from "../../lib/childPicture";
+import { en, he } from "../../lib/i18n";
+import { choiceSelected, toggleDelimitedChoice } from "../../lib/profileChoiceLines";
+import { CHILD_LANGUAGES, DOMAINS } from "./AddChildFields";
 // B-CAREPRO-35: the drawer no longer exports or deletes (GP-18's typed-name
 // delete moved, with its receipt, to Settings › Your data — YourDataSheet).
 
@@ -62,6 +65,10 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const [languages, setLanguages] = useState(activeChild.languages.join(", "));
   const [strengths, setStrengths] = useState(activeChild.strengths.join("\n"));
   const [challenges, setChallenges] = useState(activeChild.challenges.join("\n"));
+  // Add-child stores parent-picked domain labels as challenges in the parent's
+  // UI language. Match both shipped languages without migrating/relabeling old
+  // rows; arbitrary parent-written challenge lines remain intact.
+  const focusAliases = (key: string) => [t(key), en[key], he[key]].filter(Boolean);
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(activeChild.photoUrl);
   const [comicAvatarUrl, setComicAvatarUrl] = useState(activeChild.comicAvatarUrl);
   const [avatarMeta, setAvatarMeta] = useState<ChildProfile["avatar"]>(activeChild.avatar);
@@ -304,8 +311,25 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Languages <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(comma separated)</span></label>
-                <input value={languages} onChange={(e) => setLanguages(e.target.value)} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
+                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.langsAtHome")}</label>
+                <div className="flex flex-wrap gap-2" role="group" aria-label={t("ob.langsAtHome")} data-testid="profile-language-choices">
+                  {CHILD_LANGUAGES.map((language) => {
+                    const chosen = choiceSelected(languages, [language], ",");
+                    return (
+                      <button key={language} type="button" aria-pressed={chosen}
+                        onClick={() => setLanguages((current) => toggleDelimitedChoice(current, [language], language, ","))}
+                        className="min-h-11 px-3 py-1.5 rounded-xl text-xs font-bold transition"
+                        style={chosen
+                          ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-border)" }
+                          : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+                        {t("ob.lang." + language.toLowerCase())}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Keep free text: existing and custom languages must round-trip. */}
+                <input value={languages} onChange={(e) => setLanguages(e.target.value)}
+                  aria-label={t("ob.langsAtHome")} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
               </div>
 
               {/* CI-29: Interests section — parent-entered only, never child-facing.
@@ -398,6 +422,29 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               <div className="space-y-1.5">
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Strengths <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(one per line)</span></label>
                 <textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
+              </div>
+
+              {/* Same seven parent focus choices as Add Child. These are parent
+                  wishes, not clinical assessments. The free-text challenges
+                  editor remains below and ALL unrecognised lines are retained. */}
+              <div className="space-y-2" data-testid="profile-focus-choices">
+                <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.step.domains.title")}</p>
+                <div className="flex flex-wrap gap-2" role="group" aria-label={t("ob.step.domains.title")}>
+                  {DOMAINS.map((domain) => {
+                    const aliases = focusAliases(domain.nameKey);
+                    const chosen = choiceSelected(challenges, aliases, "\n");
+                    return (
+                      <button key={domain.id} type="button" aria-pressed={chosen}
+                        onClick={() => setChallenges((current) => toggleDelimitedChoice(current, aliases, t(domain.nameKey), "\n"))}
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition"
+                        style={chosen
+                          ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-border)" }
+                          : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+                        {domain.icon}<span>{t(domain.nameKey)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="space-y-1.5">
