@@ -58,7 +58,9 @@ export default function AdminDashboard({ open, onClose }: { open: boolean; onClo
           <div className="grid grid-cols-2 gap-y-1.5 gap-x-4 text-xs" style={{ color: "var(--arbor-muted)" }}>
             <span>Calls</span><span className="text-end font-mono" style={{ color: "var(--arbor-ink)" }}>{data?.usageToday.calls ?? "—"}</span>
             <span>Total tokens</span><span className="text-end font-mono" style={{ color: "var(--arbor-ink)" }}>{data ? data.usageToday.totalTokens.toLocaleString() : "—"}</span>
-            <span>Approx. cost</span><span className="text-end font-mono font-bold" style={{ color: "var(--arbor-ink)" }}>{data ? `≈ €${data.usageToday.approxCostEur.toFixed(2)}` : "—"}</span>
+            <span>Estimated cost · last 30 days</span><span className="text-end font-mono font-bold" style={{ color: "var(--arbor-ink)" }}>{data?.cost30d?.estimatedCostUsd != null ? `≈ $${data.cost30d.estimatedCostUsd.toFixed(4)} USD` : "Not measured"}</span>
+            <span>Priced calls · last 30 days</span><span className="text-end font-mono">{data?.cost30d ? `${data.cost30d.pricedCalls} / ${data.cost30d.calls}` : "—"}</span>
+            <span>Per active family · last 30 days</span><span className="text-end font-mono">{data?.cost30d?.perActiveFamilyUsd != null ? `≈ $${data.cost30d.perActiveFamilyUsd.toFixed(4)} USD` : "Not measured"}</span>
           </div>
           {data && Object.keys(data.usageToday.byProvider).length > 0 && (
             <div className="mt-3 pt-3 text-xs" style={{ borderTop: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
@@ -71,7 +73,7 @@ export default function AdminDashboard({ open, onClose }: { open: boolean; onClo
             </div>
           )}
           <p className="text-[11px] mt-3" style={{ color: "var(--arbor-muted)" }}>
-            Cost is an approximation from token counts — RevenueCat is the source of truth for revenue, GCP Billing for actual model spend.
+            List-price estimate for priced calls only, not the full bill. Unmetered voice and unknown models are not free. No currency conversion or free allowance is assumed. GCP Billing remains the source of truth for actual spend.
           </p>
         </div>
       </div>

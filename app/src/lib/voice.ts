@@ -55,8 +55,13 @@ const NATURAL_TTFB_MS = 1500;
 const NATURAL_DEGRADE_AFTER = 3;
 let naturalMisses = 0;
 
-export function voiceSupported(): boolean {
+function browserVoiceSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
+}
+
+/** Natural audio works in webviews which do not expose SpeechSynthesis. */
+export function voiceSupported(): boolean {
+  return browserVoiceSupported() || (engine === "natural" && naturalSynth !== null);
 }
 
 export function voiceState(): VoiceState {
@@ -114,7 +119,7 @@ function stopActivePlayback(): void {
     }
     activeNaturalStop = null;
   }
-  if (voiceSupported()) {
+  if (browserVoiceSupported()) {
     try {
       window.speechSynthesis.cancel();
     } catch {
@@ -142,7 +147,7 @@ export function resetVoicePickCacheForTest(): void {
 }
 
 function pickVoiceFor(langCode: string): SpeechSynthesisVoice | null {
-  if (!voiceSupported()) return null;
+  if (!browserVoiceSupported()) return null;
   const synth = window.speechSynthesis as SpeechSynthesis & {
     addEventListener?: (type: string, fn: () => void) => void;
   };
@@ -181,7 +186,7 @@ function pickVoiceFor(langCode: string): SpeechSynthesisVoice | null {
 
 /** Browser `SpeechSynthesis` floor. Returns `id` on success, 0 if it could not start. */
 function startBrowser(id: number, text: string, handlers: SpeakHandlers, lang: "en" | "he"): number {
-  if (!voiceSupported()) {
+  if (!browserVoiceSupported()) {
     if (isActive(id)) {
       activeId = 0;
       if (speaking) {

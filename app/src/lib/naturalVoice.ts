@@ -1,5 +1,5 @@
 import { authHeaders, getAiLanguage } from "./api";
-import { setNaturalSynth, setVoiceEngine, type NaturalSynth, type NaturalSynthHandle, type SpeakHandlers } from "./voice";
+import { setNaturalSynth, setVoiceEngine, stopVoice, type NaturalSynth, type NaturalSynthHandle, type SpeakHandlers } from "./voice";
 
 /**
  * Client neural-voice adapter (Epic A) — bridges the voice controller to the server
@@ -66,28 +66,61 @@ const takeTtsToken = (text: string): string | undefined => {
 type FetchedAudio = { b64: string; mime: string };
 
 const PREFETCH_MAX = 16;
-const prefetchCache = new Map<string, Promise<FetchedAudio | null>>();
+type AudioRequest = {
+  promise: Promise<FetchedAudio | null>;
+  cancel: () => void;
+  ready: boolean;
+};
+const prefetchCache = new Map<string, AudioRequest>();
+const pendingRequests = new Set<AudioRequest>();
+// A bounded request includes auth lookup and body consumption, not just fetch.
+const TTS_REQUEST_TIMEOUT_MS = 15_000;
 
 /** B-BOOK-61: the prefetch cache is keyed by language as well as text
  *  (the two-letter prefix keeps the key unambiguous). */
 const cacheKey = (text: string, lang: "en" | "he") => `${lang}:${text}`;
 
-async function fetchTtsAudio(text: string, lang: "en" | "he"): Promise<FetchedAudio | null> {
-  try {
-    const res = await fetch("/api/tts", {
-      method: "POST",
-      headers: await authHeaders(),
-      // B-BOOK-61: the UTTERANCE's language, not the session's AI language —
-      // a Hebrew book in an English-AI session is spoken by a Hebrew voice.
-      body: JSON.stringify({ text, language: lang, screenedToken: takeTtsToken(text) }),
-    });
-    if (!res.ok) return null;
-    const { audio, mimeType } = (await res.json()) as { audio?: string; mimeType?: string };
-    if (!audio) return null;
-    return { b64: audio, mime: mimeType || "audio/mpeg" };
-  } catch {
-    return null;
+function requestTtsAudio(text: string, lang: "en" | "he"): AudioRequest {
+  const controller = new AbortController();
+  let settle: (audio: FetchedAudio | null) => void = () => {};
+  let done = false;
+  const request: AudioRequest = {
+    ready: false,
+    promise: new Promise((resolve) => { settle = resolve; }),
+    cancel: () => { controller.abort(); finish(null); },
+  };
+  pendingRequests.add(request);
+  const timer = setTimeout(() => request.cancel(), TTS_REQUEST_TIMEOUT_MS);
+  function finish(audio: FetchedAudio | null): void {
+    if (done) return;
+    done = true;
+    pendingRequests.delete(request);
+    clearTimeout(timer);
+    request.ready = audio !== null;
+    settle(audio);
   }
+  void (async () => {
+    try {
+      const headers = await authHeaders();
+      // Stop/navigation during token refresh must not start a paid POST later.
+      if (controller.signal.aborted) return;
+      const res = await fetch("/api/tts", {
+        method: "POST", headers, signal: controller.signal,
+        body: JSON.stringify({ text, language: lang, screenedToken: takeTtsToken(text) }),
+      });
+      if (!res.ok || controller.signal.aborted) { finish(null); return; }
+      const { audio, mimeType } = (await res.json()) as { audio?: string; mimeType?: string };
+      finish(!controller.signal.aborted && typeof audio === "string" && audio
+        ? { b64: audio, mime: mimeType || "audio/mpeg" } : null);
+    } catch { finish(null); }
+  })();
+  return request;
+}
+
+/** Clear speculative audio, never persist it or reuse it across sign-ins. */
+export function clearNaturalAudioPrefetch(): void {
+  for (const request of prefetchCache.values()) request.cancel();
+  prefetchCache.clear();
 }
 
 /** Start fetching `text`'s audio now (sentence N+1 while N plays). Idempotent
@@ -98,9 +131,15 @@ export function prefetchNaturalAudio(text: string, lang: "en" | "he" = getAiLang
   if (!trimmed || prefetchCache.has(key)) return;
   if (prefetchCache.size >= PREFETCH_MAX) {
     const oldest = prefetchCache.keys().next().value;
-    if (oldest !== undefined) prefetchCache.delete(oldest);
+    if (oldest !== undefined) {
+      prefetchCache.get(oldest)?.cancel();
+      prefetchCache.delete(oldest);
+    }
   }
-  prefetchCache.set(key, fetchTtsAudio(trimmed, lang));
+  const request = requestTtsAudio(trimmed, lang);
+  prefetchCache.set(key, request);
+  // Keep even a failed result until consumed/evicted: a prefetch failure must
+  // not silently trigger another paid request for the same utterance.
 }
 
 /* ── The synth ─────────────────────────────────────────────────────────────── */
@@ -137,10 +176,11 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers, lang: 
   // removed so an interrupted utterance can never replay a stale buffer).
   const prefetched = prefetchCache.get(cacheKey(text, lang));
   if (prefetched) prefetchCache.delete(cacheKey(text, lang));
+  const request = prefetched ?? requestTtsAudio(text, lang);
 
   void (async () => {
     try {
-      const fetched = await (prefetched ?? fetchTtsAudio(text, lang));
+      const fetched = await request.promise;
       if (cancelled) return;
       if (!fetched) {
         handlers.onError?.();
@@ -171,9 +211,11 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers, lang: 
   })();
 
   return {
-    prefetched: !!prefetched,
+    // An in-flight prefetch must NOT disable the controller's 1.5s watchdog.
+    prefetched: !!prefetched?.ready,
     stop: () => {
       cancelled = true;
+      request.cancel();
       // Detach before pausing so a late media event can never fire handlers
       // for an utterance the controller already released.
       audio.onplay = null;
@@ -208,6 +250,7 @@ export function primeNaturalAudio(): { speak: (text: string, lang: "en" | "he", 
   }
   let url: string | null = null;
   let cancelled = false;
+  let pending: AudioRequest | null = null;
   const cleanup = () => {
     if (url) {
       URL.revokeObjectURL(url);
@@ -219,7 +262,11 @@ export function primeNaturalAudio(): { speak: (text: string, lang: "en" | "he", 
       const trimmed = text.trim();
       if (cancelled || !trimmed) return false;
       if (token) registerTtsToken(trimmed, token);
-      const fetched = await fetchTtsAudio(trimmed, lang);
+      pending?.cancel();
+      const request = requestTtsAudio(trimmed, lang);
+      pending = request;
+      const fetched = await request.promise;
+      if (pending !== request) return false;
       if (cancelled || !fetched) return false;
       url = URL.createObjectURL(base64ToBlob(fetched.b64, fetched.mime));
       audio.src = url;
@@ -235,6 +282,8 @@ export function primeNaturalAudio(): { speak: (text: string, lang: "en" | "he", 
     },
     cancel: () => {
       cancelled = true;
+      pending?.cancel();
+      pending = null;
       audio.onended = null;
       audio.onerror = null;
       try {
@@ -248,40 +297,60 @@ export function primeNaturalAudio(): { speak: (text: string, lang: "en" | "he", 
 }
 
 let initialized = false;
+let probe: Promise<void> | null = null;
+let probeController: AbortController | null = null;
+let generation = 0;
 
-/** Test seam: reset module state (init latch, caches). */
-export function resetNaturalVoiceForTest(): void {
+/** Retire the signed-in voice scope; late responses cannot re-enable it. */
+export function resetNaturalVoice(): void {
+  generation++;
   initialized = false;
+  probeController?.abort();
+  probeController = null;
+  probe = null;
+  stopVoice();
+  clearNaturalAudioPrefetch();
+  for (const request of pendingRequests) request.cancel();
   tokenRegistry.clear();
-  prefetchCache.clear();
+  setNaturalSynth(null);
+  setVoiceEngine("basic");
 }
 
-/** Bootstrap the neural engine. AI-V4: driven SOLELY by the server-side
- *  GET /api/tts `configured` probe (TTS_PROVIDER) — no client build flag.
- *  Safe to call once at app init; no-op when the server reports off. */
-export async function initNaturalVoice(): Promise<void> {
-  if (initialized) return;
-  // The latch must NOT be set before the probe. AuthContext calls this on mount
-  // — i.e. while signed OUT — and /api/tts answers 401 there. Latching first
-  // meant that one guaranteed-to-fail pre-auth call permanently blocked the
-  // retry after sign-in, so the neural engine never activated for the whole
-  // session and every parent stayed on the browser-floor voice (plus a red 401
-  // in the console on every load). Only a probe that actually ANSWERED is
-  // allowed to be final.
-  let answered = false;
-  try {
-    const res = await fetch("/api/tts", { headers: await authHeaders() });
-    // 401/403 = "not signed in yet", never a verdict about TTS being off.
-    if (res.status === 401 || res.status === 403) return;
-    answered = true;
-    if (!res.ok) return;
-    const { configured } = (await res.json()) as { configured?: boolean };
-    if (!configured) return;
-    setNaturalSynth(naturalSynth);
-    setVoiceEngine("natural");
-  } catch {
-    /* network error: leave the browser floor AND allow a later retry */
-  } finally {
-    if (answered) initialized = true;
-  }
+export const resetNaturalVoiceForTest = resetNaturalVoice;
+
+/** One cheap capability GET at a time. Only a valid boolean is a final answer;
+ *  401/403/429/5xx, timeout and malformed JSON remain retryable, not "off".
+ *  This does not create synthesis requests or override a valid server kill switch. */
+export function initNaturalVoice(): Promise<void> {
+  if (initialized) return Promise.resolve();
+  if (probe) return probe;
+  const scope = generation;
+  const controller = new AbortController();
+  probeController = controller;
+  const timer = setTimeout(() => controller.abort(), 5_000);
+  const attempt = (async () => {
+    try {
+      const headers = await authHeaders();
+      if (controller.signal.aborted || generation !== scope) return;
+      const res = await fetch("/api/tts", { headers, signal: controller.signal });
+      if (!res.ok) return;
+      const body: unknown = await res.json();
+      if (controller.signal.aborted || generation !== scope || !body || typeof body !== "object"
+        || !("configured" in body) || typeof body.configured !== "boolean") return;
+      initialized = true;
+      if (body.configured) {
+        setNaturalSynth(naturalSynth);
+        setVoiceEngine("natural");
+      }
+    } catch { /* leave the floor and allow the next user/online retry */ }
+  })();
+  // A held token lookup/body cannot keep the single-flight latch forever.
+  const aborted = new Promise<void>((resolve) => {
+    controller.signal.addEventListener("abort", () => resolve(), { once: true });
+  });
+  probe = Promise.race([attempt, aborted]).finally(() => {
+    clearTimeout(timer);
+    if (generation === scope) { probe = null; probeController = null; }
+  });
+  return probe;
 }
