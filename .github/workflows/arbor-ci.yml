@@ -29,3 +29,7 @@ jobs:
       - run: npm run eval:safety
       - run: npm run check:acceptance
       - run: npm run build
+      - name: Install Chromium for closing voice review checks
+        run: npx playwright install --with-deps chromium
+      - name: Verify closing voice review in English and Hebrew (offline)
+        run: node scripts/voice-close-browser.mjs
