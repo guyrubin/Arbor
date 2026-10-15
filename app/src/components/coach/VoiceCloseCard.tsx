@@ -88,16 +88,18 @@ export default function VoiceCloseCard({ sessionId, proposals, language, pending
   const review = <div data-arbor-dialog-layer onClick={onBackdropClick} className="arbor-app fixed inset-0 z-[60] flex items-end justify-center px-3 pb-6"
     style={{ background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)" }}>
   <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={copy.title} dir={language === "he" ? "rtl" : "ltr"}
-    onClick={event => event.stopPropagation()} className="w-full max-h-[85dvh] max-w-[620px] overflow-y-auto rounded-[22px] p-4"
+    onClick={event => event.stopPropagation()} className="flex w-full max-h-[85dvh] max-w-[620px] flex-col rounded-[22px] p-4"
     style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-lg)" }}>
+    <div className="shrink-0">
     <h2 className="text-base font-bold">{copy.title}</h2>
     <p className="my-2 text-sm">{copy.note}</p>
     <p role="status" className="my-2 text-sm">{pending ? copy.pending : failed ? copy.failed : !proposals.length ? copy.empty : ""}</p>
     {audioFailed && <p role="status" className="my-2 text-sm">{copy.audioFailed}</p>}
     {reading && <button type="button" onClick={() => cancelReadback.current()} className="min-h-11 rounded-xl px-4 text-sm font-bold"
       style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{copy.stop}</button>}
-    {children}
-    <button type="button" disabled={busy} onClick={requestClose} className="mt-3 min-h-11 rounded-xl px-4 text-sm font-bold disabled:opacity-50"
+    </div>
+    <div className="min-h-0 overflow-y-auto">{children}</div>
+    <button type="button" disabled={busy} onClick={requestClose} className="mt-3 min-h-11 shrink-0 rounded-xl px-4 text-sm font-bold disabled:opacity-50"
       style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
       {proposals.length || pending ? copy.discard : copy.done}
     </button>

@@ -93,6 +93,8 @@ try {
   assert.ok((await save().first().boundingBox()).height>=44,'Save touch target');
   const geometry=await page.getByRole('dialog').evaluate(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,overflow:el.scrollWidth>el.clientWidth};});
   assert.ok(geometry.left>=0&&geometry.right<=375&&geometry.top>=0&&geometry.bottom<=812&&!geometry.overflow,JSON.stringify(geometry));
+  const closeBox=await page.getByRole('button',{name:language==='he'?'לא לשמור את הטיוטות האלה':'Don’t keep these drafts',exact:true}).boundingBox();
+  assert.ok(closeBox.y>=0&&closeBox.y+closeBox.height<=788,'Discard all stays in the viewport');
   await page.screenshot({path:path.join(output,language+'-375.png'),fullPage:true});
   await page.evaluate(()=>window.evidence.end());
   await page.waitForFunction(()=>window.evidence.spoken.length===2);
