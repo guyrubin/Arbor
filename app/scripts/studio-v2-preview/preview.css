@@ -11,3 +11,4 @@ body { padding: 24px 0; }
 .review-books { padding:60px; color:white; min-height:600px; }
 .review-books p { margin-block:20px; }
 @media(max-width:640px) { body {padding:0;} .studio-review {border-radius:0;} .review-tools {padding-block:12px;} }
+#root.arbor-app { background: #0f1830; }

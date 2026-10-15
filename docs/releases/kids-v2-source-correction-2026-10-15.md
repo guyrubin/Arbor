@@ -24,6 +24,6 @@ The handoff's sample currency, level ranks and locked games are not fabricated. 
 - Focused V2, approved-avatar and hero-identity suite: 15 files, 132 tests passed (including the parent hold gate).
 - Application TypeScript check and Vite production build passed; existing bundle-size notices remain.
 - The private preview uses a normal Vite build with external JS/CSS assets.
-- Browser interaction, responsive painting on devices and physical audio remain unverified in this environment; the supported browser preview capability is unavailable. Native publication screenshot inspection is recorded separately after deployment.
+- Browser interaction, responsive painting on devices and physical audio remain unverified in this environment; the supported browser preview capability is unavailable. The version-6 native publication screenshot was inspected and confirms the sunset sky, four-door composition, central Sprout fallback and V2 typography. A low-contrast no-avatar caption found in that render was corrected with a navy label surface. It does not verify subsequent gameplay or responsive views.
 
 The Arbor production release remains unchanged. This work updates draft PR #141 and the existing owner-private review Site only.

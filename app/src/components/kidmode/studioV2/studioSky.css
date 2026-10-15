@@ -97,3 +97,5 @@
   .studio-v2__quest-steps li::after { background: CanvasText; }
   .studio-v2__portal-hero, .studio-v2__hero-portrait { mask-image: none; }
 }
+/* Keep the no-avatar state readable over the warm horizon. */
+.studio-v2__hero-empty p { padding: 8px 14px; border-radius: 12px; background: #1a2b4ad9; color: #fff; text-shadow: none; font-size: 14px; }
