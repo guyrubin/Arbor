@@ -64,7 +64,7 @@ export default function RiverRescue() {
             {Array.from({ length: map.size * map.size }, (_, cell) => {
               const isRock = map.rocks.includes(cell), isParcel = map.parcels.includes(cell), isDock = cell === map.dock;
               const visited = path.includes(cell), collected = isParcel && sailedPath.includes(cell);
-              const piece = isRock ? 'rock' : isDock ? 'dock' : isParcel ? 'parcel' : 'water';
+              const piece = isRock ? 'rock' : isDock ? 'canal-dock' : isParcel ? 'parcel' : 'water';
               const previous = path[path.indexOf(cell) - 1];
               const following = path[path.indexOf(cell) + 1];
               const links = [previous, following].filter(value => value !== undefined).map(value => value === cell - 1 ? 'left' : value === cell + 1 ? 'right' : value < cell ? 'up' : 'down');

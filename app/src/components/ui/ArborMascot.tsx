@@ -57,7 +57,7 @@ export function ArborMascot({
     >
       {detailed && <defs>
         <radialGradient id={`${gradientId}-head`} cx="30%" cy="22%" r="85%"><stop offset="0" stopColor="#ffffff" stopOpacity=".7" /><stop offset=".3" stopColor="var(--arbor-clay)" /><stop offset="1" stopColor="var(--arbor-clay-deep)" /></radialGradient>
-        <linearGradient id={`${gradientId}-pot`} x1="0" x2="1"><stop stopColor="#d8784d" /><stop offset=".35" stopColor="#ffc8a2" /><stop offset=".7" stopColor="#f3a886" /><stop offset="1" stopColor="#c96c48" /></linearGradient>
+        <linearGradient id={`${gradientId}-pot`} x1="0" x2="1"><stop stopColor="#ef8a52" /><stop offset=".35" stopColor="color-mix(in srgb, #f3a886 65%, #fff)" /><stop offset=".7" stopColor="#f3a886" /><stop offset="1" stopColor="color-mix(in srgb, #ef8a52 78%, var(--arbor-ink))" /></linearGradient>
       </defs>}
       {/* shadow */}
       <ellipse cx="70" cy="126" rx="34" ry="6" fill="var(--arbor-clay-deep)" opacity="0.10" />

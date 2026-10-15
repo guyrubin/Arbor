@@ -2,8 +2,9 @@ import type { CSSProperties } from 'react';
 import type { Feeling } from './forestStories';
 import type { NoteId } from './adventureRules';
 
-type CanalPiece = 'boat' | 'rock' | 'parcel' | 'dock' | 'water' | 'lilies';
-const CANAL: Record<CanalPiece, number> = { boat: 0, rock: 1, parcel: 2, dock: 3, water: 4, lilies: 5 };
+// Namespace the dock asset id: it is raster art, not the same-named icon glyph.
+type CanalPiece = 'boat' | 'rock' | 'parcel' | 'canal-dock' | 'water' | 'lilies';
+const CANAL: Record<CanalPiece, number> = { boat: 0, rock: 1, parcel: 2, 'canal-dock': 3, water: 4, lilies: 5 };
 const FEELINGS: Record<Feeling, number> = { sad: 0, worried: 1, angry: 2, excited: 3, proud: 4, lonely: 5 };
 function spriteStyle(at: number): CSSProperties {
   return { backgroundPosition: `${(at % 3) * 50}% ${Math.floor(at / 3) * 100}%` };
