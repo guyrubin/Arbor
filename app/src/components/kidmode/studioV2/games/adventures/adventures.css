@@ -443,3 +443,22 @@
 }
 
 .adventure-sprite--canal[data-piece=water] { mask-image:radial-gradient(ellipse 48% 35% at 53% 53%,#000 72%,transparent 100%); }
+/* On a phone the playable stage precedes workshop settings. The first tune
+   and its main action stay together; optional editing follows below. */
+@media(max-width:799px) {
+ .adventure--rhythm { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
+ .adventure--rhythm .adventure-toolbar { grid-row:1; margin:0; }
+ .adventure--rhythm .adventure-prompt { grid-row:2; margin:0; }
+ .adventure--rhythm .rhythm-stage { grid-row:3; min-height:350px; padding:12px 6px 18px; }
+ .adventure--rhythm .rhythm-pattern { grid-row:4; margin:0; }
+ .adventure--rhythm > .adventure-actions:not(.rhythm-workshop-actions) { grid-row:5; margin:0; }
+ .adventure--rhythm .rhythm-workshop-actions { grid-row:6; margin:0; }
+ .adventure--rhythm .rhythm-workshop-actions button { flex:1 1 40%; font-size:13px; padding:8px; }
+ .adventure--rhythm .rhythm-tempo { grid-row:7; margin:0 auto; }
+ .adventure--rhythm .adventure-status { grid-row:8; margin:0; }
+ .adventure--rhythm .adventure-quiet { grid-row:9; margin:0; }
+ .adventure--rhythm .adventure-transfer { grid-row:10; margin:0; }
+ .adventure--rhythm .rhythm-conductor { min-height:190px; }
+ .adventure--rhythm .rhythm-conductor > .studio-play-hero { zoom:.7; }
+ .adventure--rhythm .rhythm-pod { min-height:130px; }
+}
