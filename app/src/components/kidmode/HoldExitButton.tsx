@@ -254,6 +254,7 @@ export function HoldExitButton({ onExit, idleLabel, ariaIdle }: HoldExitButtonPr
         <X aria-hidden="true" style={{ width: "20px", height: "20px", pointerEvents: "none" }} />
       </button>
       <span
+        data-kid-exit-caption=""
         role={hinting ? "status" : undefined}
         style={{
           fontSize: "var(--t-xs)",

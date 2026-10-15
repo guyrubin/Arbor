@@ -1,5 +1,5 @@
 @import "./studioTokens.css";
-/* Selected Sky composition: 1180×820. All scenery is real manifest artwork. */
+/* Kids Studio Sky handoff: 1180×820 landscape / 820×1180 portrait. */
 .studio-v2{--studio-ink:var(--studio-deep-ink);--studio-gold:var(--studio-action-gold);position:relative;isolation:isolate;inline-size:100%;max-inline-size:1180px;min-block-size:720px;margin-inline:auto;overflow:hidden;border-radius:22px;color:#fff;background:#172443;font-family:var(--studio-font);font-weight:700;box-sizing:border-box}
 .studio-v2 *{box-sizing:border-box}.studio-v2 button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}.studio-v2 button:focus-visible{outline:3px solid #fff;outline-offset:4px}.studio-v2 button:disabled{cursor:default;opacity:.7}.studio-v2 button:active:not(:disabled){scale:.97}.studio-v2 h1,.studio-v2 h2,.studio-v2 h3,.studio-v2 p{margin:0;font-family:inherit}.studio-v2 h1,.studio-v2 h2,.studio-v2 strong{font-weight:800}.studio-v2 svg{flex-shrink:0}.studio-v2[dir=rtl] .studio-v2__gold-button>svg,.studio-v2[dir=rtl] .studio-v2__door-label>svg,.studio-v2[dir=rtl] .studio-v2__bubble button>svg,.studio-v2[dir=rtl] .studio-v2__activity>svg{transform:scaleX(-1)}
 .studio-v2__sky{position:absolute;inset:0;z-index:-2;pointer-events:none;background:#22285e}.studio-v2__sky img{inline-size:100%;block-size:100%;object-fit:cover;display:block}.studio-v2--home{aspect-ratio:1180/820}.studio-v2__header{position:absolute;inset-block-start:34px;inset-inline:3.4%;display:flex;justify-content:space-between;align-items:flex-start;gap:18px;z-index:5}.studio-v2__greeting h1{font-size:clamp(32px,4.6vw,54px);line-height:1.08;display:flex;align-items:center;gap:10px;overflow-wrap:anywhere}.studio-v2__greeting p{font-size:16px;line-height:1.4;margin-block-start:8px;color:#e8eaf5}.studio-v2__header-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}.studio-v2__glass-button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-block-size:46px;padding:9px 14px;border:1px solid #ffffff66;border-radius:12px;background:#34456fdf;box-shadow:inset 0 1px 0 #ffffff30;font-size:14px}
@@ -21,12 +21,3 @@
 @media(max-width:640px){.arbor-play>.studio-v2-bar{min-block-size:66px;padding-inline:10px!important}.arbor-play>.studio-v2-bar>[data-kid-bar-title]{font-size:18px!important}}
 /* Child headings must win over the parent shell's important serif/weight rules. */
 .arbor-play .studio-v2 :is(h1,h2,h3){font-family:Nunito,Heebo,sans-serif!important;font-weight:800!important;color:#fff!important}
-
-.studio-v2__featured { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; padding: 18px; }
-.studio-v2__featured > button { min-inline-size: 0; display: flex; align-items: center; gap: 10px; border: 1px solid #ffffff40; background: #142642a8; color: #fff; border-radius: 16px; padding: 10px; text-align: start; cursor: pointer; }
-.studio-v2__featured-art { width: 72px; height: 76px; border-radius: 12px; overflow: hidden; flex-shrink: 0; }
-.studio-v2__featured strong { display: block; font: 800 17px/1.25 Nunito,Heebo,sans-serif; }
-.studio-v2__featured small { display: block; color: #e7eaf6; margin-block-start: 6px; font-size: 13px; line-height: 1.4; }
-.studio-v2__featured > button > svg { flex-shrink: 0; margin-inline-start: auto; }
-.studio-v2__featured > button:focus-visible { outline: 3px solid #ffd24d; outline-offset: 3px; }
-@media(max-width:900px) { .studio-v2__featured { grid-template-columns: 1fr; } .studio-v2__featured-art { width: 64px; height: 64px; } }

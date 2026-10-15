@@ -1,20 +1,26 @@
-/* Kids Studio V2 / Studio Sky. Shared values extracted from the shipped shell.
-   World illustrations may vary; navigation and controls keep one design system. */
-:where(.studio-v2, .studio-game-view, .adventure, .arbor-games-preview) {
+/* Source: Arbor Kids Studio v2.zip — Kids Studio Sky.dc.html + tokens/worlds.css.
+   Keep the cinematic chrome and the cream play stage as distinct surfaces. */
+:where(.studio-v2, .studio-game-view, .adventure) {
   --studio-font: Nunito, Heebo, sans-serif;
-  --studio-sky: #172443;
+  --studio-sky: #121c3a;
   --studio-deep-ink: #1a2b4a;
+  --studio-ink-soft: #3a4a66;
+  --studio-canvas: #f7f3e9;
+  --studio-canvas-soft: #fbf8f1;
   --studio-text: #fff;
-  --studio-text-soft: #e7eaf6;
-  --studio-edge: #ffffff50;
-  --studio-panel: linear-gradient(155deg, #3c4678f5, #1e2850fa);
-  --studio-glass: #ffffff14;
-  --studio-action-gold: #ffd24d;
-  --studio-action-ink: #352908;
-  --studio-action-fill: linear-gradient(135deg, #ffdf83, var(--studio-action-gold) 55%, #efb52f);
-  --studio-radius-panel: 22px;
-  --studio-radius-control: 14px;
-  --studio-radius-window: 12px;
+  --studio-text-soft: #ffffffd9;
+  --studio-edge: #ffffff4d;
+  --studio-panel: linear-gradient(160deg, #3c4678eb, #1e2850f2);
+  --studio-glass: #ffffff1f;
+  --studio-action-gold: #f7b91d;
+  --studio-action-ink: #3a2a00;
+  --studio-action-fill: linear-gradient(135deg, #ffd86b, var(--studio-action-gold) 50%, #e09a10);
+  --studio-radius-panel: 20px;
+  --studio-radius-card: 16px;
+  --studio-radius-control: 12px;
+  --studio-radius-window: 10px;
+  --studio-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --studio-ease-soft: cubic-bezier(.22, 1, .36, 1);
   --studio-tap: 56px;
   --studio-space-1: 8px;
   --studio-space-2: 12px;

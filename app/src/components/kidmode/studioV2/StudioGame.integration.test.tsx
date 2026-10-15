@@ -64,7 +64,7 @@ vi.mock("../../ui/playkit", () => ({
 import { StudioGame, StudioGameSession, CameraFreeMimic, STUDIO_GAME_COMPONENTS } from "./StudioGame";
 import { studioCopy } from "./studioCopy";
 import * as artManifest from "../../../lib/kidThemeManifest";
-import { HeroAvatar } from "../../ui/HeroAvatar";
+import { StudioPortrait } from "./StudioPortrait";
 import { studioLegacyRoute, type StudioActivityId } from "./studioCatalog";
 import { KID_WORLDS } from "../kidWorlds";
 import { GameCompletionProvider } from "../game/GameSessionContext";
@@ -121,7 +121,7 @@ describe("V2 entry, identity and persistent result", () => {
   it("intro uses neutral world imagery with one profile hero and refuses a stock-child replacement", () => {
     const draw = () => render("visual", () => StudioGameSession({ activityId: "memory", onBack: vi.fn() }));
     let tree = draw();
-    expect(tree.filter(node => node.type === HeroAvatar)).toHaveLength(1);
+    expect(tree.filter(node => node.type === StudioPortrait)).toHaveLength(1);
     expect(tree.filter(node => node.type === "img").map(node => node.props.src)).toEqual([
       artManifest.kidArt("film3d", "studio.portal.playbank")!.src480,
       artManifest.kidArt("film3d", "studio.portal.playbank")!.src480,
@@ -133,7 +133,7 @@ describe("V2 entry, identity and persistent result", () => {
     try {
       tree = draw();
       expect(tree.filter(node => node.type === "img")).toHaveLength(0);
-      expect(tree.filter(node => node.type === HeroAvatar)).toHaveLength(1);
+      expect(tree.filter(node => node.type === StudioPortrait)).toHaveLength(1);
       click(tree.find(node => node.props["data-studio-start"] === ""));
       expect(draw().some(node => node.type === STUDIO_GAME_COMPONENTS.memory)).toBe(true);
     } finally { spy.mockRestore(); }
@@ -153,7 +153,7 @@ describe("V2 entry, identity and persistent result", () => {
     expect(render("finish", () => GameFinish({ title: "Done", onPlayAgain: vi.fn(), playAgainLabel: "Again", homeLabel: "Home" }))).toEqual([]);
     let tree = draw(); expect(tree[0].props["data-studio-phase"]).toBe("result");
     expect(tree.find(node => node.type === KidFinishMoment)?.props).toMatchObject({ childId: "child-a", kind: "world", refId: "memory", hero: false });
-    expect(tree.filter(node => node.type === HeroAvatar)).toHaveLength(1);
+    expect(tree.filter(node => node.type === StudioPortrait)).toHaveLength(1);
     expect(draw().find(node => node.type === KidFinishMoment)).toBeDefined();
     expect(h.sound).toHaveBeenCalledWith("finish");
     click(tree.find(node => node.props["data-studio-replay"] === "")); tree = draw();

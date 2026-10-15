@@ -7,3 +7,5 @@ app/.claude/launch.json
 
 # Rendered sweeps (app/scripts/rendered-sweep.mjs) — JSON + PNG evidence, never in git
 sweeps/
+
+/app/dist-studio-preview/

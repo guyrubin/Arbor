@@ -3,6 +3,7 @@ import { Check, Leaf, Sparkles } from 'lucide-react';
 import type { Challenge } from './adventureRules';
 import type { AdventureWords } from './adventureCopy';
 import './adventures.css';
+import { ArborMascot } from '../../../../ui/ArborMascot';
 import { useKidTheme } from '../../../../../hooks/useKidTheme';
 import { kidArt, kidArtSrcSet } from '../../../../../lib/kidThemeManifest';
 
@@ -20,7 +21,7 @@ export function AdventureHeading({ children, focusKey }: { children: React.React
   const ref = useRef<HTMLHeadingElement>(null);
   const mounted = useRef(false);
   useEffect(() => { if (mounted.current) ref.current?.focus({ preventScroll: true }); mounted.current = true; }, [focusKey]);
-  return <h2 className="adventure-heading" tabIndex={-1} ref={ref}>{children}</h2>;
+  return <div className="adventure-prompt"><ArborMascot size={72} mood="wave" animate={false} /><h2 className="adventure-heading" tabIndex={-1} ref={ref}>{children}</h2></div>;
 }
 /** Neutral authored environment; profile identity is always a separate layer. */
 export function AdventureScenery({ world }: { world: 'story-theater' | 'sound-orbit' }) {

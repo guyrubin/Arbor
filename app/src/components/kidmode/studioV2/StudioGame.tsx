@@ -8,6 +8,8 @@ import { useKidTheme } from "../../../hooks/useKidTheme";
 import { kidArt, kidArtSrcSet } from "../../../lib/kidThemeManifest";
 import { noteKidActivity } from "../../../lib/kidModeGate";
 import { localizedMimicPacks } from "../../../practice/mimicContent";
+import { ArborMascot } from "../../ui/ArborMascot";
+import { StudioPortrait } from "./StudioPortrait";
 import { HeroAvatar } from "../../ui/HeroAvatar";
 import { KidStageFallback } from "../KidStageFallback";
 import { sneakFreezeFlagOn } from "../kidWorlds";
@@ -42,8 +44,8 @@ export const STUDIO_GAME_COMPONENTS: Partial<Record<StudioActivityId, React.Comp
   "calm-builder": CalmBuilder, puzzle: PuzzlePlanet, "sound-explorer": SoundExplorer,
 };
 const WORDS = {
-  en: { start: "Let's play", back: "Back to the world", done: "A little adventure, complete", again: "Play again", unavailable: "Let's choose something else together.", tried: "I tried it", skip: "Try another", mimicDone: "You made those faces your own", mimicPassed: "You can try a face whenever you’re ready" },
-  he: { start: "בואו נשחק", back: "בחזרה לעולם", done: "הרפתקה קטנה שהושלמה", again: "לשחק שוב", unavailable: "אפשר לבחור משהו אחר יחד.", tried: "ניסיתי", skip: "ננסה עוד אחת", mimicDone: "ניסית את ההבעות בדרך שלך", mimicPassed: "אפשר לנסות הבעה כשמתאים לך" },
+  en: { start: "Let's play", back: "Back to the world", done: "A little adventure, complete", again: "Play again", unavailable: "Let's choose something else together.", tried: "I tried it", skip: "Try another", guide: "Take your time. I’m right here.", mimicDone: "You made those faces your own", mimicPassed: "You can try a face whenever you’re ready" },
+  he: { start: "בואו נשחק", back: "בחזרה לעולם", done: "הרפתקה קטנה שהושלמה", again: "לשחק שוב", unavailable: "אפשר לבחור משהו אחר יחד.", tried: "ניסיתי", skip: "ננסה עוד אחת", guide: "אפשר לקחת את הזמן. אני כאן.", mimicDone: "ניסית את ההבעות בדרך שלך", mimicPassed: "אפשר לנסות הבעה כשמתאים לך" },
 };
 /** Owner, child and activity changes retire the old play session immediately. */
 export function StudioGame({ activityId, onBack }: { activityId: StudioActivityId; onBack: () => void }) {
@@ -112,12 +114,13 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
       <div className="studio-game-card__window" aria-hidden="true">
         {art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
         {activity && <span className="studio-game-card__world">{labels.worlds[activity.worldId].title}</span>}
-        <span className="studio-game-card__portrait"><HeroAvatar size={112} mood={phase === "result" ? "cheer" : "wave"} animate={false} ring={false} decorative /></span>
+        <StudioPortrait className="studio-game-card__hero" />
       </div>
       {phase === "intro" ? <div className="studio-game-card__body">
         <h1 className="studio-game-card__title">{copy.title}</h1>
         <p className="studio-game-card__instruction">{copy.instruction}</p>
-        <div className="studio-game-card__actions">
+        <div className="studio-game-card__actions studio-game-card__intro-actions">
+          <div className="studio-game-card__guide"><ArborMascot size={64} mood="wave" animate={false} /><span>{words.guide}</span></div>
           <button type="button" data-studio-start="" className="studio-game-button-v2 studio-game-button-v2--primary" onClick={() => setPhase("play")}>{words.start}<ArrowRight size={22} aria-hidden="true" /></button>
         </div>
       </div> : <div className="studio-game-card__body">

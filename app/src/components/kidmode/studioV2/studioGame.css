@@ -31,9 +31,9 @@
 .studio-game-card__world { position: absolute; z-index: 1; inset-block-start: 14px; inset-inline-start: 14px; max-inline-size: calc(100% - 28px); padding: 6px 10px; border-radius: 7px; background: #23345ce8; border: 1px solid #ffffff40; color: var(--studio-game-text); font-size: 13px; font-weight: 800; line-height: 1.3; }
 .studio-game-card__portrait { position: absolute; z-index: 1; inset-inline-end: 18px; inset-block-end: 16px; display: grid; place-items: center; inline-size: 124px; block-size: 124px; border: 4px solid #fff; border-radius: 50%; background: #354d73; box-shadow: 0 8px 30px #12213d66; }
 .studio-game-card__body { padding: 20px 6px 0; }
-.arbor-play .studio-game-card :is(h1,h2), .arbor-play .studio-game-mimic h2 { font-family: var(--studio-font) !important; font-weight: 800 !important; color: var(--studio-game-text) !important; }
+.arbor-play .studio-game-card :is(h1,h2), .arbor-play .studio-game-mimic h2 { font-family: var(--studio-font) !important; font-weight: 900 !important; color: var(--studio-game-text) !important; }
 .studio-game-card .studio-game-card__title { margin: 0; font-size: clamp(30px, 4vw, 38px); line-height: 1.1; letter-spacing: -.025em; overflow-wrap: anywhere; }
-.studio-game-card__instruction { margin: 12px 0 0; color: var(--studio-game-soft); font-size: 18px; font-weight: 700; line-height: 1.5; }
+.studio-game-card__instruction { margin: 12px 0 0; color: var(--studio-game-soft); font-size: 16px; font-weight: 700; line-height: 1.4; }
 .studio-game-card__actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-block-start: 24px; }
 .studio-game-button-v2 { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-block-size: var(--studio-tap); min-inline-size: var(--studio-tap); padding: 12px 22px; border: 1px solid #ffffff66; border-radius: var(--studio-radius-control); background: #ffffff14; color: var(--studio-game-text); font: 800 17px/1.3 var(--studio-font); cursor: pointer; touch-action: manipulation; transition: transform .16s ease, filter .16s ease; }
 .studio-game-button-v2 svg { flex-shrink: 0; }
@@ -73,9 +73,6 @@
 
 .studio-play-hero { position: relative; display: inline-block; flex-shrink: 0; vertical-align: middle; isolation: isolate; }
 .studio-player-banner { display: flex; align-items: center; gap: 16px; inline-size: min(100%, 900px); margin: 0 auto 14px; font-weight: 800; font-size: 20px; }
-.studio-activity-picture { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; background: var(--arbor-sky-soft); }
-.studio-activity-picture > img { width: 100%; height: 100%; object-fit: cover; }
-.studio-activity-picture__symbol { position: absolute; inset-block-end: 8px; inset-inline-end: 8px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 16px; background: var(--arbor-paper-elevated); color: var(--arbor-green-ink); box-shadow: 0 4px 12px #17244344; }
 /* Established puzzle and memory mechanics now share the cinematic game stage. */
 .studio-game-view:is([data-studio-game=memory],[data-studio-game=pattern],[data-studio-game=puzzle],[data-studio-game=calm-builder]) .studio-game-view__environment img { filter:brightness(.55) saturate(1.1); transform:scale(1.01); }
 .studio-player-banner { padding:8px 18px; border-radius:24px; border:1px solid #ffffff30; background:linear-gradient(110deg,#183546e8,#18354640); box-shadow:0 12px 30px #0d1b3233; }
@@ -83,3 +80,12 @@
 .studio-game-view[data-studio-game=memory] .kid-card-back { background:radial-gradient(circle at 30% 20%,#fff8cf 0 5%,#e4bf74 7% 15%,#71a98a 17% 25%,#335e64 28% 65%,#21464e); border:3px solid #ffecb2; box-shadow:inset 0 0 0 6px #2e6265,inset 0 0 0 8px #8ebc9c,0 5px 0 #102d3a; }
 .studio-game-view[data-studio-game=pattern] .pattern-sequence { box-shadow:0 12px 34px #091d3955; }
 .studio-game-view[data-studio-game=puzzle] .studio-game-panel,.studio-game-view[data-studio-game=calm-builder] .studio-game-panel { background:linear-gradient(145deg,#fffdf4,#f1ebdc); border:2px solid #edddb7; box-shadow:0 22px 60px #0c1d3b55; border-radius:30px; }
+
+/* Profile compositing follows the handoff; no child is baked into shared art. */
+.studio-game-card__hero { position: absolute; z-index: 1; inset-inline-start: 5%; inset-block: 0; inline-size: 60%; display: flex; justify-content: center; align-items: end; mask-image: radial-gradient(ellipse 65% 70% at 50% 45%, #000 38%, transparent 98%); }
+.studio-game-card__hero > img { block-size: 120%; inline-size: 100%; object-fit: cover; object-position: center 20%; }
+.studio-game-card__hero > svg { inline-size: 150px; block-size: 200px; margin-block-end: 14px; }
+.studio-game-card__intro-actions { justify-content: space-between; align-items: center; }
+.studio-game-card__guide { display: flex; align-items: center; gap: 10px; flex: 1; min-inline-size: 170px; }
+.studio-game-card__guide > svg { flex-shrink: 0; }
+.studio-game-card__guide > span { max-inline-size: 180px; padding: 10px 12px; background: #fffffff5; color: var(--studio-deep-ink); font-size: 13.5px; line-height: 1.4; font-weight: 800; border-radius: 10px; }

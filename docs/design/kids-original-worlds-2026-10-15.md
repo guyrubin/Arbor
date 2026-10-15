@@ -2,11 +2,15 @@
 
 The owner rejected three similar woodland environments and asked for inspiration from leading children's worlds without copying their protected creative expression. The follow-up explicitly requires the new design system. This revision keeps the existing game loops and approved profile identity, while changing the games' visible world identities.
 
-## Design-system authority
+## Design-system authority — corrected after owner review
 
-The implemented Kids Studio V2 / Studio Sky shell and `docs/releases/kids-studio-v2-design-qa.md` are the current source of truth: white Nunito/Heebo child typography, navy environment, dark glass panels, gold primary action, consistent rounded controls, visible focus, RTL and reduced-motion behavior. Shared values are now in `app/src/components/kidmode/studioV2/studioTokens.css`, consumed by the existing home/world shell, game shell and adventures. The existing `studio-game-button-v2` primary/secondary controls are reused. Parent V3 typography and tokens remain separate.
+The original **Arbor Kids Studio v2.zip** is authoritative, specifically `HANDOFF.md`, `Kids Studio Sky.dc.html`, and `docs/final-home.png` / `docs/final-world.png`. The earlier version of this document incorrectly treated the already-shipped shell as the authority without checking the original export.
 
-PR #138's additional home-screen parity work was reviewed as context and remains a separate draft. This revision does not merge its unrelated changes. Approved current-child avatar selection remains in `StudioPlayHero`, exactly as before.
+The handoff specifies an authored sunset sky, four glass doors around the large approved child avatar, a connected quest dock, deep world backdrops, a glass intro card and a **cream play stage** with navy text and Sprout's white prompt bubble. Nunito/Heebo display text uses weight 900; gold is #f7b91d, ink #1a2b4a, and cream #fbf8f1. Shared tokens now reflect those actual source values.
+
+The custom three-card private-preview landing page and replacement featured-game dock were deviations. Both are removed. The preview now imports the actual StudioHome, StudioWorld, StudioGame, StudioQuest and StudioCollection components, with synthetic account/profile adapters. The three games live inside their appropriate V2 worlds.
+
+The handoff's atmosphere CSS from draft PR #138 is adapted here; that PR remains unmerged. No fixed child's export imagery, fabricated ranks or simulated currency are imported. Current matching approved hero sheets continue to drive the central/player figure, with the canonical profile portrait as fallback and Sprout when absent. Portal and intro portraits use that same canonical resolver.
 
 ## Three visual identities
 
