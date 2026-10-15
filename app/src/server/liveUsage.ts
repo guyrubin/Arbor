@@ -10,6 +10,17 @@ import type { ArborConfig } from "../config/env.js";
 import type { Plan } from "./entitlements.js";
 import { logger } from "./logger.js";
 
+/** Accounting may delay token delivery by at most one second. The caller
+ * catches rejection and returns the already-minted token without telemetry. */
+export async function withLiveUsageDeadline<T>(work: () => Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Live usage setup timed out")), 1_000);
+  });
+  try { return await Promise.race([Promise.resolve().then(work), deadline]); }
+  finally { clearTimeout(timer!); }
+}
+
 export type LiveUsageEvent = "opened" | "heartbeat" | "closed";
 export type LiveUsageSession = {
   uid: string; familyId: string; plan: Plan; model: string;

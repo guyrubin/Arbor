@@ -1,5 +1,5 @@
 import { liveUsageRateLimit } from "../server/apiRateLimits.js";
-import { createLiveUsageStore, type LiveUsageEvent } from "../server/liveUsage.js";
+import { createLiveUsageStore, withLiveUsageDeadline, type LiveUsageEvent } from "../server/liveUsage.js";
 import { attachmentTurnPolicy } from "../ai/attachmentSourcePolicy.js";
 import { parseCompanionAttachments, type ComposerAttachment } from "../lib/companionAttachments.js";
 import express from "express";
@@ -1860,11 +1860,14 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // Telemetry failure must not strand a successfully minted voice token.
       let usageSessionId: string | undefined;
       try {
-        const actor = actorOf(req);
-        const entitlement = await resolveEntitlement(entitlementStore, actor);
-        usageSessionId = await liveUsage.create({ uid: actor.uid,
-          familyId: await resolveFamilyId(req, undefined), plan: entitlement.plan,
-          model, expiresAt: Date.parse(expireTime) });
+        usageSessionId = await withLiveUsageDeadline(async () => {
+          const actor = actorOf(req);
+          const [entitlement, familyId] = await Promise.all([
+            resolveEntitlement(entitlementStore, actor), resolveFamilyId(req, undefined),
+          ]);
+          return liveUsage.create({ uid: actor.uid, familyId, plan: entitlement.plan,
+            model, expiresAt: Date.parse(expireTime) });
+        });
       } catch (error) {
         logger.error("Live usage session creation failed", error, { requestId: requestIdOf(req) });
       }

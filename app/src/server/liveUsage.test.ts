@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { advanceLiveUsage, splitLiveUsageDays, MemoryLiveUsageStore, type LiveUsageSession } from "./liveUsage.js";
+import { advanceLiveUsage, withLiveUsageDeadline, splitLiveUsageDays, MemoryLiveUsageStore, type LiveUsageSession } from "./liveUsage.js";
 
 const session = (): LiveUsageSession => ({ uid: "parent", familyId: "family", plan: "free",
   model: "test-model", createdAt: 1_000, expiresAt: 181_000, observedMs: 0, closed: false, incomplete: false });
@@ -52,4 +52,15 @@ it("splits UTC days without dropping or duplicating midnight duration", () => {
     "2026-10-16": 5_000, "2026-10-15": 10_000,
   });
   expect(Object.fromEntries(splitLiveUsageDays(midnight, 15_000))).toEqual({ "2026-10-15": 15_000 });
+});
+
+it("bounded accounting setup cannot strand a minted voice token", async () => {
+  vi.useFakeTimers();
+  const pending = withLiveUsageDeadline(() => new Promise(() => {}));
+  const checked = expect(pending).rejects.toThrow("Live usage setup timed out");
+  await vi.advanceTimersByTimeAsync(1_000);
+  await checked;
+  expect(vi.getTimerCount()).toBe(0);
+  expect(await withLiveUsageDeadline(async () => "session-id")).toBe("session-id");
+  expect(vi.getTimerCount()).toBe(0);
 });
