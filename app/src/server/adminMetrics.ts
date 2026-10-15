@@ -22,6 +22,7 @@ export type AdminOverview = {
     totalTokens: number;
     byProvider: Record<string, ProviderTokens & { calls?: number }>;
     approxCostEur: number;
+    live?: { observedSessionMs: number; openedSessions: number };
   };
   /** B-PROV-04: the last 30 days' estimated model spend ÷ active families. */
   cost30d: Cost30d;
@@ -158,6 +159,7 @@ export class FirestoreAdminMetricsStore implements AdminMetricsStore {
           totalTokens: Number(data.totalTokens ?? 0),
           byProvider,
           approxCostEur: estimateCostEur(byProvider),
+          ...(data.live ? { live: { observedSessionMs: Number(data.live.observedSessionMs ?? 0), openedSessions: Number(data.live.openedSessions ?? 0) } } : {}),
         }
       : EMPTY_USAGE(date);
 

@@ -560,9 +560,11 @@ export const api = {
     privateMode?: boolean;
     topicId?: string;
   } = {}, opts: { signal?: AbortSignal } = {}) =>
-    liveStartupRequest<{ available: boolean; token?: string; model?: string; expiresAt?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown }>(payload, opts.signal),
+    liveStartupRequest<{ available: boolean; token?: string; model?: string; expiresAt?: string; usageSessionId?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown }>(payload, opts.signal),
   // VC-2/VC-3: the authoritative per-turn Live screen. The liveTurnGuard treats
   // ANY failure of this call (network / non-200 / timeout) as FLAGGED (VC-5).
+  liveUsage: (sessionId: string, event: "opened" | "heartbeat" | "closed") =>
+    request<{ observedMs: number; incomplete: boolean }>("/api/live/usage", "POST", { sessionId, event }, AbortSignal.timeout(5_000)),
   liveTurn: (payload: { role: "user" | "model"; text: string; language?: "en" | "he"; childId?: string }) =>
     post<import("./liveTurnGuard").LiveTurnVerdict>("/api/live/turn", payload),
   // MON-1: plan + limits + usage for the signed-in parent.
@@ -668,6 +670,7 @@ export type AdminOverview = {
     totalTokens: number;
     byProvider: Record<string, { calls?: number; promptTokens?: number; outputTokens?: number }>;
     approxCostEur: number;
+    live?: { observedSessionMs: number; openedSessions: number };
   };
   generatedAt: string;
 };

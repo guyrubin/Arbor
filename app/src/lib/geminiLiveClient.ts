@@ -49,6 +49,7 @@ export type LiveHandlers = {
 export type LiveSessionOptions = {
   /** Cancels pending microphone/socket startup as well as an adopted session. */
   signal?: AbortSignal;
+  reportUsage?: (event: "opened" | "heartbeat" | "closed") => Promise<unknown>;
   token: string;
   model: string;
   /** The server-pinned instruction returned by /live/token (cosmetic here —
@@ -115,6 +116,13 @@ export async function startGeminiLive(
 ): Promise<LiveController> {
   if (opts.signal?.aborted) throw abortError();
   let stopped = false;
+  let usageTimer: ReturnType<typeof setInterval> | undefined;
+  let usageStarted = false;
+  let usageQueue = Promise.resolve();
+  const reportUsage = (event: "opened" | "heartbeat" | "closed") => {
+    if (!opts.reportUsage) return;
+    usageQueue = usageQueue.then(async () => { await opts.reportUsage!(event); }).catch(() => {});
+  };
   let opened = false;
   let ready = false;
   let stream: MediaStream | null = null;
@@ -159,6 +167,8 @@ export async function startGeminiLive(
   const stopAll = () => {
     if (stopped) return;
     stopped = true;
+    clearInterval(usageTimer);
+    if (usageStarted) reportUsage("closed");
     opts.signal?.removeEventListener("abort", onAbort);
     guard.dispose();
     stopPlayback();
@@ -302,6 +312,9 @@ export async function startGeminiLive(
       try { session?.sendRealtimeInput({ media: { data, mimeType: "audio/pcm;rate=16000" } }); } catch { /* closed */ }
     };
     ready = true;
+    usageStarted = true;
+    reportUsage("opened");
+    if (opts.reportUsage) usageTimer = setInterval(() => reportUsage("heartbeat"), 15_000);
     handlers.onPhase?.("listening");
     assertRunning();
     return { stop: stopAll };

@@ -731,3 +731,43 @@ describe("suspended audio startup", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+describe("Live usage lifecycle", () => {
+  it("reports readiness once, periodic heartbeats, and one close after releasing resources", async () => {
+    vi.useFakeTimers();
+    connectMock.mockResolvedValue({ close() {}, sendRealtimeInput() {} });
+    const events: string[] = [];
+    const ctl = await startGeminiLive({ token: "tok", model: "m", systemInstruction: "pinned",
+      reportUsage: async (event) => {
+        if (event === "closed") expect(micTracks.every((t) => t.stopped)).toBe(true);
+        events.push(event);
+      },
+    }, { screenTurn: async () => ({ action: "continue" }) });
+    await flushMicrotasks();
+    expect(events).toEqual(["opened"]);
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(events).toEqual(["opened", "heartbeat"]);
+    ctl.stop(); ctl.stop();
+    await flushMicrotasks();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(events).toEqual(["opened", "heartbeat", "closed"]);
+  });
+  it("accounting failure cannot break audio or suppress resource cleanup", async () => {
+    vi.useFakeTimers();
+    connectMock.mockResolvedValue({ close() {}, sendRealtimeInput() {} });
+    const reportUsage = vi.fn().mockRejectedValue(new Error("offline"));
+    const ctl = await startGeminiLive({ token: "tok", model: "m", systemInstruction: "pinned", reportUsage },
+      { screenTurn: async () => ({ action: "continue" }) });
+    await flushMicrotasks();
+    ctl.stop(); await flushMicrotasks();
+    expect(reportUsage.mock.calls.map(([event]) => event)).toEqual(["opened", "closed"]);
+    expect(micTracks.every((t) => t.stopped)).toBe(true);
+  });
+  it("failed startup never reports an opened session", async () => {
+    getUserMediaMock.mockRejectedValue(new Error("permission denied"));
+    const reportUsage = vi.fn();
+    await expect(startGeminiLive({ token: "tok", model: "m", systemInstruction: "pinned", reportUsage },
+      { screenTurn: async () => ({ action: "continue" }) })).rejects.toThrow();
+    expect(reportUsage).not.toHaveBeenCalled();
+  });
+});

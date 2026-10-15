@@ -158,7 +158,7 @@ export async function runAccountDeletion(
 
 /** aiQuota meters that key on the uid (quotaStore doc id = `{name}_{key}_{start}`).
  *  These docs also self-expire ≤24h via the TTL policy on `expireAt`. */
-const UID_METERS = ["ai_hourly", "coach_daily", "tts_chars_daily", "img_user_daily"];
+const UID_METERS = ["ai_hourly", "coach_daily", "tts_chars_daily", "img_user_daily", "live_session"];
 
 /** Batch-delete every doc a query matches; returns the count. */
 async function deleteByQuery(db: Firestore, query: FirebaseFirestore.Query): Promise<number> {
