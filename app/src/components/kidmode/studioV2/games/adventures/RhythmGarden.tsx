@@ -1,5 +1,8 @@
 import { NEXT_GAME_COPY } from "../../../../../lib/i18nGameNext";
 import { useEffect, useRef, useState } from 'react';
+import { AdventureSprout, useAdventureVoice } from './AdventureGuide';
+import { InstrumentSprite } from './AdventureSprite';
+import { StudioAdventureScene } from '../../StudioAdventureScene';
 import { StudioPlayHero } from '../../StudioPlayHero';
 import { useStudioCreations } from '../../studioCreations';
 import { Check, Droplet, Eye, Triangle, Music2, Pause, Play, Star, Undo2 } from 'lucide-react';
@@ -7,7 +10,7 @@ import { useLanguage } from '../../../../../context/LanguageContext';
 import { useArborOptional } from '../../../../../context/ArborContext';
 import { GameShell, GameFinish } from '../../../game/GameShell';
 import { kidSfx, onKidHush, useKidReadAloudMuted } from '../../../audio/kidAudio';
-import { AdventureHeading, AdventureSteps, ChallengePicker, AdventureScenery } from './AdventureShared';
+import { AdventureHeading, AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { defaultChallenge, melodyFor, melodyMatches, type Challenge, type NoteId } from './adventureRules';
 import { createGardenAudio, type GardenAudio } from './gardenAudio';
@@ -22,6 +25,7 @@ export default function RhythmGarden() {
   const [challenge, setChallenge] = useState<Challenge>(() => defaultChallenge(child));
   const [round, setRound] = useState(0); const [target, setTarget] = useState<NoteId[]>(() => melodyFor(defaultChallenge(child), 0));
   const [phase, setPhase] = useState<'ready' | 'copy' | 'matched' | 'compose' | 'done'>('ready');
+  const [beat, setBeat] = useState(0);
   const [playing, setPlaying] = useState(false); const [lit, setLit] = useState<number | null>(null);
   const [played, setPlayed] = useState<NoteId[]>([]); const [composition, setComposition] = useState<NoteId[]>([]);
   const [showPattern, setShowPattern] = useState(false); const [status, setStatus] = useState(''); const [unavailable, setUnavailable] = useState(false);
@@ -40,11 +44,11 @@ export default function RhythmGarden() {
   useEffect(() => { if (muted) stopRef.current(); }, [muted]);
   const sound = (note: NoteId) => { const ok = audio.current?.play(note) ?? false; if (!muted && !ok) setUnavailable(true); };
   const play = (notes: readonly NoteId[], toCopy: boolean) => {
-    stop(); if (!notes.length) return;
+    stop(); guide.cancel(); if (!notes.length) return;
     active.current = true; setPlaying(true); setStatus('');
     if (toCopy) { setPhase('copy'); phaseRef.current = 'copy'; input.current = []; setPlayed([]); }
     notes.forEach((note, i) => {
-      const strike = () => { if (!active.current) return; setLit(note); sound(note); };
+      const strike = () => { if (!active.current) return; setLit(note); setBeat(value => value + 1); sound(note); };
       // First note stays inside the gesture for Safari's audio unlock.
       if (i === 0) strike(); else timers.current.push(setTimeout(strike, i * tempo));
       timers.current.push(setTimeout(() => { if (active.current) setLit(null); }, i * tempo + Math.min(460, tempo - 80)));
@@ -52,11 +56,13 @@ export default function RhythmGarden() {
     timers.current.push(setTimeout(() => { active.current = false; setPlaying(false); setLit(null); timers.current = []; }, notes.length * tempo));
   };
   const tap = (note: NoteId) => {
-    if (active.current || !['copy', 'compose'].includes(phaseRef.current)) return;
+    if (active.current || !['ready', 'copy', 'compose'].includes(phaseRef.current)) return;
+    guide.cancel();
     if (phaseRef.current === 'compose' && input.current.length >= 8) { setStatus(w.fullTune); return; }
     if (tapTimer.current) clearTimeout(tapTimer.current);
-    setLit(note);
+    setLit(note); setBeat(value => value + 1);
     tapTimer.current = setTimeout(() => setLit(null), 420);
+    if (phaseRef.current === 'ready') { sound(note); return; }
     if (phaseRef.current === 'compose') {
       const next = [...input.current, note]; input.current = next; setComposition(next); sound(note); return;
     }
@@ -72,10 +78,12 @@ export default function RhythmGarden() {
     else { setRound(value => value + 1); setTarget(melodyFor(challenge, round + 1)); setPhase('ready'); phaseRef.current = 'ready'; }
   };
   const cue = playing ? w.watch : phase === 'matched' ? w.rhythmMatch : phase === 'compose' ? w.rhythmCompose : phase === 'ready' ? w.watch : w.yourTurn;
-  return <GameShell fullBleed worldId="rhythm-garden" title={w.rhythm} instruction={w.rhythmInstruction} hearIt={phase === 'compose' ? `${w.rhythmCompose} ${w.rhythmComposeHelp}` : `${w.rhythmInstruction} ${cue}`}>
+  const narration = status || (phase === 'compose' ? `${cue} ${w.rhythmComposeHelp}` : phase === 'ready' ? `${w.rhythmInstruction} ${cue}` : cue);
+  const guide = useAdventureVoice({ childId: child?.id ?? '', lang, text: narration, cueKey: `${round}:${phase}:${playing}:${status}`, enabled: !playing && phase !== 'done' });
+  return <GameShell fullBleed autoNarrate={false} worldId="rhythm-garden" title={w.rhythm} instruction={w.rhythmInstruction} hearIt={narration}>
     <section className="adventure adventure--rhythm" data-adventure="rhythm-garden" dir={lang === 'he' ? 'rtl' : 'ltr'}>
       {phase === 'done' ? <GameFinish creation={{ kind: 'melody', notes: composition, tempo }} title={w.rhythmFinish} subtitle={w.rhythmTransfer} onPlayAgain={() => reset(challenge)} playAgainLabel={w.again} homeLabel={w.home} /> : <>
-        <div className="adventure-toolbar"><ChallengePicker value={challenge} onChange={reset} words={w} /><AdventureSteps done={phase === 'compose' ? 3 : round} /></div>
+        <div className="adventure-toolbar"><ChallengePicker value={challenge} onChange={reset} words={w} />{phase !== 'compose' && <AdventureSteps done={round} />}</div>
         {(phase === 'ready' || phase === 'compose') && <div className="adventure-actions rhythm-workshop-actions">
           <button type="button" className="studio-game-button-v2" onClick={() => { stop(); input.current = []; setComposition([]); setPhase('compose'); phaseRef.current = 'compose'; setStatus(''); }}>{nextWords.freeTune}</button>
           {saved.items.find(item => item.creation.kind === 'melody') && <button type="button" className="studio-game-button-v2" onClick={() => {
@@ -87,11 +95,11 @@ export default function RhythmGarden() {
         {phase === 'compose' && <div className="adventure-challenge rhythm-tempo" role="group" aria-label={nextWords.tuneSpeed}>
           {([1000, 760, 500] as const).map((value, index) => <button type="button" key={value} aria-pressed={tempo === value} onClick={() => { stop(); setTempo(value); }}>{[nextWords.slow, nextWords.flowing, nextWords.bouncy][index]}</button>)}
         </div>}
-        <AdventureHeading focusKey={`${round}:${phase}:${playing}`}>{cue}</AdventureHeading>
-        <div className="rhythm-stage" data-active-note={lit ?? 'none'}><AdventureScenery world="sound-orbit" /><div className="rhythm-conductor"><span className="rhythm-halo" aria-hidden="true" /><StudioPlayHero size={158} pose={lit === 0 ? 'hold-up' : lit === 1 ? 'freeze-a' : lit === 2 ? 'freeze-b' : 'idle'} celebrate={phase === 'matched'} /></div><div className="rhythm-pods" role="group" aria-label={w.rhythm}>
+        <AdventureHeading focusKey={`${round}:${phase}:${playing}`} onHear={guide.replay} muted={guide.muted || playing}>{cue}</AdventureHeading>
+        <div className="rhythm-stage" data-phase={phase} data-active-note={lit ?? 'none'}><StudioAdventureScene activityId="rhythm-garden" /><div className="rhythm-conductor"><span className="rhythm-halo" aria-hidden="true" /><StudioPlayHero size={270} kick={beat} pose={lit === 0 ? 'hold-up' : lit === 1 ? 'freeze-a' : lit === 2 ? 'freeze-b' : 'idle'} celebrate={phase === 'matched'} /><AdventureSprout className="rhythm-sprout" size={125} speaking={guide.speaking} beat={beat} action={phase === 'matched' ? 'celebrate' : playing ? 'show' : phase === 'copy' ? 'listen' : 'welcome'} /></div><div className="rhythm-pods" role="group" aria-label={w.rhythm}>
           {([0, 1, 2] as const).map(note => {
-            const Glyph = NOTE_GLYPHS[note]; return <button type="button" key={note} data-note={note} data-lit={lit === note} className="rhythm-pod" aria-label={w.notes[note]} disabled={playing || phase === 'ready' || phase === 'matched'} onClick={() => tap(note)}>
-              <span className="rhythm-pad"><Glyph size={42} aria-hidden="true" fill="currentColor" /></span><span className="rhythm-pedestal" aria-hidden="true" /><span className="rhythm-name">{w.notes[note]}</span>
+            return <button type="button" key={note} data-note={note} data-lit={lit === note} className="rhythm-pod" aria-label={w.notes[note]} disabled={playing || phase === 'matched'} onClick={() => tap(note)}>
+              <span className="rhythm-pad"><InstrumentSprite note={note} lit={lit === note} /></span><span className="rhythm-pedestal" aria-hidden="true" /><span className="rhythm-name">{w.notes[note]}</span>
             </button>;
           })}
         </div></div>
@@ -103,7 +111,7 @@ export default function RhythmGarden() {
           {phase === 'compose' && composition.length === 0 && <p>{w.rhythmComposeHelp}</p>}
         </div>
         {(muted || unavailable) && <p className="adventure-quiet">{muted ? w.visual : w.rhythmUnavailable}</p>}
-        <p className="adventure-status" role="status">{status || '\u00a0'}</p>
+        <p className="adventure-status" role="status">{status}</p>
         <div className="adventure-actions">
           {playing ? <button type="button" className="studio-game-button-v2" onClick={stop}><Pause size={20} aria-hidden="true" />{w.stop}</button> : phase === 'matched' ? <button type="button" className="studio-game-button-v2 studio-game-button-v2--primary adventure-go" onClick={next}>{w.next}<Check size={20} aria-hidden="true" /></button> : phase === 'compose' ? <>
             <button type="button" className="studio-game-button-v2" disabled={!composition.length} onClick={() => { const nextTune = input.current.slice(0, -1); input.current = nextTune; setComposition(nextTune); setStatus(''); }}><Undo2 size={20} aria-hidden="true" />{w.undo}</button>

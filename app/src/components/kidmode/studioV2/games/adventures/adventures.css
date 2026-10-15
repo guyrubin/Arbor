@@ -221,3 +221,225 @@
 
 @media(max-width:600px) { .forest-friends > .studio-play-hero,.forest-mascot { zoom:.7; } }
 @media(max-width:360px) { .forest-friends > .studio-play-hero,.forest-mascot { zoom:.6; } .forest-friends { gap:42px; } }
+
+/* V2 illustrated game pieces. Alpha atlases contain original neutral art. */
+.adventure-sprite { display:block; aspect-ratio:1; flex-shrink:0; background-size:300% 200%; background-repeat:no-repeat; pointer-events:none; }
+.adventure-sprite--canal { background-image:url('/visuals/studio-v2/adventures/canal-pieces.webp'); }
+.adventure-sprite--instrument { background-image:url('/visuals/studio-v2/adventures/orbit-instruments.webp'); }
+.adventure-sprite--feeling { background-image:url('/visuals/studio-v2/adventures/feeling-tokens.webp'); }
+.river-landscape { padding-top:112px; }
+.river-board { gap:3px; padding:8px; border:5px solid #f9d59d; background:#3399ad; box-shadow:0 6px 0 #b47648,0 18px 28px #123c4f66,inset 0 0 0 2px #a36b40; }
+.river-cell { overflow:visible; border:1px solid #ccffff66; background:#83d6dfaa; box-shadow:inset 0 2px 0 #ecffff55; border-radius:9px; }
+.river-cell > .adventure-sprite { position:relative; width:94%; z-index:1; filter:drop-shadow(0 4px 2px #0f587b33); transition:transform .2s ease; }
+.river-cell:not([data-rock=true]):not([data-parcel=true]):not([data-dock=true]) > .adventure-sprite { width:88%; opacity:.45; }
+.river-cell[data-path=true] { background:#c6e7d5; border-color:#f9efb1; }
+.river-cell[data-rock=true] { border-radius:9px; background:#63b8b7; border-color:#8bd6cf; }
+.river-cell[data-rock=true] > .adventure-sprite { width:112%; transform:translateY(-8%); }
+.river-cell[data-dock=true] { background:#7acbd0; border-color:#beece4; box-shadow:inset 0 2px 0 #eaffff55; }
+.river-cell[data-dock=true] > .adventure-sprite { width:114%; transform:translateY(-5%); }
+.river-cell[data-parcel=true] > .adventure-sprite { width:78%; transform:translateY(-5%); }
+.river-cell[data-path=true][data-parcel=true] > .adventure-sprite { opacity:.55; transform:translateY(-7%) scale(.8); }
+.river-collected { z-index:4; }
+.river-trail { display:none; }
+.river-route { position:absolute; inset:-4px; z-index:0; }
+.river-route i { position:absolute; background:#fff0ae; box-shadow:0 0 8px #fff5c788; }
+.river-route i[data-direction=left] { width:53%; height:8px; top:calc(50% - 4px); left:0; }
+.river-route i[data-direction=right] { width:53%; height:8px; top:calc(50% - 4px); right:0; }
+.river-route i[data-direction=up] { width:8px; height:53%; left:calc(50% - 4px); top:0; }
+.river-route i[data-direction=down] { width:8px; height:53%; left:calc(50% - 4px); bottom:0; }
+.river-bank { display:flex; justify-content:space-between; pointer-events:none; position:absolute; inset:14px 18px auto; }
+.river-bank > .adventure-sprite { width:76px; filter:drop-shadow(0 8px 6px #164b5144); }
+.river-bank--bottom { inset:auto 2px -17px; z-index:4; }
+.river-bank--bottom > .adventure-sprite { width:62px; }
+.river-vessel { overflow:visible; z-index:5; }
+.river-vessel > .river-boat-art { position:absolute; width:135%; bottom:-18%; z-index:3; }
+.river-vessel > .studio-play-hero { position:absolute; bottom:39%; left:calc(50% - 26px); top:auto; z-index:2; filter:drop-shadow(0 3px 2px #6b482b66); }
+.river-vessel > .studio-play-hero[data-game-hero-source=current-portrait] { border:2px solid #f7e2b8; border-radius:50%; overflow:hidden; }
+.river-vessel > .studio-play-hero[data-game-hero-source=current-portrait] img { border-radius:50%; }
+.river-wake { position:absolute; width:155%; height:auto; bottom:-35%; border:0; border-radius:0; box-shadow:none; z-index:0; opacity:.7; }
+.river-landscape[data-phase=arrived] .river-boat-art { filter:drop-shadow(0 0 12px #fff1a0); }
+.river-cargo > span:not(.river-cargo-title) { padding:4px 8px; min-width:70px; min-height:60px; border-radius:18px; }
+.river-cargo .adventure-sprite { width:46px; }
+.forest-friends { display:grid; grid-template-columns:1fr 1fr; align-items:end; justify-items:center; gap:0; min-height:210px; }
+.forest-friends > .studio-play-hero { grid-column:1; grid-row:1; }
+.forest-mascot { grid-column:2; grid-row:1; align-self:end; }
+.forest-response { left:auto; inset-inline-end:8%; top:-25px; width:80px; height:80px; padding:4px; }
+.forest-response .adventure-sprite { width:100%; }
+.forest-prop { width:130px; height:130px; inset-inline-start:calc(50% - 65px); bottom:-9px; }
+.forest-choices button { padding:10px; gap:3px; box-shadow:0 5px 0 #d5c3a8,0 9px 16px #604c2a12; }
+.forest-choices button > .adventure-sprite { width:80px; margin:-9px -5px -3px; }
+.forest-stage[data-phase=outcome] .forest-prop { animation:stage-response .55s ease-out; }
+.rhythm-stage { display:flex; flex-direction:column; justify-content:end; padding:32px 12px 28px; }
+.rhythm-conductor { flex:1; min-height:210px; margin-bottom:-10px; }
+.rhythm-pods { gap:0; position:relative; z-index:2; width:100%; align-items:end; }
+.rhythm-pod { width:33.333%; max-width:200px; min-height:180px; padding:0; }
+.rhythm-pod[data-note='1'] { transform:translateY(12px); }
+.rhythm-pad { display:block; position:relative; width:148px; max-width:125%; height:auto; aspect-ratio:1; border:0; background:none; box-shadow:none; border-radius:0; }
+.rhythm-pad::before { display:none; }
+.rhythm-pad > .adventure-sprite { width:100%; filter:drop-shadow(0 12px 7px #101b4199); }
+.rhythm-pedestal { display:none; }
+.rhythm-name { margin-top:-4px; border:1px solid #d9cfff60; background:#162340d9; backdrop-filter:blur(8px); font-size:13px; }
+.rhythm-pod[data-lit=true] .rhythm-pad { box-shadow:none; transform:translateY(-9px) scale(1.07); }
+.rhythm-pod[data-lit=true] .rhythm-pad > .adventure-sprite { filter:drop-shadow(0 0 20px var(--pod-fill)); }
+.rhythm-pattern > span { width:46px; height:46px; border-radius:50%; }
+@media(min-width:800px) {
+ .adventure { grid-template-columns:minmax(0,1fr) 268px; gap:16px 24px; }
+ .river-landscape,.forest-stage,.rhythm-stage { min-height:520px; }
+ .river-board { max-inline-size:370px; }
+ .forest-stage { padding:130px 16px 22px; }
+ .rhythm-stage { padding:30px 8px 28px; }
+ .forest-choices button { min-height:120px; }
+ .forest-choices--support button { min-height:68px; }
+}
+@media(max-width:600px) {
+ .adventure { padding:12px 10px 18px; }
+ .river-landscape { padding:90px 6px 24px; }
+ .river-board { padding:5px; border-width:3px; }
+ .river-bank > .adventure-sprite { width:58px; }
+ .river-vessel > .studio-play-hero { scale:.7; transform-origin:bottom center; }
+ .forest-stage { min-height:500px; padding:135px 10px 16px; }
+ .forest-friends { min-height:165px; }
+ .forest-friends > .studio-play-hero,.forest-mascot { zoom:.7; }
+ .forest-response { width:63px; height:63px; inset-inline-end:8%; top:-28px; }
+ .forest-prop { width:94px; height:94px; inset-inline-start:calc(50% - 47px); bottom:-5px; }
+ .forest-choices button > .adventure-sprite { width:70px; }
+ .rhythm-stage { min-height:430px; padding:28px 5px 24px; }
+ .rhythm-conductor { min-height:190px; }
+ .rhythm-conductor > .studio-play-hero { zoom:.8; }
+ .rhythm-pad { width:118px; }
+ .rhythm-pod { min-height:150px; }
+ .rhythm-name { font-size:11px; padding:8px 5px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .adventure *, .adventure *::before,.adventure *::after { animation:none!important; transition:none!important; }
+ .rhythm-pod[data-lit=true] .rhythm-pad { transform:none; outline:3px solid #ffe6a7; border-radius:20px; }
+}
+@media(forced-colors:active) {
+ .river-route i { background:Highlight; }
+ .river-cell[data-path=true] { outline:2px solid Highlight; }
+}
+
+/* Keep stage geometry independent of the number of sidebar controls. */
+.adventure-status:empty { min-height:0; height:0; margin:0; }
+.forest-stage { padding:0 0 16px; min-height:0; justify-content:start; background:#bd8965; }
+.forest-visual { position:relative; isolation:isolate; width:100%; aspect-ratio:3/2; overflow:hidden; }
+.forest-visual .forest-friends { position:absolute; inset:0; min-height:0!important; direction:ltr; }
+.forest-friends > .studio-play-hero { position:absolute; left:12%; bottom:14%; margin:0; }
+.forest-mascot { position:absolute; right:12%; bottom:12%; margin:0; }
+.forest-prop { bottom:11%; width:110px; height:110px; inset-inline-start:calc(50% - 55px); }
+.forest-response { top:15%; right:13%; left:auto; inset-inline-end:auto; }
+.forest-story { margin:0 16px; width:calc(100% - 32px); max-width:none; z-index:3; }
+[dir=rtl] .forest-stage[data-action=together] .forest-friends > .studio-play-hero { transform:translateX(38px); }
+[dir=rtl] .forest-stage[data-action=space] .forest-friends > .studio-play-hero { transform:translateX(-28px); }
+.rhythm-stage { aspect-ratio:1.32; min-height:0; align-self:start; padding:24px 12px; }
+.rhythm-conductor { min-height:180px; }
+@media(min-width:800px) {
+ .adventure { align-items:start; }
+ .forest-stage { min-height:0; padding:0 0 18px; }
+ .rhythm-stage { min-height:0; }
+ .adventure-actions { gap:8px; }
+ .adventure-actions button { flex:1 1 40%; padding:10px 12px; font-size:14px; min-height:48px; }
+ .adventure-actions .adventure-go { flex-basis:100%; }
+ .rhythm-workshop-actions button { flex-basis:40%; font-size:12px; }
+ .adventure-transfer { grid-column:1/-1; grid-row:10; padding:10px 14px; font-size:13px; }
+ .adventure-quiet { font-size:12px; }
+ .river-landscape { align-self:start; }
+}
+@media(max-width:600px) {
+ .forest-stage { min-height:0; padding:0 0 14px; }
+ .forest-visual { aspect-ratio:1.1; }
+ .forest-friends > .studio-play-hero,.forest-mascot { zoom:.6; }
+ .forest-friends > .studio-play-hero { left:8%; bottom:15%; }
+ .forest-mascot { right:9%; bottom:13%; }
+ .forest-prop { width:72px; height:72px; inset-inline-start:calc(50% - 36px); bottom:10%; }
+ .forest-response { width:54px; height:54px; top:12%; right:12%; }
+ .forest-story { margin:0 10px; width:calc(100% - 20px); }
+ .forest-story p { font-size:17px; }
+ .rhythm-stage { aspect-ratio:auto; min-height:350px; padding:18px 6px; }
+ .rhythm-conductor { min-height:155px; }
+ .rhythm-pod { min-height:140px; }
+ [dir=rtl] .forest-stage[data-action=together] .forest-friends > .studio-play-hero { transform:translateX(12px); }
+ [dir=rtl] .forest-stage[data-action=space] .forest-friends > .studio-play-hero { transform:translateX(-10px); }
+}
+.rhythm-stage { align-items:stretch; }
+.rhythm-conductor { width:100%; }
+
+/* The player is a character in the world, using the same feet-anchored sprites
+   as Sneak & Freeze. Portrait fallback preserves the image without a frame. */
+.arbor-play .adventure .studio-play-hero[data-game-hero-source=current-portrait] { border:0; border-radius:0; overflow:visible; }
+.arbor-play .adventure .studio-play-hero img[data-hero-pose] { object-fit:contain; object-position:center bottom; border-radius:0; }
+.adventure-prompt { position:relative; align-items:stretch; gap:0; }
+.arbor-play .adventure .adventure-heading { padding-inline-end:48px; border:1px solid #decbae; border-radius:18px; font-size:20px!important; line-height:1.35; }
+.adventure-guide-replay { position:absolute; inset-inline-end:5px; top:calc(50% - 22px); width:44px; height:44px; display:grid; place-items:center; border:0; border-radius:50%; background:transparent; color:#84613c; }
+.adventure-guide-replay:disabled { opacity:.35; }
+.adventure-sprout { position:relative; display:inline-block; flex-shrink:0; isolation:isolate; }
+.adventure-sprout__actor { position:absolute; inset:0; display:block; transform-origin:50% 90%; filter:drop-shadow(3px 8px 4px #25392744); }
+.adventure-sprout__ground { position:absolute; inset:auto 8% 3%; height:12%; border-radius:50%; background:radial-gradient(ellipse,#ffefbd88,transparent 70%); }
+.adventure-sprout[data-action=welcome] .adventure-sprout__actor { animation:sprout-greeting .8s ease-out; }
+.adventure-sprout[data-action=think] .adventure-sprout__actor { transform:rotate(-7deg); }
+.adventure-sprout[data-action=listen] .adventure-sprout__actor { transform:rotate(5deg) scale(1.025); }
+.adventure-sprout[data-action=comfort] .adventure-sprout__actor { animation:sprout-settle 1.2s ease-out; }
+.adventure-sprout[data-action=show] .adventure-sprout__actor { animation:sprout-beat .4s ease-out; }
+.adventure-sprout[data-action=celebrate] .adventure-sprout__actor { animation:sprout-joy .85s ease-out; }
+.adventure-sprout__voice { position:absolute; top:10%; right:3%; display:flex; align-items:center; gap:3px; opacity:0; }
+.adventure-sprout[data-speaking=true] .adventure-sprout__voice { opacity:1; }
+.adventure-sprout__voice i { width:4px; height:13px; background:#ffedb0; border:1px solid #987f4c; border-radius:5px; }
+.adventure-sprout[data-speaking=true] .adventure-sprout__voice i { animation:sprout-voice .7s ease-in-out infinite alternate; }
+.adventure-sprout__voice i:nth-child(2) { animation-delay:.18s!important; height:21px; }
+.adventure-sprout__voice i:nth-child(3) { animation-delay:.35s!important; }
+@keyframes sprout-greeting { 25% { transform:rotate(-8deg); } 65% { transform:rotate(5deg); } }
+@keyframes sprout-settle { from { transform:scale(1.04,.96); } to { transform:scale(1); } }
+@keyframes sprout-beat { 45% { transform:translateY(-6px) rotate(-5deg); } }
+@keyframes sprout-joy { 25%,65% { transform:translateY(-12px) rotate(6deg); } 45% { transform:translateY(0) rotate(-4deg); } }
+@keyframes sprout-voice { to { transform:scaleY(.4); } }
+.river-landscape { padding-top:160px; }
+.river-captain { position:absolute; inset:8px 0 auto; height:145px; display:flex; align-items:end; justify-content:center; gap:38px; direction:ltr; pointer-events:none; }
+.river-captain > .studio-play-hero { transition:opacity .2s; }
+.river-landscape[data-phase=sail] .river-captain > .studio-play-hero { opacity:0; }
+.river-vessel > .studio-play-hero { left:calc(50% - 48px); bottom:45%; scale:1; opacity:0; transition:opacity .2s; }
+.river-landscape[data-phase=sail] .river-vessel > .studio-play-hero { opacity:1; }
+.river-cargo > span[data-planned=true] { border-color:#b28a45; box-shadow:inset 0 0 0 1px #edcd88; }
+.river-cargo > span[data-collected=true] { background:#f8d784; box-shadow:0 0 18px #f7da8b80; }
+.river-landscape[data-phase=sail] .river-cell[data-parcel=true][data-path=true] > .adventure-sprite { opacity:1; transform:none; }
+.river-cell:has(.river-collected) > .adventure-sprite { opacity:.25!important; transform:scale(.7)!important; }
+.forest-friends > .studio-play-hero { left:4%; bottom:15%; }
+.forest-mascot { right:10%; bottom:13%; }
+.forest-prop { z-index:0; width:120px; height:120px; bottom:11%; }
+.forest-stage[data-action=help] .forest-prop { animation:stage-response .55s ease-out; filter:drop-shadow(0 0 12px #ffe5aa); }
+.rhythm-conductor { min-height:260px; padding-top:12px; }
+.rhythm-sprout { position:absolute; right:4%; bottom:8px; }
+.rhythm-halo { width:240px; }
+.rhythm-stage { aspect-ratio:auto; min-height:505px; }
+.rhythm-stage[data-phase=matched] .rhythm-halo { box-shadow:0 0 65px 15px #fff0ba80; border-color:#ffedbd; }
+@media(min-width:800px) {
+ .adventure-prompt { grid-row:2; }
+ .rhythm-workshop-actions { grid-row:3; }
+ .rhythm-tempo { grid-row:4; }
+ .rhythm-pattern { grid-row:5; }
+ .adventure--rhythm .adventure-quiet { grid-row:6; }
+ .adventure--rhythm .adventure-status { grid-row:7; }
+ .adventure--rhythm > .adventure-actions:not(.rhythm-workshop-actions) { grid-row:8; }
+}
+@media(max-width:600px) {
+ .river-landscape { padding-top:147px; }
+ .river-captain { top:3px; height:135px; gap:20px; }
+ .river-captain > .studio-play-hero { zoom:.9; }
+ .river-vessel > .studio-play-hero { scale:.72; }
+ .forest-friends > .studio-play-hero { zoom:.68; left:-1%; bottom:13%; }
+ .forest-mascot { zoom:.65; right:7%; bottom:12%; }
+ .forest-prop { width:78px; height:78px; inset-inline-start:calc(50% - 39px); }
+ .rhythm-stage { min-height:420px; }
+ .rhythm-conductor { min-height:225px; }
+ .rhythm-conductor > .studio-play-hero { zoom:.84; }
+ .rhythm-sprout { zoom:.72; right:-3%; bottom:12px; }
+ .rhythm-halo { width:190px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .adventure-sprout *, .adventure-sprout { animation:none!important; transition:none!important; }
+}
+
+@media(min-width:800px) {
+ .adventure { grid-template-rows:auto repeat(7,min-content) minmax(0,1fr) auto; }
+}
+
+.adventure-sprite--canal[data-piece=water] { mask-image:radial-gradient(ellipse 48% 35% at 53% 53%,#000 72%,transparent 100%); }

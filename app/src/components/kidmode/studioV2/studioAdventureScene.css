@@ -1,0 +1,13 @@
+/* Neutral scenery and immutable approved identity are separate layers. */
+.studio-adventure-scene { position:absolute; inset:0; z-index:-1; overflow:hidden; background:#343253; }
+.studio-adventure-scene[data-adventure-scene=feelings-forest] { background:#ae755a; }
+.studio-adventure-scene[data-adventure-scene=river-rescue] { background:#21899a; }
+.studio-adventure-scene > img { position:absolute; inset:0; width:100%; height:100%; max-width:none; object-fit:cover; object-position:50% 25%; }
+.studio-game-card__window:has(.studio-adventure-scene) { isolation:isolate; block-size:310px; }
+.studio-game-card__window:has(.studio-adventure-scene) .studio-game-card__world { inset-block-start:auto; inset-block-end:16px; }
+.studio-game-card--result .studio-game-card__window:has(.studio-adventure-scene) { block-size:260px; }
+.studio-game-card__window:has(.studio-adventure-scene) .studio-game-card__hero { width:230px; height:230px; bottom:12px; }
+@media(max-width:640px) {
+ .studio-game-card__window:has(.studio-adventure-scene) { block-size:240px; }
+ .studio-game-card__window:has(.studio-adventure-scene) .studio-game-card__hero { scale:.8; transform-origin:bottom right; right:8px; }
+}

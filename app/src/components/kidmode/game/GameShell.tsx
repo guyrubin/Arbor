@@ -72,6 +72,8 @@ export interface GameShellProps {
    *  paragraph, no padding, no progress dots — the child fills the view.
    *  Default false: every existing game is unchanged. */
   fullBleed?: boolean;
+  /** Contextual guides can own narration while retaining the shared hear-it. */
+  autoNarrate?: boolean;
   children: React.ReactNode;
 }
 
@@ -98,7 +100,7 @@ export function GameProgressDots({ index, total }: { index: number; total: numbe
   );
 }
 
-export function GameShell({ worldId, title, instruction, hearIt, progress, mood, eyebrow, action, variant = "compact", heroDecorative, fullBleed = false, children }: GameShellProps) {
+export function GameShell({ worldId, title, instruction, hearIt, progress, mood, eyebrow, action, variant = "compact", heroDecorative, fullBleed = false, autoNarrate = true, children }: GameShellProps) {
   const kid = useKidModeOn();
   const { uiLang } = useLanguage();
   const arbor = useArborOptional();
@@ -122,10 +124,10 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
   }, [kid, worldId]);
   // … and the instruction is spoken ONCE, on arrival.
   useEffect(() => {
-    if (!kid || !instruction) return;
+    if (!kid || !instruction || !autoNarrate) return;
     const timer = setTimeout(() => { autoReadPage(childId, instruction, lang); }, 400);
     return () => { clearTimeout(timer); stopVoice(); };
-  }, [kid, instruction, lang, childId]);
+  }, [kid, instruction, lang, childId, autoNarrate]);
 
   // The flagged proof game has no parent door, art key or souvenir.
   const tileWorld: KidWorldTileId | null = worldId === "sneak" ? null : worldId;

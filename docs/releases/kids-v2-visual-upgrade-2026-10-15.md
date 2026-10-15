@@ -13,9 +13,9 @@ The authoritative separate adoption backlog is ROS PR 16, `PAI/projects/arbor/pr
 | A1–A5 home | Name/current approved hero, four eligible world doors, finite saved cozy-corner quest, authored sky and reduced motion. This release repairs source geometry and phone composition. Numeric levels/currency and daily debt remain deliberately revised. |
 | B1–B2 guide | Authored bilingual contextual hints, real suggested actions and bounded reactions. |
 | B3 generated Sprout | Explicitly deferred in the adopted backlog; not implemented or claimed shipped. |
-| B4 voice/input | Existing narration retained. New Sprout speech/microphone input remains deferred; no new capture permission. |
-| C1–C3 worlds | Real destinations, recognizable scenes, approved-source compositing with neutral fallback, earned keepsakes. No fake progress. |
-| D1–D4 games | Actual intro/play/result/replay; eight distinct menu games with three complete adventures. Older overlapping games remain reachable from historical/parent routes. Current pose authority, actual support responses and tap-driven music lighting are strengthened here. |
+| B4 voice/input | Contextual authored EN/HE Sprout narration now uses the existing child voice bus. New voice identity and microphone input remain deferred; no new capture permission. |
+| C1–C3 worlds | Real destinations, recognizable scenes, neutral authored environments with a separate current-character layer, earned keepsakes. No fake progress. |
+| D1–D4 games | Actual intro/play/result/replay; eight distinct menu games with three complete adventures. Older overlapping games remain reachable from historical/parent routes. The same character resolver as Sneak & Freeze, actual support responses, contextual narration and tap-driven music lighting are used here. |
 | E1–E3 books | Existing eligible shelf, branching reader, approved narration, edition-bound resume and genuine completion. No historical art is regenerated. |
 | F1–F3 collection | Existing owner/child ledger, award-once keepsakes and saved creations/revisit routes. |
 | G1–G3 layouts | Desktop and 390px Hebrew phone inspected; layout changes preserve component state. Physical iOS/Android rotation/audio/performance remain separate unverified criteria. |
@@ -23,10 +23,16 @@ The authoritative separate adoption backlog is ROS PR 16, `PAI/projects/arbor/pr
 
 All adopted functional areas have implementation evidence; this does not mean every source proposal was adopted or every real-device acceptance criterion has been verified. Do not mark B3/B4 or physical-device checks complete merely because deployment passes.
 
-## New artwork
+## New artwork and identity
 
-`app/public/visuals/studio-v2/adventures/story-props.webp` is an original generated transparent 3×2 raster atlas, optimized to 768×512 and 75,032 bytes. Six neutral props: fallen blocks, stacked blocks, paper map, picnic basket, seedling and bench. No child identity, text, logo or franchise reference is present. Built-in Imagegen prompt: premium stylized 3D handmade story-theater toys, gold/teal/lilac wood, cream paper, wicker/coral gingham, terracotta/green leaves, rounded bevels, warm soft studio lighting, six equal isolated cells, true transparency, no characters/scenery/text. Original PNG is retained privately; only the optimized atlas ships.
+Four original transparent raster atlases ship: story-props (768×512, 75,032 bytes), canal-pieces, feeling-tokens and orbit-instruments (each 1152×768, approximately 260–290 KB). They contain neutral props, boat/water/dock/rocks/cargo, weather-like feeling tokens and musical instruments. No franchise references or child identity is included. Original PNGs remain private; optimized WebP atlases ship.
+
+Portrait frames and generated child scenes were rejected by the user and are excluded. Private image experiments using the original kit illustration produced identity drift and were not shipped. The full player now uses `useHeroSheetState` and `HeroFigure`, exactly as Sneak & Freeze. Existing owner/child/avatar guards and pose source order are unchanged. No runtime child image generation is added. Where a matching character sheet is missing, the exact current profile image remains the honest fallback.
+
+Sprout uses the existing drawing with opt-in dimensional lighting and reactions to actual gameplay. Contextual narration uses the existing voice engine, respects mute and silence, and cancels on navigation/hush. Difficult feelings receive comfort; support does not imply a feeling disappears.
 
 ## Evidence
 
-See `../../app/design-qa.md` for rendered comparison and operated flows. Local TypeScript, 120 focused checks and production frontend build pass. An earlier CI correctly failed two old component assertions; those now target the active approved-player component, while identity rejection and completion semantics remain tested. Final CI, merged SHA and production deployment receipt are recorded in the PR/release follow-up.
+See `../../app/design-qa.md` for the comparison, operated checks and limits. Focused tests include avatar identity/snapshot retirement, complete EN/HE game flows and voice scheduling/cancellation. Final TypeScript/build/CI results and deployed SHA are recorded in PR 146. The earlier 120-test and portrait-frame acceptance is superseded by this revision.
+
+Deployment is pending exact-head CI and release verification. The adopted backlog dispositions above remain explicit; generated Sprout art, a new voice identity/microphone flow and real-device criteria are not claimed complete.

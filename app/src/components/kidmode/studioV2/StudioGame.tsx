@@ -19,6 +19,7 @@ import { KidFinishMoment } from "../rewards/KidSouvenir";
 import { studioActivity, studioActivityFits, type StudioActivityId } from "./studioCatalog";
 import { studioCopy } from "./studioCopy";
 import "./studioGame.css";
+import { StudioAdventureScene, isStudioAdventure } from './StudioAdventureScene';
 import { StudioPlayHero } from './StudioPlayHero';
 import { StudioCreationResult } from './StudioCreationResult';
 import type { StudioCreation } from './studioCreations';
@@ -111,9 +112,9 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
     {environment}
     <div className={`studio-game-card${phase === "result" ? " studio-game-card--result" : ""}`}>
       <div className="studio-game-card__window" aria-hidden="true">
-        {art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
+        {isStudioAdventure(activityId) ? <StudioAdventureScene activityId={activityId} /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
         {activity && <span className="studio-game-card__world">{labels.worlds[activity.worldId].title}</span>}
-        <div className="studio-game-card__hero"><StudioPlayHero size={200} celebrate={phase === "result"} /></div>
+        <div className="studio-game-card__hero"><StudioPlayHero size={230} celebrate={phase === "result"} /></div>
       </div>
       {phase === "intro" ? <div className="studio-game-card__body">
         <h1 className="studio-game-card__title">{copy.title}</h1>
