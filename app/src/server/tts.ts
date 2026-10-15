@@ -6,6 +6,7 @@ import type { CapabilityAdapter, CapabilityRequest } from "../ai/capabilities/co
 import type { CapabilityRegistry } from "../ai/capabilities/registry.js";
 import { screenModelOutput, screenModelOutputLexical, type OutputScreenVerdict } from "../safety/outputScreen.js";
 import { logger } from "./logger.js";
+import { recordTtsUsage } from "../ai/ttsUsage.js";
 
 /**
  * Neural text-to-speech seam (Epic A) — synthesizes screened app text (story /
@@ -71,6 +72,7 @@ async function synthesizeGoogle(config: ArborConfig, input: TtsInput): Promise<T
   const languageCode = LANGUAGE_CODE[input.lang] ?? LANGUAGE_CODE.en;
   const voiceName = input.lang === "he" ? config.ttsVoiceHe : config.ttsVoiceEn;
 
+  const startedAt = Date.now();
   const res = await fetch("https://texttospeech.googleapis.com/v1/text:synthesize", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(config.gcpProjectId ? { "x-goog-user-project": config.gcpProjectId } : {}) },
@@ -89,9 +91,12 @@ async function synthesizeGoogle(config: ArborConfig, input: TtsInput): Promise<T
   const audio = String(json.audioContent ?? "");
   if (!audio) throw new Error("Cloud TTS returned no audioContent.");
 
-  // Char-metered usage signal (Cloud TTS bills per character). Never throws.
+  // Unicode code points, including whitespace; never treat UTF-8 bytes as chars.
+  const characters = Array.from(input.text).length;
+  recordTtsUsage(voiceName, input.lang, characters, Date.now() - startedAt);
+  // Keep the existing synthesis audit event as well as the shared cost rollup.
   try {
-    logger.info("tts.synthesis", { provider: "google", lang: input.lang, voice: voiceName || languageCode, chars: input.text.length });
+    logger.info("tts.synthesis", { provider: "google", lang: input.lang, voice: voiceName || languageCode, chars: characters });
   } catch {
     /* telemetry must never break synthesis */
   }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { initNaturalVoice } from "../lib/naturalVoice";
 import {
   isActive,
   speakText,
@@ -35,6 +36,9 @@ export function toggleSpeech(currentId: number, text: string, handlers: VoiceTog
     return { id: 0, speaking: false };
   }
   const id = speakText(text, handlers);
+  // Keep synchronous gesture-bound playback. A failed bootstrap can recover
+  // for subsequent playback; valid off/on configurations are cached.
+  void initNaturalVoice();
   return { id, speaking: voiceState().speaking && isActive(id) };
 }
 

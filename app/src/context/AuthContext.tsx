@@ -12,7 +12,7 @@ import {
 import { auth, firebaseEnabled } from "../lib/firebase";
 import { setAuthTokenProvider } from "../lib/api";
 import { authErrorKey } from "../lib/i18nElevation/storeShell";
-import { initNaturalVoice } from "../lib/naturalVoice";
+import { initNaturalVoice, resetNaturalVoice } from "../lib/naturalVoice";
 import { setAnalyticsUser } from "../lib/analytics";
 import { trackSessionOpen } from "../lib/loopEvents";
 import { recordRetentionSession } from "../lib/retentionRollup";
@@ -176,6 +176,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // session, merging today into the stored day set. Fire-and-forget and
     // never throws; a retention fact is never worth degrading a session.
     if (user?.uid) recordRetentionSession(user.uid);
+    const retryVoice = () => { if (user?.uid) void initNaturalVoice(); };
+    window.addEventListener("online", retryVoice);
+    return () => {
+      window.removeEventListener("online", retryVoice);
+      resetNaturalVoice();
+    };
   }, [user?.uid]);
 
   const value: AuthContextValue = {
