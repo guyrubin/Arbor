@@ -204,6 +204,23 @@ describe("coach-core-v1 suite schema (EVAL-1 compatibility)", () => {
 });
 
 describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", () => {
+  it("B-AI-17: Hebrew names and attached prefixes are redacted at the model seam and restored in the answer", async () => {
+    contractOverrides = {
+      text: "אפשר להציע ל[Child] שתי אפשרויות.",
+      parentScript: "[Child], נבחר יחד.",
+    };
+    const { events } = await postChatStreamed({
+      message: "מאיה אוהבת רכבות. איך להציע למאיה משחק?",
+      childProfile: { id: "c1", name: "מאיה" },
+      language: "he",
+    });
+    expect(modelInvocations).toBe(1);
+    expect(lastChatPrompt).not.toContain("מאיה");
+    expect(lastChatPrompt).toContain("ל[Child]");
+    expect(doneOf(events)?.contract?.text).toContain("למאיה");
+    expect(doneOf(events)?.contract?.parentScript).toContain("מאיה");
+  });
+
   it("coach-happy-path-en: zod-parsed contract, prose-led text, honest stage statuses, todayPlan 1-3", async () => {
     const sc = scenario("coach-happy-path-en");
     contractOverrides = { text: sc.input.stubbedContractText };

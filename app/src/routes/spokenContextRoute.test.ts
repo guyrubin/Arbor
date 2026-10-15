@@ -81,6 +81,18 @@ const post = async (route: string, payload: unknown) => {
 };
 
 describe("spoken continuity at the actual server seams", () => {
+  it.each([false, true])("/voice redacts Hebrew names including current-message prefixes (private=%s)", async (privateMode) => {
+    const result = await post("/api/voice", {
+      ...body, privateMode, language: "he",
+      childProfile: { ...body.childProfile, name: "מאיה" },
+      message: "מאיה אוהבת רכבות. הצעתי למאיה משחק.",
+    });
+    expect(result.status).toBe(200);
+    expect(providerCalls).toBe(1);
+    expect(prompt).not.toContain("מאיה");
+    expect(prompt).toContain("ל[Child]");
+  });
+
   it("/voice injects approved memory and same-child recent turns but never disallowed profile or facts", async () => {
     const result = await post("/api/voice", body);
     expect(result.status).toBe(200);
