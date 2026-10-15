@@ -14,7 +14,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 vi.mock("./logger.js", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() }, requestIdOf: () => "test" }));
 
-import { API_PER_IP_PER_MIN, apiRateLimit, bookAssetRates, isBookAssetRoute } from "./apiRateLimits";
+import { API_PER_IP_PER_MIN, apiRateLimit, liveUsageRateLimit, bookAssetRates, isBookAssetRoute } from "./apiRateLimits";
 import { createBookAssetsRouter, type BookAssetBucket, type BookAssetFile } from "./bookAssets";
 import { createBookSheetRouter, LocalBookAssetsDocStore } from "./bookSheet";
 import type { EntitlementStore, Plan } from "./entitlements";
@@ -94,4 +94,24 @@ describe("per-account limits on one IP", () => {
     expect((await over.json()).code).toBe("book_assets_rate");
     expect((await commit("famB")).status).not.toBe(429);
   });
+});
+
+it("usage reports have an account budget without consuming the safety-route IP budget", async () => {
+  const app = express();
+  app.use("/api", apiRateLimit());
+  app.use((req, _res, next) => { (req as any).user = { uid: req.header("x-test-user") || "a" }; next(); });
+  app.post("/api/live/usage", liveUsageRateLimit(2), (_req, res) => res.json({ ok: true }));
+  app.get("/api/ping", (_req, res) => res.json({ ok: true }));
+  const server = app.listen(0);
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    const report = (uid: string) => fetch(`${base}/api/live/usage`, { method: "POST", headers: { "x-test-user": uid } });
+    expect((await report("a")).status).toBe(200);
+    expect((await report("a")).status).toBe(200);
+    expect((await report("a")).status).toBe(429);
+    expect((await report("b")).status).toBe(200);
+    for (let n = 0; n < API_PER_IP_PER_MIN; n++) expect((await fetch(`${base}/api/ping`)).status).toBe(200);
+    expect((await fetch(`${base}/api/ping`)).status).toBe(429);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });

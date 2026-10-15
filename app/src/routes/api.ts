@@ -1,3 +1,4 @@
+import { liveUsageRateLimit } from "../server/apiRateLimits.js";
 import { createLiveUsageStore, type LiveUsageEvent } from "../server/liveUsage.js";
 import { attachmentTurnPolicy } from "../ai/attachmentSourcePolicy.js";
 import { parseCompanionAttachments, type ComposerAttachment } from "../lib/companionAttachments.js";
@@ -1770,7 +1771,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // ever seeing the server key. Reports availability so the client can fall back
   // to the browser voice loop when Live isn't configured/provisioned.
   // Metered by createAiQuota in createApp.ts (same list as the other paid mints).
-  router.post("/live/usage", async (req, res) => {
+  router.post("/live/usage", liveUsageRateLimit(), async (req, res) => {
     const { sessionId, event } = req.body ?? {};
     if (typeof sessionId !== "string" || !["opened", "heartbeat", "closed"].includes(event)) {
       res.status(400).json({ error: "Invalid session event" }); return;

@@ -209,6 +209,19 @@ async function request<T>(url: string, method: string, body?: unknown, signal?: 
   return (await res.json()) as T;
 }
 const post = <T>(url: string, body: unknown, beforeDispatch?: () => void) => request<T>(url, "POST", body, undefined, beforeDispatch);
+// Bound auth refresh as well as fetch, so a hung report cannot accumulate
+// heartbeats or prevent the eventual close report from being attempted.
+function liveUsageRequest(sessionId: string, event: "opened" | "heartbeat" | "closed") {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => { controller.abort(); reject(new Error("Usage report timed out")); }, 5_000);
+  });
+  return Promise.race([
+    request<{ observedMs: number; incomplete: boolean }>("/api/live/usage", "POST", { sessionId, event }, controller.signal),
+    deadline,
+  ]).finally(() => clearTimeout(timer));
+}
 // Live startup includes auth-token refresh and response JSON, not only fetch.
 // Bound the whole operation and never send after an owner has cancelled it.
 function liveStartupRequest<T>(body: unknown, signal?: AbortSignal): Promise<T> {
@@ -564,7 +577,7 @@ export const api = {
   // VC-2/VC-3: the authoritative per-turn Live screen. The liveTurnGuard treats
   // ANY failure of this call (network / non-200 / timeout) as FLAGGED (VC-5).
   liveUsage: (sessionId: string, event: "opened" | "heartbeat" | "closed") =>
-    request<{ observedMs: number; incomplete: boolean }>("/api/live/usage", "POST", { sessionId, event }, AbortSignal.timeout(5_000)),
+    liveUsageRequest(sessionId, event),
   liveTurn: (payload: { role: "user" | "model"; text: string; language?: "en" | "he"; childId?: string }) =>
     post<import("./liveTurnGuard").LiveTurnVerdict>("/api/live/turn", payload),
   // MON-1: plan + limits + usage for the signed-in parent.
