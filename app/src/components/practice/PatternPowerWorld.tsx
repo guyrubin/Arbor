@@ -1,3 +1,5 @@
+import { NEXT_GAME_COPY } from "../../lib/i18nGameNext";
+import "../kidmode/studioV2/games/studioGames.css";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useGameSession } from "../kidmode/game/GameSessionContext";
@@ -82,6 +84,7 @@ export function PatternRoundView({
   missed = [],
   revealed = false,
   tryAnotherFeedback = "",
+  onNext, nextLabel,
 }: {
   puzzle: PatternPuzzle;
   idx: number;
@@ -93,6 +96,8 @@ export function PatternRoundView({
   revealed?: boolean;
   tryAnotherFeedback?: string;
   onChoose: (opt: string) => void;
+  onNext?: () => void;
+  nextLabel?: string;
   patternAria: string;
   title: string;
   say: string;
@@ -161,6 +166,7 @@ export function PatternRoundView({
         </MascotSay>
       )}
 
+      {picked && onNext && <div className="studio-game-actions"><button type="button" className="studio-game-button studio-game-button--go" onClick={onNext}>{nextLabel}</button></div>}
       {!kid && (
       <p className="flex items-center justify-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
         <Icon name="category" size={14} /> {supportLabel}
@@ -174,6 +180,7 @@ export default function PatternPowerWorld() {
   const gameSession = useGameSession();
   const { first, log } = useArcadeLogger();
   const { t, uiLang } = useLanguage();
+  const nextWords = NEXT_GAME_COPY[uiLang === "he" ? "he" : "en"];
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   // B-KID-50 (KC-06): a wrong pick nudges and leaves the round open; a second
@@ -181,7 +188,7 @@ export default function PatternPowerWorld() {
   const [missed, setMissed] = useState<string[]>([]);
   const [revealed, setRevealed] = useState(false);
   const [scores, setScores] = useState<number[]>([]);
-  const [sessionSeed, setSessionSeed] = useState(0);
+  const [sessionSeed, setSessionSeed] = useState(() => gameSession?.playOnly ? Math.floor(Math.random() * 1000000) : 0);
   const advanceTimerRef = useRef<number | null>(null);
 
   useEffect(() => () => {
@@ -213,6 +220,9 @@ export default function PatternPowerWorld() {
     );
   }
 
+  const advance = () => {
+    setPicked(null); setMissed([]); setRevealed(false); setIdx(i => i + 1);
+  };
   const choose = (opt: string) => {
     if (picked || missed.includes(opt)) return;
     const correct = opt === puzzle.answer;
@@ -229,6 +239,7 @@ export default function PatternPowerWorld() {
     // B-KID-51 (KC-08): ONE kid activity per finished sitting — the
     // set's last round, never per pick. A COUNT, a no-op outside Kid Mode.
     if (idx + 1 >= puzzles.length) noteKidActivity();
+    if (gameSession?.playOnly) return;
     advanceTimerRef.current = window.setTimeout(() => {
       setScores((s) => [...s, score]);
       setPicked(null);
@@ -245,6 +256,8 @@ export default function PatternPowerWorld() {
       options={options}
       picked={picked}
       onChoose={choose}
+      onNext={gameSession?.playOnly && picked ? advance : undefined}
+      nextLabel={idx === puzzles.length - 1 ? nextWords.finishPattern : nextWords.nextPattern}
       patternAria={t("aria.patternToContinue")}
       title={t("elev.play.pattern.title")}
       say={t("elev.play.pattern.say")}

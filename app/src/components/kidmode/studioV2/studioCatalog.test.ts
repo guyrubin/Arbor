@@ -3,9 +3,17 @@ import { offersForChild } from "../../../lib/age/playGate";
 import { KID_WORLDS } from "../kidWorlds";
 import { STUDIO_V2_ACTIVITIES, STUDIO_V2_WORLDS, studioActivitiesForChild, studioActivity, studioActivityFits, studioActivityFromLegacy, studioLegacyRoute } from "./studioCatalog";
 import { studioCopy } from "./studioCopy";
+import { STUDIO_GAME_SELECTION, studioMenuActivities } from './studioCatalog';
 const now = new Date("2026-10-13T12:00:00Z");
 const child = (ageMonths: number) => ({ id: "test-child", age: Math.floor(ageMonths / 12), ageMonths, ageMonthsAsOf: "2026-10-13" });
 describe("Studio V2 retains real destinations and eligibility", () => {
+  it('curates eight distinct games while keeping legacy history resolvable', () => {
+    const menu = STUDIO_V2_WORLDS.flatMap(world => studioMenuActivities(world, child(84), 'he', now));
+    expect(menu.map(a => a.id).sort()).toEqual([...STUDIO_GAME_SELECTION].sort());
+    for (const id of ['feelings', 'mimic', 'beat', 'sound-explorer', 'reading', 'pose', 'speech', 'adventures']) {
+      expect(menu.some(a => a.id === id)).toBe(false); expect(studioActivity(id)).toBeDefined();
+    }
+  });
   it("has one world per activity and preserves all nine legacy routes", () => {
     expect(new Set(STUDIO_V2_ACTIVITIES.map(a => a.id)).size).toBe(STUDIO_V2_ACTIVITIES.length);
     for (const legacy of KID_WORLDS) {

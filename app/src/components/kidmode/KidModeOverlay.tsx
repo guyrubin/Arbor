@@ -515,7 +515,7 @@ export default function KidModeOverlay() {
                   style={sneakOpen ? { flex: 1, minBlockSize: 0, position: "relative" } : studioOpen ? { minHeight: "100%" } : undefined}
                 >
                   {view === "home" ? (
-                    <Suspense fallback={<KidStageFallback />}><StudioHome onWorld={(id) => openStudio("studio-world", id)} onCollection={() => openStudio("studio-collection")} onQuest={() => openStudio("studio-quest")} onExit={closeKidMode} /></Suspense>
+                    <Suspense fallback={<KidStageFallback />}><StudioHome onActivity={openActivity} onWorld={(id) => openStudio("studio-world", id)} onCollection={() => openStudio("studio-collection")} onQuest={() => openStudio("studio-quest")} onExit={closeKidMode} /></Suspense>
                   ) : view === "studio-world" ? (
                     <Suspense fallback={<KidStageFallback />}><StudioWorld worldId={arcadeWorldId as StudioWorldId} onActivity={openActivity} onBooks={() => openSurface("journeys")} onOpenBook={setOpenBookId} /></Suspense>
                   ) : view === "studio-game" ? (

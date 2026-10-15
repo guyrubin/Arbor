@@ -18,6 +18,9 @@ const en: StudioCopy = {
     studio: { title: "Studio", description: "Listen, move and make", headline: "Welcome to the Studio!", hint: "Shall we make a little music?" },
   },
   activities: {
+    "river-rescue": { title: "River Rescue", description: "Plan a path. Sail your boat.", instruction: "Build a water path, collect the supplies, and sail to the dock." },
+    "feelings-forest": { title: "Feelings Forest", description: "Little stories. Big feelings.", instruction: "Listen to Sprout’s story, name the feeling, and choose how to help." },
+    "rhythm-garden": { title: "Rhythm Garden", description: "Copy a tune. Grow your own.", instruction: "Follow the musical flowers, then make a tune of your own." },
     memory: { title: "Memory Match", description: "Find the pairs", instruction: "Turn over two cards. Can you find a pair?" },
     feelings: { title: "Feelings Detective", description: "Every feeling has a story", instruction: "Listen to the story. Which feeling did they name?" },
     mimic: { title: "Mimic Studio", description: "Try a silly face", instruction: "Try the face or movement. You can pass whenever you like." },
@@ -44,6 +47,9 @@ const he: StudioCopy = {
     studio: { title: "הסטודיו", description: "מקשיבים, זזים ויוצרים", headline: "ברוכים הבאים לסטודיו!", hint: "אולי ניצור קצת מוזיקה?" },
   },
   activities: {
+    "river-rescue": { title: "הרפתקה בנהר", description: "מתכננים מסלול. משיטים סירה.", instruction: "בונים מסלול במים, אוספים את הציוד ושטים למזח." },
+    "feelings-forest": { title: "יער הרגשות", description: "סיפורים קטנים. רגשות גדולים.", instruction: "מקשיבים לסיפור של נבט, נותנים שם לרגש ובוחרים איך לעזור." },
+    "rhythm-garden": { title: "גן המנגינות", description: "חוזרים על מנגינה. יוצרים אחת משלך.", instruction: "עוקבים אחרי הפרחים המנגנים ויוצרים מנגינה משלך." },
     memory: { title: "משחק הזיכרון", description: "מוצאים זוגות", instruction: "הופכים שני קלפים. איפה הזוג?" },
     feelings: { title: "בלשי הרגשות", description: "מאחורי כל רגש יש סיפור", instruction: "מקשיבים לסיפור. איזה רגש הדמות ציינה?" },
     mimic: { title: "סטודיו לחיקויים", description: "מנסים פרצוף מצחיק", instruction: "מנסים את הפרצוף או התנועה. אפשר לדלג מתי שרוצים." },

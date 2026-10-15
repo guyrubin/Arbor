@@ -54,3 +54,13 @@
   .studio-sound-choices { gap: 7px; }
   .studio-sound-choice { font-size: 16px !important; }
 }
+
+.studio-corner-resident { display: flex; justify-content: center; min-block-size: 108px; }
+.studio-corner-places { margin-block-start: 8px; }
+.studio-corner-place[data-filled=true] { box-shadow: 0 5px 0 color-mix(in srgb, var(--arbor-ink) 20%, transparent); }
+.studio-corner-place:nth-child(3n+1) svg { color: var(--arbor-clay-deep); }
+.studio-corner-place:nth-child(3n+2) svg { color: var(--arbor-green-ink); }
+.studio-corner-place:nth-child(3n) svg { color: var(--arbor-lav-ink); }
+.studio-puzzle-cell[data-hint=true] { outline: 4px solid var(--arbor-green-ink); outline-offset: -4px; background: var(--arbor-green-soft); }
+.studio-puzzle-reveal { text-align: center; padding-block: 16px; }
+.studio-puzzle-reveal .studio-puzzle-preview { inline-size: min(100%, 520px); }

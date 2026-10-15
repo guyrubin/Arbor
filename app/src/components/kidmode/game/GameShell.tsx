@@ -34,6 +34,7 @@ import { stopVoice } from "../../../lib/voice";
 import { kidSfx } from "../audio/kidAudio";
 import { KidFinishMoment } from "../rewards/KidSouvenir";
 import { useGameSession } from "./GameSessionContext";
+import type { StudioCreation } from '../studioV2/studioCreations';
 
 /** B-KID-94: the world a finish screen belongs to (its souvenir), provided by
  *  the shell so every GameFinish inside it knows without a prop. */
@@ -176,7 +177,7 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
  *  The hero cheers, the world's souvenir sticker is awarded (once, kept for
  *  good), the finish sound plays; Play again and Home (the overlay's, when
  *  Kid Mode is open). No stars, no counts, no streak. */
-export function GameFinish({ title, subtitle, onPlayAgain, playAgainLabel, homeLabel, worldId }: { title: string; subtitle?: string; onPlayAgain: () => void; playAgainLabel: string; homeLabel: string; worldId?: KidWorldTileId }) {
+export function GameFinish({ title, subtitle, onPlayAgain, playAgainLabel, homeLabel, worldId, creation }: { title: string; subtitle?: string; onPlayAgain: () => void; playAgainLabel: string; homeLabel: string; worldId?: KidWorldTileId; creation?: StudioCreation }) {
   const session = useGameSession();
   const goHome = useKidHome();
   const shellWorld = useContext(GameWorldContext);
@@ -185,7 +186,7 @@ export function GameFinish({ title, subtitle, onPlayAgain, playAgainLabel, homeL
   const { uiLang } = useLanguage();
   // B-KID-73: the finish fanfare with the burst (silent when Sound is off).
   useEffect(() => {
-    if (session) { session.onComplete(); return; }
+    if (session) { session.onComplete(creation); return; }
     celebrateBurst(); kidSfx("finish");
   }, [session]);
   // V2 owns the persistent result so its award can wait for ledger hydration.

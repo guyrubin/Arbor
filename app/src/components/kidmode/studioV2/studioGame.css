@@ -69,3 +69,16 @@
 }
 @media (prefers-reduced-motion: reduce) { .studio-game-button-v2 { transition: none; } .studio-game-button-v2:hover, .studio-game-button-v2:active { transform: none; } }
 @media (forced-colors: active) { .studio-game-card, .studio-game-button-v2, .studio-game-mimic { border: 2px solid ButtonText; } .studio-game-button-v2 { color: ButtonText; } }
+
+.studio-play-hero { position: relative; display: inline-block; flex-shrink: 0; vertical-align: middle; isolation: isolate; }
+.studio-player-banner { display: flex; align-items: center; gap: 16px; inline-size: min(100%, 900px); margin: 0 auto 14px; font-weight: 800; font-size: 20px; }
+.studio-activity-picture { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; background: var(--arbor-sky-soft); }
+.studio-activity-picture > img { width: 100%; height: 100%; object-fit: cover; }
+.studio-activity-picture__symbol { position: absolute; inset-block-end: 8px; inset-inline-end: 8px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 16px; background: var(--arbor-paper-elevated); color: var(--arbor-green-ink); box-shadow: 0 4px 12px #17244344; }
+/* Established puzzle and memory mechanics now share the cinematic game stage. */
+.studio-game-view:is([data-studio-game=memory],[data-studio-game=pattern],[data-studio-game=puzzle],[data-studio-game=calm-builder]) .studio-game-view__environment img { filter:brightness(.55) saturate(1.1); transform:scale(1.01); }
+.studio-player-banner { padding:8px 18px; border-radius:24px; border:1px solid #ffffff30; background:linear-gradient(110deg,#183546e8,#18354640); box-shadow:0 12px 30px #0d1b3233; }
+.studio-game-view[data-studio-game=memory] .kid-card { filter:drop-shadow(0 8px 5px #061e3645); }
+.studio-game-view[data-studio-game=memory] .kid-card-back { background:radial-gradient(circle at 30% 20%,#fff8cf 0 5%,#e4bf74 7% 15%,#71a98a 17% 25%,#335e64 28% 65%,#21464e); border:3px solid #ffecb2; box-shadow:inset 0 0 0 6px #2e6265,inset 0 0 0 8px #8ebc9c,0 5px 0 #102d3a; }
+.studio-game-view[data-studio-game=pattern] .pattern-sequence { box-shadow:0 12px 34px #091d3955; }
+.studio-game-view[data-studio-game=puzzle] .studio-game-panel,.studio-game-view[data-studio-game=calm-builder] .studio-game-panel { background:linear-gradient(145deg,#fffdf4,#f1ebdc); border:2px solid #edddb7; box-shadow:0 22px 60px #0c1d3b55; border-radius:30px; }

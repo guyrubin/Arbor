@@ -1,0 +1,147 @@
+.adventure { --adv-ink: #244f49; --adv-paper: #fffef8; color: var(--adv-ink); background: var(--adv-paper); border: 1px solid #dce8de; border-radius: 30px; padding: clamp(16px,3vw,28px); max-inline-size: 840px; margin-inline: auto; box-shadow: 0 16px 50px #254f4b14; font-family: var(--font-sans); }
+.adventure button { font: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.adventure button:focus-visible { outline: 3px solid #305fbc; outline-offset: 4px; }
+.adventure button:disabled { cursor: default; }
+.adventure-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-block-end: 18px; }
+.adventure-challenge { display: flex; padding: 4px; border: 1px solid #dae5dc; background: #f1f5ee; border-radius: 18px; gap: 4px; }
+.adventure-challenge button { display: flex; align-items: center; justify-content: center; gap: 6px; min-block-size: 44px; padding: 8px 12px; border: 0; background: transparent; color: #496358; border-radius: 14px; font-size: 14px; font-weight: 750; }
+.adventure-challenge button[aria-pressed=true] { background: #fffef8; color: #244f49; box-shadow: 0 2px 7px #284d4017; }
+.adventure-steps { display: flex; gap: 6px; }
+.adventure-steps span { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; background: #edf0e9; color: #6c806f; }
+.adventure-steps span[data-current=true] { outline: 2px solid #749d81; outline-offset: 2px; }
+.adventure-steps span[data-done=true] { background: #286c57; color: #fff; }
+.adventure-heading { font-size: clamp(20px,3vw,28px); line-height: 1.3; letter-spacing: -.02em; font-weight: 800; text-align: center; margin: 6px auto 20px; max-inline-size: 600px; }
+.adventure-heading:focus { outline: none; }
+.adventure-status { min-block-size: 27px; margin: 12px 0; text-align: center; font-size: 16px; line-height: 1.5; font-weight: 650; }
+.adventure-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; }
+.adventure-actions button { min-block-size: 52px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 19px; border: 1px solid #cedbd0; border-radius: 17px; background: #fff; font-weight: 750; color: #31594a; box-shadow: 0 3px 0 #dce4dc; }
+.adventure-actions button.adventure-go { background: #276951; border-color: #276951; color: #fffdf3; box-shadow: 0 4px 0 #154b3a; }
+.adventure-actions button:disabled { opacity: .45; box-shadow: none; }
+.adventure-actions button:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+.adventure-transfer { background: #f0f4e9; color: #436348; border-radius: 16px; padding: 14px 18px; font-size: 15px; text-align: center; margin: 22px 0 0; }
+.adventure-quiet { color: #515e70; text-align: center; font-size: 14px; margin-block: 10px; }
+.adventure-eyebrow { display: flex; gap: 8px; align-items: center; font-weight: 800; font-size: 15px; }
+.river-landscape { background: #c2e7d6; border-radius: 26px; overflow: hidden; padding-inline: clamp(12px,5vw,46px); }
+.river-bank { display: flex; justify-content: space-around; color: #6b9364; font-size: 27px; line-height: 1.3; height: 33px; overflow: hidden; }
+.river-bank--bottom { color: #547c4c; }
+.river-board { display: grid; gap: 5px; padding: 8px; border-radius: 20px; border: 3px solid #84b9b6; background: #83c7cc; max-inline-size: 430px; margin-inline: auto; box-shadow: inset 0 3px 10px #417d8b20; }
+.river-cell { position: relative; aspect-ratio: 1; min-inline-size: 0; min-block-size: 44px; border: 2px solid #ffffff65; border-radius: 14px; display: grid; place-items: center; background: #c1eaeb; color: #57949d; transition: background .18s, box-shadow .18s; }
+.river-cell > svg { width: 46%; height: 46%; z-index: 1; }
+.river-cell[data-path=true] { background: #f4f6d7; border-color: #edf6ad; color: #326965; box-shadow: inset 0 0 0 2px #c6d58c; }
+.river-cell[data-rock=true] { background: #a9c8c0; border-color: #a9c8c0; color: #657976; }
+.river-cell[data-rock=true] svg { width: 70%; height: 70%; fill: #859891; }
+.river-cell[data-parcel=true] svg { color: #956431; fill: #ffe0a1; }
+.river-cell[data-dock=true] { background: #f5d9b5; border-color: #c19d74; color: #895b38; }
+.river-cell[data-boat=true] svg { color: #375e7a; fill: #fffdf2; width: 72%; height: 72%; }
+.river-cell[data-hint=true] { outline: 4px solid #be741c; outline-offset: -4px; background: #fff0aa; }
+.river-cell .river-collected { position: absolute; inset-inline-end: 2px; inset-block-start: 2px; width: 17px; height: 17px; color: #1a5d45; fill: #fff; }
+.river-trail { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #79a383; }
+.river-cell[data-path=true]:not([data-boat=true]):not([data-parcel=true]):not([data-dock=true]) > svg { opacity: .16; }
+.river-cargo { display: flex; justify-content: center; gap: 8px; margin-block-start: 15px; }
+.river-cargo > span { display: flex; gap: 4px; align-items: center; background: #f3eee1; color: #9c8259; padding: 7px 12px; border-radius: 13px; min-inline-size: 53px; min-block-size: 36px; }
+.river-cargo > span[data-collected=true] { background: #e3edce; color: #386447; }
+.forest-stage, .rhythm-stage { position: relative; border-radius: 24px; overflow: hidden; isolation: isolate; background: #cce5d4; }
+.adventure-scenery { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; }
+.forest-stage { padding: 24px clamp(16px,4vw,34px); min-block-size: 300px; display: flex; flex-direction: column; align-items: center; justify-content: end; margin-block-end: 23px; }
+.forest-mascot { display: grid; place-items: center; margin-block-end: -12px; filter: drop-shadow(0 10px 8px #244b3d30); }
+.forest-story { position: relative; display: flex; align-items: center; gap: 12px; background: #fffdf6; border-radius: 23px; padding: 18px 20px; border: 1px solid #eee8d6; max-inline-size: 560px; box-shadow: 0 8px 18px #274d3d14; }
+.forest-story p { font-size: clamp(18px,2.7vw,23px); font-weight: 650; line-height: 1.55; margin: 0; }
+.adventure-hear { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; border: 1px solid #cbdcce; border-radius: 50%; background: #eef4e9; color: #315e4b; }
+.adventure-hear:disabled { opacity: .4; }
+.forest-choices { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+.forest-choices button { display: flex; flex: 1 1 110px; max-inline-size: 180px; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-block-size: 110px; padding: 17px 10px; border: 2px solid #e1dbf0; border-radius: 22px; background: #f3effa; color: #665386; font-weight: 750; font-size: 18px; box-shadow: 0 4px 0 #e4dcee; }
+.forest-choices button:nth-child(2n) { background: #fff2df; border-color: #ecddc4; color: #916332; box-shadow: 0 4px 0 #edddc5; }
+.forest-choices--support button { font-size: 16px; background: #eaf3eb; border-color: #d2e1d3; color: #396647; box-shadow: 0 4px 0 #d2e1d3; }
+.forest-choices button:active { transform: translateY(2px); box-shadow: none; }
+.rhythm-stage { min-block-size: 280px; display: grid; align-items: end; padding: 35px 18px 24px; }
+.rhythm-flowers { display: flex; justify-content: center; gap: clamp(10px,3vw,32px); }
+.rhythm-flower { --flower: #ffd89a; --flower-ink: #9e672d; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: end; width: 30%; max-inline-size: 150px; min-block-size: 195px; background: transparent; border: 0; padding: 10px 0 0; color: var(--flower-ink); }
+.rhythm-flower[data-note='1'] { --flower: #bce8ef; --flower-ink: #3d788e; }
+.rhythm-flower[data-note='2'] { --flower: #e1cefa; --flower-ink: #7c5b9c; }
+.rhythm-bloom { width: clamp(66px,12vw,100px); height: clamp(66px,12vw,100px); border-radius: 40% 60% 42% 58% / 55% 45% 55% 45%; display: grid; place-items: center; background: var(--flower); border: 5px solid #fff9; box-shadow: 0 6px 0 #385b4929; position: relative; z-index: 1; transition: transform .16s, box-shadow .16s; }
+.rhythm-bloom > svg { width: 40%; height: 40%; }
+.rhythm-stem { display: block; width: 9px; height: 42px; background: #397b5c; position: relative; }
+.rhythm-stem::after { content: ''; position: absolute; left: 6px; top: 9px; width: 26px; height: 17px; background: #4e956a; border-radius: 100% 0 100% 0; }
+.rhythm-name { background: #fffdf2; border-radius: 12px; padding: 9px 10px; font-size: 14px; font-weight: 800; box-shadow: 0 3px 0 #2e53331c; min-block-size: 40px; }
+.rhythm-flower[data-lit=true] .rhythm-bloom { transform: translateY(-10px) scale(1.12); box-shadow: 0 0 0 9px #fff9, 0 0 32px #fff4c0; }
+.rhythm-flower:active:not(:disabled) .rhythm-bloom { transform: scale(.92); }
+.rhythm-pattern { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin: 22px auto 0; min-block-size: 44px; }
+.rhythm-pattern > span { display: grid; place-items: center; width: 43px; height: 43px; border: 2px dashed #d7dfce; border-radius: 14px; background: #f2f5ea; color: #7a8671; }
+.rhythm-pattern > span[data-filled=true] { border-style: solid; border-color: #9db69a; background: #e2eed7; color: #386647; }
+.rhythm-pattern p { font-size: 16px; text-align: center; max-inline-size: 470px; margin: 0; }
+@media (max-width: 440px) {
+  .adventure { padding: 14px 12px; border-radius: 22px; }
+  .adventure-toolbar { justify-content: center; }
+  .adventure-challenge { width: 100%; justify-content: center; }
+  .adventure-challenge button { flex: 1; font-size: 13px; padding-inline: 7px; }
+  .adventure-heading { font-size: 21px; }
+  .river-landscape { padding-inline: 6px; }
+  .river-board { gap: 4px; padding: 5px; }
+  .river-cell { border-radius: 10px; }
+  .forest-stage { padding: 14px 10px; min-block-size: 310px; }
+  .forest-story { padding: 14px; gap: 8px; }
+  .forest-story p { font-size: 18px; }
+  .forest-choices { gap: 9px; }
+  .forest-choices button { min-block-size: 99px; flex-basis: 80px; font-size: 16px; }
+  .forest-choices--support button { font-size: 14px; }
+  .rhythm-stage { padding-inline: 9px; min-block-size: 250px; }
+  .rhythm-name { font-size: 12px; padding-inline: 7px; }
+  .adventure-actions { gap: 9px; }
+  .adventure-actions button { padding-inline: 12px; font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .adventure *, .adventure *::before, .adventure *::after { animation: none !important; transition: none !important; }
+  .rhythm-flower[data-lit=true] .rhythm-bloom { transform: none; outline: 5px solid #506f3b; }
+}
+
+.river-cell .river-captain { position: absolute; inset-block-start: 0; inset-inline-start: calc(50% - 18px); z-index: 2; pointer-events: none; }
+.river-cell[data-boat=true] > svg { align-self: end; height: 65%; }
+.forest-friends { display: flex; align-items: end; justify-content: center; gap: 30px; padding-block-end: 8px; }
+.forest-friends > .studio-play-hero { margin-block-end: 12px; }
+.rhythm-conductor { display: flex; justify-content: center; margin-block-end: -18px; }
+.rhythm-stage { padding-block-start: 18px; }
+.rhythm-workshop-actions { margin-block: 0 16px; }
+.rhythm-tempo { margin: 0 auto 16px; inline-size: fit-content; }
+@media (max-width: 440px) { .forest-friends { gap: 18px; } .rhythm-flower { min-block-size: 165px; } }
+/* Cinematic play stages: the art is the environment, controls are tactile toys. */
+.adventure { max-inline-size: 1040px; border-color: #d9d7c6; background: linear-gradient(160deg,#fffdf4,#f4f0e1); box-shadow: 0 22px 80px #061c393d, inset 0 1px 0 #fff; }
+.adventure-heading { letter-spacing: -.025em; font-weight: 900; }
+.river-landscape { position: relative; isolation: isolate; padding: clamp(75px,10vw,130px) clamp(12px,6vw,70px) 26px; border: 3px solid #fff9; box-shadow: inset 0 0 30px #123f4a30,0 10px 30px #294e4c25; }
+.river-scene { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
+.river-bank { display: none; }
+.river-board { max-inline-size: 460px; padding: 9px; gap: 6px; border: 2px solid #d6ffff9c; background: #104e639c; backdrop-filter: blur(3px); box-shadow: 0 16px 28px #1138484d,inset 0 1px 0 #fff7; }
+.river-cell { border-color: #d4ffff80; background: linear-gradient(150deg,#c4f4efed,#61bacad9); box-shadow: inset 0 3px 0 #eaffff70,0 3px 0 #255e6c80; }
+.river-cell[data-path=true] { background: linear-gradient(145deg,#fff9c9,#d5e9a6); animation: river-piece-in .22s ease-out; }
+.river-cell[data-rock=true] { background: linear-gradient(145deg,#acc0af,#557a78); box-shadow: inset 0 4px 6px #e7e7cbb3,0 4px 0 #2c555b; border-radius: 34% 45% 32% 46%; }
+.river-cell[data-parcel=true] > svg { filter: drop-shadow(0 3px 0 #845a3266); }
+.river-cell[data-dock=true] { background: repeating-linear-gradient(0deg,#d6a773 0 10px,#bc8759 10px 12px); border-color:#efcc99; box-shadow: 0 5px 0 #76553c; }
+.river-cell[data-boat=true] { overflow: visible; }
+.river-cell[data-boat=true] > svg { filter: drop-shadow(0 3px 2px #204b5480); }
+.forest-stage { min-block-size: 460px; padding-block-start: 110px; justify-content: end; border: 3px solid #fff8; box-shadow: 0 10px 28px #24452c30; }
+.forest-friends { gap: clamp(36px,8vw,100px); }
+.forest-story { background: #fffdf3f5; border: 3px solid #e5cf9d; border-radius: 24px; box-shadow: 0 8px 0 #5b663c22,0 12px 30px #142d2b30; }
+.forest-choices button { background: linear-gradient(145deg,#faf5ff,#dfcff4); box-shadow: inset 0 3px 0 #fff,0 6px 0 #ae9dc2,0 10px 15px #38314f16; border-width: 3px; }
+.forest-choices button:nth-child(2n) { background: linear-gradient(145deg,#fff8e8,#f5d19e); box-shadow: inset 0 3px 0 #fff,0 6px 0 #be9864,0 10px 15px #4e3d2e16; }
+.forest-choices--support button { background: linear-gradient(145deg,#f3fff4,#bbdfbc); border-color: #deefcf; }
+.rhythm-stage { min-block-size: 455px; padding-block-start: 125px; border: 3px solid #fff7; box-shadow: 0 10px 30px #102b4855; }
+.rhythm-conductor { margin-block-end: -30px; }
+.rhythm-flowers { align-items: end; gap: clamp(12px,4vw,60px); }
+.rhythm-flower { max-inline-size: 180px; min-block-size: 220px; }
+.rhythm-flower:nth-child(2) { transform: translateY(13px); }
+.rhythm-bloom { border: 5px solid #fff9; background: radial-gradient(circle at 30% 20%,#fffaf5 0 4%,var(--flower) 37%,var(--flower-ink) 125%); box-shadow: inset 0 4px 5px #fff7,inset 0 -7px 8px #0002,0 10px 0 #182d3226,0 16px 24px #162f3270; }
+.rhythm-bloom::before { content:''; position:absolute; inset:-11px; border:7px dotted var(--flower); border-radius:44%; pointer-events:none; opacity:.75; }
+.rhythm-name { border:2px solid #e1dab7; box-shadow:0 5px 0 #314c3759; }
+.rhythm-flower[data-lit=true] .rhythm-bloom { animation: rhythm-bloom-pop .36s ease-out; box-shadow:0 0 0 10px #fff9,0 0 70px var(--flower),0 12px 20px #11332650; }
+.adventure-actions button { background: linear-gradient(#fff,#f6f1e4); border-width: 2px; box-shadow: inset 0 2px 0 #fff,0 5px 0 #c3cdbb; }
+.adventure-actions button.adventure-go { background: linear-gradient(155deg,#418866,#1f5d46); border-color: #6ea786; box-shadow:inset 0 2px 0 #9ccea170,0 6px 0 #113e30,0 12px 20px #214d3b20; }
+@keyframes river-piece-in { from { transform: scale(.94); } to { transform: scale(1); } }
+@keyframes rhythm-bloom-pop { 0% { transform:scale(.95); } 60% { transform: translateY(-12px) scale(1.15); } 100% { transform:translateY(-10px) scale(1.12); } }
+@media(max-width:600px) { .river-landscape { padding:75px 5px 18px; } .river-board { gap:4px; padding:5px; } .forest-stage { min-block-size:390px; padding-block-start:90px; } .rhythm-stage { min-block-size:390px; padding-block-start:95px; } .rhythm-flower { min-block-size:190px; } .forest-story p { font-size:18px; } }
+@media(prefers-reduced-motion:reduce) { .river-cell[data-path=true],.rhythm-flower[data-lit=true] .rhythm-bloom { animation:none; } .rhythm-flower[data-lit=true] .rhythm-bloom { transform:none; } }
+
+.river-board { position:relative; }
+.river-cell[data-boat=true] > svg { visibility:hidden; }
+.river-vessel { position:absolute; z-index:3; pointer-events:none; display:flex; flex-direction:column; align-items:center; justify-content:end; transform:translate(-50%,-50%); transition:left .34s ease-in-out,top .34s ease-in-out; filter:drop-shadow(0 6px 4px #17374d66); }
+.river-vessel > .studio-play-hero { position:absolute; top:0; left:calc(50% - 21px); z-index:1; }
+.river-vessel > svg { width:95%; height:72%; fill:#ffecbf; color:#4d7292; }
+@media(prefers-reduced-motion:reduce) { .river-vessel { transition:none; } }

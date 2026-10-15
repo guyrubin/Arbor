@@ -210,7 +210,8 @@ describe("existing mechanics keep answers local only inside V2", () => {
     for (let i = 0; i < 6; i++) {
       const round = draw().find(node => node.type === PatternRoundView)!;
       (round.props.onChoose as (choice: string) => void)((round.props.puzzle as { answer: string }).answer);
-      vi.advanceTimersByTime(1050);
+      if (playOnly) (draw().find(node => node.type === PatternRoundView)!.props.onNext as () => void)();
+      else vi.advanceTimersByTime(1050);
     }
     const ending = draw().find(node => node.type === PatternDoneView)!;
     expect(ending).toBeDefined();

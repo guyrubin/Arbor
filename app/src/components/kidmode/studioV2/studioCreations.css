@@ -1,0 +1,21 @@
+.studio-creation-result { margin-block-start: 24px; }
+.studio-creation h3 { margin: 0 0 14px; font-size: 23px; }
+.studio-creation p, .studio-creation-result > p { font-size: 16px; line-height: 1.5; }
+.studio-creation-notes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-block: 18px; direction: ltr; }
+.studio-creation-notes > span { width: 46px; height: 52px; display: grid; place-items: center; background: var(--arbor-peach-soft); color: var(--arbor-clay-deep); border: 3px solid transparent; border-radius: 16px; }
+.studio-creation-notes > span[data-note='1'] { background: var(--arbor-sky-soft); color: var(--arbor-sky-ink); }
+.studio-creation-notes > span[data-note='2'] { background: var(--arbor-lav-soft); color: var(--arbor-lav-ink); }
+.studio-creation-notes > span[data-lit=true] { border-color: currentColor; outline: 3px solid var(--arbor-paper); outline-offset: 3px; transform: translateY(-5px); }
+.studio-creation-room { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: linear-gradient(180deg,var(--arbor-sky-soft) 0 45%,var(--arbor-green-soft) 45%); padding: 24px 18px; border-radius: 26px; border: 2px solid var(--arbor-paper); min-block-size: 210px; }
+.studio-creation-room[data-scene=treehouse] { background: linear-gradient(180deg,var(--arbor-peach-soft) 0 45%,var(--arbor-clay-soft) 45%); }
+.studio-creation-room[data-scene=sky] { background: linear-gradient(180deg,var(--arbor-lav-soft),var(--arbor-sky-soft)); }
+.studio-creation-room[data-light=evening] { box-shadow: inset 0 0 80px var(--arbor-clay); }
+.studio-creation-room[data-light=night] { box-shadow: inset 0 0 100px var(--arbor-ink); }
+.studio-creation-room > span { display: grid; place-items: center; min-block-size: 68px; border-radius: 20px; color: var(--arbor-green-ink); background: var(--arbor-paper-elevated); box-shadow: 0 5px 0 var(--arbor-rule); }
+.studio-creation-room > span[data-object=empty] { opacity: .15; }
+.studio-creation-room svg { width: 46px; height: 46px; }
+.studio-creation-receipt { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.studio-creation-gallery { display: grid; gap: 20px; margin-block-end: 28px; }
+.studio-creation-gallery h2 { display: flex; gap: 10px; align-items: center; }
+.studio-creation-gallery article { border: 1px solid currentColor; border-radius: 22px; padding: 18px; text-align: center; }
+@media (prefers-reduced-motion: reduce) { .studio-creation-notes > span[data-lit=true] { transform: none; } }

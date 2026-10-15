@@ -7,6 +7,7 @@
  * NOTE: Hebrew strings are a solid first draft; a native review is recommended
  * before wide release (child-health product).
  */
+import { gameNextEn, gameNextHe } from "./i18nGameNext";
 import { companionEn, companionHe } from "./i18nCompanion";
 import { keptEn, keptHe } from "./i18nKept";
 import { isolate } from "./bidi";
@@ -17,6 +18,7 @@ export type UiLang = "en" | "he";
 type Dict = Record<string, string>;
 
 export const en: Dict = {
+  ...gameNextEn,
   ...keptEn,
   ...companionEn,
   // AP-005 — JITAI home-nudge strings (were hardcoded EN on the #1 retention surface).
@@ -1236,6 +1238,12 @@ export const en: Dict = {
   "kid.game.sound-explorer.sub": "Listen, discover and play",
   "kid.game.calm-builder.title": "Calm Builder",
   "kid.game.calm-builder.sub": "Make a cozy place your way",
+  "kid.game.river-rescue.title": "River Rescue",
+  "kid.game.river-rescue.sub": "Plan a path. Sail your boat.",
+  "kid.game.feelings-forest.title": "Feelings Forest",
+  "kid.game.feelings-forest.sub": "Little stories. Big feelings.",
+  "kid.game.rhythm-garden.title": "Rhythm Garden",
+  "kid.game.rhythm-garden.sub": "Copy a tune. Grow your own.",
   "kid.game.puzzle.title": "Puzzle Planet",
   "kid.game.puzzle.sub": "Bring a picture together",
   // B-PLAY-08: the three parent-branch Mimic literals, keyed.
@@ -2636,6 +2644,7 @@ export const en: Dict = {
 };
 
 export const he: Dict = {
+  ...gameNextHe,
   ...keptHe,
   ...companionHe,
   // AP-005 — JITAI home-nudge strings (HE; were hardcoded EN). Flagged for arbor-localization native review.
@@ -3797,6 +3806,12 @@ export const he: Dict = {
   "kid.game.sound-explorer.sub": "מקשיבים, מגלים ומשחקים",
   "kid.game.calm-builder.title": "בונים פינה נעימה",
   "kid.game.calm-builder.sub": "מכינים מקום נעים בדרך שלך",
+  "kid.game.river-rescue.title": "הרפתקה בנהר",
+  "kid.game.river-rescue.sub": "מתכננים מסלול. משיטים סירה.",
+  "kid.game.feelings-forest.title": "יער הרגשות",
+  "kid.game.feelings-forest.sub": "סיפורים קטנים. רגשות גדולים.",
+  "kid.game.rhythm-garden.title": "גן המנגינות",
+  "kid.game.rhythm-garden.sub": "חוזרים על מנגינה. יוצרים אחת משלך.",
   "kid.game.puzzle.title": "עולם הפאזלים",
   "kid.game.puzzle.sub": "מחברים תמונה יחד",
   "prac.mimic.camUnavailable": "המצלמה לא זמינה — המשחק עובד באותה מידה פנים מול פנים. אתם המראה!",

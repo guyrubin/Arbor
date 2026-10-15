@@ -1,3 +1,4 @@
+import { NEXT_GAME_COPY } from "../../../lib/i18nGameNext";
 import React, { useEffect, useState } from "react";
 import { ArrowRight, Check, Sparkles, Sticker } from "lucide-react";
 import { useArbor } from "../../../context/ArborContext";
@@ -11,10 +12,12 @@ import { HoldExitButton } from "../HoldExitButton";
 import { prefetchKidSurfaces } from "../kidPrefetch";
 import { HeroFigure } from "../hero/HeroFigure";
 import { useHeroSheetState } from "../hero/useHeroSheet";
-import { STUDIO_V2_WORLDS, type StudioWorldId } from "./studioCatalog";
+import { STUDIO_V2_WORLDS, studioActivityFits, type StudioWorldId, type StudioActivityId } from "./studioCatalog";
 import { studioCopy } from "./studioCopy";
 import { QUEST_STEPS, studioQuestText, useStudioQuestProgress } from "./studioProgress";
 import "./studioV2.css";
+import { StudioActivityArt } from "./StudioActivityArt";
+import "./studioGame.css";
 
 /** The V2 environments are deliberately neutral: the profile alone supplies the child. */
 export function StudioPortalArt({ worldId }: { worldId: StudioWorldId }) {
@@ -33,11 +36,12 @@ export function StudioPortrait({ className = "", label = "" }: { className?: str
   const [failed, setFailed] = useState<string | null>(null);
   return <span className={className}>{hero.url && failed !== hero.url ? <img key={hero.url} src={hero.url} alt={label} onError={() => setFailed(hero.url)} draggable={false} referrerPolicy="no-referrer" /> : <ArborMascot size={90} mood="wave" animate={false} />}</span>;
 }
-export interface StudioHomeProps { onWorld: (worldId: StudioWorldId) => void; onCollection: () => void; onQuest: () => void; onExit: () => void }
-export default function StudioHome({ onWorld, onCollection, onQuest, onExit }: StudioHomeProps) {
+export interface StudioHomeProps { onActivity?: (id: StudioActivityId) => void; onWorld: (worldId: StudioWorldId) => void; onCollection: () => void; onQuest: () => void; onExit: () => void }
+export default function StudioHome({ onWorld, onCollection, onQuest, onExit, onActivity }: StudioHomeProps) {
   const { childProfile } = useArbor();
   useEffect(() => { prefetchKidSurfaces(); }, []);
   const { uiLang } = useLanguage();
+  const nextWords = NEXT_GAME_COPY[uiLang === "he" ? "he" : "en"];
   const lang = uiLang === "he" ? "he" : "en";
   const copy = studioCopy(lang);
   const questCopy = studioQuestText[lang];
@@ -60,11 +64,13 @@ export default function StudioHome({ onWorld, onCollection, onQuest, onExit }: S
       {hasPose ? <div className="studio-v2__figure"><HeroFigure sheet={heroState.sheet} pose="idle" height={430} x={210} y={450} /></div> : hero.url ? <StudioPortrait className="studio-v2__hero-portrait" /> : <div className="studio-v2__hero-empty"><ArborMascot size={200} mood="wave" animate={false} /><p>{copy.noHero}</p></div>}
     </div>
     <div className="studio-v2__guide"><div className="studio-v2__bubble"><span aria-live="polite">{copy.worlds[hintWorld].hint}</span><button type="button" onClick={() => onWorld(hintWorld)}>{copy.takeMe}<ArrowRight size={15} aria-hidden="true" /></button></div><button type="button" className="studio-v2__sprout" aria-label={copy.guide} onClick={() => setHint(n => n + 1)}><ArborMascot size={92} mood={hint % 2 ? "think" : "wave"} animate={false} /></button></div>
-    <section className="studio-v2__quest" aria-label={questCopy.title}>
+    {onActivity ? <section className="studio-v2__quest studio-v2__featured" aria-label={nextWords.featured}>
+      {(['river-rescue','feelings-forest','rhythm-garden'] as const).filter(id => studioActivityFits(id, childProfile, lang)).map(id => <button type="button" key={id} onClick={() => onActivity(id)}><span className="studio-v2__featured-art"><StudioActivityArt id={id} /></span><span><strong>{copy.activities[id].title}</strong><small>{copy.activities[id].description}</small></span><ArrowRight size={20} aria-hidden="true" /></button>)}
+    </section> : <section className="studio-v2__quest" aria-label={questCopy.title}>
       <div className="studio-v2__quest-title"><small>{copy.quest}</small><h2>{quest.completed ? questCopy.done : questCopy.title}</h2><p>{quest.loaded ? quest.completed ? questCopy.ending : copy.progress(quest.steps.length) : copy.questLoading}</p></div>
       <ol className="studio-v2__quest-steps">{QUEST_STEPS.map((step, index) => <li key={step} data-done={quest.steps.includes(step)} aria-current={quest.loaded && !quest.completed && index === quest.steps.length ? "step" : undefined}><span>{quest.steps.includes(step) ? <Check size={22} aria-hidden="true" /> : index + 1}</span><small>{questCopy.steps[index]}</small></li>)}</ol>
       <button type="button" className="studio-v2__gold-button" onClick={onQuest}>{quest.completed ? copy.questOpen : copy.questContinue}<ArrowRight size={20} aria-hidden="true" /></button>
-    </section>
+    </section>}
   </section>;
 }
 export { StudioHome };
