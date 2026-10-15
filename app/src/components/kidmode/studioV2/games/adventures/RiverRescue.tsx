@@ -76,11 +76,11 @@ export default function RiverRescue() {
         <p className="adventure-status" role="status">{status || '\u00a0'}</p>
         <div className="adventure-actions">
           {phase === 'plan' && <>
-            <button type="button" disabled={path.length < 2} onClick={() => { const next = pathRef.current.slice(0, -1); pathRef.current = next; setPath(next); setHint(null); setStatus(''); }}><Undo2 size={20} aria-hidden="true" />{w.undo}</button>
-            <button type="button" disabled={ready} onClick={() => { const next = riverHint(map, path); setHint(next); setStatus(next === null ? w.riverUndoHint : w.riverHint); }}><Lightbulb size={20} aria-hidden="true" />{w.hint}</button>
-            <button type="button" className="adventure-go" disabled={!ready} onClick={() => { if (riverComplete(map, pathRef.current)) { setPhase('sail'); setBoatStep(0); setStatus(''); } }}><Sailboat size={23} aria-hidden="true" />{w.sail}</button>
+            <button type="button" className="studio-game-button-v2" disabled={path.length < 2} onClick={() => { const next = pathRef.current.slice(0, -1); pathRef.current = next; setPath(next); setHint(null); setStatus(''); }}><Undo2 size={20} aria-hidden="true" />{w.undo}</button>
+            <button type="button" className="studio-game-button-v2" disabled={ready} onClick={() => { const next = riverHint(map, path); setHint(next); setStatus(next === null ? w.riverUndoHint : w.riverHint); }}><Lightbulb size={20} aria-hidden="true" />{w.hint}</button>
+            <button type="button" className="studio-game-button-v2 studio-game-button-v2--primary adventure-go" disabled={!ready} onClick={() => { if (riverComplete(map, pathRef.current)) { setPhase('sail'); setBoatStep(0); setStatus(''); } }}><Sailboat size={23} aria-hidden="true" />{w.sail}</button>
           </>}
-          {phase === 'arrived' && <button type="button" className="adventure-go" onClick={() => round === 2 ? setPhase('done') : reset(challenge, round + 1)}>{round === 2 ? w.finish : w.next}<Check size={20} aria-hidden="true" /></button>}
+          {phase === 'arrived' && <button type="button" className="studio-game-button-v2 studio-game-button-v2--primary adventure-go" onClick={() => round === 2 ? setPhase('done') : reset(challenge, round + 1)}>{round === 2 ? w.finish : w.next}<Check size={20} aria-hidden="true" /></button>}
         </div>
         {phase === 'arrived' && round === 2 && <p className="adventure-transfer">{w.riverTransfer}</p>}
       </>}

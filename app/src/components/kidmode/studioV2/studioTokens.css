@@ -1,0 +1,23 @@
+/* Kids Studio V2 / Studio Sky. Shared values extracted from the shipped shell.
+   World illustrations may vary; navigation and controls keep one design system. */
+:where(.studio-v2, .studio-game-view, .adventure, .arbor-games-preview) {
+  --studio-font: Nunito, Heebo, sans-serif;
+  --studio-sky: #172443;
+  --studio-deep-ink: #1a2b4a;
+  --studio-text: #fff;
+  --studio-text-soft: #e7eaf6;
+  --studio-edge: #ffffff50;
+  --studio-panel: linear-gradient(155deg, #3c4678f5, #1e2850fa);
+  --studio-glass: #ffffff14;
+  --studio-action-gold: #ffd24d;
+  --studio-action-ink: #352908;
+  --studio-action-fill: linear-gradient(135deg, #ffdf83, var(--studio-action-gold) 55%, #efb52f);
+  --studio-radius-panel: 22px;
+  --studio-radius-control: 14px;
+  --studio-radius-window: 12px;
+  --studio-tap: 56px;
+  --studio-space-1: 8px;
+  --studio-space-2: 12px;
+  --studio-space-3: 16px;
+  --studio-space-4: 24px;
+}

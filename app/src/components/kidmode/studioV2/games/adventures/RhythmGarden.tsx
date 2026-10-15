@@ -2,17 +2,17 @@ import { NEXT_GAME_COPY } from "../../../../../lib/i18nGameNext";
 import { useEffect, useRef, useState } from 'react';
 import { StudioPlayHero } from '../../StudioPlayHero';
 import { useStudioCreations } from '../../studioCreations';
-import { Check, Droplet, Eye, Leaf, Music2, Pause, Play, Star, Undo2 } from 'lucide-react';
+import { Check, Droplet, Eye, Triangle, Music2, Pause, Play, Star, Undo2 } from 'lucide-react';
 import { useLanguage } from '../../../../../context/LanguageContext';
 import { useArborOptional } from '../../../../../context/ArborContext';
 import { GameShell, GameFinish } from '../../../game/GameShell';
 import { kidSfx, onKidHush, useKidReadAloudMuted } from '../../../audio/kidAudio';
-import { AdventureHeading, AdventureSteps, ChallengePicker, GardenScenery } from './AdventureShared';
+import { AdventureHeading, AdventureSteps, ChallengePicker, AdventureScenery } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { defaultChallenge, melodyFor, melodyMatches, type Challenge, type NoteId } from './adventureRules';
 import { createGardenAudio, type GardenAudio } from './gardenAudio';
 
-const NOTE_GLYPHS = [Star, Droplet, Leaf];
+const NOTE_GLYPHS = [Star, Droplet, Triangle];
 export default function RhythmGarden() {
   const { uiLang } = useLanguage();
   const nextWords = NEXT_GAME_COPY[uiLang === "he" ? "he" : "en"]; const lang = uiLang === 'he' ? 'he' : 'en'; const w = ADVENTURE_COPY[lang];
@@ -73,8 +73,8 @@ export default function RhythmGarden() {
       {phase === 'done' ? <GameFinish creation={{ kind: 'melody', notes: composition, tempo }} title={w.rhythmFinish} subtitle={w.rhythmTransfer} onPlayAgain={() => reset(challenge)} playAgainLabel={w.again} homeLabel={w.home} /> : <>
         <div className="adventure-toolbar"><ChallengePicker value={challenge} onChange={reset} words={w} /><AdventureSteps done={phase === 'compose' ? 3 : round} /></div>
         {(phase === 'ready' || phase === 'compose') && <div className="adventure-actions rhythm-workshop-actions">
-          <button type="button" onClick={() => { stop(); input.current = []; setComposition([]); setPhase('compose'); phaseRef.current = 'compose'; setStatus(''); }}>{nextWords.freeTune}</button>
-          {saved.items.find(item => item.creation.kind === 'melody') && <button type="button" onClick={() => {
+          <button type="button" className="studio-game-button-v2" onClick={() => { stop(); input.current = []; setComposition([]); setPhase('compose'); phaseRef.current = 'compose'; setStatus(''); }}>{nextWords.freeTune}</button>
+          {saved.items.find(item => item.creation.kind === 'melody') && <button type="button" className="studio-game-button-v2" onClick={() => {
             const kept = saved.items.find(item => item.creation.kind === 'melody')?.creation;
             if (!saved.isCurrent() || kept?.kind !== 'melody') return;
             stop(); input.current = [...kept.notes]; setComposition([...kept.notes]); setTempo(kept.tempo); setPhase('compose'); phaseRef.current = 'compose'; setStatus('');
@@ -84,10 +84,10 @@ export default function RhythmGarden() {
           {([1000, 760, 500] as const).map((value, index) => <button type="button" key={value} aria-pressed={tempo === value} onClick={() => { stop(); setTempo(value); }}>{[nextWords.slow, nextWords.flowing, nextWords.bouncy][index]}</button>)}
         </div>}
         <AdventureHeading focusKey={`${round}:${phase}:${playing}`}>{cue}</AdventureHeading>
-        <div className="rhythm-stage"><GardenScenery night /><div className="rhythm-conductor"><StudioPlayHero size={92} celebrate={phase === 'matched'} /></div><div className="rhythm-flowers" role="group" aria-label={w.rhythm}>
+        <div className="rhythm-stage"><AdventureScenery world="sound-orbit" /><div className="rhythm-conductor"><StudioPlayHero size={92} celebrate={phase === 'matched'} /></div><div className="rhythm-pods" role="group" aria-label={w.rhythm}>
           {([0, 1, 2] as const).map(note => {
-            const Glyph = NOTE_GLYPHS[note]; return <button type="button" key={note} data-note={note} data-lit={lit === note} className="rhythm-flower" aria-label={w.notes[note]} disabled={playing || phase === 'ready' || phase === 'matched'} onClick={() => tap(note)}>
-              <span className="rhythm-bloom"><Glyph size={42} aria-hidden="true" fill="currentColor" /></span><span className="rhythm-stem" aria-hidden="true" /><span className="rhythm-name">{w.notes[note]}</span>
+            const Glyph = NOTE_GLYPHS[note]; return <button type="button" key={note} data-note={note} data-lit={lit === note} className="rhythm-pod" aria-label={w.notes[note]} disabled={playing || phase === 'ready' || phase === 'matched'} onClick={() => tap(note)}>
+              <span className="rhythm-pad"><Glyph size={42} aria-hidden="true" fill="currentColor" /></span><span className="rhythm-pedestal" aria-hidden="true" /><span className="rhythm-name">{w.notes[note]}</span>
             </button>;
           })}
         </div></div>
@@ -101,13 +101,13 @@ export default function RhythmGarden() {
         {(muted || unavailable) && <p className="adventure-quiet">{muted ? w.visual : w.rhythmUnavailable}</p>}
         <p className="adventure-status" role="status">{status || '\u00a0'}</p>
         <div className="adventure-actions">
-          {playing ? <button type="button" onClick={stop}><Pause size={20} aria-hidden="true" />{w.stop}</button> : phase === 'matched' ? <button type="button" className="adventure-go" onClick={next}>{w.next}<Check size={20} aria-hidden="true" /></button> : phase === 'compose' ? <>
-            <button type="button" disabled={!composition.length} onClick={() => { const nextTune = input.current.slice(0, -1); input.current = nextTune; setComposition(nextTune); setStatus(''); }}><Undo2 size={20} aria-hidden="true" />{w.undo}</button>
-            <button type="button" disabled={!composition.length} onClick={() => play(composition, false)}><Play size={20} aria-hidden="true" />{w.rhythmPlay}</button>
-            <button type="button" disabled={!composition.length} className="adventure-go" onClick={() => { stop(); setPhase('done'); }}><Music2 size={20} aria-hidden="true" />{w.finish}</button>
+          {playing ? <button type="button" className="studio-game-button-v2" onClick={stop}><Pause size={20} aria-hidden="true" />{w.stop}</button> : phase === 'matched' ? <button type="button" className="studio-game-button-v2 studio-game-button-v2--primary adventure-go" onClick={next}>{w.next}<Check size={20} aria-hidden="true" /></button> : phase === 'compose' ? <>
+            <button type="button" className="studio-game-button-v2" disabled={!composition.length} onClick={() => { const nextTune = input.current.slice(0, -1); input.current = nextTune; setComposition(nextTune); setStatus(''); }}><Undo2 size={20} aria-hidden="true" />{w.undo}</button>
+            <button type="button" className="studio-game-button-v2" disabled={!composition.length} onClick={() => play(composition, false)}><Play size={20} aria-hidden="true" />{w.rhythmPlay}</button>
+            <button type="button" disabled={!composition.length} className="studio-game-button-v2 studio-game-button-v2--primary adventure-go" onClick={() => { stop(); setPhase('done'); }}><Music2 size={20} aria-hidden="true" />{w.finish}</button>
           </> : <>
-            <button type="button" className="adventure-go" onClick={() => play(target, true)}><Play size={21} aria-hidden="true" />{phase === 'ready' ? w.listen : w.replay}</button>
-            <button type="button" aria-pressed={showPattern} onClick={() => setShowPattern(value => !value)}><Eye size={20} aria-hidden="true" />{showPattern ? w.hideMemory : w.memory}</button>
+            <button type="button" className="studio-game-button-v2 studio-game-button-v2--primary adventure-go" onClick={() => play(target, true)}><Play size={21} aria-hidden="true" />{phase === 'ready' ? w.listen : w.replay}</button>
+            <button type="button" className="studio-game-button-v2" aria-pressed={showPattern} onClick={() => setShowPattern(value => !value)}><Eye size={20} aria-hidden="true" />{showPattern ? w.hideMemory : w.memory}</button>
           </>}
         </div>
         {phase === 'compose' && <p className="adventure-transfer">{w.rhythmTransfer}</p>}

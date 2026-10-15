@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Droplet, Leaf, Star, Flower2, LampFloor, LibraryBig, Moon, Music2, Panda, Pause, Play, RectangleHorizontal, RectangleVertical, ShoppingBasket, Sprout, Sun } from 'lucide-react';
+import { Check, Droplet, Triangle, Star, Flower2, LampFloor, LibraryBig, Moon, Music2, Panda, Pause, Play, RectangleHorizontal, RectangleVertical, ShoppingBasket, Sprout, Sun } from 'lucide-react';
 import { useLanguage } from '../../../context/LanguageContext';
 import { onKidHush, useKidReadAloudMuted } from '../audio/kidAudio';
 import { createGardenAudio } from './games/adventures/gardenAudio';
@@ -8,7 +8,7 @@ import type { StudioActivityId } from './studioCatalog';
 import './studioCreations.css';
 
 export const CORNER_GLYPHS = { cushion: RectangleHorizontal, plant: Sprout, books: LibraryBig, lamp: LampFloor, blanket: RectangleVertical, panda: Panda, flowers: Flower2, basket: ShoppingBasket };
-const NOTE_GLYPHS = [Star, Droplet, Leaf];
+const NOTE_GLYPHS = [Star, Droplet, Triangle];
 const COPY = {
   en: { corner: 'Your little world', melody: 'Your own tune', keeping: 'Keeping your creation…', kept: 'In your collection', error: 'Your creation is still here. Saving did not finish.', retry: 'Try saving again', play: 'Play my tune', pause: 'Pause', quiet: 'Follow the shapes with sound off.', show: 'Show someone what you made. Can they play it with you?', remix: 'Open and remix', title: 'Things I made', unavailable: 'The sound could not play. You can follow the shapes.' },
   he: { corner: 'העולם הקטן שלך', melody: 'המנגינה שלך', keeping: 'שומרים את היצירה…', kept: 'באוסף שלך', error: 'היצירה עדיין כאן. השמירה לא הושלמה.', retry: 'לנסות לשמור שוב', play: 'לנגן את המנגינה שלי', pause: 'לעצור', quiet: 'אפשר לעקוב אחרי הצורות כשהצליל כבוי.', show: 'אפשר להראות למישהו מה יצרת. אולי תנסו יחד?', remix: 'לפתוח וליצור גרסה חדשה', title: 'דברים שיצרתי', unavailable: 'לא הצלחנו להשמיע צליל. אפשר לעקוב אחרי הצורות.' },

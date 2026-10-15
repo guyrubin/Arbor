@@ -1,9 +1,9 @@
-import { Brain, Flower2, Leaf, Puzzle, Route, Sailboat, Shapes, Sofa } from 'lucide-react';
+import { Brain, AudioLines, Theater, Puzzle, Route, Sailboat, Shapes, Sofa } from 'lucide-react';
 import { useKidTheme } from '../../../hooks/useKidTheme';
 import { kidArt, kidArtSrcSet, type KidArtKey } from '../../../lib/kidThemeManifest';
 import { studioActivity, type StudioActivityId } from './studioCatalog';
 
-const glyphs = { 'river-rescue': Sailboat, 'feelings-forest': Leaf, 'rhythm-garden': Flower2, memory: Brain, pattern: Shapes, puzzle: Puzzle, 'calm-builder': Sofa, sneak: Route };
+const glyphs = { 'river-rescue': Sailboat, 'feelings-forest': Theater, 'rhythm-garden': AudioLines, memory: Brain, pattern: Shapes, puzzle: Puzzle, 'calm-builder': Sofa, sneak: Route };
 /** Distinct game landmarks, with profile identity kept out of shared imagery. */
 export function StudioActivityArt({ id }: { id: StudioActivityId }) {
   const theme = useKidTheme();

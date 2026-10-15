@@ -1,147 +1,121 @@
-.adventure { --adv-ink: #244f49; --adv-paper: #fffef8; color: var(--adv-ink); background: var(--adv-paper); border: 1px solid #dce8de; border-radius: 30px; padding: clamp(16px,3vw,28px); max-inline-size: 840px; margin-inline: auto; box-shadow: 0 16px 50px #254f4b14; font-family: var(--font-sans); }
-.adventure button { font: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.adventure button:focus-visible { outline: 3px solid #305fbc; outline-offset: 4px; }
+@import "../../studioTokens.css";
+/* Studio V2 chrome is shared. Each game has a separate authored play scene. */
+.adventure { --adv-ink: var(--studio-text); color: var(--studio-text); background: var(--studio-panel); border: 1px solid var(--studio-edge); border-radius: var(--studio-radius-panel); padding: clamp(16px,3vw,28px); max-inline-size: 1040px; margin-inline: auto; box-shadow: 0 24px 70px #0006,inset 0 1px 0 #ffffff1a; font-family: var(--studio-font); }
+.adventure button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.adventure button:focus-visible { outline: 3px solid var(--studio-text); outline-offset: 4px; }
 .adventure button:disabled { cursor: default; }
-.adventure-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-block-end: 18px; }
-.adventure-challenge { display: flex; padding: 4px; border: 1px solid #dae5dc; background: #f1f5ee; border-radius: 18px; gap: 4px; }
-.adventure-challenge button { display: flex; align-items: center; justify-content: center; gap: 6px; min-block-size: 44px; padding: 8px 12px; border: 0; background: transparent; color: #496358; border-radius: 14px; font-size: 14px; font-weight: 750; }
-.adventure-challenge button[aria-pressed=true] { background: #fffef8; color: #244f49; box-shadow: 0 2px 7px #284d4017; }
-.adventure-steps { display: flex; gap: 6px; }
-.adventure-steps span { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; background: #edf0e9; color: #6c806f; }
-.adventure-steps span[data-current=true] { outline: 2px solid #749d81; outline-offset: 2px; }
-.adventure-steps span[data-done=true] { background: #286c57; color: #fff; }
-.adventure-heading { font-size: clamp(20px,3vw,28px); line-height: 1.3; letter-spacing: -.02em; font-weight: 800; text-align: center; margin: 6px auto 20px; max-inline-size: 600px; }
+.adventure-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--studio-space-2); margin-block-end: var(--studio-space-3); }
+.adventure-challenge { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--studio-edge); background: var(--studio-glass); border-radius: var(--studio-radius-control); }
+.adventure-challenge button { display: flex; align-items: center; justify-content: center; gap: 6px; min-block-size: 48px; padding: 8px 12px; border: 0; background: transparent; color: var(--studio-text-soft); border-radius: 10px; font-size: 14px; font-weight: 800; }
+.adventure-challenge button[aria-pressed=true] { background: var(--studio-action-gold); color: var(--studio-action-ink); }
+.adventure-steps { display: flex; gap: var(--studio-space-1); }
+.adventure-steps span { display: grid; place-items: center; inline-size: 26px; block-size: 26px; border: 1px solid var(--studio-edge); border-radius: 50%; background: var(--studio-glass); color: var(--studio-text-soft); }
+.adventure-steps span[data-current=true] { outline: 2px solid var(--studio-text); outline-offset: 2px; }
+.adventure-steps span[data-done=true] { background: var(--studio-action-gold); color: var(--studio-action-ink); border-color: var(--studio-action-gold); }
+.arbor-play .adventure .adventure-heading { font: 800 clamp(21px,3vw,28px)/1.3 var(--studio-font); color: var(--studio-text); letter-spacing: -.025em; text-align: center; margin: 6px auto 20px; max-inline-size: 600px; }
 .adventure-heading:focus { outline: none; }
-.adventure-status { min-block-size: 27px; margin: 12px 0; text-align: center; font-size: 16px; line-height: 1.5; font-weight: 650; }
-.adventure-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; }
-.adventure-actions button { min-block-size: 52px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 19px; border: 1px solid #cedbd0; border-radius: 17px; background: #fff; font-weight: 750; color: #31594a; box-shadow: 0 3px 0 #dce4dc; }
-.adventure-actions button.adventure-go { background: #276951; border-color: #276951; color: #fffdf3; box-shadow: 0 4px 0 #154b3a; }
+.adventure-status { min-block-size: 27px; margin: var(--studio-space-2) 0; text-align: center; font-size: 16px; line-height: 1.5; font-weight: 700; color: var(--studio-text-soft); }
+.adventure-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--studio-space-2); }
+.adventure-actions button { min-block-size: var(--studio-tap); display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 22px; border: 1px solid var(--studio-edge); border-radius: var(--studio-radius-control); background: var(--studio-glass); font: 800 17px/1.3 var(--studio-font); color: var(--studio-text); }
+.adventure-actions button.adventure-go { background: var(--studio-action-fill); border-color: #ffe499; color: var(--studio-action-ink); box-shadow: 0 6px 24px #ffc22635; }
 .adventure-actions button:disabled { opacity: .45; box-shadow: none; }
-.adventure-actions button:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
-.adventure-transfer { background: #f0f4e9; color: #436348; border-radius: 16px; padding: 14px 18px; font-size: 15px; text-align: center; margin: 22px 0 0; }
-.adventure-quiet { color: #515e70; text-align: center; font-size: 14px; margin-block: 10px; }
-.adventure-eyebrow { display: flex; gap: 8px; align-items: center; font-weight: 800; font-size: 15px; }
-.river-landscape { background: #c2e7d6; border-radius: 26px; overflow: hidden; padding-inline: clamp(12px,5vw,46px); }
-.river-bank { display: flex; justify-content: space-around; color: #6b9364; font-size: 27px; line-height: 1.3; height: 33px; overflow: hidden; }
-.river-bank--bottom { color: #547c4c; }
-.river-board { display: grid; gap: 5px; padding: 8px; border-radius: 20px; border: 3px solid #84b9b6; background: #83c7cc; max-inline-size: 430px; margin-inline: auto; box-shadow: inset 0 3px 10px #417d8b20; }
-.river-cell { position: relative; aspect-ratio: 1; min-inline-size: 0; min-block-size: 44px; border: 2px solid #ffffff65; border-radius: 14px; display: grid; place-items: center; background: #c1eaeb; color: #57949d; transition: background .18s, box-shadow .18s; }
-.river-cell > svg { width: 46%; height: 46%; z-index: 1; }
-.river-cell[data-path=true] { background: #f4f6d7; border-color: #edf6ad; color: #326965; box-shadow: inset 0 0 0 2px #c6d58c; }
-.river-cell[data-rock=true] { background: #a9c8c0; border-color: #a9c8c0; color: #657976; }
-.river-cell[data-rock=true] svg { width: 70%; height: 70%; fill: #859891; }
-.river-cell[data-parcel=true] svg { color: #956431; fill: #ffe0a1; }
-.river-cell[data-dock=true] { background: #f5d9b5; border-color: #c19d74; color: #895b38; }
-.river-cell[data-boat=true] svg { color: #375e7a; fill: #fffdf2; width: 72%; height: 72%; }
-.river-cell[data-hint=true] { outline: 4px solid #be741c; outline-offset: -4px; background: #fff0aa; }
-.river-cell .river-collected { position: absolute; inset-inline-end: 2px; inset-block-start: 2px; width: 17px; height: 17px; color: #1a5d45; fill: #fff; }
-.river-trail { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #79a383; }
+.adventure-actions button:active:not(:disabled) { transform: scale(.97); }
+.adventure-transfer { background: var(--studio-glass); color: var(--studio-text-soft); border: 1px solid var(--studio-edge); border-radius: var(--studio-radius-control); padding: 14px 18px; font-size: 15px; text-align: center; margin: 22px 0 0; }
+.adventure-quiet { color: var(--studio-text-soft); text-align: center; font-size: 14px; margin-block: 10px; }
+.adventure-eyebrow { display: flex; gap: var(--studio-space-1); align-items: center; font-weight: 800; font-size: 15px; }
+/* Canal Quest: engineered waterways, ceramic channels and brass cargo. */
+.river-landscape { position: relative; isolation: isolate; border-radius: var(--studio-radius-window); overflow: hidden; padding: clamp(90px,11vw,150px) clamp(12px,6vw,70px) 28px; background: #2198b4; border: 1px solid var(--studio-edge); }
+.river-scene { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; z-index: -1; }
+.river-bank { display: none; }
+.river-board { position: relative; display: grid; gap: 5px; padding: 8px; border-radius: 18px; border: 5px solid #ffd8a3; background: #276b7ddb; max-inline-size: 460px; margin-inline: auto; box-shadow: 0 7px 0 #b76b3b,0 18px 28px #0e4f6470,inset 0 0 0 2px #8d6148; }
+.river-cell { position: relative; aspect-ratio: 1; min-inline-size: 0; min-block-size: 44px; border: 2px solid #e1ffff8c; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(145deg,#b4edf1,#4eb2c6); color: #24647d; box-shadow: inset 0 3px 0 #eaffff70,0 3px 0 #255e6c80; transition: background .18s,box-shadow .18s; }
+.river-cell > svg { inline-size: 46%; block-size: 46%; z-index: 1; }
+.river-cell[data-path=true] { background: linear-gradient(145deg,#fff7b8,#f3c76e); border-color: #fff4ba; color: #5c5631; animation: canal-piece-in .2s ease-out; }
+.river-cell[data-rock=true] { background: linear-gradient(145deg,#e1ad79,#a96c4f); border-color: #dda774; color: #795344; border-radius: 30% 38% 30% 42%; }
+.river-cell[data-rock=true] svg { inline-size: 70%; block-size: 70%; fill: #bb8a69; }
+.river-cell[data-parcel=true] > svg { color: #825422; fill: #ffe0a1; filter: drop-shadow(0 3px 0 #845a3266); }
+.river-cell[data-dock=true] { background: repeating-linear-gradient(0deg,#e0b47e 0 10px,#b17d51 10px 12px); border-color: #fff1c5; color: #654431; box-shadow: 0 4px 0 #76553c; }
+.river-cell[data-boat=true] > svg { visibility: hidden; }
+.river-cell[data-hint=true] { outline: 4px solid #80431d; outline-offset: -4px; background: #fff0aa; }
+.river-cell:focus-visible { outline-color: #162746; }
+.river-cell .river-collected { position: absolute; inset-inline-end: 2px; inset-block-start: 2px; inline-size: 17px; block-size: 17px; color: #1a5d45; fill: #fff; }
+.river-trail { position: absolute; inline-size: 12px; block-size: 12px; border-radius: 50%; background: #957849; }
 .river-cell[data-path=true]:not([data-boat=true]):not([data-parcel=true]):not([data-dock=true]) > svg { opacity: .16; }
-.river-cargo { display: flex; justify-content: center; gap: 8px; margin-block-start: 15px; }
-.river-cargo > span { display: flex; gap: 4px; align-items: center; background: #f3eee1; color: #9c8259; padding: 7px 12px; border-radius: 13px; min-inline-size: 53px; min-block-size: 36px; }
-.river-cargo > span[data-collected=true] { background: #e3edce; color: #386447; }
-.forest-stage, .rhythm-stage { position: relative; border-radius: 24px; overflow: hidden; isolation: isolate; background: #cce5d4; }
-.adventure-scenery { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; }
-.forest-stage { padding: 24px clamp(16px,4vw,34px); min-block-size: 300px; display: flex; flex-direction: column; align-items: center; justify-content: end; margin-block-end: 23px; }
-.forest-mascot { display: grid; place-items: center; margin-block-end: -12px; filter: drop-shadow(0 10px 8px #244b3d30); }
-.forest-story { position: relative; display: flex; align-items: center; gap: 12px; background: #fffdf6; border-radius: 23px; padding: 18px 20px; border: 1px solid #eee8d6; max-inline-size: 560px; box-shadow: 0 8px 18px #274d3d14; }
-.forest-story p { font-size: clamp(18px,2.7vw,23px); font-weight: 650; line-height: 1.55; margin: 0; }
-.adventure-hear { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; border: 1px solid #cbdcce; border-radius: 50%; background: #eef4e9; color: #315e4b; }
-.adventure-hear:disabled { opacity: .4; }
-.forest-choices { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
-.forest-choices button { display: flex; flex: 1 1 110px; max-inline-size: 180px; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-block-size: 110px; padding: 17px 10px; border: 2px solid #e1dbf0; border-radius: 22px; background: #f3effa; color: #665386; font-weight: 750; font-size: 18px; box-shadow: 0 4px 0 #e4dcee; }
-.forest-choices button:nth-child(2n) { background: #fff2df; border-color: #ecddc4; color: #916332; box-shadow: 0 4px 0 #edddc5; }
-.forest-choices--support button { font-size: 16px; background: #eaf3eb; border-color: #d2e1d3; color: #396647; box-shadow: 0 4px 0 #d2e1d3; }
+.river-cargo { display: flex; justify-content: center; gap: var(--studio-space-1); margin-block-start: var(--studio-space-3); }
+.river-cargo > span { display: flex; gap: 4px; align-items: center; background: var(--studio-glass); border: 1px solid var(--studio-edge); color: var(--studio-text-soft); padding: 7px 12px; border-radius: 10px; min-inline-size: 53px; min-block-size: 36px; }
+.river-cargo > span[data-collected=true] { background: var(--studio-action-gold); color: var(--studio-action-ink); }
+.river-vessel { position: absolute; z-index: 3; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: end; transform: translate(-50%,-50%); transition: left .34s ease-in-out,top .34s ease-in-out; filter: drop-shadow(0 6px 4px #17374d66); }
+.river-vessel > .studio-play-hero { position: absolute; top: 0; left: calc(50% - 21px); z-index: 1; }
+.river-vessel > svg { width: 95%; height: 72%; fill: #ffecbf; color: #4d7292; }
+/* Story Theater: paper props, warm spotlights and a tactile speech card. */
+.forest-stage,.rhythm-stage { position: relative; border-radius: var(--studio-radius-window); overflow: hidden; isolation: isolate; border: 1px solid var(--studio-edge); }
+.adventure-scenery { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; z-index: -1; }
+.adventure-scenery--fallback[data-world-scenery='story-theater'] { background: radial-gradient(ellipse at 50% 75%,#ffe4b2,#bd8790 60%,#66526f); box-shadow: inset 40px 0 #9e6a39,inset -40px 0 #9e6a39; }
+.adventure-scenery--fallback[data-world-scenery='sound-orbit'] { background: radial-gradient(ellipse at 50% 65%,#776abc,#172443 68%); }
+.forest-stage { padding: 150px clamp(14px,4vw,34px) 24px; min-block-size: 470px; display: flex; flex-direction: column; align-items: center; justify-content: end; margin-block-end: var(--studio-space-4); background: #9d6b59; }
+.forest-prop { display: grid; place-items: center; position: absolute; top: 24%; inset-inline-start: calc(50% - 34px); inline-size: 68px; block-size: 68px; border-radius: 15px; background: #f9dfb7; color: #755240; box-shadow: 0 5px 0 #6e473636; transform: rotate(-5deg); }
+.forest-friends { display: flex; align-items: end; justify-content: center; gap: clamp(36px,9vw,110px); padding-block-end: 8px; }
+.forest-friends > .studio-play-hero { margin-block-end: 12px; }
+.forest-mascot { display: grid; place-items: center; margin-block-end: -12px; filter: drop-shadow(0 10px 8px #50334544); }
+.forest-story { position: relative; display: flex; align-items: center; gap: var(--studio-space-2); background: #fff8e9; color: var(--studio-deep-ink); border: 2px solid #e8cba0; border-radius: 12px 20px 20px 20px; padding: 18px 20px; max-inline-size: 560px; box-shadow: 0 6px 0 #77573833,0 12px 24px #4d344140; }
+.forest-story p { font-size: clamp(18px,2.7vw,23px); font-weight: 700; line-height: 1.5; margin: 0; }
+.adventure-hear { display: grid; place-items: center; inline-size: var(--studio-tap); block-size: var(--studio-tap); flex-shrink: 0; border: 1px solid #c6ab8e; border-radius: var(--studio-radius-control); background: #f5e6d4; color: var(--studio-deep-ink); }
+.adventure-hear:disabled { opacity: .45; }
+.adventure .adventure-hear:focus-visible { outline-color: var(--studio-deep-ink); }
+.forest-choices { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--studio-space-2); margin-block: var(--studio-space-3); }
+.forest-choices button { display: flex; flex: 1 1 110px; max-inline-size: 180px; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-block-size: 110px; padding: 17px 10px; border: 1px solid var(--studio-edge); border-radius: var(--studio-radius-control); background: var(--studio-glass); color: var(--studio-text); font-weight: 800; font-size: 18px; box-shadow: inset 0 1px 0 #fff3,0 6px 0 #0f1d393d; }
+.forest-choices button > svg { color: #ffdd9c; }
+.forest-choices--support button { font-size: 16px; }
 .forest-choices button:active { transform: translateY(2px); box-shadow: none; }
-.rhythm-stage { min-block-size: 280px; display: grid; align-items: end; padding: 35px 18px 24px; }
-.rhythm-flowers { display: flex; justify-content: center; gap: clamp(10px,3vw,32px); }
-.rhythm-flower { --flower: #ffd89a; --flower-ink: #9e672d; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: end; width: 30%; max-inline-size: 150px; min-block-size: 195px; background: transparent; border: 0; padding: 10px 0 0; color: var(--flower-ink); }
-.rhythm-flower[data-note='1'] { --flower: #bce8ef; --flower-ink: #3d788e; }
-.rhythm-flower[data-note='2'] { --flower: #e1cefa; --flower-ink: #7c5b9c; }
-.rhythm-bloom { width: clamp(66px,12vw,100px); height: clamp(66px,12vw,100px); border-radius: 40% 60% 42% 58% / 55% 45% 55% 45%; display: grid; place-items: center; background: var(--flower); border: 5px solid #fff9; box-shadow: 0 6px 0 #385b4929; position: relative; z-index: 1; transition: transform .16s, box-shadow .16s; }
-.rhythm-bloom > svg { width: 40%; height: 40%; }
-.rhythm-stem { display: block; width: 9px; height: 42px; background: #397b5c; position: relative; }
-.rhythm-stem::after { content: ''; position: absolute; left: 6px; top: 9px; width: 26px; height: 17px; background: #4e956a; border-radius: 100% 0 100% 0; }
-.rhythm-name { background: #fffdf2; border-radius: 12px; padding: 9px 10px; font-size: 14px; font-weight: 800; box-shadow: 0 3px 0 #2e53331c; min-block-size: 40px; }
-.rhythm-flower[data-lit=true] .rhythm-bloom { transform: translateY(-10px) scale(1.12); box-shadow: 0 0 0 9px #fff9, 0 0 32px #fff4c0; }
-.rhythm-flower:active:not(:disabled) .rhythm-bloom { transform: scale(.92); }
-.rhythm-pattern { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin: 22px auto 0; min-block-size: 44px; }
-.rhythm-pattern > span { display: grid; place-items: center; width: 43px; height: 43px; border: 2px dashed #d7dfce; border-radius: 14px; background: #f2f5ea; color: #7a8671; }
-.rhythm-pattern > span[data-filled=true] { border-style: solid; border-color: #9db69a; background: #e2eed7; color: #386647; }
+/* Sound Orbit: three luminous instrument pods, each readable by shape. */
+.rhythm-stage { min-block-size: 470px; display: grid; align-items: end; padding: 130px 18px 28px; background: var(--studio-sky); }
+.rhythm-conductor { display: flex; justify-content: center; margin-block-end: -15px; }
+.rhythm-pods { display: flex; justify-content: center; align-items: end; gap: clamp(12px,4vw,60px); }
+.rhythm-pod { --pod-fill: #ffe39c; --pod-ink: #735026; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: end; inline-size: 30%; max-inline-size: 180px; min-block-size: 195px; background: transparent; border: 0; padding: 10px 0 0; color: var(--pod-ink); }
+.rhythm-pod[data-note='1'] { --pod-fill: #9fe6eb; --pod-ink: #245979; transform: translateY(12px); }
+.rhythm-pod[data-note='2'] { --pod-fill: #d7baff; --pod-ink: #624387; }
+.rhythm-pad { inline-size: clamp(66px,12vw,110px); block-size: clamp(66px,12vw,110px); border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 30% 20%,#fffcf6,var(--pod-fill) 48%,var(--pod-ink) 135%); border: 5px solid #fff9; box-shadow: inset 0 4px 5px #fff7,inset 0 -7px 8px #0002,0 9px 0 #45517b,0 16px 24px #13132b80; position: relative; z-index: 1; transition: transform .16s,box-shadow .16s; }
+.rhythm-pad::before { content: ''; position: absolute; inset: -10px; border: 2px solid var(--pod-fill); border-radius: 50%; transform: rotateX(52deg) rotateZ(-25deg); pointer-events: none; opacity: .8; }
+.rhythm-pad > svg { inline-size: 40%; block-size: 40%; }
+.rhythm-pedestal { display: block; inline-size: 60%; block-size: 27px; margin-block-start: 9px; border-radius: 50%; border: 2px solid #d5deffb3; background: linear-gradient(#a2afdb,#45517b); box-shadow: 0 9px 18px #0d163e80; }
+.rhythm-name { background: #1d2d50f2; color: var(--studio-text); border: 1px solid var(--studio-edge); border-radius: var(--studio-radius-control); padding: 9px 10px; font-size: 14px; font-weight: 800; min-block-size: 40px; margin-block-start: 12px; }
+.rhythm-pod[data-lit=true] .rhythm-pad { transform: translateY(-8px) scale(1.08); box-shadow: 0 0 0 8px #fff8,0 0 42px var(--pod-fill),0 9px 0 #45517b; }
+.rhythm-pod:active:not(:disabled) .rhythm-pad { transform: scale(.93); }
+.rhythm-pattern { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--studio-space-1); margin: 22px auto 0; min-block-size: 44px; }
+.rhythm-pattern > span { display: grid; place-items: center; inline-size: 44px; block-size: 44px; border: 1px dashed var(--studio-edge); border-radius: 12px; background: var(--studio-glass); color: var(--studio-text-soft); }
+.rhythm-pattern > span[data-filled=true] { border-style: solid; border-color: var(--studio-action-gold); color: var(--studio-action-gold); }
 .rhythm-pattern p { font-size: 16px; text-align: center; max-inline-size: 470px; margin: 0; }
-@media (max-width: 440px) {
-  .adventure { padding: 14px 12px; border-radius: 22px; }
+.rhythm-workshop-actions { margin-block: 0 var(--studio-space-3); }
+.rhythm-tempo { margin: 0 auto var(--studio-space-3); inline-size: fit-content; }
+@keyframes canal-piece-in { from { transform: scale(.94); } to { transform: scale(1); } }
+@media (max-width:600px) {
+  .adventure { padding: 14px 12px; border-radius: 18px; }
   .adventure-toolbar { justify-content: center; }
-  .adventure-challenge { width: 100%; justify-content: center; }
+  .adventure-challenge { inline-size: 100%; justify-content: center; }
   .adventure-challenge button { flex: 1; font-size: 13px; padding-inline: 7px; }
-  .adventure-heading { font-size: 21px; }
-  .river-landscape { padding-inline: 6px; }
-  .river-board { gap: 4px; padding: 5px; }
-  .river-cell { border-radius: 10px; }
-  .forest-stage { padding: 14px 10px; min-block-size: 310px; }
+  .river-landscape { padding: 90px 5px 18px; }
+  .river-board { gap: 4px; padding: 5px; border-width: 3px; }
+  .river-cell { border-radius: 8px; }
+  .forest-stage { padding: 130px 10px 16px; min-block-size: 420px; }
+  .forest-friends { gap: 30px; }
   .forest-story { padding: 14px; gap: 8px; }
   .forest-story p { font-size: 18px; }
   .forest-choices { gap: 9px; }
   .forest-choices button { min-block-size: 99px; flex-basis: 80px; font-size: 16px; }
   .forest-choices--support button { font-size: 14px; }
-  .rhythm-stage { padding-inline: 9px; min-block-size: 250px; }
+  .rhythm-stage { padding: 110px 9px 24px; min-block-size: 420px; }
+  .rhythm-pod { min-block-size: 180px; }
   .rhythm-name { font-size: 12px; padding-inline: 7px; }
   .adventure-actions { gap: 9px; }
   .adventure-actions button { padding-inline: 12px; font-size: 15px; }
 }
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion:reduce) {
   .adventure *, .adventure *::before, .adventure *::after { animation: none !important; transition: none !important; }
-  .rhythm-flower[data-lit=true] .rhythm-bloom { transform: none; outline: 5px solid #506f3b; }
+  .rhythm-pod[data-lit=true] .rhythm-pad { transform: none; outline: 5px solid var(--studio-action-gold); }
+  .adventure button:active { transform: none !important; }
 }
-
-.river-cell .river-captain { position: absolute; inset-block-start: 0; inset-inline-start: calc(50% - 18px); z-index: 2; pointer-events: none; }
-.river-cell[data-boat=true] > svg { align-self: end; height: 65%; }
-.forest-friends { display: flex; align-items: end; justify-content: center; gap: 30px; padding-block-end: 8px; }
-.forest-friends > .studio-play-hero { margin-block-end: 12px; }
-.rhythm-conductor { display: flex; justify-content: center; margin-block-end: -18px; }
-.rhythm-stage { padding-block-start: 18px; }
-.rhythm-workshop-actions { margin-block: 0 16px; }
-.rhythm-tempo { margin: 0 auto 16px; inline-size: fit-content; }
-@media (max-width: 440px) { .forest-friends { gap: 18px; } .rhythm-flower { min-block-size: 165px; } }
-/* Cinematic play stages: the art is the environment, controls are tactile toys. */
-.adventure { max-inline-size: 1040px; border-color: #d9d7c6; background: linear-gradient(160deg,#fffdf4,#f4f0e1); box-shadow: 0 22px 80px #061c393d, inset 0 1px 0 #fff; }
-.adventure-heading { letter-spacing: -.025em; font-weight: 900; }
-.river-landscape { position: relative; isolation: isolate; padding: clamp(75px,10vw,130px) clamp(12px,6vw,70px) 26px; border: 3px solid #fff9; box-shadow: inset 0 0 30px #123f4a30,0 10px 30px #294e4c25; }
-.river-scene { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
-.river-bank { display: none; }
-.river-board { max-inline-size: 460px; padding: 9px; gap: 6px; border: 2px solid #d6ffff9c; background: #104e639c; backdrop-filter: blur(3px); box-shadow: 0 16px 28px #1138484d,inset 0 1px 0 #fff7; }
-.river-cell { border-color: #d4ffff80; background: linear-gradient(150deg,#c4f4efed,#61bacad9); box-shadow: inset 0 3px 0 #eaffff70,0 3px 0 #255e6c80; }
-.river-cell[data-path=true] { background: linear-gradient(145deg,#fff9c9,#d5e9a6); animation: river-piece-in .22s ease-out; }
-.river-cell[data-rock=true] { background: linear-gradient(145deg,#acc0af,#557a78); box-shadow: inset 0 4px 6px #e7e7cbb3,0 4px 0 #2c555b; border-radius: 34% 45% 32% 46%; }
-.river-cell[data-parcel=true] > svg { filter: drop-shadow(0 3px 0 #845a3266); }
-.river-cell[data-dock=true] { background: repeating-linear-gradient(0deg,#d6a773 0 10px,#bc8759 10px 12px); border-color:#efcc99; box-shadow: 0 5px 0 #76553c; }
-.river-cell[data-boat=true] { overflow: visible; }
-.river-cell[data-boat=true] > svg { filter: drop-shadow(0 3px 2px #204b5480); }
-.forest-stage { min-block-size: 460px; padding-block-start: 110px; justify-content: end; border: 3px solid #fff8; box-shadow: 0 10px 28px #24452c30; }
-.forest-friends { gap: clamp(36px,8vw,100px); }
-.forest-story { background: #fffdf3f5; border: 3px solid #e5cf9d; border-radius: 24px; box-shadow: 0 8px 0 #5b663c22,0 12px 30px #142d2b30; }
-.forest-choices button { background: linear-gradient(145deg,#faf5ff,#dfcff4); box-shadow: inset 0 3px 0 #fff,0 6px 0 #ae9dc2,0 10px 15px #38314f16; border-width: 3px; }
-.forest-choices button:nth-child(2n) { background: linear-gradient(145deg,#fff8e8,#f5d19e); box-shadow: inset 0 3px 0 #fff,0 6px 0 #be9864,0 10px 15px #4e3d2e16; }
-.forest-choices--support button { background: linear-gradient(145deg,#f3fff4,#bbdfbc); border-color: #deefcf; }
-.rhythm-stage { min-block-size: 455px; padding-block-start: 125px; border: 3px solid #fff7; box-shadow: 0 10px 30px #102b4855; }
-.rhythm-conductor { margin-block-end: -30px; }
-.rhythm-flowers { align-items: end; gap: clamp(12px,4vw,60px); }
-.rhythm-flower { max-inline-size: 180px; min-block-size: 220px; }
-.rhythm-flower:nth-child(2) { transform: translateY(13px); }
-.rhythm-bloom { border: 5px solid #fff9; background: radial-gradient(circle at 30% 20%,#fffaf5 0 4%,var(--flower) 37%,var(--flower-ink) 125%); box-shadow: inset 0 4px 5px #fff7,inset 0 -7px 8px #0002,0 10px 0 #182d3226,0 16px 24px #162f3270; }
-.rhythm-bloom::before { content:''; position:absolute; inset:-11px; border:7px dotted var(--flower); border-radius:44%; pointer-events:none; opacity:.75; }
-.rhythm-name { border:2px solid #e1dab7; box-shadow:0 5px 0 #314c3759; }
-.rhythm-flower[data-lit=true] .rhythm-bloom { animation: rhythm-bloom-pop .36s ease-out; box-shadow:0 0 0 10px #fff9,0 0 70px var(--flower),0 12px 20px #11332650; }
-.adventure-actions button { background: linear-gradient(#fff,#f6f1e4); border-width: 2px; box-shadow: inset 0 2px 0 #fff,0 5px 0 #c3cdbb; }
-.adventure-actions button.adventure-go { background: linear-gradient(155deg,#418866,#1f5d46); border-color: #6ea786; box-shadow:inset 0 2px 0 #9ccea170,0 6px 0 #113e30,0 12px 20px #214d3b20; }
-@keyframes river-piece-in { from { transform: scale(.94); } to { transform: scale(1); } }
-@keyframes rhythm-bloom-pop { 0% { transform:scale(.95); } 60% { transform: translateY(-12px) scale(1.15); } 100% { transform:translateY(-10px) scale(1.12); } }
-@media(max-width:600px) { .river-landscape { padding:75px 5px 18px; } .river-board { gap:4px; padding:5px; } .forest-stage { min-block-size:390px; padding-block-start:90px; } .rhythm-stage { min-block-size:390px; padding-block-start:95px; } .rhythm-flower { min-block-size:190px; } .forest-story p { font-size:18px; } }
-@media(prefers-reduced-motion:reduce) { .river-cell[data-path=true],.rhythm-flower[data-lit=true] .rhythm-bloom { animation:none; } .rhythm-flower[data-lit=true] .rhythm-bloom { transform:none; } }
-
-.river-board { position:relative; }
-.river-cell[data-boat=true] > svg { visibility:hidden; }
-.river-vessel { position:absolute; z-index:3; pointer-events:none; display:flex; flex-direction:column; align-items:center; justify-content:end; transform:translate(-50%,-50%); transition:left .34s ease-in-out,top .34s ease-in-out; filter:drop-shadow(0 6px 4px #17374d66); }
-.river-vessel > .studio-play-hero { position:absolute; top:0; left:calc(50% - 21px); z-index:1; }
-.river-vessel > svg { width:95%; height:72%; fill:#ffecbf; color:#4d7292; }
-@media(prefers-reduced-motion:reduce) { .river-vessel { transition:none; } }
+@media (forced-colors:active) {
+  .adventure button,.rhythm-pad,.rhythm-name { border: 2px solid ButtonText; }
+  .adventure button:focus-visible { outline-color: Highlight; }
+  .river-cell[data-path=true],.rhythm-pattern > span[data-filled=true] { outline: 2px solid Highlight; }
+}
