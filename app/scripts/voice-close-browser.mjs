@@ -63,14 +63,15 @@ const shellStyles = [...(await fs.readFile('index.html','utf8')).matchAll(/<styl
 const css = (await fs.readFile(path.join('dist/assets',cssFiles[0]),'utf8')).replace(/@import"[^"]*";/g, '') + shellStyles;
 const browser = await chromium.launch({headless:true,
  ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? {executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH} : {}),
- args:['--disable-dev-shm-usage','--disable-gpu','--single-process'],
+ args:['--disable-dev-shm-usage','--disable-gpu',...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? ['--single-process'] : [])],
 });
 const results=[];
 try {
+ const context=await browser.newContext({viewport:{width:375,height:812}});
+ await context.route('**/*',route=>route.abort());
+ const page=await context.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
  for(const language of ['en','he']) {
-  const context=await browser.newContext({viewport:{width:375,height:812}});
-  await context.route('**/*',route=>route.abort());
-  const page=await context.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  errors.length=0;
   async function mount(pending=false,sourceLanguage=language){
    await page.goto('about:blank');
    await page.setContent('<!doctype html><html><head><meta charset="utf-8"></head><body class="arbor-app"><div id="root"></div></body></html>');
@@ -135,7 +136,8 @@ try {
   assert.equal(await page.evaluate(()=>window.evidence.spoken.length),count,'Closing cancels remaining chunks');
   assert.deepEqual(errors,[]);
   results.push({language,width:375,strictMode:true,geometry,result:'passed'});
-  // Keep contexts until browser.close(): supported by single-process CI Chromium.
+  // Each mount navigates to a fresh document. Reuse the one browser context
+  // because single-process Chromium cannot reliably create a second one.
  }
  console.log(JSON.stringify({result:'passed',scope:'Offline actual-component browser checks; synthetic speech and persistence only',results,output},null,2));
  await fs.writeFile(path.join(output,'result.json'),JSON.stringify({result:'passed',scope:'Offline actual-component browser checks; synthetic speech and persistence only',results},null,2));
