@@ -38,3 +38,13 @@ New deterministic suites cover configuration errors, malformed/parallel probes, 
 Required for the exact final candidate: full CI type/lint/tests/framework/floors/offline safety/acceptance/build. Actual results are recorded on PR #140, not assumed in this note.
 
 Before merge: signed-in EN/HE phone and desktop playback; Stop/navigation; offline/recovery; typed-versus-mic describe question; audition the selected voices; verify one EN and one HE successful `tts.synthesis`/`ai.usage` event and matching rollup. Confirm child book narration and avatar unchanged. Main is production-sensitive. Do not mark rows SHIPPED from source tests alone.
+
+## Recovery follow-up — 15 October 2026
+
+- Production frontend and API still identify `fa3f994715e2dba1ef782480c13863dfab0597cf`; PR #140 had not been deployed.
+- Reproduced the remaining CI failure: the deployment guard counted model names inside YAML comments as duplicate runtime settings. The guard now compares exact deployed key/value entries and still rejects duplicate keys or unexpected values.
+- Three consecutive natural-voice failures now open a 30-second cooldown instead of disabling natural speech for the rest of the session. The next speech request after that window retries natural voice. No background synthesis or automatic replay is introduced; explicitly selecting basic voice or retiring the session cancels recovery.
+- Late natural start/end/error callbacks cannot reclaim or terminate the browser fallback after it has taken over.
+- Focused validation: 82 voice/configuration/usage/hook/contract assertions passed; TypeScript passed. Full candidate CI is required separately.
+- Official Google voice catalog and list pricing were rechecked on 15 October; both candidate Sulafat locale names remain listed. This does not replace an authenticated audition or a real synthesis/cost check.
+- The browser reached the production sign-in screen. Authenticated playback and phone validation remain outstanding; no production fix is claimed from unit tests.

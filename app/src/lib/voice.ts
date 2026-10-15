@@ -54,6 +54,10 @@ const NATURAL_TTFB_MS = 1500;
 // neural start in between (a slow book page must not robot-voice the rest).
 const NATURAL_DEGRADE_AFTER = 3;
 let naturalMisses = 0;
+// Avoid repeated paid requests during an outage, but do not strand a parent
+// on the basic voice for the whole sign-in. Retry only on a later speech tap.
+const NATURAL_RETRY_MS = 30_000;
+let naturalRetryAt: number | null = null;
 
 function browserVoiceSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
@@ -90,11 +94,13 @@ export function subscribeVoice(fn: Listener): () => void {
 /** Register (or clear) the neural synth adapter. */
 export function setNaturalSynth(fn: NaturalSynth | null): void {
   naturalSynth = fn;
+  naturalRetryAt = null;
 }
 
 /** Seam hook for the neural-TTS upgrade: set the reported/active engine. */
 export function setVoiceEngine(next: VoiceEngine): void {
   naturalMisses = 0;
+  naturalRetryAt = null;
   if (engine !== next) {
     engine = next;
     emit();
@@ -264,13 +270,16 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "
     naturalMisses++;
     // A natural-only webview has no floor to degrade to. Keep its retry control
     // available rather than making speech disappear after three failures.
-    if (naturalMisses >= NATURAL_DEGRADE_AFTER && browserVoiceSupported()) setVoiceEngine("basic");
+    if (naturalMisses >= NATURAL_DEGRADE_AFTER && browserVoiceSupported()) {
+      setVoiceEngine("basic");
+      naturalRetryAt = Date.now() + NATURAL_RETRY_MS;
+    }
     startBrowser(id, text, handlers, lang); // re-dispatch THIS utterance
   };
 
   const handle = naturalSynth!(text, {
     onStart: () => {
-      if (!isActive(id)) return;
+      if (fellBack || !isActive(id)) return;
       started = true;
       naturalMisses = 0;
       clearWatchdog();
@@ -279,7 +288,7 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "
       handlers.onStart?.();
     },
     onEnd: () => {
-      if (isActive(id)) {
+      if (!fellBack && isActive(id)) {
         clearWatchdog();
         activeNaturalStop = null;
         activeId = 0;
@@ -289,6 +298,7 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "
       }
     },
     onError: () => {
+      if (fellBack) return;
       if (!started) {
         fallback(); // never produced audio → silent fallback to the floor
       } else if (isActive(id)) {
@@ -331,6 +341,9 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "
  */
 export function speakText(text: string, handlers: SpeakHandlers = {}, lang: "en" | "he" = getAiLanguage()): number {
   const trimmed = text.trim();
+  if (trimmed && naturalSynth && naturalRetryAt !== null && Date.now() >= naturalRetryAt) {
+    setVoiceEngine("natural");
+  }
   const canNatural = engine === "natural" && !!naturalSynth;
   if (!trimmed || (!canNatural && !voiceSupported())) {
     handlers.onError?.();

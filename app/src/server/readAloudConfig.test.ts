@@ -11,9 +11,13 @@ vi.mock("google-auth-library", () => ({ GoogleAuth: class {
 describe("B-PROV-05 production configuration guard", () => {
   it("pins EN and HE without changing the approved provider or text/image routing", () => {
     const yaml = readFileSync(new URL("../../../cloudbuild.prod.yaml", import.meta.url), "utf8");
+    // Match the deployed --set-env-vars entries, not incidental mentions in
+    // comments (the image model is also documented above the deploy command).
+    const env = yaml.split("\n").find((line) => line.trimStart().startsWith("- ^|^ARBOR_ENV="))!
+      .trim().slice("- ^|^".length).split("|");
     for (const value of ["TTS_PROVIDER=google", "TTS_VOICE_EN=en-US-Chirp3-HD-Sulafat", "TTS_VOICE_HE=he-IL-Chirp3-HD-Sulafat",
       "VERTEX_MODEL_CHAT=gemini-3.5-flash", "VERTEX_MODEL_IMAGE=gemini-2.5-flash-image", "CHILD_ASR_PROVIDER=none"]) {
-      expect(yaml.split(value)).toHaveLength(2);
+      expect(env.filter((entry) => entry.startsWith(`${value.split("=")[0]}=`))).toEqual([value]);
     }
   });
   it("does not display the stale provider-generic euro estimate or hide unpriced calls", () => {

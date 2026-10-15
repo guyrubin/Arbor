@@ -132,6 +132,67 @@ describe("voice controller — natural engine + browser-floor fallback", () => {
     expect(voiceState().speaking).toBe(false);
   });
 
+  it("recovers the natural voice on the next speech request after a bounded outage cooldown", () => {
+    vi.useFakeTimers();
+    const { synth, calls } = makeNatural();
+    setNaturalSynth(synth);
+    setVoiceEngine("natural");
+    for (let i = 0; i < 3; i++) {
+      speakText(`Failed ${i}`);
+      calls[i].handlers.onError?.();
+    }
+    expect(voiceState().engine).toBe("basic");
+    speakText("During cooldown");
+    expect(calls).toHaveLength(3);
+    vi.advanceTimersByTime(29_999);
+    speakText("Still cooling down");
+    expect(calls).toHaveLength(3);
+    vi.advanceTimersByTime(1);
+    // No background synthesis and no automatic restart of stopped audio.
+    stopVoice();
+    expect(calls).toHaveLength(3);
+    speakText("Natural voice again", {}, "he");
+    expect(calls).toHaveLength(4);
+    expect(voiceState().engine).toBe("natural");
+    calls[3].handlers.onStart?.();
+    calls[3].handlers.onEnd?.();
+    expect(voiceState().speaking).toBe(false);
+  });
+
+  it("an explicit basic-voice setting cancels outage recovery", () => {
+    vi.useFakeTimers();
+    const { synth, calls } = makeNatural();
+    setNaturalSynth(synth);
+    setVoiceEngine("natural");
+    for (let i = 0; i < 3; i++) {
+      speakText(`Failed ${i}`);
+      calls[i].handlers.onError?.();
+    }
+    setVoiceEngine("basic");
+    vi.advanceTimersByTime(30_000);
+    speakText("Keep the chosen voice");
+    expect(calls).toHaveLength(3);
+    expect(voiceState().engine).toBe("basic");
+  });
+
+  it("late natural callbacks cannot end or reclaim the browser fallback", () => {
+    const { synth, calls } = makeNatural();
+    setNaturalSynth(synth);
+    setVoiceEngine("natural");
+    const onStart = vi.fn();
+    const onEnd = vi.fn();
+    const id = speakText("Keep reading", { onStart, onEnd });
+    calls[0].handlers.onError?.();
+    calls[0].handlers.onStart?.();
+    calls[0].handlers.onEnd?.();
+    expect(isActive(id)).toBe(true);
+    expect(onStart).not.toHaveBeenCalled();
+    expect(onEnd).not.toHaveBeenCalled();
+    spoken[0].onend?.();
+    expect(onEnd).toHaveBeenCalledTimes(1);
+    expect(isActive(id)).toBe(false);
+  });
+
   // F-03 pins: failure paths PROPAGATE to the caller's onError — never a
   // state-reset-only swallow (the SpeakButton toast depends on this).
   it("F-03: the floor's utterance.onerror propagates to the caller's onError and clears state", () => {
