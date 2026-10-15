@@ -40,12 +40,19 @@ export type RedactionContext = {
 export const createRedaction = (childName?: string | null): RedactionContext => {
   const name = (childName || "").trim();
   // Single-character "names" would shred ordinary words; skip them.
-  const nameRe = name.length >= 2 ? new RegExp(`\\b${escapeRegExp(name)}\\b`, "gi") : null;
+  // JavaScript's \\b is ASCII-oriented and never bounds a Hebrew name.
+  // Keep Unicode letters/marks/numbers inside words. Hebrew prepositions and
+  // conjunctions attach to names (למאיה, ולמאיה, ושלמאיה); preserve the prefix
+  // outside the alias so restoring the response also preserves the grammar.
+  const prefix = /^[\u05d0-\u05ea]/u.test(name) ? "([ובכלמשה]{0,3})" : "()";
+  const nameRe = name.length >= 2
+    ? new RegExp(`(?:(?<![\\p{L}\\p{M}\\p{N}_])|(?<=\\\\[nrt]))${prefix}${escapeRegExp(name)}(?![\\p{L}\\p{M}\\p{N}_])`, "giu")
+    : null;
 
   const redact = (text: string) => {
     if (!text) return text;
     let out = text;
-    if (nameRe) out = out.replace(nameRe, CHILD_ALIAS);
+    if (nameRe) out = out.replace(nameRe, (_match, attachedPrefix: string) => attachedPrefix + CHILD_ALIAS);
     out = out.replace(EMAIL, "[email]");
     out = out.replace(PHONE, (m) => (countDigits(m) >= 9 ? "[phone]" : m));
     return out;

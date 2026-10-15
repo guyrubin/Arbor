@@ -2,6 +2,40 @@ import { describe, expect, it } from "vitest";
 import { CHILD_ALIAS, createRedaction } from "./redaction.js";
 
 describe("PII redaction before model calls (SEC/CMP P0)", () => {
+  it.each(["", "ל", "מ", "ב", "כ", "ו", "ש", "ה", "ול", "של", "ושל"])(
+    "redacts a Hebrew name with attached prefix '%s' and restores it exactly",
+    (prefix) => {
+      const r = createRedaction("מאיה");
+      const input = `אמרתי ${prefix}מאיה שלום.`;
+      const redacted = r.redact(input);
+      expect(redacted).toBe(`אמרתי ${prefix}${CHILD_ALIAS} שלום.`);
+      expect(redacted).not.toContain("מאיה");
+      expect(r.restore(redacted)).toBe(input);
+    },
+  );
+
+  it("redacts Hebrew profile JSON and preserves longer words and names", () => {
+    const r = createRedaction("מאיה");
+    const input = { name: "מאיה", notes: "למאיה ולמאיה", other: "מאיהן אבמאיה xמאיה מאיה2" };
+    const redacted = JSON.parse(r.redact(JSON.stringify(input)));
+    expect(redacted).toEqual({ name: CHILD_ALIAS, notes: `ל${CHILD_ALIAS} ול${CHILD_ALIAS}`, other: input.other });
+    expect(r.restoreDeep(redacted)).toEqual(input);
+  });
+
+  it.each(["מאיה", "Maya"])("redacts %s after escaped JSON whitespace", (name) => {
+    const r = createRedaction(name);
+    const input = { notes: `A note\n${name}\t${name}\r${name}` };
+    const redacted = r.redact(JSON.stringify(input));
+    expect(redacted).not.toContain(name);
+    expect(r.restoreDeep(JSON.parse(redacted))).toEqual(input);
+  });
+
+  it.each(["Élodie", "ليلى", "נועם-לי", "נועה רות"])("redacts the Unicode or compound name %s", (name) => {
+    const r = createRedaction(name);
+    expect(r.redact(`Hello, ${name}!`)).toBe(`Hello, ${CHILD_ALIAS}!`);
+    expect(r.restore(r.redact(`Hello, ${name}!`))).toBe(`Hello, ${name}!`);
+  });
+
   it("replaces the child's name with the alias, case-insensitively, on word boundaries", () => {
     const r = createRedaction("Maya");
     expect(r.redact("Maya threw the truck. maya calmed down. Mayan ruins.")).toBe(
