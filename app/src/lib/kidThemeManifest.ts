@@ -131,6 +131,11 @@ const FILM3D_STORY_COVERS_2X3 = [
   "the-friendly-monster", "the-lantern-path", "the-cloud-orchestra", "the-little-bridge-builders",
 ] as const;
 
+const adventureScene = (id: 'canal-world' | 'story-theater' | 'sound-orbit'): KidArt => ({
+  src: `/visuals/studio-v2/adventures/${id}.webp`, src480: `/visuals/studio-v2/adventures/${id}-480.webp`, width: 1536,
+  objectPosition: '50% 50%', altKey: null, provenanceId: `studio-original-world:${id}:2026-10-15`, hasHero: false,
+});
+
 const studioPortal = (id: typeof STUDIO_PORTAL_IDS[number]): KidArt => ({
   src: `/visuals/studio-v2/portal-${id}.webp`, src480: `/visuals/studio-v2/portal-${id}-480.webp`, width: 1536,
   objectPosition: "50% 50%", altKey: null, provenanceId: `studio-v2-neutral-portal:${id}:2026-10-13`, hasHero: false,
@@ -148,6 +153,9 @@ export const KID_THEME_MANIFEST: Record<KidThemeId, Partial<Record<KidArtKey, Ki
     ...STUDIO_ART,
     "world.sound-explorer.tile": STUDIO_ART["studio.portal.studio"],
     "world.calm-builder.tile": STUDIO_ART["studio.portal.feelings"],
+    "world.river-rescue.tile": adventureScene("canal-world"),
+    "world.feelings-forest.tile": adventureScene("story-theater"),
+    "world.rhythm-garden.tile": adventureScene("sound-orbit"),
     "world.puzzle.tile": STUDIO_ART["studio.portal.playbank"],
     "world.speech.tile": film("game-speech", "50% 22%", 1023),
     "world.feelings.tile": film("game-feelings"),
@@ -175,6 +183,9 @@ export const KID_THEME_MANIFEST: Record<KidThemeId, Partial<Record<KidArtKey, Ki
     ...STUDIO_ART,
     "world.sound-explorer.tile": STUDIO_ART["studio.portal.studio"],
     "world.calm-builder.tile": STUDIO_ART["studio.portal.feelings"],
+    "world.river-rescue.tile": adventureScene("canal-world"),
+    "world.feelings-forest.tile": adventureScene("story-theater"),
+    "world.rhythm-garden.tile": adventureScene("sound-orbit"),
     "world.puzzle.tile": STUDIO_ART["studio.portal.playbank"],
     "world.speech.tile": world("sound-lab", "48% 40%"),
     "world.feelings.tile": world("mood-mountain", "50% 40%"),

@@ -25,6 +25,7 @@ vi.mock("../../../../context/LanguageContext", () => ({ useLanguage: () => ({ ui
 vi.mock("../../../../context/ArborContext", () => ({ useArborOptional: () => ({ childProfile: { id: h.childId } }) }));
 vi.mock("../../game/GameShell", () => ({ GameShell: () => null, GameFinish: () => null }));
 vi.mock("../../audio/kidAudio", () => ({ useKidReadAloudMuted: () => h.muted }));
+vi.mock("../studioCreations", () => ({ useStudioCreations: () => ({ items: [], loaded: true, isCurrent: () => true }) }));
 vi.mock("./explorerAudio", () => ({ createExplorerAudio: () => h.audio }));
 
 import CalmBuilder from "./CalmBuilder";
@@ -81,7 +82,7 @@ describe("Puzzle Planet real play", () => {
     clickLabel("Piece: bottom right"); clickLabel("Picture space: top left");
     expect(render().find(node => node.type === GameShell)!.props.progress).toEqual({ index: 0, total: 4 }); expect(finished()).toBe(false);
     for (const position of ["bottom right", "top left", "top right", "bottom left"]) { clickLabel(`Piece: ${position}`); clickLabel(`Picture space: ${position}`); }
-    expect(finished()).toBe(true);
+    expect(finished()).toBe(false); clickText("My picture is ready"); expect(finished()).toBe(true);
   });
   it("switching to nine pieces resets partial play and keeps a whole-picture preview", () => {
     component = PuzzlePlanet; clickLabel("Piece: top left"); clickLabel("Picture space: top left"); clickText("Nine pieces");

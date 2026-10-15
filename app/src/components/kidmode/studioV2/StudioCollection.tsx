@@ -12,6 +12,7 @@ import { sneakFreezeFlagOn } from "../kidWorlds";
 import { studioActivityFromLegacy, studioActivityFits, type StudioActivityId } from "./studioCatalog";
 import { studioCopy } from "./studioCopy";
 import { studioCollectionText, studioQuestText } from "./studioProgress";
+import { StudioCreationGallery } from './StudioCreationResult';
 
 export function StudioCollection({ onActivity, onBooks, onQuest }: { onActivity: (id: StudioActivityId) => void; onBooks: () => void; onHome: () => void; onQuest?: () => void }) {
   const { childProfile } = useArbor(); const { uiLang } = useLanguage();
@@ -22,6 +23,7 @@ export function StudioCollection({ onActivity, onBooks, onQuest }: { onActivity:
     <div className="studio-keepsakes__layout">
       <div className="studio-keepsakes__scene"><StudioPortalArt worldId="stories" /><header className="studio-keepsakes__heading"><h1>{copy.title}</h1><p>{copy.empty}</p></header></div>
       <div className="studio-keepsakes__panel">
+    <StudioCreationGallery childId={childProfile.id} onActivity={onActivity} />
     {!ledger.loaded ? <p role="status">{copy.loading}</p> : !items.length ? null : <ul className="studio-keepsakes__collection">{items.map(item => {
       const isQuest = item.kind === "world" && item.refId === QUEST_SOUVENIR_REF;
       const activity = item.kind === "world" ? studioActivityFromLegacy(item.refId) : undefined;

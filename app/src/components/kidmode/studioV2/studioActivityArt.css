@@ -1,0 +1,8 @@
+/* Shared by world activity rows and any game preview. */
+.studio-activity-picture { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; background: var(--arbor-sky-soft); }
+.studio-activity-picture > img { width: 100%; height: 100%; object-fit: cover; }
+.studio-activity-picture__symbol { position: absolute; inset-block-end: 8px; inset-inline-end: 8px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 16px; background: var(--arbor-paper-elevated); color: var(--arbor-green-ink); box-shadow: 0 4px 12px #17244344; }
+.studio-activity-picture__hero { position: absolute; inset-inline-start: -8%; inset-block: 0; inline-size: 85%; mask-image: radial-gradient(ellipse 65% 65% at 42% 48%, #000 40%, transparent 95%); }
+.studio-activity-picture__hero img { inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 50% 20%; }
+.studio-activity-picture__symbol { inline-size: 32px; block-size: 32px; border-radius: 10px; background: #1a2b4ae8; color: #fff; border: 1px solid #ffffff80; inset-inline-end: 4px; inset-block-end: 4px; }
+.studio-activity-picture__symbol svg { inline-size: 21px; block-size: 21px; }

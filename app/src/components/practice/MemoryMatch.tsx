@@ -1,3 +1,5 @@
+import { NEXT_GAME_COPY } from "../../lib/i18nGameNext";
+import "../kidmode/studioV2/games/studioGames.css";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useGameSession } from "../kidmode/game/GameSessionContext";
@@ -65,6 +67,7 @@ function buildDeck(size: 6 | 8 | 12, setIdx: number): Card[] {
 export default function MemoryMatch({ data, childAge, embedded = false }: { data: PracticeData; childAge?: number; embedded?: boolean }) {
   const gameSession = useGameSession();
   const { t, uiLang } = useLanguage();
+  const nextWords = NEXT_GAME_COPY[uiLang === "he" ? "he" : "en"];
   const memorySay = t("elev.kids.memory.say");
   // Past round scores drive the adaptive grid size, bounded by an age-appropriate ceiling.
   const pastScores = useMemo(
@@ -72,7 +75,7 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
     [data.events.items]
   );
   const maxCards = memoryMaxCards(childAge);
-  const recommendedSize = memoryGridSize(pastScores, maxCards);
+  const recommendedSize = memoryGridSize(gameSession?.playOnly ? [] : pastScores, maxCards);
 
   const [setIdx, setSetIdx] = useState(() => memorySetIndexForAge(childAge, MEMORY_THEMES.length));
   const [size, setSize] = useState<6 | 8 | 12>(recommendedSize);
@@ -89,7 +92,7 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
 
   const pairs = size / 2;
 
-  const reset = (nextSize = recommendedSize, nextSet = setIdx) => {
+  const reset = (nextSize = size, nextSet = setIdx) => {
     pairLifecycleRef.current?.invalidate();
     setSize(nextSize);
     setDeck(buildDeck(nextSize, nextSet));
@@ -211,6 +214,9 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
         })}
       </div>
 
+      {gameSession?.playOnly && !won && <div className="studio-game-actions" role="group" aria-label={nextWords.boardSize}>
+        {([{ cards: 6, label: nextWords.threePairs }, { cards: 8, label: nextWords.fourPairs }, { cards: 12, label: nextWords.sixPairs }] as const).filter(option => option.cards <= maxCards).map(({ cards: value, label }) => <button type="button" key={value} className="studio-game-button" aria-pressed={size === value} data-memory-size={value} onClick={() => reset(value)}>{label}</button>)}
+      </div>}
       {won && inKidShell ? (
         <GameFinish
           title={t("elev.kids.memory.done.title")}
@@ -271,7 +277,7 @@ export default function MemoryMatch({ data, childAge, embedded = false }: { data
           )}
           <div className="text-center mt-5">
             <PlayButton variant="ghost" size="md" onClick={() => reset()}>
-              <Icon name="refresh" size={16} /> Shuffle &amp; restart
+              <Icon name="refresh" size={16} /> {nextWords.shuffleBoard}
             </PlayButton>
           </div>
         </>

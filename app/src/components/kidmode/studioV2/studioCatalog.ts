@@ -3,7 +3,7 @@ import type { AgedChild } from "../../../lib/age/forChild";
 import { KID_WORLDS, SNEAK_FREEZE_WORLD } from "../kidWorlds";
 
 export type StudioWorldId = "playbank" | "stories" | "feelings" | "studio";
-export type StudioActivityId = "memory" | "feelings" | "mimic" | "sound-explorer" | "pattern" | "calm-builder" | "beat" | "puzzle" | "sneak" | "reading" | "adventures" | "pose" | "speech";
+export type StudioActivityId = "river-rescue" | "feelings-forest" | "rhythm-garden" | "memory" | "feelings" | "mimic" | "sound-explorer" | "pattern" | "calm-builder" | "beat" | "puzzle" | "sneak" | "reading" | "adventures" | "pose" | "speech";
 export type StudioLanguage = "en" | "he";
 export interface StudioActivity { id: StudioActivityId; worldId: StudioWorldId; legacyWorldId?: string; ageBands: readonly string[]; languages: readonly StudioLanguage[] }
 export const STUDIO_V2_WORLDS: readonly StudioWorldId[] = ["playbank", "stories", "studio", "feelings"];
@@ -14,6 +14,9 @@ const legacy = (id: StudioActivityId, worldId: StudioWorldId): StudioActivity =>
   return { id, worldId, legacyWorldId: id, ageBands: entry.ageBands, languages: id === "speech" ? ["en"] : both };
 };
 export const STUDIO_V2_ACTIVITIES: readonly StudioActivity[] = [
+  { id: "river-rescue", worldId: "playbank", ageBands: SNEAK_FREEZE_WORLD.ageBands, languages: both },
+  { id: "feelings-forest", worldId: "feelings", ageBands: SNEAK_FREEZE_WORLD.ageBands, languages: both },
+  { id: "rhythm-garden", worldId: "studio", ageBands: SNEAK_FREEZE_WORLD.ageBands, languages: both },
   legacy("memory", "playbank"), legacy("pattern", "playbank"),
   { id: "puzzle", worldId: "playbank", ageBands: SNEAK_FREEZE_WORLD.ageBands, languages: both },
   { id: "sneak", worldId: "playbank", legacyWorldId: "sneak", ageBands: SNEAK_FREEZE_WORLD.ageBands, languages: both },
@@ -24,6 +27,16 @@ export const STUDIO_V2_ACTIVITIES: readonly StudioActivity[] = [
   { id: "sound-explorer", worldId: "studio", ageBands: SNEAK_FREEZE_WORLD.ageBands, languages: both },
   legacy("pose", "studio"), legacy("speech", "studio"),
 ];
+/** The child menu is intentionally curated. Legacy routes and keepsakes remain
+ * resolvable; overlapping practice tools are not additional game promises. */
+export const STUDIO_GAME_SELECTION: readonly StudioActivityId[] = [
+  "river-rescue", "memory", "pattern", "puzzle", "sneak",
+  "feelings-forest", "calm-builder", "rhythm-garden",
+];
+export function studioMenuActivities(...args: Parameters<typeof studioActivitiesForChild>): StudioActivity[] {
+  const eligible = studioActivitiesForChild(...args);
+  return STUDIO_GAME_SELECTION.flatMap(id => eligible.filter(activity => activity.id === id));
+}
 export function studioActivity(id: string): StudioActivity | undefined { return STUDIO_V2_ACTIVITIES.find(a => a.id === id); }
 export function studioActivityFromLegacy(refId: string): StudioActivity | undefined { return STUDIO_V2_ACTIVITIES.find(a => a.legacyWorldId === refId || a.id === refId); }
 export function studioLegacyRoute(id: StudioActivityId): { surface: "arcade"; worldId: string } | null {

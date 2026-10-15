@@ -102,7 +102,7 @@ describe("B-KID-68: art ids come from the registry", () => {
     expect(manifest).not.toMatch(/"speech", "feelings", "memory"/);
   });
   it("worldArtwork resolves old and new worlds in every theme without widening the legacy picker", () => {
-    expect(STUDIO_V2_GAME_WORLDS.map(w => w.worldId).sort()).toEqual(["calm-builder", "puzzle", "sound-explorer"]);
+    expect(STUDIO_V2_GAME_WORLDS.map(w => w.worldId).sort()).toEqual(["calm-builder", "feelings-forest", "puzzle", "rhythm-garden", "river-rescue", "sound-explorer"]);
     for (const theme of KID_THEME_IDS) {
       for (const w of [...KID_WORLDS, ...STUDIO_V2_GAME_WORLDS]) expect(worldArtwork(w.worldId, theme)?.src, `${theme} ${w.worldId}`).toBeTruthy();
       for (const w of STUDIO_V2_GAME_WORLDS) {
