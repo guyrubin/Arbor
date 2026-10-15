@@ -214,3 +214,10 @@
 .story-object { display:block; background-image:url('/visuals/studio-v2/adventures/story-props.webp'); background-size:300% 200%; background-repeat:no-repeat; }
 .forest-prop { height:140px; top:2%; }
 @media(max-width:600px) { .forest-prop { height:110px; top:1%; } }
+
+.forest-friends { gap:120px; }
+.forest-prop { top:auto; bottom:0; width:110px; height:110px; inset-inline-start:calc(50% - 55px); transform:none; z-index:2; }
+@media(max-width:600px) { .forest-friends { gap:54px; } .forest-prop { top:auto; bottom:0; width:76px; height:76px; inset-inline-start:calc(50% - 38px); } }
+
+@media(max-width:600px) { .forest-friends > .studio-play-hero,.forest-mascot { zoom:.7; } }
+@media(max-width:360px) { .forest-friends > .studio-play-hero,.forest-mascot { zoom:.6; } .forest-friends { gap:42px; } }
