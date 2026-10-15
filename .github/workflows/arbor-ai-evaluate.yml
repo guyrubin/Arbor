@@ -1,0 +1,88 @@
+name: Arbor AI candidate evaluations
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: arbor-ai-candidates
+  cancel-in-progress: false
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - name: haiku-routine
+            model: claude-haiku-5-5@anthropic
+            location: eu
+            suites: coach-core-v1 coach-hardmoment-seed-v1
+          - name: flash-routine
+            model: gemini-3.8-flash
+            location: eu
+            suites: coach-core-v1 coach-hardmoment-seed-v1
+          - name: sonnet-flagged
+            model: claude-sonnet-5-5@anthropic
+            location: eu
+            suites: coach-core-v1 coach-hardmoment-seed-v1
+          - name: lite-analysis
+            model: gemini-3.5-flash
+            location: europe-west3
+            suites: capture-extract-v1 today-focus-v1 plan-v1 school-handoff-v1 describe-child-v1
+    env:
+      ARBOR_ENV: dev
+      MODEL_PROVIDER: vertex
+      MEMORY_ADAPTER: local
+      ENABLE_LOCAL_MEMORY_ADAPTER: 'true'
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      VERTEX_LOCATION: ${{ matrix.location }}
+      VERTEX_CLAUDE_LOCATION: eu
+      EVAL_JUDGE_LOCATION: eu
+      VERTEX_MODEL_CHAT: ${{ matrix.model }}
+      VERTEX_MODEL_ANALYSIS: gemini-3.5-flash-lite
+      VERTEX_MODEL_HANDOFF: gemini-3.5-flash-lite
+      TTS_DISABLED: 'true'
+      LIVE_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+        working-directory: app
+      - uses: google-github-actions/auth@v2
+        if: vars.GCP_WIF_PROVIDER != ''
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/auth@v2
+        if: vars.GCP_WIF_PROVIDER == ''
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Evaluate synthetic fixtures (no production data)
+        working-directory: app
+        env:
+          SUITES: ${{ matrix.suites }}
+        run: |
+          set -o pipefail
+          # Retain only this run's evidence, never historical passing rows.
+          for result in ../evals/*.results.jsonl; do : > "$result"; done
+          failed=0
+          for suite in $SUITES; do
+            : > "../evals/$suite.results.jsonl"
+            timeout 360 npm run eval:judge -- "$suite" 2>&1 | tee "eval-$suite.log" || failed=1
+          done
+          exit "$failed"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ai-evaluations-${{ matrix.name }}
+          path: |
+            evals/*.results.jsonl
+            app/eval-*.log
+          retention-days: 14
