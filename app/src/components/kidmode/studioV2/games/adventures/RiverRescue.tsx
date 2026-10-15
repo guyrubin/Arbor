@@ -49,12 +49,12 @@ export default function RiverRescue() {
   const ready = riverComplete(map, path);
   const boat = phase === 'plan' ? map.start : path[Math.min(boatStep, path.length - 1)];
   const label = phase === 'arrived' ? w.riverArrived : phase === 'sail' ? w.riverSailing : ready ? w.riverReady : w.riverPlan;
-  return <GameShell worldId="river-rescue" title={w.river} instruction={w.riverInstruction} hearIt={`${w.riverInstruction} ${label}`}>
+  return <GameShell fullBleed worldId="river-rescue" title={w.river} instruction={w.riverInstruction} hearIt={`${w.riverInstruction} ${label}`}>
     <section className="adventure adventure--river" dir={lang === 'he' ? 'rtl' : 'ltr'} data-adventure="river-rescue">
       {phase === 'done' ? <GameFinish title={w.riverFinish} subtitle={w.riverTransfer} onPlayAgain={() => reset(challenge, 0)} playAgainLabel={w.again} homeLabel={w.home} /> : <>
         <div className="adventure-toolbar"><ChallengePicker value={challenge} onChange={level => reset(level, 0)} words={w} /><AdventureSteps done={round} /></div>
         <AdventureHeading focusKey={`${round}:${phase}`}>{label}</AdventureHeading>
-        <div className="river-landscape">{scene && !scene.hasHero && <img className="river-scene" src={scene.src} srcSet={kidArtSrcSet(scene)} sizes="(max-width: 700px) 100vw, 1000px" alt="" draggable={false} />}<div className="river-bank" aria-hidden="true"><span>✿</span><span>❋</span><span>✿</span></div>
+        <div className="river-landscape" data-phase={phase}>{scene && !scene.hasHero && <img className="river-scene" src={scene.src} srcSet={kidArtSrcSet(scene)} sizes="(max-width: 700px) 100vw, 1000px" alt="" draggable={false} />}<div className="river-bank" aria-hidden="true"><span>✿</span><span>❋</span><span>✿</span></div>
           <div className="river-board" role="group" aria-label={w.riverBoard} dir="ltr" style={{ gridTemplateColumns: `repeat(${map.size}, 1fr)` }}>
             {Array.from({ length: map.size * map.size }, (_, cell) => {
               const isRock = map.rocks.includes(cell), isParcel = map.parcels.includes(cell), isDock = cell === map.dock;
@@ -68,11 +68,11 @@ export default function RiverRescue() {
               </button>;
             })}
             <span className="river-vessel" aria-hidden="true" style={{ left: `${(boat % map.size + .5) * 100 / map.size}%`, top: `${(Math.floor(boat / map.size) + .5) * 100 / map.size}%`, width: `${80 / map.size}%`, height: `${80 / map.size}%` }}>
-              <StudioPlayHero size={42} celebrate={phase === 'arrived'} /><Sailboat strokeWidth={1.5} />
+              <StudioPlayHero size={68} pose={phase === 'sail' ? 'hold-up' : 'idle'} celebrate={phase === 'arrived'} /><span className="river-hull" /><span className="river-wake" />
             </span>
           </div><div className="river-bank river-bank--bottom" aria-hidden="true"><span>✿</span><span>❋</span><span>✿</span></div>
         </div>
-        <div className="river-cargo" aria-label={w.parcel}>{map.parcels.map(cell => <span key={cell} data-collected={path.includes(cell)}><Package size={22} aria-hidden="true" />{path.includes(cell) && <Check size={15} aria-hidden="true" />}</span>)}</div>
+        <div className="river-cargo" aria-label={w.parcel}><span className="river-cargo-title">{w.parcel}</span>{map.parcels.map(cell => <span key={cell} data-collected={path.includes(cell)}><Package size={22} aria-hidden="true" />{path.includes(cell) && <Check size={15} aria-hidden="true" />}</span>)}</div>
         <p className="adventure-status" role="status">{status || '\u00a0'}</p>
         <div className="adventure-actions">
           {phase === 'plan' && <>

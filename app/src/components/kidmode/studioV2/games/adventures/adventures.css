@@ -121,3 +121,96 @@
   .adventure button:focus-visible { outline-color: Highlight; }
   .river-cell[data-path=true],.rhythm-pattern > span[data-filled=true] { outline: 2px solid Highlight; }
 }
+/* Physical stages and feedback follow the child's action. */
+.adventure { border-color:#e6cda6; background:linear-gradient(145deg,#fffaf0,#f4eddf); }
+.river-landscape,.forest-stage,.rhythm-stage { border:2px solid #fff2cd; box-shadow:0 12px 30px #1a2b4a22; }
+.adventure .studio-play-hero { position:relative; flex-shrink:0; display:inline-block; filter:drop-shadow(0 10px 8px #17234444); }
+.adventure .studio-play-hero[data-game-hero-source=current-portrait] { border-radius:48% 48% 35% 35%; overflow:hidden; }
+.adventure .studio-play-hero[data-game-hero-source=current-portrait] img { width:100%; height:100%; object-fit:cover; object-position:center 20%; border-radius:48% 48% 35% 35%; }
+.adventure .studio-play-hero[data-game-hero-source=current-portrait] > div > span { display:none; }
+.river-vessel > .studio-play-hero { position:absolute; top:auto; bottom:24%; left:calc(50% - 34px); z-index:2; }
+.river-hull { position:absolute; bottom:6%; width:85%; height:32%; border-radius:12% 12% 50% 50%; background:linear-gradient(#ffefbd 0 18%,#e79b47 20% 55%,#a75f33 57%); border:3px solid #fff1c0; box-shadow:0 4px 0 #664b39; z-index:3; }
+.river-wake { position:absolute; bottom:-7%; width:110%; height:23%; border-radius:50%; border-block-end:3px solid #f3ffffcc; box-shadow:0 5px 0 #a9f4ff55; }
+.river-landscape[data-phase=sail] .river-wake { animation:river-ripple .7s ease-out infinite; }
+.river-landscape[data-phase=arrived] .river-hull { box-shadow:0 0 25px 8px #fff2a8; }
+.forest-stage { min-block-size:510px; padding-block-start:135px; }
+.forest-friends { position:relative; width:100%; min-height:195px; gap:95px; }
+.forest-friends::before { content:''; position:absolute; bottom:0; width:80%; height:46px; border-radius:50%; background:#ffe3a47a; filter:blur(12px); z-index:-1; }
+.forest-friends > .studio-play-hero { transition:transform .65s ease; }
+.forest-stage[data-action=together] .forest-friends > .studio-play-hero { transform:translateX(38px); }
+[dir=rtl] .forest-stage[data-action=together] .forest-friends > .studio-play-hero { transform:translateX(-38px); }
+.forest-stage[data-action=space] .forest-friends > .studio-play-hero { transform:translateX(-28px); }
+[dir=rtl] .forest-stage[data-action=space] .forest-friends > .studio-play-hero { transform:translateX(28px); }
+.forest-response { position:absolute; left:calc(50% - 32px); top:4px; display:grid; place-items:center; width:64px; height:64px; border-radius:50% 50% 50% 8px; background:#fff3d6; color:#96643c; border:2px solid #ffe3a4; box-shadow:0 6px 20px #50334533; }
+.forest-stage[data-phase=outcome] .forest-response { color:#9c496b; background:#ffe9ef; animation:stage-response .55s ease-out; }
+.forest-prop { top:11%; width:78px; height:78px; background:#fff0cd; transform:rotate(-8deg); }
+.rhythm-stage { min-block-size:510px; padding-top:58px; background:#20264e; }
+.rhythm-conductor { position:relative; align-items:end; margin-bottom:-5px; min-height:170px; }
+.rhythm-halo { position:absolute; bottom:-7px; width:210px; height:62px; border:2px solid #e6d5ff; border-radius:50%; background:radial-gradient(ellipse,#f8d0ff88,#ad90ff33 60%,transparent 70%); box-shadow:0 0 35px #b794fc66; }
+.rhythm-stage[data-active-note='0'] { --note-glow:#ffe5a1; }
+.rhythm-stage[data-active-note='1'] { --note-glow:#a4f5ff; }
+.rhythm-stage[data-active-note='2'] { --note-glow:#e8baff; }
+.rhythm-stage:not([data-active-note=none]) .rhythm-halo { background:var(--note-glow); box-shadow:0 -35px 100px 30px var(--note-glow); }
+.rhythm-stage:not([data-active-note=none]) .rhythm-conductor > .studio-play-hero { animation:conductor-beat .42s ease-out; }
+.rhythm-pod[data-lit=true] .rhythm-pad::before { animation:note-wave .5s ease-out; }
+.forest-choices button { background:linear-gradient(#fffdf5,#f2e8d9); border-color:#d7c5ad; border-radius:22px; }
+.forest-choices button > svg { width:46px; height:46px; padding:7px; border-radius:50%; background:#fbe6bb; }
+@keyframes river-ripple { from { transform:scale(.8); opacity:.9; } to { transform:scale(1.25); opacity:.25; } }
+@keyframes stage-response { from { transform:scale(.7) rotate(-12deg); } to { transform:scale(1); } }
+@keyframes conductor-beat { 50% { transform:translateY(-9px) rotate(-3deg); } }
+@keyframes note-wave { from { scale:.9; opacity:1; } to { scale:1.5; opacity:0; } }
+@media (max-width:600px) {
+ .forest-stage,.rhythm-stage { min-block-size:460px; }
+ .forest-friends { gap:20px; min-height:178px; }
+ .forest-friends > .studio-play-hero,.forest-mascot { zoom:.8; }
+ .forest-response { top:-22px; width:50px; height:50px; left:calc(50% - 25px); }
+ .forest-prop { top:6%; width:62px; height:62px; }
+ .forest-stage[data-action=together] .forest-friends > .studio-play-hero { transform:translateX(12px); }
+ [dir=rtl] .forest-stage[data-action=together] .forest-friends > .studio-play-hero { transform:translateX(-12px); }
+ .forest-stage[data-action=space] .forest-friends > .studio-play-hero { transform:translateX(-10px); }
+ [dir=rtl] .forest-stage[data-action=space] .forest-friends > .studio-play-hero { transform:translateX(10px); }
+ .river-vessel > .studio-play-hero { scale:.75; transform-origin:bottom center; }
+}
+
+/* Desktop: the stage and its controls stay in one field of view. */
+@media (min-width:800px) {
+ .adventure { display:grid; grid-template-columns:minmax(0,1fr) 280px; gap:12px 24px; padding:24px; }
+ .adventure-toolbar { grid-column:1/-1; margin:0; }
+ .adventure-prompt { grid-column:2; margin:0; align-items:start; gap:8px; }
+ .adventure-prompt > svg { width:45px; height:58px; }
+ .arbor-play .adventure .adventure-heading { font-size:20px!important; padding:14px; }
+ .river-landscape,.forest-stage,.rhythm-stage { grid-column:1; grid-row:2 / span 8; min-height:490px; margin:0; }
+ .river-landscape { padding:85px 14px 24px; }
+ .river-board { max-inline-size:370px; }
+ .adventure-actions,.adventure-status,.adventure-transfer,.river-cargo,.forest-choices,.rhythm-pattern,.rhythm-tempo,.adventure-quiet { grid-column:2; margin:0; }
+ .adventure-actions { align-content:start; }
+ .adventure-actions button { flex:1 1 100%; }
+ .adventure-status:empty { display:none; }
+ .forest-stage { padding:150px 18px 24px; }
+ .forest-friends { gap:55px; }
+ .forest-story p { font-size:19px; }
+ .forest-choices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-content:start; }
+ .forest-choices button { max-inline-size:none; min-block-size:100px; padding:10px; font-size:16px; }
+ .forest-choices--support { grid-template-columns:1fr; }
+ .forest-choices--support button { flex-direction:row; min-block-size:68px; }
+ .rhythm-workshop-actions { grid-row:3; }
+ .rhythm-tempo { padding:3px; }
+ .rhythm-tempo button { padding:7px; font-size:12px; }
+ .rhythm-pattern { align-self:start; }
+ .rhythm-stage { padding:70px 12px 30px; }
+ .rhythm-pods { gap:16px; }
+ .rhythm-pad { width:92px; height:92px; }
+ .rhythm-name { font-size:12px; }
+}
+.river-cargo { flex-wrap:wrap; }
+.river-cargo > .river-cargo-title { flex-basis:100%; justify-content:center; border:0; background:none; padding:0; font-weight:900; }
+@media (prefers-reduced-motion:reduce) {
+ .adventure *, .adventure *::before, .adventure *::after { animation:none!important; transition:none!important; }
+}
+
+.forest-prop { background:none; box-shadow:none; border-radius:0; width:140px; height:110px; inset-inline-start:calc(50% - 70px); top:5%; transform:rotate(-4deg); }
+.story-object { width:100%; height:100%; filter:drop-shadow(0 7px 5px #3c293226); }
+@media(max-width:600px) { .forest-prop { width:110px; height:86px; inset-inline-start:calc(50% - 55px); top:4%; } }
+.story-object { display:block; background-image:url('/visuals/studio-v2/adventures/story-props.webp'); background-size:300% 200%; background-repeat:no-repeat; }
+.forest-prop { height:140px; top:2%; }
+@media(max-width:600px) { .forest-prop { height:110px; top:1%; } }

@@ -9,7 +9,6 @@ import { kidArt, kidArtSrcSet } from "../../../lib/kidThemeManifest";
 import { noteKidActivity } from "../../../lib/kidModeGate";
 import { localizedMimicPacks } from "../../../practice/mimicContent";
 import { ArborMascot } from "../../ui/ArborMascot";
-import { StudioPortrait } from "./StudioPortrait";
 import { HeroAvatar } from "../../ui/HeroAvatar";
 import { KidStageFallback } from "../KidStageFallback";
 import { sneakFreezeFlagOn } from "../kidWorlds";
@@ -114,7 +113,7 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
       <div className="studio-game-card__window" aria-hidden="true">
         {art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
         {activity && <span className="studio-game-card__world">{labels.worlds[activity.worldId].title}</span>}
-        <StudioPortrait className="studio-game-card__hero" />
+        <div className="studio-game-card__hero"><StudioPlayHero size={200} celebrate={phase === "result"} /></div>
       </div>
       {phase === "intro" ? <div className="studio-game-card__body">
         <h1 className="studio-game-card__title">{copy.title}</h1>

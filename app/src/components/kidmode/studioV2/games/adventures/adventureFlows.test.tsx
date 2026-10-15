@@ -104,3 +104,16 @@ it('navigation cancels scheduled flowers and disposes the audio owner', () => {
   let tree=render(RhythmGarden);clickButton(tree,ADVENTURE_COPY.en.listen);tree=render(RhythmGarden);expect(vi.getTimerCount()).toBeGreaterThan(0);
   h.slots.forEach(s=>s.cleanup?.());expect(vi.getTimerCount()).toBe(0);expect(h.audio.dispose).toHaveBeenCalled();
 });
+
+it('a played note lights its pod; a later tap owns the cue and navigation cancels it', () => {
+  let tree=render(RhythmGarden);
+  clickButton(tree,ADVENTURE_COPY.en.listen);tree=render(RhythmGarden);
+  vi.advanceTimersByTime(5000);tree=render(RhythmGarden);
+  const tap=(note:number)=>nodes(tree).find(n=>n.props['data-note']===note)!.props.onClick!();
+  tap(0);tree=render(RhythmGarden);
+  expect(nodes(tree).find(n=>n.props['data-note']===0)!.props['data-lit']).toBe(true);
+  vi.advanceTimersByTime(200);tap(1);tree=render(RhythmGarden);
+  vi.advanceTimersByTime(220);tree=render(RhythmGarden);
+  expect(nodes(tree).find(n=>n.props['data-note']===1)!.props['data-lit']).toBe(true);
+  h.slots.forEach(s=>s.cleanup?.());expect(vi.getTimerCount()).toBe(0);
+});
