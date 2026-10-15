@@ -524,6 +524,7 @@ export function freshTopLevelModules(source: string): { stamped: string[]; unsta
     // Gated blocks that never render on a fresh thread.
     // F-TALK-1: the history list renders only on the menu's request.
     if (/^\{(composerDocked|historyOpen|voicePhase !== "off"|[^}]*&& userTurnExists|userTurnExists) &&/.test(head) && !/!userTurnExists/.test(head)) continue;
+    if (/^\{visible && voiceReviewOpen && voicePhase === "off" &&/.test(head)) continue;
     if (/^\{lastMessage\?\.sender === "ai" && userTurnExists/.test(head)) continue;
     if (REST_NULL.test(head)) continue;
     // The element (this line, or the first element line of a gated block).
@@ -558,6 +559,7 @@ describe("B-ASKJB-06 — Ask's fresh stack meets moduleBudget 3", () => {
     // B-ASKJB-12 replaced the lens row with the Tone control in the identity
     // strip; the trust chip moved inside coach-orientation. Tightened to [].
     expect(fresh.unstamped).toEqual([]);
+    expect(COACH).toContain("const [voiceReviewOpen, setVoiceReviewOpen] = useState(false)");
   });
 
   // F-TALK-1 re-pin: orientation is the welcome, the composer and ONE chip

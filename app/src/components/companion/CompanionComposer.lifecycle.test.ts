@@ -42,7 +42,7 @@ const voiceEffects = find(coachSource, node => {
   const call = node.expression;
   return call.expression.getText(coachSource) === "useEffect" && call.arguments.length === 2
     && ["[conversationRevision]", "[visible]"].includes(call.arguments[1].getText(coachSource))
-    && call.arguments[0].getText(coachSource).includes("stopVoice()");
+    && call.arguments[0].getText(coachSource).includes("stopVoice(false)");
 }).map(node => node.getText(coachSource));
 if (voiceEffects.length !== 2) throw new Error("Expected the two production voice-lifetime effects");
 const voiceSource = `import { useEffect } from "react";

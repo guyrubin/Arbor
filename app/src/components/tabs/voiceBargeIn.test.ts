@@ -85,7 +85,7 @@ describe("F-01 — the voice chip can never wedge into a dead button", () => {
     // The stale-ref branch clears but does NOT return — the tap keeps going,
     // paints the connecting state (S5), claims its attempt, and flows STRAIGHT
     // into the Live-availability branch.
-    expect(toggle).toMatch(/if \(voiceOnRef\.current \|\| liveCtlRef\.current\) stopVoice\(\);\s*setVoiceNotice\(null\);\s*setVoicePhase\("connecting"\);\s*const attempt = voiceLifetimeRef\.current\.begin\(\);\s*let liveClosed = false;\s*let liveStage: "mint" | "socket" = "mint";\| "start" = "token";\s*if \(liveAvail\)/);
+    expect(toggle).toMatch(/if \(voiceOnRef\.current \|\| liveCtlRef\.current\) stopVoice\(false\);\s*setVoiceNotice\(null\);\s*setVoicePhase\("connecting"\);\s*const attempt = voiceLifetimeRef\.current\.begin\(\);\s*let liveClosed = false;\s*let liveStage: "mint" | "socket" = "mint";\| "start" = "token";\s*if \(liveAvail\)/);
     // …so every idle-looking tap reaches the token mint or the browser loop.
     expect(toggle).toContain("api.liveToken(");
     expect(toggle).toMatch(/startBrowserVoice\(\);\s*\};\s*$/);
@@ -169,7 +169,7 @@ describe("S5 — every Talk tap paints a visible outcome", () => {
   });
 
   it("stop and unmount invalidate ownership before abort/cleanup; awaits cannot adopt stale starts", () => {
-    expect(coach).toMatch(/const stopVoice = \(\) => \{\s*voiceLifetimeRef\.current\.cancel\(\);/);
+    expect(coach).toMatch(/const stopVoice = \(review = true\) => \{\s*const reviewAttempt = voiceLifetimeRef\.current\.current;\s*voiceLifetimeRef\.current\.cancel\(\);/);
     expect(coach).toMatch(/useEffect\(\(\) => \(\) => \{\s*voiceLifetimeRef\.current\.cancel\(\);/);
     expect(toggle).toMatch(/await api\.liveToken\([\s\S]{0,250}\);\s*if \(!attempt\.isCurrent\(\)\) return;/);
     expect(toggle).toContain("signal: attempt.signal");
@@ -197,7 +197,7 @@ describe("S5 — every Talk tap paints a visible outcome", () => {
     // unsupported-browser branch ends visible (toast + off), never silent.
     expect(startListeningFn).toMatch(/if \(!speechSupported\(\)\) \{ setVoiceNotice\(microphoneRecovery\("unsupported", uiLang\)\); voiceOnRef\.current = false; setVoicePhase\("off"\); return; \}\s*setVoicePhase\("listening"\);/);
     // Fatal dictation outcomes stop voice AND toast (mic denied / retries out).
-    expect(startListeningFn).toMatch(/onFatal: \(reason\) => \{\s*if \(!attempt\.isCurrent\(\)\) return;\s*stopVoice\(\);\s*setVoiceNotice\(microphoneRecovery\(reason, uiLang\)/);
+    expect(startListeningFn).toMatch(/onFatal: \(reason\) => \{\s*if \(!attempt\.isCurrent\(\)\) return;\s*stopVoice\(false\);\s*setVoiceNotice\(microphoneRecovery\(reason, uiLang\)/);
     expect(startListeningFn).toContain("microphoneRecovery(reason, uiLang)");
   });
 
@@ -230,7 +230,9 @@ describe("voice attempt wiring rejects stale callbacks BEFORE mutations", () => 
     expect(coach).toMatch(/\(delta\) => \{\s*if \(!ownsTurn\(\)\) return;/);
     expect(coach).toMatch(/onEvent: \(event, data\) => \{\s*if \(!ownsTurn\(\)\) return;/);
     expect(coach).toContain("if (voiceAbortRef.current === controller) voiceAbortRef.current = null");
-    expect(coach).toContain("attempt.isCurrent() ? [...current, ...checked].slice(-8) : current");
+    expect(coach).toContain("mayReview() ? [...current, ...checked].slice(-8) : current");
+    expect(coach).toContain("sessionId === voiceSessionIdRef.current");
+    expect(coach).toContain("attempt.isCurrent() || reviewAttemptRef.current === attempt");
     expect(coach).toMatch(/speak\(next, \(\) => \{ if \(!attempt\.isCurrent\(\)\) return;/);
     expect(coach).toMatch(/const startBrowserVoice = \(\) => \{\s*voiceLifetimeRef\.current\.begin\(\);/);
   });

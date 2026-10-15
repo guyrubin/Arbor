@@ -15,6 +15,7 @@ const TARGETS = {
   // P5 critic r2 (P1-4, 6 Oct): #/milestones no longer owns a dialog — the
   // full-screen celebration overlay is gone (one confetti burst only).
   "coach/VoiceOverlay.tsx": "true",
+  "coach/VoiceCloseCard.tsx": "true",
   "tabs/HeroJourneyTab.tsx": "Boolean(kidNav) && immersive && Boolean(activeStory && render)",
 };
 const read = (file: string) => readFileSync(path.join(root, file), "utf8");

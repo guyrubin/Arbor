@@ -29,7 +29,7 @@ vi.mock("@google/genai", () => ({
 }));
 
 import { startGeminiLive, type LiveHandlers } from "./geminiLiveClient";
-import { createVoiceLifetime } from "./voiceLifetime";
+import { createVoiceLifetime, type VoiceAttempt } from "./voiceLifetime";
 import type { LiveTurnVerdict } from "./liveTurnGuard";
 import * as ts from "typescript";
 
@@ -565,6 +565,9 @@ function productionCoachHarness() {
   const attempt = lifetime.begin();
   const extraction = deferred<{ proposals: unknown[] }>();
   let proposals: unknown[] = [];
+  const reviewAttemptRef = { current: null as VoiceAttempt | null };
+  const voiceSessionIdRef = { current: "synthetic-session" };
+  let proposalPending = 0;
   const phases: { phase: string; current: boolean; released: boolean }[] = [];
   const api = {
     extractConversationProposals: vi.fn(() => extraction.promise),
@@ -579,7 +582,10 @@ function productionCoachHarness() {
   const speak = vi.fn();
   const handlers = bindProductionCoachCallbacks({
     attempt, api, voiceLifetimeRef: { current: lifetime },
-    voiceSessionIdRef: { current: "synthetic-session" }, voiceTurnRef: { current: 0 },
+    voiceSessionIdRef, voiceTurnRef: { current: 0 }, reviewAttemptRef,
+    setProposalPending: (update: (count: number) => number) => { proposalPending = update(proposalPending); },
+    setProposalFailed: vi.fn(),
+    setVoiceReviewOpen: vi.fn(),
     childProfile: { id: "synthetic-child" }, getAiLanguage: () => "en", milestones: [],
     behaviorLogs: [], conversationChanges: [], normalizeConversationProposals,
     attachProposalConflicts: (drafts: unknown[]) => drafts,
@@ -597,10 +603,39 @@ function productionCoachHarness() {
     lifetime, attempt, handlers, extraction, api, phases, normalizeConversationProposals,
     appendVoiceUserTurn, appendVoiceAiDelta, finalizeVoiceAiTurn, clearLiveRefs, setVoiceInterim, speak,
     get proposals() { return proposals; },
+    reviewAttemptRef, voiceSessionIdRef,
+    get proposalPending() { return proposalPending; },
   };
 }
 
 describe("ordinary remote close versus safety halt — real client + production Coach callbacks", () => {
+  it("an explicitly stopped session may finish its pending readback without restarting voice", async () => {
+    const coach = productionCoachHarness();
+    coach.handlers.onUserTurn!("We played with blocks.");
+    expect(coach.proposalPending).toBe(1);
+    coach.lifetime.cancel();
+    coach.reviewAttemptRef.current = coach.attempt;
+    coach.extraction.resolve({ proposals: [{ id: "draft-to-review" }] });
+    await flushMicrotasks();
+    expect(coach.proposals).toEqual([{ id: "draft-to-review" }]);
+    expect(coach.proposalPending).toBe(0);
+    expect(coach.speak).not.toHaveBeenCalled();
+    expect(coach.appendVoiceAiDelta).not.toHaveBeenCalled();
+  });
+
+  it.each(["discard", "different-thread"])("%s invalidates a stopped session's late readback", async (reason) => {
+    const coach = productionCoachHarness();
+    coach.handlers.onUserTurn!("We played with blocks.");
+    coach.lifetime.cancel();
+    coach.reviewAttemptRef.current = coach.attempt;
+    if (reason === "discard") coach.reviewAttemptRef.current = null;
+    else coach.voiceSessionIdRef.current = "different-thread";
+    coach.extraction.resolve({ proposals: [{ id: "must-not-return" }] });
+    await flushMicrotasks();
+    expect(coach.proposals).toEqual([]);
+    expect(coach.normalizeConversationProposals).not.toHaveBeenCalled();
+  });
+
   it.each([true, false])("remote-close retirement enabled=%s blocks late extraction (false is the pre-fix negative control)", async (retireOnRemoteClose) => {
     const coach = productionCoachHarness();
     let cb!: Callbacks;

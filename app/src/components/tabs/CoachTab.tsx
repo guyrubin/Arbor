@@ -55,6 +55,7 @@ import VoiceOverlay from "../coach/VoiceOverlay";
 import MicrophoneNotice from "../ui/MicrophoneNotice";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import ConversationProposalTray from "../coach/ConversationProposalTray";
+import VoiceCloseCard from "../coach/VoiceCloseCard";
 import CaptureProposalsTray from "../capture/CaptureProposalsTray";
 import { liveUnavailableReason, trackLiveUnavailable } from "../../lib/kpiEvents";
 // AI-06 / AI-24: one classifier from a thrown transport error (or from being
@@ -467,27 +468,49 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const voiceTurnRef = useRef(0);
   const [conversationProposals, setConversationProposals] = useState<ConversationProposal[]>([]);
   const [proposalBusyId, setProposalBusyId] = useState<string | null>(null);
+  const proposalCommitRef = useRef(false);
+  const reviewAttemptRef = useRef<VoiceAttempt | null>(null);
+  const [voiceReviewOpen, setVoiceReviewOpen] = useState(false);
+  const [proposalPending, setProposalPending] = useState(0);
+  const [proposalFailed, setProposalFailed] = useState(false);
+  const clearVoiceReview = () => {
+    reviewAttemptRef.current = null;
+    voiceSessionIdRef.current = "discarded-" + Date.now();
+    setConversationProposals([]);
+    setProposalPending(0);
+    setProposalFailed(false);
+    setVoiceReviewOpen(false);
+  };
+  const discardVoiceReview = () => { if (!proposalCommitRef.current) clearVoiceReview(); };
 
   const deriveConversationProposals = async (transcript: string, attempt: VoiceAttempt | null = voiceLifetimeRef.current.current) => {
     if (!attempt?.isCurrent()) return;
     const sessionId = voiceSessionIdRef.current;
     const turnId = "turn-" + (++voiceTurnRef.current) + "-" + Date.now();
+    // Only an explicit Stop carries an in-flight draft into review. A safety
+    // halt, child/thread change, new session or discard never adopts it.
+    const mayReview = () => sessionId === voiceSessionIdRef.current
+      && (attempt.isCurrent() || reviewAttemptRef.current === attempt);
+    setProposalPending(count => count + 1);
     try {
       const result = await api.extractConversationProposals({
         transcript, childProfile, language: getAiLanguage(),
         milestones: milestones.map(({ id, title, checked, observationStatus }) => ({ id, title, checked, observationStatus })),
       });
-      if (!attempt.isCurrent()) return;
+      if (!mayReview()) return;
       const normalized = normalizeConversationProposals(result.proposals, {
         sessionId, turnId, childId: childProfile.id, language: getAiLanguage(),
       });
       const checked = attachProposalConflicts(normalized, { behaviorLogs, milestones, committedChanges: conversationChanges });
-      if (checked.length) setConversationProposals((current) => attempt.isCurrent() ? [...current, ...checked].slice(-8) : current);
+      if (checked.length) setConversationProposals((current) => mayReview() ? [...current, ...checked].slice(-8) : current);
     } catch (error) {
-      if (!attempt.isCurrent()) return;
+      if (!mayReview()) return;
+      setProposalFailed(true);
       // Escalation remains owned by the existing voice safety path. Extraction
       // failure is non-blocking: conversation continues and nothing is saved.
       if (!(error instanceof EscalationRequiredError)) console.warn("Harbor proposal extraction unavailable", error);
+    } finally {
+      if (sessionId === voiceSessionIdRef.current) setProposalPending(count => Math.max(0, count - 1));
     }
   };
 
@@ -664,7 +687,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       },
       onFatal: (reason) => {
         if (!attempt.isCurrent()) return;
-        stopVoice();
+        stopVoice(false);
         setVoiceNotice(microphoneRecovery(reason, uiLang));
       },
     });
@@ -680,8 +703,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     setLiveSession(false);
   };
 
-  const stopVoice = () => {
+  const stopVoice = (review = true) => {
+    const reviewAttempt = voiceLifetimeRef.current.current;
     voiceLifetimeRef.current.cancel();
+    if (review && reviewAttempt && voicePhase !== "off") {
+      reviewAttemptRef.current = reviewAttempt;
+      setVoiceReviewOpen(true);
+    }
     setVoiceNotice(null);
     voiceOnRef.current = false;
     streamDoneRef.current = false;
@@ -729,7 +757,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     const action = voiceChipAction(voicePhase, Boolean(liveCtlRef.current));
     if (action === "interrupt" && voiceOnRef.current) { bargeInVoice(); return; }
     if (action !== "start") { stopVoice(); return; }
-    if (voiceOnRef.current || liveCtlRef.current) stopVoice();
+    if (voiceReviewOpen) return;
+    reviewAttemptRef.current = null;
+    voiceSessionIdRef.current = "voice-session-" + Date.now() + "-" + (++voiceTurnRef.current);
+    setConversationProposals([]);
+    setProposalPending(0);
+    setProposalFailed(false);
+    if (voiceOnRef.current || liveCtlRef.current) stopVoice(false);
     setVoiceNotice(null);
     // Paint before the token/import/mic/socket awaits; X owns cancellation
     // throughout startup, including before a LiveController exists.
@@ -784,6 +818,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                 finalizeVoiceAiTurn();
                 setVoicePhase("off");
                 setVoiceNotice(microphoneRecovery("connection", uiLang));
+                setVoiceReviewOpen(true);
               },
               onError: () => {
                 if (!attempt.isCurrent()) return;
@@ -896,6 +931,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // No state writes on unmount; late grants/verdicts cannot adopt or render.
   useEffect(() => () => {
     voiceLifetimeRef.current.cancel();
+    reviewAttemptRef.current = null;
+    voiceSessionIdRef.current = "unmounted";
     voiceOnRef.current = false;
     dictationLoopRef.current?.stop();
     dictationLoopRef.current = null;
@@ -905,8 +942,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     liveCtlRef.current = null;
   }, []);
 
-  useEffect(() => { stopVoice(); }, [conversationRevision]);
-  useEffect(() => { if (!visible) stopVoice(); }, [visible]);
+  useEffect(() => { stopVoice(false); }, [conversationRevision]);
+  useEffect(() => { if (!visible) stopVoice(false); }, [visible]);
+  // Review drafts belong to one child and one thread, including late network
+  // responses. A new thread cannot offer the prior child's unconfirmed facts.
+  useEffect(() => { clearVoiceReview(); }, [childProfile.id, conversationRevision]);
 
   // B-VOICE-06: "Talk it through" on the capture bar opens the conversation
   // READY to talk — it never opens the microphone by itself. The microphone
@@ -1681,31 +1721,38 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
 
       <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
 
-      <ConversationProposalTray
-        proposals={conversationProposals}
-        language={uiLang}
-        busyId={proposalBusyId}
-        onEdit={(id, summary) => setConversationProposals((items) => items.map((item) => item.id === id ? { ...item, summary } : item))}
-        onDiscard={(id) => setConversationProposals((items) => items.filter((item) => item.id !== id))}
-        onConfirm={async (proposal) => {
-          setProposalBusyId(proposal.id);
-          try {
-            // N1-01-R2: the voice tray's commit is a real keep_this seam. The
-            // record's own status + commitRef decide whether it counts, so a
-            // throw above this line emits nothing (critic C8).
-            const record = await commitConversationProposal(proposal);
-            noteKeepCommitted(record, "coach-voice");
-            setConversationProposals((items) => items.filter((item) => item.id !== proposal.id));
-            // B-ASKJB-03: ONE toast per Keep. The tray raises "Kept" + Undo
-            // once the audit row lands; this success toast doubled it. Only a
-            // milestone confirmation (which the tray deliberately gives no
-            // Undo, and so no toast) still confirms here.
-            if (proposal.target === "milestone") toast(t("coach.voice.proposalSaved"), "success");
-          } catch {
-            toast(t("coach.voice.proposalSaveError"), "error");
-          } finally { setProposalBusyId(null); }
-        }}
-      />
+      {visible && voiceReviewOpen && voicePhase === "off" && <VoiceCloseCard
+        sessionId={voiceSessionIdRef.current} proposals={conversationProposals} language={uiLang}
+        pending={proposalPending > 0} failed={proposalFailed} busy={!!proposalBusyId} onClose={discardVoiceReview}>
+        <ConversationProposalTray
+          inline
+          proposals={conversationProposals}
+          language={uiLang}
+          busyId={proposalBusyId}
+          onEdit={(id, summary) => setConversationProposals((items) => items.map((item) => item.id === id ? { ...item, summary } : item))}
+          onDiscard={(id) => setConversationProposals((items) => items.filter((item) => item.id !== id))}
+          onConfirm={async (proposal) => {
+            if (proposalCommitRef.current) return;
+            proposalCommitRef.current = true;
+            setProposalBusyId(proposal.id);
+            try {
+              // N1-01-R2: the voice tray's commit is a real keep_this seam. The
+              // record's own status + commitRef decide whether it counts, so a
+              // throw above this line emits nothing (critic C8).
+              const record = await commitConversationProposal(proposal);
+              noteKeepCommitted(record, "coach-voice");
+              setConversationProposals((items) => items.filter((item) => item.id !== proposal.id));
+              // B-ASKJB-03: ONE toast per Keep. The tray raises "Kept" + Undo
+              // once the audit row lands; this success toast doubled it. Only a
+              // milestone confirmation (which the tray deliberately gives no
+              // Undo, and so no toast) still confirms here.
+              if (proposal.target === "milestone") toast(t("coach.voice.proposalSaved"), "success");
+            } catch {
+              toast(t("coach.voice.proposalSaveError"), "error");
+            } finally { proposalCommitRef.current = false; setProposalBusyId(null); }
+          }}
+        />
+      </VoiceCloseCard>}
 
       {/* AI-V7: the voice surface — orb + live captions in a calm bottom
           sheet, owned entirely by voicePhase (unmounts when voice is off).
