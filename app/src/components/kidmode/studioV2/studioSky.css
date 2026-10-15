@@ -1,0 +1,99 @@
+/* Studio Sky handoff (1180 × 820 / 820 × 1180): preserve its authored
+   atmosphere, glass and portrait composition. Identity comes from the profile;
+   the export's fixed child art, simulated ranks and currency are not assets. */
+.studio-v2 {
+  --studio-gold: #f7b91d;
+  --studio-gold-deep: #e09a10;
+  --studio-world: #6b4bc4;
+  --studio-ease: cubic-bezier(.22, 1, .36, 1);
+  box-shadow: 0 40px 100px #0007;
+}
+.studio-v2__sky {
+  overflow: hidden;
+  background: linear-gradient(180deg, #121c3a 0%, #22285e 30%, #4a3a86 52%, #9a5a7a 66%, #e08a4c 80%, #ffcf6b 100%);
+}
+.studio-v2__sky > span { position: absolute; display: block; pointer-events: none; }
+.studio-sky__aurora { inline-size: 44%; aspect-ratio: 1; border-radius: 50%; filter: blur(30px); opacity: .55; }
+.studio-sky__aurora--stories { inset-inline-start: -10%; inset-block-start: 5%; background: radial-gradient(circle, #a592d8, transparent 65%); }
+.studio-sky__aurora--calm { inset-inline-end: -7%; inset-block-start: -5%; background: radial-gradient(circle, #7eb4cb, transparent 65%); }
+.studio-sky__stars { inset: 0; opacity: .7; background-image: radial-gradient(1.5px 1.5px at 12% 18%, #fff 50%, transparent 60%), radial-gradient(1px 1px at 28% 9%, #fff 50%, transparent 60%), radial-gradient(2px 2px at 44% 22%, #fff 50%, transparent 60%), radial-gradient(1px 1px at 61% 12%, #fff 50%, transparent 60%), radial-gradient(1.5px 1.5px at 73% 26%, #fff 50%, transparent 60%), radial-gradient(1px 1px at 86% 8%, #fff 50%, transparent 60%), radial-gradient(1.5px 1.5px at 92% 30%, #fff 50%, transparent 60%), radial-gradient(1px 1px at 52% 34%, #fff 50%, transparent 60%), radial-gradient(1px 1px at 8% 40%, #fff 50%, transparent 60%); }
+.studio-sky__rays { left: 50%; top: 62%; inline-size: 136%; aspect-ratio: 1; transform: translate(-50%, -50%); opacity: .35; background: repeating-conic-gradient(from 0deg, #ffe6a080 0deg 3deg, transparent 3deg 11deg); mask-image: radial-gradient(circle, #000 0%, transparent 42%); }
+.studio-sky__horizon { left: 50%; top: 66%; inline-size: 94%; block-size: 63%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(ellipse, #ffd678bf, #ffaa5a40 45%, transparent 70%); }
+.studio-sky__ground { left: -10%; bottom: -15%; inline-size: 120%; block-size: 40%; border-radius: 50%; background: radial-gradient(ellipse at 50% 30%, #ffecc8e6, #ffc8828c 40%, #783c5a00 72%); }
+.arbor-play .studio-v2 :is(h1, h2, h3), .studio-v2 strong { font-weight: 900 !important; }
+.studio-v2__greeting h1 { letter-spacing: -.02em; text-shadow: 0 2px 24px #0006; }
+.studio-v2__greeting h1 > svg { color: var(--studio-gold); filter: drop-shadow(0 0 10px #f7b91dcc); }
+.studio-v2__greeting p { font-size: 17px; font-weight: 600; color: #ffffffc7; }
+.studio-v2__header-actions [data-kid-exit-caption], .studio-v2-bar [data-kid-exit-caption] { color: #e8eaf5 !important; }
+.studio-v2__door[data-world=playbank], .studio-v2[data-world=playbank] { --studio-world: #2f9e54; }
+.studio-v2__door[data-world=stories], .studio-v2[data-world=stories] { --studio-world: #6b4bc4; }
+.studio-v2__door[data-world=feelings], .studio-v2[data-world=feelings] { --studio-world: #e89b1f; }
+.studio-v2__door[data-world=studio], .studio-v2[data-world=studio] { --studio-world: #d4543a; }
+.studio-v2__door { background: linear-gradient(160deg, #ffffff26, #ffffff0a); border-color: #ffffff52; box-shadow: 0 12px 30px #0004, inset 0 1px 0 #ffffff38, 0 0 28px color-mix(in srgb, var(--studio-world) 20%, transparent); transition: translate .3s var(--studio-ease), box-shadow .3s var(--studio-ease); }
+.studio-v2__door[data-world=playbank] { transform: perspective(1400px) rotateY(16deg); }
+.studio-v2__door[data-world=stories] { transform: perspective(1400px) rotateY(9deg); }
+.studio-v2__door[data-world=studio] { transform: perspective(1400px) rotateY(-9deg); }
+.studio-v2__door[data-world=feelings] { transform: perspective(1400px) rotateY(-16deg); }
+.studio-v2__door > .studio-v2__portal-art { aspect-ratio: 194 / 164; }
+.studio-v2__door-label { min-block-size: 48px; padding: 10px 2px 0; }
+.studio-v2__door-label small { margin-block-start: 3px; line-height: 1.25; color: #ffffffdf; }
+.studio-v2__door-label > svg { inline-size: 18px; }
+.studio-v2__portal-art { position: relative; }
+.studio-v2__portal-art > .studio-v2__portal-hero { position: absolute; inset-inline-start: -5%; inset-block: 0; inline-size: 72%; pointer-events: none; mask-image: radial-gradient(ellipse 65% 65% at 42% 48%, #000 40%, transparent 95%); }
+.studio-v2__portal-hero img { object-fit: cover; object-position: 50% 20%; }
+.studio-v2__hero-portrait { position: relative; filter: drop-shadow(0 14px 22px #42253325); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 34%, transparent 96%); }
+.studio-v2__hero-portrait img { inline-size: 118%; max-inline-size: none; block-size: auto; min-block-size: 100%; margin-inline: -9%; object-fit: cover; object-position: center 20%; border-radius: 0; }
+.studio-v2__hero::before { content: ""; position: absolute; inset-inline: -5%; inset-block-end: -10px; block-size: 120px; border-radius: 50%; background: radial-gradient(ellipse, #fff0c8f2, #ffc87866 45%, transparent 70%); }
+.studio-v2__bubble { position: relative; font-weight: 800; }
+.studio-v2__bubble::after { content: ""; position: absolute; inset-inline-start: 18px; inset-block-end: -7px; inline-size: 14px; block-size: 14px; transform: rotate(45deg); background: #fff; }
+.studio-v2__sprout { margin-block-start: 4px; }
+.studio-v2__quest { gap: 22px; background: linear-gradient(160deg, #1a2b4ac7, #1a2b4a9e); border-color: #ffffff38; box-shadow: 0 20px 60px #0006, inset 0 1px 0 #ffffff38; }
+.studio-v2__quest-steps li { position: relative; }
+.studio-v2__quest-steps li:not(:last-child)::after { content: ""; position: absolute; inset-inline-start: 50%; inset-block-start: 20px; inline-size: calc(100% + 8px); block-size: 4px; background: #ffffff38; }
+.studio-v2__quest-steps li[data-connected=true]::after { background: var(--studio-gold); box-shadow: 0 0 14px #f7b91d80; }
+.studio-v2__quest-steps li > span { position: relative; z-index: 1; background: #536077; }
+.studio-v2__quest-steps [aria-current=step] > span { box-shadow: 0 0 0 8px #ffffff12; }
+.studio-v2__gold-button { background: linear-gradient(135deg, #ffd86b, var(--studio-gold) 50%, var(--studio-gold-deep)); box-shadow: 0 10px 30px #f7b91d59; font-size: 17px; font-weight: 900; }
+.studio-v2--world { min-block-size: max(744px, calc(100dvh - 76px)); padding-block-start: 44px; }
+.studio-v2--world::before { background: linear-gradient(90deg, #121c3ad9, #121c3a73 55%, #121c3a99), linear-gradient(180deg, #121c3a4d, transparent 30%, transparent 70%, #121c3a99); }
+.studio-v2__world-environment { position: absolute; inset: -40px; z-index: -2; pointer-events: none; filter: blur(14px) saturate(1.2) brightness(.65); transform: scale(1.06); }
+.studio-v2__world-environment > .studio-v2__portal-art { border-radius: 0; }
+.studio-v2__world-heading { background: linear-gradient(transparent, #101b31e6); padding-block-start: 64px; }
+.studio-v2__world-heading > small { background: var(--studio-world); color: #fff; box-shadow: 0 2px 8px #0004; }
+.studio-v2__world-window > .studio-v2__portal-art { border-color: #ffde8977; }
+.studio-v2__activity { background: linear-gradient(145deg, #3d4c83c4, #27385cba); box-shadow: inset 0 1px 0 #ffffff24; border-color: #ffffff38; }
+/* The parent shell styles every aside with important declarations. */
+.arbor-play .studio-v2__keepsake-note { background: linear-gradient(145deg, #3d4c83c4, #27385cba) !important; color: #fff !important; }
+.studio-v2__activity-art { position: relative; overflow: hidden; border-radius: 10px; }
+.studio-v2__activity-cue { position: absolute; inset-inline-end: 4px; inset-block-end: 4px; display: grid; place-items: center; inline-size: 36px; block-size: 36px; border-radius: 10px; color: #fff; background: #172443e8; border: 1px solid #ffffff80; }
+@media (hover:hover) and (pointer:fine) {
+  .studio-v2__door:hover { box-shadow: 0 16px 40px #0005, 0 0 36px color-mix(in srgb, var(--studio-world) 60%, transparent); }
+  .studio-v2__gold-button:hover { filter: brightness(1.07); }
+}
+@media (prefers-reduced-motion:no-preference) {
+  .studio-sky__aurora { will-change: transform; animation: studio-sky-drift 16s ease-in-out infinite; }
+  .studio-sky__aurora--calm { animation-direction: reverse; animation-duration: 19s; }
+  @keyframes studio-sky-drift { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(24px,-18px) scale(1.08); } }
+}
+@media (min-width:641px) and (max-width:950px) {
+  .studio-v2__hero { inline-size: 41.46%; block-size: 32.2%; inset-block-end: 23.05%; }
+  .studio-sky__rays { inline-size: 190%; top: 58%; }
+}
+@media (max-width:640px) {
+  .studio-v2__hero { margin: 0; block-size: 310px; }
+  .studio-v2__hero-portrait { max-inline-size: 340px; margin-inline: auto; }
+  .studio-v2__hero-portrait img { max-inline-size: none; margin-inline: -9%; }
+  .studio-v2__door-label { min-block-size: 56px; }
+  .studio-v2__guide { margin-block-start: -18px; }
+  .studio-v2__quest { gap: 16px; }
+  .studio-v2__quest-steps li:not(:last-child)::after { inline-size: calc(100% + 5px); }
+  .studio-v2--world { padding-block-start: 20px; }
+  .studio-v2__sky { position: absolute; inset: 0; overflow: hidden; }
+  .studio-sky__rays { inline-size: 280%; top: 46%; }
+  .studio-sky__horizon { top: 46%; block-size: 36%; }
+}
+@media (forced-colors:active) {
+  .studio-v2__sky, .studio-v2__world-environment { display: none; }
+  .studio-v2__quest-steps li::after { background: CanvasText; }
+  .studio-v2__portal-hero, .studio-v2__hero-portrait { mask-image: none; }
+}
