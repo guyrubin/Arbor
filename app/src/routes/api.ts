@@ -1,3 +1,5 @@
+import { liveUsageRateLimit } from "../server/apiRateLimits.js";
+import { createLiveUsageStore, withLiveUsageDeadline, type LiveUsageEvent } from "../server/liveUsage.js";
 import { attachmentTurnPolicy } from "../ai/attachmentSourcePolicy.js";
 import { parseCompanionAttachments, type ComposerAttachment } from "../lib/companionAttachments.js";
 import express from "express";
@@ -400,6 +402,7 @@ export const allowListHandoffInput = (
 
 export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource }: ApiDeps) => {
   const router = express.Router();
+  const liveUsage = createLiveUsageStore(config);
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
   const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
   // B-AI-01: the companion ledger read (Firestore in prod, null locally).
@@ -1768,6 +1771,20 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // ever seeing the server key. Reports availability so the client can fall back
   // to the browser voice loop when Live isn't configured/provisioned.
   // Metered by createAiQuota in createApp.ts (same list as the other paid mints).
+  router.post("/live/usage", liveUsageRateLimit(), async (req, res) => {
+    const { sessionId, event } = req.body ?? {};
+    if (typeof sessionId !== "string" || !["opened", "heartbeat", "closed"].includes(event)) {
+      res.status(400).json({ error: "Invalid session event" }); return;
+    }
+    try {
+      const result = await liveUsage.report(actorOf(req).uid, sessionId, event as LiveUsageEvent);
+      if (!result) { res.status(404).json({ error: "Session not found" }); return; }
+      res.json(result);
+    } catch (error) {
+      logger.error("Live usage write failed", error, { requestId: requestIdOf(req) });
+      res.status(503).json({ error: "Usage reporting unavailable" });
+    }
+  });
   router.post("/live/token", async (req, res) => {
     const live = decideLive(config);
     if (!live.available) {
@@ -1840,7 +1857,21 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // The pinned instruction/speechConfig are echoed back so the client's
       // connect config stays byte-identical to the pin (cosmetic — the token
       // constraints are authoritative).
-      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig });
+      // Telemetry failure must not strand a successfully minted voice token.
+      let usageSessionId: string | undefined;
+      try {
+        usageSessionId = await withLiveUsageDeadline(async () => {
+          const actor = actorOf(req);
+          const [entitlement, familyId] = await Promise.all([
+            resolveEntitlement(entitlementStore, actor), resolveFamilyId(req, undefined),
+          ]);
+          return liveUsage.create({ uid: actor.uid, familyId, plan: entitlement.plan,
+            model, expiresAt: Date.parse(expireTime) });
+        });
+      } catch (error) {
+        logger.error("Live usage session creation failed", error, { requestId: requestIdOf(req) });
+      }
+      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig, usageSessionId });
     } catch (error: any) {
       logger.error("Arbor Live Token Error", error, { requestId: requestIdOf(req), provider: selected.provider, region: selected.region });
       if (euPath) {

@@ -57,11 +57,13 @@ export default function AdminDashboard({ open, onClose }: { open: boolean; onClo
           </div>
           <div className="grid grid-cols-2 gap-y-1.5 gap-x-4 text-xs" style={{ color: "var(--arbor-muted)" }}>
             <span>Calls</span><span className="text-end font-mono" style={{ color: "var(--arbor-ink)" }}>{data?.usageToday.calls ?? "—"}</span>
+            <span>Live session minutes · observed</span><span className="text-end font-mono">{data?.usageToday.live ? (data.usageToday.live.observedSessionMs / 60_000).toFixed(1) : "Not measured"}</span>
             <span>Total tokens</span><span className="text-end font-mono" style={{ color: "var(--arbor-ink)" }}>{data ? data.usageToday.totalTokens.toLocaleString() : "—"}</span>
             <span>Estimated cost · last 30 days</span><span className="text-end font-mono font-bold" style={{ color: "var(--arbor-ink)" }}>{data?.cost30d?.estimatedCostUsd != null ? `≈ $${data.cost30d.estimatedCostUsd.toFixed(4)} USD` : "Not measured"}</span>
             <span>Priced calls · last 30 days</span><span className="text-end font-mono">{data?.cost30d ? `${data.cost30d.pricedCalls} / ${data.cost30d.calls}` : "—"}</span>
             <span>Per active family · last 30 days</span><span className="text-end font-mono">{data?.cost30d?.perActiveFamilyUsd != null ? `≈ $${data.cost30d.perActiveFamilyUsd.toFixed(4)} USD` : "Not measured"}</span>
           </div>
+          <p className="mt-2 text-xs" style={{ color: "var(--arbor-muted)" }}>Live minutes are observed connection time, not billed audio. Live costs and missing session reports are not included in the cost estimate.</p>
           {data && Object.keys(data.usageToday.byProvider).length > 0 && (
             <div className="mt-3 pt-3 text-xs" style={{ borderTop: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}>
               {Object.entries(data.usageToday.byProvider).map(([prov, t]) => (

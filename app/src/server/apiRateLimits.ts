@@ -28,7 +28,7 @@ export function apiRateLimit(): RequestHandler {
     standardHeaders: true,
     legacyHeaders: false,
     // K2: the book-asset routes have their own per-account limit (bookAssetLimiter)
-    skip: (req) => isBookAssetRoute(req.path),
+    skip: (req) => isBookAssetRoute(req.path) || /^\/live\/usage\/?$/.test(req.path),
     message: {
       error: "Rate limit exceeded",
       details: "Too many Arbor requests from this IP. Please wait a minute and try again."
@@ -58,4 +58,12 @@ export function bookAssetLimiter(kind: "read" | "write", limit?: number): Reques
     legacyHeaders: false,
     message: { error: "Too many book requests. Please wait a minute.", code: "book_assets_rate" },
   });
+}
+
+/** Accounting must not consume the IP budget used by voice safety screens.
+ * Mounted after authentication; still bounded per account to protect writes. */
+export function liveUsageRateLimit(limit = 12): RequestHandler {
+  return rateLimit({ windowMs: 60_000, limit, keyGenerator: uidKey,
+    standardHeaders: true, legacyHeaders: false,
+    message: { error: "Too many usage reports", code: "live_usage_rate" } });
 }

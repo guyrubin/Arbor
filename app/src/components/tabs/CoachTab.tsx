@@ -753,6 +753,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             {
               signal: attempt.signal,
               token: fresh.token,
+              reportUsage: fresh.usageSessionId
+                ? (event) => api.liveUsage(fresh.usageSessionId!, event)
+                : undefined,
               model: fresh.model,
               systemInstruction: fresh.systemInstruction || "",
               speechConfig: fresh.speechConfig,
