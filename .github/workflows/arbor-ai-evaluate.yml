@@ -1,9 +1,6 @@
 name: Arbor AI candidate evaluations
 on:
   workflow_dispatch:
-  push:
-    branches: [codex/ai-backlog-completion-2026-10-15]
-    paths: [.github/workflows/arbor-ai-evaluate.yml]
 permissions:
   contents: read
   id-token: write
@@ -72,14 +69,20 @@ jobs:
         env:
           SUITES: ${{ matrix.suites }}
         run: |
+          set -o pipefail
+          # Retain only this run's evidence, never historical passing rows.
+          for result in ../evals/*.results.jsonl; do : > "$result"; done
           failed=0
           for suite in $SUITES; do
-            timeout 360 npm run eval:judge -- "$suite" || failed=1
+            : > "../evals/$suite.results.jsonl"
+            timeout 360 npm run eval:judge -- "$suite" 2>&1 | tee "eval-$suite.log" || failed=1
           done
           exit "$failed"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ai-evaluations-${{ matrix.name }}
-          path: evals/*.results.jsonl
+          path: |
+            evals/*.results.jsonl
+            app/eval-*.log
           retention-days: 14

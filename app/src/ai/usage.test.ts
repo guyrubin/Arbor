@@ -223,3 +223,50 @@ describe("B-PROV-04 · estimatedCostUsd from the dated price table", () => {
     expect(empty.perActiveFamilyUsd).toBeNull();
   });
 });
+
+describe("B-GA-26 model and cache price coverage", () => {
+  it("does not price new modalities or model families as an older text model", () => {
+    for (const model of ["gemini-3.8-flash-tts", "gemini-3.8-flash-cyber", "gemini-3.5-flash-unknown", "claude-sonnet-50"]) {
+      expect(priceKeyFor(model)).toBeNull();
+      expect(estimateCostUsd(model, { promptTokens: 100, outputTokens: 10 })).toBeUndefined();
+    }
+    expect(estimateCostUsd("gemini-3.5-flash-lite", { promptTokens: 1_000_000, outputTokens: 0 })).toBe(0.33);
+    expect(estimateCostUsd("claude-sonnet-5-5", { promptTokens: 1_000_000, outputTokens: 0 })).toBe(2.2);
+  });
+
+  it("counts Gemini cached prompt tokens once at the cache rate", () => {
+    const usage = normalizeUsage({ promptTokenCount: 1000, candidatesTokenCount: 100, cachedContentTokenCount: 800 });
+    expect(usage).toMatchObject({ promptTokens: 1000, cacheReadTokens: 800, totalTokens: 1100 });
+    expect(estimateCostUsd("gemini-3.5-flash", usage)).toBe(0.001452);
+  });
+
+  it("includes all Claude cache categories once, with separate write TTL prices", () => {
+    const usage = normalizeUsage({ input_tokens: 100, output_tokens: 50, cache_read_input_tokens: 200,
+      cache_creation_input_tokens: 300, cache_creation: { ephemeral_5m_input_tokens: 200, ephemeral_1h_input_tokens: 100 } });
+    expect(usage).toEqual({ promptTokens: 600, outputTokens: 50, totalTokens: 650,
+      cacheReadTokens: 200, cacheWrite5mTokens: 200, cacheWrite1hTokens: 100 });
+    expect(estimateCostUsd("claude-sonnet-5-5", usage)).toBe(0.001782);
+    expect(buildUsageEvent({ route: "coach_high_stakes", provider: "vertex_claude", model: "claude-sonnet-5-5" }, usage))
+      .toMatchObject({ cacheReadTokens: 200, cacheWrite5mTokens: 200, cacheWrite1hTokens: 100 });
+  });
+
+  it("uses the full input including cache to select Haiku's long-context tier", () => {
+    expect(estimateCostUsd("claude-haiku-5-5", { promptTokens: 100_000, outputTokens: 1000 })).toBe(0.01155);
+    expect(estimateCostUsd("claude-haiku-5-5", { promptTokens: 100_001, outputTokens: 1000 })).toBe(0.057751);
+  });
+
+  it("applies the published end of introductory Gemini pricing", () => {
+    const usage = { promptTokens: 1000, outputTokens: 1000, cacheReadTokens: 500 };
+    expect(estimateCostUsd("gemini-3.8-flash", usage, Date.parse("2026-12-31T23:59:59Z"))).toBe(0.004579);
+    expect(estimateCostUsd("gemini-3.8-flash", usage, Date.parse("2027-01-01T00:00:00Z"))).toBe(0.009158);
+  });
+
+  it("keeps unsupported or malformed usage unpriced instead of understating cost", () => {
+    for (const usage of [
+      { promptTokens: -1, outputTokens: 0 }, { promptTokens: NaN, outputTokens: 1 },
+      { promptTokens: 5, outputTokens: 1, cacheReadTokens: 10 },
+      { promptTokens: 100, outputTokens: 1, cacheReadTokens: 10, audioInputTokens: 20 },
+    ]) expect(estimateCostUsd("gemini-3.5-flash", usage)).toBeUndefined();
+    expect(estimateCostUsd("gemini-2.5-flash", { promptTokens: 100, outputTokens: 10, cacheReadTokens: 20 })).toBeUndefined();
+  });
+});

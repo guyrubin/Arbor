@@ -16,9 +16,9 @@ import { logger } from "../server/logger.js";
 import { currentRequestContext } from "../server/requestContext.js";
 import { recordUsageRollup } from "../server/usageRollup.js";
 import type { ModelRoute, ProviderId } from "./modelRouter.js";
-import { estimateCostUsd } from "./priceTable.js";
+import { estimateCostUsd, type PricedTokenUsage } from "./priceTable.js";
 
-export type TokenUsage = {
+export type TokenUsage = PricedTokenUsage & {
   promptTokens: number;
   outputTokens: number;
   totalTokens: number;
@@ -60,13 +60,24 @@ export const normalizeUsage = (raw: any): TokenUsage | null => {
       outputTokens,
       totalTokens: Number(raw.totalTokenCount || promptTokens + outputTokens + thoughtsTokens),
       ...(thoughtsTokens > 0 ? { thoughtsTokens } : {}),
+      ...(raw.cachedContentTokenCount ? { cacheReadTokens: Number(raw.cachedContentTokenCount) } : {}),
+      ...(Array.isArray(raw.promptTokensDetails) && raw.promptTokensDetails.some((d: any) => d.modality === "AUDIO")
+        ? { audioInputTokens: raw.promptTokensDetails.filter((d: any) => d.modality === "AUDIO").reduce((n: number, d: any) => n + Number(d.tokenCount || 0), 0) } : {}),
     };
   }
   // Anthropic (Claude on Vertex): input_tokens / output_tokens.
   if (raw.input_tokens != null || raw.output_tokens != null) {
-    const promptTokens = Number(raw.input_tokens || 0);
+    const cacheReadTokens = Number(raw.cache_read_input_tokens || 0);
+    const created = Number(raw.cache_creation_input_tokens || 0);
+    const cacheWrite1hTokens = Number(raw.cache_creation?.ephemeral_1h_input_tokens || 0);
+    const cacheWrite5mTokens = raw.cache_creation?.ephemeral_5m_input_tokens != null
+      ? Number(raw.cache_creation.ephemeral_5m_input_tokens) : created - cacheWrite1hTokens;
+    const promptTokens = Number(raw.input_tokens || 0) + cacheReadTokens + created;
     const outputTokens = Number(raw.output_tokens || 0);
-    return { promptTokens, outputTokens, totalTokens: promptTokens + outputTokens };
+    return { promptTokens, outputTokens, totalTokens: promptTokens + outputTokens,
+      ...(cacheReadTokens ? { cacheReadTokens } : {}),
+      ...(cacheWrite5mTokens ? { cacheWrite5mTokens } : {}),
+      ...(cacheWrite1hTokens ? { cacheWrite1hTokens } : {}) };
   }
   return null;
 };
@@ -112,6 +123,10 @@ export const buildUsageEvent = (
     outputTokens: usage?.outputTokens ?? 0,
     ...(usage?.thoughtsTokens ? { thoughtsTokens: usage.thoughtsTokens } : {}),
     totalTokens: usage?.totalTokens ?? 0,
+    ...(usage?.cacheReadTokens ? { cacheReadTokens: usage.cacheReadTokens } : {}),
+    ...(usage?.cacheWrite5mTokens ? { cacheWrite5mTokens: usage.cacheWrite5mTokens } : {}),
+    ...(usage?.cacheWrite1hTokens ? { cacheWrite1hTokens: usage.cacheWrite1hTokens } : {}),
+    ...(usage?.audioInputTokens ? { audioInputTokens: usage.audioInputTokens } : {}),
     // B-PROV-04: dated price table (ai/priceTable.ts) on the RESOLVED model.
     // Absent — never 0 — when the model is unpriced or no tokens were reported.
     ...(costOf(meta, usage) !== undefined ? { estimatedCostUsd: costOf(meta, usage) } : {}),
