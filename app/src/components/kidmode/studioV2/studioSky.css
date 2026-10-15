@@ -19,7 +19,7 @@
 .studio-sky__stars { inset: 0; opacity: .7; background-image: radial-gradient(1.5px 1.5px at 12% 18%, #fff 50%, transparent 60%), radial-gradient(1px 1px at 28% 9%, #fff 50%, transparent 60%), radial-gradient(2px 2px at 44% 22%, #fff 50%, transparent 60%), radial-gradient(1px 1px at 61% 12%, #fff 50%, transparent 60%), radial-gradient(1.5px 1.5px at 73% 26%, #fff 50%, transparent 60%), radial-gradient(1px 1px at 86% 8%, #fff 50%, transparent 60%), radial-gradient(1.5px 1.5px at 92% 30%, #fff 50%, transparent 60%), radial-gradient(1px 1px at 52% 34%, #fff 50%, transparent 60%), radial-gradient(1px 1px at 8% 40%, #fff 50%, transparent 60%); }
 .studio-sky__rays { left: 50%; top: 62%; inline-size: 136%; aspect-ratio: 1; transform: translate(-50%, -50%); opacity: .35; background: repeating-conic-gradient(from 0deg, #ffe6a080 0deg 3deg, transparent 3deg 11deg); mask-image: radial-gradient(circle, #000 0%, transparent 42%); }
 .studio-sky__horizon { left: 50%; top: 66%; inline-size: 94%; block-size: 63%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(ellipse, #ffd678bf, #ffaa5a40 45%, transparent 70%); }
-.studio-sky__ground { left: -10%; bottom: -15%; inline-size: 120%; block-size: 40%; border-radius: 50%; background: radial-gradient(ellipse at 50% 30%, #ffecc8e6, #ffc8828c 40%, #783c5a00 72%); }
+.studio-sky__ground { mask-image: linear-gradient(transparent, #000 28%); left: -10%; bottom: -15%; inline-size: 120%; block-size: 40%; border-radius: 50%; background: radial-gradient(ellipse at 50% 30%, #ffecc8e6, #ffc8828c 40%, #783c5a00 72%); }
 .arbor-play .studio-v2 :is(h1, h2, h3), .studio-v2 strong { font-weight: 900 !important; }
 .studio-v2__greeting h1 { letter-spacing: -.02em; text-shadow: 0 2px 24px #0006; }
 .studio-v2__greeting h1 > svg { color: var(--studio-gold); filter: drop-shadow(0 0 10px #f7b91dcc); }
@@ -29,7 +29,7 @@
 .studio-v2__door[data-world=stories], .studio-v2[data-world=stories] { --studio-world: #6b4bc4; }
 .studio-v2__door[data-world=feelings], .studio-v2[data-world=feelings] { --studio-world: #e89b1f; }
 .studio-v2__door[data-world=studio], .studio-v2[data-world=studio] { --studio-world: #d4543a; }
-.studio-v2__door { background: linear-gradient(160deg, #ffffff26, #ffffff0a); border-color: #ffffff52; box-shadow: 0 12px 30px #0004, inset 0 1px 0 #ffffff38, 0 0 28px color-mix(in srgb, var(--studio-world) 20%, transparent); transition: translate .3s var(--studio-ease), box-shadow .3s var(--studio-ease); }
+.studio-v2__door { background: linear-gradient(160deg, #786eaa8c, #3c376e8c); border-color: #ffffff52; box-shadow: 0 12px 30px #0004, inset 0 1px 0 #ffffff38, 0 0 28px color-mix(in srgb, var(--studio-world) 20%, transparent); transition: translate .3s var(--studio-ease), box-shadow .3s var(--studio-ease); }
 .studio-v2__door[data-world=playbank] { transform: perspective(1400px) rotateY(16deg); }
 .studio-v2__door[data-world=stories] { transform: perspective(1400px) rotateY(9deg); }
 .studio-v2__door[data-world=studio] { transform: perspective(1400px) rotateY(-9deg); }
@@ -39,11 +39,10 @@
 .studio-v2__door-label small { margin-block-start: 3px; line-height: 1.25; color: #ffffffdf; }
 .studio-v2__door-label > svg { inline-size: 18px; }
 .studio-v2__portal-art { position: relative; }
-.studio-v2__portal-art > .studio-v2__portal-hero { position: absolute; inset-inline-start: -5%; inset-block: 0; inline-size: 72%; pointer-events: none; mask-image: radial-gradient(ellipse 65% 65% at 42% 48%, #000 40%, transparent 95%); }
-.studio-v2__portal-hero img { object-fit: cover; object-position: 50% 20%; }
 .studio-v2__hero-portrait { position: relative; filter: drop-shadow(0 14px 22px #42253325); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 34%, transparent 96%); }
-.studio-v2__hero-portrait img { inline-size: 118%; max-inline-size: none; block-size: auto; min-block-size: 100%; margin-inline: -9%; object-fit: cover; object-position: center 20%; border-radius: 0; }
-.studio-v2__hero::before { content: ""; position: absolute; inset-inline: -5%; inset-block-end: -10px; block-size: 120px; border-radius: 50%; background: radial-gradient(ellipse, #fff0c8f2, #ffc87866 45%, transparent 70%); }
+.arbor-play .studio-v2__hero-portrait img { position: absolute; left: -9%; top: 20%; transform: translateY(-20%); inline-size: 118%; max-inline-size: none; max-width: none; block-size: auto; margin: 0; border-radius: 0; }
+.studio-v2__hero { isolation: isolate; }
+.studio-v2__hero::before { z-index: -1; content: ""; position: absolute; inset-inline: -5%; inset-block-end: -10px; block-size: 120px; border-radius: 50%; background: radial-gradient(ellipse, #fff0c8f2, #ffc87866 45%, transparent 70%); }
 .studio-v2__bubble { position: relative; font-weight: 800; }
 .studio-v2__bubble::after { content: ""; position: absolute; inset-inline-start: 18px; inset-block-end: -7px; inline-size: 14px; block-size: 14px; transform: rotate(45deg); background: #fff; }
 .studio-v2__sprout { margin-block-start: 4px; }
@@ -53,8 +52,8 @@
 .studio-v2__quest-steps li[data-connected=true]::after { background: var(--studio-gold); box-shadow: 0 0 14px #f7b91d80; }
 .studio-v2__quest-steps li > span { position: relative; z-index: 1; background: #536077; }
 .studio-v2__quest-steps [aria-current=step] > span { box-shadow: 0 0 0 8px #ffffff12; }
-.studio-v2__gold-button { background: linear-gradient(135deg, #ffd86b, var(--studio-gold) 50%, var(--studio-gold-deep)); box-shadow: 0 10px 30px #f7b91d59; font-size: 17px; font-weight: 900; }
-.studio-v2--world { min-block-size: max(744px, calc(100dvh - 76px)); padding-block-start: 44px; }
+.studio-v2 .studio-v2__gold-button { background: linear-gradient(135deg, #ffd86b, var(--studio-gold) 50%, var(--studio-gold-deep)); box-shadow: 0 10px 30px #f7b91d59; font-size: 17px; font-weight: 900; }
+.studio-v2--world { min-block-size: 744px; padding-block-start: 30px; padding-block-end: 26px; }
 .studio-v2--world::before { background: linear-gradient(90deg, #121c3ad9, #121c3a73 55%, #121c3a99), linear-gradient(180deg, #121c3a4d, transparent 30%, transparent 70%, #121c3a99); }
 .studio-v2__world-environment { position: absolute; inset: -40px; z-index: -2; pointer-events: none; filter: blur(14px) saturate(1.2) brightness(.65); transform: scale(1.06); }
 .studio-v2__world-environment > .studio-v2__portal-art { border-radius: 0; }
@@ -80,17 +79,17 @@
   .studio-sky__rays { inline-size: 190%; top: 58%; }
 }
 @media (max-width:640px) {
-  .studio-v2__hero { margin: 0; block-size: 310px; }
+
   .studio-v2__hero-portrait { max-inline-size: 340px; margin-inline: auto; }
-  .studio-v2__hero-portrait img { max-inline-size: none; margin-inline: -9%; }
-  .studio-v2__door-label { min-block-size: 56px; }
-  .studio-v2__guide { margin-block-start: -18px; }
-  .studio-v2__quest { gap: 16px; }
-  .studio-v2__quest-steps li:not(:last-child)::after { inline-size: calc(100% + 5px); }
+  .studio-v2__door-label { min-block-size: 36px; padding: 8px 2px 0; }
+  .studio-v2__door > .studio-v2__portal-art { aspect-ratio: 1.16; }
+
+
+  .studio-v2__quest-steps li:not(:last-child)::after { inline-size: calc(100% + 5px); inset-block-start: 14px; }
   .studio-v2--world { padding-block-start: 20px; }
   .studio-v2__sky { position: absolute; inset: 0; overflow: hidden; }
-  .studio-sky__rays { inline-size: 280%; top: 46%; }
-  .studio-sky__horizon { top: 46%; block-size: 36%; }
+  .studio-sky__rays { inline-size: 280%; top: 65%; }
+  .studio-sky__horizon { top: 65%; block-size: 36%; }
 }
 @media (forced-colors:active) {
   .studio-v2__sky, .studio-v2__world-environment { display: none; }
@@ -99,3 +98,10 @@
 }
 /* Keep the no-avatar state readable over the warm horizon. */
 .studio-v2__hero-empty p { padding: 8px 14px; border-radius: 12px; background: #1a2b4ad9; color: #fff; text-shadow: none; font-size: 14px; }
+
+.studio-v2__world-list { min-block-size: 680px; }
+.studio-v2__keepsake-note { margin-block-start: auto; padding: 14px 18px; }
+.studio-v2__portal-art > div { position: absolute; inset: 0; }
+@media(max-width:950px) { .studio-v2__world-list { min-block-size: auto; } .studio-v2__keepsake-note { margin-block-start: 12px; } }
+
+.studio-v2-bar [data-kid-exit-caption] { font-size:10px!important; line-height:1.2!important; }

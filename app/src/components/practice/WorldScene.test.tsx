@@ -27,6 +27,14 @@ beforeEach(()=>{
 });
 afterEach(()=>{unmount();vi.unstubAllGlobals();});
 describe("WorldScene current-key lifecycle and decorative fallback",()=>{
+ it("uses the surface's reviewed neutral scene while generation is unavailable",async()=>{
+  const fallbackArt={src:"neutral-studio.webp",srcSet:"neutral-studio.webp 480w",objectPosition:"50% 50%",provenanceId:"reviewed-studio",hasHero:false};
+  h.generate.mockRejectedValue(new Error("image allowance unavailable"));
+  expect(image(render({worldId:"studio-v2-stories",fallbackArt}))!.props.src).toBe("neutral-studio.webp");
+  visible();await settle();
+  expect(image(render({worldId:"studio-v2-stories",fallbackArt}))!.props.src).toBe("neutral-studio.webp");
+  expect(image(render({worldId:"studio-v2-stories",fallbackArt,heroUrl:undefined}))!.props.src).toBe("neutral-studio.webp");
+ });
  it("shows responsive static art with no avatar and never calls a provider",()=>{
   const tree=render({heroUrl:undefined});const img=image(tree)!;
   expect(img.props.src).toContain("mood-mountain-v2-480.webp");expect(img.props.srcSet).toContain("960w");expect(img.props.loading).toBe("lazy");expect(img.props.alt).toBe("");expect(img.props["aria-hidden"]).toBe("true");expect(h.generate).not.toHaveBeenCalled();

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { api, type AvatarStyle } from "../../lib/api";
 import { normalizeAvatarStyle } from "../../lib/avatarStyle";
 import { dedupeScene, getScene } from "../../lib/sceneCache";
-import { worldArtwork } from "./worldArtwork";
+import { worldArtwork, type WorldArtwork } from "./worldArtwork";
 import type { KidThemeId } from "../../lib/kidThemeManifest";
 import { runInstrumented } from "../../hooks/useAsyncAction";
 
@@ -53,6 +53,7 @@ export default function WorldScene({
   children,
   sizes = "(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 240px",
   priority = false,
+  fallbackArt,
 }: {
   worldId: string;
   /** B-KID-70: the child's ONE kid look (useKidTheme()); the static art comes
@@ -66,6 +67,9 @@ export default function WorldScene({
   /** B-KID-122: the one above-the-fold picture (the kid home's Tonight
    *  cover) loads eagerly at high fetch priority; every other scene stays lazy. */
   priority?: boolean;
+  /** A reviewed environment supplied by a newer surface. Never substitute an
+   * unrelated stock character when the personalized scene is unavailable. */
+  fallbackArt?: WorldArtwork;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const style = normalizeAvatarStyle(heroStyle);
@@ -79,7 +83,7 @@ export default function WorldScene({
   // A previous key's result is never displayed, even before effect cleanup runs.
   const art = key ? (resolved?.key === key ? resolved.url : getScene(key)) : undefined;
   const generated = art && !(failedGenerated?.key === key && failedGenerated.url === art) ? art : undefined;
-  const fallback = worldArtwork(worldId, theme);
+  const fallback = fallbackArt ?? worldArtwork(worldId, theme);
 
   useEffect(() => {
     if (!heroUrl || !key) return;

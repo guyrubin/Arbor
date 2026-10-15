@@ -17,13 +17,24 @@ import { QUEST_STEPS, studioQuestText, useStudioQuestProgress } from "./studioPr
 import "./studioV2.css";
 import "./studioSky.css";
 import { StudioPortrait } from "./StudioPortrait";
+import WorldScene from "../../practice/WorldScene";
 export { StudioPortrait } from "./StudioPortrait";
 
 /** The V2 environments are deliberately neutral: the profile alone supplies the child. */
+const WORLD_SCENES: Record<StudioWorldId, string> = {
+  stories: "An original magical story world: the child opens an illuminated storybook, with a tiny violet castle and a winding golden path rising from its pages. Expressive three-quarter close-up, face clearly visible, warm wonder, rich cinematic depth",
+  studio: "An original creative studio: the child paints a colorful handmade rocket on a wooden easel, brush in hand, warm amber lamps and art supplies. Expressive three-quarter close-up, face clearly visible, playful discovery, rich cinematic depth",
+  playbank: "An original playful discovery garden: the child solves a chunky wooden animal puzzle at a low table among green leaves and glowing lanterns. Expressive three-quarter close-up, face clearly visible, joyful curiosity, rich cinematic depth",
+  feelings: "An original feelings adventure: the child gently welcomes little friendly glowing emotion orbs on a sunny mountain path with soft clouds. Expressive three-quarter close-up, face clearly visible, reassuring warmth, rich cinematic depth",
+};
 export function StudioPortalArt({ worldId, personalized = false }: { worldId: StudioWorldId; personalized?: boolean }) {
   const theme = useKidTheme();
+  const hero = useHeroAvatar();
   const art = kidArt(theme, `studio.portal.${worldId}`);
-  return <span className="studio-v2__portal-art" aria-hidden="true">{art && !art.hasHero ? <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(max-width: 640px) 45vw, 600px" style={{ objectPosition: art.objectPosition }} alt="" draggable={false} decoding="async" /> : null}{personalized && <StudioPortrait className="studio-v2__portal-hero" fallback={false} />}</span>;
+  const neutral = art && !art.hasHero ? art : null;
+  return <span className="studio-v2__portal-art" aria-hidden="true">{neutral && (personalized
+    ? <WorldScene worldId={`studio-v2-${worldId}`} theme={theme} imagePrompt={WORLD_SCENES[worldId]} heroUrl={hero.url ?? undefined} heroStyle={hero.style} sizes="(max-width: 640px) 36vw, 600px" fallbackArt={{ src: neutral.src480, srcSet: kidArtSrcSet(neutral), objectPosition: neutral.objectPosition, provenanceId: neutral.provenanceId, hasHero: false }}>{null}</WorldScene>
+    : <img src={neutral.src480} srcSet={kidArtSrcSet(neutral)} sizes="100vw" style={{ objectPosition: neutral.objectPosition }} alt="" draggable={false} decoding="async" />)}</span>;
 }
 export function StudioSky() {
   // Authored atmosphere from Kids Studio Sky.dc.html, the V2 source of truth.
@@ -46,7 +57,7 @@ export default function StudioHome({ onWorld, onCollection, onQuest, onExit }: S
   return <section className="studio-v2 studio-v2--home" dir={lang === "he" ? "rtl" : "ltr"} data-studio-home="">
     <StudioSky />
     <header className="studio-v2__header">
-      <div className="studio-v2__greeting"><h1>{hero.name === HERO_NAME_FALLBACK ? copy.helloNoName : <>{copy.hello} <bdi>{hero.name}</bdi>! <Sparkles size={22} aria-hidden="true" /></>}</h1><p>{copy.invitation}</p></div>
+      <div className="studio-v2__greeting"><h1><span>{hero.name === HERO_NAME_FALLBACK ? copy.helloNoName : <>{copy.hello} <bdi>{hero.name}</bdi>!</>}</span><Sparkles size={22} aria-hidden="true" /></h1><p>{copy.invitation}</p></div>
       <div className="studio-v2__header-actions"><button className="studio-v2__glass-button" type="button" onClick={onCollection}><Sticker size={22} aria-hidden="true" /><span>{copy.collection}</span></button><HoldExitButton onExit={onExit} /></div>
     </header>
     <nav className="studio-v2__doors" aria-label={copy.invitation}>{STUDIO_V2_WORLDS.map(worldId => <button className="studio-v2__door" data-world={worldId} key={worldId} type="button" onClick={() => onWorld(worldId)}>
