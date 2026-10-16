@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 
 export type MascotMood = "happy" | "cheer" | "think" | "proud" | "wave" | "calm";
@@ -18,13 +18,17 @@ export function ArborMascot({
   mood = "happy",
   animate = false,
   className = "",
+  detailed = false,
 }: {
   size?: number;
   mood?: MascotMood;
   animate?: boolean;
   className?: string;
+  /** Same silhouette and face, with dimensional lighting for game stages. */
+  detailed?: boolean;
 }) {
   const { t } = useLanguage();
+  const gradientId = useId().replace(/:/g, "");
   // Eyes: most moods share the round eyes; "proud" closes them into happy arcs.
   const eyesClosed = mood === "proud";
   // Mouth path per mood.
@@ -51,11 +55,15 @@ export function ArborMascot({
       className={`${animate ? "sprout-bob" : ""} ${className}`.trim()}
       xmlns="http://www.w3.org/2000/svg"
     >
+      {detailed && <defs>
+        <radialGradient id={`${gradientId}-head`} cx="30%" cy="22%" r="85%"><stop offset="0" stopColor="#ffffff" stopOpacity=".7" /><stop offset=".3" stopColor="var(--arbor-clay)" /><stop offset="1" stopColor="var(--arbor-clay-deep)" /></radialGradient>
+        <linearGradient id={`${gradientId}-pot`} x1="0" x2="1"><stop stopColor="#ef8a52" /><stop offset=".35" stopColor="color-mix(in srgb, #f3a886 65%, #fff)" /><stop offset=".7" stopColor="#f3a886" /><stop offset="1" stopColor="color-mix(in srgb, #ef8a52 78%, var(--arbor-ink))" /></linearGradient>
+      </defs>}
       {/* shadow */}
       <ellipse cx="70" cy="126" rx="34" ry="6" fill="var(--arbor-clay-deep)" opacity="0.10" />
 
       {/* pot */}
-      <path d="M48 96 H92 L86 124 Q85 128 81 128 H59 Q55 128 54 124 Z" fill="#f3a886" />
+      <path d="M48 96 H92 L86 124 Q85 128 81 128 H59 Q55 128 54 124 Z" fill={detailed ? `url(#${gradientId}-pot)` : "#f3a886"} />
       <rect x="45" y="90" width="50" height="12" rx="6" fill="#ef8a52" />
 
       {/* stem */}
@@ -82,8 +90,9 @@ export function ArborMascot({
       {/* sprout head — a rounded bud */}
       <path
         d="M70 60 C50 60 40 46 42 30 C44 16 56 8 70 8 C84 8 96 16 98 30 C100 46 90 60 70 60 Z"
-        fill="var(--arbor-clay)"
+        fill={detailed ? `url(#${gradientId}-head)` : "var(--arbor-clay)"}
       />
+      {detailed && <path d="M49 28 Q51 17 61 15" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" opacity=".28" />}
       {/* leaf crease on head */}
       <path d="M70 12 V52" stroke="var(--arbor-clay-deep)" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
 

@@ -13,7 +13,7 @@ export const ACTION_NAMES: Record<KindAction, LocalText> = {
  * the response models asking permission instead of making a feeling disappear. */
 export const FOREST_STORIES: readonly ForestStory[] = [
   { id: 'tower', feeling: 'sad', story: { en: '“My little tower fell over. I feel sad,” says Sprout.', he: '״המגדל הקטן שלי נפל. אני מרגיש עצב,״ אומר נבט.' }, responses: {
-    together: { en: '“Would you like me to sit with you?” Sprout nods. You sit together. The sadness can stay.', he: '״רוצה שאשב לידך?״ נבט מהנהן. יושבים יחד. מותר לעצב להישאר.' },
+    together: { en: '“May I stay beside you?” Sprout nods. You stay together. The sadness can stay.', he: '״רוצה שאשאר לידך?״ נבט מהנהן. נשארים יחד. מותר לעצב להישאר.' },
     space: { en: '“Would a quiet moment help?” Sprout says yes. You stay nearby until Sprout is ready.', he: '״רגע שקט יכול לעזור?״ נבט אומר שכן. נשארים קרוב עד שיתאים לו.' },
     help: { en: '“What would help?” Sprout says, “Maybe we could build it again, when I’m ready.”', he: '״מה יכול לעזור?״ נבט אומר, ״אולי נבנה שוב, כשאהיה מוכן.״' },
   } },

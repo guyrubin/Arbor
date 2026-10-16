@@ -1,18 +1,25 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-const h = vi.hoisted(() => ({ url: null as string | null, from: 'placeholder' }));
-vi.mock('../../../context/ArborContext', () => ({ useArbor: () => ({ childProfile: { id: 'child-a' } }) }));
-vi.mock('../../ui/HeroAvatar', () => ({ useHeroAvatar: () => ({ url: h.url }), HeroAvatar: () => <span data-canonical-avatar="" /> }));
-vi.mock('../hero/useHeroSheet', () => ({ useHeroSheetState: () => ({ from: h.from, sheet: {} }) }));
-vi.mock('../hero/HeroFigure', () => ({ HeroFigure: () => <span data-matching-figure="" /> }));
+const h = vi.hoisted(() => ({ url: null as string | null, character: false }));
+vi.mock('./useStudioHero', () => ({ useStudioHero: () => ({ url: h.url, sheet: h.character ? { poses: { idle: { url: 'approved-full-body' } } } : null }) }));
+vi.mock('../../ui/HeroAvatar', () => ({ HeroAvatar: () => <span data-mascot="" /> }));
+vi.mock('../hero/HeroFigure', () => ({ HeroFigure: ({ pose, sheet, kick }: { pose: string; sheet: {poses: {idle: {url: string}}}; kick: number }) => <span data-figure={sheet.poses.idle.url} data-pose={pose} data-kick={kick} /> }));
 import { StudioPlayHero } from './StudioPlayHero';
-describe('game hero follows the Studio home authority', () => {
-  it('only uses a current child sheet when an approved portrait exists', () => {
-    h.url = 'approved-avatar'; h.from = 'child'; expect(renderToStaticMarkup(<StudioPlayHero />)).toContain('data-matching-figure');
-    for (const from of ['proof', 'stock', 'device', 'avatar']) { h.from = from; const html = renderToStaticMarkup(<StudioPlayHero />); expect(html).toContain('data-canonical-avatar'); expect(html).not.toContain('data-matching-figure'); }
-  });
-  it('falls back honestly when a profile has no approved avatar', () => {
-    h.url = null; h.from = 'child'; const html = renderToStaticMarkup(<StudioPlayHero />); expect(html).toContain('data-game-hero-source="mascot"'); expect(html).not.toContain('data-matching-figure');
-  });
+describe('full character rendering', () => {
+ it('uses existing poses and real action beats, with celebration precedence', () => {
+  h.url = 'approved-avatar'; h.character = true;
+  const html = renderToStaticMarkup(<StudioPlayHero pose="hold-up" kick={4} />);
+  expect(html).toContain('data-figure="approved-full-body"'); expect(html).toContain('data-pose="hold-up"'); expect(html).toContain('data-kick="4"');
+  expect(renderToStaticMarkup(<StudioPlayHero pose="hold-up" celebrate />)).toContain('data-pose="cheer"');
+ });
+ it('preserves exact profile pixels when no character sheet exists, without a frame', () => {
+  h.url = 'approved-avatar'; h.character = false;
+  const html = renderToStaticMarkup(<StudioPlayHero />);
+  expect(html).toContain('data-figure="approved-avatar"'); expect(html).not.toContain('hero-portal');
+ });
+ it('keeps Sprout when no selected profile or character exists', () => {
+  h.url = null; h.character = false;
+  expect(renderToStaticMarkup(<StudioPlayHero />)).toContain('data-game-hero-source="mascot"');
+ });
 });

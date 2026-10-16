@@ -9,6 +9,11 @@ vi.mock('react', async original => {
   const actual = await original<typeof import('react')>();
   return { ...actual,
     useState(initial: any) { const slot = h.slots[h.cursor++] ??= { value: typeof initial === 'function' ? initial() : initial }; return [slot.value, (next: any) => { slot.value = typeof next === 'function' ? next(slot.value) : next; }]; },
+    useCallback(callback: any, deps: readonly unknown[]) {
+      const index = h.cursor++, old = h.slots[index];
+      if (old?.deps?.length === deps.length && old.deps.every((v, i) => Object.is(v, deps[i]))) return old.value;
+      h.slots[index] = { value: callback, deps }; return callback;
+    },
     useRef(initial: any) { return (h.slots[h.cursor++] ??= { value: { current: initial } }).value; },
     useEffect(effect: () => void | (() => void), deps: readonly unknown[]) {
       const index = h.cursor++, old = h.slots[index];
@@ -21,12 +26,14 @@ vi.mock('../../../../../context/LanguageContext', () => ({ useLanguage: () => ({
 vi.mock('../../../../../context/ArborContext', () => ({ useArborOptional: () => ({ childProfile: { id: 'child-a', age: 5 } }) }));
 vi.mock('../../../game/GameShell', () => ({ GameShell: () => null, GameFinish: () => null }));
 vi.mock('../../../audio/kidAudio', () => ({ kidSfx: h.sound, kidSay: h.say, useKidReadAloudMuted: () => h.muted, onKidHush: (fn: () => void) => { h.hush = fn; return () => { h.hush = null; }; } }));
-vi.mock('../../../../../lib/voice', () => ({ stopVoice: vi.fn() }));
+vi.mock('../../../../../lib/voice', () => ({ stopVoice: vi.fn(), isActive: () => false, voiceState: () => ({ speaking: false }), subscribeVoice: () => () => {} }));
 vi.mock('../../studioCreations', () => ({ useStudioCreations: () => ({ items: [], loaded: true, isCurrent: () => true }) }));
 vi.mock('./gardenAudio', () => ({ createGardenAudio: () => h.audio }));
 import RiverRescue from './RiverRescue';
 import FeelingsForest from './FeelingsForest';
 import RhythmGarden from './RhythmGarden';
+import { AdventureSprout } from './AdventureGuide';
+import { StudioPlayHero } from '../../StudioPlayHero';
 import { GameFinish } from '../../../game/GameShell';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { makeRiverMap } from './adventureRules';
@@ -103,4 +110,50 @@ describe.each(['en','he'] as const)('real adventure flows in %s', lang => {
 it('navigation cancels scheduled flowers and disposes the audio owner', () => {
   let tree=render(RhythmGarden);clickButton(tree,ADVENTURE_COPY.en.listen);tree=render(RhythmGarden);expect(vi.getTimerCount()).toBeGreaterThan(0);
   h.slots.forEach(s=>s.cleanup?.());expect(vi.getTimerCount()).toBe(0);expect(h.audio.dispose).toHaveBeenCalled();
+});
+
+it('a played note lights its pod; a later tap owns the cue and navigation cancels it', () => {
+  let tree=render(RhythmGarden);
+  clickButton(tree,ADVENTURE_COPY.en.listen);tree=render(RhythmGarden);
+  vi.advanceTimersByTime(5000);tree=render(RhythmGarden);
+  const tap=(note:number)=>nodes(tree).find(n=>n.props['data-note']===note)!.props.onClick!();
+  tap(0);tree=render(RhythmGarden);
+  expect(nodes(tree).find(n=>n.props['data-note']===0)!.props['data-lit']).toBe(true);
+  vi.advanceTimersByTime(200);tap(1);tree=render(RhythmGarden);
+  vi.advanceTimersByTime(220);tree=render(RhythmGarden);
+  expect(nodes(tree).find(n=>n.props['data-note']===1)!.props['data-lit']).toBe(true);
+  h.slots.forEach(s=>s.cleanup?.());expect(vi.getTimerCount()).toBe(0);
+});
+
+it('Sprout reads each story and response once; leaving cancels the pending next line', () => {
+ let tree=render(FeelingsForest); vi.advanceTimersByTime(200);
+ const story=FOREST_STORIES.find(s=>words(tree).includes(s.story.en))!;
+ expect(h.say).toHaveBeenLastCalledWith('child-a',expect.stringContaining(story.story.en),'en');
+ const calls=h.say.mock.calls.length; tree=render(FeelingsForest); vi.advanceTimersByTime(1000); expect(h.say).toHaveBeenCalledTimes(calls);
+ clickButton(tree,FEELING_NAMES[story.feeling].en); tree=render(FeelingsForest); vi.advanceTimersByTime(200);
+ expect(h.say).toHaveBeenLastCalledWith('child-a',`${ADVENTURE_COPY.en.forestSame} ${ADVENTURE_COPY.en.forestKind}`,'en');
+ const support=nodes(tree).find(n=>n.type==='button'&&words(n.props.children)==='Offer company')!;
+ support.props.onClick!(); tree=render(FeelingsForest);
+ h.slots.forEach(s=>s.cleanup?.()); vi.advanceTimersByTime(1000);
+ expect(h.say).not.toHaveBeenCalledWith('child-a',expect.stringContaining(story.responses.together.en),'en');
+});
+it('Sprout stays silent during musical playback, then gives the turn to the child', () => {
+ let tree=render(RhythmGarden); clickButton(tree,ADVENTURE_COPY.en.listen); tree=render(RhythmGarden);
+ vi.advanceTimersByTime(1000); expect(h.say).not.toHaveBeenCalled();
+ vi.advanceTimersByTime(4000); tree=render(RhythmGarden); vi.advanceTimersByTime(200);
+ expect(h.say).toHaveBeenLastCalledWith('child-a',ADVENTURE_COPY.en.yourTurn,'en');
+});
+it('mute cancels pending narration, and unmuting does not replay it', () => {
+ let tree=render(FeelingsForest); h.muted=true; tree=render(FeelingsForest); vi.advanceTimersByTime(1000);
+ expect(h.say).not.toHaveBeenCalled(); h.muted=false; render(FeelingsForest); vi.advanceTimersByTime(1000); expect(h.say).not.toHaveBeenCalled();
+});
+
+it('offering company does not turn a difficult feeling into a victory pose', () => {
+ let tree=render(FeelingsForest);
+ const story=FOREST_STORIES.find(s=>words(tree).includes(s.story.en))!;
+ clickButton(tree,FEELING_NAMES[story.feeling].en); tree=render(FeelingsForest);
+ const support=nodes(tree).find(n=>n.type==='button'&&words(n.props.children)==='Offer company')!; support.props.onClick!(); tree=render(FeelingsForest);
+ const joyful=['excited','proud'].includes(story.feeling);
+ expect(nodes(tree).find(n=>n.type===AdventureSprout)!.props.action).toBe(joyful?'celebrate':'comfort');
+ expect(nodes(tree).find(n=>n.type===StudioPlayHero)!.props.celebrate).toBe(joyful);
 });
