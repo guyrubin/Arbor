@@ -393,7 +393,7 @@
 @keyframes sprout-joy { 25%,65% { transform:translateY(-12px) rotate(6deg); } 45% { transform:translateY(0) rotate(-4deg); } }
 @keyframes sprout-voice { to { transform:scaleY(.4); } }
 .river-landscape { padding-top:160px; }
-.river-captain { position:absolute; inset:8px 0 auto; height:145px; display:flex; align-items:end; justify-content:center; gap:38px; direction:ltr; pointer-events:none; }
+.river-captain { z-index:1; position:absolute; inset:8px 0 auto; height:145px; display:flex; align-items:end; justify-content:center; gap:38px; direction:ltr; pointer-events:none; }
 .river-captain > .studio-play-hero { transition:opacity .2s; }
 .river-landscape[data-phase=sail] .river-captain > .studio-play-hero { opacity:0; }
 .river-vessel > .studio-play-hero { left:calc(50% - 48px); bottom:45%; scale:1; opacity:0; transition:opacity .2s; }
@@ -461,4 +461,24 @@
  .adventure--rhythm .rhythm-conductor { min-height:190px; }
  .adventure--rhythm .rhythm-conductor > .studio-play-hero { zoom:.7; }
  .adventure--rhythm .rhythm-pod { min-height:130px; }
+}
+
+/* Keep the phone canal board, cargo and sailing action in one visual group.
+   Cells remain at least 44px; the captain keeps the existing full-body size. */
+@media(max-width:600px) {
+ .adventure--river .adventure-toolbar { flex-wrap:nowrap; gap:8px; margin-block-end:12px; }
+ .adventure--river .adventure-challenge { flex:1; min-width:0; width:auto; }
+ .adventure--river .adventure-challenge button { font-size:12px; gap:4px; padding-inline:5px; }
+ .adventure--river .adventure-steps { flex-shrink:0; gap:4px; }
+ .adventure--river .adventure-steps span { width:22px; height:22px; }
+ .adventure--river .adventure-prompt { margin-block:0 12px; }
+ .adventure--river .river-landscape { padding-bottom:12px; }
+ .adventure--river .river-board { max-inline-size:270px; }
+ .adventure--river .river-cargo { align-items:center; margin-block:10px; gap:8px; }
+ .adventure--river .river-cargo > .river-cargo-title { flex-basis:auto; min-width:0; }
+ .adventure--river .river-cargo > span:not(.river-cargo-title) { min-height:48px; min-width:58px; padding:2px 6px; }
+ .adventure--river .river-cargo .adventure-sprite { width:38px; }
+ .adventure--river .adventure-actions { display:flex; flex-wrap:nowrap; gap:8px; }
+ .adventure--river .adventure-actions button { flex:1; min-width:0; padding:10px 6px; font-size:13px; gap:5px; }
+ .adventure--river .adventure-actions .adventure-go { flex:1.25; }
 }

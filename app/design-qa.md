@@ -34,4 +34,18 @@ Evidence images are private QA files, not shipped child assets. Full-character c
 
 Focused V2/avatar/scene and narration lifecycle tests, TypeScript and frontend production build are required. Exact final counts and CI/deployment SHAs are recorded in the PR. Synthetic browser checks do not establish real iOS/Android speaker quality, rotation/performance or authenticated family persistence. Those hardware criteria remain unverified. No claim of perfection or measured virality.
 
-final result: visual/interaction checks passed for the stated synthetic scope; final CI and production verification pending
+PR 146 release: deployed successfully at `babbf7aceb434b72a62d44e18c3840b28509919d`; run `38827106425`. Public health, timestamp and four adventure atlases matched the release.
+
+
+## Follow-up visual audit — responsive polish
+
+This pass rechecked the current implementation against Kids Studio Sky. Production changes are limited to the two V2 stylesheets; identity resolution, narration, game rules and saves are unchanged.
+
+1. **Home — fixed.** Standalone CSS scaling also scaled the centering translation, shifting the full character behind a door on phones. Translation and scale now share one ordered transform for both LTR and RTL. The phone hero occupies a clear central stage. Guide and quest now flow below it so wrapped English copy at 320px cannot make the quest cover Sprout's bubble.
+2. **Canal Quest — fixed.** Phone toolbar, board, supplies and actions now form a compact sequence. At 390×844 the sailing controls are visible together; the full captain retains its size. At 320px the 4×4 cells measure 55.5×55.5px and there is no horizontal overflow. Decorative lilies sit behind the captain so they cannot cover the face. A connected route through supplies was played through sailing to arrival.
+3. **Story Theater and Sound Orbit — checked.** Theater's Hebrew phone story, full character, Sprout and feeling choices fit without overlap. Music's full character, illustrated instruments and guide were inspected at 390×844; demonstration, two matching taps and the success state were operated. Content/scroll widths both measured 375px with the browser's scrollbar.
+4. **Desktop/tablet consistency — checked.** The current-run desktop home/world/theater captures and 820×1180 Hebrew tablet home retain the sky, glass portals, gold dock and centered full character. The private preview header was corrected to match production's single sound control; an extra preview-only replay button had caused a narrow-screen header artifact. That fixture change is not shipped.
+
+Current-run proof files: `arbor-audit-09-phone-home-final.jpg`, `arbor-audit-11-phone-music.jpg`, `arbor-audit-12-narrow-canal-final.jpg` in private QA scratch. Earlier current-pass captures include the desktop worlds and Hebrew theater. These use an existing Sneak & Freeze character with a synthetic child, not a fetched live family profile.
+
+Local verification after the final CSS edits: 17 test files / 206 tests passed; Vite production build passed; whitespace check passed. Full CI and exact production release receipt belong in the follow-up PR. Physical-device sound, live family persistence and device rotation/performance remain unverified.
