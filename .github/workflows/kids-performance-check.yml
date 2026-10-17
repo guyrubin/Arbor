@@ -10,16 +10,22 @@ concurrency:
 jobs:
   source-review:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Export tracked text for isolated source review
-        run: |
-          git ls-files -z app/src app/scripts app/package.json app/package-lock.json app/tsconfig.json app/vite.config.ts app/server.ts app/README.md app/DESIGN.md app/public/sw.js README.md .github/workflows firebase.json firestore.rules firestore.indexes.json cloudbuild.prod.yaml | tar --null -T - -czf /tmp/arbor-source-text.tgz
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+        working-directory: app
+      - name: Export toolchain for isolated regression checks
+        run: tar -czf /tmp/arbor-toolchain.tgz app/node_modules
       - uses: actions/upload-artifact@v4
         with:
-          name: arbor-source-text
-          path: /tmp/arbor-source-text.tgz
+          name: arbor-toolchain
+          path: /tmp/arbor-toolchain.tgz
           retention-days: 1
