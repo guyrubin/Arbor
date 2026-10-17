@@ -85,11 +85,12 @@ try {
         await page.locator('.forest-stage[data-phase="outcome"]').waitFor();
       } else {
         await page.getByRole('button', { name: lang === 'he' ? 'להראות את המנגינה' : 'Show the tune', exact: true }).click();
-        const schedule = await page.evaluate(() => window.qa.audio.filter(record => record.starts.length));
+        // Instrument envelopes are 350ms; do not count the independent 70ms UI tap cue.
+        const schedule = await page.evaluate(() => window.qa.audio.filter(record => record.starts.length && Math.abs(record.stops[0] - record.starts[0] - .35) < .00001));
         assert.equal(schedule.length, 2, 'Two notes scheduled synchronously: ' + JSON.stringify(await page.evaluate(() => ({ audio: window.qa.audio, hidden: document.visibilityState, mute: document.querySelector('[data-kid-sound]')?.getAttribute('aria-pressed'), quiet: document.querySelector('.adventure-quiet')?.textContent, phase: document.querySelector('.rhythm-stage')?.getAttribute('data-phase'), activated: navigator.userActivation?.hasBeenActive }))));
         assert.ok(Math.abs(schedule[1].starts[0] - schedule[0].starts[0] - .760) < .00001, 'One audio-clock tempo');
         await page.getByRole('button', { name: lang === 'he' ? 'הפסקה' : 'Pause', exact: true }).click();
-        assert.ok(await page.evaluate(() => window.qa.audio.every(record => record.ended || record.stops.length >= 2)), 'Pause cancels even future notes');
+        assert.ok(await page.evaluate(() => window.qa.audio.filter(record => record.starts.length && Math.abs(record.stops[0] - record.starts[0] - .35) < .00001).every(record => record.ended || record.stops.length >= 2)), 'Pause cancels even future notes');
       }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
       await page.screenshot({ path: path.join(output, `${game.id}-${lang}-${width}.png`), fullPage: true });
