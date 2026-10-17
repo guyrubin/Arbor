@@ -12,6 +12,7 @@
  * data export and the erase cover it. This module never calls a model.
  */
 import { collection, deleteDoc, doc, getDocs, onSnapshot, setDoc } from "firebase/firestore";
+import { createSharedSubscription } from "./sharedSubscription";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db, firebaseEnabled } from "./firebase";
 import {
@@ -202,30 +203,46 @@ export function heroSheetStoreFor(childId: string, opts: { uid?: string | null; 
   return localStore(childId, storage);
 }
 
-/** Live docs for one child (Firestore listener, or the device copy + its event). */
+const shareHeroDocs = createSharedSubscription<HeroSheetDocs>();
+
+/** One transport/parse per current owner and child, even with multiple figures.
+ * Scope guards and the last-listener cleanup retire both data and callbacks. */
 export function subscribeHeroSheetDocs(childId: string, cb: (docs: HeroSheetDocs) => void): () => void {
   if (!childId) return () => {};
+  const ownerKey = heroSheetOwnerKey();
+  return shareHeroDocs(JSON.stringify([ownerKey, childId]), emit => listenHeroSheetDocs(childId, ownerKey, emit), cb);
+}
+
+function listenHeroSheetDocs(childId: string, ownerKey: string, cb: (docs: HeroSheetDocs) => void): () => void {
+  let active = true, sequence = 0;
   if (firebaseEnabled && auth && db) {
     let unsubDocs: (() => void) | null = null;
     const database = db;
     const unsubAuth = onAuthStateChanged(auth, (user) => {
+      const revision = ++sequence;
       unsubDocs?.();
       unsubDocs = null;
-      if (!user) { cb({ meta: null, poses: {} }); return; }
+      if (!active) return;
+      if (!user || user.uid !== ownerKey) { cb({ meta: null, poses: {} }); return; }
+      const current = () => active && sequence === revision && heroSheetOwnerKey() === ownerKey;
       unsubDocs = onSnapshot(
         collection(database, `users/${user.uid}/children/${childId}/${HERO_SHEET_COLLECTION}`),
-        (snap) => cb(parseHeroSheetDocs(snap.docs.map((d) => ({ ...d.data(), id: d.id })))),
-        () => cb({ meta: null, poses: {} }),
+        (snap) => { if (current()) cb(parseHeroSheetDocs(snap.docs.map((d) => ({ ...d.data(), id: d.id })))); },
+        () => { if (current()) cb({ meta: null, poses: {} }); },
       );
     });
-    return () => { unsubAuth(); unsubDocs?.(); };
+    return () => { active = false; sequence++; unsubAuth(); unsubDocs?.(); };
   }
   const store = heroSheetStoreFor(childId, { uid: null });
-  const push = () => { void store.read().then(cb, () => cb({ meta: null, poses: {} })); };
+  const push = () => {
+    const revision = ++sequence;
+    const publish = (docs: HeroSheetDocs) => { if (active && sequence === revision && heroSheetOwnerKey() === ownerKey) cb(docs); };
+    void store.read().then(publish, () => publish({ meta: null, poses: {} }));
+  };
   push();
-  if (typeof window === "undefined") return () => {};
+  if (typeof window === "undefined") return () => { active = false; sequence++; };
   // Same-tab only: the builder runs in the tab the parent accepted the hero in.
   const onEvent = (e: Event) => { const d = (e as CustomEvent<{ childId?: string }>).detail; if (!d || d.childId === childId) push(); };
   window.addEventListener(HERO_SHEET_EVENT, onEvent);
-  return () => { window.removeEventListener(HERO_SHEET_EVENT, onEvent); };
+  return () => { active = false; sequence++; window.removeEventListener(HERO_SHEET_EVENT, onEvent); };
 }

@@ -31,7 +31,7 @@ export function StudioSky() {
 export interface StudioHomeProps { onWorld: (worldId: StudioWorldId) => void; onCollection: () => void; onQuest: () => void; onExit: () => void }
 export default function StudioHome({ onWorld, onCollection, onQuest, onExit }: StudioHomeProps) {
   const { childProfile } = useArbor();
-  useEffect(() => { prefetchKidSurfaces(); }, []);
+  useEffect(() => prefetchKidSurfaces(), []);
   const { uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
   const copy = studioCopy(lang);

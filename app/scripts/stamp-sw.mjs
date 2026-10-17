@@ -1,7 +1,5 @@
-// Stamp dist/sw.js with a unique build id so its bytes change every deploy.
-// A changed service-worker file is how the browser detects an update, activates
-// the new worker, and (via the controllerchange handler in main.tsx) reloads
-// open tabs onto the latest build instead of serving a stale cached shell.
+// Stamp each build so the browser discovers an update. Activation waits for
+// existing clients to close; active games and drafts must never be reloaded.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 
 const SW = "dist/sw.js";
