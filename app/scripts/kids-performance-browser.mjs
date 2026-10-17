@@ -1,5 +1,4 @@
-/** Real production Kids components and CSS with the existing synthetic preview
- * adapters. No real accounts, model calls, private avatars or cloud writes. */
+/** Actual game components with synthetic records; no cloud writes or private avatars. */
 import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -41,15 +40,17 @@ try {
       if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = async () => { window.qa.captures++; throw new Error('Capture forbidden in fixture'); };
       const original = AudioContext.prototype.createOscillator;
       AudioContext.prototype.createOscillator = function(...args) {
-        const node = original.apply(this, args), record = { starts: [], stops: [] };
+        const node = original.apply(this, args), record = { starts: [], stops: [], ended: false };
         window.qa.audio.push(record);
+        node.addEventListener('ended', () => { record.ended = true; });
         const start = node.start.bind(node), stop = node.stop.bind(node);
         node.start = when => { record.starts.push(when); return start(when); };
         node.stop = when => { record.stops.push(when ?? null); return stop(when); };
         return node;
       };
     });
-    const page = await context.newPage(), errors = [], brokenArt = [], chunks = new Set();
+    const page = await context.newPage(), errors = [], brokenArt = [], browserLog = [], chunks = new Set();
+    page.on('console', message => { if (['error', 'warning'].includes(message.type())) browserLog.push(message.text()); });
     page.on('pageerror', e => errors.push(e.message));
     page.on('response', res => {
       const url = res.url();
@@ -85,16 +86,22 @@ try {
       } else {
         await page.getByRole('button', { name: lang === 'he' ? 'להראות את המנגינה' : 'Show the tune', exact: true }).click();
         const schedule = await page.evaluate(() => window.qa.audio.filter(record => record.starts.length));
-        assert.equal(schedule.length, 2, 'Two notes scheduled synchronously');
+        assert.equal(schedule.length, 2, 'Two notes scheduled synchronously: ' + JSON.stringify(await page.evaluate(() => ({ audio: window.qa.audio, hidden: document.visibilityState, mute: document.querySelector('[data-kid-sound]')?.getAttribute('aria-pressed'), quiet: document.querySelector('.adventure-quiet')?.textContent, phase: document.querySelector('.rhythm-stage')?.getAttribute('data-phase'), activated: navigator.userActivation?.hasBeenActive }))));
         assert.ok(Math.abs(schedule[1].starts[0] - schedule[0].starts[0] - .760) < .00001, 'One audio-clock tempo');
         await page.getByRole('button', { name: lang === 'he' ? 'הפסקה' : 'Pause', exact: true }).click();
-        assert.ok(await page.evaluate(() => window.qa.audio.every(record => record.stops.length >= 2)), 'Pause cancels even future notes');
+        assert.ok(await page.evaluate(() => window.qa.audio.every(record => record.ended || record.stops.length >= 2)), 'Pause cancels even future notes');
       }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
       await page.screenshot({ path: path.join(output, `${game.id}-${lang}-${width}.png`), fullPage: true });
       assert.equal(await page.evaluate(() => window.qa.captures), 0);
       assert.deepEqual(errors, []); assert.deepEqual(brokenArt, []); assert.equal(overflow, false, 'No horizontal document overflow');
       results.push({ game: game.id, lang, width, warmPlayMs, passed: true, overflow, pageErrors: errors, brokenArt });
+    } catch (error) {
+      await page.screenshot({ path: path.join(output, `failed-${game.id}-${lang}-${width}.png`), fullPage: true }).catch(() => {});
+      const details = { game: game.id, lang, width, error: String(error), pageErrors: errors, browserLog, body: await page.locator('body').innerText().catch(() => '') };
+      console.error(JSON.stringify(details, null, 2));
+      await writeFile(path.join(output, 'failure.json'), JSON.stringify(details, null, 2));
+      throw error;
     } finally { await context.close(); }
   }
   await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixture: 'synthetic-preview; actual game components and assets', results }, null, 2));
