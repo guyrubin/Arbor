@@ -23,9 +23,11 @@ function refreshArt(cache, req) {
   if (refreshingArt.has(key)) return refreshingArt.get(key);
   const update = fetch(req, { cache: "no-cache" }).then(async res => {
     if (res.ok) {
-      try { await cache.put(req, res.clone()); await trimArt(cache); } catch { /* Quota must not prevent online play. */ }
-      validatedArt.add(key);
-      if (validatedArt.size > ART_CACHE_MAX) validatedArt.delete(validatedArt.values().next().value);
+      try {
+        await cache.put(req, res.clone()); await trimArt(cache);
+        validatedArt.add(key);
+        if (validatedArt.size > ART_CACHE_MAX) validatedArt.delete(validatedArt.values().next().value);
+      } catch { /* Quota must not prevent online play or mark stale bytes fresh. */ }
     }
     return res;
   }).catch(() => undefined).finally(() => refreshingArt.delete(key));
@@ -79,7 +81,7 @@ self.addEventListener("fetch", event => {
       const update = !cached || !validatedArt.has(req.url) ? refreshArt(cache, req) : Promise.resolve(undefined);
       return { cached, update };
     });
-    event.respondWith(lookup.then(({ cached, update }) => cached || update.then(res => res || Response.error())).catch(() => fetch(req)));
+    event.respondWith(lookup.then(({ cached, update }) => cached || update.then(res => res ? res.clone() : Response.error())).catch(() => fetch(req)));
     // Keep revalidation alive after a cached response has already painted.
     event.waitUntil(lookup.then(({ update }) => update).then(() => undefined).catch(() => undefined));
     return;
