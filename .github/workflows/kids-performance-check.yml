@@ -1,0 +1,25 @@
+name: Kids Performance Check
+on:
+  push:
+    branches: [codex/kids-performance-2026-10-17]
+permissions:
+  contents: read
+concurrency:
+  group: kids-performance-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Export tracked text for isolated source review
+        run: |
+          git ls-files -z app/src app/scripts app/package.json app/package-lock.json app/tsconfig.json app/vite.config.ts app/server.ts app/README.md app/DESIGN.md app/public/sw.js README.md .github/workflows firebase.json firestore.rules firestore.indexes.json cloudbuild.prod.yaml | tar --null -T - -czf /tmp/arbor-source-text.tgz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arbor-source-text
+          path: /tmp/arbor-source-text.tgz
+          retention-days: 1
