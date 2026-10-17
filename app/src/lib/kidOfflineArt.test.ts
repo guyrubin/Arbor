@@ -71,6 +71,8 @@ function bootWorker(online = true) {
       add: async (r: string) => { if (!online) throw new Error("offline"); m.set(key(r), `net:${key(r)}`); },
       addAll: async (rs: string[]) => { for (const r of rs) m.set(key(r), `net:${key(r)}`); },
       put: async (r: unknown, res: { body: string }) => { m.set(key(r), res.body); },
+      keys: async () => [...m.keys()],
+      delete: async (r: unknown) => m.delete(key(r)),
     };
   };
   const caches = {
@@ -86,20 +88,24 @@ function bootWorker(online = true) {
   const self = {
     location: { origin: "https://arbor.test" },
     addEventListener: (t: string, fn: (e: unknown) => void) => { listeners[t] = fn; },
-    skipWaiting: () => undefined,
-    clients: { claim: async () => undefined },
+    skipWaiting: vi.fn(),
+    clients: { claim: vi.fn(async () => undefined) },
   };
-  const fetch = async (r: { url: string }) => {
+  let version = 'net';
+  const fetch = vi.fn(async (r: { url: string }) => {
     if (!online) throw new Error("offline");
-    return { ok: true, body: `net:${r.url.replace("https://arbor.test", "")}`, clone() { return this; } };
-  };
-  vm.runInNewContext(swSource.replace(/__BUILD_ID__/g, "b2"), { self, caches, fetch, URL, Promise, Array, console });
+    return { ok: true, body: `${version}:${r.url.replace("https://arbor.test", "")}`, clone() { return this; } };
+  });
+  vm.runInNewContext(swSource.replace(/__BUILD_ID__/g, "b2"), { self, caches, fetch, URL, Promise, Array, console, Response });
   const run = async (type: string, e: Record<string, unknown>) => {
-    let done: Promise<unknown> = Promise.resolve();
-    listeners[type]({ ...e, waitUntil: (p: Promise<unknown>) => { done = p; }, respondWith: (p: Promise<unknown>) => { done = p; } });
-    return done;
+    const work: Promise<unknown>[] = [];
+    let response: Promise<unknown> | undefined;
+    listeners[type]({ ...e, waitUntil: (p: Promise<unknown>) => { work.push(p); }, respondWith: (p: Promise<unknown>) => { response = p; } });
+    const result = await response;
+    await Promise.all(work);
+    return result;
   };
-  return { stores, run, setOnline: (v: boolean) => { online = v; } };
+  return { stores, run, fetch, self, setOnline: (v: boolean) => { online = v; }, setVersion: (v: string) => { version = v; } };
 }
 
 describe("public/sw.js keeps kid art across deploys", () => {
@@ -131,5 +137,47 @@ describe("public/sw.js keeps kid art across deploys", () => {
   it("the shell cache is still stamped per build (the repo's version bump) and the art cache is versioned by hand", () => {
     expect(swSource).toContain('const CACHE = "arbor-shell-__BUILD_ID__";');
     expect(swSource).toContain('const ART_VERSION = "v1";');
+  });
+});
+
+
+describe('session-safe worker updates and bounded public artwork', () => {
+  it('never force-activates, claims clients, or reloads an active page', async () => {
+    const w = bootWorker(); await w.run('install', {}); await w.run('activate', {});
+    expect(w.self.skipWaiting).not.toHaveBeenCalled(); expect(w.self.clients.claim).not.toHaveBeenCalled();
+    const main = readFileSync(path.join(APP, 'src/main.tsx'), 'utf8');
+    expect(main).not.toContain('window.location.reload()');
+    expect(main).not.toContain("addEventListener('controllerchange'");
+  });
+  it('does not delete unrelated origin caches', async () => {
+    const w = bootWorker(); w.stores.set('private-books-v1', new Map());
+    await w.run('activate', {}); expect(w.stores.has('private-books-v1')).toBe(true);
+  });
+  it('paints kept art and refreshes a stable URL once per worker lifetime', async () => {
+    const w = bootWorker(), url = '/visuals/a.webp';
+    await w.run('message', { data: { type: 'kid-art-precache', urls: [url] } });
+    w.setVersion('new');
+    const request = { method: 'GET', url: `https://arbor.test${url}`, mode: 'no-cors' };
+    expect(await w.run('fetch', { request })).toBe(`net:${url}`);
+    expect(w.stores.get('arbor-kid-art-v1')?.get(url)).toBe(`new:${url}`);
+    expect(await w.run('fetch', { request })).toBe(`new:${url}`);
+    expect(w.fetch).toHaveBeenCalledOnce();
+  });
+  it('enforces a total cache cap across multiple precache messages', async () => {
+    const w = bootWorker();
+    for (let batch = 0; batch < 8; batch++) {
+      await w.run('message', { data: { type: 'kid-art-precache', urls: Array.from({ length: 40 }, (_, n) => `/visuals/${batch}-${n}.webp`) } });
+    }
+    expect(w.stores.get('arbor-kid-art-v1')?.size).toBe(256);
+    expect(w.stores.get('arbor-kid-art-v1')?.has('/visuals/7-39.webp')).toBe(true);
+  });
+  it('does not intercept API, cross-origin, or non-GET requests', async () => {
+    const w = bootWorker();
+    for (const request of [
+      { method: 'GET', url: 'https://arbor.test/api/private' },
+      { method: 'GET', url: 'https://storage.example/child.webp' },
+      { method: 'POST', url: 'https://arbor.test/visuals/a.webp' },
+    ]) expect(await w.run('fetch', { request })).toBeUndefined();
+    expect(w.fetch).not.toHaveBeenCalled();
   });
 });

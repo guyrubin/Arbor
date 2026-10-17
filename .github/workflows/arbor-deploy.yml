@@ -229,3 +229,8 @@ jobs:
             sleep 10
           done
           echo "::error::Live site did not return 200 after deploy — hosting may not have propagated"; exit 1
+
+      - name: Verify live release identity
+        run: |
+          API_URL=$(gcloud run services describe arbor-api --region europe-west4 --project "$PROJECT_ID" --format='value(status.url)')
+          node app/scripts/verify-live-release.mjs https://arborparentingapp.com "$API_URL" "$GITHUB_SHA" app/dist/sw.js

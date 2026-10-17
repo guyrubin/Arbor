@@ -46,10 +46,12 @@ export default function RhythmGarden() {
   const play = (notes: readonly NoteId[], toCopy: boolean) => {
     stop(); guide.cancel(); if (!notes.length) return;
     active.current = true; setPlaying(true); setStatus('');
+    const scheduled = audio.current?.sequence(notes, tempo) ?? false;
+    setUnavailable(!muted && !scheduled);
     if (toCopy) { setPhase('copy'); phaseRef.current = 'copy'; input.current = []; setPlayed([]); }
     notes.forEach((note, i) => {
-      const strike = () => { if (!active.current) return; setLit(note); setBeat(value => value + 1); sound(note); };
-      // First note stays inside the gesture for Safari's audio unlock.
+      const strike = () => { if (!active.current) return; setLit(note); setBeat(value => value + 1); };
+      // Visual feedback is best-effort; audio was scheduled above inside the gesture.
       if (i === 0) strike(); else timers.current.push(setTimeout(strike, i * tempo));
       timers.current.push(setTimeout(() => { if (active.current) setLit(null); }, i * tempo + Math.min(460, tempo - 80)));
     });

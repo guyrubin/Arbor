@@ -4,7 +4,7 @@ import { isValidElement, type ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 type Slot = { value?: any; deps?: readonly unknown[]; cleanup?: () => void };
 const h = vi.hoisted(() => ({ cursor: 0, slots: [] as Slot[], effects: [] as (() => void)[], lang: 'en', muted: false, hush: null as null | (() => void),
-  audio: { play: vi.fn(() => true), stop: vi.fn(), dispose: vi.fn() }, say: vi.fn(), sound: vi.fn() }));
+  audio: { sequence: vi.fn(() => true), play: vi.fn(() => true), stop: vi.fn(), dispose: vi.fn() }, say: vi.fn(), sound: vi.fn() }));
 vi.mock('react', async original => {
   const actual = await original<typeof import('react')>();
   return { ...actual,

@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 const here = path.resolve(import.meta.dirname);
-const adapters = ['context/ArborContext', 'context/AuthContext', 'context/LanguageContext', 'hooks/useChildCollection', 'practice/usePracticeData', 'lib/analytics', 'lib/kidModeGate', 'lib/voice', 'components/kidmode/kidPrefetch', 'components/kidmode/useKidModeEntry'];
+const adapters = ['context/ArborContext', 'context/AuthContext', 'context/LanguageContext', 'hooks/useChildCollection', 'practice/usePracticeData', 'lib/analytics', 'lib/kidModeGate', 'lib/voice', 'components/kidmode/useKidModeEntry'];
 export default defineConfig({
   root: here, base: '/', publicDir: false,
   plugins: [{ name: 'synthetic-preview-adapters', enforce: 'pre', resolveId(source, importer) {
