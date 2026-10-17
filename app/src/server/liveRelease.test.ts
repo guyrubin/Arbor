@@ -3,7 +3,10 @@ import { verifyHosting } from '../../scripts/verify-live-release.mjs';
 const SHA = 'a'.repeat(40);
 const WORKER = 'const CACHE = "arbor-shell-test-release";';
 function fixture(stamp = `${SHA}-123-1\n`, worker = WORKER, status = 200) {
-  return vi.fn(async (url: string) => ({ status, text: async () => url.includes('timestamp.txt') ? stamp : worker }));
+  return vi.fn<typeof fetch>(async input => {
+    const url = input instanceof Request ? input.url : String(input);
+    return new Response(url.includes('timestamp.txt') ? stamp : worker, { status });
+  });
 }
 describe('post-promotion release identity', () => {
   it('requires the exact stamp and exact stamped worker', async () => {
