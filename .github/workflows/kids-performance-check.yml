@@ -10,22 +10,15 @@ concurrency:
 jobs:
   source-review:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: app/package-lock.json
-      - run: npm ci
-        working-directory: app
-      - name: Export toolchain for isolated regression checks
-        run: tar -czf /tmp/arbor-toolchain.tgz app/node_modules
+      - name: Export complete tracked build fixtures
+        run: git archive HEAD | gzip > /tmp/arbor-build-fixtures.tgz
       - uses: actions/upload-artifact@v4
         with:
-          name: arbor-toolchain
-          path: /tmp/arbor-toolchain.tgz
+          name: arbor-build-fixtures
+          path: /tmp/arbor-build-fixtures.tgz
           retention-days: 1
