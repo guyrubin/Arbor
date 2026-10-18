@@ -3,24 +3,26 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useKeepsakeMigration } from "../../hooks/useKeepsakeMigration";
+import { useNoticeActions } from "../../hooks/useNoticeActions";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { ageMonthsOf } from "../../lib/age/forChild";
 import { domainName, type DomainId } from "../../lib/domains/registry";
 import { readRitualRecord } from "../../lib/familyRitualsCadence";
-import { keepsakeDoc, keepsakeMapFromDocs, upsertKeepsake, type KeepsakeDoc, type KeepsakeDraft } from "../../lib/firstsKeepsake";
+import { keepsakeMapFromDocs } from "../../lib/firstsKeepsake";
 import { ADVENTURES, type SavedComicMeta } from "../../lib/heroComics";
-import { bandForAgeMonths, comparisonAgeMonths, milestoneText } from "../../lib/milestoneData";
+import { bandForAgeMonths, comparisonAgeMonths } from "../../lib/milestoneData";
 import { lastMomentByDomain } from "../../lib/milestones/domainMap";
 import type { ObserveStatus } from "../../lib/milestones/observe";
 import type { Observation } from "../../lib/observations";
 import { latestRecheckDueAt } from "../../lib/screeningRecheck";
 import { clearWatchFocus, readWatchFocus, resolveWatchFocus, writeWatchFocus, type WatchFocus } from "../../lib/screeningWatch";
 import { closeDay, deriveReturnSignals } from "../../lib/tomorrowReason";
-import FirstKeepsakeSheet from "../milestones/FirstKeepsakeSheet";
+import { closeNoticeDetail, openNoticeDetail, readNoticeTarget } from "../../lib/noticeNavigation";
 import { celebrateFirstOnce } from "../milestones/celebrateFirst";
 import { Sheet, useCompactSurface } from "../ui/Sheet";
 import AreaRowDetail from "./AreaRowDetail";
 import DevelopmentMap from "./DevelopmentMap";
+import NoticeObjectDetail from "./NoticeObjectDetail";
 import { CUSTOM_MILESTONE_DOMAIN, areaFromQuery, watchDomain } from "./milestonesModel";
 
 /**
@@ -64,10 +66,13 @@ export interface MilestoneAreasProps {
 const watchOpenedKey = (childId: string) => `arbor.milestones.watchOpened.${childId}`;
 
 export default function MilestoneAreas({ observations, momentText, primaryMoveProps, onExplore }: MilestoneAreasProps) {
-  const { childProfile, milestones, behaviorLogs, playLogs, setMilestoneObservation, addCustomMilestone, setActiveTab } = useArbor();
+  const { childProfile, milestones, behaviorLogs, playLogs, addCustomMilestone, setActiveTab } = useArbor();
   const { t } = useLanguage();
+  const notices = useNoticeActions();
   const compact = useCompactSurface();
-  const queryArea = areaFromQuery(useHashQuery());
+  const query = useHashQuery();
+  const queryArea = areaFromQuery(query);
+  const noticeTarget = readNoticeTarget(query, childProfile.id);
   // A tap wins until the link's area changes; a new ?area= wins over the tap.
   const [toggled, setToggled] = useState<{ from: DomainId | null; domain: DomainId | null } | null>(null);
   const openDomain = toggled && toggled.from === queryArea ? toggled.domain : queryArea;
@@ -133,20 +138,18 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
   }, [chosenWatch?.id, compact]);
 
   // The first's keepsake: the registered `keepsakes` subcollection (doc id = milestone id).
-  const keepsakeCol = useChildCollection<KeepsakeDoc>(childProfile.id, "keepsakes");
+  const keepsakeCol = notices.keepsakes;
   const keepsakes = useMemo(() => keepsakeMapFromDocs(keepsakeCol.items), [keepsakeCol.items]);
-  const [keepFor, setKeepFor] = useState<string | null>(null);
   useKeepsakeMigration(childProfile.id, keepsakeCol, keepsakes);
-  const keeping = keepFor ? milestones.find((m) => m.id === keepFor) ?? null : null;
 
   const answer = (id: string, status: ObserveStatus) => {
     const before = milestones.find((m) => m.id === id);
     const fresh = status === "yes" && !!before && before.checked !== true;
-    const write = setMilestoneObservation(id, status);
-    if (!write) return write;
+    if (!before) return undefined;
+    const write = notices.forMilestone(before).onAnswer(status);
     write.then(() => {
       // One capped burst per skill ever, after the answer is stored (MilestonesTab's rule).
-      if (fresh) celebrateFirstOnce(childProfile.id, id);
+      if (fresh && notices.isCurrent()) celebrateFirstOnce(childProfile.id, id);
     }, () => undefined);
     return write;
   };
@@ -160,15 +163,17 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
 
   const detail = (domain: DomainId, detailId?: string, lastMoment: { at: string; text: string } | null = null) => (
     <AreaRowDetail
-      key={domain}
+      key={`${notices.scopeKey}:${domain}`}
       id={detailId}
       lastMoment={lastMoment}
       domain={domain}
       milestones={milestones}
       currentBandMonths={currentBandMonths}
+      confirmed={notices.confirmed}
       gender={gender}
       onAnswer={answer}
-      onKeep={setKeepFor}
+      onKeep={(milestoneId) => openNoticeDetail(childProfile.id, milestoneId, { editEvidence: true })}
+      onOpenObservation={(milestoneId) => openNoticeDetail(childProfile.id, milestoneId)}
       onAddOwn={(words) => addCustomMilestone(words, CUSTOM_MILESTONE_DOMAIN[domain])}
       watch={chosenWatch && chosenDomain === domain ? { milestoneId: chosenWatch.id, recheckDueAt, onStop: stopWatching } : null}
       onUndoWatch={clearedDomain === domain ? undoStop : null}
@@ -192,31 +197,17 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
         recheckDueAt={chosenWatch ? null : recheckDueAt}
         layout={compact ? "tiles" : "rows"}
       />
-      {compact && openDomain && (
+      {compact && openDomain && !noticeTarget && (
         <Sheet open onClose={close} title={domainName(openDomain, t)}>
           {detail(openDomain, undefined, sheetMoment(openDomain))}
         </Sheet>
       )}
-      {keeping && (
-        <FirstKeepsakeSheet
-          key={`${childProfile.id}:${keeping.id}`}
-          open
-          milestoneId={keeping.id}
-          milestoneTitle={milestoneText(keeping, "title", t, { gender })}
-          childId={childProfile.id}
-          childName={(childProfile.name || "").split(" ")[0]}
-          keepsake={keepsakes[keeping.id] ?? null}
-          canShare={false}
-          beforeShare={() => false}
-          // Both return the write: the sheet says "Kept" (or closes) only after it resolved.
-          onSave={(draft: KeepsakeDraft) => {
-            const next = upsertKeepsake(keepsakes, draft, new Date().toISOString());
-            return keepsakeCol.upsert(keepsakeDoc(next[draft.milestoneId]));
-          }}
-          onRemove={() => keepsakeCol.remove(keeping.id)}
-          onClose={() => setKeepFor(null)}
-        />
-      )}
+      {noticeTarget && <NoticeObjectDetail
+        key={`${notices.scopeKey}:${noticeTarget.milestoneId}`}
+        target={noticeTarget} editEvidence={query.get("evidence") === "edit"} observations={observations}
+        onClose={() => closeNoticeDetail(query)}
+      />}
+
     </>
   );
 }

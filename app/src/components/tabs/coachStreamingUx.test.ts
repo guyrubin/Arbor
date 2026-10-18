@@ -35,7 +35,9 @@ const ctx = stripComments(read("context/ArborContext.tsx"));
 
 describe("N9 — progressive streamed render (client wiring)", () => {
   it("the chat request opts into SSE and folds screened deltas via the applyChatDelta reducer", () => {
-    expect(ctx).toContain('headers: await authHeaders({ Accept: "text/event-stream" }),');
+    expect(ctx).toContain('headers: sourceHeaders ?? await authHeaders({ Accept: "text/event-stream" }),');
+    expect(ctx).toContain('sourceHeaders = await authHeaders({ Accept: "text/event-stream" });');
+    expect(ctx).toContain('if (!opts.isCurrent()) return false;');
     // Only server-screened delta text ever reaches the live bubble.
     expect(ctx).toContain('setChatMessages((prev) => applyChatDelta(prev, String(data.text || ""), selectedLens));');
     // Honest milestone stage keys → localized status copy owned client-side.

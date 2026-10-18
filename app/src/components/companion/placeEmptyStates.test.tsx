@@ -35,13 +35,14 @@ const state = vi.hoisted(() => ({
 vi.mock("../../context/ArborContext", () => {
   const value = () => ({
     childProfile: { id: "child-a", name: "Noa", age: 4, interests: [], strengths: [], activeGoals: [] },
-    milestones: [], actionLoop: [], activeFamilyTopic: null,
+    milestones: [], milestonesLoaded: true, milestonesConfirmed: true, actionLoop: [], activeFamilyTopic: null,
     behaviorLogs: state.behaviorLogs, logsLoaded: state.logsLoaded,
     openCaptureSheet: state.openCaptureSheet, setActiveTab: state.setActiveTab, saveMoment: state.saveMoment,
     seedCoach: vi.fn(), requestJournalFocus: vi.fn(),
   });
   return { useArbor: value, useArborOptional: value };
 });
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { uid: "account-invented" } }) }));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };

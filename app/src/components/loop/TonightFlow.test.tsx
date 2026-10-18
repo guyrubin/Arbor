@@ -53,7 +53,7 @@ const render = (step: TonightStep, lang: "en" | "he" = "en", over: Record<string
       dayQuestion={{ key: "elev.loop.tonight.day.generic", vars: {} }}
       onQuote={(t) => calls.push(`quote:${t}`)}
       notice={{ milestone: noticeMs, shelf: "moving" }}
-      onNotice={(s) => calls.push(`notice:${s}`)}
+      onNotice={(s) => { calls.push(`notice:${s}`); }}
       onStory={() => calls.push("story")}
       initialStep={step}
       {...over}

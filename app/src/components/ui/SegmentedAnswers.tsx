@@ -41,12 +41,14 @@ export function SegmentedAnswers({
   ariaLabel,
   attrs,
   className = "mt-3",
+  disabled = false,
 }: {
   onAnswer: (status: ObserveStatus) => void;
   selected?: ObserveStatus | null;
   ariaLabel: string;
   attrs?: Record<string, string>;
   className?: string;
+  disabled?: boolean;
 }) {
   const { t, uiLang } = useLanguage();
   const cells = useRef<(HTMLButtonElement | null)[]>([]);
@@ -60,6 +62,7 @@ export function SegmentedAnswers({
     <div
       role="group"
       aria-label={ariaLabel}
+      aria-busy={disabled || undefined}
       data-testid="segmented-answers"
       {...(attrs ?? {})}
       className={`${className} grid grid-cols-3 gap-1 p-1`}
@@ -74,6 +77,7 @@ export function SegmentedAnswers({
               cells.current[i] = el;
             }}
             type="button"
+            disabled={disabled}
             data-answer={status}
             {...(selected !== undefined ? { "aria-pressed": on } : {})}
             onClick={() => onAnswer(status)}

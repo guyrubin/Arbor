@@ -62,7 +62,7 @@ describe("W2 Care — coherent purpose and share flow", () => {
  it("every export keeps the fail-closed guard and scanner", () => {
    expect(ASK).toContain('ClinicalLanguageError');
    // B-LOOP-12: an intake packet (the professional view's preset) leaves as the whole scoped packet ("self" ceiling); every other packet under its audience.
-   expect(ASK).toContain('const egressAudience: ExportAudience = intakePacket ? "self" : audience;');
+   expect(ASK).toContain('const egressAudience: ExportAudience = !noticePacket && intakePacket ? "self" : audience;');
    expect(ASK).toContain('serializeForExport(egressAudience, packet, excluded');
    expect(ASK).toContain('disabled={noneSelected}');
    expect(ASK).toContain('if (exportText == null) return');

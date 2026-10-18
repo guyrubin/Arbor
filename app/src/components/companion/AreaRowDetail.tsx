@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { DomainId } from "../../lib/domains/registry";
 import { fmtDay } from "../../lib/formatDate";
@@ -13,6 +13,7 @@ import { Icon } from "../ui/Icon";
 import { Receipt } from "../ui/Receipt";
 import { SegmentedAnswers } from "../ui/SegmentedAnswers";
 import { PARENT_RECORD_COPY } from "./parentRecordCopy";
+import { NOTICE_DETAIL_COPY } from "./noticeDetailCopy";
 import "./developmentMap.css";
 
 /**
@@ -62,11 +63,15 @@ export interface AreaRowDetailProps {
   milestones: readonly Milestone[];
   /** The child's current band (preterm-corrected), lib/milestoneData. */
   currentBandMonths: number;
+  /** A cached or pending snapshot cannot show an acknowledged-save receipt. */
+  confirmed?: boolean;
   gender?: string | null;
   /** The write seam; resolves when the answer is stored. */
   onAnswer: (milestoneId: string, status: ObserveStatus) => Promise<unknown> | undefined;
   /** Opens the note-and-date keepsake for a first the parent just saw. */
   onKeep?: (milestoneId: string) => void;
+  /** Opens the same child-scoped object reached from Now and Moments. */
+  onOpenObservation?: (milestoneId: string) => void;
   /** Writes a skill the parent names on this area; resolves once it is stored. */
   onAddOwn?: (title: string) => Promise<unknown>;
   /** The chosen watch, when its skill files on this area. */
@@ -83,12 +88,19 @@ export interface AreaRowDetailProps {
 }
 
 export default function AreaRowDetail({
-  domain, milestones, currentBandMonths, gender = null, onAnswer, onKeep, onAddOwn, watch = null, onUndoWatch = null,
+  domain, milestones, currentBandMonths, confirmed = true, gender = null, onAnswer, onKeep, onOpenObservation, onAddOwn, watch = null, onUndoWatch = null,
   onCheck, onExplore, onOpenMoments, id, lastMoment = null,
 }: AreaRowDetailProps) {
   const { t, uiLang } = useLanguage();
   const copy = PARENT_RECORD_COPY[uiLang === "he" ? "he" : "en"];
-  const [written, setWritten] = useState<{ id: string; saved: boolean; fresh: boolean } | null>(null);
+  const noticeCopy = NOTICE_DETAIL_COPY[uiLang === "he" ? "he" : "en"];
+  const [written, setWritten] = useState<{ id: string; saved: boolean; fresh: boolean; queued?: boolean } | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  const lifetime = useRef({ active: true, pending: false });
+  useEffect(() => {
+    lifetime.current.active = true;
+    return () => { lifetime.current.active = false; };
+  }, []);
   const [draft, setDraft] = useState("");
   // "Add your own": the line clears only after the row was stored; a failed
   // write keeps the parent's words and says so.
@@ -105,33 +117,52 @@ export default function AreaRowDetail({
       now: pick((b) => b.current),
       own: pick((b) => b.months === -1),
       next: pick((b) => b.later),
+      // Earlier answers stay findable without re-asking every earlier skill.
+      earlier: pick((b) => !b.current && !b.later && b.months !== -1)
+        .filter((m) => !!m.observationStatus || m.checked === true),
     };
   });
   const title = (m: Milestone) => milestoneText(m, "title", t, { gender });
   const answer = (m: Milestone, status: ObserveStatus) => {
+    if (!lifetime.current.active || lifetime.current.pending) return;
     setWritten(null);
     const wasSeen = m.checked === true || m.observationStatus === "yes";
     const write = onAnswer(m.id, status);
     if (!write) return;
+    lifetime.current.pending = true;
+    setPending(m.id);
+    const finish = (saved: boolean, error?: unknown) => {
+      lifetime.current.pending = false;
+      if (!lifetime.current.active) return;
+      setPending(null);
+      setWritten({ id: m.id, saved, fresh: saved && status === "yes" && !wasSeen,
+        queued: error instanceof Error && /write (?:needs an online confirmation|was not confirmed)/.test(error.message) });
+    };
     write.then(
-      () => setWritten({ id: m.id, saved: true, fresh: status === "yes" && !wasSeen }),
-      () => setWritten({ id: m.id, saved: false, fresh: false }),
+      () => finish(true),
+      (error) => finish(false, error),
     );
   };
   const skill = (m: Milestone, lead?: React.ReactNode) => (
     <li key={m.id} className="area-detail-skill" data-testid="area-detail-skill" data-milestone={m.id}>
       {lead}
-      <p className="area-detail-skill-title" dir="auto">{title(m)}</p>
+      {onOpenObservation ? <button type="button" className="area-detail-skill-open" data-testid="area-detail-open-observation" onClick={() => onOpenObservation(m.id)} aria-label={`${noticeCopy.open}: ${title(m)}`}>
+        <span className="area-detail-skill-title" dir="auto">{title(m)}</span>
+        <Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+      </button> : <p className="area-detail-skill-title" dir="auto">{title(m)}</p>}
       <SegmentedAnswers
         className="mt-2"
         ariaLabel={title(m)}
         selected={m.observationStatus ?? (m.checked ? "yes" : null)}
+        disabled={pending !== null}
         onAnswer={(status) => answer(m, status)}
       />
+      {pending === m.id && <p role="status" className="notice-object-note" data-testid="area-detail-saving">{noticeCopy.saving}</p>}
       {written?.id === m.id && (written.saved
-        ? <Receipt testId="area-detail-saved" size="sm" className="mt-1">{t("companion.devMap.saved")}</Receipt>
+        ? confirmed && <Receipt testId="area-detail-saved" size="sm" className="mt-1">{t("companion.devMap.saved")}</Receipt>
+        : written.queued ? <p className="notice-object-note" role="status" data-testid="area-detail-queued">{noticeCopy.pending}</p>
         : <p className="area-detail-failed" role="alert" data-testid="area-detail-failed">{t("companion.devMap.saveFailed")}</p>)}
-      {written?.id === m.id && written.saved && written.fresh && onKeep && (
+      {written?.id === m.id && written.saved && written.fresh && confirmed && onKeep && (
         <button type="button" className="area-detail-keep" data-testid="area-detail-keep" onClick={() => onKeep(m.id)}>
           <Icon name="bookmark_add" size={16} />
           <span>{t("elev.waveR.keepsake.add")}</span>
@@ -142,7 +173,7 @@ export default function AreaRowDetail({
   const answerable = !!watched || sections.some((s) => s.now.length > 0 || s.own.length > 0);
   // Body spans two shelves (Sleep, Food & growth); a heading names each only
   // when both carry rows.
-  const shown = sections.filter((s) => s.now.length + s.own.length + s.next.length > 0);
+  const shown = sections.filter((s) => s.now.length + s.own.length + s.next.length + s.earlier.length > 0);
   const addOwn = (event: React.FormEvent) => {
     event.preventDefault();
     const words = draft.trim();
@@ -170,6 +201,7 @@ export default function AreaRowDetail({
         </p>
       )}
       <p className="area-detail-why">{t(WHY_KEYS[domain])}</p>
+      {!confirmed && <p role="status" className="notice-object-note">{noticeCopy.unconfirmed}</p>}
       {watched && (
         <ul className="area-detail-skills area-detail-watch" data-testid="area-detail-watch">
           {skill(watched, (
@@ -196,7 +228,7 @@ export default function AreaRowDetail({
         </div>
       )}
       {!answerable && <p className="area-detail-empty" data-testid="area-detail-empty">{t("companion.devMap.empty")}</p>}
-      {shown.map(({ shelf, now, own, next }) => (
+      {shown.map(({ shelf, now, own, next, earlier }) => (
         <section key={shelf} className="area-detail-shelf" data-shelf={shelf}>
           {shown.length > 1 && <h3>{shelfLabel(shelf, t)}</h3>}
           {now.length > 0 && (
@@ -220,6 +252,14 @@ export default function AreaRowDetail({
               <ul>
                 {next.map((m) => <li key={m.id} data-testid="area-detail-later-item" dir="auto">{title(m)}</li>)}
               </ul>
+            </details>
+          )}
+          {earlier.length > 0 && onOpenObservation && (
+            <details className="area-detail-later" data-testid="area-detail-earlier-answers">
+              <summary><span>{noticeCopy.earlier}</span><Icon name="expand_more" size={18} /></summary>
+              <ul>{earlier.map((m) => <li key={m.id}><button type="button" className="area-detail-skill-open" onClick={() => onOpenObservation(m.id)}>
+                <span dir="auto">{title(m)}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+              </button></li>)}</ul>
             </details>
           )}
         </section>

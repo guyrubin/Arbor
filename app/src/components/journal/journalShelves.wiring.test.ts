@@ -93,8 +93,9 @@ describe("B-LOOP-12 — the professional view reuses the ONE consult egress", ()
     expect(consult).toContain('const intakeRaw = query.get("intake");');
     expect(consult).toContain("const intake = isIntakeProfession(intakeRaw) ? intakeRaw : undefined;");
     expect(consult).toContain("intake={intake}");
-    expect(ask).toContain("const packet = useMemo(() => intakePacket ?? presetPacket(audience, fullPacket), [intakePacket, audience, fullPacket]);");
-    expect(ask).toContain('const egressAudience: ExportAudience = intakePacket ? "self" : audience;');
+    expect(ask).toContain("const packet = useMemo(() => noticePacket ? presetPacket(audience, { ...noticePacket,");
+    expect(ask).toContain("}) : intakePacket ?? presetPacket(audience, fullPacket), [noticePacket, intakePacket, audience, fullPacket]);");
+    expect(ask).toContain('const egressAudience: ExportAudience = !noticePacket && intakePacket ? "self" : audience;');
     expect(ask).toContain("serializeForExport(egressAudience, packet, excluded, visionNote");
     expect(ask).toContain("exportPrintSections(egressAudience, packet, excluded, visionNote");
     expect(ask).toContain("const noneSelected = includedCount === 0 || !reviewed || exportText == null || !canExportCurrent();");

@@ -8,6 +8,12 @@ import { sameLocalHistoryRows } from "../lib/historyWindow";
 
 type WithId = { id: string };
 
+/** A parent-facing receipt can require confirmation without changing legacy queued writes. */
+export interface ChildWriteOptions {
+  awaitServer?: boolean;
+  requireAcknowledgement?: boolean;
+}
+
 export interface ChildCollection<T extends WithId> {
   items: T[];
   loaded: boolean;
@@ -25,9 +31,9 @@ export interface ChildCollection<T extends WithId> {
   /** True when backed by Firestore (vs localStorage sandbox). */
   remote: boolean;
   /** Create or replace a single item. */
-  upsert: (item: T, options?: { awaitServer?: boolean; requireAcknowledgement?: boolean }) => Promise<void>;
+  upsert: (item: T, options?: ChildWriteOptions) => Promise<void>;
   /** Delete an item by id. */
-  remove: (id: string) => Promise<void>;
+  remove: (id: string, options?: ChildWriteOptions) => Promise<void>;
   /** Replace the whole collection in one shot (sandbox: state; remote: batch). */
   replaceAll: (next: T[]) => Promise<void>;
 }
@@ -179,7 +185,7 @@ export function useChildCollection<T extends WithId>(
   }, [items, remote, loaded, lsKey]);
 
   const upsert = useCallback(
-    async (item: T, options?: { awaitServer?: boolean; requireAcknowledgement?: boolean }) => {
+    async (item: T, options?: ChildWriteOptions) => {
       if (scopeRef.current !== scope) throw new Error("The active child changed");
       if (remote && db && uid) {
         const write = setDoc(doc(db, `users/${uid}/children/${childId}/${name}`, item.id), item as Record<string, unknown>);
@@ -205,10 +211,13 @@ export function useChildCollection<T extends WithId>(
   );
 
   const remove = useCallback(
-    async (id: string) => {
+    async (id: string, options?: ChildWriteOptions) => {
       if (scopeRef.current !== scope) throw new Error("The active child changed");
       if (remote && db && uid) {
-        await settleOrQueue(deleteDoc(doc(db, `users/${uid}/children/${childId}/${name}`, id)));
+        const write = deleteDoc(doc(db, `users/${uid}/children/${childId}/${name}`, id));
+        if (options?.awaitServer) await write;
+        else await settleOrQueue(write, options);
+        if (scopeRef.current !== scope) throw new Error("The active child changed");
       } else {
         const next = itemsRef.current.filter(item => item.id !== id);
         localStorage.setItem(lsKey, JSON.stringify(next));

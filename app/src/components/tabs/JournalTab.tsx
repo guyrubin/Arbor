@@ -36,6 +36,7 @@ import { behaviorTypeLabel, isIncidentType } from "../../content/behaviorTaxonom
 import { ageYearsOf } from "../../lib/age/forChild";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { hashQuery, routeHash } from "../../lib/routes";
+import { openNoticeDetail } from "../../lib/noticeNavigation";
 import JournalShelves, { shelfFromQuery } from "../journal/JournalShelves";
 
 /**
@@ -427,6 +428,11 @@ function JournalFeed({ primaryMoveProps }: { primaryMoveProps?: Record<string, s
   // existing editor (the shared capture sheet), never a
   // second copy of the log form.
   const [openSignal, setOpenSignal] = useState<TimelineSignal | null>(null);
+  const openRecord = (signal: TimelineSignal) => {
+    const milestoneId = signal.kind === "milestone" ? signal.milestoneRef?.id : undefined;
+    if (milestoneId && milestones.some((m) => m.id === milestoneId)) openNoticeDetail(childProfile.id, milestoneId);
+    else setOpenSignal(signal);
+  };
   const openMomentLogId = (s: TimelineSignal | null): string | null =>
     s && s.kind === "moment" && s.id.startsWith("moment-") ? s.id.slice("moment-".length) : null;
   // B-ASKJB-30: Edit opens the ONE capture sheet in place (prefilled through
@@ -608,7 +614,7 @@ function JournalFeed({ primaryMoveProps }: { primaryMoveProps?: Record<string, s
               <button
                 type="button"
                 data-testid="journal-last-words"
-                onClick={() => setOpenSignal(lastKeptSignal)}
+                onClick={() => openRecord(lastKeptSignal)}
                 className="flex min-h-11 w-full flex-col items-start gap-1 py-1 text-start"
               >
                 <span dir="auto" className="block border-s-2 ps-3 t-lg font-normal leading-relaxed line-clamp-2" style={{ borderColor: "var(--arbor-clay-dim)", fontFamily: "var(--font-sans)", color: "var(--arbor-ink)" }}>
@@ -890,7 +896,7 @@ function JournalFeed({ primaryMoveProps }: { primaryMoveProps?: Record<string, s
                     contentSourceLabel={signalContentSource(s, tt)}
                     resolvedLabel={t("beh.resolved")}
                     focused={s.id === focusId}
-                    onOpen={() => setOpenSignal(s)}
+                    onOpen={() => openRecord(s)}
                   />
                 );
               })}

@@ -45,7 +45,9 @@ describe("settleOrQueue — a capture never waits on the network to be kept", ()
     const upsert = hook.slice(hook.indexOf("const upsert = useCallback("), hook.indexOf("const remove = useCallback("));
     expect(upsert).toContain("const write = setDoc(");
     expect(upsert).toMatch(/if\s*\(options\?\.awaitServer\)\s*await write;\s*else\s*await settleOrQueue\(write, options\);/);
-    expect(hook).toContain("await settleOrQueue(deleteDoc(");
+    const remove = hook.slice(hook.indexOf("const remove = useCallback("), hook.indexOf("const replaceAll = useCallback("));
+    expect(remove).toContain("const write = deleteDoc(");
+    expect(remove).toMatch(/if\s*\(options\?\.awaitServer\)\s*await write;\s*else\s*await settleOrQueue\(write, options\);/);
     expect(hook).not.toMatch(/await setDoc\(|await deleteDoc\(/);
   });
 });

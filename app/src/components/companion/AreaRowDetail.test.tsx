@@ -13,7 +13,7 @@ import type { Milestone } from "../../types";
 const state = vi.hoisted(() => ({
   lang: "en" as "en" | "he",
   keepState: false, cursor: 0, hooks: [] as unknown[],
-  segments: [] as { ariaLabel: string; selected?: string | null; onAnswer: (status: "yes" | "not_yet" | "not_sure") => void }[],
+  segments: [] as { ariaLabel: string; selected?: string | null; disabled?: boolean; onAnswer: (status: "yes" | "not_yet" | "not_sure") => void }[],
   buttons: [] as { onClick?: () => void; "data-testid"?: string; disabled?: boolean }[],
   inputs: [] as { onChange?: (e: { target: { value: string } }) => void; "data-testid"?: string }[],
   forms: [] as { onSubmit?: (e: { preventDefault: () => void }) => void }[],
@@ -226,6 +226,37 @@ describe("v3 F-CHILD-1 — AreaRowDetail", () => {
     const html = render({ onAnswer });
     expect(html).not.toContain('data-testid="area-detail-saved"');
     expect(html).not.toContain('data-testid="area-detail-failed"');
+  });
+
+  it("blocks rapid duplicate answers, then keeps an unconfirmed write distinct from Saved", async () => {
+    state.keepState = true;
+    let reject!: (error: Error) => void;
+    const onAnswer = vi.fn(() => new Promise<void>((_resolve, fail) => { reject = fail; }));
+    render({ onAnswer });
+    state.segments[0].onAnswer("not_yet");
+    state.segments[0].onAnswer("yes");
+    expect(onAnswer).toHaveBeenCalledOnce();
+    expect(render({ onAnswer })).toContain('data-testid="area-detail-saving"');
+    expect(state.segments.every((segment) => segment.disabled)).toBe(true);
+    reject(new Error("The write was not confirmed; please retry")); await tick();
+    const html = render({ onAnswer, confirmed: false });
+    expect(html).toContain('data-testid="area-detail-queued"');
+    expect(html).not.toContain('data-testid="area-detail-saved"');
+    expect(state.segments.every((segment) => !segment.disabled)).toBe(true);
+  });
+
+  it("keeps earlier Not yet and Not sure answers accessible as exact objects", () => {
+    const [a, b] = EARLIER;
+    const onOpenObservation = vi.fn();
+    const milestones = catalogue().map((m) => m.id === a.id ? { ...m, checked: false, observationStatus: "not_yet" as const }
+      : m.id === b.id ? { ...m, checked: false, observationStatus: "not_sure" as const } : m);
+    const html = render({ milestones, onOpenObservation });
+    expect(html).toContain('data-testid="area-detail-earlier-answers"');
+    // Saved earlier answers are doors, not new answer controls or Seen-it pips.
+    expect(ids(html)).toEqual(NOW.map((m) => m.id));
+    expect(html).toContain(esc(a.title)); expect(html).toContain(esc(b.title));
+    button("area-detail-open-observation")!.onClick!();
+    expect(onOpenObservation).toHaveBeenCalledWith(NOW[0].id);
   });
 
   it("the three doors call their callbacks", () => {

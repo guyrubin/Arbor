@@ -4,6 +4,7 @@
  *  then through the conversation's ONE Talk path (CoachTab toggleVoice), never
  *  a second voice path. */
 export const COMPANION_CONVERSATION_EVENT = "arbor:open-conversation";
+export const COMPANION_CLOSE_EVENT = "arbor:close-conversation";
 /** FEAT-01: the conversation header's menu reaches controls the conversation
  *  itself owns, through this same door — "history" brings the history row into
  *  view, "tone" opens the ONE ToneSheet. Neither sends a message. Like a voice
@@ -23,6 +24,13 @@ export function requestCompanionConversation(detail: CompanionConversationReques
   if (detail.voice) voiceRequestedAt = now;
   if (detail.panel) panelRequest = { panel: detail.panel, at: now };
   if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(COMPANION_CONVERSATION_EVENT, { detail }));
+}
+
+/** A page handoff steps the panel aside; its mounted thread and draft remain. */
+export function requestCompanionClose(): void {
+  voiceRequestedAt = null;
+  panelRequest = null;
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(COMPANION_CLOSE_EVENT));
 }
 
 /** True once per "Talk it through" tap, and only while the tap is fresh.

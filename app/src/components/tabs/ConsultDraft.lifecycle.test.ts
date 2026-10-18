@@ -53,7 +53,8 @@ describe("targeted Consult retains the mounted editor while blocking stale egres
   });
   it("does not retain a previous child's or target's editor after its keyed owner changes", () => {
     expect(find(render(), AskSpecialist)).not.toBeNull();
-    expect(source.getFullText()).toContain('JSON.stringify([user?.uid ?? "local", childProfile.id, query.get("appointment")])');
+    expect(source.getFullText()).toContain('JSON.stringify([user?.uid ?? "local", childProfile.id, query.get("appointment"), query.get("notice"), query.get("child")])');
+    expect(source.getFullText()).toContain('if (query.has("notice")) return <NoticeCareTarget key={scope} query={query} />;');
     expect(source.getFullText()).toContain('key={scope}');
     // The outer keyed ConsultContent owns this state; a new key receives fresh hooks.
     slots = []; child = "b"; rows = []; status.confirmed = false;

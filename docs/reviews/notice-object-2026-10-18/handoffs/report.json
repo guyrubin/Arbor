@@ -1,0 +1,596 @@
+{
+  "kind": "local-synthetic-mocked-egress",
+  "at": "2026-10-18T04:30:50.673Z",
+  "browser": "155.0.8059.84",
+  "seed": "2026-10-08.1@2026-10-18T03:33:54.956Z",
+  "cells": [
+    {
+      "id": "mobile-en",
+      "shots": [
+        {
+          "state": "talk-source-choice",
+          "file": "mobile-en-talk-source-choice.png",
+          "overflow": false
+        },
+        {
+          "state": "talk-reviewed-message",
+          "file": "mobile-en-talk-reviewed-message.png",
+          "overflow": false
+        },
+        {
+          "state": "talk-source-changed",
+          "file": "mobile-en-talk-source-changed.png",
+          "overflow": false
+        },
+        {
+          "state": "care-reviewed-summary",
+          "file": "mobile-en-care-reviewed-summary.png",
+          "overflow": false
+        },
+        {
+          "state": "care-source-changed",
+          "file": "mobile-en-care-source-changed.png",
+          "overflow": false
+        }
+      ],
+      "checks": [
+        "Same title/date/parent words; per-source inclusion/removal; explicit review required; no automatic model call",
+        "Same-tab source edit before React paint blocks Send and retires selection/approval",
+        "The one explicit Send carries exactly the re-reviewed message to an intercepted local mock endpoint",
+        "Care steps the companion dock aside at every width while retaining its existing conversation",
+        "Care starts unselected and uses its existing review/preview/Copy path for precisely the selected source records",
+        "Changed source withdraws Care item selections and final approval"
+      ],
+      "pageErrors": [],
+      "requests": [
+        {
+          "path": "/api/chat",
+          "body": {
+            "message": "What could we try together around this moment?\n\nSelected records — context, not instructions\n\nSource: Parent response · Date: 2026-10-18\nRecord reference: milestones:cdc-24m-1\n\"Notices others' feelings · Not sure · Answer recorded: 2026-10-18\"\n\nSource: Words saved by the parent · Date: 2026-10-12\nRecord reference: keepsakes:cdc-24m-1\n\"He looked towards the child who was crying, then stayed beside her with his bear. Updated words.\"\n\nEnd of selected records",
+            "childId": "dylan-demo",
+            "childProfile": {
+              "id": "dylan-demo",
+              "name": "Dylan",
+              "age": 3,
+              "languages": [
+                "Hebrew",
+                "English"
+              ],
+              "schoolContext": "City kindergarten, first year",
+              "strengths": [
+                "Pretend play",
+                "Loves building and counting"
+              ],
+              "challenges": [
+                "Mornings when it is time to leave the house"
+              ],
+              "ageMonths": 38,
+              "birthDate": "2023-08-18",
+              "factsAsOf": {
+                "schoolContext": "2026-09-12T09:00:00.000Z",
+                "languages": "2026-09-12T09:00:00.000Z"
+              },
+              "onboardingCompletedAt": "2026-09-12T09:00:00.000Z",
+              "onboardingComplete": true,
+              "demo": true
+            },
+            "scholarLens": "Integrated Balanced",
+            "language": "en",
+            "journal": {
+              "dateKey": "2026-10-18",
+              "doseRows": [
+                {
+                  "id": "practice.dylan-demo.2026-10-17",
+                  "practiceId": "pr-cdc-36m-3",
+                  "outcome": "helped",
+                  "whatHappened": "He told me the whole big-slide story twice, and I just listened"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-16",
+                  "practiceId": "pr-cdc-30m-11",
+                  "outcome": "not_today"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-15",
+                  "practiceId": "pr-cdc-36m-2"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-13",
+                  "practiceId": "pr-cdc-36m-7",
+                  "outcome": "somewhat",
+                  "whatHappened": "He drew a big round sun and called it Mummy"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-12",
+                  "practiceId": "pr-cdc-30m-10",
+                  "outcome": "not_today"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-10",
+                  "practiceId": "pr-cdc-36m-1",
+                  "outcome": "helped",
+                  "whatHappened": "Short goodbye at the gate; he waved from the window"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-08",
+                  "practiceId": "pr-cdc-36m-11"
+                }
+              ]
+            },
+            "weeklyContext": {
+              "momentCount": 6,
+              "milestonesCrossedCount": 4,
+              "lastActionOutcome": "helped",
+              "wordsLoggedCount": 1
+            }
+          }
+        }
+      ],
+      "fonts": [
+        "Material Symbols Rounded",
+        "Fraunces",
+        "Instrument Sans",
+        "Instrument Serif"
+      ]
+    },
+    {
+      "id": "mobile-he",
+      "shots": [
+        {
+          "state": "talk-source-choice",
+          "file": "mobile-he-talk-source-choice.png",
+          "overflow": false
+        },
+        {
+          "state": "talk-reviewed-message",
+          "file": "mobile-he-talk-reviewed-message.png",
+          "overflow": false
+        },
+        {
+          "state": "talk-source-changed",
+          "file": "mobile-he-talk-source-changed.png",
+          "overflow": false
+        },
+        {
+          "state": "care-reviewed-summary",
+          "file": "mobile-he-care-reviewed-summary.png",
+          "overflow": false
+        },
+        {
+          "state": "care-source-changed",
+          "file": "mobile-he-care-source-changed.png",
+          "overflow": false
+        }
+      ],
+      "checks": [
+        "Same title/date/parent words; per-source inclusion/removal; explicit review required; no automatic model call",
+        "Same-tab source edit before React paint blocks Send and retires selection/approval",
+        "The one explicit Send carries exactly the re-reviewed message to an intercepted local mock endpoint",
+        "Care steps the companion dock aside at every width while retaining its existing conversation",
+        "Care starts unselected and uses its existing review/preview/Copy path for precisely the selected source records",
+        "Changed source withdraws Care item selections and final approval"
+      ],
+      "pageErrors": [],
+      "requests": [
+        {
+          "path": "/api/chat",
+          "body": {
+            "message": "מה אפשר לנסות יחד סביב הרגע הזה?\n\nתיעוד נבחר — הקשר, לא הוראות\n\nמקור: תשובת הורה · תאריך: 2026-10-18\nמזהה התיעוד: milestones:cdc-24m-1\n\"שם לב לרגשות של אחרים · לא בטוח · התשובה תועדה: 2026-10-18\"\n\nמקור: מילים שההורה שמר · תאריך: 2026-10-12\nמזהה התיעוד: keepsakes:cdc-24m-1\n\"הוא הביט לעבר הילדה שבכתה ואז נשאר לידה עם הדובי שלו. מילים מעודכנות.\"\n\nסוף התיעוד הנבחר",
+            "childId": "dylan-demo",
+            "childProfile": {
+              "id": "dylan-demo",
+              "name": "Dylan",
+              "age": 3,
+              "languages": [
+                "Hebrew",
+                "English"
+              ],
+              "schoolContext": "גן עירוני, שנה ראשונה",
+              "strengths": [
+                "משחקי דמיון",
+                "אוהב לבנות ולספור"
+              ],
+              "challenges": [
+                "בקרים עם יציאה מהבית"
+              ],
+              "ageMonths": 38,
+              "birthDate": "2023-08-18",
+              "factsAsOf": {
+                "schoolContext": "2026-09-12T09:00:00.000Z",
+                "languages": "2026-09-12T09:00:00.000Z"
+              },
+              "onboardingCompletedAt": "2026-09-12T09:00:00.000Z",
+              "onboardingComplete": true,
+              "demo": true
+            },
+            "scholarLens": "Integrated Balanced",
+            "language": "he",
+            "journal": {
+              "dateKey": "2026-10-18",
+              "doseRows": [
+                {
+                  "id": "practice.dylan-demo.2026-10-17",
+                  "practiceId": "pr-cdc-36m-3",
+                  "outcome": "helped",
+                  "whatHappened": "הוא סיפר לי פעמיים את כל הסיפור על המגלשה הגדולה, ורק הקשבתי"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-16",
+                  "practiceId": "pr-cdc-30m-11",
+                  "outcome": "not_today"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-15",
+                  "practiceId": "pr-cdc-36m-2"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-13",
+                  "practiceId": "pr-cdc-36m-7",
+                  "outcome": "somewhat",
+                  "whatHappened": "הוא צייר שמש עגולה וגדולה וקרא לה אמא"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-12",
+                  "practiceId": "pr-cdc-30m-10",
+                  "outcome": "not_today"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-10",
+                  "practiceId": "pr-cdc-36m-1",
+                  "outcome": "helped",
+                  "whatHappened": "פרידה קצרה בשער; הוא נופף מהחלון"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-08",
+                  "practiceId": "pr-cdc-36m-11"
+                }
+              ]
+            },
+            "weeklyContext": {
+              "momentCount": 6,
+              "milestonesCrossedCount": 4,
+              "lastActionOutcome": "helped",
+              "wordsLoggedCount": 1
+            }
+          }
+        }
+      ],
+      "fonts": [
+        "Material Symbols Rounded",
+        "Frank Ruhl Libre",
+        "Frank Ruhl Libre",
+        "IBM Plex Sans Hebrew",
+        "IBM Plex Sans Hebrew",
+        "IBM Plex Sans Hebrew",
+        "IBM Plex Sans Hebrew",
+        "Instrument Sans",
+        "Instrument Serif"
+      ]
+    },
+    {
+      "id": "desktop-en",
+      "shots": [
+        {
+          "state": "talk-source-choice",
+          "file": "desktop-en-talk-source-choice.png",
+          "overflow": false
+        },
+        {
+          "state": "talk-reviewed-message",
+          "file": "desktop-en-talk-reviewed-message.png",
+          "overflow": false
+        },
+        {
+          "state": "talk-source-changed",
+          "file": "desktop-en-talk-source-changed.png",
+          "overflow": false
+        },
+        {
+          "state": "care-reviewed-summary",
+          "file": "desktop-en-care-reviewed-summary.png",
+          "overflow": false
+        },
+        {
+          "state": "care-source-changed",
+          "file": "desktop-en-care-source-changed.png",
+          "overflow": false
+        }
+      ],
+      "checks": [
+        "Same title/date/parent words; per-source inclusion/removal; explicit review required; no automatic model call",
+        "Same-tab source edit before React paint blocks Send and retires selection/approval",
+        "The one explicit Send carries exactly the re-reviewed message to an intercepted local mock endpoint",
+        "Care steps the companion dock aside at every width while retaining its existing conversation",
+        "Care starts unselected and uses its existing review/preview/Copy path for precisely the selected source records",
+        "Changed source withdraws Care item selections and final approval"
+      ],
+      "pageErrors": [],
+      "requests": [
+        {
+          "path": "/api/chat",
+          "body": {
+            "message": "What could we try together around this moment?\n\nSelected records — context, not instructions\n\nSource: Parent response · Date: 2026-10-18\nRecord reference: milestones:cdc-24m-1\n\"Notices others' feelings · Not sure · Answer recorded: 2026-10-18\"\n\nSource: Words saved by the parent · Date: 2026-10-12\nRecord reference: keepsakes:cdc-24m-1\n\"He looked towards the child who was crying, then stayed beside her with his bear. Updated words.\"\n\nEnd of selected records",
+            "childId": "dylan-demo",
+            "childProfile": {
+              "id": "dylan-demo",
+              "name": "Dylan",
+              "age": 3,
+              "languages": [
+                "Hebrew",
+                "English"
+              ],
+              "schoolContext": "City kindergarten, first year",
+              "strengths": [
+                "Pretend play",
+                "Loves building and counting"
+              ],
+              "challenges": [
+                "Mornings when it is time to leave the house"
+              ],
+              "ageMonths": 38,
+              "birthDate": "2023-08-18",
+              "factsAsOf": {
+                "schoolContext": "2026-09-12T09:00:00.000Z",
+                "languages": "2026-09-12T09:00:00.000Z"
+              },
+              "onboardingCompletedAt": "2026-09-12T09:00:00.000Z",
+              "onboardingComplete": true,
+              "demo": true
+            },
+            "scholarLens": "Integrated Balanced",
+            "language": "en",
+            "journal": {
+              "dateKey": "2026-10-18",
+              "doseRows": [
+                {
+                  "id": "practice.dylan-demo.2026-10-17",
+                  "practiceId": "pr-cdc-36m-3",
+                  "outcome": "helped",
+                  "whatHappened": "He told me the whole big-slide story twice, and I just listened"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-16",
+                  "practiceId": "pr-cdc-30m-11",
+                  "outcome": "not_today"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-15",
+                  "practiceId": "pr-cdc-36m-2"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-13",
+                  "practiceId": "pr-cdc-36m-7",
+                  "outcome": "somewhat",
+                  "whatHappened": "He drew a big round sun and called it Mummy"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-12",
+                  "practiceId": "pr-cdc-30m-10",
+                  "outcome": "not_today"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-10",
+                  "practiceId": "pr-cdc-36m-1",
+                  "outcome": "helped",
+                  "whatHappened": "Short goodbye at the gate; he waved from the window"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-08",
+                  "practiceId": "pr-cdc-36m-11"
+                }
+              ]
+            },
+            "weeklyContext": {
+              "momentCount": 6,
+              "milestonesCrossedCount": 4,
+              "lastActionOutcome": "helped",
+              "wordsLoggedCount": 1
+            }
+          }
+        }
+      ],
+      "fonts": [
+        "Material Symbols Rounded",
+        "Fraunces",
+        "Instrument Sans",
+        "Instrument Serif"
+      ]
+    },
+    {
+      "id": "desktop-he",
+      "shots": [
+        {
+          "state": "talk-source-choice",
+          "file": "desktop-he-talk-source-choice.png",
+          "overflow": false
+        },
+        {
+          "state": "talk-reviewed-message",
+          "file": "desktop-he-talk-reviewed-message.png",
+          "overflow": false
+        },
+        {
+          "state": "talk-source-changed",
+          "file": "desktop-he-talk-source-changed.png",
+          "overflow": false
+        },
+        {
+          "state": "care-reviewed-summary",
+          "file": "desktop-he-care-reviewed-summary.png",
+          "overflow": false
+        },
+        {
+          "state": "care-source-changed",
+          "file": "desktop-he-care-source-changed.png",
+          "overflow": false
+        }
+      ],
+      "checks": [
+        "Same title/date/parent words; per-source inclusion/removal; explicit review required; no automatic model call",
+        "Same-tab source edit before React paint blocks Send and retires selection/approval",
+        "The one explicit Send carries exactly the re-reviewed message to an intercepted local mock endpoint",
+        "Care steps the companion dock aside at every width while retaining its existing conversation",
+        "Care starts unselected and uses its existing review/preview/Copy path for precisely the selected source records",
+        "Changed source withdraws Care item selections and final approval"
+      ],
+      "pageErrors": [],
+      "requests": [
+        {
+          "path": "/api/chat",
+          "body": {
+            "message": "מה אפשר לנסות יחד סביב הרגע הזה?\n\nתיעוד נבחר — הקשר, לא הוראות\n\nמקור: תשובת הורה · תאריך: 2026-10-18\nמזהה התיעוד: milestones:cdc-24m-1\n\"שם לב לרגשות של אחרים · לא בטוח · התשובה תועדה: 2026-10-18\"\n\nמקור: מילים שההורה שמר · תאריך: 2026-10-12\nמזהה התיעוד: keepsakes:cdc-24m-1\n\"הוא הביט לעבר הילדה שבכתה ואז נשאר לידה עם הדובי שלו. מילים מעודכנות.\"\n\nסוף התיעוד הנבחר",
+            "childId": "dylan-demo",
+            "childProfile": {
+              "id": "dylan-demo",
+              "name": "Dylan",
+              "age": 3,
+              "languages": [
+                "Hebrew",
+                "English"
+              ],
+              "schoolContext": "גן עירוני, שנה ראשונה",
+              "strengths": [
+                "משחקי דמיון",
+                "אוהב לבנות ולספור"
+              ],
+              "challenges": [
+                "בקרים עם יציאה מהבית"
+              ],
+              "ageMonths": 38,
+              "birthDate": "2023-08-18",
+              "factsAsOf": {
+                "schoolContext": "2026-09-12T09:00:00.000Z",
+                "languages": "2026-09-12T09:00:00.000Z"
+              },
+              "onboardingCompletedAt": "2026-09-12T09:00:00.000Z",
+              "onboardingComplete": true,
+              "demo": true
+            },
+            "scholarLens": "Integrated Balanced",
+            "language": "he",
+            "journal": {
+              "dateKey": "2026-10-18",
+              "doseRows": [
+                {
+                  "id": "practice.dylan-demo.2026-10-17",
+                  "practiceId": "pr-cdc-36m-3",
+                  "outcome": "helped",
+                  "whatHappened": "הוא סיפר לי פעמיים את כל הסיפור על המגלשה הגדולה, ורק הקשבתי"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-16",
+                  "practiceId": "pr-cdc-30m-11",
+                  "outcome": "not_today"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-15",
+                  "practiceId": "pr-cdc-36m-2"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-13",
+                  "practiceId": "pr-cdc-36m-7",
+                  "outcome": "somewhat",
+                  "whatHappened": "הוא צייר שמש עגולה וגדולה וקרא לה אמא"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-12",
+                  "practiceId": "pr-cdc-30m-10",
+                  "outcome": "not_today"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-10",
+                  "practiceId": "pr-cdc-36m-1",
+                  "outcome": "helped",
+                  "whatHappened": "פרידה קצרה בשער; הוא נופף מהחלון"
+                },
+                {
+                  "id": "practice.dylan-demo.2026-10-08",
+                  "practiceId": "pr-cdc-36m-11"
+                }
+              ]
+            },
+            "weeklyContext": {
+              "momentCount": 6,
+              "milestonesCrossedCount": 4,
+              "lastActionOutcome": "helped",
+              "wordsLoggedCount": 1
+            }
+          }
+        }
+      ],
+      "fonts": [
+        "Material Symbols Rounded",
+        "Frank Ruhl Libre",
+        "Frank Ruhl Libre",
+        "IBM Plex Sans Hebrew",
+        "IBM Plex Sans Hebrew",
+        "IBM Plex Sans Hebrew",
+        "IBM Plex Sans Hebrew",
+        "Instrument Sans",
+        "Instrument Serif"
+      ]
+    }
+  ],
+  "fonts": [
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,0..100&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Heebo:wght@400;500;600;700;800;900&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=Frank+Ruhl+Libre:wght@300..900&family=Instrument+Serif:ital@0;1&display=swap",
+      "sha256": "5019d086eda63f8a5b66ad723ce6c45464cb794d37646336689704e26a5b5b24",
+      "bytes": 49397,
+      "retrievedAt": "2026-10-18T04:30:50.671Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/instrumentsans/v4/pxiTypc9vsFDm051Uf6KVwgkfoSxQ0GsQv8ToedPibnr0SZe1Q.woff2",
+      "sha256": "2ee17598a98d8a59e4df8152d015bec9ab8e4d5672cc0ab42bef806b568e3971",
+      "bytes": 30092,
+      "retrievedAt": "2026-10-18T04:30:52.537Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/fraunces/v38/6NUI8FyLNQOQZAnv9bYEvCeYdG9Ea92uemAO8Uik.woff2",
+      "sha256": "e79165432c3e1e01aff1ea4d394dec633c13ec70f09e92432ae77aa6e1aa7328",
+      "bytes": 120788,
+      "retrievedAt": "2026-10-18T04:30:52.731Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/instrumentserif/v5/jizBRFtNs2ka5fXjeivQ4LroWlx-6zUTjg.woff2",
+      "sha256": "5eb09b5ac0e28b67c2f041c8ba6d244604ca0c0980d65912ab2d47fed84ddc31",
+      "bytes": 21032,
+      "retrievedAt": "2026-10-18T04:30:52.884Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/ibmplexsanshebrew/v12/BCa2qYENg9Kw1mpLpO0bGM5lfHAAZHhDXE2g-lgHrQ.woff2",
+      "sha256": "087793392c1abaa1ad918f3e2ca7e991cbf2cb6d4a991944fa8b9e336c12aab1",
+      "bytes": 5476,
+      "retrievedAt": "2026-10-18T04:30:58.865Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/ibmplexsanshebrew/v12/BCa5qYENg9Kw1mpLpO0bGM5lfHAAZHhDXEV93k06jDu19Q.woff2",
+      "sha256": "2a0832e31ca7571d89f13a385d1b45f431415160b631eff71636c2a9483b87dc",
+      "bytes": 5652,
+      "retrievedAt": "2026-10-18T04:30:59.000Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/ibmplexsanshebrew/v12/BCa5qYENg9Kw1mpLpO0bGM5lfHAAZHhDXEUZ3006jDu19Q.woff2",
+      "sha256": "7127a3cf5a6f98b5db2a89ca2802765fd9e2d34336dde46423fa421214796e03",
+      "bytes": 5644,
+      "retrievedAt": "2026-10-18T04:30:58.912Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/frankruhllibre/v23/j8_w6_fAw7jrcalD7oKYNX0QfAnPW7Ll4ajn.woff2",
+      "sha256": "acdf9ed0a3fc287df8401d796892c1f72118f291e510e38328396f48e200b08c",
+      "bytes": 18748,
+      "retrievedAt": "2026-10-18T04:30:58.978Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/frankruhllibre/v23/j8_w6_fAw7jrcalD7oKYNX0QfAnPW7Dl4Q.woff2",
+      "sha256": "b8081e5e9acd530df59ef062f9274e201569b94c9bfa6881950f3eb259d7b375",
+      "bytes": 44332,
+      "retrievedAt": "2026-10-18T04:30:59.028Z"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/ibmplexsanshebrew/v12/BCa5qYENg9Kw1mpLpO0bGM5lfHAAZHhDXEVR2U06jDu19Q.woff2",
+      "sha256": "3f85b2d84d91b35cdd7abb4b7b100bd218a5e5de83fc19b2d7e0d2f174a10e18",
+      "bytes": 5668,
+      "retrievedAt": "2026-10-18T04:30:59.192Z"
+    }
+  ]
+}

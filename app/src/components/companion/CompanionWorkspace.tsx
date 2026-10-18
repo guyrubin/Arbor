@@ -4,7 +4,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDialog } from "../../hooks/useDialog";
 import { useVisualViewportInset } from "../../hooks/useVisualViewportInset";
-import { COMPANION_CONVERSATION_EVENT, requestCompanionConversation, type CompanionConversationRequest } from "../../lib/companionConversation";
+import { COMPANION_CLOSE_EVENT, COMPANION_CONVERSATION_EVENT, requestCompanionConversation, type CompanionConversationRequest } from "../../lib/companionConversation";
 import { trackCompanionPanelOpen } from "../../lib/kpiEvents";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import Icon from "../ui/Icon";
@@ -220,6 +220,18 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     window.addEventListener(COMPANION_CONVERSATION_EVENT, receive);
     return () => window.removeEventListener(COMPANION_CONVERSATION_EVENT, receive);
   }, [kidLocked, setChatInput]);
+  useEffect(() => {
+    const stepAside = () => {
+      // The destination owns focus. Keep the thread and draft mounted, while
+      // giving its reviewed Care packet the full available reading width.
+      closeFocus.current = null;
+      opener.current = null;
+      openRef.current = false;
+      setOpen(false);
+    };
+    window.addEventListener(COMPANION_CLOSE_EVENT, stepAside);
+    return () => window.removeEventListener(COMPANION_CLOSE_EVENT, stepAside);
+  }, []);
   useEffect(() => {
     if (previousChild.current === childProfile.id) return;
     previousChild.current = childProfile.id;

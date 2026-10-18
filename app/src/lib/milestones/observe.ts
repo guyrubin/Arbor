@@ -29,7 +29,8 @@ export interface ObserveOptions {
   now?: Date | string;
   /** "When?" — only meaningful on "yes"; defaults to "today". */
   when?: ObservedWhen;
-  /** Who wrote it; defaults to the parent. */
+  /** Who wrote it. A yes defaults to the parent; explicit authorship also
+   * applies to a neutral response without making it an observed event. */
   source?: ObserveSource;
   /** B-LOOP-06: the behaviour-log id whose words proposed the answer. */
   provenance?: string;
@@ -57,6 +58,7 @@ export function observeMilestoneDoc(m: Milestone, status: ObserveStatus, opts: O
     checked: status === "yes",
     observationStatus: status,
     observationUpdatedAt: at,
+    ...(opts.source ? { observationSource: opts.source } : {}),
   };
   if (status !== "yes") return base;
   return {

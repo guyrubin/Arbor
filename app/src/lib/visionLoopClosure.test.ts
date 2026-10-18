@@ -65,7 +65,7 @@ describe("AIX-S3(a) — AskSpecialist: parent-editable prefill, explicit-act sha
 
   it("renders the note as an EDITABLE textarea (prefill is not consent)", () => {
     expect(code).toMatch(/<textarea[\s\S]{0,200}value=\{visionNote\}/);
-    expect(code).toMatch(/onChange=\{\(e\) => setVisionNote\(e\.target\.value\)\}/);
+    expect(code).toMatch(/onChange=\{\(e\) => \{ approval\.current = null; setReviewed\(false\); setVisionNote\(e\.target\.value\); \}\}/);
   });
 
   it("the note joins the packet only via appendParentNote in markdown() — no new send path", () => {

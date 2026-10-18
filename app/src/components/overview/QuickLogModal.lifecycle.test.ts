@@ -607,7 +607,7 @@ describe("B-ASKJB-36 optional kept capture — production handlers", () => {
     const h = contextHarness();
     for (const kept of ["said", "by_herself", "first"]) {
       const row = await h.addMoment("Parent words", { kept });
-      expect(h.env.logsCol.upsert).toHaveBeenLastCalledWith(expect.objectContaining({ kept }));
+      expect(h.env.logsCol.upsert).toHaveBeenLastCalledWith(expect.objectContaining({ kept }), undefined);
       expect(row).not.toHaveProperty("source");
       expect(keptThings({ behaviorLogs: [row] }, { id: "child-a", name: "Dylan" })).toMatchObject([{ kind: kept, text: "Parent words" }]);
     }

@@ -107,7 +107,7 @@ describe("B-STATUS-01 · the Notice card answers back", () => {
       expectReceiptShape(thanked.line, lang);
       expect(thanked.line).not.toContain('class="msr');
       expect(thanked.words).toBe(words(translate(lang, "elev.loop.notice.thanks")));
-      const keptHtml = render(lang, "kept");
+      const keptHtml = render(lang, "kept", { savedWords: "A moment in the parent’s own words", savedAt: "2026-10-18T09:00:00Z" });
       const kept = receipt(keptHtml, "notice-kept-status");
       expect(kept.line).toContain('data-receipt="kept"');
       expect(kept.line).toContain("var(--arbor-green-soft)");
