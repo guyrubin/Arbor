@@ -65,7 +65,7 @@ const QUESTION = "How could mornings feel easier?";
 const FOUR: CrumbLevel[] = [
   { label: "Level one", tab: "overview" },
   { label: "My child", tab: "development" },
-  { label: "Development map", tab: "development" },
+  { label: "Milestones", tab: "development" },
   { label: "Mornings at home" },
 ];
 const ORIGIN = "https://arbor.test/";
@@ -155,7 +155,7 @@ describe("IA-06 · Breadcrumb markup", () => {
   it("renders at most three levels from four inputs: the last three, in order", () => {
     const html = renderToStaticMarkup(<Breadcrumb levels={FOUR} />);
     expectCapped(html);
-    expect(levelsOf(html).map(l => l.label)).toEqual(["My child", "Development map", "Mornings at home"]);
+    expect(levelsOf(html).map(l => l.label)).toEqual(["My child", "Milestones", "Mornings at home"]);
     expect(html).not.toContain("Level one");
   });
 
@@ -202,7 +202,7 @@ describe("IA-06 · Breadcrumb markup", () => {
   it("without somewhere to go, no level is a button: never a dead control", () => {
     const html = renderToStaticMarkup(<Breadcrumb levels={FOUR} />);
     expect(html).not.toContain("<button");
-    expect(levelsOf(html).map(l => l.label)).toEqual(["My child", "Development map", "Mornings at home"]);
+    expect(levelsOf(html).map(l => l.label)).toEqual(["My child", "Milestones", "Mornings at home"]);
   });
 
   it("an ancestor reports its own tab; the current level is not a control", () => {
@@ -264,7 +264,8 @@ describe("IA-06 · crumb levels follow the route's home and its pill row", () =>
   const t = (lang: "en" | "he") => (key: string) => translate(lang, key);
   it.each([
     ["overview", ["Now", QUESTION]],
-    ["development", ["My child", "Development map", QUESTION]],
+    // v4: #/development is My child's "Milestones" reading.
+    ["development", ["My child", "Milestones", QUESTION]],
     ["milestones", ["My child", "Milestones", QUESTION]],
     ["coach", ["Talk with Arbor", QUESTION]],
   ] as const)("EN %s", (tab, expected) => {
@@ -272,7 +273,7 @@ describe("IA-06 · crumb levels follow the route's home and its pill row", () =>
   });
 
   it("HE: the same levels in Hebrew", () => {
-    expect(crumbLevelsFor("development", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["הילד שלי", "מפת התפתחות", QUESTION]);
+    expect(crumbLevelsFor("development", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["הילד שלי", "אבני דרך", QUESTION]);
     expect(crumbLevelsFor("overview", QUESTION, "he", t("he")).map(l => l.label)).toEqual(["עכשיו", QUESTION]);
   });
 
@@ -473,10 +474,10 @@ describe("IA-06 · useSheetHistory owns one history entry", () => {
 });
 
 describe("IA-06 · the sheet's crumb", () => {
-  it("#/development with a selection open: My child › Development map › its title", () => {
+  it("#/development with a selection open: My child › Milestones › its title", () => {
     state.activeTab = "development";
     const html = renderToStaticMarkup(<SheetBreadcrumb label="Mornings at home" close={vi.fn()} />);
-    expect(levelsOf(html).map(l => l.label)).toEqual(["My child", "Development map", "Mornings at home"]);
+    expect(levelsOf(html).map(l => l.label)).toEqual(["My child", "Milestones", "Mornings at home"]);
   });
 
   it("#/overview with the question sheet open: Now › the question (the Now pill is not repeated)", () => {
@@ -487,7 +488,7 @@ describe("IA-06 · the sheet's crumb", () => {
     state.lang = "he"; state.activeTab = "development";
     const html = renderToStaticMarkup(<SheetBreadcrumb label="בוקר בבית" close={vi.fn()} />);
     expect(html).toContain('aria-label="נתיב ניווט"');
-    expect(levelsOf(html).map(l => l.label)).toEqual(["הילד שלי", "מפת התפתחות", "בוקר בבית"]);
+    expect(levelsOf(html).map(l => l.label)).toEqual(["הילד שלי", "אבני דרך", "בוקר בבית"]);
   });
 
   it("is always the compact crumb, pulled up under the dialog title", () => {
@@ -562,7 +563,7 @@ describe("IA-06 · the crumb renders inside the open dialog, under its title", (
       </Modal>,
     );
     expectInDialog(html, lang, 'class="portrait-evidence"');
-    expect(levelsOf(html).map(l => l.label)).toEqual(lang === "he" ? ["הילד שלי", "מפת התפתחות", "Mornings at home"] : ["My child", "Development map", "Mornings at home"]);
+    expect(levelsOf(html).map(l => l.label)).toEqual(lang === "he" ? ["הילד שלי", "אבני דרך", "Mornings at home"] : ["My child", "Milestones", "Mornings at home"]);
   });
 
   it("with no sheet open, no crumb renders", () => {

@@ -130,7 +130,8 @@ describe("record hierarchy keeps useful controls without repeating navigation or
     expect(shell.match(/data-testid="secondary-place-back"/g)).toHaveLength(1);
     // v3 IA-01 re-pin (was `setActiveTab(placeForTab(activeTab).tab)`): Back returns
     // to the route's HOME, its place or its door, and a home's own route has none.
-    expect(shell).toContain("const back = isCompanionHome(activeTab) ? null : backTargetFor(activeTab);");
+    // v4 re-pin: a pill of the place's own row (Weekly report, Moments, About) is a reading, not a level.
+    expect(shell).toContain("const back = isCompanionHome(activeTab) || isPlaceReading(activeTab) ? null : backTargetFor(activeTab);");
     expect(shell).toContain("{back && <button data-testid=\"secondary-place-back\" onClick={() => setActiveTab(back.tab)}");
     expect(shell).toContain("pillRowFor(section, activeTab).map");
     expect(shell).not.toContain('t("nav.sub." + hubSubKey');

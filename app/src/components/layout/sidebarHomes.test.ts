@@ -237,7 +237,8 @@ describe("v3 IA-01 · Back returns to the home", () => {
 
   it("Shell renders Back only when there is a target, labelled with that home's name", () => {
     const shell = readFileSync(new URL("./Shell.tsx", import.meta.url), "utf8");
-    expect(shell).toContain("const back = isCompanionHome(activeTab) ? null : backTargetFor(activeTab);");
+    // v4 re-pin: a pill of the place's own row (Weekly report, Moments, About) is a reading, not a level.
+    expect(shell).toContain("const back = isCompanionHome(activeTab) || isPlaceReading(activeTab) ? null : backTargetFor(activeTab);");
     expect(shell).toMatch(/\{back && <button data-testid="secondary-place-back" onClick=\{\(\) => setActiveTab\(back\.tab\)\}/);
     expect(shell).toContain('{uiLang === "he" ? back.he : back.en}');
     expect(shell).not.toContain("setActiveTab(placeForTab(activeTab).tab)");

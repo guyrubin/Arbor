@@ -373,21 +373,28 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
  * attribution dashboard keeps its Care highlight (TAB_SECTION_FALLBACK) but is
  * not a Care capability a parent moves between, so it does not wear the Care
  * pills. Shell renders `pillRowFor`, never `hubTabsForSection` directly.
- * v3 IA-02: the record's two densities (#/journal Feed, #/timeline Story)
- * carry their own Feed · Story tablist (TimelineTab). A My child row above it
- * would be a second nav over the same two routes under other names (the
- * release capture's NO_DUPLICATE_SHELL_NAV), so they keep Back to My child
- * and stay in the My child row as doors from its other pages.
+ * v4 (consolidation): #/journal and #/timeline wear My child's row again. The
+ * row is now Milestones · Moments · About; Moments' own in-page views (Across
+ * areas · Over time · By place) are readings of one record, not a second nav
+ * over the same routes, so the duplicate-nav reason for hiding it is gone.
  */
-export const NO_PILL_ROW_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>(["attribution", "journal", "timeline"]);
+export const NO_PILL_ROW_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>(["attribution"]);
 
 /**
- * v3 IA-02 (table A) — the pill row of each place a parent stands in, and the
- * ONLY rendered pill order for a route whose home is that place. SECTIONS stays
- * the hub index for More and search; its hub rows still serve the doors (Care,
- * For you, the parent) until their own v3 rows. The place's home pill leads,
- * then at most six. Together has no Shell row: its first level is the in-page
- * filter row on #/practice (TogetherView), so a second row would repeat it.
+ * v4 (consolidation blueprint: 43 routes become 9 screens) — the pill row of
+ * each place a parent stands in, and the ONLY rendered pill order for a route
+ * whose home is that place. A pill is a different READING of the same record,
+ * never a capability: everything else is an object on one of these views, a
+ * state, a filter, a sheet or a setting, and every former route stays a deep
+ * link (PILL_LIT says which reading it belongs to).
+ *   - Now:      Now · Weekly report. Day windows and Reminders are settings
+ *               (Settings › Reminders & rhythm keeps both doors).
+ *   - My child: Milestones (#/development, the 8-area map) · Moments
+ *               (#/timeline) · About (#/profile).
+ *   - Together: no Shell row — its three in-page filters (Routines · Play ·
+ *               Stories) are its first level (TogetherView).
+ * The doors (For you, the parent; Care, together) are one screen each, so they
+ * carry no row either. SECTIONS stays the hub index for More and search.
  * One glyph per destination, checked with SECTIONS by
  * components/ui/iconFamily.guard.test.ts; `history` stays Talk's.
  */
@@ -398,27 +405,57 @@ export const PLACE_PILLS: Readonly<Record<PillPlace, readonly NavItem[]>> = {
     // and name); this glyph only keeps the row's one-glyph check whole.
     { tab: "overview", label: "Now", msIcon: "home" },
     { tab: "weekly", label: "Weekly report", msIcon: "bar_chart", labelKey: "nav.pill.weekly" },
-    { tab: "day-windows", label: "Day windows", msIcon: "schedule", labelKey: "nav.pill.day-windows" },
-    { tab: "smart-reminders", label: "Reminders", msIcon: "notifications", labelKey: "nav.pill.reminders" },
   ],
   child: [
-    { tab: "development", label: "Development map", msIcon: "map", labelKey: "nav.pill.development" },
-    { tab: "milestones", label: "Milestones", msIcon: "check_circle" },
-    { tab: "language", label: "Language", msIcon: "translate", labelKey: "nav.pill.language" },
-    { tab: "timeline", label: "Portrait", msIcon: "photo_library", labelKey: "nav.pill.portrait" },
-    { tab: "journal", label: "Journal", msIcon: "edit_note" },
-    { tab: "behaviors", label: "Moments", msIcon: "monitoring" },
-    { tab: "profile", label: "Profile", msIcon: "person", labelKey: "nav.pill.profile" },
+    { tab: "development", label: "Milestones", msIcon: "map", labelKey: "nav.pill.development" },
+    { tab: "timeline", label: "Moments", msIcon: "photo_library", labelKey: "nav.pill.portrait" },
+    { tab: "profile", label: "About", msIcon: "person", labelKey: "nav.pill.profile" },
   ],
 };
 
+/**
+ * v4 — which pill a leaf route lights. A former pill or tool keeps its route
+ * (a deep link, a search hit, a door inside a view) and, while it is open, the
+ * row says which reading it belongs to: the milestone list, the screener and
+ * the copilot are Milestones; the journal, the hard moments and the words are
+ * Moments; the memory ledger and strengths are About. A route not listed
+ * lights its own pill, if it has one, and otherwise none.
+ */
+export const PILL_LIT: Readonly<Partial<Record<ActiveTab, ActiveTab>>> = {
+  milestones: "development",
+  screening: "development",
+  copilot: "development",
+  journal: "timeline",
+  behaviors: "timeline",
+  language: "timeline",
+  memory: "profile",
+  strengths: "profile",
+};
+
+/** The pill `tab` lights in its place's row (itself when it is a pill). */
+export function pillLitTab(tab: ActiveTab): ActiveTab {
+  return PILL_LIT[tab] ?? tab;
+}
+
+/** v4 — true when `tab` is itself a pill of its place's row (a reading of
+ *  the place: Weekly report, Moments, About). Shell gives it no Back. */
+export function isPlaceReading(tab: ActiveTab): boolean {
+  const home = homeIdForTab(tab);
+  return (home === "now" || home === "child") && PLACE_PILLS[home].some((it) => it.tab === tab);
+}
+
+/** The homes that are ONE screen with no Shell row (v4): Together's first
+ *  level is its own in-page filter row; the two doors have no tabs at all. */
+const ROWLESS_HOMES: ReadonlySet<HomeId> = new Set<HomeId>(["together", "learn", "care"]);
+
 /** The pill row Shell renders for `tab` inside `section` (empty = none): its
- *  place's row (v3 IA-02), none in Together, else the door's hub row. */
+ *  place's row (Now, My child), none in Together or the two single-screen
+ *  doors, else the door's hub row (Talk). */
 export function pillRowFor(section: NavSection, tab: ActiveTab): readonly NavItem[] {
   if (NO_PILL_ROW_TABS.has(tab)) return [];
   const home = homeIdForTab(tab);
   if (home === "now" || home === "child") return PLACE_PILLS[home];
-  return home === "together" ? [] : hubTabsForSection(section);
+  return ROWLESS_HOMES.has(home) ? [] : hubTabsForSection(section);
 }
 
 export function sectionForTab(tab: ActiveTab): NavSection {
