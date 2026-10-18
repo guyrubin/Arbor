@@ -86,7 +86,8 @@ describe("B-CAREPRO-17 · every Consult egress records the export for its audien
     expect(ASK.length).toBeGreaterThan(5000);
     for (const [name, act] of [
       ["copy", "navigator.clipboard.writeText(exportText)"],
-      ["savePdf", "printPdf(audience, sections)"],
+      // B-CAREPRO-52: the act carries the parent's per-export likeness choice.
+      ["savePdf", "printPdf(audience, sections, { likeness: likenessIncluded })"],
       ["sendToTrusted", "window.location.href = href"],
     ] as const) {
       const body = fnBody(name);

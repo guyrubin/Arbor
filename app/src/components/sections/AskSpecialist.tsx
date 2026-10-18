@@ -35,6 +35,7 @@ import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { InsetRow } from "../ui/kit";
 import { useConsultPdf } from "./Reports";
+import { useHeroAvatar } from "../ui/HeroAvatar";
 import { consultAnchor, parentWords, reportsLeadCounts } from "../../lib/recordCounts";
 import type { Appointment, AppointmentFollowUp } from "../../lib/careTrack";
 import { exportPlainLines } from "../../consult/plainText";
@@ -245,6 +246,24 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     setReviewed(false);
     approval.current = null;
     setTopicOnId(topicIncluded ? null : familyTopic.id);
+  };
+
+  // B-CAREPRO-52 — the child's picture on a professional document is the
+  // parent's explicit choice for THIS export and audience. Off by default,
+  // never persisted (device or cloud), reset when the audience or the child
+  // changes, so a choice cannot carry to another document. Only the stylized
+  // hero (isGenerated) is ever offered — a real photo never reaches a PDF.
+  const { url: heroUrl, isGenerated: heroIsGenerated } = useHeroAvatar();
+  const likenessAvailable = !isTeacher && heroIsGenerated && !!heroUrl;
+  const [likenessOn, setLikenessOn] = useState(false);
+  useEffect(() => { setLikenessOn(false); }, [audience, childProfile.id]);
+  const likenessIncluded = likenessAvailable && likenessOn;
+  const toggleLikeness = () => {
+    if (!likenessAvailable) return;
+    // Consent covers the exact outgoing document: withdraw it in this click.
+    setReviewed(false);
+    approval.current = null;
+    setLikenessOn(!likenessOn);
   };
 
   // The parent's prepared questions and the discipline-specific evidence — the
@@ -546,7 +565,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     if (!canExportCurrent()) return;
     try {
       const sections = exportPrintSections(egressAudience, packet, excluded, visionNote, t("consult.visionNote.heading"), uiLang, familyQuestionLine);
-      printPdf(audience, sections);
+      // B-CAREPRO-52: the picture rides only on the parent's explicit per-export choice.
+      printPdf(audience, sections, { likeness: likenessIncluded });
       recordExport(childProfile.id, audience);
     } catch (err) {
       void err;
@@ -1042,6 +1062,11 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
               </p>
               <p className="t-xs leading-relaxed mt-0.5" style={{ color: MUTED }}>{t("elev.carehonesty.consult.preview.hint")}</p>
               {landing && <p data-testid="consult-preview-note" className="t-xs leading-relaxed mt-0.5" style={{ color: MUTED }}>{t("elev.consult.preview.note")}</p>}
+              {/* B-CAREPRO-52: the preview shows the picture exactly when the
+                  PDF will carry it — the same hero URL useConsultPdf embeds. */}
+              {likenessIncluded && (
+                <img data-testid="consult-preview-likeness" src={heroUrl!} alt={t("elev.carehonesty.consult.likeness.alt", { name: firstName })} referrerPolicy="no-referrer" className="mt-2 w-9 h-9 rounded-full object-cover" style={{ border: "2px solid var(--arbor-rule-strong)" }} />
+              )}
               {exportLines != null ? (
                 <>
                   <div data-testid="consult-export-preview" className="mt-2 flex flex-col gap-0.5">
@@ -1075,6 +1100,24 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
                 </p>
               )}
             </section>
+            {/* B-CAREPRO-52: per-export likeness choice — off by default, a
+                44 px include-toggle like the rest of the screen; shown only
+                when a stylized hero exists. Toggling withdraws "I reviewed". */}
+            {likenessAvailable && (
+              <button
+                type="button"
+                data-testid="consult-include-likeness"
+                aria-pressed={likenessIncluded}
+                onClick={toggleLikeness}
+                className="inline-flex max-w-full items-center gap-1.5 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px] text-start transition self-start"
+                style={likenessIncluded
+                  ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
+                  : { background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}
+              >
+                <Icon name="face" size={14} fill={likenessIncluded ? 1 : 0} />
+                <span>{t(likenessIncluded ? "elev.carehonesty.consult.likeness.on" : "elev.carehonesty.consult.likeness.off", { name: firstName })}</span>
+              </button>
+            )}
             <div className="flex flex-wrap items-center gap-3">
               <span className="t-sm font-bold me-auto" style={{ color: MUTED }} aria-live="polite">
                 {t("consult.selected", { n: includedCount })}
