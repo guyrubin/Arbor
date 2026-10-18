@@ -117,7 +117,8 @@ describe("PaywallModal.tsx wiring (source contract)", () => {
   it("shows the disclosure + legal links, and a skeleton while a store price is null", () => {
     expect(modal).toMatch(/disclosureText\(t, nativePlatform, cadence\)/);
     expect(modal).toContain("<LegalLinks");
-    expect(modal).toMatch(/row\.price === null \? \(\s*<Skeleton/);
+    // B-GA-12: the skeleton is the LOADING branch only; an unavailable offering renders a dash.
+    expect(modal).toMatch(/row\.price === null \? \(\s*offeringStatus === "unavailable" \? <span[^>]*>—<\/span> : <Skeleton/);
   });
 
   it("tokens only — no #fff / hex literals (the old CTAs carried color: '#fff')", () => {

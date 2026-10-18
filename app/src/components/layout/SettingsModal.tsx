@@ -13,6 +13,9 @@ import DeleteAccountModal from "./DeleteAccountModal";
 import YourDataSheet from "./YourDataSheet";
 import { AnalyticsOptOutRow } from "../privacy/AnalyticsOptOutRow";
 import { PlanPrices } from "../billing/PlanPrices";
+import { DEFAULT_CADENCE, offeringGate, type Cadence } from "../billing/paywallModel";
+import { useNativeOffering } from "../../hooks/useNativePrices";
+import { isNativePlatform, nativePlatform } from "../../lib/runtime";
 import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: Privacy · Terms · Support in the footer
 import { Skeleton } from "../ui/Skeleton";
 import { PlanBadge } from "../ui/PlanBadge";
@@ -49,7 +52,10 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const isPaid = entitlement.plan !== "free";
   const isBeta = isPaid && !entitlement.enforced;
   const coachLimit = entitlement.limits.coachMessagesPerDay;
-  const [cadence, setCadence] = useState<"monthly" | "annual">("monthly");
+  // B-GA-12: annual is the accepted initial cadence (DEFAULT_CADENCE, shared
+  // with PaywallModal); an explicit tap wins thereafter.
+  const [cadence, setCadence] = useState<Cadence>(DEFAULT_CADENCE);
+  const nativeOffering = useNativeOffering();
   const [adminOpen, setAdminOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   // B-CAREPRO-35: Settings › Your data — export / delete child / delete account.
@@ -57,6 +63,9 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   // STORE-2: all checkout/manage/restore actions go through the ONE platform-
   // gated hook — no inline `/api/billing/…` calls in this file (guard-tested).
   const { busy, startCheckout, openPortal, restorePurchases, isNative } = useCheckout();
+  // B-GA-12: on native, no upgrade button without a store price for this cadence;
+  // the notice tells loading from a failed/missing offering apart.
+  const offer = offeringGate({ isNative: isNativePlatform, status: nativeOffering.status, nativePrices: nativeOffering.prices, plan: "plus", cadence, platform: nativePlatform, t });
   const [accentTheme, setAccentTheme] = useState<AccentTheme>(getSavedTheme);
   const [draftUiLang, setDraftUiLang] = useState<UiLang>(uiLang);
   // LANG-ADV-OVERRIDE: bilingual parents (e.g. Hebrew interface, English clinical
@@ -443,12 +452,15 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               {/* CARE-5: the real price, in the parent's language, BEFORE any redirect. */}
               <div className="mt-2.5">
                 <PlanPrices cadence={cadence} plans={["plus"]} />
+                {offer.notice && (
+                  <p data-testid="offering-notice" className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{offer.notice}</p>
+                )}
               </div>
               {/* 3.6 — each upgrade row carries its plan badge, so what's paid is
                   labeled BEFORE any tap toward checkout. */}
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
                 <span className="inline-flex items-center gap-1.5">
-                  <button onClick={() => void startCheckout("plus", cadence, "settings")} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
+                  <button onClick={() => void startCheckout("plus", cadence, "settings")} disabled={busy || offer.blocked} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
                     {t("set.plan.upgradePlus")}
                   </button>
                   <PlanBadge plan="plus" />
