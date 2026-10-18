@@ -104,7 +104,11 @@ const expectNoNumbers = (text: string) => {
 const occurrences = (html: string, needle: string) => html.split(needle).length - 1;
 /** Rendered pictures of the Together art: <img> tags only (React 19 also emits a
  *  <link rel="preload"> carrying the same srcset for an eager image). */
-const togetherPictures = (html: string) => [...html.matchAll(/<img\b[^>]*>/g)].filter(([tag]) => tag.includes(TOGETHER_ART.src)).length;
+const togetherPictures = (html: string) => [...shown(html).matchAll(/<img\b[^>]*>/g)].filter(([tag]) => tag.includes(TOGETHER_ART.src)).length;
+/** v4: one Together filter shows at a time; the others stay in the page as
+ *  `hidden` sections (their doors keep a return target), and a hidden section
+ *  shows nothing — so a picture inside one is not on screen. */
+const shown = (html: string) => html.replace(/<section hidden=""[\s\S]*?<\/section>/g, "");
 const buttonsIn = (html: string) => (html.match(/<button\b/g) ?? []).length;
 const labelOf = (button: Record<string, any>) => React.Children.toArray(button.children).filter((child) => typeof child === "string").join("");
 
@@ -178,7 +182,9 @@ describe("VIS-07 · Together: a good moment needs no other reason", () => {
     const html = renderTogether();
     const at = html.indexOf('data-testid="together-empty"');
     expect(at).toBeGreaterThan(html.indexOf('data-testid="together-cta"'));
-    expect(at).toBeLessThan(html.indexOf('class="companion-filter-row"'));
+    // v4 re-pin: the filter row is Together's first level, above the hero; the
+    // empty state still comes before the catalogue.
+    expect(at).toBeLessThan(html.indexOf('class="companion-collection"'));
     expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
     expect(branch(html, TOGETHER_EMPTY)).toMatch(/class="[^"]*items-center[^"]*text-center[^"]*together-empty"/);
     expect(branch(html, TOGETHER_EMPTY)).not.toContain("data-module=");

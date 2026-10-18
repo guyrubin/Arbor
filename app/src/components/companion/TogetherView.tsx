@@ -13,6 +13,7 @@ import type { HeroJourneyRun } from "../../types";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { latestPlayedWorldId, opensInKidMode, studioCountKey, studioCountsSince, studioWorldsForChild, worksInLanguage, type StudioWorld } from "../practice/studioWorlds";
 import Icon from "../ui/Icon";
+import { BrandChip } from "../ui/BrandChip";
 import { EmptyState } from "../ui/EmptyState";
 import { Modal } from "../ui/Modal";
 import { Sheet, useCompactSurface } from "../ui/Sheet";
@@ -27,7 +28,8 @@ import "./togetherDiscovery.css";
 // FEAT-05: the shared question-chip rules (44px hit area, pill) live here.
 import "./companionWorkspace.css";
 
-type Preview = { kind: "world"; world: StudioWorld } | { kind: "offscreen"; id: string };
+type Preview = { kind: "world"; world: StudioWorld } | { kind: "offscreen"; id: string } | { kind: "story"; id: string };
+type StoryDoorId = "story-library" | "story-bedtime" | "story-comics" | "story-family";
 
 /** Parent previews lead to the existing child-mode entry seam. Nothing on this
  * page starts a camera/microphone or writes an activity just because it is seen. */
@@ -76,16 +78,17 @@ export default function TogetherView() {
   const firstTime = playLoaded && !playError && logsLoaded && behaviorLogs.length === 0
     && playCollections.every((collection) => collection.items.length === 0);
   const pinSet = Boolean(readParentPin());
-  // FEAT-07: the pill order is All together, Games (when open), Stories,
-  // Routines, Away from the screen.
-  const filters: { id: TogetherCategory; label: string; icon: string }[] = [
-    { id: "all", label: t("companion.together-view.all-together"), icon: "interests" },
-    ...(gamesOpen ? [{ id: "games" as const, label: t("companion.together-view.games"), icon: "extension" }] : []),
-    { id: "stories", label: t("companion.together-view.stories"), icon: "auto_stories" },
-    { id: "routines", label: t("companion.together-view.routines"), icon: "checklist" },
-    { id: "offscreen", label: t("companion.together-view.away-from-the-screen"), icon: "wb_sunny" },
+  // v4: three filters, Routines · Play · Stories, as Together's first level
+  // (the place pills of Now and My child sit in the same spot). Play holds the
+  // games (when open for this child) and the away-from-the-screen ideas, so it
+  // exists at every age. Label-only pills, like the place pills.
+  const filters: { id: TogetherCategory; label: string }[] = [
+    { id: "routines", label: t("companion.together-view.routines") },
+    { id: "games", label: t("companion.together-view.play") },
+    { id: "stories", label: t("companion.together-view.stories") },
   ];
-  const show = (id: TogetherCategory) => category === "all" || category === id;
+  type Section = "games" | "stories" | "routines" | "offscreen";
+  const show = (section: Section) => (section === "games" || section === "offscreen" ? category === "games" : category === section);
   // v3 F-TOG-1: the hero CTA and the doors choose a category, then bring its
   // heading into view and give it focus (the heading carries tabIndex -1).
   const goTo = (next: "games" | "offscreen") => {
@@ -119,7 +122,21 @@ export default function TogetherView() {
     return idea ? { title: idea.title[lang], detail: idea.detail[lang], say: idea.say[lang], icon: idea.icon }
       : { title: t(`elev.ages.together.${id}.title`), detail: t(`elev.ages.together.${id}.do`), say: t(`elev.ages.together.${id}.say`), icon: "favorite" };
   };
-  const previewTitle = preview?.kind === "world" ? t(preview.world.kidNameKey) : preview ? offline(preview.id).title : "";
+  // v4 (blueprint decision 3): a story opens as a sheet over Together — its
+  // picture, what it is and the one way in — instead of leaving at once for a
+  // full tab. The reader routes keep their own flows (the library's book
+  // reader is the child's, in Kid Mode; comics keep their creation flow).
+  const storyOf = (id: string) => STORY_DOORS.find((story) => story.id === id) ?? null;
+  const openStory = (id: string) => {
+    const story = storyOf(id);
+    if (!story) return;
+    setPreview(null);
+    rememberDoor(`story-${story.id}` as StoryDoorId);
+    setActiveTab(story.tab);
+  };
+  const previewTitle = preview?.kind === "world" ? t(preview.world.kidNameKey)
+    : preview?.kind === "story" ? storyOf(preview.id)?.title[lang] ?? ""
+    : preview ? offline(preview.id).title : "";
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const keepOffline = async (id: string) => {
@@ -138,6 +155,11 @@ export default function TogetherView() {
 
   return (
     <div ref={pageRef} className="companion-page companion-together" dir={he ? "rtl" : "ltr"}>
+      {/* v4: Together's first level — Routines · Play · Stories — where the place pills sit on Now and My child. */}
+      <div className="companion-filter-row together-pills" role="group" aria-label={t("companion.together-view.what-feels-right-now")}>
+        {filters.map((filter) => <button key={filter.id} type="button" className="companion-filter" aria-pressed={category === filter.id} onClick={() => setCategory(filter.id)}>{filter.label}</button>)}
+      </div>
+
       {/* v3 F-TOG-1: the hero — kicker, title, sub, the one move and the studio doors beside the Together picture. */}
       <section className={`companion-together-hero${firstTime ? " together-hero-solo" : ""}`} data-module="together-invitation" aria-labelledby={`${filterId}-title`}>
         <div className="together-hero-copy">
@@ -147,11 +169,12 @@ export default function TogetherView() {
           {!firstTime && <p className="together-hero-sub">{t("companion.together-view.a-story-to-get-lost-in-a-game-to-wonder-at")}</p>}
           <button type="button" className="companion-primary together-hero-cta" data-primary-move="choose-together" data-testid="together-cta" onClick={() => goTo("offscreen")}><Icon name="favorite" size={19} />{t("companion.together-view.one-small-idea-for-time-together")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>
           {/* The studio doors: wide layouts only (the stylesheet hides them on a phone). */}
+          {/* v4: each door wears the brand chip (the one icon object), chip beside label. */}
           <div className="together-doors" data-testid="together-doors">
-            <button type="button" className="together-door" data-testid="together-door-story" onClick={() => { rememberDoor("story-bedtime"); setActiveTab("bedtime-stories"); }}><Icon name="auto_stories" size={18} />{t("companion.together-view.door-create-story")}</button>
+            <button type="button" className="together-door" data-testid="together-door-story" onClick={() => { rememberDoor("story-bedtime"); setActiveTab("bedtime-stories"); }}><BrandChip icon="auto_stories" tone="pink" shape="leaf" size={32} />{t("companion.together-view.door-create-story")}</button>
             {gamesOpen && <>
-              <button type="button" className="together-door" data-testid="together-door-continue" onClick={continueFavorite}><Icon name="replay" size={18} />{t("companion.together-view.door-continue-favorite")}</button>
-              <button type="button" className="together-door" data-testid="together-door-find" onClick={() => goTo("games")}><Icon name="extension" size={18} />{t("companion.together-view.door-find-play")}</button>
+              <button type="button" className="together-door" data-testid="together-door-continue" onClick={continueFavorite}><BrandChip icon="replay" tone="lav" shape="arch" size={32} />{t("companion.together-view.door-continue-favorite")}</button>
+              <button type="button" className="together-door" data-testid="together-door-find" onClick={() => goTo("games")}><BrandChip icon="extension" tone="green" shape="drop" size={32} />{t("companion.together-view.door-find-play")}</button>
             </>}
           </div>
         </div>
@@ -171,24 +194,21 @@ export default function TogetherView() {
         <EmptyState illustration={TOGETHER_ART} headline={t("companion.together-view.empty")} cta={t("companion.portrait.capture")} onCta={() => openCaptureSheet()} ctaTestId="together-empty-cta" className="together-empty" />
       </section>}
 
-      <div className="companion-filter-row" role="group" aria-label={t("companion.together-view.what-feels-right-now")}>
-        {filters.map((filter) => <button key={filter.id} type="button" className="companion-filter" aria-pressed={category === filter.id} onClick={() => setCategory(filter.id)}><Icon name={filter.icon} size={19} />{filter.label}</button>)}
-      </div>
-
-      {/* v3 F-TOG-1: the mock's order — games, stories, routines, away from the screen, then the gate card. */}
+      {/* v3 F-TOG-1 order — games, stories, routines, away from the screen, then the gate card.
+          v4: one filter shows at a time — Play is the games and the away ideas. */}
       {kidAvailable && <section hidden={!show("games")} className="companion-collection" data-module="together-games" aria-labelledby={`${filterId}-games`}>
-        <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.first-choose-then-play")}</span><h2 id={`${filterId}-games`} tabIndex={-1}>{t("companion.together-view.little-invitations-to-play")}</h2></div>{category === "all" && worlds.length > 3 && <button type="button" className="companion-text-button" onClick={() => setCategory("games")}>{t("companion.together-view.all-games")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>}</div>
-        {worlds.length ? <div className="companion-world-grid">{worlds.slice(0, category === "all" ? 3 : undefined).map((world) => <button key={world.id} type="button" data-together-return={`world-${world.id}`} className="companion-world-card" onClick={() => setPreview({ kind: "world", world })}><img src={`/visuals/cards/web/game-${WORLD_ART[world.id]}-480.webp`} srcSet={`/visuals/cards/web/game-${WORLD_ART[world.id]}-480.webp 1x, /visuals/cards/web/game-${WORLD_ART[world.id]}-1024.webp 2x`} alt="" width="480" height="320" loading="lazy" decoding="async" /><div><h3>{t(world.kidNameKey)}</h3>{category === "games" && <div className="together-world-count-slot" aria-busy={!playLoaded}>{category === "games" && (counts.byWorld[world.id] ?? 0) > 0 && <span className="companion-world-count" data-testid="together-world-count">{t(studioCountKey(world.unit, counts.byWorld[world.id]), { n: counts.byWorld[world.id] })}</span>}</div>}<p>{t(`practice.world.${world.key}.skill`)}</p><span className="companion-door-link">{t("companion.together-view.preview-before-playing")}<Icon name="arrow_forward" size={17} className="companion-arrow rtl:-scale-x-100" /></span></div></button>)}</div> : <p className="companion-caption">{t("companion.together-view.there-are-no-listed-screen-games-for-this")}</p>}
+        <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.first-choose-then-play")}</span><h2 id={`${filterId}-games`} tabIndex={-1}>{t("companion.together-view.little-invitations-to-play")}</h2></div></div>
+        {worlds.length ? <div className="companion-world-grid">{worlds.map((world) => <button key={world.id} type="button" data-together-return={`world-${world.id}`} className="companion-world-card" onClick={() => setPreview({ kind: "world", world })}><img src={`/visuals/cards/web/game-${WORLD_ART[world.id]}-480.webp`} srcSet={`/visuals/cards/web/game-${WORLD_ART[world.id]}-480.webp 1x, /visuals/cards/web/game-${WORLD_ART[world.id]}-1024.webp 2x`} alt="" width="480" height="320" loading="lazy" decoding="async" /><div><h3>{t(world.kidNameKey)}</h3>{category === "games" && <div className="together-world-count-slot" aria-busy={!playLoaded}>{category === "games" && (counts.byWorld[world.id] ?? 0) > 0 && <span className="companion-world-count" data-testid="together-world-count">{t(studioCountKey(world.unit, counts.byWorld[world.id]), { n: counts.byWorld[world.id] })}</span>}</div>}<p>{t(`practice.world.${world.key}.skill`)}</p><span className="companion-door-link">{t("companion.together-view.preview-before-playing")}<Icon name="arrow_forward" size={17} className="companion-arrow rtl:-scale-x-100" /></span></div></button>)}</div> : <p className="companion-caption">{t("companion.together-view.there-are-no-listed-screen-games-for-this")}</p>}
       </section>}
 
       <section hidden={!show("stories")} className="companion-collection" data-module="together-stories" aria-labelledby={`${filterId}-stories`}>
-        <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.read-imagine-talk")}</span><h2 id={`${filterId}-stories`}>{t("companion.together-view.which-story-shall-we-step-into")}</h2></div>{category === "all" && <button type="button" className="companion-text-button" onClick={() => setCategory("stories")}>{t("companion.together-view.all-stories")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>}</div>
-        <div className="companion-story-grid">{STORY_DOORS.slice(0, category === "all" ? 2 : undefined).map((story) => <button key={story.id} type="button" className="companion-story-card" data-together-return={`story-${story.id}`} onClick={() => { rememberDoor(`story-${story.id}` as "story-library" | "story-bedtime" | "story-comics" | "story-family"); setActiveTab(story.tab); }}><div className="companion-card-art"><img src={story.art} alt="" loading="lazy" width="480" height="320" /><span className="companion-art-label"><Icon name={story.icon} size={16} />{t("companion.together-view.choose-and-preview")}</span></div><div className="companion-card-copy"><h3>{story.title[lang]}</h3><p>{story.detail[lang]}</p><span className="companion-door-link">{t("companion.together-view.explore")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></span></div></button>)}</div>
+        <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.read-imagine-talk")}</span><h2 id={`${filterId}-stories`}>{t("companion.together-view.which-story-shall-we-step-into")}</h2></div></div>
+        <div className="companion-story-grid">{STORY_DOORS.map((story) => <button key={story.id} type="button" className="companion-story-card" data-together-return={`story-${story.id}`} aria-haspopup="dialog" onClick={() => setPreview({ kind: "story", id: story.id })}><div className="companion-card-art"><img src={story.art} alt="" loading="lazy" width="480" height="320" /><span className="companion-art-label"><Icon name={story.icon} size={16} />{t("companion.together-view.choose-and-preview")}</span></div><div className="companion-card-copy"><h3>{story.title[lang]}</h3><p>{story.detail[lang]}</p><span className="companion-door-link">{t("companion.together-view.explore")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></span></div></button>)}</div>
       </section>
 
       {/* FEAT-07 → v3 F-TOG-1: the ready-made routines are a module of their own. */}
       <section hidden={!show("routines")} className="companion-collection" data-module="together-routines" aria-labelledby={`${filterId}-routines`}>
-        {show("routines") && <TogetherRoutines mode={category === "routines" ? "routines" : "all"} onAll={() => setCategory("routines")} headingId={`${filterId}-routines`} />}
+        {show("routines") && <TogetherRoutines headingId={`${filterId}-routines`} />}
       </section>
 
       <section hidden={!show("offscreen")} className="companion-collection" data-module="together-offscreen" aria-labelledby={`${filterId}-offscreen`}>
@@ -224,6 +244,16 @@ export default function TogetherView() {
           <button type="button" className="companion-primary" onClick={() => setPreview(null)}>{t("companion.together-view.let-s-give-it-a-try")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>
           <button type="button" className="companion-text-button" disabled={saving || kept.includes(preview.id)} onClick={() => void keepOffline(preview.id)}><Icon name={kept.includes(preview.id) ? "check" : "bookmark_add"} size={18} />{kept.includes(preview.id) ? (t("companion.together-view.a-moment-from-your-time-together-is-saved")) : (t("companion.together-view.we-already-tried-it-keep-the-moment"))}</button>
         </div>}
+        {preview?.kind === "story" && (() => {
+          const story = storyOf(preview.id);
+          if (!story) return null;
+          return <div className="companion-preview together-story-preview" data-testid="together-story-preview" data-story={story.id} dir={he ? "rtl" : "ltr"}>
+            <img src={story.art} width="480" height="320" alt="" decoding="async" />
+            <p dir="auto">{story.detail[lang]}</p>
+            <p className="companion-caption">{t("companion.together-view.story-preview-note")}</p>
+            <button type="button" className="companion-primary" data-testid="together-story-open" onClick={() => openStory(story.id)}><Icon name={story.icon} size={20} />{t("companion.together-view.explore")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></button>
+          </div>;
+        })()}
         {saveError && <p role="alert" className="companion-caption">{t("companion.together-view.the-moment-wasn-t-saved-please-try-again")}</p>}
       </PreviewSurface>
     </div>
