@@ -35,6 +35,8 @@ const harness = vi.hoisted(() => ({
 }));
 
 vi.mock("../../context/ArborContext", () => ({
+  // v4: the library card's The Science chip (TrustLink) reads the provider tolerantly.
+  useArborOptional: () => null,
   useArbor: () => ({
     childProfile: { id: "child-foryou", name: "Mika", birthDate: harness.birthDate },
     behaviorLogs: [],

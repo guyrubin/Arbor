@@ -134,7 +134,7 @@ const BRING_GROUPS: readonly { id: string; icon: string; labelKey: string; secti
 
 /** W2-CAREPRO r1: ConsultTab hands its route stamp here; it lands on the
  *  selected audience chip (one 44 px button in step 1), never on a wrapper. */
-export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard, excludeTeacher = false, landing = false, head, noticePacket, noticeRevision }: {
+export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard, excludeTeacher = false, landing = false, head, noticePacket, noticeRevision, audienceRequest }: {
   primaryMoveStamp?: Record<string, string>;
   /** v3 EXTRA-CARE: #/consult, the Care landing. The three steps read
    *  "Choose what to bring" (who it is for, then what to bring as chips,
@@ -164,6 +164,10 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   anchorAudience?: ExportAudience;
   /** NEXTLEVEL critic r1: the page H1 follows the chosen audience. */
   onAudienceChange?: (a: ExportAudience) => void;
+  /** v4 (Care › Past exports): "Prepare an update" for an audience shared
+   *  with before. Each new `seq` selects that audience exactly as its chip
+   *  would (consent cleared, remembered) and brings step 1 into view. */
+  audienceRequest?: { audience: ExportAudience; seq: number };
 } = {}) {
   const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, actionLoop, setActiveTab, pendingConsultPrefill, consumeConsultPrefill, activeFamilyTopic } = useArbor();
   const { toast } = useToast();
@@ -203,6 +207,37 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     try { localStorage.setItem(AUDIENCE_STORAGE_KEY, a); } catch { /* metadata only */ }
   };
   const isTeacher = audience === "teacher";
+  /* v4 — the builder's TEMPLATE: Visit summary or Teacher brief. It is the
+     existing audience model read as two documents, never a parallel concept:
+     Teacher brief IS the teacher audience (the inline School Brief, B-CAREPRO-36)
+     and Visit summary is every clinical audience, returning to the last one the
+     parent picked here (else the stored or default professional). Shown wherever
+     a teacher may be chosen (not on #/handoff, not on a notice packet); there
+     the teacher chip leaves the audience row, which is then only "which
+     professional", and in the teacher template the row steps aside. */
+  const showTemplate = allowed("teacher");
+  const lastClinical = useRef<ExportAudience>(audience !== "teacher" ? audience : (() => {
+    const stored = readStoredAudience();
+    return stored !== "teacher" ? stored : DEFAULT_EXPORT_AUDIENCE;
+  })());
+  if (audience !== "teacher") lastClinical.current = audience;
+  const chooseTemplate = (template: "visit" | "teacher") => setAudience(template === "teacher" ? "teacher" : lastClinical.current);
+  // v4: an external "prepare an update for {audience}" lands like a chip tap.
+  const handledRequest = useRef(audienceRequest?.seq);
+  useEffect(() => {
+    if (!audienceRequest || handledRequest.current === audienceRequest.seq) return;
+    handledRequest.current = audienceRequest.seq;
+    if (!allowed(audienceRequest.audience)) return;
+    setAudience(audienceRequest.audience);
+    if (typeof document === "undefined") return;
+    const step = document.getElementById("consult-audience-step");
+    if (!step) return;
+    const still = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    step.scrollIntoView({ block: "start", behavior: still ? "auto" : "smooth" });
+    step.focus({ preventScroll: true });
+    // The request's seq alone drives this; setAudience is a chip tap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audienceRequest?.seq]);
   // B-CAREPRO-42: "therapist" splits into OT, PT and psychology. A split
   // preset rides the profession's intake packet (B-LOOP-12 path: the
   // registry domains that profession owns, the parent's questions), under
@@ -680,13 +715,45 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       )}
       {/* Step 1 · Who is it for? — the audience IS the preset (B-CAREPRO-28).
           LC-28 / OBJ-CARE-02: the hub CTA scrolls to and focuses this row. */}
-      <section data-testid="consult-audience-step" className="flex flex-col gap-2">
-        {landing && !isTeacher ? (
+      <section id="consult-audience-step" tabIndex={-1} data-testid="consult-audience-step" className="flex flex-col gap-2 focus:outline-none" style={{ scrollMarginBlockStart: "0.75rem" }}>
+        {showTemplate && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-1">
+            <span className="t-xs font-bold" style={{ color: MUTED }}>{t("elev.consult.template.label")}</span>
+            <div role="radiogroup" aria-label={t("elev.consult.template.aria")} data-testid="consult-template-row" className="flex flex-wrap items-center gap-1.5">
+              {(["visit", "teacher"] as const).map((template) => {
+                const on = template === "teacher" ? isTeacher : !isTeacher;
+                return (
+                  <button
+                    key={template}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    data-testid="consult-template"
+                    data-template={template}
+                    onClick={() => chooseTemplate(template)}
+                    className="inline-flex items-center gap-1.5 t-sm font-bold rounded-full px-3.5 min-h-[44px] transition"
+                    style={on
+                      ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
+                      : { background: "var(--arbor-paper-elevated)", color: INK, border: `1px solid ${RULE}` }}
+                  >
+                    <Icon name={template === "teacher" ? "backpack" : "description"} size={16} />
+                    {t(`elev.consult.template.${template}`)}
+                  </button>
+                );
+              })}
+            </div>
+            <span data-testid="consult-template-note" className="t-xs sm:ms-auto" style={{ color: MUTED }}>
+              {t(isTeacher ? "elev.consult.template.note.teacher" : "elev.consult.template.note.visit")}
+            </span>
+          </div>
+        )}
+        {showTemplate && isTeacher ? null : landing && !isTeacher ? (
           <>
             {stepHeading(1, t("elev.consult.step.bring"), "consult-bring-heading")}
             <p id="consult-audience-label" className="t-sm font-bold" style={{ color: INK }}>{t("elev.carehonesty.consult.audience.label")}</p>
           </>
         ) : stepHeading(1, t("elev.carehonesty.consult.audience.label"), "consult-audience-label")}
+        {!(showTemplate && isTeacher) && <>
         <div
           id="consult-audience-row"
           data-testid="consult-audience-row"
@@ -696,7 +763,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           className="flex flex-wrap items-center gap-1.5 focus:outline-none"
           style={{ scrollMarginBlockStart: "0.75rem" }}
         >
-          {EXPORT_AUDIENCES.filter(allowed).map((a) => {
+          {EXPORT_AUDIENCES.filter((a) => allowed(a) && !(showTemplate && a === "teacher")).map((a) => {
             const on = a === audience && !split;
             return (
               <button
@@ -749,6 +816,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
         <p className="text-xs leading-relaxed" style={{ color: MUTED }}>
           {t(`elev.carehonesty.consult.audience.hint.${audience}`)}
         </p>
+        </>}
         {landing && !isTeacher && (bringChips.length > 0 || topicChip) && (
           <div className="flex flex-col gap-1.5 mt-1">
             <p id="consult-bring-label" className="t-sm font-bold" style={{ color: INK }}>{t("elev.consult.bring.label")}</p>

@@ -177,8 +177,12 @@ describe("B-CAREPRO-NEW-2a · Consult anchors on the next visit", () => {
       expect(h1).toContain(translate(locale, "elev.careNet.appt.profession.slp"));
       expect(h1).not.toBe(translate(locale, "elev.consult.h1"));
       expect(html).toMatch(/role="radio" aria-checked="true"[^>]*>(?:<[^>]+>)*[^<]*?(?:<\/[^>]+>)*/);
-      const checked = /aria-checked="true"[\s\S]*?<\/button>/.exec(html)![0];
+      // v4 re-pin: the template row (Visit summary checked) now leads step 1;
+      // the preselected professional is read from the audience row itself.
+      const row = html.slice(html.indexOf('data-testid="consult-audience-row"'));
+      const checked = /aria-checked="true"[\s\S]*?<\/button>/.exec(row)![0];
       expect(decode(checked)).toContain(translate(locale, "elev.carehonesty.consult.audience.slp"));
+      expect(html).toMatch(/aria-checked="true"[^>]*data-template="visit"/);
       expect(html).not.toContain('data-testid="consult-visit-outcome"');
     });
 

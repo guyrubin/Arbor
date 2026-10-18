@@ -17,7 +17,7 @@ import { Icon } from "../ui/Icon";
 import { guidedTierOn } from "../../lib/entitlementsGuided";
 import HomeProgramEntry, { HomeProgramDays, homeProfessionForAppointment, nextVisitDayFor, type EntryWrites } from "../program/HomeProgramEntry";
 import CareAside from "../care/CareAside";
-import CareDoors from "../care/CareDoors";
+import CareShared from "../care/CareShared";
 import CareVisitHead from "../care/CareVisitHead";
 import { activeHomeEnrolments, toggleExerciseDay, type HomeProgramEnrolment } from "../../content/programs/homeProgram";
 import type { FamilyGoal } from "../../lib/goals";
@@ -143,6 +143,9 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
   // Pediatrician was picked, so the two loudest lines named two people.
   const [chosen, setChosen] = useState<ExportAudience | undefined>(presetAudience);
   const heading = consultHeading({ visitAudience: anchorAudience, hasVisit: !!visit, chosen });
+  // v4: Past exports' "Prepare an update" selects that audience in the builder.
+  const [audienceRequest, setAudienceRequest] = useState<{ audience: ExportAudience; seq: number } | undefined>(undefined);
+  const prepareAgain = (audience: ExportAudience) => setAudienceRequest({ audience, seq: (audienceRequest?.seq ?? 0) + 1 });
 
   // v3 EXTRA-CARE: "Saved" only after the follow-up write is acknowledged.
   // Offline or unanswered, the answer stays in the field and the toast says
@@ -223,17 +226,20 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
      own H1. The visit's open loop, the home program and the guided-coach line
      stay on #/consult, so this page holds one job and the route's one stamp. */
   const summary = activeTab === "handoff";
-  /* v3 EXTRA-CARE: #/consult is the Care landing. Three modules: the next
-     visit card with its three prep steps (the builder, holding the route's
-     one move), the aside (Help and safety, Who sees what) and the doors with
-     the trust line. #/handoff and #/school-brief keep the builder alone.
-     At 1600 px and up the aside is an end column (1fr | 20rem); below, one
-     column in DOM order (visit, aside as a two-card row from md, doors).
-     Not the brief's 7fr | 5fr from 1024: the builder already folds into its
-     own two panes at lg (1fr | 22rem, the sticky step-3 column, pinned by
-     consultVisitAnchor.test), and a third column under 1600 px would leave
-     step 2 a sliver. Safety stays one tap away in every width (the Care
-     pills and the More sheet). */
+  /* v3 EXTRA-CARE → v4 (Care, together is ONE screen, no tabs): #/consult is
+     the Care landing. Three modules: the next visit card with its three prep
+     steps (the builder, holding the route's one move, its template choosing
+     a visit summary or a teacher brief), the aside (Help and safety, the
+     page's way into #/safety) and what is shared (Who sees what, Past
+     exports, the trust line). #/handoff and #/school-brief keep the builder
+     alone. At 1600 px and up the aside is an end column (1fr | 20rem) and
+     the shared cards run under both; from lg the visit card spans the row
+     and Help and safety sits beside the two shared cards (1 | 2); below lg,
+     one column in DOM order. The builder already folds into its own two
+     panes at lg (1fr | 22rem, the sticky step-3 column, pinned by
+     consultVisitAnchor.test), so it always keeps the full width under
+     1600 px. Safety stays one tap away in every width (this card and the
+     More sheet). */
   const landing = activeTab === "consult";
   const homeEntry = !summary && !awaiting && (
     <section className="mb-5 rounded-[var(--r-lg)] border p-4" style={{ borderColor: "var(--arbor-rule)" }}>
@@ -257,7 +263,8 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
       egressGuard={egressGuard}
       excludeTeacher={summary}
       landing={landing}
-      head={landing && visit ? <CareVisitHead visit={visit} /> : undefined}
+      head={landing ? <CareVisitHead visit={visit} /> : undefined}
+      audienceRequest={audienceRequest}
     />
   );
 
@@ -305,8 +312,8 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
           </p>
         )}
       </header>
-      <div data-testid="consult-landing" className={landing ? "flex flex-col gap-6 min-[1600px]:grid min-[1600px]:grid-cols-[minmax(0,1fr)_20rem] min-[1600px]:gap-8 min-[1600px]:items-start" : undefined}>
-      <div data-module="consult-packet" className="min-w-0">
+      <div data-testid="consult-landing" className={landing ? "flex flex-col gap-6 lg:grid lg:grid-cols-3 lg:items-start min-[1600px]:grid-cols-[minmax(0,1fr)_20rem] min-[1600px]:gap-8" : undefined}>
+      <div data-module="consult-packet" className={landing ? "min-w-0 lg:col-span-3 min-[1600px]:col-span-1" : "min-w-0"}>
         {!landing && homeEntry}
         {!landing && homeDays}
         {!summary && awaiting && (
@@ -384,7 +391,7 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
         {landing && homeDays}
       </div>
       {landing && <CareAside />}
-      {landing && <CareDoors />}
+      {landing && <CareShared onPrepareAgain={prepareAgain} />}
       </div>
     </div>}
   </>;
