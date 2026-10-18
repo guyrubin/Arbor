@@ -310,3 +310,66 @@ describe("K2 4a: the sandbox runs the same path on a local folder", () => {
     await s.stop();
   });
 });
+
+
+describe("B-BOOK-69: protect book sheets at persistence boundaries", () => {
+  it("rejects impossible footprint anchors before changing stored files", async () => {
+    const s = serve({});
+    await s.start();
+    try {
+      expect((await s.put(poseRel("look-up"), webp(200, 400), ANCHOR)).status).toBe(200);
+      const previous = [...s.objects.entries()];
+      for (const bad of [
+        { ...ANCHOR, footX: 0.05 },
+        { ...ANCHOR, footX: 0.95 },
+        { ...ANCHOR, footW: 0.000001 },
+      ]) {
+        const response = await s.put(poseRel("look-up"), webp(200, 400), bad);
+        expect(response.status).toBe(400);
+        expect((await response.json()).code).toBe("book_sheet_bad_anchor");
+        expect([...s.objects.entries()]).toEqual(previous);
+      }
+    } finally { await s.stop(); }
+  });
+
+  it("refuses to commit corrupt stored anchors rather than publishing an invalid sheet", async () => {
+    const s = serve({});
+    await s.start();
+    try {
+      for (const pose of bookSheetDrawPoses(book)) {
+        s.objects.set(`children/kid1/books/${BOOK}/${poseRel(pose)}`, {
+          data: webp(200, 400), metadata: { aspect: "0.5", footX: "0.05", footW: "0.4" },
+        });
+      }
+      const response = await s.commit({ avatarHash: HASH });
+      expect(response.status).toBe(409);
+      expect((await response.json()).code).toBe("book_sheet_incomplete");
+      expect(await s.docs.read("owner", "kid1", BOOK)).toBeNull();
+    } finally { await s.stop(); }
+  });
+
+  it.each([false, true])("fails closed when the existing book record is unreadable (dryRun=%s)", async (dryRun) => {
+    const write = vi.fn(async () => undefined);
+    const docs: BookAssetsDocStore = {
+      read: vi.fn(async () => { throw new Error("Transient record-store failure"); }),
+      write,
+    };
+    const s = serve({ docs });
+    await s.start();
+    try {
+      for (const pose of bookSheetDrawPoses(book)) {
+        s.objects.set(`children/kid1/books/${BOOK}/${poseRel(pose)}`, {
+          data: webp(200, 400), metadata: { aspect: "0.5", footX: "0.5", footW: "0.4" },
+        });
+      }
+      const prior = `children/kid1/books/${BOOK}/${poseRel("look-up", OTHER)}`;
+      s.objects.set(prior, { data: webp(200, 400), metadata: { aspect: "0.5", footX: "0.5", footW: "0.4" } });
+      const previous = [...s.objects.entries()];
+      const response = await s.commit({ avatarHash: HASH, dryRun });
+      expect(response.status).toBe(500);
+      expect((await response.json()).code).toBe("book_sheet_commit_failed");
+      expect(write).not.toHaveBeenCalled();
+      expect([...s.objects.entries()]).toEqual(previous);
+    } finally { await s.stop(); }
+  });
+});

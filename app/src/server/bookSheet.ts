@@ -258,7 +258,9 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
       }
       const missing = missingBookPoses(book, Object.keys(poses));
       const have = [...byRel.keys()].filter((rel) => rel.startsWith(`hero-sheets/${sheetId}/`)).sort();
-      const existing = await deps.docs.read(g.owner, g.childId, g.bookId).catch(() => null);
+      // A failed read is not a missing record. Fail closed before replacing
+      // an approved sheet, dropping its narration, or deleting an older hero.
+      const existing = await deps.docs.read(g.owner, g.childId, g.bookId);
       const admin = !!existing?.sheetId && !isHeroBookSheetId(existing.sheetId);
       if (body.dryRun === true) {
         // committed: the book already shows THIS hero; admin: an uploaded sheet the pipeline never replaces
