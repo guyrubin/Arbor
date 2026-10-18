@@ -6,19 +6,68 @@
 .now-lifecycle-note { margin-block-start: 8px; font-size: var(--t-sm); color: var(--arbor-clay-deep); }
 .now-loop-lead { min-inline-size: 0; }
 .now-loop-adapt { margin-block-start: 10px; }
-.now-notice { margin-block-start: 26px; min-inline-size: 0; padding: 8px 18px; border-radius: 18px; background: var(--arbor-paper-elevated); box-shadow: 0 0 0 1px var(--arbor-rule); }
-/* v4: Notice today's head — gradient chip, title with the open count, the calm sub, fold toggle. */
-.now-notice-head { display: flex; align-items: center; gap: 10px; min-block-size: 52px; }
-.now-notice-head-text { flex: 1; min-inline-size: 0; }
-.now-notice-head-text h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; font: 700 14px/1.3 var(--font-sans); color: var(--arbor-ink); }
-.now-notice-head-text p { margin: 2px 0 0; font-size: var(--t-xs); line-height: 1.4; color: var(--arbor-muted); }
-.now-notice-count { display: inline-flex; align-items: center; justify-content: center; min-inline-size: 22px; padding: 2px 8px; border-radius: 10px; background: var(--arbor-clay-soft); color: var(--arbor-clay); font-size: var(--t-xs); font-weight: 700; font-variant-numeric: tabular-nums; }
-.now-notice-toggle { display: inline-flex; flex: none; align-items: center; justify-content: center; inline-size: 44px; block-size: 44px; border: 0; border-radius: 12px; background: transparent; color: var(--arbor-muted); }
-.now-notice-toggle:hover { background: var(--arbor-paper-deep); }
-.now-notice-toggle:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
-.now-notice-card { margin-block-start: 4px; padding-inline: 0; border-block-start: 1px solid var(--arbor-rule); }
+.now-notice { margin-block-start: 26px; min-inline-size: 0; padding: 8px 18px; border-radius: 18px; background: var(--arbor-paper-elevated); box-shadow: 0 0 0 1px var(--arbor-rule), var(--shadow-xs); container: notice / inline-size; }
+/* v4 (Arbor v4 · NOTICE TODAY): ONE head line — chip · name · open count · sub (one line, ellipsis) · chevron; the whole line folds the rows. */
+.now-notice-heading { margin: 0; }
+.now-notice .now-notice-head { display: flex; align-items: center; gap: 9px; inline-size: 100%; min-block-size: 44px; padding: 0; border: 0; background: transparent; color: var(--arbor-ink); font: 700 14px/1.3 var(--font-sans); text-align: start; cursor: pointer; overflow-wrap: normal; }
+.now-notice-head:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; border-radius: 12px; }
+.now-notice-title { flex: none; }
+.now-notice-count { display: inline-flex; flex: none; align-items: center; justify-content: center; min-inline-size: 22px; padding: 2px 8px; border-radius: 10px; background: color-mix(in srgb, var(--arbor-clay) 10%, var(--arbor-paper-elevated)); color: var(--arbor-clay); font-size: var(--t-xs); font-weight: 700; font-variant-numeric: tabular-nums; }
+.now-notice-sub { flex: 1; min-inline-size: 0; overflow: hidden; color: var(--arbor-muted); font-size: var(--t-xs); font-weight: 400; white-space: nowrap; text-overflow: ellipsis; }
+.now-notice-chev { flex: none; color: var(--arbor-muted); }
+.now-notice-card { padding-block-end: 4px; }
 .now-notice-card[hidden] { display: none; }
-.now-notice-row.is-next { border-block-start: 1px solid var(--arbor-rule); }
+/* One row: area chip · title over shelf (opens what it looks like) · three inline answers or the answered pill + undo. */
+.now-notice-item { padding-block: 12px; border-block-start: 1px solid var(--arbor-rule); }
+.now-notice-item-main { display: flex; align-items: center; gap: 12px; }
+.now-notice-item-name { display: flex; flex: 1; flex-direction: column; align-items: flex-start; gap: 1px; min-inline-size: 0; min-block-size: 44px; justify-content: center; padding: 0; border: 0; background: transparent; color: var(--arbor-ink); text-align: start; cursor: pointer; }
+.now-notice-item-name:focus-visible, .now-notice-answer:focus-visible, .now-notice-undo:focus-visible, .now-notice-when:focus-visible, .now-notice-link:focus-visible, .now-notice-all:focus-visible, .now-notice-keep :is(input, button):focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
+.now-notice-item-title { font-size: 14.5px; font-weight: 600; line-height: 1.3; }
+.now-notice-item-shelf { display: inline-flex; align-items: center; gap: 6px; color: var(--arbor-muted); font-size: 11.5px; line-height: 1.3; }
+.now-notice-answers { display: flex; flex: none; gap: 4px; }
+.now-notice .now-notice-answer { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-inline-size: 44px; min-block-size: 44px; padding: 0 10px; border: 1px solid var(--arbor-rule); border-radius: 10px; background: var(--arbor-paper); color: var(--arbor-ink); font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow-wrap: normal; cursor: pointer; transition: background-color .15s, border-color .15s, transform .1s; }
+.now-notice-answer:hover { border-color: var(--arbor-rule-strong); background: var(--arbor-paper-deep); }
+.now-notice-answer:active { transform: scale(.97); }
+.now-notice-answer[aria-pressed="true"] { border-color: var(--arbor-clay); }
+.now-notice-answer:disabled { opacity: .6; cursor: progress; }
+/* The labels show when the card is wide enough; on a phone the three glyphs stand alone (each keeps its name). */
+.now-notice-answer-label { display: none; }
+@container notice (min-width: 600px) {
+  .now-notice-answer { padding-inline: 12px; }
+  .now-notice-answer-label { display: inline; }
+}
+.now-notice-answered { display: flex; flex: none; align-items: center; gap: 6px; animation: now-notice-fade .2s ease-out; }
+.now-notice-pill { display: inline-flex; align-items: center; gap: 4px; min-block-size: 40px; padding: 0 10px; border-radius: 10px; background: color-mix(in srgb, var(--arbor-muted) 9%, var(--arbor-paper-elevated)); color: var(--arbor-muted); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.now-notice-pill[data-answer="yes"] { background: color-mix(in srgb, var(--arbor-green-ink) 11%, var(--arbor-paper-elevated)); color: var(--arbor-green-ink); }
+.now-notice-undo { display: inline-flex; align-items: center; justify-content: center; inline-size: 44px; block-size: 44px; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--arbor-muted); cursor: pointer; }
+.now-notice-undo:hover { background: var(--arbor-paper-deep); }
+/* Under the row, indented to the title: what it looks like, When + Keep, the kept words, notes. */
+.now-notice-item-more { margin-block: 8px 0; margin-inline: 48px 0; animation: now-notice-fade .2s ease-out; }
+.now-notice-item-more[hidden] { display: none; }
+.now-notice-item-more > p { margin: 0; color: var(--arbor-ink); font-size: 12.5px; line-height: 1.5; }
+.now-notice-item-more > .now-notice-item-age { display: flex; align-items: center; gap: 5px; margin-block-start: 4px; color: var(--arbor-muted); font-size: 11.5px; }
+.now-notice-seen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.now-notice-whens { display: contents; }
+.now-notice .now-notice-when { position: relative; display: inline-flex; align-items: center; min-block-size: 32px; padding: 0 10px; border: 1px solid var(--arbor-rule-strong); border-radius: 16px; background: var(--arbor-paper-elevated); color: var(--arbor-ink); font-size: var(--t-xs); font-weight: 600; cursor: pointer; }
+/* 32 px to the eye, 44 px to the finger. */
+.now-notice-when::after, .now-notice-link::after { content: ""; position: absolute; inset: -6px 0; }
+.now-notice-when[aria-pressed="true"] { border-color: color-mix(in srgb, var(--arbor-clay) 32%, var(--arbor-paper-elevated)); background: color-mix(in srgb, var(--arbor-clay) 10%, var(--arbor-paper-elevated)); color: var(--arbor-clay); }
+.now-notice .now-notice-link { position: relative; display: inline-flex; align-items: center; gap: 4px; min-block-size: 32px; padding: 0 6px; border: 0; background: transparent; color: var(--arbor-clay); font-size: var(--t-xs); font-weight: 700; cursor: pointer; }
+.now-notice-item-more > .now-notice-link { margin-block-start: 4px; padding-inline: 0; }
+.now-notice-keep { display: flex; gap: 6px; }
+.now-notice .now-notice-keep input { flex: 1; min-inline-size: 0; min-block-size: 44px; padding: 0 12px; border: 1px solid var(--arbor-rule-strong); border-radius: 10px; background: var(--arbor-paper-elevated); color: var(--arbor-ink); font: inherit; font-size: 13px; }
+.now-notice .now-notice-keep button { flex: none; min-block-size: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--arbor-ink); color: var(--arbor-on-accent); font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.now-notice-keep button:disabled { opacity: .55; cursor: default; }
+.now-notice-kept { padding: 2px 10px; border-inline-start: 3px solid var(--arbor-clay); }
+.now-notice-item-more.now-notice-kept { font-family: var(--font-display); font-size: 14px; color: var(--arbor-ink); }
+.now-notice-kept-meta { font-family: var(--font-sans); font-size: 11.5px; color: var(--arbor-muted); }
+.now-notice-item-more.now-notice-note { color: var(--arbor-muted); font-size: var(--t-sm); }
+.now-notice-item-more.now-notice-error { padding-inline-start: 10px; border-inline-start: 2px solid var(--arbor-rule-strong); color: var(--arbor-ink); font-size: var(--t-sm); }
+/* The foot: not a score, and every milestone. */
+.now-notice-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block-start: 2px; border-block-start: 1px solid var(--arbor-rule); color: var(--arbor-muted); font-size: 11.5px; }
+.now-notice .now-notice-all { display: inline-flex; flex: none; align-items: center; gap: 3px; min-block-size: 44px; padding: 0; border: 0; background: transparent; color: var(--arbor-clay); font-size: 11.5px; font-weight: 700; cursor: pointer; }
+@keyframes now-notice-fade { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .now-notice-answered, .now-notice-item-more { animation: none; } .now-notice-answer { transition: none; } }
 .now-notice-extras { display: grid; gap: 4px; min-inline-size: 0; }
 .now-notice-card > .now-notice-extras > :not(:empty) { padding-block: 8px; border-block-start: 1px solid var(--arbor-rule); }
 .now-main-column > .now-notice-extras:has(> :not(:empty)) { margin-block-start: 18px; }

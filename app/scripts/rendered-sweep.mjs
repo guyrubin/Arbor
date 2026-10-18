@@ -984,7 +984,7 @@ const STATES = {
       // Now is Notice today's fold toggle.
       name: "notice-folded",
       run: async (h) => {
-        await h.click("main [data-testid=today-notice-toggle]", [h.tr("elev.loop.today.notice.fold")], "Notice today's fold toggle");
+        await h.click("main [data-testid=today-notice-toggle]", [h.tr("elev.loop.today.notice.title")], "Notice today's head (the fold control)");
         await h.top(await h.need("main [data-testid=today-notice-toggle][aria-expanded=false]", "Notice today folded (head only)"));
       },
     },
