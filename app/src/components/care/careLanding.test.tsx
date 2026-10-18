@@ -268,6 +268,9 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       expect(loading).toMatch(/data-testid="care-aside-sharing"[^>]*aria-busy="true"/);
       expect(decode(loading)).toContain(translate(locale, "elev.consult.sharing.loading"));
       expect(loading).not.toContain('data-testid="care-aside-sharing-none"');
+      // while the roster is unknown (loading, or a failed read that says "Open Manage") the door reads Manage, never "Add someone"
+      const pending = /<button[^>]*data-testid="care-aside-manage"[^>]*>([\s\S]*?)<\/button>/.exec(loading)![1];
+      expect(decode(pending.replace(/<span class="msr[^"]*"[^>]*>[^<]*<\/span>/g, "").replace(/<[^>]+>/g, "")).trim()).toBe(translate(locale, "elev.consult.aside.manage"));
       harness.signedIn = false;
       const out = sliceModule(renderToStaticMarkup(<ConsultTab />), "consult-shared");
       expect(textOf(out, "care-aside-sharing-none")).toBe(translate(locale, "elev.consult.sharing.none"));

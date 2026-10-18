@@ -149,7 +149,8 @@ describe("WeekGlance (v3 F-NOW-3)", () => {
     expect(html).toContain("What happened each day");
     expect(html).toContain("Moments you kept");
     expect(html).toContain("Kid world sessions");
-    expect(html).toMatch(/<table class="sr-only"><caption>What was kept each day this week<\/caption>/);
+    // The visually-hidden clip is on a wrapper (a table ignores the 1 px box and widened the RTL phone page).
+    expect(html).toMatch(/<div class="sr-only"><table><caption>What was kept each day this week<\/caption>/);
     expect(html.match(/<th scope="row">/g)).toHaveLength(7);
   });
 

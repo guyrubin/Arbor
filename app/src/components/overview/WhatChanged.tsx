@@ -129,7 +129,7 @@ export default function WhatChanged({
                   setActiveTab("weekly");
                 }}
                 aria-label={t("elev.recap.ready.aria")}
-                className="now-week-changed-line"
+                className="now-week-changed-line min-h-11"
                 data-testid="what-changed-recap"
               >
                 <Icon name="auto_stories" size={17} />
@@ -149,7 +149,7 @@ export default function WhatChanged({
                     track("sincevisit_row_tap", { kind: line.kind });
                     onLineTap(line);
                   }}
-                  className="now-week-changed-line"
+                  className="now-week-changed-line min-h-11"
                 >
                   <Icon name={LINE_ICON[line.kind]} size={17} />
                   <span dir="auto">{title}{sub && <small dir="auto">{sub}</small>}</span>
@@ -159,7 +159,7 @@ export default function WhatChanged({
           })}
         </ul>
         {hiddenCount > 0 && (
-          <button type="button" onClick={onMore} className="now-week-changed-more">
+          <button type="button" onClick={onMore} className="now-week-changed-more min-h-11">
             {t("elev.sincevisit.more", { n: num(hiddenCount) })}
             <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
           </button>

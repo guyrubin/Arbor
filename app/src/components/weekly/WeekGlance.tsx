@@ -195,8 +195,9 @@ export default function WeekGlance({ glance, lines, childFirst, helpedAction, on
             <li><Icon name={OUTCOME_GLYPH.helped.icon} size={15} />{t(OUTCOME_GLYPH.helped.label)}</li>
             <li><Icon name={OUTCOME_GLYPH["not-this-time"].icon} size={15} />{t(OUTCOME_GLYPH["not-this-time"].label)}</li>
           </ul>
-          {/* The strip is drawn for the eye (aria-hidden); a screen reader gets the same counts as a table, each day by its full date. */}
-          <table className="sr-only">
+          {/* The strip is drawn for the eye (aria-hidden); a screen reader gets the same counts as a table, each day by its full date.
+              The clip sits on a wrapper: a table ignores the 1 px box, and in RTL it pushed the phone page wide (479 px at 390). */}
+          <div className="sr-only"><table>
             <caption>{t("elev.wk.glance.days.aria")}</caption>
             <thead>
               <tr>
@@ -216,7 +217,7 @@ export default function WeekGlance({ glance, lines, childFirst, helpedAction, on
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </figure>
 
         <div className="wk-glance-side">

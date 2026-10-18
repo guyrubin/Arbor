@@ -105,7 +105,8 @@ export function WhoSeesWhat({ state, rows }: { state: "loading" | "failed" | "re
         </ul>
       )}
       <button type="button" data-testid="care-aside-manage" onClick={() => setActiveTab("sharing")} className={linkCls} style={{ color: "var(--arbor-clay)" }}>
-        {t(state === "ready" && rows.length > 0 ? "elev.consult.aside.manage" : "elev.consult.who.add")}
+        {/* "Add someone" only when the roster is known to be empty; a failed read says "Open Manage", so the door must read Manage. */}
+        {t(state === "ready" && rows.length === 0 ? "elev.consult.who.add" : "elev.consult.aside.manage")}
         <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
       </button>
     </section>
