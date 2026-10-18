@@ -453,7 +453,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               <div className="mt-2.5">
                 <PlanPrices cadence={cadence} plans={["plus"]} />
                 {offer.notice && (
-                  <p data-testid="offering-notice" className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{offer.notice}</p>
+                  <p data-testid="offering-notice" className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>{offer.notice}</p>
                 )}
               </div>
               {/* 3.6 — each upgrade row carries its plan badge, so what's paid is

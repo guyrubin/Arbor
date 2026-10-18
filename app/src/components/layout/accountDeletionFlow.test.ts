@@ -173,6 +173,10 @@ function settings(source = settingsSource) {
     "../coach/ToneSheet": { default: "ToneSheet", toneLabel: () => "", __esModule: true },
     "../referral/InviteCard": { default: "InviteCard", __esModule: true },
     "../billing/PlanPrices": { PlanPrices: "PlanPrices" }, "../billing/LegalLinks": { LegalLinks: "LegalLinks" },
+    // B-GA-12: annual default + the native offering gate (web here: never blocked).
+    "../billing/paywallModel": { DEFAULT_CADENCE: "annual", offeringGate: () => ({ blocked: false, notice: null }) },
+    "../../hooks/useNativePrices": { useNativeOffering: () => ({ prices: null, status: "web" }) },
+    "../../lib/runtime": { isNativePlatform: false, nativePlatform: "web" },
     "../ui/Skeleton": { Skeleton: "Skeleton" }, "../ui/PlanBadge": { PlanBadge: "PlanBadge" },
     "../../context/ArborContext": { useArbor: () => ({ setActiveTab: vi.fn() }) },
     "../../hooks/useEntitlement": { useEntitlement: () => ({ entitlement: { plan: "free", limits: { coachMessagesPerDay: 5 }, usage: { coachMessagesToday: 0 } } }) },
