@@ -23,10 +23,12 @@ jobs:
           npm audit --omit=dev --json > /tmp/kids-audit/before-runtime.json || true
           npm install --package-lock-only --ignore-scripts --save-dev @capacitor/android@8.4.3 @capacitor/ios@8.4.3 @capacitor/cli@8.4.3
           npm install --package-lock-only --ignore-scripts @capacitor/core@8.4.3
-          # No --force, no major upgrade, no dependency overrides, no Firebase downgrade.
-          npm audit fix --package-lock-only --ignore-scripts > /tmp/kids-audit/fix.txt 2>&1 || true
+          # Target advisory-affected packages within their existing semver constraints.
+          # No --force, SDK downgrade, major manifest upgrade or overrides.
+          npm update --package-lock-only --ignore-scripts proxy-addr tar websocket-driver @babel/core @fastify/busboy @google-cloud/storage @vitest/coverage-v8 @vitest/mocker @xmldom/xmldom baseline-browser-mapping body-parser brace-expansion browserslist express form-data gaxios ip-address nanoid postcss protobufjs qs source-map-js vite vitest tsx > /tmp/kids-audit/fix.txt 2>&1
           npm audit --json > /tmp/kids-audit/after-all.json || true
           npm audit --omit=dev --json > /tmp/kids-audit/after-runtime.json || true
+          git diff -- package.json package-lock.json > /tmp/kids-audit/dependency-upgrade.patch
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           for (const stage of ['before', 'after']) for (const scope of ['all', 'runtime']) {
@@ -40,8 +42,8 @@ jobs:
           for (const name of ['firebase', 'firebase-admin', '@google/genai', '@google-cloud/vertexai']) {
             if (before.dependencies[name] !== after.dependencies[name]) throw new Error(`Unexpected SDK manifest change: ${name}`);
           }
+          if (after.overrides) throw new Error('Dependency overrides not allowed in this batch');
           JS
-          git diff -- package.json package-lock.json > /tmp/kids-audit/dependency-upgrade.patch
           cp package.json package-lock.json /tmp/kids-patches/
       - name: Retain exact dependency files
         uses: actions/upload-artifact@v4
