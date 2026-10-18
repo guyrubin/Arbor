@@ -177,7 +177,10 @@ describe("the icon-subset opt-out cannot hide a real icon", () => {
   const optedOut = sourceFiles().filter((f) => readFileSync(f, "utf8").includes(ICON_IGNORE_PRAGMA));
 
   it("stays a short, deliberate list", () => {
-    expect(optedOut.length).toBeLessThanOrEqual(5);
+    // B-GROWTH-44's read-only source hook adds a browser "storage" event,
+    // not a rendered glyph. It remains covered by the no-icon check below.
+    expect(optedOut.map((file) => path.basename(file))).toContain("useNoticeSource.ts");
+    expect(optedOut.length).toBeLessThanOrEqual(6);
   });
 
   it("no opted-out file renders an icon", () => {

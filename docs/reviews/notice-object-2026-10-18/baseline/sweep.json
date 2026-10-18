@@ -1,0 +1,1565 @@
+{
+  "runId": "arbor-observation-baseline-captures",
+  "base": "http://localhost:3000",
+  "sha": "8fad8f1e732f1aa60ef086ad60e8ba8546b39be4",
+  "seed": "demo",
+  "seedBundle": {
+    "version": "2026-10-08.1",
+    "seededAt": "2026-10-18T03:44:51.230Z",
+    "lang": "en",
+    "childId": "dylan-demo",
+    "childName": "Dylan",
+    "marker": "2026-10-08.1@2026-10-18T03:44:51.230Z"
+  },
+  "states": false,
+  "startedAt": "2026-10-18T03:51:31.123Z",
+  "completed": true,
+  "finishedAt": "2026-10-18T03:52:05.350Z",
+  "totals": {
+    "routes": 4,
+    "cells": 16,
+    "mounted": 16,
+    "consoleErrorCells": 16,
+    "pctCells": 0,
+    "latinHECells": 5,
+    "sub44Cells": 16,
+    "occludedCells": 1,
+    "overflowCells": 0,
+    "rateLimitedCells": 0,
+    "retriedCells": 0,
+    "seedHydratedCells": 16,
+    "stateCells": 0,
+    "statesUnreached": 0,
+    "stateUndoFailed": 0
+  },
+  "cells": [
+    {
+      "route": "overview",
+      "viewport": "375x812",
+      "lang": "en",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/overview",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "What would help with Dylan?",
+      "htmlLang": "en",
+      "dir": "ltr",
+      "modules": [
+        "now-record",
+        "today-notice"
+      ],
+      "moduleCount": 2,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "choose-next-step",
+        "x": 34,
+        "y": 909,
+        "w": 307,
+        "h": 96,
+        "foldY": 747,
+        "aboveFold": false,
+        "occluded": false
+      },
+      "stampHeight": 96,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 747,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": null,
+      "latinChromeHECount": null,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "Skip to content",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 6,
+        "tappable": 20,
+        "textSizes": 12,
+        "under12": 3,
+        "uppercase": 2,
+        "gradients": 3,
+        "screens": 2.9
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "clientWidth": 375
+      },
+      "fullShotScope": "document-extent-only-not-full-main-content",
+      "mainScrollport": {
+        "scrollTop": 0,
+        "clientHeight": 613,
+        "scrollHeight": 2356
+      },
+      "fullShot": "shots/overview.375x812.en.full.png",
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement",
+        "GET /api/memory/dylan-demo",
+        "GET /api/memory/dylan-demo",
+        "GET /api/tts",
+        "POST /api/children/dylan-demo/book-narration",
+        "POST /api/digest"
+      ],
+      "loadMs": 2093,
+      "readyTimedOut": false,
+      "shot": "shots/overview.375x812.en.png"
+    },
+    {
+      "route": "timeline",
+      "viewport": "375x812",
+      "lang": "en",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/timeline",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "Moments",
+      "htmlLang": "en",
+      "dir": "ltr",
+      "modules": [
+        "moments-toolbar",
+        "moments-view"
+      ],
+      "moduleCount": 2,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "capture-moment",
+        "x": 16,
+        "y": 300,
+        "w": 188,
+        "h": 44,
+        "foldY": 747,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 44,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 747,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": null,
+      "latinChromeHECount": null,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "Skip to content",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 9,
+        "tappable": 25,
+        "textSizes": 6,
+        "under12": 0,
+        "uppercase": 0,
+        "gradients": 0,
+        "screens": 3.9
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "clientWidth": 375
+      },
+      "fullShotScope": "document-extent-only-not-full-main-content",
+      "mainScrollport": {
+        "scrollTop": 0,
+        "clientHeight": 594,
+        "scrollHeight": 3133
+      },
+      "fullShot": "shots/timeline.375x812.en.full.png",
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration"
+      ],
+      "loadMs": 2062,
+      "readyTimedOut": false,
+      "shot": "shots/timeline.375x812.en.png"
+    },
+    {
+      "route": "development",
+      "viewport": "375x812",
+      "lang": "en",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/development",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "Dylan's growth, in your words.",
+      "htmlLang": "en",
+      "dir": "ltr",
+      "modules": [
+        "child-milestones-areas",
+        "child-milestones-portrait"
+      ],
+      "moduleCount": 2,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "start-development-check",
+        "x": 31,
+        "y": 278,
+        "w": 313,
+        "h": 44,
+        "foldY": 747,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 44,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 747,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": null,
+      "latinChromeHECount": null,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "Skip to content",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 15,
+        "tappable": 21,
+        "textSizes": 6,
+        "under12": 0,
+        "uppercase": 1,
+        "gradients": 0,
+        "screens": 1.8
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "clientWidth": 375
+      },
+      "fullShotScope": "document-extent-only-not-full-main-content",
+      "mainScrollport": {
+        "scrollTop": 0,
+        "clientHeight": 594,
+        "scrollHeight": 1455
+      },
+      "fullShot": "shots/development.375x812.en.full.png",
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration"
+      ],
+      "loadMs": 1749,
+      "readyTimedOut": false,
+      "shot": "shots/development.375x812.en.png"
+    },
+    {
+      "route": "practice",
+      "viewport": "375x812",
+      "lang": "en",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/practice",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "A little world to discover with Dylan.",
+      "htmlLang": "en",
+      "dir": "ltr",
+      "modules": [
+        "together-invitation",
+        "together-games",
+        "together-stories",
+        "together-routines",
+        "together-offscreen"
+      ],
+      "moduleCount": 5,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "choose-together",
+        "x": 16,
+        "y": 496,
+        "w": 343,
+        "h": 73,
+        "foldY": 747,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 73,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 747,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": null,
+      "latinChromeHECount": null,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "Skip to content",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 9,
+        "tappable": 25,
+        "textSizes": 6,
+        "under12": 0,
+        "uppercase": 0,
+        "gradients": 1,
+        "screens": 3.3
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "clientWidth": 375
+      },
+      "fullShotScope": "document-extent-only-not-full-main-content",
+      "mainScrollport": {
+        "scrollTop": 0,
+        "clientHeight": 594,
+        "scrollHeight": 2650
+      },
+      "fullShot": "shots/practice.375x812.en.full.png",
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration"
+      ],
+      "loadMs": 1839,
+      "readyTimedOut": false,
+      "shot": "shots/practice.375x812.en.png"
+    },
+    {
+      "route": "overview",
+      "viewport": "375x812",
+      "lang": "he",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/overview",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "מה יעזור לכם עם Dylan?",
+      "htmlLang": "he",
+      "dir": "rtl",
+      "modules": [
+        "now-record",
+        "today-notice"
+      ],
+      "moduleCount": 2,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "choose-next-step",
+        "x": 34,
+        "y": 879,
+        "w": 307,
+        "h": 96,
+        "foldY": 747,
+        "aboveFold": false,
+        "occluded": false
+      },
+      "stampHeight": 96,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 747,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": [],
+      "latinChromeHECount": 0,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "דילוג לתוכן",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 6,
+        "tappable": 20,
+        "textSizes": 12,
+        "under12": 3,
+        "uppercase": 0,
+        "gradients": 3,
+        "screens": 2.7
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "clientWidth": 375
+      },
+      "fullShotScope": "document-extent-only-not-full-main-content",
+      "mainScrollport": {
+        "scrollTop": 0,
+        "clientHeight": 613,
+        "scrollHeight": 2185
+      },
+      "fullShot": "shots/overview.375x812.he.full.png",
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration",
+        "POST /api/digest"
+      ],
+      "loadMs": 2001,
+      "readyTimedOut": false,
+      "shot": "shots/overview.375x812.he.png"
+    },
+    {
+      "route": "timeline",
+      "viewport": "375x812",
+      "lang": "he",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/timeline",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "רגעים",
+      "htmlLang": "he",
+      "dir": "rtl",
+      "modules": [
+        "moments-toolbar",
+        "moments-view"
+      ],
+      "moduleCount": 2,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "capture-moment",
+        "x": 78,
+        "y": 246,
+        "w": 135,
+        "h": 44,
+        "foldY": 747,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 44,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 747,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": [
+        "more juice"
+      ],
+      "latinChromeHECount": 1,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "דילוג לתוכן",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 10,
+        "tappable": 25,
+        "textSizes": 6,
+        "under12": 0,
+        "uppercase": 0,
+        "gradients": 0,
+        "screens": 3.6
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "clientWidth": 375
+      },
+      "fullShotScope": "document-extent-only-not-full-main-content",
+      "mainScrollport": {
+        "scrollTop": 0,
+        "clientHeight": 594,
+        "scrollHeight": 2959
+      },
+      "fullShot": "shots/timeline.375x812.he.full.png",
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration"
+      ],
+      "loadMs": 2092,
+      "readyTimedOut": false,
+      "shot": "shots/timeline.375x812.he.png"
+    },
+    {
+      "route": "development",
+      "viewport": "375x812",
+      "lang": "he",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/development",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "הצמיחה של Dylan, במילים שלכם.",
+      "htmlLang": "he",
+      "dir": "rtl",
+      "modules": [
+        "child-milestones-areas",
+        "child-milestones-portrait"
+      ],
+      "moduleCount": 2,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "start-development-check",
+        "x": 31,
+        "y": 280,
+        "w": 313,
+        "h": 44,
+        "foldY": 747,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 44,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 747,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": [],
+      "latinChromeHECount": 0,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "דילוג לתוכן",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 17,
+        "tappable": 21,
+        "textSizes": 5,
+        "under12": 0,
+        "uppercase": 1,
+        "gradients": 0,
+        "screens": 1.6
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "clientWidth": 375
+      },
+      "fullShotScope": "document-extent-only-not-full-main-content",
+      "mainScrollport": {
+        "scrollTop": 0,
+        "clientHeight": 594,
+        "scrollHeight": 1272
+      },
+      "fullShot": "shots/development.375x812.he.full.png",
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration"
+      ],
+      "loadMs": 1756,
+      "readyTimedOut": false,
+      "shot": "shots/development.375x812.he.png"
+    },
+    {
+      "route": "practice",
+      "viewport": "375x812",
+      "lang": "he",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/practice",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "העולם גדול יותר כשמגלים אותו עם ⁨Dylan⁩.",
+      "htmlLang": "he",
+      "dir": "rtl",
+      "modules": [
+        "together-invitation",
+        "together-games",
+        "together-stories",
+        "together-routines",
+        "together-offscreen"
+      ],
+      "moduleCount": 5,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "choose-together",
+        "x": 16,
+        "y": 496,
+        "w": 343,
+        "h": 49,
+        "foldY": 747,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 49,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 747,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": [],
+      "latinChromeHECount": 0,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "דילוג לתוכן",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 10,
+        "tappable": 25,
+        "textSizes": 6,
+        "under12": 0,
+        "uppercase": 0,
+        "gradients": 1,
+        "screens": 3.1
+      },
+      "overflow": {
+        "scrollWidth": 375,
+        "clientWidth": 375
+      },
+      "fullShotScope": "document-extent-only-not-full-main-content",
+      "mainScrollport": {
+        "scrollTop": 0,
+        "clientHeight": 594,
+        "scrollHeight": 2550
+      },
+      "fullShot": "shots/practice.375x812.he.full.png",
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration"
+      ],
+      "loadMs": 1983,
+      "readyTimedOut": false,
+      "shot": "shots/practice.375x812.he.png"
+    },
+    {
+      "route": "overview",
+      "viewport": "1280x800",
+      "lang": "en",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/overview",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "What would help with Dylan?",
+      "htmlLang": "en",
+      "dir": "ltr",
+      "modules": [
+        "now-record",
+        "today-notice"
+      ],
+      "moduleCount": 2,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "choose-next-step",
+        "x": 854,
+        "y": 667,
+        "w": 372,
+        "h": 96,
+        "foldY": 800,
+        "aboveFold": true,
+        "occluded": true
+      },
+      "stampHeight": 96,
+      "primaryMoveOccluded": true,
+      "primaryMoveFoldY": 800,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": null,
+      "latinChromeHECount": null,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "Skip to content",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 11,
+        "tappable": 22,
+        "textSizes": 12,
+        "under12": 3,
+        "uppercase": 2,
+        "gradients": 3,
+        "screens": 2.2
+      },
+      "overflow": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280
+      },
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration",
+        "POST /api/digest"
+      ],
+      "loadMs": 1863,
+      "readyTimedOut": false,
+      "shot": "shots/overview.1280x800.en.png"
+    },
+    {
+      "route": "timeline",
+      "viewport": "1280x800",
+      "lang": "en",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/timeline",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "Moments",
+      "htmlLang": "en",
+      "dir": "ltr",
+      "modules": [
+        "moments-toolbar",
+        "moments-view"
+      ],
+      "moduleCount": 2,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "capture-moment",
+        "x": 1060,
+        "y": 201,
+        "w": 188,
+        "h": 44,
+        "foldY": 800,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 44,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 800,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": null,
+      "latinChromeHECount": null,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "Skip to content",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 13,
+        "tappable": 22,
+        "textSizes": 6,
+        "under12": 0,
+        "uppercase": 0,
+        "gradients": 0,
+        "screens": 1.9
+      },
+      "overflow": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280
+      },
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration"
+      ],
+      "loadMs": 1927,
+      "readyTimedOut": false,
+      "shot": "shots/timeline.1280x800.en.png"
+    },
+    {
+      "route": "development",
+      "viewport": "1280x800",
+      "lang": "en",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/development",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "Dylan's growth, in your words.",
+      "htmlLang": "en",
+      "dir": "ltr",
+      "modules": [
+        "child-milestones-portrait",
+        "child-milestones-areas"
+      ],
+      "moduleCount": 2,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "start-development-check",
+        "x": 888,
+        "y": 523,
+        "w": 222,
+        "h": 44,
+        "foldY": 800,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 44,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 800,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": null,
+      "latinChromeHECount": null,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "Skip to content",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 13,
+        "tappable": 18,
+        "textSizes": 8,
+        "under12": 0,
+        "uppercase": 3,
+        "gradients": 0,
+        "screens": 1.6
+      },
+      "overflow": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280
+      },
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration"
+      ],
+      "loadMs": 1811,
+      "readyTimedOut": false,
+      "shot": "shots/development.1280x800.en.png"
+    },
+    {
+      "route": "practice",
+      "viewport": "1280x800",
+      "lang": "en",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/practice",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "A little world to discover with Dylan.",
+      "htmlLang": "en",
+      "dir": "ltr",
+      "modules": [
+        "together-invitation",
+        "together-games",
+        "together-stories",
+        "together-routines",
+        "together-offscreen"
+      ],
+      "moduleCount": 5,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "choose-together",
+        "x": 312,
+        "y": 350,
+        "w": 378,
+        "h": 49,
+        "foldY": 800,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 49,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 800,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": null,
+      "latinChromeHECount": null,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "Skip to content",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 14,
+        "tappable": 28,
+        "textSizes": 5,
+        "under12": 0,
+        "uppercase": 0,
+        "gradients": 2,
+        "screens": 2.7
+      },
+      "overflow": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280
+      },
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration"
+      ],
+      "loadMs": 1849,
+      "readyTimedOut": false,
+      "shot": "shots/practice.1280x800.en.png"
+    },
+    {
+      "route": "overview",
+      "viewport": "1280x800",
+      "lang": "he",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/overview",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "מה יעזור לכם עם Dylan?",
+      "htmlLang": "he",
+      "dir": "rtl",
+      "modules": [
+        "now-record",
+        "today-notice"
+      ],
+      "moduleCount": 2,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "choose-next-step",
+        "x": 54,
+        "y": 611,
+        "w": 372,
+        "h": 44,
+        "foldY": 800,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 44,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 800,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": [
+        "Sandbox Parent",
+        "הבינה המלאכותית החיה כבויה. נתוני דוגמה מאפשרים לסייר במוצר. הוסיפו מפתח ב-.env…"
+      ],
+      "latinChromeHECount": 2,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "דילוג לתוכן",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 12,
+        "tappable": 22,
+        "textSizes": 12,
+        "under12": 3,
+        "uppercase": 0,
+        "gradients": 3,
+        "screens": 2
+      },
+      "overflow": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280
+      },
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration",
+        "POST /api/digest"
+      ],
+      "loadMs": 1991,
+      "readyTimedOut": false,
+      "shot": "shots/overview.1280x800.he.png"
+    },
+    {
+      "route": "timeline",
+      "viewport": "1280x800",
+      "lang": "he",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/timeline",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "רגעים",
+      "htmlLang": "he",
+      "dir": "rtl",
+      "modules": [
+        "moments-toolbar",
+        "moments-view"
+      ],
+      "moduleCount": 2,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "capture-moment",
+        "x": 32,
+        "y": 201,
+        "w": 135,
+        "h": 44,
+        "foldY": 800,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 44,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 800,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": [
+        "Sandbox Parent",
+        "הבינה המלאכותית החיה כבויה. נתוני דוגמה מאפשרים לסייר במוצר. הוסיפו מפתח ב-.env…",
+        "more juice"
+      ],
+      "latinChromeHECount": 3,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "דילוג לתוכן",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 13,
+        "tappable": 22,
+        "textSizes": 6,
+        "under12": 0,
+        "uppercase": 0,
+        "gradients": 0,
+        "screens": 1.9
+      },
+      "overflow": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280
+      },
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration"
+      ],
+      "loadMs": 1866,
+      "readyTimedOut": false,
+      "shot": "shots/timeline.1280x800.he.png"
+    },
+    {
+      "route": "development",
+      "viewport": "1280x800",
+      "lang": "he",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/development",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "הצמיחה של Dylan, במילים שלכם.",
+      "htmlLang": "he",
+      "dir": "rtl",
+      "modules": [
+        "child-milestones-portrait",
+        "child-milestones-areas"
+      ],
+      "moduleCount": 2,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "start-development-check",
+        "x": 155,
+        "y": 489,
+        "w": 177,
+        "h": 44,
+        "foldY": 800,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 44,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 800,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": [
+        "Sandbox Parent",
+        "הבינה המלאכותית החיה כבויה. נתוני דוגמה מאפשרים לסייר במוצר. הוסיפו מפתח ב-.env…"
+      ],
+      "latinChromeHECount": 2,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "דילוג לתוכן",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 14,
+        "tappable": 18,
+        "textSizes": 7,
+        "under12": 0,
+        "uppercase": 3,
+        "gradients": 0,
+        "screens": 1.5
+      },
+      "overflow": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280
+      },
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration"
+      ],
+      "loadMs": 2046,
+      "readyTimedOut": false,
+      "shot": "shots/development.1280x800.he.png"
+    },
+    {
+      "route": "practice",
+      "viewport": "1280x800",
+      "lang": "he",
+      "seed": "demo",
+      "seedHydrated": true,
+      "state": "base",
+      "finalHash": "#/practice",
+      "mounted": true,
+      "errorBoundary": false,
+      "h1": "העולם גדול יותר כשמגלים אותו עם ⁨Dylan⁩.",
+      "htmlLang": "he",
+      "dir": "rtl",
+      "modules": [
+        "together-invitation",
+        "together-games",
+        "together-stories",
+        "together-routines",
+        "together-offscreen"
+      ],
+      "moduleCount": 5,
+      "demotedModules": [],
+      "primaryMove": {
+        "id": "choose-together",
+        "x": 727,
+        "y": 326,
+        "w": 241,
+        "h": 49,
+        "foldY": 800,
+        "aboveFold": true,
+        "occluded": false
+      },
+      "stampHeight": 49,
+      "primaryMoveOccluded": false,
+      "primaryMoveFoldY": 800,
+      "pctStrings": [],
+      "pctCount": 0,
+      "latinChromeHE": [
+        "Sandbox Parent",
+        "הבינה המלאכותית החיה כבויה. נתוני דוגמה מאפשרים לסייר במוצר. הוסיפו מפתח ב-.env…"
+      ],
+      "latinChromeHECount": 2,
+      "sub44AboveFold": [
+        {
+          "tag": "a",
+          "text": "דילוג לתוכן",
+          "w": 2,
+          "h": 2,
+          "y": -1,
+          "inMain": false
+        }
+      ],
+      "sub44Count": 1,
+      "weight": {
+        "tappableAboveFold": 14,
+        "tappable": 28,
+        "textSizes": 5,
+        "under12": 0,
+        "uppercase": 0,
+        "gradients": 2,
+        "screens": 2.7
+      },
+      "overflow": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280
+      },
+      "consoleErrors": [
+        "NETWORK",
+        "OTHER_ERROR"
+      ],
+      "runtimeDiagnostics": {
+        "counts": {
+          "NETWORK": 1,
+          "OTHER_ERROR": 1
+        },
+        "recent": [
+          {
+            "kind": "NETWORK"
+          },
+          {
+            "kind": "OTHER_ERROR"
+          }
+        ]
+      },
+      "rateLimited": 0,
+      "apiRequests": [
+        "GET /api/entitlement (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/memory/dylan-demo (cache)",
+        "GET /api/tts (cache)",
+        "POST /api/children/dylan-demo/book-narration"
+      ],
+      "loadMs": 1879,
+      "readyTimedOut": false,
+      "shot": "shots/practice.1280x800.he.png"
+    }
+  ],
+  "browser": "chrome"
+}

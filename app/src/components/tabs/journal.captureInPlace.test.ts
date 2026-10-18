@@ -150,7 +150,11 @@ describe("B-TODAY-19 · addMoment stores the photo (unit)", () => {
 
   it("ArborContext.addMoment writes the builder's record (one path)", () => {
     // B-LOOP-07/10: the opts also carry the shelf + milestone Tonight files the line on; the builder gets the rest.
-    expect(CONTEXT).toMatch(/const addMoment = async \(\s*text: string,\s*opts: \{ photoAttachment\?: string; promptKey\?: string; kept\?: BehaviorLog\["kept"\]; contentSource\?: BehaviorLog\["contentSource"\]; shelf\?: ShelfId; milestoneId\?: string; context\?: BehaviorContext; notes\?: string; callerShowsFailure\?: boolean \} = \{\},/);
+    expect(CONTEXT).toMatch(/const addMoment = async \(\s*text: string,\s*opts: \{ photoAttachment\?: string; promptKey\?: string; kept\?: BehaviorLog\["kept"\]; contentSource\?: BehaviorLog\["contentSource"\]; shelf\?: ShelfId; milestoneId\?: string; context\?: BehaviorContext; notes\?: string; callerShowsFailure\?: boolean; requireAcknowledgement\?: boolean; retryKey\?: string; isCurrent\?: \(\) => boolean \} = \{\},/);
+    // Acknowledgement/lifetime options do not become parent-authored record
+    // fields; the unchanged builder still receives only moment data.
+    expect(CONTEXT).toContain("const { callerShowsFailure = false, requireAcknowledgement = false, retryKey, isCurrent, ...writeOpts } = opts;");
+    expect(CONTEXT).toContain("await logsCol.upsert(logItem, requireAcknowledgement ? { requireAcknowledgement: true } : undefined);");
     expect(CONTEXT).toContain('buildMomentLog(text, context ?? "", buildOpts)');
   });
 
@@ -371,7 +375,12 @@ describe("Journal: real modules, expandable entry context at every width, one se
     const context = JOURNAL.slice(JOURNAL.indexOf('<details data-testid="journal-last-context"'), JOURNAL.indexOf("</details>", JOURNAL.indexOf('<details data-testid="journal-last-context"')));
     expect(context).toContain('aria-label={`${t("elev.journal.lastEntry.summary", { date: lastKeptDate })} · ${childFirstName}`}');
     expect(context).toContain('t("elev.journal.lastEntry.summary", { date: lastKeptDate })');
-    expect(context).toContain("onClick={() => setOpenSignal(lastKeptSignal)}");
+    expect(context).toContain("onClick={() => openRecord(lastKeptSignal)}");
+    const openRecord = JOURNAL.slice(JOURNAL.indexOf("const openRecord ="), JOURNAL.indexOf("\n  };", JOURNAL.indexOf("const openRecord =")));
+    expect(openRecord).toContain('signal.kind === "milestone"');
+    expect(openRecord).toContain("openNoticeDetail(childProfile.id, milestoneId)");
+    expect(openRecord).toContain("setOpenSignal(signal)");
+    expect(openRecord).not.toMatch(/setMonth\(|setSearch\(|setFilter\(|requestJournalFocus\(/);
     expect(context).not.toContain("requestJournalFocus(");
     expect(context).toContain('borderColor: "var(--arbor-clay-dim)"');
     expect(context).toContain('{weekCount > 0 && <p data-testid="journal-week-line"');

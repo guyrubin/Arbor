@@ -105,3 +105,7 @@
   .moments-view-tab { padding-inline: 14px; border: 1px solid var(--arbor-rule); background: var(--arbor-paper-elevated); font-size: 13px; }
   .moments-view-tab[aria-selected="true"] { border-color: var(--arbor-ink); }
 }
+
+/* B-GROWTH-44: the record itself is an accessible door into its source. */
+.moments-card-open { display: block; inline-size: 100%; min-height: var(--touch-min); padding: 0; border: 0; background: transparent; color: inherit; text-align: start; cursor: pointer; }
+.moments-card-open:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 4px; border-radius: var(--r-sm); }

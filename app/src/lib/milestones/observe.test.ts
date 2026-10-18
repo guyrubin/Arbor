@@ -48,6 +48,17 @@ describe("observeMilestoneDoc", () => {
     }
   });
 
+  it("explicit neutral-response authorship is saved without an observed event or inherited proposal", () => {
+    const seen = observeMilestoneDoc(row(), "yes", { now: NOW, source: "ai_proposed_parent_confirmed", provenance: "log-1" });
+    for (const status of ["not_yet", "not_sure"] as const) {
+      const doc = observeMilestoneDoc(seen, status, { now: NOW, source: "parent_typed" });
+      expect(doc.observationSource).toBe("parent_typed");
+      expect(doc.checked).toBe(false);
+      for (const key of ["observedAt", "observedWhen", "observationProvenance"]) expect(doc).not.toHaveProperty(key);
+      expect(toObservations({ milestones: [doc] }, { id: "c1" })).toEqual([]);
+    }
+  });
+
   it("is pure: the same answer from two surfaces is the same document, byte for byte", () => {
     const fromTab = observeMilestoneDoc(row(), "yes", { now: NOW });
     const fromCard = observeMilestoneDoc(row(), "yes", { now: NOW });
@@ -85,8 +96,8 @@ describe("critic r3 (P1) — Undo where the answer was given", () => {
 
   it("the context restores the held document; the Milestones tab holds it before answering and passes Undo", () => {
     const ctx = src("context/ArborContext.tsx");
-    expect(ctx).toContain("const restoreMilestone = (previous: Milestone) => {");
-    expect(ctx).toContain("void milestonesCol.upsert(previous);");
+    expect(ctx).toContain("const restoreMilestone = (previous: Milestone, writeOptions?: ChildWriteOptions) => {");
+    expect(ctx).toContain("return milestonesCol.upsert(previous, writeOptions);");
     const tab = src("components/tabs/MilestonesTab.tsx");
     const at = tab.indexOf("setBeforeAnswer((p) => ({ ...p, [shelf]: card }));");
     expect(at).toBeGreaterThan(-1);
@@ -99,7 +110,8 @@ describe("critic r3 (P1) — Undo where the answer was given", () => {
 describe("one seam — source pins", () => {
   it("the context's setMilestoneObservation writes observeMilestoneDoc's document", () => {
     const ctx = src("context/ArborContext.tsx");
-    expect(ctx).toMatch(/const setMilestoneObservation = \(id: string, status: ObserveStatus, opts: ObserveOptions = \{\}\) => \{[\s\S]{0,200}?milestonesCol\.upsert\(observeMilestoneDoc\(milestone, status, opts\)\)/);
+    const write = ctx.slice(ctx.indexOf("const setMilestoneObservation ="), ctx.indexOf("const restoreMilestone ="));
+    expect(write).toContain("return milestonesCol.upsert(observeMilestoneDoc(milestone, status, opts), writeOptions);");
   });
 
   it("the Milestones tab answers through setMilestoneObservation (never its own document)", () => {

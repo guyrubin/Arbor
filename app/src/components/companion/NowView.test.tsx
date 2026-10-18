@@ -24,13 +24,15 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
   ...state, playLogs: [], milestones: [], pendingCaptureMode: null, consumeCaptureRequest: vi.fn(),
+  milestonesLoaded: true, milestonesConfirmed: true,
   activeTodayAction: null, setMilestoneObservation: vi.fn(), restoreMilestone: vi.fn(), removeTodayAction: vi.fn(), addMoment: vi.fn(async () => null),
 }) }));
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { uid: "local-sandbox" } }) }));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };
 });
-vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: (_id: string, collection: string) => ({ items: collection === "appointments" ? state.appointments : [], loaded: true, upsert: vi.fn() }) }));
+vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: (_id: string, collection: string) => ({ items: collection === "appointments" ? state.appointments : [], loaded: true, confirmed: true, error: false, isCurrent: () => true, upsert: vi.fn() }) }));
 vi.mock("../../hooks/useObservations", () => ({ useObservations: () => [] }));
 vi.mock("../../hooks/useLastVisit", () => ({ useLastVisit: () => ({ previousVisitAt: null, isReturning: false }) }));
 vi.mock("../overview/useLifecycleMoment", () => ({ useLifecycleMoment: () => ({ moment: null }) }));

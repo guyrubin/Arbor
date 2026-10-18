@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
+import { Sheet, useCompactSurface } from "../ui/Sheet";
 import { ShareButton } from "../ui/ShareButton";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -56,6 +57,8 @@ export default function FirstKeepsakeSheet({
   childId,
   childName,
   keepsake,
+  initialNoticedOn,
+  pendingAcknowledgementMessage,
   canShare,
   beforeShare,
   onSave,
@@ -69,6 +72,10 @@ export default function FirstKeepsakeSheet({
   childName: string;
   /** The keepsake already kept for this milestone, or null for a new one. */
   keepsake: FirstKeepsake | null;
+  /** Approximate observations ask for a real date instead of inventing today. */
+  initialNoticedOn?: string;
+  /** Receipt wording for an owned write still awaiting its remote acknowledgement. */
+  pendingAcknowledgementMessage?: string;
   /** Same selected-note eligibility and confirmed history as the saved row. */
   canShare: boolean;
   beforeShare: () => boolean;
@@ -80,28 +87,42 @@ export default function FirstKeepsakeSheet({
 }) {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const Surface = useCompactSurface() ? Sheet : Modal;
   const toastCtx = useToastOptional();
   const toast = (message: string, type?: "success" | "error" | "info") => toastCtx?.toast(message, type);
 
   // Seeded from the saved keepsake on first paint; the effect below re-seeds
   // when a different milestone's sheet opens.
   const [note, setNote] = useState(() => keepsake?.note ?? "");
-  const [noticedOn, setNoticedOn] = useState(() => keepsake?.noticedOn ?? localDayKey());
+  const [noticedOn, setNoticedOn] = useState(() => keepsake?.noticedOn ?? initialNoticedOn ?? localDayKey());
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(() => keepsake?.photoUrl);
   const [uploading, setUploading] = useState(false);
   // A write in flight: a second tap waits for it instead of writing twice.
   const [writing, setWriting] = useState(false);
+  const [pendingAck, setPendingAck] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const ownerKey = `${user?.uid ?? "local"}:${childId}:${milestoneId}:${open ? "open" : "closed"}`;
+  const ownerRef = useRef({ key: ownerKey, active: true, busy: false });
+  if (ownerRef.current.key !== ownerKey) {
+    ownerRef.current.active = false;
+    ownerRef.current = { key: ownerKey, active: true, busy: false };
+  }
+  const owner = ownerRef.current;
+  useEffect(() => { owner.active = true; return () => { owner.active = false; }; }, [owner]);
+  const isCurrent = () => ownerRef.current === owner && owner.active && open;
 
   // Re-seed whenever a different milestone's sheet opens, so one first's note
   // can never be saved onto another first.
   useEffect(() => {
     if (!open) return;
     setNote(keepsake?.note ?? "");
-    setNoticedOn(keepsake?.noticedOn ?? localDayKey());
+    setNoticedOn(keepsake?.noticedOn ?? initialNoticedOn ?? localDayKey());
     setPhotoUrl(keepsake?.photoUrl);
+    setWriting(false);
+    setUploading(false);
+    setPendingAck(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, milestoneId]);
+  }, [open, milestoneId, childId, user?.uid]);
 
   const today = localDayKey();
   const draft: KeepsakeDraft = { milestoneId, note, noticedOn, photoUrl };
@@ -112,52 +133,69 @@ export default function FirstKeepsakeSheet({
       toast(t(KEEPSAKE_ERROR_KEYS[problem]), "error");
       return;
     }
-    if (writing) return;
+    if (writing || owner.busy || !isCurrent()) return;
+    owner.busy = true;
     setWriting(true);
+    setPendingAck(false);
     try {
       await onSave(draft);
-    } catch {
+    } catch (error) {
+      if (!isCurrent()) return;
+      owner.busy = false;
       setWriting(false);
+      if (pendingAcknowledgementMessage && error instanceof Error && /write (?:needs an online confirmation|was not confirmed)/.test(error.message)) { setPendingAck(true); return; }
       toast(t("elev.waveR.keepsake.saveFailed"), "error");
       return;
     }
+    if (!isCurrent()) return;
+    owner.busy = false;
     setWriting(false);
     toast(t("elev.waveR.keepsake.saved"), "success");
     onClose();
   };
 
   const remove = async () => {
-    if (writing) return;
+    if (writing || owner.busy || !isCurrent()) return;
+    owner.busy = true;
     setWriting(true);
+    setPendingAck(false);
     try {
       await onRemove();
-    } catch {
+    } catch (error) {
+      if (!isCurrent()) return;
+      owner.busy = false;
       setWriting(false);
+      if (pendingAcknowledgementMessage && error instanceof Error && /write (?:needs an online confirmation|was not confirmed)/.test(error.message)) { setPendingAck(true); return; }
       toast(t("elev.waveR.keepsake.removeFailed"), "error");
       return;
     }
+    if (!isCurrent()) return;
+    owner.busy = false;
     setWriting(false);
     toast(t("elev.waveR.keepsake.removed"), "info");
     onClose();
   };
 
   const pickPhoto = async (file: File | undefined) => {
-    if (!file) return;
+    if (!file || owner.busy || !isCurrent()) return;
+    owner.busy = true;
     setUploading(true);
     try {
       const thumb = await fileToThumbnail(file, 800, 0.82);
+      if (!isCurrent()) return;
       if (!user?.uid || user.uid === "local-sandbox") throw new Error("no-remote-storage");
       // The ONE upload route — per-child prefix, already swept on erase.
-      setPhotoUrl(await uploadChildPhoto(user.uid, childId, thumb));
+      const url = await uploadChildPhoto(user.uid, childId, thumb);
+      if (isCurrent()) setPhotoUrl(url);
     } catch {
-      toast(t("elev.waveR.keepsake.photoFailed"), "error");
+      if (isCurrent()) toast(t("elev.waveR.keepsake.photoFailed"), "error");
     } finally {
-      setUploading(false);
+      if (isCurrent()) { owner.busy = false; setUploading(false); }
     }
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={t("elev.waveR.keepsake.title")}>
+    <Surface open={open} onClose={onClose} title={t("elev.waveR.keepsake.title")}>
       <div className="space-y-4" data-testid="first-keepsake-sheet">
         <div>
           <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>
@@ -180,6 +218,7 @@ export default function FirstKeepsakeSheet({
             rows={3}
             dir="auto"
             maxLength={KEEPSAKE_NOTE_MAX}
+            disabled={writing}
             placeholder={t("elev.waveR.keepsake.notePlaceholder")}
             onChange={(e) => setNote(e.target.value)}
             data-testid="first-keepsake-note"
@@ -196,6 +235,7 @@ export default function FirstKeepsakeSheet({
             type="date"
             value={noticedOn}
             max={today}
+            disabled={writing}
             onChange={(e) => setNoticedOn(e.target.value)}
             data-testid="first-keepsake-date"
             className="mt-1.5 w-full rounded-xl px-3 py-2 text-[13.5px] font-bold focus:outline-none focus-visible:ring-2"
@@ -218,6 +258,7 @@ export default function FirstKeepsakeSheet({
               />
               <button
                 type="button"
+                disabled={writing}
                 onClick={() => setPhotoUrl(undefined)}
                 className="min-h-[44px] rounded-xl px-3 text-[12px] font-bold"
                 style={{ color: "var(--arbor-muted)" }}
@@ -229,7 +270,7 @@ export default function FirstKeepsakeSheet({
             <div className="mt-1.5">
               <button
                 type="button"
-                disabled={uploading}
+                disabled={uploading || writing}
                 onClick={() => photoInputRef.current?.click()}
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 text-[12px] font-bold disabled:opacity-50"
                 style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
@@ -240,6 +281,7 @@ export default function FirstKeepsakeSheet({
                 ref={photoInputRef}
                 type="file"
                 accept="image/*"
+                disabled={uploading || writing}
                 className="hidden"
                 onChange={(e) => void pickPhoto(e.target.files?.[0])}
               />
@@ -254,11 +296,11 @@ export default function FirstKeepsakeSheet({
           <button
             type="button"
             onClick={() => void save()}
-            disabled={Boolean(problem)}
+            disabled={Boolean(problem) || writing || uploading}
             aria-busy={writing || undefined}
             data-testid="first-keepsake-save"
-            className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl px-4 text-[13px] font-extrabold text-white transition active:scale-[0.98] disabled:opacity-50"
-            style={{ background: "var(--arbor-gradient-primary)" }}
+            className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl px-4 text-[13px] font-extrabold transition active:scale-[0.98] disabled:opacity-50"
+            style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
           >
             <Icon name="bookmark_added" size={17} fill={1} /> {t("elev.waveR.keepsake.save")}
           </button>
@@ -266,6 +308,7 @@ export default function FirstKeepsakeSheet({
             <button
               type="button"
               onClick={() => void remove()}
+              disabled={writing || uploading}
               aria-busy={writing || undefined}
               data-testid="first-keepsake-remove"
               className="min-h-[44px] rounded-xl px-3 text-[12px] font-bold"
@@ -275,6 +318,7 @@ export default function FirstKeepsakeSheet({
             </button>
           )}
         </div>
+        {pendingAck && pendingAcknowledgementMessage && <p role="status" data-testid="first-keepsake-pending-ack" className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{pendingAcknowledgementMessage}</p>}
 
         {/* Sharing requires the same eligible, confirmed source as the row.
             The guard runs at opening and final Send. The caption is
@@ -296,6 +340,6 @@ export default function FirstKeepsakeSheet({
           />
         )}
       </div>
-    </Modal>
+    </Surface>
   );
 }

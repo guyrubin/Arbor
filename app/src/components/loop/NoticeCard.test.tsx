@@ -110,14 +110,14 @@ describe("NoticeCard — firewall and direction", () => {
     }
   });
 
-  it("EN + HE markup at 375 carries no physical-direction class, no raw hex, no image", () => {
+  it("EN + HE markup at 375 carries logical layout, token colours and approved decorative area art", () => {
     for (const lang of ["en", "he"] as const) {
       for (const p of phases) {
         const html = render(cdc, lang, p);
         expect(html).not.toMatch(/\b(?:ml|mr|pl|pr|left|right)-[\w[]/);
         expect(html).not.toMatch(/\btext-(?:left|right)\b/);
         expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
-        expect(html).not.toMatch(/<img\b/);
+        expect(html).toMatch(/<img[^>]*data-testid="notice-area-art"[^>]*src="\/visuals\/parent\/v1\/area-words-480.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
       }
     }
   });

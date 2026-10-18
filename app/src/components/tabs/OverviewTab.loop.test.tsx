@@ -270,7 +270,7 @@ describe("B-DESIGN-04 · Today takes the blend frame", () => {
     expect(OV.match(/<NoticeCard\b/g)).toHaveLength(2);
     expect(OV.match(/<NoticeCard\b[^>]*answers="segmented"/g)).toHaveLength(2);
     expect(TF.match(/<NoticeCard\b/g)).toHaveLength(1);
-    expect(TF).toMatch(/<NoticeCard[\s\S]{0,400}answers="segmented"/);
+    expect(TF).toMatch(/<NoticeCard\b[^>]*answers="segmented"/);
   });
   it("the deep shadow belongs to the day's ONE primary card — the morning practice card or, at 21:00, the Tonight card (R6; they never render together); the door is a solid hairline", () => {
     // Parity 9 Oct: the loop blocks add no depth of their own (PracticeCard and

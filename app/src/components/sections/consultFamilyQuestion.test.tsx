@@ -100,6 +100,7 @@ import {
 } from "../../consult/packet";
 import { exportPlainLines } from "../../consult/plainText";
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
+import { noticeCarePacket } from "../../lib/noticeSources";
 
 type El = React.ReactElement<Record<string, any>>;
 function elements(node: React.ReactNode): El[] {
@@ -109,6 +110,53 @@ function elements(node: React.ReactNode): El[] {
   return [element, ...React.Children.toArray(element.props.children).flatMap(elements)];
 }
 const byId = (node: React.ReactNode, id: string) => elements(node).find((el) => el.props["data-testid"] === id);
+
+describe("B-GROWTH-44 · targeted observation through the existing Care egress", () => {
+  const source = { childId: "child-1", id: "milestones:m1", kind: "answer" as const, label: "Saved answer", source: "Parent response", at: "2026-10-16", text: "Points to ask · Not sure" };
+  const packet = () => noticeCarePacket([source], "Noa", "2026-10-18T08:00:00Z", false);
+  const choose = (tree: React.ReactNode) => elements(tree).find(element => element.props.testId === "consult-packet-item")!.props.check.props.onClick();
+
+  it("starts unselected, keeps unrelated record data out, and exports only after selection and review", async () => {
+    h.topic = topic("en");
+    const props = { noticePacket: packet(), noticeRevision: {}, excludeTeacher: true, egressGuard: { isCurrent: () => true } };
+    let tree = render(props);
+    expect(byId(tree, "consult-copy")!.props.disabled).toBe(true);
+    expect(byId(tree, "consult-include-topic")).toBeUndefined();
+    expect(textOf(tree)).not.toContain(h.questions[0].text);
+    expect(textOf(tree)).not.toContain("Builds towers");
+    choose(tree); tree = render(props);
+    await byId(tree, "consult-copy")!.props.onClick(); expect(h.copy).not.toHaveBeenCalled();
+    byId(tree, "consult-reviewed")!.props.onClick(); tree = render(props);
+    await byId(tree, "consult-copy")!.props.onClick();
+    expect(h.copy).toHaveBeenCalledTimes(1);
+    const copy = String(h.copy.mock.calls[0][0]);
+    expect(props.noticePacket.sections[0].items[0].id).toBe("milestones:m1");
+    expect(copy).toContain("Points to ask · Not sure"); expect(copy).not.toContain("milestones:m1"); expect(copy).toContain("2026-10-16");
+    expect(copy).not.toContain(h.questions[0].text); expect(copy).not.toContain("Builds towers");
+  });
+
+  it("blocks captured Copy/PDF/Send callbacks when a source is revoked before render", async () => {
+    let current = true;
+    const props = { noticePacket: packet(), noticeRevision: {}, excludeTeacher: true, egressGuard: { isCurrent: () => current } };
+    choose(render(props)); byId(render(props), "consult-reviewed")!.props.onClick(); const held = render(props);
+    current = false;
+    await byId(held, "consult-copy")!.props.onClick(); byId(held, "consult-pdf")!.props.onClick(); byId(held, "consult-send-trusted")!.props.onClick();
+    expect(h.copy).not.toHaveBeenCalled(); expect(h.pdf).not.toHaveBeenCalled(); expect(h.record).not.toHaveBeenCalled();
+  });
+
+  it("a changed source withdraws both item selection and review while retaining the parent's draft", async () => {
+    const props = { noticePacket: packet(), noticeRevision: {}, excludeTeacher: true, egressGuard: { isCurrent: () => true } };
+    choose(render(props)); byId(render(props), "consult-reason-input")!.props.onChange({ target: { value: "Could we discuss this?" } });
+    byId(render(props), "consult-reviewed")!.props.onClick(); const held = render(props);
+    const next = { ...props, noticeRevision: {}, noticePacket: noticeCarePacket([{ ...source, text: "Points to ask · Not yet" }], "Noa", "2026-10-18T08:00:00Z", false) };
+    const changed = render(next);
+    expect(byId(changed, "consult-reviewed")!.props["aria-pressed"]).toBe(false);
+    const item = elements(changed).find(element => element.props.testId === "consult-packet-item" && String(element.key).includes("milestones"))!;
+    expect(item.props.check.props["aria-pressed"]).toBe(false);
+    expect(byId(changed, "consult-reason-input")!.props.value).toBe("Could we discuss this?");
+    await byId(held, "consult-copy")!.props.onClick(); expect(h.copy).not.toHaveBeenCalled();
+  });
+});
 
 function render(props: object = {}): React.ReactNode {
   for (let n = 0; n < 12; n++) {

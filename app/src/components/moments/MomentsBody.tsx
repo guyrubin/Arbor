@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useArbor } from "../../context/ArborContext";
+import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useObservationRecord } from "../../hooks/useObservationRecord";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
@@ -8,6 +9,8 @@ import { domainName, isDomainId, type DomainId } from "../../lib/domains/registr
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import type { Observation, ObservationOrigin } from "../../lib/observations";
 import { milestoneText } from "../../lib/milestoneData";
+import { noticeMilestoneId, openNoticeDetail } from "../../lib/noticeNavigation";
+import { NOTICE_DETAIL_COPY } from "../companion/noticeDetailCopy";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
@@ -52,10 +55,12 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   toolbarModule: DataAttrs;
   viewModule: DataAttrs;
 }) {
-  const { childProfile, milestones, setActiveTab, seedCoach, openCaptureSheet, requestJournalFocus } = useArbor();
+  const { childProfile, milestones, setActiveTab, seedCoach, openCaptureSheet } = useArbor();
+  const { user } = useAuth();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   const copy = PORTRAIT_COPY[he ? "he" : "en"];
+  const noticeCopy = NOTICE_DETAIL_COPY[he ? "he" : "en"];
   const locale = he ? "he-IL" : "en-GB";
   const query = useHashQuery();
   const view = parseView(query.get("view"));
@@ -66,6 +71,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [selection, setSelection] = useState<{ childId: string; title: string; ids: string[]; domain?: DomainId } | null>(null);
+  const [dismissedSource, setDismissedSource] = useState<string | null>(null);
   const [reviewSelection, setReviewSelection] = useState<{ childId: string; ids: string[] }>({ childId: childProfile.id, ids: [] });
   const [visible, setVisible] = useState(20);
   const compact = useCompactSurface();
@@ -81,6 +87,16 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   // Moments shows the parent's kept record only: a child's own practice, a
   // screening's answers and a measurement never enter a card or a count.
   const observations = useMemo(() => record.observations.filter(o => o.childId === childProfile.id && isMomentRecord(o)), [record.observations, childProfile.id]);
+  const sourceScope = `${user?.uid ?? "signed-out"}:${childProfile.id}`;
+  const sourceOwnerRef = useRef({ key: sourceScope, active: true });
+  if (sourceOwnerRef.current.key !== sourceScope) {
+    sourceOwnerRef.current.active = false;
+    sourceOwnerRef.current = { key: sourceScope, active: true };
+  }
+  const sourceOwner = sourceOwnerRef.current;
+  useEffect(() => { sourceOwner.active = true; return () => { sourceOwner.active = false; }; }, [sourceOwner]);
+  const currentSource = useRef({ record, observations, milestones });
+  currentSource.current = { record, observations, milestones };
   const logMap = useMemo(() => new Map((record.sources.behaviorLogs ?? []).map(log => [`behaviorLogs:${log.id}`, log])), [record.sources.behaviorLogs]);
   const scoped = useMemo(() => filterByAreaMonth(observations, area, null), [observations, area]);
   const rangeBuckets = useMemo(() => monthBuckets(scoped, childProfile.id, new Date(), range), [scoped, childProfile.id, range]);
@@ -97,10 +113,17 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
     return area ? rows.filter(row => row.domain === area) : rows;
   }, [areaColumns, area]);
 
-  const selected = selection?.childId === childProfile.id ? selection : null;
+  // ID-only deep links resolve against the current child's live reader. A
+  // removed response cannot linger as an old source copied into route state.
+  const requestedId = query.get("child") === childProfile.id ? query.get("observation") : null;
+  const requestKey = requestedId ? `${childProfile.id}:${requestedId}` : null;
+  const requestedObservation = requestedId && dismissedSource !== requestKey && record.confirmed && !record.error ? observations.find((o) => o.id === requestedId) : null;
+  const selected = selection?.childId === childProfile.id ? selection : requestedObservation ? {
+    childId: childProfile.id, title: noticeCopy.title, ids: [requestedObservation.id], domain: requestedObservation.domains[0],
+  } : null;
   const reviewedIds = reviewSelection.childId === childProfile.id ? reviewSelection.ids : [];
   const selectedObservations = selected ? observations.filter(o => selected.ids.includes(o.id)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)) : [];
-  const closeSelection = useSheetHistory(!!selected, () => setSelection(null));
+  const closeSelection = useSheetHistory(!!selected, () => { setSelection(null); if (requestKey) setDismissedSource(requestKey); });
 
   // The range menu: focus moves into it on open (onto the checked item),
   // Arrow Up/Down, Home and End rove its items, Escape closes it and returns
@@ -137,7 +160,8 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
     items[next]?.focus();
   };
 
-  const date = (at: string, year = false) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", ...(year ? { year: "numeric" as const } : {}) }).format(new Date(at));
+  // A note's YYYY-MM-DD is the day the parent chose, not midnight UTC.
+  const date = (at: string, year = false) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", ...(year ? { year: "numeric" as const } : {}) }).format(new Date(/^\d{4}-\d{2}-\d{2}$/.test(at) ? `${at}T12:00:00` : at));
   const monthLabel = (bucket: Pick<MonthBucket, "from">) => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(bucket.from);
   const multiYear = areaColumns.length > 0 && areaColumns[0].from.getFullYear() !== areaColumns[areaColumns.length - 1].from.getFullYear();
   const columnLabel = (bucket: MonthBucket) => new Intl.DateTimeFormat(locale, { month: "short", ...(multiYear ? { year: "2-digit" as const } : {}) }).format(bucket.from);
@@ -189,6 +213,15 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
     setReviewSelection({ childId: childProfile.id, ids: [] });
     setSelection({ childId: childProfile.id, title: heading, ids: items.map(o => o.id), domain });
   };
+  const openMomentCard = (o: Observation) => {
+    if (sourceOwnerRef.current !== sourceOwner || !sourceOwner.active) return;
+    const milestoneId = noticeMilestoneId(o.origin, o.id);
+    if (milestoneId && currentSource.current.milestones.some((m) => m.id === milestoneId)) {
+      openNoticeDetail(childProfile.id, milestoneId);
+      return;
+    }
+    select([o], date(o.at, true), o.domains[0]);
+  };
   const question = () => {
     const domains = selected?.domain ? [selected.domain] : [...new Set(selectedObservations.flatMap(o => o.domains))];
     return portraitDiscussionPrompt(domains, domain => domainName(domain, t), he);
@@ -212,10 +245,21 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
     closeSelection(() => openFamilyTopicSheet({ startNew: true, draft, observationIds }));
   };
   const openOriginal = (o: Observation) => closeSelection(() => {
-    if (o.origin === "behaviorLogs") { openCaptureSheet({ editLogId: o.id.slice("behaviorLogs:".length), editLog: logMap.get(o.id) }); return; }
-    if (o.origin === "milestones" && milestones.some(m => `milestones:${m.id}` === o.id)) { requestJournalFocus(`milestone-${o.id.slice("milestones:".length)}`); setActiveTab("journal"); return; }
+    // Closing a sheet completes after browser Back. Re-resolve the exact row
+    // then; a child switch or removed source cannot open a held preview.
+    const current = currentSource.current;
+    if (sourceOwnerRef.current !== sourceOwner || !sourceOwner.active || !current.record.confirmed || current.record.error) return;
+    const source = current.observations.find((item) => item.id === o.id && item.childId === childProfile.id);
+    if (!source) return;
+    if (source.origin === "behaviorLogs") {
+      const original = current.record.sources.behaviorLogs?.find((log) => `behaviorLogs:${log.id}` === source.id);
+      if (original) openCaptureSheet({ editLogId: original.id, editLog: original });
+      return;
+    }
+    const milestoneId = noticeMilestoneId(source.origin, source.id);
+    if (milestoneId && current.milestones.some((m) => m.id === milestoneId)) { openNoticeDetail(childProfile.id, milestoneId); return; }
     const routes: Partial<Record<ObservationOrigin, Parameters<typeof setActiveTab>[0]>> = { milestones: "milestones", keepsakes: "milestones", growthEntries: "profile", langObs: "language", screenings: "screening", memory: "memory", goalObservations: "practice", actionLoops: "journal", playLogs: "journal", practiceEvents: "journal", speechAttempts: "speech", mimicSessions: "mimic", adventureResults: "adventures", missionRecords: "journal" };
-    setActiveTab(routes[o.origin] ?? "journal");
+    setActiveTab(routes[source.origin] ?? "journal");
   });
 
   const filterLabel = [area ? domainName(area, t) : "", month ? monthIdLabel(month) : ""].filter(Boolean).join(" · ");
@@ -235,7 +279,8 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   const emptyRecord = !record.loading && !record.error && record.confirmed && observations.length === 0;
 
   const band = (o: Observation) => {
-    const photo = logMap.get(o.id)?.photoAttachment;
+    const keepsake = o.origin === "keepsakes" ? record.sources.keepsakes?.find((item) => `keepsakes:${item.milestoneId}` === o.id) : undefined;
+    const photo = logMap.get(o.id)?.photoAttachment ?? keepsake?.photoUrl;
     if (photo) return <div className="moments-band moments-band-photo"><img src={photo} alt={t("companion.portrait.photo")} loading="lazy" /></div>;
     const domain = o.domains[0];
     if (!domain) return <div className="moments-band" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }} aria-hidden="true"><Icon name="auto_stories" size={30} /></div>;
@@ -277,6 +322,10 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
       </div>
 
       <div {...viewModule} role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${view}`} className="moments-panel">
+        {requestedId && dismissedSource !== requestKey && !requestedObservation && !record.loading && <div className="moments-note" role="status" data-testid="moments-source-unavailable">
+          <span>{record.error || !record.confirmed ? noticeCopy.loadFailed : noticeCopy.missing}</span>
+          {record.more && <button type="button" className="moments-text-button" onClick={record.loadMore}>{t("companion.moments.loadMore")}</button>}
+        </div>}
         {record.loading && observations.length === 0 && <p className="moments-note" role="status"><Icon name="history" size={18} />{copy.loading}</p>}
         {record.error && <p className="moments-note" role="status"><Icon name="info" size={18} />{copy.failed}<button type="button" className="moments-text-button" onClick={record.reload}>{copy.retry}</button></p>}
         {emptyRecord ? (
@@ -310,7 +359,9 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
                               <Icon name="more_horiz" size={20} />
                             </button>
                           </div>
-                          <p className="moments-quote" dir="auto">{title(o)}</p>
+                          <button type="button" className="moments-card-open" data-testid="moments-card-open" onClick={() => openMomentCard(o)} aria-label={`${noticeCopy.open}: ${title(o)}`}>
+                            <span className="moments-quote" dir="auto">{title(o)}</span>
+                          </button>
                         </div>
                       </article>
                     ))}
@@ -439,8 +490,8 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
                     onChange={() => setReviewSelection({ childId: childProfile.id, ids: chosen ? reviewedIds.filter(id => id !== o.id) : [...reviewedIds, o.id].slice(0, 5) })} />
                   <span>{copy.select}</span>
                 </label>
-                <button type="button" className="moments-text-button" onClick={() => openOriginal(o)}>
-                  {o.origin === "behaviorLogs" ? t("companion.portrait.sourceOpen") : o.origin === "milestones" && milestones.some(m => `milestones:${m.id}` === o.id) ? copy.journal : copy.library}
+                <button type="button" className="moments-text-button" data-testid="moments-open-source" disabled={!record.confirmed || record.error} onClick={() => openOriginal(o)}>
+                  {o.origin === "behaviorLogs" ? t("companion.portrait.sourceOpen") : noticeMilestoneId(o.origin, o.id) && milestones.some(m => m.id === noticeMilestoneId(o.origin, o.id)) ? noticeCopy.open : copy.library}
                   <Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
                 </button>
               </article>

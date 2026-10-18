@@ -29,7 +29,7 @@ import {
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
 import { api, ApiError, authHeaders, getAiLanguage, PaywallError, streamCouncil } from "../lib/api";
-import { useChildCollection } from "../hooks/useChildCollection";
+import { useChildCollection, type ChildWriteOptions } from "../hooks/useChildCollection";
 import { useFamilyTopics } from "../hooks/useFamilyTopics";
 import type { ExplainAnswer } from "../lib/explainAnswer";
 import { track } from "../lib/analytics";
@@ -378,6 +378,7 @@ function useArborState() {
   const milestonesCol = useChildCollection<Milestone>(childProfile.id, "milestones", {
     seed: initialMilestones,
     sandboxSeed: initialMilestones,
+    trackConfirmation: true,
   });
   const plansCol = useChildCollection<ActionPlan>(childProfile.id, "actionPlans", { sandboxSeed: demoSeed.plans });
   // B-GROWTH-15: the words the parent wrote down (`langObs`) — only their
@@ -645,6 +646,7 @@ function useArborState() {
     [conversationsCol.items]
   );
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+  const sourceHeaderPending = useRef(false);
   const [chatStreamStatus, setChatStreamStatus] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   // AI-06: the STATUS, kept beside the message. Without it the coach called
@@ -1162,12 +1164,27 @@ function useArborState() {
   // label the parent actually tapped (scenario / follow-up chip) — the bubble
   // shows their words while the canonical prompt goes to the model (the
   // approved hardMomentSurface pattern).
-  const handleChatSend = async (customPrompt?: string, opts?: { displayText?: string; attachments?: ComposerAttachment[] }) => {
+  const handleChatSend = async (customPrompt?: string, opts?: { displayText?: string; attachments?: ComposerAttachment[]; isCurrent?: () => boolean }) => {
     let attachments: ComposerAttachment[];
     try { attachments = parseCompanionAttachments(opts?.attachments, childProfile.id); }
     catch { setApiError("Please attach these files again for the current child."); return false; }
     const promptValue = customPrompt || chatInput || (attachments.length ? (getAiLanguage() === "he" ? "מה אפשר להבין ממה שצירפתי, ומה אפשר לעשות יחד עכשיו?" : "Help me understand what I shared and suggest something we could try together.") : "");
     if (!promptValue.trim() || isChatLoading) return false;
+    // B-GROWTH-44: revalidate selected source receipts after async auth and
+    // before writing a quoted turn or issuing fetch. The message builder and
+    // every existing unscoped send stay unchanged.
+    let sourceHeaders: Awaited<ReturnType<typeof authHeaders>> | undefined;
+    if (opts?.isCurrent) {
+      if (sourceHeaderPending.current || !opts.isCurrent()) return false;
+      sourceHeaderPending.current = true;
+      try {
+        sourceHeaders = await authHeaders({ Accept: "text/event-stream" });
+      } catch (error: any) {
+        if (opts.isCurrent()) setApiError(error.message || "Unable to connect");
+        return false;
+      } finally { sourceHeaderPending.current = false; }
+      if (!opts.isCurrent()) return false;
+    }
     const topicThread = prepareTopicConversation();
 
     const sentDraft = !customPrompt ? chatInput : "";
@@ -1198,7 +1215,7 @@ function useArborState() {
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: await authHeaders({ Accept: "text/event-stream" }),
+        headers: sourceHeaders ?? await authHeaders({ Accept: "text/event-stream" }),
         signal: controller.signal,
         body: JSON.stringify({
           message: promptValue,
@@ -1417,8 +1434,10 @@ function useArborState() {
     previous?.childId === childProfile.id && previous.id === id ? null : previous);
 
   // Add a Custom Behavior Log
-  const captureScopeRef = useRef({ childId: childProfile.id });
-  if (captureScopeRef.current.childId !== childProfile.id) captureScopeRef.current = { childId: childProfile.id };
+  const captureScopeRef = useRef({ childId: childProfile.id, writer: logsCol.upsert, momentRetries: new Map<string, BehaviorLog>(), momentWrites: new Set<string>() });
+  if (captureScopeRef.current.childId !== childProfile.id || captureScopeRef.current.writer !== logsCol.upsert) {
+    captureScopeRef.current = { childId: childProfile.id, writer: logsCol.upsert, momentRetries: new Map(), momentWrites: new Set() };
+  }
   const captureScope = captureScopeRef.current;
   const currentCaptureDraftRef = useRef("");
   currentCaptureDraftRef.current = JSON.stringify([newLogType, newLogIntensity, newLogDuration, newLogTrigger, newLogResponse, newLogNotes, newLogContext, newLogPhoto, editingLogId]);
@@ -1514,34 +1533,42 @@ function useArborState() {
    * draft and its retry (QuickLogModal, TogetherView, KidExitRecap). */
   const addMoment = async (
     text: string,
-    opts: { photoAttachment?: string; promptKey?: string; kept?: BehaviorLog["kept"]; contentSource?: BehaviorLog["contentSource"]; shelf?: ShelfId; milestoneId?: string; context?: BehaviorContext; notes?: string; callerShowsFailure?: boolean } = {},
+    opts: { photoAttachment?: string; promptKey?: string; kept?: BehaviorLog["kept"]; contentSource?: BehaviorLog["contentSource"]; shelf?: ShelfId; milestoneId?: string; context?: BehaviorContext; notes?: string; callerShowsFailure?: boolean; requireAcknowledgement?: boolean; retryKey?: string; isCurrent?: () => boolean } = {},
   ): Promise<BehaviorLog | null> => {
-    const { callerShowsFailure = false, ...writeOpts } = opts;
+    const { callerShowsFailure = false, requireAcknowledgement = false, retryKey, isCurrent, ...writeOpts } = opts;
     const { shelf, milestoneId, context, notes, ...buildOpts } = writeOpts;
     const built = buildMomentLog(text, context ?? "", buildOpts);
     if (!built) return null;
     const { context: _unchosenContext, ...moment } = built;
+    const writeKey = `${childProfile.id}:moment:${text}:${JSON.stringify(writeOpts)}`;
+    const attemptKey = retryKey ? `${childProfile.id}:moment:${retryKey}` : writeKey;
+    const previous = requireAcknowledgement ? captureScope.momentRetries.get(attemptKey) : undefined;
     const logItem: BehaviorLog = {
       ...moment,
+      ...(previous ? { id: previous.id, timestamp: previous.timestamp } : {}),
       ...(context ? { context } : {}),
       ...(notes?.trim() ? { notes: notes.trim() } : {}),
       ...(shelf ? { shelf } : {}),
       ...(milestoneId ? { milestoneId } : {}),
     };
-    const writeKey = `${childProfile.id}:moment:${text}:${JSON.stringify(writeOpts)}`;
-    if (captureWritesRef.current.has(writeKey) || captureScopeRef.current !== captureScope) return null;
-    captureWritesRef.current.add(writeKey);
+    const writes = requireAcknowledgement ? captureScope.momentWrites : captureWritesRef.current;
+    const inFlightKey = requireAcknowledgement ? attemptKey : writeKey;
+    if (writes.has(inFlightKey) || captureScopeRef.current !== captureScope || isCurrent?.() === false) return null;
+    writes.add(inFlightKey);
+    if (requireAcknowledgement) captureScope.momentRetries.set(attemptKey, logItem);
     try {
-      await logsCol.upsert(logItem);
-      if (captureScopeRef.current !== captureScope) return null;
+      await logsCol.upsert(logItem, requireAcknowledgement ? { requireAcknowledgement: true } : undefined);
+      if (captureScopeRef.current !== captureScope || isCurrent?.() === false) return null;
+      if (requireAcknowledgement) captureScope.momentRetries.delete(attemptKey);
       track("log_created", { type: logItem.behaviorType, context: logItem.context });
       trackCaptureSaved("moment");
       return logItem;
     } catch {
+      if (isCurrent?.() === false) return null;
       if (!callerShowsFailure && captureScopeRef.current === captureScope) toast(t("companion.capture.saveError"), "error");
       return null;
     } finally {
-      captureWritesRef.current.delete(writeKey);
+      writes.delete(inFlightKey);
     }
   };
   const saveMoment = addMoment;
@@ -1746,17 +1773,21 @@ function useArborState() {
   /** B-LOOP-04: every milestone answer (the Milestones tab, Today's Notice
    *  card, the journal shelf, a confirmed capture proposal) writes the ONE
    *  document lib/milestones/observe.ts builds — same answer, same bytes. */
-  const setMilestoneObservation = (id: string, status: ObserveStatus, opts: ObserveOptions = {}) => {
+  const setMilestoneObservation = (id: string, status: ObserveStatus, opts: ObserveOptions = {}, writeOptions?: ChildWriteOptions) => {
     const milestone = milestones.find((item) => item.id === id);
-    if (!milestone) return;
-    return milestonesCol.upsert(observeMilestoneDoc(milestone, status, opts));
+    if (!milestone) return writeOptions?.requireAcknowledgement || writeOptions?.awaitServer
+      ? Promise.reject(new Error("The observation is no longer available"))
+      : Promise.resolve();
+    return milestonesCol.upsert(observeMilestoneDoc(milestone, status, opts), writeOptions);
   };
   /** B-LOOP-04 (critic r3): Undo where the answer was given — writes back the
    *  document the surface held BEFORE the answer, byte for byte (setDoc
    *  replaces), so a mis-tap leaves no trace in the record or the packet. */
-  const restoreMilestone = (previous: Milestone) => {
-    if (!milestones.some((item) => item.id === previous.id)) return;
-    void milestonesCol.upsert(previous);
+  const restoreMilestone = (previous: Milestone, writeOptions?: ChildWriteOptions) => {
+    if (!milestones.some((item) => item.id === previous.id)) return writeOptions?.requireAcknowledgement || writeOptions?.awaitServer
+      ? Promise.reject(new Error("The observation is no longer available"))
+      : Promise.resolve();
+    return milestonesCol.upsert(previous, writeOptions);
   };
 
   /**
@@ -1892,6 +1923,8 @@ function useArborState() {
     behaviorLogs,
     logsLoaded: logsCol.loaded,
     milestones,
+    milestonesLoaded: milestonesCol.loaded,
+    milestonesConfirmed: milestonesCol.confirmed,
     // History freshness belongs to the raw collection, while its rendered
     // rows retain the catalogue fallback and retired-row read filtering.
     milestoneHistory: { items: milestones, sourceItems: milestonesCol.items },

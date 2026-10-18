@@ -58,7 +58,7 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
 import CompanionWorkspace from "./CompanionWorkspace";
 import CompanionPanelMenu, { companionPanelItems } from "./CompanionPanelMenu";
 import { translate } from "../../lib/i18n";
-import { COMPANION_CONVERSATION_EVENT, CONVERSATION_VOICE_REQUEST_TTL_MS, consumeConversationPanelRequest, consumeConversationVoiceRequest, requestCompanionConversation } from "../../lib/companionConversation";
+import { COMPANION_CONVERSATION_EVENT, CONVERSATION_VOICE_REQUEST_TTL_MS, consumeConversationPanelRequest, consumeConversationVoiceRequest, requestCompanionClose, requestCompanionConversation } from "../../lib/companionConversation";
 
 const TOPIC = { id: "topic-a", title: "How could mornings feel easier?" };
 const renderWorkspace = (kidLocked = false) => renderToStaticMarkup(<CompanionWorkspace kidLocked={kidLocked}><main>Page content</main></CompanionWorkspace>);
@@ -383,6 +383,29 @@ describe("FEAT-01 — the conversation header's options menu", () => {
 
 describe("FEAT-01 — the conversation answers the menu through its one door", () => {
   const coach = readFileSync(new URL("../tabs/CoachTab.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  it("a Care page handoff closes display while retaining the draft and thread, and cancels unclaimed panel or voice intent", () => {
+    state.forceOpen = true;
+    state.chatInput = "My unfinished question";
+    renderWorkspace();
+    vi.stubGlobal("window", new EventTarget());
+    const subscribe = state.effects.find(effect => String(effect).includes("stepAside"));
+    expect(subscribe).toBeDefined();
+    const cleanup = subscribe!();
+    requestCompanionConversation({ voice: true, panel: "tone" }, 1_000);
+    requestCompanionClose();
+    // Only the visibility setter changes: no unmount, new conversation, route
+    // replacement, or draft mutation is part of this close request.
+    expect(state.setOpen).toHaveBeenCalledExactlyOnceWith(false);
+    expect(state.setChatInput).not.toHaveBeenCalled();
+    expect(state.newConversation).not.toHaveBeenCalled();
+    expect(state.setActiveTab).not.toHaveBeenCalled();
+    expect(consumeConversationVoiceRequest(1_001)).toBe(false);
+    expect(consumeConversationPanelRequest(1_001)).toBeNull();
+    if (typeof cleanup === "function") cleanup();
+    state.setOpen.mockClear();
+    requestCompanionClose();
+    expect(state.setOpen).not.toHaveBeenCalled();
+  });
   // F-TALK-1 re-pin: history is hidden until asked; the claim opens the list,
   // and a separate effect (the list mounts on the next render) brings it into
   // view and focuses its current row.
