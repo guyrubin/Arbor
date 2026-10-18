@@ -113,7 +113,8 @@ describe("v3 F-CHILD-1 — AreaRowDetail", () => {
     expect(text).not.toMatch(/\d+\s*\/\s*\d+/);
     expect(html).not.toContain('data-testid="area-detail-empty"');
     expect(html).not.toContain('data-testid="area-detail-add"');
-    for (const key of ["companion.milestones.check", "companion.devMap.explore", "companion.devMap.moments"]) expect(html).toContain(esc(translate(lang, key)));
+    // v4 re-pin: inside an open area the check is that area's check.
+    for (const key of ["companion.milestones.checkArea", "companion.devMap.explore", "companion.devMap.moments"]) expect(html).toContain(esc(translate(lang, key)));
   });
 
   it("body walks both of its shelves under their own headings once Sleep has a row", () => {

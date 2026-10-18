@@ -35,7 +35,15 @@
 .dev-map-sub { margin: 6px 0 0; max-width: 560px; color: var(--arbor-muted); font-size: 13px; line-height: 1.6; }
 .dev-map-recheck { margin: 8px 0 0; color: var(--arbor-ink-soft); font-size: 13px; line-height: 1.5; }
 .dev-map-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.dev-map-check { display: inline-flex; align-items: center; gap: 8px; min-block-size: var(--touch-min); padding-inline: 16px 18px; border: 0; border-radius: 100px; background: var(--arbor-clay); color: var(--arbor-on-accent); font-size: 14px; font-weight: 600; text-align: start; cursor: pointer; }
+/* v4: the 5-minute check is one row under the eight areas; Start is the
+   page's one primary move (the sapphire fill), so it still reads first. */
+.dev-map-checkrow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-block-start: 6px; padding-block: 14px; padding-inline: 12px; border-block-end: 1px solid var(--arbor-rule); }
+.dev-map-checkrow-glyph { flex: none; color: var(--arbor-clay); }
+.dev-map-checkrow-text { flex: 1 1 220px; min-width: 0; }
+.dev-map-checkrow-title { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--arbor-ink); }
+.dev-map-checkrow-sub { margin: 2px 0 0; font-size: 12px; line-height: 1.5; color: var(--arbor-muted); }
+.dev-map-checkrow .dev-map-recheck { margin: 2px 0 0; font-size: 12px; }
+.dev-map-check { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 8px; min-block-size: var(--touch-min); padding-inline: 18px; border: 0; border-radius: 100px; background: var(--arbor-clay); color: var(--arbor-on-accent); font-size: 14px; font-weight: 600; text-align: center; cursor: pointer; }
 .dev-map-check:hover { background: var(--arbor-clay-deep); }
 .dev-map-chip { display: inline-flex; align-items: center; gap: 6px; min-block-size: 32px; padding-inline: 10px 12px; border: 1px solid var(--arbor-rule); border-radius: 100px; background: var(--arbor-paper); color: var(--arbor-ink); font-size: 13px; }
 .dev-map-chip-dot { inline-size: 8px; block-size: 8px; border-radius: 999px; background: var(--arbor-ink-soft); }
@@ -84,11 +92,12 @@
 .dev-map-tile .dev-map-name { font-size: 14px; }
 .dev-map-tile-last { font-size: 12px; line-height: 1.4; color: var(--arbor-muted); }
 @media (max-width: 767.98px) {
-  /* The phone card (the mock's Phone frame): heading, a full-width check, the
-     one Seen-it chip, two columns of tiles, the foot. */
+  /* The phone card (the mock's Phone frame): heading, the one Seen-it chip,
+     two columns of tiles, the check row with a full-width Start, the foot. */
   .dev-map-sub { display: none; }
   .dev-map-tools { flex: 1 1 100%; flex-direction: column; align-items: stretch; }
-  .dev-map-check { justify-content: center; min-block-size: 46px; border-radius: 12px; }
+  .dev-map-checkrow { padding-inline: 4px; }
+  .dev-map-check { flex: 1 1 100%; justify-content: center; min-block-size: 46px; border-radius: 12px; }
   .dev-map-chip { align-self: flex-start; }
   .dev-map-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dev-map-tile-item:last-child:nth-child(odd) { grid-column: 1 / -1; }

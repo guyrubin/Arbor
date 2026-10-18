@@ -21,10 +21,14 @@ import "./developmentMap.css";
  * area, and a chevron. At most one row is open; the page that owns the open
  * row renders its body inline under it (renderDetail) or in a sheet.
  *
- * The card's head: the 5-minute check (the page's one primary move, stamped
- * by the page through `primaryMoveProps`) and one neutral chip with how many
- * things the parent marked "Seen it". Its foot: the areas with a new Seen it
- * in the last 30 days (names only), then the blank-means-no-record note.
+ * The card's head: one neutral chip with how many things the parent marked
+ * "Seen it". v4: the 5-minute check is ONE row under the eight areas (the
+ * consolidation blueprint's "Check row"): its name, the date of the latest
+ * saved check (or that none is saved yet) and that its answers write into
+ * these same areas, the saved re-check date when there is one, and Start (the
+ * page's one primary move, stamped by the page through `primaryMoveProps`).
+ * Its foot: the areas with a new Seen it in the last 30 days (names only),
+ * then the blank-means-no-record note.
  *
  * Clinical firewall (law 1): the only numbers are Seen-it counts. A domain
  * with no Seen-it skill and no kept moment says "No record yet", never
@@ -58,6 +62,8 @@ export interface DevelopmentMapProps {
   primaryMoveProps?: Record<string, string>;
   /** The Development Check's saved re-check date, when no watched skill shows it. */
   recheckDueAt?: string | null;
+  /** v4: when the latest Development Check was saved (null = none yet). */
+  lastCheckAt?: string | null;
   /** The clock the growing line reads (tests pin it). */
   nowMs?: number;
   /** Rows (an open row's body inline) or tiles (the body in a sheet). Default rows. */
@@ -65,7 +71,7 @@ export interface DevelopmentMapProps {
 }
 
 export default function DevelopmentMap({
-  milestones, observations, momentText, openDomain, onToggle, renderDetail, onCheck, primaryMoveProps, recheckDueAt = null, nowMs, layout = "rows",
+  milestones, observations, momentText, openDomain, onToggle, renderDetail, onCheck, primaryMoveProps, recheckDueAt = null, lastCheckAt = null, nowMs, layout = "rows",
 }: DevelopmentMapProps) {
   const { t, uiLang } = useLanguage();
   const headingId = useId();
@@ -84,13 +90,8 @@ export default function DevelopmentMap({
           <p className="dev-map-kicker">{t("companion.milestones.mapKicker")}</p>
           <h2 id={headingId}>{t("companion.milestones.areasTitle")}</h2>
           <p className="dev-map-sub">{t(tiles ? "companion.milestones.areasSubTiles" : "companion.milestones.areasSub")}</p>
-          {recheckDueAt && <p className="dev-map-recheck" data-testid="dev-map-recheck">{t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })}</p>}
         </div>
         <div className="dev-map-tools">
-          <button type="button" className="dev-map-check" data-testid="dev-map-check" onClick={onCheck} {...(primaryMoveProps ?? {})}>
-            <Icon name="fact_check" size={18} />
-            <span>{t("companion.milestones.check")}</span>
-          </button>
           {seenCount > 0 && (
             <span className="dev-map-chip" data-testid="dev-map-seen">
               <span className="dev-map-chip-dot" aria-hidden="true" />
@@ -192,6 +193,19 @@ export default function DevelopmentMap({
           </ul>
         </>
       )}
+      <div className="dev-map-checkrow" data-testid="dev-map-checkrow">
+        <Icon name="fact_check" size={20} className="dev-map-checkrow-glyph" />
+        <div className="dev-map-checkrow-text">
+          <p className="dev-map-checkrow-title">{t("companion.milestones.checkTitle")}</p>
+          <p className="dev-map-checkrow-sub" data-testid="dev-map-checkrow-sub">
+            {lastCheckAt ? t("companion.milestones.checkLast", { date: fmtDay(lastCheckAt, uiLang) }) : t("companion.milestones.checkNever")}
+          </p>
+          {recheckDueAt && <p className="dev-map-recheck" data-testid="dev-map-recheck">{t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })}</p>}
+        </div>
+        <button type="button" className="dev-map-check" data-testid="dev-map-check" onClick={onCheck} {...(primaryMoveProps ?? {})}>
+          {t(lastCheckAt ? "companion.milestones.checkAgain" : "companion.milestones.checkStart")}
+        </button>
+      </div>
       <div className="dev-map-foot">
         {growing.length > 0 && (
           <p className="dev-map-growing" data-testid="dev-map-growing">

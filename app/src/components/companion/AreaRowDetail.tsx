@@ -295,7 +295,7 @@ export default function AreaRowDetail({
       <div className="area-detail-actions">
         <button type="button" className="area-detail-check" data-testid="area-detail-check" onClick={onCheck}>
           <Icon name="fact_check" size={18} />
-          <span>{t("companion.milestones.check")}</span>
+          <span>{t("companion.milestones.checkArea")}</span>
         </button>
         <button type="button" className="area-detail-explore" data-testid="area-detail-explore" onClick={onExplore}>
           <Icon name="forum" size={18} />
