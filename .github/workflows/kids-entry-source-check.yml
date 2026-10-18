@@ -3,24 +3,25 @@ on:
   push:
     branches: [codex/kids-entry-preparation-2026-10-18]
 permissions:
-  contents: read
+  contents: write
+concurrency:
+  group: kids-entry-reviewed-transfer
+  cancel-in-progress: false
 jobs:
-  source:
+  apply-reviewed-source:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: 8fad8f1e732f1aa60ef086ad60e8ba8546b39be4
-          persist-credentials: false
-      - name: Export tracked text for isolated verification
+      - name: Apply exact hash-verified source only on the feature branch
         run: |
-          git archive HEAD app/src app/scripts app/public/sw.js app/package.json app/package-lock.json app/tsconfig.json app/vite.config.ts .github docs | gzip > /tmp/arbor-entry-current-source.tgz
-          git rev-parse HEAD > /tmp/arbor-entry-source-sha.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: arbor-entry-current-source
-          path: |
-            /tmp/arbor-entry-current-source.tgz
-            /tmp/arbor-entry-source-sha.txt
-          retention-days: 1
+          test "$GITHUB_REF" = 'refs/heads/codex/kids-entry-preparation-2026-10-18'
+          test -f .github/kids-entry-apply.py
+          python .github/kids-entry-apply.py
+          git diff --check
+          git rm .github/kids-entry-apply.py .github/kids-entry-transfer/*.json .github/workflows/kids-entry-source-check.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src app/scripts docs .github/workflows/arbor-ci.yml
+          git commit -m 'fix(kids): prepare narration only after explicit parent handover'
+          git push origin HEAD:refs/heads/codex/kids-entry-preparation-2026-10-18
