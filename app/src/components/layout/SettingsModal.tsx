@@ -275,11 +275,11 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </button>
         </Row>
 
-        {/* TJB-25 / IA-07 + B-TODAY-13: Today's pill row collapses below
-            `md`, so this row is the always-present door to #/day-windows at
-            390; the other doors are the md+ pill and the rhythm line's "See
-            the hours" link when a PREP or CALM cue shows. Same open pattern,
-            its own shipped keys (dw.title / dw.subtitle / dw.cta, EN + HE). */}
+        {/* TJB-25 / IA-07 + B-TODAY-13 → v4: Day windows left Now's pill row
+            at every width (a setting, not a reading of Now), so this row,
+            beside Reminders, is its home; the rhythm line's "See the hours"
+            link stays its other door when a PREP or CALM cue shows. Same open
+            pattern, its own shipped keys (dw.title / dw.subtitle / dw.cta, EN + HE). */}
         <Row icon={<Icon name="schedule" size={18} />} title={t("dw.title")} sub={t("dw.subtitle")}>
           <button
             onClick={() => { onClose(); setActiveTab("day-windows"); }}
