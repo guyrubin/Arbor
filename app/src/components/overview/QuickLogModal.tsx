@@ -476,9 +476,17 @@ export default function QuickLogModal({
   // otherwise the parent's words stay verbatim in the moment field
   // (source "voice") and Save writes a Moment at intensity 1 via addMoment.
   // The hard-moment form's path is unchanged. Zero added model calls.
+  // B-ASKJB-46: one request, two leases. "extract" fills fields and is retired
+  // the moment the parent edits (stale model words never overwrite theirs).
+  // "screen" carries the escalation verdict on the words that were sent and
+  // outlives an edit: only closing, a child change or a replacement
+  // extraction retires it. Typing during the drafting pause therefore cannot
+  // swallow a 409 — the alert still shows and every text field is cleared —
+  // and Save stays locked (drafting) until the server has answered.
   const extractFromTyped = async (text: string, from: "moment" | "incident" = "incident") => {
     if (busyRef.current) return;
     const isCurrent = sessionRef.current.lease("extract");
+    const screenCurrent = sessionRef.current.lease("screen");
     setDrafting(true);
     setEscalationMarkdown(null);
     try {
@@ -498,21 +506,23 @@ export default function QuickLogModal({
       setHardMoment(true);
       setReviewing(true);
     } catch (err) {
-      if (!isCurrent()) return;
-      // FAIL-CLOSED: the escalation branch runs FIRST and writes no draft field.
+      // FAIL-CLOSED: the escalation branch runs FIRST, on the screening lease
+      // (an edit does not retire it), and writes no draft field.
       if (err instanceof EscalationRequiredError) {
+        if (!screenCurrent()) return;
         dropEscalatedDraft();
         const match =
           escalationCategories.find((c) => c.category === err.category) ??
           escalationCategories[0];
         setEscalationMarkdown(renderEscalationMarkdown({ category: match.category, label: match.label, resources: match.resources }));
       } else {
+        if (!isCurrent()) return;
         // Only AFTER the escalation branch: degrade to today's manual form —
         // the sentence is already in the trigger field, nothing is lost.
         toast(t("beh.toast.voiceFallback"), "info");
       }
     } finally {
-      if (isCurrent()) setDrafting(false);
+      if (screenCurrent()) setDrafting(false);
     }
   };
 
@@ -585,11 +595,14 @@ export default function QuickLogModal({
 
   // TJB-01: the plain-moment save — one field, one tap, no review step (there
   // is nothing drafted to review; the parent wrote every word).
+  // B-ASKJB-46: `drafting` is NOT reset here. It is owned by the screening
+  // lease and lifts only when the server has answered for the words that were
+  // sent (or the sheet closes), so Save cannot run between an edit and a 409.
   const stopCaptureWork = () => {
     sessionRef.current.retire("voice");
     sessionRef.current.retire("extract");
     stopRef.current?.(); stopRef.current = null;
-    setListening(false); setVoiceInterim(""); setDrafting(false);
+    setListening(false); setVoiceInterim("");
   };
   const changeTrigger = (text: string) => {
     stopCaptureWork();

@@ -59,7 +59,9 @@ describe("AI-CAP-1 — voice capture goes through the ONE hardened extraction ow
     expect(branch).toBeTruthy();
     expect(branch).not.toMatch(/setNewLog|toast\(|handleAddLog|addMoment/);
     expect(branch).toContain('setEscalationMarkdown(renderEscalationMarkdown(');
-    expect(extract).toMatch(/if \(err instanceof EscalationRequiredError\) \{[\s\S]*?\} else \{\s*toast\(t\("beh\.toast\.voiceFallback"\), "info"\)/);
+    // B-ASKJB-46: the ordinary fallback is fenced on the field lease (an edit
+    // retires it); the escalation branch above is fenced on the screening lease.
+    expect(extract).toMatch(/if \(err instanceof EscalationRequiredError\) \{[\s\S]*?\} else \{\s*if \(!isCurrent\(\)\) return;\s*(\/\/[^\n]*\n\s*)*toast\(t\("beh\.toast\.voiceFallback"\), "info"\)/);
     // Unlike the old parseVoice catch, neither catch branch invents a new draft.
     expect(extract.slice(extract.indexOf('catch (err)'))).not.toMatch(/setNewLog/);
   });
