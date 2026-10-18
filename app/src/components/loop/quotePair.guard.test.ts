@@ -21,7 +21,7 @@ const FILES = [
     readdirSync(path.join(components, dir)).filter((f) => f.endsWith(".tsx") && !/\.test\./.test(f)).map((f) => path.join(dir, f)),
   ),
   // Parity 9 Oct: Today is NowView and the loop it runs.
-  ...["NowView.tsx", "useNowLoop.ts", "NowLoopBlocks.tsx", "NowMoreForToday.tsx", "NowRecommendation.tsx"].map((f) => path.join("companion", f)),
+  ...["NowView.tsx", "useNowLoop.ts", "NowLoopBlocks.tsx", "NowTodayLines.tsx", "NowRecommendation.tsx"].map((f) => path.join("companion", f)),
   path.join("tabs", "MilestonesTab.tsx"),
 ];
 const LATIN_QUOTES = /[\u201C\u201D\u201E]/;

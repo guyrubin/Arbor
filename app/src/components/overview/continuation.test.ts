@@ -12,7 +12,8 @@ import { fileURLToPath } from "node:url";
 import { chooseContinuation, isContinuationKind } from "./continuation";
 import { chooseOffer, type OfferState } from "../../lib/companionOffer";
 import { DEFAULT_PREFS } from "../../growth/jitaiPrefs";
-import { translate } from "../../lib/i18n";
+import { translate } from "../../lib/i18n";
+
 import { todayFile, todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -68,13 +69,13 @@ describe("B-TODAY-18 · placement on Today", () => {
 
   // B-LOOP-07 re-pin: the continuation slot (carry-over ask, tomorrow's
   // reason) is the coordinator's ONE slot behind Today's door, below the blocks.
-  it("the slot renders behind the door, after the lead", () => {
-    // Parity 9 Oct: the door is Now's NowMoreForToday, mounted after the lead.
+  // v4 re-pin (blueprint decision 5): the door dissolved; the slot is an agenda row in Today at a glance, after the lead.
+  it("the slot renders as an agenda row, after the lead", () => {
     const view = strip(todayFile("NowView.tsx"));
-    expect(view.indexOf("<NowMoreForToday")).toBeGreaterThan(view.indexOf("<NowRecommendation"));
+    expect(view.indexOf("<NowAgendaExtras")).toBeGreaterThan(view.indexOf("<NowRecommendation"));
     const slotAt = overview.indexOf("<CompanionOfferSlot");
     expect(slotAt).toBeGreaterThan(-1);
-    expect(slotAt).toBeGreaterThan(overview.indexOf('data-testid="today-door"'));
+    expect(slotAt).toBeGreaterThan(overview.indexOf("export function NowAgendaExtras"));
   });
 
   it("ONE CompanionOfferSlot instance, fed the coordinator's winner (never a second arbiter)", () => {

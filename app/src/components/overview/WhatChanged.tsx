@@ -81,7 +81,11 @@ export default function WhatChanged({
   rhythmDaysNeeded,
   onLineTap,
   onMore,
+  variant = "card",
 }: {
+  /** v4: "lines" draws the same lines inside Now's "This week so far" card —
+   *  no card chrome, no heading, no footer (the week card is the frame). */
+  variant?: "card" | "lines";
   lines: WhatChangedLine[];
   hiddenCount: number;
   /** Today's ONE useWeeklyRecap() result (B-TODAY-08), passed down. */
@@ -110,6 +114,59 @@ export default function WhatChanged({
   }, []);
 
   if (lines.length === 0 && !recapLine) return null;
+
+  if (variant === "lines") {
+    return (
+      <div className="now-week-changed" data-testid="what-changed" data-variant="lines">
+        <p className="sr-only">{t("elev.brief.changed.title")}</p>
+        <ul>
+          {recapLine && (
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  track("recap_ready_tap", { week: recap.currentId });
+                  setActiveTab("weekly");
+                }}
+                aria-label={t("elev.recap.ready.aria")}
+                className="now-week-changed-line min-h-11"
+                data-testid="what-changed-recap"
+              >
+                <Icon name="auto_stories" size={17} />
+                <span dir="auto">{t("elev.recap.ready", { name: firstName })}</span>
+              </button>
+            </li>
+          )}
+          {lines.map((line, i) => {
+            const { title, sub } = label(line);
+            return (
+              <li key={`${line.kind}.${i}`}>
+                <button
+                  type="button"
+                  data-testid="what-changed-line"
+                  data-line-kind={line.kind}
+                  onClick={() => {
+                    track("sincevisit_row_tap", { kind: line.kind });
+                    onLineTap(line);
+                  }}
+                  className="now-week-changed-line min-h-11"
+                >
+                  <Icon name={LINE_ICON[line.kind]} size={17} />
+                  <span dir="auto">{title}{sub && <small dir="auto">{sub}</small>}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {hiddenCount > 0 && (
+          <button type="button" onClick={onMore} className="now-week-changed-more min-h-11">
+            {t("elev.sincevisit.more", { n: num(hiddenCount) })}
+            <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <section

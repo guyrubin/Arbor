@@ -1,0 +1,10 @@
+/* v4 — the brand gradient chip (BrandChip.tsx). Tokens only. */
+.brand-chip { position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; color: var(--arbor-on-accent); }
+.brand-chip::before { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg, var(--chip-light), var(--chip-ink)); border-radius: 62% 38% 60% 40% / 40% 60% 40% 60%; opacity: .95; }
+.brand-chip[data-shape="arch"]::before { border-radius: 40% 60% 40% 60% / 60% 40% 60% 40%; }
+.brand-chip[data-shape="drop"]::before { border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; }
+.brand-chip > .brand-chip-glyph { position: relative; color: var(--arbor-on-accent); }
+@media (forced-colors: active) {
+  .brand-chip::before { background: CanvasText; }
+  .brand-chip > .brand-chip-glyph { color: Canvas; }
+}

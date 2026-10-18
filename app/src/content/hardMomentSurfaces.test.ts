@@ -223,12 +223,15 @@ describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams
     expect(stripComments(read("components/behaviors/HardMomentsSection.tsx"))).toContain("availableHardMomentCards(context)");
   });
 
-  it("the hard-moment step seam is unchanged; Today opens the ONE sheet from a door line (B-LOOP-07)", () => {
+  // v4 re-pin (blueprint decision 6): Today's door to the ONE sheet is the
+  // launcher rail's "A hard moment?", on every screen; Now no longer has its own.
+  it("the hard-moment step seam is unchanged; Today opens the ONE sheet from the rail (B-LOOP-07 → v4)", () => {
     const code = stripComments(read("components/overview/hardMomentStep.ts"));
     expect(code).toContain('accept(locText(current.doNow, ctx.locale), capacity, "hard-moment")');
     expect(code).not.toMatch(/handleAddLog|upsert|firestore|setDoc/i);
     const overview = stripComments(todayLiveSource());
-    expect(overview).toContain("openHardMomentNow()");
+    expect(overview).not.toContain("openHardMomentNow()");
+    expect(stripComments(read("components/companion/CompanionWorkspace.tsx"))).toContain('data-testid="launcher-hard-moment" onClick={() => openHardMomentNow()}');
     expect(overview).not.toContain("HardMomentTodayOffer");
     expect(stripComments(read("components/overview/CompanionOfferSlot.tsx"))).toMatch(/if \(offer\.kind === "grounded-step" && surface === "today"\) return null;/);
   });

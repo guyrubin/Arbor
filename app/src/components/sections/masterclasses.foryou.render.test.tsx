@@ -21,7 +21,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../lib/i18n";
 import { makeFamilyTopic, type FamilyTopic } from "../../lib/familyTopics";
 import { LEARN_CARDS } from "../../learn/learnCards";
-import { topicBoost } from "../../learn/learnLibrary";
+import { LEARN_CATEGORIES, topicBoost } from "../../learn/learnLibrary";
 import { topicWords } from "../../learn/topicMatch";
 import { DOMAIN_IDS, domainName, type DomainId } from "../../lib/domains/registry";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
@@ -35,6 +35,8 @@ const harness = vi.hoisted(() => ({
 }));
 
 vi.mock("../../context/ArborContext", () => ({
+  // v4: the library card's The Science chip (TrustLink) reads the provider tolerantly.
+  useArborOptional: () => null,
   useArbor: () => ({
     childProfile: { id: "child-foryou", name: "Mika", birthDate: harness.birthDate },
     behaviorLogs: [],
@@ -207,6 +209,27 @@ describe("v3 EXTRA-FORYOU · with a family question open", () => {
       expect(door).toContain('alt=""');
       expect(door).toContain("rtl:-scale-x-100");
       expect(door).not.toContain("--gradient-cta");
+    });
+
+    // v4 (For you, the parent is one screen, no tabs): with the Library and
+    // Family formation pills gone, the page carries their doors itself.
+    it(`${locale}: v4 — the library's shelves are 44 px doors in the catalogue, with Open the library and The Science`, () => {
+      harness.locale = locale;
+      harness.topic = ask(QUESTION[locale]);
+      const html = render();
+      const card = region(html, 'data-testid="academy-library"', "</section>");
+      expect(card).toContain(esc(translate(locale, "elev.learnCare.library.title")));
+      const shelves = [...card.matchAll(/<button[^>]*data-shelf="([a-z]+)"[^>]*>/g)];
+      expect(shelves.map((m) => m[1])).toEqual(LEARN_CATEGORIES.map((c) => c.id));
+      for (const [chip] of shelves) expect(chip).toContain("min-h-11");
+      for (const shelf of LEARN_CATEGORIES) expect(card).toContain(esc(locale === "he" ? shelf.label.he : shelf.label.en));
+      expect(region(card, 'data-testid="academy-library-open"', "</button>")).toContain(esc(translate(locale, "elev.learnCare.library.open")));
+      expect(card).toContain('data-testid="trust-link"');
+      // inside the catalogue module: the route's budget of three is untouched
+      const catalogue = html.indexOf('data-module="academy-catalogue"');
+      expect(html.indexOf('data-testid="academy-library"')).toBeGreaterThan(catalogue);
+      expect(html.indexOf('data-testid="academy-library"')).toBeGreaterThan(html.indexOf('data-testid="academy-family-door"'));
+      expect(card).toContain("xl:col-span-2");
     });
 
     it(`${locale}: no percentage anywhere in the visible text`, () => {

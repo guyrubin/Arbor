@@ -19,7 +19,8 @@ import * as path from "node:path";
 import { en, he } from "../../lib/i18nElevation/firstMoment";
 import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
 import { FIRST_MOMENT_STEPS } from "../../lib/firstMomentChain";
-import { LIFECYCLE_STICKY_KINDS } from "./useLifecycleMoment";
+import { LIFECYCLE_STICKY_KINDS } from "./useLifecycleMoment";
+
 import { todayLiveSource } from "../../testTodaySource";
 
 /** Read a source file relative to src/, CRLF-normalised and comment-stripped. */
@@ -135,7 +136,12 @@ describe("ENG-L2 — a captured interest actually reaches play selection", () =>
     const list = (deps?.[1] ?? deps?.[2] ?? "");
     expect(list.length).toBeGreaterThan(20);
     expect(list).toContain("childProfile.interests");
-    expect(OVERVIEW).toContain('line("today-door-play", "sports_esports", t("elev.loop.door.play"), () => setActiveTab("daily-play"))');
+    // v4 re-pin (blueprint: Daily Play feeds "Away from the screen"): the door
+    // to Daily Play left Now's dissolved "More for today" for Together's Play
+    // filter ("More ideas"), where play is chosen.
+    expect(OVERVIEW).not.toContain("today-door-play");
+    const together = read("components/companion/TogetherView.tsx");
+    expect(together).toContain('setActiveTab("daily-play")');
   });
 
   it("NEGATIVE CONTROL — the shipped dep list would have failed before the fix", () => {

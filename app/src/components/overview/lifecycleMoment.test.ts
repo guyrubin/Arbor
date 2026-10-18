@@ -4,7 +4,8 @@ import * as path from "node:path";
 import { planToday } from "./todayModules";
 import { LIFECYCLE_STICKY_KINDS } from "./useLifecycleMoment";
 import { resolveLifecycle } from "../../lib/lifecycle";
-import { en as lifecycleEn } from "../../lib/i18nElevation/lifecycle";
+import { en as lifecycleEn } from "../../lib/i18nElevation/lifecycle";
+
 import { todayFile, todayLiveSource } from "../../testTodaySource";
 
 /**
@@ -99,15 +100,17 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
   // B-TODAY-21: the since-strip is gone; the ONE What-changed card sits in the
   // anchor ROW (the seat the dev-map card held), so the lifecycle moment now
   // renders after that row — still after the day's action (P1-A).
-  it("never leads the page: the note sits inside the practice card's header, else right after the lead; What changed stays behind the door", () => {
-    // Parity 9 Oct: Now places the note; the door is NowMoreForToday.
+  it("never leads the page: the note sits inside the practice card's header, else right after the lead; What changed sits in the week card below", () => {
+    // Parity 9 Oct: Now places the note. v4 re-pin: the door dissolved; What
+    // changed is lines inside "This week so far", far below the lead.
     const view = stripComments(todayFile("NowView.tsx"));
     expect(view).toContain("headerNote={lifecycleNote}");
     const note = view.indexOf('className="now-lifecycle-note"');
     expect(note).toBeGreaterThan(view.indexOf("<NowRecommendation"));
-    expect(note).toBeLessThan(view.indexOf("{showNotice &&"));
-    const door = stripComments(todayFile("NowMoreForToday.tsx"));
-    expect(door.indexOf("<WhatChanged")).toBeGreaterThan(door.indexOf('data-testid="today-door"'));
+    expect(note).toBeLessThan(view.indexOf("{showNotice ?"));
+    expect(view.indexOf("<NowWhatChangedLines")).toBeGreaterThan(view.indexOf("<NowWeekSoFar"));
+    const lines = stripComments(todayFile("NowTodayLines.tsx"));
+    expect(lines).toContain('<WhatChanged variant="lines"');
   });
 
   it("the budget has no lifecycle module id (todayModules v3: practice · notice · tonight · door)", () => {

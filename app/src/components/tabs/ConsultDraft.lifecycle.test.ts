@@ -12,8 +12,8 @@ let child = "a", query = new URLSearchParams("appointment=visit"), rows: any[] =
 const AskSpecialist = () => null;
 const env = {
   React, AskSpecialist, visitForConsult, consultAudienceForProfession,
-  // v3 EXTRA-CARE: the Care landing's visit head, aside and doors (#/consult)
-  CareVisitHead: () => null, CareAside: () => null, CareDoors: () => null,
+  // v3 EXTRA-CARE → v4: the Care landing's visit head, aside and shared cards (#/consult)
+  CareVisitHead: () => null, CareAside: () => null, CareShared: () => null,
   useRef: (initial: unknown) => slots[cursor++] ??= { current: initial },
   useState: (initial: unknown) => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], (value: unknown) => { slots[i] = value; }]; },
   useMemo: (calculate: () => unknown) => calculate(),

@@ -36,7 +36,8 @@ import type { ActionLoopEntry } from "../../actionLoop/model";
 import { lastNightWords } from "../../lib/today/shelfWords";
 import { tonightLineEntry, tonightOutcomeEntry } from "../../lib/loop/tonight";
 import { practiceDoseEntry } from "../../lib/practice/choosePractice";
-import { translate as translateFor } from "../../lib/i18n";
+import { translate as translateFor } from "../../lib/i18n";
+
 import { todayFile, todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -92,19 +93,22 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
     expect(selectNowLead({ ...base, record: true, recordPending: true, visit, tonight: true, manualTonight: true })).toBe("record");
   });
 
-  it("Tonight is a pointer line in the morning, the flow in the evening; the door is ONE collapsed disclosure", () => {
+  // v4 re-pin (blueprint decision 5): "More for today" dissolved — no
+  // collapsed door; each of its lines lives in the object it belongs to
+  // (NowTodayLines): What changed in the week card, the say-back and the
+  // clinical watch signal in Notice today, the ONE proactive slot, the sibling
+  // lines and the evening story in the agenda. Daily Play left for Together.
+  it("Tonight is a pointer line in the morning, the flow in the evening; the door's lines live in their objects", () => {
     expect(OV).toContain('data-testid="today-tonight-pointer"');
     expect(OV).toContain("<TonightFlow");
-    // Parity 9 Oct: the door is Now's "More for today" (NowMoreForToday).
-    expect(OV).toMatch(/<details className="now-more" data-module-disclosure="today-more" data-testid="today-door"(?![^>]*\bopen\b)/);
-    const door = OV.slice(OV.indexOf('data-testid="today-door"'), OV.indexOf("</details>"));
-    // lines only, plus the ONE proactive slot, the say-back, the clinical watch
-    // signal and the sibling lines; the hard-moment and week doors sit beside the lead
-    for (const tok of ["<WhatChanged", "today-door-story", "today-door-play", "<TodaySayBackLine", "<ArborNoticedCard", "<CompanionOfferSlot", "<FamilyOfferLines"]) {
-      expect(door, tok).toContain(tok);
+    expect(OV).not.toContain('data-testid="today-door"');
+    expect(OV).not.toMatch(/<details className="now-more"/);
+    for (const tok of ["<WhatChanged", "today-agenda-story", "<TodaySayBackLine", "<ArborNoticedCard", "<CompanionOfferSlot", "<FamilyOfferLines"]) {
+      expect(OV, tok).toContain(tok);
     }
+    expect(OV).not.toContain("today-door-play");
     for (const tok of ["<LifecycleMomentCard", "<FirstStepsRail", "<TodayActionLoop", "<TodayStepLine"]) expect(OV, tok).not.toContain(tok);
-    expect(door).toContain("changed.lines.slice(0, 3)");
+    expect(OV).toContain("changed.lines.slice(0, 3)");
   });
 
   it("the practice is the B-LOOP-09 chooser with the AI pick only inside its candidates; Notice never shows the practice's shelf", () => {
@@ -259,13 +263,19 @@ describe("every Today / practice / tonight string — no streak, no count of day
    control; the door keeps its content and loses the dashed border. */
 describe("B-DESIGN-04 · Today takes the blend frame", () => {
   const TF = strip(readFileSync(path.join(here, "..", "loop", "TonightFlow.tsx"), "utf8").replace(/\r\n/g, "\n"));
-  it("Notice today = SectionHead (visibility glyph, the h2 id the section is labelled by, the sub-line) over one card", () => {
-    // Parity 9 Oct: the block is NowNoticeBlock (components/companion/NowLoopBlocks.tsx).
+  // v4 re-pin: Notice today is one object with a head — the gradient chip
+  // (visibility), the h2 the section is labelled by with the open count, the
+  // sub-line — and a 44 px fold toggle over its one card of rows.
+  it("Notice today = chip head (visibility glyph, the h2 id the section is labelled by, the count, the sub-line, a fold toggle) over one card", () => {
     const blocks = strip(todayFile("NowLoopBlocks.tsx"));
     const block = blocks.slice(blocks.indexOf('data-testid="today-notice"'), blocks.indexOf("export function NowTonightLead"));
-    expect(block).toContain('<SectionHead id={`${id}-notice`} icon="visibility" title={t("elev.loop.today.notice.title")} sub={t("elev.loop.today.notice.sub")} />');
+    expect(block).toContain('<BrandChip icon="visibility" tone="sky" shape="drop" />');
+    expect(block).toContain('<h2 id={`${id}-notice`}>{t("elev.loop.today.notice.title")}');
+    expect(block).toContain('<p>{t("elev.loop.today.notice.sub")}</p>');
+    expect(block).toContain('data-testid="today-notice-count"');
+    expect(block).toContain("aria-expanded={open}");
     expect(block).toContain("aria-labelledby={`${id}-notice`}");
-    expect(block).toContain('<div className="now-notice-card">');
+    expect(block).toContain('<div className="now-notice-card" id={`${id}-notice-body`} hidden={!open}>');
     expect(block).not.toMatch(/rounded-\[|text-\[\d/);
   });
   it("every NoticeCard on Today (the slot card, the Notice rows, Tonight's step 3) answers segmented", () => {
@@ -307,8 +317,10 @@ describe("B-DESIGN-04 · Today takes the blend frame", () => {
       expect(order.includes("practice") && order.includes("tonight"), String(practiceShown)).toBe(false);
     }
     const css = readFileSync(path.join(here, "..", "companion", "nowView.css"), "utf8");
-    expect(css).toMatch(/\.now-more \{[^}]*border: 1px solid var\(--arbor-rule\)/);
-    expect(css.match(/\.now-more[^{]*\{[^}]*\}/g)?.join("\n")).not.toMatch(/dashed/);
+    // v4: the door is gone; Notice today, the week card and the glance are solid hairlines, never dashed.
+    expect(css).toMatch(/\.now-notice \{[^}]*box-shadow: 0 0 0 1px var\(--arbor-rule\)/);
+    expect(css).toMatch(/\.now-week, \.now-glance \{[^}]*border: 1px solid var\(--arbor-rule\)/);
+    expect(css.match(/\.now-(?:notice|week|glance)[^{]*\{[^}]*\}/g)?.join("\n")).not.toMatch(/dashed/);
   });
   it("the flat loop glyph is gone from Today: PracticeCard, NoticeCard and TonightFlow mount the duotone one", () => {
     for (const rel of ["PracticeCard.tsx", "NoticeCard.tsx", "TonightFlow.tsx"]) {

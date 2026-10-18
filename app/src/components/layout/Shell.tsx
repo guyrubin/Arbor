@@ -6,7 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { backTargetFor, homeForTab, isCompanionHome, placeForTab } from "../../lib/companionPlaces";
 import { useHashQuery } from "../../hooks/useHashQuery";
-import { sectionForTab, pillRowFor, isCompactHiddenTool } from "../../lib/navigation";
+import { sectionForTab, pillRowFor, pillLitTab, isPlaceReading, isCompactHiddenTool } from "../../lib/navigation";
 import { contractFor } from "../../lib/surfaceContract";
 import Sidebar from "./Sidebar";
 import CompanionWorkspace from "../companion/CompanionWorkspace";
@@ -245,7 +245,11 @@ export default function Shell() {
   const section = sectionForTab(activeTab);
   // v3 IA-01: Back returns to the route's home, its place or its door
   // (#/learn → For you, the parent). A home's own route has no Back.
-  const back = isCompanionHome(activeTab) ? null : backTargetFor(activeTab);
+  // v4: a pill of the place's own row (Weekly report, Moments, About) is a
+  // reading of the place, not a level below it, so it has no Back either.
+  const back = isCompanionHome(activeTab) || isPlaceReading(activeTab) ? null : backTargetFor(activeTab);
+  // v4: the About pill names the child ("About Mia"); without a name it is "About".
+  const childFirstName = childProfile.name?.trim().split(/\s+/)[0] ?? "";
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -501,7 +505,8 @@ export default function Shell() {
               }}
             >
               {pillRowFor(section, activeTab).map((it) => {
-                const on = it.tab === activeTab;
+                // v4: a leaf route lights the reading it belongs to (PILL_LIT).
+                const on = it.tab === pillLitTab(activeTab);
                 return (
                   <button
                     key={it.tab}
@@ -524,7 +529,9 @@ export default function Shell() {
                   >
                     {it.tab === "overview"
                       ? (uiLang === "he" ? placeForTab(it.tab).he : placeForTab(it.tab).en)
-                      : t(it.labelKey ?? "nav.tab." + it.tab)}
+                      : it.tab === "profile" && childFirstName
+                        ? t("nav.pill.profile.named", { name: childFirstName })
+                        : t(it.labelKey ?? "nav.tab." + it.tab)}
                   </button>
                 );
               })}

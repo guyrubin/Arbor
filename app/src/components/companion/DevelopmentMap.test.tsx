@@ -34,6 +34,7 @@ import DevelopmentMap from "./DevelopmentMap";
 import { DOMAIN_IDS, domainName } from "../../lib/domains/registry";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { translate } from "../../lib/i18n";
+import { fmtDay } from "../../lib/formatDate";
 import { ALL_MILESTONES } from "../../lib/milestoneData";
 import { groupMilestonesByShelf } from "../../lib/milestones/shelfMap";
 import { toObservations } from "../../lib/observations";
@@ -81,7 +82,8 @@ describe("v3 F-CHILD-1 — DevelopmentMap rows", () => {
       expect(row).not.toContain("rtl:-scale-x-100");
       expect(row).toContain(esc(translate(lang, "companion.devMap.none")));
     }
-    for (const key of ["companion.milestones.mapKicker", "companion.milestones.areasTitle", "companion.milestones.areasSub", "companion.milestones.check", "companion.milestones.lastMoment", "companion.devMap.note", "elev.loop.ms.footer"]) {
+    // v4 re-pin: the check is the row under the areas (its name, "not done yet", Start).
+    for (const key of ["companion.milestones.mapKicker", "companion.milestones.areasTitle", "companion.milestones.areasSub", "companion.milestones.checkTitle", "companion.milestones.checkNever", "companion.milestones.checkStart", "companion.milestones.lastMoment", "companion.devMap.note", "elev.loop.ms.footer"]) {
       expect(html, key).toContain(esc(translate(lang, key)));
     }
     expect(html).toMatch(/<section class="dev-map" data-testid="dev-map" aria-labelledby="([^"]+)">[\s\S]*?<h2 id="\1">/);
@@ -113,8 +115,36 @@ describe("v3 F-CHILD-1 — DevelopmentMap rows", () => {
     const html = render({ milestones: catalogue() });
     expect(html).not.toContain('data-testid="dev-map-seen"');
     expect(html).not.toContain("count-pips");
-    // The check's own label names its length ("a 5-minute check"); nothing about the child is a number.
-    expect(words(html.replace(/<button type="button" class="dev-map-check"[\s\S]*?<\/button>/, ""))).not.toMatch(/\d/);
+    // The check row names its own length ("The 5-minute development check") and,
+    // once one is saved, its day; nothing about the child is a number.
+    expect(words(html.replace(/<div class="dev-map-checkrow"[\s\S]*?<\/button><\/div>/, ""))).not.toMatch(/\d/);
+  });
+
+  // v4: the 5-minute check is ONE row under the eight areas: its name, the day
+  // of the latest saved check (or "not done yet"), that answers write into
+  // these same areas, the saved re-check day, and Start / Check again.
+  describe("v4 — the check row under the areas", () => {
+    const row = (html: string) => html.match(/<div class="dev-map-checkrow"[\s\S]*?<\/button><\/div>/)?.[0] ?? "";
+    it.each(["en", "he"] as const)("never checked: not done yet, Start; it sits after the rows and before the foot (%s)", lang => {
+      state.lang = lang;
+      const html = render();
+      const r = row(html);
+      expect(r).toContain(esc(translate(lang, "companion.milestones.checkTitle")));
+      expect(r).toContain(esc(translate(lang, "companion.milestones.checkNever")));
+      expect(r).toContain(esc(translate(lang, "companion.milestones.checkStart")));
+      expect(html.indexOf('class="dev-map-checkrow"')).toBeGreaterThan(html.indexOf('class="dev-map-rows"'));
+      expect(html.indexOf('class="dev-map-checkrow"')).toBeLessThan(html.indexOf('class="dev-map-foot"'));
+      // The head no longer carries the check.
+      expect(html.slice(0, html.indexOf('class="dev-map-rows"'))).not.toContain("dev-map-check");
+    });
+    it("a saved check: its day and Check again; the re-check day rides in the same row", () => {
+      const html = render({ lastCheckAt: "2026-06-01T10:00:00.000Z", recheckDueAt: "2026-06-22T10:00:00.000Z" });
+      const r = row(html);
+      expect(r).toContain(esc(translate("en", "companion.milestones.checkLast", { date: fmtDay("2026-06-01T10:00:00.000Z", "en") })));
+      expect(r).toContain(translate("en", "companion.milestones.checkAgain"));
+      expect(r).toContain('data-testid="dev-map-recheck"');
+      expect(r).not.toContain(translate("en", "companion.milestones.checkNever"));
+    });
   });
 
   it.each(["en", "he"] as const)("CLINICAL FIREWALL: no share, no denominator, no 'n of m' anywhere in the card (%s)", lang => {

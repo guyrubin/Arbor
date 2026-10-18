@@ -1,0 +1,54 @@
+/* v4 — Together's Routines filter: Today's rhythm and the routine library
+   (TogetherRoutines.tsx). Tokens and logical sides only; names and steps wrap,
+   nothing is clipped. One mark per step (ticked or not, today's run): a count
+   drawn as marks, never a share, a bar or a meter. */
+.together-routines-heading { align-items: flex-end; flex-wrap: wrap; gap: 12px 16px; }
+.together-rhythm-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-inline-start: auto; }
+.together-rhythm-tally { display: flex; flex-direction: column; align-items: center; margin: 0; text-align: center; }
+.together-rhythm-count { font-family: var(--font-display); font-size: var(--t-xl); font-weight: 600; line-height: 1; color: var(--arbor-clay); white-space: nowrap; }
+.together-rhythm-count-label { margin-block-start: 4px; font-size: var(--t-xs); font-weight: 700; color: var(--arbor-muted); }
+/* `.companion-page button { font: inherit }` outranks a single class, so the button rules carry the page class. */
+.companion-together .together-rhythm-add { display: inline-flex; align-items: center; gap: 6px; min-block-size: var(--touch-min); padding-inline: 14px; border: 1px solid var(--arbor-rule-strong); border-radius: var(--r); background: var(--arbor-paper-elevated); color: var(--arbor-ink); font-size: var(--t-sm); font-weight: 700; white-space: nowrap; transition: border-color 180ms; }
+.together-rhythm-add:hover { border-color: var(--arbor-clay); }
+.together-rhythm-add .msr { color: var(--arbor-clay); }
+
+.together-rhythm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.together-rhythm-grid > li { display: flex; min-inline-size: 0; }
+.together-rhythm-card { display: flex; flex: 1; flex-direction: column; gap: 10px; min-inline-size: 0; padding-block: 14px; padding-inline: 16px; border: 1px solid transparent; border-radius: var(--r-lg); background: var(--arbor-paper-elevated); box-shadow: var(--arbor-shadow-card); color: var(--arbor-ink); text-align: start; transition: border-color 180ms, transform 180ms; }
+.together-rhythm-card:hover { border-color: var(--arbor-clay); }
+.together-rhythm-card[data-next-up="true"] { border-color: color-mix(in srgb, var(--arbor-clay) 40%, transparent); }
+.together-rhythm-card[data-complete="true"] { background: var(--arbor-paper); }
+.together-rhythm-head { display: flex; align-items: center; gap: 10px; min-inline-size: 0; }
+.together-rhythm-title { display: flex; flex: 1; flex-direction: column; min-inline-size: 0; }
+.together-rhythm-name { font-size: var(--t-base); font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.together-rhythm-when { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; margin-block-start: 2px; font-size: var(--t-xs); color: var(--arbor-muted); line-height: 1.4; }
+.together-rhythm-slot { font-weight: 700; color: var(--rhythm-ink, var(--arbor-clay)); }
+.together-rhythm-next-up { flex: none; padding-block: 3px; padding-inline: 8px; border-radius: 999px; background: var(--arbor-clay); color: var(--arbor-on-accent); font-size: var(--t-xs); font-weight: 800; white-space: nowrap; }
+.together-rhythm-done { flex: none; color: var(--arbor-green-ink); }
+.together-rhythm-marks { display: flex; gap: 3px; }
+.together-rhythm-mark { flex: 1; block-size: 6px; border-radius: 3px; background: var(--arbor-paper-deep); }
+.together-rhythm-mark[data-ticked="true"] { background: var(--rhythm-ink, var(--arbor-clay)); }
+.together-rhythm-next { display: flex; align-items: flex-start; gap: 8px; font-size: var(--t-sm); font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.together-rhythm-next .msr { margin-block-start: 1px; color: var(--arbor-muted); }
+.together-rhythm-why { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-block-start: 14px; padding-block: 12px; padding-inline: 16px; border-radius: var(--r-lg); background: var(--arbor-paper-elevated); box-shadow: var(--arbor-shadow-card); }
+.together-rhythm-why > p { flex: 1 1 220px; margin: 0; font-size: var(--t-sm); line-height: 1.5; color: var(--arbor-ink); }
+
+.together-library > p { margin-block: 0 14px; }
+.together-library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.together-library-grid > li { display: flex; min-inline-size: 0; }
+.together-library-item { display: flex; flex: 1; align-items: center; gap: 10px; min-block-size: var(--touch-min); padding-block: 10px; padding-inline: 12px; border: 1px solid var(--arbor-rule); border-radius: var(--r); background: var(--arbor-paper); color: var(--arbor-ink); text-align: start; transition: border-color 180ms; }
+.together-library-item:hover { border-color: var(--arbor-clay); }
+.together-library-item[data-in-plan="true"] { background: var(--arbor-paper-elevated); }
+.together-library-text { display: flex; flex: 1; flex-direction: column; gap: 2px; min-inline-size: 0; }
+.together-library-in-plan { flex: none; color: var(--arbor-green-ink); }
+
+/* The routine sheet's identity row: the routine's chip beside its why-line. */
+.together-routine-identity { display: flex; align-items: center; gap: 12px; }
+.together-routine-identity > p { flex: 1; margin: 0; }
+
+@container together (max-width: 540px) {
+  .together-routines-heading { align-items: center; }
+  .together-rhythm-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .together-rhythm-card { padding-block: 12px; padding-inline: 14px; gap: 9px; }
+  .together-rhythm-actions { gap: 8px 10px; }
+}

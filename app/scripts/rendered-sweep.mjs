@@ -980,10 +980,12 @@ const STATES = {
       },
     },
     {
-      name: "door-open",
+      // v4: "More for today" dissolved into its objects; the one collapsible on
+      // Now is Notice today's fold toggle.
+      name: "notice-folded",
       run: async (h) => {
-        await h.click("main [data-testid=today-door] summary", [h.tr("elev.loop.today.door")], "the More for today door");
-        await h.top(await h.need("main [data-testid=today-door][open]", "the open door (lines only)"));
+        await h.click("main [data-testid=today-notice-toggle]", [h.tr("elev.loop.today.notice.fold")], "Notice today's fold toggle");
+        await h.top(await h.need("main [data-testid=today-notice-toggle][aria-expanded=false]", "Notice today folded (head only)"));
       },
     },
   ],

@@ -16,13 +16,16 @@ const shell = read("components/layout/Shell.tsx");
 const now = read("components/companion/NowView.tsx");
 const loop = read("components/companion/useNowLoop.ts");
 const blocks = read("components/companion/NowLoopBlocks.tsx");
-const more = read("components/companion/NowMoreForToday.tsx");
+// v4: "More for today" dissolved; its lines live in their objects (NowTodayLines).
+const more = read("components/companion/NowTodayLines.tsx");
+const launcher = read("components/companion/CompanionWorkspace.tsx");
 
 describe("the loop is mounted where parents land", () => {
   it("#/overview renders NowView, and NowView runs the loop and its door", () => {
     expect(shell).toContain('const OverviewTab = lazy(() => import("../companion/NowView"));');
     expect(now).toContain("useNowLoop({");
-    expect(now).toContain("<NowMoreForToday");
+    for (const home of ["<NowWhatChangedLines", "<NowNoticeExtras", "<NowAgendaExtras"]) expect(now).toContain(home);
+    expect(now).not.toContain("<NowMoreForToday");
     for (const block of ["<NowPracticeLead", "<NowTonightLead", "<NowNoticeBlock", "<NowNoticeLead", "<NowTonightPointer"]) expect(now).toContain(block);
   });
 
@@ -65,22 +68,22 @@ describe("every loop seam has a live caller", () => {
     expect(more).toContain("<ArborNoticedCard />");
     expect(more).toContain("<FamilyOfferLines");
   });
-  it("the door is ONE collapsed disclosure, never a module", () => {
-    expect(more).toContain('data-module-disclosure="today-more"');
-    expect(more).toContain('data-testid="today-door"');
+  it("v4: the door's lines live in their objects — never a module, never a second collapsed door", () => {
     expect(more).not.toMatch(/\bdata-module=/);
-    expect(more).not.toMatch(/<details[^>]*\bopen=/);
+    expect(more).not.toContain("<details");
+    expect(now).not.toContain('data-testid="today-door"');
   });
   it("the loop blocks carry #/overview's contract move, never a move of their own", () => {
     expect(blocks).toContain('const MOVE = "choose-next-step";');
     expect(blocks).not.toContain("do-practice");
   });
-  it("gates the hard-moment door like every door to the sheet (B-ASKJB-31)", () => {
-    expect(now).toContain("availableHardMomentCards({ now: at, ageMonths: ageMonthsFromProfile(childProfile, at), locale: lang }).length > 0");
-    expect(now).toContain('{hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}>');
+  it("v4: the hard-moment door is the launcher rail's, gated like every door to the sheet (B-ASKJB-31); Now has none of its own", () => {
+    expect(launcher).toMatch(/availableHardMomentCards\(\{ now: at, ageMonths: ageMonthsFromProfile\(childProfile, at\), locale: uiLang === "he" \? "he" : "en" \}\)\.length > 0/);
+    expect(launcher).toContain('{hardMomentDoor && <button type="button" className="companion-launch-save companion-launch-hard"');
+    expect(now).not.toContain("openHardMomentNow");
   });
   it("keeps the night's story to ONE door line (critic c2 r1)", () => {
     expect(blocks).not.toMatch(/onStory=/);
-    expect(more).toContain('{evening && storyFits && line("today-door-story"');
+    expect(more).toContain('{storyRow && evening && storyFits && <button type="button" className="now-weekly-door now-agenda-row" data-testid="today-agenda-story"');
   });
 });

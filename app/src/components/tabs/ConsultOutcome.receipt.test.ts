@@ -56,7 +56,7 @@ const toast = vi.fn();
 const AskSpecialist = () => null;
 const CareVisitHead = () => null;
 const CareAside = () => null;
-const CareDoors = () => null;
+const CareShared = () => null;
 const Icon = () => null;
 const collection = (name: string) => ({
   items: name === "appointments" ? [past] : name === "apptFollowUps" ? followUps : [],
@@ -64,7 +64,7 @@ const collection = (name: string) => ({
   upsert: name === "apptFollowUps" ? followUpUpsert : name === "appointments" ? apptUpsert : vi.fn(async () => undefined),
 });
 const env = {
-  React, AskSpecialist, CareVisitHead, CareAside, CareDoors, Icon, HomeProgramDays: () => null, HomeProgramEntry: () => null,
+  React, AskSpecialist, CareVisitHead, CareAside, CareShared, Icon, HomeProgramDays: () => null, HomeProgramEntry: () => null,
   visitForConsult, consultAudienceForProfession, appointmentStatus, makeFollowUp,
   useRef: (initial: unknown) => slots[cursor++] ??= { current: initial },
   useState: (initial: unknown) => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], (value: unknown) => { slots[i] = value; }]; },
@@ -229,7 +229,7 @@ describe("v3 EXTRA-CARE · only #/consult is the landing", () => {
     it(`#/${route} renders no visit card, head, aside or doors, and the builder is not in landing mode`, () => {
       tab = route;
       const all = render();
-      expect(all.some((el) => el.type === CareVisitHead || el.type === CareAside || el.type === CareDoors)).toBe(false);
+      expect(all.some((el) => el.type === CareVisitHead || el.type === CareAside || el.type === CareShared)).toBe(false);
       expect(all.some((el) => el.props["data-testid"] === "consult-kicker" || el.props["data-testid"] === "consult-sub" || el.props["data-testid"] === "consult-visit-card")).toBe(false);
       const builder = all.find((el) => el.type === AskSpecialist)!;
       expect(builder.props.landing).toBe(false);
@@ -240,7 +240,7 @@ describe("v3 EXTRA-CARE · only #/consult is the landing", () => {
   it("#/consult renders each of them once, the builder in landing mode inside the visit card", () => {
     const all = render();
     expect(all.filter((el) => el.type === CareAside)).toHaveLength(1);
-    expect(all.filter((el) => el.type === CareDoors)).toHaveLength(1);
+    expect(all.filter((el) => el.type === CareShared)).toHaveLength(1);
     const card = byId(all, "consult-visit-card")!;
     expect(card.type).toBe("section");
     const inCard = elements(card.props.children);

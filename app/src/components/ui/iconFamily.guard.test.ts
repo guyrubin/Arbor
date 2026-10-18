@@ -220,7 +220,8 @@ describe("(c) navigation.ts — one glyph per destination", () => {
   });
 
   it("NEGATIVE CONTROL: a place pill sharing a glyph with another pill, or with a hub's destination, is caught", () => {
-    expect(glyphCollisions([...SECTIONS, placeRows({ tab: "milestones", msIcon: "map" })])).toEqual(["map: development, milestones"]);
+    // v4: My child's row is Milestones (map), Moments, About.
+    expect(glyphCollisions([...SECTIONS, placeRows({ tab: "profile", msIcon: "map" })])).toEqual(["map: development, profile"]);
     expect(glyphCollisions([...SECTIONS, placeRows({ tab: "timeline", msIcon: "school" })])).toEqual(["school: masterclasses, timeline"]);
   });
 });

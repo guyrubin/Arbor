@@ -1,5 +1,14 @@
 /**
- * v3 IA-02 — pill rows per place (L1).
+ * v4 (consolidation blueprint) re-pin — pill rows per place (L1).
+ *
+ * v4 rule: a pill is a different READING of the same record, never a
+ * capability. Now is Now · Weekly report (Day windows and Reminders are
+ * settings, doored from Settings); My child is Milestones · Moments · About;
+ * Together keeps its in-page filter row; the two doors (Care, For you) are one
+ * screen each and carry no row. Every former pill stays a deep link and lights
+ * the reading it belongs to (PILL_LIT).
+ *
+ * History (v3 IA-02):
  *
  * A parent stands in one of three places. Before this item only Now carried a
  * row (in the legacy hub order Overview · Day Windows · Reminders · Weekly), My
@@ -30,7 +39,10 @@ import { COMPANION_PLACES, homeForTab } from "./companionPlaces";
 import { translate } from "./i18n";
 import {
   NO_PILL_ROW_TABS,
+  PILL_LIT,
   PLACE_PILLS,
+  isPlaceReading,
+  pillLitTab,
   homeIdForTab,
   hubTabsForSection,
   isCompactHiddenTool,
@@ -49,12 +61,12 @@ const labelKeyOf = (it: NavItem) => it.labelKey ?? "nav.tab." + it.tab;
 const label = (lang: "en" | "he", it: NavItem) => translate(lang, labelKeyOf(it));
 
 describe("1 · each place's row, in table A's order", () => {
-  it("Now: Now · Weekly report · Day windows · Reminders", () => {
-    expect(tabsOf(PLACE_PILLS.now)).toEqual(["overview", "weekly", "day-windows", "smart-reminders"]);
+  it("Now: Now · Weekly report", () => {
+    expect(tabsOf(PLACE_PILLS.now)).toEqual(["overview", "weekly"]);
   });
 
-  it("My child: Development map · Milestones · Language · Portrait · Journal · Moments · Profile", () => {
-    expect(tabsOf(PLACE_PILLS.child)).toEqual(["development", "milestones", "language", "timeline", "journal", "behaviors", "profile"]);
+  it("My child: Milestones · Moments · About", () => {
+    expect(tabsOf(PLACE_PILLS.child)).toEqual(["development", "timeline", "profile"]);
   });
 
   it("only Now and My child have a Shell row; Together's first level is its in-page filter row", () => {
@@ -68,7 +80,7 @@ describe("1 · each place's row, in table A's order", () => {
     for (const place of PLACES) {
       const row = PLACE_PILLS[place];
       expect(row[0].tab, place).toBe(COMPANION_PLACES.find((p) => p.id === place)!.tab);
-      expect(row.length, place).toBeLessThanOrEqual(7);
+      expect(row.length, place).toBeLessThanOrEqual(3);
       expect(new Set(tabsOf(row)).size, place).toBe(row.length);
     }
   });
@@ -87,13 +99,19 @@ describe("2 · pillRowFor: the place's row on the place and on every leaf", () =
       expect(rowFor(tab), tab).toBe(PLACE_PILLS[home]);
       checked.push(tab);
     }
-    // FEAT-07 moves Plans into Together. Keep exact coverage of every remaining
-    // Now/My child route, rather than retaining the pre-routines count.
+    // FEAT-07 moves Plans into Together. v4: #/journal and #/timeline wear the
+    // My child row again (Moments is one of its three readings).
     expect(checked).toEqual([
       "overview", "behaviors", "milestones", "weekly", "language", "profile",
-      "memory", "strengths", "screening", "copilot", "development",
-      "day-windows", "smart-reminders", "science",
+      "memory", "strengths", "screening", "timeline", "journal", "copilot", "development",
+      "science",
     ]);
+    // v4: the two settings-grade panels keep Back to Now and wear no row.
+    for (const tab of ["day-windows", "smart-reminders"] as const) {
+      expect(NO_PILL_ROW_TABS.has(tab), tab).toBe(true);
+      expect(rowFor(tab), tab).toEqual([]);
+      expect(homeIdForTab(tab), tab).toBe("now");
+    }
     expect(homeIdForTab("plans")).toBe("together");
   });
 
@@ -104,11 +122,11 @@ describe("2 · pillRowFor: the place's row on the place and on every leaf", () =
     expect(tabsOf(rowFor("weekly"))).toEqual(tabsOf(PLACE_PILLS.now));
   });
 
-  it("the record's two densities keep their own Feed · Story nav and render no Shell row; they stay doors in My child", () => {
+  it("v4: Moments and the journal wear the My child row and light Moments; Moments' in-page views are readings, not routes", () => {
     for (const tab of ["journal", "timeline"] as const) {
-      expect(NO_PILL_ROW_TABS.has(tab), tab).toBe(true);
-      expect(rowFor(tab), tab).toEqual([]);
-      expect(tabsOf(PLACE_PILLS.child), tab).toContain(tab);
+      expect(NO_PILL_ROW_TABS.has(tab), tab).toBe(false);
+      expect(rowFor(tab), tab).toBe(PLACE_PILLS.child);
+      expect(pillLitTab(tab), tab).toBe("timeline");
     }
     const timeline = readFileSync(path.resolve(here, "../components/tabs/TimelineTab.tsx"), "utf8");
     // F-CHILD-2 re-pin (this line only): the Feed · Story toggle is retired;
@@ -125,13 +143,37 @@ describe("2 · pillRowFor: the place's row on the place and on every leaf", () =
     for (const tab of together) expect(rowFor(tab), tab).toEqual([]);
   });
 
-  it("the doors keep their hub rows (Care, For you, the parent) and attribution keeps none", () => {
-    for (const tab of ["consult", "masterclasses"] as const) {
+  it("v4: the two doors (Care, For you, the parent) are one screen each — no row on them or their leaves; attribution keeps none", () => {
+    const doors = ALL_TABS.filter((tab) => homeIdForTab(tab) === "care" || homeIdForTab(tab) === "learn");
+    expect(doors).toEqual(expect.arrayContaining(["consult", "safety", "handoff", "school-brief", "sharing", "appointments", "masterclasses", "learn", "family"]));
+    for (const tab of doors) {
       expect(homeForTab(tab).kind, tab).toBe("door");
-      expect(rowFor(tab), tab).toEqual(hubTabsForSection(sectionForTab(tab)));
-      expect(rowFor(tab).length, tab).toBeGreaterThan(1);
+      expect(rowFor(tab), tab).toEqual([]);
     }
+    // Talk keeps its own one-pill hub row (Shell draws a row only past one pill).
+    expect(rowFor("coach")).toEqual(hubTabsForSection(sectionForTab("coach")));
     expect(rowFor("attribution")).toEqual([]);
+  });
+
+  it("v4: every former pill stays a route and lights the reading it belongs to", () => {
+    expect(pillLitTab("milestones")).toBe("development");
+    expect(pillLitTab("screening")).toBe("development");
+    expect(pillLitTab("language")).toBe("timeline");
+    expect(pillLitTab("behaviors")).toBe("timeline");
+    expect(pillLitTab("journal")).toBe("timeline");
+    expect(pillLitTab("memory")).toBe("profile");
+    for (const [leaf, lit] of Object.entries(PILL_LIT)) {
+      expect(ALL_TABS, leaf).toContain(leaf);
+      expect(tabsOf(rowFor(leaf as (typeof ALL_TABS)[number])), leaf).toContain(lit);
+    }
+    // A pill lights itself; a settings-grade route under Now lights nothing.
+    expect(pillLitTab("weekly")).toBe("weekly");
+    expect(tabsOf(PLACE_PILLS.now)).not.toContain(pillLitTab("day-windows"));
+  });
+
+  it("v4: a pill of the place's own row is a reading, not a level — no Back; a leaf keeps Back", () => {
+    for (const tab of ["weekly", "timeline", "profile"] as const) expect(isPlaceReading(tab), tab).toBe(true);
+    for (const tab of ["milestones", "language", "day-windows", "consult", "practice"] as const) expect(isPlaceReading(tab), tab).toBe(false);
   });
 
   it("NEGATIVE CONTROL: the shipped rule put #/milestones in the Growth hub row and gave #/development none", () => {
@@ -146,11 +188,12 @@ describe("2 · pillRowFor: the place's row on the place and on every leaf", () =
 describe("3 · below md, Now shows Now and Weekly report; My child hides nothing", () => {
   const compact = (row: readonly NavItem[]) => tabsOf(row).filter((tab) => !isCompactHiddenTool(sectionForTab(tab), tab));
 
-  it("Now collapses to its home and the Weekly report (TJB-25 class, unchanged)", () => {
+  it("Now is its home and the Weekly report at every width (v4: the two panels left the row)", () => {
     expect(compact(PLACE_PILLS.now)).toEqual(["overview", "weekly"]);
+    expect(tabsOf(PLACE_PILLS.now)).toEqual(["overview", "weekly"]);
   });
 
-  it("My child keeps all seven; the row scrolls instead", () => {
+  it("My child keeps all three at every width", () => {
     expect(compact(PLACE_PILLS.child)).toEqual(tabsOf(PLACE_PILLS.child));
   });
 });
@@ -185,8 +228,8 @@ describe("4 · glyphs: shipped, one per destination, and `history` stays Talk's"
   });
 
   it("NEGATIVE CONTROL: a duplicated glyph is caught", () => {
-    const dup = PLACE_PILLS.child.map((it) => (it.tab === "milestones" ? { ...it, msIcon: "map" } : it));
-    expect(sharedGlyphs([PLACE_PILLS.now, dup])).toEqual(["map: development, milestones"]);
+    const dup = PLACE_PILLS.child.map((it) => (it.tab === "profile" ? { ...it, msIcon: "map" } : it));
+    expect(sharedGlyphs([PLACE_PILLS.now, dup])).toEqual(["map: development, profile"]);
     expect(subset.has("not_a_shipped_glyph")).toBe(false);
   });
 });
@@ -203,10 +246,12 @@ describe("5 · every pill label exists in EN and HE", () => {
     }
   });
 
-  it("the rows read as table A in English", () => {
-    expect(PLACE_PILLS.child.map((it) => label("en", it))).toEqual(["Development map", "Milestones", "Language", "Portrait", "Journal", "Moments", "Profile"]);
-    expect(PLACE_PILLS.now.slice(1).map((it) => label("en", it))).toEqual(["Weekly report", "Day windows", "Reminders"]);
-    expect(PLACE_PILLS.child.map((it) => label("he", it))).toEqual(["מפת התפתחות", "אבני דרך", "שפה", "דיוקן", "יומן", "רגעים", "פרופיל"]);
+  it("the rows read as the v4 table in English and Hebrew; About names the child", () => {
+    expect(PLACE_PILLS.child.map((it) => label("en", it))).toEqual(["Milestones", "Moments", "About"]);
+    expect(PLACE_PILLS.now.slice(1).map((it) => label("en", it))).toEqual(["Weekly report"]);
+    expect(PLACE_PILLS.child.map((it) => label("he", it))).toEqual(["אבני דרך", "רגעים", "אודות"]);
+    expect(translate("en", "nav.pill.profile.named", { name: "Mia" })).toBe("About Mia");
+    expect(translate("he", "nav.pill.profile.named", { name: "מיה" })).toBe("על מיה");
   });
 
   it("the tablist is named for its home in both languages", () => {

@@ -10,6 +10,7 @@ import { dayKey } from "../../practice/signals";
 import type { PracticeEvent } from "../../types";
 import { Avatar } from "../ui/Avatar";
 import Icon from "../ui/Icon";
+import { BrandChip } from "../ui/BrandChip";
 import { NOW_COPY } from "./nowViewCopy";
 import { PRACTICE_ACTIVITY_LABELS, kidFeelingWord } from "./portraitEvidence";
 
@@ -94,8 +95,10 @@ export function NowKidWorld({ observations, now, name, onAll }: {
  * v3 EXTRA-WEEKLY: the counting lives in lib/weekGlance (the Weekly tab's
  * glance reads the same object); this card renders it unchanged.
  */
-export function NowWeekSoFar({ observations, now, onReport }: {
+export function NowWeekSoFar({ observations, now, onReport, children }: {
   observations: readonly Observation[]; now: Date; onReport: () => void;
+  /** v4: what changed since the last visit, drawn under the day bars. */
+  children?: React.ReactNode;
 }) {
   const { actionLoop = [] } = useArbor();
   const { uiLang } = useLanguage();
@@ -106,7 +109,7 @@ export function NowWeekSoFar({ observations, now, onReport }: {
   const label: Record<WeekCountKey, string> = { moments: copy.weekMoments, helped: copy.weekHelped, milestones: copy.weekMilestones, words: copy.weekWords, kid: copy.weekKid };
   return <section className="now-week" aria-labelledby={`${id}-week`} data-testid="now-week">
     <div className="now-week-head">
-      <Icon name="bar_chart" size={19} />
+      <BrandChip icon="bar_chart" tone="sapphire" shape="arch" />
       <h2 id={`${id}-week`}>{copy.weeklyTitle}</h2>
       <button type="button" className="now-week-report" data-testid="now-week-report" aria-label={copy.weekReportAria} onClick={onReport}>{copy.weekReport}<Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" /></button>
     </div>
@@ -120,5 +123,6 @@ export function NowWeekSoFar({ observations, now, onReport }: {
         </span>)}
       </div>
     </> : <p className="now-week-empty">{copy.weekEmpty}</p>}
+    {children}
   </section>;
 }

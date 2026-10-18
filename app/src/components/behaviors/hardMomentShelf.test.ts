@@ -184,8 +184,12 @@ describe("B-ASKJB-31 — the Hard moment now sheet and its doors", async () => {
     expect(COMPOSER).toMatch(/\{onHardMoment && <button type="button" className="companion-tray-hard" data-testid="coach-hard-moment-now" onClick=\{\(\) => \{ closeTools\(\); onHardMoment\(\); \}\}/);
     expect(SHELF).toMatch(/if\s*\(cards\.length\s*===\s*0\)\s*return null/);
     expect(SHELF).toContain("onClick={() => openHardMomentNow(card.id)}");
-    // Parity 9 Oct: Today's door is Now's hard-moment line, gated the same way.
-    expect(TODAY).toContain('{hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}>');
+    // v4 re-pin (blueprint decision 6): Today's door is the launcher rail's
+    // hard-moment button, on every screen, gated the same way; Now has none.
+    const RAIL = strip(read("components/companion/CompanionWorkspace.tsx"));
+    expect(RAIL).toContain('{hardMomentDoor && <button type="button" className="companion-launch-save companion-launch-hard" data-testid="launcher-hard-moment" onClick={() => openHardMomentNow()}');
+    expect(RAIL).toContain("availableHardMomentCards({ now: at, ageMonths: ageMonthsFromProfile(childProfile, at)");
+    expect(TODAY).not.toContain("openHardMomentNow");
   });
 
   it("one sheet, mounted once in Shell, opened through the context seam", () => {

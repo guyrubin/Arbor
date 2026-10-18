@@ -109,10 +109,12 @@ describe("navigation IA", () => {
       for (const it of row) expect(/[A-Za-z]/.test(labelOf("he", it)), it.tab).toBe(false);
     });
 
-    it("every Care pill wears this row and belongs to the Care, together door", () => {
+    // v4 re-pin (consolidation: "Care, together" is one screen, no tabs). The
+    // hub index above stays for More and search; Shell draws no row on Care.
+    it("every Care route is one screen with no Shell row (v4) and belongs to the Care, together door", () => {
       for (const tab of ORDER) {
         const t = tab as (typeof row)[number]["tab"];
-        expect(pillRowFor(sectionForTab(t), t).map((i) => i.tab), tab).toEqual(ORDER);
+        expect(pillRowFor(sectionForTab(t), t).map((i) => i.tab), tab).toEqual([]);
         const home = homeForTab(t);
         expect(home.kind === "door" && home.door.id, tab).toBe("care");
       }

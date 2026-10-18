@@ -14,9 +14,9 @@
 .companion-together .together-hero-cta:hover { background: var(--gradient-cta); filter: brightness(.95); }
 .companion-together .together-hero-cta .companion-arrow { display: none; }
 .companion-together .together-doors { display: none; }
-.companion-together .together-door { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-inline-size: 0; min-block-size: var(--touch-min); padding-block: 12px; padding-inline: 14px; border: 1px solid var(--arbor-rule); border-radius: var(--r); background: var(--arbor-paper-elevated); color: var(--arbor-ink); font-size: var(--t-sm); font-weight: 700; line-height: 1.25; text-align: start; overflow-wrap: anywhere; transition: border-color 180ms; }
+/* v4: a door is the brand chip beside its label (the chip draws its own white glyph). */
+.companion-together .together-door { display: flex; flex-direction: row; align-items: center; gap: 10px; min-inline-size: 0; min-block-size: var(--touch-min); padding-block: 10px; padding-inline: 12px; border: 1px solid var(--arbor-rule); border-radius: var(--r); background: var(--arbor-paper-elevated); color: var(--arbor-ink); font-size: var(--t-sm); font-weight: 700; line-height: 1.25; text-align: start; overflow-wrap: anywhere; transition: border-color 180ms; }
 .companion-together .together-door:hover { border-color: var(--arbor-clay); }
-.companion-together .together-door .msr { color: var(--arbor-clay); }
 .companion-together .companion-together-art { order: -1; box-shadow: var(--arbor-shadow-primary); }
 .companion-together .companion-together-art img { block-size: 190px; object-position: 50% 60%; }
 @container together (min-width: 640px) {
@@ -34,6 +34,12 @@
 .companion-together .companion-say,
 .companion-preview .companion-say { font-family: var(--font-sans); font-size: var(--t-base); font-style: normal; line-height: 1.6 !important; }
 .companion-together .companion-filter-row { margin-block-end: 20px; padding-block: 10px 16px; }
+/* v4: the three filters are Together's first level, drawn as the place pills
+   (Shell's row on Now and My child): label-only, 700 weight, the navy active
+   pill, a quiet ruled pill at rest, no rule under the row. */
+.companion-together .together-pills { margin-block: 0 22px; padding-block: 0; border-block-end: 0; }
+.companion-together .together-pills .companion-filter { padding-inline: 13px; border-color: var(--arbor-rule); background: var(--arbor-paper-elevated); color: var(--arbor-muted); font-size: var(--t-sm) !important; font-weight: 700; white-space: nowrap; }
+.companion-together .together-pills .companion-filter[aria-pressed="true"] { background: var(--arbor-subtab-active); color: var(--arbor-subtab-on-ink); border-color: var(--arbor-subtab-active); }
 .companion-together .companion-collection[hidden] { display: none; }
 .companion-together .companion-collection { margin-block: 24px; }
 /* A section the CTA or a door scrolls to takes focus quietly (its heading is tabIndex -1). */
@@ -113,8 +119,8 @@
    gutter (Hebrew starts at the reading edge, since the row follows dir); the
    section heads drop their eyebrow and sit at the large step; games are rows
    with an 88px picture flush at the start edge (78px at least, the picture
-   fills the row) beside the name and the skill; on All together the routines
-   are one sideways row of 124px tiles (the Routines pill keeps the full grid);
+   fills the row) beside the name and the skill (v4: the All together row of
+   routine tiles is gone with the All filter; Routines keeps its own layout);
    and the gate card keeps the lock, the PIN line and Start playing on one row
    when the PIN is set. Counts and words only, tokens and logical sides only,
    and nothing is clipped: every name wraps. */
@@ -133,9 +139,6 @@
   .companion-together .companion-world-card p { margin-block-start: 0; font-size: var(--t-xs); line-height: 1.45; }
   .companion-together .companion-world-card .companion-door-link { display: none; }
   .companion-together .together-world-count-slot { min-block-size: 0; }
-  .companion-together .together-routines[data-mode="all"] .together-routine-grid { display: flex; gap: 8px; margin-inline: -16px; padding-block: 6px; padding-inline: 16px; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x proximity; scroll-padding-inline: 16px; scrollbar-width: none; }
-  .companion-together .together-routines[data-mode="all"] .together-routine-grid::-webkit-scrollbar { display: none; }
-  .companion-together .together-routines[data-mode="all"] .together-routine-grid > li { flex: none; inline-size: 124px; scroll-snap-align: start; }
   .companion-together .together-gate { gap: 10px 12px; }
   .companion-together .together-gate-note { flex: 1 1 150px; min-inline-size: 0; }
   .companion-together .together-gate-actions { margin-inline-start: auto; gap: 4px 12px; }

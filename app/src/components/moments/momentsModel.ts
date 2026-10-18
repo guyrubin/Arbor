@@ -4,17 +4,69 @@
  * parent kept. No rates, no shares, no denominators, no colour scale — a
  * blank cell means "no record in this period", never a missing ability.
  */
-import { EXTRACT_CONTEXTS } from "../../content/behaviorTaxonomy";
+import { EXTRACT_CONTEXTS, isIncidentType } from "../../content/behaviorTaxonomy";
 import { DOMAIN_IDS, type DomainId } from "../../lib/domains/registry";
 import type { Observation } from "../../lib/observations";
 import type { BehaviorContext } from "../../types";
 
 export type MomentsView = "time" | "places" | "areas";
-export const MOMENTS_VIEWS: readonly MomentsView[] = ["time", "places", "areas"];
+/** v4: Across areas leads (the record at a glance), then Over time, then By place. */
+export const MOMENTS_VIEWS: readonly MomentsView[] = ["areas", "time", "places"];
 
-/** `?view=` → a known view; anything else is the default (Over time). */
-export function parseView(raw: string | null | undefined): MomentsView {
-  return raw === "places" || raw === "areas" ? raw : "time";
+/**
+ * `?view=` → a known view. v4: with no view, Moments opens Across areas — but a
+ * link that names an area, a month or one observation is asking for those
+ * moments themselves, so it opens Over time (the reading that lists them).
+ */
+export function parseView(raw: string | null | undefined, focused = false): MomentsView {
+  if (raw === "places" || raw === "areas" || raw === "time") return raw;
+  return focused ? "time" : "areas";
+}
+
+/**
+ * v4 — which moments are in view (the consolidation blueprint folds the hard
+ * moments, the kept things and the words into Moments as filters):
+ *  - kept: the firsts the parent kept (keepsakes);
+ *  - hard: the incident-shaped entries — a behaviour log whose type is one of
+ *    the incident types (isIncidentType), never the neutral "Moment";
+ *  - said: the words and phrases the parent wrote down.
+ * A filter only narrows; the counts beside it are plain counts of kept items.
+ */
+export type MomentsKind = "all" | "kept" | "hard" | "said";
+export const MOMENTS_KINDS: readonly MomentsKind[] = ["all", "kept", "hard", "said"];
+
+/** `?kind=` → a known kind; anything else is everything. */
+export function parseKind(raw: string | null | undefined): MomentsKind {
+  return raw === "kept" || raw === "hard" || raw === "said" ? raw : "all";
+}
+
+export function isKind(o: Observation, kind: MomentsKind): boolean {
+  switch (kind) {
+    case "all": return true;
+    case "kept": return o.value.type === "keepsake";
+    case "hard": return o.value.type === "moment" && isIncidentType(o.value.behaviorType);
+    case "said": return o.value.type === "word";
+  }
+}
+
+/** How many of `observations` each kind holds (All included). */
+export function kindCounts(observations: readonly Observation[]): Record<MomentsKind, number> {
+  const counts: Record<MomentsKind, number> = { all: 0, kept: 0, hard: 0, said: 0 };
+  for (const o of observations) for (const kind of MOMENTS_KINDS) if (isKind(o, kind)) counts[kind] += 1;
+  return counts;
+}
+
+/**
+ * v4 — a month bar's height on Across areas: a FIXED scale (every saved
+ * moment adds the same few pixels, capped), so one count is one height on
+ * every card. Nothing is normalised against another area or month: no share,
+ * no maximum, and the number itself is always printed under the bar.
+ */
+export const BAR_UNIT_PX = 3;
+export const BAR_BASE_PX = 4;
+export const BAR_MAX_PX = 28;
+export function barHeightPx(n: number): number {
+  return n > 0 ? Math.min(BAR_MAX_PX, BAR_BASE_PX + BAR_UNIT_PX * n) : 0;
 }
 
 /**

@@ -26,13 +26,13 @@ const AskSpecialist = () => null;
 const HomeProgramDays = () => null;
 const HomeProgramEntry = () => null;
 const Icon = () => null;
-// v3 EXTRA-CARE: the Care landing's visit head, aside and doors render on #/consult only
+// v3 EXTRA-CARE → v4: the Care landing's visit head, aside and shared cards render on #/consult only
 const CareVisitHead = () => null;
 const CareAside = () => null;
-const CareDoors = () => null;
+const CareShared = () => null;
 const visit = { id: "visit", whenIso: new Date(Date.now() + 86400000).toISOString(), status: "confirmed", profession: "slp" };
 const env = {
-  React, AskSpecialist, HomeProgramDays, HomeProgramEntry, Icon, CareVisitHead, CareAside, CareDoors, visitForConsult, consultAudienceForProfession,
+  React, AskSpecialist, HomeProgramDays, HomeProgramEntry, Icon, CareVisitHead, CareAside, CareShared, visitForConsult, consultAudienceForProfession,
   useRef: (initial: unknown) => slots[cursor++] ??= { current: initial },
   useState: (initial: unknown) => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], (value: unknown) => { slots[i] = value; }]; },
   useMemo: (calculate: () => unknown) => calculate(),
@@ -97,7 +97,7 @@ describe("v3 FEAT-09 · #/handoff is the care summary builder", () => {
     expect(all.some((el) => el.type === HomeProgramDays || el.type === HomeProgramEntry)).toBe(false);
     expect(all.some((el) => el.type === "section")).toBe(false);
     // v3 EXTRA-CARE: the landing's visit card, head, aside and doors stay on #/consult
-    expect(all.some((el) => el.type === CareVisitHead || el.type === CareAside || el.type === CareDoors)).toBe(false);
+    expect(all.some((el) => el.type === CareVisitHead || el.type === CareAside || el.type === CareShared)).toBe(false);
     expect(all.find((el) => el.type === AskSpecialist)!.props.head).toBeUndefined();
   });
 
@@ -111,14 +111,16 @@ describe("v3 FEAT-09 · #/handoff is the care summary builder", () => {
     expect(textOf(all.find((el) => el.type === "h1"))).not.toBe(translate("en", "elev.consult.h1.summary"));
     expect(all.find((el) => el.type === AskSpecialist)!.props.primaryMoveStamp).toEqual({ "data-primary-move": "build-share-packet" });
     expect(all.find((el) => el.type === AskSpecialist)!.props.excludeTeacher).toBe(false);
-    // v3 EXTRA-CARE: the Care landing adds its visit card (the builder, headed
-    // by the visit), aside and doors
+    // v3 EXTRA-CARE → v4: the Care landing adds its visit card (the builder,
+    // headed by the visit), aside and shared cards (Who sees what, Past exports)
     const builder = all.find((el) => el.type === AskSpecialist)!;
     expect(builder.props.landing).toBe(true);
     expect(builder.props.head?.type).toBe(CareVisitHead);
     expect(builder.props.head?.props.visit.id).toBe("visit");
     expect(all.filter((el) => el.props["data-testid"] === "consult-visit-card")).toHaveLength(1);
     expect(all.filter((el) => el.type === CareAside)).toHaveLength(1);
-    expect(all.filter((el) => el.type === CareDoors)).toHaveLength(1);
+    expect(all.filter((el) => el.type === CareShared)).toHaveLength(1);
+    // v4: Past exports' "Prepare an update" reaches the builder
+    expect(typeof all.find((el) => el.type === CareShared)!.props.onPrepareAgain).toBe("function");
   });
 });

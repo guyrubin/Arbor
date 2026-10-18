@@ -63,12 +63,23 @@ beforeEach(() => {
 });
 afterEach(() => { unmount(); vi.unstubAllGlobals(); });
 
+/* v4 re-pin: Together is three filters — Routines (the default) · Play
+   (`games`: the games and the away ideas) · Stories. The former ids still
+   arrive by link and stored choice and land on the filter they became:
+   all → routines, offscreen → games. */
 describe("Together return presentation state", () => {
-  it.each(["stories", "games", "routines", "offscreen"] as const)("opens More's %s destination over a saved category on the first render", (category) => {
-    writeTogetherView("a", { category: "all" });
-    h.query = `f=${category}`;
+  it.each([["stories", "stories"], ["games", "games"], ["routines", "routines"], ["offscreen", "games"], ["all", "routines"]] as const)("opens the %s link over a saved category on the first render (as %s)", (param, category) => {
+    writeTogetherView("a", { category: "stories" });
+    h.query = `f=${param}`;
     expect(render().category).toBe(category);
     expect(readTogetherView("a", true)).toEqual({ category });
+  });
+
+  it("a stored former id reads as the filter it became", () => {
+    sessionStorage.setItem("arbor.together.view.a", JSON.stringify({ category: "all" }));
+    expect(readTogetherView("a", true)).toEqual({ category: "routines" });
+    sessionStorage.setItem("arbor.together.view.a", JSON.stringify({ category: "offscreen", returnDoor: "more-ideas" }));
+    expect(readTogetherView("a", true)).toEqual({ category: "games", returnDoor: "more-ideas" });
   });
 
   it("follows query-only navigation and Back/Forward while mounted, cancelling an old return door", () => {
@@ -80,13 +91,14 @@ describe("Together return presentation state", () => {
     stale(0); paint(); expect(target.door.focus).not.toHaveBeenCalled();
     h.query = "f=stories"; expect(render().category).toBe("stories");
     h.query = "f=routines"; expect(render().category).toBe("routines");
+    // A former id chosen in code writes the filter it became.
     render().setCategory("offscreen");
-    expect(h.query).toBe("f=offscreen"); expect(render().category).toBe("offscreen");
+    expect(h.query).toBe("f=games"); expect(render().category).toBe("games");
   });
 
-  it("rejects unknown filters and keeps unavailable games behind the existing age gate", () => {
-    h.query = "f=unknown"; expect(render().category).toBe("all");
-    h.query = "f=games"; expect(render("a", false).category).toBe("all");
+  it("rejects unknown filters; Play stays Play when no world is listed (it holds the away ideas)", () => {
+    h.query = "f=unknown"; expect(render().category).toBe("routines");
+    h.query = "f=games"; expect(render("a", false).category).toBe("games");
     h.query = "f=routines"; expect(render("a", false).category).toBe("routines");
   });
 
@@ -94,10 +106,10 @@ describe("Together return presentation state", () => {
     const replaceState = vi.fn();
     vi.stubGlobal("window", { location: { hash: "#/practice" }, history: { state: { existing: true }, replaceState } });
     render().setCategory("stories");
-    expect(replaceState).toHaveBeenCalledWith({ existing: true }, "", "#/practice?f=all");
-    h.query = "f=all"; expect(render().category).toBe("all");
+    expect(replaceState).toHaveBeenCalledWith({ existing: true }, "", "#/practice?f=routines");
+    h.query = "f=routines"; expect(render().category).toBe("routines");
   });
-  it.each(["all", "stories", "games", "routines", "offscreen"] as const)("never moves focus or scroll on an ordinary %s visit or rerender without a pending return", (category) => {
+  it.each(["routines", "games", "stories"] as const)("never moves focus or scroll on an ordinary %s visit or rerender without a pending return", (category) => {
     writeTogetherView("a", { category });
     const target = page();
     // Data arriving or a dock opening/closing rerenders the mounted page. None
@@ -126,7 +138,7 @@ describe("Together return presentation state", () => {
   });
 
   it.each(["story-library", "story-bedtime", "story-comics", "story-family", "world-word-world", "world-speech", "more-ideas"])("restores the specific visible door %s after a normal destination-ready return, once", (returnDoor) => {
-    const category = returnDoor.startsWith("world-") ? "games" : returnDoor === "more-ideas" ? "offscreen" : "stories";
+    const category = returnDoor.startsWith("world-") ? "games" : returnDoor === "more-ideas" ? "games" : "stories";
     const outgoing = page(); let view = render("a", true, outgoing);
     view.setCategory(category); view = render("a", true, outgoing); view.rememberDoor(returnDoor);
     h.present = false; render("a", true, outgoing); paint();
@@ -143,7 +155,7 @@ describe("Together return presentation state", () => {
   });
 
   it.each(["story-library", "story-bedtime", "story-comics", "story-family", "world-word-world", "world-speech", "more-ideas"])("restores %s on early Back while the outgoing Together is still mounted and the destination has not committed", (returnDoor) => {
-    const category = returnDoor.startsWith("world-") ? "games" : returnDoor === "more-ideas" ? "offscreen" : "stories";
+    const category = returnDoor.startsWith("world-") ? "games" : returnDoor === "more-ideas" ? "games" : "stories";
     const retained = page(); let view = render("a", true, retained);
     view.setCategory(category); view = render("a", true, retained); view.rememberDoor(returnDoor);
     const samePageRef = view.pageRef;
@@ -163,13 +175,13 @@ describe("Together return presentation state", () => {
 
   it("never borrows another child's category or queued return, even before effects", () => {
     writeTogetherView("a", { category: "stories", returnDoor: "story-library" });
-    writeTogetherView("b", { category: "offscreen" });
+    writeTogetherView("b", { category: "games" });
     const previous = page(); expect(render("a", true, previous).category).toBe("stories");
     const stale = scheduled.at(-1)!;
-    const current = page(); expect(render("b", true, current).category).toBe("offscreen");
+    const current = page(); expect(render("b", true, current).category).toBe("games");
     stale(0); paint();
     expect(previous.door.focus).not.toHaveBeenCalled(); expect(current.door.focus).not.toHaveBeenCalled();
-    expect(readTogetherView("b", true)).toEqual({ category: "offscreen" });
+    expect(readTogetherView("b", true)).toEqual({ category: "games" });
     expect(readTogetherView("a", true)).toEqual({ category: "stories", returnDoor: "story-library" });
   });
 
@@ -190,7 +202,7 @@ describe("Together return presentation state", () => {
     else view.rememberDoor(action === "same-door" ? "story-library" : "story-comics");
     stale(0); paint();
     expect(target.door.focus).not.toHaveBeenCalled();
-    expect(readTogetherView("a", true)).toEqual(action === "filter" ? { category: "offscreen" } : { category: "stories", returnDoor: action === "same-door" ? "story-library" : "story-comics" });
+    expect(readTogetherView("a", true)).toEqual(action === "filter" ? { category: "games" } : { category: "stories", returnDoor: action === "same-door" ? "story-library" : "story-comics" });
   });
 
   it("a disposed session cannot focus or consume its replacement's pending return", () => {
@@ -207,14 +219,14 @@ describe("Together return presentation state", () => {
   it("does not consume or focus an unavailable door", () => {
     writeTogetherView("a", { category: "games", returnDoor: "world-speech" });
     const target = page(); target.door.closest.mockReturnValue({} as never);
-    expect(render("a", false, target).category).toBe("all"); paint();
+    expect(render("a", false, target).category).toBe("games"); paint();
     expect(target.door.focus).not.toHaveBeenCalled(); expect(readTogetherView("a", false).returnDoor).toBe("world-speech");
   });
 
   it("ignores unknown categories, untrusted selectors, obsolete games and broken storage", () => {
-    sessionStorage.setItem("arbor.together.view.a", JSON.stringify({ category: "unknown", returnDoor: 'x"] button' })); expect(readTogetherView("a", true)).toEqual({ category: "all" });
-    writeTogetherView("a", { category: "games" }); expect(readTogetherView("a", false)).toEqual({ category: "all" });
-    sessionStorage.setItem("arbor.together.view.a", "{"); expect(readTogetherView("a", true)).toEqual({ category: "all" });
+    sessionStorage.setItem("arbor.together.view.a", JSON.stringify({ category: "unknown", returnDoor: 'x"] button' })); expect(readTogetherView("a", true)).toEqual({ category: "routines" });
+    writeTogetherView("a", { category: "games" }); expect(readTogetherView("a", false)).toEqual({ category: "games" });
+    sessionStorage.setItem("arbor.together.view.a", "{"); expect(readTogetherView("a", true)).toEqual({ category: "routines" });
     vi.stubGlobal("sessionStorage", { getItem: () => { throw new Error("disabled"); }, setItem: () => { throw new Error("disabled"); } });
     const view = render(); view.setCategory("stories"); expect(render().category).toBe("stories");
     h.present = false; render(); h.present = true;
@@ -225,14 +237,14 @@ describe("Together return presentation state", () => {
     writeTogetherView("a", { category: "routines" });
     expect(readTogetherView("a", true)).toEqual({ category: "routines" });
     expect(readTogetherView("a", false)).toEqual({ category: "routines" });
-    expect(readTogetherView("b", true)).toEqual({ category: "all" });
+    expect(readTogetherView("b", true)).toEqual({ category: "routines" });
     const view = render("a", false); expect(view.category).toBe("routines");
-    view.setCategory("offscreen"); expect(render("a", false).category).toBe("offscreen");
+    view.setCategory("offscreen"); expect(render("a", false).category).toBe("games");
     render("a", false).setCategory("routines"); expect(render("a", false).category).toBe("routines");
     expect(readTogetherView("a", false)).toEqual({ category: "routines" });
-    // An unknown or retired value still falls back to the whole catalogue.
+    // An unknown or retired value still falls back to the default (v4: Routines).
     sessionStorage.setItem("arbor.together.view.a", JSON.stringify({ category: "routine" }));
-    expect(readTogetherView("a", true)).toEqual({ category: "all" });
+    expect(readTogetherView("a", true)).toEqual({ category: "routines" });
   });
 
   it("pins the actual retained-route boundary that supplies Motion presence", () => {

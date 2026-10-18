@@ -93,14 +93,17 @@ for (const lang of ["en", "he"] as const) describe(`v3 F-TOG-1 · Together's her
     expect(html).not.toMatch(/\bMia\b|(?<![֐-׿])מיה(?![֐-׿])/);
   });
 
-  it("three studio doors, each an icon and a label, inside the hero", () => {
+  // v4 re-pin: each door's icon is the brand chip (pink, lavender, green), beside its label.
+  it("three studio doors, each a brand chip and a label, inside the hero", () => {
     const html = render();
     const doors = html.slice(html.indexOf('data-testid="together-doors"'), html.indexOf("</section>", html.indexOf('data-testid="together-doors"')));
-    for (const [testId, icon, key] of DOORS) {
+    const TONES = ["pink", "lav", "green"];
+    DOORS.forEach(([testId, icon, key], i) => {
       const door = buttonMarkup(doors, testId);
       expect(door, testId).toMatch(/^<button type="button" class="together-door"/);
       expect(door.replace(/<[^>]+>/g, ""), testId).toBe(`${icon}${tr(lang, key)}`);
-    }
+      expect(door, testId).toMatch(new RegExp(`<span aria-hidden="true" data-brand-chip="${TONES[i]}"[^>]*class="brand-chip"`));
+    });
     expect(html.indexOf('data-testid="together-cta"')).toBeLessThan(html.indexOf('data-testid="together-doors"'));
     expect(html.indexOf('data-testid="together-doors"')).toBeLessThan(html.indexOf('class="companion-together-art"'));
   });
@@ -115,23 +118,27 @@ for (const lang of ["en", "he"] as const) describe(`v3 F-TOG-1 · Together's her
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
   });
 
-  it("the question row sits under the hero and before the filter row, with the enjoy note beside the chip", () => {
+  // v4 re-pin: the filter row is Together's first level (above the hero), so
+  // the question row now sits between the hero and the filter's catalogue.
+  it("the question row sits under the hero and before the catalogue, with the enjoy note beside the chip", () => {
     state.topic = { id: "topic-a", title: "What helps mornings feel calmer?" };
     const html = render();
     const row = html.indexOf('data-testid="together-question-row"');
+    const catalogue = html.indexOf('class="companion-collection"');
+    expect(html.indexOf('class="companion-filter-row together-pills"')).toBeLessThan(html.indexOf('data-module="together-invitation"'));
     expect(row).toBeGreaterThan(html.indexOf('data-testid="together-cta"'));
     expect(row).toBeGreaterThan(html.indexOf("</section>", html.indexOf('data-module="together-invitation"')));
-    expect(row).toBeLessThan(html.indexOf('class="companion-filter-row"'));
-    expect(html.slice(row, html.indexOf('class="companion-filter-row"'))).toContain(tr(lang, "companion.together-view.here-it-is-also-enough-just-to-enjoy"));
+    expect(row).toBeLessThan(catalogue);
+    expect(html.slice(row, catalogue)).toContain(tr(lang, "companion.together-view.here-it-is-also-enough-just-to-enjoy"));
     expect(html.match(/data-module=/g)).toHaveLength(5);
   });
 });
 
 describe("v3 F-TOG-1 · what the doors and the move do", () => {
-  it("the move chooses the away ideas; nothing is written and play does not start", () => {
+  it("the move chooses the away ideas (v4: in Play); nothing is written and play does not start", () => {
     render();
     button("together-cta")!.onClick();
-    expect(readTogetherView("child-a", true)).toEqual({ category: "offscreen" });
+    expect(readTogetherView("child-a", true)).toEqual({ category: "games" });
     expect(state.saveMoment).not.toHaveBeenCalled(); expect(state.requestKidMode).not.toHaveBeenCalled(); expect(state.setActiveTab).not.toHaveBeenCalled();
   });
 
@@ -139,7 +146,7 @@ describe("v3 F-TOG-1 · what the doors and the move do", () => {
     render();
     button("together-door-story")!.onClick();
     expect(state.setActiveTab).toHaveBeenCalledWith("bedtime-stories");
-    expect(readTogetherView("child-a", true)).toEqual({ category: "all", returnDoor: "story-bedtime" });
+    expect(readTogetherView("child-a", true)).toEqual({ category: "routines", returnDoor: "story-bedtime" });
   });
 
   it("Find something to play chooses the games", () => {
@@ -165,7 +172,7 @@ describe("v3 F-TOG-1 · what the doors and the move do", () => {
     render();
     button("together-door-continue")!.onClick();
     // The preview opens in place: the category stays where it was and nothing starts.
-    expect(readTogetherView("child-a", true)).toEqual({ category: "all" });
+    expect(readTogetherView("child-a", true)).toEqual({ category: "routines" });
     expect(state.requestKidMode).not.toHaveBeenCalled(); expect(state.setActiveTab).not.toHaveBeenCalled();
   });
 });

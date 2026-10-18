@@ -110,6 +110,7 @@ export const NOW_COPY = {
     noStepYet: "Not chosen yet",
     nextStep: (step: string) => `Next: ${step}`,
     programWeek: (week: number) => `Your program · week ${week}`,
+    programWeekOf: (week: number, total: number) => `Week ${week} of ${total}`,
     close: "Close",
     planSay: { practice: "A few minutes is enough.", step: "One small step at a time.", recommendation: "Start small. Stay close.", program: "Your program, at your pace.", record: "It starts from what you noticed.", visit: "Bring what you’ve noticed.", tonight: "A quiet moment before sleep.", notice: "Just notice. Nothing to fix." },
     // v3 F-NOW-1 r2: every lead's one body - the Picked line, the face's meta, and the time and size in words.
@@ -231,6 +232,7 @@ export const NOW_COPY = {
     noStepYet: "עוד לא נבחר",
     nextStep: (step: string) => `הבא: ${step}`,
     programWeek: (week: number) => `התוכנית שלכם · שבוע ${week}`,
+    programWeekOf: (week: number, total: number) => `שבוע ${week} מתוך ${total}`,
     close: "סגירה",
     planSay: { practice: "כמה דקות זה מספיק.", step: "צעד קטן אחד בכל פעם.", recommendation: "מתחילים בקטן. נשארים קרובים.", program: "התוכנית שלכם, בקצב שלכם.", record: "מתחילים ממה שראיתם.", visit: "הביאו איתכם את מה שראיתם.", tonight: "רגע שקט לפני השינה.", notice: "רק לשים לב. אין מה לתקן." },
     // v3 F-NOW-1 r2: every lead's one body - the Picked line, the face's meta, and the time and size in words.

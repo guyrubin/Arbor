@@ -486,7 +486,8 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
       expect(seam.worlds.map((w) => w.id), lang).toEqual(orderedStudioWorlds(lang).map((w) => w.id));
       expect(seam.stampId, lang).toBe(stampWorldId(lang));
     }
-    expect(stripComments(studio)).toContain('{worlds.slice(0, category === "all" ? 3 : undefined).map((world) =>');
+    // v4 re-pin: the All filter (and its three-world preview) is gone; Play lists every world in THAT order.
+    expect(stripComments(studio)).toContain("{worlds.map((world) =>");
     expect(stripComments(studio)).not.toContain("STUDIO_WORLDS.map(");
     // NEGATIVE CONTROL: the r3 rule (first world that works in HE) stamped the parent-tab tile 2
     expect(STUDIO_WORLDS.find((w) => worksInLanguage(w, "he"))!.id).toBe("word-world");

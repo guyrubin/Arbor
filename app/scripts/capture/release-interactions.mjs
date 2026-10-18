@@ -556,10 +556,14 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
 
       const invitation = page.locator('[data-module="together-invitation"]');
       const story = page.locator('[data-together-return="story-library"]');
+      // v4: Together is Routines · Play · Stories; the story doors live under
+      // Stories (?f=stories) and a door opens its sheet first — its one way in
+      // then leaves for the reader route (blueprint decision 3).
+      const openStory = async () => { await story.click(); await byId('together-story-open').click(); };
       const togetherGeometry = async () => { await fontReady(); return story.evaluate(observeTogetherGeometry); };
       let firstGeometry, preDockGeometry, openGeometry;
       const together = await screen('practice', 'together-first-ready', async cell => {
-        await load('practice'); await visible(cell, 'TOGETHER_INVITATION_VISIBLE', invitation); await visible(cell, 'STORY_DOOR_VISIBLE', story);
+        await load('practice?f=stories'); await visible(cell, 'TOGETHER_INVITATION_VISIBLE', invitation); await visible(cell, 'STORY_DOOR_VISIBLE', story);
         firstGeometry = await togetherGeometry(); cell.geometryObservation = firstGeometry; cell.geometry = firstGeometry.geometry;
         check(cell, 'TOGETHER_ENTRY_GEOMETRY_OBSERVED', togetherLayoutGeometry(firstGeometry, true) !== null);
       });
@@ -594,10 +598,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         check(cell, 'TOGETHER_RESTORED_AFTER_DOCK', geometryStable(preDockGeometry.geometry, after.geometry), { before: preDockGeometry.geometry, after: after.geometry, tolerancePx: 2 });
         check(cell, 'TOGETHER_DOCK_SCROLL_RESTORED', togetherScrollStable(preDockGeometry.scrollOffsets, after.scrollOffsets), { before: preDockGeometry.scrollOffsets, after: after.scrollOffsets });
       });
-      await screen('practice', 'together-return-card', async cell => { await load('practice'); await story.click(); await byId('secondary-place-back').waitFor({ state: 'visible' }); check(cell, 'STORY_DESTINATION_REACHED', new URL(page.url()).hash.startsWith('#/stories')); await page.locator('[data-route="stories"] [data-module="stories-tonight"]').waitFor({ state: 'visible' }); await invitation.waitFor({ state: 'hidden' }); check(cell, 'STORY_CONTENT_MOUNTED', true); await byId('secondary-place-back').click(); await story.waitFor({ state: 'visible' }); await page.waitForFunction(() => document.activeElement?.getAttribute('data-together-return') === 'story-library'); check(cell, 'EXACT_RETURN_CARD_FOCUSED', await story.evaluate(el => document.activeElement === el)); check(cell, 'RETURN_TO_TOGETHER', new URL(page.url()).hash.startsWith('#/practice')); cell.returnMarker = 'story-library'; });
+      await screen('practice', 'together-return-card', async cell => { await load('practice?f=stories'); await openStory(); await byId('secondary-place-back').waitFor({ state: 'visible' }); check(cell, 'STORY_DESTINATION_REACHED', new URL(page.url()).hash.startsWith('#/stories')); await page.locator('[data-route="stories"] [data-module="stories-tonight"]').waitFor({ state: 'visible' }); await invitation.waitFor({ state: 'hidden' }); check(cell, 'STORY_CONTENT_MOUNTED', true); await byId('secondary-place-back').click(); await story.waitFor({ state: 'visible' }); await page.waitForFunction(() => document.activeElement?.getAttribute('data-together-return') === 'story-library'); check(cell, 'EXACT_RETURN_CARD_FOCUSED', await story.evaluate(el => document.activeElement === el)); check(cell, 'RETURN_TO_TOGETHER', new URL(page.url()).hash.startsWith('#/practice')); cell.returnMarker = 'story-library'; });
 
       await screen('practice', 'together-early-back', async cell => {
-        await load('practice'); await story.click();
+        await load('practice?f=stories'); await openStory();
         const back = byId('secondary-place-back'); await back.waitFor({ state: 'visible' });
         cell.transitionAtBack = await clickWithEvidence(back);
         await story.waitFor({ state: 'visible' });
@@ -609,7 +613,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         cell.returnMarker = 'story-library';
       });
       await screen('practice', 'together-how-to-begin', async cell => {
-        await load('practice');
+        await load('practice?f=games');
         const card = page.locator('.companion-offscreen-card').filter({ has: page.locator('.companion-door-link') }).first();
         await card.scrollIntoViewIfNeeded();
         const title = await card.locator('h3').textContent();
@@ -627,13 +631,20 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       await screen('practice', 'together-bottom-reachable', cell => mainScrollFrame(cell, 'practice'));
 
       const recordNav = async cell => {
-        // F-CHILD-2: #/timeline is Moments; its own nav is the three-view tablist.
-        const back = byId('secondary-place-back'); const nav = page.locator('[data-moments-views]');
-        await visible(cell, 'RECORD_BACK_MOUNTED', back); await visible(cell, 'RECORD_MOMENTS_VIEWS_MOUNTED', nav); check(cell, 'THREE_MOMENT_VIEWS', await nav.locator('[role=tab]').count() === 3); check(cell, 'NO_DUPLICATE_SHELL_NAV', await byId('secondary-sibling-nav').count() === 0);
-        const geometry = { back: await rect(back), nav: await rect(nav), clip: await rect(page.locator('main')) };
+        // v4: #/timeline is My child's Moments reading. The Shell row names the
+        // three readings (Milestones · Moments · About, Moments lit) and a
+        // reading has no Back; Moments' own nav is the three-view tablist.
+        // The two never repeat each other: no view name is a pill name.
+        const row = byId('secondary-sibling-nav'); const nav = page.locator('[data-moments-views]');
+        await visible(cell, 'RECORD_PILL_ROW_MOUNTED', row); await visible(cell, 'RECORD_MOMENTS_VIEWS_MOUNTED', nav); check(cell, 'THREE_MOMENT_VIEWS', await nav.locator('[role=tab]').count() === 3);
+        const pills = (await row.locator('[role=tab]').allTextContents()).map(s => s.trim());
+        const views = (await nav.locator('[role=tab]').allTextContents()).map(s => s.trim());
+        check(cell, 'NO_DUPLICATE_SHELL_NAV', pills.length === 3 && views.every(v => !pills.includes(v)), { pills, views });
+        check(cell, 'MOMENTS_PILL_LIT', await row.locator('[role=tab][aria-selected=true]').count() === 1);
+        check(cell, 'READING_HAS_NO_BACK', await byId('secondary-place-back').count() === 0);
+        const geometry = { row: await rect(row), nav: await rect(nav), clip: await rect(page.locator('main')) };
         cell.geometry = geometry;
-        check(cell, 'RECORD_BACK_UNIQUE', await back.count() === 1);
-        check(cell, 'RECORD_BACK_NO_VISIBLE_NAV_OVERLAP', clippedOverlap(geometry.back, geometry.nav, geometry.clip) === 0, clippedOverlap(geometry.back, geometry.nav, geometry.clip));
+        check(cell, 'PILL_ROW_NO_VISIBLE_NAV_OVERLAP', clippedOverlap(geometry.row, geometry.nav, geometry.clip) === 0, clippedOverlap(geometry.row, geometry.nav, geometry.clip));
       };
       const record = await screen('timeline', 'recordnav-initial', async cell => { await load('timeline'); await recordNav(cell); });
       await screen('timeline', 'recordnav-scrolled', async cell => { dependent(record); cell.scroll = await page.evaluate(() => { const main = document.querySelector('#main'); const max = main.scrollHeight - main.clientHeight; main.scrollTop = Math.min(Math.max(100, main.clientHeight / 2), max); return { main: main.scrollTop, window: window.scrollY }; }); check(cell, 'RECORD_ACTUALLY_SCROLLED', cell.scroll.main > 0 && cell.scroll.window === 0); await recordNav(cell); });

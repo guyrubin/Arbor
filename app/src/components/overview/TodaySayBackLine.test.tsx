@@ -154,15 +154,17 @@ describe("TodaySayBackLine — rendered (EN + HE)", () => {
   }
 });
 
-describe("the door mounts the line after the step line (Law 6 order)", () => {
+describe("the say-back line sits in Notice today, after the lead (Law 6 order)", () => {
   const OV = todayLiveSource();
-  it("inside the door, once, after the offer slot", () => {
-    // Parity 9 Oct: the door is Now's NowMoreForToday; the step line left with
-    // the Today hub (an accepted step leads Now).
-    const door = OV.slice(OV.indexOf('data-testid="today-door"'), OV.indexOf("</details>"));
-    expect(door.match(/<TodaySayBackLine /g)).toHaveLength(1);
-    expect(door.indexOf("<CompanionOfferSlot ")).toBeLessThan(door.indexOf("<TodaySayBackLine "));
-    expect(door).toContain("<TodaySayBackLine keepsakeDocs={keepsakeDocs} now={now} />");
+  it("v4: once, as Notice today's last rows (NowNoticeExtras), mounted after the lead", () => {
+    // v4 re-pin (blueprint decision 5): the door dissolved; the say-back
+    // question is Notice today's own row. The step line left with the Today
+    // hub (an accepted step leads Now), and the line still yields to it.
+    const extras = OV.slice(OV.indexOf("export function NowNoticeExtras"), OV.indexOf("export function NowAgendaExtras"));
+    expect(extras.match(/<TodaySayBackLine /g)).toHaveLength(1);
+    expect(extras).toContain("<TodaySayBackLine keepsakeDocs={keepsakeDocs} now={now} />");
+    expect(OV.indexOf("<NowNoticeExtras ")).toBeGreaterThan(OV.indexOf("<NowRecommendation "));
+    expect(OV.match(/<TodaySayBackLine /g)).toHaveLength(1);
   });
 });
 

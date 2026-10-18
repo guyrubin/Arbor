@@ -433,11 +433,16 @@ describe("v3 FEAT-09 · the Care summary page (#/handoff)", () => {
     expect(byId(tree, "consult-teacher-branch")).toBeUndefined();
   });
 
-  it("NEGATIVE CONTROL: on #/consult a stored teacher still opens the teacher branch, with the teacher chip", () => {
+  // v4 re-pin: on #/consult the teacher is the builder's Teacher brief template
+  // (the clinical audience row steps aside in it); #/handoff shows no template.
+  it("NEGATIVE CONTROL: on #/consult a stored teacher still opens the teacher branch, with the Teacher brief template checked", () => {
     storage.set("arbor.consultExportAudience", "teacher");
     const tree = render();
     expect(byId(tree, "consult-teacher-branch")).toBeDefined();
     expect(byId(tree, "consult-reason-section")).toBeUndefined();
-    expect(audienceChips(tree).map(chipText)).toContain(translate("en", "elev.carehonesty.consult.audience.teacher"));
+    const template = elements(tree).find((el) => el.props["data-template"] === "teacher");
+    expect(template?.props["aria-checked"]).toBe(true);
+    expect(byId(tree, "consult-audience-row")).toBeUndefined();
+    expect(audienceChips(tree)).toEqual([]);
   });
 });

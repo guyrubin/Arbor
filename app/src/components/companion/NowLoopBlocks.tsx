@@ -1,11 +1,11 @@
-import React, { useId } from "react";
+import React, { useId, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import PracticeCard from "../loop/PracticeCard";
 import NoticeCard from "../loop/NoticeCard";
 import TonightFlow from "../loop/TonightFlow";
-import { SectionHead } from "../ui/SectionHead";
 import Icon from "../ui/Icon";
+import { BrandChip } from "../ui/BrandChip";
 import { PendingLine } from "../ui/Receipt";
 import { NOW_COPY } from "./nowViewCopy";
 import type { useNowLoop } from "./useNowLoop";
@@ -70,15 +70,31 @@ export function NowNoticeLead({ loop, name }: { loop: Loop; name: string }) {
   return <NoticeCard key={card.milestone.id} milestone={card.milestone} shelf={card.shelf} gender={childProfile.gender} childName={name} variant="card" answers="segmented" answersAttrs={stamp} {...loop.noticeHandlers(card.milestone, card.shelf)} />;
 }
 
-/** Notice today — ≤ 2 rows, never the practice's shelf (B-LOOP-04). */
-export function NowNoticeBlock({ loop, name, practiceLeads }: { loop: Loop; name: string; practiceLeads: boolean }) {
+/** Notice today — ≤ 2 rows, never the practice's shelf (B-LOOP-04).
+ *  v4: one object with a head (gradient chip · title · how many are still
+ *  open · the calm sub) that folds the rows away and back; the say-back
+ *  question and "Arbor noticed" follow as its last rows (`extras`). */
+export function NowNoticeBlock({ loop, name, practiceLeads, extras }: { loop: Loop; name: string; practiceLeads: boolean; extras?: React.ReactNode }) {
   const { childProfile } = useArbor();
   const { t } = useLanguage();
   const id = useId();
+  const [open, setOpen] = useState(true);
   if (!loop.blockNotices.length) return null;
+  // Counts only: how many of today's rows are still unanswered (never a score).
+  const waiting = loop.blockNotices.filter(c => !c.milestone.observationStatus).length;
   return <section className="now-notice" data-testid="today-notice" aria-labelledby={`${id}-notice`}>
-    <SectionHead id={`${id}-notice`} icon="visibility" title={t("elev.loop.today.notice.title")} sub={t("elev.loop.today.notice.sub")} />
-    <div className="now-notice-card">
+    <div className="now-notice-head">
+      <BrandChip icon="visibility" tone="sky" shape="drop" />
+      <div className="now-notice-head-text">
+        <h2 id={`${id}-notice`}>{t("elev.loop.today.notice.title")}{waiting > 0 && <span className="now-notice-count" data-testid="today-notice-count" aria-label={t("elev.loop.today.notice.count", { n: waiting })}>{waiting}</span>}</h2>
+        <p>{t("elev.loop.today.notice.sub")}</p>
+      </div>
+      <button type="button" className="now-notice-toggle" aria-expanded={open} aria-controls={`${id}-notice-body`} data-testid="today-notice-toggle"
+        aria-label={open ? t("elev.loop.today.notice.fold") : t("elev.loop.today.notice.unfold")} onClick={() => setOpen(v => !v)}>
+        <Icon name={open ? "expand_less" : "expand_more"} size={22} />
+      </button>
+    </div>
+    <div className="now-notice-card" id={`${id}-notice-body`} hidden={!open}>
       {loop.blockNotices.map((c, i) => (
         <div key={c.milestone.id} className={i > 0 ? "now-notice-row is-next" : "now-notice-row"}>
           {/* Practice answered: the move passes to the first Notice row's answers. */}
@@ -86,6 +102,7 @@ export function NowNoticeBlock({ loop, name, practiceLeads }: { loop: Loop; name
             answersAttrs={i === 0 && practiceLeads && loop.doseAnswer ? stamp : undefined} {...loop.noticeHandlers(c.milestone, c.shelf)} />
         </div>
       ))}
+      {extras}
     </div>
   </section>;
 }
@@ -100,7 +117,7 @@ export function NowTonightLead({ loop }: { loop: Loop }) {
 export function NowTonightPointer({ onOpen }: { onOpen: () => void }) {
   const { t } = useLanguage();
   return <button type="button" className="now-weekly-door now-tonight-pointer" data-testid="today-tonight-pointer" onClick={onOpen}>
-    <Icon name="dark_mode" size={24} />
+    <BrandChip icon="dark_mode" tone="lav" shape="arch" />
     <span><b>{t("elev.loop.today.tonight")}</b><small>{t("elev.loop.today.tonightSub")}</small></span>
     <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
   </button>;

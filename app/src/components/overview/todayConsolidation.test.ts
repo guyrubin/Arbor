@@ -3,7 +3,8 @@ import * as fs from "node:fs";
 import { existsSync } from "node:fs";
 import * as path from "node:path";
 import { en, he } from "../../lib/i18n";
-import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
+import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
+
 import { todayFile, todayLiveSource } from "../../testTodaySource";
 
 /**
@@ -95,15 +96,17 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     expect(overview).not.toMatch(/today-recent-context/);
   });
 
-  it("section order: the lead → Notice → the Tonight pointer → the door (What changed → the offer → say-back → noticed)", () => {
-    // Parity 9 Oct: Now's order (NowView), then its door (NowMoreForToday).
+  // v4 re-pin (blueprint decision 5: "More for today" dissolves): each line
+  // lives in its object — say-back and "Arbor noticed" in Notice today, What
+  // changed in the week card, the offer in the agenda — in the same order.
+  it("section order: the lead → Notice (say-back → noticed) → the week (What changed) → the Tonight pointer → the agenda (the offer)", () => {
     const view = stripComments(todayFile("NowView.tsx"));
-    const door = stripComments(todayFile("NowMoreForToday.tsx"));
-    const viewOrder = [view.indexOf("<NowRecommendation"), view.indexOf("{showNotice &&"), view.indexOf("{showPointer &&"), view.indexOf("<NowMoreForToday")];
-    const doorOrder = [door.indexOf("<WhatChanged"), door.indexOf("<CompanionOfferSlot"), door.indexOf("<TodaySayBackLine"), door.indexOf("<ArborNoticedCard")];
-    for (const idx of [...viewOrder, ...doorOrder]) expect(idx).toBeGreaterThan(-1);
+    const lines = stripComments(todayFile("NowTodayLines.tsx"));
+    const viewOrder = [view.indexOf("<NowRecommendation"), view.indexOf("{showNotice ?"), view.indexOf("<NowWhatChangedLines"), view.indexOf("{showPointer &&"), view.indexOf("<NowAgendaExtras")];
+    const noticeOrder = [lines.indexOf("<TodaySayBackLine"), lines.indexOf("<ArborNoticedCard")];
+    for (const idx of [...viewOrder, ...noticeOrder, lines.indexOf("<WhatChanged"), lines.indexOf("<CompanionOfferSlot")]) expect(idx).toBeGreaterThan(-1);
     expect([...viewOrder].sort((a, b) => a - b)).toEqual(viewOrder);
-    expect([...doorOrder].sort((a, b) => a - b)).toEqual(doorOrder);
+    expect([...noticeOrder].sort((a, b) => a - b)).toEqual(noticeOrder);
     expect(count(overview, /<DailyPlayCard/g)).toBe(0);
   });
 
@@ -233,9 +236,10 @@ describe("B-TODAY-12 — one step card: the hard-moment offer folds into it as '
     expect(count(overview, /t\("today\.action\.make"\)/g)).toBe(0);
     expect(count(overview, /--arbor-gradient-primary|--gradient-cta/g)).toBe(0);
     expect(count(hero, /--arbor-gradient-primary/g)).toBe(1);
-    // Parity 9 Oct: Now's hard-moment line, gated like every door (B-ASKJB-31).
-    expect(count(overview, /openHardMomentNow\(\)/g)).toBe(1);
-    expect(overview).toContain('{hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}>');
+    // v4 re-pin (blueprint decision 6): the hard-moment door is the launcher
+    // rail's, on every screen (gated like every door, B-ASKJB-31); Now has none.
+    expect(count(overview, /openHardMomentNow\(\)/g)).toBe(0);
+    expect(read("components/companion/CompanionWorkspace.tsx")).toContain('{hardMomentDoor && <button type="button" className="companion-launch-save companion-launch-hard"');
     expect(overview).not.toContain("HardMomentTodayOffer");
     expect(existsSync(path.join(SRC_ROOT, "components/overview/HardMomentTodayOffer.tsx"))).toBe(false);
   });
@@ -278,7 +282,7 @@ describe("B-TODAY-17 — the drawer is gone: no feed, no check-in, no displaced 
     const view = stripComments(todayFile("NowView.tsx"));
     const modules = new Set(view.match(/data-module="[a-z-]+"/g) ?? []);
     expect(modules).toEqual(new Set(['data-module="now-urgent"', 'data-module="now-record"', 'data-module="now-visit"', 'data-module="today-tonight"', 'data-module="now-step"', 'data-module="today-practice"', 'data-module="now-program"', 'data-module="today-notice"', 'data-module="now-focus"']));
-    expect(stripComments(todayFile("NowMoreForToday.tsx"))).not.toMatch(/\bdata-module=/);
+    expect(stripComments(todayFile("NowTodayLines.tsx"))).not.toMatch(/\bdata-module=/);
     const budget = read("components/overview/todayModules.ts").match(/TODAY_MODULE_BUDGET = (\d+)/)?.[1];
     expect(Number(budget)).toBe(3);
     expect(read("lib/surfaceContract.ts")).toMatch(/route: "overview"[\s\S]{0,400}moduleBudget: 3/);

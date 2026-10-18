@@ -239,7 +239,8 @@ describe("v3 IA-03 — the More sheet: doors, Search, then the three places", ()
     const expected: Record<string, string[]> = {
       now: [translate(lang, "nav.pill.weekly")],
       child: [translate(lang, "companion.more.milestones"), translate(lang, "companion.more.moments"), translate(lang, "companion.more.about", { name: "Noa" })],
-      together: ["companion.together-view.games", "companion.together-view.stories", "companion.together-view.routines", "companion.together-view.away-from-the-screen"].map((key) => translate(lang, key)),
+      // v4 re-pin: Together's three filters, in its order (Routines · Play · Stories).
+      together: ["companion.together-view.routines", "companion.together-view.play", "companion.together-view.stories"].map((key) => translate(lang, key)),
     };
     for (const place of COMPANION_PLACES) {
       const group = groupOf(html, place.id);
@@ -258,7 +259,7 @@ describe("v3 IA-03 — the More sheet: doors, Search, then the three places", ()
     const html = render("overview", lang);
     const records = /<section[^>]*data-testid="more-records-group"[^>]*>[\s\S]*?<\/section>/.exec(html)![0];
     const labels = rowsOf(records).map(words);
-    expect(labels).toHaveLength(8);
+    expect(labels).toHaveLength(7);
     // "Stories" survives only as Together's pill (it opens #/practice?f=stories);
     // the old Stories hub, like the others, is never a row's destination.
     for (const hub of ["journal", "behaviors", "learn", "care", "profile"]) {
@@ -280,7 +281,7 @@ describe("v3 IA-03 — the More sheet: doors, Search, then the three places", ()
     const rows = state.buttons.filter((button) => button["data-more-destination"]) as Props[];
     expect(rows.map((row) => row["data-more-destination"])).toEqual([
       "weekly", "development", "timeline", "profile",
-      "practice?f=games", "practice?f=stories", "practice?f=routines", "practice?f=offscreen",
+      "practice?f=routines", "practice?f=games", "practice?f=stories",
     ]);
     const win = { location: { hash: "" } };
     vi.stubGlobal("window", win);
@@ -299,25 +300,28 @@ describe("v3 IA-03 — the More sheet: doors, Search, then the three places", ()
         expect(win.location.hash).toBe("");
       }
     }
-    expect(hashes).toHaveLength(4);
+    expect(hashes).toHaveLength(3);
   });
 
-  it("Games follows the Together pill: no Games row before three, and About falls back when there is no name", () => {
+  // v4 re-pin: Play (f=games) is one of Together's three filters at every age —
+  // under three, or with no world that fits, it opens on the away ideas — so
+  // its row never lands on an empty view and is always there.
+  it("Play follows the Together pill: a row before three too, and About falls back when there is no name", () => {
     state.child = { id: "child-b", name: "", age: 2 };
     const html = render("overview");
     const together = rowsOf(groupOf(html, "together")).map(words);
+    expect(together).toEqual(["routines", "play", "stories"].map((k) => translate("en", `companion.together-view.${k}`)));
     expect(together).not.toContain(translate("en", "companion.together-view.games"));
-    expect(together).toHaveLength(3);
     expect(rowsOf(groupOf(html, "child")).map(words)).toContain(translate("en", "companion.more.about-child"));
   });
 
-  it.each(["en", "he"] as const)("no Games row when Kid Mode is open but no world fits her: the row reads Together's gate (%s)", (lang) => {
+  it.each(["en", "he"] as const)("Play stays a row when Kid Mode is open but no world fits her: it opens on the away ideas (%s)", (lang) => {
     state.noWorlds = true;
     const html = render("overview", lang);
     const together = rowsOf(groupOf(html, "together")).map(words);
-    expect(together).not.toContain(translate(lang, "companion.together-view.games"));
+    expect(together).toContain(translate(lang, "companion.together-view.play"));
     expect(together).toHaveLength(3);
-    expect(state.buttons.map((button) => button["data-more-destination"])).not.toContain("practice?f=games");
+    expect(state.buttons.map((button) => button["data-more-destination"])).toContain("practice?f=games");
   });
 
   it("gamesOpenFor is one predicate: the Kid Mode door is open AND a world fits, as Together's Games pill reads it", () => {
@@ -345,7 +349,7 @@ describe("v3 IA-03 — the More sheet: doors, Search, then the three places", ()
     const html = render("overview", lang);
     const chevrons = [...html.matchAll(/<span class="([^"]*)"[^>]*>chevron_right<\/span>/g)].map((m) => m[1]);
     const rows = state.buttons.filter((button) => button["data-more-door"] || button["data-more-destination"]);
-    expect(rows).toHaveLength(COMPANION_DOORS.length + 8);
+    expect(rows).toHaveLength(COMPANION_DOORS.length + 7);
     expect(chevrons).toHaveLength(rows.length);
     for (const cls of chevrons) {
       expect(cls.split(" ").filter((c) => c === "rtl:-scale-x-100")).toHaveLength(1);
@@ -357,7 +361,7 @@ describe("v3 IA-03 — the More sheet: doors, Search, then the three places", ()
   it("every dock button and sheet row keeps the 44 px floor", () => {
     const html = render("overview");
     const classes = [...html.matchAll(/<button[^>]*class="([^"]*)"/g)].map((m) => m[1]);
-    expect(classes.length).toBeGreaterThanOrEqual(5 + 1 + COMPANION_DOORS.length + 1 + 8);
+    expect(classes.length).toBeGreaterThanOrEqual(5 + 1 + COMPANION_DOORS.length + 1 + 7);
     for (const cls of classes) expect(cls).toMatch(/min-h-\[64px\]|min-h-11|min-h-\[44px\]|w-11 h-11/);
   });
 

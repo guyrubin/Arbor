@@ -139,7 +139,9 @@ describe("B-CAREPRO-30 · AttributionTab reads every family, counts only, no fal
     expect(NO_PILL_ROW_TABS.has("attribution")).toBe(true);
     expect(sectionForTab("attribution").id).toBe("care");
     expect(pillRowFor(sectionForTab("attribution"), "attribution")).toEqual([]);
-    // POSITIVE CONTROL: Consult keeps the Care pills.
-    expect(pillRowFor(sectionForTab("consult"), "consult").length).toBeGreaterThan(1);
+    // POSITIVE CONTROL (v4 re-pin: Care is one screen with no Shell row): a
+    // place still wears its row, so the empty row above is the rule, not a blank.
+    expect(pillRowFor(sectionForTab("consult"), "consult")).toEqual([]);
+    expect(pillRowFor(sectionForTab("development"), "development").length).toBeGreaterThan(1);
   });
 });

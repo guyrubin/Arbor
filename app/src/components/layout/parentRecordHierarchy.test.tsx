@@ -72,7 +72,8 @@ describe("record hierarchy keeps useful controls without repeating navigation or
     expect(records).not.toContain(`>${copy.profile}<`);
     // The exact index, in place order, so a missing or newly added row cannot
     // slip through a hand-maintained list of examples.
-    const expectedDestinations = ["weekly", "development", "timeline", "profile", "practice?f=games", "practice?f=stories", "practice?f=routines", "practice?f=offscreen"];
+    // v4 re-pin: Together reads Routines · Play · Stories (Play is f=games).
+    const expectedDestinations = ["weekly", "development", "timeline", "profile", "practice?f=routines", "practice?f=games", "practice?f=stories"];
     const destinationButtons = state.buttons.filter(button => button["data-more-destination"]);
     expect(destinationButtons.map(button => button["data-more-destination"])).toEqual(expectedDestinations);
     for (const destination of expectedDestinations) {
@@ -130,7 +131,8 @@ describe("record hierarchy keeps useful controls without repeating navigation or
     expect(shell.match(/data-testid="secondary-place-back"/g)).toHaveLength(1);
     // v3 IA-01 re-pin (was `setActiveTab(placeForTab(activeTab).tab)`): Back returns
     // to the route's HOME, its place or its door, and a home's own route has none.
-    expect(shell).toContain("const back = isCompanionHome(activeTab) ? null : backTargetFor(activeTab);");
+    // v4 re-pin: a pill of the place's own row (Weekly report, Moments, About) is a reading, not a level.
+    expect(shell).toContain("const back = isCompanionHome(activeTab) || isPlaceReading(activeTab) ? null : backTargetFor(activeTab);");
     expect(shell).toContain("{back && <button data-testid=\"secondary-place-back\" onClick={() => setActiveTab(back.tab)}");
     expect(shell).toContain("pillRowFor(section, activeTab).map");
     expect(shell).not.toContain('t("nav.sub." + hubSubKey');

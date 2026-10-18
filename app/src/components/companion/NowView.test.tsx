@@ -37,7 +37,12 @@ vi.mock("../../hooks/useObservations", () => ({ useObservations: () => [] }));
 vi.mock("../../hooks/useLastVisit", () => ({ useLastVisit: () => ({ previousVisitAt: null, isReturning: false }) }));
 vi.mock("../overview/useLifecycleMoment", () => ({ useLifecycleMoment: () => ({ moment: null }) }));
 vi.mock("../overview/useCompanionOffer", () => ({ useCompanionOffer: () => ({ offer: null, appointment: state.appointments[0] ?? null, ledger: {}, snooze: vi.fn() }) }));
-vi.mock("./NowMoreForToday", () => ({ default: (props: unknown) => { state.moreProps = props; return null; } }));
+// v4: "More for today" dissolved into its object homes (NowTodayLines); the agenda extras and Notice extras carry the props the door did.
+vi.mock("./NowTodayLines", () => ({
+  NowAgendaExtras: (props: unknown) => { state.moreProps = { ...(state.moreProps ?? {}), ...(props as object) }; return null; },
+  NowNoticeExtras: (props: unknown) => { state.moreProps = { ...(state.moreProps ?? {}), ...(props as object) }; return null; },
+  NowWhatChangedLines: () => null,
+}));
 // F-NOW-1: the guide reader is a sheet; its props are what the card hands it.
 vi.mock("./NowGuideReader", () => ({ default: (props: unknown) => { state.readerProps = props; return null; } }));
 vi.mock("../../lib/programs/enrolment", () => ({ activeProgramWeek: () => state.program, dayKey: (d: Date) => d.toISOString().slice(0, 10) }));
@@ -76,7 +81,7 @@ function button(label: string) {
   expect(found, `button ${label}`).toBeDefined();
   return found!;
 }
-const PROGRAM = { week: 2, program: { shelf: "words" }, enrolment: { programId: "talk-together", startedAt: "2026-10-05T00:00:00Z" }, content: { skill: { en: "Follow their story", he: "מקשיבים לסיפור שלהם" }, watchFor: [] } };
+const PROGRAM = { week: 2, program: { shelf: "words", weeks: [{}, {}, {}, {}] }, enrolment: { programId: "talk-together", startedAt: "2026-10-05T00:00:00Z" }, content: { skill: { en: "Follow their story", he: "מקשיבים לסיפור שלהם" }, watchFor: [] } };
 
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 9, 12, 8));
@@ -112,6 +117,8 @@ describe("Now leads with the milestone loop (parity 9 Oct)", () => {
     expect(html).toContain('data-module="today-practice"');
     expect(html).toContain('data-testid="now-program-line"');
     expect(html).toContain("Follow their story");
+    // v4: the agenda row carries where the family is in the program, counts only.
+    expect(html).toContain(`data-testid="now-program-week">${NOW_COPY.en.programWeekOf(2, 4)}</span>`);
   });
   it("Tonight's pointer is a line under the morning practice", () => {
     renderToStaticMarkup(<NowView />);

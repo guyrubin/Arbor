@@ -3,11 +3,19 @@ import type { DomainId } from "../../lib/domains/registry";
 import { DOMAIN_IDS } from "../../lib/domains/registry";
 import type { Observation } from "../../lib/observations";
 import {
+  BAR_BASE_PX,
+  BAR_MAX_PX,
+  BAR_UNIT_PX,
+  MOMENTS_KINDS,
   MOMENTS_RANGES,
   MOMENTS_VIEWS,
   areaMonthCounts,
+  barHeightPx,
   filterByAreaMonth,
+  isKind,
   isMomentRecord,
+  kindCounts,
+  parseKind,
   monthBuckets,
   monthIdOf,
   parseMonth,
@@ -45,13 +53,45 @@ const at = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12).toISOS
 const NOW = new Date(2026, 9, 12, 15); // 12 Oct 2026, local
 
 describe("views and query parsing", () => {
-  it("knows three views, defaulting to Over time", () => {
-    expect(MOMENTS_VIEWS).toEqual(["time", "places", "areas"]);
+  // v4 re-pin: Across areas leads and is the default; a link that names an
+  // area, a month or one observation (focused) still opens Over time.
+  it("knows three views, Across areas first and by default; a focused link opens Over time", () => {
+    expect(MOMENTS_VIEWS).toEqual(["areas", "time", "places"]);
     expect(parseView("places")).toBe("places");
     expect(parseView("areas")).toBe("areas");
     expect(parseView("time")).toBe("time");
-    expect(parseView(null)).toBe("time");
-    expect(parseView("story")).toBe("time");
+    expect(parseView(null)).toBe("areas");
+    expect(parseView("story")).toBe("areas");
+    expect(parseView(null, true)).toBe("time");
+    expect(parseView("places", true)).toBe("places");
+    expect(parseView("areas", true)).toBe("areas");
+  });
+
+  it("v4: which moments are in view — All · Kept · Hard moments · Things said, from real record types", () => {
+    expect(MOMENTS_KINDS).toEqual(["all", "kept", "hard", "said"]);
+    expect(parseKind("kept")).toBe("kept");
+    expect(parseKind("hard")).toBe("hard");
+    expect(parseKind("said")).toBe("said");
+    expect(parseKind(null)).toBe("all");
+    expect(parseKind("behaviors")).toBe("all");
+    const base = { childId: "c", at: at(2026, 10, 1), domains: [], source: "parent_typed" as const, ageAtObservationMonths: null, pretermCorrected: false };
+    const keepsake = { ...base, id: "keepsakes:m1", kind: "milestone" as const, origin: "keepsakes" as const, value: { type: "keepsake" as const, milestoneId: "m1", note: "First wave" } };
+    const word = { ...base, id: "langObs:w1", kind: "word" as const, origin: "langObs" as const, value: { type: "word" as const, language: "en", phrase: "moon" } };
+    const incident = { ...base, id: "behaviorLogs:b1", kind: "moment" as const, origin: "behaviorLogs" as const, value: { type: "moment" as const, behaviorType: "Transition Refusal" } };
+    const neutral = { ...base, id: "behaviorLogs:b2", kind: "moment" as const, origin: "behaviorLogs" as const, value: { type: "moment" as const, behaviorType: "Moment" } };
+    const record = [keepsake, word, incident, neutral] as unknown as Parameters<typeof kindCounts>[0];
+    expect(kindCounts(record)).toEqual({ all: 4, kept: 1, hard: 1, said: 1 });
+    // NEGATIVE CONTROL: a neutral moment ("she said butterfly") is never a hard moment.
+    expect(isKind(record[3], "hard")).toBe(false);
+    expect(isKind(record[2], "hard")).toBe(true);
+  });
+
+  it("v4: a month bar is a fixed scale — one count is one height everywhere, capped, nothing normalised", () => {
+    expect(barHeightPx(0)).toBe(0);
+    expect(barHeightPx(1)).toBe(BAR_BASE_PX + BAR_UNIT_PX);
+    expect(barHeightPx(3)).toBe(BAR_BASE_PX + 3 * BAR_UNIT_PX);
+    expect(barHeightPx(500)).toBe(BAR_MAX_PX);
+    expect(barHeightPx(2)).toBeLessThan(barHeightPx(3));
   });
   it("reads ?month= as YYYY-MM only", () => {
     expect(parseMonth("2026-08")).toBe("2026-08");
