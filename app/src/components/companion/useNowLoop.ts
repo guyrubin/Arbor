@@ -47,7 +47,16 @@ import { planToday } from "../overview/todayModules";
  * CLINICAL FIREWALL: no count, %, streak, score or verdict; the dose is
  * logged, never scored; the only age sentence is the Notice card's sourced line.
  */
-export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openPhotoCapture: () => void; now: Date }) {
+export function useNowLoop({ aiPracticeId, now, questionShelves }: {
+  aiPracticeId?: string;
+  openPhotoCapture: () => void;
+  now: Date;
+  /** v3 question continuity (audit #3): the active question's shelves
+   *  (companionChoices shelvesForQuestion). Set and non-empty, the practice
+   *  and Notice picks are drawn from them only, so the card never says sleep
+   *  while the art says mornings; empty, the loop keeps its own order. */
+  questionShelves?: readonly ShelfId[];
+}) {
   const {
     milestones, behaviorLogs, childProfile, playLogs, actionLoop, activeTodayAction,
     recordPracticeDose, removeTodayAction, addMoment,
@@ -74,10 +83,15 @@ export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openP
   const comparisonMonths = comparisonMonthsOf(childProfile, now);
   const dose = useMemo(() => todayDose(actionLoop, childProfile.id, now), [actionLoop, childProfile.id, now]);
   const recentIds = useMemo(() => recentPracticeIds(actionLoop, childProfile.id, now), [actionLoop, childProfile.id, now]);
+  const shelvesKey = (questionShelves ?? []).join("|");
+  const questionFilter = useMemo<((p: { shelf: ShelfId }) => boolean) | undefined>(() => {
+    const shelves = new Set(shelvesKey ? shelvesKey.split("|") as ShelfId[] : []);
+    return shelves.size ? (p) => shelves.has(p.shelf) : undefined;
+  }, [shelvesKey]);
   // B-LOOP-13: the journal the focus route chooses from (ids and counts only).
   const journal = useMemo(() => {
     if (comparisonMonths === null) return undefined;
-    const base = { childId: childProfile.id, milestones, comparisonMonths, practices: PRACTICES, coverage, today: now, recentPracticeIds: recentIds };
+    const base = { childId: childProfile.id, milestones, comparisonMonths, practices: PRACTICES, coverage, today: now, recentPracticeIds: recentIds, candidateFilter: questionFilter };
     return buildJournalRequest({
       childId: childProfile.id,
       dateKey: dayKey(now),
@@ -88,7 +102,7 @@ export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openP
       pinnedPracticeId: readTodayPin(childProfile.id, now),
       actionLoop,
     });
-  }, [childProfile.id, milestones, comparisonMonths, coverage, now, recentIds, actionLoop]);
+  }, [childProfile.id, milestones, comparisonMonths, coverage, now, recentIds, actionLoop, questionFilter]);
   const basePick = useMemo(
     () => choosePractice({
       childId: childProfile.id,
@@ -103,8 +117,9 @@ export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openP
       todayPracticeId: dose?.practiceId ?? readTodayPin(childProfile.id, now),
       todayAdaptation: dose?.practiceAdaptation,
       aiPracticeId,
+      candidateFilter: questionFilter,
     }),
-    [childProfile.id, milestones, comparisonMonths, coverage, now, recentIds, dose?.practiceId, dose?.practiceAdaptation, aiPracticeId],
+    [childProfile.id, milestones, comparisonMonths, coverage, now, recentIds, dose?.practiceId, dose?.practiceAdaptation, aiPracticeId, questionFilter],
   );
   const adaptationKey = adaptationSessionKey(childProfile.id, basePick?.practice.id ?? "", dayKey(now));
   const [adaptationPreview, setAdaptationPreview] = useState<{ session: string; key: PracticeAdaptationKey | null } | null>(null);
@@ -169,8 +184,8 @@ export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openP
   const noticePicks = useMemo(
     () => (comparisonMonths === null ? [] : selectNoticeWithProgram(milestones, comparisonMonths, {
       perShelf: 1, total: 3, coverage, now, excludeShelves: pick ? [pick.shelf] : [],
-    }, noticeProgram)),
-    [milestones, comparisonMonths, coverage, now, pick, noticeProgram],
+    }, noticeProgram)).filter((p) => !questionFilter || questionFilter(p)),
+    [milestones, comparisonMonths, coverage, now, pick, noticeProgram, questionFilter],
   );
   const [heldNotice, setHeldNotice] = useState<{ scope: string; rows: { id: string; shelf: ShelfId }[] }>({ scope: notices.scopeKey, rows: [] });
   const noticeCards = useMemo(() => {
