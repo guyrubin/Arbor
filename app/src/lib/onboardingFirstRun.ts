@@ -117,6 +117,16 @@ export function firstRunCard(state: FirstRunState, lang: UiLang, now = new Date(
   return { key: `${key}:${visibleKey}`, title: area ? choiceName(area, lang) : tr("elev.prompt.lead"), notice,
     recommendation: sayBack ? `${notice}\n${sayBack.heading} ${sayBack.line}` : notice, source: "onboarding", observation: true, ...(sayBack ? { sayBack } : {}) };
 }
+/** B-TODAY-38: true on the local calendar day the first run ended on the urgent
+ * notice. Reads the profile marker only (no ledger row, no model context);
+ * from the next day on it is false and Now shows its ordinary lead. */
+export function urgentSetupToday(profile: Pick<ChildProfile, "onboardingUrgentNoticeAt"> | null | undefined, now: Date): boolean {
+  const at = profile?.onboardingUrgentNoticeAt;
+  if (typeof at !== "string") return false;
+  const when = new Date(at);
+  if (Number.isNaN(when.getTime())) return false;
+  return isoDateOf(when) === isoDateOf(now);
+}
 export function onboardingAcceptanceKey(childId: string, card: FirstRunCard): string {
   return `${card.urgent ? "onboarding-urgent" : "onboarding-v1"}.${childId}.${fnv1a(`${card.key}|${card.recommendation}`).toString(16)}`;
 }
@@ -306,7 +316,10 @@ export class FirstRunController {
         this.put({ complete: true });
         services.onComplete?.();
       };
+      // B-TODAY-38: the urgent notice leaves one dated profile marker instead,
+      // so Now can keep the help lines in view for the rest of that day.
       const completed = await services.updateChild(state.childId!, { onboardingComplete: true, onboardingCompletedAt: now.toISOString(),
+        ...(current.urgent ? { onboardingUrgentNoticeAt: now.toISOString() } : {}),
         challenges: this.challengesFor(state.worry, lang), onboardingDraft: undefined }, { isCurrent: stillCurrent, onPersisted: complete });
       if (!stillCurrent()) return;
       if (!completed) throw new Error("Completion was not saved");

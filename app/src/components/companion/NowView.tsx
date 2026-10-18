@@ -34,6 +34,7 @@ import Icon from "../ui/Icon";
 import { Receipt } from "../ui/Receipt";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import { screenForImmediateEscalation } from "../../safety/escalation";
+import { urgentSetupToday } from "../../lib/onboardingFirstRun";
 import "./companionExperience.css";
 import "./nowView.css";
 import { useObservations } from "../../hooks/useObservations";
@@ -194,6 +195,10 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const todayOffer = useCompanionOffer("today", { now, whatChanged: lifecycle.moment ? { id: lifecycle.moment.kind } : null });
   const visit = todayOffer.appointment;
   const lead = selectNowLead({
+    // B-TODAY-38: the day the first run ended on the urgent notice, the help
+    // lines are the ONE lead inside the plan card. A profile marker, not a
+    // step: no outcome buttons, no ledger row, gone tomorrow.
+    urgent: urgentSetupToday(childProfile, now),
     chosen: !!chosen,
     chosenPending: saving || currentSaveError,
     manualTonight: tonightOpen,
@@ -217,7 +222,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   };
   // The lead the chain below actually draws (its guards included). Every lead but
   // the recommendation (which frames itself, to show its own words) sits in the v3 plan card.
-  const shownLead: NowPlanKind = lead === "record" ? "record" : lead === "visit" && visit ? "visit" : lead === "tonight" ? "tonight"
+  const shownLead: NowPlanKind = lead === "urgent" ? "urgent" : lead === "record" ? "record" : lead === "visit" && visit ? "visit" : lead === "tonight" ? "tonight"
     : lead === "step" && chosen ? "step" : lead === "practice" && loop.pick ? "practice" : lead === "notice" ? "notice"
       : lead === "program" && program ? "program" : "recommendation";
   const lifecycleKey = lifecycle.moment && todayOffer.offer?.kind === "what-changed" ? LIFECYCLE_NOTE[lifecycle.moment.kind] : undefined;
@@ -226,8 +231,11 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // (the practice's say line, in the locale's quotes), else its one-liner; and
   // a line of plan meta about the parent's own step, in words, never a count.
   const practiceSay = shownLead === "practice" && loop.pick ? practiceText(loop.pick.practice, "say", lang, childProfile.gender) : "";
-  const planSay = practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
-  const planMeta = shownLead === "step" ? (receipt ? copy.saved : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
+  // The urgent lead's face carries only the reviewed safety header; no say line,
+  // no plan meta, no "picked because" — nothing is invented beside the help lines.
+  const planTag = shownLead === "urgent" ? t("elev.safety.header.title") : copy.planTag[shownLead];
+  const planSay = shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
+  const planMeta = shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? copy.saved : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
   // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
   // from its section (which keeps it as its label). The loop leads' cards carry
   // their own heading, so their face has the say line and meta only.
@@ -255,8 +263,10 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     <div className="now-main-column">
         {lead === "practice" && <PracticeFocus now={now} journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
         {/* The recommendation frames itself (its screened words face the art panel), so its frame here is bare. */}
-        <NowPlanFrame kind={shownLead} lang={lang} tag={copy.planTag[shownLead]} say={planSay} quoted={!!practiceSay} title={planTitle} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation"}>
-        {lead === "record" ? <section className="now-loop-lead" data-module="now-record" aria-label={t("today.record.aria")}>
+        <NowPlanFrame kind={shownLead} lang={lang} tag={planTag} say={planSay} quoted={!!practiceSay} title={planTitle} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation"}>
+        {lead === "urgent" ? <section className="now-loop-lead" data-module="now-urgent" aria-label={t("elev.safety.header.title")}>
+          <UrgentSupport testId="now-urgent-setup-support" className="now-urgent-lead" />
+        </section> : lead === "record" ? <section className="now-loop-lead" data-module="now-record" aria-label={t("today.record.aria")}>
           {record.receipt ? <FromRecordReceipt /> : record.opener && <FromRecordCard opener={record.opener} childName={name} stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)} />}
           {record.saving && <p role="status" className="now-inline-status">{record.confirming ? t("elev.today.record.confirming") : copy.saving}</p>}
           {record.error && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
@@ -312,7 +322,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           <div className="now-lead-actions"><PrimaryMove type="button" className="companion-primary" onClick={openProgram}>{copy.continueProgram}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove></div>
           <button type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(program.content.skill[lang]))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></button>
         </section> : <NowRecommendation name={name} onTalkOpen={talk} journal={loop.journal} />}
-        {shownLead !== "recommendation" && <div className="now-plan-foot"><NowPlanBody why={planWhy} time={copy.planTime[shownLead]} size={copy.planSize[shownLead]} question={planQuestion} /></div>}
+        {shownLead !== "recommendation" && shownLead !== "urgent" && <div className="now-plan-foot"><NowPlanBody why={planWhy} time={copy.planTime[shownLead]} size={copy.planSize[shownLead]} question={planQuestion} /></div>}
         </NowPlanFrame>
         {lifecycleNote && lead !== "practice" && <p className="now-lifecycle-note" role="note">{lifecycleNote}</p>}
 

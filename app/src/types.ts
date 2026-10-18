@@ -17,6 +17,12 @@ export interface ChildProfile {
    */
   onboardingComplete?: boolean;
   onboardingCompletedAt?: string;
+  /**
+   * B-TODAY-38: ISO instant the first run ended on the urgent safety notice
+   * (crisis words at setup). Not a step and not a verdict: Now keeps the help
+   * lines in view on that calendar day only. Never projected to the model.
+   */
+  onboardingUrgentNoticeAt?: string;
   /** Optional profile image — a generated stylized avatar, or a raw photo
    *  (Firebase Storage URL, or an inlined data URL fallback). Rendered by `Avatar`. */
   photoUrl?: string;

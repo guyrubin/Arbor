@@ -8,6 +8,16 @@ import { selectNowLead } from "../../lib/today/dayCard";
 import { NOW_COPY } from "./nowViewCopy";
 import { translate } from "../../lib/i18n";
 import { screenForImmediateEscalation } from "../../safety/escalation";
+import { urgentSetupToday } from "../../lib/onboardingFirstRun";
+import { renderToStaticMarkup } from "react-dom/server";
+import { UrgentSupport } from "../safety/UrgentSupport";
+// Only the mounted UrgentSupport render below reaches the real LanguageContext;
+// NowContent is compiled with injected hooks and never touches this mock.
+const mockLang = vi.hoisted(() => ({ lang: "en" as "en" | "he" }));
+vi.mock("../../context/LanguageContext", async () => {
+  const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
+  return { useLanguage: () => ({ uiLang: mockLang.lang, t: (key: string, vars?: Record<string, string | number>) => translate(mockLang.lang, key, vars) }) };
+});
 const source = ts.createSourceFile("NowView.tsx", readFileSync("src/components/companion/NowView.tsx", "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "NowContent")!.getText(source);
 const code = ts.transpileModule(`${fn}; return NowContent;`, { compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React } }).outputText;
@@ -21,10 +31,10 @@ function nodes(node: React.ReactNode): React.ReactElement<any>[] {
 }
 function setup(lang: "en" | "he" = "en") {
   let at = 0; const slots: any[] = [], effects: (() => void)[] = [];
-  const state = { childProfile: { id: "a", name: "Noa", age: 4 }, actionLoop: [{ ...original }], seedCoach: vi.fn(), requestJournalFocus: vi.fn(), setActiveTab: vi.fn(), openCaptureSheet: vi.fn(), openHardMomentNow: vi.fn(), saveTodayOutcome: vi.fn(), pendingCaptureMode: null, consumeCaptureRequest: vi.fn(),
+  const state = { childProfile: { id: "a", name: "Noa", age: 4 } as { id: string; name: string; age: number; onboardingUrgentNoticeAt?: string }, actionLoop: [{ ...original }], seedCoach: vi.fn(), requestJournalFocus: vi.fn(), setActiveTab: vi.fn(), openCaptureSheet: vi.fn(), openHardMomentNow: vi.fn(), saveTodayOutcome: vi.fn(), pendingCaptureMode: null, consumeCaptureRequest: vi.fn(),
     saveTodayObservation: vi.fn(async (_id: string, words: string) => completeObservation(original, words)) };
   const route = vi.fn();
-  const env = { goToRoute: route, React, isObservationAction, nextChosenAction, selectNowLead, NOW_COPY, screenForImmediateEscalation,
+  const env = { goToRoute: route, React, isObservationAction, nextChosenAction, selectNowLead, NOW_COPY, screenForImmediateEscalation, urgentSetupToday,
     useState: (initial: any) => { const index = at++; if (!(index in slots)) slots[index] = { value: typeof initial === "function" ? initial() : initial }; return [slots[index].value, (value: any) => { slots[index].value = typeof value === "function" ? value(slots[index].value) : value; }]; },
     useRef: (value: any) => slots[at++] ??= { current: value }, useMemo: (run: () => unknown) => run(), useId: () => "now-test",
     useEffect: (run: () => any, deps: unknown[]) => { const index = at++, old = slots[index]; if (old && deps.every((value, n) => Object.is(value, old.deps[n]))) return; const slot = { deps, cleanup: undefined as any }; slots[index] = slot; effects.push(() => { old?.cleanup?.(); slot.cleanup = run(); }); },
@@ -138,4 +148,67 @@ describe("actual Now observation form lifecycle", () => {
     expect(tree.find(el => el.type === "h2")!.props.children).toBe(original.recommendation); h.unmount();
   });
 
+
+  // B-TODAY-38: a first run that ended on the urgent notice.
+  describe("B-TODAY-38 urgent setup keeps the help lines on Now that day", () => {
+    const urgentProfile = { id: "a", name: "Noa", age: 4, onboardingUrgentNoticeAt: "2026-10-10T09:30:00Z" };
+    it.each(["en", "he"] as const)("%s: the urgent lead is the ONE plan card, inside NowPlanFrame, with no outcome buttons and no ledger row", lang => {
+      const h = setup(lang); h.state.childProfile = urgentProfile; h.state.actionLoop = [];
+      const tree = h.render();
+      // One lead object: the plan frame, kind urgent, with the reviewed safety header as its tag and no invented face copy.
+      const frames = tree.filter(el => el.type === "plan-frame");
+      expect(frames).toHaveLength(1);
+      expect(frames[0].props.kind).toBe("urgent");
+      expect(frames[0].props.bare).toBe(false);
+      expect(frames[0].props.tag).toBe(translate(lang, "elev.safety.header.title"));
+      expect(frames[0].props.say).toBeNull(); expect(frames[0].props.meta).toBeNull(); expect(frames[0].props.title).toBeUndefined();
+      // The body is the existing UrgentSupport, inside the frame; no plan foot ("picked because").
+      const inside = nodes(frames[0]);
+      const urgent = inside.filter(el => el.type === "urgent-support");
+      expect(urgent).toHaveLength(1);
+      expect(urgent[0].props.testId).toBe("now-urgent-setup-support");
+      expect(urgent[0].props.showInstructions).toBeUndefined(); // default: both instructions, role="alert"
+      expect(inside.some(el => el.props["data-module"] === "now-urgent")).toBe(true);
+      expect(inside.some(el => el.type === "plan-body")).toBe(false);
+      // Nothing beside the frame in the main column; no standalone block above the fold.
+      const column = tree.find(el => el.props.className === "now-main-column")!;
+      const children = React.Children.toArray(column.props.children).filter(React.isValidElement) as React.ReactElement<any>[];
+      expect(children.map(el => el.type)).toEqual(["plan-frame"]);
+      expect(tree.some(el => el.props["data-module"] === "now-urgent-setup")).toBe(false);
+      expect(tree.some(el => typeof el.props.className === "string" && el.props.className.includes("arbor-depth-primary"))).toBe(false); // the frame alone carries depth
+      // Not a step: no outcome controls, nothing chosen, nothing saved.
+      expect(tree.some(el => el.props["data-module"] === "now-step" || el.props["data-module"] === "today-practice")).toBe(false);
+      expect(tree.some(el => el.type === "form" || el.type === "textarea" || el.type === "primary-move")).toBe(false);
+      expect(h.state.saveTodayOutcome).not.toHaveBeenCalled(); expect(h.state.saveTodayObservation).not.toHaveBeenCalled();
+      expect(h.state.actionLoop).toEqual([]);
+      // No second door: the urgent lead adds no hard-moment button of its own (the glance door is gated elsewhere).
+      expect(tree.filter(el => el.props.className === "now-hard-moment").length).toBeLessThanOrEqual(1);
+      h.unmount();
+    });
+    it("outranks a chosen step that day (the help lines are the lead, the step waits)", () => {
+      const h = setup(); h.state.childProfile = urgentProfile;
+      const tree = h.render();
+      expect(tree.find(el => el.type === "plan-frame")!.props.kind).toBe("urgent");
+      expect(tree.some(el => el.type === "textarea")).toBe(false);
+      h.unmount();
+    });
+    it("is gone the next day and absent for an ordinary setup", () => {
+      const next = setup(); next.state.childProfile = { ...urgentProfile, onboardingUrgentNoticeAt: "2026-10-09T09:30:00Z" };
+      let tree = next.render();
+      expect(tree.some(el => el.type === "urgent-support")).toBe(false); expect(tree.find(el => el.type === "plan-frame")!.props.kind).toBe("step"); next.unmount();
+      const plain = setup(); // default profile carries no marker
+      tree = plain.render();
+      expect(tree.some(el => el.type === "urgent-support")).toBe(false); expect(tree.find(el => el.type === "plan-frame")!.props.kind).toBe("step"); plain.unmount();
+    });
+    it.each(["en", "he"] as const)("%s: the mounted component dials every existing target, with both instructions", lang => {
+      mockLang.lang = lang;
+      const html = renderToStaticMarkup(<UrgentSupport testId="now-urgent-setup-support" className="now-lead-body" />);
+      expect(html.match(/role="alert"/g)).toHaveLength(1);
+      expect([...html.matchAll(/href="(tel:[^"]+)"/g)].map(m => m[1])).toEqual(["tel:1201", "tel:101", "tel:100", "tel:118"]);
+      for (const key of ["elev.safety.crisis.danger", "screen.safetyNote", "elev.safety.helpline.il_eran", "elev.safety.helpline.il_mda", "elev.safety.helpline.il_police", "elev.safety.helpline.il_welfare"]) {
+        expect(html).toContain(renderToStaticMarkup(<span>{translate(lang, key)}</span>).slice(6, -7));
+      }
+      expect(html).not.toContain("elev.safety.");
+    });
+  });
 });

@@ -347,7 +347,7 @@ describe("AI-12 / GP-16 — promptProfile allow-list: no verdict, photo, avatar 
   });
 
   it("MODEL_PROFILE_FIELDS never lists the banned fields (the disclosure list and the wire share one constant)", () => {
-    for (const banned of ["riskLevel", "photoUrl", "avatar", "id", "onboardingComplete", "onboardingCompletedAt", "interestsUpdatedAt"]) {
+    for (const banned of ["riskLevel", "photoUrl", "avatar", "id", "onboardingComplete", "onboardingCompletedAt", "onboardingUrgentNoticeAt", "interestsUpdatedAt"]) {
       expect((MODEL_PROFILE_FIELDS as readonly string[]).includes(banned)).toBe(false);
     }
   });

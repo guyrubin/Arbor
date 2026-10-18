@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChildProfile } from "../types";
 import { DOMAINS } from "./domains/registry";
 import { translate } from "./i18n";
-import { FirstRunController, firstRunCard, initialFirstRunState, onboardingChallenges, FIRST_NOTICE_PROMPTS, validAbout } from "./onboardingFirstRun";
+import { FirstRunController, firstRunCard, initialFirstRunState, onboardingChallenges, FIRST_NOTICE_PROMPTS, urgentSetupToday, validAbout } from "./onboardingFirstRun";
 import { acceptTodayAction } from "../actionLoop/accept";
 import type { ActionLoopEntry } from "../actionLoop/model";
 import { ageMonthsFromBirthMonth, ageMonthsFromProfile, agePatchFromMonths } from "./childAge";
@@ -164,6 +164,31 @@ describe("authored content, vocabulary and pilot boundaries", () => {
     expect(h.accepted).not.toHaveBeenCalled(); expect(h.rows).toHaveLength(0);
     expect(h.controller.snapshot().complete).toBe(true); expect(h.onComplete).toHaveBeenCalledOnce();
     expect(h.profiles[0].onboardingComplete).toBe(true);
+    // B-TODAY-38: the one dated marker Now reads that day; written in the same
+    // completion write, so a completion that fails leaves no marker either.
+    expect(h.profiles[0].onboardingUrgentNoticeAt).toBe(NOW.toISOString());
+    expect(urgentSetupToday(h.profiles[0], NOW)).toBe(true);
+    expect(urgentSetupToday(h.profiles[0], new Date("2026-10-10T00:00:00"))).toBe(false);
+  });
+  it("B-TODAY-38: an ordinary setup never carries the urgent marker, and a failed completion writes none", async () => {
+    const h = await ready(); h.controller.worry({ choice: "talking", words: "My own concern", quote: "bus" });
+    await h.controller.finish(firstRunCard(h.controller.snapshot(), "en", NOW));
+    expect(h.profiles[0].onboardingComplete).toBe(true);
+    expect(h.profiles[0]).not.toHaveProperty("onboardingUrgentNoticeAt");
+    expect(urgentSetupToday(h.profiles[0], NOW)).toBe(false);
+    const failed = await ready(); failCompletionOnce(failed); failed.controller.worry({ choice: "talking", words: "she no longer speaks" });
+    await failed.controller.finish(firstRunCard(failed.controller.snapshot(), "en", NOW));
+    expect(failed.controller.snapshot().complete).toBe(false);
+    expect(failed.profiles[0]).not.toHaveProperty("onboardingUrgentNoticeAt");
+    expect(failed.rows).toHaveLength(0);
+  });
+  it("B-TODAY-38: urgentSetupToday is a local-calendar-day read and ignores junk", () => {
+    const at = "2026-10-09T23:30:00";
+    expect(urgentSetupToday({ onboardingUrgentNoticeAt: at }, new Date("2026-10-09T00:10:00"))).toBe(true);
+    expect(urgentSetupToday({ onboardingUrgentNoticeAt: at }, new Date("2026-10-10T00:10:00"))).toBe(false);
+    expect(urgentSetupToday({ onboardingUrgentNoticeAt: "not a date" }, NOW)).toBe(false);
+    expect(urgentSetupToday({}, NOW)).toBe(false);
+    expect(urgentSetupToday(null, NOW)).toBe(false);
   });
 });
 

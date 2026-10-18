@@ -50,7 +50,9 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
       expect(OV, tok).not.toContain(tok);
     }
     expect(OV.match(/<FromRecordCard\b/g)).toHaveLength(1);
-    expect(OV).toContain('{lead === "record" ? <section');
+    // B-TODAY-38: the urgent-setup lead heads the one chain; the record lead is its unchanged next branch.
+    expect(OV).toContain('{lead === "urgent" ? <section');
+    expect(OV).toContain(': lead === "record" ? <section');
     expect(OV).toContain('record.receipt ? <FromRecordReceipt /> : record.opener && <FromRecordCard');
     expect(OV).toContain('stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)}');
   });

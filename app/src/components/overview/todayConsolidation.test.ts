@@ -277,7 +277,7 @@ describe("B-TODAY-17 — the drawer is gone: no feed, no check-in, no displaced 
     // Notice block and the conversation card; the pointer, doors and lines are chrome.
     const view = stripComments(todayFile("NowView.tsx"));
     const modules = new Set(view.match(/data-module="[a-z-]+"/g) ?? []);
-    expect(modules).toEqual(new Set(['data-module="now-record"', 'data-module="now-visit"', 'data-module="today-tonight"', 'data-module="now-step"', 'data-module="today-practice"', 'data-module="now-program"', 'data-module="today-notice"', 'data-module="now-focus"']));
+    expect(modules).toEqual(new Set(['data-module="now-urgent"', 'data-module="now-record"', 'data-module="now-visit"', 'data-module="today-tonight"', 'data-module="now-step"', 'data-module="today-practice"', 'data-module="now-program"', 'data-module="today-notice"', 'data-module="now-focus"']));
     expect(stripComments(todayFile("NowMoreForToday.tsx"))).not.toMatch(/\bdata-module=/);
     const budget = read("components/overview/todayModules.ts").match(/TODAY_MODULE_BUDGET = (\d+)/)?.[1];
     expect(Number(budget)).toBe(3);

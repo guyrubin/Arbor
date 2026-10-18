@@ -3,9 +3,12 @@ import { appointmentInWindow, ledgerSilence, type OfferLedger } from "../compani
 import { appointmentStatus, isPrepareDue, nextPrepareVisit, type Appointment } from "../careTrack";
 
 export type NowFallback = "practice" | "notice" | "program" | "recommendation";
-export type NowLead = "step" | "visit" | "tonight" | "record" | NowFallback;
+export type NowLead = "urgent" | "step" | "visit" | "tonight" | "record" | NowFallback;
 
 export function selectNowLead(input: {
+  /** B-TODAY-38: the first run ended on the urgent notice today (`urgentSetupToday`).
+   * The help lines are the day's one lead; no step, visit or offer outranks them. */
+  urgent?: boolean;
   chosen: boolean;
   chosenPending?: boolean;
   manualTonight?: boolean;
@@ -17,6 +20,7 @@ export function selectNowLead(input: {
   recordPending: boolean;
   fallback: NowFallback;
 }): NowLead {
+  if (input.urgent) return "urgent";
   // A parent-opened Tonight door is explicit navigation, not an automatic offer.
   if (input.manualTonight && !input.chosenPending && !input.recordPending) return "tonight";
   if (input.chosen) return "step";
