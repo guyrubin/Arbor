@@ -1,6 +1,6 @@
 """Apply the locally tested entry change exactly, or fail before any write.
-Each source and result is checked by SHA256. No fuzzy patching or shell code
-from the transfer data. Removed with the branch-only transport after use.
+Each source and result is checked by SHA256. CI changes are validated here but
+written separately through the authorized connector, not the Actions token.
 """
 import hashlib
 import json
@@ -30,6 +30,9 @@ for part in parts:
         prepared.append((target, result))
 assert len(prepared) == 14, 'Unexpected file count'
 for target, result in prepared:
+    if str(target.relative_to(root)).startswith('.github/workflows/'):
+        print('Validated for separate authorized connector write:', target.relative_to(root))
+        continue
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(result)
     print(target.relative_to(root))
