@@ -13,11 +13,11 @@ const decode=s=>s.replaceAll('&amp;','&').replaceAll('&quot;','"').replaceAll('&
 const menu=lang=>`<details class="language-menu"><summary aria-label="${menuLabels[lang]}: ${names[lang]}"><span class="language-name">${names[lang]}</span><span class="language-code" aria-hidden="true">${lang.toUpperCase()}</span></summary><nav class="language-options" aria-label="${menuLabels[lang]}">${Object.entries(names).map(([code,name])=>`<a href="/marketing/${page(code)}" lang="${code}" hreflang="${code}"${code===lang?' aria-current="page"':''}>${name}</a>`).join('')}</nav></details>`;
 const alternatives=Object.keys(names).map(lang=>`<link rel="alternate" hreflang="${lang}" href="${url(lang)}">`).join('')+'<link rel="alternate" hreflang="x-default" href="https://arborparentingapp.com/marketing/">';
 function shell(html,lang){
- html=html.replace(/<html[^>]*>/,`<html lang="${lang}"${lang==='he'?' dir="rtl"':''}>`);
+ html=html.replace(/<html[^>]*>/,`<html lang="${lang}"${lang==='he'?' dir="rtl"':''} data-marketing-version="2026-10-11-v3">`);
  html=html.replace(/<link rel="canonical"[^>]*>/,`<link rel="canonical" href="${url(lang)}">`);
  html=html.replace(/<link rel="alternate"[^>]*>/g,'').replace('</head>',alternatives+'</head>');
  html=html.replace(/<a class="language"[^>]*>.*?<\/a>|<details class="language-menu">[\s\S]*?<\/details>/,menu(lang));
- return html.replace(/arbor-immersive-v3\.(css|js)\?v=[\d.]+/g,'arbor-immersive-v3.$1?v=8');
+ return html.replace(/arbor-immersive-v3\.(css|js)\?v=[\d.]+/g,'arbor-immersive-v3.$1?v=9');
 }
 const source=fs.readFileSync(path.join(dir,page('en')),'utf8');
 for(const lang of ['de','fr','nl']){
