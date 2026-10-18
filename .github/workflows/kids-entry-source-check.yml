@@ -1,0 +1,26 @@
+name: Kids Entry Source Check
+on:
+  push:
+    branches: [codex/kids-entry-preparation-2026-10-18]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 8fad8f1e732f1aa60ef086ad60e8ba8546b39be4
+          persist-credentials: false
+      - name: Export tracked text for isolated verification
+        run: |
+          git archive HEAD app/src app/scripts app/public/sw.js app/package.json app/package-lock.json app/tsconfig.json app/vite.config.ts .github docs | gzip > /tmp/arbor-entry-current-source.tgz
+          git rev-parse HEAD > /tmp/arbor-entry-source-sha.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arbor-entry-current-source
+          path: |
+            /tmp/arbor-entry-current-source.tgz
+            /tmp/arbor-entry-source-sha.txt
+          retention-days: 1
