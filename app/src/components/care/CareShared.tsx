@@ -45,7 +45,8 @@ const cardCls = "min-w-0 rounded-[var(--r-lg)] border p-4 sm:p-5 flex flex-col g
 const cardStyle: React.CSSProperties = { borderColor: "var(--arbor-rule)", background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" };
 const rowCls = "flex items-center gap-3 rounded-xl px-3 py-2 min-w-0";
 const rowStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" };
-const linkCls = "self-start inline-flex items-center gap-1 rounded-full min-h-[44px] t-sm font-bold";
+/** The card's foot door; mt-auto keeps both cards' doors on one line. */
+const linkCls = "mt-auto self-start inline-flex items-center gap-1 rounded-full min-h-[44px] t-sm font-bold";
 
 function CardHead({ id, icon, tone, shape, title, sub }: { id: string; icon: string; tone: "sapphire" | "peach"; shape: "leaf" | "arch"; title: string; sub: string }) {
   return (
@@ -206,7 +207,7 @@ export default function CareShared({ onPrepareAgain }: { onPrepareAgain?: (audie
 
   return (
     <section data-module="consult-shared" aria-label={t("elev.consult.shared.label")} className="min-w-0 lg:col-span-2 min-[1600px]:col-span-2 flex flex-col gap-3">
-      <div className="grid gap-4 md:grid-cols-2 items-start">
+      <div className="grid gap-4 md:grid-cols-2">
         <WhoSeesWhat state={sharingState} rows={rows} />
         <PastExports rows={exports} onPrepareAgain={onPrepareAgain} />
       </div>

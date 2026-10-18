@@ -54,8 +54,13 @@ export default function CareAside() {
   const firstName = (childProfile.name || "").trim().split(" ")[0];
   const reviewed = readSafetyReviewed(childProfile.id);
 
+  // v4: a complementary landmark, but not an <aside> element — the shell's
+  // global `.arbor-app aside` rules (sidebar paper, an inline-end rule, a
+  // hover nudge on rounded buttons) belong to the sidebar and the AI rail and
+  // painted a straight rule over this card's rounded edge.
   return (
-    <aside
+    <div
+      role="complementary"
       data-module="consult-aside"
       aria-label={t("elev.consult.aside.label")}
       className="min-w-0 min-[1600px]:sticky min-[1600px]:top-[var(--sticky-offset)]"
@@ -96,7 +101,6 @@ export default function CareAside() {
           {t(lines.findLine ? "elev.safety.crisis.findLine" : "elev.consult.aside.openSafety")}
         </button>
       </section>
-
-    </aside>
+    </div>
   );
 }
