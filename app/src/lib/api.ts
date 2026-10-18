@@ -118,6 +118,13 @@ export const IMAGE_RESTING = "image_resting";
 export const isImageResting = (err: unknown): boolean =>
   err instanceof ApiError && err.status === 429 && err.message === IMAGE_RESTING;
 
+/** B-AIOPS-02: /live/token's 429 code — the FAMILY's realtime-voice minutes
+ *  for today are reserved or spent (server/liveBudget.ts). Not the hourly AI
+ *  quota and not "busy": no Retry-After; typed coaching stays open. */
+export const LIVE_RESTING = "live_resting";
+export const isLiveResting = (err: unknown): boolean =>
+  err instanceof ApiError && err.status === 429 && err.message === LIVE_RESTING;
+
 /**
  * B-KID-119: whether this session's plan grants ANY scene/comic image. Learnt
  * from /entitlement (`imageAllowance`) and from a "resting" refusal of a scene
@@ -196,6 +203,9 @@ async function request<T>(url: string, method: string, body?: unknown, signal?: 
     // B-KID-05: image quota exhaustion carries its own code and no retry hint.
     if (res.status === 429 && errData?.code === IMAGE_RESTING) {
       throw new ApiError(IMAGE_RESTING, 429);
+    }
+    if (res.status === 429 && errData?.code === LIVE_RESTING) {
+      throw new ApiError(LIVE_RESTING, 429);
     }
     if (res.status === 409) {
       // Server escalation contract (see routes/api.ts): 409 == a safety trigger
@@ -573,7 +583,9 @@ export const api = {
     privateMode?: boolean;
     topicId?: string;
   } = {}, opts: { signal?: AbortSignal } = {}) =>
-    liveStartupRequest<{ available: boolean; token?: string; model?: string; expiresAt?: string; usageSessionId?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown }>(payload, opts.signal),
+    liveStartupRequest<{ available: boolean; token?: string; model?: string; expiresAt?: string; usageSessionId?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown;
+      /** B-AIOPS-02: the server-reserved slice and what the family has left today. */
+      budget?: { reservedMs: number; remainingMs: number; allowanceMs: number; resetAt: string } }>(payload, opts.signal),
   // VC-2/VC-3: the authoritative per-turn Live screen. The liveTurnGuard treats
   // ANY failure of this call (network / non-200 / timeout) as FLAGGED (VC-5).
   liveUsage: (sessionId: string, event: "opened" | "heartbeat" | "closed") =>

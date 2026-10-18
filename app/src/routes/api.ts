@@ -1,5 +1,6 @@
 import { liveUsageRateLimit } from "../server/apiRateLimits.js";
 import { createLiveUsageStore, withLiveUsageDeadline, type LiveUsageEvent } from "../server/liveUsage.js";
+import { createLiveBudgetStore, LIVE_RESTING_BODY } from "../server/liveBudget.js";
 import { attachmentTurnPolicy } from "../ai/attachmentSourcePolicy.js";
 import { parseCompanionAttachments, type ComposerAttachment } from "../lib/companionAttachments.js";
 import express from "express";
@@ -133,6 +134,9 @@ type ApiDeps = {
    *  (actionLoops, kept insights). Injectable for tests; defaults to the
    *  Firestore/null source derived from config. */
   companionLedgerSource?: CompanionLedgerSource;
+  /** B-AIOPS-02: the family-day Live reservation store. Injectable for tests;
+   *  defaults to the Firestore/memory store derived from config. */
+  liveBudgetStore?: import("../server/liveBudget.js").LiveBudgetStore;
   /** N1-05: the founder-side cohort reader (injectable for tests); defaults
    *  to the Firestore/null store derived from config. */
   cohortMetricsStore?: CohortMetricsStore;
@@ -400,9 +404,11 @@ export const allowListHandoffInput = (
   return { logs: safeLogs, milestones: safeMilestones };
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource, liveBudgetStore }: ApiDeps) => {
   const router = express.Router();
   const liveUsage = createLiveUsageStore(config);
+  // B-AIOPS-02: the shared-family daily Live allowance (injectable for tests).
+  const liveBudget = liveBudgetStore ?? createLiveBudgetStore(config);
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
   const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
   // B-AI-01: the companion ledger read (Firestore in prod, null locally).
@@ -1779,7 +1785,18 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     try {
       const result = await liveUsage.report(actorOf(req).uid, sessionId, event as LiveUsageEvent);
       if (!result) { res.status(404).json({ error: "Session not found" }); return; }
-      res.json(result);
+      // B-AIOPS-02 reconciliation: observed time is RECORDED beside the
+      // family reservation. It never credits the budget here — a client
+      // report cannot shorten a token that the provider still honours.
+      if (result.budget) {
+        try {
+          await liveBudget.observe(result.familyId, result.budget.day, result.budget.reservationId,
+            { observedMs: result.observedMs, incomplete: result.incomplete, closed: result.closed });
+        } catch (error) {
+          logger.error("Live budget reconciliation failed", error, { requestId: requestIdOf(req) });
+        }
+      }
+      res.json({ observedMs: result.observedMs, incomplete: result.incomplete });
     } catch (error) {
       logger.error("Live usage write failed", error, { requestId: requestIdOf(req) });
       res.status(503).json({ error: "Usage reporting unavailable" });
@@ -1808,6 +1825,45 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       exception_until: live.exceptionUntil ?? null,
     });
     const euPath = selected.provider === LIVE_VERTEX_EU_PROVIDER;
+
+    // B-AIOPS-02: reserve BEFORE the provider is touched. The family, plan and
+    // slice are server-resolved; the client supplies none of them. A token is
+    // spend the provider honours until expiry, so the reservation is
+    // non-refundable and the token's expireTime IS the reservation end.
+    // Overlapping mints from any parent/device of the family serialize on
+    // the family-day document; renewal after expiry is simply the next mint.
+    // A store failure refuses the mint (503): the
+    // browser voice loop keeps its own meters, and a cap that fails open on
+    // an outage is not a cap.
+    const actor = actorOf(req);
+    let reserved: Extract<Awaited<ReturnType<typeof liveBudget.reserve>>, { ok: true }>;
+    let entitlementPlan: import("../server/entitlements.js").Plan;
+    let familyId: string;
+    try {
+      const [entitlement, resolvedFamilyId] = await Promise.all([
+        resolveEntitlement(entitlementStore, actor), resolveFamilyId(req, undefined),
+      ]);
+      entitlementPlan = entitlement.plan;
+      familyId = resolvedFamilyId;
+      const outcome = await liveBudget.reserve({ familyId, plan: entitlement.plan, uid: actor.uid });
+      res.setHeader("X-Live-Quota-Limit", String(Math.round(outcome.allowanceMs / 1000)));
+      res.setHeader("X-Live-Quota-Remaining", String(Math.round(outcome.remainingMs / 1000)));
+      res.setHeader("X-Live-Quota-Reset", new Date(outcome.resetAt).toISOString());
+      if (!outcome.ok) {
+        // B-KID-05 posture: exhaustion is not "busy" — no Retry-After. The
+        // typed coach and the crisis path stay open; only realtime voice rests.
+        logger.info("live.budget.resting", { requestId: requestIdOf(req), familyId, plan: entitlement.plan, remainingMs: outcome.remainingMs });
+        res.status(429).json({ ...LIVE_RESTING_BODY, remainingMs: outcome.remainingMs, resetAt: new Date(outcome.resetAt).toISOString() });
+        return;
+      }
+      reserved = outcome;
+    } catch (error) {
+      logger.error("Live budget reservation failed", error, { requestId: requestIdOf(req) });
+      res.status(503).json({ available: false, code: "live_budget_unavailable", reason: "Live voice is not available right now." });
+      return;
+    }
+    const { reservation } = reserved;
+    const expireTime = new Date(reservation.expiresAt).toISOString();
     try {
       const { GoogleGenAI } = await import("@google/genai");
       // The EU attempt mints on Vertex in the configured EU location; the
@@ -1816,7 +1872,6 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         ? new GoogleGenAI({ vertexai: true, project: config.gcpProjectId, location: config.liveVertexLocation || config.vertexLocation })
         : new GoogleGenAI({ apiKey: config.geminiApiKey as string });
       const model = config.liveModel;
-      const expireTime = new Date(Date.now() + 20 * 60 * 1000).toISOString();
       // AI-V9: the instruction + voice are built per session language from the
       // ONE shared spoken-persona module and pinned server-side.
       const { childProfile, recentTurns, contextChildId, privateMode, topicId } = req.body ?? {};
@@ -1825,7 +1880,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const companionContext = await assembleSpokenContext({
         memoryStore, childProfile, recentTurns, contextChildId, privateMode, topicId,
         canReadMemory, maxMemoryFacts: config.memoryPromptMaxFacts,
-        ledgerSource, uid: actorOf(req).uid,
+        ledgerSource, uid: actor.uid,
       });
       // Direct audio cannot restore the text route's child-name alias. Keep
       // names/contact PII out of the token pin and use natural generic wording.
@@ -1835,7 +1890,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const token = await ai.authTokens.create({
         config: {
           uses: 1,
+          // B-AIOPS-02: the reserved slice bounds the token; the provider
+          // rejects messages after it. A new session may start on the token
+          // only in the next minute, so a parked token cannot be spent later.
           expireTime,
+          newSessionExpireTime: new Date(Date.now() + 60_000).toISOString(),
           // FW-NEW-P0: pin the persona, voice, and transcription-on INTO the
           // token's constraints at mint time. The Live API rejects a connect
           // config that conflicts with these, so a modified client cannot
@@ -1860,20 +1919,20 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // Telemetry failure must not strand a successfully minted voice token.
       let usageSessionId: string | undefined;
       try {
-        usageSessionId = await withLiveUsageDeadline(async () => {
-          const actor = actorOf(req);
-          const [entitlement, familyId] = await Promise.all([
-            resolveEntitlement(entitlementStore, actor), resolveFamilyId(req, undefined),
-          ]);
-          return liveUsage.create({ uid: actor.uid, familyId, plan: entitlement.plan,
-            model, expiresAt: Date.parse(expireTime) });
-        });
+        usageSessionId = await withLiveUsageDeadline(async () =>
+          liveUsage.create({ uid: actor.uid, familyId, plan: entitlementPlan, model, expiresAt: reservation.expiresAt,
+            budget: { day: reservation.day, reservationId: reservation.id } }));
       } catch (error) {
         logger.error("Live usage session creation failed", error, { requestId: requestIdOf(req) });
       }
-      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig, usageSessionId });
+      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig, usageSessionId,
+        budget: { reservedMs: reservation.ms, remainingMs: reserved.remainingMs, allowanceMs: reserved.allowanceMs, resetAt: new Date(reserved.resetAt).toISOString() } });
     } catch (error: any) {
       logger.error("Arbor Live Token Error", error, { requestId: requestIdOf(req), provider: selected.provider, region: selected.region });
+      // No token was issued: the reservation is released on this SERVER fact
+      // (never on a client report). Failure here is logged, not surfaced.
+      try { await liveBudget.cancel(familyId, reservation.day, reservation.id); }
+      catch (cancelError) { logger.error("Live budget release failed", cancelError, { requestId: requestIdOf(req) }); }
       if (euPath) {
         // B-PROV-01: the Vertex `eu` attempt could not mint (ephemeral Live
         // tokens are a Developer-API feature today). 503, browser fallback.
