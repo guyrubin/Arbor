@@ -10,7 +10,7 @@ import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { portraitDiscussionPrompt } from "./portraitModel";
 import { PORTRAIT_COPY } from "./portraitCopy";
 import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
-import ChildDoors, { useChildPhoneLayout } from "./ChildDoors";
+import { useChildPhoneLayout } from "./ChildDoors";
 import MilestoneAreas from "./MilestoneAreas";
 import PortraitCards from "./PortraitCards";
 import "./childPortrait.css";
@@ -25,23 +25,22 @@ import "./childPortrait.css";
  *     kept, and what the family is working on (the goal picker opens here).
  *  3. "Milestones across areas" (MilestoneAreas → DevelopmentMap): eight
  *     area rows with Seen-it pips and the newest moment; a row opens inline
- *     (a sheet on a phone) to answer its skills; the 5-minute check is the
- *     page's one primary move; the growing line and the record note close it.
+ *     (a sheet on a phone) to answer its skills; v4: the 5-minute check is one
+ *     row under the areas (its Start is the page's one primary move); the
+ *     growing line and the record note close it.
  *
- * The moments views (over time, in different places, across areas) belong to
- * the Moments pill; the care and record doors belong to Care and the pills.
+ * The moments views (across areas, over time, by place) belong to the
+ * Moments pill; the care and record doors belong to Care and the pills.
  *
  * v3 F-CHILD-4 (MOB-02) — on a phone (below 768 px) the pill is one stack,
  * as the mock's Phone frame: the areas card comes first (tiles, each opening
- * its area in a bottom sheet), the h1 stays for screen readers only (the pill
- * row names the place), then the goal card (the goal picker's only door; the
- * strength and kept cards are wide-screen only), then the doors to the
- * journal, the memory and Care (the check's door is the page's own primary
- * move, so it is not repeated). The memory door reads the waiting queue
- * itself: this pill shows no proposal, so any that waits is named there, in
- * words, as About names one its areas do not show. The modules are built
- * once and only their order changes, so a pill keeps its two modules and its
- * one primary move at every width.
+ * its area in a bottom sheet, then the check row), the h1 stays for screen
+ * readers only (the pill row names the place), then the goal card (the goal
+ * picker's only door; the strength and kept cards are wide-screen only).
+ * v4: no doors close it any more — the journal, the memory and the check each
+ * have a visible home (Moments, About, the check row) and Care is in More.
+ * The modules are built once and only their order changes, so a pill keeps
+ * its two modules and its one primary move at every width.
  * CLINICAL FIREWALL: Seen-it counts and the parent's own words only.
  */
 export interface ChildPortraitProps {
@@ -104,7 +103,7 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
 
   return <section className="child-portrait milestones-body" dir={uiLang === "he" ? "rtl" : "ltr"} data-testid="child-portrait">
     {phone
-      ? [<h1 key="title" className="sr-only">{heading}</h1>, areasModule, portraitModule, <ChildDoors key="doors" omit="screening" />]
+      ? [<h1 key="title" className="sr-only">{heading}</h1>, areasModule, portraitModule]
       : [portraitModule, areasModule]}
   </section>;
 }

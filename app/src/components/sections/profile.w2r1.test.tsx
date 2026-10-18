@@ -184,21 +184,20 @@ describe("#/profile — the cut chapters, the count line and the dated areas", (
     expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
     expect(html.split("Noa answers in Hebrew when tired").length - 1).toBe(1);
   });
-  it("review r1: proposals no area shows are not invisible — one sentence under the memory door, no number, no badge (EN + HE)", () => {
+  // v4 re-pin (supersedes review r1's sentence-under-the-door): proposals no
+  // area shows wait IN What Arbor remembers, each with Remember / Not this, the
+  // first three on the page and the rest one tap away on #/memory. The badge
+  // counts facts waiting in the ledger (never anything about the child); the
+  // door stays the ONE door and the page keeps its one primary move.
+  it("v4: proposals no area shows wait in What Arbor remembers (first three), counted as facts waiting; one door, one stamp (EN + HE)", () => {
     for (const locale of ["en", "he"] as const) {
       h.locale = locale;
       h.pending = [1, 2, 3, 4].map((n) => ({ memoryId: `p${n}`, fact: `fact ${n}`, status: "pending", createdAt: "2026-10-02T10:00:00.000Z", source: "chat", retention: "90d" }));
       const html = renderToStaticMarkup(<ChildProfile />);
-      const doorAt = html.indexOf('data-testid="profile-remember-check"');
-      const door = html.slice(doorAt, html.indexOf("</button>", doorAt));
-      expect(html.match(/data-testid="about-memory-waiting"/g)).toHaveLength(1);
-      expect(door).toContain('data-testid="about-memory-waiting"');
-      const said = text(door.slice(door.indexOf(">") + 1)).replace(/\s+/g, " ");
-      expect(said).toContain(translate(locale, "companion.about.memoryWaiting"));
-      expect(said).not.toMatch(/\d/);
-      if (locale === "he") expect(translate("he", "companion.about.memoryWaiting")).not.toMatch(/[A-Za-z]/);
-      // it is a line, not a count badge, and the door stays the ONE door
-      expect(door).not.toMatch(/badge|data-count/);
+      expect(html.match(/data-testid="about-memory-pending"/g)).toHaveLength(3);
+      expect(text(html)).toContain(translate(locale, "companion.about.memory.waiting", { n: 4 }));
+      if (locale === "he") expect(translate("he", "companion.about.memory.waiting", { n: 4 })).not.toMatch(/[A-Za-z]/);
+      expect(html).not.toContain('data-testid="about-memory-waiting"');
       expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
       expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     }

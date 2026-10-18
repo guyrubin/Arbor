@@ -5,7 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 /* F-INT-1 — Moments (#/timeline) shows the journal door exactly once, in
    every view and every record state.
 
-   On a phone, Moments closes with My child's doors (F-CHILD-4), the journal
+   v4: My child's phone doors are gone; this suite keeps the one-door rule.
+   History: on a phone, Moments closed with My child's doors (F-CHILD-4), the journal
    door left out because Moments carries its own. That own door used to sit
    only under the months over time with a non-empty record, so in places, in
    areas, or with an empty record a phone parent had no journal door at all.
@@ -94,7 +95,8 @@ const VIEWS: View[] = ["time", "places", "areas"];
 const CASES: [View, RecordState][] = VIEWS.flatMap(view => (Object.keys(RECORDS) as RecordState[]).map((record): [View, RecordState] => [view, record]));
 
 const render = (view: View, record: RecordState) => {
-  state.query = view === "time" ? "" : `view=${view}`;
+  // v4 re-pin: no ?view= now opens Across areas, so every view is named.
+  state.query = `view=${view}`;
   state.record = RECORDS[record]();
   state.buttons = [];
   return renderToStaticMarkup(<TimelineTab />);
@@ -117,18 +119,17 @@ const words = (html: string) => html.replace(/<span class="msr[^"]*"[^>]*>[^<]*<
 beforeEach(() => { vi.clearAllMocks(); state.lang = "en"; state.phone = true; state.query = ""; state.buttons = []; });
 
 describe("F-INT-1 — Moments on a phone shows the journal door exactly once", () => {
-  it.each(CASES)("view %s, %s record: one journal door, Moments' own, then the three other doors", (view, record) => {
+  // v4 re-pin: My child's phone doors are gone (each has a visible home), so
+  // Moments' own journal door is the page's one way to #/journal on a phone too.
+  it.each(CASES)("view %s, %s record: one journal door, Moments' own, and no doors grid", (view, record) => {
     const html = render(view, record);
     expect(html).toContain('data-testid="moments-body"');
     expect(count(html, DOOR)).toBe(1);
-    expect(html).not.toContain('data-testid="child-door-journal"');
-    expect(count(html, 'data-testid="child-doors"')).toBe(1);
-    expect([...html.matchAll(/data-testid="child-door-([a-z]+)"/g)].map(m => m[1])).toEqual(["memory", "screening", "consult"]);
+    expect(html).not.toContain("child-door");
     expect(journalPresses()).toBe(1);
     expect(state.setActiveTab).toHaveBeenCalledWith("journal");
-    // The door closes the view, inside its module; the doors grid follows it.
+    // The door closes the view, inside its module.
     expect(html.indexOf(DOOR)).toBeGreaterThan(html.indexOf('data-module="moments-view"'));
-    expect(html.indexOf(DOOR)).toBeLessThan(html.indexOf('data-testid="child-doors"'));
     // Navigation adds no block and no move: two modules, one primary move.
     expect(count(html, "data-module=")).toBe(2);
     expect(count(html, "data-primary-move=")).toBe(1);

@@ -627,13 +627,20 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
       await screen('practice', 'together-bottom-reachable', cell => mainScrollFrame(cell, 'practice'));
 
       const recordNav = async cell => {
-        // F-CHILD-2: #/timeline is Moments; its own nav is the three-view tablist.
-        const back = byId('secondary-place-back'); const nav = page.locator('[data-moments-views]');
-        await visible(cell, 'RECORD_BACK_MOUNTED', back); await visible(cell, 'RECORD_MOMENTS_VIEWS_MOUNTED', nav); check(cell, 'THREE_MOMENT_VIEWS', await nav.locator('[role=tab]').count() === 3); check(cell, 'NO_DUPLICATE_SHELL_NAV', await byId('secondary-sibling-nav').count() === 0);
-        const geometry = { back: await rect(back), nav: await rect(nav), clip: await rect(page.locator('main')) };
+        // v4: #/timeline is My child's Moments reading. The Shell row names the
+        // three readings (Milestones · Moments · About, Moments lit) and a
+        // reading has no Back; Moments' own nav is the three-view tablist.
+        // The two never repeat each other: no view name is a pill name.
+        const row = byId('secondary-sibling-nav'); const nav = page.locator('[data-moments-views]');
+        await visible(cell, 'RECORD_PILL_ROW_MOUNTED', row); await visible(cell, 'RECORD_MOMENTS_VIEWS_MOUNTED', nav); check(cell, 'THREE_MOMENT_VIEWS', await nav.locator('[role=tab]').count() === 3);
+        const pills = (await row.locator('[role=tab]').allTextContents()).map(s => s.trim());
+        const views = (await nav.locator('[role=tab]').allTextContents()).map(s => s.trim());
+        check(cell, 'NO_DUPLICATE_SHELL_NAV', pills.length === 3 && views.every(v => !pills.includes(v)), { pills, views });
+        check(cell, 'MOMENTS_PILL_LIT', await row.locator('[role=tab][aria-selected=true]').count() === 1);
+        check(cell, 'READING_HAS_NO_BACK', await byId('secondary-place-back').count() === 0);
+        const geometry = { row: await rect(row), nav: await rect(nav), clip: await rect(page.locator('main')) };
         cell.geometry = geometry;
-        check(cell, 'RECORD_BACK_UNIQUE', await back.count() === 1);
-        check(cell, 'RECORD_BACK_NO_VISIBLE_NAV_OVERLAP', clippedOverlap(geometry.back, geometry.nav, geometry.clip) === 0, clippedOverlap(geometry.back, geometry.nav, geometry.clip));
+        check(cell, 'PILL_ROW_NO_VISIBLE_NAV_OVERLAP', clippedOverlap(geometry.row, geometry.nav, geometry.clip) === 0, clippedOverlap(geometry.row, geometry.nav, geometry.clip));
       };
       const record = await screen('timeline', 'recordnav-initial', async cell => { await load('timeline'); await recordNav(cell); });
       await screen('timeline', 'recordnav-scrolled', async cell => { dependent(record); cell.scroll = await page.evaluate(() => { const main = document.querySelector('#main'); const max = main.scrollHeight - main.clientHeight; main.scrollTop = Math.min(Math.max(100, main.clientHeight / 2), max); return { main: main.scrollTop, window: window.scrollY }; }); check(cell, 'RECORD_ACTUALLY_SCROLLED', cell.scroll.main > 0 && cell.scroll.window === 0); await recordNav(cell); });

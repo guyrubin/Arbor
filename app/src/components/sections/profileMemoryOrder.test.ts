@@ -28,6 +28,9 @@ import path from "node:path";
 const SRC = path.resolve(__dirname, "..", "..");
 const memory = readFileSync(path.join(SRC, "components/sections/ChildMemory.tsx"), "utf8");
 const profile = readFileSync(path.join(SRC, "components/sections/ChildProfile.tsx"), "utf8");
+// v4: About's one memory room is the What Arbor remembers card it mounts.
+const memoryCard = readFileSync(path.join(SRC, "components/about/AboutMemoryCard.tsx"), "utf8");
+const page = profile + memoryCard;
 
 /** Position of a marker in a file, asserted to exist. */
 const at = (src: string, marker: string) => {
@@ -68,10 +71,11 @@ describe("Child Memory · the action queue comes first", () => {
 
 describe("Profile · one door per room", () => {
   it("OBJ-PROFILE-03 — the memory door is the chapter, not a chapter plus a tile", () => {
-    // B-SHELL-26: chapter 6 folded into the "Things Arbor remembers" band; its
-    // ONE door to #/memory is the band's quiet check line. No footer tile.
-    expect(profile).toContain('data-testid="profile-remember-check"');
-    expect(profile.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(1);
+    // v4 re-pin: the room is the What Arbor remembers card (AboutMemoryCard,
+    // mounted once by the page); its ONE door to #/memory keeps the testid.
+    expect(profile.match(/<AboutMemoryCard /g) ?? []).toHaveLength(1);
+    expect(page.match(/data-testid="profile-remember-check"/g) ?? []).toHaveLength(1);
+    expect(page.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(1);
     expect(profile).not.toContain('t("cp.footer.memory")');
     // v3 F-CHILD-3 re-pin: the footer jump strip left #/profile with the old
     // page (About is the describe card, the eight areas and Details), so no
@@ -87,13 +91,14 @@ describe("Profile · one door per room", () => {
      review button, so `#/profile` still printed "What Arbor remembers" twice.
      The chapter is the door; the tile is gone. */
   it("R9 — the memory heading is rendered exactly once on the page", () => {
-    // B-SHELL-26: the one heading is the band's "Things Arbor remembers" —
-    // chapter 6 (cp.ch.memory) folded into it, so the room is named once.
-    expect(profile.match(/t\("elev\.profile\.remembers\.title"\)/g) ?? []).toHaveLength(1);
-    expect(profile.match(/t\("cp\.ch\.memory"\)/g) ?? []).toHaveLength(0);
-    // ONE door to #/memory (the quiet check line); no Keep / Not quite here.
-    expect(profile.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(1);
-    expect(profile).not.toContain('t("elev.profile.remember.notQuite")');
+    // v4 re-pin: the one heading is the card's "What Arbor remembers"; the
+    // older band title and chapter 6 are gone, so the room is named once.
+    expect(page.match(/t\("companion\.about\.memory\.title"\)/g) ?? []).toHaveLength(1);
+    expect(page.match(/t\("elev\.profile\.remembers\.title"\)/g) ?? []).toHaveLength(0);
+    expect(page.match(/t\("cp\.ch\.memory"\)/g) ?? []).toHaveLength(0);
+    // ONE door to #/memory; the old Keep / Not quite pair is not back.
+    expect(page.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(1);
+    expect(page).not.toContain('t("elev.profile.remember.notQuite")');
   });
 
   it("NEGATIVE CONTROL: the pre-fix tile is a second heading of the same name", () => {
