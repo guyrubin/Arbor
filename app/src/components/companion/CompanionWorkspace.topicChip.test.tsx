@@ -107,8 +107,10 @@ describe("FEAT-01 — the Ask bar carries the active question as one quiet line"
     expect(markup).not.toMatch(/sr-only|class="msr/);
     expect(textOf(markup)).not.toMatch(/\d/);
     expect(html).not.toContain("<small");
-    // B-ASKJB-39: the hard-moment door stays off the overview, question or not.
-    expect(html).not.toContain('data-testid="launcher-hard-moment"');
+    // v4 re-pin (blueprint decision 6): the hard-moment door is on the rail on
+    // EVERY parent screen, the overview included — beside the question line,
+    // never inside it (the caption above is text only).
+    expect(markup).not.toContain('data-testid="launcher-hard-moment"');
   });
 
   it("is absent without a question, for a blank question, beside a draft and in Kid Mode", () => {

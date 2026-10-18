@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { TODAY_MODULE_BUDGET, planToday, type TodayModuleId, type TodayPlanInput } from "./todayModules";
-import { contractFor } from "../../lib/surfaceContract";
+import { contractFor } from "../../lib/surfaceContract";
+
 import { todayFile, todayLiveSource } from "../../testTodaySource";
 
 /**
@@ -50,8 +51,9 @@ describe("todayModules v3 — planToday", () => {
     expect(planToday(STATES.eveningUnanswered).order).toEqual(["tonight", "notice"]);
     const tab = stripComments(todayLiveSource());
     expect(tab).not.toMatch(/PracticeOutcomeStrip|practiceMode === "outcome"/);
-    // the story is ONE door line at night, never a line under the Tonight card
-    expect(tab).toContain('{evening && storyFits && line("today-door-story"');
+    // the story is ONE agenda line at night (v4: the door dissolved), never a line under the Tonight card
+    expect(tab).toContain('{storyRow && evening && storyFits && <button type="button" className="now-weekly-door now-agenda-row" data-testid="today-agenda-story"');
+    expect(tab.match(/data-testid="today-agenda-story"/g)).toHaveLength(1);
     expect(tab.slice(tab.indexOf("<TonightFlow"), tab.indexOf("/>", tab.indexOf("<TonightFlow")))).not.toMatch(/onStory=/);
   });
 

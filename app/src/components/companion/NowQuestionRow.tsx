@@ -1,11 +1,14 @@
 import React, { useId, useRef } from "react";
 import { useArbor } from "../../context/ArborContext";
 import Icon from "../ui/Icon";
+import { BrandChip, brandChipShape, type BrandChipTone } from "../ui/BrandChip";
 import { INTENT_ICON, type FamilyTopic } from "../../lib/familyTopics";
 import { NOW_COPY } from "./nowViewCopy";
 import { guideFaceFor } from "./nowGuideFace";
 import { requestFamilyTopicEdit } from "./familyTopicEvents";
 
+/** v4: the recents row cycles the brand tones (peach, lav, green, sky, pink, sapphire). */
+const QUESTION_TONES: readonly BrandChipTone[] = ["peach", "lav", "green", "sky", "pink", "sapphire"];
 const intentIcon = (intent?: string) => INTENT_ICON[intent as FamilyTopic["intent"]] ?? "help";
 /** F-NOW-1: a question wears its guide topic's glyph; one no guide matches keeps its intent's. */
 const questionIcon = (title: string, intent: string | undefined, lang: "en" | "he") => guideFaceFor(title, lang).glyph ?? intentIcon(intent);
@@ -53,8 +56,9 @@ export default function NowQuestionRow({ lang, topic, onOpen, onCreate, "data-mo
       {others.length > 0 && <>
         {others.length > 2 && <button type="button" className="now-question-scroll" aria-label={copy.earlierQuestions} onClick={() => scroll(false)}><Icon name="arrow_back" size={22} className="rtl:-scale-x-100" /></button>}
         <div ref={row} className="now-question-chips" role="group" aria-label={copy.otherQuestions}>
-          {others.map(item => <button key={item.id} type="button" className="now-question-chip" onClick={() => selectFamilyTopic(item.id)}>
-            <Icon name={questionIcon(item.title, item.intent, lang)} size={20} /><span dir="auto">{item.title}</span>
+          {/* v4: each other question wears the brand gradient chip, in a stable tone per position. */}
+          {others.map((item, index) => <button key={item.id} type="button" className="now-question-chip" onClick={() => selectFamilyTopic(item.id)}>
+            <BrandChip icon={questionIcon(item.title, item.intent, lang)} tone={QUESTION_TONES[index % QUESTION_TONES.length]} shape={brandChipShape(index)} size={30} /><span dir="auto">{item.title}</span>
           </button>)}
         </div>
         {others.length > 2 && <button type="button" className="now-question-scroll" aria-label={copy.moreQuestions} onClick={() => scroll(true)}><Icon name="arrow_forward" size={22} className="rtl:-scale-x-100" /></button>}

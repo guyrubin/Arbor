@@ -104,8 +104,14 @@ describe("2 · pillRowFor: the place's row on the place and on every leaf", () =
     expect(checked).toEqual([
       "overview", "behaviors", "milestones", "weekly", "language", "profile",
       "memory", "strengths", "screening", "timeline", "journal", "copilot", "development",
-      "day-windows", "smart-reminders", "science",
+      "science",
     ]);
+    // v4: the two settings-grade panels keep Back to Now and wear no row.
+    for (const tab of ["day-windows", "smart-reminders"] as const) {
+      expect(NO_PILL_ROW_TABS.has(tab), tab).toBe(true);
+      expect(rowFor(tab), tab).toEqual([]);
+      expect(homeIdForTab(tab), tab).toBe("now");
+    }
     expect(homeIdForTab("plans")).toBe("together");
   });
 

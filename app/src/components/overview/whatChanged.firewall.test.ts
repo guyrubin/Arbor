@@ -213,9 +213,10 @@ describe("hidden on day-0 and with no events", () => {
     }
   });
 
-  it("Today gates the mount on returning + not day-0 (Now's More-for-today door)", () => {
-    const overview = code("../companion/NowMoreForToday.tsx");
-    expect(overview).toMatch(/changedWould\s*=\s*!dayZero\s*&&\s*isReturning\s*&&/);
+  // v4 re-pin: the door dissolved; What changed is lines inside "This week so far" (NowWhatChangedLines), same gate.
+  it("Today gates the mount on returning + not day-0 (Now's week card)", () => {
+    const overview = code("../companion/NowTodayLines.tsx");
+    expect(overview).toMatch(/if \(dayZero \|\| !isReturning \|\| changed\.lines\.length === 0\) return null;/);
     expect(overview).toMatch(/previousVisitAt:\s*isReturning\s*&&\s*!dayZero/);
   });
 });

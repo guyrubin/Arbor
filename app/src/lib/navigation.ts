@@ -377,8 +377,10 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
  * row is now Milestones · Moments · About; Moments' own in-page views (Across
  * areas · Over time · By place) are readings of one record, not a second nav
  * over the same routes, so the duplicate-nav reason for hiding it is gone.
+ * v4: Day windows and Reminders are settings (Settings › Reminders & rhythm);
+ * opened, they keep Back to Now and wear no row, since neither is a reading.
  */
-export const NO_PILL_ROW_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>(["attribution"]);
+export const NO_PILL_ROW_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>(["attribution", "day-windows", "smart-reminders"]);
 
 /**
  * v4 (consolidation blueprint: 43 routes become 9 screens) — the pill row of

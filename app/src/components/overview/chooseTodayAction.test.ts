@@ -169,7 +169,8 @@ import { bedtimeDoorOpen } from "../../lib/timeOfDay";
 import { chooseContinuation, dayCloseDue, DAY_CLOSE_LINE_HOUR } from "./continuation";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath } from "node:url";
+
 import { todayLiveSource } from "../../testTodaySource";
 
 describe("B-TODAY-26 — Tonight and the day-close: the hour table", () => {
@@ -231,15 +232,18 @@ describe("B-TODAY-26 — Today wiring: one voice, no generation, no timer", () =
     expect(overview).not.toContain("<TonightCard");
   });
 
-  it("one voice in the evening: the coordinator's slot sits behind the door, Tonight leads the page", () => {
-    const door = overview.slice(overview.indexOf('data-testid="today-door"'), overview.indexOf("</details>"));
-    expect(door).toContain('<CompanionOfferSlot surface="today" offer={todayOffer.offer}');
+  // v4 re-pin (blueprint decision 5): the door dissolved; the offer is an agenda row in Today at a glance.
+  it("one voice in the evening: the coordinator's slot is an agenda row, Tonight leads the page", () => {
+    const agenda = overview.slice(overview.indexOf("export function NowAgendaExtras"));
+    expect(agenda).toContain('<CompanionOfferSlot surface="today" offer={todayOffer.offer}');
     expect((overview.match(/<CompanionOfferSlot\b/g) ?? []).length).toBe(1);
   });
 
   it("Tonight's story door navigates and generates nothing; the card it replaced stays inert", () => {
-    // critic c2 r1: the story moved from under the Tonight card into the door
-    expect(overview).toContain('line("today-door-story", "auto_stories", t("elev.loop.tonight.story"), () => setActiveTab("bedtime-stories"))');
+    // critic c2 r1: the story moved from under the Tonight card into the door;
+    // v4: the door dissolved, so it is ONE agenda row (only while the Tonight pointer is not already there).
+    expect(overview).toContain('data-testid="today-agenda-story" onClick={() => setActiveTab("bedtime-stories")}');
+    expect(overview).toContain('{t("elev.loop.tonight.story")}');
     expect(card).not.toMatch(/fetch\(|api\.|generate|setTimeout|setInterval|streak|tomorrow/i);
   });
 

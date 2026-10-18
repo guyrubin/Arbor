@@ -23,7 +23,8 @@ import {
   type CarryOverEntry,
 } from "./carryOverAction";
 import { coldStartLineKey } from "./whatChangedEvents";
-import { todayActionId } from "../../actionLoop/model";
+import { todayActionId } from "../../actionLoop/model";
+
 import { todayLiveSource } from "../../testTodaySource";
 
 const NOW = Date.parse("2026-09-04T08:00:00.000Z");
@@ -121,10 +122,11 @@ describe("ENG-12 — the step that outlived its day", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const overview = todayLiveSource();
     // B-AI-06: mounted through the single-offer slot (kind "follow-up");
-    // B-LOOP-07: that one slot instance sits behind Today's "More for today" door.
+    // B-LOOP-07: that one slot instance sits below the lead; v4 re-pin: the
+    // "More for today" door dissolved, so it is an agenda row (NowAgendaExtras).
     expect(overview).toMatch(/<CompanionOfferSlot\s+surface="today"/);
-    const door = overview.slice(overview.indexOf('data-testid="today-door"'), overview.indexOf("</details>"));
-    expect(door).toContain("<CompanionOfferSlot");
+    const agenda = overview.slice(overview.indexOf("export function NowAgendaExtras"));
+    expect(agenda).toContain("<CompanionOfferSlot");
     expect(readFileSync(path.join(here, "./CompanionOfferSlot.tsx"), "utf8")).toContain("<CarryOverActionAsk onSkip={controls.refresh} />");
     // Negative control: the shipped file had no such mount.
     expect("      {activeTodayAction ? (\n        <TodayActionLoop />").not.toContain("CarryOverActionAsk");

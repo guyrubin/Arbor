@@ -81,10 +81,13 @@ describe("B-TODAY-10 · four tiles, each ≥44 px", () => {
 describe("B-TODAY-10 · gating and opener", () => {
   it("the tile renders only when Today passes an opener, gated on available pilot guides", () => {
     expect(BAR).toMatch(/\{onHardMoment && \(/);
-    // Parity 9 Oct: Now's hard-moment door carries the same gate (the bar left with the Today hub).
-    expect(TODAY).toMatch(/availableHardMomentCards\(\{ now: at, ageMonths: ageMonthsFromProfile\(childProfile, at\), locale: lang \}\)\.length > 0/);
-    // B-ASKJB-31: the door opens the ONE "Hard moment now" sheet (context seam).
-    expect(TODAY).toContain('{hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}>');
+    // v4 re-pin (blueprint decision 6): Today's hard-moment door is the
+    // launcher rail's, on every screen, with the same gate (the bar left with
+    // the Today hub); B-ASKJB-31: it opens the ONE "Hard moment now" sheet.
+    const RAIL = strip(read("components/companion/CompanionWorkspace.tsx"));
+    expect(RAIL).toMatch(/availableHardMomentCards\(\{ now: at, ageMonths: ageMonthsFromProfile\(childProfile, at\), locale: uiLang === "he" \? "he" : "en" \}\)\.length > 0/);
+    expect(RAIL).toContain('{hardMomentDoor && <button type="button" className="companion-launch-save companion-launch-hard" data-testid="launcher-hard-moment" onClick={() => openHardMomentNow()}');
+    expect(TODAY).not.toContain("openHardMomentNow");
   });
 
   it("after HARD_MOMENT_PILOT.expiresAt no guide is available, so the tile is absent", () => {

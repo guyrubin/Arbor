@@ -29,7 +29,8 @@ const cue = stripComments(read("components/coach/RhythmCue.tsx"));
 const coordinator = stripComments(read("components/overview/useCompanionOffer.ts"));
 const slot = stripComments(read("components/overview/CompanionOfferSlot.tsx"));
 // F-TALK-1: Now holds the one offer slot; "What the coach sees" moved to #/memory.
-const nowMore = stripComments(read("components/companion/NowMoreForToday.tsx"));
+// v4: the door dissolved; its lines live in NowTodayLines.
+const nowMore = stripComments(read("components/companion/NowTodayLines.tsx"));
 const contract = stripComments(read("components/coach/CoachDataContract.tsx"));
 
 describe("ENG-10 / ENG-11 — the cue is mounted on a surface a parent opens, and measured", () => {

@@ -12,7 +12,7 @@ export const TODAY_LIVE_FILES = [
   "components/companion/NowView.tsx",
   "components/companion/useNowLoop.ts",
   "components/companion/NowLoopBlocks.tsx",
-  "components/companion/NowMoreForToday.tsx",
+  "components/companion/NowTodayLines.tsx",
   "components/companion/NowRecommendation.tsx",
 ] as const;
 

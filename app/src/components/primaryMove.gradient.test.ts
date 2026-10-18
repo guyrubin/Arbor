@@ -36,7 +36,7 @@ const SCOPE_FILES = [
   // Parity 9 Oct: Today is NowView and the loop it runs.
   "companion/NowView.tsx",
   "companion/NowLoopBlocks.tsx",
-  "companion/NowMoreForToday.tsx",
+  "companion/NowTodayLines.tsx",
   "companion/NowRecommendation.tsx",
   "tabs/JournalTab.tsx",
   "tabs/WeeklyTab.tsx",

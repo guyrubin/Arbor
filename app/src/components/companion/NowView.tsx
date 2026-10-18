@@ -10,7 +10,8 @@ import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/mode
 import { nextChosenAction } from "./companionChoices";
 import { NOW_COPY } from "./nowViewCopy";
 import NowRecommendation from "./NowRecommendation";
-import NowMoreForToday from "./NowMoreForToday";
+import { NowAgendaExtras, NowNoticeExtras, NowWhatChangedLines } from "./NowTodayLines";
+import { BrandChip } from "../ui/BrandChip";
 import { NowNoticeBlock, NowNoticeLead, NowPracticeLead, NowTonightLead, NowTonightPointer } from "./NowLoopBlocks";
 import { focusSignalsForNow, stepLines } from "./nowRecommendationModel";
 import { useNowClock } from "./useNowClock";
@@ -28,8 +29,6 @@ import { practiceText, WHY_KEY } from "../loop/PracticeCard";
 import { shelfLabel } from "../../lib/shelves/registry";
 import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import { trackActionOffered } from "../../lib/loopEvents";
-import { availableHardMomentCards } from "../../content/selectCards";
-import { ageMonthsFromProfile } from "../../lib/childAge";
 import Icon from "../ui/Icon";
 import { Receipt } from "../ui/Receipt";
 import { UrgentSupport } from "../safety/UrgentSupport";
@@ -96,7 +95,7 @@ const LIFECYCLE_NOTE: Partial<Record<string, string>> = {
 };
 
 function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewProps) {
-  const { childProfile, actionLoop, seedCoach, setActiveTab, openCaptureSheet, openHardMomentNow,
+  const { childProfile, actionLoop, seedCoach, setActiveTab, openCaptureSheet,
     saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest } = useArbor();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
@@ -107,6 +106,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const name = childProfile.name?.split(" ")[0] || t("companion.now-view.your-child");
   const programs = useChildCollection<{ id: string }>(childProfile.id, "programs");
   const program = useMemo(() => activeProgramWeek(programs.items, now), [programs.items, now]);
+  // v4: the agenda row says where the family is in it ("Week 2 of 4"), counts only.
+  const programWeeks = Array.isArray(program?.program.weeks) ? program.program.weeks.length : 0;
   const action = useMemo(() => nextChosenAction(actionLoop, topic?.id), [actionLoop, topic?.id]);
   const [receiptAction, setReceiptAction] = useState<{ scope: object; action: ActionLoopEntry } | null>(null);
   const [, refreshSaving] = useState(0);
@@ -173,12 +174,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCaptureMode]);
   const openProgram = () => { setActiveTab("development"); window.location.hash = "#/development?view=program"; };
-  // B-TODAY-10 / B-ASKJB-31: the hard-moment door shows only while a pilot
-  // guide fits this child and language — the gate every door to the sheet shares.
-  const hardMomentDoor = useMemo(() => {
-    const at = now;
-    return availableHardMomentCards({ now: at, ageMonths: ageMonthsFromProfile(childProfile, at), locale: lang }).length > 0;
-  }, [childProfile, lang, now]);
+  // v4 (blueprint decision 6): the hard-moment door is the launcher rail's,
+  // on every screen (CompanionWorkspace); Now no longer duplicates it.
 
   // ── The milestone loop (parity 9 Oct): practice → Did it → Tonight → notice. ──
   const [focus, setFocus] = useState<Focus | null>(null);
@@ -326,29 +323,35 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
         </NowPlanFrame>
         {lifecycleNote && lead !== "practice" && <p className="now-lifecycle-note" role="note">{lifecycleNote}</p>}
 
-        {showNotice && <div data-module="today-notice"><NowNoticeBlock loop={loop} name={name} practiceLeads={lead === "practice"} /></div>}
+        {/* v4: the say-back question and "Arbor noticed" are Notice today's last rows; with no notice rows today they stand
+            alone — except beside the urgent help lines, which stand alone in the column (B-TODAY-38). */}
+        {showNotice ? <div data-module="today-notice"><NowNoticeBlock loop={loop} name={name} practiceLeads={lead === "practice"}
+          extras={<NowNoticeExtras keepsakeDocs={loop.keepsakeDocs} now={loop.now} isReturning={isReturning} suppressSayBack={lead === "record"} />} /></div>
+          : lead !== "urgent" && <NowNoticeExtras keepsakeDocs={loop.keepsakeDocs} now={loop.now} isReturning={isReturning} suppressSayBack={lead === "record"} />}
     </div>
 
     <NowKidWorld observations={observations} now={now} name={name} onAll={() => setActiveTab("development")} />
 
     <div className="now-day-grid">
-      <NowWeekSoFar observations={observations} now={now} onReport={() => setActiveTab("weekly")} />
+      <NowWeekSoFar observations={observations} now={now} onReport={() => setActiveTab("weekly")}>
+        <NowWhatChangedLines previousVisitAt={previousVisitAt} isReturning={isReturning} rhythmDaysNeeded={loop.rhythm.daysNeeded} />
+      </NowWeekSoFar>
       <section className="now-glance" aria-labelledby={`${id}-glance`}>
         <h2 id={`${id}-glance`} className="now-kicker">{copy.glanceTitle}</h2>
         {visit && lead !== "visit" && <button type="button" className="now-weekly-door now-glance-visit" onClick={openVisit}>
-          <Icon name="event" size={24} /><span><b dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</b><small>{copy.visitPrep}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
+          <BrandChip icon="event" tone="sky" shape="leaf" /><span><b dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</b><small>{copy.visitPrep}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
         </button>}
         {showPointer && <NowTonightPointer onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }} />}
         {/* B-PROG-03: the program is Today's frame: one line beside the practice, never a second lead. */}
         {program && lead !== "program" && <button type="button" className="now-weekly-door now-program-line" data-testid="now-program-line" onClick={openProgram}>
-          <Icon name="menu_book" size={24} /><span><b>{copy.programLabel}</b><small dir="auto">{program.content.skill[lang]}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
+          <BrandChip icon="menu_book" tone="green" shape="drop" /><span><b>{copy.programLabel}</b><small dir="auto">{program.content.skill[lang]}</small></span>
+          {programWeeks > 0 && <span className="now-agenda-badge" data-testid="now-program-week">{copy.programWeekOf(program.week, Math.max(program.week, programWeeks))}</span>}
+          <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
         </button>}
-        {hardMomentDoor && <button type="button" className="now-hard-moment" onClick={() => openHardMomentNow()}><Icon name="volunteer_activism" size={24} /><span><b>{copy.hardTitle}</b><small>{copy.hardBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>}
-        <button type="button" className="now-weekly-door now-glance-reminders" onClick={() => setActiveTab("smart-reminders")}><Icon name="notifications" size={24} /><span><b>{copy.remindersTitle}</b><small>{copy.remindersBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
+        <NowAgendaExtras evening={loop.evening} storyFits={loop.storyFits} todayOffer={todayOffer} suppressVisit={lead === "visit" || !!visit} storyRow={!showPointer} />
+        <button type="button" className="now-weekly-door now-glance-reminders" onClick={() => setActiveTab("smart-reminders")}><BrandChip icon="notifications" tone="sapphire" shape="arch" /><span><b>{copy.remindersTitle}</b><small>{copy.remindersBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
       </section>
     </div>
-    <NowMoreForToday now={loop.now} evening={loop.evening} storyFits={loop.storyFits} rhythmDaysNeeded={loop.rhythm.daysNeeded}
-      keepsakeDocs={loop.keepsakeDocs} previousVisitAt={previousVisitAt} isReturning={isReturning} todayOffer={todayOffer} suppressVisit={lead === "visit" || !!visit} suppressSayBack={lead === "record"} />
 
   </div>;
 }
