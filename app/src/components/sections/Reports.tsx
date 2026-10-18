@@ -103,21 +103,30 @@ export function useReportExport() {
   };
 }
 
+/** B-CAREPRO-52 — per-export likeness choice. `likeness` is the parent's
+ *  explicit choice for THIS document and audience; it is never stored, so it
+ *  cannot carry to another child, owner, audience or a later export. */
+export type ConsultPdfOptions = { likeness?: boolean };
+
 /** B-CAREPRO-28 — Consult's ONE PDF per audience. The caller hands the
  *  sections it built with `exportPrintSections` (the same audience, redaction
  *  and note as its Copy text); this opens them in the shared print shell with
- *  the audience's own title and the stylized hero (never a real photo). */
+ *  the audience's own title.
+ *
+ *  B-CAREPRO-52: a professional document carries NO picture of the child by
+ *  default. Only `likeness: true` — the parent's explicit choice for this
+ *  export — embeds the stylized hero (never a real photo: isGenerated gate). */
 export function useConsultPdf() {
   const { childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const { url: heroUrl, isGenerated } = useHeroAvatar();
-  return (audience: ExportAudience, sections: PresetPrintSection[]) => {
+  return (audience: ExportAudience, sections: PresetPrintSection[], options: ConsultPdfOptions = {}) => {
     const report = REPORTS.find((r) => r.type === audience);
     const doc: ReportDoc = {
       title: report ? t(report.titleKey) : t("elev.carehonesty.consult.pdf.selfTitle"),
       subtitle: `${childProfile.name}, ${ageLabel(childProfile)}`,
       sections,
-      heroImageUrl: isGenerated && heroUrl ? heroUrl : undefined,
+      heroImageUrl: options.likeness === true && isGenerated && heroUrl ? heroUrl : undefined,
     };
     openPrintableReport(doc, childProfile.name, uiLang);
   };

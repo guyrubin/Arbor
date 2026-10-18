@@ -51,6 +51,10 @@ export const en: Record<string, string> = {
   // B-CAREPRO-28: one PDF per audience (the 10-item menu and the .md download are gone).
   "elev.carehonesty.consult.pdf": "Save as PDF",
   "elev.carehonesty.consult.pdf.selfTitle": "Summary for my records",
+  // B-CAREPRO-52: the child's picture on a professional document — this export only, off by default.
+  "elev.carehonesty.consult.likeness.off": "Add {name}'s picture to this PDF",
+  "elev.carehonesty.consult.likeness.on": "{name}'s picture is on this PDF",
+  "elev.carehonesty.consult.likeness.alt": "{name}'s picture, as it prints",
   // ── Consult › exact-text preview (LC-07)
   "elev.carehonesty.consult.preview.toggle": "Preview exactly what leaves",
   "elev.carehonesty.consult.preview.hint": "This is the text your recipient receives — word for word.",
@@ -311,6 +315,9 @@ export const he: Record<string, string> = {
   "elev.carehonesty.consult.home.open": "לפתוח את {world}",
   "elev.carehonesty.consult.pdf": "שמירה כ-PDF",
   "elev.carehonesty.consult.pdf.selfTitle": "סיכום לרשומות שלי",
+  "elev.carehonesty.consult.likeness.off": "להוסיף את התמונה של {name} ל-PDF הזה",
+  "elev.carehonesty.consult.likeness.on": "התמונה של {name} תופיע ב-PDF הזה",
+  "elev.carehonesty.consult.likeness.alt": "התמונה של {name}, כפי שתודפס",
   "elev.carehonesty.consult.preview.toggle": "תצוגה מקדימה של מה שיוצא בדיוק",
   "elev.carehonesty.consult.preview.hint": "זה הטקסט שהנמען מקבל — מילה במילה.",
   "elev.carehonesty.consult.blocked.teacher": "זה לא יכול לצאת לגננת או למורה כפי שנכתב: “{term}” היא שפה קלינית. ערכו את ההערה או בחרו איש מקצוע טיפולי.",
