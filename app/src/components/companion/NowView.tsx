@@ -18,7 +18,7 @@ import { openPrintablePlan } from "../../lib/plans/planPrint";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { dayKey } from "../../practice/signals";
 import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
-import { nextChosenAction, requestedObservation } from "./companionChoices";
+import { nextChosenAction, requestedObservation, shelvesForQuestion } from "./companionChoices";
 import { scrollQuestionIntoMain } from "./nowDeepLinkScroll";
 import { NOW_COPY } from "./nowViewCopy";
 import NowRecommendation from "./NowRecommendation";
@@ -144,6 +144,9 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // B-TODAY-37: "Record a moment" on an older question asks Now for THAT question's form.
   const observeId = useHashQuery().get("observe");
   const action = useMemo(() => requestedObservation(actionLoop, observeId) ?? nextChosenAction(actionLoop, topic?.id), [actionLoop, observeId, topic?.id]);
+  // v3 question continuity (audit #3): the loop's picks are drawn from the question's shelves.
+  const questionShelves = useMemo(() => shelvesForQuestion(topic?.title), [topic?.title]);
+  const questionGuided = !!topic && questionShelves.length > 0;
   // B-DATA-14: `queued` — kept on this phone, sending when back online.
   const [receiptAction, setReceiptAction] = useState<{ scope: object; action: ActionLoopEntry; queued?: boolean } | null>(null);
   const [, refreshSaving] = useState(0);
@@ -254,6 +257,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     now,
     aiPracticeId: focus?.practiceVia === "ai" ? focus.practiceId : undefined,
     openPhotoCapture: () => openCaptureSheet({ mode: "photo" }),
+    questionShelves,
   });
   const [tonightOpen, setTonightOpen] = useState(false);
   // ── Return hooks (parity 9 Oct): the visit stamp, a lifecycle note, the offer. ──
@@ -322,7 +326,10 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     ? (loop.pick.via === "ai" && focus?.why?.trim()) || t(loop.whyReason && (loop.whyReason !== "since" || loop.whyDate) ? WHY_KEY[loop.whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfLabel(loop.pick.shelf, t), name, date: loop.whyDate ?? "" })
     : "";
   const planWhy = pausedLead ? t("companion.pause.kept") : shownLead === "practice" ? practiceWhy || copy.pickedWhy.practice : shownLead === "tonight" && tonightOpen ? copy.pickedTonightOpen : copy.pickedWhy[shownLead];
-  const planQuestion = shownLead === "step" && chosen && topic && chosen.topicId === topic.id ? topic.title : null;
+  // The question is named only where it drove the pick: a step chosen under
+  // it, or a practice/notice drawn from its shelves.
+  const planQuestion = shownLead === "step" && chosen && topic && chosen.topicId === topic.id ? topic.title
+    : (shownLead === "practice" || shownLead === "notice") && questionGuided ? topic.title : null;
 
   return <div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
     <header className="now-heading">
