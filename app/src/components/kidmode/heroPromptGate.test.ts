@@ -107,8 +107,10 @@ describe("heroPromptGate — how the Kid Mode entry seam uses it (B-KID-11)", ()
   });
 
   it("a child WITH a hero still goes straight into Kid Mode", () => {
-    // After admission and the hero-first branch, the target opens directly.
-    expect(button).toMatch(/setStepOpen\(target\);\s*\n\s*return;\s*\n\s*\}\s*\n\s*onBeforeOpen\?\.\(\);\s*\n\s*openKidMode\(target\);/);
+    // After admission and the hero-first branch, handover remains synchronous.
+    expect(button).toMatch(/onBeforeOpen\?\.\(\);\s*\n\s*openKidMode\(target\);/);
+    expect(button).toContain("if (isKidModeActive()) prepare?.();");
+    expect(button).toMatch(/setStepOpen\(target\);\s*\n\s*return;\s*\n\s*\}\s*\n\s*handOver\(target\);/);
   });
 
   it("the step hands over to Kid Mode itself — the child is never blocked", () => {

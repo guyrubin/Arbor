@@ -499,8 +499,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }
 
+/** Read-only optional access for parent entry controls outside the profile tree. */
+export function useProfileOptional(): ProfileContextValue | null {
+  return useContext(ProfileContext);
+}
+
 export function useProfile(): ProfileContextValue {
-  const ctx = useContext(ProfileContext);
+  const ctx = useProfileOptional();
   if (!ctx) throw new Error("useProfile must be used within a ProfileProvider");
   return ctx;
 }

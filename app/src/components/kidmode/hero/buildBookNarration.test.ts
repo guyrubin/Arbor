@@ -89,7 +89,10 @@ describe("K2 2c: the narration builder", () => {
     const sheet = readFileSync(path.join(here, "buildBookSheet.ts"), "utf8");
     expect(sheet).toContain('if (r.status === "complete" || r.status === "already") void import("./buildBookNarration").then((m) => m.afterBookSheet(childId))');
     const door = readFileSync(path.join(here, "..", "..", "layout", "KidModeButton.tsx"), "utf8");
-    expect(door).toContain("const narrationVoice = narrationFolder(storyLanguage(uiLang, aiLang), child?.gender);");
-    expect(door).toContain("void ensureBookNarration(child, narrationVoice); }, [child?.id, child?.name, child?.gender, narrationVoice]);");
+    expect(door).not.toContain("ensureBookNarration");
+    const entry = readFileSync(path.join(here, "..", "useKidModeEntry.tsx"), "utf8");
+    expect(entry).toContain('import("./hero/buildBookNarration")');
+    expect(entry).toContain("if (isKidModeActive()) prepare?.();");
+    expect(entry).toContain("captureOnboardingLifetime(snapshot.id)");
   });
 });

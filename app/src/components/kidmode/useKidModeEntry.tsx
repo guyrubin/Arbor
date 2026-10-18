@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import { useKidMode, type KidModeTarget } from "./KidModeContext";
+import { useProfileOptional } from "../../context/ProfileContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { narrationFolder } from "../../lib/library/narrationVoice";
+import { storyLanguage } from "../../lib/heroJourneys";
+import { heroSheetOwnerKey } from "../../lib/heroSheetStore";
+import { PROOF_HERO_CHILD_IDS } from "./hero/useHeroSheet";
 import { useArborOptional } from "../../context/ArborContext";
 import { resolveHeroUrl } from "../ui/HeroAvatar";
 import HeroFirstStep from "./HeroFirstStep";
@@ -7,7 +13,7 @@ import { markHeroStepOffered, shouldOfferHeroStep } from "./heroPromptGate";
 import { kidModeOpenFor } from "../../lib/age/playGate";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 
-type EntryScope = { childId: string | undefined; eligible: boolean; active: boolean };
+type EntryScope = { childId: string | undefined; eligible: boolean; active: boolean; ownerCurrent?: () => boolean };
 type PendingEntry = { scope: EntryScope; target: KidModeTarget };
 
 /**
@@ -31,21 +37,27 @@ export function useKidModeEntry(onBeforeOpen?: () => void): {
   // until an eligible child is in scope.
   const arbor = useArborOptional();
   const child = arbor?.childProfile;
+  const profile = useProfileOptional();
+  const { uiLang, aiLang } = useLanguage();
+  const language = storyLanguage(uiLang, aiLang);
+  const languageRef = useRef(language);
+  languageRef.current = language;
   const eligible = Boolean(child?.id) && kidModeOpenFor(child);
   const childRef = useRef(child);
   childRef.current = child;
   const scopeRef = useRef<EntryScope | null>(null);
   // Retire during render, before effect cleanup, and never revive A's old
   // callbacks when the selected child goes A → B → A.
-  if (!scopeRef.current || scopeRef.current.childId !== child?.id || scopeRef.current.eligible !== eligible) {
+  if (!scopeRef.current || scopeRef.current.childId !== child?.id || scopeRef.current.eligible !== eligible || scopeRef.current.ownerCurrent !== profile?.isCurrentSession) {
     if (scopeRef.current) scopeRef.current.active = false;
-    scopeRef.current = { childId: child?.id, eligible, active: true };
+    scopeRef.current = { childId: child?.id, eligible, active: true, ownerCurrent: profile?.isCurrentSession };
   }
   const scope = scopeRef.current;
   const pendingRef = useRef<PendingEntry | null>(null);
   const [stepState, setStepState] = useState<PendingEntry | null>(null);
   if (pendingRef.current?.scope !== scope) pendingRef.current = null;
   const current = () => scope.active && scopeRef.current === scope && scope.eligible
+    && scope.ownerCurrent?.() !== false && profile?.loading !== true && profile?.loadError !== true
     && childRef.current?.id === scope.childId && kidModeOpenFor(childRef.current) && !isKidModeActive();
   const setStepOpen = (target: KidModeTarget) => {
     const pending = { scope, target: { ...target } };
@@ -73,6 +85,37 @@ export function useKidModeEntry(onBeforeOpen?: () => void): {
     };
   }, [scope]);
 
+  /** The parent authorizes this work at the final handover, never on mount,
+   * hero-step display/cancel, a rehydrated Kids session, or a game interaction.
+   * Capture before a mobile sheet closes; the ProfileProvider owns the fence
+   * after that control unmounts. Preparation never delays opening or playback. */
+  const captureNarration = () => {
+    const snapshot = childRef.current;
+    if (!current() || !snapshot || !profile || PROOF_HERO_CHILD_IDS.includes(snapshot.id)) return null;
+    const selected = profile.captureOnboardingLifetime(snapshot.id);
+    const ownerKey = heroSheetOwnerKey();
+    const folder = narrationFolder(language, snapshot.gender);
+    const isCurrent = () => selected() && scopeRef.current === scope && heroSheetOwnerKey() === ownerKey
+      && childRef.current?.id === snapshot.id && childRef.current?.name === snapshot.name
+      && childRef.current?.gender === snapshot.gender && languageRef.current === language
+      && kidModeOpenFor(childRef.current);
+    return () => {
+      if (!isCurrent()) return;
+      // This is the parent-only entry seam. Child readers/games never import
+      // or invoke the builder; rejected imports leave the usual entry intact.
+      void import("./hero/buildBookNarration").then(m => {
+        if (!isCurrent()) return;
+        return m.ensureBookNarration(snapshot, folder, undefined, undefined, { ownerKey, isCurrent });
+      }).catch(() => undefined);
+    };
+  };
+  const handOver = (target: KidModeTarget) => {
+    const prepare = captureNarration();
+    onBeforeOpen?.();
+    openKidMode(target);
+    if (isKidModeActive()) prepare?.();
+  };
+
   const request = (target: KidModeTarget = {}) => {
     if (!current() || pendingRef.current) return;
     // Hero-first: a child with no hero gets their parent one step first —
@@ -84,16 +127,14 @@ export function useKidModeEntry(onBeforeOpen?: () => void): {
       setStepOpen(target);
       return;
     }
-    onBeforeOpen?.();
-    openKidMode(target);
+    handOver(target);
   };
   const pending = stepState && pendingRef.current === stepState && current() ? stepState : null;
   const enterKidMode = () => {
     if (!pending || pendingRef.current !== pending || !current()) return;
     const target = pending.target;
     dismiss(pending); // Consume before closing a mobile sheet or opening Kid Mode.
-    onBeforeOpen?.();
-    openKidMode(target);
+    handOver(target);
   };
   // Unmount the whole step, including its nested creator, when it retires.
   const step = child && pending ? (
