@@ -3,9 +3,9 @@
  * book's narration IN THE CHILD'S NAME. Parent side only, like the sheet
  * builders (heroSheetBuilder.guard.test.ts): Kid Mode never imports it.
  *
- * Runs after the book sheet commits (buildBookSheet hands over) and again when
- * the child's name, Hebrew form or story language changes (the parent shell,
- * KidModeButton). For the voice folder the child hears (EN, or HE-f for a girl
+ * Runs after a deliberate parent handover into Kids and, for that same
+ * owner/child lifetime, after the book sheet commits. Mounting parent controls
+ * or restoring a child session never starts narration. For the voice folder the child hears (EN, or HE-f for a girl
  * and HE-m otherwise — the reader's heGender rule) it asks the server for each
  * file that says the name:
  *   POST /api/children/:cid/book-narration { bookId, lang, file }   (ids only)
@@ -18,9 +18,10 @@
 import { authHeaders } from "../../../lib/api";
 import type { BookAssetsDoc } from "../../../lib/library/bookAssetPaths";
 import { getLibraryBook } from "../../../lib/library/books";
-import { heGender } from "../../../lib/library/bookText";
 import { nameBearingFiles, type VoiceFolder } from "../../../lib/library/narrationFiles";
 import type { BookReaderChild } from "../../../lib/library/types";
+import { heroSheetOwnerKey } from "../../../lib/heroSheetStore";
+export { narrationFolder } from "../../../lib/library/narrationVoice";
 import { DEFAULT_SHEET_BOOK, keepLocalBookDoc } from "./buildBookSheet";
 
 export type NarrationCall =
@@ -31,6 +32,8 @@ export interface NarrationBuilderDeps {
   render(body: { bookId: string; lang: VoiceFolder; file: string }): Promise<NarrationCall>;
   keepLocalDoc(doc: BookAssetsDoc): Promise<void>;
   sleep(ms: number): Promise<void>;
+  /** Retired owner/selection work stops before every new request and write. */
+  isCurrent?(): boolean;
 }
 
 export interface NarrationBuildResult {
@@ -40,9 +43,11 @@ export interface NarrationBuildResult {
   stoppedBy?: string;
 }
 
-/** The voice folder the child hears: the story language, then the Hebrew form. */
-export function narrationFolder(lang: "en" | "he", gender: BookReaderChild["gender"]): VoiceFolder {
-  return lang === "he" ? (heGender(gender) === "f" ? "he-f" : "he-m") : "en";
+export interface NarrationBuildScope {
+  ownerKey: string;
+  /** Captured by ProfileProvider; survives closing the entry control, not a
+   * child/account change (including A–B–A). */
+  isCurrent(): boolean;
 }
 
 const RATE_LIMITED = new Set(["book_assets_rate", "http_429"]);
@@ -57,10 +62,14 @@ export async function buildBookNarration(input: { childId: string; folder: Voice
   let rendered = 0;
   let doc: BookAssetsDoc | null = null;
   let local = false;
+  const current = () => deps.isCurrent?.() !== false;
+  const retired = (): NarrationBuildResult => ({ status: "stopped", files, rendered, stoppedBy: "scope_changed" });
   for (const file of files) {
     let r: NarrationCall = { ok: false, status: 0, code: "network" };
     for (let rate = 0, busy = 0; ; ) {
+      if (!current()) return retired();
       r = await deps.render({ bookId, lang: input.folder, file }).catch(() => ({ ok: false as const, status: 0, code: "network" }));
+      if (!current()) return retired();
       if (r.ok) break;
       const { code } = r as { code: string };
       if (RATE_LIMITED.has(code) && rate < 6) { rate++; await deps.sleep(20_000); continue; }
@@ -76,91 +85,124 @@ export async function buildBookNarration(input: { childId: string; folder: Voice
     if (ok.doc) doc = ok.doc;
     if (ok.local) local = true;
   }
-  if (doc && local) await deps.keepLocalDoc(doc).catch(() => undefined);
+  if (!current()) return retired();
+  if (doc && local) {
+    try { await deps.keepLocalDoc(doc); }
+    catch { return { status: "stopped", files, rendered, stoppedBy: "local_storage" }; }
+  }
+  if (!current()) return retired();
   return { status: "complete", files, rendered };
 }
 
 /* ── Browser wiring ──────────────────────────────────────────────────────── */
 
-export function browserNarrationDeps(childId: string): NarrationBuilderDeps {
+export function browserNarrationDeps(childId: string, isCurrent: () => boolean = () => true): NarrationBuilderDeps {
   return {
+    isCurrent,
     async render(body) {
-      const res = await fetch(`/api/children/${encodeURIComponent(childId)}/book-narration`, { method: "POST", headers: await authHeaders(), body: JSON.stringify(body) });
+      const changed = { ok: false as const, status: 0, code: "scope_changed" };
+      if (!isCurrent()) return changed;
+      const headers = await authHeaders();
+      if (!isCurrent()) return changed;
+      const res = await fetch(`/api/children/${encodeURIComponent(childId)}/book-narration`, { method: "POST", headers, body: JSON.stringify(body) });
       let data: Record<string, unknown> | null = null;
       try {
         data = (await res.json()) as Record<string, unknown>;
       } catch {
         data = null;
       }
+      if (!isCurrent()) return changed;
       if (!res.ok || !data) return { ok: false, status: res.status, code: typeof data?.code === "string" ? data.code : `http_${res.status}` };
       return { ok: true, complete: !!data.complete, cached: !!data.cached, ...(data.doc ? { doc: data.doc as BookAssetsDoc } : {}), local: !!data.local };
     },
-    keepLocalDoc: keepLocalBookDoc(childId),
+    async keepLocalDoc(doc) {
+      if (!isCurrent()) throw new Error("Narration scope changed");
+      await keepLocalBookDoc(childId)(doc);
+    },
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
   };
 }
 
 /* ── When it runs ────────────────────────────────────────────────────────── */
 
-type NarrationContext = { name: string; gender?: BookReaderChild["gender"]; folder: VoiceFolder };
+type NarrationStorage = Pick<Storage, "getItem" | "setItem"> | null;
+function defaultStorage(): NarrationStorage {
+  try { return typeof localStorage === "undefined" ? null : localStorage; }
+  catch { return null; }
+}
+type NarrationContext = NarrationBuildScope & {
+  name: string; gender?: BookReaderChild["gender"]; folder: VoiceFolder; storage: NarrationStorage;
+};
 const contexts = new Map<string, NarrationContext>();
-const running = new Map<string, Promise<NarrationBuildResult>>();
-const ensured = new Set<string>();
+const running = new Map<string, { ctx: NarrationContext; job: Promise<NarrationBuildResult> }>();
+const completed = new Set<string>();
+// Keep the existing per-child key so export/erase cleanup still covers it.
+// The v2 marker adds ownership; unowned legacy success markers are not trusted.
 const MARK = (childId: string) => `arbor.bookNarration.${childId}`;
-const keyOf = (c: NarrationContext) => `${c.name}|${c.gender ?? ""}|${c.folder}`;
+const contextKey = (owner: string, child: string) => JSON.stringify([owner, child]);
+const keyOf = (c: NarrationContext) => JSON.stringify([c.name, c.gender ?? "", c.folder]);
+const jobKey = (child: string, c: NarrationContext) => JSON.stringify([c.ownerKey, child, keyOf(c)]);
+const markerOf = (c: NarrationContext) => JSON.stringify({ v: 2, owner: c.ownerKey, configuration: keyOf(c) });
+const currentContext = (child: string, c: NarrationContext) => c.isCurrent()
+  && heroSheetOwnerKey() === c.ownerKey && contexts.get(contextKey(c.ownerKey, child)) === c;
 
-function start(childId: string, ctx: NarrationContext, deps?: NarrationBuilderDeps, storage: Pick<Storage, "getItem" | "setItem"> | null = typeof localStorage !== "undefined" ? localStorage : null): Promise<NarrationBuildResult> {
-  const key = `${childId}|${keyOf(ctx)}`;
+function start(childId: string, ctx: NarrationContext, deps?: NarrationBuilderDeps): Promise<NarrationBuildResult> {
+  const key = jobKey(childId, ctx);
   const live = running.get(key);
-  if (live) return live;
-  const job = buildBookNarration({ childId, folder: ctx.folder }, deps ?? browserNarrationDeps(childId))
-    .then((r) => {
-      if (r.status === "complete") {
-        try { storage?.setItem(MARK(childId), keyOf(ctx)); } catch { /* best effort */ }
+  if (live?.ctx === ctx) return live.job;
+  const current = () => currentContext(childId, ctx) && deps?.isCurrent?.() !== false;
+  const base = deps ?? browserNarrationDeps(childId, current);
+  const job = buildBookNarration({ childId, folder: ctx.folder }, { ...base, isCurrent: current })
+    .then(r => {
+      if (r.status === "complete" && current()) {
+        completed.add(key);
+        try { ctx.storage?.setItem(MARK(childId), markerOf(ctx)); } catch { /* memory still deduplicates */ }
       }
       return r;
     })
     .catch((): NarrationBuildResult => ({ status: "stopped", files: [], rendered: 0, stoppedBy: "error" }))
-    .finally(() => running.delete(key));
-  running.set(key, job);
+    .finally(() => { if (running.get(key)?.job === job) running.delete(key); });
+  running.set(key, { ctx, job });
   return job;
 }
 
-/**
- * The parent shell (KidModeButton): the child's narration for the folder they
- * hear. Once per child, name, Hebrew form and folder per page load; skipped
- * when this device already completed exactly that.
- */
+/** Explicit parent handover only. Share in-flight work and confirmed success;
+ * a refusal, offline attempt or retired scope never poisons a later entry. */
 export function ensureBookNarration(
   child: { id: string; name?: string | null; gender?: BookReaderChild["gender"] } | null | undefined,
   folder: VoiceFolder,
   deps?: NarrationBuilderDeps,
-  storage: Pick<Storage, "getItem" | "setItem"> | null = typeof localStorage !== "undefined" ? localStorage : null,
+  storage: NarrationStorage = defaultStorage(),
+  scope?: NarrationBuildScope,
 ): Promise<NarrationBuildResult> | null {
   const name = (child?.name ?? "").trim();
   if (!child?.id || !name) return null;
-  const ctx: NarrationContext = { name, gender: child.gender, folder };
-  contexts.set(child.id, ctx);
-  const key = `${child.id}|${keyOf(ctx)}`;
-  if (ensured.has(key)) return null;
-  ensured.add(key);
+  const ownerKey = scope?.ownerKey ?? heroSheetOwnerKey();
+  if (ownerKey === "signed-out" || ownerKey !== heroSheetOwnerKey() || scope?.isCurrent() === false) return null;
+  const slot = contextKey(ownerKey, child.id);
+  const previous = contexts.get(slot);
+  const next: NarrationContext = { name, gender: child.gender, folder, ownerKey,
+    isCurrent: scope?.isCurrent ?? (() => heroSheetOwnerKey() === ownerKey), storage };
+  const ctx = previous && currentContext(child.id, previous) && keyOf(previous) === keyOf(next) ? previous : next;
+  contexts.set(slot, ctx);
+  const key = jobKey(child.id, ctx);
+  if (completed.has(key)) return null;
   let done: string | null = null;
-  try { done = storage?.getItem(MARK(child.id)) ?? null; } catch { done = null; }
-  if (done === keyOf(ctx)) return null;
-  return start(child.id, ctx, deps, storage);
+  try { done = storage?.getItem(MARK(child.id)) ?? null; } catch { /* unconfirmed */ }
+  if (done === markerOf(ctx)) { completed.add(key); return null; }
+  return start(child.id, ctx, deps);
 }
 
-/** buildBookSheet hands over after a commit: the narration of the child's
- *  last known name and folder follows (a book whose sheet just changed keeps
- *  its narration set; a new book gets its first). */
+/** A committed sheet can continue only an existing explicit entry intent for
+ * this same owner/child lifetime. It cannot revive a retired account's work. */
 export function afterBookSheet(childId: string, deps?: NarrationBuilderDeps): Promise<NarrationBuildResult> | null {
-  const ctx = contexts.get(childId);
-  return ctx ? start(childId, ctx, deps) : null;
+  const ctx = contexts.get(contextKey(heroSheetOwnerKey(), childId));
+  return ctx && currentContext(childId, ctx) ? start(childId, ctx, deps) : null;
 }
 
 /** Test seam. */
 export function resetBookNarrationForTest(): void {
   contexts.clear();
   running.clear();
-  ensured.clear();
+  completed.clear();
 }

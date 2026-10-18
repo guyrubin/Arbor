@@ -20,6 +20,15 @@ jobs:
       - run: npm run lint
       - name: Install Chromium for browser regression checks
         run: npx playwright install --with-deps chromium
+      - name: Verify deliberate Kids entry and narration lifetime (EN/HE)
+        run: node scripts/kids-entry-browser.mjs
+      - name: Retain synthetic Kids entry evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-entry-evidence
+          path: app/output/kids-entry
+          retention-days: 7
       - name: Verify interruption-safe updates with two browser clients
         run: node scripts/kids-update-browser.mjs
       - name: Build actual Kids components with synthetic data adapters

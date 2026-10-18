@@ -106,7 +106,7 @@ describe('observed first-run child narration refusal', () => {
     const badCount = { ...h.apiState, deniedActions: 0, firstRunDeniedWrites: 0, ...snapshot, firstRunNarrationRefusals: 11 };
     expect(validFirstRunNetworkEvidence(badCount)).toBe(false);
   });
-  it('executes the real shell narration builder endpoint and stops at the first 409 without storing media or completion', async () => {
+  it('executes the real entry narration builder endpoint and stops at the first 409 without storing media or completion', async () => {
     const h = await harness(); const observed: { method: string; pathname: string }[] = [];
     const storage = { getItem: () => null, setItem: vi.fn() };
     vi.stubGlobal('fetch', async (input: string, options: RequestInit) => {
@@ -120,7 +120,12 @@ describe('observed first-run child narration refusal', () => {
     expect(result).toMatchObject({ status: 'not-started', rendered: 0, stoppedBy: 'synthetic_capture_media_disabled' });
     expect(storage.setItem).not.toHaveBeenCalled();
     expect(h.apiState).toMatchObject({ firstRunNarrationRefusals: 1, firstRunDeniedWrites: 0, mockRequests: 0 });
-    expect(read('../src/components/layout/KidModeButton.tsx')).toContain('void ensureBookNarration(child, narrationVoice)');
+    // Mounting this shell control must not synthesize narration. The shared
+    // explicit-entry seam invokes the same builder tested above after handover.
+    expect(read('../src/components/layout/KidModeButton.tsx')).not.toContain('ensureBookNarration');
+    const entry = read('../src/components/kidmode/useKidModeEntry.tsx');
+    expect(entry).toContain('if (isKidModeActive()) prepare?.();');
+    expect(entry).toContain('m.ensureBookNarration(snapshot, folder, undefined, undefined, { ownerKey, isCurrent })');
     expect(read('../src/components/layout/Shell.tsx')).toContain('<KidModeButton compact />');
   });
   it('records the child scope only after real form, identity and unchanged-baseline assertions', () => {
