@@ -14,8 +14,15 @@ export function nextChosenAction(rows: readonly ActionLoopEntry[], topicId?: str
   return [...(linked.length ? linked : open)].sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt))[0] ?? null;
 }
 
-/** FEAT-07: "routines" is an in-page category hosted inside the everyday-life module. */
-export type TogetherCategory = "all" | "stories" | "games" | "routines" | "offscreen";
+/** v4: Together is three filters — Routines (Today's rhythm), Play (the games
+ *  and the away-from-the-screen ideas) and Stories. `games` is Play's id: it
+ *  is what #/practice?f=games has always meant, and Play exists at every age
+ *  (under three, or with no world that fits, it holds only the away ideas). */
+export type TogetherCategory = "routines" | "games" | "stories";
+/** The former filter ids still arrive by link, bookmark and stored choice:
+ *  "all" (the old whole catalogue) lands on Routines, the default; "offscreen"
+ *  (Away from the screen) lands on Play, where the away ideas now live. */
+export type TogetherFilterParam = TogetherCategory | "all" | "offscreen";
 
 export const WORLD_ART: Readonly<Record<string, string>> = {
   speech: "speech", "word-world": "reading", feelings: "feelings", mimic: "mimic",

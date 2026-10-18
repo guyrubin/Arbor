@@ -3,7 +3,10 @@ import { useLanguage } from "../../context/LanguageContext";
 import { localized, type Routine } from "../../lib/routines";
 import type { ActionPlan } from "../../types";
 import RoutineRunBoard from "../plans/RoutineRunBoard";
+import { BrandChip } from "../ui/BrandChip";
 import Icon from "../ui/Icon";
+import { routineChipTone } from "./togetherRhythm";
+import "./togetherRhythm.css";
 import { Modal } from "../ui/Modal";
 import { PendingLine, Receipt } from "../ui/Receipt";
 import { Sheet, useCompactSurface } from "../ui/Sheet";
@@ -53,7 +56,11 @@ export default function RoutineRunSheet({ routine, plan, start, childName, onSta
   return (
     <Surface open onClose={onClose} title={title}>
       <div className="companion-preview together-routine-sheet" data-testid="together-routine-sheet" data-routine={routine.id} dir={lang === "he" ? "rtl" : "ltr"}>
-        <p dir="auto">{why}</p>
+        {/* v4: the routine's chip (the one icon object) names it beside its why-line. */}
+        <div className="together-routine-identity">
+          <BrandChip icon={routine.ms} tone={routineChipTone(routine)} size={48} testId="together-routine-chip" />
+          <p dir="auto">{why}</p>
+        </div>
         {plan && start?.status === "saved" && (
           <Receipt testId="together-routine-started" size="sm">{t("companion.together-view.routines-in-plan")}</Receipt>
         )}

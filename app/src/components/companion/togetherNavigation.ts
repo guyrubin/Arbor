@@ -3,25 +3,35 @@ import { useIsPresent } from "motion/react";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { routeHash } from "../../lib/routes";
 import { STUDIO_WORLDS } from "../practice/studioWorlds";
-import type { TogetherCategory } from "./companionChoices";
+import type { TogetherCategory, TogetherFilterParam } from "./companionChoices";
 
-const categories: readonly TogetherCategory[] = ["all", "stories", "games", "routines", "offscreen"];
+/** v4: the three filters, Routines first (the default). */
+export const TOGETHER_CATEGORIES: readonly TogetherCategory[] = ["routines", "games", "stories"];
+export const DEFAULT_TOGETHER_CATEGORY: TogetherCategory = "routines";
+/** A filter id, current or former, as the filter it now opens (null when unknown). */
+export function togetherCategoryOf(raw: unknown): TogetherCategory | null {
+  if (raw === "routines" || raw === "games" || raw === "stories") return raw;
+  if (raw === "all") return "routines";
+  if (raw === "offscreen") return "games";
+  return null;
+}
 const returnDoors = ["story-library", "story-bedtime", "story-comics", "story-family", "more-ideas", ...STUDIO_WORLDS.map((world) => `world-${world.id}`)] as const;
 type ReturnDoor = typeof returnDoors[number];
 type ViewState = { category: TogetherCategory; returnDoor?: ReturnDoor };
 const key = (childId: string) => `arbor.together.view.${childId}`;
 
 /** Only presentation choices live here, never a child's records or a preview.
- * Session scope keeps a parent’s catalogue choice when Shell remounts a route. */
-export function readTogetherView(childId: string, gamesAvailable: boolean): ViewState {
+ * Session scope keeps a parent’s catalogue choice when Shell remounts a route.
+ * v4: Play (`games`) exists at every age — without a world that fits, it holds
+ * the away ideas — so a stored Play choice is kept whether or not a world is
+ * listed (a pending return to a world card that is not rendered is simply not
+ * found, so it is neither focused nor consumed). */
+export function readTogetherView(childId: string, _gamesAvailable: boolean): ViewState {
   try {
-    const value = JSON.parse(sessionStorage.getItem(key(childId)) || "null") as Partial<ViewState> | null;
-    const category = value && categories.includes(value.category as TogetherCategory) ? value.category! : "all";
-    return {
-      category: category === "games" && !gamesAvailable ? "all" : category,
-      ...(value?.returnDoor && returnDoors.includes(value.returnDoor) ? { returnDoor: value.returnDoor } : {}),
-    };
-  } catch { return { category: "all" }; }
+    const value = JSON.parse(sessionStorage.getItem(key(childId)) || "null") as { category?: unknown; returnDoor?: ReturnDoor } | null;
+    const category = togetherCategoryOf(value?.category) ?? DEFAULT_TOGETHER_CATEGORY;
+    return { category, ...(value?.returnDoor && returnDoors.includes(value.returnDoor) ? { returnDoor: value.returnDoor } : {}) };
+  } catch { return { category: DEFAULT_TOGETHER_CATEGORY }; }
 }
 
 export function writeTogetherView(childId: string, value: ViewState) {
@@ -33,22 +43,21 @@ export function useTogetherNavigation(childId: string, gamesAvailable: boolean) 
   const isPresent = useIsPresent();
   const query = useHashQuery();
   const requested = query.get("f");
-  const routeCategory = requested === null ? null
-    : categories.includes(requested as TogetherCategory) ? requested as TogetherCategory : "all";
+  // v4: a former id (all, offscreen) opens the filter it became; an unknown one the default.
+  const routeCategory = requested === null ? null : togetherCategoryOf(requested) ?? DEFAULT_TOGETHER_CATEGORY;
   const pageRef = useRef<HTMLDivElement>(null);
   const cancelRestoreRef = useRef<(() => void) | null>(null);
   const [state, setState] = useState(() => ({ childId, ...readTogetherView(childId, gamesAvailable) }));
   const current = state.childId === childId ? state : readTogetherView(childId, gamesAvailable);
-  const selected = routeCategory ?? current.category;
-  const category = selected === "games" && !gamesAvailable ? "all" : selected;
-  const setCategory = (next: TogetherCategory) => {
+  const category = routeCategory ?? current.category;
+  const setCategory = (next: TogetherFilterParam) => {
     cancelRestoreRef.current?.();
     // Pin the starting choice before pushing the first filter URL, so Back
     // returns to that choice rather than re-reading the newest stored value.
     if (routeCategory === null && typeof window !== "undefined" && window.location.hash.split("?")[0] === "#/practice") {
       window.history.replaceState(window.history.state, "", `#${routeHash("practice", { f: category })}`);
     }
-    const value = { category: next === "games" && !gamesAvailable ? "all" as const : next };
+    const value = { category: togetherCategoryOf(next) ?? DEFAULT_TOGETHER_CATEGORY };
     writeTogetherView(childId, value);
     setState({ childId, ...value });
     goToRoute("practice", { f: value.category });

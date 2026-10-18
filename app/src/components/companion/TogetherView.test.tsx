@@ -5,14 +5,15 @@ import { readFileSync } from "node:fs";
 import type { StudioWorld } from "../practice/studioWorlds";
 const state = vi.hoisted(() => ({
   childProfile: { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] },
-  previewWorld: null as StudioWorld | null, lang: "en" as "en" | "he", loaded: true, failed: false, pin: null as string | null,
+  previewWorld: null as StudioWorld | null, previewStory: null as string | null, lang: "en" as "en" | "he", loaded: true, failed: false, pin: null as string | null,
   saveMoment: vi.fn(async () => true), setActiveTab: vi.fn(), requestKidMode: vi.fn(), buttons: [] as Record<string, any>[],
   topic: null as null | { id: string; title: string }, openSheet: vi.fn(), openSettings: vi.fn(),
   compact: false, surfaces: [] as { kind: "modal" | "sheet"; props: Record<string, any> }[],
 }));
 vi.mock("react", async (original) => {
   const real = await original<typeof import("react")>();
-  return { ...real, useState: (initial: any) => real.useState(state.previewWorld && initial && typeof initial === "object" && "value" in initial ? { ...initial, value: { kind: "world", world: state.previewWorld } } : initial) };
+  const preview = () => (state.previewWorld ? { kind: "world", world: state.previewWorld } : state.previewStory ? { kind: "story", id: state.previewStory } : null);
+  return { ...real, useState: (initial: any) => real.useState(preview() && initial && typeof initial === "object" && "value" in initial ? { ...initial, value: preview() } : initial) };
 });
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ ...state, activeFamilyTopic: state.topic }) }));
 vi.mock("./familyTopicEvents", () => ({ openFamilyTopicSheet: (...args: unknown[]) => state.openSheet(...args) }));
@@ -53,7 +54,7 @@ import { translate } from "../../lib/i18n";
 import { STUDIO_WORLDS } from "../practice/studioWorlds";
 beforeEach(() => {
   vi.clearAllMocks(); state.childProfile = { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] };
-  state.previewWorld = null; state.lang = "en"; state.loaded = true; state.failed = false; state.pin = null; state.buttons = []; state.topic = null; state.compact = false; state.surfaces = [];
+  state.previewWorld = null; state.previewStory = null; state.lang = "en"; state.loaded = true; state.failed = false; state.pin = null; state.buttons = []; state.topic = null; state.compact = false; state.surfaces = [];
   const data = new Map<string, string>();
   vi.stubGlobal("sessionStorage", { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) });
 });
@@ -81,6 +82,31 @@ describe("Together's compact discovery", () => {
     for (const gone of ["together-suggestion", "together-handover", "together-play-history", "together-since", "<details", "companion-together-footer"]) expect(html).not.toContain(gone);
     expect(html).not.toContain(translate(lang, "companion.together-view.together-room-for-curiosity-and-connection"));
   });
+  // v4 re-pin: Together is three filters — Routines · Play · Stories — and they
+  // are its first level, ahead of the hero (where Now's and My child's place
+  // pills sit). Label-only, like the place pills; Routines is the default.
+  it.each(["en", "he"] as const)("opens on Routines with the three label-only pills first on the page (%s)", (lang) => {
+    state.lang = lang; const html = render();
+    const row = html.match(/<div class="companion-filter-row together-pills"[^>]*>([\s\S]*?)<\/div>/)!;
+    expect(html.indexOf(row[0])).toBeLessThan(html.indexOf('data-module="together-invitation"'));
+    const pills = [...row[1].matchAll(/<button type="button" class="companion-filter" aria-pressed="(true|false)">([\s\S]*?)<\/button>/g)];
+    expect(pills.map((p) => p[2])).toEqual(["routines", "play", "stories"].map((k) => esc(translate(lang, `companion.together-view.${k}`))));
+    expect(pills.map((p) => p[1])).toEqual(["true", "false", "false"]);
+    expect(row[1]).not.toContain('class="msr"');
+    expect(section(html, "together-routines")).not.toContain("hidden");
+    for (const name of ["together-games", "together-stories", "together-offscreen"]) expect(section(html, name), name).toContain("hidden");
+    // NEGATIVE CONTROL: the v3 five-pill row (All together, Away from the screen) is gone.
+    expect(row[1]).not.toContain(esc(translate(lang, "companion.together-view.all-together")));
+    expect(row[1]).not.toContain(esc(translate(lang, "companion.together-view.away-from-the-screen")));
+  });
+  it("Play shows the games and the away ideas together; Stories shows every story door", () => {
+    writeTogetherView("child-a", { category: "games" }); const play = render();
+    expect(section(play, "together-games")).not.toContain("hidden"); expect(section(play, "together-offscreen")).not.toContain("hidden");
+    expect(section(play, "together-stories")).toContain("hidden"); expect(section(play, "together-routines")).toContain("hidden");
+    writeTogetherView("child-a", { category: "stories" }); const stories = render();
+    expect(section(stories, "together-stories")).not.toContain("hidden");
+    expect([...stories.matchAll(/data-together-return="(story-[a-z]+)"/g)].map((m) => m[1])).toEqual(["story-library", "story-bedtime", "story-comics", "story-family"]);
+  });
   // v3 F-TOG-3 re-pin: the gate card's PIN ask reads "Set a PIN" (the mock's words), not "Parent settings"; it still opens Settings at the PIN.
   it.each(["en", "he"] as const)("closes with one gate card: the PIN line, Set a PIN and Start playing (%s)", (lang) => {
     state.lang = lang; const card = gate(render());
@@ -97,7 +123,8 @@ describe("Together's compact discovery", () => {
   it("opening the page writes nothing; the CTA chooses the away ideas and the gate starts play", () => {
     render(); expect(state.saveMoment).not.toHaveBeenCalled(); expect(state.requestKidMode).not.toHaveBeenCalled(); expect(state.setActiveTab).not.toHaveBeenCalled();
     button("together-cta")!.onClick();
-    expect(readTogetherView("child-a", true).category).toBe("offscreen");
+    // v4 re-pin: the away ideas live in Play (`games`).
+    expect(readTogetherView("child-a", true).category).toBe("games");
     button("together-gate-pin")!.onClick(); expect(state.openSettings).toHaveBeenCalledWith({ focus: "pin" });
     button("together-start-playing")!.onClick(); expect(state.requestKidMode).toHaveBeenCalledOnce(); expect(state.requestKidMode).toHaveBeenCalledWith();
     expect(state.saveMoment).not.toHaveBeenCalled();
@@ -107,10 +134,33 @@ describe("Together's compact discovery", () => {
     state.buttons = []; const selected = render();
     expect(section(selected, "together-stories")).not.toContain("hidden"); expect(section(selected, "together-games")).toContain("hidden");
     expect(section(selected, "together-routines")).toContain("hidden"); expect(section(selected, "together-offscreen")).toContain("hidden");
-    state.buttons.find((b) => b["data-together-return"] === "story-comics")!.onClick();
+    // v4 re-pin (blueprint decision 3): a story opens as a sheet over Together;
+    // its one way in then leaves for the reader and remembers the card.
+    const card = state.buttons.find((b) => b["data-together-return"] === "story-comics")!;
+    expect(card["aria-haspopup"]).toBe("dialog");
+    card.onClick();
+    expect(state.setActiveTab).not.toHaveBeenCalled();
+    state.previewStory = "comics"; state.buttons = []; render();
+    const open = button("together-story-open")!;
+    expect(React.Children.toArray(open.children)).toContain(translate("en", "companion.together-view.explore"));
+    open.onClick();
     expect(state.setActiveTab).toHaveBeenCalledWith("comics"); expect(readTogetherView("child-a", true)).toEqual({ category: "stories", returnDoor: "story-comics" });
+    state.previewStory = null;
     expect(section(render(), "together-stories")).not.toContain("hidden");
-    state.childProfile.id = "child-b"; expect(section(render(), "together-games")).not.toContain("hidden");
+    // Another child starts on the default, Routines.
+    state.childProfile.id = "child-b"; const other = render();
+    expect(section(other, "together-routines")).not.toContain("hidden"); expect(section(other, "together-stories")).toContain("hidden");
+  });
+  it.each(["en", "he"] as const)("the story sheet carries the door's picture, words and title (%s)", (lang) => {
+    state.lang = lang; state.previewStory = "library"; state.compact = true;
+    const html = render();
+    expect(state.surfaces.map((s) => [s.kind, s.props.open, s.props.title])).toEqual([["sheet", true, translate(lang, "companion.story.library.title")]]);
+    const sheet = renderToStaticMarkup(<>{state.surfaces[0].props.children}</>);
+    expect(sheet).toContain('data-testid="together-story-preview"');
+    expect(sheet).toContain(esc(translate(lang, "companion.story.library.detail")));
+    expect(sheet).toContain(esc(translate(lang, "companion.together-view.story-preview-note")));
+    expect(sheet).toMatch(/<img src="\/visuals\/worlds\/v2\/tonight-story-v2-480\.webp"[^>]*alt=""/);
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
   });
   it.each([["en", "word-world", "language"], ["he", "speech", "speech"]] as const)("returns to the chosen %s %s card after its parent tool", (lang, id, tab) => {
     state.lang = lang; state.childProfile.age = 6; state.previewWorld = STUDIO_WORLDS.find((world) => world.id === id)!;
@@ -120,7 +170,7 @@ describe("Together's compact discovery", () => {
     expect(open).toBeDefined(); open!.onClick();
     expect(state.setActiveTab).toHaveBeenCalledWith(tab); expect(readTogetherView("child-a", true)).toEqual({ category: "games", returnDoor: `world-${id}` });
   });
-  it("keeps age gates after restoring an obsolete games choice", () => {
+  it("keeps age gates after restoring a games choice under three: Play holds only the away cards", () => {
     writeTogetherView("child-a", { category: "games" }); state.childProfile.age = 2; const html = render();
     expect(html).not.toContain('data-testid="together-start-playing"'); expect(html).not.toContain('data-module="together-games"');
     expect(html).not.toContain('data-testid="together-door-continue"'); expect(html).not.toContain('data-testid="together-door-find"');
@@ -128,7 +178,9 @@ describe("Together's compact discovery", () => {
     const card = gate(html);
     expect(card).not.toContain("<button"); expect(card).not.toContain(">lock</span>");
     expect(card).toContain(esc(translate("en", "elev.ages.practice.fromThree", { name: "Noa" })));
-    expect(html).toContain(translate("en", "elev.ages.together.copy-faces.title")); expect(section(html, "together-stories")).not.toContain("hidden");
+    // v4 re-pin: Play exists at every age; under three it is the together cards.
+    expect(html).toContain(translate("en", "elev.ages.together.copy-faces.title")); expect(section(html, "together-offscreen")).not.toContain("hidden");
+    expect(section(html, "together-stories")).toContain("hidden");
     expect(html.match(/data-module=/g)).toHaveLength(4); expect(html.match(/data-primary-move=/g)).toHaveLength(1);
   });
   it("uses real content-width queries and no clipped activity copy", () => {
@@ -225,9 +277,10 @@ describe("v3 F-TOG-3 — Together at 390", () => {
     expect(phone).not.toContain("companion-story-grid");
   });
 
-  it("on All together the routines are one sideways row of 124px tiles; the Routines pill keeps the grid", () => {
-    expect(phone).toMatch(/\.companion-together \.together-routines\[data-mode="all"\] \.together-routine-grid \{ display: flex;[^}]*overflow-x: auto;/);
-    expect(phone).toMatch(/\.companion-together \.together-routines\[data-mode="all"\] \.together-routine-grid > li \{ flex: none; inline-size: 124px; scroll-snap-align: start; \}/);
+  // v4 re-pin: the All filter is gone, so the sideways four-tile row it drew is
+  // gone too; the library keeps its wrapping 124px grid at every width.
+  it("the library keeps its wrapping 124px grid; no All-together row of tiles is left", () => {
+    expect(css).not.toContain('data-mode="all"');
     expect(css).toMatch(/\.together-routine-grid \{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(124px, 1fr\)\)/);
     // Counts and words only: no bar, no share of anything about the child.
     expect(item).not.toMatch(/progress|meter/);

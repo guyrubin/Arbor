@@ -556,10 +556,14 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
 
       const invitation = page.locator('[data-module="together-invitation"]');
       const story = page.locator('[data-together-return="story-library"]');
+      // v4: Together is Routines · Play · Stories; the story doors live under
+      // Stories (?f=stories) and a door opens its sheet first — its one way in
+      // then leaves for the reader route (blueprint decision 3).
+      const openStory = async () => { await story.click(); await byId('together-story-open').click(); };
       const togetherGeometry = async () => { await fontReady(); return story.evaluate(observeTogetherGeometry); };
       let firstGeometry, preDockGeometry, openGeometry;
       const together = await screen('practice', 'together-first-ready', async cell => {
-        await load('practice'); await visible(cell, 'TOGETHER_INVITATION_VISIBLE', invitation); await visible(cell, 'STORY_DOOR_VISIBLE', story);
+        await load('practice?f=stories'); await visible(cell, 'TOGETHER_INVITATION_VISIBLE', invitation); await visible(cell, 'STORY_DOOR_VISIBLE', story);
         firstGeometry = await togetherGeometry(); cell.geometryObservation = firstGeometry; cell.geometry = firstGeometry.geometry;
         check(cell, 'TOGETHER_ENTRY_GEOMETRY_OBSERVED', togetherLayoutGeometry(firstGeometry, true) !== null);
       });
@@ -594,10 +598,10 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         check(cell, 'TOGETHER_RESTORED_AFTER_DOCK', geometryStable(preDockGeometry.geometry, after.geometry), { before: preDockGeometry.geometry, after: after.geometry, tolerancePx: 2 });
         check(cell, 'TOGETHER_DOCK_SCROLL_RESTORED', togetherScrollStable(preDockGeometry.scrollOffsets, after.scrollOffsets), { before: preDockGeometry.scrollOffsets, after: after.scrollOffsets });
       });
-      await screen('practice', 'together-return-card', async cell => { await load('practice'); await story.click(); await byId('secondary-place-back').waitFor({ state: 'visible' }); check(cell, 'STORY_DESTINATION_REACHED', new URL(page.url()).hash.startsWith('#/stories')); await page.locator('[data-route="stories"] [data-module="stories-tonight"]').waitFor({ state: 'visible' }); await invitation.waitFor({ state: 'hidden' }); check(cell, 'STORY_CONTENT_MOUNTED', true); await byId('secondary-place-back').click(); await story.waitFor({ state: 'visible' }); await page.waitForFunction(() => document.activeElement?.getAttribute('data-together-return') === 'story-library'); check(cell, 'EXACT_RETURN_CARD_FOCUSED', await story.evaluate(el => document.activeElement === el)); check(cell, 'RETURN_TO_TOGETHER', new URL(page.url()).hash.startsWith('#/practice')); cell.returnMarker = 'story-library'; });
+      await screen('practice', 'together-return-card', async cell => { await load('practice?f=stories'); await openStory(); await byId('secondary-place-back').waitFor({ state: 'visible' }); check(cell, 'STORY_DESTINATION_REACHED', new URL(page.url()).hash.startsWith('#/stories')); await page.locator('[data-route="stories"] [data-module="stories-tonight"]').waitFor({ state: 'visible' }); await invitation.waitFor({ state: 'hidden' }); check(cell, 'STORY_CONTENT_MOUNTED', true); await byId('secondary-place-back').click(); await story.waitFor({ state: 'visible' }); await page.waitForFunction(() => document.activeElement?.getAttribute('data-together-return') === 'story-library'); check(cell, 'EXACT_RETURN_CARD_FOCUSED', await story.evaluate(el => document.activeElement === el)); check(cell, 'RETURN_TO_TOGETHER', new URL(page.url()).hash.startsWith('#/practice')); cell.returnMarker = 'story-library'; });
 
       await screen('practice', 'together-early-back', async cell => {
-        await load('practice'); await story.click();
+        await load('practice?f=stories'); await openStory();
         const back = byId('secondary-place-back'); await back.waitFor({ state: 'visible' });
         cell.transitionAtBack = await clickWithEvidence(back);
         await story.waitFor({ state: 'visible' });
@@ -609,7 +613,7 @@ export async function collectReleaseInteractions({ output, bundle, viewport, gro
         cell.returnMarker = 'story-library';
       });
       await screen('practice', 'together-how-to-begin', async cell => {
-        await load('practice');
+        await load('practice?f=games');
         const card = page.locator('.companion-offscreen-card').filter({ has: page.locator('.companion-door-link') }).first();
         await card.scrollIntoViewIfNeeded();
         const title = await card.locator('h3').textContent();

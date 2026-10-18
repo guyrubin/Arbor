@@ -72,7 +72,8 @@ describe("record hierarchy keeps useful controls without repeating navigation or
     expect(records).not.toContain(`>${copy.profile}<`);
     // The exact index, in place order, so a missing or newly added row cannot
     // slip through a hand-maintained list of examples.
-    const expectedDestinations = ["weekly", "development", "timeline", "profile", "practice?f=games", "practice?f=stories", "practice?f=routines", "practice?f=offscreen"];
+    // v4 re-pin: Together reads Routines · Play · Stories (Play is f=games).
+    const expectedDestinations = ["weekly", "development", "timeline", "profile", "practice?f=routines", "practice?f=games", "practice?f=stories"];
     const destinationButtons = state.buttons.filter(button => button["data-more-destination"]);
     expect(destinationButtons.map(button => button["data-more-destination"])).toEqual(expectedDestinations);
     for (const destination of expectedDestinations) {
