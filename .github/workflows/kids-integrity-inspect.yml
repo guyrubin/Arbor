@@ -15,54 +15,48 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Resolve compatible security patches without package scripts
-        working-directory: app
+      - name: Apply exact reviewed book patch
         run: |
-          mkdir -p /tmp/kids-patches /tmp/kids-audit
-          npm audit --json > /tmp/kids-audit/before-all.json || true
-          npm audit --omit=dev --json > /tmp/kids-audit/before-runtime.json || true
-          npx --yes npm@11 --version > /tmp/kids-audit/resolver-version.txt
-          npx --yes npm@11 install --package-lock-only --ignore-scripts --save-dev @capacitor/android@8.4.3 @capacitor/ios@8.4.3 @capacitor/cli@8.4.3
-          npx --yes npm@11 install --package-lock-only --ignore-scripts @capacitor/core@8.4.3
-          # Only advisory-affected packages, within existing semver constraints.
-          # No forced upgrades, SDK downgrade, peer bypass or overrides.
-          npx --yes npm@11 update --package-lock-only --ignore-scripts proxy-addr tar websocket-driver @babel/core @fastify/busboy @google-cloud/storage @vitest/coverage-v8 @vitest/mocker @xmldom/xmldom baseline-browser-mapping body-parser brace-expansion browserslist express form-data gaxios ip-address nanoid postcss protobufjs qs source-map-js vite vitest tsx 2>&1 | tee /tmp/kids-audit/fix.txt
-          npm audit --json > /tmp/kids-audit/after-all.json || true
-          npm audit --omit=dev --json > /tmp/kids-audit/after-runtime.json || true
-          git diff -- package.json package-lock.json > /tmp/kids-audit/dependency-upgrade.patch
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          for (const stage of ['before', 'after']) for (const scope of ['all', 'runtime']) {
-            const report = JSON.parse(fs.readFileSync(`/tmp/kids-audit/${stage}-${scope}.json`, 'utf8'));
-            if (report.error || !report.metadata?.vulnerabilities) throw new Error(`Audit unavailable: ${stage}-${scope}`);
-            console.log(stage, scope, JSON.stringify(report.metadata.vulnerabilities));
-            if (stage === 'after' && report.metadata.vulnerabilities.critical) throw new Error('Critical advisory remains; do not commit');
-          }
-          const before = JSON.parse((await import('node:child_process')).execFileSync('git', ['show', 'HEAD:app/package.json'], {encoding:'utf8'}));
-          const after = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          for (const name of ['firebase', 'firebase-admin', '@google/genai', '@google-cloud/vertexai']) {
-            if (before.dependencies[name] !== after.dependencies[name]) throw new Error(`Unexpected SDK manifest change: ${name}`);
-          }
-          if (after.overrides) throw new Error('Dependency overrides not allowed in this batch');
-          JS
-          cp package.json package-lock.json /tmp/kids-patches/
-      - name: Retain exact dependency files
-        uses: actions/upload-artifact@v4
-        with:
-          name: kids-compatible-dependency-files
-          path: /tmp/kids-patches/
-          retention-days: 7
-      - name: Verify npm 10 clean install and retain local validation toolchain
+          mkdir -p /tmp/kids-book-files /tmp/kids-book-evidence
+          sed 's/^ diff --git/diff --git/' .github/kids-integrity.patch > /tmp/kids-book-evidence/applied.patch
+          git apply --check /tmp/kids-book-evidence/applied.patch
+          git apply /tmp/kids-book-evidence/applied.patch
+          git add -N app/src/lib/library/bookSheetAnchor.test.ts
+          git diff --check
+          git diff --stat
+          git diff > /tmp/kids-book-evidence/book-integrity.patch
+          for f in app/src/lib/library/bookSheet.ts app/src/lib/library/bookSheetAnchor.test.ts app/src/server/bookSheet.ts app/src/server/bookSheet.test.ts; do
+            mkdir -p "/tmp/kids-book-files/$(dirname "$f")"
+            cp "$f" "/tmp/kids-book-files/$f"
+            git hash-object "$f"
+          done
+      - name: Validate actual dependency installation and affected book paths
         working-directory: app
         run: |
           npm ci --ignore-scripts
-          tar -czf /tmp/kids-audit/toolchain.tgz node_modules
-      - name: Retain audit evidence
-        if: always()
-        uses: actions/upload-artifact@v4
+          npm run lint
+          npx --no-install vitest run --config scripts/vitest.config.mjs src/lib/library/bookSheetAnchor.test.ts src/server/bookSheet.test.ts src/components/kidmode/hero/heroKeyerBook.test.ts src/components/kidmode/hero/bookSheetMockPipeline.test.ts src/components/kidmode/hero/buildBookSheet.test.ts src/server/bookAssets.test.ts src/server/bookAssetExport.test.ts 2>&1 | tee /tmp/kids-book-evidence/focused-tests.log
+          npm audit --json > /tmp/kids-book-evidence/audit-all.json || true
+          npm audit --omit=dev --json > /tmp/kids-book-evidence/audit-runtime.json || true
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          for(const scope of ['all','runtime']) {
+            const x=JSON.parse(fs.readFileSync(`/tmp/kids-book-evidence/audit-${scope}.json`,'utf8'));
+            if(x.error || !x.metadata?.vulnerabilities) throw new Error('Audit unavailable');
+            if(x.metadata.vulnerabilities.critical) throw new Error('Critical advisory remains');
+            console.log(scope,JSON.stringify(x.metadata.vulnerabilities));
+          }
+          JS
+      - uses: actions/upload-artifact@v4
         with:
-          name: kids-compatible-dependency-evidence
-          path: /tmp/kids-audit/
+          name: kids-reviewed-book-files
+          path: /tmp/kids-book-files/
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kids-reviewed-book-evidence
+          path: /tmp/kids-book-evidence/
           retention-days: 7
   commit-branch-only:
     needs: prepare
@@ -76,16 +70,19 @@ jobs:
           ref: codex/kids-book-integrity-2026-10-18
       - uses: actions/download-artifact@v4
         with:
-          name: kids-compatible-dependency-files
-          path: /tmp/kids-patches
-      - name: Commit package files to this branch only
+          name: kids-reviewed-book-files
+          path: /tmp/kids-book-files
+      - name: Commit only the four validated book files to this branch
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          cp /tmp/kids-patches/package.json /tmp/kids-patches/package-lock.json app/
-          git add -- app/package.json app/package-lock.json
-          if git diff --cached --quiet; then exit 0; fi
+          for f in app/src/lib/library/bookSheet.ts app/src/lib/library/bookSheetAnchor.test.ts app/src/server/bookSheet.ts app/src/server/bookSheet.test.ts; do
+            cp "/tmp/kids-book-files/$f" "$f"
+            git add -- "$f"
+          done
+          git rm -- .github/kids-integrity.patch
+          git diff --cached --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Fix compatible dependency advisories; align Capacitor 8.4.3 security floor'
+          git commit -m 'Harden book sprite geometry and fail closed on unreadable approved-sheet records (B-BOOK-69)'
           git push origin HEAD:refs/heads/codex/kids-book-integrity-2026-10-18
           git rev-parse HEAD
