@@ -70,7 +70,7 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
-    "@vitest/coverage-v8": "^4.1.7",
+    "@vitest/coverage-v8": "^4.1.12",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "playwright": "^1.63.0",
@@ -78,6 +78,6 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.12"
   }
 }
