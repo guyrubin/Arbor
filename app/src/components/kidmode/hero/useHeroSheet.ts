@@ -146,7 +146,7 @@ export function useHeroSheetState(child: HeroChainChild | null | undefined): { i
   const childId = child?.id ?? "";
   const { ownerKey, docs } = useOwnedHeroSheetDocs(childId);
   const avatarUrl = heroSheetAvatarUrl(child);
-  const hash = avatarUrl ? heroAvatarHash(avatarUrl) : null;
+  const hash = useMemo(() => avatarUrl ? heroAvatarHash(avatarUrl) : null, [avatarUrl]);
   const stockHeroId = typeof child?.stockHeroId === "string" ? child.stockHeroId : null;
   const identityKey = JSON.stringify([ownerKey, childId, hash, stockHeroId]);
   const ownCache = useRef<{ identityKey: string; sheet: HeroSheet } | null>(null);

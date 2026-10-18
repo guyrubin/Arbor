@@ -1,10 +1,10 @@
 /**
  * B-KID-47 — no blank screen between worlds (K0, without the GameShell):
- * the home prefetches every world chunk on idle, Kid Mode never shows the
+ * the home prefetches navigation shells on idle, Kid Mode never shows the
  * parent grey TabSkeleton (the world's own art + the hero instead), and the
  * overlay no longer holds an empty stage for the old view's exit.
  */
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -14,10 +14,6 @@ const arcade = read("practice/HeroArcade.tsx");
 const dash = read("kidmode/KidDashboard.tsx");
 const prefetch = read("kidmode/kidPrefetch.ts");
 const fallback = read("kidmode/KidStageFallback.tsx");
-
-const lazySpecifiers = (src: string) => [...src.matchAll(/lazy\(\(\) => import\("([^"]+)"\)\)/g)].map((m) => m[1]);
-const fromKidmode = (spec: string, fileDir: "kidmode" | "practice") =>
-  path.posix.normalize(path.posix.join(fileDir === "kidmode" ? "kidmode" : "practice", spec));
 
 describe("B-KID-47: no grey parent skeleton in Kid Mode", () => {
   it("the overlay's every Suspense shows the kid stage, never TabSkeleton", () => {
@@ -46,35 +42,26 @@ describe("B-KID-47: no grey parent skeleton in Kid Mode", () => {
   });
 });
 
-describe("B-KID-47: the home warms every world chunk", () => {
-  it("prefetches exactly the modules the kid lazy() calls load", () => {
-    const wanted = new Set([
-      ...lazySpecifiers(overlay).map((s) => fromKidmode(s, "kidmode")),
-      ...lazySpecifiers(arcade).map((s) => fromKidmode(s, "practice")),
-    ]);
-    const warmed = new Set([...prefetch.matchAll(/import\("([^"]+)"\)/g)].map((m) => fromKidmode(m[1], "kidmode")));
-    // the comics shelf + word world are not home tiles; everything a tile opens is warmed
-    for (const spec of ["practice/PracticeHubTab", "tabs/HeroJourneyTab", "practice/MindVaultWorld", "practice/PatternPowerWorld", "practice/BeatKeeperWorld", "practice/HeroPoseWorld", "practice/SpellForgeWorld", "practice/SpeechCoachTab", "practice/MimicStudioTab", "practice/FeelingsLabTab", "practice/AdventuresTab"]) {
-      expect(wanted.has(spec), `${spec} is a lazy kid surface`).toBe(true);
-      expect(warmed.has(spec), `${spec} is prefetched`).toBe(true);
-    }
+describe("Kids loading: small home warm-up, selected game ready on intro", () => {
+  it("keeps home prefetch to two shells, not legacy games or capture tools", async () => {
+    const mod = await import("./kidPrefetch");
+    expect(mod.KID_SURFACE_CHUNKS).toHaveLength(2);
+    const homeQueue = prefetch.slice(prefetch.indexOf('export const KID_SURFACE_CHUNKS'), prefetch.indexOf('export function prefetchKidSurfaces'));
+    expect(homeQueue).toContain("import('./studioV2/StudioWorld')");
+    expect(homeQueue).toContain("import('./studioV2/StudioGame')");
+    expect(homeQueue).not.toMatch(/SpeechCoach|MimicStudio|HeroPose|MindVault|RiverRescue/);
   });
-  it("the home calls it once on mount", () => {
-    expect(dash).toContain("useEffect(() => { prefetchKidSurfaces(); }, []);");
-    expect(read("kidmode/studioV2/StudioHome.tsx")).toContain("prefetchKidSurfaces();");
-  });
-  it("runs once per session, on idle", async () => {
-    const calls: number[] = [];
-    vi.stubGlobal("window", { requestIdleCallback: (cb: () => void) => { calls.push(1); return 1; }, setTimeout });
-    try {
-      const mod = await import("./kidPrefetch");
-      mod.__resetKidPrefetch();
-      mod.prefetchKidSurfaces();
-      mod.prefetchKidSurfaces();
-      expect(calls).toHaveLength(1);
-      expect(mod.KID_SURFACE_CHUNKS).toHaveLength(18);
-    } finally {
-      vi.unstubAllGlobals();
+  it("the three current adventures and lazy renderer share the exact same loader", () => {
+    const game = read("kidmode/studioV2/StudioGame.tsx");
+    for (const [id, component] of [['river-rescue', 'RiverRescue'], ['feelings-forest', 'FeelingsForest'], ['rhythm-garden', 'RhythmGarden']]) {
+      expect(prefetch).toContain(`import('./studioV2/games/adventures/${component}')`);
+      expect(game).toContain(`lazy(STUDIO_ACTIVITY_LOADERS['${id}'])`);
     }
+    expect(game).toContain("if (!eligible || phase !== 'intro') return;");
+    expect(game).toContain('preloadStudioActivity(activityId)');
+  });
+  it("both homes return the cancellation function on unmount", () => {
+    expect(dash).toContain('useEffect(() => prefetchKidSurfaces(), []);');
+    expect(read("kidmode/studioV2/StudioHome.tsx")).toContain('useEffect(() => prefetchKidSurfaces(), []);');
   });
 });

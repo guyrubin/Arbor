@@ -336,7 +336,7 @@ export default function KidDashboard({
   const hero = useHeroAvatar();
   const kidTheme = useKidTheme();
   // B-KID-47: warm every world's code on idle so a tap never waits on a chunk.
-  useEffect(() => { prefetchKidSurfaces(); }, []);
+  useEffect(() => prefetchKidSurfaces(), []);
   const data = usePracticeData(childProfile.id);
   // RUN-03: every kid-register string renders through the bidi isolate so an
   // EN placeholder inside a Hebrew (RTL) shell keeps its own direction —

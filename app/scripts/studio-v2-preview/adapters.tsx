@@ -16,7 +16,6 @@ export const useAuth = () => ({ user: { uid: 'local-sandbox' }, loading: false }
 export const isKidModeActive = () => true;
 export const subscribeKidMode = () => () => {};
 export const noteKidActivity = () => {};
-export const prefetchKidSurfaces = () => {};
 export const track = () => {};
 const rows = new Map<string, any[]>(), listeners = new Set<() => void>();
 export function useChildCollection<T extends {id: string}>(childId: string, name: string) {

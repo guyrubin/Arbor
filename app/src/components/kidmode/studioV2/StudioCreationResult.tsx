@@ -30,9 +30,11 @@ export function CreationPreview({ creation, childId }: { creation: StudioCreatio
   }, []);
   useEffect(() => { if (muted) stopRef.current(); }, [muted]);
   const play = () => {
-    stop(); if (creation.kind !== 'melody') return; setPlaying(true); setUnavailable(false);
+    stop(); if (creation.kind !== 'melody') return; setPlaying(true);
+    const scheduled = audio.current?.sequence(creation.notes, creation.tempo) ?? false;
+    setUnavailable(!muted && !scheduled);
     creation.notes.forEach((note, index) => {
-      const strike = () => { setLit(index); const ok = audio.current?.play(note); if (!muted && !ok) setUnavailable(true); };
+      const strike = () => setLit(index);
       if (index === 0) strike(); else timers.current.push(setTimeout(strike, index * creation.tempo));
     });
     timers.current.push(setTimeout(stop, creation.notes.length * creation.tempo));

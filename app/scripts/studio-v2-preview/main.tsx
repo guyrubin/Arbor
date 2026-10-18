@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ArrowLeft, Languages } from 'lucide-react';
 import { PreviewProvider, useLanguage } from './adapters';
@@ -7,6 +7,7 @@ import StudioWorld from '../../src/components/kidmode/studioV2/StudioWorld';
 import StudioGame from '../../src/components/kidmode/studioV2/StudioGame';
 import StudioCollection from '../../src/components/kidmode/studioV2/StudioCollection';
 import StudioQuest from '../../src/components/kidmode/studioV2/StudioQuest';
+import { setKidAudioChild, kidHush, kidAudioVisibility, closeKidAudio } from '../../src/components/kidmode/audio/kidAudio';
 import { HoldExitButton } from '../../src/components/kidmode/HoldExitButton';
 import { KidHearItButton, KidSoundToggle } from '../../src/components/kidmode/kidReadAloud';
 import { studioActivity, type StudioActivityId, type StudioWorldId } from '../../src/components/kidmode/studioV2/studioCatalog';
@@ -19,6 +20,13 @@ function Preview() {
   const [view, setView] = useState<View>('home');
   const [world, setWorld] = useState<StudioWorldId>('playbank');
   const [game, setGame] = useState<StudioActivityId>('river-rescue');
+  useEffect(() => {
+    setKidAudioChild('studio-v2-synthetic-review');
+    const visibility = () => kidAudioVisibility(document.visibilityState === 'hidden');
+    document.addEventListener('visibilitychange', visibility);
+    return () => { document.removeEventListener('visibilitychange', visibility); closeKidAudio(); };
+  }, []);
+  useEffect(() => { kidHush(); }, [view, game]);
   const copy = studioCopy(uiLang);
   const openGame = (id: StudioActivityId) => { setGame(id); setWorld(studioActivity(id)?.worldId ?? 'playbank'); setView('game'); window.scrollTo(0,0); };
   const home = () => { setView('home'); window.scrollTo(0,0); };

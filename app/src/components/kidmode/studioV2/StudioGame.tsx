@@ -1,3 +1,4 @@
+import { STUDIO_ACTIVITY_LOADERS, preloadStudioActivity } from '../kidPrefetch';
 import { NEXT_GAME_COPY } from "../../../lib/i18nGameNext";
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, RotateCcw, Waves } from "lucide-react";
@@ -24,17 +25,17 @@ import { StudioPlayHero } from './StudioPlayHero';
 import { StudioCreationResult } from './StudioCreationResult';
 import type { StudioCreation } from './studioCreations';
 
-const RiverRescue = lazy(() => import("./games/adventures/RiverRescue"));
-const FeelingsForest = lazy(() => import("./games/adventures/FeelingsForest"));
-const RhythmGarden = lazy(() => import("./games/adventures/RhythmGarden"));
-const MemoryMatch = lazy(() => import("../../practice/MindVaultWorld"));
-const FeelingsDetective = lazy(() => import("../../practice/FeelingsLabTab"));
-const SequenceQuest = lazy(() => import("../../practice/PatternPowerWorld"));
-const RhythmHero = lazy(() => import("../../practice/BeatKeeperWorld"));
-const SneakFreeze = lazy(() => import("../games/sneakFreeze/SneakFreeze"));
-const CalmBuilder = lazy(() => import("./games/CalmBuilder"));
-const PuzzlePlanet = lazy(() => import("./games/PuzzlePlanet"));
-const SoundExplorer = lazy(() => import("./games/SoundExplorer"));
+const RiverRescue = lazy(STUDIO_ACTIVITY_LOADERS['river-rescue']);
+const FeelingsForest = lazy(STUDIO_ACTIVITY_LOADERS['feelings-forest']);
+const RhythmGarden = lazy(STUDIO_ACTIVITY_LOADERS['rhythm-garden']);
+const MemoryMatch = lazy(STUDIO_ACTIVITY_LOADERS['memory']);
+const FeelingsDetective = lazy(STUDIO_ACTIVITY_LOADERS['feelings']);
+const SequenceQuest = lazy(STUDIO_ACTIVITY_LOADERS['pattern']);
+const RhythmHero = lazy(STUDIO_ACTIVITY_LOADERS['beat']);
+const SneakFreeze = lazy(STUDIO_ACTIVITY_LOADERS['sneak']);
+const CalmBuilder = lazy(STUDIO_ACTIVITY_LOADERS['calm-builder']);
+const PuzzlePlanet = lazy(STUDIO_ACTIVITY_LOADERS['puzzle']);
+const SoundExplorer = lazy(STUDIO_ACTIVITY_LOADERS['sound-explorer']);
 
 /** The real mechanics stay lazy; opening the sky does not load every game. */
 export const STUDIO_GAME_COMPONENTS: Partial<Record<StudioActivityId, React.ComponentType<{ onBack?: () => void }>>> = {
@@ -83,6 +84,11 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   useEffect(() => { if (phase === "result") kidSfx("finish"); }, [phase]);
   const Component = STUDIO_GAME_COMPONENTS[activityId];
   const eligible = !!Component && studioActivityFits(activityId, childProfile, lang, undefined, { sneakEnabled: sneakFreezeFlagOn() });
+
+  useEffect(() => {
+    if (!eligible || phase !== 'intro') return;
+    void preloadStudioActivity(activityId).catch(() => { /* Play owns retry/fallback. */ });
+  }, [activityId, eligible, phase]);
 
   const environment = <div className="studio-game-view__environment" aria-hidden="true">
     {art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}

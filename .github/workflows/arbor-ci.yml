@@ -1,13 +1,8 @@
 name: Arbor CI
-
 on:
   pull_request:
   push:
-    branches:
-      - main
-      - 'claude/**'
-      - 'codex/**'
-
+    branches: [main, 'claude/**', 'codex/**']
 jobs:
   app-quality-gates:
     runs-on: ubuntu-latest
@@ -23,13 +18,27 @@ jobs:
           cache-dependency-path: app/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - name: Install Chromium for browser regression checks
+        run: npx playwright install --with-deps chromium
+      - name: Verify interruption-safe updates with two browser clients
+        run: node scripts/kids-update-browser.mjs
+      - name: Build actual Kids components with synthetic data adapters
+        run: npx vite build --config scripts/studio-v2-preview/vite.config.ts
+      - name: Verify Kids games, selected loading and audio cancellation (EN/HE)
+        run: node scripts/kids-performance-browser.mjs
+      - name: Retain synthetic Kids browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-performance-evidence
+          path: app/output/kids-performance
+          retention-days: 7
+          overwrite: true
       - run: npm test
       - run: npm run check:framework
       - run: npm run check:floors
       - run: npm run eval:safety
       - run: npm run check:acceptance
       - run: npm run build
-      - name: Install Chromium for closing voice review checks
-        run: npx playwright install --with-deps chromium
       - name: Verify closing voice review in English and Hebrew (offline)
         run: node scripts/voice-close-browser.mjs
