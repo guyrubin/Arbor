@@ -21,11 +21,12 @@ jobs:
           mkdir -p /tmp/kids-patches /tmp/kids-audit
           npm audit --json > /tmp/kids-audit/before-all.json || true
           npm audit --omit=dev --json > /tmp/kids-audit/before-runtime.json || true
-          npm install --package-lock-only --ignore-scripts --save-dev @capacitor/android@8.4.3 @capacitor/ios@8.4.3 @capacitor/cli@8.4.3
-          npm install --package-lock-only --ignore-scripts @capacitor/core@8.4.3
-          # Target advisory-affected packages within their existing semver constraints.
-          # No --force, SDK downgrade, major manifest upgrade or overrides.
-          npm update --package-lock-only --ignore-scripts proxy-addr tar websocket-driver @babel/core @fastify/busboy @google-cloud/storage @vitest/coverage-v8 @vitest/mocker @xmldom/xmldom baseline-browser-mapping body-parser brace-expansion browserslist express form-data gaxios ip-address nanoid postcss protobufjs qs source-map-js vite vitest tsx > /tmp/kids-audit/fix.txt 2>&1
+          npx --yes npm@11 --version > /tmp/kids-audit/resolver-version.txt
+          npx --yes npm@11 install --package-lock-only --ignore-scripts --save-dev @capacitor/android@8.4.3 @capacitor/ios@8.4.3 @capacitor/cli@8.4.3
+          npx --yes npm@11 install --package-lock-only --ignore-scripts @capacitor/core@8.4.3
+          # Only advisory-affected packages, within existing semver constraints.
+          # No forced upgrades, SDK downgrade, peer bypass or overrides.
+          npx --yes npm@11 update --package-lock-only --ignore-scripts proxy-addr tar websocket-driver @babel/core @fastify/busboy @google-cloud/storage @vitest/coverage-v8 @vitest/mocker @xmldom/xmldom baseline-browser-mapping body-parser brace-expansion browserslist express form-data gaxios ip-address nanoid postcss protobufjs qs source-map-js vite vitest tsx 2>&1 | tee /tmp/kids-audit/fix.txt
           npm audit --json > /tmp/kids-audit/after-all.json || true
           npm audit --omit=dev --json > /tmp/kids-audit/after-runtime.json || true
           git diff -- package.json package-lock.json > /tmp/kids-audit/dependency-upgrade.patch
@@ -51,7 +52,7 @@ jobs:
           name: kids-compatible-dependency-files
           path: /tmp/kids-patches/
           retention-days: 7
-      - name: Prepare local validation toolchain without package scripts
+      - name: Verify npm 10 clean install and retain local validation toolchain
         working-directory: app
         run: |
           npm ci --ignore-scripts
@@ -77,7 +78,7 @@ jobs:
         with:
           name: kids-compatible-dependency-files
           path: /tmp/kids-patches
-      - name: Commit reviewed-scope package files to this branch only
+      - name: Commit package files to this branch only
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           cp /tmp/kids-patches/package.json /tmp/kids-patches/package-lock.json app/
