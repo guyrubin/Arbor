@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { FreeText } from "../ui/FreeText";
 import { useLanguage } from "../../context/LanguageContext";
@@ -11,16 +11,19 @@ import type { ObserveStatus, ObservedWhen } from "../../lib/milestones/observe";
 import { TONIGHT_STEPS } from "../../lib/loop/tonight";
 import { GOAL_SCALE_VALUES, type FamilyGoal, type GoalScaleKey, type GoalScaleValue } from "../../lib/goals";
 import { ShelfGlyph } from "../ui/ShelfGlyph"; // B-DESIGN-04: the 44 px duotone glyph
-import NoticeCard from "./NoticeCard";
+import NoticeCard, { type NoticeCardProps } from "./NoticeCard";
 import { practiceText } from "./PracticeCard";
 // B-STATUS-01: the one receipt line of parent mode.
 import { Receipt } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
+import type { NoticeActionProps } from "../../hooks/useNoticeActions";
 
 export type TonightStep = 1 | 2 | 3 | 4 | "done";
 
 export interface TonightFlowProps {
   childName: string;
+  /** Account + child: changing either retires drafts and pending receipts. */
+  scopeKey?: string;
   gender?: string | null;
   /** Today's practice (null when none was offered — step 1 is skipped). */
   practice: PracticePick | null;
@@ -34,16 +37,17 @@ export interface TonightFlowProps {
   /** Step 1: how it went — the parent's choice, never inferred. */
   onOutcome: (outcome: Exclude<ActionOutcome, "not_today">) => void;
   /** Step 1: "What happened?" — one line, saved as a moment on the practice's shelf. */
-  onWhatHappened: (text: string) => void;
+  onWhatHappened: (text: string) => unknown | Promise<unknown>;
   /** Step 2: the question (key + vars from lib/loop/tonight tonightDayQuestion). */
   dayQuestion: { key: string; vars: Record<string, string> };
   /** Step 2: the kept words (a `quote` keepsake). */
-  onQuote: (text: string) => void;
+  onQuote: (text: string) => unknown | Promise<unknown>;
   /** Step 3: one watch-for card from a shelf step 1 did not use. */
   notice: { milestone: Milestone; shelf: ShelfId } | null;
-  onNotice: (status: ObserveStatus) => void;
-  onNoticeWhen?: (when: ObservedWhen) => void;
-  onNoticeUndo?: () => void;
+  onNotice: (status: ObserveStatus) => void | Promise<unknown>;
+  onNoticeWhen?: (when: ObservedWhen) => void | Promise<unknown>;
+  onNoticeUndo?: NoticeCardProps["onUndo"];
+  noticeActions?: NoticeActionProps & { onKeepPhoto?: () => void };
   /** The story door (the last quiet line); omitted when no story fits the child (B-PLAY-24). */
   onStory?: () => void;
   /** B-PROG-07: the family's active goals, passed ONLY on the last day of the
@@ -73,6 +77,10 @@ const pillBase = "inline-flex min-h-[44px] items-center justify-center rounded-f
  * the last line, under the card.
  */
 export default function TonightFlow(props: TonightFlowProps) {
+  return <TonightFlowBody key={props.scopeKey ?? "tonight"} {...props} />;
+}
+
+function TonightFlowBody(props: TonightFlowProps) {
   const { t, uiLang } = useLanguage();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
   const g = (s: string) => (lang === "he" ? resolveHebrewSlash(s, props.gender) : s);
@@ -88,6 +96,11 @@ export default function TonightFlow(props: TonightFlowProps) {
   const [quote, setQuote] = useState("");
   const [kept, setKept] = useState(false);
   const [goalMarks, setGoalMarks] = useState<Record<string, GoalScaleValue>>({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const writing = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const hasGoals = !!(props.weeklyGoals?.length && props.onGoalScore);
   const totalSteps = hasGoals ? TONIGHT_STEPS + 1 : TONIGHT_STEPS;
   const name = props.childName || t("today.record.childFallback");
@@ -98,13 +111,33 @@ export default function TonightFlow(props: TonightFlowProps) {
   // B-PROG-07: on a program week's last day the family's goals are step 4.
   const next = (from: TonightStep) =>
     setStep(from === 1 ? 2 : from === 2 && props.notice ? 3 : (from === 2 || from === 3) && hasGoals ? 4 : "done");
+  const saveWords = async (kind: "moment" | "quote", text: string) => {
+    if (writing.current) return;
+    writing.current = true;
+    setSaving(true);
+    setSaveError(false);
+    try {
+      const result = await (kind === "quote" ? props.onQuote(text) : props.onWhatHappened(text));
+      if (!mounted.current) return;
+      // addMoment owns the existing single error toast and returns false when
+      // it fails. Keep the parent's line and step so the same text can retry.
+      if (result === false || result === null) return;
+      if (kind === "quote") setKept(true);
+      else { setLine(""); next(1); }
+    } catch {
+      if (mounted.current) setSaveError(true);
+    } finally {
+      writing.current = false;
+      if (mounted.current) setSaving(false);
+    }
+  };
   const progress = (n: 1 | 2 | 3 | 4) => (
     <p data-testid="tonight-progress" className="arbor-num t-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>
       {t("elev.loop.tonight.step", { n, total: totalSteps })}
     </p>
   );
   const skipButton = (from: TonightStep) => (
-    <button type="button" data-testid="tonight-skip" onClick={() => next(from)} className={pillBase} style={{ color: "var(--arbor-muted)" }}>
+    <button type="button" data-testid="tonight-skip" disabled={saving} onClick={() => next(from)} className={pillBase} style={{ color: "var(--arbor-muted)" }}>
       {t("elev.loop.tonight.skip")}
     </button>
   );
@@ -201,12 +234,12 @@ export default function TonightFlow(props: TonightFlowProps) {
           <form
             className="mt-4 space-y-3"
             data-testid="tonight-how"
+            aria-busy={saving}
             onSubmit={(e) => {
               e.preventDefault();
               const text = line.trim();
-              if (text) props.onWhatHappened(text);
-              setLine("");
-              next(1);
+              if (text) void saveWords("moment", text);
+              else if (!writing.current) next(1);
             }}
           >
             {/* Law 7: the how-group IS the evening's move once "Did it" is in
@@ -239,6 +272,7 @@ export default function TonightFlow(props: TonightFlowProps) {
               type="text"
               dir="auto"
               value={line}
+              disabled={saving}
               maxLength={280}
               onChange={(e) => setLine(e.target.value)}
               placeholder={t("elev.loop.tonight.practice.what")}
@@ -255,13 +289,15 @@ export default function TonightFlow(props: TonightFlowProps) {
               type="submit"
               data-testid="tonight-save-next"
               data-ready={forwardReady ? "true" : "false"}
+              disabled={saving}
               className={pillBase}
               style={forwardReady
                 ? { color: "var(--arbor-on-accent)", background: "var(--gradient-cta)", boxShadow: "var(--shadow-sm)" }
                 : { color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}
             >
-              {t(forwardReady ? "elev.loop.tonight.saveNext" : "elev.loop.tonight.next")}
+              {t(saving ? "elev.describe.saving" : forwardReady ? "elev.loop.tonight.saveNext" : "elev.loop.tonight.next")}
             </button>
+            {saveError && <p role="alert" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.waveR.keepsake.saveFailed")}</p>}
           </form>
         )}
         {!answer && <div className="mt-2">{skipButton(1)}</div>}
@@ -286,20 +322,21 @@ export default function TonightFlow(props: TonightFlowProps) {
           <>
             <form
               data-testid="tonight-quote-form"
+              aria-busy={saving}
               {...stamp}
               className="mt-3 flex items-center gap-2"
               onSubmit={(e) => {
                 e.preventDefault();
                 const text = quote.trim();
                 if (!text) return;
-                props.onQuote(text);
-                setKept(true);
+                void saveWords("quote", text);
               }}
             >
               <input
                 type="text"
                 dir="auto"
                 value={quote}
+                disabled={saving}
                 maxLength={280}
                 onChange={(e) => setQuote(e.target.value)}
                 placeholder={t("elev.loop.tonight.day.placeholder")}
@@ -308,10 +345,11 @@ export default function TonightFlow(props: TonightFlowProps) {
                 className="min-h-[44px] min-w-0 flex-1 rounded-xl px-3 t-base"
                 style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}
               />
-              <button type="submit" disabled={!quote.trim()} className={`${pillBase} disabled:opacity-60`} style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
-                {t("elev.loop.tonight.keep")}
+              <button type="submit" disabled={saving || !quote.trim()} className={`${pillBase} disabled:opacity-60`} style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }}>
+                {t(saving ? "elev.describe.saving" : "elev.loop.tonight.keep")}
               </button>
             </form>
+            {saveError && <p role="alert" className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.waveR.keepsake.saveFailed")}</p>}
             <div className="mt-2">{skipButton(2)}</div>
           </>
         )}
@@ -331,6 +369,8 @@ export default function TonightFlow(props: TonightFlowProps) {
           gender={props.gender}
           childName={props.childName}
           variant="row"
+          {...props.noticeActions}
+          scopeKey={props.noticeActions?.scopeKey ?? props.scopeKey}
           onAnswer={props.onNotice}
           onWhen={props.onNoticeWhen}
           onUndo={props.onNoticeUndo}

@@ -133,8 +133,8 @@ describe("B-CAREPRO-13 · AskSpecialist consumes all four fields", () => {
   });
 
   it("every prefilled field stays editable", () => {
-    expect(ask).toMatch(/value=\{reason\}\n\s*onChange=\{\(e\) => setReason\(e\.target\.value\)\}/);
-    expect(ask).toMatch(/onChange=\{\(e\) => setVisionNote\(e\.target\.value\)\}/);
+    expect(ask).toMatch(/value=\{reason\}\n\s*onChange=\{\(e\) => \{ approval\.current = null; setReviewed\(false\); setReason\(e\.target\.value\); \}\}/);
+    expect(ask).toMatch(/onChange=\{\(e\) => \{ approval\.current = null; setReviewed\(false\); setVisionNote\(e\.target\.value\); \}\}/);
     expect(ask).toContain("onClick={() => setAudience(a)}");
   });
 

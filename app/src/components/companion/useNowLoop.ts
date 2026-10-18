@@ -3,6 +3,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useObservations } from "../../hooks/useObservations";
+import { useNoticeActions } from "../../hooks/useNoticeActions";
 import { bedtimeDoorOpen } from "../../lib/timeOfDay";
 import { predictRhythm } from "../../rhythm/predict";
 import { ageYearsOf, comparisonMonthsOf } from "../../lib/age/forChild";
@@ -19,10 +20,11 @@ import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/
 import { activeProgramWeek, dayKey as programDayKey } from "../../lib/programs/enrolment";
 import { programWeekDays } from "../../lib/programs/measures";
 import { activeGoals, scoreGoal, type FamilyGoal } from "../../lib/goals";
-import { localDay, type ObserveStatus, type ObservedWhen } from "../../lib/milestones/observe";
+import type { ObserveStatus, ObservedWhen } from "../../lib/milestones/observe";
 import { lastNightWords, shelfWordsThenNow } from "../../lib/today/shelfWords";
 import { quoteKeepsakeDoc, tonightDayQuestion, tonightLineEntry, tonightOutcomeEntry } from "../../lib/loop/tonight";
-import { keepsakeDoc, type KeepsakeDoc } from "../../lib/firstsKeepsake";
+import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
+import { openNoticeDetail } from "../../lib/noticeNavigation";
 import type { Milestone } from "../../types";
 import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import { practiceText, type PracticeQuote, type PracticeWhyReason } from "../loop/PracticeCard";
@@ -45,13 +47,15 @@ import { planToday } from "../overview/todayModules";
  * CLINICAL FIREWALL: no count, %, streak, score or verdict; the dose is
  * logged, never scored; the only age sentence is the Notice card's sourced line.
  */
-export function useNowLoop({ aiPracticeId, openPhotoCapture, now }: { aiPracticeId?: string; openPhotoCapture: () => void; now: Date }) {
+export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openPhotoCapture: () => void; now: Date }) {
   const {
     milestones, behaviorLogs, childProfile, playLogs, actionLoop, activeTodayAction,
-    setMilestoneObservation, restoreMilestone, recordPracticeDose, removeTodayAction, addMoment,
+    recordPracticeDose, removeTodayAction, addMoment,
   } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
+  const notices = useNoticeActions();
+  const keepsakes = notices.keepsakes;
 
   // ── The evening door: bedtimeDoorOpen is the ONE evening rule (18:00 on, or
   //    the family's own wind-down hour); the parent may open Tonight early. ──
@@ -168,40 +172,41 @@ export function useNowLoop({ aiPracticeId, openPhotoCapture, now }: { aiPractice
     }, noticeProgram)),
     [milestones, comparisonMonths, coverage, now, pick, noticeProgram],
   );
-  const [heldNotice, setHeldNotice] = useState<{ id: string; shelf: ShelfId }[]>([]);
-  const [beforeNotice, setBeforeNotice] = useState<Record<string, Milestone>>({});
+  const [heldNotice, setHeldNotice] = useState<{ scope: string; rows: { id: string; shelf: ShelfId }[] }>({ scope: notices.scopeKey, rows: [] });
   const noticeCards = useMemo(() => {
-    const held = heldNotice
+    const held = (heldNotice.scope === notices.scopeKey ? heldNotice.rows : [])
       .map((h) => ({ shelf: h.shelf, milestone: milestones.find((m) => m.id === h.id) }))
       .filter((h): h is { shelf: ShelfId; milestone: Milestone } => !!h.milestone);
     const fresh = noticePicks.filter((p) => !held.some((h) => h.milestone.id === p.milestone.id || h.shelf === p.shelf));
-    return [...held, ...fresh];
-  }, [heldNotice, noticePicks, milestones]);
+    return [...held, ...fresh].slice(0, 3);
+  }, [heldNotice, notices.scopeKey, noticePicks, milestones]);
   // No practice for the window → the lead is the thinnest shelf's Notice card.
   const slotNotice = pick ? null : noticeCards[0] ?? null;
   const blockNotices = (pick ? noticeCards : noticeCards.slice(1)).slice(0, 2);
-  const keepsakes = useChildCollection<KeepsakeDoc>(childProfile.id, "keepsakes");
-  const noticeHandlers = (m: Milestone, shelf: ShelfId) => ({
-    onAnswer: (status: ObserveStatus) => {
-      setHeldNotice((p) => (p.some((h) => h.id === m.id) ? p : [...p, { id: m.id, shelf }]));
-      setBeforeNotice((p) => ({ ...p, [m.id]: m }));
-      setMilestoneObservation(m.id, status);
-    },
-    onWhen: (when: ObservedWhen) => setMilestoneObservation(m.id, "yes", { when }),
-    onKeepQuote: (note: string) => {
-      const at = new Date().toISOString();
-      void keepsakes.upsert(keepsakeDoc({ milestoneId: m.id, note: note.slice(0, 280), noticedOn: localDay(new Date()), createdAt: at, updatedAt: at }));
-    },
-    onKeepPhoto: openPhotoCapture,
-    onUndo: () => {
-      const previous = beforeNotice[m.id];
-      if (previous) restoreMilestone(previous);
-    },
-  });
+  const noticeHandlers = (m: Milestone, _shelf: ShelfId) => {
+    const actions = notices.forMilestone(m);
+    return {
+      ...actions,
+      onAnswer: (status: ObserveStatus) => {
+        // Hold the offered order, including its siblings. Answering the second
+        // object must not move it ahead of the one the parent just read.
+        setHeldNotice({
+          scope: notices.scopeKey,
+          rows: noticeCards.map(card => ({ id: card.milestone.id, shelf: card.shelf })),
+        });
+        return actions.onAnswer(status);
+      },
+      onOpen: () => openNoticeDetail(childProfile.id, m.id),
+      onDetails: () => openNoticeDetail(childProfile.id, m.id),
+      onKeepPhoto: () => openNoticeDetail(childProfile.id, m.id, { editEvidence: true }),
+    };
+  };
 
   // ── B-LOOP-10: Tonight, each step through its named seam. ──
   const dayQuestion = useMemo(() => tonightDayQuestion(behaviorLogs, now), [behaviorLogs, now]);
   const tonightNotice = noticeCards.find((c) => !pick || c.shelf !== pick.shelf) ?? null;
+  const tonightNoticeActions = tonightNotice ? noticeHandlers(tonightNotice.milestone, tonightNotice.shelf) : undefined;
+  const quoteAttempt = useRef<{ scope: string; text: string; doc: KeepsakeDoc } | null>(null);
   const storyFits = HERO_STORIES.some((s) => storyFitsChild(s, childProfile));
   const tonightHasQuestions = !!pick || behaviorLogs.length + playLogs.length > 0 || !!tonightNotice;
   // Tonight asks "Did you try it today?" only about a practice the parent SAW.
@@ -215,6 +220,7 @@ export function useNowLoop({ aiPracticeId, openPhotoCapture, now }: { aiPractice
     practiceShown: pick ? practiceShown : true,
   });
   const tonight = {
+    scopeKey: notices.scopeKey,
     childName: (childProfile.name || "").split(" ")[0],
     gender: childProfile.gender,
     practice: pick,
@@ -227,22 +233,36 @@ export function useNowLoop({ aiPracticeId, openPhotoCapture, now }: { aiPractice
       recordPracticeDose(tonightOutcomeEntry(row, outcome));
     },
     onWhatHappened: async (text: string) => {
-      if (!pick) return;
+      if (!pick) return false;
       // The seam's own toast is this write's one failure message (Tonight has no inline error).
-      if (!await addMoment(text, { shelf: pick.shelf, ...(pick.milestone ? { milestoneId: pick.milestone.id } : {}) })) return;
+      if (!await addMoment(text, {
+        shelf: pick.shelf, ...(pick.milestone ? { milestoneId: pick.milestone.id } : {}),
+        requireAcknowledgement: true, retryKey: `tonight:${dayKey(now)}:${pick.practice.id}`, isCurrent: notices.isCurrent,
+      })) return false;
       // B-LOOP-13: the line also lands on the day's dose row (tomorrow's choice).
       const row = tonightLineEntry(dose ?? practiceDoseEntry(pick, "did", childProfile.id, sayText), text);
       if (row) recordPracticeDose(row);
+      return true;
     },
     dayQuestion,
-    onQuote: (text: string) => {
-      const doc = quoteKeepsakeDoc(text);
-      if (doc) void keepsakes.upsert(doc);
+    onQuote: async (text: string) => {
+      if (!notices.isCurrent()) throw new Error("The child changed");
+      const previous = quoteAttempt.current;
+      const built = quoteKeepsakeDoc(text);
+      if (!built) throw new Error("Add words before keeping the moment");
+      const doc = previous?.scope === notices.scopeKey
+        ? previous.text === text ? previous.doc : { ...built, id: previous.doc.id, createdAt: previous.doc.createdAt, noticedOn: previous.doc.noticedOn }
+        : built;
+      quoteAttempt.current = { scope: notices.scopeKey, text, doc };
+      await keepsakes.upsert(doc, { requireAcknowledgement: true });
+      if (!notices.isCurrent()) throw new Error("The child changed");
+      quoteAttempt.current = null;
     },
     notice: tonightNotice,
-    onNotice: (status: ObserveStatus) => { if (tonightNotice) noticeHandlers(tonightNotice.milestone, tonightNotice.shelf).onAnswer(status); },
-    onNoticeWhen: (when: ObservedWhen) => { if (tonightNotice) setMilestoneObservation(tonightNotice.milestone.id, "yes", { when }); },
-    onNoticeUndo: () => { if (tonightNotice) noticeHandlers(tonightNotice.milestone, tonightNotice.shelf).onUndo(); },
+    noticeActions: tonightNoticeActions,
+    onNotice: (status: ObserveStatus) => tonightNoticeActions?.onAnswer(status),
+    onNoticeWhen: (when: ObservedWhen) => tonightNoticeActions?.onWhen(when),
+    onNoticeUndo: tonightNoticeActions?.onUndo,
     weeklyGoals,
     onGoalScore: (goalId: string, value: Parameters<typeof scoreGoal>[1]) => {
       const goal = familyGoals.items.find((g) => g.id === goalId);

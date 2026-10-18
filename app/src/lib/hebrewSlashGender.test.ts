@@ -439,7 +439,9 @@ describe("P1-NEXTLEVEL critic r2 (milestones · G0) — every Growth screen pass
   // #/milestones rendered the slash forms in the hero and all three rows.
   // Parity 9 Oct: the Growth leaf's milestone text lives in the portrait's watch row.
   // v3 F-CHILD-1: the Milestones page's parts print milestone text too.
-  for (const file of ["tabs/MilestonesTab.tsx", "companion/PortraitWatchRow.tsx", "companion/ChildPortrait.tsx", "companion/MilestoneAreas.tsx", "companion/AreaRowDetail.tsx", "companion/PortraitCards.tsx"]) {
+  // B-GROWTH-44: MilestoneAreas routes to the shared detail; the latter now
+  // owns the evidence editor's title and must carry the same gender options.
+  for (const file of ["tabs/MilestonesTab.tsx", "companion/PortraitWatchRow.tsx", "companion/ChildPortrait.tsx", "companion/NoticeObjectDetail.tsx", "companion/AreaRowDetail.tsx", "companion/PortraitCards.tsx"]) {
     it(`${file}: no milestoneText( call lacks the gender opts`, async () => {
       const fs = await import("node:fs");
       const path = await import("node:path");

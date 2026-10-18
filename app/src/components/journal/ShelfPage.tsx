@@ -7,7 +7,8 @@ import { shelfDef, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import type { ObserveStatus, ObservedWhen } from "../../lib/milestones/observe";
 import { practiceTitle } from "../../lib/practice/practiceTitle";
 import { practiceText } from "../loop/PracticeCard";
-import NoticeCard from "../loop/NoticeCard";
+import NoticeCard, { type NoticeCardProps } from "../loop/NoticeCard";
+import type { NoticeActionProps } from "../../hooks/useNoticeActions";
 // B-DESIGN-04: the 44 px duotone glyph (its white chip on the header wash) + the shelf tone.
 import { ShelfGlyph, shelfTone } from "../ui/ShelfGlyph";
 import { SectionHead } from "../ui/SectionHead";
@@ -34,12 +35,12 @@ export interface ShelfDayGroup {
   rows: ShelfEntryRow[];
 }
 
-export interface ShelfNoticeHandlers {
-  onAnswer: (status: ObserveStatus) => void;
-  onWhen?: (when: ObservedWhen) => void;
-  onKeepQuote?: (text: string) => void;
+export interface ShelfNoticeHandlers extends Partial<Omit<NoticeActionProps, "onAnswer" | "onWhen" | "onKeepQuote" | "onUndo">> {
+  onAnswer: (status: ObserveStatus) => void | Promise<unknown>;
+  onWhen?: (when: ObservedWhen) => void | Promise<unknown>;
+  onKeepQuote?: (text: string) => void | Promise<unknown>;
   onKeepPhoto?: () => void;
-  onUndo?: () => void;
+  onUndo?: NoticeCardProps["onUndo"];
 }
 
 export interface ShelfPageProps {

@@ -1,0 +1,98 @@
+/* One parent observation object; the area's approved emblem is orientation,
+   never evidence or a response score. All layout follows reading direction. */
+.notice-object {
+  min-inline-size: 0;
+  color: var(--arbor-ink);
+  container-type: inline-size;
+}
+.notice-object--card {
+  padding: 20px;
+  border-radius: var(--r-lg);
+  background: var(--arbor-paper-elevated);
+}
+.notice-object--row { padding-block: 16px; }
+.notice-object--detail { padding: 0; }
+.notice-object-identity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px;
+  gap: 12px;
+  align-items: center;
+}
+.notice-object-heading { min-inline-size: 0; }
+.notice-object-shelf { display: flex; align-items: center; gap: 10px; margin-block-end: 10px; color: var(--arbor-muted); }
+.notice-object-art {
+  inline-size: 88px;
+  block-size: 88px;
+  object-fit: contain;
+  border-radius: var(--r);
+  background: var(--arbor-paper-elevated);
+}
+.notice-object-title {
+  margin: 0;
+  color: var(--arbor-ink);
+  font-family: var(--font-display);
+  font-size: var(--t-title);
+  font-weight: 600;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+}
+.notice-object-meaning { margin-block-start: 12px; color: var(--arbor-ink-soft); line-height: 1.5; }
+.notice-object-source { display: flex; align-items: flex-start; gap: 6px; margin-block-start: 10px; color: var(--arbor-muted); line-height: 1.45; }
+.notice-object-source > .msr { flex: none; margin-block-start: 3px; }
+.notice-object-response { margin-block-start: 18px; }
+.notice-object-prompt { color: var(--arbor-muted); font-weight: 500; }
+.notice-object-answer-summary { display: flex; flex-wrap: wrap; align-items: center; column-gap: 10px; margin-block-end: 6px; }
+.notice-object-answer-summary > span { color: var(--arbor-muted); }
+.notice-object-answer-summary > strong { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+.notice-object-answer-summary > button { margin-inline-start: auto; }
+.notice-object-saved { display: grid; gap: 14px; }
+.notice-object-when {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 14px;
+  border-radius: 999px;
+  border: 1px solid var(--arbor-rule-strong);
+  color: var(--arbor-ink);
+  background: var(--arbor-paper-deep);
+  font-weight: 600;
+}
+.notice-object-when[aria-pressed="true"] { color: var(--arbor-clay); background: var(--arbor-clay-soft); border-color: var(--arbor-clay); }
+.notice-object-keep { margin-block-start: 16px; }
+.notice-object-quote-form { display: flex; gap: 8px; margin-block-start: 6px; }
+.notice-object-quote-form input {
+  min-inline-size: 0;
+  inline-size: 100%;
+  flex: 1;
+  padding-inline: 12px;
+  border-radius: var(--r);
+  border: 1px solid var(--arbor-rule-strong);
+  background: var(--arbor-paper);
+  color: var(--arbor-ink);
+}
+.notice-object-words { margin-block-start: 16px; padding: 14px; border-radius: var(--r); background: var(--arbor-paper); }
+.notice-object-words > p { color: var(--arbor-muted); margin-block-end: 6px; }
+.notice-object-words blockquote {
+  padding-inline-start: 12px;
+  border-inline-start: 2px solid var(--arbor-ink);
+  color: var(--arbor-ink-soft);
+  font-family: var(--font-editorial);
+  font-size: var(--t-md);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.notice-object-words figcaption { margin-block-start: 6px; }
+.notice-object-link { display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--arbor-clay); font-size: var(--t-sm); font-weight: 600; padding-inline: 4px; }
+.notice-object button:disabled { cursor: not-allowed; }
+.notice-object button:disabled:not([aria-pressed="true"]) { color: var(--arbor-muted); }
+.notice-object-status:not(:empty), .notice-object-error { margin-block-start: 10px; color: var(--arbor-muted); line-height: 1.5; }
+.notice-object-error { color: var(--arbor-ink); padding-inline-start: 10px; border-inline-start: 2px solid var(--arbor-rule-strong); }
+.notice-object-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin-block-start: 16px; padding-block-start: 10px; border-block-start: 1px solid var(--arbor-rule); }
+.notice-object-footer > span { color: var(--arbor-muted); }
+.now-plan-body .notice-object--card { box-shadow: none; border-radius: 0; background: transparent; }
+@container (max-width: 280px) {
+  .notice-object-identity { grid-template-columns: minmax(0, 1fr) 64px; gap: 8px; }
+  .notice-object-art { inline-size: 64px; block-size: 64px; }
+  .notice-object-quote-form { flex-wrap: wrap; }
+  .notice-object-quote-form input { flex-basis: 100%; }
+}

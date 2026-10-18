@@ -39,9 +39,13 @@ describe("every loop seam has a live caller", () => {
     expect(loop).toContain("if (row) recordPracticeDose(row);");
   });
   it("notice: observations, undo and kept words (B-LOOP-04)", () => {
-    expect(loop).toContain("setMilestoneObservation(m.id, status);");
-    expect(loop).toContain("restoreMilestone(previous)");
-    expect(loop).toContain("keepsakes.upsert(keepsakeDoc(");
+    expect(loop).toContain("const notices = useNoticeActions();");
+    expect(loop).toContain("const actions = notices.forMilestone(m);");
+    expect(loop).toContain("return actions.onAnswer(status);");
+    const shared = read("hooks/useNoticeActions.ts");
+    expect(shared).toContain('setMilestoneObservation(milestone.id, status, { now: at, source: "parent_typed" }, ACKNOWLEDGED)');
+    expect(shared).toContain("restoreMilestone(structuredClone(previous), ACKNOWLEDGED)");
+    expect(shared).toContain("collection.upsert(doc, ACKNOWLEDGED)");
   });
   it("the program: its week's watch-for first, and the week-end goal marks (B-PROG-03/07)", () => {
     expect(loop).toContain("selectNoticeWithProgram(");

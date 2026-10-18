@@ -29,6 +29,7 @@ vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
   setActiveTab: state.setActiveTab, seedCoach: () => undefined, openCaptureSheet: () => undefined, requestJournalFocus: () => undefined,
   pendingMemoryItems: [],
 }) }));
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { uid: "account-invented" } }) }));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return { useLanguage: () => ({ uiLang: state.lang, t: (key: string, vars?: Record<string, string | number>) => translate(state.lang, key, vars) }) };

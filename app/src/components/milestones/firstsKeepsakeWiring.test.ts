@@ -100,7 +100,9 @@ describe("the keepsake is reachable from the milestone the parent just marked", 
 describe("the photo is optional", () => {
   it("Save is gated on the validator, which never looks at the photo", () => {
     expect(sheet).toContain("const problem = validateKeepsake(draft, today)");
-    expect(sheet).toMatch(/disabled=\{Boolean\(problem\)\}/);
+    // The validator still gates content; in-flight writes/uploads additionally
+    // lock Save so a late photo or a second tap cannot overwrite that draft.
+    expect(sheet).toContain("disabled={Boolean(problem) || writing || uploading}");
     // NEGATIVE CONTROL: the shape that would make a photo mandatory.
     expect(sheet).not.toMatch(/disabled=\{[^}]*!photoUrl/);
     expect(sheet).not.toMatch(/if \(!photoUrl\) return;/);

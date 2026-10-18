@@ -3,6 +3,7 @@ import { doc, writeBatch } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../context/AuthContext";
 import AskSpecialist from "../sections/AskSpecialist";
+import NoticeCareTarget from "../companion/NoticeCareTarget";
 import { isIntakeProfession, type ExportAudience } from "../../consult/packet";
 import { visitForConsult } from "../../lib/today/dayCard";
 import { useHashQuery } from "../../hooks/useHashQuery";
@@ -66,13 +67,14 @@ export default function ConsultTab() {
   const { childProfile } = useArbor();
   const { user } = useAuth();
   const query = useHashQuery();
-  const scope = JSON.stringify([user?.uid ?? "local", childProfile.id, query.get("appointment")]);
+  const scope = JSON.stringify([user?.uid ?? "local", childProfile.id, query.get("appointment"), query.get("notice"), query.get("child")]);
   const owner = useRef({ scope, token: {} });
   if (owner.current.scope !== scope) owner.current = { scope, token: {} };
   const token = owner.current.token;
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const isOwnerCurrent = useCallback(() => mounted.current && owner.current.token === token, [token]);
+  if (query.has("notice")) return <NoticeCareTarget key={scope} query={query} />;
   return <ConsultContent key={scope} query={query} isOwnerCurrent={isOwnerCurrent} />;
 }
 

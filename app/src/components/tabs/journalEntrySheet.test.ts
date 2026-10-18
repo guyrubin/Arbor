@@ -52,7 +52,14 @@ describe("TJB-13 — the row is a control", () => {
   });
 
   it("every rendered row is given an open handler", () => {
-    expect(journal).toContain("onOpen={() => setOpenSignal(s)}");
+    expect(journal).toContain("onOpen={() => openRecord(s)}");
+    const open = /const openRecord = \(signal: TimelineSignal\) => \{[\s\S]*?\n  \};/.exec(journal)?.[0] ?? "";
+    expect(open).toContain('signal.kind === "milestone"');
+    expect(open).toContain("signal.milestoneRef?.id");
+    expect(open).toContain("milestones.some((m) => m.id === milestoneId)");
+    expect(open).toContain("openNoticeDetail(childProfile.id, milestoneId)");
+    // Every other source retains the existing entry sheet/editor.
+    expect(open).toContain("else setOpenSignal(signal)");
   });
 });
 

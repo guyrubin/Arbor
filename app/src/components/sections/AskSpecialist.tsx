@@ -25,6 +25,7 @@ import {
   parentGoalPreview,
   type ExportAudience,
   type IntakeProfession,
+  type ConsultPacket,
 } from "../../consult/packet";
 import { intakeQuestionLines, readIntakeQuestionsText } from "../../consult/intakeDraft";
 import { SPLIT_CLINICIAN_AUDIENCES, SPLIT_CLINICIAN_PRESETS, isSplitClinicianAudience, type SplitClinicianAudience } from "../../content/consultPresets";
@@ -132,7 +133,7 @@ const BRING_GROUPS: readonly { id: string; icon: string; labelKey: string; secti
 
 /** W2-CAREPRO r1: ConsultTab hands its route stamp here; it lands on the
  *  selected audience chip (one 44 px button in step 1), never on a wrapper. */
-export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard, excludeTeacher = false, landing = false, head }: {
+export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake: intakeProp, onAudienceChange, egressGuard, excludeTeacher = false, landing = false, head, noticePacket, noticeRevision }: {
   primaryMoveStamp?: Record<string, string>;
   /** v3 EXTRA-CARE: #/consult, the Care landing. The three steps read
    *  "Choose what to bring" (who it is for, then what to bring as chips,
@@ -144,6 +145,9 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
    *  up from step 2 into that head, so the card reads visit, since, then
    *  steps 1-3 with nothing in between. */
   head?: React.ReactNode;
+  /** B-GROWTH-44: exact, confirmed observation sources; same packet egress. */
+  noticePacket?: ConsultPacket;
+  noticeRevision?: object;
   /** v3 FEAT-09: the Care summary pill (#/handoff) builds the professional
    *  summary only. The teacher chip is left out (School brief is its own
    *  pill), and a stored, anchored or prefilled teacher audience starts at
@@ -166,14 +170,21 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   const reduceMotion = useReducedMotion();
   const printPdf = useConsultPdf();
   const firstName = (childProfile.name || "your child").split(" ")[0];
-  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [excluded, setExcluded] = useState<Set<string>>(() => new Set(noticePacket?.sections.flatMap(section => section.items.map(item => item.id)) ?? []));
   const [reviewed, setReviewed] = useState(false);
   const egress = useConsultEgress(egressGuard);
   const approval = useRef<object | null>(null);
+  const noticeSelection = useRef(noticeRevision);
+  if (noticeSelection.current !== noticeRevision) {
+    noticeSelection.current = noticeRevision;
+    approval.current = null;
+    setReviewed(false);
+    setExcluded(new Set(noticePacket?.sections.flatMap(section => section.items.map(item => item.id)) ?? []));
+  }
   const [previewAll, setPreviewAll] = useState(false);
 
   // Step 1: the audience (= the preset); remembered per device.
-  const allowed = (a: ExportAudience) => !(excludeTeacher && a === "teacher");
+  const allowed = (a: ExportAudience) => !((excludeTeacher || noticePacket) && a === "teacher");
   const [audience, setAudienceState] = useState<ExportAudience>(() => {
     const initial = intakeProp ? INTAKE_AUDIENCE[intakeProp] : anchorAudience ?? readStoredAudience();
     return allowed(initial) ? initial : DEFAULT_EXPORT_AUDIENCE;
@@ -224,7 +235,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // the parent turns it on. Off by default and never auto-included: inclusion
   // is held by the topic's id, so a different question selected meanwhile is
   // off again. It leaves only through the same reviewed gate and egress.
-  const familyTopic = activeFamilyTopic && activeFamilyTopic.status === "active" && activeFamilyTopic.childId === childProfile.id ? activeFamilyTopic : null;
+  const familyTopic = !noticePacket && activeFamilyTopic && activeFamilyTopic.status === "active" && activeFamilyTopic.childId === childProfile.id ? activeFamilyTopic : null;
   const [topicOnId, setTopicOnId] = useState<string | null>(null);
   const topicIncluded = !!familyTopic && topicOnId === familyTopic.id;
   const familyQuestionLine = familyTopic && topicIncluded ? t("elev.consult.topic.line", { title: familyTopic.title }) : "";
@@ -258,6 +269,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // the reason. The reviewed gate starts unticked, as ever.
   useEffect(() => {
     if (pendingConsultPrefill == null) return;
+    // An unrelated static prefill cannot masquerade as this selected source.
+    if (noticePacket) { consumeConsultPrefill(); return; }
     const patch = resolveConsultPrefill(pendingConsultPrefill);
     if (patch.reason !== undefined) setReason(patch.reason);
     if (patch.note !== undefined) setVisionNote(patch.note);
@@ -352,11 +365,13 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     }) : null),
     [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items, intakeProgram, familyGoalsCol.items, programRows.items]
   );
-  const packet = useMemo(() => intakePacket ?? presetPacket(audience, fullPacket), [intakePacket, audience, fullPacket]);
+  const packet = useMemo(() => noticePacket ? presetPacket(audience, { ...noticePacket,
+    sections: [...fullPacket.sections.filter(section => section.id === "reason"), ...noticePacket.sections],
+  }) : intakePacket ?? presetPacket(audience, fullPacket), [noticePacket, intakePacket, audience, fullPacket]);
   // The intake packet is already scoped to its profession; it leaves through
   // the whole-packet serializer ("self": clinician ceiling, forbidden tokens,
   // no %), never a preset cap that would drop its sections.
-  const egressAudience: ExportAudience = intakePacket ? "self" : audience;
+  const egressAudience: ExportAudience = !noticePacket && intakePacket ? "self" : audience;
 
   // W2-CAREPRO c2 r1: "What changed" is measured from a NAMED anchor — the
   // last visit with this audience's profession (with what they said), else
@@ -413,7 +428,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     milestones: t(sinceCounts.milestones === 1 ? "elev.reports.lead.milestones.one" : "elev.reports.lead.milestones.other", { n: sinceCounts.milestones }),
     date: sinceIso ? fmtDay(sinceIso, uiLang) : "",
   };
-  const sinceSentence = anchor.kind === "visit"
+  const sinceSentence = noticePacket ? null : anchor.kind === "visit"
     ? t("elev.carehonesty.consult.since.visit", { ...countVars, name: firstName, profession: lower(t(`elev.careNet.appt.profession.${anchor.profession}`)) })
     : anchor.kind === "share"
       ? t("elev.carehonesty.consult.since.share", { ...countVars, audience: lower(t(`elev.carehonesty.consult.audience.${audience}`)) })
@@ -426,12 +441,13 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // W2-CAREPRO c2 r1: read where capture writes (parentWords: notes, else a
   // Moment's trigger) — a notes-only filter never rendered for real moments.
   const sinceMoment = useMemo(() => {
+    if (noticePacket) return null;
     const since = countFromIso ? new Date(countFromIso).getTime() : -Infinity;
     const withWords = (behaviorLogs ?? [])
       .filter((l) => parentWords(l) && new Date(l.timestamp).getTime() > since)
       .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
     return withWords[0] ? { quote: parentWords(withWords[0]), at: withWords[0].timestamp } : null;
-  }, [behaviorLogs, countFromIso]);
+  }, [noticePacket, behaviorLogs, countFromIso]);
   // W2-CAREPRO r2: the stamp's act — build the summary and land on step 3.
   const buildSummary = () => {
     const target = document.getElementById(isEmpty ? "consult-empty" : "consult-review-export");
@@ -448,8 +464,11 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   // "nothing beyond about" — the authored empty state can finally mount.
   const isEmpty = isConsultPacketEmpty(packet);
   const includedCount = countIncluded(packet, excluded);
-  const toggle = (id: string) =>
+  const toggle = (id: string) => {
+    approval.current = null;
+    setReviewed(false);
     setExcluded((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
   // v3 EXTRA-CARE: step 1's "what to bring" chips on the Care landing. Each
   // chip is a group of the packet's own sections, shown only when the packet
   // holds it, and turns all of that group's lines in or out of the same
@@ -820,7 +839,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           id="consult-reason"
           data-testid="consult-reason-input"
           value={reason}
-          onChange={(e) => setReason(e.target.value)}
+          onChange={(e) => { approval.current = null; setReviewed(false); setReason(e.target.value); }}
           rows={2}
           dir="auto"
           placeholder={t("elev.learnCare.reason.placeholder")}
@@ -830,7 +849,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
         {reason.trim() === "" && (
           <p className="text-xs mt-1.5" style={{ color: MUTED }}>{t("elev.learnCare.reason.missing")}</p>
         )}
-        {preparedQuestions.length > 0 && (
+        {!noticePacket && preparedQuestions.length > 0 && (
           <p className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
             <Icon name="check_circle" size={14} fill={1} /> {t("elev.learnCare.appt.questions.toPacket")}
           </p>
@@ -902,7 +921,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           <p className="text-xs leading-relaxed mt-1" style={{ color: MUTED }}>{t("consult.visionNote.hint")}</p>
           <textarea
             value={visionNote}
-            onChange={(e) => setVisionNote(e.target.value)}
+            onChange={(e) => { approval.current = null; setReviewed(false); setVisionNote(e.target.value); }}
             aria-label={t("consult.visionNote.title")}
             rows={4}
             dir="auto"

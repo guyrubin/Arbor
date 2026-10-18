@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-const h = vi.hoisted(() => ({ cursor: 0, slots: [] as any[], effects: [] as (() => void)[], remote: true, disposed: false, listeners: [] as any[], write: vi.fn(), store: new Map<string, string>(), storageFail: false }));
+const h = vi.hoisted(() => ({ cursor: 0, slots: [] as any[], effects: [] as (() => void)[], remote: true, disposed: false, listeners: [] as any[], write: vi.fn(), remove: vi.fn(), store: new Map<string, string>(), storageFail: false }));
 vi.mock("react", () => ({
   useState: (initial: any) => { const i = h.cursor++; if (!(i in h.slots)) h.slots[i] = typeof initial === "function" ? initial() : initial; return [h.slots[i], (next: any) => { if (h.disposed) throw Error("setState after unmount"); h.slots[i] = typeof next === "function" ? next(h.slots[i]) : next; }]; },
   useRef: (initial: any) => { const i = h.cursor++; return h.slots[i] ??= { current: initial }; },
@@ -13,7 +13,7 @@ vi.mock("../lib/syncStore", () => ({ clearSyncError: vi.fn(), reportSyncError: v
 vi.mock("firebase/firestore", () => ({
   collection: (_db: unknown, path: string) => ({ path }), doc: (_db: unknown, path: string, id: string) => ({ path, id }),
   orderBy: vi.fn(), limit: vi.fn(), query: (q: unknown) => q, setDoc: (...args: unknown[]) => h.write(...args),
-  deleteDoc: vi.fn(), writeBatch: vi.fn(),
+  deleteDoc: (...args: unknown[]) => h.remove(...args), writeBatch: vi.fn(),
   onSnapshot: (q: unknown, ...args: any[]) => { const options = typeof args[0] === "function" ? null : args.shift(); const item = { q, options, next: args[0], fail: args[1], stop: vi.fn() }; h.listeners.push(item); return item.stop; },
 }));
 import { useChildCollection } from "./useChildCollection";
@@ -21,7 +21,7 @@ let child = "a";
 const render = (trackConfirmation = true) => { h.cursor = 0; const result = useChildCollection<{ id: string }>(child, "actionLoops", { trackConfirmation }); h.effects.splice(0).forEach(fn => fn()); return result; };
 const snapshot = (id: string, fromCache: boolean, hasPendingWrites: boolean) => ({ empty: false, docs: [{ id, data: () => ({}) }], metadata: { fromCache, hasPendingWrites } });
 function deferred() { let resolve!: () => void, reject!: (error: unknown) => void; const promise = new Promise<void>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
-beforeEach(() => { h.cursor = 0; h.slots = []; h.effects = []; h.remote = true; h.listeners = []; h.disposed = false; h.store.clear(); h.storageFail = false; child = "a"; h.write = vi.fn(); vi.stubGlobal("navigator", { onLine: true }); vi.stubGlobal("localStorage", { getItem: (key: string) => h.store.get(key) ?? null, setItem: (key: string, value: string) => { if (h.storageFail) throw Error("quota"); h.store.set(key, value); } }); });
+beforeEach(() => { h.cursor = 0; h.slots = []; h.effects = []; h.remote = true; h.listeners = []; h.disposed = false; h.store.clear(); h.storageFail = false; child = "a"; h.write = vi.fn(); h.remove = vi.fn(); vi.stubGlobal("navigator", { onLine: true }); vi.stubGlobal("localStorage", { getItem: (key: string) => h.store.get(key) ?? null, setItem: (key: string, value: string) => { if (h.storageFail) throw Error("quota"); h.store.set(key, value); } }); });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe("opt-in truthful record acknowledgement", () => {
@@ -56,5 +56,22 @@ describe("opt-in truthful record acknowledgement", () => {
     h.remote = false; render(); const collection = render(); await collection.upsert({ id: "record" }, { awaitServer: true });
     expect(h.store.get("arbor.actionLoops.a")).toContain('"record"');
     h.storageFail = true; await expect(collection.upsert({ id: "other" }, { awaitServer: true })).rejects.toThrow("quota");
+  });
+  it("an acknowledged removal rejects queued-only success and a late result for another child", async () => {
+    vi.useFakeTimers(); const one = deferred(); h.remove.mockReturnValueOnce(one.promise);
+    const deleting = render().remove("record", { requireAcknowledgement: true });
+    const unconfirmed = expect(deleting).rejects.toThrow("not confirmed");
+    await vi.advanceTimersByTimeAsync(4000); await unconfirmed; one.resolve();
+    const two = deferred(); h.remove.mockReturnValueOnce(two.promise);
+    const pending = render().remove("record", { requireAcknowledgement: true });
+    child = "b"; render();
+    const stale = expect(pending).rejects.toThrow("child changed"); two.resolve(); await stale;
+    expect(h.remove.mock.calls[0][0]).toMatchObject({ path: "users/parent/children/a/actionLoops", id: "record" });
+  });
+  it("sandbox removal retains the record when local persistence fails", async () => {
+    h.remote = false; render(); await render().upsert({ id: "record" });
+    h.storageFail = true;
+    await expect(render().remove("record", { requireAcknowledgement: true })).rejects.toThrow("quota");
+    expect(render().items).toEqual([{ id: "record" }]);
   });
 });

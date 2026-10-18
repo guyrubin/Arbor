@@ -32,6 +32,9 @@ import ToneSheet, { toneLabel } from "../coach/ToneSheet";
 import ValuePreview from "../billing/ValuePreview";
 import { ShareButton } from "../ui/ShareButton";
 import CompanionComposer from "../companion/CompanionComposer";
+import NoticeTalkReview, { type NoticeTalkController } from "../companion/NoticeTalkReview";
+import { clearNoticeTalk, readNoticeTalk, useNoticeTalkRequest } from "../../lib/noticeHandoff";
+import { NOTICE_HANDOFF_COPY } from "../companion/noticeHandoffCopy";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import { screenForImmediateEscalation } from "../../safety/escalation";
 import type { ComposerAttachment } from "../../lib/companionAttachments";
@@ -187,6 +190,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // Talk panel: nothing sits between the panel header and the thread.
   const { toast } = useToast();
   const { aiLang, t, uiLang } = useLanguage();
+  const noticeTalk = useNoticeTalkRequest();
+  const noticeTalkController = useRef<NoticeTalkController | null>(null);
   const childFirst = (childProfile.name || "").split(" ")[0];
   const reducedMotion = usePrefersReducedMotion();
 
@@ -318,6 +323,20 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       return;
     }
     setAiFailure(null);
+    const pendingNotice = readNoticeTalk();
+    const question = customPrompt ?? chatInput;
+    // Immediate-help messages keep the governed existing route, without any
+    // unreviewed source attached. A normal handoff requires the current review.
+    if (pendingNotice && !screenForImmediateEscalation({ message: question })) {
+      const prepared = noticeTalkController.current?.request === pendingNotice ? noticeTalkController.current.prepare(question) : null;
+      if (!prepared) { toast(NOTICE_HANDOFF_COPY[uiLang === "he" ? "he" : "en"].reviewNeeded, "error"); return false; }
+      const sent = await sendToCoach(prepared.message, { ...opts, isCurrent: prepared.isCurrent });
+      if (sent) {
+        setChatInput(current => current === chatInput ? "" : current);
+        clearNoticeTalk(pendingNotice);
+      }
+      return sent;
+    }
     return sendToCoach(customPrompt, opts);
   };
   const handleCouncilSend = (customPrompt?: string, opts?: { answerIndex?: number }) => {
@@ -326,6 +345,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       return;
     }
     setAiFailure(null);
+    if (readNoticeTalk()) { toast(NOTICE_HANDOFF_COPY[uiLang === "he" ? "he" : "en"].reviewNeeded, "error"); return; }
     return convenceCouncil(customPrompt, opts);
   };
 
@@ -757,6 +777,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     const action = voiceChipAction(voicePhase, Boolean(liveCtlRef.current));
     if (action === "interrupt" && voiceOnRef.current) { bargeInVoice(); return; }
     if (action !== "start") { stopVoice(); return; }
+    if (readNoticeTalk()) { toast(NOTICE_HANDOFF_COPY[uiLang === "he" ? "he" : "en"].voice, "error"); return; }
     if (voiceReviewOpen) return;
     reviewAttemptRef.current = null;
     voiceSessionIdRef.current = "voice-session-" + Date.now() + "-" + (++voiceTurnRef.current);
@@ -1157,8 +1178,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               </button>
             </div>
           )}
+          {noticeTalk && <NoticeTalkReview key={noticeTalk.requestId} request={noticeTalk} question={chatInput} he={uiLang === "he"} controller={noticeTalkController} />}
           <CompanionComposer key={childProfile.id} childId={childProfile.id} conversationRevision={conversationRevision} language={uiLang === "he" ? "he" : "en"}
-            value={chatInput} onChange={setChatInput} busy={isChatLoading} visible={visible}
+            value={chatInput} onChange={value => { noticeTalkController.current?.revoke(); setChatInput(value); }} busy={isChatLoading} visible={visible}
             onSend={handleChatSend} onVoice={() => void toggleVoice()} voiceActive={voicePhase !== "off"} voiceLabel={voiceLabel}
             onKeep={(text, photo) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo })}
             onAttachmentsChange={setComposerFiles}

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DomainId } from "../../lib/domains/registry";
 import { DOMAIN_IDS } from "../../lib/domains/registry";
 import type { Observation } from "../../lib/observations";
@@ -106,6 +106,29 @@ describe("monthBuckets", () => {
   it("monthIdOf is local and rejects junk", () => {
     expect(monthIdOf(new Date(2026, 0, 31, 23))).toBe("2026-01");
     expect(monthIdOf("nope")).toBeNull();
+  });
+
+  it("keeps a chosen first-of-month day in that month west of UTC", () => {
+    vi.stubEnv("TZ", "America/Los_Angeles");
+    try {
+      const firstMorning = new Date(2026, 9, 1, 9);
+      expect(firstMorning.getTimezoneOffset()).toBeGreaterThan(0);
+      const saved: Observation = {
+        ...moment("2026-10-01", ["talking"]),
+        id: "keepsakes:october-first", origin: "keepsakes",
+        value: { type: "keepsake", milestoneId: "october-first", note: "Our words on October 1" },
+      };
+      expect(monthIdOf(saved.at)).toBe("2026-10");
+      // A full timestamp still follows its actual local month.
+      expect(monthIdOf("2026-10-01T00:00:00Z")).toBe("2026-09");
+      const full = monthBuckets([saved], CHILD, firstMorning, 0);
+      expect(full.map(bucket => bucket.id)).toEqual(["2026-10"]);
+      expect(full[0].observations).toEqual([saved]);
+      expect(filterByAreaMonth([saved], "talking", "2026-10")).toEqual([saved]);
+      expect(filterByAreaMonth([saved], "talking", "2026-09")).toEqual([]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 

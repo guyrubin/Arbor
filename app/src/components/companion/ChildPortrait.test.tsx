@@ -34,7 +34,8 @@ const state = vi.hoisted(() => ({
   keepUpsert: vi.fn((_doc: unknown): Promise<void> => Promise.resolve()),
   keepRemove: vi.fn((_id: string): Promise<void> => Promise.resolve()),
   sheet: null as null | { milestoneId: string; onSave: (draft: { milestoneId: string; note: string; noticedOn: string }) => Promise<unknown>; onRemove: () => Promise<unknown> },
-  setMilestoneObservation: vi.fn((_id: string, _status: Answer): Promise<void> | undefined => Promise.resolve()),
+  noticeTarget: null as null | { target: { childId: string; milestoneId: string }; editEvidence?: boolean },
+  setMilestoneObservation: vi.fn((_id: string, _status: Answer, _meta?: unknown, _options?: unknown): Promise<void> | undefined => Promise.resolve()),
   goToRoute: vi.fn(), celebrate: vi.fn(), markCelebrated: vi.fn(), clearWatchFocus: vi.fn(), writeWatchFocus: vi.fn(),
   keepState: false, cursor: 0, hooks: [] as unknown[],
   buttons: [] as { onClick?: () => void; "data-testid"?: string; "data-domain"?: string }[],
@@ -68,6 +69,12 @@ vi.mock("../../hooks/useChildCollection", async original => ({
     ? { items: [], upsert: state.keepUpsert, remove: state.keepRemove }
     : { items: name === "screenings" ? state.screenings : [], upsert: vi.fn(), remove: vi.fn() }),
 }));
+// The shared hook's acknowledged write / Undo lifecycle has its own suite.
+vi.mock("../../hooks/useNoticeActions", () => ({ useNoticeActions: () => ({
+  scopeKey: `account-a:${state.profile.id}`, confirmed: true, isCurrent: () => true,
+  keepsakes: { items: [], upsert: state.keepUpsert, remove: state.keepRemove },
+  forMilestone: (milestone: Milestone) => ({ onAnswer: (status: Answer) => state.setMilestoneObservation(milestone.id, status, {}, { requireAcknowledgement: true }) }),
+}) }));
 vi.mock("../../hooks/useHashQuery", async original => ({
   ...(await original<typeof import("../../hooks/useHashQuery")>()),
   useHashQuery: () => new URLSearchParams(state.query),
@@ -108,6 +115,12 @@ vi.mock("../describe/TellArborMore", () => ({ default: () => <div data-testid="t
 vi.mock("../milestones/FirstKeepsakeSheet", () => ({ default: (props: NonNullable<typeof state.sheet>) => {
   state.sheet = props;
   return <div data-testid="keepsake-sheet" data-milestone={props.milestoneId} />;
+} }));
+// This page owns the shared source route. Detail/evidence writes are exercised
+// without this boundary in NoticeObjectDetail.test.tsx.
+vi.mock("./NoticeObjectDetail", () => ({ default: (props: NonNullable<typeof state.noticeTarget>) => {
+  state.noticeTarget = props;
+  return <div data-testid="notice-detail" data-child={props.target.childId} data-milestone={props.target.milestoneId} />;
 } }));
 const capture = vi.hoisted(() => (type: unknown, props: unknown) => {
   if (!props || typeof props !== "object") return;
@@ -435,38 +448,32 @@ describe("v3 F-CHILD-1 — answers, firsts and the chosen watch", () => {
     const html0 = render();
     const id = html0.match(/data-testid="area-detail-skill" data-milestone="([^"]+)"/)![1];
     state.segments[0].onAnswer("yes");
-    expect(state.setMilestoneObservation).toHaveBeenCalledWith(id, "yes");
+    expect(state.setMilestoneObservation).toHaveBeenCalledWith(id, "yes", {}, { requireAcknowledgement: true });
     expect(state.celebrate).not.toHaveBeenCalled();
     await tick();
     expect(state.celebrate).toHaveBeenCalledOnce();
     expect(state.celebrate).toHaveBeenCalledWith({ kind: "milestone" });
     expect(state.markCelebrated).toHaveBeenCalledWith("child-a", id);
-    let html = render();
+    const html = render();
     expect(html).toContain('data-testid="area-detail-saved"');
     expect(html).not.toContain('data-testid="keepsake-sheet"');
     button("area-detail-keep")!.onClick!();
-    html = render();
-    expect(html).toContain(`data-testid="keepsake-sheet" data-milestone="${id}"`);
+    expect(state.goToRoute).toHaveBeenCalledWith("development", { child: "child-a", notice: id, evidence: "edit", return: null });
   });
 
-  it("the keepsake sheet's save and remove hand back the write itself, so its receipt waits for it", async () => {
-    state.keepState = true;
-    state.query = "area=talking";
-    const id = render().match(/data-testid="area-detail-skill" data-milestone="([^"]+)"/)![1];
-    state.segments[0].onAnswer("yes");
-    await tick();
-    render();
-    button("area-detail-keep")!.onClick!();
-    render();
-    expect(state.sheet?.milestoneId).toBe(id);
-    const stored = Promise.resolve();
-    state.keepUpsert.mockReturnValueOnce(stored);
-    expect(state.sheet!.onSave({ milestoneId: id, note: "  Said it twice  ", noticedOn: "2026-06-10" })).toBe(stored);
-    expect(state.keepUpsert).toHaveBeenCalledWith(expect.objectContaining({ id, milestoneId: id, note: "Said it twice", noticedOn: "2026-06-10" }));
-    const gone = Promise.resolve();
-    state.keepRemove.mockReturnValueOnce(gone);
-    expect(state.sheet!.onRemove()).toBe(gone);
-    expect(state.keepRemove).toHaveBeenCalledWith(id);
+  it("the canonical source route opens this child's exact shared detail and evidence editor", () => {
+    const id = NOW[0].id;
+    state.query = new URLSearchParams({ child: "child-a", notice: id, evidence: "edit" }).toString();
+    expect(render()).toContain(`data-testid="notice-detail" data-child="child-a" data-milestone="${id}"`);
+    expect(state.noticeTarget).toMatchObject({ target: { childId: "child-a", milestoneId: id }, editEvidence: true });
+    expect(state.setMilestoneObservation).not.toHaveBeenCalled();
+    expect(state.keepUpsert).not.toHaveBeenCalled();
+  });
+
+  it("a shared detail link cannot open the same catalogue id for a different child", () => {
+    state.query = new URLSearchParams({ child: "child-b", notice: NOW[0].id }).toString();
+    expect(render()).not.toContain('data-testid="notice-detail"');
+    expect(state.setMilestoneObservation).not.toHaveBeenCalled();
   });
 
   it("a skill already celebrated is not celebrated again; a failed write celebrates nothing", async () => {

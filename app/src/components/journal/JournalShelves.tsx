@@ -5,13 +5,14 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useObservations } from "../../hooks/useObservations";
 import { useTimeline } from "../../hooks/useTimeline";
 import { useChildCollection } from "../../hooks/useChildCollection";
+import { useNoticeActions } from "../../hooks/useNoticeActions";
 import { goToRoute } from "../../hooks/useHashQuery";
 import { PRACTICES } from "../../content/practices";
 import type { Milestone } from "../../types";
 import { SHELF_IDS, shelfDef, type ShelfId } from "../../lib/shelves/registry";
 import { shelfCoverage } from "../../lib/milestones/selectByShelf";
-import { localDay, type ObserveStatus, type ObservedWhen } from "../../lib/milestones/observe";
-import { keepsakeDoc, type KeepsakeDoc } from "../../lib/firstsKeepsake";
+import type { ObserveStatus } from "../../lib/milestones/observe";
+import { openNoticeDetail } from "../../lib/noticeNavigation";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { recentPracticeIds, todayDose } from "../../lib/practice/choosePractice";
 import { readTodayPin, writeTodayPin } from "../../lib/practice/todayPin";
@@ -56,7 +57,9 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
   intakeFor?: string | null;
   primaryMoveProps?: Record<string, string>;
 }) {
-  const { childProfile, milestones, behaviorLogs, actionLoop, setMilestoneObservation, restoreMilestone, requestJournalFocus, openHardMomentNow } = useArbor();
+  const { childProfile, milestones, behaviorLogs, actionLoop, requestJournalFocus, openHardMomentNow } = useArbor();
+  const notices = useNoticeActions();
+  const keepsakes = notices.keepsakes;
   const { t, uiLang } = useLanguage();
   const locale = uiLang === "he" ? "he" : "en";
   const tt = useMemo(() => withChildSignals(t, uiLang === "he"), [t, uiLang]);
@@ -94,25 +97,27 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
 
   // ── the shelf's next thing to notice (the B-LOOP-04 handlers, as on Today) ──
   const notice = useMemo(() => (shelf ? shelfNotice(milestones, comparisonMonths, shelf, now) : null), [shelf, milestones, comparisonMonths, now]);
-  const [held, setHeld] = useState<{ id: string; before: Milestone } | null>(null);
-  const shownNotice = held && held.id !== notice?.milestone.id ? milestones.find((m) => m.id === held.id) ?? null : notice?.milestone ?? null;
-  const keepsakes = useChildCollection<KeepsakeDoc>(childProfile.id, "keepsakes");
-  const noticeHandlers = (m: Milestone) => ({
-    onAnswer: (status: ObserveStatus) => {
-      setHeld((p) => (p?.id === m.id ? p : { id: m.id, before: m }));
-      setMilestoneObservation(m.id, status);
-    },
-    onWhen: (when: ObservedWhen) => setMilestoneObservation(m.id, "yes", { when }),
-    onKeepQuote: (note: string) => {
-      const at = new Date().toISOString();
-      void keepsakes.upsert(keepsakeDoc({ milestoneId: m.id, note: note.slice(0, 280), noticedOn: localDay(new Date()), createdAt: at, updatedAt: at }));
-    },
-    onKeepPhoto: () => setCapture({ open: true, mode: "photo" }),
-    onUndo: () => {
-      if (held?.id === m.id) restoreMilestone(held.before);
-      setHeld(null);
-    },
-  });
+  const [held, setHeld] = useState<{ id: string; scope: string; shelf: ShelfId | null } | null>(null);
+  const currentHeld = held?.scope === notices.scopeKey && held.shelf === shelf ? held : null;
+  const shownNotice = currentHeld && currentHeld.id !== notice?.milestone.id ? milestones.find((m) => m.id === currentHeld.id) ?? null : notice?.milestone ?? null;
+  const noticeHandlers = (m: Milestone) => {
+    const actions = notices.forMilestone(m);
+    return {
+      ...actions,
+      onAnswer: (status: ObserveStatus) => {
+        setHeld({ id: m.id, scope: notices.scopeKey, shelf });
+        return actions.onAnswer(status);
+      },
+      onOpen: () => openNoticeDetail(childProfile.id, m.id),
+      onDetails: () => openNoticeDetail(childProfile.id, m.id),
+      onKeepPhoto: () => openNoticeDetail(childProfile.id, m.id, { editEvidence: true }),
+      ...(actions.onUndo ? { onUndo: async () => {
+        const restored = await actions.onUndo!();
+        setHeld(previous => previous?.scope === notices.scopeKey && previous.id === m.id ? null : previous);
+        return restored;
+      } } : {}),
+    };
+  };
 
   // ── the shelf's entries: the journal engine (groupByDay), filtered by shelfOf only ──
   const groups = useMemo<ShelfDayGroup[]>(() => {
@@ -232,6 +237,10 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
     return out;
   }, [onGrid, coverage, tileWords, tileNotice, childProfile.id, childProfile.name, childProfile.gender, milestones, comparisonMonths, now, actionLoop, locale]);
   const openEntry = (id: string) => {
+    if (id.startsWith("milestone-") && milestones.some(milestone => `milestone-${milestone.id}` === id)) {
+      openNoticeDetail(childProfile.id, id.slice("milestone-".length));
+      return;
+    }
     goToRoute("journal", { view: "all" });
     requestJournalFocus(id);
   };

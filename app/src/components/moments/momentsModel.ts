@@ -44,14 +44,19 @@ export interface MonthBucket {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** The local calendar month of a timestamp, `YYYY-MM` (null when unparseable). */
+// A date chosen by the parent is a local calendar day, not midnight UTC.
+// Use the same interpretation for month labels, range bounds and ordering.
+const recordDate = (at: string | Date): Date => at instanceof Date ? at
+  : new Date(/^\d{4}-\d{2}-\d{2}$/.test(at) ? `${at}T00:00:00` : at);
+
+/** The local calendar month of a timestamp or chosen day (null when unparseable). */
 export function monthIdOf(at: string | Date): string | null {
-  const d = at instanceof Date ? at : new Date(at);
+  const d = recordDate(at);
   if (!Number.isFinite(d.getTime())) return null;
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 }
 
-const time = (o: Observation) => Date.parse(o.at);
+const time = (o: Observation) => recordDate(o.at).getTime();
 
 /**
  * The child's record in month columns, newest month first. Every month of the
