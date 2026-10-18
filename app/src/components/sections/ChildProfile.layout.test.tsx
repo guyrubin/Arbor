@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ChildProfile from "./ChildProfile";
 import AspectCard from "../about/AspectCard";
+import AboutMemoryCard from "../about/AboutMemoryCard";
 import { en, he } from "../../lib/i18nElevation/wave2Knowledge";
 import { en as goalsEn, he as goalsHe } from "../../lib/i18nElevation/goals";
 import { en as cpEn, he as cpHe } from "../../lib/i18nElevation/careprofile";
@@ -39,8 +40,8 @@ vi.mock("../profile/ProfileEditDrawer",()=>({default:()=>null}));
 // The ONE guided conversation is its own suite (describe.render.test.tsx); here
 // only what About opens it with is read.
 vi.mock("../describe/TellArborMore",()=>({default:(props:Record<string,unknown>)=>{harness.tell.push(props);return null;}}));
-// v3 F-CHILD-4 (MOB-02): the page reads the phone width through the doors'
-// hook; the doors themselves render for real (their own suite: ChildDoors.test).
+// The phone width seam (v4: About no longer reads it; kept so a regression
+// that brings the doors back would render them here).
 vi.mock("../companion/ChildDoors",async(importOriginal)=>({...(await importOriginal<typeof import("../companion/ChildDoors")>()),useChildPhoneLayout:()=>harness.phone}));
 function elements(node:React.ReactNode):React.ReactElement<Record<string,any>>[]{
  if(!React.isValidElement<Record<string,any>>(node))return[];
@@ -93,33 +94,55 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   expect(harness.setState).toHaveBeenLastCalledWith(true);
   expect(harness.setActiveTab).not.toHaveBeenCalled();
  });
- it("a proposal no area shows: one plain sentence under the memory door, no number, no badge (EN + HE)",()=>{
+ /* v4 re-pin: What Arbor remembers is a card on About (AboutMemoryCard). A
+    proposal an area shows is decided THERE (never asked twice on one page);
+    one that names no area waits in the card with Remember / Not this. */
+ it("a proposal no area shows waits in What Arbor remembers with Remember / Not this; one an area shows is not asked twice (EN + HE)",()=>{
   for(const locale of ["en","he"]){
    harness.locale=locale;
    const C=locale==="he"?companionHe:companionEn;
    harness.pending=[];
-   expect(renderToStaticMarkup(<ChildProfile/>)).not.toContain('data-testid="about-memory-waiting"');
-   // placed in its area → shown there, so the door says nothing more
+   let html=renderToStaticMarkup(<ChildProfile/>);
+   expect(html).toContain('data-testid="about-memory"');
+   expect(html).not.toContain('data-testid="about-memory-pending"');
+   expect(html).toContain('data-testid="about-memory-empty"');
+   // placed in its area: decided there; the card only notes that more sits below
    harness.pending=[{memoryId:"p1",fact:"Wakes up twice since the move",createdAt:"2026-10-06T10:00:00.000Z"}];
-   expect(renderToStaticMarkup(<ChildProfile/>)).not.toContain('data-testid="about-memory-waiting"');
-   // names no area → it waits on #/memory, and the door says so
+   html=renderToStaticMarkup(<ChildProfile/>);
+   expect(html).not.toContain('data-testid="about-memory-pending"');
+   expect(html.split("Wakes up twice since the move").length-1).toBe(1);
+   expect(html).toContain('data-testid="about-memory-in-areas"');
+   // names no area: it waits in the card, decided through the #/memory seam
    harness.pending=[{memoryId:"p2",fact:"fact 1",createdAt:"2026-10-06T10:00:00.000Z"}];
-   const html=renderToStaticMarkup(<ChildProfile/>);
-   const door=html.slice(html.indexOf('data-testid="profile-remember-check"'),html.indexOf("</button>",html.indexOf('data-testid="profile-remember-check"')));
-   expect(door).toContain('data-testid="about-memory-waiting"');
-   expect(door).toContain(C["companion.about.memoryWaiting"]);
-   // what the door SAYS (its text, after the opening tag's class list)
-   expect(door.slice(door.indexOf(">")+1).replace(/<[^>]+>/g," ")).not.toMatch(/\d/);
-   expect(door).not.toMatch(/badge|data-count|aria-label="[^"]*\d/);
+   html=renderToStaticMarkup(<ChildProfile/>);
+   const card=html.slice(html.indexOf('data-testid="about-memory"'),html.indexOf("</section>",html.indexOf('data-testid="about-memory"')));
+   expect(card).toContain('data-testid="about-memory-pending"');
+   expect(card).toContain("Fact 1");
+   expect(card).toContain(C["companion.about.memory.remember"]);
+   expect(card).toContain(C["companion.about.memory.not"]);
+   expect(card).toContain(C["companion.about.memory.waitingOne"]);
    expect(html).not.toContain('data-testid="about-aspect-pending"');
   }
+ });
+ it("Remember / Not this are the #/memory decision (handleMemoryDecision), one fact at a time",()=>{
+  harness.callback=true;
+  harness.pending=[{memoryId:"p2",fact:"fact 1",createdAt:"2026-10-06T10:00:00.000Z"}];
+  const mounted=elements(ChildProfile()).find(el=>el.type===AboutMemoryCard)!;
+  const inner=elements(AboutMemoryCard(mounted.props as React.ComponentProps<typeof AboutMemoryCard>));
+  inner.find(el=>el.props["data-testid"]==="about-memory-remember")!.props.onClick();
+  inner.find(el=>el.props["data-testid"]==="about-memory-not")!.props.onClick();
+  expect(harness.decide.mock.calls).toEqual([["p2","approved"],["p2","rejected"]]);
+  inner.find(el=>el.props["data-testid"]==="profile-remember-check")!.props.onClick();
+  expect(harness.setActiveTab).toHaveBeenCalledWith("memory");
  });
  it("eight area cards in the brief's order, a 4/2/1 grid, and the memory door",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
   // the card's own testid is followed by its data-aspect (about-aspect-ask/-src/-quote are its parts)
   expect([...html.matchAll(/data-testid="about-aspect-([a-z]+)" data-aspect="\1"/g)].map(m=>m[1])).toEqual(["temper","lang","social","routine","sleep","senses","school","strengths"]);
   expect(html).toMatch(/data-testid="profile-remember-check"[^>]*min-h-11|min-h-11[^>]*data-testid="profile-remember-check"/);
-  expect(html).toContain(cpEn["elev.profile.remembers.title"]);
+  // v4 re-pin: the memory room is the What Arbor remembers card, before the areas.
+  expect(html).toContain(companionEn["companion.about.memory.title"]);
+  expect(html.indexOf('data-testid="about-memory"')).toBeLessThan(html.indexOf('data-testid="about-aspects"'));
  });
  it("renders the Details line and the area copy in HE, with the language name through its key (law 8)",()=>{
   harness.locale="he";const html=renderToStaticMarkup(<ChildProfile/>);
@@ -152,6 +175,7 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   expect(sleep).toContain(companionEn["companion.about.pending"].trim());
   expect(sleep).toContain("Wakes up twice since the move");
   expect(sleep).toContain('data-testid="about-pending-confirm"');expect(sleep).toContain('data-testid="about-pending-dismiss"');
+  // v4: the memory card does not print a fact its area already quotes.
   expect(html.split("Falls asleep after two stories").length-1).toBe(1);
   // no receipt before anything was decided
   expect(html).not.toContain('data-testid="about-aspect-receipt"');
@@ -181,7 +205,9 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   harness.callback=true;
   card("sleep").props.onTell("sleep");
   expect(harness.setState).toHaveBeenLastCalledWith({from:null,open:{aspect:"sleep",mode:"write"}});
-  elements(ChildProfile()).find(el=>el.props["data-testid"]==="profile-remember-check")!.props.onClick();
+  // v4 re-pin: the door is the What Arbor remembers card's own (AboutMemoryCard).
+  const mounted=elements(ChildProfile()).find(el=>el.type===AboutMemoryCard)!;
+  elements(AboutMemoryCard(mounted.props as React.ComponentProps<typeof AboutMemoryCard>)).find(el=>el.props["data-testid"]==="profile-remember-check")!.props.onClick();
   expect(harness.setActiveTab).toHaveBeenCalledWith("memory");
  });
  it("?aspect=<id> opens the conversation with that area chosen; an unknown id opens nothing",()=>{
@@ -351,56 +377,24 @@ describe("B-CAREPRO-33 · the areas date their facts", () => {
   });
 });
 
-/* v3 F-CHILD-4 (MOB-02) — About on a phone closes the pill with My child's
-   doors (journal, memory, check, Care), each an icon and the place's name as
-   the mock's phone grid. The memory door replaces the quiet memory line (one
-   door per room) and carries the waiting sentence in words, with the same
-   answer as the wide line: About hands it the areas, so a proposal an area
-   shows is not "waiting". The doors are navigation: no module, no second
-   primary move. */
-describe("v3 F-CHILD-4 (MOB-02) · About on a phone: the doors close the pill",()=>{
+/* v4 re-pin: My child's phone doors are gone. About's one door to #/memory
+   is the What Arbor remembers card at every width; the page keeps its three
+   modules and its one primary move. */
+describe("v4 · About on a phone: no doors; the memory card is the one door to #/memory",()=>{
  const MODULES=['data-module="about-describe"','data-module="about-aspects"','data-module="about-details"','data-module="about-measurements"'];
- const doorOf=(html:string,tab:string)=>{const at=html.indexOf(`data-testid="child-door-${tab}"`);return html.slice(at,html.indexOf("</button>",at));};
- it.each(["en","he"] as const)("four doors after Details; the memory line gives way to the memory door (%s)",locale=>{
+ it.each(["en","he"] as const)("no doors grid; the card and its one door are there on a phone too (%s)",locale=>{
   harness.locale=locale;harness.phone=true;
-  const C=locale==="he"?companionHe:companionEn;
   const html=renderToStaticMarkup(<ChildProfile/>);
-  expect(html).not.toContain('data-testid="profile-remember-check"');
-  expect(html.match(/data-testid="child-doors"/g)).toHaveLength(1);
-  expect([...html.matchAll(/data-testid="child-door-([a-z]+)"/g)].map(m=>m[1])).toEqual(["journal","memory","screening","consult"]);
-  expect(html.indexOf('data-testid="child-doors"')).toBeGreaterThan(html.indexOf('data-testid="about-details"'));
-  // what each door SAYS (after the opening tag, the glyph left out): its name only
-  const said=(door:string)=>door.slice(door.indexOf(">")+1).replace(/<span class="msr[^"]*"[^>]*>[^<]*<\/span>/g," ").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim();
-  expect(said(doorOf(html,"memory"))).toBe(C["companion.portrait.memory"]);
-  expect(said(doorOf(html,"consult"))).toBe(C["companion.door.care"]);
-  // the doors add no module and no move: the page's budget and its one primary move hold
+  expect(html).not.toContain("child-door");
+  expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
+  expect(html).toContain((locale==="he"?companionHe:companionEn)["companion.about.memory.title"]);
   expect(html.match(/data-module="[^"]+"/g)).toEqual(MODULES);
   expect(html.match(/data-primary-move=/g)).toHaveLength(1);
  });
- it.each(["en","he"] as const)("a proposal that names no area waits on #/memory: the memory door says so in words, never a number (%s)",locale=>{
-  harness.locale=locale;harness.phone=true;
-  const C=locale==="he"?companionHe:companionEn;
-  harness.pending=[{memoryId:"p2",fact:"fact 1",createdAt:"2026-10-06T10:00:00.000Z"}];
-  const html=renderToStaticMarkup(<ChildProfile/>);
-  const door=doorOf(html,"memory");
-  expect(door).toContain('data-testid="child-door-waiting"');
-  expect(door).toContain(C["companion.about.memoryWaiting"]);
-  expect(door.slice(door.indexOf(">")+1).replace(/<[^>]+>/g," ")).not.toMatch(/\d/);
-  expect(html).not.toContain('data-testid="about-memory-waiting"');
- });
- it.each(["en","he"] as const)("a proposal an area shows waits in that area, so the door says nothing more: the wide line's answer (%s)",locale=>{
-  harness.locale=locale;harness.phone=true;
-  harness.pending=[{memoryId:"p1",fact:"Wakes up twice since the move",createdAt:"2026-10-06T10:00:00.000Z"}];
-  const html=renderToStaticMarkup(<ChildProfile/>);
-  expect(html).toContain('data-testid="about-aspect-pending"');
-  expect(html).not.toContain('data-testid="child-door-waiting"');
-  harness.phone=false;
-  expect(renderToStaticMarkup(<ChildProfile/>)).not.toContain('data-testid="about-memory-waiting"');
- });
- it("wide: no doors; the memory line stays where it was",()=>{
+ it("wide: the same: no doors, one door to #/memory, the same modules",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
   expect(html).not.toContain('data-testid="child-doors"');
-  expect(html).toContain('data-testid="profile-remember-check"');
+  expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
   expect(html.match(/data-module="[^"]+"/g)).toEqual(MODULES);
  });
 });

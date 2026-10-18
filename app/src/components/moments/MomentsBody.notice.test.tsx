@@ -71,7 +71,8 @@ afterEach(() => vi.useRealTimers());
 
 describe("Moments opens the same current observation object", () => {
   it("a milestone/keepsake card opens the canonical object directly, without an intermediate evidence sheet", () => {
-    h.query = "";
+    // v4 re-pin: Moments opens Across areas by default; the cards are Over time's.
+    h.query = "view=time";
     h.record.observations = [{ ...moment(), at: new Date().toISOString() }];
     render();
     const card = h.buttons.find((button) => button["data-testid"] === "moments-card-open");

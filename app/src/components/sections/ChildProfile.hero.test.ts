@@ -19,6 +19,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const strip = (raw: string) => raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
 const src = strip(readFileSync(path.join(here, "ChildProfile.tsx"), "utf8"));
 const card = strip(readFileSync(path.join(here, "..", "about", "AspectCard.tsx"), "utf8"));
+const memoryCard = strip(readFileSync(path.join(here, "..", "about", "AboutMemoryCard.tsx"), "utf8"));
 const aboutCss = readFileSync(path.join(here, "..", "about", "about.css"), "utf8");
 
 /** The describe card, so pins are scoped to the hero. */
@@ -51,18 +52,25 @@ describe("GP-15 — the hero CTA is the contract's primary move", () => {
     expect(card).not.toContain("data-primary-move");
   });
 
-  it("a proposal is decided inside its area with the #/memory decision — no queue, no list, one door to #/memory", () => {
+  // v4 re-pin: About now carries What Arbor remembers (AboutMemoryCard): the
+  // proposals NO area shows, with Remember / Not this, and the newest facts.
+  // Every decision is still the #/memory seam (handleMemoryDecision), an area
+  // still decides its own proposal, and the page has one door to #/memory.
+  it("a proposal is decided with the #/memory decision — in its area, or in the memory card when no area shows it; one door to #/memory", () => {
     expect(card).toContain('handleMemoryDecision(pending.memoryId, status)');
     expect(card).toContain('data-testid="about-pending-confirm"');
     expect(card).toContain('data-testid="about-pending-dismiss"');
+    expect(memoryCard).toContain("handleMemoryDecision(memoryId, status)");
+    expect(memoryCard).toContain("pending.filter((m) => !inAreas.has(m.memoryId))");
+    expect(memoryCard).not.toMatch(/fetch\(|\/api\//);
     expect(src).not.toContain('data-testid="profile-remember-keep"');
     expect(src).not.toContain('data-testid="profile-remember-notquite"');
     expect(src).not.toContain('"elev.profile.remember.keep"');
     expect(src).not.toContain('"elev.profile.remember.notQuite"');
     expect(src).not.toMatch(/pendingQueue\.(slice|map)\(/);
-    expect(src).toContain('data-testid="profile-remember-check"');
-    expect(src).toContain('setActiveTab("memory")');
-    expect(src).toContain('t("elev.profile.remembers.title")');
+    expect(src).toContain("<AboutMemoryCard areas={aspects} />");
+    expect(memoryCard).toContain('data-testid="profile-remember-check"');
+    expect(memoryCard).toContain('setActiveTab("memory")');
   });
 
   it("NEGATIVE CONTROL: the pre-fix 'Add a family member' CTA is gone from the hero", () => {

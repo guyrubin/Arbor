@@ -22,9 +22,27 @@ describe("F-CHILD-2 Moments body", () => {
     expect(body).toContain("MOMENTS_VIEWS.map((key, index) =>");
     expect(body).toContain('role="tab"');
     expect(body).toContain('const VIEW_ICONS: Readonly<Record<MomentsView, string>> = { time: "history", places: "home", areas: "grid_view" };');
-    expect(body).toContain('parseView(query.get("view"))');
+    // v4 re-pin: the default depends on whether the link names an area, a month or an observation.
+    expect(body).toContain('parseView(query.get("view"), !!(area || month || query.get("observation")))');
     expect(body).toContain('query.get("area")');
     expect(body).toContain('goToRoute("timeline", {');
+  });
+
+  it("v4: which moments are in view is one group of toggles read from ?kind=, each kind with a door to its full page", () => {
+    expect(body).toContain('role="group" data-moments-kinds');
+    expect(body).toContain("MOMENTS_KINDS.map(key =>");
+    expect(body).toContain("aria-pressed={kind === key}");
+    expect(body).toContain('parseKind(query.get("kind"))');
+    expect(body).toContain('kind: target.kind === "all" ? undefined : target.kind');
+    expect(body).toContain('onClick={() => setActiveTab("behaviors")}');
+    expect(body).toContain('onClick={() => setActiveTab("language")}');
+    // The range stays a capability, with the panel (its head, or the areas
+    // legend), never in the toolbar.
+    const toolbar = body.slice(body.indexOf('className="moments-toolbar"'), body.indexOf('role="tabpanel"'));
+    expect(toolbar).not.toContain("moments-range");
+    expect(toolbar).not.toContain("{rangeControl}");
+    expect(body).toContain('<div className="moments-range" ref={rangeRef}>');
+    expect(body.slice(body.indexOf('role="tabpanel"')).match(/\{rangeControl\}/g)).toHaveLength(2);
   });
 
   it("the leaf owns the stamps: the body spreads them and never writes its own", () => {
@@ -44,8 +62,14 @@ describe("F-CHILD-2 Moments body", () => {
     expect(code).not.toMatch(/ProgressBar|RadialProgress|progressbar|aria-valuenow/);
     expect(code).not.toMatch(/--arbor-(success|danger|warning|error)|text-(green|red)-|bg-(green|red)-/);
     // a blank month is a dash and an sr-only "no record", never a zero grade
-    expect(body).toContain('<span aria-hidden="true">—</span><span className="sr-only">{t("companion.portrait.noRecord")}</span>');
+    // (v4 re-pin: the dash prints while the months fit; the sr-only line always does)
+    expect(body).toContain('{showBarCounts && <span aria-hidden="true">—</span>}<span className="sr-only">{t("companion.portrait.noRecord")}</span>');
     expect(body).toContain('{n > 0 ? (');
+    // v4: a month bar is a fixed-scale count (barHeightPx), never normalised
+    // against another area or month, and its tone says recency, not quantity.
+    expect(body).toContain("blockSize: `${barHeightPx(n)}px`");
+    expect(code).not.toMatch(/Math\.max\(\s*\.\.\.\s*row\.counts|\/\s*max\b/);
+    expect(css).toContain("opacity: var(--bar-o, 1)");
     expect(body).toContain('t("companion.moments.areasNote")');
     expect(body).toContain('t("companion.moments.placeNote")');
     expect(css).not.toMatch(/%\s*\)|width:\s*\d+%/);

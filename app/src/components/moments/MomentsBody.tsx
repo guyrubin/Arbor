@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -21,19 +21,29 @@ import { PORTRAIT_COPY } from "../companion/portraitCopy";
 import { portraitEvidenceLines, reviewedPortraitDraft } from "../companion/portraitEvidence";
 import { openFamilyTopicSheet } from "../companion/familyTopicEvents";
 import { PLACE_ICONS, PLACE_LABEL_KEYS } from "../overview/CaptureWhereArea";
+import { BrandChip, DOMAIN_CHIP_TONE, brandChipShape } from "../ui/BrandChip";
 import {
-  areaMonthCounts, filterByAreaMonth, isMomentRecord, monthBuckets, MOMENTS_RANGES, MOMENTS_VIEWS, parseMonth, parseView, placeCards,
-  type MomentsRange, type MomentsView, type MonthBucket,
+  areaMonthCounts, barHeightPx, filterByAreaMonth, isKind, isMomentRecord, kindCounts, monthBuckets, MOMENTS_KINDS, MOMENTS_RANGES, MOMENTS_VIEWS, parseKind, parseMonth, parseView, placeCards,
+  type MomentsKind, type MomentsRange, type MomentsView, type MonthBucket,
 } from "./momentsModel";
 import "./moments.css";
 
 /**
  * F-CHILD-2 — Moments (#/timeline): the parent's kept record seen three ways —
- * over time (month columns, newest first), in different places (only places
- * the parent recorded) and across areas (a bare count per area and month).
- * Counts only: no rates, no shares, no colour scale, no progress shape. Each
- * card's overflow opens the evidence sheet (Discuss · Save question · Open
- * the original). The route's stamps arrive as props from TimelineTab, the leaf.
+ * across areas (one card per area: its months as plain counts and the newest
+ * words), over time (month columns, newest first) and by place (only places
+ * the parent recorded). Counts only: no rates, no shares, no colour scale by
+ * value, no progress shape. Each card's overflow opens the evidence sheet
+ * (Discuss · Save question · Open the original). The route's stamps arrive as
+ * props from TimelineTab, the leaf.
+ *
+ * v4 (consolidation): Across areas leads; the views are one segmented control;
+ * beside them, which moments are in view — All · Kept · Hard moments · Things
+ * <name> said (?kind=) — so the hard-moments list, the kept things and the
+ * words are filters of this one record, each with a quiet door to its full
+ * page (#/behaviors logs and patterns, #/language the words). The time range
+ * (3 months · a year · everything) moved out of the toolbar to the panel's
+ * head, where it reads as a property of what is shown.
  */
 
 type DataAttrs = Record<string, string>;
@@ -43,6 +53,12 @@ const VIEW_KEYS: Readonly<Record<MomentsView, string>> = {
   time: "companion.moments.view.time",
   places: "companion.moments.view.places",
   areas: "companion.moments.view.areas",
+};
+const KIND_ICONS: Readonly<Record<MomentsKind, string>> = { all: "photo_album", kept: "bookmark", hard: "volunteer_activism", said: "format_quote" };
+const KIND_KEYS: Readonly<Record<Exclude<MomentsKind, "said">, string>> = {
+  all: "companion.moments.kind.all",
+  kept: "companion.moments.kind.kept",
+  hard: "companion.moments.kind.hard",
 };
 const RANGE_KEYS: Readonly<Record<MomentsRange, string>> = {
   3: "companion.portrait.three",
@@ -63,10 +79,13 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   const noticeCopy = NOTICE_DETAIL_COPY[he ? "he" : "en"];
   const locale = he ? "he-IL" : "en-GB";
   const query = useHashQuery();
-  const view = parseView(query.get("view"));
   const rawArea = query.get("area");
   const area: DomainId | null = isDomainId(rawArea) ? rawArea : null;
   const month = parseMonth(query.get("month"));
+  // A link that names an area, a month or one observation opens Over time.
+  const view = parseView(query.get("view"), !!(area || month || query.get("observation")));
+  const kind = parseKind(query.get("kind"));
+  const firstName = (childProfile.name || "").trim().split(/\s+/)[0] || t("companion.together-view.your-child");
   const [range, setRange] = useState<MomentsRange>(3);
   const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState<string[]>([]);
@@ -98,7 +117,10 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   const currentSource = useRef({ record, observations, milestones });
   currentSource.current = { record, observations, milestones };
   const logMap = useMemo(() => new Map((record.sources.behaviorLogs ?? []).map(log => [`behaviorLogs:${log.id}`, log])), [record.sources.behaviorLogs]);
-  const scoped = useMemo(() => filterByAreaMonth(observations, area, null), [observations, area]);
+  // v4: the kind filter narrows first; its counts are read before it, over the range and area in view.
+  const areaScoped = useMemo(() => filterByAreaMonth(observations, area, null), [observations, area]);
+  const counts = useMemo(() => kindCounts(monthBuckets(areaScoped, childProfile.id, new Date(), range).flatMap(bucket => bucket.observations)), [areaScoped, childProfile.id, range]);
+  const scoped = useMemo(() => areaScoped.filter(o => isKind(o, kind)), [areaScoped, kind]);
   const rangeBuckets = useMemo(() => monthBuckets(scoped, childProfile.id, new Date(), range), [scoped, childProfile.id, range]);
   // A month filter from an older column than the range shows is still honoured.
   const buckets = useMemo(() => (month && !rangeBuckets.some(bucket => bucket.id === month) ? monthBuckets(scoped, childProfile.id, new Date(), 0) : rangeBuckets), [rangeBuckets, scoped, childProfile.id, month]);
@@ -107,11 +129,20 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   const places = useMemo(() => placeCards(inView), [inView]);
   // Across areas: oldest column first, over the range in view (a month filter belongs to the other views).
   const areaColumns = useMemo(() => [...rangeBuckets].reverse(), [rangeBuckets]);
-  const tableColumns = `minmax(9rem, 1.4fr) repeat(${areaColumns.length}, minmax(3.25rem, 1fr))`;
   const areaRows = useMemo(() => {
     const rows = areaMonthCounts(areaColumns);
     return area ? rows.filter(row => row.domain === area) : rows;
   }, [areaColumns, area]);
+  // The newest moment per area in the range (buckets and their rows are newest first).
+  const latestByDomain = useMemo(() => {
+    const latest = new Map<DomainId, Observation>();
+    for (const bucket of rangeBuckets) for (const o of bucket.observations) for (const d of o.domains) if (!latest.has(d)) latest.set(d, o);
+    return latest;
+  }, [rangeBuckets]);
+  // A month's tone says how recent it is (oldest lightest), never how many: opacity 0.35 → 1.
+  const recency = (i: number) => (areaColumns.length <= 1 ? 1 : Math.round((0.35 + (0.65 * i) / (areaColumns.length - 1)) * 100) / 100);
+  // Every bar prints its count while the months fit; past a year each bar keeps it in its label.
+  const showBarCounts = areaColumns.length <= 12;
 
   // ID-only deep links resolve against the current child's live reader. A
   // removed response cannot linger as an old source copied into route state.
@@ -192,10 +223,11 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
     }
   };
 
-  const go = (next: { view?: MomentsView; area?: DomainId | null; month?: string | null }) => {
-    const target = { view: next.view ?? view, area: next.area === undefined ? area : next.area, month: next.month === undefined ? month : next.month };
-    goToRoute("timeline", { view: target.view, area: target.area ?? undefined, month: target.month ?? undefined });
+  const go = (next: { view?: MomentsView; area?: DomainId | null; month?: string | null; kind?: MomentsKind }) => {
+    const target = { view: next.view ?? view, area: next.area === undefined ? area : next.area, month: next.month === undefined ? month : next.month, kind: next.kind ?? kind };
+    goToRoute("timeline", { view: target.view, area: target.area ?? undefined, month: target.month ?? undefined, kind: target.kind === "all" ? undefined : target.kind });
   };
+  const kindLabel = (key: MomentsKind) => (key === "said" ? t("companion.moments.kind.said", { name: firstName }) : t(KIND_KEYS[key]));
   const onTabKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const forward = he ? "ArrowLeft" : "ArrowRight";
     const back = he ? "ArrowRight" : "ArrowLeft";
@@ -277,6 +309,27 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
     </button>
   );
   const emptyRecord = !record.loading && !record.error && record.confirmed && observations.length === 0;
+  // v4: the time range (3 months · a year · everything) — a property of what is
+  // shown, so it sits with the panel (its head, or the areas legend), never in the toolbar.
+  const rangeControl = (
+    <div className="moments-range" ref={rangeRef}>
+      <button type="button" ref={rangeChipRef} className="moments-chip" aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuId}
+        aria-label={t("companion.moments.rangeAria", { range: t(RANGE_KEYS[range]) })} onClick={() => setMenuOpen(open => !open)} onKeyDown={onChipKey}>
+        <Icon name="calendar_month" size={18} />{t(RANGE_KEYS[range])}<Icon name="expand_more" size={18} />
+      </button>
+      {menuOpen && (
+        <div role="menu" id={menuId} className="moments-menu" aria-label={t("companion.portrait.range")} onKeyDown={onMenuKey}>
+          {MOMENTS_RANGES.map((option, index) => (
+            <button key={option} type="button" role="menuitemradio" aria-checked={range === option} className="moments-menu-item"
+              tabIndex={range === option ? 0 : -1} ref={el => { rangeItemRefs.current[index] = el; }}
+              onClick={() => { setRange(option); closeMenu(true); }}>
+              {range === option ? <Icon name="check" size={18} /> : <span className="moments-menu-spacer" aria-hidden="true" />}{t(RANGE_KEYS[option])}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   const band = (o: Observation) => {
     const keepsake = o.origin === "keepsakes" ? record.sources.keepsakes?.find((item) => `keepsakes:${item.milestoneId}` === o.id) : undefined;
@@ -301,27 +354,38 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
             </button>
           ))}
         </div>
-        <div className="moments-range" ref={rangeRef}>
-          <button type="button" ref={rangeChipRef} className="moments-chip" aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuId}
-            aria-label={t("companion.moments.rangeAria", { range: t(RANGE_KEYS[range]) })} onClick={() => setMenuOpen(open => !open)} onKeyDown={onChipKey}>
-            <Icon name="calendar_month" size={18} />{t(RANGE_KEYS[range])}<Icon name="expand_more" size={18} />
-          </button>
-          {menuOpen && (
-            <div role="menu" id={menuId} className="moments-menu" aria-label={t("companion.portrait.range")} onKeyDown={onMenuKey}>
-              {MOMENTS_RANGES.map((option, index) => (
-                <button key={option} type="button" role="menuitemradio" aria-checked={range === option} className="moments-menu-item"
-                  tabIndex={range === option ? 0 : -1} ref={el => { rangeItemRefs.current[index] = el; }}
-                  onClick={() => { setRange(option); closeMenu(true); }}>
-                  {range === option ? <Icon name="check" size={18} /> : <span className="moments-menu-spacer" aria-hidden="true" />}{t(RANGE_KEYS[option])}
-                </button>
-              ))}
-            </div>
-          )}
+        <div role="group" data-moments-kinds aria-label={t("companion.moments.kinds")} className="moments-kinds">
+          {MOMENTS_KINDS.map(key => (
+            <button key={key} type="button" className="moments-kind" data-moments-kind={key} aria-pressed={kind === key} onClick={() => go({ kind: key })}>
+              <Icon name={KIND_ICONS[key]} size={17} /><span dir="auto">{kindLabel(key)}</span>
+              {counts[key] > 0 && <span className="moments-kind-n arbor-num">{counts[key]}</span>}
+            </button>
+          ))}
         </div>
         {keepButton}
       </div>
 
       <div {...viewModule} role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${view}`} className="moments-panel">
+        {/* Over time and By place: the panel's head carries the filter and the
+            range. Across areas carries the range in its legend, beside the
+            months it sets, so the cards follow the toolbar directly. */}
+        {view !== "areas" && (
+          <div className="moments-panel-head">
+            {filterChip ?? <span />}
+            {rangeControl}
+          </div>
+        )}
+        {/* v4: a filter of the one record keeps a quiet door to its full page. */}
+        {kind === "hard" && (
+          <button type="button" className="moments-text-button moments-kind-door" data-testid="moments-kind-door-hard" onClick={() => setActiveTab("behaviors")}>
+            <Icon name="volunteer_activism" size={18} />{t("companion.moments.kind.hardDoor")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+          </button>
+        )}
+        {kind === "said" && (
+          <button type="button" className="moments-text-button moments-kind-door" data-testid="moments-kind-door-said" onClick={() => setActiveTab("language")}>
+            <Icon name="format_quote" size={18} />{t("companion.moments.kind.saidDoor", { name: firstName })}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+          </button>
+        )}
         {requestedId && dismissedSource !== requestKey && !requestedObservation && !record.loading && <div className="moments-note" role="status" data-testid="moments-source-unavailable">
           <span>{record.error || !record.confirmed ? noticeCopy.loadFailed : noticeCopy.missing}</span>
           {record.more && <button type="button" className="moments-text-button" onClick={record.loadMore}>{t("companion.moments.loadMore")}</button>}
@@ -334,8 +398,6 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
             <p>{t("companion.portrait.emptyAllSub")}</p>
           </div>
         ) : <>
-          {filterChip}
-
           {view === "time" && (
             <div className="moments-months">
               {shownBuckets.map(bucket => {
@@ -400,10 +462,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
           </>}
 
           {view === "areas" && <>
-            <div className="moments-section-head">
-              <h2>{t("companion.moments.threadTitle")}</h2>
-              <p>{t("companion.moments.threadSub")}</p>
-            </div>
+            <h2 className="sr-only">{t("companion.moments.threadTitle")}</h2>
             {area && (
               <div className="moments-filter" data-moments-filter>
                 <span dir="auto">{t("companion.moments.filtered", { filter: domainName(area, t) })}</span>
@@ -412,39 +471,61 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
                 </button>
               </div>
             )}
-            <div className="moments-table-scroll">
-              <div role="table" aria-label={t("companion.moments.threadTitle")} className="moments-table">
-                <div role="row" className="moments-row moments-row-head" style={{ gridTemplateColumns: tableColumns }}>
-                  <span role="columnheader" className="moments-area-head">{t("companion.moments.area")}</span>
-                  {areaColumns.map(bucket => <span role="columnheader" key={bucket.id} className="moments-col-head">{columnLabel(bucket)}</span>)}
-                </div>
-                {areaRows.map(row => (
-                  <div role="row" key={row.domain} className="moments-row" data-moments-area={row.domain} style={{ gridTemplateColumns: tableColumns }}>
-                    <span role="rowheader" className="moments-area-cell">
-                      <button type="button" className="moments-area-button" onClick={() => go({ view: "time", area: row.domain, month: null })}>
-                        <Icon name={DOMAIN_ICONS[row.domain]} size={20} style={{ color: `var(--arbor-domain-${row.domain}-ink)` }} />
-                        <span>{domainName(row.domain, t)}</span>
-                      </button>
-                    </span>
-                    {row.counts.map((n, i) => (
-                      <span role="cell" key={areaColumns[i].id} className="moments-cell">
-                        {n > 0 ? (
-                          <button type="button" className="moments-bubble" data-moments-count={n}
-                            style={{ background: `var(--arbor-domain-${row.domain}-soft)`, color: `var(--arbor-domain-${row.domain}-ink)` }}
-                            aria-label={t("companion.moments.cellAria", { area: domainName(row.domain, t), month: monthLabel(areaColumns[i]), n })}
-                            onClick={() => go({ view: "time", area: row.domain, month: areaColumns[i].id })}>
-                            {n}
-                          </button>
-                        ) : (
-                          <span className="moments-blank"><span aria-hidden="true">—</span><span className="sr-only">{t("companion.portrait.noRecord")}</span></span>
-                        )}
+            {/* v4: one card per area — the area's chip and name, how many moments
+                in the range, its months as plain counts (a fixed scale, the
+                number printed under each bar), and the newest words. The card
+                opens the area Over time; a month opens that month. */}
+            <ul className="moments-area-cards" role="list" aria-label={t("companion.moments.threadTitle")}>
+              {areaRows.map((row, index) => {
+                const name = domainName(row.domain, t);
+                const total = row.counts.reduce((sum, n) => sum + n, 0);
+                const latest = latestByDomain.get(row.domain);
+                const openArea = () => go({ view: "time", area: row.domain, month: null });
+                return (
+                  <li key={row.domain} className="moments-area-card" data-moments-area={row.domain} onClick={event => { if (!(event.target as Element).closest?.("button")) openArea(); }}>
+                    <button type="button" className="moments-area-button" onClick={openArea}>
+                      <BrandChip icon={DOMAIN_ICONS[row.domain]} tone={DOMAIN_CHIP_TONE[row.domain]} shape={brandChipShape(index)} size={34} />
+                      <span className="moments-area-title">
+                        <span className="moments-area-name">{name}</span>
+                        <span className="moments-area-total">{total > 0 ? `${countLabel(total)} · ${t(RANGE_KEYS[range])}` : t("companion.moments.cardNone")}</span>
                       </span>
-                    ))}
-                  </div>
-                ))}
-              </div>
+                    </button>
+                    <div className="moments-bars" data-columns={areaColumns.length}>
+                      {row.counts.map((n, i) => (
+                        <span key={areaColumns[i].id} className="moments-cell" style={{ ["--bar-o" as string]: String(recency(i)) } as CSSProperties}>
+                          {n > 0 ? (
+                            <button type="button" className="moments-bar" data-moments-count={n}
+                              aria-label={t("companion.moments.cellAria", { area: name, month: monthLabel(areaColumns[i]), n })}
+                              onClick={() => go({ view: "time", area: row.domain, month: areaColumns[i].id })}>
+                              <span className="moments-bar-fill" style={{ blockSize: `${barHeightPx(n)}px` }} aria-hidden="true" />
+                              {showBarCounts && <span className="moments-bar-n arbor-num" aria-hidden="true">{n}</span>}
+                            </button>
+                          ) : (
+                            <span className="moments-blank"><span className="moments-bar-fill moments-bar-none" aria-hidden="true" />{showBarCounts && <span aria-hidden="true">—</span>}<span className="sr-only">{t("companion.portrait.noRecord")}</span></span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="moments-area-quote" dir="auto">{latest ? title(latest) : ""}</p>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="moments-legend">
+              {rangeControl}
+              {areaColumns.length <= 4 ? (
+                <span className="moments-legend-months">
+                  {areaColumns.map((bucket, i) => (
+                    <span key={bucket.id} className="moments-legend-month" style={{ ["--bar-o" as string]: String(recency(i)) } as CSSProperties}>
+                      <span className="moments-legend-swatch" aria-hidden="true" />{columnLabel(bucket)}
+                    </span>
+                  ))}
+                </span>
+              ) : areaColumns.length > 0 && (
+                <span className="moments-legend-months">{t("companion.moments.legendSpan", { from: columnLabel(areaColumns[0]), to: columnLabel(areaColumns[areaColumns.length - 1]) })}</span>
+              )}
+              <p className="moments-note"><Icon name="info" size={18} />{t("companion.moments.areasNote")}</p>
             </div>
-            <p className="moments-note"><Icon name="info" size={18} />{t("companion.moments.areasNote")}</p>
           </>}
         </>}
 

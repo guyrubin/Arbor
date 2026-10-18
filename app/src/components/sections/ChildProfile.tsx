@@ -17,11 +17,10 @@ import { formatChildAge } from "../../lib/age/format";
 import { fmtDay } from "../../lib/formatDate";
 import { useHashQuery } from "../../hooks/useHashQuery";
 // v3 F-CHILD-3 — the eight areas and the ONE guided conversation.
-import { asAspectId, buildAspects, toldSummary, waitingOffPage, type AspectId } from "../../lib/aboutAspects";
+import { asAspectId, buildAspects, toldSummary, type AspectId } from "../../lib/aboutAspects";
 import AspectCard from "../about/AspectCard";
+import AboutMemoryCard from "../about/AboutMemoryCard";
 import TellArborMore from "../describe/TellArborMore";
-// v3 F-CHILD-4 (MOB-02) — on a phone the pill closes with My child's doors.
-import ChildDoors, { useChildPhoneLayout } from "../companion/ChildDoors";
 import "../about/about.css";
 
 /**
@@ -30,10 +29,12 @@ import "../about/about.css";
  *  1. the describe card — "Tell Arbor about {name}", by voice or in writing,
  *     both opening the ONE guided conversation (TellArborMore), and a count
  *     line that says how many areas were told, never against a total;
- *  2. the eight areas — each the newest thing told with its source and day,
- *     or the question Arbor would ask; a proposal waits inside its area with
- *     Confirm / No; "Tell more" opens the conversation on that area; the door
- *     to everything Arbor remembers (#/memory) closes the section;
+ *  2. v4: What Arbor remembers (AboutMemoryCard) — the proposals no area
+ *     shows with Remember / Not this, the newest approved facts, and the door
+ *     to everything Arbor remembers (#/memory); then the eight areas — each
+ *     the newest thing told with its source and day, or the question Arbor
+ *     would ask; a proposal waits inside its area with Confirm / No; "Tell
+ *     more" opens the conversation on that area;
  *  3. Details — name, age, birth date, born early and measurements, folded
  *     into one row that opens the profile drawer.
  * Goals live on Milestones; the Family Circle lives in Care › Trusted sharing.
@@ -41,13 +42,10 @@ import "../about/about.css";
  * #/strengths land here). Nothing on the page grades the child: no share, no
  * fill, no "of 8".
  *
- * v3 F-CHILD-4 (MOB-02) — on a phone (below 768 px) the page is the mock's
- * one stack, and it closes with My child's doors (journal, memory, check,
- * Care). The doors' memory door IS the page's one door to #/memory there, so
- * the quiet check line under the areas is wide-screen only: one door per
- * room at every width. The door reads the same waiting queue and is handed
- * the areas, so it speaks only of a proposal no area here shows: the same
- * answer as the wide line.
+ * v4 (consolidation): the phone's doors under the pill are gone — each now
+ * has a visible home (the memory card here, the check row on Milestones, the
+ * journal door in Moments, Care in More), so the memory card is the page's
+ * one door to #/memory at every width.
  */
 /** The route's ONE primary move (B-SHELL-26): capture-moment, now on "Tell
  *  Arbor by voice" — telling Arbor one thing, rendered once in every state. */
@@ -61,9 +59,8 @@ type SheetOpen = { aspect: AspectId | null; mode: SheetMode };
 const dayOf = (value: string): string => (/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value);
 
 export default function ChildProfile() {
-  const { childProfile, approvedMemoryItems, pendingMemoryItems, setActiveTab } = useArbor();
+  const { childProfile, approvedMemoryItems, pendingMemoryItems } = useArbor();
   const { t, uiLang } = useLanguage();
-  const phone = useChildPhoneLayout();
   // B-SHELL-27: ONE resolver (hero render → photo → initial) — the same face
   // the sidebar and the switcher show; "Create hero" only when there is none.
   const { name: heroName } = useHeroAvatar();
@@ -91,9 +88,6 @@ export default function ChildProfile() {
     pending: scrubMemoryProposals(pendingMemoryItems),
     words: toParentWords,
   }), [childProfile, approvedMemoryItems, pendingMemoryItems]);
-  // A proposal no area shows waits on #/memory (the same scrubbed queue it
-  // lists): the door says so in a sentence, no number.
-  const waiting = useMemo(() => waitingOffPage(aspects, scrubMemoryProposals(pendingMemoryItems)), [aspects, pendingMemoryItems]);
   const { told, dated } = toldSummary(aspects);
   const toldLine = told === 0
     ? t("companion.about.toldNone")
@@ -143,8 +137,11 @@ export default function ChildProfile() {
         </div>
       </section>
 
-      {/* 2 — the eight areas, then the door to everything Arbor remembers. */}
+      {/* 2 — v4: What Arbor remembers (proposals no area shows, the newest
+          approved facts, the door to the ledger), then the eight areas. One
+          module: the card belongs to what Arbor knows. */}
       <section data-module="about-aspects" aria-labelledby="about-aspects-title" className="flex flex-col gap-3">
+        <AboutMemoryCard areas={aspects} />
         <div className="about-aspects-head">
           <p className="about-kicker">{t("companion.about.aspectsKicker")}</p>
           <h2 id="about-aspects-title">{t("companion.about.aspectsTitle")}</h2>
@@ -157,15 +154,6 @@ export default function ChildProfile() {
             </li>
           ))}
         </ul>
-        {!phone && (
-        <button type="button" data-testid="profile-remember-check" onClick={() => setActiveTab("memory")} className="about-memory-door min-h-11">
-          <span className="about-memory-door-text">
-            <span>{t("elev.profile.remembers.title")}</span>
-            {waiting && <span className="about-memory-waiting" data-testid="about-memory-waiting">{t("companion.about.memoryWaiting")}</span>}
-          </span>
-          <Icon name="chevron_right" size={20} className="rtl:rotate-180" />
-        </button>
-        )}
       </section>
 
       {/* 3 — Details: ONE tap — the row opens the profile drawer (name, age,
@@ -207,10 +195,6 @@ export default function ChildProfile() {
           </div>
         </details>
       </section>
-
-      {/* A phone closes the pill with the doors (no data-module: navigation).
-          The areas tell the memory door which proposals this page shows. */}
-      {phone && <ChildDoors shownAreas={aspects} />}
 
       {sheet && <TellArborMore key={`${sheet.aspect ?? "all"}-${sheet.mode}`} aspect={sheet.aspect} mode={sheet.mode} onClose={closeSheet} />}
       <ProfileEditDrawer open={editingProfile} onClose={() => setEditingProfile(false)} />

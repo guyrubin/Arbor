@@ -108,6 +108,8 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
 
   const screenings = useChildCollection<{ id: string; answeredAt: string; recheckDueAt?: string }>(childProfile.id, "screenings");
   const recheckDueAt = useMemo(() => latestRecheckDueAt(screenings.items), [screenings.items]);
+  // v4: the check row names the latest saved check (the screener's own newest-first rule).
+  const lastCheckAt = useMemo(() => screenings.items.reduce<string | null>((latest, s) => (s.answeredAt && (!latest || s.answeredAt > latest) ? s.answeredAt : latest), null), [screenings.items]);
   const savedComics = useChildCollection<SavedComicMeta>(childProfile.id, "savedComics");
   const returnSignals = useMemo(() => deriveReturnSignals({
     behaviorLogs: behaviorLogs ?? [], playLogs: playLogs ?? [], watchFocus: chosenWatch != null, ritualRecord: readRitualRecord(),
@@ -195,6 +197,7 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
         onCheck={() => setActiveTab("screening")}
         primaryMoveProps={primaryMoveProps}
         recheckDueAt={chosenWatch ? null : recheckDueAt}
+        lastCheckAt={lastCheckAt}
         layout={compact ? "tiles" : "rows"}
       />
       {compact && openDomain && !noticeTarget && (

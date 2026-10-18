@@ -491,7 +491,7 @@ describe("v3 F-CHILD-1 — answers, firsts and the chosen watch", () => {
     expect(state.celebrate).not.toHaveBeenCalled();
   });
 
-  it("with no watch, the Development Check's re-check date sits under the areas heading", () => {
+  it("with no watch, the Development Check's re-check date sits in the check row (v4)", () => {
     state.screenings = [{ id: "s1", answeredAt: "2026-06-01T10:00:00.000Z", recheckDueAt: "2026-09-01T10:00:00.000Z" }];
     const html = render();
     expect(html).toContain('data-testid="dev-map-recheck"');
@@ -533,7 +533,9 @@ describe("v3 F-CHILD-1 — answers, firsts and the chosen watch", () => {
 describe("v3 F-CHILD-4 (MOB-02) — the Milestones pill on a phone, one stack", () => {
   const phone = () => { state.phone = true; state.compact = true; };
 
-  it.each(["en", "he"] as const)("the areas first, then the goal card, then the doors; the h1 is for screen readers; two modules, one primary move (%s)", lang => {
+  // v4 re-pin: the phone doors are gone — the journal door is Moments', the
+  // memory card is About's, the check is this pill's own row, Care is in More.
+  it.each(["en", "he"] as const)("the areas first (tiles, then the check row), then the goal card; no doors; the h1 is for screen readers; two modules, one primary move (%s)", lang => {
     state.lang = lang;
     phone();
     const html = render();
@@ -543,38 +545,17 @@ describe("v3 F-CHILD-4 (MOB-02) — the Milestones pill on a phone, one stack", 
     expect(html).toContain(`<h1 class="sr-only">${esc(before)}<bdi dir="auto">Noa</bdi>${esc(after)}</h1>`);
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
     expect(html).not.toContain('class="portrait-intro"');
-    const h1 = html.indexOf("<h1"), map = html.indexOf('data-testid="dev-map"'), goal = html.indexOf('data-testid="portrait-goals-edit"'), doors = html.indexOf('data-testid="child-doors"');
+    const h1 = html.indexOf("<h1"), map = html.indexOf('data-testid="dev-map"'), check = html.indexOf('data-testid="dev-map-checkrow"'), goal = html.indexOf('data-testid="portrait-goals-edit"');
     expect(h1).toBeGreaterThan(-1);
     expect(map).toBeGreaterThan(h1);
-    expect(goal).toBeGreaterThan(map);
-    expect(doors).toBeGreaterThan(goal);
+    expect(check).toBeGreaterThan(html.indexOf('data-testid="dev-map-tiles"'));
+    expect(goal).toBeGreaterThan(check);
+    expect(html).not.toContain("child-door");
     expect(html.match(/data-testid="dev-map-tile"/g)).toHaveLength(8);
     expect(html).not.toContain('data-testid="dev-map-row"');
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     expect(html).toMatch(/data-testid="dev-map-check" data-primary-move="start-development-check"/);
-    // The doors are navigation: no module, no stamp.
-    const nav = html.slice(doors, html.indexOf("</nav>", doors));
-    expect(nav).not.toContain("data-module");
-    expect(nav).not.toContain("data-primary-move");
     expect(words(html)).not.toMatch(/companion\.|elev\./);
-  });
-
-  it.each(["en", "he"] as const)("the doors: journal, memory and Care, each the place's own name; the check's door is the page's primary move, not a second door (%s)", lang => {
-    state.lang = lang;
-    phone();
-    const html = render();
-    expect([...html.matchAll(/data-testid="child-door-([a-z]+)"/g)].map(m => m[1])).toEqual(["journal", "memory", "consult"]);
-    expect(html).not.toContain('data-testid="child-door-screening"');
-    // Icon and name only, as the mock's phone grid; Care keeps the place's one name.
-    for (const [tab, key] of [["journal", "companion.portrait.journal"], ["memory", "companion.portrait.memory"], ["consult", "companion.door.care"]] as const) {
-      const at = html.indexOf(`data-testid="child-door-${tab}"`);
-      const door = html.slice(html.indexOf(">", at) + 1, html.indexOf("</button>", at));
-      expect(words(door).replace(/\s+/g, " ").trim(), key).toBe(translate(lang, key));
-    }
-    for (const tab of ["journal", "memory", "consult"]) {
-      button(`child-door-${tab}`)!.onClick!();
-      expect(state.setActiveTab).toHaveBeenLastCalledWith(tab);
-    }
   });
 
   it.each(["en", "he"] as const)("CLINICAL FIREWALL at phone width: a tile is glyph, name and pips — no share, no denominator, no level word (%s)", lang => {
@@ -595,26 +576,16 @@ describe("v3 F-CHILD-4 (MOB-02) — the Milestones pill on a phone, one stack", 
     expect(html.match(/data-testid="count-pips"/g)).toHaveLength(3);
   });
 
-  it.each(["en", "he"] as const)("the memory door says in words when a proposal waits: this pill shows none, so any waiting one is behind the door, as About's door speaks of one its areas do not show (%s)", lang => {
-    state.lang = lang;
+  // v4 re-pin: a waiting proposal is no longer named here behind a door; the
+  // What Arbor remembers card on About holds it (AboutMemoryCard).
+  it("a waiting proposal adds nothing to this pill: no door, no sentence, the same two modules and one primary move", () => {
     phone();
-    const doorOf = (html: string) => {
-      const at = html.indexOf('data-testid="child-door-memory"');
-      return html.slice(html.indexOf(">", at) + 1, html.indexOf("</button>", at));
-    };
-    expect(doorOf(render())).not.toContain("child-door-waiting");
-    // Invented proposals: one About would place in its sleep area, one that names no area.
-    for (const fact of ["Wakes up twice since the move", "fact 1"]) {
-      state.pending = [{ memoryId: "p1", childId: "child-a", status: "pending", fact, source: "chat", retention: "standard", createdAt: "2026-10-06T10:00:00.000Z", latestEventId: "event-p1" }];
-      const html = render();
-      expect(html.match(/data-testid="child-door-waiting"/g)).toHaveLength(1);
-      const door = words(doorOf(html)).replace(/\s+/g, " ").trim();
-      expect(door).toBe(`${translate(lang, "companion.portrait.memory")} ${translate(lang, "companion.about.memoryWaiting")}`);
-      expect(door).not.toMatch(/\d/);
-      // Still one primary move and the same two modules: the sentence is no module.
-      expect(html.match(/data-primary-move=/g)).toHaveLength(1);
-      expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(["child-milestones-areas", "child-milestones-portrait"]);
-    }
+    state.pending = [{ memoryId: "p1", childId: "child-a", status: "pending", fact: "fact 1", source: "chat", retention: "standard", createdAt: "2026-10-06T10:00:00.000Z", latestEventId: "event-p1" }];
+    const html = render();
+    expect(html).not.toContain("child-door");
+    expect(html).not.toContain(esc(translate("en", "companion.about.memoryWaiting")));
+    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(["child-milestones-areas", "child-milestones-portrait"]);
   });
 
   it("a tablet (below lg, above a phone) keeps the header and the cards, with tiles and no doors", () => {
