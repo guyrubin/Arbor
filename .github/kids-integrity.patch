@@ -1,0 +1,175 @@
+diff --git a/app/src/lib/library/bookSheet.ts b/app/src/lib/library/bookSheet.ts
+index 2c4d585..db5a850 100644
+--- a/app/src/lib/library/bookSheet.ts
++++ b/app/src/lib/library/bookSheet.ts
+@@ -62,12 +62,20 @@ export function bookSheetDrawPoses(book: Book): string[] {
+   return [...out].sort();
+ }
+ 
+-/** A measured sprite anchor (untrusted input): aspect > 0, foot fractions in [0, 1]. */
++/** A measured sprite anchor (untrusted input). The feet-band centre and width
++ * must describe a band inside the sprite, not merely valid separate fractions.
++ * Keep the keyer's four-decimal precision; tolerate its boundary-rounding error. */
+ export function readSpriteAnchor(raw: { aspect?: unknown; footX?: unknown; footW?: unknown } | null | undefined): SpriteAnchor | null {
+   if (!raw) return null;
+   const n = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN);
+   const aspect = n(raw.aspect), footX = n(raw.footX), footW = n(raw.footW);
+   if (!(aspect > 0.05 && aspect < 5) || !(footX >= 0 && footX <= 1) || !(footW > 0 && footW <= 1)) return null;
+   const r4 = (v: number) => Math.round(v * 10000) / 10000;
+-  return { aspect: r4(aspect), footX: r4(footX), footW: r4(footW) };
++  const a = { aspect: r4(aspect), footX: r4(footX), footW: r4(footW) };
++  // Validate the values we actually persist, too: a tiny positive width may
++  // round to zero, or an aspect may round onto an excluded boundary.
++  if (!(a.aspect > 0.05 && a.aspect < 5) || !(a.footW > 0)) return null;
++  const rounding = 0.0001;
++  if (a.footX - a.footW / 2 < -rounding || a.footX + a.footW / 2 > 1 + rounding) return null;
++  return a;
+ }
+ diff --git a/app/src/lib/library/bookSheetAnchor.test.ts b/app/src/lib/library/bookSheetAnchor.test.ts
+new file mode 100644
+index 0000000..12c57df
+--- /dev/null
++++ b/app/src/lib/library/bookSheetAnchor.test.ts
+@@ -0,0 +1,56 @@
++import { describe, expect, it } from "vitest";
++import { readSpriteAnchor } from "./bookSheet";
++
++const measured = { aspect: 0.5, footX: 0.5, footW: 0.4 };
++
++describe("book sprite anchor integrity (B-BOOK-69)", () => {
++  it("preserves valid measured anchors, including HTTP query strings", () => {
++    expect(readSpriteAnchor(measured)).toEqual(measured);
++    expect(readSpriteAnchor({ aspect: "0.5", footX: "0.5", footW: "0.4" })).toEqual(measured);
++    expect(readSpriteAnchor({ aspect: 1, footX: 0.5, footW: 1 })).toEqual({ aspect: 1, footX: 0.5, footW: 1 });
++  });
++
++  it.each([
++    { ...measured, footX: 0.05 },
++    { ...measured, footX: 0.95 },
++    { ...measured, footX: 0 },
++    { ...measured, footX: 1 },
++    { ...measured, footW: 0.000001 },
++    { ...measured, aspect: 0.050001 },
++    { ...measured, aspect: 4.999999 },
++    { ...measured, footW: Infinity },
++    { ...measured, footX: NaN },
++    { ...measured, aspect: "Infinity" },
++    { ...measured, footW: [] },
++    { ...measured, footX: true },
++  ])("rejects impossible or rounding-degenerate geometry: %j", (anchor) => {
++    expect(readSpriteAnchor(anchor)).toBeNull();
++  });
++
++  it("tolerates only the existing keyer's four-decimal boundary rounding", () => {
++    // Both centre and width are independently rounded by bookSpriteAnchor.
++    expect(readSpriteAnchor({ aspect: 1, footX: 0.0656, footW: 0.1313 })).not.toBeNull();
++    expect(readSpriteAnchor({ aspect: 1, footX: 0.9344, footW: 0.1313 })).not.toBeNull();
++    expect(readSpriteAnchor({ aspect: 1, footX: 0.0654, footW: 0.1313 })).toBeNull();
++    expect(readSpriteAnchor({ aspect: 1, footX: 0.9346, footW: 0.1313 })).toBeNull();
++  });
++
++  it("accepts the keyer's measured pixel bands without changing their values", () => {
++    const r4 = (n: number) => Math.round(n * 10000) / 10000;
++    for (const width of [16, 31, 128, 257, 512, 1024, 2048]) {
++      for (let start = 0; start < width - 1; start += Math.max(1, Math.floor(width / 17))) {
++        for (const end of [start + 1, Math.floor((start + width) / 2), width - 1]) {
++          const anchor = { aspect: 1, footX: r4((start + end) / 2 / width), footW: r4((end - start) / width) };
++          expect(readSpriteAnchor(anchor), JSON.stringify({ width, start, end })).toEqual(anchor);
++        }
++      }
++    }
++  });
++
++  it("returns only values that remain valid on a second read", () => {
++    for (let i = 1; i < 500; i++) {
++      const anchor = readSpriteAnchor({ aspect: 0.05 + i * 0.0099, footX: 0.5, footW: i / 500 });
++      if (anchor) expect(readSpriteAnchor(anchor)).toEqual(anchor);
++    }
++  });
++});
+diff --git a/app/src/server/bookSheet.test.ts b/app/src/server/bookSheet.test.ts
+index 25b1dba..fd49fc3 100644
+--- a/app/src/server/bookSheet.test.ts
++++ b/app/src/server/bookSheet.test.ts
+@@ -310,3 +310,66 @@ describe("K2 4a: the sandbox runs the same path on a local folder", () => {
+     await s.stop();
+   });
+ });
++
++
++describe("B-BOOK-69: protect book sheets at persistence boundaries", () => {
++  it("rejects impossible footprint anchors before changing stored files", async () => {
++    const s = serve({});
++    await s.start();
++    try {
++      expect((await s.put(poseRel("look-up"), webp(200, 400), ANCHOR)).status).toBe(200);
++      const previous = [...s.objects.entries()];
++      for (const bad of [
++        { ...ANCHOR, footX: 0.05 },
++        { ...ANCHOR, footX: 0.95 },
++        { ...ANCHOR, footW: 0.000001 },
++      ]) {
++        const response = await s.put(poseRel("look-up"), webp(200, 400), bad);
++        expect(response.status).toBe(400);
++        expect((await response.json()).code).toBe("book_sheet_bad_anchor");
++        expect([...s.objects.entries()]).toEqual(previous);
++      }
++    } finally { await s.stop(); }
++  });
++
++  it("refuses to commit corrupt stored anchors rather than publishing an invalid sheet", async () => {
++    const s = serve({});
++    await s.start();
++    try {
++      for (const pose of bookSheetDrawPoses(book)) {
++        s.objects.set(`children/kid1/books/${BOOK}/${poseRel(pose)}`, {
++          data: webp(200, 400), metadata: { aspect: "0.5", footX: "0.05", footW: "0.4" },
++        });
++      }
++      const response = await s.commit({ avatarHash: HASH });
++      expect(response.status).toBe(409);
++      expect((await response.json()).code).toBe("book_sheet_incomplete");
++      expect(await s.docs.read("owner", "kid1", BOOK)).toBeNull();
++    } finally { await s.stop(); }
++  });
++
++  it.each([false, true])("fails closed when the existing book record is unreadable (dryRun=%s)", async (dryRun) => {
++    const write = vi.fn(async () => undefined);
++    const docs: BookAssetsDocStore = {
++      read: vi.fn(async () => { throw new Error("Transient record-store failure"); }),
++      write,
++    };
++    const s = serve({ docs });
++    await s.start();
++    try {
++      for (const pose of bookSheetDrawPoses(book)) {
++        s.objects.set(`children/kid1/books/${BOOK}/${poseRel(pose)}`, {
++          data: webp(200, 400), metadata: { aspect: "0.5", footX: "0.5", footW: "0.4" },
++        });
++      }
++      const prior = `children/kid1/books/${BOOK}/${poseRel("look-up", OTHER)}`;
++      s.objects.set(prior, { data: webp(200, 400), metadata: { aspect: "0.5", footX: "0.5", footW: "0.4" } });
++      const previous = [...s.objects.entries()];
++      const response = await s.commit({ avatarHash: HASH, dryRun });
++      expect(response.status).toBe(500);
++      expect((await response.json()).code).toBe("book_sheet_commit_failed");
++      expect(write).not.toHaveBeenCalled();
++      expect([...s.objects.entries()]).toEqual(previous);
++    } finally { await s.stop(); }
++  });
++});
+diff --git a/app/src/server/bookSheet.ts b/app/src/server/bookSheet.ts
+index dbe34f2..0ea4aa1 100644
+--- a/app/src/server/bookSheet.ts
++++ b/app/src/server/bookSheet.ts
+@@ -258,7 +258,9 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
+       }
+       const missing = missingBookPoses(book, Object.keys(poses));
+       const have = [...byRel.keys()].filter((rel) => rel.startsWith(`hero-sheets/${sheetId}/`)).sort();
+-      const existing = await deps.docs.read(g.owner, g.childId, g.bookId).catch(() => null);
++      // A failed read is not a missing record. Fail closed before replacing
++      // an approved sheet, dropping its narration, or deleting an older hero.
++      const existing = await deps.docs.read(g.owner, g.childId, g.bookId);
+       const admin = !!existing?.sheetId && !isHeroBookSheetId(existing.sheetId);
+       if (body.dryRun === true) {
+         // committed: the book already shows THIS hero; admin: an uploaded sheet the pipeline never replaces
