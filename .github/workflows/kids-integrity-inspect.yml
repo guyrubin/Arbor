@@ -1,0 +1,47 @@
+name: Kids integrity inspection
+on:
+  push:
+    branches: [codex/kids-book-integrity-2026-10-18]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Record public source baseline
+        run: |
+          mkdir -p /tmp/kids-inspection
+          git rev-parse HEAD > /tmp/kids-inspection/source-sha.txt
+          git ls-tree -r --full-tree HEAD > /tmp/kids-inspection/source-manifest.txt
+          git archive --format=tar.gz HEAD > /tmp/kids-inspection/source.tgz
+      - name: Record dependency advisories without executing package scripts
+        working-directory: app
+        run: |
+          set +e
+          npm audit --json > /tmp/kids-inspection/audit-all.json
+          all_status=$?
+          npm audit --omit=dev --json > /tmp/kids-inspection/audit-runtime.json
+          runtime_status=$?
+          printf '{"allAuditExit":%s,"runtimeAuditExit":%s}\n' "$all_status" "$runtime_status" > /tmp/kids-inspection/audit-exits.json
+          node -e "for(const n of ['all','runtime']){const x=JSON.parse(require('fs').readFileSync('/tmp/kids-inspection/audit-'+n+'.json'));if(x.error||!x.metadata)throw new Error('Audit unavailable: '+n);console.log(n,JSON.stringify(x.metadata.vulnerabilities));}"
+      - name: Probe public production release only
+        run: |
+          date -u +%FT%TZ > /tmp/kids-inspection/probe-time.txt
+          curl --fail --show-error --silent --max-time 20 -H 'Cache-Control: no-cache' 'https://arborparentingapp.com/timestamp.txt?inspection=kids-integrity' > /tmp/kids-inspection/live-timestamp.txt
+          curl --fail --show-error --silent --max-time 20 -H 'Cache-Control: no-cache' 'https://arborparentingapp.com/sw.js?inspection=kids-integrity' > /tmp/kids-inspection/live-sw.js
+          curl --fail --show-error --silent --max-time 20 'https://arbor-api-q3vp2srxyq-ez.a.run.app/api/health' > /tmp/kids-inspection/live-health.json
+          curl --fail --show-error --silent --max-time 20 'https://arbor-api-q3vp2srxyq-ez.a.run.app/' > /tmp/kids-inspection/live-api-root.txt
+      - name: Retain inspection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-integrity-inspection
+          path: /tmp/kids-inspection/
+          retention-days: 7
