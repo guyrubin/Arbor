@@ -2,11 +2,15 @@
  * v3 EXTRA-CARE — the Care landing (#/consult), rendered at the real
  * ConsultTab in EN and HE.
  *
- * Three modules: the next visit with its three prep steps (the packet, which
- * holds the route's ONE move, build-share-packet), the aside (Help and
- * safety, Who sees what) and the doors with the trust line. #/handoff keeps
- * the builder alone. Who sees what lists live grants only; the doors are the
- * Care pages, never a directory. Counts only, no verdicts.
+ * v4 re-pin (Care, together is ONE screen, no tabs). Three modules: the next
+ * visit with its three prep steps (the packet, which holds the route's ONE
+ * move, build-share-packet; its head now carries the door to Appointments and
+ * its builder the Visit summary | Teacher brief template), the aside (Help and
+ * safety, the page's way into #/safety) and what is shared (Who sees what,
+ * Past exports, the trust line). The v3 doors (School brief, Appointments,
+ * Care summary) are gone: each has a home on this screen. #/handoff keeps the
+ * builder alone. Who sees what lists live grants only; nothing is a
+ * directory. Counts only, no verdicts.
  */
 import React from "react";
 import { readFileSync } from "node:fs";
@@ -65,11 +69,13 @@ vi.mock("../../hooks/useChildCollection", () => ({
 }));
 vi.mock("../../lib/loopEvents", () => ({ trackShareInitiated: vi.fn(), trackShareCompleted: vi.fn() }));
 vi.mock("../sections/Reports", () => ({ REPORTS: [], useReportExport: () => vi.fn(), useConsultPdf: () => vi.fn() }));
+// v4: #/school-brief renders the inline School Brief, whose review sheet portals to document.body.
+vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 
 import ConsultTab from "../tabs/ConsultTab";
-import { WhoSeesWhat } from "./CareAside";
-import { careDoors } from "./CareDoors";
+import { initialOf, PastExports, pastExportRows, WhoSeesWhat } from "./CareShared";
 import { daysUntil, inDaysLabel } from "./CareVisitHead";
+import { listExports, recordExport } from "../../consult/exportHistory";
 import { isLiveGrant, liveGrantRows } from "../../lib/shareGrants";
 
 function installLocalStorage() {
@@ -110,8 +116,14 @@ const LANDING_KEYS = [
   "elev.consult.preview.note", "elev.consult.aside.label", "elev.consult.aside.safety",
   "elev.consult.aside.sharing", "elev.consult.aside.manage", "elev.consult.aside.openSafety",
   "elev.consult.sharing.none", "elev.consult.sharing.unavailable", "elev.consult.sharing.loading",
-  "elev.consult.doors.label", "elev.consult.door.schoolBrief", "elev.consult.door.appointments",
-  "elev.consult.door.summary", "elev.consult.trust", "elev.consult.visitOutcome.saveError",
+  // v4: the template, the shared cards and the visit head's Appointments door
+  "elev.consult.template.label", "elev.consult.template.aria", "elev.consult.template.visit",
+  "elev.consult.template.teacher", "elev.consult.template.note.visit", "elev.consult.template.note.teacher",
+  "elev.consult.shared.label", "elev.consult.who.sub", "elev.consult.who.add", "elev.consult.who.until",
+  "elev.consult.who.noEnd", "elev.consult.past.title", "elev.consult.past.sub", "elev.consult.past.none",
+  "elev.consult.past.audience", "elev.consult.past.again", "elev.consult.past.record",
+  "elev.consult.visit.appointments", "elev.consult.visit.none", "elev.consult.visit.add",
+  "elev.consult.trust", "elev.consult.visitOutcome.saveError",
   "elev.consult.visitOutcome.saving", "elev.consult.visitOutcome.queued", "elev.consult.visitOutcome.held",
 ];
 
@@ -186,16 +198,16 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       expect(textOf(html, "consult-preview-note")).toBe(translate(locale, "elev.consult.preview.note"));
     });
 
-    it(`${locale}: exactly three modules and ONE move — on Build, never in the aside or the doors`, () => {
+    it(`${locale}: exactly three modules and ONE move — on Build, never in the aside or the shared cards`, () => {
       harness.locale = locale;
       harness.appts = [visitIn3()];
       const html = renderToStaticMarkup(<ConsultTab />);
-      expect(modulesOf(html)).toEqual(["consult-packet", "consult-aside", "consult-doors"]);
+      expect(modulesOf(html)).toEqual(["consult-packet", "consult-aside", "consult-shared"]);
       expect((html.match(/data-primary-move="/g) ?? []).length).toBe(1);
       const build = /<button[^>]*data-testid="consult-build"[^>]*>/.exec(html)![0];
       expect(build).toContain('data-primary-move="build-share-packet"');
-      expect(sliceModule(html, "consult-aside", "consult-doors")).not.toContain("data-primary-move");
-      expect(sliceModule(html, "consult-doors")).not.toContain("data-primary-move");
+      expect(sliceModule(html, "consult-aside", "consult-shared")).not.toContain("data-primary-move");
+      expect(sliceModule(html, "consult-shared")).not.toContain("data-primary-move");
       // one gradient on the page: Build's
       expect((html.match(/gradient-cta|arbor-gradient-primary/g) ?? []).length).toBe(1);
     });
@@ -225,7 +237,7 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       harness.contacts = [{ id: "k1", name: "Aunt Lea", phone: "+31 6 0000 0000" }];
       localStorage.setItem("arbor.safetyReviewed.c-care", new Date(2026, 8, 30, 12).toISOString());
       const html = renderToStaticMarkup(<ConsultTab />);
-      const aside = sliceModule(html, "consult-aside", "consult-doors");
+      const aside = sliceModule(html, "consult-aside", "consult-shared");
       const calls = [...aside.matchAll(/data-testid="care-aside-call" data-line="([^"]+)" href="tel:([^"]+)"/g)].map((m) => [m[1], m[2]]);
       // ONE way into Safety; with no talk line for the region it says what
       // Safety's by-country list is for
@@ -252,39 +264,81 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
 
     it(`${locale}: Who sees what — signed in it reads the roster; signed out no one can hold a grant`, () => {
       harness.locale = locale;
-      const loading = sliceModule(renderToStaticMarkup(<ConsultTab />), "consult-aside", "consult-doors");
+      const loading = sliceModule(renderToStaticMarkup(<ConsultTab />), "consult-shared");
       expect(loading).toMatch(/data-testid="care-aside-sharing"[^>]*aria-busy="true"/);
       expect(decode(loading)).toContain(translate(locale, "elev.consult.sharing.loading"));
       expect(loading).not.toContain('data-testid="care-aside-sharing-none"');
       harness.signedIn = false;
-      const out = sliceModule(renderToStaticMarkup(<ConsultTab />), "consult-aside", "consult-doors");
+      const out = sliceModule(renderToStaticMarkup(<ConsultTab />), "consult-shared");
       expect(textOf(out, "care-aside-sharing-none")).toBe(translate(locale, "elev.consult.sharing.none"));
+      // with no one yet, the roster door reads "Add someone"
       expect(out).toContain('data-testid="care-aside-manage"');
+      const manage = /<button[^>]*data-testid="care-aside-manage"[^>]*>([\s\S]*?)<\/button>/.exec(out)![1];
+      expect(decode(manage.replace(/<span class="msr[^"]*"[^>]*>[^<]*<\/span>/g, "").replace(/<[^>]+>/g, "")).trim()).toBe(translate(locale, "elev.consult.who.add"));
     });
 
-    it(`${locale}: the doors are School brief, Appointments and Care summary, then the trust line`, () => {
+    it(`${locale}: v4 — Who sees what and Past exports side by side, then the trust line; no doors, never a directory`, () => {
       harness.locale = locale;
       const html = renderToStaticMarkup(<ConsultTab />);
-      const doors = sliceModule(html, "consult-doors");
-      expect([...doors.matchAll(/data-testid="care-door" data-door="([^"]+)"/g)].map((m) => m[1])).toEqual(["school-brief", "appointments", "handoff"]);
-      for (const b of doors.match(/<button [^>]*>/g) ?? []) expect(b).toContain("min-h-[44px]");
-      expect(decode(doors)).toContain(translate(locale, "elev.consult.door.schoolBrief"));
-      const trust = doors.slice(doors.indexOf('data-testid="consult-trust-line"'));
-      expect(trust.length).toBeGreaterThan(0);
+      const shared = sliceModule(html, "consult-shared");
+      expect(shared.indexOf('data-testid="care-aside-sharing"')).toBeGreaterThan(-1);
+      expect(shared.indexOf('data-testid="care-past-exports"')).toBeGreaterThan(shared.indexOf('data-testid="care-aside-sharing"'));
+      // each card names itself with the brand gradient chip
+      expect((shared.match(/data-brand-chip="/g) ?? []).length).toBe(2);
+      // nothing exported from this device yet: an honest empty state, and the full record stays one tap away
+      expect(textOf(shared, "care-past-none")).toBe(translate(locale, "elev.consult.past.none"));
+      expect(shared).toContain('data-testid="care-past-record"');
+      for (const b of shared.match(/<button [^>]*>/g) ?? []) expect(b).toContain("min-h-[44px]");
+      const trust = shared.slice(shared.indexOf('data-testid="consult-trust-line"'));
       expect(decode(trust)).toContain(translate(locale, "elev.consult.trust"));
-      expect(doors.indexOf('data-testid="consult-trust-line"')).toBeGreaterThan(doors.lastIndexOf('data-testid="care-door"'));
+      expect(shared.indexOf('data-testid="consult-trust-line"')).toBeGreaterThan(shared.indexOf('data-testid="care-past-exports"'));
+      // the v3 doors are gone: each has its home on this one screen
+      expect(html).not.toContain('data-testid="care-door"');
+      expect(html).not.toContain('data-module="consult-doors"');
       // never a directory or a way to find someone new
       const landing = decode(sliceModule(html, "consult-aside"));
       expect(landing).not.toMatch(/find-pro|directory|Find a professional|Verified professionals|אנשי מקצוע מאומתים/i);
     });
+
+    it(`${locale}: v4 — Appointments lives under the visit head; with no visit the head says so and offers to add one`, () => {
+      harness.locale = locale;
+      harness.appts = [visitIn3()];
+      const booked = renderToStaticMarkup(<ConsultTab />);
+      const head = booked.slice(booked.indexOf('data-testid="consult-visit-head"'), booked.indexOf('data-testid="consult-audience-step"'));
+      expect(head).toContain('data-visit="booked"');
+      expect(decode(head)).toContain(translate(locale, "elev.consult.visit.appointments"));
+      expect(head).toMatch(/<button[^>]*data-testid="consult-visit-appointments"[^>]*min-h-\[44px\]/);
+      harness.appts = [];
+      const none = renderToStaticMarkup(<ConsultTab />);
+      expect(none).toContain('data-visit="none"');
+      expect(textOf(none, "consult-visit-none")).toBe(translate(locale, "elev.consult.visit.none"));
+      expect(decode(none)).toContain(translate(locale, "elev.consult.visit.add"));
+    });
+
+    it(`${locale}: v4 — the builder's template: Visit summary is the clinical audience row (no teacher chip), Teacher brief is the teacher`, () => {
+      harness.locale = locale;
+      const html = renderToStaticMarkup(<ConsultTab />);
+      const row = /<div[^>]*data-testid="consult-template-row"[^>]*>[\s\S]*?<\/div>/.exec(html)![0];
+      expect([...row.matchAll(/data-template="([^"]+)"/g)].map((m) => m[1])).toEqual(["visit", "teacher"]);
+      expect(row).toMatch(/aria-checked="true"[^>]*data-template="visit"/);
+      expect(textOf(html, "consult-template-note")).toBe(translate(locale, "elev.consult.template.note.visit"));
+      const audiences = /<div[^>]*data-testid="consult-audience-row"[^>]*>[\s\S]*?<\/div>/.exec(html)![0];
+      expect(decode(audiences)).not.toContain(translate(locale, "elev.carehonesty.consult.audience.teacher"));
+      harness.tab = "school-brief";
+      const brief = renderToStaticMarkup(<ConsultTab />);
+      expect(brief).toMatch(/aria-checked="true"[^>]*data-template="teacher"/);
+      expect(textOf(brief, "consult-template-note")).toBe(translate(locale, "elev.consult.template.note.teacher"));
+      expect(brief).toContain('data-testid="consult-teacher-branch"');
+      expect(brief).not.toContain('data-testid="consult-audience-row"');
+    });
   }
 
-  it("#/handoff keeps the builder alone: no kicker, visit card, chips, aside or doors", () => {
+  it("#/handoff keeps the builder alone: no kicker, visit card, chips, template, aside or shared cards", () => {
     harness.tab = "handoff";
     harness.appts = [visitIn3()];
     const html = renderToStaticMarkup(<ConsultTab />);
     expect(modulesOf(html)).toEqual(["consult-packet"]);
-    for (const id of ["consult-kicker", "consult-sub", "consult-visit-card", "consult-visit-card-head", "consult-visit-head", "consult-bring-row", "consult-preview-note", "consult-trust-line"]) {
+    for (const id of ["consult-kicker", "consult-sub", "consult-visit-card", "consult-visit-card-head", "consult-visit-head", "consult-bring-row", "consult-preview-note", "consult-trust-line", "consult-template-row"]) {
       expect(html, id).not.toContain(`data-testid="${id}"`);
     }
     expect((html.match(/data-primary-move="/g) ?? []).length).toBe(1);
@@ -380,19 +434,50 @@ describe("v3 EXTRA-CARE · units and source pins", () => {
     expect(translate("en", "elev.consult.inDays", { n: 9 })).toBe("In 9 days");
   });
 
-  it("the doors are the Care pages, each with its pill's own glyph", () => {
-    expect(careDoors().map((d) => [d.tab, d.icon])).toEqual([["school-brief", "backpack"], ["appointments", "calendar_month"], ["handoff", "description"]]);
+  it("v4: Past exports reads this device's history newest first — audiences and the weekly record, nothing else", () => {
+    installLocalStorage();
+    recordExport("c-care", "slp", "2026-09-12T10:00:00.000Z");
+    recordExport("c-care", "reports-weekly", "2026-10-02T10:00:00.000Z");
+    recordExport("c-care", "not-an-audience", "2026-10-05T10:00:00.000Z");
+    recordExport("c-care", "clinician", "2026-08-01T10:00:00.000Z");
+    expect(listExports("c-care").map((e) => e.audience)).toEqual(["not-an-audience", "reports-weekly", "slp", "clinician"]);
+    // the legacy "clinician" reads as the therapist ceiling; an unknown slot is left out
+    expect(pastExportRows(listExports("c-care"))).toEqual([
+      { kind: "record", at: "2026-10-02T10:00:00.000Z" },
+      { kind: "audience", audience: "slp", at: "2026-09-12T10:00:00.000Z" },
+      { kind: "audience", audience: "therapist", at: "2026-08-01T10:00:00.000Z" },
+    ]);
+    expect(listExports("someone-else")).toEqual([]);
   });
 
-  it("ConsultTab stamps one module literal; the aside and doors stamp their own, and no move", () => {
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: v4 Past exports rows — a professional's row prepares an update, the weekly row opens the full record`, () => {
+      harness.locale = locale;
+      const html = renderToStaticMarkup(<PastExports rows={[{ kind: "audience", audience: "slp", at: "2026-09-12T10:00:00.000Z" }, { kind: "record", at: "2026-10-02T10:00:00.000Z" }]} />);
+      expect([...html.matchAll(/data-testid="care-past-row" data-export="([^"]+)"/g)].map((m) => m[1])).toEqual(["slp", "record"]);
+      expect(decode(html)).toContain(translate(locale, "elev.consult.past.audience", { audience: translate(locale, "elev.carehonesty.consult.audience.slp") }));
+      expect(decode(html)).toContain(translate(locale, "elev.consult.past.again"));
+      expect(decode(html)).toContain(translate(locale, "elev.consult.past.record"));
+      expect(html).not.toContain('data-testid="care-past-none"');
+    });
+  }
+
+  it("v4: a grant row's initial is the address's first letter or digit", () => {
+    expect(initialOf("therapist@example.test")).toBe("T");
+    expect(initialOf("  _dani@example.test")).toBe("D");
+    expect(initialOf("9lives@example.test")).toBe("9");
+    expect(initialOf("")).toBe("·");
+  });
+
+  it("ConsultTab stamps one module literal; the aside and the shared cards stamp their own, and no move", () => {
     const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
     const consult = strip(readFileSync("src/components/tabs/ConsultTab.tsx", "utf8"));
     expect(consult.match(/\bdata-module\b(?!-)/g) ?? []).toHaveLength(1);
     const aside = strip(readFileSync("src/components/care/CareAside.tsx", "utf8"));
-    const doors = strip(readFileSync("src/components/care/CareDoors.tsx", "utf8"));
+    const shared = strip(readFileSync("src/components/care/CareShared.tsx", "utf8"));
     expect(aside).toContain('data-module="consult-aside"');
-    expect(doors).toContain('data-module="consult-doors"');
-    for (const src of [aside, doors, strip(readFileSync("src/components/care/CareVisitHead.tsx", "utf8"))]) {
+    expect(shared).toContain('data-module="consult-shared"');
+    for (const src of [aside, shared, strip(readFileSync("src/components/care/CareVisitHead.tsx", "utf8"))]) {
       expect(src).not.toContain("data-primary-move");
       expect(src).not.toMatch(/gradient-cta|arbor-gradient-primary/);
       expect(src).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);

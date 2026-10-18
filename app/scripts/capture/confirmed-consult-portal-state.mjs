@@ -16,7 +16,8 @@ export async function collectConfirmedConsultPortalState({ page, fixture, viewpo
   page.on('download', onDownload); page.on('popup', onPopup);
   try {
     await run('consult', 'consult-teacher-review-retirement', async cell => {
-      await byId('consult-audience-row').getByRole('radio', { name: he ? 'גננת או מורה' : 'Teacher or gan', exact: true }).click();
+      // v4: the teacher is the builder's Teacher brief template (the audience row is clinical only).
+      await byId('consult-template-row').getByRole('radio', { name: he ? 'תקציר לגן/בית הספר' : 'Teacher brief', exact: true }).click();
       await byId('consult-teacher-branch').waitFor({ state: 'visible' });
       await byId('school-brief-edit').click(); await editor().fill(fixture.words.draft);
       teacherDraft = await editor().elementHandle();

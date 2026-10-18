@@ -105,7 +105,16 @@ function openReview() {
   return find(modal.props.children, el => el.type === "button" && String(el.props.className).includes("gap-2")).props.onClick as () => void;
 }
 function start(profession = "teacher") { render(); source([visit("teacher-visit", profession)]); return render(); }
-function setAudience(audience: string) { find(render().packet, el => el.props.role === "radio" && elements(el).length > 0 && React.Children.toArray(el.props.children).includes(translate(`elev.carehonesty.consult.audience.${audience}`))).props.onClick(); render(); }
+// v4 re-pin: the builder's template (Visit summary | Teacher brief) chooses the
+// teacher; in the teacher template the clinical audience row steps aside, so a
+// professional is reached through Visit summary, then its chip.
+const chipFor = (audience: string) => (el: El) => el.props.role === "radio" && elements(el).length > 0 && React.Children.toArray(el.props.children).includes(translate(`elev.carehonesty.consult.audience.${audience}`));
+function setAudience(audience: string) {
+  const tree = render().packet;
+  if (audience === "teacher") { find(tree, el => el.props["data-template"] === "teacher").props.onClick(); render(); return; }
+  if (!elements(tree).find(chipFor(audience))) { find(tree, el => el.props["data-template"] === "visit").props.onClick(); render(); }
+  find(render().packet, chipFor(audience)).props.onClick(); render();
+}
 function approvePacket() { byId(render().packet, "consult-reason-input").props.onChange({ target: { value: "What helps with classroom transitions?" } }); byId(render().packet, "consult-reviewed").props.onClick(); return render().packet; }
 beforeEach(() => {
   h.cursor = 0; h.slots = []; h.owners.clear(); h.effects = []; h.dirty = false; h.listeners = []; h.remote = true; h.child = "a"; h.account = "parent-a"; h.query = "appointment=teacher-visit"; activeKey = ""; schoolMounted = false; h.storage.clear();

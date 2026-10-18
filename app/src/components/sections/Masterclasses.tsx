@@ -22,7 +22,7 @@ import { concernsForBehaviors } from "../../content/selectCards";
 import { recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { readLearnFeedback } from "../../learn/learnFeedback";
 import { LEARN_CARDS } from "../../learn/learnCards";
-import { rankLearnCards, type LearnRankSignals } from "../../learn/learnLibrary";
+import { LEARN_CATEGORIES, rankLearnCards, type LearnRankSignals } from "../../learn/learnLibrary";
 import { pickShortReads } from "../../learn/shortReads";
 import { ageVisibleLearnCards, devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
 // v3 EXTRA-FORYOU: courses and reads by area (the ONE domain registry: names,
@@ -34,6 +34,7 @@ import { TOGETHER_ART } from "../../lib/parentArt";
 import type { DevelopmentMetricId } from "../../types";
 // AP-055: Scholar Hub weekly concept feed
 import ScholarHubCard from "./ScholarHubCard";
+import { TrustLink } from "../trust/TrustLink";
 // AP-053: Academy "For You" — copilot focus + Learning Map join
 import AcademyForYou from "./AcademyForYou";
 
@@ -627,6 +628,51 @@ export default function Masterclasses() {
             {railStack}
           </div>
         )}
+        {/* v4 (For you, the parent is ONE screen, no tabs): the Learn
+            library's shelves as one row of doors inside the catalogue (not a
+            module of its own: the route's budget is 3). A shelf opens the
+            library on that shelf (requestLearnRead, the Scholar Hub's own
+            door), "Open the library" opens it whole, and The Science sits
+            at the card's foot, so every width keeps both doors the Library
+            pill and the rail used to carry. From xl it spans both columns
+            above them, right under the short reads (more reads, by area);
+            below xl it follows the courses, so a phone still meets a course
+            first (R17). */}
+        <section data-testid="academy-library" aria-labelledby="academy-library-title" className={`${cardCls} order-3 flex min-w-0 flex-col gap-3 p-4 xl:order-none xl:col-span-2`}>
+          <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
+            <div className="min-w-0">
+              <h2 id="academy-library-title" className="text-lg font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.library.title")}</h2>
+              <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.library.sub")}</p>
+            </div>
+            <button
+              type="button"
+              data-testid="academy-library-open"
+              onClick={() => requestLearnRead({ source: "foryou-library" })}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[13px] font-bold"
+              style={{ color: "var(--arbor-clay)" }}
+            >
+              <Icon name="local_library" size={16} />{t("elev.learnCare.library.open")}<Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
+            </button>
+          </div>
+          <div role="group" aria-labelledby="academy-library-title" data-testid="academy-library-shelves" className="flex min-w-0 flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap">
+            {LEARN_CATEGORIES.map((shelf) => (
+              <button
+                key={shelf.id}
+                type="button"
+                data-shelf={shelf.id}
+                onClick={() => requestLearnRead({ category: shelf.id, source: "foryou-library" })}
+                className={AREA_CHIP}
+                style={areaChipStyle(false)}
+              >
+                <Icon name={shelf.msIcon} size={15} />
+                <span dir="auto">{he ? shelf.label.he : shelf.label.en}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-[11px]" style={{ color: "var(--arbor-faint)" }}>
+            <TrustLink surface="foryou-library" />
+          </div>
+        </section>
       </div>
 
       {phone && (

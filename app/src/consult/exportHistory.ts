@@ -44,6 +44,20 @@ export function getLastExportedAt(childId: string, audience: string): string | n
   return typeof v === "string" && Number.isFinite(new Date(v).getTime()) ? v : null;
 }
 
+/** v4 (Care › Past exports): every recorded export on this device for this
+ *  child, newest first — the audience (or a report slot such as
+ *  "reports-weekly") and when. Metadata only; the documents themselves are
+ *  never stored, so a row can re-open the builder but never the old text.
+ *  Unparseable timestamps are dropped. */
+export function listExports(childId: string): { audience: string; at: string }[] {
+  const store = getStore();
+  if (!store || !childId) return [];
+  return Object.entries(readHistory(store, childId))
+    .filter((entry): entry is [string, string] => typeof entry[1] === "string" && Number.isFinite(new Date(entry[1]).getTime()))
+    .map(([audience, at]) => ({ audience, at }))
+    .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+}
+
 /** Record a successful export to this audience. Never throws. */
 export function recordExport(childId: string, audience: string, when: string = new Date().toISOString()): void {
   const store = getStore();
@@ -52,5 +66,15 @@ export function recordExport(childId: string, audience: string, when: string = n
     store.setItem(storageKey(childId), JSON.stringify({ ...readHistory(store, childId), [audience]: when }));
   } catch {
     /* metadata only — never block an export on storage failure */
+    return;
+  }
+  // v4: Care's Past exports card re-reads the history when one is recorded.
+  try {
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") window.dispatchEvent(new CustomEvent(CONSULT_EXPORTS_EVENT, { detail: { childId } }));
+  } catch {
+    /* no listener is ever load-bearing */
   }
 }
+
+/** v4: fired on window after an export is recorded (detail: { childId }). */
+export const CONSULT_EXPORTS_EVENT = "arbor:consult-export-recorded";
