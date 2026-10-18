@@ -224,6 +224,59 @@ describe("B-GAME-07f — the courtyard is alive, the tag is a moment", () => {
   });
 });
 
+describe("B-GAME-36 — how to play, without a word (GO / STOP pad, floor arrows)", () => {
+  const html = renderToStaticMarkup(<SneakFreeze />);
+  const box = (tag: string) => {
+    const m = html.match(new RegExp(`<div data-sneak-${tag}=""[^>]*style="([^"]*)"`))?.[1] ?? "";
+    const n = (k: string) => parseFloat(m.match(new RegExp(`${k}:([-0-9.]+)px`))?.[1] ?? "NaN");
+    return { left: n("left"), top: n("top"), width: n("width"), height: n("height") };
+  };
+
+  it("the demonstration opens on GO: a green walking-figure pad in the thumb zone, at least 44 px, no text", () => {
+    expect(html).toContain('data-sneak-demo="count"');
+    expect(html).toContain('data-sneak-pad=""');
+    expect(html).toContain('data-sneak-signal="go"');
+    expect(html).not.toContain('data-sneak-signal="stop"');
+    const pad = box("pad");
+    expect(pad.width).toBeGreaterThanOrEqual(44);
+    expect(pad.height).toBeGreaterThanOrEqual(44);
+    const padHtml = html.match(/<div data-sneak-pad=""[\s\S]*?<\/div><\/div>/)?.[0] ?? "";
+    expect(padHtml).toContain("var(--arbor-success)");
+    expect(padHtml).toContain("directions_walk");
+    expect(padHtml).toContain('aria-hidden="true"');
+  });
+
+  it("while it is safe to go, four arrows flow along the floor; the demonstration's hand presses the pad", () => {
+    expect(html).toContain('data-sneak-arrows=""');
+    expect((html.match(/data-sneak-arrow="\d"/g) ?? []).length).toBe(4);
+    const pad = box("pad");
+    const hand = box("hand");
+    // the fingertip (upper part of the glyph) lands inside the pad
+    const tipX = hand.left + hand.width / 2;
+    const tipY = hand.top + hand.height * 0.25;
+    expect(tipX).toBeGreaterThan(pad.left);
+    expect(tipX).toBeLessThan(pad.left + pad.width);
+    expect(tipY).toBeGreaterThan(pad.top);
+    expect(tipY).toBeLessThan(pad.top + pad.height);
+  });
+
+  it("the pad follows the hold (pressed in while the child holds), STOP is red with an open hand, arrows only on GO", () => {
+    const src = read("SneakFreeze.tsx");
+    expect(src).toMatch(/const held = holding\(\);/);
+    expect(src).toMatch(/<GoStopPad size=\{pad\} signal=\{signal\} held=\{held\} \/>/);
+    expect(src).toMatch(/data-sneak-held=\{held \? "" : undefined\}/);
+    expect(src).toMatch(/go \? "var\(--arbor-success\)" : "var\(--arbor-danger\)"/);
+    expect(src).toMatch(/go \? "directions_walk" : "front_hand"/);
+    expect(src).toMatch(/\{signal === "go" && <PathArrows/);
+    // the pad is a cue, not a second control: the whole stage stays the hold surface
+    expect(src.slice(src.indexOf("function GoStopPad"), src.indexOf("function PathArrows"))).not.toMatch(/onPointer|onClick|onTouch|<button/);
+    // the glyphs ship in the self-hosted icon subset (no network font, no emoji)
+    const subset = read("..", "..", "..", "..", "..", "public", "fonts", "material-symbols-rounded-subset.icons.txt");
+    expect(subset).toMatch(/^directions_walk$/m);
+    expect(subset).toMatch(/^front_hand$/m);
+  });
+});
+
 describe("B-GAME-06b — the covers sit in the plate", () => {
   it("the covers sit in the plate (a softer, less saturated cut-out); never the hero", () => {
     const html = renderToStaticMarkup(<SneakFreeze />);
