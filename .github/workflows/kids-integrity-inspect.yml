@@ -5,9 +5,9 @@ on:
 permissions:
   contents: read
 jobs:
-  inspect:
+  prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -15,33 +15,74 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Record public source baseline
-        run: |
-          mkdir -p /tmp/kids-inspection
-          git rev-parse HEAD > /tmp/kids-inspection/source-sha.txt
-          git ls-tree -r --full-tree HEAD > /tmp/kids-inspection/source-manifest.txt
-          git archive --format=tar.gz HEAD > /tmp/kids-inspection/source.tgz
-      - name: Record dependency advisories without executing package scripts
+      - name: Resolve compatible security patches without package scripts
         working-directory: app
         run: |
-          set +e
-          npm audit --json > /tmp/kids-inspection/audit-all.json
-          all_status=$?
-          npm audit --omit=dev --json > /tmp/kids-inspection/audit-runtime.json
-          runtime_status=$?
-          printf '{"allAuditExit":%s,"runtimeAuditExit":%s}\n' "$all_status" "$runtime_status" > /tmp/kids-inspection/audit-exits.json
-          node -e "for(const n of ['all','runtime']){const x=JSON.parse(require('fs').readFileSync('/tmp/kids-inspection/audit-'+n+'.json'));if(x.error||!x.metadata)throw new Error('Audit unavailable: '+n);console.log(n,JSON.stringify(x.metadata.vulnerabilities));}"
-      - name: Probe public production release only
+          mkdir -p /tmp/kids-patches /tmp/kids-audit
+          npm audit --json > /tmp/kids-audit/before-all.json || true
+          npm audit --omit=dev --json > /tmp/kids-audit/before-runtime.json || true
+          npm install --package-lock-only --ignore-scripts --save-dev @capacitor/android@8.4.3 @capacitor/ios@8.4.3 @capacitor/cli@8.4.3
+          npm install --package-lock-only --ignore-scripts @capacitor/core@8.4.3
+          # No --force, no major upgrade, no dependency overrides, no Firebase downgrade.
+          npm audit fix --package-lock-only --ignore-scripts > /tmp/kids-audit/fix.txt 2>&1 || true
+          npm audit --json > /tmp/kids-audit/after-all.json || true
+          npm audit --omit=dev --json > /tmp/kids-audit/after-runtime.json || true
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          for (const stage of ['before', 'after']) for (const scope of ['all', 'runtime']) {
+            const report = JSON.parse(fs.readFileSync(`/tmp/kids-audit/${stage}-${scope}.json`, 'utf8'));
+            if (report.error || !report.metadata?.vulnerabilities) throw new Error(`Audit unavailable: ${stage}-${scope}`);
+            console.log(stage, scope, JSON.stringify(report.metadata.vulnerabilities));
+            if (stage === 'after' && report.metadata.vulnerabilities.critical) throw new Error('Critical advisory remains; do not commit');
+          }
+          const before = JSON.parse((await import('node:child_process')).execFileSync('git', ['show', 'HEAD:app/package.json'], {encoding:'utf8'}));
+          const after = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          for (const name of ['firebase', 'firebase-admin', '@google/genai', '@google-cloud/vertexai']) {
+            if (before.dependencies[name] !== after.dependencies[name]) throw new Error(`Unexpected SDK manifest change: ${name}`);
+          }
+          JS
+          git diff -- package.json package-lock.json > /tmp/kids-audit/dependency-upgrade.patch
+          cp package.json package-lock.json /tmp/kids-patches/
+      - name: Retain exact dependency files
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-compatible-dependency-files
+          path: /tmp/kids-patches/
+          retention-days: 7
+      - name: Prepare local validation toolchain without package scripts
+        working-directory: app
         run: |
-          date -u +%FT%TZ > /tmp/kids-inspection/probe-time.txt
-          curl --fail --show-error --silent --max-time 20 -H 'Cache-Control: no-cache' 'https://arborparentingapp.com/timestamp.txt?inspection=kids-integrity' > /tmp/kids-inspection/live-timestamp.txt
-          curl --fail --show-error --silent --max-time 20 -H 'Cache-Control: no-cache' 'https://arborparentingapp.com/sw.js?inspection=kids-integrity' > /tmp/kids-inspection/live-sw.js
-          curl --fail --show-error --silent --max-time 20 'https://arbor-api-q3vp2srxyq-ez.a.run.app/api/health' > /tmp/kids-inspection/live-health.json
-          curl --fail --show-error --silent --max-time 20 'https://arbor-api-q3vp2srxyq-ez.a.run.app/' > /tmp/kids-inspection/live-api-root.txt
-      - name: Retain inspection evidence
+          npm ci --ignore-scripts
+          tar -czf /tmp/kids-audit/toolchain.tgz node_modules
+      - name: Retain audit evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: kids-integrity-inspection
-          path: /tmp/kids-inspection/
+          name: kids-compatible-dependency-evidence
+          path: /tmp/kids-audit/
           retention-days: 7
+  commit-branch-only:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/kids-book-integrity-2026-10-18
+      - uses: actions/download-artifact@v4
+        with:
+          name: kids-compatible-dependency-files
+          path: /tmp/kids-patches
+      - name: Commit reviewed-scope package files to this branch only
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          cp /tmp/kids-patches/package.json /tmp/kids-patches/package-lock.json app/
+          git add -- app/package.json app/package-lock.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Fix compatible dependency advisories; align Capacitor 8.4.3 security floor'
+          git push origin HEAD:refs/heads/codex/kids-book-integrity-2026-10-18
+          git rev-parse HEAD
