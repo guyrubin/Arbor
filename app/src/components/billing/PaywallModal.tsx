@@ -8,13 +8,13 @@ import { Skeleton } from "../ui/Skeleton";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useCheckout } from "../../hooks/useCheckout";
-import { useNativePrices } from "../../hooks/useNativePrices";
+import { useNativeOffering } from "../../hooks/useNativePrices";
 import { isNativePlatform, nativePlatform } from "../../lib/runtime";
 import { trackPaywallView } from "../../lib/kpiEvents";
 import type { PaidPlan } from "../../lib/pricing";
 import { fmtStoreCurrency } from "./PlanPrices";
 import { LegalLinks } from "./LegalLinks";
-import { buildPlanRows, paywallCta, disclosureText, periodKey, paywallBody, type Cadence } from "./paywallModel";
+import { buildPlanRows, paywallCta, disclosureText, periodKey, paywallBody, DEFAULT_CADENCE, type Cadence } from "./paywallModel";
 import { PlanBadge } from "../ui/PlanBadge";
 // Direct module import (3.6): planclarity IS registered in i18nElevation/index.ts;
 // the direct read is kept so this modal renders the split even if t() overrides drift.
@@ -44,8 +44,10 @@ export default function PaywallModal() {
   // A plain count of approved memory facts — never a %, hidden at 0.
   const keptCount = approvedMemoryItems?.length ?? 0;
   const { busy, startCheckout, restorePurchases, isNative } = useCheckout();
-  const nativePrices = useNativePrices();
-  const [cadence, setCadence] = useState<Cadence>("monthly");
+  const { prices: nativePrices, status: offeringStatus } = useNativeOffering();
+  // B-GA-12: annual is the accepted initial cadence (DEFAULT_CADENCE, shared
+  // with Settings); a parent's explicit tap wins thereafter — never reset on open.
+  const [cadence, setCadence] = useState<Cadence>(DEFAULT_CADENCE);
   const [selected, setSelected] = useState<PaidPlan>("plus");
 
   // The 402 names the plan that unlocks the feature; re-select it each open.
@@ -68,7 +70,7 @@ export default function PaywallModal() {
   // Co-parent sharing is free. Preserve existing Family subscriptions, but
   // do not sell a more expensive plan with no additional entitlement.
   const rows = buildPlanRows({ isNative: isNativePlatform, nativePrices, cadence, fmtCurrency: fmtStoreCurrency }).filter((row) => row.plan === "plus");
-  const cta = paywallCta({ rows, selected, cadence, isNative: isNativePlatform, platform: nativePlatform, t });
+  const cta = paywallCta({ rows, selected, cadence, isNative: isNativePlatform, platform: nativePlatform, t, status: offeringStatus });
   const disclosure = disclosureText(t, nativePlatform, cadence);
 
   // Feature-specific body copy keeps the pitch relevant to what they just hit.
@@ -119,7 +121,7 @@ export default function PaywallModal() {
           </div>
         </div>
 
-        {/* Cadence toggle (monthly / annual) */}
+        {/* Cadence toggle (monthly / annual) — annual preselected (B-GA-12) */}
         <div className="flex items-center gap-1 rounded-xl p-1 w-fit" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
           {(["monthly", "annual"] as const).map((c) => (
             <button key={c} type="button" onClick={() => setCadence(c)} aria-pressed={cadence === c} className="px-3 min-h-[44px] rounded-lg text-xs font-bold transition"
@@ -157,7 +159,8 @@ export default function PaywallModal() {
                 </span>
                 <span className="text-end text-xs font-semibold" style={{ color: "var(--arbor-ink)" }}>
                   {row.price === null ? (
-                    <Skeleton className="h-4 w-20" />
+                    // B-GA-12: a failed/missing offering is not "loading" — no perpetual skeleton.
+                    offeringStatus === "unavailable" ? <span aria-hidden="true">—</span> : <Skeleton className="h-4 w-20" />
                   ) : (
                     <>
                       <span className="block">{row.price}/{t(periodKey(cadence))}</span>

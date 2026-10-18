@@ -1,5 +1,5 @@
 import { PLAN_PRICES, formatEur, effectiveMonthlyEur, type PaidPlan } from "../../lib/pricing";
-import type { NativePriceMap } from "../../lib/nativeBilling";
+import type { NativePriceMap, OfferingStatus } from "../../lib/nativeBilling";
 
 /**
  * MOB-02 — the paywall's pure view-model (node-testable, no React).
@@ -11,6 +11,16 @@ import type { NativePriceMap } from "../../lib/nativeBilling";
  * (StoreKit/Play is the price authority there — never the web EUR constant).
  */
 export type Cadence = "monthly" | "annual";
+
+/**
+ * B-GA-12 — the accepted default cadence. Annual was decided as the default
+ * toggle (billing-and-store-publishing.md) but both surfaces shipped monthly.
+ * This is the ONE home for the initial selection: PaywallModal and the Settings
+ * plan panel both seed their toggle from here, and an explicit tap thereafter
+ * wins (nothing resets cadence on open). Pinned by annualDefault.test.ts.
+ */
+export const DEFAULT_CADENCE: Cadence = "annual";
+
 export type Tr = (key: string, vars?: Record<string, string | number>) => string;
 
 export type PlanRow = {
@@ -73,11 +83,15 @@ export type PaywallCta = { label: string; disabled: boolean; loading: boolean };
  * The single primary CTA. Native while no price resolved → disabled + the
  * "prices are loading" line (never a purchase button without a price).
  */
-export function paywallCta(args: { rows: PlanRow[]; selected: PaidPlan; cadence: Cadence; isNative: boolean; platform: string; t: Tr }): PaywallCta {
-  const { rows, selected, cadence, isNative, platform, t } = args;
+export function paywallCta(args: { rows: PlanRow[]; selected: PaidPlan; cadence: Cadence; isNative: boolean; platform: string; t: Tr; status?: OfferingStatus }): PaywallCta {
+  const { rows, selected, cadence, isNative, platform, t, status } = args;
   const row = rows.find((r) => r.plan === selected) ?? rows[0];
-  const loading = isNative && (!row || row.price === null);
-  if (loading) {
+  const missing = isNative && (!row || row.price === null);
+  // B-GA-12: the store answered with no usable offering — say so, stay disabled.
+  if (missing && status === "unavailable") {
+    return { label: t("elev.storeshell.pw.pricesUnavailable", { store: t(storeLabelKey(platform)) }), disabled: true, loading: false };
+  }
+  if (missing) {
     return { label: t("elev.storeshell.pw.pricesLoading", { store: t(storeLabelKey(platform)) }), disabled: true, loading: true };
   }
   return {
@@ -85,6 +99,20 @@ export function paywallCta(args: { rows: PlanRow[]; selected: PaidPlan; cadence:
     disabled: false,
     loading: false,
   };
+}
+
+/**
+ * B-GA-12 — the Settings plan panel's offering gate: on native the upgrade
+ * button is disabled until the store has a price for the selected cadence,
+ * and the notice names loading vs. unavailable (same keys as the paywall CTA).
+ * Web: never blocked, no notice (the display price is the client constant).
+ */
+export function offeringGate(args: { isNative: boolean; status: OfferingStatus; nativePrices: NativePriceMap | null; plan: PaidPlan; cadence: Cadence; platform: string; t: Tr }): { blocked: boolean; notice: string | null } {
+  const { isNative, status, nativePrices, plan, cadence, platform, t } = args;
+  if (!isNative) return { blocked: false, notice: null };
+  if (nativePrices?.[plan]?.[cadence]) return { blocked: false, notice: null };
+  const key = status === "unavailable" ? "elev.storeshell.pw.pricesUnavailable" : "elev.storeshell.pw.pricesLoading";
+  return { blocked: true, notice: t(key, { store: t(storeLabelKey(platform)) }) };
 }
 
 /** The auto-renewal disclosure paragraph (Apple 3.1.2 / Play). */

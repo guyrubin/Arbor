@@ -30,6 +30,15 @@ const PACKAGE_IDS: Record<PaidPlan, Record<Cadence, string>> = {
 export type NativePrice = { priceString: string; amount: number; currencyCode: string };
 export type NativePriceMap = Record<PaidPlan, Partial<Record<Cadence, NativePrice>>>;
 
+/**
+ * B-GA-12 — where the native offering stands. "web" = no store involved (the
+ * lib/pricing constant is the display price); "loading" = asked, not answered;
+ * "ready" = at least one store price resolved; "unavailable" = the store
+ * answered with no offering (billing not configured, no `default` offering,
+ * or the fetch failed) — a failed/missing offering is NOT "still loading".
+ */
+export type OfferingStatus = "web" | "loading" | "ready" | "unavailable";
+
 const rcApiKey = (): string | null => {
   const key =
     nativePlatform === "ios"
