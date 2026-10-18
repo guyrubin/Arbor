@@ -62,12 +62,20 @@ export function bookSheetDrawPoses(book: Book): string[] {
   return [...out].sort();
 }
 
-/** A measured sprite anchor (untrusted input): aspect > 0, foot fractions in [0, 1]. */
+/** A measured sprite anchor (untrusted input). The feet-band centre and width
+ * must describe a band inside the sprite, not merely valid separate fractions.
+ * Keep the keyer's four-decimal precision; tolerate its boundary-rounding error. */
 export function readSpriteAnchor(raw: { aspect?: unknown; footX?: unknown; footW?: unknown } | null | undefined): SpriteAnchor | null {
   if (!raw) return null;
   const n = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN);
   const aspect = n(raw.aspect), footX = n(raw.footX), footW = n(raw.footW);
   if (!(aspect > 0.05 && aspect < 5) || !(footX >= 0 && footX <= 1) || !(footW > 0 && footW <= 1)) return null;
   const r4 = (v: number) => Math.round(v * 10000) / 10000;
-  return { aspect: r4(aspect), footX: r4(footX), footW: r4(footW) };
+  const a = { aspect: r4(aspect), footX: r4(footX), footW: r4(footW) };
+  // Validate the values we actually persist, too: a tiny positive width may
+  // round to zero, or an aspect may round onto an excluded boundary.
+  if (!(a.aspect > 0.05 && a.aspect < 5) || !(a.footW > 0)) return null;
+  const rounding = 0.0001;
+  if (a.footX - a.footW / 2 < -rounding || a.footX + a.footW / 2 > 1 + rounding) return null;
+  return a;
 }
