@@ -326,6 +326,54 @@ describe("one capture sheet — real rendered handlers with deferred I/O", () =>
     // Negative control: the former ordinary form shape would remain savable.
     expect(nodes({ type: "form", props: { onSubmit: () => {} } }).some(n => n.type === "form")).toBe(true);
   });
+  it.each(["voice", "typed"] as const)("B-ASKJB-46: a %s crisis escalation that lands while the parent is editing still shows the alert and clears every field", async entry => {
+    const h = captureHarness({ text: "" });
+    if (entry === "voice") {
+      one(h.render(), n => n.type === "button" && n.props.onClick?.name === "startVoice").props.onClick();
+      h.speech[0].callbacks.onResult("A long parent sentence describing a dangerous situation needing support");
+    } else {
+      hardToggle(h, true);
+      h.state.newLogTrigger = "A long parent sentence describing a dangerous situation needing support";
+      one(h.render(), n => n.props.id === "quick-log-trigger").props.onKeyDown({ key: "Enter", preventDefault: vi.fn() });
+    }
+    expect(h.extracts).toHaveLength(1);
+    // The parent types while the server is still screening the sentence.
+    const field = entry === "voice" ? "quick-log-moment" : "quick-log-trigger";
+    one(h.render(), n => n.props.id === field).props.onChange({ target: { value: "A long parent sentence describing a dangerous situation needing support now" } });
+    h.state.newLogNotes = "a note"; h.state.newLogResponse = "a response";
+    // Save stays locked until the words that were sent have been screened.
+    let tree = h.render();
+    expect(one(tree, n => n.type === "button" && n.props.type === "submit").props.disabled).toBe(true);
+    expect(one(tree, n => n.props.testId === "quicklog-drafting").props.active).toBe(true);
+    h.extracts[0].reject(new h.EscalationRequiredError("blocked"));
+    await tick();
+    tree = h.render();
+    expect(one(tree, n => n.props["data-testid"] === "quicklog-escalation").props.role).toBe("alert");
+    expect(nodes(tree).some(n => n.type === "form" || typeof n.props.onConfirm === "function")).toBe(false);
+    expect(h.state.newLogTrigger).toBe("");
+    expect(h.state.newLogNotes).toBe("");
+    expect(h.state.newLogResponse).toBe("");
+    expect(h.state.handleAddLog).not.toHaveBeenCalled();
+    expect(h.state.addMoment).not.toHaveBeenCalled();
+    expect(h.toast).not.toHaveBeenCalled();
+    // Dismissing the alert hands back an unlocked, empty form.
+    one(tree, n => n.props["data-testid"] === "quicklog-escalation").props.children.find((c: any) => c?.type === "button").props.onClick();
+    tree = h.render();
+    expect(one(tree, n => n.type === "button" && n.props.type === "submit").props.disabled).toBe(false);
+  });
+  it("B-ASKJB-46 negative control: an ordinary extraction answered after an edit lifts the lock and keeps the parent's words", async () => {
+    const h = captureHarness({ text: "" });
+    one(h.render(), n => n.type === "button" && n.props.onClick?.name === "startVoice").props.onClick();
+    h.speech[0].callbacks.onResult("A long parent sentence describing a very difficult transition");
+    one(h.render(), n => n.props.id === "quick-log-moment").props.onChange({ target: { value: "My replacement words" } });
+    expect(one(h.render(), n => n.type === "button" && n.props.type === "submit").props.disabled).toBe(true);
+    h.extracts[0].resolve({ behaviorType: "Aggression", trigger: "Stale model words", response: "Old response", intensity: 5 });
+    await tick();
+    const tree = h.render();
+    expect(h.state.newLogTrigger).toBe("My replacement words");
+    expect(one(tree, n => n.type === "button" && n.props.type === "submit").props.disabled).toBe(false);
+    expect(nodes(tree).some(n => typeof n.props.onConfirm === "function")).toBe(false);
+  });
   it("late extraction is ignored after closing, unmounting, or replacing the parent's words", async () => {
     for (const retirement of ["close", "unmount", "edit"]) {
       const h = captureHarness();

@@ -22,6 +22,13 @@ describe("Now's one-lead priority (B-TODAY-28/34)", () => {
   it("does not erase a record answer being saved or retried when a visit arrives or evening starts", () => {
     expect(selectNowLead({ ...base, record: true, recordPending: true, tonight: true, visit: visit("a", "2026-10-14T10:00:00") })).toBe("record");
   });
+  it("B-TODAY-38: the urgent-setup day outranks every lead, including a chosen step, a saving record and the Tonight door", () => {
+    const loaded = { ...base, chosen: true, chosenPending: true, manualTonight: true, record: true, recordPending: true, tonight: true, visit: visit("a", "2026-10-14T10:00:00") };
+    expect(selectNowLead({ ...loaded, urgent: true })).toBe("urgent");
+    expect(selectNowLead({ ...base, urgent: true })).toBe("urgent");
+    expect(selectNowLead({ ...loaded, urgent: false })).toBe("step");
+    expect(selectNowLead(base)).toBe("practice");
+  });
   it("has no Monday recap and leaves an empty child's existing fallback intact", () => {
     for (const fallback of ["practice", "notice", "program", "recommendation"] as const) expect(selectNowLead({ ...base, fallback })).toBe(fallback);
   });

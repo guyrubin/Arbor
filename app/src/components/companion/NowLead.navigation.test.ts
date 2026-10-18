@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import ts from "typescript";
 import { selectNowLead } from "../../lib/today/dayCard";
+import { urgentSetupToday } from "../../lib/onboardingFirstRun";
 const source = ts.createSourceFile("NowView.tsx", readFileSync("src/components/companion/NowView.tsx", "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 let lead = "", open = "", currentError = "";
 const walk = (node: ts.Node) => {
@@ -17,7 +18,8 @@ const walk = (node: ts.Node) => {
 }; walk(source);
 const execute = (code: string, env: Record<string, unknown>) => new Function(...Object.keys(env), ts.transpileModule(`return (${code});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText)(...Object.values(env));
 function environment(initial: "step" | "visit" = "step") {
-  return { selectNowLead, chosen: initial === "step", saving: false, saveError: false,
+  // B-TODAY-38: the urgent-setup day is read through the real helper on a profile without the marker.
+  return { selectNowLead, urgentSetupToday, childProfile: { id: "a" }, now: new Date("2026-10-10T12:00:00Z"), chosen: initial === "step", saving: false, saveError: false,
     retryAction: null as { scope: object } | null, scopeLease: { key: "child:topic-a" }, tonightOpen: false,
     visit: initial === "visit" ? { id: "visit" } : null,
     record: { opener: null as { id: string } | null, receipt: null, saving: false, error: false },

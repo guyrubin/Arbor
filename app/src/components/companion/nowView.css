@@ -1,6 +1,8 @@
 .now-page { max-inline-size: 1100px; padding-block-start: 8px; container-type: inline-size; container-name: now; }
 .now-page button { overflow-wrap: anywhere; }
 .now-heading { margin-block-end: 18px; }
+.now-urgent-lead { display: flex; flex-direction: column; gap: 8px; font-size: var(--t-base); color: var(--arbor-ink); min-inline-size: 0; overflow-wrap: anywhere; }
+.now-urgent-lead p { margin: 0; }
 .now-lifecycle-note { margin-block-start: 8px; font-size: var(--t-sm); color: var(--arbor-clay-deep); }
 .now-loop-lead { min-inline-size: 0; }
 .now-loop-adapt { margin-block-start: 10px; }
