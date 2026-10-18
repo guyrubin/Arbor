@@ -266,21 +266,35 @@ describe("B-DESIGN-04 · Today takes the blend frame", () => {
   // v4 re-pin: Notice today is one object with a head — the gradient chip
   // (visibility), the h2 the section is labelled by with the open count, the
   // sub-line — and a 44 px fold toggle over its one card of rows.
+  // v4 design re-pin (Arbor v4 · NOTICE TODAY): the head is ONE line and the
+  // whole line is the fold control (a button inside the h2); the rows are the
+  // compact NowNoticeRow (chip · title over shelf · inline answers), and a foot
+  // closes the card: not a score, and the way to every milestone.
   it("Notice today = chip head (visibility glyph, the h2 id the section is labelled by, the count, the sub-line, a fold toggle) over one card", () => {
     const blocks = strip(todayFile("NowLoopBlocks.tsx"));
     const block = blocks.slice(blocks.indexOf('data-testid="today-notice"'), blocks.indexOf("export function NowTonightLead"));
     expect(block).toContain('<BrandChip icon="visibility" tone="sky" shape="drop" />');
-    expect(block).toContain('<h2 id={`${id}-notice`}>{t("elev.loop.today.notice.title")}');
-    expect(block).toContain('<p>{t("elev.loop.today.notice.sub")}</p>');
+    expect(block).toContain('<h2 className="now-notice-heading">');
+    expect(block).toContain('<span id={`${id}-notice`} className="now-notice-title">{t("elev.loop.today.notice.title")}</span>');
+    // v4 polish: the sub-line says what is true now (rows and answers), never "Two" beside a 1.
+    expect(block).toContain('<span className="now-notice-sub">{t(noticeSummaryKey(loop.blockNotices.length, waiting))}</span>');
     expect(block).toContain('data-testid="today-notice-count"');
     expect(block).toContain("aria-expanded={open}");
     expect(block).toContain("aria-labelledby={`${id}-notice`}");
     expect(block).toContain('<div className="now-notice-card" id={`${id}-notice-body`} hidden={!open}>');
+    expect(block).toContain("<NowNoticeRow key={c.milestone.id} index={i}");
+    expect(block).toContain('{t("elev.loop.today.notice.foot")}');
+    expect(block).toContain('data-testid="today-notice-all" onClick={() => setActiveTab("development")}');
+    // negative control: the big Notice object no longer stands in the rows
+    expect(block).not.toContain("<NoticeCard");
     expect(block).not.toMatch(/rounded-\[|text-\[\d/);
   });
   it("every NoticeCard on Today (the slot card, the Notice rows, Tonight's step 3) answers segmented", () => {
-    expect(OV.match(/<NoticeCard\b/g)).toHaveLength(2);
-    expect(OV.match(/<NoticeCard\b[^>]*answers="segmented"/g)).toHaveLength(2);
+    // v4 design re-pin: the slot card is the one NoticeCard left on Now (the
+    // rows are NowNoticeRow's inline answers); Tonight's step 3 is unchanged.
+    expect(OV.match(/<NoticeCard\b/g)).toHaveLength(1);
+    expect(OV.match(/<NoticeCard\b[^>]*answers="segmented"/g)).toHaveLength(1);
+    expect(OV.match(/<NowNoticeRow\b/g)).toHaveLength(1);
     expect(TF.match(/<NoticeCard\b/g)).toHaveLength(1);
     expect(TF).toMatch(/<NoticeCard\b[^>]*answers="segmented"/);
   });

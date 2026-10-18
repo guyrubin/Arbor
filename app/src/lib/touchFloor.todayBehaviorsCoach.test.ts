@@ -282,12 +282,16 @@ describe("B-DESIGN-04 · Today keeps its 44 px floors after the blend", () => {
     const css = read("components/companion/nowView.css");
     expect(ov).toContain('className="now-weekly-door now-tonight-pointer" data-testid="today-tonight-pointer"');
     expect(css).toMatch(/\.now-weekly-door \{[^}]*min-block-size: 72px/);
-    expect(css).toMatch(/\.now-notice-toggle \{[^}]*inline-size: 44px; block-size: 44px/);
+    // v4 design re-pin: the whole head line is the fold control, 44 px tall.
+    expect(css).toMatch(/\.now-notice-head \{[^}]*min-block-size: 44px/);
     expect(css).toMatch(/\.now-week-changed-line \{[^}]*min-block-size: 44px/);
     expect(css).not.toContain(".now-more");
   });
   it("every Notice answer on Today is the segmented control; its cells are 44 px", () => {
-    expect(ov.match(/<NoticeCard\b[^>]*answers="segmented"/g)).toHaveLength(2);
+    // v4 design re-pin: the slot card keeps the segmented control; Notice
+    // today's compact rows answer inline at 44 x 44 (NowNoticeRow.lifecycle).
+    expect(ov.match(/<NoticeCard\b[^>]*answers="segmented"/g)).toHaveLength(1);
+    expect(read("components/companion/nowView.css")).toMatch(/\.now-notice-answer \{[^}]*min-inline-size: 44px; min-block-size: 44px/);
     expect(seg).toMatch(/const cellBase = "[^"]*\bmin-h-\[44px\][^"]*\bmin-w-\[44px\]/);
   });
 });

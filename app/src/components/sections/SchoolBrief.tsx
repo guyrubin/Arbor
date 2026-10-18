@@ -31,6 +31,7 @@ import {
 // LC-11: the teacher receives a real document through the shared, native-aware
 // print egress — not a Markdown blob a gan teacher cannot open.
 import { openPrintableReport } from "../../lib/reportExport";
+import { recordExport } from "../../consult/exportHistory";
 
 /* AP-056 — School Handoff Brief (parent-controlled, teacher-facing).
  *
@@ -328,6 +329,9 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
         childProfile.name,
         uiLang
       );
+      // v4: an approved teacher brief is a Care export like any other — it
+      // lands in Care › Past exports (metadata only: audience + time).
+      recordExport(childProfile.id, "teacher");
       toast(t("elev.learnCare.brief.printed"), "success");
     } catch (err) {
       // Condition 3 fail-closed: a diagnosis term (incl. one edited in) means we DO NOT export.

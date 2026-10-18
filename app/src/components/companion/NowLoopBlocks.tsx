@@ -4,6 +4,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import PracticeCard from "../loop/PracticeCard";
 import NoticeCard from "../loop/NoticeCard";
 import TonightFlow from "../loop/TonightFlow";
+import { NowNoticeRow } from "./NowNoticeRow";
 import Icon from "../ui/Icon";
 import { BrandChip } from "../ui/BrandChip";
 import { PendingLine } from "../ui/Receipt";
@@ -70,39 +71,54 @@ export function NowNoticeLead({ loop, name }: { loop: Loop; name: string }) {
   return <NoticeCard key={card.milestone.id} milestone={card.milestone} shelf={card.shelf} gender={childProfile.gender} childName={name} variant="card" answers="segmented" answersAttrs={stamp} {...loop.noticeHandlers(card.milestone, card.shelf)} />;
 }
 
+/** v4: the head's line says what is true right now — how many things there
+ *  are to notice and how many are already answered — so it never contradicts
+ *  the open count beside the title. Counts only, never a score. */
+export function noticeSummaryKey(rows: number, waiting: number): string {
+  if (waiting <= 0) return rows > 1 ? "elev.loop.today.notice.doneTwo" : "elev.loop.today.notice.doneOne";
+  if (rows <= 1) return "elev.loop.today.notice.subOne";
+  return waiting < rows ? "elev.loop.today.notice.oneLeft" : "elev.loop.today.notice.sub";
+}
+
 /** Notice today — ≤ 2 rows, never the practice's shelf (B-LOOP-04).
  *  v4: one object with a head (gradient chip · title · how many are still
  *  open · the calm sub) that folds the rows away and back; the say-back
  *  question and "Arbor noticed" follow as its last rows (`extras`). */
 export function NowNoticeBlock({ loop, name, practiceLeads, extras }: { loop: Loop; name: string; practiceLeads: boolean; extras?: React.ReactNode }) {
-  const { childProfile } = useArbor();
+  const { childProfile, setActiveTab } = useArbor();
   const { t } = useLanguage();
   const id = useId();
   const [open, setOpen] = useState(true);
   if (!loop.blockNotices.length) return null;
   // Counts only: how many of today's rows are still unanswered (never a score).
   const waiting = loop.blockNotices.filter(c => !c.milestone.observationStatus).length;
+  // v4 (Arbor v4 · NOTICE TODAY): ONE line of head — the chip, the name, the
+  // open count, the sub-line, the chevron — the whole line is the fold control;
+  // then compact rows (area chip · title over shelf · three inline answers) and
+  // the foot: not a score, and the way to every milestone.
   return <section className="now-notice" data-testid="today-notice" aria-labelledby={`${id}-notice`}>
-    <div className="now-notice-head">
-      <BrandChip icon="visibility" tone="sky" shape="drop" />
-      <div className="now-notice-head-text">
-        <h2 id={`${id}-notice`}>{t("elev.loop.today.notice.title")}{waiting > 0 && <span className="now-notice-count" data-testid="today-notice-count" aria-label={t("elev.loop.today.notice.count", { n: waiting })}>{waiting}</span>}</h2>
-        <p>{t("elev.loop.today.notice.sub")}</p>
-      </div>
-      <button type="button" className="now-notice-toggle" aria-expanded={open} aria-controls={`${id}-notice-body`} data-testid="today-notice-toggle"
-        aria-label={open ? t("elev.loop.today.notice.fold") : t("elev.loop.today.notice.unfold")} onClick={() => setOpen(v => !v)}>
-        <Icon name={open ? "expand_less" : "expand_more"} size={22} />
+    <h2 className="now-notice-heading">
+      <button type="button" className="now-notice-head" aria-expanded={open} aria-controls={`${id}-notice-body`} data-testid="today-notice-toggle" onClick={() => setOpen(v => !v)}>
+        <BrandChip icon="visibility" tone="sky" shape="drop" />
+        <span id={`${id}-notice`} className="now-notice-title">{t("elev.loop.today.notice.title")}</span>
+        {waiting > 0 && <><span className="now-notice-count" data-testid="today-notice-count" aria-hidden="true">{waiting}</span><span className="sr-only">{t("elev.loop.today.notice.count", { n: waiting })}</span></>}
+        <span className="now-notice-sub">{t(noticeSummaryKey(loop.blockNotices.length, waiting))}</span>
+        <Icon name={open ? "expand_less" : "expand_more"} size={20} className="now-notice-chev" />
       </button>
-    </div>
+    </h2>
     <div className="now-notice-card" id={`${id}-notice-body`} hidden={!open}>
       {loop.blockNotices.map((c, i) => (
-        <div key={c.milestone.id} className={i > 0 ? "now-notice-row is-next" : "now-notice-row"}>
-          {/* Practice answered: the move passes to the first Notice row's answers. */}
-          <NoticeCard milestone={c.milestone} shelf={c.shelf} gender={childProfile.gender} childName={name} variant="row" answers="segmented"
-            answersAttrs={i === 0 && practiceLeads && loop.doseAnswer ? stamp : undefined} {...loop.noticeHandlers(c.milestone, c.shelf)} />
-        </div>
+        /* Practice answered: the move passes to the first Notice row's answers. */
+        <NowNoticeRow key={c.milestone.id} index={i} milestone={c.milestone} shelf={c.shelf} gender={childProfile.gender} childName={name}
+          answersAttrs={i === 0 && practiceLeads && loop.doseAnswer ? stamp : undefined} {...loop.noticeHandlers(c.milestone, c.shelf)} />
       ))}
       {extras}
+      <div className="now-notice-foot">
+        <span>{t("elev.loop.today.notice.foot")}</span>
+        <button type="button" className="now-notice-all" data-testid="today-notice-all" onClick={() => setActiveTab("development")}>
+          {t("elev.loop.today.notice.all")}<Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
+        </button>
+      </div>
     </div>
   </section>;
 }
