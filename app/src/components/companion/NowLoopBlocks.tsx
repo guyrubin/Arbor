@@ -70,6 +70,15 @@ export function NowNoticeLead({ loop, name }: { loop: Loop; name: string }) {
   return <NoticeCard key={card.milestone.id} milestone={card.milestone} shelf={card.shelf} gender={childProfile.gender} childName={name} variant="card" answers="segmented" answersAttrs={stamp} {...loop.noticeHandlers(card.milestone, card.shelf)} />;
 }
 
+/** v4: the head's line says what is true right now — how many things there
+ *  are to notice and how many are already answered — so it never contradicts
+ *  the open count beside the title. Counts only, never a score. */
+export function noticeSummaryKey(rows: number, waiting: number): string {
+  if (waiting <= 0) return rows > 1 ? "elev.loop.today.notice.doneTwo" : "elev.loop.today.notice.doneOne";
+  if (rows <= 1) return "elev.loop.today.notice.subOne";
+  return waiting < rows ? "elev.loop.today.notice.oneLeft" : "elev.loop.today.notice.sub";
+}
+
 /** Notice today — ≤ 2 rows, never the practice's shelf (B-LOOP-04).
  *  v4: one object with a head (gradient chip · title · how many are still
  *  open · the calm sub) that folds the rows away and back; the say-back
@@ -87,7 +96,7 @@ export function NowNoticeBlock({ loop, name, practiceLeads, extras }: { loop: Lo
       <BrandChip icon="visibility" tone="sky" shape="drop" />
       <div className="now-notice-head-text">
         <h2 id={`${id}-notice`}>{t("elev.loop.today.notice.title")}{waiting > 0 && <span className="now-notice-count" data-testid="today-notice-count" aria-label={t("elev.loop.today.notice.count", { n: waiting })}>{waiting}</span>}</h2>
-        <p>{t("elev.loop.today.notice.sub")}</p>
+        <p>{t(noticeSummaryKey(loop.blockNotices.length, waiting))}</p>
       </div>
       <button type="button" className="now-notice-toggle" aria-expanded={open} aria-controls={`${id}-notice-body`} data-testid="today-notice-toggle"
         aria-label={open ? t("elev.loop.today.notice.fold") : t("elev.loop.today.notice.unfold")} onClick={() => setOpen(v => !v)}>

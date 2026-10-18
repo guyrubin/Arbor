@@ -87,3 +87,22 @@ describe("every loop seam has a live caller", () => {
     expect(more).toContain('{storyRow && evening && storyFits && <button type="button" className="now-weekly-door now-agenda-row" data-testid="today-agenda-story"');
   });
 });
+
+describe("v4 · Notice today's head line matches its open count", () => {
+  it("names how many rows there are and how many are answered — never 'two' beside a 1", async () => {
+    const { noticeSummaryKey } = await import("./NowLoopBlocks");
+    const { translate } = await import("../../lib/i18n");
+    expect(noticeSummaryKey(2, 2)).toBe("elev.loop.today.notice.sub");
+    expect(noticeSummaryKey(2, 1)).toBe("elev.loop.today.notice.oneLeft");
+    expect(noticeSummaryKey(2, 0)).toBe("elev.loop.today.notice.doneTwo");
+    expect(noticeSummaryKey(1, 1)).toBe("elev.loop.today.notice.subOne");
+    expect(noticeSummaryKey(1, 0)).toBe("elev.loop.today.notice.doneOne");
+    for (const key of ["sub", "subOne", "oneLeft", "doneTwo", "doneOne"]) {
+      for (const lang of ["en", "he"] as const) expect(translate(lang, `elev.loop.today.notice.${key}`), `${lang} ${key}`).not.toBe(`elev.loop.today.notice.${key}`);
+      expect(translate("he", `elev.loop.today.notice.${key}`)).not.toMatch(/[A-Za-z]/);
+    }
+    // NEGATIVE CONTROL: the shipped head always said "Two things", even with one row open.
+    expect(translate("en", "elev.loop.today.notice.sub")).toMatch(/^Two /);
+  });
+});
+

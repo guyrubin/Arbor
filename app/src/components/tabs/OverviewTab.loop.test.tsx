@@ -271,7 +271,8 @@ describe("B-DESIGN-04 · Today takes the blend frame", () => {
     const block = blocks.slice(blocks.indexOf('data-testid="today-notice"'), blocks.indexOf("export function NowTonightLead"));
     expect(block).toContain('<BrandChip icon="visibility" tone="sky" shape="drop" />');
     expect(block).toContain('<h2 id={`${id}-notice`}>{t("elev.loop.today.notice.title")}');
-    expect(block).toContain('<p>{t("elev.loop.today.notice.sub")}</p>');
+    // v4 polish: the sub-line says what is true now (rows and answers), never "Two" beside a 1.
+    expect(block).toContain('<p>{t(noticeSummaryKey(loop.blockNotices.length, waiting))}</p>');
     expect(block).toContain('data-testid="today-notice-count"');
     expect(block).toContain("aria-expanded={open}");
     expect(block).toContain("aria-labelledby={`${id}-notice`}");
