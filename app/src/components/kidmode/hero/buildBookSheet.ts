@@ -301,15 +301,6 @@ export function keepLocalBookDoc(childId: string, storage: Pick<Storage, "getIte
 
 const running = new Map<string, { hash: string; cancel: () => void; job: Promise<BookBuildResult> }>();
 
-/** Notify the open parent sheet when a book-edition build starts or ends. */
-export const BOOK_SHEET_ACTIVITY_EVENT = "arbor:bookSheetActivity";
-function announceBookSheetActivity(childId: string): void {
-  if (typeof window !== "undefined" && typeof CustomEvent !== "undefined") {
-    window.dispatchEvent(new CustomEvent(BOOK_SHEET_ACTIVITY_EVENT, { detail: { childId } }));
-  }
-}
-
-
 /**
  * Start (or join) the book sheet of the child's hero. A build of another hero
  * for the same child is cancelled first (it stops between poses; nothing of it
