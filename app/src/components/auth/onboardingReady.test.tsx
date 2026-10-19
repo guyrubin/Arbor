@@ -57,30 +57,30 @@ describe("three-step authored first run", () => {
     const html = renderToStaticMarkup(<OnboardingFlow />);
     expect(html).toContain('data-testid="onboarding-about"'); expect(html).toContain('aria-valuemax="3"');
     expect(html).not.toContain("onboarding-promise-card"); expect(html).not.toMatch(/First steps|1 of 4|Create.*comic|demo/i);
-    expect(state.inputs.find(input => input.type === "month")?.value).toBe("");
+    expect(state.inputs.find(input => input["data-testid"] === "onboarding-birth-year")?.value).toBe("");
   });
   it.each(["en", "he"] as const)("Continue is disabled until a birth month is supplied (%s)", lang => {
     state.lang = lang; const s = { ...base(), birthMonth: "" };
     const html = renderToStaticMarkup(<StepChild state={s} onEdit={nothing} onNext={nothing} />);
-    expect(html).toContain('type="month"'); expect(html).not.toContain('type="range"'); expect(html).not.toContain('type="number"');
+    expect(html).toContain('inputMode="numeric"'); expect(html).toContain('onboarding-birth-month'); expect(html).not.toContain('type="range"');
     expect(state.buttons.find(button => button.className === "first-run-primary")?.disabled).toBe(true);
     state.buttons = []; renderToStaticMarkup(<StepChild state={base()} onEdit={nothing} onNext={nothing} />);
     expect(state.buttons.find(button => button.className === "first-run-primary")?.disabled).toBe(false);
   });
   it("actual month, languages and consent controls call the supplied editor", () => {
     const edit = vi.fn(); renderToStaticMarkup(<StepChild state={{ ...base(), languages: [] }} onEdit={edit} onNext={nothing} />);
-    state.inputs.find(input => input.type === "month")!.onChange({ target: { value: "2023-08" } });
+    state.inputs.find(input => input["data-testid"] === "onboarding-birth-year")!.onChange({ target: { value: "2023" } });
     state.buttons.find(button => button["data-language"] === "Hebrew")!.onClick();
     state.inputs.find(input => input.type === "checkbox")!.onChange({ target: { checked: true } });
-    expect(edit.mock.calls).toEqual([[{ birthMonth: "2023-08" }], [{ languages: ["Hebrew"] }], [{ consent: true }]]);
+    expect(edit.mock.calls).toEqual([[{ birthMonth: "2023-04" }], [{ languages: ["Hebrew"] }], [{ consent: true }]]);
   });
-  it.each(["en", "he"] as const)("the worry screen has exactly ten registry-backed single-select tiles (%s)", lang => {
+  it.each(["en", "he"] as const)("the worry screen has ten registry-backed multi-select tiles (%s)", lang => {
     state.lang = lang; const edit = vi.fn(); const html = renderToStaticMarkup(<StepDomains state={base()} onWorry={edit} onNext={nothing} />);
     expect(ONBOARDING_CHOICES).toEqual([...DOMAIN_IDS, "hard-moment", "nothing"]);
     expect((html.match(/data-choice=/g) ?? [])).toHaveLength(10); expect(html).not.toContain("elev.domains.");
     expect((html.match(/aria-pressed="true"/g) ?? [])).toHaveLength(1);
     state.buttons.find(button => button["data-choice"] === "talking")!.onClick();
-    expect(edit).toHaveBeenCalledWith({ choice: "talking", hardMomentId: "", quote: "" });
+    expect(edit).toHaveBeenCalledWith({ choice: "talking", choices: ["talking"], hardMomentId: "", quote: "" });
     // B-SHELL-39: the describe field (2,000 characters) replaced the one-line field.
     state.inputs.find(input => input.maxLength === 2000)!.onChange({ target: { value: "My words" } }); expect(edit).toHaveBeenLastCalledWith({ words: "My words" });
   });

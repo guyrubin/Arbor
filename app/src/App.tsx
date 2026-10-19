@@ -10,6 +10,7 @@ import Shell from "./components/layout/Shell";
 import LoginScreen from "./components/auth/LoginScreen";
 import OnboardingFlow from "./components/auth/OnboardingFlow";
 import CoParentGate from "./components/sharing/CoParentGate";
+import PurchaseIntentGate from "./components/billing/PurchaseIntentGate";
 import { firebaseClientMisconfigured, missingFirebaseClientConfig } from "./lib/firebase";
 import { refreshEntitlement, markBillingReturn } from "./hooks/useEntitlement";
 import { recordBillingTransition } from "./lib/billingTransition";
@@ -155,6 +156,7 @@ export default function App() {
               <CoParentGate>
               <ProfileGate>
                 <ArborProvider>
+                  <PurchaseIntentGate />
                   <Shell />
                 </ArborProvider>
               </ProfileGate>

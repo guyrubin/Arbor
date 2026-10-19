@@ -138,6 +138,6 @@ describe("3 · the message and the place it sends the parent both exist", () => 
     );
     // The shipped gate, which rendered whenever the fallback said "free".
     expect(src).not.toContain("{!isPaid && (\n");
-    expect(src).toContain("set.plan.upgradePlus");
+    expect(src).toContain("elev.storeshell.pw.continuePayment");
   });
 });

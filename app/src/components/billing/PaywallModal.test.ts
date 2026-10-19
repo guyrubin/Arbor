@@ -108,7 +108,7 @@ describe("PaywallModal.tsx wiring (source contract)", () => {
     expect((modal.match(/role="radio"/g) ?? []).length).toBe(1); // one row template, mapped
     expect(modal).toMatch(/paywallCta\(\{/);
     expect(modal).toMatch(/disabled=\{busy \|\| cta\.disabled\}/);
-    expect(modal).toContain("{cta.label}");
+    expect(modal).toContain('{busy ? t("elev.storeshell.pw.opening") : cta.label}');
     expect(modal).toMatch(/startCheckout\(selected, cadence, "paywall"\)/);
     // exactly one purchase button (the old two competing CTAs are gone)
     expect((modal.match(/startCheckout\(/g) ?? []).length).toBe(1);

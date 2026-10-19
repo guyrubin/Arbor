@@ -51,7 +51,10 @@ steps:
       - --no-traffic
       - --tag
       - candidate
-      - --set-env-vars
+      # Preserve provider configuration maintained outside the release manifest,
+      # including BILLING_WEB_PURCHASE_LINK and BILLING_MANAGE_URL. Replacing
+      # this list silently disabled checkout on every release.
+      - --update-env-vars
       # `^|^` switches the gcloud delimiter to | so CORS_ORIGINS can hold a
       # comma-separated origin list AND comp-email vars (ARBOR_*_EMAILS) can
       # contain '@'. (A '@' delimiter would split email addresses.)
@@ -100,8 +103,8 @@ steps:
       # Parent Live uses short-lived tokens minted with the Gemini API key.
       # Images stay on the configured regional Vertex provider.
       # REVENUECAT_WEBHOOK_AUTH = the shared secret the RC billing webhook sends;
-      # MUST stay listed here or a CI deploy drops it and entitlements stop updating.
-      - --set-secrets
+      # Keep the managed secret reference current while preserving other secrets.
+      - --update-secrets
       - GEMINI_API_KEY=arbor-gemini-key:latest,REVENUECAT_WEBHOOK_AUTH=arbor-rc-webhook-auth:latest
 substitutions:
   _REGION: europe-west4

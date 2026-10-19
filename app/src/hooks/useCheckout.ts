@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useToast } from "../context/ToastContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useArborOptional } from "../context/ArborContext";
@@ -27,7 +27,7 @@ export type OutcomeEffects = { toastKey: string | null; tone: ToastTone; close: 
  *  - cancelled   → the parent closed the store sheet; silent by design.
  *  - unavailable → honest "not available right now" (never the pre-launch
  *                  "we'll email you" copy — nobody sends that email).
- *  - error       → a dedicated purchase-failed line: nothing was charged.
+ *  - error       → ask the parent to check their plan before retrying.
  */
 export function resolveCheckoutOutcome(result: CheckoutResult): OutcomeEffects {
   switch (result) {
@@ -71,6 +71,8 @@ export function useCheckout() {
   // and must stay usable if a future surface mounts outside the provider.
   const arbor = useArborOptional();
   const [busy, setBusy] = useState(false);
+  const checkoutPending = useRef(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const applyEffects = (fx: OutcomeEffects) => {
     if (fx.close) arbor?.closePaywall();
@@ -78,7 +80,7 @@ export function useCheckout() {
   };
 
   const startCheckout = async (plan: PaidPlan, cadence: Cadence, surface: CheckoutSurface) => {
-    if (busy) return;
+    if (busy || checkoutPending.current) return;
     // B-SHELL-12: ONE checkout_start per tap, from every purchase surface
     // (Settings used to start checkout silently). Reported before the platform
     // gate runs: a parent who reaches the store sheet and cancels is still a
@@ -90,11 +92,20 @@ export function useCheckout() {
       toast(t("elev.gate.blocked"), "info");
       return;
     }
+    checkoutPending.current = true;
+    setCheckoutError(null);
     setBusy(true);
     try {
       const result = await performCheckout(defaultDeps(), plan, cadence);
-      applyEffects(resolveCheckoutOutcome(result));
+      const effects = resolveCheckoutOutcome(result);
+      if (result === "unavailable" || result === "error") setCheckoutError(effects.toastKey);
+      applyEffects(effects);
+    } catch {
+      const effects = resolveCheckoutOutcome("error");
+      setCheckoutError(effects.toastKey);
+      applyEffects(effects);
     } finally {
+      checkoutPending.current = false;
       setBusy(false);
     }
   };
@@ -128,5 +139,5 @@ export function useCheckout() {
     }
   };
 
-  return { busy, startCheckout, openPortal, restorePurchases, isNative: isNativePlatform };
+  return { busy, checkoutError, startCheckout, openPortal, restorePurchases, isNative: isNativePlatform };
 }

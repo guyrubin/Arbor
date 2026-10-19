@@ -8,6 +8,7 @@
  * broken mock (heredoc lesson: every filter needs a negative test).
  */
 import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "./api";
 import {
   performCheckout,
   performOpenPortal,
@@ -127,9 +128,18 @@ describe("G2 negative control — web path DOES use the hosted checkout (proves 
   });
 
   it("web checkout failure yields the CARE-5 'unavailable' info outcome, no navigation", async () => {
-    const deps = makeDeps({ isNative: false, billingCheckout: async () => { throw new Error("503"); } });
+    const deps = makeDeps({ isNative: false, billingCheckout: async () => { throw new ApiError("Checkout not configured", 503); } });
     const result = await performCheckout(deps, "family", "monthly");
     expect(result).toBe("unavailable");
     expect(deps.calls.navigate).toBe(0);
+  });
+  it("network errors remain errors, and unsafe or empty URLs never navigate", async () => {
+    for (const url of ["", "javascript:alert(1)", "http://pay.rev.cat/tok", "https://user:pass@pay.rev.cat/tok"]) {
+      const deps = makeDeps({ isNative: false, billingCheckout: async () => ({ url }) });
+      expect(await performCheckout(deps, "plus", "monthly")).toBe("error");
+      expect(deps.calls.navigate).toBe(0);
+    }
+    const deps = makeDeps({ isNative: false, billingCheckout: async () => { throw new TypeError("offline"); } });
+    expect(await performCheckout(deps, "plus", "monthly")).toBe("error");
   });
 });

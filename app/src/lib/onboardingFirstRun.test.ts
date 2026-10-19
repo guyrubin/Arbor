@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChildProfile } from "../types";
 import { DOMAINS } from "./domains/registry";
 import { translate } from "./i18n";
-import { FirstRunController, firstRunCard, initialFirstRunState, onboardingChallenges, FIRST_NOTICE_PROMPTS, urgentSetupToday, validAbout } from "./onboardingFirstRun";
+import { FirstRunController, firstRunCard, initialFirstRunState, onboardingChallenges, onboardingChoices, toggleOnboardingChoice, FIRST_NOTICE_PROMPTS, urgentSetupToday, validAbout } from "./onboardingFirstRun";
 import { acceptTodayAction } from "../actionLoop/accept";
 import type { ActionLoopEntry } from "../actionLoop/model";
 import { ageMonthsFromBirthMonth, ageMonthsFromProfile, agePatchFromMonths } from "./childAge";
@@ -38,6 +38,30 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW); vi.stubGlobal("fet
 afterEach(() => { expect(globalThis.fetch).not.toHaveBeenCalled(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("B-SHELL-36: signed-in first run", () => {
+  it("keeps multiple topics through Back, persisted resume and completion", async () => {
+    const h = harness(); const c = h.controller; about(c); await c.next();
+    c.worry(toggleOnboardingChoice(c.snapshot().worry, "talking"));
+    c.worry(toggleOnboardingChoice(c.snapshot().worry, "feelings"));
+    expect(onboardingChoices(c.snapshot().worry)).toEqual(["talking", "feelings"]);
+    await c.next(); c.back();
+    expect(onboardingChoices(c.snapshot().worry)).toEqual(["talking", "feelings"]);
+    const resumed = new FirstRunController(h.profiles[0], h.services);
+    expect(onboardingChoices(resumed.snapshot().worry)).toEqual(["talking", "feelings"]);
+    await resumed.finish(firstRunCard(resumed.snapshot(), "en", NOW));
+    expect(h.profiles[0].challenges).toEqual(onboardingChallenges(c.snapshot().worry, "en"));
+    expect(h.profiles[0].challenges).toHaveLength(2);
+    expect(h.rows).toHaveLength(1);
+  });
+  it("deselects topics and makes Nothing exclusive without losing words", () => {
+    const c = harness().controller;
+    c.worry({ words: "Keep my own words" });
+    for (const choice of ["talking", "feelings", "talking"] as const) c.worry(toggleOnboardingChoice(c.snapshot().worry, choice));
+    expect(onboardingChoices(c.snapshot().worry)).toEqual(["feelings"]);
+    expect(c.snapshot().worry.choice).toBe("feelings");
+    c.worry(toggleOnboardingChoice(c.snapshot().worry, "nothing"));
+    expect(onboardingChoices(c.snapshot().worry)).toEqual(["nothing"]);
+    expect(c.snapshot().worry.words).toBe("Keep my own words");
+  });
   it.each(["en", "he"] as const)("three steps → accepted Today step, no model/network calls (%s)", async lang => {
     const h = harness(undefined, lang); const c = h.controller;
     expect(c.snapshot().step).toBe(1); expect(c.snapshot().birthMonth).toBe("");

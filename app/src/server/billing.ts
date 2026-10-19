@@ -235,14 +235,15 @@ export const billingCheckoutUrl = (
 
   if (config.billingWebPurchaseLink) {
     try {
-      const base = config.billingWebPurchaseLink.replace(/\/+$/, "");
-      const target = `${base}/${encodeURIComponent(opts.uid)}`;
-      const params = new URLSearchParams();
+      const target = new URL(config.billingWebPurchaseLink.trim());
+      if (target.protocol !== "https:" || target.username || target.password || !opts.uid) return null;
+      target.pathname = `${target.pathname.replace(/\/+$/, "")}/${encodeURIComponent(opts.uid)}`;
+      target.hash = "";
+      const params = target.searchParams;
       const pkg = WEB_PACKAGE_IDS[key];
       if (pkg) params.set("package_id", pkg);
       if (opts.email) params.set("email", opts.email);
-      const qs = params.toString();
-      return qs ? `${target}?${qs}` : target;
+      return target.toString();
     } catch (error) {
       logger.error("Invalid BILLING_WEB_PURCHASE_LINK in config", error, { plan: opts.plan, cadence: opts.cadence });
       return null;
@@ -253,6 +254,7 @@ export const billingCheckoutUrl = (
   if (!base) return null;
   try {
     const url = new URL(base);
+    if (url.protocol !== "https:" || url.username || url.password || !opts.uid) return null;
     url.searchParams.set("client_reference_id", opts.uid);
     if (opts.email) url.searchParams.set("prefilled_email", opts.email);
     return url.toString();

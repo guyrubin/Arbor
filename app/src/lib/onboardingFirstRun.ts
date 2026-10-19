@@ -23,6 +23,8 @@ export type OnboardingChoice = DomainId | "hard-moment" | "nothing";
 export interface OnboardingDraft {
   step: 2 | 3;
   choice: OnboardingChoice;
+  /** All selected topics. `choice` remains the first-card focus for old drafts. */
+  choices?: OnboardingChoice[];
   words: string;
   quote: string;
   hardMomentId: string;
@@ -63,9 +65,25 @@ export function validAbout(state: Pick<FirstRunState, "name" | "birthMonth" | "l
 export function choiceName(choice: OnboardingChoice, lang: UiLang): string {
   return isDomainId(choice) ? domainName(choice, key => translate(lang, key)) : translate(lang, `ob.first.${choice}`);
 }
+export function onboardingChoices(worry: OnboardingDraft): OnboardingChoice[] {
+  const choices = [...new Set((worry.choices ?? [worry.choice]).filter(value => isDomainId(value) || value === "hard-moment"))];
+  return choices.length ? choices : ["nothing"];
+}
+export function toggleOnboardingChoice(worry: OnboardingDraft, choice: OnboardingChoice): Partial<OnboardingDraft> {
+  const current = onboardingChoices(worry).filter(value => value !== "nothing");
+  const selected = choice === "nothing" ? [] : current.includes(choice)
+    ? current.filter(value => value !== choice) : [...current, choice];
+  const choices: OnboardingChoice[] = selected.length ? selected : ["nothing"];
+  return { choices, choice: choices.includes("hard-moment") ? "hard-moment" : choices[0],
+    hardMomentId: choices.includes("hard-moment") ? worry.hardMomentId : "",
+    quote: choices.includes("talking") ? worry.quote : "" };
+}
 export function onboardingChallenges(worry: OnboardingDraft, lang: UiLang): string[] {
   const text = worry.words.trim();
-  return text ? [text] : worry.choice === "nothing" ? [] : [choiceName(worry.choice, lang)];
+  // Legacy single-topic drafts retain their original free-text semantics.
+  if (!worry.choices && text) return [text];
+  const topics = onboardingChoices(worry).filter(choice => choice !== "nothing").map(choice => choiceName(choice, lang));
+  return [...new Set([...(text ? [text] : []), ...topics])];
 }
 
 /** Existing Journal questions, unchanged. The clinical review packet identifies
@@ -187,7 +205,8 @@ export class FirstRunController {
     this.put({ ...next, error: false });
   }
   worry(next: Partial<OnboardingDraft>) {
-    if (!this.state.busy && !this.state.complete) this.put({ worry: { ...this.state.worry, ...next }, error: false });
+    if (!this.state.busy && !this.state.complete) this.put({ worry: { ...this.state.worry,
+      ...(next.choice !== undefined && next.choices === undefined ? { choices: undefined } : {}), ...next }, error: false });
   }
   back() { if (!this.state.busy && !this.state.complete) this.put({ step: Math.max(1, this.state.step - 1) as FirstRunState["step"], error: false }); }
   /** Capture callbacks once. React may refresh callbacks within one session,

@@ -16,10 +16,12 @@ import {restoreTheme} from './lib/theme';
 import {firebaseEnabled} from './lib/firebase';
 import {hydrateDemoFamily} from './lib/demoFamilyHydrate';
 import {isPublicGuidePath} from './content/publicHardMoments';
+import {capturePurchaseIntent} from './lib/purchaseIntent';
 
 // AP-052: restore accent-theme preference before first render so there is no
 // flash-of-wrong-theme on load. Runs synchronously — no await needed.
 restoreTheme();
+capturePurchaseIntent();
 
 // Native shells (iOS/Android) load the bundle from a local origin, so re-point
 // relative `/api/*` calls at the remote backend. No-op on the web. Must run

@@ -27,8 +27,9 @@ describe("resolveCheckoutOutcome", () => {
   it("error → dedicated purchase-failed key (error tone), paywall stays open for a retry", () => {
     const fx = resolveCheckoutOutcome("error");
     expect(fx).toEqual({ toastKey: "elev.storeshell.pw.purchaseFailed", tone: "error", close: false });
-    expect(shellEn[fx.toastKey!]).toMatch(/nothing was charged/i);
-    expect(shellHe[fx.toastKey!]).toContain("לא בוצע חיוב");
+    expect(shellEn[fx.toastKey!]).toMatch(/check your connection and your plan/i);
+    expect(shellEn[fx.toastKey!]).not.toMatch(/nothing was charged/i);
+    expect(shellHe[fx.toastKey!]).toContain("מצב המנוי");
   });
 
   it("unavailable → honest not-available copy (info), never the pre-launch email promise", () => {
@@ -58,7 +59,8 @@ describe("resolveRestoreOutcome", () => {
 
 describe("useCheckout wiring (source contract)", () => {
   it("applies effects through the pure resolver and closes the paywall via ArborContext", () => {
-    expect(hook).toMatch(/applyEffects\(resolveCheckoutOutcome\(result\)\)/);
+    expect(hook).toMatch(/const effects = resolveCheckoutOutcome\(result\)/);
+    expect(hook).toMatch(/applyEffects\(effects\)/);
     expect(hook).toMatch(/applyEffects\(resolveRestoreOutcome\(result\)\)/);
     expect(hook).toMatch(/if \(fx\.close\) arbor\?\.closePaywall\(\);/);
   });

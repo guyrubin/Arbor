@@ -31,7 +31,7 @@ describe("B-GA-12 · annual is the initial cadence on BOTH surfaces", () => {
 
   it("PaywallModal and SettingsModal seed cadence from DEFAULT_CADENCE — never a literal", () => {
     for (const [name, src] of [["PaywallModal", paywall], ["SettingsModal", settings]] as const) {
-      expect(src, name).toMatch(/useState<Cadence>\(DEFAULT_CADENCE\)/);
+      expect(src, name).toMatch(/useState<Cadence>\((?:\(\) => readPurchaseIntent\(\)\?\.cadence \?\? )?DEFAULT_CADENCE\)/);
       expect(src, name).not.toMatch(/useState<[^>]*>\("monthly"\)/);
       expect(src, name).not.toMatch(/useState<[^>]*>\("annual"\)/);
     }

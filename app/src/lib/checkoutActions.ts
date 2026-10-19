@@ -1,4 +1,4 @@
-import { api } from "./api";
+import { api, ApiError } from "./api";
 import { isNativePlatform } from "./runtime";
 import { refreshEntitlement } from "../hooks/useEntitlement";
 
@@ -81,11 +81,13 @@ export async function performCheckout(deps: CheckoutDeps, plan: PaidPlan, cadenc
   }
   try {
     const { url } = await deps.billingCheckout(plan, cadence);
+    const target = new URL(url);
+    if (target.protocol !== "https:" || target.username || target.password) return "error";
     deps.navigate(url);
     return "redirected";
-  } catch {
-    // CARE-5: checkout being unavailable is information, not a success.
-    return "unavailable";
+  } catch (error) {
+    // A configuration failure is different from a network or sign-in failure.
+    return error instanceof ApiError && error.status === 503 ? "unavailable" : "error";
   }
 }
 
