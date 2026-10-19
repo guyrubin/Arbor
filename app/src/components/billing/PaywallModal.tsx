@@ -16,6 +16,7 @@ import { fmtStoreCurrency } from "./PlanPrices";
 import { LegalLinks } from "./LegalLinks";
 import { buildPlanRows, paywallCta, disclosureText, periodKey, paywallBody, DEFAULT_CADENCE, type Cadence } from "./paywallModel";
 import { PlanBadge } from "../ui/PlanBadge";
+import { readPurchaseIntent } from "../../lib/purchaseIntent";
 // Direct module import (3.6): planclarity IS registered in i18nElevation/index.ts;
 // the direct read is kept so this modal renders the split even if t() overrides drift.
 import * as planclarity from "../../lib/i18nElevation/planclarity";
@@ -43,11 +44,11 @@ export default function PaywallModal() {
   const name = firstName || t("learn.yourChild");
   // A plain count of approved memory facts — never a %, hidden at 0.
   const keptCount = approvedMemoryItems?.length ?? 0;
-  const { busy, startCheckout, restorePurchases, isNative } = useCheckout();
+  const { busy, checkoutError, startCheckout, restorePurchases, isNative } = useCheckout();
   const { prices: nativePrices, status: offeringStatus } = useNativeOffering();
   // B-GA-12: annual is the accepted initial cadence (DEFAULT_CADENCE, shared
   // with Settings); a parent's explicit tap wins thereafter — never reset on open.
-  const [cadence, setCadence] = useState<Cadence>(DEFAULT_CADENCE);
+  const [cadence, setCadence] = useState<Cadence>(() => readPurchaseIntent()?.cadence ?? DEFAULT_CADENCE);
   const [selected, setSelected] = useState<PaidPlan>("plus");
 
   // The 402 names the plan that unlocks the feature; re-select it each open.
@@ -95,7 +96,7 @@ export default function PaywallModal() {
         {/* 3.6 — the mom-test answer to "what's free vs paid?": the split, stated
             plainly BEFORE the price. Free column first — the parent keeps it all
             either way; the upgrade only ADDS. */}
-        <div dir="auto" className="rounded-xl p-3 grid gap-3 sm:grid-cols-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+        <div className="rounded-xl p-3 grid gap-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
           <div>
             <p className="font-bold mb-1" style={{ color: "var(--arbor-ink)" }}>{pc("freeTitle")}</p>
             <ul className="space-y-0.5 list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
@@ -122,9 +123,10 @@ export default function PaywallModal() {
         </div>
 
         {/* Cadence toggle (monthly / annual) — annual preselected (B-GA-12) */}
+        <p className="text-xs font-semibold">{t("elev.storeshell.pw.billingChoice")}</p>
         <div className="flex items-center gap-1 rounded-xl p-1 w-fit" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
           {(["monthly", "annual"] as const).map((c) => (
-            <button key={c} type="button" onClick={() => setCadence(c)} aria-pressed={cadence === c} className="px-3 min-h-[44px] rounded-lg text-xs font-bold transition"
+            <button key={c} type="button" onClick={() => setCadence(c)} disabled={busy} aria-pressed={cadence === c} className="px-3 min-h-[44px] rounded-lg text-xs font-bold transition"
               style={cadence === c ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" } : { color: "var(--arbor-muted)" }}>
               {t(c === "monthly" ? "set.plan.monthly" : "set.plan.annual")}
             </button>
@@ -190,8 +192,9 @@ export default function PaywallModal() {
           className="w-full inline-flex items-center justify-center gap-1.5 text-sm font-bold rounded-xl px-4 py-3 min-h-[44px] disabled:opacity-50"
           style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
         >
-          {cta.label}
+          {busy ? t("elev.storeshell.pw.opening") : cta.label}
         </button>
+        {checkoutError && <p role="alert" className="text-xs leading-relaxed">{t(checkoutError)}</p>}
 
         {/* Apple 3.1.2 / Play: the auto-renewal + cancellation statement, visible
             before purchase, plus the Privacy · Terms · Support links (MOB-01). */}

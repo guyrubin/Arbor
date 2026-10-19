@@ -89,6 +89,18 @@ describe("RevenueCat → entitlement mapping (MON-2)", () => {
 });
 
 describe("billingCheckoutUrl (MON-2 web purchase link)", () => {
+  it("preserves configured URL parameters and selects exactly the requested package", () => {
+    const url = new URL(billingCheckoutUrl(cfg({ billingWebPurchaseLink: "https://pay.rev.cat/tok/?currency=EUR&package_id=old#fragment" }), {
+      plan: "plus", cadence: "monthly", uid: "u1", email: null,
+    })!);
+    expect(url.pathname).toBe("/tok/u1");
+    expect(url.searchParams.get("currency")).toBe("EUR");
+    expect(url.searchParams.getAll("package_id")).toEqual(["plus_monthly"]);
+    expect(url.hash).toBe("");
+  });
+  it.each(["not-a-url", "http://pay.rev.cat/tok", "javascript:alert(1)", "https://user:pass@pay.rev.cat/tok"])("rejects unusable checkout config: %s", billingWebPurchaseLink => {
+    expect(billingCheckoutUrl(cfg({ billingWebPurchaseLink }), { plan: "plus", cadence: "monthly", uid: "u1", email: null })).toBeNull();
+  });
   it("builds a RevenueCat Web Purchase Link: uid as path segment + package_id", () => {
     const url = billingCheckoutUrl(cfg({ billingWebPurchaseLink: "https://pay.rev.cat/tok" }), {
       plan: "family", cadence: "annual", uid: "firebaseUid1", email: null,

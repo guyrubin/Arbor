@@ -180,7 +180,9 @@ describe("the icon-subset opt-out cannot hide a real icon", () => {
     // B-GROWTH-44's read-only source hook adds a browser "storage" event,
     // not a rendered glyph. It remains covered by the no-icon check below.
     expect(optedOut.map((file) => path.basename(file))).toContain("useNoticeSource.ts");
-    expect(optedOut.length).toBeLessThanOrEqual(6);
+    // Purchase intent contains the URL key "cadence", not a rendered glyph.
+    expect(optedOut.map((file) => path.basename(file))).toContain("purchaseIntent.ts");
+    expect(optedOut.length).toBeLessThanOrEqual(7);
   });
 
   it("no opted-out file renders an icon", () => {

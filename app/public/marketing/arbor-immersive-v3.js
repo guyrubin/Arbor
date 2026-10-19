@@ -7,6 +7,13 @@ window.ARBOR_ICONS={"ArrowRight":"<svg xmlns=\"http://www.w3.org/2000/svg\" widt
 (()=>{'use strict';
 const language=document.documentElement.lang;const he=language==='he';const t=(en,hebrew)=>he?hebrew:(window.ARBOR_TRANSLATIONS?.[language]?.[en]??en);
 const q=s=>document.querySelector(s);const qa=s=>[...document.querySelectorAll(s)];
+// Native radio controls provide keyboard selection; the chosen cadence follows
+// the parent through sign-in and setup, then opens the in-app plan review.
+qa('input[name="purchase-cadence"]').forEach(input=>input.addEventListener('change',()=>{
+ const selected=q('input[name="purchase-cadence"]:checked');
+ const next=q('[data-purchase-continue]');
+ if(selected&&next)next.href='/?plan=plus&cadence='+encodeURIComponent(selected.value);
+}));
 const icon=name=>window.ARBOR_ICONS?.[name]||'';
 function icons(root=document){root.querySelectorAll('[data-icon]').forEach(e=>{e.outerHTML=icon(e.dataset.icon)})}
 let current='guidance',storyStep=0,galleryIndex=0,lastFocus=null,toastTimer;

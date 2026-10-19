@@ -3,13 +3,13 @@ import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import { findIncompleteOnboardingChild } from "../../lib/onboardingGate";
-import { isoDateOf } from "../../lib/childAge";
+import { ageMonthsFromBirthMonth } from "../../lib/childAge";
 import { DOMAIN_IDS } from "../../lib/domains/registry";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { acceptTodayAction } from "../../actionLoop/accept";
 import type { ActionLoopEntry } from "../../actionLoop/model";
-import { choiceName, firstRunCard, firstRunAgeMonths, FirstRunController, validAbout, type FirstRunState, type FirstRunCard, type OnboardingChoice } from "../../lib/onboardingFirstRun";
+import { choiceName, onboardingChoices, toggleOnboardingChoice, firstRunCard, firstRunAgeMonths, FirstRunController, validAbout, type FirstRunState, type FirstRunCard, type OnboardingChoice } from "../../lib/onboardingFirstRun";
 import { availableHardMomentCards } from "../../content/selectCards";
 import { locText, escalationText } from "../../content/hardMomentSurface";
 import { renderSayThis } from "../../content/hardMomentCards";
@@ -39,15 +39,31 @@ export const ONBOARDING_CHOICES: readonly OnboardingChoice[] = [...DOMAIN_IDS, "
 export function StepChild({ state, onEdit, onNext }: {
   state: FirstRunState; onEdit: FirstRunController["edit"]; onNext: () => void;
 }) {
-  const { t } = useLanguage();
-  const max = isoDateOf().slice(0, 7);
+  const { t, uiLang } = useLanguage();
+  const [year = "", month = ""] = state.birthMonth.split("-");
+  const age = ageMonthsFromBirthMonth(state.birthMonth);
+  const invalidBirth = year.length === 4 && !!month && (age === null || age >= 156);
   return <section className="first-run-step" data-testid="onboarding-about">
     <h1>{t("ob.first.about")}</h1>
     <label className="first-run-field">{t("ob.name")}<input autoFocus autoComplete="off" value={state.name} maxLength={80}
       onChange={e => onEdit({ name: e.target.value })} disabled={state.busy} required /></label>
-    <label className="first-run-field">{t("ob.first.birthMonth")}<input type="month" value={state.birthMonth} max={max}
-      readOnly={!!state.exactBirthDate} onChange={e => onEdit({ birthMonth: e.target.value })} disabled={state.busy} required data-testid="onboarding-birth-month" /></label>
-    <p className="first-run-hint">{t("ob.first.birthHint")}</p>
+    <fieldset disabled={state.busy || !!state.exactBirthDate} aria-describedby="birth-hint">
+      <legend>{t("ob.first.birthMonth")}</legend>
+      <div className="first-run-birth-fields">
+        <label className="first-run-field">{t("ob.first.month")}<select value={month} required data-testid="onboarding-birth-month"
+          onChange={e => onEdit({ birthMonth: `${year}-${e.target.value}` })}>
+          <option value="">{t("ob.first.chooseMonth")}</option>
+          {Array.from({ length: 12 }, (_, i) => <option key={i} value={String(i + 1).padStart(2, "0")}>
+            {new Intl.DateTimeFormat(uiLang, { month: "long" }).format(new Date(2020, i, 1))}
+          </option>)}
+        </select></label>
+        <label className="first-run-field">{t("ob.first.year")}<input type="text" inputMode="numeric" pattern="[0-9]{4}" maxLength={4}
+          value={year} placeholder={t("ob.first.yearPlaceholder")} required data-testid="onboarding-birth-year" aria-invalid={invalidBirth}
+          onChange={e => onEdit({ birthMonth: `${e.target.value.replace(/\D/g, "").slice(0, 4)}-${month}` })} /></label>
+      </div>
+    </fieldset>
+    <p id="birth-hint" className="first-run-hint">{t("ob.first.birthHint")}</p>
+    {invalidBirth && <p role="alert" className="first-run-error">{t("ob.first.birthInvalid")}</p>}
     <fieldset disabled={state.busy}><legend>{t("ob.first.languages")}</legend><div className="first-run-languages">
       {LANGUAGES.map(language => <button type="button" key={language} data-language={language} aria-pressed={state.languages.includes(language)}
         onClick={() => onEdit({ languages: state.languages.includes(language) ? state.languages.filter(value => value !== language) : [...state.languages, language] })}>
@@ -83,15 +99,18 @@ export function StepDomains({ state, onWorry, onNext, onSkip, describe, onAnswer
     if (describe?.snapshot().status !== "asking") { primed.current?.cancel(); primed.current = null; }
   };
   const guides = availableHardMomentCards({ ageMonths: firstRunAgeMonths(state), locale: lang });
+  const selectedChoices = onboardingChoices(state.worry);
   return <section className="first-run-step" data-testid="onboarding-worry">
     <h1>{t("ob.first.worry", { name: state.name.trim() })}</h1>
+    <p className="first-run-hint">{t("ob.first.multiHint")}</p>
     <div className="first-run-choices" role="group" aria-label={t("ob.first.worry", { name: state.name.trim() })}>
       {ONBOARDING_CHOICES.map(choice => <button type="button" key={choice} data-choice={choice} disabled={state.busy}
-        aria-pressed={state.worry.choice === choice} onClick={() => onWorry({ choice, hardMomentId: "", quote: "" })}>
-        <span data-selection-check={state.worry.choice === choice ? "" : undefined} aria-hidden="true"><Icon name={state.worry.choice === choice ? "check" : choice === "hard-moment" ? "volunteer_activism" : choice === "nothing" ? "wb_sunny" : DOMAIN_ICONS[choice]} size={20} /></span>
+        aria-pressed={selectedChoices.includes(choice)} onClick={() => onWorry(toggleOnboardingChoice(state.worry, choice))}>
+        <span data-selection-check={selectedChoices.includes(choice) ? "" : undefined} aria-hidden="true"><Icon name={selectedChoices.includes(choice) ? "check" : choice === "hard-moment" ? "volunteer_activism" : choice === "nothing" ? "wb_sunny" : DOMAIN_ICONS[choice]} size={20} /></span>
         <span>{choiceName(choice, lang)}</span>
       </button>)}
     </div>
+    {selectedChoices.length > 1 && <p className="first-run-hint" role="status">{t("ob.first.startWith", { topic: choiceName(state.worry.choice, lang) })}</p>}
     {/* B-SHELL-39: the guided conversation replaces the one-line field. */}
     {!conversing && <DescribeChild name={state.name.trim()} lang={lang} value={state.worry.words} disabled={state.busy} onChange={words => onWorry({ words })} onVoiceText={() => setViaMic(true)} />}
     {conversing && <DescribeThread name={state.name.trim()} lang={lang} session={describe!} onAnswer={onAnswer} onSkip={onFinish} onDone={onFinish} primedVoice={primed} />}
@@ -191,7 +210,7 @@ export default function OnboardingFlow() {
     onComplete: () => {
       if (state.childId) setActiveChild(state.childId);
       window.location.hash = "#/overview";
-      trackOnboardingCompleted({ domainCount: DOMAIN_IDS.includes(state.worry.choice as typeof DOMAIN_IDS[number]) ? 1 : 0, hasAvatar: false });
+      trackOnboardingCompleted({ domainCount: onboardingChoices(state.worry).filter(choice => DOMAIN_IDS.includes(choice as typeof DOMAIN_IDS[number])).length, hasAvatar: false });
     },
   };
   const card = state.step === 3 ? firstRunCard(state, uiLang === "he" ? "he" : "en") : null;

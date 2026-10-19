@@ -34,8 +34,8 @@ export function prodEnvVars(source: string): Record<string, string> {
 /** The --set-secrets value, as ENV → secret ref. */
 export function prodSecrets(source: string): Record<string, string> {
   const lines = source.split(/\r?\n/).map((l) => l.trim());
-  const at = lines.indexOf("- --set-secrets");
-  if (at < 0) throw new Error("no --set-secrets in cloudbuild.prod.yaml");
+  const at = lines.findIndex(line => line === "- --set-secrets" || line === "- --update-secrets");
+  if (at < 0) throw new Error("no secrets configuration in cloudbuild.prod.yaml");
   const value = lines.slice(at + 1).find((l) => l.startsWith("- ") && !l.startsWith("- --"));
   const out: Record<string, string> = {};
   for (const pair of (value ?? "").slice(2).split(",")) {

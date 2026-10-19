@@ -62,7 +62,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const [dataOpen, setDataOpen] = useState(false);
   // STORE-2: all checkout/manage/restore actions go through the ONE platform-
   // gated hook — no inline `/api/billing/…` calls in this file (guard-tested).
-  const { busy, startCheckout, openPortal, restorePurchases, isNative } = useCheckout();
+  const { busy, checkoutError, startCheckout, openPortal, restorePurchases, isNative } = useCheckout();
   // B-GA-12: on native, no upgrade button without a store price for this cadence;
   // the notice tells loading from a failed/missing offering apart.
   const offer = offeringGate({ isNative: isNativePlatform, status: nativeOffering.status, nativePrices: nativeOffering.prices, plan: "plus", cadence, platform: nativePlatform, t });
@@ -438,12 +438,22 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   {t("set.plan.coachToday", { used: entitlement.usage.coachMessagesToday, limit: coachLimit })}
                 </p>
               )}
-              <p className="text-xs leading-relaxed mt-3" style={{ color: "var(--arbor-muted)" }}>
-                {t("set.plan.plusPitch")}
-              </p>
+              <div className="mt-3 space-y-3 text-xs leading-relaxed">
+                <div><p className="font-bold">{t("elev.plan.freeTitle")}</p>
+                  <ul className="list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
+                    {["free.1", "free.2", "free.3"].map(key => <li key={key}>{t(`elev.plan.${key}`)}</li>)}
+                  </ul>
+                </div>
+                <div><p className="font-bold">{t("elev.plan.plusTitle")}</p>
+                  <ul className="list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
+                    {["plus.1", "plus.2", "plus.3", "plus.4"].map(key => <li key={key}>{t(`elev.plan.${key}`)}</li>)}
+                  </ul>
+                </div>
+                <p className="font-semibold">{t("elev.storeshell.pw.billingChoice")}</p>
+              </div>
               <div className="flex items-center gap-1 rounded-xl p-1 mt-3 w-fit" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                 {(["monthly", "annual"] as const).map((c) => (
-                  <button key={c} onClick={() => setCadence(c)} className="px-3 min-h-11 rounded-lg text-xs font-bold transition"
+                  <button key={c} type="button" aria-pressed={cadence === c} disabled={busy} onClick={() => setCadence(c)} className="px-3 min-h-11 rounded-lg text-xs font-bold transition"
                     style={cadence === c ? { background: "var(--arbor-clay)", color: T.onAccent } : { color: "var(--arbor-muted)" }}>
                     {t(c === "monthly" ? "set.plan.monthly" : "set.plan.annual")}
                   </button>
@@ -461,11 +471,16 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
                 <span className="inline-flex items-center gap-1.5">
                   <button onClick={() => void startCheckout("plus", cadence, "settings")} disabled={busy || offer.blocked} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-clay)", color: T.onAccent }}>
-                    {t("set.plan.upgradePlus")}
+                    {busy ? t("elev.storeshell.pw.opening") : t("elev.storeshell.pw.continuePayment")}
                   </button>
                   <PlanBadge plan="plus" />
                 </span>
               </div>
+              {checkoutError && <p role="alert" className="text-xs mt-2">{t(checkoutError)}</p>}
+              <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.storeshell.pw.disclosure", {
+                period: t(cadence === "monthly" ? "elev.storeshell.pw.period.month" : "elev.storeshell.pw.period.year"),
+                store: t(`elev.storeshell.store.${isNative ? nativePlatform : "web"}`),
+              })}</p>
             </>
           )}
 
