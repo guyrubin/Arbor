@@ -420,7 +420,7 @@ Work in focused commits on branch `feat/arbor-next`:
 ## 9. Definition of Done
 
 A feature is complete when:
-- [ ] Renders correctly on mobile (375px), tablet (768px), desktop (1440px)
+- [ ] Renders correctly on every viewport of the matrix of record (`DEVICE_VIEWPORTS` in `app/scripts/capture/release-config.mjs`; `node scripts/rendered-sweep.mjs --matrix device`), EN and HE
 - [ ] Firestore reads/writes are real (not mocked state)
 - [ ] Auth-gated (no unauthenticated access)
 - [ ] Empty state handled

@@ -7,10 +7,11 @@
  *   node scripts/rendered-sweep.mjs --out <dir> [--base http://localhost:4805] [--routes a,b]
  *        [--diff <prev sweep.json>] [--no-shots] [--no-api-cache] [--runs 1]  (npm run sweep -- …)
  *        [--seed demo|day0] [--states | --no-states]   (v2, below; --routes also takes "shell")
+ *        [--matrix release|device] [--viewport <id>]   (device = the matrix of record, DEVICE_VIEWPORTS)
  *
  * Routes = every `route:` in SURFACE_CONTRACTS (src/lib/surfaceContract.ts); the run aborts
  * (exit 1) if that set differs from ROUTE_IDS (src/lib/routes.ts). Each route is a FULL LOAD
- * `${base}/?cb=<n>#/<route>` in four cells: 375×812 EN/HE · 1280×800 EN/HE, one
+ * `${base}/?cb=<n>#/<route>` in the four RELEASE_VIEWPORTS cells (mobile/desktop × EN/HE), one
  * isolated browser context per cell type; locale (arbor.uiLang + arbor.aiLang) and a CLOSED
  * kid mode (arbor.kidmode.active) are written to localStorage BEFORE load; animations and
  * transitions are disabled and prefers-reduced-motion = reduce. Never starts a server:
@@ -75,7 +76,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { networkInterfaces } from "node:os";
 import { assertLoopbackOnly, captureRevision } from "./capture/config.mjs";
-import { RELEASE_VIEWPORTS, expectedSeedMarker, requiresConversationReadiness } from "./capture/release-config.mjs";
+import { DEVICE_VIEWPORTS, RELEASE_VIEWPORTS, expectedSeedMarker, requiresConversationReadiness } from "./capture/release-config.mjs";
 import { classifyReleaseConsole, createRuntimeDiagnostics } from "./capture/runtime-diagnostics.mjs";
 import { initializeSyntheticOnline } from "./capture/small-state.mjs";
 import { captureFontContextOptions, installOfflineFonts, captureScreenshot } from "./capture/font-runtime.mjs";
@@ -85,6 +86,7 @@ const APP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const REPO_DIR = path.resolve(APP_DIR, "..");
 
 // Every route has the same EN/HE × mobile/desktop matrix. No HE desktop exception.
+// `--matrix device` widens it to the matrix of record (DEVICE_VIEWPORTS); `--viewport <id>` takes any id in it.
 const VIEWPORTS = RELEASE_VIEWPORTS;
 const syntheticOnline = process.env.ARBOR_CAPTURE_CONNECTIVITY === "synthetic-online";
 if (syntheticOnline || process.env.ARBOR_CAPTURE_FONT_MODE === "exact") {
@@ -100,7 +102,7 @@ const SHELL = "shell";
 
 /* ── args ─────────────────────────────────────────────────────────────────── */
 function parseArgs(argv) {
-  const out = { base: "http://localhost:4805", shots: true, apiCache: true, runs: 1, routes: null, diff: null, out: null, seed: "demo", states: null, viewport: null };
+  const out = { base: "http://localhost:4805", shots: true, apiCache: true, runs: 1, routes: null, diff: null, out: null, seed: "demo", states: null, viewport: null, matrix: "release" };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => {
@@ -113,8 +115,12 @@ function parseArgs(argv) {
     else if (a === "--routes") out.routes = next().split(",").map((s) => s.trim()).filter(Boolean);
     else if (a === "--viewport") {
       const id = next();
-      out.viewport = RELEASE_VIEWPORTS.find((vp) => vp.id === id);
+      out.viewport = DEVICE_VIEWPORTS.find((vp) => vp.id === id);
       if (!out.viewport) fail("unknown release viewport");
+    }
+    else if (a === "--matrix") {
+      out.matrix = next();
+      if (!["release", "device"].includes(out.matrix)) fail(`--matrix must be release or device (got ${out.matrix})`);
     }
     else if (a === "--diff") out.diff = next();
     else if (a === "--no-shots") out.shots = false;
@@ -127,7 +133,7 @@ function parseArgs(argv) {
     else if (a === "--no-states") out.states = false;
     else fail(`unknown argument ${a}`);
   }
-  out.viewports = out.viewport ? [out.viewport] : VIEWPORTS;
+  out.viewports = out.viewport ? [out.viewport] : out.matrix === "device" ? DEVICE_VIEWPORTS : VIEWPORTS;
   if (out.states === null) out.states = out.seed === "demo";
   if (!out.out) {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");

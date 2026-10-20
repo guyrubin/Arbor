@@ -4,12 +4,24 @@ import { smallCaptureEnvironment } from './small-state.mjs';
 
 export const RELEASE_ROUTE_COUNT = 43;
 export const RELEASE_SHARDS = 1;
-export const RELEASE_VIEWPORTS = Object.freeze([
-  { id: 'mobile-en', w: 375, h: 812, lang: 'en' },
-  { id: 'mobile-he', w: 375, h: 812, lang: 'he' },
-  { id: 'desktop-en', w: 1280, h: 800, lang: 'en' },
-  { id: 'desktop-he', w: 1280, h: 800, lang: 'he' },
+/**
+ * The matrix of record (CoS AR-REL-2, 20 Oct 2026): every viewport Arbor is verified on, × EN/HE.
+ * Docs, backlogs and rules point here and restate no sizes. The phone boxes are the real visible
+ * areas Guy tests on (Safari chrome included, K2.1); `mobile` and `desktop` are the automated
+ * release cells the capture harness runs. Sweep all of it with `rendered-sweep.mjs --matrix device`.
+ */
+const DEVICE_BOXES = Object.freeze([
+  { box: 'se', w: 375, h: 667 },
+  { box: 'mobile', w: 375, h: 812 },
+  { box: 'safari', w: 390, h: 664 },
+  { box: 'plus', w: 430, h: 740 },
+  { box: 'landscape', w: 844, h: 390 },
+  { box: 'desktop', w: 1280, h: 800 },
+  { box: 'wide', w: 1920, h: 1080 },
 ]);
+export const DEVICE_VIEWPORTS = Object.freeze(DEVICE_BOXES.flatMap(({ box, w, h }) => ['en', 'he'].map((lang) => Object.freeze({ id: `${box}-${lang}`, w, h, lang }))));
+const RELEASE_VIEWPORT_IDS = Object.freeze(['mobile-en', 'mobile-he', 'desktop-en', 'desktop-he']);
+export const RELEASE_VIEWPORTS = Object.freeze(RELEASE_VIEWPORT_IDS.map((id) => DEVICE_VIEWPORTS.find((viewport) => viewport.id === id)));
 export const RELEASE_GROUPS = Object.freeze(['base', 'navigation', 'ask', 'ask-diagnostic', 'report-close-only', 'focused', 'record', 'confirmed-actions', 'kept-search', 'kid-entry', 'single-goal', 'first-run-preview', 'private-export']);
 export const RELEASE_MATRIX = Object.freeze(RELEASE_VIEWPORTS.flatMap((viewport) => [
   { viewport: viewport.id, group: 'base', shard: 0 },
