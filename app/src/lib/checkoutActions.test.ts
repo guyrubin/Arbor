@@ -103,6 +103,14 @@ describe("G2 negative control — web path DOES use the hosted checkout (proves 
     expect(deps.calls.nativePurchase).toBe(0);
   });
 
+  it("BD-53/P2: the web checkout names the currency the price was shown in (EUR by default)", async () => {
+    const deps = makeDeps({ isNative: false });
+    await performCheckout(deps, "plus", "annual", "ILS");
+    expect(deps.billingCheckout).toHaveBeenLastCalledWith("plus", "annual", "ILS");
+    await performCheckout(deps, "plus", "monthly");
+    expect(deps.billingCheckout).toHaveBeenLastCalledWith("plus", "monthly", "EUR");
+  });
+
   it("openPortal on web navigates to the portal URL", async () => {
     const deps = makeDeps({ isNative: false });
     const result = await performOpenPortal(deps);

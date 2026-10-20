@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planFromRevenueCat, recordFromRevenueCat, billingCheckoutUrl } from "./billing.js";
+import { planFromRevenueCat, recordFromRevenueCat, billingCheckoutUrl, offeredCurrencies, SOLD_PLANS } from "./billing.js";
 import type { ArborConfig } from "../config/env.js";
 
 const cfg = (over: Partial<ArborConfig>): ArborConfig =>
@@ -132,5 +132,38 @@ describe("billingCheckoutUrl (MON-2 web purchase link)", () => {
 
   it("returns null when nothing is configured for the plan", () => {
     expect(billingCheckoutUrl(cfg({}), { plan: "plus", cadence: "monthly", uid: "u1", email: null })).toBeNull();
+  });
+
+  it("BD-53/P2: names the checkout currency so RevenueCat never picks one by location", () => {
+    const url = new URL(billingCheckoutUrl(cfg({ billingWebPurchaseLink: "https://pay.rev.cat/tok" }), {
+      plan: "plus", cadence: "annual", uid: "u1", email: null, currency: "ILS",
+    })!);
+    expect(url.searchParams.get("currency")).toBe("ILS");
+    expect(url.searchParams.get("package_id")).toBe("plus_annual");
+  });
+});
+
+describe("BD-53 offer (Guy, 20 Oct 2026)", () => {
+  it("P2: EUR is always on sale; ILS only when configured", () => {
+    expect(offeredCurrencies(cfg({}))).toEqual(["EUR"]);
+    expect(offeredCurrencies(cfg({ billingCurrencies: ["EUR", "ILS"] }))).toEqual(["EUR", "ILS"]);
+  });
+
+  it("P3: only Plus is sold; Family keeps its entitlement but starts no checkout", () => {
+    expect(SOLD_PLANS).toEqual(["plus"]);
+  });
+
+  it("the checkout route sells only SOLD_PLANS and falls back to EUR for an unoffered currency", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("../routes/api.ts", import.meta.url), "utf8");
+    expect(src).toContain("if (!SOLD_PLANS.includes(plan) || ");
+    expect(src).toContain('const currency = offeredCurrencies(config).includes(requested) ? requested : "EUR";');
+    expect(src).toContain("currencies: offeredCurrencies(config),");
+  });
+
+  it("BILLING_CURRENCIES parses to EUR plus ILS only when it names ILS", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("../config/env.ts", import.meta.url), "utf8");
+    expect(src).toContain('billingCurrencies: ["EUR", ...((process.env.BILLING_CURRENCIES || "")');
   });
 });

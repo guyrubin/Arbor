@@ -79,6 +79,16 @@ describe("negative controls — with a price the CTA is live and names plan + pr
     expect(cta.label).toContain("plan=set.plan.family");
     expect(cta.label).toContain("price=€19.99/elev.storeshell.pw.period.month");
   });
+
+  it("BD-53/P2 web in ILS: the shekel figures; a plan without a shekel price shows none", () => {
+    const annual = buildPlanRows({ isNative: false, nativePrices: null, cadence: "annual", fmtCurrency: fmt, currency: "ILS" });
+    const plus = annual.find((r) => r.plan === "plus")!;
+    expect(plus.price).toBe("₪549.00");
+    expect(plus.perMonth).toBe("₪45.75");
+    expect(annual.find((r) => r.plan === "family")?.price).toBeNull();
+    const monthly = buildPlanRows({ isNative: false, nativePrices: null, cadence: "monthly", fmtCurrency: fmt, currency: "ILS" });
+    expect(monthly.find((r) => r.plan === "plus")?.price).toBe("₪69.90");
+  });
 });
 
 describe("disclosure — auto-renewal + where to cancel, per platform, EN + HE", () => {

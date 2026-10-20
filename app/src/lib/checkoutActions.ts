@@ -1,6 +1,7 @@
 import { api, ApiError } from "./api";
 import { isNativePlatform } from "./runtime";
 import { refreshEntitlement } from "../hooks/useEntitlement";
+import type { BillingCurrency } from "./pricing";
 
 /**
  * STORE-2 — the ONE platform gate for every purchase/portal surface.
@@ -36,7 +37,7 @@ export type CheckoutDeps = {
   /** Platform flag — the single fact the gate branches on. */
   isNative: boolean;
   /** Web path: server-issued hosted checkout URL. NEVER called on native. */
-  billingCheckout: (plan: PaidPlan, cadence: Cadence) => Promise<{ url: string }>;
+  billingCheckout: (plan: PaidPlan, cadence: Cadence, currency: BillingCurrency) => Promise<{ url: string }>;
   /** Web path: server-issued self-service portal URL. NEVER called on native. */
   billingPortal: () => Promise<{ url: string | null }>;
   /** Web path: full-page redirect to the hosted checkout/portal. */
@@ -71,7 +72,7 @@ export type CheckoutResult =
   | "unavailable"       // billing not configured yet (either platform)
   | "error";            // real failure — surface the neutral toast
 
-export async function performCheckout(deps: CheckoutDeps, plan: PaidPlan, cadence: Cadence): Promise<CheckoutResult> {
+export async function performCheckout(deps: CheckoutDeps, plan: PaidPlan, cadence: Cadence, currency: BillingCurrency = "EUR"): Promise<CheckoutResult> {
   if (deps.isNative) {
     // Native binary: the web checkout must be unreachable (Apple 3.1.1 /
     // Play Payments). No billing-checkout API call, no redirect — ever.
@@ -80,7 +81,7 @@ export async function performCheckout(deps: CheckoutDeps, plan: PaidPlan, cadenc
     return outcome;
   }
   try {
-    const { url } = await deps.billingCheckout(plan, cadence);
+    const { url } = await deps.billingCheckout(plan, cadence, currency);
     const target = new URL(url);
     if (target.protocol !== "https:" || target.username || target.password) return "error";
     deps.navigate(url);

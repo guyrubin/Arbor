@@ -92,7 +92,7 @@ import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../
 import { dispatchSpeechSynthesis, screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
 import { AiProviderError } from "../ai/capabilities/contracts.js";
 import type { CapabilityRegistry } from "../ai/capabilities/registry.js";
-import { billingCheckoutUrl } from "../server/billing.js";
+import { SOLD_PLANS, billingCheckoutUrl, offeredCurrencies } from "../server/billing.js";
 import { buildLiveSystemInstruction, liveSpeechConfig, SPOKEN_COACH_PERSONA, spokenLanguageDirective } from "../lib/livePersona.js";
 import { countAnalyzeLogs, toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
 // B-AI-16: the digest routes drop every free-text field an older client still posts.
@@ -3877,6 +3877,8 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         // BD-53: the 14-day trial — when it ends, and whether it already has.
         trialEndsAt: entitlement.trialEndsAt ?? null,
         accessEnded: accessEnded(entitlement),
+        // BD-53/P2: which checkout currencies are on sale (EUR always).
+        currencies: offeredCurrencies(config),
       });
     } catch (error: any) {
       logger.error("Arbor Entitlement Error", error, { requestId: requestIdOf(req) });
@@ -3891,15 +3893,19 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       const actor = actorOf(req);
       const plan = String(req.body?.plan ?? "plus");
       const cadence = String(req.body?.cadence ?? "monthly");
-      if (!["plus", "family"].includes(plan) || !["monthly", "annual"].includes(cadence)) {
+      if (!SOLD_PLANS.includes(plan) || !["monthly", "annual"].includes(cadence)) {
         res.status(400).json({ error: "Invalid plan or cadence" });
         return;
       }
+      // BD-53/P2: charge in the currency the parent was shown; an unoffered one is €.
+      const requested = String(req.body?.currency ?? "EUR").toUpperCase();
+      const currency = offeredCurrencies(config).includes(requested) ? requested : "EUR";
       const url = billingCheckoutUrl(config, {
         plan: plan as "plus" | "family",
         cadence: cadence as "monthly" | "annual",
         uid: actor.uid,
         email: actor.email,
+        currency,
       });
       if (!url) {
         res.status(503).json({ error: "Checkout not configured", details: `No checkout link set for ${plan} ${cadence}.` });
