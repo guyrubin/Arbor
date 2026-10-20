@@ -7,7 +7,7 @@ const h = vi.hoisted(() => ({ docs: null as HeroSheetDocs | null }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (key: string) => key }) }));
 vi.mock("../kidmode/hero/useHeroSheet", () => ({ useHeroSheetDocs: () => h.docs }));
 vi.mock("../kidmode/hero/buildHeroSheet", () => ({ browserBuilderDeps: vi.fn(), markHeroPoseOk: vi.fn(), redrawHeroPose: vi.fn(), resumeHeroSheet: vi.fn() }));
-vi.mock("./BookSheetStrip", () => ({ default: () => null }));
+vi.mock("./BookSheetStrip", () => ({ default: () => <i data-strip="" /> }));
 import HeroSheetPanel from "./HeroSheetPanel";
 import { heroAvatarHash } from "../../lib/heroSheetContract";
 
@@ -33,5 +33,10 @@ describe("parent pose review follows the canonical profile identity", () => {
   it("never turns an unapproved raw profile photo into a reviewable hero", () => {
     h.docs = docsFor(photoUrl);
     expect(renderToStaticMarkup(<HeroSheetPanel child={{ id: child.id, name: child.name, photoUrl }} />)).toBe("");
+  });
+  it("B-BOOK-69: while the new hero learns to move, the book's line shows under the building line", () => {
+    const docs = docsFor(comicAvatarUrl); h.docs = { ...docs, meta: { ...docs.meta, status: "building" } };
+    const html = renderToStaticMarkup(<HeroSheetPanel child={child} />);
+    expect(html).toContain('data-hero-sheet="building"'); expect(html).toContain('data-strip=""');
   });
 });
