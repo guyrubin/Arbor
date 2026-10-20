@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildHealthPayload } from "./healthz.js";
+import { buildHealthPayload, checkoutConfigured } from "./healthz.js";
 
 describe("buildHealthPayload (OPS-A1)", () => {
   it("returns ok status + an ISO timestamp from the injected clock", () => {
@@ -23,6 +23,24 @@ describe("buildHealthPayload (OPS-A1)", () => {
 
   it("carries no child-data or secret fields", () => {
     const keys = Object.keys(buildHealthPayload());
-    expect(keys.sort()).toEqual(["env", "status", "ts", "version"]);
+    expect(keys.sort()).toEqual(["checkout", "env", "status", "ts", "version"]);
+  });
+
+  it("reports whether checkout is configured as a boolean, never the link", () => {
+    const link = "https://pay.rev.cat/tokenvalue";
+    expect(checkoutConfigured({})).toBe(false);
+    expect(checkoutConfigured({ BILLING_WEB_PURCHASE_LINK: "  " })).toBe(false);
+    expect(checkoutConfigured({ BILLING_WEB_PURCHASE_LINK: link })).toBe(true);
+    expect(checkoutConfigured({ BILLING_URL_PLUS_ANNUAL: "https://buy.example/plus" })).toBe(true);
+    const prev = process.env.BILLING_WEB_PURCHASE_LINK;
+    process.env.BILLING_WEB_PURCHASE_LINK = link;
+    try {
+      const payload = buildHealthPayload();
+      expect(payload.checkout).toBe(true);
+      expect(JSON.stringify(payload)).not.toContain("tokenvalue");
+    } finally {
+      if (prev === undefined) delete process.env.BILLING_WEB_PURCHASE_LINK;
+      else process.env.BILLING_WEB_PURCHASE_LINK = prev;
+    }
   });
 });

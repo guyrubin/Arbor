@@ -51,9 +51,10 @@ steps:
       - --no-traffic
       - --tag
       - candidate
-      # Preserve provider configuration maintained outside the release manifest,
-      # including BILLING_WEB_PURCHASE_LINK and BILLING_MANAGE_URL. Replacing
-      # this list silently disabled checkout on every release.
+      # --update-env-vars keeps any value set on the service outside this list
+      # (BILLING_MANAGE_URL). The checkout link is NOT one of them: it is bound
+      # from Secret Manager below, because no prod revision carried it from at
+      # least 8 Oct to 20 Oct 2026 and every purchase returned "unavailable".
       - --update-env-vars
       # `^|^` switches the gcloud delimiter to | so CORS_ORIGINS can hold a
       # comma-separated origin list AND comp-email vars (ARBOR_*_EMAILS) can
@@ -103,9 +104,12 @@ steps:
       # Parent Live uses short-lived tokens minted with the Gemini API key.
       # Images stay on the configured regional Vertex provider.
       # REVENUECAT_WEBHOOK_AUTH = the shared secret the RC billing webhook sends;
-      # Keep the managed secret reference current while preserving other secrets.
+      # BILLING_WEB_PURCHASE_LINK = the RevenueCat Web Purchase Link checkout
+      # opens (server/billing.ts); without it /api/billing/checkout answers 503.
+      # The post-deploy smoke refuses a prod candidate whose /api/health says
+      # checkout is not configured.
       - --update-secrets
-      - GEMINI_API_KEY=arbor-gemini-key:latest,REVENUECAT_WEBHOOK_AUTH=arbor-rc-webhook-auth:latest
+      - GEMINI_API_KEY=arbor-gemini-key:latest,REVENUECAT_WEBHOOK_AUTH=arbor-rc-webhook-auth:latest,BILLING_WEB_PURCHASE_LINK=arbor-billing-web-purchase-link:latest
 substitutions:
   _REGION: europe-west4
   # _TAG is supplied at submit time (git short SHA). Defaults to "latest" so the
