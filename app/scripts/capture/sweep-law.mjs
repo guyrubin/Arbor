@@ -55,6 +55,8 @@ function cli(file) {
   }
   console.log(`SWEEP-LAW FAIL ${failures.length} cells`);
   for (const line of sweepLawLines(failures)) console.log(line);
+  // In Actions, annotations are the one place a public reader sees the cells without a login.
+  if (process.env.GITHUB_ACTIONS === 'true') for (const f of failures.slice(0, 10)) console.log(`::error title=sweep law::${f.cell}: ${f.reasons.join(', ')}`);
   return SWEEP_LAW_EXIT;
 }
 

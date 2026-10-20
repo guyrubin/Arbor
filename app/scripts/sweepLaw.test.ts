@@ -20,7 +20,7 @@ function runCli(body: unknown) {
   try {
     const file = path.join(dir, "sweep.json");
     writeFileSync(file, JSON.stringify(body));
-    return spawnSync(process.execPath, [path.join(scripts, "capture", "sweep-law.mjs"), file], { encoding: "utf8" });
+    return spawnSync(process.execPath, [path.join(scripts, "capture", "sweep-law.mjs"), file], { encoding: "utf8", env: { ...process.env, GITHUB_ACTIONS: "" } });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
