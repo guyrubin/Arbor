@@ -37,8 +37,15 @@ describe("candidate exact revision gate", () => {
     ["HTML fallback", () => shell()],
     ["malformed JSON", () => new Response("{", { headers: { "Content-Type": "application/json" } })],
     ["network failure", () => new Error("unreachable")],
+    ["prod candidate without checkout", () => health({ status: "ok", version: SHA, env: "prod", checkout: false })],
+    ["prod candidate that does not report checkout", () => health({ status: "ok", version: SHA, env: "prod" })],
   ] as const)("blocks promotion for %s even when the shell is live", async (_label, response) => {
     await expect(verifyCandidate("https://candidate.example", SHA, mockFetch(response()))).rejects.toThrow();
+  });
+
+  it("passes a prod candidate that reports a configured checkout", async () => {
+    const fetcher = mockFetch(health({ status: "ok", version: SHA, env: "prod", checkout: true }));
+    await expect(verifyCandidate("https://candidate.example", SHA, fetcher)).resolves.toBe(SHA);
   });
 
   it.each([
@@ -115,7 +122,8 @@ describe("real app public version route with auth enforced", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     const body = await response.json();
     expect(body).toMatchObject({ status: "ok", version: SHA, env: "prod" });
-    expect(Object.keys(body).sort()).toEqual(["env", "status", "ts", "version"]);
+    expect(typeof body.checkout).toBe("boolean");
+    expect(Object.keys(body).sort()).toEqual(["checkout", "env", "status", "ts", "version"]);
     expect(new Date(body.ts).toISOString()).toBe(body.ts);
   });
 

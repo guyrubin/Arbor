@@ -12,4 +12,11 @@ describe("billing configuration survives releases", () => {
     expect(config).toContain("REQUIRE_AUTH=true");
     expect(config).toContain("ENFORCE_ENTITLEMENTS=true");
   });
+
+  it("binds the checkout link from Secret Manager on every release", () => {
+    const config = readFileSync(new URL("../../../cloudbuild.prod.yaml", import.meta.url), "utf8");
+    const lines = config.split("\n").map(line => line.trim());
+    const secrets = lines[lines.indexOf("- --update-secrets") + 1] ?? "";
+    expect(secrets.split(",")).toContain("BILLING_WEB_PURCHASE_LINK=arbor-billing-web-purchase-link:latest");
+  });
 });
