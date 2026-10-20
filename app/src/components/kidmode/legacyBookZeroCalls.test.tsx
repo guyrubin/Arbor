@@ -15,7 +15,7 @@ const env = vi.hoisted(() => ({
   image: vi.fn(async () => ({ key: "test-page", url: "/static-page.webp" })),
   speech: vi.fn(() => 7),
   narrate: vi.fn((_units: readonly string[]) => () => {}),
-  voice: "files" as "files" | "none",
+  voice: "recorded" as "recorded" | "none",
 }));
 vi.mock("react", async original => {
   const real = await original<typeof import("react")>();
@@ -128,7 +128,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-09T18:00:00Z"));
   env.kid = true; env.lang = "en"; env.collections = []; env.listeners.clear();
   env.profile = { id: "synthetic-child", name: "Test Hero", age: 6, gender: "boy", avatar: { style: "comichero", source: "descriptor", createdAt: "2026-10-09T18:00:00Z" }, photoUrl: "data:image/png;base64,c3ludGhldGlj" } as unknown as ChildProfile;
-  env.text.mockReset(); env.image.mockClear(); env.speech.mockClear(); env.narrate.mockClear(); env.upsert.mockClear(); env.voice = "files";
+  env.text.mockReset(); env.image.mockClear(); env.speech.mockClear(); env.narrate.mockClear(); env.upsert.mockClear(); env.voice = "recorded";
   clearJourneyMemo(); backend = new Map(); reads = vi.fn();
   _setHeroRenderBackend({ get: async id => { reads(); return backend.get(id); }, put: async row => { backend.set(row.id, row); }, getAll: async () => { reads(); return [...backend.values()]; }, delete: async id => { backend.delete(id); }, clear: async () => backend.clear() });
   fetchSpy = vi.fn(() => { throw new Error("Unexpected network request"); });
@@ -169,7 +169,7 @@ async function readPath(tab: ReturnType<typeof harness<any>>, story: HeroStorySp
 }
 
 describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () => {
-  for (const voice of ["files", "none"] as const) for (const fixture of fixtures) it(`${fixture.lang}/${fixture.gender} (${voice === "files" ? "narration files" : "no files yet"}): every legacy book and choice reads twice without text, image, TTS or network calls`, async () => {
+  for (const voice of ["recorded", "none"] as const) for (const fixture of fixtures) it(`${fixture.lang}/${fixture.gender} (${voice === "recorded" ? "narration files" : "no files yet"}): every legacy book and choice reads twice without text, image, TTS or network calls`, async () => {
     env.lang = fixture.lang; env.voice = voice;
     for (const story of KID_SHELF_STORIES.filter(value => storyHasLanguage(value, fixture.lang))) {
       env.profile = { ...env.profile, ...fixture, age: story.ageRange[0] };
@@ -191,7 +191,7 @@ describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () =
     // Guy, 10 Oct 2026 evening: a child hears only the chosen narrator, so
     // nothing is ever synthesized in a legacy read (B-BOOK-28 / B-BOOK-73).
     expect(env.speech).not.toHaveBeenCalled();
-    if (voice === "files") {
+    if (voice === "recorded") {
       // Each page asks for exactly its authored units: the cover's title, each
       // beat, the Decision page's question and every answer, the chosen
       // outcome, The End. Nothing else is ever requested.

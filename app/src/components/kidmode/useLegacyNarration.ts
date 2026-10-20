@@ -7,7 +7,7 @@
  * `play(units)` reads a page's units in order on the ONE page voice channel
  * (lib/kidVoicePlayer, blessed by the child's first tap so an iPhone plays it
  * outside the tap) and returns the stop the page's effect calls on the turn.
- * `status` says which voice a page uses: "files" when this child has this
+ * `status` says which voice a page uses: "recorded" when this child has this
  * book's units in this language/gender, "none" otherwise (the caller falls
  * back to the K2.1 read-aloud), "loading" until the manifest answers.
  */
@@ -43,7 +43,7 @@ export function resetLegacyNarrationForTest(): void {
 /** The pause after a page settles before it reads (the page-turn sound first). */
 export const LEGACY_READ_DELAY_MS = 400;
 
-export type LegacyVoiceStatus = "loading" | "files" | "none";
+export type LegacyVoiceStatus = "loading" | "recorded" | "none";
 
 export function useLegacyNarration(childId: string | null, storyId: string | null, lang: "en" | "he", gender: string | undefined): {
   status: LegacyVoiceStatus;
@@ -68,7 +68,7 @@ export function useLegacyNarration(childId: string | null, storyId: string | nul
   }, [childId, storyId]);
 
   const folder = legacyFolder(lang, gender);
-  const status: LegacyVoiceStatus = !scopeKey ? "none" : answered !== scopeKey ? "loading" : manifest?.folders[folder]?.length ? "files" : "none";
+  const status: LegacyVoiceStatus = !scopeKey ? "none" : answered !== scopeKey ? "loading" : manifest?.folders[folder]?.length ? "recorded" : "none";
   const blobs = useRef(new Map<string, Promise<string | null>>());
   useEffect(() => {
     const held = blobs.current;

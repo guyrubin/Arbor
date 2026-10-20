@@ -381,7 +381,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const legacyVoice = useLegacyNarration(kidMode ? childProfile.id : null, kidMode ? activeStory?.id ?? null : null, renderLang, childProfile.gender);
   useEffect(() => {
     stopVoice();
-    const stop = kidMode && activeStory && legacyVoice.status === "files"
+    const stop = kidMode && activeStory && legacyVoice.status === "recorded"
       ? legacyVoice.play(legacyPageUnits({ onCover, atEnd, beatId: beat?.id, choiceId, choiceIds: choices.map((c) => c.id) }))
       : () => {};
     return () => { stop(); stopVoice(); };

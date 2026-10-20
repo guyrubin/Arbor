@@ -117,7 +117,7 @@ describe("the Kid Mode reader (HeroJourneyTab)", () => {
   it("B-BOOK-28: legacy pages never synthesize narration (only the chosen narrator's files, B-BOOK-73); the Decision question and choices stay readable", () => {
     expect(tab).not.toContain("autoReadPage");
     expect(tab).not.toContain("kidSay");
-    expect(tab).toContain('legacyVoice.status === "files"');
+    expect(tab).toContain('legacyVoice.status === "recorded"');
     expect(tab).toContain("stopVoice();");
     expect(kidReader).toContain("renderChoices()");
     expect(tab).toContain("<DecisionChoices choices={choices}");
