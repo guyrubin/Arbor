@@ -583,8 +583,9 @@ export const api = {
   // MON-1: plan + limits + usage for the signed-in parent.
   entitlement: () => get<EntitlementInfo>("/api/entitlement").then((e) => { noteImageAllowance(e.imageAllowance); return e; }),
   // MON-2: start a hosted checkout for a plan + cadence; returns the URL to open.
-  billingCheckout: (plan: "plus" | "family", cadence: "monthly" | "annual") =>
-    post<{ url: string }>("/api/billing/checkout", { plan, cadence }),
+  // BD-53/P2: `currency` is the one the price was shown in (lib/pricing checkoutCurrency).
+  billingCheckout: (plan: "plus" | "family", cadence: "monthly" | "annual", currency: "EUR" | "ILS" = "EUR") =>
+    post<{ url: string }>("/api/billing/checkout", { plan, cadence, currency }),
   // MON-2: self-service portal link to manage/cancel a web subscription.
   billingPortal: () => get<{ url: string | null }>("/api/billing/portal"),
   // ADM-1: founder dashboard — users + paying-by-plan + today's token spend (403 if not admin).
@@ -657,6 +658,12 @@ export type EntitlementInfo = {
   cohort?: "internal" | "family";
   /** B-KID-119: the plan's image allowance (server IMAGE_ALLOWANCE row). */
   imageAllowance?: { perDay: number; perMonth: number; heroPer30Days: number };
+  /** BD-53: ISO end of the 14-day trial (running or past); null when unknown. */
+  trialEndsAt?: string | null;
+  /** BD-53: true once the trial is over and nothing is paid — AI answers 402. */
+  accessEnded?: boolean;
+  /** BD-53/P2: checkout currencies the server offers (BILLING_CURRENCIES); € always. */
+  currencies?: string[];
 };
 
 /** Server-computed list-price estimates; nullable values mean not measured. */

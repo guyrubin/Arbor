@@ -51,6 +51,9 @@ const fetchEntitlement = () => {
   return inflight;
 };
 
+/** The last server answer, for non-React callers (the checkout names its currency). */
+export const cachedEntitlement = (): EntitlementInfo | null => cached;
+
 /** Invalidate after an upgrade (billing success redirect, native purchase, restore). */
 export const refreshEntitlement = () => { cached = null; return fetchEntitlement(); };
 

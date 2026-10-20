@@ -15,7 +15,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PLAN_PRICES, formatEur, effectiveMonthlyEur } from "./pricing";
+import { PLAN_PRICES, formatEur, effectiveMonthlyEur, ILS_PRICES, checkoutCurrency, planPrice, effectiveMonthly, formatPrice } from "./pricing";
 import { PLAN_PRICING } from "../server/entitlements.js";
 import { en, he } from "./i18n";
 
@@ -49,6 +49,42 @@ describe("client price constant ↔ entitlement config parity (CARE-5)", () => {
   });
 });
 
+describe("BD-53 / P2: the Israeli price (Guy, 20 Oct 2026)", () => {
+  it("Plus ₪69.90/month or ₪549/year; Family has no shekel price (not sold, P3)", () => {
+    expect(ILS_PRICES).toEqual({ plus: { monthly: 69.9, annual: 549 } });
+    expect(planPrice("family", "monthly", "ILS")).toBeNull();
+  });
+
+  it("EUR figures are unchanged through the currency-aware helpers", () => {
+    expect(planPrice("plus", "monthly")).toBe(12.99);
+    expect(planPrice("plus", "annual", "EUR")).toBe(129.9);
+    expect(effectiveMonthly("plus")).toBe(effectiveMonthlyEur("plus"));
+    expect(formatPrice(12.99)).toBe("€12.99");
+  });
+
+  it("formats and derives the shekel figures", () => {
+    expect(formatPrice(69.9, "ILS")).toBe("₪69.90");
+    expect(formatPrice(planPrice("plus", "annual", "ILS")!, "ILS")).toBe("₪549.00");
+    expect(effectiveMonthly("plus", "ILS")).toBe(45.75);
+  });
+
+  it("one currency rule: Hebrew gets ₪ only once the server offers ILS; everyone else €", () => {
+    expect(checkoutCurrency("he", ["EUR"])).toBe("EUR");
+    expect(checkoutCurrency("he", undefined)).toBe("EUR");
+    expect(checkoutCurrency("he", ["EUR", "ILS"])).toBe("ILS");
+    expect(checkoutCurrency("en", ["EUR", "ILS"])).toBe("EUR");
+  });
+
+  it("the checkout names the same currency the price block shows", () => {
+    const hook = readSrc("hooks/useCheckout.ts");
+    const block = readSrc("components/billing/PlanPrices.tsx");
+    const modal = readSrc("components/billing/PaywallModal.tsx");
+    expect(hook).toContain("checkoutCurrency(uiLang, cachedEntitlement()?.currencies)");
+    expect(block).toContain("checkoutCurrency(uiLang, entitlement.currencies)");
+    expect(modal).toContain("checkoutCurrency(uiLang, entitlement.currencies)");
+  });
+});
+
 describe("both upgrade surfaces show the price before checkout (CARE-5)", () => {
   const paywall = readSrc("components/billing/PaywallModal.tsx");
   const settings = readSrc("components/layout/SettingsModal.tsx");
@@ -63,8 +99,8 @@ describe("both upgrade surfaces show the price before checkout (CARE-5)", () => 
     expect(paywall).toMatch(/buildPlanRows\(\{[^}]*cadence/);
     expect(paywall).toContain('data-testid="plan-prices"');
     expect(model).toContain('from "../../lib/pricing"');
-    expect(model).toContain("PLAN_PRICES[plan].monthlyEur");
-    expect(model).toContain("PLAN_PRICES[plan].annualEur");
+    expect(model).toContain("planPrice(plan, cadence, currency)");
+    expect(model).toContain("effectiveMonthly(plan, currency)");
   });
 
   it("Settings plan panel renders the shared PlanPrices block", () => {

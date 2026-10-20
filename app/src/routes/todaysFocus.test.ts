@@ -206,7 +206,7 @@ describe("/api/todays-focus daily cache (AIR-5 firewall condition 4)", () => {
 
 describe("createApp wiring (AIR-5/AIR-6 metering, source-pinned)", () => {
   const createAppSrc = fs.readFileSync(path.resolve(__dirname, "../server/createApp.ts"), "utf8");
-  const quotaBlock = /app\.use\(\s*\[[\s\S]*?\],\s*createAiQuota\(counters(?:, \{ exempt: aiHourlyExempt\(config\) \})?\)\s*\);/.exec(createAppSrc)?.[0] ?? "";
+  const quotaBlock = /const modelRoutes = \[[\s\S]*?\];[\s\S]*?app\.use\(modelRoutes, createAiQuota\(counters(?:, \{ exempt: aiHourlyExempt\(config\) \})?\)\);/.exec(createAppSrc)?.[0] ?? "";
 
   it("/api/todays-focus sits INSIDE the hourly AI quota", () => {
     expect(quotaBlock).toContain('"/api/todays-focus"');

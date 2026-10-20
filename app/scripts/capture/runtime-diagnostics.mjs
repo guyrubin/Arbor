@@ -27,6 +27,10 @@ export function classifyReleaseConsole(message) {
   if (/content security policy|\bcsp\b|refused to (?:load|execute|connect)/i.test(message)) return 'CSP';
   if (/dynamically imported module|module script|loading chunk|failed to fetch.*module/i.test(message)) return 'MODULE_LOAD';
   if (/minified react error/i.test(message)) return 'REACT_MINIFIED';
+  // Chrome's own line for a 4xx/5xx subresource or fetch. Only the status leaves (B-INF-14: the
+  // co-parent 401 on #/care-team and #/sharing read as OTHER_ERROR in every capture cell).
+  const status = /failed to load resource: the server responded with a status of ([1-5]\d\d)\b/i.exec(message);
+  if (status) return `RESOURCE_HTTP_${status[1]}`;
   if (/networkerror|failed to fetch|err_connection|net::err/i.test(message)) return 'NETWORK';
   if (/resizeobserver loop/i.test(message)) return 'RESIZE_OBSERVER';
   return 'OTHER_ERROR';

@@ -227,7 +227,7 @@ export const he: Record<string, string> = {
   "elev.trust.not.title": "מה Arbor לא עושה",
   "elev.trust.not.diagnosis": "לא אבחנה — Arbor אף פעם לא מאבחן ולא מתייג את הילד.",
   "elev.trust.not.substitute": "לא תחליף לאיש מקצוע — Arbor מכין אתכם לשיחה איתו.",
-  "elev.trust.not.medical": "בלי החלטות רפואיות — שום דבר ב‑Arbor הוא לא ייעוץ רפואי.",
+  "elev.trust.not.medical": "בלי החלטות רפואיות — שום דבר ב־Arbor הוא לא ייעוץ רפואי.",
   "elev.trust.not.sell": "לא מוכר את המידע שלכם — המידע של המשפחה שלכם הוא לא מוצר.",
 
   "elev.trust.sources.title": "מאיפה המידע",
@@ -238,7 +238,7 @@ export const he: Record<string, string> = {
     "‏Arbor מאיר, במילים פשוטות, מה ששווה שיחה עם איש מקצוע — ואף פעם לא מתייג את הילד.",
   "elev.trust.more.faq2.q": "מי יכול לראות מה ששיתפתי?",
   "elev.trust.more.faq2.a":
-    "רק החשבון המשפחתי שלכם. כל מה שיוצא מ‑Arbor עובר דרככם, עם שלב אישור מפורש.",
+    "רק החשבון המשפחתי שלכם. כל מה שיוצא מ־Arbor עובר דרככם, עם שלב אישור מפורש.",
   "elev.trust.more.faq3.q": "אפשר לקחת את המידע איתנו — או למחוק אותו?",
   "elev.trust.more.faq3.a": "כן. ייצוא ומחיקה מובנים, מתוך פרופיל הילד.",
   "elev.trust.more.contact": "דברו איתנו",

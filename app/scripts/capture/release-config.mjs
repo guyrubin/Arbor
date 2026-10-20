@@ -29,6 +29,8 @@ export const RELEASE_MATRIX = Object.freeze(RELEASE_VIEWPORTS.flatMap((viewport)
 ]));
 export function releaseMatrix(scope = 'all') {
   if (scope === 'all') return RELEASE_MATRIX;
+  // AR-REL-1: the per-PR capture (arbor-capture.yml) = the four release cells, base routes only.
+  if (scope === 'base-only') return RELEASE_VIEWPORTS.map(viewport => ({ viewport: viewport.id, group: 'base', shard: 0 }));
   if (scope === 'first-run-goal-only') return [...releaseMatrix('first-run-preview-only'), ...releaseMatrix('single-goal-only')];
   if (scope === 'single-goal-only') return RELEASE_VIEWPORTS.map(viewport => ({ viewport: viewport.id, group: 'single-goal', shard: 0 }));
   if (scope === 'first-run-preview-only') return RELEASE_VIEWPORTS.map(viewport => ({ viewport: viewport.id, group: 'first-run-preview', shard: 0 }));

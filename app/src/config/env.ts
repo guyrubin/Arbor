@@ -84,6 +84,9 @@ export type ArborConfig = {
   billingCheckoutUrls: Record<string, string>;
   /** MON-2: customer self-service portal (Stripe Billing portal) for web subs. */
   billingManageUrl?: string;
+  /** BD-53/P2: checkout currencies on sale (`BILLING_CURRENCIES`); EUR always, ILS
+   *  only once the RevenueCat products hold the shekel price. */
+  billingCurrencies?: string[];
   /** Child articulation ASR provider. Parent voice stays on Gemini Live — this is
    *  ONLY for scoring the child's pronunciation. "gemini" = Vertex multimodal audio
    *  (no vendor/secrets); "none" = on-device Web Speech fallback only. */
@@ -225,6 +228,7 @@ export const loadConfig = (): ArborConfig => {
       ...(process.env.BILLING_URL_FAMILY_ANNUAL ? { family_annual: process.env.BILLING_URL_FAMILY_ANNUAL } : {}),
     },
     billingManageUrl: process.env.BILLING_MANAGE_URL,
+    billingCurrencies: ["EUR", ...((process.env.BILLING_CURRENCIES || "").toUpperCase().split(",").map((c) => c.trim()).includes("ILS") ? ["ILS"] : [])],
     childAsrProvider: (() => {
       const v = (process.env.CHILD_ASR_PROVIDER || "none").toLowerCase();
       if (modelProvider === "mock") return "none"; // B-INF-04: no outbound ASR under mock

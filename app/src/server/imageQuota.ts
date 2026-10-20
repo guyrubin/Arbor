@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 import type { UsageCounterStore } from "./quotaStore.js";
-import { entitlementsEnforced, resolveEntitlement, type EntitlementStore, type Plan } from "./entitlements.js";
+import { accessEnded, entitlementForRequest, entitlementsEnforced, type EntitlementStore, type Plan } from "./entitlements.js";
 import { HERO_BOOK_POSE_IDS } from "../lib/heroSheetContract.js";
 
 /**
@@ -98,8 +98,9 @@ export const imagePlanFor = async (req: unknown, store: EntitlementStore | undef
   if (!user?.uid && entitlementsEnforced()) return "signed_out";
   if (!store) return "free";
   try {
-    const e = await resolveEntitlement(store, { uid: user?.uid || "local-sandbox", email: user?.email || null });
-    return e.plan;
+    const e = await entitlementForRequest(req, store);
+    // BD-53: a family whose trial is over draws nothing new (the zero row).
+    return accessEnded(e) ? "signed_out" : e.plan;
   } catch {
     return "free";
   }

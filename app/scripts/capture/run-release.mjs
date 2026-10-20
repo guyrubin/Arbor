@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { BASE, assertLoopbackOnly } from './config.mjs';
 import { SMALL_FIXTURE } from './small-state.mjs';
 import { SOURCE_FONT_NOTE, validateFontCache } from './font-runtime.mjs';
+import { SWEEP_LAW_EXIT } from './sweep-law.mjs';
 import { captureDeadlineMs, releaseCell, releaseEnvironment, releaseIdentity, releaseInventory, releaseSweepArguments, shardRoutes, missingBaseEvidence } from './release-config.mjs';
 
 const app = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -34,7 +35,7 @@ function progress(stage) {
   write('capture.json', metadata);
   console.log(`Release capture: ${cell.id}/${stage}; screenshots=${metadata.screenshots}.`);
 }
-async function run(args, env, name, deadlineMs) {
+async function run(args, env, name, deadlineMs, { lawExit = false } = {}) {
   const log = openSync(`${scratch}/${name}.log`, 'w');
   const child = spawn(process.execPath, args, { cwd: app, env, stdio: ['ignore', 'pipe', log], detached: true });
   let pending = '';
@@ -54,6 +55,9 @@ async function run(args, env, name, deadlineMs) {
   try {
     const exitCode = await new Promise((resolve, reject) => { child.once('exit', resolve); child.once('error', reject); });
     metadata.lastProcess = { name, exitCode, deadlineExpired: expired };
+    // AR-REL-1: a base sweep that finished but broke the law is a finding (sweepLaw), not a crash.
+    if (lawExit && !expired) metadata.sweepLaw = exitCode === SWEEP_LAW_EXIT ? 'fail' : exitCode === 0 ? 'pass' : undefined;
+    if (lawExit && !expired && exitCode === SWEEP_LAW_EXIT) return;
     if (exitCode !== 0 || expired) throw new Error(expired ? 'CAPTURE_DEADLINE' : 'CHILD_PROCESS_FAILED');
   } finally { clearTimeout(deadline); clearTimeout(hardKill); clearInterval(pulse); }
 }
@@ -107,7 +111,7 @@ async function main() {
   }
   if (!ready) throw new Error('SANDBOX_READINESS_TIMEOUT');
   progress('screens');
-  await run(cell.group === 'base' ? releaseSweepArguments(output, routeIds, cell) : ['scripts/capture/collect-release.mjs'], env, 'screens', captureDeadlineMs(cell));
+  await run(cell.group === 'base' ? releaseSweepArguments(output, routeIds, cell) : ['scripts/capture/collect-release.mjs'], env, 'screens', captureDeadlineMs(cell), { lawExit: cell.group === 'base' });
   progress('captured');
   if (!metadata.completed) throw new Error('EVIDENCE_INCOMPLETE');
 }

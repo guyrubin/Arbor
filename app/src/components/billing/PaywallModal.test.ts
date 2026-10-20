@@ -79,6 +79,16 @@ describe("negative controls — with a price the CTA is live and names plan + pr
     expect(cta.label).toContain("plan=set.plan.family");
     expect(cta.label).toContain("price=€19.99/elev.storeshell.pw.period.month");
   });
+
+  it("BD-53/P2 web in ILS: the shekel figures; a plan without a shekel price shows none", () => {
+    const annual = buildPlanRows({ isNative: false, nativePrices: null, cadence: "annual", fmtCurrency: fmt, currency: "ILS" });
+    const plus = annual.find((r) => r.plan === "plus")!;
+    expect(plus.price).toBe("₪549.00");
+    expect(plus.perMonth).toBe("₪45.75");
+    expect(annual.find((r) => r.plan === "family")?.price).toBeNull();
+    const monthly = buildPlanRows({ isNative: false, nativePrices: null, cadence: "monthly", fmtCurrency: fmt, currency: "ILS" });
+    expect(monthly.find((r) => r.plan === "plus")?.price).toBe("₪69.90");
+  });
 });
 
 describe("disclosure — auto-renewal + where to cancel, per platform, EN + HE", () => {
@@ -148,10 +158,10 @@ describe("B-SHELL-11 · one body per trigger, a plain kept count", () => {
     return fill(dict ?? "", { name: lang === "he" ? "מיה" : "Mia" });
   };
 
-  it("enumerates exactly the eight trigger ids", () => {
+  it("enumerates exactly the nine trigger ids (BD-53 added trial_ended)", () => {
     expect([...PAYWALL_FEATURES].sort()).toEqual([
       "advancedPlans", "adventureGenerate", "avatarGenerate", "coParentSeats",
-      "coach_unlimited", "heroComic", "maxChildren", "professionalReports",
+      "coach_unlimited", "heroComic", "maxChildren", "professionalReports", "trial_ended",
     ]);
   });
 
@@ -163,14 +173,14 @@ describe("B-SHELL-11 · one body per trigger, a plain kept count", () => {
   });
 
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: the eight bodies are present and pairwise distinct, with no % and no stray placeholder`, () => {
+    it(`${lang}: every body are present and pairwise distinct, with no % and no stray placeholder`, () => {
       const bodies = PAYWALL_FEATURES.map((f) => bodyText(lang, f));
       for (const [i, b] of bodies.entries()) {
         expect(b.length, PAYWALL_FEATURES[i]).toBeGreaterThan(20);
         expect(b, PAYWALL_FEATURES[i]).not.toMatch(/%|\{\w+\}/);
         if (lang === "he") expect(b).toMatch(/[֐-׿]/);
       }
-      expect(new Set(bodies).size).toBe(8);
+      expect(new Set(bodies).size).toBe(PAYWALL_FEATURES.length);
     });
   }
 

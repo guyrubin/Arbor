@@ -2,7 +2,8 @@
  * OPS-A2 / REL-ARBOR-002 — candidate liveness AND exact revision gate.
  *
  * The candidate must serve the app shell and identify the full expected commit
- * through /api/health before the promote job may shift production traffic.
+ * through /api/health before the promote job may shift production traffic; a
+ * prod candidate must also report a configured checkout.
  * /healthz remains a compatibility alias; Google ingress intercepts that path.
  * Neither missing identity nor a stale or malformed response can pass the gate.
  *
@@ -52,6 +53,12 @@ export async function verifyCandidate(host, expectedVersion, fetcher = fetch) {
   const payload = await health.json();
   if (payload?.status !== "ok" || payload?.version !== expectedVersion) {
     throw new Error("Revision probe does not identify the expected healthy commit");
+  }
+  // A production revision that cannot sell is not healthy: from at least 8 Oct
+  // to 20 Oct 2026 every prod revision lacked the checkout link and each
+  // purchase answered "unavailable" while this gate passed.
+  if (payload.env === "prod" && payload.checkout !== true) {
+    throw new Error("Production candidate has no checkout configured (BILLING_WEB_PURCHASE_LINK)");
   }
   return payload.version;
 }

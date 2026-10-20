@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 import type { UsageCounterStore } from "./quotaStore.js";
-import { COACH_METER, resolveEntitlement, type EntitlementStore } from "./entitlements.js";
+import { COACH_METER, TRIAL_ENDED_BODY, accessEnded, entitlementForRequest, type EntitlementStore } from "./entitlements.js";
 import { logger, requestIdOf } from "./logger.js";
 
 /**
@@ -92,12 +92,19 @@ export const createCoachGate = (
   const [quota, entitlement] = await Promise.all([
     // fix r1: the hourly AI cap is skipped under the mock provider (aiHourlyExempt); the coach meter below still applies
     opts.exemptHourly ? Promise.resolve(null) : counters.increment("ai_hourly", key, WINDOW_MS, { limit: LIMIT }),
-    resolveEntitlement(entitlementStore, actor),
+    entitlementForRequest(req, entitlementStore),
   ]);
   (req as any).entitlement = entitlement;
 
   if (quota && rejectOverHourlyQuota(res, quota.count, quota.resetAt)) {
     logGateDuration(req, "coach_gate", startedAt);
+    return;
+  }
+
+  // BD-53: the trial is over and nothing is paid — the coach answers with the paywall.
+  if (accessEnded(entitlement)) {
+    logGateDuration(req, "coach_gate", startedAt);
+    res.status(402).json(TRIAL_ENDED_BODY);
     return;
   }
 

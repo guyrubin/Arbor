@@ -18,7 +18,7 @@ import { createAuthMiddleware } from "./authMiddleware.js";
 import { aiHourlyExempt, createAiQuota, createCoachGate, createTtsQuota } from "./aiQuota.js";
 import { createImageQuota } from "./imageQuota.js";
 import { createCounterStore } from "./quotaStore.js";
-import { createEntitlementStore, requirePlusFeature } from "./entitlements.js";
+import { createEntitlementStore, requireActiveAccess, requirePlusFeature } from "./entitlements.js";
 import { createReferralStore } from "./referral.js";
 import { createBillingWebhookRouter } from "./billing.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
@@ -195,41 +195,44 @@ export const createApp = (config: ArborConfig) => {
   // route handler or consent/billing middleware.
   // The image-gen endpoints are also included for the hourly abuse cap AND get a
   // tighter daily image cap below (S2 — image generation is a pricier SKU).
-  app.use(
-    [
-      "/api/voice",
-      "/api/extract-log",
-      "/api/vision",
-      "/api/generate-plan",
-      "/api/generate-bedtime-story",
-      "/api/conversation/proposals",
-      // B-SHELL-39: "Tell Arbor about {name}" calls the model per description.
-      "/api/describe-child",
-      "/api/generate-adventure",
-      "/api/generate-hero-journey",
-      "/api/analyze-behavior",
-      "/api/generate-handoff",
-      "/api/digest",
-      "/api/generate-avatar",
-      "/api/generate-scene",
-      "/api/generate-comic",
-      "/api/live/token",
-      // VC-7: the upcoming screened Live turn endpoint sits under the SAME
-      // per-user metering as the token mint, so Live usage is bounded and
-      // visible the moment that route lands (firewall condition 4).
-      "/api/live/turn",
-      // AIR-5: the lightweight Today's Focus generator is a model call, so it
-      // sits inside the hourly AI quota — but NOT under the coach meter (an
-      // ambient card must never silently burn the free plan's daily coach
-      // messages; the /chat+/council coach gate below deliberately excludes it).
-      "/api/todays-focus",
-      // Wave T (AI-01): the lightweight explain route replaces the coach
-      // route for Milestones/Behaviors explanations — same hourly AI quota,
-      // same exclusion from the coach meter as todays-focus.
-      "/api/explain",
-    ],
-    createAiQuota(counters, { exempt: aiHourlyExempt(config) })
-  );
+  const modelRoutes = [
+    "/api/voice",
+    "/api/extract-log",
+    "/api/vision",
+    "/api/generate-plan",
+    "/api/generate-bedtime-story",
+    "/api/conversation/proposals",
+    // B-SHELL-39: "Tell Arbor about {name}" calls the model per description.
+    "/api/describe-child",
+    "/api/generate-adventure",
+    "/api/generate-hero-journey",
+    "/api/analyze-behavior",
+    "/api/generate-handoff",
+    "/api/digest",
+    "/api/generate-avatar",
+    "/api/generate-scene",
+    "/api/generate-comic",
+    "/api/live/token",
+    // VC-7: the upcoming screened Live turn endpoint sits under the SAME
+    // per-user metering as the token mint, so Live usage is bounded and
+    // visible the moment that route lands (firewall condition 4).
+    "/api/live/turn",
+    // AIR-5: the lightweight Today's Focus generator is a model call, so it
+    // sits inside the hourly AI quota — but NOT under the coach meter (an
+    // ambient card must never silently burn the free plan's daily coach
+    // messages; the /chat+/council coach gate below deliberately excludes it).
+    "/api/todays-focus",
+    // Wave T (AI-01): the lightweight explain route replaces the coach
+    // route for Milestones/Behaviors explanations — same hourly AI quota,
+    // same exclusion from the coach meter as todays-focus.
+    "/api/explain",
+  ];
+  // BD-53: once the 14-day trial is over and nothing is paid, every model
+  // route answers 402 `trial_ended` (the paywall) BEFORE the hourly quota is
+  // charged. /chat and /council get the same rule inside the coach gate;
+  // /api/tts stays open so saved stories can still be read aloud.
+  app.use(modelRoutes, requireActiveAccess(entitlementStore));
+  app.use(modelRoutes, createAiQuota(counters, { exempt: aiHourlyExempt(config) }));
   // AIR-6: /api/tts left the model-call quota — spoken sentences are not model
   // calls and must never 429 a voice conversation mid-session. It gets its own
   // character-based daily meter (Cloud TTS bills per character). The lexical

@@ -8,10 +8,11 @@ import { Skeleton } from "../ui/Skeleton";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useCheckout } from "../../hooks/useCheckout";
+import { useEntitlement } from "../../hooks/useEntitlement";
 import { useNativeOffering } from "../../hooks/useNativePrices";
 import { isNativePlatform, nativePlatform } from "../../lib/runtime";
 import { trackPaywallView } from "../../lib/kpiEvents";
-import type { PaidPlan } from "../../lib/pricing";
+import { checkoutCurrency, type PaidPlan } from "../../lib/pricing";
 import { fmtStoreCurrency } from "./PlanPrices";
 import { LegalLinks } from "./LegalLinks";
 import { buildPlanRows, paywallCta, disclosureText, periodKey, paywallBody, DEFAULT_CADENCE, type Cadence } from "./paywallModel";
@@ -70,7 +71,10 @@ export default function PaywallModal() {
 
   // Co-parent sharing is free. Preserve existing Family subscriptions, but
   // do not sell a more expensive plan with no additional entitlement.
-  const rows = buildPlanRows({ isNative: isNativePlatform, nativePrices, cadence, fmtCurrency: fmtStoreCurrency }).filter((row) => row.plan === "plus");
+  // BD-53/P2: the currency the checkout link will name (lib/pricing checkoutCurrency).
+  const { entitlement } = useEntitlement();
+  const currency = checkoutCurrency(uiLang, entitlement.currencies);
+  const rows = buildPlanRows({ isNative: isNativePlatform, nativePrices, cadence, fmtCurrency: fmtStoreCurrency, currency }).filter((row) => row.plan === "plus");
   const cta = paywallCta({ rows, selected, cadence, isNative: isNativePlatform, platform: nativePlatform, t, status: offeringStatus });
   const disclosure = disclosureText(t, nativePlatform, cadence);
 

@@ -49,7 +49,11 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   // MOB-08: `loading` → skeleton row (never "Free" while unsure); `isFallback`
   // → "couldn't verify — showing last known · Retry" line.
   const { entitlement, loading: entitlementLoading, isFallback: entitlementUnverified, retry: retryEntitlement } = useEntitlement();
-  const isPaid = entitlement.plan !== "free";
+  // BD-53: a running trial reads as Plus but is not a subscription — it shows
+  // the trial line and the subscribe controls, never "Manage subscription".
+  const isTrial = entitlement.source === "trial";
+  const trialEnded = entitlement.accessEnded === true;
+  const isPaid = entitlement.plan !== "free" && !isTrial;
   const isBeta = isPaid && !entitlement.enforced;
   const coachLimit = entitlement.limits.coachMessagesPerDay;
   // B-GA-12: annual is the accepted initial cadence (DEFAULT_CADENCE, shared
@@ -129,12 +133,18 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
   const planLabel = isBeta
     ? t("set.plan.beta")
-    : entitlement.plan === "family"
+    : trialEnded
+      ? t("set.plan.trialEnded")
+      : entitlement.plan === "family"
       ? t("set.plan.family")
       : entitlement.plan === "plus"
         ? t("set.plan.plus")
         : t("set.plan.free");
-  const planDesc = entitlement.plan === "family"
+  const planDesc = isTrial
+    ? t("set.plan.trialDesc")
+    : trialEnded
+      ? t("set.plan.trialEndedDesc")
+      : entitlement.plan === "family"
     ? t("set.plan.familyDesc")
     : entitlement.plan === "plus"
       ? t("set.plan.plusDesc")
@@ -144,7 +154,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const fmtDate = (iso?: string | null) => fmtDay(iso, uiLang);
   // The status line under a paid plan: trial / renews / ends / payment issue.
   const statusLine = (() => {
-    if (!isPaid || isBeta) return null;
+    if ((!isPaid && !isTrial) || isBeta) return null;
     const date = fmtDate(entitlement.currentPeriodEnd);
     if (entitlement.status === "grace_period") return t("set.plan.grace");
     if (entitlement.status === "in_trial" && date) return t("set.plan.trial", { date });
@@ -431,9 +441,12 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               Selling an upgrade to somebody whose just-completed checkout has
               not been confirmed yet is the worst moment in the product to get
               wrong — and the usage counter under it is fallback data too. */}
+          {isTrial && statusLine && (
+            <p className="text-xs mt-2" data-testid="plan-trial-ends" style={{ color: "var(--arbor-muted)" }}>{statusLine}</p>
+          )}
           {!isPaid && !entitlementUnverified && (
             <>
-              {coachLimit !== null && (
+              {coachLimit !== null && !isTrial && !trialEnded && (
                 <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>
                   {t("set.plan.coachToday", { used: entitlement.usage.coachMessagesToday, limit: coachLimit })}
                 </p>

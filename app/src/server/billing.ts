@@ -227,9 +227,16 @@ export const WEB_PACKAGE_IDS: Record<string, string> = {
  * Fallback: per-plan hosted links (e.g. Stripe Payment Links) where the uid is a
  * `client_reference_id` query param.
  */
+/** BD-53/P2: the checkout currencies on sale — EUR always, ILS when configured. */
+export const offeredCurrencies = (config: ArborConfig): string[] => config.billingCurrencies ?? ["EUR"];
+
+/** BD-53/P3 (Guy, 20 Oct 2026): only Plus is sold. Family stays an entitlement
+ *  (comps, any existing subscription) but no new checkout starts for it. */
+export const SOLD_PLANS: readonly string[] = ["plus"];
+
 export const billingCheckoutUrl = (
   config: ArborConfig,
-  opts: { plan: "plus" | "family"; cadence: "monthly" | "annual"; uid: string; email: string | null },
+  opts: { plan: "plus" | "family"; cadence: "monthly" | "annual"; uid: string; email: string | null; currency?: string },
 ): string | null => {
   const key = `${opts.plan}_${opts.cadence}`;
 
@@ -242,6 +249,9 @@ export const billingCheckoutUrl = (
       const params = target.searchParams;
       const pkg = WEB_PACKAGE_IDS[key];
       if (pkg) params.set("package_id", pkg);
+      // BD-53/P2: name the currency the price was shown in; RevenueCat would
+      // otherwise pick one by the buyer's location once a second one exists.
+      if (opts.currency) params.set("currency", opts.currency);
       if (opts.email) params.set("email", opts.email);
       return target.toString();
     } catch (error) {

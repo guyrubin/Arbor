@@ -8,6 +8,8 @@
  *        [--diff <prev sweep.json>] [--no-shots] [--no-api-cache] [--runs 1]  (npm run sweep -- …)
  *        [--seed demo|day0] [--states | --no-states]   (v2, below; --routes also takes "shell")
  *        [--matrix release|device] [--viewport <id>]   (device = the matrix of record, DEVICE_VIEWPORTS)
+ *        [--report-only]   (AR-REL-1: exit 3 = SWEEP-LAW FAIL — an unmounted base cell, or any rendered
+ *        cell with a console error or horizontal overflow; scripts/capture/sweep-law.mjs; --report-only keeps 0)
  *
  * Routes = every `route:` in SURFACE_CONTRACTS (src/lib/surfaceContract.ts); the run aborts
  * (exit 1) if that set differs from ROUTE_IDS (src/lib/routes.ts). Each route is a FULL LOAD
@@ -78,6 +80,7 @@ import { networkInterfaces } from "node:os";
 import { assertLoopbackOnly, captureRevision } from "./capture/config.mjs";
 import { DEVICE_VIEWPORTS, RELEASE_VIEWPORTS, expectedSeedMarker, requiresConversationReadiness } from "./capture/release-config.mjs";
 import { classifyReleaseConsole, createRuntimeDiagnostics } from "./capture/runtime-diagnostics.mjs";
+import { SWEEP_LAW_EXIT, sweepLawFailures, sweepLawLines } from "./capture/sweep-law.mjs";
 import { initializeSyntheticOnline } from "./capture/small-state.mjs";
 import { captureFontContextOptions, installOfflineFonts, captureScreenshot } from "./capture/font-runtime.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -102,7 +105,7 @@ const SHELL = "shell";
 
 /* ── args ─────────────────────────────────────────────────────────────────── */
 function parseArgs(argv) {
-  const out = { base: "http://localhost:4805", shots: true, apiCache: true, runs: 1, routes: null, diff: null, out: null, seed: "demo", states: null, viewport: null, matrix: "release" };
+  const out = { base: "http://localhost:4805", shots: true, apiCache: true, runs: 1, routes: null, diff: null, out: null, seed: "demo", states: null, viewport: null, matrix: "release", reportOnly: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => {
@@ -125,6 +128,7 @@ function parseArgs(argv) {
     else if (a === "--diff") out.diff = next();
     else if (a === "--no-shots") out.shots = false;
     else if (a === "--no-api-cache") out.apiCache = false;
+    else if (a === "--report-only") out.reportOnly = true;
     else if (a === "--runs") out.runs = Math.max(1, Number.parseInt(next(), 10) || 1);
     else if (a === "--seed") {
       out.seed = next();
@@ -1931,6 +1935,14 @@ async function main() {
     };
     report("base", "STABLE", "UNSTABLE");
     if (opts.states) report("state", "STATE-STABLE", "STATE-UNSTABLE");
+  }
+  // AR-REL-1: the law decides the exit code (run 1 is the recorded run).
+  const lawFailures = sweepLawFailures(docs[0]);
+  if (lawFailures.length === 0) console.log("SWEEP-LAW PASS");
+  else {
+    console.log(`SWEEP-LAW FAIL ${lawFailures.length} cells${opts.reportOnly ? " (report only)" : ""}`);
+    for (const line of sweepLawLines(lawFailures)) console.log(line);
+    if (!opts.reportOnly) process.exitCode = SWEEP_LAW_EXIT;
   }
 }
 

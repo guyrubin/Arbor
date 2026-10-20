@@ -1,4 +1,4 @@
-import { PLAN_PRICES, formatEur, effectiveMonthlyEur, type PaidPlan } from "../../lib/pricing";
+import { planPrice, effectiveMonthly, formatPrice, type BillingCurrency, type PaidPlan } from "../../lib/pricing";
 import type { NativePriceMap, OfferingStatus } from "../../lib/nativeBilling";
 
 /**
@@ -42,8 +42,10 @@ export function buildPlanRows(args: {
   cadence: Cadence;
   /** Store-currency formatter for native per-month math (PlanPrices.fmtStoreCurrency). */
   fmtCurrency: (amount: number, currencyCode: string) => string;
+  /** Web only: the checkout currency (lib/pricing checkoutCurrency); default €. */
+  currency?: BillingCurrency;
 }): PlanRow[] {
-  const { isNative, nativePrices, cadence, fmtCurrency } = args;
+  const { isNative, nativePrices, cadence, fmtCurrency, currency = "EUR" } = args;
   return PLAN_ORDER.map((plan) => {
     if (isNative) {
       const p = nativePrices?.[plan]?.[cadence];
@@ -55,11 +57,13 @@ export function buildPlanRows(args: {
         perMonth: cadence === "annual" ? fmtCurrency(Math.round((p.amount / 12) * 100) / 100, p.currencyCode) : null,
       };
     }
+    const price = planPrice(plan, cadence, currency);
+    const perMonth = cadence === "annual" ? effectiveMonthly(plan, currency) : null;
     return {
       plan,
       nameKey: PLAN_NAME_KEY[plan],
-      price: formatEur(cadence === "monthly" ? PLAN_PRICES[plan].monthlyEur : PLAN_PRICES[plan].annualEur),
-      perMonth: cadence === "annual" ? formatEur(effectiveMonthlyEur(plan)) : null,
+      price: price === null ? null : formatPrice(price, currency),
+      perMonth: perMonth === null ? null : formatPrice(perMonth, currency),
     };
   });
 }
@@ -139,6 +143,8 @@ export const PAYWALL_FEATURES = [
   "adventureGenerate",
   "maxChildren",
   "coParentSeats",
+  // BD-53: the 14-day trial is over (server TRIAL_ENDED_BODY).
+  "trial_ended",
 ] as const;
 export type PaywallFeature = (typeof PAYWALL_FEATURES)[number];
 
@@ -154,6 +160,7 @@ export function paywallBody(feature: string | undefined): PaywallBody {
     // AI-drafted school note (/api/generate-handoff). Packets and PDFs are free.
     case "professionalReports": return { key: "pw.bodySchoolNotes", source: "planclarity" };
     case "advancedPlans": return { key: "pw.bodyPlans", source: "t" };
+    case "trial_ended": return { key: "pw.body.trialEnded", source: "t" };
     case "avatarGenerate":
     case "heroComic":
     case "adventureGenerate":
