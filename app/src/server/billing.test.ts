@@ -166,4 +166,19 @@ describe("BD-53 offer (Guy, 20 Oct 2026)", () => {
     const src = readFileSync(new URL("../config/env.ts", import.meta.url), "utf8");
     expect(src).toContain('billingCurrencies: ["EUR", ...((process.env.BILLING_CURRENCIES || "")');
   });
+
+  it("production sells ILS and the Hebrew landing shows the same shekel prices as ILS_PRICES", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { ILS_PRICES, formatPrice } = await import("../lib/pricing.js");
+    const prod = readFileSync(new URL("../../../cloudbuild.prod.yaml", import.meta.url), "utf8");
+    expect(prod).toContain("|BILLING_CURRENCIES=EUR,ILS|");
+    const plus = ILS_PRICES.plus!;
+    for (const page of ["arbor-marketing-landing-page-he.html", "index.html"]) {
+      const html = readFileSync(new URL(`../../public/marketing/${page}`, import.meta.url), "utf8");
+      expect(html, page).toContain(`${formatPrice(plus.monthly, "ILS")} <small>`);
+      expect(html, page).toContain(`₪${plus.annual} <small>`);
+      expect(html, page).toContain(`כ־${formatPrice(Math.round((plus.annual / 12) * 100) / 100, "ILS")}`);
+      expect(html, page).not.toContain("€");
+    }
+  });
 });
