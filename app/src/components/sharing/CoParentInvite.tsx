@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "../../context/AuthContext";
 import { coParentCopy } from "../../lib/i18nElevation/coParent";
 import { coParentApi, coParentLink, CoParentError } from "../../lib/coParentApi";
 import { readTodayPin } from "../../lib/practice/todayPin";
@@ -16,6 +17,11 @@ export default function CoParentInvite(props: CoParentInviteProps) {
 }
 function CoParentInviteSession({ childId, childName, grants, onChanged }: CoParentInviteProps) {
   const { uiLang } = useLanguage();
+  const { user } = useAuth();
+  // The co-parent API needs a real account: server/coParent.ts answers 401 to the
+  // local sandbox identity. Never ask it from the sandbox (B-INF-14: that 401 was the
+  // console error on #/care-team and #/sharing in every capture cell).
+  const signedIn = Boolean(user?.uid) && user?.uid !== "local-sandbox";
   const c = coParentCopy[uiLang];
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -36,6 +42,7 @@ function CoParentInviteSession({ childId, childName, grants, onChanged }: CoPare
   useEffect(() => () => { activityRequests.current.invalidate(); activityMutations.current.invalidate(); invitationRequests.current.invalidate(); }, []);
   const pinned = readTodayPin(childId);
   const loadActivities = useCallback(async () => {
+    if (!signedIn) { setActivityLoading(false); return; }
     const ticket = activityRequests.current.begin();
     setActivityLoading(true);
     try {
@@ -46,7 +53,7 @@ function CoParentInviteSession({ childId, childName, grants, onChanged }: CoPare
         : result.choices.find((p) => p.id === pinned)?.id ?? result.choices.find((p) => p.id === result.activity?.practiceId)?.id ?? result.choices[0]?.id ?? "");
     } catch { if (activityRequests.current.latest(ticket)) setActivityError(c.choiceLoadError); }
     finally { if (activityRequests.current.latest(ticket)) setActivityLoading(false); }
-  }, [childId, uiLang, pinned, c.choiceLoadError]);
+  }, [childId, uiLang, pinned, c.choiceLoadError, signedIn]);
   // Locale changes replace reads, while a mutation still belongs to this child.
   // Its completion reloads through the current locale rather than a stale closure.
   const currentActivityLoad = useRef(loadActivities);
@@ -122,7 +129,7 @@ function CoParentInviteSession({ childId, childName, grants, onChanged }: CoPare
       {selection?.activity && <div className="space-y-3"><h3 className="text-base font-bold">{c.activity}</h3><p className="text-sm leading-relaxed" dir="auto">{selection.activity.do || selection.activity.text}</p>{selection.activity.say && <p className="text-sm leading-relaxed" dir="auto"><span className="font-bold">{c.sayLabel}: </span><q>{selection.activity.say}</q></p>}{selection.activity.completedAt ? <p className="text-sm font-bold flex items-center gap-2"><Icon name="check" size={18} />{c.completed}</p> : <button type="button" disabled={activityBusy} className={button} style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }} onClick={() => void completeChoice()}>{activityBusy ? c.saving : c.done}</button>}</div>}
       <details open={!selection?.activity}><summary className="min-h-11 flex items-center cursor-pointer text-sm font-bold" style={{ color: "var(--arbor-clay)" }}>{c.choose}</summary>
         <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--arbor-muted)" }}>{c.chooseHint}</p>
-        {activityLoading && !selection ? <p role="status" className="text-sm">{c.chooseLoading}</p> : selection && selection.choices.length === 0 ? <p className="text-sm">{c.choiceEmpty}</p> : selection && <form onSubmit={(e) => void saveChoice(e)} className="space-y-3">
+        {!signedIn ? <p className="text-sm">{c.chooseSignIn}</p> : activityLoading && !selection ? <p role="status" className="text-sm">{c.chooseLoading}</p> : selection && selection.choices.length === 0 ? <p className="text-sm">{c.choiceEmpty}</p> : selection && <form onSubmit={(e) => void saveChoice(e)} className="space-y-3">
           <label htmlFor="coparent-practice" className="block text-sm font-bold">{c.chooseLabel}</label>
           <select id="coparent-practice" value={choice} disabled={activityBusy} onChange={(e) => { setChoice(e.target.value); choiceRequest.current = crypto.randomUUID(); }} className="w-full min-w-0 min-h-11 rounded-xl px-3 text-sm" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)" }}>
             {selection.choices.map((p) => <option key={p.id} value={p.id}>{p.id === pinned ? `${c.pinned} · ` : ""}{p.do}</option>)}

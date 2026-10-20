@@ -260,4 +260,24 @@ describe("co-parent owner activity lifetime", () => {
     current.resolve(selection("child-b activity")); await settle(); old.resolve(selection("child-a activity")); await settle();
     expect(text(ownerActivity(owner("child-b")))).toContain("child-b activity"); expect(text(ownerActivity(owner("child-b")))).not.toContain("child-a activity");
   });
+
+  // B-INF-14: server/coParent.ts answers 401 to the local sandbox identity, and that 401 was the
+  // console error on #/care-team and #/sharing in every capture cell. The owner never asks it.
+  it("the local sandbox identity never requests co-parent activities and says sign-in is needed", async () => {
+    for (const lang of ["en", "he"] as const) {
+      h.uid = "local-sandbox"; h.lang = lang; h.api.activities.mockClear(); unmount();
+      owner(`sandbox-${lang}`); await settle(); fireFocus(); await settle();
+      const tree = ownerActivity(owner(`sandbox-${lang}`));
+      expect(h.api.activities).not.toHaveBeenCalled();
+      expect(text(tree)).toContain(coParentCopy[lang].chooseSignIn);
+      expect(text(tree)).not.toContain(coParentCopy[lang].chooseLoading);
+      expect(text(tree)).not.toContain(coParentCopy[lang].choiceLoadError);
+    }
+  });
+
+  it("negative control: a signed-in owner still reads the activities once", async () => {
+    owner("signed-in"); await settle();
+    expect(h.api.activities).toHaveBeenCalledTimes(1);
+    expect(text(ownerActivity(owner("signed-in")))).not.toContain(coParentCopy.en.chooseSignIn);
+  });
 });
