@@ -153,10 +153,10 @@
     "A little moment. Part of their story.": "Ein kleiner Moment. Mehr Kontext.",
     "Choose what works for you": "Wähle, was zu dir passt",
     "Get started with Arbor.": "Mit Arbor starten.",
-    "Always free": "Immer kostenlos",
-    "Journal, milestones, daily plays and one child profile with free co-parent sharing.": "Tagebuch, Meilensteine, tägliche Spiele und ein Kinderprofil mit kostenlosem Zugang für einen zweiten Elternteil.",
-    "Arbor Plus adds": "Arbor Plus ergänzt",
-    "Coaching without the daily limit, AI-drafted school notes, advanced growth plans and up to six children.": "Coaching ohne Tageslimit, KI-entworfene Schulnotizen, erweiterte Entwicklungspläne und bis zu sechs Kinder.",
+    "Your first 14 days are free": "Deine ersten 14 Tage sind kostenlos",
+    "Every Arbor Plus feature from sign-up, no card needed. After that, everything you saved stays yours to read and export, and co-parent sharing stays free.": "Alle Funktionen von Arbor Plus ab der Anmeldung, ohne Karte. Danach bleibt alles Gespeicherte deins, zum Lesen und Exportieren, und der Zugang für einen zweiten Elternteil bleibt kostenlos.",
+    "Then, with Arbor Plus": "Danach mit Arbor Plus",
+    "Coaching, AI-drafted school notes, advanced growth plans, bedtime stories and up to six children.": "Coaching, KI-entworfene Schulnotizen, erweiterte Entwicklungspläne, Gute-Nacht-Geschichten und bis zu sechs Kinder.",
     "Choose how to pay for Plus": "Zahlungsweise für Plus wählen",
     "Monthly": "Monatlich",
     "Annual": "Jährlich",
@@ -167,7 +167,7 @@
     "≈ €10.83 per month, billed yearly": "≈ 10,83 € pro Monat, jährlich abgerechnet",
     "Both options include the same Plus features. Your subscription renews automatically until you cancel. Review the final price and terms at checkout.": "Beide Optionen enthalten dieselben Plus-Funktionen. Das Abo verlängert sich automatisch bis zur Kündigung. Preis und Bedingungen werden vor der Zahlung angezeigt.",
     "Continue with selected plan": "Mit Auswahl fortfahren",
-    "Continue free": "Kostenlos fortfahren"
+    "Start my 14 free days": "Meine 14 kostenlosen Tage starten"
   },
   "fr": {
     "Skip to content": "Aller au contenu",
@@ -323,10 +323,10 @@
     "A little moment. Part of their story.": "Un petit moment qui compte.",
     "Choose what works for you": "Choisissez ce qui vous convient",
     "Get started with Arbor.": "Commencer avec Arbor.",
-    "Always free": "Toujours gratuit",
-    "Journal, milestones, daily plays and one child profile with free co-parent sharing.": "Journal, étapes du développement, jeux quotidiens et un profil enfant avec un accès gratuit pour un deuxième parent.",
-    "Arbor Plus adds": "Arbor Plus ajoute",
-    "Coaching without the daily limit, AI-drafted school notes, advanced growth plans and up to six children.": "Accompagnement sans limite quotidienne, notes scolaires rédigées par IA, plans de développement avancés et jusqu’à six enfants.",
+    "Your first 14 days are free": "Vos 14 premiers jours sont gratuits",
+    "Every Arbor Plus feature from sign-up, no card needed. After that, everything you saved stays yours to read and export, and co-parent sharing stays free.": "Toutes les fonctionnalités d’Arbor Plus dès l’inscription, sans carte bancaire. Ensuite, tout ce que vous avez enregistré reste à vous, à lire et à exporter, et l’accès d’un deuxième parent reste gratuit.",
+    "Then, with Arbor Plus": "Ensuite, avec Arbor Plus",
+    "Coaching, AI-drafted school notes, advanced growth plans, bedtime stories and up to six children.": "Accompagnement, notes scolaires rédigées par IA, plans de développement avancés, histoires du soir et jusqu’à six enfants.",
     "Choose how to pay for Plus": "Choisir la facturation de Plus",
     "Monthly": "Mensuelle",
     "Annual": "Annuelle",
@@ -337,7 +337,7 @@
     "≈ €10.83 per month, billed yearly": "≈ 10,83 € par mois, facturés annuellement",
     "Both options include the same Plus features. Your subscription renews automatically until you cancel. Review the final price and terms at checkout.": "Les deux options incluent les mêmes fonctions Plus. L’abonnement se renouvelle automatiquement jusqu’à résiliation. Vérifiez le prix et les conditions avant de payer.",
     "Continue with selected plan": "Continuer avec ce choix",
-    "Continue free": "Continuer gratuitement"
+    "Start my 14 free days": "Commencer mes 14 jours gratuits"
   },
   "nl": {
     "Skip to content": "Ga naar de inhoud",
@@ -493,10 +493,10 @@
     "A little moment. Part of their story.": "Een klein moment dat telt.",
     "Choose what works for you": "Kies wat bij je past",
     "Get started with Arbor.": "Begin met Arbor.",
-    "Always free": "Altijd gratis",
-    "Journal, milestones, daily plays and one child profile with free co-parent sharing.": "Dagboek, mijlpalen, dagelijks spelen en één kindprofiel met gratis toegang voor een tweede ouder.",
-    "Arbor Plus adds": "Arbor Plus voegt toe",
-    "Coaching without the daily limit, AI-drafted school notes, advanced growth plans and up to six children.": "Coaching zonder daglimiet, schoolnotities opgesteld door AI, uitgebreide groeiplannen en maximaal zes kinderen.",
+    "Your first 14 days are free": "Je eerste 14 dagen zijn gratis",
+    "Every Arbor Plus feature from sign-up, no card needed. After that, everything you saved stays yours to read and export, and co-parent sharing stays free.": "Alle functies van Arbor Plus vanaf je aanmelding, zonder creditcard. Daarna blijft alles wat je hebt bewaard van jou, om te lezen en te exporteren, en blijft toegang voor een tweede ouder gratis.",
+    "Then, with Arbor Plus": "Daarna, met Arbor Plus",
+    "Coaching, AI-drafted school notes, advanced growth plans, bedtime stories and up to six children.": "Coaching, schoolnotities opgesteld door AI, uitgebreide groeiplannen, verhaaltjes voor het slapengaan en maximaal zes kinderen.",
     "Choose how to pay for Plus": "Kies hoe je voor Plus betaalt",
     "Monthly": "Maandelijks",
     "Annual": "Jaarlijks",
@@ -507,6 +507,6 @@
     "≈ €10.83 per month, billed yearly": "≈ € 10,83 per maand, jaarlijks gefactureerd",
     "Both options include the same Plus features. Your subscription renews automatically until you cancel. Review the final price and terms at checkout.": "Beide opties bieden dezelfde Plus-functies. Het abonnement wordt automatisch verlengd tot je opzegt. Controleer de prijs en voorwaarden vóór betaling.",
     "Continue with selected plan": "Doorgaan met deze keuze",
-    "Continue free": "Gratis doorgaan"
+    "Start my 14 free days": "Start mijn 14 gratis dagen"
   }
 }
