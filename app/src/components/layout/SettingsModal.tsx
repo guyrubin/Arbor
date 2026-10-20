@@ -14,6 +14,7 @@ import YourDataSheet from "./YourDataSheet";
 import { AnalyticsOptOutRow } from "../privacy/AnalyticsOptOutRow";
 import { PlanPrices } from "../billing/PlanPrices";
 import { DEFAULT_CADENCE, offeringGate, type Cadence } from "../billing/paywallModel";
+import { trialStatusCopy } from "../billing/trialNotice";
 import { useNativeOffering } from "../../hooks/useNativePrices";
 import { isNativePlatform, nativePlatform } from "../../lib/runtime";
 import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: Privacy · Terms · Support in the footer
@@ -157,7 +158,11 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
     if ((!isPaid && !isTrial) || isBeta) return null;
     const date = fmtDate(entitlement.currentPeriodEnd);
     if (entitlement.status === "grace_period") return t("set.plan.grace");
-    if (entitlement.status === "in_trial" && date) return t("set.plan.trial", { date });
+    if (entitlement.status === "in_trial") {
+      // BD-53 follow-up: "N days left, ends {date}" on every trial day.
+      const copy = trialStatusCopy(entitlement.trialEndsAt ?? entitlement.currentPeriodEnd, Date.now(), fmtDate);
+      if (copy) return t(copy.key, copy.vars);
+    }
     if (entitlement.willRenew === false && date) return t("set.plan.renewOff", { date });
     if (date) return t("set.plan.renews", { date });
     return null;
