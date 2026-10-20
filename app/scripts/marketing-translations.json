@@ -113,7 +113,7 @@
     "Your AI parenting companion. Practical guidance, a memory you shape, and ideas for time together.": "Dein KI-Begleiter im Familienalltag. Praktische Unterstützung, Erinnerungen in deiner Hand und Ideen für gemeinsame Zeit.",
     "Everyday parenting. Ongoing support.": "Eltern sein. Begleitung im Alltag.",
     "Your AI companion": "Dein KI-Begleiter",
-    "for parenting.": "im Familienalltag.",
+    "for parenting.": "im Elternalltag.",
     "Talk through everyday parenting. Arbor connects what you share and choose to remember with practical guidance, small next steps, and stories and play for your child.": "Sprich über das, was dich als Elternteil beschäftigt. Arbor verbindet das, was du teilst und festhalten möchtest, mit praktischer Begleitung, kleinen nächsten Schritten und Geschichten und Spielideen für dein Kind.",
     "See Arbor in action": "Arbor ausprobieren",
     "One companion. Connected support.": "Ein Begleiter. Alles verbunden.",
@@ -167,7 +167,12 @@
     "≈ €10.83 per month, billed yearly": "≈ 10,83 € pro Monat, jährlich abgerechnet",
     "Both options include the same Plus features. Your subscription renews automatically until you cancel. Review the final price and terms at checkout.": "Beide Optionen enthalten dieselben Plus-Funktionen. Das Abo verlängert sich automatisch bis zur Kündigung. Preis und Bedingungen werden vor der Zahlung angezeigt.",
     "Continue with selected plan": "Mit Auswahl fortfahren",
-    "Start my 14 free days": "Meine 14 kostenlosen Tage starten"
+    "Start my 14 free days": "Meine 14 kostenlosen Tage starten",
+    "Arbor — Your personal AI parenting companion": "Arbor — Dein persönlicher KI-Begleiter im Elternalltag",
+    "Meet Arbor, your personal AI parenting companion. Talk through what is on your mind, keep the context you choose, and find practical steps that fit your family.": "Entdecke Arbor, deinen persönlichen KI-Begleiter im Elternalltag. Sprich über das, was dich beschäftigt, bewahre den Kontext, den du auswählst, und finde praktische Schritte, die zu deiner Familie passen.",
+    "An AI parenting companion. Practical guidance, memories you control, and ideas for time together.": "Ein KI-Begleiter im Elternalltag. Praktische Orientierung, Erinnerungen unter deiner Kontrolle und Ideen für gemeinsame Zeit.",
+    "Your personal companion": "Dein persönlicher Begleiter",
+    "Talk through what is on your mind as a parent. Arbor connects the context you choose to keep with practical guidance, small steps to try, and personal stories and play for your child.": "Sprich über das, was dich als Elternteil beschäftigt. Arbor verbindet den Kontext, den du behalten möchtest, mit praktischer Orientierung, kleinen Schritten zum Ausprobieren sowie persönlichen Geschichten und Spielideen für dein Kind."
   },
   "fr": {
     "Skip to content": "Aller au contenu",
@@ -337,7 +342,12 @@
     "≈ €10.83 per month, billed yearly": "≈ 10,83 € par mois, facturés annuellement",
     "Both options include the same Plus features. Your subscription renews automatically until you cancel. Review the final price and terms at checkout.": "Les deux options incluent les mêmes fonctions Plus. L’abonnement se renouvelle automatiquement jusqu’à résiliation. Vérifiez le prix et les conditions avant de payer.",
     "Continue with selected plan": "Continuer avec ce choix",
-    "Start my 14 free days": "Commencer mes 14 jours gratuits"
+    "Start my 14 free days": "Commencer mes 14 jours gratuits",
+    "Arbor — Your personal AI parenting companion": "Arbor — Votre compagnon parental personnel, avec l’IA",
+    "Meet Arbor, your personal AI parenting companion. Talk through what is on your mind, keep the context you choose, and find practical steps that fit your family.": "Découvrez Arbor, votre compagnon parental personnel basé sur l’IA. Échangez sur ce qui vous préoccupe, conservez le contexte de votre choix et trouvez des pistes concrètes adaptées à votre famille.",
+    "An AI parenting companion. Practical guidance, memories you control, and ideas for time together.": "Un compagnon parental basé sur l’IA. Des conseils pratiques, des souvenirs que vous contrôlez et des idées pour passer du temps ensemble.",
+    "Your personal companion": "Votre compagnon personnel",
+    "Talk through what is on your mind as a parent. Arbor connects the context you choose to keep with practical guidance, small steps to try, and personal stories and play for your child.": "Parlez de ce qui vous préoccupe en tant que parent. Arbor relie le contexte que vous choisissez de conserver à des conseils pratiques, de petits gestes à essayer, ainsi qu’à des histoires et des jeux personnalisés pour votre enfant."
   },
   "nl": {
     "Skip to content": "Ga naar de inhoud",
@@ -507,6 +517,11 @@
     "≈ €10.83 per month, billed yearly": "≈ € 10,83 per maand, jaarlijks gefactureerd",
     "Both options include the same Plus features. Your subscription renews automatically until you cancel. Review the final price and terms at checkout.": "Beide opties bieden dezelfde Plus-functies. Het abonnement wordt automatisch verlengd tot je opzegt. Controleer de prijs en voorwaarden vóór betaling.",
     "Continue with selected plan": "Doorgaan met deze keuze",
-    "Start my 14 free days": "Start mijn 14 gratis dagen"
+    "Start my 14 free days": "Start mijn 14 gratis dagen",
+    "Arbor — Your personal AI parenting companion": "Arbor — Je persoonlijke AI-metgezel bij het ouderschap",
+    "Meet Arbor, your personal AI parenting companion. Talk through what is on your mind, keep the context you choose, and find practical steps that fit your family.": "Ontdek Arbor, je persoonlijke AI-metgezel bij het ouderschap. Bespreek wat je bezighoudt, bewaar de context die jij kiest en vind praktische stappen die bij je gezin passen.",
+    "An AI parenting companion. Practical guidance, memories you control, and ideas for time together.": "Een AI-metgezel bij het ouderschap. Praktische begeleiding, herinneringen waarover jij beslist en ideeën voor tijd samen.",
+    "Your personal companion": "Je persoonlijke metgezel",
+    "Talk through what is on your mind as a parent. Arbor connects the context you choose to keep with practical guidance, small steps to try, and personal stories and play for your child.": "Bespreek wat je als ouder bezighoudt. Arbor verbindt de context die jij wilt bewaren met praktische begeleiding, kleine stappen om uit te proberen en persoonlijke verhalen en spel voor je kind."
   }
 }

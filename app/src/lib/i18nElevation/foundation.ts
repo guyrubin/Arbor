@@ -228,7 +228,7 @@ export const he: Record<string, string> = {
   "elev.pulse.behaviors.weekOne": "אירוע אחד נרשם השבוע",
   "elev.pulse.behaviors.empty": "לא נרשם דבר השבוע",
 
-  "elev.pulse.growth.noticed": "שמתם לב ל‑{count} אבני דרך",
+  "elev.pulse.growth.noticed": "שמתם לב ל־{count} אבני דרך",
   "elev.pulse.growth.noticedOne": "שמתם לב לאבן דרך אחת",
   "elev.pulse.growth.empty": "אבן הדרך הראשונה מחכה לכם",
 

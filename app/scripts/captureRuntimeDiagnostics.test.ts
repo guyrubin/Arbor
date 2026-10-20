@@ -29,6 +29,9 @@ describe('shared release diagnostic allowlist, no browser or sockets', () => {
       [`Cannot access 'privateChild' before initialization ${secret}`, 'MODULE_INITIALIZATION'],
       [`Cannot read properties of undefined ${child}`, 'TYPE_ERROR'],
       [`Service Worker registration blocked by Playwright ${secret}`, 'SERVICE_WORKER_BLOCKED'],
+      [`Failed to load resource: the server responded with a status of 401 (Unauthorized) ${child} ${secret}`, 'RESOURCE_HTTP_401'],
+      [`Failed to load resource: the server responded with a status of 503 (Service Unavailable) ${child} ${secret}`, 'RESOURCE_HTTP_503'],
+      [`Failed to load resource: net::ERR_FAILED ${child} ${secret}`, 'NETWORK'],
       [`TypeError: ${child} ${secret}\n at secretFunction (https://private.test/secret.js:1:2)`, 'OTHER_ERROR'],
     ];
     for (const [raw, expected] of cases) {

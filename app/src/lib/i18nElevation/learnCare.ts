@@ -239,8 +239,8 @@ export const he: Record<string, string> = {
   "elev.learnCare.brief.escalation.cta": "לפתוח בטיחות ותמיכה",
   "elev.learnCare.brief.escalation.blocked":
     "ארבור עצר את המסמך הזה. משהו ממה שתיעדתם כדאי לברר קודם עם איש מקצוע, לפני שנכתב מסמך לצוות החינוכי. בבטיחות ותמיכה תמצאו למי לפנות.",
-  "elev.learnCare.brief.print": "לשמור כ‑PDF",
-  "elev.learnCare.brief.printed": "נפתח להדפסה. בחרו „שמירה כ‑PDF” כדי לשמור עותק.",
+  "elev.learnCare.brief.print": "לשמור כ־PDF",
+  "elev.learnCare.brief.printed": "נפתח להדפסה. בחרו „שמירה כ־PDF” כדי לשמור עותק.",
   "elev.learnCare.brief.draftHint": "הטיוטה נכתבה ממה שתיעדתם. אפשר לערוך כל שורה לפני השמירה — או לבקש מארבור טיוטה מלאה יותר.",
   "elev.learnCare.brief.caption": "ממה שתיעדתם — מה שעוזר, לעולם לא אבחנה.",
   "elev.learnCare.brief.aiDraft": "לנסח עם ארבור",
