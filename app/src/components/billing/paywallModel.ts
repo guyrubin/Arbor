@@ -139,6 +139,8 @@ export const PAYWALL_FEATURES = [
   "adventureGenerate",
   "maxChildren",
   "coParentSeats",
+  // BD-53: the 14-day trial is over (server TRIAL_ENDED_BODY).
+  "trial_ended",
 ] as const;
 export type PaywallFeature = (typeof PAYWALL_FEATURES)[number];
 
@@ -154,6 +156,7 @@ export function paywallBody(feature: string | undefined): PaywallBody {
     // AI-drafted school note (/api/generate-handoff). Packets and PDFs are free.
     case "professionalReports": return { key: "pw.bodySchoolNotes", source: "planclarity" };
     case "advancedPlans": return { key: "pw.bodyPlans", source: "t" };
+    case "trial_ended": return { key: "pw.body.trialEnded", source: "t" };
     case "avatarGenerate":
     case "heroComic":
     case "adventureGenerate":

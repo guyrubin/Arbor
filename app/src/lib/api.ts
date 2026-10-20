@@ -657,6 +657,10 @@ export type EntitlementInfo = {
   cohort?: "internal" | "family";
   /** B-KID-119: the plan's image allowance (server IMAGE_ALLOWANCE row). */
   imageAllowance?: { perDay: number; perMonth: number; heroPer30Days: number };
+  /** BD-53: ISO end of the 14-day trial (running or past); null when unknown. */
+  trialEndsAt?: string | null;
+  /** BD-53: true once the trial is over and nothing is paid — AI answers 402. */
+  accessEnded?: boolean;
 };
 
 /** Server-computed list-price estimates; nullable values mean not measured. */
