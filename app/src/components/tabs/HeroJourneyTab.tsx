@@ -65,7 +65,6 @@ import { kidBookOpenable, kidBooks, kidShelfFor } from "../kidmode/kidBooks";
 import { useChildLibraryBooks } from "../kidmode/useChildLibraryBooks";
 import { adoptSavedRender, hydrateHeroRenders, resolvePersonalisedRender, type SavedHeroRender } from "../../lib/heroRenderStore";
 import { KidBookTitleCard } from "../kidmode/KidBookCover";
-import { autoReadPage } from "../kidmode/kidReadAloud";
 import { useLegacyNarration } from "../kidmode/useLegacyNarration";
 import { legacyPageUnits } from "../../lib/library/legacyNarration";
 import { kidSfx } from "../kidmode/audio/kidAudio";
@@ -370,43 +369,24 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       : scenes[sceneIndex]
     : undefined;
 
-  // B-KID-76 (b): read-to-me. In Kid Mode each page reads itself aloud once it
-  // opens (400 ms after it settles); the per-child Sound in the top bar and the
-  // gesture rule live in kidReadAloud / useLegacyNarration. The Decision page
-  // reads its question and then each choice (B-KID-73), so a child who cannot
-  // read yet hears what is asked. Guy, 10 Oct 2026: the read-aloud is back
-  // (PR 118 had removed it with B-BOOK-28), in the narrator he chose (Sulafat,
-  // the books standard section 6). B-BOOK-73: when the child has this book's
-  // own narration files the page plays them and makes no TTS call; until then
-  // the AUTHORED words are read through the one kid voice path (each line
-  // fetched once per session, lib/naturalVoice). B-BOOK-28 stands: no text or
-  // image generation in a kid read. Both play on the blessed voice channel an
-  // iPhone allows outside the tap (lib/kidVoicePlayer). Turning the page,
-  // closing the book or leaving Kid Mode stops it.
+  // B-BOOK-73 (Guy, 10 Oct 2026 evening: "This is not the voice ... the
+  // rhythm"): a legacy book reads aloud only from the child's own files in the
+  // narrator he chose (Sulafat, the books standard section 6, the performed
+  // render): each page, then on the Decision page the question and each answer.
+  // No files = silence; never the runtime voice (Chirp3 Sulafat is the same
+  // timbre, not the performed reading). B-BOOK-28 stands: nothing is generated
+  // or synthesized while a child reads. Files play on the blessed page channel
+  // an iPhone allows outside the tap (lib/kidVoicePlayer). Turning the page,
+  // closing the book or leaving Kid Mode stops it (and any parent narration).
   const legacyVoice = useLegacyNarration(kidMode ? childProfile.id : null, kidMode ? activeStory?.id ?? null : null, renderLang, childProfile.gender);
-  const kidSpeech = !kidMode || !activeStory || !render
-    ? ""
-    : atEnd
-      ? kidsStoriesText("journey.end", aiLang)
-      : onCover
-        ? (render.title || activeStory.title)
-        : isDecision && !choiceId && displayScene
-          ? [`${displayScene.narration} ${kidsStoriesText("journey.decision", renderLang, { name: childProfile.name?.split(" ")[0] ?? "" })}`, ...choices.map((c) => c.label)].join("\n")
-          : displayScene?.narration ?? "";
   useEffect(() => {
     stopVoice();
-    if (!kidMode || !activeStory || legacyVoice.status === "loading") return;
-    if (legacyVoice.status === "files") {
-      const stop = legacyVoice.play(legacyPageUnits({ onCover, atEnd, beatId: beat?.id, choiceId, choiceIds: choices.map((c) => c.id) }));
-      return () => { stop(); stopVoice(); };
-    }
-    if (!kidSpeech) return;
-    const timer = setTimeout(() => {
-      autoReadPage(childProfile.id, kidSpeech.split("\n"), atEnd ? (aiLang === "he" ? "he" : "en") : renderLang);
-    }, 400);
-    return () => { clearTimeout(timer); stopVoice(); };
+    const stop = kidMode && activeStory && legacyVoice.status === "files"
+      ? legacyVoice.play(legacyPageUnits({ onCover, atEnd, beatId: beat?.id, choiceId, choiceIds: choices.map((c) => c.id) }))
+      : () => {};
+    return () => { stop(); stopVoice(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kidSpeech, kidMode, activeStory?.id, sceneIndex, onCover, atEnd, choiceId, legacyVoice.status, legacyVoice.play]);
+  }, [kidMode, activeStory?.id, sceneIndex, onCover, atEnd, choiceId, legacyVoice.status, legacyVoice.play]);
   useEffect(() => { setAtEnd(false); }, [activeStory?.id]);
 
   const visibleStories = storiesForLanguage(

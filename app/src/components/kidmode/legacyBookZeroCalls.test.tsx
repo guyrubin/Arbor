@@ -49,8 +49,8 @@ vi.mock("../../lib/kidModeGate", () => ({
   noteKidActivity: vi.fn(),
 }));
 vi.mock("./audio/kidAudio", () => ({ kidSfx: vi.fn(), kidSay: env.speech }));
-// B-BOOK-73: with the child's own narration files a legacy page asks them for its units (never a voice
-// service); without them it falls back to the K2.1 read-aloud of the authored words.
+// B-BOOK-73: with the child's own narration files a legacy page asks them for its units; without
+// them it is silent. Never a voice service (Guy, 10 Oct 2026: only the chosen narrator).
 vi.mock("./useLegacyNarration", () => ({ useLegacyNarration: () => ({ status: env.voice, play: env.narrate }) }));
 vi.mock("../../lib/voice", () => ({ speakText: env.speech, stopVoice: vi.fn(), voiceSupported: () => true, voiceState: () => ({ speaking: false, engine: "natural" }) }));
 vi.mock("../../lib/tts", () => ({ stopSpeaking: vi.fn() }));
@@ -169,7 +169,7 @@ async function readPath(tab: ReturnType<typeof harness<any>>, story: HeroStorySp
 }
 
 describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () => {
-  for (const voice of ["files", "none"] as const) for (const fixture of fixtures) it(`${fixture.lang}/${fixture.gender} (${voice === "files" ? "narration files" : "no files yet"}): every legacy book and choice reads twice without text, image or network calls; the read-aloud speaks authored words`, async () => {
+  for (const voice of ["files", "none"] as const) for (const fixture of fixtures) it(`${fixture.lang}/${fixture.gender} (${voice === "files" ? "narration files" : "no files yet"}): every legacy book and choice reads twice without text, image, TTS or network calls`, async () => {
     env.lang = fixture.lang; env.voice = voice;
     for (const story of KID_SHELF_STORIES.filter(value => storyHasLanguage(value, fixture.lang))) {
       env.profile = { ...env.profile, ...fixture, age: story.ageRange[0] };
@@ -188,27 +188,19 @@ describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () =
     expect(reads).not.toHaveBeenCalled();
     expect(env.text).not.toHaveBeenCalled();
     expect(env.image).not.toHaveBeenCalled();
+    // Guy, 10 Oct 2026 evening: a child hears only the chosen narrator, so
+    // nothing is ever synthesized in a legacy read (B-BOOK-28 / B-BOOK-73).
+    expect(env.speech).not.toHaveBeenCalled();
     if (voice === "files") {
-      // B-BOOK-73: with the child's files nothing is synthesized, and each page
-      // asks for exactly its authored units: the cover's title, each beat, the
-      // Decision page's question and every answer, the chosen outcome, The End.
-      expect(env.speech).not.toHaveBeenCalled();
+      // Each page asks for exactly its authored units: the cover's title, each
+      // beat, the Decision page's question and every answer, the chosen
+      // outcome, The End. Nothing else is ever requested.
       const asked = new Set(env.narrate.mock.calls.flatMap(([units]) => [...units]));
       expect(asked.has("decision") && asked.has("question") && asked.has("the-end")).toBe(true);
       for (const unit of asked) expect(unit).toMatch(/^(title|call|challenge|fear|decision|question|growth|victory|reflection|the-end|choice\.[a-z0-9-]+|outcome\.[a-z0-9-]+)$/);
     } else {
-      // Guy, 10 Oct 2026: the read-aloud is back (PR 118 had removed it). Until
-      // the child has files it speaks the AUTHORED words through the one kid
-      // voice path, in the story's language; the read makes no text, image or
-      // network call of its own.
+      // No files for this child yet: silence, never a fallback voice.
       expect(env.narrate).not.toHaveBeenCalled();
-      expect(env.speech).toHaveBeenCalled();
-      for (const [, lines, lang] of env.speech.mock.calls as unknown as [string, string | string[], string][]) {
-        const said = Array.isArray(lines) ? lines : [lines];
-        expect(said.length).toBeGreaterThan(0);
-        for (const line of said) expect(typeof line === "string" && line.trim().length > 0).toBe(true);
-        expect(lang).toBe(fixture.lang);
-      }
     }
     expect(fetchSpy).not.toHaveBeenCalled();
   });
