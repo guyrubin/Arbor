@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildHealthPayload, checkoutConfigured } from "./healthz.js";
+import { buildHealthPayload, checkoutConfigured, checkoutMode } from "./healthz.js";
 
 describe("buildHealthPayload (OPS-A1)", () => {
   it("returns ok status + an ISO timestamp from the injected clock", () => {
@@ -23,7 +23,7 @@ describe("buildHealthPayload (OPS-A1)", () => {
 
   it("carries no child-data or secret fields", () => {
     const keys = Object.keys(buildHealthPayload());
-    expect(keys.sort()).toEqual(["checkout", "env", "status", "ts", "version"]);
+    expect(keys.sort()).toEqual(["checkout", "checkoutMode", "env", "status", "ts", "version"]);
   });
 
   it("reports whether checkout is configured as a boolean, never the link", () => {
@@ -37,10 +37,23 @@ describe("buildHealthPayload (OPS-A1)", () => {
     try {
       const payload = buildHealthPayload();
       expect(payload.checkout).toBe(true);
+      expect(payload.checkoutMode).toBe("live");
       expect(JSON.stringify(payload)).not.toContain("tokenvalue");
     } finally {
       if (prev === undefined) delete process.env.BILLING_WEB_PURCHASE_LINK;
       else process.env.BILLING_WEB_PURCHASE_LINK = prev;
     }
+  });
+
+  it("tells a live checkout from a test one, so a prod that declines real cards shows", () => {
+    expect(checkoutMode({})).toBe("none");
+    expect(checkoutMode({ BILLING_WEB_PURCHASE_LINK: "https://pay.rev.cat/tokenvalue" })).toBe("live");
+    expect(checkoutMode({ BILLING_WEB_PURCHASE_LINK: "https://pay.rev.cat/sandbox/tokenvalue" })).toBe("sandbox");
+    expect(checkoutMode({ BILLING_WEB_PURCHASE_LINK: " https://pay.rev.cat/sandbox/tokenvalue/ " })).toBe("sandbox");
+    expect(checkoutMode({ BILLING_URL_PLUS_ANNUAL: "https://buy.stripe.com/test_abc" })).toBe("sandbox");
+    expect(checkoutMode({ BILLING_URL_PLUS_ANNUAL: "https://buy.stripe.com/abc" })).toBe("live");
+    // The Web Purchase Link is the one checkout uses, so it alone decides.
+    expect(checkoutMode({ BILLING_WEB_PURCHASE_LINK: "https://pay.rev.cat/tokenvalue", BILLING_URL_PLUS_ANNUAL: "https://buy.stripe.com/test_abc" })).toBe("live");
+    expect(checkoutMode({ BILLING_WEB_PURCHASE_LINK: "not a url" })).toBe("none");
   });
 });

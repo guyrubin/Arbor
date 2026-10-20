@@ -60,6 +60,11 @@ export async function verifyCandidate(host, expectedVersion, fetcher = fetch) {
   if (payload.env === "prod" && payload.checkout !== true) {
     throw new Error("Production candidate has no checkout configured (BILLING_WEB_PURCHASE_LINK)");
   }
+  // A sandbox link takes test cards and declines real ones. Reported, not yet
+  // refused, until prod is seen reading "live" (B-GA-13, 21 Oct 2026).
+  if (payload.env === "prod" && payload.checkoutMode === "sandbox") {
+    console.warn("[smoke] WARNING: production checkout is a sandbox link; real cards are declined (BILLING_WEB_PURCHASE_LINK)");
+  }
   return payload.version;
 }
 

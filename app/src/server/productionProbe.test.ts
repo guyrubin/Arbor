@@ -48,6 +48,17 @@ describe("candidate exact revision gate", () => {
     await expect(verifyCandidate("https://candidate.example", SHA, fetcher)).resolves.toBe(SHA);
   });
 
+  it("warns, without blocking yet, when a prod candidate's checkout is a sandbox link", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const fetcher = mockFetch(health({ status: "ok", version: SHA, env: "prod", checkout: true, checkoutMode: "sandbox" }));
+      await expect(verifyCandidate("https://candidate.example", SHA, fetcher)).resolves.toBe(SHA);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("sandbox link"));
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it.each([
     new Response("broken", { status: 503 }),
     new Response("not an app", { status: 200 }),
@@ -123,7 +134,7 @@ describe("real app public version route with auth enforced", () => {
     const body = await response.json();
     expect(body).toMatchObject({ status: "ok", version: SHA, env: "prod" });
     expect(typeof body.checkout).toBe("boolean");
-    expect(Object.keys(body).sort()).toEqual(["checkout", "env", "status", "ts", "version"]);
+    expect(Object.keys(body).sort()).toEqual(["checkout", "checkoutMode", "env", "status", "ts", "version"]);
     expect(new Date(body.ts).toISOString()).toBe(body.ts);
   });
 
