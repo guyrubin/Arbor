@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planFromRevenueCat, recordFromRevenueCat, billingCheckoutUrl, offeredCurrencies, SOLD_PLANS } from "./billing.js";
+import { planFromRevenueCat, recordFromRevenueCat, billingCheckoutUrl, offeredCurrencies, SOLD_PLANS, webhookSkipReason, createBillingWebhookRouter } from "./billing.js";
 import type { ArborConfig } from "../config/env.js";
 
 const cfg = (over: Partial<ArborConfig>): ArborConfig =>
@@ -179,6 +179,69 @@ describe("BD-53 offer (Guy, 20 Oct 2026)", () => {
       expect(html, page).toContain(`₪${plus.annual} <small>`);
       expect(html, page).toContain(`כ־${formatPrice(Math.round((plus.annual / 12) * 100) / 100, "ILS")}`);
       expect(html, page).not.toContain("€");
+    }
+  });
+});
+
+describe("the webhook never grants Plus from a test or a sandbox event in prod", () => {
+  const purchase = { type: "INITIAL_PURCHASE", app_user_id: "u1", product_id: "arbor_plus_monthly_v2", store: "RC_BILLING" };
+
+  it("skips the dashboard TEST event in every environment", () => {
+    expect(webhookSkipReason({ type: "TEST", app_user_id: "x" }, { billingAcceptSandbox: true })).toBe("test");
+    expect(webhookSkipReason({ type: "test" }, { billingAcceptSandbox: false })).toBe("test");
+  });
+
+  it("skips a SANDBOX purchase unless sandbox is accepted; production events always apply", () => {
+    expect(webhookSkipReason({ ...purchase, environment: "SANDBOX" }, { billingAcceptSandbox: false })).toBe("sandbox");
+    expect(webhookSkipReason({ ...purchase, environment: "sandbox" }, {})).toBe("sandbox");
+    expect(webhookSkipReason({ ...purchase, environment: "SANDBOX" }, { billingAcceptSandbox: true })).toBeNull();
+    expect(webhookSkipReason({ ...purchase, environment: "PRODUCTION" }, { billingAcceptSandbox: false })).toBeNull();
+    expect(webhookSkipReason(purchase, { billingAcceptSandbox: false })).toBeNull();
+  });
+
+  it("prod config refuses sandbox by default; other environments accept it", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("../config/env.ts", import.meta.url), "utf8");
+    expect(src).toContain('billingAcceptSandbox: boolFromEnv(process.env.BILLING_ACCEPT_SANDBOX, arborEnv !== "prod"),');
+    const prod = readFileSync(new URL("../../../cloudbuild.prod.yaml", import.meta.url), "utf8");
+    expect(prod).toContain("^ARBOR_ENV=prod|");
+    expect(prod).not.toContain("BILLING_ACCEPT_SANDBOX");
+  });
+
+  it("over HTTP: TEST and prod-sandbox events answer 200 and write nothing; a real purchase writes Plus", async () => {
+    const express = (await import("express")).default;
+    const writes: Array<[string, unknown]> = [];
+    const store = {
+      getEntitlement: async () => null,
+      setEntitlement: async (uid: string, record: unknown) => {
+        writes.push([uid, record]);
+      },
+    };
+    const app = express();
+    app.use("/webhooks/billing", createBillingWebhookRouter(cfg({ revenueCatWebhookAuth: "Bearer s3cret", billingAcceptSandbox: false }), store as never));
+    const server = app.listen(0);
+    try {
+      const { port } = server.address() as { port: number };
+      const post = (event: object, auth = "Bearer s3cret") =>
+        fetch(`http://127.0.0.1:${port}/webhooks/billing/revenuecat`, {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: auth },
+          body: JSON.stringify({ api_version: "1.0", event }),
+        });
+      expect((await post({ ...purchase, environment: "PRODUCTION" }, "Bearer wrong")).status).toBe(401);
+      const test = await post({ type: "TEST", app_user_id: "rc-test-user", environment: "SANDBOX" });
+      expect(test.status).toBe(200);
+      expect(await test.json()).toEqual({ ok: true, skipped: "test" });
+      const sandbox = await post({ ...purchase, environment: "SANDBOX" });
+      expect(sandbox.status).toBe(200);
+      expect(await sandbox.json()).toEqual({ ok: true, skipped: "sandbox" });
+      expect(writes).toEqual([]);
+      expect((await post({ ...purchase, environment: "PRODUCTION" })).status).toBe(200);
+      expect(writes).toHaveLength(1);
+      expect(writes[0][0]).toBe("u1");
+      expect(writes[0][1]).toMatchObject({ plan: "plus", status: "active", provider: "stripe" });
+    } finally {
+      server.close();
     }
   });
 });

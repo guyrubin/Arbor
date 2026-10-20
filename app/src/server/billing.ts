@@ -46,6 +46,7 @@ export type RevenueCatEvent = {
   period_type?: string; // NORMAL | TRIAL | INTRO
   store?: string; // APP_STORE | PLAY_STORE | STRIPE | RC_BILLING | ...
   expiration_at_ms?: number | string;
+  environment?: string; // PRODUCTION | SANDBOX
 };
 
 // Event types that (re)grant access.
@@ -94,6 +95,24 @@ const providerFromStore = (store: string | undefined): BillingProvider => {
     default:
       return "none";
   }
+};
+
+/**
+ * Events the webhook acknowledges without writing an entitlement.
+ *  - "test": the dashboard's "Send test event" (type TEST, made-up user id);
+ *    a 200 proves the Authorization header matches, nothing is granted.
+ *  - "sandbox": a test-card purchase. The sandbox checkout is the live Purchase
+ *    Link with `/sandbox/` in front of the same token, so any parent could
+ *    reach it from their own checkout URL; in prod it must never grant Plus.
+ *    Accepted only where `billingAcceptSandbox` is on (every env but prod).
+ */
+export const webhookSkipReason = (
+  event: RevenueCatEvent,
+  config: Pick<ArborConfig, "billingAcceptSandbox">,
+): "test" | "sandbox" | null => {
+  if (String(event.type ?? "").toUpperCase() === "TEST") return "test";
+  if (String(event.environment ?? "").toUpperCase() === "SANDBOX" && config.billingAcceptSandbox !== true) return "sandbox";
+  return null;
 };
 
 /** Translate a RevenueCat event into the entitlement record we persist. */
@@ -173,6 +192,13 @@ export const createBillingWebhookRouter = (config: ArborConfig, store: Entitleme
     }
     if (req.header("authorization") !== expected) {
       res.status(401).json({ error: "Unauthorized webhook" });
+      return;
+    }
+    const skip = webhookSkipReason(req.body?.event ?? req.body ?? {}, config);
+    if (skip) {
+      // 200, so RevenueCat does not retry an event we will never apply.
+      if (skip === "sandbox") logger.warn("RevenueCat sandbox event ignored in this environment", { type: req.body?.event?.type ?? null });
+      res.status(200).json({ ok: true, skipped: skip });
       return;
     }
     if (!store.setEntitlement) {
