@@ -213,6 +213,7 @@ describe("B-KID-119: the client never fires a scene/comic call the plan cannot g
   it("/entitlement carries the plan's allowance row", async () => {
     const { readFileSync } = await import("node:fs");
     const src = readFileSync(new URL("../routes/api.ts", import.meta.url), "utf8");
-    expect(src).toContain("imageAllowance: IMAGE_ALLOWANCE[entitlement.plan],");
+    // BD-53: a family past its trial gets the zero row, as the image gate charges it.
+    expect(src).toContain('imageAllowance: IMAGE_ALLOWANCE[accessEnded(entitlement) ? "signed_out" : entitlement.plan],');
   });
 });

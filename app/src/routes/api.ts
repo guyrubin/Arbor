@@ -86,7 +86,7 @@ import { IMAGE_ALLOWANCE, imageFailureResponse } from "../server/imageQuota.js";
 import { childNamesFrom, letteredWithoutNames, replaceNames } from "../server/imagePromptNames.js";
 import { createHeroPoseHandler, createHeroPoseSource, type HeroPoseSource } from "../server/heroPoseRoute.js";
 import { decideLive, LIVE_VERTEX_EU_PROVIDER } from "../ai/liveResidency.js";
-import { cohortTagFor, resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
+import { accessEnded, cohortTagFor, resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
 import { dispatchSpeechSynthesis, screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
@@ -3873,7 +3873,10 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         // B-MEAS-01: a measurement tag (internal | family), never the email.
         cohort: cohortTagFor(entitlement, actor, isAdmin(actor)),
         // B-KID-119: the client skips scene/comic calls the plan cannot grant.
-        imageAllowance: IMAGE_ALLOWANCE[entitlement.plan],
+        imageAllowance: IMAGE_ALLOWANCE[accessEnded(entitlement) ? "signed_out" : entitlement.plan],
+        // BD-53: the 14-day trial — when it ends, and whether it already has.
+        trialEndsAt: entitlement.trialEndsAt ?? null,
+        accessEnded: accessEnded(entitlement),
       });
     } catch (error: any) {
       logger.error("Arbor Entitlement Error", error, { requestId: requestIdOf(req) });
