@@ -145,6 +145,9 @@ export const PAYWALL_FEATURES = [
   "coParentSeats",
   // BD-53: the 14-day trial is over (server TRIAL_ENDED_BODY).
   "trial_ended",
+  // BD-53 follow-up: opened from the Shell's pre-expiry notice, so the funnel
+  // tells a planned upgrade from a 402 (trialNotice.ts).
+  "trial_ending",
 ] as const;
 export type PaywallFeature = (typeof PAYWALL_FEATURES)[number];
 
@@ -161,6 +164,7 @@ export function paywallBody(feature: string | undefined): PaywallBody {
     case "professionalReports": return { key: "pw.bodySchoolNotes", source: "planclarity" };
     case "advancedPlans": return { key: "pw.bodyPlans", source: "t" };
     case "trial_ended": return { key: "pw.body.trialEnded", source: "t" };
+    case "trial_ending": return { key: "pw.body.trialEnding", source: "t" };
     case "avatarGenerate":
     case "heroComic":
     case "adventureGenerate":

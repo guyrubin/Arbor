@@ -158,10 +158,10 @@ describe("B-SHELL-11 · one body per trigger, a plain kept count", () => {
     return fill(dict ?? "", { name: lang === "he" ? "מיה" : "Mia" });
   };
 
-  it("enumerates exactly the nine trigger ids (BD-53 added trial_ended)", () => {
+  it("enumerates exactly the ten trigger ids (BD-53 added trial_ended and trial_ending)", () => {
     expect([...PAYWALL_FEATURES].sort()).toEqual([
       "advancedPlans", "adventureGenerate", "avatarGenerate", "coParentSeats",
-      "coach_unlimited", "heroComic", "maxChildren", "professionalReports", "trial_ended",
+      "coach_unlimited", "heroComic", "maxChildren", "professionalReports", "trial_ended", "trial_ending",
     ]);
   });
 

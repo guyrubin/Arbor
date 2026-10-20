@@ -175,6 +175,8 @@ function settings(source = settingsSource) {
     "../billing/PlanPrices": { PlanPrices: "PlanPrices" }, "../billing/LegalLinks": { LegalLinks: "LegalLinks" },
     // B-GA-12: annual default + the native offering gate (web here: never blocked).
     "../billing/paywallModel": { DEFAULT_CADENCE: "annual", offeringGate: () => ({ blocked: false, notice: null }) },
+    // BD-53 follow-up: the trial days-left line (free plan here: never called).
+    "../billing/trialNotice": { trialStatusCopy: () => null },
     "../../hooks/useNativePrices": { useNativeOffering: () => ({ prices: null, status: "web" }) },
     "../../lib/runtime": { isNativePlatform: false, nativePlatform: "web" },
     "../ui/Skeleton": { Skeleton: "Skeleton" }, "../ui/PlanBadge": { PlanBadge: "PlanBadge" },

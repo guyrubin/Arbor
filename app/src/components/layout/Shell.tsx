@@ -47,6 +47,8 @@ import WowOnboarding from "../onboarding/WowOnboarding";
 import PostCaptureCoachStrip from "../overview/PostCaptureCoachStrip";
 // W0.5+W0.6: ONE global data-freshness banner (offline / couldn't-refresh).
 import SyncStatusBanner from "../ui/SyncStatusBanner";
+// BD-53 follow-up: the calm pre-expiry trial notice, mounted beside it.
+import TrialNoticeBanner from "../billing/TrialNoticeBanner";
 // IA-04 / IA-17 / B-SHELL-38: ONE child switcher per viewport — the sidebar
 // identity line on lg+ (ProfileSwitcher), the same component in the mobile
 // strip identity slot below lg. It prints name + age; the strip does not repeat it.
@@ -545,6 +547,11 @@ export default function Shell() {
               ONCE here so 18 useChildCollection screens don't each grow one.
               Additive: cached/local data keeps rendering below, never a wall. */}
           <SyncStatusBanner />
+
+          {/* BD-53 follow-up: the pre-expiry trial notice (3 days left or
+              fewer, or ended). Parent register only; self-hides for paid,
+              comped and admin accounts (billing/trialNotice.ts). */}
+          {!kidLocked && <TrialNoticeBanner />}
 
           {/* Sandbox banner if API key is missing (production sets
               VITE_HAS_GEMINI_API, so it never shows there).
