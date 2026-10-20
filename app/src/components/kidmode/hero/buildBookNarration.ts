@@ -158,6 +158,9 @@ function start(childId: string, ctx: NarrationContext, deps?: NarrationBuilderDe
         completed.add(key);
         try { ctx.storage?.setItem(MARK(childId), markerOf(ctx)); } catch { /* memory still deduplicates */ }
       }
+      // An admin-uploaded book keeps its own narration (the server refuses
+      // every name file for it): ask once per page load, not on every entry.
+      if (r.stoppedBy === "book_sheet_admin") completed.add(key);
       return r;
     })
     .catch((): NarrationBuildResult => ({ status: "stopped", files: [], rendered: 0, stoppedBy: "error" }))

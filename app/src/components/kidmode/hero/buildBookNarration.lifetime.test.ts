@@ -36,6 +36,12 @@ describe("parent narration job lifetime", () => {
     expect(await ensureBookNarration(child, "en", f, null)).toMatchObject({ status: "complete" });
     expect(f.render).toHaveBeenCalledTimes(6);
   });
+  it("an admin-uploaded book (409 book_sheet_admin) is asked once per page load, never on every entry (B-BOOK-71)", async () => {
+    const f = fake(), store = memory(); f.render.mockResolvedValue({ ok: false, status: 409, code: "book_sheet_admin" });
+    expect(await ensureBookNarration(child, "en", f, store)).toMatchObject({ status: "not-started", stoppedBy: "book_sheet_admin" });
+    expect(ensureBookNarration(child, "en", f, store)).toBeNull();
+    expect(f.render).toHaveBeenCalledOnce(); expect(store.m.size).toBe(0);
+  });
   it("owner A's confirmed marker cannot skip owner B's same child/name/folder", async () => {
     const store = memory(); await ensureBookNarration(child, "en", fake(), store);
     expect(JSON.parse(store.m.get(`arbor.bookNarration.${child.id}`)!).owner).toBe("owner-a");

@@ -5,7 +5,6 @@ import { useLanguage } from "../../context/LanguageContext";
 import { narrationFolder } from "../../lib/library/narrationVoice";
 import { storyLanguage } from "../../lib/heroJourneys";
 import { heroSheetOwnerKey } from "../../lib/heroSheetStore";
-import { PROOF_HERO_CHILD_IDS } from "./hero/useHeroSheet";
 import { useArborOptional } from "../../context/ArborContext";
 import { resolveHeroUrl } from "../ui/HeroAvatar";
 import HeroFirstStep from "./HeroFirstStep";
@@ -91,7 +90,7 @@ export function useKidModeEntry(onBeforeOpen?: () => void): {
    * after that control unmounts. Preparation never delays opening or playback. */
   const captureNarration = () => {
     const snapshot = childRef.current;
-    if (!current() || !snapshot || !profile || PROOF_HERO_CHILD_IDS.includes(snapshot.id)) return null;
+    if (!current() || !snapshot || !profile) return null;
     const selected = profile.captureOnboardingLifetime(snapshot.id);
     const ownerKey = heroSheetOwnerKey();
     const folder = narrationFolder(language, snapshot.gender);

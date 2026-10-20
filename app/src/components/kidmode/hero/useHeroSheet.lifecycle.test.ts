@@ -132,14 +132,11 @@ describe("hero resolver identity and snapshot lifetime", () => {
     emit(docs(AVATAR, "right-owner")); render(); await flush();
     expect(render().sheet.poses.idle?.url).toBe("data:image/webp;base64,right-owner-idle");
   });
-  it("late proof resolution is discarded after an avatar change or unmount", async () => {
-    const proofChild = { ...child, id: "child-1780330920145" };
-    let finish!: (sheet: HeroSheet | null) => void; h.proof.mockImplementation(() => new Promise(done => { finish = done; }));
-    render(proofChild); emit({ meta: null, poses: {} }); render(proofChild);
-    const finishOld = finish;
-    render({ ...proofChild, photoUrl: OTHER });
-    finishOld({ v: 1, heroId: heroAvatarHash(AVATAR), source: "proof", theme: "film3d", poses: { idle: { url: "old-proof", w: 1, h: 1, foot: { x: 0, y: 1 } } } });
-    await flush(); expect(render({ ...proofChild, photoUrl: OTHER }).sheet.poses.idle?.url).toBe(OTHER);
+  it("a Firebase build never loads the public proof sheet, for any child (B-BOOK-71)", async () => {
+    const proofChild = { ...child, id: "proof-child" };
+    render(proofChild); emit({ meta: null, poses: {} }); render(proofChild); await flush();
+    expect(h.proof).not.toHaveBeenCalled();
+    expect(render(proofChild).sheet.poses.idle?.url).toBe(AVATAR);
     unmount(); expect(h.subscriptions.every(s => !s.active)).toBe(true); expect(h.ownerListeners.size).toBe(0);
   });
 });
