@@ -5,6 +5,8 @@ import { useArborOptional } from "../context/ArborContext";
 import { isNativePlatform } from "../lib/runtime";
 import { commerceAllowed } from "../components/kidmode/parentGate";
 import { trackCheckoutStart, type CheckoutSurface } from "../lib/kpiEvents";
+import { checkoutCurrency } from "../lib/pricing";
+import { cachedEntitlement } from "./useEntitlement";
 import {
   defaultDeps,
   performCheckout,
@@ -66,7 +68,7 @@ export function resolveRestoreOutcome(result: NativeRestoreOutcome): OutcomeEffe
  */
 export function useCheckout() {
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   // Optional: the paywall lives in ArborContext; the hook also serves Settings,
   // and must stay usable if a future surface mounts outside the provider.
   const arbor = useArborOptional();
@@ -96,7 +98,9 @@ export function useCheckout() {
     setCheckoutError(null);
     setBusy(true);
     try {
-      const result = await performCheckout(defaultDeps(), plan, cadence);
+      // BD-53/P2: charge in the currency the price block showed (PlanPrices).
+      const currency = checkoutCurrency(uiLang, cachedEntitlement()?.currencies);
+      const result = await performCheckout(defaultDeps(), plan, cadence, currency);
       const effects = resolveCheckoutOutcome(result);
       if (result === "unavailable" || result === "error") setCheckoutError(effects.toastKey);
       applyEffects(effects);

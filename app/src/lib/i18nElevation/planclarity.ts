@@ -22,11 +22,11 @@ export const en: Record<string, string> = {
   "elev.plan.badge.familyAria": "Included with Arbor Family",
 
   // ── PaywallModal split: what's free, what each paid plan adds ──────────────
-  "elev.plan.freeTitle": "Always free",
-  "elev.plan.free.1": "Journal, milestones, and daily plays",
-  "elev.plan.free.2": "Coach messages every day, up to the daily limit",
-  "elev.plan.free.3": "One child profile, with free co-parent sharing",
-  "elev.plan.plusTitle": "Arbor Plus adds",
+  "elev.plan.freeTitle": "Always yours, subscribed or not",
+  "elev.plan.free.1": "Everything you saved: journal, milestones, plans and stories",
+  "elev.plan.free.2": "Read it and export it at any time",
+  "elev.plan.free.3": "Co-parent sharing, free on every plan",
+  "elev.plan.plusTitle": "Arbor Plus — your first 14 days are free",
   "elev.plan.plus.1": "Coaching without the daily limit",
   // B-CAREPRO-08: every packet and PDF is free (built client-side, no gate);
   // the ONE Plus gate in Care is /api/generate-handoff (professionalReports),
@@ -51,11 +51,11 @@ export const he: Record<string, string> = {
   "elev.plan.badge.familyAria": "כלול בארבור משפחה",
 
   // ── PaywallModal split (he) ────────────────────────────────────────────────
-  "elev.plan.freeTitle": "תמיד בחינם",
-  "elev.plan.free.1": "יומן, אבני דרך ומשחקים יומיים",
-  "elev.plan.free.2": "הודעות מאמן בכל יום, עד המכסה היומית",
-  "elev.plan.free.3": "פרופיל ילד אחד, עם שיתוף חינמי להורה נוסף",
-  "elev.plan.plusTitle": "ארבור פלוס מוסיף",
+  "elev.plan.freeTitle": "תמיד שלכם, גם בלי מנוי",
+  "elev.plan.free.1": "כל מה ששמרתם: יומן, אבני דרך, תוכניות וסיפורים",
+  "elev.plan.free.2": "לקרוא ולייצא בכל עת",
+  "elev.plan.free.3": "שיתוף עם הורה נוסף, ללא תשלום בכל מסלול",
+  "elev.plan.plusTitle": "ארבור פלוס — 14 הימים הראשונים בחינם",
   "elev.plan.plus.1": "אימון בלי המכסה היומית",
   "elev.plan.plus.2": "מסמכים לגן ולבית הספר שארבור מנסח בשבילכם",
   "elev.plan.plus.3": "תוכניות צמיחה מתקדמות",

@@ -15,9 +15,16 @@
  *
  * Free meters the coach and keeps single-child; Plus adds unlimited coaching,
  * professional reports/handoffs, advanced plans, and multi-child.
+ *
+ * BD-53 (Guy, 20 Oct 2026): there is no standing free tier. Every account gets
+ * TRIAL_DAYS of full Plus from sign-up, with no card; after that, Arbor's AI
+ * needs a subscription (`accessEnded` → 402 `trial_ended`) while everything the
+ * family saved stays readable and exportable. The legacy free limits remain
+ * only as the fallback when the trial clock cannot be read.
  */
 import type { RequestHandler } from "express";
 import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
 import type { UsageCounterStore } from "./quotaStore.js";
@@ -104,13 +111,46 @@ export type EntitlementRecord = {
 export type Entitlement = {
   plan: Plan;
   limits: PlanLimits;
-  source: "default" | "env" | "store" | "beta_unenforced";
+  source: "default" | "env" | "store" | "beta_unenforced" | "trial";
   enforced: boolean;
   status?: EntitlementStatus;
   provider?: BillingProvider;
   currentPeriodEnd?: string | null;
   willRenew?: boolean;
+  /** ISO end of the account's free trial (running or past); null when unknown. */
+  trialEndsAt?: string | null;
 };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** BD-53: days of full Plus every account gets from sign-up (no card). */
+export const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 14);
+/** Accounts created before the trial shipped count their days from here, so
+ *  nobody already using Arbor loses access on release day. */
+export const TRIAL_LAUNCHED_AT = Date.parse("2026-10-20T00:00:00.000Z");
+
+/** End of the trial for an account created at `accountCreatedAtMs`. */
+export const trialEndsAtFor = (accountCreatedAtMs: number, days: number = TRIAL_DAYS): number =>
+  Math.max(accountCreatedAtMs, TRIAL_LAUNCHED_AT) + days * DAY_MS;
+
+/**
+ * True when the family has no paid or comped plan and its trial is over: the
+ * only state in which Arbor's AI answers 402 `trial_ended`. An unknown trial
+ * clock (`trialEndsAt` null) keeps the legacy free limits instead of locking
+ * a new family out on a transient Auth read failure.
+ */
+export const accessEnded = (entitlement: Entitlement, now: number = Date.now()): boolean => {
+  if (!entitlement.enforced || entitlement.plan !== "free" || !entitlement.trialEndsAt) return false;
+  const end = Date.parse(entitlement.trialEndsAt);
+  return Number.isFinite(end) && end <= now;
+};
+
+/** The 402 body every AI route returns once the trial is over. */
+export const TRIAL_ENDED_BODY = Object.freeze({
+  error: "Your Arbor trial has ended",
+  details: "Everything you saved stays yours to read and export. Arbor Plus keeps the answers, plans and stories going.",
+  upgrade: Object.freeze({ feature: "trial_ended", plan: "plus" as const }),
+});
 
 const flag = (value: string | undefined, fallback: boolean) =>
   value === undefined ? fallback : ["1", "true", "yes", "on"].includes(value.toLowerCase());
@@ -130,6 +170,8 @@ export interface EntitlementStore {
   getRecord?(uid: string): Promise<EntitlementRecord | null>;
   /** Persist a billing event into the seam. Read-only stores omit this. */
   setEntitlement?(uid: string, record: EntitlementRecord): Promise<void>;
+  /** Account creation time (ms) — the trial clock. Null when it cannot be read. */
+  accountCreatedAt?(uid: string): Promise<number | null>;
 }
 
 const isPlan = (value: unknown): value is Plan =>
@@ -198,6 +240,24 @@ export class FirestoreEntitlementStore implements EntitlementStore {
       tx.set(ref, payload, { merge: true });
     });
   }
+  /** Firebase Auth creation time: server-owned, so a client cannot extend its
+   *  own trial, and nothing new is stored. Cached per instance (it never
+   *  changes); a failed read is not cached, so the next request retries. */
+  private readonly createdAtCache = new Map<string, number>();
+  async accountCreatedAt(uid: string): Promise<number | null> {
+    const hit = this.createdAtCache.get(uid);
+    if (hit !== undefined) return hit;
+    try {
+      const created = Date.parse((await getAuth().getUser(uid)).metadata.creationTime);
+      if (!Number.isFinite(created)) return null;
+      if (this.createdAtCache.size >= 10_000) this.createdAtCache.clear();
+      this.createdAtCache.set(uid, created);
+      return created;
+    } catch (error) {
+      logger.error("Account creation time read failed — legacy free limits apply", error, { uid });
+      return null;
+    }
+  }
 }
 
 /**
@@ -228,7 +288,13 @@ export const resolveEntitlement = async (
   const email = (actor.email || "").toLowerCase();
   // Comp lists grant a plan without billing (founders, example/demo accounts).
   // Preserve existing Family billing identity; its limits now match Plus.
-  if (envList("ARBOR_FAMILY_UIDS").includes(uid) || (email && envList("ARBOR_FAMILY_EMAILS").includes(email))) {
+  // BD-53 (Guy, 20 Oct): the admin account is the founder's own and never meets
+  // the trial or the paywall, even if it leaves the Family comp list.
+  if (
+    envList("ARBOR_FAMILY_UIDS").includes(uid)
+    || (email && envList("ARBOR_FAMILY_EMAILS").includes(email))
+    || (email && envList("ARBOR_ADMIN_EMAILS").includes(email))
+  ) {
     return { plan: "family", limits: PLAN_LIMITS.family, source: "env", enforced: true, status: "active", provider: "comp" };
   }
   if (envList("ARBOR_PLUS_UIDS").includes(uid) || (email && envList("ARBOR_PLUS_EMAILS").includes(email))) {
@@ -252,7 +318,58 @@ export const resolveEntitlement = async (
     const stored = await store.getPlan(actor.uid);
     if (stored) return { plan: stored, limits: PLAN_LIMITS[stored], source: "store", enforced: true };
   }
-  return { plan: "free", limits: PLAN_LIMITS.free, source: "default", enforced: true, status: "active" };
+  // BD-53: no paid or comped plan → the trial decides. Running: full Plus.
+  const createdAt = store.accountCreatedAt ? await store.accountCreatedAt(actor.uid) : null;
+  const trialEnd = createdAt === null ? null : trialEndsAtFor(createdAt);
+  const trialEndsAt = trialEnd === null ? null : new Date(trialEnd).toISOString();
+  if (trialEnd !== null && trialEnd > Date.now()) {
+    return {
+      plan: "plus",
+      limits: PLAN_LIMITS.plus,
+      source: "trial",
+      enforced: true,
+      status: "in_trial",
+      provider: "none",
+      currentPeriodEnd: trialEndsAt,
+      willRenew: false,
+      trialEndsAt,
+    };
+  }
+  return { plan: "free", limits: PLAN_LIMITS.free, source: "default", enforced: true, status: "active", trialEndsAt };
+};
+
+/**
+ * The entitlement for this request, resolved once: the gates that run before
+ * a route (access, coach meter, Plus features, image allowance) share it
+ * instead of each re-reading Firestore.
+ */
+export const entitlementForRequest = (req: unknown, store: EntitlementStore): Promise<Entitlement> => {
+  const r = req as { user?: { uid?: string; email?: string | null }; entitlementPromise?: Promise<Entitlement> };
+  if (!r.entitlementPromise) {
+    r.entitlementPromise = resolveEntitlement(store, { uid: r.user?.uid || "local-sandbox", email: r.user?.email || null });
+  }
+  return r.entitlementPromise;
+};
+
+/**
+ * BD-53: middleware for every AI route except /chat and /council (the coach
+ * gate in aiQuota.ts applies the same rule). Once the trial is over and no
+ * plan is paid, the route answers 402 `trial_ended`, which the client turns
+ * into the paywall. A failed resolution passes through: the gates downstream
+ * still apply their own fail-closed limits.
+ */
+export const requireActiveAccess = (store: EntitlementStore): RequestHandler => async (req, res, next) => {
+  try {
+    const entitlement = await entitlementForRequest(req, store);
+    (req as any).entitlement = entitlement;
+    if (accessEnded(entitlement)) {
+      res.status(402).json(TRIAL_ENDED_BODY);
+      return;
+    }
+  } catch (error) {
+    logger.error("Access gate could not resolve the entitlement — passing through", error);
+  }
+  next();
 };
 
 /**
@@ -276,7 +393,6 @@ export const cohortTagFor = (
   return "family";
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 export const COACH_METER = "coach_daily";
 
 /**
@@ -291,6 +407,7 @@ export const createCoachMeter = (
   const actor = { uid: (req as any).user?.uid || "local-sandbox", email: ((req as any).user?.email as string | null) || null };
   const entitlement = await resolveEntitlement(store, actor);
   (req as any).entitlement = entitlement;
+  if (accessEnded(entitlement)) { res.status(402).json(TRIAL_ENDED_BODY); return; }
   const limit = entitlement.limits.coachMessagesPerDay;
   if (limit === null) { next(); return; }
 
@@ -331,9 +448,9 @@ export const requirePlusFeature = (
   feature: keyof Pick<PlanLimits, "professionalReports" | "advancedPlans">,
   label: string,
 ): RequestHandler => async (req, res, next) => {
-  const actor = { uid: (req as any).user?.uid || "local-sandbox", email: ((req as any).user?.email as string | null) || null };
-  const entitlement = await resolveEntitlement(store, actor);
+  const entitlement = await entitlementForRequest(req, store);
   (req as any).entitlement = entitlement;
+  if (accessEnded(entitlement)) { res.status(402).json(TRIAL_ENDED_BODY); return; }
   if (entitlement.limits[feature]) { next(); return; }
   res.status(402).json({
     error: `${label} is an Arbor Plus feature`,

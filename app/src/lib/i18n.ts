@@ -1386,6 +1386,9 @@ export const en: Dict = {
   "set.plan.renews": "Renews {date}",
   "set.plan.renewOff": "Access ends {date}",
   "set.plan.trial": "Free trial — ends {date}",
+  "set.plan.trialDesc": "Every Arbor Plus feature for your first 14 days, no card needed. Subscribe any time to keep it.",
+  "set.plan.trialEnded": "Trial ended",
+  "set.plan.trialEndedDesc": "Everything you saved stays yours to read and export. Subscribe to keep Arbor's answers, plans and stories going.",
   "set.plan.grace": "Payment issue — please update your billing.",
   "set.plan.viaStore": "Billed via {provider}",
   "set.plan.manageStore": "Manage this subscription from the App Store or Google Play.",
@@ -1417,6 +1420,8 @@ export const en: Dict = {
   "pw.body.adventureGenerate": "You've reached today's free limit. With Arbor Plus there is no daily limit, so a new adventure starring {name} can start today.",
   "pw.body.maxChildren": "The free plan keeps one child. Arbor Plus keeps up to six, each with their own journal, plans and answers.",
   "pw.body.coParentSeats": "Co-parent sharing is free on every plan. Open Trusted Sharing to invite the other parent; you can revoke access any time.",
+  // BD-53: the 402 every AI route returns once the 14-day trial is over.
+  "pw.body.trialEnded": "Your 14 days of Arbor Plus are over. Everything you saved stays yours to read and export. Subscribe to keep Arbor's answers, plans and stories going.",
   // The Plus list leads with what Arbor remembers — plus.1's claim (no daily
   // limit), said through what the parent gets; approved memory is real today.
   "pw.plusLead": "Answers that remember {name}, without the daily limit",
@@ -3950,6 +3955,9 @@ export const he: Dict = {
   "set.plan.renews": "מתחדש ב-{date}",
   "set.plan.renewOff": "הגישה מסתיימת ב-{date}",
   "set.plan.trial": "תקופת ניסיון — מסתיימת ב-{date}",
+  "set.plan.trialDesc": "כל יכולות ארבור פלוס ב-14 הימים הראשונים, בלי כרטיס אשראי. אפשר להצטרף למנוי בכל רגע ולהמשיך.",
+  "set.plan.trialEnded": "תקופת הניסיון הסתיימה",
+  "set.plan.trialEndedDesc": "כל מה ששמרתם נשאר שלכם, לקריאה ולייצוא. הצטרפו למנוי כדי להמשיך לקבל תשובות, תוכניות וסיפורים מארבור.",
   "set.plan.grace": "בעיה בתשלום — נא לעדכן את אמצעי החיוב.",
   "set.plan.viaStore": "מחויב דרך {provider}",
   "set.plan.manageStore": "נהלו את המנוי דרך App Store או Google Play.",
@@ -3977,6 +3985,7 @@ export const he: Dict = {
   "pw.body.adventureGenerate": "הגעתם למכסה החינמית של היום. בארבור פלוס אין מכסה יומית, כך שהרפתקה חדשה בכיכובו של {name} יכולה להתחיל היום.",
   "pw.body.maxChildren": "התוכנית החינמית שומרת ילד אחד. ארבור פלוס שומר עד שישה, לכל אחד יומן, תוכניות ותשובות משלו.",
   "pw.body.coParentSeats": "שיתוף עם ההורה השני זמין ללא תשלום בכל מסלול. פתחו את מסך השיתוף כדי להזמין אותו; ניתן לבטל את הגישה בכל רגע.",
+  "pw.body.trialEnded": "14 הימים שלכם עם ארבור פלוס הסתיימו. כל מה ששמרתם נשאר שלכם, לקריאה ולייצוא. הצטרפו למנוי כדי להמשיך לקבל תשובות, תוכניות וסיפורים מארבור.",
   "pw.plusLead": "תשובות שזוכרות את {name}, בלי המכסה היומית",
   "pw.kept.one": "ארבור שמר דבר אחד על {name}",
   "pw.kept.many": "ארבור שמר {n} דברים על {name}",
