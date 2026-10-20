@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { planFromRevenueCat, recordFromRevenueCat, billingCheckoutUrl, offeredCurrencies, SOLD_PLANS, webhookSkipReason, createBillingWebhookRouter } from "./billing.js";
 import type { ArborConfig } from "../config/env.js";
+import { isStaleBillingEvent, recordStillEntitles, type EntitlementRecord } from "./entitlements.js";
 
 const cfg = (over: Partial<ArborConfig>): ArborConfig =>
   ({ billingCheckoutUrls: {}, ...over } as ArborConfig);
@@ -199,6 +200,36 @@ describe("the webhook never grants Plus from a test or a sandbox event in prod",
     expect(webhookSkipReason(purchase, { billingAcceptSandbox: false })).toBeNull();
   });
 
+  it("native-store sandbox still applies in prod: App Review buys in the sandbox against the prod backend", () => {
+    for (const store of ["APP_STORE", "MAC_APP_STORE", "PLAY_STORE"]) {
+      expect(webhookSkipReason({ ...purchase, store, environment: "SANDBOX" }, { billingAcceptSandbox: false }), store).toBeNull();
+    }
+    for (const store of ["RC_BILLING", "STRIPE", "PADDLE", "TEST_STORE", undefined]) {
+      expect(webhookSkipReason({ ...purchase, store, environment: "SANDBOX" }, { billingAcceptSandbox: false }), String(store)).toBe("sandbox");
+    }
+  });
+
+  it("only entitlement types are written: an unpaid invoice or an experiment never unlocks Plus", () => {
+    for (const type of [
+      "INVOICE_ISSUANCE",
+      "EXPERIMENT_ENROLLMENT",
+      "VIRTUAL_CURRENCY_TRANSACTION",
+      "PURCHASE_REDEEMED",
+      "TRANSFER",
+      "SUBSCRIBER_ALIAS",
+      "PRICE_INCREASE_CONSENT_REQUIRED",
+      "PRICE_INCREASE_CONSENT_APPROVED",
+      "SOMETHING_NEW",
+      "",
+    ]) {
+      expect(webhookSkipReason({ ...purchase, type, environment: "PRODUCTION" }, { billingAcceptSandbox: false }), type).toBe("ignored");
+      expect(recordFromRevenueCat({ ...purchase, type }), type).toBeNull();
+    }
+    for (const type of ["INITIAL_PURCHASE", "RENEWAL", "CANCELLATION", "EXPIRATION", "BILLING_ISSUE", "TEMPORARY_ENTITLEMENT_GRANT", "REFUND_REVERSED", "SUBSCRIPTION_PAUSED"]) {
+      expect(webhookSkipReason({ ...purchase, type, environment: "PRODUCTION" }, { billingAcceptSandbox: false }), type).toBeNull();
+    }
+  });
+
   it("prod config refuses sandbox by default; other environments accept it", async () => {
     const { readFileSync } = await import("node:fs");
     const src = readFileSync(new URL("../config/env.ts", import.meta.url), "utf8");
@@ -235,6 +266,9 @@ describe("the webhook never grants Plus from a test or a sandbox event in prod",
       const sandbox = await post({ ...purchase, environment: "SANDBOX" });
       expect(sandbox.status).toBe(200);
       expect(await sandbox.json()).toEqual({ ok: true, skipped: "sandbox" });
+      const invoice = await post({ ...purchase, type: "INVOICE_ISSUANCE", environment: "PRODUCTION" });
+      expect(invoice.status).toBe(200);
+      expect(await invoice.json()).toEqual({ ok: true, skipped: "ignored" });
       expect(writes).toEqual([]);
       expect((await post({ ...purchase, environment: "PRODUCTION" })).status).toBe(200);
       expect(writes).toHaveLength(1);
@@ -243,5 +277,99 @@ describe("the webhook never grants Plus from a test or a sandbox event in prod",
     } finally {
       server.close();
     }
+  });
+});
+
+describe("B-GA-20 webhook replay with native event shapes reconciles the entitlement once", () => {
+  const DAY = 86_400_000;
+  const T0 = Date.parse("2026-11-01T10:00:00.000Z");
+  // The same pipeline the webhook runs: map, skip stale, merge without undefined
+  // (FirestoreEntitlementStore.setEntitlement's set(..., { merge: true })).
+  const replay = () => {
+    let doc: EntitlementRecord | null = null;
+    const apply = (event: Parameters<typeof recordFromRevenueCat>[0]) => {
+      const mapped = recordFromRevenueCat(event);
+      if (!mapped || isStaleBillingEvent(doc, mapped.record)) return false;
+      const clean = Object.fromEntries(Object.entries(mapped.record).filter(([, v]) => v !== undefined));
+      doc = { ...(doc ?? {}), ...clean } as EntitlementRecord;
+      return true;
+    };
+    return { apply, doc: () => doc as EntitlementRecord, entitles: (now: number) => recordStillEntitles(doc as EntitlementRecord, now) };
+  };
+  const ios = (type: string, ts: number, over: Record<string, unknown> = {}) => ({
+    id: `evt-${type}-${ts}`,
+    type,
+    app_user_id: "fam-uid",
+    original_app_user_id: "fam-uid",
+    product_id: "arbor_plus_monthly",
+    entitlement_ids: ["plus"],
+    period_type: "NORMAL",
+    store: "APP_STORE",
+    environment: "PRODUCTION",
+    event_timestamp_ms: ts,
+    expiration_at_ms: T0 + 30 * DAY,
+    ...over,
+  });
+
+  it("purchase, duplicate, out-of-order, upgrade, refund, reversal, billing issue, expiry and retry", () => {
+    const r = replay();
+    expect(r.apply(ios("INITIAL_PURCHASE", T0))).toBe(true);
+    expect(r.doc()).toMatchObject({ plan: "plus", status: "active", provider: "app_store", willRenew: true });
+    expect(r.entitles(T0 + DAY)).toBe(true);
+
+    expect(r.apply(ios("INITIAL_PURCHASE", T0))).toBe(false); // RevenueCat resend
+
+    expect(r.apply(ios("RENEWAL", T0 + 3, { expiration_at_ms: T0 + 60 * DAY }))).toBe(true);
+    expect(r.apply(ios("CANCELLATION", T0 + 2))).toBe(false); // older event delivered late
+    expect(r.doc()).toMatchObject({ status: "active", willRenew: true });
+
+    expect(r.apply(ios("PRODUCT_CHANGE", T0 + 4, { product_id: "arbor_plus_annual", expiration_at_ms: T0 + 365 * DAY }))).toBe(true);
+    expect(r.doc()).toMatchObject({ plan: "plus", productId: "arbor_plus_annual", status: "active" });
+
+    // A refund is CANCELLATION with the expiry at the refund: access ends at once.
+    expect(r.apply(ios("CANCELLATION", T0 + 5 * DAY, { cancel_reason: "CUSTOMER_SUPPORT", expiration_at_ms: T0 + 5 * DAY }))).toBe(true);
+    expect(r.doc()).toMatchObject({ status: "canceled", willRenew: false });
+    expect(r.entitles(T0 + 5 * DAY + 1)).toBe(false);
+
+    expect(r.apply(ios("REFUND_REVERSED", T0 + 6 * DAY, { expiration_at_ms: T0 + 365 * DAY }))).toBe(true);
+    expect(r.entitles(T0 + 6 * DAY + 1)).toBe(true);
+
+    expect(r.apply(ios("BILLING_ISSUE", T0 + 7 * DAY))).toBe(true);
+    expect(r.doc()).toMatchObject({ status: "grace_period" });
+    expect(r.entitles(T0 + 7 * DAY + 1)).toBe(true);
+
+    const expiry = ios("EXPIRATION", T0 + 8 * DAY, { expiration_at_ms: T0 + 8 * DAY });
+    expect(r.apply(expiry)).toBe(true);
+    expect(r.doc()).toMatchObject({ plan: "free", status: "expired", willRenew: false });
+    expect(r.apply(expiry)).toBe(false); // retried delivery changes nothing
+    expect(r.doc().plan).toBe("free");
+  });
+
+  it("a store outage grant on Play lasts until EXPIRATION; a pause keeps access to period end", () => {
+    const play = (type: string, ts: number, over: Record<string, unknown> = {}) =>
+      ios(type, ts, { store: "PLAY_STORE", product_id: "arbor_plus_monthly:monthly", ...over });
+    const r = replay();
+    expect(r.apply(play("TEMPORARY_ENTITLEMENT_GRANT", T0, { expiration_at_ms: T0 + DAY }))).toBe(true);
+    expect(r.doc()).toMatchObject({ plan: "plus", provider: "play_store" });
+    expect(r.apply(play("EXPIRATION", T0 + 1, { expiration_at_ms: T0 + 1 }))).toBe(true);
+    expect(r.doc().plan).toBe("free");
+
+    const p = replay();
+    expect(p.apply(play("INITIAL_PURCHASE", T0))).toBe(true);
+    expect(p.apply(play("SUBSCRIPTION_PAUSED", T0 + 1))).toBe(true);
+    expect(p.doc()).toMatchObject({ plan: "plus", status: "canceled", willRenew: false });
+    expect(p.entitles(T0 + 29 * DAY)).toBe(true);
+    expect(p.entitles(T0 + 31 * DAY)).toBe(false);
+  });
+
+  it("an event without a timestamp still applies and never erases the stored one", () => {
+    const r = replay();
+    expect(r.apply(ios("INITIAL_PURCHASE", T0))).toBe(true);
+    expect(r.apply({ ...ios("RENEWAL", T0), event_timestamp_ms: undefined, expiration_at_ms: T0 + 60 * DAY })).toBe(true);
+    expect(r.doc().lastEventTs).toBe(T0);
+    expect(isStaleBillingEvent(null, { lastEventTs: T0 })).toBe(false);
+    expect(isStaleBillingEvent({ lastEventTs: T0 }, { lastEventTs: undefined })).toBe(false);
+    expect(isStaleBillingEvent({ lastEventTs: T0 }, { lastEventTs: T0 })).toBe(true);
+    expect(isStaleBillingEvent({ lastEventTs: T0 }, { lastEventTs: T0 + 1 })).toBe(false);
   });
 });

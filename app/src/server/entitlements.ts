@@ -177,6 +177,16 @@ export interface EntitlementStore {
 const isPlan = (value: unknown): value is Plan =>
   value === "free" || value === "plus" || value === "family";
 
+/**
+ * Idempotency for billing writes: an event at or below the last applied
+ * `event_timestamp_ms` is a resend or an out-of-order delivery and must not
+ * regress state. Events without a timestamp always apply.
+ */
+export const isStaleBillingEvent = (
+  current: Pick<EntitlementRecord, "lastEventTs"> | null | undefined,
+  record: Pick<EntitlementRecord, "lastEventTs">,
+): boolean => Boolean(record.lastEventTs && current?.lastEventTs && current.lastEventTs >= record.lastEventTs);
+
 export class NullEntitlementStore implements EntitlementStore {
   async getPlan() { return null; }
   async getRecord() { return null; }
@@ -227,9 +237,7 @@ export class FirestoreEntitlementStore implements EntitlementStore {
     // applied — so RevenueCat resends and out-of-order deliveries can't regress state.
     await this.db.runTransaction(async (tx) => {
       const current = (await tx.get(ref)).data();
-      if (record.lastEventTs && current?.lastEventTs && current.lastEventTs >= record.lastEventTs) {
-        return;
-      }
+      if (isStaleBillingEvent(current, record)) return;
       // Firestore rejects `undefined` field values (e.g. lastEventTs when a
       // RevenueCat event carries no event_timestamp_ms) — which crashed the
       // webhook (500) and silently dropped paid upgrades. Strip undefined keys
@@ -264,12 +272,12 @@ export class FirestoreEntitlementStore implements EntitlementStore {
  * A stored paid record still entitles the user until it lapses. A canceled sub
  * keeps its plan until the period end; an expired/refunded one drops to Free.
  */
-const recordStillEntitles = (record: EntitlementRecord): boolean => {
+export const recordStillEntitles = (record: EntitlementRecord, now: number = Date.now()): boolean => {
   if (record.plan === "free") return true;
   if (record.status === "expired") return false;
   if (record.currentPeriodEnd && record.willRenew === false && record.status !== "in_trial") {
     const end = Date.parse(record.currentPeriodEnd);
-    if (Number.isFinite(end) && end < Date.now()) return false;
+    if (Number.isFinite(end) && end < now) return false;
   }
   return true;
 };

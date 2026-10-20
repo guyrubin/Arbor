@@ -49,7 +49,8 @@ export type RevenueCatEvent = {
   environment?: string; // PRODUCTION | SANDBOX
 };
 
-// Event types that (re)grant access.
+// Event types that (re)grant access. TEMPORARY_ENTITLEMENT_GRANT is RevenueCat's
+// store-outage grant (at most 24 h; EXPIRATION follows if validation fails).
 const GRANTING = new Set([
   "INITIAL_PURCHASE",
   "RENEWAL",
@@ -57,15 +58,27 @@ const GRANTING = new Set([
   "UNCANCELLATION",
   "NON_RENEWING_PURCHASE",
   "SUBSCRIPTION_EXTENDED",
+  "TEMPORARY_ENTITLEMENT_GRANT",
+  "REFUND_REVERSED",
   "TRIAL_STARTED",
   "TRIAL_CONVERTED",
 ]);
-// Still entitled until period end, but auto-renew is off.
-const CANCELLED = new Set(["CANCELLATION"]);
+// Still entitled until period end, but auto-renew is off. A refund arrives as
+// CANCELLATION (cancel_reason CUSTOMER_SUPPORT) with the expiry at the refund,
+// so the record lapses at once. SUBSCRIPTION_PAUSED pauses at period end.
+const CANCELLED = new Set(["CANCELLATION", "SUBSCRIPTION_PAUSED"]);
 // In a billing-retry grace window — keep access, surface the warning.
 const GRACE = new Set(["BILLING_ISSUE"]);
 // Hard loss of access.
-const REVOKING = new Set(["EXPIRATION", "REFUND", "SUBSCRIPTION_PAUSED"]);
+const REVOKING = new Set(["EXPIRATION", "REFUND"]);
+/** Every type that changes an entitlement. Anything else (INVOICE_ISSUANCE, an
+ *  unpaid invoice; EXPERIMENT_ENROLLMENT; VIRTUAL_CURRENCY_TRANSACTION;
+ *  PURCHASE_REDEEMED; PRICE_INCREASE_*; TRANSFER, which names no app_user_id)
+ *  is acknowledged and never written: none of them is a payment. */
+const ENTITLEMENT_TYPES = new Set([...GRANTING, ...CANCELLED, ...GRACE, ...REVOKING]);
+/** Stores whose sandbox needs a tester the account owner invited (TestFlight,
+ *  Play license testers) and which App Review uses against the prod backend. */
+const NATIVE_STORES = new Set(["APP_STORE", "MAC_APP_STORE", "PLAY_STORE"]);
 
 /** Decide the plan from the product / entitlement identifiers RevenueCat sends. */
 export const planFromRevenueCat = (event: RevenueCatEvent): Plan => {
@@ -101,17 +114,24 @@ const providerFromStore = (store: string | undefined): BillingProvider => {
  * Events the webhook acknowledges without writing an entitlement.
  *  - "test": the dashboard's "Send test event" (type TEST, made-up user id);
  *    a 200 proves the Authorization header matches, nothing is granted.
- *  - "sandbox": a test-card purchase. The sandbox checkout is the live Purchase
- *    Link with `/sandbox/` in front of the same token, so any parent could
- *    reach it from their own checkout URL; in prod it must never grant Plus.
- *    Accepted only where `billingAcceptSandbox` is on (every env but prod).
+ *  - "ignored": any type outside ENTITLEMENT_TYPES. Before 20 Oct an unknown
+ *    type was written as a grant, so an unpaid INVOICE_ISSUANCE unlocked Plus.
+ *  - "sandbox": a web test-card purchase. The web sandbox checkout is the live
+ *    Purchase Link with `/sandbox/` in front of the same token, so any parent
+ *    could reach it from their own checkout URL; in prod it must never grant
+ *    Plus. Native-store sandbox still applies (App Review buys in the sandbox
+ *    against prod). Every web sandbox event applies where `billingAcceptSandbox`
+ *    is on (every env but prod).
  */
 export const webhookSkipReason = (
   event: RevenueCatEvent,
   config: Pick<ArborConfig, "billingAcceptSandbox">,
-): "test" | "sandbox" | null => {
-  if (String(event.type ?? "").toUpperCase() === "TEST") return "test";
-  if (String(event.environment ?? "").toUpperCase() === "SANDBOX" && config.billingAcceptSandbox !== true) return "sandbox";
+): "test" | "ignored" | "sandbox" | null => {
+  const type = String(event.type ?? "").toUpperCase();
+  if (type === "TEST") return "test";
+  if (!ENTITLEMENT_TYPES.has(type)) return "ignored";
+  const sandbox = String(event.environment ?? "").toUpperCase() === "SANDBOX";
+  if (sandbox && config.billingAcceptSandbox !== true && !NATIVE_STORES.has(String(event.store ?? "").toUpperCase())) return "sandbox";
   return null;
 };
 
@@ -148,11 +168,8 @@ export const recordFromRevenueCat = (
     };
   }
 
-  // Treat unknown event types conservatively as a grant refresh (RevenueCat only
-  // calls the webhook for entitlement-affecting events).
-  if (!GRANTING.has(type) && !CANCELLED.has(type) && !GRACE.has(type)) {
-    logger.info("RevenueCat event treated as grant refresh", { type });
-  }
+  // Only an entitlement type is ever written (see webhookSkipReason).
+  if (!ENTITLEMENT_TYPES.has(type)) return null;
 
   const isTrial = String(event.period_type ?? "").toUpperCase() === "TRIAL";
   let status: EntitlementStatus = "active";
@@ -197,7 +214,9 @@ export const createBillingWebhookRouter = (config: ArborConfig, store: Entitleme
     const skip = webhookSkipReason(req.body?.event ?? req.body ?? {}, config);
     if (skip) {
       // 200, so RevenueCat does not retry an event we will never apply.
-      if (skip === "sandbox") logger.warn("RevenueCat sandbox event ignored in this environment", { type: req.body?.event?.type ?? null });
+      const type = req.body?.event?.type ?? null;
+      if (skip === "sandbox") logger.warn("RevenueCat web sandbox event ignored in this environment", { type });
+      if (skip === "ignored") logger.info("RevenueCat event acknowledged, not an entitlement change", { type });
       res.status(200).json({ ok: true, skipped: skip });
       return;
     }
