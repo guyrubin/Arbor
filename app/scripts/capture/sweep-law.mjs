@@ -27,13 +27,14 @@ export function sweepLawFailures(doc) {
     if (isBase(cell) && !cell.mounted) reasons.push('unmounted');
     if ((cell.consoleErrors ?? []).length > 0) reasons.push('console-error');
     if (cell.overflow && cell.overflow.scrollWidth > cell.overflow.clientWidth) reasons.push('overflow');
-    if (reasons.length) failures.push({ cell: `${cell.route} ${cell.viewport} ${cell.lang}${isBase(cell) ? '' : ` ${cell.state}`}`, reasons });
+    const detail = reasons.includes('console-error') ? String(cell.consoleErrors[0]).replace(/\s+/g, ' ').slice(0, 240) : undefined;
+    if (reasons.length) failures.push({ cell: `${cell.route} ${cell.viewport} ${cell.lang}${isBase(cell) ? '' : ` ${cell.state}`}`, reasons, ...(detail ? { detail } : {}) });
   }
   return failures;
 }
 
 export function sweepLawLines(failures, limit = 20) {
-  const lines = failures.slice(0, limit).map((f) => `  ${f.cell}: ${f.reasons.join(', ')}`);
+  const lines = failures.slice(0, limit).map((f) => `  ${f.cell}: ${f.reasons.join(', ')}${f.detail ? ` — ${f.detail}` : ''}`);
   if (failures.length > limit) lines.push(`  … ${failures.length - limit} more in sweep.json`);
   return lines;
 }
@@ -56,7 +57,7 @@ function cli(file) {
   console.log(`SWEEP-LAW FAIL ${failures.length} cells`);
   for (const line of sweepLawLines(failures)) console.log(line);
   // In Actions, annotations are the one place a public reader sees the cells without a login.
-  if (process.env.GITHUB_ACTIONS === 'true') for (const f of failures.slice(0, 10)) console.log(`::error title=sweep law::${f.cell}: ${f.reasons.join(', ')}`);
+  if (process.env.GITHUB_ACTIONS === 'true') for (const f of failures.slice(0, 10)) console.log(`::error title=sweep law::${f.cell}: ${f.reasons.join(', ')}${f.detail ? ` — ${f.detail}` : ''}`);
   return SWEEP_LAW_EXIT;
 }
 

@@ -95,7 +95,11 @@ jobs:
           [ -f "$f" ] || { echo "::error title=capture::no capture.json"; exit 0; }
           node -e 'const c=require(process.argv[1]); const m=(c.missingEvidence||[]).slice(0,5).map(e=>JSON.stringify(e)).join(" ; "); console.log(`::${c.completed?"notice":"error"} title=capture::stage=${c.stage} completed=${c.completed} failure=${c.failure||"-"} sweepLaw=${c.sweepLaw||"-"} cells=${c.cellsRecorded??0} shots=${c.screenshots??0} last=${JSON.stringify(c.lastProcess||{})} missing=${(c.missingEvidence||[]).length} ${m}`.slice(0,4000))' "$f"
       - name: Apply the sweep law (unmounted, console error, overflow)
-        run: node app/scripts/capture/sweep-law.mjs "$RUNNER_TEMP/arbor-capture/sweep.json"
+        if: always()
+        shell: bash
+        run: |
+          [ -f "$RUNNER_TEMP/arbor-capture/sweep.json" ] || { echo "::error title=sweep law::no sweep.json"; exit 1; }
+          node app/scripts/capture/sweep-law.mjs "$RUNNER_TEMP/arbor-capture/sweep.json"
       - name: Retain screenshots and evidence JSON
         if: always()
         uses: actions/upload-artifact@v4
