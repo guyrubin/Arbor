@@ -16,6 +16,7 @@ import { checkoutCurrency, type PaidPlan } from "../../lib/pricing";
 import { fmtStoreCurrency } from "./PlanPrices";
 import { LegalLinks } from "./LegalLinks";
 import { buildPlanRows, paywallCta, disclosureText, periodKey, paywallBody, DEFAULT_CADENCE, type Cadence } from "./paywallModel";
+import { plusTitleKey } from "./trialNotice";
 import { PlanBadge } from "../ui/PlanBadge";
 import { readPurchaseIntent } from "../../lib/purchaseIntent";
 // Direct module import (3.6): planclarity IS registered in i18nElevation/index.ts;
@@ -109,7 +110,7 @@ export default function PaywallModal() {
           </div>
           <div>
             <p className="font-bold mb-1 flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
-              <PlanBadge plan="plus" />{pc("plusTitle")}
+              <PlanBadge plan="plus" />{pc(plusTitleKey(entitlement))}
             </p>
             {/* B-SHELL-11: lead with what Arbor remembers (the uncapped answers
                 — plus.1's claim, named through the child), then reports, plans,

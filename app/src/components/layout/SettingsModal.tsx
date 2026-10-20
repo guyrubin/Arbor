@@ -14,7 +14,7 @@ import YourDataSheet from "./YourDataSheet";
 import { AnalyticsOptOutRow } from "../privacy/AnalyticsOptOutRow";
 import { PlanPrices } from "../billing/PlanPrices";
 import { DEFAULT_CADENCE, offeringGate, type Cadence } from "../billing/paywallModel";
-import { trialStatusCopy } from "../billing/trialNotice";
+import { plusTitleKey, trialStatusCopy } from "../billing/trialNotice";
 import { useNativeOffering } from "../../hooks/useNativePrices";
 import { isNativePlatform, nativePlatform } from "../../lib/runtime";
 import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: Privacy · Terms · Support in the footer
@@ -462,7 +462,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                     {["free.1", "free.2", "free.3"].map(key => <li key={key}>{t(`elev.plan.${key}`)}</li>)}
                   </ul>
                 </div>
-                <div><p className="font-bold">{t("elev.plan.plusTitle")}</p>
+                <div><p className="font-bold">{t(`elev.plan.${plusTitleKey(entitlement)}`)}</p>
                   <ul className="list-disc ps-4" style={{ color: "var(--arbor-muted)" }}>
                     {["plus.1", "plus.2", "plus.3", "plus.4"].map(key => <li key={key}>{t(`elev.plan.${key}`)}</li>)}
                   </ul>

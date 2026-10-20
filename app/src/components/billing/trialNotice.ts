@@ -85,6 +85,16 @@ export function trialStatusCopy(trialEndsAt: string | null | undefined, now: num
   return { key: "set.plan.trialLeft", vars: { n: daysLeft, date } };
 }
 
+/**
+ * The planclarity heading over the Plus column (paywall and Settings). A
+ * signed-in parent is already on the trial clock, so no surface promises "14
+ * days free": a running trial reads "included in your free trial", and every
+ * other parent (ended trial, unverified plan) reads the plain "What Arbor Plus
+ * adds". Paid parents never see the column.
+ */
+export const plusTitleKey = (e: Pick<EntitlementInfo, "source" | "accessEnded">): "plusTitleTrial" | "plusTitle" =>
+  e.source === "trial" && e.accessEnded !== true ? "plusTitleTrial" : "plusTitle";
+
 /** The paywall trigger the notice's button opens (PAYWALL_FEATURES). */
 export const trialNoticeFeature = (n: TrialNotice): "trial_ending" | "trial_ended" =>
   n.kind === "ended" ? "trial_ended" : "trial_ending";

@@ -26,7 +26,11 @@ export const en: Record<string, string> = {
   "elev.plan.free.1": "Everything you saved: journal, milestones, plans and stories",
   "elev.plan.free.2": "Read it and export it at any time",
   "elev.plan.free.3": "Co-parent sharing, free on every plan",
-  "elev.plan.plusTitle": "Arbor Plus — your first 14 days are free",
+  // In-app the parent is already on the trial clock (it starts at sign-up), so
+  // the heading never promises 14 free days: a running trial reads plusTitleTrial,
+  // everyone else (ended trial, unverified) the plain plusTitle (trialNotice.plusTitleKey).
+  "elev.plan.plusTitle": "What Arbor Plus adds",
+  "elev.plan.plusTitleTrial": "Arbor Plus — included in your free trial",
   "elev.plan.plus.1": "Coaching without the daily limit",
   // B-CAREPRO-08: every packet and PDF is free (built client-side, no gate);
   // the ONE Plus gate in Care is /api/generate-handoff (professionalReports),
@@ -55,7 +59,8 @@ export const he: Record<string, string> = {
   "elev.plan.free.1": "כל מה ששמרתם: יומן, אבני דרך, תוכניות וסיפורים",
   "elev.plan.free.2": "לקרוא ולייצא בכל עת",
   "elev.plan.free.3": "שיתוף עם הורה נוסף, ללא תשלום בכל מסלול",
-  "elev.plan.plusTitle": "ארבור פלוס — 14 הימים הראשונים בחינם",
+  "elev.plan.plusTitle": "מה ארבור פלוס מוסיף",
+  "elev.plan.plusTitleTrial": "ארבור פלוס — כלול בתקופת הניסיון שלכם",
   "elev.plan.plus.1": "אימון בלי המכסה היומית",
   "elev.plan.plus.2": "מסמכים לגן ולבית הספר שארבור מנסח בשבילכם",
   "elev.plan.plus.3": "תוכניות צמיחה מתקדמות",

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { en, he, translate } from "../../lib/i18n";
 import { PAYWALL_FEATURES, paywallBody } from "./paywallModel";
+import * as planclarity from "../../lib/i18nElevation/planclarity";
 import {
   TRIAL_NOTICE_DAYS,
   trialDaysLeft,
@@ -9,6 +10,7 @@ import {
   trialNoticeDismissToken,
   trialNoticeFeature,
   trialStatusCopy,
+  plusTitleKey,
   type TrialFields,
   type TrialNotice,
 } from "./trialNotice";
@@ -157,5 +159,25 @@ describe("dismissal", () => {
     expect(trialNoticeDismissToken(n, at("2026-11-01T13:00:00.000Z"))).toBe(morning);
     expect(trialNoticeDismissToken(n, at("2026-11-02T12:00:00.000Z"))).not.toBe(morning);
     expect(trialNoticeDismissToken({ kind: "ended" }, at("2026-11-01T12:00:00.000Z"))).toBe(trialNoticeDismissToken({ kind: "ended" }, at("2027-01-01T12:00:00.000Z")));
+  });
+});
+
+describe("the Plus heading never promises a trial the parent does not have", () => {
+  it("a running trial reads the trial heading; ended, comped and unverified read the plain one", () => {
+    expect(plusTitleKey({ source: "trial", accessEnded: false })).toBe("plusTitleTrial");
+    expect(plusTitleKey({ source: "trial" })).toBe("plusTitleTrial");
+    expect(plusTitleKey({ source: "trial", accessEnded: true })).toBe("plusTitle");
+    expect(plusTitleKey({ source: "default", accessEnded: true })).toBe("plusTitle");
+    expect(plusTitleKey({ source: "default" })).toBe("plusTitle");
+    expect(plusTitleKey({ source: "client_fallback" })).toBe("plusTitle");
+  });
+
+  it("neither heading offers free days; both exist in EN and HE", () => {
+    for (const k of ["elev.plan.plusTitle", "elev.plan.plusTitleTrial"]) {
+      expect(planclarity.en[k], `en ${k}`).toBeTruthy();
+      expect(/[֐-׿]/.test(planclarity.he[k]), `he ${k} is Hebrew`).toBe(true);
+      expect(planclarity.en[k], `en ${k}`).not.toMatch(/\d|days? (are )?free/i);
+      expect(planclarity.he[k], `he ${k}`).not.toMatch(/\d/);
+    }
   });
 });
