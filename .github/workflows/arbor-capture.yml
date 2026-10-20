@@ -1,0 +1,106 @@
+name: Arbor capture
+# AR-REL-1 (ROS CoS/ROS-BACKLOG.md): the browser sweep runs on every PR and branch push,
+# in the offline capture container, on the four release cells (RELEASE_VIEWPORTS, base routes).
+# Phase 1 = evidence only: this workflow is not a required check and never gates Arbor CI or
+# Deploy. A job is green only when its sweep completed AND passed the sweep law
+# (app/scripts/capture/sweep-law.mjs: no unmounted cell, no console error, no overflow).
+# Phase 2 (blocking) starts after ten consecutive green runs on main-bound branches.
+# Kept out of arbor-ci.yml on purpose: its ~25 min would delay every branch's CI green.
+on:
+  pull_request:
+    paths: ['app/**', 'knowledge/**', '.github/workflows/arbor-capture.yml']
+  push:
+    branches: ['claude/**', 'codex/**']
+    paths: ['app/**', 'knowledge/**', '.github/workflows/arbor-capture.yml']
+permissions:
+  contents: read
+concurrency:
+  group: arbor-capture-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      cells: ${{ steps.matrix.outputs.cells }}
+      source-tree: ${{ steps.matrix.outputs.source-tree }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: matrix
+        name: Derive the four release cells from the matrix of record
+        shell: bash
+        run: |
+          CAPTURE_SCOPE=base-only node --input-type=module -e 'import { releaseMatrix } from "./app/scripts/capture/release-config.mjs"; console.log("cells=" + JSON.stringify(releaseMatrix(process.env.CAPTURE_SCOPE)));' >> "$GITHUB_OUTPUT"
+          echo "source-tree=$(git rev-parse HEAD:app/src)" >> "$GITHUB_OUTPUT"
+  capture:
+    needs: matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 42
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.cells) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build isolated capture image (no app execution with network)
+        timeout-minutes: 15
+        run: docker build --file app/scripts/capture/Dockerfile --tag arbor-capture-base .
+      - name: Cache exact source fonts in a disposable CI container
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          fonts=$(docker create --network bridge \
+            --env CAPTURE_FONT_MODE=exact --env CAPTURE_DISPOSABLE_CI=true \
+            arbor-capture-base node scripts/capture/prepare-font-cache.mjs)
+          trap 'docker rm -f "$fonts" >/dev/null' EXIT
+          docker start --attach "$fonts"
+          # CI-local image only; font files never go to artifacts or registries.
+          docker commit "$fonts" arbor-capture >/dev/null
+      - name: Sweep one release cell, with no external network
+        timeout-minutes: 20
+        env:
+          CAPTURE_VIEWPORT: ${{ matrix.viewport }}
+          CAPTURE_GROUP: ${{ matrix.group }}
+          CAPTURE_SHARD: ${{ matrix.shard }}
+          CAPTURE_SOURCE_TREE: ${{ needs.matrix.outputs.source-tree }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          container=$(docker create --network none --shm-size=1g \
+            --env ARBOR_CAPTURE_SHA="$GITHUB_SHA" \
+            --env ARBOR_CAPTURE_SOURCE_TREE_SHA="$CAPTURE_SOURCE_TREE" \
+            --env ARBOR_CAPTURE_FONT_MODE=exact \
+            --env ARBOR_CAPTURE_VIEWPORT="$CAPTURE_VIEWPORT" \
+            --env ARBOR_CAPTURE_GROUP="$CAPTURE_GROUP" \
+            --env ARBOR_CAPTURE_SHARD="$CAPTURE_SHARD" \
+            arbor-capture node scripts/capture/run-release.mjs)
+          preserve() {
+            mkdir -p "$RUNNER_TEMP/arbor-capture"
+            docker cp "$container:/capture-output/." "$RUNNER_TEMP/arbor-capture/" || true
+            docker rm -f "$container" >/dev/null || true
+          }
+          trap preserve EXIT
+          trap 'exit 124' TERM INT
+          docker start --attach "$container"
+      - name: Apply the sweep law (unmounted, console error, overflow)
+        run: node app/scripts/capture/sweep-law.mjs "$RUNNER_TEMP/arbor-capture/sweep.json"
+      - name: Retain screenshots and evidence JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arbor-capture-${{ github.sha }}-${{ matrix.viewport }}
+          path: |
+            ${{ runner.temp }}/arbor-capture/capture.json
+            ${{ runner.temp }}/arbor-capture/sweep.json
+            ${{ runner.temp }}/arbor-capture/route-inventory.json
+            ${{ runner.temp }}/arbor-capture/font-provenance.json
+            ${{ runner.temp }}/arbor-capture/font-evidence.sweep.json
+            ${{ runner.temp }}/arbor-capture/shots/*.png
+          if-no-files-found: warn
+          retention-days: 7
+          include-hidden-files: false
