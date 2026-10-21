@@ -93,6 +93,33 @@ describe("candidate exact revision gate", () => {
   });
 
   /**
+   * B-GA-36: once the GCP_WIF_PROVIDER variable is set, no step may receive the
+   * long-lived GCP_SA_KEY, or deleting that secret breaks the release mid-way. Until
+   * 21 Oct 2026 the hosting deploy read it unconditionally, after traffic had moved.
+   * Firebase auth is proven before the promote, and no legacy token can win over ADC.
+   */
+  it("keyless deploys never read the long-lived key, and Firebase auth is proven before traffic moves", () => {
+    for (const name of ["arbor-deploy.yml", "arbor-ai-evaluate.yml"]) {
+      const workflow = readFileSync(new URL(`../../../.github/workflows/${name}`, import.meta.url), "utf8");
+      const keyed = workflow.split(/\n(?= {6}- )/).filter((step) => step.includes("secrets.GCP_SA_KEY"));
+      expect(keyed.length, name).toBeGreaterThan(0);
+      for (const step of keyed) {
+        const gated = step.includes("if: vars.GCP_WIF_PROVIDER == ''")
+          || step.includes("${{ vars.GCP_WIF_PROVIDER == '' && secrets.GCP_SA_KEY || '' }}");
+        expect(gated, `${name}: ${step.trim().slice(0, 80)}`).toBe(true);
+      }
+      const code = workflow.split("\n").filter((line) => !/^\s*#/.test(line)).join("\n");
+      expect(code, name).not.toMatch(/--token|FIREBASE_TOKEN/);
+    }
+    const deploy = readFileSync(new URL("../../../.github/workflows/arbor-deploy.yml", import.meta.url), "utf8");
+    const preflight = deploy.indexOf("name: Firebase auth preflight");
+    expect(preflight).toBeGreaterThan(-1);
+    expect(preflight).toBeLessThan(deploy.indexOf("name: Promote candidate to 100%"));
+    expect(deploy.match(/name: Auth keyless \(WIF\)/g)).toHaveLength(2);
+    expect(deploy.match(/name: Auth key fallback \(GCP_SA_KEY\)/g)).toHaveLength(2);
+  });
+
+  /**
    * Regression guard. A `#!` line at the top of the gate module cannot be
    * parsed by the test transform, and the failure mode is the dangerous one:
    * this entire file dies with "Invalid or unexpected token", so every

@@ -5,7 +5,9 @@
 #     GCP_WIF_PROVIDER   projects/<num>/locations/global/workloadIdentityPools/github/providers/arbor
 #     GCP_DEPLOY_SA      arbor-deployer@<project>.iam.gserviceaccount.com
 #   When GCP_WIF_PROVIDER is set, the workflow authenticates KEYLESSLY via
-#   Workload Identity Federation and GCP_SA_KEY is unused (delete it!).
+#   Workload Identity Federation and no step receives GCP_SA_KEY, the hosting
+#   deploy included (it uses the federated ADC file that auth-wif exports), so the
+#   secret and its IAM key can be deleted after one green keyless run.
 #   Until then it falls back to the long-lived key:
 #     GCP_SA_KEY         JSON key for a service account with roles:
 #                        Cloud Build Editor, Cloud Run Admin, Artifact
@@ -86,6 +88,7 @@ jobs:
 
       # Keyless auth via Workload Identity Federation (preferred — no stored key).
       - id: auth-wif
+        name: Auth keyless (WIF)
         if: vars.GCP_WIF_PROVIDER != ''
         uses: google-github-actions/auth@v2
         with:
@@ -95,6 +98,7 @@ jobs:
       # Fallback: long-lived SA key. Retire by setting GCP_WIF_PROVIDER + GCP_DEPLOY_SA
       # vars (see docs/ops/wif-migration.md), then DELETE the GCP_SA_KEY secret + key.
       - id: auth-key
+        name: Auth key fallback (GCP_SA_KEY)
         if: vars.GCP_WIF_PROVIDER == ''
         uses: google-github-actions/auth@v2
         with:
@@ -157,6 +161,7 @@ jobs:
         working-directory: app
 
       - id: auth-wif
+        name: Auth keyless (WIF)
         if: vars.GCP_WIF_PROVIDER != ''
         uses: google-github-actions/auth@v2
         with:
@@ -164,12 +169,37 @@ jobs:
           service_account: ${{ vars.GCP_DEPLOY_SA }}
 
       - id: auth-key
+        name: Auth key fallback (GCP_SA_KEY)
         if: vars.GCP_WIF_PROVIDER == ''
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - uses: google-github-actions/setup-gcloud@v2
+
+      # Firebase credentials, proven BEFORE any traffic moves: an auth failure here fails
+      # the run while the previous revision still serves 100%, instead of after the
+      # promote (new API, old client). Auth = Application Default Credentials, which
+      # firebase-tools >=11.1 honors WITHOUT --token. Do NOT pass --token or set
+      # FIREBASE_TOKEN: a legacy token overrides ADC, which is what silently broke the
+      # hosting deploy (runs #94/#95).
+      #   Keyless (GCP_WIF_PROVIDER set): auth-wif already exported
+      #     GOOGLE_APPLICATION_CREDENTIALS, an external_account file that impersonates
+      #     GCP_DEPLOY_SA; GCP_SA_KEY is not passed in, so the secret can be deleted.
+      #   Key fallback: the raw service-account key, written to a temp file as before.
+      - name: Firebase auth preflight
+        env:
+          WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          GCP_SA_KEY: ${{ vars.GCP_WIF_PROVIDER == '' && secrets.GCP_SA_KEY || '' }}
+        run: |
+          if [ -z "$WIF_PROVIDER" ]; then
+            KEY="$RUNNER_TEMP/firebase-sa-key.json"
+            printf '%s' "$GCP_SA_KEY" > "$KEY"
+            echo "GOOGLE_APPLICATION_CREDENTIALS=$KEY" >> "$GITHUB_ENV"
+            export GOOGLE_APPLICATION_CREDENTIALS="$KEY"
+          fi
+          npx --yes firebase-tools hosting:sites:list --project "$PROJECT_ID" --non-interactive > /dev/null
+          echo "✓ firebase-tools authenticated before promote"
 
       # OPS-A3 promote: shift 100% traffic to the exact revision recorded by the successful smoke job.
       # Rollback = re-run `update-traffic --to-revisions=<prev>=100` (prior revision held
@@ -197,21 +227,14 @@ jobs:
           rm -f dist/server.cjs dist/server.cjs.map
           echo "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}" > dist/timestamp.txt
 
+      # Credentials: GOOGLE_APPLICATION_CREDENTIALS from "Firebase auth preflight" above
+      # (federated when keyless, the SA key file on the fallback). The deploy SA must
+      # hold Firebase Admin / Hosting Admin (arbor-deployer does).
       - name: Deploy Hosting + Firestore
         env:
-          # Auth = the raw service-account key from GCP_SA_KEY, written to a temp file
-          # and exposed to firebase-tools as GOOGLE_APPLICATION_CREDENTIALS (ADC).
-          # firebase-tools >=11.1 honors ADC WITHOUT --token. Do NOT pass --token: a
-          # legacy token forces token-auth and overrides this SA key, which is what
-          # silently broke this step (runs #94/#95) — the SA key was valid but an
-          # expired/invalid FIREBASE_TOKEN won the auth contest. The SA in GCP_SA_KEY
-          # must hold Firebase Admin / Hosting Admin (arbor-deployer does).
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
         run: |
-          KEY="$RUNNER_TEMP/firebase-sa-key.json"
-          printf '%s' "$GCP_SA_KEY" > "$KEY"
-          export GOOGLE_APPLICATION_CREDENTIALS="$KEY"
-          node -e "const k=JSON.parse(require('fs').readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS,'utf8')); if(k.type!=='service_account'){console.error('::error::GCP_SA_KEY is not a service_account key (type='+(k.type||'unknown')+') — firebase needs a raw SA key JSON');process.exit(1)} console.log('✓ ADC via service_account key for '+k.client_email)"
+          node -e "const fs=require('fs');const p=process.env.GOOGLE_APPLICATION_CREDENTIALS||'';const want=process.env.WIF_PROVIDER?'external_account':'service_account';const k=p&&fs.existsSync(p)?JSON.parse(fs.readFileSync(p,'utf8')):{};if(k.type!==want){console.error('::error::Firebase ADC is '+(k.type||'missing')+', expected '+want+' (keyless needs auth-wif; the fallback needs the GCP_SA_KEY secret)');process.exit(1)}const who=k.client_email||String(k.service_account_impersonation_url||'').replace(/^.*\/serviceAccounts\//,'').replace(':generateAccessToken','');console.log('✓ ADC via '+k.type+' for '+who)"
           npx --yes firebase-tools deploy \
             --only hosting,firestore \
             --project "$PROJECT_ID" \
