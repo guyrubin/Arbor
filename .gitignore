@@ -9,3 +9,9 @@ app/.claude/launch.json
 sweeps/
 
 /app/dist-studio-preview/
+
+# Root-level scratch: CI/Xcode logs, command output, saved API responses - never commit
+/*.log
+/*-log*.txt
+/tmp.out
+/jobs.json
