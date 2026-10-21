@@ -1,6 +1,6 @@
 # WIF Migration Runbook — Keyless GitHub Actions Deploys
 
-**Status (2026-10-21):** every step of `arbor-deploy.yml` is keyless-ready, the Firebase Hosting deploy included. The GCP-side setup below must be run once by someone with `roles/iam.workloadIdentityPoolAdmin` on the project. After that, deploys go keyless and the long-lived `GCP_SA_KEY` can be destroyed. The operator's copy with production values is kept outside this public repo.
+**Status (2026-10-21): done for production.** Arbor deploys keylessly. The pool, the provider and the two repo variables are set, and the `GCP_SA_KEY` and `FIREBASE_TOKEN` secrets and the deployer's user-managed key are retired. The steps below remain the procedure for a new project or a rebuild. Whoever runs them needs `roles/iam.workloadIdentityPoolAdmin` on the project. The operator's copy with production values is kept outside this public repo.
 
 **Correction to the 2026-06-11 version.** That version said the key path is skipped entirely once WIF is on. It was not: the `promote` job's *Deploy Hosting + Firestore* step read `secrets.GCP_SA_KEY` unconditionally. Deleting the secret after a keyless deploy would have failed the next release at that step, after traffic had already moved to the new API. Fixed on 2026-10-21. A *Firebase auth preflight* now runs before the promote and uses whichever credentials the auth step exported. A guard test in `app/src/server/productionProbe.test.ts` pins it.
 
@@ -12,7 +12,7 @@ The workflow prefers WIF: if the repo **variable** `GCP_WIF_PROVIDER` is set, no
 
 ## One-time GCP setup
 
-Fill in the three values and run (Git Bash on Windows: `export MSYS_NO_PATHCONV=1` first):
+Fill in the values and run. In Git Bash on Windows, do **not** set `MSYS_NO_PATHCONV=1`: it breaks gcloud's own launcher (`can't open file 'C:\c\Users\…\gcloud.py'`), and none of these arguments needs it.
 
 ```bash
 PROJECT_ID="<your-project-id>"
