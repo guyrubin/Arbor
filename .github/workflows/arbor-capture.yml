@@ -1,5 +1,5 @@
 name: Arbor capture
-# AR-REL-1 (ROS CoS/ROS-BACKLOG.md): the browser sweep runs on every PR and branch push,
+# AR-REL-1: the browser sweep runs on every PR and branch push,
 # in the offline capture container, on the four release cells (RELEASE_VIEWPORTS, base routes).
 # Phase 1 = evidence only: this workflow is not a required check and never gates Arbor CI or
 # Deploy. A job is green only when its sweep completed AND passed the sweep law
