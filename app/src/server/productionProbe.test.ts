@@ -39,6 +39,7 @@ describe("candidate exact revision gate", () => {
     ["network failure", () => new Error("unreachable")],
     ["prod candidate without checkout", () => health({ status: "ok", version: SHA, env: "prod", checkout: false })],
     ["prod candidate that does not report checkout", () => health({ status: "ok", version: SHA, env: "prod" })],
+    ["prod candidate whose checkout is a sandbox link", () => health({ status: "ok", version: SHA, env: "prod", checkout: true, checkoutMode: "sandbox" })],
   ] as const)("blocks promotion for %s even when the shell is live", async (_label, response) => {
     await expect(verifyCandidate("https://candidate.example", SHA, mockFetch(response()))).rejects.toThrow();
   });
@@ -48,15 +49,11 @@ describe("candidate exact revision gate", () => {
     await expect(verifyCandidate("https://candidate.example", SHA, fetcher)).resolves.toBe(SHA);
   });
 
-  it("warns, without blocking yet, when a prod candidate's checkout is a sandbox link", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    try {
-      const fetcher = mockFetch(health({ status: "ok", version: SHA, env: "prod", checkout: true, checkoutMode: "sandbox" }));
-      await expect(verifyCandidate("https://candidate.example", SHA, fetcher)).resolves.toBe(SHA);
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining("sandbox link"));
-    } finally {
-      warn.mockRestore();
-    }
+  it("passes a prod candidate on a live checkout, and a sandbox link outside prod", async () => {
+    const live = mockFetch(health({ status: "ok", version: SHA, env: "prod", checkout: true, checkoutMode: "live" }));
+    await expect(verifyCandidate("https://candidate.example", SHA, live)).resolves.toBe(SHA);
+    const staging = mockFetch(health({ status: "ok", version: SHA, env: "staging", checkout: true, checkoutMode: "sandbox" }));
+    await expect(verifyCandidate("https://candidate.example", SHA, staging)).resolves.toBe(SHA);
   });
 
   it.each([
