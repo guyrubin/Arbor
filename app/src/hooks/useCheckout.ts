@@ -127,7 +127,7 @@ export function useCheckout() {
       const result = await performOpenPortal(defaultDeps());
       // B-GA-13: a web purchase is cancelled in RevenueCat's portal, never in a
       // store, so a parent without a link is told where else to cancel.
-      if (result === "unavailable") toast(t(manageFallbackKey(isNativePlatform, cachedEntitlement()?.provider)), "info");
+      if (result === "unavailable") toast(t(manageFallbackKey(isNativePlatform, cachedEntitlement()?.provider)), "success");
     } finally {
       setBusy(false);
     }
