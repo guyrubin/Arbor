@@ -93,6 +93,7 @@ import { dispatchSpeechSynthesis, screenAndSynthesizeSpeech, synthesizeSpeech, t
 import { AiProviderError } from "../ai/capabilities/contracts.js";
 import type { CapabilityRegistry } from "../ai/capabilities/registry.js";
 import { SOLD_PLANS, billingCheckoutUrl, offeredCurrencies } from "../server/billing.js";
+import { webManagementUrl } from "../server/revenuecatPortal.js";
 import { buildLiveSystemInstruction, liveSpeechConfig, SPOKEN_COACH_PERSONA, spokenLanguageDirective } from "../lib/livePersona.js";
 import { countAnalyzeLogs, toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
 // B-AI-16: the digest routes drop every free-text field an older client still posts.
@@ -3918,9 +3919,18 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
     }
   });
 
-  // MON-2: customer self-service portal link (manage / cancel web subscriptions).
-  router.get("/billing/portal", (_req, res) => {
-    res.json({ url: config.billingManageUrl ?? null });
+  // MON-2 / B-GA-13: the signed-in parent's own way to manage or cancel a web
+  // subscription: a single-use RevenueCat portal link, else the configured
+  // portal, else null (the client then names the receipt email and support).
+  router.get("/billing/portal", async (req, res) => {
+    let url: string | null = null;
+    try {
+      url = await webManagementUrl(config, actorOf(req).uid);
+    } catch (error) {
+      logger.error("RevenueCat management link failed", error, { requestId: requestIdOf(req) });
+    }
+    res.set("Cache-Control", "no-store");
+    res.json({ url: url ?? config.billingManageUrl ?? null });
   });
 
   // mk-p0-2 referral loop: the signed-in parent's stable invite code + link +

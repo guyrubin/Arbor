@@ -113,6 +113,10 @@ export async function performOpenPortal(deps: CheckoutDeps): Promise<PortalResul
   }
 }
 
+/** Where to send a parent whose "Manage subscription" found no link. */
+export const manageFallbackKey = (isNative: boolean, provider: string | undefined): "set.plan.manageStore" | "set.plan.manageWeb" =>
+  isNative || provider === "app_store" || provider === "play_store" ? "set.plan.manageStore" : "set.plan.manageWeb";
+
 /** Apple-required Restore Purchases. Native-only; on web it is a no-op that
  *  reports "unavailable" (the control itself never renders on web). */
 export async function performRestore(deps: CheckoutDeps): Promise<NativeRestoreOutcome> {

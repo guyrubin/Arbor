@@ -430,9 +430,11 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   {statusLine}
                 </p>
               )}
-              {entitlement.provider && entitlement.provider !== "none" && entitlement.provider !== "comp" && (
+              {/* Named only for a store a parent manages elsewhere; a web
+                  purchase is managed right here (never "Billed via stripe"). */}
+              {(entitlement.provider === "app_store" || entitlement.provider === "play_store") && (
                 <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>
-                  {t("set.plan.viaStore", { provider: entitlement.provider })}
+                  {t("set.plan.viaStore", { provider: t(`set.plan.store.${entitlement.provider}`) })}
                 </p>
               )}
               <button onClick={() => void openPortal()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>

@@ -84,6 +84,11 @@ export type ArborConfig = {
   billingCheckoutUrls: Record<string, string>;
   /** MON-2: customer self-service portal (Stripe Billing portal) for web subs. */
   billingManageUrl?: string;
+  /** B-GA-13: RevenueCat API v2 secret key (`REVENUECAT_API_KEY`, `sk_…`, Customer
+   *  information: read) that fetches a parent's single-use Web Billing portal link. */
+  revenuecatApiKey?: string;
+  /** `REVENUECAT_PROJECT_ID`; looked up with the key when unset. */
+  revenuecatProjectId?: string;
   /** BD-53/P2: checkout currencies on sale (`BILLING_CURRENCIES`); EUR always, ILS
    *  only once the RevenueCat products hold the shekel price. */
   billingCurrencies?: string[];
@@ -231,6 +236,8 @@ export const loadConfig = (): ArborConfig => {
       ...(process.env.BILLING_URL_FAMILY_ANNUAL ? { family_annual: process.env.BILLING_URL_FAMILY_ANNUAL } : {}),
     },
     billingManageUrl: process.env.BILLING_MANAGE_URL,
+    revenuecatApiKey: process.env.REVENUECAT_API_KEY?.trim() || undefined,
+    revenuecatProjectId: process.env.REVENUECAT_PROJECT_ID?.trim() || undefined,
     billingCurrencies: ["EUR", ...((process.env.BILLING_CURRENCIES || "").toUpperCase().split(",").map((c) => c.trim()).includes("ILS") ? ["ILS"] : [])],
     billingAcceptSandbox: boolFromEnv(process.env.BILLING_ACCEPT_SANDBOX, arborEnv !== "prod"),
     childAsrProvider: (() => {

@@ -10,6 +10,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "./api";
 import {
+  manageFallbackKey,
   performCheckout,
   performOpenPortal,
   performRestore,
@@ -149,5 +150,18 @@ describe("G2 negative control — web path DOES use the hosted checkout (proves 
     }
     const deps = makeDeps({ isNative: false, billingCheckout: async () => { throw new TypeError("offline"); } });
     expect(await performCheckout(deps, "plus", "monthly")).toBe("error");
+  });
+});
+
+describe("B-GA-13: a parent without a portal link is told where to cancel", () => {
+  it("a web purchase points to the receipt email and support, never to a store", () => {
+    expect(manageFallbackKey(false, "stripe")).toBe("set.plan.manageWeb");
+    expect(manageFallbackKey(false, undefined)).toBe("set.plan.manageWeb");
+  });
+
+  it("a store purchase, or any purchase inside the native app, points to the store", () => {
+    expect(manageFallbackKey(false, "app_store")).toBe("set.plan.manageStore");
+    expect(manageFallbackKey(false, "play_store")).toBe("set.plan.manageStore");
+    expect(manageFallbackKey(true, "stripe")).toBe("set.plan.manageStore");
   });
 });

@@ -9,6 +9,7 @@ import { checkoutCurrency } from "../lib/pricing";
 import { cachedEntitlement } from "./useEntitlement";
 import {
   defaultDeps,
+  manageFallbackKey,
   performCheckout,
   performOpenPortal,
   performRestore,
@@ -124,7 +125,9 @@ export function useCheckout() {
     setBusy(true);
     try {
       const result = await performOpenPortal(defaultDeps());
-      if (result === "unavailable") toast(t("set.plan.manageStore"), "success");
+      // B-GA-13: a web purchase is cancelled in RevenueCat's portal, never in a
+      // store, so a parent without a link is told where else to cancel.
+      if (result === "unavailable") toast(t(manageFallbackKey(isNativePlatform, cachedEntitlement()?.provider)), "info");
     } finally {
       setBusy(false);
     }
