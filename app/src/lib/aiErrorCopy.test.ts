@@ -9,7 +9,7 @@
  * Before this both rendered one sentence with one Retry button.
  */
 import { describe, it, expect } from "vitest";
-import { ApiError, EscalationRequiredError, PaywallError } from "./api";
+import { ApiError, EscalationRequiredError, LIVE_RESTING, PaywallError } from "./api";
 import { CONSENT_STATUS, QUOTA_STATUS, classifyAiFailure, retryAfterSeconds } from "./aiErrorCopy";
 
 const quota = () => new ApiError("You've reached the hourly AI limit (25 requests).", 429, 2_400);
@@ -81,6 +81,21 @@ describe("AI-06 — 429 and 451 never collapse into one message", () => {
     expect(classifyAiFailure(new EscalationRequiredError("escalate")).kind).toBe("escalation");
     expect(QUOTA_STATUS).toBe(429);
     expect(CONSENT_STATUS).toBe(451);
+  });
+});
+
+describe("B-AIOPS-02 — the family voice allowance is its own failure, not the hourly quota", () => {
+  it("live_resting renders voice-resting copy with no retry and no minutes countdown", () => {
+    const v = classifyAiFailure(new ApiError(LIVE_RESTING, 429), { online: true });
+    expect(v.kind).toBe("voiceResting");
+    expect(v.titleKey).toBe("elev.aierrors.voiceResting.title");
+    expect(v.bodyKey).toBe("elev.aierrors.voiceResting.body");
+    expect(v.retryable).toBe(false);
+    expect(v.actionRoute).toBeUndefined();
+    // Any other 429 keeps the hourly-quota copy.
+    expect(classifyAiFailure(quota(), { online: true }).kind).toBe("quota");
+    // Offline still outranks it.
+    expect(classifyAiFailure(new ApiError(LIVE_RESTING, 429), { online: false }).kind).toBe("offline");
   });
 });
 

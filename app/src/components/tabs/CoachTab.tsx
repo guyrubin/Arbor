@@ -924,6 +924,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
         // the same refusal, so "falling back" was a silent dead end. Now the
         // status survives (lib/api streamVoice) and the parent is told which
         // of the two happened, and what to do about it.
+        // B-AIOPS-02: the family's daily Live allowance (`live_resting`) is
+        // the same shape — a typed card, voice off, the typed composer and
+        // the crisis path untouched; no reload, no fallback loop, no retry.
         if (err instanceof ApiError && (err.status === 429 || err.status === 451)) {
           attempt.end();
           setVoicePhase("off");
@@ -1641,7 +1644,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               className="flex items-start gap-3 rounded-2xl p-4 me-auto max-w-[85%]"
               style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
             >
-              <Icon name={failureCopy.kind === "offline" ? "cloud_off" : failureCopy.kind === "consent" ? "lock" : "warning"} size={16} className="flex-shrink-0 mt-0.5" />
+              <Icon name={failureCopy.kind === "offline" ? "cloud_off" : failureCopy.kind === "consent" ? "lock" : failureCopy.kind === "voiceResting" ? "mic_off" : "warning"} size={16} className="flex-shrink-0 mt-0.5" />
               <div className="space-y-2">
                 <p className="text-xs leading-relaxed font-extrabold" dir="auto">{t(failureCopy.titleKey)}</p>
                 <p className="text-xs leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>
