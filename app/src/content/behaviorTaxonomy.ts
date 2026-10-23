@@ -170,6 +170,11 @@ const TYPE_KEYWORDS: [CanonicalBehaviorType, RegExp][] = [
   ["Transition Refusal", /transition|refus|leav|morning|dress|depart|goodbye|drop-?off|cling|מעבר|סירוב|בוקר|יציאה/i],
 ];
 
+/** A context noun by itself ("sister", "bedtime", "dinner", "tablet") is not
+ * evidence of a challenge. Require a problem cue before heuristically mapping
+ * non-canonical model labels, otherwise joyful moments become false incidents. */
+const INCIDENT_CUES = /refus|resist|meltdown|conflict|disput|fight|argu|standoff|overload|overwhelm|struggl|tantrum|upset|distress|cry|scream|avoid|difficul|trouble|problem|anxiet|disrupt|סירוב|מסרב|ריב|מריבה|קושי|קשה|בכי|צעק|התפרצות|עומס|חרדה|מאבק|וויכוח/i;
+
 /** Map a (possibly free) extraction label onto the canonical set.
  *  `matched: false` means the label didn't fit — the caller preserves it in
  *  notes and the type is the documented fallback. */
@@ -178,6 +183,9 @@ export function mapLabelToType(label: string): { type: CanonicalBehaviorType; ma
   if (!raw) return { type: DEFAULT_BEHAVIOR_TYPE, matched: false };
   const exact = BEHAVIOR_TYPES.find((b) => b.value.toLowerCase() === raw.toLowerCase());
   if (exact) return { type: exact.value, matched: true };
+  // Do not infer "Sibling Conflict" from "Sister helped me" or "Sleep
+  // Meltdown" from "Goodnight routine". The parent can confirm a concern.
+  if (!INCIDENT_CUES.test(raw)) return { type: DEFAULT_BEHAVIOR_TYPE, matched: false };
   for (const [type, re] of TYPE_KEYWORDS) {
     if (re.test(raw)) return { type, matched: true };
   }
@@ -235,7 +243,9 @@ export function normalizeExtractedLog(d: ExtractedLogDraft, fallbackTrigger = ""
   const notes = matched || !freeLabel ? baseNotes : baseNotes ? `${baseNotes} · ${freeLabel}` : freeLabel;
   const ctx = String(d?.context ?? "");
   return {
-    behaviorType: type,
+    // An unmatched AI label must never become a default "Transition Refusal".
+    // Keep it neutral and keep the original words in notes for parent review.
+    behaviorType: matched ? type : MOMENT_BEHAVIOR_TYPE,
     typeMatched: matched,
     freeLabel,
     intensity: clampIntensity(d?.intensity),

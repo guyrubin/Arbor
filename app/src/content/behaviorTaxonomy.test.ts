@@ -41,6 +41,19 @@ describe("AI-CAP-8 — mapLabelToType", () => {
     expect(mapLabelToType("סירוב בבוקר").type).toBe("Transition Refusal");
   });
 
+  it("does not promote positive or context-only AI labels into challenges", () => {
+    for (const label of [
+      "Sister reading together", "Goodnight routine", "Dinner with grandparents",
+      "Played on the tablet", "First word this morning", "אחים משחקים ביחד",
+    ]) {
+      expect(mapLabelToType(label).matched, label).toBe(false);
+      const draft = normalizeExtractedLog({ behaviorType: label, notes: "kept words" });
+      expect(draft.behaviorType, label).toBe("Moment");
+      expect(draft.typeMatched, label).toBe(false);
+      expect(draft.notes, label).toContain(label);
+    }
+  });
+
   it("an unmatched label falls back to the documented default with matched:false", () => {
     const r = mapLabelToType("Glitter everywhere incident");
     expect(r.type).toBe(DEFAULT_BEHAVIOR_TYPE);
@@ -71,7 +84,7 @@ describe("AI-CAP-8 — normalizeExtractedLog clamps every field", () => {
 
   it("preserves an unmatched free label in notes — never dropped", () => {
     const n = normalizeExtractedLog({ behaviorType: "Glitter everywhere incident", notes: "calm after" });
-    expect(n.behaviorType).toBe(DEFAULT_BEHAVIOR_TYPE);
+    expect(n.behaviorType).toBe("Moment");
     expect(n.typeMatched).toBe(false);
     expect(n.notes).toContain("Glitter everywhere incident");
     expect(n.notes).toContain("calm after");
