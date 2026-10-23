@@ -19,7 +19,7 @@ const state = vi.hoisted(() => ({
   program: null as null | { week: number; program: { shelf: string }; enrolment: Record<string, string>; content: { skill: { en: string; he: string }; watchFor: string[] } },
   openCaptureSheet: vi.fn(), seedCoach: vi.fn(), setActiveTab: vi.fn(),
   openHardMomentNow: vi.fn(), saveTodayOutcome: vi.fn(async () => {}),
-  acceptTodayAction: vi.fn(async () => {}), focusCalls: vi.fn(), recordPracticeDose: vi.fn(), noPractice: false,
+  acceptTodayAction: vi.fn(async () => {}), focusCalls: vi.fn(), recordPracticeDose: vi.fn(), noPractice: false, noLibrary: false,
   buttons: [] as { children?: React.ReactNode; onClick?: () => void; className?: string; "data-answer"?: string; "data-testid"?: string; "data-primary-move"?: string }[],
 }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
@@ -52,6 +52,11 @@ vi.mock("../../lib/programs/measures", () => ({ programWeekDays: () => ({ from: 
 vi.mock("../../lib/practice/choosePractice", async (original) => {
   const real = await original<typeof import("../../lib/practice/choosePractice")>();
   return { ...real, choosePractice: (input: Parameters<typeof real.choosePractice>[0]) => state.noPractice ? null : real.choosePractice(input) };
+});
+// A library with nothing in the question's areas (audit #3: the honest empty state).
+vi.mock("./nowRecommendationModel", async (original) => {
+  const real = await original<typeof import("./nowRecommendationModel")>();
+  return { ...real, dailyPlayForNow: (...args: Parameters<typeof real.dailyPlayForNow>) => state.noLibrary ? [] : real.dailyPlayForNow(...args) };
 });
 vi.mock("../../hooks/useTodaysFocus", () => ({ useTodaysFocus: (...args: unknown[]) => { state.focusCalls(...args); return { focus: state.focus, loading: false, error: false, regenerate: vi.fn() }; } }));
 vi.mock("../trust/TrustLink", () => ({ TrustLink: () => null }));
@@ -87,7 +92,7 @@ beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 9, 12, 8));
   state.actionPlans = []; state.approvedMemoryItems = []; state.behaviorLogs = []; state.appointments = []; state.evening = false; state.moreProps = null; state.readerProps = null; state.activeFamilyTopic = null;
   clearAcceptFailed("child-a");
-  vi.clearAllMocks(); state.actionLoopReady = true; state.setActiveTab.mockReset(); state.buttons = []; state.lang = "en"; state.focus = null; state.program = null; state.actionLoop = []; state.childProfile = { ...KNOWN_AGE }; state.noPractice = false;
+  vi.clearAllMocks(); state.actionLoopReady = true; state.setActiveTab.mockReset(); state.buttons = []; state.lang = "en"; state.focus = null; state.program = null; state.actionLoop = []; state.childProfile = { ...KNOWN_AGE }; state.noPractice = false; state.noLibrary = false;
 });
 
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
@@ -447,6 +452,88 @@ describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
     expect(words(plain)).not.toContain("Why does he hum?");
     expect(words(plain)).not.toContain(copy.pickedQuestion);
     expect(words(plain)).not.toContain(copy.topicWhy);
+  });
+
+  // v3 question continuity (audit #3): the active question feeds every lead's
+  // pick; a question with nothing for it shows the honest empty state.
+  describe("question continuity", () => {
+    const planOf = (page: string) => {
+      const at = page.indexOf('data-plan="');
+      expect(at).toBeGreaterThan(-1);
+      return page.slice(at, page.indexOf("</section>", at) + "</section>".length);
+    };
+    it.each(["en", "he"] as const)("%s: switching the question changes the practice lead to one on its shelves and names the question; a prior question's step never leads", lang => {
+      state.lang = lang;
+      const copy = NOW_COPY[lang];
+      // A step chosen under the mornings question is open.
+      state.actionLoop = [{ id: "step-m", recommendation: "Lay out two shoes before breakfast.", source: "coach", status: "accepted", acceptedAt: "2026-10-10T08:00:00", capacity: "tiny", topicId: "topic-m" }];
+      const mornings = { id: "topic-m", title: lang === "he" ? "הבקרים נגמרים בריב" : "Mornings end in a fight" };
+      const underMornings = renderToStaticMarkup(<NowView topic={mornings} />);
+      expect(underMornings).toContain('data-module="now-step"');
+      expect(underMornings).toContain("Lay out two shoes before breakfast.");
+      // Switch to a bedtime question: the mornings step must not lead it.
+      const bedtime = { id: "topic-b", title: lang === "he" ? "השינה לוקחת נצח" : "Bedtime takes forever" };
+      const page = renderToStaticMarkup(<NowView topic={bedtime} />);
+      expect(page).not.toContain("Lay out two shoes before breakfast.");
+      expect(page).not.toContain('data-module="now-step"');
+      expect(page).toContain('data-guide="bedtime"');
+      // The practice is drawn from the question's shelves - never an unrelated one - and the Picked line names the question.
+      expect(planOf(page)).toContain('data-plan="practice"');
+      state.buttons.find((item) => item["data-answer"] === "did")!.onClick?.();
+      expect(state.recordPracticeDose.mock.calls[0][0]).toMatchObject({ shelf: expect.stringMatching(/^(sleep|family)$/) });
+      const line = picked(page);
+      expect(words(line)).toContain(`${copy.pickedQuestion} `);
+      { const runs: string[] = line.match(/<bdi>[^<]*<\/bdi>/g) ?? []; expect(runs.some(run => run.includes(bedtime.title))).toBe(true); }
+      // The same question with no practice on its shelves falls through to the library, ranked by its areas - still never the mornings step.
+      state.noPractice = true;
+      const library = renderToStaticMarkup(<NowView topic={bedtime} />);
+      expect(library).not.toContain("Lay out two shoes before breakfast.");
+      expect(library).not.toContain('data-module="now-step"');
+      expect(library).toMatch(/data-recommendation-source="(library|none)"/);
+      expect(page.match(/data-primary-move=/g)).toHaveLength(1);
+    });
+    it.each(["en", "he"] as const)("%s: a question with no linked step and no matching idea shows the honest empty state with Ask Arbor, and cites the question", lang => {
+      state.lang = lang; state.noPractice = true; state.noLibrary = true;
+      const copy = NOW_COPY[lang];
+      state.actionLoop = [{ id: "step-m", recommendation: "Lay out two shoes before breakfast.", source: "coach", status: "accepted", acceptedAt: "2026-10-10T08:00:00", capacity: "tiny", topicId: "topic-m" }];
+      const question = lang === "he" ? "האחים רבים כל היום" : "The siblings fight all day";
+      state.activeFamilyTopic = { id: "topic-s", title: question };
+      const talk = vi.fn();
+      const page = renderToStaticMarkup(<NowView topic={state.activeFamilyTopic} onTalkOpen={talk} />);
+      expect(page).not.toContain("Lay out two shoes before breakfast.");
+      expect(page).toContain('data-guide="siblings"');
+      const plan = card(page);
+      const line = picked(plan);
+      { const runs: string[] = line.match(/<bdi>[^<]*<\/bdi>/g) ?? []; expect(runs.some(run => run.includes(question)), "the question cited").toBe(true); }
+      expect(plan).toContain('data-testid="now-question-empty"');
+      expect(plan).toContain('data-recommendation-source="none"');
+      expect(plan).toContain(copy.noStepForQuestion);
+      expect(words(line)).toContain(copy.noStepForQuestionWhy);
+      expect(plan).not.toContain(copy.noOffer);
+      expect(plan).not.toContain(copy.curatedWhy);
+      expect(plan).not.toContain(copy.otherIdea);
+      expect(state.readerProps.open).toBe(false);
+      button(lang === "he" ? "לשאול את ארבור על זה" : "Ask Arbor about this").onClick?.();
+      expect(talk).toHaveBeenCalledWith(copy.askQuestionPrompt(question));
+      // Without a question the open mornings step leads again (no question, no filter) ...
+      state.activeFamilyTopic = null;
+      expect(renderToStaticMarkup(<NowView />)).toContain("Lay out two shoes before breakfast.");
+      // ... and the same empty library is the plain "time together" offer, not the question's empty state.
+      state.actionLoop = [];
+      const plain = card(renderToStaticMarkup(<NowView />));
+      expect(plain).not.toContain('data-testid="now-question-empty"');
+      expect(plain).toContain(copy.noOffer);
+      // Clinical firewall and the one-move rule hold on the empty state too.
+      expect(plan).not.toMatch(/\d\s*\/\s*\d|\d\s*%|role="progressbar"|<progress/);
+      expect(page.match(/data-primary-move=/g)).toHaveLength(1);
+      if (lang === "he") expect(words(line).replace(/Noa/g, "").replace(question, "")).not.toMatch(/[A-Za-z]/);
+    });
+    it("a question whose words name no guide leaves the loop's own pick and never cites the question", () => {
+      state.activeFamilyTopic = { id: "topic-h", title: "Why does he hum?" };
+      const page = renderToStaticMarkup(<NowView topic={state.activeFamilyTopic} />);
+      expect(page).toContain('data-plan="practice"');
+      expect(words(picked(page))).not.toContain("Why does he hum?");
+    });
   });
 
   it.each(["en", "he"] as const)("%s: the face carries the guide's title as the card's h2 and the say line as a plain line unless it is words to say", lang => {
